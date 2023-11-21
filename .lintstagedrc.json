@@ -1,0 +1,6 @@
+{
+  "{packages,plugin-packages,web-packages}/**/*.ts": [
+    "eslint --cache --fix",
+    "sh -c 'tsc -b tsconfig.check.json'"
+  ]
+}

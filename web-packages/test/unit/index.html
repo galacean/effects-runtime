@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unit - Test</title>
+  <link rel="stylesheet" href="https://unpkg.com/mocha@10.2.0/mocha.css">
+</head>
+<body>
+  <div id="mocha"></div>
+
+  <script src="https://unpkg.com/chai@4.3.7/chai.js"></script>
+  <script src="https://unpkg.com/chai-spies@1.0.0/chai-spies.js"></script>
+  <script src="https://unpkg.com/mocha@10.2.0/mocha.js"></script>
+  <script class="mocha-init">
+    mocha.setup({ ui: 'bdd', globals: ['__core-js_shared__', 'core', 'LiveReload', 'Mars']});
+    mocha.checkLeaks();
+  </script>
+  <script type="module" src="./src/index.ts"></script>
+  <script type="module" class="mocha-exec">
+    mocha.run();
+  </script>
+</body>
+</html>

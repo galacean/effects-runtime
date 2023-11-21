@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>后处理测试 - demo</title>
+  <link rel="stylesheet" href="https://gw.alipayobjects.com/as/g/antui/antui/10.1.32/dpl/antui.css"/>
+  <style>
+    html, body, div, canvas { margin: 0; padding: 0; }
+    .container {
+      width: 1000px;
+      height: 600px;
+      background-color: rgb(0, 0, 0);
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="J-container"></div>
+<div class="am-whitespace ws15px"></div>
+<div class="am-flexbox am-wingblank wb10px" style="align-items: start">
+  <div class="am-wingblank wb10px">
+    <select id="J-select" size="12" style="min-width: 350px;"></select>
+  </div>
+  <div class="am-flexbox-item">
+    <div class="am-flexbox">
+      <div class="am-flexbox-item">
+        <button type="button" class="am-button" id="J-start">开始</button>
+      </div>
+      <div class="am-flexbox-item">
+        <button type="button" class="am-button white" id="J-pause">暂停</button>
+      </div>
+    </div>
+  </div>
+ <div class="am-flexbox-item"></div>
+</div>
+<div class="am-whitespace ws25px"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+<script type="module" src="../src/post-processing.ts"></script>
+</body>
+</html>

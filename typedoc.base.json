@@ -1,0 +1,9 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "includeVersion": true,
+  "exclude": ["**/*d.ts"],
+  "excludeInternal": true,
+  "excludeReferences": true,
+  "excludeNotDocumented": true,
+  "excludeExternals": true,
+}

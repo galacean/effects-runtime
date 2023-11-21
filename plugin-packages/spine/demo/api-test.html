@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>API 测试 - Spine 插件 - demo</title>
+  <link rel="stylesheet" href="https://gw.alipayobjects.com/as/g/antui/antui/10.1.32/dpl/antui.css"/>
+  <style>
+    input[type=range]::-webkit-slider-runnable-track {
+      background-color: #eee;
+      height: 2px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      margin-top: -6px;
+    }
+    .container {
+      position: relative;
+      text-align: center;
+      width: 375px;
+      height: 812px;
+      background-color: rgba(0,0,0,0.6);
+    }
+  </style>
+</head>
+<body>
+<div class="am-flexbox" style="align-items: start;">
+  <div class="container" id="J-container"></div>
+  <div class="am-wingblank" id="J-op" style="width: 460px;">
+    <div class="am-list am-list-form">
+      <div class="am-list-body">
+        <div class="am-list-item">
+          <div class="am-list-label">文件选择</div>
+          <div class="am-list-control">
+            <select id="J-fileList"></select>
+          </div>
+          <div class="am-list-arrow"><span class="am-icon arrow horizontal"></span></div>
+        </div>
+        <div class="am-list-item">
+          <div class="am-list-label">动画选择</div>
+          <div id="J-animationList" >
+          </div>
+        </div>
+       <!-- <div class="am-list-item">
+          <div class="am-list-label">动画选择</div>
+          <div class="am-list-item check">
+            <select id="J-animationList" multiple></select>
+          </div>
+          <div class="am-list-arrow"><span class="am-icon arrow horizontal"></span></div>
+        </div>-->
+        <div class="am-list-item">
+          <div class="am-list-label">格式选择</div>
+          <div class="am-list-control">
+            <select id="J-formatList">
+              <option value="json" selected>JSON</option>
+              <option value="skel">Skel</option>
+            </select>
+          </div>
+          <div class="am-list-arrow"><span class="am-icon arrow horizontal"></span></div>
+        </div>
+        <div class="am-list-item">
+          <div class="am-list-label">皮肤选择</div>
+          <div class="am-list-control">
+            <select id="J-skinList"></select>
+          </div>
+          <div class="am-list-arrow"><span class="am-icon arrow horizontal"></span></div>
+        </div>
+        <div class="am-list-item">
+            <button id="J-start" class="am-button tiny">开始</button>
+            <span class="am-list-item-action-divider" role="presentation"></span>
+            <button id="J-pause" class="am-button tiny">暂停</button>
+        </div>
+      </div>
+    </div>
+    <div class="am-list am-list-form">
+      <div class="am-list-header">动画设置</div>
+      <div class="am-list-body">
+        <div class="am-list-item">
+          <div class="am-list-label" id="J-SPEED">动画速度</div>
+          <div class="am-list-control">
+            <input type="text" placeholder="1" value=1 name="speed">
+          </div>
+        </div>
+        <div class="am-list-item">
+          <div class="am-list-label" id="J-MIX">混合时间</div>
+          <div class="am-list-control">
+            <input type="text" placeholder="0" value=0 name="mixDuration">
+          </div>
+        </div>
+        <div class="am-list-item">
+          <div class="am-list-label" id="J-DELAY">动画延时</div>
+          <div class="am-list-control">
+            <input type="text" placeholder="0" value=0 name="delay">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="am-list am-list-form">
+      <div class="am-list-header">相机位置</div>
+      <div class="am-list-body">
+          <div class="am-list-item">
+            <div class="am-list-label" id="J-DX">X: 0</div>
+            <div class="am-list-control">
+              <input type="range" value="0" min="-100" max="100" step="1" name="distanceX">
+            </div>
+          </div>
+          <div class="am-list-item">
+            <div class="am-list-label" id="J-DY">Y: 0</div>
+            <div class="am-list-control">
+              <input type="range" value="0" min="-100" max="100" step="1" name="distanceY">
+            </div>
+          </div>
+          <div class="am-list-item">
+            <div class="am-list-label" id="J-DZ">Z: 8</div>
+            <div class="am-list-control">
+              <input type="range" value="8" min="-30" max="30" step="0.5" name="distanceZ">
+            </div>
+          </div>
+      </div>
+    </div>
+    <div class="am-list am-list-form">
+      <div class="am-list-header">相机旋转</div>
+      <div class="am-list-body">
+        <div class="am-list-item">
+          <div class="am-list-label" id="J-RX">RotationX</div>
+          <div class="am-list-control">
+            <input type="range" value="0" min="-180" max="180" step="1" name="rotationX">
+          </div>
+        </div>
+        <div class="am-list-item">
+          <div class="am-list-label" id="J-RY">RotationY</div>
+          <div class="am-list-control">
+            <input type="range" value="0" min="-180" max="180" step="1" name="rotationY">
+          </div>
+        </div>
+        <div class="am-list-item">
+          <div class="am-list-label" id="J-RZ">RotationZ</div>
+          <div class="am-list-control">
+            <input type="range" value="0" min="-180" max="180" step="1" name="rotationZ">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="am-list">
+      <div class="am-list-body">
+        <div class="am-list-item">
+          <div class="am-list-content">
+            <div class="am-list-brief" id="J-premultiply"></div>
+          </div>
+        </div>
+    </div>
+    </div>
+  </div>
+  <div class="am-flexbox-item"></div>
+</div>
+</body>
+<script type="module" src="./src/api-test.ts"></script>
+</html>

@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "dist",
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "strictPropertyInitialization": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "downlevelIteration": true,
+    "esModuleInterop": true,
+    // "noUnusedLocals": true,
+    "strictNullChecks": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
+    "moduleResolution": "node",
+    "module": "ESNext",
+    "target": "ES6",
+    "lib": [
+      "DOM",
+      "ES2015",
+      "ESNext"
+    ],
+    "paths": {
+      "@galacean/effects-core": [
+        "./packages/effects-core/src"
+      ],
+      "@galacean/effects-webgl": [
+        "./packages/effects-webgl/src"
+      ],
+      "@galacean/effects-helper": [
+        "./packages/effects-helper/src"
+      ],
+      "@galacean/effects": [
+        "./packages/effects/src"
+      ],
+      "@galacean/effects-threejs": [
+        "./packages/effects-threejs/src"
+      ],
+      "@galacean/effects-plugin-*": [
+        "./plugin-packages/*/src"
+      ],
+      "@galacean/effects-plugin-model/*": [
+        "./plugin-packages/model/src/*"
+      ],
+    }
+  }
+}

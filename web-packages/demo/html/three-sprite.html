@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>sprite - ThreeJS demo</title>
+  <style>
+    html, body, div, canvas { margin: 0; padding: 0; }
+    body { display: grid; grid-template-columns: repeat(auto-fill, minmax(520px, auto)); }
+    .container {
+      width: 512px;
+      height: 512px;
+      background-color: rgba(0,0,0,255);
+    }
+  </style>
+</head>
+<body>
+<div>
+  <p>ThreeJS 插件渲染结果</p>
+  <div class="container" id="J-container"></div>
+</div>
+<div>
+  <p>ThreeJS 渲染结果</p>
+  <div class="container" id="J-threeContainer"></div>
+</div>
+
+<script src="https://unpkg.com/three@0.149.0/build/three.js"></script>
+<script type="module" src="../src/three-sprite.ts"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "references": [
+    {
+      "path": "./packages/effects-core"
+    },
+    {
+      "path": "./packages/effects"
+    },
+    {
+      "path": "./packages/effects-webgl"
+    },
+    {
+      "path": "./packages/effects-threejs"
+    }
+  ],
+  "files": []
+}

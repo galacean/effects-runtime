@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>多合成播放 - Spine 插件 - demo</title>
+  <link rel="stylesheet" href="https://gw.alipayobjects.com/as/g/antui/antui/10.1.32/dpl/antui.css"/>
+  <style>
+    .container {
+      text-align: center;
+      width: 375px;
+      height: 812px;
+      background-color: rgba(0,0,0,0.6);
+    }
+  </style>
+</head>
+<body>
+<div class="am-flexbox" style="align-items: start;">
+  <div class="container" id="J-container"></div>
+  <div class="am-wingblank wb10px" style="width: 460px;">
+    <div class="am-list">
+      <div class="am-list-body">
+        <div class="am-list-item-actions">
+          <button id="J-start" class="am-button tiny">开始</button>
+          <button id="J-pause" class="am-button tiny">暂停</button>
+          <button id="J-multi" class="am-button tiny">叠加新合成</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="./src/multi-comp.ts"></script>
+</body>
+</html>

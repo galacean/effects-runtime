@@ -1,0 +1,1 @@
+import '../../spine/src/index';

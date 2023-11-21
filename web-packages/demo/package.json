@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "name": "@galacean/effects-demo",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "concurrently -k \"vite build -w\" \"sleep 6 && vite preview\""
+  },
+  "dependencies": {
+    "@galacean/effects": "workspace:*",
+    "@galacean/effects-threejs": "workspace:*",
+    "@galacean/effects-plugin-orientation-transformer": "workspace:*",
+    "three": "^0.149.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.149.0"
+  }
+}

@@ -1,0 +1,4 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+PATH=$PATH:/usr/local/bin:/usr/local/sbin
+npx commitlint --edit "$1"

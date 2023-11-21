@@ -1,0 +1,21 @@
+{
+  "name": "Galacean Effects Runtime API",
+  "entryPoints": [
+    "packages/effects-core",
+    "packages/effects",
+    "packages/effects-helper",
+    "packages/effects-threejs",
+    "plugin-packages/editor-gizmo",
+    "plugin-packages/model",
+    "plugin-packages/orientation-transformer",
+    "plugin-packages/spine"
+  ],
+  "entryPointStrategy": "packages",
+  "out": "api",
+  "includeVersion": true,
+  "readme": "./packages/effects/README.md",
+  "navigationLinks": {
+    "Galacean Effects": "https://galacean.antgroup.com/effects/",
+    "Source code": "https://github.com/galacean/effects-runtime"
+  }
+}

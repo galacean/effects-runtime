@@ -1,0 +1,16 @@
+node_modules
+.DS_Store
+dist
+lib
+*.local
+*.tgz
+.eslintcache
+*.tsbuildinfo
+.vscode
+.idea
+.history
+.accesskey.yml
+.pnpm-debug.log
+temp
+api
+www

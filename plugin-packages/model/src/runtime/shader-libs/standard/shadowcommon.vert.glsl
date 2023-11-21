@@ -1,0 +1,8 @@
+//#define SHADOWMAP_STANDARD
+//#define SHADOWMAP_VSM
+//#define SHADOWMAP_EVSM
+
+#define SHADOWMAP_BAIS 0.001
+
+#define EVSM_FUNC0(DEPTH) -exp(-7.0 * DEPTH)
+#define EVSM_FUNC1(DEPTH) -exp(-6.0 * DEPTH)

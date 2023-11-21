@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简单使用 - 陀螺仪插件 - demo</title>
+  <style>
+    html, body, div, canvas { margin: 0; padding: 0; }
+    .container {
+      height: calc(100vh - 200px);
+      background-color: rgba(0,0,0,255);
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="J-container"></div>
+<section style="padding: 15px 20px;">
+  <div>
+    gamma:
+    <input name="gamma" type="range" min="-90" max="90" step="1">
+  </div>
+  <div>
+    beta:
+    <input name="beta" type="range" min="-90" max="90" step="1">
+  </div>
+  <div id="J-info"></div>
+</section>
+<script type="module" src="./src/simple.ts"></script>
+</body>
+</html>

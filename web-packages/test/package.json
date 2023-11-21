@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "name": "@galacean/effects-test",
+  "scripts": {
+    "test": "vite"
+  },
+  "dependencies": {
+    "@galacean/effects-webgl": "workspace:*",
+    "@galacean/effects": "workspace:*",
+    "@galacean/effects-helper": "workspace:*",
+    "@galacean/effects-threejs": "workspace:*"
+  }
+}
