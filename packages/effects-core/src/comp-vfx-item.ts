@@ -85,6 +85,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           props.delay = itemProps.delay;
           props.parentId = itemProps.parentId;
           props.content = itemProps.content;
+          props.transform = itemProps.transform;
           item = new CompVFXItem(props, this.composition);
           (item as CompVFXItem).contentProps = itemProps.content;
           item.transform.parentTransform = this.transform;
