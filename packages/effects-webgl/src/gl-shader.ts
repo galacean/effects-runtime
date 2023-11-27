@@ -1,8 +1,15 @@
-import type { ShaderCompileResult, ShaderWithSource, Texture, Engine } from '@galacean/effects-core';
+import type { ShaderCompileResult, ShaderWithSource, Texture, Engine, math } from '@galacean/effects-core';
 import { Shader } from '@galacean/effects-core';
 import type { GLProgram } from './gl-program';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
+
+type Vector2 = math.Vector2;
+type Vector3 = math.Vector3;
+type Vector4 = math.Vector4;
+type Matrix3 = math.Matrix3;
+type Matrix4 = math.Matrix4;
+type Quaternion = math.Quaternion;
 
 export class GLShader extends Shader {
   pipelineContext: GLPipelineContext;
@@ -42,19 +49,22 @@ export class GLShader extends Shader {
   public setTexture (name: string, texture: Texture) {
     this.pipelineContext.setTexture(this.uniformLocations[name], this.samplerChannels[name], texture);
   }
-  public setVector2 (name: string, value: number[]) {
+  public setVector2 (name: string, value: Vector2) {
     this.pipelineContext.setVector2(this.uniformLocations[name], value);
   }
-  public setVector3 (name: string, value: number[]) {
+  public setVector3 (name: string, value: Vector3) {
     this.pipelineContext.setVector3(this.uniformLocations[name], value);
   }
-  public setVector4 (name: string, value: number[]) {
+  public setVector4 (name: string, value: Vector4) {
     this.pipelineContext.setVector4(this.uniformLocations[name], value);
   }
-  public setMatrix (name: string, value: number[]) {
+  public setQuaternion (name: string, value: Quaternion) {
+    this.pipelineContext.setQuaternion(this.uniformLocations[name], value);
+  }
+  public setMatrix (name: string, value: Matrix4) {
     this.pipelineContext.setMatrix(this.uniformLocations[name], value);
   }
-  public setMatrix3 (name: string, value: number[]) {
+  public setMatrix3 (name: string, value: Matrix3) {
     this.pipelineContext.setMatrix3(this.uniformLocations[name], value);
   }
   public setVector4Array (name: string, array: number[]) {

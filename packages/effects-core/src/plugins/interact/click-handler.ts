@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import type { vec2, vec3 } from '@galacean/effects-specification';
-import type { mat4, Ray, Triangle } from '../../math';
+import type { Matrix4, Ray, TriangleLike, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 
 export enum HitTestType {
   triangle = 1,
@@ -11,65 +10,65 @@ export enum HitTestType {
 
 export interface BoundingBoxData {
   type: HitTestType,
-  area: (Triangle | Record<string, vec3>)[],
+  area: (TriangleLike | Record<string, Vector3>)[],
 }
 
 export interface BoundingBoxTriangle extends BoundingBoxData {
   type: HitTestType.triangle,
-  area: Triangle[],
+  area: TriangleLike[],
 }
 
 export interface BoundingBoxSphere extends BoundingBoxData {
   type: HitTestType.sphere,
   area: {
-    center: vec3,
-    size: vec3,
+    center: Vector3,
+    size: Vector3,
   }[],
 }
 
 export interface HitTestTriangleParams {
   type: HitTestType.triangle,
-  triangles: Triangle[],
+  triangles: TriangleLike[],
   backfaceCulling?: boolean,
   behavior?: spec.InteractBehavior,
 }
 
 export interface HitTestBoxParams {
   type: HitTestType.box,
-  center: vec3,
-  size: vec3,
+  center: Vector3,
+  size: Vector3,
   behavior?: spec.InteractBehavior,
 }
 
 export interface HitTestSphereParams {
   type: HitTestType.sphere,
-  center: vec3,
+  center: Vector3,
   radius: number,
   behavior?: spec.InteractBehavior,
 }
 
 export interface HitTestCustomParams {
   type: HitTestType.custom,
-  collect (ray: Ray, pointInCanvas: vec2): vec3[] | void,
+  collect (ray: Ray, pointInCanvas: Vector2): Vector3[] | void,
   behavior?: spec.InteractBehavior,
 }
 
 export type Region = {
   name: string,
   id: string,
-  position: vec3,
+  position: Vector3,
   behavior?: spec.InteractBehavior,
   parentId?: string,
-  hitPositions?: vec3[],
+  hitPositions?: Vector3[],
 };
 
 export type HitTestParams = {
   camera: {
-    position: vec3,
-    direction: vec3,
-    viewProjection: mat4,
+    position: Vector3,
+    direction: Vector3,
+    viewProjection: Matrix4,
   },
   x: number,
   y: number,
-  inRect: (position: vec3, width: number, height: number) => boolean,
+  inRect: (position: Vector3, width: number, height: number) => boolean,
 };

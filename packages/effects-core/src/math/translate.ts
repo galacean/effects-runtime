@@ -1,7 +1,5 @@
-import type { vec3 } from '@galacean/effects-specification';
-import type { mat3 } from './types';
 import type { ValueGetter } from './value-getter';
-import { mat3FromRotation, vec3MulMat3, vecAdd } from './vec';
+import { Euler, Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 
 export function translatePoint (x: number, y: number): number[] {
   const origin = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
@@ -14,7 +12,8 @@ export function translatePoint (x: number, y: number): number[] {
   return origin;
 }
 
-const tempRot: mat3 = [] as unknown as mat3;
+const tempEuler = new Euler();
+const tempMat4 = new Matrix4();
 
 export interface TranslateTarget {
   speedOverLifetime?: ValueGetter<number>,
@@ -24,17 +23,15 @@ export interface TranslateTarget {
 }
 
 export function calculateTranslation (
-  out: vec3,
+  out: Vector3,
   target: TranslateTarget,
-  acc: vec3,
+  acc: Vector3,
   time: number,
   duration: number,
-  posData: number[] | Float32Array,
-  velData: Float32Array | number[],
-  posStartIndex?: number,
-  velStartIndex?: number
-): vec3 {
-  let ret = out;
+  posData: Vector3,
+  velData: Vector3,
+): Vector3 {
+  const ret = out;
   const lifetime = time / duration;
   let speedIntegrate = time;
   const speedOverLifetime = target.speedOverLifetime;
@@ -45,21 +42,23 @@ export function calculateTranslation (
 
   const d = target.gravityModifier ? target.gravityModifier.getIntegrateByTime(0, time) : 0;
 
-  posStartIndex = posStartIndex || 0;
-  velStartIndex = velStartIndex || 0;
-  for (let i = 0; i < 3; i++) {
-    ret[i] = posData[posStartIndex + i] + velData[velStartIndex + i] * speedIntegrate + acc[i] * d;
-  }
+  ret.copyFrom(posData);
+  ret.addScaledVector(velData, speedIntegrate);
+  ret.addScaledVector(acc, d);
 
   const linearVelocityOverLifetime = target.linearVelOverLifetime || {};
   const orbVelOverLifetime = target.orbitalVelOverLifetime || {};
   const map = ['x', 'y', 'z'];
 
   if (orbVelOverLifetime.enabled) {
-    const center = orbVelOverLifetime.center || [0, 0, 0];
-    const pos: vec3 = [ret[0] - center[0], ret[1] - center[1], ret[2] - center[2]];
+    const center = new Vector3();
+
+    if (orbVelOverLifetime.center) {
+      center.setFromArray(orbVelOverLifetime.center);
+    }
+    const pos = ret.clone().subtract(center);
     const asRotation = orbVelOverLifetime.asRotation;
-    const rot = vec3MulMat3(pos, pos, mat3FromRotation(tempRot, map.map(pro => {
+    const orbVel = map.map(pro => {
       const value = orbVelOverLifetime[pro];
 
       if (value) {
@@ -67,9 +66,13 @@ export function calculateTranslation (
       }
 
       return 0;
-    }) as vec3));
+    });
 
-    ret = vecAdd(ret, center, rot);
+    tempEuler.setFromArray(orbVel).negate();
+    tempMat4.setFromEuler(tempEuler);
+    const rot = tempMat4.transformPoint(pos);
+
+    ret.addVectors(center, rot);
   }
   if (linearVelocityOverLifetime.enabled) {
     const asMovement = linearVelocityOverLifetime.asMovement;
@@ -78,7 +81,9 @@ export function calculateTranslation (
       const pro = linearVelocityOverLifetime[map[i]];
 
       if (pro) {
-        ret[i] += asMovement ? pro.getValue(lifetime) : pro.getIntegrateValue(0, time, duration);
+        const val = asMovement ? pro.getValue(lifetime) : pro.getIntegrateValue(0, time, duration);
+
+        ret.setElement(i, ret.getElement(i) + val);
       }
     }
   }

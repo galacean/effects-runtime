@@ -1,5 +1,8 @@
 fsIn vec2 v_UVCoord1;
+
+#ifdef HAS_UV_SET2
 fsIn vec2 v_UVCoord2;
+#endif
 
 // General Material
 #ifdef HAS_NORMAL_MAP
@@ -76,7 +79,9 @@ vec2 getNormalUV()
 {
     vec3 uv = vec3(v_UVCoord1, 1.0);
 #ifdef HAS_NORMAL_MAP
+    #ifdef HAS_UV_SET2
     uv.xy = u_NormalUVSet < 1 ? v_UVCoord1 : v_UVCoord2;
+    #endif
     #ifdef HAS_NORMAL_UV_TRANSFORM
     uv *= u_NormalUVTransform;
     #endif
@@ -88,7 +93,9 @@ vec2 getEmissiveUV()
 {
     vec3 uv = vec3(v_UVCoord1, 1.0);
 #ifdef HAS_EMISSIVE_MAP
+    #ifdef HAS_UV_SET2
     uv.xy = u_EmissiveUVSet < 1 ? v_UVCoord1 : v_UVCoord2;
+    #endif
     #ifdef HAS_EMISSIVE_UV_TRANSFORM
     uv *= u_EmissiveUVTransform;
     #endif
@@ -101,7 +108,9 @@ vec2 getOcclusionUV()
 {
     vec3 uv = vec3(v_UVCoord1, 1.0);
 #ifdef HAS_OCCLUSION_MAP
+    #ifdef HAS_UV_SET2
     uv.xy = u_OcclusionUVSet < 1 ? v_UVCoord1 : v_UVCoord2;
+    #endif
     #ifdef HAS_OCCLUSION_UV_TRANSFORM
     uv *= u_OcclusionUVTransform;
     #endif
@@ -113,7 +122,9 @@ vec2 getBaseColorUV()
 {
     vec3 uv = vec3(v_UVCoord1, 1.0);
 #ifdef HAS_BASE_COLOR_MAP
+    #ifdef HAS_UV_SET2
     uv.xy = u_BaseColorUVSet < 1 ? v_UVCoord1 : v_UVCoord2;
+    #endif
     #ifdef HAS_BASECOLOR_UV_TRANSFORM
     uv *= u_BaseColorUVTransform;
     #endif
@@ -125,7 +136,9 @@ vec2 getMetallicRoughnessUV()
 {
     vec3 uv = vec3(v_UVCoord1, 1.0);
 #ifdef HAS_METALLIC_ROUGHNESS_MAP
+    #ifdef HAS_UV_SET2
     uv.xy = u_MetallicRoughnessUVSet < 1 ? v_UVCoord1 : v_UVCoord2;
+    #endif
     #ifdef HAS_METALLICROUGHNESS_UV_TRANSFORM
     uv *= u_MetallicRoughnessUVTransform;
     #endif
@@ -137,7 +150,9 @@ vec2 getSpecularGlossinessUV()
 {
     vec3 uv = vec3(v_UVCoord1, 1.0);
 #ifdef HAS_SPECULAR_GLOSSINESS_MAP
+    #ifdef HAS_UV_SET2
     uv.xy = u_SpecularGlossinessUVSet < 1 ? v_UVCoord1 : v_UVCoord2;
+    #endif
     #ifdef HAS_SPECULARGLOSSINESS_UV_TRANSFORM
     uv *= u_SpecularGlossinessUVTransform;
     #endif
@@ -149,7 +164,9 @@ vec2 getDiffuseUV()
 {
     vec3 uv = vec3(v_UVCoord1, 1.0);
 #ifdef HAS_DIFFUSE_MAP
+    #ifdef HAS_UV_SET2
     uv.xy = u_DiffuseUVSet < 1 ? v_UVCoord1 : v_UVCoord2;
+    #endif
     #ifdef HAS_DIFFUSE_UV_TRANSFORM
     uv *= u_DiffuseUVTransform;
     #endif

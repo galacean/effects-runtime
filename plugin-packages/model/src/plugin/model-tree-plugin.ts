@@ -1,13 +1,5 @@
-import type {
-  Scene,
-  Composition,
-  RenderFrame,
-  VFXItem,
-} from '@galacean/effects';
-import {
-  AbstractPlugin,
-  VFX_ITEM_TYPE_TREE,
-} from '@galacean/effects';
+import type { Scene, Composition, RenderFrame, VFXItem } from '@galacean/effects';
+import { AbstractPlugin, spec } from '@galacean/effects';
 import { PAnimationSystem } from '../runtime/animation';
 import type { ModelTreeItem } from './model-tree-item';
 
@@ -42,7 +34,7 @@ export class ModelTreePlugin extends AbstractPlugin {
   }
 
   override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<ModelTreeItem>) {
-    if (item.type === VFX_ITEM_TYPE_TREE) {
+    if (item.type === spec.ItemType.tree) {
       const animSystem = this.getAnimationSystem(composition);
       const treeItem = item.content;
 
@@ -51,7 +43,7 @@ export class ModelTreePlugin extends AbstractPlugin {
   }
 
   override onCompositionItemRemoved (composition: Composition, item: VFXItem<ModelTreeItem>) {
-    if (item.type === VFX_ITEM_TYPE_TREE) {
+    if (item.type === spec.ItemType.tree) {
       const animSystem = this.getAnimationSystem(composition);
       const treeItem = item.content;
 

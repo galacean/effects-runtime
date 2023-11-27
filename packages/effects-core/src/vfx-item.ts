@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import { HELP_LINK, VFX_ITEM_TYPE_TREE } from './constants';
-import { quatFromRotation, quatStar } from './math';
+import { Euler, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
+import { HELP_LINK } from './constants';
 import type { Disposable } from './utils';
 import { Transform } from './transform';
 import type {
@@ -15,8 +15,13 @@ import type {
   InteractItem,
   BoundingBoxData,
   SpriteRenderData,
+  ParticleVFXItem,
+  FilterSpriteVFXItem,
+  SpriteVFXItem,
+  CameraVFXItem,
 } from './plugins';
 import type { Composition } from './composition';
+import type { CompVFXItem } from './comp-vfx-item';
 
 export type VFXItemContent = ParticleSystem | SpriteItem | CalculateItem | CameraController | InteractItem | void;
 export type VFXItemConstructor = new (props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
@@ -139,11 +144,38 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
    * 元素动画结束回调是否被调用
    */
   private callEnd: boolean;
-
   /**
    * 元素动画的速度
    */
   private speed: number;
+
+  static isComposition (item: VFXItem<VFXItemContent>): item is CompVFXItem {
+    return item.type === spec.ItemType.composition;
+  }
+
+  static isSprite (item: VFXItem<VFXItemContent>): item is SpriteVFXItem {
+    return item.type === spec.ItemType.sprite;
+  }
+
+  static isParticle (item: VFXItem<VFXItemContent>): item is ParticleVFXItem {
+    return item.type === spec.ItemType.particle;
+  }
+
+  static isFilterSprite (item: VFXItem<VFXItemContent>): item is FilterSpriteVFXItem {
+    return item.type === spec.ItemType.filter;
+  }
+
+  static isNull (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+    return item.type === spec.ItemType.null;
+  }
+
+  static isTree (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+    return item.type === spec.ItemType.tree;
+  }
+
+  static isExtraCamera (item: VFXItem<VFXItemContent>): item is CameraVFXItem {
+    return item.id === 'extra-camera' && item.name === 'extra-camera';
+  }
 
   constructor (
     props: VFXItemProps,
@@ -313,7 +345,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
    */
   public onUpdate (deltaTime: number) {
     if (this.started && !this.frozen && this.composition) {
-      const dt = deltaTime * this.speed;
+      let dt = deltaTime * this.speed;
       const time = (this.timeInms += dt);
 
       this.time += dt / 1000;
@@ -354,6 +386,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
               this.transform.setValid(true);
               shouldUpdate = true;
               lifetime = 1;
+              dt = 0;
             }
             if (!this.reusable) {
               if (
@@ -382,6 +415,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
           this.callEnd = false;
         }
         this.lifetime = lifetime;
+
         shouldUpdate && this.onItemUpdate(dt, lifetime);
       }
     }
@@ -515,10 +549,10 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
    * 设置元素在 3D 坐标轴上相对旋转（角度）
    */
   rotate (x: number, y: number, z: number) {
-    const q: spec.vec4 = [0, 0, 0, 1];
+    const euler = new Euler(x, y, z);
+    const q = Quaternion.fromEuler(euler);
 
-    quatFromRotation(q, x, y, z);
-    quatStar(q, q);
+    q.conjugate();
     this.transform.rotateByQuat(q);
   }
   /**
@@ -533,8 +567,8 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
    */
   setPositionByPixel (x: number, y: number) {
     if (this.composition) {
-      const z = this.transform.getWorldPosition()[2];
-      const [rx, ry] = this.composition.camera.getInverseVPRatio(z);
+      const { z } = this.transform.getWorldPosition();
+      const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
       const width = this.composition.renderer.getWidth() / 2;
       const height = this.composition.renderer.getHeight() / 2;
 
@@ -593,8 +627,8 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
   /**
    * 获取元素当前世界坐标
    */
-  getCurrentPosition (): spec.vec3 | undefined {
-    const pos: spec.vec3 = [0, 0, 0];
+  getCurrentPosition (): Vector3 {
+    const pos = new Vector3();
 
     this.transform.assignWorldTRS(pos);
 
@@ -624,8 +658,8 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
-      const z = this.transform.getWorldPosition()[2];
-      const [rx, ry] = this.composition.camera.getInverseVPRatio(z);
+      const { z } = this.transform.getWorldPosition();
+      const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
       const width = this.composition.renderer.getWidth() / 2;
       const height = this.composition.renderer.getHeight() / 2;
 
@@ -644,6 +678,28 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
       this.composition = null;
       this.transform.setValid(false);
     }
+  }
+}
+
+export namespace Item {
+  export function is<T extends spec.Item> (item: spec.Item, type: spec.ItemType): item is T {
+    return item.type === type;
+  }
+
+  export function isFilter (item: spec.Item): item is spec.FilterItem {
+    return item.type === spec.ItemType.filter;
+  }
+
+  export function isComposition (item: spec.Item): item is spec.CompositionItem {
+    return item.type === spec.ItemType.composition;
+  }
+
+  export function isParticle (item: spec.Item): item is spec.ParticleItem {
+    return item.type === spec.ItemType.particle;
+  }
+
+  export function isNull (item: spec.Item): item is spec.NullItem {
+    return item.type === spec.ItemType.null;
   }
 }
 
@@ -687,8 +743,8 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
         pluginName = 'text';
 
         break;
-      case VFX_ITEM_TYPE_TREE:
-        pluginName = VFX_ITEM_TYPE_TREE;
+      case spec.ItemType.tree:
+        pluginName = 'tree';
 
         break;
       default:

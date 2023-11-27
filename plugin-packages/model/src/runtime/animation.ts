@@ -6,7 +6,7 @@ import type {
   ModelAnimationOptions,
   ModelTreeOptions,
 } from '../index';
-import { Matrix4 } from '../math';
+import { Matrix4 } from './math';
 import { PObjectType } from './common';
 import { PObject } from './object';
 import type { InterpolationSampler } from './anim-sampler';
@@ -48,15 +48,14 @@ export class PSkin extends PObject {
 
     if (matList !== undefined && matList.length > 0) {
       if (matList.length % 16 !== 0 || matList.length !== this.jointList.length * 16) {
-        throw new Error(`Invalid array length, inverse bind matrices ${matList.length}, joint array ${this.jointList.length}`);
+        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointList.length}`);
       }
 
       const matrixCount = matList.length / 16;
 
       for (let i = 0; i < matrixCount; i++) {
-        const mat = new Matrix4();
+        const mat = Matrix4.fromArray(matList, i * 16);
 
-        Matrix4.unpack(matList, i * 16, mat);
         this.inverseBindMatrices.push(mat);
       }
     }
@@ -83,9 +82,8 @@ export class PSkin extends PObject {
           break;
         }
         const mat4 = node.transform.getWorldMatrix();
-        const newMat4 = Matrix4.fromArray(mat4);
 
-        this.animationMatrices.push(newMat4);
+        this.animationMatrices.push(mat4.clone());
       }
     }
 
@@ -95,22 +93,22 @@ export class PSkin extends PObject {
       });
     } else {
       this.animationMatrices = this.inverseBindMatrices;
-      console.error('Some error occured, replace skin animation matrices by inverse bind matrices');
+      console.error('Some error occured, replace skin animation matrices by invert bind matrices');
     }
   }
 
   computeMeshAnimMatrices (worldMatrix: Matrix4, matrixList: Float32Array, normalMatList: Float32Array) {
-    const inverseWorldMatrix = worldMatrix.clone().inverse();
+    const inverseWorldMatrix = worldMatrix.clone().invert();
     const tempMatrix = new Matrix4();
 
     this.animationMatrices.forEach((mat, i) => {
-      const localMatrix = Matrix4.multiply(inverseWorldMatrix, mat, tempMatrix);
+      const localMatrix = tempMatrix.multiplyMatrices(inverseWorldMatrix, mat);
 
-      localMatrix.data.forEach((x, j) => matrixList[i * 16 + j] = x);
+      localMatrix.elements.forEach((x, j) => matrixList[i * 16 + j] = x);
       //
-      const normalMat = localMatrix.clone().inverse().transpose();
+      const normalMat = localMatrix.clone().invert().transpose();
 
-      normalMat.data.forEach((x, j) => normalMatList[i * 16 + j] = x);
+      normalMat.elements.forEach((x, j) => normalMatList[i * 16 + j] = x);
     });
   }
 

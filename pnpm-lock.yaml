@@ -137,6 +137,9 @@ importers:
 
   packages/effects-core:
     dependencies:
+      '@galacean/effects-math':
+        specifier: 1.0.0
+        version: 1.0.0
       '@galacean/effects-specification':
         specifier: 1.0.0
         version: 1.0.0
@@ -1834,6 +1837,11 @@ packages:
     resolution: {integrity: sha512-ZSjtmelB7IJfWD2Fvb7+Z+ChTIKWq6kjda95fLcQKNS5aheVHn4IkfgRQE3sIIzTcSLwLcLZUD9UBt+V7+h+Pw==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dev: true
+
+  /@galacean/effects-math@1.0.0:
+    resolution: {integrity: sha512-fHkFk/UdJ0B/MXRKoXsytYQFmAphtsEWYj7NS2HFixkFMSoKFKu9donBKWnxyeYStcPKxroYWBOWpfMJQzNjlg==}
+    engines: {node: '>=10.0.0'}
+    dev: false
 
   /@galacean/effects-specification@1.0.0:
     resolution: {integrity: sha512-o9EnyCaf2lV2FqeNAS7fPTa7IenqbX6LCPiJpi2PH2ub5yDdhERqTHKClIxS+obAKXX1KwkLRHC64QAZ51K6Gg==}

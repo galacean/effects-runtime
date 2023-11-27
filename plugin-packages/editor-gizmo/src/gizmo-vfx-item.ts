@@ -1,31 +1,24 @@
-import type { Engine, GeometryDrawMode, HitTestCustomParams, Mesh, Ray, SpriteMesh, SpriteVFXItem, Texture, Triangle } from '@galacean/effects';
-import { spec, HitTestType, Transform, VFXItem, glContext, intersectRayBox, intersectRaySphere, intersectRayTriangle, assertExist } from '@galacean/effects';
+import type { Engine, GeometryDrawMode, HitTestCustomParams, Mesh, SpriteMesh, SpriteVFXItem, Texture } from '@galacean/effects';
+import { spec, HitTestType, Transform, VFXItem, glContext, assertExist, math } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType, GizmoVFXItemType } from './define';
 import { createModeWireframe, updateWireframeMesh, WireframeGeometryType } from './wireframe';
 import { createMeshFromShape } from './shape';
 import { createMeshFromSubType } from './mesh';
-import {
-  vecSquareDistance,
-  vec3MulMat4,
-  vecSub,
-  mat4MulMat4,
-  computeOrthographicOffCenter,
-  vec3ToVec2,
-  vec4MulMat4,
-  vecAdd,
-  vecNormalize,
-  vecMulScalar,
-} from './math/vec';
+import { computeOrthographicOffCenter } from './math-utils';
 import { intersectRayLine } from './raycast';
 import { moveToPointWidthFixDistance } from './util';
 
 const constants = glContext;
 
-type mat4 = spec.mat4;
 type vec3 = spec.vec3;
-type vec2 = spec.vec2;
 type vec4 = spec.vec4;
+type Ray = math.Ray;
+type TriangleLike = math.TriangleLike;
+type Vector2 = math.Vector2;
+type Vector3 = math.Vector3;
+type Matrix4 = math.Matrix4;
+const { Vector2, Vector3, Matrix4, Ray, Quaternion } = math;
 
 /**
  * 包围盒类型
@@ -43,7 +36,7 @@ export enum BoundingType {
 export interface GizmoItemBoundingLine {
   type: BoundingType.line,
   // 线条包围盒两端点
-  points: [vec3, vec3],
+  points: [Vector3, Vector3],
   // 射线与线条距离阈值
   width: number,
 }
@@ -54,9 +47,9 @@ export interface GizmoItemBoundingLine {
 export interface GizmoItemBoundingBox {
   type: BoundingType.box,
   //包围形状相对于元素位置的偏移，默认[0,0,0]
-  center?: vec3,
+  center?: Vector3,
   //包围盒的xyz长度，当type为box时生效
-  size: vec3,
+  size: Vector3,
 }
 
 /**
@@ -65,7 +58,7 @@ export interface GizmoItemBoundingBox {
 export interface GizmoItemBoundingSphere {
   type: BoundingType.sphere,
   //包围形状相对于元素位置的偏移，默认[0,0,0]
-  center?: vec3,
+  center?: Vector3,
   //包围球的半径，当type为sphere时生效
   radius: number,
 }
@@ -75,7 +68,7 @@ export interface GizmoItemBoundingSphere {
  */
 export interface GizmoItemBoundingTriangle {
   type: BoundingType.triangle,
-  triangles: Triangle[],
+  triangles: TriangleLike[],
   backfaceCulling?: boolean,
 }
 
@@ -100,8 +93,8 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
   contents?: Map<Mesh, Transform>;
   targetItem?: VFXItem<any>;
   boundingMap: Map<string, GizmoItemBounding> = new Map();
-  hitBounding?: { key: string, position: vec3 };
-  mat: mat4 = [] as unknown as mat4;
+  hitBounding?: { key: string, position: Vector3 };
+  mat = Matrix4.fromIdentity();
   wireframeMesh?: Mesh;
   spriteMesh?: SpriteMesh;
 
@@ -229,9 +222,9 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
 
     //   meshesToAdd.push(mesh);
     // }
-    if (item.type === spec.ItemType.sprite || item.type === spec.ItemType.filter) {
+    if (VFXItem.isSprite(item) || VFXItem.isFilterSprite(item)) {
       const color = this.color.slice();
-      const mesh = this.spriteMesh = (item as SpriteVFXItem).createWireframeMesh(item.content, color as vec4);
+      const mesh = this.spriteMesh = item.createWireframeMesh(item.content, color as vec4);
 
       this.wireframeMesh = mesh.mesh;
       meshesToAdd.push(mesh.mesh);
@@ -344,37 +337,37 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
         if (this.contents) { // 组合几何体
           // const targetTransform = this.targetItem.transform.clone();
 
-          const worldPos: vec3 = [0, 0, 0];
-          const worldQuat: vec4 = [0, 0, 0, 0];
-          const worldSca: vec3 = [1, 1, 1];
+          const worldPos = new Vector3();
+          const worldQuat = new Quaternion();
+          const worldScale = new Vector3(1, 1, 1);
 
           this.targetItem.transform.assignWorldTRS(worldPos, worldQuat);
 
           const targetTransform = new Transform({
             position: worldPos,
             quat: worldQuat,
-            scale: worldSca,
+            scale: worldScale,
             valid: true,
           });
 
           // 移动\旋转\缩放gizmo去除近大远小
           if (this.subType === GizmoSubType.rotation || this.subType === GizmoSubType.scale || this.subType === GizmoSubType.translation) {
             const camera = this.composition!.camera;
-            const cameraPos = camera.position || [0, 0, 0];
+            const cameraPos = camera.position || new Vector3();
             const itemPos = targetTransform.position;
             const newPos = moveToPointWidthFixDistance(cameraPos, itemPos);
 
-            targetTransform.setPosition(...newPos);
+            targetTransform.setPosition(newPos.x, newPos.y, newPos.z);
           }
 
           this.mat = targetTransform.getWorldMatrix();
           const center = targetTransform.position;
 
           for (const [mesh, transform] of this.contents) {
-            let worldMat4 = [] as unknown as mat4;
+            let worldMat4: Matrix4;
 
             transform.parentTransform = targetTransform;
-            const position: vec3 = [0, 0, 0];
+            const position = new Vector3();
 
             transform.assignWorldTRS(position);
             // 物体和中心点在屏幕空间上投影的距离
@@ -384,7 +377,7 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
             if (this.subType === GizmoSubType.viewHelper) {
               // 正交投影只需要计算物体在XY平面上的投影与中心点的距离
               if (mesh.name === 'sprite') {
-                distanceToCneter = Math.pow(vecSquareDistance(vec3ToVec2(position), vec3ToVec2(center)), 0.5);
+                distanceToCneter = position.toVector2().distance(center.toVector2());
                 theta = (this.boundingMap.get('posX') as GizmoItemBoundingSphere).radius;
               }
               // 将物体挂到相机的transform上
@@ -397,7 +390,7 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
               const height = width / aspect;
               const cameraModelMat4 = this.composition!.camera.getInverseViewMatrix();
               const padding = this.size.padding || 1; // 指定viewHelper与屏幕右上角的边距
-              let localMat = [] as unknown as mat4;
+              let localMat: Matrix4;
 
               localMat = transform.getWorldMatrix();
               const worldTransform: Transform = new Transform({
@@ -405,9 +398,9 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
               });
 
               worldTransform.cloneFromMatrix(localMat);
-              worldTransform.setPosition((position[0] + width / 2) - padding, (position[1] + height / 2) - padding, position[2]);
+              worldTransform.setPosition((position.x + width / 2) - padding, (position.y + height / 2) - padding, position.z);
               localMat = worldTransform.getWorldMatrix();
-              worldMat4 = mat4MulMat4(cameraModelMat4, localMat);
+              worldMat4 = cameraModelMat4.clone().multiply(localMat);
               // 正交投影到屏幕上
               const proMat5 = computeOrthographicOffCenter(-width / 2, width / 2, -height / 2, height / 2, -distance, distance);
 
@@ -427,17 +420,17 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
             // 使用distanceToCneter处理坐标轴旋转到中心点附近时的遮挡问题
             if (distanceToCneter < theta) {
               if (distanceToCneter < theta * 0.5) {
-                mesh.material.setVector2('u_alpha', [0, 0]);
+                mesh.material.setVector2('u_alpha', new Vector2(0, 0));
               } else {
-                mesh.material.setVector2('u_alpha', [(2 / theta) * distanceToCneter - 1, 0]);
+                mesh.material.setVector2('u_alpha', new Vector2((2 / theta) * distanceToCneter - 1, 0));
               }
             }
           }
         }
         if (this.content) { // 基础几何体
-          const worldPos: vec3 = [0, 0, 0];
-          const worldQuat: vec4 = [0, 0, 0, 0];
-          const worldSca: vec3 = [1, 1, 1];
+          const worldPos = new Vector3();
+          const worldQuat = new Quaternion();
+          const worldSca = new Vector3(1, 1, 1);
 
           this.targetItem.transform.assignWorldTRS(worldPos, worldQuat);
 
@@ -450,11 +443,11 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
 
           if (this.subType === GizmoSubType.light || this.subType === GizmoSubType.camera) {
             const camera = this.composition!.camera;
-            const cameraPos = camera.position || [0, 0, 0];
+            const cameraPos = camera.position || new Vector3(0, 0, 0);
             const itemPos = targetTransform.position;
             const newPos = moveToPointWidthFixDistance(cameraPos, itemPos);
 
-            targetTransform.setPosition(...newPos);
+            targetTransform.setPosition(newPos.x, newPos.y, newPos.z);
           }
 
           this.mat = targetTransform.getWorldMatrix();
@@ -474,15 +467,15 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
 
     if (boundingMap.size > 0) {
       const boundingKeys = boundingMap.keys();
-      let worldMat4 = [] as unknown as mat4;
+      let worldMat4: Matrix4;
 
       worldMat4 = this.transform.getWorldMatrix();
 
       if (this.targetItem) {
         //const targetTransform = this.targetItem.transform.clone();
-        const worldPos: vec3 = [0, 0, 0];
-        const worldQuat: vec4 = [0, 0, 0, 0];
-        const worldSca: vec3 = [1, 1, 1];
+        const worldPos = new Vector3();
+        const worldQuat = new Quaternion();
+        const worldSca = new Vector3(1, 1, 1);
 
         this.targetItem.transform.assignWorldTRS(worldPos, worldQuat);
 
@@ -506,7 +499,7 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
           const itemPos = targetTransform.position;
           const newPos = moveToPointWidthFixDistance(cameraPos, itemPos);
 
-          targetTransform.setPosition(...newPos);
+          targetTransform.setPosition(newPos.x, newPos.y, newPos.z);
           worldMat4 = targetTransform.getWorldMatrix();
         } else {
           worldMat4 = targetTransform.getWorldMatrix();
@@ -524,25 +517,32 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
          * @param pointInCanvas 屏幕坐标
          * @returns
          */
-        collect (ray: Ray, pointInCanvas: vec2): vec3[] | void {
+        collect (ray: Ray, pointInCanvas: Vector2): Vector3[] | void {
           const hitPositions = [];
 
           self.hitBounding = undefined;
           for (const key of boundingKeys) {
             const bounding = boundingMap.get(key);
-            let center: vec3 = [0, 0, 0];
-            const worldCenter: vec3 = [0, 0, 0];
+            const center = new Vector3();
+            const worldCenter = new Vector3();
 
             if (bounding?.type === BoundingType.box || bounding?.type === BoundingType.sphere) {
-              center = bounding?.center ? bounding.center.slice() as vec3 : [0, 0, 0];
-              vec3MulMat4(worldCenter, center, worldMat4);
+              if (bounding?.center) {
+                center.copyFrom(bounding?.center);
+              }
+              worldMat4.projectPoint(center, worldCenter);
             }
-            let position;
+            let position: Vector3 | undefined;
 
             switch (bounding?.type) {
               case BoundingType.box: // 立方体包围盒
-                bounding;
-                position = intersectRayBox([], ray.center, ray.direction, worldCenter, bounding?.size);
+                {
+                  const boxHalfSize = bounding.size.clone().multiply(0.5);
+                  const boxMax = center.clone().add(boxHalfSize);
+                  const boxMin = center.clone().subtract(boxHalfSize);
+
+                  position = ray.intersectBox({ min: boxMin, max: boxMax }, new Vector3());
+                }
 
                 break;
               case BoundingType.sphere: // 球体包围盒
@@ -565,78 +565,67 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
                   const localTransform = new Transform({
                     valid: true,
                   });
-                  let localMat4 = [] as unknown as mat4;
 
                   localTransform.cloneFromMatrix(worldMat4);
                   const pos = localTransform.position;
                   const padding = self.size.padding || 1; // 指定viewHelper与屏幕右上角的边距
 
-                  localTransform.setPosition((pos[0] + width / 2) - padding, (pos[1] + height / 2) - padding, pos[2]);
-                  localMat4 = localTransform.getWorldMatrix();
-                  const modelMat4 = mat4MulMat4(cameraModelMat4, localMat4);
+                  localTransform.setPosition((pos.x + width / 2) - padding, (pos.y + height / 2) - padding, pos.z);
+                  const localMat4 = localTransform.getWorldMatrix();
+                  const modelMat4 = cameraModelMat4.clone().multiply(localMat4);
 
-                  vec3MulMat4(worldCenter, center, modelMat4);
+                  modelMat4.projectPoint(center, worldCenter);
 
                   // 包围球中心点正交投影到屏幕上
-                  const screenCenter: vec4 = [0, 0, 0, 0];
-                  const vpMat4 = mat4MulMat4(proMat4, viewMat4);
-                  const mvpMat4 = mat4MulMat4(vpMat4, modelMat4);
-
-                  vec4MulMat4(screenCenter, [...center, 1.0] as vec4, mvpMat4);
-                  const screenCenterX = screenCenter[0] / screenCenter[3];
-                  const screenCenterY = screenCenter[1] / screenCenter[3];
+                  const vpMat4 = proMat4.clone().multiply(viewMat4);
+                  const mvpMat4 = vpMat4.clone().multiply(modelMat4);
+                  const screenCenter = mvpMat4.projectPoint(center, new Vector3());
+                  const screenCenterX = screenCenter.x;
+                  const screenCenterY = screenCenter.y;
 
                   // 包围球上的点正交投影到屏幕上
                   const radius = bounding.radius;
-                  const point: vec3 = [0, 0, 0];
-                  const up = [
-                    localMat4[1],
-                    localMat4[5],
-                    localMat4[9],
-                  ];
+                  const up = new Vector3(
+                    localMat4.elements[1],
+                    localMat4.elements[5],
+                    localMat4.elements[9],
+                  ).normalize();
 
-                  vecMulScalar(point, vecNormalize(up), radius);
-                  vecAdd(point, center, point);
+                  const point = up.clone().multiply(radius);
 
-                  const screenPoint: vec4 = [0, 0, 0, 0];
+                  point.add(center);
 
-                  vec4MulMat4(screenPoint, [...point, 1.0] as vec4, mvpMat4);
-                  const screenPointX = screenPoint[0] / screenPoint[3];
-                  const screenPointY = screenPoint[1] / screenPoint[3];
+                  const screenPoint = mvpMat4.projectPoint(point, new Vector3());
+                  const screenPointX = screenPoint.x;
+                  const screenPointY = screenPoint.y;
 
                   // 计算正交投影到屏幕上的包围球的半径
-                  const vecRadius: vec2 = [0, 0];
+                  const screenCenter2 = screenCenter.toVector2();
+                  const screenPoint2 = screenPoint.toVector2();
+                  const screenRadius = screenCenter2.distance(screenPoint2);
 
-                  vecSub(vecRadius, [screenCenterX, screenCenterY], [screenPointX, screenPointY]);
-                  const screenRadius = Math.hypot(...vecRadius);
-
-                  if (Math.pow(vecSquareDistance(pointInCanvas, [screenCenterX, screenCenterY]), 0.5) < screenRadius * 1.2) {
+                  if (pointInCanvas.distance(screenCenter2) < screenRadius * 1.2) {
                     position = worldCenter;
                   }
                 } else {
-                  bounding;
-                  position = intersectRaySphere([], ray.center, ray.direction, worldCenter, bounding?.radius);
+                  position = ray.intersectSphere({ center: worldCenter, radius: bounding.radius }, new Vector3());
                 }
 
                 break;
               case BoundingType.triangle: {// 三角数组包围盒
                 const { triangles, backfaceCulling } = bounding;
-                const tmpPositions = [];
+                const tmpPositions: Vector3[] = [];
                 let tmpPosition;
 
                 for (let j = 0; j < triangles.length; j++) {
                   const triangle = triangles[j];
-                  const worldTriangle: Triangle = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+                  const worldTriangle: TriangleLike = {
+                    p0: worldMat4.projectPoint(triangle.p0 as Vector3, new Vector3()),
+                    p1: worldMat4.projectPoint(triangle.p1 as Vector3, new Vector3()),
+                    p2: worldMat4.projectPoint(triangle.p2 as Vector3, new Vector3()),
+                  };
 
-                  // 坐标转换为世界坐标
-                  for (let i = 0; i < 3; i++) {
-                    const worldPosition: vec3 = [0, 0, 0];
-
-                    vec3MulMat4(worldPosition, triangle[i], worldMat4);
-                    worldTriangle[i] = worldPosition;
-                  }
-
-                  tmpPosition = intersectRayTriangle([], ray.center, ray.direction, worldTriangle, backfaceCulling);
+                  tmpPosition = ray.intersectTriangle(worldTriangle, new Vector3(), backfaceCulling);
                   if (tmpPosition) {
                     tmpPositions.push(tmpPosition);
                   }
@@ -646,7 +635,7 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
                   let lastDistance: number;
 
                   tmpPositions.forEach(item => {
-                    const distance = vecSquareDistance(ray.center, item);
+                    const distance = ray.origin.distanceSquared(item);
 
                     if (!lastDistance || distance < lastDistance) {
                       lastDistance = distance;
@@ -660,7 +649,7 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
               case BoundingType.line: {// 线条包围盒，将线条转换到屏幕空间，计算线条与屏幕交互点的距离，小于阈值判定为点中
                 const { points, width } = bounding;
 
-                position = intersectRayLine([], pointInCanvas, points, width / 2, worldMat4, self.composition!.camera);
+                position = intersectRayLine(new Vector3(), pointInCanvas, points, width / 2, worldMat4, self.composition!.camera);
 
                 break;
               }
@@ -671,8 +660,8 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
               hitPositions.push(position);
               //  缓存距离相机最近的 BoundingKey
               if (self.hitBounding) {
-                const distance = vecSquareDistance(ray.center, position);
-                const lastDistance = vecSquareDistance(ray.center, self.hitBounding.position);
+                const distance = ray.origin.distanceSquared(position);
+                const lastDistance = ray.origin.distanceSquared(self.hitBounding.position);
 
                 if (distance < lastDistance) {
                   self.hitBounding.key = key;

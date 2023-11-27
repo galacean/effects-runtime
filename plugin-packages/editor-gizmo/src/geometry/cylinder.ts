@@ -1,5 +1,7 @@
-import { vecNormalize } from '../math/vec';
+import { math } from '@galacean/effects';
 import { GeometryData } from './geometry';
+
+const { Vector3 } = math;
 
 /**
  *
@@ -63,9 +65,9 @@ export class CylinderGeometryData extends GeometryData {
 
           points.push(px, py, pz);
 
-          const normal = vecNormalize([sinTheta, slope, cosTheta]);
+          const normal = new Vector3(sinTheta, slope, cosTheta).normalize();
 
-          normals.push(...normal);
+          normals.push(...normal.toArray());
 
           uvs.push(u, 1 - v);
 

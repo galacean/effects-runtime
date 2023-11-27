@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Camera, JSONValue } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import type { FileFormat } from './files';

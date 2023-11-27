@@ -1,14 +1,9 @@
+import type { Vector3 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import type { vec2, vec4, TypedArray, TextureSheetAnimation } from '@galacean/effects-specification';
 import type { FilterDefine } from '../../filter';
 import type { ValueGetter } from '../../math';
-import {
-  convertAnchor,
-  createValueGetter,
-  vecAdd,
-  vecFill,
-  vecMulCombine,
-} from '../../math';
+import { vecFill, vecMulCombine, convertAnchor, createValueGetter } from '../../math';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
@@ -138,9 +133,9 @@ export class SpriteItem extends CalculateItem {
 
     // 兼容旧JSON（anchor和particleOrigin可能同时存在）
     if (!renderer.anchor && renderer.particleOrigin !== undefined) {
-      vecAdd(this.basicTransform.position, this.basicTransform.position, [-realAnchor[0] * scale[0], -realAnchor[1] * scale[1], 0]);
+      this.basicTransform.position.add([-realAnchor[0] * scale.x, -realAnchor[1] * scale.y, 0]);
     }
-    this.transform.setAnchor(realAnchor[0] * scale[0], realAnchor[1] * scale[1], 0);
+    this.transform.setAnchor(realAnchor[0] * scale.x, realAnchor[1] * scale.y, 0);
 
     const colorOverLifetime = props.colorOverLifetime;
 
@@ -301,9 +296,9 @@ export class SpriteItem extends CalculateItem {
     return ret;
   }
 
-  protected override calculateScaling (sizeChanged: boolean, sizeInc: spec.vec3, init?: boolean) {
+  protected override calculateScaling (sizeChanged: boolean, sizeInc: Vector3, init?: boolean) {
     if (sizeChanged || init) {
-      this.transform.setScale(sizeInc[0], sizeInc[1], sizeInc[2]);
+      this.transform.setScale(sizeInc.x, sizeInc.y, sizeInc.z);
     }
   }
 

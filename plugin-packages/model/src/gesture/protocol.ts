@@ -1,4 +1,4 @@
-import type { CameraOptions, spec } from '@galacean/effects';
+import type { CameraOptionsEx, spec } from '@galacean/effects';
 
 export interface CameraGestureHandler {
 
@@ -11,7 +11,7 @@ export interface CameraGestureHandler {
    * @param event - 键盘事件信息
    * @returns 当前的相机参数
    */
-  onKeyEvent (event: CameraKeyEvent): CameraOptions,
+  onKeyEvent (event: CameraKeyEvent): CameraOptionsEx,
 
   /**
    * 在 XY 方向上平移相机开始函数，在鼠标按下时调用
@@ -22,7 +22,7 @@ export interface CameraGestureHandler {
    * @param cameraID - 要控制的相机 item id
    * @returns 当前的相机参数
    */
-  onXYMoveBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptions,
+  onXYMoveBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptionsEx,
 
   /**
    * 在 XY 方向上平移相机开始函数，在鼠标按下拖拽时调用
@@ -31,7 +31,7 @@ export interface CameraGestureHandler {
    * @param speed - 移动速度，默认是 0.015
    * @returns 更新后的相机参数
    */
-  onXYMoving (x: number, y: number, speed?: number): CameraOptions,
+  onXYMoving (x: number, y: number, speed?: number): CameraOptionsEx,
 
   /**
    * 结束在 XY 方向上平移相机
@@ -47,7 +47,7 @@ export interface CameraGestureHandler {
    * @param cameraID - 要控制的相机 item id
    * @returns 当前的相机参数
    */
-  onZMoveBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptions,
+  onZMoveBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptionsEx,
 
   /**
    * 在 Z 方向上平移相机开始函数，类似缩放 3D 模型，在鼠标按下拖拽时调用
@@ -56,7 +56,7 @@ export interface CameraGestureHandler {
    * @param speed - 移动速度，默认是 0.015
    * @returns 更新后的相机参数
    */
-  onZMoving (x: number, y: number, speed?: number): CameraOptions,
+  onZMoving (x: number, y: number, speed?: number): CameraOptionsEx,
 
   /**
    * 结束在 Z 方向上平移相机
@@ -72,7 +72,7 @@ export interface CameraGestureHandler {
    * @param cameraID - 要控制的相机 item id
    * @returns 当前的相机参数
    */
-  onRotateBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptions,
+  onRotateBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptionsEx,
 
   /**
    * 相机的自旋转，在鼠标按下拖拽时调用
@@ -81,7 +81,7 @@ export interface CameraGestureHandler {
    * @param speed - 移动速度，默认是 1
    * @returns 更新后的相机参数
    */
-  onRotating (x: number, y: number, speed?: number): CameraOptions,
+  onRotating (x: number, y: number, speed?: number): CameraOptionsEx,
 
   /**
    * 相机的自旋转
@@ -97,7 +97,7 @@ export interface CameraGestureHandler {
    * @param cameraID - 要控制的相机 item id
    * @returns 当前的相机参数
    */
-  onRotatePointBegin (x: number, y: number, width: number, height: number, point: spec.vec3, cameraID: string): CameraOptions,
+  onRotatePointBegin (x: number, y: number, width: number, height: number, point: spec.vec3, cameraID: string): CameraOptionsEx,
 
   /**
    * 相机绕某个点旋转，在鼠标按下拖拽时调用
@@ -106,7 +106,7 @@ export interface CameraGestureHandler {
    * @param speed - 移动速度，默认是 1
    * @returns 更新后的相机参数
    */
-  onRotatingPoint (x: number, y: number, speed?: number): CameraOptions,
+  onRotatingPoint (x: number, y: number, speed?: number): CameraOptionsEx,
 
   /**
    * 相机绕某个点旋转

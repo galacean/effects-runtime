@@ -1,6 +1,6 @@
 import type {
-  Disposable, GLType, JSONValue, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, Scene, GPUCapability,
+  Disposable, GLType, JSONValue, LostHandler, MessageItem, RestoreHandler,
+  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, Scene, math, GPUCapability,
 } from '@galacean/effects-core';
 import {
   Ticker,
@@ -34,7 +34,7 @@ export interface ItemClickedData {
   name: string,
   player: Player,
   id: string,
-  hitPositions: spec.vec3[],
+  hitPositions: math.Vector3[],
   compositionId: number,
 }
 

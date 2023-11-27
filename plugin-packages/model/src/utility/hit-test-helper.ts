@@ -1,44 +1,45 @@
-
-import type { Composition, Ray, Region, spec } from '@galacean/effects';
-import { intersectRayBox } from '@galacean/effects';
-import { Matrix4, Vector3, Vector4 } from '../math';
+import type { Composition, Region, spec, math } from '@galacean/effects';
+import type { Ray, Matrix4 } from '../runtime/math';
+import { Vector3 } from '../runtime/math';
 import type { ModelItemBounding, ModelItemBoundingBox } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../plugin/const';
 import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import type { PMesh } from '../runtime';
 import { PObjectType } from '../runtime/common';
 
+type Ray = math.Ray;
+
 // 射线与带旋转的包围盒求交
 function transformDirection (m: Matrix4, direction: Vector3) {
   const x = direction.x;
   const y = direction.y;
   const z = direction.z;
+  const me = m.elements;
   const result = new Vector3();
 
-  result.x = m.data[0] * x + m.data[4] * y + m.data[8] * z;
-  result.y = m.data[1] * x + m.data[5] * y + m.data[9] * z;
-  result.z = m.data[2] * x + m.data[6] * y + m.data[10] * z;
+  result.x = me[0] * x + me[4] * y + me[8] * z;
+  result.y = me[1] * x + me[5] * y + me[9] * z;
+  result.z = me[2] * x + me[6] * y + me[10] * z;
 
   return result.normalize();
 
 }
 
-function RayIntersectsBoxWithRotation (ray: Ray, matrixData: spec.mat4, bounding: ModelItemBounding) {
-  const local2World = Matrix4.fromArray(matrixData);
-  const world2Local = Matrix4.inverse(local2World, new Matrix4());
+function RayIntersectsBoxWithRotation (ray: Ray, matrixData: Matrix4, bounding: ModelItemBounding) {
+  const local2World = matrixData;
+  const world2Local = local2World.clone().invert();
 
-  const origin = new Vector4(ray.center[0], ray.center[1], ray.center[2], 1.0);
-  const direction = new Vector3(ray.direction[0], ray.direction[1], ray.direction[2]);
+  const newRay = ray.clone().applyMatrix(world2Local);
+  const boxCenter = Vector3.fromArray(bounding.center!);
+  const boxHalfSize = Vector3.fromArray((bounding as ModelItemBoundingBox).size!).multiply(0.5);
+  const boxMin = boxCenter.clone().subtract(boxHalfSize);
+  const boxMax = boxCenter.clone().add(boxHalfSize);
+  const intersetPoint = newRay.intersectBox({ min: boxMin, max: boxMax }, new Vector3());
 
-  const origin2 = Matrix4.multiplyByVector(world2Local, origin, new Vector4());
-  const direction2 = transformDirection(world2Local, direction);
+  if (intersetPoint !== undefined) {
+    const insersetPointInWorld = local2World.transformPoint(intersetPoint);
 
-  const insersetPoint: any = intersectRayBox([], [origin2.x, origin2.y, origin2.z], [direction2.x, direction2.y, direction2.z], bounding.center as spec.vec3, (bounding as ModelItemBoundingBox).size as spec.vec3);
-
-  if (insersetPoint !== null) {
-    const insersetPointInWorld = Matrix4.multiplyByVector(local2World, new Vector4(insersetPoint[0], insersetPoint[1], insersetPoint[2], 1.0), new Vector4());
-
-    return [[insersetPointInWorld.x, insersetPointInWorld.y, insersetPointInWorld.z]];
+    return [insersetPointInWorld];
   } else {
     return;
   }
@@ -115,9 +116,9 @@ const normal = new Vector3();
 function RayTriangleTesting (ro: Vector3, rd: Vector3, a: Vector3, b: Vector3, c: Vector3, backfaceCulling: boolean): number | undefined {
   // Compute the offset origin, edges, and normal.
   // from https://github.com/pmjoniak/GeometricTools/blob/master/GTEngine/Include/Mathematics/GteIntrRay3Triangle3.h
-  Vector3.subtract(b, a, edge1);
-  Vector3.subtract(c, a, edge2);
-  Vector3.cross(edge1, edge2, normal);
+  edge1.subtractVectors(b, a);
+  edge2.subtractVectors(c, a);
+  normal.crossVectors(edge1, edge2);
   // Solve Q + t*D = b1*E1 + b2*E2 (Q = kDiff, D = ray direction,
   // E1 = kEdge1, E2 = kEdge2, N = Cross(E1,E2)) by
   //	 |Dot(D,N)|*b1 = sign(Dot(D,N))*Dot(D,Cross(Q,E2))
@@ -137,16 +138,16 @@ function RayTriangleTesting (ro: Vector3, rd: Vector3, a: Vector3, b: Vector3, c
     return;
   }
 
-  Vector3.subtract(ro, a, diff);
+  diff.subtractVectors(ro, a);
 
-  Vector3.cross(diff, edge2, edge2);
+  edge2.crossVectors(diff, edge2);
   const DdQxE2 = sign * rd.dot(edge2); // b1 < 0, no intersection
 
   if (DdQxE2 < 0) {
     return;
   }
 
-  Vector3.cross(edge1, diff, edge1);
+  edge1.crossVectors(edge1, diff);
   const DdE1xQ = sign * rd.dot(edge1); // b2 < 0, no intersection
 
   if (DdE1xQ < 0) {
@@ -174,7 +175,7 @@ function CompositionHitTest (composition: Composition, x: number, y: number): Re
     return [];
   }
 
-  const o = ray.center;
+  const o = ray.origin;
   const d = ray.direction;
   const nums = regions.map((region, index) => {
     const p = region.position;
@@ -182,7 +183,7 @@ function CompositionHitTest (composition: Composition, x: number, y: number): Re
     const t: spec.vec3 = [0, 0, 0];
 
     for (let i = 0; i < 3; i++) {
-      t[i] = (p[i] - o[i]) / d[i];
+      t[i] = (p.getElement(i) - o.getElement(i)) / d.getElement(i);
     }
 
     return [index, Math.max(...t)];

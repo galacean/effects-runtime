@@ -1,9 +1,9 @@
 import * as spec from '@galacean/effects-specification';
-import { VFX_ITEM_TYPE_TREE } from './constants';
-import type { CameraController } from './plugins';
+import { CalculateItem } from './plugins';
+import type { CameraVFXItem } from './plugins';
 import { addItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
-import { createVFXItem, VFXItem } from './vfx-item';
+import { createVFXItem, Item, VFXItem } from './vfx-item';
 import type { Composition } from './composition';
 
 export interface ItemNode {
@@ -13,7 +13,7 @@ export interface ItemNode {
   parentId?: string, // 当前时刻作用在 vfxItem 的 transform 上的 parentTransform 对应元素的 id，会随父元素的销毁等生命周期变换，与 vfxItem.parenId 可能不同
 }
 
-export class CompVFXItem extends VFXItem<void> {
+export class CompVFXItem extends VFXItem<void | CalculateItem> {
   /**
    * 创建好的元素数组
    */
@@ -23,6 +23,8 @@ export class CompVFXItem extends VFXItem<void> {
    */
   itemTree: ItemNode[] = [];
   startTime: number;
+  // k帧数据
+  contentProps: any;
   override timeInms: number;
   /**
    * id和元素的映射关系Map，方便查找
@@ -35,16 +37,17 @@ export class CompVFXItem extends VFXItem<void> {
   private itemsToRemove: VFXItem<VFXItemContent>[] = [];
   private tempQueue: VFXItem<VFXItemContent>[] = [];
   // 3D 模式下创建的场景相机 需要最后更新参数
-  private extraCamera: VFXItem<CameraController>;
+  private extraCamera: CameraVFXItem;
 
   override get type (): spec.ItemType {
     return spec.ItemType.composition;
   }
 
   override onConstructed (props: VFXItemProps) {
-    const { items = [], startTime = 0 } = props;
+    const { items = [], startTime = 0, content } = props;
 
     this.itemProps = items;
+    this.contentProps = content;
     const endBehavior = this.endBehavior;
 
     if (
@@ -65,16 +68,54 @@ export class CompVFXItem extends VFXItem<void> {
      */
     if (!this.items.length && this.composition) {
       for (let i = 0; i < this.itemProps.length; i++) {
-        const item = createVFXItem(this.itemProps[i], this.composition);
+        let item: VFXItem<VFXItemContent>;
+        const itemProps = this.itemProps[i];
 
-        if (item.id === 'extra-camera' && item.name === 'extra-camera') {
+        // 设置预合成作为元素时的时长、结束行为和渲染延时
+        if (Item.isComposition(itemProps)) {
+          const refId = itemProps.content.options.refId;
+          const props = this.composition.refCompositionProps.get(refId);
+
+          if (!props) {
+            throw new Error(`引用的Id: ${refId} 的预合成不存在`);
+          }
+          props.name = itemProps.name;
+          props.duration = itemProps.duration;
+          props.endBehavior = itemProps.endBehavior;
+          props.delay = itemProps.delay;
+          props.parentId = itemProps.parentId;
+          props.content = itemProps.content;
+          item = new CompVFXItem(props, this.composition);
+          (item as CompVFXItem).contentProps = itemProps.content;
+          item.transform.parentTransform = this.transform;
+          this.composition.refContent.push(item as CompVFXItem);
+          if (item.endBehavior === spec.END_BEHAVIOR_RESTART) {
+            this.composition.autoRefTex = false;
+          }
+        } else {
+          item = createVFXItem(this.itemProps[i], this.composition);
+          item.transform.parentTransform = this.transform;
+        }
+
+        if (VFXItem.isExtraCamera(item)) {
           this.extraCamera = item;
         }
         this.items.push(item);
         this.tempQueue.push(item);
       }
     }
+    // TODO: 处理k帧数据, ECS后改成 TimelineComponent
+    if (!this.content && this.contentProps) {
+      this._content = this.doCreateContent();
+    }
+  }
 
+  protected override doCreateContent (): CalculateItem {
+    const content: CalculateItem = new CalculateItem(this.contentProps, this);
+
+    content.renderData = content.getRenderData(0, true);
+
+    return content;
   }
 
   override onLifetimeBegin () {
@@ -92,7 +133,10 @@ export class CompVFXItem extends VFXItem<void> {
   }
 
   override onItemUpdate (dt: number, lifetime: number) {
-
+    if (this.content) {
+      this.content.updateTime(this.time);
+      this.content.getRenderData(this.content.time);
+    }
     if (!this.items) {
       return;
     }
@@ -142,7 +186,17 @@ export class CompVFXItem extends VFXItem<void> {
       const itemNode = this.itemTree[i];
 
       if (itemNode && itemNode.item) {
-        itemNode.item.onUpdate(dt);
+        const item = itemNode.item;
+
+        if (
+          VFXItem.isComposition(item) &&
+          item.ended &&
+          item.endBehavior === spec.END_BEHAVIOR_RESTART
+        ) {
+          item.restart();
+        } else {
+          item.onUpdate(dt);
+        }
         queue.push(...itemNode.children);
       }
     }
@@ -160,7 +214,7 @@ export class CompVFXItem extends VFXItem<void> {
       }
     }
 
-    this.extraCamera && this.extraCamera.onUpdate(dt);
+    this.extraCamera?.onUpdate(dt);
   }
 
   override onItemRemoved (composition: Composition) {
@@ -206,9 +260,9 @@ export class CompVFXItem extends VFXItem<void> {
 
     if (itemIndex > -1) {
       addItem(this.itemsToRemove, item);
-      if (item.type === VFX_ITEM_TYPE_TREE || item.type === spec.ItemType.null) {
+      if (VFXItem.isTree(item) || VFXItem.isNull(item)) {
         const willRemove = item.endBehavior === spec.END_BEHAVIOR_DESTROY_CHILDREN;
-        const keepParent = item.type === spec.ItemType.null && !!this.itemCacheMap.get(item.id);
+        const keepParent = VFXItem.isNull(item) && !!this.itemCacheMap.get(item.id);
         const children = this.itemCacheMap.get(item.id)?.children || [];
 
         children.forEach(cit => {
@@ -221,6 +275,18 @@ export class CompVFXItem extends VFXItem<void> {
 
       return true;
     }
+
+    this.items.forEach(it => {
+      if (VFXItem.isComposition(it)) {
+        const itemIndex = it.items.indexOf(item);
+
+        if (itemIndex > -1) {
+          it.removeItem(item);
+
+          return true;
+        }
+      }
+    });
 
     return false;
   }
@@ -285,6 +351,20 @@ export class CompVFXItem extends VFXItem<void> {
 
   }
 
+  getItemByName (name: string) {
+    const res: VFXItem<VFXItemContent>[] = [];
+
+    for (const item of this.items) {
+      if (item.name === name) {
+        res.push(item);
+      } else if (VFXItem.isComposition(item)) {
+        res.push(...item.getItemByName(name));
+      }
+    }
+
+    return res;
+  }
+
   protected override isEnded (now: number) {
     return now >= this.durInms;
   }
@@ -297,10 +377,8 @@ export class CompVFXItem extends VFXItem<void> {
       this.itemTree = [];
       const itemMap = this.itemCacheMap;
       const queue = this.tempQueue;
-      let countTime = 0;
 
       while (queue.length) {
-        countTime++;
         const item = queue.shift() as VFXItem<VFXItemContent>;
 
         if (item.parentId === undefined) {
@@ -344,5 +422,11 @@ export class CompVFXItem extends VFXItem<void> {
     const idx = id.lastIndexOf('^');
 
     return idx > -1 ? id.substring(0, idx) : id;
+  }
+
+  private restart () {
+    this.reset();
+    this.createContent();
+    this.start();
   }
 }

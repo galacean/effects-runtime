@@ -33,7 +33,10 @@ vsIn vec2 a_UV2;
 #endif
 
 vsOut vec2 v_UVCoord1;
+
+#ifdef HAS_UV_SET2
 vsOut vec2 v_UVCoord2;
+#endif
 
 #ifdef HAS_VERTEX_COLOR_VEC3
 vsIn vec3 a_Color;
@@ -127,7 +130,6 @@ void main()
     #endif // !HAS_NORMALS
 
     v_UVCoord1 = vec2(0.0, 0.0);
-    v_UVCoord2 = vec2(0.0, 0.0);
 
     #ifdef HAS_UV_SET1
     v_UVCoord1 = a_UV1;

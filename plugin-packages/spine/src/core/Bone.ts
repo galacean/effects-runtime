@@ -2,7 +2,7 @@ import type { BoneData } from './BoneData';
 import { TransformMode } from './BoneData';
 import type { Skeleton } from './Skeleton';
 import type { Updatable } from './Updatable';
-import type { Vector2 } from '../math/vector2';
+import type { math } from '@galacean/effects';
 import { MathUtils } from '../math/math';
 
 /** Stores a bone's current pose.
@@ -329,7 +329,7 @@ export class Bone implements Updatable {
   }
 
   /** Transforms a point from world coordinates to the bone's local coordinates. */
-  worldToLocal (world: Vector2) {
+  worldToLocal (world: math.Vector2) {
     const invDet = 1 / (this.a * this.d - this.b * this.c);
     const x = world.x - this.worldX, y = world.y - this.worldY;
 
@@ -340,7 +340,7 @@ export class Bone implements Updatable {
   }
 
   /** Transforms a point from the bone's local coordinates to world coordinates. */
-  localToWorld (local: Vector2) {
+  localToWorld (local: math.Vector2) {
     const x = local.x, y = local.y;
 
     local.x = x * this.a + y * this.b + this.worldX;

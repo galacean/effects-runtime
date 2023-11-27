@@ -1,12 +1,13 @@
 import type { vec3 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
+import { Vector3, clamp } from '@galacean/effects-math/es/core/index';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { EventSystem, TouchEventType } from './event-system';
 import type { VFXItemProps } from '../../vfx-item';
 import { VFXItem } from '../../vfx-item';
 import type { HitTestTriangleParams, BoundingBoxTriangle } from './click-handler';
 import { HitTestType } from './click-handler';
-import { clamp, vec3MulMat4, trianglesFromRect } from '../../math';
+import { trianglesFromRect } from '../../math';
 import type { Composition } from '../../composition';
 import { InteractMesh } from './interact-mesh';
 import type { InteractItem } from './interact-item';
@@ -85,12 +86,12 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
 
   override getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
-    const triangles = trianglesFromRect([0, 0, 0], 0.5, 0.5);
+    const triangles = trianglesFromRect(Vector3.ZERO, 0.5, 0.5);
 
     triangles.forEach(triangle => {
-      triangle.forEach(p => {
-        vec3MulMat4(p, p, worldMatrix);
-      });
+      worldMatrix.transformPoint(triangle.p0 as Vector3);
+      worldMatrix.transformPoint(triangle.p1 as Vector3);
+      worldMatrix.transformPoint(triangle.p2 as Vector3);
     });
 
     return {
@@ -149,7 +150,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
           x: event.x,
           y: event.y,
           cameraParam: {
-            position: camera?.position || [0, 0, 8],
+            position: camera?.position.toArray() || [0, 0, 8],
             fov: camera?.fov || 60,
           },
         };
@@ -220,7 +221,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
         event.origin?.preventDefault();
       }
     }
-    this.composition.camera.position = [nx, ny, depth];
+    this.composition.camera.position.set(nx, ny, depth);
   }
 }
 

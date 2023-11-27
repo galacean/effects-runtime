@@ -1,8 +1,9 @@
-// @ts-nocheck
-import type { Player } from '@galacean/effects';
-import { Sphere, Vector3, Box3, CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
+//@ts-nocheck
+import { math } from '@galacean/effects';
+import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
 import { LoaderImplEx } from '@galacean/effects-plugin-model/helper';
-import { createSlider } from './utility';
+
+const { Sphere, Vector3, Box3 } = math;
 
 let player: Player;
 let pending = false;
@@ -50,7 +51,7 @@ async function getCurrentScene () {
   sceneAABB = new Box3(sceneMin, sceneMax);
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
-  const position = sceneCenter.addVector(new Vector3(0, 0, sceneRadius * 3));
+  const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
 
   items.push({
     id: '321',

@@ -1,7 +1,7 @@
 // @ts-nocheck
-import { Player, vecAdd, vec3MulMat4 } from '@galacean/effects';
-import { sanitizeNumbers } from '../../../utils';
+import { Player, math } from '@galacean/effects';
 
+const { Vector3 } = math;
 const { expect } = chai;
 
 describe('effects-core/plugins/particle-interaction', () => {
@@ -35,22 +35,23 @@ describe('effects-core/plugins/particle-interaction', () => {
     const item = comp.getItemByName('item');
     const vp = comp.camera.getViewProjectionMatrix();
     const particle = item.content;
+
     const pos = particle.particleMesh.getPointPosition(0);
-    const inPos = vec3MulMat4([], pos, vp);
+    const inPos = vp.projectPoint(pos, new Vector3());
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(inPos[0], inPos[1]);
+      const regions = comp.hitTest(inPos.x, inPos.y);
 
       expect(regions.length).to.not.eql(0);
       const position = regions[0].position;
 
-      expect(sanitizeNumbers(position)).to.eql([pos[0], pos[1], pos[2]]);
+      expect(position.distance(pos)).closeTo(0, 1e-6);
     });
 
-    const outPos = vecAdd([], pos, [radius + 0.1, radius + 0.1, 0]);
+    const outPos = pos.add([radius + 0.1, radius + 0.1, 0]);
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(outPos[0], outPos[1]);
+      const regions = comp.hitTest(outPos.x, outPos.y);
 
       expect(regions.length).to.eql(0);
     });
@@ -66,10 +67,10 @@ describe('effects-core/plugins/particle-interaction', () => {
     const vp = comp.camera.getViewProjectionMatrix();
     const particle = item.content;
     const pos = particle.particleMesh.getPointPosition(0);
-    const inPos = vec3MulMat4([], pos, vp);
+    const inPos = vp.projectPoint(pos, new Vector3());
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(inPos[0], inPos[1], true);
+      const regions = comp.hitTest(inPos.x, inPos.y, true);
 
       expect(regions.length).to.not.eql(0);
     });
@@ -85,18 +86,18 @@ describe('effects-core/plugins/particle-interaction', () => {
     const vp = comp.camera.getViewProjectionMatrix();
     const particle = item.content;
     const pos = particle.particleMesh.getPointPosition(0);
-    const inPos = vec3MulMat4([], pos, vp);
+    const inPos = vp.projectPoint(pos, new Vector3());
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(inPos[0], inPos[1]);
+      const regions = comp.hitTest(inPos.x, inPos.y);
 
       expect(regions.length).to.eql(0);
     });
 
-    const outPos = vecAdd([], pos, [1, 1, 0]);
+    const outPos = pos.clone().add([1, 1, 0]);
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(outPos[0], outPos[1]);
+      const regions = comp.hitTest(outPos.x, outPos.y);
 
       expect(regions.length).to.eql(0);
     });

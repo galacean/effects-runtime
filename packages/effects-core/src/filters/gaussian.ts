@@ -1,4 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
+import { Vector2 } from '@galacean/effects-math/es/core/index';
 import type { Composition } from '../composition';
 import type { FilterDefine, FilterShaderDefine } from '../filter';
 import { glContext } from '../gl';
@@ -15,7 +16,7 @@ import { cloneSpriteMesh } from './utils';
 /****************************************************************************************/
 
 class GaussianPass extends RenderPass {
-  uTexStep: spec.vec2;
+  uTexStep: Vector2;
   uBlurSource: Texture;
   prePassTexture: Texture;
   preDefaultPassTexture: Texture;
@@ -26,7 +27,7 @@ class GaussianPass extends RenderPass {
 
   mframeBuffer: FrameBuffer;
 
-  constructor (renderer: Renderer, type: 'H' | 'V', uTexStep: spec.vec2, pluginSystem: PluginSystem, fragShader: string, option: RenderPassOptions) {
+  constructor (renderer: Renderer, type: 'H' | 'V', uTexStep: Vector2, pluginSystem: PluginSystem, fragShader: string, option: RenderPassOptions) {
     super(renderer, option);
     this.uTexStep = uTexStep;
     this.pluginSystem = pluginSystem;
@@ -176,7 +177,7 @@ export function registerGaussianFilter (filter: spec.FilterParams, composition: 
 
   // 使用一个attachment对象保存滤镜前的pass渲染结果，传递到后续滤镜pass使用
   const preDefaultPassColorAttachment = new RenderTargetHandle(engine, {});
-  const gaussianHPass = new GaussianPass(renderer, 'H', [0, step], composition.pluginSystem, shader, {
+  const gaussianHPass = new GaussianPass(renderer, 'H', new Vector2(0, step), composition.pluginSystem, shader, {
     name: 'gaussianH',
     viewport,
     attachments: [{ texture: gaussianTextureH }],
@@ -186,7 +187,7 @@ export function registerGaussianFilter (filter: spec.FilterParams, composition: 
   });
 
   gaussianHPass.preDefaultPassAttachment = preDefaultPassColorAttachment;
-  const gaussianVPass = new GaussianPass(renderer, 'V', [step, 0], composition.pluginSystem, shader, {
+  const gaussianVPass = new GaussianPass(renderer, 'V', new Vector2(step, 0), composition.pluginSystem, shader, {
     name: 'gaussianV',
     viewport,
     attachments: [{ texture: gaussianTextureV }],

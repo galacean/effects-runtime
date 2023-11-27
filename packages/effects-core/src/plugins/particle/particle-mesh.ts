@@ -1,4 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
+import type { Matrix4 } from '@galacean/effects-math/es/core/index';
+import { Euler, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Composition } from '../../composition';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { FILTER_NAME_NONE, PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
@@ -14,14 +16,13 @@ import {
   setSideMode,
   ShaderType,
 } from '../../material';
-import type { mat4, ValueGetter } from '../../math';
+import type { ValueGetter } from '../../math';
 import {
-  calculateTranslation,
   createKeyFrameMeta,
   createValueGetter,
   CurveValue,
   getKeyFrameMetaByRawValue,
-  mat4create,
+  calculateTranslation,
 } from '../../math';
 import type { Attribute, GeometryProps, ShaderMarcos, SharedShaderWithSource, GPUCapability } from '../../render';
 import { Geometry, GLSLVersion, Mesh } from '../../render';
@@ -31,17 +32,17 @@ import { Transform } from '../../transform';
 import { enlargeBuffer, imageDataFromGradient } from '../../utils';
 
 export type Point = {
-  vel: spec.vec3,
+  vel: Vector3,
   lifetime: number,
   color: spec.vec4,
   uv: number[],
-  dirX: spec.vec3,
-  dirY: spec.vec3,
+  dirX: Vector3,
+  dirY: Vector3,
   delay: number,
   sprite?: [start: number, duration: number, cycles: number],
   transform: Transform,
   gravity: spec.vec3,
-  size: spec.vec2,
+  size: Vector2,
 };
 
 export interface ParticleMeshData {
@@ -93,7 +94,7 @@ export interface ParticleMeshProps extends ParticleMeshData {
   side: number,
   filter?: spec.FilterParams,
   transparentOcclusion?: boolean,
-  matrix?: mat4,
+  matrix?: Matrix4,
   sprite?: {
     animate?: boolean,
     blend?: boolean,
@@ -115,7 +116,7 @@ export interface ParticleMeshProps extends ParticleMeshData {
   maxCount: number,
   shaderCachePrefix: string,
   name: string,
-  anchor: spec.vec2,
+  anchor: Vector2,
 }
 export class ParticleMesh implements ParticleMeshData {
   duration: number;
@@ -135,7 +136,7 @@ export class ParticleMesh implements ParticleMeshData {
   readonly useSprite?: boolean;
   readonly textureOffsets: number[];
   readonly maxCount: number;
-  readonly anchor: spec.vec2;
+  readonly anchor: Vector2;
 
   constructor (
     props: ParticleMeshProps,
@@ -149,7 +150,6 @@ export class ParticleMesh implements ParticleMeshData {
       filter, gravity, forceTarget, side, occlusion, anchor, blending,
       maskMode, mask, transparentOcclusion, listIndex, meshSlots,
       renderMode = 0,
-      matrix = mat4create(),
       diffuse = Texture.createWithData(engine),
     } = props;
     const { detail } = engine.gpuCapability;
@@ -410,25 +410,25 @@ export class ParticleMesh implements ParticleMeshData {
 
         return;
       }
-      const res: spec.vec4[] = [];
+      const res: Vector4[] = [];
 
       switch (typeMap[name]) {
         case 'vec4':
-          material.setVector4(name, value);
+          material.setVector4(name, Vector4.fromArray(value));
 
           break;
         case 'vec3':
-          material.setVector3(name, value);
+          material.setVector3(name, Vector3.fromArray(value));
 
           break;
         case 'vec2':
-          material.setVector2(name, value);
+          material.setVector2(name, Vector2.fromArray(value));
 
           break;
         case 'vec4Array':
 
           for (let i = 0; i < value.length; i = i + 4) {
-            const v: spec.vec4 = [value[i], value[i + 1], value[i + 2], value[i + 3]];
+            const v = new Vector4(value[i], value[i + 1], value[i + 2], value[i + 3]);
 
             res.push(v);
           }
@@ -440,7 +440,7 @@ export class ParticleMesh implements ParticleMeshData {
           console.warn(`uniform ${name}'s type not in typeMap`);
       }
     });
-    material.setVector3('emissionColor', [0, 0, 0]);
+    material.setVector3('emissionColor', new Vector3(0, 0, 0));
     material.setFloat('emissionIntensity', 0.0);
 
     const geometry = Geometry.create(engine, generateGeometryProps(maxCount * 4, this.useSprite, `particle#${name}`));
@@ -469,10 +469,10 @@ export class ParticleMesh implements ParticleMeshData {
   get time () {
     const value = this.mesh.material.getVector4('uParams')!;
 
-    return value[0];
+    return value.x;
   }
   set time (v: number) {
-    this.mesh.material.setVector4('uParams', [+v, this.duration, 0, 0]);
+    this.mesh.material.setVector4('uParams', new Vector4(+v, this.duration, 0, 0));
   }
 
   getPointColor (index: number) {
@@ -486,7 +486,7 @@ export class ParticleMesh implements ParticleMeshData {
    * 待废弃
    * @deprecated - 使用 `particle-system.getPointPosition` 替代
    */
-  getPointPosition (index: number): spec.vec3 {
+  getPointPosition (index: number): Vector3 {
     const geo = this.geometry;
     const posIndex = index * 48;
     const posData = geo.getAttributeData('aPos') as Float32Array;
@@ -494,16 +494,19 @@ export class ParticleMesh implements ParticleMeshData {
     const time = this.time - offsetData[index * 16 + 2];
     const pointDur = offsetData[index * 16 + 3];
     const mtl = this.mesh.material;
-    const ret = calculateTranslation([0, 0, 0], this, mtl.getVector4('uAcceleration')!.slice(0, 3) as spec.vec3, time, pointDur, posData, posData, posIndex, posIndex + 3);
+    const acc = mtl.getVector4('uAcceleration')!.toVector3();
+    const pos = Vector3.fromArray(posData, posIndex);
+    const vel = Vector3.fromArray(posData, posIndex + 3);
+    const ret = calculateTranslation(new Vector3(), this, acc, time, pointDur, pos, vel);
 
     if (this.forceTarget) {
       const target = mtl.getVector3('uFinalTarget')!;
       const life = this.forceTarget.curve.getValue(time / pointDur);
       const dl = 1 - life;
 
-      ret[0] = ret[0] * dl + target[0] * life;
-      ret[1] = ret[1] * dl + target[1] * life;
-      ret[2] = ret[2] * dl + target[2] * life;
+      ret.x = ret.x * dl + target.x * life;
+      ret.y = ret.y * dl + target.y * life;
+      ret.z = ret.z * dl + target.z * life;
     }
 
     return ret;
@@ -577,15 +580,20 @@ export class ParticleMesh implements ParticleMeshData {
         pointData.aSprite = new Float32Array(12);
       }
 
-      const position: spec.vec3 = [0, 0, 0], rotation: spec.vec3 = [0, 0, 0], quat: spec.vec4 = [0, 0, 0, 1], scale: spec.vec3 = [1, 1, 1];
+      const tempPos = new Vector3();
+      const tempQuat = new Quaternion();
+      const scale = new Vector3(1, 1, 1);
 
-      point.transform.assignWorldTRS(position, quat, scale);
-      Transform.getRotation(rotation, quat);
+      point.transform.assignWorldTRS(tempPos, tempQuat, scale);
+      const tempEuler = Transform.getRotation(tempQuat, new Euler());
+
+      const position = tempPos.toArray();
+      const rotation = tempEuler.toArray();
 
       const offsets = this.textureOffsets;
       const off = [0, 0, point.delay, point.lifetime];
       const wholeUV = [0, 0, 1, 1];
-      const vel: number[] = point.vel;
+      const vel = point.vel;
       const color: number[] = point.color;
       const sizeOffsets = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
       const seed = Math.random();
@@ -603,7 +611,7 @@ export class ParticleMesh implements ParticleMeshData {
         const j8 = j * 8;
 
         pointData.aPos.set(position, j12);
-        pointData.aPos.set(vel, j12 + 3);
+        vel.fill(pointData.aPos, j12 + 3);
         pointData.aRot.set(rotation, j8);
         pointData.aRot[j8 + 3] = seed;
         pointData.aRot.set(color, j8 + 4);
@@ -622,12 +630,12 @@ export class ParticleMesh implements ParticleMeshData {
         }
         pointData.aOffset.set(off, j4);
         const ji = (j + j);
-        const sx = (sizeOffsets[ji] - this.anchor[0]) * scale[0];
-        const sy = (sizeOffsets[ji + 1] - this.anchor[1]) * scale[1];
+        const sx = (sizeOffsets[ji] - this.anchor.x) * scale.x;
+        const sy = (sizeOffsets[ji + 1] - this.anchor.y) * scale.y;
 
         for (let k = 0; k < 3; k++) {
-          pointData.aPos[j12 + 6 + k] = point.dirX[k] * sx;
-          pointData.aPos[j12 + 9 + k] = point.dirY[k] * sy;
+          pointData.aPos[j12 + 6 + k] = point.dirX.getElement(k) * sx;
+          pointData.aPos[j12 + 9 + k] = point.dirY.getElement(k) * sy;
         }
       }
       const indexData = new Uint16Array([0, 1, 2, 2, 1, 3].map(x => x + index * 4));

@@ -22,9 +22,9 @@ describe('sprite transform', () => {
 
     const item = comp.getItemByName('simple');
 
-    const position = item.transform.getWorldPosition();
-    const rotation = item.transform.getWorldRotation();
-    const scale = item.transform.getWorldScale();
+    const position = item.transform.getWorldPosition().toArray();
+    const rotation = item.transform.getWorldRotation().toArray();
+    const scale = item.transform.getWorldScale().toArray();
 
     expect(position).to.deep.equals([0, 1, 0], 'position');
     expect(rotation[0]).to.eql(0);
@@ -59,7 +59,7 @@ describe('sprite transform', () => {
     const item = comp.getItemByName('sprite_1');
     const worldTransform = item.getWorldTransform();
 
-    expect(worldTransform.position).to.deep.equals([2, 1.5, 0]);
+    expect(worldTransform.position.toArray()).to.deep.equals([2, 1.5, 0]);
   });
 
   // transform 受空节点父节点的影响
@@ -71,10 +71,10 @@ describe('sprite transform', () => {
     const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
     const item = comp.getItemByName('sp');
 
-    expect(item.transform.position).to.deep.equals([0, 1, 0]);
+    expect(item.transform.position.toArray()).to.deep.equals([0, 1, 0]);
     const worldTransform = item.getWorldTransform();
 
-    expect(worldTransform.position).to.deep.equals([0, 2, 0]);
+    expect(worldTransform.position.toArray()).to.deep.equals([0, 2, 0]);
   });
 
   // transform 受图层父节点的影响
@@ -86,10 +86,10 @@ describe('sprite transform', () => {
     const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
     const item = comp.getItemByName('sp');
 
-    expect(item.transform.position).to.deep.equals([0, 1, 0]);
+    expect(item.transform.position.toArray()).to.deep.equals([0, 1, 0]);
     const worldTransform = item.getWorldTransform();
 
-    expect(worldTransform.position).to.deep.equals([0, 1, 0]);
+    expect(worldTransform.position.toArray()).to.deep.equals([0, 1, 0]);
   });
 
   // transform 受父节点的旋转影响
@@ -101,10 +101,10 @@ describe('sprite transform', () => {
     const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
     const item = comp.getItemByName('sp');
 
-    expect(item.transform.position).to.deep.equals([1, 0, 0]);
+    expect(item.transform.position.toArray()).to.deep.equals([1, 0, 0]);
     const worldTransform = item.getWorldTransform();
 
-    expect(sanitizeNumbers(worldTransform.position)).to.deep.equals([0, -1, 0]);
+    expect(sanitizeNumbers(worldTransform.position.toArray())).to.deep.equals([0, -1, 0]);
   });
 
   // transform 受图层父节点的旋转影响
@@ -116,10 +116,10 @@ describe('sprite transform', () => {
     const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
     const item = comp.getItemByName('sp');
 
-    expect(item.transform.position).to.deep.equals([1, 0, 0]);
+    expect(item.transform.position.toArray()).to.deep.equals([1, 0, 0]);
     const worldTransform = item.getWorldTransform();
 
-    expect(sanitizeNumbers(worldTransform.position)).to.deep.equals([0, -1, 0]);
+    expect(sanitizeNumbers(worldTransform.position.toArray())).to.deep.equals([0, -1, 0]);
   });
 
   // transform 受图层父节点的路径影响
@@ -135,7 +135,7 @@ describe('sprite transform', () => {
     const item = comp.getItemByName('sp');
     const worldTransform = item.getWorldTransform();
 
-    expect(worldTransform.position).to.deep.equals([2, 1.5, 0]);
+    expect(worldTransform.position.toArray()).to.deep.equals([2, 1.5, 0]);
   });
 
   // transform 受图层父节点的路径影响
@@ -151,7 +151,7 @@ describe('sprite transform', () => {
     const item = comp.getItemByName('sp');
     const worldTransform = item.getWorldTransform();
 
-    expect(worldTransform.position).to.deep.equals([2, 1.5, 0]);
+    expect(worldTransform.position.toArray()).to.deep.equals([2, 1.5, 0]);
   });
 
   // 多个空父节点同时影响position
@@ -164,15 +164,15 @@ describe('sprite transform', () => {
     const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
     const item = comp.getItemByName('sp');
 
-    expect(item.transform.position).to.deep.equals([1, 0, 0]);
+    expect(item.transform.position.toArray()).to.deep.equals([1, 0, 0]);
     let worldTransform = item.getWorldTransform();
 
-    expect(sanitizeNumbers(worldTransform.position)).to.deep.equals([1, 1, 0]);
+    expect(sanitizeNumbers(worldTransform.position.toArray())).to.deep.equals([1, 1, 0]);
     const item2 = comp.getItemByName('spp');
 
-    expect(item2.transform.position).to.deep.equals([0, 0, 1]);
+    expect(item2.transform.position.toArray()).to.deep.equals([0, 0, 1]);
     worldTransform = item2.getWorldTransform();
-    expect(sanitizeNumbers(worldTransform.position)).to.deep.equals([1, 1, 1]);
+    expect(sanitizeNumbers(worldTransform.position.toArray())).to.deep.equals([1, 1, 1]);
   });
 
   // 多个图层父节点同时影响position
@@ -185,15 +185,15 @@ describe('sprite transform', () => {
     const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
     const item = comp.getItemByName('sp');
 
-    expect(item.transform.position).to.deep.equals([1, 0, 0]);
+    expect(item.transform.position.toArray()).to.deep.equals([1, 0, 0]);
     let worldTransform = item.getWorldTransform();
 
-    expect(sanitizeNumbers(worldTransform.position)).to.deep.equals([1, 1, 0]);
+    expect(sanitizeNumbers(worldTransform.position.toArray())).to.deep.equals([1, 1, 0]);
     const item2 = comp.getItemByName('spp');
 
-    expect(item2.transform.position).to.deep.equals([0, 0, 1]);
+    expect(item2.transform.position.toArray()).to.deep.equals([0, 0, 1]);
     worldTransform = item2.getWorldTransform();
-    expect(sanitizeNumbers(worldTransform.position)).to.deep.equals([1, 1, 1]);
+    expect(sanitizeNumbers(worldTransform.position.toArray())).to.deep.equals([1, 1, 1]);
   });
 
   // transform 受多个空父节点的size影响
@@ -207,9 +207,9 @@ describe('sprite transform', () => {
     const item = comp.getItemByName('sp');
     const item2 = comp.getItemByName('spp');
 
-    expect(sanitizeNumbers(item.transform.scale)).to.deep.equals([3, 3, 3]);
-    expect(sanitizeNumbers(item.transform.getWorldScale())).to.deep.equals([6, 6, 6]);
-    expect(item2.transform.position).to.deep.equals([0, 0, 1]);
+    expect(sanitizeNumbers(item.transform.scale.toArray())).to.deep.equals([3, 3, 3]);
+    expect(sanitizeNumbers(item.transform.getWorldScale().toArray())).to.deep.equals([6, 6, 6]);
+    expect(item2.transform.position.toArray()).to.deep.equals([0, 0, 1]);
   });
 
   // transform 受多个空父节点的旋转影响
@@ -223,9 +223,9 @@ describe('sprite transform', () => {
     const pt = comp.getItemByName('sp').transform;
     const sppt = comp.getItemByName('spp').transform;
 
-    expect(new Float32Array(sanitizeNumbers(pt.rotation))).to.deep.equals(new Float32Array([0, 0, 60]));
-    expect(new Float32Array(sanitizeNumbers(sppt.getWorldRotation()))).to.deep.equals(new Float32Array([0, 0, 90]));
-    expect(sppt.position).to.deep.equals([1, 0, 0]);
+    expect(new Float32Array(sanitizeNumbers(pt.rotation.toArray()))).to.deep.equals(new Float32Array([0, 0, 60]));
+    expect(new Float32Array(sanitizeNumbers(sppt.getWorldRotation().toArray()))).to.deep.equals(new Float32Array([0, 0, 90]));
+    expect(sppt.position.toArray()).to.deep.equals([1, 0, 0]);
   });
 
   // transform 受多个父节点的旋转影响
@@ -239,9 +239,9 @@ describe('sprite transform', () => {
     const pt = comp.getItemByName('sp').transform;
     const sppt = comp.getItemByName('spp').transform;
 
-    expect(new Float32Array(sanitizeNumbers(pt.rotation))).to.deep.equals(new Float32Array([0, 0, 60]));
-    expect(new Float32Array(sanitizeNumbers(sppt.getWorldRotation()))).to.deep.equals(new Float32Array([0, 0, 90]));
-    expect(sppt.position).to.deep.equals([1, 0, 0]);
+    expect(new Float32Array(sanitizeNumbers(pt.rotation.toArray()))).to.deep.equals(new Float32Array([0, 0, 60]));
+    expect(new Float32Array(sanitizeNumbers(sppt.getWorldRotation().toArray()))).to.deep.equals(new Float32Array([0, 0, 90]));
+    expect(sppt.position.toArray()).to.deep.equals([1, 0, 0]);
   });
 
 });

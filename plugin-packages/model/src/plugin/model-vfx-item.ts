@@ -3,10 +3,10 @@ import type {
   HitTestCustomParams,
   HitTestSphereParams,
   Composition,
-  Ray,
   Engine,
+  math,
 } from '@galacean/effects';
-import { HitTestType, VFXItem, spec, TimelineComponent } from '@galacean/effects';
+import { HitTestType, VFXItem, spec, TimelineComponent, Item } from '@galacean/effects';
 import type {
   ModelItemBounding,
   ModelItemCamera,
@@ -17,11 +17,15 @@ import type {
 } from '../index';
 import { PCamera, PLight, PSkybox } from '../runtime';
 import { PMesh } from '../runtime';
-import { Matrix4, Vector3 } from '../math';
+import { Vector3 } from '../runtime/math';
 import type { CompositionCache } from '../runtime/cache';
 import { VFX_ITEM_TYPE_3D } from './const';
 import { CheckerHelper, RayIntersectsBoxWithRotation } from '../utility';
 import { ModelTreeVFXItem } from './model-tree-vfx-item';
+
+type Vector2 = math.Vector2;
+type Euler = math.Euler;
+type Ray = math.Ray;
 
 export type ModelItem = PMesh | PCamera | PLight | PSkybox;
 export type ModelItemOptions = ModelItemMesh | ModelItemCamera | ModelItemLight | ModelItemSkybox;
@@ -47,13 +51,15 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
     this.bounding = bounding && JSON.parse(JSON.stringify(bounding));
 
-    if (options.type === spec.ItemType.camera || options.type === spec.ItemType.light) {
-      //@ts-expect-error
+    if (
+      Item.is<spec.CameraItem>(options, spec.ItemType.camera) ||
+      Item.is<spec.ModelLightItem>(options, spec.ItemType.light)
+    ) {
       this.timeline = new TimelineComponent(options.content, this);
       this.timeline.getRenderData(0, true);
     }
 
-    if (options.type === spec.ItemType.skybox) {
+    if (Item.is<spec.ModelSkyboxItem<'json'>>(options, spec.ItemType.skybox)) {
       // 从cache中创建天空盒
       this.overwriteSkyboxFromCache(options.content.options as spec.SkyboxOptions<'studio'>);
     }
@@ -67,7 +73,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   override doCreateContent (composition: Composition) {
     switch (this.options?.type) {
-      case 'mesh':{
+      case 'mesh': {
         const meshOptions = this.options.content.options;
 
         CheckerHelper.assertModelMeshOptions(meshOptions as spec.ModelMeshOptions<any>);
@@ -83,7 +89,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
         return new PCamera(this.options as spec.ModelCameraItem, width, height, this);
       }
-      case 'light':{
+      case 'light': {
         const lightOptions = this.options.content.options;
 
         CheckerHelper.assertModelLightOptions(lightOptions as spec.ModelLightOptions);
@@ -130,7 +136,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
   computeBoundingBox (): ModelItemBounding | undefined {
     if (this._content === undefined) { return; }
     if (this._content instanceof PMesh) {
-      const worldMatrix = Matrix4.fromArray(this.transform.getWorldMatrix());
+      const worldMatrix = this.transform.getWorldMatrix();
       const bbox = this._content.computeBoundingBox(worldMatrix);
       const center = bbox.getCenter(new Vector3());
       const size = bbox.getSize(new Vector3());
@@ -152,12 +158,11 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     const itemContent = this._content;
 
     if (itemContent !== undefined) {
-      const parentMat4 = new Matrix4();
+      const parentMat4 = this.transform.getWorldMatrix();
 
-      parentMat4.setData(this.transform.getWorldMatrix() as unknown as Float32Array);
       itemContent.matrix = parentMat4;
       if (itemContent instanceof PCamera && this.composition) {
-        this.composition.camera.position = this.transform.position;
+        this.composition.camera.position = this.transform.position.clone();
         // FIXME: 可能存在相机朝向相反的问题
         this.composition.camera.setQuat(this.transform.quat);
         this.composition.camera.near = itemContent.nearPlane;
@@ -167,9 +172,16 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     }
   }
 
-  updateTransformPosition (x: number, y: number, z: number): void {
-    this.timeline?.updatePosition(x, y, z);
-    this.transform.setPosition(x, y, z);
+  setTransform (position?: Vector3, rotation?: Euler): void {
+    if (position !== undefined) {
+      this.transform.setPosition(position.x, position.y, position.z);
+      this.timeline?.updatePosition(position.x, position.y, position.z);
+    }
+    if (rotation !== undefined) {
+      this.transform.setRotation(rotation.x, rotation.y, rotation.z);
+      this.timeline?.updateRotation(rotation.x, rotation.y, rotation.z);
+    }
+    this.updateTransform();
   }
 
   override onLifetimeBegin (composition: Composition, content: ModelItem) {
@@ -212,10 +224,8 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
           const customHitTest: HitTestCustomParams = {
             behavior: bounding.behavior as number,
             type: HitTestType.custom,
-            collect: function (ray: Ray, pointInCanvas: spec.vec2) {
-              const origin = Vector3.fromArray(ray.center);
-              const direction = Vector3.fromArray(ray.direction);
-              const result = mesh.hitTesting(origin, direction);
+            collect: function (ray: Ray, pointInCanvas: Vector2) {
+              const result = mesh.hitTesting(ray.origin, ray.direction);
 
               return result;
             },
@@ -227,8 +237,8 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
           const customHitTest: HitTestCustomParams = {
             behavior: bounding.behavior as number,
             type: HitTestType.custom,
-            collect: function (ray: Ray, pointInCanvas: spec.vec2) {
-              const result = RayIntersectsBoxWithRotation(ray, worldMatrixData, bounding) as spec.vec3[];
+            collect: function (ray: Ray, pointInCanvas: Vector2) {
+              const result = RayIntersectsBoxWithRotation(ray, worldMatrixData, bounding);
 
               return result;
             },
@@ -237,14 +247,16 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
           return customHitTest;
         }
       } else if (type === spec.ModelBoundingType.sphere) {
-        const pos = [0, 0, 0];
+        const pos = new Vector3();
 
         this.transform.assignWorldTRS(pos);
-        const center: spec.vec3 = bounding.center ? bounding.center.slice() as spec.vec3 : [0, 0, 0];
+        const center = new Vector3();
 
-        center[0] += pos[0];
-        center[1] += pos[1];
-        center[2] += pos[2];
+        if (bounding.center) {
+          center.setFromArray(bounding.center);
+        }
+
+        center.add(pos);
 
         return {
           type: type as unknown as HitTestType.sphere,

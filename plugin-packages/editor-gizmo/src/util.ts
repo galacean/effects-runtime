@@ -1,9 +1,7 @@
-
 import { Texture, noop } from '@galacean/effects';
-import type { Engine, spec } from '@galacean/effects';
-import { vecSub, vecAdd, vecNormalize, vecMulScalar } from './math/vec';
+import type { Engine, math } from '@galacean/effects';
 
-type vec3 = spec.vec3;
+type Vector3 = math.Vector3;
 
 /**
  * 下载图片
@@ -46,21 +44,14 @@ export function createTexture (engine: Engine, image: HTMLImageElement, hookDest
  * @param currentPos - 当前点
  * @returns 指定点
  */
-export function moveToPointWidthFixDistance (targetPos: vec3, currentPos: vec3): vec3 {
-  const vecCameraItem: vec3 = [0, 0, 0];
+export function moveToPointWidthFixDistance (targetPos: Vector3, currentPos: Vector3): Vector3 {
+  const vecCameraItem = currentPos.clone().subtract(targetPos);
 
-  vecSub(vecCameraItem, currentPos, targetPos);
-  const normalVecCameraItem = vecNormalize(vecCameraItem);
-  const newPos: vec3 = [0, 0, 0];
-  const scalerVecCameraItem: vec3 = [0, 0, 0];
+  const normalVecCameraItem = vecCameraItem.clone().normalize();
+  const scalerVecCameraItem = normalVecCameraItem.clone().multiply(20);
 
-  vecMulScalar(scalerVecCameraItem, normalVecCameraItem, 20);
-  const vecScalerItem: vec3 = [0, 0, 0];
-  const vecItemScaler: vec3 = [0, 0, 0];
+  const vecScalerItem = vecCameraItem.clone().subtract(scalerVecCameraItem);
+  const vecItemScaler = vecScalerItem.clone().multiply(-1);
 
-  vecSub(vecScalerItem, vecCameraItem, scalerVecCameraItem);
-  vecMulScalar(vecItemScaler, vecScalerItem, -1);
-  vecAdd(newPos, currentPos, vecItemScaler);
-
-  return newPos;
+  return currentPos.clone().add(vecItemScaler);
 }

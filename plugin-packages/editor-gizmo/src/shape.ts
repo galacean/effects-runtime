@@ -1,21 +1,30 @@
-import type { Engine } from '@galacean/effects';
-import { Geometry, Material, Mesh, glContext, type spec } from '@galacean/effects';
-import { mat3FromRotation, vec3MulMat3, vecAdd } from './math/vec';
+import type { Engine, spec } from '@galacean/effects';
+import { Geometry, Material, Mesh, glContext, math } from '@galacean/effects';
 
 type vec3 = spec.vec3;
+type Vector3 = math.Vector3;
+type Matrix4 = math.Matrix4;
+
+const { Euler, Vector3, Matrix4 } = math;
 
 const rectSize = 0.04;
 const DEG2RAD = Math.PI / 180;
 
 interface GeometryData {
-  points: vec3[],
+  points: Vector3[],
   indices: number[],
 }
 
-function arcPath (radius: number, arc: number, options: Record<string, any> = {}): GeometryData {
+interface ArcPathOptions {
+  plane?: string,
+  translate?: vec3,
+  rotate?: vec3,
+}
+
+function arcPath (radius: number, arc: number, options: ArcPathOptions = {}): GeometryData {
   const { plane, translate = [0, 0, 0], rotate = [0, 0, 0] } = options;
-  const rotation = mat3FromRotation([], rotate);
-  const points: vec3[] = [];
+  const rotMat4 = Euler.fromArray(rotate).negate().toMatrix4(new Matrix4());
+  const points: Vector3[] = [];
   const indices = [];
 
   addPoint(radius, 0);
@@ -34,23 +43,26 @@ function arcPath (radius: number, arc: number, options: Record<string, any> = {}
   };
 
   function addPoint (cos: number, sin: number) {
-    let point: vec3;
+    const point = new Vector3();
 
     if (plane === 'xz') {
-      point = [cos, 0, sin];
+      point.set(cos, 0, sin);
     } else if (plane === 'yz') {
-      point = [0, cos, sin];
+      point.set(0, cos, sin);
     } else {
-      point = [cos, sin, 0];
+      point.set(cos, sin, 0);
     }
-    point = vec3MulMat3(point, point, rotation);
-    points.push(vecAdd(point, point, translate));
+    rotMat4.transformNormal(point);
+    points.push(point.add(translate));
   }
 }
 
 function line (p0: vec3, p1: vec3): GeometryData {
   return {
-    points: [p0, p1],
+    points: [
+      Vector3.fromArray(p0),
+      Vector3.fromArray(p1),
+    ],
     indices: [0, 1],
   };
 }
@@ -60,11 +72,11 @@ function box (width: number, height: number, depth: number, center?: number[]): 
   const h = height / 2;
   const d = depth / 2;
   const myCenter = center ?? [0, 0, 0];
-  const points: vec3[] = [
+  const points: Vector3[] = [
     [-w, h, -d], [-w, -h, -d], [-w, h, d], [-w, -h, d],
     [w, h, -d], [w, -h, -d], [w, h, d], [w, -h, d],
   ].map(item => {
-    return [item[0] + myCenter[0], item[1] + myCenter[1], item[2] + myCenter[2]];
+    return new Vector3(item[0] + myCenter[0], item[1] + myCenter[1], item[2] + myCenter[2]);
   });
 
   return {
@@ -80,13 +92,16 @@ function box (width: number, height: number, depth: number, center?: number[]): 
 function rect (width: number, height: number, pos?: vec3): GeometryData {
   const w = width / 2;
   const h = height / 2;
-  const points: vec3[] = [[-w, h, 0], [w, h, 0], [w, -h, 0], [-w, -h, 0]];
+  const points: Vector3[] = [
+    new Vector3(-w, h, 0),
+    new Vector3(w, h, 0),
+    new Vector3(w, -h, 0),
+    new Vector3(-w, -h, 0),
+  ];
 
   if (pos) {
     points.forEach(vec => {
-      vec[0] += pos[0];
-      vec[1] += pos[1];
-      vec[2] += pos[2];
+      vec.add(pos);
     });
   }
 
@@ -107,7 +122,7 @@ function combineGeometries (geometries: GeometryData[]) {
 
     if (geometry) {
       geometry.points.forEach(point => {
-        points.push(point[0], point[1], point[2]);
+        points.push(point.x, point.y, point.z);
       });
       geometry.indices.forEach(index => indices.push(index + indicesBase));
       indicesBase += geometry.points.length;
@@ -310,8 +325,8 @@ function createMesh (engine: Engine, points: Float32Array, indices: Uint16Array,
       },
     });
 
-  material.setVector3('u_color', color);
-  material.setMatrix('u_model', [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  material.setVector3('u_color', Vector3.fromArray(color));
+  material.setMatrix('u_model', Matrix4.IDENTITY);
   material.depthTest = depthTest;
   material.stencilTest = false;
   material.blending = false;

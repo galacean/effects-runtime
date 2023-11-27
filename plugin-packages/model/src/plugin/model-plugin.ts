@@ -5,13 +5,13 @@ import type {
   RenderFrame,
   VFXItem,
 } from '@galacean/effects';
-import { AbstractPlugin, DEG2RAD, PLAYER_OPTIONS_ENV_EDITOR, spec } from '@galacean/effects';
+import { AbstractPlugin, PLAYER_OPTIONS_ENV_EDITOR, spec } from '@galacean/effects';
 import { PCamera, PSceneManager } from '../runtime';
 import { ModelVFXItem } from './model-vfx-item';
 import { CompositionCache } from '../runtime/cache';
 import { VFX_ITEM_TYPE_3D } from './const';
 import { PluginHelper } from '../utility/plugin-helper';
-import { Matrix4, Vector3 } from '../math';
+import { Vector3, DEG2RAD } from '../runtime/math';
 import { PCoordinate, PObjectType, PTransform } from '../runtime/common';
 
 export class ModelPlugin extends AbstractPlugin {
@@ -158,36 +158,36 @@ export class ModelPlugin extends AbstractPlugin {
       // 更加相机的具体参数，计算出合适的相机观察位置
       // 但只会在第一帧进行更新，主要是用于测试使用
       // this.autoAdjustScene = false;
-      const cameraParams = composition.camera;
-      const cameraTransform = new PTransform().fromEffectsTransform(cameraParams);
+      const cameraObject = composition.camera;
+      const cameraTransform = new PTransform().fromMatrix4(cameraObject.getViewMatrix());
       const cameraCoordinate = new PCoordinate().fromPTransform(cameraTransform);
       const cameraDirection = cameraCoordinate.zAxis.clone();
-      const cameraFov = cameraParams.fov ?? 45;
-      const cameraAspect = cameraParams.aspect ?? 1.0;
+      const cameraFov = cameraObject.fov ?? 45;
+      const cameraAspect = cameraObject.aspect ?? 1.0;
       //
       const sceneAABB = sceneManager.getSceneAABB();
-      const newAABB = sceneAABB.clone().transform(cameraTransform.getMatrix());
-      const newSize = newAABB.getSize(new Vector3()).multiplyScalar(0.5);
+      const newAABB = sceneAABB.clone().applyMatrix4(cameraTransform.getMatrix());
+      const newSize = newAABB.getSize(new Vector3()).multiply(0.5);
       const newWidth = newSize.x;
       const newHeight = newSize.y;
       const finalHeight = newHeight * Math.max(newWidth / newHeight / cameraAspect, 1.0);
       const center = sceneAABB.getCenter(new Vector3());
       const offset = finalHeight / Math.tan(cameraFov * 0.5 * DEG2RAD);
-      const position = center.clone().addVector(cameraDirection.clone().multiplyScalar(offset + newSize.z));
+      const position = center.clone().add(cameraDirection.clone().multiply(offset + newSize.z));
 
       // 更新相机的位置，主要是composition的camera数据，以及camera item数据
-      composition.camera.position = position.toArray() as spec.vec3;
+      composition.camera.position = position;
       composition.items?.forEach(item => {
         if (item.type === VFX_ITEM_TYPE_3D) {
           const item3D = item as ModelVFXItem;
 
           if (item3D.content instanceof PCamera) {
             // @ts-expect-error
-            const worldMatrix = Matrix4.fromArray(item3D.transform.parentTransform.getWorldMatrix());
-            const invWorldMatrix = worldMatrix.inverse();
-            const newPosition = invWorldMatrix.multiplyByPoint3(position);
+            const worldMatrix = item3D.transform.parentTransform.getWorldMatrix();
+            const invWorldMatrix = worldMatrix.invert();
+            const newPosition = invWorldMatrix.transformPoint(position);
 
-            item3D.updateTransformPosition(newPosition.x, newPosition.y, newPosition.z);
+            item3D.setTransform(newPosition);
 
             // 正式版本不会走到这个流程，只在测试时使用
             console.info(`Scene AABB [${sceneAABB.min.toArray()}], [${sceneAABB.max.toArray()}]`);

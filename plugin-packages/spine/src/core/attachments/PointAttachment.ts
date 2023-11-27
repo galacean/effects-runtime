@@ -1,5 +1,5 @@
+import type { math } from '@galacean/effects';
 import type { Bone } from '../Bone';
-import type { Vector2 } from '../../math/vector2';
 import { MathUtils } from '../../math/math';
 import { Color } from '../../utils';
 import type { Attachment } from './Attachment';
@@ -23,7 +23,7 @@ export class PointAttachment extends VertexAttachment {
     super(name);
   }
 
-  computeWorldPosition (bone: Bone, point: Vector2) {
+  computeWorldPosition (bone: Bone, point: math.Vector2) {
     point.x = this.x * bone.a + this.y * bone.b + bone.worldX;
     point.y = this.x * bone.c + this.y * bone.d + bone.worldY;
 

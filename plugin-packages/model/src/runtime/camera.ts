@@ -1,10 +1,13 @@
+import type { math } from '@galacean/effects';
 import { spec } from '@galacean/effects';
 import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import type { ModelItemCamera } from '../index';
-import type { Quaternion, Box3 } from '../math';
-import { Vector2, Vector3, Matrix4 } from '../math';
+import { Vector2, Vector3, Matrix4 } from './math';
 import { PObjectType } from './common';
 import { PEntity } from './object';
+
+type Box3 = math.Box3;
+type Quaternion = math.Quaternion;
 
 const deg2rad = Math.PI / 180;
 
@@ -16,8 +19,8 @@ export class PCamera extends PEntity {
   fovy = 45;
   aspect = 1.0;
   clipMode = spec.CameraClipMode.landscape;
-  projectionMatrix = new Matrix4();
-  viewMatrix = new Matrix4();
+  projectionMatrix: Matrix4 = new Matrix4();
+  viewMatrix: Matrix4 = new Matrix4();
 
   constructor (camera: ModelItemCamera, width: number, height: number, ownerItem?: ModelVFXItem) {
     super();
@@ -43,12 +46,16 @@ export class PCamera extends PEntity {
       this.transform.fromEffectsTransform(this.ownerItem.transform);
     }
 
-    this.projectionMatrix.perspective(this.fovy * deg2rad, this.aspect, this.nearPlane, this.farPlane, this.isReversed());
-    this.viewMatrix = this.matrix.inverse();
+    const reverse = this.clipMode === spec.CameraClipMode.portrait;
+
+    this.projectionMatrix.perspective(this.fovy * deg2rad, this.aspect, this.nearPlane, this.farPlane, reverse);
+    this.viewMatrix = this.matrix.invert();
   }
 
   getNewProjectionMatrix (fov: number): Matrix4 {
-    return new Matrix4().perspective(Math.min(fov * 1.25, 140) * deg2rad, this.aspect, this.nearPlane, this.farPlane, this.isReversed());
+    const reverse = this.clipMode === spec.CameraClipMode.portrait;
+
+    return new Matrix4().perspective(Math.min(fov * 1.25, 140) * deg2rad, this.aspect, this.nearPlane, this.farPlane, reverse);
   }
 
   computeViewAABB (box: Box3): Box3 {
@@ -74,15 +81,15 @@ export class PCamera extends PEntity {
     box.makeEmpty();
     const matrix = this.matrix;
 
-    box.expandByPoint(matrix.multiplyByPoint3(new Vector3(xFarCoord, yFarCoord, -this.farPlane)));
-    box.expandByPoint(matrix.multiplyByPoint3(new Vector3(xFarCoord, -yFarCoord, -this.farPlane)));
-    box.expandByPoint(matrix.multiplyByPoint3(new Vector3(-xFarCoord, yFarCoord, -this.farPlane)));
-    box.expandByPoint(matrix.multiplyByPoint3(new Vector3(-xFarCoord, -yFarCoord, -this.farPlane)));
+    box.expandByPoint(matrix.transformPoint(new Vector3(xFarCoord, yFarCoord, -this.farPlane)));
+    box.expandByPoint(matrix.transformPoint(new Vector3(xFarCoord, -yFarCoord, -this.farPlane)));
+    box.expandByPoint(matrix.transformPoint(new Vector3(-xFarCoord, yFarCoord, -this.farPlane)));
+    box.expandByPoint(matrix.transformPoint(new Vector3(-xFarCoord, -yFarCoord, -this.farPlane)));
     //
-    box.expandByPoint(matrix.multiplyByPoint3(new Vector3(xNearCoord, yNearCoord, -this.nearPlane)));
-    box.expandByPoint(matrix.multiplyByPoint3(new Vector3(xNearCoord, -yNearCoord, -this.nearPlane)));
-    box.expandByPoint(matrix.multiplyByPoint3(new Vector3(-xNearCoord, yNearCoord, -this.nearPlane)));
-    box.expandByPoint(matrix.multiplyByPoint3(new Vector3(-xNearCoord, -yNearCoord, -this.nearPlane)));
+    box.expandByPoint(matrix.transformPoint(new Vector3(xNearCoord, yNearCoord, -this.nearPlane)));
+    box.expandByPoint(matrix.transformPoint(new Vector3(xNearCoord, -yNearCoord, -this.nearPlane)));
+    box.expandByPoint(matrix.transformPoint(new Vector3(-xNearCoord, yNearCoord, -this.nearPlane)));
+    box.expandByPoint(matrix.transformPoint(new Vector3(-xNearCoord, -yNearCoord, -this.nearPlane)));
 
     return box;
   }
@@ -181,7 +188,7 @@ export class PCameraManager {
     fovy: number,
     nearPlane: number,
     farPlane: number,
-    position: spec.vec3,
+    position: Vector3,
     rotation: Quaternion,
     clipMode: number,
   ) {

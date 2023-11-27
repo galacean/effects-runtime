@@ -1,12 +1,9 @@
-import type { vec3 } from '@galacean/effects-specification';
-import { DEG2RAD } from '../constants';
-import type { mat3 } from '../math';
-import { mat3FromRotationZ, vec3MulMat3 } from '../math';
+import { DEG2RAD, Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import { random } from '../utils';
 import { getArcAngle } from './cone';
 import type { Shape, ShapeGeneratorOptions, ShapeParticle } from './shape';
 
-const tempMat3 = [] as unknown as mat3;
+const tempMat4 = new Matrix4();
 
 export class Donut implements Shape {
   radius: number;
@@ -25,13 +22,13 @@ export class Donut implements Shape {
     const center = this.radius - dradius;
     const angle = random(0, Math.PI * 2);
     const arc = getArcAngle(this.arc, this.arcMode, opt) * DEG2RAD;
-    const rot = mat3FromRotationZ(tempMat3, arc);
-    const direction = [Math.cos(angle), Math.sin(angle), 0] as vec3;
-    const position = [center + Math.cos(angle) * dradius, 0, Math.sin(angle) * dradius] as vec3;
+    const rot = tempMat4.setFromRotationZ(arc);
+    const direction = new Vector3(Math.cos(angle), Math.sin(angle), 0);
+    const position = new Vector3(center + Math.cos(angle) * dradius, 0, Math.sin(angle) * dradius);
 
     return {
-      direction: vec3MulMat3(direction, direction, rot),
-      position: vec3MulMat3(position, position, rot),
+      direction: rot.transformNormal(direction),
+      position: rot.transformPoint(position),
     };
   }
 

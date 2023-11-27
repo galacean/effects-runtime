@@ -217,12 +217,12 @@ describe('sprite renderer params', () => {
       transform,
       startSize,
     } = renderData;
-    const a = transform.anchor;
-    const pos = transform.getWorldPosition();
+    const a = transform.anchor.toArray();
+    const pos = transform.getWorldPosition().toArray();
 
     expect(a[0]).to.be.closeTo((anchor[0] - 0.5) * 3, 0.0001);
     expect(a[1]).to.be.closeTo((0.5 - anchor[1]) * 3, 0.0001);
-    expect([startSize[0], startSize[1]]).to.eql([3, 3]);
+    expect([startSize.x, startSize.y]).to.eql([3, 3]);
     expect(pos[0]).to.be.closeTo(1.47, 0.001);
     expect(pos[1]).to.be.closeTo(-0.179, 0.001);
     expect(pos[2]).to.be.closeTo(0, 0.001);

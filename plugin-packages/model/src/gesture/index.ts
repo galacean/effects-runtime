@@ -1,4 +1,4 @@
-import type { Composition, CameraOptions, spec } from '@galacean/effects';
+import type { Composition, CameraOptionsEx, spec } from '@galacean/effects';
 import { Transform } from '@galacean/effects';
 import type {
   CameraGestureHandler,
@@ -8,7 +8,7 @@ import type {
 import { CameraGestureType } from './protocol';
 import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import { PCoordinate, PTransform } from '../runtime/common';
-import { Quaternion, Vector3, Matrix4 } from '../math';
+import { Quaternion, Vector3, Matrix4 } from '../runtime/math';
 
 export class CameraGestureHandlerImp implements CameraGestureHandler {
   private cameraTransform = new PTransform();
@@ -40,7 +40,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.startParams.type;
   }
 
-  onKeyEvent (event: CameraKeyEvent): CameraOptions {
+  onKeyEvent (event: CameraKeyEvent): CameraOptionsEx {
     // check event camera ID at first
     if (this.startParams.target !== event.cameraID) {
       this.startParams.target = event.cameraID;
@@ -68,10 +68,10 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const xAxis = event.xAxis ?? 0;
     const yAxis = event.yAxis ?? 0;
     const zAxis = event.zAxis ?? 0;
-    const dir = cameraCoordiante.xAxis.multiplyScalar(xAxis);
+    const dir = cameraCoordiante.xAxis.clone().multiply(xAxis);
 
-    dir.addVector(cameraCoordiante.yAxis.multiplyScalar(yAxis));
-    dir.addVector(cameraCoordiante.zAxis.multiplyScalar(zAxis));
+    dir.add(cameraCoordiante.yAxis.clone().multiply(yAxis));
+    dir.add(cameraCoordiante.zAxis.clone().multiply(zAxis));
     if (dir.lengthSquared() < 0.00001) {
       return camera.getOptions();
     }
@@ -81,7 +81,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const speed = event.speed ?? 0.1;
     const pos = cameraTransform.getPosition();
 
-    pos.addVector(dir.clone().multiplyScalar(speed));
+    pos.add(dir.clone().multiply(speed));
     item.transform.setPosition(pos.x, pos.y, pos.z);
     item.updateTransform();
 
@@ -94,7 +94,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return camera.getOptions();
   }
 
-  onXYMoveBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptions {
+  onXYMoveBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptionsEx {
     const args = {
       type: CameraGestureType.translate,
       mouseEvent: true,
@@ -108,7 +108,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.startGesture(args);
   }
 
-  onXYMoving (x: number, y: number, speed?: number): CameraOptions {
+  onXYMoving (x: number, y: number, speed?: number): CameraOptionsEx {
     if (!this.startParams.mouseEvent) {
       return this.composition.camera.getOptions();
     }
@@ -132,7 +132,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     this.endGesture();
   }
 
-  onZMoveBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptions {
+  onZMoveBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptionsEx {
     const arg = {
       type: CameraGestureType.scale,
       mouseEvent: true,
@@ -146,7 +146,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.startGesture(arg);
   }
 
-  onZMoving (x: number, y: number, speed: number): CameraOptions {
+  onZMoving (x: number, y: number, speed: number): CameraOptionsEx {
     if (!this.startParams.mouseEvent) {
       return this.composition.camera.getOptions();
     }
@@ -170,7 +170,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     this.endGesture();
   }
 
-  onRotateBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptions {
+  onRotateBegin (x: number, y: number, width: number, height: number, cameraID: string): CameraOptionsEx {
     const arg = {
       type: CameraGestureType.rotate_self,
       mouseEvent: true,
@@ -184,7 +184,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.startGesture(arg);
   }
 
-  onRotating (x: number, y: number, speed?: number): CameraOptions {
+  onRotating (x: number, y: number, speed?: number): CameraOptionsEx {
     if (!this.startParams.mouseEvent) {
       return this.composition.camera.getOptions();
     }
@@ -208,7 +208,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     this.endGesture();
   }
 
-  onRotatePointBegin (x: number, y: number, width: number, height: number, point: spec.vec3, cameraID: string): CameraOptions {
+  onRotatePointBegin (x: number, y: number, width: number, height: number, point: spec.vec3, cameraID: string): CameraOptionsEx {
     const arg = {
       type: CameraGestureType.rotate_focus,
       mouseEvent: true,
@@ -223,7 +223,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.startGesture(arg);
   }
 
-  onRotatingPoint (x: number, y: number, speed?: number): CameraOptions {
+  onRotatingPoint (x: number, y: number, speed?: number): CameraOptionsEx {
     if (!this.startParams.mouseEvent) {
       return this.composition.camera.getOptions();
     }
@@ -292,10 +292,11 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     //
     const transform = new PTransform().fromEffectsTransform(item.transform);
     const coordinate = new PCoordinate().fromPTransform(transform);
-    const lookatDir = coordinate.zAxis.clone().multiplyScalar(1.0);
+    // FIXME: MATH
+    const lookatDir = Vector3.fromArray(coordinate.zAxis.toArray()).multiply(1.0);
     //
-    const newOffset = lookatDir.clone().multiplyScalar(newDistance);
-    const newPosition = targetPoint.clone().addVector(newOffset);
+    const newOffset = lookatDir.clone().multiply(newDistance);
+    const newPosition = targetPoint.clone().add(newOffset);
 
     //
     item.transform.setPosition(newPosition.x, newPosition.y, newPosition.z);
@@ -350,7 +351,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     this.updateCameraTransform(this.composition.camera.getOptions());
   }
 
-  private startGesture (args: CameraGestureHandlerParams): CameraOptions {
+  private startGesture (args: CameraGestureHandlerParams): CameraOptionsEx {
     this.startParams = args;
     this.updateCameraTransform(this.composition.camera.getOptions());
 
@@ -361,7 +362,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.composition.camera.getOptions();
   }
 
-  private moveGesture (arg: CameraGestureHandlerParams): CameraOptions {
+  private moveGesture (arg: CameraGestureHandlerParams): CameraOptionsEx {
     if (this.getCurrentType() === arg.type) {
       const item = this.getItem();
 
@@ -381,50 +382,52 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
         const pos = this.cameraTransform.getPosition();
         const newPos = pos.clone();
 
-        newPos.addVector(xAxis.clone().multiplyScalar(-dx * speed));
-        newPos.addVector(yAxis.clone().multiplyScalar(dy * speed));
+        newPos.add(xAxis.clone().multiply(-dx * speed));
+        newPos.add(yAxis.clone().multiply(dy * speed));
         item.transform.setPosition(newPos.x, newPos.y, newPos.z);
-        item.updateTransform();
+        item.setTransform(item.transform.position, item.transform.rotation);
       } else if (arg.type === CameraGestureType.scale) {
         const pos = this.cameraTransform.getPosition();
         const newPos = pos.clone();
 
-        newPos.addVector(zAxis.clone().multiplyScalar(dy * speed));
+        newPos.add(zAxis.clone().multiply(dy * speed));
         item.transform.setPosition(newPos.x, newPos.y, newPos.z);
-        item.updateTransform();
+        item.setTransform(item.transform.position, item.transform.rotation);
       } else if (arg.type === CameraGestureType.rotate_self) {
         const ndx = dx / arg.clientWidth;
         const ndy = dy / arg.clientHeight;
         const dxAngle = ndx * Math.PI * speed * 0.5;
         const dyAngle = ndy * Math.PI * speed * 0.5;
-        // merge to on rotation?
-        const newRotation = Quaternion.fromAxisAngle(Vector3.UNIT_Y, -dxAngle, new Quaternion());
-        const tempRotation = Quaternion.fromAxisAngle(xAxis, -dyAngle, new Quaternion());
+
+        const newRotation = Quaternion.fromAxisAngle(Vector3.Y, -dxAngle);
+        // FIXME: MATH
+        const tempRotation = Quaternion.fromAxisAngle(xAxis, -dyAngle);
 
         newRotation.multiply(tempRotation);
+        // FIXME: MATH
         newRotation.multiply(this.cameraTransform.getRotation());
         item.transform.setQuaternion(newRotation.x, newRotation.y, newRotation.z, newRotation.w);
-        item.updateTransform();
+        item.setTransform(item.transform.position, item.transform.rotation);
       } else if (arg.type === CameraGestureType.rotate_focus) {
         const ndx = dx / arg.clientWidth;
         const ndy = dy / arg.clientHeight;
         const dxAngle = ndx * Math.PI * speed;
         const dyAngle = ndy * Math.PI * speed;
-        const newRotation = Quaternion.fromAxisAngle(Vector3.UNIT_Y, -dxAngle, new Quaternion());
-        const tempRotation = Quaternion.fromAxisAngle(xAxis, -dyAngle, new Quaternion());
+        const newRotation = Quaternion.fromAxisAngle(Vector3.Y, -dxAngle);
+        const tempRotation = Quaternion.fromAxisAngle(xAxis, -dyAngle);
 
         newRotation.multiply(tempRotation);
         const rotateMatrix = newRotation.toMatrix4(new Matrix4());
         const targetPoint = Vector3.fromArray(arg.focusPoint as spec.vec3);
-        const deltaPosition = this.cameraCoordiante.origin.clone().subVector(targetPoint);
+        const deltaPosition = this.cameraCoordiante.origin.clone().subtract(targetPoint);
 
-        rotateMatrix.multiplyByPoint3(deltaPosition);
-        const newPosition = deltaPosition.addVector(targetPoint);
+        rotateMatrix.transformPoint(deltaPosition);
+        const newPosition = deltaPosition.add(targetPoint);
 
         newRotation.multiply(this.cameraTransform.getRotation());
         item.transform.setPosition(newPosition.x, newPosition.y, newPosition.z);
         item.transform.setQuaternion(newRotation.x, newRotation.y, newRotation.z, newRotation.w);
-        item.updateTransform();
+        item.setTransform(newPosition, item.transform.rotation);
       } else {
         console.warn('not implement');
       }
@@ -441,7 +444,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     this.startParams.target = '';
   }
 
-  private updateCameraTransform (cameraOptions: CameraOptions) {
+  private updateCameraTransform (cameraOptions: CameraOptionsEx) {
     const effectsTransfrom = new Transform(cameraOptions);
 
     effectsTransfrom.setValid(true);

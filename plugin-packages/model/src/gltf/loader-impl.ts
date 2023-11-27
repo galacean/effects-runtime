@@ -1,4 +1,4 @@
-import type { TransformProps, Texture, Attribute, Engine } from '@galacean/effects';
+import type { TransformProps, Texture, Attribute, Engine, math } from '@galacean/effects';
 import { Transform as EffectsTransform, spec, glContext, Geometry } from '@galacean/effects';
 import type {
   Loader,
@@ -27,7 +27,7 @@ import type {
   ModelSkinOptions,
   ModelTextureTransform,
 } from '../index';
-import { Vector3, Box3, Matrix4 } from '../math';
+import { Vector3, Box3, Matrix4 } from '../runtime/math';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
 import type {
@@ -50,6 +50,8 @@ import type {
 import type { PImageBufferData, PSkyboxBufferParams } from '../runtime/skybox';
 import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
+
+type Box3 = math.Box3;
 
 let globalGLTFLoader: Loader;
 
@@ -153,11 +155,11 @@ export class LoaderImpl implements Loader {
       if (node.matrix !== undefined) {
         if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
         const mat = Matrix4.fromArray(node.matrix);
-        const trans = mat.decompose();
+        const transform = mat.getTransform();
 
-        pos = trans.translation.toArray() as spec.vec3;
-        quat = trans.rotation.toArray() as spec.vec4;
-        scale = trans.scale.toArray() as spec.vec3;
+        pos = transform.translation.toArray();
+        quat = transform.rotation.toArray();
+        scale = transform.scale.toArray();
       } else {
         if (node.translation !== undefined) { pos = node.translation as spec.vec3; }
         if (node.rotation !== undefined) { quat = node.rotation as spec.vec4; }
@@ -388,8 +390,8 @@ export class LoaderImpl implements Loader {
       source: this.getRemarkString(),
       items: modelItems,
       sceneAABB: {
-        min: sceneAABB.min.toArray() as spec.vec3,
-        max: sceneAABB.max.toArray() as spec.vec3,
+        min: sceneAABB.min.toArray(),
+        max: sceneAABB.max.toArray(),
       },
     };
   }
@@ -638,11 +640,11 @@ export class LoaderImpl implements Loader {
     const transformData: TransformProps = {};
 
     if (node.matrix) {
-      const trans = Matrix4.fromArray(node.matrix).decompose();
+      const trans = Matrix4.fromArray(node.matrix).getTransform();
 
-      transformData.position = trans.translation.toArray() as spec.vec3;
-      transformData.quat = trans.rotation.toArray() as spec.vec4;
-      transformData.scale = trans.scale.toArray() as spec.vec3;
+      transformData.position = trans.translation.toArray();
+      transformData.quat = trans.rotation.toArray();
+      transformData.scale = trans.scale.toArray();
     } else {
       if (node.translation) { transformData.position = node.translation as spec.vec3; }
       if (node.rotation) { transformData.quat = node.rotation as spec.vec4; }
@@ -657,7 +659,7 @@ export class LoaderImpl implements Loader {
       const mesh = this._gltfMeshs[node.mesh];
       const meshAABB = GLTFHelper.createBoxFromGLTFBound(mesh.bounds as GLTFBounds);
 
-      meshAABB.transform(Matrix4.fromArray(nodeTransform.getWorldMatrix()));
+      meshAABB.applyMatrix4(nodeTransform.getWorldMatrix());
       sceneAABB.union(meshAABB);
     }
 

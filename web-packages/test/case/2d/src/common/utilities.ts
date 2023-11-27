@@ -5,15 +5,17 @@ import {
   registerPlugin,
   AbstractPlugin,
   VFXItem,
-  vec3MulMat4,
   spec,
-  getDefaultTemplateCanvasPool, AssetManager,
+  math,
+  AssetManager,
+  getDefaultTemplateCanvasPool,
 } from '@galacean/effects';
 
-const sleepTime = 50;
+const { Vector3, Matrix4 } = math;
+
+const sleepTime = 20;
 const params = new URLSearchParams(location.search);
-const playerVersion = params.get('version') || '1.3.4';  // 旧 Player 版本
-const oldSpineVersion = params.get('version') || '2.0.1'; // 旧 spine 插件版本
+const oldVersion = params.get('version') || '2.3.6';  // 旧版Player版本
 const playerOptions: PlayerConfig = {
   //env: 'editor',
   //pixelRatio: 2,
@@ -25,7 +27,7 @@ const playerOptions: PlayerConfig = {
 };
 
 export class TestPlayer {
-  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, MarsPlugin, VFXItem, prefetchFunc) {
+  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, prefetchFunc, oldVersion) {
     this.width = width;
     this.height = height;
     //
@@ -40,11 +42,12 @@ export class TestPlayer {
       renderFramework,
     });
     this.prefetchFunc = prefetchFunc;
+    this.oldVersion = oldVersion;
     this.scene = undefined;
     this.composition = undefined;
     this.lastTime = 0;
 
-    registerFunc('orientation-transformer', MarsPlugin, VFXItem, true);
+    registerFunc('orientation-transformer', Plugin, VFXItem, true);
   }
 
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
@@ -53,12 +56,13 @@ export class TestPlayer {
     }
 
     Math.seedrandom('mars-runtime');
-    if (this.player.loadScene) {
+    if (!this.player.oldVersion) {
       getDefaultTemplateCanvasPool().dispose();
       const assetManager = new AssetManager();
       const json = await assetManager.loadScene(url);
 
       compatibleCalculateItem(json.jsonScene.compositions[0]);
+
       this.player.destroyCurrentCompositions();
       Math.seedrandom('mars-runtime');
       this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
@@ -69,7 +73,6 @@ export class TestPlayer {
       Math.seedrandom('mars-runtime');
       this.composition = await this.player.play(this.scene, playerOptions ?? { pauseOnFirstFrame: true });
     }
-
   }
 
   gotoTime (time) {
@@ -103,7 +106,7 @@ export class TestPlayer {
   }
 
   loadSceneTime () {
-    return this.scene.totalTime;
+    return this.composition.statistic.loadTime;
   }
 
   firstFrameTime () {
@@ -119,7 +122,7 @@ export class TestPlayer {
   }
 
   duration () {
-    return this.composition.duration;
+    return this.composition.compositionSourceManager.totalTime;
   }
 
   isLoop () {
@@ -129,12 +132,15 @@ export class TestPlayer {
   getRandomPointInParticle () {
     const itemList = [];
     let viewProjection;
-    const inPosition = [0, 0, 0];
+    const inPosition = new Vector3(0, 0, 0);
 
     if (this.composition._camera) {
-      viewProjection = this.composition._camera.viewProjection;
+      viewProjection = Matrix4.fromArray(this.composition._camera.viewProjection);
     } else {
       viewProjection = this.composition.camera.getViewProjectionMatrix();
+      if (ArrayBuffer.isView(viewProjection)) {
+        viewProjection = Matrix4.fromArray(viewProjection);
+      }
     }
 
     this.composition.items.forEach(item => {
@@ -163,14 +169,14 @@ export class TestPlayer {
         if (typeof itemList[index].getParticleBoxes === 'function') {
           const pos = item.getParticleBoxes().reverse()[subIndex].center;
 
-          vec3MulMat4(inPosition, pos, viewProjection);
+          viewProjection.projectPoint(pos, inPosition);
         } else {
           const pos = mesh.getPointPosition(subIndex);
 
-          vec3MulMat4(inPosition, pos, viewProjection);
+          viewProjection.projectPoint(pos, inPosition);
         }
 
-        return [inPosition[0], inPosition[1]];
+        return [inPosition.x, inPosition.y];
       }
     }
 
@@ -212,29 +218,27 @@ export class TestPlayer {
 export class TestController {
   constructor () {
     this.renderFramework = 'webgl';
-    this.marsPlayer = undefined;
-    this.runtimePlayer = undefined;
+    this.oldPlayer = undefined;
+    this.newPlayer = undefined;
   }
 
   async createPlayers (width, height, renderFramework, isEditor = true) {
     const playerScript = await this.loadOldPlayer();
-    const filterScript = await this.loadOldFilters();
     const modelPlugin = await this.loadOldModelPlugin();
     const spinePlugin = await this.loadOldSpinePlugin();
 
     playerOptions.env = isEditor ? 'editor' : '';
 
     this.renderFramework = renderFramework;
-    if (window.Mars.MarsPlayer) {
-      window.Mars.registerFilters(window.MarsFilters.filters);
-      this.marsPlayer = new TestPlayer(
-        width, height, window.Mars.MarsPlayer, playerOptions, renderFramework,
-        window.Mars.registerPlugin, window.Mars.MarsPlugin, window.Mars.VFXItem,
-        window.Mars.loadSceneAsync
+    if (window.mars.MarsPlayer) {
+      this.oldPlayer = new TestPlayer(
+        width, height, window.mars.MarsPlayer, playerOptions, renderFramework,
+        window.mars.registerPlugin, window.mars.AbstractPlugin, window.mars.VFXItem,
+        null, true
       );
-      this.runtimePlayer = new TestPlayer(
+      this.newPlayer = new TestPlayer(
         width, height, Player, playerOptions, renderFramework,
-        registerPlugin, AbstractPlugin, VFXItem, null
+        registerPlugin, AbstractPlugin, VFXItem, null, false
       );
       console.info('Create all players');
     } else {
@@ -243,40 +247,41 @@ export class TestController {
   }
 
   disposePlayers () {
-    this.marsPlayer.dispose();
-    this.runtimePlayer.dispose();
+    this.oldPlayer.dispose();
+    this.newPlayer.dispose();
     //
-    this.marsPlayer = undefined;
-    this.runtimePlayer = undefined;
+    this.oldPlayer = undefined;
+    this.newPlayer = undefined;
   }
 
   async loadOldPlayer () {
-    const playerAddress = `https://gw.alipayobjects.com/os/lib/alipay/mars-player/${playerVersion}/dist/index.js`;
+    const playerAddress = `https://gw.alipayobjects.com/os/lib/galacean/mars-player/${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(playerAddress);
   }
 
-  async loadOldFilters () {
-    const filterAddress = `https://gw.alipayobjects.com/os/lib/alipay/mars-player/${playerVersion}/dist/filters.js`;
-
-    return this.loadScript(filterAddress);
-  }
-
   async loadOldModelPlugin () {
-    const pluginAddress = 'https://gw.alipayobjects.com/render/p/yuyan_npm/@alipay_mars-plugin-model/1.1.0/dist/index.min.js';
+    const pluginAddress = `https://gw.alipayobjects.com/os/lib/galacean/mars-plugin-model/${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(pluginAddress);
   }
 
   async loadOldSpinePlugin () {
-    const spineAddress = `https://gw.alipayobjects.com/render/p/yuyan_npm/@alipay_mars-plugin-spine/${oldSpineVersion}/dist/index.min.js`;
+    const spineAddress = `https://gw.alipayobjects.com/os/lib/galacean/mars-plugin-spine/${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(spineAddress);
   }
 
   async loadScript (src) {
+    const element = document.getElementById(src);
+
+    if (element !== null) {
+      return;
+    }
+
     const script = document.createElement('script');
 
+    script.id = src;
     script.src = src;
     document.head.appendChild(script);
 
@@ -436,28 +441,28 @@ export class PlayerCost {
 export class ComparatorStats {
   constructor (renderFramework) {
     this.renderFramework = renderFramework;
-    this.marsCost = new PlayerCost();
-    this.runtimeCost = new PlayerCost();
+    this.oldCost = new PlayerCost();
+    this.newCost = new PlayerCost();
   }
 
-  addSceneInfo (name, marsLoadCost, marsCreateCost, runtimeLoadCost, runtimeCreateCost, pixelDiffCount) {
-    this.marsCost.add(
-      name, marsLoadCost, marsCreateCost,
-      marsLoadCost, marsCreateCost, pixelDiffCount
+  addSceneInfo (name, oldLoadCost, oldCreateCost, newLoadCost, newCreateCost, pixelDiffCount) {
+    this.oldCost.add(
+      name, oldLoadCost, oldCreateCost,
+      oldLoadCost, oldCreateCost, pixelDiffCount
     );
-    this.runtimeCost.add(
-      name, runtimeLoadCost, runtimeCreateCost,
-      marsLoadCost, marsCreateCost, pixelDiffCount
+    this.newCost.add(
+      name, newLoadCost, newCreateCost,
+      oldLoadCost, oldCreateCost, pixelDiffCount
     );
   }
 
   getStatsInfo () {
-    const diffSceneCount = this.runtimeCost.getDiffSceneCount();
-    const equalSceneCount = this.runtimeCost.getEqualSceneCount();
+    const diffSceneCount = this.newCost.getDiffSceneCount();
+    const equalSceneCount = this.newCost.getEqualSceneCount();
     const totalCount = equalSceneCount + diffSceneCount;
     const diffSceneRatio = equalSceneCount / totalCount;
-    const maxPixelDiffCount = this.runtimeCost.maxPixelDiffCount;
-    const totalPixelDiffCount = this.runtimeCost.getTotalPixelDiffCount();
+    const maxPixelDiffCount = this.newCost.maxPixelDiffCount;
+    const totalPixelDiffCount = this.newCost.getTotalPixelDiffCount();
     const averPixelDiffCount = totalPixelDiffCount / diffSceneCount;
     const msgList = [];
 
@@ -465,17 +470,17 @@ export class ComparatorStats {
       `DiffStats: ${this.renderFramework}, total ${totalCount}, equal ${equalSceneCount}, ratio ${diffSceneRatio.toFixed(2)}, ` +
       `diff ${diffSceneCount}, max ${maxPixelDiffCount}, aver ${averPixelDiffCount.toFixed(2)}`
     );
-    const marsAverLoadCost = this.marsCost.getAverLoadCost();
-    const marsAverCreateCost = this.marsCost.getAverCreateCost();
-    const marsAverTotalCost = marsAverLoadCost + marsAverCreateCost;
-    const runtimeAverLoadCost = this.runtimeCost.getAverLoadCost();
-    const runtimeAverCreateCost = this.runtimeCost.getAverCreateCost();
-    const runtimeAverTotalCost = runtimeAverLoadCost + runtimeAverCreateCost;
-    const maxSceneList = this.runtimeCost.getMaxDiffCostScenes(5);
-    const marsCostInfo = `mars(${marsAverLoadCost.toFixed(2)}, ${marsAverCreateCost.toFixed(2)}, ${marsAverTotalCost.toFixed(2)})`;
-    const runtimeCostInfo = `runtime(${runtimeAverLoadCost.toFixed(2)}, ${runtimeAverCreateCost.toFixed(2)}, ${runtimeAverTotalCost.toFixed(2)})`;
+    const oldAverLoadCost = this.oldCost.getAverLoadCost();
+    const oldAverCreateCost = this.oldCost.getAverCreateCost();
+    const oldAverTotalCost = oldAverLoadCost + oldAverCreateCost;
+    const newAverLoadCost = this.newCost.getAverLoadCost();
+    const newAverCreateCost = this.newCost.getAverCreateCost();
+    const newAverTotalCost = newAverLoadCost + newAverCreateCost;
+    const maxSceneList = this.newCost.getMaxDiffCostScenes(5);
+    const oldCostInfo = `Old(${oldAverLoadCost.toFixed(2)}, ${oldAverCreateCost.toFixed(2)}, ${oldAverTotalCost.toFixed(2)})`;
+    const newCostInfo = `New(${newAverLoadCost.toFixed(2)}, ${newAverCreateCost.toFixed(2)}, ${newAverTotalCost.toFixed(2)})`;
 
-    msgList.push(`CostStats: ${this.renderFramework}, ${marsCostInfo}, ${runtimeCostInfo}`);
+    msgList.push(`CostStats: ${this.renderFramework}, ${oldCostInfo}, ${newCostInfo}`);
     msgList.push('Top5Scene: ' + maxSceneList.map(scene => scene.name + `(${scene.totalDiffCost.toFixed(1)})`).join(', '));
     console.info(msgList.join('\n'));
 
@@ -540,13 +545,12 @@ function compatibleCalculateItem (composition: Composition) {
   // 测试用的兼容
   composition.items.forEach(item => {
     // 兼容空节点结束行为，保持和player一致，在runtime上空节点结束为销毁改为冻结的效果
-    if (item.type === spec.ItemType.null && item.endBehavior === spec.ItemEndBehavior.destroy) {
+    if (VFXItem.isNull(item) && item.endBehavior === spec.ItemEndBehavior.destroy) {
       item.endBehavior = spec.ItemEndBehavior.forward;
     }
     // 兼容旧版 Player 粒子发射器为直线时形状错误
-    if (item.type === spec.ItemType.particle && item.content.shape && item.content.shape.type === spec.ShapeType.EDGE) {
+    if (VFXItem.isParticle(item) && item.content.shape && item.content.shape.type === spec.ShapeType.EDGE) {
       item.content.shape.width /= 2;
     }
   });
-
 }

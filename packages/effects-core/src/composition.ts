@@ -1,4 +1,6 @@
 import * as spec from '@galacean/effects-specification';
+import type { Ray } from '@galacean/effects-math/es/core/index';
+import { Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import { LOG_TYPE } from './config';
 import type { JSONValue } from './downloader';
 import type { Scene } from './scene';
@@ -8,16 +10,15 @@ import { Transform } from './transform';
 import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
 import type { ItemNode } from './comp-vfx-item';
 import { CompVFXItem } from './comp-vfx-item';
-import type { InteractVFXItem, Plugin, EventSystem } from './plugins';
+import type { InteractVFXItem, Plugin, EventSystem, Region } from './plugins';
+import { HitTestType } from './plugins';
 import type { PluginSystem } from './plugin-system';
 import type { MeshRendererOptions, Renderer, GlobalVolume } from './render';
+import { RenderFrame } from './render';
 import type { Texture } from './texture';
 import { TextureSourceType } from './texture';
-import { RenderFrame } from './render';
 import { Camera } from './camera';
-import { setRayFromCamera, intersectRayTriangle, intersectRayBox, intersectRaySphere, quatFromRotation } from './math';
-import { HitTestType } from './plugins';
-import type { Region } from './plugins';
+import { setRayFromCamera } from './math';
 import { CompositionSourceManager } from './composition-source-manager';
 
 export interface CompositionStatistic {
@@ -127,6 +128,10 @@ export class Composition implements Disposable, LostHandler {
    */
   readonly pluginSystem: PluginSystem;
   /**
+   * 是否在合成结束时自动销毁引用的纹理，合成重播时不销毁
+   */
+  autoRefTex: boolean;
+  /**
    * 当前合成名称
    */
   readonly name: string;
@@ -150,6 +155,14 @@ export class Composition implements Disposable, LostHandler {
    * 合成对象
    */
   readonly content: CompVFXItem;
+  /**
+   * 预合成数组
+   */
+  readonly refContent: CompVFXItem[] = [];
+  /**
+   * 预合成的合成属性，在 content 中会被其元素属性覆盖
+   */
+  refCompositionProps: Map<string, VFXItemProps> = new Map();
   /**
    * 合成的相机对象
    */
@@ -179,7 +192,6 @@ export class Composition implements Disposable, LostHandler {
   // private readonly event: EventSystem;
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
-  private readonly autoRefTex: boolean;
   private readonly postLoaders: Plugin[] = [];
   private readonly handleMessageItem?: (item: MessageItem) => void;
 
@@ -205,10 +217,11 @@ export class Composition implements Disposable, LostHandler {
       scene.textures = undefined;
       scene.consumed = true;
     }
-    const { sourceContent, pluginSystem, imgUsage, totalTime, renderLevel } = this.compositionSourceManager;
+    const { sourceContent, pluginSystem, imgUsage, totalTime, renderLevel, refCompositionProps } = this.compositionSourceManager;
 
     assertExist(sourceContent);
 
+    this.refCompositionProps = refCompositionProps;
     const vfxItem = new CompVFXItem(sourceContent as unknown as VFXItemProps, this);
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
@@ -531,10 +544,8 @@ export class Composition implements Disposable, LostHandler {
    * @returns 元素对象
    */
   getItemByName (name: string, type?: spec.ItemType) {
-    const items = this.content && this.content.items;
-
-    if (items) {
-      return items.find(item => item.name === name && (!type || type === item.type));
+    if (this.content && this.content.items) {
+      return this.content.getItemByName(name)[0];
     }
   }
 
@@ -583,8 +594,8 @@ export class Composition implements Disposable, LostHandler {
    * @param y
    * @returns
    */
-  getHitTestRay (x: number, y: number): { center: spec.vec3, direction: spec.vec3 } {
-    const [a, b, c, d] = this.renderFrame.editorTransform;
+  getHitTestRay (x: number, y: number): Ray {
+    const { x: a, y: b, z: c, w: d } = this.renderFrame.editorTransform;
 
     return setRayFromCamera((x - c) / a, (y - d) / b, this.camera);
   }
@@ -608,9 +619,9 @@ export class Composition implements Disposable, LostHandler {
     if (this.isDestroyed) {
       return [];
     }
-    const hitPositions: spec.vec3[] = [];
+    const hitPositions: Vector3[] = [];
     const regions: Region[] = [];
-    const [a, b, c, d] = this.renderFrame.editorTransform;
+    const { x: a, y: b, z: c, w: d } = this.renderFrame.editorTransform;
     const ray = setRayFromCamera((x - c) / a, (y - d) / b, this.camera);
     const stop = options?.stop || noop;
     const skip = options?.skip || noop;
@@ -624,7 +635,7 @@ export class Composition implements Disposable, LostHandler {
 
         if (hitParams) {
           let success = false;
-          const intersectPoint: spec.vec3 | number[] = [];
+          const intersectPoint = new Vector3();
 
           if (hitParams.type === HitTestType.triangle) {
             const { triangles, backfaceCulling } = hitParams;
@@ -632,35 +643,36 @@ export class Composition implements Disposable, LostHandler {
             for (let j = 0; j < triangles.length; j++) {
               const triangle = triangles[j];
 
-              intersectRayTriangle(intersectPoint, ray.center, ray.direction, triangle, backfaceCulling);
-              if (intersectPoint.length) {
+              if (ray.intersectTriangle(triangle, intersectPoint, backfaceCulling)) {
                 success = true;
-                hitPositions.push(intersectPoint as spec.vec3);
+                hitPositions.push(intersectPoint);
 
                 break;
               }
             }
           } else if (hitParams.type === HitTestType.box) {
             const { center, size } = hitParams;
+            const boxMin = center.clone().addScaledVector(size, 0.5);
+            const boxMax = center.clone().addScaledVector(size, -0.5);
 
-            intersectRayBox(intersectPoint, ray.center, ray.direction, center, size);
-            if (intersectPoint.length) {
+            if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
               success = true;
-              hitPositions.push(intersectPoint as spec.vec3);
+              hitPositions.push(intersectPoint);
             }
           } else if (hitParams.type === HitTestType.sphere) {
             const { center, radius } = hitParams;
 
-            intersectRaySphere(intersectPoint, ray.center, ray.direction, center, radius);
-            if (intersectPoint.length) {
+            if (ray.intersectSphere({ center, radius }, intersectPoint)) {
               success = true;
-              hitPositions.push(intersectPoint as spec.vec3);
+              hitPositions.push(intersectPoint);
             }
           } else if (hitParams.type === HitTestType.custom) {
-            const tempPosition = hitParams.collect(ray, [x, y]);
+            const tempPosition = hitParams.collect(ray, new Vector2(x, y));
 
             if (tempPosition && tempPosition.length > 0) {
-              hitPositions.push(...tempPosition);
+              tempPosition.forEach(pos => {
+                hitPositions.push(pos);
+              });
               success = true;
             }
           }
@@ -768,7 +780,15 @@ export class Composition implements Disposable, LostHandler {
    * @param item - 需要销毁的 item
    */
   destroyItem (item: VFXItem<VFXItemContent>) {
-    if (this.content.removeItem(item)) {
+    // 预合成元素销毁时销毁其中的item
+    if (item.type == spec.ItemType.composition) {
+      if (item.endBehavior !== spec.END_BEHAVIOR_FREEZE) {
+        (item as CompVFXItem).items.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));
+      }
+    } else {
+      this.content.removeItem(item);
+      // 预合成中的元素移除
+      this.refContent.forEach(content => content.removeItem(item));
       this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, item));
     }
   }
@@ -827,6 +847,7 @@ export class Composition implements Disposable, LostHandler {
       textures.forEach(tex => tex.dispose = textureDisposes[tex.id]);
     }
     this.compositionSourceManager.dispose();
+    this.refCompositionProps.clear();
   }
 
   /**
@@ -837,7 +858,7 @@ export class Composition implements Disposable, LostHandler {
    * @param dy - y偏移量
    */
   setEditorTransform (scale: number, dx: number, dy: number) {
-    this.renderFrame.editorTransform = [scale, scale, dx, dy];
+    this.renderFrame.editorTransform.set(scale, scale, dx, dy);
   }
 
   /**
