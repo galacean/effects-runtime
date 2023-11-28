@@ -221,7 +221,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
         event.origin?.preventDefault();
       }
     }
-    this.composition.camera.position.set(nx, ny, depth);
+    this.composition.camera.position = new Vector3(nx, ny, depth);
   }
 }
 
