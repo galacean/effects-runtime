@@ -79,13 +79,16 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           if (!props) {
             throw new Error(`引用的Id: ${refId} 的预合成不存在`);
           }
-          props.name = itemProps.name;
-          props.duration = itemProps.duration;
-          props.endBehavior = itemProps.endBehavior;
-          props.delay = itemProps.delay;
-          props.parentId = itemProps.parentId;
           props.content = itemProps.content;
-          item = new CompVFXItem(props, this.composition);
+          item = new CompVFXItem({
+            ...props,
+            id: itemProps.id,
+            name: itemProps.name,
+            duration: itemProps.duration,
+            endBehavior: itemProps.endBehavior,
+            parentId: itemProps.parentId,
+            transform: itemProps.transform,
+          }, this.composition);
           (item as CompVFXItem).contentProps = itemProps.content;
           item.transform.parentTransform = this.transform;
           this.composition.refContent.push(item as CompVFXItem);
