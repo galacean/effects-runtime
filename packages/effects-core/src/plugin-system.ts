@@ -64,7 +64,7 @@ export class PluginSystem {
         const CTRL = pluginLoaderMap[name];
 
         if (!CTRL) {
-          throw new Error(`plugin '${name}' not found`);
+          throw new Error(`plugin '${name}' not found.` + getPluginUsageInfo(name));
         }
 
         const loader = new CTRL();
@@ -129,5 +129,24 @@ export class PluginSystem {
 
   async loadResources (scene: Object, options: SceneLoadOptions) {
     return this.callStatic('prepareResource', scene, options);
+  }
+}
+
+const pluginInfoMap: Record<string, string> = {
+  'alipay-downgrade': '@galacean/effects-plugin-alipay-downgrade',
+  'editor-gizmo': '@galacean/effects-plugin-editor-gizmo',
+  'tree': '@galacean/effects-plugin-model',
+  'model': '@galacean/effects-plugin-model',
+  'orientation-transformer': '@galacean/effects-plugin-orientation-transformer',
+  'spine': '@galacean/effects-plugin-spine',
+};
+
+function getPluginUsageInfo (name: string) {
+  const info = pluginInfoMap[name];
+
+  if (info) {
+    return `\nInstall Plugin: npm i ${info}@${__VERSION__} --save \nImport Plugin: import '${info}'`;
+  } else {
+    return '';
   }
 }
