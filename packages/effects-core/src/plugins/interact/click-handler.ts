@@ -1,5 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Matrix4, Ray, TriangleLike, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
+import type { CompVFXItem } from '../../comp-vfx-item';
 
 export enum HitTestType {
   triangle = 1,
@@ -54,6 +55,7 @@ export interface HitTestCustomParams {
 }
 
 export type Region = {
+  compContent: CompVFXItem,
   name: string,
   id: string,
   position: Vector3,

@@ -40,14 +40,17 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
   private tempQueue: VFXItem<VFXItemContent>[] = [];
   // 3D 模式下创建的场景相机 需要最后更新参数
   private extraCamera: CameraVFXItem;
+  // 预合成的原始合成id
+  private refId: string | undefined;
 
   override get type (): spec.ItemType {
     return spec.ItemType.composition;
   }
 
   override onConstructed (props: VFXItemProps) {
-    const { items = [], startTime = 0, content } = props;
+    const { items = [], startTime = 0, content, refId } = props;
 
+    this.refId = refId;
     this.itemProps = items;
     this.contentProps = content;
     const endBehavior = this.endBehavior;
@@ -84,6 +87,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           props.content = itemProps.content;
           item = new CompVFXItem({
             ...props,
+            refId,
             id: itemProps.id,
             name: itemProps.name,
             duration: itemProps.duration,
@@ -427,6 +431,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           }
           if (success) {
             const region = {
+              compContent: this,
               id: item.id,
               name: item.name,
               position: hitPositions[hitPositions.length - 1],
