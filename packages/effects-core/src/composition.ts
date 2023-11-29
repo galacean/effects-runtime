@@ -1,6 +1,5 @@
 import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/index';
-import { Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import { LOG_TYPE } from './config';
 import type { JSONValue } from './downloader';
 import type { Scene } from './scene';
@@ -11,7 +10,6 @@ import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
 import type { ItemNode } from './comp-vfx-item';
 import { CompVFXItem } from './comp-vfx-item';
 import type { InteractVFXItem, Plugin, EventSystem, Region } from './plugins';
-import { HitTestType } from './plugins';
 import type { PluginSystem } from './plugin-system';
 import type { MeshRendererOptions, Renderer, GlobalVolume } from './render';
 import { RenderFrame } from './render';
@@ -37,7 +35,7 @@ export interface MessageItem {
 /**
  *
  */
-interface CompositionHitTestOptions {
+export interface CompositionHitTestOptions {
   maxCount?: number,
   stop?: (region: Region) => boolean,
   skip?: (item: VFXItem<VFXItemContent>) => boolean,
@@ -589,7 +587,7 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
-   *
+   * 获取指定位置和相机连成的射线
    * @param x
    * @param y
    * @returns
@@ -619,81 +617,13 @@ export class Composition implements Disposable, LostHandler {
     if (this.isDestroyed) {
       return [];
     }
-    const hitPositions: Vector3[] = [];
     const regions: Region[] = [];
-    const { x: a, y: b, z: c, w: d } = this.renderFrame.editorTransform;
-    const ray = setRayFromCamera((x - c) / a, (y - d) / b, this.camera);
-    const stop = options?.stop || noop;
-    const skip = options?.skip || noop;
-    const maxCount = options?.maxCount || this.items.length;
+    const ray = this.getHitTestRay(x, y);
 
-    for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
-      const item = this.items[i];
-
-      if (item.lifetime >= 0 && item.lifetime <= 1 && !skip(item)) {
-        const hitParams = item.getHitTestParams(force);
-
-        if (hitParams) {
-          let success = false;
-          const intersectPoint = new Vector3();
-
-          if (hitParams.type === HitTestType.triangle) {
-            const { triangles, backfaceCulling } = hitParams;
-
-            for (let j = 0; j < triangles.length; j++) {
-              const triangle = triangles[j];
-
-              if (ray.intersectTriangle(triangle, intersectPoint, backfaceCulling)) {
-                success = true;
-                hitPositions.push(intersectPoint);
-
-                break;
-              }
-            }
-          } else if (hitParams.type === HitTestType.box) {
-            const { center, size } = hitParams;
-            const boxMin = center.clone().addScaledVector(size, 0.5);
-            const boxMax = center.clone().addScaledVector(size, -0.5);
-
-            if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
-              success = true;
-              hitPositions.push(intersectPoint);
-            }
-          } else if (hitParams.type === HitTestType.sphere) {
-            const { center, radius } = hitParams;
-
-            if (ray.intersectSphere({ center, radius }, intersectPoint)) {
-              success = true;
-              hitPositions.push(intersectPoint);
-            }
-          } else if (hitParams.type === HitTestType.custom) {
-            const tempPosition = hitParams.collect(ray, new Vector2(x, y));
-
-            if (tempPosition && tempPosition.length > 0) {
-              tempPosition.forEach(pos => {
-                hitPositions.push(pos);
-              });
-              success = true;
-            }
-          }
-          if (success) {
-            const region = {
-              id: item.id,
-              name: item.name,
-              position: hitPositions[hitPositions.length - 1],
-              parentId: item.parentId,
-              hitPositions,
-              behavior: hitParams.behavior,
-            };
-
-            regions.push(region);
-            if (stop(region)) {
-              return regions;
-            }
-          }
-        }
-      }
-    }
+    this.content.hitTest(ray, x, y, regions, force, options);
+    this.refContent.forEach(ref => {
+      ref.hitTest(ray, x, y, regions, force, options);
+    });
 
     return regions;
   }
