@@ -3,7 +3,7 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.turnplate.url;
+const json = inspireList.mask.url;
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -11,6 +11,7 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json);
+    const item = comp.getItemByName('mask');
 
   } catch (e) {
     console.error('biz', e);
