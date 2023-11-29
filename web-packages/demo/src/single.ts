@@ -1,10 +1,8 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
-import { inspectLogger } from '@galacean/effects-plugin-alipay-downgrade';
 import inspireList from './assets/inspire-list';
 
-inspectLogger();
 const json = inspireList.mask.url;
 const container = document.getElementById('J-container');
 
