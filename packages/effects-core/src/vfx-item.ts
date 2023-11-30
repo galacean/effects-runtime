@@ -32,6 +32,7 @@ export type VFXItemProps =
     startTime: number,
     relative?: boolean,
     listIndex?: number,
+    refId?: string,
   }
   ;
 

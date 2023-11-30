@@ -1,10 +1,12 @@
+import { Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
+import type { Ray } from '@galacean/effects-math/es';
 import * as spec from '@galacean/effects-specification';
-import { CalculateItem } from './plugins';
-import type { CameraVFXItem } from './plugins';
-import { addItem } from './utils';
+import { CalculateItem, HitTestType } from './plugins';
+import type { CameraVFXItem, Region } from './plugins';
+import { addItem, noop } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { createVFXItem, Item, VFXItem } from './vfx-item';
-import type { Composition } from './composition';
+import type { Composition, CompositionHitTestOptions } from './composition';
 
 export interface ItemNode {
   id: string, // item 的 id
@@ -38,14 +40,17 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
   private tempQueue: VFXItem<VFXItemContent>[] = [];
   // 3D 模式下创建的场景相机 需要最后更新参数
   private extraCamera: CameraVFXItem;
+  // 预合成的原始合成id
+  private refId: string | undefined;
 
   override get type (): spec.ItemType {
     return spec.ItemType.composition;
   }
 
   override onConstructed (props: VFXItemProps) {
-    const { items = [], startTime = 0, content } = props;
+    const { items = [], startTime = 0, content, refId } = props;
 
+    this.refId = refId;
     this.itemProps = items;
     this.contentProps = content;
     const endBehavior = this.endBehavior;
@@ -82,6 +87,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           props.content = itemProps.content;
           item = new CompVFXItem({
             ...props,
+            refId,
             id: itemProps.id,
             name: itemProps.name,
             duration: itemProps.duration,
@@ -366,6 +372,84 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
     }
 
     return res;
+  }
+
+  hitTest (ray: Ray, x: number, y: number, regions: Region[], force?: boolean, options?: CompositionHitTestOptions): Region[] {
+    const hitPositions: Vector3[] = [];
+    const stop = options?.stop || noop;
+    const skip = options?.skip || noop;
+    const maxCount = options?.maxCount || this.items.length;
+
+    for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
+      const item = this.items[i];
+
+      if (item.lifetime >= 0 && item.lifetime <= 1 && !VFXItem.isComposition(item) && !skip(item)) {
+        const hitParams = item.getHitTestParams(force);
+
+        if (hitParams) {
+          let success = false;
+          const intersectPoint = new Vector3();
+
+          if (hitParams.type === HitTestType.triangle) {
+            const { triangles, backfaceCulling } = hitParams;
+
+            for (let j = 0; j < triangles.length; j++) {
+              const triangle = triangles[j];
+
+              if (ray.intersectTriangle(triangle, intersectPoint, backfaceCulling)) {
+                success = true;
+                hitPositions.push(intersectPoint);
+
+                break;
+              }
+            }
+          } else if (hitParams.type === HitTestType.box) {
+            const { center, size } = hitParams;
+            const boxMin = center.clone().addScaledVector(size, 0.5);
+            const boxMax = center.clone().addScaledVector(size, -0.5);
+
+            if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
+              success = true;
+              hitPositions.push(intersectPoint);
+            }
+          } else if (hitParams.type === HitTestType.sphere) {
+            const { center, radius } = hitParams;
+
+            if (ray.intersectSphere({ center, radius }, intersectPoint)) {
+              success = true;
+              hitPositions.push(intersectPoint);
+            }
+          } else if (hitParams.type === HitTestType.custom) {
+            const tempPosition = hitParams.collect(ray, new Vector2(x, y));
+
+            if (tempPosition && tempPosition.length > 0) {
+              tempPosition.forEach(pos => {
+                hitPositions.push(pos);
+              });
+              success = true;
+            }
+          }
+          if (success) {
+            const region = {
+              compContent: this,
+              id: item.id,
+              name: item.name,
+              position: hitPositions[hitPositions.length - 1],
+              parentId: item.parentId,
+              hitPositions,
+              behavior: hitParams.behavior,
+            };
+
+            regions.push(region);
+            if (stop(region)) {
+              return regions;
+            }
+          }
+        }
+      }
+    }
+
+    return regions;
   }
 
   protected override isEnded (now: number) {
