@@ -893,7 +893,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           const behavior = regions[i].behavior || spec.InteractBehavior.NOTIFY;
 
           if (behavior === spec.InteractBehavior.NOTIFY) {
-
             this.handleItemClicked?.({
               ...regions[i],
               composition: composition.name,
