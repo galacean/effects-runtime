@@ -145,7 +145,7 @@ function getPluginUsageInfo (name: string) {
   const info = pluginInfoMap[name];
 
   if (info) {
-    return `\nInstall Plugin: npm i ${info}@next --save\nImport Plugin: import '${info}'`;
+    return `\nInstall Plugin: npm i ${info}@latest --save\nImport Plugin: import '${info}'`;
   } else {
     return '';
   }
