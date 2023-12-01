@@ -1,5 +1,9 @@
 # Galacean Effects Runtime
 
+![GitHub release (with filter)](https://img.shields.io/github/v/release/galacean/effects-runtime)
+![GitHub License](https://img.shields.io/github/license/galacean/effects-runtime)
+![GitHub top language](https://img.shields.io/github/languages/top/galacean/effects-runtime)
+
 Galacean Effects runtime, It can load and render cool animation effects, The APIs provided by effects-core allow your engine to quickly access animation data such as layer and particle animation.
 
 ## [Integration Guide](https://galacean.antgroup.com/effects/#/user/ti4f2yx1rot4hs1n)
