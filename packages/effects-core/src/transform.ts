@@ -237,6 +237,7 @@ export class Transform implements Disposable {
    */
   rotateByQuat (quat: Quaternion) {
     this.quat.multiply(quat);
+    this.rotation.setFromQuaternion(this.quat);
     this.dirtyFlags.localData = true;
     this.dispatchValueChange();
   }

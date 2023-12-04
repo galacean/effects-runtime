@@ -11,7 +11,6 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json);
-
   } catch (e) {
     console.error('biz', e);
   }
@@ -20,7 +19,6 @@ const container = document.getElementById('J-container');
 function createPlayer () {
   const player = new Player({
     container,
-    pixelRatio: 2,
     interactive: true,
     // renderFramework: 'webgl',
     env: 'editor',
