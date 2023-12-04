@@ -1,4 +1,4 @@
-import type { Texture, Geometry, Engine } from '@galacean/effects';
+import type { Texture, Geometry, Engine, math } from '@galacean/effects';
 import {
   spec,
   Mesh,
@@ -26,7 +26,7 @@ import {
   PMaterialUnlit,
   createPluginMaterial,
 } from './material';
-import { Matrix4, Vector3, Box3 } from '../math';
+import { Matrix4, Vector3, Box3, Vector2 } from './math';
 import { PSkin, PAnimTexture, PMorph, TextureDataMode } from './animation';
 import type { PSceneStates } from './scene';
 import type { PSkybox } from './skybox';
@@ -37,6 +37,8 @@ import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import { BoxMesh } from '../utility/ri-helper';
 import { RayBoxTesting } from '../utility/hit-test-helper';
 import type { ModelTreeVFXItem, ModelTreeNode } from '../plugin';
+
+type Box3 = math.Box3;
 
 export class PMesh extends PEntity {
   /**
@@ -59,7 +61,7 @@ export class PMesh extends PEntity {
   primitives: PPrimitive[] = [];
   hide = true;
   priority = 0;
-  boundingBox = new Box3();
+  boundingBox: Box3 = new Box3();
   visBoundingBox = false;
   boundingBoxMesh?: BoxMesh;
   isBuilt = false;
@@ -193,7 +195,7 @@ export class PMesh extends PEntity {
 
   override updateUniformsForScene (sceneStates: PSceneStates) {
     const worldMatrix = this.matrix;
-    const normalMatrix = worldMatrix.clone().inverse().transpose();
+    const normalMatrix = worldMatrix.clone().invert().transpose();
 
     this.primitives.forEach(prim => {
       prim.updateUniformsForScene(worldMatrix, normalMatrix, sceneStates);
@@ -226,11 +228,11 @@ export class PMesh extends PEntity {
     });
   }
 
-  hitTesting (rayOrigin: Vector3, rayDirection: Vector3): spec.vec3[] {
+  hitTesting (rayOrigin: Vector3, rayDirection: Vector3): Vector3[] {
     const worldMatrix = this.matrix;
-    const invWorldMatrix = worldMatrix.clone().inverse();
-    const newOrigin = Matrix4.multiplyByPoint(invWorldMatrix, rayOrigin, new Vector3());
-    const newDirection = Matrix4.multiplyByPointAsVector(invWorldMatrix, rayDirection, new Vector3());
+    const invWorldMatrix = worldMatrix.clone().invert();
+    const newOrigin = invWorldMatrix.transformPoint(rayOrigin, new Vector3());
+    const newDirection = invWorldMatrix.transformNormal(rayDirection, new Vector3());
 
     const bounding = this.boundingBox;
     const boxt = RayBoxTesting(newOrigin, newDirection, bounding.min, bounding.max);
@@ -259,16 +261,16 @@ export class PMesh extends PEntity {
       return [];
     }
 
-    newDirection.multiplyScalar(mint);
-    newOrigin.addVector(newDirection);
-    worldMatrix.multiplyByPoint3(newOrigin);
+    newDirection.multiply(mint);
+    newOrigin.add(newDirection);
+    worldMatrix.transformPoint(newOrigin);
 
-    return [[newOrigin.x, newOrigin.y, newOrigin.z]];
+    return [newOrigin];
   }
 
   computeBoundingBox (worldMatrix: Matrix4): Box3 {
     const box = this.boundingBox.makeEmpty();
-    const inverseWorldMatrix = worldMatrix.clone().inverse();
+    const inverseWorldMatrix = worldMatrix.clone().invert();
 
     this.primitives.forEach(prim => {
       const subbox = prim.computeBoundingBox(inverseWorldMatrix);
@@ -288,17 +290,17 @@ export class PMesh extends PEntity {
       const center = inBounding.center ?? [0, 0, 0];
       const size = inBounding.size ?? [0, 0, 0];
       const c = Vector3.fromArray(center);
-      const hs = Vector3.fromArray(size).multiplyScalar(0.5);
-      const minVector = c.clone().subVector(hs);
-      const maxVector = c.clone().addVector(hs);
+      const hs = Vector3.fromArray(size).multiply(0.5);
+      const minVector = c.clone().subtract(hs);
+      const maxVector = c.clone().add(hs);
 
       return new Box3(minVector, maxVector);
     } else {
       const center = inBounding.center ?? [0, 0, 0];
       const halfRadius = (inBounding.radius ?? 0) * 0.5;
       const c = Vector3.fromArray(center);
-      const minVector = c.clone().subScalar(halfRadius);
-      const maxVector = c.clone().addScalar(halfRadius);
+      const minVector = c.clone().subtract(halfRadius);
+      const maxVector = c.clone().add(halfRadius);
 
       return new Box3(minVector, maxVector);
     }
@@ -449,7 +451,8 @@ export class PPrimitive {
       const shadowVertexShader = this.shadowMaterial.vertexShaderCode;
       const shaodwFragmentShader = this.shadowMaterial.fragmentShaderCode;
       const shadowMaterial = Material.create(
-        this.engine, {
+        this.engine,
+        {
           shader: {
             vertex: shadowVertexShader,
             fragment: shaodwFragmentShader,
@@ -618,7 +621,7 @@ export class PPrimitive {
     const shadowMriMaterial = this.getShadowModelMaterial();
 
     if (shadowMriMaterial !== undefined) {
-      shadowMriMaterial.setMatrix('u_ViewProjectionMatrix', shadowOpts.viewProjectionMatrix.toArray() as spec.mat4);
+      shadowMriMaterial.setMatrix('u_ViewProjectionMatrix', shadowOpts.viewProjectionMatrix);
       if (this.shadowMaterial !== undefined) {
         this.shadowMaterial.updateUniforms(shadowMriMaterial);
       }
@@ -638,7 +641,7 @@ export class PPrimitive {
       const animMatrices = this.skin.animationMatrices;
 
       animMatrices.forEach(mat => {
-        bindMatrices.push(Matrix4.multiply(invWorldMatrix, mat, new Matrix4()));
+        bindMatrices.push(new Matrix4().multiplyMatrices(invWorldMatrix, mat));
       });
     }
 
@@ -663,7 +666,7 @@ export class PPrimitive {
       const animMatrices = this.skin.animationMatrices;
 
       animMatrices.forEach(mat => {
-        bindMatrices.push(Matrix4.multiply(inverseWorldMatrix, mat, new Matrix4()));
+        bindMatrices.push(new Matrix4().multiplyMatrices(inverseWorldMatrix, mat));
       });
     }
 
@@ -705,11 +708,11 @@ export class PPrimitive {
     const material = this.getModelMaterial();
     const shadowMaterial = this.getShadowModelMaterial();
 
-    material.setMatrix('u_ModelMatrix', worldMatrix.toArray() as spec.mat4);
-    material.setMatrix('u_NormalMatrix', normalMatrix.toArray() as spec.mat4);
+    material.setMatrix('u_ModelMatrix', worldMatrix);
+    material.setMatrix('u_NormalMatrix', normalMatrix);
     if (shadowMaterial !== undefined) {
-      shadowMaterial.setMatrix('u_ModelMatrix', worldMatrix.toArray() as spec.mat4);
-      shadowMaterial.setMatrix('u_NormalMatrix', normalMatrix.toArray() as spec.mat4);
+      shadowMaterial.setMatrix('u_ModelMatrix', worldMatrix);
+      shadowMaterial.setMatrix('u_NormalMatrix', normalMatrix);
     }
     //
     const skin = this.skin;
@@ -760,8 +763,8 @@ export class PPrimitive {
   private updateUniformsByScene (sceneStates: PSceneStates) {
     const material = this.getModelMaterial();
 
-    material.setMatrix('u_ViewProjectionMatrix', sceneStates.viewProjectionMatrix.toArray() as spec.mat4);
-    material.setVector3('u_Camera', sceneStates.cameraPosition.toArray() as spec.vec3);
+    material.setMatrix('u_ViewProjectionMatrix', sceneStates.viewProjectionMatrix);
+    material.setVector3('u_Camera', sceneStates.cameraPosition);
     if (this.isEnableShadow()) {
       // shadow map 先不支持
       // const matrix = sceneStates.lightViewProjectionMatrix?.data ?? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -784,32 +787,32 @@ export class PPrimitive {
           const light = lightList[i];
           const intensity = light.visible ? light.intensity : 0;
 
-          material.setVector3(`u_Lights[${i}].direction`, light.getWorldDirection().toArray() as spec.vec3);
+          material.setVector3(`u_Lights[${i}].direction`, light.getWorldDirection());
           material.setFloat(`u_Lights[${i}].range`, light.range);
-          material.setVector3(`u_Lights[${i}].color`, light.color.toArray() as spec.vec3);
+          material.setVector3(`u_Lights[${i}].color`, light.color);
           material.setFloat(`u_Lights[${i}].intensity`, intensity);
-          material.setVector3(`u_Lights[${i}].position`, light.getWorldPosition().toArray() as spec.vec3);
+          material.setVector3(`u_Lights[${i}].position`, light.getWorldPosition());
           material.setFloat(`u_Lights[${i}].innerConeCos`, Math.cos(light.innerConeAngle));
           material.setFloat(`u_Lights[${i}].outerConeCos`, Math.cos(light.outerConeAngle));
           material.setInt(`u_Lights[${i}].type`, light.lightType);
-          material.setVector2(`u_Lights[${i}].padding`, light.padding.toArray() as spec.vec2);
+          material.setVector2(`u_Lights[${i}].padding`, light.padding);
         } else {
-          material.setVector3(`u_Lights[${i}].direction`, [0, 0, 0]);
+          material.setVector3(`u_Lights[${i}].direction`, Vector3.ZERO);
           material.setFloat(`u_Lights[${i}].range`, 0);
-          material.setVector3(`u_Lights[${i}].color`, [0, 0, 0]);
+          material.setVector3(`u_Lights[${i}].color`, Vector3.ZERO);
           material.setFloat(`u_Lights[${i}].intensity`, 0);
-          material.setVector3(`u_Lights[${i}].position`, [0, 0, 0]);
+          material.setVector3(`u_Lights[${i}].position`, Vector3.ZERO);
           material.setFloat(`u_Lights[${i}].innerConeCos`, 0);
           material.setFloat(`u_Lights[${i}].outerConeCos`, 0);
           material.setInt(`u_Lights[${i}].type`, 99999);
-          material.setVector2(`u_Lights[${i}].padding`, [0, 0]);
+          material.setVector2(`u_Lights[${i}].padding`, Vector2.ZERO);
         }
       }
 
       const skybox = sceneStates.skybox;
 
       if (skybox !== undefined && skybox.available) {
-        material.setVector2('u_IblIntensity', [skybox.currentIntensity, skybox.currentReflectionsIntensity]);
+        material.setVector2('u_IblIntensity', new Vector2(skybox.currentIntensity, skybox.currentReflectionsIntensity));
         material.setTexture('u_brdfLUT', skybox.brdfLUT as Texture);
         if (skybox.diffuseImage !== undefined) {
           material.setTexture('u_DiffuseEnvSampler', skybox.diffuseImage);
@@ -818,7 +821,7 @@ export class PPrimitive {
           const aliasName = ['l00', 'l1m1', 'l10', 'l11', 'l2m2', 'l2m1', 'l20', 'l21', 'l22'];
 
           aliasName.forEach((n, i) => {
-            material.setVector3(`u_shCoefficients.${n}`, coeffs[i] as spec.vec3);
+            material.setVector3(`u_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
           });
         }
         material.setInt('u_MipCount', skybox.specularMipCount ?? 1);
@@ -886,7 +889,7 @@ export class PPrimitive {
   getWorldBoundingBox (): Box3 {
     if (this.parent === undefined) {
       if (this.boundingBox.isEmpty()) {
-        this.computeBoundingBox(Matrix4.IDENTITY.clone());
+        this.computeBoundingBox(Matrix4.fromIdentity());
       }
 
       return this.boundingBox;
@@ -894,10 +897,10 @@ export class PPrimitive {
       const matrix = this.parent.matrix;
 
       if (this.boundingBox.isEmpty()) {
-        this.computeBoundingBox(matrix.clone().inverse());
+        this.computeBoundingBox(matrix.clone().invert());
       }
 
-      return this.boundingBox.clone().transform(matrix);
+      return this.boundingBox.clone().applyMatrix4(matrix);
     }
   }
 }

@@ -4,7 +4,7 @@ import { createShaderWithMarcos, ShaderType } from '../../material';
 import type { Mesh, Renderer, RenderFrame, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { addItem, removeItem } from '../../utils';
-import type { VFXItem } from '../../vfx-item';
+import { Item, type VFXItem } from '../../vfx-item';
 import { AbstractPlugin } from '../index';
 import { getParticleMeshShader, modifyMaxKeyframeShader } from './particle-mesh';
 import type { ParticleSystem } from './particle-system';
@@ -69,14 +69,13 @@ export class ParticleLoader extends AbstractPlugin {
     let maxVertexCount = 0;
 
     composition.items.forEach(item => {
-      // TODO: 待 spec 修改升级后移除 as
-      if (item.type as spec.ItemType === spec.ItemType.particle) {
-        items.push(item as spec.ParticleItem);
-        assignDefValue(item as spec.ParticleItem);
+      if (Item.isParticle(item)) {
+        items.push(item);
+        assignDefValue(item);
         if (level === 2) {
           Object.keys(compileOptions).forEach(name => {
             const content = compileOptions[name];
-            const target = (item.content as spec.ParticleContent)[name as keyof spec.ParticleContent];
+            const target = item.content[name as keyof spec.ParticleContent];
 
             if (target) {
               Object.keys(content).forEach(pro => {
@@ -193,7 +192,7 @@ export class ParticleLoader extends AbstractPlugin {
 }
 
 function assignDefValue (item: spec.ParticleItem) {
-  if (item.type === spec.ItemType.particle) {
+  if (Item.isParticle(item)) {
     const options = item.content;
 
     if (!options.rotationOverLifetime) {

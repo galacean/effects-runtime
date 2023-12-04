@@ -1,6 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import type { vec3 } from '@galacean/effects-specification';
-import { vecNormalize } from '../math';
+import { Vector3 } from '@galacean/effects-math/es/core/index';
 import { Circle, Edge, Rectangle, RectangleEdge } from './2d-shape';
 import { Cone } from './cone';
 import { Donut } from './donut';
@@ -15,8 +14,8 @@ export type ShapeGeneratorOptions = {
 };
 
 export type ShapeParticle = {
-  direction: number[],
-  position: number[],
+  direction: Vector3,
+  position: Vector3,
 };
 
 export interface Shape {
@@ -25,13 +24,13 @@ export interface Shape {
 
 export type ShapeGenerator =
   Shape
-  & { reverseDirection?: boolean, alignSpeedDirection?: boolean, upDirection?: vec3 };
+  & { reverseDirection?: boolean, alignSpeedDirection?: boolean, upDirection?: Vector3 };
 
 class ShapeNone implements Shape {
   generate () {
     return {
-      position: [0, 0, 0],
-      direction: [0, 0, 0],
+      position: new Vector3(),
+      direction: new Vector3(),
     };
   }
 }
@@ -72,7 +71,7 @@ export function createShape (shapeOptions: spec.ParticleShape): Shape {
     const { alignSpeedDirection, upDirection = [0, 0, 1] } = shapeOptions as spec.ParticleShapeBase;
 
     ctrl.alignSpeedDirection = alignSpeedDirection;
-    ctrl.upDirection = vecNormalize(upDirection);
+    ctrl.upDirection = Vector3.fromArray(upDirection).normalize();
   }
 
   return ctrl;

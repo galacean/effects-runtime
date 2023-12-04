@@ -1,4 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
+import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
 
@@ -73,7 +74,7 @@ export interface MaterialDataBlockDestroyOptions {
  * });
  * mtl2 use the same program with mtl0
  */
-export type UniformValueDataType = spec.TypedArray | number | number[] | Texture | Texture[] | number[][];
+export type UniformValueDataType = spec.TypedArray | number | number[] | Texture | Texture[] | number[][] | Vector2 | Vector3 | Vector4 | Matrix3 | Matrix4;
 export type UniformStruct = Record<string, UniformValueDataType>;
 
 // 支持结构体Uniform数据

@@ -1,8 +1,15 @@
-import type { Disposable, Texture } from '@galacean/effects-core';
+import type { Disposable, Texture, math } from '@galacean/effects-core';
 import { glContext } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
 import type { GLEngine } from './gl-engine';
+
+type Vector2 = math.Vector2;
+type Vector3 = math.Vector3;
+type Vector4 = math.Vector4;
+type Matrix3 = math.Matrix3;
+type Matrix4 = math.Matrix4;
+type Quaternion = math.Quaternion;
 
 export type Nullable<T> = T | null;
 
@@ -525,16 +532,20 @@ export class GLPipelineContext implements Disposable {
     this.gl.uniform1fv(uniform, value);
   }
 
-  public setVector2 (uniform: Nullable<WebGLUniformLocation>, value: number[]) {
-    this.setFloat2(uniform, value[0], value[1]);
+  public setVector2 (uniform: Nullable<WebGLUniformLocation>, value: Vector2) {
+    this.setFloat2(uniform, value.x, value.y);
   }
 
-  public setVector3 (uniform: Nullable<WebGLUniformLocation>, value: number[]) {
-    this.setFloat3(uniform, value[0], value[1], value[2]);
+  public setVector3 (uniform: Nullable<WebGLUniformLocation>, value: Vector3) {
+    this.setFloat3(uniform, value.x, value.y, value.z);
   }
 
-  public setVector4 (uniform: Nullable<WebGLUniformLocation>, value: number[]) {
-    this.setFloat4(uniform, value[0], value[1], value[2], value[3]);
+  public setVector4 (uniform: Nullable<WebGLUniformLocation>, value: Vector4) {
+    this.setFloat4(uniform, value.x, value.y, value.z, value.w);
+  }
+
+  public setQuaternion (uniform: Nullable<WebGLUniformLocation>, value: Quaternion) {
+    this.setFloat4(uniform, value.x, value.y, value.z, value.w);
   }
 
   public setVector4Array (uniform: Nullable<WebGLUniformLocation>, array: number[]) {
@@ -542,14 +553,14 @@ export class GLPipelineContext implements Disposable {
     this.gl.uniform4fv(uniform, array);
   }
 
-  public setMatrix (uniform: Nullable<WebGLUniformLocation>, value: number[]) {
-    if (!uniform || value.length != 16) { return; }
-    this.gl.uniformMatrix4fv(uniform, false, value);
+  public setMatrix (uniform: Nullable<WebGLUniformLocation>, value: Matrix4) {
+    if (!uniform) { return; }
+    this.gl.uniformMatrix4fv(uniform, false, value.elements);
   }
 
-  public setMatrix3 (uniform: Nullable<WebGLUniformLocation>, value: number[]) {
-    if (!uniform || value.length != 9) { return; }
-    this.gl.uniformMatrix3fv(uniform, false, value);
+  public setMatrix3 (uniform: Nullable<WebGLUniformLocation>, value: Matrix3) {
+    if (!uniform) { return; }
+    this.gl.uniformMatrix3fv(uniform, false, value.elements);
   }
 
   public setMatrixArray (uniform: Nullable<WebGLUniformLocation>, array: number[]) {

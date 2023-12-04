@@ -1,7 +1,8 @@
 // @ts-nocheck
-import { Player, EVENT_TYPE_CLICK, vec3MulMat4, vecAdd, spec } from '@galacean/effects';
+import { Player, EVENT_TYPE_CLICK, math, spec } from '@galacean/effects';
 import { loadSceneAndPlay } from './utils';
 
+const { Vector3 } = math;
 const { expect } = chai;
 
 describe('sprite interaction', async () => {
@@ -45,14 +46,14 @@ describe('sprite interaction', async () => {
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
     edgePoints.map(p => {
-      const inPos = vec3MulMat4([], [p[0], p[1], 0], vp);
-      const res = comp.hitTest(inPos[0], inPos[1], true);
+      const inPos = vp.projectPoint(Vector3.fromArray([p[0], p[1], 0]), new Vector3());
+      const res = comp.hitTest(inPos.x, inPos.y, true);
 
       expect(res.length).to.eql(1);
     });
-    const outPos = vec3MulMat4([], [width / 2 + 0.2, height / 2 + 0.2], vp);
+    const outPos = vp.projectPoint(Vector3.fromArray([width / 2 + 0.2, height / 2 + 0.2]), new Vector3());
 
-    comp.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos[0], y: outPos[1] });
+    comp.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
     expect(hitSuccess).to.be.false;
   });
 
@@ -94,18 +95,18 @@ describe('sprite interaction', async () => {
     const item = comp.getItemByName('item_1');
     const vp = comp.camera.getViewProjectionMatrix();
     const pos = item.getCurrentPosition();
-    const inPos = vec3MulMat4([], pos, vp);
+    const inPos = vp.projectPoint(pos, new Vector3());
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(inPos[0], inPos[1], false);
+      const regions = comp.hitTest(inPos.x, inPos.y, false);
 
       expect(regions.length).to.eql(0);
     });
 
-    const outPos = vecAdd([], pos, [1, 1, 0]);
+    const outPos = pos.add([1, 1, 0]);
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(outPos[0], outPos[1], false);
+      const regions = comp.hitTest(outPos.x, outPos.y, false);
 
       expect(regions.length).to.eql(0);
     });
@@ -119,16 +120,16 @@ describe('sprite interaction', async () => {
     });
     const item = comp.getItemByName('item_33');
     const vp = comp.camera.getViewProjectionMatrix();
-    const pos = item.getCurrentPosition();
-    const inPos = vec3MulMat4([], pos, vp);
+    const pos = item.getCurrentPosition().toArray();
+    const inPos = vp.projectPoint(pos, new Vector3());
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(inPos[0], inPos[1], false);
+      const regions = comp.hitTest(inPos.x, inPos.y, false);
 
       for (let i = 0; i < regions.length; i++) {
         const region = regions[i];
 
-        expect([region.position[0], region.position[1]]).to.eql([inPos[0], inPos[1]]);
+        expect([region.position.x, region.position.y]).to.eql([inPos.x, inPos.y]);
         const b = region.behavior;
 
         expect(b).to.eql(spec.InteractBehavior.NOTIFY);
@@ -157,9 +158,9 @@ describe('sprite interaction', async () => {
     const item = comp.getItemByName('item_33');
     const vp = comp.camera.getViewProjectionMatrix();
     const pos = item.getCurrentPosition();
-    const inPos = vec3MulMat4([], pos, vp);
+    const inPos = vp.projectPoint(pos, new Vector3());
 
-    player.handleClick({ x: inPos[0], y: inPos[1] });
+    player.handleClick({ x: inPos.x, y: inPos.y });
     window.setTimeout(() => {
       expect(player.paused).to.be.false;
     }, 4);
@@ -173,10 +174,10 @@ describe('sprite interaction', async () => {
       currentTime: 0.01,
     });
     const vp = comp1.camera.getInverseViewProjectionMatrix();
-    const inPos = vec3MulMat4([], [0, 1.8, 0], vp);
+    const inPos = vp.projectPoint(Vector3.fromArray([0, 1.8, 0]), new Vector3());
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(inPos[0], inPos[1], true);
+      const regions = comp.hitTest(inPos.x, inPos.y, true);
 
       expect(regions.length).to.not.eql(0);
     });
@@ -185,10 +186,10 @@ describe('sprite interaction', async () => {
       currentTime: 0.01,
     });
     const vp2 = comp2.camera.getInverseViewProjectionMatrix();
-    const inPos2 = vec3MulMat4([], [0, 1.8, 0], vp2);
+    const inPos2 = vp2.projectPoint(Vector3.fromArray([0, 1.8, 0]), new Vector3());
 
     player.compositions.forEach(comp => {
-      const regions = comp.hitTest(inPos2[0], inPos2[1], false);
+      const regions = comp.hitTest(inPos2.x, inPos2.y, false);
 
       expect(regions.length).to.eql(1);
     });
@@ -204,9 +205,9 @@ describe('sprite interaction', async () => {
 
     comp.setEditorTransform(scale, dx, dy);
     const vp = comp.camera.getViewProjectionMatrix();
-    const inPos = vec3MulMat4([], [0, 0, 0], vp);
+    const inPos = vp.projectPoint(Vector3.fromArray([0, 0, 0]), new Vector3());
 
-    comp.event.dispatchEvent(EVENT_TYPE_CLICK, { x: scale * inPos[0] + dx, y: scale * inPos[1] + dy });
+    comp.event.dispatchEvent(EVENT_TYPE_CLICK, { x: scale * inPos.x + dx, y: scale * inPos.y + dy });
     expect(hitSuccess).to.be.true;
   });
 
@@ -217,8 +218,8 @@ describe('sprite interaction', async () => {
       currentTime: 0.5,
     });
     const vp = comp.camera.getViewProjectionMatrix();
-    const inPos = vec3MulMat4([], [0, 0, 0], vp);
-    const ret = comp.hitTest(inPos[0], inPos[1], true);
+    const inPos = vp.projectPoint(Vector3.fromArray([0, 0, 0]), new Vector3());
+    const ret = comp.hitTest(inPos.x, inPos.y, true);
 
     expect(ret.length).to.eql(1);
   });
@@ -231,8 +232,8 @@ describe('sprite interaction', async () => {
     });
     const skip = item => item.name === 'item_1';
     const vp = comp.camera.getViewProjectionMatrix();
-    const inPos = vec3MulMat4([], [0, 0, 0], vp);
-    const ret = comp.hitTest(inPos[0], inPos[1], false, { skip });
+    const inPos = vp.projectPoint(Vector3.fromArray([0, 0, 0]), new Vector3());
+    const ret = comp.hitTest(inPos.x, inPos.y, false, { skip });
 
     expect(ret.length).to.eql(0);
   });
@@ -247,8 +248,8 @@ describe('sprite interaction', async () => {
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
     edgePoints.map(p => {
-      const inPos = vec3MulMat4([], [p[0], p[1], 0], vp);
-      const res = comp.hitTest(inPos[0], inPos[1], true);
+      const inPos = vp.projectPoint(Vector3.fromArray([p[0], p[1], 0]), new Vector3());
+      const res = comp.hitTest(inPos.x, inPos.y, true);
 
       expect(res.length).to.eql(1);
     });
@@ -264,8 +265,10 @@ describe('sprite interaction', async () => {
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
     edgePoints.map(p => {
-      const inPos = vec3MulMat4([], [p[0] + 0.2 * currentTime, p[1] + currentTime * currentTime / 2 / duration, 0], vp);
-      const res = comp.hitTest(inPos[0], inPos[1], true);
+      const inPos = vp.projectPoint(
+        Vector3.fromArray([p[0] + 0.2 * currentTime, p[1] + currentTime * currentTime / 2 / duration, 0]), new Vector3()
+      );
+      const res = comp.hitTest(inPos.x, inPos.y, true);
 
       expect(res.length).to.eql(1);
     });
@@ -280,8 +283,8 @@ describe('sprite interaction', async () => {
     const edgePoints = [[1.49, 1.99], [1.49, 1.01], [-0.49, 1.01], [-0.49, 1.99]];
 
     edgePoints.map(p => {
-      const inPos = vec3MulMat4([], [p[0], p[1], 0], vp);
-      const res = comp.hitTest(inPos[0], inPos[1], true);
+      const inPos = vp.projectPoint(Vector3.fromArray([p[0], p[1], 0]), new Vector3());
+      const res = comp.hitTest(inPos.x, inPos.y, true);
 
       expect(res.length).to.eql(1);
     });
@@ -295,8 +298,8 @@ describe('sprite interaction', async () => {
     const edgePoints = [[2.99, 3.99], [2.99, 2.01], [-0.99, 2.01], [-0.99, 3.99]];
 
     edgePoints.map(p => {
-      const inPos = vec3MulMat4([], [p[0], p[1], 0], vp);
-      const res = comp.hitTest(inPos[0], inPos[1], true);
+      const inPos = vp.projectPoint(Vector3.fromArray([p[0], p[1], 0]), new Vector3());
+      const res = comp.hitTest(inPos.x, inPos.y, true);
 
       expect(res.length).to.eql(1);
     });
@@ -308,11 +311,11 @@ describe('sprite interaction', async () => {
     const json = `[{"id":"1","name":"sprite_1","duration":2,"type":"1","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"anchor":[0,0],"blending":0,"side":1032,"occlusion":false,"transparentOcclusion":false,"maskMode":0},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]},"sizeOverLifetime":{"size":[0,2],"separateAxes":false},"interaction":{"behavior":1}},"transform":{"position":[0.2,0,2],"rotation":[0,0,0],"scale":[${[(size + 0.001), (size + 0.001) / aspect, 1]}]}},{"id":"2","name":"sprite_2","duration":2,"type":"1","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"anchor":[0,0],"blending":0,"side":1032,"occlusion":false,"transparentOcclusion":false,"maskMode":0},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]},"sizeOverLifetime":{"size":[0,2],"separateAxes":false},"interaction":{"behavior":1}},"transform":{"position":[0.5,0,0],"rotation":[0,0,0],"scale":[${[(size + 0.001), (size + 0.001) / aspect, 1]}]}}]`;
     const comp = await loadSceneAndPlay(player, JSON.parse(json), { currentTime:0.01 });
     const vp = comp.camera.getViewProjectionMatrix();
-    const point = vec3MulMat4([], [0, 0, 0], vp);
-    const res = comp.hitTest(point[0], point[1], true);
+    const point = vp.projectPoint(new Vector3());
+    const res = comp.hitTest(point.x, point.y, true);
 
     expect(res.length).to.eql(2);
-    expect(res[1].position).to.deep.equals([0, 0, 0]);
-    expect(res[0].position).to.deep.equals([0, 0, 2]);
+    expect(res[1].position.toArray()).to.deep.equals([0, 0, 0]);
+    expect(res[0].position.toArray()).to.deep.equals([0, 0, 2]);
   });
 });

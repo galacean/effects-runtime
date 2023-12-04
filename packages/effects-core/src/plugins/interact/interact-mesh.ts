@@ -1,13 +1,14 @@
 import type * as spec from '@galacean/effects-specification';
+import { Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import { createShaderWithMarcos, Material, ShaderType } from '../../material';
-import { createValueGetter, mat4create } from '../../math';
 import type { MeshRendererOptions } from '../../render';
 import { Geometry, GLSLVersion, Mesh } from '../../render';
 import type { Transform } from '../../transform';
 import type { Engine } from '../../engine';
+import { createValueGetter } from '../../math';
 
 const vertex = `
 precision highp float;
@@ -78,17 +79,24 @@ export class InteractMesh {
 
   updateMesh () {
     const { material } = this.mesh;
-    const uSize = material.getVector2('uSize')!.slice();
-    const uPos = material.getVector4('uPos')!.slice();
-    const uQuat = material.getVector4('uQuat')!.slice();
-    const scale = [...this.transform.scale];
+    const uSize = material.getVector2('uSize')!.clone();
+    const uPos = material.getVector4('uPos')!.clone();
 
-    this.transform.assignWorldTRS(uPos, uQuat, scale);
-    uSize[0] = scale[0];
-    uSize[1] = scale[1];
-    material.setVector2('uSize', uSize as spec.vec2);
-    material.setVector4('uPos', uPos as spec.vec4);
-    material.setVector4('uQuat', uQuat as spec.vec4);
+    const tempPos = new Vector3();
+    const tempQuat = new Quaternion();
+    const tempScale = this.transform.scale.clone();
+
+    this.transform.assignWorldTRS(tempPos, tempQuat, tempScale);
+
+    uSize.x = tempScale.x;
+    uSize.y = tempScale.y;
+    uPos.x = tempPos.x;
+    uPos.y = tempPos.y;
+    uPos.z = tempPos.z;
+
+    material.setVector2('uSize', uSize);
+    material.setVector4('uPos', uPos);
+    material.setQuaternion('uQuat', tempQuat);
   }
 
   private createMaterial (rendererOptions: MeshRendererOptions): Material {
@@ -116,10 +124,10 @@ export class InteractMesh {
     const material = Material.create(this.engine, materialProps);
 
     material.depthTest = false;
-    material.setVector4('uPos', [0, 0, 0, 0]);
-    material.setVector2('uSize', [1, 1]);
-    material.setVector4('uColor', [color[0] / 255, color[1] / 255, color[2] / 255, color[3]]);
-    material.setVector4('uQuat', [0, 0, 0, 0]);
+    material.setVector4('uPos', new Vector4(0, 0, 0, 0));
+    material.setVector2('uSize', new Vector2(1, 1));
+    material.setVector4('uColor', new Vector4(color[0] / 255, color[1] / 255, color[2] / 255, color[3]));
+    material.setQuaternion('uQuat', new Quaternion(0, 0, 0, 0));
 
     return material;
   }
@@ -153,7 +161,7 @@ export class InteractMesh {
       {
         name: 'Interact_preview' + seed++,
         priority: 0,
-        worldMatrix: mat4create(),
+        worldMatrix: Matrix4.fromIdentity(),
         geometry,
         material,
       });

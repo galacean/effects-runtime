@@ -61,10 +61,10 @@ async function checkScene (keyName, sceneData) {
 
   it(`${name}`, async () => {
     console.info(`[Compare]: Begin ${name}, ${url}`);
-    const { marsPlayer, runtimePlayer, renderFramework } = controller;
+    const { oldPlayer, newPlayer, renderFramework } = controller;
 
-    await marsPlayer.initialize(url);
-    await runtimePlayer.initialize(url);
+    await oldPlayer.initialize(url);
+    await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
     const timeList = [
@@ -79,18 +79,18 @@ async function checkScene (keyName, sceneData) {
     for (let i = 0; i < timeList.length; i++) {
       const time = timeList[i];
 
-      if (!marsPlayer.isLoop() && time > marsPlayer.duration()) {
+      if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
         break;
       }
       //
-      marsPlayer.gotoTime(time);
-      runtimePlayer.gotoTime(time);
-      const marsImage = await marsPlayer.readImageBuffer();
-      const runtimeImage = await runtimePlayer.readImageBuffer();
+      oldPlayer.gotoTime(time);
+      newPlayer.gotoTime(time);
+      const oldImage = await oldPlayer.readImageBuffer();
+      const newImage = await newPlayer.readImageBuffer();
 
-      expect(marsImage.length).to.eql(runtimeImage.length);
+      expect(oldImage.length).to.eql(newImage.length);
       //
-      const pixelDiffValue = await imageCmp.compareImages(marsImage, runtimeImage);
+      const pixelDiffValue = await imageCmp.compareImages(oldImage, newImage);
       const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
       if (pixelDiffValue > 0) {
@@ -100,11 +100,11 @@ async function checkScene (keyName, sceneData) {
       if (diffCountRatio > accumRatioThreshold) {
         console.error('FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
         if (dumpImageForDebug) {
-          const marsFileName = `${namePrefix}_${name}_${time}_mars.png`;
-          const runtimeFileName = `${namePrefix}_${name}_${time}_runtime.png`;
+          const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
+          const newFileName = `${namePrefix}_${name}_${time}_new.png`;
 
-          await marsPlayer.saveCanvasToFile(marsFileName);
-          await runtimePlayer.saveCanvasToFile(runtimeFileName);
+          await oldPlayer.saveCanvasToFile(oldFileName);
+          await newPlayer.saveCanvasToFile(newFileName);
         }
       }
 

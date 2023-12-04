@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import type { Matrix4 } from '@galacean/effects-math/es/core/index';
 import type { LostHandler, RestoreHandler } from '../utils';
 import type { FilterMode, FrameBuffer, RenderTextureFormat } from './frame-buffer';
 import type { Mesh } from './mesh';
@@ -36,7 +36,7 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  setGlobalMatrix (name: string, value: spec.mat4) {
+  setGlobalMatrix (name: string, value: Matrix4) {
     // OVERRIDE
   }
 

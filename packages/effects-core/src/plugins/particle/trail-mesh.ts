@@ -1,5 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import type { vec3, vec4, GradientStop } from '@galacean/effects-specification';
+import { Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { Matrix4 } from '@galacean/effects-math/es/core/index';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import { glContext } from '../../gl';
@@ -12,16 +14,11 @@ import {
   setMaskMode,
   ShaderType,
 } from '../../material';
-import type { mat4, ValueGetter } from '../../math';
 import {
   createKeyFrameMeta,
   createValueGetter,
   CurveValue,
   getKeyFrameMetaByRawValue,
-  vecAdd,
-  vecMinus,
-  vecNormalize,
-  vecSquareDistance,
 } from '../../math';
 import type { GeometryProps, ShaderMarcos, ShaderWithSource, GPUCapability } from '../../render';
 import { Geometry, GLSLVersion, Mesh } from '../../render';
@@ -29,6 +26,7 @@ import { particleFrag, trailVert } from '../../shader';
 import { generateHalfFloatTexture, Texture } from '../../texture';
 import { imageDataFromGradient } from '../../utils';
 import type { Engine } from '../../engine';
+import type { ValueGetter } from '../../math';
 
 export type TrailMeshConstructor = {
   maxTrailCount: number,
@@ -40,7 +38,7 @@ export type TrailMeshConstructor = {
   widthOverTrail: ValueGetter<number>,
   colorOverTrail?: Array<GradientStop>,
   order: number,
-  matrix?: mat4,
+  matrix?: Matrix4,
   opacityOverLifetime: ValueGetter<number>,
   occlusion: boolean,
   transparentOcclusion: boolean,
@@ -59,8 +57,8 @@ type TrailPointOptions = {
   time: number,
 };
 
-const tmp0: vec3 = [0, 0, 0];
-const tmp1: vec3 = [0, 0, 0];
+const tmp0 = new Vector3();
+const tmp1 = new Vector3();
 
 export class TrailMesh {
   mesh: Mesh;
@@ -72,7 +70,7 @@ export class TrailMesh {
   useAttributeTrailStart: boolean;
   checkVertexDistance: boolean;
 
-  private pointStart: vec3[] = [];
+  private pointStart: Vector3[] = [];
   private trailCursors: Uint16Array;
 
   // TODO: engine 挪到第一个参数
@@ -231,24 +229,24 @@ export class TrailMesh {
       } else if (name === 'uTrailStart') {
         material.setFloats('uTrailStart', value);
       } else if (name === 'uVCurveValues') {
-        const array: vec4[] = [];
+        const array: Vector4[] = [];
 
-        array.push([value[0], value[1], value[2], value[3]]);
-        array.push([value[4], value[5], value[6], value[7]]);
+        array.push(new Vector4(value[0], value[1], value[2], value[3]));
+        array.push(new Vector4(value[4], value[5], value[6], value[7]));
         material.setVector4Array(name, array);
       } else {
-        material.setVector4(name, value);
+        material.setVector4(name, Vector4.fromArray(value));
       }
     });
 
     material.setFloat('uTime', 0);
     // TODO: 修改下长度
-    material.setVector4('uWidthOverTrail', uWidthOverTrail as unknown as vec4);
-    material.setVector2('uTexOffset', [0, 0]);
-    material.setVector4('uTextureMap', textureMap);
-    material.setVector4('uParams', [0, pointCountPerTrail - 1, 0, 0]);
+    material.setVector4('uWidthOverTrail', Vector4.fromArray(uWidthOverTrail));
+    material.setVector2('uTexOffset', new Vector2(0, 0));
+    material.setVector4('uTextureMap', Vector4.fromArray(textureMap));
+    material.setVector4('uParams', new Vector4(0, pointCountPerTrail - 1, 0, 0));
     material.setTexture('uMaskTex', uMaskTex);
-    material.setVector4('uColorParams', [texture ? 1 : 0, +preMulAlpha, 0, +(occlusion && !transparentOcclusion)]);
+    material.setVector4('uColorParams', new Vector4(texture ? 1 : 0, +preMulAlpha, 0, +(occlusion && !transparentOcclusion)));
 
     this.maxTrailCount = maxTrailCount;
     this.pointCountPerTrail = pointCountPerTrail;
@@ -270,7 +268,7 @@ export class TrailMesh {
     this.mesh.material.setFloat('uTime', t ?? 0);
   }
 
-  addPoint (trailIndex: number, position: vec3, opt: TrailPointOptions) {
+  addPoint (trailIndex: number, position: Vector3, opt: TrailPointOptions) {
     opt = opt || ({} as TrailPointOptions);
     let cursor = this.trailCursors[trailIndex];
     const pointCountPerTrail = this.pointCountPerTrail;
@@ -282,7 +280,7 @@ export class TrailMesh {
     const previousPoint = this.getTrailPosition(trailIndex, previousIndex, tmp0);
     // point too close
 
-    if (previousPoint && this.checkVertexDistance && vecSquareDistance(previousPoint, position) < this.minimumVertexDistance) {
+    if (previousPoint && this.checkVertexDistance && previousPoint?.distanceSquared(position) < this.minimumVertexDistance) {
       return;
     }
 
@@ -303,24 +301,25 @@ export class TrailMesh {
 
     const color = opt.color || [1, 1, 1, 1];
     const colorData = new Float32Array(24);
+    const positionData = position.toArray();
 
     colorData.set(color, 0);
     colorData.set(info, 4);
     colorData[7] = 0;
-    colorData.set(position, 8);
+    colorData.set(positionData, 8);
     colorData[11] = 0.5 * size;
 
     colorData.set(color, 12);
     colorData.set(info, 16);
     colorData[19] = 1;
-    colorData.set(position, 20);
+    colorData.set(positionData, 20);
     colorData[23] = -0.5 * size;
 
     geometry.setAttributeSubData('aColor', pointStartIndex * 24, colorData);
 
     if (previousIndex >= 0) {
-      const bPreviousPoint = this.getTrailPosition(trailIndex, bpreviousIndex, tmp1) as vec3;
-      const previousDir = new Float32Array(calculateDirection(bPreviousPoint, previousPoint as vec3, position));
+      const bPreviousPoint = this.getTrailPosition(trailIndex, bpreviousIndex, tmp1) as Vector3;
+      const previousDir = new Float32Array(calculateDirection(bPreviousPoint, previousPoint as Vector3, position));
       const previousDirStartIndex = (trailIndex * pointCountPerTrail + previousIndex) * 6;
 
       geometry.setAttributeSubData('aDir', previousDirStartIndex, previousDir);
@@ -362,21 +361,21 @@ export class TrailMesh {
     }
 
     if (params) {
-      params[1] = Math.max(params[1], cursor - 1) - Math.max(0, cursor - pointCountPerTrail);
+      params.y = Math.max(params.y, cursor - 1) - Math.max(0, cursor - pointCountPerTrail);
       mtl.setVector4('uParams', params);
     }
   }
 
-  getTrailPosition (trail: number, index: number, out: vec3): vec3 | undefined {
+  getTrailPosition (trail: number, index: number, out: Vector3): Vector3 | undefined {
     const pointCountPerTrail = this.pointCountPerTrail;
 
     if (index >= 0 && index < pointCountPerTrail) {
       const startIndex = (trail * pointCountPerTrail + index) * 24 + 8;
       const data = this.geometry.getAttributeData('aColor')!;
 
-      out[0] = data[startIndex];
-      out[1] = data[1 + startIndex];
-      out[2] = data[2 + startIndex];
+      out.x = data[startIndex];
+      out.y = data[1 + startIndex];
+      out.z = data[2 + startIndex];
 
       return out;
     }
@@ -418,7 +417,7 @@ export class TrailMesh {
     return this.pointStart[index];
   }
 
-  setPointStartPos (index: number, pos: vec3) {
+  setPointStartPos (index: number, pos: Vector3) {
     this.pointStart[index] = pos;
   }
 
@@ -427,26 +426,28 @@ export class TrailMesh {
 
 }
 
-const tempDir: vec3 = [0, 0, 0];
-const tempDa: vec3 = [0, 0, 0];
-const tempDb: vec3 = [0, 0, 0];
+const tempDir = new Vector3();
+const tempDa = new Vector3();
+const tempDb = new Vector3();
 
-function calculateDirection (prePoint: vec3 | undefined, point: vec3, nextPoint?: vec3): vec3 {
-  const dir: vec3 = tempDir;
+function calculateDirection (prePoint: Vector3 | undefined, point: Vector3, nextPoint?: Vector3): vec3 {
+  const dir = tempDir;
 
   if (!prePoint && !nextPoint) {
     return [0, 0, 0];
   } else if (!prePoint) {
-    vecMinus(dir, nextPoint!, point);
+    dir.subtractVectors(nextPoint!, point);
   } else if (!nextPoint) {
-    vecMinus(dir, point, prePoint);
+    dir.subtractVectors(point, prePoint);
   } else {
-    vecNormalize(tempDa, vecMinus(tempDa, point, prePoint));
-    vecNormalize(tempDb, vecMinus(tempDa, nextPoint, point));
-    vecAdd(dir, tempDa, tempDb);
+    tempDa.subtractVectors(point, prePoint).normalize();
+    // FIXME: 这里有bug。。。
+    tempDa.subtractVectors(nextPoint, point);
+    tempDb.copyFrom(tempDa).normalize();
+    dir.addVectors(tempDa, tempDb);
   }
 
-  return vecNormalize(dir, dir);
+  return dir.normalize().toArray();
 }
 
 export function getTrailMeshShader (trails: spec.ParticleTrail, particleMaxCount: number, name: string, env = '', gpuCapability: GPUCapability): ShaderWithSource {

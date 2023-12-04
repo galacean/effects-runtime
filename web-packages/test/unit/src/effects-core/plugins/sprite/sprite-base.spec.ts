@@ -224,9 +224,9 @@ describe('sprite item base options', () => {
     player.gotoAndPlay(currentTime);
     const spriteItem = comp.getItemByName('sprite_3').content;
     const spriteTransform = spriteItem.transform;
-    const scale = spriteTransform.getWorldScale();
-    const position = spriteTransform.getWorldPosition();
-    const rotation = spriteTransform.getWorldRotation();
+    const scale = spriteTransform.getWorldScale().toArray();
+    const position = spriteTransform.getWorldPosition().toArray();
+    const rotation = spriteTransform.getWorldRotation().toArray();
 
     expect(scale[0]).to.be.closeTo(2, 0.0001);
     expect(scale[1]).to.be.closeTo(2, 0.0001);
@@ -478,22 +478,22 @@ describe('sprite item base options', () => {
     const item6 = comp.getItemByID('6'); // item4的直接父元素
     const item5 = comp.getItemByID('5'); // item4的爷元素
 
-    expect(item4.transform.getWorldPosition()).to.eql([0, 2, 0]);
-    let scale = item4.transform.getWorldScale();
+    expect(item4.transform.getWorldPosition().toArray()).to.eql([0, 2, 0]);
+    let scale = item4.transform.getWorldScale().toArray();
 
     expect(scale[0]).to.be.closeTo(1, 0.0001);
     expect(scale[1]).to.be.closeTo(1, 0.0001);
 
     player.gotoAndStop(comp.time + 1.5);
-    expect(item4.transform.getWorldPosition()).to.eql([1, 6, 3]);
-    scale = item4.transform.getWorldScale();
+    expect(item4.transform.getWorldPosition().toArray()).to.eql([1, 6, 3]);
+    scale = item4.transform.getWorldScale().toArray();
 
     expect(scale[0]).to.be.closeTo(1, 0.0001);
     expect(scale[1]).to.be.closeTo(1, 0.0001);
 
     player.gotoAndStop(comp.time + 2);
-    expect(item4.transform.getWorldPosition()).to.eql([0, 2, 0]);
-    scale = item4.transform.getWorldScale();
+    expect(item4.transform.getWorldPosition().toArray()).to.eql([0, 2, 0]);
+    scale = item4.transform.getWorldScale().toArray();
 
     expect(scale[0]).to.be.closeTo(1, 0.0001);
     expect(scale[1]).to.be.closeTo(1, 0.0001);
@@ -714,7 +714,7 @@ describe('sprite item base options', () => {
     player.gotoAndPlay(5);
     const item1 = comp.getItemByID('1');
     const item2 = comp.getItemByID('2'); // item4的父元素
-    const scale = item2.transform.getWorldScale();
+    const scale = item2.transform.getWorldScale().toArray();
 
     expect(scale[0]).to.be.closeTo(2, 0.0001);
     expect(scale[1]).to.be.closeTo(2, 0.0001);

@@ -1,15 +1,17 @@
-import type { Engine, Geometry, spec, Triangle } from '@galacean/effects';
-import { glContext, Material, Mesh, Texture, Transform } from '@galacean/effects';
+import type { Engine, Geometry, spec } from '@galacean/effects';
+import { glContext, Material, Mesh, Texture, Transform, math } from '@galacean/effects';
 import type { MeshOption } from './geometry';
 import { createGeometry, GeometryType } from './geometry';
 import { GizmoSubType } from './define';
 import type { GizmoItemBounding } from './gizmo-vfx-item';
 import { BoundingType } from './gizmo-vfx-item';
-import { vec3MulMat4 } from './math/vec';
 import { color, renderMode } from './constants';
 
 type mat4 = spec.mat4;
 type vec3 = spec.vec3;
+type Vector3 = math.Vector3;
+type TriangleLike = math.TriangleLike;
+const { Vector2, Vector3, Matrix4 } = math;
 
 /**
  * 根据 gizmoSubType 类型创建几何体 Mesh
@@ -168,24 +170,28 @@ function createRotationMesh (
  * @param transform - 变换式
  * @returns 三角面数组
  */
-function getTriangle (geometry: Geometry, transform: Transform): Triangle[] {
-  const result: Triangle[] = [];
+function getTriangle (geometry: Geometry, transform: Transform): TriangleLike[] {
+  const result: TriangleLike[] = [];
   const indices = geometry.getIndexData();
   const points = geometry.getAttributeData('a_Position');
   const mat4 = transform.getWorldMatrix();
 
   if (points && indices && indices.length > 0) {
-    indices?.forEach((index, i) => {
-      const position: vec3 = [points[index * 3], points[index * 3 + 1], points[index * 3 + 2]];
-      const localPosition: vec3 = [0, 0, 0];
+    for (let i = 0; i < indices.length; i += 3) {
+      const i0 = indices[i] * 3;
+      const i1 = indices[i + 1] * 3;
+      const i2 = indices[i + 2] * 3;
+      const p0 = new Vector3(points[i0], points[i0 + 1], points[i0 + 2]);
+      const p1 = new Vector3(points[i1], points[i1 + 1], points[i1 + 2]);
+      const p2 = new Vector3(points[i2], points[i2 + 1], points[i2 + 2]);
 
-      vec3MulMat4(localPosition, position, mat4);
+      result.push({
+        p0: mat4.projectPoint(p0),
+        p1: mat4.projectPoint(p1),
+        p2: mat4.projectPoint(p2),
+      });
 
-      if (result[Math.floor(i / 3)] === undefined) {
-        result[Math.floor(i / 3)] = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-      }
-      result[Math.floor(i / 3)][i % 3] = localPosition;
-    });
+    }
   }
 
   return result;
@@ -385,7 +391,7 @@ function createScaleMesh (engine: Engine, options: MeshOption, boundingMap: Map<
   createAxisBounding({ width: boxSize.width * 1.2, length: axisSize.width + boxSize.width / 2 }, boundingMap);
   boundingMap.set('center', {
     type: BoundingType.sphere,
-    center: [0, 0, 0],
+    center: new Vector3(),
     radius: Math.pow(Math.pow(centerBoxSize.width, 2) + Math.pow(centerBoxSize.height, 2) + Math.pow(centerBoxSize.depth, 2), 0.5) / 2,
   });
 
@@ -672,14 +678,14 @@ function createSpriteMesh (engine: Engine, options: MeshOption, texture?: Textur
  * @returns 纯色材质，无光照，无透明
  */
 function createMaterial (engine: Engine, color?: vec3, depthTest?: boolean): Material {
-  const myColor: vec3 = color ? color : [255, 255, 255];
+  const myColor = color ? Vector3.fromArray(color) : new Vector3(255, 255, 255);
   const myDepthTest = depthTest ? depthTest : false;
 
   const material = Material.create(
     engine,
     {
       uniformValues: {
-        u_color: new Float32Array(myColor),
+        u_color: new Float32Array(myColor.toArray()),
         u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
       },
       uniformSemantics: {
@@ -716,7 +722,7 @@ function createMaterial (engine: Engine, color?: vec3, depthTest?: boolean): Mat
     });
 
   material.setVector3('u_color', myColor);
-  material.setMatrix('u_model', [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  material.setMatrix('u_model', Matrix4.IDENTITY);
   material.depthTest = myDepthTest;
   material.stencilTest = false;
   material.blending = false;
@@ -733,14 +739,14 @@ function createMaterial (engine: Engine, color?: vec3, depthTest?: boolean): Mat
  * @returns
  */
 function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boolean): Material {
-  const myColor: vec3 = color ? color : [255, 255, 255];
+  const myColor = color ? Vector3.fromArray(color) : new Vector3(255, 255, 255);
   const myDepthTest = depthTest ? depthTest : false;
 
   const material = Material.create(
     engine,
     {
       uniformValues: {
-        u_color: new Float32Array(myColor),
+        u_color: new Float32Array(myColor.toArray()),
         u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
         u_cameraPos: new Float32Array([0, 0, 0]),
         u_center: new Float32Array([0, 0, 0]),
@@ -792,9 +798,9 @@ function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boole
     });
 
   material.setVector3('u_color', myColor);
-  material.setMatrix('u_model', [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-  material.setVector3('u_cameraPos', [0, 0, 0]);
-  material.setVector3('u_center', [0, 0, 0]);
+  material.setMatrix('u_model', Matrix4.IDENTITY);
+  material.setVector3('u_cameraPos', Vector3.ZERO);
+  material.setVector3('u_center', Vector3.ZERO);
 
   material.depthTest = myDepthTest;
   material.stencilTest = false;
@@ -813,7 +819,7 @@ function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boole
  * @returns
  */
 function createBlendMaterial (engine: Engine, color?: vec3, depthTest?: boolean, alpha?: number): Material {
-  const myColor: vec3 = color ? color : [255, 255, 255];
+  const myColor = color ? Vector3.fromArray(color) : new Vector3(255, 255, 255);
   const myDepthTest = depthTest ? depthTest : false;
   const myAlpha = alpha ? alpha : 1;
 
@@ -821,7 +827,7 @@ function createBlendMaterial (engine: Engine, color?: vec3, depthTest?: boolean,
     engine,
     {
       uniformValues: {
-        u_color: new Float32Array(myColor),
+        u_color: new Float32Array(myColor.toArray()),
         u_alpha: new Float32Array([myAlpha, 0]),
         u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),
       },
@@ -859,8 +865,8 @@ function createBlendMaterial (engine: Engine, color?: vec3, depthTest?: boolean,
     });
 
   material.setVector3('u_color', myColor);
-  material.setVector2('u_alpha', [myAlpha, 0]);
-  material.setMatrix('u_model', [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  material.setVector2('u_alpha', new Vector2(myAlpha, 0));
+  material.setMatrix('u_model', Matrix4.IDENTITY);
   material.depthTest = myDepthTest;
   material.stencilTest = false;
   material.blending = true;
@@ -932,19 +938,19 @@ function createSpriteMaterial (engine: Engine, data: vec3 | Texture | undefined,
       },
     });
 
-  material.setMatrix('u_model', [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-  material.setVector2('u_alpha', [1, 0]);
+  material.setMatrix('u_model', Matrix4.IDENTITY);
+  material.setVector2('u_alpha', new Vector2(1, 0));
 
   if (data instanceof Texture) {
     material.setTexture('u_iconTex', data);
     // uniformValues.u_iconTex = data;
   } else {
-    let color: vec3;
+    let color: Vector3;
 
     if (data === undefined) {
-      color = [255, 255, 255];
+      color = new Vector3(255, 255, 255);
     } else {
-      color = data as vec3;
+      color = Vector3.fromArray(data);
     }
     material.setVector3('u_color', color);
     // uniformValues.u_color = new Float32Array(color);
@@ -968,17 +974,17 @@ function createSpriteMaterial (engine: Engine, data: vec3 | Texture | undefined,
 function createAxisBounding (size: { width: number, length: number }, boundingMap: Map<string, GizmoItemBounding>) {
   boundingMap.set('xAxis', {
     type: BoundingType.line,
-    points: [[0, 0, 0], [size.length, 0, 0]],
+    points: [new Vector3(0, 0, 0), new Vector3(size.length, 0, 0)],
     width: size.width,
   });
   boundingMap.set('yAxis', {
     type: BoundingType.line,
-    points: [[0, 0, 0], [0, size.length, 0]],
+    points: [new Vector3(0, 0, 0), new Vector3(0, size.length, 0)],
     width: size.width,
   });
   boundingMap.set('zAxis', {
     type: BoundingType.line,
-    points: [[0, 0, 0], [0, 0, size.length]],
+    points: [new Vector3(0, 0, 0), new Vector3(0, 0, size.length)],
     width: size.width,
   });
 }

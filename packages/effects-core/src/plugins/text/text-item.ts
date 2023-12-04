@@ -49,7 +49,6 @@ export class TextItem extends SpriteItem {
   ) {
     super(props as unknown as SpriteItemProps, opts, vfxItem as unknown as SpriteVFXItem);
     const { options } = props;
-    const basicScale = this.basicTransform.scale;
 
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
@@ -58,7 +57,7 @@ export class TextItem extends SpriteItem {
     this.engine = vfxItem.composition.getEngine();
 
     this.textStyle = new TextStyle(options);
-    this.textLayout = new TextLayout(options, basicScale);
+    this.textLayout = new TextLayout(options);
 
     this.text = options.text;
 

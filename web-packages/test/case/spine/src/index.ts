@@ -51,34 +51,35 @@ function addDescribe (renderFramework) {
 async function checkScene (keyName, name, url) {
   it(`${name}`, async () => {
     console.info(`[Compare]: Begin ${name}, ${url}`);
-    const { marsPlayer, runtimePlayer, renderFramework } = controller;
+    const { oldPlayer, newPlayer, renderFramework } = controller;
 
-    await marsPlayer.initialize(url);
-    await runtimePlayer.initialize(url);
+    await oldPlayer.initialize(url);
+    await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
-    const duration = marsPlayer.composition.duration;
+    const duration = oldPlayer.composition.duration;
     const timeList = [
-      0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.65, 0.74, 0.87, 0.96, 1,
+      0, 0.045, 0.11, 0.13, 0.17, 0.22, 0.28, 0.3, 0.34, 0.38,
+      0.41, 0.45, 0.51, 0.57, 0.63, 0.65, 0.69, 0.74, 0.77,
+      0.83, 0.87, 0.92, 0.96, 1,
     ].map(t => t * duration);
     let maxDiffValue = 0;
 
     for (let i = 0; i < timeList.length; i++) {
       const time = timeList[i];
 
-      if (!marsPlayer.isLoop() && time > marsPlayer.duration()) {
+      if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
         break;
       }
       //
-      marsPlayer.gotoTime(time);
-      runtimePlayer.gotoTime(time);
+      oldPlayer.gotoTime(time);
+      newPlayer.gotoTime(time);
+      const oldImage = await oldPlayer.readImageBuffer();
+      const newImage = await newPlayer.readImageBuffer();
 
-      const marsImage = await marsPlayer.readImageBuffer();
-      const runtimeImage = await runtimePlayer.readImageBuffer();
-
-      expect(marsImage.length).to.eql(runtimeImage.length);
+      expect(oldImage.length).to.eql(newImage.length);
       //
-      const pixelDiffValue = await imageCmp.compareImages(marsImage, runtimeImage);
+      const pixelDiffValue = await imageCmp.compareImages(oldImage, newImage);
       const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
       if (pixelDiffValue > 0) {
@@ -88,25 +89,25 @@ async function checkScene (keyName, name, url) {
       if (diffCountRatio > accumRatioThreshold) {
         console.error('FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
         if (dumpImageForDebug) {
-          const marsFileName = `${namePrefix}_${name}_${time}_mars.png`;
-          const runtimeFileName = `${namePrefix}_${name}_${time}_runtime.png`;
+          const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
+          const newFileName = `${namePrefix}_${name}_${time}_new.png`;
 
-          await marsPlayer.saveCanvasToFile(marsFileName);
-          await runtimePlayer.saveCanvasToFile(runtimeFileName);
+          await oldPlayer.saveCanvasToFile(oldFileName);
+          await newPlayer.saveCanvasToFile(newFileName);
         }
       }
 
       expect(diffCountRatio).to.lte(accumRatioThreshold);
     }
 
-    const marsLoadCost = marsPlayer.loadSceneTime();
-    const marsFirstCost = marsPlayer.firstFrameTime();
-    const runtimeLoadCost = runtimePlayer.loadSceneTime();
-    const runtimeFirstCost = runtimePlayer.firstFrameTime();
+    const oldLoadCost = oldPlayer.loadSceneTime();
+    const oldFirstCost = oldPlayer.firstFrameTime();
+    const newLoadCost = newPlayer.loadSceneTime();
+    const newFirstCost = newPlayer.firstFrameTime();
 
     cmpStats.addSceneInfo(
-      `${keyName}@${name}`, marsLoadCost, marsFirstCost - marsLoadCost,
-      runtimeLoadCost, runtimeFirstCost - runtimeLoadCost, maxDiffValue
+      `${keyName}@${name}`, oldLoadCost, oldFirstCost - oldLoadCost,
+      newLoadCost, newFirstCost - newLoadCost, maxDiffValue
     );
 
     console.info(`[Compare]: End ${name}, ${url}`);

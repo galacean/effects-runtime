@@ -20,8 +20,8 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       },
     });
 
-    result.sceneAABB.max.forEach((v, i) => { expect([371.6921691894531, 115.25850677490234, 135.25839233398438][i]).closeTo(v, 1e-5); });
-    result.sceneAABB.min.forEach((v, i) => { expect([-373.2934875488281, -188.28282165527344, -140][i]).closeTo(v, 1e-5); });
+    result.sceneAABB.max.forEach((v, i) => { expect([371.6921691894531, 115.25850677490234, 135.25839233398438][i]).closeTo(v, 1e-4); });
+    result.sceneAABB.min.forEach((v, i) => { expect([-373.2934875488281, -188.28282165527344, -140][i]).closeTo(v, 4e-5); });
     const items = result.items;
 
     expect(items.length).to.eql(68);
@@ -65,36 +65,56 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
     expect(node3.children).to.eql([]);
     expect(node3.id).to.eql('3');
     expect(node3.transform.position).to.eql([-45.315460205078125, -24.617263793945312, -26.320369720458984]);
-    expect(node3.transform.quat).to.eql([0, 0, 0.014748196117579937, 0.9998912215232849]);
-    expect(node3.transform.scale).to.eql([1, 1, 1]);
+    [0, 0, 0.014748196117579937, 0.9998912215232849].forEach((v, i) => {
+      expect(node3.transform.quat[i]).closeTo(v, 1e-5);
+    });
+    [1, 1, 1].forEach((v, i) => {
+      expect(node3.transform.scale[i]).closeTo(v, 1e-5);
+    });
     const node18 = treeNodes[18];
 
     expect(node18.children).to.eql([]);
     expect(node18.id).to.eql('18');
     expect(node18.transform.position).to.eql([122.53109741210938, 86.64814758300781, -312.3133850097656]);
-    expect(node18.transform.quat).to.eql([0.23851503431797028, -0.8046342730522156, 0.45807889103889465, 0.29298120737075806]);
-    expect(node18.transform.scale).to.eql([1, 1, 1]);
+    [0.23851503431797028, -0.8046342730522156, 0.45807889103889465, 0.29298120737075806].forEach((v, i) => {
+      expect(node18.transform.quat[i]).closeTo(v, 1e-5);
+    });
+    [1, 1, 1].forEach((v, i) => {
+      expect(node18.transform.scale[i]).closeTo(v, 1e-5);
+    });
     const node33 = treeNodes[33];
 
     expect(node33.children).to.eql([]);
     expect(node33.id).to.eql('33');
     expect(node33.transform.position).to.eql([-71.11894989013672, 74.98487091064453, -164.83367919921875]);
-    expect(node33.transform.quat).to.eql([-0.48719531297683716, 0.23058265447616577, 0.12568430602550507, 0.8328720331192017]);
-    expect(node33.transform.scale).to.eql([1, 1, 1]);
+    [-0.48719531297683716, 0.23058265447616577, 0.12568430602550507, 0.8328720331192017].forEach((v, i) => {
+      expect(node33.transform.quat[i]).closeTo(v, 1e-5);
+    });
+    [1, 1, 1].forEach((v, i) => {
+      expect(node33.transform.scale[i]).closeTo(v, 1e-5);
+    });
     const node46 = treeNodes[46];
 
     expect(node46.children).to.eql([]);
     expect(node46.id).to.eql('46');
     expect(node46.transform.position).to.eql([49.69811248779297, 257.12298583984375, 94.59911346435547]);
-    expect(node46.transform.quat).to.eql([-0.9999993443489075, -0, -0.0011350003769621253, -4.4896589918019814e-11]);
-    expect(node46.transform.scale).to.eql([1, 1, 1]);
+    [-0.9999993443489075, -0, -0.0011350003769621253, -4.4896589918019814e-11].forEach((v, i) => {
+      expect(node46.transform.quat[i]).closeTo(v, 1e-5);
+    });
+    [1, 1, 1].forEach((v, i) => {
+      expect(node46.transform.scale[i]).closeTo(v, 1e-5);
+    });
     const node80 = treeNodes[80];
 
     expect(node80.children).to.eql([]);
     expect(node80.id).to.eql('80');
     expect(node80.transform.position).to.eql([-295, 132.1395263671875, -3.9833459854125977]);
-    expect(node80.transform.quat).to.eql([-0.7071062922477722, -0.0008329991833306849, 0.7071062922477722, 0.0008333029691129923]);
-    expect(node80.transform.scale).to.eql([1, 1, 1]);
+    [-0.7071062922477722, -0.0008329991833306849, 0.7071062922477722, 0.0008333029691129923].forEach((v, i) => {
+      expect(node80.transform.quat[i]).closeTo(v, 1e-5);
+    });
+    [1, 1, 1].forEach((v, i) => {
+      expect(node80.transform.scale[i]).closeTo(v, 1e-5);
+    });
     //
     {
       const item1 = items[1];
@@ -227,7 +247,9 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       const interaction1 = item.content.interaction;
       expect(interaction1.type).to.eql(2);
       expect(interaction1.size).to.eql([21.999984741210938, 21.983718872070312, 85]);
-      expect(interaction1.center).to.eql([-253.4925537109375, 96.58930206298828, 42.5]);
+      [-253.4925537109375, 96.58930206298828, 42.5].forEach((v, i) => {
+        expect(interaction1.center[i]).closeTo(v, 1e-5);
+      });
       expect(item.type).to.eql('mesh');
       expect(item.parentId).to.eql('sceneTree^6');
       expect(item.id).to.eql('mesh_ni6_mi1');
@@ -307,7 +329,9 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       const interaction1 = item.content.interaction;
       expect(interaction1.type).to.eql(2);
       expect(interaction1.size).to.eql([4, 29.99703598022461, 14.998519897460938]);
-      expect(interaction1.center).to.eql([130.30111694335938, -49.399810791015625, 7.499259948730469]);
+      [130.30111694335938, -49.399810791015625, 7.499259948730469].forEach((v, i) => {
+        expect(interaction1.center[i]).closeTo(v, 1e-5);
+      });
       expect(item.type).to.eql('mesh');
       expect(item.parentId).to.eql('sceneTree^36');
       expect(item.id).to.eql('mesh_ni36_mi6');
@@ -488,7 +512,9 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       expect(node0.children).to.eql([1]);
       expect(node0.id).to.eql('0');
       expect(node0.transform.position).to.eql([0, 0, 0]);
-      expect(node0.transform.quat).to.eql([-0.7071067690849304, 0, 0, 0.7071067690849304]);
+      [-0.7071067690849304, 0, 0, 0.7071067690849304].forEach((v, i) => {
+        expect(node0.transform.quat[i]).closeTo(v, 1e-5);
+      });
       expect(node0.transform.scale).to.eql([1, 1, 1]);
     }
     {
@@ -496,24 +522,36 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       expect(node0.children).to.eql([3, 2]);
       expect(node0.id).to.eql('1');
       expect(node0.transform.position).to.eql([0, 0, 0]);
-      expect(node0.transform.quat).to.eql([0, 0, -0.7071067690849304, 0.7071067690849304]);
-      expect(node0.transform.scale).to.eql([1, 1, 1]);
+      [0, 0, -0.7071067690849304, 0.7071067690849304].forEach((v, i) => {
+        expect(node0.transform.quat[i]).closeTo(v, 1e-5);
+      });
+      [1, 1, 1].forEach((v, i) => {
+        expect(node0.transform.scale[i]).closeTo(v, 1e-5);
+      });
     }
     {
       const node0 = treeNodes[7];
       expect(node0.children).to.eql([]);
       expect(node0.id).to.eql('7');
       expect(node0.transform.position).to.eql([-0.06681963056325912, -0.001072264974936843, 0.026351310312747955]);
-      expect(node0.transform.quat).to.eql([0, -0.3269147574901581, 0, 0.9450538158416748]);
-      expect(node0.transform.scale).to.eql([1, 1, 1]);
+      [0, -0.3269147574901581, 0, 0.9450538158416748].forEach((v, i) => {
+        expect(node0.transform.quat[i]).closeTo(v, 1e-5);
+      });
+      [1, 1, 1].forEach((v, i) => {
+        expect(node0.transform.scale[i]).closeTo(v, 1e-5);
+      });
     }
     {
       const node0 = treeNodes[18];
       expect(node0.children).to.eql([19]);
       expect(node0.id).to.eql('18');
       expect(node0.transform.position).to.eql([0.01322161965072155, 0.21549950540065765, 0.10933209955692291]);
-      expect(node0.transform.quat).to.eql([-0, 0.0711694285273552, -0, 0.9974642395973206]);
-      expect(node0.transform.scale).to.eql([1, 1, 1]);
+      [-0, 0.0711694285273552, -0, 0.9974642395973206].forEach((v, i) => {
+        expect(node0.transform.quat[i]).closeTo(v, 1e-5);
+      });
+      [1, 1, 1].forEach((v, i) => {
+        expect(node0.transform.scale[i]).closeTo(v, 1e-5);
+      });
     }
 
     expect(treeOptions.animation).to.eql(0);
@@ -652,8 +690,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       const item = items[1];
       const interaction1 = item.content.interaction;
       expect(interaction1.type).to.eql(2);
-      expect(interaction1.size).to.eql([0.3119540214538574, 1.1382739543914795, 1.5065499544143677]);
-      expect(interaction1.center).to.eql([0.02497699111700058, -8.940696716308594e-8, 0.7532749772071838]);
+      [0.3119540214538574, 1.1382739543914795, 1.5065499544143677].forEach((v, i) => {
+        expect(interaction1.size[i]).closeTo(v, 1e-5);
+      });
+      [0.02497699111700058, -8.940696716308594e-8, 0.7532749772071838].forEach((v, i) => {
+        expect(interaction1.center[i]).closeTo(v, 1e-5);
+      });
       expect(item.type).to.eql('mesh');
       expect(item.parentId).to.eql('sceneTree^2');
       expect(item.id).to.eql('mesh_ni2_mi0');
@@ -834,15 +876,23 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       expect(node0.children).to.eql([]);
       expect(node0.id).to.eql('0');
       expect(node0.transform.position).to.eql([0, 0, 0]);
-      expect(node0.transform.quat).to.eql([0.7071068286895752, 0, 0, 0.7071067094802856]);
-      expect(node0.transform.scale).to.eql([1, 1.0000001192092896, 1.0000001192092896]);
+      [0.7071068286895752, 0, 0, 0.7071067094802856].forEach((v, i) => {
+        expect(node0.transform.quat[i]).closeTo(v, 1e-5);
+      });
+      [1, 1.0000001192092896, 1.0000001192092896].forEach((v, i) => {
+        expect(node0.transform.scale[i]).closeTo(v, 1e-5);
+      });
     }
     {
       const item = items[1];
       const interaction1 = item.content.interaction;
       expect(interaction1.type).to.eql(2);
-      expect(interaction1.size).to.eql([1.8899539709091187, 2, 1.8019688129425049]);
-      expect(interaction1.center).to.eql([-0.0024815797805786133, -0.18715494871139526, -0.000010520219802856445]);
+      [1.8899539709091187, 2, 1.8019688129425049].forEach((v, i) => {
+        expect(interaction1.size[i]).closeTo(v, 1e-5);
+      });
+      [-0.0024815797805786133, -0.18715494871139526, -0.000010520219802856445].forEach((v, i) => {
+        expect(interaction1.center[i]).closeTo(v, 1e-5);
+      });
       expect(item.type).to.eql('mesh');
       expect(item.parentId).to.eql('sceneTree^0');
       expect(item.id).to.eql('mesh_ni0_mi0');

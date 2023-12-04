@@ -1,3 +1,4 @@
+import type { math } from '@galacean/effects';
 import { Transform as EffectsTransform, PLAYER_OPTIONS_ENV_EDITOR, spec } from '@galacean/effects';
 import {
   Quaternion,
@@ -5,8 +6,10 @@ import {
   Vector3,
   Matrix4,
   EulerOrder,
-} from '../math';
+} from './math';
 import type { BaseTransform } from '../index';
+
+type Euler = math.Euler;
 
 export enum PObjectType {
   none = 0,
@@ -102,7 +105,7 @@ export class PTransform {
   toEffectsTransform (transform: EffectsTransform) {
     const mat = this.getMatrix();
 
-    transform.cloneFromMatrix(mat.toArray() as spec.mat4);
+    transform.cloneFromMatrix(mat);
 
     return transform;
   }
@@ -189,13 +192,13 @@ export class PTransform {
 
   setMatrix (mat: Matrix4 | spec.mat4) {
     if (mat instanceof Matrix4) {
-      const res = mat.decompose();
+      const res = mat.getTransform();
 
       this.setTranslation(res.translation);
       this.setRotation(res.rotation);
       this.setScale(res.scale);
     } else {
-      const res = Matrix4.fromArray(mat).decompose();
+      const res = Matrix4.fromArray(mat).getTransform();
 
       this.setTranslation(res.translation);
       this.setRotation(res.rotation);
@@ -217,12 +220,12 @@ export class PCoordinate {
     this.zAxis = new Vector3(0, 0, 1);
   }
 
-  fromPTransform (trans: PTransform, inverse = false) {
+  fromPTransform (trans: PTransform, invert = false) {
     this.origin.copyFrom(trans.getPosition());
     const rotationMatrix = trans.getRotation().toMatrix4(new Matrix4());
 
-    if (inverse) {
-      rotationMatrix.inverse();
+    if (invert) {
+      rotationMatrix.invert();
     }
     this.fromRotationMatrix(rotationMatrix);
 
@@ -230,11 +233,11 @@ export class PCoordinate {
   }
 
   fromRotationMatrix (matrix: Matrix4) {
-    const matrixData = matrix.data;
+    const me = matrix.elements;
 
-    this.xAxis.set(matrixData[0], matrixData[1], matrixData[2]);
-    this.yAxis.set(matrixData[4], matrixData[5], matrixData[6]);
-    this.zAxis.set(matrixData[8], matrixData[9], matrixData[10]);
+    this.xAxis.set(me[0], me[1], me[2]);
+    this.yAxis.set(me[4], me[5], me[6]);
+    this.zAxis.set(me[8], me[9], me[10]);
   }
 }
 

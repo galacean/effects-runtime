@@ -1,9 +1,9 @@
+import { math } from '@galacean/effects';
 import type { Bone } from './Bone';
 import type { Skeleton } from './Skeleton';
 import type { TransformConstraintData } from './TransformConstraintData';
 import type { Updatable } from './Updatable';
 import { MathUtils } from '../math/math';
-import { Vector2 } from '../math/vector2';
 
 /** Stores the current pose for a transform constraint. A transform constraint adjusts the world transform of the constrained
  * bones to match that of the target bone.
@@ -22,7 +22,7 @@ export class TransformConstraint implements Updatable {
 
   mixRotate = 0; mixX = 0; mixY = 0; mixScaleX = 0; mixScaleY = 0; mixShearY = 0;
 
-  temp = new Vector2();
+  temp = new math.Vector2();
   active = false;
 
   constructor (data: TransformConstraintData, skeleton: Skeleton) {

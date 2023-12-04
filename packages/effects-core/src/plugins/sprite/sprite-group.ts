@@ -1,7 +1,7 @@
-import * as spec from '@galacean/effects-specification';
 import type { Disposable } from '../../utils';
 import { addItem, addItemWithOrder, removeItem, DestroyOptions } from '../../utils';
-import type { VFXItem } from '../../vfx-item';
+import type { VFXItemContent } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import type { Composition } from '../../composition';
 import type { Mesh } from '../../render';
 import type { Texture } from '../../texture';
@@ -685,7 +685,7 @@ export class SpriteGroup implements Disposable {
 
           if (
             current.cacheId === cacheId &&
-            item.type === spec.ItemType.sprite &&
+            VFXItem.isSprite(item) &&
             current.items.length < maxSpriteMeshItemCount &&
             (texInc + current.textures.length) <= maxSpriteTextureCount
           ) {
@@ -719,8 +719,6 @@ export class SpriteGroup implements Disposable {
   }
 }
 
-function isSprite (item: VFXItem<any>) {
-  const type = item.type;
-
-  return type === spec.ItemType.sprite || type === spec.ItemType.filter;
+function isSprite (item: VFXItem<VFXItemContent>) {
+  return VFXItem.isSprite(item) || VFXItem.isFilterSprite(item);
 }

@@ -1,7 +1,7 @@
-import type { mat4, Texture, Attribute, SharedShaderWithSource, Engine } from '@galacean/effects';
+import type { Texture, Attribute, SharedShaderWithSource, Engine } from '@galacean/effects';
 import {
-  PLAYER_OPTIONS_ENV_EDITOR, Mesh, Geometry, Material, setMaskMode, mat4create,
-  GLSLVersion, glContext, createShaderWithMarcos, ShaderType,
+  PLAYER_OPTIONS_ENV_EDITOR, Mesh, Geometry, Material, setMaskMode,
+  GLSLVersion, glContext, createShaderWithMarcos, ShaderType, math,
 } from '@galacean/effects';
 import type { BlendMode } from './core';
 import { SlotGroup } from './slot-group';
@@ -105,7 +105,7 @@ export class SpineMesh {
       });
 
     material.setTexture('uTexture', this.lastTexture);
-    material.setMatrix('uModel', mat4create());
+    material.setMatrix('uModel', math.Matrix4.fromIdentity());
     material.blending = true;
     material.culling = false;
     material.depthTest = false;
@@ -132,7 +132,7 @@ export class SpineMesh {
     this.indicesLength += indices.length;
   }
 
-  endUpdate (worldMatrix: mat4) {
+  endUpdate (worldMatrix: math.Matrix4) {
     for (let i = this.verticesLength; i < this.vertices.length; i++) {
       this.vertices[i] = 0;
     }

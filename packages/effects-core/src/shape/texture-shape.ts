@@ -1,5 +1,4 @@
-import type { vec3 } from '@galacean/effects-specification';
-import { clamp, vecNormalize } from '../math';
+import { Vector3, clamp } from '@galacean/effects-math/es/core/index';
 import { getArcAngle } from './cone';
 import type { Shape, ShapeGeneratorOptions, ShapeParticle } from '.';
 
@@ -29,11 +28,11 @@ export class TextureShape implements Shape {
 
     const pointX = (anchors[index * 2] + this.block[0] * this.random * Math.random()) % 1 - 0.5;
     const pointY = (anchors[index * 2 + 1] + this.block[1] * this.random * Math.random()) % 1 - 0.5;
-    const dir: vec3 = [pointX, pointY, 0];
+    const dir = new Vector3(pointX, pointY, 0);
 
     return {
-      position: [pointX * this.width, pointY * this.height, 0],
-      direction: vecNormalize(dir, dir),
+      position: new Vector3(pointX * this.width, pointY * this.height, 0),
+      direction: dir.normalize(),
     };
   }
 }

@@ -5,7 +5,7 @@ import type {
   ModelMaterialUnlitOptions,
   ModelMaterialPBROptions,
 } from '../index';
-import { Vector3, Vector4, Matrix3 } from '../math';
+import { Vector3, Vector4, Matrix3 } from './math';
 import {
   PObjectType,
   PMaterialType,
@@ -253,13 +253,13 @@ export class PMaterialUnlit extends PMaterialBase {
   override updateUniforms (material: Material) {
     super.updateUniforms(material);
     //
-    const uvTransform = Matrix3.IDENTITY.clone();
+    const uvTransform = new Matrix3().identity();
 
-    material.setVector4('u_BaseColorFactor', this.baseColorFactor.toArray() as spec.vec4);
+    material.setVector4('u_BaseColorFactor', this.baseColorFactor);
     if (this.hasBaseColorTexture()) {
       material.setTexture('u_BaseColorSampler', this.getBaseColorTexture());
       material.setInt('u_BaseColorUVSet', 0);
-      material.setMatrix('u_BaseColorUVTransform', uvTransform.toArray() as spec.mat4);
+      material.setMatrix3('u_BaseColorUVTransform', uvTransform);
     }
     material.setFloat('u_MetallicFactor', 0.0);
     material.setFloat('u_RoughnessFactor', 0.0);
@@ -296,7 +296,7 @@ export class PMaterialUnlit extends PMaterialBase {
 export class PMaterialPBR extends PMaterialBase {
   baseColorTexture?: Texture;
   baseColorTextureTrans?: Matrix3;
-  baseColorFactor = new Vector4(1, 1, 1, 1);
+  baseColorFactor: Vector4 = new Vector4(1, 1, 1, 1);
   //
   metallicRoughnessTexture?: Texture;
   metallicRoughnessTextureTrans?: Matrix3;
@@ -314,7 +314,7 @@ export class PMaterialPBR extends PMaterialBase {
   //
   emissiveTexture?: Texture;
   emissiveTextureTrans?: Matrix3;
-  emissiveFactor = new Vector3(0, 0, 0);
+  emissiveFactor: Vector3 = new Vector3(0, 0, 0);
   emissiveIntensity = 1;
   //
   enableShadow = false;
@@ -428,17 +428,17 @@ export class PMaterialPBR extends PMaterialBase {
   override updateUniforms (material: Material) {
     super.updateUniforms(material);
     //
-    const uvTransform = Matrix3.IDENTITY.clone();
+    const uvTransform = new Matrix3().identity();
 
-    material.setVector4('u_BaseColorFactor', this.baseColorFactor.toArray() as spec.vec4);
+    material.setVector4('u_BaseColorFactor', this.baseColorFactor);
     if (this.baseColorTexture !== undefined) {
       material.setTexture('u_BaseColorSampler', this.baseColorTexture);
       material.setInt('u_BaseColorUVSet', 0);
       if (this.baseColorTextureTrans !== undefined) {
-        material.setMatrix3('u_BaseColorUVTransform', this.baseColorTextureTrans.toArray() as spec.mat3);
+        material.setMatrix3('u_BaseColorUVTransform', this.baseColorTextureTrans);
       } else {
         // fill other data
-        material.setMatrix3('u_BaseColorUVTransform', uvTransform.toArray() as spec.mat3);
+        material.setMatrix3('u_BaseColorUVTransform', uvTransform);
       }
     }
     //
@@ -448,10 +448,10 @@ export class PMaterialPBR extends PMaterialBase {
       material.setTexture('u_MetallicRoughnessSampler', this.metallicRoughnessTexture);
       material.setInt('u_MetallicRoughnessUVSet', 0);
       if (this.metallicRoughnessTextureTrans !== undefined) {
-        material.setMatrix3('u_MetallicRoughnessUVTransform', this.metallicRoughnessTextureTrans.toArray() as spec.mat3);
+        material.setMatrix3('u_MetallicRoughnessUVTransform', this.metallicRoughnessTextureTrans);
       } else {
         // fill other data
-        material.setMatrix3('u_MetallicRoughnessUVTransform', uvTransform.toArray() as spec.mat3);
+        material.setMatrix3('u_MetallicRoughnessUVTransform', uvTransform);
       }
     }
     //
@@ -460,10 +460,10 @@ export class PMaterialPBR extends PMaterialBase {
       material.setFloat('u_NormalScale', this.normalTextureScale);
       material.setInt('u_NormalUVSet', 0);
       if (this.normalTextureTrans !== undefined) {
-        material.setMatrix3('u_NormalUVTransform', this.normalTextureTrans.toArray() as spec.mat3);
+        material.setMatrix3('u_NormalUVTransform', this.normalTextureTrans);
       } else {
         // fill other data
-        material.setMatrix3('u_NormalUVTransform', uvTransform.toArray() as spec.mat3);
+        material.setMatrix3('u_NormalUVTransform', uvTransform);
       }
     }
     //
@@ -472,10 +472,10 @@ export class PMaterialPBR extends PMaterialBase {
       material.setFloat('u_OcclusionStrength', this.occlusionTextureStrength);
       material.setInt('u_OcclusionUVSet', 0);
       if (this.occlusionTextureTrans !== undefined) {
-        material.setMatrix3('u_OcclusionUVTransform', this.occlusionTextureTrans.toArray() as spec.mat3);
+        material.setMatrix3('u_OcclusionUVTransform', this.occlusionTextureTrans);
       } else {
         // fill other data
-        material.setMatrix3('u_OcclusionUVTransform', uvTransform.toArray() as spec.mat3);
+        material.setMatrix3('u_OcclusionUVTransform', uvTransform);
       }
     }
     //
@@ -483,18 +483,18 @@ export class PMaterialPBR extends PMaterialBase {
       const emissiveFactor = this.getEmissiveFactor();
 
       material.setTexture('u_EmissiveSampler', this.emissiveTexture);
-      material.setVector3('u_EmissiveFactor', emissiveFactor.toArray() as spec.vec3);
+      material.setVector3('u_EmissiveFactor', emissiveFactor);
       material.setInt('u_EmissiveUVSet', 0);
       if (this.emissiveTextureTrans !== undefined) {
-        material.setMatrix3('u_EmissiveUVTransform', this.emissiveTextureTrans.toArray() as spec.mat3);
+        material.setMatrix3('u_EmissiveUVTransform', this.emissiveTextureTrans);
       } else {
         // fill other data
-        material.setMatrix3('u_EmissiveUVTransform', uvTransform.toArray() as spec.mat3);
+        material.setMatrix3('u_EmissiveUVTransform', uvTransform);
       }
     } else if (this.hasEmissiveFactor()) {
       const emissiveFactor = this.getEmissiveFactor();
 
-      material.setVector3('u_EmissiveFactor', emissiveFactor.toArray() as spec.vec3);
+      material.setVector3('u_EmissiveFactor', emissiveFactor);
     }
 
     material.setFloat('u_Exposure', 3.0);
@@ -595,7 +595,7 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   getEmissiveFactor (): Vector3 {
-    return this.emissiveFactor.clone().multiplyScalar(this.emissiveIntensity);
+    return this.emissiveFactor.clone().multiply(this.emissiveIntensity);
   }
 
   setEmissiveFactor (val: Vector3 | spec.vec3) {

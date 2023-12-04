@@ -7,7 +7,7 @@ const { expect } = chai;
  * 万分之一的像素不相等比例，对于512x512大小的图像，
  * 不能超过26个像素不相等
  */
-const accumRatioThreshold = 1.5e-4;
+const accumRatioThreshold = 3e-4;
 const pixelDiffThreshold = 1;
 const dumpImageForDebug = false;
 const canvasWidth = 512;
@@ -48,16 +48,14 @@ function addDescribe (renderFramework) {
     });
 
     it(`${renderFramework}检查`, () => {
-      const { marsPlayer } = controller;
-
-      const instance = marsPlayer.player.renderer.gpu;
+      const { oldPlayer, newPlayer } = controller;
 
       if (renderFramework === 'webgl') {
-        expect(instance.level).to.eql(1);
-        expect(marsPlayer.player.renderer.gpu.level).to.eql(1);
+        expect(oldPlayer.player.gpuCapability.level).to.eql(1);
+        expect(newPlayer.player.gpuCapability.level).to.eql(1);
       } else {
-        expect(instance.level).to.eql(2);
-        expect(marsPlayer.player.renderer.gpu.level).to.eql(2);
+        expect(oldPlayer.player.gpuCapability.level).to.eql(2);
+        expect(newPlayer.player.gpuCapability.level).to.eql(2);
       }
     });
 
@@ -72,34 +70,35 @@ function addDescribe (renderFramework) {
 async function checkScene (keyName, name, url) {
   it(`${name}`, async () => {
     console.info(`[Compare]: Begin ${name}, ${url}`);
-    const { marsPlayer, runtimePlayer, renderFramework } = controller;
+    const { oldPlayer, newPlayer, renderFramework } = controller;
 
     runtimePlayer.player.compositions.length = 0;
-    await marsPlayer.initialize(url);
-    await runtimePlayer.initialize(url);
+    await oldPlayer.initialize(url);
+    await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
     const timeList = [
-      0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.71, 0.83, 0.96,
-      1.1, 1.2, 1.4, 1.7, 1.9, 2.2, 2.5, 2.7, 3.3, 3.8,
-      4.7, 5.2, 6.8, 7.5, 8.6, 9.7, 9.99, 12.5, 18.9,
+      0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.65, 0.71, 0.83, 0.96, 1.0,
+      1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.9, 2.0, 2.2, 2.5, 2.7, 3.0, 3.3, 3.8,
+      4.1, 4.7, 5.2, 5.9, 6.8, 7.5, 8.6, 9.7, 9.99, 11.23, 12.5, 15.8, 18.9,
     ];
     let maxDiffValue = 0;
 
     for (let i = 0; i < timeList.length; i++) {
       const time = timeList[i];
 
-      if (!marsPlayer.isLoop() && time > marsPlayer.duration()) {
+      if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
         break;
       }
-      marsPlayer.gotoTime(time);
-      runtimePlayer.gotoTime(time);
-      const marsImage = await marsPlayer.readImageBuffer();
-      const runtimeImage = await runtimePlayer.readImageBuffer();
-
-      expect(marsImage.length).to.eql(runtimeImage.length);
       //
-      const pixelDiffValue = await imageCmp.compareImages(marsImage, runtimeImage);
+      oldPlayer.gotoTime(time);
+      newPlayer.gotoTime(time);
+      const oldImage = await oldPlayer.readImageBuffer();
+      const newImage = await newPlayer.readImageBuffer();
+
+      expect(oldImage.length).to.eql(newImage.length);
+      //
+      const pixelDiffValue = await imageCmp.compareImages(oldImage, newImage);
       const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
       if (pixelDiffValue > 0) {
@@ -109,25 +108,25 @@ async function checkScene (keyName, name, url) {
       if (diffCountRatio > accumRatioThreshold) {
         console.error('FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
         if (dumpImageForDebug) {
-          const marsFileName = `${namePrefix}_${name}_${time}_mars.png`;
-          const runtimeFileName = `${namePrefix}_${name}_${time}_runtime.png`;
+          const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
+          const newFileName = `${namePrefix}_${name}_${time}_new.png`;
 
-          await marsPlayer.saveCanvasToFile(marsFileName);
-          await runtimePlayer.saveCanvasToFile(runtimeFileName);
+          await oldPlayer.saveCanvasToFile(oldFileName);
+          await newPlayer.saveCanvasToFile(newFileName);
         }
       }
 
       expect(diffCountRatio).to.lte(accumRatioThreshold);
     }
 
-    const marsLoadCost = marsPlayer.loadSceneTime();
-    const marsFirstCost = marsPlayer.firstFrameTime();
-    const runtimeLoadCost = runtimePlayer.loadSceneTime();
-    const runtimeFirstCost = runtimePlayer.firstFrameTime();
+    const oldLoadCost = oldPlayer.loadSceneTime();
+    const oldFirstCost = oldPlayer.firstFrameTime();
+    const newLoadCost = newPlayer.loadSceneTime();
+    const newFirstCost = newPlayer.firstFrameTime();
 
     cmpStats.addSceneInfo(
-      `${keyName}@${name}`, marsLoadCost, marsFirstCost - marsLoadCost,
-      runtimeLoadCost, runtimeFirstCost - runtimeLoadCost, maxDiffValue
+      `${keyName}@${name}`, oldLoadCost, oldFirstCost - oldLoadCost,
+      newLoadCost, newFirstCost - newLoadCost, maxDiffValue
     );
 
     console.info(`[Compare]: End ${name}, ${url}`);

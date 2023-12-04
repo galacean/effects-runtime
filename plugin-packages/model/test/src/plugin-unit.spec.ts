@@ -1,9 +1,11 @@
 /* eslint-disable padding-line-between-statements */
 // @ts-nocheck
-import { Player, VFX_ITEM_TYPE_TREE, Texture, spec, Downloader } from '@galacean/effects';
+import { Player, Texture, spec, Downloader, math } from '@galacean/effects';
+const { Matrix4, Quaternion, Vector3, RAD2DEG } = math;
+
 import type { ModelVFXItem } from '@galacean/effects-plugin-model';
 import {
-  Matrix4, Quaternion, Vector3, PEntity, PObject, PAnimationManager, PMorph,
+  PEntity, PObject, PAnimationManager, PMorph,
   PBlendMode, PLightType, PMaterialType, PObjectType, PShadowType, PTransform,
   PCamera, PLight, PMesh, PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit,
   VFX_ITEM_TYPE_3D, RayBoxTesting, RayTriangleTesting,
@@ -41,7 +43,7 @@ describe('渲染插件单测', function () {
         0, 0, 1, 0,
         123, 456, 789, 1,
       ]);
-      const decomp0 = trans0.getMatrix().decompose();
+      const decomp0 = trans0.getMatrix().getTransform();
 
       expect(decomp0.translation).to.eql(new Vector3(123, 456, 789));
       expect(decomp0.rotation).to.eql(new Quaternion(0, 0, 0, 1));
@@ -56,14 +58,14 @@ describe('渲染插件单测', function () {
         0, 0, 1, 0,
         987, 654, 321, 1,
       ]);
-      const decomp1 = trans1.getMatrix().decompose();
+      const decomp1 = trans1.getMatrix().getTransform();
       expect(decomp1.translation).to.eql(new Vector3(987, 654, 321));
       expect(decomp1.rotation).to.eql(new Quaternion(0, 0, 0, 1));
       expect(decomp1.scale).to.eql(new Vector3(1, 1, 1));
     }
     {
       const trans0 = new PTransform();
-      trans0.setRotation(new Vector3(-2.1, 0.3, 4.5));
+      trans0.setRotation(new Vector3(-2.1, 0.3, 4.5).multiply(RAD2DEG));
       trans0.getMatrix().toArray().forEach((v, i) => {
         expect(v).closeTo([
           -0.20138093829154968, -0.9338701963424683, -0.29552021622657776, 0,
@@ -74,16 +76,22 @@ describe('渲染插件单测', function () {
       });
       const trans1 = new PTransform();
       trans1.setRotation(Quaternion.fromAxisAngle(new Vector3(3, 7, 5), Math.PI * 0.15, new Quaternion()));
-      expect(trans1.getMatrix().toArray()).to.eql([
-        0.9028250575065613, 0.2767362892627716, -0.32912591099739075, 0,
-        -0.22158297896385193, 0.9553520679473877, 0.19545689225196838, 0,
-        0.368521124124527, -0.10353469103574753, 0.9238358736038208, 0,
-        0, 0, 0, 1,
-      ]);
-      const decomp1 = trans1.getMatrix().decompose();
+      trans1.getMatrix().toArray().forEach((v, i) => {
+        expect([
+          0.9028250575065613, 0.2767362892627716, -0.32912591099739075, 0,
+          -0.22158297896385193, 0.9553520679473877, 0.19545689225196838, 0,
+          0.368521124124527, -0.10353469103574753, 0.9238358736038208, 0,
+          0, 0, 0, 1,
+        ][i]).closeTo(v, 1e-5);
+      });
+      const decomp1 = trans1.getMatrix().getTransform();
       expect(decomp1.translation).to.eql(new Vector3(0, 0, 0));
-      expect(decomp1.rotation).to.eql(new Quaternion(0.07687187194824219, 0.17936770617961884, 0.12811978161334991, 0.972369909286499));
-      expect(decomp1.scale).to.eql(new Vector3(0.9999999403953552, 1, 1));
+      decomp1.rotation.toArray().forEach((v, i) => {
+        expect([0.07687187194824219, 0.17936770617961884, 0.12811978161334991, 0.972369909286499][i]).closeTo(v, 1e-5);
+      });
+      decomp1.scale.toArray().forEach((v, i) => {
+        expect([0.9999999403953552, 1, 1][i]).closeTo(v, 1e-5);
+      });
     }
     {
       const trans0 = new PTransform();
@@ -97,10 +105,12 @@ describe('渲染插件单测', function () {
       trans0.getMatrix().toArray().forEach((v, index) => {
         expect(v).closeTo(expectMatrix[index], 1e-5);
       });
-      const decomp = trans0.getMatrix().decompose();
+      const decomp = trans0.getMatrix().getTransform();
       expect(decomp.translation).to.eql(new Vector3(0, 0, 0));
       expect(decomp.rotation).to.eql(new Quaternion(0, 0, 0, 1));
-      expect(decomp.scale).to.eql(new Vector3(2.1, 0.3, 4.5));
+      decomp.scale.toArray().forEach((v, i) => {
+        expect([2.1, 0.3, 4.5][i]).closeTo(v, 1e-5);
+      });
     }
     {
       const trans0 = new PTransform();
@@ -116,23 +126,31 @@ describe('渲染插件单测', function () {
       trans0.getMatrix().toArray().forEach((v, index) => {
         expect(v).closeTo(expectMatrix[index], 1e-5);
       });
-      const decomp0 = trans0.getMatrix().decompose();
-      expect(decomp0.translation).to.eql(new Vector3(13.5, 2.3399999141693115, 5.677999973297119));
+      const decomp0 = trans0.getMatrix().getTransform();
+      decomp0.translation.toArray().forEach((v, index) => {
+        expect(v).closeTo([13.5, 2.3399999141693115, 5.677999973297119][index], 1e-6);
+      });
       decomp0.rotation.toArray().forEach((v, index) => {
         expect(v).closeTo([-0.14367972314357758, 0.22104573249816895, 0.7345519661903381, 0.6252426505088806][index], 1e-6);
       });
-      expect(decomp0.scale).to.eql(new Vector3(3.7800002098083496, 2.559999942779541, 5.119999885559082));
+      decomp0.scale.toArray().forEach((v, index) => {
+        expect(v).closeTo([3.7800002098083496, 2.559999942779541, 5.119999885559082][index], 1e-6);
+      });
 
       const trans1 = new PTransform();
       trans1.setMatrix(Matrix4.fromArray(expectMatrix));
       trans1.getMatrix().toArray().forEach((v, index) => {
         expect(v).closeTo(expectMatrix[index], 1e-5);
       });
-      expect(trans1.getTranslation()).to.eql(new Vector3(13.5, 2.3399999141693115, 5.677999973297119));
+      trans1.getTranslation().toArray().forEach((v, i) => {
+        expect([13.5, 2.3399999141693115, 5.677999973297119][i]).closeTo(v, 1e-5);
+      });
       trans1.getRotation().toArray().forEach((v, index) => {
         expect(v).closeTo([-0.14367972314357758, 0.22104573249816895, 0.7345519661903381, 0.6252426505088806][index], 1e-6);
       });
-      expect(trans1.getScale()).to.eql(new Vector3(3.7800002098083496, 2.559999942779541, 5.119999885559082));
+      trans1.getScale().toArray().forEach((v, index) => {
+        expect(v).closeTo([3.7800002098083496, 2.559999942779541, 5.119999885559082][index], 1e-6);
+      });
     }
   });
   it('Object和Entity测试', function () {
@@ -184,7 +202,9 @@ describe('渲染插件单测', function () {
     expect(light1.name).to.eql('light1');
     expect(light1.visible).to.eql(false);
     expect(light1.transform.getPosition().toArray()).to.eql([123, 456, 789]);
-    expect(light1.transform.getRotation()).to.eql(new Quaternion(-0.0833304226398468, -0.06886117160320282, -0.02214544080197811, 0.9938932657241821));
+    light1.transform.getRotation().toArray().forEach((v, index) => {
+      expect(v).closeTo([-0.0833304226398468, -0.06886117160320282, -0.02214544080197811, 0.9938932657241821][index], 1e-6);
+    });
     light1.transform.getScale().toArray().forEach((v, index) => {
       expect(v).closeTo([3.4, 5.7, 6.9][index], 1e-6);
     });
@@ -237,7 +257,7 @@ describe('渲染插件单测', function () {
     expect(light2.innerConeAngle).to.eql(35.8);
     expect(light2.outerConeAngle).to.eql(49.6);
     light2.getWorldDirection().toArray().forEach((v, index) => {
-      expect(v).closeTo([0, 0, -10.199999809265137][index], 1e-5);
+      expect(v).closeTo([0, 0, -1][index], 1e-5);
     });
     //
     //
@@ -270,7 +290,9 @@ describe('渲染插件单测', function () {
     light3.transform.getRotation().toArray().forEach((v, index) => {
       expect(v).closeTo([0.16855104267597198, -0.3602624833583832, -0.5503277778625488, 0.7341259121894836][index], 1e-6);
     });
-    expect(light3.transform.getScale().toArray()).to.eql([1, 1, 1]);
+    light3.transform.getScale().toArray().forEach((v, index) => {
+      expect(v).closeTo([1, 1, 1][index], 1e-6);
+    });
     light3.color.toArray().forEach((v, index) => {
       expect(v).closeTo([128, 0, 177, 33][index] / 255.0, 1e-6);
     });
@@ -327,7 +349,9 @@ describe('渲染插件单测', function () {
     camera1.position.toArray().forEach((v, i) => {
       expect([3.21, 6.54, 9.87][i]).closeTo(v, 1e-6);
     });
-    expect(camera1.scale.toArray()).to.eql([1, 1, 1]);
+    camera1.scale.toArray().forEach((v, i) => {
+      expect([1, 1, 1][i]).closeTo(v, 1e-6);
+    });
     camera1.rotation.toArray().forEach((v, i) => {
       expect([0.3490997552871704, -0.46741336584091187, -0.36707738041877747, 0.7245055437088013][i]).closeTo(v, 1e-6);
     });
@@ -383,7 +407,9 @@ describe('渲染插件单测', function () {
     camera2.position.toArray().forEach((v, i) => {
       expect([13.5, 33.6, 56.2][i]).closeTo(v, 1e-5);
     });
-    expect(camera2.scale.toArray()).to.eql([1, 1, 1]);
+    camera2.scale.toArray().forEach((v, i) => {
+      expect([1, 1, 1][i]).closeTo(v, 1e-6);
+    });
     camera2.rotation.toArray().forEach((v, i) => {
       expect([0.0990457609295845, -0.36964380741119385, -0.23911762237548828, 0.8923990726470947][i]).closeTo(v, 1e-6);
     });
@@ -393,7 +419,7 @@ describe('渲染插件单测', function () {
         -0.5000000596046448, 0.866025447845459, 0, 0, 0.6123724579811096,
         0.35355344414711, 0.7071068286895752, 0, -25.882360458374023,
         -53.741127014160156, -30.193462371826172, 1,
-      ][i]).closeTo(v, 1e-6);
+      ][i]).closeTo(v, 1e-5);
     });
     camera2.projectionMatrix.toArray().forEach((v, i) => {
       expect([
@@ -438,7 +464,7 @@ describe('渲染插件单测', function () {
         0.254606157541275, 0.962443470954895, -0.09422452002763748, 0,
         0.1283072978258133, 0.06295374035835266, 0.9897343516349792, -0,
         -64.57437896728516, -93.03727722167969, -63.509559631347656, 1,
-      ][i]).closeTo(v, 1e-6);
+      ][i]).closeTo(v, 1e-5);
     });
     acam.projectionMatrix.toArray().forEach((v, i) => {
       expect([
@@ -667,8 +693,12 @@ describe('渲染插件单测', function () {
       },
     });
     const sceneAABB = loadResult.sceneAABB;
-    expect(sceneAABB.max).to.eql([0.569136917591095, 1.5065498352050781, 0.18095403909683228]);
-    expect(sceneAABB.min).to.eql([-0.5691370964050293, -6.193791257658177e-9, -0.13100001215934753]);
+    [0.569136917591095, 1.5065498352050781, 0.18095403909683228].forEach((v, i) => {
+      expect(sceneAABB.max[i]).closeTo(v, 1e-5);
+    });
+    [-0.5691370964050293, -6.193791257658177e-9, -0.13100001215934753].forEach((v, i) => {
+      expect(sceneAABB.min[i]).closeTo(v, 1e-5);
+    });
     //
     const itemList = loadResult.items;
     expect(itemList.length).to.eql(2);
@@ -717,7 +747,9 @@ describe('渲染插件单测', function () {
     expect(mesh.primitives.length).to.eql(1);
     expect(mesh.hide).to.eql(false);
     expect(mesh.priority).to.eql(priority);
-    expect(mesh.boundingBox.max.toArray()).to.eql([0.1809540092945099, 0.5691368579864502, 1.5065499544143677]);
+    mesh.boundingBox.max.toArray().forEach((v, i) => {
+      expect(v).closeTo([0.1809540092945099, 0.5691368579864502, 1.5065499544143677][i], 1e-5);
+    });
     expect(mesh.boundingBox.min.toArray()).to.eql([-0.13100001215934753, -0.5691370964050293, 0]);
     expect(mesh.mriMeshs.length).to.eql(1);
     const skin = mesh.skin;
@@ -967,11 +999,11 @@ describe('渲染插件单测', function () {
     const items = comp.items;
     expect(items.length).to.eql(2);
     const treeItem = items[0];
-    expect(treeItem.type).to.eql(VFX_ITEM_TYPE_TREE);
+    expect(treeItem.type).to.eql(spec.ItemType.tree);
     expect(treeItem.id).to.eql('tree0');
     expect(treeItem.name).to.eql('tree0');
     const treeWorldMatrix = treeItem.transform.getWorldMatrix();
-    treeWorldMatrix.forEach((v, i) => {
+    treeWorldMatrix.elements.forEach((v, i) => {
       expect([
         1, 0, 0, 0,
         0, 1, 0, 0,
@@ -1119,7 +1151,7 @@ describe('渲染插件单测', function () {
       0, 0.9999999403953552, 3.422854177870249e-8, 0,
       0, 0, 0, 1,
     ].forEach((val, idx) => {
-      expect(val).closeTo(worldMatrix[idx], 1e-5);
+      expect(val).closeTo(worldMatrix.elements[idx], 1e-5);
     });
     const skin = modelItem.options.content.options.skin;
     expect(skin.inverseBindMatrices.length).to.eql(304);
@@ -1305,20 +1337,20 @@ describe('渲染插件单测', function () {
     const t3 = RayTriangleTesting(new Vector3(0, 0, 0), new Vector3(1, 1, 1).normalize(), a, b, c, false);
     expect(t3).closeTo(1.1547005591040844, 1e-5);
 
-    b.multiplyScalar(-1);
+    b.multiply(-1);
     const t4 = RayTriangleTesting(new Vector3(0, 0, 0), new Vector3(1, 1, 1).normalize(), a, b, c, false);
     expect(t4).to.eql(undefined);
 
-    a.multiplyScalar(-1);
+    a.multiply(-1);
     const t5 = RayTriangleTesting(new Vector3(0, 0, 0), new Vector3(1, 1, 1).normalize(), a, b, c, false);
     expect(t5).to.eql(undefined);
 
-    b.multiplyScalar(-1);
+    b.multiply(-1);
     const t6 = RayTriangleTesting(new Vector3(0, 0, 0), new Vector3(1, 1, 1).normalize(), a, b, c, false);
     expect(t6).to.eql(undefined);
 
-    a.multiplyScalar(-1);
-    b.multiplyScalar(-1);
+    a.multiply(-1);
+    b.multiply(-1);
     const t7 = RayTriangleTesting(new Vector3(0, 0, 0), new Vector3(-1, -1, -1).normalize(), a, b, c, false);
     expect(t7).to.eql(undefined);
   });

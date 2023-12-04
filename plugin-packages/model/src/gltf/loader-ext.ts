@@ -16,8 +16,7 @@ import {
 import type { Player, spec } from '@galacean/effects';
 import type { LoadSceneOptions, LoadSceneResult } from './protocol';
 import { LoaderImpl } from './loader-impl';
-import { Box3, Vector3 } from '../math';
-import { Sphere } from '../math/sphere';
+import { Box3, Vector3, Sphere } from '../runtime/math';
 
 export class LoaderImplEx extends LoaderImpl {
   override async loadScene (options: LoadSceneOptions): Promise<LoadSceneResult> {
@@ -143,8 +142,8 @@ export async function loadGLTFScene (options: LoadGLTFSceneOptions) {
     const sceneAABB = new Box3(sceneMin, sceneMax);
     const sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
     const sceneCenter = sceneAABB.getCenter(new Vector3());
-    const position = sceneCenter.addVector(new Vector3(0, 0, sceneRadius * 1.71));
-    const cameraPosition = options.camera?.position ?? position.toArray() as spec.vec3;
+    const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 1.71));
+    const cameraPosition = options.camera?.position ?? position.toArray();
     const cameraRotation = options.camera?.rotation ?? [0, 0, 0];
 
     items.push({
