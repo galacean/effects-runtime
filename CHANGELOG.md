@@ -11,11 +11,11 @@
 
 `2023-12-04`
 
-- Feat: add name suggestion after player dispose。[#6](https://github.com/galacean/effects-runtime/pull/6) @RGCHN
-- Fix: Plugin error message optimization。[#10](https://github.com/galacean/effects-runtime/pull/10) @liuxi150
-- Fix: setRotation does not work after rotate in transform。[#11](https://github.com/galacean/effects-runtime/pull/11) @RGCHN
-- Chore: add dependabot。[#14](https://github.com/galacean/effects-runtime/pull/14) @zheeeng
-- Chore: add top language and license badge for README.md。[#13](https://github.com/galacean/effects-runtime/pull/13) @zheeeng
+- Feat: Add name suggestion after player dispose. [#6](https://github.com/galacean/effects-runtime/pull/6) @RGCHN
+- Fix: Plugin error message optimization. [#10](https://github.com/galacean/effects-runtime/pull/10) @liuxi150
+- Fix: setRotation does not work after rotate in transform. [#11](https://github.com/galacean/effects-runtime/pull/11) @RGCHN
+- Chore: Add dependabot. [#14](https://github.com/galacean/effects-runtime/pull/14) @zheeeng
+- Chore: Add top language and license badge for README.md. [#13](https://github.com/galacean/effects-runtime/pull/13) @zheeeng
 
 ## 1.0.0
 
