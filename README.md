@@ -8,7 +8,7 @@ Galacean Effects runtime, It can load and render cool animation effects, The API
 
 ## [Integration Guide](https://galacean.antgroup.com/effects/#/user/ti4f2yx1rot4hs1n)
 
-## [API Documentation]((https://galacean.antgroup.com/effects/#/api))
+## [API Documentation](https://galacean.antgroup.com/effects/#/api)
 
 ## Development
 

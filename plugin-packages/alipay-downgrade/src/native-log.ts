@@ -25,7 +25,7 @@ export function inspectLogger () {
       error.apply(console, [prefix, msg.content, ...args]);
       nativeLogger('error', msg.content, ...args);
     } else {
-      error.apply(console, [prefix, msg, ...args]);
+      error.apply(console, [msg, ...args]);
     }
   };
 
@@ -34,7 +34,7 @@ export function inspectLogger () {
       info.apply(console, [prefix, msg.content, ...args]);
       nativeLogger('info', msg.content, ...args);
     } else {
-      info.apply(console, [prefix, msg, ...args]);
+      info.apply(console, [msg, ...args]);
     }
   };
 
@@ -43,7 +43,7 @@ export function inspectLogger () {
       warn.apply(console, [prefix, msg.content, ...args]);
       nativeLogger('info', msg.content, ...args);
     } else {
-      warn.apply(console, [prefix, msg, ...args]);
+      warn.apply(console, [msg, ...args]);
     }
   };
 }

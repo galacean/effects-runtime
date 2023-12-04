@@ -862,12 +862,16 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       }
       this.canvas.remove();
     }
+    // 在报错函数中传入 player.name
+    const errorMsg = getDestroyedErrorMessage(this.name);
+    const throwErrorFunc = () => throwDestroyedError(errorMsg);
+    const throwErrorPromiseFunc = () => throwDestroyedErrorPromise(errorMsg);
 
-    this.tick = throwDestroyedError;
-    this.resize = throwDestroyedError;
-    this.loadScene = throwDestroyedErrorPromise;
-    this.play = throwDestroyedErrorPromise;
-    this.resume = throwDestroyedErrorPromise;
+    this.tick = throwErrorFunc;
+    this.resize = throwErrorFunc;
+    this.loadScene = throwErrorPromiseFunc;
+    this.play = throwErrorPromiseFunc;
+    this.resume = throwErrorPromiseFunc;
     this.disposed = true;
   }
 
@@ -1031,13 +1035,15 @@ function assertContainer (container?: HTMLElement | null): asserts container is 
   }
 }
 
-const destroyedErrorMessage = `Never use destroyed player again, see ${HELP_LINK['Never use destroyed player again']}`;
+function getDestroyedErrorMessage (name: string) {
+  return `Never use destroyed player: ${name} again, see ${HELP_LINK['Never use destroyed player again']}`;
+}
 
-function throwDestroyedError () {
+function throwDestroyedError (destroyedErrorMessage: string) {
   throw new Error(destroyedErrorMessage);
 }
 
-function throwDestroyedErrorPromise () {
+function throwDestroyedErrorPromise (destroyedErrorMessage: string) {
   return Promise.reject(destroyedErrorMessage);
 }
 

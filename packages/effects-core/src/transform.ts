@@ -248,6 +248,7 @@ export class Transform implements Disposable {
    */
   rotateByQuat (quat: vec4) {
     quatMultiply(this.quat, this.quat, quat);
+    rotationFromMat3(this.rotation, mat3FromQuat(tempMat3, quat));
     this.dirtyFlags.localData = true;
     this.dispatchValueChange();
   }

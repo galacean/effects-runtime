@@ -3,7 +3,7 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*Wy0HS5F7hO4AAAAAAAAAAAAADlB4AQ';
+const json = inspireList.mask.url;
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -11,8 +11,7 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json);
-
-    const item = comp.getItemByName('null_11');
+    const item = comp.getItemByName('mask');
 
   } catch (e) {
     console.error('biz', e);
@@ -22,7 +21,6 @@ const container = document.getElementById('J-container');
 function createPlayer () {
   const player = new Player({
     container,
-    pixelRatio: 2,
     interactive: true,
     // renderFramework: 'webgl',
     env: 'editor',
