@@ -63,8 +63,6 @@ export class TextItem extends SpriteItem {
 
     // Text
     this.mesh = new TextMesh(this.engine, this.renderInfo, vfxItem.composition) as unknown as SpriteMesh;
-    this.mesh.setItems([this]);
-    this.updateTexture();
   }
 
   /**
@@ -285,7 +283,7 @@ export class TextItem extends SpriteItem {
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
-    this.char = this.text.split('');
+    this.char = (this.text || '').split('');
 
     this.canvas.width = width ;
     this.canvas.height = height;

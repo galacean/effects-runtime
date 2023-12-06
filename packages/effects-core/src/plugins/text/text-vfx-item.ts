@@ -23,27 +23,22 @@ export class TextVFXItem extends VFXItem<TextItem> {
   }
 
   override onLifetimeBegin (composition: Composition, content: TextItem) {
-    this._contentVisible = true;
     content.active = true;
-
+    this.content?.mesh!.setItems([this.content]);
+    this.content.updateTexture();
   }
 
   override onItemRemoved (composition: Composition, content?: TextItem) {
-    this._contentVisible = false;
-
     if (content) {
       delete content.mesh;
       composition.destroyTextures(content.getTextures());
     }
   }
 
-  override handleVisibleChanged (visible: boolean) {
-    if (this.content) {
-      this.content.visible = visible;
-    }
-  }
-
   override onItemUpdate (dt: number, lifetime: number) {
+    if (!this.content) {
+      return ;
+    }
     this.content?.updateTime(this.time);
   }
 
@@ -112,6 +107,7 @@ export class TextVFXItem extends VFXItem<TextItem> {
   createWireframeMesh (item: TextItem, color: spec.vec4): TextMesh {
     const spMesh = new TextMesh(this.composition.getEngine(), { wireframe: true, ...item.renderInfo }, this.composition);
 
+    spMesh.mesh.setVisible(true);
     spMesh.setItems([item]);
     spMesh.mesh.material.setVector3('uFrameColor', Vector3.fromArray(color));
     spMesh.mesh.priority = 999;
