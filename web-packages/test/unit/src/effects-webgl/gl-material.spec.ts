@@ -1113,7 +1113,7 @@ describe('gl-material', () => {
   //       meshes,
   //       camera: { name: 'main' },
   //       delegate: {
-  //         didiRenderMesh (mesh) {
+  //         didRenderMesh (mesh) {
   //           const db = mesh.material.dataBlocks[1];
 
   //           expect(db.name).to.eql('Test');
@@ -1192,7 +1192,7 @@ describe('gl-material', () => {
     const renderPass = new RenderPass({
       name: 'basic', priority: 8, meshes, camera: { name: 'main' },
       delegate: {
-        didiRenderMesh () {
+        didRenderMesh () {
           spy();
         },
       },
@@ -1271,7 +1271,7 @@ describe('gl-material', () => {
       meshes: meshes,
       camera: { name: 'main' },
       delegate: {
-        didiRenderMesh () {
+        didRenderMesh () {
           spy();
         },
       },
