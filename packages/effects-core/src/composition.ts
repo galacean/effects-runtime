@@ -804,22 +804,44 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
-   * 设置合成在 3D 坐标轴上相对移动
+   * 设置合成在 3D 坐标轴上相对当前的位移
    */
   translate (x: number, y: number, z: number) {
     this.content.translate(x, y, z);
   }
+
   /**
-   * 设置合成在 3D 坐标轴上相对旋转（角度）
+   * 设置合成在 3D 坐标轴上的位移
+   */
+  setPosition (x: number, y: number, z: number) {
+    this.content.setPosition(x, y, z);
+  }
+
+  /**
+   * 设置合成在 3D 坐标轴上相对当前的旋转（角度）
    */
   rotate (x: number, y: number, z: number) {
     this.content.rotate(x, y, z);
   }
+
   /**
-   * 设置合成在 3D 坐标轴上相对缩放
+   * 设置合成在 3D 坐标轴上的旋转（角度）
+   */
+  setRotation (x: number, y: number, z: number) {
+    this.content.setRotation(x, y, z);
+  }
+  /**
+   * 设置合成在 3D 坐标轴上相对当前的缩放
    */
   scale (x: number, y: number, z: number) {
     this.content.scale(x, y, z);
+  }
+
+  /**
+   * 设置合成在 3D 坐标轴上的缩放
+   */
+  setScale (x: number, y: number, z: number) {
+    this.content.setScale(x, y, z);
   }
 
   /**
