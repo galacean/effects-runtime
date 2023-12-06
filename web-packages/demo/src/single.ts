@@ -3,14 +3,14 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*fTq-S4h_nYMAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*vKGhS7H1ei8AAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
   try {
     const player = createPlayer();
 
-    const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*fTq-S4h_nYMAAAAAAAAAAAAADlB4AQ');
+    const comp = await player.loadScene(json);
 
   } catch (e) {
     console.error('biz', e);
@@ -22,7 +22,7 @@ function createPlayer () {
     container,
     interactive: true,
     // renderFramework: 'webgl',
-    env: 'editor',
+    // env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {
       console.info('onPausedByItem', data);
