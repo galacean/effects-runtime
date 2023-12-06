@@ -2,8 +2,7 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
-
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*vKGhS7H1ei8AAAAAAAAAAAAADlB4AQ';
+const json = inspireList.mask.url;
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -11,10 +10,6 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json);
-    const item = comp.getItemByName('spine_483');
-
-    setTimeout(() => {
-    }, 1000);
 
   } catch (e) {
     console.error('biz', e);
