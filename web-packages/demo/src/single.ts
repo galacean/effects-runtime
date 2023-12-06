@@ -11,6 +11,10 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json);
+    const item = comp.getItemByName('spine_483');
+
+    setTimeout(() => {
+    }, 1000);
 
   } catch (e) {
     console.error('biz', e);
