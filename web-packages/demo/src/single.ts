@@ -9,7 +9,7 @@ const container = document.getElementById('J-container');
   try {
     const player = createPlayer();
 
-    const comp = await player.loadScene(json);
+    await player.loadScene(json);
 
   } catch (e) {
     console.error('biz', e);
@@ -29,7 +29,6 @@ function createPlayer () {
     onItemClicked: () => {
 
     },
-    // reportGPUTime: console.debug,
   });
 
   return player;
