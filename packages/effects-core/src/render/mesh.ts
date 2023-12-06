@@ -54,7 +54,7 @@ export class Mesh implements Disposable {
 
   // 各引擎独立实现 priority，重写 getter/setter
   private _priority: number;
-  private visible = false;
+  private visible = true;
 
   /**
    * 创建一个新的 Mesh 对象。

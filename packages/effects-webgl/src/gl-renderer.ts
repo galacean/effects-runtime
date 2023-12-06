@@ -144,7 +144,7 @@ export class GLRenderer extends Renderer implements Disposable {
         // console.error(`mesh ${mesh.name} destroyed`, mesh);
         continue;
       }
-      if (mesh.getVisible()) {
+      if (!mesh.getVisible()) {
         continue;
       }
       if (!mesh.material) {

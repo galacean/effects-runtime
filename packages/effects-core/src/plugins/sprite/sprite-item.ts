@@ -294,7 +294,7 @@ export class SpriteItem extends CalculateItem {
     } else if (init) {
       ret.texOffset = [0, 0, 1, 1];
     }
-    ret.visible = this.visible;
+    ret.visible = this.vfxItem.contentVisible;
     // 图层元素作为父节点时，除了k的大小变换，自身的尺寸也需要传递给子元素，子元素可以通过startSize读取
     ret.startSize = this.startSize;
 

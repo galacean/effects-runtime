@@ -10,7 +10,7 @@ export class TextLoader extends AbstractPlugin {
   override name = 'text';
   addItems: TextVFXItem[] = [];
   removeItems: TextVFXItem[] = [];
-  public readonly meshes: Mesh[] = []; // meshSplits对应的mesh数组 每次diff后更新
+  public readonly meshes: Mesh[] = [];
 
   override onCompositionDestroyed (composition: Composition) {
     if (composition.reusable) {
@@ -26,11 +26,18 @@ export class TextLoader extends AbstractPlugin {
 
   override onCompositionUpdate (composition: Composition, dt: number): void {
     this.addItems.forEach(item => {
+      if (!item.contentVisible) {
+        item.content.mesh?.mesh.setVisible(false);
+
+        return;
+      } else {
+        item.content.mesh?.mesh.setVisible(true);
+      }
       item.content.updateTexture();
       if (!item.content.ended && item.content.mesh) {
         item.content.mesh.updateItem(item.content);
+        item.content.mesh?.applyChange();
       }
-      item.content.mesh?.applyChange();
     });
   }
 

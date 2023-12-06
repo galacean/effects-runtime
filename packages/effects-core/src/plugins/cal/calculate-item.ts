@@ -94,7 +94,7 @@ export class CalculateItem {
   private _velocity: spec.vec3;
   constructor (
     props: spec.NullContent,
-    vfxItem: VFXItem<VFXItemContent>,
+    protected vfxItem: VFXItem<VFXItemContent>,
   ) {
     this.transform = vfxItem.transform;
     const scale = this.transform.scale;

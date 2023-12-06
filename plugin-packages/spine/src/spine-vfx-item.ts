@@ -146,19 +146,21 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   }
 
   override onItemUpdate (dt: number, lifetime: number) {
-    if (lifetime < 0) {
-      // 还未开始 隐藏一下
-      this.setVisible(false);
-
-      return;
+    if (!this.content || !this.content.meshGroups.length) {
+      return ;
     }
-    this.setVisible(true);
-    this.updateState(dt / 1000);
+    const visible = this.contentVisible;
+
+    this.content.meshGroups.map((mesh: SpineMesh) => {
+      mesh.mesh.setVisible(visible);
+    });
+    if (visible) {
+      this.updateState(dt / 1000);
+    }
   }
 
   override onEnd () {
-    if (this.endBehavior === spec.END_BEHAVIOR_DESTROY) {
-      this.setVisible(false);
+    if (this.endBehavior === spec.END_BEHAVIOR_DESTROY && this.state) {
       this.state.clearListeners();
       this.state.clearTracks();
     }

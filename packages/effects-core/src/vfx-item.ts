@@ -30,7 +30,7 @@ export type VFXItemProps =
   }
   ;
 
-/**
+/*
  * 所有元素的继承的抽象类
  */
 export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
@@ -324,6 +324,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
 
         this.transform.setValid(true);
         this.createContent();
+        this._contentVisible = true;
         this.onLifetimeBegin(this.composition, this.content);
         this.composition.itemLifetimeEvent(this, true);
       }
@@ -366,7 +367,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
                 this.endBehavior = spec.END_BEHAVIOR_FORWARD;
               }
             } else if (this.endBehavior === spec.END_BEHAVIOR_DESTROY) {
-              this.setVisible(false);
+              this._contentVisible = false;
             }
             lifetime = Math.min(lifetime, 1);
           } else {
@@ -618,6 +619,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
     if (this.composition) {
       this.onItemRemoved(this.composition, this._content);
       this._content = undefined;
+      this._contentVisible = false;
     }
     this.started = false;
   }
