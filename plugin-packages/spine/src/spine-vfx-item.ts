@@ -135,7 +135,6 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     }
     this.state.apply(this.skeleton);
     this.resize();
-    this._contentVisible = true;
     this.updateState(0);
   }
 
@@ -379,7 +378,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   }
 
   getBounds (): BoundsData | undefined {
-    if (!(this.state && this.skeleton)) {
+    if (!(this.state && this.skeleton && this.contentVisible)) {
       return;
     }
     this.skeleton.updateWorldTransform();
