@@ -860,7 +860,7 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
-   * 设置合成在 3D 坐标轴上的位移
+   * 设置合成在 3D 坐标轴上相对原点的位移
    */
   setPosition (x: number, y: number, z: number) {
     this.content.setPosition(x, y, z);
@@ -874,7 +874,7 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
-   * 设置合成在 3D 坐标轴上的旋转（角度）
+   * 设置合成在 3D 坐标轴上的相对原点的旋转（角度）
    */
   setRotation (x: number, y: number, z: number) {
     this.content.setRotation(x, y, z);
