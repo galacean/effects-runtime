@@ -72,7 +72,7 @@ async function checkScene (keyName, name, url) {
     console.info(`[Compare]: Begin ${name}, ${url}`);
     const { oldPlayer, newPlayer, renderFramework } = controller;
 
-    runtimePlayer.player.compositions.length = 0;
+    newPlayer.player.compositions.length = 0;
     await oldPlayer.initialize(url);
     await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
@@ -130,6 +130,6 @@ async function checkScene (keyName, name, url) {
     );
 
     console.info(`[Compare]: End ${name}, ${url}`);
-    runtimePlayer.disposeScene();
+    newPlayer.disposeScene();
   });
 }

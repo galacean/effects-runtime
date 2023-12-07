@@ -56,22 +56,20 @@ export class TestPlayer {
     }
 
     Math.seedrandom('mars-runtime');
-    if (!this.player.oldVersion) {
+    if (this.oldVersion) {
+      this.scene = await this.player.loadSceneAsync(url, { ...loadOptions, timeout: 100 });
+      Math.seedrandom('mars-runtime');
+      this.composition = await this.player.play(this.scene, playerOptions ?? { pauseOnFirstFrame: true });
+    } else {
       getDefaultTemplateCanvasPool().dispose();
       const assetManager = new AssetManager();
       const json = await assetManager.loadScene(url);
 
       compatibleCalculateItem(json.jsonScene.compositions[0]);
-
       this.player.destroyCurrentCompositions();
       Math.seedrandom('mars-runtime');
       this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
       this.player.gotoAndStop(0);
-    } else {
-      // 旧版Mars调用
-      this.scene = await this.player.loadSceneAsync(url, { ...loadOptions, timeout: 100 });
-      Math.seedrandom('mars-runtime');
-      this.composition = await this.player.play(this.scene, playerOptions ?? { pauseOnFirstFrame: true });
     }
   }
 
