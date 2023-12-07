@@ -62,13 +62,13 @@ export class TestPlayer {
       this.composition = await this.player.play(this.scene, playerOptions ?? { pauseOnFirstFrame: true });
     } else {
       getDefaultTemplateCanvasPool().dispose();
-      const assetManager = new AssetManager();
+      const assetManager = new AssetManager({ ...loadOptions, timeout: 100, autoplay: false });
       const json = await assetManager.loadScene(url);
 
       compatibleCalculateItem(json.jsonScene.compositions[0]);
       this.player.destroyCurrentCompositions();
-      Math.seedrandom('mars-runtime');
       this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
+      Math.seedrandom('mars-runtime');
       this.player.gotoAndStop(0);
     }
   }
@@ -120,7 +120,7 @@ export class TestPlayer {
   }
 
   duration () {
-    return this.composition.compositionSourceManager.totalTime;
+    return this.composition.content.duration;
   }
 
   isLoop () {
