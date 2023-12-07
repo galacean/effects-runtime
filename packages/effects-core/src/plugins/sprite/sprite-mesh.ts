@@ -91,7 +91,7 @@ export class SpriteMesh {
     let pointCount = 0;
 
     if (!items.length) {
-      this.mesh.setVisible(true);
+      this.mesh.setVisible(false);
 
       return true;
     }
@@ -157,7 +157,7 @@ export class SpriteMesh {
     geometry.setIndexData(indexData);
     geometry.setAttributeData('aPoint', bundle.aPoint);
     geometry.setDrawCount(indexLen);
-    this.mesh.setVisible(!geometry.getDrawCount());
+    this.mesh.setVisible(!!geometry.getDrawCount());
     this.mesh.priority = items[0].listIndex;
     for (let i = 0; i < textures.length; i++) {
       const texture = textures[i];
@@ -195,7 +195,7 @@ export class SpriteMesh {
     const uQuatStart = start + 8;
     const uColorStart = start + 12;
 
-    if (!selfData.visible) {
+    if (!selfData.visible && !init) {
       mainDataArray[uSizeStart + 2] = -1;
 
       return;

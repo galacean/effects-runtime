@@ -25,21 +25,13 @@ export class SpriteVFXItem extends VFXItem<SpriteItem> {
   }
 
   override onLifetimeBegin (composition: Composition, content: SpriteItem) {
-    this._contentVisible = true;
     content.active = true;
   }
 
   override onItemRemoved (composition: Composition, content?: SpriteItem) {
-    this._contentVisible = false;
     if (content) {
       delete content.mesh;
       composition.destroyTextures(content.getTextures());
-    }
-  }
-
-  override handleVisibleChanged (visible: boolean) {
-    if (this.content) {
-      this.content.visible = visible;
     }
   }
 

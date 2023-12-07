@@ -135,24 +135,25 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     }
     this.state.apply(this.skeleton);
     this.resize();
-    this._contentVisible = true;
     this.updateState(0);
   }
 
   override onItemUpdate (dt: number, lifetime: number) {
-    if (lifetime < 0) {
-      // 还未开始 隐藏一下
-      this.setVisible(false);
-
-      return;
+    if (!this.content || !this.content.meshGroups.length) {
+      return ;
     }
-    this.setVisible(true);
-    this.updateState(dt / 1000);
+    const visible = this.contentVisible;
+
+    this.content.meshGroups.map((mesh: SpineMesh) => {
+      mesh.mesh.setVisible(visible);
+    });
+    if (visible) {
+      this.updateState(dt / 1000);
+    }
   }
 
   override onEnd () {
-    if (this.endBehavior === spec.END_BEHAVIOR_DESTROY) {
-      this.setVisible(false);
+    if (this.endBehavior === spec.END_BEHAVIOR_DESTROY && this.state) {
       this.state.clearListeners();
       this.state.clearTracks();
     }
@@ -376,8 +377,14 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
   }
 
+  override setScale (sx: number, sy: number, sz: number) {
+    const { x, y, z } = this.transform.scale;
+
+    this.transform.setScale(x * sx, y * sy, z * sz);
+  }
+
   getBounds (): BoundsData | undefined {
-    if (!(this.state && this.skeleton)) {
+    if (!(this.state && this.skeleton && this.contentVisible)) {
       return;
     }
     this.skeleton.updateWorldTransform();

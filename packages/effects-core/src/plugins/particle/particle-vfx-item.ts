@@ -54,9 +54,9 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
         }
       }
       if (hide) {
-        this.content.setVisible(true);
-      } else {
         this.content.setVisible(false);
+      } else {
+        this.content.setVisible(true);
         this.content.onUpdate(dt);
       }
 
