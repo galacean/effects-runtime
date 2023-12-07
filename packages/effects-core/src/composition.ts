@@ -15,7 +15,7 @@ import type { Texture } from './texture';
 import { TextureSourceType } from './texture';
 import { RenderFrame } from './render';
 import { Camera } from './camera';
-import { setRayFromCamera, intersectRayTriangle, intersectRayBox, intersectRaySphere, quatFromRotation } from './math';
+import { setRayFromCamera, intersectRayTriangle, intersectRayBox, intersectRaySphere } from './math';
 import { HitTestType } from './plugins';
 import type { Region } from './plugins';
 import { CompositionSourceManager } from './composition-source-manager';

@@ -57,6 +57,7 @@ export class TextLoader extends AbstractPlugin {
   }
 
   override onCompositionItemRemoved (composition: Composition, item: VFXItem<TextItem>) {
+    // FIXME: 此处判断有问题，item 应该先判断
     if (item instanceof TextVFXItem && item) {
       addItem(this.removeItems, item);
       if (this.addItems.includes(item)) {
@@ -76,7 +77,6 @@ export class TextLoader extends AbstractPlugin {
         removeItem(this.addItems, item);
         item.content.mesh.mesh.dispose({ material: { textures: DestroyOptions.keep } });
         item.dispose();
-
       }
     });
 
