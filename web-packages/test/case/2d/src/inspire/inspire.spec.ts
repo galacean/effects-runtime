@@ -9,7 +9,7 @@ const { expect } = chai;
  */
 const accumRatioThreshold = 3e-4;
 const pixelDiffThreshold = 1;
-const dumpImageForDebug = false;
+const dumpImageForDebug = true;
 const canvasWidth = 512;
 const canvasHeight = 512;
 let controller, cmpStats;

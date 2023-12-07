@@ -73,22 +73,23 @@ export class TestPlayer {
     }
   }
 
-  gotoTime (time) {
+  gotoTime (newtime) {
+
+    let time = newtime;
+
+    // 兼容旧 Player 设置结束行为为重播时在第duration秒会回到第0帧
+    if (this.composition.content.endBehavior === 5 && newtime === this.composition.content.duration) {
+      time -= 0.01;
+    }
     const deltaTime = time - this.lastTime;
 
-    this.lastTime = time;
-    //
+    this.lastTime = newtime;
     Math.seedrandom(`mars-runtime${time}`);
     if (this.player.gotoAndStop) {
       this.player.gotoAndStop(time);
-      const comp = this.player.getCompositions()[0];
-
-      if (comp.time === comp.duration && comp.content.endBehavior === 5) {
-        this.player.gotoAndStop(0);
-      }
     } else {
       this.composition.forwardTime(deltaTime);
-      this.player.tick(0);
+      this.player.doTick(0, true);
     }
   }
 
