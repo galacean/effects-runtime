@@ -760,16 +760,20 @@ export class PluginHelper {
       return;
     }
 
-    let compIndex = 0;
-    const jsonScene = scene.jsonScene;
+    const { jsonScene } = scene;
+    const compIndexSet: Set<number> = new Set();
+
+    if (jsonScene.compositionId === undefined) {
+      compIndexSet.add(0);
+    }
 
     jsonScene.compositions.forEach((comp, index) => {
-      if (comp.id === jsonScene.compositionId) {
-        compIndex = index;
+      if (comp.id === jsonScene.compositionId || composition.refCompositionProps.has(comp.id)) {
+        compIndexSet.add(index);
       }
     });
 
-    if (compIndex >= 0 && compIndex < jsonScene.compositions.length) {
+    compIndexSet.forEach(compIndex => {
       const sceneComp = jsonScene.compositions[compIndex];
 
       sceneComp.items.forEach((item, itemId) => {
@@ -863,7 +867,7 @@ export class PluginHelper {
           }
         }
       });
-    }
+    });
 
   }
 
