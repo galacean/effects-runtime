@@ -377,8 +377,8 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
   }
 
-  override setScale (x: number, y: number, z: number) {
-    const [sx, sy, sz] = this.transform.scale;
+  override setScale (sx: number, sy: number, sz: number) {
+    const { x, y, z } = this.transform.scale;
 
     this.transform.setScale(x * sx, y * sy, z * sz);
   }

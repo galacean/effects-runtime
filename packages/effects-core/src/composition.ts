@@ -9,14 +9,15 @@ import { Transform } from './transform';
 import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
 import type { ItemNode } from './comp-vfx-item';
 import { CompVFXItem } from './comp-vfx-item';
-import type { InteractVFXItem, Plugin, EventSystem, Region } from './plugins';
+import type { InteractVFXItem, Plugin, EventSystem } from './plugins';
 import type { PluginSystem } from './plugin-system';
 import type { MeshRendererOptions, Renderer, GlobalVolume } from './render';
-import { RenderFrame } from './render';
 import type { Texture } from './texture';
 import { TextureSourceType } from './texture';
+import { RenderFrame } from './render';
 import { Camera } from './camera';
 import { setRayFromCamera } from './math';
+import type { Region } from './plugins';
 import { CompositionSourceManager } from './composition-source-manager';
 
 export interface CompositionStatistic {

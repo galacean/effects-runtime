@@ -36,7 +36,7 @@ export type VFXItemProps =
   }
   ;
 
-/*
+/**
  * 所有元素的继承的抽象类
  */
 export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
