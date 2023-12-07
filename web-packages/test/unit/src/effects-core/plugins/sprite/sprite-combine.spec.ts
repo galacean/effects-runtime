@@ -61,10 +61,7 @@ describe('combine sprite meshes according to items', () => {
 
   // 粒子元素不参与合并
   it('[getMeshSplits] combine composition items ignore invisible items and other type', async () => {
-    player = new Player({
-      canvas: document.createElement('canvas'),
-      manualRender: true,
-    });
+
     const comp = await player.loadScene(generateSceneByOpts([
       {}, { delay: 1 }, {},
       { blending: 1, delay: 1 },

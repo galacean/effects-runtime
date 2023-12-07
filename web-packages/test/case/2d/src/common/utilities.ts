@@ -56,41 +56,40 @@ export class TestPlayer {
     }
 
     Math.seedrandom('mars-runtime');
-    if (!this.player.oldVersion) {
-      getDefaultTemplateCanvasPool().dispose();
-      const assetManager = new AssetManager();
-      const json = await assetManager.loadScene(url);
-
-      compatibleCalculateItem(json.jsonScene.compositions[0]);
-
-      this.player.destroyCurrentCompositions();
-      Math.seedrandom('mars-runtime');
-      this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
-      this.player.gotoAndStop(0);
-    } else {
-      // 旧版Mars调用
+    if (this.oldVersion) {
       this.scene = await this.player.loadSceneAsync(url, { ...loadOptions, timeout: 100 });
       Math.seedrandom('mars-runtime');
       this.composition = await this.player.play(this.scene, playerOptions ?? { pauseOnFirstFrame: true });
+    } else {
+      getDefaultTemplateCanvasPool().dispose();
+      const assetManager = new AssetManager({ ...loadOptions, timeout: 100, autoplay: false });
+      const json = await assetManager.loadScene(url);
+
+      compatibleCalculateItem(json.jsonScene.compositions[0]);
+      this.player.destroyCurrentCompositions();
+      this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
+      Math.seedrandom('mars-runtime');
+      this.player.gotoAndStop(0);
     }
   }
 
-  gotoTime (time) {
+  gotoTime (newtime) {
+
+    let time = newtime;
+
+    // 兼容旧 Player 设置结束行为为重播时在第duration秒会回到第0帧
+    if (this.composition.content.endBehavior === 5 && newtime === this.composition.content.duration) {
+      time -= 0.01;
+    }
     const deltaTime = time - this.lastTime;
 
-    this.lastTime = time;
-    //
+    this.lastTime = newtime;
     Math.seedrandom(`mars-runtime${time}`);
     if (this.player.gotoAndStop) {
       this.player.gotoAndStop(time);
-      const comp = this.player.getCompositions()[0];
-
-      if (comp.time === comp.duration && comp.content.endBehavior === 5) {
-        this.player.gotoAndStop(0);
-      }
     } else {
       this.composition.forwardTime(deltaTime);
-      this.player.tick(0);
+      this.player.doTick(0, true);
     }
   }
 
@@ -122,7 +121,7 @@ export class TestPlayer {
   }
 
   duration () {
-    return this.composition.compositionSourceManager.totalTime;
+    return this.composition.content.duration;
   }
 
   isLoop () {
