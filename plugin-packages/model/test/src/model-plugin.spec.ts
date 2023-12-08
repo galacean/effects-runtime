@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/quotes */
 // @ts-nocheck
 import { Player, HitTestType, spec, math } from '@galacean/effects';
+import { generateComposition } from './utilities';
+
 const { Vector3 } = math;
 
 const { expect } = chai;
@@ -63,15 +65,15 @@ describe('mode plugin test', function () {
       "plugins": ["model"],
       "_imgs": { "1": [] },
     };
-    const comp = await generateComposition(player, scn, {}, { pauseOnFirstFrame: true });
+    const comp = await generateComposition(player, scn, {}, { autoplay: false });
     const cameraItem = comp.getItemByName('camera');
 
     let pos = cameraItem.content.transform.getPosition();
 
     expect(pos.toArray()).to.deep.equal([0, 0, 8]);
     expect(cameraItem.duration).to.eql(5);
-    comp.gotoAndPlay(1.9);
-    pos = cameraItem.content.transform.getPosition().toArray();
+    comp.gotoAndStop(1.9);
+    pos = cameraItem.content.transform.getPosition();
     const cp = new Vector3();
 
     cameraItem.transform.assignWorldTRS(cp);

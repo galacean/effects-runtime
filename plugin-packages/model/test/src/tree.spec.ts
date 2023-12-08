@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { Player, math, spec } from '@galacean/effects';
 import { ModelTreeVFXItem } from '@galacean/effects-plugin-model';
+import { generateComposition } from './utilities';
+
 const { Vector3 } = math;
 
 const { expect } = chai;
