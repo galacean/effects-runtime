@@ -7,6 +7,22 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.1.0
+
+`2023-12-11`
+
+- Feat: Added support for direct parsing and playback of pre-compositions, and unified math library. [#3cd9c82](https://github.com/galacean/effects-runtime/commit/3cd9c8265013407f4aa9b52fe0c838e7ffecb66d)
+- Fix: solve pre composition problem in 3D plugin. [#27](https://github.com/galacean/effects-runtime/pull/27) @liuxi150
+- Fix: errors about visible and transform when setting. [#25](https://github.com/galacean/effects-runtime/pull/25) @RGCHN
+- Fix: hitTest bug in pre-composition. [#9](https://github.com/galacean/effects-runtime/pull/9) @RGCHN
+- Fix: Resolved dragging issue. [#8](https://github.com/galacean/effects-runtime/pull/8) @liuxi150
+- Fix: add id and transform setting from pre-composition item. [#5](https://github.com/galacean/effects-runtime/pull/5) @RGCHN
+- Chore: auto tigger bot review for specific branches. [#23](https://github.com/galacean/effects-runtime/pull/23) @zheeeng
+- Test: fix plugin unit test. [#28](https://github.com/galacean/effects-runtime/pull/28) @liuxi150
+- Test: fix unit and case test problems. [#26](https://github.com/galacean/effects-runtime/pull/26) @liuxi150
+- Build: support CHANGELOG generation script. [#4](https://github.com/galacean/effects-runtime/pull/4) @yiiqii
+- Build: add vite legacy polyfill. [#29](https://github.com/galacean/effects-runtime/pull/29) @yiiqii
+
 ## 1.0.1
 
 `2023-12-04`

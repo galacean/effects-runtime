@@ -19,7 +19,7 @@ function printPR(prList) {
     const authorText = `@${author}`;
     const urlText = `[#${pr}](${url})`;
 
-    console.log(`- ${titleText}。${urlText} ${authorText}`);
+    console.log(`- ${titleText}. ${urlText} ${authorText}`);
 
     if (descriptions.length !== 0) {
       console.log(descriptions.map(desc => `  - ${desc}`).join('\n'));
