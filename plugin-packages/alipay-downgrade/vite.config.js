@@ -36,6 +36,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       legacy({
         targets: ['iOS >= 9'],
+        modernPolyfills: ['es/global-this'],
       }),
       glslInner(),
       tsconfigPaths(),

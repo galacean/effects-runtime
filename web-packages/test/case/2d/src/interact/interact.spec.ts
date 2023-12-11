@@ -41,16 +41,16 @@ function addDescribe (renderFramework) {
 async function checkScene (keyName, name, url) {
   it(`${name}`, async () => {
     console.info(`[Compare]: Begin ${name}, ${url}`);
-    const { marsPlayer, runtimePlayer, renderFramework } = controller;
+    const { oldPlayer, newPlayer, renderFramework } = controller;
 
-    await marsPlayer.initialize(url);
-    await runtimePlayer.initialize(url);
+    await oldPlayer.initialize(url);
+    await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
     const timeList = [
-      0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.66, 0.71, 0.83, 0.96,
-      1.1, 1.23, 1.45, 1.67, 1.88, 2.1, 2.5, 3.3, 4.7, 5.2, 6.8,
-      7.5, 8.6, 9.7, 9.99,
+      0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.66, 0.71, 0.83, 0.96, 1.0,
+      1.1, 1.23, 1.34, 1.45, 1.55, 1.67, 1.73, 1.88, 1.99,
+      2.1, 2.5, 3.3, 4.7, 5.2, 6.8, 7.5, 8.6, 9.7, 9.99,
     ];
     let marsRet, runtimeRet;
 
@@ -58,17 +58,17 @@ async function checkScene (keyName, name, url) {
 
       const time = timeList[i];
 
-      if (!marsPlayer.isLoop() && time > marsPlayer.duration()) {
+      if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
         break;
       }
       //
-      marsPlayer.gotoTime(time);
-      runtimePlayer.gotoTime(time);
+      oldPlayer.gotoTime(time);
+      newPlayer.gotoTime(time);
       //
       Math.seedrandom(`hit-test${i}`);
 
-      // console.log(marsPlayer.compositions[0]);
-      // console.log(runtimePlayer.currentComposition);
+      // console.log(oldPlayer.compositions[0]);
+      // console.log(newPlayer.currentComposition);
 
       if (Math.random() < 0.75) {
         const count = Math.round(Math.random() * 8);
@@ -77,8 +77,8 @@ async function checkScene (keyName, name, url) {
           const x = Math.random() * 2.0 - 1.0;
           const y = Math.random() * 2.0 - 1.0;
 
-          marsRet = marsPlayer.hitTest(x, y);
-          runtimeRet = runtimePlayer.hitTest(x, y);
+          marsRet = oldPlayer.hitTest(x, y);
+          runtimeRet = newPlayer.hitTest(x, y);
 
           expect(marsRet.length).to.eql(runtimeRet.length);
           for (let k = 0; k < marsRet.length; k++) {
@@ -89,13 +89,13 @@ async function checkScene (keyName, name, url) {
         let hitPos;
 
         if (Math.random() < 0.5) {
-          hitPos = marsPlayer.getRandomPointInParticle();
+          hitPos = oldPlayer.getRandomPointInParticle();
         } else {
-          hitPos = runtimePlayer.getRandomPointInParticle();
+          hitPos = newPlayer.getRandomPointInParticle();
         }
 
-        marsRet = marsPlayer.hitTest(hitPos[0], hitPos[1]);
-        runtimeRet = runtimePlayer.hitTest(hitPos[0], hitPos[1]);
+        marsRet = oldPlayer.hitTest(hitPos[0], hitPos[1]);
+        runtimeRet = newPlayer.hitTest(hitPos[0], hitPos[1]);
 
         expect(marsRet.length).to.eql(runtimeRet.length);
         for (let j = 0; j < marsRet.length; j++) {
@@ -103,12 +103,12 @@ async function checkScene (keyName, name, url) {
         }
       }
 
-      const marsImage = await marsPlayer.readImageBuffer();
-      const runtimeImage = await runtimePlayer.readImageBuffer();
+      const oldImage = await oldPlayer.readImageBuffer();
+      const newImage = await newPlayer.readImageBuffer();
 
-      expect(marsImage.length).to.eql(runtimeImage.length);
+      expect(oldImage.length).to.eql(newImage.length);
       //
-      const pixelDiffValue = await imageCmp.compareImages(marsImage, runtimeImage);
+      const pixelDiffValue = await imageCmp.compareImages(oldImage, newImage);
       const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
       if (pixelDiffValue > 0) {
@@ -117,11 +117,11 @@ async function checkScene (keyName, name, url) {
       if (diffCountRatio > accumRatioThreshold) {
         console.error('FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
         if (dumpImageForDebug) {
-          const marsFileName = `${namePrefix}_${name}_${time}_mars.png`;
-          const runtimeFileName = `${namePrefix}_${name}_${time}_runtime.png`;
+          const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
+          const newFileName = `${namePrefix}_${name}_${time}_new.png`;
 
-          await marsPlayer.saveCanvasToFile(marsFileName);
-          await runtimePlayer.saveCanvasToFile(runtimeFileName);
+          await oldPlayer.saveCanvasToFile(oldFileName);
+          await newPlayer.saveCanvasToFile(newFileName);
         }
       }
 

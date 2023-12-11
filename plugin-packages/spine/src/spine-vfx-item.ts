@@ -1,19 +1,13 @@
-import {
-  HitTestType,
-  VFXItem,
-  spec,
-  vec3MulMat4,
-  PLAYER_OPTIONS_ENV_EDITOR,
-  assertExist,
-} from '@galacean/effects';
+import { HitTestType, VFXItem, spec, PLAYER_OPTIONS_ENV_EDITOR, assertExist, math } from '@galacean/effects';
 import type { HitTestTriangleParams, Engine, Composition, VFXItemProps, BoundingBoxTriangle } from '@galacean/effects';
 import type { AnimationStateListener, SkeletonData } from './core';
 import { AnimationState, AnimationStateData, Skeleton } from './core';
-import { Vector2 } from './math/vector2';
 import { SlotGroup } from './slot-group';
 import type { SpineResource } from './spine-loader';
 import { createSkeletonData, getAnimationDuration } from './utils';
 import type { SpineMesh } from './spine-mesh';
+
+const { Vector2, Vector3 } = math;
 
 export interface BoundsData {
   x: number,
@@ -141,24 +135,25 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     }
     this.state.apply(this.skeleton);
     this.resize();
-    this._contentVisible = true;
     this.updateState(0);
   }
 
   override onItemUpdate (dt: number, lifetime: number) {
-    if (lifetime < 0) {
-      // 还未开始 隐藏一下
-      this.setVisible(false);
-
-      return;
+    if (!this.content || !this.content.meshGroups.length) {
+      return ;
     }
-    this.setVisible(true);
-    this.updateState(dt / 1000);
+    const visible = this.contentVisible;
+
+    this.content.meshGroups.map((mesh: SpineMesh) => {
+      mesh.mesh.setVisible(visible);
+    });
+    if (visible) {
+      this.updateState(dt / 1000);
+    }
   }
 
   override onEnd () {
-    if (this.endBehavior === spec.END_BEHAVIOR_DESTROY) {
-      this.setVisible(false);
+    if (this.endBehavior === spec.END_BEHAVIOR_DESTROY && this.state) {
       this.state.clearListeners();
       this.state.clearTracks();
     }
@@ -191,19 +186,19 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     const wm = this.transform.getWorldMatrix();
     const centerX = x + width / 2;
     const centerY = y + height / 2;
-    const p0: spec.vec3 = [centerX - width / 2, centerY - height / 2, 0];
-    const p1: spec.vec3 = [centerX + width / 2, centerY - height / 2, 0];
-    const p2: spec.vec3 = [centerX + width / 2, centerY + height / 2, 0];
-    const p3: spec.vec3 = [centerX - width / 2, centerY + height / 2, 0];
+    const p0 = new Vector3(centerX - width / 2, centerY - height / 2, 0);
+    const p1 = new Vector3(centerX + width / 2, centerY - height / 2, 0);
+    const p2 = new Vector3(centerX + width / 2, centerY + height / 2, 0);
+    const p3 = new Vector3(centerX - width / 2, centerY + height / 2, 0);
 
-    vec3MulMat4(p0, p0, wm);
-    vec3MulMat4(p1, p1, wm);
-    vec3MulMat4(p2, p2, wm);
-    vec3MulMat4(p3, p3, wm);
+    wm.projectPoint(p0);
+    wm.projectPoint(p1);
+    wm.projectPoint(p2);
+    wm.projectPoint(p3);
 
     res.area = [
-      [p0, p1, p2],
-      [p0, p2, p3],
+      { p0, p1, p2 },
+      { p0: p0, p1: p2, p2: p3 },
     ];
 
     return res;
@@ -379,11 +374,17 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     const scaleFactor = 1 / width;
 
     this.scaleFactor = scaleFactor;
-    this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale[2]);
+    this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
+  }
+
+  override setScale (sx: number, sy: number, sz: number) {
+    const { x, y, z } = this.transform.scale;
+
+    this.transform.setScale(x * sx, y * sy, z * sz);
   }
 
   getBounds (): BoundsData | undefined {
-    if (!(this.state && this.skeleton)) {
+    if (!(this.state && this.skeleton && this.contentVisible)) {
       return;
     }
     this.skeleton.updateWorldTransform();

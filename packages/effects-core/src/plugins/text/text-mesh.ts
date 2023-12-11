@@ -12,7 +12,7 @@ export class TextMesh extends SpriteMesh {
    */
   override getItemGeometryData (item: SpriteItem, aIndex: number) {
     const { splits, renderer, textureSheetAnimation, startSize, textLayout } = item as TextItem;
-    const [sx, sy] = startSize;
+    const { x: sx, y: sy } = startSize;
 
     if (renderer.shape) {
       const { index, aPoint } = renderer.shape;

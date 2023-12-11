@@ -1,7 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import type { vec3 } from '@galacean/effects-specification';
-import { DEG2RAD } from '../constants';
-import { vecDot, vecNormalize } from '../math';
+import { DEG2RAD, Vector3 } from '@galacean/effects-math/es/core/index';
 import { random } from '../utils';
 import type { Shape, ShapeGeneratorOptions, ShapeParticle } from './index';
 
@@ -23,16 +21,16 @@ export class Cone implements Shape {
     const x = Math.cos(a) * this.radius;
     const y = Math.sin(a) * this.radius;
 
-    const position = [x, y, 0];
+    const position = new Vector3(x, y, 0);
     const l = Math.tan(this.angle * DEG2RAD);
-    const dir = vecDot([], position, l) as vec3;
+    const dir = position.clone().multiply(l);
 
     // dir + [0,0,1]
-    dir[2] += 1;
+    dir.z += 1;
 
     return {
-      position: vecDot(position, position, random(0, 1)) as vec3,
-      direction: vecNormalize(dir, dir),
+      position: position.multiply(random(0, 1)),
+      direction: dir.normalize(),
     };
   }
 }

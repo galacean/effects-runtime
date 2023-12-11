@@ -1,15 +1,5 @@
-import type { Disposable, FrameBuffer, Geometry, LostHandler, Material, Mesh, RenderFrame, RenderPass, RenderPassClearAction, RenderPassStoreAction, RestoreHandler, ShaderLibrary, mat4 } from '@galacean/effects-core';
-import {
-  assertExist,
-  glContext,
-  Renderer,
-  RenderPassAttachmentStorageType,
-  TextureLoadAction,
-  TextureSourceType,
-  FilterMode,
-  RenderTextureFormat,
-  sortByOrder,
-} from '@galacean/effects-core';
+import type { Disposable, FrameBuffer, Geometry, LostHandler, Material, Mesh, RenderFrame, RenderPass, RenderPassClearAction, RenderPassStoreAction, RestoreHandler, ShaderLibrary, math } from '@galacean/effects-core';
+import { assertExist, glContext, Renderer, RenderPassAttachmentStorageType, TextureLoadAction, TextureSourceType, FilterMode, RenderTextureFormat, sortByOrder } from '@galacean/effects-core';
 import { ExtWrap } from './ext-wrap';
 import { GLContextManager } from './gl-context-manager';
 import { GLFrameBuffer } from './gl-frame-buffer';
@@ -17,6 +7,8 @@ import { GLPipelineContext } from './gl-pipeline-context';
 import { GLRendererInternal } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
 import { GLEngine } from './gl-engine';
+
+type Matrix4 = math.Matrix4;
 
 export class GLRenderer extends Renderer implements Disposable {
   glRenderer: GLRendererInternal;
@@ -144,7 +136,7 @@ export class GLRenderer extends Renderer implements Disposable {
         // console.error(`mesh ${mesh.name} destroyed`, mesh);
         continue;
       }
-      if (mesh.getVisible()) {
+      if (!mesh.getVisible()) {
         continue;
       }
       if (!mesh.material) {
@@ -170,7 +162,7 @@ export class GLRenderer extends Renderer implements Disposable {
     this.renderingData.currentFrame.globalUniforms.ints[name] = value;
   }
 
-  override setGlobalMatrix (name: string, value: mat4) {
+  override setGlobalMatrix (name: string, value: Matrix4) {
     this.checkGlobalUniform(name);
     this.renderingData.currentFrame.globalUniforms.matrices[name] = value;
   }

@@ -1,5 +1,6 @@
-//@ts-nocheck
-import { Player, EVENT_TYPE_CLICK, vec3MulMat4, spec } from '@galacean/effects';
+// @ts-nocheck
+import { Player, EVENT_TYPE_CLICK, spec, math } from '@galacean/effects';
+const { Vector3 } = math;
 
 const { expect } = chai;
 
@@ -61,17 +62,15 @@ describe('interact item', () => {
 
     clicked = false;
     edgePoints.forEach(p => {
-      const inPos = [];
+      const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      vec3MulMat4(inPos, [p[0], p[1], 0], vp);
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos[0], y: inPos[1] });
+      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
       expect(clicked).to.be.true;
       clicked = false;
     });
-    const outPos = [];
+    const outPos = vp.projectPoint(new Vector3(width / 2 + 0.2, height / 2 + 0.2), new Vector3());
 
-    vec3MulMat4(outPos, [width / 2 + 0.2, height / 2 + 0.2], vp);
-    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos[0], y: outPos[1] });
+    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
     expect(clicked).to.be.false;
   });
 
@@ -125,14 +124,12 @@ describe('interact item', () => {
 
     clicked = false;
     edgePoints.forEach(p => {
-      const inPos = [];
-      const outPos = [];
+      const inPos = vp.projectPoint(new Vector3(p[1] - 1, p[0] + 1, 0), new Vector3());
+      const outPos = vp.projectPoint(new Vector3(p[0] - 1, p[1] + 1, 0), new Vector3());
 
-      vec3MulMat4(inPos, [p[1] - 1, p[0] + 1, 0], vp);
-      vec3MulMat4(outPos, [p[0] - 1, p[1] + 1, 0], vp);
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos[0], y: outPos[1] });
+      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
       expect(clicked).to.be.false;
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos[0], y: inPos[1] });
+      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
       expect(clicked).to.be.true;
       clicked = false;
     });
@@ -162,17 +159,15 @@ describe('interact item', () => {
     ];
     const composition = await generateComposition(items, player, {});
     const vp = composition.camera.getViewProjectionMatrix();
-    const inPos = [];
+    const inPos = vp.projectPoint(new Vector3(1, 1, 0), new Vector3());
 
-    vec3MulMat4(inPos, [1, 1, 0], vp);
     clicked = false;
-    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos[0], y: inPos[1] });
+    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
     expect(clicked).to.be.true;
     clicked = false;
-    const outPos = [];
+    const outPos = vp.projectPoint(new Vector3(0.5, 0.5, 0), new Vector3());
 
-    vec3MulMat4(outPos, [0.5, 0.5, 0], vp);
-    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos[0], y: outPos[1] });
+    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
     expect(clicked).to.be.false;
   });
 
@@ -254,11 +249,9 @@ describe('interact item', () => {
     composition.setEditorTransform(scale, dx, dy);
     edgePoints.forEach(p => {
       clicked = false;
-      const inPos = [];
+      const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      vec3MulMat4(inPos, [p[0], p[1], 0], vp);
-
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: scale * inPos[0] + dx, y: scale * inPos[1] + dy });
+      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: scale * inPos.x + dx, y: scale * inPos.y + dy });
       expect(clicked).to.be.true;
     });
   });
@@ -305,10 +298,9 @@ describe('interact item', () => {
     const edgePoints = [[0, height / 2], [width / 2, height / 2], [0, -height / 2], [width / 2, -height / 2]];
 
     edgePoints.forEach(p => {
-      const inPos = [];
+      const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      vec3MulMat4(inPos, [p[0], p[1], 0], vp);
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos[0], y: inPos[1] });
+      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
       expect(hitPositions.length).to.eql(2);
     });
   });
@@ -340,10 +332,9 @@ describe('interact item', () => {
 
     edgePoints.forEach(p => {
       clicked = false;
-      const inPos = [];
+      const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      vec3MulMat4(inPos, [p[0], p[1], 0], vp);
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos[0], y: inPos[1] });
+      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
       expect(clicked).to.be.false;
     });
   });
@@ -391,10 +382,9 @@ describe('interact item', () => {
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
     edgePoints.forEach(p => {
-      const inPos = [];
+      const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      vec3MulMat4(inPos, [p[0], p[1], 0], vp);
-      const ret = composition.hitTest(inPos[0], inPos[1], false, { skip: skipFunc });
+      const ret = composition.hitTest(inPos.x, inPos.y, false, { skip: skipFunc });
 
       expect(ret.length).to.eql(1);
     });
@@ -458,14 +448,12 @@ describe('interact item', () => {
 
     clicked = false;
     edgePoints.forEach(p => {
-      const inPos = [];
-      const outPos = [];
+      const inPos = vp.projectPoint(new Vector3(p[0] + 0.2 * currentTime, p[1] + currentTime * currentTime / 2 / duration, 0), new Vector3());
+      const outPos = vp.projectPoint(new Vector3(p[1] + 0.2 * currentTime, p[0] + currentTime * currentTime / 2 / duration, 0), new Vector3());
 
-      vec3MulMat4(inPos, [p[0] + 0.2 * currentTime, p[1] + currentTime * currentTime / 2 / duration, 0], vp);
-      vec3MulMat4(outPos, [p[1] + 0.2 * currentTime, p[0] + currentTime * currentTime / 2 / duration, 0], vp);
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos[0], y: outPos[1] });
+      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
       expect(clicked).to.be.false;
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos[0], y: inPos[1] });
+      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
       expect(clicked).to.be.true;
       clicked = false;
     });

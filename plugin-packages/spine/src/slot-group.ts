@@ -1,5 +1,5 @@
-import { mat4create } from '@galacean/effects';
-import type { Transform, Texture, mat4, Mesh, Engine } from '@galacean/effects';
+import { math } from '@galacean/effects';
+import type { Transform, Texture, Mesh, Engine } from '@galacean/effects';
 import type { Slot, BlendMode } from './core';
 import { ClippingAttachment, MeshAttachment, RegionAttachment, SkeletonClipping } from './core';
 import type { NumberArrayLike } from './utils';
@@ -46,7 +46,7 @@ export class SlotGroup {
   /**
    * 世界变换矩阵
    */
-  private wm: mat4 = mat4create();
+  private wm = math.Matrix4.fromIdentity();
   /**
    * 当前环境，用于 editor
    */

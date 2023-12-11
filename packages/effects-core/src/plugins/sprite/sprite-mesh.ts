@@ -1,4 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
+import { Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Composition } from '../../composition';
 import { PLAYER_OPTIONS_ENV_EDITOR, SPRITE_VERTEX_STRIDE } from '../../constants';
 import type { FilterShaderDefine } from '../../filter';
@@ -14,7 +15,6 @@ import {
   ShaderType,
 } from '../../material';
 import type { ValueGetter } from '../../math';
-import { mat4create } from '../../math';
 import type { GeometryDrawMode, GPUCapabilityDetail, SharedShaderWithSource } from '../../render';
 import { Geometry, GLSLVersion, Mesh } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
@@ -28,7 +28,7 @@ export type SpriteRenderData = {
   life: number,
   transform: Transform,
   visible?: boolean,
-  startSize?: spec.vec3,
+  startSize?: Vector3,
   color?: spec.vec4,
   texOffset?: spec.vec4,
   active?: boolean,
@@ -76,7 +76,7 @@ export class SpriteMesh {
       {
         name: 'MSprite' + seed++,
         priority: 0,
-        worldMatrix: mat4create(),
+        worldMatrix: Matrix4.fromIdentity(),
         geometry,
         material,
       });
@@ -91,7 +91,7 @@ export class SpriteMesh {
     let pointCount = 0;
 
     if (!items.length) {
-      this.mesh.setVisible(true);
+      this.mesh.setVisible(false);
 
       return true;
     }
@@ -157,7 +157,7 @@ export class SpriteMesh {
     geometry.setIndexData(indexData);
     geometry.setAttributeData('aPoint', bundle.aPoint);
     geometry.setDrawCount(indexLen);
-    this.mesh.setVisible(!geometry.getDrawCount());
+    this.mesh.setVisible(!!geometry.getDrawCount());
     this.mesh.priority = items[0].listIndex;
     for (let i = 0; i < textures.length; i++) {
       const texture = textures[i];
@@ -195,21 +195,33 @@ export class SpriteMesh {
     const uQuatStart = start + 8;
     const uColorStart = start + 12;
 
-    if (!selfData.visible) {
+    if (!selfData.visible && !init) {
       mainDataArray[uSizeStart + 2] = -1;
 
       return;
     }
 
-    const uPos = [0, 0, 0, 0];
-    const uSize = [1, 1, 1, 0];
-    const uQuat = [0, 0, 1, 1];
     const uColor = selfData.color || [mainDataArray[uColorStart], mainDataArray[uColorStart + 1], mainDataArray[uColorStart + 2], mainDataArray[uColorStart + 3]];
+
+    // if (selfData.startSize) {
+    //   selfData.transform.scaleBy(1 / selfData.startSize[0], 1 / selfData.startSize[1], 1);
+    // }
+
+    const tempPos = new Vector3();
+    const tempQuat = new Quaternion();
+    const tempScale = new Vector3();
+
+    selfData.transform.assignWorldTRS(tempPos, tempQuat, tempScale);
+
+    const uPos = [...tempPos.toArray(), 0];
+    const uSize = [...tempScale.toArray(), 0];
+    const uQuat = tempQuat.toArray();
 
     if (!isNaN(item.getCustomOpacity())) {
       uColor[3] = item.getCustomOpacity();
     }
-    selfData.transform.assignWorldTRS(uPos, uQuat, uSize);
+
+    // selfData.transform.assignWorldTRS(uPos, uQuat, uSize);
 
     /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
     // vecMulCombine(uColor, selfData.color, parentData.color);
@@ -375,23 +387,23 @@ export class SpriteMesh {
         } else if (typeof value === 'number') {
           material.setFloat(key, value);
         } else if ((value as number[]).length === 2) {
-          material.setVector2(key, value as spec.vec2);
+          material.setVector2(key, Vector2.fromArray(value as spec.vec2));
         } else if ((value as number[]).length === 4) {
-          material.setVector4(key, value as spec.vec4);
+          material.setVector4(key, Vector4.fromArray(value as spec.vec4));
         } else {
-          material.setMatrix(key, value as spec.mat4);
+          material.setMatrix(key, Matrix4.fromArray(value as spec.mat4));
         }
       }
     }
 
-    const uMainData: spec.mat4[] = [];
-    const uTexParams: spec.vec4[] = [];
-    const uTexOffset: spec.vec4[] = [];
+    const uMainData: Matrix4[] = [];
+    const uTexParams: Vector4[] = [];
+    const uTexOffset: Vector4[] = [];
 
     for (let i = 0; i < count; i++) {
-      uMainData.push(mat4create());
-      uTexParams.push([0, 0, 0, 0]);
-      uTexOffset.push([0, 0, 0, 0]);
+      uMainData.push(Matrix4.fromIdentity());
+      uTexParams.push(new Vector4());
+      uTexOffset.push(new Vector4());
     }
     if (!material.hasUniform('uMainData')) {
       material.setMatrixArray('uMainData', uMainData);
@@ -408,7 +420,7 @@ export class SpriteMesh {
 
   getItemGeometryData (item: SpriteItem, aIndex: number) {
     const { splits, renderer, textureSheetAnimation, startSize } = item;
-    const [sx, sy] = startSize;
+    const { x: sx, y: sy } = startSize;
 
     if (renderer.shape) {
       const { index, aPoint } = renderer.shape;

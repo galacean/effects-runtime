@@ -1,4 +1,4 @@
-import type { mat3, mat4, vec2, vec3, vec4 } from '@galacean/effects-specification';
+import type { Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { GlobalUniforms, Renderer, ShaderWithSource } from '../render';
 import type { Texture } from '../texture';
 import type { DestroyOptions, Disposable } from '../utils';
@@ -269,37 +269,49 @@ export abstract class Material implements Disposable {
    * 获取 Material 的 vec2 类型的 uniform 数据
    * @param name
    */
-  abstract getVector2 (name: string): vec2 | null;
+  abstract getVector2 (name: string): Vector2 | null;
   /**
    * 设置 vec2 类型的 uniform 的数据
    * @param name - uniform 名称
    * @param value - 要设置的 uniform 数据
    */
-  abstract setVector2 (name: string, value: vec2): void;
+  abstract setVector2 (name: string, value: Vector2): void;
 
   /**
    * 获取 Material 的 vec3 类型的 uniform 数据
    * @param name
    */
-  abstract getVector3 (name: string): vec3 | null;
+  abstract getVector3 (name: string): Vector3 | null;
   /**
    * 设置 vec3 类型的 uniform 的数据
    * @param name - uniform 名称
    * @param value - 要设置的 uniform 数据
    */
-  abstract setVector3 (name: string, value: vec3): void;
+  abstract setVector3 (name: string, value: Vector3): void;
 
   /**
    * 获取 Material 的 vec4 类型的 uniform 数据
    * @param name
    */
-  abstract getVector4 (name: string): vec4 | null;
+  abstract getVector4 (name: string): Vector4 | null;
   /**
    * 设置 vec4 类型的 uniform 的数据
    * @param name - uniform 名称
    * @param value - 要设置的 uniform 数据
    */
-  abstract setVector4 (name: string, value: vec4): void;
+  abstract setVector4 (name: string, value: Vector4): void;
+
+  /**
+   * 获取 Material 的 Quaternion 类型的 uniform 数据
+   * @param name
+   */
+  abstract getQuaternion (name: string): Quaternion | null;
+  /**
+   * 设置 Quaternion 类型的 uniform 的数据
+   * @param name - uniform 名称
+   * @param value - 要设置的 uniform 数据
+   */
+  abstract setQuaternion (name: string, value: Quaternion): void;
 
   /**
    * 获取 Material 的 vec4 数组类型的 uniform 数据
@@ -311,25 +323,25 @@ export abstract class Material implements Disposable {
    * @param name - uniform 名称
    * @param value - 要设置的 uniform 数据
    */
-  abstract setVector4Array (name: string, value: vec4[]): void;
+  abstract setVector4Array (name: string, value: Vector4[]): void;
 
   /**
    * 获取 Material 的 mat4 类型的 uniform 数据
    * @param name
    */
-  abstract getMatrix (name: string): mat4 | null;
+  abstract getMatrix (name: string): Matrix4 | null;
   /**
    * 设置 mat4 类型的 uniform 的数据
    * @param name - uniform 名称
    * @param value - 要设置的 uniform 数据
    */
-  abstract setMatrix (name: string, value: mat4): void;
+  abstract setMatrix (name: string, value: Matrix4): void;
   /**
    * 设置 mat3 类型的 uniform 的数据
    * @param name - uniform 名称
    * @param value - 要设置的 uniform 数据
    */
-  abstract setMatrix3 (name: string, value: mat3): void;
+  abstract setMatrix3 (name: string, value: Matrix3): void;
 
   /**
    * 获取 Material 的 mat4 数组类型的 uniform 数据
@@ -341,7 +353,7 @@ export abstract class Material implements Disposable {
    * @param name - uniform 名称
    * @param array - 要设置的 uniform 数据
    */
-  abstract setMatrixArray (name: string, array: mat4[]): void;
+  abstract setMatrixArray (name: string, array: Matrix4[]): void;
   /**
    * 设置 mat 数组类型的 uniform 的数据，传入 number 数组
    * @param name - uniform 名称

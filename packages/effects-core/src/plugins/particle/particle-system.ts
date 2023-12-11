@@ -1,26 +1,10 @@
 import * as spec from '@galacean/effects-specification';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
+import type { Ray } from '@galacean/effects-math/es/core/index';
+import { Euler, Vector3, Matrix4, Vector2, Vector4 } from '@galacean/effects-math/es/core/index';
 import { Link } from './link';
-import type { Ray, mat3, mat4, ValueGetter } from '../../math';
-import {
-  mat4create,
-  intersectRaySphere,
-  createValueGetter,
-  ensureVec3,
-  mat3FromRotation,
-  vec3Cross,
-  vec3MulMat3,
-  vec3MulMat4,
-  vec3RotateByMat4,
-  vecAdd,
-  vecAssign,
-  vecDot,
-  vecMinus,
-  vecMulCombine,
-  vecNormalize,
-  convertAnchor,
-  calculateTranslation,
-} from '../../math';
+import type { ValueGetter } from '../../math';
+import { ensureVec3, convertAnchor, calculateTranslation, createValueGetter } from '../../math';
 import type { ShapeGenerator, ShapeGeneratorOptions } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
@@ -86,8 +70,8 @@ type ParticleEmissionOptions = {
 };
 
 interface ParticleTransform {
-  position: vec3,
-  rotation?: vec3,
+  position: Vector3,
+  rotation?: Euler,
   path?: ValueGetter<vec3>,
 }
 
@@ -157,7 +141,7 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture'> 
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
 export class ParticleSystem {
   reusable: boolean;
-  renderMatrix: mat4;
+  renderMatrix: Matrix4;
   particleMesh: ParticleMesh;
   trailMesh?: TrailMesh;
   options: ParticleOptions;
@@ -179,7 +163,7 @@ export class ParticleSystem {
   private ended: boolean;
   private lastEmitTime: number;
   private frozen: boolean;
-  private upDirectionWorld: vec3 | null;
+  private upDirectionWorld: Vector3 | null;
   private uvs: number[][];
   private readonly basicTransform: ParticleTransform;
   private readonly transform: Transform;
@@ -216,7 +200,7 @@ export class ParticleSystem {
       row: _textureSheetAnimation.row,
       total: _textureSheetAnimation.total || _textureSheetAnimation.col * _textureSheetAnimation.row,
     } : undefined;
-    const renderMatrix = mat4create();
+    const renderMatrix = Matrix4.fromIdentity();
     const startTurbulence = !!(shape && shape.turbulenceX || shape.turbulenceY || shape.turbulenceZ);
     let turbulence: ParticleOptions['turbulence'];
 
@@ -284,7 +268,7 @@ export class ParticleSystem {
         separateAxes: false,
         x: createValueGetter(('size' in sizeOverLifetime ? sizeOverLifetime.size : sizeOverLifetime.x) || 1),
       };
-    const anchor = convertAnchor(renderer.anchor, renderer.particleOrigin);
+    const anchor = Vector2.fromArray(convertAnchor(renderer.anchor, renderer.particleOrigin));
 
     this.options = {
       particleFollowParent: !!options.particleFollowParent,
@@ -453,14 +437,14 @@ export class ParticleSystem {
       this.trailMesh = new TrailMesh(trailMeshProps, engine);
     }
     this.transform = vfxItem.transform;
-    const position = [...this.transform.position] as vec3;
-    const rotation = [...this.transform.rotation] as vec3;
+    const position = this.transform.position.clone();
+    const rotation = this.transform.rotation.clone();
     const transformPath = props.emitterTransform && props.emitterTransform.path;
     let path;
 
     if (transformPath) {
       if (transformPath[0] === spec.ValueType.CONSTANT_VEC3) {
-        vecAdd(position, position, transformPath[1]);
+        position.add(transformPath[1]);
       } else {
         path = createValueGetter(transformPath);
       }
@@ -476,7 +460,7 @@ export class ParticleSystem {
     }
     this.meshes = meshes;
     this.reusable = vfxItem.reusable;
-    this.setVisible(vfxItem.getVisible());
+    this.setVisible(vfxItem.contentVisible);
     const interaction = props.interaction;
 
     if (interaction) {
@@ -504,21 +488,21 @@ export class ParticleSystem {
     const parentTransform = this.parentTransform;
 
     const { path, position } = this.basicTransform;
-    const selfPos = [...position];
+    const selfPos = position.clone();
 
     if (path) {
       const duration = this.options.duration;
 
-      vecAdd(selfPos, selfPos, path.getValue(time / duration));
+      selfPos.add(path.getValue(time / duration));
     }
-    this.transform.setPosition(selfPos[0], selfPos[1], selfPos[2]);
+    this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
 
     if (this.options.particleFollowParent && parentTransform) {
       const tempMatrix = parentTransform.getWorldMatrix();
 
-      this.particleMesh.mesh.worldMatrix = tempMatrix;
+      this.particleMesh.mesh.worldMatrix = tempMatrix.clone();
       if (this.trailMesh) {
-        this.trailMesh.mesh.worldMatrix = tempMatrix;
+        this.trailMesh.mesh.worldMatrix = tempMatrix.clone();
       }
     }
   }
@@ -540,7 +524,7 @@ export class ParticleSystem {
     this.particleMesh.setPoint(point, pointIndex);
     this.clearPointTrail(pointIndex);
     if (this.parentTransform && this.trailMesh) {
-      this.trailMesh.setPointStartPos(pointIndex, this.parentTransform.position);
+      this.trailMesh.setPointStartPos(pointIndex, this.parentTransform.position.clone());
     }
   }
 
@@ -554,9 +538,9 @@ export class ParticleSystem {
   setOpacity (opacity: number) {
     const material = this.particleMesh.mesh.material;
     const geometry = this.particleMesh.mesh.geometry;
-    const originalColor = material.getVector4('uOpacityOverLifetimeValue') || [1, 1, 1, 1];
+    const originalColor = material.getVector4('uOpacityOverLifetimeValue')?.toArray() || [1, 1, 1, 1];
 
-    material.setVector4('uOpacityOverLifetimeValue', [originalColor[0], originalColor[1], originalColor[2], opacity]);
+    material.setVector4('uOpacityOverLifetimeValue', new Vector4(originalColor[0], originalColor[1], originalColor[2], opacity));
     const data = geometry.getAttributeData('aColor') || [];
 
     for (let i = 0; i < data.length; i += 32) {
@@ -570,9 +554,9 @@ export class ParticleSystem {
   setColor (r: number, g: number, b: number, a: number) {
     const material = this.particleMesh.mesh.material;
     const geometry = this.particleMesh.mesh.geometry;
-    const originalColor = material.getVector4('uOpacityOverLifetimeValue') || [1, 1, 1, 1];
+    const originalColor = material.getVector4('uOpacityOverLifetimeValue')?.toArray() || [1, 1, 1, 1];
 
-    material.setVector4('uOpacityOverLifetimeValue', [originalColor[0], originalColor[1], originalColor[2], a]);
+    material.setVector4('uOpacityOverLifetimeValue', new Vector4(originalColor[0], originalColor[1], originalColor[2], a));
     const data = geometry.getAttributeData('aColor') || [];
 
     for (let i = 0; i < data.length; i += 32) {
@@ -770,10 +754,10 @@ export class ParticleSystem {
   onDestroy () {
   }
 
-  getParticleBoxes (): { center: vec3, size: vec3 }[] {
+  getParticleBoxes (): { center: Vector3, size: Vector3 }[] {
     const link = this.particleLink;
     const mesh = this.particleMesh;
-    const res: { center: vec3, size: vec3 }[] = [];
+    const res: { center: Vector3, size: Vector3 }[] = [];
     const maxCount = this.particleCount;
     let counter = 0;
 
@@ -810,7 +794,7 @@ export class ParticleSystem {
 
   }
 
-  raycast (options: ParticleSystemRayCastOptions): vec3[] | undefined {
+  raycast (options: ParticleSystemRayCastOptions): Vector3[] | undefined {
     const link = this.particleLink;
     const mesh = this.particleMesh;
 
@@ -819,7 +803,7 @@ export class ParticleSystem {
     }
     let node = link.last;
     const hitPositions = [];
-    const temp: vec3 = [0, 0, 0];
+    const temp = new Vector3();
     let finish = false;
 
     if (node && node.content) {
@@ -832,7 +816,10 @@ export class ParticleSystem {
           let pass = false;
 
           if (ray) {
-            pass = !!intersectRaySphere(temp, ray.center, ray.direction, pos, options.radius);
+            pass = !!ray.intersectSphere({
+              center: pos,
+              radius: options.radius,
+            }, temp);
           }
           if (pass) {
             if (options.removeParticle) {
@@ -871,7 +858,7 @@ export class ParticleSystem {
     const particleMesh = this.particleMesh;
     const position = this.getPointPosition(point);
     const color = trails.inheritParticleColor ? particleMesh.getPointColor(pointIndex) : [1, 1, 1, 1];
-    const size: vec3 = point.transform.getWorldScale();
+    const size: vec3 = point.transform.getWorldScale().toArray();
 
     let width = 1;
     let lifetime = trails.lifetime.getValue(emitterLifetime);
@@ -883,11 +870,11 @@ export class ParticleSystem {
       lifetime *= size[0];
     }
     if (trails.parentAffectsPosition && this.parentTransform) {
-      vecAdd(position, position, this.parentTransform.position);
+      position.add(this.parentTransform.position);
       const pos = this.trailMesh.getPointStartPos(pointIndex);
 
       if (pos) {
-        vecMinus(position, position, pos);
+        position.subtract(pos);
       }
     }
     this.trailMesh.addPoint(pointIndex, position, {
@@ -898,30 +885,32 @@ export class ParticleSystem {
     });
   }
 
-  getPointPosition (point: Point): spec.vec3 {
+  getPointPosition (point: Point): Vector3 {
     const {
       transform,
       vel,
       lifetime,
       delay,
-      gravity = [0, 0, 0],
+      gravity = [],
     } = point;
 
     const forceTarget = this.options.forceTarget;
-    const pos: vec3 = [0, 0, 0];
     const time = this.lastUpdate - delay;
 
-    transform.assignWorldTRS(pos);
-    const ret = calculateTranslation([0, 0, 0], this.options, gravity, time, lifetime, pos, vel);
+    const tempPos = new Vector3();
+    const acc = Vector3.fromArray(gravity);
+
+    transform.assignWorldTRS(tempPos);
+    const ret = calculateTranslation(new Vector3(), this.options, acc, time, lifetime, tempPos, vel);
 
     if (forceTarget) {
       const target = forceTarget.target || [0, 0, 0];
       const life = forceTarget.curve.getValue(time / lifetime);
       const dl = 1 - life;
 
-      ret[0] = ret[0] * dl + target[0] * life;
-      ret[1] = ret[1] * dl + target[1] * life;
-      ret[2] = ret[2] * dl + target[2] * life;
+      ret.x = ret.x * dl + target[0] * life;
+      ret.y = ret.y * dl + target[1] * life;
+      ret.z = ret.z * dl + target[2] * life;
     }
 
     return ret;
@@ -940,7 +929,7 @@ export class ParticleSystem {
     const speed = options.startSpeed.getValue(lifetime);
     const matrix4 = options.particleFollowParent ? this.transform.getMatrix() : this.transform.getWorldMatrix();
     // 粒子的位置受发射器的位置影响，自身的旋转和缩放不受影响
-    const position = vec3MulMat4([], data.position, matrix4);
+    const position = matrix4.transformPoint(data.position, new Vector3());
     const transform = new Transform({
       position,
       valid: true,
@@ -948,29 +937,37 @@ export class ParticleSystem {
 
     let direction = data.direction;
 
-    direction = vecNormalize(tempDir, vec3RotateByMat4(tempDir, direction, matrix4));
+    direction = matrix4.transformNormal(direction, tempDir).normalize();
     if (options.startTurbulence && options.turbulence) {
       for (let i = 0; i < 3; i++) {
-        tempVec3[i] = options.turbulence[i]!.getValue(lifetime);
+        tempVec3.setElement(i, options.turbulence[i]!.getValue(lifetime));
       }
-      const mat3 = mat3FromRotation(tempMat3, tempVec3);
+      tempEuler.setFromVector3(tempVec3.negate());
+      const mat4 = tempMat4.setFromEuler(tempEuler);
 
-      direction = vecNormalize(tempDir, vec3MulMat3(direction, direction, mat3));
+      mat4.transformNormal(direction).normalize();
     }
-    let dirX = tmpDirX;
+    const dirX = tmpDirX;
     const dirY = tmpDirY;
 
     if (shape.alignSpeedDirection) {
-      vecAssign(dirY, direction, 3);
+      dirY.copyFrom(direction);
       if (!this.upDirectionWorld) {
-        this.upDirectionWorld = vec3RotateByMat4([], shape.upDirection ?? [0, 0, 1], matrix4);
+        if (shape.upDirection) {
+          this.upDirectionWorld = shape.upDirection.clone();
+        } else {
+          this.upDirectionWorld = Vector3.Z.clone();
+        }
+        matrix4.transformNormal(this.upDirectionWorld);
       }
-      dirX = vecNormalize(dirX, vec3Cross(dirX, dirY, this.upDirectionWorld));
+      dirX.crossVectors(dirY, this.upDirectionWorld).normalize();
+      // FIXME: 原先因为有精度问题，这里dirX不是0向量
+      if (dirX.isZero()) {
+        dirX.set(1, 0, 0);
+      }
     } else {
-      dirX[0] = 1;
-      dirX[1] = dirX[2] = 0;
-      dirY[1] = 1;
-      dirY[0] = dirY[2] = 0;
+      dirX.set(1, 0, 0);
+      dirY.set(0, 1, 0);
     }
     let sprite;
     const tsa = this.textureSheetAnimation;
@@ -981,15 +978,17 @@ export class ParticleSystem {
       sprite[1] = tsa.animationDuration.getValue(lifetime);
       sprite[2] = tsa.cycles.getValue(lifetime);
     }
-    let rot = tempRot;
+    const rot = tempRot;
 
     if (options.start3DRotation) {
       // @ts-expect-error
-      rot = [options.startRotationX.getValue(lifetime), options.startRotationY.getValue(lifetime), options.startRotationZ.getValue(lifetime)];
+      rot.set(options.startRotationX.getValue(lifetime), options.startRotationY.getValue(lifetime), options.startRotationZ.getValue(lifetime));
     } else if (options.startRotation) {
-      rot = [0, 0, options.startRotation.getValue(lifetime)];
+      rot.set(0, 0, options.startRotation.getValue(lifetime));
+    } else {
+      rot.set(0, 0, 0);
     }
-    transform.setRotation(...rot);
+    transform.setRotation(rot.x, rot.y, rot.z);
     const color = options.startColor.getValue(lifetime) as number[];
 
     if (color.length === 3) {
@@ -998,28 +997,31 @@ export class ParticleSystem {
     const size = tempSize;
 
     if (options.start3DSize) {
-      size[0] = options.startSizeX!.getValue(lifetime);
-      size[1] = options.startSizeY!.getValue(lifetime);
+      size.x = options.startSizeX!.getValue(lifetime);
+      size.y = options.startSizeY!.getValue(lifetime);
     } else {
       const n = options.startSize!.getValue(lifetime);
       const aspect = options.sizeAspect!.getValue(lifetime);
 
-      size[0] = n;
+      size.x = n;
       // 兼容aspect为0的情况
-      size[1] = aspect === 0 ? 0 : n / aspect;
+      size.y = aspect === 0 ? 0 : n / aspect;
       // size[1] = n / aspect;
     }
 
-    const vel: vec3 = [0, 0, 0];
+    const vel = direction.clone();
 
-    vecDot(vel, direction, speed);
+    vel.multiply(speed);
 
     // 粒子的大小受发射器父节点的影响
     if (!options.particleFollowParent) {
-      this.transform.assignWorldTRS([], [], tempVec3);
-      vecMulCombine(size, size, tempVec3 as unknown as vec2);
+      const tempScale = new Vector3();
+
+      this.transform.assignWorldTRS(undefined, undefined, tempScale);
+      size.x *= tempScale.x;
+      size.y *= tempScale.y;
     }
-    transform.setScale(size[0], size[1], 1);
+    transform.setScale(size.x, size.y, 1);
 
     return {
       size,
@@ -1077,14 +1079,15 @@ export class ParticleSystem {
 }
 
 // array performance better for small memory than Float32Array
-const tempDir: vec3 = [0, 0, 0];
-const tempSize: vec2 = [0, 0];
-const tempRot: vec3 = [0, 0, 0];
-const tmpDirX: vec3 = [0, 0, 0];
-const tmpDirY: vec3 = [0, 0, 0];
-const tempVec3: vec3 = [0, 0, 0];
+const tempDir = new Vector3();
+const tempSize = new Vector2();
+const tempRot = new Euler();
+const tmpDirX = new Vector3();
+const tmpDirY = new Vector3();
+const tempVec3 = new Vector3();
+const tempEuler = new Euler();
 const tempSprite: vec3 = [0, 0, 0];
-const tempMat3 = [] as unknown as mat3;
+const tempMat4 = new Matrix4();
 
 function getBurstOffsets (burstOffsets: Record<string, number>[]): Record<string, vec3[]> {
   const ret: Record<string, vec3[]> = {};

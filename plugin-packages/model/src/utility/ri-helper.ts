@@ -1,4 +1,4 @@
-import type { spec, GeometryProps, Engine } from '@galacean/effects';
+import type { GeometryProps, Engine } from '@galacean/effects';
 import {
   glContext,
   Geometry,
@@ -6,8 +6,8 @@ import {
   Mesh,
   RenderPassAttachmentStorageType,
 } from '@galacean/effects';
-import type { Matrix4, Vector3 } from '../math';
-import { Vector2 } from '../math';
+import type { Matrix4 } from '../runtime/math';
+import { Vector2, Vector3 } from '../runtime/math';
 
 export class FBOOptions {
   resolution: Vector2;
@@ -87,12 +87,12 @@ export class BoxMesh {
   update (modelMatrix: Matrix4, viewProjMatrix: Matrix4, positions: Float32Array, lineColor: Vector3) {
     const material = this.mesh.material;
 
-    material.setMatrix('u_ModelMatrix', modelMatrix.toArray() as spec.mat4);
-    material.setMatrix('u_ViewProjectionMatrix', viewProjMatrix.toArray() as spec.mat4);
+    material.setMatrix('u_ModelMatrix', modelMatrix);
+    material.setMatrix('u_ViewProjectionMatrix', viewProjMatrix);
     for (let i = 0; i < positions.length; i += 3) {
-      material.setVector3(`u_PositionList[${i / 3}]`, [positions[i], positions[i + 1], positions[i + 2]]);
+      material.setVector3(`u_PositionList[${i / 3}]`, Vector3.fromArray(positions, i));
     }
-    material.setVector3('u_LineColor', lineColor.toArray() as spec.vec3);
+    material.setVector3('u_LineColor', lineColor);
   }
 
   dispose () {

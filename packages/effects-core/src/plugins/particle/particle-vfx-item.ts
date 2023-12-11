@@ -1,7 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import type { vec3 } from '@galacean/effects-specification';
+import type { Ray, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { Composition } from '../../composition';
-import type { Ray } from '../../math';
 import { assertExist, DestroyOptions } from '../../utils';
 import { VFXItem } from '../../vfx-item';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
@@ -55,9 +54,9 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
         }
       }
       if (hide) {
-        this.content.setVisible(true);
-      } else {
         this.content.setVisible(false);
+      } else {
+        this.content.setVisible(true);
         this.content.onUpdate(dt);
       }
 
@@ -125,7 +124,7 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
     if (force || interactParams) {
       return {
         type: HitTestType.custom,
-        collect: (ray: Ray): vec3[] | void =>
+        collect: (ray: Ray): Vector3[] | void =>
           this.content?.raycast({
             radius: interactParams?.radius || 0.4,
             multiple: !!interactParams?.multiple,

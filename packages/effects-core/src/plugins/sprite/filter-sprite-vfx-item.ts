@@ -1,5 +1,5 @@
-import type { mat4, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
+import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { FilterDefine } from '../../filter';
 import { createFilter } from '../../filter';
 import type { Composition } from '../../composition';
@@ -40,9 +40,9 @@ export class FilterSpriteVFXItem extends SpriteVFXItem {
           const value = variables[key](lifetime);
 
           if ((value as Float32Array).length > 4) {
-            material.setMatrix(key, value as mat4);
+            material.setMatrix(key, Matrix4.fromArray(value as spec.mat4));
           } else {
-            material.setVector4(key, value as vec4);
+            material.setVector4(key, Vector4.fromArray(value as spec.vec4));
           }
         }
       }

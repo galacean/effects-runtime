@@ -70,7 +70,7 @@ export class ThreeMesh extends Mesh implements Sortable {
    * @param val - 可见性开关
    */
   override setVisible (val: boolean): void {
-    this.mesh.visible = !val;
+    this.mesh.visible = val;
   }
 
   /**
@@ -79,7 +79,7 @@ export class ThreeMesh extends Mesh implements Sortable {
    * @returns
    */
   override getVisible (): boolean {
-    return !this.mesh.visible;
+    return this.mesh.visible;
   }
 
   /**

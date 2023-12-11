@@ -48,7 +48,7 @@ export class CompositionTransformerAcceler {
       const target = this.targets[item.name];
 
       if (target) {
-        const position = item.transform.position.slice();
+        const position = item.transform.position.toArray();
         const currentPosition = this.current[item.name];
 
         this.records[item.name] = {

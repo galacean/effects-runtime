@@ -1,7 +1,7 @@
-import type { vec3, vec4 } from '@galacean/effects-specification';
 import type * as spec from '@galacean/effects-specification';
+import { clamp, Euler, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { ValueGetter } from '../../math';
-import { createValueGetter, vecAdd, vecAssign, clamp } from '../../math';
+import { createValueGetter } from '../../math';
 import { Transform } from '../../transform';
 
 export class CameraController {
@@ -9,18 +9,18 @@ export class CameraController {
   far: number;
   fov: number;
   clipMode?: spec.CameraClipMode;
-  position: vec3;
-  rotation: vec3;
+  position: Vector3;
+  rotation: Euler;
 
   private options: {
-    position: vec3,
-    rotation: vec3,
+    position: Vector3,
+    rotation: Euler,
     near: ValueGetter<number>,
     far: ValueGetter<number>,
     fov: ValueGetter<number>,
   };
   private readonly translateOverLifetime?: {
-    path?: ValueGetter<vec3>,
+    path?: ValueGetter<spec.vec3>,
     x: ValueGetter<number>,
     y: ValueGetter<number>,
     z: ValueGetter<number>,
@@ -37,16 +37,14 @@ export class CameraController {
     private readonly transform: Transform,
     model: spec.CameraContent,
   ) {
-    const {
-      position = [0, 0, 0],
-    } = transform;
+    const { position } = transform;
     const rotation = transform.getRotation();
     const { near, far, fov, clipMode } = model.options;
 
     this.clipMode = clipMode;
     this.options = {
-      position: vecAssign([0, 0, 0], position, 3),
-      rotation: vecAssign([0, 0, 0], rotation, 3),
+      position: position.clone(),
+      rotation: rotation.clone(),
       near: createValueGetter(near),
       far: createValueGetter(far),
       fov: createValueGetter(fov),
@@ -75,44 +73,50 @@ export class CameraController {
   }
 
   update (lifetime: number) {
-    const quat: vec4 = [0, 0, 0, 1], position: vec3 = [0, 0, 0], rotation: vec3 = [0, 0, 0];
+    const quat = new Quaternion();
+    const position = new Vector3();
+    const rotation = new Euler();
 
-    vecAssign(position, this.options.position, 3);
-    vecAssign(rotation, this.options.rotation, 3);
+    position.copyFrom(this.options.position);
+    rotation.copyFrom(this.options.rotation);
     const translateOverLifetime = this.translateOverLifetime;
     const rotationOverLifetime = this.rotationOverLifetime;
 
     lifetime = clamp(lifetime, 0, 1);
 
     if (translateOverLifetime) {
-      position[0] += translateOverLifetime.x.getValue(lifetime);
-      position[1] += translateOverLifetime.y.getValue(lifetime);
-      position[2] += translateOverLifetime.z.getValue(lifetime);
+      position.x += translateOverLifetime.x.getValue(lifetime);
+      position.y += translateOverLifetime.y.getValue(lifetime);
+      position.z += translateOverLifetime.z.getValue(lifetime);
       if (translateOverLifetime.path) {
-        vecAdd(position, position, translateOverLifetime.path.getValue(lifetime));
+        const val = translateOverLifetime.path.getValue(lifetime);
+
+        position.x += val[0];
+        position.y += val[1];
+        position.z += val[2];
       }
     }
     if (rotationOverLifetime) {
       const z = rotationOverLifetime.z.getValue(lifetime);
 
-      rotation[2] += z;
+      rotation.z += z;
       if (rotationOverLifetime.separateAxes) {
-        rotation[0] += rotationOverLifetime.x.getValue(lifetime);
-        rotation[1] += rotationOverLifetime.y.getValue(lifetime);
+        rotation.x += rotationOverLifetime.x.getValue(lifetime);
+        rotation.y += rotationOverLifetime.y.getValue(lifetime);
       } else {
-        rotation[0] += z;
-        rotation[1] += z;
+        rotation.x += z;
+        rotation.y += z;
       }
     }
     this.far = this.options.far.getValue(lifetime);
     this.near = this.options.near.getValue(lifetime);
     this.fov = this.options.fov.getValue(lifetime);
 
-    this.transform.setPosition(position[0], position[1], position[2]);
-    this.transform.setRotation(rotation[0], rotation[1], rotation[2]);
+    this.transform.setPosition(position.x, position.y, position.z);
+    this.transform.setRotation(rotation.x, rotation.y, rotation.z);
     this.transform.assignWorldTRS(position, quat);
     this.position = position;
-    this.rotation = Transform.getRotation(rotation, quat);
+    this.rotation = Transform.getRotation(quat, rotation);
   }
 
 }

@@ -1,6 +1,5 @@
 import type {
   RenderFrame,
-  spec,
   Mesh,
   Material,
   RenderPass,
@@ -8,8 +7,8 @@ import type {
   Renderer,
   Engine,
 } from '@galacean/effects';
-import { glContext, RenderPassAttachmentStorageType } from '@galacean/effects';
-import { Vector3, Matrix4, Vector2, Box3 } from '../math';
+import { glContext, RenderPassAttachmentStorageType, math } from '@galacean/effects';
+import { Vector3, Matrix4, Vector2, Box3 } from './math';
 import type { PShadowType } from './common';
 import { PObjectType, PLightType, PMaterialType } from './common';
 import type { PMesh, PPrimitive } from './mesh';
@@ -19,7 +18,8 @@ import type { PSceneManager, PSceneStates } from './scene';
 import { FBOOptions } from '../utility/ri-helper';
 import { WebGLHelper } from '../utility/plugin-helper';
 import { TwoStatesSet } from '../utility/ts-helper';
-import { MathUtils } from '../math/utilities';
+
+type Box3 = math.Box3;
 
 export interface PMaterialShadowBaseOptions {
   name: string,
@@ -92,7 +92,7 @@ export class PMaterialShadowFilter extends PMaterialBase {
   }
 
   override updateUniforms (material: Material) {
-    material.setVector2('u_BlurScale', this.blurScale.toArray() as spec.vec2);
+    material.setVector2('u_BlurScale', this.blurScale);
   }
 }
 
@@ -379,7 +379,7 @@ export class PShadowManager {
 
   private updateDirectionalLightViewProjection (lightObj: PLight) {
     if (!lightObj.isDirectional()) {
-      this.lightViewProjection.setIdentity();
+      this.lightViewProjection.identity();
 
       return;
     }
@@ -387,19 +387,19 @@ export class PShadowManager {
     const shadowAABB = this.shadowAABB;
     const viewPosition = shadowAABB.getCenter(new Vector3());
     const lightDirection = lightObj.getWorldDirection();
-    const viewTarget = viewPosition.clone().addVector(lightDirection);
-    const viewUp = Vector3.computeUpVector(lightDirection, new Vector3());
+    const viewTarget = viewPosition.clone().add(lightDirection);
+    const viewUp = computeUpVector(lightDirection, new Vector3());
     const viewMatrix = new Matrix4().lookAt(viewPosition, viewTarget, viewUp);
 
-    const tempAABB = shadowAABB.clone().transform(viewMatrix);
+    const tempAABB = shadowAABB.clone().applyMatrix4(viewMatrix);
     const tempCenter = tempAABB.getCenter(new Vector3());
-    const halfSize = tempAABB.getSize(new Vector3()).multiplyScalar(0.5);
+    const halfSize = tempAABB.getSize(new Vector3()).multiply(0.5);
 
     halfSize.x = Math.max(halfSize.x, halfSize.y);
     halfSize.y = Math.max(halfSize.x, halfSize.y);
-    const tempMin = halfSize.clone().multiplyScalar(-1.001).addVector(tempCenter);
-    const tempMax = halfSize.clone().multiplyScalar(1.001).addVector(tempCenter);
-    const projectMatrix = new Matrix4().orth2d(
+    const tempMin = halfSize.clone().multiply(-1.001).add(tempCenter);
+    const tempMax = halfSize.clone().multiply(1.001).add(tempCenter);
+    const projectMatrix = new Matrix4().orthographic(
       tempMin.x, tempMax.x,
       tempMin.y, tempMax.y,
       tempMin.z, tempMax.z
@@ -408,25 +408,25 @@ export class PShadowManager {
     this.lightView.copyFrom(viewMatrix);
     this.lightProjection.copyFrom(projectMatrix);
 
-    return Matrix4.multiply(projectMatrix, viewMatrix, this.lightViewProjection);
+    return this.lightViewProjection.multiplyMatrices(projectMatrix, viewMatrix);
   }
 
   private updateSpotLightViewProjection (lightObj: PLight) {
     if (!lightObj.isSpot()) {
-      this.lightViewProjection.setIdentity();
+      this.lightViewProjection.identity();
 
       return;
     }
     //
     const viewPosition = lightObj.getWorldPosition();
     const lightDirection = lightObj.direction.clone();
-    const dirOffset = lightDirection.clone().multiplyScalar(10);
-    const viewTarget = viewPosition.clone().addVector(dirOffset);
-    const viewUp = Vector3.computeUpVector(lightDirection, new Vector3());
-    const viewMatrix = new Matrix4().lookAt(viewPosition, viewTarget, viewUp);
+    const dirOffset = lightDirection.clone().multiply(10);
+    const viewTarget = viewPosition.clone().add(dirOffset);
+    const viewUp = computeUpVector(lightDirection, new Vector3());
+    const viewMatrix = Matrix4.fromLookAt(viewPosition, viewTarget, viewUp);
     // estimate real fovy
     const shadowAABB = this.shadowAABB;
-    const tempAABB = shadowAABB.clone().transform(viewMatrix);
+    const tempAABB = shadowAABB.clone().applyMatrix4(viewMatrix);
     const tempPoints = [
       new Vector3(tempAABB.min.x, tempAABB.min.y, tempAABB.min.z),
       new Vector3(tempAABB.min.x, tempAABB.min.y, tempAABB.max.z),
@@ -453,9 +453,9 @@ export class PShadowManager {
     });
     const minTheta = Math.acos(minCosTheta);
     const fovy = Math.min(minTheta, lightObj.outerConeAngle) * 2;
-    const projectMatrix = new Matrix4().perspective(fovy, 1, nearPlane, farPlane, false);
+    const projectMatrix = Matrix4.fromPerspective(fovy, 1, nearPlane, farPlane, false);
 
-    return Matrix4.multiply(projectMatrix, viewMatrix, this.lightViewProjection);
+    return this.lightViewProjection.multiplyMatrices(projectMatrix, viewMatrix);
   }
 
   private getShadowOptions (): PShadowRuntimeOptions {
@@ -694,7 +694,7 @@ export class PShadowManager {
     } else {
       console.error(`Invalid softness value from shadow init options, ${softness}`);
 
-      return MathUtils.clamp(softness, 0, 2);
+      return math.clamp(softness, 0, 2);
     }
   }
 
@@ -806,3 +806,33 @@ export class PShadowManager {
   }
 }
 
+function computeUpVector (lookatDir: Vector3, result: Vector3) {
+  const dir = lookatDir.clone().normalize();
+  const absDir = dir.clone().abs();
+  const minIndex = getMinComponentIndex(absDir);
+
+  if (minIndex !== 1) {
+    result.set(0, 1, 0);
+  } else {
+    result.set(dir.z, 0, -dir.x);
+    result.normalize();
+  }
+
+  return result;
+}
+
+function getMinComponentIndex (cartesian: Vector3) {
+  if (cartesian.x < cartesian.y) {
+    if (cartesian.x < cartesian.z) {
+      return 0;
+    } else {
+      return 2;
+    }
+  } else {
+    if (cartesian.y < cartesian.z) {
+      return 1;
+    } else {
+      return 2;
+    }
+  }
+}

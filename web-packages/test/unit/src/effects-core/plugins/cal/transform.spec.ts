@@ -32,24 +32,24 @@ describe('calculate item transform', () => {
     const item = comp.getItemByName('x');
     const parent = comp.getItemByName('p');
 
-    expect(sanitizeNumbers(item.transform.getWorldPosition())).to.deep.equals([0, 1, 0], 'world 0');
-    expect(sanitizeNumbers(item.transform.position)).to.deep.equals([0, 1, 0], 'local 0');
+    expect(sanitizeNumbers(item.transform.getWorldPosition().toArray())).to.deep.equals([0, 1, 0], 'world 0');
+    expect(sanitizeNumbers(item.transform.position.toArray())).to.deep.equals([0, 1, 0], 'local 0');
     comp.gotoAndStop(comp.time + 0.6);
     expect(item.transform.parentTransform).to.eql(parent.transform, 'item transform t1');
-    expect(sanitizeNumbers(item.transform.getWorldPosition())).to.deep.equals([1, 1, 0], 'world 1');
-    expect(sanitizeNumbers(item.transform.position)).to.deep.equals([0, 1, 0], 'local 1');
+    expect(sanitizeNumbers(item.transform.getWorldPosition().toArray())).to.deep.equals([1, 1, 0], 'world 1');
+    expect(sanitizeNumbers(item.transform.position.toArray())).to.deep.equals([0, 1, 0], 'local 1');
 
     comp.gotoAndStop(comp.time + 1);
-    expect(item.transform.parentTransform).to.eqls(comp.content.transform, 'item transform t2');
-    expect(sanitizeNumbers(item.transform.getWorldPosition())).to.deep.equals([0, 1, 0], 'world 0');
-    expect(sanitizeNumbers(item.transform.position)).to.deep.equals([0, 1, 0], 'local 0');
+    expect(item.transform.parentTransform).to.eql(comp.content.transform, 'item transform t2');
+    expect(sanitizeNumbers(item.transform.getWorldPosition().toArray())).to.deep.equals([0, 1, 0], 'world 0');
+    expect(sanitizeNumbers(item.transform.position.toArray())).to.deep.equals([0, 1, 0], 'local 0');
   });
 
   it('transform set rotation', () => {
     const t = new Transform();
 
     t.setRotation(0, 30, 0);
-    const r = t.rotation;
+    const r = t.rotation.toArray();
 
     expect(new Float32Array(sanitizeNumbers(r))).to.deep.equal(new Float32Array([0, 30, 0]));
   });

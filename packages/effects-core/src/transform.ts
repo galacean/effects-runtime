@@ -1,68 +1,57 @@
-import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
+import { Vector3, Matrix4, Quaternion, Euler } from '@galacean/effects-math/es/core/index';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
-import type { mat4, mat3 } from './math';
-import {
-  quatFromRotation,
-  quatStar,
-  getMat4TR,
-  getMat4TRS,
-  mat3FromQuat,
-  mat4create,
-  mat4multiply,
-  rotationFromMat3,
-  vecAssign,
-  mat4fromRotationTranslationScale, isIdentityMatrix, mat4ToIdentityMatrix, quatMultiply, mat4Clone,
-} from './math';
 
 export interface TransformProps {
-  position?: vec3,
-  rotation?: vec3,
-  quat?: vec4,
-  scale?: vec3,
+  position?: spec.vec3 | Vector3,
+  rotation?: spec.vec3 | Euler,
+  quat?: spec.vec4 | Quaternion,
+  scale?: spec.vec3 | Vector3,
   name?: string,
-  anchor?: vec2 | vec3,
+  anchor?: spec.vec2 | spec.vec3 | Vector3,
   valid?: boolean,
 }
 
-const tempMat3 = new Array(9).fill(0) as mat3;
-const tempQuat = new Array(4).fill(0) as vec4;
+const tempQuat = new Quaternion();
 let seed = 1;
 
 export class Transform implements Disposable {
   /**
    * 转换右手坐标系左手螺旋对应的四元数到对应的旋转角
-   * @param out - 旋转向量
    * @param quat - 四元数
+   * @param out - 欧拉角
    * @returns
    */
-  static getRotation (out: vec3, quat: vec4): vec3 {
-    quatStar(tempQuat, quat);
-    const m3 = mat3FromQuat(tempMat3, tempQuat);
+  static getRotation (quat: Quaternion, out: Euler): Euler {
+    const newQuat = tempQuat.copyFrom(quat);
 
-    return rotationFromMat3(out, m3);
+    newQuat.conjugate();
+
+    return out.setFromQuaternion(newQuat);
   }
+
   public name: string;
   /**
    * 自身位移
    */
-  public readonly position: vec3 = [0, 0, 0];
+  public readonly position = new Vector3(0, 0, 0);
   /**
    * 自身旋转对应的四元数，右手坐标系，旋转正方向左手螺旋（轴向的顺时针），旋转欧拉角的顺序为 ZYX
    */
-  public readonly quat: vec4 = [0, 0, 0, 1];
+  public readonly quat = new Quaternion(0, 0, 0, 1);
   /**
    * 自身旋转角度
    */
-  public readonly rotation: vec3 = [0, 0, 0];
+  public readonly rotation = new Euler(0, 0, 0);
   /**
    * 自身缩放
    */
-  public readonly scale: vec3 = [1, 1, 1];
+  public readonly scale = new Vector3(1, 1, 1);
   /**
    * 自身锚点
    */
-  public readonly anchor: vec3 = [0, 0, 0];
+  public readonly anchor = new Vector3(0, 0, 0);
   /**
    * 子变换，可以有多个
    */
@@ -74,15 +63,15 @@ export class Transform implements Disposable {
   /**
    * 所有父变换对应的联合矩阵
    */
-  private parentMatrix: mat4;
+  private parentMatrix: Matrix4;
   /**
    * 包含父变换的最终模型矩阵
    */
-  private worldMatrix: mat4 = mat4create();
+  private worldMatrix = Matrix4.fromIdentity();
   /**
    * 仅包含自身变换的模型矩阵
    */
-  private localMatrix: mat4 = mat4create();
+  private localMatrix = Matrix4.fromIdentity();
   /**
    * 变换是否需要生效，不生效返回的模型矩阵为单位矩阵，需要随元素生命周期改变
    */
@@ -103,7 +92,7 @@ export class Transform implements Disposable {
   /**
    * 最终模型矩阵对应变换的缓存，当自身矩阵或父矩阵有修改时需要更新
    */
-  private readonly worldTRSCache: { position: vec3, quat: vec4, scale: vec3 } = { position: [0, 0, 0], quat: [0, 0, 0, 1], scale: [1, 1, 1] };
+  private readonly worldTRSCache = { position: new Vector3(0, 0, 0), quat: new Quaternion(0, 0, 0, 1), scale: new Vector3(1, 1, 1) };
 
   constructor (props: TransformProps = {}, parent?: Transform) {
     this.name = `transform_${seed++}`;
@@ -164,10 +153,10 @@ export class Transform implements Disposable {
    * @param z
    */
   setPosition (x: number, y: number, z: number) {
-    if (this.position[0] !== x || this.position[1] !== y || this.position[2] !== z) {
-      this.position[0] = x;
-      this.position[1] = y;
-      this.position[2] = z;
+    if (this.position.x !== x || this.position.y !== y || this.position.z !== z) {
+      this.position.x = x;
+      this.position.y = y;
+      this.position.z = z;
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -181,9 +170,9 @@ export class Transform implements Disposable {
    */
   translate (x: number, y: number, z: number) {
     if (x !== 0 || y !== 0 || z !== 0) {
-      this.position[0] += x;
-      this.position[1] += y;
-      this.position[2] += z;
+      this.position.x += x;
+      this.position.y += y;
+      this.position.z += z;
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -195,12 +184,12 @@ export class Transform implements Disposable {
    * @param z
    */
   setRotation (x: number, y: number, z: number) {
-    if (this.rotation[0] !== x || this.rotation[1] !== y || this.rotation[2] !== z) {
-      this.rotation[0] = x;
-      this.rotation[1] = y;
-      this.rotation[2] = z;
-      quatFromRotation(this.quat, x, y, z);
-      quatStar(this.quat, this.quat);
+    if (this.rotation.x !== x || this.rotation.y !== y || this.rotation.z !== z) {
+      this.rotation.x = x;
+      this.rotation.y = y;
+      this.rotation.z = z;
+      this.quat.setFromEuler(this.rotation);
+      this.quat.conjugate();
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -215,12 +204,12 @@ export class Transform implements Disposable {
    * @private
    */
   setQuaternion (x: number, y: number, z: number, w: number) {
-    if (this.quat[0] !== x || this.quat[1] !== y || this.quat[2] !== z || this.quat[3] !== w) {
-      this.quat[0] = x;
-      this.quat[1] = y;
-      this.quat[2] = z;
-      this.quat[3] = w;
-      rotationFromMat3(this.rotation, mat3FromQuat(tempMat3, [x, y, z, w]));
+    if (this.quat.x !== x || this.quat.y !== y || this.quat.z !== z || this.quat.w !== w) {
+      this.quat.x = x;
+      this.quat.y = y;
+      this.quat.z = z;
+      this.quat.w = w;
+      this.rotation.setFromQuaternion(this.quat);
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -233,10 +222,10 @@ export class Transform implements Disposable {
    * @param z
    */
   setScale (x: number, y: number, z: number) {
-    if (this.scale[0] !== x || this.scale[1] !== y || this.scale[2] !== z) {
-      this.scale[0] = x;
-      this.scale[1] = y;
-      this.scale[2] = z;
+    if (this.scale.x !== x || this.scale.y !== y || this.scale.z !== z) {
+      this.scale.x = x;
+      this.scale.y = y;
+      this.scale.z = z;
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -246,9 +235,9 @@ export class Transform implements Disposable {
    * 在当前旋转的基础上使用四元素添加旋转
    * @param quat
    */
-  rotateByQuat (quat: vec4) {
-    quatMultiply(this.quat, this.quat, quat);
-    rotationFromMat3(this.rotation, mat3FromQuat(tempMat3, quat));
+  rotateByQuat (quat: Quaternion) {
+    this.quat.multiply(quat);
+    this.rotation.setFromQuaternion(this.quat);
     this.dirtyFlags.localData = true;
     this.dispatchValueChange();
   }
@@ -260,9 +249,9 @@ export class Transform implements Disposable {
    * @param z
    */
   scaleBy (x: number, y: number, z: number) {
-    this.scale[0] *= x;
-    this.scale[1] *= y;
-    this.scale[2] *= z;
+    this.scale.x *= x;
+    this.scale.y *= y;
+    this.scale.z *= z;
     this.dirtyFlags.localData = true;
     this.dispatchValueChange();
   }
@@ -274,10 +263,10 @@ export class Transform implements Disposable {
    * @param z
    */
   setAnchor (x: number, y: number, z: number) {
-    if (this.anchor[0] !== x || this.anchor[1] !== y || this.anchor[2] !== z) {
-      this.anchor[0] = x;
-      this.anchor[1] = y;
-      this.anchor[2] = z;
+    if (this.anchor.x !== x || this.anchor.y !== y || this.anchor.z !== z) {
+      this.anchor.x = x;
+      this.anchor.y = y;
+      this.anchor.z = z;
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -295,20 +284,40 @@ export class Transform implements Disposable {
       this.name = name;
     }
     if (position) {
-      this.setPosition(position[0], position[1], position[2]);
+      if (position instanceof Vector3) {
+        this.setPosition(position.x, position.y, position.z);
+      } else {
+        this.setPosition(position[0], position[1], position[2]);
+      }
     }
     if (quat) {
-      this.setQuaternion(quat[0], quat[1], quat[2], quat[3]);
+      if (quat instanceof Quaternion) {
+        this.setQuaternion(quat.x, quat.y, quat.z, quat.w);
+      } else {
+        this.setQuaternion(quat[0], quat[1], quat[2], quat[3]);
+      }
     } else if (rotation) {
       const mul = reverseEuler ? -1 : 1;
 
-      this.setRotation(rotation[0] * mul, rotation[1] * mul, rotation[2] * mul);
+      if (rotation instanceof Euler) {
+        this.setRotation(rotation.x * mul, rotation.y * mul, rotation.z * mul);
+      } else {
+        this.setRotation(rotation[0] * mul, rotation[1] * mul, rotation[2] * mul);
+      }
     }
     if (scale) {
-      this.setScale(scale[0], scale[1], scale[2]);
+      if (scale instanceof Vector3) {
+        this.setScale(scale.x, scale.y, scale.z);
+      } else {
+        this.setScale(scale[0], scale[1], scale[2]);
+      }
     }
     if (anchor) {
-      this.setAnchor(anchor[0], anchor[1], anchor[2] ?? 0);
+      if (anchor instanceof Vector3) {
+        this.setAnchor(anchor.x, anchor.y, anchor.z);
+      } else {
+        this.setAnchor(anchor[0], anchor[1], anchor[2] ?? 0);
+      }
     }
 
   }
@@ -332,15 +341,15 @@ export class Transform implements Disposable {
    * 获取当前的旋转量
    * @returns
    */
-  getRotation (): vec3 {
-    return Transform.getRotation([0, 0, 0], this.quat);
+  getRotation (): Euler {
+    return Transform.getRotation(this.quat, new Euler());
   }
 
   /**
    * 获取当前的四元数
    * @returns
    */
-  getQuaternion (): vec4 {
+  getQuaternion (): Quaternion {
     return this.quat;
   }
 
@@ -350,13 +359,13 @@ export class Transform implements Disposable {
   updateLocalMatrix () {
     if (this.valid) {
       if (this.dirtyFlags.localData) {
-        mat4fromRotationTranslationScale(this.localMatrix, this.quat, this.position, this.scale, this.anchor);
+        this.localMatrix.compose(this.position, this.quat, this.scale, this.anchor);
         this.dirtyFlags.localMatrix = true;
       }
       this.dirtyFlags.localData = false;
     } else {
-      if (!isIdentityMatrix(this.localMatrix)) {
-        mat4ToIdentityMatrix(this.localMatrix);
+      if (!this.localMatrix.isIdentity()) {
+        this.localMatrix.identity();
         this.dirtyFlags.localMatrix = true;
       }
     }
@@ -368,7 +377,7 @@ export class Transform implements Disposable {
    * 当变换不需要生效时返回单位矩阵
    * @returns
    */
-  getMatrix (): mat4 {
+  getMatrix (): Matrix4 {
     this.updateLocalMatrix();
 
     return this.localMatrix;
@@ -377,7 +386,7 @@ export class Transform implements Disposable {
    * 获取父矩阵，如果有多级父节点，返回整体变换
    * @returns
    */
-  getParentMatrix (): mat4 | undefined {
+  getParentMatrix (): Matrix4 | undefined {
     if (this.parent) {
       this.parentMatrix = this.parent.getWorldMatrix();
       this.dirtyFlags.parentMatrix = this.dirtyFlags.parentMatrix || this.parent.dirtyFlags.localMatrix || this.parent.dirtyFlags.worldMatrix;
@@ -390,15 +399,15 @@ export class Transform implements Disposable {
    * 获取包含自身变换和父变换的模型变换矩阵
    * @returns
    */
-  getWorldMatrix (): mat4 {
+  getWorldMatrix (): Matrix4 {
     const localMatrix = this.getMatrix();
     const parentMatrix = this.getParentMatrix();
 
     if (this.dirtyFlags.localMatrix || this.dirtyFlags.parentMatrix) {
       if (parentMatrix) {
-        mat4multiply(this.worldMatrix, parentMatrix, localMatrix);
+        this.worldMatrix.multiplyMatrices(parentMatrix, localMatrix);
       } else {
-        mat4Clone(this.worldMatrix, localMatrix);
+        this.worldMatrix.copyFrom(localMatrix);
       }
       this.dirtyFlags.worldMatrix = true;
       this.dirtyFlags.localMatrix = false;
@@ -412,39 +421,37 @@ export class Transform implements Disposable {
    * 获取联合变换后的最终缩放因子
    * @returns
    */
-  getWorldScale (): vec3 {
+  getWorldScale (): Vector3 {
     const cache = this.worldTRSCache;
 
     if (this.dirtyFlags.worldMatrix) {
-      getMat4TRS(this.getWorldMatrix(), cache.position, cache.quat, cache.scale);
+      const mat = this.getWorldMatrix();
+
+      mat.decompose(cache.position, cache.quat, cache.scale);
       this.dirtyFlags.worldMatrix = false;
     }
 
-    return [...this.worldTRSCache.scale];
+    return this.worldTRSCache.scale.clone();
   }
 
   /**
    * 获取联合变换后的最终位置
    * @returns
    */
-  getWorldPosition (): vec3 {
+  getWorldPosition (): Vector3 {
     this.updateTRSCache();
 
-    return [...this.worldTRSCache.position];
+    return this.worldTRSCache.position.clone();
   }
 
   /**
    * 获取联合变换后的最终旋转量
    * @returns
    */
-  getWorldRotation (): vec3 {
+  getWorldRotation (): Euler {
     this.updateTRSCache();
-    const out: vec3 = [0, 0, 0];
 
-    Transform.getRotation(out, this.worldTRSCache.quat);
-
-    return out;
-
+    return Transform.getRotation(this.worldTRSCache.quat, new Euler());
   }
 
   /**
@@ -453,16 +460,16 @@ export class Transform implements Disposable {
    * @param  quat
    * @param  scale
    */
-  assignWorldTRS (position?: vec3 | number[] | Float32Array, quat?: vec4 | number[] | Float32Array, scale?: vec3 | number[] | Float32Array) {
+  assignWorldTRS (position?: Vector3, quat?: Quaternion, scale?: Vector3) {
     this.updateTRSCache();
     if (position) {
-      vecAssign(position, this.worldTRSCache.position, 3);
+      position.copyFrom(this.worldTRSCache.position);
     }
     if (quat) {
-      vecAssign(quat, this.worldTRSCache.quat, 4);
+      quat.copyFrom(this.worldTRSCache.quat);
     }
     if (scale) {
-      vecAssign(scale, this.worldTRSCache.scale, 3);
+      scale.copyFrom(this.worldTRSCache.scale);
     }
   }
 
@@ -472,25 +479,23 @@ export class Transform implements Disposable {
    * @param scale
    * @returns
    */
-  cloneFromMatrix (m4: mat4, scale?: vec3) {
+  cloneFromMatrix (m4: Matrix4, scale?: Vector3) {
+    m4.decompose(this.position, this.quat, this.scale);
     if (scale) {
-      getMat4TR(m4, this.position, this.quat, scale);
-      vecAssign(this.scale, scale, 3);
-    } else {
-      getMat4TRS(m4, this.position, this.quat, this.scale);
+      scale.copyFrom(this.scale);
     }
     this.dirtyFlags.localData = true;
     this.dispatchValueChange();
   }
 
   /**
-	 * 设置 Transform 生效 / 失效， 默认元素生命周期开始后生效，结束后失效
-	 */
+   * 设置 Transform 生效 / 失效， 默认元素生命周期开始后生效，结束后失效
+   */
   setValid (val: boolean) {
     if (this.valid !== val) {
       this.valid = val;
       if (!val) {
-        mat4ToIdentityMatrix(this.localMatrix);
+        this.localMatrix.identity();
         this.dirtyFlags.localMatrix = true;
       } else {
         this.dirtyFlags.localData = true;
@@ -506,7 +511,7 @@ export class Transform implements Disposable {
     return this.valid;
   }
 
-  dispose (): void {}
+  dispose (): void { }
 
   private updateTRSCache () {
     const worldMatrix = this.getWorldMatrix();
@@ -514,7 +519,7 @@ export class Transform implements Disposable {
     if (this.dirtyFlags.worldMatrix) {
       const cache = this.worldTRSCache;
 
-      getMat4TRS(worldMatrix, cache.position, cache.quat, cache.scale);
+      worldMatrix.decompose(cache.position, cache.quat, cache.scale);
       this.dirtyFlags.worldMatrix = false;
     }
   }

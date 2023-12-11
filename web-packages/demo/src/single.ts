@@ -3,7 +3,7 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.mask.url;
+const json = inspireList.preComp.url;
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -11,8 +11,6 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json);
-    const item = comp.getItemByName('mask');
-
   } catch (e) {
     console.error('biz', e);
   }
@@ -28,8 +26,8 @@ function createPlayer () {
     onPausedByItem: data => {
       console.info('onPausedByItem', data);
     },
-    onItemClicked: () => {
-
+    onItemClicked: data => {
+      console.info(`item ${data.name} has been clicked`);
     },
     // reportGPUTime: console.debug,
   });

@@ -1,6 +1,6 @@
 import type {
-  Disposable, GLType, JSONValue, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, Scene, GPUCapability,
+  Disposable, GLType, JSONValue, LostHandler, MessageItem, RestoreHandler,
+  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, Scene, math, GPUCapability,
 } from '@galacean/effects-core';
 import {
   Ticker,
@@ -34,7 +34,7 @@ export interface ItemClickedData {
   name: string,
   player: Player,
   id: string,
-  hitPositions: spec.vec3[],
+  hitPositions: math.Vector3[],
   compositionId: number,
 }
 
@@ -897,15 +897,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           const behavior = regions[i].behavior || spec.InteractBehavior.NOTIFY;
 
           if (behavior === spec.InteractBehavior.NOTIFY) {
-            const { name, id, hitPositions } = regions[i];
-
             this.handleItemClicked?.({
-              name,
-              player: this,
+              ...regions[i],
               composition: composition.name,
-              id,
-              compositionId: composition.id,
-              hitPositions,
+              player: this,
             });
           } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
             void this.resume();

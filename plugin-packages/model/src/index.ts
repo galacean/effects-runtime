@@ -43,7 +43,6 @@ export type ModelAnimationOptions = spec.ModelAnimationOptions<'studio'>;
 
 export * from './gesture';
 export * from './gltf';
-export * from './math';
 export * from './plugin';
 export * from './runtime';
 export * from './utility';

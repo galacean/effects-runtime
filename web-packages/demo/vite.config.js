@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
           'three-sprite': resolve(__dirname, 'html/three-sprite.html'),
           'threejs-large-scene': resolve(__dirname, 'html/threejs-large-scene.html'),
         },
+        context: 'undefined',
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常
     },

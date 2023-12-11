@@ -1,5 +1,7 @@
+import { math } from '@galacean/effects';
 import { GeometryData } from './geometry';
-import { vecNormalize } from '../math/vec';
+
+const { Vector3 } = math;
 
 /**
  *
@@ -57,9 +59,9 @@ export class SphereGeometryData extends GeometryData {
         this.points.push(x, y, z);
 
         // normal
-        const normal = vecNormalize([x, y, z]);
+        const normal = new Vector3(x, y, z).normalize();
 
-        this.normals.push(...normal);
+        this.normals.push(...normal.toArray());
 
         // uv
         this.uvs.push(u + uOffset, 1 - v);

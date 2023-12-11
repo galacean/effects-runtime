@@ -1,5 +1,7 @@
-import { vecNormalize, vecSub } from '../math/vec';
+import { math } from '@galacean/effects';
 import { GeometryData } from './geometry';
+
+const { Vector3 } = math;
 
 /**
  *
@@ -39,9 +41,11 @@ export class TorusGeometryData extends GeometryData {
 
         const cx = radius * Math.cos(u);
         const cy = radius * Math.sin(u);
-        const normal = vecNormalize(vecSub([], [px, py, pz], [cx, cy, 0]));
+        const p = new Vector3(px, py, pz);
+        const c = new Vector3(cx, cy, 0);
+        const normal = p.subtract(c).normalize();
 
-        this.normals.push(...normal);
+        this.normals.push(...normal.toArray());
 
         this.uvs.push(i / tubularSegments);
         this.uvs.push(j / radialSegments);

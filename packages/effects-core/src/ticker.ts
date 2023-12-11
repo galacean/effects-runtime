@@ -1,4 +1,4 @@
-import { clamp } from './math';
+import { clamp } from '@galacean/effects-math/es/core/index';
 
 /**
  * 定时器类

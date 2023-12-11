@@ -1,19 +1,19 @@
 import type { ModelItemLight } from '../index';
-import { Vector2, Vector3, Matrix4 } from '../math';
+import { Vector2, Vector3 } from './math';
 import { PObjectType, PLightType } from './common';
 import { PEntity } from './object';
 import { PluginHelper } from '../utility/plugin-helper';
 import type { ModelVFXItem } from '../plugin/model-vfx-item';
 
 export class PLight extends PEntity {
-  direction = new Vector3(0, 0, 1);
+  direction: Vector3 = new Vector3(0, 0, 1);
   range = 0;
-  color = new Vector3(1, 1, 1);
+  color: Vector3 = new Vector3(1, 1, 1);
   intensity = 0;
   outerConeAngle = 0;
   innerConeAngle = 0;
   lightType = PLightType.ambient;
-  padding = new Vector2(0, 0);
+  padding: Vector2 = new Vector2(0, 0);
 
   constructor (light: ModelItemLight, ownerItem?: ModelVFXItem) {
     super();
@@ -85,9 +85,7 @@ export class PLight extends PEntity {
   }
 
   getWorldDirection (): Vector3 {
-    const matrix = this.matrix;
-
-    return Matrix4.multiplyByPointAsVector(matrix, this.direction, new Vector3());
+    return this.matrix.transformNormal(this.direction, new Vector3());
   }
 }
 

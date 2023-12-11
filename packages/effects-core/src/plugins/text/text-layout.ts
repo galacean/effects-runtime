@@ -24,7 +24,7 @@ export class TextLayout {
    */
   lineHeight: number;
 
-  constructor (options: spec.TextContentOptions, basicScale: spec.vec3) {
+  constructor (options: spec.TextContentOptions) {
     const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.display, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text, letterSpace = 0, autoWidth = false, fontSize, lineHeight = fontSize } = options;
 
     const tempWidth = fontSize + letterSpace;

@@ -1,7 +1,9 @@
 // @ts-nocheck
-import { Player, spec } from '@galacean/effects';
+import { Player, math, spec } from '@galacean/effects';
 import { ModelTreeVFXItem } from '@galacean/effects-plugin-model';
 import { generateComposition } from './utilities';
+
+const { Vector3 } = math;
 
 const { expect } = chai;
 
@@ -51,11 +53,11 @@ describe('tree item', () => {
     const grandChild = child.children[0];
 
     expect(grandChild.id).to.eql('^r2-2');
-    const worldPos = [];
+    const worldPos = new Vector3();
 
     grandChild.transform.assignWorldTRS(worldPos);
-    expect(grandChild.transform.position).to.deep.equals([1, 0, 1]);
-    expect(worldPos).to.deep.equals([2, 0, 1]);
+    expect(grandChild.transform.position.toArray()).to.deep.equals([1, 0, 1]);
+    expect(worldPos.toArray()).to.deep.equals([2, 0, 1]);
   });
 
   it('set node as parent', async () => {
@@ -76,7 +78,7 @@ describe('tree item', () => {
       ],
       player,
     );
-    const pos = [];
+    const pos = new Vector3();
     const treeItem = comp.items[0];
     const root = treeItem.content.nodes[0];
     const treeItem1 = comp.items[1];
@@ -91,10 +93,10 @@ describe('tree item', () => {
     expect(comp.items[2].transform.parentTransform).to.eql(treeItem.content.getNodeById('2').transform, '^2');
 
     comp.items[2].transform.assignWorldTRS(pos);
-    expect(comp.items[2].transform.position).to.eql([0, 1, 0]);
-    expect(comp.items[2].transform.parentTransform.position).to.eql([1, 0, 1]);
-    expect(comp.items[2].transform.parentTransform.parentTransform.position).to.deep.equals([1, 0, 0]);
-    expect(pos).to.deep.equals([2, 1, 1]);
+    expect(comp.items[2].transform.position.toArray()).to.eql([0, 1, 0]);
+    expect(comp.items[2].transform.parentTransform.position.toArray()).to.eql([1, 0, 1]);
+    expect(comp.items[2].transform.parentTransform.parentTransform.position.toArray()).to.deep.equals([1, 0, 0]);
+    expect(pos.toArray()).to.deep.equals([2, 1, 1]);
   });
 
   it('grand children tree', async () => {
@@ -129,7 +131,7 @@ describe('tree item', () => {
     expect(treeItem1.transform.parentTransform).to.eql(treeItem.content.nodes[0].transform);
     expect(treeItem2.parent).to.eql(treeItem1);
     expect(treeItem2.transform.parentTransform).to.eql(treeItem1.content.nodes[0].transform);
-    expect(treeItem2.getCurrentPosition()).to.eql([1, 1, 1]);
+    expect(treeItem2.getCurrentPosition().toArray()).to.eql([1, 1, 1]);
   });
 
   it('wrong children index', async () => {

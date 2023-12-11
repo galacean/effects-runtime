@@ -87,10 +87,10 @@ export class ThreeRenderFrame extends RenderFrame {
       const camera = this.camera;
 
       uniformSemanticsMap = {
-        // 'effects_ObjectToWorld': mesh.worldMatrix,
-        'effects_MatrixV': camera.getViewMatrix(),
-        'effects_MatrixVP': camera.getViewProjectionMatrix(),
-        'effects_MatrixInvV': camera.getInverseViewMatrix(),
+        'effects_ObjectToWorld': mesh.worldMatrix.toArray(),
+        'effects_MatrixV': camera.getViewMatrix().toArray(),
+        'effects_MatrixVP': camera.getViewProjectionMatrix().toArray(),
+        'effects_MatrixInvV': camera.getInverseViewMatrix().toArray(),
       };
     }
 
@@ -138,9 +138,9 @@ export class ThreeRenderFrame extends RenderFrame {
     group.children.forEach(mesh => {
       const material = (mesh as THREE.Mesh).material as THREE.ShaderMaterial;
 
-      setUniformValue(material.uniforms, 'effects_MatrixInvV', camera.getInverseViewMatrix());
-      setUniformValue(material.uniforms, 'effects_MatrixVP', camera.getViewProjectionMatrix());
-      setUniformValue(material.uniforms, 'effects_MatrixV', camera.getViewMatrix());
+      setUniformValue(material.uniforms, 'effects_MatrixInvV', camera.getInverseViewMatrix().toArray());
+      setUniformValue(material.uniforms, 'effects_MatrixVP', camera.getViewProjectionMatrix().toArray());
+      setUniformValue(material.uniforms, 'effects_MatrixV', camera.getViewMatrix().toArray());
       material.uniformsNeedUpdate = true;
     });
   }

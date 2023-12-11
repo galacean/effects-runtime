@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import type { vec2 } from '@galacean/effects-specification';
+import { Vector2 } from '@galacean/effects-math/es/core/index';
 import type { Composition } from '../composition';
 import type { FilterDefine, FilterShaderDefine } from '../filter';
 import { glContext } from '../gl';
@@ -7,7 +7,7 @@ import type { ValueGetter } from '../math';
 import { createValueGetter, nearestPowerOfTwo } from '../math';
 import type { PluginSystem } from '../plugin-system';
 import type { Renderer, RenderPassOptions } from '../render';
-import { getTextureSize, GPUCapability, RenderPass, RenderTargetHandle } from '../render';
+import { getTextureSize, RenderPass, RenderTargetHandle } from '../render';
 import { bloomMixVert, bloomThresholdVert } from '../shader';
 import type { Texture } from '../texture';
 import { TextureLoadAction } from '../texture';
@@ -84,7 +84,7 @@ export function registerBloomFilter (filter: spec.FilterParams, composition: Com
   thresholdPass.fragShader = bloomThresholdVert;
   thresholdPass.preDefaultPassAttachment = preDefaultPassColorAttachment;
 
-  const gaussianHPass = new BloomGaussianPass(renderer, 'H', [gaussian.step, 0], composition.pluginSystem, gaussian.shader, {
+  const gaussianHPass = new BloomGaussianPass(renderer, 'H', new Vector2(gaussian.step, 0), composition.pluginSystem, gaussian.shader, {
     name: 'gaussianH',
     viewport,
     attachments: [{ texture: blurInterMedia }],
@@ -94,7 +94,7 @@ export function registerBloomFilter (filter: spec.FilterParams, composition: Com
   }, blurTarget);
 
   gaussianHPass.preDefaultPassAttachment = preDefaultPassColorAttachment;
-  const gaussianVPass = new BloomGaussianPass(renderer, 'V', [0, gaussian.step], composition.pluginSystem, gaussian.shader, {
+  const gaussianVPass = new BloomGaussianPass(renderer, 'V', new Vector2(0, gaussian.step), composition.pluginSystem, gaussian.shader, {
     name: 'gaussianV',
     viewport,
     attachments: [{ texture: blurTarget }],
@@ -172,7 +172,7 @@ class ThresholdPass extends RenderPass {
 }
 
 class BloomGaussianPass extends RenderPass {
-  uTexStep: vec2;
+  uTexStep: Vector2;
   uBlurSource: Texture;
   prePassTexture: Texture;
   preDefaultPassTexture: Texture;
@@ -181,7 +181,7 @@ class BloomGaussianPass extends RenderPass {
   type: 'H' | 'V'; //高斯模糊的方向 可选'V'和'H'
   preDefaultPassAttachment: RenderTargetHandle; // 滤镜前的pass attachment
 
-  constructor (renderer: Renderer, type: 'H' | 'V', uTexStep: vec2, pluginSystem: PluginSystem, fragShader: string,
+  constructor (renderer: Renderer, type: 'H' | 'V', uTexStep: Vector2, pluginSystem: PluginSystem, fragShader: string,
     option: RenderPassOptions, uBlurSource?: Texture) {
     super(renderer, option);
     this.uTexStep = uTexStep;
