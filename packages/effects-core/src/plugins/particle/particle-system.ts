@@ -460,7 +460,7 @@ export class ParticleSystem {
     }
     this.meshes = meshes;
     this.reusable = vfxItem.reusable;
-    this.setVisible(vfxItem.getVisible());
+    this.setVisible(vfxItem.contentVisible);
     const interaction = props.interaction;
 
     if (interaction) {

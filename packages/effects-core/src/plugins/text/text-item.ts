@@ -1,5 +1,4 @@
 import * as spec from '@galacean/effects-specification';
-import type { TextureDataType } from '../../texture';
 import { Texture } from '../../texture';
 import { TextMesh } from './text-mesh';
 import type { TextVFXItem } from './text-vfx-item';
@@ -63,13 +62,11 @@ export class TextItem extends SpriteItem {
 
     // Text
     this.mesh = new TextMesh(this.engine, this.renderInfo, vfxItem.composition) as unknown as SpriteMesh;
-    this.mesh.setItems([this]);
-    this.updateTexture();
   }
 
   /**
    * 设置字号大小
-   * @param value 字号
+   * @param value - 字号
    * @returns
    */
   setFontSize (value: number): void {
@@ -85,7 +82,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置字重
-   * @param value 字重类型
+   * @param value - 字重类型
    * @returns
    */
   setFontWeight (value: spec.TextWeight): void {
@@ -111,7 +108,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置文本
-   * @param value 文本内容
+   * @param value - 文本内容
    * @returns
    */
   setText (value: string): void {
@@ -124,7 +121,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置文本水平布局
-   * @param value 布局选项
+   * @param value - 布局选项
    * @returns
    */
   setTextAlign (value: spec.TextAlignment): void {
@@ -137,7 +134,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置文本垂直布局
-   * @param value 布局选项
+   * @param value - 布局选项
    * @returns
    */
   setTextBaseline (value: spec.TextBaseline): void {
@@ -150,7 +147,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置文本颜色
-   * @param value 颜色内容
+   * @param value - 颜色内容
    * @returns
    */
   setTextColor (value: spec.RGBAColorValue): void {
@@ -163,7 +160,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置文本字体
-   * @param value 文本字体
+   * @param value - 文本字体
    * @returns
    */
   setFontFamily (value: string): void {
@@ -176,7 +173,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置外描边文本颜色
-   * @param value 颜色内容
+   * @param value - 颜色内容
    * @returns
    */
   setOutlineColor (value: spec.RGBAColorValue): void {
@@ -189,7 +186,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置外描边文本宽度
-   * @param value 外描边宽度
+   * @param value - 外描边宽度
    * @returns
    */
   setOutlineWidth (value: number): void {
@@ -202,7 +199,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置阴影模糊
-   * @param value 阴影模糊强度
+   * @param value - 阴影模糊强度
    * @returns
    */
   setShadowBlur (value: number): void {
@@ -215,7 +212,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置阴影颜色
-   * @param value 阴影颜色
+   * @param value - 阴影颜色
    * @returns
    */
   setShadowColor (value: spec.RGBAColorValue): void {
@@ -228,7 +225,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置阴影水平偏移距离
-   * @param value 水平偏移距离
+   * @param value - 水平偏移距离
    * @returns
    */
   setShadowOffsetX (value: number): void {
@@ -241,7 +238,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置阴影水平偏移距离
-   * @param value 水平偏移距离
+   * @param value - 水平偏移距离
    * @returns
    */
   setShadowOffsetY (value: number): void {
@@ -254,7 +251,7 @@ export class TextItem extends SpriteItem {
 
   /**
    * 设置字体清晰度
-   * @param value 字体清晰度
+   * @param value - 字体清晰度
    * @returns
    */
   setFontScale (value: number): void {
@@ -285,7 +282,7 @@ export class TextItem extends SpriteItem {
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
-    this.char = this.text.split('');
+    this.char = (this.text || '').split('');
 
     this.canvas.width = width ;
     this.canvas.height = height;
@@ -435,5 +432,4 @@ export class TextItem extends SpriteItem {
     context!.shadowOffsetX = style.shadowOffsetX ;
     context!.shadowOffsetY = -style.shadowOffsetY ;
   }
-
 }

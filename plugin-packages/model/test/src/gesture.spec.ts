@@ -163,7 +163,7 @@ describe('测试CameraGestureHandler对象接口', function () {
   });
 
   it('测试其他功能', async function () {
-    const comp = await generateComposition({ pauseOnFirstFrame: true });
+    const comp = await createComposition({ pauseOnFirstFrame: true });
     const handler = new CameraGestureHandlerImp(comp);
 
     handler.onFocusPoint('extra-camera', [10, 20, 30]);

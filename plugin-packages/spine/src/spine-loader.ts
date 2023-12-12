@@ -189,7 +189,7 @@ export class SpineLoader extends AbstractPlugin {
     this.slotGroups.length && this.slotGroups.map(slotGroup => {
       if (slotGroup) {
         slotGroup.meshToAdd.forEach(mesh => {
-          renderFrame.addMeshToDefaultRenderPass(mesh);
+          mesh.getVisible() && renderFrame.addMeshToDefaultRenderPass(mesh);
         });
         slotGroup.resetMeshes();
       }
