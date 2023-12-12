@@ -1,12 +1,11 @@
-import type { CameraOptions, RenderFrame, Mesh, Renderer, Texture, Engine } from '@galacean/effects';
+import type { RenderFrame, Mesh, Renderer, Texture, Engine, math, CameraOptionsEx } from '@galacean/effects';
 import { Transform, spec, addItem, removeItem, PLAYER_OPTIONS_ENV_EDITOR } from '@galacean/effects';
-import type { ModelVFXItem, ModelItem } from '../plugin/model-vfx-item';
+import type { ModelItem, ModelVFXItem } from '../plugin/model-vfx-item';
 import { PMesh } from './mesh';
 import type { PCamera } from './camera';
 import { PCameraManager } from './camera';
 import { PLight, PLightManager } from './light';
-import type { Vector2 } from '../math';
-import { Vector3, Matrix4, Box3 } from '../math';
+import { Vector3, Matrix4, Box3 } from './math';
 import { PSkybox } from './skybox';
 import { PTransform, PGlobalState, PObjectType } from './common';
 import type { CompositionCache } from './cache';
@@ -14,6 +13,9 @@ import { PShadowManager } from './shadow';
 import type { PEntity } from './object';
 import { WebGLHelper } from '../utility/plugin-helper';
 import { TwoStatesSet } from '../utility/ts-helper';
+
+type Box3 = math.Box3;
+type Vector2 = math.Vector2;
 
 export interface PSceneOptions {
   componentName: string,
@@ -238,7 +240,7 @@ export class PSceneManager {
     removeItem(this.itemList, entity);
   }
 
-  updateDefaultCamera (camera: CameraOptions) {
+  updateDefaultCamera (camera: CameraOptionsEx) {
     const effectsTransfrom = new Transform({
       ...camera,
       valid: true,
@@ -250,7 +252,7 @@ export class PSceneManager {
       camera.fov,
       camera.near,
       camera.far,
-      camera.position,
+      newTransform.getPosition(),
       newTransform.getRotation(),
       camera.clipMode as number,
     );
@@ -378,10 +380,10 @@ export class PSceneManager {
       const btransparent = WebGLHelper.isTransparentMesh(b);
 
       if (atransparent && btransparent) {
-        const aposition = Vector3.unpack(a.worldMatrix, 12, new Vector3());
-        const bposition = Vector3.unpack(b.worldMatrix, 12, new Vector3());
-        const anewPos = viewMatrix.multiplyByPoint3(aposition);
-        const bnewPos = viewMatrix.multiplyByPoint3(bposition);
+        const aposition = Vector3.fromArray(a.worldMatrix.elements, 12);
+        const bposition = Vector3.fromArray(b.worldMatrix.elements, 12);
+        const anewPos = viewMatrix.transformPoint(aposition);
+        const bnewPos = viewMatrix.transformPoint(bposition);
 
         return anewPos.z - bnewPos.z;
       } else if (atransparent) {
@@ -441,13 +443,13 @@ export class PSceneManager {
 
         if (mesh.ownerItem) {
           const transform = mesh.ownerItem.getWorldTransform();
-          const worldMatrix = Matrix4.fromArray(transform.getWorldMatrix());
+          const worldMatrix = transform.getWorldMatrix();
           const meshBox = mesh.computeBoundingBox(worldMatrix);
 
-          meshBox.transform(worldMatrix);
+          meshBox.applyMatrix4(worldMatrix);
           sceneBox.union(meshBox);
         } else {
-          sceneBox.union(mesh.computeBoundingBox(Matrix4.IDENTITY.clone()));
+          sceneBox.union(mesh.computeBoundingBox(Matrix4.fromIdentity()));
         }
       }
     });

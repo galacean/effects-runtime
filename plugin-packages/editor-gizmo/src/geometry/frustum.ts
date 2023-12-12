@@ -1,6 +1,8 @@
 import type { spec } from '@galacean/effects';
-import { mat3FromRotationZYX, vec3MulMat3ByPoint, vecAdd } from '../math/vec';
+import { math } from '@galacean/effects';
 import { GeometryData } from './geometry';
+
+const { Euler, Vector3, Matrix4 } = math;
 
 /**
  *
@@ -29,19 +31,21 @@ export class FrustumGeometryData extends GeometryData {
     const ratio = aspect;
     const halfY = far * Math.tan(fovY / 2);
     const halfX = halfY * ratio;
-    const point1 = vecAdd([], position, [halfX, halfY, far]) as [number, number, number];
-    const point2 = vecAdd([], position, [-halfX, halfY, far]) as [number, number, number];
-    const point3 = vecAdd([], position, [-halfX, -halfY, far]) as [number, number, number];
-    const point4 = vecAdd([], position, [halfX, -halfY, far]) as [number, number, number];
+    const point1 = new Vector3(halfX, halfY, far);
+    const point2 = new Vector3(-halfX, halfY, far);
+    const point3 = new Vector3(-halfX, -halfY, far);
+    const point4 = new Vector3(halfX, -halfY, far);
+    const matrix = Euler.fromArray(rotation).toMatrix4(new Matrix4());
+    const result1 = matrix.transformPoint(point1).add(position);
+    const result2 = matrix.transformPoint(point2).add(position);
+    const result3 = matrix.transformPoint(point3).add(position);
+    const result4 = matrix.transformPoint(point4).add(position);
 
-    const matrix = mat3FromRotationZYX([], rotation[0], rotation[1], rotation[2]);
-
-    const result1 = vec3MulMat3ByPoint([], point1, matrix, position);
-    const result2 = vec3MulMat3ByPoint([], point2, matrix, position);
-    const result3 = vec3MulMat3ByPoint([], point3, matrix, position);
-    const result4 = vec3MulMat3ByPoint([], point4, matrix, position);
-
-    this.points.push(...position, ...result1, ...result2, ...result3, ...result4);
+    this.points.push(
+      ...position,
+      ...result1.toArray(), ...result2.toArray(),
+      ...result3.toArray(), ...result4.toArray()
+    );
     this.indices.push(0, 1, 0, 2, 0, 3, 0, 4, 1, 2, 2, 3, 3, 4, 4, 1);
   }
 }

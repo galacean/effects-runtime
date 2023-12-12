@@ -1,14 +1,7 @@
 import * as spec from '@galacean/effects-specification';
+import { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { ValueGetter } from '../../math';
-import {
-  calculateTranslation,
-  createValueGetter,
-  ensureVec3, isZeroVec,
-  vecAdd,
-  vecAssign,
-  vecFill, vecMulScalar,
-  vecNormalize,
-} from '../../math';
+import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Transform } from '../../transform';
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
 import type { SpriteRenderData } from '../sprite/sprite-mesh';
@@ -17,9 +10,9 @@ import type { SpriteRenderData } from '../sprite/sprite-mesh';
  * 基础位移属性数据
  */
 export type ItemBasicTransform = {
-  position: [x: number, y: number, z: number],
-  rotation: [x: number, y: number, z: number],
-  scale: [x: number, y: number, z: number],
+  position: Vector3,
+  rotation: Euler,
+  scale: Vector3,
   path?: ValueGetter<spec.vec3>,
 };
 
@@ -34,21 +27,21 @@ export type ItemLinearVelOverLifetime = {
 export interface CalculateItemOptions {
   delay: number,
   startSpeed: number,
-  direction: spec.vec3,
+  direction: Vector3,
   startSize: number,
   sizeAspect: number,
   duration: number,
   looping: boolean,
   endBehavior: number,
   reusable?: boolean,
-  gravity: spec.vec3,
+  gravity: Vector3,
   gravityModifier: ValueGetter<number>,
   startRotation?: number,
   start3DRotation?: number,
 }
-const tempRot: spec.vec3 = [0, 0, 0];
-const tempSize: spec.vec3 = [1, 1, 1];
-const tempPos: spec.vec3 = [0, 0, 0];
+const tempRot = new Euler();
+const tempSize = new Vector3(1, 1, 1);
+const tempPos = new Vector3();
 
 export class CalculateItem {
   renderData: SpriteRenderData;
@@ -91,18 +84,19 @@ export class CalculateItem {
   // readonly startColor: vec4 = [1, 1, 1, 1];
   /*****************/
 
-  private _velocity: spec.vec3;
+  private _velocity: Vector3;
+
   constructor (
     props: spec.NullContent,
-    vfxItem: VFXItem<VFXItemContent>,
+    protected vfxItem: VFXItem<VFXItemContent>,
   ) {
     this.transform = vfxItem.transform;
     const scale = this.transform.scale;
 
     this.basicTransform = {
-      position: [...this.transform.position],
-      rotation: [...this.transform.getRotation()],
-      scale: [scale[0], scale[1], scale[0]],
+      position: this.transform.position.clone(),
+      rotation: this.transform.getRotation(),
+      scale: new Vector3(scale.x, scale.y, scale.x),
     };
 
     const { rotationOverLifetime, sizeOverLifetime, positionOverLifetime = {} } = props;
@@ -178,14 +172,14 @@ export class CalculateItem {
       reusable: !!vfxItem.reusable,
       delay: vfxItem.delay || 0,
       startSpeed: positionOverLifetime.startSpeed || 0,
-      startSize: scale && scale[0] || 1,
-      sizeAspect: scale && (scale[0] / (scale[1] || 1)) || 1,
+      startSize: scale && scale.x || 1,
+      sizeAspect: scale && (scale.x / (scale.y || 1)) || 1,
       duration: vfxItem.duration || 0,
       looping: vfxItem.endBehavior && vfxItem.endBehavior === spec.ItemEndBehavior.loop,
       endBehavior: vfxItem.endBehavior || spec.END_BEHAVIOR_DESTROY,
-      gravity: ensureVec3(positionOverLifetime.gravity),
+      gravity: Vector3.fromArray(positionOverLifetime.gravity || []),
       gravityModifier: createValueGetter(positionOverLifetime.gravityOverLifetime ?? 0),
-      direction: positionOverLifetime.direction ? vecNormalize([], positionOverLifetime.direction) : ensureVec3(),
+      direction: positionOverLifetime.direction ? Vector3.fromArray(positionOverLifetime.direction).normalize() : new Vector3(),
       /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
       // startColor: props.options.startColor || [1, 1, 1, 1],
       /*********************/
@@ -204,14 +198,14 @@ export class CalculateItem {
   get startSize () {
     return this.basicTransform.scale;
   }
-
-  set startSize (scale: [x: number, y: number, z: number]) {
+  set startSize (scale: Vector3) {
     this.basicTransform.scale = scale;
   }
 
   get velocity () {
     if (!this._velocity) {
-      this._velocity = vecMulScalar([] as unknown as spec.vec3, this.options.direction, this.options.startSpeed);
+      this._velocity = this.options.direction.clone();
+      this._velocity.multiply(this.options.startSpeed);
     }
 
     return this._velocity;
@@ -220,8 +214,8 @@ export class CalculateItem {
   getWillTranslate (): boolean {
     return !!((this.linearVelOverLifetime && this.linearVelOverLifetime.enabled) ||
       (this.orbitalVelOverLifetime && this.orbitalVelOverLifetime.enabled) ||
-      (this.options.gravityModifier && !isZeroVec(this.options.gravity)) ||
-      (this.options.startSpeed && !isZeroVec(this.options.direction)));
+      (this.options.gravityModifier && !this.options.gravity.isZero()) ||
+      (this.options.startSpeed && !this.options.direction.isZero()));
   }
 
   updateTime (globalTime: number) {
@@ -244,8 +238,8 @@ export class CalculateItem {
 
   getRenderData (_time: number, init?: boolean): SpriteRenderData {
     const options = this.options;
-    const sizeInc = vecFill(tempSize, 1);
-    const rotInc = vecFill(tempRot, 0);
+    const sizeInc = tempSize.setFromNumber(1);
+    const rotInc = tempRot.set(0, 0, 0);
     let sizeChanged = false, rotChanged = false;
     const time = _time < 0 ? _time : Math.max(_time, 0.);
     const duration = options.duration;
@@ -259,12 +253,12 @@ export class CalculateItem {
     life = life < 0 ? 0 : (life > 1 ? 1 : life);
 
     if (this.sizeXOverLifetime) {
-      sizeInc[0] = this.sizeXOverLifetime.getValue(life);
+      sizeInc.x = this.sizeXOverLifetime.getValue(life);
       if (this.sizeSeparateAxes) {
-        sizeInc[1] = this.sizeYOverLifetime.getValue(life);
-        sizeInc[2] = this.sizeZOverLifetime.getValue(life);
+        sizeInc.y = this.sizeYOverLifetime.getValue(life);
+        sizeInc.z = this.sizeZOverLifetime.getValue(life);
       } else {
-        sizeInc[2] = sizeInc[1] = sizeInc[0];
+        sizeInc.z = sizeInc.y = sizeInc.x;
       }
       sizeChanged = true;
     }
@@ -277,33 +271,33 @@ export class CalculateItem {
       const incZ = func(rotationOverLifetime.z!);
       const separateAxes = rotationOverLifetime.separateAxes;
 
-      rotInc[0] = separateAxes ? func(rotationOverLifetime.x!) : 0;
-      rotInc[1] = separateAxes ? func(rotationOverLifetime.y!) : 0;
-      rotInc[2] = incZ;
+      rotInc.x = separateAxes ? func(rotationOverLifetime.x!) : 0;
+      rotInc.y = separateAxes ? func(rotationOverLifetime.y!) : 0;
+      rotInc.z = incZ;
       rotChanged = true;
     }
 
     if (rotChanged || init) {
-      const rot = vecAdd(tempRot, this.basicTransform.rotation, rotInc);
+      const rot = tempRot.addEulers(this.basicTransform.rotation, rotInc);
 
-      ret.transform.setRotation(rot[0], rot[1], rot[2]);
+      ret.transform.setRotation(rot.x, rot.y, rot.z);
     }
 
-    let pos: spec.vec3 | undefined;
+    let pos: Vector3 | undefined;
 
     if (this.getWillTranslate() || init) {
-      pos = [0, 0, 0];
+      pos = new Vector3();
       calculateTranslation(pos, this, this.options.gravity, time, duration, this.basicTransform.position, this.velocity);
     }
 
     if (this.basicTransform.path) {
       if (!pos) {
-        pos = vecAssign(tempPos, this.basicTransform.position, 3);
+        pos = this.basicTransform.position.clone();
       }
-      vecAdd(pos, pos, this.basicTransform.path.getValue(life));
+      pos.add(this.basicTransform.path.getValue(life));
     }
     if (pos) {
-      this.transform.setPosition(pos[0], pos[1], pos[2]);
+      this.transform.setPosition(pos.x, pos.y, pos.z);
     }
 
     /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
@@ -331,8 +325,8 @@ export class CalculateItem {
     return ret;
   }
 
-  protected calculateScaling (sizeChanged: boolean, sizeInc: spec.vec3, init?: boolean) {
-    this.transform.setScale(sizeInc[0] * this.startSize[0], sizeInc[1] * this.startSize[1], sizeInc[2] * this.startSize[2]);
+  protected calculateScaling (sizeChanged: boolean, sizeInc: Vector3, init?: boolean) {
+    this.transform.setScale(sizeInc.x * this.startSize.x, sizeInc.y * this.startSize.y, sizeInc.z * this.startSize.z);
   }
 
 }

@@ -4,11 +4,10 @@ import type {
   MaterialStates,
   UndefinedAble,
   Texture,
-  spec,
   Engine,
   GlobalUniforms,
 } from '@galacean/effects-core';
-import { DestroyOptions, Material, assertExist, mat4create, throwDestroyedError } from '@galacean/effects-core';
+import { DestroyOptions, Material, assertExist, throwDestroyedError, math } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShader } from './gl-shader';
@@ -16,17 +15,27 @@ import type { GLTexture } from './gl-texture';
 import type { GLEngine } from './gl-engine';
 import type { GLRenderer } from './gl-renderer';
 
+type Vector2 = math.Vector2;
+type Vector3 = math.Vector3;
+type Vector4 = math.Vector4;
+type Matrix3 = math.Matrix3;
+type Matrix4 = math.Matrix4;
+type Quaternion = math.Quaternion;
+
+const { Vector4, Matrix4 } = math;
+
 export class GLMaterial extends Material {
   shader: GLShader;
 
   // material存放的uniform数据。
   floats: Record<string, number> = {};
   ints: Record<string, number> = {};
-  vector2s: Record<string, spec.vec2> = {};
-  vector3s: Record<string, spec.vec3> = {};
-  vector4s: Record<string, spec.vec4> = {};
-  matrices: Record<string, spec.mat4> = {};
-  matrice3s: Record<string, spec.mat3> = {};
+  vector2s: Record<string, Vector2> = {};
+  vector3s: Record<string, Vector3> = {};
+  vector4s: Record<string, Vector4> = {};
+  quaternions: Record<string, Quaternion> = {};
+  matrices: Record<string, Matrix4> = {};
+  matrice3s: Record<string, Matrix3> = {};
   textures: Record<string, Texture> = {};
   floatArrays: Record<string, number[]> = {};
   vector4Arrays: Record<string, number[]> = {};
@@ -281,7 +290,7 @@ export class GLMaterial extends Material {
     }
 
     if (globalUniforms) {
-    // 设置全局 uniform
+      // 设置全局 uniform
       for (name in globalUniforms.floats) {
         this.shader.setFloat(name, globalUniforms.floats[name]);
       }
@@ -319,6 +328,9 @@ export class GLMaterial extends Material {
     }
     for (name in this.vector4s) {
       this.shader.setVector4(name, this.vector4s[name]);
+    }
+    for (name in this.quaternions) {
+      this.shader.setQuaternion(name, this.quaternions[name]);
     }
     for (name in this.matrices) {
       this.shader.setMatrix(name, this.matrices[name]);
@@ -358,38 +370,46 @@ export class GLMaterial extends Material {
     this.floatArrays[name] = value;
   }
 
-  public getVector2 (name: string): spec.vec2 | null {
+  public getVector2 (name: string): Vector2 | null {
     return this.vector2s[name];
   }
-  public setVector2 (name: string, value: spec.vec2): void {
+  public setVector2 (name: string, value: Vector2): void {
     this.checkUniform(name);
     this.vector2s[name] = value;
   }
 
-  public getVector3 (name: string): spec.vec3 | null {
+  public getVector3 (name: string): Vector3 | null {
     return this.vector3s[name];
   }
-  public setVector3 (name: string, value: spec.vec3): void {
+  public setVector3 (name: string, value: Vector3): void {
     this.checkUniform(name);
     this.vector3s[name] = value;
   }
 
-  public getVector4 (name: string): spec.vec4 | null {
+  public getVector4 (name: string): Vector4 | null {
     return this.vector4s[name];
   }
-  public setVector4 (name: string, value: spec.vec4): void {
+  public setVector4 (name: string, value: Vector4): void {
     this.checkUniform(name);
     this.vector4s[name] = value;
   }
 
-  public getMatrix (name: string): spec.mat4 | null {
+  public getQuaternion (name: string): Quaternion | null {
+    return this.quaternions[name];
+  }
+  public setQuaternion (name: string, value: Quaternion): void {
+    this.checkUniform(name);
+    this.quaternions[name] = value;
+  }
+
+  public getMatrix (name: string): Matrix4 | null {
     return this.matrices[name];
   }
-  public setMatrix (name: string, value: spec.mat4): void {
+  public setMatrix (name: string, value: Matrix4): void {
     this.checkUniform(name);
     this.matrices[name] = value;
   }
-  public setMatrix3 (name: string, value: spec.mat3): void {
+  public setMatrix3 (name: string, value: Matrix3): void {
     this.checkUniform(name);
     this.matrice3s[name] = value;
   }
@@ -397,23 +417,23 @@ export class GLMaterial extends Material {
   public getVector4Array (name: string): number[] {
     return this.vector4Arrays[name];
   }
-  public setVector4Array (name: string, array: spec.vec4[]): void {
+  public setVector4Array (name: string, array: Vector4[]): void {
     this.checkUniform(name);
     this.vector4Arrays[name] = [];
     for (const v of array) {
-      this.vector4Arrays[name].push(v[0], v[1], v[2], v[3]);
+      this.vector4Arrays[name].push(v.x, v.y, v.z, v.w);
     }
   }
 
   public getMatrixArray (name: string): number[] | null {
     return this.matrixArrays[name];
   }
-  public setMatrixArray (name: string, array: spec.mat4[]): void {
+  public setMatrixArray (name: string, array: Matrix4[]): void {
     this.checkUniform(name);
     this.matrixArrays[name] = [];
     for (const m of array) {
       for (let i = 0; i < 16; i++) {
-        this.matrixArrays[name].push(m[i]);
+        this.matrixArrays[name].push(m.elements[i]);
       }
     }
   }
@@ -451,6 +471,7 @@ export class GLMaterial extends Material {
     clonedMaterial.vector2s = this.vector2s;
     clonedMaterial.vector3s = this.vector3s;
     clonedMaterial.vector4s = this.vector4s;
+    clonedMaterial.quaternions = this.quaternions;
     clonedMaterial.matrices = this.matrices;
     clonedMaterial.textures = this.textures;
     clonedMaterial.floatArrays = this.floatArrays;
@@ -488,29 +509,33 @@ export class GLMaterial extends Material {
     for (name in material.vector4s) {
       this.setVector4(name, material.vector4s[name]);
     }
+    for (name in material.quaternions) {
+      this.setQuaternion(name, material.quaternions[name]);
+    }
     for (name in material.matrices) {
       this.setMatrix(name, material.matrices[name]);
     }
     for (name in material.vector4Arrays) {
-      const vec4Array: spec.vec4[] = [];
+      const vec4Array: Vector4[] = [];
 
-      for (let i = 0;i < material.vector4Arrays[name].length;i += 4) {
-        vec4Array.push([material.vector4Arrays[name][i],
+      for (let i = 0; i < material.vector4Arrays[name].length; i += 4) {
+        vec4Array.push(new Vector4(
+          material.vector4Arrays[name][i],
           material.vector4Arrays[name][i + 1],
           material.vector4Arrays[name][i + 2],
           material.vector4Arrays[name][i + 3],
-        ]);
+        ));
       }
       this.setVector4Array(name, vec4Array);
     }
     for (name in material.matrixArrays) {
-      const mat4Array: spec.mat4[] = [];
+      const mat4Array: Matrix4[] = [];
 
-      for (let i = 0;i < material.matrixArrays[name].length;i += 16) {
-        const matrix: spec.mat4 = mat4create();
+      for (let i = 0; i < material.matrixArrays[name].length; i += 16) {
+        const matrix = Matrix4.fromIdentity();
 
-        for (let j = 0;j < 16;j++) {
-          matrix[j] = (material.matrixArrays[name][i + j]);
+        for (let j = 0; j < 16; j++) {
+          matrix.elements[j] = (material.matrixArrays[name][i + j]);
         }
         mat4Array.push(matrix);
       }
@@ -545,6 +570,7 @@ export class GLMaterial extends Material {
     this.vector2s = {};
     this.vector3s = {};
     this.vector4s = {};
+    this.quaternions = {};
     this.matrices = {};
     this.matrice3s = {};
     this.textures = {};

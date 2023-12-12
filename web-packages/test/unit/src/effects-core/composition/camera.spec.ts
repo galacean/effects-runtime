@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { Player, BezierSegments, CameraController, CurveValue, PathSegments, spec } from '@galacean/effects';
+import { Player, BezierSegments, CameraController, CurveValue, PathSegments, spec, math } from '@galacean/effects';
 
+const { Vector3 } = math;
 const { expect } = chai;
 
 describe('camera item', () => {
@@ -49,8 +50,8 @@ describe('camera item', () => {
     expect(near).to.eql(0.6);
     expect(fov).to.eql(60);
     expect(far).to.eql(25);
-    expect([+(position[0].toFixed(0)), +(position[1].toFixed(0)), +(position[2].toFixed(0))]).to.eql([10, 2, 12]);
-    expect([+(rotation[0].toFixed(0)), +(rotation[1].toFixed(0)), +(rotation[2].toFixed(0))]).to.eql([10, 60, 30]);
+    expect([+(position.x.toFixed(0)), +(position.y.toFixed(0)), +(position.z.toFixed(0))]).to.eql([10, 2, 12]);
+    expect([+(rotation.x.toFixed(0)), +(rotation.y.toFixed(0)), +(rotation.z.toFixed(0))]).to.eql([10, 60, 30]);
   });
 
   it('camera positionOverLifetime', async () => {
@@ -86,10 +87,10 @@ describe('camera item', () => {
     player.gotoAndStop(2.5);
     const pos = comp.camera.position;
 
-    expect(pos).to.deep.equals([2, 0.5, 0]);
+    expect(pos).to.deep.equals(new Vector3(2, 0.5, 0));
     const z = new CurveValue([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
 
-    expect(pos[2]).to.eql(z.getValue(0.5));
+    expect(pos.z).to.eql(z.getValue(0.5));
   });
 
   it('camera rotationOverLifetime', async () => {
@@ -121,7 +122,7 @@ describe('camera item', () => {
     player.gotoAndStop(2.5);
     const ro = comp.camera.rotation;
 
-    expect(new Float32Array(ro)).to.deep.equals(new Float32Array([10, 10, 10]));
+    expect(new Float32Array(ro.toArray())).to.deep.equals(new Float32Array([10, 10, 10]));
     const separate = [{
       'name': 'separate',
       'delay': 0,
@@ -154,11 +155,11 @@ describe('camera item', () => {
     player.gotoAndStop(2.5);
     const ro2 = comp2.camera.rotation;
 
-    expect(ro2[0]).to.closeTo(2, 0.0001);
-    expect(ro2[1]).to.closeTo(0, 0.0001);
+    expect(ro2.x).to.closeTo(2, 0.0001);
+    expect(ro2.y).to.closeTo(0, 0.0001);
     const z = new CurveValue([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
 
-    expect(ro2[2]).to.closeTo(z.getValue(0.5), 0.00001);
+    expect(ro2.z).to.closeTo(z.getValue(0.5), 0.00001);
   });
 
   it('camera position with path', async () => {
@@ -190,9 +191,9 @@ describe('camera item', () => {
     player.gotoAndStop(2.5);
     const pos = comp.camera.position;
 
-    expect(pos[0]).to.eql(1, 'constant path');
-    expect(pos[1]).to.eql(1, 'constant path');
-    expect(pos[2]).to.eql(1, 'constant path');
+    expect(pos.x).to.eql(1, 'constant path');
+    expect(pos.y).to.eql(1, 'constant path');
+    expect(pos.z).to.eql(1, 'constant path');
 
     const linear = [
       {
@@ -224,9 +225,9 @@ describe('camera item', () => {
     const pos1 = comp1.camera.position;
     const val = new PathSegments([[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [1, 1, 1]]]).getValue(0.5);
 
-    expect(pos1[0]).to.eql(val[0], 'linear path');
-    expect(pos1[1]).to.eql(val[1], 'linear path');
-    expect(pos1[2]).to.eql(val[2], 'linear path');
+    expect(pos1.x).to.eql(val[0], 'linear path');
+    expect(pos1.y).to.eql(val[1], 'linear path');
+    expect(pos1.z).to.eql(val[2], 'linear path');
 
     const curve = [
       {
@@ -257,9 +258,9 @@ describe('camera item', () => {
     const pos2 = comp2.camera.position;
     const val2 = new BezierSegments([[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [3, 1, 0]], [[1, 1, 0], [2, 1, 0]]]).getValue(0.5);
 
-    expect(pos2[1]).to.eql(val2[1], 'bezier path');
-    expect(pos2[0]).to.eql(val2[0], 'bezier path');
-    expect(pos2[2]).to.eql(val2[2], 'bezier path');
+    expect(pos2.x).to.eql(val2[0], 'bezier path');
+    expect(pos2.y).to.eql(val2[1], 'bezier path');
+    expect(pos2.z).to.eql(val2[2], 'bezier path');
   });
 
   it('camera 2D item affected by parent', async () => {
@@ -384,9 +385,9 @@ describe('camera item', () => {
     const comp = await player.loadScene(json);
     const camera = comp.camera;
 
-    expect(camera.position).to.deep.equals([0, 0, 8]);
+    expect(camera.position).to.deep.equals(new Vector3(0, 0, 8));
     player.gotoAndStop(2.2);
-    expect(camera.position).to.deep.equals([0, 0, 12]);
+    expect(camera.position).to.deep.equals(new Vector3(0, 0, 12));
   });
 });
 

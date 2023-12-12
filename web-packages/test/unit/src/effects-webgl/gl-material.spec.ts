@@ -1,7 +1,8 @@
 // @ts-nocheck
-import { createShaderWithMarcos, RenderFrame, RenderPass, glContext, DestroyOptions, TextureLoadAction, ShaderType, Texture, Camera, Mesh } from '@galacean/effects-core';
+import { createShaderWithMarcos, RenderFrame, RenderPass, glContext, DestroyOptions, TextureLoadAction, ShaderType, Texture, Camera, Mesh, math } from '@galacean/effects-core';
 import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
 
+const { Vector4 } = math;
 const { expect, assert } = chai;
 
 describe('gl-material', () => {
@@ -588,10 +589,10 @@ describe('gl-material', () => {
     ];
 
     mesh.material.setVector4Array('u_pos', [
-      [1, 2, 3, 4],
-      [1, 2, 3, 4],
-      [1, 2, 3, 4],
-      [1, 2, 3, 4],
+      Vector4.fromArray([1, 2, 3, 4]),
+      Vector4.fromArray([1, 2, 3, 4]),
+      Vector4.fromArray([1, 2, 3, 4]),
+      Vector4.fromArray([1, 2, 3, 4]),
     ]);
     const data2 = mesh.material.getVector4Array('u_pos');
 

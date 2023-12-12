@@ -1,5 +1,7 @@
 import type { ShaderMarcos, Geometry, GeometryDrawMode, Engine, GLEngine, spec } from '@galacean/effects';
-import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, createShaderWithMarcos, ShaderType } from '@galacean/effects';
+import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, createShaderWithMarcos, ShaderType, math } from '@galacean/effects';
+
+const { Vector4 } = math;
 
 export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec.vec3): Mesh {
   const geometry = new SharedGeometry(
@@ -28,7 +30,7 @@ export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec
   const material = Material.create(engine, materialOptions);
 
   material.depthTest = mesh.material.depthTest;
-  material.setVector4('uPreviewColor', [color[0], color[1], color[2], 1]);
+  material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
 
   return updateWireframeMesh(mesh, Mesh.create(
     engine,
@@ -128,7 +130,7 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
   const material = Material.create(engine, materialOptions);
 
   material.depthTest = mesh.material.depthTest;
-  material.setVector4('uPreviewColor', [color[0], color[1], color[2], 1]);
+  material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
 
   return updateWireframeMesh(mesh, Mesh.create(
     engine,

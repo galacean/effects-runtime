@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { DEG2RAD } from '../constants';
+import { DEG2RAD, Vector3 } from '@galacean/effects-math/es/core/index';
 import { random } from '../utils';
 import { getArcAngle } from './cone';
 import type { Shape, ShapeGeneratorOptions, ShapeParticle } from './shape';
@@ -17,12 +17,12 @@ export class Circle implements Shape {
 
   generate (opt: ShapeGeneratorOptions): ShapeParticle {
     const arc = getArcAngle(this.arc, this.arcMode, opt) * DEG2RAD;
-    const direction = [Math.cos(arc), Math.sin(arc), 0];
+    const direction = new Vector3(Math.cos(arc), Math.sin(arc), 0);
     const radius = this.radius;
 
     return {
       direction,
-      position: direction.map(n => n * radius),
+      position: direction.clone().multiply(radius),
     };
   }
 }
@@ -41,8 +41,8 @@ export class Rectangle implements Shape {
     const y = random(-this._h, this._h);
 
     return {
-      direction: [0, 0, 1],
-      position: [x, y, 0],
+      direction: new Vector3(0, 0, 1),
+      position: new Vector3(x, y, 0),
     };
   }
 
@@ -65,23 +65,23 @@ export class RectangleEdge implements Shape {
 
   generate (opt: ShapeGeneratorOptions): ShapeParticle {
     const arc = getArcAngle(this.arc, this.arcMode, opt) * DEG2RAD;
-    const direction = [Math.cos(arc), Math.sin(arc), 0];
+    const direction = new Vector3(Math.cos(arc), Math.sin(arc), 0);
     const w = this._d;
     const h = this._h;
     const r0 = Math.atan2(h, w);
     const tan = Math.tan(arc);
-    let position;
+    const position = new Vector3();
 
     if (arc < r0) {
-      position = [w, w * tan, 0];
+      position.set(w, w * tan, 0);
     } else if (arc >= r0 && arc < Math.PI - r0) {
-      position = [h / tan, h, 0];
+      position.set(h / tan, h, 0);
     } else if (arc < Math.PI + r0) {
-      position = [-w, -w * tan, 0];
+      position.set(-w, -w * tan, 0);
     } else if (arc < Math.PI * 2 - r0) {
-      position = [-h / tan, -h, 0];
+      position.set(-h / tan, -h, 0);
     } else {
-      position = [w, w * tan, 0];
+      position.set(w, w * tan, 0);
     }
 
     return {
@@ -106,8 +106,8 @@ export class Edge implements Shape {
     const x = this.arcMode === spec.ShapeArcMode.UNIFORM_BURST ? ((options.burstIndex % options.burstCount) / (options.burstCount - 1)) : random(0, 1);
 
     return {
-      direction: [0, 1, 0],
-      position: [this._d * (x - 0.5), 0, 0],
+      direction: new Vector3(0, 1, 0),
+      position: new Vector3(this._d * (x - 0.5), 0, 0),
     };
   }
 }

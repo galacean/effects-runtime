@@ -1,4 +1,6 @@
-import type { vec2, vec4, mat4 } from '@galacean/effects-specification';
+import type { vec4 } from '@galacean/effects-specification';
+import type { Matrix4 } from '@galacean/effects-math/es/core/index';
+import { Vector2, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Camera } from '../camera';
 import { glContext } from '../gl';
 import type { UniformValue } from '../material';
@@ -179,6 +181,7 @@ export class RenderFrame implements Disposable {
   renderer: Renderer;
   resource: RenderFrameResource;
   keepColorBuffer?: boolean;
+  editorTransform: Vector4;
 
   /**
    * 名称
@@ -199,7 +202,6 @@ export class RenderFrame implements Disposable {
   readonly transparentTexture: Texture;
 
   protected destroyed = false;
-  protected _editorTransform: vec4;
   protected renderPassInfoMap: WeakMap<RenderPass, RenderPassInfo> = new WeakMap();
 
   constructor (options: RenderFrameOptions) {
@@ -389,7 +391,7 @@ export class RenderFrame implements Disposable {
     this.camera = camera;
     this.keepColorBuffer = keepColorBuffer;
     this.renderPassInfoMap.set(firstRP, { listStart: 0, listEnd: 0, renderPass: firstRP, intermedia: false });
-    this.editorTransform = editorTransform;
+    this.editorTransform = Vector4.fromArray(editorTransform);
 
     if (!options.clearAction) {
       this.resetClearActions();
@@ -403,14 +405,6 @@ export class RenderFrame implements Disposable {
     const shader = createCopyShader(level, writeDepth);
 
     this.renderer.getShaderLibrary()?.addShader(shader);
-  }
-
-  get editorTransform (): vec4 {
-    return this._editorTransform;
-  }
-
-  set editorTransform (v: vec4) {
-    this._editorTransform = v;
   }
 
   get renderPasses () {
@@ -953,7 +947,7 @@ export class RenderFrame implements Disposable {
       engine,
       {
         uniformValues: {
-        // @ts-expect-error
+          // @ts-expect-error
           uDepth: semantics?.depthTexture,
         },
         name,
@@ -987,8 +981,8 @@ export class RenderFrame implements Disposable {
   }
 }
 
-export function getTextureSize (tex?: Texture): vec2 {
-  return tex ? [tex.getWidth(), tex.getHeight()] : [0, 0];
+export function getTextureSize (tex?: Texture): Vector2 {
+  return tex ? new Vector2(tex.getWidth(), tex.getHeight()) : new Vector2();
 }
 
 export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: RenderPass): RenderPass | undefined {
@@ -1019,7 +1013,7 @@ export class GlobalUniforms {
   floats: Record<string, number> = {};
   ints: Record<string, number> = {};
   // vector3s: Record<string, vec3> = {};
-  matrices: Record<string, mat4> = {};
+  matrices: Record<string, Matrix4> = {};
   //...
 
   samplers: string[] = [];  // 存放的sampler名称。

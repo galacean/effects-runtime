@@ -1,4 +1,5 @@
 import * as spec from '@galacean/effects-specification';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { VFXItemProps } from '../../vfx-item';
 import { VFXItem } from '../../vfx-item';
 import type { Composition } from '../../composition';
@@ -53,13 +54,13 @@ export class CalculateVFXItem extends VFXItem<CalculateItem> {
   }
 
   override setScale (x: number, y: number, z: number) {
-    this.content.startSize = [x, y, z];
+    this.content.startSize = new Vector3(x, y, z);
   }
 
   override scale (x: number, y: number, z: number) {
-    const startSize = this.content.startSize.slice();
+    const startSize = this.content.startSize.clone();
 
-    this.content.startSize = [x * startSize[0], y * startSize[1], z * startSize[2]];
+    this.content.startSize = new Vector3(x * startSize.x, y * startSize.y, z * startSize.z);
   }
 
   override getHitTestParams (force?: boolean): void {

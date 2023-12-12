@@ -1,17 +1,7 @@
 import * as spec from '@galacean/effects-specification';
-import type { vec3 } from '@galacean/effects-specification';
+import { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { ValueGetter } from '../math';
-import {
-  calculateTranslation,
-  createValueGetter,
-  ensureVec3,
-  isZeroVec,
-  vecAdd,
-  vecAssign,
-  vecFill,
-  vecMulScalar,
-  vecNormalize,
-} from '../math';
+import { ensureVec3, calculateTranslation, createValueGetter } from '../math';
 import type { Transform } from '../transform';
 import type { VFXItem } from '../vfx-item';
 import type { SpriteItemOptions, ItemBasicTransform, ItemLinearVelOverLifetime, SpriteRenderData } from '../plugins';
@@ -22,9 +12,9 @@ export interface TimelineComponentOptions {
   positionOverLifetime?: spec.PositionOverLifetime,
 }
 
-const tempRot: vec3 = [0, 0, 0];
-const tempSize: vec3 = [1, 1, 1];
-const tempPos: vec3 = [0, 0, 0];
+const tempRot = new Euler();
+const tempSize = new Vector3(1, 1, 1);
+const tempPos = new Vector3(0, 0, 0);
 
 export class TimelineComponent {
   options: Omit<SpriteItemOptions, 'delay'>;
@@ -44,7 +34,7 @@ export class TimelineComponent {
     enabled?: boolean,
   };
 
-  private velocity: vec3;
+  private velocity: Vector3;
   private readonly rotationOverLifetime: {
     asRotation?: boolean,
     separateAxes?: boolean,
@@ -65,9 +55,9 @@ export class TimelineComponent {
 
     this.transform = transform;
     this.basicTransform = {
-      position: [...transform.position],
-      rotation: [...transform.getRotation()],
-      scale: [scale[0], scale[1], scale[2]],
+      position: transform.position.clone(),
+      rotation: transform.getRotation(),
+      scale,
     };
     if (positionOverLifetime.path) {
       this.basicTransform.path = createValueGetter(positionOverLifetime.path);
@@ -75,14 +65,14 @@ export class TimelineComponent {
     this.positionOverLifetime = positionOverLifetime;
     this.options = {
       startSpeed: positionOverLifetime.startSpeed || 0,
-      startSize: scale && scale[0] || 1,
-      sizeAspect: scale && (scale[0] / (scale[1] || 1)) || 1,
+      startSize: scale && scale.x || 1,
+      sizeAspect: scale && (scale.x / (scale.y || 1)) || 1,
       startColor: [1, 1, 1, 1],
       duration: duration || 0,
       looping: endBehavior && endBehavior === spec.ItemEndBehavior.loop,
-      gravity: ensureVec3(positionOverLifetime.gravity),
+      gravity: Vector3.fromArray(positionOverLifetime.gravity || []),
       gravityModifier: createValueGetter(positionOverLifetime.gravityOverLifetime ?? 0),
-      direction: positionOverLifetime.direction ? vecNormalize([], positionOverLifetime.direction) : ensureVec3(),
+      direction: positionOverLifetime.direction ? Vector3.fromArray(positionOverLifetime.direction).normalize() : new Vector3(),
       endBehavior: endBehavior || spec.END_BEHAVIOR_DESTROY,
     };
 
@@ -147,7 +137,7 @@ export class TimelineComponent {
 
   private getVelocity () {
     if (!this.velocity) {
-      this.velocity = vecMulScalar([] as unknown as vec3, this.options.direction, this.options.startSpeed);
+      this.velocity = this.options.direction.clone().multiply(this.options.startSpeed);
     }
 
     return this.velocity;
@@ -156,18 +146,22 @@ export class TimelineComponent {
   private willTranslate () {
     return !!((this.linearVelOverLifetime && this.linearVelOverLifetime.enabled) ||
       (this.orbitalVelOverLifetime && this.orbitalVelOverLifetime.enabled) ||
-      (this.options.gravityModifier && !isZeroVec(this.options.gravity)) ||
-      (this.options.startSpeed && !isZeroVec(this.options.direction)));
+      (this.options.gravityModifier && !this.options.gravity.isZero()) ||
+      (this.options.startSpeed && !this.options.direction.isZero()));
   }
 
   updatePosition (x: number, y: number, z: number) {
-    this.basicTransform.position = [x, y, z];
+    this.basicTransform.position.set(x, y, z);
+  }
+
+  updateRotation (x: number, y: number, z: number) {
+    this.basicTransform.rotation.set(x, y, z);
   }
 
   getRenderData (_time: number, init?: boolean): SpriteRenderData {
     const options = this.options;
-    const sizeInc = vecFill(tempSize, 1);
-    const rotInc = vecFill(tempRot, 0);
+    const sizeInc = tempSize.setFromNumber(1);
+    const rotInc = tempRot.set(0, 0, 0);
     let sizeChanged, rotChanged;
     const time = _time < 0 ? _time : Math.max(_time, 0.);
     const duration = options.duration;
@@ -176,23 +170,23 @@ export class TimelineComponent {
     const ret: SpriteRenderData = {
       life,
       transform: this.transform,
-      startSize: this.basicTransform.scale,
+      startSize: this.basicTransform.scale.clone(),
     };
     const transform = this.basicTransform;
 
     life = life < 0 ? 0 : (life > 1 ? 1 : life);
     if (this.sizeXOverLifetime) {
-      sizeInc[0] = this.sizeXOverLifetime.getValue(life);
+      sizeInc.x = this.sizeXOverLifetime.getValue(life);
       if (this.sizeSeparateAxes) {
-        sizeInc[1] = this.sizeYOverLifetime.getValue(life);
-        sizeInc[2] = this.sizeZOverLifetime.getValue(life);
+        sizeInc.y = this.sizeYOverLifetime.getValue(life);
+        sizeInc.z = this.sizeZOverLifetime.getValue(life);
       } else {
-        sizeInc[2] = sizeInc[1] = sizeInc[0];
+        sizeInc.z = sizeInc.y = sizeInc.x;
       }
       sizeChanged = true;
     }
     if (sizeChanged || init) {
-      ret.transform.setScale(sizeInc[0], sizeInc[1], sizeInc[2]);
+      ret.transform.setScale(sizeInc.x, sizeInc.y, sizeInc.z);
     }
     const rotationOverLifetime = this.rotationOverLifetime;
 
@@ -201,39 +195,39 @@ export class TimelineComponent {
       const incZ = func(rotationOverLifetime.z!);
       const separateAxes = rotationOverLifetime.separateAxes;
 
-      rotInc[0] = separateAxes ? func(rotationOverLifetime.x!) : 0;
-      rotInc[1] = separateAxes ? func(rotationOverLifetime.y!) : 0;
-      rotInc[2] = incZ;
+      rotInc.x = separateAxes ? func(rotationOverLifetime.x!) : 0;
+      rotInc.y = separateAxes ? func(rotationOverLifetime.y!) : 0;
+      rotInc.z = incZ;
       rotChanged = true;
     }
 
     if (rotChanged || init) {
-      const rot = vecAdd(tempRot, transform.rotation, rotInc);
+      const rot = tempRot.addEulers(transform.rotation, rotInc);
 
-      ret.transform.setRotation(rot[0], rot[1], rot[2]);
+      ret.transform.setRotation(rot.x, rot.y, rot.z);
     }
 
-    let pos: vec3 | undefined;
+    let pos: Vector3 | undefined;
 
     if (this.willTranslate() || init) {
-      const out = vecFill(tempSize, 0);
+      const out = tempSize.setFromNumber(0);
 
       pos = calculateTranslation(out, this, options.gravity, time, duration, transform.position, this.getVelocity());
     }
     if (transform.path) {
       if (!pos) {
-        pos = vecAssign(tempPos, transform.position, 3);
+        pos = tempPos.copyFrom(transform.position);
       }
-      vecAdd(pos, pos, transform.path.getValue(life));
+      pos.add(transform.path.getValue(life));
     }
     if (pos) {
-      ret.transform.setPosition(pos[0], pos[1], pos[2]);
+      ret.transform.setPosition(pos.x, pos.y, pos.z);
     }
 
     if (ret.startSize) {
       const scaling = ret.transform.scale;
 
-      ret.transform.setScale(scaling[0] * ret.startSize[0], scaling[1] * ret.startSize[1], scaling[2] * ret.startSize[2]);
+      ret.transform.setScale(scaling.x * ret.startSize.x, scaling.y * ret.startSize.y, scaling.z * ret.startSize.z);
     }
 
     return ret;

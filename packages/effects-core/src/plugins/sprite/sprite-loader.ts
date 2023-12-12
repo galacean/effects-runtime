@@ -2,7 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import type { Composition } from '../../composition';
 import type { SpriteItem } from '../index';
 import { AbstractPlugin } from '../index';
-import type { VFXItem } from '../../vfx-item';
+import { Item, type VFXItem } from '../../vfx-item';
 import type { LayerInfo } from './sprite-group';
 import { SpriteGroup } from './sprite-group';
 import type { RenderFrame, Renderer, RenderPassSplitOptions } from '../../render';
@@ -36,10 +36,9 @@ export class SpriteLoader extends AbstractPlugin {
       let hasFilter = false;
 
       compositions[0]?.items.forEach(item => {
-        // TODO: 待 spec 修改升级后移除 as
-        if (item.type as spec.ItemType === spec.ItemType.filter && (item as spec.FilterItem).content.filter) {
+        if (Item.isFilter(item) && item.content.filter) {
           hasFilter = true;
-          const shaderDefs = createFilterShaders((item as spec.FilterItem).content.filter);
+          const shaderDefs = createFilterShaders(item.content.filter);
 
           shaderDefs.forEach(function (def) {
             if (!def.isParticle) {
@@ -68,13 +67,16 @@ export class SpriteLoader extends AbstractPlugin {
     const spriteGroup: SpriteGroup = composition.loaderData.spriteGroup;
 
     spriteGroup.dispose();
+    delete composition.loaderData.spriteGroup;
   }
 
   override onCompositionReset (composition: Composition, pipeline: RenderFrame) {
-    const spriteGroup = new SpriteGroup(composition);
+    if (!composition.loaderData.spriteGroup) {
+      const spriteGroup = new SpriteGroup(composition);
 
-    composition.loaderData.spriteGroup = spriteGroup;
-    spriteGroup.resetMeshSplits();
+      composition.loaderData.spriteGroup = spriteGroup;
+      spriteGroup.resetMeshSplits();
+    }
   }
 
   override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<SpriteItem>) {

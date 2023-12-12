@@ -158,8 +158,12 @@ describe('effects-core/plugins/particle-transform', () => {
     const particle = item.content;
     const pos = particle.particleMesh.getPointPosition(0);
 
-    expect(sanitizeNumbers(item.getWorldTransform().position)).to.deep.equals([1, -1, 0]);
-    expect(sanitizeNumbers(pos)).to.deep.equals([1, -1, 0]);
+    sanitizeNumbers(item.getWorldTransform().position).forEach((v, i) => {
+      expect(v).closeTo([1, -1, 0][i], 1e-6);
+    });
+    sanitizeNumbers(pos).forEach((v, i) => {
+      expect(v).closeTo([1, -1, 0][i], 1e-6);
+    });
   });
 
   it('transform path with asMovement', async () => {
@@ -185,7 +189,7 @@ describe('effects-core/plugins/particle-transform', () => {
     const { position, rotation, path } = ps.basicTransform;
 
     expect(sanitizeNumbers(rotation)).to.eql([0, 0, -180]);
-    expect(position).to.eql([0, 0, 0]);
+    expect(position.toArray()).to.eql([0, 0, 0]);
     expect(path).to.be.an.instanceof(PathSegments);
     expect(path.keys).to.eql([[0, 0, 1, 1], [1, 1, 1, 1]]);
     expect(path.values).to.eql([[0, -1.5, -1], [0.2, 1.2, 0]]);

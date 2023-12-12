@@ -21,6 +21,7 @@ export {
   getStandardComposition,
   getStandardItem,
 } from '@galacean/effects-specification/dist/fallback';
+export * as math from '@galacean/effects-math/es/core/index';
 export * from './gl';
 export * from './constants';
 export * from './config';

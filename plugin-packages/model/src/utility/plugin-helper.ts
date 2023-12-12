@@ -9,12 +9,12 @@ import type {
   Texture2DSourceOptionsImage,
   TextureCubeSourceOptionsImageMipmaps,
   Engine,
+  math,
 } from '@galacean/effects';
 import {
   Player,
   spec,
   Transform,
-  DEG2RAD,
   glContext,
   Material,
   Mesh,
@@ -45,8 +45,7 @@ import type {
   ModelTreeOptions,
   ModelAnimTrackOptions,
 } from '../index';
-import type { Box3 } from '../math';
-import { Matrix3, Matrix4, Vector3, Vector4 } from '../math';
+import { Matrix3, Matrix4, Vector3, Vector4, DEG2RAD } from '../runtime/math';
 import type { FBOOptions } from './ri-helper';
 import type { PMaterialBase } from '../runtime/material';
 import type { PImageBufferData } from '../runtime/skybox';
@@ -55,6 +54,7 @@ import { RayTriangleTesting } from './hit-test-helper';
 import { PMorph } from '../runtime/animation';
 import type { CompositionCache } from '../runtime/cache';
 
+type Box3 = math.Box3;
 type VertexArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array;
 
 export class WebGLHelper {
@@ -379,7 +379,7 @@ export class MeshHelper {
       engine,
       {
         name,
-        worldMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+        worldMatrix: Matrix4.fromIdentity(),
         material: effectsMaterial,
         geometry,
       }
@@ -530,15 +530,15 @@ export class PluginHelper {
       return;
     }
 
-    const res = Matrix3.IDENTITY.clone();
+    const res = Matrix3.fromIdentity();
     const temp = new Matrix3();
 
     if (transform.offset !== undefined) {
-      Matrix3.fromColumnMajorArray([
+      temp.setFromArray([
         1, 0, 0,
         0, 1, 0,
         transform.offset[0], transform.offset[1], 1,
-      ], temp);
+      ]);
       res.multiply(temp);
     }
 
@@ -546,24 +546,24 @@ export class PluginHelper {
       const cosTheta = Math.cos(transform.rotation);
       const sinTheta = Math.sin(transform.rotation);
 
-      Matrix3.fromColumnMajorArray([
+      temp.setFromArray([
         cosTheta, sinTheta, 0,
         -sinTheta, cosTheta, 0,
         0, 0, 1,
-      ], temp);
+      ]);
       res.multiply(temp);
     }
 
     if (transform.scale !== undefined) {
-      Matrix3.fromColumnMajorArray([
+      temp.setFromArray([
         transform.scale[0], 0, 0,
         0, transform.scale[1], 0,
         0, 0, 1,
-      ], temp);
+      ]);
       res.multiply(temp);
     }
 
-    Matrix3.transpose(res, res);
+    res.transpose();
 
     return res;
   }
@@ -587,17 +587,16 @@ export class PluginHelper {
   static focusOnPoint (cameraPosition: spec.vec3, YRotationAngle: number, targetPoint: spec.vec3) {
     const camPos = Vector3.fromArray(cameraPosition);
     const targetPos = Vector3.fromArray(targetPoint);
-    const deltaPos = new Vector3().copyFrom(camPos).subVector(targetPos);
-    const rotationMat = Matrix4.IDENTITY.clone().rotate(YRotationAngle * DEG2RAD, new Vector3(0, 1, 0)) as Matrix4;
+    const deltaPos = new Vector3().copyFrom(camPos).subtract(targetPos);
+    const rotationMat = Matrix4.fromRotationAxis(new Vector3(0, 1, 0), YRotationAngle * DEG2RAD);
 
-    rotationMat.multiplyByPoint3(deltaPos);
-    const newCamPos = deltaPos.clone().addVector(targetPos);
-    const viewMatrix = new Matrix4().lookAt(newCamPos, targetPos, new Vector3(0, 1, 0)).inverse();
+    rotationMat.transformPoint(deltaPos);
+    const newCamPos = deltaPos.clone().add(targetPos);
+    const viewMatrix = new Matrix4().lookAt(newCamPos, targetPos, new Vector3(0, 1, 0)).invert();
     const effectsTransform = new Transform();
 
     effectsTransform.setValid(true);
-
-    effectsTransform.cloneFromMatrix(viewMatrix.toArray() as spec.mat4);
+    effectsTransform.cloneFromMatrix(viewMatrix);
 
     return effectsTransform;
   }
@@ -761,16 +760,20 @@ export class PluginHelper {
       return;
     }
 
-    let compIndex = 0;
-    const jsonScene = scene.jsonScene;
+    const { jsonScene } = scene;
+    const compIndexSet: Set<number> = new Set();
+
+    if (jsonScene.compositionId === undefined) {
+      compIndexSet.add(0);
+    }
 
     jsonScene.compositions.forEach((comp, index) => {
-      if (comp.id === jsonScene.compositionId) {
-        compIndex = index;
+      if (comp.id === jsonScene.compositionId || composition.refCompositionProps.has(comp.id)) {
+        compIndexSet.add(index);
       }
     });
 
-    if (compIndex >= 0 && compIndex < jsonScene.compositions.length) {
+    compIndexSet.forEach(compIndex => {
       const sceneComp = jsonScene.compositions[compIndex];
 
       sceneComp.items.forEach((item, itemId) => {
@@ -864,7 +867,7 @@ export class PluginHelper {
           }
         }
       });
-    }
+    });
 
   }
 
@@ -1255,14 +1258,14 @@ export class GeometryBoxProxy {
 
               const bindMat = this.bindMatrices[jointData[i]];
 
-              Matrix4.mulScalerAddMatrix(skinMat, bindMat, weightData[i], skinMat);
+              skinMat.addScaledMatrix(bindMat, weightData[i]);
             }
 
             if (!findError) {
-              const resVec = skinMat.multiplyByVector4(new Vector4(posVec.x, posVec.y, posVec.z, 1.0));
+              const resVec = skinMat.transformVector4(new Vector4(posVec.x, posVec.y, posVec.z, 1.0));
 
               if (Math.abs(resVec.w) > 1e-4) {
-                resVec.multiplyScalar(1.0 / resVec.w);
+                resVec.multiply(1.0 / resVec.w);
                 posVec.set(resVec.x, resVec.y, resVec.z);
               }
             }
@@ -1381,11 +1384,11 @@ export class HitTestingProxy {
 
           const bindMat = this.bindMatrices[jointData[i]];
 
-          Matrix4.mulScalerAddMatrix(skinMat, bindMat, weightData[i], skinMat);
+          skinMat.addScaledMatrix(bindMat, weightData[i]);
         }
 
         vec4.set(posData[0], posData[1], posData[2], 1.0);
-        const resVec = skinMat.multiplyByVector4(vec4);
+        const resVec = skinMat.transformVector4(vec4);
         const scale = 1.0 / resVec.w;
 
         vec3.set(resVec.x * scale, resVec.y * scale, resVec.z * scale);
@@ -1675,7 +1678,7 @@ export class CheckerHelper {
 
       for (let i = 0; i < v.inverseBindMatrices.length; i += 16) {
         for (let j = 0; j < 16; j++) {
-          mat.data[j] = v.inverseBindMatrices[i + j];
+          mat.elements[j] = v.inverseBindMatrices[i + j];
         }
         if (Math.abs(mat.determinant()) < 1e-5) {
           console.error(`Determinant of inverseBindMatrices is too small ${mat.determinant()}, index ${i / 16}, ${this.stringify(v)}`);

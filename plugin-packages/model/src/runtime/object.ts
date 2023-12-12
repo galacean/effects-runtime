@@ -1,9 +1,11 @@
-import type { spec, Mesh } from '@galacean/effects';
+import type { spec, Mesh, math } from '@galacean/effects';
 import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import type { BaseTransform } from '../index';
-import type { Quaternion, Euler, Vector3, Matrix4 } from '../math';
+import type { Quaternion, Euler, Vector3, Matrix4 } from './math';
 import { PObjectType, PTransform, PCoordinate } from './common';
 import type { PSceneStates } from './scene';
+
+type Euler = math.Euler;
 
 let objectIndex = 1;
 

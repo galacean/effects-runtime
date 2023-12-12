@@ -722,5 +722,10 @@ export default {
     name: '多级父节点',
     pass: true,
   },
+  preComp: {
+    url: 'https://gw.alipayobjects.com/os/gltf-asset/97436498253707/pre.json',
+    name: '预合成',
+    pass: true,
+  },
 };
 

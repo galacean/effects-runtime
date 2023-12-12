@@ -1,8 +1,15 @@
-import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine } from '@galacean/effects-core';
-import { GPUCapability, Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
+import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math } from '@galacean/effects-core';
+import { Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
 import { CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP, TEXTURE_UNIFORM_MAP } from './three-material-util';
+
+type Matrix4 = math.Matrix4;
+type Vector2 = math.Vector2;
+type Vector3 = math.Vector3;
+type Vector4 = math.Vector4;
+type Matrix3 = math.Matrix3;
+type Quaternion = math.Quaternion;
 
 /**
  * THREE 抽象材质类
@@ -330,11 +337,11 @@ export class ThreeMaterial extends Material {
   getVector4Array (name: string): number[] {
     return this.uniforms[name].value as number[];
   }
-  setVector4Array (name: string, array: spec.vec4[]): void {
+  setVector4Array (name: string, array: Vector4[]): void {
     let value: number[] = [];
 
     for (const v of array) {
-      value = value.concat(v);
+      value = value.concat(v.toArray());
     }
 
     this.setUniform(name, value);
@@ -343,11 +350,11 @@ export class ThreeMaterial extends Material {
   getMatrixArray (name: string): number[] | null {
     return this.uniforms[name].value;
   }
-  setMatrixArray (name: string, array: spec.mat4[]): void {
+  setMatrixArray (name: string, array: Matrix4[]): void {
     let value: number[] = [];
 
     for (const v of array) {
-      value = value.concat(v);
+      value = value.concat(v.elements);
     }
     this.setUniform(name, value);
   }
@@ -355,34 +362,41 @@ export class ThreeMaterial extends Material {
     this.setUniform(name, array);
   }
 
-  getMatrix (name: string): spec.mat4 | null {
+  getMatrix (name: string): Matrix4 | null {
     return this.uniforms[name].value;
   }
-  setMatrix (name: string, value: spec.mat4): void {
+  setMatrix (name: string, value: Matrix4): void {
     this.setUniform(name, value);
   }
-  setMatrix3 (name: string, value: spec.mat3): void {
+  setMatrix3 (name: string, value: Matrix3): void {
     this.setUniform(name, value);
   }
 
-  getVector2 (name: string): spec.vec2 | null {
+  getVector2 (name: string): Vector2 | null {
     return this.uniforms[name].value;
   }
-  setVector2 (name: string, value: spec.vec2): void {
+  setVector2 (name: string, value: Vector2): void {
     this.setUniform(name, value);
   }
 
-  getVector3 (name: string): spec.vec3 {
-    return this.uniforms[name].value as spec.vec3;
+  getVector3 (name: string): Vector3 {
+    return this.uniforms[name].value as Vector3;
   }
-  setVector3 (name: string, value: spec.vec3): void {
+  setVector3 (name: string, value: Vector3): void {
     this.setUniform(name, value);
   }
 
-  getVector4 (name: string): spec.vec4 | null {
+  getVector4 (name: string): Vector4 | null {
     return this.uniforms[name].value;
   }
-  setVector4 (name: string, value: spec.vec4): void {
+  setVector4 (name: string, value: Vector4): void {
+    this.setUniform(name, value);
+  }
+
+  getQuaternion (name: string): Quaternion | null {
+    return this.uniforms[name].value;
+  }
+  setQuaternion (name: string, value: Quaternion): void {
     this.setUniform(name, value);
   }
 
@@ -411,7 +425,7 @@ export class ThreeMaterial extends Material {
     return !!this.uniforms[name];
   }
 
-  private setUniform (name: string, value: THREE.Texture | number | number[] | spec.mat4 | spec.vec2 | spec.vec3 | spec.vec4 | spec.vec4[]) {
+  private setUniform (name: string, value: THREE.Texture | number | number[] | Matrix4 | Matrix3 | Quaternion | Vector2 | Vector3 | Vector4 | Vector4[]) {
     const uniform = new THREE.Uniform(value);
 
     this.uniforms[name] = this.material.uniforms[name] = uniform;

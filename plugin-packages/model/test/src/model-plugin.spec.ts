@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/quotes */
 // @ts-nocheck
-import { Player, HitTestType, spec } from '@galacean/effects';
+import { Player, HitTestType, spec, math } from '@galacean/effects';
 import { generateComposition } from './utilities';
+
+const { Vector3 } = math;
 
 const { expect } = chai;
 
@@ -63,18 +65,19 @@ describe('mode plugin test', function () {
       "plugins": ["model"],
       "_imgs": { "1": [] },
     };
-    const comp = await generateComposition(player, scn, {}, { pauseOnFirstFrame: true });
+    const comp = await generateComposition(player, scn, {}, { autoplay: false });
     const cameraItem = comp.getItemByName('camera');
-    let pos = cameraItem.content.transform.getPosition().toArray();
 
-    expect(pos).to.deep.equal([0, 0, 8]);
+    let pos = cameraItem.content.transform.getPosition();
+
+    expect(pos.toArray()).to.deep.equal([0, 0, 8]);
     expect(cameraItem.duration).to.eql(5);
-    comp.gotoAndPlay(1.9);
-    pos = cameraItem.content.transform.getPosition().toArray();
-    const cp = [0, 0, 0];
+    comp.gotoAndStop(1.9);
+    pos = cameraItem.content.transform.getPosition();
+    const cp = new Vector3();
 
     cameraItem.transform.assignWorldTRS(cp);
-    expect(cp).to.deep.equal([3, 0, 8]);
+    expect(cp.toArray()).to.deep.equal([3, 0, 8]);
     expect(pos).to.deep.equal(cp);
     comp.dispose();
   });
@@ -135,6 +138,7 @@ describe('mode plugin test', function () {
     };
     const comp = await generateComposition(player, scn, {}, { pauseOnFirstFrame: true });
     const cameraItem = comp.getItemByName('camera');
+
     let p = cameraItem.getHitTestParams(true);
 
     if (p !== undefined) {
@@ -147,7 +151,7 @@ describe('mode plugin test', function () {
 
       } else if (p.type === HitTestType.sphere) {
 
-        expect(p.center).to.deep.equal([0, 0, 0]);
+        expect(p.center.toArray()).to.deep.equal([0, 0, 0]);
         expect(p.radius).to.eql(0.2);
         const ret = comp.hitTest(0, 0, true);
 
@@ -156,7 +160,7 @@ describe('mode plugin test', function () {
 
         comp.gotoAndPlay(1.9);
         p = cameraItem.getHitTestParams(true);
-        expect(p.center).to.deep.equal([3, 0, 0]);
+        expect(p.center.toArray()).to.deep.equal([3, 0, 0]);
         expect(p.radius).to.eql(0.2);
         expect(comp.hitTest(0, 0, true)).to.be.an('array').length(0);
 

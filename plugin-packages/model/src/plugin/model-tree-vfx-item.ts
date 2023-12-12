@@ -1,5 +1,5 @@
-import type { spec, Transform, Composition } from '@galacean/effects';
-import { VFX_ITEM_TYPE_TREE, VFXItem, TimelineComponent } from '@galacean/effects';
+import type { Transform, Composition } from '@galacean/effects';
+import { spec, VFXItem, TimelineComponent } from '@galacean/effects';
 import { ModelTreeItem } from './model-tree-item';
 import type { ModelItemTree, ModelTreeOptions } from '../index';
 
@@ -8,7 +8,7 @@ export class ModelTreeVFXItem extends VFXItem<ModelTreeItem> {
   timeline?: TimelineComponent;
 
   override get type (): spec.ItemType {
-    return VFX_ITEM_TYPE_TREE;
+    return spec.ItemType.tree;
   }
 
   override onConstructed (props: ModelItemTree) {

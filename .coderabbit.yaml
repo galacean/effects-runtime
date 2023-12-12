@@ -1,0 +1,11 @@
+reviews:
+  auto_review:
+    enabled: true
+    drafts: true
+    base_branches:
+      - "main"
+      - "hotfix"
+      - "dev"
+      - "feat/*"
+chat:
+  auto_reply: true

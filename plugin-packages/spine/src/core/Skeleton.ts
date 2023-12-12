@@ -1,3 +1,4 @@
+import { math } from '@galacean/effects';
 import type { Attachment } from './attachments';
 import { MeshAttachment } from './attachments';
 import { PathAttachment } from './attachments';
@@ -12,7 +13,6 @@ import { TransformConstraint } from './TransformConstraint';
 import type { Updatable } from './Updatable';
 import { Color, ArrayUtils } from '../utils';
 import { MathUtils } from '../math/math';
-import { Vector2 } from '../math/vector2';
 
 /** Stores the current pose for a skeleton.
  *
@@ -612,8 +612,8 @@ export class Skeleton {
   /** Returns the axis aligned bounding box (AABB) of the region and mesh attachments for the current pose as `{ x: number, y: number, width: number, height: number }`.
 	 * Note that this method will create temporary objects which can add to garbage collection pressure. Use `getBounds()` if garbage collection is a concern. */
   getBoundsRect () {
-    const offset = new Vector2();
-    const size = new Vector2();
+    const offset = new math.Vector2();
+    const size = new math.Vector2();
 
     this.getBounds(offset, size);
 
@@ -624,7 +624,7 @@ export class Skeleton {
 	 * @param offset An output value, the distance from the skeleton origin to the bottom left corner of the AABB.
 	 * @param size An output value, the width and height of the AABB.
 	 * @param temp Working memory to temporarily store attachments' computed world vertices. */
-  getBounds (offset: Vector2, size: Vector2, temp: Array<number> = new Array<number>(2)) {
+  getBounds (offset: math.Vector2, size: math.Vector2, temp: Array<number> = new Array<number>(2)) {
     if (!offset) {throw new Error('offset cannot be null.');}
     if (!size) {throw new Error('size cannot be null.');}
     const drawOrder = this.drawOrder;

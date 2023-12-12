@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { Player, spec, Texture, TextureSourceType, imageDataFromGradient, glContext } from '@galacean/effects';
+import { Player, spec, Texture, TextureSourceType, imageDataFromGradient, glContext, math } from '@galacean/effects';
 
+const { Vector2 } = math;
 const { expect } = chai;
 
 describe('effects-core/plugins/particle-test', function () {
@@ -168,7 +169,7 @@ describe('effects-core/plugins/particle-test', function () {
     const uColorParams = transparentMaterial.getVector4('uColorParams');
 
     expect(transparentMaterial.glMaterialState.depthMask).to.be.true;
-    expect(uColorParams.toString()).to.eql('1,1,0,0');
+    expect(uColorParams.toArray()).to.eql([1, 1, 0, 0]);
   });
 
   it('particle blend mode', async () => {
@@ -183,7 +184,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(state.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
     expect(state.blending).to.be.true;
     expect(state.blendFunctionParameters).to.eql([glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA]);
-    expect(alphaColorParams.toString()).to.eql('1,1,0,0');
+    expect(alphaColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const additiveItem = comp.getItemByName('additive');
     const additiveMaterial = additiveItem.content.particleMesh.mesh.material;
@@ -194,7 +195,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(addState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
     expect(addState.blending).to.be.true;
     expect(addState.blendFunctionParameters).to.eql([glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE]);
-    expect(additiveColorParams.toString()).to.eql('1,1,0,0');
+    expect(additiveColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const subtractItem = comp.getItemByName('subtract');
     const subtractMaterial = subtractItem.content.particleMesh.mesh.material;
@@ -205,7 +206,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(subState.blendEquationParameters).to.eql([glContext.FUNC_REVERSE_SUBTRACT, glContext.FUNC_REVERSE_SUBTRACT]);
     expect(subState.blending).to.be.true;
     expect(subState.blendFunctionParameters).to.eql([glContext.ONE, glContext.ONE, glContext.ZERO, glContext.ONE]);
-    expect(subtractColorParams.toString()).to.eql('1,1,0,0');
+    expect(subtractColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const luAdditiveItem = comp.getItemByName('luminance_additive');
     const luAdditiveMaterial = luAdditiveItem.content.particleMesh.mesh.material;
@@ -216,7 +217,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(luAddState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
     expect(luAddState.blending).to.be.true;
     expect(luAddState.blendFunctionParameters).to.eql([glContext.ONE, glContext.ONE, glContext.ONE, glContext.ONE]);
-    expect(luAdditiveColorParams.toString()).to.eql('1,2,0,0');
+    expect(luAdditiveColorParams.toArray()).to.eql([1, 2, 0, 0]);
 
     const multiplyItem = comp.getItemByName('multiply');
     const multiplyMaterial = multiplyItem.content.particleMesh.mesh.material;
@@ -227,7 +228,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(multiplyState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
     expect(multiplyState.blending).to.be.true;
     expect(multiplyState.blendFunctionParameters).to.eql([glContext.DST_COLOR, glContext.ONE_MINUS_SRC_ALPHA, glContext.DST_COLOR, glContext.ONE_MINUS_SRC_ALPHA]);
-    expect(multiplyColorParams.toString()).to.eql('1,0,0,0');
+    expect(multiplyColorParams.toArray()).to.eql([1, 0, 0, 0]);
 
     const addLightItem = comp.getItemByName('add_light');
     const addLightMaterial = addLightItem.content.particleMesh.mesh.material;
@@ -238,7 +239,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(addLightState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
     expect(addLightState.blending).to.be.true;
     expect(addLightState.blendFunctionParameters).to.eql([glContext.DST_COLOR, glContext.DST_ALPHA, glContext.ZERO, glContext.ONE]);
-    expect(addLightColorParams.toString()).to.eql('1,1,0,0');
+    expect(addLightColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const lightItem = comp.getItemByName('light');
     const lightMaterial = lightItem.content.particleMesh.mesh.material;
@@ -249,7 +250,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(lightState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
     expect(lightState.blending).to.be.true;
     expect(lightState.blendFunctionParameters).to.eql([glContext.DST_COLOR, glContext.ZERO, glContext.ZERO, glContext.ONE]);
-    expect(lightColorParams.toString()).to.eql('1,1,0,0');
+    expect(lightColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const luAlphaItem = comp.getItemByName('luminance_alpha');
     const luAlphaMaterial = luAlphaItem.content.particleMesh.mesh.material;
@@ -260,7 +261,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(luAlphaState.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
     expect(luAlphaState.blending).to.be.true;
     expect(luAlphaState.blendFunctionParameters).to.eql([glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA]);
-    expect(luAlphaColorParams.toString()).to.eql('1,3,0,0');
+    expect(luAlphaColorParams.toArray()).to.eql([1, 3, 0, 0]);
 
   });
 
@@ -292,16 +293,16 @@ describe('effects-core/plugins/particle-test', function () {
     const size = [1, 5]; // effected by startLifetime startSize sizeAspect;
     const DirX = [1, 0, 0], DirY = [0, 1, 0]; // close alignSpeedDirection
 
-    checkItem('unset', [0, 0]);
-    checkItem('center', [0, 0]);
-    checkItem('left_top', [-0.5, 0.5]);
-    checkItem('left_middle', [-0.5, 0]);
-    checkItem('left_bottom', [-0.5, -0.5]);
-    checkItem('middle_top', [0, 0.5]);
-    checkItem('middle_bottom', [0, -0.5]);
-    checkItem('right_top', [0.5, 0.5]);
-    checkItem('right_middle', [0.5, 0]);
-    checkItem('right_bottom', [0.5, -0.5]);
+    checkItem('unset', new Vector2(0, 0));
+    checkItem('center', new Vector2(0, 0));
+    checkItem('left_top', new Vector2(-0.5, 0.5));
+    checkItem('left_middle', new Vector2(-0.5, 0));
+    checkItem('left_bottom', new Vector2(-0.5, -0.5));
+    checkItem('middle_top', new Vector2(0, 0.5));
+    checkItem('middle_bottom', new Vector2(0, -0.5));
+    checkItem('right_top', new Vector2(0.5, 0.5));
+    checkItem('right_middle', new Vector2(0.5, 0));
+    checkItem('right_bottom', new Vector2(0.5, -0.5));
 
     function checkItem (name, anchor) {
       const item = comp.getItemByName(name);
@@ -315,8 +316,8 @@ describe('effects-core/plugins/particle-test', function () {
       expect(_anchor).to.deep.equals(anchor, 'anchor:' + name);
       for (let j = 0; j < 4; j++) {
         for (let k = 0; k < 3; k++) {
-          expect(size[0] * (rightBottomOffsets[j + j] - _anchor[0]) * DirX[k]).to.eql(rightBottomPos[12 * j + 6 + k], name);
-          expect(size[1] * (rightBottomOffsets[j + j + 1] - _anchor[1]) * DirY[k]).to.eql(rightBottomPos[12 * j + 9 + k], name);
+          expect(size[0] * (rightBottomOffsets[j + j] - _anchor.x) * DirX[k]).to.eql(rightBottomPos[12 * j + 6 + k], name);
+          expect(size[1] * (rightBottomOffsets[j + j + 1] - _anchor.y) * DirY[k]).to.eql(rightBottomPos[12 * j + 9 + k], name);
         }
       }
     }

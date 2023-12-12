@@ -10,6 +10,7 @@ import type { Scene } from './scene';
 import type { PluginSystem } from './plugin-system';
 import type { Engine } from './engine';
 import type { GlobalVolume } from './render';
+import type { VFXItemProps } from './vfx-item';
 
 let listOrder = 0;
 
@@ -29,7 +30,9 @@ export interface ContentOptions {
  */
 export class CompositionSourceManager implements Disposable {
   composition?: spec.Composition;
+  refCompositions: Map<string, spec.Composition> = new Map();
   sourceContent?: ContentOptions;
+  refCompositionProps: Map<string, VFXItemProps> = new Map();
   renderLevel?: spec.RenderLevel;
   pluginSystem?: PluginSystem;
   totalTime: number;
@@ -43,7 +46,7 @@ export class CompositionSourceManager implements Disposable {
     scene: Scene,
     engine: Engine,
   ) {
-    // // 资源
+    // 资源
     const { jsonScene, renderLevel, textureOptions, pluginSystem, totalTime } = scene;
     const { compositions, imgUsage, compositionId } = jsonScene;
 
@@ -55,15 +58,18 @@ export class CompositionSourceManager implements Disposable {
     // 缓存创建的Texture对象
     // @ts-expect-error
     scene.textureOptions = cachedTextures;
-    const composition = compositions.find(({ id }) => id === compositionId);
-
     cachedTextures?.forEach(tex => tex?.initialize());
+    for (const comp of compositions) {
+      if (comp.id === compositionId) {
+        this.composition = comp;
+      } else {
+        this.refCompositions.set(comp.id, comp);
+      }
+    }
 
-    if (!composition) {
+    if (!this.composition) {
       throw new Error('Invalid composition id: ' + compositionId);
     }
-    listOrder = 0;
-    this.composition = composition;
     this.jsonScene = jsonScene;
     this.renderLevel = renderLevel;
     this.pluginSystem = pluginSystem;
@@ -71,16 +77,16 @@ export class CompositionSourceManager implements Disposable {
     this.imgUsage = imgUsage ?? {};
     this.textures = cachedTextures;
     this.mask = 0;
+    listOrder = 0;
     this.textureOptions = textureOptions;
-    this.sourceContent = this.getContent();
-
+    this.sourceContent = this.getContent(this.composition);
   }
 
-  private getContent (): ContentOptions {
+  private getContent (composition: spec.Composition): ContentOptions {
     // TODO: specification 中补充 globalVolume 类型
     // @ts-expect-error
-    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0 } = this.composition as spec.Composition;
-    const items = this.assembleItems();
+    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0 } = composition;
+    const items = this.assembleItems(composition);
 
     return {
       id,
@@ -95,7 +101,7 @@ export class CompositionSourceManager implements Disposable {
     };
   }
 
-  private assembleItems () {
+  private assembleItems (composition: spec.Composition) {
     const items: any[] = [];
     let mask = this.mask;
 
@@ -103,8 +109,8 @@ export class CompositionSourceManager implements Disposable {
       mask = 0;
     }
 
-    this.composition?.items.forEach(item => {
-      const opt: Record<string, any> = {};
+    composition.items.forEach(item => {
+      const option: Record<string, any> = {};
       const { visible, renderLevel: itemRenderLevel, type } = item;
 
       if (visible === false) {
@@ -114,12 +120,12 @@ export class CompositionSourceManager implements Disposable {
       const content = { ...item.content };
 
       if (content) {
-        opt.content = { ...content };
+        option.content = { ...content };
 
         if (passRenderLevel(itemRenderLevel, this.renderLevel)) {
-          const renderContent = opt.content;
+          const renderContent = option.content;
 
-          opt.type = type;
+          option.type = type;
 
           if (renderContent.renderer) {
             renderContent.renderer = this.changeTex(renderContent.renderer);
@@ -143,7 +149,7 @@ export class CompositionSourceManager implements Disposable {
               renderContent.renderer.shape = getGeometryByShape(renderContent.renderer.shape, split);
             }
           } else {
-            opt.content.renderer = { order: 0 };
+            option.content.renderer = { order: 0 };
           }
           if (renderContent.trails) {
             renderContent.trails = this.changeTex(renderContent.trails);
@@ -158,26 +164,44 @@ export class CompositionSourceManager implements Disposable {
           const { refCount } = item;
           const { plugins = [] } = this.jsonScene as spec.JSONScene;
 
-          opt.name = name;
-          opt.delay = delay;
-          opt.id = id;
+          option.name = name;
+          option.delay = delay;
+          option.id = id;
           if (parentId) {
-            opt.parentId = parentId;
+            option.parentId = parentId;
           }
-          opt.refCount = refCount;
-          opt.duration = duration;
-          opt.listIndex = listOrder++;
-          opt.endBehavior = endBehavior;
+          option.refCount = refCount;
+          option.duration = duration;
+          option.listIndex = listOrder++;
+          option.endBehavior = endBehavior;
           if (pluginName) {
-            opt.pluginName = pluginName;
+            option.pluginName = pluginName;
           } else if (pn !== undefined && Number.isInteger(pn)) {
-            opt.pluginName = plugins[pn];
+            option.pluginName = plugins[pn];
           }
           if (transform) {
-            opt.transform = transform;
+            option.transform = transform;
           }
 
-          items.push(opt);
+          // 处理预合成的渲染顺序
+          if (option.type === spec.ItemType.composition) {
+            const refId = (item.content as spec.CompositionContent).options.refId;
+
+            if (!this.refCompositions.get(refId)) {
+              throw new Error('Invalid Ref Composition id: ' + refId);
+            }
+            if (!this.refCompositionProps.has(refId)) {
+              this.refCompositionProps.set(refId, this.getContent(this.refCompositions.get(refId)!) as unknown as VFXItemProps);
+            }
+            const ref = this.refCompositionProps.get(refId)!;
+
+            ref.items.forEach((item: Record<string, any>) => {
+              item.listIndex = listOrder++;
+            });
+            option.items = ref.items;
+
+          }
+          items.push(option);
         }
       }
     });
@@ -224,5 +248,7 @@ export class CompositionSourceManager implements Disposable {
     this.totalTime = 0;
     this.pluginSystem = undefined;
     this.sourceContent = undefined;
+    this.refCompositions.clear();
+    this.refCompositionProps.clear();
   }
 }

@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import type { vec3 } from '@galacean/effects-specification';
-import { trianglesFromRect, vec3MulMat4 } from '../../math';
+import { Vector3 } from '@galacean/effects-math/es/core/index';
+import { trianglesFromRect } from '../../math';
 import { VFXItem } from '../../vfx-item';
 import type { Composition } from '../../composition';
 import type { HitTestTriangleParams, BoundingBoxTriangle } from '../interact/click-handler';
@@ -23,32 +23,27 @@ export class TextVFXItem extends VFXItem<TextItem> {
   }
 
   override onLifetimeBegin (composition: Composition, content: TextItem) {
-    this._contentVisible = true;
     content.active = true;
-
+    this.content?.mesh?.setItems([this.content]);
+    this.content.updateTexture();
   }
 
   override onItemRemoved (composition: Composition, content?: TextItem) {
-    this._contentVisible = false;
-
     if (content) {
       delete content.mesh;
       composition.destroyTextures(content.getTextures());
     }
   }
 
-  override handleVisibleChanged (visible: boolean) {
-    if (this.content) {
-      this.content.visible = visible;
-    }
-  }
-
   override onItemUpdate (dt: number, lifetime: number) {
+    if (!this.content) {
+      return ;
+    }
     this.content?.updateTime(this.time);
   }
 
   override getCurrentPosition () {
-    const pos: vec3 = [0, 0, 0];
+    const pos = new Vector3();
 
     this.transform.assignWorldTRS(pos);
 
@@ -67,12 +62,12 @@ export class TextVFXItem extends VFXItem<TextItem> {
     }
     const worldMatrix = this.transform.getWorldMatrix();
     const size = item.startSize;
-    const triangles = trianglesFromRect([0, 0, 0], size[0] / 2, size[1] / 2);
+    const triangles = trianglesFromRect(Vector3.ZERO, size.x / 2, size.y / 2);
 
     triangles.forEach(triangle => {
-      triangle.forEach(p => {
-        vec3MulMat4(p, p, worldMatrix);
-      });
+      worldMatrix.transformPoint(triangle.p0 as Vector3);
+      worldMatrix.transformPoint(triangle.p1 as Vector3);
+      worldMatrix.transformPoint(triangle.p2 as Vector3);
     });
 
     return {
@@ -112,8 +107,9 @@ export class TextVFXItem extends VFXItem<TextItem> {
   createWireframeMesh (item: TextItem, color: spec.vec4): TextMesh {
     const spMesh = new TextMesh(this.composition.getEngine(), { wireframe: true, ...item.renderInfo }, this.composition);
 
+    spMesh.mesh.setVisible(true);
     spMesh.setItems([item]);
-    spMesh.mesh.material.setVector3('uFrameColor', [color[0], color[1], color[2]]);
+    spMesh.mesh.material.setVector3('uFrameColor', Vector3.fromArray(color));
     spMesh.mesh.priority = 999;
 
     return spMesh;

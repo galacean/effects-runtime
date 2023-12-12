@@ -1,8 +1,8 @@
 import type * as spec from '@galacean/effects-specification';
+import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import { getConfig, POST_PROCESS_SETTINGS } from '../config';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
-import type { mat4 } from '../math';
 import type { Geometry, Renderer } from '../render';
 import type { Disposable } from '../utils';
 import { DestroyOptions } from '../utils';
@@ -10,7 +10,7 @@ import { DestroyOptions } from '../utils';
 export interface MeshOptionsBase {
   material: Material,
   name?: string,
-  worldMatrix?: mat4 | Float32Array,
+  worldMatrix?: Matrix4,
   priority?: number,
 }
 
@@ -40,7 +40,7 @@ export class Mesh implements Disposable {
   /**
    * Mesh 的世界矩阵
    */
-  worldMatrix: mat4 | Float32Array;
+  worldMatrix: Matrix4;
   /**
    * Mesh 的材质
    */
@@ -54,7 +54,7 @@ export class Mesh implements Disposable {
 
   // 各引擎独立实现 priority，重写 getter/setter
   private _priority: number;
-  private visible = false;
+  private visible = true;
 
   /**
    * 创建一个新的 Mesh 对象。
@@ -70,7 +70,7 @@ export class Mesh implements Disposable {
       geometry,
       name = '<unnamed>',
       priority = 0,
-      worldMatrix = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+      worldMatrix = Matrix4.fromIdentity(),
     } = props;
 
     this.id = 'Mesh' + seed++;
@@ -112,7 +112,7 @@ export class Mesh implements Disposable {
         renderer.setGlobalMatrix('effects_MatrixVP', renderingData.currentCamera.getViewProjectionMatrix());
         renderer.setGlobalMatrix('_MatrixP', renderingData.currentCamera.getProjectionMatrix());
       }
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.worldMatrix as mat4);
+      renderer.setGlobalMatrix('effects_ObjectToWorld', this.worldMatrix);
     }
     if (renderingData.currentFrame.editorTransform) {
       material.setVector4('uEditorTransform', renderingData.currentFrame.editorTransform);
@@ -125,7 +125,7 @@ export class Mesh implements Disposable {
         emissionColor[0] /= 255;
         emissionColor[1] /= 255;
         emissionColor[2] /= 255;
-        material.setVector3('emissionColor', emissionColor);
+        material.setVector3('emissionColor', Vector3.fromArray(emissionColor));
         material.setFloat('emissionIntensity', getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['intensity']);
       }
     }

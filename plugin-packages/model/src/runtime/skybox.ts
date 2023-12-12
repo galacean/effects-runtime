@@ -8,6 +8,7 @@ import type { CompositionCache } from './cache';
 import type { PSceneStates } from './scene';
 import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import { WebGLHelper } from '../utility/plugin-helper';
+import { Vector2, Vector3 } from './math';
 
 export class PSkybox extends PEntity {
   renderable = true;
@@ -88,11 +89,11 @@ export class PSkybox extends PEntity {
     if (this.visible && this.renderable && this.skyboxMesh !== undefined && this.skyboxMaterial !== undefined) {
       const camera = sceneStates.camera;
       const viewMatrix = sceneStates.viewMatrix;
-      const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fovy).multiply(viewMatrix).inverse();
+      const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fovy).multiply(viewMatrix).invert();
       const material = this.skyboxMesh.material;
 
       this.skyboxMaterial.updateUniforms(material);
-      material.setMatrix('u_InvViewProjectionMatrix', newProjViewMatrix.toArray() as spec.mat4);
+      material.setMatrix('u_InvViewProjectionMatrix', newProjViewMatrix);
     }
   }
 
@@ -172,7 +173,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
       throw new Error('Setup brdfLUT for skybox at first.');
     }
 
-    material.setVector2('u_IblIntensity', [2.0, 2.0]);
+    material.setVector2('u_IblIntensity', new Vector2(2.0, 2.0));
     material.setTexture('u_brdfLUT', this.brdfLUT);
     if (this.diffuseImage !== undefined) {
       material.setTexture('u_DiffuseEnvSampler', this.diffuseImage);
@@ -184,7 +185,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
       const aliasName = ['l00', 'l1m1', 'l10', 'l11', 'l2m2', 'l2m1', 'l20', 'l21', 'l22'];
 
       aliasName.forEach((n, i) => {
-        material.setVector3(`u_shCoefficients.${n}`, coeffs[i] as spec.vec3);
+        material.setVector3(`u_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
       });
     }
     material.setInt('u_MipCount', this.specularMipCount);
