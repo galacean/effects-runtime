@@ -88,6 +88,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           item = new CompVFXItem({
             ...props,
             refId,
+            delay: itemProps.delay,
             id: itemProps.id,
             name: itemProps.name,
             duration: itemProps.duration,
