@@ -7,6 +7,12 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.1.1
+
+`2023-12-14`
+
+- Fix: Error about delay and disappear in pre-comp item. [#38](https://github.com/galacean/effects-runtime/pull/38) @RGCHN
+
 ## 1.1.0
 
 `2023-12-11`
