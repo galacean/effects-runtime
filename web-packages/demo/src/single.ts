@@ -11,6 +11,7 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json);
+
   } catch (e) {
     console.error('biz', e);
   }
@@ -34,3 +35,4 @@ function createPlayer () {
 
   return player;
 }
+
