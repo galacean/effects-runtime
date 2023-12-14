@@ -18,10 +18,6 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
     return spec.ItemType.particle;
   }
 
-  override get contentVisible () {
-    return !this.destroyed;
-  }
-
   override onConstructed (props: spec.ParticleItem) {
     this.particle = props.content as unknown as ParticleSystemProps;
   }
@@ -40,7 +36,8 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
 
   override onItemUpdate (dt: number, lifetime: number) {
     if (this.content) {
-      let hide = !this.visible;
+      let hide = !this.contentVisible;
+
       const parentItem = this.parentId && this.composition?.getItemByID(this.parentId);
 
       if (!hide && parentItem) {
