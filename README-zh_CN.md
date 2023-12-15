@@ -1,7 +1,6 @@
 <div align="center"><a name="readme-top"></a>
 
 <h1>Galacean Effects</h1>
-<h3>所见 · 即所得</h3>
 
 加载并渲染酷炫的动效，通过 effects-core 提供的 APIs 也可以让你的引擎使用动效产物，快速的接入图层、粒子等动画效果。
 
@@ -13,6 +12,7 @@
 
 ![](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
 
+<h3>所见 · 即所得</h3>
 <img height="320" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*BrMIQqkmbKEAAAAAAAAAAAAADvV6AQ/original">
 <img height="320" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*VHMAR6Vq_8wAAAAAAAAAAAAADvV6AQ/original">
 <img height="320" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*UwMWT4uY6jsAAAAAAAAAAAAADvV6AQ/original">
