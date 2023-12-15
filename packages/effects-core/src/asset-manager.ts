@@ -167,7 +167,7 @@ export class AssetManager implements Disposable {
     const waitPromise = new Promise<Scene>((resolve, reject) =>
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
-        reject(`Load time out: ${url}`);
+        reject(`Load time out: ${JSON.stringify(url)}`);
       }, this.timeout * 1000));
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
       if (!cancelLoading) {
@@ -302,7 +302,7 @@ export class AssetManager implements Disposable {
         return this.loadBins(bin.url);
       }
 
-      throw new Error(`Invalid bins source: ${bins}`);
+      throw new Error(`Invalid bins source: ${JSON.stringify(bins)}`);
     });
 
     return Promise.all(jobs);
@@ -325,7 +325,7 @@ export class AssetManager implements Disposable {
           AssetManager.fonts.add(font.fontFamily);
         } catch (e) {
           console.warn({
-            content: `Invalid fonts source: ${font.fontURL}`,
+            content: `Invalid fonts source: ${JSON.stringify(font.fontURL)}`,
             type: LOG_TYPE,
           });
         }
@@ -483,7 +483,7 @@ export class AssetManager implements Disposable {
         url,
         resolve,
         (status, responseText) => {
-          reject(`Couldn't load JSON ${url}: status ${status}, ${responseText}`);
+          reject(`Couldn't load JSON ${JSON.stringify(url)}: status ${status}, ${responseText}`);
         });
     });
   }
@@ -494,7 +494,7 @@ export class AssetManager implements Disposable {
         url,
         resolve,
         (status, responseText) => {
-          reject(`Couldn't load bins ${url}: status ${status}, ${responseText}`);
+          reject(`Couldn't load bins ${JSON.stringify(url)}: status ${status}, ${responseText}`);
         });
     });
   }
