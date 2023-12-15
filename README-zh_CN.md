@@ -1,8 +1,7 @@
 <div align="center"><a name="readme-top"></a>
 
 <h1>Galacean Effects</h1>
-
-![所见 · 即所得](./docs/assets/readme-banner-zh_CN.svg)
+<h3>所见 · 即所得</h3>
 
 加载并渲染酷炫的动效，通过 effects-core 提供的 APIs 也可以让你的引擎使用动效产物，快速的接入图层、粒子等动画效果。
 
@@ -13,6 +12,10 @@
 [更新日志](./CHANGELOG.md) · [报告问题][github-issues-url] · [特性需求][github-issues-url] · [English](./README.md) · 中文
 
 ![](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+
+<img height="360" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*BrMIQqkmbKEAAAAAAAAAAAAADvV6AQ/original">
+<img height="360" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*VHMAR6Vq_8wAAAAAAAAAAAAADvV6AQ/original">
+<img height="360" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*UwMWT4uY6jsAAAAAAAAAAAAADvV6AQ/original">
 
 [github-issues-url]: https://github.com/galacean/effects-runtime/issues
 </div>

@@ -1,8 +1,7 @@
 <div align="center"><a name="readme-top"></a>
 
 <h1>Galacean Effects</h1>
-
-![What you see is what you get](./docs/assets/readme-banner.svg)
+<h3>What you see is what you get</h3>
 
 It can load and render cool animation effects, The APIs provided by effects-core allow your engine to quickly access animation data such as layer and particle animation.
 
@@ -13,6 +12,10 @@ It can load and render cool animation effects, The APIs provided by effects-core
 [Changelog](./CHANGELOG.md) · [Report Bug][github-issues-url] · [Request Feature][github-issues-url] · English · [中文](./README-zh_CN.md)
 
 ![](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+
+<img height="360" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*BrMIQqkmbKEAAAAAAAAAAAAADvV6AQ/original">
+<img height="360" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*VHMAR6Vq_8wAAAAAAAAAAAAADvV6AQ/original">
+<img height="360" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*UwMWT4uY6jsAAAAAAAAAAAAADvV6AQ/original">
 
 [github-issues-url]: https://github.com/galacean/effects-runtime/issues
 </div>
