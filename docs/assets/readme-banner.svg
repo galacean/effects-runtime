@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg
           PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<meta http-equiv="Content-Security-Policy"
-      content="default-src *;
-   img-src * 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' *;
-   style-src  'self' 'unsafe-inline' *">
 <svg xmlns="http://www.w3.org/2000/svg"
      xmlns:xlink="http://www.w3.org/1999/xlink"
      version="1.1"
@@ -17,13 +13,13 @@
            y="24.7"
            width="624"
            height="397.2"
-           xlink:href="./editor-preview.png"
+           xlink:href="https://mdn.alipayobjects.com/rms/uri/file/as/0.0.1/assets/editor-preview.png"
            preserveAspectRatio="none" />
     <image x="611.5"
            y="7.9"
            width="205.82"
            height="384"
-           xlink:href="./device-preview.gif"
+           xlink:href="https://mdn.alipayobjects.com/rms/uri/file/as/0.0.1/assets/device-preview.gif"
            preserveAspectRatio="none" />
     <rect x="12"
           y="0"
