@@ -2,6 +2,16 @@
 
 <h1>Galacean Effects</h1>
 
+<div style="display: flex; ">
+  <div style="flex:2.9">
+    <h3 align="left" style="text-indent:20px;margin:0;">所见 · 即所得</h3>
+    <img src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*QHpQQ4dY6SQAAAAAAAAAAAAADvV6AQ/original" />
+  </div>
+  <div style="flex:1">
+    <img src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*UwMWT4uY6jsAAAAAAAAAAAAADvV6AQ/original" />
+  </div>
+</div>
+
 加载并渲染酷炫的动效，通过 effects-core 提供的 APIs 也可以让你的引擎使用动效产物，快速的接入图层、粒子等动画效果。
 
 ![GitHub release (with filter)](https://img.shields.io/github/v/release/galacean/effects-runtime)

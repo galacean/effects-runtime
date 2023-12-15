@@ -2,6 +2,16 @@
 
 <h1>Galacean Effects</h1>
 
+<div style="display: flex; ">
+  <div style="flex:2.9">
+    <h3 align="left" style="text-indent:20px;margin:0;">What you see is what you get</h3>
+    <img src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*QHpQQ4dY6SQAAAAAAAAAAAAADvV6AQ/original" />
+  </div>
+  <div style="flex:1">
+    <img src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*UwMWT4uY6jsAAAAAAAAAAAAADvV6AQ/original" />
+  </div>
+</div>
+
 It can load and render cool animation effects, The APIs provided by effects-core allow your engine to quickly access animation data such as layer and particle animation.
 
 ![GitHub release (with filter)](https://img.shields.io/github/v/release/galacean/effects-runtime)
