@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg
+          PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     version="1.1"
+     width="820px"
+     height="424px"
+     viewBox="-0.5 -0.5 820 424">
+  <defs />
+  <g>
+    <image x="-0.5"
+           y="24.7"
+           width="624"
+           height="397.2"
+           xlink:href="./editor-preview.png"
+           preserveAspectRatio="none" />
+    <image x="611.5"
+           y="7.9"
+           width="205.82"
+           height="384"
+           xlink:href="./device-preview.gif"
+           preserveAspectRatio="none" />
+    <rect x="12"
+          y="0"
+          width="240"
+          height="36"
+          fill="none"
+          stroke="none"
+          pointer-events="all" />
+    <g transform="translate(-0.5 -0.5)scale(1.2)">
+      <switch>
+        <foreignObject pointer-events="none"
+                       width="100%"
+                       height="100%"
+                       requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"
+                       style="overflow: visible; text-align: left;">
+          <div xmlns="http://www.w3.org/1999/xhtml">
+            <style>
+              .container {
+                --color-primary: rgba(255, 255, 255, .8);
+                color: var(--color-primary);
+              }
+
+              @media (prefers-color-scheme: light) {
+                .container {
+                  --color-primary: rgba(31, 35, 40, .8);
+                }
+              }
+            </style>
+            <div class="container">
+              <h3 style="text-indent: 20px; margin: 0;">所见 · 即所得</h3>
+            </div>
+          </div>
+        </foreignObject>
+      </switch>
+    </g>
+  </g>
+</svg>
