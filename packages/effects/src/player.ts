@@ -1,27 +1,32 @@
 import type {
-  Disposable, GLType, JSONValue, LostHandler, MessageItem, RestoreHandler,
-  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, Scene, math, GPUCapability,
+  Disposable, GLType,
+  GPUCapability,
+  JSONValue, LostHandler, MessageItem, RestoreHandler,
+  Scene,
+  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent,
+  math,
 } from '@galacean/effects-core';
 import {
-  Ticker,
   AssetManager,
   Composition,
-  EventSystem,
+  CompositionComponent,
   EVENT_TYPE_CLICK,
+  EventSystem,
+  LOG_TYPE,
+  Renderer,
+  TextureLoadAction,
+  Ticker,
+  canvasPool,
   getPixelRatio,
   gpuTimer,
-  pluginLoaderMap,
-  Renderer,
-  setSpriteMeshMaxItemCountByGPU,
-  TextureLoadAction,
-  spec,
-  isAndroid,
   initErrors,
-  canvasPool,
-  isScene,
-  LOG_TYPE,
+  isAndroid,
   isArray,
   isObject,
+  isScene,
+  pluginLoaderMap,
+  setSpriteMeshMaxItemCountByGPU,
+  spec,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -152,26 +157,26 @@ let seed = 1;
  * Galacean Effects 播放器
  */
 export class Player implements Disposable, LostHandler, RestoreHandler {
-  public readonly env: string;
-  public readonly pixelRatio: number;
-  public readonly canvas: HTMLCanvasElement;
-  public readonly name: string;
-  public readonly gpuCapability: GPUCapability;
-  public readonly container: HTMLElement | null;
+  readonly env: string;
+  readonly pixelRatio: number;
+  readonly canvas: HTMLCanvasElement;
+  readonly name: string;
+  readonly gpuCapability: GPUCapability;
+  readonly container: HTMLElement | null;
+  /**
+   * 播放器的渲染对象
+   */
+  readonly renderer: Renderer;
+  /**
+   * 计时器
+   * 手动渲染 `manualRender=true` 时不创建计时器
+   */
+  readonly ticker: Ticker;
 
   /**
    * 当前播放的合成对象数组，请不要修改内容
    */
   protected compositions: Composition[] = [];
-  /**
-   * 播放器的渲染对象
-   */
-  public readonly renderer: Renderer;
-  /**
-   * 计时器
-   * 手动渲染 `manualRender=true` 时不创建计时器
-   */
-  public readonly ticker: Ticker;
 
   private readonly event: EventSystem;
   private readonly handleWebGLContextLost?: (event: Event) => void;
@@ -619,7 +624,15 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       }
 
       if (composition.renderer) {
-        composition.update(dt);
+        const needResume = composition.getPaused();
+
+        if (needResume) {
+          composition.resume();
+        }
+        composition.update(dt, false);
+        if (needResume) {
+          composition.pause();
+        }
       }
 
       if (composition.isDestroyed) {
@@ -811,7 +824,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           await video.play();
         }
       }
-      newComposition.content.start();
+      newComposition.rootItem.getComponent(CompositionComponent)!.resetStatus();
       newComposition.gotoAndPlay(currentTime);
 
       return newComposition;
@@ -1041,4 +1054,3 @@ function throwDestroyedError (destroyedErrorMessage: string) {
 function throwDestroyedErrorPromise (destroyedErrorMessage: string) {
   return Promise.reject(destroyedErrorMessage);
 }
-

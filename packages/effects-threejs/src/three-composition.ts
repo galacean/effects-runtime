@@ -1,5 +1,5 @@
 import type { Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem, MessageItem, CompositionProps } from '@galacean/effects-core';
-import { Composition } from '@galacean/effects-core';
+import { Composition, CompositionComponent } from '@galacean/effects-core';
 import { ThreeRenderFrame } from './three-render-frame';
 import { ThreeTexture } from './three-texture';
 import type THREE from 'three';
@@ -82,6 +82,7 @@ export class ThreeComposition extends Composition {
   constructor (props: CompositionProps, scene: Scene) {
     super(props, scene);
     this.compositionSourceManager.sourceContent?.items.forEach(item => {
+      //@ts-expect-error
       const shape = item.content.renderer.shape;
 
       if (shape) {
@@ -95,7 +96,7 @@ export class ThreeComposition extends Composition {
         });
       }
     });
-    this.content.start();
+    this.rootItem.getComponent(CompositionComponent)!.resetStatus();
   }
 
   /**

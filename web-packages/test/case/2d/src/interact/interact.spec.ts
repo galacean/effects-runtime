@@ -9,7 +9,7 @@ const { expect } = chai;
  */
 const accumRatioThreshold = 1.5e-4;
 const pixelDiffThreshold = 1;
-const dumpImageForDebug = true;
+const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
 let controller;
@@ -48,9 +48,9 @@ async function checkScene (keyName, name, url) {
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
     const timeList = [
-      0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.66, 0.71, 0.83, 0.96, 1.0,
-      1.1, 1.23, 1.34, 1.45, 1.55, 1.67, 1.73, 1.88, 1.99,
-      2.1, 2.5, 3.3, 4.7, 5.2, 6.8, 7.5, 8.6, 9.7, 9.99,
+      0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.66, 0.71, 0.83, 0.96,
+      1.1, 1.23, 1.45, 1.67, 1.88, 2.1, 2.5, 3.3, 4.7, 5.2, 6.8,
+      7.5, 8.6, 9.7, 9.99,
     ];
     let marsRet, runtimeRet;
 

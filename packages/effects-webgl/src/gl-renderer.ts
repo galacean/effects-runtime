@@ -1,12 +1,12 @@
-import type { Disposable, FrameBuffer, Geometry, LostHandler, Material, Mesh, RenderFrame, RenderPass, RenderPassClearAction, RenderPassStoreAction, RestoreHandler, ShaderLibrary, math } from '@galacean/effects-core';
-import { assertExist, glContext, Renderer, RenderPassAttachmentStorageType, TextureLoadAction, TextureSourceType, FilterMode, RenderTextureFormat, sortByOrder } from '@galacean/effects-core';
+import type { Disposable, FrameBuffer, Geometry, LostHandler, Material, RenderFrame, RenderPass, RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler, ShaderLibrary, spec } from '@galacean/effects-core';
+import { FilterMode, POST_PROCESS_SETTINGS, RenderPassAttachmentStorageType, RenderTextureFormat, Renderer, TextureLoadAction, TextureSourceType, assertExist, getConfig, glContext, math, sortByOrder } from '@galacean/effects-core';
 import { ExtWrap } from './ext-wrap';
 import { GLContextManager } from './gl-context-manager';
+import { GLEngine } from './gl-engine';
 import { GLFrameBuffer } from './gl-frame-buffer';
 import { GLPipelineContext } from './gl-pipeline-context';
 import { GLRendererInternal } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
-import { GLEngine } from './gl-engine';
 
 type Matrix4 = math.Matrix4;
 
@@ -128,24 +128,13 @@ export class GLRenderer extends Renderer implements Disposable {
     pass.execute(this);
   }
 
-  override renderMeshes (meshes: Mesh[]) {
+  override renderMeshes (meshes: RendererComponent[]) {
     const delegate = this.renderingData.currentPass.delegate;
 
     for (const mesh of meshes) {
-      if (mesh.isDestroyed) {
-        // console.error(`mesh ${mesh.name} destroyed`, mesh);
-        continue;
+      for (const material of mesh.materials) {
+        material.initialize();
       }
-      if (!mesh.getVisible()) {
-        continue;
-      }
-      if (!mesh.material) {
-        console.warn('Mesh ' + mesh.name + ' 没有绑定材质。');
-
-        continue;
-      }
-      mesh.material.initialize();
-      mesh.geometry.initialize();
       delegate.willRenderMesh && delegate.willRenderMesh(mesh, this.renderingData);
       mesh.render(this);
       delegate.didiRenderMesh && delegate.didiRenderMesh(mesh, this.renderingData);
@@ -168,6 +157,39 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override drawGeometry (geometry: Geometry, material: Material): void {
+    geometry.initialize();
+    const renderingData = this.renderingData;
+
+    // TODO 后面移到管线相机渲染开始位置
+    if (renderingData.currentFrame.globalUniforms) {
+      if (renderingData.currentCamera) {
+        this.setGlobalMatrix('effects_MatrixInvV', renderingData.currentCamera.getInverseViewMatrix());
+        this.setGlobalMatrix('effects_MatrixV', renderingData.currentCamera.getViewMatrix());
+        this.setGlobalMatrix('effects_MatrixVP', renderingData.currentCamera.getViewProjectionMatrix());
+        this.setGlobalMatrix('_MatrixP', renderingData.currentCamera.getProjectionMatrix());
+      }
+    }
+
+    // TODO 自定义材质测试代码
+    const time = Date.now() % 100000000 * 0.001 * 1;
+
+    this.setGlobalFloat('_GlobalTime', time);
+    if (renderingData.currentFrame.editorTransform) {
+      material.setVector4('uEditorTransform', renderingData.currentFrame.editorTransform);
+    }
+    // 测试后处理 Bloom 和 ToneMapping 逻辑
+    if (__DEBUG__) {
+      if (getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)) {
+        const emissionColor = getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)['color'].slice() as spec.vec3;
+
+        emissionColor[0] /= 255;
+        emissionColor[1] /= 255;
+        emissionColor[2] /= 255;
+        material.setVector3('emissionColor', math.Vector3.fromArray(emissionColor));
+        material.setFloat('emissionIntensity', getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['intensity']);
+      }
+    }
+    material.use(this, renderingData.currentFrame.globalUniforms);
     this.glRenderer.drawGeometry(geometry, material);
   }
 

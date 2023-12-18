@@ -44,8 +44,8 @@ const skin = document.getElementById('J-skinList') as HTMLSelectElement;
 const animation = document.getElementById('J-animationList') as HTMLSelectElement;
 const format = document.getElementById('J-formatList') as HTMLSelectElement;
 
-format.onchange = handleChange;
-delay.onchange = handleChange;
+// format.onchange = handleChange;
+// delay.onchange = handleChange;
 
 const files: Record<string, FileFormat> = direct;
 
@@ -96,9 +96,8 @@ startEle.onclick = async () => {
   if (player.hasPlayable) {
     player.pause();
   }
-  if (!scene) {
-    scene = generateScene(skin.value, animationList, duration) as JSONValue;
-  }
+  player.destroyCurrentCompositions();
+  handleChange();
   const comp = await player.loadScene(scene);
 
   void player.play();
@@ -194,19 +193,23 @@ function handleChange () {
     duration += getAnimationDuration(skeletonData, a);
   }
 
-  scene = generateScene(as, animationList, duration, Number(delay.value)) as JSONValue;
+  scene = generateScene(as, animationList, duration, Number(delay.value), Number(speed.value), Number(mixDuration.value)) as JSONValue;
 }
 
-function generateScene (activeSkin: string, activeAnimation: string[], duration: number, delay = 0) {
+function generateScene (activeSkin: string, activeAnimation: string[], duration: number, delay = 0, speed = 1, mixDuration = 0) {
   return {
-    'compositionId': 654110176,
-    'requires': [],
-    'bins': [{ url: file.atlas }, { url: format.value === 'json' ? file.json : file.skeleton }],
-    'textures': file.png.map((url, index) => ({
-      source: index,
-      name: url.slice(url.lastIndexOf('/') + 1),
-      flipY: false,
-    })),
+    'playerVersion': {
+      'web': '1.0.0',
+      'native': '1.0.0.231013104006',
+    },
+    'images': file.png.map(img => {
+      return {
+        'url': img,
+        'renderLevel': 'B+',
+        'oriY': 1,
+      };
+    }),
+    'fonts': [],
     'spines': [
       {
         'atlas': [20, [0, 0]],
@@ -215,74 +218,95 @@ function generateScene (activeSkin: string, activeAnimation: string[], duration:
         'images': file.png.map((item, index) => index),
       },
     ],
+    'version': '2.2',
+    'shapes': [],
+    'plugins': [
+      'spine',
+    ],
+    'type': 'ge',
     'compositions': [
       {
-        'name': '新建合成2',
-        'id': 654110176,
-        'duration': 5,
-        'endBehavior': 2,
-        'camera': {
-          'fov': 80,
-          'far': 1000,
-          'near': 1,
-          'aspect': 1,
-          'clipMode': 1,
-          'position': cameraPos,
-          'rotation': [0, 0, 0],
-        },
+        'id': '10',
+        'name': '新建合成',
+        'duration': 10,
+        'startTime': 0,
+        'endBehavior': 5,
+        'previewSize': [
+          750,
+          1624,
+        ],
         'items': [
           {
+            'id': '104',
             'name': 'spine_item',
-            delay,
-            'id': 4,
-            'pn': 0,
+            duration,
             'type': 'spine',
+            'pluginName': 'spine',
+            'visible': true,
+            'endBehavior': 5,
+            delay,
+            'renderLevel': 'B+',
             'content': {
-              'renderer': {
-                'renderMode': 1,
-              },
-              'transform': {
-                'position': [0, 0, 0],
-                'rotation': [0, 0, 0],
-                'scale': [1, 1, 1],
-              },
               'options': {
-                'renderLevel': 'B+',
-                'looping': true,
-                'startSize': 6,
-                duration,
-                'endBehavior': 1,
                 activeSkin,
                 'spine': 0,
+                'size': [
+                  3,
+                  3,
+                ],
+                'startSize': 3,
                 activeAnimation,
+                mixDuration,
+                speed,
               },
+            },
+            'transform': {
+              'position': [
+                0,
+                0,
+                0,
+              ],
+              'rotation': [
+                0,
+                0,
+                0,
+              ],
+              'scale': [
+                1,
+                1,
+                1,
+              ],
             },
           },
         ],
-        'meta': {
-          'previewSize': [
+        'camera': {
+          'fov': 60,
+          'far': 40,
+          'near': 0.1,
+          'clipMode': 1,
+          'position': [
+            0,
+            0,
+            8,
+          ],
+          'rotation': [
+            0,
             0,
             0,
           ],
         },
       },
     ],
-    'gltf': [],
-    'images': [
-      ...file.png,
-    ],
-    'version': '0.9.0',
-    'shapes': [],
-    'plugins': [
-      'spine',
-    ],
-    'type': 'mars',
-    '_imgs': {
-      '654110176': file.png.map((_, index) => index),
-    },
+    'requires': [],
+    'compositionId': '10',
+    'bins': [{ url: file.atlas }, { url: format.value === 'json' ? file.json : file.skeleton }],
+    'textures': file.png.map((url, index) => ({
+      source: index,
+      name: url.slice(url.lastIndexOf('/') + 1),
+      flipY: false,
+    })),
   };
 }
-
 function setSkinList (list: string[]) {
   const options = [];
 
@@ -293,7 +317,7 @@ function setSkinList (list: string[]) {
   }
   options.push('<option value="" selected>请选择皮肤</option>');
   skin.innerHTML = options.join('');
-  skin.onchange = handleChange;
+  // skin.onchange = handleChange;
   skin.value = skin.value || list[0];
 }
 

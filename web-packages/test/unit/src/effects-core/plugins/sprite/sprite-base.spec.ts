@@ -6,6 +6,13 @@ const { expect } = chai;
 
 describe('sprite item base options', () => {
   let player;
+  const canvas = document.createElement('canvas');
+  const renderOptions = {
+    canvas,
+    pixelRatio: 1,
+    manualRender: true,
+    interactive: true,
+  };
 
   before(() => {
     const canvas = document.createElement('canvas');
@@ -33,11 +40,13 @@ describe('sprite item base options', () => {
     const comp = await player.loadScene(generateSceneJSON(JSON.parse(json)));
 
     player.gotoAndPlay(0.01);
-    const spriteItem = comp.getItemByName('sprite_1').content;
-    const color = spriteItem.getRenderData(0).color;
+    const spriteItem = comp.getItemByName('sprite_1').getComponent(SpriteComponent);
+    const spriteColorClip = comp.getItemByName('sprite_1').getComponent(TimelineComponent).findTrack('SpriteColorTrack').findClip('SpriteColorClip');
 
-    expect(spriteItem.options.startColor).to.eql([0.3, 0.2, 0.2, 1], 'startColor');
-    expect(spriteItem.colorOverLifetime).to.eql([
+    const color = spriteItem.material.getVector4('_Color').toArray();
+
+    expect(spriteColorClip.startColor).to.eql([0.3, 0.2, 0.2, 1], 'startColor');
+    expect(spriteColorClip.colorOverLifetime).to.eql([
       { stop: 0, color: [124, 183, 187, 255] },
       { stop: 1, color: [160, 47, 194, 255] },
     ], 'colorOverLifetime');
@@ -53,12 +62,13 @@ describe('sprite item base options', () => {
     const comp = await player.loadScene(generateSceneJSON(JSON.parse(json)));
 
     player.gotoAndPlay(0.01);
-    const spriteItem = comp.getItemByName('item').content;
-    const sizeX = spriteItem.sizeXOverLifetime;
-    const sizeY = spriteItem.sizeYOverLifetime;
-    const sizeZ = spriteItem.sizeZOverLifetime;
 
-    expect(spriteItem.sizeSeparateAxes, 'sizeSeparateAxes').to.be.true;
+    const spriteItem = comp.getItemByName('item').getComponent(SpriteComponent);
+    const sizeX = spriteItem.timelineComponent.sizeXOverLifetime;
+    const sizeY = spriteItem.timelineComponent.sizeYOverLifetime;
+    const sizeZ = spriteItem.timelineComponent.sizeZOverLifetime;
+
+    expect(spriteItem.timelineComponent.sizeSeparateAxes, 'sizeSeparateAxes').to.be.true;
     expect(sizeX, 'sizeXOverLifetime').to.be.an.instanceof(LinearValue);
     expect(sizeY, 'sizeYOverLifetime').to.be.an.instanceof(CurveValue);
     expect(sizeX.getValue(0), 'sizeXOverLifetime').to.eql(2);
@@ -72,9 +82,15 @@ describe('sprite item base options', () => {
     const comp = await player.loadScene(JSON.parse(json));
 
     player.gotoAndPlay(0.01);
-    const spriteItem = comp.getItemByName('日历逐帧').content;
-    const texOffset0 = spriteItem.getRenderData(0).texOffset;
-    const texOffset2 = spriteItem.getRenderData(0.2).texOffset;
+    const spriteItem = comp.getItemByName('日历逐帧').getComponent(SpriteComponent);
+
+    spriteItem.update();
+    const texOffset0 = spriteItem.material.getVector4('_TexOffset').clone().toArray();
+
+    spriteItem.item.getComponent(TimelineComponent).setTime(0.2);
+    spriteItem.update();
+
+    const texOffset2 = spriteItem.material.getVector4('_TexOffset').clone().toArray();
 
     expect(texOffset0[0]).to.be.closeTo(0.0004, 0.001);
     expect(texOffset0[1]).to.be.closeTo(0.8746, 0.001);
@@ -222,7 +238,7 @@ describe('sprite item base options', () => {
     const comp = await player.loadScene(json);
 
     player.gotoAndPlay(currentTime);
-    const spriteItem = comp.getItemByName('sprite_3').content;
+    const spriteItem = comp.getItemByName('sprite_3').getComponent(SpriteComponent);
     const spriteTransform = spriteItem.transform;
     const scale = spriteTransform.getWorldScale().toArray();
     const position = spriteTransform.getWorldPosition().toArray();
@@ -243,13 +259,13 @@ describe('sprite item base options', () => {
     const comp = await player.loadScene(generateSceneJSON(JSON.parse(json)));
 
     player.gotoAndPlay(currentTime);
-    const spriteItem = comp.getItemByName('sprite_3').content;
-    const mesh = comp.loaderData.spriteGroup.getSpriteMesh(spriteItem).mesh;
-    const mainData = mesh.material.getMatrixArray('uMainData');
+    const spriteItem = comp.getItemByName('sprite_3').getComponent(SpriteComponent);
+    const size = new Vector3();
 
+    spriteItem.item.transform.assignWorldTRS(new Vector3(), new Quaternion(), size);
     // size
-    expect(mainData[4]).to.eql(6);
-    expect(mainData[5]).to.eql(6);
+    expect(size.x).to.eql(6);
+    expect(size.y).to.eql(6);
   });
 
   // 图层作为父元素时基础属性的继承

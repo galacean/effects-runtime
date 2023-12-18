@@ -1,7 +1,8 @@
-import { Transform } from '@galacean/effects';
+import { Transform, ItemBehaviour, spec } from '@galacean/effects';
+import type { TimelineComponent, VFXItemContent, Engine, Deserializer, SceneData, VFXItemProps, VFXItem } from '@galacean/effects';
+import type { ModelTreeOptions, ModelTreeContent } from '../index';
 import { PAnimationManager } from '../runtime';
-import type { ModelTreeVFXItem } from './model-tree-vfx-item';
-import type { ModelTreeOptions } from '../index';
+import { getSceneManager } from './model-plugin';
 
 export interface ModelTreeNode {
   name?: string,
@@ -18,7 +19,7 @@ export class ModelTreeItem {
   readonly baseTransform: Transform;
   animationManager: PAnimationManager;
 
-  constructor (props: ModelTreeOptions, owner: ModelTreeVFXItem) {
+  constructor (props: ModelTreeOptions, owner: VFXItem<VFXItemContent>) {
     this.baseTransform = owner.transform;
     this.animationManager = new PAnimationManager(props, owner);
     this.build(props);
@@ -113,5 +114,64 @@ export class ModelTreeItem {
     });
     this.allNodes = nodes;
     this.nodes = options.children.map(i => nodes[i]);
+  }
+}
+
+/**
+ * @since 2.0.0
+ * @internal
+ */
+export class ModelTreeComponent extends ItemBehaviour {
+  content: ModelTreeItem;
+  timeline?: TimelineComponent;
+
+  constructor (engine: Engine, options?: ModelTreeContent) {
+    super(engine);
+    if (options) {
+      this.fromData(options);
+    }
+  }
+
+  override fromData (options: ModelTreeContent, deserializer?: Deserializer, sceneData?: SceneData): void {
+    super.fromData(options, deserializer, sceneData);
+    const treeOptions = options.options.tree;
+
+    this.content = new ModelTreeItem(treeOptions, this.item);
+  }
+
+  override start () {
+    this.item.type = spec.ItemType.tree;
+    this.content.baseTransform.setValid(true);
+    const sceneManager = getSceneManager(this);
+
+    if (sceneManager) {
+      this.content.animationManager.setSceneManager(sceneManager);
+    }
+  }
+
+  override update (dt: number): void {
+    // this.timeline?.getRenderData(time, true);
+    // TODO: 需要使用lifetime
+    this.content?.tick(dt);
+  }
+
+  override onDestroy (): void {
+    this.content?.dispose();
+  }
+
+  getNodeTransform (itemId: string): Transform {
+    if (this.content === undefined) {
+      return this.transform;
+    }
+
+    const idWithSubfix = this.item.id + '^';
+
+    if (itemId.indexOf(idWithSubfix) === 0) {
+      const nodeId = itemId.substring(idWithSubfix.length);
+
+      return this.content.getNodeTransform(nodeId);
+    } else {
+      return this.transform;
+    }
   }
 }

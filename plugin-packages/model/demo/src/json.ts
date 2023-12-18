@@ -6,6 +6,7 @@ import { createButton, createPlayer, disposePlayer, createSlider, loadJsonFromUR
 let player;
 let pending = false;
 let currentTime = 0;
+let pauseOnFirstFrame = false;
 
 let infoElement;
 const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
@@ -42,14 +43,17 @@ export async function loadScene (inPlayer) {
     };
 
     return player.loadScene(scene, opt).then(res => {
-      player.gotoAndPlay(currentTime);
+      if (pauseOnFirstFrame) {
+        player.gotoAndStop(currentTime);
+      } else {
+        player.gotoAndPlay(currentTime);
+      }
 
       pending = false;
 
       return true;
     });
   }
-
 }
 
 export function createUI () {

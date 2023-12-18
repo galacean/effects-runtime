@@ -15,11 +15,12 @@ import { createCopyShader, EFFECTS_COPY_MESH_NAME } from './create-copy-shader';
 import { Geometry } from './geometry';
 import { Mesh } from './mesh';
 import type { RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassColorAttachmentTextureOptions, RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction } from './render-pass';
-import { RenderTargetHandle, RenderPass, RenderPassAttachmentStorageType, RenderPassDestroyAttachmentType, RenderPassPriorityNormal } from './render-pass';
+import { RenderTargetHandle, RenderPass, RenderPassAttachmentStorageType, RenderPassPriorityNormal } from './render-pass';
 import type { Renderer } from './renderer';
 import { BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass } from './post-process-pass';
 import type { GlobalVolume } from './global-volume';
 import { defaultGlobalVolume } from './global-volume';
+import type { RendererComponent } from '../components';
 
 /**
  * 渲染数据，保存了当前渲染使用到的数据。
@@ -182,6 +183,9 @@ export class RenderFrame implements Disposable {
   resource: RenderFrameResource;
   keepColorBuffer?: boolean;
   editorTransform: Vector4;
+
+  // TODO: 是否有用
+  renderQueue: RendererComponent[] = [];
 
   /**
    * 名称
@@ -419,36 +423,47 @@ export class RenderFrame implements Disposable {
    * 根据 Mesh 优先级添加到 RenderPass
    * @param mesh - 要添加的 Mesh 对象
    */
-  addMeshToDefaultRenderPass (mesh: Mesh) {
-    const renderPasses = this.renderPasses;
-    const infoMap = this.renderPassInfoMap;
-    const { priority } = mesh;
-
-    for (let i = 1; i < renderPasses.length; i++) {
-      const renderPass = renderPasses[i - 1];
-      const info = infoMap.get(renderPasses[i]);
-      const infoBefore = infoMap.get(renderPass);
-
-      if (!info || !infoBefore) {
-        continue;
-      }
-
-      if (info.listStart > priority && (priority > infoBefore.listEnd || i === 1)) {
-        return this.addToRenderPass(renderPass, mesh);
-      }
+  addMeshToDefaultRenderPass (mesh?: RendererComponent) {
+    if (!mesh) {
+      return;
     }
+    this.renderPasses[0].addMesh(mesh);
 
-    // TODO diff逻辑待优化，有时会添加进找不到的元素
-    let lastId = renderPasses.length - 1;
-    let lastDefaultPass = renderPasses[lastId];
+    // const renderPasses = this.renderPasses;
+    // const infoMap = this.renderPassInfoMap;
+    // const { priority } = mesh;
 
-    // 找到最后一个 DefaultPass, 直接将元素添加进去
-    while (lastId >= 0 && !lastDefaultPass.name.includes(RENDER_PASS_NAME_PREFIX)) {
-      lastId--;
-      lastDefaultPass = renderPasses[lastId];
-    }
+    // for (let i = 1; i < renderPasses.length; i++) {
+    //   const renderPass = renderPasses[i - 1];
+    //   const info = infoMap.get(renderPasses[i])!;
 
-    return this.addToRenderPass(lastDefaultPass, mesh);
+    //   if (info && info.listStart > priority && (priority > infoMap.get(renderPass)!.listEnd || i === 1)) {
+    //     return this.addToRenderPass(renderPass, mesh);
+    //   }
+    // }
+    // // TODO: diff逻辑待优化，有时会添加进找不到的元素
+    // let last = renderPasses[renderPasses.length - 1];
+
+    // // TODO: 是否添加mesh到pass的判断方式需要优化，先通过长度判断是否有postprocess
+    // for (const pass of renderPasses) {
+    //   if (!(pass instanceof HQGaussianDownSamplePass
+    //     || pass instanceof BloomThresholdPass
+    //     || pass instanceof ToneMappingPass
+    //     || pass instanceof HQGaussianUpSamplePass
+    //     || pass.name === 'mars-final-copy')) {
+    //     last = pass;
+    //   }
+    // }
+
+    // // if (priority > infoMap.get(last)!.listStart || renderPasses.length === 1) {
+    // //   return this.addToRenderPass(last, mesh);
+    // // }
+
+    // return this.addToRenderPass(last, mesh);
+
+    // if (__DEBUG__) {
+    //   throw Error('render pass not found');
+    // }
   }
 
   /**
@@ -457,204 +472,204 @@ export class RenderFrame implements Disposable {
    * @param mesh - 要删除的 Mesh 对象
    */
   removeMeshFromDefaultRenderPass (mesh: Mesh) {
-    const renderPasses = this.renderPasses;
-    const infoMap = this.renderPassInfoMap;
+    // const renderPasses = this.renderPasses;
+    // const infoMap = this.renderPassInfoMap;
 
-    for (let i = renderPasses.length - 1; i >= 0; i--) {
-      const renderPass = renderPasses[i];
-      const info = infoMap.get(renderPass)!;
+    // for (let i = renderPasses.length - 1; i >= 0; i--) {
+    //   const renderPass = renderPasses[i];
+    //   const info = infoMap.get(renderPass)!;
 
-      // 只有渲染场景物体的pass才有 info
-      if (!info) {
-        continue;
-      }
+    //   // 只有渲染场景物体的pass才有 info
+    //   if (!info) {
+    //     continue;
+    //   }
 
-      if (info.listStart <= mesh.priority && info.listEnd >= mesh.priority) {
-        const idx = renderPass.meshes.indexOf(mesh);
+    //   if (info.listStart <= mesh.priority && info.listEnd >= mesh.priority) {
+    //     const idx = renderPass.meshes.indexOf(mesh);
 
-        if (idx === -1) {
-          return;
-        }
+    //     if (idx === -1) {
+    //       return;
+    //     }
 
-        // TODO hack: 现在的除了rp1和finalcopy pass，所有renderpass的meshes是一个copy加上一个filter mesh，这里的判断当filter mesh被删除后当前pass需不需要删除，
-        // 判断需要更鲁棒。
-        const shouldRestoreRenderPass = idx === 1 && renderPass.meshes[0].name === EFFECTS_COPY_MESH_NAME;
+    //     // TODO hack: 现在的除了rp1和finalcopy pass，所有renderpass的meshes是一个copy加上一个filter mesh，这里的判断当filter mesh被删除后当前pass需不需要删除，
+    //     // 判断需要更鲁棒。
+    //     const shouldRestoreRenderPass = idx === 1 && renderPass.meshes[0].name === MARS_COPY_MESH_NAME;
 
-        renderPass.removeMesh(mesh);
-        if (shouldRestoreRenderPass) {
-          const nextRenderPass = renderPasses[i + 1];
-          const meshes = renderPass.meshes;
+    //     renderPass.removeMesh(mesh);
+    //     if (shouldRestoreRenderPass) {
+    //       const nextRenderPass = renderPasses[i + 1];
+    //       const meshes = renderPass.meshes;
 
-          if (!info.intermedia) {
-            info.preRenderPass?.resetColorAttachments([]);
-            //this.renderer.extension.resetColorAttachments?.(info.preRenderPass, []);
-          }
-          for (let j = 1; j < meshes.length; j++) {
-            info.preRenderPass?.addMesh(meshes[j]);
-          }
-          const cp = renderPass.attachments[0]?.texture;
-          const keepColor = cp === this.resource.color_a || cp === this.resource.color_b;
+    //       if (!info.intermedia) {
+    //         info.preRenderPass?.resetColorAttachments([]);
+    //         //this.renderer.extension.resetColorAttachments?.(info.preRenderPass, []);
+    //       }
+    //       for (let j = 1; j < meshes.length; j++) {
+    //         info.preRenderPass?.addMesh(meshes[j]);
+    //       }
+    //       const cp = renderPass.attachments[0]?.texture;
+    //       const keepColor = cp === this.resource.color_a || cp === this.resource.color_b;
 
-          renderPass.dispose({
-            meshes: DestroyOptions.keep,
-            colorAttachment: keepColor ? RenderPassDestroyAttachmentType.keep : RenderPassDestroyAttachmentType.destroy,
-            depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
-          });
-          removeItem(renderPasses, renderPass);
-          this.removeRenderPass(renderPass);
-          infoMap.delete(renderPass);
-          if (nextRenderPass) {
-            this.updateRenderInfo(nextRenderPass);
-          }
-          if (info.preRenderPass) {
-            this.updateRenderInfo(info.preRenderPass);
-          }
-          if (info.prePasses) {
-            info.prePasses.forEach(rp => {
-              this.removeRenderPass(rp.pass);
-              if (rp?.destroyOptions !== false) {
-                rp.pass.attachments.forEach(c => {
-                  if (c.texture !== this.resource.color_b || c.texture !== this.resource.color_a) {
-                    c.texture.dispose();
-                  }
-                });
-                const options: RenderPassDestroyOptions = {
-                  ...(rp?.destroyOptions ? rp.destroyOptions as RenderPassDestroyOptions : {}),
-                  depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
-                };
+    //       renderPass.dispose({
+    //         meshes: DestroyOptions.keep,
+    //         colorAttachment: keepColor ? RenderPassDestroyAttachmentType.keep : RenderPassDestroyAttachmentType.destroy,
+    //         depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
+    //       });
+    //       removeItem(renderPasses, renderPass);
+    //       this.removeRenderPass(renderPass);
+    //       infoMap.delete(renderPass);
+    //       if (nextRenderPass) {
+    //         this.updateRenderInfo(nextRenderPass);
+    //       }
+    //       if (info.preRenderPass) {
+    //         this.updateRenderInfo(info.preRenderPass);
+    //       }
+    //       if (info.prePasses) {
+    //         info.prePasses.forEach(rp => {
+    //           this.removeRenderPass(rp.pass);
+    //           if (rp?.destroyOptions !== false) {
+    //             rp.pass.attachments.forEach(c => {
+    //               if (c.texture !== this.resource.color_b || c.texture !== this.resource.color_a) {
+    //                 c.texture.dispose();
+    //               }
+    //             });
+    //             const options: RenderPassDestroyOptions = {
+    //               ...(rp?.destroyOptions ? rp.destroyOptions as RenderPassDestroyOptions : {}),
+    //               depthStencilAttachment: RenderPassDestroyAttachmentType.keep,
+    //             };
 
-                rp.pass.dispose(options);
-              }
-            });
-          }
-          this.resetRenderPassDefaultAttachment(renderPasses, Math.max(i - 1, 0));
-          if (renderPasses.length === 1) {
-            renderPasses[0].resetColorAttachments([]);
-            //this.renderer.extension.resetColorAttachments?.(renderPasses[0], []);
-            this.removeRenderPass(this.resource.finalCopyRP);
-          }
-        }
+    //             rp.pass.dispose(options);
+    //           }
+    //         });
+    //       }
+    //       this.resetRenderPassDefaultAttachment(renderPasses, Math.max(i - 1, 0));
+    //       if (renderPasses.length === 1) {
+    //         renderPasses[0].resetColorAttachments([]);
+    //         //this.renderer.extension.resetColorAttachments?.(renderPasses[0], []);
+    //         this.removeRenderPass(this.resource.finalCopyRP);
+    //       }
+    //     }
 
-        return this.resetClearActions();
-      }
-    }
+    //     return this.resetClearActions();
+    //   }
+    // }
   }
 
-  /**
-   * 将 Mesh 所有在 RenderPass 进行切分
-   * @param mesh - 目标 Mesh 对象
-   * @param options - 切分选项，包含 RenderPass 相关的 Attachment 等数据
-   */
-  splitDefaultRenderPassByMesh (mesh: Mesh, options: RenderPassSplitOptions): RenderPass {
-    const index = this.findMeshRenderPassIndex(mesh);
-    const renderPass = this.renderPasses[index];
+  // /**
+  //  * 将 Mesh 所有在 RenderPass 进行切分
+  //  * @param mesh - 目标 Mesh 对象
+  //  * @param options - 切分选项，包含 RenderPass 相关的 Attachment 等数据
+  //  */
+  // splitDefaultRenderPassByMesh (mesh: Mesh, options: RenderPassSplitOptions): RenderPass {
+  //   const index = this.findMeshRenderPassIndex(mesh);
+  //   const renderPass = this.renderPasses[index];
 
-    if (__DEBUG__) {
-      if (!renderPass) {
-        throw Error('RenderPassNotFound');
-      }
-    }
-    this.createResource();
-    const meshIndex = renderPass.meshes.indexOf(mesh);
-    const ms0 = renderPass.meshes.slice(0, meshIndex);
-    const ms1 = renderPass.meshes.slice(meshIndex);
-    const infoMap = this.renderPassInfoMap;
+  //   if (__DEBUG__) {
+  //     if (!renderPass) {
+  //       throw Error('RenderPassNotFound');
+  //     }
+  //   }
+  //   this.createResource();
+  //   const meshIndex = renderPass.meshes.indexOf(mesh);
+  //   const ms0 = renderPass.meshes.slice(0, meshIndex);
+  //   const ms1 = renderPass.meshes.slice(meshIndex);
+  //   const infoMap = this.renderPassInfoMap;
 
-    // TODO 为什么要加这个判断？
-    // if (renderPass.attachments[0] && this.renderPasses[index + 1] !== this.resource.finalCopyRP) {
-    //   throw Error('not implement');
-    // } else {
-    if (!options.attachments?.length) {
-      throw Error('should include at least one color attachment');
-    }
-    const defRPS = this.renderPasses;
-    const defIndex = defRPS.indexOf(renderPass);
-    const lastDefRP = defRPS[defIndex - 1];
+  //   // TODO 为什么要加这个判断？
+  //   // if (renderPass.attachments[0] && this.renderPasses[index + 1] !== this.resource.finalCopyRP) {
+  //   //   throw Error('not implement');
+  //   // } else {
+  //   if (!options.attachments?.length) {
+  //     throw Error('should include at least one color attachment');
+  //   }
+  //   const defRPS = this.renderPasses;
+  //   const defIndex = defRPS.indexOf(renderPass);
+  //   const lastDefRP = defRPS[defIndex - 1];
 
-    removeItem(defRPS, renderPass);
-    const lastInfo = infoMap.get(renderPass);
+  //   removeItem(defRPS, renderPass);
+  //   const lastInfo = infoMap.get(renderPass);
 
-    infoMap.delete(renderPass);
-    const filter = this.renderer.engine.gpuCapability.level === 2 ? glContext.LINEAR : glContext.NEAREST;
-    const rp0 = new RenderPass(this.renderer, {
-      name: RENDER_PASS_NAME_PREFIX + defIndex,
-      priority: renderPass.priority,
-      attachments: [{
-        texture: {
-          sourceType: TextureSourceType.framebuffer,
-          format: glContext.RGBA,
-          name: 'frame_a',
-          minFilter: filter,
-          magFilter: filter,
-        },
-      }],
-      clearAction: renderPass.clearAction || { colorAction: TextureLoadAction.clear },
-      storeAction: renderPass.storeAction,
-      depthStencilAttachment: this.resource.depthStencil,
-      meshes: ms0,
-      meshOrder: OrderType.ascending,
-    });
+  //   infoMap.delete(renderPass);
+  //   const filter = GPUCapability.getInstance().level === 2 ? glContext.LINEAR : glContext.NEAREST;
+  //   const rp0 = new RenderPass({
+  //     name: RENDER_PASS_NAME_PREFIX + defIndex,
+  //     priority: renderPass.priority,
+  //     attachments: [{
+  //       texture: {
+  //         sourceType: TextureSourceType.framebuffer,
+  //         format: glContext.RGBA,
+  //         name: 'frame_a',
+  //         minFilter: filter,
+  //         magFilter: filter,
+  //       },
+  //     }],
+  //     clearAction: renderPass.clearAction || { colorAction: TextureLoadAction.clear },
+  //     storeAction: renderPass.storeAction,
+  //     depthStencilAttachment: this.resource.depthStencil,
+  //     meshes: ms0,
+  //     meshOrder: OrderType.ascending,
+  //   });
 
-    ms1.unshift(this.createCopyMesh());
+  //   ms1.unshift(this.createCopyMesh());
 
-    const renderPasses = this.renderPasses;
+  //   const renderPasses = this.renderPasses;
 
-    renderPasses[index] = rp0;
-    const prePasses: RenderPass[] = [];
+  //   renderPasses[index] = rp0;
+  //   const prePasses: RenderPass[] = [];
 
-    const restMeshes = ms1.slice();
+  //   const restMeshes = ms1.slice();
 
-    if (options.prePasses) {
-      options.prePasses.forEach((pass, i) => {
-        pass.priority = renderPass.priority + 1 + i;
-        pass.setMeshes(ms1);
-        prePasses.push(pass);
-      });
-      renderPasses.splice(index + 1, 0, ...prePasses);
-      restMeshes.splice(0, 2);
-    }
-    const copyRP = this.resource.finalCopyRP;
+  //   if (options.prePasses) {
+  //     options.prePasses.forEach((pass, i) => {
+  //       pass.priority = renderPass.priority + 1 + i;
+  //       pass.setMeshes(ms1);
+  //       prePasses.push(pass);
+  //     });
+  //     renderPasses.splice(index + 1, 0, ...prePasses);
+  //     restMeshes.splice(0, 2);
+  //   }
+  //   const copyRP = this.resource.finalCopyRP;
 
-    if (!renderPasses.includes(copyRP)) {
-      renderPasses.push(copyRP);
-    }
-    // let sourcePass = (prePasses.length && !options.useLastDefaultPassColor) ? prePasses[prePasses.length - 1] : rp0;
+  //   if (!renderPasses.includes(copyRP)) {
+  //     renderPasses.push(copyRP);
+  //   }
+  //   // let sourcePass = (prePasses.length && !options.useLastDefaultPassColor) ? prePasses[prePasses.length - 1] : rp0;
 
-    const finalFilterPass = prePasses[prePasses.length - 1];
+  //   const finalFilterPass = prePasses[prePasses.length - 1];
 
-    finalFilterPass.initialize(this.renderer);
+  //   finalFilterPass.initialize(this.renderer);
 
-    // 不切RT，接着上一个pass的渲染结果渲染
-    const rp1 = new RenderPass(this.renderer, {
-      name: RENDER_PASS_NAME_PREFIX + (defIndex + 1),
-      priority: renderPass.priority + 1 + (options.prePasses?.length || 0),
-      meshes: restMeshes,
-      meshOrder: OrderType.ascending,
-      depthStencilAttachment: this.resource.depthStencil,
-      storeAction: options.storeAction,
-      clearAction: {
-        depthAction: TextureLoadAction.whatever,
-        stencilAction: TextureLoadAction.whatever,
-        colorAction: TextureLoadAction.whatever,
-      },
-    });
+  //   // 不切RT，接着上一个pass的渲染结果渲染
+  //   const rp1 = new RenderPass({
+  //     name: RENDER_PASS_NAME_PREFIX + (defIndex + 1),
+  //     priority: renderPass.priority + 1 + (options.prePasses?.length || 0),
+  //     meshes: restMeshes,
+  //     meshOrder: OrderType.ascending,
+  //     depthStencilAttachment: this.resource.depthStencil,
+  //     storeAction: options.storeAction,
+  //     clearAction: {
+  //       depthAction: TextureLoadAction.whatever,
+  //       stencilAction: TextureLoadAction.whatever,
+  //       colorAction: TextureLoadAction.whatever,
+  //     },
+  //   });
 
-    renderPasses.splice(index + 1 + (options.prePasses?.length || 0), 0, rp1);
-    this.setRenderPasses(renderPasses);
-    this.updateRenderInfo(finalFilterPass);
-    this.updateRenderInfo(rp0);
-    this.updateRenderInfo(rp1);
+  //   renderPasses.splice(index + 1 + (options.prePasses?.length || 0), 0, rp1);
+  //   this.setRenderPasses(renderPasses);
+  //   this.updateRenderInfo(finalFilterPass);
+  //   this.updateRenderInfo(rp0);
+  //   this.updateRenderInfo(rp1);
 
-    // 目的是删除滤镜元素后，把之前滤镜用到的prePass给删除，逻辑有些复杂，考虑优化
-    infoMap.get(rp0)!.prePasses = lastInfo!.prePasses;
-    prePasses.pop();
-    infoMap.get(finalFilterPass)!.prePasses = prePasses.map((pass, i) => {
-      return { pass, destroyOptions: false };
-    });
-    this.resetClearActions();
+  //   // 目的是删除滤镜元素后，把之前滤镜用到的prePass给删除，逻辑有些复杂，考虑优化
+  //   infoMap.get(rp0)!.prePasses = lastInfo!.prePasses;
+  //   prePasses.pop();
+  //   infoMap.get(finalFilterPass)!.prePasses = prePasses.map((pass, i) => {
+  //     return { pass, destroyOptions: false };
+  //   });
+  //   this.resetClearActions();
 
-    return finalFilterPass;
-  }
+  //   return finalFilterPass;
+  // }
 
   /**
    * 销毁 RenderFrame
@@ -785,49 +800,49 @@ export class RenderFrame implements Disposable {
     }
   }
 
-  protected updateRenderInfo (renderPass: RenderPass): RenderPassInfo {
-    const map = this.renderPassInfoMap;
-    const passes = this.renderPasses;
-    let info: RenderPassInfo;
+  // protected updateRenderInfo (renderPass: RenderPass): RenderPassInfo {
+  //   const map = this.renderPassInfoMap;
+  //   const passes = this.renderPasses;
+  //   let info: RenderPassInfo;
 
-    if (!map.has(renderPass)) {
-      info = {
-        intermedia: false,
-        renderPass: renderPass,
-        listStart: 0,
-        listEnd: 0,
-      };
-      map.set(renderPass, info);
-    } else {
-      info = map.get(renderPass)!;
-    }
-    info.intermedia = renderPass.attachments.length > 0;
-    const meshes = renderPass.meshes;
+  //   if (!map.has(renderPass)) {
+  //     info = {
+  //       intermedia: false,
+  //       renderPass: renderPass,
+  //       listStart: 0,
+  //       listEnd: 0,
+  //     };
+  //     map.set(renderPass, info);
+  //   } else {
+  //     info = map.get(renderPass)!;
+  //   }
+  //   info.intermedia = renderPass.attachments.length > 0;
+  //   const meshes = renderPass.meshes;
 
-    if (meshes[0]) {
-      info.listStart = (meshes[0].name === EFFECTS_COPY_MESH_NAME ? meshes[1] : meshes[0]).priority;
-      info.listEnd = meshes[meshes.length - 1].priority;
-    } else {
-      info.listStart = 0;
-      info.listEnd = 0;
-    }
-    const index = passes.indexOf(renderPass);
-    const depthStencilActon = index === 0 ? TextureLoadAction.clear : TextureLoadAction.whatever;
+  //   if (meshes[0]) {
+  //     info.listStart = (meshes[0].name === MARS_COPY_MESH_NAME ? meshes[1] : meshes[0]).priority;
+  //     info.listEnd = meshes[meshes.length - 1].priority;
+  //   } else {
+  //     info.listStart = 0;
+  //     info.listEnd = 0;
+  //   }
+  //   const index = passes.indexOf(renderPass);
+  //   const depthStencilActon = index === 0 ? TextureLoadAction.clear : TextureLoadAction.whatever;
 
-    if (index === 0) {
-      renderPass.clearAction.colorAction = TextureLoadAction.clear;
-    }
-    renderPass.clearAction.depthAction = depthStencilActon;
-    renderPass.clearAction.stencilAction = depthStencilActon;
-    if (index > -1) {
-      renderPass.semantics.setSemantic('EDITOR_TRANSFORM', () => this.editorTransform);
-    } else {
-      renderPass.semantics.setSemantic('EDITOR_TRANSFORM', undefined);
-    }
-    info.preRenderPass = passes[index - 1];
+  //   if (index === 0) {
+  //     renderPass.clearAction.colorAction = TextureLoadAction.clear;
+  //   }
+  //   renderPass.clearAction.depthAction = depthStencilActon;
+  //   renderPass.clearAction.stencilAction = depthStencilActon;
+  //   if (index > -1) {
+  //     renderPass.semantics.setSemantic('EDITOR_TRANSFORM', () => this.editorTransform);
+  //   } else {
+  //     renderPass.semantics.setSemantic('EDITOR_TRANSFORM', undefined);
+  //   }
+  //   info.preRenderPass = passes[index - 1];
 
-    return info;
-  }
+  //   return info;
+  // }
 
   /**
    * 设置 RenderPass 数组，直接修改内部的 RenderPass 数组

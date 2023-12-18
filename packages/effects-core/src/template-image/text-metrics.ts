@@ -7,18 +7,17 @@ export interface IFontMetrics {
 }
 
 export class TextMetrics {
+  static _fonts: { [font: string]: IFontMetrics } = {};
 
-  public static _fonts: { [font: string]: IFontMetrics } = {};
-
-  public static METRICS_STRING = '|ÉqÅ';
-  public static BASELINE_SYMBOL = 'M';
-  public static BASELINE_MULTIPLIER = 1.4;
-  public static HEIGHT_MULTIPLIER = 2.0;
+  static METRICS_STRING = '|ÉqÅ';
+  static BASELINE_SYMBOL = 'M';
+  static BASELINE_MULTIPLIER = 1.4;
+  static HEIGHT_MULTIPLIER = 2.0;
 
   private static __canvas: HTMLCanvasElement;
   private static __context: CanvasRenderingContext2D;
 
-  public static measureFont (font: string): IFontMetrics {
+  static measureFont (font: string): IFontMetrics {
     // as this method is used for preparing assets, don't recalculate things if we don't need to
     if (TextMetrics._fonts[font]) {
       return TextMetrics._fonts[font];
@@ -108,7 +107,7 @@ export class TextMetrics {
     return properties;
   }
 
-  public static get _canvas (): HTMLCanvasElement {
+  static get _canvas (): HTMLCanvasElement {
     let canvas: HTMLCanvasElement;
 
     if (getConfig(TEMPLATE_USE_OFFSCREEN_CANVAS)) {

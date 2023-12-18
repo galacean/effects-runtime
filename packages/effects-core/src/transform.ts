@@ -1,5 +1,5 @@
+import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
-import { Vector3, Matrix4, Quaternion, Euler } from '@galacean/effects-math/es/core/index';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
 
@@ -31,27 +31,32 @@ export class Transform implements Disposable {
     return out.setFromQuaternion(newQuat);
   }
 
-  public name: string;
+  name: string;
   /**
    * 自身位移
    */
-  public readonly position = new Vector3(0, 0, 0);
+  readonly position = new Vector3(0, 0, 0);
   /**
    * 自身旋转对应的四元数，右手坐标系，旋转正方向左手螺旋（轴向的顺时针），旋转欧拉角的顺序为 ZYX
    */
-  public readonly quat = new Quaternion(0, 0, 0, 1);
+  readonly quat = new Quaternion(0, 0, 0, 1);
   /**
    * 自身旋转角度
    */
-  public readonly rotation = new Euler(0, 0, 0);
+  readonly rotation = new Euler(0, 0, 0);
   /**
    * 自身缩放
    */
-  public readonly scale = new Vector3(1, 1, 1);
+  readonly scale = new Vector3(1, 1, 1);
   /**
    * 自身锚点
    */
-  public readonly anchor = new Vector3(0, 0, 0);
+  readonly anchor = new Vector3(0, 0, 0);
+
+  /**
+   * 元素矩形宽高
+   */
+  readonly size = new Vector2(1, 1);
   /**
    * 子变换，可以有多个
    */
@@ -75,7 +80,7 @@ export class Transform implements Disposable {
   /**
    * 变换是否需要生效，不生效返回的模型矩阵为单位矩阵，需要随元素生命周期改变
    */
-  private valid = false;
+  private valid = true;
   /**
    * 数据变化标志位
    */
@@ -231,6 +236,15 @@ export class Transform implements Disposable {
     }
   }
 
+  setSize (x: number, y: number) {
+    if (this.size.x !== x || this.size.y !== y) {
+      this.size.x = x;
+      this.size.y = y;
+      this.dirtyFlags.localData = true;
+      this.dispatchValueChange();
+    }
+  }
+
   /**
    * 在当前旋转的基础上使用四元素添加旋转
    * @param quat
@@ -319,7 +333,6 @@ export class Transform implements Disposable {
         this.setAnchor(anchor[0], anchor[1], anchor[2] ?? 0);
       }
     }
-
   }
 
   /**
@@ -456,9 +469,9 @@ export class Transform implements Disposable {
 
   /**
    * 根据世界变换矩阵计算位移、旋转、缩放向量
-   * @param  position
-   * @param  quat
-   * @param  scale
+   * @param position
+   * @param quat
+   * @param scale
    */
   assignWorldTRS (position?: Vector3, quat?: Quaternion, scale?: Vector3) {
     this.updateTRSCache();

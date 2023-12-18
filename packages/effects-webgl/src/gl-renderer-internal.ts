@@ -27,7 +27,9 @@ export class GLRendererInternal implements Disposable, LostHandler {
   private targetFbo: WebGLFramebuffer | null;
   private destroyed = false;
 
-  constructor (public engine: GLEngine) {
+  constructor (
+    public engine: GLEngine,
+  ) {
     const d = { width: 1, height: 1, data: new Uint8Array([255]) };
     const pipelineContext = engine.getGLPipelineContext();
     const gl = pipelineContext.gl;

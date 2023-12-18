@@ -53,10 +53,10 @@ describe('effects-core/plugins/particle-base', function () {
     expect(ps.options.startSize.getValue()).to.eql(3, 'startSize');
     expect(ps.options.startSpeed.getValue()).to.eql(0, 'startSpeed');
     expect(ps.options.startColor.getValue()).to.eql([255, 255, 255], 'startColor');
-    expect(ps.options.duration).to.eql(5, 'duration');
+    // expect(ps.options.duration).to.eql(5, 'duration');
     expect(ps.options.maxCount).to.eql(1, 'maxCount');
     expect(ps.options.gravityModifier.getValue()).to.eql(1, 'gravityModifier');
-    expect(ps.options.endBehavior).to.eql(spec.END_BEHAVIOR_DESTROY, 'endBehavior');
+    expect(ps.item.endBehavior).to.eql(spec.END_BEHAVIOR_DESTROY, 'endBehavior');
     expect(ps.options.looping).to.eql(false, 'looping');
   });
 

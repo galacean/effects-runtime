@@ -4,6 +4,7 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-orientation-transformer';
 import type { SpineVFXItem } from '@galacean/effects-plugin-spine';
+import { SpineComponent } from '../../src/spineComponent';
 import { direct, premultiply } from './files';
 
 const startEle = document.getElementById('J-start');
@@ -27,13 +28,9 @@ const filetype = document.getElementById('J-premultiply');
 
 const cameraPos = [0, 0, 8];
 const playerOptions = {
-  willCaptureImage: true,
-  pixelRatio: 2,
   interactive: true,
-  reusable: true,
   onItemClicked: () => console.info('包围盒内被点击'),
   onEnd: () => console.info('合成播放结束'),
-  env: 'editor',
 };
 const files = direct;
 
@@ -45,7 +42,7 @@ if (files === premultiply) {
 
 const file = files.spineboy;
 const mix = files.mix;
-const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration = 0.3, speed = 1;
+const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration = 0, speed = 1;
 
 (async () => {
   const animation = {
@@ -108,7 +105,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
         'name': '新建合成2',
         'duration': 10,
         'startTime': 0,
-        'endBehavior': 2,
+        'endBehavior': 0,
         'previewSize': [
           750,
           1624,
@@ -137,9 +134,9 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
             'type': 'spine',
             'pluginName': 'spine',
             'visible': true,
-            'endBehavior': 5,
+            'endBehavior': 0,
             'renderLevel': 'B+',
-            'duration': dur,
+            'duration': 3,
             'content': {
               'options': {
                 'activeSkin': skin,
@@ -147,13 +144,13 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
                 mixDuration,
                 activeAnimation,
                 'spine': 0,
-                'startSize': 2,
+                'startSize': 3,
               },
             },
             'transform': {
               'position': [
                 0,
-                5.1,
+                2,
                 0,
               ],
               'rotation': [
@@ -183,15 +180,15 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
                 'activeSkin': 'skin-base',
                 speed,
                 mixDuration,
-                'activeAnimation': ['dance'],
+                'activeAnimation': ['dance', 'aware'],
                 'spine': 1,
-                'startSize': 1,
+                'startSize': 2,
               },
             },
             'transform': {
               'position': [
                 0,
-                -5.1,
+                -5,
                 0,
               ],
               'rotation': [
@@ -248,13 +245,10 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
     const comp = await player.loadScene(animation, {
       autoplay: false,
     });
-    const item = comp.getItemByName('spine_item') as SpineVFXItem;
-
-    item.setMixDuration('run', 'jump', 0.7);
+    const item = comp.getItemByName('spine_item2') as SpineVFXItem;
 
     player.play();
-    // item.deleteMixForLoop()
-
+    item.getComponent(SpineComponent).setMixDuration('dance', 'aware', 0.3);
     setCamera(comp);
 
     pauseEle.onclick = () => {
@@ -270,7 +264,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
     };
 
     skinEle.onclick = () => {
-      const spineItem = comp.getItemByName('spine_item');
+      const spineItem = comp.getItemByName('spine_item2');
 
       if (spineItem) {
         const skinList = spineItem.skinList;
@@ -281,7 +275,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
     };
 
     animationEle.onclick = () => {
-      const spineItem = comp.getItemByName('spine_item');
+      const spineItem = comp.getItemByName('spine_item2');
 
       if (spineItem) {
         const animationList = spineItem.animationList;

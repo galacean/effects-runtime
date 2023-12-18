@@ -37,44 +37,44 @@ export class GLShader extends Shader {
     pipelineContext.shaderLibrary.compileShader(this);
   }
 
-  public setFloat (name: string, value: number) {
+  setFloat (name: string, value: number) {
     this.pipelineContext.setFloat(this.uniformLocations[name], value);
   }
-  public setInt (name: string, value: number) {
+  setInt (name: string, value: number) {
     this.pipelineContext.setInt(this.uniformLocations[name], value);
   }
-  public setFloats (name: string, value: number[]) {
+  setFloats (name: string, value: number[]) {
     this.pipelineContext.setFloats(this.uniformLocations[name], value);
   }
-  public setTexture (name: string, texture: Texture) {
+  setTexture (name: string, texture: Texture) {
     this.pipelineContext.setTexture(this.uniformLocations[name], this.samplerChannels[name], texture);
   }
-  public setVector2 (name: string, value: Vector2) {
+  setVector2 (name: string, value: Vector2) {
     this.pipelineContext.setVector2(this.uniformLocations[name], value);
   }
-  public setVector3 (name: string, value: Vector3) {
+  setVector3 (name: string, value: Vector3) {
     this.pipelineContext.setVector3(this.uniformLocations[name], value);
   }
-  public setVector4 (name: string, value: Vector4) {
+  setVector4 (name: string, value: Vector4) {
     this.pipelineContext.setVector4(this.uniformLocations[name], value);
   }
-  public setQuaternion (name: string, value: Quaternion) {
+  setQuaternion (name: string, value: Quaternion) {
     this.pipelineContext.setQuaternion(this.uniformLocations[name], value);
   }
-  public setMatrix (name: string, value: Matrix4) {
+  setMatrix (name: string, value: Matrix4) {
     this.pipelineContext.setMatrix(this.uniformLocations[name], value);
   }
-  public setMatrix3 (name: string, value: Matrix3) {
+  setMatrix3 (name: string, value: Matrix3) {
     this.pipelineContext.setMatrix3(this.uniformLocations[name], value);
   }
-  public setVector4Array (name: string, array: number[]) {
+  setVector4Array (name: string, array: number[]) {
     this.pipelineContext.setVector4Array(this.uniformLocations[name], array);
   }
-  public setMatrixArray (name: string, array: number[]) {
+  setMatrixArray (name: string, array: number[]) {
     this.pipelineContext.setMatrixArray(this.uniformLocations[name], array);
   }
 
-  public fillShaderInformation (uniformNames: string[], samplers: string[]) {
+  fillShaderInformation (uniformNames: string[], samplers: string[]) {
     // 避免修改原数组。
     const samplerList = samplers.slice();
 

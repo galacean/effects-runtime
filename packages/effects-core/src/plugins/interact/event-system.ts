@@ -34,8 +34,8 @@ export class EventSystem implements Disposable {
 
   constructor (
     private target: HTMLCanvasElement | null,
-    public allowPropagation = false) {
-  }
+    public allowPropagation = false,
+  ) { }
 
   bindListeners () {
     let x: number;

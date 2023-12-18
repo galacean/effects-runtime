@@ -7,7 +7,7 @@ export type SemanticFunc = (state: RenderingData) => UniformValue | undefined;
 export type SemanticGetter = UniformValue | SemanticFunc;
 
 export class SemanticMap implements Disposable {
-  public readonly semantics: Record<string, SemanticGetter>;
+  readonly semantics: Record<string, SemanticGetter>;
 
   constructor (semantics: Record<string, SemanticGetter> = {}) {
     this.semantics = { ...semantics };

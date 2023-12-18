@@ -4,8 +4,12 @@ import type {
   MaterialStates,
   UndefinedAble,
   Texture,
-  Engine,
   GlobalUniforms,
+  Renderer,
+  Deserializer,
+  MaterialData,
+  SceneData,
+  ShaderData,
 } from '@galacean/effects-core';
 import { DestroyOptions, Material, assertExist, throwDestroyedError, math } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
@@ -13,7 +17,6 @@ import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShader } from './gl-shader';
 import type { GLTexture } from './gl-texture';
 import type { GLEngine } from './gl-engine';
-import type { GLRenderer } from './gl-renderer';
 
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
@@ -46,14 +49,6 @@ export class GLMaterial extends Material {
 
   uniformDirtyFlag = true;
   glMaterialState = new GLMaterialState();
-
-  private engine?: Engine;
-
-  constructor (engine: Engine, props: MaterialProps) {
-    super(props);
-
-    this.engine = engine;
-  }
 
   override get blending () {
     return this.glMaterialState.blending;
@@ -262,7 +257,7 @@ export class GLMaterial extends Material {
     this.glMaterialState.apply(pipelineContext);
   }
 
-  public override use (renderer: GLRenderer, globalUniforms?: GlobalUniforms) {
+  override use (renderer: Renderer, globalUniforms?: GlobalUniforms) {
     const engine = renderer.engine as GLEngine;
     const pipelineContext = engine.getGLPipelineContext();
 
@@ -346,78 +341,78 @@ export class GLMaterial extends Material {
     }
   }
 
-  public getFloat (name: string): number | null {
+  getFloat (name: string): number | null {
     return this.floats[name];
   }
-  public setFloat (name: string, value: number) {
+  setFloat (name: string, value: number) {
     this.checkUniform(name);
     this.floats[name] = value;
   }
 
-  public getInt (name: string): number | null {
+  getInt (name: string): number | null {
     return this.ints[name];
   }
-  public setInt (name: string, value: number) {
+  setInt (name: string, value: number) {
     this.checkUniform(name);
     this.ints[name] = value;
   }
 
-  public getFloats (name: string): number[] | null {
+  getFloats (name: string): number[] | null {
     return this.floatArrays[name];
   }
-  public setFloats (name: string, value: number[]) {
+  setFloats (name: string, value: number[]) {
     this.checkUniform(name);
     this.floatArrays[name] = value;
   }
 
-  public getVector2 (name: string): Vector2 | null {
+  getVector2 (name: string): Vector2 | null {
     return this.vector2s[name];
   }
-  public setVector2 (name: string, value: Vector2): void {
+  setVector2 (name: string, value: Vector2): void {
     this.checkUniform(name);
     this.vector2s[name] = value;
   }
 
-  public getVector3 (name: string): Vector3 | null {
+  getVector3 (name: string): Vector3 | null {
     return this.vector3s[name];
   }
-  public setVector3 (name: string, value: Vector3): void {
+  setVector3 (name: string, value: Vector3): void {
     this.checkUniform(name);
     this.vector3s[name] = value;
   }
 
-  public getVector4 (name: string): Vector4 | null {
+  getVector4 (name: string): Vector4 | null {
     return this.vector4s[name];
   }
-  public setVector4 (name: string, value: Vector4): void {
+  setVector4 (name: string, value: Vector4): void {
     this.checkUniform(name);
     this.vector4s[name] = value;
   }
 
-  public getQuaternion (name: string): Quaternion | null {
+  getQuaternion (name: string): Quaternion | null {
     return this.quaternions[name];
   }
-  public setQuaternion (name: string, value: Quaternion): void {
+  setQuaternion (name: string, value: Quaternion): void {
     this.checkUniform(name);
     this.quaternions[name] = value;
   }
 
-  public getMatrix (name: string): Matrix4 | null {
+  getMatrix (name: string): Matrix4 | null {
     return this.matrices[name];
   }
-  public setMatrix (name: string, value: Matrix4): void {
+  setMatrix (name: string, value: Matrix4): void {
     this.checkUniform(name);
     this.matrices[name] = value;
   }
-  public setMatrix3 (name: string, value: Matrix3): void {
+  setMatrix3 (name: string, value: Matrix3): void {
     this.checkUniform(name);
     this.matrice3s[name] = value;
   }
 
-  public getVector4Array (name: string): number[] {
+  getVector4Array (name: string): number[] {
     return this.vector4Arrays[name];
   }
-  public setVector4Array (name: string, array: Vector4[]): void {
+  setVector4Array (name: string, array: Vector4[]): void {
     this.checkUniform(name);
     this.vector4Arrays[name] = [];
     for (const v of array) {
@@ -425,10 +420,10 @@ export class GLMaterial extends Material {
     }
   }
 
-  public getMatrixArray (name: string): number[] | null {
+  getMatrixArray (name: string): number[] | null {
     return this.matrixArrays[name];
   }
-  public setMatrixArray (name: string, array: Matrix4[]): void {
+  setMatrixArray (name: string, array: Matrix4[]): void {
     this.checkUniform(name);
     this.matrixArrays[name] = [];
     for (const m of array) {
@@ -437,15 +432,15 @@ export class GLMaterial extends Material {
       }
     }
   }
-  public setMatrixNumberArray (name: string, array: number[]): void {
+  setMatrixNumberArray (name: string, array: number[]): void {
     this.checkUniform(name);
     this.matrixArrays[name] = array;
   }
 
-  public getTexture (name: string): Texture | null {
+  getTexture (name: string): Texture | null {
     return this.textures[name];
   }
-  public setTexture (name: string, texture: Texture) {
+  setTexture (name: string, texture: Texture) {
     if (!this.samplers.includes(name)) {
       this.samplers.push(name);
       this.uniformDirtyFlag = true;
@@ -453,11 +448,11 @@ export class GLMaterial extends Material {
     this.textures[name] = texture;
   }
 
-  public hasUniform (name: string): boolean {
+  hasUniform (name: string): boolean {
     return this.uniforms.includes(name) || this.samplers.includes(name);
   }
 
-  public clone (props?: MaterialProps): Material {
+  clone (props?: MaterialProps): Material {
     const newProps = props ? props : this.props;
     const engine = this.engine;
 
@@ -482,6 +477,59 @@ export class GLMaterial extends Material {
     clonedMaterial.uniformDirtyFlag = true;
 
     return clonedMaterial;
+  }
+
+  override fromData (data: MaterialData, deserializer: Deserializer, sceneData: SceneData): void {
+    super.fromData(data, deserializer, sceneData);
+    const shaderData: ShaderData = deserializer.findData(data.shader, sceneData);
+
+    this.shaderSource = {
+      vertex: shaderData.vertex,
+      fragment: shaderData.fragment,
+      // @ts-expect-error
+      glslVersion: shaderData.version,
+    };
+
+    const propertiesData = {
+      vector2s: {},
+      vector3s: {},
+      matrices: {},
+      matrice3s: {},
+      // textures: {},
+      floatArrays: {},
+      vector4Arrays: {},
+      matrixArrays: {},
+      ...data,
+    };
+
+    let name: string;
+
+    for (name in data.floats) {
+      this.setFloat(name, propertiesData.floats[name]);
+    }
+    for (name in data.ints) {
+      this.setInt(name, propertiesData.ints[name]);
+    }
+    for (name in data.floatArrays) {
+      this.setFloats(name, propertiesData.floatArrays[name]);
+    }
+    // for (name in materialData.textures) {
+    //   this.setTexture(name, propertiesData.textures[name]);
+    // }
+    // for (name in materialData.vector2s) {
+    //   this.setVector2(name, Vector propertiesData.vector2s[name]);
+    // }
+    // for (name in materialData.vector3s) {
+    //   this.setVector3(name, propertiesData.vector3s[name]);
+    // }
+    // for (name in materialData.vector4s) {
+    //   this.setVector4(name, propertiesData.vector4s[name]);
+    // }
+    // for (name in materialData.matrices) {
+    //   this.setMatrix(name, propertiesData.matrices[name]);
+    // }
+
+    this.initialized = false;
   }
 
   override cloneUniforms (sourceMaterial: Material): void {
@@ -557,7 +605,10 @@ export class GLMaterial extends Material {
     this.shader?.dispose();
     if (options?.textures !== DestroyOptions.keep) {
       for (const texture of Object.values(this.textures)) {
-        texture.dispose();
+        // TODO 纹理释放需要引用计数
+        if (texture !== this.engine.emptyTexture) {
+          texture.dispose();
+        }
       }
     }
 
@@ -584,7 +635,6 @@ export class GLMaterial extends Material {
 
     if (this.engine !== undefined) {
       this.engine.removeMaterial(this);
-      this.engine = undefined;
     }
   }
 }

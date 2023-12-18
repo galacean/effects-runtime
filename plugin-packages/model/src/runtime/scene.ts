@@ -1,6 +1,5 @@
-import type { RenderFrame, Mesh, Renderer, Texture, Engine, math, CameraOptionsEx } from '@galacean/effects';
+import type { Mesh, Renderer, Texture, Engine, math, CameraOptionsEx } from '@galacean/effects';
 import { Transform, spec, addItem, removeItem, PLAYER_OPTIONS_ENV_EDITOR } from '@galacean/effects';
-import type { ModelItem, ModelVFXItem } from '../plugin/model-vfx-item';
 import { PMesh } from './mesh';
 import type { PCamera } from './camera';
 import { PCameraManager } from './camera';
@@ -9,7 +8,6 @@ import { Vector3, Matrix4, Box3 } from './math';
 import { PSkybox } from './skybox';
 import { PTransform, PGlobalState, PObjectType } from './common';
 import type { CompositionCache } from './cache';
-import { PShadowManager } from './shadow';
 import type { PEntity } from './object';
 import { WebGLHelper } from '../utility/plugin-helper';
 import { TwoStatesSet } from '../utility/ts-helper';
@@ -59,7 +57,6 @@ export class PSceneManager {
   meshList: PMesh[];
   lightManager: PLightManager;
   cameraManager: PCameraManager;
-  shadowManager: PShadowManager;
   /**
    * 是否动态排序 Mesh 渲染优先级
    * 默认 false，需要和 Tiny 对齐时为 true
@@ -78,15 +75,12 @@ export class PSceneManager {
    * 场景前帧和当前帧渲染的 Mesh 集合
    */
   renderedMeshSet: TwoStatesSet<Mesh>;
-  /**
-   * 场景中所有渲染过的 Mesh 集合
-   */
-  allRenderedMeshSet: Set<Mesh>;
+  maxLightCount = 16;
+  sceneStates: PSceneStates;
 
   private renderer?: Renderer;
   private sceneCache?: CompositionCache;
   private parentId2Mesh: Map<string, PMesh>;
-  private maxLightCount = 16;
   private renderSkybox = false;
 
   private engine: Engine;
@@ -98,7 +92,6 @@ export class PSceneManager {
     this.engine = engine;
     this.lightManager = new PLightManager();
     this.cameraManager = new PCameraManager();
-    this.shadowManager = new PShadowManager();
     this.parentId2Mesh = new Map();
     //
     this.enableDynamicSort = false;
@@ -107,7 +100,6 @@ export class PSceneManager {
     //
     this.sceneAABBCache = new Box3();
     this.renderedMeshSet = new TwoStatesSet();
-    this.allRenderedMeshSet = new Set();
   }
 
   initial (opts: PSceneOptions) {
@@ -153,7 +145,6 @@ export class PSceneManager {
 
     this.lightManager = new PLightManager();
     this.cameraManager = new PCameraManager();
-    this.shadowManager = new PShadowManager();
     this.parentId2Mesh = new Map();
     this.brdfLUT = undefined;
     this.skybox = undefined;
@@ -161,7 +152,6 @@ export class PSceneManager {
     //
     this.tickCount = 0;
     this.renderedMeshSet = new TwoStatesSet();
-    this.allRenderedMeshSet = new Set();
   }
 
   dispose () {
@@ -175,7 +165,6 @@ export class PSceneManager {
     this.skybox?.dispose();
     this.skybox = undefined;
     this.renderedMeshSet.clear();
-    this.allRenderedMeshSet.clear();
     //
     this.renderer = undefined;
     this.sceneCache = undefined;
@@ -184,20 +173,17 @@ export class PSceneManager {
     this.parentId2Mesh.clear();
   }
 
-  addItem (item: ModelVFXItem) {
-    const entity = item.content;
-
-    if (entity instanceof PMesh) {
-      const mesh = entity;
+  addItem (item: PMesh | PCamera | PLight | PSkybox) {
+    if (item instanceof PMesh) {
+      const mesh = item;
 
       if (mesh.parentItemId !== undefined) {
         this.parentId2Mesh.set(mesh.parentItemId, mesh);
       }
 
       addItem(this.meshList, mesh);
-      this.buildItem(entity);
-    } else if (entity instanceof PSkybox) {
-      const skybox = entity;
+    } else if (item instanceof PSkybox) {
+      const skybox = item;
 
       skybox.setup(this.brdfLUT);
       if (!this.renderSkybox) {
@@ -208,36 +194,33 @@ export class PSceneManager {
         skybox.renderable = false;
       }
       this.skybox = skybox;
-      this.buildItem(entity);
-    } else if (entity instanceof PLight) {
-      this.lightManager.insertLight(entity);
+    } else if (item instanceof PLight) {
+      this.lightManager.insertLight(item);
     } else {
-      this.cameraManager.insertCamera(entity);
+      this.cameraManager.insertCamera(item);
     }
 
-    addItem(this.itemList, entity);
+    addItem(this.itemList, item);
   }
 
-  removeItem (item: ModelVFXItem) {
-    const entity = item.content;
-
-    if (entity instanceof PMesh) {
-      const mesh = entity;
+  removeItem (item: PMesh | PCamera | PLight | PSkybox) {
+    if (item instanceof PMesh) {
+      const mesh = item;
 
       if (mesh.parentItemId !== undefined) {
         this.parentId2Mesh.delete(mesh.parentItemId);
       }
 
       removeItem(this.meshList, mesh);
-    } else if (entity instanceof PSkybox) {
+    } else if (item instanceof PSkybox) {
       this.skybox = undefined;
-    } else if (entity instanceof PLight) {
-      this.lightManager.remove(entity);
+    } else if (item instanceof PLight) {
+      this.lightManager.remove(item);
     } else {
-      this.cameraManager.remove(entity);
+      this.cameraManager.remove(item);
     }
 
-    removeItem(this.itemList, entity);
+    removeItem(this.itemList, item);
   }
 
   updateDefaultCamera (camera: CameraOptionsEx) {
@@ -250,6 +233,7 @@ export class PSceneManager {
 
     this.cameraManager.updateDefaultCamera(
       camera.fov,
+      camera.aspect,
       camera.near,
       camera.far,
       newTransform.getPosition(),
@@ -258,34 +242,14 @@ export class PSceneManager {
     );
   }
 
-  buildItem (item: ModelItem) {
-    if (item instanceof PMesh) {
-      item.build(this.maxLightCount, {}, this.skybox);
-    } else if (item instanceof PSkybox) {
-      item.build(this.getSceneCache());
-    }
-  }
-
-  /**
-   * 编译运行时需要的 Shader 代码，包括 PBR、天空盒与阴影。
-   */
-  private build () {
-    this.meshList.forEach(mesh => {
-      mesh.build(this.maxLightCount, {}, this.skybox);
-    });
-
-    if (this.skybox !== undefined) {
-      this.skybox.build(this.getSceneCache());
-    }
-  }
-
   tick (deltaTime: number) {
     const deltaSeconds = deltaTime;
     const camera = this.activeCamera;
     const viewMatrix = camera.viewMatrix;
     const projectionMatrix = camera.projectionMatrix;
     const viewProjectionMatrix = projectionMatrix.clone().multiply(viewMatrix);
-    const states: PSceneStates = {
+
+    this.sceneStates = {
       deltaSeconds: deltaSeconds,
       //
       camera: camera,
@@ -301,57 +265,12 @@ export class PSceneManager {
       skybox: this.skybox,
     };
 
-    this.build();
-
-    this.lightManager.tick(deltaSeconds);
-
-    // 状态切换，now开始记录当前帧的Mesh
-    this.renderedMeshSet.forward();
-    this.itemList.forEach(item => {
-      item.tick(deltaSeconds);
-      item.updateUniformsForScene(states);
-      item.addToRenderObjectSet(this.renderedMeshSet.now);
-    });
-
-    if (this.enableDynamicSort) {
-      this.dynamicSortMeshes(states);
-    }
+    // if (this.enableDynamicSort) {
+    //   this.dynamicSortMeshes(states);
+    // }
 
     this.tickCount += 1;
     this.lastTickSecond += deltaSeconds;
-  }
-
-  /**
-   * 更新 RI 帧对象中默认 Pass 的渲染队列
-   * 如果是动态排序模式，需要重新添加所有的 mesh，这样优先级才能生效
-   * 如果是正常模式，那就增量添加和删除
-   *
-   * @param frame - RI 帧对象
-   */
-  updateDefaultRenderPass (frame: RenderFrame) {
-    if (this.enableDynamicSort) {
-      const lastMeshSet = this.renderedMeshSet.last;
-
-      lastMeshSet.forEach(mesh => {
-        frame.removeMeshFromDefaultRenderPass(mesh);
-      });
-
-      const currentMeshSet = this.renderedMeshSet.now;
-
-      currentMeshSet.forEach(mesh => {
-        frame.addMeshToDefaultRenderPass(mesh);
-        this.allRenderedMeshSet.add(mesh);
-      });
-    } else {
-      this.renderedMeshSet.forRemovedItem(mesh => {
-        frame.removeMeshFromDefaultRenderPass(mesh);
-      });
-
-      this.renderedMeshSet.forAddedItem(mesh => {
-        frame.addMeshToDefaultRenderPass(mesh);
-        this.allRenderedMeshSet.add(mesh);
-      });
-    }
   }
 
   /**
@@ -421,19 +340,6 @@ export class PSceneManager {
     return mesh;
   }
 
-  /**
-   * 删除 RenderFrame DefaultRenderPass 中添加的 Mesh，Player 要执行 Reset 操作
-   *
-   * @param renderFrame - 当前渲染帧对象
-   */
-  removeAllMeshesFromDefaultPass (renderFrame: RenderFrame) {
-    const meshSet = this.renderedMeshSet.now;
-
-    meshSet.forEach(mesh => {
-      renderFrame.removeMeshFromDefaultRenderPass(mesh);
-    });
-  }
-
   getSceneAABB (box?: Box3): Box3 {
     const sceneBox = box ?? new Box3();
 
@@ -441,8 +347,8 @@ export class PSceneManager {
       if (item.type === PObjectType.mesh) {
         const mesh = item as PMesh;
 
-        if (mesh.ownerItem) {
-          const transform = mesh.ownerItem.getWorldTransform();
+        if (mesh.owner) {
+          const transform = mesh.owner.item.getWorldTransform();
           const worldMatrix = transform.getWorldMatrix();
           const meshBox = mesh.computeBoundingBox(worldMatrix);
 
@@ -492,10 +398,6 @@ export class PSceneManager {
 
   get shaderLightCount (): number {
     return Math.min(10, this.lightManager.lightCount);
-  }
-
-  get enableShadowPass (): boolean {
-    return this.shadowManager.isEnable();
   }
 }
 

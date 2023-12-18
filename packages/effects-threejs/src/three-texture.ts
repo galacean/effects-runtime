@@ -14,11 +14,10 @@ import * as THREE from 'three';
  * THREE 抽象纹理类
  */
 export class ThreeTexture extends Texture {
-
   /**
    * THREE 纹理对象
    */
-  public texture: THREE.Texture;
+  texture: THREE.Texture;
 
   /**
    * 将 WebGL 纹理过滤器枚举类型映射到 THREE 纹理过滤器枚举类型

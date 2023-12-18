@@ -1,13 +1,13 @@
 import type { Matrix4 } from '@galacean/effects-math/es/core/index';
+import type { RendererComponent } from '../components/renderer-component';
+import type { Engine } from '../engine';
+import type { Material } from '../material';
 import type { LostHandler, RestoreHandler } from '../utils';
 import type { FilterMode, FrameBuffer, RenderTextureFormat } from './frame-buffer';
-import type { Mesh } from './mesh';
+import type { Geometry } from './geometry';
 import type { RenderFrame, RenderingData } from './render-frame';
 import type { RenderPassClearAction, RenderPassStoreAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
-import type { Geometry } from './geometry';
-import type { Material } from '../material';
-import type { Engine } from '../engine';
 
 export class Renderer implements LostHandler, RestoreHandler {
   static create: (
@@ -117,7 +117,7 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  renderMeshes (meshes: Mesh[]) {
+  renderMeshes (meshes: RendererComponent[]) {
     // OVERRIDE
   }
 

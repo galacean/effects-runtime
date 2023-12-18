@@ -39,7 +39,7 @@ export class SpineMesh {
   priority: number;
 
   constructor (renderInfo: SpineMeshRenderInfo) {
-    const { blendMode, texture, priority, renderer, pma, name = 'MSpine', engine } = renderInfo;
+    const { blendMode, texture, priority, renderer = {}, pma, name = 'MSpine', engine } = renderInfo;
     const { mask = 0, maskMode = 0 } = renderer;
 
     this.blendMode = blendMode;

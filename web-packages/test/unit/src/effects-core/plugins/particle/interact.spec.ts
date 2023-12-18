@@ -36,7 +36,7 @@ describe('effects-core/plugins/particle-interaction', () => {
     const vp = comp.camera.getViewProjectionMatrix();
     const particle = item.content;
 
-    const pos = particle.particleMesh.getPointPosition(0);
+    const pos = particle.renderer.particleMesh.getPointPosition(0);
     const inPos = vp.projectPoint(pos, new Vector3());
 
     player.compositions.forEach(comp => {
@@ -66,7 +66,7 @@ describe('effects-core/plugins/particle-interaction', () => {
     const item = comp.getItemByName('item');
     const vp = comp.camera.getViewProjectionMatrix();
     const particle = item.content;
-    const pos = particle.particleMesh.getPointPosition(0);
+    const pos = particle.renderer.particleMesh.getPointPosition(0);
     const inPos = vp.projectPoint(pos, new Vector3());
 
     player.compositions.forEach(comp => {
@@ -85,7 +85,7 @@ describe('effects-core/plugins/particle-interaction', () => {
     const item = comp.getItemByName('item');
     const vp = comp.camera.getViewProjectionMatrix();
     const particle = item.content;
-    const pos = particle.particleMesh.getPointPosition(0);
+    const pos = particle.renderer.particleMesh.getPointPosition(0);
     const inPos = vp.projectPoint(pos, new Vector3());
 
     player.compositions.forEach(comp => {

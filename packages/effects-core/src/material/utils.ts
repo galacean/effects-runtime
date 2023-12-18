@@ -95,7 +95,7 @@ export function createShaderWithMarcos (marcos: ShaderMarcos, shader: string, sh
   return fullShader;
 }
 
-export function setBlendMode (material: Material, blendMode: number | undefined) {
+export function setBlendMode (material: Material, blendMode?: number) {
   switch (blendMode) {
     case undefined:
       material.blendFunction = [glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA];

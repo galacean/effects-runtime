@@ -19,7 +19,7 @@ describe('effects-core/plugins/particle-transform', () => {
     const comp = await generateComposition(player, [{ name: '1', type: '2', transform: { position: [0, 1, 0], rotation: [0, 90, 0] } }]);
     const item = comp.getItemByName('1');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const t = item.getWorldTransform();
 
     expect(sanitizeNumbers(t.getWorldPosition())).to.deep.equals([0, 1, 0]);
@@ -32,7 +32,7 @@ describe('effects-core/plugins/particle-transform', () => {
       { type: '3', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const t = item.getWorldTransform();
 
     expect(sanitizeNumbers(t.position)).to.deep.equals([1, 1, 0]);
@@ -45,7 +45,7 @@ describe('effects-core/plugins/particle-transform', () => {
       { type: '1', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const t = item.getWorldTransform();
 
     expect(sanitizeNumbers(t.position)).to.deep.equals([1, 1, 0]);
@@ -58,7 +58,7 @@ describe('effects-core/plugins/particle-transform', () => {
       { type: '2', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const t = item.getWorldTransform();
 
     expect(sanitizeNumbers(t.position)).to.deep.equals([1, 1, 0]);
@@ -74,7 +74,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
     const item = comp.getItemByName('2');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const t = item.getWorldTransform();
 
     expect(sanitizeNumbers(t.position, Number.EPSILON * 5)).to.deep.equals([0, -2, 0]);
@@ -90,7 +90,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
     const item = comp.getItemByName('2');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const t = item.getWorldTransform();
 
     expect(sanitizeNumbers(t.position, Number.EPSILON * 5)).to.deep.equals([0, -2, 0]);
@@ -106,7 +106,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
     const item = comp.getItemByName('2');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const t = item.getWorldTransform();
 
     expect(sanitizeNumbers(t.position, Number.EPSILON * 5)).to.deep.equals([0, -2, 0]);
@@ -123,7 +123,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
     const item = comp.getItemByName('2');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const t = item.getWorldTransform();
 
     expect(sanitizeNumbers(t.position, Number.EPSILON * 5)).to.deep.equals([0, -2, 0]);
@@ -138,9 +138,9 @@ describe('effects-core/plugins/particle-transform', () => {
     comp.forwardTime(1);
     const item = comp.getItemByName('1');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const particle = item.content;
-    const pos = particle.particleMesh.getPointPosition(0);
+    const pos = particle.renderer.particleMesh.getPointPosition(0);
 
     expect(sanitizeNumbers(pos)).to.deep.equals([1, 0, 0]);
   });
@@ -154,9 +154,9 @@ describe('effects-core/plugins/particle-transform', () => {
     comp.forwardTime(1);
     const item = comp.getItemByName('1');
 
-    expect(item).to.be.an.instanceof(ParticleVFXItem);
+    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
     const particle = item.content;
-    const pos = particle.particleMesh.getPointPosition(0);
+    const pos = particle.renderer.particleMesh.getPointPosition(0);
 
     sanitizeNumbers(item.getWorldTransform().position).forEach((v, i) => {
       expect(v).closeTo([1, -1, 0][i], 1e-6);
@@ -182,7 +182,7 @@ describe('effects-core/plugins/particle-transform', () => {
     }]);
     const item = comp.getItemByName('item');
 
-    expect(item).to.be.instanceof(ParticleVFXItem);
+    expect(item).to.be.instanceof(VFXItem<ParticleSystem>);
     const ps = item.content;
 
     expect(ps).to.be.an.instanceof(ParticleSystem);
@@ -193,8 +193,8 @@ describe('effects-core/plugins/particle-transform', () => {
     expect(path).to.be.an.instanceof(PathSegments);
     expect(path.keys).to.eql([[0, 0, 1, 1], [1, 1, 1, 1]]);
     expect(path.values).to.eql([[0, -1.5, -1], [0.2, 1.2, 0]]);
-    expect(ps.particleMesh.linearVelOverLifetime.asMovement).to.be.true;
-    expect(ps.particleMesh.speedOverLifetime).to.not.exist;
+    expect(ps.renderer.particleMesh.linearVelOverLifetime.asMovement).to.be.true;
+    expect(ps.renderer.particleMesh.speedOverLifetime).to.not.exist;
   });
 });
 

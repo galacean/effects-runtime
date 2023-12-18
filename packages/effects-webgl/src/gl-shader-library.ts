@@ -30,7 +30,10 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   private shaderAllDone = false;
   private cachedShaders: Record<string, GLShader> = {};
 
-  constructor (public engine: GLEngine, public pipelineContext: GLPipelineContext) {
+  constructor (
+    public engine: GLEngine,
+    public pipelineContext: GLPipelineContext,
+  ) {
     this.glAsyncCompileExt = engine.gpuCapability.glAsyncCompileExt;
   }
 

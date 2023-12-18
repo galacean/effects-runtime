@@ -24,24 +24,13 @@ describe('sprite transform', () => {
 
     const position = item.transform.getWorldPosition().toArray();
     const rotation = item.transform.getWorldRotation().toArray();
-    const scale = item.content.basicTransform.scale;
 
     expect(position).to.deep.equals([0, 1, 0], 'position');
     expect(rotation[0]).to.eql(0);
     expect(rotation[1]).to.eql(90);
     expect(rotation[2] === 0).to.be.true;
-    expect(scale.x).to.be.closeTo(0.15, 0.0001);
-    expect(scale.y).to.be.closeTo(0.15, 0.0001);
-    const spriteGroup = comp.loaderData.spriteGroup;
-    const mesh = spriteGroup.meshes[0];
-    const data = mesh.material.getMatrixArray('uMainData');
-
-    expect(new Float32Array(data.slice(0, 16))).to.deep.equals(new Float32Array([
-      0, 1, 0, 0,
-      1, 1, item.lifetime, 0,
-      0, -0.7071067690849304, 0, 0.7071067690849304,
-      1, 1, 1, 1,
-    ]));
+    expect(item.transform.size.x).to.be.closeTo(0.15, 0.0001);
+    expect(item.transform.size.y).to.be.closeTo(0.15, 0.0001);
   });
 
   // transform受k帧曲线影响

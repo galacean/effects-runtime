@@ -1,16 +1,16 @@
-import type { spec, Mesh, Material, TextureSourceOptions, TextureConfigOptions, Engine } from '@galacean/effects';
+import type { spec, Mesh, Material, TextureSourceOptions, TextureConfigOptions, Engine, Renderer } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType, loadImage } from '@galacean/effects';
 import type { ModelItemSkybox, ModelSkyboxOptions } from '../index';
 import { PObjectType, PMaterialType } from './common';
 import { PEntity } from './object';
 import { PMaterialBase } from './material';
-import type { CompositionCache } from './cache';
-import type { PSceneStates } from './scene';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
+import type { PSceneManager } from './scene';
 import { WebGLHelper } from '../utility/plugin-helper';
 import { Vector2, Vector3 } from './math';
+import type { ModelSkyboxComponent } from '../plugin/model-item';
 
 export class PSkybox extends PEntity {
+  owner?: ModelSkyboxComponent;
   renderable = true;
   intensity = 1.0;
   reflectionsIntensity = 1.0;
@@ -29,14 +29,12 @@ export class PSkybox extends PEntity {
   skyboxMaterial?: PMaterialSkyboxFilter;
   isBuilt = false;
 
-  constructor (skybox: ModelItemSkybox, ownerItem?: ModelVFXItem) {
+  constructor (name: string, options: ModelSkyboxOptions, owner?: ModelSkyboxComponent) {
     super();
-    this.name = skybox.name;
+    this.name = name;
     this.type = PObjectType.skybox;
     this.visible = false;
-    this.ownerItem = ownerItem;
-
-    const options = skybox.content.options;
+    this.owner = owner;
 
     this.renderable = options.renderable;
     this.intensity = options.intensity;
@@ -47,14 +45,14 @@ export class PSkybox extends PEntity {
     this.specularImageSize = options.specularImageSize;
     this.specularMipCount = options.specularMipCount;
 
-    this.priority = ownerItem?.listIndex || 0;
+    this.priority = owner?.item?.listIndex || 0;
   }
 
   setup (brdfLUT?: Texture) {
     this.brdfLUT = brdfLUT;
   }
 
-  build (sceneCache: CompositionCache) {
+  build (scene: PSceneManager) {
     if (this.isBuilt) {
       return;
     }
@@ -64,12 +62,28 @@ export class PSkybox extends PEntity {
     this.skyboxMaterial.create(this);
     this.skyboxMaterial.build();
     //
+    const sceneCache = scene.getSceneCache();
+
     this.skyboxMesh = sceneCache.getFilterMesh('SkyboxFilterPlane', this.skyboxMaterial, {});
     this.skyboxMesh.priority = this.priority;
     this.skyboxMaterial.updateUniforms(this.skyboxMesh.material);
   }
 
+  override render (scene: PSceneManager, renderer: Renderer) {
+    this.updateMaterial(scene);
+
+    if (this.visible && this.renderable && this.skyboxMesh !== undefined) {
+      const mesh = this.skyboxMesh;
+
+      mesh.geometry.flush();
+      mesh.material.initialize();
+      renderer.drawGeometry(mesh.geometry, mesh.material);
+    }
+  }
+
   override dispose () {
+    super.dispose();
+    this.owner = undefined;
     this.diffuseImage = undefined;
     //@ts-expect-error
     this.specularImage = undefined;
@@ -79,14 +93,11 @@ export class PSkybox extends PEntity {
     this.skyboxMaterial = undefined;
   }
 
-  override addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
-    if (this.visible && this.renderable && this.skyboxMesh !== undefined) {
-      renderObjectSet.add(this.skyboxMesh);
-    }
-  }
+  private updateMaterial (scene: PSceneManager) {
+    this.build(scene);
 
-  override updateUniformsForScene (sceneStates: PSceneStates) {
     if (this.visible && this.renderable && this.skyboxMesh !== undefined && this.skyboxMaterial !== undefined) {
+      const sceneStates = scene.sceneStates;
       const camera = sceneStates.camera;
       const viewMatrix = sceneStates.viewMatrix;
       const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fovy).multiply(viewMatrix).invert();

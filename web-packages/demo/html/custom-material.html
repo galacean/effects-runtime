@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>single - Mars demo</title>
+  <style>
+    html,
+    body,
+    div,
+    canvas {
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 375px;
+      height: 812px;
+      background-color: rgba(0, 0, 0, 255);
+    }
+
+    .am-flexbox {
+      display: flex;
+    }
+
+    .am-flexbox-item {
+      margin-right: 20px;
+    }
+
+    .shader-input {
+      width: 400px;
+    }
+
+    .properties-input {
+      width: 300px;
+      ;
+    }
+
+    .button {
+      width: 100px;
+      height: 30px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="am-flexbox">
+    <div class="am-flexbox-item">
+      <div class="container" id="J-container"></div>
+    </div>
+    <textarea class="properties-input" id="properties-input" name="story" rows="5" cols="33">
+      Input your material properties here...
+    </textarea>
+    <textarea class="shader-input" id="vs-input" name="story" rows="5" cols="33">
+        Input your vs shader here...
+    </textarea>
+    <textarea class="shader-input" id="fs-input" name="story" rows="5" cols="33">
+        Input your fs shader here...
+    </textarea>
+  </div>
+
+  <button id="compile-button" class="button">Compile</button>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
+  <script type="module" src="../src/custom-material.ts"></script>
+
+</body>
+
+</html>

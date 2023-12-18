@@ -6,7 +6,7 @@ const renderLevelPassSet: Record<string, string[]> = {
   [spec.RenderLevel.B]: [spec.RenderLevel.B, spec.RenderLevel.BPlus],
 };
 
-export function passRenderLevel (l: string | undefined, renderLevel?: string): boolean {
+export function passRenderLevel (l?: string, renderLevel?: string): boolean {
   if (!l || !renderLevel) {
     return true;
   }

@@ -4,6 +4,7 @@ import type { Texture } from '../texture';
 import type { DestroyOptions, Disposable } from '../utils';
 import type { UniformSemantic, UniformValue } from './types';
 import type { Engine } from '../engine';
+import { EffectsObject } from '../effects-object';
 
 /**
  * 材质销毁设置
@@ -20,7 +21,7 @@ export interface MaterialDestroyOptions {
  */
 export enum MaterialRenderType {
   normal = 0,
-  transformFeedback = 1
+  transformFeedback = 1,
 }
 
 export type UndefinedAble<U> = U | undefined;
@@ -65,11 +66,13 @@ let seed = 1;
 /**
  * Material 抽象类
  */
-export abstract class Material implements Disposable {
+export abstract class Material extends EffectsObject implements Disposable {
   shaderSource: ShaderWithSource;
   readonly uniformSemantics: Record<string, UniformSemantic>;
   readonly renderType: MaterialRenderType;
   readonly name: string;
+  readonly props: MaterialProps;
+
   protected destroyed = false;
   protected initialized = false;
 
@@ -78,19 +81,28 @@ export abstract class Material implements Disposable {
    * @param props - 材质属性
    */
   constructor (
-    public readonly props: MaterialProps,
+    engine: Engine,
+    props?: MaterialProps,
   ) {
-    const {
-      name = 'Material' + seed++,
-      renderType = MaterialRenderType.normal,
-      shader,
-      uniformSemantics,
-    } = props;
+    super(engine);
 
-    this.name = name;
-    this.renderType = renderType;
-    this.shaderSource = shader;
-    this.uniformSemantics = { ...uniformSemantics };
+    if (props) {
+      const {
+        name = 'Material' + seed++,
+        renderType = MaterialRenderType.normal,
+        shader,
+        uniformSemantics,
+      } = props;
+
+      this.name = name;
+      this.renderType = renderType; // TODO 没有地方用到
+      this.shaderSource = shader;
+      this.props = props;
+      this.uniformSemantics = { ...uniformSemantics }; // TODO 废弃，待移除
+    } else {
+      this.name = 'Material' + seed++;
+      this.renderType = MaterialRenderType.normal;
+    }
   }
 
   /******** effects-core 中会调用 引擎必须实现 ***********************/
@@ -400,12 +412,12 @@ export abstract class Material implements Disposable {
    * 销毁当前 Material
    * @param destroy - 包含纹理的销毁选项
    */
-  abstract dispose (destroy?: MaterialDestroyOptions): void;
+  abstract override dispose (destroy?: MaterialDestroyOptions): void;
 
   /**
    * 创建 Material
    */
-  static create: (engine: Engine, props: MaterialProps) => Material;
+  static create: (engine: Engine, props?: MaterialProps) => Material;
 
   /**
    * 初始化 GPU 资源

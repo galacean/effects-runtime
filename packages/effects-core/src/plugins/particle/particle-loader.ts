@@ -1,20 +1,16 @@
 import * as spec from '@galacean/effects-specification';
-import type { Composition } from '../../composition';
+import type { Engine } from '../../engine';
 import { createShaderWithMarcos, ShaderType } from '../../material';
-import type { Mesh, Renderer, RenderFrame, SharedShaderWithSource } from '../../render';
+import type { Renderer, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
-import { addItem, removeItem } from '../../utils';
-import { Item, type VFXItem } from '../../vfx-item';
+import { addItem } from '../../utils';
+import { Item } from '../../vfx-item';
 import { AbstractPlugin } from '../index';
 import { getParticleMeshShader, modifyMaxKeyframeShader } from './particle-mesh';
-import type { ParticleSystem } from './particle-system';
-import { ParticleVFXItem } from './particle-vfx-item';
 import { getTrailMeshShader } from './trail-mesh';
 import type { PrecompileOptions } from '../../plugin-system';
-import type { Engine } from '../../engine';
 
 export class ParticleLoader extends AbstractPlugin {
-  private meshes: Mesh[] = [];
   engine: Engine;
 
   static override precompile (compositions: spec.Composition[], renderer: Renderer, options?: PrecompileOptions): Promise<any> {
@@ -158,37 +154,35 @@ export class ParticleLoader extends AbstractPlugin {
     return Promise.resolve();
   }
 
-  override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<ParticleSystem>) {
-    if (item instanceof ParticleVFXItem) {
-      this.add(item.content);
-    }
-  }
+  // override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<ParticleSystem>) {
+  //   // if (VFXItem.isParticle(item)) {
+  //   //   this.add(item.content);
+  //   // }
+  // }
 
-  override onCompositionItemRemoved (composition: Composition, item: VFXItem<ParticleSystem>) {
-    if (item instanceof ParticleVFXItem) {
-      if (item.content) {
-        this.remove(item.content, composition.renderFrame);
-      }
-    }
-  }
+  // override onCompositionItemRemoved (composition: Composition, item: VFXItem<ParticleSystem>) {
+  //   // if (VFXItem.isParticle(item)) {
+  //   //   if (item.content) {
+  //   //     this.remove(item.content, composition.renderFrame);
+  //   //   }
+  //   // }
+  // }
 
-  override prepareRenderFrame (composition: Composition, pipeline: RenderFrame): boolean {
-    this.meshes.forEach(mesh => pipeline.addMeshToDefaultRenderPass(mesh));
-    this.meshes.length = 0;
+  // override prepareRenderFrame (composition: Composition, pipeline: RenderFrame): boolean {
+  //   // this.meshes.forEach(mesh => pipeline.addMeshToDefaultRenderPass(mesh));
 
-    return false;
-  }
+  //   return false;
+  // }
 
-  private add (particle: ParticleSystem) {
-    particle.meshes.forEach(mesh => addItem(this.meshes, mesh));
-  }
+  // private add (particle: ParticleSystem) {
+  //   // particle.meshes.forEach(mesh => addItem(this.meshes, mesh));
+  // }
 
-  private remove (particle: ParticleSystem, frame: RenderFrame) {
-    particle.meshes.forEach(mesh => {
-      removeItem(this.meshes, mesh);
-      frame.removeMeshFromDefaultRenderPass(mesh);
-    });
-  }
+  // private remove (particle: ParticleSystem, frame: RenderFrame) {
+  //   // particle.meshes.forEach(mesh => {
+  //   //   removeItem(this.meshes, mesh);
+  //   // });
+  // }
 }
 
 function assignDefValue (item: spec.ParticleItem) {
