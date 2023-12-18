@@ -204,8 +204,8 @@ importers:
         specifier: workspace:*
         version: link:../editor-gizmo
       '@types/hammerjs':
-        specifier: ^2.0.41
-        version: 2.0.41
+        specifier: ^2.0.45
+        version: 2.0.45
       '@vvfx/resource-detection':
         specifier: 0.4.2-alpha.22
         version: 0.4.2-alpha.22
@@ -213,8 +213,8 @@ importers:
         specifier: ^0.3.1
         version: 0.3.1
       hammerjs:
-        specifier: ^2.0.6
-        version: 2.0.6
+        specifier: ^2.0.8
+        version: 2.0.8
 
   plugin-packages/orientation-transformer:
     devDependencies:
@@ -2123,8 +2123,8 @@ packages:
     resolution: {integrity: sha512-WulqXMDUTYAXCjZnk6JtIHPigp55cVtDgDrO2gHRwhyJto21+1zbVCtOYB2L1F9w4qCQ0rOGWBnBe0FNTiEJIQ==}
     dev: true
 
-  /@types/hammerjs@2.0.41:
-    resolution: {integrity: sha512-ewXv/ceBaJprikMcxCmWU1FKyMAQ2X7a9Gtmzw8fcg2kIePI1crERDM818W+XYrxqdBBOdlf2rm137bU+BltCA==}
+  /@types/hammerjs@2.0.45:
+    resolution: {integrity: sha512-qkcUlZmX6c4J8q45taBKTL3p+LbITgyx7qhlPYOdOHZB7B31K0mXbP5YA7i7SgDeEGuI9MnumiKPEMrxg8j3KQ==}
     dev: true
 
   /@types/json-schema@7.0.12:
@@ -3511,8 +3511,8 @@ packages:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
     dev: true
 
-  /hammerjs@2.0.6:
-    resolution: {integrity: sha512-nZoavd6pgT++1rPy4wXt12oJI69DmWwLbEVssCg0nHXQaXneWbvlGMLRv5cWTL+Fe+WHudRftEM2+oe5Yzw7fg==}
+  /hammerjs@2.0.8:
+    resolution: {integrity: sha512-tSQXBXS/MWQOn/RKckawJ61vvsDpCom87JgxiYdGwHdOa0ht0vzUWDlfioofFCRU0L+6NGDt6XzbgoJvZkMeRQ==}
     engines: {node: '>=0.8.0'}
     dev: true
 
