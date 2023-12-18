@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -15,8 +19,8 @@ importers:
         specifier: ^13.2.1
         version: 13.2.1
       '@commitlint/config-conventional':
-        specifier: ^13.2.0
-        version: 13.2.0
+        specifier: ^18.4.3
+        version: 18.4.3
       '@manypkg/get-packages':
         specifier: ^2.2.0
         version: 2.2.0
@@ -1461,11 +1465,11 @@ packages:
       yargs: 17.7.1
     dev: true
 
-  /@commitlint/config-conventional@13.2.0:
-    resolution: {integrity: sha1-KtJP7MVq6WGdvgk0uYqYsYrOC+w=, tarball: https://registry.npmmirror.com/@commitlint/config-conventional/download/@commitlint/config-conventional-13.2.0.tgz}
-    engines: {node: '>=v12'}
+  /@commitlint/config-conventional@18.4.3:
+    resolution: {integrity: sha512-729eRRaNta7JZF07qf6SAGSghoDEp9mH7yHU0m7ff0q89W97wDrWCyZ3yoV3mcQJwbhlmVmZPTkPcm7qiAu8WA==}
+    engines: {node: '>=v18'}
     dependencies:
-      conventional-changelog-conventionalcommits: 4.6.3
+      conventional-changelog-conventionalcommits: 7.0.2
     dev: true
 
   /@commitlint/ensure@13.2.0:
@@ -2461,7 +2465,7 @@ packages:
     dev: true
 
   /array-ify@1.0.0:
-    resolution: {integrity: sha1-nlKHYrSpBmrRY6aWKjZEGOlibs4=, tarball: https://registry.npmmirror.com/array-ify/download/array-ify-1.0.0.tgz}
+    resolution: {integrity: sha512-c5AMf34bKdvPhQ7tBGhqkgKNUzMr4WUs+WDtC2ZUGOUncbxKMTvqxYctiseW3+L4bA8ec+GcZ6/A/FW4m8ukng==}
     dev: true
 
   /array-union@2.1.0:
@@ -2731,7 +2735,7 @@ packages:
     dev: true
 
   /compare-func@2.0.0:
-    resolution: {integrity: sha1-+2XnXtvd/S5WhVTotbBf/3pR/LM=, tarball: https://registry.npmmirror.com/compare-func/download/compare-func-2.0.0.tgz}
+    resolution: {integrity: sha512-zHig5N+tPWARooBnb0Zx1MFcdfpyJrfTJ3Y5L+IFvUm8rM74hHz66z0gw0x4tijh5CorKkKUCnW82R2vmpeCRA==}
     dependencies:
       array-ify: 1.0.0
       dot-prop: 5.3.0
@@ -2772,13 +2776,11 @@ packages:
       q: 1.5.1
     dev: true
 
-  /conventional-changelog-conventionalcommits@4.6.3:
-    resolution: {integrity: sha512-LTTQV4fwOM4oLPad317V/QNQ1FY4Hju5qeBIM1uTHbrnCE+Eg4CdRZ3gO2pUeR+tzWdp80M2j3qFFEDWVqOV4g==, tarball: https://registry.npmmirror.com/conventional-changelog-conventionalcommits/download/conventional-changelog-conventionalcommits-4.6.3.tgz}
-    engines: {node: '>=10'}
+  /conventional-changelog-conventionalcommits@7.0.2:
+    resolution: {integrity: sha512-NKXYmMR/Hr1DevQegFB4MwfM5Vv0m4UIxKZTTYuD98lpTknaZlSRrDOG4X7wIXpGkfsYxZTghUN+Qq+T0YQI7w==}
+    engines: {node: '>=16'}
     dependencies:
       compare-func: 2.0.0
-      lodash: 4.17.21
-      q: 1.5.1
     dev: true
 
   /conventional-commits-parser@3.2.4:
@@ -2962,7 +2964,7 @@ packages:
     dev: true
 
   /dot-prop@5.3.0:
-    resolution: {integrity: sha1-kMzOcIzZzYLMTcjD3dmr3VWyDog=, tarball: https://registry.npmmirror.com/dot-prop/download/dot-prop-5.3.0.tgz}
+    resolution: {integrity: sha512-QM8q3zDe58hqUqjraQOmzZ1LIH9SWQJTlEKCH4kJ2oQvLZk7RbQXvtDM2XEq3fwkV9CCvvH4LA0AV+ogFsBM2Q==}
     engines: {node: '>=8'}
     dependencies:
       is-obj: 2.0.0
@@ -3715,12 +3717,12 @@ packages:
     dev: true
 
   /is-obj@1.0.1:
-    resolution: {integrity: sha1-PkcprB9f3gJc19g6iW2rn09n2w8=, tarball: https://registry.npmmirror.com/is-obj/download/is-obj-1.0.1.tgz}
+    resolution: {integrity: sha512-l4RyHgRqGN4Y3+9JHVrNqO+tN0rV5My76uW5/nuO4K1b6vw5G8d/cmFjP9tRfEsdhZNt0IFdZuK/c2Vr4Nb+Qg==}
     engines: {node: '>=0.10.0'}
     dev: true
 
   /is-obj@2.0.0:
-    resolution: {integrity: sha1-Rz+wXZc3BeP9liBUUBjKjiLvSYI=, tarball: https://registry.npmmirror.com/is-obj/download/is-obj-2.0.0.tgz}
+    resolution: {integrity: sha512-drqDG3cbczxxEJRoOXcOjtdp1J/lyp1mNn0xaznRs8+muBhgQcrnbspox5X5fOw0HnMnbfDzvnEMEtqDEJEo8w==}
     engines: {node: '>=8'}
     dev: true
 
@@ -5639,7 +5641,3 @@ packages:
     resolution: {integrity: sha1-ApTrPe4FAo0x7hpfosVWpqrxChs=, tarball: https://registry.npmmirror.com/yocto-queue/download/yocto-queue-0.1.0.tgz}
     engines: {node: '>=10'}
     dev: true
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
