@@ -481,14 +481,6 @@ export class GLMaterial extends Material {
 
   override fromData (data: MaterialData, deserializer: Deserializer, sceneData: SceneData): void {
     super.fromData(data, deserializer, sceneData);
-    const shaderData: ShaderData = deserializer.findData(data.shader, sceneData);
-
-    this.shaderSource = {
-      vertex: shaderData.vertex,
-      fragment: shaderData.fragment,
-      // @ts-expect-error
-      glslVersion: shaderData.version,
-    };
 
     const propertiesData = {
       vector2s: {},
@@ -513,22 +505,28 @@ export class GLMaterial extends Material {
     for (name in data.floatArrays) {
       this.setFloats(name, propertiesData.floatArrays[name]);
     }
-    for (name in data.textures) {
-      // TODO 纹理通过 id 加入场景数据
-      this.setTexture(name, sceneData.effectsObjects['Texture' + propertiesData.textures[name].id] as unknown as Texture);
-    }
     // for (name in materialData.vector2s) {
     //   this.setVector2(name, Vector propertiesData.vector2s[name]);
     // }
-    // for (name in materialData.vector3s) {
-    //   this.setVector3(name, propertiesData.vector3s[name]);
-    // }
-    // for (name in materialData.vector4s) {
-    //   this.setVector4(name, propertiesData.vector4s[name]);
-    // }
-    // for (name in materialData.matrices) {
-    //   this.setMatrix(name, propertiesData.matrices[name]);
-    // }
+    for (name in data.vector4s) {
+      this.setVector4(name, new math.Vector4().setFromArray(propertiesData.vector4s[name]));
+    }
+
+    if (deserializer && sceneData) {
+      for (name in data.textures) {
+        // TODO 纹理通过 id 加入场景数据
+        this.setTexture(name, sceneData.effectsObjects['Texture' + propertiesData.textures[name].id] as unknown as Texture);
+      }
+
+      const shaderData: ShaderData = deserializer.findData(data.shader, sceneData);
+
+      this.shaderSource = {
+        vertex: shaderData.vertex,
+        fragment: shaderData.fragment,
+        // @ts-expect-error
+        glslVersion: shaderData.version,
+      };
+    }
 
     this.initialized = false;
   }

@@ -204,6 +204,50 @@ const particleSystemProps = {
   },
 };
 
+const spriteProps = {
+  id:'13',
+  dataType: DataType.SpriteComponent,
+  item:{ id:'03' },
+  'options': {
+    'startColor': [
+      1,
+      1,
+      1,
+      1,
+    ],
+  },
+  'renderer': {
+    'renderMode': 1,
+    'texture': 3,
+  },
+  'positionOverLifetime': {
+    'direction': [
+      0,
+      0,
+      0,
+    ],
+    'startSpeed': 0,
+    'gravity': [
+      0,
+      0,
+      0,
+    ],
+    'gravityOverLifetime': [
+      0,
+      1,
+    ],
+  },
+  'splits': [
+    [
+      0,
+      0,
+      0.9375,
+      0.52734375,
+      0,
+    ],
+  ],
+};
+
 const json = {
   images: [
     {
@@ -214,6 +258,14 @@ const json = {
     {
       url: '../src/assets/textures/Trail.png',
       renderLevel: 'B+',
+    },
+    {
+      url: '../src/assets/textures/Ge.png',
+      renderLevel: 'B+',
+    },
+    {
+      url: 'https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original',
+      'renderLevel': 'B+',
     },
   ],
   spines: [],
@@ -232,6 +284,7 @@ const json = {
       items: [
         { id: '0' },
         { id: '1' },
+        { id: '2' },
       ],
       camera: { fov: 60, far: 1000, near: 0.3, clipMode: 0, position: [0, 0, 8], rotation: [0, 0, 0] },
       globalVolume:{
@@ -242,7 +295,7 @@ const json = {
         threshold: 1.0,
         bloomIntensity: 1.0,
         // ColorAdjustments
-        brightness: 1,
+        brightness: 1.5,
         saturation: 1,
         contrast: 1,
         // ToneMapping
@@ -252,9 +305,41 @@ const json = {
   ],
   items: [
     {
+      'id': '03',
+      'name': 'background',
+      'duration': 1000,
+      dataType: 0,
+      'type': '1',
+      'visible': true,
+      'endBehavior': 2,
+      'delay': 0,
+      'renderLevel': 'B+',
+      content: spriteProps,
+      'transform': {
+        'position': [
+          0,
+          -7.285564691294531e-16,
+          0,
+        ],
+        'rotation': [
+          0,
+          0,
+          0,
+        ],
+        'scale': [
+          9.289619008007278,
+          5.225410692004094,
+          1,
+        ],
+      },
+      components: [{
+        id: '13',
+      }],
+    },
+    {
       id: '01',
       name: 'particle',
-      duration: 5,
+      duration: 1000,
       dataType: 0,
       type: '2',
       visible: true,
@@ -292,6 +377,7 @@ const json = {
       materials: [{ id: '21' }],
     },
     particleSystemProps,
+    spriteProps,
   ],
   materials: [
     {
@@ -305,11 +391,14 @@ const json = {
       ints: {
       },
       vector4s: {
+        _StartColor:[1.0, 0.2, 0.2, 1.0],
+        _EndColor:[1.0, 1.0, 0.2, 1.0],
       },
       vector3s: {
       },
       textures:{
         _MainTex:{ id:1 },
+        _MainTex2:{ id:2 },
       },
     },
   ],
@@ -327,6 +416,8 @@ const json = {
   textures: [
     { source: 0, flipY: true },
     { source: 1, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { source: 2, flipY: false, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { source: 3, flipY: true },
   ],
 };
 const sceneData: SceneData = { effectsObjects: {} };
@@ -394,14 +485,22 @@ function parseMaterialProperties (shaderProperties: string, gui: any) {
       //@ts-expect-error
       json.materials[0].floats[uniformName] = Number(value);
       gui.add(json.materials[0].floats, uniformName, start, end).onChange(() => {
-        testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0], deserializer, sceneData);
-        // testVfxItem.fromData(deserializer, json.items[1], json as unknown as SceneData);
+        testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0]);
       });
     } else if (type === 'Float') {
       //@ts-expect-error
       json.materials[0].floats[uniformName] = Number(value);
       gui.add(json.materials[0].floats, uniformName).onChange(() => {
-        testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0], deserializer, sceneData);
+        testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0]);
+      });
+    } else if (type === 'Color') {
+      const Color: Record<string, number[]> = {};
+
+      Color[uniformName] = [0, 0, 0, 0];
+      gui.addColor(Color, uniformName).onChange((value: number[]) => {
+        //@ts-expect-error
+        json.materials[0].vector4s[uniformName] = [value[0] / 255, value[1] / 255, value[2] / 255, value[3] / 255];
+        testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0]);
       });
     }
   }
@@ -482,14 +581,14 @@ function setGUI () {
 
   vsInput.value = json.shaders[0].vertex;
   fsInput.value = json.shaders[0].fragment;
-  propertiesInput.value = `_MaxIntensity("MaxIntensity",Range(0,10)) = 5.5
-_WaveZoom("WaveZoom",Range(0,15)) = 12`;
+  propertiesInput.value = `_StartColor("Color",Color) = (1,1,1,1)
+_EndColor("Color",Color) = (1,1,1,1)`;
 
-  compileButton.addEventListener('click', () => {
-    json.shaders[0].vertex = vsInput.value;
-    json.shaders[0].fragment = fsInput.value;
-    setDatGUI(propertiesInput.value);
-    testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0], deserializer, sceneData);
-  });
+  // compileButton.addEventListener('click', () => {
+  //   json.shaders[0].vertex = vsInput.value;
+  //   json.shaders[0].fragment = fsInput.value;
+  //   setDatGUI(propertiesInput.value);
+  //   testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0], deserializer, sceneData);
+  // });
   setDatGUI(propertiesInput.value);
 }
