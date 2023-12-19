@@ -185,10 +185,11 @@ export class CompositionSourceManager implements Disposable {
             if (!this.refCompositions.get(refId)) {
               throw new Error('Invalid Ref Composition id: ' + refId);
             }
+            const ref = this.getContent(this.refCompositions.get(refId)!);
+
             if (!this.refCompositionProps.has(refId)) {
-              this.refCompositionProps.set(refId, this.getContent(this.refCompositions.get(refId)!) as unknown as VFXItemProps);
+              this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
             }
-            const ref = this.refCompositionProps.get(refId)!;
 
             ref.items.forEach((item: Record<string, any>) => {
               item.listIndex = listOrder++;
