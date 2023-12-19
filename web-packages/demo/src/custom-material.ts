@@ -1,5 +1,5 @@
 import type { SceneData, Composition, VFXItem, SpriteComponent } from '@galacean/effects';
-import { Deserializer, EffectComponent, Player } from '@galacean/effects';
+import { DataType, Deserializer, EffectComponent, Player } from '@galacean/effects';
 import { compatibleCalculateItem } from './common/utils';
 
 const vert = `precision highp float;
@@ -174,6 +174,35 @@ void main()
 }
 `;
 
+const particleSystemProps = {
+  id: '12',
+  dataType: DataType.ParticleSystem,
+  item: { id: '01' },
+  shape: { shape: 'Sphere', radius: 1, arc: 360, arcMode: 0, type: 1, alignSpeedDirection: false },
+  splits: [[0, 0, 0.8125, 0.8125, 0]],
+  options: {
+    startColor: [8, [1, 1, 1, 1]],
+    maxCount: 99,
+    startLifetime: [4, [2, 4.5]],
+    startSize: [4, [0.05, 0.2]],
+    sizeAspect: [0, 1],
+  },
+  renderer: { texture: 0, side: 1028 },
+  emission: { rateOverTime: [0, 16] },
+  positionOverLifetime: { startSpeed: [4, [0.5, 1]], gravityOverLifetime: [0, 1] },
+  colorOverLifetime: {
+    opacity: [
+      6,
+      [
+        [0, 0, 0, 4.323488565047734],
+        [0.1569, 0.9994, -0.000008581158770600304, 0.0000019450758869311368],
+        [0.72, 0.82, -0.9799974080598542, -1.099987166822864],
+        [1, 0, -4.999984592567138, 0],
+      ],
+    ],
+  },
+};
+
 const json = {
   images: [
     {
@@ -207,37 +236,17 @@ const json = {
       id: '01',
       name: 'particle',
       duration: 5,
+      dataType: 0,
       type: '2',
       visible: true,
       endBehavior: 5,
       delay: 0,
       renderLevel: 'B+',
-      content: {
-        shape: { shape: 'Sphere', radius: 1, arc: 360, arcMode: 0, type: 1, alignSpeedDirection: false },
-        splits: [[0, 0, 0.8125, 0.8125, 0]],
-        options: {
-          startColor: [8, [1, 1, 1, 1]],
-          maxCount: 99,
-          startLifetime: [4, [2, 4.5]],
-          startSize: [4, [0.05, 0.2]],
-          sizeAspect: [0, 1],
-        },
-        renderer: { texture: 0, side: 1028 },
-        emission: { rateOverTime: [0, 16] },
-        positionOverLifetime: { startSpeed: [4, [0.5, 1]], gravityOverLifetime: [0, 1] },
-        colorOverLifetime: {
-          opacity: [
-            6,
-            [
-              [0, 0, 0, 4.323488565047734],
-              [0.1569, 0.9994, -0.000008581158770600304, 0.0000019450758869311368],
-              [0.72, 0.82, -0.9799974080598542, -1.099987166822864],
-              [1, 0, -4.999984592567138, 0],
-            ],
-          ],
-        },
-      },
+      content: particleSystemProps,
       transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+      components: [{
+        id: '12',
+      }],
     },
     {
       id: '02',
@@ -249,19 +258,8 @@ const json = {
       endBehavior: 0,
       delay: 0,
       renderLevel: 'B+',
-      content: {
-        options: { startColor: [1, 1, 1, 1] },
-        renderer: { renderMode: 1 },
-        positionOverLifetime: {
-          direction: [0, 0, 0],
-          startSpeed: 0,
-          gravity: [0, 0, 0],
-          gravityOverLifetime: [0, 1],
-        },
-      },
       transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
       components: [{
-        fieldId: 'components',
         id: '11',
       }],
     },
@@ -274,6 +272,7 @@ const json = {
       item: { id: '02' },
       materials: [{ id: '21' }],
     },
+    particleSystemProps,
   ],
   materials: [
     {
@@ -308,7 +307,6 @@ const json = {
 const sceneData: SceneData = { effectsObjects: {} };
 
 for (const item of json.items) {
-  // @ts-expect-error
   sceneData.effectsObjects[item.id] = item;
 }
 for (const component of json.components) {
