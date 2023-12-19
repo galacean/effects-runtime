@@ -7,6 +7,12 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.1.2
+
+`2023-12-19`
+
+- Fix: Render bugs caused by diff algorithm and pre-comp. [#53](https://github.com/galacean/effects-runtime/pull/53) @RGCHN
+
 ## 1.1.1
 
 `2023-12-14`
