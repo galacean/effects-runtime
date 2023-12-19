@@ -1,13 +1,10 @@
-import type { Composition, Region, spec, math } from '@galacean/effects';
+import type { Composition, Region, spec } from '@galacean/effects';
 import type { Ray, Matrix4 } from '../runtime/math';
 import { Vector3 } from '../runtime/math';
 import type { ModelItemBounding, ModelItemBoundingBox } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../plugin/const';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
-import type { PMesh } from '../runtime';
 import { PObjectType } from '../runtime/common';
-
-type Ray = math.Ray;
+import { ModelMeshComponent } from '../plugin/model-item';
 
 // 射线与带旋转的包围盒求交
 function transformDirection (m: Matrix4, direction: Vector3) {
@@ -25,7 +22,7 @@ function transformDirection (m: Matrix4, direction: Vector3) {
 
 }
 
-function RayIntersectsBoxWithRotation (ray: Ray, matrixData: Matrix4, bounding: ModelItemBounding) {
+function RayIntersectsBoxWithRotation (ray: Ray, matrixData: Matrix4, bounding: ModelItemBounding): Vector3[] | undefined {
   const local2World = matrixData;
   const world2Local = local2World.clone().invert();
 
@@ -204,12 +201,16 @@ function CompositionHitTest (composition: Composition, x: number, y: number): Re
 function ToggleItemBounding (composition: Composition, itemId: string) {
   composition.items?.forEach(item => {
     if (item.type === VFX_ITEM_TYPE_3D) {
-      const modelItem = item as ModelVFXItem;
+      const meshComponent = item.getComponent(ModelMeshComponent);
 
-      if (modelItem.content.type === PObjectType.mesh) {
-        const mesh = modelItem.content as PMesh;
+      if (meshComponent) {
+        const mesh = meshComponent.content;
 
-        if (modelItem.id === itemId) { mesh.visBoundingBox = true; } else { mesh.visBoundingBox = false; }
+        if (item.id === itemId) {
+          mesh.visBoundingBox = true;
+        } else {
+          mesh.visBoundingBox = false;
+        }
       }
     }
   });

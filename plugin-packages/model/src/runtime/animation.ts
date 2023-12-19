@@ -1,4 +1,4 @@
-import type { Geometry, Engine } from '@galacean/effects';
+import type { Geometry, Engine, VFXItemContent, VFXItem } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects';
 import type {
   ModelSkinOptions,
@@ -13,7 +13,7 @@ import type { InterpolationSampler } from './anim-sampler';
 import { createAnimationSampler } from './anim-sampler';
 import { Float16ArrayWrapper } from '../utility/plugin-helper';
 import type { PSceneManager } from './scene';
-import type { ModelTreeVFXItem } from '../plugin';
+import { ModelTreeComponent } from '../plugin';
 
 const forceTextureSkinning = false;
 
@@ -24,14 +24,14 @@ export enum TextureDataMode {
 }
 
 export class PSkin extends PObject {
-  parentItem?: ModelTreeVFXItem;
+  parentItem?: VFXItem<VFXItemContent>;
   skeleton = 0;
   jointList: number[] = [];
   inverseBindMatrices: Matrix4[] = [];
   animationMatrices: Matrix4[] = [];
   textureDataMode = TextureDataMode.none;
 
-  create (options: ModelSkinOptions, engine: Engine, parentItem?: ModelTreeVFXItem) {
+  create (options: ModelSkinOptions, engine: Engine, parentItem?: VFXItem<VFXItemContent>) {
     this.name = this.genName(options.name ?? 'Unnamed skin');
     this.type = PObjectType.skin;
     //
@@ -63,12 +63,12 @@ export class PSkin extends PObject {
 
   updateSkinMatrices () {
     this.animationMatrices = [];
-    if (this.parentItem !== undefined) {
-      const parentTree = this.parentItem.content;
+    const parentTree = this.parentItem?.getComponent(ModelTreeComponent);
 
+    if (parentTree !== undefined) {
       for (let i = 0; i < this.jointList.length; i++) {
         const joint = this.jointList[i];
-        const node = parentTree.getNodeById(joint);
+        const node = parentTree.content.getNodeById(joint);
 
         // let parent = node?.transform.parentTransform;
         // while(parent !== undefined){
@@ -112,7 +112,7 @@ export class PSkin extends PObject {
     });
   }
 
-  updateParentItem (parentItem: ModelTreeVFXItem) {
+  updateParentItem (parentItem: VFXItem<VFXItemContent>) {
     this.parentItem = parentItem;
   }
 
@@ -444,8 +444,9 @@ export class PAnimTrack {
     this.sampler = undefined;
   }
 
-  tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
-    const node = treeItem.content.getNodeById(this.node);
+  tick (time: number, treeItem: VFXItem<VFXItemContent>, sceneManager?: PSceneManager) {
+    const treeComponent = treeItem.getComponent(ModelTreeComponent);
+    const node = treeComponent?.content?.getNodeById(this.node);
 
     if (this.sampler !== undefined && node !== undefined) {
       const result = this.sampler.evaluate(time);
@@ -624,7 +625,7 @@ export class PAnimation extends PObject {
     });
   }
 
-  tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
+  tick (time: number, treeItem: VFXItem<VFXItemContent>, sceneManager?: PSceneManager) {
     this.time = time;
     // TODO: 这里时间事件定义不明确，先兼容原先实现
     const newTime = this.time % this.duration;
@@ -643,15 +644,15 @@ export class PAnimation extends PObject {
 }
 
 export class PAnimationManager extends PObject {
-  private ownerItem: ModelTreeVFXItem;
+  private ownerItem: VFXItem<VFXItemContent>;
   private animation = 0;
   private speed = 0;
   private delay = 0;
   private time = 0;
   private animations: PAnimation[] = [];
-  private sceneManager: PSceneManager;
+  private sceneManager?: PSceneManager;
 
-  constructor (treeOptions: ModelTreeOptions, ownerItem: ModelTreeVFXItem) {
+  constructor (treeOptions: ModelTreeOptions, ownerItem: VFXItem<VFXItemContent>) {
     super();
     this.name = this.genName(ownerItem.name ?? 'Unnamed tree');
     this.type = PObjectType.animationManager;
@@ -659,7 +660,7 @@ export class PAnimationManager extends PObject {
     this.ownerItem = ownerItem;
     this.animation = treeOptions.animation ?? -1;
     this.speed = 1.0;
-    this.delay = ownerItem.delay ?? 0;
+    this.delay = ownerItem.start ?? 0;
     this.animations = [];
     if (treeOptions.animations !== undefined) {
       treeOptions.animations.forEach(animOpts => {
@@ -668,13 +669,10 @@ export class PAnimationManager extends PObject {
         this.animations.push(anim);
       });
     }
+  }
 
-    // get scene manager from composition
-    const composition = ownerItem.composition;
-
-    if (composition !== null && composition !== undefined) {
-      this.sceneManager = composition.loaderData.sceneManager;
-    }
+  setSceneManager (sceneManager: PSceneManager) {
+    this.sceneManager = sceneManager;
   }
 
   createAnimation (animationOpts: ModelAnimationOptions) {
@@ -720,43 +718,3 @@ export class PAnimationManager extends PObject {
     return this.ownerItem;
   }
 }
-
-export class PAnimationSystem {
-  private managers: PAnimationManager[] = [];
-
-  constructor (private engine: Engine) {}
-
-  create (treeItems: ModelTreeVFXItem[]) {
-    this.managers = [];
-    treeItems.forEach(tree => {
-      const mgr = new PAnimationManager(tree.options, tree);
-
-      this.managers.push(mgr);
-    });
-  }
-
-  insert (animationManager: PAnimationManager) {
-    this.managers.push(animationManager);
-  }
-
-  delete (animationManager: PAnimationManager) {
-    let findIndex = -1;
-
-    this.managers.forEach((mgr, index) => {
-      if (mgr === animationManager) {
-        findIndex = index;
-      }
-    });
-    if (findIndex >= 0) {
-      this.managers.splice(findIndex, 1);
-    }
-  }
-
-  dispose () {
-    this.managers.forEach(mgr => {
-      mgr.dispose();
-    });
-    this.managers = [];
-  }
-}
-

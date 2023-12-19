@@ -27,7 +27,7 @@ export type ThreeDisplayObjectOptions = {
  */
 export class ThreeDisplayObject extends THREE.Group {
   compositions: ThreeComposition[];
-  camera: THREE.Camera | undefined;
+  camera?: THREE.Camera;
   renderer: Renderer;
 
   readonly width: number;

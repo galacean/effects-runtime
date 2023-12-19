@@ -8,7 +8,6 @@ const { Sphere, Vector3, Box3 } = math;
 let player: Player;
 let pending = false;
 
-let cameraItem;
 let sceneAABB;
 let sceneCenter;
 let sceneRadius = 1;
@@ -92,8 +91,6 @@ async function getCurrentScene () {
       },
     },
   });
-
-  cameraItem = items.find(item => item.id === 'extra-camera');
 
   return {
     'compositionId': 1,
@@ -217,9 +214,8 @@ function registerMouseEvent () {
 
     refreshCamera();
     if (pauseOnFirstFrame) {
-      player.renderFrame({
-        pauseOnFirstFrame: pauseOnFirstFrame,
-        currentTime: 0,
+      player.compositions.forEach(comp => {
+        comp.gotoAndStop(comp.time);
       });
     }
   });
@@ -265,9 +261,8 @@ function registerMouseEvent () {
           gestureHandler.onXYMoving(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.renderFrame({
-              pauseOnFirstFrame: pauseOnFirstFrame,
-              currentTime: 0,
+            player.compositions.forEach(comp => {
+              comp.gotoAndStop(comp.time);
             });
           }
 
@@ -286,9 +281,8 @@ function registerMouseEvent () {
           gestureHandler.onZMoving(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.renderFrame({
-              pauseOnFirstFrame: pauseOnFirstFrame,
-              currentTime: 0,
+            player.compositions.forEach(comp => {
+              comp.gotoAndStop(comp.time);
             });
           }
 
@@ -308,9 +302,8 @@ function registerMouseEvent () {
           gestureHandler.onRotating(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.renderFrame({
-              pauseOnFirstFrame: pauseOnFirstFrame,
-              currentTime: 0,
+            player.compositions.forEach(comp => {
+              comp.gotoAndStop(comp.time);
             });
           }
 
@@ -331,9 +324,8 @@ function registerMouseEvent () {
           gestureHandler.onRotatingPoint(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.renderFrame({
-              pauseOnFirstFrame: pauseOnFirstFrame,
-              currentTime: 0,
+            player.compositions.forEach(comp => {
+              comp.gotoAndStop(comp.time);
             });
           }
 
@@ -436,31 +428,5 @@ export function createUI () {
   // add ui to parent dom
   demo_infoDom.appendChild(uiDom);
   demo_infoDom.appendChild(select);
-}
-
-function createSlider (name, minV, maxV, stepV, defaultV, callback) {
-  const InputDom = document.createElement('input');
-
-  InputDom.type = 'range';
-  InputDom.min = minV.toString();
-  InputDom.max = maxV.toString();
-  InputDom.value = defaultV.toString();
-  InputDom.step = stepV.toString();
-  InputDom.addEventListener('input', function (event) {
-    const dom = event.target;
-
-    Label.innerHTML = dom.value;
-    callback(Number(dom.value));
-  });
-  const divDom = document.createElement('div');
-
-  divDom.innerHTML = name;
-  divDom.appendChild(InputDom);
-  const Label = document.createElement('label');
-
-  Label.innerHTML = defaultV.toString();
-  divDom.appendChild(Label);
-
-  return divDom;
 }
 

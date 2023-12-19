@@ -50,7 +50,7 @@ Texture.createWithData = (
   return tex;
 };
 
-Material.create = (engine: Engine, props: MaterialProps) => {
+Material.create = (engine: Engine, props?: MaterialProps) => {
   return new GLMaterial(engine, props);
 };
 
@@ -58,7 +58,7 @@ Geometry.create = (engine: Engine, props: GeometryProps) => {
   return new GLGeometry(engine, props);
 };
 
-Mesh.create = (engine: Engine, props: GeometryMeshProps) => {
+Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
   return new Mesh(engine, props);
 };
 

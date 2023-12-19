@@ -14,7 +14,7 @@ import type { ThreeMesh } from './three-mesh';
  */
 export class ThreeRenderFrame extends RenderFrame {
   group: THREE.Group;
-  threeCamera: THREE.Camera | undefined;
+  threeCamera?: THREE.Camera;
 
   constructor (options: RenderFrameOptions) {
     super(options);

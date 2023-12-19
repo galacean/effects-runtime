@@ -1,16 +1,13 @@
 import * as spec from '@galacean/effects-specification';
+import type { Deserializer, SceneData } from '../../deserializer';
+import type { Engine } from '../../engine';
 import { Texture } from '../../texture';
-import { TextMesh } from './text-mesh';
-import type { TextVFXItem } from './text-vfx-item';
 import type { SpriteItemProps } from '../sprite/sprite-item';
-import { SpriteItem } from '../sprite/sprite-item';
-import type { SpriteMesh } from '../sprite/sprite-mesh';
+import { SpriteComponent } from '../sprite/sprite-item';
+import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import { DEFAULT_FONTS, canvasPool } from '../../template-image';
-import { TextLayout } from './text-layout';
-import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
-import type { SpriteVFXItem } from '../sprite/sprite-vfx-item';
 
 interface CharInfo {
   /**
@@ -28,32 +25,28 @@ interface CharInfo {
   width: number,
 }
 
-export class TextItem extends SpriteItem {
-
+/**
+ * @since 2.0.0
+ * @internal
+ */
+export class TextComponent extends SpriteComponent {
   textStyle: TextStyle;
   isDirty = true;
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
   textLayout: TextLayout;
   text: string;
-  private engine: Engine;
+
   private char: string[];
 
-  constructor (
-    props: spec.TextContent,
-    opts: {
-      emptyTexture: Texture,
-    },
-    vfxItem: TextVFXItem,
-  ) {
-    super(props as unknown as SpriteItemProps, opts, vfxItem as unknown as SpriteVFXItem);
+  constructor (engine: Engine, props: spec.TextContent) {
+    super(engine, props as unknown as SpriteItemProps);
+
     const { options } = props;
 
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
-
-    this.engine = vfxItem.composition.getEngine();
 
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
@@ -61,7 +54,7 @@ export class TextItem extends SpriteItem {
     this.text = options.text;
 
     // Text
-    this.mesh = new TextMesh(this.engine, this.renderInfo, vfxItem.composition) as unknown as SpriteMesh;
+    this.updateTexture();
   }
 
   /**
@@ -263,6 +256,11 @@ export class TextItem extends SpriteItem {
     this.isDirty = true;
   }
 
+  override update (dt: number): void {
+    super.update(dt);
+    this.updateTexture();
+  }
+
   /**
    * 更新文本
    * @returns
@@ -284,7 +282,7 @@ export class TextItem extends SpriteItem {
 
     this.char = (this.text || '').split('');
 
-    this.canvas.width = width ;
+    this.canvas.width = width;
     this.canvas.height = height;
 
     context.clearRect(0, 0, width, this.canvas.height);
@@ -352,10 +350,10 @@ export class TextItem extends SpriteItem {
       charOffsetX,
     });
 
-    charsInfo.forEach(charInfo=>{
+    charsInfo.forEach(charInfo => {
       const x = layout.getOffsetX(style, charInfo.width);
 
-      charInfo.chars.forEach((str, i)=>{
+      charInfo.chars.forEach((str, i) => {
         if (style.isOutlined) {
 
           context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
@@ -375,14 +373,14 @@ export class TextItem extends SpriteItem {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.mesh?.mesh.material.setTexture('uSampler0', Texture.createWithData(this.engine,
+    this.material.setTexture('uSampler0', Texture.createWithData(this.engine,
       {
         data: new Uint8Array(imageData.data),
         width: imageData.width,
         height: imageData.height,
       },
       {
-        flipY:true,
+        flipY: true,
         magFilter: glContext.LINEAR,
         minFilter: glContext.LINEAR,
         wrapS: glContext.CLAMP_TO_EDGE,
@@ -391,6 +389,10 @@ export class TextItem extends SpriteItem {
     ));
 
     this.isDirty = false;
+  }
+
+  override fromData (data: SpriteItemProps, deserializer?: Deserializer, sceneData?: SceneData): void {
+    super.fromData(data, deserializer, sceneData);
   }
 
   private getFontDesc (): string {
@@ -428,8 +430,8 @@ export class TextItem extends SpriteItem {
     const style = this.textStyle;
 
     context!.shadowColor = `rgba(${style.shadowColor[0] * 255}, ${style.shadowColor[1] * 255}, ${style.shadowColor[2] * 255}, ${style.shadowColor[3]})`;
-    context!.shadowBlur = style.shadowBlur ;
-    context!.shadowOffsetX = style.shadowOffsetX ;
-    context!.shadowOffsetY = -style.shadowOffsetY ;
+    context!.shadowBlur = style.shadowBlur;
+    context!.shadowOffsetX = style.shadowOffsetX;
+    context!.shadowOffsetY = -style.shadowOffsetY;
   }
 }

@@ -1,10 +1,10 @@
 import type { math } from '@galacean/effects';
 import { spec } from '@galacean/effects';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
-import type { ModelItemCamera } from '../index';
+import type { ModelCameraOptions } from '../index';
 import { Vector2, Vector3, Matrix4 } from './math';
 import { PObjectType } from './common';
 import { PEntity } from './object';
+import type { ModelCameraComponent } from '../plugin/model-item';
 
 type Box3 = math.Box3;
 type Quaternion = math.Quaternion;
@@ -12,6 +12,7 @@ type Quaternion = math.Quaternion;
 const deg2rad = Math.PI / 180;
 
 export class PCamera extends PEntity {
+  owner?: ModelCameraComponent;
   width = 512;
   height = 512;
   nearPlane = 0.001;
@@ -22,16 +23,15 @@ export class PCamera extends PEntity {
   projectionMatrix: Matrix4 = new Matrix4();
   viewMatrix: Matrix4 = new Matrix4();
 
-  constructor (camera: ModelItemCamera, width: number, height: number, ownerItem?: ModelVFXItem) {
+  constructor (name: string, width: number, height: number, options: ModelCameraOptions, owner?: ModelCameraComponent) {
     super();
-    this.name = camera.name;
     this.type = PObjectType.camera;
     this.visible = false;
-    this.ownerItem = ownerItem;
+    this.owner = owner;
     //
+    this.name = name;
     this.width = width;
     this.height = height;
-    const options = camera.content.options;
 
     this.nearPlane = options.near;
     this.farPlane = options.far;
@@ -41,9 +41,9 @@ export class PCamera extends PEntity {
     this.update();
   }
 
-  update () {
-    if (this.ownerItem !== undefined) {
-      this.transform.fromEffectsTransform(this.ownerItem.transform);
+  override update () {
+    if (this.owner !== undefined) {
+      this.transform.fromEffectsTransform(this.owner.transform);
     }
 
     const reverse = this.clipMode === spec.CameraClipMode.portrait;
@@ -119,24 +119,14 @@ export class PCameraManager {
 
   constructor () {
     this.defaultCamera = new PCamera(
+      'camera', 512, 512,
       {
-        id: 'camera',
-        name: 'camera',
-        type: 'camera',
-        duration: 10,
-        pluginName: 'model',
-        content: {
-          options: {
-            fov: 60,
-            far: 1000,
-            near: 0.001,
-            position: [0, 0, -1.5],
-            clipMode: spec.CameraClipMode.portrait,
-          },
-        },
-        endBehavior: spec.END_BEHAVIOR_FORWARD,
+        fov: 60,
+        far: 1000,
+        near: 0.001,
+        position: [0, 0, -1.5],
+        clipMode: spec.CameraClipMode.portrait,
       },
-      512, 512
     );
   }
 
@@ -152,8 +142,8 @@ export class PCameraManager {
     camera.update();
   }
 
-  insert (inCamera: ModelItemCamera, ownerItem?: ModelVFXItem): PCamera {
-    const camera = new PCamera(inCamera, this.winWidth, this.winHeight, ownerItem);
+  insert (name: string, options: ModelCameraOptions, owner?: ModelCameraComponent): PCamera {
+    const camera = new PCamera(name, this.winWidth, this.winHeight, options, owner);
 
     this.cameraList.push(camera);
 
@@ -186,6 +176,7 @@ export class PCameraManager {
 
   updateDefaultCamera (
     fovy: number,
+    aspect: number,
     nearPlane: number,
     farPlane: number,
     position: Vector3,
@@ -193,6 +184,7 @@ export class PCameraManager {
     clipMode: number,
   ) {
     this.defaultCamera.fovy = fovy;
+    this.defaultCamera.aspect = aspect;
     this.defaultCamera.nearPlane = nearPlane;
     this.defaultCamera.farPlane = farPlane;
     this.defaultCamera.position = position;

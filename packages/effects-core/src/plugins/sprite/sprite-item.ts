@@ -1,17 +1,26 @@
-import type { Vector3 } from '@galacean/effects-math/es/core/index';
+import { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { vec2, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
-import type { vec2, vec4, TypedArray, TextureSheetAnimation } from '@galacean/effects-specification';
-import type { FilterDefine } from '../../filter';
+import { RendererComponent } from '../../components/renderer-component';
+import type { Deserializer, SceneData } from '../../deserializer';
+import type { Engine } from '../../engine';
+import { glContext } from '../../gl';
+import type { MaterialProps } from '../../material';
+import { Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode } from '../../material';
 import type { ValueGetter } from '../../math';
-import { vecFill, vecMulCombine, convertAnchor, createValueGetter } from '../../math';
+import { createValueGetter, trianglesFromRect, vecFill, vecMulCombine } from '../../math';
+import type { GeometryDrawMode, Renderer } from '../../render';
+import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
-import { colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
+import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
 import type { CalculateItemOptions } from '../cal/calculate-item';
-import { CalculateItem } from '../cal/calculate-item';
-import type { SpriteMesh, SpriteRenderData } from './sprite-mesh';
-import { getImageItemRenderInfo } from './sprite-mesh';
-import type { SpriteVFXItem } from './sprite-vfx-item';
+import { TimelineComponent } from '../cal/calculate-item';
+import { Playable } from '../cal/playable-graph';
+import { Track } from '../cal/track';
+import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
+import { HitTestType } from '../interact/click-handler';
+import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -59,7 +68,6 @@ export interface SpriteItemRenderInfo {
   mask: number,
   maskMode: number,
   cacheId: string,
-  filter?: FilterDefine,
   wireframe?: boolean,
 }
 
@@ -68,76 +76,46 @@ export type splitsDataType = [r: number, x: number, y: number, w: number, h: num
 const singleSplits: splitsDataType = [[0, 0, 1, 1, undefined]];
 const tempColor: vec4 = [1, 1, 1, 1];
 
-export class SpriteItem extends CalculateItem {
-  override options: SpriteItemOptions;
-  renderer: SpriteItemRenderer;
-  interaction?;
-  listIndex: number;
-  parentId?: string;
-  reusable: boolean;
-  cachePrefix: string;
-  geoData: { aPoint: number[] | TypedArray, index: number[] | TypedArray };
-  mesh?: SpriteMesh;
-  anchor?: vec2;
+let seed = 0;
 
-  readonly feather?: ValueGetter<number>;
-  readonly textureSheetAnimation?: TextureSheetAnimation;
-  readonly splits: splitsDataType;
-  readonly startColor: vec4 = [1, 1, 1, 1];
-  readonly emptyTexture: Texture;
+export class SpriteColorPlayable extends Playable {
+  clipData: { colorOverLifetime?: spec.ColorOverLifetime, startColor?: spec.RGBAColorValue };
+  colorOverLifetime: { stop: number, color: any }[];
+  opacityOverLifetime: ValueGetter<number>;
+  startColor: spec.RGBAColorValue;
+  renderColor: vec4 = [1, 1, 1, 1];
+  spriteMaterial: Material;
 
-  private customColor: vec4;
-  private customOpacity: number;
-  private _filter?: FilterDefine;
-  /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
-  // override colorOverLifetime: { stop: number, color: any }[];
-  // override opacityOverLifetime: ValueGetter<number>;
-  /***********************/
-  private readonly colorOverLifetime: { stop: number, color: any }[];
-  private readonly opacityOverLifetime: ValueGetter<number>;
-  private readonly _renderInfo: SpriteItemRenderInfo;
+  override onPlayablePlay (): void {
+    this.spriteMaterial = this.bindingItem.getComponent(SpriteComponent)!.material;
+  }
 
-  constructor (
-    props: SpriteItemProps,
-    opts: {
-      emptyTexture: Texture,
-    },
-    vfxItem: SpriteVFXItem,
-  ) {
-    super(props, vfxItem);
-    const { interaction, renderer, options, listIndex = 0 } = props;
-    const { emptyTexture } = opts;
-    const { transform } = vfxItem;
-    const scale = transform.scale;
+  override processFrame (dt: number): void {
+    let colorInc = vecFill(tempColor, 1);
+    let colorChanged;
+    const life = this.time / this.bindingItem.duration;
 
-    this.options = {
-      ...this.options,
-      startColor: options.startColor || [1, 1, 1, 1],
-    };
+    const opacityOverLifetime = this.opacityOverLifetime;
+    const colorOverLifetime = this.colorOverLifetime;
 
-    this.interaction = interaction;
-    this.renderer = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
-      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: this.initTexture(renderer.texture, emptyTexture),
-      occlusion: !!(renderer.occlusion),
-      transparentOcclusion: !!(renderer.transparentOcclusion) || (renderer.maskMode === spec.MaskMode.MASK),
-      side: renderer.side ?? spec.SideMode.DOUBLE,
-      shape: renderer.shape,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
-      order: listIndex,
-    };
-
-    const realAnchor = convertAnchor(renderer.anchor, renderer.particleOrigin);
-
-    // 兼容旧JSON（anchor和particleOrigin可能同时存在）
-    if (!renderer.anchor && renderer.particleOrigin !== undefined) {
-      this.basicTransform.position.add([-realAnchor[0] * scale.x, -realAnchor[1] * scale.y, 0]);
+    if (colorOverLifetime) {
+      colorInc = getColorFromGradientStops(colorOverLifetime, life, true) as vec4;
+      colorChanged = true;
     }
-    this.transform.setAnchor(realAnchor[0] * scale.x, realAnchor[1] * scale.y, 0);
+    if (opacityOverLifetime) {
+      colorInc[3] *= opacityOverLifetime.getValue(life);
+      colorChanged = true;
+    }
 
-    const colorOverLifetime = props.colorOverLifetime;
+    if (colorChanged) {
+      vecMulCombine<vec4>(this.renderColor, colorInc, this.startColor);
+      this.spriteMaterial.getVector4('_Color')!.setFromArray(this.renderColor);
+    }
+  }
+
+  override fromData (clipData: { colorOverLifetime?: spec.ColorOverLifetime, startColor?: spec.RGBAColorValue }) {
+    this.clipData = clipData;
+    const colorOverLifetime = clipData.colorOverLifetime;
 
     if (colorOverLifetime) {
       this.opacityOverLifetime = createValueGetter(colorOverLifetime.opacity ?? 1);
@@ -145,96 +123,88 @@ export class SpriteItem extends CalculateItem {
         this.colorOverLifetime = colorStopsFromGradient(colorOverLifetime.color[1]);
       }
     }
+    this.startColor = clipData.startColor || [1, 1, 1, 1];
 
-    if (props.filter?.feather && props.filter?.feather !== 1) {
-      this.feather = createValueGetter(props.filter.feather);
+    return this;
+  }
+}
+
+export class SpriteComponent extends RendererComponent {
+  renderer: SpriteItemRenderer;
+  interaction?: { behavior: spec.InteractBehavior };
+  cachePrefix: string;
+  geoData: { atlasOffset: number[] | spec.TypedArray, index: number[] | spec.TypedArray };
+  anchor?: vec2;
+  timelineComponent: TimelineComponent;
+
+  textureSheetAnimation?: spec.TextureSheetAnimation;
+  splits: splitsDataType;
+  emptyTexture: Texture;
+  color: vec4 = [1, 1, 1, 1];
+  worldMatrix: Matrix4;
+  geometry: Geometry;
+
+  /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
+  // override colorOverLifetime: { stop: number, color: any }[];
+  // override opacityOverLifetime: ValueGetter<number>;
+  /***********************/
+  private renderInfo: SpriteItemRenderInfo;
+  // readonly mesh: Mesh;
+  private readonly wireframe?: boolean;
+  private preMultiAlpha: number;
+  private visible = true;
+
+  constructor (engine: Engine, props?: SpriteItemProps) {
+    super(engine);
+
+    if (props) {
+      this.fromData(props);
     }
-
-    this.emptyTexture = emptyTexture;
-    this.splits = props.splits || singleSplits;
-    this.listIndex = vfxItem.listIndex || 0;
-    this.textureSheetAnimation = props.textureSheetAnimation;
-    this.cachePrefix = '-';
-    this.parentId = vfxItem.parentId;
-    this.reusable = vfxItem.reusable;
-    this._renderInfo = getImageItemRenderInfo(this);
-  }
-
-  get filter () {
-    return this._filter;
-  }
-
-  set filter (f: FilterDefine | undefined) {
-    this._filter = f;
-    this._renderInfo.filter = f;
-  }
-
-  get renderInfo () {
-    return this._renderInfo;
-  }
-
-  initTexture (texture: Texture, emptyTexture: Texture) {
-    const tex = texture ?? emptyTexture;
-
-    return tex;
-  }
-
-  getTextures (): Texture[] {
-    const ret = [];
-    const tex = this.renderer.texture;
-
-    if (tex) {
-      ret.push(tex);
-    }
-
-    return ret;
   }
 
   /**
-   * @internal
+   * 设置当前 Mesh 的可见性。
+   * @param visible - true：可见，false：不可见
    */
-  setColor (r: number, g: number, b: number, a: number) {
-    this.customColor = [r, g, b, a];
+  setVisible (visible: boolean) {
+    this.visible = visible;
   }
-
-  setOpacity (opacity: number) {
-    this.customOpacity = opacity;
-  }
-
   /**
-   * @internal
+   * 获取当前 Mesh 的可见性。
    */
-  getCustomOpacity () {
-    return this.customOpacity;
+  getVisible (): boolean {
+    return this.visible;
   }
 
-  override getRenderData (_time: number, init?: boolean): SpriteRenderData {
-    const ret = super.getRenderData(_time, init);
-    let colorInc = vecFill(tempColor, 1);
-    let colorChanged;
-    const time = _time < 0 ? _time : Math.max(_time, 0.);
-    const duration = this.options.duration;
-    const life = time / duration < 0 ? 0 : (time / duration > 1 ? 1 : time / duration);
-
-    if (this.customColor) {
-      ret.color = this.customColor;
-    } else {
-      const opacityOverLifetime = this.opacityOverLifetime;
-      const colorOverLifetime = this.colorOverLifetime;
-
-      if (colorOverLifetime) {
-        colorInc = getColorFromGradientStops(colorOverLifetime, life, true) as vec4;
-        colorChanged = true;
-      }
-      if (opacityOverLifetime) {
-        colorInc[3] *= opacityOverLifetime.getValue(life);
-        colorChanged = true;
-      }
-
-      if (colorChanged || init) {
-        ret.color = vecMulCombine<vec4>(this.startColor, colorInc, this.options.startColor);
-      }
+  override render (renderer: Renderer) {
+    if (!this.getVisible()) {
+      return;
     }
+    const material = this.material;
+    const geo = this.geometry;
+
+    if (renderer.renderingData.currentFrame.globalUniforms) {
+      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
+    }
+    this.material.setVector2('_Size', this.transform.size);
+
+    // 执行 Geometry 的数据刷新
+    geo.flush();
+
+    renderer.drawGeometry(geo, material);
+  }
+
+  override start (): void {
+    this.priority = this.item.listIndex;
+    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
+    this.item.getHitTestParams = this.getHitTestParams;
+  }
+
+  override update (dt: number): void {
+    const time = this.timelineComponent.getTime();
+
+    const duration = this.item.duration;
+    const life = Math.min(Math.max(time / duration, 0.0), 1.0);
 
     const ta = this.textureSheetAnimation;
 
@@ -280,26 +250,332 @@ export class SpriteItem extends CalculateItem {
       } else {
         texOffset = [0, dy];
       }
-      ret.texOffset = [
+      this.material.getVector4('_TexOffset')!.setFromArray([
         texRectX + texOffset[0],
         texRectH + texRectY - texOffset[1],
         dx, dy,
-      ];
-
-    } else if (init) {
-      ret.texOffset = [0, 0, 1, 1];
+      ]);
     }
-    ret.visible = this.vfxItem.contentVisible;
-    // 图层元素作为父节点时，除了k的大小变换，自身的尺寸也需要传递给子元素，子元素可以通过startSize读取
-    ret.startSize = this.startSize;
+  }
+
+  override onDestroy (): void {
+    if (this.item && this.item.composition) {
+      this.item.composition.destroyTextures(this.getTextures());
+    }
+  }
+
+  private getItemInitData (item: SpriteComponent, idx: number, pointStartIndex: number, textureIndex: number) {
+    let geoData = item.geoData;
+
+    if (!geoData) {
+      geoData = item.geoData = this.getItemGeometryData(item, idx);
+    }
+    const index = geoData.index;
+    const idxCount = index.length;
+    // @ts-expect-error
+    const indexData: number[] = this.wireframe ? new Uint8Array([0, 1, 1, 3, 2, 3, 2, 0]) : new index.constructor(idxCount);
+
+    if (!this.wireframe) {
+      for (let i = 0; i < idxCount; i++) {
+        indexData[i] = pointStartIndex + index[i];
+      }
+    }
+
+    return {
+      atlasOffset: geoData.atlasOffset,
+      index: indexData,
+    };
+  }
+
+  private setItem () {
+    const textures: Texture[] = [];
+    let texture = this.renderer.texture;
+
+    if (texture) {
+      addItem(textures, texture);
+    }
+    texture = this.renderer.texture;
+    const textureIndex = texture ? textures.indexOf(texture) : -1;
+    const data = this.getItemInitData(this, 0, 0, textureIndex);
+
+    const renderer = this.renderer;
+    const texParams = this.material.getVector4('_TexParams')!;
+
+    texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
+    texParams.y = +this.preMultiAlpha;
+    texParams.z = renderer.renderMode;
+    const attributes = {
+      atlasOffset: new Float32Array(data.atlasOffset.length),
+      index: new Uint16Array(data.index.length),
+    };
+
+    attributes.atlasOffset.set(data.atlasOffset);
+    attributes.index.set(data.index);
+    const { material, geometry } = this;
+    const indexData = attributes.index;
+
+    geometry.setIndexData(indexData);
+    geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
+    geometry.setDrawCount(data.index.length);
+    this.setVisible(geometry.getDrawCount() > 0 ? true : false);
+    for (let i = 0; i < textures.length; i++) {
+      const texture = textures[i];
+
+      material.setTexture('uSampler' + i, texture);
+    }
+    // FIXME: 内存泄漏的临时方案，后面再调整
+    const emptyTexture = this.emptyTexture;
+
+    for (let k = textures.length; k < maxSpriteMeshItemCount; k++) {
+      material.setTexture('uSampler' + k, emptyTexture);
+    }
+  }
+
+  private createGeometry (mode: GeometryDrawMode) {
+    return Geometry.create(this.engine, {
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array([
+            -0.5, 0.5, 0, //左上
+            -0.5, -0.5, 0, //左下
+            0.5, 0.5, 0, //右上
+            0.5, -0.5, 0, //右下
+          ]),
+        },
+        atlasOffset: {
+          size: 2,
+          offset: 0,
+          releasable: true,
+          type: glContext.FLOAT,
+          data: new Float32Array(0),
+        },
+      },
+      indices: { data: new Uint16Array(0), releasable: true },
+      mode,
+    });
+  }
+
+  private createMaterial (renderInfo: SpriteItemRenderInfo, count: number): Material {
+    const { side, occlusion, blending, maskMode, mask } = renderInfo;
+    const materialProps: MaterialProps = {
+      shader: spriteMeshShaderFromRenderInfo(renderInfo, count, 1),
+    };
+
+    this.preMultiAlpha = getPreMultiAlpha(blending);
+
+    const material = Material.create(this.engine, materialProps);
+
+    const states = {
+      side,
+      blending: true,
+      blendMode: blending,
+      mask,
+      maskMode,
+      depthTest: true,
+      depthMask: occlusion,
+    };
+
+    material.blending = states.blending;
+    material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
+    material.depthTest = states.depthTest;
+    material.depthMask = states.depthMask;
+    states.blending && setBlendMode(material, states.blendMode);
+    setMaskMode(material, states.maskMode);
+    setSideMode(material, states.side);
+
+    if (!material.hasUniform('_Color')) {
+      material.setVector4('_Color', new Vector4(0, 0, 0, 1));
+    }
+    if (!material.hasUniform('_TexOffset')) {
+      material.setVector4('_TexOffset', new Vector4());
+    }
+    if (!material.hasUniform('_TexParams')) {
+      material.setVector4('_TexParams', new Vector4());
+    }
+
+    return material;
+  }
+
+  private getItemGeometryData (item: SpriteComponent, aIndex: number) {
+    const { splits, renderer, textureSheetAnimation } = item;
+    const sx = 1, sy = 1;
+
+    if (renderer.shape) {
+      const { index, aPoint } = renderer.shape;
+      const point = new Float32Array(aPoint);
+      const position = [];
+
+      const atlasOffset = [];
+
+      for (let i = 0; i < point.length; i += 6) {
+        point[i] *= sx;
+        point[i + 1] *= sy;
+        atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
+        position.push(point[i], point[i + 1], 0.0);
+      }
+      this.geometry.setAttributeData('aPos', new Float32Array(position));
+
+      return {
+        index,
+        atlasOffset,
+      };
+    }
+
+    const originData = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
+    const atlasOffset = [];
+    const index = [];
+    let col = 2;
+    let row = 2;
+
+    if (splits.length === 1) {
+      col = 1;
+      row = 1;
+    }
+    const position = [];
+
+    for (let x = 0; x < col; x++) {
+      for (let y = 0; y < row; y++) {
+        const base = (y * 2 + x) * 4;
+        // @ts-expect-error
+        const split: number[] = textureSheetAnimation ? [0, 0, 1, 1, splits[0][4]] : splits[y * 2 + x];
+        const texOffset = split[4] ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+        const dw = ((x + x + 1) / col - 1) / 2;
+        const dh = ((y + y + 1) / row - 1) / 2;
+        const tox = split[0];
+        const toy = split[1];
+        const tsx = split[4] ? split[3] : split[2];
+        const tsy = split[4] ? split[2] : split[3];
+        const origin = [
+          originData[0] / col + dw,
+          originData[1] / row + dh,
+          originData[2] / col + dw,
+          originData[3] / row + dh,
+          originData[4] / col + dw,
+          originData[5] / row + dh,
+          originData[6] / col + dw,
+          originData[7] / row + dh,
+        ];
+
+        atlasOffset.push(
+          texOffset[0] * tsx + tox, texOffset[1] * tsy + toy,
+          texOffset[2] * tsx + tox, texOffset[3] * tsy + toy,
+          texOffset[4] * tsx + tox, texOffset[5] * tsy + toy,
+          texOffset[6] * tsx + tox, texOffset[7] * tsy + toy,
+        );
+        position.push((origin[0]) * sx, (origin[1]) * sy, 0.0,
+          (origin[2]) * sx, (origin[3]) * sy, 0.0,
+          (origin[4]) * sx, (origin[5]) * sy, 0.0,
+          (origin[6]) * sx, (origin[7]) * sy, 0.0);
+        index.push(base, 1 + base, 2 + base, 2 + base, 1 + base, 3 + base);
+      }
+    }
+
+    this.geometry.setAttributeData('aPos', new Float32Array(position));
+
+    return { index, atlasOffset };
+  }
+
+  initTexture (texture: Texture, emptyTexture: Texture) {
+    const tex = texture ?? emptyTexture;
+
+    return tex;
+  }
+
+  getTextures (): Texture[] {
+    const ret = [];
+    const tex = this.renderer.texture;
+
+    if (tex) {
+      ret.push(tex);
+    }
 
     return ret;
   }
 
-  protected override calculateScaling (sizeChanged: boolean, sizeInc: Vector3, init?: boolean) {
-    if (sizeChanged || init) {
-      this.transform.setScale(sizeInc.x, sizeInc.y, sizeInc.z);
+  /**
+   * 获取图层包围盒的类型和世界坐标
+   * @returns
+   */
+  getBoundingBox (): BoundingBoxTriangle | void {
+    if (!this.item) {
+      return;
     }
+    const worldMatrix = this.transform.getWorldMatrix();
+    const size = this.transform.size;
+    const triangles = trianglesFromRect(Vector3.ZERO, size.x / 2, size.y / 2);
+
+    triangles.forEach(triangle => {
+      worldMatrix.transformPoint(triangle.p0 as Vector3);
+      worldMatrix.transformPoint(triangle.p1 as Vector3);
+      worldMatrix.transformPoint(triangle.p2 as Vector3);
+    });
+
+    return {
+      type: HitTestType.triangle,
+      area: triangles,
+    };
   }
 
+  getHitTestParams = (force?: boolean): HitTestTriangleParams | void => {
+    const ui = this.interaction;
+
+    if ((force || ui)) {
+      const area = this.getBoundingBox();
+
+      if (area) {
+        return {
+          behavior: this.interaction?.behavior || 0,
+          type: area.type,
+          triangles: area.area,
+          backfaceCulling: this.renderer.side === spec.SideMode.FRONT,
+        };
+      }
+    }
+  };
+
+  override fromData (data: SpriteItemProps, deserializer?: Deserializer, sceneData?: SceneData): void {
+    super.fromData(data, deserializer, sceneData);
+
+    const { interaction, renderer, options, listIndex = 0 } = data;
+
+    this.interaction = interaction;
+    this.renderer = {
+      renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
+      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
+      texture: this.initTexture(renderer.texture, this.engine.emptyTexture),
+      occlusion: !!(renderer.occlusion),
+      transparentOcclusion: !!(renderer.transparentOcclusion) || (renderer.maskMode === spec.MaskMode.MASK),
+      side: renderer.side ?? spec.SideMode.DOUBLE,
+      shape: renderer.shape,
+      mask: renderer.mask ?? 0,
+      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      order: listIndex,
+    };
+
+    this.emptyTexture = this.engine.emptyTexture;
+    this.splits = data.splits || singleSplits;
+    this.textureSheetAnimation = data.textureSheetAnimation;
+    this.cachePrefix = '-';
+    this.renderInfo = getImageItemRenderInfo(this);
+
+    const geometry = this.createGeometry(glContext.TRIANGLES);
+    const material = this.createMaterial(this.renderInfo, 2);
+
+    this.worldMatrix = Matrix4.fromIdentity();
+    this.material = material;
+    this.geometry = geometry;
+    this.name = 'MSprite' + seed++;
+    const startColor = options.startColor || [1, 1, 1, 1];
+
+    this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
+    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
+    this.setItem();
+
+    // 添加K帧动画
+    const colorTrack = this.item.getComponent(TimelineComponent)!.createTrack(Track, 'SpriteColorTrack');
+
+    colorTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData({ colorOverLifetime: data.colorOverLifetime, startColor: data.options.startColor });
+  }
 }

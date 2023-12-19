@@ -61,4 +61,15 @@ export class TwoStatesSet<T> {
     });
   }
 
+  /**
+   * 遍历当前帧所有的元素
+   *
+   * @param callbackfn - 当前帧元素的回调
+   */
+  forNowItem (callbackfn: (value: T) => void) {
+    this.now.forEach(item => {
+      callbackfn(item);
+    });
+  }
+
 }

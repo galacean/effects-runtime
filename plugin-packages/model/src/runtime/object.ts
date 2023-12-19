@@ -1,11 +1,8 @@
-import type { spec, Mesh, math } from '@galacean/effects';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
+import type { spec, Renderer } from '@galacean/effects';
 import type { BaseTransform } from '../index';
 import type { Quaternion, Euler, Vector3, Matrix4 } from './math';
 import { PObjectType, PTransform, PCoordinate } from './common';
-import type { PSceneStates } from './scene';
-
-type Euler = math.Euler;
+import type { PSceneManager } from './scene';
 
 let objectIndex = 1;
 
@@ -39,9 +36,12 @@ export abstract class PEntity extends PObject {
   private _transform = new PTransform();
   //
   deleted = false;
-  ownerItem?: ModelVFXItem;
 
-  tick (deltaSeconds: number) {
+  update () {
+
+  }
+
+  render (scene: PSceneManager, renderer: Renderer) {
     // OVERRIDE
   }
 
@@ -49,19 +49,12 @@ export abstract class PEntity extends PObject {
     this.visible = visible;
   }
 
-  addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
-    // OVERRIDE
-  }
-
-  updateUniformsForScene (sceneStates: PSceneStates) {
-    // OVERRIDE
-  }
-
   /**
    * 仅标记不可见和删除状态，但不进行 WebGL 相关资源的释放
    * 最终释放 WebGL 相关资源是在 plugin destroy 的时候
    */
-  onEntityRemoved () {
+  override dispose () {
+    super.dispose();
     this.visible = false;
     this.deleted = true;
   }

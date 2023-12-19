@@ -9,6 +9,7 @@ import {
   math,
   AssetManager,
   getDefaultTemplateCanvasPool,
+  AssetManager,
 } from '@galacean/effects';
 
 const { Vector3, Matrix4 } = math;
@@ -51,10 +52,6 @@ export class TestPlayer {
   }
 
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
-    if (this.prefetchFunc) {
-      // await this.prefetchFunc(url, { pendingCompile: true });
-    }
-
     Math.seedrandom('mars-runtime');
     if (this.oldVersion) {
       this.scene = await this.player.loadSceneAsync(url, { ...loadOptions, timeout: 100 });
@@ -75,12 +72,20 @@ export class TestPlayer {
 
   gotoTime (newtime) {
 
-    let time = newtime;
+    const time = newtime;
 
-    // 兼容旧 Player 设置结束行为为重播时在第duration秒会回到第0帧
-    if (this.composition.content.endBehavior === 5 && newtime === this.composition.content.duration) {
-      time -= 0.01;
-    }
+    // if (this.oldVersion) {
+    //   // 兼容旧 Player 设置结束行为为重播时在第duration秒会回到第0帧
+    //   if (this.composition.content.endBehavior === 5 && newtime === this.composition.content.duration) {
+    //     time -= 0.01;
+    //   }
+    // } else {
+    //   // 兼容旧 Player 设置结束行为为重播时在第duration秒会回到第0帧
+    //   if (this.composition.rootItem.endBehavior === 5 && newtime === this.composition.rootItem.duration) {
+    //     time -= 0.01;
+    //   }
+    // }
+
     const deltaTime = time - this.lastTime;
 
     this.lastTime = newtime;

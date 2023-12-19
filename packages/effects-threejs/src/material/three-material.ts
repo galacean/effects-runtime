@@ -1,4 +1,4 @@
-import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math } from '@galacean/effects-core';
+import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math, Deserializer, SceneData } from '@galacean/effects-core';
 import { Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
@@ -34,7 +34,8 @@ export class ThreeMaterial extends Material {
    * @param props - 材质属性
    */
   constructor (engine: Engine, props: MaterialProps) {
-    super(props);
+    super(engine, props);
+
     const shader = props.shader;
     const { level } = engine.gpuCapability;
 
@@ -448,6 +449,11 @@ export class ThreeMaterial extends Material {
   }
 
   override cloneUniforms (sourceMaterial: Material): void {
+    //FIXME: 暂时不实现
+    throw new Error('Method not implemented.');
+  }
+
+  override fromData (data: any, deserializer: Deserializer, sceneData: SceneData): void {
     //FIXME: 暂时不实现
     throw new Error('Method not implemented.');
   }

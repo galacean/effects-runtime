@@ -601,7 +601,7 @@ export class PluginHelper {
     return effectsTransform;
   }
 
-  static preprocessEffectsScene (scene: Scene, runtimeEnv: string, compatibleMode: string, autoAdjustScene: boolean): EffectsSceneInfo {
+  static preprocessScene (scene: Scene, runtimeEnv: string, compatibleMode: string, autoAdjustScene: boolean): EffectsSceneInfo {
     const deviceEnv = (runtimeEnv !== PLAYER_OPTIONS_ENV_EDITOR);
     const tiny3dMode = (compatibleMode === 'tiny3d');
     // 默认skybox如何处理需要讨论
@@ -776,7 +776,11 @@ export class PluginHelper {
     compIndexSet.forEach(compIndex => {
       const sceneComp = jsonScene.compositions[compIndex];
 
-      sceneComp.items.forEach((item, itemId) => {
+      sceneComp.items.forEach(data => {
+        const itemId = data.id;
+        // @ts-expect-error
+        const item = jsonScene.items[itemId];
+
         if (item.type === 'mesh') {
           const meshItem = item as spec.ModelMeshItem<'json'>;
           const skin = meshItem.content.options.skin;
@@ -1407,7 +1411,7 @@ export class CheckerHelper {
     return typeof v === 'number';
   }
 
-  static checkNumberUndef (v: number | undefined): boolean {
+  static checkNumberUndef (v?: number): boolean {
     return v === undefined ? true : this.checkNumber(v);
   }
 
@@ -1415,7 +1419,7 @@ export class CheckerHelper {
     return this.checkNumber(v) && v >= 0 && v <= 1;
   }
 
-  static checkNumber01Undef (v: number | undefined): boolean {
+  static checkNumber01Undef (v?: number): boolean {
     return v === undefined ? true : this.checkNumber01(v);
   }
 
@@ -1427,7 +1431,7 @@ export class CheckerHelper {
     return this.checkNumber(v) && v >= 0;
   }
 
-  static checkNonnegativeUndef (v: number | undefined): boolean {
+  static checkNonnegativeUndef (v?: number): boolean {
     return v === undefined ? true : this.checkNonnegative(v);
   }
 
@@ -1435,7 +1439,7 @@ export class CheckerHelper {
     return typeof v === 'boolean';
   }
 
-  static checkBooleanUndef (v: boolean | undefined): boolean {
+  static checkBooleanUndef (v?: boolean): boolean {
     return v === undefined ? true : this.checkBoolean(v);
   }
 
@@ -1443,7 +1447,7 @@ export class CheckerHelper {
     return typeof v === 'string';
   }
 
-  static checkStringUndef (v: string | undefined): boolean {
+  static checkStringUndef (v?: string): boolean {
     return v === undefined ? true : this.checkString(v);
   }
 
@@ -1451,18 +1455,18 @@ export class CheckerHelper {
     return v instanceof Float32Array;
   }
 
-  static checkFloat32ArrayUndef (v: Float32Array | undefined): boolean {
+  static checkFloat32ArrayUndef (v?: Float32Array): boolean {
     return v === undefined ? true : this.checkFloat32Array(v);
   }
 
-  static checkParent (v: number | undefined): boolean {
+  static checkParent (v?: number): boolean {
     if (v === undefined) { return true; }
     if (!this.checkNumber(v)) { return false; }
 
     return v >= 0;
   }
 
-  static checkTexCoord (v: number | undefined): boolean {
+  static checkTexCoord (v?: number): boolean {
     if (v === undefined) { return true; }
     if (!this.checkNumber(v)) { return false; }
 
@@ -1526,7 +1530,7 @@ export class CheckerHelper {
     }
   }
 
-  static checkTextureUndef (v: Texture | undefined): boolean {
+  static checkTextureUndef (v?: Texture): boolean {
     return v === undefined ? true : this.checkTexture(v);
   }
 
@@ -1545,11 +1549,11 @@ export class CheckerHelper {
     return true;
   }
 
-  static checkTexTransformUndef (v: ModelTextureTransform | undefined): boolean {
+  static checkTexTransformUndef (v?: ModelTextureTransform): boolean {
     return v === undefined ? true : this.checkTexTransform(v);
   }
 
-  static checkMatBlending (v: spec.MaterialBlending | undefined): boolean {
+  static checkMatBlending (v?: spec.MaterialBlending): boolean {
     return v === undefined
       || v === spec.MaterialBlending.opaque
       || v === spec.MaterialBlending.masked
@@ -1557,7 +1561,7 @@ export class CheckerHelper {
       || v === spec.MaterialBlending.additive;
   }
 
-  static checkMatSide (v: spec.SideMode | undefined): boolean {
+  static checkMatSide (v?: spec.SideMode): boolean {
     return v === undefined || v === spec.SideMode.BACK || v === spec.SideMode.DOUBLE || v === spec.SideMode.FRONT;
   }
 

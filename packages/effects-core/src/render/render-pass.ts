@@ -1,6 +1,8 @@
 import type * as spec from '@galacean/effects-specification';
 import type { vec4 } from '@galacean/effects-specification';
 import type { Camera } from '../camera';
+import type { RendererComponent } from '../components';
+import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Mesh, MeshDestroyOptions, Renderer } from '../render';
 import { FrameBuffer } from '../render';
@@ -12,7 +14,6 @@ import type { Disposable, Sortable } from '../utils';
 import { addByOrder, DestroyOptions, OrderType, removeItem, sortByOrder, throwDestroyedError } from '../utils';
 import type { RenderBuffer } from './render-buffer';
 import type { RenderingData } from './render-frame';
-import type { Engine } from '../engine';
 
 export const RenderPassPriorityPrepare = 0;
 export const RenderPassPriorityNormal = 1000;
@@ -240,13 +241,13 @@ export interface RenderPassDelegate {
    * @param mesh - 当前 Mesh
    * @param state - 当前渲染状态
    */
-  willRenderMesh?: (mesh: Mesh, state: RenderingData) => void,
+  willRenderMesh?: (mesh: RendererComponent, state: RenderingData) => void,
   /**
    * Mesh 渲染后回调
    * @param mesh - 当前 Mesh
    * @param state - 当前渲染状态
    */
-  didiRenderMesh?: (mesh: Mesh, state: RenderingData) => void,
+  didiRenderMesh?: (mesh: RendererComponent, state: RenderingData) => void,
 }
 
 /**
@@ -269,7 +270,7 @@ export interface RenderPassAttachmentOptions {
 
 export interface RenderPassOptions extends RenderPassAttachmentOptions {
   name?: string,
-  meshes?: Mesh[],
+  meshes?: RendererComponent[],
   priority?: number,
   meshOrder?: OrderType,
   clearAction?: RenderPassClearAction,
@@ -304,7 +305,7 @@ export class RenderPass implements Disposable, Sortable {
   /**
    * 包含的 Mesh 列表
    */
-  readonly meshes: Mesh[];
+  readonly meshes: RendererComponent[];
   /**
    * Mesh 渲染顺序，按照优先级升序或降序
    */
@@ -390,15 +391,15 @@ export class RenderPass implements Disposable, Sortable {
     return this.getDepthAttachment();
   }
 
-  addMesh (mesh: Mesh): void {
+  addMesh (mesh: RendererComponent): void {
     addByOrder(this.meshes, mesh, this.meshOrder);
   }
 
-  removeMesh (mesh: Mesh): void {
+  removeMesh (mesh: RendererComponent): void {
     removeItem(this.meshes, mesh);
   }
 
-  setMeshes (meshes: Mesh[]): Mesh[] {
+  setMeshes (meshes: RendererComponent[]): RendererComponent[] {
     this.meshes.length = 0;
     this.meshes.splice(0, 0, ...meshes);
     sortByOrder(this.meshes, this.meshOrder);
@@ -657,7 +658,7 @@ export class RenderPass implements Disposable, Sortable {
 
     if (destroyMeshOption !== DestroyOptions.keep) {
       this.meshes.forEach(mesh => {
-        mesh.dispose(destroyMeshOption);
+        (mesh as Mesh).dispose(destroyMeshOption);
       });
     }
     this.meshes.length = 0;

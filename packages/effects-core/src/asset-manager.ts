@@ -1,20 +1,22 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
 import { LOG_TYPE } from './config';
+import { DataType, type DataPath } from './deserializer';
+import type { JSONValue } from './downloader';
+import { Downloader, loadImage, loadVideo, loadWebPOptional } from './downloader';
 import { glContext } from './gl';
+import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
-import type { JSONValue } from './downloader';
-import { Downloader, loadWebPOptional, loadImage, loadVideo } from './downloader';
-import { passRenderLevel } from './pass-render-level';
-import type { Disposable } from './utils';
-import { isObject, isString } from './utils';
-import type { ImageSource, Scene } from './scene';
-import type { TextureSourceOptions } from './texture';
-import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
+import type { ImageSource, Scene } from './scene';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
+import type { TextureSourceOptions } from './texture';
+import { Texture, TextureSourceType, deserializeMipmapTexture, getKTXTextureOptions } from './texture';
+import type { Disposable } from './utils';
+import { isObject, isString } from './utils';
+import type { VFXItemProps } from './vfx-item';
 
 /**
  * 场景加载参数
@@ -204,7 +206,7 @@ export class AssetManager implements Disposable {
 
       const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
-      const scene = {
+      let scene: Scene = {
         jsonScene,
         images: loadedImages,
         textureOptions: loadedTextures,
@@ -229,6 +231,11 @@ export class AssetManager implements Disposable {
       window.clearTimeout(loadTimer);
       scene.totalTime = totalTime;
       scene.startTime = startTime;
+
+      if (Number(scene.jsonScene.version) < 3.0) {
+        console.warn('The current json version ' + scene.jsonScene.version + ' is less than 3.0, try to convert to the new version.');
+        scene = version3Migration(scene);
+      }
 
       return scene;
     };
@@ -581,4 +588,139 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
   }
 
   throw new Error('Invalid texture options');
+}
+
+type ecScene = spec.JSONScene & { items: VFXItemProps[], components: DataPath[] };
+
+export function version3Migration (scene: Record<string, any>): Scene {
+  const ecScene = scene.jsonScene as ecScene;
+
+  if (!ecScene.items) {
+    ecScene.items = [];
+  }
+
+  // composition 的 items 转为 { id: string }
+  for (const composition of scene.jsonScene.compositions) {
+    for (let i = 0; i < composition.items.length; i++) {
+      ecScene.items.push(composition.items[i]);
+      composition.items[i] = { id: (ecScene.items.length - 1).toString() };
+    }
+  }
+
+  if (!ecScene.components) {
+    ecScene.components = [];
+  }
+  const components = ecScene.components;
+
+  for (const item of ecScene.items) {
+    // sprite content 转为 component data 加入 JSONScene.components
+    if (item.type === spec.ItemType.sprite) {
+      //@ts-expect-error
+      item.components = [];
+      //@ts-expect-error
+      components.push(item.content);
+      //@ts-expect-error
+      item.content.id = 'c' + (components.length - 1).toString();
+      //@ts-expect-error
+      item.content.dataType = DataType.SpriteComponent;
+      //@ts-expect-error
+      item.content.item = { id: item.id };
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
+      //@ts-expect-error
+      item.components.push({ id: item.content.id });
+    } else if (item.type === spec.ItemType.particle) {
+      //@ts-expect-error
+      item.components = [];
+      //@ts-expect-error
+      components.push(item.content);
+      //@ts-expect-error
+      item.content.id = 'c' + (components.length - 1).toString();
+      //@ts-expect-error
+      item.content.dataType = DataType.ParticleSystem;
+      //@ts-expect-error
+      item.content.item = { id: item.id };
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
+      //@ts-expect-error
+      item.components.push({ id: item.content.id });
+    } else if (item.type === spec.ItemType.mesh) {
+      //@ts-expect-error
+      item.components = [];
+      //@ts-expect-error
+      components.push(item.content);
+      //@ts-expect-error
+      item.content.id = 'c' + (components.length - 1).toString();
+      //@ts-expect-error
+      item.content.dataType = DataType.MeshComponent;
+      //@ts-expect-error
+      item.content.item = { id: item.id };
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
+      //@ts-expect-error
+      item.components.push({ id: item.content.id });
+    } else if (item.type === spec.ItemType.skybox) {
+      //@ts-expect-error
+      item.components = [];
+      //@ts-expect-error
+      components.push(item.content);
+      //@ts-expect-error
+      item.content.id = 'c' + (components.length - 1).toString();
+      //@ts-expect-error
+      item.content.dataType = DataType.SkyboxComponent;
+      //@ts-expect-error
+      item.content.item = { id: item.id };
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
+      //@ts-expect-error
+      item.components.push({ id: item.content.id });
+    } else if (item.type === spec.ItemType.light) {
+      //@ts-expect-error
+      item.components = [];
+      //@ts-expect-error
+      components.push(item.content);
+      //@ts-expect-error
+      item.content.id = 'c' + (components.length - 1).toString();
+      //@ts-expect-error
+      item.content.dataType = DataType.LightComponent;
+      //@ts-expect-error
+      item.content.item = { id: item.id };
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
+      //@ts-expect-error
+      item.components.push({ id: item.content.id });
+    } else if (item.type === 'camera') {
+      //@ts-expect-error
+      item.components = [];
+      //@ts-expect-error
+      components.push(item.content);
+      //@ts-expect-error
+      item.content.id = 'c' + (components.length - 1).toString();
+      //@ts-expect-error
+      item.content.dataType = DataType.CameraComponent;
+      //@ts-expect-error
+      item.content.item = { id: item.id };
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
+      //@ts-expect-error
+      item.components.push({ id: item.content.id });
+    } else if (item.type === spec.ItemType.tree) {
+      //@ts-expect-error
+      item.components = [];
+      //@ts-expect-error
+      components.push(item.content);
+      //@ts-expect-error
+      item.content.id = 'c' + (components.length - 1).toString();
+      //@ts-expect-error
+      item.content.dataType = DataType.TreeComponent;
+      //@ts-expect-error
+      item.content.item = { id: item.id };
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
+      //@ts-expect-error
+      item.components.push({ id: item.content.id });
+    }
+  }
+
+  return scene as Scene;
 }

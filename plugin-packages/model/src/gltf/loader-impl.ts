@@ -439,6 +439,7 @@ export class LoaderImpl implements Loader {
     this._gltfData2PlayerData(this._gltfScene, this._gltfMaterials);
   }
 
+  // FIXME: texInfo 可选，isBaseColor 不可选，顺序问题
   tryAddTexture2D (matIndex: number, texInfo: GLTFTextureInfo | undefined, isBaseColor: boolean) {
     if (texInfo === undefined) { return; }
 
@@ -455,6 +456,7 @@ export class LoaderImpl implements Loader {
     });
   }
 
+  // FIXME: 可选顺序问题
   getTexture2D (matIndex: number, texInfo: GLTFTextureInfo | undefined, isBaseColor: boolean, noWarning?: boolean): Texture | undefined {
     if (texInfo === undefined) { return; }
     const texIndex = texInfo.index;

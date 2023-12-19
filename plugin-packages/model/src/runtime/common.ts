@@ -1,4 +1,3 @@
-import type { math } from '@galacean/effects';
 import { Transform as EffectsTransform, PLAYER_OPTIONS_ENV_EDITOR, spec } from '@galacean/effects';
 import {
   Quaternion,
@@ -8,8 +7,6 @@ import {
   EulerOrder,
 } from './math';
 import type { BaseTransform } from '../index';
-
-type Euler = math.Euler;
 
 export enum PObjectType {
   none = 0,

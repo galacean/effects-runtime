@@ -1,11 +1,8 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Matrix4 } from '@galacean/effects-math/es/core/index';
 import { Euler, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
-import type { Composition } from '../../composition';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
-import { FILTER_NAME_NONE, PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { FilterShaderDefine, ParticleFilterDefine } from '../../filter';
-import { createFilter, createFilterShaders } from '../../filter';
+import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { MaterialProps } from '../../material';
 import {
   createShaderWithMarcos,
@@ -30,6 +27,7 @@ import { particleFrag, particleVert } from '../../shader';
 import { generateHalfFloatTexture, Texture } from '../../texture';
 import { Transform } from '../../transform';
 import { enlargeBuffer, imageDataFromGradient } from '../../utils';
+import type { Engine } from '../../engine';
 
 export type Point = {
   vel: Vector3,
@@ -111,8 +109,8 @@ export interface ParticleMeshProps extends ParticleMeshData {
     curve: ValueGetter<number>,
     target: spec.vec3,
   },
-  listIndex: number,
-  duration: number,
+  // listIndex: number,
+  // duration: number,
   maxCount: number,
   shaderCachePrefix: string,
   name: string,
@@ -132,6 +130,7 @@ export class ParticleMesh implements ParticleMeshData {
   orbitalVelOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean, center?: spec.vec3 };
   rotationOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number> };
   speedOverLifetime?: ValueGetter<number>;
+  time: number;
 
   readonly useSprite?: boolean;
   readonly textureOffsets: number[];
@@ -139,16 +138,15 @@ export class ParticleMesh implements ParticleMeshData {
   readonly anchor: Vector2;
 
   constructor (
+    engine: Engine,
     props: ParticleMeshProps,
-    rendererOptions: { composition: Composition },
   ) {
-    const engine = rendererOptions.composition.getEngine();
     const { env } = engine.renderer ?? {};
     const {
       speedOverLifetime, colorOverLifetime, linearVelOverLifetime, orbitalVelOverLifetime, sizeOverLifetime, rotationOverLifetime,
-      sprite, gravityModifier, maxCount, duration, textureFlip, useSprite, name,
+      sprite, gravityModifier, maxCount, textureFlip, useSprite, name,
       filter, gravity, forceTarget, side, occlusion, anchor, blending,
-      maskMode, mask, transparentOcclusion, listIndex, meshSlots,
+      maskMode, mask, transparentOcclusion, meshSlots,
       renderMode = 0,
       diffuse = Texture.createWithData(engine),
     } = props;
@@ -166,7 +164,6 @@ export class ParticleMesh implements ParticleMeshData {
     const uniformValues: Record<string, any> = {};
     let vertex_lookup_texture = 0;
     let shaderCacheId = 0;
-    let particleDefine: ParticleFilterDefine;
     let useOrbitalVel;
 
     this.useSprite = useSprite;
@@ -183,32 +180,6 @@ export class ParticleMesh implements ParticleMeshData {
       shaderCacheId |= 1 << 2;
       uniformValues.uFSprite = uniformValues.uSprite = new Float32Array([sprite.col, sprite.row, sprite.total, sprite.blend ? 1 : 0]);
       this.useSprite = true;
-    }
-    if (filter && filter.name !== FILTER_NAME_NONE) {
-      marcos.push(['USE_FILTER', true]);
-      shaderCacheId |= 1 << 3;
-      const filterDefine = createFilter(filter, rendererOptions.composition);
-
-      if (!filterDefine.particle) {
-        throw new Error(`particle filter ${filter.name} not implement`);
-      }
-      particleDefine = filterDefine.particle;
-      Object.keys(particleDefine.uniforms ?? {}).forEach(uName => {
-        const getter = particleDefine.uniforms?.[uName];
-
-        if (uniformValues[uName]) {
-          throw new Error('conflict uniform name:' + uName);
-        }
-        uniformValues[uName] = getter?.toUniform(vertexKeyFrameMeta);
-      });
-      Object.keys(particleDefine.uniformValues ?? {}).forEach(uName => {
-        const val = particleDefine.uniformValues?.[uName];
-
-        if (uniformValues[uName]) {
-          throw new Error('conflict uniform name:' + uName);
-        }
-        uniformValues[uName] = val;
-      });
     }
     if (colorOverLifetime?.color) {
       marcos.push(['COLOR_OVER_LIFETIME', true]);
@@ -323,9 +294,9 @@ export class ParticleMesh implements ParticleMeshData {
       ['FRAG_MAX_KEY_FRAME_COUNT', fragmentKeyFrameMeta.max],
     );
 
-    const fragment = filter ? particleFrag.replace(/#pragma\s+FILTER_FRAG/, particleDefine!.fragment) : particleFrag;
+    const fragment = particleFrag;
     const originalVertex = `#define LOOKUP_TEXTURE_CURVE ${vertex_lookup_texture}\n${particleVert}`;
-    const vertex = filter ? originalVertex.replace(/#pragma\s+FILTER_VERT/, particleDefine!.vertex || 'void filterMain(float t){}\n') : originalVertex;
+    const vertex = originalVertex;
 
     const shader = {
       fragment: createShaderWithMarcos(marcos, fragment, ShaderType.fragment, level),
@@ -337,9 +308,9 @@ export class ParticleMesh implements ParticleMeshData {
       name: `particle#${name}`,
     };
 
-    if (filter) {
-      shader.cacheId += filter.name;
-    }
+    // if (filter) {
+    //   shader.cacheId += filter.name;
+    // }
 
     const mtlOptions: MaterialProps = {
       shader,
@@ -355,7 +326,7 @@ export class ParticleMesh implements ParticleMeshData {
     uniformValues.uTexOffset = new Float32Array(diffuse ? [1 / diffuse.getWidth(), 1 / diffuse.getHeight()] : [0, 0]);
     uniformValues.uMaskTex = diffuse;
     uniformValues.uColorParams = new Float32Array([diffuse ? 1 : 0, +preMulAlpha, 0, +(!!occlusion && !transparentOcclusion)]);
-    uniformValues.uParams = [0, duration, 0, 0];
+    uniformValues.uParams = [0, 0, 0, 0];
     uniformValues.uAcceleration = [gravity?.[0] || 0, gravity?.[1] || 0, gravity?.[2] || 0, 0];
     // mtlOptions.uniformValues = uniformValues;
 
@@ -446,7 +417,7 @@ export class ParticleMesh implements ParticleMeshData {
     const geometry = Geometry.create(engine, generateGeometryProps(maxCount * 4, this.useSprite, `particle#${name}`));
     const mesh = Mesh.create(engine, {
       name: `MParticle_${name}`,
-      priority: listIndex,
+      // priority: listIndex,
       material,
       geometry,
     });
@@ -462,18 +433,20 @@ export class ParticleMesh implements ParticleMeshData {
     this.orbitalVelOverLifetime = orbitalVelOverLifetime;
     this.gravityModifier = gravityModifier;
     this.maxCount = maxCount;
-    this.duration = duration;
+    // this.duration = duration;
     this.textureOffsets = textureFlip ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+    this.time = 0;
   }
+  // get time () {
+  //   // const value = this.mesh.material.getVector4('uParams')!;
 
-  get time () {
-    const value = this.mesh.material.getVector4('uParams')!;
-
-    return value.x;
-  }
-  set time (v: number) {
-    this.mesh.material.setVector4('uParams', new Vector4(+v, this.duration, 0, 0));
-  }
+  //   // return value.x;
+  //   return this._time;
+  // }
+  // set time (value: number) {
+  //   this._time = value;
+  //   // this.mesh.material.setVector4('uParams', new Vector4(+v, this.duration, 0, 0));
+  // }
 
   getPointColor (index: number) {
     const data = this.geometry.getAttributeData('aRot')!;
@@ -552,7 +525,7 @@ export class ParticleMesh implements ParticleMeshData {
     }
   }
 
-  setPoint (point: Point, index: number) {
+  setPoint (index: number, point: Point) {
     const maxCount = this.maxCount;
 
     if (index < maxCount) {
@@ -743,21 +716,21 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     marcos.push(['USE_SPRITE', true]);
     shaderCacheId |= 1 << 2;
   }
-  let filter: FilterShaderDefine | undefined = undefined;
+  // let filter: FilterShaderDefine | undefined = undefined;
 
-  if (props.filter && (props.filter as any).name !== FILTER_NAME_NONE) {
-    marcos.push(['USE_FILTER', true]);
-    shaderCacheId |= 1 << 3;
-    const f = createFilterShaders(props.filter).find(f => f.isParticle);
+  // if (props.filter && (props.filter as any).name !== FILTER_NAME_NONE) {
+  //   marcos.push(['USE_FILTER', true]);
+  //   shaderCacheId |= 1 << 3;
+  //   const f = createFilterShaders(props.filter).find(f => f.isParticle);
 
-    if (!f) {
-      throw Error(`particle filter ${props.filter.name} not implement`);
-    }
-    filter = f;
-    f.uniforms?.forEach(val => getKeyFrameMetaByRawValue(vertexKeyFrameMeta, val));
+  //   if (!f) {
+  //     throw Error(`particle filter ${props.filter.name} not implement`);
+  //   }
+  //   filter = f;
+  //   f.uniforms?.forEach(val => getKeyFrameMetaByRawValue(vertexKeyFrameMeta, val));
 
-    // filter = processFilter(props.filter, fragmentKeyFrameMeta, vertexKeyFrameMeta, options);
-  }
+  //   // filter = processFilter(props.filter, fragmentKeyFrameMeta, vertexKeyFrameMeta, options);
+  // }
   const colorOverLifetime = props.colorOverLifetime;
 
   if (colorOverLifetime && colorOverLifetime.color) {
@@ -879,11 +852,11 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     name: `particle#${item.name}`,
   };
 
-  if (filter) {
-    shader.fragment = shader.fragment.replace(/#pragma\s+FILTER_FRAG/, filter.fragment ?? '');
-    shader.vertex = shader.vertex.replace(/#pragma\s+FILTER_VERT/, filter.vertex || 'void filterMain(float t){}\n');
-    shader.cacheId += '+' + props.filter?.name;
-  }
+  // if (filter) {
+  //   shader.fragment = shader.fragment.replace(/#pragma\s+FILTER_FRAG/, filter.fragment ?? '');
+  //   shader.vertex = shader.vertex.replace(/#pragma\s+FILTER_VERT/, filter.vertex || 'void filterMain(float t){}\n');
+  //   shader.cacheId += '+' + props.filter?.name;
+  // }
   marcos.push(
     ['VERT_CURVE_VALUE_COUNT', vertexKeyFrameMeta.index],
     ['FRAG_CURVE_VALUE_COUNT', fragmentKeyFrameMeta.index],

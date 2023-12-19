@@ -46,6 +46,7 @@ Texture.createWithData = (engine?: Engine, data?: TextureDataType, options?: Rec
  * @param props - 材质球创建参数
  * @returns THREE 中的抽象材质球对象
  */
+// @ts-expect-error
 Material.create = (engine: Engine, props: MaterialProps) => {
   return new ThreeMaterial(engine, props);
 };
@@ -66,6 +67,7 @@ Geometry.create = (engine: Engine, options: GeometryProps) => {
  * @param props - mesh 创建参数
  * @returns THREE 中的抽象 mesh 对象
  */
+// @ts-expect-error
 Mesh.create = (engine: Engine, props: GeometryMeshProps) => {
   return new ThreeMesh(engine, props);
 };

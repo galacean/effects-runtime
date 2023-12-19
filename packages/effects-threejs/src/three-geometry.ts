@@ -42,7 +42,7 @@ export class ThreeGeometry extends Geometry {
   /**
    * geometry 绘制模式
    */
-  public readonly mode: GLenum;
+  readonly mode: GLenum;
 
   private destroyed = false;
   private attributesName: string[] = [];

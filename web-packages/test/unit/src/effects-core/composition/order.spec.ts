@@ -255,7 +255,7 @@ describe('composition order', () => {
           ],
           'items': [
             {
-              'id': '2+17',
+              'id': '19',
               'name': '欢呼粒子',
               'duration': 3,
               'type': '7',
@@ -288,7 +288,7 @@ describe('composition order', () => {
               },
             },
             {
-              'id': '2+16',
+              'id': '18',
               'name': '火星',
               'duration': 5,
               'type': '2',
@@ -484,7 +484,7 @@ describe('composition order', () => {
           ],
           'items': [
             {
-              'id': '2+17+4',
+              'id': '23',
               'name': 'face',
               'duration': 2,
               'type': '2',

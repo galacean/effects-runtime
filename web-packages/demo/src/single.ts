@@ -34,3 +34,8 @@ function createPlayer () {
 
   return player;
 }
+
+// dat gui 参数及修改
+function setDatGUI () {
+  // const gui = new dat.GUI();
+}

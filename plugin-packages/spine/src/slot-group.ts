@@ -1,5 +1,5 @@
 import { math } from '@galacean/effects';
-import type { Transform, Texture, Mesh, Engine } from '@galacean/effects';
+import type { Transform, Texture, Mesh, Engine, Renderer } from '@galacean/effects';
 import type { Slot, BlendMode } from './core';
 import { ClippingAttachment, MeshAttachment, RegionAttachment, SkeletonClipping } from './core';
 import type { NumberArrayLike } from './utils';
@@ -300,6 +300,21 @@ export class SlotGroup {
     clipper.clipEnd();
     this.wm = this.transform.getWorldMatrix();
     this.meshGroups.map(sp => sp.endUpdate(this.wm));
+  }
+
+  /**
+   * @since 2.0.0
+   * @internal
+   * @param renderer
+   */
+  render (renderer: Renderer) {
+    this.meshGroups.forEach(spineMesh => {
+      const mesh = spineMesh.mesh;
+
+      mesh.geometry.flush();
+      mesh.material.initialize();
+      renderer.drawGeometry(mesh.geometry, mesh.material);
+    });
   }
 
   /**

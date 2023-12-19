@@ -1,10 +1,13 @@
-import type * as spec from '@galacean/effects-specification';
 import { clamp, Euler, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
+import type * as spec from '@galacean/effects-specification';
+import { ItemBehaviour } from '../../components';
+import type { Deserializer, SceneData } from '../../deserializer';
+import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
 import { Transform } from '../../transform';
 
-export class CameraController {
+export class CameraController extends ItemBehaviour {
   near: number;
   far: number;
   fov: number;
@@ -19,13 +22,13 @@ export class CameraController {
     far: ValueGetter<number>,
     fov: ValueGetter<number>,
   };
-  private readonly translateOverLifetime?: {
+  private translateOverLifetime?: {
     path?: ValueGetter<spec.vec3>,
     x: ValueGetter<number>,
     y: ValueGetter<number>,
     z: ValueGetter<number>,
   };
-  private readonly rotationOverLifetime?: {
+  private rotationOverLifetime?: {
     separateAxes?: boolean,
     x: ValueGetter<number>,
     y: ValueGetter<number>,
@@ -34,45 +37,27 @@ export class CameraController {
   };
 
   constructor (
-    private readonly transform: Transform,
-    model: spec.CameraContent,
+    engine: Engine,
+    props?: spec.CameraContent,
   ) {
-    const { position } = transform;
-    const rotation = transform.getRotation();
-    const { near, far, fov, clipMode } = model.options;
+    super(engine);
 
-    this.clipMode = clipMode;
-    this.options = {
-      position: position.clone(),
-      rotation: rotation.clone(),
-      near: createValueGetter(near),
-      far: createValueGetter(far),
-      fov: createValueGetter(fov),
-    };
-    if (model.positionOverLifetime) {
-      const { path, linearX = 0, linearY = 0, linearZ = 0 } = model.positionOverLifetime;
-
-      this.translateOverLifetime = {
-        path: path && createValueGetter(path),
-        x: createValueGetter(linearX),
-        y: createValueGetter(linearY),
-        z: createValueGetter(linearZ),
-      };
-    }
-
-    if (model.rotationOverLifetime) {
-      const { separateAxes, x = 0, y = 0, z = 0 } = model.rotationOverLifetime;
-
-      this.rotationOverLifetime = {
-        separateAxes,
-        x: createValueGetter(x),
-        y: createValueGetter(y),
-        z: createValueGetter(z),
-      };
+    if (props) {
+      this.fromData(props);
     }
   }
 
-  update (lifetime: number) {
+  override start (): void {
+    this.options.position = this.transform.position.clone();
+    this.options.rotation = this.transform.getRotation().clone();
+  }
+
+  override update () {
+    let lifetime = this.item.lifetime;
+
+    if (lifetime < 0 || !this.item.transform.getValid()) {
+      return;
+    }
     const quat = new Quaternion();
     const position = new Vector3();
     const rotation = new Euler();
@@ -117,6 +102,55 @@ export class CameraController {
     this.transform.assignWorldTRS(position, quat);
     this.position = position;
     this.rotation = Transform.getRotation(quat, rotation);
+
+    this.updateCamera();
   }
 
+  override fromData (data: spec.CameraContent, deserializer?: Deserializer, sceneData?: SceneData): void {
+    super.fromData(data, deserializer, sceneData);
+    const { near, far, fov, clipMode } = data.options;
+
+    this.clipMode = clipMode;
+    this.options = {
+      position: new Vector3(),
+      rotation: new Euler(),
+      near: createValueGetter(near),
+      far: createValueGetter(far),
+      fov: createValueGetter(fov),
+    };
+    if (data.positionOverLifetime) {
+      const { path, linearX = 0, linearY = 0, linearZ = 0 } = data.positionOverLifetime;
+
+      this.translateOverLifetime = {
+        path: path && createValueGetter(path),
+        x: createValueGetter(linearX),
+        y: createValueGetter(linearY),
+        z: createValueGetter(linearZ),
+      };
+    }
+
+    if (data.rotationOverLifetime) {
+      const { separateAxes, x = 0, y = 0, z = 0 } = data.rotationOverLifetime;
+
+      this.rotationOverLifetime = {
+        separateAxes,
+        x: createValueGetter(x),
+        y: createValueGetter(y),
+        z: createValueGetter(z),
+      };
+    }
+  }
+
+  private updateCamera () {
+    if (this.item.composition) {
+      const camera = this.item.composition.camera;
+
+      camera.near = this.near;
+      camera.far = this.far;
+      camera.fov = this.fov;
+      camera.clipMode = this.clipMode;
+      camera.position = this.position;
+      camera.rotation = this.rotation;
+    }
+  }
 }

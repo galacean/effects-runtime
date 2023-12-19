@@ -363,7 +363,7 @@ export class Camera {
   /**
    * 更新相机相关的矩阵，获取矩阵前会自动调用
    */
-  public updateMatrix () {
+  updateMatrix () {
     if (this.dirty) {
       const { fov, aspect, near, far, clipMode, position } = this.options;
 

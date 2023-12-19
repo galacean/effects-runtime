@@ -94,7 +94,10 @@ export class PluginSystem {
     if (!CTRL) {
       throw new Error(`plugin ${name} no registered constructor`);
     }
-    const item = new CTRL(props, composition);
+    const engine = composition.getEngine();
+    const item = new CTRL(engine, props, composition);
+
+    item.composition = composition;
 
     if (!(item instanceof VFXItem)) {
       throw new Error(`plugin ${name} invalid constructor type`);

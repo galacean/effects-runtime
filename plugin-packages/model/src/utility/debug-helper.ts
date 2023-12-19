@@ -1,8 +1,8 @@
 import type { Player } from '@galacean/effects';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import type { PMesh } from '../runtime/mesh';
 import { VFX_ITEM_TYPE_3D } from '../plugin/const';
 import { PObjectType } from '../runtime/common';
+import { ModelMeshComponent } from '../plugin/model-item';
 
 type WebGLContext = WebGL2RenderingContext | WebGLRenderingContext;
 const HookSuffix = '_Native';
@@ -99,10 +99,10 @@ export function getPMeshList (player: Player) {
 
   composition?.items.forEach(item => {
     if (item.type === VFX_ITEM_TYPE_3D) {
-      const item3D = item as ModelVFXItem;
+      const meshComponent = item.getComponent(ModelMeshComponent);
 
-      if (item3D.content && item3D.content.type === PObjectType.mesh) {
-        meshList.push(item3D.content as PMesh);
+      if (meshComponent?.content.type === PObjectType.mesh) {
+        meshList.push(meshComponent.content);
       }
     }
   });

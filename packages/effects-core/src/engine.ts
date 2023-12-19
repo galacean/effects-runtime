@@ -1,23 +1,31 @@
 import { LOG_TYPE } from './config';
+import { glContext } from './gl';
 import type { Material } from './material';
-import type { Texture } from './texture';
-import { type Geometry, type Mesh, type RenderPass } from './render';
+import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
+import { Texture, TextureSourceType } from './texture';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
-import type { ShaderLibrary, GPUCapability, Renderer } from './render';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的销毁
  */
 export class Engine implements Disposable {
   renderer: Renderer;
+  emptyTexture: Texture;
+  transparentTexture: Texture;
+  gpuCapability: GPUCapability;
+
   protected destroyed = false;
   protected textures: Texture[] = [];
   protected materials: Material[] = [];
   protected geometries: Geometry[] = [];
   protected meshes: Mesh[] = [];
   protected renderPasses: RenderPass[] = [];
-  gpuCapability: GPUCapability;
+
+  constructor () {
+    this.createDefaultTexture();
+  }
+
   /**
    * 创建 Engine 对象。
    */
@@ -99,6 +107,43 @@ export class Engine implements Disposable {
 
   getShaderLibrary (): ShaderLibrary {
     return this.renderer.getShaderLibrary() as ShaderLibrary;
+  }
+
+  private createDefaultTexture () {
+    const sourceOpts = {
+      type: glContext.UNSIGNED_BYTE,
+      format: glContext.RGBA,
+      internalFormat: glContext.RGBA,
+      wrapS: glContext.MIRRORED_REPEAT,
+      wrapT: glContext.MIRRORED_REPEAT,
+      minFilter: glContext.NEAREST,
+      magFilter: glContext.NEAREST,
+    };
+
+    this.emptyTexture = Texture.create(
+      this,
+      {
+        data: {
+          width: 1,
+          height: 1,
+          data: new Uint8Array([255, 255, 255, 255]),
+        },
+        sourceType: TextureSourceType.data,
+        ...sourceOpts,
+      },
+    );
+    this.transparentTexture = Texture.create(
+      this,
+      {
+        data: {
+          width: 1,
+          height: 1,
+          data: new Uint8Array([0, 0, 0, 0]),
+        },
+        sourceType: TextureSourceType.data,
+        ...sourceOpts,
+      }
+    );
   }
 
   /**

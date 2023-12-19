@@ -28,7 +28,7 @@ import { imageDataFromGradient } from '../../utils';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 
-export type TrailMeshConstructor = {
+export type TrailMeshProps = {
   maxTrailCount: number,
   pointCountPerTrail: number,
   colorOverLifetime?: Array<GradientStop>,
@@ -37,7 +37,7 @@ export type TrailMeshConstructor = {
   blending: number,
   widthOverTrail: ValueGetter<number>,
   colorOverTrail?: Array<GradientStop>,
-  order: number,
+  // order: number,
   matrix?: Matrix4,
   opacityOverLifetime: ValueGetter<number>,
   occlusion: boolean,
@@ -50,7 +50,7 @@ export type TrailMeshConstructor = {
   name: string,
 };
 
-type TrailPointOptions = {
+export type TrailPointOptions = {
   lifetime: number,
   color: number[],
   size: number,
@@ -73,10 +73,9 @@ export class TrailMesh {
   private pointStart: Vector3[] = [];
   private trailCursors: Uint16Array;
 
-  // TODO: engine 挪到第一个参数
   constructor (
-    props: TrailMeshConstructor,
-    engine: Engine
+    engine: Engine,
+    props: TrailMeshProps,
   ) {
     const {
       colorOverLifetime,
@@ -88,7 +87,7 @@ export class TrailMesh {
       occlusion,
       blending,
       maskMode,
-      order,
+      // order,
       textureMap = [0, 0, 1, 1],
       texture,
       transparentOcclusion,
@@ -216,7 +215,7 @@ export class TrailMesh {
         name: `MTrail_${name}`,
         material,
         geometry: Geometry.create(engine, geometryOptions),
-        priority: order,
+        // priority: order,
       }
     );
     const uMaskTex = texture ?? Texture.createWithData(engine);
@@ -430,6 +429,7 @@ const tempDir = new Vector3();
 const tempDa = new Vector3();
 const tempDb = new Vector3();
 
+// TODO: prePoint 可选，point 必选，顺序有问题
 function calculateDirection (prePoint: Vector3 | undefined, point: Vector3, nextPoint?: Vector3): vec3 {
   const dir = tempDir;
 

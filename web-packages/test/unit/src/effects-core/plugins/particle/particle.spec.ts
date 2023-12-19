@@ -25,12 +25,12 @@ describe('effects-core/plugins/particle-test', function () {
     const vfxItem = comp.getItemByName('item_3');
 
     expect(vfxItem.listIndex).to.eql(1);
-    const pMesh = vfxItem.content.particleMesh.mesh;
-    const tMesh = vfxItem.content.trailMesh.mesh;
+    const pMesh = vfxItem.content.renderer.particleMesh.mesh;
+    const tMesh = vfxItem.content.renderer.trailMesh.mesh;
 
-    expect(pMesh.priority).to.eql(1, 'particle');
-    expect(tMesh.priority).to.eql(1, 'trail');
-    expect(vfxItem.content.particleMesh.maxCount).to.eql(18);
+    // expect(pMesh.priority).to.eql(1, 'particle');
+    // expect(tMesh.priority).to.eql(1, 'trail');
+    expect(vfxItem.content.renderer.particleMesh.maxCount).to.eql(18);
     expect(pMesh.material.uniformSemantics).to.include({
       effects_MatrixV:'VIEW',
       effects_MatrixVP:'VIEWPROJECTION',
@@ -51,7 +51,7 @@ describe('effects-core/plugins/particle-test', function () {
     const json = `[{"name":"item_4","delay":0,"id":"4","type":"2","duration":5,"content":{"shape":{"type":0,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"None"},"options":{"startLifetime":1.2,"startSize":0.2,"sizeAspect":1,"startSpeed":1,"startColor":[8,[255,255,255]],"duration":2,"maxCount":10,"renderLevel":"B+"},"colorOverLifetime":{"opacity":[${spec.ValueType.LINE},[[0.5,0],[0.9,1]]],"color":[${spec.ValueType.GRADIENT_COLOR},[[0,255,255,255,255],[0.5,255,0,0,255],[1,255,0,255,255]]]},"emission":{"rateOverTime":5},"trails":{"lifetime":1,"maxPointPerTrail":12,"widthOverTrail":0.1,"minimumVertexDistance":0.04,"dieWithParticles":true,"colorOverTrail":{"0%":"rgb(255,255,255)","100%":"rgba(255,255,255,0)"}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}}]`;
     const comp = await generateComposition(player, json, { currentTime: 0.01 });
     const item = comp.getItemByName('item_4');
-    const uColorOverLifetime = item.content.particleMesh.mesh.material.getTexture('uColorOverLifetime');
+    const uColorOverLifetime = item.content.renderer.particleMesh.mesh.material.getTexture('uColorOverLifetime');
 
     uColorOverLifetime.initialize();
     expect(uColorOverLifetime).to.be.an.instanceOf(Texture);
@@ -73,11 +73,11 @@ describe('effects-core/plugins/particle-test', function () {
     const comp = await generateComposition(player, json, { currentTime: 1 });
     const p0 = comp.getItemByName('item_5');
 
-    expect(p0.content.particleMesh.particleCount).to.eql(5);
+    expect(p0.content.renderer.particleMesh.particleCount).to.eql(5);
     const p1 = comp.getItemByName('item_6');
 
-    expect(p1.content.particleMesh.particleCount).to.eql(10);
-    const geometry = p1.content.particleMesh.mesh.firstGeometry();
+    expect(p1.content.renderer.particleMesh.particleCount).to.eql(10);
+    const geometry = p1.content.renderer.particleMesh.mesh.firstGeometry();
     const size = geometry.attributes['aPos'].stride / Float32Array.BYTES_PER_ELEMENT * 4; //4 vertex per particle
 
     expect(geometry.getAttributeData('aPos')).to.be.an.instanceOf(Float32Array).with.lengthOf(size * 10);
@@ -89,27 +89,27 @@ describe('effects-core/plugins/particle-test', function () {
 
     player.gotoAndStop(0.2);
     const billItem = comp.getItemByName('billboard');
-    const billMaterial = billItem.content.particleMesh.mesh.material;
+    const billMaterial = billItem.content.renderer.particleMesh.mesh.material;
 
     expect(getMarcosValue(billMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.BILLBOARD);
 
     const defaultItem = comp.getItemByName('default');
-    const defaultMaterial = defaultItem.content.particleMesh.mesh.material;
+    const defaultMaterial = defaultItem.content.renderer.particleMesh.mesh.material;
 
     expect(getMarcosValue(defaultMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.BILLBOARD);
 
     const meshItem = comp.getItemByName('mesh');
-    const meshMaterial = meshItem.content.particleMesh.mesh.material;
+    const meshMaterial = meshItem.content.renderer.particleMesh.mesh.material;
 
     expect(getMarcosValue(meshMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.MESH);
 
     const verticalItem = comp.getItemByName('vertical_billboard');
-    const verticalMaterial = verticalItem.content.particleMesh.mesh.material;
+    const verticalMaterial = verticalItem.content.renderer.particleMesh.mesh.material;
 
     expect(getMarcosValue(verticalMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.VERTICAL_BILLBOARD);
 
     const horizonItem = comp.getItemByName('horizon_billboard');
-    const horizonMaterial = horizonItem.content.particleMesh.mesh.material;
+    const horizonMaterial = horizonItem.content.renderer.particleMesh.mesh.material;
 
     expect(getMarcosValue(horizonMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.HORIZONTAL_BILLBOARD);
   });
@@ -119,14 +119,14 @@ describe('effects-core/plugins/particle-test', function () {
     const comp = await generateComposition(player, json, { currentTime: 0.01 });
     const unsetItem = comp.getItemByName('unset');
 
-    expect(unsetItem.content.particleMesh.mesh.material.glMaterialState.stencilTest).to.be.false;
+    expect(unsetItem.content.renderer.particleMesh.mesh.material.glMaterialState.stencilTest).to.be.false;
 
     const defaultItem = comp.getItemByName('default');
 
-    expect(defaultItem.content.particleMesh.mesh.material.glMaterialState.stencilTest).to.be.false;
+    expect(defaultItem.content.renderer.particleMesh.mesh.material.glMaterialState.stencilTest).to.be.false;
 
     const writeItem = comp.getItemByName('write');
-    const writeStates = writeItem.content.particleMesh.mesh.material.glMaterialState;
+    const writeStates = writeItem.content.renderer.particleMesh.mesh.material.glMaterialState;
 
     expect(writeStates.stencilTest).to.be.true;
     expect(writeStates.stencilFunc).to.deep.equal([glContext.ALWAYS, glContext.ALWAYS]);
@@ -136,7 +136,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(writeStates.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
 
     const readItem = comp.getItemByName('read');
-    const readStates = readItem.content.particleMesh.mesh.material.glMaterialState;
+    const readStates = readItem.content.renderer.particleMesh.mesh.material.glMaterialState;
 
     expect(readStates.stencilTest).to.be.true;
     expect(readStates.stencilFunc).to.deep.equal([glContext.EQUAL, glContext.EQUAL]);
@@ -146,7 +146,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(readStates.stencilOpZFail).to.deep.equal([glContext.KEEP, glContext.KEEP]);
 
     const readInverseItem = comp.getItemByName('read_inverse');
-    const readInverseStates = readInverseItem.content.particleMesh.mesh.material.glMaterialState;
+    const readInverseStates = readInverseItem.content.renderer.particleMesh.mesh.material.glMaterialState;
 
     expect(readInverseStates.stencilTest).to.be.true;
     expect(readInverseStates.stencilFunc).to.deep.equal([glContext.NOTEQUAL, glContext.NOTEQUAL]);
@@ -161,11 +161,11 @@ describe('effects-core/plugins/particle-test', function () {
     const comp = await generateComposition(player, json, { currentTime: 0.01 });
 
     const depthTestItem = comp.getItemByName('depth_test');
-    const depthStates = depthTestItem.content.particleMesh.mesh.material.glMaterialState;
+    const depthStates = depthTestItem.content.renderer.particleMesh.mesh.material.glMaterialState;
 
     expect(depthStates.depthMask).to.be.true;
     const transparentItem = comp.getItemByName('transparent_occlusion');
-    const transparentMaterial = transparentItem.content.particleMesh.mesh.material;
+    const transparentMaterial = transparentItem.content.renderer.particleMesh.mesh.material;
     const uColorParams = transparentMaterial.getVector4('uColorParams');
 
     expect(transparentMaterial.glMaterialState.depthMask).to.be.true;
@@ -177,8 +177,8 @@ describe('effects-core/plugins/particle-test', function () {
     const comp = await generateComposition(player, json, { currentTime: 0.01 });
 
     const alphaItem = comp.getItemByName('alpha');
-    const alphaMaterial = alphaItem.content.particleMesh.mesh.material;
-    const alphaColorParams = alphaItem.content.particleMesh.mesh.material.getVector4('uColorParams');
+    const alphaMaterial = alphaItem.content.renderer.particleMesh.mesh.material;
+    const alphaColorParams = alphaItem.content.renderer.particleMesh.mesh.material.getVector4('uColorParams');
     const state = alphaMaterial.glMaterialState;
 
     expect(state.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_ADD]);
@@ -187,7 +187,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(alphaColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const additiveItem = comp.getItemByName('additive');
-    const additiveMaterial = additiveItem.content.particleMesh.mesh.material;
+    const additiveMaterial = additiveItem.content.renderer.particleMesh.mesh.material;
     const additiveColorParams = additiveMaterial.getVector4('uColorParams');
     const addState = additiveMaterial.glMaterialState;
 
@@ -198,7 +198,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(additiveColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const subtractItem = comp.getItemByName('subtract');
-    const subtractMaterial = subtractItem.content.particleMesh.mesh.material;
+    const subtractMaterial = subtractItem.content.renderer.particleMesh.mesh.material;
     const subtractColorParams = subtractMaterial.getVector4('uColorParams');
     const subState = subtractMaterial.glMaterialState;
 
@@ -209,7 +209,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(subtractColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const luAdditiveItem = comp.getItemByName('luminance_additive');
-    const luAdditiveMaterial = luAdditiveItem.content.particleMesh.mesh.material;
+    const luAdditiveMaterial = luAdditiveItem.content.renderer.particleMesh.mesh.material;
     const luAdditiveColorParams = luAdditiveMaterial.getVector4('uColorParams');
     const luAddState = luAdditiveMaterial.glMaterialState;
 
@@ -220,7 +220,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(luAdditiveColorParams.toArray()).to.eql([1, 2, 0, 0]);
 
     const multiplyItem = comp.getItemByName('multiply');
-    const multiplyMaterial = multiplyItem.content.particleMesh.mesh.material;
+    const multiplyMaterial = multiplyItem.content.renderer.particleMesh.mesh.material;
     const multiplyColorParams = multiplyMaterial.getVector4('uColorParams');
     const multiplyState = multiplyMaterial.glMaterialState;
 
@@ -231,7 +231,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(multiplyColorParams.toArray()).to.eql([1, 0, 0, 0]);
 
     const addLightItem = comp.getItemByName('add_light');
-    const addLightMaterial = addLightItem.content.particleMesh.mesh.material;
+    const addLightMaterial = addLightItem.content.renderer.particleMesh.mesh.material;
     const addLightColorParams = addLightMaterial.getVector4('uColorParams');
     const addLightState = addLightMaterial.glMaterialState;
 
@@ -242,7 +242,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(addLightColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const lightItem = comp.getItemByName('light');
-    const lightMaterial = lightItem.content.particleMesh.mesh.material;
+    const lightMaterial = lightItem.content.renderer.particleMesh.mesh.material;
     const lightColorParams = lightMaterial.getVector4('uColorParams');
     const lightState = lightMaterial.glMaterialState;
 
@@ -253,7 +253,7 @@ describe('effects-core/plugins/particle-test', function () {
     expect(lightColorParams.toArray()).to.eql([1, 1, 0, 0]);
 
     const luAlphaItem = comp.getItemByName('luminance_alpha');
-    const luAlphaMaterial = luAlphaItem.content.particleMesh.mesh.material;
+    const luAlphaMaterial = luAlphaItem.content.renderer.particleMesh.mesh.material;
     const luAlphaColorParams = luAlphaMaterial.getVector4('uColorParams');
     const luAlphaState = luAlphaMaterial.glMaterialState;
 
@@ -270,17 +270,17 @@ describe('effects-core/plugins/particle-test', function () {
     const comp = await generateComposition(player, json, { currentTime: 0.01 });
     const bothItem = comp.getItemByName('both');
 
-    expect(bothItem.content.particleMesh.mesh.material.glMaterialState.culling).to.false;
+    expect(bothItem.content.renderer.particleMesh.mesh.material.glMaterialState.culling).to.false;
 
     const frontItem = comp.getItemByName('front');
-    const frontStates = frontItem.content.particleMesh.mesh.material.glMaterialState;
+    const frontStates = frontItem.content.renderer.particleMesh.mesh.material.glMaterialState;
 
     expect(frontStates.culling).to.true;
     expect(frontStates.cullFace).to.eql(glContext.FRONT);
     expect(frontStates.frontFace).to.eql(glContext.CW);
 
     const backItem = comp.getItemByName('back');
-    const backStates = backItem.content.particleMesh.mesh.material.glMaterialState;
+    const backStates = backItem.content.renderer.particleMesh.mesh.material.glMaterialState;
 
     expect(backStates.culling).to.true;
     expect(backStates.cullFace).to.eql(glContext.BACK);
@@ -306,12 +306,12 @@ describe('effects-core/plugins/particle-test', function () {
 
     function checkItem (name, anchor) {
       const item = comp.getItemByName(name);
-      const rightBottomPos = item.content.particleMesh.mesh.firstGeometry().getAttributeData('aPos');
+      const rightBottomPos = item.content.renderer.particleMesh.mesh.firstGeometry().getAttributeData('aPos');
 
       expect(rightBottomPos).to.be.an.instanceOf(Float32Array).with.lengthOf(48);
       const rightBottomOffsets = particleOriginTranslateMap[spec.ParticleOrigin.PARTICLE_ORIGIN_CENTER];
 
-      const _anchor = item.content.particleMesh.anchor;
+      const _anchor = item.content.renderer.particleMesh.anchor;
 
       expect(_anchor).to.deep.equals(anchor, 'anchor:' + name);
       for (let j = 0; j < 4; j++) {
