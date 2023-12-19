@@ -10,7 +10,7 @@ const container = document.getElementById('J-container');
   try {
     const player = createPlayer();
 
-    const comp = await player.loadScene(json);
+    await player.loadScene(json);
   } catch (e) {
     console.error('biz', e);
   }
@@ -21,7 +21,7 @@ function createPlayer () {
     container,
     interactive: true,
     // renderFramework: 'webgl',
-    env: 'editor',
+    // env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {
       console.info('onPausedByItem', data);

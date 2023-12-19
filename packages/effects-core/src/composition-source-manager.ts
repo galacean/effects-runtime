@@ -39,7 +39,7 @@ export class CompositionSourceManager implements Disposable {
   imgUsage: Record<string, number[]>;
   textures: Texture[];
   jsonScene?: spec.JSONScene;
-  mask: number;
+  mask = 0;
   textureOptions: Record<string, any>[];
 
   constructor (
@@ -76,7 +76,6 @@ export class CompositionSourceManager implements Disposable {
     this.totalTime = totalTime ?? 0;
     this.imgUsage = imgUsage ?? {};
     this.textures = cachedTextures;
-    this.mask = 0;
     listOrder = 0;
     this.textureOptions = textureOptions;
     this.sourceContent = this.getContent(this.composition);
@@ -103,7 +102,7 @@ export class CompositionSourceManager implements Disposable {
 
   private assembleItems (composition: spec.Composition) {
     const items: any[] = [];
-    let mask = this.mask;
+    let mask = this.mask++;
 
     if (isNaN(mask)) {
       mask = 0;
@@ -131,13 +130,7 @@ export class CompositionSourceManager implements Disposable {
             renderContent.renderer = this.changeTex(renderContent.renderer);
 
             if (!renderContent.renderer.mask) {
-              const maskMode = renderContent.renderer.maskMode;
-
-              if (maskMode === spec.MaskMode.MASK) {
-                renderContent.renderer.mask = ++mask;
-              } else if (maskMode === spec.MaskMode.OBSCURED || maskMode === spec.MaskMode.REVERSE_OBSCURED) {
-                renderContent.renderer.mask = mask;
-              }
+              this.processMask(renderContent.renderer, this.mask);
             }
 
             const split = renderContent.splits && !renderContent.textureSheetAnimation && renderContent.splits[0];
@@ -185,18 +178,21 @@ export class CompositionSourceManager implements Disposable {
 
           // 处理预合成的渲染顺序
           if (option.type === spec.ItemType.composition) {
+            const maskRef = ++this.mask;
             const refId = (item.content as spec.CompositionContent).options.refId;
 
             if (!this.refCompositions.get(refId)) {
               throw new Error('Invalid Ref Composition id: ' + refId);
             }
+            const ref = this.getContent(this.refCompositions.get(refId)!);
+
             if (!this.refCompositionProps.has(refId)) {
-              this.refCompositionProps.set(refId, this.getContent(this.refCompositions.get(refId)!) as unknown as VFXItemProps);
+              this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
             }
-            const ref = this.refCompositionProps.get(refId)!;
 
             ref.items.forEach((item: Record<string, any>) => {
               item.listIndex = listOrder++;
+              this.processMask(item.content, maskRef);
             });
             option.items = ref.items;
 
@@ -236,6 +232,19 @@ export class CompositionSourceManager implements Disposable {
         imageUsage[texId]++;
 
         return tex;
+      }
+    }
+  }
+
+  /**
+   * 处理蒙版和遮挡关系写入 stencil 的 ref 值
+   */
+  private processMask (renderer: Record<string, number>, maskRef: number) {
+    if (!renderer.mask) {
+      const maskMode: spec.MaskMode = renderer.maskMode;
+
+      if (maskMode !== spec.MaskMode.NONE) {
+        renderer.mask = maskRef;
       }
     }
   }
