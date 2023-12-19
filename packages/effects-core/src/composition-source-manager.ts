@@ -76,7 +76,6 @@ export class CompositionSourceManager implements Disposable {
     this.totalTime = totalTime ?? 0;
     this.imgUsage = imgUsage ?? {};
     this.textures = cachedTextures;
-    this.mask = 0;
     listOrder = 0;
     this.textureOptions = textureOptions;
     this.sourceContent = this.getContent(this.composition);
@@ -179,7 +178,7 @@ export class CompositionSourceManager implements Disposable {
 
           // 处理预合成的渲染顺序
           if (option.type === spec.ItemType.composition) {
-            const maskRef = ++ this.mask;
+            const maskRef = ++this.mask;
             const refId = (item.content as spec.CompositionContent).options.refId;
 
             if (!this.refCompositions.get(refId)) {
