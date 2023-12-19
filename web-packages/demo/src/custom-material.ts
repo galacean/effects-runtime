@@ -1,6 +1,7 @@
 import type { SceneData, Composition, VFXItem, SpriteComponent } from '@galacean/effects';
-import { DataType, Deserializer, EffectComponent, Player } from '@galacean/effects';
+import { DataType, Deserializer, EffectComponent, Player, glContext } from '@galacean/effects';
 import { compatibleCalculateItem } from './common/utils';
+import trail from './assets/shaders/Trail.fs.glsl';
 
 const vert = `precision highp float;
 attribute vec3 aPos;
@@ -210,6 +211,10 @@ const json = {
       webp: 'https://mdn.alipayobjects.com/mars/afts/img/A*8ZhTRa_BlToAAAAAAAAAAAAADlB4AQ/original',
       renderLevel: 'B+',
     },
+    {
+      url: '../src/assets/textures/Trail.png',
+      renderLevel: 'B+',
+    },
   ],
   spines: [],
   version: '3.0',
@@ -228,7 +233,21 @@ const json = {
         { id: '0' },
         { id: '1' },
       ],
-      camera: { fov: 60, far: 20, near: 0.1, clipMode: 0, position: [0, 0, 8], rotation: [0, 0, 0] },
+      camera: { fov: 60, far: 1000, near: 0.3, clipMode: 0, position: [0, 0, 8], rotation: [0, 0, 0] },
+      globalVolume:{
+        usePostProcessing: true,
+        useHDR: true,
+        // Bloom
+        useBloom: 1.0,
+        threshold: 1.0,
+        bloomIntensity: 1.0,
+        // ColorAdjustments
+        brightness: 1,
+        saturation: 1,
+        contrast: 1,
+        // ToneMapping
+        useToneMapping: 1, // 1: true, 0: false
+      },
     },
   ],
   items: [
@@ -251,14 +270,14 @@ const json = {
     {
       id: '02',
       name: 'sprite_5',
-      duration: 100,
+      duration: 1000,
       type: 'ECS',
       dataType: 0,
       visible: true,
       endBehavior: 0,
       delay: 0,
       renderLevel: 'B+',
-      transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+      transform: { position: [-30, 30, -200], rotation: [90, -150, 0], scale: [0.3, 0.3, 0.3] },
       components: [{
         id: '11',
       }],
@@ -289,6 +308,9 @@ const json = {
       },
       vector3s: {
       },
+      textures:{
+        _MainTex:{ id:1 },
+      },
     },
   ],
   shaders: [
@@ -296,13 +318,16 @@ const json = {
       id: '31',
       dataType: 3,
       vertex: vert,
-      fragment: sinFrag,
+      fragment: trail,
     },
   ],
   requires: [],
   compositionId: '4',
   bins: [],
-  textures: [{ source: 0, flipY: true }],
+  textures: [
+    { source: 0, flipY: true },
+    { source: 1, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+  ],
 };
 const sceneData: SceneData = { effectsObjects: {} };
 

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import type { Composition } from '@galacean/effects';
 import { Player, POST_PROCESS_SETTINGS, setConfig, defaultGlobalVolume } from '@galacean/effects';
 import { InspireList } from './common/inspire-list';
 
@@ -28,7 +29,6 @@ const postProcessSettings = {
 
 (async () => {
   setConfig(POST_PROCESS_SETTINGS, postProcessSettings);
-  setDatGUI();
   player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
@@ -54,6 +54,8 @@ async function handlePlay (url) {
     const scene = await player.loadScene(json);
 
     void player.play(scene, { speed });
+    setDatGUI(scene);
+
   } catch (e) {
     console.error('biz', e);
   }
@@ -64,28 +66,30 @@ function handlePause () {
 }
 
 // dat gui 参数及修改
-function setDatGUI () {
+function setDatGUI (composition: Composition) {
   const gui = new dat.GUI();
   const ParticleFolder = gui.addFolder('Particle');
   const BloomFolder = gui.addFolder('Bloom');
   const ToneMappingFlolder = gui.addFolder('ToneMapping');
   const ColorAdjustmentsFolder = gui.addFolder('ColorAdjustments');
 
+  const globalVolume = composition.renderFrame.globalVolume;
+
   ParticleFolder.addColor(postProcessSettings, 'color');
   ParticleFolder.add(postProcessSettings, 'intensity', -10, 10).step(0.1);
   ParticleFolder.open();
 
-  BloomFolder.add(postProcessSettings, 'useBloom', 0, 1).step(1);
-  BloomFolder.add(postProcessSettings, 'threshold', 0, 40).step(0.1);
-  BloomFolder.add(postProcessSettings, 'bloomIntensity', 0, 10);
+  BloomFolder.add(globalVolume, 'useBloom', 0, 1).step(1);
+  BloomFolder.add(globalVolume, 'threshold', 0, 40).step(0.1);
+  BloomFolder.add(globalVolume, 'bloomIntensity', 0, 10);
   BloomFolder.open();
 
-  ColorAdjustmentsFolder.add(postProcessSettings, 'brightness', -5, 5).step(0.1);
-  ColorAdjustmentsFolder.add(postProcessSettings, 'saturation', -100, 100);
-  ColorAdjustmentsFolder.add(postProcessSettings, 'contrast', -100, 100);
+  ColorAdjustmentsFolder.add(globalVolume, 'brightness', -5, 5).step(0.1);
+  ColorAdjustmentsFolder.add(globalVolume, 'saturation', 0, 2);
+  ColorAdjustmentsFolder.add(globalVolume, 'contrast', 0, 2);
   ColorAdjustmentsFolder.open();
 
-  ToneMappingFlolder.add(postProcessSettings, 'useToneMapping', 0, 1).step(1);
+  ToneMappingFlolder.add(globalVolume, 'useToneMapping', 0, 1).step(1);
   ToneMappingFlolder.open();
 }
 

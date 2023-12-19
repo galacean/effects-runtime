@@ -495,7 +495,7 @@ export class GLMaterial extends Material {
       vector3s: {},
       matrices: {},
       matrice3s: {},
-      // textures: {},
+      textures: {},
       floatArrays: {},
       vector4Arrays: {},
       matrixArrays: {},
@@ -513,9 +513,10 @@ export class GLMaterial extends Material {
     for (name in data.floatArrays) {
       this.setFloats(name, propertiesData.floatArrays[name]);
     }
-    // for (name in materialData.textures) {
-    //   this.setTexture(name, propertiesData.textures[name]);
-    // }
+    for (name in data.textures) {
+      // TODO 纹理通过 id 加入场景数据
+      this.setTexture(name, sceneData.effectsObjects['Texture' + propertiesData.textures[name].id] as unknown as Texture);
+    }
     // for (name in materialData.vector2s) {
     //   this.setVector2(name, Vector propertiesData.vector2s[name]);
     // }

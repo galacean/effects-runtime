@@ -26,7 +26,7 @@ setMaxSpriteMeshItemCount(8);
  * @returns THREE 中的抽象图片对象
  */
 Texture.create = (engine: Engine, options: TextureSourceOptions) => {
-  return new ThreeTexture(undefined, options) as Texture;
+  return new ThreeTexture(engine, undefined, options) as Texture;
 };
 
 /**
@@ -36,8 +36,8 @@ Texture.create = (engine: Engine, options: TextureSourceOptions) => {
  * @param options - 图片创建参数
  * @returns THREE 中的抽象图片对象
  */
-Texture.createWithData = (engine?: Engine, data?: TextureDataType, options?: Record<string, any>) => {
-  return new ThreeTexture(data, options as TextureSourceOptions) as Texture;
+Texture.createWithData = (engine: Engine, data?: TextureDataType, options?: Record<string, any>) => {
+  return new ThreeTexture(engine, data, options as TextureSourceOptions) as Texture;
 };
 
 /**

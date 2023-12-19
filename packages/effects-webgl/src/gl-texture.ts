@@ -56,7 +56,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   private initialized = false;
 
   constructor (engine: Engine, source: TextureSourceOptions) {
-    super();
+    super(engine);
     const opts = this.assembleOptions(source);
     const { sourceType, sourceFrom, name = '' } = opts;
 

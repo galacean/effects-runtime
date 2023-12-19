@@ -1,6 +1,6 @@
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { type Ray } from '@galacean/effects-math/es/core';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
@@ -95,6 +95,13 @@ export class CompositionComponent extends ItemBehaviour {
       if (jsonScene.components) {
         for (const componentData of jsonScene.components) {
           sceneData.effectsObjects[componentData.id] = componentData;
+        }
+      }
+
+      if (jsonScene.textures) {
+        for (let i = 0;i < jsonScene.textures.length;i++) {
+          // TODO 纹理增加 id 加入 effectsObjects Map
+          sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
         }
       }
 
