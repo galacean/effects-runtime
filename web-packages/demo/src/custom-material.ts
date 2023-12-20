@@ -267,6 +267,18 @@ const json = {
       url: 'https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original',
       'renderLevel': 'B+',
     },
+    {
+      url: '../src/assets/textures/Trail2.png',
+      renderLevel: 'B+',
+    },
+    {
+      url: '../src/assets/textures/Trail3.png',
+      renderLevel: 'B+',
+    },
+    {
+      url: '../src/assets/textures/Trail5.png',
+      renderLevel: 'B+',
+    },
   ],
   spines: [],
   version: '3.0',
@@ -285,6 +297,8 @@ const json = {
         { id: '0' },
         { id: '1' },
         { id: '2' },
+        { id: '3' },
+        { id: '4' },
       ],
       camera: { fov: 60, far: 1000, near: 0.3, clipMode: 0, position: [0, 0, 8], rotation: [0, 0, 0] },
       globalVolume:{
@@ -354,7 +368,7 @@ const json = {
     },
     {
       id: '02',
-      name: 'sprite_5',
+      name: 'Trail1',
       duration: 1000,
       type: 'ECS',
       dataType: 0,
@@ -365,6 +379,36 @@ const json = {
       transform: { position: [-30, 30, -200], rotation: [90, -150, 0], scale: [0.3, 0.3, 0.3] },
       components: [{
         id: '11',
+      }],
+    },
+    {
+      id: '04',
+      name: 'Trail2',
+      duration: 1000,
+      type: 'ECS',
+      dataType: 0,
+      visible: true,
+      endBehavior: 0,
+      delay: 0,
+      renderLevel: 'B+',
+      transform: { position: [20, 30, -200], rotation: [90, -150, 0], scale: [0.3, 0.3, 0.3] },
+      components: [{
+        id: '14',
+      }],
+    },
+    {
+      id: '05',
+      name: 'Trail3',
+      duration: 1000,
+      type: 'ECS',
+      dataType: 0,
+      visible: true,
+      endBehavior: 0,
+      delay: 0,
+      renderLevel: 'B+',
+      transform: { position: [-80, 30, -200], rotation: [90, -150, 0], scale: [0.3, 0.3, 0.3] },
+      components: [{
+        id: '15',
       }],
     },
   ],
@@ -378,6 +422,18 @@ const json = {
     },
     particleSystemProps,
     spriteProps,
+    {
+      id: '14',
+      dataType: 1,
+      item: { id: '04' },
+      materials: [{ id: '22' }],
+    },
+    {
+      id: '15',
+      dataType: 1,
+      item: { id: '05' },
+      materials: [{ id: '23' }],
+    },
   ],
   materials: [
     {
@@ -385,20 +441,47 @@ const json = {
       dataType: 2,
       shader: { id: '31' },
       floats: {
-        _MaxIntensity: 5.5,
-        _WaveZoom: 12,
-      },
-      ints: {
       },
       vector4s: {
-        _StartColor:[1.0, 0.2, 0.2, 1.0],
+        _StartColor:[1.0, 0.0, 0.0, 1.0],
         _EndColor:[1.0, 1.0, 0.2, 1.0],
-      },
-      vector3s: {
       },
       textures:{
         _MainTex:{ id:1 },
-        _MainTex2:{ id:2 },
+        _Tex2:{ id:2 },
+        _Tex3:{ id:4 },
+      },
+    },
+    {
+      id: '22',
+      dataType: 2,
+      shader: { id: '31' },
+      floats: {
+      },
+      vector4s: {
+        _StartColor:[0.0, 1.0, 0.0, 1.0],
+        _EndColor:[0.0, 0.2, 0.8, 1.0],
+      },
+      textures:{
+        _MainTex:{ id:1 },
+        _Tex2:{ id:5 },
+        _Tex3:{ id:4 },
+      },
+    },
+    {
+      id: '23',
+      dataType: 2,
+      shader: { id: '31' },
+      floats: {
+      },
+      vector4s: {
+        _StartColor:[1.0, 0.0, 0.0, 1.0],
+        _EndColor:[0.0, 0.0, 0.0, 1.0],
+      },
+      textures:{
+        _MainTex:{ id: 1 },
+        _Tex2:{ id: 6 },
+        _Tex3:{ id: 4 },
       },
     },
   ],
@@ -418,6 +501,9 @@ const json = {
     { source: 1, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
     { source: 2, flipY: false, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
     { source: 3, flipY: true },
+    { source: 4, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { source: 5, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { source: 6, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
   ],
 };
 const sceneData: SceneData = { effectsObjects: {} };
@@ -456,7 +542,6 @@ let gui;
 
 function parseMaterialProperties (shaderProperties: string, gui: any) {
 
-  //@ts-expect-error
   json.materials[0].floats = {};
   const lines = shaderProperties.split('\n');
 
@@ -527,7 +612,7 @@ function parseMaterialProperties (shaderProperties: string, gui: any) {
 
     composition = comp;
     deserializer = new Deserializer(composition.getEngine());
-    testVfxItem = composition.getItemByName('sprite_5') as VFXItem<any>;
+    testVfxItem = composition.getItemByName('Trail1') as VFXItem<any>;
     // testVfxItem.fromData(deserializer, json.vfxItems['1'], ecsSceneJsonDemo);
     // composition.content.items.push(testVfxItem);
     // composition.content.rootItems.push(testVfxItem);
