@@ -194,24 +194,20 @@ export class SpriteMesh {
     const uSizeStart = start + 4;
     const uQuatStart = start + 8;
     const uColorStart = start + 12;
-
-    if (!selfData.visible && !init) {
-      mainDataArray[uSizeStart + 2] = -1;
-
-      return;
-    }
-
-    const uColor = selfData.color || [mainDataArray[uColorStart], mainDataArray[uColorStart + 1], mainDataArray[uColorStart + 2], mainDataArray[uColorStart + 3]];
-
-    // if (selfData.startSize) {
-    //   selfData.transform.scaleBy(1 / selfData.startSize[0], 1 / selfData.startSize[1], 1);
-    // }
-
     const tempPos = new Vector3();
     const tempQuat = new Quaternion();
     const tempScale = new Vector3();
+    const uColor = selfData.color || [mainDataArray[uColorStart], mainDataArray[uColorStart + 1], mainDataArray[uColorStart + 2], mainDataArray[uColorStart + 3]];
 
-    selfData.transform.assignWorldTRS(tempPos, tempQuat, tempScale);
+    if (selfData.visible) {
+      selfData.transform.assignWorldTRS(tempPos, tempQuat, tempScale);
+    } else {
+      if (!init) {
+        mainDataArray[uSizeStart + 2] = -1;
+
+        return;
+      }
+    }
 
     const uPos = [...tempPos.toArray(), 0];
     const uSize = [...tempScale.toArray(), 0];

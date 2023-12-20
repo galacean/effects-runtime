@@ -68,11 +68,11 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   get height () {
-    return this.glRenderer?.height || 0;
+    return this.glRenderer?.height ?? 0;
   }
 
   get width () {
-    return this.glRenderer?.width || 0;
+    return this.glRenderer?.width ?? 0;
   }
 
   override renderRenderFrame (renderFrame: RenderFrame) {
@@ -108,9 +108,9 @@ export class GLRenderer extends Renderer implements Disposable {
     for (const pass of passes) {
       const delegate = pass.delegate;
 
-      delegate.willBeginRenderPass && delegate?.willBeginRenderPass(pass, this.renderingData);
+      delegate.willBeginRenderPass?.(pass, this.renderingData);
       this.renderRenderPass(pass);
-      delegate.didEndRenderPass && delegate?.didEndRenderPass(pass, this.renderingData);
+      delegate.didEndRenderPass?.(pass, this.renderingData);
     }
 
     for (const pass of passes) {
@@ -146,9 +146,9 @@ export class GLRenderer extends Renderer implements Disposable {
       }
       mesh.material.initialize();
       mesh.geometry.initialize();
-      delegate.willRenderMesh && delegate.willRenderMesh(mesh, this.renderingData);
+      delegate.willRenderMesh?.(mesh, this.renderingData);
       mesh.render(this);
-      delegate.didiRenderMesh && delegate.didiRenderMesh(mesh, this.renderingData);
+      delegate.didRenderMesh?.(mesh, this.renderingData);
     }
   }
 

@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^13.2.1",
-    "@commitlint/config-conventional": "^13.2.0",
+    "@commitlint/config-conventional": "^18.4.3",
     "@manypkg/get-packages": "^2.2.0",
     "@rollup/plugin-commonjs": "^21.1.0",
     "@rollup/plugin-inject": "^5.0.5",
@@ -61,10 +61,10 @@
     "rollup-plugin-typescript2": "^0.34.1",
     "simple-git": "^3.19.1",
     "tslib": "^2.6.2",
-    "typedoc": "^0.25.3",
+    "typedoc": "^0.25.4",
     "typescript": "^5.2.2",
     "vite": "^4.4.9",
     "vite-plugin-externals": "^0.6.2",
-    "vite-tsconfig-paths": "^4.2.0"
+    "vite-tsconfig-paths": "^4.2.2"
   }
 }
