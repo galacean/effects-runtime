@@ -48,7 +48,7 @@ export enum WireframeGeometryType {
 }
 
 export function destroyWireframeMesh (mesh: Mesh) {
-  //mesh.geometry?.destroy();
+  mesh.geometry?.dispose();
   mesh.dispose({ material: { textures: DestroyOptions.keep }, geometries: DestroyOptions.keep });
 }
 
@@ -244,8 +244,13 @@ export class SharedGeometry extends GLGeometry {
     super.flush();
   }
 
-  destroy () {
+  override dispose () {
+    // from source geometry
+    this.buffers = {};
+    this.bufferProps = {};
     super.dispose();
+    // @ts-expect-error
+    this.source = null;
   }
 }
 

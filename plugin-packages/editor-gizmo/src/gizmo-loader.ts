@@ -157,11 +157,21 @@ export class EditorGizmoPlugin extends AbstractPlugin {
         }
       }
     }
-    const wireframeMesh = gizmoVFXItem.wireframeMesh;
 
-    if (wireframeMesh && !wireframeMesh.isDestroyed) {
-      destroyWireframeMesh(wireframeMesh);
-      this.getEditorRenderPass(composition.renderFrame).removeMesh(wireframeMesh);
+    if (gizmoVFXItem.wireframeMeshes.length > 0) {
+      gizmoVFXItem.wireframeMeshes.forEach(mesh => {
+        if (!mesh.isDestroyed) {
+          destroyWireframeMesh(mesh);
+          this.getEditorRenderPass(composition.renderFrame).removeMesh(mesh);
+        }
+      });
+    } else {
+      const wireframeMesh = gizmoVFXItem.wireframeMesh;
+
+      if (wireframeMesh && !wireframeMesh.isDestroyed) {
+        destroyWireframeMesh(wireframeMesh);
+        this.getEditorRenderPass(composition.renderFrame).removeMesh(wireframeMesh);
+      }
     }
 
     const arr: GizmoVFXItem[] = composition.loaderData.gizmoItems;
