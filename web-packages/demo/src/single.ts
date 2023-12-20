@@ -3,7 +3,7 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.preComp.url;
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*3mT3SJ4KGKYAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
