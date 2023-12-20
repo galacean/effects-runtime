@@ -122,7 +122,7 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
   materialOptions.shader = {
     vertex: createGizmoShader(newMarcos, vertex, ShaderType.vertex, level),
     fragment: createGizmoShader(newMarcos, fragment, ShaderType.fragment, level),
-    shared: false,
+    shared: true,
     name: (mesh.name ?? 'unamedmesh') + '_wireframe',
     glslVersion: engine.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
   };
