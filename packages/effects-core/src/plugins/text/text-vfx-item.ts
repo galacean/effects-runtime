@@ -24,7 +24,7 @@ export class TextVFXItem extends VFXItem<TextItem> {
 
   override onLifetimeBegin (composition: Composition, content: TextItem) {
     content.active = true;
-    this.content?.mesh!.setItems([this.content]);
+    this.content?.mesh?.setItems([this.content]);
     this.content.updateTexture();
   }
 
