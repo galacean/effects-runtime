@@ -12,7 +12,7 @@ import {
 
 export { SpineVFXItem } from './spine-vfx-item';
 
-export * from './core';
+export * from '@esotericsoftware/spine-core';
 export * from './spine-loader';
 export {
   createSkeletonData,

@@ -6,8 +6,8 @@ import type {
   VFXItem,
   RenderFrame, SceneLoadOptions,
 } from '@galacean/effects';
-import type { SkeletonData } from './core';
-import { Skeleton, TextureAtlas } from './core';
+import type { SkeletonData, Texture } from '@esotericsoftware/spine-core';
+import { Skeleton, TextureAtlas } from '@esotericsoftware/spine-core';
 import type { SlotGroup } from './slot-group';
 import type { SpineMesh } from './spine-mesh';
 import type { SpineContent } from './spine-vfx-item';
@@ -151,7 +151,7 @@ export class SpineLoader extends AbstractPlugin {
         if (!tex) {
           throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
         }
-        page.setTexture(tex);
+        page.texture = tex as unknown as Texture;
 
       }
     });

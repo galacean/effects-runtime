@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 importers:
 
   .:
@@ -223,6 +219,10 @@ importers:
         version: link:../../packages/effects
 
   plugin-packages/spine:
+    dependencies:
+      '@esotericsoftware/spine-core':
+        specifier: ~4.2.33
+        version: 4.2.33
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
@@ -1845,6 +1845,10 @@ packages:
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dev: true
 
+  /@esotericsoftware/spine-core@4.2.33:
+    resolution: {integrity: sha512-p6/2t1/7jVdBpbup35tIsLaWiLYfBq3Rngue86GBU8lXYxCKWT5P9uFXhJF1aKcm8CyileCcoGOAeA+aLht7nw==}
+    dev: false
+
   /@galacean/effects-math@1.0.0:
     resolution: {integrity: sha512-fHkFk/UdJ0B/MXRKoXsytYQFmAphtsEWYj7NS2HFixkFMSoKFKu9donBKWnxyeYStcPKxroYWBOWpfMJQzNjlg==}
     engines: {node: '>=10.0.0'}
@@ -2653,7 +2657,7 @@ packages:
       normalize-path: 3.0.0
       readdirp: 3.6.0
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /clean-stack@2.2.0:
@@ -3365,8 +3369,8 @@ packages:
     resolution: {integrity: sha1-FQStJSMVjKpA20onh8sBQRmU6k8=, tarball: https://registry.npmmirror.com/fs.realpath/download/fs.realpath-1.0.0.tgz}
     dev: true
 
-  /fsevents@2.3.2:
-    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+  /fsevents@2.3.3:
+    resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
     requiresBuild: true
@@ -4777,7 +4781,7 @@ packages:
     engines: {node: '>=10.0.0'}
     hasBin: true
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /rollup@3.29.1:
@@ -4785,7 +4789,7 @@ packages:
     engines: {node: '>=14.18.0', npm: '>=8.0.0'}
     hasBin: true
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /rrweb-cssom@0.6.0:
@@ -5465,7 +5469,7 @@ packages:
       rollup: 3.29.1
       terser: 5.19.1
     optionalDependencies:
-      fsevents: 2.3.2
+      fsevents: 2.3.3
     dev: true
 
   /vscode-oniguruma@1.7.0:
@@ -5641,3 +5645,7 @@ packages:
     resolution: {integrity: sha1-ApTrPe4FAo0x7hpfosVWpqrxChs=, tarball: https://registry.npmmirror.com/yocto-queue/download/yocto-queue-0.1.0.tgz}
     engines: {node: '>=10'}
     dev: true
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
