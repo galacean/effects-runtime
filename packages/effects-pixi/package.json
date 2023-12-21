@@ -1,0 +1,60 @@
+{
+  "name": "@galacean/effects-threejs",
+  "version": "1.1.1",
+  "description": "Galacean Effects runtime threejs plugin for the web",
+  "module": "./dist/index.mjs",
+  "main": "./dist/index.js",
+  "brower": "./dist/index.min.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "prebuild": "pnpm clean",
+    "build": "pnpm build:declaration && pnpm build:module",
+    "build:module": "rollup -c",
+    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
+    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "prepublishOnly": "pnpm build"
+  },
+  "contributors": [
+    {
+      "name": "燃然"
+    },
+    {
+      "name": "飂兮"
+    },
+    {
+      "name": "十弦"
+    },
+    {
+      "name": "云垣"
+    },
+    {
+      "name": "茂安"
+    },
+    {
+      "name": "意绮"
+    }
+  ],
+  "author": "Ant Group CO., Ltd.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "dependencies": {
+    "@galacean/effects-core": "workspace:*"
+  },
+  "devDependencies": {
+    "three": "^0.149.0",
+    "@types/three": "^0.149.0"
+  }
+}

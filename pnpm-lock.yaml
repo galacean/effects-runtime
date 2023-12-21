@@ -157,6 +157,19 @@ importers:
         specifier: workspace:*
         version: link:../effects
 
+  packages/effects-pixi:
+    dependencies:
+      '@galacean/effects-core':
+        specifier: workspace:*
+        version: link:../effects-core
+    devDependencies:
+      '@types/three':
+        specifier: ^0.149.0
+        version: 0.149.0
+      three:
+        specifier: ^0.149.0
+        version: 0.149.0
+
   packages/effects-threejs:
     dependencies:
       '@galacean/effects-core':
