@@ -25,7 +25,7 @@ export class Ticker {
   }
   setFPS (fps: number) {
     this.targetFPS = clamp(fps, 1, 120);
-    this.interval = Math.floor(1000 / fps) - 1;
+    this.interval = Math.floor(1000 / fps) - 2;
   }
 
   /**
