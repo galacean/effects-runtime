@@ -78,7 +78,8 @@ export class CompositionComponent extends ItemBehaviour {
       const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], components: EffectsObjectData[] };
 
       if (jsonScene.items) {
-        for (const vfxItemData of jsonScene.items) {
+        for (const vfxItemData of this.item.props.items) {
+          //@ts-expect-error
           sceneData.effectsObjects[vfxItemData.id] = vfxItemData;
         }
       }
@@ -121,17 +122,16 @@ export class CompositionComponent extends ItemBehaviour {
             throw new Error(`引用的Id: ${refId} 的预合成不存在`);
           }
           // endBehaviour 类型需优化
-          props.endBehavior = itemData.endBehavior;
           props.content = itemData.content;
           item = new VFXItem(this.engine, {
             ...props,
-            id: props.id,
-            name: props.name,
-            delay: props.delay,
-            duration: props.duration,
-            endBehavior: props.endBehavior,
-            parentId: props.parentId,
-            transform: props.transform,
+            id: itemData.id,
+            name: itemData.name,
+            delay: itemData.delay,
+            duration: itemData.duration,
+            endBehavior: itemData.endBehavior,
+            parentId: itemData.parentId,
+            transform: itemData.transform,
           });
           // TODO 编辑器数据传入 composition type 后移除
           item.type = spec.ItemType.composition;
@@ -199,6 +199,7 @@ export class CompositionComponent extends ItemBehaviour {
             }
           }
         }
+        item.parent = this.item;
         item.transform.parentTransform = this.transform;
 
         if (VFXItem.isExtraCamera(item)) {
