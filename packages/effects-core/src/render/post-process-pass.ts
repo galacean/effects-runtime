@@ -10,7 +10,6 @@ import { RenderTargetHandle, TextureStoreAction } from './render-pass';
 import { RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
 import type { ShaderWithSource } from './shader';
-import { POST_PROCESS_SETTINGS, getConfig } from '../config';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
 
 // Bloom 阈值 Pass

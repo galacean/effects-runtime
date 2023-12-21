@@ -18,10 +18,10 @@ void main() {
   vec3 color = gradientColor + texColor;
 
   float mask = texture2D(_MainTex, uv0).r + texture2D(_Tex3, uv0).r;
-  mask = min(mask,1.0);
+  mask = min(mask, 1.0);
 
   float trailEnd = 0.8;
-  if(uv.x>trailEnd){
+  if(uv.x > trailEnd) {
     mask = (1.0 - (uv.x - trailEnd) / (1.0 - trailEnd)) * mask;
   }
 

@@ -1,4 +1,4 @@
-import { type Ray } from '@galacean/effects-math/es/core';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
@@ -100,7 +100,7 @@ export class CompositionComponent extends ItemBehaviour {
       }
 
       if (jsonScene.textures) {
-        for (let i = 0;i < jsonScene.textures.length;i++) {
+        for (let i = 0; i < jsonScene.textures.length; i++) {
           // TODO 纹理增加 id 加入 effectsObjects Map
           sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
         }
