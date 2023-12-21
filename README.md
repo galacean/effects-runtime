@@ -12,6 +12,11 @@ It can load and render cool animation effects, The APIs provided by effects-core
 
 ![](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
 
+<h3>What you see is what you get</h3>
+<img height="320" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*BrMIQqkmbKEAAAAAAAAAAAAADvV6AQ/original">
+<img height="320" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*VHMAR6Vq_8wAAAAAAAAAAAAADvV6AQ/original">
+<img height="320" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*UwMWT4uY6jsAAAAAAAAAAAAADvV6AQ/original">
+
 [github-issues-url]: https://github.com/galacean/effects-runtime/issues
 </div>
 
