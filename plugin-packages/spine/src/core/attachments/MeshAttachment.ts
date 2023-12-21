@@ -68,9 +68,8 @@ export class MeshAttachment extends VertexAttachment implements HasTextureRegion
     let u = this.region.u, v = this.region.v, width = 0, height = 0;
 
     if (this.region instanceof TextureAtlasRegion) {
-      const region = this.region;
-      const texture = region.page.texture;
-      const textureWidth = texture ? texture.width : 0, textureHeight = texture ? texture.height : 0;
+      const region = this.region, page = region.page;
+      const textureWidth = page.width, textureHeight = page.height;
 
       switch (region.degrees) {
         case 90:

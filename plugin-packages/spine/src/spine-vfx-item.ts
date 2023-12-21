@@ -241,13 +241,20 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
       throw new Error('animationList is empty, check your spine file');
     }
     const loop = this.endBehavior === spec.ItemEndBehavior.loop;
+    const listener = this.state.tracks[0]?.listener;
 
+    if (listener) {
+      listener.end = () => {};
+    }
+    this.state.clearTracks();
+    this.skeleton.setToSetupPose();
     if (!this.animationList.includes(animation)) {
-      console.warn(`animation ${animation} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}`);
+      console.warn(`animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}`);
+
       this.state.setAnimation(0, this.animationList[0], loop);
       this.activeAnimation = [this.animationList[0]];
     } else {
-      this.state.addAnimation(0, animation, loop, 0);
+      this.state.setAnimation(0, animation, loop);
       this.activeAnimation = [animation];
     }
     if (!isNaN(speed as number)) {
@@ -260,9 +267,20 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
       throw new Error('Set animation before skeleton create');
     }
     if (!this.animationList.length) {
-      throw new Error('animationList is empty, check your spine file');
+      throw new Error('animationList is empty, please check your setting');
+    }
+    if (animationList.length === 1) {
+      this.setAnimation(animationList[0], speed);
+
+      return;
+    }
+    const listener = this.state.tracks[0]?.listener;
+
+    if (listener) {
+      listener.end = () => {};
     }
     this.state.clearTracks();
+    this.skeleton.setToSetupPose();
     for (const animation of animationList) {
       const trackEntry = this.state.addAnimation(0, animation, false);
 
