@@ -13,8 +13,8 @@ import { createMeshFromShape } from './shape';
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
 type Matrix4 = math.Matrix4;
-const { Vector2, Vector3, Matrix4, Ray, Quaternion } = math;
 
+const { Vector2, Vector3, Matrix4, Quaternion } = math;
 const constants = glContext;
 
 export class GizmoComponent extends ItemBehaviour {

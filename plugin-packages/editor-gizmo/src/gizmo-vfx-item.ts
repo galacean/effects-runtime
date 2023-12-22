@@ -1,20 +1,17 @@
-import type { Engine, GeometryDrawMode, HitTestCustomParams, Mesh, VFXItemProps } from '@galacean/effects';
-import { HitTestType, Transform, VFXItem, glContext, math, spec } from '@galacean/effects';
+import type { Engine, HitTestCustomParams, Mesh, VFXItemProps } from '@galacean/effects';
+import { HitTestType, Transform, VFXItem, math, spec } from '@galacean/effects';
 import { GizmoSubType } from './define';
 import { GizmoComponent } from './gizmo-component';
 import { computeOrthographicOffCenter } from './math-utils';
 import { intersectRayLine } from './raycast';
 import { moveToPointWidthFixDistance } from './util';
 
-const constants = glContext;
-
-type vec3 = spec.vec3;
-type vec4 = spec.vec4;
 type Ray = math.Ray;
 type TriangleLike = math.TriangleLike;
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
 type Matrix4 = math.Matrix4;
+
 const { Vector2, Vector3, Matrix4, Ray, Quaternion } = math;
 
 /**

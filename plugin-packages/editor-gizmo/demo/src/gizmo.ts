@@ -1,8 +1,12 @@
 import type { Camera } from '@galacean/effects';
-import { Player } from '@galacean/effects';
+import { Player, math } from '@galacean/effects';
 import type { GizmoVFXItem } from '@galacean/effects-plugin-editor-gizmo';
-import { primaryJSON, gizmoJSON, transformGizmoScene } from './assets';
-import { Vector2, Vector3, Matrix4, Quaternion } from '@galacean/effects-plugin-model/runtime/math';
+import { gizmoJSON, transformGizmoScene } from './assets';
+
+type Vector2 = math.Vector2;
+type Vector3 = math.Vector3;
+
+const { Vector2, Vector3, Matrix4, Quaternion } = math;
 let input: Input;
 let orbitController: OrbitController;
 
@@ -115,52 +119,48 @@ class Input {
     document.removeEventListener('wheel', this.onMouseWheel);
   }
 
-  private onPointerMove = (event: PointerEvent) =>{
+  private onPointerMove = (event: PointerEvent) => {
     this.mousePosition.x = event.clientX;
     this.mousePosition.y = event.clientY;
     this.mouseMovement.x = event.movementX;
     this.mouseMovement.y = event.movementY;
   };
 
-  private onPointerDown = (event: PointerEvent)=>{
+  private onPointerDown = (event: PointerEvent) => {
     switch (event.button) {
       case 0:
         this.keyStatusMap[KeyCode.Mouse0] = KeyStatus.KeyDown;
 
         break;
       case 1:
-
         this.keyStatusMap[KeyCode.Mouse1] = KeyStatus.KeyDown;
 
         break;
       case 2:
-
         this.keyStatusMap[KeyCode.Mouse2] = KeyStatus.KeyDown;
 
         break;
     }
   };
 
-  private onPointerUp = (event: PointerEvent) =>{
+  private onPointerUp = (event: PointerEvent) => {
     switch (event.button) {
       case 0:
         this.keyStatusMap[KeyCode.Mouse0] = KeyStatus.KeyUp;
 
         break;
       case 1:
-
         this.keyStatusMap[KeyCode.Mouse1] = KeyStatus.KeyUp;
 
         break;
       case 2:
-
         this.keyStatusMap[KeyCode.Mouse2] = KeyStatus.KeyUp;
 
         break;
     }
   };
 
-  private onMouseWheel = (event: WheelEvent) =>{
+  private onMouseWheel = (event: WheelEvent) => {
     this.mouseWheelDeltaY = event.deltaY;
   };
 }
@@ -170,6 +170,7 @@ class OrbitController {
   camera: Camera;
   deltaTheta: number;
   deltaPhi: number;
+
   constructor (camera: Camera) {
     this.targetPosition = new Vector3(0, 0, 0);
     this.camera = camera;
@@ -318,5 +319,4 @@ export enum KeyCode {
   Num7,
   Num8,
   Num9,
-
 }
