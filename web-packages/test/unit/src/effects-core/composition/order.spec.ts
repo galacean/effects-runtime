@@ -789,7 +789,7 @@ describe('composition order', () => {
     const comp = await player.loadScene(json);
 
     await player.play(comp);
-    const face = comp.content.getItemByName('face')[0];
+    const face = comp.getItemByName('face');
 
     expect(face.listIndex).to.be.eql(3);
   });

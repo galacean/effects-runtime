@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Player, ParticleVFXItem, ParticleSystem, PathSegments } from '@galacean/effects';
+import { Player, VFXItem, ParticleSystem, PathSegments } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;

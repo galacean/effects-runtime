@@ -40,7 +40,7 @@ describe('calculate item transform', () => {
     expect(sanitizeNumbers(item.transform.position.toArray())).to.deep.equals([0, 1, 0], 'local 1');
 
     comp.gotoAndStop(comp.time + 1);
-    expect(item.transform.parentTransform).to.eql(comp.content.transform, 'item transform t2');
+    expect(item.transform.parentTransform).to.eql(comp.rootItem.transform, 'item transform t2');
     expect(sanitizeNumbers(item.transform.getWorldPosition().toArray())).to.deep.equals([0, 1, 0], 'world 0');
     expect(sanitizeNumbers(item.transform.position.toArray())).to.deep.equals([0, 1, 0], 'local 0');
   });
