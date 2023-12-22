@@ -25,7 +25,7 @@ export class Ticker {
   }
   setFPS (fps: number) {
     this.targetFPS = clamp(fps, 1, 120);
-    this.interval = Math.floor(1000 / fps) - 1;
+    this.interval = Math.floor(1000 / fps) - 2;
   }
 
   /**
@@ -93,7 +93,6 @@ export class Ticker {
     const deltaTime = startTime - this.lastTime;
 
     if (deltaTime >= this.interval) {
-
       this.lastTime = startTime;
 
       if (this.resetTickers) {
@@ -107,7 +106,6 @@ export class Ticker {
         tick(deltaTime);
       }
     }
-
   }
 
   /**

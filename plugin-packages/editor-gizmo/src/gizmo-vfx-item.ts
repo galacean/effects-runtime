@@ -96,6 +96,7 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
   hitBounding?: { key: string, position: Vector3 };
   mat = Matrix4.fromIdentity();
   wireframeMesh?: Mesh;
+  wireframeMeshes: Mesh[] = [];
   spriteMesh?: SpriteMesh;
 
   private engine: Engine;
@@ -197,8 +198,11 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
 
     if (ms) {
       this.targetItem = item;
+      this.wireframeMeshes = [];
       ms.forEach(m => {
         const mesh = this.wireframeMesh = createModeWireframe(engine, m, this.color);
+
+        this.wireframeMeshes.push(mesh);
 
         meshesToAdd.push(mesh);
       });
@@ -326,10 +330,12 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
     } else if (this.subType === GizmoSubType.modelWireframe) { // 模型线框
       if (this.wireframeMesh && this.targetItem) {
         const meshes = this.targetItem.content.mriMeshs as Mesh[];
-        const wireframeMesh = this.wireframeMesh;
+        const wireframeMeshes = this.wireframeMeshes;
 
         if (meshes?.length > 0) {
-          meshes.forEach(mesh => updateWireframeMesh(mesh, wireframeMesh, WireframeGeometryType.triangle));
+          for (let i = 0;i < meshes.length;i++) {
+            updateWireframeMesh(meshes[i], wireframeMeshes[i], WireframeGeometryType.triangle);
+          }
         }
       }
     } else { // 几何体模型

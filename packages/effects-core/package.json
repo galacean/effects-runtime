@@ -51,6 +51,6 @@
   },
   "dependencies": {
     "@galacean/effects-specification": "1.0.0",
-    "@galacean/effects-math": "1.0.0"
+    "@galacean/effects-math": "1.0.1"
   }
 }
