@@ -26,8 +26,8 @@ export class Ticker {
   setFPS (fps: number) {
     this.targetFPS = clamp(fps, 1, 120);
     // 注意：-2 的原因是保证帧率稳定
-    // interval 在 60 的时候设成 15 累计误差会很大，设成14就稳定了
-    // requestanimationFrame 在不同的刷新率下时间间隔不一样，120hz 的误差在 8 以内，60hz 的误差在 16
+    // interval 在 fps 为 60 的时候设成 15 累计误差会很大，设成 14 较稳定
+    // requestanimationFrame 在不同的刷新率下时间间隔不一样，120hz 的误差在 8 以内，60hz 的误差在 16 以内
     this.interval = Math.floor(1000 / fps) - 2;
   }
 
