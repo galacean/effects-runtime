@@ -10,7 +10,6 @@ import { RenderTargetHandle, TextureStoreAction } from './render-pass';
 import { RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
 import type { ShaderWithSource } from './shader';
-import { POST_PROCESS_SETTINGS, getConfig } from '../config';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
 
 // Bloom 阈值 Pass
@@ -67,11 +66,8 @@ export class BloomThresholdPass extends RenderPass {
       stencilAction: TextureStoreAction.clear,
     });
     this.screenMesh.material.setTexture('_MainTex', this.mainTexture);
-    let threshold = renderer.renderingData.currentFrame.globalVolume.threshold;
+    const threshold = renderer.renderingData.currentFrame.globalVolume.threshold;
 
-    if (__DEBUG__) {
-      threshold = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['threshold'];
-    }
     this.screenMesh.material.setFloat('_Threshold', threshold);
     renderer.renderMeshes([this.screenMesh]);
   }
@@ -266,21 +262,7 @@ export class ToneMappingPass extends RenderPass {
       depthAction: TextureStoreAction.clear,
       stencilAction: TextureStoreAction.clear,
     });
-    let { bloomIntensity, brightness, saturation, contrast, useBloom, useToneMapping } = renderer.renderingData.currentFrame.globalVolume;
-
-    if (__DEBUG__) {
-      bloomIntensity = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['bloomIntensity'];
-      brightness = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['brightness'];
-      saturation = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['saturation'];
-      contrast = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['contrast'];
-      useBloom = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['useBloom'];
-      useToneMapping = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['useToneMapping'];
-
-      // 曲线转换
-      brightness = Math.pow(2, brightness);
-      saturation = saturation * 0.01 + 1; // (-100, 100) -> (0, 2)
-      contrast = contrast * 0.01 + 1; // (-100, 100) -> (0, 2)
-    }
+    const { bloomIntensity, brightness, saturation, contrast, useBloom, useToneMapping } = renderer.renderingData.currentFrame.globalVolume;
 
     this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
     this.screenMesh.material.setFloat('_Brightness', brightness);

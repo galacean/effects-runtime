@@ -486,7 +486,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.name = name;
     this.start = delay ? delay : this.start;
     // TODO spec 数据需要区分 scale 和 size
-    if (transform && transform.scale) {
+    if (transform && transform.scale && data.type !== 'ECS') {
       transform.scale[2] = transform.scale[0];
     }
 

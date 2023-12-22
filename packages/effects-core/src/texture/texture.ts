@@ -2,13 +2,14 @@ import { TextureSourceType } from './types';
 import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType } from './types';
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
+import { EffectsObject } from '../effects-object';
 
 let seed = 1;
 
 /**
  * Texture 抽象类
  */
-export abstract class Texture {
+export abstract class Texture extends EffectsObject {
   /**
    * Texture 名称
    */
@@ -16,7 +17,6 @@ export abstract class Texture {
   sourceFrom?: TextureFactorySourceFrom;
   sourceType?: TextureSourceType;
   source: TextureSourceOptions;
-  engine: Engine;
 
   /**
    * Texture 高度
@@ -50,7 +50,8 @@ export abstract class Texture {
     options?: Record<string, any>,
   ) => Texture;
 
-  constructor () {
+  constructor (engine: Engine) {
+    super(engine);
     this.id = 'Tex' + seed++;
   }
 
@@ -102,7 +103,7 @@ export abstract class Texture {
   /**
    * 销毁当前资源。
    */
-  abstract dispose (): void;
+  abstract override dispose (): void;
 
   /**
    * 初始化 GPU 资源

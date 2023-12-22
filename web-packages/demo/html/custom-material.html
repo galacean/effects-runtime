@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>single - Mars demo</title>
+  <title>Custom Material - demo</title>
   <style>
     html,
     body,
@@ -15,8 +14,8 @@
     }
 
     .container {
-      width: 375px;
-      height: 812px;
+      width: 720px;
+      height: 720px;
       background-color: rgba(0, 0, 0, 255);
     }
 
@@ -53,17 +52,15 @@
       Input your material properties here...
     </textarea>
     <textarea class="shader-input" id="vs-input" name="story" rows="5" cols="33">
-        Input your vs shader here...
+      Input your vs shader here...
     </textarea>
     <textarea class="shader-input" id="fs-input" name="story" rows="5" cols="33">
-        Input your fs shader here...
+      Input your fs shader here...
     </textarea>
   </div>
 
-  <button id="compile-button" class="button">Compile</button>
+  <button id="J-compileBtn" class="button">Compile</button>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
   <script type="module" src="../src/custom-material.ts"></script>
-
 </body>
-
 </html>

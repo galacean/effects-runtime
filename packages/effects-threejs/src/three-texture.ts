@@ -1,4 +1,5 @@
 import type {
+  Engine,
   Texture2DSourceOptionsCompressed,
   Texture2DSourceOptionsData,
   Texture2DSourceOptionsFrameBuffer,
@@ -54,8 +55,8 @@ export class ThreeTexture extends Texture {
    * @param data - 纹理数据
    * @param options - 纹理选项
    */
-  constructor (data?: TextureDataType, options: TextureSourceOptions = {}) {
-    super();
+  constructor (engine: Engine, data?: TextureDataType, options: TextureSourceOptions = {}) {
+    super(engine);
     if (data) {
       const { width = 1, height = 1 } = data;
 
