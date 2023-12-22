@@ -4,7 +4,7 @@ import { Player, SpriteComponent, TimelineComponent, LinearValue, CurveValue } f
 import { generateSceneJSON } from './utils';
 
 const Vector3 = math.Vector3;
-const Quaternion = math.Vector3;
+const Quaternion = math.Quaternion;
 
 const { expect } = chai;
 
