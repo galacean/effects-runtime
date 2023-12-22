@@ -1,9 +1,5 @@
 lockfileVersion: '6.0'
 
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
-
 importers:
 
   .:
@@ -145,8 +141,8 @@ importers:
   packages/effects-core:
     dependencies:
       '@galacean/effects-math':
-        specifier: 1.0.0
-        version: 1.0.0
+        specifier: 1.0.1
+        version: 1.0.1
       '@galacean/effects-specification':
         specifier: 1.0.0
         version: 1.0.0
@@ -1845,8 +1841,8 @@ packages:
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dev: true
 
-  /@galacean/effects-math@1.0.0:
-    resolution: {integrity: sha512-fHkFk/UdJ0B/MXRKoXsytYQFmAphtsEWYj7NS2HFixkFMSoKFKu9donBKWnxyeYStcPKxroYWBOWpfMJQzNjlg==}
+  /@galacean/effects-math@1.0.1:
+    resolution: {integrity: sha512-nrx2KcZ6e9upbUWqC49U0+53EE776WBU+f8rYfXy5anZhDN8LY3m5avxPmpWh3ERGOOEsrv6Aq1hKV3P0Z+prQ==}
     engines: {node: '>=10.0.0'}
     dev: false
 
@@ -5641,3 +5637,7 @@ packages:
     resolution: {integrity: sha1-ApTrPe4FAo0x7hpfosVWpqrxChs=, tarball: https://registry.npmmirror.com/yocto-queue/download/yocto-queue-0.1.0.tgz}
     engines: {node: '>=10'}
     dev: true
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
