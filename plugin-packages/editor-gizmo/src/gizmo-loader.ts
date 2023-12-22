@@ -1,7 +1,7 @@
 import type { Composition, Mesh, RenderFrame, Scene, Texture, VFXItem } from '@galacean/effects';
 import { AbstractPlugin, RenderPass, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, TextureLoadAction, removeItem } from '@galacean/effects';
 import { GizmoVFXItem } from './gizmo-vfx-item';
-import { GizmoSubType, GizmoVFXItemType } from './define';
+import { GizmoVFXItemType } from './define';
 import { destroyWireframeMesh } from './wireframe';
 import { axisIconMap } from './constants';
 import { createImage, createTexture } from './util';
@@ -15,9 +15,7 @@ const iconImages: Map<string, HTMLImageElement> = new Map();
 export const iconTextures: Map<string, Texture> = new Map();
 
 export class EditorGizmoPlugin extends AbstractPlugin {
-
   meshToAdd: Mesh[] = [];
-
   meshToRemove: Mesh[] = [];
   override order = 1001;
 
@@ -38,7 +36,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
   override onCompositionConstructed (composition: Composition, scene: Scene) {
     const engine = composition.renderer.engine;
 
-    iconImages.forEach((image, name)=>{
+    iconImages.forEach((image, name) => {
       iconTextures.set(name, createTexture(engine, image));
     });
     iconImages.clear();

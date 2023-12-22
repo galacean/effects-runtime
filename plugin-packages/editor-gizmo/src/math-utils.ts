@@ -2,6 +2,7 @@ import { math } from '@galacean/effects';
 
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
+
 const { Matrix4, Vector2 } = math;
 
 export function distanceOfPointAndLine (point: Vector2, line: [Vector2, Vector2]): { distance: number, isInLine: boolean } {
