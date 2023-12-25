@@ -1,12 +1,24 @@
-`effects-runtime` 遵循 [Semantic Versioning 2.0.0](http://semver.org/lang/zh-CN/) 语义化版本规范。
+`effects-runtime` follows [Semantic Versioning 2.0.0](http://semver.org/).
 
-#### 发布周期
-
-- 修订版本号：每周末会进行日常 bugfix 更新（如果有紧急的 bugfix，则任何时候都可发布）。
-- 次版本号：每月发布一个带有新特性的向下兼容的版本。
-- 主版本号：含有破坏性更新和新特性，不在发布周期内。
+#### Release Schedule
+- **Weekly release**: patch version at the end of every week for routine bugfix (anytime for urgent bugfix).
+- **Monthly release**: minor version at the end of every month for new features.
+- Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.1.3
+
+`2023-12-22`
+
+- Fix: Fix the frame drop problem caused by ticker. [#65](https://github.com/galacean/effects-runtime/pull/65) @wumaolinmaoan
+- Fix: Texture retrieval and action setting issue for Spine. [#63](https://github.com/galacean/effects-runtime/pull/63) @RGCHN
+- Fix: Multi-layer mask penetration issue. [#60](https://github.com/galacean/effects-runtime/pull/60) @RGCHN
+- Fix: Gizmo rendering problem. [#58](https://github.com/galacean/effects-runtime/pull/58) @liuxi150
+- Fix: Render sprite incorrectly when config reusable caused by diff algorithm. [#45](https://github.com/galacean/effects-runtime/pull/45) @RGCHN
+- Fix: Typo and refactor code style. [#24](https://github.com/galacean/effects-runtime/pull/24) @zheeeng
+- Perf: Add JSON.stringify to show load error message. [#42](https://github.com/galacean/effects-runtime/pull/42) @RGCHN
+- Chore: Update math library version. [#61](https://github.com/galacean/effects-runtime/pull/61) @liuxi150
+
 ## 1.1.2
 
 `2023-12-19`
