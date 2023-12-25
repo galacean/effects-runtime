@@ -150,7 +150,9 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === spec.ItemType.skybox ||
           itemData.type === spec.ItemType.light ||
           itemData.type === 'camera' ||
-          itemData.type === spec.ItemType.tree) {
+          itemData.type === spec.ItemType.tree ||
+          itemData.type === spec.ItemType.interact ||
+          itemData.type === spec.ItemType.camera) {
           item = deserializer.deserialize({ id: itemData.id }, sceneData);
           item.composition = this.item.composition;
         } else {
@@ -168,29 +170,6 @@ export class CompositionComponent extends ItemBehaviour {
               item.components.push(textItem);
               item.rendererComponents.push(textItem);
               item._content = textItem;
-
-              break;
-            }
-            case spec.ItemType.camera: {
-              // 添加相机组件
-              const controller = new CameraController(this.engine);
-
-              controller.fromData(itemData.content as spec.CameraContent);
-              controller.item = item;
-              item.components.push(controller);
-              item.itemBehaviours.push(controller);
-              item._content = controller;
-
-              break;
-            }
-            case spec.ItemType.interact: {
-              // 添加交互组件
-              const ineteractItem = item.addComponent(InteractComponent);
-
-              // TODO 改造完成后统一加入到场景反序列化
-              ineteractItem.fromData(itemData.content);
-
-              item._content = ineteractItem;
 
               break;
             }
