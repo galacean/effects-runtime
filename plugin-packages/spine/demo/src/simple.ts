@@ -4,7 +4,7 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-orientation-transformer';
 import type { SpineVFXItem } from '@galacean/effects-plugin-spine';
-import { SpineComponent } from '../../src/spine-component';
+import { SpineComponent } from '@galacean/effects-plugin-spine';
 import { direct, premultiply } from './files';
 
 const startEle = document.getElementById('J-start');
