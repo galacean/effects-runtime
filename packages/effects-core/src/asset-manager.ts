@@ -1,5 +1,7 @@
+import { JSONScene } from '@galacean/effects-specification';
 import type * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
+import { raw } from 'concurrently/dist/src/defaults';
 import { LOG_TYPE } from './config';
 import { glContext } from './gl';
 import type { PrecompileOptions } from './plugin-system';
@@ -7,8 +9,9 @@ import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo } from './downloader';
 import { passRenderLevel } from './pass-render-level';
+import { isScene } from './scene';
 import type { Disposable } from './utils';
-import { isObject, isString } from './utils';
+import { isObject, isString, noop } from './utils';
 import type { ImageSource, Scene } from './scene';
 import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
@@ -155,8 +158,8 @@ export class AssetManager implements Disposable {
    * @param options - 扩展参数
    * @returns
    */
-  async loadScene (url: string | JSONValue, renderer?: Renderer, options?: { env: string }): Promise<Scene> {
-    let rawJSON: JSONValue;
+  async loadScene (url: string | JSONValue | Scene, renderer?: Renderer, options?: SceneLoadOptions): Promise<Scene> {
+    let rawJSON: JSONValue | Scene;
     const timeLabel = `Load asset: ${isString(url) ? url : this.id}`;
     const startTime = performance.now();
     const timeInfos: string[] = [];
@@ -164,6 +167,9 @@ export class AssetManager implements Disposable {
     const asyncShaderCompile = gpuInstance?.detail?.asyncShaderCompile ?? false;
     let loadTimer: number;
     let cancelLoading = false;
+
+    this.updateOptions(options);
+
     const waitPromise = new Promise<Scene>((resolve, reject) =>
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
@@ -191,31 +197,54 @@ export class AssetManager implements Disposable {
         this.baseUrl = url;
         rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(url as string));
       }
-      // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
-      const { usedImages, jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON));
-      const { bins = [], images, compositions, fonts } = jsonScene;
-      const [loadedBins, loadedImages] = await Promise.all([
-        hookTimeInfo('processBins', () => this.processBins(bins)),
-        hookTimeInfo('processImages', () => this.processImages(images, usedImages, gpuInstance?.detail.compressedTexture ?? 0)),
-        hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, renderer, options)),
-      ]);
-
-      await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
-
-      const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
-
-      const scene = {
-        jsonScene,
-        images: loadedImages,
-        textureOptions: loadedTextures,
-        bins: loadedBins,
+      let scene: Scene = {
+        bins: [], images: [],
+        // @ts-expect-error
+        jsonScene: undefined,
+        textureOptions: [],
         storage: {},
         pluginSystem: this.pluginSystem,
         renderLevel: this.options.renderLevel,
         totalTime: 0,
         startTime: 0,
+        // @ts-expect-error
         url,
       };
+
+      if (isScene(rawJSON)) {
+        // 已经加载过的 可能需要更新数据模板
+        scene = rawJSON;
+        if (options && options.variables && Object.keys(options.variables).length !== 0) {
+
+          // @ts-expect-error
+          const { usedImages, images } = rawJSON.jsonScene;
+
+          scene.images = await hookTimeInfo('processImages', () => this.processImages(images, usedImages, gpuInstance?.detail.compressedTexture ?? 0));
+        }
+
+      } else {
+        // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
+        // @ts-expect-error
+        const { usedImages, jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON));
+        const { bins = [], images, compositions, fonts } = jsonScene;
+        const [loadedBins, loadedImages] = await Promise.all([
+          hookTimeInfo('processBins', () => this.processBins(bins)),
+          hookTimeInfo('processImages', () => this.processImages(images, usedImages, gpuInstance?.detail.compressedTexture ?? 0)),
+          hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, renderer, options)),
+        ]);
+
+        await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
+
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+
+        scene = {
+          ...scene,
+          jsonScene,
+          images: loadedImages,
+          textureOptions: loadedTextures,
+          bins: loadedBins,
+        };
+      }
 
       // 触发插件系统 pluginSystem 的回调 prepareResource
       await hookTimeInfo('processPlugins', () => this.pluginSystem.loadResources(scene, this.options));

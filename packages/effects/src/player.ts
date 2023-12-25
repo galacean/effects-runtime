@@ -427,7 +427,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.assetManager = new AssetManager(opts);
     }
 
-    if (isScene(source)) {
+    if (isScene(source) && (!options.variables || Object.keys(options.variables).length === 0)) {
       scene = source;
     } else {
       scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
