@@ -4,7 +4,7 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-orientation-transformer';
 import type { SpineVFXItem } from '@galacean/effects-plugin-spine';
-import { SpineComponent } from '../../src/spineComponent';
+import { SpineComponent } from '../../src/spine-component';
 import { direct, premultiply } from './files';
 
 const startEle = document.getElementById('J-start');
@@ -105,7 +105,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
         'name': '新建合成2',
         'duration': 10,
         'startTime': 0,
-        'endBehavior': 0,
+        'endBehavior': 5,
         'previewSize': [
           750,
           1624,
@@ -134,7 +134,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
             'type': 'spine',
             'pluginName': 'spine',
             'visible': true,
-            'endBehavior': 0,
+            'endBehavior': 5,
             'renderLevel': 'B+',
             'duration': 3,
             'content': {
