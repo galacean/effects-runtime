@@ -17,6 +17,7 @@ describe('transform methods', () => {
     const quat = new Quaternion();
     const rotation = new Euler();
 
+    r.setValid(false);
     r.assignWorldTRS(pos, quat, scale);
     expect(scale.toArray()).to.deep.equals([1, 1, 1]);
     expect(sanitizeNumbers(quat.toArray())).to.deep.equals([0, 0, 0, 1]);
