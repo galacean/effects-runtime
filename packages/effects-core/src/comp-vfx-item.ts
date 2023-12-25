@@ -227,7 +227,7 @@ export class CompositionComponent extends ItemBehaviour {
     for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
       const item = this.items[i];
 
-      if (item.lifetime >= 0 && item.lifetime <= 1 && !VFXItem.isComposition(item) && !skip(item)) {
+      if (item.lifetime >= 0 && !item.ended && !VFXItem.isComposition(item) && !skip(item)) {
         const hitParams = item.getHitTestParams(force);
 
         if (hitParams) {
