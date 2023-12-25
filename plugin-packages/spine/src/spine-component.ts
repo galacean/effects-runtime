@@ -60,11 +60,13 @@ export class SpineComponent extends RendererComponent {
 
   constructor (engine: Engine, options?: spec.SpineItem) {
     super(engine);
+
   }
 
   override fromData (options: any, deserializer?: Deserializer, sceneData?: SceneData) {
     super.fromData(options, deserializer, sceneData);
     this.options = options;
+    this.item.getHitTestParams = this.getHitTestParams.bind(this);
   }
 
   override start () {

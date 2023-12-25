@@ -7,7 +7,6 @@ import type { GizmoItemBounding } from './gizmo-vfx-item';
 import { BoundingType } from './gizmo-vfx-item';
 import { color, renderMode } from './constants';
 
-type mat4 = spec.mat4;
 type vec3 = spec.vec3;
 type Vector3 = math.Vector3;
 type TriangleLike = math.TriangleLike;

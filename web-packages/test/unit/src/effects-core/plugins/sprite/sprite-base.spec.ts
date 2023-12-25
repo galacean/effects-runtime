@@ -1,6 +1,10 @@
 // @ts-nocheck
-import { Player, LinearValue, CurveValue } from '@galacean/effects';
+import { math } from '@galacean/effects';
+import { Player, SpriteComponent, TimelineComponent, LinearValue, CurveValue } from '@galacean/effects';
 import { generateSceneJSON } from './utils';
+
+const Vector3 = math.Vector3;
+const Quaternion = math.Quaternion;
 
 const { expect } = chai;
 
@@ -41,7 +45,7 @@ describe('sprite item base options', () => {
 
     player.gotoAndPlay(0.01);
     const spriteItem = comp.getItemByName('sprite_1').getComponent(SpriteComponent);
-    const spriteColorClip = comp.getItemByName('sprite_1').getComponent(TimelineComponent).findTrack('SpriteColorTrack').findClip('SpriteColorClip');
+    const spriteColorClip = comp.getItemByName('sprite_1').getComponent(TimelineComponent).findTrack('SpriteColorTrack').findClip('SpriteColorClip').playable;
 
     const color = spriteItem.material.getVector4('_Color').toArray();
 
@@ -63,12 +67,13 @@ describe('sprite item base options', () => {
 
     player.gotoAndPlay(0.01);
 
-    const spriteItem = comp.getItemByName('item').getComponent(SpriteComponent);
-    const sizeX = spriteItem.timelineComponent.sizeXOverLifetime;
-    const sizeY = spriteItem.timelineComponent.sizeYOverLifetime;
-    const sizeZ = spriteItem.timelineComponent.sizeZOverLifetime;
+    const animationClipPlayable = comp.getItemByName('item').getComponent(TimelineComponent).findTrack('AnimationTrack').findClip('AnimationTimelineClip').playable;
 
-    expect(spriteItem.timelineComponent.sizeSeparateAxes, 'sizeSeparateAxes').to.be.true;
+    const sizeX = animationClipPlayable.sizeXOverLifetime;
+    const sizeY = animationClipPlayable.sizeYOverLifetime;
+    const sizeZ = animationClipPlayable.sizeZOverLifetime;
+
+    expect(animationClipPlayable.sizeSeparateAxes, 'sizeSeparateAxes').to.be.true;
     expect(sizeX, 'sizeXOverLifetime').to.be.an.instanceof(LinearValue);
     expect(sizeY, 'sizeYOverLifetime').to.be.an.instanceof(CurveValue);
     expect(sizeX.getValue(0), 'sizeXOverLifetime').to.eql(2);
@@ -81,7 +86,7 @@ describe('sprite item base options', () => {
     const json = '{"images":[{"url":"https://mdn.alipayobjects.com/mars/afts/img/A*pMoUS5aQU8UAAAAAAAAAAAAADlB4AQ/original","webp":"https://mdn.alipayobjects.com/mars/afts/img/A*31h5T7SiZrIAAAAAAAAAAAAADlB4AQ/original","renderLevel":"B+"}],"spines":[],"version":"1.5","shapes":[],"plugins":[],"type":"mars","compositions":[{"id":"14","name":"帧动画","duration":5,"startTime":0,"endBehavior":1,"previewSize":[750,1624],"items":[{"id":"42","name":"日历逐帧","duration":1,"type":"1","visible":true,"endBehavior":4,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"texture":0,"occlusion":false},"positionOverLifetime":{"startSpeed":0},"textureSheetAnimation":{"col":8,"row":8,"animate":true,"cycles":0,"blend":false,"animationDuration":2,"animationDelay":0,"total":59}},"transform":{"position":[-0.6295,-0.0166,0],"rotation":[0,0,0],"scale":[2.4177,2.4177,1]}}],"camera":{"fov":60,"far":20,"near":0.1,"position":[0,0,8],"rotation":[0,0,0],"clipMode":0}}],"requires":[],"compositionId":"14","bins":[],"textures":[{"source":0,"flipY":true}]}';
     const comp = await player.loadScene(JSON.parse(json));
 
-    player.gotoAndPlay(0.01);
+    player.gotoAndStop(0);
     const spriteItem = comp.getItemByName('日历逐帧').getComponent(SpriteComponent);
 
     spriteItem.update();
@@ -490,9 +495,7 @@ describe('sprite item base options', () => {
 
     player.gotoAndPlay(0.01);
 
-    const item4 = comp.getItemByID('4');
-    const item6 = comp.getItemByID('6'); // item4的直接父元素
-    const item5 = comp.getItemByID('5'); // item4的爷元素
+    const item4 = comp.getItemByName('sprite_4');
 
     expect(item4.transform.getWorldPosition().toArray()).to.eql([0, 2, 0]);
     let scale = item4.transform.getWorldScale().toArray();
@@ -728,8 +731,7 @@ describe('sprite item base options', () => {
     const comp = await player.loadScene(json);
 
     player.gotoAndPlay(5);
-    const item1 = comp.getItemByID('1');
-    const item2 = comp.getItemByID('2'); // item4的父元素
+    const item2 = comp.getItemByName('sprite_2'); // item4的父元素
     const scale = item2.transform.getWorldScale().toArray();
 
     expect(scale[0]).to.be.closeTo(2, 0.0001);

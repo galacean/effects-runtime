@@ -29,6 +29,8 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.startTime = startTime;
     this.timelineComponents = [];
+    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
+
     for (const item of this.items) {
       // 获取所有的合成元素 Timeline 组件
       const timeline = item.getComponent(TimelineComponent);
@@ -36,14 +38,11 @@ export class CompositionComponent extends ItemBehaviour {
       if (timeline) {
         this.timelineComponents.push(timeline);
         // 重播不销毁元素
-        if (this.item.endBehavior !== spec.END_BEHAVIOR_DESTROY) {
+        if (this.item.endBehavior !== spec.END_BEHAVIOR_DESTROY || this.timelineComponent.reusable) {
           timeline.reusable = true;
         }
       }
     }
-
-    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
-
   }
 
   override update (dt: number): void {
@@ -207,7 +206,7 @@ export class CompositionComponent extends ItemBehaviour {
     for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
       const item = this.items[i];
 
-      if (item.lifetime >= 0 && item.lifetime <= 1 && !VFXItem.isComposition(item) && !skip(item)) {
+      if (item.lifetime >= 0 && !item.ended && !VFXItem.isComposition(item) && !skip(item)) {
         const hitParams = item.getHitTestParams(force);
 
         if (hitParams) {

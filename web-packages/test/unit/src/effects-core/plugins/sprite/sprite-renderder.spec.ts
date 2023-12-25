@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Player, spec, glContext } from '@galacean/effects';
+import { Player, spec, SpriteComponent, glContext } from '@galacean/effects';
 import { loadSceneAndPlay } from './utils';
 
 const { expect } = chai;

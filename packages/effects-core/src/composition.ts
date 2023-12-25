@@ -235,6 +235,7 @@ export class Composition implements Disposable, LostHandler {
     this.refCompositionProps = refCompositionProps;
     const vfxItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
 
+    vfxItem.name = 'rootItem';
     // TODO 编辑器数据传入 composition type 后移除
     vfxItem.type = spec.ItemType.composition;
     vfxItem.composition = this;
@@ -260,7 +261,7 @@ export class Composition implements Disposable, LostHandler {
     this.renderLevel = renderLevel;
     this.autoRefTex = !this.keepResource && imageUsage && vfxItem.endBehavior !== spec.END_BEHAVIOR_RESTART;
     this.rootItem = vfxItem;
-    this.name = vfxItem.name;
+    this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
     this.camera = new Camera(this.name, {
