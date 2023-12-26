@@ -3,6 +3,7 @@ import { createBUI, reactive } from '@advjs/blender-ui/dist/blender-ui.umd.cjs';
 import type { Composition, VFXItem, VFXItemContent } from '@galacean/effects';
 
 export class TreeGui {
+  activeItem: VFXItem<VFXItemContent>;
   private composition: Composition;
   private guiProps: any;
 
@@ -16,9 +17,10 @@ export class TreeGui {
           onNodeExpand (nodes: any) {
             // console.log(nodes);
           },
-          onNodeActivate (node: any) {
+          onNodeActivate: (node: any) => {
+            this.activeItem = node.item;
             // eslint-disable-next-line no-console
-            console.log(node.item.name, node.item.id, node.item);
+            // console.log(node.item.name, node.item.id, node.item);
             // console.log(node);
           },
           // onNodeCollapse (nodes) {
@@ -50,14 +52,14 @@ export class TreeGui {
     const props = this.guiProps;
     const bui = createBUI({ props });
 
-    setInterval(this.updateTreeGUI, 500);
+    // setInterval(this.updateTreeGUI, 250);
   }
 
   setComposition (composition: Composition) {
     this.composition = composition;
   }
 
-  private updateTreeGUI = () => {
+  update = () => {
     if (this.composition) {
       this.guiProps.panels[0].data = [this.addTreeData(this.composition.rootItem, this.guiProps.panels[0].data[0])];
     }
