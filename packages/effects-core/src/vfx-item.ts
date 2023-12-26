@@ -524,6 +524,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     // TODO anchor 应该放在 transform data
     if (data.type === spec.ItemType.sprite) {
       const content = data.content as unknown as SpriteItemProps;
+
+      if (!content.renderer) {
+        //@ts-expect-error
+        content.renderer = {};
+      }
       const realAnchor = convertAnchor(content.renderer.anchor, content.renderer.particleOrigin);
       const startSize = this.transform.size;
 

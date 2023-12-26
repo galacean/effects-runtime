@@ -1,15 +1,15 @@
 import * as spec from '@galacean/effects-specification';
-import type { TextureSourceOptions } from './texture';
-import { Texture } from './texture';
+import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
+import type { PluginSystem } from './plugin-system';
+import type { GlobalVolume } from './render';
+import type { Scene } from './scene';
 import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
+import type { TextureSourceOptions } from './texture';
+import { Texture } from './texture';
 import type { Disposable } from './utils';
 import { isObject } from './utils';
-import type { Scene } from './scene';
-import type { PluginSystem } from './plugin-system';
-import type { Engine } from './engine';
-import type { GlobalVolume } from './render';
 import type { VFXItemProps } from './vfx-item';
 
 let listOrder = 0;
@@ -102,82 +102,43 @@ export class CompositionSourceManager implements Disposable {
 
   private assembleItems (composition: spec.Composition) {
     const items: any[] = [];
-    const mask = this.mask++;
+
+    this.mask++;
+    const componentMap: Record<string, any> = {};
+
+    //@ts-expect-error
+    for (const component of this.jsonScene.components) {
+      componentMap[component.id] = component;
+    }
 
     for (const itemDataPath of composition.items) {
       //@ts-expect-error
       const sourceItemData: VFXItemProps = this.jsonScene.items[itemDataPath.id];
-
-      if (sourceItemData.visible === false) {
-        continue;
-      }
-
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
-        const renderContent = itemProps.content;
 
-        itemProps.type = sourceItemData.type;
+        if (itemProps.type === spec.ItemType.sprite ||
+          itemProps.type === spec.ItemType.particle) {
+          for (const componentPath of itemProps.components) {
+            const componentData = componentMap[componentPath.id];
 
-        if (renderContent) {
-          if (renderContent.renderer) {
-            renderContent.renderer = this.changeTex(renderContent.renderer);
-
-            if (!renderContent.renderer.mask) {
-              this.processMask(renderContent.renderer, this.mask);
-            }
-
-            const split = renderContent.splits && !renderContent.textureSheetAnimation && renderContent.splits[0];
-
-            if (Number.isInteger(renderContent.renderer.shape)) {
-              // TODO: scene.shapes 类型问题？
-              renderContent.renderer.shape = getGeometryByShape(this.jsonScene?.shapes[renderContent.renderer.shape] as unknown as ShapeData, split);
-            } else if (renderContent.renderer.shape && isObject(renderContent.renderer.shape)) {
-              renderContent.renderer.shape = getGeometryByShape(renderContent.renderer.shape, split);
-            }
-          } else {
-            itemProps.content.renderer = { order: 0 };
+            this.preProcessItemContent(componentData);
           }
-          if (renderContent.trails) {
-            renderContent.trails = this.changeTex(renderContent.trails);
-          }
-          if (renderContent.filter) {
-            renderContent.filter = { ...renderContent.filter };
-          }
+        } else {
+          const renderContent = itemProps.content;
 
+          if (renderContent) {
+            this.preProcessItemContent(renderContent);
+          }
         }
 
-        //@ts-expect-error FIXME: dataType 为 ECS 专用
-        const { name, delay = 0, id, parentId, duration, endBehavior, pluginName, pn, transform, dataType } = sourceItemData;
-        // FIXME: specification 下定义的 Item 不存在 refCount 类型定义
-        // @ts-expect-error
-        const { refCount } = sourceItemData;
+        const pn = sourceItemData.pn;
         const { plugins = [] } = this.jsonScene as spec.JSONScene;
 
-        itemProps.name = name;
-        itemProps.delay = delay;
-        itemProps.id = id;
-        itemProps.dataType = dataType;
-        if (parentId) {
-          itemProps.parentId = parentId;
-        }
-        itemProps.refCount = refCount;
-        itemProps.duration = duration;
         itemProps.listIndex = listOrder++;
-        itemProps.endBehavior = endBehavior;
-        if (pluginName) {
-          itemProps.pluginName = pluginName;
-        } else if (pn !== undefined && Number.isInteger(pn)) {
+        if (pn !== undefined && Number.isInteger(pn)) {
           itemProps.pluginName = plugins[pn];
-        }
-        if (transform) {
-          itemProps.transform = transform;
-        }
-
-        //@ts-expect-error
-        if (sourceItemData.components) {
-          //@ts-expect-error
-          itemProps.components = sourceItemData.components;
         }
 
         // 处理预合成的渲染顺序
@@ -203,12 +164,33 @@ export class CompositionSourceManager implements Disposable {
         }
 
         items.push(itemProps as VFXItemProps);
-        // @ts-expect-error TODO: itemProps 深拷贝导致原有数据不生效
-        this.jsonScene.items[itemDataPath.id] = itemProps;
       }
     }
 
     return items;
+  }
+
+  private preProcessItemContent (renderContent: any) {
+    if (renderContent.renderer) {
+      renderContent.renderer = this.changeTex(renderContent.renderer);
+
+      if (!renderContent.renderer.mask) {
+        this.processMask(renderContent.renderer, this.mask);
+      }
+
+      const split = renderContent.splits && !renderContent.textureSheetAnimation && renderContent.splits[0];
+
+      if (Number.isInteger(renderContent.renderer.shape)) {
+        // TODO: scene.shapes 类型问题？
+        renderContent.renderer.shape = getGeometryByShape(this.jsonScene?.shapes[renderContent.renderer.shape] as unknown as ShapeData, split);
+      } else if (renderContent.renderer.shape && isObject(renderContent.renderer.shape)) {
+        renderContent.renderer.shape = getGeometryByShape(renderContent.renderer.shape, split);
+      }
+    }
+
+    if (renderContent.trails) {
+      renderContent.trails = this.changeTex(renderContent.trails);
+    }
   }
 
   private changeTex (renderer: Record<string, number>) {

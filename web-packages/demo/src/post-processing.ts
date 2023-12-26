@@ -51,6 +51,7 @@ async function handlePlay (url) {
     const json = await (await fetch(url)).json();
 
     hackGlobalVolume(json);
+    player.destroyCurrentCompositions();
     const scene = await player.loadScene(json);
 
     void player.play(scene, { speed });
