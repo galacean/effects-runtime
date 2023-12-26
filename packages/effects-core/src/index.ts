@@ -1,7 +1,8 @@
 import { EffectComponent } from './components';
 import { Deserializer, DataType } from './deserializer';
 import { registerPlugin } from './plugin-system';
-import type { CameraController, InteractComponent, TextComponent, TimelineComponent } from './plugins';
+import type { TextComponent, TimelineComponent } from './plugins';
+import { CameraController, InteractComponent } from './plugins';
 import {
   CalculateLoader,
   CameraVFXItemLoader,
@@ -59,3 +60,5 @@ Deserializer.addConstructor(VFXItem, DataType.VFXItemData);
 Deserializer.addConstructor(EffectComponent, DataType.EffectComponent);
 Deserializer.addConstructor(SpriteComponent, DataType.SpriteComponent);
 Deserializer.addConstructor(ParticleSystem, DataType.ParticleSystem);
+Deserializer.addConstructor(InteractComponent, DataType.InteractComponent);
+Deserializer.addConstructor(CameraController, DataType.CameraController);

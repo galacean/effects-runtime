@@ -2,15 +2,20 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
+import { TreeGui } from './gui/tree-gui';
 
 const json = inspireList.preComp.url;
 const container = document.getElementById('J-container');
+
+const treeGui = new TreeGui();
 
 (async () => {
   try {
     const player = createPlayer();
 
-    await player.loadScene(json);
+    const comp = await player.loadScene(json);
+
+    treeGui.setComposition(comp);
   } catch (e) {
     console.error('biz', e);
   }
