@@ -21,11 +21,23 @@ export class InteractComponent extends RendererComponent {
   dragEvent: DragEventType | null;
   bouncingArg: TouchEventType | null;
   previewContent: InteractMesh | null;
+  interactData: spec.InteractContent;
 
   override start (): void {
     const options = this.item.props.content.options as spec.DragInteractOption;
     const { env } = this.item.engine?.renderer ?? {};
     const composition = this.item.composition!;
+
+    const { type, showPreview } = this.interactData.options as spec.ClickInteractOption;
+
+    if (type === spec.InteractType.CLICK) {
+      this.clickable = true;
+      if (showPreview && env === PLAYER_OPTIONS_ENV_EDITOR) {
+        const rendererOptions = this.item.composition!.getRendererOptions();
+
+        this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
+      }
+    }
 
     this.item.composition?.addInteractiveItem(this.item, options.type);
     if (options.type === spec.InteractType.DRAG) {
@@ -202,19 +214,7 @@ export class InteractComponent extends RendererComponent {
 
   override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
     super.fromData(data, deserializer, sceneData);
-    const interactData = data as spec.InteractContent;
-
-    const { type, showPreview } = interactData.options as spec.ClickInteractOption;
-    const { env } = this.engine.renderer ?? {};
-
-    if (type === spec.InteractType.CLICK) {
-      this.clickable = true;
-      if (showPreview && env === PLAYER_OPTIONS_ENV_EDITOR) {
-        const rendererOptions = this.item.composition!.getRendererOptions();
-
-        this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
-      }
-    }
+    this.interactData = data as spec.InteractContent;
   }
 }
 
