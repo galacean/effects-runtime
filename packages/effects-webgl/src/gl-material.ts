@@ -482,13 +482,11 @@ export class GLMaterial extends Material {
   override fromData (data: MaterialData, deserializer: Deserializer, sceneData: SceneData): void {
     super.fromData(data, deserializer, sceneData);
 
-    this.samplers = [];
     this.uniforms = [];
     this.floats = {};
     this.ints = {};
     this.floatArrays = {};
     this.vector4s = {};
-    this.textures = {};
 
     const propertiesData = {
       vector2s: {},
@@ -521,6 +519,8 @@ export class GLMaterial extends Material {
     }
 
     if (deserializer && sceneData) {
+      this.samplers = [];
+      this.textures = {};
       for (name in data.textures) {
         const texture = deserializer.deserialize({ id:'Texture' + propertiesData.textures[name].id }, sceneData);
 
