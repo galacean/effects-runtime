@@ -14,7 +14,6 @@ uniform vec4 uEditorTransform;
 
 void main() {
   uv = aUV;
-  // gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos.x*5.5,aPos.y*3.5,aPos.z*3.5,1.0);
   gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos*2.0,1.0);
 }
 `;
@@ -498,7 +497,7 @@ const json = {
   ],
 };
 
-const sceneData: SceneData = { effectsObjects: {} };
+export const sceneData: SceneData = { effectsObjects: {} };
 
 for (const item of json.items) {
   sceneData.effectsObjects[item.id] = item;

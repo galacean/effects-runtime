@@ -482,6 +482,14 @@ export class GLMaterial extends Material {
   override fromData (data: MaterialData, deserializer: Deserializer, sceneData: SceneData): void {
     super.fromData(data, deserializer, sceneData);
 
+    this.samplers = [];
+    this.uniforms = [];
+    this.floats = {};
+    this.ints = {};
+    this.floatArrays = {};
+    this.vector4s = {};
+    this.textures = {};
+
     const propertiesData = {
       vector2s: {},
       vector3s: {},
@@ -514,8 +522,10 @@ export class GLMaterial extends Material {
 
     if (deserializer && sceneData) {
       for (name in data.textures) {
+        const texture = deserializer.deserialize({ id:'Texture' + propertiesData.textures[name].id }, sceneData);
+
         // TODO 纹理通过 id 加入场景数据
-        this.setTexture(name, sceneData.effectsObjects['Texture' + propertiesData.textures[name].id] as unknown as Texture);
+        this.setTexture(name, texture);
       }
 
       const shaderData: ShaderData = deserializer.findData(data.shader, sceneData);
@@ -529,6 +539,8 @@ export class GLMaterial extends Material {
     }
 
     this.initialized = false;
+    //@ts-expect-error
+    this.shader = undefined;
   }
 
   override cloneUniforms (sourceMaterial: Material): void {

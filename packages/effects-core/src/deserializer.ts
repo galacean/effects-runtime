@@ -22,12 +22,12 @@ export class Deserializer {
   }
 
   deserialize (dataPath: DataPath, sceneData: SceneData): any {
-    let effectsObject;
-    const effectsObjectData = this.findData(dataPath, sceneData);
-
     if (this.objectInstance[dataPath.id]) {
       return this.objectInstance[dataPath.id];
     }
+    let effectsObject;
+    const effectsObjectData = this.findData(dataPath, sceneData);
+
     switch (effectsObjectData.dataType) {
       case DataType.Material:
         effectsObject = Material.create(this.engine);

@@ -1,6 +1,6 @@
-import type { Composition, VFXItem, SpriteComponent, SceneLoadType } from '@galacean/effects';
-import { Deserializer, EffectComponent, Player } from '@galacean/effects';
-import json from './assets/custom-material';
+import type { Composition, VFXItem, SpriteComponent, SceneLoadType, Deserializer } from '@galacean/effects';
+import { EffectComponent, Player } from '@galacean/effects';
+import json, { sceneData } from './assets/custom-material';
 
 const container = document.getElementById('J-container');
 
@@ -25,7 +25,7 @@ let gui;
     const player = new Player({ container });
     const composition = await player.loadScene(json as SceneLoadType);
 
-    deserializer = new Deserializer(composition.getEngine());
+    deserializer = composition.deserializer;
     testVfxItem = composition.getItemByName('Trail1') as VFXItem<any>;
     // testVfxItem.fromData(deserializer, json.vfxItems['1'], ecsSceneJsonDemo);
     // composition.content.items.push(testVfxItem);
@@ -114,11 +114,11 @@ function setGUI () {
   propertiesInput.value = `_StartColor("Color",Color) = (1,1,1,1)
 _EndColor("Color",Color) = (1,1,1,1)`;
 
-  // compileButton.addEventListener('click', () => {
-  //   json.shaders[0].vertex = vsInput.value;
-  //   json.shaders[0].fragment = fsInput.value;
-  //   setDatGUI(propertiesInput.value);
-  //   testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0], deserializer, sceneData);
-  // });
+  compileButton.addEventListener('click', () => {
+    json.shaders[0].vertex = vsInput.value;
+    json.shaders[0].fragment = fsInput.value;
+    setDatGUI(propertiesInput.value);
+    testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0], deserializer, sceneData);
+  });
   setDatGUI(propertiesInput.value);
 }

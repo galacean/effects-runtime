@@ -69,7 +69,7 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.items.length = 0;
     if (this.item.composition) {
-      const deserializer = new Deserializer(this.engine);
+      const deserializer = this.item.composition.deserializer;
       const sceneData: SceneData = {
         effectsObjects: {},
       };
@@ -100,8 +100,9 @@ export class CompositionComponent extends ItemBehaviour {
 
       if (jsonScene.textures) {
         for (let i = 0; i < jsonScene.textures.length; i++) {
+          this.item.composition.deserializer.addInstance('Texture' + i, this.item.composition.textures[i]);
           // TODO 纹理增加 id 加入 effectsObjects Map
-          sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
+          // sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
         }
       }
 
