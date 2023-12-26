@@ -437,9 +437,9 @@ const json = {
         _EndColor   : [1.0, 1.0, 0.2, 1.0],
       },
       textures: {
-        _MainTex : { id: 1 },
-        _Tex2    : { id: 2 },
-        _Tex3    : { id: 4 },
+        _MainTex : { id: '1' },
+        _Tex2    : { id: '2' },
+        _Tex3    : { id: '4' },
       },
     },
     {
@@ -453,9 +453,9 @@ const json = {
         _EndColor   : [0.0, 0.2, 0.8, 1.0],
       },
       textures: {
-        _MainTex : { id: 1 },
-        _Tex2    : { id: 5 },
-        _Tex3    : { id: 4 },
+        _MainTex : { id: '1' },
+        _Tex2    : { id: '5' },
+        _Tex3    : { id: '4' },
       },
     },
     {
@@ -469,9 +469,9 @@ const json = {
         _EndColor   : [0.0, 0.0, 0.0, 1.0],
       },
       textures: {
-        _MainTex : { id: 1 },
-        _Tex2    : { id: 6 },
-        _Tex3    : { id: 4 },
+        _MainTex : { id: '1' },
+        _Tex2    : { id: '6' },
+        _Tex3    : { id: '4' },
       },
     },
   ],

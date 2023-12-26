@@ -80,7 +80,7 @@ function parseMaterialProperties (shaderProperties: string, gui: any) {
       const Color: Record<string, number[]> = {};
 
       Color[uniformName] = [0, 0, 0, 0];
-      gui.addColor(Color, uniformName).onChange((value: number[]) => {
+      gui.addColor(Color, uniformName).name(inspectorName).onChange((value: number[]) => {
         //@ts-expect-error
         json.materials[0].vector4s[uniformName] = [value[0] / 255, value[1] / 255, value[2] / 255, value[3] / 255];
         testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0]);
@@ -111,8 +111,8 @@ function setGUI () {
 
   vsInput.value = json.shaders[0].vertex;
   fsInput.value = json.shaders[0].fragment;
-  propertiesInput.value = `_StartColor("Color",Color) = (1,1,1,1)
-_EndColor("Color",Color) = (1,1,1,1)`;
+  propertiesInput.value = `_StartColor("StartColor",Color) = (1,1,1,1)
+_EndColor("EndColor",Color) = (1,1,1,1)`;
 
   compileButton.addEventListener('click', () => {
     json.shaders[0].vertex = vsInput.value;

@@ -13,7 +13,7 @@
     "three": "^0.149.0"
   },
   "devDependencies": {
-    "@advjs/blender-ui": "0.0.2-beta.8",
+    "@advjs/blender-ui": "0.0.2-beta.9",
     "@types/three": "^0.149.0"
   }
 }

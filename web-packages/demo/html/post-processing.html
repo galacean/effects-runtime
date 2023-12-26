@@ -15,7 +15,13 @@
   </style>
 </head>
 <body>
-<div class="container" id="J-container"></div>
+
+<div style="display:flex;">
+  <div id="advjs-blender-ui-container" style="width:300px;height:600px;overflow-y: auto;"></div>
+  <div class="container" id="J-container"></div>
+</div>
+
+
 <div class="am-whitespace ws15px"></div>
 <div class="am-flexbox am-wingblank wb10px" style="align-items: start">
   <div class="am-wingblank wb10px">
@@ -36,15 +42,6 @@
 <div class="am-whitespace ws25px"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
 <script type="module" src="../src/post-processing.ts"></script>
-
-<style>
-  #advjs-blender-ui-container {
-    position: fixed;
-    width: 300px;
-    top: 0;
-    left: 0;
-  }
-</style>
 
 </body>
 </html>
