@@ -101,6 +101,11 @@ function setDatGUI (materialProperties: string) {
 
   parseMaterialProperties(materialProperties, gui);
   materialGUI.open();
+
+  // @ts-expect-error
+  gui.add(json.components[0].materials[0], 'id', { material1:'21', material2:'22', material3:'23' }).name('Material').onChange(()=>{
+    testVfxItem.getComponent(EffectComponent)!.fromData(json.components[0], deserializer, sceneData);
+  });
 }
 
 function setGUI () {
@@ -118,7 +123,7 @@ _EndColor("EndColor",Color) = (1,1,1,1)`;
     json.shaders[0].vertex = vsInput.value;
     json.shaders[0].fragment = fsInput.value;
     setDatGUI(propertiesInput.value);
-    testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0], deserializer, sceneData);
+    testVfxItem.getComponent(EffectComponent)!.fromData(json.components[0], deserializer, sceneData);
   });
   setDatGUI(propertiesInput.value);
 }
