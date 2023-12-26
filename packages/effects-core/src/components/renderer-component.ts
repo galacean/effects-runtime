@@ -28,10 +28,6 @@ export class RendererComponent extends Component {
     this._enabled = value;
     if (value) {
       this.onEnable();
-      if (!this.started) {
-        this.start();
-        this.started = true;
-      }
     }
   }
 
