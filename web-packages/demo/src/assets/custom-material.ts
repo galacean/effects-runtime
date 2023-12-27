@@ -4,175 +4,6 @@ import { TrailShader } from './shaders/trail-shader';
 import geometryData from './geometries/trail.json';
 
 const trailShaderData = TrailShader.getShaderData();
-
-const vert = `precision highp float;
-attribute vec3 aPos;
-attribute vec2 aUV;
-
-varying vec2 uv;
-
-uniform mat4 effects_ObjectToWorld;
-uniform mat4 effects_MatrixInvV;
-uniform mat4 effects_MatrixVP;
-uniform vec4 uEditorTransform;
-
-void main() {
-  uv = aUV;
-  gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos*2.0,1.0);
-}
-`;
-const sinFrag = `precision highp float;
-varying vec2 uv;
-
-uniform float _GlobalTime;
-uniform float _MaxIntensity;
-uniform float _WaveZoom;
-
-void main() {
-  float minIntensity = 1.5;
-  float maxIntensity = _MaxIntensity;
-  float combinedIntensity = 150.0;
-  float waveZoom = _WaveZoom;
-  float waveStretch = 1.5;
-
-  vec2 iuv = vec2(uv)*2.0 - vec2(1.0, 1.0);
-  vec2 uv0 = waveZoom * iuv;
-
-  vec3 finalCol = vec3(0.0);
-
-  uv0.y += waveStretch * sin(uv0.x - (_GlobalTime * 3.75));
-
-  float lineIntensity = minIntensity + (maxIntensity * abs(mod(uv.x + _GlobalTime, 2.0) - 1.0));
-  float glowWidth = abs(lineIntensity / (combinedIntensity * uv0.y));
-
-  finalCol += vec3(glowWidth * (1.0 + sin(_GlobalTime * 0.33)),
-                glowWidth * (1.0 - sin(_GlobalTime * 0.33)),
-                glowWidth * (1.0 - cos(_GlobalTime * 0.33)));
-
-  gl_FragColor = vec4(finalCol, 1.0);
-}
-`;
-const bubbleFrag = `precision highp float;
-#define BG_COLOR (vec3(sin(_GlobalTime)*0.5+0.5) * 0.0 + vec3(0.0))
-const vec3 color1 = vec3(0.611765, 0.262745, 0.996078);
-const vec3 color2 = vec3(0.298039, 0.760784, 0.913725);
-const vec3 color3 = vec3(0.062745, 0.078431, 0.600000);
-const float innerRadius = 0.6;
-const float noiseScale = 0.65;
-
-uniform float _GlobalTime;
-uniform float _Speed;
-uniform vec3 _Color;
-varying vec2 uv;
-
-// noise from https://www.shadertoy.com/view/4sc3z2
-vec3 hash33(vec3 p3)
-{
-	p3 = fract(p3 * vec3(.1031,.11369,.13787));
-    p3 += dot(p3, p3.yxz+19.19);
-    return -1.0 + 2.0 * fract(vec3(p3.x+p3.y, p3.x+p3.z, p3.y+p3.z)*p3.zyx);
-}
-float snoise3(vec3 p)
-{
-    const float K1 = 0.333333333;
-    const float K2 = 0.166666667;
-
-    vec3 i = floor(p + (p.x + p.y + p.z) * K1);
-    vec3 d0 = p - (i - (i.x + i.y + i.z) * K2);
-
-    vec3 e = step(vec3(0.0), d0 - d0.yzx);
-	vec3 i1 = e * (1.0 - e.zxy);
-	vec3 i2 = 1.0 - e.zxy * (1.0 - e);
-
-    vec3 d1 = d0 - (i1 - K2);
-    vec3 d2 = d0 - (i2 - K1);
-    vec3 d3 = d0 - 0.5;
-
-    vec4 h = max(0.6 - vec4(dot(d0, d0), dot(d1, d1), dot(d2, d2), dot(d3, d3)), 0.0);
-    vec4 n = h * h * h * h * vec4(dot(d0, hash33(i)), dot(d1, hash33(i + i1)), dot(d2, hash33(i + i2)), dot(d3, hash33(i + 1.0)));
-
-    return dot(vec4(31.316), n);
-}
-
-vec4 extractAlpha(vec3 colorIn)
-{
-    vec4 colorOut;
-    float maxValue = min(max(max(colorIn.r, colorIn.g), colorIn.b), 1.0);
-    if (maxValue > 1e-5)
-    {
-        colorOut.rgb = colorIn.rgb * (1.0 / maxValue);
-        colorOut.a = maxValue;
-    }
-    else
-    {
-        colorOut = vec4(0.0);
-    }
-    return colorOut;
-}
-
-float light1(float intensity, float attenuation, float dist)
-{
-    return intensity / (1.0 + dist * attenuation);
-}
-float light2(float intensity, float attenuation, float dist)
-{
-    return intensity / (1.0 + dist * dist * attenuation);
-}
-
-void draw( out vec4 _FragColor, in vec2 vUv )
-{
-    float time  = _Speed * _GlobalTime;
-    vec2 uv = vUv;
-    float ang = atan(uv.y, uv.x);
-    float len = length(uv);
-    float v0, v1, v2, v3, cl;
-    float r0, d0, n0;
-    float r, d;
-
-    // ring
-    n0 = snoise3( vec3(uv * noiseScale, time * 0.5) ) * 0.5 + 0.5;
-    r0 = mix(mix(innerRadius, 1.0, 0.4), mix(innerRadius, 1.0, 0.6), n0);
-    d0 = distance(uv, r0 / len * uv);
-    v0 = light1(1.0, 10.0, d0);
-    v0 *= smoothstep(r0 * 1.05, r0, len);
-    cl = cos(ang + time * 2.0) * 0.5 + 0.5;
-
-    // high light
-    float a = time * -1.0;
-    vec2 pos = vec2(cos(a), sin(a)) * r0;
-    d = distance(uv, pos);
-    v1 = light2(1.5, 5.0, d);
-    v1 *= light1(1.0, 50.0 , d0);
-
-    // back decay
-    v2 = smoothstep(1.0, mix(innerRadius, 1.0, n0 * 0.5), len);
-
-    // hole
-    v3 = smoothstep(innerRadius, mix(innerRadius, 1.0, 0.5), len);
-
-    // color
-    vec3 c = mix(color1, _Color/255.0, cl);
-    vec3 col = mix(color1,  _Color/255.0, cl);
-    col = mix(color3, col, v0);
-    col = (col + v1) * v2 * v3;
-    col.rgb = clamp(col.rgb, 0.0, 1.0);
-
-    //gl_FragColor = extractAlpha(col);
-    _FragColor = extractAlpha(col);
-}
-
-void main()
-{
-
-    vec4 col;
-    vec2 iuv = vec2(uv)*2.0 - vec2(1.0, 1.0);
-    draw(col, iuv);
-
-    vec3 bg = BG_COLOR;
-
-    gl_FragColor = vec4(mix(bg, col.rgb, col.a), 1.0); //normal blend
-}
-`;
 const particleSystemProps = {
   id       : '12',
   dataType : DataType.ParticleSystem,
@@ -315,27 +146,27 @@ const json = {
   ],
   items: [
     {
-      'id'          : '03',
-      'name'        : 'background',
-      'duration'    : 1000,
-      dataType      : 0,
-      'type'        : '1',
-      'visible'     : true,
-      'endBehavior' : 2,
-      'delay'       : 0,
-      'renderLevel' : 'B+',
-      'transform'   : {
-        'position': [
+      id          : '03',
+      name        : 'background',
+      duration    : 1000,
+      dataType    : 0,
+      type        : '1',
+      visible     : true,
+      endBehavior : 2,
+      delay       : 0,
+      renderLevel : 'B+',
+      transform   : {
+        position: [
           0,
           -7.285564691294531e-16,
           0,
         ],
-        'rotation': [
+        rotation: [
           0,
           0,
           0,
         ],
-        'scale': [
+        scale: [
           16.24,
           7.315,
           1,
@@ -370,7 +201,7 @@ const json = {
       endBehavior : 0,
       delay       : 0,
       renderLevel : 'B+',
-      transform   : { position: [-30, 30, -200], rotation: [90, -150, 0], scale: [0.3, 0.3, 0.3] },
+      transform   : { position: [2, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
       components  : [{
         id : '11',
       }],
@@ -385,7 +216,7 @@ const json = {
       endBehavior : 0,
       delay       : 0,
       renderLevel : 'B+',
-      transform   : { position: [20, 30, -200], rotation: [90, -150, 0], scale: [0.3, 0.3, 0.3] },
+      transform   : { position: [-1, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
       components  : [{
         id : '14',
       }],
@@ -400,7 +231,7 @@ const json = {
       endBehavior : 0,
       delay       : 0,
       renderLevel : 'B+',
-      transform   : { position: [-80, 30, -200], rotation: [90, -150, 0], scale: [0.3, 0.3, 0.3] },
+      transform   : { position: [-4, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
       components  : [{
         id : '15',
       }],
