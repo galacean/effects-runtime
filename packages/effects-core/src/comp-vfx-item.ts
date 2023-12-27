@@ -4,10 +4,9 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { EffectsObjectData, MaterialData, SceneData, ShaderData, VFXItemData } from './deserializer';
-import { Deserializer } from './deserializer';
+import type { EffectsObjectData, GeometryData, MaterialData, SceneData, ShaderData, VFXItemData } from './deserializer';
 import type { Region } from './plugins';
-import { CameraController, HitTestType, InteractComponent, TextComponent, TimelineComponent } from './plugins';
+import { HitTestType, TextComponent, TimelineComponent } from './plugins';
 import { noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
@@ -74,7 +73,7 @@ export class CompositionComponent extends ItemBehaviour {
         effectsObjects: {},
       };
       // TODO spec 定义新类型后 as 移除
-      const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], components: EffectsObjectData[] };
+      const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], geometrys: GeometryData[], components: EffectsObjectData[] };
 
       if (jsonScene.items) {
         for (const vfxItemData of this.item.props.items) {
@@ -90,6 +89,11 @@ export class CompositionComponent extends ItemBehaviour {
       if (jsonScene.shaders) {
         for (const shaderData of jsonScene.shaders) {
           sceneData.effectsObjects[shaderData.id] = shaderData;
+        }
+      }
+      if (jsonScene.geometrys) {
+        for (const geometryData of jsonScene.geometrys) {
+          sceneData.effectsObjects[geometryData.id] = geometryData;
         }
       }
       if (jsonScene.components) {

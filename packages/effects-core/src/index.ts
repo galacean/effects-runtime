@@ -12,6 +12,7 @@ import {
   TextLoader,
   ParticleSystem, SpriteComponent } from './plugins';
 import './polyfill';
+import { Geometry } from './render';
 import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';
@@ -47,6 +48,7 @@ export * from './ticker';
 export * from './transform';
 export * from './utils';
 export * from './vfx-item';
+export * from './deserializer';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);
