@@ -402,11 +402,12 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
               }
             } else if (this.endBehavior === spec.END_BEHAVIOR_DESTROY) {
               this._contentVisible = false;
+              shouldUpdate = true;
+              dt = 0;
 
               // 预合成配置 reusable 且销毁时， 需要隐藏其中的元素
               if ((this.type as spec.ItemType) === spec.ItemType.composition) {
                 this.handleVisibleChanged(false);
-                this.onItemUpdate(0, lifetime);
               }
             }
             lifetime = Math.min(lifetime, 1);
