@@ -1,8 +1,20 @@
 import type { Deserializer, SpriteComponent, VFXItem } from '@galacean/effects';
 import { EffectComponent, Player } from '@galacean/effects';
 import json, { sceneData } from './assets/custom-material';
+import { InspectorGui } from './gui/inspector-gui';
+import { TreeGui } from './gui/tree-gui';
 
 const container = document.getElementById('J-container');
+const treeGui = new TreeGui();
+const inspectorGui = new InspectorGui();
+
+setInterval(()=>{
+  if (treeGui.activeItem) {
+    inspectorGui.setItem(treeGui.activeItem);
+  }
+  treeGui.update();
+  inspectorGui.update();
+}, 100);
 
 let deserializer: Deserializer;
 let testVfxItem: VFXItem<SpriteComponent>;
@@ -25,6 +37,8 @@ let gui;
     const player = new Player({ container });
     //@ts-expect-error
     const composition = await player.loadScene(json);
+
+    treeGui.setComposition(composition);
 
     deserializer = composition.deserializer;
     testVfxItem = composition.getItemByName('Trail1') as VFXItem<any>;
@@ -110,21 +124,22 @@ function setDatGUI (materialProperties: string) {
 }
 
 function setGUI () {
-  const vsInput = document.getElementById('vs-input') as HTMLTextAreaElement;
-  const fsInput = document.getElementById('fs-input') as HTMLTextAreaElement;
-  const propertiesInput = document.getElementById('properties-input') as HTMLTextAreaElement;
-  const compileButton = document.getElementById('J-compileBtn') as HTMLButtonElement;
+//   const vsInput = document.getElementById('vs-input') as HTMLTextAreaElement;
+//   const fsInput = document.getElementById('fs-input') as HTMLTextAreaElement;
+//   const propertiesInput = document.getElementById('properties-input') as HTMLTextAreaElement;
+//   const compileButton = document.getElementById('J-compileBtn') as HTMLButtonElement;
 
-  vsInput.value = json.shaders[0].vertex;
-  fsInput.value = json.shaders[0].fragment;
-  propertiesInput.value = `_StartColor("StartColor",Color) = (1,1,1,1)
-_EndColor("EndColor",Color) = (1,1,1,1)`;
+  //   vsInput.value = json.shaders[0].vertex;
+  //   fsInput.value = json.shaders[0].fragment;
+  //   propertiesInput.value = `_StartColor("StartColor",Color) = (1,1,1,1)
+  // _EndColor("EndColor",Color) = (1,1,1,1)`;
 
-  compileButton.addEventListener('click', () => {
-    json.shaders[0].vertex = vsInput.value;
-    json.shaders[0].fragment = fsInput.value;
-    setDatGUI(propertiesInput.value);
-    testVfxItem.getComponent(EffectComponent)!.fromData(json.components[0], deserializer, sceneData);
-  });
-  setDatGUI(propertiesInput.value);
+  //   compileButton.addEventListener('click', () => {
+  //     json.shaders[0].vertex = vsInput.value;
+  //     json.shaders[0].fragment = fsInput.value;
+  //     setDatGUI(propertiesInput.value);
+  //     testVfxItem.getComponent(EffectComponent)!.fromData(json.components[0], deserializer, sceneData);
+  //   });
+  setDatGUI(`_StartColor("StartColor",Color) = (1,1,1,1)
+  _EndColor("EndColor",Color) = (1,1,1,1)`);
 }

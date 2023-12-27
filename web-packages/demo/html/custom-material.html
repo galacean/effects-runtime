@@ -14,8 +14,8 @@
     }
 
     .container {
-      width: 720px;
-      height: 720px;
+      width: 1000px;
+      height: 600px;
       background-color: rgba(0, 0, 0, 255);
     }
 
@@ -44,22 +44,12 @@
 </head>
 
 <body>
-  <div class="am-flexbox">
-    <div class="am-flexbox-item">
-      <div class="container" id="J-container"></div>
-    </div>
-    <textarea class="properties-input" id="properties-input" name="story" rows="5" cols="33">
-      Input your material properties here...
-    </textarea>
-    <textarea class="shader-input" id="vs-input" name="story" rows="5" cols="33">
-      Input your vs shader here...
-    </textarea>
-    <textarea class="shader-input" id="fs-input" name="story" rows="5" cols="33">
-      Input your fs shader here...
-    </textarea>
+  <div style="display:flex;">
+    <div id="advjs-blender-ui-container" style="width:300px;height:600px;overflow-y: auto;"></div>
+    <div class="container" id="J-container"></div>
   </div>
 
-  <button id="J-compileBtn" class="button">Compile</button>
+  <!-- <button id="J-compileBtn" class="button">Compile</button> -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.7.9/dat.gui.min.js"></script>
   <script type="module" src="../src/custom-material.ts"></script>
 </body>
