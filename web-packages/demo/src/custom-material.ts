@@ -1,4 +1,4 @@
-import type { Composition, VFXItem, SpriteComponent, SceneLoadType, Deserializer } from '@galacean/effects';
+import type { Deserializer, SpriteComponent, VFXItem } from '@galacean/effects';
 import { EffectComponent, Player } from '@galacean/effects';
 import json, { sceneData } from './assets/custom-material';
 
@@ -23,7 +23,8 @@ let gui;
 (async () => {
   try {
     const player = new Player({ container });
-    const composition = await player.loadScene(json as SceneLoadType);
+    //@ts-expect-error
+    const composition = await player.loadScene(json);
 
     deserializer = composition.deserializer;
     testVfxItem = composition.getItemByName('Trail1') as VFXItem<any>;

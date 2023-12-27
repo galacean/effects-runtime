@@ -1,5 +1,8 @@
 import { DataType, glContext, type SceneData } from '@galacean/effects';
 import trail from './shaders/trail.fs.glsl';
+import { TrailShader } from './shaders/trail-shader';
+
+const trailShaderData = TrailShader.getShaderData();
 
 const vert = `precision highp float;
 attribute vec3 aPos;
@@ -429,7 +432,7 @@ const json = {
     {
       id       : '21',
       dataType : 2,
-      shader   : { id: '31' },
+      shader   : { id: trailShaderData.id },
       floats   : {
       },
       vector4s: {
@@ -445,7 +448,7 @@ const json = {
     {
       id       : '22',
       dataType : 2,
-      shader   : { id: '31' },
+      shader   : { id: trailShaderData.id },
       floats   : {
       },
       vector4s: {
@@ -461,7 +464,7 @@ const json = {
     {
       id       : '23',
       dataType : 2,
-      shader   : { id: '31' },
+      shader   : { id: trailShaderData.id },
       floats   : {
       },
       vector4s: {
@@ -476,12 +479,7 @@ const json = {
     },
   ],
   shaders: [
-    {
-      id       : '31',
-      dataType : 3,
-      vertex   : vert,
-      fragment : trail,
-    },
+    trailShaderData,
   ],
   requires      : [],
   compositionId : '4',
