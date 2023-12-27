@@ -11,5 +11,5 @@ uniform vec4 uEditorTransform;
 
 void main() {
   uv = aUV;
-  gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos*2.0,1.0);
+  gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos,1.0);
 }

@@ -12,7 +12,7 @@ export class TrailShader {
 
   static getShaderData (): ShaderData {
     const shaderData: ShaderData = {
-      id: uuidv4(),
+      id: uuidv4().replace(/-/g, ''),
       dataType:DataType.Shader,
       vertex:TrailShader.vertex,
       fragment:TrailShader.fragment,

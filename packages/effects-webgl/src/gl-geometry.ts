@@ -425,7 +425,7 @@ export class GLGeometry extends Geometry {
         },
       },
       indices: {
-        data: new Uint16Array(fullGeometryData.indices),
+        data: new Uint32Array(fullGeometryData.indices),
       },
       drawCount: fullGeometryData.indices.length,
     };

@@ -83,8 +83,9 @@ export interface DataPath {
 }
 
 export interface EffectsObjectData {
-  dataType: DataType,
   id: string,
+  name?: string,
+  dataType: DataType,
 }
 
 export interface MaterialData extends EffectsObjectData {
