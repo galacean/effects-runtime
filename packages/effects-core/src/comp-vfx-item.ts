@@ -73,7 +73,7 @@ export class CompositionComponent extends ItemBehaviour {
         effectsObjects: {},
       };
       // TODO spec 定义新类型后 as 移除
-      const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], geometrys: GeometryData[], components: EffectsObjectData[] };
+      const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], geometries: GeometryData[], components: EffectsObjectData[] };
 
       if (jsonScene.items) {
         for (const vfxItemData of this.item.props.items) {
@@ -91,8 +91,8 @@ export class CompositionComponent extends ItemBehaviour {
           sceneData.effectsObjects[shaderData.id] = shaderData;
         }
       }
-      if (jsonScene.geometrys) {
-        for (const geometryData of jsonScene.geometrys) {
+      if (jsonScene.geometries) {
+        for (const geometryData of jsonScene.geometries) {
           sceneData.effectsObjects[geometryData.id] = geometryData;
         }
       }
