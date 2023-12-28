@@ -113,6 +113,7 @@ export interface GeometryData extends EffectsObjectData {
 export interface ShaderData extends EffectsObjectData {
   vertex: string,
   fragment: string,
+  properties?: string,
 }
 
 export interface EffectComponentData extends EffectsObjectData {

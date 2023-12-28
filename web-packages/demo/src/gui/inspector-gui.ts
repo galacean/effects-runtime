@@ -1,4 +1,5 @@
-import { ItemBehaviour, RendererComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import type { Material, ShaderData } from '@galacean/effects';
+import { EffectComponent, ItemBehaviour, RendererComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
 
 export class InspectorGui {
   gui: any;
@@ -73,6 +74,14 @@ export class InspectorGui {
         folder.open();
       }
 
+      const rendererComponent = this.item.getComponent(RendererComponent);
+
+      if (rendererComponent) {
+        for (const material of rendererComponent.materials) {
+          this.setMaterialGui(material);
+        }
+      }
+
       this.itemDirtyFlag = false;
     }
 
@@ -87,5 +96,68 @@ export class InspectorGui {
     }
     this.item = item;
     this.itemDirtyFlag = true;
+  }
+
+  private parseMaterialProperties (material: Material, gui: any) {
+
+    //@ts-expect-error
+    const materialData = material.toData({ effectsObjects:{} });
+
+    const shaderProperties = (material.shaderSource as ShaderData).properties!;
+    const lines = shaderProperties.split('\n');
+
+    for (const property of lines) {
+      // 提取材质属性信息
+      // 如 “_Float1("Float2", Float) = 0”
+      // 提取出 “_Float1” “Float2” “Float” “0”
+      const regex = /\s*(.+?)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/;
+      const matchResults = property.match(regex);
+
+      if (!matchResults) {
+        return;
+      }
+      const uniformName = matchResults[1];
+      const inspectorName = matchResults[2];
+      const type = matchResults[3];
+      const value = matchResults[4];
+
+      // 提取 Range(a, b) 的 a 和 b
+      const match = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+
+      if (match) {
+        const start = Number(match[1]);
+        const end = Number(match[2]);
+
+        materialData.floats[uniformName] = Number(value);
+        gui.add(materialData.floats, uniformName, start, end).onChange(() => {
+          this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+        });
+      } else if (type === 'Float') {
+        materialData.floats[uniformName] = Number(value);
+        gui.add(materialData.floats, uniformName).onChange(() => {
+          this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+        });
+      } else if (type === 'Color') {
+        const Color: Record<string, number[]> = {};
+
+        Color[uniformName] = [0, 0, 0, 0];
+        gui.addColor(Color, uniformName).name(inspectorName).onChange((value: number[]) => {
+          materialData.vector4s[uniformName] = [value[0] / 255, value[1] / 255, value[2] / 255, value[3] / 255];
+          this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+        });
+      }
+    }
+  }
+
+  // dat gui 参数及修改
+  private setMaterialGui (material: Material) {
+    const materialGUI = this.gui.addFolder('Material');
+
+    this.parseMaterialProperties(material, this.gui);
+    materialGUI.open();
+
+    // this.gui.add(json.components[0].materials[0], 'id', { material1:'21', material2:'22', material3:'23' }).name('Material').onChange(()=>{
+    //   // this.item.getComponent(EffectComponent)?.fromData(json.components[0], this.item.composition?.deserializer, sceneData);
+    // });
   }
 }

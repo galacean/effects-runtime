@@ -1,6 +1,8 @@
 import type { Deserializer, SceneData } from './deserializer';
 import type { Engine } from './engine';
 
+let seed = 0;
+
 /**
  * @since 2.0.0
  * @internal
@@ -10,7 +12,9 @@ export abstract class EffectsObject {
 
   constructor (
     public engine: Engine,
-  ) { }
+  ) {
+    this.instanceId = seed++;
+  }
 
   /**
    * 反序列化函数

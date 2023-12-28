@@ -11,7 +11,7 @@ import type {
   SceneData,
   ShaderData,
 } from '@galacean/effects-core';
-import { DestroyOptions, Material, assertExist, throwDestroyedError, math } from '@galacean/effects-core';
+import { DestroyOptions, Material, assertExist, throwDestroyedError, math, DataType } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShader } from './gl-shader';
@@ -531,16 +531,42 @@ export class GLMaterial extends Material {
       const shaderData: ShaderData = deserializer.findData(data.shader, sceneData);
 
       this.shaderSource = {
-        vertex: shaderData.vertex,
-        fragment: shaderData.fragment,
-        // @ts-expect-error
-        glslVersion: shaderData.version,
+        ...shaderData,
       };
     }
 
     this.initialized = false;
     //@ts-expect-error
     this.shader = undefined;
+  }
+
+  toData (sceneData: SceneData): MaterialData {
+    //@ts-expect-error
+    let materialData: MaterialData = sceneData[this.instanceId.toString()];
+
+    if (!materialData) {
+      materialData = {
+        id: this.instanceId.toString(),
+        dataType:DataType.Material,
+        shader:{ id:(this.shaderSource as ShaderData).id },
+        floats:{},
+        ints:{},
+        vector4s:{},
+      };
+      //@ts-expect-error
+      sceneData[this.instanceId.toString()] = materialData;
+    }
+    for (const name in this.floats) {
+      materialData.floats[name] = this.floats[name];
+    }
+    for (const name in this.ints) {
+      materialData.ints[name] = this.ints[name];
+    }
+    for (const name in this.vector4s) {
+      materialData.vector4s[name] = this.vector4s[name].toArray();
+    }
+
+    return materialData;
   }
 
   override cloneUniforms (sourceMaterial: Material): void {

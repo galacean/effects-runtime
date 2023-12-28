@@ -13,9 +13,10 @@ export class TrailShader {
   static getShaderData (): ShaderData {
     const shaderData: ShaderData = {
       id: uuidv4().replace(/-/g, ''),
-      dataType:DataType.Shader,
-      vertex:TrailShader.vertex,
-      fragment:TrailShader.fragment,
+      dataType: DataType.Shader,
+      vertex: TrailShader.vertex,
+      fragment: TrailShader.fragment,
+      properties: TrailShader.properties,
     };
 
     return shaderData;
