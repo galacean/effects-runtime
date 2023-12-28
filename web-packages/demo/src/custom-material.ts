@@ -1,4 +1,4 @@
-import type { Camera, Deserializer, SpriteComponent, VFXItem } from '@galacean/effects';
+import type { Camera, Deserializer, SpriteComponent, VFXItem, VFXItemContent } from '@galacean/effects';
 import { EffectComponent, Player, math } from '@galacean/effects';
 import json, { sceneData } from './assets/custom-material';
 import { InspectorGui } from './gui/inspector-gui';
@@ -13,7 +13,7 @@ const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();
 
 let deserializer: Deserializer;
-let testVfxItem: VFXItem<SpriteComponent>;
+let testVfxItem: VFXItem<VFXItemContent>;
 
 //@ts-expect-error
 let gui;
@@ -123,8 +123,10 @@ class Input {
   mousePosition: Vector2;
   mouseMovement: Vector2;
   mouseWheelDeltaY: number;
+  canvas: HTMLElement;
 
   startup (canvas: HTMLElement) {
+    this.canvas = canvas;
     this.keyStatusMap = {};
     this.mousePosition = new Vector2();
     this.mouseMovement = new Vector2();
@@ -246,8 +248,6 @@ export class OrbitController {
   deltaPhi: number;
   input: Input;
 
-  constructor () {}
-
   xAxis: Vector3;
   yAxis: Vector3;
   zAxis: Vector3;
@@ -278,7 +278,12 @@ export class OrbitController {
   }
 
   handlePan () {
-    const moveSpeed = 0.01;
+    const offset = this.camera.position.clone().subtract(this.targetPosition);
+
+    const cameraHeight = this.camera.near * (Math.tan(this.camera.fov / 2 * Math.PI / 180)) * 2;
+    const perPixelDistance = cameraHeight / this.input.canvas.clientHeight;
+    const moveSpeed = perPixelDistance * (offset.length() + this.camera.near) / this.camera.near;
+
     const dx = - this.input.mouseMovement.x * moveSpeed;
     const dy = + this.input.mouseMovement.y * moveSpeed;
 
@@ -408,10 +413,10 @@ function guiMainLoop () {
   inspectorGui.update();
 }
 
-function controllerUpdate () {
+function inputControllerUpdate () {
   orbitController.update();
   input.refreshStatus();
-  requestAnimationFrame(controllerUpdate);
+  requestAnimationFrame(inputControllerUpdate);
 }
 
 const input = new Input();
@@ -427,10 +432,10 @@ const orbitController = new OrbitController();
     orbitController.setup(composition.camera, input);
     input.startup(container!);
 
-    controllerUpdate();
+    inputControllerUpdate();
 
     deserializer = composition.deserializer;
-    testVfxItem = composition.getItemByName('Trail1') as VFXItem<any>;
+    testVfxItem = composition.getItemByName('Trail1')!;
     // testVfxItem.fromData(deserializer, json.vfxItems['1'], ecsSceneJsonDemo);
     // composition.content.items.push(testVfxItem);
     // composition.content.rootItems.push(testVfxItem);
