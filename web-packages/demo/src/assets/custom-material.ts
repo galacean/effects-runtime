@@ -1,9 +1,7 @@
-import type { GeometryData } from '@galacean/effects';
 import { DataType, glContext, type SceneData } from '@galacean/effects';
-import { TrailShader } from './shaders/trail-shader';
-import geometryData from './geometries/trail.json';
+import geometryData from './geometries/trail.geo.json';
+import trailShaderData from './shaders/trail.shader.json';
 
-const trailShaderData = TrailShader.getShaderData();
 const particleSystemProps = {
   id       : '12',
   dataType : DataType.ParticleSystem,

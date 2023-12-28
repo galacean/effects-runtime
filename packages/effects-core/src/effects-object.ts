@@ -23,7 +23,9 @@ export abstract class EffectsObject {
    * @param data - 对象的序列化的数据
    * @param sceneData - 场景的序列化数据
    */
-  fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData) { }
+  fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData) {
+    this.instanceId = data.id;
+  }
 
   dispose () { }
 }

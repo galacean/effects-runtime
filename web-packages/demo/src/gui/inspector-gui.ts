@@ -1,5 +1,6 @@
 import type { Material, ShaderData } from '@galacean/effects';
 import { EffectComponent, ItemBehaviour, RendererComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {
   gui: any;
@@ -13,6 +14,14 @@ export class InspectorGui {
     this.gui = new dat.GUI();
     this.gui.addFolder('Inspector');
     // setInterval(this.updateInspector, 500);
+  }
+
+  setItem (item: VFXItem<VFXItemContent>) {
+    if (this.item === item) {
+      return;
+    }
+    this.item = item;
+    this.itemDirtyFlag = true;
   }
 
   update = ()=> {
@@ -57,7 +66,18 @@ export class InspectorGui {
       for (const component of this.item.components) {
         const folder = this.gui.addFolder(component.constructor.name);
 
-        if (component instanceof RendererComponent || component instanceof ItemBehaviour) {
+        if (component instanceof RendererComponent) {
+          const controller = folder.add(component, '_enabled');
+          const controller2 = folder.add({ Material:'21' }, 'Material', { Material1:'21', Material2:'22', Material3:'23' }).onChange((value: string)=>{
+            // @ts-expect-error
+            assetDataBase.assetsData[component.instanceId].materials[0].id = value;
+            component.fromData(assetDataBase.assetsData[component.instanceId], this.item.composition?.deserializer, { effectsObjects:assetDataBase.assetsData });
+          });
+
+          this.guiControllers.push(controller);
+        }
+
+        if (component instanceof ItemBehaviour) {
           const controller = folder.add(component, '_enabled');
 
           this.guiControllers.push(controller);
@@ -90,20 +110,16 @@ export class InspectorGui {
     }
   };
 
-  setItem (item: VFXItem<VFXItemContent>) {
-    if (this.item === item) {
-      return;
-    }
-    this.item = item;
-    this.itemDirtyFlag = true;
-  }
-
   private parseMaterialProperties (material: Material, gui: any) {
 
     //@ts-expect-error
     const materialData = material.toData({ effectsObjects:{} });
 
-    const shaderProperties = (material.shaderSource as ShaderData).properties!;
+    const shaderProperties = (material.shaderSource as ShaderData).properties;
+
+    if (!shaderProperties) {
+      return;
+    }
     const lines = shaderProperties.split('\n');
 
     for (const property of lines) {
@@ -155,9 +171,5 @@ export class InspectorGui {
 
     this.parseMaterialProperties(material, this.gui);
     materialGUI.open();
-
-    // this.gui.add(json.components[0].materials[0], 'id', { material1:'21', material2:'22', material3:'23' }).name('Material').onChange(()=>{
-    //   // this.item.getComponent(EffectComponent)?.fromData(json.components[0], this.item.composition?.deserializer, sceneData);
-    // });
   }
 }
