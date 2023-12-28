@@ -1,3 +1,4 @@
+import { JSONScene } from '@galacean/effects-specification';
 import type * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
 import { LOG_TYPE } from './config';
@@ -7,6 +8,7 @@ import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo } from './downloader';
 import { passRenderLevel } from './pass-render-level';
+import { isScene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString } from './utils';
 import type { ImageSource, Scene } from './scene';
@@ -155,8 +157,8 @@ export class AssetManager implements Disposable {
    * @param options - 扩展参数
    * @returns
    */
-  async loadScene (url: string | JSONValue, renderer?: Renderer, options?: { env: string }): Promise<Scene> {
-    let rawJSON: JSONValue;
+  async loadScene (url: string | JSONValue | Scene, renderer?: Renderer, options?: { env: string }): Promise<Scene> {
+    let rawJSON: JSONValue | Scene;
     const timeLabel = `Load asset: ${isString(url) ? url : this.id}`;
     const startTime = performance.now();
     const timeInfos: string[] = [];
@@ -182,8 +184,20 @@ export class AssetManager implements Disposable {
     };
     const loadResourcePromise = async () => {
       if (isObject(url)) {
-        // TODO: 原 JSONLoader contructor 判断是否兼容
-        rawJSON = url;
+        if (isScene(url)) {
+          rawJSON = url;
+          // 已经使用过的JSON 走重新加载流程
+          for (let i = 0; i < url.textureOptions.length; i++) {
+            if (url.textureOptions[i] instanceof Texture) {
+              rawJSON = url.jsonScene as unknown as JSONValue;
+
+              break;
+            }
+          }
+        } else {
+          // TODO: 原 JSONLoader contructor 判断是否兼容
+          rawJSON = url;
+        }
         this.baseUrl = location.href;
       } else {
         // 兼容相对路径
@@ -191,34 +205,74 @@ export class AssetManager implements Disposable {
         this.baseUrl = url;
         rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(url as string));
       }
-      // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
-      const { usedImages, jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON));
-      const { bins = [], images, compositions, fonts } = jsonScene;
-      const [loadedBins, loadedImages] = await Promise.all([
-        hookTimeInfo('processBins', () => this.processBins(bins)),
-        hookTimeInfo('processImages', () => this.processImages(images, usedImages, gpuInstance?.detail.compressedTexture ?? 0)),
-        hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, renderer, options)),
-      ]);
+      let scene: Scene;
 
-      await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
+      if (isScene(rawJSON)) {
+        // 已经加载过的 可能需要更新数据模板
+        scene = rawJSON;
+        const variables = this.options.variables;
 
-      const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+        if (this.options && variables && Object.keys(variables).length !== 0) {
+          const { images } = scene.jsonScene;
 
-      const scene = {
-        jsonScene,
-        images: loadedImages,
-        textureOptions: loadedTextures,
-        bins: loadedBins,
-        storage: {},
-        pluginSystem: this.pluginSystem,
-        renderLevel: this.options.renderLevel,
-        totalTime: 0,
-        startTime: 0,
-        url,
-      };
+          scene.images = await Promise.all(images.map(async (img, i) => {
+            if ('template' in img) {
+
+              const { url: png, webp } = img;
+              const imageURL = new URL(png, this.baseUrl).href;
+              const webpURL = webp && new URL(webp, this.baseUrl).href;
+
+              return this.processTemplateImage(img, variables, imageURL, webpURL);
+            } else {
+              return scene.images[i];
+            }
+          }));
+
+          scene.textureOptions = await this.processTextures(scene.images, scene.bins, scene.jsonScene);
+        }
+      } else {
+        // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
+        // @ts-expect-error
+        const { usedImages, jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON));
+        const { bins = [], images, compositions, fonts } = jsonScene;
+
+        const [loadedBins, loadedImages] = await Promise.all([
+          hookTimeInfo('processBins', () => this.processBins(bins)),
+          hookTimeInfo('processImages', () => this.processImages(images, usedImages, gpuInstance?.detail.compressedTexture ?? 0)),
+          hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, renderer, options)),
+        ]);
+
+        for (let i = 0; i < jsonScene.images.length; i++) {
+          const img = jsonScene.images[i];
+
+          if (!('template' in img)) {
+            jsonScene.images[i] = loadedImages[i];
+          }
+        }
+        await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
+
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+
+        scene = {
+          storage: {},
+          pluginSystem: this.pluginSystem,
+          renderLevel: this.options.renderLevel,
+          totalTime: 0,
+          startTime: 0,
+          // @ts-expect-error
+          url,
+          jsonScene,
+          images: loadedImages,
+          textureOptions: loadedTextures,
+          bins: loadedBins,
+        };
+      }
 
       // 触发插件系统 pluginSystem 的回调 prepareResource
-      await hookTimeInfo('processPlugins', () => this.pluginSystem.loadResources(scene, this.options));
+      if (this.pluginSystem) {
+        await hookTimeInfo('processPlugins', () => this.pluginSystem.loadResources(scene, this.options));
+
+      }
 
       const totalTime = performance.now() - startTime;
 
@@ -349,57 +403,7 @@ export class AssetManager implements Disposable {
         const webpURL = webp && new URL(webp, baseUrl).href;
 
         if ('template' in img) {
-          const template = img.template as (spec.TemplateContentV1 | spec.TemplateContentV2);
-          let result: { image: HTMLImageElement, type?: string, url: string };
-
-          // 新版数据模版
-          if ('v' in template && template.v === 2 && template.background) {
-            const url = getBackgroundImage(template, variables);
-
-            if (url instanceof Array) {
-              const { name } = template.background;
-
-              try {
-                result = {
-                  image: await loadImage(url[0]),
-                  url: url[0],
-                };
-              } catch (e) {
-                result = {
-                  image: await loadImage(url[1]),
-                  url: url[1],
-                };
-              }
-
-              if (variables) {
-                variables[name] = result.url;
-              }
-            } else if (typeof url === 'string') {
-              result = {
-                image: await loadImage(url),
-                url,
-              };
-            }
-          } else {
-            // 测试场景：'年兽大爆炸——8个彩蛋t1'
-            result = await loadWebPOptional(imageURL, webpURL);
-          }
-
-          let templateImage;
-
-          try {
-            templateImage = await combineImageTemplate(
-              result!.image,
-              template,
-              variables as Record<string, number | string>,
-              this.options,
-              img.oriY === -1,
-            );
-          } catch (e) {
-            throw new Error(`image template fail: ${imageURL}`);
-          }
-
-          return templateImage;
+          return this.processTemplateImage(img as spec.TemplateImage, variables, imageURL, webpURL);
         } else if ('type' in img && img.type === 'video') {
           const { loop } = img as spec.VideoImage;
 
@@ -446,6 +450,58 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
+  private async processTemplateImage (img: spec.TemplateImage, variables: SceneLoadOptions['variables'], imageURL: string, webpURL?: string) {
+    const template = img.template ;
+    let result: { image: HTMLImageElement, type?: string, url: string };
+
+    // 新版数据模版
+    if ('v' in template && template.v === 2 && template.background) {
+      const url = getBackgroundImage(template, variables);
+
+      if (url instanceof Array) {
+        const { name } = template.background;
+
+        try {
+          result = {
+            image: await loadImage(url[0]),
+            url: url[0],
+          };
+        } catch (e) {
+          result = {
+            image: await loadImage(url[1]),
+            url: url[1],
+          };
+        }
+
+        if (variables) {
+          variables[name] = result.url;
+        }
+      } else if (typeof url === 'string') {
+        result = {
+          image: await loadImage(url),
+          url,
+        };
+      }
+    } else {
+      result = await loadWebPOptional(imageURL, webpURL);
+    }
+
+    let templateImage;
+
+    try {
+      templateImage = await combineImageTemplate(
+        result!.image,
+        template,
+        variables as Record<string, number | string>,
+        this.options,
+        img.oriY === -1,
+      );
+    } catch (e) {
+      throw new Error(`image template fail: ${imageURL}`);
+    }
+
+    return templateImage;
+  }
   private async processTextures (
     images: any,
     bins: ArrayBuffer[],

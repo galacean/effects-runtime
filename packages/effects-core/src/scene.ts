@@ -11,13 +11,12 @@ export type ImageSource = spec.TemplateImage | spec.Image | spec.CompressedImage
  */
 export interface Scene {
   readonly jsonScene: spec.JSONScene,
-  readonly images: ImageSource[],
-  readonly textureOptions: Record<string, any>[],
   readonly bins: ArrayBuffer[],
   readonly pluginSystem: PluginSystem,
   readonly renderLevel?: spec.RenderLevel,
   readonly storage: Record<string, any>,
-
+  images: (ImageSource | HTMLImageElement | HTMLCanvasElement)[],
+  textureOptions: Record<string, any>[],
   consumed?: boolean,
   textures?: Texture[],
   /**
