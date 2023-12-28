@@ -11,7 +11,7 @@ export class InspectorGui {
 
   constructor () {
     //@ts-expect-error
-    this.gui = new dat.GUI();
+    this.gui = new GUI();
     this.gui.addFolder('Inspector');
     // setInterval(this.updateInspector, 500);
   }
@@ -29,7 +29,7 @@ export class InspectorGui {
       this.guiControllers = [];
       this.gui.destroy();
       //@ts-expect-error
-      this.gui = new dat.GUI();
+      this.gui = new GUI();
       this.gui.add(this.item, 'name');
 
       const transformFolder = this.gui.addFolder('Transform');
@@ -154,11 +154,7 @@ export class InspectorGui {
           this.item.getComponent(EffectComponent)?.material.fromData(materialData);
         });
       } else if (type === 'Color') {
-        const Color: Record<string, number[]> = {};
-
-        Color[uniformName] = [0, 0, 0, 0];
-        gui.addColor(Color, uniformName).name(inspectorName).onChange((value: number[]) => {
-          materialData.vector4s[uniformName] = [value[0] / 255, value[1] / 255, value[2] / 255, value[3] / 255];
+        gui.addColor(materialData.vector4s, uniformName).name(inspectorName).onChange(() => {
           this.item.getComponent(EffectComponent)?.material.fromData(materialData);
         });
       }
@@ -169,7 +165,7 @@ export class InspectorGui {
   private setMaterialGui (material: Material) {
     const materialGUI = this.gui.addFolder('Material');
 
-    this.parseMaterialProperties(material, this.gui);
+    this.parseMaterialProperties(material, materialGUI);
     materialGUI.open();
   }
 }

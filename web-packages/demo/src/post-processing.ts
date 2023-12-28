@@ -22,7 +22,7 @@ setInterval(()=>{
   inspectorGui.update();
 }, 100);
 
-let gui = new dat.GUI();
+let gui = new GUI();
 let player;
 
 // DATUI 参数面板
@@ -85,7 +85,7 @@ function handlePause () {
 // dat gui 参数及修改
 function setDatGUI (composition: Composition) {
   gui.destroy();
-  gui = new dat.GUI();
+  gui = new GUI();
   const ParticleFolder = gui.addFolder('Particle');
   const BloomFolder = gui.addFolder('Bloom');
   const ToneMappingFlolder = gui.addFolder('ToneMapping');
