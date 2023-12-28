@@ -174,6 +174,10 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
     return item.type === spec.ItemType.tree;
   }
 
+  static isCamera (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+    return item.type === spec.ItemType.camera;
+  }
+
   static isExtraCamera (item: VFXItem<VFXItemContent>): item is CameraVFXItem {
     return item.id === 'extra-camera' && item.name === 'extra-camera';
   }

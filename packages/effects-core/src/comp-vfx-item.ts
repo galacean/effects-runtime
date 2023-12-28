@@ -2,7 +2,8 @@ import { Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { Ray } from '@galacean/effects-math/es';
 import * as spec from '@galacean/effects-specification';
 import { CalculateItem, HitTestType } from './plugins';
-import type { CameraVFXItem, Region } from './plugins';
+import type { Region, CameraVFXItem } from './plugins';
+import { Transform } from './transform';
 import { addItem, noop } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { createVFXItem, Item, VFXItem } from './vfx-item';
@@ -104,7 +105,8 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           }
         } else {
           item = createVFXItem(this.itemProps[i], this.composition);
-          item.transform.parentTransform = this.transform;
+          // 相机不跟随合成移动
+          item.transform.parentTransform = VFXItem.isCamera(item) ? new Transform() : this.transform;
         }
 
         if (VFXItem.isExtraCamera(item)) {
@@ -318,7 +320,8 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
       if (!parentItem) {
         itemNode.parentId = undefined;
         item.parent = undefined;
-        item.transform.parentTransform = this.transform;
+
+        item.transform.parentTransform = VFXItem.isExtraCamera(item) ? new Transform() : this.transform;
       } else {
         const parentNode = this.itemCacheMap.get(parentItem.id) as ItemNode;
 
