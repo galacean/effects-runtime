@@ -104,6 +104,10 @@ const json = {
       url         : '../src/assets/textures/trail5.png',
       renderLevel : 'B+',
     },
+    {
+      url         : '../src/assets/textures/ge-icon.png',
+      renderLevel : 'B+',
+    },
   ],
   spines       : [],
   version      : '3.0',
@@ -124,6 +128,7 @@ const json = {
         { id: '2' },
         { id: '3' },
         { id: '4' },
+        { id: '5' },
       ],
       camera       : { fov: 60, far: 1000, near: 0.3, clipMode: 0, position: [0, 0, 8], rotation: [0, 0, 0] },
       globalVolume : {
@@ -131,7 +136,7 @@ const json = {
         useHDR            : true,
         // Bloom
         useBloom       : 1.0,
-        threshold      : 1.0,
+        threshold      : 0.8,
         bloomIntensity : 1.0,
         // ColorAdjustments
         brightness : 1.5,
@@ -166,7 +171,7 @@ const json = {
         ],
         scale: [
           16.24,
-          7.315,
+          6.2,
           1,
         ],
       },
@@ -234,6 +239,37 @@ const json = {
         id : '15',
       }],
     },
+    {
+      id          : '06',
+      name        : 'Ge',
+      duration    : 1000,
+      dataType    : 0,
+      type        : '1',
+      visible     : true,
+      endBehavior : 2,
+      delay       : 0,
+      renderLevel : 'B+',
+      transform   : {
+        position: [
+          0,
+          -3.85,
+          0,
+        ],
+        rotation: [
+          0,
+          0,
+          0,
+        ],
+        scale: [
+          3.36,
+          0.7,
+          1,
+        ],
+      },
+      components: [{
+        id : '16',
+      }],
+    },
   ],
   components: [
     // 是否和Item保持一致
@@ -241,7 +277,7 @@ const json = {
       id        : '11',
       dataType  : 1,
       item      : { id: '02' },
-      materials : [{ id: '21' }],
+      materials : [{ id: '22' }],
       geometry  : { id:geometryData.id },
     },
     particleSystemProps,
@@ -250,7 +286,7 @@ const json = {
       id        : '14',
       dataType  : 1,
       item      : { id: '04' },
-      materials : [{ id: '22' }],
+      materials : [{ id: '21' }],
       geometry  : { id:geometryData.id },
     },
     {
@@ -259,6 +295,40 @@ const json = {
       item      : { id: '05' },
       materials : [{ id: '23' }],
       geometry  : { id:geometryData.id },
+    },
+    {
+      id        : '16',
+      dataType  : DataType.SpriteComponent,
+      item      : { id: '06' },
+      'options' : {
+        'startColor': [
+          1,
+          1,
+          1,
+          1,
+        ],
+      },
+      'renderer': {
+        'renderMode' : 1,
+        'texture'    : 7,
+      },
+      'positionOverLifetime': {
+        'direction': [
+          0,
+          0,
+          0,
+        ],
+        'startSpeed' : 0,
+        'gravity'    : [
+          0,
+          0,
+          0,
+        ],
+        'gravityOverLifetime': [
+          0,
+          1,
+        ],
+      },
     },
   ],
   materials: [
@@ -328,6 +398,7 @@ const json = {
     { source: 4, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
     { source: 5, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
     { source: 6, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { source: 7, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
   ],
 };
 
