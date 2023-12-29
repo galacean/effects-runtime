@@ -278,7 +278,7 @@ const json = {
       dataType  : 1,
       item      : { id: '02' },
       materials : [{ id: '22' }],
-      geometry  : { id:geometryData.id },
+      geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     particleSystemProps,
     spriteProps,
@@ -287,14 +287,14 @@ const json = {
       dataType  : 1,
       item      : { id: '04' },
       materials : [{ id: '21' }],
-      geometry  : { id:geometryData.id },
+      geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
       id        : '15',
       dataType  : 1,
       item      : { id: '05' },
       materials : [{ id: '23' }],
-      geometry  : { id:geometryData.id },
+      geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
       id        : '16',
@@ -335,7 +335,7 @@ const json = {
     {
       id       : '21',
       dataType : 2,
-      shader   : { id: trailShaderData.id },
+      shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
       floats   : {
       },
       vector4s: {
@@ -351,7 +351,7 @@ const json = {
     {
       id       : '22',
       dataType : 2,
-      shader   : { id: trailShaderData.id },
+      shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
       floats   : {
       },
       vector4s: {
@@ -367,7 +367,7 @@ const json = {
     {
       id       : '23',
       dataType : 2,
-      shader   : { id: trailShaderData.id },
+      shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
       floats   : {
       },
       vector4s: {
@@ -382,10 +382,10 @@ const json = {
     },
   ],
   shaders: [
-    trailShaderData,
+    trailShaderData.exportObjects[0],
   ],
   geometries:[
-    geometryData,
+    geometryData.exportObjects[0],
   ],
   requires      : [],
   compositionId : '4',

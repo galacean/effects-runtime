@@ -1,4 +1,4 @@
-import type { EffectsObjectData } from '@galacean/effects';
+import type { DataType, EffectsObjectData } from '@galacean/effects';
 import json from '../assets/custom-material';
 
 export class AssetDataBase {
@@ -17,9 +17,11 @@ export class AssetDataBase {
         return response.text();
       })
       .then(data => {
-        const jsonData = JSON.parse(data) as EffectsObjectData;
+        const packageData = JSON.parse(data) as EffectAssetData;
 
-        this.addData(jsonData);
+        for (const effectsObjectData of packageData.exportObjects) {
+          this.addData(effectsObjectData);
+        }
       })
       .catch(error => {
         console.error('An error occurred:', error);
@@ -45,4 +47,9 @@ assetDataBase.importAsset('../src/assets/materials/trail3.mat.json');
 
 for (const componentData of json.components) {
   assetDataBase.addData(componentData);
+}
+
+export interface EffectAssetData {
+  assetType: DataType,
+  exportObjects: EffectsObjectData[],
 }
