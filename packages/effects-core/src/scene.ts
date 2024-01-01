@@ -11,13 +11,12 @@ export type ImageSource = spec.TemplateImage | spec.Image | spec.CompressedImage
  */
 export interface Scene {
   readonly jsonScene: spec.JSONScene,
-  images: ImageSource[],
-  readonly textureOptions: Record<string, any>[],
+  textureOptions: Record<string, any>[],
   readonly bins: ArrayBuffer[],
   readonly pluginSystem: PluginSystem,
   readonly renderLevel?: spec.RenderLevel,
   readonly storage: Record<string, any>,
-
+  images: ImageSource[],
   consumed?: boolean,
   textures?: Texture[],
   /**
@@ -29,6 +28,7 @@ export interface Scene {
    */
   startTime?: number,
   url: string | JSONValue,
+  usedImages: Record<number, boolean>,
 }
 
 export function isScene (scene: any): scene is Scene {

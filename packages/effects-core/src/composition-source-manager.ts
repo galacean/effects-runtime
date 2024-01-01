@@ -56,7 +56,6 @@ export class CompositionSourceManager implements Disposable {
     const cachedTextures = textureOptions.map(option => option && (option instanceof Texture ? option : Texture.create(engine, option as unknown as TextureSourceOptions)));
 
     // 缓存创建的Texture对象
-    // @ts-expect-error
     scene.textureOptions = cachedTextures;
     cachedTextures?.forEach(tex => tex?.initialize());
     for (const comp of compositions) {
