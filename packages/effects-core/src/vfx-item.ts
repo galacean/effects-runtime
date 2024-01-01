@@ -174,6 +174,10 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
     return item.type === spec.ItemType.tree;
   }
 
+  static isCamera (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+    return item.type === spec.ItemType.camera;
+  }
+
   static isExtraCamera (item: VFXItem<VFXItemContent>): item is CameraVFXItem {
     return item.id === 'extra-camera' && item.name === 'extra-camera';
   }
@@ -402,11 +406,12 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
               }
             } else if (this.endBehavior === spec.END_BEHAVIOR_DESTROY) {
               this._contentVisible = false;
+              shouldUpdate = true;
+              dt = 0;
 
               // 预合成配置 reusable 且销毁时， 需要隐藏其中的元素
               if ((this.type as spec.ItemType) === spec.ItemType.composition) {
                 this.handleVisibleChanged(false);
-                this.onItemUpdate(0, lifetime);
               }
             }
             lifetime = Math.min(lifetime, 1);
