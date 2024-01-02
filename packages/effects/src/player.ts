@@ -597,7 +597,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
   private doTick (dt: number, forceRender: boolean) {
     dt = Math.min(dt, 33) * this.speed;
-    let removed = false;
+    const removed = false;
     let comps = this.compositions;
     let skipRender = false;
 
@@ -611,26 +611,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
         });
       }
 
-      if (composition.isDestroyed) {
-        delete comps[i];
-        removed = true;
-
-        return;
-      }
-
-      if (composition.renderer) {
+      if (!composition.isDestroyed && composition.renderer) {
         composition.update(dt);
-      }
-
-      if (composition.isDestroyed) {
-        delete comps[i];
-        removed = true;
-
-        return;
       }
     });
     if (removed) {
-      comps = comps.filter(comp => comp);
+      comps = comps.filter(comp => !comp.isDestroyed);
       comps.map((comp, index) => comp.setIndex(index));
       this.compositions = comps;
     }
