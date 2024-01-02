@@ -6,8 +6,9 @@
       "shader"   : {
         "id" : "a070be488c9c424d9e91d56ec1f0a591"
       },
-      "zWrite"   : true,
-      "zTest"    : true,
+      "blending" : false,
+      "zTest"    : false,
+      "zWrite"   : false,
       "floats"   : {},
       "vector4s" : {
         "_StartColor": [

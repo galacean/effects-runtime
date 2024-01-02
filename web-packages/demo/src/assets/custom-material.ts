@@ -336,6 +336,9 @@ const json = {
       id       : '21',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
+      blending: true,
+      zTest: false,
+      zWrite: false,
       floats   : {
       },
       vector4s: {
@@ -352,6 +355,9 @@ const json = {
       id       : '22',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
+      blending: true,
+      zTest: false,
+      zWrite: false,
       floats   : {
       },
       vector4s: {
@@ -368,6 +374,9 @@ const json = {
       id       : '23',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
+      blending: true,
+      zTest: false,
+      zWrite: false,
       floats   : {
       },
       vector4s: {

@@ -115,8 +115,6 @@ export class EffectComponent extends RendererComponent implements Disposable {
     this._priority = effectComponentData._priority;
     if (deserializer && sceneData) {
       this.material = deserializer.deserialize(effectComponentData.materials[0], sceneData);
-      this.material.blending = true;
-      setBlendMode(this.material, spec.BlendingMode.ALPHA);
 
       this.geometry = deserializer.deserialize(effectComponentData.geometry, sceneData);
     }

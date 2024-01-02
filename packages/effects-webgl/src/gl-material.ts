@@ -497,11 +497,10 @@ export class GLMaterial extends Material {
       floatArrays: {},
       vector4Arrays: {},
       matrixArrays: {},
-      zTest:false,
-      zWrite:false,
       ...data,
     };
 
+    this.blending = propertiesData.blending;
     this.depthTest = propertiesData.zTest;
     this.depthMask = propertiesData.zWrite;
 
@@ -547,20 +546,26 @@ export class GLMaterial extends Material {
 
   toData (sceneData: SceneData): MaterialData {
     //@ts-expect-error
-    let materialData: MaterialData = sceneData[this.instanceId.toString()];
+    let materialData: MaterialData = sceneData.effectsObjects[this.instanceId.toString()];
 
     if (!materialData) {
       materialData = {
         id: this.instanceId.toString(),
         dataType:DataType.Material,
         shader:{ id:(this.shaderSource as ShaderData).id },
+        blending: false,
+        zTest: false,
+        zWrite: false,
         floats:{},
         ints:{},
         vector4s:{},
       };
-      //@ts-expect-error
-      sceneData[this.instanceId.toString()] = materialData;
+      sceneData.effectsObjects[this.instanceId.toString()] = materialData;
     }
+    materialData.blending = this.blending!;
+    materialData.zTest = this.depthTest!;
+    materialData.zWrite = this.depthMask!;
+
     for (const name in this.floats) {
       materialData.floats[name] = this.floats[name];
     }

@@ -1,11 +1,14 @@
 {
   "exportObjects": [
     {
-      "id"       : "23",
+      "id"       : "c4495362f3b34ed7a72d60ea79bd4ba3",
       "dataType" : 2,
       "shader"   : {
         "id" : "a070be488c9c424d9e91d56ec1f0a591"
       },
+      "blending" : true,
+      "zTest"    : false,
+      "zWrite"   : false,
       "floats"   : {},
       "vector4s" : {
         "_StartColor": [

@@ -1,4 +1,4 @@
-import type { EffectComponentData, Material, ShaderData } from '@galacean/effects';
+import type { EffectComponentData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
 import { EffectComponent, ItemBehaviour, RendererComponent, TimelineComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import type { EffectsAssetData } from './asset-data-base';
 import { assetDataBase } from './asset-data-base';
@@ -8,12 +8,15 @@ export class InspectorGui {
   item: VFXItem<VFXItemContent>;
   itemDirtyFlag = false;
 
+  sceneData: SceneData;
   guiControllers: any[] = [];
 
   constructor () {
     //@ts-expect-error
     this.gui = new GUI();
     this.gui.addFolder('Inspector');
+
+    this.sceneData = { effectsObjects:assetDataBase.assetsData };
     // setInterval(this.updateInspector, 500);
   }
 
@@ -102,13 +105,14 @@ export class InspectorGui {
 
               for (const effectsObject of data.exportObjects) {
                 assetDataBase.addData(effectsObject);
+
                 const effectComponent = this.item.getComponent(RendererComponent);
 
                 if (effectComponent) {
                   const guid = effectComponent.instanceId;
 
                   (assetDataBase.assetsData[guid] as EffectComponentData).materials[0].id = effectsObject.id;
-                  effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, { effectsObjects:assetDataBase.assetsData });
+                  effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, this.sceneData);
                 }
               }
               this.itemDirtyFlag = true;
@@ -136,7 +140,7 @@ export class InspectorGui {
                   const guid = effectComponent.instanceId;
 
                   (assetDataBase.assetsData[guid] as EffectComponentData).geometry.id = effectsObject.id;
-                  effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, { effectsObjects:assetDataBase.assetsData });
+                  effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, this.sceneData);
                 }
               }
 
@@ -175,6 +179,17 @@ export class InspectorGui {
       this.itemDirtyFlag = false;
     }
 
+    if (this.item) {
+      const rendererComponent = this.item.getComponent(RendererComponent);
+
+      if (rendererComponent) {
+        for (const material of rendererComponent.materials) {
+          //@ts-expect-error
+          material.toData(this.sceneData);
+        }
+      }
+    }
+
     for (const controller of this.guiControllers) {
       controller.updateDisplay();
     }
@@ -183,7 +198,8 @@ export class InspectorGui {
   private parseMaterialProperties (material: Material, gui: any) {
 
     //@ts-expect-error
-    const materialData = material.toData({ effectsObjects:{} });
+    const materialData = material.toData(this.sceneData);
+
     const shaderProperties = (material.shaderSource as ShaderData).properties;
 
     if (!shaderProperties) {
@@ -214,18 +230,18 @@ export class InspectorGui {
         const end = Number(match[2]);
 
         materialData.floats[uniformName] = Number(value);
-        gui.add(materialData.floats, uniformName, start, end).onChange(() => {
+        this.guiControllers.push(gui.add(materialData.floats, uniformName, start, end).onChange(() => {
           this.item.getComponent(EffectComponent)?.material.fromData(materialData);
-        });
+        }));
       } else if (type === 'Float') {
         materialData.floats[uniformName] = Number(value);
-        gui.add(materialData.floats, uniformName).onChange(() => {
+        this.guiControllers.push(gui.add(materialData.floats, uniformName).onChange(() => {
           this.item.getComponent(EffectComponent)?.material.fromData(materialData);
-        });
+        }));
       } else if (type === 'Color') {
-        gui.addColor(materialData.vector4s, uniformName).name(inspectorName).onChange(() => {
+        this.guiControllers.push(gui.addColor(materialData.vector4s, uniformName).name(inspectorName).onChange(() => {
           this.item.getComponent(EffectComponent)?.material.fromData(materialData);
-        });
+        }));
       }
     }
   }
@@ -235,12 +251,18 @@ export class InspectorGui {
     const materialGUI = this.gui.addFolder('Material');
 
     materialGUI.open();
-    // @ts-expect-error
-    materialGUI.add(material.glMaterialState, 'blending');
-    // @ts-expect-error
-    materialGUI.add(material.glMaterialState, 'depthTest');
-    // @ts-expect-error
-    materialGUI.add(material.glMaterialState, 'depthMask');
+    //@ts-expect-error
+    const materialData = material.toData(this.sceneData);
+
+    this.guiControllers.push(materialGUI.add(materialData, 'blending').onChange(() => {
+      this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+    }));
+    this.guiControllers.push(materialGUI.add(materialData, 'zTest').onChange(() => {
+      this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+    }));
+    this.guiControllers.push(materialGUI.add(materialData, 'zWrite').onChange(() => {
+      this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+    }));
     this.parseMaterialProperties(material, materialGUI);
   }
 }
