@@ -8,12 +8,12 @@ let seed = 0;
  * @internal
  */
 export abstract class EffectsObject {
-  instanceId: number;
+  instanceId: string;
 
   constructor (
     public engine: Engine,
   ) {
-    this.instanceId = seed++;
+    this.instanceId = (seed++).toString();
   }
 
   /**

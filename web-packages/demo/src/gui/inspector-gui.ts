@@ -1,5 +1,6 @@
-import type { Material, ShaderData } from '@galacean/effects';
+import type { EffectComponentData, Material, ShaderData } from '@galacean/effects';
 import { EffectComponent, ItemBehaviour, RendererComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import type { EffectsAssetData } from './asset-data-base';
 import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {
@@ -68,11 +69,34 @@ export class InspectorGui {
 
         if (component instanceof RendererComponent) {
           const controller = folder.add(component, '_enabled');
-          const controller2 = folder.add({ Material:'21' }, 'Material', { Material1:'21', Material2:'22', Material3:'23' }).onChange((value: string)=>{
+
+          this.gui.add({ click: async ()=>{
             // @ts-expect-error
-            assetDataBase.assetsData[component.instanceId].materials[0].id = value;
-            component.fromData(assetDataBase.assetsData[component.instanceId], this.item.composition?.deserializer, { effectsObjects:assetDataBase.assetsData });
-          });
+            const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
+            const file = await fileHandle[0].getFile();
+            const reader = new FileReader();
+
+            reader.onload = () => {
+              if (typeof reader.result !== 'string') {
+                return;
+              }
+              const data = JSON.parse(reader.result) as EffectsAssetData;
+
+              for (const effectsObject of data.exportObjects) {
+                assetDataBase.addData(effectsObject);
+                const effectComponent = this.item.getComponent(RendererComponent);
+
+                if (effectComponent) {
+                  const guid = effectComponent.instanceId;
+
+                  (assetDataBase.assetsData[guid] as EffectComponentData).materials[0].id = effectsObject.id;
+                  effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, { effectsObjects:assetDataBase.assetsData });
+                }
+              }
+              this.itemDirtyFlag = true;
+            };
+            reader.readAsText(file);
+          } }, 'click').name('Material');
 
           this.guiControllers.push(controller);
         }
@@ -102,6 +126,36 @@ export class InspectorGui {
         }
       }
 
+      this.gui.add({ click: async ()=>{
+        // @ts-expect-error
+        const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
+        const file = await fileHandle[0].getFile();
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          if (typeof reader.result !== 'string') {
+            return;
+          }
+          const data = JSON.parse(reader.result) as EffectsAssetData;
+
+          for (const effectsObject of data.exportObjects) {
+            assetDataBase.addData(effectsObject);
+            const effectComponent = this.item.getComponent(EffectComponent);
+
+            if (effectComponent) {
+              const guid = effectComponent.instanceId;
+
+              (assetDataBase.assetsData[guid] as EffectComponentData).geometry.id = effectsObject.id;
+              effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, { effectsObjects:assetDataBase.assetsData });
+            }
+          }
+
+        };
+        reader.readAsText(file);
+
+        // console.log(file);
+      } }, 'click').name('Geometry');
+
       this.itemDirtyFlag = false;
     }
 
@@ -114,7 +168,6 @@ export class InspectorGui {
 
     //@ts-expect-error
     const materialData = material.toData({ effectsObjects:{} });
-
     const shaderProperties = (material.shaderSource as ShaderData).properties;
 
     if (!shaderProperties) {
