@@ -43,26 +43,40 @@ export class InspectorGui {
       rotationFolder.open();
       scaleFolder.open();
 
-      // @ts-expect-error
-      this.guiControllers.push(positionFolder.add(this.item.transform.position, 'x').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
-      // @ts-expect-error
-      this.guiControllers.push(positionFolder.add(this.item.transform.position, 'y').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
-      // @ts-expect-error
-      this.guiControllers.push(positionFolder.add(this.item.transform.position, 'z').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
+      const transform = this.item.transform;
 
       // @ts-expect-error
-      this.guiControllers.push(rotationFolder.add(this.item.transform.rotation, 'x').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
+      this.guiControllers.push(positionFolder.add(transform.position, 'x').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
       // @ts-expect-error
-      this.guiControllers.push(rotationFolder.add(this.item.transform.rotation, 'y').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
+      this.guiControllers.push(positionFolder.add(transform.position, 'y').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
       // @ts-expect-error
-      this.guiControllers.push(rotationFolder.add(this.item.transform.rotation, 'z').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
+      this.guiControllers.push(positionFolder.add(transform.position, 'z').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
+
+      this.guiControllers.push(rotationFolder.add(transform.rotation, 'x').step(0.05).onChange(()=>{
+        transform.quat.setFromEuler(transform.rotation);
+        transform.quat.conjugate();
+        // @ts-expect-error
+        transform.dirtyFlags.localData = true;
+      }));
+      this.guiControllers.push(rotationFolder.add(transform.rotation, 'y').step(0.05).onChange(()=>{
+        transform.quat.setFromEuler(transform.rotation);
+        transform.quat.conjugate();
+        // @ts-expect-error
+        transform.dirtyFlags.localData = true;
+      }));
+      this.guiControllers.push(rotationFolder.add(transform.rotation, 'z').step(0.05).onChange(()=>{
+        transform.quat.setFromEuler(transform.rotation);
+        transform.quat.conjugate();
+        // @ts-expect-error
+        transform.dirtyFlags.localData = true;
+      }));
 
       // @ts-expect-error
-      this.guiControllers.push(scaleFolder.add(this.item.transform.scale, 'x').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
+      this.guiControllers.push(scaleFolder.add(transform.scale, 'x').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
       // @ts-expect-error
-      this.guiControllers.push(scaleFolder.add(this.item.transform.scale, 'y').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
+      this.guiControllers.push(scaleFolder.add(transform.scale, 'y').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
       // @ts-expect-error
-      this.guiControllers.push(scaleFolder.add(this.item.transform.scale, 'z').step(0.05).onChange(()=>{this.item.transform.dirtyFlags.localData = true;}));
+      this.guiControllers.push(scaleFolder.add(transform.scale, 'z').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
 
       for (const component of this.item.components) {
         const componentFolder = this.gui.addFolder(component.constructor.name);
