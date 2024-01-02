@@ -7,6 +7,7 @@ import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo } from './downloader';
 import { passRenderLevel } from './pass-render-level';
+import { isScene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString } from './utils';
 import type { ImageSource, Scene } from './scene';
@@ -105,10 +106,6 @@ export class AssetManager implements Disposable {
    */
   private baseUrl: string;
   /**
-   * 插件系统
-   */
-  private pluginSystem: PluginSystem;
-  /**
    * 图像资源，用于创建和释放GPU纹理资源
    */
   private assets: Record<string, any> = {};
@@ -148,22 +145,27 @@ export class AssetManager implements Disposable {
   }
 
   /**
-   * 场景创建
-   * 通过 json 创建出场景对象，并进行提前编译等工作
+   * 场景创建，通过 json 创建出场景对象，并进行提前编译等工作
    * @param url - json 的 URL 链接或者 json 对象
    * @param renderer - renderer 对象，用于获取管理、编译 shader 及 GPU 上下文的参数
    * @param options - 扩展参数
    * @returns
    */
-  async loadScene (url: string | JSONValue, renderer?: Renderer, options?: { env: string }): Promise<Scene> {
-    let rawJSON: JSONValue;
+  async loadScene (
+    url: string | JSONValue | Scene,
+    renderer?: Renderer,
+    options?: { env: string },
+  ): Promise<Scene> {
+    let rawJSON: JSONValue | Scene;
     const timeLabel = `Load asset: ${isString(url) ? url : this.id}`;
     const startTime = performance.now();
     const timeInfos: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
     const asyncShaderCompile = gpuInstance?.detail?.asyncShaderCompile ?? false;
+    const compressedTexture = gpuInstance?.detail.compressedTexture ?? 0;
     let loadTimer: number;
     let cancelLoading = false;
+
     const waitPromise = new Promise<Scene>((resolve, reject) =>
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
@@ -181,6 +183,9 @@ export class AssetManager implements Disposable {
       throw new Error('load canceled.');
     };
     const loadResourcePromise = async () => {
+      let scene: Scene;
+
+      // url 为 JSONValue 或 Scene 对象
       if (isObject(url)) {
         // TODO: 原 JSONLoader contructor 判断是否兼容
         rawJSON = url;
@@ -191,34 +196,47 @@ export class AssetManager implements Disposable {
         this.baseUrl = url;
         rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(url as string));
       }
-      // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
-      const { usedImages, jsonScene } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON));
-      const { bins = [], images, compositions, fonts } = jsonScene;
-      const [loadedBins, loadedImages] = await Promise.all([
-        hookTimeInfo('processBins', () => this.processBins(bins)),
-        hookTimeInfo('processImages', () => this.processImages(images, usedImages, gpuInstance?.detail.compressedTexture ?? 0)),
-        hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, renderer, options)),
-      ]);
 
-      await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
+      if (isScene(rawJSON)) {
+        // 已经加载过的 可能需要更新数据模板
+        scene = {
+          ...rawJSON,
+        };
 
-      const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+        if (this.options && this.options.variables && Object.keys(this.options.variables).length !== 0) {
+          const { images } = rawJSON.jsonScene;
 
-      const scene = {
-        jsonScene,
-        images: loadedImages,
-        textureOptions: loadedTextures,
-        bins: loadedBins,
-        storage: {},
-        pluginSystem: this.pluginSystem,
-        renderLevel: this.options.renderLevel,
-        totalTime: 0,
-        startTime: 0,
-        url,
-      };
+          scene.images = await hookTimeInfo('processImages', () => this.processImages(images, scene.usedImages, compressedTexture));
+        }
+        scene.textureOptions = await hookTimeInfo('processTextures', () => this.processTextures(scene.images, scene.bins, scene.jsonScene));
+      } else {
+        // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
+        const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
+        const { bins = [], images, compositions, fonts } = jsonScene;
+        const [loadedBins, loadedImages] = await Promise.all([
+          hookTimeInfo('processBins', () => this.processBins(bins)),
+          hookTimeInfo('processImages', () => this.processImages(images, usedImages, compressedTexture)),
+          hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
+        ]);
 
-      // 触发插件系统 pluginSystem 的回调 prepareResource
-      await hookTimeInfo('processPlugins', () => this.pluginSystem.loadResources(scene, this.options));
+        await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+
+        scene = {
+          url: url as JSONValue | string,
+          renderLevel: this.options.renderLevel,
+          storage: {},
+          pluginSystem,
+          jsonScene,
+          usedImages,
+          images: loadedImages,
+          textureOptions: loadedTextures,
+          bins: loadedBins,
+        };
+
+        // 触发插件系统 pluginSystem 的回调 prepareResource
+        await hookTimeInfo('processPlugins', () => pluginSystem.loadResources(scene, this.options));
+      }
 
       const totalTime = performance.now() - startTime;
 
@@ -236,13 +254,13 @@ export class AssetManager implements Disposable {
     return Promise.race([waitPromise, loadResourcePromise()]);
   }
 
-  private async precompile (compositions: spec.Composition[], renderer?: Renderer, options?: PrecompileOptions) {
+  private async precompile (compositions: spec.Composition[], pluginSystem?: PluginSystem, renderer?: Renderer, options?: PrecompileOptions) {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }
     const shaderLibrary = renderer?.getShaderLibrary();
 
-    await this.pluginSystem.precompile(compositions, renderer, options);
+    await pluginSystem?.precompile(compositions, renderer, options);
 
     await new Promise(resolve => {
       shaderLibrary!.compileAllShaders(() => {
@@ -270,9 +288,9 @@ export class AssetManager implements Disposable {
       }
     });
     const { plugins = [], compositions: sceneCompositions, imgUsage, images } = jsonScene;
+    const pluginSystem = new PluginSystem(plugins);
 
-    this.pluginSystem = new PluginSystem(plugins);
-    await this.pluginSystem.processRawJSON(jsonScene, this.options);
+    await pluginSystem.processRawJSON(jsonScene, this.options);
 
     const { renderLevel } = this.options;
     const usedImages: Record<number, boolean> = {};
@@ -289,6 +307,7 @@ export class AssetManager implements Disposable {
     return {
       usedImages,
       jsonScene,
+      pluginSystem,
     };
   }
 

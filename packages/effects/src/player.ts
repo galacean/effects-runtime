@@ -18,7 +18,6 @@ import {
   isAndroid,
   initErrors,
   canvasPool,
-  isScene,
   LOG_TYPE,
   isArray,
   isObject,
@@ -408,7 +407,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       autoplay: true,
       ...options,
     };
-    let scene: Scene;
     let source: SceneType;
 
     if (isSceneWithOptions(url)) {
@@ -427,12 +425,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.assetManager = new AssetManager(opts);
     }
 
-    if (isScene(source)) {
-      scene = source;
-    } else {
-      scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
-    }
-
+    const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
     const composition = new Composition({
       ...opts,
       renderer,
