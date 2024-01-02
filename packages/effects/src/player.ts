@@ -597,31 +597,33 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
   private doTick (dt: number, forceRender: boolean) {
     dt = Math.min(dt, 33) * this.speed;
-    const removed = false;
-    let comps = this.compositions;
+    const comps = this.compositions;
     let skipRender = false;
 
     comps.sort((a, b) => a.getIndex() - b.getIndex());
-    comps.forEach((composition, i) => {
+    this.compositions = [];
+    for (let i = 0; i < comps.length; i++) {
+      const composition = comps[i];
+
       if (composition.textureOffloaded) {
         skipRender = true;
         console.error({
           content: `Composition ${composition.name} texture offloaded, skip render.`,
           type: LOG_TYPE,
         });
+        this.compositions.push(composition);
+        composition.setIndex(this.compositions.length - 1);
+        continue;
       }
-
       if (!composition.isDestroyed && composition.renderer) {
         composition.update(dt);
       }
-    });
-    if (removed) {
-      comps = comps.filter(comp => !comp.isDestroyed);
-      comps.map((comp, index) => comp.setIndex(index));
-      this.compositions = comps;
+      if (!composition.isDestroyed) {
+        this.compositions.push(composition);
+        composition.setIndex(this.compositions.length - 1);
+      }
     }
-
-    this.baseCompositionIndex = comps.length;
+    this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
       this.handleRenderError?.(new Error('play when texture offloaded'));
 
