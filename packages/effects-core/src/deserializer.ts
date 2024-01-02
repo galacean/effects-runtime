@@ -90,6 +90,8 @@ export interface EffectsObjectData {
 
 export interface MaterialData extends EffectsObjectData {
   shader: DataPath,
+  zWrite?: boolean,
+  zTest?: boolean,
   floats: Record<string, number>,
   ints: Record<string, number>,
   vector2s?: Record<string, spec.vec2>,

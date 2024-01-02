@@ -38,6 +38,8 @@ export class AssetDataBase {
 }
 export const assetDataBase = new AssetDataBase();
 
+assetDataBase.importAsset('../src/assets/shaders/trail.shader.json');
+
 assetDataBase.importAsset('../src/assets/geometries/duck.geo.json');
 assetDataBase.importAsset('../src/assets/geometries/trail.geo.json');
 

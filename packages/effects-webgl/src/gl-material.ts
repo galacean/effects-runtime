@@ -497,8 +497,13 @@ export class GLMaterial extends Material {
       floatArrays: {},
       vector4Arrays: {},
       matrixArrays: {},
+      zTest:false,
+      zWrite:false,
       ...data,
     };
+
+    this.depthTest = propertiesData.zTest;
+    this.depthMask = propertiesData.zWrite;
 
     let name: string;
 
