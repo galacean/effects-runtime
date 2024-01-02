@@ -3,7 +3,7 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.giftOpen.url;
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*88uxRq5GA4sAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -20,9 +20,8 @@ function createPlayer () {
   const player = new Player({
     container,
     interactive: true,
-
     // renderFramework: 'webgl',
-    env: 'editor',
+    // env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {
       console.info('onPausedByItem', data);

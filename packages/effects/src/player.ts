@@ -635,7 +635,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       const time = (level === 2 && this.reportGPUTime) ? gpuTimer(gl as WebGL2RenderingContext) : undefined;
 
       time?.begin();
-      if (this.compositions.length || forceRender) {
+      if (this.compositions.length || this.compositions.length < comps.length || forceRender) {
         this.renderer.setFrameBuffer(null);
         this.renderer.clear({
           stencilAction: TextureLoadAction.clear,
