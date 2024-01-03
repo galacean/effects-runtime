@@ -11,9 +11,7 @@ const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();
 
 export let deserializer: Deserializer;
-
 export let testVfxItem: VFXItem<VFXItemContent>;
-
 let orbitController: OrbitController;
 let input: Input;
 

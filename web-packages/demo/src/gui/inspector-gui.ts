@@ -1,5 +1,5 @@
-import type { EffectComponentData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
-import { EffectComponent, ItemBehaviour, RendererComponent, TimelineComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import type { EffectComponentData, EffectsObjectData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
+import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import type { EffectsAssetData } from './asset-data-base';
 import { assetDataBase } from './asset-data-base';
 
@@ -92,17 +92,8 @@ export class InspectorGui {
 
         if (component instanceof EffectComponent) {
           componentFolder.add({ click: async ()=>{
-            // @ts-expect-error
-            const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
-            const file = await fileHandle[0].getFile();
-            const reader = new FileReader();
 
-            reader.onload = () => {
-              if (typeof reader.result !== 'string') {
-                return;
-              }
-              const data = JSON.parse(reader.result) as EffectsAssetData;
-
+            await selectJsonFile((data: EffectsAssetData)=>{
               for (const effectsObject of data.exportObjects) {
                 assetDataBase.addData(effectsObject);
 
@@ -116,22 +107,11 @@ export class InspectorGui {
                 }
               }
               this.itemDirtyFlag = true;
-            };
-            reader.readAsText(file);
+            });
           } }, 'click').name('Material');
 
           componentFolder.add({ click: async ()=>{
-            // @ts-expect-error
-            const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
-            const file = await fileHandle[0].getFile();
-            const reader = new FileReader();
-
-            reader.onload = () => {
-              if (typeof reader.result !== 'string') {
-                return;
-              }
-              const data = JSON.parse(reader.result) as EffectsAssetData;
-
+            await selectJsonFile((data: EffectsAssetData)=>{
               for (const effectsObject of data.exportObjects) {
                 assetDataBase.addData(effectsObject);
                 const effectComponent = this.item.getComponent(EffectComponent);
@@ -143,11 +123,7 @@ export class InspectorGui {
                   effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, this.sceneData);
                 }
               }
-
-            };
-            reader.readAsText(file);
-
-            // console.log(file);
+            });
           } }, 'click').name('Geometry');
         }
 
@@ -242,6 +218,18 @@ export class InspectorGui {
         this.guiControllers.push(gui.addColor(materialData.vector4s, uniformName).name(inspectorName).onChange(() => {
           this.item.getComponent(EffectComponent)?.material.fromData(materialData);
         }));
+      } else if (type === '2D') {
+        this.gui.add({ click:async ()=>{
+          // @ts-expect-error
+          const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
+          const file = await fileHandle[0].getFile();
+
+          const image = await loadImage(file);
+
+          const texture = Texture.create(this.item.engine, { image:image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
+
+          this.item?.getComponent(EffectComponent)?.material.setTexture(uniformName, texture);
+        } }, 'click').name(uniformName);
       }
     }
   }
@@ -265,4 +253,21 @@ export class InspectorGui {
     }));
     this.parseMaterialProperties(material, materialGUI);
   }
+}
+
+async function selectJsonFile (callback: (data: any) => void) {
+  // @ts-expect-error
+  const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
+  const file = await fileHandle[0].getFile();
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    if (typeof reader.result !== 'string') {
+      return;
+    }
+    const data = JSON.parse(reader.result);
+
+    callback(data);
+  };
+  reader.readAsText(file);
 }
