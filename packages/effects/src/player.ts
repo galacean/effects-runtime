@@ -590,45 +590,33 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
   private doTick (dt: number, forceRender: boolean) {
     dt = Math.min(dt, 33) * this.speed;
-    let removed = false;
-    let comps = this.compositions;
+    const comps = this.compositions;
     let skipRender = false;
 
     comps.sort((a, b) => a.getIndex() - b.getIndex());
-    comps.forEach((composition, i) => {
+    this.compositions = [];
+    for (let i = 0; i < comps.length; i++) {
+      const composition = comps[i];
+
       if (composition.textureOffloaded) {
         skipRender = true;
         console.error({
           content: `Composition ${composition.name} texture offloaded, skip render.`,
           type: LOG_TYPE,
         });
+        this.compositions.push(composition);
+        composition.setIndex(this.compositions.length - 1);
+        continue;
       }
-
-      if (composition.isDestroyed) {
-        delete comps[i];
-        removed = true;
-
-        return;
-      }
-
-      if (composition.renderer) {
+      if (!composition.isDestroyed && composition.renderer) {
         composition.update(dt);
       }
-
-      if (composition.isDestroyed) {
-        delete comps[i];
-        removed = true;
-
-        return;
+      if (!composition.isDestroyed) {
+        this.compositions.push(composition);
+        composition.setIndex(this.compositions.length - 1);
       }
-    });
-    if (removed) {
-      comps = comps.filter(comp => comp);
-      comps.map((comp, index) => comp.setIndex(index));
-      this.compositions = comps;
     }
-
-    this.baseCompositionIndex = comps.length;
+    this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
       this.handleRenderError?.(new Error('play when texture offloaded'));
 
@@ -640,7 +628,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       const time = (level === 2 && this.reportGPUTime) ? gpuTimer(gl as WebGL2RenderingContext) : undefined;
 
       time?.begin();
-      if (this.compositions.length || forceRender) {
+      if (this.compositions.length || this.compositions.length < comps.length || forceRender) {
         this.renderer.setFrameBuffer(null);
         this.renderer.clear({
           stencilAction: TextureLoadAction.clear,
