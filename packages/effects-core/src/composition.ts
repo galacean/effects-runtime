@@ -105,7 +105,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 单个合成结束时的回调
    */
-  handleEnd?: (composition: Composition) => void;
+  onEnd?: (composition: Composition) => void;
   /**
    * 合成id
    */
@@ -253,9 +253,18 @@ export class Composition implements Disposable, LostHandler {
     this.assigned = true;
     this.handlePlayerPause = handlePlayerPause;
     this.handleMessageItem = handleMessageItem;
-    this.handleEnd = handleEnd;
+    this.onEnd = handleEnd;
     this.createRenderFrame();
     this.reset();
+  }
+
+  /**
+   * 合成结束回调
+   * @param {(composition: Composition) => void} func
+   * @deprecated since 2.0 - use `onEnd` instead
+   */
+  set handleEnd (func: (composition: Composition) => void) {
+    this.onEnd = func;
   }
 
   /**
@@ -435,7 +444,7 @@ export class Composition implements Disposable, LostHandler {
     this.content.createContent();
     this.content.onEnd = () => {
       window.setTimeout(() => {
-        this.handleEnd?.(this);
+        this.onEnd?.(this);
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
