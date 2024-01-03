@@ -512,9 +512,6 @@ export class GLMaterial extends Material {
     for (name in data.ints) {
       this.setInt(name, propertiesData.ints[name]);
     }
-    for (name in data.floatArrays) {
-      this.setFloats(name, propertiesData.floatArrays[name]);
-    }
     // for (name in materialData.vector2s) {
     //   this.setVector2(name, Vector propertiesData.vector2s[name]);
     // }

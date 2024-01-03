@@ -34,36 +34,36 @@ const spriteProps = {
   id        : '13',
   dataType  : DataType.SpriteComponent,
   item      : { id: '03' },
-  'options' : {
-    'startColor': [
+  options : {
+    startColor: [
       1,
       1,
       1,
       1,
     ],
   },
-  'renderer': {
-    'renderMode' : 1,
-    'texture'    : 3,
+  renderer: {
+    renderMode : 1,
+    texture    : 3,
   },
-  'positionOverLifetime': {
-    'direction': [
+  positionOverLifetime: {
+    direction: [
       0,
       0,
       0,
     ],
-    'startSpeed' : 0,
-    'gravity'    : [
+    startSpeed : 0,
+    gravity    : [
       0,
       0,
       0,
     ],
-    'gravityOverLifetime': [
+    gravityOverLifetime: [
       0,
       1,
     ],
   },
-  'splits': [
+  splits: [
     [
       0,
       0,
@@ -90,7 +90,7 @@ const json = {
     },
     {
       url           : 'https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original',
-      'renderLevel' : 'B+',
+      renderLevel : 'B+',
     },
     {
       url         : '../src/assets/textures/trail2.png',
@@ -300,31 +300,31 @@ const json = {
       id        : '16',
       dataType  : DataType.SpriteComponent,
       item      : { id: '06' },
-      'options' : {
-        'startColor': [
+      options : {
+        startColor: [
           1,
           1,
           1,
           1,
         ],
       },
-      'renderer': {
-        'renderMode' : 1,
-        'texture'    : 7,
+      renderer: {
+        renderMode : 1,
+        texture    : 7,
       },
-      'positionOverLifetime': {
-        'direction': [
+      positionOverLifetime: {
+        direction: [
           0,
           0,
           0,
         ],
-        'startSpeed' : 0,
-        'gravity'    : [
+        startSpeed : 0,
+        gravity    : [
           0,
           0,
           0,
         ],
-        'gravityOverLifetime': [
+        gravityOverLifetime: [
           0,
           1,
         ],
@@ -340,6 +340,7 @@ const json = {
       zTest: false,
       zWrite: false,
       floats   : {
+        _Speed : 1,
       },
       vector4s: {
         _StartColor : [1.0, 0.0, 0.0, 1.0],
@@ -359,6 +360,7 @@ const json = {
       zTest: false,
       zWrite: false,
       floats   : {
+        _Speed : 1,
       },
       vector4s: {
         _StartColor : [0.0, 1.0, 0.0, 1.0],
@@ -378,6 +380,7 @@ const json = {
       zTest: false,
       zWrite: false,
       floats   : {
+        _Speed : 1,
       },
       vector4s: {
         _StartColor : [1.0, 0.0, 0.0, 1.0],

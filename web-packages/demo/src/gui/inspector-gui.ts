@@ -211,7 +211,7 @@ export class InspectorGui {
         }));
       } else if (type === 'Float') {
         materialData.floats[uniformName] = Number(value);
-        this.guiControllers.push(gui.add(materialData.floats, uniformName).onChange(() => {
+        this.guiControllers.push(gui.add(materialData.floats, uniformName).name(inspectorName).onChange(() => {
           this.item.getComponent(EffectComponent)?.material.fromData(materialData);
         }));
       } else if (type === 'Color') {
@@ -229,7 +229,7 @@ export class InspectorGui {
           const texture = Texture.create(this.item.engine, { image:image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
 
           this.item?.getComponent(EffectComponent)?.material.setTexture(uniformName, texture);
-        } }, 'click').name(uniformName);
+        } }, 'click').name(inspectorName);
       }
     }
   }

@@ -9,7 +9,9 @@
       "blending" : true,
       "zTest"    : false,
       "zWrite"   : false,
-      "floats"   : {},
+      "floats"   : {
+        "_Speed" : 1
+      },
       "vector4s" : {
         "_StartColor": [
           0,
