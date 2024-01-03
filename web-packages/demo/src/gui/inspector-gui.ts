@@ -207,16 +207,16 @@ export class InspectorGui {
 
         materialData.floats[uniformName] = Number(value);
         this.guiControllers.push(gui.add(materialData.floats, uniformName, start, end).onChange(() => {
-          this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+          this.item.getComponent(RendererComponent)?.material.fromData(materialData);
         }));
       } else if (type === 'Float') {
         materialData.floats[uniformName] = Number(value);
         this.guiControllers.push(gui.add(materialData.floats, uniformName).name(inspectorName).onChange(() => {
-          this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+          this.item.getComponent(RendererComponent)?.material.fromData(materialData);
         }));
       } else if (type === 'Color') {
         this.guiControllers.push(gui.addColor(materialData.vector4s, uniformName).name(inspectorName).onChange(() => {
-          this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+          this.item.getComponent(RendererComponent)?.material.fromData(materialData);
         }));
       } else if (type === '2D') {
         this.gui.add({ click:async ()=>{
@@ -228,7 +228,7 @@ export class InspectorGui {
 
           const texture = Texture.create(this.item.engine, { image:image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
 
-          this.item?.getComponent(EffectComponent)?.material.setTexture(uniformName, texture);
+          this.item?.getComponent(RendererComponent)?.material.setTexture(uniformName, texture);
         } }, 'click').name(inspectorName);
       }
     }
@@ -243,13 +243,13 @@ export class InspectorGui {
     const materialData = material.toData(this.sceneData);
 
     this.guiControllers.push(materialGUI.add(materialData, 'blending').onChange(() => {
-      this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+      this.item.getComponent(RendererComponent)?.material.fromData(materialData);
     }));
     this.guiControllers.push(materialGUI.add(materialData, 'zTest').onChange(() => {
-      this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+      this.item.getComponent(RendererComponent)?.material.fromData(materialData);
     }));
     this.guiControllers.push(materialGUI.add(materialData, 'zWrite').onChange(() => {
-      this.item.getComponent(EffectComponent)?.material.fromData(materialData);
+      this.item.getComponent(RendererComponent)?.material.fromData(materialData);
     }));
     this.parseMaterialProperties(material, materialGUI);
   }
