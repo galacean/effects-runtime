@@ -2,6 +2,7 @@ precision highp float;
 varying vec2 uv;
 
 uniform float _GlobalTime;
+uniform float _Speed;
 uniform vec4 _StartColor;
 uniform vec4 _EndColor;
 uniform sampler2D _MainTex;
@@ -9,7 +10,7 @@ uniform sampler2D _Tex2;
 uniform sampler2D _Tex3;
 
 void main() {
-  vec2 uv0 = uv * vec2(1.0, 1.0) + vec2(-_GlobalTime, 0.0);
+  vec2 uv0 = uv + vec2(-_GlobalTime, 0.0) * _Speed;
 
   vec3 startColor = _StartColor.rgb * 1.0;
   vec3 endColor = _EndColor.rgb * 1.0;

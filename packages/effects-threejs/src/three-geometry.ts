@@ -51,13 +51,19 @@ export class ThreeGeometry extends Geometry {
    * 构造函数
    * @param props - geometry 创建参数
    */
-  constructor (engine: Engine, props: GeometryProps) {
+  constructor (engine: Engine, props?: GeometryProps) {
+    super(engine);
+
+    if (!props) {
+      return;
+    }
+
     const {
       drawStart = 0, drawCount, indices, mode,
       name = `effectsGeometry:${seed++}`,
     } = props;
 
-    super(name);
+    this.name = name;
     this.mode = mode ?? glContext.TRIANGLES;
     const attributesName: string[] = [];
     const attributes: Record<string, ThreeAttributeWithType> = {};
@@ -300,7 +306,7 @@ export class ThreeGeometry extends Geometry {
    *
    * @returns
    */
-  dispose (): void {
+  override dispose (): void {
     if (this.destroyed) {
       return;
     }

@@ -4,13 +4,9 @@ import { registerPlugin } from './plugin-system';
 import type { TextComponent, TimelineComponent } from './plugins';
 import { CameraController, InteractComponent } from './plugins';
 import {
-  CalculateLoader,
-  CameraVFXItemLoader,
-  InteractLoader,
-  ParticleLoader,
-  SpriteLoader,
-  TextLoader,
-  ParticleSystem, SpriteComponent } from './plugins';
+  CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
+  ParticleSystem, SpriteComponent,
+} from './plugins';
 import './polyfill';
 import { VFXItem } from './vfx-item';
 
@@ -47,6 +43,7 @@ export * from './ticker';
 export * from './transform';
 export * from './utils';
 export * from './vfx-item';
+export * from './deserializer';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);

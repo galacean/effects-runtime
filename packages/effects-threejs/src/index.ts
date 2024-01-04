@@ -57,7 +57,7 @@ Material.create = (engine: Engine, props: MaterialProps) => {
  * @param options - geometry 创建参数
  * @returns THREE 中的抽象 geometry 对象
  */
-Geometry.create = (engine: Engine, options: GeometryProps) => {
+Geometry.create = (engine: Engine, options?: GeometryProps) => {
   return new ThreeGeometry(engine, options);
 };
 

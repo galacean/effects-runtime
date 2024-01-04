@@ -54,7 +54,7 @@ Material.create = (engine: Engine, props?: MaterialProps) => {
   return new GLMaterial(engine, props);
 };
 
-Geometry.create = (engine: Engine, props: GeometryProps) => {
+Geometry.create = (engine: Engine, props?: GeometryProps) => {
   return new GLGeometry(engine, props);
 };
 

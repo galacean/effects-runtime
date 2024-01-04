@@ -1,14 +1,43 @@
-import type { Composition, VFXItem, SpriteComponent, SceneLoadType } from '@galacean/effects';
-import { Deserializer, EffectComponent, Player } from '@galacean/effects';
+import type { Deserializer, VFXItem, VFXItemContent } from '@galacean/effects';
+import { Player } from '@galacean/effects';
 import json from './assets/custom-material';
+import { Input } from './gui/input';
+import { InspectorGui } from './gui/inspector-gui';
+import { OrbitController } from './gui/orbit-controller';
+import { TreeGui } from './gui/tree-gui';
 
 const container = document.getElementById('J-container');
+const treeGui = new TreeGui();
+const inspectorGui = new InspectorGui();
 
-let deserializer: Deserializer;
-let testVfxItem: VFXItem<SpriteComponent>;
+export let deserializer: Deserializer;
+export let testVfxItem: VFXItem<VFXItemContent>;
+let orbitController: OrbitController;
+let input: Input;
 
-//@ts-expect-error
-let gui;
+(async () => {
+  try {
+    const player = new Player({ container });
+    //@ts-expect-error
+    const composition = await player.loadScene(json);
+
+    treeGui.setComposition(composition);
+    input = new Input(container!);
+    input.startup();
+    orbitController = new OrbitController(composition.camera, input);
+
+    inputControllerUpdate();
+
+    deserializer = composition.deserializer;
+    testVfxItem = composition.getItemByName('Trail1')!;
+  } catch (e) {
+    console.error('biz', e);
+  }
+})();
+
+setInterval(() => {
+  guiMainLoop();
+}, 100);
 
 // const properties = `
 // _2D("2D", 2D) = "" {}
@@ -20,105 +49,16 @@ let gui;
 // _Cube("Cube",Cube) = "" {}
 // `;
 
-(async () => {
-  try {
-    const player = new Player({ container });
-    const composition = await player.loadScene(json as SceneLoadType);
-
-    deserializer = new Deserializer(composition.getEngine());
-    testVfxItem = composition.getItemByName('Trail1') as VFXItem<any>;
-    // testVfxItem.fromData(deserializer, json.vfxItems['1'], ecsSceneJsonDemo);
-    // composition.content.items.push(testVfxItem);
-    // composition.content.rootItems.push(testVfxItem);
-    setGUI();
-    // testVfxItem.fromData(deserializer, ecsSceneJsonDemo.vfxItems['1'], ecsSceneJsonDemo);
-    // testVfxItem.start();
-    // testVfxItem.composition = composition;
-  } catch (e) {
-    console.error('biz', e);
+function guiMainLoop () {
+  if (treeGui.activeItem) {
+    inspectorGui.setItem(treeGui.activeItem);
   }
-})();
-
-function parseMaterialProperties (shaderProperties: string, gui: any) {
-  json.materials[0].floats = {};
-  const lines = shaderProperties.split('\n');
-
-  for (const property of lines) {
-    // 提取材质属性信息
-    // 如 “_Float1("Float2", Float) = 0”
-    // 提取出 “_Float1” “Float2” “Float” “0”
-    const regex = /\s*(.+?)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/;
-    const matchResults = property.match(regex);
-
-    if (!matchResults) {
-      return;
-    }
-    const uniformName = matchResults[1];
-    const inspectorName = matchResults[2];
-    const type = matchResults[3];
-    const value = matchResults[4];
-
-    // 提取 Range(a, b) 的 a 和 b
-    const match = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
-
-    if (match) {
-      const start = Number(match[1]);
-      const end = Number(match[2]);
-
-      //@ts-expect-error
-      json.materials[0].floats[uniformName] = Number(value);
-      gui.add(json.materials[0].floats, uniformName, start, end).onChange(() => {
-        testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0]);
-      });
-    } else if (type === 'Float') {
-      //@ts-expect-error
-      json.materials[0].floats[uniformName] = Number(value);
-      gui.add(json.materials[0].floats, uniformName).onChange(() => {
-        testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0]);
-      });
-    } else if (type === 'Color') {
-      const Color: Record<string, number[]> = {};
-
-      Color[uniformName] = [0, 0, 0, 0];
-      gui.addColor(Color, uniformName).onChange((value: number[]) => {
-        //@ts-expect-error
-        json.materials[0].vector4s[uniformName] = [value[0] / 255, value[1] / 255, value[2] / 255, value[3] / 255];
-        testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0]);
-      });
-    }
-  }
+  treeGui.update();
+  inspectorGui.update();
 }
 
-// dat gui 参数及修改
-function setDatGUI (materialProperties: string) {
-  //@ts-expect-error
-  if (gui) {
-    gui.destroy();
-  }
-  //@ts-expect-error
-  gui = new dat.GUI();
-  const materialGUI = gui.addFolder('Material');
-
-  parseMaterialProperties(materialProperties, gui);
-  materialGUI.open();
-}
-
-function setGUI () {
-  const vsInput = document.getElementById('vs-input') as HTMLTextAreaElement;
-  const fsInput = document.getElementById('fs-input') as HTMLTextAreaElement;
-  const propertiesInput = document.getElementById('properties-input') as HTMLTextAreaElement;
-  const compileButton = document.getElementById('J-compileBtn') as HTMLButtonElement;
-
-  vsInput.value = json.shaders[0].vertex;
-  fsInput.value = json.shaders[0].fragment;
-  propertiesInput.value = `_StartColor("Color",Color) = (1,1,1,1)
-_EndColor("Color",Color) = (1,1,1,1)`;
-
-  // compileButton.addEventListener('click', () => {
-  //   json.shaders[0].vertex = vsInput.value;
-  //   json.shaders[0].fragment = fsInput.value;
-  //   setDatGUI(propertiesInput.value);
-  //   testVfxItem.getComponent(EffectComponent)!.material.fromData(json.materials[0], deserializer, sceneData);
-  // });
-  setDatGUI(propertiesInput.value);
+function inputControllerUpdate () {
+  orbitController.update();
+  input.refreshStatus();
+  requestAnimationFrame(inputControllerUpdate);
 }

@@ -1,0 +1,42 @@
+{
+  "exportObjects": [
+    {
+      "id"       : "8e37e39b347f4bf8afe8288ea2c9347c",
+      "dataType" : 2,
+      "shader"   : {
+        "id" : "a070be488c9c424d9e91d56ec1f0a591"
+      },
+      "blending" : true,
+      "zTest"    : false,
+      "zWrite"   : false,
+      "floats"   : {
+        "_Speed" : 1
+      },
+      "vector4s" : {
+        "_StartColor": [
+          0,
+          1,
+          0,
+          1
+        ],
+        "_EndColor": [
+          0,
+          0.2,
+          0.8,
+          1
+        ]
+      },
+      "textures": {
+        "_MainTex": {
+          "id" : "1"
+        },
+        "_Tex2": {
+          "id" : "5"
+        },
+        "_Tex3": {
+          "id" : "4"
+        }
+      }
+    }
+  ]
+}

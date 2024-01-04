@@ -1,17 +1,28 @@
 // @ts-nocheck
-import type { Composition, VFXItem, VFXItemContent } from '@galacean/effects';
-import { Player, POST_PROCESS_SETTINGS, setConfig, defaultGlobalVolume } from '@galacean/effects';
+import type { Composition } from '@galacean/effects';
+import { POST_PROCESS_SETTINGS, Player, defaultGlobalVolume, setConfig } from '@galacean/effects';
 import { InspireList } from './common/inspire-list';
 import { TreeGui } from './gui/tree-gui';
+import { InspectorGui } from './gui/inspector-gui';
 
 const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*YIKpS69QTaoAAAAAAAAAAAAADlB4AQ';
 //const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*6j_ZQan_MhMAAAAAAAAAAAAADlB4AQ'; // BloomTest
 const container = document.getElementById('J-container');
 const speed = 0.5;
 const inspireList = new InspireList();
-const treeGui = new TreeGui();
 
-let gui = new dat.GUI();
+const treeGui = new TreeGui();
+const inspectorGui = new InspectorGui();
+
+setInterval(()=>{
+  if (treeGui.activeItem) {
+    inspectorGui.setItem(treeGui.activeItem);
+  }
+  treeGui.update();
+  inspectorGui.update();
+}, 100);
+
+let gui = new GUI();
 let player;
 
 // DATUI 参数面板
@@ -55,6 +66,7 @@ async function handlePlay (url) {
     const json = await (await fetch(url)).json();
 
     hackGlobalVolume(json);
+    player.destroyCurrentCompositions();
     const comp = await player.loadScene(json);
 
     void player.play(comp, { speed });
@@ -73,7 +85,7 @@ function handlePause () {
 // dat gui 参数及修改
 function setDatGUI (composition: Composition) {
   gui.destroy();
-  gui = new dat.GUI();
+  gui = new GUI();
   const ParticleFolder = gui.addFolder('Particle');
   const BloomFolder = gui.addFolder('Bloom');
   const ToneMappingFlolder = gui.addFolder('ToneMapping');

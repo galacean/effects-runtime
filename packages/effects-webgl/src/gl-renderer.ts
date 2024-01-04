@@ -182,9 +182,6 @@ export class GLRenderer extends Renderer implements Disposable {
       if (getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)) {
         const emissionColor = getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)['color'].slice() as spec.vec3;
 
-        emissionColor[0] /= 255;
-        emissionColor[1] /= 255;
-        emissionColor[2] /= 255;
         material.setVector3('emissionColor', math.Vector3.fromArray(emissionColor));
         material.setFloat('emissionIntensity', getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['intensity']);
       }

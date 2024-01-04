@@ -1,4 +1,4 @@
-import type { Disposable, GeometryProps, spec, Engine } from '@galacean/effects-core';
+import type { GeometryProps, spec, Engine, Deserializer, SceneData, GeometryData } from '@galacean/effects-core';
 import { BYTES_TYPE_MAP, Geometry, assertExist, generateEmptyTypedArray, glContext } from '@galacean/effects-core';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
 import { GLGPUBuffer } from './gl-gpu-buffer';
@@ -23,7 +23,7 @@ let seed = 1;
 /**
  * 应用层 Geometry 对象，本身不直接保存 GPU 资源而是通过 geometryInternal 成员保存 GPU 资源
  */
-export class GLGeometry extends Geometry implements Disposable {
+export class GLGeometry extends Geometry {
   /**
    * 索引缓冲区
    */
@@ -55,98 +55,13 @@ export class GLGeometry extends Geometry implements Disposable {
   private dirtyFlags: Record<string, BufferDirtyFlag>;
   private attributesName: string[] = [];
   private destroyed = false;
-  engine?: Engine;
 
   // TODO: 参数必传的用 props，可选的用 options，如果 props里面还有 options，则 options 需要修改名字（如renderOptions）
-  constructor (engine: Engine, props: GeometryProps) {
-    const {
-      drawStart = 0, drawCount, mode, indices,
-      name = `effectsGeometry:${seed++}`,
-      bufferUsage = glContext.STATIC_DRAW,
-    } = props;
-
-    super(name);
-
-    this.engine = engine;
-
-    // 记录顶点属性，需要与 Shader 中 attribute 进行关联
-    const bufferProps: Record<string, GLGPUBufferProps> = {};
-    const attributesName: string[] = [];
-    const attributes: Record<string, spec.AttributeWithType> = {};
-    // key为buffer的名字
-    const dirtyFlags: Record<string, BufferDirtyFlag> = {};
-    const attributesReleasable: Record<string, boolean> = {};
-    const usage = bufferUsage;
-
-    this.drawStart = drawStart;
-    this.drawCount = isNaN(+(drawCount as number)) ? NaN : (drawCount as number);
-    this.mode = (isNaN(mode as number) ? glContext.TRIANGLES : mode) as number;
-
-    Object.keys(props.attributes).forEach(name => {
-      const attr = props.attributes[name];
-      const { size, stride, offset, normalize } = attr;
-      const { type = glContext.FLOAT, releasable } = attr as spec.AttributeWithData;
-      let { data } = attr as spec.AttributeWithData;
-
-      if (type && !('dataSource' in attr) && !data) {
-        data = generateEmptyTypedArray(type);
-      }
-      if (data) {
-        const glType = data instanceof Float32Array ? glContext.FLOAT : glContext.INT;
-
-        // 使用 AttributeWithData 构造的 attribute
-        bufferProps[name] = {
-          data, usage, target: glContext.ARRAY_BUFFER, name,
-        };
-        attributes[name] = {
-          size,
-          stride,
-          offset,
-          type: type ?? glType,
-          normalize: !!normalize,
-          dataSource: name,
-        };
-        attributesReleasable[name] = releasable ?? false;
-        dirtyFlags[name] = {
-          dirty: true,
-          discard: true,
-          start: Number.POSITIVE_INFINITY,
-          end: 0,
-        };
-      } else {
-        // 使用 AttributeWithType 构造的 attribute
-        const { dataSource } = attr as spec.AttributeWithType;
-
-        if (dataSource) {
-          // 属性共享 buffer
-          attributes[name] = {
-            size,
-            stride,
-            offset,
-            type,
-            dataSource,
-            normalize: !!normalize,
-          };
-        }
-      }
-      attributesName.push(name);
-    });
-
-    dirtyFlags.index = {
-      dirty: true,
-      discard: true,
-      start: Number.POSITIVE_INFINITY,
-      end: 0,
-    };
-    // 顶点索引
-    this.indices = indices?.data;
-    this.indicesReleasable = indices?.releasable === true;
-    this.bufferProps = bufferProps;
-    this.attributes = attributes;
-    this.attributesName = attributesName;
-    this.attributesReleasable = attributesReleasable;
-    this.dirtyFlags = dirtyFlags;
-    this.options = props;
+  constructor (engine: Engine, props?: GeometryProps) {
+    super(engine);
+    if (props) {
+      this.processProps(props);
+    }
   }
 
   get isDestroyed (): boolean {
@@ -393,7 +308,132 @@ export class GLGeometry extends Geometry implements Disposable {
     }
   }
 
-  dispose (): void {
+  private processProps (data: GeometryProps): void {
+    const props = data;
+    const {
+      drawStart = 0, drawCount, mode, indices,
+      name = `effectsGeometry:${seed++}`,
+      bufferUsage = glContext.STATIC_DRAW,
+    } = props;
+
+    this.name = name;
+
+    // 记录顶点属性，需要与 Shader 中 attribute 进行关联
+    const bufferProps: Record<string, GLGPUBufferProps> = {};
+    const attributesName: string[] = [];
+    const attributes: Record<string, spec.AttributeWithType> = {};
+    // key为buffer的名字
+    const dirtyFlags: Record<string, BufferDirtyFlag> = {};
+    const attributesReleasable: Record<string, boolean> = {};
+    const usage = bufferUsage;
+
+    this.drawStart = drawStart;
+    this.drawCount = isNaN(+(drawCount as number)) ? NaN : (drawCount as number);
+    this.mode = (isNaN(mode as number) ? glContext.TRIANGLES : mode) as number;
+
+    Object.keys(props.attributes).forEach(name => {
+      const attr = props.attributes[name];
+      const { size, stride, offset, normalize } = attr;
+      const { type = glContext.FLOAT, releasable } = attr as spec.AttributeWithData;
+      let { data } = attr as spec.AttributeWithData;
+
+      if (type && !('dataSource' in attr) && !data) {
+        data = generateEmptyTypedArray(type);
+      }
+      if (data) {
+        const glType = data instanceof Float32Array ? glContext.FLOAT : glContext.INT;
+
+        // 使用 AttributeWithData 构造的 attribute
+        bufferProps[name] = {
+          data, usage, target: glContext.ARRAY_BUFFER, name,
+        };
+        attributes[name] = {
+          size,
+          stride,
+          offset,
+          type: type ?? glType,
+          normalize: !!normalize,
+          dataSource: name,
+        };
+        attributesReleasable[name] = releasable ?? false;
+        dirtyFlags[name] = {
+          dirty: true,
+          discard: true,
+          start: Number.POSITIVE_INFINITY,
+          end: 0,
+        };
+      } else {
+        // 使用 AttributeWithType 构造的 attribute
+        const { dataSource } = attr as spec.AttributeWithType;
+
+        if (dataSource) {
+          // 属性共享 buffer
+          attributes[name] = {
+            size,
+            stride,
+            offset,
+            type,
+            dataSource,
+            normalize: !!normalize,
+          };
+        }
+      }
+      attributesName.push(name);
+    });
+
+    dirtyFlags.index = {
+      dirty: true,
+      discard: true,
+      start: Number.POSITIVE_INFINITY,
+      end: 0,
+    };
+    // 顶点索引
+    this.indices = indices?.data;
+    this.indicesReleasable = indices?.releasable === true;
+    this.bufferProps = bufferProps;
+    this.attributes = attributes;
+    this.attributesName = attributesName;
+    this.attributesReleasable = attributesReleasable;
+    this.dirtyFlags = dirtyFlags;
+    this.options = props;
+    this.initialized = false;
+  }
+
+  override fromData (data: any, deserializer?: Deserializer | undefined, sceneData?: SceneData | undefined): void {
+    super.fromData(data, deserializer, sceneData);
+    const geometryData = data as GeometryData;
+    const fullGeometryData = {
+      vertices: [],
+      uv: [],
+      normals: [],
+      indices: [],
+      ...geometryData,
+    };
+
+    const geometryProps: GeometryProps = {
+      mode: glContext.TRIANGLES,
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array(fullGeometryData.vertices),
+        },
+        aUV: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array(fullGeometryData.uv),
+        },
+      },
+      indices: {
+        data: new Uint32Array(fullGeometryData.indices),
+      },
+      drawCount: fullGeometryData.indices.length,
+    };
+
+    this.processProps(geometryProps);
+  }
+
+  override dispose (): void {
     this.drawStart = 0;
     this.drawCount = NaN;
     this.bufferProps = {};
@@ -416,6 +456,7 @@ export class GLGeometry extends Geometry implements Disposable {
 
       if (this.engine !== undefined) {
         this.engine.removeGeometry(this);
+        // @ts-expect-error
         this.engine = undefined;
       }
     }

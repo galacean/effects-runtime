@@ -1,17 +1,8 @@
 import type {
-  MaterialDestroyOptions,
-  MaterialProps,
-  MaterialStates,
-  UndefinedAble,
-  Texture,
-  GlobalUniforms,
-  Renderer,
-  Deserializer,
-  MaterialData,
-  SceneData,
-  ShaderData,
+  MaterialDestroyOptions, MaterialProps, MaterialStates, UndefinedAble, Texture, GlobalUniforms,
+  Renderer, Deserializer, MaterialData, SceneData, ShaderData,
 } from '@galacean/effects-core';
-import { DestroyOptions, Material, assertExist, throwDestroyedError, math } from '@galacean/effects-core';
+import { DestroyOptions, Material, assertExist, throwDestroyedError, math, DataType } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShader } from './gl-shader';
@@ -482,6 +473,12 @@ export class GLMaterial extends Material {
   override fromData (data: MaterialData, deserializer: Deserializer, sceneData: SceneData): void {
     super.fromData(data, deserializer, sceneData);
 
+    this.uniforms = [];
+    this.floats = {};
+    this.ints = {};
+    this.floatArrays = {};
+    this.vector4s = {};
+
     const propertiesData = {
       vector2s: {},
       vector3s: {},
@@ -494,6 +491,10 @@ export class GLMaterial extends Material {
       ...data,
     };
 
+    this.blending = propertiesData.blending;
+    this.depthTest = propertiesData.zTest;
+    this.depthMask = propertiesData.zWrite;
+
     let name: string;
 
     for (name in data.floats) {
@@ -501,9 +502,6 @@ export class GLMaterial extends Material {
     }
     for (name in data.ints) {
       this.setInt(name, propertiesData.ints[name]);
-    }
-    for (name in data.floatArrays) {
-      this.setFloats(name, propertiesData.floatArrays[name]);
     }
     // for (name in materialData.vector2s) {
     //   this.setVector2(name, Vector propertiesData.vector2s[name]);
@@ -513,22 +511,65 @@ export class GLMaterial extends Material {
     }
 
     if (deserializer && sceneData) {
+      this.samplers = [];
+      this.textures = {};
       for (name in data.textures) {
+        const texture = deserializer.deserialize({ id: 'Texture' + propertiesData.textures[name].id }, sceneData);
+
         // TODO 纹理通过 id 加入场景数据
-        this.setTexture(name, sceneData.effectsObjects['Texture' + propertiesData.textures[name].id] as unknown as Texture);
+        this.setTexture(name, texture);
       }
 
       const shaderData: ShaderData = deserializer.findData(data.shader, sceneData);
 
       this.shaderSource = {
-        vertex: shaderData.vertex,
-        fragment: shaderData.fragment,
-        // @ts-expect-error
-        glslVersion: shaderData.version,
+        ...shaderData,
       };
     }
 
     this.initialized = false;
+    //@ts-expect-error
+    this.shader = undefined;
+  }
+
+  /**
+   * @since 2.0.0
+   * @param sceneData
+   * @returns
+   */
+  toData (sceneData: SceneData): MaterialData {
+    //@ts-expect-error
+    let materialData: MaterialData = sceneData.effectsObjects[this.instanceId.toString()];
+
+    if (!materialData) {
+      materialData = {
+        id: this.instanceId.toString(),
+        dataType: DataType.Material,
+        shader: { id: (this.shaderSource as ShaderData).id },
+        blending: false,
+        zTest: false,
+        zWrite: false,
+        floats: {},
+        ints: {},
+        vector4s: {},
+      };
+      sceneData.effectsObjects[this.instanceId.toString()] = materialData;
+    }
+    materialData.blending = this.blending!;
+    materialData.zTest = this.depthTest!;
+    materialData.zWrite = this.depthMask!;
+
+    for (const name in this.floats) {
+      materialData.floats[name] = this.floats[name];
+    }
+    for (const name in this.ints) {
+      materialData.ints[name] = this.ints[name];
+    }
+    for (const name in this.vector4s) {
+      materialData.vector4s[name] = this.vector4s[name].toArray();
+    }
+
+    return materialData;
   }
 
   override cloneUniforms (sourceMaterial: Material): void {

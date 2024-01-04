@@ -4,10 +4,9 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { EffectsObjectData, MaterialData, SceneData, ShaderData, VFXItemData } from './deserializer';
-import { Deserializer } from './deserializer';
+import type { EffectsObjectData, GeometryData, MaterialData, SceneData, ShaderData, VFXItemData } from './deserializer';
 import type { Region } from './plugins';
-import { CameraController, HitTestType, InteractComponent, TextComponent, TimelineComponent } from './plugins';
+import { HitTestType, TextComponent, TimelineComponent } from './plugins';
 import { noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
@@ -69,12 +68,12 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.items.length = 0;
     if (this.item.composition) {
-      const deserializer = new Deserializer(this.engine);
+      const deserializer = this.item.composition.deserializer;
       const sceneData: SceneData = {
         effectsObjects: {},
       };
       // TODO spec 定义新类型后 as 移除
-      const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], components: EffectsObjectData[] };
+      const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], geometries: GeometryData[], components: EffectsObjectData[] };
 
       if (jsonScene.items) {
         for (const vfxItemData of this.item.props.items) {
@@ -92,6 +91,11 @@ export class CompositionComponent extends ItemBehaviour {
           sceneData.effectsObjects[shaderData.id] = shaderData;
         }
       }
+      if (jsonScene.geometries) {
+        for (const geometryData of jsonScene.geometries) {
+          sceneData.effectsObjects[geometryData.id] = geometryData;
+        }
+      }
       if (jsonScene.components) {
         for (const componentData of jsonScene.components) {
           sceneData.effectsObjects[componentData.id] = componentData;
@@ -100,8 +104,9 @@ export class CompositionComponent extends ItemBehaviour {
 
       if (jsonScene.textures) {
         for (let i = 0; i < jsonScene.textures.length; i++) {
+          this.item.composition.deserializer.addInstance('Texture' + i, this.item.composition.textures[i]);
           // TODO 纹理增加 id 加入 effectsObjects Map
-          sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
+          // sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
         }
       }
 
@@ -109,7 +114,6 @@ export class CompositionComponent extends ItemBehaviour {
 
       for (let i = 0; i < itemProps.length; i++) {
         let item: VFXItem<any>;
-
         const itemData = itemProps[i];
 
         // 设置预合成作为元素时的时长、结束行为和渲染延时
