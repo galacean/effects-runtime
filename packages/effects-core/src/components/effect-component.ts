@@ -1,8 +1,8 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import * as spec from '@galacean/effects-specification';
-import { DataType, type Deserializer, type EffectComponentData, type GeometryData, type SceneData } from '../deserializer';
+import type { Deserializer, EffectComponentData, GeometryData, SceneData } from '../deserializer';
+import { DataType } from '../deserializer';
 import type { Engine } from '../engine';
-import { setBlendMode, type Material, type MaterialDestroyOptions } from '../material';
+import type { Material, MaterialDestroyOptions } from '../material';
 import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
 import type { Disposable } from '../utils';
@@ -30,6 +30,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
   geometry: Geometry;
 
   protected destroyed = false;
+
   private visible = false;
 
   constructor (engine: Engine) {

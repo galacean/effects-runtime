@@ -1,15 +1,6 @@
 import type {
-  MaterialDestroyOptions,
-  MaterialProps,
-  MaterialStates,
-  UndefinedAble,
-  Texture,
-  GlobalUniforms,
-  Renderer,
-  Deserializer,
-  MaterialData,
-  SceneData,
-  ShaderData,
+  MaterialDestroyOptions, MaterialProps, MaterialStates, UndefinedAble, Texture, GlobalUniforms,
+  Renderer, Deserializer, MaterialData, SceneData, ShaderData,
 } from '@galacean/effects-core';
 import { DestroyOptions, Material, assertExist, throwDestroyedError, math, DataType } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
@@ -523,7 +514,7 @@ export class GLMaterial extends Material {
       this.samplers = [];
       this.textures = {};
       for (name in data.textures) {
-        const texture = deserializer.deserialize({ id:'Texture' + propertiesData.textures[name].id }, sceneData);
+        const texture = deserializer.deserialize({ id: 'Texture' + propertiesData.textures[name].id }, sceneData);
 
         // TODO 纹理通过 id 加入场景数据
         this.setTexture(name, texture);
@@ -541,6 +532,11 @@ export class GLMaterial extends Material {
     this.shader = undefined;
   }
 
+  /**
+   * @since 2.0.0
+   * @param sceneData
+   * @returns
+   */
   toData (sceneData: SceneData): MaterialData {
     //@ts-expect-error
     let materialData: MaterialData = sceneData.effectsObjects[this.instanceId.toString()];
@@ -548,14 +544,14 @@ export class GLMaterial extends Material {
     if (!materialData) {
       materialData = {
         id: this.instanceId.toString(),
-        dataType:DataType.Material,
-        shader:{ id:(this.shaderSource as ShaderData).id },
+        dataType: DataType.Material,
+        shader: { id: (this.shaderSource as ShaderData).id },
         blending: false,
         zTest: false,
         zWrite: false,
-        floats:{},
-        ints:{},
-        vector4s:{},
+        floats: {},
+        ints: {},
+        vector4s: {},
       };
       sceneData.effectsObjects[this.instanceId.toString()] = materialData;
     }

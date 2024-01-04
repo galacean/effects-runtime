@@ -53,61 +53,64 @@ export class ThreeGeometry extends Geometry {
    */
   constructor (engine: Engine, props?: GeometryProps) {
     super(engine);
-    if (props) {
-      const {
-        drawStart = 0, drawCount, indices, mode,
-        name = `effectsGeometry:${seed++}`,
-      } = props;
 
-      this.name = name;
-      this.mode = mode ?? glContext.TRIANGLES;
-      const attributesName: string[] = [];
-      const attributes: Record<string, ThreeAttributeWithType> = {};
-      const geometry = new THREE.BufferGeometry();
+    if (!props) {
+      return;
+    }
 
-      Object.keys(props.attributes).forEach(name => {
-        const attr = props.attributes[name];
+    const {
+      drawStart = 0, drawCount, indices, mode,
+      name = `effectsGeometry:${seed++}`,
+    } = props;
 
-        if (!('dataSource' in attr)) {
-          this.setAttributeType(name, attr, geometry, attributes, props.maxVertex);
-        } else {
-          // 使用AttributeWithType构造的attribute
-          const { dataSource } = attr as spec.AttributeWithType;
+    this.name = name;
+    this.mode = mode ?? glContext.TRIANGLES;
+    const attributesName: string[] = [];
+    const attributes: Record<string, ThreeAttributeWithType> = {};
+    const geometry = new THREE.BufferGeometry();
 
-          if (dataSource) {
-            if (attributes[dataSource] === undefined) {
-              this.setAttributeType(dataSource, attr, geometry, attributes, props.maxVertex);
-            }
-            const { size, offset, normalize } = attr;
-            const dataSourceAttribute = attributes[dataSource];
-            const buffer = dataSourceAttribute.buffer;
-            const dataLength = dataSourceAttribute.dataLength;
-            const attribute = new THREE.InterleavedBufferAttribute(buffer, size, (offset ?? 0) / dataLength, normalize);
+    Object.keys(props.attributes).forEach(name => {
+      const attr = props.attributes[name];
 
-            geometry.setAttribute(name, attribute);
-            attributes[name] = {
-              buffer,
-              attribute,
-              type: dataSourceAttribute.type,
-              dataLength,
-            };
+      if (!('dataSource' in attr)) {
+        this.setAttributeType(name, attr, geometry, attributes, props.maxVertex);
+      } else {
+        // 使用AttributeWithType构造的attribute
+        const { dataSource } = attr as spec.AttributeWithType;
+
+        if (dataSource) {
+          if (attributes[dataSource] === undefined) {
+            this.setAttributeType(dataSource, attr, geometry, attributes, props.maxVertex);
           }
+          const { size, offset, normalize } = attr;
+          const dataSourceAttribute = attributes[dataSource];
+          const buffer = dataSourceAttribute.buffer;
+          const dataLength = dataSourceAttribute.dataLength;
+          const attribute = new THREE.InterleavedBufferAttribute(buffer, size, (offset ?? 0) / dataLength, normalize);
+
+          geometry.setAttribute(name, attribute);
+          attributes[name] = {
+            buffer,
+            attribute,
+            type: dataSourceAttribute.type,
+            dataLength,
+          };
         }
-
-        attributesName.push(name);
-
-      });
-
-      if (indices && indices.data) {
-        geometry.setIndex(new THREE.BufferAttribute(indices.data, 1));
       }
 
-      this.geometry = geometry;
-      this.attributes = attributes;
-      this.attributesName = attributesName;
-      this.drawStart = drawStart;
-      this.drawCount = drawCount ?? 0;
+      attributesName.push(name);
+
+    });
+
+    if (indices && indices.data) {
+      geometry.setIndex(new THREE.BufferAttribute(indices.data, 1));
     }
+
+    this.geometry = geometry;
+    this.attributes = attributes;
+    this.attributesName = attributesName;
+    this.drawStart = drawStart;
+    this.drawCount = drawCount ?? 0;
   }
 
   /**

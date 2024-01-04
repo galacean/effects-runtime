@@ -114,7 +114,6 @@ export class CompositionComponent extends ItemBehaviour {
 
       for (let i = 0; i < itemProps.length; i++) {
         let item: VFXItem<any>;
-
         const itemData = itemProps[i];
 
         // 设置预合成作为元素时的时长、结束行为和渲染延时

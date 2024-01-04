@@ -13,7 +13,7 @@ export abstract class EffectsObject {
   constructor (
     public engine: Engine,
   ) {
-    this.instanceId = (seed++).toString();
+    this.instanceId = String(seed++);
   }
 
   /**

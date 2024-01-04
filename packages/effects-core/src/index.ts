@@ -4,15 +4,10 @@ import { registerPlugin } from './plugin-system';
 import type { TextComponent, TimelineComponent } from './plugins';
 import { CameraController, InteractComponent } from './plugins';
 import {
-  CalculateLoader,
-  CameraVFXItemLoader,
-  InteractLoader,
-  ParticleLoader,
-  SpriteLoader,
-  TextLoader,
-  ParticleSystem, SpriteComponent } from './plugins';
+  CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
+  ParticleSystem, SpriteComponent,
+} from './plugins';
 import './polyfill';
-import { Geometry } from './render';
 import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';

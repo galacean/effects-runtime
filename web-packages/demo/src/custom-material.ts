@@ -35,7 +35,7 @@ let input: Input;
   }
 })();
 
-setInterval(()=>{
+setInterval(() => {
   guiMainLoop();
 }, 100);
 

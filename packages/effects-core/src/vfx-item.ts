@@ -22,11 +22,7 @@ import type {
   SpriteItemProps,
   TransformAnimationData,
 } from './plugins';
-import {
-  TimelineComponent, Track,
-  AnimationClipPlayable,
-  ActivationClipPlayable,
-} from './plugins';
+import { TimelineComponent, Track, AnimationClipPlayable, ActivationClipPlayable } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
 import { RendererComponent } from './components';

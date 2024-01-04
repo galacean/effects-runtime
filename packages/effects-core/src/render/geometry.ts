@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
 import { glContext } from '../gl';
-import type { Disposable } from '../utils';
 import type { Engine } from '../engine';
 import { EffectsObject } from '../effects-object';
 

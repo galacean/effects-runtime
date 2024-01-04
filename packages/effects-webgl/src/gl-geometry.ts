@@ -1,4 +1,4 @@
-import type { Disposable, GeometryProps, spec, Engine, Deserializer, SceneData, GeometryData } from '@galacean/effects-core';
+import type { GeometryProps, spec, Engine, Deserializer, SceneData, GeometryData } from '@galacean/effects-core';
 import { BYTES_TYPE_MAP, Geometry, assertExist, generateEmptyTypedArray, glContext } from '@galacean/effects-core';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
 import { GLGPUBuffer } from './gl-gpu-buffer';
@@ -60,7 +60,7 @@ export class GLGeometry extends Geometry {
   constructor (engine: Engine, props?: GeometryProps) {
     super(engine);
     if (props) {
-      this.fromProps(props);
+      this.processProps(props);
     }
   }
 
@@ -308,7 +308,7 @@ export class GLGeometry extends Geometry {
     }
   }
 
-  fromProps (data: GeometryProps): void {
+  private processProps (data: GeometryProps): void {
     const props = data;
     const {
       drawStart = 0, drawCount, mode, indices,
@@ -403,10 +403,10 @@ export class GLGeometry extends Geometry {
     super.fromData(data, deserializer, sceneData);
     const geometryData = data as GeometryData;
     const fullGeometryData = {
-      vertices:[],
-      uv:[],
-      normals:[],
-      indices:[],
+      vertices: [],
+      uv: [],
+      normals: [],
+      indices: [],
       ...geometryData,
     };
 
@@ -430,7 +430,7 @@ export class GLGeometry extends Geometry {
       drawCount: fullGeometryData.indices.length,
     };
 
-    this.fromProps(geometryProps);
+    this.processProps(geometryProps);
   }
 
   override dispose (): void {
