@@ -1,0 +1,1 @@
+console.info('effects-assets');

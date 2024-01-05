@@ -138,6 +138,12 @@ importers:
         specifier: workspace:*
         version: link:../effects-webgl
 
+  packages/effects-assets:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../effects
+
   packages/effects-core:
     dependencies:
       '@galacean/effects-math':
