@@ -36,15 +36,13 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
 
   override onItemUpdate (dt: number, lifetime: number) {
     if (this.content) {
-      let hide = !this.contentVisible;
-
+      let hide = !this.visible;
       const parentItem = this.parentId && this.composition?.getItemByID(this.parentId);
 
       if (!hide && parentItem) {
         const parentData = parentItem.getRenderData();
 
         if (parentData) {
-          this.content.setParentTransform(parentData.transform);
           if (!parentData.visible) {
             hide = false;
           }

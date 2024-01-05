@@ -17,7 +17,6 @@ import { TrailMesh } from './trail-mesh';
 import type { ParticleMeshProps, Point } from './particle-mesh';
 import { ParticleMesh } from './particle-mesh';
 import type { Mesh } from '../../render';
-
 type ParticleSystemRayCastOptions = {
   ray: Ray,
   radius: number,
@@ -158,7 +157,6 @@ export class ParticleSystem {
   private lastUpdate: number;
   private loopStartTime: number;
   private particleLink: Link<ParticleContent>;
-  private parentTransform: Transform;
   private started: boolean;
   private ended: boolean;
   private lastEmitTime: number;
@@ -485,7 +483,7 @@ export class ParticleSystem {
   }
 
   private updateEmitterTransform (time: number) {
-    const parentTransform = this.parentTransform;
+    const parentTransform = this.transform.parentTransform;
 
     const { path, position } = this.basicTransform;
     const selfPos = position.clone();
@@ -500,9 +498,9 @@ export class ParticleSystem {
     if (this.options.particleFollowParent && parentTransform) {
       const tempMatrix = parentTransform.getWorldMatrix();
 
-      this.particleMesh.mesh.worldMatrix = tempMatrix.clone();
+      this.particleMesh.mesh.worldMatrix = tempMatrix;
       if (this.trailMesh) {
-        this.trailMesh.mesh.worldMatrix = tempMatrix.clone();
+        this.trailMesh.mesh.worldMatrix = tempMatrix;
       }
     }
   }
@@ -523,8 +521,8 @@ export class ParticleSystem {
     link.pushNode(linkContent);
     this.particleMesh.setPoint(point, pointIndex);
     this.clearPointTrail(pointIndex);
-    if (this.parentTransform && this.trailMesh) {
-      this.trailMesh.setPointStartPos(pointIndex, this.parentTransform.position.clone());
+    if (this.trailMesh) {
+      this.trailMesh.setPointStartPos(pointIndex, this.transform.parentTransform!.position.clone());
     }
   }
 
@@ -566,8 +564,10 @@ export class ParticleSystem {
       data[i * 8 + 7] = a;
     }
   }
+
   setParentTransform (transform: Transform) {
-    this.parentTransform = transform;
+    // this.transform.parentTransform = transform;
+    // this.parentTransform = transform;
   }
 
   getTextures (): Texture[] {
@@ -869,8 +869,8 @@ export class ParticleSystem {
     if (trails.sizeAffectsLifetime) {
       lifetime *= size[0];
     }
-    if (trails.parentAffectsPosition && this.parentTransform) {
-      position.add(this.parentTransform.position);
+    if (trails.parentAffectsPosition && this.transform.parentTransform) {
+      position.add(this.transform.parentTransform.position);
       const pos = this.trailMesh.getPointStartPos(pointIndex);
 
       if (pos) {
