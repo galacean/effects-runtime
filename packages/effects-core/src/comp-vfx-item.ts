@@ -146,7 +146,8 @@ export class CompositionComponent extends ItemBehaviour {
             this.item.composition.autoRefTex = false;
           }
           item.getComponent(CompositionComponent)!.createContent();
-        } else if (itemData.type === 'ECS' ||
+        } else if (
+          itemData.type === 'ECS' ||
           itemData.type === spec.ItemType.sprite ||
           itemData.type === spec.ItemType.particle ||
           itemData.type === spec.ItemType.mesh ||
@@ -155,7 +156,8 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === 'camera' ||
           itemData.type === spec.ItemType.tree ||
           itemData.type === spec.ItemType.interact ||
-          itemData.type === spec.ItemType.camera) {
+          itemData.type === spec.ItemType.camera
+        ) {
           item = deserializer.deserialize({ id: itemData.id }, sceneData);
           item.composition = this.item.composition;
         } else {

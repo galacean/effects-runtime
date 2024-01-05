@@ -1,6 +1,6 @@
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
-import type { Deserializer, SceneData } from '../deserializer';
+import type { Deserializer, EffectComponentData, SceneData, VFXItemData } from '../deserializer';
 import type { VFXItem, VFXItemContent } from '../vfx-item';
 
 /**
@@ -23,8 +23,13 @@ export abstract class Component extends EffectsObject {
   onAttached () { }
   onDestroy () { }
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
+  override fromData (
+    data: any,
+    deserializer?: Deserializer,
+    sceneData?: SceneData,
+  ): void {
     super.fromData(data, deserializer, sceneData);
+
     if (deserializer && sceneData) {
       this.item = deserializer.deserialize(data.item, sceneData);
     }

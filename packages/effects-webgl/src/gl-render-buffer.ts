@@ -9,7 +9,7 @@ export class GLRenderBuffer extends RenderBuffer {
 
   constructor (
     props: RenderBufferProps,
-    renderer?: GLRendererInternal
+    renderer?: GLRendererInternal,
   ) {
     super(props);
 

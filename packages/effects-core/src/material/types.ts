@@ -11,7 +11,8 @@ export type UniformSemantic =
   | 'VIEWPROJECTION'
   | 'VIEWINVERSE'
   | 'EDITOR_TRANSFORM'
-  | 'MODELVIEWPROJECTION';
+  | 'MODELVIEWPROJECTION'
+  ;
 
 export interface MaterialBlendingStates {
   blending?: boolean,

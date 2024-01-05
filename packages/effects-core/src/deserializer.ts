@@ -4,6 +4,7 @@ import type { Engine } from './engine';
 import { Material } from './material';
 import type { VFXItemProps } from './vfx-item';
 import { Geometry } from './render';
+import type { Component } from './components';
 
 /**
  * @since 2.0.0
@@ -18,15 +19,15 @@ export class Deserializer {
     private engine: Engine,
   ) { }
 
-  static addConstructor (constructor: new (engine: Engine) => EffectsObject, type: number) {
+  static addConstructor (constructor: new (engine: Engine) => EffectsObject | Component, type: number) {
     Deserializer.constructorMap[type] = constructor;
   }
 
-  deserialize (dataPath: DataPath, sceneData: SceneData) {
+  deserialize<T> (dataPath: DataPath, sceneData: SceneData): T {
     if (this.objectInstance[dataPath.id]) {
-      return this.objectInstance[dataPath.id];
+      return this.objectInstance[dataPath.id] as T;
     }
-    let effectsObject: any;
+    let effectsObject: EffectsObject;
     const effectsObjectData = this.findData(dataPath, sceneData);
 
     switch (effectsObjectData.dataType) {
@@ -44,10 +45,10 @@ export class Deserializer {
     this.addInstance(dataPath.id, effectsObject);
     effectsObject.fromData(effectsObjectData, this, sceneData);
 
-    return effectsObject;
+    return effectsObject as T;
   }
 
-  findData (dataPath: DataPath, sceneData: SceneData): any {
+  findData (dataPath: DataPath, sceneData: SceneData): EffectsObjectData {
     const data = sceneData.effectsObjects[dataPath.id];
 
     return data;

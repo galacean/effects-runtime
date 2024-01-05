@@ -35,7 +35,6 @@ export class GLProgram implements Disposable {
     private readonly shared: boolean,
     private readonly id: string,
   ) {
-
     let blockUniformNames: string[] = [];
 
     this.pipelineContext = engine.getGLPipelineContext();
@@ -59,7 +58,6 @@ export class GLProgram implements Disposable {
   }
 
   bind () {
-
     this.pipelineContext.useProgram(this.program);
   }
 
