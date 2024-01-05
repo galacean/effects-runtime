@@ -605,7 +605,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           type: LOG_TYPE,
         });
         this.compositions.push(composition);
-        composition.setIndex(this.compositions.length - 1);
         continue;
       }
       if (!composition.isDestroyed && composition.renderer) {
@@ -613,7 +612,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       }
       if (!composition.isDestroyed) {
         this.compositions.push(composition);
-        composition.setIndex(this.compositions.length - 1);
       }
     }
     this.baseCompositionIndex = this.compositions.length;

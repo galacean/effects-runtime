@@ -204,11 +204,21 @@ export class AssetManager implements Disposable {
         };
 
         if (this.options && this.options.variables && Object.keys(this.options.variables).length !== 0) {
-          const { images } = rawJSON.jsonScene;
+          const { images: rawImages } = rawJSON.jsonScene;
+          const images = scene.images;
 
+          for (let i = 0; i < rawImages.length; i++) {
+            // 仅重新加载数据模板对应的图片
+            if (images[i] instanceof HTMLCanvasElement) {
+              images[i] = rawImages[i];
+            }
+          }
           scene.images = await hookTimeInfo('processImages', () => this.processImages(images, scene.usedImages, compressedTexture));
+          // 更新 TextureOptions 中的 image 指向
+          for (let i = 0; i < scene.images.length; i++) {
+            scene.textureOptions[i].image = scene.images[i];
+          }
         }
-        scene.textureOptions = await hookTimeInfo('processTextures', () => this.processTextures(scene.images, scene.bins, scene.jsonScene));
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));

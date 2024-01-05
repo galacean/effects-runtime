@@ -73,16 +73,16 @@ describe('combine sprite meshes according to items', () => {
     player.gotoAndPlay(0.01);
 
     const spriteGroup = comp.loaderData.spriteGroup;
+
     let splits = spriteGroup.getMeshSplits(comp.items, 0, comp.items.length - 1, true);
 
-    expect(splits.length).to.eql(7);
+    expect(splits.length).to.eql(6);
     expect(mapSplitItemNames(splits[0])).to.deep.equal(['item_0', 'item_1', 'item_2']);
     expect(mapSplitItemNames(splits[1])).to.deep.equal(['item_3']);
     expect(mapSplitItemNames(splits[2])).to.deep.equal(['item_4']);
     expect(mapSplitItemNames(splits[3])).to.deep.equal(['item_6']);
     expect(mapSplitItemNames(splits[4])).to.deep.equal(['item_7']);
-    expect(mapSplitItemNames(splits[5])).to.deep.equal(['item_8']);
-    expect(mapSplitItemNames(splits[6])).to.deep.equal(['item_10']);
+    expect(mapSplitItemNames(splits[5])).to.deep.equal(['item_8', 'item_10']);
     splits = spriteGroup.getMeshSplits(comp.items);
     expect(splits.length).to.eql(4);
     expect(mapSplitItemNames(splits[0])).to.deep.equal(['item_0', 'item_2', 'item_4']);
