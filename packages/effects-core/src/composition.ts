@@ -48,7 +48,7 @@ export interface CompositionProps {
   renderer: Renderer,
   onPlayerPause?: (item: VFXItem<any>) => void,
   onMessageItem?: (item: MessageItem) => void,
-  handleEnd?: (composition: Composition) => void,
+  onEnd?: (composition: Composition) => void,
   event?: EventSystem,
   width: number,
   height: number,
@@ -207,7 +207,7 @@ export class Composition implements Disposable, LostHandler {
       reusable = false,
       speed = 1,
       baseRenderOrder = 0, renderer,
-      onPlayerPause, onMessageItem, handleEnd,
+      onPlayerPause, onMessageItem, onEnd,
       event, width, height,
     } = props;
 
@@ -257,7 +257,7 @@ export class Composition implements Disposable, LostHandler {
     this.assigned = true;
     this.onPlayerPause = onPlayerPause;
     this.onMessageItem = onMessageItem;
-    this.onEnd = handleEnd;
+    this.onEnd = onEnd;
     this.createRenderFrame();
     this.reset();
   }
