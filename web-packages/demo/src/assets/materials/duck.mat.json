@@ -6,9 +6,6 @@
       "shader"   : {
         "id" : "a070be488c9c424d9e91d56ec1f0a591"
       },
-      "blending" : false,
-      "zTest"    : false,
-      "zWrite"   : false,
       "floats"   : {
         "_Speed" : 1
       },

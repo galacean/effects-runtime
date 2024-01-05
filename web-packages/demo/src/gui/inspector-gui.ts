@@ -1,6 +1,6 @@
-import type { EffectComponentData, EffectsObjectData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
+import type { EffectComponentData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
 import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
-import type { EffectsAssetData } from './asset-data-base';
+import type { AssetData } from './asset-data-base';
 import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {
@@ -16,7 +16,7 @@ export class InspectorGui {
     this.gui = new GUI();
     this.gui.addFolder('Inspector');
 
-    this.sceneData = { effectsObjects:assetDataBase.assetsData };
+    this.sceneData = { effectsObjects: assetDataBase.assetsData };
     // setInterval(this.updateInspector, 500);
   }
 
@@ -28,7 +28,7 @@ export class InspectorGui {
     this.itemDirtyFlag = true;
   }
 
-  update = ()=> {
+  update = () => {
     if (this.item && this.itemDirtyFlag) {
       this.guiControllers = [];
       this.gui.destroy();
@@ -47,39 +47,19 @@ export class InspectorGui {
       scaleFolder.open();
 
       const transform = this.item.transform;
+      const transformData = transform.toData(this.sceneData);
 
-      // @ts-expect-error
-      this.guiControllers.push(positionFolder.add(transform.position, 'x').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
-      // @ts-expect-error
-      this.guiControllers.push(positionFolder.add(transform.position, 'y').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
-      // @ts-expect-error
-      this.guiControllers.push(positionFolder.add(transform.position, 'z').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
+      this.guiControllers.push(positionFolder.add(transformData.position, 'x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, 'y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, 'z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
-      this.guiControllers.push(rotationFolder.add(transform.rotation, 'x').step(0.05).onChange(()=>{
-        transform.quat.setFromEuler(transform.rotation);
-        transform.quat.conjugate();
-        // @ts-expect-error
-        transform.dirtyFlags.localData = true;
-      }));
-      this.guiControllers.push(rotationFolder.add(transform.rotation, 'y').step(0.05).onChange(()=>{
-        transform.quat.setFromEuler(transform.rotation);
-        transform.quat.conjugate();
-        // @ts-expect-error
-        transform.dirtyFlags.localData = true;
-      }));
-      this.guiControllers.push(rotationFolder.add(transform.rotation, 'z').step(0.05).onChange(()=>{
-        transform.quat.setFromEuler(transform.rotation);
-        transform.quat.conjugate();
-        // @ts-expect-error
-        transform.dirtyFlags.localData = true;
-      }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
-      // @ts-expect-error
-      this.guiControllers.push(scaleFolder.add(transform.scale, 'x').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
-      // @ts-expect-error
-      this.guiControllers.push(scaleFolder.add(transform.scale, 'y').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
-      // @ts-expect-error
-      this.guiControllers.push(scaleFolder.add(transform.scale, 'z').step(0.05).onChange(()=>{transform.dirtyFlags.localData = true;}));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, 'x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, 'y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, 'z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
       for (const component of this.item.components) {
         const componentFolder = this.gui.addFolder(component.constructor.name);
@@ -91,40 +71,44 @@ export class InspectorGui {
         }
 
         if (component instanceof EffectComponent) {
-          componentFolder.add({ click: async ()=>{
+          componentFolder.add({
+            click: async () => {
 
-            await selectJsonFile((data: EffectsAssetData)=>{
-              for (const effectsObject of data.exportObjects) {
-                assetDataBase.addData(effectsObject);
+              await selectJsonFile((data: AssetData) => {
+                for (const effectsObject of data.exportObjects) {
+                  assetDataBase.addData(effectsObject);
 
-                const effectComponent = this.item.getComponent(RendererComponent);
+                  const effectComponent = this.item.getComponent(RendererComponent);
 
-                if (effectComponent) {
-                  const guid = effectComponent.instanceId;
+                  if (effectComponent) {
+                    const guid = effectComponent.instanceId;
 
-                  (assetDataBase.assetsData[guid] as EffectComponentData).materials[0].id = effectsObject.id;
-                  effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, this.sceneData);
+                    (assetDataBase.assetsData[guid] as EffectComponentData).materials[0].id = effectsObject.id;
+                    effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, this.sceneData);
+                  }
                 }
-              }
-              this.itemDirtyFlag = true;
-            });
-          } }, 'click').name('Material');
+                this.itemDirtyFlag = true;
+              });
+            },
+          }, 'click').name('Material');
 
-          componentFolder.add({ click: async ()=>{
-            await selectJsonFile((data: EffectsAssetData)=>{
-              for (const effectsObject of data.exportObjects) {
-                assetDataBase.addData(effectsObject);
-                const effectComponent = this.item.getComponent(EffectComponent);
+          componentFolder.add({
+            click: async () => {
+              await selectJsonFile((data: AssetData) => {
+                for (const effectsObject of data.exportObjects) {
+                  assetDataBase.addData(effectsObject);
+                  const effectComponent = this.item.getComponent(EffectComponent);
 
-                if (effectComponent) {
-                  const guid = effectComponent.instanceId;
+                  if (effectComponent) {
+                    const guid = effectComponent.instanceId;
 
-                  (assetDataBase.assetsData[guid] as EffectComponentData).geometry.id = effectsObject.id;
-                  effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, this.sceneData);
+                    (assetDataBase.assetsData[guid] as EffectComponentData).geometry.id = effectsObject.id;
+                    effectComponent.fromData(assetDataBase.assetsData[guid], this.item.composition?.deserializer, this.sceneData);
+                  }
                 }
-              }
-            });
-          } }, 'click').name('Geometry');
+              });
+            },
+          }, 'click').name('Geometry');
         }
 
         if (component instanceof ItemBehaviour) {
@@ -219,17 +203,19 @@ export class InspectorGui {
           this.item.getComponent(RendererComponent)?.material.fromData(materialData);
         }));
       } else if (type === '2D') {
-        this.gui.add({ click:async ()=>{
-          // @ts-expect-error
-          const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
-          const file = await fileHandle[0].getFile();
+        this.gui.add({
+          click: async () => {
+            // @ts-expect-error
+            const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
+            const file = await fileHandle[0].getFile();
 
-          const image = await loadImage(file);
+            const image = await loadImage(file);
 
-          const texture = Texture.create(this.item.engine, { image:image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
+            const texture = Texture.create(this.item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
 
-          this.item?.getComponent(RendererComponent)?.material.setTexture(uniformName, texture);
-        } }, 'click').name(inspectorName);
+            this.item?.getComponent(RendererComponent)?.material.setTexture(uniformName, texture);
+          },
+        }, 'click').name(inspectorName);
       }
     }
   }
@@ -239,8 +225,13 @@ export class InspectorGui {
     const materialGUI = this.gui.addFolder('Material');
 
     materialGUI.open();
-    //@ts-expect-error
-    const materialData = material.toData(this.sceneData);
+    const materialData: MaterialData = {
+      blending: false,
+      zTest: false,
+      zWrite: false,
+      //@ts-expect-error
+      ...material.toData(this.sceneData),
+    };
 
     this.guiControllers.push(materialGUI.add(materialData, 'blending').onChange(() => {
       this.item.getComponent(RendererComponent)?.material.fromData(materialData);

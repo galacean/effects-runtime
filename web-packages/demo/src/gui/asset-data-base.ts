@@ -17,7 +17,7 @@ export class AssetDataBase {
         return response.text();
       })
       .then(data => {
-        const packageData = JSON.parse(data) as EffectsAssetData;
+        const packageData = JSON.parse(data) as AssetData;
 
         for (const effectsObjectData of packageData.exportObjects) {
           this.addData(effectsObjectData);
@@ -51,7 +51,7 @@ for (const componentData of json.components) {
   assetDataBase.addData(componentData);
 }
 
-export interface EffectsAssetData {
+export interface AssetData {
   assetType: DataType,
   exportObjects: EffectsObjectData[],
 }

@@ -414,19 +414,4 @@ const json = {
   ],
 };
 
-export const sceneData: SceneData = { effectsObjects: {} };
-
-for (const item of json.items) {
-  sceneData.effectsObjects[item.id] = item;
-}
-for (const component of json.components) {
-  sceneData.effectsObjects[component.id] = component;
-}
-for (const material of json.materials) {
-  sceneData.effectsObjects[material.id] = material;
-}
-for (const shader of json.shaders) {
-  sceneData.effectsObjects[shader.id] = shader;
-}
-
 export default json;

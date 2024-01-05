@@ -488,6 +488,9 @@ export class GLMaterial extends Material {
       floatArrays: {},
       vector4Arrays: {},
       matrixArrays: {},
+      blending:false,
+      zTest:false,
+      zWrite:false,
       ...data,
     };
 
@@ -544,20 +547,23 @@ export class GLMaterial extends Material {
     if (!materialData) {
       materialData = {
         id: this.instanceId.toString(),
-        dataType: DataType.Material,
-        shader: { id: (this.shaderSource as ShaderData).id },
-        blending: false,
-        zTest: false,
-        zWrite: false,
-        floats: {},
-        ints: {},
-        vector4s: {},
+        dataType:DataType.Material,
+        shader:{ id:(this.shaderSource as ShaderData).id },
+        floats:{},
+        ints:{},
+        vector4s:{},
       };
       sceneData.effectsObjects[this.instanceId.toString()] = materialData;
     }
-    materialData.blending = this.blending!;
-    materialData.zTest = this.depthTest!;
-    materialData.zWrite = this.depthMask!;
+    if (this.blending) {
+      materialData.blending = this.blending;
+    }
+    if (this.depthTest) {
+      materialData.zTest = this.depthTest;
+    }
+    if (this.depthMask) {
+      materialData.zWrite = this.depthMask;
+    }
 
     for (const name in this.floats) {
       materialData.floats[name] = this.floats[name];
