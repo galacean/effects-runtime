@@ -1,1 +1,5 @@
-console.info('effects-assets');
+export class Assets {
+  constructor () {
+    console.info('effects-assets');
+  }
+}
