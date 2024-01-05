@@ -176,8 +176,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   private readonly event: EventSystem;
   private readonly handleWebGLContextLost?: (event: Event) => void;
   private readonly handleWebGLContextRestored?: () => void;
-  private readonly handleMessageItem?: (item: MessageItem) => void;
-  private readonly handlePlayerPause?: (item: VFXItem<VFXItemContent>) => void;
+  private readonly onMessageItem?: (item: MessageItem) => void;
+  private readonly onPlayerPause?: (item: VFXItem<VFXItemContent>) => void;
   private readonly reportGPUTime?: (time: number) => void;
   private readonly handleItemClicked?: (event: any) => void;
   private readonly handlePlayableUpdate?: (event: { playing: boolean, player: Player }) => void;
@@ -229,10 +229,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.handleWebGLContextRestored = onWebGLContextRestored;
     this.reportGPUTime = reportGPUTime;
     this.handleItemClicked = onItemClicked;
-    this.handleMessageItem = onMessageItem;
+    this.onMessageItem = onMessageItem;
     this.handlePlayableUpdate = onPlayableUpdate;
     this.handleRenderError = onRenderError;
-    this.handlePlayerPause = (item: VFXItem<VFXItemContent>) => {
+    this.onPlayerPause = (item: VFXItem<VFXItemContent>) => {
       this.pause();
       onPausedByItem?.({
         name: item.name,
@@ -439,8 +439,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       width: renderer.getWidth(),
       height: renderer.getHeight(),
       event: this.event,
-      handlePlayerPause: this.handlePlayerPause,
-      handleMessageItem: this.handleMessageItem,
+      onPlayerPause: this.onPlayerPause,
+      onMessageItem: this.onMessageItem,
     }, scene);
 
     if (this.ticker) {
