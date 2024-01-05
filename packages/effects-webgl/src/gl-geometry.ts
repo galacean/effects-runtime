@@ -1,4 +1,4 @@
-import type { GeometryProps, spec, Engine, Deserializer, SceneData, GeometryData } from '@galacean/effects-core';
+import type { GeometryProps, spec, Engine, Deserializer, SceneData, GeometryData, EffectsObjectData, MaterialData } from '@galacean/effects-core';
 import { BYTES_TYPE_MAP, Geometry, assertExist, generateEmptyTypedArray, glContext } from '@galacean/effects-core';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
 import { GLGPUBuffer } from './gl-gpu-buffer';
@@ -399,9 +399,14 @@ export class GLGeometry extends Geometry {
     this.initialized = false;
   }
 
-  override fromData (data: any, deserializer?: Deserializer | undefined, sceneData?: SceneData | undefined): void {
+  override fromData (
+    data: EffectsObjectData | MaterialData | GeometryData,
+    deserializer?: Deserializer,
+    sceneData?: SceneData,
+  ): void {
     super.fromData(data, deserializer, sceneData);
-    const geometryData = data as GeometryData;
+
+    const geometryData = data;
     const fullGeometryData = {
       vertices: [],
       uv: [],
@@ -409,7 +414,6 @@ export class GLGeometry extends Geometry {
       indices: [],
       ...geometryData,
     };
-
     const geometryProps: GeometryProps = {
       mode: glContext.TRIANGLES,
       attributes: {

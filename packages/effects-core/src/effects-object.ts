@@ -1,4 +1,4 @@
-import type { Deserializer, SceneData } from './deserializer';
+import type { Deserializer, EffectsObjectData, SceneData } from './deserializer';
 import type { Engine } from './engine';
 
 let seed = 0;
@@ -23,7 +23,7 @@ export abstract class EffectsObject {
    * @param data - 对象的序列化的数据
    * @param sceneData - 场景的序列化数据
    */
-  fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData) {
+  fromData (data: EffectsObjectData, deserializer?: Deserializer, sceneData?: SceneData) {
     this.instanceId = data.id;
   }
 

@@ -1,4 +1,8 @@
-import type { Texture2DSourceOptions, Texture2DSourceOptionsImage, TextureCubeSourceOptions, TextureCubeSourceOptionsImageMipmaps, TextureFactorySource2DFrom, TextureFactorySourceFrom, TextureSourceType, spec } from '@galacean/effects';
+import type {
+  Texture2DSourceOptions, Texture2DSourceOptionsImage, TextureCubeSourceOptions,
+  TextureCubeSourceOptionsImageMipmaps, TextureFactorySource2DFrom, TextureFactorySourceFrom,
+  TextureSourceType, spec,
+} from '@galacean/effects';
 import { getImageFileContent, loadMipmaps } from './utils';
 
 export interface TextureSerializationResult {
