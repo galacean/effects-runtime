@@ -268,6 +268,7 @@ export class Composition implements Disposable, LostHandler {
    * @deprecated since 2.0 - use `onEnd` instead
    */
   set handleEnd (func: (composition: Composition) => void) {
+    console.warn('The handleEnd property is deprecated. Use onEnd instead.');
     this.onEnd = func;
   }
 
