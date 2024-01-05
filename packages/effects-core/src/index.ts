@@ -1,3 +1,4 @@
+import './polyfill';
 import { EffectComponent } from './components';
 import { Deserializer, DataType } from './deserializer';
 import { registerPlugin } from './plugin-system';
@@ -7,7 +8,6 @@ import {
   CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
   ParticleSystem, SpriteComponent,
 } from './plugins';
-import './polyfill';
 import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';
