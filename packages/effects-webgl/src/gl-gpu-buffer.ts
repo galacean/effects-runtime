@@ -11,7 +11,8 @@ type GPUBufferTarget =
   | WebGL2RenderingContext['TRANSFORM_FEEDBACK_BUFFER']
   | WebGL2RenderingContext['UNIFORM_BUFFER']
   | WebGL2RenderingContext['PIXEL_PACK_BUFFER']
-  | WebGL2RenderingContext['PIXEL_UNPACK_BUFFER'];
+  | WebGL2RenderingContext['PIXEL_UNPACK_BUFFER']
+  ;
 
 type GPUBufferType =
   | WebGLRenderingContext['UNSIGNED_INT']
@@ -20,7 +21,8 @@ type GPUBufferType =
   | WebGLRenderingContext['FLOAT']
   | WebGLRenderingContext['INT']
   | WebGLRenderingContext['SHORT']
-  | WebGLRenderingContext['BYTE'];
+  | WebGLRenderingContext['BYTE']
+  ;
 
 export interface GLGPUBufferProps {
   name?: string,

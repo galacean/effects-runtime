@@ -1,13 +1,7 @@
 import type { Disposable, FrameBuffer, Renderer, SharedShaderWithSource } from '@galacean/effects-core';
 import {
-  createShaderWithMarcos,
-  glContext,
-  GLSLVersion,
-  RenderPass,
-  ShaderType,
-  TextureLoadAction,
-  TextureSourceType,
-  Mesh,
+  createShaderWithMarcos, glContext, GLSLVersion, RenderPass, ShaderType, TextureLoadAction,
+  TextureSourceType, Mesh,
 } from '@galacean/effects-core';
 import type { GLFrameBuffer } from './gl-frame-buffer';
 import { GLGeometry } from './gl-geometry';
@@ -29,7 +23,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
   private copyRenderPass?: RenderPass;
 
   constructor (
-    public readonly renderer: GLRenderer
+    public readonly renderer: GLRenderer,
   ) {
     if (renderer.engine.gpuCapability.level === 1) {
       this.copyRenderPass = this.createCopyRenderPass().initialize(renderer);
@@ -129,18 +123,16 @@ export class ExtWrap implements RendererExtensions, Disposable {
       void main(){gl_FragColor = texture2D(uTex,vTex);}
       `;
     const { level } = engine.gpuCapability;
-    const material = new GLMaterial(
-      engine,
-      {
+    const material = new GLMaterial(engine, {
+      name,
+      shader: {
+        cacheId: copyShaderId,
         name,
-        shader: {
-          cacheId: copyShaderId,
-          name,
-          vertex: createShaderWithMarcos([], vertexShader, ShaderType.vertex, level),
-          fragment: createShaderWithMarcos([], fragmentShader, ShaderType.fragment, level),
-          glslVersion: level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-        },
-      });
+        vertex: createShaderWithMarcos([], vertexShader, ShaderType.vertex, level),
+        fragment: createShaderWithMarcos([], fragmentShader, ShaderType.fragment, level),
+        glslVersion: level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+      },
+    });
 
     material.blending = false;
     material.depthTest = false;

@@ -1,28 +1,12 @@
 import type {
-  Disposable, RestoreHandler,
-  Texture2DSourceOptionsCompressed,
-  Texture2DSourceOptionsData,
-  Texture2DSourceOptionsImage,
-  Texture2DSourceOptionsImageMipmaps,
-  Texture2DSourceOptionsVideo,
-  TextureConfigOptions,
-  TextureCubeSourceOptionsImage,
-  TextureCubeSourceOptionsImageMipmaps,
-  TextureDataType,
-  TextureSourceOptions,
-  Texture2DSourceOptionsFrameBuffer,
-  spec, Engine,
+  Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
+  Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
+  TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
+  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFrameBuffer, spec, Engine,
 } from '@galacean/effects-core';
 import {
-  getDefaultTextureFactory,
-  glContext,
-  nearestPowerOfTwo,
-  Texture,
-  TextureSourceType,
-  isWebGL2,
-  throwDestroyedError,
-  canvasPool,
-  LOG_TYPE,
+  getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,
+  throwDestroyedError, canvasPool, LOG_TYPE,
 } from '@galacean/effects-core';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import { assignInspectorName } from './gl-renderer-internal';
@@ -77,7 +61,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     if (this.initialized) {
       return;
     }
-    const glEngine = this.engine as GLEngine ;
+    const glEngine = this.engine as GLEngine;
 
     glEngine.addTexture(this);
     const pipelineContext = glEngine.getGLPipelineContext();

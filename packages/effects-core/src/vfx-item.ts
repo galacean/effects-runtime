@@ -10,16 +10,8 @@ import type { Deserializer, SceneData, VFXItemData } from './deserializer';
 import type { Engine } from './engine';
 import { EffectsObject } from './effects-object';
 import type {
-  BoundingBoxData,
-  CameraController,
-  HitTestBoxParams,
-  HitTestCustomParams,
-  HitTestSphereParams,
-  HitTestTriangleParams,
-  InteractComponent,
-  ParticleSystem,
-  SpriteComponent,
-  SpriteItemProps,
+  BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
+  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent, SpriteItemProps,
   TransformAnimationData,
 } from './plugins';
 import { TimelineComponent, Track, AnimationClipPlayable, ActivationClipPlayable } from './plugins';
@@ -551,7 +543,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
     if (deserializer && sceneData) {
       for (const dataPath of data.components) {
-        const newComponent = deserializer.deserialize(dataPath, sceneData);
+        const newComponent = deserializer.deserialize<Component>(dataPath, sceneData);
 
         this.components.push(newComponent);
         if (newComponent instanceof RendererComponent) {

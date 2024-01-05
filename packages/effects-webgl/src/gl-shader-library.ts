@@ -1,10 +1,6 @@
 import stringHash from 'string-hash';
 import type {
-  Disposable,
-  RestoreHandler,
-  ShaderCompileResult,
-  ShaderLibrary,
-  ShaderWithSource,
+  Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderWithSource,
   SharedShaderWithSource,
 } from '@galacean/effects-core';
 import { ShaderCompileResultStatus, GLSLVersion } from '@galacean/effects-core';

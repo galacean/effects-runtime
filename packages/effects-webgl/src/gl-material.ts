@@ -514,13 +514,13 @@ export class GLMaterial extends Material {
       this.samplers = [];
       this.textures = {};
       for (name in data.textures) {
-        const texture = deserializer.deserialize({ id: 'Texture' + propertiesData.textures[name].id }, sceneData);
+        const texture = deserializer.deserialize<Texture>({ id: 'Texture' + propertiesData.textures[name].id }, sceneData);
 
         // TODO 纹理通过 id 加入场景数据
         this.setTexture(name, texture);
       }
 
-      const shaderData: ShaderData = deserializer.findData(data.shader, sceneData);
+      const shaderData = deserializer.findData(data.shader, sceneData) as ShaderData;
 
       this.shaderSource = {
         ...shaderData,

@@ -1,32 +1,11 @@
 import type {
-  Disposable, GLType,
-  GPUCapability,
-  JSONValue, LostHandler, MessageItem, RestoreHandler,
-  Scene,
-  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent,
-  math,
+  Disposable, GLType, GPUCapability, JSONValue, LostHandler, MessageItem, RestoreHandler, Scene,
+  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
 } from '@galacean/effects-core';
 import {
-  AssetManager,
-  Composition,
-  CompositionComponent,
-  EVENT_TYPE_CLICK,
-  EventSystem,
-  LOG_TYPE,
-  Renderer,
-  TextureLoadAction,
-  Ticker,
-  canvasPool,
-  getPixelRatio,
-  gpuTimer,
-  initErrors,
-  isAndroid,
-  isArray,
-  isObject,
-  isScene,
-  pluginLoaderMap,
-  setSpriteMeshMaxItemCountByGPU,
-  spec,
+  AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, LOG_TYPE,
+  Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
+  isArray, isObject, isScene, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -205,7 +184,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   constructor (config: PlayerConfig) {
     const {
       container, canvas, gl, fps, name, pixelRatio, manualRender, interactive, reportGPUTime,
-      onMessageItem, onPausedByItem, onItemClicked, onPlayableUpdate, onRenderError, onWebGLContextLost, onWebGLContextRestored,
+      onMessageItem, onPausedByItem, onItemClicked, onPlayableUpdate, onRenderError,
+      onWebGLContextLost, onWebGLContextRestored,
       renderFramework: glType,
       env = '',
       notifyTouch,
@@ -777,15 +757,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     } else {
       this.forceRenderNextFrame = true;
     }
-  }
-
-  /**
-   * @internal
-   * @deprecated since 2.0.0
-   * @param id
-   * @param options
-   */
-  destroyItem (id: string, options = {}) {
   }
 
   /**

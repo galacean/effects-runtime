@@ -11,7 +11,8 @@ type TypedArrayCtrl =
   | Int16ArrayConstructor
   | Uint32ArrayConstructor
   | Uint16ArrayConstructor
-  | Uint8ArrayConstructor;
+  | Uint8ArrayConstructor
+  ;
 
 type BlockUniformInfo = [
   type: number,

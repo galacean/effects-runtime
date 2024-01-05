@@ -1,5 +1,11 @@
-import type { Disposable, FrameBufferProps, RenderBuffer, Renderer, RenderPassStoreAction, Texture, Texture2DSourceOptionsFrameBuffer } from '@galacean/effects-core';
-import { isWebGL2, addItem, FrameBuffer, glContext, GPUCapability, RenderPassAttachmentStorageType, RenderPassDestroyAttachmentType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
+import type {
+  Disposable, FrameBufferProps, RenderBuffer, Renderer, RenderPassStoreAction, Texture,
+  Texture2DSourceOptionsFrameBuffer,
+} from '@galacean/effects-core';
+import {
+  isWebGL2, addItem, FrameBuffer, glContext, RenderPassAttachmentStorageType,
+  RenderPassDestroyAttachmentType, TextureSourceType, TextureStoreAction,
+} from '@galacean/effects-core';
 import { GLRenderBuffer } from './gl-render-buffer';
 import type { GLRenderer } from './gl-renderer';
 import { GLTexture } from './gl-texture';
@@ -27,7 +33,11 @@ export class GLFrameBuffer extends FrameBuffer implements Disposable {
     super();
     this.renderer = renderer as GLRenderer;
     this.engine = renderer.engine as GLEngine;
-    const { depthStencilAttachment, viewport, isCustomViewport, viewportScale = 1, storeAction, name = `GLFrameBuffer${seed++}` } = props;
+    const {
+      depthStencilAttachment, viewport, isCustomViewport, storeAction,
+      viewportScale = 1,
+      name = `GLFrameBuffer${seed++}`,
+    } = props;
 
     this.depthStencilStorageType = depthStencilAttachment?.storageType ?? RenderPassAttachmentStorageType.none;
     this.viewport = viewport;
