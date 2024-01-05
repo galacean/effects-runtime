@@ -46,9 +46,9 @@ export interface CompositionProps {
   reusable?: boolean,
   baseRenderOrder?: number,
   renderer: Renderer,
-  handlePlayerPause?: (item: VFXItem<any>) => void,
-  handleMessageItem?: (item: MessageItem) => void,
-  handleEnd?: (composition: Composition) => void,
+  onPlayerPause?: (item: VFXItem<any>) => void,
+  onMessageItem?: (item: MessageItem) => void,
+  onEnd?: (composition: Composition) => void,
   event?: EventSystem,
   width: number,
   height: number,
@@ -100,12 +100,17 @@ export class Composition implements Disposable, LostHandler {
   keepResource: boolean;
   /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
+   * @internal
    */
-  handlePlayerPause?: (item: VFXItem<any>) => void;
+  onPlayerPause?: (item: VFXItem<any>) => void;
   /**
    * 单个合成结束时的回调
    */
-  handleEnd?: (composition: Composition) => void;
+  onEnd?: (composition: Composition) => void;
+  /**
+   * 合成中消息元素创建/销毁时触发的回调
+   */
+  onMessageItem?: (item: MessageItem) => void;
   /**
    * 合成id
    */
@@ -192,7 +197,6 @@ export class Composition implements Disposable, LostHandler {
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   private readonly postLoaders: Plugin[] = [];
-  private readonly handleMessageItem?: (item: MessageItem) => void;
 
   /**
    * Composition 构造函数
@@ -203,7 +207,7 @@ export class Composition implements Disposable, LostHandler {
       reusable = false,
       speed = 1,
       baseRenderOrder = 0, renderer,
-      handlePlayerPause, handleMessageItem, handleEnd,
+      onPlayerPause, onMessageItem, onEnd,
       event, width, height,
     } = props;
 
@@ -251,11 +255,21 @@ export class Composition implements Disposable, LostHandler {
     });
     this.url = scene.url;
     this.assigned = true;
-    this.handlePlayerPause = handlePlayerPause;
-    this.handleMessageItem = handleMessageItem;
-    this.handleEnd = handleEnd;
+    this.onPlayerPause = onPlayerPause;
+    this.onMessageItem = onMessageItem;
+    this.onEnd = onEnd;
     this.createRenderFrame();
     this.reset();
+  }
+
+  /**
+   * 合成结束回调
+   * @param {(composition: Composition) => void} func
+   * @deprecated since 2.0 - use `onEnd` instead
+   */
+  set handleEnd (func: (composition: Composition) => void) {
+    console.warn('The handleEnd property is deprecated. Use onEnd instead.');
+    this.onEnd = func;
   }
 
   /**
@@ -435,7 +449,7 @@ export class Composition implements Disposable, LostHandler {
     this.content.createContent();
     this.content.onEnd = () => {
       window.setTimeout(() => {
-        this.handleEnd?.(this);
+        this.onEnd?.(this);
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
@@ -636,7 +650,7 @@ export class Composition implements Disposable, LostHandler {
    */
   addInteractiveItem (item: InteractVFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.handleMessageItem?.({
+      this.onMessageItem?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -655,7 +669,7 @@ export class Composition implements Disposable, LostHandler {
   removeInteractiveItem (item: InteractVFXItem, type: spec.InteractType) {
     // MESSAGE ITEM的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.handleMessageItem?.({
+      this.onMessageItem?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_END,
         id: item.id,
@@ -772,7 +786,7 @@ export class Composition implements Disposable, LostHandler {
         type: LOG_TYPE,
       });
     };
-    this.handlePlayerPause = noop;
+    this.onPlayerPause = noop;
     this.dispose = noop;
     if (textures && this.keepResource) {
       textures.forEach(tex => tex.dispose = textureDisposes[tex.id]);

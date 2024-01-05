@@ -439,8 +439,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       width: renderer.getWidth(),
       height: renderer.getHeight(),
       event: this.event,
-      handlePlayerPause: this.handlePlayerPause,
-      handleMessageItem: this.handleMessageItem,
+      onPlayerPause: this.handlePlayerPause,
+      onMessageItem: this.handleMessageItem,
     }, scene);
 
     if (this.ticker) {
@@ -539,9 +539,9 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   playSequence (compositions: Composition[]): void {
     for (let i = 0; i < compositions.length - 1; i++) {
       const composition = compositions[i];
-      const preEndHandler = composition.handleEnd;
+      const preEndHandler = composition.onEnd;
 
-      composition.handleEnd = () => {
+      composition.onEnd = () => {
         preEndHandler?.call(composition, composition);
         compositions[i + 1].play();
       };

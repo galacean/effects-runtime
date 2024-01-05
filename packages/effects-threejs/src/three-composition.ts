@@ -37,21 +37,21 @@ export interface CompositionBaseProps {
    * @param composition - composition 对象
    * @returns
    */
-  handleEnd?: (composition: Composition) => void,
+  onEnd?: (composition: Composition) => void,
   /**
    * 交互元素监听函数
    *
    * @param item
    * @returns
    */
-  handleMessageItem?: (item: MessageItem) => void,
+  onMessageItem?: (item: MessageItem) => void,
   /**
    * player 暂停监听函授
    *
    * @param item
    * @returns
    */
-  handlePlayerPause?: (item: VFXItem<VFXItemContent>) => void,
+  onPlayerPause?: (item: VFXItem<VFXItemContent>) => void,
 }
 
 export interface ThreeCompositionProps extends CompositionBaseProps {
