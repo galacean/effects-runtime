@@ -123,12 +123,12 @@ const json = {
       endBehavior : 2,
       previewSize : [0, 0],
       items       : [
-        { id: '0' },
-        { id: '1' },
-        { id: '2' },
-        { id: '3' },
-        { id: '4' },
-        { id: '5' },
+        { id: '03' },
+        { id: '01' },
+        { id: '02' },
+        { id: '04' },
+        { id: '05' },
+        { id: '06' },
       ],
       camera       : { fov: 60, far: 1000, near: 0.3, clipMode: 0, position: [0, 0, 8], rotation: [0, 0, 0] },
       globalVolume : {
