@@ -81,11 +81,16 @@ export class Deserializer {
     for (const key of Object.keys(serializedData)) {
       const value = serializedData[key];
 
-      taggedProperties[key] = this.deserializeProperty(value);
+      taggedProperties[key] = this.deserializeProperty(value, 0);
     }
   }
 
-  deserializeProperty<T> (property: T): any {
+  deserializeProperty<T> (property: T, level: number): any {
+    if (level > 10) {
+      console.error('序列化数据的内嵌对象层数大于上限');
+
+      return;
+    }
     if (typeof property === 'number' ||
     typeof property === 'string' ||
     typeof property === 'boolean') {
@@ -96,19 +101,19 @@ export class Deserializer {
       const res = [];
 
       for (const value of property) {
-        res.push(this.deserializeProperty(value));
+        res.push(this.deserializeProperty(value, level + 1));
       }
 
       return res;
       // TODO json 数据避免传 typedArray
-    } else if (property instanceof EffectsObject || property instanceof Shader || this.checkTypedArray(property)) {
+    } else if (property instanceof EffectsObject || this.checkTypedArray(property)) {
       return property;
     } else if (property instanceof Object) {
       const res: Record<string, any> = {};
 
       for (const key of Object.keys(property)) {
         // @ts-expect-error
-        res[key] = this.deserializeProperty(property[key]);
+        res[key] = this.deserializeProperty(property[key], level + 1);
       }
 
       return res;
@@ -168,8 +173,7 @@ export class SerializedObject {
         const target = serializedData[key];
 
         this.serializeArrayField(value, target);
-      } else if (value instanceof EffectsObject || value instanceof Shader) {
-        //@ts-expect-error
+      } else if (value instanceof EffectsObject) {
         serializedData[key] = { id:value.instanceId };
       } else if (value instanceof Object) {
         serializedData[key] = {};
@@ -191,8 +195,7 @@ export class SerializedObject {
       } else if (value instanceof Array) {
         serializedData[key] = [];
         this.serializeArrayField(value, serializedData[key]);
-      } else if (value instanceof EffectsObject || value instanceof Shader) {
-        //@ts-expect-error
+      } else if (value instanceof EffectsObject) {
         serializedData[key] = { id:value.instanceId };
       } else if (value instanceof Object) {
         serializedData[key] = {};
@@ -212,8 +215,7 @@ export class SerializedObject {
 
         serializedData.push(arrayField);
         this.serializeArrayField(value, arrayField);
-      } else if (value instanceof EffectsObject || value instanceof Shader) {
-        //@ts-expect-error
+      } else if (value instanceof EffectsObject) {
         serializedData.push({ id:value.instanceId });
       } else if (value instanceof Object) {
         const objectField = {};

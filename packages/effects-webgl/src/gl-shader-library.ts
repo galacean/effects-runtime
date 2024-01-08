@@ -80,7 +80,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     if (shaderSource.shared || (shaderSource as SharedShaderWithSource).cacheId) {
       shared = true;
     }
-    this.cachedShaders[shaderCacheId] = new GLShader({
+    this.cachedShaders[shaderCacheId] = new GLShader(this.engine, {
       ...shaderSource,
       vertex,
       fragment,

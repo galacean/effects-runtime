@@ -21,8 +21,8 @@ export class GLShader extends Shader {
 
   private samplerChannels: Record<string, number> = {};
 
-  constructor (source: ShaderWithSource) {
-    super(source);
+  constructor (engine: Engine, source: ShaderWithSource) {
+    super(engine, source);
   }
 
   // shader 的 GPU 资源初始化方法，在绘制前调用
@@ -103,7 +103,7 @@ export class GLShader extends Shader {
     }
   }
 
-  dispose () {
+  override dispose () {
     if (this.compileResult && this.compileResult.shared) {
       return;
     }
