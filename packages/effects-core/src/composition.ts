@@ -176,11 +176,6 @@ export class Composition implements Disposable, LostHandler {
    */
   globalTime;
 
-  /**
-   * 合成反序列化器
-   */
-  deserializer: Deserializer;
-
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
   protected assigned = false;
@@ -277,7 +272,6 @@ export class Composition implements Disposable, LostHandler {
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
-    this.deserializer = new Deserializer(renderer.engine);
     this.handlePlayerPause = handlePlayerPause;
     this.handleMessageItem = handleMessageItem;
     this.handleEnd = handleEnd;

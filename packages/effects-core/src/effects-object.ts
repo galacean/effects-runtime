@@ -9,11 +9,13 @@ let seed = 0;
  */
 export abstract class EffectsObject {
   instanceId: string;
+  taggedProperties: Record<string, any>;
 
   constructor (
     public engine: Engine,
   ) {
     this.instanceId = String(seed++);
+    this.taggedProperties = {};
   }
 
   /**

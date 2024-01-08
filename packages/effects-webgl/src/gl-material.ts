@@ -481,13 +481,10 @@ export class GLMaterial extends Material {
 
     const propertiesData = {
       vector2s: {},
-      vector3s: {},
       matrices: {},
-      matrice3s: {},
       textures: {},
       floatArrays: {},
       vector4Arrays: {},
-      matrixArrays: {},
       blending:false,
       zTest:false,
       zWrite:false,
@@ -500,34 +497,31 @@ export class GLMaterial extends Material {
 
     let name: string;
 
-    for (name in data.floats) {
+    for (name in propertiesData.floats) {
       this.setFloat(name, propertiesData.floats[name]);
     }
-    for (name in data.ints) {
+    for (name in propertiesData.ints) {
       this.setInt(name, propertiesData.ints[name]);
     }
     // for (name in materialData.vector2s) {
     //   this.setVector2(name, Vector propertiesData.vector2s[name]);
     // }
-    for (name in data.vector4s) {
+    for (name in propertiesData.vector4s) {
       this.setVector4(name, new math.Vector4().setFromArray(propertiesData.vector4s[name]));
     }
 
     if (deserializer && sceneData) {
       this.samplers = [];
       this.textures = {};
-      for (name in data.textures) {
-        const texture = deserializer.deserialize<Texture>({ id: 'Texture' + propertiesData.textures[name].id }, sceneData);
+      for (name in propertiesData.textures) {
+        const texture = deserializer.deserialize<Texture>({ id: 'Texture' + propertiesData.textures[name].id });
 
         // TODO 纹理通过 id 加入场景数据
         this.setTexture(name, texture);
       }
 
-      const shaderData = deserializer.findData(data.shader, sceneData) as ShaderData;
-
-      this.shaderSource = {
-        ...shaderData,
-      };
+      this.shader = data.shader as GLShader;
+      this.shaderSource = this.shader.source;
     }
 
     this.initialized = false;
@@ -540,21 +534,26 @@ export class GLMaterial extends Material {
    * @param sceneData
    * @returns
    */
-  toData (sceneData: SceneData): MaterialData {
+  toData (): MaterialData {
     //@ts-expect-error
-    let materialData: MaterialData = sceneData.effectsObjects[this.instanceId.toString()];
+    const materialData: MaterialData = this.taggedProperties;
 
-    if (!materialData) {
-      materialData = {
-        id: this.instanceId.toString(),
-        dataType:DataType.Material,
-        shader:{ id:(this.shaderSource as ShaderData).id },
-        floats:{},
-        ints:{},
-        vector4s:{},
-      };
-      sceneData.effectsObjects[this.instanceId.toString()] = materialData;
-    }
+    // if (!materialData) {
+    //   materialData = {
+    //     id: this.instanceId.toString(),
+    //     dataType:DataType.Material,
+    //     shader:{ id:(this.shaderSource as ShaderData).id },
+    //     floats:{},
+    //     ints:{},
+    //     vector4s:{},
+    //   };
+    //   sceneData.effectsObjects[this.instanceId.toString()] = materialData;
+    // }
+    materialData.shader = { id:(this.shaderSource as ShaderData).id };
+    materialData.floats = {};
+    materialData.ints = {};
+    materialData.vector4s = {};
+    materialData.dataType = DataType.Material;
     if (this.blending) {
       materialData.blending = this.blending;
     }

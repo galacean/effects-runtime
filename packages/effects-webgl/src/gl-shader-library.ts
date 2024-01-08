@@ -81,6 +81,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       shared = true;
     }
     this.cachedShaders[shaderCacheId] = new GLShader({
+      ...shaderSource,
       vertex,
       fragment,
       name: shaderSource.name || shaderCacheId,

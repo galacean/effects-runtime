@@ -538,7 +538,13 @@ export class SpriteComponent extends RendererComponent {
   override fromData (data: SpriteItemProps, deserializer?: Deserializer, sceneData?: SceneData): void {
     super.fromData(data, deserializer, sceneData);
 
-    const { interaction, renderer, options, listIndex = 0 } = data;
+    const { interaction, options, listIndex = 0 } = data;
+    let renderer = data.renderer;
+
+    if (!renderer) {
+      //@ts-expect-error
+      renderer = {};
+    }
 
     this.interaction = interaction;
     this.renderer = {

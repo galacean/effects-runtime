@@ -277,7 +277,7 @@ const json = {
       id        : '11',
       dataType  : 1,
       item      : { id: '02' },
-      materials : [{ id: '22' }],
+      materials : [{ id: '11f66680df4d4665884d16de06a52216' }],
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     particleSystemProps,
@@ -286,14 +286,14 @@ const json = {
       id        : '14',
       dataType  : 1,
       item      : { id: '04' },
-      materials : [{ id: '21' }],
+      materials : [{ id: '378d35e08fee497f901b70f1144a5f6d' }],
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
       id        : '15',
       dataType  : 1,
       item      : { id: '05' },
-      materials : [{ id: '23' }],
+      materials : [{ id: '992e087df9154793a34b66658f4be1ca' }],
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
@@ -333,7 +333,7 @@ const json = {
   ],
   materials: [
     {
-      id       : '21',
+      id       : '378d35e08fee497f901b70f1144a5f6d',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
       blending: true,
@@ -353,7 +353,7 @@ const json = {
       },
     },
     {
-      id       : '22',
+      id       : '11f66680df4d4665884d16de06a52216',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
       blending: true,
@@ -373,7 +373,7 @@ const json = {
       },
     },
     {
-      id       : '23',
+      id       : '992e087df9154793a34b66658f4be1ca',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
       blending: true,

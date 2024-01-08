@@ -43,6 +43,7 @@ assetDataBase.importAsset('../src/assets/shaders/trail.shader.json');
 assetDataBase.importAsset('../src/assets/geometries/duck.geo.json');
 assetDataBase.importAsset('../src/assets/geometries/trail.geo.json');
 
+assetDataBase.importAsset('../src/assets/materials/duck.mat.json');
 assetDataBase.importAsset('../src/assets/materials/trail.mat.json');
 assetDataBase.importAsset('../src/assets/materials/trail2.mat.json');
 assetDataBase.importAsset('../src/assets/materials/trail3.mat.json');

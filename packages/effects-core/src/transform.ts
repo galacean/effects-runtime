@@ -526,7 +526,7 @@ export class Transform implements Disposable {
     return this.valid;
   }
 
-  toData (sceneData: SceneData) {
+  toData () {
     const transformData: TransformProps = {
       position:this.position.clone(),
       rotation:this.rotation.clone(),

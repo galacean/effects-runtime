@@ -1,3 +1,5 @@
+import { EffectsObject } from '../effects-object';
+
 export type ShaderMarcos = [key: string, value: string | number | boolean][];
 
 export enum ShaderCompileResultStatus {
@@ -93,6 +95,8 @@ export interface ShaderLibrary {
   readonly shaderResults: { [cacheId: string]: ShaderCompileResult },
 
   addShader(shader: ShaderWithSource): void,
+
+  createShader (shaderSource: ShaderWithSource): Shader,
 
   /**
    * @param cacheId

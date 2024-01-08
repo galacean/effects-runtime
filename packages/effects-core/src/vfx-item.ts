@@ -543,7 +543,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
     if (deserializer && sceneData) {
       for (const dataPath of data.components) {
-        const newComponent = deserializer.deserialize<Component>(dataPath, sceneData);
+        const newComponent = deserializer.deserialize<Component>(dataPath);
 
         this.components.push(newComponent);
         if (newComponent instanceof RendererComponent) {

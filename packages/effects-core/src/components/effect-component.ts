@@ -111,13 +111,12 @@ export class EffectComponent extends RendererComponent implements Disposable {
 
   override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
     super.fromData(data, deserializer, sceneData);
-
     const effectComponentData: EffectComponentData = data;
 
     this._priority = effectComponentData._priority;
     if (deserializer && sceneData) {
-      this.material = deserializer.deserialize(effectComponentData.materials[0], sceneData);
-      this.geometry = deserializer.deserialize(effectComponentData.geometry, sceneData);
+      this.material = data.materials[0];
+      this.geometry = data.geometry;
     }
   }
 

@@ -31,7 +31,7 @@ export abstract class Component extends EffectsObject {
     super.fromData(data, deserializer, sceneData);
 
     if (deserializer && sceneData) {
-      this.item = deserializer.deserialize(data.item, sceneData);
+      this.item = deserializer.deserialize(data.item);
     }
   }
 

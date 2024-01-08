@@ -418,6 +418,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
     }
 
+    // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
+    this.renderer.engine.clearResources();
     const composition = new Composition({
       ...opts,
       renderer,

@@ -1,10 +1,13 @@
 import type * as spec from '@galacean/effects-specification';
-import type { EffectsObject } from './effects-object';
+import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { Material } from './material';
 import type { VFXItemProps } from './vfx-item';
-import { Geometry } from './render';
+import type { ShaderWithSource } from './render';
+import { Geometry, Shader } from './render';
 import type { Component } from './components';
+import { Texture } from './texture';
+import { value } from './shader';
 
 /**
  * @since 2.0.0
@@ -23,11 +26,12 @@ export class Deserializer {
     Deserializer.constructorMap[type] = constructor;
   }
 
-  deserialize<T> (dataPath: DataPath, sceneData: SceneData): T {
+  deserialize<T> (dataPath: DataPath): T {
     if (this.objectInstance[dataPath.id]) {
       return this.objectInstance[dataPath.id] as T;
     }
-    let effectsObject: EffectsObject;
+    let effectsObject: EffectsObject | undefined;
+    const sceneData = this.engine.sceneData;
     const effectsObjectData = this.findData(dataPath, sceneData);
 
     switch (effectsObjectData.dataType) {
@@ -39,23 +43,185 @@ export class Deserializer {
         effectsObject = Geometry.create(this.engine);
 
         break;
+      case DataType.Shader:
+        return this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData) as T;
       default:
-        effectsObject = new Deserializer.constructorMap[effectsObjectData.dataType](this.engine);
+        if (Deserializer.constructorMap[effectsObjectData.dataType]) {
+          effectsObject = new Deserializer.constructorMap[effectsObjectData.dataType](this.engine);
+        }
     }
+
+    if (!effectsObject) {
+      console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
+    }
+
+    effectsObject = effectsObject as EffectsObject;
+
     this.addInstance(dataPath.id, effectsObject);
-    effectsObject.fromData(effectsObjectData, this, sceneData);
+    this.deserializeTaggedProperties(effectsObjectData, effectsObject.taggedProperties);
+
+    // console.log(effectsObjectData, effectsObject.taggedProperties);
+
+    effectsObject.fromData(effectsObject.taggedProperties as EffectsObjectData, this, sceneData);
 
     return effectsObject as T;
   }
 
   findData (dataPath: DataPath, sceneData: SceneData): EffectsObjectData {
-    const data = sceneData.effectsObjects[dataPath.id];
+    const data = sceneData[dataPath.id];
 
     return data;
   }
 
   addInstance (id: string, effectsObject: EffectsObject) {
     this.objectInstance[id] = effectsObject;
+  }
+
+  deserializeTaggedProperties (serializedData: Record<string, any>, taggedProperties: Record<string, any>) {
+    for (const key of Object.keys(serializedData)) {
+      const value = serializedData[key];
+
+      taggedProperties[key] = this.deserializeProperty(value);
+    }
+  }
+
+  deserializeProperty<T> (property: T): any {
+    if (typeof property === 'number' ||
+    typeof property === 'string' ||
+    typeof property === 'boolean') {
+      return property;
+    } else if (this.checkDataPath(property)) {
+      return this.deserialize(property as DataPath);
+    } else if (property instanceof Array) {
+      const res = [];
+
+      for (const value of property) {
+        res.push(this.deserializeProperty(value));
+      }
+
+      return res;
+      // TODO json 数据避免传 typedArray
+    } else if (property instanceof EffectsObject || property instanceof Shader || this.checkTypedArray(property)) {
+      return property;
+    } else if (property instanceof Object) {
+      const res: Record<string, any> = {};
+
+      for (const key of Object.keys(property)) {
+        // @ts-expect-error
+        res[key] = this.deserializeProperty(property[key]);
+      }
+
+      return res;
+    }
+  }
+
+  checkTypedArray (obj: any): boolean {
+    return obj instanceof Int8Array ||
+         obj instanceof Uint8Array ||
+         obj instanceof Uint8ClampedArray ||
+         obj instanceof Int16Array ||
+         obj instanceof Uint16Array ||
+         obj instanceof Int32Array ||
+         obj instanceof Uint32Array ||
+         obj instanceof Float32Array ||
+         obj instanceof Float64Array;
+  }
+
+  private checkDataPath (value: any): boolean {
+    // check value is { id: 7e69662e964e4892ae8933f24562395b }
+    return value instanceof Object && Object.keys(value).length === 1 && value.id && value.id.length === 32;
+  }
+}
+
+export class SerializedObject {
+  engine: Engine;
+  serializedData: Record<string, any>;
+  target: EffectsObject;
+
+  constructor (target: EffectsObject) {
+    this.target = target;
+    this.engine = target.engine;
+    this.serializedData = {};
+    this.update();
+  }
+
+  update () {
+    this.serializeTaggedProperties(this.target.taggedProperties, this.serializedData);
+  }
+
+  applyModifiedProperties () {
+    this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target.taggedProperties);
+    this.target.fromData(this.serializedData as EffectsObjectData);
+  }
+
+  serializeTaggedProperties (taggedProperties: Record<string, any>, serializedData: Record<string, any>) {
+
+    for (const key of Object.keys(taggedProperties)) {
+      const value = taggedProperties[key];
+
+      if (typeof value === 'number' ||
+      typeof value === 'string' ||
+      typeof value === 'boolean') {
+        serializedData[key] = value;
+      } else if (value instanceof Array) {
+        serializedData[key] = [];
+        const target = serializedData[key];
+
+        this.serializeArrayField(value, target);
+      } else if (value instanceof EffectsObject || value instanceof Shader) {
+        //@ts-expect-error
+        serializedData[key] = { id:value.instanceId };
+      } else if (value instanceof Object) {
+        serializedData[key] = {};
+        const target = serializedData[key];
+
+        this.serializeObjectField(value, target);
+      }
+    }
+  }
+
+  private serializeObjectField (source: any, serializedData: any) {
+    for (const key of Object.keys(source)) {
+      const value = source[key];
+
+      if (typeof value === 'number' ||
+      typeof value === 'string' ||
+      typeof value === 'boolean') {
+        serializedData[key] = value;
+      } else if (value instanceof Array) {
+        serializedData[key] = [];
+        this.serializeArrayField(value, serializedData[key]);
+      } else if (value instanceof EffectsObject || value instanceof Shader) {
+        //@ts-expect-error
+        serializedData[key] = { id:value.instanceId };
+      } else if (value instanceof Object) {
+        serializedData[key] = {};
+        this.serializeObjectField(value, serializedData[key]);
+      }
+    }
+  }
+
+  private serializeArrayField (source: any[], serializedData: any[]) {
+    for (const value of source) {
+      if (typeof value === 'number' ||
+      typeof value === 'string' ||
+      typeof value === 'boolean') {
+        serializedData.push(value);
+      } else if (value instanceof Array) {
+        const arrayField: any[] = [];
+
+        serializedData.push(arrayField);
+        this.serializeArrayField(value, arrayField);
+      } else if (value instanceof EffectsObject || value instanceof Shader) {
+        //@ts-expect-error
+        serializedData.push({ id:value.instanceId });
+      } else if (value instanceof Object) {
+        const objectField = {};
+
+        serializedData.push(objectField);
+        this.serializeObjectField(value, objectField);
+      }
+    }
   }
 }
 
@@ -129,6 +295,4 @@ export interface EffectComponentData extends EffectsObjectData {
 
 export type VFXItemData = VFXItemProps & { dataType: DataType, components: DataPath[] };
 
-export interface SceneData {
-  effectsObjects: Record<string, EffectsObjectData>,
-}
+export type SceneData = Record<string, EffectsObjectData>;

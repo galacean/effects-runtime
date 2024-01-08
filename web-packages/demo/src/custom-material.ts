@@ -5,6 +5,7 @@ import { Input } from './gui/input';
 import { InspectorGui } from './gui/inspector-gui';
 import { OrbitController } from './gui/orbit-controller';
 import { TreeGui } from './gui/tree-gui';
+import { assetDataBase } from './gui/asset-data-base';
 
 const container = document.getElementById('J-container');
 const treeGui = new TreeGui();
@@ -21,6 +22,10 @@ let input: Input;
     //@ts-expect-error
     const composition = await player.loadScene(json);
 
+    for (const resourceData of Object.values(assetDataBase.assetsData)) {
+      player.renderer.engine.sceneData[resourceData.id] = resourceData;
+    }
+
     treeGui.setComposition(composition);
     input = new Input(container!);
     input.startup();
@@ -28,7 +33,7 @@ let input: Input;
 
     inputControllerUpdate();
 
-    deserializer = composition.deserializer;
+    deserializer = composition.getEngine().deserializer;
     testVfxItem = composition.getItemByName('Trail1')!;
   } catch (e) {
     console.error('biz', e);

@@ -68,43 +68,40 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.items.length = 0;
     if (this.item.composition) {
-      const deserializer = this.item.composition.deserializer;
-      const sceneData: SceneData = {
-        effectsObjects: {},
-      };
+      const deserializer = this.item.engine.deserializer;
+      const sceneData: SceneData = this.engine.sceneData;
       // TODO spec 定义新类型后 as 移除
       const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], geometries: GeometryData[], components: EffectsObjectData[] };
 
       if (jsonScene.items) {
-        for (const vfxItemData of this.item.props.items) {
-          //@ts-expect-error
-          sceneData.effectsObjects[vfxItemData.id] = vfxItemData;
+        for (const vfxItemData of jsonScene.items) {
+          sceneData[vfxItemData.id] = vfxItemData;
         }
       }
       if (jsonScene.materials) {
         for (const materialData of jsonScene.materials) {
-          sceneData.effectsObjects[materialData.id] = materialData;
+          sceneData[materialData.id] = materialData;
         }
       }
       if (jsonScene.shaders) {
         for (const shaderData of jsonScene.shaders) {
-          sceneData.effectsObjects[shaderData.id] = shaderData;
+          sceneData[shaderData.id] = shaderData;
         }
       }
       if (jsonScene.geometries) {
         for (const geometryData of jsonScene.geometries) {
-          sceneData.effectsObjects[geometryData.id] = geometryData;
+          sceneData[geometryData.id] = geometryData;
         }
       }
       if (jsonScene.components) {
         for (const componentData of jsonScene.components) {
-          sceneData.effectsObjects[componentData.id] = componentData;
+          sceneData[componentData.id] = componentData;
         }
       }
 
       if (jsonScene.textures) {
         for (let i = 0; i < jsonScene.textures.length; i++) {
-          this.item.composition.deserializer.addInstance('Texture' + i, this.item.composition.textures[i]);
+          this.item.engine.deserializer.addInstance('Texture' + i, this.item.composition.textures[i]);
           // TODO 纹理增加 id 加入 effectsObjects Map
           // sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
         }
@@ -158,7 +155,7 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === spec.ItemType.interact ||
           itemData.type === spec.ItemType.camera
         ) {
-          item = deserializer.deserialize({ id: itemData.id }, sceneData);
+          item = deserializer.deserialize({ id: itemData.id });
           item.composition = this.item.composition;
         } else {
           // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣

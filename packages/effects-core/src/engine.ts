@@ -1,4 +1,6 @@
 import { LOG_TYPE } from './config';
+import { Deserializer } from './deserializer';
+import type { SceneData } from './deserializer';
 import { glContext } from './gl';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
@@ -14,6 +16,8 @@ export class Engine implements Disposable {
   emptyTexture: Texture;
   transparentTexture: Texture;
   gpuCapability: GPUCapability;
+  sceneData: SceneData;
+  deserializer: Deserializer;
 
   protected destroyed = false;
   protected textures: Texture[] = [];
@@ -24,12 +28,19 @@ export class Engine implements Disposable {
 
   constructor () {
     this.createDefaultTexture();
+    this.sceneData = {};
+    this.deserializer = new Deserializer(this);
   }
 
   /**
    * 创建 Engine 对象。
    */
   static create: (gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
+
+  clearResources () {
+    this.sceneData = {};
+    this.deserializer = new Deserializer(this);
+  }
 
   addTexture (tex: Texture) {
     if (this.destroyed) {
