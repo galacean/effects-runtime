@@ -1,0 +1,54 @@
+name: Feature Request
+description: Issue a feature for our project
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        👋 Welcome to suggest your valuable ideas for the Galacean Effects.
+
+        Before creating an Issue, please search for keywords in the Issues area to avoid submitting duplicates. Discussions on the same feature request can be continued in its respective Issue.
+        
+        When creating an Issue, please describe the feature in as much detail as possible so that we can accurately engage with you and facilitate other users to join the conversation. 🥰
+
+  - type: dropdown
+    id: domain
+    attributes:
+      label: 🕗 Domain
+      description: Which domain would you like to make a feature request for?
+      options:
+        - Galacean Effects Runtime
+        - Galacean Effects Editor
+        - Galacean Effects Website
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Feature
+      description: What feature are you requesting?
+      placeholder: Feature requested
+    validations:
+      required: true
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: What is the scenario for the feature?
+      placeholder: Feature scenario
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: What are the standards that the feature should meet?
+      placeholder: I hope...
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: Additional Information

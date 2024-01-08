@@ -141,7 +141,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   }
 
   override onItemUpdate (dt: number, lifetime: number) {
-    if (!this.content || !this.content.meshGroups.length) {
+    if (!this.content) {
       return ;
     }
     const visible = this.contentVisible;
@@ -162,7 +162,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   }
 
   override handleVisibleChanged (hide: boolean) {
-    if (!this.content || !this.content.meshGroups.length) {
+    if (!this.content) {
       return;
     }
     this.content.meshGroups.map((mesh: SpineMesh) => {

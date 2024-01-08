@@ -18,12 +18,6 @@ export class CameraVFXItem extends VFXItem<CameraController> {
     this.controller?.update(lifetime);
     this.updateCamera();
   }
-
-  // override onEnd () {
-  //   this.controller?.update(1);
-  //   this.updateCamera();
-  // }
-
   private updateCamera () {
     if (this.controller && this.composition) {
       const camera = this.composition.camera;
