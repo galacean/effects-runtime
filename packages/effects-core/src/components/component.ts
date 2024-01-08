@@ -1,6 +1,6 @@
+import type { Deserializer } from '../deserializer';
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
-import type { Deserializer, EffectComponentData, SceneData, VFXItemData } from '../deserializer';
 import type { VFXItem, VFXItemContent } from '../vfx-item';
 
 /**

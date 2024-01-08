@@ -3,7 +3,7 @@ import geometryData from './geometries/trail.geo.json';
 import trailShaderData from './shaders/trail.shader.json';
 
 const particleSystemProps = {
-  id       : '12',
+  id       : '8264d22a44124050b5a2d3dc476875fa',
   dataType : DataType.ParticleSystem,
   item     : { id: '01' },
   shape    : { shape: 'Sphere', radius: 1, arc: 360, arcMode: 0, type: 1, alignSpeedDirection: false },
@@ -31,7 +31,7 @@ const particleSystemProps = {
   },
 };
 const spriteProps = {
-  id        : '13',
+  id        : '333faa0ad3974003a5e13a6d433d8bc7',
   dataType  : DataType.SpriteComponent,
   item      : { id: '03' },
   options : {
@@ -176,7 +176,7 @@ const json = {
         ],
       },
       components: [{
-        id : '13',
+        id : '333faa0ad3974003a5e13a6d433d8bc7',
       }],
     },
     {
@@ -191,7 +191,7 @@ const json = {
       renderLevel : 'B+',
       transform   : { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
       components  : [{
-        id : '12',
+        id : '8264d22a44124050b5a2d3dc476875fa',
       }],
     },
     {
@@ -206,7 +206,7 @@ const json = {
       renderLevel : 'B+',
       transform   : { position: [2, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
       components  : [{
-        id : '11',
+        id : 'a5f8d715a06b4acba79b891566de8754',
       }],
     },
     {
@@ -221,7 +221,7 @@ const json = {
       renderLevel : 'B+',
       transform   : { position: [-1, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
       components  : [{
-        id : '14',
+        id : '7cb4f4f2a0994941ab535552ac774237',
       }],
     },
     {
@@ -236,7 +236,7 @@ const json = {
       renderLevel : 'B+',
       transform   : { position: [-4, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
       components  : [{
-        id : '15',
+        id : '24b05ca55c0f4f1a86f97699ba907099',
       }],
     },
     {
@@ -267,14 +267,14 @@ const json = {
         ],
       },
       components: [{
-        id : '16',
+        id : 'bcc377b9ec064a7fb110033e805ef462',
       }],
     },
   ],
   components: [
     // 是否和Item保持一致
     {
-      id        : '11',
+      id        : 'a5f8d715a06b4acba79b891566de8754',
       dataType  : 1,
       item      : { id: '02' },
       materials : [{ id: '11f66680df4d4665884d16de06a52216' }],
@@ -283,21 +283,21 @@ const json = {
     particleSystemProps,
     spriteProps,
     {
-      id        : '14',
+      id        : '7cb4f4f2a0994941ab535552ac774237',
       dataType  : 1,
       item      : { id: '04' },
       materials : [{ id: '378d35e08fee497f901b70f1144a5f6d' }],
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
-      id        : '15',
+      id        : '24b05ca55c0f4f1a86f97699ba907099',
       dataType  : 1,
       item      : { id: '05' },
       materials : [{ id: '992e087df9154793a34b66658f4be1ca' }],
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
-      id        : '16',
+      id        : 'bcc377b9ec064a7fb110033e805ef462',
       dataType  : DataType.SpriteComponent,
       item      : { id: '06' },
       options : {

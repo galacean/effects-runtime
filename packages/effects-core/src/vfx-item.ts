@@ -154,6 +154,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     super(engine);
 
     this.transform.name = this.name;
+    this.addComponent(TimelineComponent);
     if (props) {
       // TODO VFXItemProps 添加 components 属性
       this.fromData(props as VFXItemData);
@@ -499,14 +500,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.lifetime = -(this.start / this.duration);
     this.listIndex = listIndex;
 
-    const timelineComponent = new TimelineComponent(this.engine);
-
-    timelineComponent.item = this;
-    this.components.push(timelineComponent);
-    this.itemBehaviours.push(timelineComponent);
     if (!data.content) {
       data.content = { options: {} };
     }
+    const timelineComponent = this.getComponent(TimelineComponent)!;
+
     timelineComponent.fromData(data.content as spec.NullContent);
 
     // TODO anchor 应该放在 transform data
@@ -542,8 +540,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     }
 
     if (deserializer) {
-      for (const dataPath of data.components) {
-        const newComponent = deserializer.deserialize<Component>(dataPath);
+      for (const component of data.components) {
+        const newComponent = component as unknown as Component;
 
         this.components.push(newComponent);
         if (newComponent instanceof RendererComponent) {

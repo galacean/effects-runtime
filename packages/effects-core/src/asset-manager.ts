@@ -17,6 +17,8 @@ import { Texture, TextureSourceType, deserializeMipmapTexture, getKTXTextureOpti
 import type { Disposable } from './utils';
 import { isObject, isString } from './utils';
 import type { VFXItemProps } from './vfx-item';
+// @ts-expect-error
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * 场景加载参数
@@ -613,6 +615,8 @@ export function version3Migration (scene: Record<string, any>): Scene {
   const components = ecScene.components;
 
   for (const item of ecScene.items) {
+    const uuid = uuidv4().replace(/-/g, '');
+
     // sprite content 转为 component data 加入 JSONScene.components
     if (item.type === spec.ItemType.sprite) {
       //@ts-expect-error
@@ -620,7 +624,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.SpriteComponent;
       //@ts-expect-error
@@ -635,7 +639,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.ParticleSystem;
       //@ts-expect-error
@@ -650,7 +654,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.MeshComponent;
       //@ts-expect-error
@@ -665,7 +669,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.SkyboxComponent;
       //@ts-expect-error
@@ -680,7 +684,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.LightComponent;
       //@ts-expect-error
@@ -695,7 +699,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.CameraComponent;
       //@ts-expect-error
@@ -710,7 +714,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.TreeComponent;
       //@ts-expect-error
@@ -725,7 +729,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.InteractComponent;
       //@ts-expect-error
@@ -740,7 +744,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
+      item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.CameraController;
       //@ts-expect-error
