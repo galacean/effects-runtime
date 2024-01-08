@@ -601,14 +601,35 @@ export function version3Migration (scene: Record<string, any>): Scene {
     ecScene.items = [];
   }
 
-  // composition 的 items 转为 { id: string }
+  // 所有 composition 的 items push 进 ecScene.items
   for (const composition of scene.jsonScene.compositions) {
     for (let i = 0; i < composition.items.length; i++) {
       ecScene.items.push(composition.items[i]);
+    }
+  }
+
+  // item.id 转为 uuid
+  const itemGuidMap: Record<string, string> = {}; // <id, guid>
+
+  for (const item of ecScene.items) {
+    itemGuidMap[item.id] = uuidv4().replace(/-/g, '');
+    item.id = itemGuidMap[item.id];
+  }
+
+  for (const item of ecScene.items) {
+    if (item.parentId) {
+      item.parentId = itemGuidMap[item.parentId];
+    }
+  }
+
+  // composition 的 items 转为 { id: string }
+  for (const composition of scene.jsonScene.compositions) {
+    for (let i = 0; i < composition.items.length; i++) {
       composition.items[i] = { id: composition.items[i].id };
     }
   }
 
+  // item 的 content 转为 component data 加入 JSONScene.components
   if (!ecScene.components) {
     ecScene.components = [];
   }
@@ -617,7 +638,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
   for (const item of ecScene.items) {
     const uuid = uuidv4().replace(/-/g, '');
 
-    // sprite content 转为 component data 加入 JSONScene.components
     if (item.type === spec.ItemType.sprite) {
       //@ts-expect-error
       item.components = [];
@@ -756,6 +776,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
     }
   }
 
+  // texture 增加 id
   for (const texture of scene.textureOptions) {
     texture.id = uuidv4().replace(/-/g, '');
   }
