@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -36,8 +40,8 @@ importers:
         specifier: ^0.4.3
         version: 0.4.3(rollup@2.79.1)
       '@types/chai':
-        specifier: 4.3.4
-        version: 4.3.4
+        specifier: 4.3.11
+        version: 4.3.11
       '@types/chai-spies':
         specifier: 1.0.0
         version: 1.0.0
@@ -2094,11 +2098,11 @@ packages:
   /@types/chai-spies@1.0.0:
     resolution: {integrity: sha1-FELaqSTSqMPyAlPbXl6P3R/U8ik=, tarball: https://registry.npmmirror.com/@types/chai-spies/download/@types/chai-spies-1.0.0.tgz}
     dependencies:
-      '@types/chai': 4.3.4
+      '@types/chai': 4.3.11
     dev: true
 
-  /@types/chai@4.3.4:
-    resolution: {integrity: sha512-KnRanxnpfpjUTqTCXslZSEdLfXExwgNxYPdiO2WGUj8+HDjFi8R3k5RVKPeSCzLjCcshCAtVO2QBbVuAV4kTnw==, tarball: https://registry.npmmirror.com/@types/chai/download/@types/chai-4.3.4.tgz}
+  /@types/chai@4.3.11:
+    resolution: {integrity: sha512-qQR1dr2rGIHYlJulmr8Ioq3De0Le9E4MJ5AiaeAETJJpndT1uUNHsGFK3L/UIu+rbkQSdj8J/w2bCsBZc/Y5fQ==}
     dev: true
 
   /@types/draco3d@1.4.2:
@@ -5637,7 +5641,3 @@ packages:
     resolution: {integrity: sha1-ApTrPe4FAo0x7hpfosVWpqrxChs=, tarball: https://registry.npmmirror.com/yocto-queue/download/yocto-queue-0.1.0.tgz}
     engines: {node: '>=10'}
     dev: true
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
