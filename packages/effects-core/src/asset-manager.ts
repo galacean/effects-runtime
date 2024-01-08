@@ -605,7 +605,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
   for (const composition of scene.jsonScene.compositions) {
     for (let i = 0; i < composition.items.length; i++) {
       ecScene.items.push(composition.items[i]);
-      composition.items[i] = { id: (ecScene.items.length - 1).toString() };
+      composition.items[i] = { id: composition.items[i].id };
     }
   }
 

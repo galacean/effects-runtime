@@ -4,14 +4,11 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { EffectsObjectData, GeometryData, MaterialData, SceneData, ShaderData, VFXItemData } from './deserializer';
 import type { Region } from './plugins';
 import { HitTestType, TextComponent, TimelineComponent } from './plugins';
 import { noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
-// @ts-expect-error
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * @since 2.0.0
@@ -71,35 +68,8 @@ export class CompositionComponent extends ItemBehaviour {
     this.items.length = 0;
     if (this.item.composition) {
       const deserializer = this.item.engine.deserializer;
-      const sceneData: SceneData = this.engine.sceneData;
       // TODO spec 定义新类型后 as 移除
-      const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], geometries: GeometryData[], components: EffectsObjectData[] };
-
-      if (jsonScene.items) {
-        for (const vfxItemData of jsonScene.items) {
-          sceneData[vfxItemData.id] = vfxItemData;
-        }
-      }
-      if (jsonScene.materials) {
-        for (const materialData of jsonScene.materials) {
-          sceneData[materialData.id] = materialData;
-        }
-      }
-      if (jsonScene.shaders) {
-        for (const shaderData of jsonScene.shaders) {
-          sceneData[shaderData.id] = shaderData;
-        }
-      }
-      if (jsonScene.geometries) {
-        for (const geometryData of jsonScene.geometries) {
-          sceneData[geometryData.id] = geometryData;
-        }
-      }
-      if (jsonScene.components) {
-        for (const componentData of jsonScene.components) {
-          sceneData[componentData.id] = componentData;
-        }
-      }
+      const jsonScene = this.item.composition.compositionSourceManager.jsonScene!;
 
       if (jsonScene.textures) {
         for (let i = 0; i < jsonScene.textures.length; i++) {

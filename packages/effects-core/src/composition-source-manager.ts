@@ -41,11 +41,13 @@ export class CompositionSourceManager implements Disposable {
   jsonScene?: spec.JSONScene;
   mask = 0;
   textureOptions: Record<string, any>[];
+  engine: Engine;
 
   constructor (
     scene: Scene,
     engine: Engine,
   ) {
+    this.engine = engine;
     // 资源
     const { jsonScene, renderLevel, textureOptions, pluginSystem, totalTime } = scene;
     const { compositions, imgUsage, compositionId } = jsonScene;
@@ -113,7 +115,7 @@ export class CompositionSourceManager implements Disposable {
 
     for (const itemDataPath of composition.items) {
       //@ts-expect-error
-      const sourceItemData: VFXItemProps = this.jsonScene.items[itemDataPath.id];
+      const sourceItemData: VFXItemProps = this.engine.sceneData[itemDataPath.id];
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {

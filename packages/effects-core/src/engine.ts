@@ -1,6 +1,7 @@
+import type { spec } from '.';
 import { LOG_TYPE } from './config';
 import { Deserializer } from './deserializer';
-import type { SceneData } from './deserializer';
+import type { EffectsObjectData, GeometryData, MaterialData, SceneData, ShaderData, VFXItemData } from './deserializer';
 import { glContext } from './gl';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
@@ -40,6 +41,46 @@ export class Engine implements Disposable {
   clearResources () {
     this.sceneData = {};
     this.deserializer = new Deserializer(this);
+  }
+
+  addResources (jsonScene: spec.JSONScene) {
+    const sceneData = this.sceneData;
+
+    //@ts-expect-error
+    if (jsonScene.items) {
+      //@ts-expect-error
+      for (const vfxItemData of jsonScene.items) {
+        sceneData[vfxItemData.id] = vfxItemData;
+      }
+    }
+    //@ts-expect-error
+    if (jsonScene.materials) {
+      //@ts-expect-error
+      for (const materialData of jsonScene.materials) {
+        sceneData[materialData.id] = materialData;
+      }
+    }
+    //@ts-expect-error
+    if (jsonScene.shaders) {
+      //@ts-expect-error
+      for (const shaderData of jsonScene.shaders) {
+        sceneData[shaderData.id] = shaderData;
+      }
+    }
+    //@ts-expect-error
+    if (jsonScene.geometries) {
+      //@ts-expect-error
+      for (const geometryData of jsonScene.geometries) {
+        sceneData[geometryData.id] = geometryData;
+      }
+    }
+    //@ts-expect-error
+    if (jsonScene.components) {
+      //@ts-expect-error
+      for (const componentData of jsonScene.components) {
+        sceneData[componentData.id] = componentData;
+      }
+    }
   }
 
   addTexture (tex: Texture) {
