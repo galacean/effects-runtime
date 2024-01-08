@@ -5,7 +5,7 @@ import trailShaderData from './shaders/trail.shader.json';
 const particleSystemProps = {
   id       : '8264d22a44124050b5a2d3dc476875fa',
   dataType : DataType.ParticleSystem,
-  item     : { id: '01' },
+  item     : { id: '9dbf4c91c5394f1dbe08010c9ed2f1a1' },
   shape    : { shape: 'Sphere', radius: 1, arc: 360, arcMode: 0, type: 1, alignSpeedDirection: false },
   splits   : [[0, 0, 0.8125, 0.8125, 0]],
   options  : {
@@ -33,7 +33,7 @@ const particleSystemProps = {
 const spriteProps = {
   id        : '333faa0ad3974003a5e13a6d433d8bc7',
   dataType  : DataType.SpriteComponent,
-  item      : { id: '03' },
+  item      : { id: '2f29a793b96a47a692239e8c858a0a33' },
   options : {
     startColor: [
       1,
@@ -123,12 +123,12 @@ const json = {
       endBehavior : 2,
       previewSize : [0, 0],
       items       : [
-        { id: '03' },
-        { id: '01' },
-        { id: '02' },
-        { id: '04' },
-        { id: '05' },
-        { id: '06' },
+        { id: '2f29a793b96a47a692239e8c858a0a33' },
+        { id: '9dbf4c91c5394f1dbe08010c9ed2f1a1' },
+        { id: 'e412b3bcf7ee4019ab882a41aec9efdf' },
+        { id: '9830e941be074b6da820819eee0e884d' },
+        { id: '90d16d7487674f08aaf398aca5f91b0e' },
+        { id: '6b668d8ea2ef4965ad90d0a57446b8d8' },
       ],
       camera       : { fov: 60, far: 1000, near: 0.3, clipMode: 0, position: [0, 0, 8], rotation: [0, 0, 0] },
       globalVolume : {
@@ -149,7 +149,7 @@ const json = {
   ],
   items: [
     {
-      id          : '03',
+      id          : '2f29a793b96a47a692239e8c858a0a33',
       name        : 'background',
       duration    : 1000,
       dataType    : 0,
@@ -180,7 +180,7 @@ const json = {
       }],
     },
     {
-      id          : '01',
+      id          : '9dbf4c91c5394f1dbe08010c9ed2f1a1',
       name        : 'particle',
       duration    : 1000,
       dataType    : 0,
@@ -195,7 +195,7 @@ const json = {
       }],
     },
     {
-      id          : '02',
+      id          : 'e412b3bcf7ee4019ab882a41aec9efdf',
       name        : 'Trail1',
       duration    : 1000,
       type        : 'ECS',
@@ -210,7 +210,7 @@ const json = {
       }],
     },
     {
-      id          : '04',
+      id          : '9830e941be074b6da820819eee0e884d',
       name        : 'Trail2',
       duration    : 1000,
       type        : 'ECS',
@@ -225,7 +225,7 @@ const json = {
       }],
     },
     {
-      id          : '05',
+      id          : '90d16d7487674f08aaf398aca5f91b0e',
       name        : 'Trail3',
       duration    : 1000,
       type        : 'ECS',
@@ -240,7 +240,7 @@ const json = {
       }],
     },
     {
-      id          : '06',
+      id          : '6b668d8ea2ef4965ad90d0a57446b8d8',
       name        : 'Ge',
       duration    : 1000,
       dataType    : 0,
@@ -276,7 +276,7 @@ const json = {
     {
       id        : 'a5f8d715a06b4acba79b891566de8754',
       dataType  : 1,
-      item      : { id: '02' },
+      item      : { id: 'e412b3bcf7ee4019ab882a41aec9efdf' },
       materials : [{ id: '11f66680df4d4665884d16de06a52216' }],
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
@@ -285,21 +285,21 @@ const json = {
     {
       id        : '7cb4f4f2a0994941ab535552ac774237',
       dataType  : 1,
-      item      : { id: '04' },
+      item      : { id: '9830e941be074b6da820819eee0e884d' },
       materials : [{ id: '378d35e08fee497f901b70f1144a5f6d' }],
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
       id        : '24b05ca55c0f4f1a86f97699ba907099',
       dataType  : 1,
-      item      : { id: '05' },
+      item      : { id: '90d16d7487674f08aaf398aca5f91b0e' },
       materials : [{ id: '992e087df9154793a34b66658f4be1ca' }],
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
       id        : 'bcc377b9ec064a7fb110033e805ef462',
       dataType  : DataType.SpriteComponent,
-      item      : { id: '06' },
+      item      : { id: '6b668d8ea2ef4965ad90d0a57446b8d8' },
       options : {
         startColor: [
           1,
