@@ -756,5 +756,9 @@ export function version3Migration (scene: Record<string, any>): Scene {
     }
   }
 
+  for (const texture of scene.textureOptions) {
+    texture.id = uuidv4().replace(/-/g, '');
+  }
+
   return scene as Scene;
 }

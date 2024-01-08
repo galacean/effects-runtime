@@ -477,12 +477,6 @@ export class SpriteComponent extends RendererComponent {
     return { index, atlasOffset };
   }
 
-  initTexture (texture: Texture, emptyTexture: Texture) {
-    const tex = texture ?? emptyTexture;
-
-    return tex;
-  }
-
   getTextures (): Texture[] {
     const ret = [];
     const tex = this.renderer.texture;
@@ -550,7 +544,7 @@ export class SpriteComponent extends RendererComponent {
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: this.initTexture(renderer.texture, this.engine.emptyTexture),
+      texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!(renderer.occlusion),
       transparentOcclusion: !!(renderer.transparentOcclusion) || (renderer.maskMode === spec.MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,

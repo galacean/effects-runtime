@@ -2,7 +2,7 @@ import type {
   Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
   TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
-  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFrameBuffer, spec, Engine,
+  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFrameBuffer, spec, Engine, Deserializer, EffectsObjectData,
 } from '@galacean/effects-core';
 import {
   getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,
@@ -39,16 +39,11 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   private pipelineContext: GLPipelineContext;
   private initialized = false;
 
-  constructor (engine: Engine, source: TextureSourceOptions) {
+  constructor (engine: Engine, source?: TextureSourceOptions) {
     super(engine);
-    const opts = this.assembleOptions(source);
-    const { sourceType, sourceFrom, name = '' } = opts;
-
-    this.source = opts;
-    this.sourceType = sourceType;
-    this.sourceFrom = sourceFrom;
-    this.name = name;
-    this.engine = engine;
+    if (source) {
+      this.fromData(source);
+    }
   }
 
   /** 绑定当前Texture对象。*/
@@ -317,6 +312,18 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magFilter);
     gl.texParameteri(target, gl.TEXTURE_WRAP_S, isPot ? wrapS : gl.CLAMP_TO_EDGE);
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, isPot ? wrapT : gl.CLAMP_TO_EDGE);
+  }
+
+  override fromData (data: any, deserializer?: Deserializer): void {
+    super.fromData(data, deserializer);
+    const source = data as TextureSourceOptions;
+    const opts = this.assembleOptions(source);
+    const { sourceType, sourceFrom, name = '' } = opts;
+
+    this.source = opts;
+    this.sourceType = sourceType;
+    this.sourceFrom = sourceFrom;
+    this.name = name;
   }
 
   private texImage2D (

@@ -21,9 +21,8 @@ export abstract class EffectsObject {
   /**
    * 反序列化函数
    *
-   * @param deserializer - 反序列化器
    * @param data - 对象的序列化的数据
-   * @param sceneData - 场景的序列化数据
+   * @param deserializer - 反序列化器
    */
   fromData (data: EffectsObjectData, deserializer?: Deserializer) {
     this.instanceId = data.id;

@@ -10,6 +10,8 @@ import { HitTestType, TextComponent, TimelineComponent } from './plugins';
 import { noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
+// @ts-expect-error
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * @since 2.0.0
@@ -101,9 +103,7 @@ export class CompositionComponent extends ItemBehaviour {
 
       if (jsonScene.textures) {
         for (let i = 0; i < jsonScene.textures.length; i++) {
-          this.item.engine.deserializer.addInstance('Texture' + i, this.item.composition.textures[i]);
-          // TODO 纹理增加 id 加入 effectsObjects Map
-          // sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
+          this.item.engine.deserializer.addInstance(this.item.composition.textures[i].instanceId, this.item.composition.textures[i]);
         }
       }
 

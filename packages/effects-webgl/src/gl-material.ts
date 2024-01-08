@@ -514,7 +514,7 @@ export class GLMaterial extends Material {
       this.samplers = [];
       this.textures = {};
       for (name in propertiesData.textures) {
-        const texture = deserializer.deserialize<Texture>({ id: 'Texture' + propertiesData.textures[name].id });
+        const texture = propertiesData.textures[name] as Texture;
 
         // TODO 纹理通过 id 加入场景数据
         this.setTexture(name, texture);

@@ -347,9 +347,9 @@ const json = {
         _EndColor   : [1.0, 1.0, 0.2, 1.0],
       },
       textures: {
-        _MainTex : { id: '1' },
-        _Tex2    : { id: '2' },
-        _Tex3    : { id: '4' },
+        _MainTex : { id: '0622cbce2a724bec976e09988f192ee9' },
+        _Tex2    : { id: '05d2cdc5814b412aa69b1a5e794aeca8' },
+        _Tex3    : { id: '080f94ebcff64c81a67f31187015697e' },
       },
     },
     {
@@ -367,9 +367,9 @@ const json = {
         _EndColor   : [0.0, 0.2, 0.8, 1.0],
       },
       textures: {
-        _MainTex : { id: '1' },
-        _Tex2    : { id: '5' },
-        _Tex3    : { id: '4' },
+        _MainTex : { id: '0622cbce2a724bec976e09988f192ee9' },
+        _Tex2    : { id: '69c42f62abcb4962803df425a65b7281' },
+        _Tex3    : { id: '080f94ebcff64c81a67f31187015697e' },
       },
     },
     {
@@ -387,9 +387,9 @@ const json = {
         _EndColor   : [0.0, 0.0, 0.0, 1.0],
       },
       textures: {
-        _MainTex : { id: '1' },
-        _Tex2    : { id: '6' },
-        _Tex3    : { id: '4' },
+        _MainTex : { id: '0622cbce2a724bec976e09988f192ee9' },
+        _Tex2    : { id: '8f33267d4f8647acbc51f34d2fe1a428' },
+        _Tex3    : { id: '080f94ebcff64c81a67f31187015697e' },
       },
     },
   ],
@@ -403,14 +403,14 @@ const json = {
   compositionId : '4',
   bins          : [],
   textures      : [
-    { source: 0, flipY: true },
-    { source: 1, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { source: 2, flipY: false, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { source: 3, flipY: true },
-    { source: 4, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { source: 5, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { source: 6, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { source: 7, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: 'c8e75e0b46a44b9ca6e9c98b9b461f37', source: 0, flipY: true },
+    { id: '0622cbce2a724bec976e09988f192ee9', source: 1, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '05d2cdc5814b412aa69b1a5e794aeca8', source: 2, flipY: false, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '83f7b031365f481192873e908fd442a6', source: 3, flipY: true },
+    { id: '080f94ebcff64c81a67f31187015697e', source: 4, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '69c42f62abcb4962803df425a65b7281', source: 5, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '8f33267d4f8647acbc51f34d2fe1a428', source: 6, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '82d245433af641d48d670bace307a9fe', source: 7, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
   ],
 };
 

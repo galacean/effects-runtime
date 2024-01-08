@@ -195,9 +195,10 @@ export class CompositionSourceManager implements Disposable {
 
   private changeTex (renderer: Record<string, number>) {
     const texIdx = renderer.texture;
-    const ret: Record<string, any> = { ...renderer };
+    const ret = renderer;
 
     if (texIdx !== undefined) {
+      //@ts-expect-error
       ret.texture = this.addTextureUsage(texIdx) || texIdx;
     }
 
