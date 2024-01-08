@@ -827,8 +827,8 @@ export class ParticleSystem extends Component {
     }
   };
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: any, deserializer?: Deserializer): void {
+    super.fromData(data, deserializer);
     const props = data as ParticleSystemProps;
 
     this.props = props;
@@ -1095,7 +1095,7 @@ export class ParticleSystem extends Component {
     this.item.getHitTestParams = this.getHitTestParams;
 
     // TODO 待移除
-    if (deserializer && sceneData) {
+    if (deserializer) {
       this.item._content = this;
       this.renderer.item = this.item;
       this.item.components.push(this.renderer);

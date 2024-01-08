@@ -62,8 +62,8 @@ export class SpineComponent extends RendererComponent {
     super(engine);
   }
 
-  override fromData (options: any, deserializer?: Deserializer, sceneData?: SceneData) {
-    super.fromData(options, deserializer, sceneData);
+  override fromData (options: any, deserializer?: Deserializer) {
+    super.fromData(options, deserializer);
 
     this.options = options;
     this.item.getHitTestParams = this.getHitTestParams.bind(this);

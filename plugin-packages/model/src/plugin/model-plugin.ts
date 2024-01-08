@@ -189,8 +189,8 @@ export class ModelPluginComponent extends ItemBehaviour {
     this.cache = null;
   }
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: any, deserializer?: Deserializer): void {
+    super.fromData(data, deserializer);
     //
     const options = data as ModelPluginOptions;
 

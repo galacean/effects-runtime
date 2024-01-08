@@ -438,8 +438,8 @@ export class GizmoComponent extends ItemBehaviour {
     this.targetItem = item;
   }
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: any, deserializer?: Deserializer): void {
+    super.fromData(data, deserializer);
 
     const item = this.item as GizmoVFXItem;
     const options = data as VFXItemProps;

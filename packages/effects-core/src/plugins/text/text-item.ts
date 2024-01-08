@@ -391,8 +391,8 @@ export class TextComponent extends SpriteComponent {
     this.isDirty = false;
   }
 
-  override fromData (data: SpriteItemProps, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: SpriteItemProps, deserializer?: Deserializer): void {
+    super.fromData(data, deserializer);
   }
 
   private getFontDesc (): string {

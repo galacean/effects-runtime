@@ -402,9 +402,8 @@ export class GLGeometry extends Geometry {
   override fromData (
     data: EffectsObjectData | MaterialData | GeometryData,
     deserializer?: Deserializer,
-    sceneData?: SceneData,
   ): void {
-    super.fromData(data, deserializer, sceneData);
+    super.fromData(data, deserializer);
 
     const geometryData = data;
     const fullGeometryData = {

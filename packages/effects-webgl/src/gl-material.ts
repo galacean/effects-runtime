@@ -470,8 +470,8 @@ export class GLMaterial extends Material {
     return clonedMaterial;
   }
 
-  override fromData (data: MaterialData, deserializer: Deserializer, sceneData: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: MaterialData, deserializer: Deserializer): void {
+    super.fromData(data, deserializer);
 
     this.uniforms = [];
     this.floats = {};
@@ -510,7 +510,7 @@ export class GLMaterial extends Material {
       this.setVector4(name, new math.Vector4().setFromArray(propertiesData.vector4s[name]));
     }
 
-    if (deserializer && sceneData) {
+    if (deserializer) {
       this.samplers = [];
       this.textures = {};
       for (name in propertiesData.textures) {

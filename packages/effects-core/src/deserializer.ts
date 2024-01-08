@@ -62,7 +62,7 @@ export class Deserializer {
 
     // console.log(effectsObjectData, effectsObject.taggedProperties);
 
-    effectsObject.fromData(effectsObject.taggedProperties as EffectsObjectData, this, sceneData);
+    effectsObject.fromData(effectsObject.taggedProperties as EffectsObjectData, this);
 
     return effectsObject as T;
   }

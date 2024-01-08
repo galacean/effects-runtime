@@ -25,12 +25,11 @@ export abstract class Component extends EffectsObject {
 
   override fromData (
     data: any,
-    deserializer?: Deserializer,
-    sceneData?: SceneData,
+    deserializer?: Deserializer
   ): void {
-    super.fromData(data, deserializer, sceneData);
+    super.fromData(data, deserializer);
 
-    if (deserializer && sceneData) {
+    if (deserializer) {
       this.item = deserializer.deserialize(data.item);
     }
   }
