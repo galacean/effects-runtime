@@ -1,0 +1,54 @@
+name: 功能请求
+description: 为我们的项目提出功能请求
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        👋 欢迎向我们提出您对 Galacean Effects 的宝贵建议。
+
+        在创建 Issue 前，可以在 Issue 区进行关键词搜索，避免重复地提交，同一个功能请求可以在 Issue 下展开讨论。
+        
+        创建 Issue 时，请尽量详细地描述这个功能，以便我们准确地与您交换意见，方便其它用户参与进来。 🥰
+
+  - type: dropdown
+    id: domain
+    attributes:
+      label: 🕗 领域
+      description: 您想对哪一个领域提出功能请求？
+      options:
+        - Galacean Effects Runtime
+        - Galacean Effects 编辑器
+        - Galacean Effects 官网
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: 功能
+      description: 你请求的功能是？
+      placeholder: 请求的功能
+    validations:
+      required: true
+
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 功能的场景是？
+      placeholder: 功能场景
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: 需要符合什么样的标准？
+      placeholder: 我希望
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: 其它信息
