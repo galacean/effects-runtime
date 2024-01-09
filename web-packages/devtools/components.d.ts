@@ -44,6 +44,7 @@ declare module 'vue' {
     BIconChevronLeft: typeof import('./../../node_modules/.pnpm/@advjs+gui@0.0.3-beta.3_vue@3.4.7/node_modules/@advjs/gui/client/components/icons/BIconChevronLeft.vue')['default']
     BIconChevronRight: typeof import('./../../node_modules/.pnpm/@advjs+gui@0.0.3-beta.3_vue@3.4.7/node_modules/@advjs/gui/client/components/icons/BIconChevronRight.vue')['default']
     HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    PanelHierarchy: typeof import('./src/components/PanelHierarchy.vue')['default']
     PanelProject: typeof import('./src/components/PanelProject.vue')['default']
     PanelScene: typeof import('./src/components/PanelScene.vue')['default']
   }

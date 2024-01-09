@@ -6,7 +6,7 @@
       </template>
 
       <template #left-top>
-        <!-- <PanelHierarchy /> -->
+        <PanelHierarchy />
       </template>
 
       <PanelScene />

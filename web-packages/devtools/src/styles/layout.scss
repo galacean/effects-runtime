@@ -40,3 +40,7 @@
   bottom: calc(-1 * var(--agui-layout-splitter-size));
   width: 100%;
 }
+
+.splitpanes--vertical .splitpanes__pane {
+  transition: none;
+}

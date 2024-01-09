@@ -9,5 +9,6 @@ import 'uno.css';
 
 import './styles/index.scss';
 import '@advjs/gui/client/styles/index.scss';
+import '@advjs/gui/dist/icons.css';
 
 createApp(App).mount('#app');
