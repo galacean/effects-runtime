@@ -34,6 +34,7 @@ export class Transform implements Disposable {
   }
 
   name: string;
+  taggedProperties: Record<string, any> = {};
   /**
    * 自身位移
    */
@@ -527,16 +528,16 @@ export class Transform implements Disposable {
   }
 
   toData () {
-    const transformData: TransformProps = {
-      position:this.position.clone(),
-      rotation:this.rotation.clone(),
-      scale:this.scale.clone(),
-    };
+    const transformData = this.taggedProperties;
+
+    transformData.position = this.position.clone();
+    transformData.rotation = this.rotation.clone();
+    transformData.scale = this.scale.clone();
 
     return transformData;
   }
 
-  fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData) {
+  fromData (data: any) {
     this.setTransform(data);
   }
 
