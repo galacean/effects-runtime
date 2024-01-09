@@ -592,6 +592,10 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
   throw new Error('Invalid texture options');
 }
 
+export function generateUuid (): string {
+  return uuidv4().replace(/-/g, '');
+}
+
 type ecScene = spec.JSONScene & { items: VFXItemProps[], components: DataPath[] };
 
 export function version3Migration (scene: Record<string, any>): Scene {
@@ -612,7 +616,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
   const itemGuidMap: Record<string, string> = {}; // <id, guid>
 
   for (const item of ecScene.items) {
-    itemGuidMap[item.id] = uuidv4().replace(/-/g, '');
+    itemGuidMap[item.id] = generateUuid();
     item.id = itemGuidMap[item.id];
   }
 
@@ -778,7 +782,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
 
   // texture 增加 id
   for (const texture of scene.textureOptions) {
-    texture.id = uuidv4().replace(/-/g, '');
+    texture.id = generateUuid();
   }
 
   return scene as Scene;

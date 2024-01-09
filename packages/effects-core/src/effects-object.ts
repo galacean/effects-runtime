@@ -1,7 +1,6 @@
-import type { Deserializer, EffectsObjectData, SceneData } from './deserializer';
+import { generateUuid } from '.';
+import type { EffectsObjectData } from './deserializer';
 import type { Engine } from './engine';
-
-let seed = 0;
 
 /**
  * @since 2.0.0
@@ -14,7 +13,7 @@ export abstract class EffectsObject {
   constructor (
     public engine: Engine,
   ) {
-    this.instanceId = String(seed++);
+    this.instanceId = generateUuid();
     this.taggedProperties = {};
   }
 
@@ -27,7 +26,9 @@ export abstract class EffectsObject {
    * @param deserializer - 反序列化器
    */
   fromData (data: EffectsObjectData) {
-    this.instanceId = data.id;
+    if (data.id) {
+      this.instanceId = data.id;
+    }
   }
 
   dispose () { }

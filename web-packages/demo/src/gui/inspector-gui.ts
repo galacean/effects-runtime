@@ -1,5 +1,5 @@
 import type { EffectComponentData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
-import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, SerializedObject } from '@galacean/effects';
+import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, SerializedObject, generateUuid } from '@galacean/effects';
 import type { AssetData } from './asset-data-base';
 import { assetDataBase } from './asset-data-base';
 
@@ -201,16 +201,27 @@ export class InspectorGui {
           serializeObject.applyModifiedProperties();
         }));
       } else if (type === '2D') {
-        this.gui.add({
+        const controller = this.gui.add({
           click: async () => {
             // @ts-expect-error
             const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
             const file = await fileHandle[0].getFile();
-
             const image = await loadImage(file);
+
+            image.width = 50;
+            image.height = 50;
+            image.id = inspectorName;
+            const lastImage = document.getElementById(inspectorName);
+
+            if (lastImage) {
+              controller.domElement.removeChild(lastImage);
+            }
+            controller.domElement.appendChild(image);
 
             const texture = Texture.create(this.item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
 
+            serializeObject.serializedData.textures[uniformName] = { id:texture.instanceId };
+            serializeObject.engine.deserializer.addInstance(texture.instanceId, texture);
             this.item?.getComponent(RendererComponent)?.material.setTexture(uniformName, texture);
           },
         }, 'click').name(inspectorName);
