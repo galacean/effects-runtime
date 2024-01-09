@@ -633,15 +633,46 @@ export function version3Migration (scene: Record<string, any>): Scene {
     }
   }
 
-  // item 的 content 转为 component data 加入 JSONScene.components
+  // texture 增加 id
+  for (const texture of scene.textureOptions) {
+    texture.id = generateUuid();
+  }
+
   if (!ecScene.components) {
     ecScene.components = [];
   }
   const components = ecScene.components;
 
   for (const item of ecScene.items) {
+    if (item.content) {
+      //@ts-expect-error
+      if (item.content.renderer) {
+        //@ts-expect-error
+        if (item.content.renderer.texture !== undefined) {
+          //@ts-expect-error
+          const oldTextureId = item.content.renderer.texture;
+
+          //@ts-expect-error
+          item.content.renderer.texture = { id:scene.textureOptions[oldTextureId].id };
+        }
+      }
+
+      //@ts-expect-error
+      if (item.content.trails) {
+        //@ts-expect-error
+        if (item.content.trails.texture !== undefined) {
+          //@ts-expect-error
+          const oldTextureId = item.content.trails.texture;
+
+          //@ts-expect-error
+          item.content.trails.texture = { id:scene.textureOptions[oldTextureId].id };
+        }
+      }
+    }
+
     const uuid = uuidv4().replace(/-/g, '');
 
+    // item 的 content 转为 component data 加入 JSONScene.components
     if (item.type === spec.ItemType.sprite) {
       //@ts-expect-error
       item.components = [];
@@ -778,11 +809,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     }
-  }
-
-  // texture 增加 id
-  for (const texture of scene.textureOptions) {
-    texture.id = generateUuid();
   }
 
   return scene as Scene;

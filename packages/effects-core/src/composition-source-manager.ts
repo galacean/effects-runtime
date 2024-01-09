@@ -196,33 +196,31 @@ export class CompositionSourceManager implements Disposable {
   }
 
   private changeTex (renderer: Record<string, number>) {
-    const texIdx = renderer.texture;
-    const ret = renderer;
+    if (!renderer.texture) {
+      return renderer;
+    }
+    //@ts-expect-error
+    const texIdx = renderer.texture.id;
 
     if (texIdx !== undefined) {
       //@ts-expect-error
-      ret.texture = this.addTextureUsage(texIdx) || texIdx;
+      this.addTextureUsage(texIdx) || texIdx;
     }
 
-    return ret;
+    return renderer;
   }
 
-  private addTextureUsage (texIdx: number): Texture | undefined {
-    if (Number.isInteger(texIdx)) {
-      const tex = this.textures?.[texIdx];
-      const texId = tex?.id;
-      // FIXME: imageUsage 取自 scene.imgUsage，类型为 Record<string, number[]>，这里给的 number，类型对不上
-      const imageUsage = this.imgUsage as unknown as Record<string, number> ?? {};
+  private addTextureUsage (texIdx: number) {
+    const texId = texIdx;
+    // FIXME: imageUsage 取自 scene.imgUsage，类型为 Record<string, number[]>，这里给的 number，类型对不上
+    const imageUsage = this.imgUsage as unknown as Record<string, number> ?? {};
 
-      if (texId && imageUsage) {
-        // eslint-disable-next-line no-prototype-builtins
-        if (!imageUsage.hasOwnProperty(texId)) {
-          imageUsage[texId] = 0;
-        }
-        imageUsage[texId]++;
-
-        return tex;
+    if (texId && imageUsage) {
+      // eslint-disable-next-line no-prototype-builtins
+      if (!imageUsage.hasOwnProperty(texId)) {
+        imageUsage[texId] = 0;
       }
+      imageUsage[texId]++;
     }
   }
 

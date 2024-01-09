@@ -15,7 +15,7 @@ const particleSystemProps = {
     startSize     : [4, [0.05, 0.2]],
     sizeAspect    : [0, 1],
   },
-  renderer             : { texture: 0, side: 1028 },
+  renderer             : { texture: { id:'c8e75e0b46a44b9ca6e9c98b9b461f37' }, side: 1028 },
   emission             : { rateOverTime: [0, 16] },
   positionOverLifetime : { startSpeed: [4, [0.5, 1]], gravityOverLifetime: [0, 1] },
   colorOverLifetime    : {
@@ -44,7 +44,7 @@ const spriteProps = {
   },
   renderer: {
     renderMode : 1,
-    texture    : 3,
+    texture    : { id:'83f7b031365f481192873e908fd442a6' },
   },
   positionOverLifetime: {
     direction: [
@@ -310,7 +310,7 @@ const json = {
       },
       renderer: {
         renderMode : 1,
-        texture    : 7,
+        texture    : { id:'82d245433af641d48d670bace307a9fe' },
       },
       positionOverLifetime: {
         direction: [

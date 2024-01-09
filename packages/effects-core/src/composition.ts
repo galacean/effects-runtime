@@ -844,7 +844,7 @@ export class Composition implements Disposable, LostHandler {
       if (!texture) {
         continue;
       }
-      if (texture.sourceType === TextureSourceType.data && !(this.texInfo[texture.id])) {
+      if (texture.sourceType === TextureSourceType.data && !(this.texInfo[texture.instanceId])) {
         if (
           texture !== this.rendererOptions?.emptyTexture &&
           texture !== this.renderFrame.transparentTexture &&
@@ -856,7 +856,7 @@ export class Composition implements Disposable, LostHandler {
       }
       if (this.autoRefTex) {
         // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
-        const c = --this.texInfo[texture.id];
+        const c = --this.texInfo[texture.instanceId];
 
         if (!c) {
           if (__DEBUG__) {
