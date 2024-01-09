@@ -184,6 +184,7 @@ export class SerializedObject {
   }
 
   update () {
+    this.target.toData();
     this.engine.deserializer.serializeTaggedProperties(this.target.taggedProperties, this.serializedData);
   }
 

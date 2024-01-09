@@ -532,7 +532,7 @@ export class GLMaterial extends Material {
    * @param sceneData
    * @returns
    */
-  toData (): MaterialData {
+  override toData (): MaterialData {
     //@ts-expect-error
     const materialData: MaterialData = this.taggedProperties;
 

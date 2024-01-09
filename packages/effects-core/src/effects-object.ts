@@ -18,6 +18,8 @@ export abstract class EffectsObject {
     this.taggedProperties = {};
   }
 
+  toData () {}
+
   /**
    * 反序列化函数
    *
