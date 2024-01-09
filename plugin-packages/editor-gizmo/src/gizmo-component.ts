@@ -48,6 +48,7 @@ export class GizmoComponent extends ItemBehaviour {
     }
     const gizmoPlugin = this.gizmoPlugin;
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
     if (targetItem.type === '7' || !gizmoPlugin) {
       return;
     }

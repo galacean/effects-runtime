@@ -190,7 +190,7 @@ export class SerializedObject {
 
   applyModifiedProperties () {
     this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target.taggedProperties);
-    this.target.fromData(this.serializedData as EffectsObjectData);
+    this.target.fromData(this.target.taggedProperties as EffectsObjectData);
   }
 }
 
