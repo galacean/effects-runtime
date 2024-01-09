@@ -1,0 +1,42 @@
+:root {
+  --agui-layout-splitter-size: 3px;
+  --agui-layout-splitter-color: black;
+}
+
+// splitpanes
+.splitpanes__pane {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: Helvetica, Arial, sans-serif;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1em;
+}
+
+.splitpanes__splitter {
+  background-color: var(--agui-layout-splitter-color);
+  position: relative;
+}
+.splitpanes__splitter:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  transition: opacity 0.4s;
+  background-color: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  z-index: 1;
+}
+.splitpanes__splitter:hover:before {
+  opacity: 1;
+}
+.splitpanes--vertical > .splitpanes__splitter:before {
+  left: calc(-1 * var(--agui-layout-splitter-size));
+  right: calc(-1 * var(--agui-layout-splitter-size));
+  height: 100%;
+}
+.splitpanes--horizontal > .splitpanes__splitter:before {
+  top: calc(-1 * var(--agui-layout-splitter-size));
+  bottom: calc(-1 * var(--agui-layout-splitter-size));
+  width: 100%;
+}
