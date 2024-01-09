@@ -11,8 +11,9 @@ import type { VFXItemProps } from './vfx-item';
  * @internal
  */
 export class Deserializer {
-  private objectInstance: Record<string, EffectsObject> = {};
 
+  serializedDatas: Record<string, any> = {};
+  private objectInstance: Record<string, EffectsObject> = {};
   private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
 
   constructor (
@@ -77,6 +78,9 @@ export class Deserializer {
   }
 
   serializeTaggedProperties (taggedProperties: Record<string, any>, serializedData: Record<string, any>) {
+    if (serializedData.id) {
+      this.serializedDatas[serializedData.id] = serializedData;
+    }
     for (const key of Object.keys(taggedProperties)) {
       const value = taggedProperties[key];
 
@@ -140,6 +144,12 @@ export class Deserializer {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (property instanceof EffectsObject) {
+      if (!this.serializedDatas[property.instanceId]) {
+        this.serializedDatas[property.instanceId] = {};
+        property.toData();
+        this.serializeTaggedProperties(property.taggedProperties, this.serializedDatas[property.instanceId]);
+      }
+
       return { id:property.instanceId };
     } else if (property instanceof Object) {
       const res: Record<string, any> = {};

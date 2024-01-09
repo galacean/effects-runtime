@@ -958,6 +958,7 @@ export class Composition implements Disposable, LostHandler {
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],
     });
+    this.getEngine().sceneData = {};
   }
 
   /**

@@ -73,17 +73,15 @@ export class InspectorGui {
         if (component instanceof EffectComponent) {
           componentFolder.add({
             click: async () => {
-
               await selectJsonFile((data: AssetData) => {
-                for (const effectsObject of data.exportObjects) {
-                  assetDataBase.addData(effectsObject);
-
+                for (const effectsObjectData of data.exportObjects) {
+                  this.item.engine.sceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(RendererComponent);
 
                   if (effectComponent) {
                     const guid = effectComponent.instanceId;
 
-                    (assetDataBase.assetsData[guid] as EffectComponentData).materials[0] = { id:effectsObject.id };
+                    (assetDataBase.assetsData[guid] as EffectComponentData).materials[0] = { id:effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(assetDataBase.assetsData[guid], effectComponent.taggedProperties);
                     effectComponent.fromData(effectComponent.taggedProperties);
                   }
@@ -96,14 +94,14 @@ export class InspectorGui {
           componentFolder.add({
             click: async () => {
               await selectJsonFile((data: AssetData) => {
-                for (const effectsObject of data.exportObjects) {
-                  assetDataBase.addData(effectsObject);
+                for (const effectsObjectData of data.exportObjects) {
+                  this.item.engine.sceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(EffectComponent);
 
                   if (effectComponent) {
                     const guid = effectComponent.instanceId;
 
-                    (assetDataBase.assetsData[guid] as EffectComponentData).geometry = { id:effectsObject.id };
+                    (assetDataBase.assetsData[guid] as EffectComponentData).geometry = { id:effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(assetDataBase.assetsData[guid], effectComponent.taggedProperties);
                     effectComponent.fromData(effectComponent.taggedProperties);
                   }

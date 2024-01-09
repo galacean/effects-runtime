@@ -39,7 +39,6 @@ export class Engine implements Disposable {
   static create: (gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
 
   clearResources () {
-    this.sceneData = {};
     this.deserializer = new Deserializer(this);
   }
 

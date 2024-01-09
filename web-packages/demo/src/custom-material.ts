@@ -66,7 +66,7 @@ async function saveJSONFile (json: any) {
     // 显示文件保存对话框，用户可以选择文件夹并输入文件名
     //@ts-expect-error
     const handle = await window.showSaveFilePicker({
-      suggestedName: 'myData.json',
+      suggestedName: 'trail-demo.scene.json',
       types: [
         {
           description: 'JSON files',
@@ -100,11 +100,12 @@ async function loadJSONFile () {
     }
     const data = JSON.parse(reader.result);
 
-    composition = await player.loadScene(data);
-
     for (const resourceData of Object.values(assetDataBase.assetsData)) {
       player.renderer.engine.sceneData[resourceData.id] = resourceData;
     }
+
+    composition = await player.loadScene(data);
+
     treeGui.setComposition(composition);
     orbitController.setup(composition.camera, input);
   };
@@ -112,14 +113,27 @@ async function loadJSONFile () {
 }
 
 function serializeScene (composition: Composition, json: any) {
+  const deserializer = composition.getEngine().deserializer;
+
+  deserializer.serializedDatas = {};
   for (const itemData of json.items) {
     if (itemData.type === spec.ItemType.sprite) {
       continue;
     }
-    const item = composition.getEngine().deserializer.getInstance(itemData.id) as VFXItem<VFXItemContent>;
+    const item = deserializer.getInstance(itemData.id) as VFXItem<VFXItemContent>;
 
     item.transform.toData();
+    deserializer.serializeTaggedProperties(item.taggedProperties, {});
     itemData.transform = item.transform.taggedProperties;
+
+    for (const component of item.components) {
+      component.toData();
+      deserializer.serializeTaggedProperties(component.taggedProperties, {});
+    }
+  }
+
+  for (let componentData of json.components) {
+    componentData = deserializer.serializedDatas[componentData.id];
   }
 }
 

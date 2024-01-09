@@ -138,10 +138,6 @@ export class EffectComponent extends RendererComponent implements Disposable {
     }
     this.destroyed = true;
 
-    if (this.engine !== undefined) {
-      //this.engine.removeMesh(this);
-      // @ts-expect-error
-      this.engine = undefined;
-    }
+    super.dispose();
   }
 }
