@@ -461,8 +461,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     return undefined;
   }
 
-  override fromData (data: VFXItemData, deserializer?: Deserializer): void {
-    super.fromData(data, deserializer);
+  override fromData (data: VFXItemData): void {
+    super.fromData(data);
     const {
       id, name, delay, parentId, endBehavior, transform,
       listIndex = 0,
@@ -539,7 +539,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
     }
 
-    if (deserializer) {
+    if (data.components) {
       for (const component of data.components) {
         const newComponent = component as unknown as Component;
 

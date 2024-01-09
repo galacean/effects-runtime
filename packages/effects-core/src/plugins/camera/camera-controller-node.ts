@@ -106,8 +106,8 @@ export class CameraController extends ItemBehaviour {
     this.updateCamera();
   }
 
-  override fromData (data: spec.CameraContent, deserializer?: Deserializer): void {
-    super.fromData(data, deserializer);
+  override fromData (data: spec.CameraContent): void {
+    super.fromData(data);
     const { near, far, fov, clipMode } = data.options;
 
     this.clipMode = clipMode;

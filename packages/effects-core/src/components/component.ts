@@ -23,13 +23,9 @@ export abstract class Component extends EffectsObject {
   onAttached () { }
   onDestroy () { }
 
-  override fromData (
-    data: any,
-    deserializer?: Deserializer
-  ): void {
-    super.fromData(data, deserializer);
-
-    if (deserializer) {
+  override fromData (data: any): void {
+    super.fromData(data);
+    if (data.item) {
       this.item = data.item;
     }
   }

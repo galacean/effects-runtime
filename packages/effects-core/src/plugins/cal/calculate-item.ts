@@ -203,8 +203,8 @@ export class TimelineComponent extends ItemBehaviour {
     }
   }
 
-  override fromData (data: spec.NullContent, deserializer?: Deserializer): void {
-    super.fromData(data, deserializer);
+  override fromData (data: spec.NullContent): void {
+    super.fromData(data);
 
     this.options = {
       start: this.item.start,

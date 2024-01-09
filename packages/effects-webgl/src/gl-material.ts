@@ -470,10 +470,12 @@ export class GLMaterial extends Material {
     return clonedMaterial;
   }
 
-  override fromData (data: MaterialData, deserializer: Deserializer): void {
-    super.fromData(data, deserializer);
+  override fromData (data: MaterialData): void {
+    super.fromData(data);
 
     this.uniforms = [];
+    this.samplers = [];
+    this.textures = {};
     this.floats = {};
     this.ints = {};
     this.floatArrays = {};
@@ -510,19 +512,15 @@ export class GLMaterial extends Material {
       this.setVector4(name, new math.Vector4().setFromArray(propertiesData.vector4s[name]));
     }
 
-    if (deserializer) {
-      this.samplers = [];
-      this.textures = {};
-      for (name in propertiesData.textures) {
-        const texture = propertiesData.textures[name] as Texture;
+    for (name in propertiesData.textures) {
+      const texture = propertiesData.textures[name] as Texture;
 
-        // TODO 纹理通过 id 加入场景数据
-        this.setTexture(name, texture);
-      }
-
-      this.shader = data.shader as GLShader;
-      this.shaderSource = this.shader.source;
+      // TODO 纹理通过 id 加入场景数据
+      this.setTexture(name, texture);
     }
+
+    this.shader = data.shader as GLShader;
+    this.shaderSource = this.shader.source;
 
     this.initialized = false;
     //@ts-expect-error

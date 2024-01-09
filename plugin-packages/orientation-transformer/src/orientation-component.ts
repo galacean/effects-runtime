@@ -6,8 +6,8 @@ import type { CompositionTransformerAcceler } from './composition-transformer-ac
 export class OrientationComponent extends ItemBehaviour {
   private targets: CompositionTransformerTarget[];
 
-  override fromData (data: any, deserializer?: Deserializer) {
-    super.fromData(data, deserializer);
+  override fromData (data: any) {
+    super.fromData(data);
 
     const { targets } = data.content.options;
 

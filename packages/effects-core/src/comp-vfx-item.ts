@@ -125,7 +125,7 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === spec.ItemType.interact ||
           itemData.type === spec.ItemType.camera
         ) {
-          item = deserializer.deserialize({ id: itemData.id });
+          item = deserializer.loadUuid(itemData.id);
           item.composition = this.item.composition;
         } else {
           // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣

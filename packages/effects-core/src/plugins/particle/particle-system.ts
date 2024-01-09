@@ -827,8 +827,8 @@ export class ParticleSystem extends Component {
     }
   };
 
-  override fromData (data: any, deserializer?: Deserializer): void {
-    super.fromData(data, deserializer);
+  override fromData (data: any): void {
+    super.fromData(data);
     const props = data as ParticleSystemProps;
 
     this.props = props;
@@ -1094,17 +1094,14 @@ export class ParticleSystem extends Component {
     }
     this.item.getHitTestParams = this.getHitTestParams;
 
-    // TODO 待移除
-    if (deserializer) {
-      this.item._content = this;
-      this.renderer.item = this.item;
-      this.item.components.push(this.renderer);
-      this.item.rendererComponents.push(this.renderer);
-      // 添加粒子动画 clip
-      const timeline = this.item.getComponent(TimelineComponent)!;
+    this.item._content = this;
+    this.renderer.item = this.item;
+    this.item.components.push(this.renderer);
+    this.item.rendererComponents.push(this.renderer);
+    // 添加粒子动画 clip
+    const timeline = this.item.getComponent(TimelineComponent)!;
 
-      timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
-    }
+    timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
   }
 }
 

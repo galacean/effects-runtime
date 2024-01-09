@@ -314,8 +314,8 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, isPot ? wrapT : gl.CLAMP_TO_EDGE);
   }
 
-  override fromData (data: any, deserializer?: Deserializer): void {
-    super.fromData(data, deserializer);
+  override fromData (data: any): void {
+    super.fromData(data);
     const source = data as TextureSourceOptions;
     const opts = this.assembleOptions(source);
     const { sourceType, sourceFrom, name = '' } = opts;

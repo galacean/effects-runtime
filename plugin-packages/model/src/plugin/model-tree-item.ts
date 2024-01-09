@@ -132,8 +132,8 @@ export class ModelTreeComponent extends ItemBehaviour {
     }
   }
 
-  override fromData (options: ModelTreeContent, deserializer?: Deserializer): void {
-    super.fromData(options, deserializer);
+  override fromData (options: ModelTreeContent): void {
+    super.fromData(options);
     const treeOptions = options.options.tree;
 
     this.content = new ModelTreeItem(treeOptions, this.item);

@@ -212,8 +212,8 @@ export class InteractComponent extends RendererComponent {
     };
   }
 
-  override fromData (data: any, deserializer?: Deserializer): void {
-    super.fromData(data, deserializer);
+  override fromData (data: any): void {
+    super.fromData(data);
     this.interactData = data as spec.InteractContent;
   }
 }

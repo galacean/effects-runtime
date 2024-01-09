@@ -85,7 +85,7 @@ export class InspectorGui {
 
                     (assetDataBase.assetsData[guid] as EffectComponentData).materials[0] = { id:effectsObject.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(assetDataBase.assetsData[guid], effectComponent.taggedProperties);
-                    effectComponent.fromData(effectComponent.taggedProperties, this.item.engine.deserializer);
+                    effectComponent.fromData(effectComponent.taggedProperties);
                   }
                 }
                 this.itemDirtyFlag = true;
@@ -105,7 +105,7 @@ export class InspectorGui {
 
                     (assetDataBase.assetsData[guid] as EffectComponentData).geometry = { id:effectsObject.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(assetDataBase.assetsData[guid], effectComponent.taggedProperties);
-                    effectComponent.fromData(effectComponent.taggedProperties, this.item.engine.deserializer);
+                    effectComponent.fromData(effectComponent.taggedProperties);
                   }
                 }
               });

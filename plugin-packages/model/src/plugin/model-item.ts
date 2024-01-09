@@ -76,8 +76,8 @@ export class ModelMeshComponent extends RendererComponent {
     this.content.dispose();
   }
 
-  override fromData (options: ModelMeshContent, deserializer?: Deserializer): void {
-    super.fromData(options, deserializer);
+  override fromData (options: ModelMeshContent): void {
+    super.fromData(options);
 
     const bounding = options.interaction;
 
@@ -219,8 +219,8 @@ export class ModelSkyboxComponent extends RendererComponent {
     this.content.dispose();
   }
 
-  override fromData (options: ModelSkyboxContent, deserializer?: Deserializer): void {
-    super.fromData(options, deserializer);
+  override fromData (options: ModelSkyboxContent): void {
+    super.fromData(options);
 
     const skyboxOptions = options.options;
 
@@ -274,8 +274,8 @@ export class ModelLightComponent extends ItemBehaviour {
     this.content.dispose();
   }
 
-  override fromData (options: ModelLightContent, deserializer?: Deserializer): void {
-    super.fromData(options, deserializer);
+  override fromData (options: ModelLightContent): void {
+    super.fromData(options);
 
     const lightOptions = options.options;
 
@@ -331,8 +331,8 @@ export class ModelCameraComponent extends ItemBehaviour {
     this.content.dispose();
   }
 
-  override fromData (options: ModelCameraContent, deserializer?: Deserializer): void {
-    super.fromData(options, deserializer);
+  override fromData (options: ModelCameraContent): void {
+    super.fromData(options);
 
     const cameraOptions = options.options;
 
