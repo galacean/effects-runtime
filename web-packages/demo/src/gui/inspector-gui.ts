@@ -49,17 +49,17 @@ export class InspectorGui {
       const transform = this.item.transform;
       const transformData = transform.toData();
 
-      this.guiControllers.push(positionFolder.add(transformData.position, 'x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(positionFolder.add(transformData.position, 'y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(positionFolder.add(transformData.position, 'z').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'z').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
-      this.guiControllers.push(scaleFolder.add(transformData.scale, 'x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(scaleFolder.add(transformData.scale, 'y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(scaleFolder.add(transformData.scale, 'z').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
       for (const component of this.item.components) {
         const componentFolder = this.gui.addFolder(component.constructor.name);
@@ -154,6 +154,16 @@ export class InspectorGui {
       controller.updateDisplay();
     }
   };
+
+  // const properties = `
+  // _2D("2D", 2D) = "" {}
+  // _Color("Color",Color) = (1,1,1,1)
+  // _Value("Value",Range(0,10)) = 2.5
+  // _Float("Float",Float) = 0
+  // _Vector("Vector",Vector) = (0,0,0,0)
+  // _Rect("Rect",Rect) = "" {}
+  // _Cube("Cube",Cube) = "" {}
+  // `;
 
   private parseMaterialProperties (material: Material, gui: any, serializeObject: SerializedObject) {
     const serializedData = serializeObject.serializedData;

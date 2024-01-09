@@ -64,6 +64,10 @@ export class Deserializer {
     this.objectInstance[id] = effectsObject;
   }
 
+  getInstance (id: string) {
+    return this.objectInstance[id];
+  }
+
   deserializeTaggedProperties (serializedData: Record<string, any>, taggedProperties: Record<string, any>) {
     for (const key of Object.keys(serializedData)) {
       const value = serializedData[key];

@@ -530,9 +530,9 @@ export class Transform implements Disposable {
   toData () {
     const transformData = this.taggedProperties;
 
-    transformData.position = this.position.clone();
-    transformData.rotation = this.rotation.clone();
-    transformData.scale = this.scale.clone();
+    transformData.position = this.position.clone().toArray();
+    transformData.rotation = this.rotation.clone().toArray();
+    transformData.scale = this.scale.clone().toArray();
 
     return transformData;
   }
