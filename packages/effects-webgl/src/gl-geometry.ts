@@ -399,7 +399,7 @@ export class GLGeometry extends Geometry {
     this.initialized = false;
   }
 
-  override fromData (data: EffectsObjectData | MaterialData | GeometryData,): void {
+  override fromData (data: GeometryData): void {
     super.fromData(data);
 
     const geometryData = data;

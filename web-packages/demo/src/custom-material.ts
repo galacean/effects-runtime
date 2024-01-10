@@ -1,5 +1,5 @@
-import type { Composition, VFXItem, VFXItemContent } from '@galacean/effects';
-import { Player, spec } from '@galacean/effects';
+import type { Composition, EffectsObjectData, VFXItem, VFXItemContent } from '@galacean/effects';
+import { DataType, Player, TimelineComponent, spec } from '@galacean/effects';
 import json from './assets/custom-material';
 import { assetDataBase } from './gui/asset-data-base';
 import { Input } from './gui/input';
@@ -103,9 +103,8 @@ async function loadJSONFile () {
     for (const resourceData of Object.values(assetDataBase.assetsData)) {
       player.renderer.engine.sceneData[resourceData.id] = resourceData;
     }
-
+    player.destroyCurrentCompositions();
     composition = await player.loadScene(data);
-
     treeGui.setComposition(composition);
     orbitController.setup(composition.camera, input);
   };
@@ -114,9 +113,10 @@ async function loadJSONFile () {
 
 function serializeScene (composition: Composition, json: any) {
   const deserializer = composition.getEngine().deserializer;
+  let serializedDatas: Record<string, EffectsObjectData> = {};
 
   for (const itemData of json.items) {
-    if (itemData.type === spec.ItemType.sprite) {
+    if (itemData.type === spec.ItemType.sprite || itemData.type === spec.ItemType.particle) {
       continue;
     }
     const item = deserializer.getInstance(itemData.id) as VFXItem<VFXItemContent>;
@@ -126,13 +126,62 @@ function serializeScene (composition: Composition, json: any) {
     itemData.transform = item.transform.taggedProperties;
 
     for (const component of item.components) {
-      component.toData();
-      deserializer.serializeTaggedProperties(component.taggedProperties, {});
+      if (component instanceof TimelineComponent) {
+        continue;
+      }
+      serializedDatas = {
+        ...serializedDatas,
+        ...deserializer.serializeEffectObject(component),
+      };
     }
   }
 
-  for (let componentData of json.components) {
-    componentData = composition.getEngine().sceneData[componentData.id];
+  let effectsObjectDataMap: Record<string, EffectsObjectData> = {};
+
+  for (const data of json.components) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.geometries) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.materials) {
+    effectsObjectDataMap[data.id] = data;
+  }
+
+  effectsObjectDataMap = {
+    ...effectsObjectDataMap,
+    ...serializedDatas,
+  };
+
+  json.components = [];
+  json.geometries = [];
+  json.materials = [];
+  for (const data of Object.values(effectsObjectDataMap)) {
+    if (!data.id) {
+      continue;
+    }
+    switch (data.dataType) {
+      case DataType.EffectComponent:
+        json.components.push(data);
+
+        break;
+      case DataType.SpriteComponent:
+        json.components.push(data);
+
+        break;
+      case DataType.ParticleSystem:
+        json.components.push(data);
+
+        break;
+      case DataType.Material:
+        json.materials.push(data);
+
+        break;
+      case DataType.Geometry:
+        json.geometries.push(data);
+
+        break;
+    }
   }
 }
 

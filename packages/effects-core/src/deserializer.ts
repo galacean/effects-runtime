@@ -72,6 +72,44 @@ export class Deserializer {
     return this.objectInstance[id];
   }
 
+  serializeEffectObject (effectsObject: EffectsObject) {
+    const serializableMap: Record<string, EffectsObject> = {};
+    const serializedDatas: Record<string, any> = {};
+
+    this.collectSerializableObject(effectsObject, serializableMap);
+    for (const value of Object.values(serializableMap)) {
+      serializedDatas[value.instanceId] = {};
+      this.serializeTaggedProperties(value.taggedProperties, serializedDatas[value.instanceId]);
+    }
+
+    return serializedDatas;
+  }
+
+  collectSerializableObject (effectsObject: EffectsObject, res: Record<string, EffectsObject>) {
+    if (res[effectsObject.instanceId]) {
+      return;
+    }
+    effectsObject.toData();
+    res[effectsObject.instanceId] = effectsObject;
+    for (const value of Object.values(effectsObject.taggedProperties)) {
+      if (value instanceof EffectsObject) {
+        this.collectSerializableObject(value, res);
+      } else if (value instanceof Array) {
+        for (const arrayValue of value) {
+          if (arrayValue instanceof EffectsObject) {
+            this.collectSerializableObject(arrayValue, res);
+          }
+        }
+      } else if (value instanceof Object) {
+        for (const objectValue of Object.values(value)) {
+          if (objectValue instanceof EffectsObject) {
+            this.collectSerializableObject(objectValue, res);
+          }
+        }
+      }
+    }
+  }
+
   deserializeTaggedProperties (serializedData: Record<string, any>, taggedProperties: Record<string, any>) {
     for (const key of Object.keys(serializedData)) {
       const value = serializedData[key];
