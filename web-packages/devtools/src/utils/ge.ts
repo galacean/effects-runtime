@@ -1,27 +1,41 @@
 import { Player } from '@galacean/effects';
+import { TreeGui } from '../gui/tree-gui';
+import { InspectorGui } from '../gui/inspector-gui';
+import { Input } from '../gui/input';
+import { OrbitController } from '../gui/orbit-controller';
+import json from '../assets/scenes/trail-demo2.scene.json';
+
+export const treeGui = new TreeGui();
+const inspectorGui = new InspectorGui();
+let input: Input;
+let orbitController: OrbitController;
 
 export async function initGEPlayer (canvas: HTMLCanvasElement) {
-  const player = createPlayer(canvas);
-  // console.log(canvas)
+  const player = new Player({ canvas, interactive: true, notifyTouch: true });
+  //@ts-expect-error
+  const comp = await player.loadScene(json);
 
-  const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ');
+  treeGui.setComposition(comp);
+  input = new Input(canvas);
+  input.startup();
+  orbitController = new OrbitController(comp.camera, input);
+  inputControllerUpdate();
+
+  setInterval(() => {
+    guiMainLoop();
+  }, 100);
 }
 
-function createPlayer (canvas: HTMLCanvasElement) {
-  const player = new Player({
-    canvas,
-    interactive: true,
-    // renderFramework: 'webgl',
-    // env: 'editor',
-    notifyTouch: true,
-    // onPausedByItem: (data) => {
-    // console.info('onPausedByItem', data);
-    // },
-    // onItemClicked: (data) => {
-    // console.info(`item ${data.name} has been clicked`);
-    // },
-    // reportGPUTime: console.debug,
-  });
+function guiMainLoop () {
+  if (treeGui.activeItem) {
+    inspectorGui.setItem(treeGui.activeItem);
+  }
+  treeGui.update();
+  inspectorGui.update();
+}
 
-  return player;
+function inputControllerUpdate () {
+  orbitController.update();
+  input.refreshStatus();
+  requestAnimationFrame(inputControllerUpdate);
 }

@@ -5,6 +5,7 @@ import type { Engine } from './engine';
 import { Material } from './material';
 import { Geometry } from './render';
 import type { VFXItemProps } from './vfx-item';
+import { generateUuid } from '.';
 
 /**
  * @since 2.0.0
@@ -12,7 +13,6 @@ import type { VFXItemProps } from './vfx-item';
  */
 export class Deserializer {
 
-  serializedDatas: Record<string, any> = {};
   private objectInstance: Record<string, EffectsObject> = {};
   private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
 
@@ -31,6 +31,9 @@ export class Deserializer {
     let effectsObject: EffectsObject | undefined;
     const effectsObjectData = this.findData(uuid);
 
+    if (!effectsObjectData) {
+      console.error('未找到 uuid: ' + uuid + '的对象数据');
+    }
     switch (effectsObjectData.dataType) {
       case DataType.Material:
         effectsObject = Material.create(this.engine);
@@ -78,9 +81,6 @@ export class Deserializer {
   }
 
   serializeTaggedProperties (taggedProperties: Record<string, any>, serializedData: Record<string, any>) {
-    if (serializedData.id) {
-      this.serializedDatas[serializedData.id] = serializedData;
-    }
     for (const key of Object.keys(taggedProperties)) {
       const value = taggedProperties[key];
 
@@ -144,13 +144,8 @@ export class Deserializer {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (property instanceof EffectsObject) {
-      if (!this.serializedDatas[property.instanceId]) {
-        this.serializedDatas[property.instanceId] = {};
-        property.toData();
-        this.serializeTaggedProperties(property.taggedProperties, this.serializedDatas[property.instanceId]);
-      }
-
-      return { id:property.instanceId };
+      // TODO 处理 EffectsObject 递归序列化
+      return { id: property.instanceId };
     } else if (property instanceof Object) {
       const res: Record<string, any> = {};
 

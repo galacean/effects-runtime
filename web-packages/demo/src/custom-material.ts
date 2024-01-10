@@ -115,7 +115,6 @@ async function loadJSONFile () {
 function serializeScene (composition: Composition, json: any) {
   const deserializer = composition.getEngine().deserializer;
 
-  deserializer.serializedDatas = {};
   for (const itemData of json.items) {
     if (itemData.type === spec.ItemType.sprite) {
       continue;
@@ -133,7 +132,7 @@ function serializeScene (composition: Composition, json: any) {
   }
 
   for (let componentData of json.components) {
-    componentData = deserializer.serializedDatas[componentData.id];
+    componentData = composition.getEngine().sceneData[componentData.id];
   }
 }
 

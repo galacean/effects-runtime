@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import type { Trees } from '@advjs/gui';
 
+export * from './ge';
 export const treeData = ref<Trees>([
   {
     name: 'Level one 1',
