@@ -1,9 +1,9 @@
 import { Player } from '@galacean/effects';
-import { TreeGui } from '../gui/tree-gui';
-import { InspectorGui } from '../gui/inspector-gui';
-import { Input } from '../gui/input';
-import { OrbitController } from '../gui/orbit-controller';
 import json from '../assets/scenes/trail-demo2.scene.json';
+import { Input } from '../gui/input';
+import { InspectorGui } from '../gui/inspector-gui';
+import { OrbitController } from '../gui/orbit-controller';
+import { TreeGui } from '../gui/tree-gui';
 
 export const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();

@@ -48,7 +48,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
         1, 1, 0, //右上
         1, -1, 0, //右下
       ],
-      uv: [0, 1, 0, 0, 1, 1, 1, 0],
+      uvs: [0, 1, 0, 0, 1, 1, 1, 0],
       indices: [0, 1, 2, 2, 1, 3],
       dataType: DataType.Geometry,
       id: 'Geometry1',

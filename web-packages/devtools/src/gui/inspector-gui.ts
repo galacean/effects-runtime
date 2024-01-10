@@ -11,8 +11,6 @@ export class InspectorGui {
   constructor () {
     //@ts-expect-error
     this.gui = new GUI();
-    this.gui.addFolder('Inspector');
-    // setInterval(this.updateInspector, 500);
   }
 
   setItem (item: VFXItem<VFXItemContent>) {

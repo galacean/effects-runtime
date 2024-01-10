@@ -11,9 +11,10 @@
     "vue": "^3.4.7"
   },
   "devDependencies": {
-    "@advjs/gui": "0.0.3-beta.3",
+    "@advjs/gui": "0.0.3-beta.4",
     "@antfu/eslint-config": "^2.6.2",
     "@galacean/effects": "workspace:*",
+    "@types/wicg-file-system-access": "^2023.10.4",
     "@unocss/reset": "^0.58.3",
     "@vitejs/plugin-vue": "^5.0.2",
     "@vueuse/core": "^10.7.1",

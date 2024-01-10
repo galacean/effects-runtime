@@ -269,14 +269,17 @@ importers:
         version: 3.4.7(typescript@5.3.3)
     devDependencies:
       '@advjs/gui':
-        specifier: 0.0.3-beta.3
-        version: 0.0.3-beta.3(vue@3.4.7)
+        specifier: 0.0.3-beta.4
+        version: 0.0.3-beta.4(vue@3.4.7)
       '@antfu/eslint-config':
         specifier: ^2.6.2
         version: 2.6.2(@vue/compiler-sfc@3.4.7)(eslint@8.56.0)(typescript@5.3.3)
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
+      '@types/wicg-file-system-access':
+        specifier: ^2023.10.4
+        version: 2023.10.4
       '@unocss/reset':
         specifier: ^0.58.3
         version: 0.58.3
@@ -344,8 +347,8 @@ packages:
       - typescript
     dev: true
 
-  /@advjs/gui@0.0.3-beta.3(vue@3.4.7):
-    resolution: {integrity: sha512-tjrTbU4wDb7crjcDE6vNLURvfs5fNnsN0SMl4FLqgjzdTG0p1RMvg/ygkCg+1phOKvtTT4h5CnD+X1+FsBjPrw==}
+  /@advjs/gui@0.0.3-beta.4(vue@3.4.7):
+    resolution: {integrity: sha512-rr3wxDSxv/Yhy46/wAsFlwt40qwE2oi7uOeamnunua06aITb1L43hSjKqCtDDyFNTWTDF3egi++XmcQW5evr+w==}
     dependencies:
       '@headlessui/vue': 1.7.17(vue@3.4.7)
       '@iconify-json/vscode-icons': 1.1.32
@@ -2947,6 +2950,7 @@ packages:
     resolution: {integrity: sha512-TVYVWD/SYwWzGGnbfTkrNpdE4HON46orgMNHCivlXmlsSGQOx/OHHYiQcMIOx38/GWgwr/po2LBn7wypkWw/Mg==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2955,6 +2959,7 @@ packages:
     resolution: {integrity: sha512-XcKvuendwizYYhFxpvQ3xVpzje2HHImzg33wL9zvxtj77HvPStbSGI9czrdbfrf8DGMcNNReH9pVZv8qejAQ5A==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -2963,6 +2968,7 @@ packages:
     resolution: {integrity: sha512-LFHS/8Q+I9YA0yVETyjonMJ3UA+DczeBd/MqNEzsGSTdNvSJa1OJZcSH8GiXLvcizgp9AlHs2walqRcqzjOi3A==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2971,6 +2977,7 @@ packages:
     resolution: {integrity: sha512-dIYgo+j1+yfy81i0YVU5KnQrIJZE8ERomx17ReU4GREjGtDW4X+nvkBak2xAUpyqLs4eleDSj3RrV72fQos7zw==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2979,6 +2986,7 @@ packages:
     resolution: {integrity: sha512-RoaYxjdHQ5TPjaPrLsfKqR3pakMr3JGqZ+jZM0zP2IkDtsGa4CqYaWSfQmZVgFUCgLrTnzX+cnHS3nfl+kB6ZQ==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -3193,6 +3201,10 @@ packages:
 
   /@types/webxr@0.5.1:
     resolution: {integrity: sha512-xlFXPfgJR5vIuDefhaHuUM9uUgvPaXB6GKdXy2gdEh8gBWQZ2ul24AJz3foUd8NNKlSTQuWYJpCb1/pL81m1KQ==, tarball: https://registry.npmmirror.com/@types/webxr/download/@types/webxr-0.5.1.tgz}
+    dev: true
+
+  /@types/wicg-file-system-access@2023.10.4:
+    resolution: {integrity: sha512-ewOj7hWhsUTS2+aY6zY+7BwlgqGBj5ZXxKuHt3TAWpIJH0bDW/6bO1N1SdUDAzV8r0Nc+/ZtpAEETYTwrehBMw==}
     dev: true
 
   /@typescript-eslint/eslint-plugin@5.62.0(@typescript-eslint/parser@5.62.0)(eslint@8.48.0)(typescript@5.2.2):

@@ -253,7 +253,7 @@ export interface MaterialData extends EffectsObjectData {
 
 export interface GeometryData extends EffectsObjectData {
   vertices?: number[],
-  uv?: number[],
+  uvs?: number[],
   normals?: number[],
   indices?: number[],
 }

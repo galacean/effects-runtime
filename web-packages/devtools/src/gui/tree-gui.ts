@@ -1,5 +1,4 @@
 import type { Composition, VFXItem, VFXItemContent } from '@galacean/effects';
-import { reactive } from 'vue';
 import { treeData } from '../utils';
 
 export class TreeGui {

@@ -1,4 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": [
+      "@types/wicg-file-system-access"
+    ]
+  },
   "exclude": ["dist", "node_modules", "cypress"]
 }
