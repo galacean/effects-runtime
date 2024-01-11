@@ -1,36 +1,18 @@
 import { curFileList, listFilesInDirectory } from '@advjs/gui/client/components/explorer/useAssetsExplorer';
 import type { GeometryData } from '@galacean/effects';
-import { DataType, generateUuid } from '@galacean/effects';
+import { DataType, generateUuid, loadImage } from '@galacean/effects';
 
 export async function onFileDrop (files: File[], curDirHandle: FileSystemHandle) {
-  // console.log(files[0]).
-  //   await saveFile(files[0], curDirHandle);
-
   const file = files[0];
-  // 创建一个FileReader实例
-  const reader = new FileReader();
 
-  // 定义文件读取成功后的回调函数
-  reader.onload = async (event: ProgressEvent<FileReader>) => {
-    // event.target.result 包含文件的内容
-    if (event.target) {
-      const fileContent = event.target.result;
-      const geometryAsset = modelJsonConverter(fileContent as string);
-
-      await saveFile(createJsonFile(geometryAsset, file.name), curDirHandle);
-    }
-  };
-
-  // 定义文件读取失败的回调函数
-  reader.onerror = event => {
-    console.error('文件读取出错:', reader.error);
-  };
-
-  // 以文本格式读取文件
-  reader.readAsText(file);
+  if (file.type === 'application/json') {
+    importModelJson(file, curDirHandle);
+  } else if (file.type === 'image/png') {
+    importPng(file, curDirHandle);
+  }
 }
 
-function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
+export function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
   // 去掉 Base64 字符串的 Data URL 部分（如果存在）
   const base64WithoutPrefix = base64.split(',')[1] || base64;
 
@@ -117,4 +99,49 @@ function modelJsonConverter (json: string): string {
   res.indices = indices;
 
   return JSON.stringify({ exportObjects: [res] });
+}
+
+function importModelJson (file: File, curDirHandle: FileSystemHandle) {
+  const reader = new FileReader();
+
+  // 定义文件读取成功后的回调函数
+  reader.onload = async (event: ProgressEvent<FileReader>) => {
+  // event.target.result 包含文件的内容
+    if (event.target) {
+      const fileContent = event.target.result;
+      const geometryAsset = modelJsonConverter(fileContent as string);
+
+      await saveFile(createJsonFile(geometryAsset, file.name), curDirHandle);
+    }
+  };
+
+  // 定义文件读取失败的回调函数
+  reader.onerror = event => {
+    console.error('文件读取出错:', reader.error);
+  };
+
+  // 以文本格式读取文件
+  reader.readAsText(file);
+}
+
+function importPng (file: File, curDirHandle: FileSystemHandle) {
+// 创建FileReader实例
+  const reader = new FileReader();
+
+  // 文件读取成功完成后触发的事件
+  reader.onload = async function (e) {
+    const result = e.target?.result;
+
+    const textureAsset = JSON.stringify({ exportObjects:[{ imageData:result }] });
+
+    await saveFile(createJsonFile(textureAsset, file.name + '.json'), curDirHandle);
+  };
+
+  // 定义文件读取失败的回调函数
+  reader.onerror = event => {
+    console.error('文件读取出错:', reader.error);
+  };
+
+  // 读取文件内容，将文件内容转换为Base64字符串
+  reader.readAsDataURL(file);
 }

@@ -461,19 +461,26 @@ export class AssetManager implements Disposable {
     jsonScene: spec.JSONScene,
   ) {
     const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
-    const jobs = textures.map((texOpts, idx) => {
+    const jobs = textures.map(async (texOpts, idx) => {
       if (texOpts instanceof Texture) {
         return texOpts;
       }
       if ('mipmaps' in texOpts) {
         try {
-          return deserializeMipmapTexture(texOpts, bins, jsonScene.bins);
+          return await deserializeMipmapTexture(texOpts, bins, jsonScene.bins);
         } catch (e) {
           throw new Error(`load texture ${idx} fails, error message: ${e}`);
         }
       }
       const { source } = texOpts;
-      const image = images[source];
+
+      let image: any;
+
+      if (typeof source === 'number') { // source 为 images 数组 id
+        image = images[source];
+      } else if (typeof source === 'string') { // source 为 base64 数据
+        image = await loadImage(base64ToFile(source));
+      }
 
       if (image) {
         const tex = createTextureOptionsBySource(image, this.assets[idx]);
@@ -590,6 +597,37 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
   }
 
   throw new Error('Invalid texture options');
+}
+
+function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
+  // 去掉 Base64 字符串的 Data URL 部分（如果存在）
+  const base64WithoutPrefix = base64.split(',')[1] || base64;
+
+  // 将 base64 编码的字符串转换为二进制字符串
+  const byteCharacters = atob(base64WithoutPrefix);
+  // 创建一个 8 位无符号整数值的数组，即“字节数组”
+  const byteArrays = [];
+
+  // 切割二进制字符串为多个片段，并将每个片段转换成一个字节数组
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
+
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+
+    byteArrays.push(byteArray);
+  }
+
+  // 使用字节数组创建 Blob 对象
+  const blob = new Blob(byteArrays, { type: contentType });
+
+  // 创建 File 对象
+  const file = new File([blob], filename, { type: contentType });
+
+  return file;
 }
 
 export function generateUuid (): string {
