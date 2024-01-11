@@ -89,10 +89,21 @@ export class SpriteMesh {
     let aPointLen = 0;
     let indexLen = 0;
     let pointCount = 0;
+    let renderInfo;
 
     if (!items.length) {
       this.mesh.setVisible(false);
 
+      return true;
+    }
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].renderInfo) {
+        renderInfo = items[i].renderInfo ;
+
+        break;
+      }
+    }
+    if (!renderInfo) {
       return true;
     }
 
@@ -101,12 +112,11 @@ export class SpriteMesh {
     if (items.length > 2) {
       itemSlot = maxSpriteMeshItemCount;
     }
-    const renderInfo = items[0].renderInfo;
 
     if (this.mtlSlotCount !== itemSlot) {
       this.mesh.setMaterial(this.createMaterial(renderInfo, itemSlot), { textures: DestroyOptions.keep });
     }
-    const attachmentLength = renderInfo?.filter?.passSplitOptions?.attachments?.length ?? 0;
+    const attachmentLength = renderInfo.filter?.passSplitOptions?.attachments?.length ?? 0;
 
     this.splitLayer = attachmentLength > 0;
     for (let i = 0; i < items.length; i++) {
