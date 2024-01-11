@@ -13,6 +13,7 @@ import { generateUuid } from '.';
  */
 export class Deserializer {
 
+  assetDatas: Record<string, EffectsObjectData> = {};
   private objectInstance: Record<string, EffectsObject> = {};
   private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
 
@@ -33,6 +34,8 @@ export class Deserializer {
 
     if (!effectsObjectData) {
       console.error('未找到 uuid: ' + uuid + '的对象数据');
+
+      return undefined as T;
     }
     switch (effectsObjectData.dataType) {
       case DataType.Material:
@@ -70,6 +73,10 @@ export class Deserializer {
 
   getInstance (id: string) {
     return this.objectInstance[id];
+  }
+
+  clearInstancePool () {
+    this.objectInstance = {};
   }
 
   serializeEffectObject (effectsObject: EffectsObject) {
@@ -213,8 +220,12 @@ export class Deserializer {
     return value instanceof Object && Object.keys(value).length === 1 && value.id && value.id.length === 32;
   }
 
-  private findData (uuid: string): EffectsObjectData {
-    return this.engine.sceneData[uuid];
+  private findData (uuid: string): EffectsObjectData | undefined {
+    if (this.engine.jsonSceneData[uuid]) {
+      return this.engine.jsonSceneData[uuid];
+    } else if (this.assetDatas[uuid]) {
+      return this.assetDatas[uuid];
+    }
   }
 }
 

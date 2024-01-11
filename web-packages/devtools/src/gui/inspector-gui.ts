@@ -68,12 +68,12 @@ export class InspectorGui {
             click: async () => {
               await selectJsonFile((data: any) => {
                 for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.sceneData[effectsObjectData.id] = effectsObjectData;
+                  this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(RendererComponent);
 
                   if (effectComponent) {
                     const guid = effectComponent.instanceId;
-                    const serializedData = effectComponent.engine.sceneData;
+                    const serializedData = effectComponent.engine.jsonSceneData;
 
                     (serializedData[guid] as EffectComponentData).materials[0] = { id:effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(serializedData[guid], effectComponent.taggedProperties);
@@ -89,12 +89,12 @@ export class InspectorGui {
             click: async () => {
               await selectJsonFile((data: any) => {
                 for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.sceneData[effectsObjectData.id] = effectsObjectData;
+                  this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(EffectComponent);
 
                   if (effectComponent) {
                     const guid = effectComponent.instanceId;
-                    const serializedData = effectComponent.engine.sceneData;
+                    const serializedData = effectComponent.engine.jsonSceneData;
 
                     (serializedData[guid] as EffectComponentData).geometry = { id:effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(serializedData[guid], effectComponent.taggedProperties);

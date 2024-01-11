@@ -115,7 +115,7 @@ export class CompositionSourceManager implements Disposable {
 
     for (const itemDataPath of composition.items) {
       //@ts-expect-error
-      const sourceItemData: VFXItemProps = this.engine.sceneData[itemDataPath.id];
+      const sourceItemData: VFXItemProps = this.engine.jsonSceneData[itemDataPath.id];
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {

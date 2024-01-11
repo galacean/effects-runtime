@@ -75,7 +75,7 @@ export class InspectorGui {
             click: async () => {
               await selectJsonFile((data: AssetData) => {
                 for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.sceneData[effectsObjectData.id] = effectsObjectData;
+                  this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(RendererComponent);
 
                   if (effectComponent) {
@@ -95,7 +95,7 @@ export class InspectorGui {
             click: async () => {
               await selectJsonFile((data: AssetData) => {
                 for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.sceneData[effectsObjectData.id] = effectsObjectData;
+                  this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(EffectComponent);
 
                   if (effectComponent) {

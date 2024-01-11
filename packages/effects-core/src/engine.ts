@@ -17,7 +17,7 @@ export class Engine implements Disposable {
   emptyTexture: Texture;
   transparentTexture: Texture;
   gpuCapability: GPUCapability;
-  sceneData: SceneData;
+  jsonSceneData: SceneData;
   deserializer: Deserializer;
 
   protected destroyed = false;
@@ -29,7 +29,7 @@ export class Engine implements Disposable {
 
   constructor () {
     this.createDefaultTexture();
-    this.sceneData = {};
+    this.jsonSceneData = {};
     this.deserializer = new Deserializer(this);
   }
 
@@ -39,11 +39,12 @@ export class Engine implements Disposable {
   static create: (gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
 
   clearResources () {
-    this.deserializer = new Deserializer(this);
+    this.jsonSceneData = {};
+    this.deserializer.clearInstancePool();
   }
 
   addResources (jsonScene: spec.JSONScene) {
-    const sceneData = this.sceneData;
+    const sceneData = this.jsonSceneData;
 
     //@ts-expect-error
     if (jsonScene.items) {

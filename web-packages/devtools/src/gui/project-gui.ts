@@ -30,6 +30,37 @@ export async function onFileDrop (files: File[], curDirHandle: FileSystemHandle)
   reader.readAsText(file);
 }
 
+function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
+  // 去掉 Base64 字符串的 Data URL 部分（如果存在）
+  const base64WithoutPrefix = base64.split(',')[1] || base64;
+
+  // 将 base64 编码的字符串转换为二进制字符串
+  const byteCharacters = atob(base64WithoutPrefix);
+  // 创建一个 8 位无符号整数值的数组，即“字节数组”
+  const byteArrays = [];
+
+  // 切割二进制字符串为多个片段，并将每个片段转换成一个字节数组
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
+
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+
+    byteArrays.push(byteArray);
+  }
+
+  // 使用字节数组创建 Blob 对象
+  const blob = new Blob(byteArrays, { type: contentType });
+
+  // 创建 File 对象
+  const file = new File([blob], filename, { type: contentType });
+
+  return file;
+}
+
 async function saveFile (file: File, curDirHandle: FileSystemHandle) {
   // create a new handle
   //@ts-expect-error
@@ -51,9 +82,9 @@ async function saveFile (file: File, curDirHandle: FileSystemHandle) {
   });
 }
 
-function createJsonFile (content: string, fileName: string) {
+function createJsonFile (json: string, fileName: string) {
   // 将字符串转换为Blob
-  const newBlob = new Blob([content], { type: 'application/json' });
+  const newBlob = new Blob([json], { type: 'application/json' });
 
   // 创建File对象，需要提供Blob、文件名和最后修改时间
   const newFile = new File([newBlob], fileName, { type: 'application/json', lastModified: Date.now() });
