@@ -1,11 +1,13 @@
 import type { Composition, EffectsObjectData, VFXItem, VFXItemContent } from '@galacean/effects';
-import { DataType, Player, TimelineComponent, spec } from '@galacean/effects';
+import { DataType, Player, TimelineComponent, generateUuid, spec } from '@galacean/effects';
 import json from './assets/custom-material';
 import { assetDataBase } from './gui/asset-data-base';
 import { Input } from './gui/input';
 import { InspectorGui } from './gui/inspector-gui';
 import { OrbitController } from './gui/orbit-controller';
 import { TreeGui } from './gui/tree-gui';
+// import vs from './assets/shaders/unlit.vs.glsl';
+// import fs from './assets/shaders/unlit.fs.glsl';
 
 const container = document.getElementById('J-container');
 const treeGui = new TreeGui();
@@ -208,3 +210,16 @@ loadButton.textContent = '加载场景json';
 loadButton.onclick = async () => {
   await loadJSONFile();
 };
+
+// console.log(JSON.stringify({
+//   exportObjects:[
+//     {
+//       id:generateUuid(),
+//       name:'unlit',
+//       dataType:DataType.Shader,
+//       vertex:vs,
+//       fragment:fs,
+//       properties:'_MainTex("MainTex", 2D) = {}\n_MainColor("MainColor", Color) = (1,1,1,1)',
+//     },
+//   ],
+// }));

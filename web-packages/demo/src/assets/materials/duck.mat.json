@@ -4,20 +4,14 @@
       "id"       : "db5e35b6e4be4edbac59c402f218dfb0",
       "dataType" : 2,
       "shader"   : {
-        "id" : "a070be488c9c424d9e91d56ec1f0a591"
+        "id" : "90ed7bbc1c364b3097b502b4a0f13d5b"
       },
       "floats"   : {
         "_Speed" : 1
       },
       "vector4s" : {
-        "_StartColor": [
+        "_MainColor": [
           1,
-          0,
-          0,
-          1
-        ],
-        "_EndColor": [
-          0,
           0,
           0,
           1

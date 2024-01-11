@@ -80,8 +80,8 @@ export class InspectorGui {
                   if (effectComponent) {
                     const guid = effectComponent.instanceId;
 
-                    (assetDataBase.assetsData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
-                    this.item.engine.deserializer.deserializeTaggedProperties(assetDataBase.assetsData[guid], effectComponent.taggedProperties);
+                    (this.item.engine.jsonSceneData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
+                    this.item.engine.deserializer.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent.taggedProperties);
                     effectComponent.fromData(effectComponent.taggedProperties);
                   }
                 }
@@ -100,8 +100,8 @@ export class InspectorGui {
                   if (effectComponent) {
                     const guid = effectComponent.instanceId;
 
-                    (assetDataBase.assetsData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
-                    this.item.engine.deserializer.deserializeTaggedProperties(assetDataBase.assetsData[guid], effectComponent.taggedProperties);
+                    (this.item.engine.jsonSceneData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
+                    this.item.engine.deserializer.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent.taggedProperties);
                     effectComponent.fromData(effectComponent.taggedProperties);
                   }
                 }
