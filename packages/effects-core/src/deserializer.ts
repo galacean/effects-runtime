@@ -92,11 +92,11 @@ export class Deserializer {
     this.collectSerializableObject(effectsObject, serializableMap);
 
     // 依次序列化
-    for (const value of Object.values(serializableMap)) {
-      if (!serializedDatas[value.instanceId]) {
-        serializedDatas[value.instanceId] = {};
+    for (const effectsObject of Object.values(serializableMap)) {
+      if (!serializedDatas[effectsObject.instanceId]) {
+        serializedDatas[effectsObject.instanceId] = {};
       }
-      this.serializeTaggedProperties(value.taggedProperties, serializedDatas[value.instanceId]);
+      this.serializeTaggedProperties(effectsObject.taggedProperties, serializedDatas[effectsObject.instanceId]);
     }
 
     return serializedDatas;

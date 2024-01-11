@@ -111,7 +111,7 @@ async function loadJSONFile () {
   reader.readAsText(file);
 }
 
-function serializeScene (composition: Composition, json: any) {
+function saveScene (composition: Composition, json: any) {
   const deserializer = composition.getEngine().deserializer;
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
@@ -121,9 +121,9 @@ function serializeScene (composition: Composition, json: any) {
     }
     const item = deserializer.getInstance(itemData.id) as VFXItem<VFXItemContent>;
 
-    deserializer.serializeEffectObject(item);
     item.transform.toData();
     itemData.transform = item.transform.taggedProperties;
+    itemData.name = item.name;
     for (const component of item.components) {
       if (component instanceof TimelineComponent) {
         continue;
@@ -197,7 +197,7 @@ const saveButton = document.createElement('button');
 body?.appendChild(saveButton);
 saveButton.textContent = '保存场景json';
 saveButton.onclick = async () => {
-  serializeScene(composition, json);
+  saveScene(composition, json);
   await saveJSONFile(json);
 };
 
