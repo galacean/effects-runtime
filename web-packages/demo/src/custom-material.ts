@@ -122,6 +122,8 @@ function serializeScene (composition: Composition, json: any) {
     const item = deserializer.getInstance(itemData.id) as VFXItem<VFXItemContent>;
 
     deserializer.serializeEffectObject(item);
+    item.transform.toData();
+    itemData.transform = item.transform.taggedProperties;
     for (const component of item.components) {
       if (component instanceof TimelineComponent) {
         continue;
@@ -132,7 +134,6 @@ function serializeScene (composition: Composition, json: any) {
       };
     }
   }
-
   let effectsObjectDataMap: Record<string, EffectsObjectData> = {};
 
   for (const data of json.components) {

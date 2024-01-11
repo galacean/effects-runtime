@@ -1,6 +1,6 @@
 import { curFileList, listFilesInDirectory } from '@advjs/gui/client/components/explorer/useAssetsExplorer';
 import type { GeometryData } from '@galacean/effects';
-import { DataType, generateUuid, loadImage } from '@galacean/effects';
+import { DataType, generateUuid, glContext, loadImage } from '@galacean/effects';
 
 export async function onFileDrop (files: File[], curDirHandle: FileSystemHandle) {
   const file = files[0];
@@ -92,13 +92,14 @@ function modelJsonConverter (json: string): string {
       indices = data.indices;
     }
   }
-  const res: GeometryData = { id: generateUuid(), dataType: DataType.Geometry };
+  const geometryData: GeometryData = { id: generateUuid(), dataType: DataType.Geometry };
 
-  res.vertices = vertices;
-  res.uvs = uvs;
-  res.indices = indices;
+  geometryData.vertices = vertices;
+  geometryData.uvs = uvs;
+  geometryData.indices = indices;
+  const geometryAsset = { exportObjects: [geometryData] };
 
-  return JSON.stringify({ exportObjects: [res] });
+  return JSON.stringify(geometryAsset);
 }
 
 function importModelJson (file: File, curDirHandle: FileSystemHandle) {
@@ -132,7 +133,8 @@ function importPng (file: File, curDirHandle: FileSystemHandle) {
   reader.onload = async function (e) {
     const result = e.target?.result;
 
-    const textureAsset = JSON.stringify({ exportObjects:[{ imageData:result }] });
+    const textureData = { id: generateUuid(), source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+    const textureAsset = JSON.stringify({ exportObjects:[textureData] });
 
     await saveFile(createJsonFile(textureAsset, file.name + '.json'), curDirHandle);
   };
