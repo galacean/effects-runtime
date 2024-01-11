@@ -553,6 +553,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     }
   }
 
+  override toData (): void {
+    this.taggedProperties.name = this.name;
+    this.taggedProperties.transform = this.transform.toData();
+  }
+
   translateByPixel (x: number, y: number) {
     if (this.composition) {
       const { z } = this.transform.getWorldPosition();
