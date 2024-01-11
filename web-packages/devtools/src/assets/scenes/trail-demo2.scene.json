@@ -1521,11 +1521,13 @@
   "textures": [
     {
       "id": "c8e75e0b46a44b9ca6e9c98b9b461f37",
+      "dataType": 9,
       "source": 0,
       "flipY": true
     },
     {
       "id": "0622cbce2a724bec976e09988f192ee9",
+      "dataType": 9,
       "source": 1,
       "flipY": true,
       "wrapS": 10497,
@@ -1533,6 +1535,7 @@
     },
     {
       "id": "05d2cdc5814b412aa69b1a5e794aeca8",
+      "dataType": 9,
       "source": 2,
       "flipY": false,
       "wrapS": 10497,
@@ -1540,11 +1543,13 @@
     },
     {
       "id": "83f7b031365f481192873e908fd442a6",
+      "dataType": 9,
       "source": 3,
       "flipY": true
     },
     {
       "id": "080f94ebcff64c81a67f31187015697e",
+      "dataType": 9,
       "source": 4,
       "flipY": true,
       "wrapS": 10497,
@@ -1552,6 +1557,7 @@
     },
     {
       "id": "69c42f62abcb4962803df425a65b7281",
+      "dataType": 9,
       "source": 5,
       "flipY": true,
       "wrapS": 10497,
@@ -1559,6 +1565,7 @@
     },
     {
       "id": "8f33267d4f8647acbc51f34d2fe1a428",
+      "dataType": 9,
       "source": 6,
       "flipY": true,
       "wrapS": 10497,
@@ -1566,6 +1573,7 @@
     },
     {
       "id": "82d245433af641d48d670bace307a9fe",
+      "dataType": 9,
       "source": 7,
       "flipY": true,
       "wrapS": 10497,

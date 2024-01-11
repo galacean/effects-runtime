@@ -15,7 +15,7 @@ const particleSystemProps = {
     startSize     : [4, [0.05, 0.2]],
     sizeAspect    : [0, 1],
   },
-  renderer             : { texture: { id:'c8e75e0b46a44b9ca6e9c98b9b461f37' }, side: 1028 },
+  renderer             : { texture: { id: 'c8e75e0b46a44b9ca6e9c98b9b461f37' }, side: 1028 },
   emission             : { rateOverTime: [0, 16] },
   positionOverLifetime : { startSpeed: [4, [0.5, 1]], gravityOverLifetime: [0, 1] },
   colorOverLifetime    : {
@@ -31,10 +31,10 @@ const particleSystemProps = {
   },
 };
 const spriteProps = {
-  id        : '333faa0ad3974003a5e13a6d433d8bc7',
-  dataType  : DataType.SpriteComponent,
-  item      : { id: '2f29a793b96a47a692239e8c858a0a33' },
-  options : {
+  id       : '333faa0ad3974003a5e13a6d433d8bc7',
+  dataType : DataType.SpriteComponent,
+  item     : { id: '2f29a793b96a47a692239e8c858a0a33' },
+  options  : {
     startColor: [
       1,
       1,
@@ -44,7 +44,7 @@ const spriteProps = {
   },
   renderer: {
     renderMode : 1,
-    texture    : { id:'83f7b031365f481192873e908fd442a6' },
+    texture    : { id: '83f7b031365f481192873e908fd442a6' },
   },
   positionOverLifetime: {
     direction: [
@@ -89,7 +89,7 @@ const json = {
       renderLevel : 'B+',
     },
     {
-      url           : 'https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original',
+      url         : 'https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original',
       renderLevel : 'B+',
     },
     {
@@ -297,10 +297,10 @@ const json = {
       geometry  : { id: '7e69662e964e4892ae8933f24562395b' },
     },
     {
-      id        : 'bcc377b9ec064a7fb110033e805ef462',
-      dataType  : DataType.SpriteComponent,
-      item      : { id: '6b668d8ea2ef4965ad90d0a57446b8d8' },
-      options : {
+      id       : 'bcc377b9ec064a7fb110033e805ef462',
+      dataType : DataType.SpriteComponent,
+      item     : { id: '6b668d8ea2ef4965ad90d0a57446b8d8' },
+      options  : {
         startColor: [
           1,
           1,
@@ -310,7 +310,7 @@ const json = {
       },
       renderer: {
         renderMode : 1,
-        texture    : { id:'82d245433af641d48d670bace307a9fe' },
+        texture    : { id: '82d245433af641d48d670bace307a9fe' },
       },
       positionOverLifetime: {
         direction: [
@@ -336,9 +336,9 @@ const json = {
       id       : '378d35e08fee497f901b70f1144a5f6d',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
-      blending: true,
-      zTest: false,
-      zWrite: false,
+      blending : true,
+      zTest    : false,
+      zWrite   : false,
       floats   : {
         _Speed : 1,
       },
@@ -356,9 +356,9 @@ const json = {
       id       : '11f66680df4d4665884d16de06a52216',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
-      blending: true,
-      zTest: false,
-      zWrite: false,
+      blending : true,
+      zTest    : false,
+      zWrite   : false,
       floats   : {
         _Speed : 1,
       },
@@ -376,9 +376,9 @@ const json = {
       id       : '992e087df9154793a34b66658f4be1ca',
       dataType : 2,
       shader   : { id: 'a070be488c9c424d9e91d56ec1f0a591' },
-      blending: true,
-      zTest: false,
-      zWrite: false,
+      blending : true,
+      zTest    : false,
+      zWrite   : false,
       floats   : {
         _Speed : 1,
       },
@@ -396,21 +396,21 @@ const json = {
   shaders: [
     trailShaderData.exportObjects[0],
   ],
-  geometries:[
+  geometries: [
     geometryData.exportObjects[0],
   ],
   requires      : [],
   compositionId : '4',
   bins          : [],
   textures      : [
-    { id: 'c8e75e0b46a44b9ca6e9c98b9b461f37', source: 0, flipY: true },
-    { id: '0622cbce2a724bec976e09988f192ee9', source: 1, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { id: '05d2cdc5814b412aa69b1a5e794aeca8', source: 2, flipY: false, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { id: '83f7b031365f481192873e908fd442a6', source: 3, flipY: true },
-    { id: '080f94ebcff64c81a67f31187015697e', source: 4, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { id: '69c42f62abcb4962803df425a65b7281', source: 5, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { id: '8f33267d4f8647acbc51f34d2fe1a428', source: 6, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
-    { id: '82d245433af641d48d670bace307a9fe', source: 7, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: 'c8e75e0b46a44b9ca6e9c98b9b461f37', dataType: DataType.Texture, source: 0, flipY: true },
+    { id: '0622cbce2a724bec976e09988f192ee9', dataType: DataType.Texture, source: 1, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '05d2cdc5814b412aa69b1a5e794aeca8', dataType: DataType.Texture, source: 2, flipY: false, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '83f7b031365f481192873e908fd442a6', dataType: DataType.Texture, source: 3, flipY: true },
+    { id: '080f94ebcff64c81a67f31187015697e', dataType: DataType.Texture, source: 4, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '69c42f62abcb4962803df425a65b7281', dataType: DataType.Texture, source: 5, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '8f33267d4f8647acbc51f34d2fe1a428', dataType: DataType.Texture, source: 6, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
+    { id: '82d245433af641d48d670bace307a9fe', dataType: DataType.Texture, source: 7, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT },
   ],
 };
 

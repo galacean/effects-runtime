@@ -1,6 +1,5 @@
-import type { EffectComponentData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
-import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, SerializedObject, generateUuid } from '@galacean/effects';
-import type { AssetData } from './asset-data-base';
+import type { AssetData, EffectComponentData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
+import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, SerializedObject, generateUuid, DataType } from '@galacean/effects';
 import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {
@@ -81,7 +80,7 @@ export class InspectorGui {
                   if (effectComponent) {
                     const guid = effectComponent.instanceId;
 
-                    (assetDataBase.assetsData[guid] as EffectComponentData).materials[0] = { id:effectsObjectData.id };
+                    (assetDataBase.assetsData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(assetDataBase.assetsData[guid], effectComponent.taggedProperties);
                     effectComponent.fromData(effectComponent.taggedProperties);
                   }
@@ -101,7 +100,7 @@ export class InspectorGui {
                   if (effectComponent) {
                     const guid = effectComponent.instanceId;
 
-                    (assetDataBase.assetsData[guid] as EffectComponentData).geometry = { id:effectsObjectData.id };
+                    (assetDataBase.assetsData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(assetDataBase.assetsData[guid], effectComponent.taggedProperties);
                     effectComponent.fromData(effectComponent.taggedProperties);
                   }
@@ -214,6 +213,24 @@ export class InspectorGui {
             // @ts-expect-error
             const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
             const file = await fileHandle[0].getFile();
+            const assetUuid = generateUuid();
+
+            // 生成纹理资产对象
+            const reader = new FileReader();
+
+            reader.onload = async function (e) {
+              const result = e.target?.result;
+              const textureData = { id: assetUuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+
+              serializeObject.engine.deserializer.assetDatas[textureData.id] = textureData;
+            };
+            reader.onerror = event => {
+              console.error('文件读取出错:', reader.error);
+            };
+
+            reader.readAsDataURL(file);
+
+            // 加载 image
             const image = await loadImage(file);
 
             image.width = 50;
@@ -226,11 +243,13 @@ export class InspectorGui {
             }
             controller.domElement.appendChild(image);
 
+            // 根据 image 生成纹理对象
             const texture = Texture.create(this.item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
 
-            serializeObject.serializedData.textures[uniformName] = { id:texture.instanceId };
+            texture.instanceId = assetUuid;
             serializeObject.engine.deserializer.addInstance(texture.instanceId, texture);
-            this.item?.getComponent(RendererComponent)?.material.setTexture(uniformName, texture);
+            serializeObject.serializedData.textures[uniformName] = { id: texture.instanceId };
+            serializeObject.applyModifiedProperties();
           },
         }, 'click').name(inspectorName);
       }

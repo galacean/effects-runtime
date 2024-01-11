@@ -671,9 +671,10 @@ export function version3Migration (scene: Record<string, any>): Scene {
     }
   }
 
-  // texture 增加 id
+  // texture 增加 id 和 dataType
   for (const texture of scene.textureOptions) {
     texture.id = generateUuid();
+    texture.dataType = DataType.Texture;
   }
 
   if (!ecScene.components) {

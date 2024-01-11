@@ -125,7 +125,7 @@ function importModelJson (file: File, curDirHandle: FileSystemHandle) {
 }
 
 function importPng (file: File, curDirHandle: FileSystemHandle) {
-// 创建FileReader实例
+  // 创建FileReader实例
   const reader = new FileReader();
 
   // 文件读取成功完成后触发的事件

@@ -1,4 +1,4 @@
-import type { DataType, EffectsObjectData } from '@galacean/effects';
+import type { AssetData, EffectsObjectData } from '@galacean/effects';
 import json from '../assets/custom-material';
 
 export class AssetDataBase {
@@ -50,9 +50,4 @@ assetDataBase.importAsset('../src/assets/materials/trail3.mat.json');
 
 for (const componentData of json.components) {
   assetDataBase.addData(componentData);
-}
-
-export interface AssetData {
-  assetType: DataType,
-  exportObjects: EffectsObjectData[],
 }

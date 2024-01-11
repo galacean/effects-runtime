@@ -81,6 +81,12 @@ export class Engine implements Disposable {
         sceneData[componentData.id] = componentData;
       }
     }
+    if (jsonScene.textures) {
+      for (const textureData of jsonScene.textures) {
+        //@ts-expect-error
+        sceneData[textureData.id] = textureData;
+      }
+    }
   }
 
   addTexture (tex: Texture) {

@@ -147,6 +147,9 @@ function serializeScene (composition: Composition, json: any) {
   for (const data of json.materials) {
     effectsObjectDataMap[data.id] = data;
   }
+  for (const data of json.textures) {
+    effectsObjectDataMap[data.id] = data;
+  }
 
   effectsObjectDataMap = {
     ...effectsObjectDataMap,
@@ -156,6 +159,7 @@ function serializeScene (composition: Composition, json: any) {
   json.components = [];
   json.geometries = [];
   json.materials = [];
+  json.textures = [];
   for (const data of Object.values(effectsObjectDataMap)) {
     if (!data.id) {
       continue;
@@ -179,6 +183,10 @@ function serializeScene (composition: Composition, json: any) {
         break;
       case DataType.Geometry:
         json.geometries.push(data);
+
+        break;
+      case DataType.Texture:
+        json.textures.push(data);
 
         break;
     }

@@ -324,6 +324,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     this.sourceType = sourceType;
     this.sourceFrom = sourceFrom;
     this.name = name;
+    this.instanceId = data.id;
   }
 
   private texImage2D (

@@ -5,7 +5,6 @@ import type { Engine } from './engine';
 import { Material } from './material';
 import { Geometry } from './render';
 import type { VFXItemProps } from './vfx-item';
-import { generateUuid } from '.';
 
 /**
  * @since 2.0.0
@@ -80,12 +79,23 @@ export class Deserializer {
   }
 
   serializeEffectObject (effectsObject: EffectsObject) {
+    // 持有所有需要序列化的引擎对象
     const serializableMap: Record<string, EffectsObject> = {};
-    const serializedDatas: Record<string, any> = {};
 
+    // 加入内存中已加载的资产数据，避免重复创建资产数据
+    const serializedDatas: Record<string, any> = {
+      ...this.engine.jsonSceneData,
+      ...this.assetDatas,
+    };
+
+    // 递归收集所有需要序列化的对象
     this.collectSerializableObject(effectsObject, serializableMap);
+
+    // 依次序列化
     for (const value of Object.values(serializableMap)) {
-      serializedDatas[value.instanceId] = {};
+      if (!serializedDatas[value.instanceId]) {
+        serializedDatas[value.instanceId] = {};
+      }
       this.serializeTaggedProperties(value.taggedProperties, serializedDatas[value.instanceId]);
     }
 
@@ -262,6 +272,7 @@ export enum DataType {
   InteractComponent,
   CameraController,
   Geometry,
+  Texture,
 
   // FIXME: 先完成ECS的场景转换，后面移到spec中
   MeshComponent = 10000,
@@ -323,3 +334,8 @@ export interface EffectComponentData extends EffectsObjectData {
 export type VFXItemData = VFXItemProps & { dataType: DataType, components: DataPath[] };
 
 export type SceneData = Record<string, EffectsObjectData>;
+
+export interface AssetData {
+  assetType: DataType,
+  exportObjects: EffectsObjectData[],
+}
