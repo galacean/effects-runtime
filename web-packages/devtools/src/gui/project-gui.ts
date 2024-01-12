@@ -3,12 +3,12 @@ import type { GeometryData } from '@galacean/effects';
 import { DataType, generateUuid, glContext, loadImage } from '@galacean/effects';
 
 export async function onFileDrop (files: File[], curDirHandle: FileSystemHandle) {
-  const file = files[0];
-
-  if (file.type === 'application/json') {
-    importModelJson(file, curDirHandle);
-  } else if (file.type === 'image/png') {
-    importPng(file, curDirHandle);
+  for (const file of files) {
+    if (file.type === 'application/json') {
+      importModelJson(file, curDirHandle);
+    } else if (file.type === 'image/png') {
+      importPng(file, curDirHandle);
+    }
   }
 }
 
