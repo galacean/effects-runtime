@@ -12,7 +12,7 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
   override name: string;
   particle: ParticleSystemProps;
 
-  private destroyed: boolean;
+  private destroyed = false;
 
   override get type () {
     return spec.ItemType.particle;
