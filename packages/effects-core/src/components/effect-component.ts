@@ -1,5 +1,5 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import type { Deserializer, EffectComponentData, GeometryData, SceneData } from '../deserializer';
+import type { EffectComponentData, GeometryData } from '../deserializer';
 import { DataType } from '../deserializer';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
@@ -8,6 +8,7 @@ import { Geometry } from '../render';
 import type { Disposable } from '../utils';
 import { DestroyOptions } from '../utils';
 import { RendererComponent } from './renderer-component';
+import { generateUuid } from '..';
 
 let seed = 1;
 
@@ -51,7 +52,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
       uvs: [0, 1, 0, 0, 1, 1, 1, 0],
       indices: [0, 1, 2, 2, 1, 3],
       dataType: DataType.Geometry,
-      id: 'Geometry1',
+      id: generateUuid(),
     };
 
     this.geometry.fromData(geometryData);
@@ -116,6 +117,12 @@ export class EffectComponent extends RendererComponent implements Disposable {
     this._priority = effectComponentData._priority;
     this.material = data.materials[0];
     this.geometry = data.geometry;
+  }
+
+  override toData (): void {
+    this.taggedProperties._priority = this._priority;
+    this.taggedProperties.materials = this.materials;
+    this.taggedProperties.geometry = this.geometry;
   }
 
   /**

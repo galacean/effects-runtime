@@ -1,10 +1,14 @@
-import type { Composition, EffectsObjectData, VFXItem, VFXItemContent } from '@galacean/effects';
+import type { Composition, EffectsObjectData, VFXItemContent } from '@galacean/effects';
+import { EffectComponent, GLGeometry, Geometry, Material, VFXItem } from '@galacean/effects';
 import { DataType, Player, TimelineComponent, spec } from '@galacean/effects';
 import json from '../assets/scenes/trail-demo2.scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
+import { SM_QUAD } from '@galacean/effects-assets';
+import { M_TRAIL } from '@galacean/effects-assets';
+import { S_TRAIL } from '@galacean/effects-assets';
 
 export const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();
@@ -14,16 +18,31 @@ let composition: Composition;
 let player: Player;
 
 export async function initGEPlayer (canvas: HTMLCanvasElement) {
-  player = new Player({ canvas, interactive: true, notifyTouch: true });
+  player = new Player({ canvas, interactive: true, notifyTouch: true, env:'editor' });
+
+  const trailShaderData = S_TRAIL.exportObjects[0];
+  const trailMaterialData = M_TRAIL.exportObjects[0];
+  const quadGeometryData = SM_QUAD.exportObjects[0];
+
+  player.renderer.engine.jsonSceneData[trailShaderData.id] = trailShaderData;
+  player.renderer.engine.jsonSceneData[trailMaterialData.id] = trailMaterialData;
+  player.renderer.engine.jsonSceneData[quadGeometryData.id] = quadGeometryData;
 
   //@ts-expect-error
   composition = await player.loadScene(json);
-
   treeGui.setComposition(composition);
   input = new Input(canvas);
   input.startup();
   orbitController = new OrbitController(composition.camera, input);
   inputControllerUpdate();
+
+  const engine = composition.getEngine();
+  const effectItem = new VFXItem(engine);
+  const effectComponent = effectItem.addComponent(EffectComponent);
+
+  effectComponent.geometry = engine.deserializer.loadUuid(quadGeometryData.id);
+  effectComponent.material = engine.deserializer.loadUuid(trailMaterialData.id);
+  composition.addItem(effectItem);
 
   setInterval(() => {
     guiMainLoop();

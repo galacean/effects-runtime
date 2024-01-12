@@ -165,6 +165,9 @@ export class GLRenderer extends Renderer implements Disposable {
   }
 
   override drawGeometry (geometry: Geometry, material: Material): void {
+    if (!geometry || !material) {
+      return;
+    }
     geometry.initialize();
     const renderingData = this.renderingData;
 
