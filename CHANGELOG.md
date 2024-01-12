@@ -11,7 +11,7 @@
 `2023-01-12`
 
 - Fix: Handling for editor errors. [#107](https://github.com/galacean/effects-runtime/pull/107) @RGCHN
-- Perf: Optimize composition time forword logic. [#106](https://github.com/galacean/effects-runtime/pull/106) @RGCHN
+- Perf: Optimize composition time forward logic. [#106](https://github.com/galacean/effects-runtime/pull/106) @RGCHN
 - Fix: Particles couldn't be clicked during replay. [#105](https://github.com/galacean/effects-runtime/pull/105) @RGCHN
 - Fix(demo): iOS postMessage targetOrigin is required. [#104](https://github.com/galacean/effects-runtime/pull/104) @yiiqii
 
