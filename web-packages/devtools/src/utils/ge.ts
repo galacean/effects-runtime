@@ -6,7 +6,7 @@ import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
-import { SM_QUAD } from '@galacean/effects-assets';
+import { G_QUAD } from '@galacean/effects-assets';
 import { M_TRAIL } from '@galacean/effects-assets';
 import { S_TRAIL } from '@galacean/effects-assets';
 import { M_DUCK } from '@galacean/effects-assets';
@@ -23,7 +23,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
 
   const trailShaderData = S_TRAIL.exportObjects[0];
   const trailMaterialData = M_DUCK.exportObjects[0];
-  const quadGeometryData = SM_QUAD.exportObjects[0];
+  const quadGeometryData = G_QUAD.exportObjects[0];
 
   player.renderer.engine.jsonSceneData[trailShaderData.id] = trailShaderData;
   player.renderer.engine.jsonSceneData[trailMaterialData.id] = trailMaterialData;

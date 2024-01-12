@@ -3,7 +3,7 @@ export class Assets {
     console.info('effects-assets');
   }
 }
-export { default as SM_QUAD } from './assets/geometries/sm-quad.json';
+export { default as G_QUAD } from './assets/geometries/g-quad.json';
 
 export { default as M_DUCK } from './assets/materials/m-duck.json';
 export { default as M_TRAIL } from './assets/materials/m-trail.json';
