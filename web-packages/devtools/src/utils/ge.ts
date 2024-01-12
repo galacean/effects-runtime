@@ -1,4 +1,4 @@
-import type { Composition, EffectsObjectData, VFXItemContent } from '@galacean/effects';
+import type { Composition, EffectsObjectData, VFXItemContent, VFXItemData } from '@galacean/effects';
 import { EffectComponent, GLGeometry, Geometry, Material, VFXItem } from '@galacean/effects';
 import { DataType, Player, TimelineComponent, spec } from '@galacean/effects';
 import json from '../assets/scenes/trail-demo2.scene.json';
@@ -20,6 +20,7 @@ let player: Player;
 
 export async function initGEPlayer (canvas: HTMLCanvasElement) {
   player = new Player({ canvas, interactive: true, notifyTouch: true, env:'editor' });
+  player.ticker.setFPS(120);
 
   const trailShaderData = S_TRAIL.exportObjects[0];
   const trailMaterialData = M_DUCK.exportObjects[0];
@@ -33,13 +34,12 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
 
   //@ts-expect-error
   composition = await player.loadScene(json);
-  treeGui.setComposition(composition);
-  input = new Input(canvas);
-  input.startup();
-  orbitController = new OrbitController(composition.camera, input);
-  inputControllerUpdate();
 
   const effectItem = new VFXItem(engine);
+
+  effectItem.duration = 1000;
+  //@ts-expect-error
+  effectItem.type = 'ECS';
   const effectComponent = effectItem.addComponent(EffectComponent);
 
   effectComponent.geometry = engine.deserializer.loadUuid(quadGeometryData.id);
@@ -49,6 +49,12 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   setInterval(() => {
     guiMainLoop();
   }, 100);
+
+  treeGui.setComposition(composition);
+  input = new Input(canvas);
+  input.startup();
+  orbitController = new OrbitController(composition.camera, input);
+  inputControllerUpdate();
 }
 
 function guiMainLoop () {
@@ -76,7 +82,7 @@ async function saveJSONFile (json: any) {
     // 显示文件保存对话框，用户可以选择文件夹并输入文件名
     //@ts-expect-error
     const handle = await window.showSaveFilePicker({
-      suggestedName: 'trail-demo.scene.json',
+      suggestedName: 'test.scene.json',
       types: [
         {
           description: 'JSON files',
@@ -122,15 +128,18 @@ function saveScene (composition: Composition, json: any) {
   const deserializer = composition.getEngine().deserializer;
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
-  for (const itemData of json.items) {
-    if (itemData.type === spec.ItemType.sprite || itemData.type === spec.ItemType.particle) {
-      continue;
-    }
-    const item = deserializer.getInstance(itemData.id) as VFXItem<VFXItemContent>;
+  for (const item of composition.items) {
+    const itemData = composition.getEngine().findEffectsObjectData(item.id) as VFXItemData;
 
     item.transform.toData();
-    itemData.transform = item.transform.taggedProperties;
-    itemData.name = item.name;
+    if (itemData) {
+      itemData.transform = item.transform.taggedProperties;
+      itemData.name = item.name;
+    }
+    serializedDatas = {
+      ...serializedDatas,
+      ...deserializer.serializeEffectObject(item),
+    };
     for (const component of item.components) {
       if (component instanceof TimelineComponent) {
         continue;
@@ -141,6 +150,7 @@ function saveScene (composition: Composition, json: any) {
       };
     }
   }
+
   let effectsObjectDataMap: Record<string, EffectsObjectData> = {};
 
   for (const data of json.components) {
@@ -155,6 +165,9 @@ function saveScene (composition: Composition, json: any) {
   for (const data of json.textures) {
     effectsObjectDataMap[data.id] = data;
   }
+  for (const data of json.items) {
+    effectsObjectDataMap[data.id] = data;
+  }
 
   effectsObjectDataMap = {
     ...effectsObjectDataMap,
@@ -165,6 +178,7 @@ function saveScene (composition: Composition, json: any) {
   json.geometries = [];
   json.materials = [];
   json.textures = [];
+  json.items = [];
   for (const data of Object.values(effectsObjectDataMap)) {
     if (!data.id) {
       continue;
@@ -194,7 +208,16 @@ function saveScene (composition: Composition, json: any) {
         json.textures.push(data);
 
         break;
+      case DataType.VFXItemData:
+        json.items.push(data);
+
+        break;
     }
+  }
+
+  json.compositions[0].items = [];
+  for (const item of json.items) {
+    json.compositions[0].items.push({ id:item.id });
   }
 }
 

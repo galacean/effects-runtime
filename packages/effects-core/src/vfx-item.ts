@@ -1,24 +1,24 @@
-import * as spec from '@galacean/effects-specification';
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import * as spec from '@galacean/effects-specification';
+import { EffectComponent, RendererComponent } from './components';
 import type { Component } from './components/component';
 import { ItemBehaviour } from './components/component';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
-import type { Deserializer, SceneData, VFXItemData } from './deserializer';
-import type { Engine } from './engine';
+import { DataType, type VFXItemData } from './deserializer';
 import { EffectsObject } from './effects-object';
+import type { Engine } from './engine';
+import { convertAnchor } from './math';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent, SpriteItemProps,
   TransformAnimationData,
 } from './plugins';
-import { TimelineComponent, Track, AnimationClipPlayable, ActivationClipPlayable } from './plugins';
+import { ActivationClipPlayable, AnimationClipPlayable, TimelineComponent, Track } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
-import { RendererComponent } from './components';
-import { convertAnchor } from './math';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | TimelineComponent | CameraController | InteractComponent | void | {};
 export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
@@ -554,8 +554,23 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   }
 
   override toData (): void {
+    this.taggedProperties.id = this.instanceId;
     this.taggedProperties.name = this.name;
+    this.taggedProperties.type = this.type;
+    this.taggedProperties.duration = this.duration;
     this.taggedProperties.transform = this.transform.toData();
+    this.taggedProperties.dataType = DataType.VFXItemData;
+
+    // TODO 统一 sprite 等其他组件的序列化逻辑
+    if (!this.taggedProperties.components) {
+      this.taggedProperties.components = [];
+      for (const component of this.components) {
+        if (component instanceof EffectComponent) {
+          this.taggedProperties.components.push(component);
+        }
+      }
+    }
+    this.taggedProperties.content = {};
   }
 
   translateByPixel (x: number, y: number) {
