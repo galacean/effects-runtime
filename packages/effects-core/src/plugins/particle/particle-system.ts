@@ -140,7 +140,6 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture'> 
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
 export class ParticleSystem {
   reusable: boolean;
-  renderMatrix: Matrix4;
   particleMesh: ParticleMesh;
   trailMesh?: TrailMesh;
   options: ParticleOptions;
@@ -825,9 +824,7 @@ export class ParticleSystem {
             if (options.removeParticle) {
               mesh.removePoint(pointIndex);
               this.clearPointTrail(pointIndex);
-              link.removeNode(node);
-              node.content = [0] as unknown as ParticleContent;
-              // link.shiftNode(node.content); // 删了又加回去 没明白什么意思
+              node.content[0] = 0;
             }
             hitPositions.push(pos);
             if (!options.multiple) {

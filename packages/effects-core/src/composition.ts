@@ -273,7 +273,7 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
-   * 获取合成开始时间
+   * 获取合成开始渲染的时间
    */
   get startTime () {
     return this.content.startTime ?? 0;
@@ -350,7 +350,12 @@ export class Composition implements Disposable, LostHandler {
     if (this.content.ended && this.reusable) {
       this.restart();
     }
-    this.gotoAndPlay(this.time);
+    if (this.content.started) {
+      this.gotoAndPlay(this.time - this.startTime);
+
+    } else {
+      this.gotoAndPlay(0);
+    }
   }
 
   /**
@@ -367,15 +372,22 @@ export class Composition implements Disposable, LostHandler {
     this.paused = false;
   }
 
+  /**
+   * 跳转合成到指定时间播放
+   * @param time - 相对 startTime 的时间
+   */
   gotoAndPlay (time: number) {
     this.resume();
     if (!this.content.started) {
       this.content.start();
-      this.forwardTime(this.startTime);
     }
-    this.forwardTime(time);
+    this.forwardTime(time + this.startTime);
   }
 
+  /**
+   * 跳转合成到指定时间并暂停
+   * @param time - 相对 startTime 的时间
+   */
   gotoAndStop (time: number) {
     this.gotoAndPlay(time);
     this.pause();
@@ -398,7 +410,7 @@ export class Composition implements Disposable, LostHandler {
 
   /**
    * 跳到指定时间点（不做任何播放行为）
-   * @param time - 指定的时间
+   * @param time - 相对 startTime 的时间
    */
   setTime (time: number) {
     const pause = this.paused;
@@ -406,15 +418,23 @@ export class Composition implements Disposable, LostHandler {
     if (pause) {
       this.resume();
     }
-    this.forwardTime(time, true);
+    if (!this.content.started) {
+      this.content.start();
+    }
+    this.forwardTime(time + this.startTime, true);
 
     if (pause) {
       this.pause();
     }
   }
 
+  /**
+   * 前进合成到指定时间
+   * @param time - 相对0时刻的时间
+   * @param skipRender - 是否跳过渲染
+   */
   private forwardTime (time: number, skipRender = false) {
-    const deltaTime = (this.startTime + Math.max(0, time)) * 1000 - this.content.timeInms;
+    const deltaTime = time * 1000 - this.content.timeInms;
     const reverse = deltaTime < 0;
     const step = 15;
     let t = Math.abs(deltaTime);
