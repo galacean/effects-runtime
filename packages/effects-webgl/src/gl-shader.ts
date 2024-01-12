@@ -1,5 +1,5 @@
-import type { ShaderCompileResult, ShaderWithSource, Texture, Engine, math } from '@galacean/effects-core';
-import { Shader } from '@galacean/effects-core';
+import type { ShaderCompileResult, ShaderWithSource, Texture, Engine, math, ShaderData } from '@galacean/effects-core';
+import { DataType, Shader } from '@galacean/effects-core';
 import type { GLProgram } from './gl-program';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
@@ -101,6 +101,15 @@ export class GLShader extends Shader {
 
       this.samplerChannels[samplerName] = index;
     }
+  }
+
+  override toData (): void {
+    const shaderData = this.taggedProperties as ShaderData;
+
+    shaderData.dataType = DataType.Shader;
+    shaderData.id = this.instanceId;
+    shaderData.vertex = this.source.vertex;
+    shaderData.fragment = this.source.fragment;
   }
 
   override dispose () {

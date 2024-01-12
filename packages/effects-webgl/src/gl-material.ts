@@ -523,8 +523,6 @@ export class GLMaterial extends Material {
     this.shaderSource = this.shader.source;
 
     this.initialized = false;
-    //@ts-expect-error
-    this.shader = undefined;
   }
 
   /**
@@ -547,7 +545,7 @@ export class GLMaterial extends Material {
     //   };
     //   sceneData.effectsObjects[this.instanceId.toString()] = materialData;
     // }
-    materialData.shader = { id:(this.shaderSource as ShaderData).id };
+    materialData.shader = this.shader;
     materialData.floats = {};
     materialData.ints = {};
     materialData.vector4s = {};
