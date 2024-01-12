@@ -9,6 +9,7 @@ import { TreeGui } from '../gui/tree-gui';
 import { SM_QUAD } from '@galacean/effects-assets';
 import { M_TRAIL } from '@galacean/effects-assets';
 import { S_TRAIL } from '@galacean/effects-assets';
+import { M_DUCK } from '@galacean/effects-assets';
 
 export const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();
@@ -21,7 +22,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   player = new Player({ canvas, interactive: true, notifyTouch: true, env:'editor' });
 
   const trailShaderData = S_TRAIL.exportObjects[0];
-  const trailMaterialData = M_TRAIL.exportObjects[0];
+  const trailMaterialData = M_DUCK.exportObjects[0];
   const quadGeometryData = SM_QUAD.exportObjects[0];
 
   player.renderer.engine.jsonSceneData[trailShaderData.id] = trailShaderData;

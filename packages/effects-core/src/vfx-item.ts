@@ -152,7 +152,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     props?: VFXItemProps,
   ) {
     super(engine);
-
+    this.name = 'VFXItem';
     this.transform.name = this.name;
     this.addComponent(TimelineComponent);
     if (props) {
