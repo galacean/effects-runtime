@@ -98,7 +98,7 @@ export class SpriteMesh {
     }
     for (let i = 0; i < items.length; i++) {
       if (items[i].renderInfo) {
-        renderInfo = items[i].renderInfo ;
+        renderInfo = items[i].renderInfo;
 
         break;
       }
