@@ -6,6 +6,15 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.1.5
+
+`2023-01-12`
+
+- Fix: Handling for editor errors. [#107](https://github.com/galacean/effects-runtime/pull/107) @RGCHN
+- Perf: Optimize composition time forword logic. [#106](https://github.com/galacean/effects-runtime/pull/106) @RGCHN
+- Fix: Particles couldn't be clicked during replay. [#105](https://github.com/galacean/effects-runtime/pull/105) @RGCHN
+- Fix(demo): iOS postMessage targetOrigin is required. [#104](https://github.com/galacean/effects-runtime/pull/104) @yiiqii
+
 ## 1.1.4
 
 `2023-01-05`
