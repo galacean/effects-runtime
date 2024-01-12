@@ -150,8 +150,6 @@ export class Deserializer {
     typeof property === 'string' ||
     typeof property === 'boolean') {
       return property;
-    } else if (this.checkDataPath(property)) {
-      return this.loadUuid((property as DataPath).id);
     } else if (property instanceof Array) {
       const res = [];
 
@@ -161,6 +159,8 @@ export class Deserializer {
 
       return res;
       // TODO json 数据避免传 typedArray
+    } else if (this.checkDataPath(property)) {
+      return this.loadUuid((property as DataPath).id);
     } else if (property instanceof EffectsObject || this.checkTypedArray(property)) {
       return property;
     } else if (property instanceof Object) {
