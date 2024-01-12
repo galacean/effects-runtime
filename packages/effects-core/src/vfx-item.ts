@@ -420,14 +420,14 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
 
             if (this.endBehavior === spec.END_BEHAVIOR_RESTART) {
               this.ended = true;
-              lifetime = lifetime % 1;
+
             }
           }
         } else if (this.callEnd && this.reusable) {
           this.setVisible(true);
           this.callEnd = false;
         }
-        this.lifetime = lifetime;
+        this.lifetime = lifetime % 1;
 
         shouldUpdate && this.onItemUpdate(dt, lifetime);
       }

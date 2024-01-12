@@ -504,7 +504,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
 
   /**
-   * 跳转全部合成带指定时间并停留
+   * 跳转全部合成到指定时间并停留
    * @param time - 指定时间, 单位秒
    */
   gotoAndStop (time: number) {
