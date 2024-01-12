@@ -7,7 +7,15 @@ import type {
   Engine,
   GlobalUniforms,
 } from '@galacean/effects-core';
-import { DestroyOptions, Material, assertExist, throwDestroyedError, math } from '@galacean/effects-core';
+import {
+  DestroyOptions,
+  Material,
+  assertExist,
+  throwDestroyedError,
+  math,
+  isFunction,
+  LOG_TYPE,
+} from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShader } from './gl-shader';
@@ -253,6 +261,14 @@ export class GLMaterial extends Material {
     }
     this.shader.initialize(glEngine);
     for (const texture of Object.values(this.textures)) {
+      if (!isFunction(texture.initialize)) {
+        console.error({
+          content: `${JSON.stringify(texture)} is not valid Texture to initialize`,
+          type: LOG_TYPE,
+        });
+
+        return;
+      }
       texture.initialize();
     }
     this.initialized = true;
