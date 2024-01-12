@@ -11,8 +11,6 @@ import type { VFXItemProps } from './vfx-item';
  * @internal
  */
 export class Deserializer {
-
-  assetDatas: Record<string, EffectsObjectData> = {};
   private objectInstance: Record<string, EffectsObject> = {};
   private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
 
@@ -85,7 +83,6 @@ export class Deserializer {
     // 加入内存中已加载的资产数据，避免重复创建资产数据
     const serializedDatas: Record<string, any> = {
       ...this.engine.jsonSceneData,
-      ...this.assetDatas,
     };
 
     // 递归收集所有需要序列化的对象
@@ -231,11 +228,7 @@ export class Deserializer {
   }
 
   private findData (uuid: string): EffectsObjectData | undefined {
-    if (this.engine.jsonSceneData[uuid]) {
-      return this.engine.jsonSceneData[uuid];
-    } else if (this.assetDatas[uuid]) {
-      return this.assetDatas[uuid];
-    }
+    return this.engine.jsonSceneData[uuid];
   }
 }
 

@@ -218,7 +218,7 @@ export class InspectorGui {
               const result = e.target?.result;
               const textureData = { id: assetUuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
 
-              serializeObject.engine.deserializer.assetDatas[textureData.id] = textureData;
+              serializeObject.engine.jsonSceneData[textureData.id] = textureData;
             };
             reader.onerror = event => {
               console.error('文件读取出错:', reader.error);

@@ -25,7 +25,7 @@ let input: Input;
     composition = await player.loadScene(json);
 
     for (const resourceData of Object.values(assetDataBase.assetsData)) {
-      player.renderer.engine.deserializer.assetDatas[resourceData.id] = resourceData;
+      player.renderer.engine.jsonSceneData[resourceData.id] = resourceData;
     }
 
     treeGui.setComposition(composition);
@@ -103,7 +103,7 @@ async function loadJSONFile () {
     const data = JSON.parse(reader.result);
 
     for (const resourceData of Object.values(assetDataBase.assetsData)) {
-      player.renderer.engine.deserializer.assetDatas[resourceData.id] = resourceData;
+      player.renderer.engine.jsonSceneData[resourceData.id] = resourceData;
     }
     player.destroyCurrentCompositions();
     composition = await player.loadScene(data);

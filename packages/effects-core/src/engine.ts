@@ -1,7 +1,7 @@
-import type { spec } from '.';
+import { PLAYER_OPTIONS_ENV_EDITOR, type spec } from '.';
 import { LOG_TYPE } from './config';
+import type { SceneData } from './deserializer';
 import { Deserializer } from './deserializer';
-import type { EffectsObjectData, GeometryData, MaterialData, SceneData, ShaderData, VFXItemData } from './deserializer';
 import { glContext } from './gl';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
@@ -39,7 +39,9 @@ export class Engine implements Disposable {
   static create: (gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
 
   clearResources () {
-    this.jsonSceneData = {};
+    if (this.renderer.env !== PLAYER_OPTIONS_ENV_EDITOR) {
+      this.jsonSceneData = {};
+    }
     this.deserializer.clearInstancePool();
   }
 

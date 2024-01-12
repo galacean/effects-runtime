@@ -226,7 +226,7 @@ export class TestController {
     this.newPlayer = undefined;
   }
 
-  async createPlayers (width, height, renderFramework, isEditor = true) {
+  async createPlayers (width, height, renderFramework, isEditor = false) {
     const playerScript = await this.loadOldPlayer();
     const modelPlugin = await this.loadOldModelPlugin();
     const spinePlugin = await this.loadOldSpinePlugin();
