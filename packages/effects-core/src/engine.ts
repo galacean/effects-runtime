@@ -1,6 +1,6 @@
 import { PLAYER_OPTIONS_ENV_EDITOR, type spec } from '.';
 import { LOG_TYPE } from './config';
-import type { SceneData } from './deserializer';
+import type { EffectsObjectData, SceneData } from './deserializer';
 import { Deserializer } from './deserializer';
 import { glContext } from './gl';
 import type { Material } from './material';
@@ -45,48 +45,54 @@ export class Engine implements Disposable {
     this.deserializer.clearInstancePool();
   }
 
-  addResources (jsonScene: spec.JSONScene) {
-    const sceneData = this.jsonSceneData;
+  addEffectsObjectData (data: EffectsObjectData) {
+    this.jsonSceneData[data.id] = data;
+  }
 
+  findEffectsObjectData (uuid: string) {
+    return this.jsonSceneData[uuid];
+  }
+
+  addResources (jsonScene: spec.JSONScene) {
     //@ts-expect-error
     if (jsonScene.items) {
       //@ts-expect-error
       for (const vfxItemData of jsonScene.items) {
-        sceneData[vfxItemData.id] = vfxItemData;
+        this.addEffectsObjectData(vfxItemData);
       }
     }
     //@ts-expect-error
     if (jsonScene.materials) {
       //@ts-expect-error
       for (const materialData of jsonScene.materials) {
-        sceneData[materialData.id] = materialData;
+        this.addEffectsObjectData(materialData);
       }
     }
     //@ts-expect-error
     if (jsonScene.shaders) {
       //@ts-expect-error
       for (const shaderData of jsonScene.shaders) {
-        sceneData[shaderData.id] = shaderData;
+        this.addEffectsObjectData(shaderData);
       }
     }
     //@ts-expect-error
     if (jsonScene.geometries) {
       //@ts-expect-error
       for (const geometryData of jsonScene.geometries) {
-        sceneData[geometryData.id] = geometryData;
+        this.addEffectsObjectData(geometryData);
       }
     }
     //@ts-expect-error
     if (jsonScene.components) {
       //@ts-expect-error
       for (const componentData of jsonScene.components) {
-        sceneData[componentData.id] = componentData;
+        this.addEffectsObjectData(componentData);
       }
     }
     if (jsonScene.textures) {
       for (const textureData of jsonScene.textures) {
         //@ts-expect-error
-        sceneData[textureData.id] = textureData;
+        this.addEffectsObjectData(textureData);
       }
     }
   }

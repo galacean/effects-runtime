@@ -25,9 +25,11 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   const trailMaterialData = M_DUCK.exportObjects[0];
   const quadGeometryData = G_QUAD.exportObjects[0];
 
-  player.renderer.engine.jsonSceneData[trailShaderData.id] = trailShaderData;
-  player.renderer.engine.jsonSceneData[trailMaterialData.id] = trailMaterialData;
-  player.renderer.engine.jsonSceneData[quadGeometryData.id] = quadGeometryData;
+  const engine = player.renderer.engine;
+
+  engine.addEffectsObjectData(trailShaderData);
+  engine.addEffectsObjectData(trailMaterialData);
+  engine.addEffectsObjectData(quadGeometryData);
 
   //@ts-expect-error
   composition = await player.loadScene(json);
@@ -37,7 +39,6 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   orbitController = new OrbitController(composition.camera, input);
   inputControllerUpdate();
 
-  const engine = composition.getEngine();
   const effectItem = new VFXItem(engine);
   const effectComponent = effectItem.addComponent(EffectComponent);
 

@@ -68,7 +68,7 @@ export class InspectorGui {
             click: async () => {
               await selectJsonFile((data: any) => {
                 for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
+                  this.item.engine.addEffectsObjectData(effectsObjectData);
                   const effectComponent = this.item.getComponent(RendererComponent);
 
                   if (effectComponent) {
@@ -89,7 +89,7 @@ export class InspectorGui {
             click: async () => {
               await selectJsonFile((data: any) => {
                 for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
+                  this.item.engine.addEffectsObjectData(effectsObjectData);
                   const effectComponent = this.item.getComponent(EffectComponent);
 
                   if (effectComponent) {
@@ -218,7 +218,7 @@ export class InspectorGui {
               const result = e.target?.result;
               const textureData = { id: assetUuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
 
-              serializeObject.engine.jsonSceneData[textureData.id] = textureData;
+              serializeObject.engine.addEffectsObjectData(textureData);
             };
             reader.onerror = event => {
               console.error('文件读取出错:', reader.error);
