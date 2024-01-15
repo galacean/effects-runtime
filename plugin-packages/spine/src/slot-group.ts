@@ -26,9 +26,6 @@ export interface SlotGroupProps {
   renderer: {},
   engine: Engine,
 }
-
-let meshIndex = 0;
-
 export class SlotGroup {
   /**
    * 根据绘制顺序排列的插槽数组
@@ -247,7 +244,7 @@ export class SlotGroup {
           const newMesh = this.currentMesh = new SpineMesh({
             blendMode: slot.data.blendMode,
             texture,
-            name: this.meshName + meshIndex++,
+            name: this.meshName,
             priority: this.listIndex += 0.01,
             pma,
             renderer: this.renderer,
