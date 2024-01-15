@@ -27,11 +27,13 @@ export interface SlotGroupProps {
   engine: Engine,
 }
 
+let meshIndex = 0;
+
 export class SlotGroup {
   /**
    * 根据绘制顺序排列的插槽数组
    */
-  private slotList: Slot[] = [];
+  private readonly slotList: Slot[] = [];
   /**
    * 顶点数据
    */
@@ -47,10 +49,6 @@ export class SlotGroup {
    * 世界变换矩阵
    */
   private wm = math.Matrix4.fromIdentity();
-  /**
-   * 当前环境，用于 editor
-   */
-  private readonly env: string;
 
   meshName: string;
   listIndex: number;
@@ -249,7 +247,7 @@ export class SlotGroup {
           const newMesh = this.currentMesh = new SpineMesh({
             blendMode: slot.data.blendMode,
             texture,
-            name: this.meshName,
+            name: this.meshName + meshIndex++,
             priority: this.listIndex += 0.01,
             pma,
             renderer: this.renderer,
@@ -270,7 +268,10 @@ export class SlotGroup {
 
     clipper.clipEnd();
     this.wm = this.transform.getWorldMatrix();
-    this.meshGroups.map(sp => sp.endUpdate(this.wm));
+    this.meshGroups.map(sp => {
+      sp.endUpdate(this.wm);
+    }
+    );
   }
 
   /**

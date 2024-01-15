@@ -1,4 +1,5 @@
-import type { Texture, Attribute, SharedShaderWithSource, Engine } from '@galacean/effects';
+import type { Texture, Attribute, SharedShaderWithSource, Engine, Disposable,
+} from '@galacean/effects';
 import {
   PLAYER_OPTIONS_ENV_EDITOR, Mesh, Geometry, Material, setMaskMode,
   GLSLVersion, glContext, createShaderWithMarcos, ShaderType, math,
@@ -24,9 +25,9 @@ export interface SpineMeshRenderInfo {
 
 let seed = 1;
 
-export class SpineMesh {
-  private vertices: Float32Array = new Float32Array(SlotGroup.MAX_VERTICES * SlotGroup.VERTEX_SIZE);
-  private indices: Uint16Array = new Uint16Array(SlotGroup.MAX_VERTICES);
+export class SpineMesh implements Disposable {
+  private vertices: Float32Array | null;
+  private indices: Uint16Array | null;
   private verticesLength = 0;
   private indicesLength = 0;
   private engine: Engine;
@@ -119,6 +120,9 @@ export class SpineMesh {
   }
 
   updateMesh (vertices: number[], indices: number[], verticesLength: number) {
+    if (!this.vertices || !this.indices) {
+      throw Error('Can not update SpineMesh after dispose');
+    }
     const verticesStart = this.verticesLength;
     const indexStart = this.indicesLength;
     const pointBefore = this.verticesLength / SlotGroup.VERTEX_SIZE;
@@ -133,6 +137,9 @@ export class SpineMesh {
   }
 
   endUpdate (worldMatrix: math.Matrix4) {
+    if (!this.vertices || !this.indices) {
+      throw Error('Can not update SpineMesh after dispose');
+    }
     for (let i = this.verticesLength; i < this.vertices.length; i++) {
       this.vertices[i] = 0;
     }
@@ -148,6 +155,14 @@ export class SpineMesh {
   startUpdate () {
     this.verticesLength = 0;
     this.indicesLength = 0;
+  }
+
+  dispose (): void {
+    this.geometry.setAttributeData('aPosition', new Float32Array(0));
+    this.geometry.setIndexData(undefined);
+    this.geometry.dispose();
+    this.vertices = null;
+    this.indices = null;
   }
 }
 
