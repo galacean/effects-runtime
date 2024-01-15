@@ -190,6 +190,7 @@ export class PCameraManager {
     farPlane: number,
     position: Vector3,
     rotation: Quaternion,
+    aspect: number,
     clipMode: number,
   ) {
     this.defaultCamera.fovy = fovy;
@@ -197,6 +198,7 @@ export class PCameraManager {
     this.defaultCamera.farPlane = farPlane;
     this.defaultCamera.position = position;
     this.defaultCamera.rotation = rotation;
+    this.defaultCamera.aspect = aspect;
     this.defaultCamera.clipMode = clipMode;
     this.defaultCamera.update();
   }
