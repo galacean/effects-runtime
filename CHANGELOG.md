@@ -6,9 +6,15 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.1.6
+
+`2024-01-16`
+
+- Fix: 3d resize problem. [#118](https://github.com/galacean/effects-runtime/pull/118) @liuxi150
+
 ## 1.1.5
 
-`2023-01-12`
+`2024-01-12`
 
 - Fix: Handling for editor errors. [#107](https://github.com/galacean/effects-runtime/pull/107) @RGCHN
 - Perf: Optimize composition time forward logic. [#106](https://github.com/galacean/effects-runtime/pull/106) @RGCHN
@@ -17,7 +23,7 @@
 
 ## 1.1.4
 
-`2023-01-05`
+`2024-01-05`
 
 - Fix: Screen not cleared after composition destruction. [#91](https://github.com/galacean/effects-runtime/pull/91) @RGCHN
 - Fix: Issue with data template not updating correctly during repeated loads. [#89](https://github.com/galacean/effects-runtime/pull/89) @RGCHN
