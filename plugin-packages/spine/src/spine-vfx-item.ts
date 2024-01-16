@@ -142,7 +142,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     const slotGroup = this.content;
 
     if (!slotGroup) {
-      return ;
+      return;
     }
     const visible = this.contentVisible;
 
@@ -256,7 +256,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     const listener = this.state.tracks[0]?.listener;
 
     if (listener) {
-      listener.end = () => {};
+      listener.end = () => { };
     }
     this.state.clearTracks();
     this.skeleton.setToSetupPose();
@@ -289,7 +289,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     const listener = this.state.tracks[0]?.listener;
 
     if (listener) {
-      listener.end = () => {};
+      listener.end = () => { };
     }
     this.state.clearTracks();
     this.skeleton.setToSetupPose();
