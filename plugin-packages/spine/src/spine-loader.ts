@@ -1,10 +1,5 @@
 import { DestroyOptions, AbstractPlugin } from '@galacean/effects';
-import type {
-  spec,
-  Scene,
-  VFXItem,
-  RenderFrame, SceneLoadOptions,
-  Composition } from '@galacean/effects';
+import type { spec, Scene, VFXItem, RenderFrame, SceneLoadOptions, Composition } from '@galacean/effects';
 import type { SkeletonData } from './core';
 import { Skeleton, TextureAtlas } from './core';
 import type { SlotGroup } from './slot-group';
@@ -159,7 +154,7 @@ export class SpineLoader extends AbstractPlugin {
 
   override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<SpineContent>) {
     if (item instanceof SpineVFXItem && item.content) {
-      this.slotGroups.push(<SlotGroup>item.content);
+      this.slotGroups.push(item.content);
     }
   }
 
