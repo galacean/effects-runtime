@@ -6,8 +6,7 @@ import type { GlobalVolume } from './render';
 import type { Scene } from './scene';
 import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
-import type { TextureSourceOptions } from './texture';
-import { Texture } from './texture';
+import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import { isObject } from './utils';
 import type { VFXItemProps } from './vfx-item';
@@ -40,7 +39,6 @@ export class CompositionSourceManager implements Disposable {
   textures: Texture[];
   jsonScene?: spec.JSONScene;
   mask = 0;
-  textureOptions: Record<string, any>[];
   engine: Engine;
 
   constructor (
@@ -55,12 +53,8 @@ export class CompositionSourceManager implements Disposable {
     if (!textureOptions) {
       throw new Error('scene.textures expected');
     }
-    const cachedTextures = textureOptions.map(option => option && (option instanceof Texture ? option : Texture.create(engine, option as unknown as TextureSourceOptions)));
+    const cachedTextures = textureOptions as Texture[];
 
-    // 缓存创建的Texture对象
-    // @ts-expect-error
-    scene.textureOptions = cachedTextures;
-    cachedTextures?.forEach(tex => tex?.initialize());
     for (const comp of compositions) {
       if (comp.id === compositionId) {
         this.composition = comp;
@@ -79,7 +73,6 @@ export class CompositionSourceManager implements Disposable {
     this.imgUsage = imgUsage ?? {};
     this.textures = cachedTextures;
     listOrder = 0;
-    this.textureOptions = textureOptions;
     this.sourceContent = this.getContent(this.composition);
   }
 
@@ -238,7 +231,6 @@ export class CompositionSourceManager implements Disposable {
   }
 
   dispose (): void {
-    this.textureOptions = [];
     this.textures = [];
     this.composition = undefined;
     this.jsonScene = undefined;

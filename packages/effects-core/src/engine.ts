@@ -1,4 +1,4 @@
-import type { EffectsObject } from '.';
+import type { EffectsObject, Scene } from '.';
 import { PLAYER_OPTIONS_ENV_EDITOR, type spec } from '.';
 import { LOG_TYPE } from './config';
 import type { EffectsObjectData, SceneData } from './deserializer';
@@ -56,7 +56,9 @@ export class Engine implements Disposable {
     return this.jsonSceneData[uuid];
   }
 
-  addResources (jsonScene: spec.JSONScene) {
+  addResources (scene: Scene) {
+    const jsonScene = scene.jsonScene;
+
     //@ts-expect-error
     if (jsonScene.items) {
       //@ts-expect-error
@@ -92,8 +94,8 @@ export class Engine implements Disposable {
         this.addEffectsObjectData(componentData);
       }
     }
-    if (jsonScene.textures) {
-      for (const textureData of jsonScene.textures) {
+    if (scene.textureOptions) {
+      for (const textureData of scene.textureOptions) {
         //@ts-expect-error
         this.addEffectsObjectData(textureData);
       }

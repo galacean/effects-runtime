@@ -5,6 +5,7 @@ import type { Engine } from './engine';
 import { Material } from './material';
 import { Geometry } from './render';
 import type { VFXItemProps } from './vfx-item';
+import { Texture } from '.';
 
 /**
  * @since 2.0.0
@@ -38,6 +39,12 @@ export class Deserializer {
         break;
       case DataType.Geometry:
         effectsObject = Geometry.create(this.engine);
+
+        break;
+      case DataType.Texture:
+        effectsObject = Texture.create(this.engine, effectsObjectData);
+
+        return effectsObject as T;
 
         break;
       case DataType.Shader:

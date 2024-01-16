@@ -37,7 +37,7 @@ export abstract class Texture extends EffectsObject {
   /**
    * 创建一个新的 Texture 对象。
    */
-  static create: (engine: Engine, options: TextureSourceOptions) => Texture;
+  static create: (engine: Engine, options?: TextureSourceOptions) => Texture;
 
   /**
    * 通过数据创建 Texture 对象。
