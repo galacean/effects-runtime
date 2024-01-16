@@ -1,6 +1,7 @@
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import replace from '@rollup/plugin-replace';
+import json from '@rollup/plugin-json';
 import typescript from 'rollup-plugin-typescript2';
 import glslInner from '../../scripts/rollup-plugin-glsl-inner';
 
@@ -27,6 +28,7 @@ const plugins = [
   }),
   glslInner(),
   typescript({ tsconfig: '../../tsconfig.bundle.json' }),
+  json(),
   resolve(),
   commonjs(),
 ];
