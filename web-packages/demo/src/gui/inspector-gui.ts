@@ -1,4 +1,4 @@
-import type { AssetData, EffectComponentData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
+import type { EffectComponentData, EffectsPackageData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
 import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, SerializedObject, generateUuid, DataType } from '@galacean/effects';
 import { assetDataBase } from './asset-data-base';
 
@@ -72,7 +72,7 @@ export class InspectorGui {
         if (component instanceof EffectComponent) {
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: AssetData) => {
+              await selectJsonFile((data: EffectsPackageData) => {
                 for (const effectsObjectData of data.exportObjects) {
                   this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(RendererComponent);
@@ -92,7 +92,7 @@ export class InspectorGui {
 
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: AssetData) => {
+              await selectJsonFile((data: EffectsPackageData) => {
                 for (const effectsObjectData of data.exportObjects) {
                   this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(EffectComponent);

@@ -1,15 +1,11 @@
-import type { Composition, EffectsObjectData, VFXItemContent, VFXItemData } from '@galacean/effects';
-import { EffectComponent, GLGeometry, Geometry, Material, VFXItem } from '@galacean/effects';
-import { DataType, Player, TimelineComponent, spec } from '@galacean/effects';
+import type { Composition, EffectsObjectData, VFXItemData } from '@galacean/effects';
+import { DataType, EffectComponent, Player, TimelineComponent, VFXItem } from '@galacean/effects';
+import { G_QUAD, M_DUCK, S_TRAIL } from '@galacean/effects-assets';
 import json from '../assets/scenes/trail-demo2.scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
-import { G_QUAD } from '@galacean/effects-assets';
-import { M_TRAIL } from '@galacean/effects-assets';
-import { S_TRAIL } from '@galacean/effects-assets';
-import { M_DUCK } from '@galacean/effects-assets';
 
 export const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();

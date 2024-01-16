@@ -1,3 +1,4 @@
+import type { EffectsObject } from '.';
 import { PLAYER_OPTIONS_ENV_EDITOR, type spec } from '.';
 import { LOG_TYPE } from './config';
 import type { EffectsObjectData, SceneData } from './deserializer';
@@ -18,6 +19,7 @@ export class Engine implements Disposable {
   transparentTexture: Texture;
   gpuCapability: GPUCapability;
   jsonSceneData: SceneData;
+  objectInstance: Record<string, EffectsObject>;
   deserializer: Deserializer;
 
   protected destroyed = false;
@@ -30,6 +32,7 @@ export class Engine implements Disposable {
   constructor () {
     this.createDefaultTexture();
     this.jsonSceneData = {};
+    this.objectInstance = {};
     this.deserializer = new Deserializer(this);
   }
 

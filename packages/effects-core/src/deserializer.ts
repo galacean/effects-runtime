@@ -11,20 +11,17 @@ import type { VFXItemProps } from './vfx-item';
  * @internal
  */
 export class Deserializer {
-  private objectInstance: Record<string, EffectsObject> = {};
   private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
 
-  constructor (
-    private engine: Engine,
-  ) { }
+  constructor (private engine: Engine) {}
 
   static addConstructor (constructor: new (engine: Engine) => EffectsObject | Component, type: number) {
     Deserializer.constructorMap[type] = constructor;
   }
 
   loadUuid<T> (uuid: string): T {
-    if (this.objectInstance[uuid]) {
-      return this.objectInstance[uuid] as T;
+    if (this.engine.objectInstance[uuid]) {
+      return this.engine.objectInstance[uuid] as T;
     }
     let effectsObject: EffectsObject | undefined;
     const effectsObjectData = this.findData(uuid);
@@ -65,15 +62,15 @@ export class Deserializer {
   }
 
   addInstance (id: string, effectsObject: EffectsObject) {
-    this.objectInstance[id] = effectsObject;
+    this.engine.objectInstance[id] = effectsObject;
   }
 
   getInstance (id: string) {
-    return this.objectInstance[id];
+    return this.engine.objectInstance[id];
   }
 
   clearInstancePool () {
-    this.objectInstance = {};
+    this.engine.objectInstance = {};
   }
 
   serializeEffectObject (effectsObject: EffectsObject) {
@@ -328,7 +325,8 @@ export type VFXItemData = VFXItemProps & { dataType: DataType, components: DataP
 
 export type SceneData = Record<string, EffectsObjectData>;
 
-export interface AssetData {
+export interface EffectsPackageData {
+  fileSummary: { guid: string },
   assetType: DataType,
   exportObjects: EffectsObjectData[],
 }

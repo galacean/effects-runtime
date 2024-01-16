@@ -1,9 +1,19 @@
-import { curFileList, listFilesInDirectory } from '@advjs/gui/client/components/explorer/useAssetsExplorer';
+import type { FSFileItem } from '@advjs/gui';
+// @ts-expect-error
+import { curFileList, saveFile } from '@advjs/gui';
 import type { GeometryData } from '@galacean/effects';
 import { DataType, generateUuid, glContext, loadImage } from '@galacean/effects';
 
-export async function onFileDrop (files: File[], curDirHandle: FileSystemHandle) {
-  for (const file of files) {
+export async function onFileDrop (files: FSFileItem[], curDirHandle: FileSystemDirectoryHandle) {
+  for (const fileItem of files) {
+    const { file } = fileItem;
+
+    if (!file) {
+      return;
+    }
+
+    // fileItem.icon = ''
+
     if (file.type === 'application/json') {
       importModelJson(file, curDirHandle);
     } else if (file.type === 'image/png') {
@@ -41,27 +51,6 @@ export function base64ToFile (base64: string, filename = 'base64File', contentTy
   const file = new File([blob], filename, { type: contentType });
 
   return file;
-}
-
-async function saveFile (file: File, curDirHandle: FileSystemHandle) {
-  // create a new handle
-  //@ts-expect-error
-  const newFileHandle = await curDirHandle.value?.getFileHandle(file.name, { create: true });
-
-  if (!newFileHandle) { return; }
-
-  // create a FileSystemWritableFileStream to write to
-  const writableStream = await newFileHandle.createWritable();
-
-  // write our file
-  await writableStream.write(file);
-
-  // close the file and write the contents to disk.
-  await writableStream.close();
-  //@ts-expect-error
-  curFileList.value = await listFilesInDirectory(curDirHandle.value!, {
-    showFiles: true,
-  });
 }
 
 function createJsonFile (json: string, fileName: string) {
@@ -102,7 +91,7 @@ function modelJsonConverter (json: string): string {
   return JSON.stringify(geometryAsset);
 }
 
-function importModelJson (file: File, curDirHandle: FileSystemHandle) {
+function importModelJson (file: File, curDirHandle: FileSystemDirectoryHandle) {
   const reader = new FileReader();
 
   // 定义文件读取成功后的回调函数

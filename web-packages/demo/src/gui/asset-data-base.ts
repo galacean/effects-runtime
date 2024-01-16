@@ -1,4 +1,4 @@
-import type { AssetData, EffectsObjectData } from '@galacean/effects';
+import type { EffectsObjectData, EffectsPackageData } from '@galacean/effects';
 import json from '../assets/custom-material';
 
 export class AssetDataBase {
@@ -17,7 +17,7 @@ export class AssetDataBase {
         return response.text();
       })
       .then(data => {
-        const packageData = JSON.parse(data) as AssetData;
+        const packageData = JSON.parse(data) as EffectsPackageData;
 
         for (const effectsObjectData of packageData.exportObjects) {
           this.addData(effectsObjectData);
