@@ -158,8 +158,6 @@ export class SpineMesh implements Disposable {
   }
 
   dispose (): void {
-    this.geometry.setAttributeData('aPosition', new Float32Array(0));
-    this.geometry.setIndexData(undefined);
     this.geometry.dispose();
     this.vertices = null;
     this.indices = null;
