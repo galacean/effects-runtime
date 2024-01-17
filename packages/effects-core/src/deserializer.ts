@@ -18,15 +18,15 @@ export class Deserializer {
     Deserializer.constructorMap[type] = constructor;
   }
 
-  loadUuid<T> (uuid: string): T {
-    if (this.engine.objectInstance[uuid]) {
-      return this.engine.objectInstance[uuid] as T;
+  loadGUID<T> (guid: string): T {
+    if (this.engine.objectInstance[guid]) {
+      return this.engine.objectInstance[guid] as T;
     }
     let effectsObject: EffectsObject | undefined;
-    const effectsObjectData = this.findData(uuid);
+    const effectsObjectData = this.findData(guid);
 
     if (!effectsObjectData) {
-      console.error('未找到 uuid: ' + uuid + '的对象数据');
+      console.error('未找到 uuid: ' + guid + '的对象数据');
 
       return undefined as T;
     }
@@ -59,7 +59,7 @@ export class Deserializer {
 
       return undefined as T;
     }
-    this.addInstance(uuid, effectsObject);
+    this.addInstance(guid, effectsObject);
     this.deserializeTaggedProperties(effectsObjectData, effectsObject.taggedProperties);
     effectsObject.fromData(effectsObject.taggedProperties as EffectsObjectData);
 
@@ -67,7 +67,7 @@ export class Deserializer {
   }
 
   // 加载本地文件资产
-  async loadGuidAsync<T> (guid: string): Promise<T> {
+  async loadGUIDAsync<T> (guid: string): Promise<T> {
     if (this.engine.objectInstance[guid]) {
       return this.engine.objectInstance[guid] as T;
     }
@@ -81,7 +81,7 @@ export class Deserializer {
         return undefined as T;
       }
 
-      effectsObject = await this.engine.database.loadGuid(guid);
+      effectsObject = await this.engine.database.loadGUID(guid);
       if (!effectsObject) {
         console.error('未找到 uuid: ' + guid + '的磁盘数据');
       }
@@ -176,6 +176,7 @@ export class Deserializer {
           }
         }
       } else if (value instanceof Object) {
+        // 非 EffectsObject 对象只递归一层
         for (const objectValue of Object.values(value)) {
           if (objectValue instanceof EffectsObject) {
             this.collectSerializableObject(objectValue, res);
@@ -229,7 +230,7 @@ export class Deserializer {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (this.checkDataPath(property)) {
-      return this.loadUuid((property as DataPath).id);
+      return this.loadGUID((property as DataPath).id);
     } else if (property instanceof EffectsObject || this.checkTypedArray(property)) {
       return property;
     } else if (property instanceof Object) {
@@ -264,7 +265,7 @@ export class Deserializer {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (this.checkDataPath(property)) {
-      const res = await this.loadGuidAsync((property as DataPath).id);
+      const res = await this.loadGUIDAsync((property as DataPath).id);
 
       return res;
     } else if (property instanceof EffectsObject || this.checkTypedArray(property)) {
@@ -339,7 +340,7 @@ export class Deserializer {
 }
 
 export class Database {
-  async loadGuid (guid: string): Promise<EffectsObject | undefined> {
+  async loadGUID (guid: string): Promise<EffectsObject | undefined> {
     return undefined;
   }
 }

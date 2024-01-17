@@ -41,8 +41,8 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   effectItem.type = 'ECS';
   const effectComponent = effectItem.addComponent(EffectComponent);
 
-  effectComponent.geometry = engine.deserializer.loadUuid(quadGeometryData.id);
-  effectComponent.material = engine.deserializer.loadUuid(trailMaterialData.id);
+  effectComponent.geometry = engine.deserializer.loadGUID(quadGeometryData.id);
+  effectComponent.material = engine.deserializer.loadGUID(trailMaterialData.id);
   composition.addItem(effectItem);
 
   setInterval(() => {

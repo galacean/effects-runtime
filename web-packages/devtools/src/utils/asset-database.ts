@@ -21,7 +21,7 @@ export class AssetDatabase extends Database {
 
   // }
 
-  override async loadGuid (guid: string): Promise<EffectsObject | undefined> {
+  override async loadGUID (guid: string): Promise<EffectsObject | undefined> {
     const packageGuid = this.objectToPackageGuidMap[guid];
 
     if (!packageGuid) {
@@ -30,7 +30,7 @@ export class AssetDatabase extends Database {
     let effectsPackage = this.effectsPackages[packageGuid];
 
     if (!effectsPackage) {
-      const path = this.packageGuidToPathMap[packageGuid];
+      const path = this.GUIDToAssetPath(packageGuid);
       const loadedPackage = await this.loadPackage(path);
 
       if (!loadedPackage) {
@@ -75,7 +75,7 @@ export class AssetDatabase extends Database {
     }
 
     for (const objectData of packageData.exportObjects) {
-      effectsPackage.exportObjects.push(this.engine.deserializer.loadUuid(objectData.id));
+      effectsPackage.exportObjects.push(this.engine.deserializer.loadGUID(objectData.id));
     }
 
     return effectsPackage;
@@ -84,7 +84,7 @@ export class AssetDatabase extends Database {
   async saveAssets () {
     for (const dirtyPackageGuid of this.dirtyPackageSet) {
       const assetData = this.effectsPackageDatas[dirtyPackageGuid];
-      const path = this.packageGuidToPathMap[dirtyPackageGuid];
+      const path = this.GUIDToAssetPath(dirtyPackageGuid);
 
       await this.saveAsset(assetData, path);
     }
@@ -272,6 +272,10 @@ export class AssetDatabase extends Database {
 
       reader.readAsText(file);
     });
+  }
+
+  GUIDToAssetPath (guid: string) {
+    return this.packageGuidToPathMap[guid];
   }
 }
 

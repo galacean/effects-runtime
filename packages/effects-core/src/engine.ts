@@ -119,7 +119,7 @@ export class Engine implements Disposable {
         continue;
       }
       if (this.database) {
-        await this.deserializer.loadGuidAsync(itemData.id);
+        await this.deserializer.loadGUIDAsync(itemData.id);
       }
     }
   }
