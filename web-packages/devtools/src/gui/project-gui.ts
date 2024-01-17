@@ -1,10 +1,11 @@
 import type { FSFileItem } from '@advjs/gui';
-// @ts-expect-error
 import { curFileList, saveFile } from '@advjs/gui';
 import type { GeometryData } from '@galacean/effects';
 import { DataType, generateUuid, glContext, loadImage } from '@galacean/effects';
 import type * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+//@ts-expect-error
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 
 export async function onFileDrop (files: FSFileItem[], curDirHandle: FileSystemDirectoryHandle) {
   for (const fileItem of files) {
@@ -23,6 +24,8 @@ export async function onFileDrop (files: FSFileItem[], curDirHandle: FileSystemD
     } else if (file.name.endsWith('.fbx')) {
       await importFBX(file, curDirHandle);
     }
+
+    return files;
   }
 }
 
@@ -118,7 +121,7 @@ function importModelJson (file: File, curDirHandle: FileSystemDirectoryHandle) {
   reader.readAsText(file);
 }
 
-function importPng (file: File, curDirHandle: FileSystemHandle) {
+function importPng (file: File, curDirHandle: FileSystemDirectoryHandle) {
   // 创建FileReader实例
   const reader = new FileReader();
 
@@ -141,7 +144,7 @@ function importPng (file: File, curDirHandle: FileSystemHandle) {
   reader.readAsDataURL(file);
 }
 
-async function importFBX (file: File, curDirHandle: FileSystemHandle) {
+async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
   const url = URL.createObjectURL(file);
   const modelDatas = await parseFBX(url);
 
@@ -180,8 +183,10 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
       object.traverse(child => {
         if ((child as THREE.Mesh).isMesh) {
           const mesh = child as THREE.Mesh;
-          const geometry = mesh.geometry;
+          let geometry = mesh.geometry;
 
+          // 转为带索引的 BufferGeometry
+          geometry = BufferGeometryUtils.mergeVertices(geometry);
           // 确保有位置属性
           if (geometry.attributes.position) {
             const positionAttribute = geometry.attributes.position;

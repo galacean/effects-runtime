@@ -12,7 +12,7 @@
     "vue": "^3.4.10"
   },
   "devDependencies": {
-    "@advjs/gui": "0.0.3-beta.8",
+    "@advjs/gui": "0.0.3-beta.11",
     "@antfu/eslint-config": "^2.6.2",
     "@galacean/effects": "workspace:*",
     "@galacean/effects-assets": "workspace:*",

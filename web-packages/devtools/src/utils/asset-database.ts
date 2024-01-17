@@ -280,7 +280,6 @@ export class AssetDatabase extends Database {
 }
 
 export async function importAssets (engine: Engine) {
-  //@ts-expect-error
   const handle = await window.showDirectoryPicker();
   const assetDatabase = engine.database as AssetDatabase;
 
