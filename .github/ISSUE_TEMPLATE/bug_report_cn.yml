@@ -62,7 +62,7 @@ body:
   - type: textarea
     id: code
     attributes:
-      label: 💻 Sample Code
+      label: 💻 示例代码
       description: |
         请在此贴出相关代码示例
 
@@ -97,7 +97,7 @@ body:
   - type: textarea
     id: reproduce
     attributes:
-      label: ⏯ Steps to Reproduce
+      label: ⏯ 复现步骤
       description: 请提供一个最小化的代码示例来复现问题，或者提供一个可以复现问题的仓库链接
       placeholder: |
         1. 点击 '....'
