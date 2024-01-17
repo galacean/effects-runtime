@@ -125,6 +125,13 @@ export const premultiply: Record<string, FileFormat> = {
     skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/02297022467078/labayu-pro.skel',
     png: ['https://gw.alipayobjects.com/zos/gltf-asset/02297022467078/labayu.png'],
   },
+  gouhualan: {
+    json:'',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/05473073081449/zhuyegouhualan.atlas',
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/05473073081449/zhuyegouhualan.skel',
+    png: ['https://gw.alipayobjects.com/zos/gltf-asset/05473073081449/zhuyegouhualan.png'],
+  },
+
 };
 
 export const direct: Record<string, FileFormat> = {

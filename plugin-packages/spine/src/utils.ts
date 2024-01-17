@@ -10,6 +10,7 @@ import {
   TextureFilter,
   TextureWrap,
 } from '@esotericsoftware/spine-core';
+import { decodeText } from './polyfill';
 
 export function setBlending (material: Material, mode: BlendMode, pma: boolean) {
   material.blendEquation = [glContext.FUNC_ADD, glContext.FUNC_ADD];
@@ -55,8 +56,7 @@ export function createSkeletonData (atlas: TextureAtlas, skeletonFile: any, skel
  * @returns 包含 magFilter, minFilter, wrapS, wrapT 的对象
 */
 export function getTextureOptions (atlasBuffer: ArrayBuffer) {
-  const textDecoder = new TextDecoder('utf-8');
-  const atlasText = textDecoder.decode(new Uint8Array(atlasBuffer, 0));
+  const atlasText = decodeText(new Uint8Array(atlasBuffer, 0));
   const atlas = new TextureAtlas(atlasText);
   const images: string[] = [];
   const page = atlas.pages[0]; // 打包配置都一样
