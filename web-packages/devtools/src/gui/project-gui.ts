@@ -201,6 +201,11 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
             vertices = Array.from(positionAttribute.array);
           }
 
+          for (let i = 0;i < vertices.length;i++) {
+            // 单位 cm 转为 m
+            vertices[i] *= mesh.scale.x / 100;
+          }
+
           // 确保有UV属性
           if (geometry.attributes.uv) {
             const uvAttribute = geometry.attributes.uv;
