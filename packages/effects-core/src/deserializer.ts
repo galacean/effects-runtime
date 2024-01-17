@@ -442,7 +442,6 @@ export type VFXItemData = VFXItemProps & { dataType: DataType, components: DataP
 export type SceneData = Record<string, EffectsObjectData>;
 
 export interface EffectsPackageData {
-  fileSummary: { guid: string },
-  assetType: DataType,
+  fileSummary: { guid: string, assetType: string },
   exportObjects: EffectsObjectData[],
 }

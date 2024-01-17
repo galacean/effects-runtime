@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { AGUILayoutType } from "@advjs/gui/client";
+import { AGUILayoutType } from "@advjs/gui";
 
 const defaultLayout: AGUILayoutType = {
   name: 'root',

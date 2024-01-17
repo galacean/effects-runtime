@@ -66,6 +66,7 @@ async function saveJSONFile (json: any) {
 
   try {
     // 显示文件保存对话框，用户可以选择文件夹并输入文件名
+    //@ts-expect-error
     const handle = await window.showSaveFilePicker({
       suggestedName: 'trail-demo.scene.json',
       types: [
@@ -90,6 +91,7 @@ async function saveJSONFile (json: any) {
 }
 
 async function loadJSONFile () {
+  //@ts-expect-error
   const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
   const file = await fileHandle[0].getFile();
   const reader = new FileReader();

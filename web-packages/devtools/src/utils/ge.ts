@@ -34,16 +34,20 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   //@ts-expect-error
   composition = await player.loadScene(json);
 
-  const effectItem = new VFXItem(engine);
+  createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
 
-  effectItem.duration = 1000;
-  //@ts-expect-error
-  effectItem.type = 'ECS';
-  const effectComponent = effectItem.addComponent(EffectComponent);
+  // const effectItem = new VFXItem(engine);
 
-  effectComponent.geometry = engine.deserializer.loadGUID(quadGeometryData.id);
-  effectComponent.material = engine.deserializer.loadGUID(trailMaterialData.id);
-  composition.addItem(effectItem);
+  // effectItem.duration = 1000;
+  // //@ts-expect-error
+  // effectItem.type = 'ECS';
+  // const effectComponent = effectItem.addComponent(EffectComponent);
+
+  // effectComponent.geometry = engine.deserializer.loadGUID(quadGeometryData.id);
+  // effectComponent.material = engine.deserializer.loadGUID(trailMaterialData.id);
+  // composition.addItem(effectItem);
 
   setInterval(() => {
     guiMainLoop();
@@ -54,6 +58,24 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   input.startup();
   orbitController = new OrbitController(composition.camera, input);
   inputControllerUpdate();
+}
+
+function createEffectVFXItem (composition: Composition) {
+  const engine = composition.getEngine();
+  const effectItem = new VFXItem(engine);
+
+  effectItem.duration = 1000;
+  //@ts-expect-error
+  effectItem.type = 'ECS';
+  const effectComponent = effectItem.addComponent(EffectComponent);
+
+  const trailShaderData = S_TRAIL.exportObjects[0];
+  const trailMaterialData = M_DUCK.exportObjects[0];
+  const quadGeometryData = G_QUAD.exportObjects[0];
+
+  effectComponent.geometry = engine.deserializer.loadGUID(quadGeometryData.id);
+  effectComponent.material = engine.deserializer.loadGUID(trailMaterialData.id);
+  composition.addItem(effectItem);
 }
 
 function guiMainLoop () {
@@ -79,6 +101,7 @@ async function saveJSONFile (json: any) {
 
   try {
     // 显示文件保存对话框，用户可以选择文件夹并输入文件名
+    //@ts-expect-error
     const handle = await window.showSaveFilePicker({
       suggestedName: 'test.scene.json',
       types: [
@@ -103,6 +126,7 @@ async function saveJSONFile (json: any) {
 }
 
 async function loadJSONFile () {
+  //@ts-expect-error
   const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
   const file = await fileHandle[0].getFile();
   const reader = new FileReader();
@@ -126,13 +150,6 @@ function saveScene (composition: Composition, json: any) {
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
   for (const item of composition.items) {
-    const itemData = composition.getEngine().findEffectsObjectData(item.id) as VFXItemData;
-
-    item.transform.toData();
-    if (itemData) {
-      itemData.transform = item.transform.taggedProperties;
-      itemData.name = item.name;
-    }
     serializedDatas = {
       ...serializedDatas,
       ...deserializer.serializeEffectObject(item),
@@ -202,6 +219,8 @@ function saveScene (composition: Composition, json: any) {
 
         break;
       case DataType.Texture:
+        //@ts-expect-error
+        data.image = undefined;
         json.textures.push(data);
 
         break;
@@ -273,6 +292,6 @@ loadButton.addEventListener('mouseout', () => {
 body?.appendChild(loadButton);
 loadButton.textContent = '加载场景json';
 loadButton.onclick = async () => {
-  await importAssets(player.renderer.engine);
+  // await importAssets(player.renderer.engine);
   await loadJSONFile();
 };

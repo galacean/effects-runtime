@@ -1,18 +1,24 @@
 import type { FSFileItem } from '@advjs/gui';
-import { curFileList, saveFile } from '@advjs/gui';
-import type { GeometryData } from '@galacean/effects';
-import { DataType, generateUuid, glContext, loadImage } from '@galacean/effects';
+import { saveFile } from '@advjs/gui';
+import type { EffectsObjectData, EffectsPackageData, GeometryData } from '@galacean/effects';
+import { DataType, generateUuid, glContext } from '@galacean/effects';
 import type * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+import type { FSDirItem } from '@advjs/gui';
 //@ts-expect-error
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { ref } from 'vue';
 
-export async function onFileDrop (files: FSFileItem[], curDirHandle: FileSystemDirectoryHandle) {
+export const curDir = ref<FSDirItem>();
+
+export async function onFileDrop (files: FSFileItem[]) {
+  const curDirHandle = curDir.value!.handle;
+
   for (const fileItem of files) {
     const { file } = fileItem;
 
     if (!file) {
-      return;
+      return [];
     }
 
     // fileItem.icon = ''
@@ -25,8 +31,9 @@ export async function onFileDrop (files: FSFileItem[], curDirHandle: FileSystemD
       await importFBX(file, curDirHandle);
     }
 
-    return files;
   }
+
+  return files;
 }
 
 export function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
@@ -93,9 +100,9 @@ function modelJsonConverter (json: string): string {
   geometryData.vertices = vertices;
   geometryData.uvs = uvs;
   geometryData.indices = indices;
-  const geometryAsset = { exportObjects: [geometryData] };
+  const geometryAsset = createPackageData([geometryData]);
 
-  return JSON.stringify(geometryAsset);
+  return JSON.stringify(geometryAsset, null, 2);
 }
 
 function importModelJson (file: File, curDirHandle: FileSystemDirectoryHandle) {
@@ -130,7 +137,7 @@ function importPng (file: File, curDirHandle: FileSystemDirectoryHandle) {
     const result = e.target?.result;
 
     const textureData = { id: generateUuid(), source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
-    const textureAsset = JSON.stringify({ exportObjects:[textureData] });
+    const textureAsset = JSON.stringify(createPackageData([textureData], 'Texture'), null, 2);
 
     await saveFile(createJsonFile(textureAsset, file.name + '.json'), curDirHandle);
   };
@@ -156,7 +163,7 @@ async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
       dataType: DataType.Geometry,
       ...modelData,
     };
-    const geometryAsset = JSON.stringify({ id:generateUuid(), exportObjects: [geometryData] });
+    const geometryAsset = JSON.stringify(createPackageData([geometryData], 'Geometry'), null, 2);
 
     await saveFile(createJsonFile(geometryAsset, file.name + i++ + '.json'), curDirHandle);
   }
@@ -220,15 +227,11 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
   });
 }
 
-// // 使用示例：
-// const fbxFilePath = 'path/to/your/model.fbx';
+function createPackageData (effectsObjectDatas: EffectsObjectData[], assetType = 'any') {
+  const newPackageData: EffectsPackageData = {
+    fileSummary:{ guid:generateUuid(), assetType },
+    exportObjects:effectsObjectDatas,
+  };
 
-// parseFBX(fbxFilePath)
-//   .then(data => {
-//     console.log('Vertices:', data.vertices);
-//     console.log('UVs:', data.uvs);
-//     console.log('Indices:', data.indices);
-//   })
-//   .catch(error => {
-//     console.error('An error occurred while parsing the FBX file:', error);
-//   });
+  return newPackageData;
+}

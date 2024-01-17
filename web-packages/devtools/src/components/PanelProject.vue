@@ -1,19 +1,25 @@
 <script lang="ts" setup>
-import { ref } from 'vue'
-import { onFileDrop } from "../gui/project-gui";
+import { ref } from 'vue';
+import { curDir, onFileDrop } from "../gui/project-gui";
+import { FSDirItem } from '@advjs/gui';
+import { watch } from 'vue';
 
 const tabList = ref([
   { title: 'Project', key: 'project', icon: 'i-ri-folder-line' },
   { title: 'Console', key: 'console', icon: 'i-ri-terminal-box-line' },
 ])
 
+const rootDir = ref<FSDirItem>()
+watch(rootDir, () => {
+  console.log(rootDir.value)
+})
 </script>
 
 <template>
   <AGUIPanel w="full" h="full">
     <AGUITabs :list="tabList">
       <AGUITabPanel>
-        <AGUIAssetsExplorer :onFileDrop="onFileDrop" />
+        <AGUIAssetsExplorer v-model:cur-dir="curDir" v-model:root-dir="rootDir" :onFileDrop="onFileDrop" />
         <slot name="project" />
       </AGUITabPanel>
       <AGUITabPanel>
