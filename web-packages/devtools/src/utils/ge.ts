@@ -6,6 +6,7 @@ import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
+import { AssetDatabase, importAssets } from './asset-database';
 
 export const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();
@@ -23,6 +24,8 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   const quadGeometryData = G_QUAD.exportObjects[0];
 
   const engine = player.renderer.engine;
+
+  engine.database = new AssetDatabase(engine);
 
   engine.addEffectsObjectData(trailShaderData);
   engine.addEffectsObjectData(trailMaterialData);
@@ -272,5 +275,6 @@ loadButton.addEventListener('mouseout', () => {
 body?.appendChild(loadButton);
 loadButton.textContent = '加载场景json';
 loadButton.onclick = async () => {
+  await importAssets(player.renderer.engine);
   await loadJSONFile();
 };

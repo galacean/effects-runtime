@@ -420,7 +420,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
     this.renderer.engine.clearResources();
-    this.renderer.engine.addResources(scene);
+    await this.renderer.engine.addPackageDatas(scene);
 
     for (let i = 0;i < scene.textureOptions.length;i++) {
       scene.textureOptions[i] = this.renderer.engine.deserializer.loadUuid(scene.textureOptions[i].id);

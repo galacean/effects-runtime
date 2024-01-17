@@ -1,8 +1,8 @@
 import type { EffectsObject, Engine } from '@galacean/effects';
-import { type EffectsPackageData } from '@galacean/effects';
+import { Database, type EffectsPackageData } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
 
-export class AssetDatabase {
+export class AssetDatabase extends Database {
   engine: Engine;
   rootDirectoryHandle: FileSystemDirectoryHandle;
 
@@ -13,6 +13,7 @@ export class AssetDatabase {
   readonly dirtyPackageSet: Set<string> = new Set<string>();
 
   constructor (engine: Engine) {
+    super();
     this.engine = engine;
   }
 
@@ -20,7 +21,7 @@ export class AssetDatabase {
 
   // }
 
-  async loadGuid (guid: string): Promise<EffectsObject | undefined> {
+  override async loadGuid (guid: string): Promise<EffectsObject | undefined> {
     const packageGuid = this.objectToPackageGuidMap[guid];
 
     if (!packageGuid) {
@@ -176,10 +177,15 @@ export class AssetDatabase {
 
   }
 
-  checkPath (path: string) {
+  checkPath (path: string): boolean {
+    let res = true;
+
     if (!path.startsWith('assets')) {
       console.error('路径请使用 assets/xxx/... 格式');
+      res = false;
     }
+
+    return res;
   }
 
   setDirty (object: EffectsObject) {
@@ -193,7 +199,14 @@ export class AssetDatabase {
   }
 
   private async getFileHandle (relativePath: string, create = false) {
-    this.checkPath(relativePath);
+    if (!this.checkPath(relativePath)) {
+      return;
+    }
+    if (!this.rootDirectoryHandle) {
+      console.error('未指定根目录');
+
+      return;
+    }
     // 将相对路径分割成各个组成部分
     const pathParts = relativePath.split('/');
     let currentHandle = this.rootDirectoryHandle;
@@ -217,7 +230,14 @@ export class AssetDatabase {
   }
 
   private async getDirectoryHandle (relativePath: string) {
-    this.checkPath(relativePath);
+    if (!this.checkPath(relativePath)) {
+      return;
+    }
+    if (!this.rootDirectoryHandle) {
+      console.error('未指定根目录');
+
+      return;
+    }
     // 将相对路径分割成各个组成部分
     const pathParts = relativePath.split('/');
     let currentHandle = this.rootDirectoryHandle;
@@ -258,7 +278,7 @@ export class AssetDatabase {
 export async function importAssets (engine: Engine) {
   //@ts-expect-error
   const handle = await window.showDirectoryPicker();
-  const assetDatabase = new AssetDatabase(engine);
+  const assetDatabase = engine.database as AssetDatabase;
 
   assetDatabase.rootDirectoryHandle = handle;
   if (handle.name !== 'assets') {

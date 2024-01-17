@@ -1,5 +1,5 @@
-import type { EffectsObject, Scene } from '.';
-import { PLAYER_OPTIONS_ENV_EDITOR, type spec } from '.';
+import type { Database, EffectsObject, Scene } from '.';
+import { PLAYER_OPTIONS_ENV_EDITOR, spec } from '.';
 import { LOG_TYPE } from './config';
 import type { EffectsObjectData, SceneData } from './deserializer';
 import { Deserializer } from './deserializer';
@@ -21,6 +21,7 @@ export class Engine implements Disposable {
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
   deserializer: Deserializer;
+  database: Database | undefined; // 磁盘数据库，打包后 runtime 运行不需要
 
   protected destroyed = false;
   protected textures: Texture[] = [];
@@ -56,7 +57,7 @@ export class Engine implements Disposable {
     return this.jsonSceneData[uuid];
   }
 
-  addResources (scene: Scene) {
+  async addPackageDatas (scene: Scene) {
     const jsonScene = scene.jsonScene;
 
     //@ts-expect-error
@@ -98,6 +99,27 @@ export class Engine implements Disposable {
       for (const textureData of scene.textureOptions) {
         //@ts-expect-error
         this.addEffectsObjectData(textureData);
+      }
+    }
+
+    //@ts-expect-error
+    for (const itemData of jsonScene.items) {
+      if (!(
+        itemData.type === 'ECS' ||
+        itemData.type === spec.ItemType.sprite ||
+        itemData.type === spec.ItemType.particle ||
+        itemData.type === spec.ItemType.mesh ||
+        itemData.type === spec.ItemType.skybox ||
+        itemData.type === spec.ItemType.light ||
+        itemData.type === 'camera' ||
+        itemData.type === spec.ItemType.tree ||
+        itemData.type === spec.ItemType.interact ||
+        itemData.type === spec.ItemType.camera)
+      ) {
+        continue;
+      }
+      if (this.database) {
+        await this.deserializer.loadGuidAsync(itemData.id);
       }
     }
   }
