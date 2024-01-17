@@ -260,7 +260,9 @@ export class GLMaterial extends Material {
       this.shader = pipelineContext.shaderLibrary.createShader(this.shaderSource);
     }
     this.shader.initialize(glEngine);
-    for (const texture of Object.values(this.textures)) {
+    Object.keys(this.textures).forEach(key => {
+      const texture = this.textures[key];
+
       if (!isFunction(texture.initialize)) {
         console.error({
           content: `${JSON.stringify(texture)} is not valid Texture to initialize`,
@@ -270,7 +272,7 @@ export class GLMaterial extends Material {
         return;
       }
       texture.initialize();
-    }
+    });
     this.initialized = true;
   }
 
@@ -572,9 +574,9 @@ export class GLMaterial extends Material {
     }
     this.shader?.dispose();
     if (options?.textures !== DestroyOptions.keep) {
-      for (const texture of Object.values(this.textures)) {
-        texture.dispose();
-      }
+      Object.keys(this.textures).forEach(key => {
+        this.textures[key].dispose();
+      });
     }
 
     // @ts-expect-error

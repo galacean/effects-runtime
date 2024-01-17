@@ -973,7 +973,8 @@ export function getActivePlayers () {
  * @param isCreate - 是否处于实例化时
  */
 function broadcastPlayerEvent (player: Player, isCreate: boolean) {
-  Object.values(pluginLoaderMap).forEach(ctrl => {
+  Object.keys(pluginLoaderMap).forEach(key => {
+    const ctrl = pluginLoaderMap[key];
     const func = isCreate ? ctrl.onPlayerCreated : ctrl.onPlayerDestroy;
 
     func?.(player);

@@ -155,7 +155,9 @@ export class UniformBlockBuffer implements Disposable {
 
     if (buffer) {
       buffer.bind();
-      Object.values(this.dirtyFlags).forEach(flag => {
+      Object.keys(this.dirtyFlags).forEach(key => {
+        const flag = this.dirtyFlags[key];
+
         if (flag.dirty) {
           // @ts-expect-error
           buffer.bufferSubData(flag.start, new Uint8Array(flag.buffer.buffer));

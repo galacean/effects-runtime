@@ -281,7 +281,9 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   }
 
   dispose (): void {
-    Object.values(this.programMap).forEach(program => {
+    Object.keys(this.programMap).forEach(key => {
+      const program = this.programMap[key];
+
       program.dispose();
     });
     this.programMap = {};
