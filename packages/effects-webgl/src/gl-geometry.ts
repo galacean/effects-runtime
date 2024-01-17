@@ -424,11 +424,14 @@ export class GLGeometry extends Geometry {
           data: new Float32Array(fullGeometryData.uvs),
         },
       },
-      indices: {
-        data: new Uint32Array(fullGeometryData.indices),
-      },
-      drawCount: fullGeometryData.indices.length,
     };
+
+    if (fullGeometryData.indices.length !== 0) {
+      geometryProps.indices = { data:new Uint32Array(fullGeometryData.indices) };
+      geometryProps.drawCount = fullGeometryData.indices.length;
+    } else {
+      geometryProps.drawCount = fullGeometryData.vertices.length;
+    }
 
     this.processProps(geometryProps);
   }

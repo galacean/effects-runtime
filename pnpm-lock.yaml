@@ -267,6 +267,9 @@ importers:
 
   web-packages/devtools:
     dependencies:
+      three:
+        specifier: ^0.160.0
+        version: 0.160.0
       vue:
         specifier: ^3.4.10
         version: 3.4.10(typescript@5.3.3)
@@ -283,6 +286,9 @@ importers:
       '@galacean/effects-assets':
         specifier: workspace:*
         version: link:../../packages/effects-assets
+      '@types/three':
+        specifier: ^0.160.0
+        version: 0.160.0
       '@types/wicg-file-system-access':
         specifier: ^2023.10.4
         version: 2023.10.4
@@ -3173,10 +3179,23 @@ packages:
       vue: 2.7.16
     dev: true
 
+  /@types/stats.js@0.17.3:
+    resolution: {integrity: sha512-pXNfAD3KHOdif9EQXZ9deK82HVNaXP5ZIF5RP2QG6OQFNTaY2YIetfrE9t528vEreGQvEPRDDc8muaoYeK0SxQ==}
+    dev: true
+
   /@types/three@0.149.0:
-    resolution: {integrity: sha512-fgNBm9LWc65ER/W0cvoXdC0iMy7Ke9e2CONmEr6Jt8sDSY3sw4DgOubZfmdZ747dkPhbQrgRQAWwDEr2S/7IEg==, tarball: https://registry.npmmirror.com/@types/three/download/@types/three-0.149.0.tgz}
+    resolution: {integrity: sha512-fgNBm9LWc65ER/W0cvoXdC0iMy7Ke9e2CONmEr6Jt8sDSY3sw4DgOubZfmdZ747dkPhbQrgRQAWwDEr2S/7IEg==}
     dependencies:
       '@types/webxr': 0.5.1
+    dev: true
+
+  /@types/three@0.160.0:
+    resolution: {integrity: sha512-jWlbUBovicUKaOYxzgkLlhkiEQJkhCVvg4W2IYD2trqD2om3VK4DGLpHH5zQHNr7RweZK/5re/4IVhbhvxbV9w==}
+    dependencies:
+      '@types/stats.js': 0.17.3
+      '@types/webxr': 0.5.1
+      fflate: 0.6.10
+      meshoptimizer: 0.18.1
     dev: true
 
   /@types/unist@2.0.10:
@@ -5422,6 +5441,10 @@ packages:
     dependencies:
       node-domexception: 1.0.0
       web-streams-polyfill: 3.2.1
+    dev: true
+
+  /fflate@0.6.10:
+    resolution: {integrity: sha512-IQrh3lEPM93wVCEczc9SaAOvkmcoQn/G8Bo1e8ZPlY3X3bnAxWaBdvTdvM1hP62iZp0BXWDy4vTAy4fF0+Dlpg==}
     dev: true
 
   /fflate@0.7.4:
@@ -7708,6 +7731,10 @@ packages:
 
   /three@0.149.0:
     resolution: {integrity: sha512-tohpUxPDht0qExRLDTM8sjRLc5d9STURNrdnK3w9A+V4pxaTBfKWWT/IqtiLfg23Vfc3Z+ImNfvRw1/0CtxrkQ==, tarball: https://registry.npmmirror.com/three/download/three-0.149.0.tgz}
+
+  /three@0.160.0:
+    resolution: {integrity: sha512-DLU8lc0zNIPkM7rH5/e1Ks1Z8tWCGRq6g8mPowdDJpw1CFBJMU7UoJjC6PefXW7z//SSl0b2+GCw14LB+uDhng==}
+    dev: false
 
   /through2@4.0.2:
     resolution: {integrity: sha1-p846wqeosLlmyA58SfBITDsjl2Q=, tarball: https://registry.npmmirror.com/through2/download/through2-4.0.2.tgz}

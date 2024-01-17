@@ -3,6 +3,8 @@ import type { FSFileItem } from '@advjs/gui';
 import { curFileList, saveFile } from '@advjs/gui';
 import type { GeometryData } from '@galacean/effects';
 import { DataType, generateUuid, glContext, loadImage } from '@galacean/effects';
+import type * as THREE from 'three';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 
 export async function onFileDrop (files: FSFileItem[], curDirHandle: FileSystemDirectoryHandle) {
   for (const fileItem of files) {
@@ -18,6 +20,8 @@ export async function onFileDrop (files: FSFileItem[], curDirHandle: FileSystemD
       importModelJson(file, curDirHandle);
     } else if (file.type === 'image/png') {
       importPng(file, curDirHandle);
+    } else if (file.name.endsWith('.fbx')) {
+      await importFBX(file, curDirHandle);
     }
   }
 }
@@ -136,3 +140,90 @@ function importPng (file: File, curDirHandle: FileSystemHandle) {
   // 读取文件内容，将文件内容转换为Base64字符串
   reader.readAsDataURL(file);
 }
+
+async function importFBX (file: File, curDirHandle: FileSystemHandle) {
+  const url = URL.createObjectURL(file);
+  const modelDatas = await parseFBX(url);
+
+  let i = 0;
+
+  for (const modelData of modelDatas) {
+    const geometryData: GeometryData = {
+      id: generateUuid(),
+      dataType: DataType.Geometry,
+      ...modelData,
+    };
+    const geometryAsset = JSON.stringify({ id:generateUuid(), exportObjects: [geometryData] });
+
+    await saveFile(createJsonFile(geometryAsset, file.name + i++ + '.json'), curDirHandle);
+  }
+}
+
+// 定义返回类型
+interface ModelData {
+  vertices: number[],
+  uvs: number[],
+  indices: number[],
+}
+
+async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
+  return new Promise((resolve, reject) => {
+    const loader = new FBXLoader();
+
+    loader.load(fbxFilePath, object => {
+      const modelDatas: ModelData[] = [];
+      // 初始化返回数据结构
+      let vertices: number[] = [];
+      let uvs: number[] = [];
+      let indices: number[] = [];
+
+      object.traverse(child => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          const geometry = mesh.geometry;
+
+          // 确保有位置属性
+          if (geometry.attributes.position) {
+            const positionAttribute = geometry.attributes.position;
+
+            vertices = Array.from(positionAttribute.array);
+          }
+
+          // 确保有UV属性
+          if (geometry.attributes.uv) {
+            const uvAttribute = geometry.attributes.uv;
+
+            uvs = Array.from(uvAttribute.array);
+          }
+
+          // 确保有索引
+          if (geometry.index) {
+            indices = Array.from(geometry.index.array);
+          }
+          modelDatas.push({
+            vertices,
+            uvs,
+            indices,
+          });
+        }
+      });
+
+      resolve(modelDatas);
+    }, undefined, error => {
+      reject(error);
+    });
+  });
+}
+
+// // 使用示例：
+// const fbxFilePath = 'path/to/your/model.fbx';
+
+// parseFBX(fbxFilePath)
+//   .then(data => {
+//     console.log('Vertices:', data.vertices);
+//     console.log('UVs:', data.uvs);
+//     console.log('Indices:', data.indices);
+//   })
+//   .catch(error => {
+//     console.error('An error occurred while parsing the FBX file:', error);
+//   });

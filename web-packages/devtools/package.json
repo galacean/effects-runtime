@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "three": "^0.160.0",
     "vue": "^3.4.10"
   },
   "devDependencies": {
@@ -15,6 +16,7 @@
     "@antfu/eslint-config": "^2.6.2",
     "@galacean/effects": "workspace:*",
     "@galacean/effects-assets": "workspace:*",
+    "@types/three": "^0.160.0",
     "@types/wicg-file-system-access": "^2023.10.4",
     "@unocss/reset": "^0.58.3",
     "@vitejs/plugin-vue": "^5.0.3",

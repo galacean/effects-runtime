@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
-import {onFileDrop} from "../gui/project-gui";
+import { onFileDrop } from "../gui/project-gui";
 
 const tabList = ref([
   { title: 'Project', key: 'project', icon: 'i-ri-folder-line' },
