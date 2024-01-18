@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -221,8 +225,8 @@ importers:
   plugin-packages/spine:
     dependencies:
       '@esotericsoftware/spine-core':
-        specifier: ~4.2.33
-        version: 4.2.33
+        specifier: ~4.2.35
+        version: 4.2.35
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
@@ -1845,8 +1849,8 @@ packages:
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dev: true
 
-  /@esotericsoftware/spine-core@4.2.33:
-    resolution: {integrity: sha512-p6/2t1/7jVdBpbup35tIsLaWiLYfBq3Rngue86GBU8lXYxCKWT5P9uFXhJF1aKcm8CyileCcoGOAeA+aLht7nw==}
+  /@esotericsoftware/spine-core@4.2.35:
+    resolution: {integrity: sha512-zvVCj5X11sOCNCANN9ndpkVAJV0rHi0dFNGUlMiy8BQvjLVgRPW5n4IZOaCIS2HXs18QVC2q+uTW6ceek4fLWg==}
     dev: false
 
   /@galacean/effects-math@1.0.1:
@@ -5645,7 +5649,3 @@ packages:
     resolution: {integrity: sha1-ApTrPe4FAo0x7hpfosVWpqrxChs=, tarball: https://registry.npmmirror.com/yocto-queue/download/yocto-queue-0.1.0.tgz}
     engines: {node: '>=10'}
     dev: true
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
