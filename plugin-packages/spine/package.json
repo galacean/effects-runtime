@@ -43,6 +43,6 @@
     "fpsmeter": "^0.3.1"
   },
   "dependencies": {
-    "@esotericsoftware/spine-core": "~4.2.33"
+    "@esotericsoftware/spine-core": "~4.2.35"
   }
 }

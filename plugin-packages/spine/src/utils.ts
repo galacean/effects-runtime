@@ -45,7 +45,21 @@ export function setBlending (material: Material, mode: BlendMode, pma: boolean) 
  */
 export function createSkeletonData (atlas: TextureAtlas, skeletonFile: any, skeletonType: any): SkeletonData {
   const atlasLoader = new AtlasAttachmentLoader(atlas);
-  const skeletonLoader = skeletonType === 'skel' ? new SkeletonBinary(atlasLoader) : new SkeletonJson(atlasLoader);
+  let skeletonLoader;
+
+  if (skeletonType === 'skel') {
+    skeletonLoader = new SkeletonBinary(atlasLoader);
+    const input = new BinaryInput(skeletonFile);
+
+    input.readInt32(); input.readInt32();
+    const version = input.readString();
+
+    if (version && version.split('.')[1] !== '2') {
+      throw new Error (`请使用 Spine 4.2 导出二进制数据, 当前版本: ${version}`);
+    }
+  } else {
+    skeletonLoader = new SkeletonJson(atlasLoader);
+  }
 
   return skeletonLoader.readSkeletonData(skeletonFile);
 }
