@@ -24,6 +24,8 @@ export class Input {
     this.canvas.addEventListener('pointerdown', this.onPointerDown);
     this.canvas.addEventListener('pointerup', this.onPointerUp);
     this.canvas.addEventListener('wheel', this.onMouseWheel);
+    document.addEventListener('keydown', this.onKeyDown);
+    document.addEventListener('keyup', this.onKeyUp);
   }
 
   getMouseButton (button: number) {
@@ -59,6 +61,30 @@ export class Input {
     }
   }
 
+  getKey (keyCode: KeyCode) {
+    if (this.keyStatusMap[keyCode] == KeyStatus.KeyDown || this.keyStatusMap[keyCode] == KeyStatus.Press) {
+      return true;
+    }
+
+    return false;
+  }
+
+  getKeyDown (keyCode: KeyCode) {
+    if (this.keyStatusMap[keyCode] == KeyStatus.KeyDown) {
+      return true;
+    }
+
+    return false;
+  }
+
+  getKeyUp (keyCode: KeyCode) {
+    if (this.keyStatusMap[keyCode] == KeyStatus.KeyUp) {
+      return true;
+    }
+
+    return false;
+  }
+
   refreshStatus () {
     for (const key of Object.keys(this.keyStatusMap)) {
       const keySatus = this.keyStatusMap[Number(key)];
@@ -77,10 +103,12 @@ export class Input {
   }
 
   dispose () {
-    document.removeEventListener('pointermove', this.onPointerMove);
-    document.removeEventListener('pointerdown', this.onPointerDown);
-    document.removeEventListener('pointerup', this.onPointerUp);
-    document.removeEventListener('wheel', this.onMouseWheel);
+    this.canvas.removeEventListener('pointermove', this.onPointerMove);
+    this.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    this.canvas.removeEventListener('pointerup', this.onPointerUp);
+    this.canvas.removeEventListener('wheel', this.onMouseWheel);
+    this.canvas.removeEventListener('keydown', this.onKeyDown);
+    this.canvas.removeEventListener('keydown', this.onKeyUp);
   }
 
   private onPointerMove = (event: PointerEvent) => {
@@ -126,6 +154,24 @@ export class Input {
 
   private onMouseWheel = (event: WheelEvent) => {
     this.mouseWheelDeltaY = event.deltaY;
+  };
+
+  private onKeyDown = (event: KeyboardEvent) => {
+    switch (event.key) {
+      case 'f':
+        this.keyStatusMap[KeyCode.F] = KeyStatus.KeyDown;
+
+        break;
+    }
+  };
+
+  private onKeyUp = (event: KeyboardEvent) => {
+    switch (event.key) {
+      case 'f':
+        this.keyStatusMap[KeyCode.F] = KeyStatus.KeyUp;
+
+        break;
+    }
   };
 }
 
