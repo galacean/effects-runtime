@@ -28,7 +28,8 @@ export class AssetDatabase extends Database {
     if (!packageGuid) {
       return;
     }
-    let effectsPackage = this.effectsPackages[packageGuid];
+    // let effectsPackage = this.effectsPackages[packageGuid];  // 合成播放完会把对象设置为销毁，无法复用
+    let effectsPackage: EffectsPackage | undefined;
 
     if (!effectsPackage) {
       const path = this.GUIDToAssetPath(packageGuid);
@@ -74,9 +75,9 @@ export class AssetDatabase extends Database {
 
     const guid = packageData.fileSummary.guid;
 
-    const effectsPackage = new EffectsPackage();
+    const effectsPackage = new EffectsPackage(this.engine);
 
-    // this.effectsPackages[guid] = effectsPackage;
+    this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
 
     for (const objectData of packageData.exportObjects) {
@@ -92,8 +93,13 @@ export class AssetDatabase extends Database {
 
   async saveAssets () {
     for (const dirtyPackageGuid of this.dirtyPackageSet) {
-      const assetData = this.effectsPackageDatas[dirtyPackageGuid];
+      const effectsPackage = this.effectsPackages[dirtyPackageGuid];
+
+      effectsPackage.toData();
+      const assetData = this.engine.deserializer.serializeTaggedProperties(effectsPackage.taggedProperties) as EffectsPackageData;
       const path = this.GUIDToAssetPath(dirtyPackageGuid);
+
+      console.info(assetData, path);
 
       await this.saveAsset(assetData, path);
     }
@@ -113,7 +119,7 @@ export class AssetDatabase extends Database {
 
     await writableStream.write(JSON.stringify(assetData, null, 2));
     await writableStream.close();
-    // console.log('save ' + path);
+    console.info('save ' + path);
   }
 
   // TODO 只加载 filesummary 到 map
@@ -158,7 +164,7 @@ export class AssetDatabase extends Database {
     for (const objectData of packageData.exportObjects) {
       this.objectToPackageGuidMap[objectData.id] = guid;
     }
-    this.dirtyPackageSet.add(guid);
+    // this.dirtyPackageSet.add(guid);
 
     // TODO 加入到场景资产 SceneData 中
 

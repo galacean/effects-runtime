@@ -245,7 +245,7 @@ function buildProject (composition: Composition, json: any) {
   }
 }
 
-function saveScene (composition: Composition, json: any) {
+async function saveScene (composition: Composition, json: any) {
   const deserializer = composition.getEngine().deserializer;
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
@@ -327,6 +327,8 @@ function saveScene (composition: Composition, json: any) {
   for (const item of json.items) {
     json.compositions[0].items.push({ id:item.id });
   }
+
+  await assetDatabase.saveAssets();
 }
 
 const body = document.querySelector('body');
@@ -355,7 +357,7 @@ saveButton.addEventListener('mouseout', () => {
 body?.appendChild(saveButton);
 saveButton.textContent = '保存场景json';
 saveButton.onclick = async () => {
-  buildProject(composition, json);
+  await saveScene(composition, json);
   await saveJSONFile(json);
 };
 

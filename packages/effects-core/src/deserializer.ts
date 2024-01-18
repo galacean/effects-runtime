@@ -206,12 +206,17 @@ export class Deserializer {
     }
   }
 
-  serializeTaggedProperties (taggedProperties: Record<string, any>, serializedData: Record<string, any>) {
+  serializeTaggedProperties (taggedProperties: Record<string, any>, serializedData?: Record<string, any>) {
+    if (!serializedData) {
+      serializedData = {};
+    }
     for (const key of Object.keys(taggedProperties)) {
       const value = taggedProperties[key];
 
       serializedData[key] = this.serializeTaggedProperty(value, 0);
     }
+
+    return serializedData;
   }
 
   private deserializeProperty<T> (property: T, level: number): any {
@@ -346,29 +351,6 @@ export class Deserializer {
 export class Database {
   async loadGUID (guid: string): Promise<EffectsObject | undefined> {
     return undefined;
-  }
-}
-
-export class SerializedObject {
-  engine: Engine;
-  serializedData: Record<string, any>;
-  target: EffectsObject;
-
-  constructor (target: EffectsObject) {
-    this.target = target;
-    this.engine = target.engine;
-    this.serializedData = {};
-    this.update();
-  }
-
-  update () {
-    this.target.toData();
-    this.engine.deserializer.serializeTaggedProperties(this.target.taggedProperties, this.serializedData);
-  }
-
-  applyModifiedProperties () {
-    this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target.taggedProperties);
-    this.target.fromData(this.target.taggedProperties as EffectsObjectData);
   }
 }
 

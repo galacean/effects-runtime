@@ -1,5 +1,5 @@
-import type { EffectComponentData, EffectsPackageData, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
-import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, SerializedObject, generateUuid, DataType } from '@galacean/effects';
+import type { EffectComponentData, EffectsObject, EffectsObjectData, EffectsPackageData, Engine, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
+import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, generateUuid, DataType } from '@galacean/effects';
 import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {
@@ -297,4 +297,27 @@ async function selectJsonFile (callback: (data: any) => void) {
     callback(data);
   };
   reader.readAsText(file);
+}
+
+export class SerializedObject {
+  engine: Engine;
+  serializedData: Record<string, any>;
+  target: EffectsObject;
+
+  constructor (target: EffectsObject) {
+    this.target = target;
+    this.engine = target.engine;
+    this.serializedData = {};
+    this.update();
+  }
+
+  update () {
+    this.target.toData();
+    this.engine.deserializer.serializeTaggedProperties(this.target.taggedProperties, this.serializedData);
+  }
+
+  applyModifiedProperties () {
+    this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target.taggedProperties);
+    this.target.fromData(this.target.taggedProperties as EffectsObjectData);
+  }
 }
