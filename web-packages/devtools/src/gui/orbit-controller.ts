@@ -1,7 +1,7 @@
 import type { Camera } from '@galacean/effects';
 import { math } from '@galacean/effects';
-import { KeyCode, type Input } from './input';
 import { treeGui } from '../utils';
+import { KeyCode, type Input } from './input';
 const { Vector2, Vector3, Matrix4, Quaternion } = math;
 
 type Vector2 = math.Vector2;
@@ -9,7 +9,9 @@ type Vector3 = math.Vector3;
 
 export class OrbitController {
   focusPosition: Vector3;
-  targetPosition: Vector3 | undefined;
+  targetPosition: Vector3 | undefined; // focus 时相机移动的目标位置
+  originPostion: Vector3; // focus 时相机的原始位置
+  t: number; // 相机 focus 插值系数
   camera: Camera;
   deltaTheta: number;
   deltaPhi: number;
@@ -28,6 +30,7 @@ export class OrbitController {
     this.camera = camera;
     this.deltaTheta = 0;
     this.deltaPhi = 0;
+    this.t = 0;
 
     this.xAxis = new Vector3();
     this.yAxis = new Vector3();
@@ -46,21 +49,31 @@ export class OrbitController {
     if (this.input.mouseWheelDeltaY !== 0) {
       this.handleZoom();
     }
+
+    // 触发相机聚焦物体
     if (this.input.getKeyDown(KeyCode.F)) {
       if (treeGui.activeItem) {
-        const offset = this.camera.position.clone().subtract(this.focusPosition).normalize().scale(4);
+        const offset = this.camera.position.clone().subtract(this.focusPosition).normalize();
+        const focusObjectScale = treeGui.activeItem.transform.scale;
+        const scaleFactor = 3 * Math.max(1, Math.abs(focusObjectScale.x), Math.abs(focusObjectScale.y), Math.abs(focusObjectScale.z));
 
-        this.focusPosition = treeGui.activeItem.transform.position;
-        this.targetPosition = offset.add(this.focusPosition);
+        this.focusPosition = treeGui.activeItem.transform.position.clone();
+        this.targetPosition = offset.scale(scaleFactor).add(this.focusPosition);
+        this.originPostion = this.camera.position.clone();
       }
     }
 
+    // 处理相机聚焦物体位移
     if (this.targetPosition) {
-      const moveSpeed = 0.06;
+      const moveSpeed = 0.04;
 
-      this.camera.position = this.camera.position.clone().scale(1 - moveSpeed).add(this.targetPosition.clone().scale(moveSpeed));
-      if (this.camera.position.clone().subtract(this.targetPosition).lengthSquared() < 0.05) {
+      this.t += moveSpeed;
+
+      this.camera.position = this.targetPosition.clone().scale(this.t).add(this.originPostion.clone().scale(1 - this.t));
+      if (this.t >= 1) {
+        this.camera.position = this.targetPosition.clone();
         this.targetPosition = undefined;
+        this.t = 0;
       }
     }
   }
