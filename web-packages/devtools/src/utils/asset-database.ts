@@ -6,9 +6,10 @@ export class AssetDatabase extends Database {
   engine: Engine;
   rootDirectoryHandle: FileSystemDirectoryHandle;
 
-  readonly effectsPackageDatas: Record<string, EffectsPackageData> = {};
-  readonly effectsPackages: Record<string, EffectsPackage> = {};
+  readonly effectsPackageDatas: Record<string, EffectsPackageData> = {}; // TODO 增加达到存储上限，自动清除缓存
+  readonly effectsPackages: Record<string, EffectsPackage> = {}; // TODO 暂时无法使用，场景的对象会在结束后销毁，导致无法缓存
   readonly packageGuidToPathMap: Record<string, string> = {};
+  readonly pathToPackageGuidMap: Record<string, string> = {};
   readonly objectToPackageGuidMap: Record<string, string> = {};
   readonly dirtyPackageSet: Set<string> = new Set<string>();
 
@@ -46,28 +47,36 @@ export class AssetDatabase extends Database {
   }
 
   async loadPackage (path: string) {
-    const fileHandle = await this.getFileHandle(path);
+    let packageData: EffectsPackageData;
 
-    if (!fileHandle) {
-      console.warn('未找到资产 ' + path);
+    if (this.pathToPackageGuidMap[path]) {
+      packageData = this.effectsPackageDatas[this.pathToPackageGuidMap[path]];
+    } else {
+      const fileHandle = await this.getFileHandle(path);
 
-      return;
+      if (!fileHandle) {
+        console.warn('未找到资产 ' + path);
+
+        return;
+      }
+      const file = await fileHandle.getFile();
+      let res: string;
+
+      try {
+        res = await readFileAsText(file);
+      } catch (error) {
+        console.error('读取文件出错:', error);
+
+        return;
+      }
+      packageData = JSON.parse(res) as EffectsPackageData;
     }
-    const file = await fileHandle.getFile();
-    let res: string;
 
-    try {
-      res = await this.readFileAsText(file);
-    } catch (error) {
-      console.error('读取文件出错:', error);
-
-      return;
-    }
-    const packageData = JSON.parse(res) as EffectsPackageData;
-    const effectsPackage = new EffectsPackage();
     const guid = packageData.fileSummary.guid;
 
-    this.effectsPackages[guid] = effectsPackage;
+    const effectsPackage = new EffectsPackage();
+
+    // this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
 
     for (const objectData of packageData.exportObjects) {
@@ -121,7 +130,7 @@ export class AssetDatabase extends Database {
     let res: string;
 
     try {
-      res = await this.readFileAsText(file);
+      res = await readFileAsText(file);
     } catch (error) {
       console.error('读取文件出错:', error);
 
@@ -144,6 +153,7 @@ export class AssetDatabase extends Database {
 
     this.effectsPackageDatas[guid] = packageData;
     this.packageGuidToPathMap[guid] = path;
+    this.pathToPackageGuidMap[path] = guid;
 
     for (const objectData of packageData.exportObjects) {
       this.objectToPackageGuidMap[objectData.id] = guid;
@@ -259,41 +269,23 @@ export class AssetDatabase extends Database {
     return currentHandle;
   }
 
-  private readFileAsText (file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        resolve(reader.result as string);
-      };
-
-      reader.onerror = () => {
-        reject(reader.error);
-      };
-
-      reader.readAsText(file);
-    });
-  }
-
   GUIDToAssetPath (guid: string) {
     return this.packageGuidToPathMap[guid];
   }
 }
 
-export async function importAssets (engine: Engine) {
-  //@ts-expect-error
-  const handle = await window.showDirectoryPicker();
-  const assetDatabase = engine.database as AssetDatabase;
+export async function readFileAsText (file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
 
-  assetDatabase.rootDirectoryHandle = handle;
-  if (handle.name !== 'assets') {
-    console.warn('请选择asset文件夹');
+    reader.onload = () => {
+      resolve(reader.result as string);
+    };
 
-    return;
-  }
+    reader.onerror = () => {
+      reject(reader.error);
+    };
 
-  await assetDatabase.importAllAssetsInFolder('assets');
-
-  // console.log(await assetDatabase.loadGuid('908d3df4192f4fb2bc1dcc7158caffc9'));
-  // setTimeout(async ()=>{await assetDatabase.saveAssets();}, 1000);
+    reader.readAsText(file);
+  });
 }

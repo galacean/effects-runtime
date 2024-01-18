@@ -84,7 +84,11 @@ export class Deserializer {
       effectsObject = await this.engine.database.loadGUID(guid);
       if (!effectsObject) {
         console.error('未找到 uuid: ' + guid + '的磁盘数据');
+
+        return undefined as T;
       }
+
+      this.addInstance(guid, effectsObject);
 
       return effectsObject as T;
     }

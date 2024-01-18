@@ -1,7 +1,7 @@
 import type { Composition, EffectsObjectData } from '@galacean/effects';
 import { DataType, EffectComponent, Player, TimelineComponent, VFXItem } from '@galacean/effects';
 import { G_QUAD, M_DUCK, S_TRAIL } from '@galacean/effects-assets';
-import demoJson from '../assets/scenes/trail-demo2.scene.json';
+import demoJson from '../assets/scenes/trail-demo.scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
 import { OrbitController } from '../gui/orbit-controller';
@@ -37,9 +37,9 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   //@ts-expect-error
   composition = await player.loadScene(json);
 
-  createEffectVFXItem(composition);
-  createEffectVFXItem(composition);
-  createEffectVFXItem(composition);
+  // createEffectVFXItem(composition);
+  // createEffectVFXItem(composition);
+  // createEffectVFXItem(composition);
 
   // const effectItem = new VFXItem(engine);
 
@@ -128,7 +128,7 @@ async function saveJSONFile (json: any) {
   }
 }
 
-async function loadJSONFile () {
+async function selectAndLoadJSONFile () {
   //@ts-expect-error
   const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
   const file = await fileHandle[0].getFile();
@@ -140,13 +140,17 @@ async function loadJSONFile () {
     }
     const data = JSON.parse(reader.result);
 
-    json = data;
-    player.destroyCurrentCompositions();
-    composition = await player.loadScene(data);
-    treeGui.setComposition(composition);
-    orbitController.setup(composition.camera, input);
+    await loadJson(data);
   };
   reader.readAsText(file);
+}
+
+export async function loadJson (data: any) {
+  json = data;
+  player.destroyCurrentCompositions();
+  composition = await player.loadScene(data);
+  treeGui.setComposition(composition);
+  orbitController.setup(composition.camera, input);
 }
 
 function buildProject (composition: Composition, json: any) {
@@ -351,7 +355,7 @@ saveButton.addEventListener('mouseout', () => {
 body?.appendChild(saveButton);
 saveButton.textContent = '保存场景json';
 saveButton.onclick = async () => {
-  saveScene(composition, json);
+  buildProject(composition, json);
   await saveJSONFile(json);
 };
 
@@ -381,5 +385,5 @@ body?.appendChild(loadButton);
 loadButton.textContent = '加载场景json';
 loadButton.onclick = async () => {
   // await importAssets(player.renderer.engine);
-  await loadJSONFile();
+  await selectAndLoadJSONFile();
 };

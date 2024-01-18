@@ -8,7 +8,8 @@ import type { FSDirItem } from '@advjs/gui';
 //@ts-expect-error
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { ref } from 'vue';
-import { assetDatabase } from '../utils/ge';
+import { assetDatabase, loadJson } from '../utils/ge';
+import { readFileAsText } from '../utils/asset-database';
 
 export const curDir = ref<FSDirItem>();
 
@@ -46,6 +47,13 @@ export async function onRootFolderSelect (rootDirectoryHandle: FileSystemDirecto
   }
 
   await assetDatabase.importAllAssetsInFolder('assets');
+}
+
+export async function onFileDblClick (item: FSFileItem) {
+  const file = await item.handle!.getFile();
+  const text = await readFileAsText(file);
+
+  await loadJson(JSON.parse(text));
 }
 
 export function base64ToFile (base64: string, filename = 'base64File', contentType = '') {

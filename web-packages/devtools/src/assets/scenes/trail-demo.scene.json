@@ -122,8 +122,8 @@
           0
         ],
         "scale": [
-          16.24,
-          6.2,
+          19.95,
+          6.3,
           1
         ]
       },
@@ -132,7 +132,8 @@
           "id": "333faa0ad3974003a5e13a6d433d8bc7"
         }
       ],
-      "listIndex": 0
+      "listIndex": 0,
+      "content": {}
     },
     {
       "id": "9dbf4c91c5394f1dbe08010c9ed2f1a1",
@@ -166,7 +167,8 @@
           "id": "8264d22a44124050b5a2d3dc476875fa"
         }
       ],
-      "listIndex": 1
+      "listIndex": 1,
+      "content": {}
     },
     {
       "id": "e412b3bcf7ee4019ab882a41aec9efdf",
@@ -200,7 +202,8 @@
           "id": "a5f8d715a06b4acba79b891566de8754"
         }
       ],
-      "listIndex": 2
+      "listIndex": 2,
+      "content": {}
     },
     {
       "id": "9830e941be074b6da820819eee0e884d",
@@ -234,7 +237,8 @@
           "id": "7cb4f4f2a0994941ab535552ac774237"
         }
       ],
-      "listIndex": 3
+      "listIndex": 3,
+      "content": {}
     },
     {
       "id": "90d16d7487674f08aaf398aca5f91b0e",
@@ -268,7 +272,8 @@
           "id": "24b05ca55c0f4f1a86f97699ba907099"
         }
       ],
-      "listIndex": 4
+      "listIndex": 4,
+      "content": {}
     },
     {
       "id": "6b668d8ea2ef4965ad90d0a57446b8d8",
@@ -292,8 +297,8 @@
           0
         ],
         "scale": [
-          3.36,
-          0.7,
+          5,
+          1,
           1
         ]
       },
@@ -302,7 +307,8 @@
           "id": "bcc377b9ec064a7fb110033e805ef462"
         }
       ],
-      "listIndex": 5
+      "listIndex": 5,
+      "content": {}
     }
   ],
   "components": [
@@ -575,6 +581,12 @@
           1,
           0.2,
           1
+        ],
+        "uEditorTransform": [
+          1,
+          1,
+          0,
+          0
         ]
       },
       "textures": {
@@ -587,7 +599,8 @@
         "_Tex3": {
           "id": "080f94ebcff64c81a67f31187015697e"
         }
-      }
+      },
+      "ints": {}
     },
     {
       "id": "11f66680df4d4665884d16de06a52216",
@@ -613,6 +626,12 @@
           0.2,
           0.8,
           1
+        ],
+        "uEditorTransform": [
+          1,
+          1,
+          0,
+          0
         ]
       },
       "textures": {
@@ -625,7 +644,8 @@
         "_Tex3": {
           "id": "080f94ebcff64c81a67f31187015697e"
         }
-      }
+      },
+      "ints": {}
     },
     {
       "id": "992e087df9154793a34b66658f4be1ca",
@@ -650,6 +670,42 @@
           0,
           0,
           0,
+          1
+        ],
+        "uEditorTransform": [
+          1,
+          1,
+          0,
+          0
+        ]
+      },
+      "textures": {
+        "_MainTex": {
+          "id": "0622cbce2a724bec976e09988f192ee9"
+        },
+        "_Tex2": {
+          "id": "8f33267d4f8647acbc51f34d2fe1a428"
+        },
+        "_Tex3": {
+          "id": "080f94ebcff64c81a67f31187015697e"
+        }
+      },
+      "ints": {}
+    },
+    {
+      "id": "db5e35b6e4be4edbac59c402f218dfb0",
+      "dataType": 2,
+      "shader": {
+        "id": "90ed7bbc1c364b3097b502b4a0f13d5b"
+      },
+      "floats": {
+        "_Speed": 1
+      },
+      "vector4s": {
+        "_MainColor": [
+          1,
+          1,
+          1,
           1
         ]
       },
@@ -1521,6 +1577,42 @@
         3,
         2
       ]
+    },
+    {
+      "id": "eee1bee74243426e9dd9a5d0f7c85aa2",
+      "dataType": 8,
+      "vertices": [
+        -1,
+        1,
+        0,
+        -1,
+        -1,
+        0,
+        1,
+        1,
+        0,
+        1,
+        -1,
+        0
+      ],
+      "uvs": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        1,
+        1,
+        0
+      ],
+      "indices": [
+        0,
+        1,
+        2,
+        2,
+        1,
+        3
+      ]
     }
   ],
   "requires": [],
@@ -1528,12 +1620,28 @@
   "bins": [],
   "textures": [
     {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "https://mdn.alipayobjects.com/mars/afts/img/A*8ZhTRa_BlToAAAAAAAAAAAAADlB4AQ/original",
+        "type": 2
+      },
+      "keepImageSource": true,
+      "minFilter": 9729,
+      "magFilter": 9729,
       "id": "c8e75e0b46a44b9ca6e9c98b9b461f37",
       "dataType": 9,
       "source": 0,
       "flipY": true
     },
     {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "http://localhost:5173/src/assets/textures/trail.png",
+        "type": 2
+      },
+      "keepImageSource": true,
+      "minFilter": 9729,
+      "magFilter": 9729,
       "id": "0622cbce2a724bec976e09988f192ee9",
       "dataType": 9,
       "source": 1,
@@ -1542,6 +1650,14 @@
       "wrapT": 10497
     },
     {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "http://localhost:5173/src/assets/textures/ge.png",
+        "type": 2
+      },
+      "keepImageSource": true,
+      "minFilter": 9729,
+      "magFilter": 9729,
       "id": "05d2cdc5814b412aa69b1a5e794aeca8",
       "dataType": 9,
       "source": 2,
@@ -1550,12 +1666,28 @@
       "wrapT": 10497
     },
     {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original",
+        "type": 2
+      },
+      "keepImageSource": true,
+      "minFilter": 9729,
+      "magFilter": 9729,
       "id": "83f7b031365f481192873e908fd442a6",
       "dataType": 9,
       "source": 3,
       "flipY": true
     },
     {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "http://localhost:5173/src/assets/textures/trail2.png",
+        "type": 2
+      },
+      "keepImageSource": true,
+      "minFilter": 9729,
+      "magFilter": 9729,
       "id": "080f94ebcff64c81a67f31187015697e",
       "dataType": 9,
       "source": 4,
@@ -1564,6 +1696,14 @@
       "wrapT": 10497
     },
     {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "http://localhost:5173/src/assets/textures/trail3.png",
+        "type": 2
+      },
+      "keepImageSource": true,
+      "minFilter": 9729,
+      "magFilter": 9729,
       "id": "69c42f62abcb4962803df425a65b7281",
       "dataType": 9,
       "source": 5,
@@ -1572,6 +1712,14 @@
       "wrapT": 10497
     },
     {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "http://localhost:5173/src/assets/textures/trail5.png",
+        "type": 2
+      },
+      "keepImageSource": true,
+      "minFilter": 9729,
+      "magFilter": 9729,
       "id": "8f33267d4f8647acbc51f34d2fe1a428",
       "dataType": 9,
       "source": 6,
@@ -1580,6 +1728,14 @@
       "wrapT": 10497
     },
     {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "http://localhost:5173/src/assets/textures/ge-icon.png",
+        "type": 2
+      },
+      "keepImageSource": true,
+      "minFilter": 9729,
+      "magFilter": 9729,
       "id": "82d245433af641d48d670bace307a9fe",
       "dataType": 9,
       "source": 7,

@@ -43,9 +43,7 @@ export class Engine implements Disposable {
   static create: (gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
 
   clearResources () {
-    if (this.renderer.env !== PLAYER_OPTIONS_ENV_EDITOR) {
-      this.jsonSceneData = {};
-    }
+    this.jsonSceneData = {};
     this.deserializer.clearInstancePool();
   }
 
