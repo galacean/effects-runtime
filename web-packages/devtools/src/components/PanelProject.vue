@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { curDir, onFileDrop } from "../gui/project-gui";
+import { curDir, onFileDrop, onRootFolderSelect } from "../gui/project-gui";
 import { FSDirItem } from '@advjs/gui';
 import { watch } from 'vue';
 
@@ -10,8 +10,8 @@ const tabList = ref([
 ])
 
 const rootDir = ref<FSDirItem>()
-watch(rootDir, () => {
-  console.log(rootDir.value)
+watch(rootDir, async () => {
+  await onRootFolderSelect(rootDir.value!.handle);
 })
 </script>
 

@@ -1,19 +1,21 @@
-import type { Composition, EffectsObjectData, VFXItemData } from '@galacean/effects';
+import type { Composition, EffectsObjectData } from '@galacean/effects';
 import { DataType, EffectComponent, Player, TimelineComponent, VFXItem } from '@galacean/effects';
 import { G_QUAD, M_DUCK, S_TRAIL } from '@galacean/effects-assets';
-import json from '../assets/scenes/trail-demo2.scene.json';
+import demoJson from '../assets/scenes/trail-demo2.scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
-import { AssetDatabase, importAssets } from './asset-database';
+import { AssetDatabase } from './asset-database';
 
 export const treeGui = new TreeGui();
+export let assetDatabase: AssetDatabase;
 const inspectorGui = new InspectorGui();
 let input: Input;
 let orbitController: OrbitController;
 let composition: Composition;
 let player: Player;
+let json = demoJson;
 
 export async function initGEPlayer (canvas: HTMLCanvasElement) {
   player = new Player({ canvas, interactive: true, notifyTouch: true, env:'editor' });
@@ -26,6 +28,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   const engine = player.renderer.engine;
 
   engine.database = new AssetDatabase(engine);
+  assetDatabase = engine.database as AssetDatabase;
 
   engine.addEffectsObjectData(trailShaderData);
   engine.addEffectsObjectData(trailMaterialData);
@@ -137,6 +140,7 @@ async function loadJSONFile () {
     }
     const data = JSON.parse(reader.result);
 
+    json = data;
     player.destroyCurrentCompositions();
     composition = await player.loadScene(data);
     treeGui.setComposition(composition);
@@ -145,7 +149,7 @@ async function loadJSONFile () {
   reader.readAsText(file);
 }
 
-function saveScene (composition: Composition, json: any) {
+function buildProject (composition: Composition, json: any) {
   const deserializer = composition.getEngine().deserializer;
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
@@ -216,6 +220,90 @@ function saveScene (composition: Composition, json: any) {
         break;
       case DataType.Geometry:
         json.geometries.push(data);
+
+        break;
+      case DataType.Texture:
+        //@ts-expect-error
+        data.image = undefined;
+        json.textures.push(data);
+
+        break;
+      case DataType.VFXItemData:
+        json.items.push(data);
+
+        break;
+    }
+  }
+
+  json.compositions[0].items = [];
+  for (const item of json.items) {
+    json.compositions[0].items.push({ id:item.id });
+  }
+}
+
+function saveScene (composition: Composition, json: any) {
+  const deserializer = composition.getEngine().deserializer;
+  let serializedDatas: Record<string, EffectsObjectData> = {};
+
+  for (const item of composition.items) {
+    serializedDatas = {
+      ...serializedDatas,
+      ...deserializer.serializeEffectObject(item),
+    };
+    for (const component of item.components) {
+      if (component instanceof TimelineComponent) {
+        continue;
+      }
+      serializedDatas = {
+        ...serializedDatas,
+        ...deserializer.serializeEffectObject(component),
+      };
+    }
+  }
+
+  let effectsObjectDataMap: Record<string, EffectsObjectData> = {};
+
+  for (const data of json.components) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.geometries) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.materials) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.textures) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.items) {
+    effectsObjectDataMap[data.id] = data;
+  }
+
+  effectsObjectDataMap = {
+    ...effectsObjectDataMap,
+    ...serializedDatas,
+  };
+
+  json.components = [];
+  // json.geometries = [];
+  // json.materials = [];
+  json.textures = [];
+  json.items = [];
+  for (const data of Object.values(effectsObjectDataMap)) {
+    if (!data.id) {
+      continue;
+    }
+    switch (data.dataType) {
+      case DataType.EffectComponent:
+        json.components.push(data);
+
+        break;
+      case DataType.SpriteComponent:
+        json.components.push(data);
+
+        break;
+      case DataType.ParticleSystem:
+        json.components.push(data);
 
         break;
       case DataType.Texture:

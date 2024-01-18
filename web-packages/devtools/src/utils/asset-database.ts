@@ -152,7 +152,8 @@ export class AssetDatabase extends Database {
 
     // TODO 加入到场景资产 SceneData 中
 
-    // console.log('import ' + path);
+    // eslint-disable-next-line no-console
+    console.log('import ' + guid + ' : ' + path);
 
     fileReader.readAsText(file);
   }

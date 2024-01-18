@@ -8,6 +8,7 @@ import type { FSDirItem } from '@advjs/gui';
 //@ts-expect-error
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { ref } from 'vue';
+import { assetDatabase } from '../utils/ge';
 
 export const curDir = ref<FSDirItem>();
 
@@ -34,6 +35,17 @@ export async function onFileDrop (files: FSFileItem[]) {
   }
 
   return files;
+}
+
+export async function onRootFolderSelect (rootDirectoryHandle: FileSystemDirectoryHandle) {
+  assetDatabase.rootDirectoryHandle = rootDirectoryHandle;
+  if (rootDirectoryHandle.name !== 'assets') {
+    console.warn('请选择asset文件夹');
+
+    return;
+  }
+
+  await assetDatabase.importAllAssetsInFolder('assets');
 }
 
 export function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
@@ -155,17 +167,17 @@ async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
   const url = URL.createObjectURL(file);
   const modelDatas = await parseFBX(url);
 
-  let i = 0;
-
   for (const modelData of modelDatas) {
     const geometryData: GeometryData = {
       id: generateUuid(),
       dataType: DataType.Geometry,
-      ...modelData,
+      vertices: modelData.vertices,
+      uvs: modelData.uvs,
+      indices: modelData.indices,
     };
     const geometryAsset = JSON.stringify(createPackageData([geometryData], 'Geometry'), null, 2);
 
-    await saveFile(createJsonFile(geometryAsset, file.name + i++ + '.json'), curDirHandle);
+    await saveFile(createJsonFile(geometryAsset, modelData.name + '.json'), curDirHandle);
   }
 }
 
@@ -174,6 +186,7 @@ interface ModelData {
   vertices: number[],
   uvs: number[],
   indices: number[],
+  name: string,
 }
 
 async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
@@ -221,6 +234,7 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
             vertices,
             uvs,
             indices,
+            name:mesh.name,
           });
         }
       });
