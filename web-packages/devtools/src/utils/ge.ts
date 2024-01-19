@@ -31,29 +31,18 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   //@ts-expect-error
   composition = await player.loadScene(json);
 
-  const modelVFXItem = new VFXItem(engine);
+  // const modelVFXItem = new VFXItem(engine);
 
-  modelVFXItem.duration = 1000;
+  // modelVFXItem.duration = 1000;
 
-  composition.addItem(modelVFXItem);
-  createEffectVFXItem(composition, modelVFXItem);
-  createEffectVFXItem(composition, modelVFXItem);
-  createEffectVFXItem(composition, modelVFXItem);
-  createEffectVFXItem(composition, modelVFXItem);
-  createEffectVFXItem(composition, modelVFXItem);
-  createEffectVFXItem(composition, modelVFXItem);
-  createEffectVFXItem(composition, modelVFXItem);
-
-  // const effectItem = new VFXItem(engine);
-
-  // effectItem.duration = 1000;
-  // //@ts-expect-error
-  // effectItem.type = 'ECS';
-  // const effectComponent = effectItem.addComponent(EffectComponent);
-
-  // effectComponent.geometry = engine.deserializer.loadGUID(quadGeometryData.id);
-  // effectComponent.material = engine.deserializer.loadGUID(trailMaterialData.id);
-  // composition.addItem(effectItem);
+  // composition.addItem(modelVFXItem);
+  // createEffectVFXItem(composition, modelVFXItem);
+  // createEffectVFXItem(composition, modelVFXItem);
+  // createEffectVFXItem(composition, modelVFXItem);
+  // createEffectVFXItem(composition, modelVFXItem);
+  // createEffectVFXItem(composition, modelVFXItem);
+  // createEffectVFXItem(composition, modelVFXItem);
+  // createEffectVFXItem(composition, modelVFXItem);
 
   setInterval(() => {
     guiMainLoop();

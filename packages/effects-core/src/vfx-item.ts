@@ -560,7 +560,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.taggedProperties.duration = this.duration;
     this.taggedProperties.transform = this.transform.toData();
     this.taggedProperties.dataType = DataType.VFXItemData;
-    if (this.parent !== this.composition?.rootItem) {
+    if (this.parent?.name !== 'rootItem') {
       this.taggedProperties.parentId = this.parent?.guid;
     }
 

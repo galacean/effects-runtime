@@ -11,11 +11,12 @@ export class MenuGui {
     this.composition = composition;
   }
 
-  async createEffectItem (parent?: VFXItem<VFXItemContent>) {
+  async createEffectItem (name: string, geometryGuid: string, parent?: VFXItem<VFXItemContent>,) {
     const composition = this.composition;
     const engine = composition.getEngine();
     const effectItem = new VFXItem(engine);
 
+    effectItem.name = name;
     effectItem.duration = 1000;
     //@ts-expect-error
     effectItem.type = 'ECS';
@@ -24,7 +25,7 @@ export class MenuGui {
     const trailMaterialData = M_DUCK.exportObjects[0];
     const quadGeometryData = G_CUBE.exportObjects[0];
 
-    effectComponent.geometry = await engine.deserializer.loadGUIDAsync(quadGeometryData.id);
+    effectComponent.geometry = await engine.deserializer.loadGUIDAsync(geometryGuid);
     effectComponent.material = await engine.deserializer.loadGUIDAsync('f23adccff3694fd98a0b905c9698188a');
     composition.addItem(effectItem);
     if (parent) {
