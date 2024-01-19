@@ -107,7 +107,7 @@ export class GLShader extends Shader {
     const shaderData = this.taggedProperties as ShaderData;
 
     shaderData.dataType = DataType.Shader;
-    shaderData.id = this.instanceId;
+    shaderData.id = this.guid;
     shaderData.vertex = this.source.vertex;
     shaderData.fragment = this.source.fragment;
   }

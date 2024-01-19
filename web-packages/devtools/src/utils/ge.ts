@@ -1,4 +1,4 @@
-import type { Composition, EffectsObjectData } from '@galacean/effects';
+import type { Composition, EffectsObjectData, VFXItemConstructor } from '@galacean/effects';
 import { DataType, EffectComponent, Player, TimelineComponent, VFXItem } from '@galacean/effects';
 import { G_QUAD, M_DUCK, S_TRAIL } from '@galacean/effects-assets';
 import demoJson from '../assets/scenes/trail-demo.scene.json';
@@ -37,9 +37,13 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   //@ts-expect-error
   composition = await player.loadScene(json);
 
-  // createEffectVFXItem(composition);
-  // createEffectVFXItem(composition);
-  // createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
+  createEffectVFXItem(composition);
 
   // const effectItem = new VFXItem(engine);
 
@@ -63,7 +67,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   inputControllerUpdate();
 }
 
-function createEffectVFXItem (composition: Composition) {
+function createEffectVFXItem (composition: Composition, parent?: VFXItem<VFXItemConstructor>) {
   const engine = composition.getEngine();
   const effectItem = new VFXItem(engine);
 

@@ -59,7 +59,8 @@ export class Deserializer {
 
       return undefined as T;
     }
-    this.addInstance(guid, effectsObject);
+    effectsObject.setInstanceId(effectsObjectData.id);
+    this.addInstance(effectsObject);
     this.deserializeTaggedProperties(effectsObjectData, effectsObject.taggedProperties);
     effectsObject.fromData(effectsObject.taggedProperties as EffectsObjectData);
 
@@ -88,7 +89,7 @@ export class Deserializer {
         return undefined as T;
       }
 
-      this.addInstance(guid, effectsObject);
+      this.addInstance(effectsObject);
 
       return effectsObject as T;
     }
@@ -122,19 +123,20 @@ export class Deserializer {
 
       return undefined as T;
     }
-    this.addInstance(guid, effectsObject);
+    effectsObject.setInstanceId(effectsObjectData.id);
+    this.addInstance(effectsObject);
     await this.deserializeTaggedPropertiesAsync(effectsObjectData, effectsObject.taggedProperties);
     effectsObject.fromData(effectsObject.taggedProperties as EffectsObjectData);
 
     return effectsObject as T;
   }
 
-  addInstance (id: string, effectsObject: EffectsObject) {
-    this.engine.objectInstance[id] = effectsObject;
+  addInstance (effectsObject: EffectsObject) {
+    this.engine.addInstance(effectsObject);
   }
 
   getInstance (id: string) {
-    return this.engine.objectInstance[id];
+    return this.engine.getInstance(id);
   }
 
   clearInstancePool () {
@@ -155,21 +157,21 @@ export class Deserializer {
 
     // 依次序列化
     for (const effectsObject of Object.values(serializableMap)) {
-      if (!serializedDatas[effectsObject.instanceId]) {
-        serializedDatas[effectsObject.instanceId] = {};
+      if (!serializedDatas[effectsObject.getInstanceId()]) {
+        serializedDatas[effectsObject.getInstanceId()] = {};
       }
-      this.serializeTaggedProperties(effectsObject.taggedProperties, serializedDatas[effectsObject.instanceId]);
+      this.serializeTaggedProperties(effectsObject.taggedProperties, serializedDatas[effectsObject.getInstanceId()]);
     }
 
     return serializedDatas;
   }
 
   collectSerializableObject (effectsObject: EffectsObject, res: Record<string, EffectsObject>) {
-    if (res[effectsObject.instanceId]) {
+    if (res[effectsObject.getInstanceId()]) {
       return;
     }
     effectsObject.toData();
-    res[effectsObject.instanceId] = effectsObject;
+    res[effectsObject.getInstanceId()] = effectsObject;
     for (const value of Object.values(effectsObject.taggedProperties)) {
       if (value instanceof EffectsObject) {
         this.collectSerializableObject(value, res);
@@ -313,7 +315,7 @@ export class Deserializer {
       // TODO json 数据避免传 typedArray
     } else if (property instanceof EffectsObject) {
       // TODO 处理 EffectsObject 递归序列化
-      return { id: property.instanceId };
+      return { id: property.getInstanceId() };
     } else if (property instanceof Object) {
       const res: Record<string, any> = {};
 

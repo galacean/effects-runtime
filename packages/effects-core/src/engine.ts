@@ -31,10 +31,10 @@ export class Engine implements Disposable {
   protected renderPasses: RenderPass[] = [];
 
   constructor () {
-    this.createDefaultTexture();
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.deserializer = new Deserializer(this);
+    this.createDefaultTexture();
   }
 
   /**
@@ -53,6 +53,18 @@ export class Engine implements Disposable {
 
   findEffectsObjectData (uuid: string) {
     return this.jsonSceneData[uuid];
+  }
+
+  addInstance (effectsObject: EffectsObject) {
+    this.objectInstance[effectsObject.getInstanceId()] = effectsObject;
+  }
+
+  getInstance (id: string) {
+    return this.objectInstance[id];
+  }
+
+  removeInstance (id: string) {
+    delete this.objectInstance[id];
   }
 
   async addPackageDatas (scene: Scene) {

@@ -7,14 +7,25 @@ import type { Engine } from './engine';
  * @internal
  */
 export abstract class EffectsObject {
-  instanceId: string;
+  protected guid: string;
   taggedProperties: Record<string, any>;
 
   constructor (
     public engine: Engine,
   ) {
-    this.instanceId = generateUuid();
+    this.guid = generateUuid();
     this.taggedProperties = {};
+    this.engine.addInstance(this);
+  }
+
+  getInstanceId () {
+    return this.guid;
+  }
+
+  setInstanceId (id: string) {
+    this.engine.removeInstance(this.guid);
+    this.guid = id;
+    this.engine.addInstance(this);
   }
 
   toData () {}
@@ -27,7 +38,7 @@ export abstract class EffectsObject {
    */
   fromData (data: EffectsObjectData) {
     if (data.id) {
-      this.instanceId = data.id;
+      this.setInstanceId(data.id);
     }
   }
 

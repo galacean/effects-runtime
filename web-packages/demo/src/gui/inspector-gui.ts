@@ -78,7 +78,7 @@ export class InspectorGui {
                   const effectComponent = this.item.getComponent(RendererComponent);
 
                   if (effectComponent) {
-                    const guid = effectComponent.instanceId;
+                    const guid = effectComponent.getInstanceId();
 
                     (this.item.engine.jsonSceneData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent.taggedProperties);
@@ -98,7 +98,7 @@ export class InspectorGui {
                   const effectComponent = this.item.getComponent(EffectComponent);
 
                   if (effectComponent) {
-                    const guid = effectComponent.instanceId;
+                    const guid = effectComponent.getInstanceId();
 
                     (this.item.engine.jsonSceneData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent.taggedProperties);
@@ -246,9 +246,9 @@ export class InspectorGui {
             // 根据 image 生成纹理对象
             const texture = Texture.create(this.item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
 
-            texture.instanceId = assetUuid;
-            serializeObject.engine.deserializer.addInstance(texture.instanceId, texture);
-            serializeObject.serializedData.textures[uniformName] = { id: texture.instanceId };
+            texture.setInstanceId(assetUuid);
+            serializeObject.engine.deserializer.addInstance(texture);
+            serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
             serializeObject.applyModifiedProperties();
           },
         }, 'click').name(inspectorName);

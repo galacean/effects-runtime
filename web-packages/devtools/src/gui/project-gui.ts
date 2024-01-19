@@ -26,7 +26,7 @@ export async function onFileDrop (files: FSFileItem[]) {
     // fileItem.icon = ''
 
     if (file.type === 'application/json') {
-      importModelJson(file, curDirHandle);
+      importEAsset(file, curDirHandle);
     } else if (file.type === 'image/png') {
       importPng(file, curDirHandle);
     } else if (file.name.endsWith('.fbx')) {
@@ -97,45 +97,29 @@ function createJsonFile (json: string, fileName: string) {
   return newFile;
 }
 
-function modelJsonConverter (json: string): string {
-  const sourceJson = JSON.parse(json);
-  let vertices;
-  let uvs;
-  let indices;
-
-  for (const verticesData of sourceJson.vertices) {
-    if (verticesData.name === 'position_buffer') {
-      vertices = verticesData.values;
-    } else if (verticesData.name === 'texcoord_buffer') {
-      uvs = verticesData.values;
-    }
-  }
-  for (const data of sourceJson.connectivity) {
-    if (data.name === 'triangles') {
-      indices = data.indices;
-    }
-  }
-  const geometryData: GeometryData = { id: generateUuid(), dataType: DataType.Geometry };
-
-  geometryData.vertices = vertices;
-  geometryData.uvs = uvs;
-  geometryData.indices = indices;
-  const geometryAsset = createPackageData([geometryData]);
-
-  return JSON.stringify(geometryAsset, null, 2);
-}
-
-function importModelJson (file: File, curDirHandle: FileSystemDirectoryHandle) {
+function importEAsset (file: File, curDirHandle: FileSystemDirectoryHandle) {
   const reader = new FileReader();
 
   // 定义文件读取成功后的回调函数
   reader.onload = async (event: ProgressEvent<FileReader>) => {
   // event.target.result 包含文件的内容
     if (event.target) {
-      const fileContent = event.target.result;
-      const geometryAsset = modelJsonConverter(fileContent as string);
+      const fileContent = event.target.result as string;
+      const eAsset: EffectsPackageData = JSON.parse(fileContent);
 
-      await saveFile(createJsonFile(geometryAsset, file.name), curDirHandle);
+      eAsset.fileSummary.guid = generateUuid();
+      for (const data of eAsset.exportObjects) {
+        data.id = generateUuid();
+      }
+
+      let fileName = file.name;
+
+      const fileNames = await getAllFileNames(curDirHandle);
+
+      while (fileNames.has(fileName)) {
+        fileName = incrementFileName(fileName);
+      }
+      await saveFile(createJsonFile(JSON.stringify(eAsset, null, 2), fileName), curDirHandle);
     }
   };
 
@@ -146,6 +130,46 @@ function importModelJson (file: File, curDirHandle: FileSystemDirectoryHandle) {
 
   // 以文本格式读取文件
   reader.readAsText(file);
+}
+
+async function getAllFileNames (directoryHandle: FileSystemDirectoryHandle): Promise<Set<string>> {
+  const fileNames: Set<string> = new Set();
+
+  // 使用异步迭代器遍历目录句柄中的条目
+  //@ts-expect-error
+  for await (const [name, entry] of directoryHandle) {
+    // 如果条目是文件，将其名称添加到 fileNames 数组中
+    if (entry.kind === 'file') {
+      fileNames.add(name);
+    }
+  }
+
+  return fileNames;
+}
+
+function incrementFileName (fileName: string) {
+  // 正则表达式用于匹配文件名中的数字
+  const regex = /(.*?)(\((\d+)\))?.json$/;
+  const match = fileName.match(regex);
+
+  let increasedName = '';
+
+  if (match && match[1]) {
+    // 如果存在匹配的数字，则将该数字增加1
+    if (match[2]) {
+      const baseName = match[1];
+      const number = parseInt(match[3], 10) + 1;
+
+      increasedName = `${baseName}(${number}).json`;
+    } else {
+      // 没有数字，添加 (1) 到文件名
+      const baseName = match[1];
+
+      increasedName = `${baseName}(1).json`;
+    }
+  }
+
+  return increasedName;
 }
 
 function importPng (file: File, curDirHandle: FileSystemDirectoryHandle) {

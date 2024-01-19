@@ -71,12 +71,6 @@ export class CompositionComponent extends ItemBehaviour {
       // TODO spec 定义新类型后 as 移除
       const jsonScene = this.item.composition.compositionSourceManager.jsonScene!;
 
-      if (jsonScene.textures) {
-        for (let i = 0; i < jsonScene.textures.length; i++) {
-          this.item.engine.deserializer.addInstance(this.item.composition.textures[i].instanceId, this.item.composition.textures[i]);
-        }
-      }
-
       const itemProps = this.item.props.items ? this.item.props.items : [];
 
       for (let i = 0; i < itemProps.length; i++) {

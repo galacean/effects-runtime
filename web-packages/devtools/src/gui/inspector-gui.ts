@@ -73,8 +73,13 @@ export class InspectorGui {
                   const effectComponent = this.item.getComponent(RendererComponent);
 
                   if (effectComponent) {
-                    const guid = effectComponent.instanceId;
+                    const guid = effectComponent.getInstanceId();
                     const serializedData = effectComponent.engine.jsonSceneData;
+
+                    if (!serializedData[guid]) {
+                      effectComponent.toData();
+                      serializedData[guid] = effectComponent.engine.deserializer.serializeTaggedProperties(effectComponent.taggedProperties) as EffectsObjectData;
+                    }
 
                     (serializedData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(serializedData[guid], effectComponent.taggedProperties);
@@ -94,8 +99,13 @@ export class InspectorGui {
                   const effectComponent = this.item.getComponent(EffectComponent);
 
                   if (effectComponent) {
-                    const guid = effectComponent.instanceId;
+                    const guid = effectComponent.getInstanceId();
                     const serializedData = effectComponent.engine.jsonSceneData;
+
+                    if (!serializedData[guid]) {
+                      effectComponent.toData();
+                      serializedData[guid] = effectComponent.engine.deserializer.serializeTaggedProperties(effectComponent.taggedProperties) as EffectsObjectData;
+                    }
 
                     (serializedData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
                     this.item.engine.deserializer.deserializeTaggedProperties(serializedData[guid], effectComponent.taggedProperties);
@@ -210,14 +220,14 @@ export class InspectorGui {
             //@ts-expect-error
             const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
             const file = await fileHandle[0].getFile();
-            const assetUuid = generateUuid();
+            const assetGuid = generateUuid();
 
             // 生成纹理资产对象
             const reader = new FileReader();
 
             reader.onload = async function (e) {
               const result = e.target?.result;
-              const textureData = { id: assetUuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+              const textureData = { id: assetGuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
 
               serializeObject.engine.addEffectsObjectData(textureData);
             };
@@ -243,9 +253,9 @@ export class InspectorGui {
             // 根据 image 生成纹理对象
             const texture = Texture.create(this.item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
 
-            texture.instanceId = assetUuid;
-            serializeObject.engine.deserializer.addInstance(texture.instanceId, texture);
-            serializeObject.serializedData.textures[uniformName] = { id: texture.instanceId };
+            texture.setInstanceId(assetGuid);
+            serializeObject.engine.deserializer.addInstance(texture);
+            serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
             serializeObject.applyModifiedProperties();
           },
         }, 'click').name(inspectorName);

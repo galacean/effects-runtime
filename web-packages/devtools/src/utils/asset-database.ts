@@ -41,7 +41,7 @@ export class AssetDatabase extends Database {
       effectsPackage = loadedPackage;
     }
     for (const effectsObject of effectsPackage.exportObjects) {
-      if (effectsObject.instanceId === guid) {
+      if (effectsObject.getInstanceId() === guid) {
         return effectsObject;
       }
     }
@@ -93,7 +93,11 @@ export class AssetDatabase extends Database {
 
   async saveAssets () {
     for (const dirtyPackageGuid of this.dirtyPackageSet) {
-      const effectsPackage = this.effectsPackages[dirtyPackageGuid];
+      let effectsPackage = this.effectsPackages[dirtyPackageGuid];
+
+      if (!effectsPackage) {
+        effectsPackage = (await this.loadPackage(this.GUIDToAssetPath(dirtyPackageGuid)))!;
+      }
 
       effectsPackage.toData();
       const assetData = this.engine.deserializer.serializeTaggedProperties(effectsPackage.taggedProperties) as EffectsPackageData;
@@ -206,7 +210,7 @@ export class AssetDatabase extends Database {
   }
 
   setDirty (object: EffectsObject) {
-    const packageGuid = this.objectToPackageGuidMap[object.instanceId];
+    const packageGuid = this.objectToPackageGuidMap[object.getInstanceId()];
 
     if (!packageGuid) {
       return;
