@@ -6,7 +6,7 @@ export class AssetDatabase extends Database {
   engine: Engine;
   rootDirectoryHandle: FileSystemDirectoryHandle;
 
-  readonly effectsPackageDatas: Record<string, EffectsPackageData> = {}; // TODO 增加达到存储上限，自动清除缓存
+  // readonly effectsPackageDatas: Record<string, EffectsPackageData> = {}; // TODO 增加达到存储上限，自动清除缓存
   readonly effectsPackages: Record<string, EffectsPackage> = {}; // TODO 暂时无法使用，场景的对象会在结束后销毁，导致无法缓存
   readonly packageGuidToPathMap: Record<string, string> = {};
   readonly pathToPackageGuidMap: Record<string, string> = {};
@@ -48,33 +48,25 @@ export class AssetDatabase extends Database {
   }
 
   async loadPackage (path: string) {
-    let packageData: EffectsPackageData;
+    const fileHandle = await this.getFileHandle(path);
 
-    if (this.pathToPackageGuidMap[path]) {
-      packageData = this.effectsPackageDatas[this.pathToPackageGuidMap[path]];
-    } else {
-      const fileHandle = await this.getFileHandle(path);
+    if (!fileHandle) {
+      console.warn('未找到资产 ' + path);
 
-      if (!fileHandle) {
-        console.warn('未找到资产 ' + path);
-
-        return;
-      }
-      const file = await fileHandle.getFile();
-      let res: string;
-
-      try {
-        res = await readFileAsText(file);
-      } catch (error) {
-        console.error('读取文件出错:', error);
-
-        return;
-      }
-      packageData = JSON.parse(res) as EffectsPackageData;
+      return;
     }
+    const file = await fileHandle.getFile();
+    let res: string;
 
+    try {
+      res = await readFileAsText(file);
+    } catch (error) {
+      console.error('读取文件出错:', error);
+
+      return;
+    }
+    const packageData = JSON.parse(res) as EffectsPackageData;
     const guid = packageData.fileSummary.guid;
-
     const effectsPackage = new EffectsPackage(this.engine);
 
     this.effectsPackages[guid] = effectsPackage;
@@ -161,7 +153,6 @@ export class AssetDatabase extends Database {
     // packageData.id = undefined;
     const guid = packageData.fileSummary.guid;
 
-    this.effectsPackageDatas[guid] = packageData;
     this.packageGuidToPathMap[guid] = path;
     this.pathToPackageGuidMap[path] = guid;
 

@@ -1,4 +1,4 @@
-import type { Composition, EffectsObjectData, VFXItemConstructor } from '@galacean/effects';
+import type { Composition, EffectsObjectData, VFXItemConstructor, VFXItemContent } from '@galacean/effects';
 import { DataType, EffectComponent, Player, TimelineComponent, VFXItem } from '@galacean/effects';
 import { G_QUAD, M_DUCK, S_TRAIL } from '@galacean/effects-assets';
 import demoJson from '../assets/scenes/trail-demo.scene.json';
@@ -21,29 +21,26 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   player = new Player({ canvas, interactive: true, notifyTouch: true, env:'editor' });
   player.ticker.setFPS(120);
 
-  const trailShaderData = S_TRAIL.exportObjects[0];
-  const trailMaterialData = M_DUCK.exportObjects[0];
-  const quadGeometryData = G_QUAD.exportObjects[0];
-
   const engine = player.renderer.engine;
 
   engine.database = new AssetDatabase(engine);
   assetDatabase = engine.database as AssetDatabase;
 
-  engine.addEffectsObjectData(trailShaderData);
-  engine.addEffectsObjectData(trailMaterialData);
-  engine.addEffectsObjectData(quadGeometryData);
-
   //@ts-expect-error
   composition = await player.loadScene(json);
 
-  createEffectVFXItem(composition);
-  createEffectVFXItem(composition);
-  createEffectVFXItem(composition);
-  createEffectVFXItem(composition);
-  createEffectVFXItem(composition);
-  createEffectVFXItem(composition);
-  createEffectVFXItem(composition);
+  const modelVFXItem = new VFXItem(engine);
+
+  modelVFXItem.duration = 1000;
+
+  composition.addItem(modelVFXItem);
+  createEffectVFXItem(composition, modelVFXItem);
+  createEffectVFXItem(composition, modelVFXItem);
+  createEffectVFXItem(composition, modelVFXItem);
+  createEffectVFXItem(composition, modelVFXItem);
+  createEffectVFXItem(composition, modelVFXItem);
+  createEffectVFXItem(composition, modelVFXItem);
+  createEffectVFXItem(composition, modelVFXItem);
 
   // const effectItem = new VFXItem(engine);
 
@@ -67,7 +64,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   inputControllerUpdate();
 }
 
-function createEffectVFXItem (composition: Composition, parent?: VFXItem<VFXItemConstructor>) {
+function createEffectVFXItem (composition: Composition, parent?: VFXItem<VFXItemContent>) {
   const engine = composition.getEngine();
   const effectItem = new VFXItem(engine);
 
@@ -76,13 +73,17 @@ function createEffectVFXItem (composition: Composition, parent?: VFXItem<VFXItem
   effectItem.type = 'ECS';
   const effectComponent = effectItem.addComponent(EffectComponent);
 
-  const trailShaderData = S_TRAIL.exportObjects[0];
   const trailMaterialData = M_DUCK.exportObjects[0];
   const quadGeometryData = G_QUAD.exportObjects[0];
 
   effectComponent.geometry = engine.deserializer.loadGUID(quadGeometryData.id);
   effectComponent.material = engine.deserializer.loadGUID(trailMaterialData.id);
   composition.addItem(effectItem);
+  if (parent) {
+    effectItem.setParent(parent);
+  }
+
+  return effectItem;
 }
 
 function guiMainLoop () {

@@ -560,6 +560,9 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.taggedProperties.duration = this.duration;
     this.taggedProperties.transform = this.transform.toData();
     this.taggedProperties.dataType = DataType.VFXItemData;
+    if (this.parent !== this.composition?.rootItem) {
+      this.taggedProperties.parentId = this.parent?.guid;
+    }
 
     // TODO 统一 sprite 等其他组件的序列化逻辑
     if (!this.taggedProperties.components) {
