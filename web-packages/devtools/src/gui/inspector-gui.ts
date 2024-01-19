@@ -1,6 +1,7 @@
-import type { EffectComponentData, EffectsObject, EffectsObjectData, Engine, Material, ShaderData } from '@galacean/effects';
+import type { EffectComponentData, EffectsObject, EffectsObjectData, EffectsPackageData, Engine, Material, ShaderData, TextureSourceOptions } from '@galacean/effects';
 import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, generateUuid, DataType } from '@galacean/effects';
 import { assetDatabase } from '../utils';
+import { base64ToFile } from './project-gui';
 
 export class InspectorGui {
   gui: any;
@@ -215,48 +216,52 @@ export class InspectorGui {
           serializeObject.applyModifiedProperties();
         }));
       } else if (type === '2D') {
+        const item = this.item;
         const controller = this.gui.add({
           click: async () => {
             //@ts-expect-error
             const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
             const file = await fileHandle[0].getFile();
-            const assetGuid = generateUuid();
 
             // 生成纹理资产对象
             const reader = new FileReader();
 
             reader.onload = async function (e) {
-              const result = e.target?.result;
-              const textureData = { id: assetGuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+              const result = e.target?.result as string;
+              // const textureData = { id: assetGuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+              const textureData = (JSON.parse(result) as EffectsPackageData).exportObjects[0];
 
               serializeObject.engine.addEffectsObjectData(textureData);
+
+              // @ts-expect-error
+              const imageFile = base64ToFile(textureData.source);
+
+              // 加载 image
+              const image = await loadImage(imageFile);
+
+              image.width = 50;
+              image.height = 50;
+              image.id = inspectorName;
+              const lastImage = document.getElementById(inspectorName);
+
+              if (lastImage) {
+                controller.domElement.removeChild(lastImage);
+              }
+              controller.domElement.appendChild(image);
+
+              // 根据 image 生成纹理对象
+              const texture = Texture.create(item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
+
+              texture.setInstanceId(textureData.id);
+              serializeObject.engine.deserializer.addInstance(texture);
+              serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
+              serializeObject.applyModifiedProperties();
             };
             reader.onerror = event => {
               console.error('文件读取出错:', reader.error);
             };
 
-            reader.readAsDataURL(file);
-
-            // 加载 image
-            const image = await loadImage(file);
-
-            image.width = 50;
-            image.height = 50;
-            image.id = inspectorName;
-            const lastImage = document.getElementById(inspectorName);
-
-            if (lastImage) {
-              controller.domElement.removeChild(lastImage);
-            }
-            controller.domElement.appendChild(image);
-
-            // 根据 image 生成纹理对象
-            const texture = Texture.create(this.item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
-
-            texture.setInstanceId(assetGuid);
-            serializeObject.engine.deserializer.addInstance(texture);
-            serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
-            serializeObject.applyModifiedProperties();
+            reader.readAsText(file);
           },
         }, 'click').name(inspectorName);
       }
