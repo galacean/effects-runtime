@@ -1,6 +1,7 @@
 import type { EffectsObject, Engine } from '@galacean/effects';
-import { Database, type EffectsPackageData } from '@galacean/effects';
+import { Database, loadImage, type EffectsPackageData } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
+import { base64ToFile } from '../gui/project-gui';
 
 export class AssetDatabase extends Database {
   engine: Engine;
@@ -67,20 +68,38 @@ export class AssetDatabase extends Database {
     }
     const packageData = JSON.parse(res) as EffectsPackageData;
     const guid = packageData.fileSummary.guid;
-    const effectsPackage = new EffectsPackage(this.engine);
 
-    this.effectsPackages[guid] = effectsPackage;
-    effectsPackage.fileSummary = packageData.fileSummary;
+    // TODO 纹理 image 特殊逻辑，待移除
+    if (packageData.fileSummary.assetType === 'Texture') {
+      await this.convertImageData(packageData);
+    }
 
     for (const objectData of packageData.exportObjects) {
       this.engine.addEffectsObjectData(objectData);
     }
 
+    const effectsPackage = new EffectsPackage(this.engine);
+
+    this.effectsPackages[guid] = effectsPackage;
+    effectsPackage.fileSummary = packageData.fileSummary;
     for (const objectData of packageData.exportObjects) {
       effectsPackage.exportObjects.push(this.engine.deserializer.loadGUID(objectData.id));
     }
 
     return effectsPackage;
+  }
+
+  async convertImageData (packageData: EffectsPackageData) {
+    const textureData = packageData.exportObjects[0];
+
+    //@ts-expect-error
+    const imageFile = base64ToFile(textureData.source);
+
+    // 加载 image
+    const image = await loadImage(imageFile);
+
+    //@ts-expect-error
+    textureData.image = image;
   }
 
   async saveAssets () {

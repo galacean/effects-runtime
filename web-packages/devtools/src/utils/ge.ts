@@ -7,8 +7,10 @@ import { InspectorGui } from '../gui/inspector-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
 import { AssetDatabase } from './asset-database';
+import { MenuGui } from '../gui/meun-gui';
 
 export const treeGui = new TreeGui();
+export const menuGui = new MenuGui();
 export let assetDatabase: AssetDatabase;
 const inspectorGui = new InspectorGui();
 let input: Input;
@@ -58,6 +60,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   }, 100);
 
   treeGui.setComposition(composition);
+  menuGui.setComposition(composition);
   input = new Input(canvas);
   input.startup();
   orbitController = new OrbitController(composition.camera, input);

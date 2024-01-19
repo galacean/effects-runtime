@@ -41,7 +41,7 @@ export class TreeGui {
     const treeData: any = {};
 
     treeData.name = item.name;
-    treeData.id = item.id;
+    treeData.id = item.getInstanceId();
     treeData.children = [];
     treeData.item = item;
     if (oldTreeData) {
@@ -52,7 +52,7 @@ export class TreeGui {
 
       if (oldTreeData && oldTreeData.children) {
         for (const childData of oldTreeData.children) {
-          if (childData.id === child.id) {
+          if (childData.id === child.getInstanceId()) {
             childOldTreeData = childData;
           }
         }

@@ -68,7 +68,7 @@ export class InspectorGui {
         if (component instanceof EffectComponent) {
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: any) => {
+              await selectJsonFile(async (data: any) => {
                 for (const effectsObjectData of data.exportObjects) {
                   this.item.engine.addEffectsObjectData(effectsObjectData);
                   const effectComponent = this.item.getComponent(RendererComponent);
@@ -83,7 +83,7 @@ export class InspectorGui {
                     }
 
                     (serializedData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
-                    this.item.engine.deserializer.deserializeTaggedProperties(serializedData[guid], effectComponent.taggedProperties);
+                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent.taggedProperties);
                     effectComponent.fromData(effectComponent.taggedProperties);
                   }
                 }
@@ -94,7 +94,7 @@ export class InspectorGui {
 
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: any) => {
+              await selectJsonFile(async (data: any) => {
                 for (const effectsObjectData of data.exportObjects) {
                   this.item.engine.addEffectsObjectData(effectsObjectData);
                   const effectComponent = this.item.getComponent(EffectComponent);
@@ -109,7 +109,7 @@ export class InspectorGui {
                     }
 
                     (serializedData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
-                    this.item.engine.deserializer.deserializeTaggedProperties(serializedData[guid], effectComponent.taggedProperties);
+                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent.taggedProperties);
                     effectComponent.fromData(effectComponent.taggedProperties);
                   }
                 }
@@ -294,19 +294,19 @@ export class InspectorGui {
   }
 }
 
-async function selectJsonFile (callback: (data: any) => void) {
+async function selectJsonFile (callback: (data: any) => Promise<void>) {
   //@ts-expect-error
   const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
   const file = await fileHandle[0].getFile();
   const reader = new FileReader();
 
-  reader.onload = () => {
+  reader.onload = async () => {
     if (typeof reader.result !== 'string') {
       return;
     }
     const data = JSON.parse(reader.result);
 
-    callback(data);
+    await callback(data);
   };
   reader.readAsText(file);
 }
