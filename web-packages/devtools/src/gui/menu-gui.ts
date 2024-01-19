@@ -25,7 +25,7 @@ export class MenuGui {
     const quadGeometryData = G_CUBE.exportObjects[0];
 
     effectComponent.geometry = await engine.deserializer.loadGUIDAsync(quadGeometryData.id);
-    effectComponent.material = await engine.deserializer.loadGUIDAsync(trailMaterialData.id);
+    effectComponent.material = await engine.deserializer.loadGUIDAsync('f23adccff3694fd98a0b905c9698188a');
     composition.addItem(effectItem);
     if (parent) {
       effectItem.setParent(parent);

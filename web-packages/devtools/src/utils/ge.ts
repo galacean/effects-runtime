@@ -7,7 +7,7 @@ import { InspectorGui } from '../gui/inspector-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
 import { AssetDatabase } from './asset-database';
-import { MenuGui } from '../gui/meun-gui';
+import { MenuGui } from '../gui/menu-gui';
 
 export const treeGui = new TreeGui();
 export const menuGui = new MenuGui();
