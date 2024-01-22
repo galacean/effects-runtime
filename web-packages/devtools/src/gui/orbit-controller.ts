@@ -21,9 +21,7 @@ export class OrbitController {
   yAxis: Vector3;
   zAxis: Vector3;
 
-  constructor (camera: Camera, input: Input) {
-    this.setup(camera, input);
-  }
+  constructor () {}
 
   setup (camera: Camera, input: Input) {
     this.focusPosition = new Vector3(0, 0, 0);

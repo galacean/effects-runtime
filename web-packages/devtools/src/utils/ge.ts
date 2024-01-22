@@ -13,8 +13,9 @@ export const treeGui = new TreeGui();
 export const menuGui = new MenuGui();
 export let assetDatabase: AssetDatabase;
 const inspectorGui = new InspectorGui();
+const orbitController = new OrbitController();
+
 let input: Input;
-let orbitController: OrbitController;
 let composition: Composition;
 let player: Player;
 let json = demoJson;
@@ -28,18 +29,14 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   engine.database = new AssetDatabase(engine);
   assetDatabase = engine.database as AssetDatabase;
 
-  //@ts-expect-error
-  composition = await player.loadScene(json);
+  input = new Input(canvas);
+  input.startup();
+  await loadJson(json);
 
   setInterval(() => {
     guiMainLoop();
   }, 100);
 
-  treeGui.setComposition(composition);
-  menuGui.setComposition(composition);
-  input = new Input(canvas);
-  input.startup();
-  orbitController = new OrbitController(composition.camera, input);
   inputControllerUpdate();
 }
 
@@ -112,6 +109,7 @@ export async function loadJson (data: any) {
   player.destroyCurrentCompositions();
   composition = await player.loadScene(data);
   treeGui.setComposition(composition);
+  menuGui.setComposition(composition);
   orbitController.setup(composition.camera, input);
 }
 
