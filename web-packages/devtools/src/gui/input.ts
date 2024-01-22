@@ -157,21 +157,11 @@ export class Input {
   };
 
   private onKeyDown = (event: KeyboardEvent) => {
-    switch (event.key) {
-      case 'f':
-        this.keyStatusMap[KeyCode.F] = KeyStatus.KeyDown;
-
-        break;
-    }
+    this.keyStatusMap[event.keyCode] = KeyStatus.KeyDown;
   };
 
   private onKeyUp = (event: KeyboardEvent) => {
-    switch (event.key) {
-      case 'f':
-        this.keyStatusMap[KeyCode.F] = KeyStatus.KeyUp;
-
-        break;
-    }
+    this.keyStatusMap[event.keyCode] = KeyStatus.KeyUp;
   };
 }
 
