@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { AGUILayoutType } from "@advjs/gui";
+import { AGUILayoutType, toastRef } from "@advjs/gui";
 
 const defaultLayout: AGUILayoutType = {
   name: 'root',
@@ -48,7 +48,7 @@ const defaultLayout: AGUILayoutType = {
   <main class="h-screen w-screen">
     <AGUILayout :layout="defaultLayout">
       <template #right>
-        <!-- <PanelInspector /> -->
+        <PanelInspector />
       </template>
 
       <template #hierarchy>
@@ -63,5 +63,7 @@ const defaultLayout: AGUILayoutType = {
         <PanelProject />
       </template>
     </AGUILayout>
+
+    <AGUIToast ref="toastRef" />
   </main>
 </template>
