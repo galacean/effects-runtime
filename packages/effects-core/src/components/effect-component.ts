@@ -138,14 +138,14 @@ export class EffectComponent extends RendererComponent implements Disposable {
       return;
     }
 
-    if (options?.geometries !== DestroyOptions.keep) {
-      this.geometry.dispose();
-    }
-    const materialDestroyOption = options?.material;
+    // if (options?.geometries !== DestroyOptions.keep) {
+    //   this.geometry.dispose();
+    // }
+    // const materialDestroyOption = options?.material;
 
-    if (materialDestroyOption !== DestroyOptions.keep) {
-      this.material.dispose(materialDestroyOption);
-    }
+    // if (materialDestroyOption !== DestroyOptions.keep) {
+    //   this.material.dispose(materialDestroyOption);
+    // }
     this.destroyed = true;
 
     super.dispose();

@@ -17,7 +17,7 @@ import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
 import { Transform } from './transform';
 import type { Disposable, LostHandler } from './utils';
-import { assertExist, noop } from './utils';
+import { assertExist, noop, removeItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import { Deserializer } from './deserializer';
@@ -891,6 +891,7 @@ export class Composition implements Disposable, LostHandler {
       // this.content.removeItem(item);
       // 预合成中的元素移除
       // this.refContent.forEach(content => content.removeItem(item));
+      removeItem(this.items, item);
       this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, item));
     }
   }

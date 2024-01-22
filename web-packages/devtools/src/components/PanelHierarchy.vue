@@ -33,6 +33,7 @@ const menuAction5 = document.getElementById('menuAction5')!;
 const menuAction6 = document.getElementById('menuAction6')!;
 const menuAction7 = document.getElementById('menuAction7')!;
 const menuAction8 = document.getElementById('menuAction8')!;
+const menuAction9 = document.getElementById('menuAction9')!;
 
 
 menuAction1.addEventListener('click', async function () {
@@ -75,6 +76,11 @@ menuAction8.addEventListener('click', async function () {
   contextMenu.style.display = 'none'; // 隐藏上下文菜单
 });
 
+menuAction9.addEventListener('click', async function () {
+  treeGui.activeItem.dispose();
+  contextMenu.style.display = 'none'; // 隐藏上下文菜单
+});
+
 });
 
 
@@ -92,6 +98,7 @@ menuAction8.addEventListener('click', async function () {
     <div class="context-menu-item" id="menuAction6">Torus</div>
     <div class="context-menu-item" id="menuAction7">Grid</div>
     <div class="context-menu-item" id="menuAction8">Monkey</div>
+    <div class="context-menu-item" id="menuAction9">Delete</div>
   </div>
 </template>
 

@@ -31,19 +31,6 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   //@ts-expect-error
   composition = await player.loadScene(json);
 
-  // const modelVFXItem = new VFXItem(engine);
-
-  // modelVFXItem.duration = 1000;
-
-  // composition.addItem(modelVFXItem);
-  // createEffectVFXItem(composition, modelVFXItem);
-  // createEffectVFXItem(composition, modelVFXItem);
-  // createEffectVFXItem(composition, modelVFXItem);
-  // createEffectVFXItem(composition, modelVFXItem);
-  // createEffectVFXItem(composition, modelVFXItem);
-  // createEffectVFXItem(composition, modelVFXItem);
-  // createEffectVFXItem(composition, modelVFXItem);
-
   setInterval(() => {
     guiMainLoop();
   }, 100);
@@ -54,28 +41,6 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   input.startup();
   orbitController = new OrbitController(composition.camera, input);
   inputControllerUpdate();
-}
-
-function createEffectVFXItem (composition: Composition, parent?: VFXItem<VFXItemContent>) {
-  const engine = composition.getEngine();
-  const effectItem = new VFXItem(engine);
-
-  effectItem.duration = 1000;
-  //@ts-expect-error
-  effectItem.type = 'ECS';
-  const effectComponent = effectItem.addComponent(EffectComponent);
-
-  const trailMaterialData = M_DUCK.exportObjects[0];
-  const quadGeometryData = G_QUAD.exportObjects[0];
-
-  effectComponent.geometry = engine.deserializer.loadGUID(quadGeometryData.id);
-  effectComponent.material = engine.deserializer.loadGUID(trailMaterialData.id);
-  composition.addItem(effectItem);
-  if (parent) {
-    effectItem.setParent(parent);
-  }
-
-  return effectItem;
 }
 
 function guiMainLoop () {
@@ -276,9 +241,9 @@ async function saveScene (composition: Composition, json: any) {
   for (const data of json.textures) {
     effectsObjectDataMap[data.id] = data;
   }
-  for (const data of json.items) {
-    effectsObjectDataMap[data.id] = data;
-  }
+  // for (const data of json.items) {
+  //   effectsObjectDataMap[data.id] = data;
+  // }
 
   effectsObjectDataMap = {
     ...effectsObjectDataMap,
@@ -314,7 +279,13 @@ async function saveScene (composition: Composition, json: any) {
 
         break;
       case DataType.VFXItemData:
-        json.items.push(data);
+        for (const item of composition.items) {
+          if (item.getInstanceId() === data.id) {
+            json.items.push(data);
+
+            break;
+          }
+        }
 
         break;
     }
