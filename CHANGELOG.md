@@ -6,6 +6,12 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.1.7
+
+`2024-01-22`
+
+- Fix: Fixed rendering order issue in pre-composition. [#132](https://github.com/galacean/effects-runtime/pull/132) @RGCHN
+
 ## 1.1.6
 
 `2024-01-16`
