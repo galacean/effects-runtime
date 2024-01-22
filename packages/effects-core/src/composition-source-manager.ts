@@ -168,7 +168,7 @@ export class CompositionSourceManager implements Disposable {
 
           // 处理预合成的渲染顺序
           if (option.type === spec.ItemType.composition) {
-            const maskRef = ++this.mask;
+            this.mask++;
             const refId = (item.content as spec.CompositionContent).options.refId;
 
             if (!this.refCompositions.get(refId)) {
@@ -181,7 +181,6 @@ export class CompositionSourceManager implements Disposable {
             }
 
             ref.items.forEach((item: Record<string, any>) => {
-              item.listIndex = listOrder++;
               this.processMask(item.content);
             });
             option.items = ref.items;
