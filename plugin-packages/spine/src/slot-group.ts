@@ -26,12 +26,11 @@ export interface SlotGroupProps {
   renderer: {},
   engine: Engine,
 }
-
 export class SlotGroup {
   /**
    * 根据绘制顺序排列的插槽数组
    */
-  private slotList: Slot[] = [];
+  private readonly slotList: Slot[] = [];
   /**
    * 顶点数据
    */
@@ -47,10 +46,6 @@ export class SlotGroup {
    * 世界变换矩阵
    */
   private wm = math.Matrix4.fromIdentity();
-  /**
-   * 当前环境，用于 editor
-   */
-  private readonly env: string;
 
   meshName: string;
   listIndex: number;
