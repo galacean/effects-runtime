@@ -276,17 +276,16 @@ async function saveScene (composition: Composition, json: any) {
         json.textures.push(data);
 
         break;
-      case DataType.VFXItemData:
-        for (const item of composition.items) {
-          if (item.getInstanceId() === data.id) {
-            json.items.push(data);
-
-            break;
-          }
-        }
-
-        break;
     }
+  }
+
+  for (const item of composition.items) {
+    const data = effectsObjectDataMap[item.getInstanceId()];
+
+    if (!data) {
+      continue;
+    }
+    json.items.push(data);
   }
 
   json.compositions[0].items = [];
