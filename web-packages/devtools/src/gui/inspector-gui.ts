@@ -48,28 +48,46 @@ export class InspectorGui {
         continue;
       }
 
-      if (typeof serializedData[key] === 'number') {
-        properties.push({
-          type: 'number',
-          name: key,
-          value });
-      } else if (this.checkVector3(value)) {
-        properties.push({
-          type: 'vector',
-          name: key,
-          value });
-      } else if (this.checkGUID(value)) {
-        properties.push({
-          type: 'file',
-          name: key,
-          placeholder: 'Placeholder',
-          onFileChange (file) {
-            // eslint-disable-next-line no-console
-            console.log(file);
-          },
-        });
+      this.addGuiProperty(properties, key, value);
+    }
+  }
+
+  addGuiProperty (guiProperties: AGUIPropertyProps[], key: string, value: any) {
+    if (typeof value === 'number') {
+      guiProperties.push({
+        type: 'number',
+        name: key,
+        value });
+    } else if (typeof value === 'boolean') {
+      guiProperties.push({
+        type: 'checkbox',
+        name: key,
+        value });
+    } else if (this.checkVector3(value)) {
+      guiProperties.push({
+        type: 'vector',
+        name: key,
+        value });
+    } else if (this.checkGUID(value)) {
+      guiProperties.push({
+        type: 'file',
+        name: key,
+        placeholder: 'Placeholder',
+        onFileChange (file) {
+          // eslint-disable-next-line no-console
+          console.log(file);
+        },
+      });
+    } else if (value instanceof Array) {
+      for (let i = 0;i < value.length;i++) {
+        this.addGuiProperty(guiProperties, key + i, value[i]);
+      }
+    } else if (value instanceof Object) {
+      for (const key of Object.keys(value)) {
+        this.addGuiProperty(guiProperties, key, value[key]);
       }
     }
+
   }
 
   checkVector3 (property: Record<string, any>) {
@@ -100,7 +118,9 @@ export class InspectorGui {
     // transformData.position = [components.value[0].properties[0].value!.x, components.value[0].properties[0].value!.y, components.value[0].properties[0].value!.z];
     // this.item.transform.fromData(transformData);
     // const position = components.value[0].properties[0].value;
-    this.serializedObjects[0].applyModifiedProperties();
+    for (const serializedObject of this.serializedObjects) {
+      serializedObject.applyModifiedProperties();
+    }
   }
 }
 

@@ -12,7 +12,7 @@ export class RendererComponent extends Component {
   materials: Material[] = [];
 
   protected _priority: number;
-  private _enabled = true;
+  protected _enabled = true;
 
   get priority (): number {
     return this._priority;

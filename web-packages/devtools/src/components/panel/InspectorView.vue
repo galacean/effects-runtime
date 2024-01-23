@@ -195,7 +195,7 @@ const vector3 = ref<Vector3>({
 <template>
   <AGUIAccordion type="multiple" :default-value="defaultOpenItems">
     <AGUIPropertiesPanel v-for="item in components" :key="item.title" :item="item" />
-    <AGUIAccordionItem
+    <!-- <AGUIAccordionItem
       :item="{
         icon: 'i-ri-cloud-line',
         title: 'test',
@@ -216,6 +216,6 @@ const vector3 = ref<Vector3>({
           <AGUICheckbox disabled />
         </AGUIFormItem>
       </AGUIForm>
-    </AGUIAccordionItem>
+    </AGUIAccordionItem> -->
   </AGUIAccordion>
 </template>

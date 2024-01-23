@@ -112,9 +112,8 @@ export class EffectComponent extends RendererComponent implements Disposable {
 
   override fromData (data: any): void {
     super.fromData(data);
-    const effectComponentData: EffectComponentData = data;
-
-    this._priority = effectComponentData._priority;
+    this._enabled = data._enabled;
+    this._priority = data._priority;
     this.material = data.materials[0];
     this.geometry = data.geometry;
   }
@@ -122,6 +121,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
   override toData (): void {
     this.taggedProperties.id = this.guid;
     this.taggedProperties.dataType = DataType.EffectComponent;
+    this.taggedProperties._enabled = this._enabled;
     this.taggedProperties._priority = this._priority;
     this.taggedProperties.materials = this.materials;
     this.taggedProperties.geometry = this.geometry;
