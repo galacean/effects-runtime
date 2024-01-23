@@ -278,8 +278,8 @@ importers:
         version: 3.4.15(typescript@5.3.3)
     devDependencies:
       '@advjs/gui':
-        specifier: 0.0.4-beta.2
-        version: 0.0.4-beta.2(vue@3.4.15)
+        specifier: 0.0.4-beta.7
+        version: 0.0.4-beta.7(vue@3.4.15)
       '@antfu/eslint-config':
         specifier: ^2.6.3
         version: 2.6.3(@vue/compiler-sfc@3.4.15)(eslint@8.56.0)(typescript@5.3.3)
@@ -371,8 +371,8 @@ packages:
       - typescript
     dev: true
 
-  /@advjs/gui@0.0.4-beta.2(vue@3.4.15):
-    resolution: {integrity: sha512-NlXJDfRBmmvyRgubbRUlyv3wBaPA4PkY6njpJy42Z9CszWBmYAdHzErRxnEhclTDlEaO0C2+Gh2QI6RWgUiaOg==}
+  /@advjs/gui@0.0.4-beta.7(vue@3.4.15):
+    resolution: {integrity: sha512-hG+25jXYKCQpKGEi0qVlmikdMdJPuCSfvj0ssuUHbE3iPD+QUX+2BhJ5Rok15BY4AgiT+/sPkz0tb9y7FFA1TA==}
     dependencies:
       '@headlessui/vue': 1.7.17(vue@3.4.15)
       '@iconify-json/vscode-icons': 1.1.33
