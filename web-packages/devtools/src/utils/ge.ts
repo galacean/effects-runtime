@@ -3,16 +3,19 @@ import { DataType, EffectComponent, Player, TimelineComponent, VFXItem } from '@
 import { G_QUAD, M_DUCK, S_TRAIL } from '@galacean/effects-assets';
 import demoJson from '../assets/scenes/trail-demo.scene.json';
 import { Input } from '../gui/input';
-import { InspectorGui } from '../gui/inspector-gui';
+import { InspectorGuiOld } from '../gui/inspector-gui-old';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
 import { AssetDatabase } from './asset-database';
 import { MenuGui } from '../gui/menu-gui';
+import { InspectorGui } from '../gui/inspector-gui';
 
 export const treeGui = new TreeGui();
 export const menuGui = new MenuGui();
 export let assetDatabase: AssetDatabase;
-const inspectorGui = new InspectorGui();
+const inspectorGuiOld = new InspectorGuiOld();
+
+export const inspectorGui = new InspectorGui();
 const orbitController = new OrbitController();
 
 let input: Input;
@@ -33,19 +36,21 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   input.startup();
   await loadJson(json);
 
-  setInterval(() => {
-    guiMainLoop();
+  setInterval(async () => {
+    await guiMainLoop();
   }, 100);
 
   inputControllerUpdate();
 }
 
-function guiMainLoop () {
+async function guiMainLoop () {
   if (treeGui.activeItem) {
+    inspectorGuiOld.setItem(treeGui.activeItem);
     inspectorGui.setItem(treeGui.activeItem);
   }
   treeGui.update();
-  inspectorGui.update();
+  inspectorGuiOld.update();
+  await inspectorGui.update();
 }
 
 function inputControllerUpdate () {

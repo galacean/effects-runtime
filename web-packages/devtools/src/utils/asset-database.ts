@@ -110,8 +110,7 @@ export class AssetDatabase extends Database {
         effectsPackage = (await this.loadPackage(this.GUIDToAssetPath(dirtyPackageGuid)))!;
       }
 
-      effectsPackage.toData();
-      const assetData = this.engine.deserializer.serializeTaggedProperties(effectsPackage.taggedProperties) as EffectsPackageData;
+      const assetData = this.engine.deserializer.serializeTaggedProperties(effectsPackage) as EffectsPackageData;
       const path = this.GUIDToAssetPath(dirtyPackageGuid);
 
       console.info(assetData, path);

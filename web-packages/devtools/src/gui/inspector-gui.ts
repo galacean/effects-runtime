@@ -1,7 +1,11 @@
-import type { EffectComponentData, EffectsObject, EffectsObjectData, EffectsPackageData, Engine, Material, ShaderData, TextureSourceOptions } from '@galacean/effects';
-import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, generateUuid, DataType } from '@galacean/effects';
-import { assetDatabase } from '../utils';
-import { base64ToFile } from './project-gui';
+import type { AGUIPropertiesPanelProps } from '@advjs/gui';
+import { Toast } from '@advjs/gui';
+import type { EffectsPackageData } from '@galacean/effects';
+import { EffectComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import { ref } from 'vue';
+import { assetDatabase, inspectorGui } from '../utils';
+import { EffectsPackage } from '@galacean/effects-assets';
+import { readFileAsText } from '../utils/asset-database';
 
 export class InspectorGui {
   gui: any;
@@ -10,10 +14,7 @@ export class InspectorGui {
 
   guiControllers: any[] = [];
 
-  constructor () {
-    //@ts-expect-error
-    this.gui = new GUI();
-  }
+  constructor () {}
 
   setItem (item: VFXItem<VFXItemContent>) {
     if (this.item === item) {
@@ -21,317 +22,309 @@ export class InspectorGui {
     }
     this.item = item;
     this.itemDirtyFlag = true;
-  }
 
-  update = () => {
-    if (this.item && this.itemDirtyFlag) {
-      this.guiControllers = [];
-      this.gui.destroy();
-      //@ts-expect-error
-      this.gui = new GUI();
-      this.gui.add(this.item, 'name');
+    const position = item.transform.position;
 
-      const transformFolder = this.gui.addFolder('Transform');
-      const positionFolder = transformFolder.addFolder('Position');
-      const rotationFolder = transformFolder.addFolder('Rotation');
-      const scaleFolder = transformFolder.addFolder('Scale');
+    components.value[0].properties[0].value = {
+      x:position.x,
+      y:position.y,
+      z:position.z,
+    };
 
-      transformFolder.open();
-      positionFolder.open();
-      rotationFolder.open();
-      scaleFolder.open();
+    this.effectComponent = item.getComponent(EffectComponent)!;
+    const effectComponent = this.effectComponent;
 
-      const transform = this.item.transform;
-      const transformData = transform.toData();
-
-      this.guiControllers.push(positionFolder.add(transformData.position, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(positionFolder.add(transformData.position, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(positionFolder.add(transformData.position, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
-
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
-
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
-
-      for (const component of this.item.components) {
-        const componentFolder = this.gui.addFolder(component.constructor.name);
-
-        if (component instanceof RendererComponent) {
-          const controller = componentFolder.add(component, '_enabled');
-
-          this.guiControllers.push(controller);
-        }
-
-        if (component instanceof EffectComponent) {
-          componentFolder.add({
-            click: async () => {
-              await selectJsonFile(async (data: any) => {
-                for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.addEffectsObjectData(effectsObjectData);
-                  const effectComponent = this.item.getComponent(RendererComponent);
-
-                  if (effectComponent) {
-                    const guid = effectComponent.getInstanceId();
-                    const serializedData = effectComponent.engine.jsonSceneData;
-
-                    if (!serializedData[guid]) {
-                      effectComponent.toData();
-                      serializedData[guid] = effectComponent.engine.deserializer.serializeTaggedProperties(effectComponent.taggedProperties) as EffectsObjectData;
-                    }
-
-                    (serializedData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
-                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent.taggedProperties);
-                    effectComponent.fromData(effectComponent.taggedProperties);
-                  }
-                }
-                this.itemDirtyFlag = true;
-              });
-            },
-          }, 'click').name('Material');
-
-          componentFolder.add({
-            click: async () => {
-              await selectJsonFile(async (data: any) => {
-                for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.addEffectsObjectData(effectsObjectData);
-                  const effectComponent = this.item.getComponent(EffectComponent);
-
-                  if (effectComponent) {
-                    const guid = effectComponent.getInstanceId();
-                    const serializedData = effectComponent.engine.jsonSceneData;
-
-                    if (!serializedData[guid]) {
-                      effectComponent.toData();
-                      serializedData[guid] = effectComponent.engine.deserializer.serializeTaggedProperties(effectComponent.taggedProperties) as EffectsObjectData;
-                    }
-
-                    (serializedData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
-                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent.taggedProperties);
-                    effectComponent.fromData(effectComponent.taggedProperties);
-                  }
-                }
-              });
-            },
-          }, 'click').name('Geometry');
-        }
-
-        if (component instanceof ItemBehaviour) {
-          const controller = componentFolder.add(component, '_enabled');
-
-          this.guiControllers.push(controller);
-        }
-
-        if (component instanceof TimelineComponent) {
-          const controller = componentFolder.add(component, 'time');
-          const controller2 = componentFolder.add(component, 'reusable');
-
-          this.guiControllers.push(controller);
-          this.guiControllers.push(controller2);
-        }
-
-        componentFolder.open();
-      }
-      const rendererComponent = this.item.getComponent(RendererComponent);
-
-      if (rendererComponent) {
-        for (const material of rendererComponent.materials) {
-          this.setMaterialGui(material);
-        }
-      }
-
-      this.itemDirtyFlag = false;
-    }
-
-    if (this.item) {
-      const rendererComponent = this.item.getComponent(RendererComponent);
-
-      if (rendererComponent) {
-        for (const material of rendererComponent.materials) {
-          // material.toData();
-        }
-      }
-    }
-
-    for (const controller of this.guiControllers) {
-      controller.updateDisplay();
-    }
-  };
-
-  // const properties = `
-  // _2D("2D", 2D) = "" {}
-  // _Color("Color",Color) = (1,1,1,1)
-  // _Value("Value",Range(0,10)) = 2.5
-  // _Float("Float",Float) = 0
-  // _Vector("Vector",Vector) = (0,0,0,0)
-  // _Rect("Rect",Rect) = "" {}
-  // _Cube("Cube",Cube) = "" {}
-  // `;
-
-  private parseMaterialProperties (material: Material, gui: any, serializeObject: SerializedObject) {
-    const serializedData = serializeObject.serializedData;
-    const shaderProperties = (material.shaderSource as ShaderData).properties;
-
-    if (!shaderProperties) {
+    if (!effectComponent) {
       return;
     }
-    const lines = shaderProperties.split('\n');
 
-    for (const property of lines) {
-      // 提取材质属性信息
-      // 如 “_Float1("Float2", Float) = 0”
-      // 提取出 “_Float1” “Float2” “Float” “0”
-      const regex = /\s*(.+?)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/;
-      const matchResults = property.match(regex);
-
-      if (!matchResults) {
-        return;
-      }
-      const uniformName = matchResults[1];
-      const inspectorName = matchResults[2];
-      const type = matchResults[3];
-      const value = matchResults[4];
-
-      // 提取 Range(a, b) 的 a 和 b
-      const match = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
-
-      if (match) {
-        const start = Number(match[1]);
-        const end = Number(match[2]);
-
-        // materialData.floats[uniformName] = Number(value);
-        this.guiControllers.push(gui.add(serializedData.floats, uniformName, start, end).onChange(() => {
-          // this.item.getComponent(RendererComponent)?.material.fromData(materialData);
-          serializeObject.applyModifiedProperties();
-        }));
-      } else if (type === 'Float') {
-        // materialData.floats[uniformName] = Number(value);
-        this.guiControllers.push(gui.add(serializedData.floats, uniformName).name(inspectorName).onChange(() => {
-          serializeObject.applyModifiedProperties();
-        }));
-      } else if (type === 'Color') {
-        this.guiControllers.push(gui.addColor(serializedData.vector4s, uniformName).name(inspectorName).onChange(() => {
-          serializeObject.applyModifiedProperties();
-        }));
-      } else if (type === '2D') {
-        const item = this.item;
-        const controller = this.gui.add({
-          click: async () => {
-            //@ts-expect-error
-            const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
-            const file = await fileHandle[0].getFile();
-
-            // 生成纹理资产对象
-            const reader = new FileReader();
-
-            reader.onload = async function (e) {
-              const result = e.target?.result as string;
-              // const textureData = { id: assetGuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
-              const textureData = (JSON.parse(result) as EffectsPackageData).exportObjects[0];
-
-              serializeObject.engine.addEffectsObjectData(textureData);
-
-              // @ts-expect-error
-              const imageFile = base64ToFile(textureData.source);
-
-              // 加载 image
-              const image = await loadImage(imageFile);
-
-              image.width = 50;
-              image.height = 50;
-              image.id = inspectorName;
-              const lastImage = document.getElementById(inspectorName);
-
-              if (lastImage) {
-                controller.domElement.removeChild(lastImage);
-              }
-              controller.domElement.appendChild(image);
-
-              // 根据 image 生成纹理对象
-              const texture = Texture.create(item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
-
-              texture.setInstanceId(textureData.id);
-              serializeObject.engine.deserializer.addInstance(texture);
-              serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
-              serializeObject.applyModifiedProperties();
-            };
-            reader.onerror = event => {
-              console.error('文件读取出错:', reader.error);
-            };
-
-            reader.readAsText(file);
-          },
-        }, 'click').name(inspectorName);
-      }
-    }
+    this.serializedData = effectComponent.engine.deserializer.serializeTaggedProperties(effectComponent);
   }
 
-  // dat gui 参数及修改
-  private setMaterialGui (material: Material) {
-    const materialGUI = this.gui.addFolder('Material');
-
-    materialGUI.open();
-    const serializeObject = new SerializedObject(material);
-    const serializedData = serializeObject.serializedData;
-
-    serializedData.blending = false;
-    serializedData.zTest = false;
-    serializedData.zWrite = false;
-    serializeObject.update();
-
-    this.guiControllers.push(materialGUI.add(serializedData, 'blending').onChange(() => {
-      serializeObject.applyModifiedProperties();
-    }));
-    this.guiControllers.push(materialGUI.add(serializedData, 'zTest').onChange(() => {
-      serializeObject.applyModifiedProperties();
-    }));
-    this.guiControllers.push(materialGUI.add(serializedData, 'zWrite').onChange(() => {
-      serializeObject.applyModifiedProperties();
-    }));
-    this.parseMaterialProperties(material, materialGUI, serializeObject);
-  }
-}
-
-async function selectJsonFile (callback: (data: any) => Promise<void>) {
-  //@ts-expect-error
-  const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
-  const file = await fileHandle[0].getFile();
-  const reader = new FileReader();
-
-  reader.onload = async () => {
-    if (typeof reader.result !== 'string') {
-      return;
-    }
-    const data = JSON.parse(reader.result);
-
-    await callback(data);
-  };
-  reader.readAsText(file);
-}
-
-export class SerializedObject {
-  engine: Engine;
   serializedData: Record<string, any>;
-  target: EffectsObject;
+  effectComponent: EffectComponent;
 
-  constructor (target: EffectsObject) {
-    this.target = target;
-    this.engine = target.engine;
-    this.serializedData = {};
-    this.update();
-  }
+  async update () {
+    if (!this.item) {
+      return;
+    }
 
-  update () {
-    this.target.toData();
-    this.engine.deserializer.serializeTaggedProperties(this.target.taggedProperties, this.serializedData);
-  }
+    if (!this.serializedData) {
+      return;
+    }
 
-  applyModifiedProperties () {
-    this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target.taggedProperties);
-    this.target.fromData(this.target.taggedProperties as EffectsObjectData);
+    // const transformData = {
+    //   position:[0],
+    // };
 
-    assetDatabase.setDirty(this.target);
+    // //@ts-expect-error
+    // transformData.position = [components.value[0].properties[0].value!.x, components.value[0].properties[0].value!.y, components.value[0].properties[0].value!.z];
+    // this.item.transform.fromData(transformData);
+    // const position = components.value[0].properties[0].value;
   }
 }
+
+let count = 0;
+
+export const components = ref<AGUIPropertiesPanelProps[]>([
+  {
+    icon: 'i-mdi-axis-arrow',
+    title: 'Transform',
+    properties: [
+      {
+        type: 'vector',
+        name: 'Position',
+        value: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+      },
+      {
+        type: 'vector',
+        name: 'Rotation',
+        value: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+      },
+      {
+        type: 'vector',
+        name: 'Scale',
+        value: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+      },
+    ],
+  },
+
+  {
+    icon: 'i-ri:compasses-2-fill',
+    title: 'Form Example',
+    properties: [
+      {
+        type: 'input',
+        name: 'Input',
+        value: 'test',
+      },
+      {
+        type: 'number',
+        name: 'InputNumber',
+        value: 10,
+      },
+      {
+        type: 'checkbox',
+        name: 'Checkbox',
+        value: true,
+      },
+      {
+        type: 'select',
+        name: 'Select',
+        options: [
+          {
+            label: 'Option 1',
+            value: 'option1',
+          },
+          {
+            label: 'Option 2',
+            value: 'option2',
+          },
+        ],
+        value: '',
+      },
+      {
+        type: 'select',
+        name: 'Select',
+        options: [
+          {
+            label: 'Option 1',
+            value: 'option1',
+          },
+          {
+            label: 'Option 2',
+            value: 'option2',
+          },
+        ],
+        value: 'option1',
+      },
+      {
+        name: 'Slider',
+        type: 'slider',
+        max: 100,
+        min: 0,
+        step: 1,
+        value: 10,
+      },
+      {
+        name: 'Number Slider',
+        type: 'number-slider',
+        max: 100,
+        min: 0,
+        step: 1,
+        value: 10,
+      },
+      {
+        name: 'divider',
+        type: 'divider',
+      },
+      {
+        type: 'vector',
+        name: 'Vector2',
+        value: {
+          x: 0,
+          y: 0,
+        },
+      },
+      {
+        type: 'vector',
+        name: 'Vector3',
+        value: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+      },
+      {
+        type: 'vector',
+        name: 'Vector4',
+        value: {
+          x: 0,
+          y: 0,
+          z: 0,
+          w: 0,
+        },
+      },
+      {
+        type: 'color',
+        name: 'Color Picker',
+        value: '#0099ff',
+      },
+      {
+        type: 'button',
+        name: 'Button',
+        label: 'Button Label',
+        title: 'Alert Test',
+        onClick () {
+          // alert('Button clicked!')
+          Toast({
+            title: 'Button clicked!',
+            description: 'Button clicked!',
+            type: (['default', 'info', 'success', 'warning', 'error'] as const)[count++ % 5],
+          });
+        },
+      },
+      {
+        type: 'file',
+        name: 'Accept File',
+        placeholder: 'Placeholder',
+        onFileChange (file) {
+          // eslint-disable-next-line no-console
+          console.log(file);
+        },
+      },
+      {
+        type: 'file',
+        name: 'Accept File 2',
+        placeholder: 'Placeholder',
+        onFileChange (file) {
+          // eslint-disable-next-line no-console
+          console.log(file);
+        },
+      },
+    ],
+  },
+  {
+    title: 'EffectComponent',
+    properties: [
+      {
+        type: 'file',
+        name: 'Material',
+        placeholder: 'Placeholder',
+        async onFileChange (fileItem) {
+          const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
+
+          let res: string;
+
+          try {
+            res = await readFileAsText(file);
+          } catch (error) {
+            console.error('读取文件出错:', error);
+
+            return;
+          }
+          const packageData = JSON.parse(res) as EffectsPackageData;
+          const guid = packageData.fileSummary.guid;
+
+          // TODO 纹理 image 特殊逻辑，待移除
+          if (packageData.fileSummary.assetType === 'Texture') {
+            await assetDatabase.convertImageData(packageData);
+          }
+
+          for (const objectData of packageData.exportObjects) {
+            assetDatabase.engine.addEffectsObjectData(objectData);
+          }
+
+          const effectsPackage = new EffectsPackage(assetDatabase.engine);
+
+          assetDatabase.effectsPackages[guid] = effectsPackage;
+          effectsPackage.fileSummary = packageData.fileSummary;
+          for (const objectData of packageData.exportObjects) {
+            effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+          }
+
+          inspectorGui.serializedData.materials = [{ id:packageData.exportObjects[0].id }];
+          await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(inspectorGui.serializedData, inspectorGui.effectComponent.taggedProperties);
+          inspectorGui.effectComponent.fromData(inspectorGui.effectComponent.taggedProperties);
+          // eslint-disable-next-line no-console
+        //   console.log(file);
+        },
+      },
+      {
+        type: 'file',
+        name: 'Geometry',
+        placeholder: 'Placeholder',
+        async onFileChange (fileItem) {
+          const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
+
+          let res: string;
+
+          try {
+            res = await readFileAsText(file);
+          } catch (error) {
+            console.error('读取文件出错:', error);
+
+            return;
+          }
+          const packageData = JSON.parse(res) as EffectsPackageData;
+          const guid = packageData.fileSummary.guid;
+
+          // TODO 纹理 image 特殊逻辑，待移除
+          if (packageData.fileSummary.assetType === 'Texture') {
+            await assetDatabase.convertImageData(packageData);
+          }
+
+          for (const objectData of packageData.exportObjects) {
+            assetDatabase.engine.addEffectsObjectData(objectData);
+          }
+
+          const effectsPackage = new EffectsPackage(assetDatabase.engine);
+
+          assetDatabase.effectsPackages[guid] = effectsPackage;
+          effectsPackage.fileSummary = packageData.fileSummary;
+          for (const objectData of packageData.exportObjects) {
+            effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+          }
+
+          inspectorGui.serializedData.geometry = { id:packageData.exportObjects[0].id };
+          await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(inspectorGui.serializedData, inspectorGui.effectComponent.taggedProperties);
+          inspectorGui.effectComponent.fromData(inspectorGui.effectComponent.taggedProperties);
+          // eslint-disable-next-line no-console
+        //   console.log(file);
+        },
+      },
+    ],
+  },
+]);

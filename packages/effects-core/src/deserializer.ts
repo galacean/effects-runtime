@@ -61,8 +61,7 @@ export class Deserializer {
     }
     effectsObject.setInstanceId(effectsObjectData.id);
     this.addInstance(effectsObject);
-    this.deserializeTaggedProperties(effectsObjectData, effectsObject.taggedProperties);
-    effectsObject.fromData(effectsObject.taggedProperties as EffectsObjectData);
+    this.deserializeTaggedProperties(effectsObjectData, effectsObject);
 
     return effectsObject as T;
   }
@@ -160,7 +159,7 @@ export class Deserializer {
       if (!serializedDatas[effectsObject.getInstanceId()]) {
         serializedDatas[effectsObject.getInstanceId()] = {};
       }
-      this.serializeTaggedProperties(effectsObject.taggedProperties, serializedDatas[effectsObject.getInstanceId()]);
+      this.serializeTaggedProperties(effectsObject, serializedDatas[effectsObject.getInstanceId()]);
     }
 
     return serializedDatas;
@@ -192,12 +191,16 @@ export class Deserializer {
     }
   }
 
-  deserializeTaggedProperties (serializedData: Record<string, any>, taggedProperties: Record<string, any>) {
+  deserializeTaggedProperties (serializedData: Record<string, any>, effectsObject: EffectsObject) {
+    const taggedProperties = effectsObject.taggedProperties;
+
     for (const key of Object.keys(serializedData)) {
       const value = serializedData[key];
 
       taggedProperties[key] = this.deserializeProperty(value, 0);
     }
+
+    effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
 
   async deserializeTaggedPropertiesAsync (serializedData: Record<string, any>, taggedProperties: Record<string, any>) {
@@ -208,7 +211,10 @@ export class Deserializer {
     }
   }
 
-  serializeTaggedProperties (taggedProperties: Record<string, any>, serializedData?: Record<string, any>) {
+  serializeTaggedProperties (effectsObject: EffectsObject, serializedData?: Record<string, any>) {
+    effectsObject.toData();
+    const taggedProperties = effectsObject.taggedProperties;
+
     if (!serializedData) {
       serializedData = {};
     }

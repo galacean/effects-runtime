@@ -1,22 +1,18 @@
-import type { EffectComponentData, EffectsObject, EffectsObjectData, EffectsPackageData, Engine, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
+import type { EffectComponentData, EffectsObject, EffectsObjectData, EffectsPackageData, Engine, Material, ShaderData, TextureSourceOptions } from '@galacean/effects';
 import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, generateUuid, DataType } from '@galacean/effects';
-import { assetDataBase } from './asset-data-base';
+import { assetDatabase } from '../utils';
+import { base64ToFile } from './project-gui';
 
-export class InspectorGui {
+export class InspectorGuiOld {
   gui: any;
   item: VFXItem<VFXItemContent>;
   itemDirtyFlag = false;
 
-  sceneData: SceneData;
   guiControllers: any[] = [];
 
   constructor () {
     //@ts-expect-error
     this.gui = new GUI();
-    this.gui.addFolder('Inspector');
-
-    this.sceneData = assetDataBase.assetsData;
-    // setInterval(this.updateInspector, 500);
   }
 
   setItem (item: VFXItem<VFXItemContent>) {
@@ -48,17 +44,17 @@ export class InspectorGui {
       const transform = this.item.transform;
       const transformData = transform.toData();
 
-      this.guiControllers.push(positionFolder.add(transformData.position, '0').name('x').step(0.03).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(positionFolder.add(transformData.position, '1').name('y').step(0.03).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(positionFolder.add(transformData.position, '2').name('z').step(0.03).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '0').name('x').step(0.03).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '1').name('y').step(0.03).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '2').name('z').step(0.03).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '0').name('x').step(0.03).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '1').name('y').step(0.03).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '2').name('z').step(0.03).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
       for (const component of this.item.components) {
         const componentFolder = this.gui.addFolder(component.constructor.name);
@@ -72,16 +68,22 @@ export class InspectorGui {
         if (component instanceof EffectComponent) {
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: EffectsPackageData) => {
+              await selectJsonFile(async (data: any) => {
                 for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
+                  this.item.engine.addEffectsObjectData(effectsObjectData);
                   const effectComponent = this.item.getComponent(RendererComponent);
 
                   if (effectComponent) {
                     const guid = effectComponent.getInstanceId();
+                    const serializedData = effectComponent.engine.jsonSceneData;
 
-                    (this.item.engine.jsonSceneData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
-                    this.item.engine.deserializer.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent);
+                    if (!serializedData[guid]) {
+                      serializedData[guid] = effectComponent.engine.deserializer.serializeTaggedProperties(effectComponent) as EffectsObjectData;
+                    }
+
+                    (serializedData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
+                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent.taggedProperties);
+                    effectComponent.fromData(effectComponent.taggedProperties);
                   }
                 }
                 this.itemDirtyFlag = true;
@@ -91,16 +93,22 @@ export class InspectorGui {
 
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: EffectsPackageData) => {
+              await selectJsonFile(async (data: any) => {
                 for (const effectsObjectData of data.exportObjects) {
-                  this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
+                  this.item.engine.addEffectsObjectData(effectsObjectData);
                   const effectComponent = this.item.getComponent(EffectComponent);
 
                   if (effectComponent) {
                     const guid = effectComponent.getInstanceId();
+                    const serializedData = effectComponent.engine.jsonSceneData;
 
-                    (this.item.engine.jsonSceneData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
-                    this.item.engine.deserializer.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent);
+                    if (!serializedData[guid]) {
+                      serializedData[guid] = effectComponent.engine.deserializer.serializeTaggedProperties(effectComponent) as EffectsObjectData;
+                    }
+
+                    (serializedData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
+                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent.taggedProperties);
+                    effectComponent.fromData(effectComponent.taggedProperties);
                   }
                 }
               });
@@ -206,48 +214,52 @@ export class InspectorGui {
           serializeObject.applyModifiedProperties();
         }));
       } else if (type === '2D') {
+        const item = this.item;
         const controller = this.gui.add({
           click: async () => {
             //@ts-expect-error
             const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
             const file = await fileHandle[0].getFile();
-            const assetUuid = generateUuid();
 
             // 生成纹理资产对象
             const reader = new FileReader();
 
             reader.onload = async function (e) {
-              const result = e.target?.result;
-              const textureData = { id: assetUuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+              const result = e.target?.result as string;
+              // const textureData = { id: assetGuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+              const textureData = (JSON.parse(result) as EffectsPackageData).exportObjects[0];
 
-              serializeObject.engine.jsonSceneData[textureData.id] = textureData;
+              serializeObject.engine.addEffectsObjectData(textureData);
+
+              // @ts-expect-error
+              const imageFile = base64ToFile(textureData.source);
+
+              // 加载 image
+              const image = await loadImage(imageFile);
+
+              image.width = 50;
+              image.height = 50;
+              image.id = inspectorName;
+              const lastImage = document.getElementById(inspectorName);
+
+              if (lastImage) {
+                controller.domElement.removeChild(lastImage);
+              }
+              controller.domElement.appendChild(image);
+
+              // 根据 image 生成纹理对象
+              const texture = Texture.create(item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
+
+              texture.setInstanceId(textureData.id);
+              serializeObject.engine.deserializer.addInstance(texture);
+              serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
+              serializeObject.applyModifiedProperties();
             };
             reader.onerror = event => {
               console.error('文件读取出错:', reader.error);
             };
 
-            reader.readAsDataURL(file);
-
-            // 加载 image
-            const image = await loadImage(file);
-
-            image.width = 50;
-            image.height = 50;
-            image.id = inspectorName;
-            const lastImage = document.getElementById(inspectorName);
-
-            if (lastImage) {
-              controller.domElement.removeChild(lastImage);
-            }
-            controller.domElement.appendChild(image);
-
-            // 根据 image 生成纹理对象
-            const texture = Texture.create(this.item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
-
-            texture.setInstanceId(assetUuid);
-            serializeObject.engine.deserializer.addInstance(texture);
-            serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
-            serializeObject.applyModifiedProperties();
+            reader.readAsText(file);
           },
         }, 'click').name(inspectorName);
       }
@@ -280,33 +292,42 @@ export class InspectorGui {
   }
 }
 
-async function selectJsonFile (callback: (data: any) => void) {
+async function selectJsonFile (callback: (data: any) => Promise<void>) {
   //@ts-expect-error
   const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
   const file = await fileHandle[0].getFile();
   const reader = new FileReader();
 
-  reader.onload = () => {
+  reader.onload = async () => {
     if (typeof reader.result !== 'string') {
       return;
     }
     const data = JSON.parse(reader.result);
 
-    callback(data);
+    await callback(data);
   };
   reader.readAsText(file);
 }
 
 export class SerializedObject {
   engine: Engine;
-  serializedData: Record<string, any>;
+  serializedData: Record<string, any> = {};
+  serializedProperties: Record<string, SerializedProperty> = {};
   target: EffectsObject;
 
   constructor (target: EffectsObject) {
     this.target = target;
     this.engine = target.engine;
-    this.serializedData = {};
     this.update();
+  }
+
+  findProperty (name: string) {
+    if (!this.serializedProperties[name]) {
+      this.serializedProperties[name] = new SerializedProperty();
+      this.serializedProperties[name].value = this.serializedData[name];
+    }
+
+    return this.serializedProperties[name];
   }
 
   update () {
@@ -315,5 +336,10 @@ export class SerializedObject {
 
   applyModifiedProperties () {
     this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target);
+    assetDatabase.setDirty(this.target);
   }
+}
+
+export class SerializedProperty {
+  value: number | string | Object;
 }
