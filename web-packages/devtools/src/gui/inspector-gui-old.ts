@@ -217,7 +217,6 @@ export class InspectorGuiOld {
         const item = this.item;
         const controller = this.gui.add({
           click: async () => {
-            //@ts-expect-error
             const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
             const file = await fileHandle[0].getFile();
 
@@ -293,7 +292,6 @@ export class InspectorGuiOld {
 }
 
 async function selectJsonFile (callback: (data: any) => Promise<void>) {
-  //@ts-expect-error
   const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
   const file = await fileHandle[0].getFile();
   const reader = new FileReader();

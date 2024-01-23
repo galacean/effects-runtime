@@ -2,6 +2,12 @@
 import { onMounted } from 'vue';
 import { menuGui, treeData, treeGui } from '../utils';
 
+import { ref } from 'vue'
+
+const tabList = ref([
+  { title: 'Hierarchy', key: 'Hierarchy', icon: 'i-ri-node-tree' },
+])
+
 onMounted(() => {
 // 获取 DIV 元素和自定义上下文菜单
 const myDiv = document.getElementById('myDiv')!;
@@ -10,7 +16,7 @@ const contextMenu = document.getElementById('contextMenu')!;
 // 阻止默认的上下文菜单
 myDiv.addEventListener('contextmenu', function (e) {
   e.preventDefault();
-  
+
   // 显示自定义上下文菜单
   contextMenu.style.display = 'block';
   contextMenu.style.left = e.pageX + 'px';
@@ -82,13 +88,16 @@ menuAction9.addEventListener('click', async function () {
 });
 
 });
-
-
-
 </script>
 
 <template>
-  <AGUITree class="w-full h-full" :data="treeData" v-bind="treeGui.panel" id="myDiv" />
+  <AGUIPanel h="full" w="full">
+    <AGUITabs :list="tabList">
+      <AGUITabPanel>
+        <AGUITree class="w-full h-full" :data="treeData" v-bind="treeGui.panel" id="myDiv" />
+      </AGUITabPanel>
+    </AGUITabs>
+  </AGUIPanel>
   <div class="custom-context-menu" id="contextMenu">
     <div class="context-menu-item" id="menuAction1">Cube</div>
     <div class="context-menu-item" id="menuAction2">Sphere</div>
@@ -101,8 +110,6 @@ menuAction9.addEventListener('click', async function () {
     <div class="context-menu-item" id="menuAction9">Delete</div>
   </div>
 </template>
-
-
 
 <style>
   .custom-context-menu {
@@ -123,7 +130,7 @@ menuAction9.addEventListener('click', async function () {
   .context-menu-item:hover {
     background-color: #2b4ac5;
   }
-  
+
   /* 仍然可选：确保最后一个菜单项底部的圆角 */
   .context-menu-item:last-child {
     border-bottom-left-radius: 4px;

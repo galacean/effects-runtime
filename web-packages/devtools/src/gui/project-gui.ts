@@ -136,7 +136,6 @@ async function getAllFileNames (directoryHandle: FileSystemDirectoryHandle): Pro
   const fileNames: Set<string> = new Set();
 
   // 使用异步迭代器遍历目录句柄中的条目
-  //@ts-expect-error
   for await (const [name, entry] of directoryHandle) {
     // 如果条目是文件，将其名称添加到 fileNames 数组中
     if (entry.kind === 'file') {

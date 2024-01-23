@@ -7,6 +7,34 @@ import { assetDatabase, inspectorGui } from '../utils';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { readFileAsText } from '../utils/asset-database';
 
+const formData = ref({
+  input: 'test',
+  inputNumber: 10,
+  checkbox: true,
+  select: '',
+  select2: 'option1',
+  slider: 10,
+  numberField: 10,
+  numberSlider: 10,
+  vector2: {
+    x: 0,
+    y: 0,
+  },
+  vector3: {
+    x: 0,
+    y: 0,
+    z: 0,
+  },
+  vector4: {
+    x: 0,
+    y: 0,
+    z: 0,
+    w: 0,
+  },
+  color: '#0099ff',
+  file: '',
+});
+
 export class InspectorGui {
   gui: any;
   item: VFXItem<VFXItemContent>;
@@ -53,40 +81,40 @@ export class InspectorGui {
   }
 
   addGuiProperty (guiProperties: AGUIPropertyProps[], key: string, value: any) {
-    if (typeof value === 'number') {
-      guiProperties.push({
-        type: 'number',
-        name: key,
-        value });
-    } else if (typeof value === 'boolean') {
-      guiProperties.push({
-        type: 'checkbox',
-        name: key,
-        value });
-    } else if (this.checkVector3(value)) {
-      guiProperties.push({
-        type: 'vector',
-        name: key,
-        value });
-    } else if (this.checkGUID(value)) {
-      guiProperties.push({
-        type: 'file',
-        name: key,
-        placeholder: 'Placeholder',
-        onFileChange (file) {
-          // eslint-disable-next-line no-console
-          console.log(file);
-        },
-      });
-    } else if (value instanceof Array) {
-      for (let i = 0;i < value.length;i++) {
-        this.addGuiProperty(guiProperties, key + i, value[i]);
-      }
-    } else if (value instanceof Object) {
-      for (const key of Object.keys(value)) {
-        this.addGuiProperty(guiProperties, key, value[key]);
-      }
-    }
+    // if (typeof value === 'number') {
+    //   guiProperties.push({
+    //     type: 'number',
+    //     name: key,
+    //     value });
+    // } else if (typeof value === 'boolean') {
+    //   guiProperties.push({
+    //     type: 'checkbox',
+    //     name: key,
+    //     value });
+    // } else if (this.checkVector3(value)) {
+    //   guiProperties.push({
+    //     type: 'vector',
+    //     name: key,
+    //     value });
+    // } else if (this.checkGUID(value)) {
+    //   guiProperties.push({
+    //     type: 'file',
+    //     name: key,
+    //     placeholder: 'Placeholder',
+    //     onFileChange (file) {
+    //       // eslint-disable-next-line no-console
+    //       console.log(file);
+    //     },
+    //   });
+    // } else if (value instanceof Array) {
+    //   for (let i = 0;i < value.length;i++) {
+    //     this.addGuiProperty(guiProperties, key + i, value[i]);
+    //   }
+    // } else if (value instanceof Object) {
+    //   for (const key of Object.keys(value)) {
+    //     this.addGuiProperty(guiProperties, key, value[key]);
+    //   }
+    // }
 
   }
 
@@ -126,6 +154,14 @@ export class InspectorGui {
 
 let count = 0;
 
+const transformData = {
+  position: {
+    x: 0,
+    y: 0,
+    z: 0,
+  },
+};
+
 export const components = ref<AGUIPropertiesPanelProps[]>([
   {
     icon: 'i-mdi-axis-arrow',
@@ -134,30 +170,27 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
       {
         type: 'vector',
         name: 'Position',
-        value: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
+        object: transformData,
+        key: 'position',
       },
-      {
-        type: 'vector',
-        name: 'Rotation',
-        value: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
-      },
-      {
-        type: 'vector',
-        name: 'Scale',
-        value: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
-      },
+      // {
+      //   type: 'vector',
+      //   name: 'Rotation',
+      //   value: {
+      //     x: 0,
+      //     y: 0,
+      //     z: 0,
+      //   },
+      // },
+      // {
+      //   type: 'vector',
+      //   name: 'Scale',
+      //   value: {
+      //     x: 0,
+      //     y: 0,
+      //     z: 0,
+      //   },
+      // },
     ],
   },
 
@@ -168,17 +201,20 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
       {
         type: 'input',
         name: 'Input',
-        value: 'test',
+        object: formData,
+        key: 'input',
       },
       {
         type: 'number',
         name: 'InputNumber',
-        value: 10,
+        object: formData,
+        key: 'inputNumber',
       },
       {
         type: 'checkbox',
         name: 'Checkbox',
-        value: true,
+        object: formData,
+        key: 'checkbox',
       },
       {
         type: 'select',
@@ -193,7 +229,8 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
             value: 'option2',
           },
         ],
-        value: '',
+        object: formData,
+        key: 'select',
       },
       {
         type: 'select',
@@ -208,7 +245,8 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
             value: 'option2',
           },
         ],
-        value: 'option1',
+        object: formData,
+        key: 'select2',
       },
       {
         name: 'Slider',
@@ -216,7 +254,17 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
         max: 100,
         min: 0,
         step: 1,
-        value: 10,
+        object: formData,
+        key: 'slider',
+      },
+      {
+        name: 'Number Field',
+        type: 'number-field',
+        max: 100,
+        min: 0,
+        step: 1,
+        object: formData,
+        key: 'numberField',
       },
       {
         name: 'Number Slider',
@@ -224,7 +272,8 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
         max: 100,
         min: 0,
         step: 1,
-        value: 10,
+        object: formData,
+        key: 'numberSlider',
       },
       {
         name: 'divider',
@@ -233,34 +282,26 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
       {
         type: 'vector',
         name: 'Vector2',
-        value: {
-          x: 0,
-          y: 0,
-        },
+        object: formData,
+        key: 'vector2',
       },
       {
         type: 'vector',
         name: 'Vector3',
-        value: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
+        object: formData,
+        key: 'vector3',
       },
       {
         type: 'vector',
         name: 'Vector4',
-        value: {
-          x: 0,
-          y: 0,
-          z: 0,
-          w: 0,
-        },
+        object: formData,
+        key: 'vector4',
       },
       {
         type: 'color',
         name: 'Color Picker',
-        value: '#0099ff',
+        object: formData,
+        key: 'color',
       },
       {
         type: 'button',
@@ -275,6 +316,8 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
             type: (['default', 'info', 'success', 'warning', 'error'] as const)[count++ % 5],
           });
         },
+        object: formData,
+        key: 'button',
       },
       {
         type: 'file',
@@ -284,109 +327,102 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
           // eslint-disable-next-line no-console
           console.log(file);
         },
-      },
-      {
-        type: 'file',
-        name: 'Accept File 2',
-        placeholder: 'Placeholder',
-        onFileChange (file) {
-          // eslint-disable-next-line no-console
-          console.log(file);
-        },
+        object: formData,
+        key: 'file',
       },
     ],
   },
-  {
-    title: 'EffectComponent',
-    properties: [
-      {
-        type: 'file',
-        name: 'Material',
-        placeholder: 'Placeholder',
-        async onFileChange (fileItem) {
-          const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
+  // {
+  //   title: 'EffectComponent',
+  //   properties: [
+  //     {
+  //       type: 'file',
+  //       name: 'Material',
+  //       placeholder: 'Placeholder',
+  //       async onFileChange (fileItem) {
+  //         const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
 
-          let res: string;
+  //         let res: string;
 
-          try {
-            res = await readFileAsText(file);
-          } catch (error) {
-            console.error('读取文件出错:', error);
+  //         try {
+  //           res = await readFileAsText(file);
+  //         } catch (error) {
+  //           console.error('读取文件出错:', error);
 
-            return;
-          }
-          const packageData = JSON.parse(res) as EffectsPackageData;
-          const guid = packageData.fileSummary.guid;
+  //           return;
+  //         }
+  //         const packageData = JSON.parse(res) as EffectsPackageData;
+  //         const guid = packageData.fileSummary.guid;
 
-          // TODO 纹理 image 特殊逻辑，待移除
-          if (packageData.fileSummary.assetType === 'Texture') {
-            await assetDatabase.convertImageData(packageData);
-          }
+  //         // TODO 纹理 image 特殊逻辑，待移除
+  //         if (packageData.fileSummary.assetType === 'Texture') {
+  //           await assetDatabase.convertImageData(packageData);
+  //         }
 
-          for (const objectData of packageData.exportObjects) {
-            assetDatabase.engine.addEffectsObjectData(objectData);
-          }
+  //         for (const objectData of packageData.exportObjects) {
+  //           assetDatabase.engine.addEffectsObjectData(objectData);
+  //         }
 
-          const effectsPackage = new EffectsPackage(assetDatabase.engine);
+  //         const effectsPackage = new EffectsPackage(assetDatabase.engine);
 
-          assetDatabase.effectsPackages[guid] = effectsPackage;
-          effectsPackage.fileSummary = packageData.fileSummary;
-          for (const objectData of packageData.exportObjects) {
-            effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
-          }
+  //         assetDatabase.effectsPackages[guid] = effectsPackage;
+  //         effectsPackage.fileSummary = packageData.fileSummary;
+  //         for (const objectData of packageData.exportObjects) {
+  //           effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+  //         }
 
-          inspectorGui.serializedData.materials = [{ id:packageData.exportObjects[0].id }];
-          await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(inspectorGui.serializedData, inspectorGui.effectComponent.taggedProperties);
-          inspectorGui.effectComponent.fromData(inspectorGui.effectComponent.taggedProperties);
-          // eslint-disable-next-line no-console
-        //   console.log(file);
-        },
-      },
-      {
-        type: 'file',
-        name: 'Geometry',
-        placeholder: 'Placeholder',
-        async onFileChange (fileItem) {
-          const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
+  //         inspectorGui.serializedData.materials = [{ id:packageData.exportObjects[0].id }];
+  //         await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(inspectorGui.serializedData, inspectorGui.effectComponent.taggedProperties);
+  //         inspectorGui.effectComponent.fromData(inspectorGui.effectComponent.taggedProperties);
+  //         // eslint-disable-next-line no-console
+  //       //   console.log(file);
+  //       },
+  //     },
+  //     {
+  //       type: 'file',
+  //       name: 'Geometry',
+  //       placeholder: 'Placeholder',
+  //       async onFileChange (fileItem) {
+  //         const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
 
-          let res: string;
+  //         let res: string;
 
-          try {
-            res = await readFileAsText(file);
-          } catch (error) {
-            console.error('读取文件出错:', error);
+  //         try {
+  //           res = await readFileAsText(file);
+  //         } catch (error) {
+  //           console.error('读取文件出错:', error);
 
-            return;
-          }
-          const packageData = JSON.parse(res) as EffectsPackageData;
-          const guid = packageData.fileSummary.guid;
+  //           return;
+  //         }
+  //         const packageData = JSON.parse(res) as EffectsPackageData;
+  //         const guid = packageData.fileSummary.guid;
 
-          // TODO 纹理 image 特殊逻辑，待移除
-          if (packageData.fileSummary.assetType === 'Texture') {
-            await assetDatabase.convertImageData(packageData);
-          }
+  //         // TODO 纹理 image 特殊逻辑，待移除
+  //         if (packageData.fileSummary.assetType === 'Texture') {
+  //           await assetDatabase.convertImageData(packageData);
+  //         }
 
-          for (const objectData of packageData.exportObjects) {
-            assetDatabase.engine.addEffectsObjectData(objectData);
-          }
+  //         for (const objectData of packageData.exportObjects) {
+  //           assetDatabase.engine.addEffectsObjectData(objectData);
+  //         }
 
-          const effectsPackage = new EffectsPackage(assetDatabase.engine);
+  //         const effectsPackage = new EffectsPackage(assetDatabase.engine);
 
-          assetDatabase.effectsPackages[guid] = effectsPackage;
-          effectsPackage.fileSummary = packageData.fileSummary;
-          for (const objectData of packageData.exportObjects) {
-            effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
-          }
+  //         assetDatabase.effectsPackages[guid] = effectsPackage;
+  //         effectsPackage.fileSummary = packageData.fileSummary;
+  //         for (const objectData of packageData.exportObjects) {
+  //           effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+  //         }
 
-          inspectorGui.serializedData.geometry = { id:packageData.exportObjects[0].id };
-          await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(inspectorGui.serializedData, inspectorGui.effectComponent.taggedProperties);
-          inspectorGui.effectComponent.fromData(inspectorGui.effectComponent.taggedProperties);
-          // eslint-disable-next-line no-console
-        //   console.log(file);
-        },
-      },
-    ],
-  },
+  //         inspectorGui.serializedData.geometry = { id:packageData.exportObjects[0].id };
+  //         await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(inspectorGui.serializedData, inspectorGui.effectComponent.taggedProperties);
+  //         inspectorGui.effectComponent.fromData(inspectorGui.effectComponent.taggedProperties);
+  //         // eslint-disable-next-line no-console
+  //       //   console.log(file);
+  //       },
+  //     },
+  //   ],
+  // },
 ]);
 
 export class SerializedObject {
