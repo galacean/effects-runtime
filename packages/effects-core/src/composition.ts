@@ -247,6 +247,7 @@ export class Composition implements Disposable, LostHandler {
     this.transform = new Transform({
       name: this.name,
     });
+    this.transform.engine = this.getEngine();
     vfxItem.transform = this.transform;
     this.globalVolume = sourceContent.globalVolume;
     this.width = width;
@@ -478,6 +479,7 @@ export class Composition implements Disposable, LostHandler {
     this.transform = new Transform({
       name: this.name,
     });
+    this.transform.engine = this.getEngine();
     vfxItem.transform = this.transform;
     this.rootItem = vfxItem;
     this.rendererOptions = null;

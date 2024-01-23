@@ -1,8 +1,8 @@
 import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
+import type { Engine } from '.';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
-import type { Deserializer, SceneData } from './deserializer';
 
 export interface TransformProps {
   position?: spec.vec3 | Vector3,
@@ -33,6 +33,7 @@ export class Transform implements Disposable {
     return out.setFromQuaternion(newQuat);
   }
 
+  engine: Engine;
   name: string;
   taggedProperties: Record<string, any> = {};
   /**
@@ -530,15 +531,21 @@ export class Transform implements Disposable {
   toData () {
     const transformData = this.taggedProperties;
 
-    transformData.position = this.position.clone().toArray();
-    transformData.rotation = this.rotation.clone().toArray();
-    transformData.scale = this.scale.clone().toArray();
+    transformData.position = this.position.clone();
+    transformData.rotation = { x:this.rotation.x, y:this.rotation.y, z:this.rotation.z };
+    transformData.scale = this.scale.clone();
 
     return transformData;
   }
 
   fromData (data: any) {
-    this.setTransform(data);
+    const transformData = {
+      position: new Vector3().copyFrom(data.position),
+      rotation: new Euler(data.rotation.x, data.rotation.y, data.rotation.z),
+      scale: new Vector3().copyFrom(data.scale),
+    };
+
+    this.setTransform(transformData);
   }
 
   dispose (): void { }

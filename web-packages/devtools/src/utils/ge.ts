@@ -49,7 +49,7 @@ async function guiMainLoop () {
     inspectorGui.setItem(treeGui.activeItem);
   }
   treeGui.update();
-  inspectorGuiOld.update();
+  // inspectorGuiOld.update();
   await inspectorGui.update();
 }
 

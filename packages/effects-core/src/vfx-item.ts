@@ -154,6 +154,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     super(engine);
     this.name = 'VFXItem';
     this.transform.name = this.name;
+    this.transform.engine = engine;
     this.addComponent(TimelineComponent);
     if (props) {
       // TODO VFXItemProps 添加 components 属性
@@ -483,6 +484,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       name: this.name,
       ...transform,
     });
+    this.transform.engine = this.engine;
 
     // TODO spec 数据需要区分 scale 和 size
     if (data.type === spec.ItemType.sprite && transform) {

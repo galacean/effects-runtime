@@ -1,6 +1,6 @@
-import type { EffectComponentData, EffectsObject, EffectsObjectData, EffectsPackageData, Engine, Material, ShaderData, TextureSourceOptions } from '@galacean/effects';
-import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, generateUuid, DataType } from '@galacean/effects';
-import { assetDatabase } from '../utils';
+import type { EffectComponentData, EffectsObjectData, EffectsPackageData, Material, ShaderData } from '@galacean/effects';
+import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import { SerializedObject } from './inspector-gui';
 import { base64ToFile } from './project-gui';
 
 export class InspectorGuiOld {
@@ -44,17 +44,17 @@ export class InspectorGuiOld {
       const transform = this.item.transform;
       const transformData = transform.toData();
 
-      this.guiControllers.push(positionFolder.add(transformData.position, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(positionFolder.add(transformData.position, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(positionFolder.add(transformData.position, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, 'x').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, 'y').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(positionFolder.add(transformData.position, 'z').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(rotationFolder.add(transformData.rotation, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'x').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'y').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(rotationFolder.add(transformData.rotation, 'z').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '0').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '1').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
-      this.guiControllers.push(scaleFolder.add(transformData.scale, '2').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, 'x').name('x').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, 'y').name('y').step(0.05).onChange(() => { transform.fromData(transformData); }));
+      this.guiControllers.push(scaleFolder.add(transformData.scale, 'z').name('z').step(0.05).onChange(() => { transform.fromData(transformData); }));
 
       for (const component of this.item.components) {
         const componentFolder = this.gui.addFolder(component.constructor.name);
@@ -307,39 +307,4 @@ async function selectJsonFile (callback: (data: any) => Promise<void>) {
     await callback(data);
   };
   reader.readAsText(file);
-}
-
-export class SerializedObject {
-  engine: Engine;
-  serializedData: Record<string, any> = {};
-  serializedProperties: Record<string, SerializedProperty> = {};
-  target: EffectsObject;
-
-  constructor (target: EffectsObject) {
-    this.target = target;
-    this.engine = target.engine;
-    this.update();
-  }
-
-  findProperty (name: string) {
-    if (!this.serializedProperties[name]) {
-      this.serializedProperties[name] = new SerializedProperty();
-      this.serializedProperties[name].value = this.serializedData[name];
-    }
-
-    return this.serializedProperties[name];
-  }
-
-  update () {
-    this.engine.deserializer.serializeTaggedProperties(this.target, this.serializedData);
-  }
-
-  applyModifiedProperties () {
-    this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target);
-    assetDatabase.setDirty(this.target);
-  }
-}
-
-export class SerializedProperty {
-  value: number | string | Object;
 }

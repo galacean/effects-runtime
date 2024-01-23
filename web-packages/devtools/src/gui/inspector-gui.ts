@@ -1,7 +1,7 @@
-import type { AGUIPropertiesPanelProps } from '@advjs/gui';
+import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
-import type { EffectsPackageData } from '@galacean/effects';
-import { EffectComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import type { Component, EffectsObject, EffectsPackageData, Engine, EffectComponent } from '@galacean/effects';
+import { type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { ref } from 'vue';
 import { assetDatabase, inspectorGui } from '../utils';
 import { EffectsPackage } from '@galacean/effects-assets';
@@ -11,8 +11,8 @@ export class InspectorGui {
   gui: any;
   item: VFXItem<VFXItemContent>;
   itemDirtyFlag = false;
-
-  guiControllers: any[] = [];
+  componentProperties: AGUIPropertiesPanelProps[] = [];
+  serializedObjects: SerializedObject[] = [];
 
   constructor () {}
 
@@ -23,22 +23,61 @@ export class InspectorGui {
     this.item = item;
     this.itemDirtyFlag = true;
 
-    const position = item.transform.position;
+    this.componentProperties = components.value;
+    this.componentProperties.length = 0;
+    this.serializedObjects = [];
 
-    components.value[0].properties[0].value = {
-      x:position.x,
-      y:position.y,
-      z:position.z,
-    };
-
-    this.effectComponent = item.getComponent(EffectComponent)!;
-    const effectComponent = this.effectComponent;
-
-    if (!effectComponent) {
-      return;
+    this.addComponentGui(item.transform as unknown as Component);
+    for (const component of item.components) {
+      this.addComponentGui(component);
     }
+  }
 
-    this.serializedData = effectComponent.engine.deserializer.serializeTaggedProperties(effectComponent);
+  addComponentGui (component: Component) {
+    const serializedObject = new SerializedObject(component);
+    const serializedData = serializedObject.serializedData;
+
+    this.serializedObjects.push(serializedObject);
+    const properties: AGUIPropertyProps[] = [];
+
+    this.componentProperties.push({ title: component.constructor.name, properties });
+    for (const key of Object.keys(serializedData)) {
+      const value = serializedData[key];
+
+      if (!value) {
+        continue;
+      }
+
+      if (typeof serializedData[key] === 'number') {
+        properties.push({
+          type: 'number',
+          name: key,
+          value });
+      } else if (this.checkVector3(value)) {
+        properties.push({
+          type: 'vector',
+          name: key,
+          value });
+      } else if (this.checkGUID(value)) {
+        properties.push({
+          type: 'file',
+          name: key,
+          placeholder: 'Placeholder',
+          onFileChange (file) {
+            // eslint-disable-next-line no-console
+            console.log(file);
+          },
+        });
+      }
+    }
+  }
+
+  checkVector3 (property: Record<string, any>) {
+    return Object.keys(property).length === 3 && property['x'] !== undefined && property['y'] !== undefined && property['z'] !== undefined ;
+  }
+
+  checkGUID (property: Record<string, any>) {
+    return property instanceof Object && Object.keys(property).length === 1 && property.id !== undefined && property.id.length === 32;
   }
 
   serializedData: Record<string, any>;
@@ -49,9 +88,9 @@ export class InspectorGui {
       return;
     }
 
-    if (!this.serializedData) {
-      return;
-    }
+    // if (!this.serializedData) {
+    //   return;
+    // }
 
     // const transformData = {
     //   position:[0],
@@ -61,6 +100,7 @@ export class InspectorGui {
     // transformData.position = [components.value[0].properties[0].value!.x, components.value[0].properties[0].value!.y, components.value[0].properties[0].value!.z];
     // this.item.transform.fromData(transformData);
     // const position = components.value[0].properties[0].value;
+    this.serializedObjects[0].applyModifiedProperties();
   }
 }
 
@@ -328,3 +368,38 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
     ],
   },
 ]);
+
+export class SerializedObject {
+  engine: Engine;
+  serializedData: Record<string, any> = {};
+  serializedProperties: Record<string, SerializedProperty> = {};
+  target: EffectsObject;
+
+  constructor (target: EffectsObject) {
+    this.target = target;
+    this.engine = target.engine;
+    this.update();
+  }
+
+  findProperty (name: string) {
+    if (!this.serializedProperties[name]) {
+      this.serializedProperties[name] = new SerializedProperty();
+      this.serializedProperties[name].value = this.serializedData[name];
+    }
+
+    return this.serializedProperties[name];
+  }
+
+  update () {
+    this.engine.deserializer.serializeTaggedProperties(this.target, this.serializedData);
+  }
+
+  applyModifiedProperties () {
+    this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target);
+    // assetDatabase.setDirty(this.target);
+  }
+}
+
+export class SerializedProperty {
+  value: number | string | Object;
+}
