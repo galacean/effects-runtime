@@ -83,35 +83,38 @@ export class InspectorGui {
     }
   }
 
-  addGuiProperty (guiProperties: AGUIPropertyProps[], key: string, object: any) {
+  addGuiProperty (guiProperties: AGUIPropertyProps[], key: string, object: any, name?: string) {
     const value = object[key];
 
     if (value === undefined) {
       return;
     }
+    if (!name) {
+      name = key;
+    }
 
     if (typeof value === 'number') {
       guiProperties.push({
         type: 'number',
-        name: key,
+        name,
         key,
         object });
     } else if (typeof value === 'boolean') {
       guiProperties.push({
         type: 'checkbox',
-        name: key,
+        name,
         key,
         object });
     } else if (this.checkVector3(value)) {
       guiProperties.push({
         type: 'vector',
-        name: key,
+        name,
         key,
         object });
     } else if (this.checkGUID(value)) {
       guiProperties.push({
         type: 'file',
-        name: key,
+        name,
         placeholder: 'Placeholder',
         key,
         object,
@@ -122,7 +125,7 @@ export class InspectorGui {
       });
     } else if (value instanceof Array) {
       for (let i = 0;i < value.length;i++) {
-        this.addGuiProperty(guiProperties, key + i, value[i]);
+        this.addGuiProperty(guiProperties, String(i), value, 'material' + i);
       }
     } else if (value instanceof Object) {
       for (const key of Object.keys(value)) {

@@ -183,7 +183,12 @@ import { components } from '../../gui/inspector-gui';
 // const testProperties = items.value[1].properties
 // console.log(testProperties[13].name = '123')
 
-const defaultOpenItems = components.value.map(item => item.title).concat('test')
+const defaultOpenItems = [
+  'Transform',
+  "EffectComponent",
+  "TimelineComponent",
+  "SpriteComponent"
+];
 
 const vector3 = ref<Vector3>({
   x: 0,
