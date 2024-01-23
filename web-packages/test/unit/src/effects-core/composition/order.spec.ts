@@ -103,7 +103,6 @@ describe('composition order', () => {
             1624,
           ],
           'items': [
-
             {
               'id': '2',
               'name': 'ref_火花',
@@ -790,8 +789,10 @@ describe('composition order', () => {
 
     await player.play(comp);
     const face = comp.content.getItemByName('face')[0];
+    const sprite = comp.content.getItemByName('sprite_1')[0];
 
-    expect(face.listIndex).to.be.eql(3);
+    expect(face.listIndex).to.be.eql(2);
+    expect(sprite.listIndex).to.be.eql(4);
   });
 });
 
