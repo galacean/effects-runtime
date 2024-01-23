@@ -281,8 +281,8 @@ importers:
         version: 3.4.15(typescript@5.3.3)
     devDependencies:
       '@advjs/gui':
-        specifier: 0.0.4-beta.7
-        version: 0.0.4-beta.7(vue@3.4.15)
+        specifier: 0.0.4-beta.8
+        version: 0.0.4-beta.8(vue@3.4.15)
       '@antfu/eslint-config':
         specifier: ^2.6.3
         version: 2.6.3(@vue/compiler-sfc@3.4.15)(eslint@8.56.0)(typescript@5.3.3)
@@ -374,8 +374,8 @@ packages:
       - typescript
     dev: true
 
-  /@advjs/gui@0.0.4-beta.7(vue@3.4.15):
-    resolution: {integrity: sha512-hG+25jXYKCQpKGEi0qVlmikdMdJPuCSfvj0ssuUHbE3iPD+QUX+2BhJ5Rok15BY4AgiT+/sPkz0tb9y7FFA1TA==}
+  /@advjs/gui@0.0.4-beta.8(vue@3.4.15):
+    resolution: {integrity: sha512-X00UX/aZ2rXtfhREW/GFbdwoIv+agFI5Fq9zRY5rlCWTzKig+NSQFGS5yFNdcHzYRBZW7u5ldoPcMWD22Zq0xg==}
     dependencies:
       '@headlessui/vue': 1.7.17(vue@3.4.15)
       '@iconify-json/vscode-icons': 1.1.33
@@ -2984,6 +2984,7 @@ packages:
     resolution: {integrity: sha512-TVYVWD/SYwWzGGnbfTkrNpdE4HON46orgMNHCivlXmlsSGQOx/OHHYiQcMIOx38/GWgwr/po2LBn7wypkWw/Mg==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2992,6 +2993,7 @@ packages:
     resolution: {integrity: sha512-XcKvuendwizYYhFxpvQ3xVpzje2HHImzg33wL9zvxtj77HvPStbSGI9czrdbfrf8DGMcNNReH9pVZv8qejAQ5A==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -3000,6 +3002,7 @@ packages:
     resolution: {integrity: sha512-LFHS/8Q+I9YA0yVETyjonMJ3UA+DczeBd/MqNEzsGSTdNvSJa1OJZcSH8GiXLvcizgp9AlHs2walqRcqzjOi3A==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -3008,6 +3011,7 @@ packages:
     resolution: {integrity: sha512-dIYgo+j1+yfy81i0YVU5KnQrIJZE8ERomx17ReU4GREjGtDW4X+nvkBak2xAUpyqLs4eleDSj3RrV72fQos7zw==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -3016,6 +3020,7 @@ packages:
     resolution: {integrity: sha512-RoaYxjdHQ5TPjaPrLsfKqR3pakMr3JGqZ+jZM0zP2IkDtsGa4CqYaWSfQmZVgFUCgLrTnzX+cnHS3nfl+kB6ZQ==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -3867,7 +3872,7 @@ packages:
       '@vue/shared': 3.4.5
       estree-walker: 2.0.2
       magic-string: 0.30.5
-      postcss: 8.4.32
+      postcss: 8.4.33
       source-map-js: 1.0.2
     dev: true
 

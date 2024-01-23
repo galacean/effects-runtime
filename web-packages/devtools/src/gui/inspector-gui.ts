@@ -1,7 +1,7 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
 import type { Component, EffectsObject, EffectsPackageData, Engine, EffectComponent } from '@galacean/effects';
-import { type VFXItem, type VFXItemContent } from '@galacean/effects';
+import { ParticleSystem, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { ref } from 'vue';
 import { assetDatabase, inspectorGui } from '../utils';
 import { EffectsPackage } from '@galacean/effects-assets';
@@ -57,6 +57,9 @@ export class InspectorGui {
 
     this.addComponentGui(item.transform as unknown as Component);
     for (const component of item.components) {
+      if (component instanceof ParticleSystem) {
+        continue;
+      }
       this.addComponentGui(component);
     }
   }
@@ -76,46 +79,56 @@ export class InspectorGui {
         continue;
       }
 
-      this.addGuiProperty(properties, key, value);
+      this.addGuiProperty(properties, key, serializedData);
     }
   }
 
-  addGuiProperty (guiProperties: AGUIPropertyProps[], key: string, value: any) {
-    // if (typeof value === 'number') {
-    //   guiProperties.push({
-    //     type: 'number',
-    //     name: key,
-    //     value });
-    // } else if (typeof value === 'boolean') {
-    //   guiProperties.push({
-    //     type: 'checkbox',
-    //     name: key,
-    //     value });
-    // } else if (this.checkVector3(value)) {
-    //   guiProperties.push({
-    //     type: 'vector',
-    //     name: key,
-    //     value });
-    // } else if (this.checkGUID(value)) {
-    //   guiProperties.push({
-    //     type: 'file',
-    //     name: key,
-    //     placeholder: 'Placeholder',
-    //     onFileChange (file) {
-    //       // eslint-disable-next-line no-console
-    //       console.log(file);
-    //     },
-    //   });
-    // } else if (value instanceof Array) {
-    //   for (let i = 0;i < value.length;i++) {
-    //     this.addGuiProperty(guiProperties, key + i, value[i]);
-    //   }
-    // } else if (value instanceof Object) {
-    //   for (const key of Object.keys(value)) {
-    //     this.addGuiProperty(guiProperties, key, value[key]);
-    //   }
-    // }
+  addGuiProperty (guiProperties: AGUIPropertyProps[], key: string, object: any) {
+    const value = object[key];
 
+    if (value === undefined) {
+      return;
+    }
+
+    if (typeof value === 'number') {
+      guiProperties.push({
+        type: 'number',
+        name: key,
+        key,
+        object });
+    } else if (typeof value === 'boolean') {
+      guiProperties.push({
+        type: 'checkbox',
+        name: key,
+        key,
+        object });
+    } else if (this.checkVector3(value)) {
+      guiProperties.push({
+        type: 'vector',
+        name: key,
+        key,
+        object });
+    } else if (this.checkGUID(value)) {
+      guiProperties.push({
+        type: 'file',
+        name: key,
+        placeholder: 'Placeholder',
+        key,
+        object,
+        onFileChange (file) {
+          // eslint-disable-next-line no-console
+          console.log(file);
+        },
+      });
+    } else if (value instanceof Array) {
+      for (let i = 0;i < value.length;i++) {
+        this.addGuiProperty(guiProperties, key + i, value[i]);
+      }
+    } else if (value instanceof Object) {
+      for (const key of Object.keys(value)) {
+        this.addGuiProperty(guiProperties, key, value[key]);
+      }
+    }
   }
 
   checkVector3 (property: Record<string, any>) {
@@ -451,6 +464,7 @@ export class SerializedObject {
   }
 
   applyModifiedProperties () {
+    // console.log(this.serializedData)
     this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target);
     // assetDatabase.setDirty(this.target);
   }

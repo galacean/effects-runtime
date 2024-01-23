@@ -36,10 +36,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   input.startup();
   await loadJson(json);
 
-  setInterval(async () => {
-    await guiMainLoop();
-  }, 100);
-
+  await guiMainLoop();
   inputControllerUpdate();
 }
 
@@ -51,6 +48,8 @@ async function guiMainLoop () {
   treeGui.update();
   // inspectorGuiOld.update();
   await inspectorGui.update();
+
+  requestAnimationFrame(guiMainLoop);
 }
 
 function inputControllerUpdate () {
