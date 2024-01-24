@@ -1,10 +1,10 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
-import type { Component, EffectsObject, EffectsPackageData, Engine, EffectComponent, Material, ShaderData, EffectsObjectData } from '@galacean/effects';
-import { ParticleSystem, RendererComponent, Texture, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
-import { ref } from 'vue';
-import { assetDatabase, inspectorGui } from '../utils';
+import type { Component, EffectsObject, EffectsPackageData, Engine, Material, ShaderData } from '@galacean/effects';
+import { ParticleSystem, RendererComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
+import { ref } from 'vue';
+import { assetDatabase } from '../utils';
 import { readFileAsText } from '../utils/asset-database';
 
 export const formData = {
@@ -102,12 +102,6 @@ export class InspectorGui {
 
     this.componentProperties.push({ title: component.constructor.name, properties });
     for (const key of Object.keys(serializedData)) {
-      const value = serializedData[key];
-
-      if (!value) {
-        continue;
-      }
-
       this.addGuiProperty(properties, key, serializedData);
     }
   }
@@ -357,7 +351,11 @@ export class InspectorGui {
     // this.item.transform.fromData(transformData);
     // const position = components.value[0].properties[0].value;
     for (const serializedObject of this.serializedObjects) {
-      serializedObject.applyModifiedProperties();
+      // serializedObject.update();
+      this.refresh();
+      // serializedObject.applyModifiedProperties();
+
+      serializedObject.update();
     }
   }
 }

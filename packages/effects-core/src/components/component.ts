@@ -63,6 +63,19 @@ export abstract class Behaviour extends Component {
   }
 
   protected onBehaviourEnable () { }
+
+  override fromData (data: any): void {
+    super.fromData(data);
+    // TODO 数据改造后可移除判断
+    if (data._enabled !== undefined) {
+      this._enabled = data._enabled;
+    }
+  }
+
+  override toData (): void {
+    super.toData();
+    this.taggedProperties._enabled = this._enabled;
+  }
 }
 
 /**

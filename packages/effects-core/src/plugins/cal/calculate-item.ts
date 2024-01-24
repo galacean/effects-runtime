@@ -215,4 +215,9 @@ export class TimelineComponent extends ItemBehaviour {
     this.id = this.item.id;
     this.name = this.item.name;
   }
+
+  override toData (): void {
+    super.toData();
+    this.taggedProperties.time = this.time;
+  }
 }

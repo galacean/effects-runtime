@@ -578,4 +578,8 @@ export class SpriteComponent extends RendererComponent {
 
     colorTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData({ colorOverLifetime: data.colorOverLifetime, startColor: data.options.startColor });
   }
+
+  override toData (): void {
+    super.toData();
+  }
 }
