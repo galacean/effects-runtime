@@ -184,7 +184,7 @@ export async function loadImage (
         URL.revokeObjectURL(url);
       }
 
-      return reject(`Load image fail: ${JSON.stringify(e)}`);
+      return reject(`Load image fail: ${url}, reason: ${JSON.stringify(e)}`);
     };
     img.src = url;
   });
