@@ -1,9 +1,10 @@
+import type { SpriteVFXItem } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.applause.url;
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*wQPWQq1-RF4AAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {

@@ -487,6 +487,335 @@ describe('interact item', () => {
 
   });
 
+  it('click item with stopCapture', async () => {
+    const width = 1, height = 1;
+    const json = {
+      'playerVersion': {
+        'web': '1.1.5',
+        'native': '1.0.0.231013104006',
+      },
+      'images': [],
+      'fonts': [],
+      'spines': [],
+      'version': '2.2',
+      'shapes': [],
+      'plugins': [],
+      'type': 'ge',
+      'compositions': [
+        {
+          'id': '7',
+          'name': '新建合成7',
+          'duration': 5,
+          'startTime': 0,
+          'endBehavior': 1,
+          'previewSize': [
+            750,
+            1624,
+          ],
+          'items': [
+            {
+              'id': '1',
+              'name': 'sprite_2',
+              'duration': 5,
+              'type': '1',
+              'visible': true,
+              'endBehavior': 0,
+              'delay': 0,
+              'renderLevel': 'B+',
+              'content': {
+                'options': {
+                  'startColor': [
+                    0.12941176470588237,
+                    0.9254901960784314,
+                    0.8666666666666667,
+                    1,
+                  ],
+                },
+                'renderer': {
+                  'renderMode': 1,
+                },
+                'positionOverLifetime': {
+                  'direction': [
+                    0,
+                    0,
+                    0,
+                  ],
+                  'startSpeed': 0,
+                  'gravity': [
+                    0,
+                    0,
+                    0,
+                  ],
+                  'gravityOverLifetime': [
+                    0,
+                    1,
+                  ],
+                },
+                'interaction': {
+                  'behavior': 1,
+                },
+              },
+              'transform': {
+                'position': [
+                  0,
+                  0,
+                  0,
+                ],
+                'rotation': [
+                  0,
+                  0,
+                  0,
+                ],
+                'scale': [
+                  width + 2,
+                  width + 2,
+                  1,
+                ],
+              },
+            },
+          ],
+          'camera': {
+            'fov': 60,
+            'far': 40,
+            'near': 0.1,
+            'clipMode': 1,
+            'position': [
+              0,
+              0,
+              8,
+            ],
+            'rotation': [
+              0,
+              0,
+              0,
+            ],
+          },
+        },
+        {
+          'id': '6',
+          'name': '新建合成6',
+          'duration': 5,
+          'startTime': 0,
+          'endBehavior': 1,
+          'previewSize': [
+            750,
+            1624,
+          ],
+          'items': [
+            {
+              'id': '2',
+              'name': 'sprite_1',
+              'duration': 5,
+              'type': '1',
+              'visible': true,
+              'endBehavior': 0,
+              'delay': 0,
+              'renderLevel': 'B+',
+              'content': {
+                'options': {
+                  'startColor': [
+                    0.42745098039215684,
+                    0.42745098039215684,
+                    0.807843137254902,
+                    1,
+                  ],
+                },
+                'renderer': {
+                  'renderMode': 1,
+                },
+                'positionOverLifetime': {
+                  'direction': [
+                    0,
+                    0,
+                    0,
+                  ],
+                  'startSpeed': 0,
+                  'gravity': [
+                    0,
+                    0,
+                    0,
+                  ],
+                  'gravityOverLifetime': [
+                    0,
+                    1,
+                  ],
+                },
+                'interaction': {
+                  'behavior': 1,
+                },
+              },
+              'transform': {
+                'position': [
+                  0,
+                  0,
+                  0,
+                ],
+                'rotation': [
+                  0,
+                  0,
+                  0,
+                ],
+                'scale': [
+                  width + 3,
+                  height + 3,
+                  1,
+                ],
+              },
+            },
+            {
+              'id': '5',
+              'name': '新建合成7',
+              'duration': 5,
+              'type': '7',
+              'visible': true,
+              'endBehavior': 4,
+              'delay': 0,
+              'renderLevel': 'B+',
+              'content': {
+                'options': {
+                  'refId': '7',
+                },
+                'positionOverLifetime': {},
+              },
+              'transform': {
+                'position': [
+                  0,
+                  0,
+                  0,
+                ],
+                'rotation': [
+                  0,
+                  0,
+                  0,
+                ],
+                'scale': [
+                  1,
+                  1,
+                  1,
+                ],
+              },
+            },
+            {
+              'id': '4',
+              'name': 'sprite_3',
+              'duration': 5,
+              'type': '1',
+              'visible': true,
+              'endBehavior': 0,
+              'delay': 0,
+              'renderLevel': 'B+',
+              'content': {
+                'options': {
+                  'startColor': [
+                    0.9607843137254902,
+                    0.9098039215686274,
+                    0.3176470588235294,
+                    1,
+                  ],
+                },
+                'renderer': {
+                  'renderMode': 1,
+                },
+                'positionOverLifetime': {
+                  'direction': [
+                    0,
+                    0,
+                    0,
+                  ],
+                  'startSpeed': 0,
+                  'gravity': [
+                    0,
+                    0,
+                    0,
+                  ],
+                  'gravityOverLifetime': [
+                    0,
+                    1,
+                  ],
+                },
+                'interaction': {
+                  'behavior': 1,
+                },
+              },
+              'transform': {
+                'position': [
+                  0,
+                  0,
+                  0,
+                ],
+                'rotation': [
+                  0,
+                  0,
+                  0,
+                ],
+                'scale': [
+                  width,
+                  height,
+                  1,
+                ],
+              },
+            },
+          ],
+          'camera': {
+            'fov': 60,
+            'far': 40,
+            'near': 0.1,
+            'clipMode': 1,
+            'position': [
+              0,
+              0,
+              8,
+            ],
+            'rotation': [
+              0,
+              0,
+              0,
+            ],
+          },
+        },
+      ],
+      'requires': [],
+      'compositionId': '6',
+      'bins': [],
+      'textures': [],
+    };
+    const composition = await player.loadScene(json, {
+      autoplay: false,
+    });
+
+    player.gotoAndStop(0);
+
+    const vp = composition.camera.getViewProjectionMatrix();
+
+    // 未开始停止点击捕获 均会响应
+    let inPos = vp.projectPoint(new Vector3(0, 0, 0), new Vector3());
+    let ret = composition.hitTest(inPos.x, inPos.y, false);
+
+    expect(ret.length).to.eql(3);
+
+    // 设置元素停止点击捕获
+    composition.getItemByName('sprite_2').setClickCapture(false);
+    inPos = vp.projectPoint(new Vector3(0, 0, 0), new Vector3());
+    ret = composition.hitTest(inPos.x, inPos.y, false);
+
+    expect(ret.length).to.eql(2);
+
+    composition.getItemByName('sprite_3').setClickCapture(false);
+    inPos = vp.projectPoint(new Vector3(0, 0, 0), new Vector3());
+    ret = composition.hitTest(inPos.x, inPos.y, false);
+
+    expect(ret.length).to.eql(1);
+
+    // 设置预合成停止点击捕获
+    composition.getItemByName('sprite_2').setClickCapture(true);
+    composition.getItemByName('sprite_3').setClickCapture(true);
+    composition.getItemByName('新建合成7').setClickCapture(false);
+    inPos = vp.projectPoint(new Vector3(1.2, 1.2, 0), new Vector3());
+    ret = composition.hitTest(inPos.x, inPos.y, false);
+
+    expect(ret.length).to.eql(1);
+  });
+
   it('prevent event if clicked', async () => {
     const container = document.createElement('div');
 

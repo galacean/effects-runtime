@@ -94,6 +94,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
             name: itemProps.name,
             duration: itemProps.duration,
             endBehavior: itemProps.endBehavior,
+            listIndex: itemProps.listIndex,
             parentId: itemProps.parentId,
             transform: itemProps.transform,
           }, this.composition);
@@ -382,12 +383,19 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
     const hitPositions: Vector3[] = [];
     const stop = options?.stop || noop;
     const skip = options?.skip || noop;
-    const maxCount = options?.maxCount || this.items.length;
+    const queue: VFXItem<VFXItemContent>[] = this.items.slice();
 
-    for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
-      const item = this.items[i];
+    const maxCount = options?.maxCount || Infinity;
 
-      if (item.lifetime >= 0 && item.lifetime <= 1 && !VFXItem.isComposition(item) && !skip(item)) {
+    while (queue.length && regions.length < maxCount) {
+      const item = queue.pop() as VFXItem<VFXItemContent>;
+
+      if (VFXItem.isComposition(item)) {
+        if (item.captureStopped) {
+          item.items[0].captureStopped = true;
+        }
+        queue.push(...item.items);
+      } else if (item.lifetime >= 0 && item.lifetime <= 1 && !skip(item)) {
         const hitParams = item.getHitTestParams(force);
 
         if (hitParams) {
@@ -445,13 +453,90 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
             };
 
             regions.push(region);
-            if (stop(region)) {
+            if (stop(region) || item.captureStopped) {
               return regions;
             }
           }
         }
+
       }
     }
+
+    // for (let i = this.items.length - 1; i >= 0 && hitPositions.length < maxCount; i--) {
+    //   const item = this.items[i];
+    //
+    //   if (VFXItem.isComposition(item)) {
+    //     item.hitTest(ray, x, y, regions, force, options, maxOrder);
+    //   } else if (item.lifetime >= 0 && item.lifetime <= 1 && item.listIndex >= maxOrder && !skip(item)) {
+    //     const hitParams = item.getHitTestParams(force);
+    //
+    //     if (hitParams) {
+    //       let success = false;
+    //       const intersectPoint = new Vector3();
+    //
+    //       if (hitParams.type === HitTestType.triangle) {
+    //         const { triangles, backfaceCulling } = hitParams;
+    //
+    //         for (let j = 0; j < triangles.length; j++) {
+    //           const triangle = triangles[j];
+    //
+    //           if (ray.intersectTriangle(triangle, intersectPoint, backfaceCulling)) {
+    //             success = true;
+    //             hitPositions.push(intersectPoint);
+    //
+    //             break;
+    //           }
+    //         }
+    //       } else if (hitParams.type === HitTestType.box) {
+    //         const { center, size } = hitParams;
+    //         const boxMin = center.clone().addScaledVector(size, 0.5);
+    //         const boxMax = center.clone().addScaledVector(size, -0.5);
+    //
+    //         if (ray.intersectBox({ min: boxMin, max: boxMax }, intersectPoint)) {
+    //           success = true;
+    //           hitPositions.push(intersectPoint);
+    //         }
+    //       } else if (hitParams.type === HitTestType.sphere) {
+    //         const { center, radius } = hitParams;
+    //
+    //         if (ray.intersectSphere({ center, radius }, intersectPoint)) {
+    //           success = true;
+    //           hitPositions.push(intersectPoint);
+    //         }
+    //       } else if (hitParams.type === HitTestType.custom) {
+    //         const tempPosition = hitParams.collect(ray, new Vector2(x, y));
+    //
+    //         if (tempPosition && tempPosition.length > 0) {
+    //           tempPosition.forEach(pos => {
+    //             hitPositions.push(pos);
+    //           });
+    //           success = true;
+    //         }
+    //       }
+    //       if (success) {
+    //         if (item.captureStopped) {
+    //           debugger;
+    //           maxOrder = item.listIndex;
+    //         }
+    //         const region = {
+    //           compContent: this,
+    //           id: item.id,
+    //           name: item.name,
+    //           position: hitPositions[hitPositions.length - 1],
+    //           parentId: item.parentId,
+    //           hitPositions,
+    //           behavior: hitParams.behavior,
+    //         };
+    //
+    //         regions.push(region);
+    //         if (stop(region)) {
+    //           return regions;
+    //         }
+    //       }
+    //     }
+    //
+    //   }
+    // }
 
     return regions;
   }

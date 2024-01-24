@@ -31,7 +31,7 @@ export type VFXItemProps =
     items: any,
     startTime: number,
     relative?: boolean,
-    listIndex?: number,
+    listIndex: number,
     refId?: string,
   }
   ;
@@ -100,6 +100,10 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
    * 元素优先级
    */
   _v_priority = 0;
+  /**
+   * 是否阻止点击事件往下层元素传递
+   */
+  captureStopped = false;
   /**
    * 元素创建的数据图层/粒子/模型等
    */
@@ -188,7 +192,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
   ) {
     const {
       id, name, delay, parentId, endBehavior, transform,
-      listIndex = 0,
+      listIndex,
       duration = 0,
     } = props;
 
@@ -693,6 +697,13 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
       this._contentVisible = false;
       this.transform.setValid(false);
     }
+  }
+
+  /**
+   * 设置点击事件是否往下层元素传递
+   */
+  setClickCapture (captive: boolean) {
+    this.captureStopped = !captive;
   }
 }
 

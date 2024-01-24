@@ -315,7 +315,7 @@ describe('sprite interaction', async () => {
     const res = comp.hitTest(point.x, point.y, true);
 
     expect(res.length).to.eql(2);
-    expect(res[1].position.toArray()).to.deep.equals([0, 0, 0]);
-    expect(res[0].position.toArray()).to.deep.equals([0, 0, 2]);
+    expect(res[1].position.toArray()).to.deep.equals([0, 0, 2]);
+    expect(res[0].position.toArray()).to.deep.equals([0, 0, 0]);
   });
 });

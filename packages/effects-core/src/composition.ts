@@ -656,9 +656,6 @@ export class Composition implements Disposable, LostHandler {
     const ray = this.getHitTestRay(x, y);
 
     this.content.hitTest(ray, x, y, regions, force, options);
-    this.refContent.forEach(ref => {
-      ref.hitTest(ray, x, y, regions, force, options);
-    });
 
     return regions;
   }
