@@ -36,7 +36,7 @@ onMounted(async () => {
       <!-- <AGUITabPanel h="full" :unmount="false" relative>
         <slot name="scene" />
       </AGUITabPanel> -->
-      <canvas id="galacean-effects-canvas" class="w-full h-full" ref="galaceanEffectsCanvas" />
+      <canvas id="galacean-effects-canvas" class="w-full! h-full!" ref="galaceanEffectsCanvas" />
       <slot />
     </AGUITabs>
   </AGUIPanel>
