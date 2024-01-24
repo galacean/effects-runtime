@@ -69,6 +69,30 @@ export class InspectorGui {
     }
   }
 
+  refresh () {
+    for (const serializedObject of this.serializedObjects) {
+      serializedObject.applyModifiedProperties();
+    }
+    this.componentProperties = components.value;
+    this.componentProperties.length = 0;
+    this.serializedObjects = [];
+
+    const item = this.item;
+
+    this.addComponentGui(item.transform as unknown as Component);
+    for (const component of item.components) {
+      if (component instanceof ParticleSystem) {
+        continue;
+      }
+      this.addComponentGui(component);
+    }
+    if (item.getComponent(RendererComponent)) {
+      const material = item.getComponent(RendererComponent)!.material;
+
+      this.addMateraiGui(material);
+    }
+  }
+
   addComponentGui (component: Component) {
     const serializedObject = new SerializedObject(component);
     const serializedData = serializedObject.serializedData;
@@ -126,7 +150,7 @@ export class InspectorGui {
         placeholder: 'Placeholder',
         key:'file',
         object:{ file:'' },
-        async onFileChange (fileItem) {
+        onFileChange: async fileItem => {
           const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
 
           let res: string;
@@ -159,6 +183,7 @@ export class InspectorGui {
           }
 
           object[key] = { id:packageData.exportObjects[0].id };
+          this.refresh();
         },
       });
     } else if (value instanceof Array) {

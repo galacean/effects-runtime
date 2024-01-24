@@ -12,7 +12,7 @@ import { AssetDatabase } from './asset-database';
 export const treeGui = new TreeGui();
 export const menuGui = new MenuGui();
 export let assetDatabase: AssetDatabase;
-const inspectorGuiOld = new InspectorGuiOld();
+// const inspectorGuiOld = new InspectorGuiOld();
 
 export const inspectorGui = new InspectorGui();
 const orbitController = new OrbitController();
@@ -41,7 +41,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
 
 async function guiMainLoop () {
   if (treeGui.activeItem) {
-    inspectorGuiOld.setItem(treeGui.activeItem);
+    // inspectorGuiOld.setItem(treeGui.activeItem);
     inspectorGui.setItem(treeGui.activeItem);
   }
   treeGui.update();
