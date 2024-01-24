@@ -403,6 +403,7 @@ export interface MaterialData extends EffectsObjectData {
   vector2s?: Record<string, spec.vec2>,
   vector3s?: Record<string, spec.vec3>,
   vector4s: Record<string, spec.vec4>,
+  colors: Record<string, { r: number, g: number, b: number, a: number }>,
   matrices?: Record<string, spec.mat4>,
   matrice3s?: Record<string, spec.mat3>,
   textures?: Record<string, DataPath>,

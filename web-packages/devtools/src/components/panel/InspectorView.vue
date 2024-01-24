@@ -187,7 +187,8 @@ const defaultOpenItems = [
   'Transform',
   "EffectComponent",
   "TimelineComponent",
-  "SpriteComponent"
+  "SpriteComponent",
+  "Material"
 ];
 
 const vector3 = ref<Vector3>({

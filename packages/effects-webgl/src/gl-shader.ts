@@ -4,6 +4,7 @@ import type { GLProgram } from './gl-program';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
 
+type Color = math.Color;
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
 type Vector4 = math.Vector4;
@@ -57,6 +58,9 @@ export class GLShader extends Shader {
   }
   setVector4 (name: string, value: Vector4) {
     this.pipelineContext.setVector4(this.uniformLocations[name], value);
+  }
+  setColor (name: string, value: Color) {
+    this.pipelineContext.setColor(this.uniformLocations[name], value);
   }
   setQuaternion (name: string, value: Quaternion) {
     this.pipelineContext.setQuaternion(this.uniformLocations[name], value);

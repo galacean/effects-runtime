@@ -1,13 +1,13 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
-import type { Component, EffectsObject, EffectsPackageData, Engine, EffectComponent } from '@galacean/effects';
-import { ParticleSystem, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import type { Component, EffectsObject, EffectsPackageData, Engine, EffectComponent, Material, ShaderData } from '@galacean/effects';
+import { ParticleSystem, RendererComponent, Texture, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { ref } from 'vue';
 import { assetDatabase, inspectorGui } from '../utils';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { readFileAsText } from '../utils/asset-database';
 
-const formData = ref({
+export const formData = ref({
   input: 'test',
   inputNumber: 10,
   checkbox: true,
@@ -61,6 +61,11 @@ export class InspectorGui {
         continue;
       }
       this.addComponentGui(component);
+    }
+    if (item.getComponent(RendererComponent)) {
+      const material = item.getComponent(RendererComponent)!.material;
+
+      this.addMateraiGui(material);
     }
   }
 
@@ -134,6 +139,166 @@ export class InspectorGui {
     }
   }
 
+  addMateraiGui (material: Material) {
+    const serializedObject = new SerializedObject(material);
+
+    serializedObject.serializedData = {
+      blending:false,
+      zTest:false,
+      zWrite:false,
+      ...serializedObject.serializedData,
+    };
+    const serializedData = serializedObject.serializedData;
+
+    this.serializedObjects.push(serializedObject);
+    const properties: AGUIPropertyProps[] = [];
+
+    this.componentProperties.push({ title: 'Material', properties });
+    for (const key of Object.keys(serializedData)) {
+      const value = serializedData[key];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      this.addGuiProperty(properties, key, serializedData);
+    }
+
+    this.parseMaterialProperties(properties, material, serializedObject);
+  }
+
+  private parseMaterialProperties (guiProperties: AGUIPropertyProps[], material: Material, serializeObject: SerializedObject) {
+    const serializedData = serializeObject.serializedData;
+    const shaderProperties = (material.shaderSource as ShaderData).properties;
+
+    if (!shaderProperties) {
+      return;
+    }
+    const lines = shaderProperties.split('\n');
+
+    for (const property of lines) {
+      // 提取材质属性信息
+      // 如 “_Float1("Float2", Float) = 0”
+      // 提取出 “_Float1” “Float2” “Float” “0”
+      const regex = /\s*(.+?)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/;
+      const matchResults = property.match(regex);
+
+      if (!matchResults) {
+        return;
+      }
+      const uniformName = matchResults[1];
+      const inspectorName = matchResults[2];
+      const type = matchResults[3];
+      const value = matchResults[4];
+
+      // 提取 Range(a, b) 的 a 和 b
+      const match = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+
+      if (match) {
+        const start = Number(match[1]);
+        const end = Number(match[2]);
+
+        // materialData.floats[uniformName] = Number(value);
+        guiProperties.push({
+          name: inspectorName,
+          type: 'number-slider',
+          max: end,
+          min: start,
+          step: 0.01,
+          object: serializedData.floats,
+          key: uniformName,
+        });
+      } else if (type === 'Float') {
+        guiProperties.push({
+          name: inspectorName,
+          type: 'number',
+          object: serializedData.floats,
+          key: uniformName,
+        });
+      } else if (type === 'Color') {
+        guiProperties.push({
+          name: inspectorName,
+          type: 'color',
+          object: serializedData.vector4s,
+          key: uniformName,
+        });
+      } else if (type === '2D') {
+      //   const item = this.item;
+      //   const controller = this.gui.add({
+      //     click: async () => {
+      //       const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
+      //       const file = await fileHandle[0].getFile();
+
+        //       // 生成纹理资产对象
+        //       const reader = new FileReader();
+
+        //       reader.onload = async function (e) {
+        //         const result = e.target?.result as string;
+        //         // const textureData = { id: assetGuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+        //         const textureData = (JSON.parse(result) as EffectsPackageData).exportObjects[0];
+
+        //         serializeObject.engine.addEffectsObjectData(textureData);
+
+        //         // @ts-expect-error
+        //         const imageFile = base64ToFile(textureData.source);
+
+        //         // 加载 image
+        //         const image = await loadImage(imageFile);
+
+        //         image.width = 50;
+        //         image.height = 50;
+        //         image.id = inspectorName;
+        //         const lastImage = document.getElementById(inspectorName);
+
+        //         if (lastImage) {
+        //           controller.domElement.removeChild(lastImage);
+        //         }
+        //         controller.domElement.appendChild(image);
+
+        //         // 根据 image 生成纹理对象
+        //         const texture = Texture.create(item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
+
+        //         texture.setInstanceId(textureData.id);
+        //         serializeObject.engine.deserializer.addInstance(texture);
+        //         serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
+        //         serializeObject.applyModifiedProperties();
+        //       };
+        //       reader.onerror = event => {
+        //         console.error('文件读取出错:', reader.error);
+        //       };
+
+      //       reader.readAsText(file);
+      //     },
+      //   }, 'click').name(inspectorName);
+      }
+    }
+  }
+
+  // dat gui 参数及修改
+  // private setMaterialGui (material: Material) {
+  //   const materialGUI = this.gui.addFolder('Material');
+
+  //   materialGUI.open();
+  //   const serializeObject = new SerializedObject(material);
+  //   const serializedData = serializeObject.serializedData;
+
+  //   serializedData.blending = false;
+  //   serializedData.zTest = false;
+  //   serializedData.zWrite = false;
+  //   serializeObject.update();
+
+  //   this.guiControllers.push(materialGUI.add(serializedData, 'blending').onChange(() => {
+  //     serializeObject.applyModifiedProperties();
+  //   }));
+  //   this.guiControllers.push(materialGUI.add(serializedData, 'zTest').onChange(() => {
+  //     serializeObject.applyModifiedProperties();
+  //   }));
+  //   this.guiControllers.push(materialGUI.add(serializedData, 'zWrite').onChange(() => {
+  //     serializeObject.applyModifiedProperties();
+  //   }));
+  //   this.parseMaterialProperties(material, materialGUI, serializeObject);
+  // }
+
   checkVector3 (property: Record<string, any>) {
     return Object.keys(property).length === 3 && property['x'] !== undefined && property['y'] !== undefined && property['z'] !== undefined ;
   }
@@ -141,9 +306,6 @@ export class InspectorGui {
   checkGUID (property: Record<string, any>) {
     return property instanceof Object && Object.keys(property).length === 1 && property.id !== undefined && property.id.length === 32;
   }
-
-  serializedData: Record<string, any>;
-  effectComponent: EffectComponent;
 
   async update () {
     if (!this.item) {
@@ -467,6 +629,9 @@ export class SerializedObject {
   }
 
   applyModifiedProperties () {
+    // if (this.serializedData.floats) {
+    //   console.log(this.serializedData);
+    // }
     // console.log(this.serializedData)
     this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target);
     // assetDatabase.setDirty(this.target);

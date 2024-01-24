@@ -1,14 +1,13 @@
-import type { Composition, EffectsObjectData, VFXItemConstructor, VFXItemContent } from '@galacean/effects';
-import { DataType, EffectComponent, Player, TimelineComponent, VFXItem } from '@galacean/effects';
-import { G_QUAD, M_DUCK, S_TRAIL } from '@galacean/effects-assets';
+import type { Composition, EffectsObjectData } from '@galacean/effects';
+import { DataType, Player, TimelineComponent } from '@galacean/effects';
 import demoJson from '../assets/scenes/trail-demo.scene.json';
 import { Input } from '../gui/input';
+import { InspectorGui } from '../gui/inspector-gui';
 import { InspectorGuiOld } from '../gui/inspector-gui-old';
+import { MenuGui } from '../gui/menu-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
 import { AssetDatabase } from './asset-database';
-import { MenuGui } from '../gui/menu-gui';
-import { InspectorGui } from '../gui/inspector-gui';
 
 export const treeGui = new TreeGui();
 export const menuGui = new MenuGui();
@@ -48,7 +47,6 @@ async function guiMainLoop () {
   treeGui.update();
   // inspectorGuiOld.update();
   await inspectorGui.update();
-
   requestAnimationFrame(guiMainLoop);
 }
 

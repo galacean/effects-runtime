@@ -9,6 +9,7 @@ import type { GLShader } from './gl-shader';
 import type { GLTexture } from './gl-texture';
 import type { GLEngine } from './gl-engine';
 
+type Color = math.Color;
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
 type Vector4 = math.Vector4;
@@ -27,6 +28,7 @@ export class GLMaterial extends Material {
   vector2s: Record<string, Vector2> = {};
   vector3s: Record<string, Vector3> = {};
   vector4s: Record<string, Vector4> = {};
+  colors: Record<string, Color> = {};
   quaternions: Record<string, Quaternion> = {};
   matrices: Record<string, Matrix4> = {};
   matrice3s: Record<string, Matrix3> = {};
@@ -315,6 +317,9 @@ export class GLMaterial extends Material {
     for (name in this.vector4s) {
       this.shader.setVector4(name, this.vector4s[name]);
     }
+    for (name in this.colors) {
+      this.shader.setColor(name, this.colors[name]);
+    }
     for (name in this.quaternions) {
       this.shader.setQuaternion(name, this.quaternions[name]);
     }
@@ -378,6 +383,15 @@ export class GLMaterial extends Material {
   setVector4 (name: string, value: Vector4): void {
     this.checkUniform(name);
     this.vector4s[name] = value;
+  }
+
+  getColor (name: string): Color | null {
+    return this.colors[name];
+  }
+
+  setColor (name: string, value: Color): void {
+    this.checkUniform(name);
+    this.colors[name] = value;
   }
 
   getQuaternion (name: string): Quaternion | null {
@@ -457,6 +471,7 @@ export class GLMaterial extends Material {
     clonedMaterial.vector2s = this.vector2s;
     clonedMaterial.vector3s = this.vector3s;
     clonedMaterial.vector4s = this.vector4s;
+    clonedMaterial.colors = this.colors;
     clonedMaterial.quaternions = this.quaternions;
     clonedMaterial.matrices = this.matrices;
     clonedMaterial.textures = this.textures;
@@ -486,7 +501,6 @@ export class GLMaterial extends Material {
       matrices: {},
       textures: {},
       floatArrays: {},
-      vector4Arrays: {},
       blending:false,
       zTest:false,
       zWrite:false,
@@ -510,6 +524,11 @@ export class GLMaterial extends Material {
     // }
     for (name in propertiesData.vector4s) {
       this.setVector4(name, new math.Vector4().setFromArray(propertiesData.vector4s[name]));
+    }
+    for (name in propertiesData.colors) {
+      const colorValue = propertiesData.colors[name];
+
+      this.setColor(name, new math.Color(colorValue.r, colorValue.g, colorValue.b, colorValue.a));
     }
 
     for (name in propertiesData.textures) {
@@ -569,6 +588,9 @@ export class GLMaterial extends Material {
     for (const name in this.vector4s) {
       materialData.vector4s[name] = this.vector4s[name].toArray();
     }
+    for (const name in this.colors) {
+      materialData.colors[name] = this.colors[name];
+    }
 
     return materialData;
   }
@@ -597,6 +619,9 @@ export class GLMaterial extends Material {
     }
     for (name in material.vector4s) {
       this.setVector4(name, material.vector4s[name]);
+    }
+    for (name in material.colors) {
+      this.setColor(name, material.colors[name]);
     }
     for (name in material.quaternions) {
       this.setQuaternion(name, material.quaternions[name]);
