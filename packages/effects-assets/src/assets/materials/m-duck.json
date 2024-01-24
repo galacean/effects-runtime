@@ -1,6 +1,6 @@
 {
   "fileSummary": {
-    "guid": "6fe65f139963468aac85ee0286d65aa8"
+    "guid": "cc4a0081215142fda2f4052e0a34f3e7"
   },
   "exportObjects": [
     {
@@ -12,14 +12,7 @@
       "floats": {
         "_Speed": 1
       },
-      "vector4s": {
-        "_MainColor": {
-          "x": 1,
-          "y": 1,
-          "z": 1,
-          "w": 1
-        }
-      },
+      "vector4s": {},
       "textures": {
         "_MainTex": {
           "id": "0622cbce2a724bec976e09988f192ee9"
@@ -31,7 +24,14 @@
           "id": "080f94ebcff64c81a67f31187015697e"
         }
       },
-      "colors": {}
+      "colors": {
+        "_MainColor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        }
+      }
     }
   ]
 }

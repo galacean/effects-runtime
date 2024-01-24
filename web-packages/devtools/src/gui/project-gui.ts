@@ -109,16 +109,7 @@ function importEAsset (file: File, curDirHandle: FileSystemDirectoryHandle) {
 
       eAsset.fileSummary.guid = generateUuid();
       for (const data of eAsset.exportObjects) {
-        const matData = data as MaterialData;
-
-        matData['colors'] = {};
-        for (const key of Object.keys(matData.vector4s)) {
-          const vec4 = matData.vector4s[key];
-
-          // @ts-expect-error
-          matData.vector4s[key] = { x:vec4[0], y:vec4[1], z:vec4[2], w:vec4[3] };
-        }
-        // data.id = generateUuid();
+        data.id = generateUuid();
       }
 
       let fileName = file.name;

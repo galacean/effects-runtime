@@ -219,7 +219,7 @@ export class InspectorGui {
         guiProperties.push({
           name: inspectorName,
           type: 'color',
-          object: serializedData.vector4s,
+          object: serializedData.colors,
           key: uniformName,
         });
       } else if (type === '2D') {
@@ -630,7 +630,7 @@ export class SerializedObject {
 
   applyModifiedProperties () {
     // if (this.serializedData.floats) {
-    //   console.log(this.serializedData);
+    //   console.log(this.serializedData.colors._StartColor);
     // }
     // console.log(this.serializedData)
     this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target);
