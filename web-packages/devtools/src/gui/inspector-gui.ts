@@ -487,6 +487,7 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
         name: 'Color Picker',
         object: formData,
         key: 'color2',
+        rgbScale:1,
       },
       {
         type: 'button',
