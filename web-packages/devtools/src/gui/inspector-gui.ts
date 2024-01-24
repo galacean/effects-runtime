@@ -254,6 +254,7 @@ export class InspectorGui {
           type: 'color',
           object: serializedData.colors,
           key: uniformName,
+          rgbScale:1,
         });
       } else if (type === '2D') {
         guiProperties.push({
