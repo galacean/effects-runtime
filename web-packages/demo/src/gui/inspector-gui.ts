@@ -202,7 +202,8 @@ export class InspectorGui {
           serializeObject.applyModifiedProperties();
         }));
       } else if (type === 'Color') {
-        this.guiControllers.push(gui.addColor(serializedData.vector4s, uniformName).name(inspectorName).onChange(() => {
+        this.guiControllers.push(gui.addColor({ color:[0, 0, 0, 0] }, 'color').name(inspectorName).onChange((value: number[]) => {
+          serializeObject.serializedData['vector4s'][uniformName] = { x:value[0], y:value[1], z:value[2], w:value[3] };
           serializeObject.applyModifiedProperties();
         }));
       } else if (type === '2D') {

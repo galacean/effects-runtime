@@ -343,8 +343,8 @@ const json = {
         _Speed : 1,
       },
       vector4s: {
-        _StartColor : [1.0, 0.0, 0.0, 1.0],
-        _EndColor   : [1.0, 1.0, 0.2, 1.0],
+        _StartColor : { x:1.0, y:0.0, z:0.0, w:1.0 },
+        _EndColor   : { x:1.0, y:1.0, z:0.2, w:1.0 },
       },
       textures: {
         _MainTex : { id: '0622cbce2a724bec976e09988f192ee9' },
@@ -363,8 +363,8 @@ const json = {
         _Speed : 1,
       },
       vector4s: {
-        _StartColor : [0.0, 1.0, 0.0, 1.0],
-        _EndColor   : [0.0, 0.2, 0.8, 1.0],
+        _StartColor : { x:0.0, y:1.0, z:0.0, w:1.0 },
+        _EndColor   : { x:0.0, y:0.2, z:0.8, w:1.0 },
       },
       textures: {
         _MainTex : { id: '0622cbce2a724bec976e09988f192ee9' },
@@ -383,8 +383,8 @@ const json = {
         _Speed : 1,
       },
       vector4s: {
-        _StartColor : [1.0, 0.0, 0.0, 1.0],
-        _EndColor   : [0.0, 0.0, 0.0, 1.0],
+        _StartColor : { x:1.0, y:0.0, z:0.0, w:1.0 },
+        _EndColor   : { x:0.0, y:0.0, z:0.0, w:1.0 },
       },
       textures: {
         _MainTex : { id: '0622cbce2a724bec976e09988f192ee9' },

@@ -1,6 +1,6 @@
 {
   "fileSummary": {
-    "guid": "13f679abd75447779302f46e8ae40790"
+    "guid": "1bfcdf1ec1ce49dd980c7c45806c3b6b"
   },
   "exportObjects": [
     {
@@ -14,18 +14,18 @@
         "_Speed": 1
       },
       "vector4s": {
-        "_StartColor": [
-          1,
-          0,
-          0,
-          1
-        ],
-        "_EndColor": [
-          1,
-          1,
-          0.2,
-          1
-        ]
+        "_StartColor": {
+          "x": 1,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "_EndColor": {
+          "x": 1,
+          "y": 1,
+          "z": 0.2,
+          "w": 1
+        }
       },
       "textures": {
         "_MainTex": {
@@ -37,7 +37,8 @@
         "_Tex3": {
           "id": "080f94ebcff64c81a67f31187015697e"
         }
-      }
+      },
+      "colors": {}
     }
   ]
 }

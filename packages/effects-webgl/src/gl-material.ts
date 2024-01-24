@@ -523,7 +523,9 @@ export class GLMaterial extends Material {
     //   this.setVector2(name, Vector propertiesData.vector2s[name]);
     // }
     for (name in propertiesData.vector4s) {
-      this.setVector4(name, new math.Vector4().setFromArray(propertiesData.vector4s[name]));
+      const vector4Value = propertiesData.vector4s[name];
+
+      this.setVector4(name, new math.Vector4(vector4Value.x, vector4Value.y, vector4Value.z, vector4Value.w));
     }
     for (name in propertiesData.colors) {
       const colorValue = propertiesData.colors[name];
@@ -586,7 +588,7 @@ export class GLMaterial extends Material {
       materialData.ints[name] = this.ints[name];
     }
     for (const name in this.vector4s) {
-      materialData.vector4s[name] = this.vector4s[name].toArray();
+      materialData.vector4s[name] = this.vector4s[name];
     }
     for (const name in this.colors) {
       materialData.colors[name] = this.colors[name];

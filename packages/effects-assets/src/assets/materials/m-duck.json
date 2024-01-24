@@ -1,6 +1,6 @@
 {
   "fileSummary": {
-    "guid": "6eb6009848104d4b8b9658a4596b1c40"
+    "guid": "6fe65f139963468aac85ee0286d65aa8"
   },
   "exportObjects": [
     {
@@ -13,12 +13,12 @@
         "_Speed": 1
       },
       "vector4s": {
-        "_MainColor": [
-          1,
-          1,
-          1,
-          1
-        ]
+        "_MainColor": {
+          "x": 1,
+          "y": 1,
+          "z": 1,
+          "w": 1
+        }
       },
       "textures": {
         "_MainTex": {
@@ -30,7 +30,8 @@
         "_Tex3": {
           "id": "080f94ebcff64c81a67f31187015697e"
         }
-      }
+      },
+      "colors": {}
     }
   ]
 }

@@ -1,6 +1,6 @@
 import type { FSFileItem } from '@advjs/gui';
 import { saveFile } from '@advjs/gui';
-import type { EffectsObjectData, EffectsPackageData, GeometryData } from '@galacean/effects';
+import type { EffectsObjectData, EffectsPackageData, GeometryData, MaterialData } from '@galacean/effects';
 import { DataType, generateUuid, glContext } from '@galacean/effects';
 import type * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
@@ -109,7 +109,16 @@ function importEAsset (file: File, curDirHandle: FileSystemDirectoryHandle) {
 
       eAsset.fileSummary.guid = generateUuid();
       for (const data of eAsset.exportObjects) {
-        data.id = generateUuid();
+        const matData = data as MaterialData;
+
+        matData['colors'] = {};
+        for (const key of Object.keys(matData.vector4s)) {
+          const vec4 = matData.vector4s[key];
+
+          // @ts-expect-error
+          matData.vector4s[key] = { x:vec4[0], y:vec4[1], z:vec4[2], w:vec4[3] };
+        }
+        // data.id = generateUuid();
       }
 
       let fileName = file.name;

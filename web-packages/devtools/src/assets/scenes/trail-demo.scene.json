@@ -570,24 +570,24 @@
         "_Speed": 1
       },
       "vector4s": {
-        "_StartColor": [
-          1,
-          0,
-          0,
-          1
-        ],
-        "_EndColor": [
-          1,
-          1,
-          0.2,
-          1
-        ],
-        "uEditorTransform": [
-          1,
-          1,
-          0,
-          0
-        ]
+        "_StartColor": {
+          "x": 1,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "_EndColor": {
+          "x": 1,
+          "y": 1,
+          "z": 0.2,
+          "w": 1
+        },
+        "uEditorTransform":{
+          "x": 1,
+          "y": 1,
+          "z": 0,
+          "w": 0
+        }
       },
       "textures": {
         "_MainTex": {
@@ -615,24 +615,24 @@
         "_Speed": 1
       },
       "vector4s": {
-        "_StartColor": [
-          0,
-          1,
-          0,
-          1
-        ],
-        "_EndColor": [
-          0,
-          0.2,
-          0.8,
-          1
-        ],
-        "uEditorTransform": [
-          1,
-          1,
-          0,
-          0
-        ]
+        "_StartColor": {
+          "x": 0,
+          "y": 1,
+          "z": 0,
+          "w": 1
+        },
+        "_EndColor": {
+          "x": 0,
+          "y": 0.2,
+          "z": 0.8,
+          "w": 1
+        },
+        "uEditorTransform":{
+          "x": 1,
+          "y": 1,
+          "z": 0,
+          "w": 0
+        }
       },
       "textures": {
         "_MainTex": {
@@ -660,24 +660,24 @@
         "_Speed": 1
       },
       "vector4s": {
-        "_StartColor": [
-          1,
-          0,
-          0,
-          1
-        ],
-        "_EndColor": [
-          0,
-          0,
-          0,
-          1
-        ],
-        "uEditorTransform": [
-          1,
-          1,
-          0,
-          0
-        ]
+        "_StartColor":{
+          "x": 1,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "_EndColor": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "w": 1
+        },
+        "uEditorTransform": {
+          "x": 1,
+          "y": 1,
+          "z": 0,
+          "w": 0
+        }
       },
       "textures": {
         "_MainTex": {
@@ -702,12 +702,12 @@
         "_Speed": 1
       },
       "vector4s": {
-        "_MainColor": [
-          1,
-          1,
-          1,
-          1
-        ]
+        "_MainColor": {
+          "x": 1,
+          "y": 1,
+          "z": 1,
+          "w": 1
+        }
       },
       "textures": {
         "_MainTex": {
