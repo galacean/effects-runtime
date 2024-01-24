@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { FSDirItem, FSItem } from '@advjs/gui';
-import { ref, watch } from 'vue';
-import { curDir, onFileDblClick, onFileDrop, onRootFolderSelect } from "../gui/project-gui";
-import { compileScript } from 'vue/compiler-sfc';
 import { EffectsPackageData } from '@galacean/effects';
+import { ref, watch } from 'vue';
+import materialIcon from "../assets/material-icon.json";
+import { curDir, onFileDblClick, onFileDrop, onRootFolderSelect } from "../gui/project-gui";
 
 const tabList = ref([
   { title: 'Project', key: 'project', icon: 'i-ri-folder-line' },
@@ -34,6 +34,9 @@ function onFSItemChange(item: FSItem) {
         if (data.fileSummary && data.fileSummary.assetType === "Texture") {
           //@ts-expect-error
           item.icon = data.exportObjects[0].source;
+        }
+        else if(data.fileSummary && data.fileSummary.assetType === "Material"){
+          item.icon = materialIcon.data;
         }
       }
       fileReader.readAsText(file);
