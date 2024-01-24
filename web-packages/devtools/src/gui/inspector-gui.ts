@@ -1,13 +1,13 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
-import type { Component, EffectsObject, EffectsPackageData, Engine, EffectComponent, Material, ShaderData } from '@galacean/effects';
+import type { Component, EffectsObject, EffectsPackageData, Engine, EffectComponent, Material, ShaderData, EffectsObjectData } from '@galacean/effects';
 import { ParticleSystem, RendererComponent, Texture, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { ref } from 'vue';
 import { assetDatabase, inspectorGui } from '../utils';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { readFileAsText } from '../utils/asset-database';
 
-export const formData = ref({
+export const formData = {
   input: 'test',
   inputNumber: 10,
   checkbox: true,
@@ -31,9 +31,9 @@ export const formData = ref({
     z: 0,
     w: 0,
   },
-  color: '#0099ff',
+  color2: { r: 1.0, g: 1.0, b: 1.0, a: 1.0 },
   file: '',
-});
+};
 
 export class InspectorGui {
   gui: any;
@@ -42,7 +42,7 @@ export class InspectorGui {
   componentProperties: AGUIPropertiesPanelProps[] = [];
   serializedObjects: SerializedObject[] = [];
 
-  constructor () {}
+  constructor () { }
 
   setItem (item: VFXItem<VFXItemContent>) {
     if (this.item === item) {
@@ -103,33 +103,66 @@ export class InspectorGui {
         type: 'number',
         name,
         key,
-        object });
+        object,
+      });
     } else if (typeof value === 'boolean') {
       guiProperties.push({
         type: 'checkbox',
         name,
         key,
-        object });
+        object,
+      });
     } else if (this.checkVector3(value)) {
       guiProperties.push({
         type: 'vector',
         name,
         key,
-        object });
+        object,
+      });
     } else if (this.checkGUID(value)) {
       guiProperties.push({
         type: 'file',
         name,
         placeholder: 'Placeholder',
-        key,
-        object,
-        onFileChange (file) {
-          // eslint-disable-next-line no-console
-          console.log(file);
+        key:'file',
+        object:{ file:'' },
+        async onFileChange (fileItem) {
+          const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
+
+          let res: string;
+
+          try {
+            res = await readFileAsText(file);
+          } catch (error) {
+            console.error('读取文件出错:', error);
+
+            return;
+          }
+          const packageData = JSON.parse(res) as EffectsPackageData;
+          const guid = packageData.fileSummary.guid;
+
+          // TODO 纹理 image 特殊逻辑，待移除
+          if (packageData.fileSummary.assetType === 'Texture') {
+            await assetDatabase.convertImageData(packageData);
+          }
+
+          for (const objectData of packageData.exportObjects) {
+            assetDatabase.engine.addEffectsObjectData(objectData);
+          }
+
+          const effectsPackage = new EffectsPackage(assetDatabase.engine);
+
+          assetDatabase.effectsPackages[guid] = effectsPackage;
+          effectsPackage.fileSummary = packageData.fileSummary;
+          for (const objectData of packageData.exportObjects) {
+            effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+          }
+
+          object[key] = { id:packageData.exportObjects[0].id };
         },
       });
     } else if (value instanceof Array) {
-      for (let i = 0;i < value.length;i++) {
+      for (let i = 0; i < value.length; i++) {
         this.addGuiProperty(guiProperties, String(i), value, 'material' + i);
       }
     } else if (value instanceof Object) {
@@ -143,9 +176,9 @@ export class InspectorGui {
     const serializedObject = new SerializedObject(material);
 
     serializedObject.serializedData = {
-      blending:false,
-      zTest:false,
-      zWrite:false,
+      blending: false,
+      zTest: false,
+      zWrite: false,
       ...serializedObject.serializedData,
     };
     const serializedData = serializedObject.serializedData;
@@ -223,84 +256,57 @@ export class InspectorGui {
           key: uniformName,
         });
       } else if (type === '2D') {
-      //   const item = this.item;
-      //   const controller = this.gui.add({
-      //     click: async () => {
-      //       const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
-      //       const file = await fileHandle[0].getFile();
+        guiProperties.push({
+          type: 'file',
+          name: inspectorName,
+          object:{ file:'' },
+          key:'file',
+          placeholder: 'Placeholder',
+          async onFileChange (fileItem) {
+            const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
 
-        //       // 生成纹理资产对象
-        //       const reader = new FileReader();
+            let res: string;
 
-        //       reader.onload = async function (e) {
-        //         const result = e.target?.result as string;
-        //         // const textureData = { id: assetGuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
-        //         const textureData = (JSON.parse(result) as EffectsPackageData).exportObjects[0];
+            try {
+              res = await readFileAsText(file);
+            } catch (error) {
+              console.error('读取文件出错:', error);
 
-        //         serializeObject.engine.addEffectsObjectData(textureData);
+              return;
+            }
+            const packageData = JSON.parse(res) as EffectsPackageData;
+            const guid = packageData.fileSummary.guid;
 
-        //         // @ts-expect-error
-        //         const imageFile = base64ToFile(textureData.source);
+            // TODO 纹理 image 特殊逻辑，待移除
+            if (packageData.fileSummary.assetType === 'Texture') {
+              await assetDatabase.convertImageData(packageData);
+            }
 
-        //         // 加载 image
-        //         const image = await loadImage(imageFile);
+            for (const objectData of packageData.exportObjects) {
+              assetDatabase.engine.addEffectsObjectData(objectData);
+            }
 
-        //         image.width = 50;
-        //         image.height = 50;
-        //         image.id = inspectorName;
-        //         const lastImage = document.getElementById(inspectorName);
+            const effectsPackage = new EffectsPackage(assetDatabase.engine);
 
-        //         if (lastImage) {
-        //           controller.domElement.removeChild(lastImage);
-        //         }
-        //         controller.domElement.appendChild(image);
+            assetDatabase.effectsPackages[guid] = effectsPackage;
+            effectsPackage.fileSummary = packageData.fileSummary;
+            for (const objectData of packageData.exportObjects) {
+              effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+            }
 
-        //         // 根据 image 生成纹理对象
-        //         const texture = Texture.create(item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
-
-        //         texture.setInstanceId(textureData.id);
-        //         serializeObject.engine.deserializer.addInstance(texture);
-        //         serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
-        //         serializeObject.applyModifiedProperties();
-        //       };
-        //       reader.onerror = event => {
-        //         console.error('文件读取出错:', reader.error);
-        //       };
-
-      //       reader.readAsText(file);
-      //     },
-      //   }, 'click').name(inspectorName);
+            serializedData.textures[uniformName] = { id:packageData.exportObjects[0].id };
+            // await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData, material);
+            // material.fromData(material.taggedProperties as EffectsObjectData);
+          // eslint-disable-next-line no-console
+            //   console.log(file);
+          },
+        });
       }
     }
   }
 
-  // dat gui 参数及修改
-  // private setMaterialGui (material: Material) {
-  //   const materialGUI = this.gui.addFolder('Material');
-
-  //   materialGUI.open();
-  //   const serializeObject = new SerializedObject(material);
-  //   const serializedData = serializeObject.serializedData;
-
-  //   serializedData.blending = false;
-  //   serializedData.zTest = false;
-  //   serializedData.zWrite = false;
-  //   serializeObject.update();
-
-  //   this.guiControllers.push(materialGUI.add(serializedData, 'blending').onChange(() => {
-  //     serializeObject.applyModifiedProperties();
-  //   }));
-  //   this.guiControllers.push(materialGUI.add(serializedData, 'zTest').onChange(() => {
-  //     serializeObject.applyModifiedProperties();
-  //   }));
-  //   this.guiControllers.push(materialGUI.add(serializedData, 'zWrite').onChange(() => {
-  //     serializeObject.applyModifiedProperties();
-  //   }));
-  //   this.parseMaterialProperties(material, materialGUI, serializeObject);
-  // }
-
   checkVector3 (property: Record<string, any>) {
-    return Object.keys(property).length === 3 && property['x'] !== undefined && property['y'] !== undefined && property['z'] !== undefined ;
+    return Object.keys(property).length === 3 && property['x'] !== undefined && property['y'] !== undefined && property['z'] !== undefined;
   }
 
   checkGUID (property: Record<string, any>) {
@@ -479,7 +485,7 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
         type: 'color',
         name: 'Color Picker',
         object: formData,
-        key: 'color',
+        key: 'color2',
       },
       {
         type: 'button',

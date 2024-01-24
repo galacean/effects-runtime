@@ -540,8 +540,10 @@ export class GLMaterial extends Material {
       this.setTexture(name, texture);
     }
 
-    this.shader = data.shader as GLShader;
-    this.shaderSource = this.shader.source;
+    if (data.shader) {
+      this.shader = data.shader as GLShader;
+      this.shaderSource = this.shader.source;
+    }
 
     this.initialized = false;
   }
