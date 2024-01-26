@@ -477,7 +477,17 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.start = delay ? delay : this.start;
     // TODO spec 数据需要区分 scale 和 size
     if (transform && transform.scale && data.type !== 'ECS') {
-      transform.scale[2] = transform.scale[0];
+      //@ts-expect-error  TODO 数据改造后移除 expect-error
+      transform.scale.z = transform.scale.x;
+    }
+
+    if (transform) {
+      //@ts-expect-error TODO 数据改造后移除 expect-error
+      transform.position = new Vector3().copyFrom(transform.position);
+      //@ts-expect-error
+      transform.rotation = new Euler().copyFrom(transform.rotation);
+      //@ts-expect-error
+      transform.scale = new Vector3().copyFrom(transform.scale);
     }
 
     this.transform = new Transform({

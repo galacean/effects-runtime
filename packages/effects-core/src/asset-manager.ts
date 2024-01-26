@@ -683,6 +683,8 @@ export function version3Migration (scene: Record<string, any>): Scene {
   const components = ecScene.components;
 
   for (const item of ecScene.items) {
+
+    // 原 texture 索引转为统一 guid 索引
     if (item.content) {
       //@ts-expect-error
       if (item.content.renderer) {
@@ -709,9 +711,33 @@ export function version3Migration (scene: Record<string, any>): Scene {
       }
     }
 
-    const uuid = uuidv4().replace(/-/g, '');
+    // item 的 transform 属性由数组转为 {x:n, y:n, z:n}
+    if (item.transform) {
+      let position = item.transform.position;
+      let rotation = item.transform.rotation;
+      let scale = item.transform.scale;
+
+      if (!position) {
+        position = [0, 0, 0];
+      }
+      if (!rotation) {
+        rotation = [0, 0, 0];
+      }
+      if (!scale) {
+        scale = [1, 1, 1];
+      }
+
+      //@ts-expect-error
+      item.transform.position = { x:position[0], y:position[1], z:position[2] };
+      //@ts-expect-error
+      item.transform.rotation = { x:rotation[0], y:rotation[1], z:rotation[2] };
+      //@ts-expect-error
+      item.transform.scale = { x:scale[0], y:scale[1], z:scale[2] };
+    }
 
     // item 的 content 转为 component data 加入 JSONScene.components
+    const uuid = uuidv4().replace(/-/g, '');
+
     if (item.type === spec.ItemType.sprite) {
       //@ts-expect-error
       item.components = [];

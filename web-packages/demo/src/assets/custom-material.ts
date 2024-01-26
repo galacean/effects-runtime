@@ -159,21 +159,21 @@ const json = {
       delay       : 0,
       renderLevel : 'B+',
       transform   : {
-        position: [
-          0,
-          -7.285564691294531e-16,
-          0,
-        ],
-        rotation: [
-          0,
-          0,
-          0,
-        ],
-        scale: [
-          16.24,
-          6.2,
-          1,
-        ],
+        position: {
+          x: 0,
+          y: -7.285564691294531e-16,
+          z: 0,
+        },
+        rotation: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        scale:{
+          x: 16.24,
+          y: 6.2,
+          z: 1,
+        },
       },
       components: [{
         id : '333faa0ad3974003a5e13a6d433d8bc7',
@@ -189,7 +189,23 @@ const json = {
       endBehavior : 5,
       delay       : 0,
       renderLevel : 'B+',
-      transform   : { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+      transform   : {
+        position: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        rotation: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        scale:{
+          x: 1,
+          y: 1,
+          z: 1,
+        },
+      },
       components  : [{
         id : '8264d22a44124050b5a2d3dc476875fa',
       }],
@@ -204,7 +220,23 @@ const json = {
       endBehavior : 0,
       delay       : 0,
       renderLevel : 'B+',
-      transform   : { position: [2, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
+      transform   : {
+        position: {
+          x: 2,
+          y: 1.5,
+          z: 0,
+        },
+        rotation: {
+          x: 90,
+          y: -150,
+          z: 0,
+        },
+        scale:{
+          x: 0.03,
+          y: 0.03,
+          z: 0.03,
+        },
+      },
       components  : [{
         id : 'a5f8d715a06b4acba79b891566de8754',
       }],
@@ -219,7 +251,23 @@ const json = {
       endBehavior : 0,
       delay       : 0,
       renderLevel : 'B+',
-      transform   : { position: [-1, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
+      transform   : {
+        position: {
+          x: -1,
+          y: 1.5,
+          z: 0,
+        },
+        rotation: {
+          x: 90,
+          y: -150,
+          z: 0,
+        },
+        scale:{
+          x: 0.03,
+          y: 0.03,
+          z: 0.03,
+        },
+      },
       components  : [{
         id : '7cb4f4f2a0994941ab535552ac774237',
       }],
@@ -234,7 +282,23 @@ const json = {
       endBehavior : 0,
       delay       : 0,
       renderLevel : 'B+',
-      transform   : { position: [-4, 1.5, 0], rotation: [90, -150, 0], scale: [0.03, 0.03, 0.03] },
+      transform   : {
+        position: {
+          x: -4,
+          y: 1.5,
+          z: 0,
+        },
+        rotation: {
+          x: 90,
+          y: -150,
+          z: 0,
+        },
+        scale:{
+          x: 0.03,
+          y: 0.03,
+          z: 0.03,
+        },
+      },
       components  : [{
         id : '24b05ca55c0f4f1a86f97699ba907099',
       }],
@@ -250,21 +314,21 @@ const json = {
       delay       : 0,
       renderLevel : 'B+',
       transform   : {
-        position: [
-          0,
-          -3.85,
-          0,
-        ],
-        rotation: [
-          0,
-          0,
-          0,
-        ],
-        scale: [
-          3.36,
-          0.7,
-          1,
-        ],
+        position: {
+          x: 0,
+          y: -3.85,
+          z: 0,
+        },
+        rotation: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        scale:{
+          x: 3.36,
+          y: 0.7,
+          z: 1,
+        },
       },
       components: [{
         id : 'bcc377b9ec064a7fb110033e805ef462',
