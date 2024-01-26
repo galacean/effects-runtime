@@ -8,7 +8,6 @@ import {
   spec,
   math,
   AssetManager,
-  getDefaultTemplateCanvasPool,
 } from '@galacean/effects';
 
 const { Vector3, Matrix4 } = math;
@@ -238,19 +237,19 @@ export class TestController {
   }
 
   async loadOldPlayer () {
-    const playerAddress = `https://gw.alipayobjects.com/os/lib/galacean/effects/${oldVersion}/dist/index.min.js`;
+    const playerAddress = `https://unpkg.com/@galacean/effects@${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(playerAddress);
   }
 
   async loadOldModelPlugin () {
-    const pluginAddress = `https://gw.alipayobjects.com/os/lib/galacean/effects-plugin-model/${oldVersion}/dist/index.min.js`;
+    const pluginAddress = `https://unpkg.com/@galacean/effects-plugin-model@${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(pluginAddress);
   }
 
   async loadOldSpinePlugin () {
-    const spineAddress = `https://gw.alipayobjects.com/os/lib/galacean/effects-plugin-spine/${oldVersion}/dist/index.min.js`;
+    const spineAddress = `https://unpkg.com/@galacean/effects-plugin-spine@${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(spineAddress);
   }
