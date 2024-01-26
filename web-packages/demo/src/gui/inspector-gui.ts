@@ -1,5 +1,5 @@
 import type { EffectComponentData, EffectsObject, EffectsPackageData, Engine, Material, SceneData, ShaderData } from '@galacean/effects';
-import { DataType, EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, generateUuid, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import { DataType, EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, generateGUID, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {
@@ -211,7 +211,7 @@ export class InspectorGui {
           click: async () => {
             const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
             const file = await fileHandle[0].getFile();
-            const assetUuid = generateUuid();
+            const assetUuid = generateGUID();
 
             // 生成纹理资产对象
             const reader = new FileReader();

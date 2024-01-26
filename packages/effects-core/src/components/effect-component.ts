@@ -8,7 +8,7 @@ import { Geometry } from '../render';
 import type { Disposable } from '../utils';
 import { DestroyOptions } from '../utils';
 import { RendererComponent } from './renderer-component';
-import { generateUuid } from '..';
+import { generateGUID } from '..';
 
 let seed = 1;
 
@@ -52,7 +52,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
       uvs: [0, 1, 0, 0, 1, 1, 1, 0],
       indices: [0, 1, 2, 2, 1, 3],
       dataType: DataType.Geometry,
-      id: generateUuid(),
+      id: generateGUID(),
     };
 
     this.geometry.fromData(geometryData);

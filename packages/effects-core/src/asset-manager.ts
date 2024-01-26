@@ -630,7 +630,7 @@ function base64ToFile (base64: string, filename = 'base64File', contentType = ''
   return file;
 }
 
-export function generateUuid (): string {
+export function generateGUID (): string {
   return uuidv4().replace(/-/g, '');
 }
 
@@ -654,7 +654,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
   const itemGuidMap: Record<string, string> = {}; // <id, guid>
 
   for (const item of ecScene.items) {
-    itemGuidMap[item.id] = generateUuid();
+    itemGuidMap[item.id] = generateGUID();
     item.id = itemGuidMap[item.id];
   }
 
@@ -673,7 +673,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
 
   // texture 增加 id 和 dataType
   for (const texture of scene.textureOptions) {
-    texture.id = generateUuid();
+    texture.id = generateGUID();
     texture.dataType = DataType.Texture;
   }
 

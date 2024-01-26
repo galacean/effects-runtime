@@ -1,4 +1,4 @@
-import { generateUuid } from '.';
+import { generateGUID } from '.';
 import type { EffectsObjectData } from './deserializer';
 import type { Engine } from './engine';
 
@@ -13,7 +13,7 @@ export abstract class EffectsObject {
   constructor (
     public engine: Engine,
   ) {
-    this.guid = generateUuid();
+    this.guid = generateGUID();
     this.taggedProperties = {};
     this.engine.addInstance(this);
   }

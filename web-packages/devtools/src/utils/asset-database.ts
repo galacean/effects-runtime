@@ -57,6 +57,12 @@ export class AssetDatabase extends Database {
       return;
     }
     const file = await fileHandle.getFile();
+    const effectsPackage = await this.loadPackageFile(file);
+
+    return effectsPackage;
+  }
+
+  async loadPackageFile (file: File) {
     let res: string;
 
     try {

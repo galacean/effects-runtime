@@ -1,5 +1,5 @@
 import type { Composition, EffectsObjectData, VFXItem, VFXItemContent } from '@galacean/effects';
-import { DataType, Player, TimelineComponent, generateUuid, spec } from '@galacean/effects';
+import { DataType, Player, TimelineComponent, spec } from '@galacean/effects';
 import json from './assets/custom-material';
 import { assetDataBase } from './gui/asset-data-base';
 import { Input } from './gui/input';

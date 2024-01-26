@@ -1,7 +1,7 @@
 import type { FSFileItem } from '@advjs/gui';
 import { saveFile } from '@advjs/gui';
 import type { EffectsObjectData, EffectsPackageData, GeometryData, MaterialData } from '@galacean/effects';
-import { DataType, generateUuid, glContext } from '@galacean/effects';
+import { DataType, generateGUID, glContext } from '@galacean/effects';
 import type * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import type { FSDirItem } from '@advjs/gui';
@@ -107,9 +107,9 @@ function importEAsset (file: File, curDirHandle: FileSystemDirectoryHandle) {
       const fileContent = event.target.result as string;
       const eAsset: EffectsPackageData = JSON.parse(fileContent);
 
-      eAsset.fileSummary.guid = generateUuid();
+      eAsset.fileSummary.guid = generateGUID();
       for (const data of eAsset.exportObjects) {
-        data.id = generateUuid();
+        data.id = generateGUID();
       }
 
       let fileName = file.name;
@@ -179,7 +179,7 @@ function importPng (file: File, curDirHandle: FileSystemDirectoryHandle) {
   reader.onload = async function (e) {
     const result = e.target?.result;
 
-    const textureData = { id: generateUuid(), source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+    const textureData = { id: generateGUID(), source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
     const textureAsset = JSON.stringify(createPackageData([textureData], 'Texture'), null, 2);
 
     await saveFile(createJsonFile(textureAsset, file.name + '.json'), curDirHandle);
@@ -200,7 +200,7 @@ async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
 
   for (const modelData of modelDatas) {
     const geometryData: GeometryData = {
-      id: generateUuid(),
+      id: generateGUID(),
       dataType: DataType.Geometry,
       vertices: modelData.vertices,
       uvs: modelData.uvs,
@@ -279,7 +279,7 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
 
 function createPackageData (effectsObjectDatas: EffectsObjectData[], assetType = 'any') {
   const newPackageData: EffectsPackageData = {
-    fileSummary:{ guid:generateUuid(), assetType },
+    fileSummary:{ guid:generateGUID(), assetType },
     exportObjects:effectsObjectDatas,
   };
 
