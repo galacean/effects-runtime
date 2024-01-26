@@ -261,13 +261,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       container.appendChild(this.canvas);
     }
 
-    // 不允许同时存在WebGL和WebGL2的Player
-    playerMap.forEach(player => {
-      if (player.gpuCapability.type !== framework) {
-        throw new Error(`Initialize player with different webgl version: old=${player.gpuCapability.type}, new=${framework}`);
-      }
-    });
-
     this.renderer = Renderer.create(
       this.canvas,
       framework,

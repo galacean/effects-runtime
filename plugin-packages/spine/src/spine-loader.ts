@@ -1,11 +1,5 @@
 import { DestroyOptions, AbstractPlugin } from '@galacean/effects';
-import type {
-  spec,
-  Composition,
-  Scene,
-  VFXItem,
-  RenderFrame, SceneLoadOptions,
-} from '@galacean/effects';
+import type { spec, Scene, VFXItem, RenderFrame, SceneLoadOptions, Composition } from '@galacean/effects';
 import type { SkeletonData, Texture } from '@esotericsoftware/spine-core';
 import { Skeleton, TextureAtlas } from '@esotericsoftware/spine-core';
 import { decodeText } from './polyfill';
@@ -152,7 +146,6 @@ export class SpineLoader extends AbstractPlugin {
           throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
         }
         page.texture = tex as unknown as Texture;
-
       }
     });
     composition.loaderData.spineDatas = spineDatas;
@@ -167,7 +160,12 @@ export class SpineLoader extends AbstractPlugin {
   override onCompositionItemRemoved (composition: Composition, item: VFXItem<SpineContent>) {
     if (item instanceof SpineVFXItem && item.content) {
       item.spineDataCache = undefined;
-      this.meshToRemove.push(...item.content.meshGroups);
+      const slotGroup = item.content;
+
+      if (slotGroup) {
+        this.meshToRemove.push(...slotGroup.meshGroups);
+        this.slotGroups.splice(this.slotGroups.indexOf(slotGroup), 1);
+      }
     }
 
   }
@@ -181,6 +179,7 @@ export class SpineLoader extends AbstractPlugin {
       if (composition.loaderData.spineDatas) {
         delete composition.loaderData.spineDatas;
       }
+      this.slotGroups = [];
     }
   }
 
