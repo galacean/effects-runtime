@@ -1,5 +1,5 @@
-import type { EffectComponentData, EffectsObject, EffectsObjectData, EffectsPackageData, Engine, Material, MaterialData, SceneData, ShaderData } from '@galacean/effects';
-import { EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, glContext, loadImage, type VFXItem, type VFXItemContent, generateUuid, DataType } from '@galacean/effects';
+import type { EffectComponentData, EffectsObject, EffectsPackageData, Engine, Material, SceneData, ShaderData } from '@galacean/effects';
+import { DataType, EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, generateUuid, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {

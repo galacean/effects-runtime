@@ -124,8 +124,7 @@ export class Deserializer {
     }
     effectsObject.setInstanceId(effectsObjectData.id);
     this.addInstance(effectsObject);
-    await this.deserializeTaggedPropertiesAsync(effectsObjectData, effectsObject.taggedProperties);
-    effectsObject.fromData(effectsObject.taggedProperties as EffectsObjectData);
+    await this.deserializeTaggedPropertiesAsync(effectsObjectData, effectsObject);
 
     return effectsObject as T;
   }
@@ -203,12 +202,15 @@ export class Deserializer {
     effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
 
-  async deserializeTaggedPropertiesAsync (serializedData: Record<string, any>, taggedProperties: Record<string, any>) {
+  async deserializeTaggedPropertiesAsync (serializedData: Record<string, any>, effectsObject: EffectsObject) {
+    const taggedProperties = effectsObject.taggedProperties;
+
     for (const key of Object.keys(serializedData)) {
       const value = serializedData[key];
 
       taggedProperties[key] = await this.deserializePropertyAsync(value, 0);
     }
+    effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
 
   serializeTaggedProperties (effectsObject: EffectsObject, serializedData?: Record<string, any>) {
@@ -221,7 +223,26 @@ export class Deserializer {
     for (const key of Object.keys(taggedProperties)) {
       const value = taggedProperties[key];
 
-      serializedData[key] = this.serializeTaggedProperty(value, 0);
+      if (typeof value === 'number' ||
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    this.checkTypedArray(value)) { // TODO json 数据避免传 typedArray
+        serializedData[key] = value;
+      } else if (value instanceof Array) {
+        if (!serializedData[key]) {
+          serializedData[key] = [];
+        }
+        this.serializeArrayProperty(value, serializedData[key], 0);
+      } else if (value instanceof EffectsObject) {
+      // TODO 处理 EffectsObject 递归序列化
+        serializedData[key] = { id: value.getInstanceId() };
+      } else if (value instanceof Object) {
+
+        if (!serializedData[key]) {
+          serializedData[key] = {};
+        }
+        this.serializeObjectProperty(value, serializedData[key], 0);
+      }
     }
 
     return serializedData;
@@ -299,38 +320,73 @@ export class Deserializer {
     }
   }
 
-  private serializeTaggedProperty<T> (property: T, level: number): any {
+  private serializeObjectProperty<T> (objectProperty: Record<string, any>, serializedData: Record<string, any>, level: number): any {
     if (level > 10) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
       return;
     }
-    if (typeof property === 'number' ||
-    typeof property === 'string' ||
-    typeof property === 'boolean' ||
-    this.checkTypedArray(property)) {
-      return property;
-    } else if (property instanceof Array) {
-      const res = [];
+    if (!serializedData) {
+      serializedData = {};
+    }
 
-      for (const value of property) {
-        res.push(this.serializeTaggedProperty(value, level + 1));
-      }
+    for (const key of Object.keys(objectProperty)) {
+      const value = objectProperty[key];
 
-      return res;
-      // TODO json 数据避免传 typedArray
-    } else if (property instanceof EffectsObject) {
+      if (typeof value === 'number' ||
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    this.checkTypedArray(objectProperty)) { // TODO json 数据避免传 typedArray
+        serializedData[key] = value;
+      } else if (value instanceof Array) {
+        if (!serializedData[key]) {
+          serializedData[key] = [];
+        }
+        this.serializeArrayProperty(value, serializedData[key], level + 1);
+      } else if (value instanceof EffectsObject) {
       // TODO 处理 EffectsObject 递归序列化
-      return { id: property.getInstanceId() };
-    } else if (property instanceof Object) {
-      const res: Record<string, any> = {};
-
-      for (const key of Object.keys(property)) {
-        // @ts-expect-error
-        res[key] = this.serializeTaggedProperty(property[key], level + 1);
+        serializedData[key] = { id: value.getInstanceId() };
+      } else if (value instanceof Object) {
+        if (!serializedData[key]) {
+          serializedData[key] = {};
+        }
+        this.serializeObjectProperty(value, serializedData[key], level + 1);
       }
+    }
+  }
 
-      return res;
+  private serializeArrayProperty<T> (arrayProperty: Array<any>, serializedData: Array<any>, level: number): any {
+    if (level > 10) {
+      console.error('序列化数据的内嵌对象层数大于上限');
+
+      return;
+    }
+    if (!serializedData) {
+      serializedData = [];
+    }
+
+    for (let i = 0;i < arrayProperty.length;i++) {
+      const value = arrayProperty[i];
+
+      if (typeof value === 'number' ||
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    this.checkTypedArray(arrayProperty)) { // TODO json 数据避免传 typedArray
+        serializedData[i] = value;
+      } else if (value instanceof Array) {
+        if (!serializedData[i]) {
+          serializedData[i] = [];
+        }
+        this.serializeArrayProperty(value, serializedData[i], level + 1);
+      } else if (value instanceof EffectsObject) {
+      // TODO 处理 EffectsObject 递归序列化
+        serializedData[i] = { id: value.getInstanceId() };
+      } else if (value instanceof Object) {
+        if (!serializedData[i]) {
+          serializedData[i] = {};
+        }
+        this.serializeObjectProperty(value[i], serializedData[i], level + 1);
+      }
     }
   }
 

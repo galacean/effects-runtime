@@ -82,8 +82,7 @@ export class InspectorGuiOld {
                     }
 
                     (serializedData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
-                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent.taggedProperties);
-                    effectComponent.fromData(effectComponent.taggedProperties);
+                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent);
                   }
                 }
                 this.itemDirtyFlag = true;
@@ -107,8 +106,7 @@ export class InspectorGuiOld {
                     }
 
                     (serializedData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
-                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent.taggedProperties);
-                    effectComponent.fromData(effectComponent.taggedProperties);
+                    await this.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData[guid], effectComponent);
                   }
                 }
               });
@@ -200,18 +198,18 @@ export class InspectorGuiOld {
         const end = Number(match[2]);
 
         // materialData.floats[uniformName] = Number(value);
-        this.guiControllers.push(gui.add(serializedData.floats, uniformName, start, end).onChange(() => {
+        this.guiControllers.push(gui.add(serializedData.floats, uniformName, start, end).onChange(async () => {
           // this.item.getComponent(RendererComponent)?.material.fromData(materialData);
-          serializeObject.applyModifiedProperties();
+          await serializeObject.applyModifiedProperties();
         }));
       } else if (type === 'Float') {
         // materialData.floats[uniformName] = Number(value);
-        this.guiControllers.push(gui.add(serializedData.floats, uniformName).name(inspectorName).onChange(() => {
-          serializeObject.applyModifiedProperties();
+        this.guiControllers.push(gui.add(serializedData.floats, uniformName).name(inspectorName).onChange(async () => {
+          await serializeObject.applyModifiedProperties();
         }));
       } else if (type === 'Color') {
-        this.guiControllers.push(gui.addColor(serializedData.vector4s, uniformName).name(inspectorName).onChange(() => {
-          serializeObject.applyModifiedProperties();
+        this.guiControllers.push(gui.addColor(serializedData.vector4s, uniformName).name(inspectorName).onChange(async () => {
+          await serializeObject.applyModifiedProperties();
         }));
       } else if (type === '2D') {
         const item = this.item;
@@ -252,7 +250,7 @@ export class InspectorGuiOld {
               texture.setInstanceId(textureData.id);
               serializeObject.engine.deserializer.addInstance(texture);
               serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
-              serializeObject.applyModifiedProperties();
+              await serializeObject.applyModifiedProperties();
             };
             reader.onerror = event => {
               console.error('文件读取出错:', reader.error);
@@ -278,14 +276,14 @@ export class InspectorGuiOld {
     serializedData.zWrite = false;
     serializeObject.update();
 
-    this.guiControllers.push(materialGUI.add(serializedData, 'blending').onChange(() => {
-      serializeObject.applyModifiedProperties();
+    this.guiControllers.push(materialGUI.add(serializedData, 'blending').onChange(async () => {
+      await serializeObject.applyModifiedProperties();
     }));
-    this.guiControllers.push(materialGUI.add(serializedData, 'zTest').onChange(() => {
-      serializeObject.applyModifiedProperties();
+    this.guiControllers.push(materialGUI.add(serializedData, 'zTest').onChange(async () => {
+      await serializeObject.applyModifiedProperties();
     }));
-    this.guiControllers.push(materialGUI.add(serializedData, 'zWrite').onChange(() => {
-      serializeObject.applyModifiedProperties();
+    this.guiControllers.push(materialGUI.add(serializedData, 'zWrite').onChange(async () => {
+      await serializeObject.applyModifiedProperties();
     }));
     this.parseMaterialProperties(material, materialGUI, serializeObject);
   }

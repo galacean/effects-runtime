@@ -568,7 +568,10 @@ export class GLMaterial extends Material {
     //   };
     //   sceneData.effectsObjects[this.instanceId.toString()] = materialData;
     // }
-    materialData.shader = this.shader;
+    // console.log(this.shader);
+    if (this.shader) {
+      materialData.shader = this.shader;
+    }
     materialData.floats = {};
     materialData.ints = {};
     materialData.vector4s = {};

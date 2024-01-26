@@ -3,7 +3,7 @@ import { Toast } from '@advjs/gui';
 import type { Component, EffectsObject, EffectsPackageData, Engine, Material, ShaderData } from '@galacean/effects';
 import { ParticleSystem, RendererComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
-import { ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { assetDatabase } from '../utils';
 import { readFileAsText } from '../utils/asset-database';
 
@@ -69,9 +69,9 @@ export class InspectorGui {
     }
   }
 
-  refresh () {
+  async refresh () {
     for (const serializedObject of this.serializedObjects) {
-      serializedObject.applyModifiedProperties();
+      await serializedObject.applyModifiedProperties();
     }
     this.componentProperties = components.value;
     this.componentProperties.length = 0;
@@ -95,6 +95,8 @@ export class InspectorGui {
 
   addComponentGui (component: Component) {
     const serializedObject = new SerializedObject(component);
+
+    serializedObject.serializedData = reactive(serializedObject.serializedData);
     const serializedData = serializedObject.serializedData;
 
     this.serializedObjects.push(serializedObject);
@@ -107,14 +109,13 @@ export class InspectorGui {
   }
 
   addGuiProperty (guiProperties: AGUIPropertyProps[], key: string, object: any, name?: string) {
-    const value = object[key];
-
-    if (value === undefined) {
+    if (!object || object[key] === undefined) {
       return;
     }
     if (!name) {
       name = key;
     }
+    const value = object[key];
 
     if (typeof value === 'number') {
       guiProperties.push({
@@ -177,12 +178,13 @@ export class InspectorGui {
           }
 
           object[key] = { id:packageData.exportObjects[0].id };
-          this.refresh();
+
+          await this.refresh();
         },
       });
     } else if (value instanceof Array) {
       for (let i = 0; i < value.length; i++) {
-        this.addGuiProperty(guiProperties, String(i), value, 'material' + i);
+        this.addGuiProperty(guiProperties, String(i), value, key + i);
       }
     } else if (value instanceof Object) {
       for (const key of Object.keys(value)) {
@@ -351,9 +353,7 @@ export class InspectorGui {
     // this.item.transform.fromData(transformData);
     // const position = components.value[0].properties[0].value;
     for (const serializedObject of this.serializedObjects) {
-      // serializedObject.update();
-      this.refresh();
-      // serializedObject.applyModifiedProperties();
+      await serializedObject.applyModifiedProperties();
 
       serializedObject.update();
     }
@@ -643,6 +643,7 @@ export class SerializedObject {
   constructor (target: EffectsObject) {
     this.target = target;
     this.engine = target.engine;
+    this.serializedData = {};
     this.update();
   }
 
@@ -659,12 +660,8 @@ export class SerializedObject {
     this.engine.deserializer.serializeTaggedProperties(this.target, this.serializedData);
   }
 
-  applyModifiedProperties () {
-    // if (this.serializedData.floats) {
-    //   console.log(this.serializedData.colors._StartColor);
-    // }
-    // console.log(this.serializedData)
-    this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target);
+  async applyModifiedProperties () {
+    await this.engine.deserializer.deserializeTaggedPropertiesAsync(this.serializedData, this.target);
     // assetDatabase.setDirty(this.target);
   }
 }

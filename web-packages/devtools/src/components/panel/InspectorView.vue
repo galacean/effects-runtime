@@ -188,6 +188,7 @@ const defaultOpenItems = [
   "EffectComponent",
   "TimelineComponent",
   "SpriteComponent",
+  "ParticleSystemRenderer",
   "Material"
 ];
 

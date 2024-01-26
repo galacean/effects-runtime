@@ -3,7 +3,6 @@ import { DataType, Player, TimelineComponent } from '@galacean/effects';
 import demoJson from '../assets/scenes/trail-demo.scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
-import { InspectorGuiOld } from '../gui/inspector-gui-old';
 import { MenuGui } from '../gui/menu-gui';
 import { OrbitController } from '../gui/orbit-controller';
 import { TreeGui } from '../gui/tree-gui';
