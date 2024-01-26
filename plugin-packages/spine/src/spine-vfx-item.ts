@@ -139,16 +139,28 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   }
 
   override onItemUpdate (dt: number, lifetime: number) {
-    if (!this.content) {
-      return ;
+    const slotGroup = this.content;
+
+    if (!slotGroup) {
+      return;
     }
     const visible = this.contentVisible;
 
-    this.content.meshGroups.map((mesh: SpineMesh) => {
+    slotGroup.meshGroups.map((mesh: SpineMesh) => {
       mesh.mesh.setVisible(visible);
     });
     if (visible) {
       this.updateState(dt / 1000);
+    }
+  }
+
+  override onItemRemoved () {
+    const slotGroup = this.content;
+
+    if (slotGroup) {
+      slotGroup.meshGroups.map(mesh => {
+        mesh.dispose();
+      });
     }
   }
 
@@ -244,7 +256,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     const listener = this.state.tracks[0]?.listener;
 
     if (listener) {
-      listener.end = () => {};
+      listener.end = () => { };
     }
     this.state.clearTracks();
     this.skeleton.setToSetupPose();
@@ -277,7 +289,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     const listener = this.state.tracks[0]?.listener;
 
     if (listener) {
-      listener.end = () => {};
+      listener.end = () => { };
     }
     this.state.clearTracks();
     this.skeleton.setToSetupPose();
