@@ -660,7 +660,14 @@ export function version3Migration (scene: Record<string, any>): Scene {
 
   for (const item of ecScene.items) {
     if (item.parentId) {
-      item.parentId = itemGuidMap[item.parentId];
+      if (item.parentId.includes('^')) {
+        const parentId = (item.parentId).split('^')[0];
+        const nodeId = (item.parentId).split('^')[1];
+
+        item.parentId = itemGuidMap[parentId] + '^' + nodeId;
+      } else {
+        item.parentId = itemGuidMap[item.parentId];
+      }
     }
   }
 
