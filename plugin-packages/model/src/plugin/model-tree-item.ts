@@ -135,12 +135,11 @@ export class ModelTreeComponent extends ItemBehaviour {
 
   override fromData (options: ModelTreeContent): void {
     super.fromData(options);
-
     this.options = options;
+    this.createContent();
   }
 
   override start () {
-    this.createContent();
     this.item.type = spec.ItemType.tree;
     this.content.baseTransform.setValid(true);
     const sceneManager = getSceneManager(this);

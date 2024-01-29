@@ -488,12 +488,10 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       transform.rotation = new Euler().copyFrom(transform.rotation);
       //@ts-expect-error
       transform.scale = new Vector3().copyFrom(transform.scale);
+      this.transform.setTransform(transform);
     }
 
-    this.transform = new Transform({
-      name: this.name,
-      ...transform,
-    });
+    this.transform.name = this.name;
     this.transform.engine = this.engine;
 
     // TODO spec 数据需要区分 scale 和 size
