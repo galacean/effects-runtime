@@ -10,6 +10,7 @@ import type {
   TextureCubeSourceOptionsImageMipmaps,
   Engine,
   math,
+  VFXItemData,
 } from '@galacean/effects';
 import {
   Player,
@@ -778,8 +779,7 @@ export class PluginHelper {
 
       sceneComp.items.forEach(data => {
         const itemId = data.id;
-        // @ts-expect-error
-        const item = jsonScene.items[itemId];
+        const item = composition.getEngine().jsonSceneData[itemId] as VFXItemData;
 
         if (item.type === 'mesh') {
           const meshItem = item as spec.ModelMeshItem<'json'>;

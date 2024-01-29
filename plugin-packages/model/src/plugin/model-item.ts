@@ -32,6 +32,7 @@ import { getSceneManager } from './model-plugin';
  */
 export class ModelMeshComponent extends RendererComponent {
   content: PMesh;
+  options?: ModelMeshContent;
   bounding?: ModelItemBounding;
   sceneManager?: PSceneManager;
 
@@ -43,6 +44,7 @@ export class ModelMeshComponent extends RendererComponent {
   }
 
   override start (): void {
+    this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
     this.priority = this.item.listIndex;
     this.sceneManager = getSceneManager(this);
@@ -78,15 +80,20 @@ export class ModelMeshComponent extends RendererComponent {
 
   override fromData (options: ModelMeshContent): void {
     super.fromData(options);
+    this.options = options;
+  }
 
-    const bounding = options.interaction;
+  createContent () {
+    if (this.options) {
+      const bounding = this.options.interaction;
 
-    this.bounding = bounding && JSON.parse(JSON.stringify(bounding));
+      this.bounding = bounding && JSON.parse(JSON.stringify(bounding));
 
-    const meshOptions = options.options;
+      const meshOptions = this.options.options;
 
-    CheckerHelper.assertModelMeshOptions(meshOptions);
-    this.content = new PMesh(this.engine, this.item.name, options, this, this.item.parentId);
+      CheckerHelper.assertModelMeshOptions(meshOptions);
+      this.content = new PMesh(this.engine, this.item.name, this.options, this, this.item.parentId);
+    }
   }
 
   /**
@@ -188,6 +195,7 @@ export class ModelMeshComponent extends RendererComponent {
  */
 export class ModelSkyboxComponent extends RendererComponent {
   content: PSkybox;
+  options?: ModelSkyboxContent;
   sceneManager?: PSceneManager;
 
   constructor (engine: Engine, options?: ModelSkyboxContent) {
@@ -198,6 +206,7 @@ export class ModelSkyboxComponent extends RendererComponent {
   }
 
   override start (): void {
+    this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
     this.priority = this.item.listIndex;
     this.sceneManager = getSceneManager(this);
@@ -221,11 +230,16 @@ export class ModelSkyboxComponent extends RendererComponent {
 
   override fromData (options: ModelSkyboxContent): void {
     super.fromData(options);
+    this.options = options;
+  }
 
-    const skyboxOptions = options.options;
+  createContent () {
+    if (this.options) {
+      const skyboxOptions = this.options.options;
 
-    CheckerHelper.assertModelSkyboxOptions(skyboxOptions);
-    this.content = new PSkybox(this.item.name, skyboxOptions, this);
+      CheckerHelper.assertModelSkyboxOptions(skyboxOptions);
+      this.content = new PSkybox(this.item.name, skyboxOptions, this);
+    }
   }
 
   /**
@@ -250,6 +264,7 @@ export class ModelSkyboxComponent extends RendererComponent {
  */
 export class ModelLightComponent extends ItemBehaviour {
   content: PLight;
+  options?: ModelLightContent;
 
   constructor (engine: Engine, options?: ModelLightContent) {
     super(engine);
@@ -259,6 +274,7 @@ export class ModelLightComponent extends ItemBehaviour {
   }
 
   override start (): void {
+    this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
     const scene = getSceneManager(this);
 
@@ -277,10 +293,16 @@ export class ModelLightComponent extends ItemBehaviour {
   override fromData (options: ModelLightContent): void {
     super.fromData(options);
 
-    const lightOptions = options.options;
+    this.options = options;
+  }
 
-    CheckerHelper.assertModelLightOptions(lightOptions);
-    this.content = new PLight(this.item.name, lightOptions, this);
+  createContent () {
+    if (this.options) {
+      const lightOptions = this.options.options;
+
+      CheckerHelper.assertModelLightOptions(lightOptions);
+      this.content = new PLight(this.item.name, lightOptions, this);
+    }
   }
 
   /**
@@ -305,6 +327,7 @@ export class ModelLightComponent extends ItemBehaviour {
  */
 export class ModelCameraComponent extends ItemBehaviour {
   content: PCamera;
+  options?: ModelCameraContent;
   timeline?: TimelineComponent;
 
   constructor (engine: Engine, options?: ModelCameraContent) {
@@ -315,6 +338,7 @@ export class ModelCameraComponent extends ItemBehaviour {
   }
 
   override start (): void {
+    this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
     this.timeline = this.item.getComponent(TimelineComponent);
     const scene = getSceneManager(this);
@@ -334,13 +358,19 @@ export class ModelCameraComponent extends ItemBehaviour {
   override fromData (options: ModelCameraContent): void {
     super.fromData(options);
 
-    const cameraOptions = options.options;
+    this.options = options;
+  }
 
-    CheckerHelper.assertModelCameraOptions(cameraOptions);
-    const width = this.engine.renderer.getWidth();
-    const height = this.engine.renderer.getHeight();
+  createContent () {
+    if (this.options) {
+      const cameraOptions = this.options.options;
 
-    this.content = new PCamera(this.item.name, width, height, cameraOptions, this);
+      CheckerHelper.assertModelCameraOptions(cameraOptions);
+      const width = this.engine.renderer.getWidth();
+      const height = this.engine.renderer.getHeight();
+
+      this.content = new PCamera(this.item.name, width, height, cameraOptions, this);
+    }
   }
 
   updateMainCamera () {

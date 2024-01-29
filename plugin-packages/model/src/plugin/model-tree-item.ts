@@ -123,6 +123,7 @@ export class ModelTreeItem {
  */
 export class ModelTreeComponent extends ItemBehaviour {
   content: ModelTreeItem;
+  options?: ModelTreeContent;
   timeline?: TimelineComponent;
 
   constructor (engine: Engine, options?: ModelTreeContent) {
@@ -134,12 +135,12 @@ export class ModelTreeComponent extends ItemBehaviour {
 
   override fromData (options: ModelTreeContent): void {
     super.fromData(options);
-    const treeOptions = options.options.tree;
 
-    this.content = new ModelTreeItem(treeOptions, this.item);
+    this.options = options;
   }
 
   override start () {
+    this.createContent();
     this.item.type = spec.ItemType.tree;
     this.content.baseTransform.setValid(true);
     const sceneManager = getSceneManager(this);
@@ -157,6 +158,14 @@ export class ModelTreeComponent extends ItemBehaviour {
 
   override onDestroy (): void {
     this.content?.dispose();
+  }
+
+  createContent () {
+    if (this.options) {
+      const treeOptions = this.options.options.tree;
+
+      this.content = new ModelTreeItem(treeOptions, this.item);
+    }
   }
 
   getNodeTransform (itemId: string): Transform {
