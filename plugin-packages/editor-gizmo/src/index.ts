@@ -1,8 +1,11 @@
 export const version = __VERSION__;
 
-console.info('[Galacean Effects Plugin Editor Gizmo] version: ' + version);
+console.info({
+  content: '[Galacean Effects Plugin Editor Gizmo] version: ' + version,
+  type: LOG_TYPE,
+});
 
-import { registerPlugin } from '@galacean/effects';
+import { LOG_TYPE, registerPlugin } from '@galacean/effects';
 import { EditorGizmoPlugin } from './gizmo-loader';
 import { GizmoVFXItem } from './gizmo-vfx-item';
 import { GizmoSubType } from './define';

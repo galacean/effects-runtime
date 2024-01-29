@@ -712,7 +712,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.renderer.resize(canvasWidth, canvasHeight);
       this.canvas.style.width = containerWidth + 'px';
       this.canvas.style.height = containerHeight + 'px';
-      console.debug(`Resize player ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
+      console.info({
+        content: `Resize player ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`,
+        type: LOG_TYPE,
+      });
       this.compositions?.forEach(comp => {
         comp.camera.aspect = aspect;
       });
@@ -806,7 +809,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    * @param keepCanvas - 是否保留 canvas 画面，默认不保留，canvas 不能再被使用
    */
   dispose (keepCanvas?: boolean): void {
-    console.debug(`call player destroy: ${this.name}`);
+    console.info({
+      content: `call player destroy: ${this.name}`,
+      type: LOG_TYPE,
+    });
     if (this.disposed) {
       return;
     }

@@ -1,4 +1,4 @@
-import { registerPlugin } from '@galacean/effects';
+import { LOG_TYPE, registerPlugin } from '@galacean/effects';
 import { OrientationPluginLoader } from './orientation-plugin-loader';
 import { TransformVFXItem } from './transform-vfx-item';
 
@@ -15,4 +15,7 @@ export { OrientationAdapterAcceler } from './orientation-adapter-acceler';
 
 export const version = __VERSION__;
 
-console.info('[Galacean Effects Plugin Orientation Transformer] version: ' + version);
+console.info({
+  content: '[Galacean Effects Plugin Orientation Transformer] version: ' + version,
+  type: LOG_TYPE,
+});
