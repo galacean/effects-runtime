@@ -12,12 +12,12 @@ export const treeGui = new TreeGui();
 export const menuGui = new MenuGui();
 export let assetDatabase: AssetDatabase;
 // const inspectorGuiOld = new InspectorGuiOld();
-
 export const inspectorGui = new InspectorGui();
+export let composition: Composition;
+
 const orbitController = new OrbitController();
 
 let input: Input;
-let composition: Composition;
 let player: Player;
 let json = demoJson;
 
