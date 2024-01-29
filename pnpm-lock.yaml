@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 importers:
 
   .:
@@ -75,8 +79,8 @@ importers:
         specifier: ^11.1.1
         version: 11.1.1
       husky:
-        specifier: ^7.0.4
-        version: 7.0.4
+        specifier: ^9.0.6
+        version: 9.0.6
       ip:
         specifier: ^1.1.8
         version: 1.1.8
@@ -3599,9 +3603,9 @@ packages:
     engines: {node: '>=10.17.0'}
     dev: true
 
-  /husky@7.0.4:
-    resolution: {integrity: sha1-JCBIJF3EnI+xvwzHz7mN1yJTFTU=, tarball: https://registry.npmmirror.com/husky/download/husky-7.0.4.tgz}
-    engines: {node: '>=12'}
+  /husky@9.0.6:
+    resolution: {integrity: sha512-EEuw/rfTiMjOfuL7pGO/i9otg1u36TXxqjIA6D9qxVjd/UXoDOsLor/BSFf5hTK50shwzCU3aVVwdXDp/lp7RA==}
+    engines: {node: '>=18'}
     hasBin: true
     dev: true
 
@@ -5637,7 +5641,3 @@ packages:
     resolution: {integrity: sha1-ApTrPe4FAo0x7hpfosVWpqrxChs=, tarball: https://registry.npmmirror.com/yocto-queue/download/yocto-queue-0.1.0.tgz}
     engines: {node: '>=10'}
     dev: true
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false
