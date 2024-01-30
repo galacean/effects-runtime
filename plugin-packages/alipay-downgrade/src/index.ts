@@ -1,8 +1,7 @@
-import { disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, registerPlugin } from '@galacean/effects';
+import { disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger, registerPlugin } from '@galacean/effects';
 import { AlipayDowngradePlugin } from './alipay-downgrade-plugin';
 import { DowngradeVFXItem } from './downgrade-vfx-item';
 import { getDeviceName } from './utils';
-import { inspectLogger } from './native-log';
 
 export * from './utils';
 export * from './native-log';
@@ -65,7 +64,6 @@ export function setAlipayDowngradeBizId (bizId: string, options: AlipayDowngrade
   }
 
   registered = true;
-  inspectLogger();
   void getDeviceName();
 }
 
@@ -81,7 +79,7 @@ const internalPaused = Symbol('@@_inter_pause');
 
 function pauseAllActivePlayers (e: Event) {
   if (e.target === document) {
-    console.debug('auto pause all players with data offloaded');
+    logger.info('Auto pause all players with data offloaded');
     const players = getActivePlayers();
 
     players.forEach(player => {
@@ -96,7 +94,7 @@ function pauseAllActivePlayers (e: Event) {
 
 function resumePausedPlayers (e: Event) {
   if (e.target === document) {
-    console.debug('auto resume all players');
+    logger.info('auto resume all players');
     const players = getActivePlayers();
 
     players.forEach(player => {
@@ -109,3 +107,7 @@ function resumePausedPlayers (e: Event) {
     });
   }
 }
+
+export const version = __VERSION__;
+
+logger.info('plugin alipay downgrade version: ' + version);

@@ -1,9 +1,8 @@
-import { LOG_TYPE } from './config';
 import type { Material } from './material';
 import type { Texture } from './texture';
 import { type Geometry, type Mesh, type RenderPass } from './render';
 import type { Disposable } from './utils';
-import { addItem, removeItem } from './utils';
+import { addItem, logger, removeItem } from './utils';
 import type { ShaderLibrary, GPUCapability, Renderer } from './render';
 
 /**
@@ -126,10 +125,7 @@ export class Engine implements Disposable {
     }
 
     if (info.length > 0) {
-      console.warn({
-        content: `Release GPU memory: ${info.join(', ')}`,
-        type: LOG_TYPE,
-      });
+      logger.warn(`Release GPU memory: ${info.join(', ')}`);
     }
 
     this.renderPasses.forEach(pass => {

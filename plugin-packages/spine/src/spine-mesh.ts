@@ -3,7 +3,7 @@ import {
   PLAYER_OPTIONS_ENV_EDITOR, Mesh, Geometry, Material, setMaskMode,
   GLSLVersion, glContext, createShaderWithMarcos, ShaderType, math,
 } from '@galacean/effects';
-import type { BlendMode } from './core';
+import type { BlendMode } from '@esotericsoftware/spine-core';
 import { SlotGroup } from './slot-group';
 import { setBlending } from './utils';
 import fs from './shader/fragment.glsl';
