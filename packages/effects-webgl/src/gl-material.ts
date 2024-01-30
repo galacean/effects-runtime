@@ -14,7 +14,7 @@ import {
   throwDestroyedError,
   math,
   isFunction,
-  LOG_TYPE,
+  logger,
 } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
@@ -264,10 +264,7 @@ export class GLMaterial extends Material {
       const texture = this.textures[key];
 
       if (!isFunction(texture.initialize)) {
-        console.error({
-          content: `${JSON.stringify(texture)} is not valid Texture to initialize`,
-          type: LOG_TYPE,
-        });
+        logger.error(`${JSON.stringify(texture)} is not valid Texture to initialize`);
 
         return;
       }

@@ -1,5 +1,5 @@
 import type { spec } from '@galacean/effects';
-import { LOG_TYPE, registerPlugin } from '@galacean/effects';
+import { logger, registerPlugin } from '@galacean/effects';
 import { ModelTreePlugin, ModelTreeVFXItem } from './plugin';
 import { ModelPlugin } from './plugin/model-plugin';
 import { ModelVFXItem } from './plugin/model-vfx-item';
@@ -47,7 +47,4 @@ export * from './plugin';
 export * from './runtime';
 export * from './utility';
 
-console.info({
-  content: '[Galacean Effects Plugin Model] version: ' + __VERSION__,
-  type: LOG_TYPE,
-});
+logger.info('plugin model version: ' + version);

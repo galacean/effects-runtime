@@ -1,10 +1,9 @@
 import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/index';
-import { LOG_TYPE } from './config';
 import type { JSONValue } from './downloader';
 import type { Scene } from './scene';
 import type { Disposable, LostHandler } from './utils';
-import { assertExist, noop } from './utils';
+import { assertExist, logger, noop } from './utils';
 import { Transform } from './transform';
 import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
 import type { ItemNode } from './comp-vfx-item';
@@ -727,10 +726,7 @@ export class Composition implements Disposable, LostHandler {
           if (__DEBUG__) {
             console.debug(`Destroy no ref texture: ${texture?.id}.`);
             if (isNaN(c)) {
-              console.error({
-                content: `Texture ${texture?.id} not found usage.`,
-                type: LOG_TYPE,
-              });
+              logger.error(`Texture ${texture?.id} not found usage.`);
             }
           }
           texture.dispose();
@@ -801,10 +797,7 @@ export class Composition implements Disposable, LostHandler {
     this.rendererOptions?.emptyTexture.dispose();
     this.pluginSystem?.destroyComposition(this);
     this.update = () => {
-      console.error({
-        content: `Update disposed composition: ${this.name}.`,
-        type: LOG_TYPE,
-      });
+      logger.error(`Update disposed composition: ${this.name}.`);
     };
     this.onPlayerPause = noop;
     this.dispose = noop;

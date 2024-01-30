@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
-import { LOG_TYPE } from './config';
 import { glContext } from './gl';
 import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
@@ -9,7 +8,7 @@ import { Downloader, loadWebPOptional, loadImage, loadVideo } from './downloader
 import { passRenderLevel } from './pass-render-level';
 import { isScene } from './scene';
 import type { Disposable } from './utils';
-import { isObject, isString } from './utils';
+import { isObject, isString, logger } from './utils';
 import type { ImageSource, Scene } from './scene';
 import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
@@ -157,7 +156,7 @@ export class AssetManager implements Disposable {
     options?: { env: string },
   ): Promise<Scene> {
     let rawJSON: JSONValue | Scene;
-    const timeLabel = `Load asset: ${isString(url) ? url : this.id}`;
+    const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfos: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
@@ -250,10 +249,7 @@ export class AssetManager implements Disposable {
 
       const totalTime = performance.now() - startTime;
 
-      console.info({
-        content: `${timeLabel}: ${totalTime.toFixed(4)}ms, ${timeInfos.join(' ')}`,
-        type: LOG_TYPE,
-      });
+      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
       window.clearTimeout(loadTimer);
       scene.totalTime = totalTime;
       scene.startTime = startTime;
@@ -353,10 +349,7 @@ export class AssetManager implements Disposable {
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
         } catch (e) {
-          console.warn({
-            content: `Invalid fonts source: ${JSON.stringify(font.fontURL)}`,
-            type: LOG_TYPE,
-          });
+          logger.warn(`Invalid fonts source: ${JSON.stringify(font.fontURL)}`);
         }
       }
     });
