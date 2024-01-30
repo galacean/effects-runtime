@@ -133,9 +133,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     if (!(this.state && this.skeleton)) {
       return;
     }
-    this.skeleton.setToSetupPose();
-    this.skeleton.update(0);
-    this.skeleton.updateWorldTransform(Physics.update);
+    this.state.apply(this.skeleton);
     this.resize();
     this.updateState(0);
   }
