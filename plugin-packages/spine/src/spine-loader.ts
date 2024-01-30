@@ -1,7 +1,8 @@
 import { DestroyOptions, AbstractPlugin } from '@galacean/effects';
 import type { spec, Scene, VFXItem, RenderFrame, SceneLoadOptions, Composition } from '@galacean/effects';
-import type { SkeletonData } from './core';
-import { Skeleton, TextureAtlas } from './core';
+import type { SkeletonData, Texture } from '@esotericsoftware/spine-core';
+import { Skeleton, TextureAtlas } from '@esotericsoftware/spine-core';
+import { decodeText } from './polyfill';
 import type { SlotGroup } from './slot-group';
 import type { SpineMesh } from './spine-mesh';
 import type { SpineContent } from './spine-vfx-item';
@@ -66,7 +67,6 @@ export class SpineLoader extends AbstractPlugin {
 
     const spineData: SpineResource[] = [];
     const bins = scn.bins;
-    const textDecoder = new TextDecoder('utf-8');
     let bufferLength;
     let start;
     let index;
@@ -87,7 +87,7 @@ export class SpineLoader extends AbstractPlugin {
 
       [index, start = 0, bufferLength] = atlasPointer[1];
       const atlasBuffer = bins[index];
-      const atlasText = bufferLength ? textDecoder.decode(new Uint8Array(atlasBuffer, start, bufferLength)) : textDecoder.decode(new Uint8Array(atlasBuffer, start));
+      const atlasText = bufferLength ? decodeText(new Uint8Array(atlasBuffer, start, bufferLength)) : decodeText(new Uint8Array(atlasBuffer, start));
       const atlas = new TextureAtlas(atlasText);
 
       [index, start = 0, bufferLength] = skeletonPointer[1];
@@ -95,7 +95,7 @@ export class SpineLoader extends AbstractPlugin {
       let skeletonFile;
 
       if (skeletonType === 'json') {
-        skeletonFile = bufferLength ? textDecoder.decode(new Uint8Array(skeletonBuffer, start, bufferLength)) : textDecoder.decode(new Uint8Array(skeletonBuffer, start));
+        skeletonFile = bufferLength ? decodeText(new Uint8Array(skeletonBuffer, start, bufferLength)) : decodeText(new Uint8Array(skeletonBuffer, start));
       } else {
         skeletonFile = bufferLength ? new DataView(skeletonBuffer, start, bufferLength) : new DataView(skeletonBuffer, start);
       }
@@ -145,8 +145,7 @@ export class SpineLoader extends AbstractPlugin {
         if (!tex) {
           throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
         }
-        page.setTexture(tex);
-
+        page.texture = tex as unknown as Texture;
       }
     });
     composition.loaderData.spineDatas = spineDatas;

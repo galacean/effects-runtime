@@ -102,11 +102,13 @@ export class PassTextureCache implements Disposable {
   }
 
   dispose () {
-    Object.values(this.textureCache).forEach(tex => {
+    Object.keys(this.textureCache).forEach(key => {
+      const texture = this.textureCache[key];
+
       // @ts-expect-error
-      tex[disposeSymbol]();
+      texture[disposeSymbol]();
       // @ts-expect-error
-      tex.dispose = tex[disposeSymbol];
+      texture.dispose = texture[disposeSymbol];
     });
     this.textureCache = {};
     this.textureRef = {};

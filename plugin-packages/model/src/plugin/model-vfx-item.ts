@@ -61,7 +61,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
     if (Item.is<spec.ModelSkyboxItem<'json'>>(options, spec.ItemType.skybox)) {
       // 从cache中创建天空盒
-      this.overwriteSkyboxFromCache(options.content.options as spec.SkyboxOptions<'studio'>);
+      this.overwriteSkyboxFromCache(options.content.options);
     }
   }
 

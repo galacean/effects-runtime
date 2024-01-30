@@ -387,7 +387,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
               this.endBehavior === spec.END_BEHAVIOR_PAUSE ||
               this.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY
             ) {
-              this.composition.handlePlayerPause?.(this);
+              this.composition.onPlayerPause?.(this);
             } else if (this.endBehavior === spec.END_BEHAVIOR_FREEZE) {
               this.transform.setValid(true);
               shouldUpdate = true;
@@ -576,7 +576,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
   }
 
   /**
-   * 设置元素的在画布上的像素位置
+   * 设置元素的在画布上的像素位置, 坐标原点在 canvas 中心，x 正方向水平向右， y 正方向垂直向下
    */
   setPositionByPixel (x: number, y: number) {
     if (this.composition) {

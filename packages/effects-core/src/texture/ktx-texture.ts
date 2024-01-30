@@ -1,7 +1,7 @@
-import { LOG_TYPE } from '../config';
 import type { Texture2DSourceOptionsCompressed, TextureDataType } from './types';
 import { TextureSourceType } from './types';
 import { glContext } from '../gl';
+import { logger } from '../utils';
 
 const HEADER_LEN = 12 + 13 * 4; // identifier + header elements (not including key value meta-data pairs)
 const COMPRESSED_2D = 0; // uses a gl.compressedTexImage2D()
@@ -74,26 +74,17 @@ export class KTXTexture {
     this.numberOfMipmapLevels = Math.max(1, this.numberOfMipmapLevels);
 
     if (this.pixelHeight === 0 || this.pixelDepth !== 0) {
-      console.warn({
-        content: 'only 2D textures currently supported',
-        type: LOG_TYPE,
-      });
+      logger.warn('Only 2D textures currently supported');
 
       return;
     }
     if (this.numberOfArrayElements !== 0) {
-      console.warn({
-        content: 'texture arrays not currently supported',
-        type: LOG_TYPE,
-      });
+      logger.warn('Texture arrays not currently supported');
 
       return;
     }
     if (this.numberOfFaces !== facesExpected) {
-      console.warn({
-        content: 'number of faces expected' + facesExpected + ', but found ' + this.numberOfFaces,
-        type: LOG_TYPE,
-      });
+      logger.warn('Number of faces expected' + facesExpected + ', but found ' + this.numberOfFaces);
 
       return;
     }

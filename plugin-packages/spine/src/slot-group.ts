@@ -1,9 +1,7 @@
 import { math } from '@galacean/effects';
 import type { Transform, Texture, Mesh, Engine } from '@galacean/effects';
-import type { Slot, BlendMode } from './core';
-import { ClippingAttachment, MeshAttachment, RegionAttachment, SkeletonClipping } from './core';
-import type { NumberArrayLike } from './utils';
-import { Color } from './utils';
+import type { Slot, BlendMode, NumberArrayLike } from '@esotericsoftware/spine-core';
+import { ClippingAttachment, MeshAttachment, RegionAttachment, SkeletonClipping, Color } from '@esotericsoftware/spine-core';
 import { SpineMesh } from './spine-mesh';
 
 export interface SlotGroupProps {
@@ -155,7 +153,8 @@ export class SlotGroup {
         region.computeWorldVertices(slot, vertices, 0, vertexSize);
         triangles = SlotGroup.QUAD_TRIANGLES;
         uvs = region.uvs;
-        texture = region.region?.renderObject.page.texture;
+        // @ts-expect-error
+        texture = region.region.page.texture;
       } else if (attachment instanceof MeshAttachment) {
         const mesh = attachment;
 
@@ -165,7 +164,8 @@ export class SlotGroup {
         mesh.computeWorldVertices(slot, 0, mesh.worldVerticesLength, vertices, 0, vertexSize);
         triangles = mesh.triangles;
         uvs = mesh.uvs;
-        texture = mesh.region?.renderObject.page.texture;
+        // @ts-expect-error
+        texture = mesh.region.page.texture;
       } else if (attachment instanceof ClippingAttachment) {
         // 剪裁应用于绘制顺序中从裁剪附件开始到裁剪附件的结束插槽之间的所有插槽（包括这两个位置）。
         clipper.clipStart(slot, attachment);

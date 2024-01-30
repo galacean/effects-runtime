@@ -22,10 +22,17 @@ module.exports = {
     "plugin:@typescript-eslint/recommended",
     "plugin:promise/recommended",
     "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "plugin:compat/recommended",
   ],
   plugins: [
     "@typescript-eslint",
+    "compat",
   ],
+  settings: {
+    polyfills: [
+      'WebGL2RenderingContext',
+    ],
+  },
   rules: {
     "arrow-parens": ["error", "as-needed"],
     "array-bracket-spacing": ["error", "never"],
@@ -138,5 +145,14 @@ module.exports = {
         "disallowTypeAnnotations": false,
       },
     ],
+    "compat/compat": "error",
   },
+  overrides: [
+    {
+      "files": ["**/test/**/*.ts", "**/demo/**/*.ts", '**/polyfill/*.ts'],
+      "rules": {
+        "compat/compat": "off"
+      }
+    }
+  ]
 };
