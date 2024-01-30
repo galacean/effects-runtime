@@ -157,7 +157,8 @@ export class AssetManager implements Disposable {
     options?: { env: string },
   ): Promise<Scene> {
     let rawJSON: JSONValue | Scene;
-    const timeLabel = `Load asset: ${isString(url) ? url : this.id}`;
+    const sceneInfo = isString(url) ? url : this.id;
+    const timeLabel = `Load asset: ${sceneInfo}`;
     const startTime = performance.now();
     const timeInfos: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
@@ -169,7 +170,9 @@ export class AssetManager implements Disposable {
     const waitPromise = new Promise<Scene>((resolve, reject) =>
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
-        reject(`Load time out: ${JSON.stringify(url)}`);
+        const totalTime = performance.now() - startTime;
+
+        reject(`Load time out: ${sceneInfo}, ${totalTime.toFixed(4)}ms, ${timeInfos.join(' ')}`);
       }, this.timeout * 1000));
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
       if (!cancelLoading) {
