@@ -54,6 +54,10 @@ export function createSkeletonData (atlas: TextureAtlas, skeletonFile: any, skel
     input.readInt32(); input.readInt32();
     const version = input.readString();
 
+    if (!version) {
+      throw new Error ('未获取到 Spine 版本信息，请使用 Spine 4.2 导出二进制数据');
+    }
+
     if (version && version.split('.')[1] !== '2') {
       throw new Error (`请使用 Spine 4.2 导出二进制数据, 当前版本: ${version}`);
     }
