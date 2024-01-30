@@ -1,5 +1,5 @@
 import type { Disposable, LostHandler, Material, Geometry } from '@galacean/effects-core';
-import { TextureSourceType, addItem, removeItem, LOG_TYPE } from '@galacean/effects-core';
+import { TextureSourceType, addItem, logger, removeItem } from '@galacean/effects-core';
 import type { GLFrameBuffer } from './gl-frame-buffer';
 import type { GLGeometry } from './gl-geometry';
 import type { GLGPUBuffer } from './gl-gpu-buffer';
@@ -246,10 +246,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   }
 
   lost (e: Event) {
-    console.error({
-      content: 'gl lost, destroy glRenderer by default',
-      type: LOG_TYPE,
-    }, e.target);
+    logger.error('gl lost, destroy glRenderer by default', e.target);
     this.deleteResource();
   }
 

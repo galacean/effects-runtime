@@ -1,4 +1,4 @@
-import { registerPlugin } from '@galacean/effects';
+import { logger, registerPlugin } from '@galacean/effects';
 import { SpineLoader } from './spine-loader';
 import { SpineVFXItem } from './spine-vfx-item';
 import {
@@ -27,4 +27,4 @@ registerPlugin('spine', SpineLoader, SpineVFXItem);
 
 export const version = __VERSION__;
 
-console.info('[Galacean Effects Plugin Spine] version: ' + version);
+logger.info('plugin spine version: ' + version);
