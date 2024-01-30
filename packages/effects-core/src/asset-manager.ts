@@ -170,7 +170,7 @@ export class AssetManager implements Disposable {
         cancelLoading = true;
         const totalTime = performance.now() - startTime;
 
-        reject(`Load time out: ${totalTime.toFixed(4)}ms, url: ${assetUrl}`);
+        reject(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
       }, this.timeout * 1000));
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
       if (!cancelLoading) {
