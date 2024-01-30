@@ -2,7 +2,6 @@ import { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index'
 import type { vec2, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { RendererComponent } from '../../components/renderer-component';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';

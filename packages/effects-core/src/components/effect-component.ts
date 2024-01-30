@@ -1,14 +1,13 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import type { EffectComponentData, GeometryData } from '../deserializer';
+import type { GeometryData } from '../deserializer';
 import { DataType } from '../deserializer';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
 import type { Disposable } from '../utils';
-import { DestroyOptions } from '../utils';
+import { DestroyOptions, generateGUID } from '../utils';
 import { RendererComponent } from './renderer-component';
-import { generateGUID } from '..';
 
 let seed = 1;
 

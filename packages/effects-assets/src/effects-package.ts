@@ -6,11 +6,11 @@ export class EffectsPackage extends EffectsObject {
 
   override toData () {
     this.taggedProperties.fileSummary = this.fileSummary;
-
     this.taggedProperties.exportObjects = [];
-    for (const eObject of this.exportObjects) {
-      eObject.toData();
-      this.taggedProperties.exportObjects.push(eObject.taggedProperties);
+
+    for (const obj of this.exportObjects) {
+      obj.toData();
+      this.taggedProperties.exportObjects.push(obj.taggedProperties);
     }
   }
 }

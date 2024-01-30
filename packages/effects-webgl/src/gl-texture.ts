@@ -2,7 +2,7 @@ import type {
   Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
   TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
-  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFrameBuffer, spec, Engine, Deserializer, EffectsObjectData,
+  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFrameBuffer, spec, Engine,
 } from '@galacean/effects-core';
 import {
   getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,

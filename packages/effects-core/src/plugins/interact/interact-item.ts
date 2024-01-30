@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { Deserializer, SceneData } from '../../deserializer';
 import { trianglesFromRect } from '../../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from './click-handler';
 import { HitTestType } from './click-handler';

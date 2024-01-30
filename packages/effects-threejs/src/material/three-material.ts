@@ -1,4 +1,4 @@
-import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math, Deserializer, SceneData } from '@galacean/effects-core';
+import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math } from '@galacean/effects-core';
 import { Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';

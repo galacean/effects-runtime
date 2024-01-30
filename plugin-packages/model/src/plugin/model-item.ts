@@ -4,11 +4,9 @@ import type {
   HitTestSphereParams,
   Engine,
   Renderer,
-  Deserializer,
-  SceneData,
   AnimationClipPlayable,
 } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, spec, VFXItem } from '@galacean/effects';
+import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, spec } from '@galacean/effects';
 import { Vector3 } from '../runtime/math';
 import type { Ray, Euler, Vector2 } from '../runtime/math';
 import type {

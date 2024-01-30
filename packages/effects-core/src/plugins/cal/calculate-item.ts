@@ -1,7 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import { ItemBehaviour } from '../../components';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';

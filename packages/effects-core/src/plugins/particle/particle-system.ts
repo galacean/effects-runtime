@@ -3,7 +3,6 @@ import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-mat
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, convertAnchor, createValueGetter, ensureVec3 } from '../../math';

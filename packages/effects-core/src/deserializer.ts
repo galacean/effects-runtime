@@ -13,7 +13,7 @@ import { Texture } from '.';
  */
 export class Deserializer {
   private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
-  constructor (private engine: Engine) {}
+  constructor (private engine: Engine) { }
   static addConstructor (constructor: new (engine: Engine) => EffectsObject | Component, type: number) {
     Deserializer.constructorMap[type] = constructor;
   }
@@ -224,9 +224,9 @@ export class Deserializer {
       const value = taggedProperties[key];
 
       if (typeof value === 'number' ||
-    typeof value === 'string' ||
-    typeof value === 'boolean' ||
-    this.checkTypedArray(value)) { // TODO json 数据避免传 typedArray
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        this.checkTypedArray(value)) { // TODO json 数据避免传 typedArray
         serializedData[key] = value;
       } else if (value instanceof Array) {
         if (!serializedData[key]) {
@@ -234,7 +234,7 @@ export class Deserializer {
         }
         this.serializeArrayProperty(value, serializedData[key], 0);
       } else if (value instanceof EffectsObject) {
-      // TODO 处理 EffectsObject 递归序列化
+        // TODO 处理 EffectsObject 递归序列化
         serializedData[key] = { id: value.getInstanceId() };
       } else if (value instanceof Object) {
 
@@ -255,8 +255,8 @@ export class Deserializer {
       return;
     }
     if (typeof property === 'number' ||
-    typeof property === 'string' ||
-    typeof property === 'boolean') {
+      typeof property === 'string' ||
+      typeof property === 'boolean') {
       return property;
     } else if (property instanceof Array) {
       const res = [];
@@ -290,8 +290,8 @@ export class Deserializer {
       return;
     }
     if (typeof property === 'number' ||
-    typeof property === 'string' ||
-    typeof property === 'boolean') {
+      typeof property === 'string' ||
+      typeof property === 'boolean') {
       return property;
     } else if (property instanceof Array) {
       const res = [];
@@ -334,9 +334,9 @@ export class Deserializer {
       const value = objectProperty[key];
 
       if (typeof value === 'number' ||
-    typeof value === 'string' ||
-    typeof value === 'boolean' ||
-    this.checkTypedArray(objectProperty)) { // TODO json 数据避免传 typedArray
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        this.checkTypedArray(objectProperty)) { // TODO json 数据避免传 typedArray
         serializedData[key] = value;
       } else if (value instanceof Array) {
         if (!serializedData[key]) {
@@ -344,7 +344,7 @@ export class Deserializer {
         }
         this.serializeArrayProperty(value, serializedData[key], level + 1);
       } else if (value instanceof EffectsObject) {
-      // TODO 处理 EffectsObject 递归序列化
+        // TODO 处理 EffectsObject 递归序列化
         serializedData[key] = { id: value.getInstanceId() };
       } else if (value instanceof Object) {
         if (!serializedData[key]) {
@@ -365,13 +365,13 @@ export class Deserializer {
       serializedData = [];
     }
 
-    for (let i = 0;i < arrayProperty.length;i++) {
+    for (let i = 0; i < arrayProperty.length; i++) {
       const value = arrayProperty[i];
 
       if (typeof value === 'number' ||
-    typeof value === 'string' ||
-    typeof value === 'boolean' ||
-    this.checkTypedArray(arrayProperty)) { // TODO json 数据避免传 typedArray
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        this.checkTypedArray(arrayProperty)) { // TODO json 数据避免传 typedArray
         serializedData[i] = value;
       } else if (value instanceof Array) {
         if (!serializedData[i]) {
@@ -379,7 +379,7 @@ export class Deserializer {
         }
         this.serializeArrayProperty(value, serializedData[i], level + 1);
       } else if (value instanceof EffectsObject) {
-      // TODO 处理 EffectsObject 递归序列化
+        // TODO 处理 EffectsObject 递归序列化
         serializedData[i] = { id: value.getInstanceId() };
       } else if (value instanceof Object) {
         if (!serializedData[i]) {
@@ -392,14 +392,14 @@ export class Deserializer {
 
   private checkTypedArray (obj: any): boolean {
     return obj instanceof Int8Array ||
-         obj instanceof Uint8Array ||
-         obj instanceof Uint8ClampedArray ||
-         obj instanceof Int16Array ||
-         obj instanceof Uint16Array ||
-         obj instanceof Int32Array ||
-         obj instanceof Uint32Array ||
-         obj instanceof Float32Array ||
-         obj instanceof Float64Array;
+      obj instanceof Uint8Array ||
+      obj instanceof Uint8ClampedArray ||
+      obj instanceof Int16Array ||
+      obj instanceof Uint16Array ||
+      obj instanceof Int32Array ||
+      obj instanceof Uint32Array ||
+      obj instanceof Float32Array ||
+      obj instanceof Float64Array;
   }
 
   private checkDataPath (value: any): boolean {

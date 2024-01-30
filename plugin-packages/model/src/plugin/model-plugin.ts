@@ -5,8 +5,6 @@ import type {
   RenderFrame,
   VFXItemProps,
   Engine,
-  Deserializer,
-  SceneData,
   Component,
 } from '@galacean/effects';
 import {

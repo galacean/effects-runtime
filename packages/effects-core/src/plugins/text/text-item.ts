@@ -1,5 +1,4 @@
 import * as spec from '@galacean/effects-specification';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import { Texture } from '../../texture';
 import type { SpriteItemProps } from '../sprite/sprite-item';

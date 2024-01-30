@@ -1,6 +1,6 @@
-import { generateGUID } from '.';
 import type { EffectsObjectData } from './deserializer';
 import type { Engine } from './engine';
+import { generateGUID } from './utils';
 
 /**
  * @since 2.0.0

@@ -1,7 +1,8 @@
 import type {
   Disposable, GLType, GPUCapability, JSONValue, LostHandler, MessageItem, RestoreHandler, Scene,
-  SceneLoadOptions, Texture2DSourceOptionsVideo, TextureSourceOptions, TouchEventType, VFXItem, VFXItemContent, math,
-  Texture } from '@galacean/effects-core';
+  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
+  Texture,
+} from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, LOG_TYPE,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
@@ -422,7 +423,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.renderer.engine.clearResources();
     await this.renderer.engine.addPackageDatas(scene);
 
-    for (let i = 0;i < scene.textureOptions.length;i++) {
+    for (let i = 0; i < scene.textureOptions.length; i++) {
       scene.textureOptions[i] = this.renderer.engine.deserializer.loadGUID(scene.textureOptions[i].id);
       (scene.textureOptions[i] as Texture).initialize();
     }

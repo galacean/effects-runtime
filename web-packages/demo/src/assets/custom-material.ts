@@ -1,4 +1,4 @@
-import { DataType, glContext, type SceneData } from '@galacean/effects';
+import { DataType, glContext } from '@galacean/effects';
 import geometryData from './geometries/trail.geo.json';
 import trailShaderData from './shaders/trail.shader.json';
 

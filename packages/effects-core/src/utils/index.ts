@@ -1,4 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
+import { v4 as uuidv4 } from 'uuid';
 
 export * from './array';
 export * from './color';
@@ -113,4 +114,8 @@ export function random (min: number, max: number) {
 
 export function throwDestroyedError () {
   throw Error('destroyed item cannot be used again');
+}
+
+export function generateGUID (): string {
+  return uuidv4().replace(/-/g, '');
 }

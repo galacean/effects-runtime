@@ -1,4 +1,4 @@
-import type { Deserializer, GeometryDrawMode, Mesh, SceneData, Texture, VFXItem, VFXItemProps, spec } from '@galacean/effects';
+import type { GeometryDrawMode, Mesh, Texture, VFXItem, VFXItemProps, spec } from '@galacean/effects';
 import { ItemBehaviour, RendererComponent, Transform, assertExist, glContext, math } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';

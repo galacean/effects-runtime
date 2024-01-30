@@ -1,4 +1,3 @@
-import type { SceneData, Deserializer } from '@galacean/effects-core';
 import { ItemBehaviour } from '@galacean/effects-core';
 import type { CompositionTransformerTarget } from './composition-transformer-acceler';
 import type { CompositionTransformerAcceler } from './composition-transformer-acceler';

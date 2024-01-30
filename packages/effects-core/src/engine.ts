@@ -1,7 +1,6 @@
-import type { Database, EffectsObject, Scene } from '.';
-import { PLAYER_OPTIONS_ENV_EDITOR, spec } from '.';
+import * as spec from '@galacean/effects-specification';
 import { LOG_TYPE } from './config';
-import type { EffectsObjectData, SceneData } from './deserializer';
+import type { Database, EffectsObjectData, SceneData } from './deserializer';
 import { Deserializer } from './deserializer';
 import { glContext } from './gl';
 import type { Material } from './material';
@@ -9,6 +8,8 @@ import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary
 import { Texture, TextureSourceType } from './texture';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
+import type { EffectsObject } from './effects-object';
+import type { Scene } from './scene';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的销毁
@@ -21,7 +22,7 @@ export class Engine implements Disposable {
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
   deserializer: Deserializer;
-  database: Database | undefined; // 磁盘数据库，打包后 runtime 运行不需要
+  database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
 
   protected destroyed = false;
   protected textures: Texture[] = [];

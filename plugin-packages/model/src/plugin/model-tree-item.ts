@@ -1,5 +1,5 @@
 import { Transform, ItemBehaviour, spec } from '@galacean/effects';
-import type { TimelineComponent, VFXItemContent, Engine, Deserializer, SceneData, VFXItemProps, VFXItem } from '@galacean/effects';
+import type { TimelineComponent, VFXItemContent, Engine, VFXItem } from '@galacean/effects';
 import type { ModelTreeOptions, ModelTreeContent } from '../index';
 import { PAnimationManager } from '../runtime';
 import { getSceneManager } from './model-plugin';

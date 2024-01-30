@@ -1,6 +1,6 @@
 import type { FSFileItem } from '@advjs/gui';
 import { saveFile } from '@advjs/gui';
-import type { EffectsObjectData, EffectsPackageData, GeometryData, MaterialData } from '@galacean/effects';
+import type { EffectsObjectData, EffectsPackageData, GeometryData } from '@galacean/effects';
 import { DataType, generateGUID, glContext } from '@galacean/effects';
 import type * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
@@ -102,7 +102,7 @@ function importEAsset (file: File, curDirHandle: FileSystemDirectoryHandle) {
 
   // 定义文件读取成功后的回调函数
   reader.onload = async (event: ProgressEvent<FileReader>) => {
-  // event.target.result 包含文件的内容
+    // event.target.result 包含文件的内容
     if (event.target) {
       const fileContent = event.target.result as string;
       const eAsset: EffectsPackageData = JSON.parse(fileContent);
@@ -245,7 +245,7 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
             vertices = Array.from(positionAttribute.array);
           }
 
-          for (let i = 0;i < vertices.length;i++) {
+          for (let i = 0; i < vertices.length; i++) {
             // 单位 cm 转为 m
             vertices[i] *= mesh.scale.x / 100;
           }
@@ -265,7 +265,7 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
             vertices,
             uvs,
             indices,
-            name:mesh.name,
+            name: mesh.name,
           });
         }
       });
@@ -279,8 +279,8 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
 
 function createPackageData (effectsObjectDatas: EffectsObjectData[], assetType = 'any') {
   const newPackageData: EffectsPackageData = {
-    fileSummary:{ guid:generateGUID(), assetType },
-    exportObjects:effectsObjectDatas,
+    fileSummary: { guid: generateGUID(), assetType },
+    exportObjects: effectsObjectDatas,
   };
 
   return newPackageData;

@@ -1,6 +1,6 @@
 import type {
   MaterialDestroyOptions, MaterialProps, MaterialStates, UndefinedAble, Texture, GlobalUniforms,
-  Renderer, Deserializer, MaterialData, SceneData, ShaderData,
+  Renderer, MaterialData,
 } from '@galacean/effects-core';
 import { DestroyOptions, Material, assertExist, throwDestroyedError, math, DataType } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
@@ -501,9 +501,9 @@ export class GLMaterial extends Material {
       matrices: {},
       textures: {},
       floatArrays: {},
-      blending:false,
-      zTest:false,
-      zWrite:false,
+      blending: false,
+      zTest: false,
+      zWrite: false,
       ...data,
     };
 

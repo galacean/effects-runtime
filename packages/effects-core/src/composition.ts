@@ -20,7 +20,6 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, noop, removeItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
-import { Deserializer } from './deserializer';
 
 export interface CompositionStatistic {
   loadTime: number,

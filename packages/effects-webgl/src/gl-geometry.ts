@@ -1,4 +1,4 @@
-import type { EffectsObjectData, Engine, GeometryData, GeometryProps, MaterialData, spec } from '@galacean/effects-core';
+import type { Engine, GeometryData, GeometryProps, spec } from '@galacean/effects-core';
 import { BYTES_TYPE_MAP, Geometry, assertExist, generateEmptyTypedArray, glContext } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
@@ -427,7 +427,7 @@ export class GLGeometry extends Geometry {
     };
 
     if (fullGeometryData.indices.length !== 0) {
-      geometryProps.indices = { data:new Uint32Array(fullGeometryData.indices) };
+      geometryProps.indices = { data: new Uint32Array(fullGeometryData.indices) };
       geometryProps.drawCount = fullGeometryData.indices.length;
     } else {
       geometryProps.drawCount = fullGeometryData.vertices.length;

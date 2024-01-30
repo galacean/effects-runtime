@@ -1,5 +1,5 @@
-import type { EffectComponentData, EffectsObject, EffectsPackageData, Engine, Material, SceneData, ShaderData } from '@galacean/effects';
-import { DataType, EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, generateGUID, glContext, loadImage, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import type { EffectComponentData, EffectsObject, EffectsPackageData, Engine, Material, SceneData, ShaderData, VFXItem, VFXItemContent } from '@galacean/effects';
+import { DataType, EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, generateGUID, glContext, loadImage } from '@galacean/effects';
 import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {
@@ -202,8 +202,8 @@ export class InspectorGui {
           serializeObject.applyModifiedProperties();
         }));
       } else if (type === 'Color') {
-        this.guiControllers.push(gui.addColor({ color:[0, 0, 0, 0] }, 'color').name(inspectorName).onChange((value: number[]) => {
-          serializeObject.serializedData['vector4s'][uniformName] = { x:value[0], y:value[1], z:value[2], w:value[3] };
+        this.guiControllers.push(gui.addColor({ color: [0, 0, 0, 0] }, 'color').name(inspectorName).onChange((value: number[]) => {
+          serializeObject.serializedData['vector4s'][uniformName] = { x: value[0], y: value[1], z: value[2], w: value[3] };
           serializeObject.applyModifiedProperties();
         }));
       } else if (type === '2D') {
