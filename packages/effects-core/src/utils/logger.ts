@@ -2,15 +2,19 @@ import { isFunction } from './index';
 
 type LogType = 'info' | 'error' | 'warn';
 
-const prefix = '\x1B[97;41;3m[Galacean Effects]\x1B[m';
+const prefix = '[Galacean Effects]';
 let localLogger: ((type: LogType, message: string, ...args: any[]) => void) | undefined;
 
 function format (message: string) {
-  return `${prefix} ${message}`;
+  return [
+    `%c${prefix}`,
+    'background: #AA0100; color: white',
+    `${message}`,
+  ];
 }
 
 function error (message: string, ...args: any[]) {
-  console.error(format(message), args);
+  console.error(...format(message), args);
   localLogger?.('error', message, args);
 }
 
@@ -20,12 +24,12 @@ function error (message: string, ...args: any[]) {
  * @param args
  */
 function info (message: string, ...args: any[]) {
-  console.debug(format(message));
+  console.debug(...format(message));
   localLogger?.('info', message, args);
 }
 
 function warn (message: string, ...args: any[]) {
-  console.warn(format(message));
+  console.warn(...format(message));
   localLogger?.('warn', message, args);
 }
 
