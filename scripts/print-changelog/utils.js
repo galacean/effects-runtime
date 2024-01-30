@@ -19,7 +19,7 @@ function printPR(prList) {
     const authorText = `@${author}`;
     const urlText = `[#${pr}](${url})`;
 
-    console.log(`- ${titleText}. ${urlText} ${authorText}`);
+    console.log(`- ${titleText}。${urlText} ${authorText}`);
 
     if (descriptions.length !== 0) {
       console.log(descriptions.map(desc => `  - ${desc}`).join('\n'));
@@ -29,7 +29,7 @@ function printPR(prList) {
 
 function queryWithJSDOM(txt) {
   const QUERY_TITLE = '.gh-header-title .js-issue-title';
-  const QUERY_DESCRIPTION_LINES = '.comment-body ol li';
+  const QUERY_DESCRIPTION_LINES = '.comment-body>ul:first-child li';
   const QUERY_AUTHOR = '.pull-discussion-timeline>.js-discussion>.TimelineItem .author';
   const dom = new JSDOM(txt);
   const { document } = dom.window;
