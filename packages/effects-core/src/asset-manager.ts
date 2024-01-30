@@ -168,7 +168,9 @@ export class AssetManager implements Disposable {
     const waitPromise = new Promise<Scene>((resolve, reject) =>
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
-        reject(`Load time out: ${JSON.stringify(url)}`);
+        const totalTime = performance.now() - startTime;
+
+        reject(`Load time out: ${totalTime.toFixed(4)}ms, url: ${assetUrl}`);
       }, this.timeout * 1000));
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
       if (!cancelLoading) {
