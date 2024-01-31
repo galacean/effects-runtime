@@ -8,6 +8,7 @@ import { generateGUID } from './utils';
 type ecScene = spec.JSONScene & { items: VFXItemProps[], components: DataPath[] };
 
 export function version3Migration (scene: Record<string, any>): Scene {
+  scene.jsonScene.version = 3.0;
   const ecScene = scene.jsonScene as ecScene;
 
   if (!ecScene.items) {

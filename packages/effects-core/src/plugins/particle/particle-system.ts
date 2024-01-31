@@ -539,7 +539,8 @@ export class ParticleSystem extends Component {
             if (options.removeParticle) {
               renderer.removeParticlePoint(pointIndex);
               this.clearPointTrail(pointIndex);
-              node.content[0] = 0;
+              link.removeNode(node);
+              node.content = [0] as unknown as ParticleContent;
             }
             hitPositions.push(pos);
             if (!options.multiple) {
