@@ -262,8 +262,6 @@ export class AssetManager implements Disposable {
         type: LOG_TYPE,
       });
 
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
       window.clearTimeout(loadTimer);
       this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
