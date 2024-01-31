@@ -122,8 +122,8 @@ export class AssetManager implements Disposable {
    */
   private timeout: number;
   /**
-	 * 场景加载的超时定时器
-	 */
+   * 场景加载的超时定时器
+   */
   private timers: number[] = [];
 
   /**
@@ -170,7 +170,7 @@ export class AssetManager implements Disposable {
     let loadTimer: number;
     let cancelLoading = false;
 
-    const waitPromise = new Promise<Scene>((resolve, reject) =>{
+    const waitPromise = new Promise<Scene>((resolve, reject) => {
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
         this.removeTimer(loadTimer);
