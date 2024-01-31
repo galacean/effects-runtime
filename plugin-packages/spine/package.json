@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-spine",
-  "version": "1.1.8",
+  "version": "1.2.0",
   "description": "Galacean Effects player spine plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -41,5 +41,8 @@
   "devDependencies": {
     "@galacean/effects": "workspace:*",
     "fpsmeter": "^0.3.1"
+  },
+  "dependencies": {
+    "@esotericsoftware/spine-core": "~4.2.35"
   }
 }

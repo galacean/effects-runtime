@@ -1,4 +1,3 @@
-import './polyfill';
 import { registerFilters } from './filter';
 import { registerPlugin } from './plugin-system';
 import type { CalculateItem, CameraController, ParticleSystem, SpriteItem, InteractItem, TextItem } from './plugins';

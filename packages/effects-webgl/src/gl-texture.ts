@@ -22,7 +22,7 @@ import {
   isWebGL2,
   throwDestroyedError,
   canvasPool,
-  LOG_TYPE,
+  logger,
 } from '@galacean/effects-core';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import { assignInspectorName } from './gl-renderer-internal';
@@ -77,7 +77,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     if (this.initialized) {
       return;
     }
-    const glEngine = this.engine as GLEngine ;
+    const glEngine = this.engine as GLEngine;
 
     glEngine.addTexture(this);
     const pipelineContext = glEngine.getGLPipelineContext();
@@ -170,10 +170,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     if (type === glContext.HALF_FLOAT) {
       type = detail.halfFloatTexture;
       if (!type) {
-        console.error({
-          content: 'half float texture is not support',
-          type: LOG_TYPE,
-        });
+        logger.error('Half float texture is not support.');
       }
       if (isWebGL2(gl) && internalFormat === format) {
         if (format === glContext.LUMINANCE) {
@@ -183,18 +180,12 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       }
       if (!detail.halfFloatLinear) {
         source.minFilter = source.magFilter = gl.NEAREST;
-        console.warn({
-          content: 'half float linear not support,change to NEAREST',
-          type: LOG_TYPE,
-        });
+        logger.warn('Half float linear not support, change to NEAREST.');
       }
     } else if (type === gl.FLOAT) {
       type = detail.floatTexture;
       if (!type) {
-        console.error({
-          content: 'float texture is not support',
-          type: LOG_TYPE,
-        });
+        logger.error('Float texture is not support.');
       }
       if (isWebGL2(gl) && internalFormat === format) {
         if (format === glContext.LUMINANCE) {
@@ -205,10 +196,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       if (!detail.floatLinear) {
         source.minFilter = gl.NEAREST;
         source.magFilter = gl.NEAREST;
-        console.warn({
-          content: 'float linear not support,change to NEAREST',
-          type: LOG_TYPE,
-        });
+        logger.warn('Float linear not support, change to NEAREST.');
       }
     }
 
@@ -504,10 +492,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     this.textureBuffer = null;
     this.destroyed = true;
     this.update = () => {
-      console.error({
-        content: 'this this texture has been destroyed',
-        type: LOG_TYPE,
-      });
+      logger.error('This texture has been destroyed.');
     };
     this.initialize = throwDestroyedError as unknown as () => void;
 
@@ -534,10 +519,7 @@ function resizeImageByCanvas (
     canvas.width = nw;
     canvas.height = nh;
     ctx?.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
-    console.warn({
-      content: `image resize from ${width}x${height} to ${nw}x${nh}`,
-      type: LOG_TYPE,
-    });
+    logger.warn(`Image resize from ${width}x${height} to ${nw}x${nh}`);
 
     return canvas;
   }

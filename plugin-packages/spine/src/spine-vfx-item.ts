@@ -1,7 +1,7 @@
 import { HitTestType, VFXItem, spec, PLAYER_OPTIONS_ENV_EDITOR, assertExist, math } from '@galacean/effects';
 import type { HitTestTriangleParams, Engine, Composition, VFXItemProps, BoundingBoxTriangle } from '@galacean/effects';
-import type { AnimationStateListener, SkeletonData } from './core';
-import { AnimationState, AnimationStateData, Skeleton } from './core';
+import type { AnimationStateListener, SkeletonData } from '@esotericsoftware/spine-core';
+import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import { SlotGroup } from './slot-group';
 import type { SpineResource } from './spine-loader';
 import { createSkeletonData, getAnimationDuration } from './utils';
@@ -241,7 +241,8 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     }
     this.state.update(dt);
     this.state.apply(this.skeleton);
-    this.skeleton.updateWorldTransform();
+    this.skeleton.update(dt);
+    this.skeleton.updateWorldTransform(Physics.update);
     this.content?.update();
   }
 
@@ -417,7 +418,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     if (!(this.state && this.skeleton && this.contentVisible)) {
       return;
     }
-    this.skeleton.updateWorldTransform();
+    this.skeleton.updateWorldTransform(Physics.update);
     this.skeleton.getBounds(this.offset, this.size);
 
     return {

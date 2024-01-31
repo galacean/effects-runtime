@@ -5,7 +5,7 @@ import type {
 } from '@galacean/effects-core';
 import {
   FrameBuffer, Geometry, glContext, imageDataFromColor, Material,
-  Mesh, RenderBuffer, Renderer, Texture, TextureSourceType, Engine, LOG_TYPE,
+  Mesh, RenderBuffer, Renderer, Texture, TextureSourceType, Engine, logger,
 } from '@galacean/effects-core';
 import { GLFrameBuffer, GLGeometry, GLMaterial, GLRenderBuffer, GLRenderer, GLTexture, GLEngine } from '@galacean/effects-webgl';
 
@@ -81,7 +81,5 @@ Engine.create = (gl: WebGLRenderingContext | WebGL2RenderingContext) => {
 };
 
 export const version = __VERSION__;
-console.info({
-  content: '[Galacean Effects Player] version: ' + __VERSION__,
-  type: LOG_TYPE,
-});
+
+logger.info('player version: ' + version);

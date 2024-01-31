@@ -17,6 +17,17 @@
 <img height="320" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*VHMAR6Vq_8wAAAAAAAAAAAAADvV6AQ/original">
 <img height="320" src="https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*UwMWT4uY6jsAAAAAAAAAAAAADvV6AQ/original">
 
+<!-- Copy-paste in your Readme.md file -->
+
+<a href="https://next.ossinsight.io/widgets/official/compose-last-28-days-stats?repo_id=715920076" target="_blank" style="display: block" align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-last-28-days-stats/thumbnail.png?repo_id=715920076&image_size=auto&color_scheme=dark" width="655" height="auto">
+    <img alt="Performance Stats of galacean/effects-runtime - Last 28 days" src="https://next.ossinsight.io/widgets/official/compose-last-28-days-stats/thumbnail.png?repo_id=715920076&image_size=auto&color_scheme=light" width="655" height="auto">
+  </picture>
+</a>
+
+<!-- Made with [OSS Insight](https://ossinsight.io/) -->
+
 [github-issues-url]: https://github.com/galacean/effects-runtime/issues
 </div>
 
