@@ -4,7 +4,7 @@ import type {
   Texture,
 } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, LOG_TYPE,
+  AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
   isArray, isObject, isScene, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
 } from '@galacean/effects-core';
@@ -236,10 +236,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       const version = gl instanceof WebGLRenderingContext ? 'webgl' : 'webgl2';
 
       if (framework !== version) {
-        console.error({
-          content: `The gl context(${version}) is inconsistent with renderFramework or default version(${framework})`,
-          type: LOG_TYPE,
-        });
+        logger.error(`The gl context(${version}) is inconsistent with renderFramework or default version(${framework})`);
         framework = version;
       }
     } else {
@@ -247,13 +244,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.canvas = document.createElement('canvas');
       container.appendChild(this.canvas);
     }
-
-    // 不允许同时存在WebGL和WebGL2的Player
-    playerMap.forEach(player => {
-      if (player.gpuCapability.type !== framework) {
-        throw new Error(`Initialize player with different webgl version: old=${player.gpuCapability.type}, new=${framework}`);
-      }
-    });
 
     this.renderer = Renderer.create(
       this.canvas,
@@ -272,10 +262,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     // 如果存在WebGL和WebGL2的Player，需要给出警告
     playerMap.forEach(player => {
       if (player.gpuCapability.type !== this.gpuCapability.type) {
-        console.warn({
-          content: `Create player with different webgl version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}`,
-          type: LOG_TYPE,
-        });
+        logger.warn(`Create player with different webgl version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}`);
       }
     });
 
@@ -394,7 +381,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       autoplay: true,
       ...options,
     };
-    let scene: Scene;
     let source: SceneType;
 
     if (isSceneWithOptions(url)) {
@@ -413,11 +399,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.assetManager = new AssetManager(opts);
     }
 
-    if (isScene(source)) {
-      scene = source;
-    } else {
-      scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
-    }
+    const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
     this.renderer.engine.clearResources();
@@ -434,8 +416,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       width: renderer.getWidth(),
       height: renderer.getHeight(),
       event: this.event,
-      handlePlayerPause: this.handlePlayerPause,
-      handleMessageItem: this.handleMessageItem,
+      onPlayerPause: this.handlePlayerPause,
+      onMessageItem: this.handleMessageItem,
     }, scene);
 
     if (this.ticker) {
@@ -460,10 +442,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     const firstFrameTime = (performance.now() - last) + composition.statistic.loadTime;
 
     composition.statistic.firstFrameTime = firstFrameTime;
-    console.info({
-      content: `first frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms`,
-      type: LOG_TYPE,
-    });
+    logger.info(`first frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms`);
 
     this.compositions.push(composition);
 
@@ -506,7 +485,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
 
   /**
-   * 跳转全部合成带指定时间并停留
+   * 跳转全部合成到指定时间并停留
    * @param time - 指定时间, 单位秒
    */
   gotoAndStop (time: number) {
@@ -534,9 +513,9 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   playSequence (compositions: Composition[]): void {
     for (let i = 0; i < compositions.length - 1; i++) {
       const composition = compositions[i];
-      const preEndHandler = composition.handleEnd;
+      const preEndHandler = composition.onEnd;
 
-      composition.handleEnd = () => {
+      composition.onEnd = () => {
         preEndHandler?.call(composition, composition);
         compositions[i + 1].play();
       };
@@ -592,28 +571,22 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
   private doTick (dt: number, forceRender: boolean) {
     dt = Math.min(dt, 33) * this.speed;
-    let removed = false;
-    let comps = this.compositions;
+    const comps = this.compositions;
     let skipRender = false;
 
     comps.sort((a, b) => a.getIndex() - b.getIndex());
-    comps.forEach((composition, i) => {
+    this.compositions = [];
+    for (let i = 0; i < comps.length; i++) {
+      const composition = comps[i];
+
       if (composition.textureOffloaded) {
         skipRender = true;
-        console.error({
-          content: `Composition ${composition.name} texture offloaded, skip render.`,
-          type: LOG_TYPE,
-        });
+        logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
+        this.compositions.push(composition);
+        continue;
       }
-
-      if (composition.isDestroyed) {
-        delete comps[i];
-        removed = true;
-
-        return;
-      }
-
-      if (composition.renderer) {
+      // TODO: [1.31] @十弦 验证
+      if (!composition.isDestroyed && composition.renderer) {
         const needResume = composition.getPaused();
 
         if (needResume) {
@@ -624,21 +597,11 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           composition.pause();
         }
       }
-
-      if (composition.isDestroyed) {
-        delete comps[i];
-        removed = true;
-
-        return;
+      if (!composition.isDestroyed) {
+        this.compositions.push(composition);
       }
-    });
-    if (removed) {
-      comps = comps.filter(comp => comp);
-      comps.map((comp, index) => comp.setIndex(index));
-      this.compositions = comps;
     }
-
-    this.baseCompositionIndex = comps.length;
+    this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
       this.handleRenderError?.(new Error('play when texture offloaded'));
 
@@ -650,7 +613,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       const time = (level === 2 && this.reportGPUTime) ? gpuTimer(gl as WebGL2RenderingContext) : undefined;
 
       time?.begin();
-      if (this.compositions.length || forceRender) {
+      if (this.compositions.length || this.compositions.length < comps.length || forceRender) {
         this.renderer.setFrameBuffer(null);
         this.renderer.clear({
           stencilAction: TextureLoadAction.clear,
@@ -719,18 +682,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       const documentWidth = document.documentElement.clientWidth;
 
       if (canvasWidth > documentWidth * 2) {
-        console.error({
-          content: `DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}`,
-          type: LOG_TYPE,
-        });
+        logger.error(`DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}`);
       }
       const maxSize = this.env ? this.gpuCapability.detail.maxTextureSize : 2048;
 
       if ((canvasWidth > maxSize || canvasHeight > maxSize)) {
-        console.error({
-          content: `Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}`,
-          type: LOG_TYPE,
-        });
+        logger.error(`Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}`);
         if (aspect > 1) {
           canvasWidth = Math.round(maxSize);
           canvasHeight = Math.round(maxSize / aspect);
@@ -743,7 +700,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.renderer.resize(canvasWidth, canvasHeight);
       this.canvas.style.width = containerWidth + 'px';
       this.canvas.style.height = containerHeight + 'px';
-      console.debug(`Resize player ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
+      logger.info(`Resize player ${this.name} [${canvasWidth},${canvasHeight},${containerWidth},${containerHeight}].`);
       this.compositions?.forEach(comp => {
         comp.camera.aspect = aspect;
       });
@@ -828,7 +785,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    * @param keepCanvas - 是否保留 canvas 画面，默认不保留，canvas 不能再被使用
    */
   dispose (keepCanvas?: boolean): void {
-    console.debug(`call player destroy: ${this.name}`);
+    logger.info(`call player destroy: ${this.name}`);
     if (this.disposed) {
       return;
     }
@@ -988,7 +945,8 @@ export function getActivePlayers () {
  * @param isCreate - 是否处于实例化时
  */
 function broadcastPlayerEvent (player: Player, isCreate: boolean) {
-  Object.values(pluginLoaderMap).forEach(ctrl => {
+  Object.keys(pluginLoaderMap).forEach(key => {
+    const ctrl = pluginLoaderMap[key];
     const func = isCreate ? ctrl.onPlayerCreated : ctrl.onPlayerDestroy;
 
     func?.(player);
@@ -1006,11 +964,9 @@ function assertNoConcurrentPlayers () {
       runningPlayers.push(player);
     }
   }
+
   if (runningPlayers.length > 1) {
-    console.error({
-      content: `Current running player count: ${runningPlayers.length}, see ${HELP_LINK['Current running player count']}`,
-      type: LOG_TYPE,
-    }, runningPlayers);
+    logger.error(`Current running player count: ${runningPlayers.length}, see ${HELP_LINK['Current running player count']}`, runningPlayers);
   }
 }
 

@@ -1,5 +1,5 @@
 import type { RenderBufferProps } from '@galacean/effects-core';
-import { throwDestroyedError, RenderBuffer, LOG_TYPE } from '@galacean/effects-core';
+import { throwDestroyedError, RenderBuffer, logger } from '@galacean/effects-core';
 import type { GLRendererInternal } from './gl-renderer-internal';
 
 export class GLRenderBuffer extends RenderBuffer {
@@ -30,10 +30,7 @@ export class GLRenderBuffer extends RenderBuffer {
 
   setSize (width: number, height: number) {
     if (!this.initialized) {
-      console.error({
-        content: 'Can\'t set size for uninitialized render buffer',
-        type: LOG_TYPE,
-      });
+      logger.error('Can\'t set size for uninitialized render buffer');
 
       return;
     }
@@ -45,10 +42,7 @@ export class GLRenderBuffer extends RenderBuffer {
       if (width && height) {
         gl.renderbufferStorage(gl.RENDERBUFFER, this.format, this.size[0] = width, this.size[1] = height);
       } else {
-        console.error({
-          content: `Invalid render buffer size: ${width}x${height}`,
-          type: LOG_TYPE,
-        });
+        logger.error(`Invalid render buffer size: ${width}x${height}`);
       }
     }
   }

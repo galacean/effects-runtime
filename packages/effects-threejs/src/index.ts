@@ -6,7 +6,7 @@ import type {
   TextureSourceOptions,
   Engine,
 } from '@galacean/effects-core';
-import { Texture, Geometry, Material, Mesh, setMaxSpriteMeshItemCount, LOG_TYPE } from '@galacean/effects-core';
+import { Texture, Geometry, Material, Mesh, setMaxSpriteMeshItemCount, logger } from '@galacean/effects-core';
 import { ThreeGeometry } from './three-geometry';
 import { ThreeMesh } from './three-mesh';
 import { ThreeTexture } from './three-texture';
@@ -73,7 +73,5 @@ Mesh.create = (engine: Engine, props: GeometryMeshProps) => {
 };
 
 export const version = __VERSION__;
-console.info({
-  content: '[Galacean Effects THREEJS] version: ' + __VERSION__,
-  type: LOG_TYPE,
-});
+
+logger.info('THREEJS plugin version: ' + version);

@@ -1,0 +1,18 @@
+blank_issues_enabled: false
+contact_links:
+  - name: '官网'
+    about: 'Galacean Effects Website'
+    url: 'https://galacean.antgroup.com/effects/'
+  - name: '文档'
+    about: 'Galacean Effects Document'
+    url: 'https://galacean.antgroup.com/effects/#/user/user-doc'
+  - name: 'Playground'
+    about: 'Galacean Effects Playground'
+    url: 'https://galacean.antgroup.com/effects/#/playground'
+  - name: 'API'
+    about: 'Galacean Effects API'
+    url: 'https://galacean.antgroup.com/effects/#/api'
+  - name: '灵感中心'
+    about: 'Galacean Effects Inspiration'
+    url: 'https://galacean.antgroup.com/effects/inspiration/'
+  

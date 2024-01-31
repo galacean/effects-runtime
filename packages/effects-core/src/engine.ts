@@ -1,5 +1,4 @@
 import * as spec from '@galacean/effects-specification';
-import { LOG_TYPE } from './config';
 import type { Database, EffectsObjectData, SceneData } from './deserializer';
 import { Deserializer } from './deserializer';
 import { glContext } from './gl';
@@ -7,7 +6,7 @@ import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
 import { Texture, TextureSourceType } from './texture';
 import type { Disposable } from './utils';
-import { addItem, removeItem } from './utils';
+import { addItem, removeItem, logger } from './utils';
 import type { EffectsObject } from './effects-object';
 import type { Scene } from './scene';
 
@@ -275,10 +274,7 @@ export class Engine implements Disposable {
     }
 
     if (info.length > 0) {
-      console.warn({
-        content: `Release GPU memory: ${info.join(', ')}`,
-        type: LOG_TYPE,
-      });
+      logger.warn(`Release GPU memory: ${info.join(', ')}`);
     }
 
     this.renderPasses.forEach(pass => {

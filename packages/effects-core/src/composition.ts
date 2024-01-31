@@ -1,25 +1,24 @@
-import type { Ray } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { Camera } from './camera';
-import { CompositionComponent } from './comp-vfx-item';
-import { RendererComponent } from './components';
-import { CompositionSourceManager } from './composition-source-manager';
-import { LOG_TYPE } from './config';
+import type { Ray } from '@galacean/effects-math/es/core/index';
 import type { JSONValue } from './downloader';
-import { setRayFromCamera } from './math';
+import type { Scene } from './scene';
+import type { Disposable, LostHandler } from './utils';
+import { assertExist, logger, noop, removeItem } from './utils';
+import { Transform } from './transform';
+import type { VFXItemContent, VFXItemProps } from './vfx-item';
+import { VFXItem } from './vfx-item';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
 import { TimelineComponent } from './plugins';
 import type { GlobalVolume, MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
-import { Transform } from './transform';
-import type { Disposable, LostHandler } from './utils';
-import { assertExist, noop, removeItem } from './utils';
-import type { VFXItemContent, VFXItemProps } from './vfx-item';
-import { VFXItem } from './vfx-item';
+import { CompositionSourceManager } from './composition-source-manager';
+import { Camera } from './camera';
+import { CompositionComponent } from './comp-vfx-item';
+import { setRayFromCamera } from './math';
+import { RendererComponent } from './components';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -47,9 +46,9 @@ export interface CompositionProps {
   reusable?: boolean,
   baseRenderOrder?: number,
   renderer: Renderer,
-  handlePlayerPause?: (item: VFXItem<any>) => void,
-  handleMessageItem?: (item: MessageItem) => void,
-  handleEnd?: (composition: Composition) => void,
+  onPlayerPause?: (item: VFXItem<any>) => void,
+  onMessageItem?: (item: MessageItem) => void,
+  onEnd?: (composition: Composition) => void,
   event?: EventSystem,
   width: number,
   height: number,
@@ -103,12 +102,17 @@ export class Composition implements Disposable, LostHandler {
   extraCamera: VFXItem<VFXItemContent>;
   /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
+   * @internal
    */
-  handlePlayerPause?: (item: VFXItem<any>) => void;
+  onPlayerPause?: (item: VFXItem<any>) => void;
   /**
    * 单个合成结束时的回调
    */
-  handleEnd?: (composition: Composition) => void;
+  onEnd?: (composition: Composition) => void;
+  /**
+   * 合成中消息元素创建/销毁时触发的回调
+   */
+  onMessageItem?: (item: MessageItem) => void;
   /**
    * 合成id
    */
@@ -173,7 +177,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 合成全局时间
    */
-  globalTime;
+  globalTime: number;
 
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
@@ -200,9 +204,7 @@ export class Composition implements Disposable, LostHandler {
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   private readonly postLoaders: Plugin[] = [];
-  private readonly handleMessageItem?: (item: MessageItem) => void;
   private rootComposition: CompositionComponent;
-
   private rootTimeline: TimelineComponent;
 
   /**
@@ -214,7 +216,7 @@ export class Composition implements Disposable, LostHandler {
       reusable = false,
       speed = 1,
       baseRenderOrder = 0, renderer,
-      handlePlayerPause, handleMessageItem, handleEnd,
+      onPlayerPause, onMessageItem, onEnd,
       event, width, height,
     } = props;
 
@@ -272,9 +274,9 @@ export class Composition implements Disposable, LostHandler {
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
-    this.handlePlayerPause = handlePlayerPause;
-    this.handleMessageItem = handleMessageItem;
-    this.handleEnd = handleEnd;
+    this.onPlayerPause = onPlayerPause;
+    this.onMessageItem = onMessageItem;
+    this.onEnd = onEnd;
     this.createRenderFrame();
     this.rendererOptions = null;
     this.rootComposition.createContent();
@@ -285,6 +287,16 @@ export class Composition implements Disposable, LostHandler {
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
+  }
+
+  /**
+   * 合成结束回调
+   * @param {(composition: Composition) => void} func
+   * @deprecated since 2.0 - use `onEnd` instead
+   */
+  set handleEnd (func: (composition: Composition) => void) {
+    console.warn('The handleEnd property is deprecated. Use onEnd instead.');
+    this.onEnd = func;
   }
 
   /**
@@ -302,7 +314,7 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
-   * 获取合成开始时间
+   * 获取合成开始渲染的时间
    */
   get startTime () {
     return this.rootComposition.startTime ?? 0;
@@ -383,7 +395,13 @@ export class Composition implements Disposable, LostHandler {
     if (this.rootItem.ended && this.reusable) {
       this.restart();
     }
-    this.gotoAndPlay(this.time);
+    // TODO: [1.31] @茂安 this.content.started 验证
+    if (this.rootTimeline.timelineStarted) {
+      this.gotoAndPlay(this.time - this.startTime);
+
+    } else {
+      this.gotoAndPlay(0);
+    }
   }
 
   /**
@@ -404,11 +422,22 @@ export class Composition implements Disposable, LostHandler {
     this.paused = false;
   }
 
+  /**
+   * 跳转合成到指定时间播放
+   * @param time - 相对 startTime 的时间
+   */
   gotoAndPlay (time: number) {
     this.resume();
-    this.forwardTime(time);
+    if (!this.rootTimeline.timelineStarted) {
+      this.rootComposition.start();
+    }
+    this.forwardTime(time + this.startTime);
   }
 
+  /**
+   * 跳转合成到指定时间并暂停
+   * @param time - 相对 startTime 的时间
+   */
   gotoAndStop (time: number) {
     this.gotoAndPlay(time);
     this.pause();
@@ -431,7 +460,7 @@ export class Composition implements Disposable, LostHandler {
 
   /**
    * 跳到指定时间点（不做任何播放行为）
-   * @param time - 指定的时间
+   * @param time - 相对 startTime 的时间
    */
   setTime (time: number) {
     const pause = this.paused;
@@ -439,7 +468,10 @@ export class Composition implements Disposable, LostHandler {
     if (pause) {
       this.resume();
     }
-    this.forwardTime(time, true);
+    if (!this.rootTimeline.timelineStarted) {
+      this.rootComposition.start();
+    }
+    this.forwardTime(time + this.startTime, true);
 
     if (pause) {
       this.pause();
@@ -451,8 +483,13 @@ export class Composition implements Disposable, LostHandler {
     item.setParent(this.rootItem);
   }
 
+  /**
+   * 前进合成到指定时间
+   * @param time - 相对0时刻的时间
+   * @param skipRender - 是否跳过渲染
+   */
   private forwardTime (time: number, skipRender = false) {
-    const deltaTime = (this.startTime + Math.max(0, time)) * 1000 - this.rootTimeline.getTime() * 1000;
+    const deltaTime = time * 1000 - this.rootTimeline.getTime() * 1000;
     const reverse = deltaTime < 0;
     const step = 15;
     let t = Math.abs(deltaTime);
@@ -487,7 +524,7 @@ export class Composition implements Disposable, LostHandler {
     this.buildItemTree(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
-        this.handleEnd?.(this);
+        this.onEnd?.(this);
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
@@ -805,7 +842,7 @@ export class Composition implements Disposable, LostHandler {
    */
   addInteractiveItem (item: VFXItem<VFXItemContent>, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.handleMessageItem?.({
+      this.onMessageItem?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -824,7 +861,7 @@ export class Composition implements Disposable, LostHandler {
   removeInteractiveItem (item: VFXItem<VFXItemContent>, type: spec.InteractType) {
     // MESSAGE ITEM的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.handleMessageItem?.({
+      this.onMessageItem?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_END,
         id: item.id,
@@ -863,10 +900,7 @@ export class Composition implements Disposable, LostHandler {
           if (__DEBUG__) {
             console.debug(`Destroy no ref texture: ${texture?.id}.`);
             if (isNaN(c)) {
-              console.error({
-                content: `Texture ${texture?.id} not found usage.`,
-                type: LOG_TYPE,
-              });
+              logger.error(`Texture ${texture?.id} not found usage.`);
             }
           }
           texture.dispose();
@@ -940,12 +974,9 @@ export class Composition implements Disposable, LostHandler {
     this.rendererOptions?.emptyTexture.dispose();
     this.pluginSystem?.destroyComposition(this);
     this.update = () => {
-      console.error({
-        content: `Update disposed composition: ${this.name}.`,
-        type: LOG_TYPE,
-      });
+      logger.error(`Update disposed composition: ${this.name}.`);
     };
-    this.handlePlayerPause = noop;
+    this.onPlayerPause = noop;
     this.dispose = noop;
     if (textures && this.keepResource) {
       textures.forEach(tex => tex.dispose = textureDisposes[tex.id]);

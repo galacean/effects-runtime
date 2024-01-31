@@ -10,43 +10,11 @@
  * nativeLog.error('this is native log from h5, error:', error);
  * ```
  */
+import { isAndroid, isIOS, logger } from '@galacean/effects';
 
-import { isAndroid, isIOS, isObject, LOG_TYPE } from '@galacean/effects';
+const prefix = '[Galacean Effects]';
 
-const prefix = '[Galacean Effects Player]';
-
-export function inspectLogger () {
-  const info = console.info;
-  const warn = console.warn;
-  const error = console.error;
-
-  console.error = (msg, ...args) => {
-    if (isObject(msg) && msg.type === LOG_TYPE) {
-      error.apply(console, [prefix, msg.content, ...args]);
-      nativeLogger('error', msg.content, ...args);
-    } else {
-      error.apply(console, [msg, ...args]);
-    }
-  };
-
-  console.info = (msg, ...args) => {
-    if (isObject(msg) && msg.type === LOG_TYPE) {
-      info.apply(console, [prefix, msg.content, ...args]);
-      nativeLogger('info', msg.content, ...args);
-    } else {
-      info.apply(console, [msg, ...args]);
-    }
-  };
-
-  console.warn = (msg, ...args) => {
-    if (isObject(msg) && msg.type === LOG_TYPE) {
-      warn.apply(console, [prefix, msg.content, ...args]);
-      nativeLogger('info', msg.content, ...args);
-    } else {
-      warn.apply(console, [msg, ...args]);
-    }
-  };
-}
+logger.register(nativeLogger);
 
 function nativeLogger (type: string, msg: string, ...args: string[]) {
   if (isAndroid()) {

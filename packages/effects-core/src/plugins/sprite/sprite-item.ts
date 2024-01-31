@@ -201,10 +201,8 @@ export class SpriteComponent extends RendererComponent {
 
   override update (dt: number): void {
     const time = this.timelineComponent.getTime();
-
     const duration = this.item.duration;
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
-
     const ta = this.textureSheetAnimation;
 
     if (ta) {
@@ -528,6 +526,7 @@ export class SpriteComponent extends RendererComponent {
     }
   };
 
+  // TODO: [1.31] @十弦 https://github.com/galacean/effects-runtime/commit/fe8736540b9a461d8e96658f4d755ff8089a263b#diff-a3618f4527c5fe6e842f20d67d5c82984568502c6bf6fdfcbd24f69e2894ca90
   override fromData (data: SpriteItemProps): void {
     super.fromData(data);
 

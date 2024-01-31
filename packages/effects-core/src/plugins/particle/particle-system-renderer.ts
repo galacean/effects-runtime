@@ -94,20 +94,23 @@ export class ParticleSystemRenderer extends RendererComponent {
   }
 
   getTextures (): Texture[] {
-    const textures = [];
+    const textures: Texture[] = [];
+    // @ts-expect-error textures 是否可以考虑挂在 Material 上
+    const particleMeshTextures = this.particleMesh.mesh.material.textures;
 
-    // @ts-expect-error
-    for (const texture of Object.values(this.particleMesh.mesh.material.textures)) {
-      textures.push(texture);
-    }
+    Object.keys(particleMeshTextures).forEach(key => {
+      textures.push(particleMeshTextures[key]);
+    });
     if (this.trailMesh) {
-      // @ts-expect-error
-      for (const texture of Object.values(this.trailMesh.mesh.material.textures)) {
-        textures.push(texture);
-      }
+      // @ts-expect-error 同上
+      const trailMeshTextures = this.trailMesh.mesh.material.textures;
+
+      Object.keys(trailMeshTextures).forEach(key => {
+        textures.push(trailMeshTextures[key]);
+      });
     }
 
-    return textures as Texture[];
+    return textures;
   }
 
   setParticlePoint (index: number, point: Point) {

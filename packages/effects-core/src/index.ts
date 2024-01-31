@@ -1,12 +1,10 @@
-import './polyfill';
 import { EffectComponent } from './components';
-import { Deserializer, DataType } from './deserializer';
+import { DataType, Deserializer } from './deserializer';
 import { registerPlugin } from './plugin-system';
 import type { TextComponent, TimelineComponent } from './plugins';
-import { CameraController, InteractComponent } from './plugins';
 import {
   CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
-  ParticleSystem, SpriteComponent,
+  ParticleSystem, SpriteComponent, CameraController, InteractComponent,
 } from './plugins';
 import { VFXItem } from './vfx-item';
 

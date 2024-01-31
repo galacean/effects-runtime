@@ -1,18 +1,15 @@
 export const premultiply: Record<string, FileFormat> = {
   coin: {
-    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/64184040650210/coin-pro.skel',
+    skeleton:'https://gw.alipayobjects.com/os/gltf-asset/05493939668400/coin-pro.skel',
     json: 'https://gw.alipayobjects.com/os/gltf-asset/64184040650210/coin-pro.json',
-    png: ['https://gw.alipayobjects.com/zos/gltf-asset/64184040650210/coin-pma.png'],
-    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/64184040650210/coin-pma.atlas',
+    png: ['https://gw.alipayobjects.com/zos/gltf-asset/05493939668400/coin-pro.png'],
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/05493939668400/coin-pro.atlas',
   },
   mix: {
     atlas: 'https://gw.alipayobjects.com/os/gltf-asset/67369243935954/mix-and-match-pro.atlas',
     json: 'https://gw.alipayobjects.com/os/gltf-asset/67369243935954/mix-and-match-pro.json',
     png: ['https://gw.alipayobjects.com/zos/gltf-asset/67369243935954/mix-and-match-pro.png'],
     skeleton: ' https://gw.alipayobjects.com/os/gltf-asset/67369243935954/mix-and-match-pro.skel',
-    tiny: [
-      'https://gw.alipayobjects.com/zos/gltf-asset/67531013767881/multi-alpha.png',
-    ],
   },
   goblins: {
     atlas: 'https://gw.alipayobjects.com/os/gltf-asset/64519553637848/goblins-pma.atlas',
@@ -110,6 +107,21 @@ export const premultiply: Record<string, FileFormat> = {
     json: 'https://gw.alipayobjects.com/os/gltf-asset/66086090439549/tank-pro.json',
     png: ['https://gw.alipayobjects.com/zos/gltf-asset/66086090439549/tank-pro.png'],
   },
+  celestial: {
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/02293829268574/celestial-circus-pro.skel',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/02293829268574/celestial-circus-pma.atlas',
+    png: [
+      'https://gw.alipayobjects.com/zos/gltf-asset/02293829268574/celestial-circus-pma.png',
+      'https://gw.alipayobjects.com/zos/gltf-asset/02293829268574/celestial-circus-pma_2.png',
+    ],
+    json: '',
+  },
+  labayu: {
+    json:'',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/02297022467078/labayu.atlas',
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/02297022467078/labayu-pro.skel',
+    png: ['https://gw.alipayobjects.com/zos/gltf-asset/02297022467078/labayu.png'],
+  },
 };
 
 export const direct: Record<string, FileFormat> = {
@@ -124,7 +136,6 @@ export const direct: Record<string, FileFormat> = {
     json: 'https://gw.alipayobjects.com/os/gltf-asset/67371559290270/mix-and-match-pro.json',
     png: ['https://gw.alipayobjects.com/zos/gltf-asset/67371559290270/mix-and-match-pro.png'],
     skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/67371559290270/mix-and-match-pro.skel',
-    tiny: ['https://gw.alipayobjects.com/zos/gltf-asset/67531013767881/direct-alpha.png'],
   },
   tank: {
     atlas: 'https://gw.alipayobjects.com/os/gltf-asset/66074515605839/tank-pro.atlas',
@@ -190,6 +201,5 @@ export interface FileFormat {
   json: string,
   png: string[],
   skeleton?: string,
-  tiny?: string[],
 }
 

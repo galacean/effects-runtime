@@ -8,6 +8,7 @@ export * from './image-data';
 export * from './sortable';
 export * from './asserts';
 export * from './timeline-component';
+export * from './logger';
 
 export type Immutable<O> = O extends Record<any, any>
   ? { readonly [key in keyof O]: Immutable<O[key]> }

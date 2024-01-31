@@ -95,6 +95,7 @@ export class CompositionSourceManager implements Disposable {
     };
   }
 
+  // TODO [1.31] @十弦，对比改动
   private assembleItems (composition: spec.Composition) {
     const items: any[] = [];
 
@@ -138,7 +139,6 @@ export class CompositionSourceManager implements Disposable {
 
         // 处理预合成的渲染顺序
         if (itemProps.type === spec.ItemType.composition) {
-          const maskRef = ++this.mask;
           const refId = (sourceItemData.content as spec.CompositionContent).options.refId;
 
           if (!this.refCompositions.get(refId)) {
@@ -152,7 +152,7 @@ export class CompositionSourceManager implements Disposable {
 
           ref.items.forEach((item: Record<string, any>) => {
             item.listIndex = listOrder++;
-            this.processMask(item.content, maskRef);
+            this.processMask(item.content);
           });
           itemProps.items = ref.items;
 
@@ -170,7 +170,7 @@ export class CompositionSourceManager implements Disposable {
       renderContent.renderer = this.changeTex(renderContent.renderer);
 
       if (!renderContent.renderer.mask) {
-        this.processMask(renderContent.renderer, this.mask);
+        this.processMask(renderContent.renderer);
       }
 
       const split = renderContent.splits && !renderContent.textureSheetAnimation && renderContent.splits[0];
@@ -220,12 +220,17 @@ export class CompositionSourceManager implements Disposable {
   /**
    * 处理蒙版和遮挡关系写入 stencil 的 ref 值
    */
-  private processMask (renderer: Record<string, number>, maskRef: number) {
+  private processMask (renderer: Record<string, number>) {
+    if (renderer.maskMode === spec.MaskMode.NONE) {
+      return;
+    }
     if (!renderer.mask) {
       const maskMode: spec.MaskMode = renderer.maskMode;
 
-      if (maskMode !== spec.MaskMode.NONE) {
-        renderer.mask = maskRef;
+      if (maskMode === spec.MaskMode.MASK) {
+        renderer.mask = ++this.mask;
+      } else if (maskMode === spec.MaskMode.OBSCURED || maskMode === spec.MaskMode.REVERSE_OBSCURED) {
+        renderer.mask = this.mask;
       }
     }
   }

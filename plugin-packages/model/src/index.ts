@@ -1,8 +1,9 @@
 import type { spec } from '@galacean/effects';
-import { registerPlugin, Deserializer, VFXItem } from '@galacean/effects';
-import { ModelTreeComponent, ModelTreePlugin } from './plugin';
-import { ModelPlugin, ModelPluginComponent } from './plugin/model-plugin';
-import { ModelCameraComponent, ModelLightComponent, ModelMeshComponent, ModelSkyboxComponent } from './plugin/model-item';
+import { registerPlugin, Deserializer, VFXItem, logger } from '@galacean/effects';
+import { ModelTreeComponent, ModelTreePlugin, ModelPlugin, ModelPluginComponent } from './plugin';
+import {
+  ModelCameraComponent, ModelLightComponent, ModelMeshComponent, ModelSkyboxComponent,
+} from './plugin/model-item';
 
 export enum ModelDataType {
   MeshComponent = 10000,
@@ -67,4 +68,4 @@ export * from './plugin';
 export * from './runtime';
 export * from './utility';
 
-console.debug('[Galacean Effects Plugin Model] version: ' + __VERSION__);
+logger.info('plugin model version: ' + version);

@@ -1,0 +1,49 @@
+name: 编辑器问题反馈
+description: 提出问题以帮助我们持续改进 Galacean Effects 编辑器
+title: "[Editor] "
+labels: ["editor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        👋 欢迎向我们提出您在使用 Galacean Effects Editor 编辑器时遇到的问题。
+
+        在创建 Issue 前，查阅以下资源可能会为您节省时间，并帮助您找到答案：
+
+        * [用户文档](https://galacean.antgroup.com/effects/#/user/user-doc) —— 了解 GalaceanEffects 编辑器的基本操作
+        * [常见问题](https://galacean.antgroup.com/effects/#/user/gasrv4ka5sacrwpg) —— 用户常见的问题合集
+
+        此外，通过 Issue 区的关键词搜索，您也可能快速找到想要解决的的相关问题。
+        
+        创建问题时，请尽量详细地提供信息，以便我们快速定位并修复，同时也方便他人搜索。感谢！ 🥰
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: ⏯ Steps to Reproduce
+      description: 请提供一个最小化的示例来复现问题
+      placeholder: |
+        1. 点击 '....'
+        2. 其它行为 ...
+        3. 看到错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: 🙂 预期行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: 🙁 实际行为
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: 其它信息

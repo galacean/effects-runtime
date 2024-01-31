@@ -247,7 +247,7 @@ export interface RenderPassDelegate {
    * @param mesh - 当前 Mesh
    * @param state - 当前渲染状态
    */
-  didiRenderMesh?: (mesh: RendererComponent, state: RenderingData) => void,
+  didRenderMesh?: (mesh: RendererComponent, state: RenderingData) => void,
 }
 
 /**
