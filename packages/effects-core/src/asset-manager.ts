@@ -221,6 +221,11 @@ export class AssetManager implements Disposable {
             scene.textureOptions[i].image = scene.images[i];
           }
         }
+
+        if (Number(scene.jsonScene.version) < 3.0) {
+          console.warn('The current json version ' + scene.jsonScene.version + ' is less than 3.0, try to convert to the new version.');
+          scene = version3Migration(scene);
+        }
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
@@ -256,11 +261,6 @@ export class AssetManager implements Disposable {
       window.clearTimeout(loadTimer);
       scene.totalTime = totalTime;
       scene.startTime = startTime;
-
-      if (Number(scene.jsonScene.version) < 3.0) {
-        console.warn('The current json version ' + scene.jsonScene.version + ' is less than 3.0, try to convert to the new version.');
-        scene = version3Migration(scene);
-      }
 
       return scene;
     };
