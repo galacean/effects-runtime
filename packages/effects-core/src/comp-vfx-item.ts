@@ -9,6 +9,7 @@ import { HitTestType, TextComponent, TimelineComponent } from './plugins';
 import { noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
+import { Transform } from './transform';
 
 /**
  * @since 2.0.0
@@ -146,6 +147,9 @@ export class CompositionComponent extends ItemBehaviour {
         }
         item.parent = this.item;
         item.transform.parentTransform = this.transform;
+        // TODO: [1.31] @十弦 加个预合成判断
+        // 相机不跟随合成移动
+        item.transform.parentTransform = VFXItem.isCamera(item) ? new Transform() : this.transform;
 
         if (VFXItem.isExtraCamera(item)) {
           this.item.composition.extraCamera = item;

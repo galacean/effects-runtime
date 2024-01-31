@@ -81,9 +81,15 @@ float integrateByTimeLineSeg(float t, vec2 p0, vec2 p1) {
   float t1 = p1.x;
   float y0 = p0.y;
   float y1 = p1.y;
-  float r = dot(vec4(2. * t * t * t, 3. * t * t, -t0 * t0 * t0, 3. * t0 * t0), vec4(y0 - y1, t0 * y1 - t1 * y0, 2. * y0 + y1, t1 * y0));
-  return r / (t0 - t1) / 6.;
+  vec4 tSqr = vec4(t, t, t0, t0);
+  tSqr = tSqr * tSqr;
+  vec4 a = vec4(2. * t, 3., -t0, 3.) * tSqr;
+  float t1y0 = t1 * y0;
+  vec4 b = vec4(y0 - y1, t0 * y1 - t1y0, 2. * y0 + y1, t1y0);
+  float r = dot(a, b);
+  return r / (t0 - t1) * 0.16666667;
 }
+
 float integrateLineSeg(float time, vec2 p0, vec2 p1) {
   float h = time - p0.x;
   float y0 = p0.y;

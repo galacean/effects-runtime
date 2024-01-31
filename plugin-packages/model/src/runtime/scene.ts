@@ -238,7 +238,7 @@ export class PSceneManager {
       camera.far,
       newTransform.getPosition(),
       newTransform.getRotation(),
-      camera.clipMode as number,
+      camera.clipMode,
     );
   }
 

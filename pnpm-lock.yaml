@@ -78,6 +78,9 @@ importers:
       eslint:
         specifier: ^8.48.0
         version: 8.48.0
+      eslint-plugin-compat:
+        specifier: ^4.2.0
+        version: 4.2.0(eslint@8.48.0)
       eslint-plugin-promise:
         specifier: ^6.1.1
         version: 6.1.1(eslint@8.48.0)
@@ -157,11 +160,11 @@ importers:
   packages/effects-core:
     dependencies:
       '@galacean/effects-math':
-        specifier: 1.0.0
-        version: 1.0.0
+        specifier: 1.0.1
+        version: 1.0.1
       '@galacean/effects-specification':
-        specifier: 1.0.0
-        version: 1.0.0
+        specifier: 1.0.1
+        version: 1.0.1
       uuid:
         specifier: 9.0.1
         version: 9.0.1
@@ -238,6 +241,10 @@ importers:
         version: link:../../packages/effects
 
   plugin-packages/spine:
+    dependencies:
+      '@esotericsoftware/spine-core':
+        specifier: ~4.2.35
+        version: 4.2.35
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
@@ -2558,6 +2565,10 @@ packages:
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dev: true
 
+  /@esotericsoftware/spine-core@4.2.35:
+    resolution: {integrity: sha512-zvVCj5X11sOCNCANN9ndpkVAJV0rHi0dFNGUlMiy8BQvjLVgRPW5n4IZOaCIS2HXs18QVC2q+uTW6ceek4fLWg==}
+    dev: false
+
   /@floating-ui/core@1.5.3:
     resolution: {integrity: sha512-O0WKDOo0yhJuugCx6trZQj5jVJ9yR0ystG2JaNAemYUWce+pmM6WUEFIibnWyEJKdrDxhm75NoSRME35FNaM/Q==}
     dependencies:
@@ -2586,13 +2597,13 @@ packages:
       - vue
     dev: true
 
-  /@galacean/effects-math@1.0.0:
-    resolution: {integrity: sha512-fHkFk/UdJ0B/MXRKoXsytYQFmAphtsEWYj7NS2HFixkFMSoKFKu9donBKWnxyeYStcPKxroYWBOWpfMJQzNjlg==}
+  /@galacean/effects-math@1.0.1:
+    resolution: {integrity: sha512-nrx2KcZ6e9upbUWqC49U0+53EE776WBU+f8rYfXy5anZhDN8LY3m5avxPmpWh3ERGOOEsrv6Aq1hKV3P0Z+prQ==}
     engines: {node: '>=10.0.0'}
     dev: false
 
-  /@galacean/effects-specification@1.0.0:
-    resolution: {integrity: sha512-o9EnyCaf2lV2FqeNAS7fPTa7IenqbX6LCPiJpi2PH2ub5yDdhERqTHKClIxS+obAKXX1KwkLRHC64QAZ51K6Gg==}
+  /@galacean/effects-specification@1.0.1:
+    resolution: {integrity: sha512-BGs70djsX5/PQH8zG0US4pR840SMB3UT1IvglHba4bNUoQqzpcQL5Na0S4YZbV6BPzKLnW5A3r1LAI1ZWEKC1A==}
     dev: false
 
   /@headlessui/vue@1.7.17(vue@3.4.15):
@@ -2767,6 +2778,10 @@ packages:
       globby: 11.1.0
       jju: 1.4.0
       read-yaml-file: 1.1.0
+    dev: true
+
+  /@mdn/browser-compat-data@5.5.9:
+    resolution: {integrity: sha512-36jBin7kGrMn+RC/8k9IKeKvZyMweA0sDNIthUbzSGTQasfMIp2naJ1e+ISUtzu/7RrpDjRh4BkVTSO6f0XArA==}
     dev: true
 
   /@nicolo-ribaudo/semver-v6@6.3.3:
@@ -4173,6 +4188,12 @@ packages:
     engines: {node: '>=0.8'}
     dev: true
 
+  /ast-metadata-inferer@0.8.0:
+    resolution: {integrity: sha512-jOMKcHht9LxYIEQu+RVd22vtgrPaVCtDRQ/16IGmurdzxvYbDd5ynxjnyrzLnieG96eTcAyaoj/wN/4/1FyyeA==}
+    dependencies:
+      '@mdn/browser-compat-data': 5.5.9
+    dev: true
+
   /astral-regex@2.0.0:
     resolution: {integrity: sha1-SDFDxWeu7UeFdZwIZXhtx319LjE=, tarball: https://registry.npmmirror.com/astral-regex/download/astral-regex-2.0.0.tgz}
     engines: {node: '>=8'}
@@ -4983,6 +5004,22 @@ packages:
       eslint: '*'
     dependencies:
       eslint: 8.56.0
+    dev: true
+
+  /eslint-plugin-compat@4.2.0(eslint@8.48.0):
+    resolution: {integrity: sha512-RDKSYD0maWy5r7zb5cWQS+uSPc26mgOzdORJ8hxILmWM7S/Ncwky7BcAtXVY5iRbKjBdHsWU8Yg7hfoZjtkv7w==}
+    engines: {node: '>=14.x'}
+    peerDependencies:
+      eslint: ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
+    dependencies:
+      '@mdn/browser-compat-data': 5.5.9
+      ast-metadata-inferer: 0.8.0
+      browserslist: 4.22.2
+      caniuse-lite: 1.0.30001576
+      eslint: 8.48.0
+      find-up: 5.0.0
+      lodash.memoize: 4.1.2
+      semver: 7.5.4
     dev: true
 
   /eslint-plugin-es-x@7.5.0(eslint@8.56.0):
@@ -6428,6 +6465,10 @@ packages:
 
   /lodash.get@4.4.2:
     resolution: {integrity: sha1-LRd/ZS+jHpObRDjVNBSZ36OCXpk=, tarball: https://registry.npmmirror.com/lodash.get/download/lodash.get-4.4.2.tgz}
+    dev: true
+
+  /lodash.memoize@4.1.2:
+    resolution: {integrity: sha512-t7j+NzmgnQzTAYXcsHYLgimltOV1MXHtlOWf6GjL9Kj8GK5FInw5JotxvbOs+IvV1/Dzo04/fCGfLVs7aXb4Ag==}
     dev: true
 
   /lodash.merge@4.6.2:

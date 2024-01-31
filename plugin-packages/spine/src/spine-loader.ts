@@ -1,7 +1,8 @@
 import { AbstractPlugin } from '@galacean/effects';
-import type { spec, Composition, Scene, Texture } from '@galacean/effects';
-import type { SkeletonData } from './core';
-import { Skeleton, TextureAtlas } from './core';
+import type { spec, Scene, Composition, Texture } from '@galacean/effects';
+import type { SkeletonData, Texture as SpineTexture } from '@esotericsoftware/spine-core';
+import { Skeleton, TextureAtlas } from '@esotericsoftware/spine-core';
+import { decodeText } from './polyfill';
 import { createSkeletonData, getAnimationList, getSkinList } from './utils';
 
 /**
@@ -49,9 +50,8 @@ export class SpineLoader extends AbstractPlugin {
     if (!scene.jsonScene.spines) {
       return;
     }
-    const textDecoder = new TextDecoder('utf-8');
 
-    composition.loaderData.spineDatas = scene.jsonScene.spines.map((resource, index) => readSpineData(resource, textDecoder, scene.bins, composition.textures));
+    composition.loaderData.spineDatas = scene.jsonScene.spines.map((resource, index) => readSpineData(resource, scene.bins, composition.textures));
   }
 
   override onCompositionDestroyed (composition: Composition) {
@@ -61,13 +61,13 @@ export class SpineLoader extends AbstractPlugin {
   }
 }
 
-function readSpineData (resource: spec.SpineResource, textDecoder: TextDecoder, bins: ArrayBuffer[], textures: Texture[]): SpineResource {
+function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textures: Texture[]): SpineResource {
   let bufferLength, start, skeletonFile, index;
   const { atlas: atlasPointer, skeleton: skeletonPointer, images, skeletonType } = resource;
 
   [index, start = 0, bufferLength] = atlasPointer[1];
   const atlasBuffer = bins[index];
-  const atlasText = bufferLength ? textDecoder.decode(new Uint8Array(atlasBuffer, start, bufferLength)) : textDecoder.decode(new Uint8Array(atlasBuffer, start));
+  const atlasText = bufferLength ? decodeText(new Uint8Array(atlasBuffer, start, bufferLength)) : decodeText(new Uint8Array(atlasBuffer, start));
   const atlas = new TextureAtlas(atlasText);
   const pageCount = atlas.pages.length;
 
@@ -81,14 +81,13 @@ function readSpineData (resource: spec.SpineResource, textDecoder: TextDecoder, 
     if (!tex) {
       throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
     }
-    page.setTexture(tex);
-
+    page.texture = tex as unknown as SpineTexture;
   }
   [index, start = 0, bufferLength] = skeletonPointer[1];
   const skeletonBuffer = bins[index];
 
   if (skeletonType === 'json') {
-    skeletonFile = bufferLength ? textDecoder.decode(new Uint8Array(skeletonBuffer, start, bufferLength)) : textDecoder.decode(new Uint8Array(skeletonBuffer, start));
+    skeletonFile = bufferLength ? decodeText(new Uint8Array(skeletonBuffer, start, bufferLength)) : decodeText(new Uint8Array(skeletonBuffer, start));
   } else {
     skeletonFile = bufferLength ? new DataView(skeletonBuffer, start, bufferLength) : new DataView(skeletonBuffer, start);
   }

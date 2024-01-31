@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-core",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "Galacean Effects runtime core for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -50,8 +50,8 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@galacean/effects-specification": "1.0.0",
-    "@galacean/effects-math": "1.0.0",
+    "@galacean/effects-specification": "1.0.1",
+    "@galacean/effects-math": "1.0.1",
     "uuid": "9.0.1"
   }
 }

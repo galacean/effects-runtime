@@ -2,7 +2,9 @@ import type {
   MaterialDestroyOptions, MaterialProps, MaterialStates, UndefinedAble, Texture, GlobalUniforms,
   Renderer, MaterialData,
 } from '@galacean/effects-core';
-import { DestroyOptions, Material, assertExist, throwDestroyedError, math, DataType } from '@galacean/effects-core';
+import {
+  DestroyOptions, Material, assertExist, throwDestroyedError, math, isFunction, logger, DataType,
+} from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShader } from './gl-shader';
@@ -240,9 +242,16 @@ export class GLMaterial extends Material {
       this.shader = pipelineContext.shaderLibrary.createShader(this.shaderSource);
     }
     this.shader.initialize(glEngine);
-    for (const texture of Object.values(this.textures)) {
+    Object.keys(this.textures).forEach(key => {
+      const texture = this.textures[key];
+
+      if (!isFunction(texture.initialize)) {
+        logger.error(`${JSON.stringify(texture)} is not valid Texture to initialize`);
+
+        return;
+      }
       texture.initialize();
-    }
+    });
     this.initialized = true;
   }
 
@@ -677,12 +686,14 @@ export class GLMaterial extends Material {
     }
     this.shader?.dispose();
     if (options?.textures !== DestroyOptions.keep) {
-      for (const texture of Object.values(this.textures)) {
+      Object.keys(this.textures).forEach(key => {
+        const texture = this.textures[key];
+
         // TODO 纹理释放需要引用计数
         if (texture !== this.engine.emptyTexture) {
           texture.dispose();
         }
-      }
+      });
     }
 
     // @ts-expect-error

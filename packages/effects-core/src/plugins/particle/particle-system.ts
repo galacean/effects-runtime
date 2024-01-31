@@ -153,14 +153,13 @@ export class ParticleSystem extends Component {
   textureSheetAnimation?: ParticleTextureSheetAnimation;
   interaction?: ParticleInteraction;
   emissionStopped: boolean;
-  destoryed: boolean;
+  destoryed = false;
   props: ParticleSystemProps;
 
   private generatedCount: number;
   private lastUpdate: number;
   private loopStartTime: number;
   private particleLink: Link<ParticleContent>;
-  private parentTransform: Transform;
   private started: boolean;
   private ended: boolean;
   private lastEmitTime: number;
@@ -209,7 +208,7 @@ export class ParticleSystem extends Component {
       position, rotation, path,
     };
 
-    const parentTransform = this.parentTransform;
+    const parentTransform = this.transform.parentTransform;
 
     const selfPos = position.clone();
 
@@ -226,7 +225,7 @@ export class ParticleSystem extends Component {
   }
 
   private updateEmitterTransform (time: number) {
-    const parentTransform = this.parentTransform;
+    const parentTransform = this.transform.parentTransform;
 
     const { path, position } = this.basicTransform;
     const selfPos = position.clone();
@@ -261,8 +260,8 @@ export class ParticleSystem extends Component {
     link.pushNode(linkContent);
     this.renderer.setParticlePoint(pointIndex, point);
     this.clearPointTrail(pointIndex);
-    if (this.parentTransform) {
-      this.renderer.setTrailStartPosition(pointIndex, this.parentTransform.position.clone());
+    if (this.transform.parentTransform) {
+      this.renderer.setTrailStartPosition(pointIndex, this.transform.parentTransform.position.clone());
     }
   }
 
@@ -301,8 +300,8 @@ export class ParticleSystem extends Component {
       data[i * 8 + 7] = a;
     }
   }
+
   setParentTransform (transform: Transform) {
-    this.parentTransform = transform;
   }
 
   getTextures (): Texture[] {
@@ -540,9 +539,7 @@ export class ParticleSystem extends Component {
             if (options.removeParticle) {
               renderer.removeParticlePoint(pointIndex);
               this.clearPointTrail(pointIndex);
-              link.removeNode(node);
-              node.content = [0] as unknown as ParticleContent;
-              // link.shiftNode(node.content); // 删了又加回去 没明白什么意思
+              node.content[0] = 0;
             }
             hitPositions.push(pos);
             if (!options.multiple) {
@@ -585,8 +582,8 @@ export class ParticleSystem extends Component {
     if (trails.sizeAffectsLifetime) {
       lifetime *= size[0];
     }
-    if (trails.parentAffectsPosition && this.parentTransform) {
-      position.add(this.parentTransform.position);
+    if (trails.parentAffectsPosition && this.transform.parentTransform) {
+      position.add(this.transform.parentTransform.position);
       const pos = renderer.getTrailStartPosition(pointIndex);
 
       if (pos) {

@@ -67,6 +67,7 @@ export class TimelineComponent extends ItemBehaviour {
     this.compileTracks(this.playableGraph);
   }
 
+  // TODO: [1.31] @十弦 vfx-item 下 onUpdate 的改动验证
   override update (dt: number): void {
     if (this.item.stopped || !this.item.composition) {
       return;
@@ -125,6 +126,7 @@ export class TimelineComponent extends ItemBehaviour {
       }
     }
 
+    // TODO: [1.31] @茂安 验证 https://github.com/galacean/effects-runtime/commits/main/packages/effects-core/src/vfx-item.ts
     // 在生命周期内更新动画
     if (!this.item.delaying) {
       const lifetime = this.time / this.item.duration;

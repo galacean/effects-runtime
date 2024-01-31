@@ -6,6 +6,7 @@ import { destroyWireframeMesh } from './wireframe';
 import { axisIconMap } from './constants';
 import { createImage, createTexture } from './util';
 import { GeometryType } from './geometry';
+import { GizmoComponent } from './gizmo-component';
 
 const editorRenderPassName = 'editor-gizmo';
 const frontRenderPassName = 'front-gizmo';
@@ -156,11 +157,23 @@ export class EditorGizmoPlugin extends AbstractPlugin {
         }
       }
     }
-    const wireframeMesh = gizmoVFXItem.wireframeMesh;
 
-    if (wireframeMesh && !wireframeMesh.isDestroyed) {
-      destroyWireframeMesh(wireframeMesh);
-      this.getEditorRenderPass(composition.renderFrame).removeMesh(wireframeMesh);
+    const gizmoComponent = gizmoVFXItem.getComponent(GizmoComponent);
+
+    if (gizmoComponent && gizmoComponent.wireframeMeshes.length > 0) {
+      gizmoComponent.wireframeMeshes.forEach(mesh => {
+        if (!mesh.isDestroyed) {
+          destroyWireframeMesh(mesh);
+          this.getEditorRenderPass(composition.renderFrame).removeMesh(mesh);
+        }
+      });
+    } else {
+      const wireframeMesh = gizmoVFXItem.wireframeMesh;
+
+      if (wireframeMesh && !wireframeMesh.isDestroyed) {
+        destroyWireframeMesh(wireframeMesh);
+        this.getEditorRenderPass(composition.renderFrame).removeMesh(wireframeMesh);
+      }
     }
 
     const arr: GizmoVFXItem[] = composition.loaderData.gizmoItems;

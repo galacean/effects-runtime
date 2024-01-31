@@ -1,0 +1,112 @@
+name: 问题反馈
+description: 提出问题以帮助我们持续改进 Galacean Effects
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        👋 欢迎向我们提出您在使用 Galacean Effects 编辑器时遇到的问题。
+
+        在创建 Issue 前，查阅以下资源可能会为您节省时间，并帮助您找到答案：
+
+        * [用户文档](https://galacean.antgroup.com/effects/#/user/user-doc) —— 了解 GalaceanEffects 编辑器的基本操作
+        * [开发者文档](https://galacean.antgroup.com/effects/#/user/dev-doc) —— 使用 Galacean Effects Runtime 的指南
+        * [API 参考](https://galacean.antgroup.com/effects/#/api) —— 详细的 API 文档
+        * [常见问题](https://galacean.antgroup.com/effects/#/user/gasrv4ka5sacrwpg) —— 用户常见的问题合集
+        * [更新记录](https://galacean.antgroup.com/effects/#/user/changelog) —— 记录了 Runtime 修复的缺陷和新增功能
+
+        此外，通过 Issue 区的关键词搜索，您也可能快速找到想要解决的的相关问题。
+        
+        创建问题时，请尽量详细地提供信息，以便我们快速定位并修复，同时也方便他人搜索。感谢！ 🥰
+
+  - type: textarea
+    id: search_terms
+    attributes:
+      label: 🔎 搜索关键词
+      description: 提交前，您用了哪些关键词进行搜索？
+      placeholder: |
+        - keyframe
+        - downgrade image
+        - spine
+        - 3D Model
+    validations:
+      required: true
+
+  - type: input
+    id: version_info
+    attributes:
+      label: 🕗 版本信息
+      description: 您当前使用的 Galacean Effects 版本号是？
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: platform_info
+    attributes:
+      label: 🖥️ 平台信息
+      description: 您在哪个平台上遇到了问题?
+      options:
+        - label: iOS
+        - label: Android
+        - label: Web
+        - label: 小程序（支付宝/微信）
+        - label: 微信小游戏
+        - label: macOS
+        - label: Windows
+        - label: Linux
+        - label: Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: 💻 示例代码
+      description: |
+        请在此贴出相关代码示例
+
+        当提交的代码十分清晰时，我们能更快地响应您的问题:
+
+          - 代码简短明了
+          - 不包含外部库
+          - 提供了对比代码或有临时解决方案。
+
+        当提交的代码存在不明晰的地方，处理问题可能会较慢:
+
+          - 代码无关部分过多
+          - 需要克隆大型仓库进行验证
+          - 示例令人困惑或没有清晰展示问题所在
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: 🙂 预期行为
+      placeholder: 实际发生了什么？为什么这是个问题？
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: 🙁 实际行为
+      placeholder: 您预期会发生什么？为什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: ⏯ 复现步骤
+      description: 请提供一个最小化的代码示例来复现问题，或者提供一个可以复现问题的仓库链接
+      placeholder: |
+        1. 点击 '....'
+        2. 其它行为 ...
+        3. 看到错误
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: 其它信息

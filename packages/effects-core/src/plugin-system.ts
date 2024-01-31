@@ -130,7 +130,7 @@ export class PluginSystem {
     return this.callStatic('precompile', compositions, renderer, options);
   }
 
-  async loadResources (scene: Object, options: SceneLoadOptions) {
+  async loadResources (scene: Scene, options: SceneLoadOptions) {
     return this.callStatic('prepareResource', scene, options);
   }
 }

@@ -1,0 +1,49 @@
+name: Editor Bug Report
+description: Submit issues to help us improve Galacean Effects Editor
+title: "[Editor] "
+labels: ["editor"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        👋 Welcome to report any issues you encounter while using Galacean Effects Editor. Our team will respond actively.
+
+        Before submitting an issue, reviewing the following resources could save you time and might help you find an existing related issue:
+
+        * [User Guide](https://galacean.antgroup.com/effects/#/user/user-doc) — Understand the basics of the GalaceanEffects editor
+        * [FAQs](https://galacean.antgroup.com/effects/#/user/gasrv4ka5sacrwpg) — Compilation of frequently asked questions
+
+        Additionally, you can quickly view or respond to related issues through keyword searches in the Issue area.
+        
+        When creating an issue, please provide as much detailed information as possible to help us locate and fix the problem quickly and to facilitate others in searching. Thank you for your cooperation! 🥰
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: ⏯ Steps to Reproduce
+      description: Please provide a minimal example to reproduce the issue
+      placeholder: |
+        1. Click on '....'
+        2. Other actions ...
+        3. See the error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: 🙂 Expected Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: 🙁 Actual Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_info
+    attributes:
+      label: Additional Information

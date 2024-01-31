@@ -1,7 +1,7 @@
 import type { BoundingBoxTriangle, HitTestTriangleParams, Engine, Renderer } from '@galacean/effects-core';
 import { HitTestType, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, spec, math } from '@galacean/effects-core';
-import type { AnimationStateListener, SkeletonData, Skeleton } from './core';
-import { AnimationState, AnimationStateData } from './core';
+import type { AnimationStateListener, SkeletonData, Skeleton } from '@esotericsoftware/spine-core';
+import { AnimationState, AnimationStateData, Physics } from '@esotericsoftware/spine-core';
 import { SlotGroup } from './slot-group';
 import type { SpineResource } from './spine-loader';
 import { getAnimationDuration } from './utils';
@@ -95,7 +95,7 @@ export class SpineComponent extends RendererComponent {
 
     this.state.update(dt / 1000);
     this.state.apply(this.skeleton);
-    this.skeleton.updateWorldTransform();
+    this.skeleton.updateWorldTransform(Physics.update);
     this.content?.update();
   }
 
@@ -358,7 +358,7 @@ export class SpineComponent extends RendererComponent {
     if (!(this.state && this.skeleton)) {
       return;
     }
-    this.skeleton.updateWorldTransform();
+    this.skeleton.updateWorldTransform(Physics.update);
     this.skeleton.getBounds(this.offset, this.size);
 
     return {

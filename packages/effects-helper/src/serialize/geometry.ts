@@ -21,8 +21,8 @@ export function serializeGeometries (geometries: GeometryProps[]): GeometrySeria
 
   geometries.forEach(options => {
     addBuffer(options.indices?.data);
-    Object.values(options.attributes).forEach(attribute => {
-      const { data } = attribute as spec.AttributeWithData;
+    Object.keys(options.attributes).forEach(key => {
+      const { data } = options.attributes[key] as spec.AttributeWithData;
 
       addBuffer(data);
     });

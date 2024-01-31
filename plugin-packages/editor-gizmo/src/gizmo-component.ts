@@ -26,6 +26,7 @@ export class GizmoComponent extends ItemBehaviour {
   renderMode!: GeometryDrawMode;
   depthTest?: boolean;
   mat = Matrix4.fromIdentity();
+  wireframeMeshes: Mesh[] = [];
 
   override start (): void {
     for (const item of this.item.composition!.items) {
@@ -138,10 +139,12 @@ export class GizmoComponent extends ItemBehaviour {
       if (item.wireframeMesh && this.targetItem) {
         // @ts-expect-error
         const meshes = this.targetItem.getComponent(RendererComponent)?.content.mriMeshs as Mesh[];
-        const wireframeMesh = item.wireframeMesh;
+        const wireframeMeshes = this.wireframeMeshes;
 
         if (meshes?.length > 0) {
-          meshes.forEach(mesh => updateWireframeMesh(mesh, wireframeMesh, WireframeGeometryType.triangle));
+          for (let i = 0;i < meshes.length;i++) {
+            updateWireframeMesh(meshes[i], wireframeMeshes[i], WireframeGeometryType.triangle);
+          }
         }
       }
     } else { // 几何体模型
@@ -342,9 +345,11 @@ export class GizmoComponent extends ItemBehaviour {
 
     if (ms) {
       this.targetItem = item;
+      this.wireframeMeshes = [];
       ms.forEach(m => {
         const mesh = (this.item as GizmoVFXItem).wireframeMesh = createModeWireframe(engine, m, this.color);
 
+        this.wireframeMeshes.push(mesh);
         meshesToAdd.push(mesh);
       });
     }

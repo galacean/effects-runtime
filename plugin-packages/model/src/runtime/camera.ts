@@ -189,6 +189,7 @@ export class PCameraManager {
     this.defaultCamera.farPlane = farPlane;
     this.defaultCamera.position = position;
     this.defaultCamera.rotation = rotation;
+    this.defaultCamera.aspect = aspect;
     this.defaultCamera.clipMode = clipMode;
     this.defaultCamera.update();
   }

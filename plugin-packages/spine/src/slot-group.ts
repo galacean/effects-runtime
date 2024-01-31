@@ -1,9 +1,7 @@
 import { math } from '@galacean/effects';
 import type { Transform, Texture, Mesh, Engine, Renderer } from '@galacean/effects';
-import type { Slot, BlendMode } from './core';
-import { ClippingAttachment, MeshAttachment, RegionAttachment, SkeletonClipping } from './core';
-import type { NumberArrayLike } from './utils';
-import { Color } from './utils';
+import type { Slot, BlendMode, NumberArrayLike } from '@esotericsoftware/spine-core';
+import { ClippingAttachment, MeshAttachment, RegionAttachment, SkeletonClipping, Color } from '@esotericsoftware/spine-core';
 import { SpineMesh } from './spine-mesh';
 
 export interface SlotGroupProps {
@@ -26,12 +24,11 @@ export interface SlotGroupProps {
   renderer: {},
   engine: Engine,
 }
-
 export class SlotGroup {
   /**
    * 根据绘制顺序排列的插槽数组
    */
-  private slotList: Slot[] = [];
+  private readonly slotList: Slot[] = [];
   /**
    * 顶点数据
    */
@@ -47,10 +44,6 @@ export class SlotGroup {
    * 世界变换矩阵
    */
   private wm = math.Matrix4.fromIdentity();
-  /**
-   * 当前环境，用于 editor
-   */
-  private readonly env: string;
 
   meshName: string;
   listIndex: number;
@@ -160,7 +153,8 @@ export class SlotGroup {
         region.computeWorldVertices(slot, vertices, 0, vertexSize);
         triangles = SlotGroup.QUAD_TRIANGLES;
         uvs = region.uvs;
-        texture = region.region?.renderObject.page.texture;
+        // @ts-expect-error
+        texture = region.region.page.texture;
       } else if (attachment instanceof MeshAttachment) {
         const mesh = attachment;
 
@@ -170,7 +164,8 @@ export class SlotGroup {
         mesh.computeWorldVertices(slot, 0, mesh.worldVerticesLength, vertices, 0, vertexSize);
         triangles = mesh.triangles;
         uvs = mesh.uvs;
-        texture = mesh.region?.renderObject.page.texture;
+        // @ts-expect-error
+        texture = mesh.region.page.texture;
       } else if (attachment instanceof ClippingAttachment) {
         // 剪裁应用于绘制顺序中从裁剪附件开始到裁剪附件的结束插槽之间的所有插槽（包括这两个位置）。
         clipper.clipStart(slot, attachment);
@@ -243,56 +238,27 @@ export class SlotGroup {
           continue;
         }
 
-        const currentMesh: SpineMesh = this.currentMesh;
+        const index = this.findMeshIndex(currentIndex, slot.data.blendMode, texture, finalIndicesLength);
 
-        // 可以 batch 到当前 spineMesh
-        if (currentMesh && currentMesh.blending === slot.data.blendMode && currentMesh.texture.name === texture.name && finalIndicesLength + currentMesh.indicesNum <= SlotGroup.MAX_VERTICES) {
-          currentMesh.updateMesh(finalVertices, finalIndices, finalVerticesLength);
+        if (index === -1) {
+          const newMesh = this.currentMesh = new SpineMesh({
+            blendMode: slot.data.blendMode,
+            texture,
+            name: this.meshName,
+            priority: this.listIndex += 0.01,
+            pma,
+            renderer: this.renderer,
+            engine: this.engine,
+          });
+
+          currentIndex = this.meshGroups.length;
+          this.meshGroups.push(newMesh);
+          this.meshToAdd.push(newMesh.mesh);
         } else {
-
-          const index = this.findMeshIndex(currentIndex, slot.data.blendMode, texture);
-
-          // 由于材质无法 batch 到 meshGroups 中的其它 spineMesh 中，在尾部新增 spineMesh
-          if (index === -1) {
-            const newMesh = this.currentMesh = new SpineMesh({
-              blendMode: slot.data.blendMode,
-              texture,
-              name: this.meshName,
-              priority: this.listIndex += 0.01,
-              pma,
-              renderer: this.renderer,
-              engine: this.engine,
-            });
-
-            currentIndex = this.meshGroups.length;
-            this.meshGroups.push(newMesh);
-            this.meshToAdd.push(newMesh.mesh);
-          } else {
-            // 可以 batch 到当前的 spineMesh 中
-            if (finalIndicesLength + currentMesh.indicesNum <= SlotGroup.MAX_VERTICES) {
-              currentIndex = index;
-              this.currentMesh = this.meshGroups[index];
-            } else {
-              // 由于 geometry 无法 batch 到 meshGroups 中的其它 spineMesh 中，插入 spineMesh
-
-              const newMesh = this.currentMesh = new SpineMesh({
-                blendMode: slot.data.blendMode,
-                texture,
-                name: this.meshName,
-                priority: currentMesh.priority + 0.01,
-                pma,
-                renderer: this.renderer,
-                engine: this.engine,
-              });
-
-              this.meshGroups.splice(currentIndex, 0, newMesh);
-              this.meshToAdd.push(newMesh.mesh);
-              currentIndex++;
-            }
-
-          }
-          this.currentMesh.updateMesh(finalVertices, finalIndices, finalVerticesLength);
+          currentIndex = index;
+          this.currentMesh = this.meshGroups[index];
         }
+        this.currentMesh.updateMesh(finalVertices, finalIndices, finalVerticesLength);
       }
       clipper.clipEndWithSlot(slot);
     }
@@ -318,15 +284,15 @@ export class SlotGroup {
   }
 
   /**
-   * 从 startIndex 开始，找到材质相同的 SpineMesh
+   * * 从 startIndex 开始，找到材质和顶点数符合限制的 SpineMesh
    */
-  private findMeshIndex (startIndex: number, blendMode: BlendMode, texture: Texture): number {
+  private findMeshIndex (startIndex: number, blendMode: BlendMode, texture: Texture, vertexNum: number): number {
     let res = -1;
 
     for (let i = startIndex; i < this.meshGroups.length; i++) {
       const mesh = this.meshGroups[i];
 
-      if (mesh && mesh.blending === blendMode && mesh.texture.name === texture.name) {
+      if (mesh && mesh.blending === blendMode && mesh.texture.name === texture.name && (vertexNum + mesh.indicesNum < SlotGroup.MAX_VERTICES)) {
         res = i;
 
         break;

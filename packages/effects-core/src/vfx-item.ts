@@ -143,6 +143,10 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     return item.type === spec.ItemType.tree;
   }
 
+  static isCamera (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+    return item.type === spec.ItemType.camera;
+  }
+
   static isExtraCamera (item: VFXItem<VFXItemContent>): item is VFXItem<CameraController> {
     return item.id === 'extra-camera' && item.name === 'extra-camera';
   }
@@ -377,7 +381,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   }
 
   /**
-   * 设置元素的在画布上的像素位置
+   * 设置元素的在画布上的像素位置, 坐标原点在 canvas 中心，x 正方向水平向右， y 正方向垂直向下
    */
   setPositionByPixel (x: number, y: number) {
     if (this.composition) {

@@ -4,7 +4,7 @@ import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 import { TreeGui } from './gui/tree-gui';
 
-const json = inspireList.preComp.url;
+const json = inspireList.applause.url;
 const container = document.getElementById('J-container');
 
 const treeGui = new TreeGui();
@@ -25,8 +25,10 @@ function createPlayer () {
   const player = new Player({
     container,
     interactive: true,
+    onPlayableUpdate: ({ player, playing }) => {
+    },
     // renderFramework: 'webgl',
-    // env: 'editor',
+    env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {
       console.info('onPausedByItem', data);

@@ -44,7 +44,7 @@ function handleInit () {
       iframe.contentWindow.postMessage({
         type: 'init',
         playerOptions,
-      });
+      }, window.origin);
     };
   });
 }
@@ -58,7 +58,7 @@ async function handlePlay (url) {
       json,
       currentTime,
       speed,
-    });
+    }, window.origin);
   });
 }
 
@@ -66,7 +66,7 @@ function handleResume () {
   iframeList.forEach(iframe => {
     iframe.contentWindow.postMessage({
       type: 'resume',
-    });
+    }, window.origin);
   });
 }
 
@@ -74,6 +74,6 @@ function handlePause () {
   iframeList.forEach(iframe => {
     iframe.contentWindow.postMessage({
       type: 'pause',
-    });
+    }, window.origin);
   });
 }

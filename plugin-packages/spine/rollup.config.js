@@ -28,7 +28,10 @@ const plugins = [
     values: defines,
   }),
   glslInner(),
-  typescript({ tsconfig: '../../tsconfig.bundle.json' }),
+  typescript({
+    include: ["*.ts", "**/*.ts", "**/spine-core/**/*.js"],
+    tsconfig: '../../tsconfig.bundle.json',
+  }),
   resolve(),
   commonjs(),
 ];
