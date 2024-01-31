@@ -2,6 +2,7 @@ import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from '@galacean/effects-
 import type * as spec from '@galacean/effects-specification';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
+import type { Engine } from './engine';
 
 export interface TransformProps {
   position?: spec.vec3 | Vector3,
@@ -16,6 +17,7 @@ export interface TransformProps {
 const tempQuat = new Quaternion();
 let seed = 1;
 
+// TODO 继承 Component
 export class Transform implements Disposable {
   /**
    * 转换右手坐标系左手螺旋对应的四元数到对应的旋转角
@@ -31,7 +33,9 @@ export class Transform implements Disposable {
     return out.setFromQuaternion(newQuat);
   }
 
+  engine: Engine;
   name: string;
+  taggedProperties: Record<string, any> = {};
   /**
    * 自身位移
    */
@@ -522,6 +526,26 @@ export class Transform implements Disposable {
    */
   getValid (): boolean {
     return this.valid;
+  }
+
+  toData () {
+    const transformData = this.taggedProperties;
+
+    transformData.position = this.position.clone();
+    transformData.rotation = { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z };
+    transformData.scale = this.scale.clone();
+
+    return transformData;
+  }
+
+  fromData (data: any) {
+    const transformData = {
+      position: new Vector3().copyFrom(data.position),
+      rotation: new Euler(data.rotation.x, data.rotation.y, data.rotation.z),
+      scale: new Vector3().copyFrom(data.scale),
+    };
+
+    this.setTransform(transformData);
   }
 
   dispose (): void { }

@@ -1,5 +1,5 @@
 import { Transform, ItemBehaviour, spec } from '@galacean/effects';
-import type { TimelineComponent, VFXItemContent, Engine, Deserializer, SceneData, VFXItemProps, VFXItem } from '@galacean/effects';
+import type { TimelineComponent, VFXItemContent, Engine, VFXItem } from '@galacean/effects';
 import type { ModelTreeOptions, ModelTreeContent } from '../index';
 import { PAnimationManager } from '../runtime';
 import { getSceneManager } from './model-plugin';
@@ -123,6 +123,7 @@ export class ModelTreeItem {
  */
 export class ModelTreeComponent extends ItemBehaviour {
   content: ModelTreeItem;
+  options?: ModelTreeContent;
   timeline?: TimelineComponent;
 
   constructor (engine: Engine, options?: ModelTreeContent) {
@@ -132,11 +133,10 @@ export class ModelTreeComponent extends ItemBehaviour {
     }
   }
 
-  override fromData (options: ModelTreeContent, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(options, deserializer, sceneData);
-    const treeOptions = options.options.tree;
-
-    this.content = new ModelTreeItem(treeOptions, this.item);
+  override fromData (options: ModelTreeContent): void {
+    super.fromData(options);
+    this.options = options;
+    this.createContent();
   }
 
   override start () {
@@ -157,6 +157,14 @@ export class ModelTreeComponent extends ItemBehaviour {
 
   override onDestroy (): void {
     this.content?.dispose();
+  }
+
+  createContent () {
+    if (this.options) {
+      const treeOptions = this.options.options.tree;
+
+      this.content = new ModelTreeItem(treeOptions, this.item);
+    }
   }
 
   getNodeTransform (itemId: string): Transform {

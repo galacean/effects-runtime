@@ -12,7 +12,7 @@ export class RendererComponent extends Component {
   materials: Material[] = [];
 
   protected _priority: number;
-  private _enabled = true;
+  protected _enabled = true;
 
   get priority (): number {
     return this._priority;
@@ -61,6 +61,23 @@ export class RendererComponent extends Component {
 
   override onAttached (): void {
     this.item.rendererComponents.push(this);
+  }
+
+  override fromData (data: any): void {
+    super.fromData(data);
+    // TODO 数据改造后可移除判断
+    if (data._enabled !== undefined) {
+      this._enabled = data._enabled;
+    }
+  }
+
+  override toData (): void {
+    super.toData();
+    // 数据改造后可移除
+    this.taggedProperties = {
+      _enabled:this._enabled,
+      ...this.taggedProperties,
+    };
   }
 
   override dispose (): void {

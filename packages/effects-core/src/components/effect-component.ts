@@ -1,12 +1,12 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import type { Deserializer, EffectComponentData, GeometryData, SceneData } from '../deserializer';
+import type { GeometryData } from '../deserializer';
 import { DataType } from '../deserializer';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
 import type { Disposable } from '../utils';
-import { DestroyOptions } from '../utils';
+import { DestroyOptions, generateGUID } from '../utils';
 import { RendererComponent } from './renderer-component';
 
 let seed = 1;
@@ -48,10 +48,10 @@ export class EffectComponent extends RendererComponent implements Disposable {
         1, 1, 0, //右上
         1, -1, 0, //右下
       ],
-      uv: [0, 1, 0, 0, 1, 1, 1, 0],
+      uvs: [0, 1, 0, 0, 1, 1, 1, 0],
       indices: [0, 1, 2, 2, 1, 3],
       dataType: DataType.Geometry,
-      id: 'Geometry1',
+      id: generateGUID(),
     };
 
     this.geometry.fromData(geometryData);
@@ -109,16 +109,22 @@ export class EffectComponent extends RendererComponent implements Disposable {
     this.material = material;
   }
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: any): void {
+    super.fromData(data);
+    this._enabled = data._enabled;
+    this._priority = data._priority;
+    this.material = data.materials[0];
+    this.geometry = data.geometry;
+  }
 
-    const effectComponentData: EffectComponentData = data;
-
-    this._priority = effectComponentData._priority;
-    if (deserializer && sceneData) {
-      this.material = deserializer.deserialize(effectComponentData.materials[0], sceneData);
-      this.geometry = deserializer.deserialize(effectComponentData.geometry, sceneData);
-    }
+  override toData (): void {
+    this.taggedProperties.id = this.guid;
+    this.taggedProperties.dataType = DataType.EffectComponent;
+    this.taggedProperties._enabled = this._enabled;
+    this.taggedProperties._priority = this._priority;
+    this.taggedProperties.materials = this.materials;
+    this.taggedProperties.geometry = this.geometry;
+    this.taggedProperties.item = this.item;
   }
 
   /**
@@ -131,20 +137,16 @@ export class EffectComponent extends RendererComponent implements Disposable {
       return;
     }
 
-    if (options?.geometries !== DestroyOptions.keep) {
-      this.geometry.dispose();
-    }
-    const materialDestroyOption = options?.material;
+    // if (options?.geometries !== DestroyOptions.keep) {
+    //   this.geometry.dispose();
+    // }
+    // const materialDestroyOption = options?.material;
 
-    if (materialDestroyOption !== DestroyOptions.keep) {
-      this.material.dispose(materialDestroyOption);
-    }
+    // if (materialDestroyOption !== DestroyOptions.keep) {
+    //   this.material.dispose(materialDestroyOption);
+    // }
     this.destroyed = true;
 
-    if (this.engine !== undefined) {
-      //this.engine.removeMesh(this);
-      // @ts-expect-error
-      this.engine = undefined;
-    }
+    super.dispose();
   }
 }

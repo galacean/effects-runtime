@@ -1,7 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import { ItemBehaviour } from '../../components';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
@@ -203,8 +202,8 @@ export class TimelineComponent extends ItemBehaviour {
     }
   }
 
-  override fromData (data: spec.NullContent, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: spec.NullContent): void {
+    super.fromData(data);
 
     this.options = {
       start: this.item.start,
@@ -214,5 +213,10 @@ export class TimelineComponent extends ItemBehaviour {
     };
     this.id = this.item.id;
     this.name = this.item.name;
+  }
+
+  override toData (): void {
+    super.toData();
+    this.taggedProperties.time = this.time;
   }
 }

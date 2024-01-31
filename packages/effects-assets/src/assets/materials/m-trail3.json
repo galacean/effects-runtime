@@ -1,0 +1,44 @@
+{
+  "fileSummary": {
+    "guid": "9b688d13b6f04ab5869ecc33083544de"
+  },
+  "exportObjects": [
+    {
+      "id": "c4495362f3b34ed7a72d60ea79bd4ba3",
+      "dataType": 2,
+      "shader": {
+        "id": "a070be488c9c424d9e91d56ec1f0a591"
+      },
+      "blending": true,
+      "floats": {
+        "_Speed": 1
+      },
+      "vector4s": {},
+      "textures": {
+        "_MainTex": {
+          "id": "0622cbce2a724bec976e09988f192ee9"
+        },
+        "_Tex2": {
+          "id": "8f33267d4f8647acbc51f34d2fe1a428"
+        },
+        "_Tex3": {
+          "id": "080f94ebcff64c81a67f31187015697e"
+        }
+      },
+      "colors": {
+        "_StartColor": {
+          "r": 1,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        },
+        "_EndColor": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 1
+        }
+      }
+    }
+  ]
+}

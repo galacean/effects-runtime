@@ -1,10 +1,10 @@
-import type { GeometryProps, spec, Engine, Deserializer, SceneData, GeometryData, EffectsObjectData, MaterialData } from '@galacean/effects-core';
+import type { Engine, GeometryData, GeometryProps, spec } from '@galacean/effects-core';
 import { BYTES_TYPE_MAP, Geometry, assertExist, generateEmptyTypedArray, glContext } from '@galacean/effects-core';
+import type { GLEngine } from './gl-engine';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
 import { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLVertexArrayObject } from './gl-vertex-array-object';
-import type { GLEngine } from './gl-engine';
 
 type BufferDirtyFlag = {
   dirty: boolean,
@@ -399,17 +399,13 @@ export class GLGeometry extends Geometry {
     this.initialized = false;
   }
 
-  override fromData (
-    data: EffectsObjectData | MaterialData | GeometryData,
-    deserializer?: Deserializer,
-    sceneData?: SceneData,
-  ): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: GeometryData): void {
+    super.fromData(data);
 
     const geometryData = data;
     const fullGeometryData = {
       vertices: [],
-      uv: [],
+      uvs: [],
       normals: [],
       indices: [],
       ...geometryData,
@@ -425,14 +421,17 @@ export class GLGeometry extends Geometry {
         aUV: {
           type: glContext.FLOAT,
           size: 2,
-          data: new Float32Array(fullGeometryData.uv),
+          data: new Float32Array(fullGeometryData.uvs),
         },
       },
-      indices: {
-        data: new Uint32Array(fullGeometryData.indices),
-      },
-      drawCount: fullGeometryData.indices.length,
     };
+
+    if (fullGeometryData.indices.length !== 0) {
+      geometryProps.indices = { data: new Uint32Array(fullGeometryData.indices) };
+      geometryProps.drawCount = fullGeometryData.indices.length;
+    } else {
+      geometryProps.drawCount = fullGeometryData.vertices.length;
+    }
 
     this.processProps(geometryProps);
   }

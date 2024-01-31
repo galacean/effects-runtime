@@ -2,7 +2,6 @@ import { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index'
 import type { vec2, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { RendererComponent } from '../../components/renderer-component';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
@@ -477,12 +476,6 @@ export class SpriteComponent extends RendererComponent {
     return { index, atlasOffset };
   }
 
-  initTexture (texture: Texture, emptyTexture: Texture) {
-    const tex = texture ?? emptyTexture;
-
-    return tex;
-  }
-
   getTextures (): Texture[] {
     const ret = [];
     const tex = this.renderer.texture;
@@ -535,16 +528,22 @@ export class SpriteComponent extends RendererComponent {
     }
   };
 
-  override fromData (data: SpriteItemProps, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: SpriteItemProps): void {
+    super.fromData(data);
 
-    const { interaction, renderer, options, listIndex = 0 } = data;
+    const { interaction, options, listIndex = 0 } = data;
+    let renderer = data.renderer;
+
+    if (!renderer) {
+      //@ts-expect-error
+      renderer = {};
+    }
 
     this.interaction = interaction;
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
-      texture: this.initTexture(renderer.texture, this.engine.emptyTexture),
+      texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!(renderer.occlusion),
       transparentOcclusion: !!(renderer.transparentOcclusion) || (renderer.maskMode === spec.MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
@@ -577,5 +576,9 @@ export class SpriteComponent extends RendererComponent {
     const colorTrack = this.item.getComponent(TimelineComponent)!.createTrack(Track, 'SpriteColorTrack');
 
     colorTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData({ colorOverLifetime: data.colorOverLifetime, startColor: data.options.startColor });
+  }
+
+  override toData (): void {
+    super.toData();
   }
 }

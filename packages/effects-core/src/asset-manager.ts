@@ -1,7 +1,6 @@
-import * as spec from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
 import { LOG_TYPE } from './config';
-import { DataType, type DataPath } from './deserializer';
 import type { JSONValue } from './downloader';
 import { Downloader, loadImage, loadVideo, loadWebPOptional } from './downloader';
 import { glContext } from './gl';
@@ -16,7 +15,7 @@ import type { TextureSourceOptions } from './texture';
 import { Texture, TextureSourceType, deserializeMipmapTexture, getKTXTextureOptions } from './texture';
 import type { Disposable } from './utils';
 import { isObject, isString } from './utils';
-import type { VFXItemProps } from './vfx-item';
+import { version3Migration } from './asset-migrations';
 
 /**
  * 场景加载参数
@@ -459,19 +458,27 @@ export class AssetManager implements Disposable {
     jsonScene: spec.JSONScene,
   ) {
     const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
-    const jobs = textures.map((texOpts, idx) => {
+    const jobs = textures.map(async (texOpts, idx) => {
       if (texOpts instanceof Texture) {
         return texOpts;
       }
       if ('mipmaps' in texOpts) {
         try {
-          return deserializeMipmapTexture(texOpts, bins, jsonScene.bins);
+          return await deserializeMipmapTexture(texOpts, bins, jsonScene.bins);
         } catch (e) {
           throw new Error(`load texture ${idx} fails, error message: ${e}`);
         }
       }
       const { source } = texOpts;
-      const image = images[source];
+
+      // TODO: 测试代码，待移除
+      let image: any;
+
+      if (typeof source === 'number') { // source 为 images 数组 id
+        image = images[source];
+      } else if (typeof source === 'string') { // source 为 base64 数据
+        image = await loadImage(base64ToFile(source));
+      }
 
       if (image) {
         const tex = createTextureOptionsBySource(image, this.assets[idx]);
@@ -590,167 +597,34 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
   throw new Error('Invalid texture options');
 }
 
-type ecScene = spec.JSONScene & { items: VFXItemProps[], components: DataPath[] };
+function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
+  // 去掉 Base64 字符串的 Data URL 部分（如果存在）
+  const base64WithoutPrefix = base64.split(',')[1] || base64;
 
-export function version3Migration (scene: Record<string, any>): Scene {
-  const ecScene = scene.jsonScene as ecScene;
+  // 将 base64 编码的字符串转换为二进制字符串
+  const byteCharacters = atob(base64WithoutPrefix);
+  // 创建一个 8 位无符号整数值的数组，即“字节数组”
+  const byteArrays = [];
 
-  if (!ecScene.items) {
-    ecScene.items = [];
-  }
+  // 切割二进制字符串为多个片段，并将每个片段转换成一个字节数组
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
 
-  // composition 的 items 转为 { id: string }
-  for (const composition of scene.jsonScene.compositions) {
-    for (let i = 0; i < composition.items.length; i++) {
-      ecScene.items.push(composition.items[i]);
-      composition.items[i] = { id: (ecScene.items.length - 1).toString() };
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
     }
+    const byteArray = new Uint8Array(byteNumbers);
+
+    byteArrays.push(byteArray);
   }
 
-  if (!ecScene.components) {
-    ecScene.components = [];
-  }
-  const components = ecScene.components;
+  // 使用字节数组创建 Blob 对象
+  const blob = new Blob(byteArrays, { type: contentType });
 
-  for (const item of ecScene.items) {
-    // sprite content 转为 component data 加入 JSONScene.components
-    if (item.type === spec.ItemType.sprite) {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.SpriteComponent;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    } else if (item.type === spec.ItemType.particle) {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.ParticleSystem;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    } else if (item.type === spec.ItemType.mesh) {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.MeshComponent;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    } else if (item.type === spec.ItemType.skybox) {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.SkyboxComponent;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    } else if (item.type === spec.ItemType.light) {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.LightComponent;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    } else if (item.type === 'camera') {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.CameraComponent;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    } else if (item.type === spec.ItemType.tree) {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.TreeComponent;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    } else if (item.type === spec.ItemType.interact) {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.InteractComponent;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    } else if (item.type === spec.ItemType.camera) {
-      //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
-      components.push(item.content);
-      //@ts-expect-error
-      item.content.id = 'c' + (components.length - 1).toString();
-      //@ts-expect-error
-      item.content.dataType = DataType.CameraController;
-      //@ts-expect-error
-      item.content.item = { id: item.id };
-      //@ts-expect-error
-      item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
-      item.components.push({ id: item.content.id });
-    }
-  }
+  // 创建 File 对象
+  const file = new File([blob], filename, { type: contentType });
 
-  return scene as Scene;
+  return file;
 }
+

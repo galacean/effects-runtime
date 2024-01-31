@@ -44,6 +44,7 @@ export * from './transform';
 export * from './utils';
 export * from './vfx-item';
 export * from './deserializer';
+export * from './effects-object';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);

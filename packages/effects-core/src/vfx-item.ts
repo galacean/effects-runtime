@@ -1,24 +1,24 @@
-import * as spec from '@galacean/effects-specification';
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import * as spec from '@galacean/effects-specification';
+import { EffectComponent, RendererComponent } from './components';
 import type { Component } from './components/component';
 import { ItemBehaviour } from './components/component';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
-import type { Deserializer, SceneData, VFXItemData } from './deserializer';
-import type { Engine } from './engine';
+import { DataType, type VFXItemData } from './deserializer';
 import { EffectsObject } from './effects-object';
+import type { Engine } from './engine';
+import { convertAnchor } from './math';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent, SpriteItemProps,
   TransformAnimationData,
 } from './plugins';
-import { TimelineComponent, Track, AnimationClipPlayable, ActivationClipPlayable } from './plugins';
+import { ActivationClipPlayable, AnimationClipPlayable, TimelineComponent, Track } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
-import { RendererComponent } from './components';
-import { convertAnchor } from './math';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | TimelineComponent | CameraController | InteractComponent | void | {};
 export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
@@ -152,8 +152,10 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     props?: VFXItemProps,
   ) {
     super(engine);
-
+    this.name = 'VFXItem';
     this.transform.name = this.name;
+    this.transform.engine = engine;
+    this.addComponent(TimelineComponent);
     if (props) {
       // TODO VFXItemProps 添加 components 属性
       this.fromData(props as VFXItemData);
@@ -460,8 +462,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     return undefined;
   }
 
-  override fromData (data: VFXItemData, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: VFXItemData): void {
+    super.fromData(data);
     const {
       id, name, delay, parentId, endBehavior, transform,
       listIndex = 0,
@@ -475,13 +477,22 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.start = delay ? delay : this.start;
     // TODO spec 数据需要区分 scale 和 size
     if (transform && transform.scale && data.type !== 'ECS') {
-      transform.scale[2] = transform.scale[0];
+      //@ts-expect-error  TODO 数据改造后移除 expect-error
+      transform.scale.z = transform.scale.x;
     }
 
-    this.transform = new Transform({
-      name: this.name,
-      ...transform,
-    });
+    if (transform) {
+      //@ts-expect-error TODO 数据改造后移除 expect-error
+      transform.position = new Vector3().copyFrom(transform.position);
+      //@ts-expect-error
+      transform.rotation = new Euler().copyFrom(transform.rotation);
+      //@ts-expect-error
+      transform.scale = new Vector3().copyFrom(transform.scale);
+      this.transform.setTransform(transform);
+    }
+
+    this.transform.name = this.name;
+    this.transform.engine = this.engine;
 
     // TODO spec 数据需要区分 scale 和 size
     if (data.type === spec.ItemType.sprite && transform) {
@@ -499,14 +510,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.lifetime = -(this.start / this.duration);
     this.listIndex = listIndex;
 
-    const timelineComponent = new TimelineComponent(this.engine);
-
-    timelineComponent.item = this;
-    this.components.push(timelineComponent);
-    this.itemBehaviours.push(timelineComponent);
     if (!data.content) {
       data.content = { options: {} };
     }
+    const timelineComponent = this.getComponent(TimelineComponent)!;
+
     timelineComponent.fromData(data.content as spec.NullContent);
 
     // TODO anchor 应该放在 transform data
@@ -541,9 +549,9 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
     }
 
-    if (deserializer && sceneData) {
-      for (const dataPath of data.components) {
-        const newComponent = deserializer.deserialize<Component>(dataPath, sceneData);
+    if (data.components) {
+      for (const component of data.components) {
+        const newComponent = component as unknown as Component;
 
         this.components.push(newComponent);
         if (newComponent instanceof RendererComponent) {
@@ -553,6 +561,29 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
         }
       }
     }
+  }
+
+  override toData (): void {
+    this.taggedProperties.id = this.guid;
+    this.taggedProperties.name = this.name;
+    this.taggedProperties.type = this.type;
+    this.taggedProperties.duration = this.duration;
+    this.taggedProperties.transform = this.transform.toData();
+    this.taggedProperties.dataType = DataType.VFXItemData;
+    if (this.parent?.name !== 'rootItem') {
+      this.taggedProperties.parentId = this.parent?.guid;
+    }
+
+    // TODO 统一 sprite 等其他组件的序列化逻辑
+    if (!this.taggedProperties.components) {
+      this.taggedProperties.components = [];
+      for (const component of this.components) {
+        if (component instanceof EffectComponent) {
+          this.taggedProperties.components.push(component);
+        }
+      }
+    }
+    this.taggedProperties.content = {};
   }
 
   translateByPixel (x: number, y: number) {

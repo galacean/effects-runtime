@@ -1,7 +1,6 @@
 import { clamp, Euler, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from '../../components';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
@@ -106,8 +105,8 @@ export class CameraController extends ItemBehaviour {
     this.updateCamera();
   }
 
-  override fromData (data: spec.CameraContent, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: spec.CameraContent): void {
+    super.fromData(data);
     const { near, far, fov, clipMode } = data.options;
 
     this.clipMode = clipMode;

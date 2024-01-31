@@ -1,4 +1,4 @@
-import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math, Deserializer, SceneData } from '@galacean/effects-core';
+import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math } from '@galacean/effects-core';
 import { Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
@@ -453,7 +453,7 @@ export class ThreeMaterial extends Material {
     throw new Error('Method not implemented.');
   }
 
-  override fromData (data: any, deserializer: Deserializer, sceneData: SceneData): void {
+  override fromData (data: any): void {
     //FIXME: 暂时不实现
     throw new Error('Method not implemented.');
   }

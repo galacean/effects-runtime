@@ -1,4 +1,4 @@
-import type { Deserializer, GeometryDrawMode, Mesh, SceneData, Texture, VFXItem, VFXItemProps, spec } from '@galacean/effects';
+import type { GeometryDrawMode, Mesh, Texture, VFXItem, VFXItemProps, spec } from '@galacean/effects';
 import { ItemBehaviour, RendererComponent, Transform, assertExist, glContext, math } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
@@ -48,6 +48,7 @@ export class GizmoComponent extends ItemBehaviour {
     }
     const gizmoPlugin = this.gizmoPlugin;
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
     if (targetItem.type === '7' || !gizmoPlugin) {
       return;
     }
@@ -438,8 +439,8 @@ export class GizmoComponent extends ItemBehaviour {
     this.targetItem = item;
   }
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: any): void {
+    super.fromData(data);
 
     const item = this.item as GizmoVFXItem;
     const options = data as VFXItemProps;

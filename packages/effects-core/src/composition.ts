@@ -17,10 +17,9 @@ import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
 import { Transform } from './transform';
 import type { Disposable, LostHandler } from './utils';
-import { assertExist, noop } from './utils';
+import { assertExist, noop, removeItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
-import { Deserializer } from './deserializer';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -176,11 +175,6 @@ export class Composition implements Disposable, LostHandler {
    */
   globalTime;
 
-  /**
-   * 合成反序列化器
-   */
-  deserializer: Deserializer;
-
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
   protected assigned = false;
@@ -252,6 +246,7 @@ export class Composition implements Disposable, LostHandler {
     this.transform = new Transform({
       name: this.name,
     });
+    this.transform.engine = this.getEngine();
     vfxItem.transform = this.transform;
     this.globalVolume = sourceContent.globalVolume;
     this.width = width;
@@ -277,7 +272,6 @@ export class Composition implements Disposable, LostHandler {
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
-    this.deserializer = new Deserializer(renderer.engine);
     this.handlePlayerPause = handlePlayerPause;
     this.handleMessageItem = handleMessageItem;
     this.handleEnd = handleEnd;
@@ -484,6 +478,7 @@ export class Composition implements Disposable, LostHandler {
     this.transform = new Transform({
       name: this.name,
     });
+    this.transform.engine = this.getEngine();
     vfxItem.transform = this.transform;
     this.rootItem = vfxItem;
     this.rendererOptions = null;
@@ -850,7 +845,7 @@ export class Composition implements Disposable, LostHandler {
       if (!texture) {
         continue;
       }
-      if (texture.sourceType === TextureSourceType.data && !(this.texInfo[texture.id])) {
+      if (texture.sourceType === TextureSourceType.data && !(this.texInfo[texture.getInstanceId()])) {
         if (
           texture !== this.rendererOptions?.emptyTexture &&
           texture !== this.renderFrame.transparentTexture &&
@@ -862,7 +857,7 @@ export class Composition implements Disposable, LostHandler {
       }
       if (this.autoRefTex) {
         // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
-        const c = --this.texInfo[texture.id];
+        const c = --this.texInfo[texture.getInstanceId()];
 
         if (!c) {
           if (__DEBUG__) {
@@ -897,6 +892,7 @@ export class Composition implements Disposable, LostHandler {
       // this.content.removeItem(item);
       // 预合成中的元素移除
       // this.refContent.forEach(content => content.removeItem(item));
+      removeItem(this.items, item);
       this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, item));
     }
   }

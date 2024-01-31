@@ -1,3 +1,6 @@
+import { EffectsObject } from '../effects-object';
+import type { Engine } from '../engine';
+
 export type ShaderMarcos = [key: string, value: string | number | boolean][];
 
 export enum ShaderCompileResultStatus {
@@ -43,7 +46,7 @@ export interface InstancedShaderWithSource {
   /**
    * shader是否共享
    */
-  shared?: false,
+  shared?: boolean,
 }
 
 export interface SharedShaderWithSource {
@@ -73,7 +76,7 @@ export interface SharedShaderWithSource {
    * 如果提供了cacheId，cacheId相同的shader会共用一个GLProgram
    * 如果没有提供cacheId，会根据字符串hash计算出cacheId，字符串相同的shader将会使用同一个GLProgram
    */
-  shared?: true,
+  shared?: boolean,
   /**
    * 相同cacheId的shader会使用同一个GLProgram
    */
@@ -82,10 +85,13 @@ export interface SharedShaderWithSource {
 
 export type ShaderWithSource = InstancedShaderWithSource | SharedShaderWithSource;
 
-export abstract class Shader {
+export abstract class Shader extends EffectsObject {
   constructor (
+    engine: Engine,
     public readonly source: ShaderWithSource,
-  ) { }
+  ) {
+    super(engine);
+  }
 }
 
 // TODO: 临时用，待移除
@@ -93,6 +99,8 @@ export interface ShaderLibrary {
   readonly shaderResults: { [cacheId: string]: ShaderCompileResult },
 
   addShader(shader: ShaderWithSource): void,
+
+  createShader (shaderSource: ShaderWithSource): Shader,
 
   /**
    * @param cacheId

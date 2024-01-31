@@ -1,6 +1,7 @@
 import type {
   Disposable, GLType, GPUCapability, JSONValue, LostHandler, MessageItem, RestoreHandler, Scene,
   SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
+  Texture,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, LOG_TYPE,
@@ -416,6 +417,15 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       scene = source;
     } else {
       scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
+    }
+
+    // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
+    this.renderer.engine.clearResources();
+    await this.renderer.engine.addPackageDatas(scene);
+
+    for (let i = 0; i < scene.textureOptions.length; i++) {
+      scene.textureOptions[i] = this.renderer.engine.deserializer.loadGUID(scene.textureOptions[i].id);
+      (scene.textureOptions[i] as Texture).initialize();
     }
 
     const composition = new Composition({

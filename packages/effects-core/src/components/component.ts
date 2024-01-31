@@ -1,6 +1,5 @@
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
-import type { Deserializer, EffectComponentData, SceneData, VFXItemData } from '../deserializer';
 import type { VFXItem, VFXItemContent } from '../vfx-item';
 
 /**
@@ -23,15 +22,10 @@ export abstract class Component extends EffectsObject {
   onAttached () { }
   onDestroy () { }
 
-  override fromData (
-    data: any,
-    deserializer?: Deserializer,
-    sceneData?: SceneData,
-  ): void {
-    super.fromData(data, deserializer, sceneData);
-
-    if (deserializer && sceneData) {
-      this.item = deserializer.deserialize(data.item, sceneData);
+  override fromData (data: any): void {
+    super.fromData(data);
+    if (data.item) {
+      this.item = data.item;
     }
   }
 
@@ -68,6 +62,19 @@ export abstract class Behaviour extends Component {
   }
 
   protected onBehaviourEnable () { }
+
+  override fromData (data: any): void {
+    super.fromData(data);
+    // TODO 数据改造后可移除判断
+    if (data._enabled !== undefined) {
+      this._enabled = data._enabled;
+    }
+  }
+
+  override toData (): void {
+    super.toData();
+    this.taggedProperties._enabled = this._enabled;
+  }
 }
 
 /**

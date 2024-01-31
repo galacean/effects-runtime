@@ -4,7 +4,6 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { EffectsObjectData, GeometryData, MaterialData, SceneData, ShaderData, VFXItemData } from './deserializer';
 import type { Region } from './plugins';
 import { HitTestType, TextComponent, TimelineComponent } from './plugins';
 import { noop } from './utils';
@@ -68,47 +67,9 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.items.length = 0;
     if (this.item.composition) {
-      const deserializer = this.item.composition.deserializer;
-      const sceneData: SceneData = {
-        effectsObjects: {},
-      };
+      const deserializer = this.item.engine.deserializer;
       // TODO spec 定义新类型后 as 移除
-      const jsonScene = this.item.composition.compositionSourceManager.jsonScene! as spec.JSONScene & { items: VFXItemData[], materials: MaterialData[], shaders: ShaderData[], geometries: GeometryData[], components: EffectsObjectData[] };
-
-      if (jsonScene.items) {
-        for (const vfxItemData of this.item.props.items) {
-          //@ts-expect-error
-          sceneData.effectsObjects[vfxItemData.id] = vfxItemData;
-        }
-      }
-      if (jsonScene.materials) {
-        for (const materialData of jsonScene.materials) {
-          sceneData.effectsObjects[materialData.id] = materialData;
-        }
-      }
-      if (jsonScene.shaders) {
-        for (const shaderData of jsonScene.shaders) {
-          sceneData.effectsObjects[shaderData.id] = shaderData;
-        }
-      }
-      if (jsonScene.geometries) {
-        for (const geometryData of jsonScene.geometries) {
-          sceneData.effectsObjects[geometryData.id] = geometryData;
-        }
-      }
-      if (jsonScene.components) {
-        for (const componentData of jsonScene.components) {
-          sceneData.effectsObjects[componentData.id] = componentData;
-        }
-      }
-
-      if (jsonScene.textures) {
-        for (let i = 0; i < jsonScene.textures.length; i++) {
-          this.item.composition.deserializer.addInstance('Texture' + i, this.item.composition.textures[i]);
-          // TODO 纹理增加 id 加入 effectsObjects Map
-          // sceneData.effectsObjects['Texture' + i] = this.item.composition.textures[i] as unknown as EffectsObjectData;
-        }
-      }
+      const jsonScene = this.item.composition.compositionSourceManager.jsonScene!;
 
       const itemProps = this.item.props.items ? this.item.props.items : [];
 
@@ -158,7 +119,7 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === spec.ItemType.interact ||
           itemData.type === spec.ItemType.camera
         ) {
-          item = deserializer.deserialize({ id: itemData.id }, sceneData);
+          item = deserializer.loadGUID(itemData.id);
           item.composition = this.item.composition;
         } else {
           // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣

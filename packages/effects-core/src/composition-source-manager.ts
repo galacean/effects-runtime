@@ -6,8 +6,7 @@ import type { GlobalVolume } from './render';
 import type { Scene } from './scene';
 import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
-import type { TextureSourceOptions } from './texture';
-import { Texture } from './texture';
+import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import { isObject } from './utils';
 import type { VFXItemProps } from './vfx-item';
@@ -40,12 +39,13 @@ export class CompositionSourceManager implements Disposable {
   textures: Texture[];
   jsonScene?: spec.JSONScene;
   mask = 0;
-  textureOptions: Record<string, any>[];
+  engine: Engine;
 
   constructor (
     scene: Scene,
     engine: Engine,
   ) {
+    this.engine = engine;
     // 资源
     const { jsonScene, renderLevel, textureOptions, pluginSystem, totalTime } = scene;
     const { compositions, imgUsage, compositionId } = jsonScene;
@@ -53,12 +53,8 @@ export class CompositionSourceManager implements Disposable {
     if (!textureOptions) {
       throw new Error('scene.textures expected');
     }
-    const cachedTextures = textureOptions.map(option => option && (option instanceof Texture ? option : Texture.create(engine, option as unknown as TextureSourceOptions)));
+    const cachedTextures = textureOptions as Texture[];
 
-    // 缓存创建的Texture对象
-    // @ts-expect-error
-    scene.textureOptions = cachedTextures;
-    cachedTextures?.forEach(tex => tex?.initialize());
     for (const comp of compositions) {
       if (comp.id === compositionId) {
         this.composition = comp;
@@ -77,7 +73,6 @@ export class CompositionSourceManager implements Disposable {
     this.imgUsage = imgUsage ?? {};
     this.textures = cachedTextures;
     listOrder = 0;
-    this.textureOptions = textureOptions;
     this.sourceContent = this.getContent(this.composition);
   }
 
@@ -113,7 +108,7 @@ export class CompositionSourceManager implements Disposable {
 
     for (const itemDataPath of composition.items) {
       //@ts-expect-error
-      const sourceItemData: VFXItemProps = this.jsonScene.items[itemDataPath.id];
+      const sourceItemData: VFXItemProps = this.engine.jsonSceneData[itemDataPath.id];
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
@@ -194,32 +189,31 @@ export class CompositionSourceManager implements Disposable {
   }
 
   private changeTex (renderer: Record<string, number>) {
-    const texIdx = renderer.texture;
-    const ret: Record<string, any> = { ...renderer };
+    if (!renderer.texture) {
+      return renderer;
+    }
+    //@ts-expect-error
+    const texIdx = renderer.texture.id;
 
     if (texIdx !== undefined) {
-      ret.texture = this.addTextureUsage(texIdx) || texIdx;
+      //@ts-expect-error
+      this.addTextureUsage(texIdx) || texIdx;
     }
 
-    return ret;
+    return renderer;
   }
 
-  private addTextureUsage (texIdx: number): Texture | undefined {
-    if (Number.isInteger(texIdx)) {
-      const tex = this.textures?.[texIdx];
-      const texId = tex?.id;
-      // FIXME: imageUsage 取自 scene.imgUsage，类型为 Record<string, number[]>，这里给的 number，类型对不上
-      const imageUsage = this.imgUsage as unknown as Record<string, number> ?? {};
+  private addTextureUsage (texIdx: number) {
+    const texId = texIdx;
+    // FIXME: imageUsage 取自 scene.imgUsage，类型为 Record<string, number[]>，这里给的 number，类型对不上
+    const imageUsage = this.imgUsage as unknown as Record<string, number> ?? {};
 
-      if (texId && imageUsage) {
-        // eslint-disable-next-line no-prototype-builtins
-        if (!imageUsage.hasOwnProperty(texId)) {
-          imageUsage[texId] = 0;
-        }
-        imageUsage[texId]++;
-
-        return tex;
+    if (texId && imageUsage) {
+      // eslint-disable-next-line no-prototype-builtins
+      if (!imageUsage.hasOwnProperty(texId)) {
+        imageUsage[texId] = 0;
       }
+      imageUsage[texId]++;
     }
   }
 
@@ -237,7 +231,6 @@ export class CompositionSourceManager implements Disposable {
   }
 
   dispose (): void {
-    this.textureOptions = [];
     this.textures = [];
     this.composition = undefined;
     this.jsonScene = undefined;

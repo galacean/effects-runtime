@@ -5,8 +5,6 @@ import type {
   RenderFrame,
   VFXItemProps,
   Engine,
-  Deserializer,
-  SceneData,
   Component,
 } from '@galacean/effects';
 import {
@@ -189,8 +187,8 @@ export class ModelPluginComponent extends ItemBehaviour {
     this.cache = null;
   }
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: any): void {
+    super.fromData(data);
     //
     const options = data as ModelPluginOptions;
 

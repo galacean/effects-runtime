@@ -1,4 +1,3 @@
-import type { SceneData, Deserializer } from '@galacean/effects-core';
 import { ItemBehaviour } from '@galacean/effects-core';
 import type { CompositionTransformerTarget } from './composition-transformer-acceler';
 import type { CompositionTransformerAcceler } from './composition-transformer-acceler';
@@ -6,8 +5,8 @@ import type { CompositionTransformerAcceler } from './composition-transformer-ac
 export class OrientationComponent extends ItemBehaviour {
   private targets: CompositionTransformerTarget[];
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData) {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: any) {
+    super.fromData(data);
 
     const { targets } = data.content.options;
 

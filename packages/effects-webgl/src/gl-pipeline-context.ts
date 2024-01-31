@@ -4,6 +4,7 @@ import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
 import type { GLEngine } from './gl-engine';
 
+type Color = math.Color;
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
 type Vector4 = math.Vector4;
@@ -542,6 +543,10 @@ export class GLPipelineContext implements Disposable {
 
   setVector4 (uniform: Nullable<WebGLUniformLocation>, value: Vector4) {
     this.setFloat4(uniform, value.x, value.y, value.z, value.w);
+  }
+
+  setColor (uniform: Nullable<WebGLUniformLocation>, value: Color) {
+    this.setFloat4(uniform, value.r, value.g, value.b, value.a);
   }
 
   setQuaternion (uniform: Nullable<WebGLUniformLocation>, value: Quaternion) {

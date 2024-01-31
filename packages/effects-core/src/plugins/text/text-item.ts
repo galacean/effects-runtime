@@ -1,5 +1,4 @@
 import * as spec from '@galacean/effects-specification';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import { Texture } from '../../texture';
 import type { SpriteItemProps } from '../sprite/sprite-item';
@@ -391,8 +390,8 @@ export class TextComponent extends SpriteComponent {
     this.isDirty = false;
   }
 
-  override fromData (data: SpriteItemProps, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: SpriteItemProps): void {
+    super.fromData(data);
   }
 
   private getFontDesc (): string {

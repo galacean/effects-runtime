@@ -3,7 +3,6 @@ import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-mat
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
-import type { Deserializer, SceneData } from '../../deserializer';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, convertAnchor, createValueGetter, ensureVec3 } from '../../math';
@@ -827,8 +826,8 @@ export class ParticleSystem extends Component {
     }
   };
 
-  override fromData (data: any, deserializer?: Deserializer, sceneData?: SceneData): void {
-    super.fromData(data, deserializer, sceneData);
+  override fromData (data: any): void {
+    super.fromData(data);
     const props = data as ParticleSystemProps;
 
     this.props = props;
@@ -1094,17 +1093,14 @@ export class ParticleSystem extends Component {
     }
     this.item.getHitTestParams = this.getHitTestParams;
 
-    // TODO 待移除
-    if (deserializer && sceneData) {
-      this.item._content = this;
-      this.renderer.item = this.item;
-      this.item.components.push(this.renderer);
-      this.item.rendererComponents.push(this.renderer);
-      // 添加粒子动画 clip
-      const timeline = this.item.getComponent(TimelineComponent)!;
+    this.item._content = this;
+    this.renderer.item = this.item;
+    this.item.components.push(this.renderer);
+    this.item.rendererComponents.push(this.renderer);
+    // 添加粒子动画 clip
+    const timeline = this.item.getComponent(TimelineComponent)!;
 
-      timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
-    }
+    timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
   }
 }
 

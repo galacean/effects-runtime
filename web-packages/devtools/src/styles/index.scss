@@ -1,0 +1,16 @@
+@use './layout.scss' as *;
+
+:root {
+  --grass-1: white;
+  --grass-11: #f0f0f0;
+
+  // --agui-c-bg-panel: #222;
+}
+
+.agui-select-item {
+  color: #f0f0f0;
+}
+
+.splitpanes__pane {
+  transition: none !important;
+}

@@ -1,4 +1,4 @@
-import type { SceneData, BoundingBoxTriangle, HitTestTriangleParams, Engine, Deserializer, Renderer } from '@galacean/effects-core';
+import type { BoundingBoxTriangle, HitTestTriangleParams, Engine, Renderer } from '@galacean/effects-core';
 import { HitTestType, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, spec, math } from '@galacean/effects-core';
 import type { AnimationStateListener, SkeletonData, Skeleton } from './core';
 import { AnimationState, AnimationStateData } from './core';
@@ -62,8 +62,8 @@ export class SpineComponent extends RendererComponent {
     super(engine);
   }
 
-  override fromData (options: any, deserializer?: Deserializer, sceneData?: SceneData) {
-    super.fromData(options, deserializer, sceneData);
+  override fromData (options: any) {
+    super.fromData(options);
 
     this.options = options;
     this.item.getHitTestParams = this.getHitTestParams.bind(this);

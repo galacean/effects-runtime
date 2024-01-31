@@ -1,10 +1,15 @@
+import * as spec from '@galacean/effects-specification';
 import { LOG_TYPE } from './config';
+import type { Database, EffectsObjectData, SceneData } from './deserializer';
+import { Deserializer } from './deserializer';
 import { glContext } from './gl';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
 import { Texture, TextureSourceType } from './texture';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
+import type { EffectsObject } from './effects-object';
+import type { Scene } from './scene';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的销毁
@@ -14,6 +19,10 @@ export class Engine implements Disposable {
   emptyTexture: Texture;
   transparentTexture: Texture;
   gpuCapability: GPUCapability;
+  jsonSceneData: SceneData;
+  objectInstance: Record<string, EffectsObject>;
+  deserializer: Deserializer;
+  database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
 
   protected destroyed = false;
   protected textures: Texture[] = [];
@@ -23,6 +32,9 @@ export class Engine implements Disposable {
   protected renderPasses: RenderPass[] = [];
 
   constructor () {
+    this.jsonSceneData = {};
+    this.objectInstance = {};
+    this.deserializer = new Deserializer(this);
     this.createDefaultTexture();
   }
 
@@ -30,6 +42,98 @@ export class Engine implements Disposable {
    * 创建 Engine 对象。
    */
   static create: (gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
+
+  clearResources () {
+    this.jsonSceneData = {};
+    this.deserializer.clearInstancePool();
+  }
+
+  addEffectsObjectData (data: EffectsObjectData) {
+    this.jsonSceneData[data.id] = data;
+  }
+
+  findEffectsObjectData (uuid: string) {
+    return this.jsonSceneData[uuid];
+  }
+
+  addInstance (effectsObject: EffectsObject) {
+    this.objectInstance[effectsObject.getInstanceId()] = effectsObject;
+  }
+
+  getInstance (id: string) {
+    return this.objectInstance[id];
+  }
+
+  removeInstance (id: string) {
+    delete this.objectInstance[id];
+  }
+
+  async addPackageDatas (scene: Scene) {
+    const jsonScene = scene.jsonScene;
+
+    //@ts-expect-error
+    if (jsonScene.items) {
+      //@ts-expect-error
+      for (const vfxItemData of jsonScene.items) {
+        this.addEffectsObjectData(vfxItemData);
+      }
+    }
+    //@ts-expect-error
+    if (jsonScene.materials) {
+      //@ts-expect-error
+      for (const materialData of jsonScene.materials) {
+        this.addEffectsObjectData(materialData);
+      }
+    }
+    //@ts-expect-error
+    if (jsonScene.shaders) {
+      //@ts-expect-error
+      for (const shaderData of jsonScene.shaders) {
+        this.addEffectsObjectData(shaderData);
+      }
+    }
+    //@ts-expect-error
+    if (jsonScene.geometries) {
+      //@ts-expect-error
+      for (const geometryData of jsonScene.geometries) {
+        this.addEffectsObjectData(geometryData);
+      }
+    }
+    //@ts-expect-error
+    if (jsonScene.components) {
+      //@ts-expect-error
+      for (const componentData of jsonScene.components) {
+        this.addEffectsObjectData(componentData);
+      }
+    }
+    if (scene.textureOptions) {
+      for (const textureData of scene.textureOptions) {
+        //@ts-expect-error
+        this.addEffectsObjectData(textureData);
+      }
+    }
+
+    //@ts-expect-error
+    for (const itemData of jsonScene.items) {
+      if (!(
+        itemData.type === 'ECS' ||
+        itemData.type === spec.ItemType.sprite ||
+        itemData.type === spec.ItemType.particle ||
+        itemData.type === spec.ItemType.mesh ||
+        itemData.type === spec.ItemType.skybox ||
+        itemData.type === spec.ItemType.light ||
+        itemData.type === 'camera' ||
+        itemData.type === spec.ItemType.tree ||
+        itemData.type === spec.ItemType.interact ||
+        itemData.type === spec.ItemType.camera)
+      ) {
+        continue;
+      }
+      if (this.database) {
+        await this.deserializer.loadGUIDAsync(itemData.id);
+      }
+    }
+  }
 
   addTexture (tex: Texture) {
     if (this.destroyed) {

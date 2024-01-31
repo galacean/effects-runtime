@@ -1,25 +1,32 @@
-import type { Deserializer, VFXItem, VFXItemContent } from '@galacean/effects';
-import { Player } from '@galacean/effects';
+import type { Composition, EffectsObjectData, VFXItem, VFXItemContent } from '@galacean/effects';
+import { DataType, Player, TimelineComponent, spec } from '@galacean/effects';
 import json from './assets/custom-material';
+import { assetDataBase } from './gui/asset-data-base';
 import { Input } from './gui/input';
 import { InspectorGui } from './gui/inspector-gui';
 import { OrbitController } from './gui/orbit-controller';
 import { TreeGui } from './gui/tree-gui';
+// import vs from './assets/shaders/unlit.vs.glsl';
+// import fs from './assets/shaders/unlit.fs.glsl';
 
 const container = document.getElementById('J-container');
 const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();
 
-export let deserializer: Deserializer;
-export let testVfxItem: VFXItem<VFXItemContent>;
+let player: Player;
+let composition: Composition;
 let orbitController: OrbitController;
 let input: Input;
 
 (async () => {
   try {
-    const player = new Player({ container });
+    player = new Player({ container });
     //@ts-expect-error
-    const composition = await player.loadScene(json);
+    composition = await player.loadScene(json);
+
+    for (const resourceData of Object.values(assetDataBase.assetsData)) {
+      player.renderer.engine.jsonSceneData[resourceData.id] = resourceData;
+    }
 
     treeGui.setComposition(composition);
     input = new Input(container!);
@@ -27,9 +34,6 @@ let input: Input;
     orbitController = new OrbitController(composition.camera, input);
 
     inputControllerUpdate();
-
-    deserializer = composition.deserializer;
-    testVfxItem = composition.getItemByName('Trail1')!;
   } catch (e) {
     console.error('biz', e);
   }
@@ -38,16 +42,6 @@ let input: Input;
 setInterval(() => {
   guiMainLoop();
 }, 100);
-
-// const properties = `
-// _2D("2D", 2D) = "" {}
-// _Color("Color",Color) = (1,1,1,1)
-// _Value("Value",Range(0,10)) = 2.5
-// _Float("Float",Float) = 0
-// _Vector("Vector",Vector) = (0,0,0,0)
-// _Rect("Rect",Rect) = "" {}
-// _Cube("Cube",Cube) = "" {}
-// `;
 
 function guiMainLoop () {
   if (treeGui.activeItem) {
@@ -62,3 +56,168 @@ function inputControllerUpdate () {
   input.refreshStatus();
   requestAnimationFrame(inputControllerUpdate);
 }
+
+async function saveJSONFile (json: any) {
+  // 创建一个包含JSON数据的对象
+  const myData = json;
+
+  // 将JSON对象转换为字符串
+  const jsonStr = JSON.stringify(myData, null, 2);
+
+  try {
+    // 显示文件保存对话框，用户可以选择文件夹并输入文件名
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'trail-demo.scene.json',
+      types: [
+        {
+          description: 'JSON files',
+          accept: { 'application/json': ['.json'] },
+        },
+      ],
+    });
+
+    // 创建一个FileSystemWritableFileStream来写入选定的文件
+    const writableStream = await handle.createWritable();
+
+    // 写入JSON字符串数据
+    await writableStream.write(jsonStr);
+
+    // 关闭文件流
+    await writableStream.close();
+  } catch (error) {
+    console.error('文件保存失败', error);
+  }
+}
+
+async function loadJSONFile () {
+  const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
+  const file = await fileHandle[0].getFile();
+  const reader = new FileReader();
+
+  reader.onload = async () => {
+    if (typeof reader.result !== 'string') {
+      return;
+    }
+    const data = JSON.parse(reader.result);
+
+    for (const resourceData of Object.values(assetDataBase.assetsData)) {
+      player.renderer.engine.jsonSceneData[resourceData.id] = resourceData;
+    }
+    player.destroyCurrentCompositions();
+    composition = await player.loadScene(data);
+    treeGui.setComposition(composition);
+    orbitController.setup(composition.camera, input);
+  };
+  reader.readAsText(file);
+}
+
+function saveScene (composition: Composition, json: any) {
+  const deserializer = composition.getEngine().deserializer;
+  let serializedDatas: Record<string, EffectsObjectData> = {};
+
+  for (const itemData of json.items) {
+    if (itemData.type === spec.ItemType.sprite || itemData.type === spec.ItemType.particle) {
+      continue;
+    }
+    const item = deserializer.getInstance(itemData.id) as VFXItem<VFXItemContent>;
+
+    item.transform.toData();
+    itemData.transform = item.transform.taggedProperties;
+    itemData.name = item.name;
+    for (const component of item.components) {
+      if (component instanceof TimelineComponent) {
+        continue;
+      }
+      serializedDatas = {
+        ...serializedDatas,
+        ...deserializer.serializeEffectObject(component),
+      };
+    }
+  }
+  let effectsObjectDataMap: Record<string, EffectsObjectData> = {};
+
+  for (const data of json.components) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.geometries) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.materials) {
+    effectsObjectDataMap[data.id] = data;
+  }
+  for (const data of json.textures) {
+    effectsObjectDataMap[data.id] = data;
+  }
+
+  effectsObjectDataMap = {
+    ...effectsObjectDataMap,
+    ...serializedDatas,
+  };
+
+  json.components = [];
+  json.geometries = [];
+  json.materials = [];
+  json.textures = [];
+  for (const data of Object.values(effectsObjectDataMap)) {
+    if (!data.id) {
+      continue;
+    }
+    switch (data.dataType) {
+      case DataType.EffectComponent:
+        json.components.push(data);
+
+        break;
+      case DataType.SpriteComponent:
+        json.components.push(data);
+
+        break;
+      case DataType.ParticleSystem:
+        json.components.push(data);
+
+        break;
+      case DataType.Material:
+        json.materials.push(data);
+
+        break;
+      case DataType.Geometry:
+        json.geometries.push(data);
+
+        break;
+      case DataType.Texture:
+        json.textures.push(data);
+
+        break;
+    }
+  }
+}
+
+const body = document.querySelector('body');
+const saveButton = document.createElement('button');
+
+body?.appendChild(saveButton);
+saveButton.textContent = '保存场景json';
+saveButton.onclick = async () => {
+  saveScene(composition, json);
+  await saveJSONFile(json);
+};
+
+const loadButton = document.createElement('button');
+
+body?.appendChild(loadButton);
+loadButton.textContent = '加载场景json';
+loadButton.onclick = async () => {
+  await loadJSONFile();
+};
+
+// console.log(JSON.stringify({
+//   exportObjects:[
+//     {
+//       id:generateUuid(),
+//       name:'unlit',
+//       dataType:DataType.Shader,
+//       vertex:vs,
+//       fragment:fs,
+//       properties:'_MainTex("MainTex", 2D) = {}\n_MainColor("MainColor", Color) = (1,1,1,1)',
+//     },
+//   ],
+// }));
