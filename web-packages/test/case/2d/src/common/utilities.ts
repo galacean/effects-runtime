@@ -9,14 +9,13 @@ import {
   math,
   AssetManager,
   getDefaultTemplateCanvasPool,
-  AssetManager,
 } from '@galacean/effects';
 
 const { Vector3, Matrix4 } = math;
 
 const sleepTime = 20;
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '2.3.6';  // 旧版Player版本
+const oldVersion = params.get('version') || '1.1.7';  // 旧版Player版本
 const playerOptions: PlayerConfig = {
   //env: 'editor',
   //pixelRatio: 2,
@@ -28,7 +27,7 @@ const playerOptions: PlayerConfig = {
 };
 
 export class TestPlayer {
-  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, prefetchFunc, oldVersion) {
+  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, assetManager, oldVersion) {
     this.width = width;
     this.height = height;
     //
@@ -42,7 +41,7 @@ export class TestPlayer {
       ...playerOptions,
       renderFramework,
     });
-    this.prefetchFunc = prefetchFunc;
+    this.assetManager = assetManager;
     this.oldVersion = oldVersion;
     this.scene = undefined;
     this.composition = undefined;
@@ -53,39 +52,21 @@ export class TestPlayer {
 
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
     Math.seedrandom('mars-runtime');
-    if (this.oldVersion) {
-      this.scene = await this.player.loadSceneAsync(url, { ...loadOptions, timeout: 100 });
-      Math.seedrandom('mars-runtime');
-      this.composition = await this.player.play(this.scene, playerOptions ?? { pauseOnFirstFrame: true });
-    } else {
-      getDefaultTemplateCanvasPool().dispose();
-      const assetManager = new AssetManager({ ...loadOptions, timeout: 100, autoplay: false });
-      const json = await assetManager.loadScene(url);
+    this.player.destroyCurrentCompositions();
+    // getDefaultTemplateCanvasPool().dispose();
+    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false });
+    const json = await assetManager.loadScene(url);
 
-      compatibleCalculateItem(json.jsonScene.compositions[0]);
-      this.player.destroyCurrentCompositions();
-      this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
-      Math.seedrandom('mars-runtime');
-      this.player.gotoAndStop(0);
-    }
+    // TODO 兼容函数，endbehaviour 改造后移除
+    compatibleCalculateItem(json.jsonScene.compositions[0]);
+
+    this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
+    Math.seedrandom('mars-runtime');
+    this.player.gotoAndStop(0);
   }
 
   gotoTime (newtime) {
-
     const time = newtime;
-
-    // if (this.oldVersion) {
-    //   // 兼容旧 Player 设置结束行为为重播时在第duration秒会回到第0帧
-    //   if (this.composition.content.endBehavior === 5 && newtime === this.composition.content.duration) {
-    //     time -= 0.01;
-    //   }
-    // } else {
-    //   // 兼容旧 Player 设置结束行为为重播时在第duration秒会回到第0帧
-    //   if (this.composition.rootItem.endBehavior === 5 && newtime === this.composition.rootItem.duration) {
-    //     time -= 0.01;
-    //   }
-    // }
-
     const deltaTime = time - this.lastTime;
 
     this.lastTime = newtime;
@@ -170,7 +151,7 @@ export class TestPlayer {
         const subIndex = Math.floor(Math.random() * 0.9999999 * particleCount);
         const mesh = item.particleMesh;
 
-        if (typeof itemList[index].getParticleBoxes === 'function') {
+        if (typeof itemList[index].getParticleBoxes === 'function' && subIndex < item.getParticleBoxes().length) {
           const pos = item.getParticleBoxes().reverse()[subIndex].center;
 
           viewProjection.projectPoint(pos, inPosition);
@@ -226,27 +207,27 @@ export class TestController {
     this.newPlayer = undefined;
   }
 
-  async createPlayers (width, height, renderFramework, isEditor = false) {
-    const playerScript = await this.loadOldPlayer();
-    const modelPlugin = await this.loadOldModelPlugin();
-    const spinePlugin = await this.loadOldSpinePlugin();
+  async createPlayers (width, height, renderFramework, isEditor = true) {
+    await this.loadOldPlayer();
+    await this.loadOldModelPlugin();
+    await this.loadOldSpinePlugin();
 
     playerOptions.env = isEditor ? 'editor' : '';
 
     this.renderFramework = renderFramework;
-    if (window.mars.MarsPlayer) {
+    if (window.ge.Player) {
       this.oldPlayer = new TestPlayer(
-        width, height, window.mars.MarsPlayer, playerOptions, renderFramework,
-        window.mars.registerPlugin, window.mars.AbstractPlugin, window.mars.VFXItem,
-        null, true
+        width, height, window.ge.Player, playerOptions, renderFramework,
+        window.ge.registerPlugin, window.ge.AbstractPlugin, window.ge.VFXItem,
+        window.ge.AssetManager, true
       );
       this.newPlayer = new TestPlayer(
         width, height, Player, playerOptions, renderFramework,
-        registerPlugin, AbstractPlugin, VFXItem, null, false
+        registerPlugin, AbstractPlugin, VFXItem, AssetManager, false
       );
       console.info('Create all players');
     } else {
-      console.info(`Create player error: ${e}`);
+      console.info('Create player error: window.ge.EffectsPlayer is undefined');
     }
   }
 
@@ -259,19 +240,19 @@ export class TestController {
   }
 
   async loadOldPlayer () {
-    const playerAddress = `https://gw.alipayobjects.com/os/lib/galacean/mars-player/${oldVersion}/dist/index.min.js`;
+    const playerAddress = `https://unpkg.com/@galacean/effects@${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(playerAddress);
   }
 
   async loadOldModelPlugin () {
-    const pluginAddress = `https://gw.alipayobjects.com/os/lib/galacean/mars-plugin-model/${oldVersion}/dist/index.min.js`;
+    const pluginAddress = `https://unpkg.com/@galacean/effects-plugin-model@${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(pluginAddress);
   }
 
   async loadOldSpinePlugin () {
-    const spineAddress = `https://gw.alipayobjects.com/os/lib/galacean/mars-plugin-spine/${oldVersion}/dist/index.min.js`;
+    const spineAddress = `https://unpkg.com/@galacean/effects-plugin-spine@${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(spineAddress);
   }
