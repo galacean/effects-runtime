@@ -8,6 +8,7 @@ import {
   spec,
   math,
   AssetManager,
+  getDefaultTemplateCanvasPool,
 } from '@galacean/effects';
 
 const { Vector3, Matrix4 } = math;
@@ -52,8 +53,12 @@ export class TestPlayer {
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
     Math.seedrandom('mars-runtime');
     this.player.destroyCurrentCompositions();
+    // getDefaultTemplateCanvasPool().dispose();
     const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false });
     const json = await assetManager.loadScene(url);
+
+    // TODO 兼容函数，endbehaviour 改造后移除
+    compatibleCalculateItem(json.jsonScene.compositions[0]);
 
     this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
     Math.seedrandom('mars-runtime');
