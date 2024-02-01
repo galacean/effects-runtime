@@ -95,7 +95,6 @@ export class CompositionSourceManager implements Disposable {
     };
   }
 
-  // TODO [1.31] @十弦，对比改动
   private assembleItems (composition: spec.Composition) {
     const items: any[] = [];
 

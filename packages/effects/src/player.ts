@@ -587,15 +587,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       }
       // TODO: [1.31] @十弦 验证
       if (!composition.isDestroyed && composition.renderer) {
-        const needResume = composition.getPaused();
-
-        if (needResume) {
-          composition.resume();
-        }
         composition.update(dt, false);
-        if (needResume) {
-          composition.pause();
-        }
       }
       if (!composition.isDestroyed) {
         this.compositions.push(composition);
