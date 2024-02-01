@@ -84,6 +84,7 @@ export class SpineComponent extends RendererComponent {
     // @ts-expect-error
     this.renderer = options.content.renderer;
 
+    this.state.apply(this.skeleton);
     this.update(0);
     this.resize();
   }
@@ -95,6 +96,7 @@ export class SpineComponent extends RendererComponent {
 
     this.state.update(dt / 1000);
     this.state.apply(this.skeleton);
+    this.skeleton.update(dt / 1000);
     this.skeleton.updateWorldTransform(Physics.update);
     this.content?.update();
   }
@@ -130,20 +132,19 @@ export class SpineComponent extends RendererComponent {
 
     this.setSkin(skin);
     this.state = new AnimationState(this.animationStateData);
-    const loop = this.item.endBehavior === spec.ItemEndBehavior.loop;
 
     if (activeAnimation.length === 1) {
       // 兼容旧JSON，根据时长计算速度
       if (isNaN(spineOptions.speed as number)) {
         const speed = Number((getAnimationDuration(this.skeletonData, activeAnimation[0]) / this.item.duration).toFixed(2));
 
-        this.setAnimation(activeAnimation[0], loop, speed);
+        this.setAnimation(activeAnimation[0], speed);
       } else {
-        this.setAnimation(activeAnimation[0], loop, spineOptions.speed);
+        this.setAnimation(activeAnimation[0], spineOptions.speed);
       }
 
     } else {
-      this.setAnimationList(activeAnimation, loop, spineOptions.speed);
+      this.setAnimationList(activeAnimation, spineOptions.speed);
     }
     this.pma = atlas.pages[0].pma;
     this.content = new SlotGroup(this.skeleton.drawOrder, {
@@ -211,20 +212,28 @@ export class SpineComponent extends RendererComponent {
     }
   }
 
-  setAnimation (animation: string, loop?: boolean, speed?: number) {
+  setAnimation (animation: string, speed?: number) {
     if (!this.skeleton || !this.state) {
       throw new Error('Set animation before skeleton create');
     }
     if (!this.animationList.length) {
       throw new Error('animationList is empty, check your spine file');
     }
+    const loop = this.item.endBehavior === spec.ItemEndBehavior.loop;
+    const listener = this.state.tracks[0]?.listener;
 
+    if (listener) {
+      listener.end = () => { };
+    }
+    this.state.clearTracks();
+    this.skeleton.setToSetupPose();
     if (!this.animationList.includes(animation)) {
-      console.warn(`animation ${animation} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}`);
+      console.warn(`animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}`);
+
       this.state.setAnimation(0, this.animationList[0], loop);
       this.activeAnimation = [this.animationList[0]];
     } else {
-      this.state.addAnimation(0, animation, loop, 0);
+      this.state.setAnimation(0, animation, loop);
       this.activeAnimation = [animation];
     }
     if (!isNaN(speed as number)) {
@@ -232,18 +241,29 @@ export class SpineComponent extends RendererComponent {
     }
   }
 
-  setAnimationList (animationList: string[], loop?: boolean, speed?: number) {
+  setAnimationList (animationList: string[], speed?: number) {
     if (!this.skeleton || !this.state) {
       throw new Error('Set animation before skeleton create');
     }
     if (!this.animationList.length) {
-      throw new Error('animationList is empty, check your spine file');
+      throw new Error('animationList is empty, please check your setting');
+    }
+    if (animationList.length === 1) {
+      this.setAnimation(animationList[0], speed);
+
+      return;
+    }
+    const listener = this.state.tracks[0]?.listener;
+
+    if (listener) {
+      listener.end = () => { };
     }
     this.state.clearTracks();
+    this.skeleton.setToSetupPose();
     for (const animation of animationList) {
       const trackEntry = this.state.addAnimation(0, animation, false);
 
-      if (loop) {
+      if (this.item.endBehavior === spec.ItemEndBehavior.loop) {
         const listener: AnimationStateListener = {
           end: () => {
             const trackEntry = this.state.addAnimation(0, animation, false);

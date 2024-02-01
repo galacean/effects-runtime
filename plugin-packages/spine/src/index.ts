@@ -11,7 +11,7 @@ import {
 } from './utils';
 
 export { SpineVFXItem } from './spine-vfx-item';
-
+export { SpineComponent } from './spine-component';
 export * from '@esotericsoftware/spine-core';
 export * from './spine-loader';
 export {

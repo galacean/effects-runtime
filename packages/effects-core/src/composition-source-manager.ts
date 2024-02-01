@@ -151,7 +151,6 @@ export class CompositionSourceManager implements Disposable {
           }
 
           ref.items.forEach((item: Record<string, any>) => {
-            item.listIndex = listOrder++;
             this.processMask(item.content);
           });
           itemProps.items = ref.items;

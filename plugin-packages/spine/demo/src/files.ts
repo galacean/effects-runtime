@@ -132,10 +132,10 @@ export const direct: Record<string, FileFormat> = {
     skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/67359691182827/dragon-ess.skel',
   },
   mix: {
-    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/67371559290270/mix-and-match-pro.atlas',
-    json: 'https://gw.alipayobjects.com/os/gltf-asset/67371559290270/mix-and-match-pro.json',
-    png: ['https://gw.alipayobjects.com/zos/gltf-asset/67371559290270/mix-and-match-pro.png'],
-    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/67371559290270/mix-and-match-pro.skel',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/06774703267820/mix-and-match-pro.atlas',
+    json: 'https://gw.alipayobjects.com/os/gltf-asset/06774703267820/mix-and-match-pro.json',
+    png: ['https://gw.alipayobjects.com/zos/gltf-asset/06774703267820/mix-and-match-pro.png'],
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/06774703267820/mix-and-match-pro.skel',
   },
   tank: {
     atlas: 'https://gw.alipayobjects.com/os/gltf-asset/66074515605839/tank-pro.atlas',
