@@ -6,7 +6,7 @@ import type {
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  isArray, isObject, isScene, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
+  isArray, isObject, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -585,7 +585,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
         this.compositions.push(composition);
         continue;
       }
-      // TODO: [1.31] @十弦 验证
       if (!composition.isDestroyed && composition.renderer) {
         composition.update(dt, false);
       }

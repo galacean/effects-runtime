@@ -263,7 +263,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     }
     this.parent = vfxItem;
     if (vfxItem) {
-      if (! VFXItem.isCamera(this)) {
+      if (!VFXItem.isCamera(this)) {
         this.transform.parentTransform = vfxItem.transform;
       }
       vfxItem.children.push(this);
