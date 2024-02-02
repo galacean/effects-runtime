@@ -146,11 +146,8 @@ export class CompositionComponent extends ItemBehaviour {
           }
         }
         item.parent = this.item;
-        item.transform.parentTransform = this.transform;
-        // TODO: [1.31] @十弦 加个预合成判断
         // 相机不跟随合成移动
-        item.transform.parentTransform = VFXItem.isCamera(item) ? new Transform() : this.transform;
-
+        item.transform.parentTransform = itemData.type === spec.ItemType.camera ? new Transform() : this.transform;
         if (VFXItem.isExtraCamera(item)) {
           this.item.composition.extraCamera = item;
         }

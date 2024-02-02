@@ -95,7 +95,6 @@ export class CompositionSourceManager implements Disposable {
     };
   }
 
-  // TODO [1.31] @十弦，对比改动
   private assembleItems (composition: spec.Composition) {
     const items: any[] = [];
 
@@ -151,7 +150,6 @@ export class CompositionSourceManager implements Disposable {
           }
 
           ref.items.forEach((item: Record<string, any>) => {
-            item.listIndex = listOrder++;
             this.processMask(item.content);
           });
           itemProps.items = ref.items;

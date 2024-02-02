@@ -4,7 +4,7 @@ import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 import { TreeGui } from './gui/tree-gui';
 
-const json = inspireList.applause.url;
+const json = inspireList.turnplate.url;
 const container = document.getElementById('J-container');
 
 const treeGui = new TreeGui();
@@ -13,7 +13,11 @@ const treeGui = new TreeGui();
   try {
     const player = createPlayer();
 
-    const comp = await player.loadScene(json);
+    const comp = await player.loadScene(json, {
+      autoplay: false,
+    });
+
+    player.gotoAndStop(0);
 
     treeGui.setComposition(comp);
   } catch (e) {
