@@ -399,10 +399,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.assetManager = new AssetManager(opts);
     }
 
+    // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
+    this.renderer.engine.clearResources(); // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
     const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
 
-    // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    this.renderer.engine.clearResources();
     await this.renderer.engine.addPackageDatas(scene);
 
     for (let i = 0; i < scene.textureOptions.length; i++) {
