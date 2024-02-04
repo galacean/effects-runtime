@@ -1,8 +1,8 @@
 import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
-import type { Engine } from '.';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
+import type { Engine } from './engine';
 
 export interface TransformProps {
   position?: spec.vec3 | Vector3,
