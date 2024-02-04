@@ -103,7 +103,7 @@ export class Input {
   }
 
   dispose () {
-    this.canvas.removeEventListener('pointermove', this.onPointerMove);
+    document.addEventListener('pointermove', this.onPointerMove);
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
     this.canvas.removeEventListener('pointerup', this.onPointerUp);
     this.canvas.removeEventListener('wheel', this.onMouseWheel);

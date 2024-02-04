@@ -100,7 +100,7 @@ export abstract class Geometry extends EffectsObject {
    * 设置 Geometry 的 indices 数据。
    * @param data - 要设置的 indices 数据
    */
-  abstract setIndexData (data?: spec.TypedArray): void;
+  abstract setIndexData (data: spec.TypedArray): void;
 
   /**
    * 设置 indices 的部分数据，当 indices 数据只有部分更新时，可调用此函数。

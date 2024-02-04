@@ -403,9 +403,9 @@ export class TrailMesh {
     if (this.trailCursors[index] !== 0) {
       const pointCountPerTrail = this.pointCountPerTrail;
       const indicesPerTrail = (pointCountPerTrail - 1) * 6;
-      const indices = this.geometry.getIndexData();
+      const indices = this.geometry.getIndexData()!;
 
-      indices?.set(new Uint16Array(indicesPerTrail), index * indicesPerTrail);
+      indices.set(new Uint16Array(indicesPerTrail), index * indicesPerTrail);
       this.geometry.setIndexData(indices);
 
       this.trailCursors[index] = 0;

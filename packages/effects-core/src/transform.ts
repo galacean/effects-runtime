@@ -1,8 +1,8 @@
 import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
+import type { Engine } from '.';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
-import type { Engine } from './engine';
 
 export interface TransformProps {
   position?: spec.vec3 | Vector3,
@@ -377,6 +377,10 @@ export class Transform implements Disposable {
     if (this.valid) {
       if (this.dirtyFlags.localData) {
         this.localMatrix.compose(this.position, this.quat, this.scale, this.anchor);
+        this.localMatrix.multiply(new Matrix4(this.size.x, 0, 0, 0,
+          0, this.size.y, 0, 0,
+          0, 0, 1, 0,
+          0, 0, 0, 1));
         this.dirtyFlags.localMatrix = true;
       }
       this.dirtyFlags.localData = false;
@@ -532,7 +536,7 @@ export class Transform implements Disposable {
     const transformData = this.taggedProperties;
 
     transformData.position = this.position.clone();
-    transformData.rotation = { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z };
+    transformData.rotation = { x:this.rotation.x, y:this.rotation.y, z:this.rotation.z };
     transformData.scale = this.scale.clone();
 
     return transformData;
