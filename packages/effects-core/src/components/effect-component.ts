@@ -1,19 +1,17 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import type { TriangleLike } from '@galacean/effects-math/es/core/type';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { GeometryData } from '../deserializer';
 import { DataType } from '../deserializer';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
+import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
+import { HitTestType } from '../plugins';
 import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
 import type { Disposable } from '../utils';
 import { DestroyOptions, generateGUID } from '../utils';
 import { RendererComponent } from './renderer-component';
-import { glContext, type spec } from '..';
-import { trianglesFromRect } from '../math';
-import type { HitTestTriangleParams, BoundingBoxTriangle } from '../plugins';
-import { HitTestType } from '../plugins';
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { TriangleLike } from '@galacean/effects-math/es/core';
 
 let seed = 1;
 
