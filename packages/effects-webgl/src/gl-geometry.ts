@@ -432,7 +432,7 @@ export class GLGeometry extends Geometry {
       geometryProps.indices = { data:new Uint32Array(fullGeometryData.indices) };
       geometryProps.drawCount = fullGeometryData.indices.length;
     } else {
-      geometryProps.drawCount = fullGeometryData.vertices.length;
+      geometryProps.drawCount = fullGeometryData.vertices.length / 3;
     }
 
     this.processProps(geometryProps);
