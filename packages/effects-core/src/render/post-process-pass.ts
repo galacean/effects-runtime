@@ -4,6 +4,7 @@ import { Material } from '../material';
 import type { Texture } from '../texture';
 import { Geometry } from './geometry';
 import { Mesh } from './mesh';
+import type { RenderingData } from './render-frame';
 import { getTextureSize } from './render-frame';
 import type { RenderPassOptions } from './render-pass';
 import { RenderTargetHandle, TextureStoreAction } from './render-pass';
@@ -59,7 +60,7 @@ export class BloomThresholdPass extends RenderPass {
     renderer.setFrameBuffer(this.frameBuffer!);
   }
 
-  override execute (renderer: Renderer): void {
+  override execute (renderer: Renderer, renderingData: RenderingData): void {
     renderer.clear({
       colorAction: TextureStoreAction.clear,
       depthAction: TextureStoreAction.clear,
@@ -129,7 +130,7 @@ export class HQGaussianDownSamplePass extends RenderPass {
     renderer.setFrameBuffer(this.frameBuffer!);
   }
 
-  override execute (renderer: Renderer): void {
+  override execute (renderer: Renderer, renderingData: RenderingData): void {
     renderer.clear({
       colorAction: TextureStoreAction.clear,
       depthAction: TextureStoreAction.clear,
@@ -190,7 +191,7 @@ export class HQGaussianUpSamplePass extends RenderPass {
     renderer.setFrameBuffer(this.frameBuffer!);
   }
 
-  override execute (renderer: Renderer): void {
+  override execute (renderer: Renderer, renderingData: RenderingData): void {
     renderer.clear({
       colorAction: TextureStoreAction.clear,
       depthAction: TextureStoreAction.clear,
@@ -256,7 +257,7 @@ export class ToneMappingPass extends RenderPass {
     renderer.setFrameBuffer(null);
   }
 
-  override execute (renderer: Renderer): void {
+  override execute (renderer: Renderer, renderingData: RenderingData): void {
     renderer.clear({
       colorAction: TextureStoreAction.clear,
       depthAction: TextureStoreAction.clear,

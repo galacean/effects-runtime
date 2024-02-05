@@ -1,4 +1,4 @@
-import type { Disposable, FrameBuffer, Renderer, SharedShaderWithSource } from '@galacean/effects-core';
+import type { Disposable, FrameBuffer, RenderPassOptions, Renderer, RenderingData, SharedShaderWithSource } from '@galacean/effects-core';
 import {
   createShaderWithMarcos, glContext, GLSLVersion, RenderPass, ShaderType, TextureLoadAction,
   TextureSourceType, Mesh,
@@ -20,14 +20,15 @@ export interface RendererExtensions {
 const copyShaderId = '$mri-internal-copy';
 
 export class ExtWrap implements RendererExtensions, Disposable {
-  private copyRenderPass?: RenderPass;
+  private copyRenderPass?: CopyTexturePass;
 
   constructor (
     public readonly renderer: GLRenderer,
   ) {
     if (renderer.engine.gpuCapability.level === 1) {
-      this.copyRenderPass = this.createCopyRenderPass().initialize(renderer);
-      const shaderSource = this.copyRenderPass.meshes[0].material.shaderSource as SharedShaderWithSource;
+      this.copyRenderPass = this.createCopyRenderPass();
+      this.copyRenderPass.initialize(renderer);
+      const shaderSource = this.copyRenderPass.mesh.material.shaderSource as SharedShaderWithSource;
 
       renderer.pipelineContext.shaderLibrary.addShader(shaderSource);
     }
@@ -81,7 +82,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
         fb.viewport[2] = target.getWidth() || source.getWidth();
         fb.viewport[3] = target.getHeight() || source.getHeight();
         renderer.glRenderer.resetColorAttachments(fb, [target]);
-        const mesh = rp.meshes[0];
+        const mesh = rp.mesh;
 
         mesh.material.setTexture('uTex', source);
         renderer.renderRenderPass(rp);
@@ -89,10 +90,36 @@ export class ExtWrap implements RendererExtensions, Disposable {
     }
   }
 
-  private createCopyRenderPass (): RenderPass {
-    const name = 'mri-copy-mesh';
+  private createCopyRenderPass () {
     const attachment = { texture: { format: glContext.RGBA } };
-    const engine = this.renderer.engine;
+
+    return new CopyTexturePass(this.renderer, {
+      name: 'mri-copy-rp',
+      clearAction: {
+        colorAction: TextureLoadAction.whatever,
+      },
+      attachments: [attachment],
+    });
+  }
+
+  dispose () {
+    if (this.renderer) {
+      this.copyRenderPass?.dispose();
+      // @ts-expect-error
+      this.renderer = undefined;
+    }
+  }
+}
+
+class CopyTexturePass extends RenderPass {
+  currentFrameBuffer: FrameBuffer;
+  mesh: Mesh;
+
+  constructor (renderer: Renderer, options: RenderPassOptions) {
+    super(renderer, options);
+
+    const engine = renderer.engine;
+    const name = 'mri-copy-mesh';
     const geometry = new GLGeometry(
       engine,
       {
@@ -138,43 +165,22 @@ export class ExtWrap implements RendererExtensions, Disposable {
     material.depthTest = false;
     material.culling = false;
 
-    const mesh = new Mesh(engine, {
+    this.mesh = new Mesh(engine, {
       name, geometry, material,
       priority: 0,
     });
-
-    return new CopyTexturePass(this.renderer, {
-      name: 'mri-copy-rp',
-      clearAction: {
-        colorAction: TextureLoadAction.whatever,
-      },
-      attachments: [attachment],
-      meshes: [mesh],
-    });
   }
-
-  dispose () {
-    if (this.renderer) {
-      this.copyRenderPass?.dispose();
-      // @ts-expect-error
-      this.renderer = undefined;
-    }
-  }
-}
-
-class CopyTexturePass extends RenderPass {
-  currentFrameBuffer: FrameBuffer;
 
   override configure (renderer: Renderer): void {
     this.currentFrameBuffer = renderer.getFrameBuffer()!;
     renderer.setFrameBuffer(this.frameBuffer!);
   }
 
-  override execute (renderer: Renderer): void {
+  override execute (renderer: Renderer, renderingData: RenderingData): void {
     if (this.clearAction) {
       renderer.clear(this.clearAction);
     }
-    renderer.renderMeshes(this.meshes);
+    renderer.renderMeshes([this.mesh]);
     if (this.storeAction) {
       renderer.clear(this.storeAction);
     }

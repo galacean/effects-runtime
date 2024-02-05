@@ -435,7 +435,7 @@ export class RenderPass implements Disposable, Sortable {
   /**
    * 执行当前pass，每帧调用一次
    */
-  execute (renderer: Renderer) {
+  execute (renderer: Renderer, renderingData: RenderingData) {
     renderer.clear(this.clearAction);
     renderer.renderMeshes(this.meshes);
     renderer.clear(this.storeAction);

@@ -3,7 +3,7 @@ import type { Ray } from '@galacean/effects-math/es/core/index';
 import type { JSONValue } from './downloader';
 import type { Scene } from './scene';
 import type { Disposable, LostHandler } from './utils';
-import { assertExist, logger, noop, removeItem } from './utils';
+import { OrderType, addByOrder, assertExist, logger, noop, removeItem, sortByOrder } from './utils';
 import { Transform } from './transform';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
@@ -535,6 +535,10 @@ export class Composition implements Disposable, LostHandler {
 
     frame._renderPasses[0].meshes.length = 0;
 
+    const renderQueue = frame.renderQueue;
+
+    renderQueue.length = 0;
+
     this.postLoaders.length = 0;
     this.pluginSystem.plugins.forEach(loader => {
       if (loader.prepareRenderFrame(this, frame)) {
@@ -548,7 +552,8 @@ export class Composition implements Disposable, LostHandler {
 
       for (const rendererComponent of rendererComponents) {
         if (rendererComponent.isActiveAndEnabled) {
-          frame._renderPasses[0].addMesh(rendererComponent);
+          frame._renderPasses[0].meshes.push(rendererComponent);
+          addByOrder(renderQueue, rendererComponent);
         }
       }
     }
@@ -559,7 +564,8 @@ export class Composition implements Disposable, LostHandler {
 
         for (const rendererComponent of rendererComponents) {
           if (rendererComponent.isActiveAndEnabled) {
-            frame._renderPasses[0].addMesh(rendererComponent);
+            frame._renderPasses[0].meshes.push(rendererComponent);
+            addByOrder(renderQueue, rendererComponent);
           }
         }
       }

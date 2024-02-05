@@ -110,6 +110,7 @@ export class GLRenderer extends Renderer implements Disposable {
 
     this.renderingData.currentFrame = frame;
     this.renderingData.currentCamera = frame.camera;
+    this.renderingData.renderQueue = frame.renderQueue;
 
     // 根据 priority 排序 pass
     sortByOrder(passes);
@@ -133,7 +134,7 @@ export class GLRenderer extends Renderer implements Disposable {
     // 配置当前 renderer 的 RT
     pass.configure(this);
     // 执行当前 pass
-    pass.execute(this);
+    pass.execute(this, this.renderingData);
   }
 
   override renderMeshes (meshes: RendererComponent[]) {

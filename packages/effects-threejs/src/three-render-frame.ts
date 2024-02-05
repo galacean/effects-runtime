@@ -46,10 +46,10 @@ export class ThreeRenderFrame extends RenderFrame {
   /**
    * 创建资源（滤镜元素会用到）
    */
-  override createResource (): void {
-    // @ts-expect-error
-    this.resource = {};
-  }
+  // override createResource (): void {
+  //   // @ts-expect-error
+  //   this.resource = {};
+  // }
 
   /**
    * 创建默认 mesh（滤镜元素会用到）

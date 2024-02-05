@@ -38,6 +38,10 @@ export interface RenderingData {
    * 当前渲染的 RenderPass
    */
   currentPass: RenderPass,
+  /**
+   * 渲染组件列表
+   */
+  renderQueue: RendererComponent[],
 }
 
 /**
@@ -869,67 +873,67 @@ export class RenderFrame implements Disposable {
   /**
    * 创建 RenderPass 切分时需要的 GPU 资源
    */
-  createResource () {
-    const engine = this.renderer.engine;
+  // createResource () {
+  //   const engine = this.renderer.engine;
 
-    if (!this.resource) {
-      const { detail, level } = engine.gpuCapability;
-      const width = this.renderer.getWidth();
-      const height = this.renderer.getHeight();
-      const filter = level === 2 ? glContext.LINEAR : glContext.NEAREST;
-      const texA = Texture.create(
-        engine,
-        {
-          sourceType: TextureSourceType.framebuffer,
-          format: glContext.RGBA,
-          name: 'frame_a',
-          minFilter: filter,
-          magFilter: filter,
-        }
-      );
-      const texB = Texture.create(
-        engine,
-        {
-          sourceType: TextureSourceType.framebuffer,
-          format: glContext.RGBA,
-          data: {
-            width,
-            height,
-          },
-          minFilter: filter,
-          magFilter: filter,
-          name: 'frame_b',
-        }
-      );
+  //   if (!this.resource) {
+  //     const { detail, level } = engine.gpuCapability;
+  //     const width = this.renderer.getWidth();
+  //     const height = this.renderer.getHeight();
+  //     const filter = level === 2 ? glContext.LINEAR : glContext.NEAREST;
+  //     const texA = Texture.create(
+  //       engine,
+  //       {
+  //         sourceType: TextureSourceType.framebuffer,
+  //         format: glContext.RGBA,
+  //         name: 'frame_a',
+  //         minFilter: filter,
+  //         magFilter: filter,
+  //       }
+  //     );
+  //     const texB = Texture.create(
+  //       engine,
+  //       {
+  //         sourceType: TextureSourceType.framebuffer,
+  //         format: glContext.RGBA,
+  //         data: {
+  //           width,
+  //           height,
+  //         },
+  //         minFilter: filter,
+  //         magFilter: filter,
+  //         name: 'frame_b',
+  //       }
+  //     );
 
-      const depthStencilType = detail.readableDepthStencilTextures && detail.writableFragDepth ?
-        RenderPassAttachmentStorageType.depth_24_stencil_8_texture :
-        RenderPassAttachmentStorageType.depth_stencil_opaque;
-      const resRP = new RenderPass(this.renderer, {
-        depthStencilAttachment: { storageType: depthStencilType },
-        attachments: [{ texture: texA }],
-      }).initialize(this.renderer);
-      const finalCopyRP = new FinalCopyRP(this.renderer, {
-        name: 'effects-final-copy',
-        priority: RenderPassPriorityNormal + 600,
-        clearAction: {
-          depthAction: TextureLoadAction.clear,
-          stencilAction: TextureLoadAction.clear,
-          colorAction: TextureLoadAction.clear,
-        },
-        meshOrder: OrderType.ascending,
-        meshes: [this.createCopyMesh({ blend: true, depthTexture: resRP.getDepthAttachment()?.texture })],
-      });
+  //     const depthStencilType = detail.readableDepthStencilTextures && detail.writableFragDepth ?
+  //       RenderPassAttachmentStorageType.depth_24_stencil_8_texture :
+  //       RenderPassAttachmentStorageType.depth_stencil_opaque;
+  //     const resRP = new RenderPass(this.renderer, {
+  //       depthStencilAttachment: { storageType: depthStencilType },
+  //       attachments: [{ texture: texA }],
+  //     }).initialize(this.renderer);
+  //     const finalCopyRP = new FinalCopyRP(this.renderer, {
+  //       name: 'effects-final-copy',
+  //       priority: RenderPassPriorityNormal + 600,
+  //       clearAction: {
+  //         depthAction: TextureLoadAction.clear,
+  //         stencilAction: TextureLoadAction.clear,
+  //         colorAction: TextureLoadAction.clear,
+  //       },
+  //       meshOrder: OrderType.ascending,
+  //       meshes: [this.createCopyMesh({ blend: true, depthTexture: resRP.getDepthAttachment()?.texture })],
+  //     });
 
-      this.resource = {
-        color_a: resRP.attachments[0].texture,
-        color_b: texB,
-        finalCopyRP,
-        depthStencil: resRP.depthAttachment,
-        resRP,
-      };
-    }
-  }
+  //     this.resource = {
+  //       color_a: resRP.attachments[0].texture,
+  //       color_b: texB,
+  //       finalCopyRP,
+  //       depthStencil: resRP.depthAttachment,
+  //       resRP,
+  //     };
+  //   }
+  // }
 
   // TODO tex和size没有地方用到。
   /**
@@ -1006,23 +1010,23 @@ export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: 
   return renderPasses[index - 1];
 }
 
-class FinalCopyRP extends RenderPass {
-  prePassTexture: Texture;
-  override configure (renderer: Renderer): void {
-    this.prePassTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
-    renderer.setFrameBuffer(null);
-  }
+// class FinalCopyRP extends RenderPass {
+//   prePassTexture: Texture;
+//   override configure (renderer: Renderer): void {
+//     this.prePassTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
+//     renderer.setFrameBuffer(null);
+//   }
 
-  override execute (renderer: Renderer): void {
-    renderer.clear(this.clearAction);
-    this.meshes[0].material.setTexture('uFilterSource', this.prePassTexture);
-    this.meshes[0].material.setVector2('uFilterSourceSize', getTextureSize(this.prePassTexture));
-    renderer.renderMeshes(this.meshes);
-    if (this.storeAction) {
-      renderer.clear(this.storeAction);
-    }
-  }
-}
+//   override execute (renderer: Renderer, renderingData: RenderingData): void {
+//     renderer.clear(this.clearAction);
+//     this.meshes[0].material.setTexture('uFilterSource', this.prePassTexture);
+//     this.meshes[0].material.setVector2('uFilterSourceSize', getTextureSize(this.prePassTexture));
+//     renderer.renderMeshes(this.meshes);
+//     if (this.storeAction) {
+//       renderer.clear(this.storeAction);
+//     }
+//   }
+// }
 
 export class GlobalUniforms {
   floats: Record<string, number> = {};
