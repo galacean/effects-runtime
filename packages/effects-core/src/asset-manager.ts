@@ -182,11 +182,16 @@ export class AssetManager implements Disposable {
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
       if (!cancelLoading) {
         const st = performance.now();
-        const result = await func();
 
-        timeInfos.push(`[${label}: ${(performance.now() - st).toFixed(2)}]`);
+        try {
+          const result = await func();
 
-        return result;
+          timeInfos.push(`[${label}: ${(performance.now() - st).toFixed(2)}]`);
+
+          return result;
+        } catch (e) {
+          throw new Error(`load error in ${label}, ${e}`);
+        }
       }
       throw new Error('load canceled.');
     };
