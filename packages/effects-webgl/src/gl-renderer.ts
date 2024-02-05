@@ -168,6 +168,7 @@ export class GLRenderer extends Renderer implements Disposable {
     if (!geometry || !material) {
       return;
     }
+    material.initialize();
     geometry.initialize();
     const renderingData = this.renderingData;
 

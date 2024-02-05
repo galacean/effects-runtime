@@ -49,7 +49,6 @@ export class Gizmos {
         },
       }
     );
-    this.material.initialize();
     this.geometry = Geometry.create(this.engine);
   }
 
