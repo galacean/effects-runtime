@@ -190,7 +190,7 @@ export class AssetManager implements Disposable {
 
           return result;
         } catch (e) {
-          throw new Error(`load error in ${label},  ${e}`);
+          throw new Error(`load error in ${label}, ${e}`);
         }
       }
       throw new Error('load canceled.');
