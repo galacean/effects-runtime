@@ -1,7 +1,8 @@
 import type { Camera } from '@galacean/effects';
 import { math } from '@galacean/effects';
-import { treeGui } from '../utils';
+import { composition, currentNode, treeData, treeGui } from '../utils';
 import { KeyCode, type Input } from './input';
+import { Gizmos } from '../utils/gizmos';
 const { Vector2, Vector3, Matrix4, Quaternion } = math;
 
 type Vector2 = math.Vector2;
@@ -38,6 +39,18 @@ export class OrbitController {
   }
 
   update () {
+    if (this.input.getMouseButton(0)) {
+      const res = composition.hitTest((this.input.mousePosition.x / this.input.canvasRect.width) * 2 - 1, -((this.input.mousePosition.y / this.input.canvasRect.height) * 2 - 1), true);
+
+      const gizmo = new Gizmos(composition.getEngine());
+      const hitRes = res[res.length - 1];
+
+      if (hitRes) {
+        currentNode.value = treeData.value[0].children![1];
+        gizmo.drawLine(new math.Vector3(0, 0, 10), hitRes.position);
+      }
+    }
+
     if (this.input.getMouseButton(0)) {
       this.handleRotate();
     }

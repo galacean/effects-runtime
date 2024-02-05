@@ -1,7 +1,7 @@
 import { ref } from 'vue';
-import type { Trees } from '@advjs/gui';
-
+import type { TreeNode, Trees } from '@advjs/gui';
 export * from './ge';
+
 export const treeData = ref<Trees>([
   {
     name: 'Level one 1',
@@ -69,3 +69,5 @@ export const treeData = ref<Trees>([
     ],
   },
 ]);
+
+export const currentNode = ref<TreeNode | undefined>(treeData.value[0]);

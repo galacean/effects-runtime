@@ -288,8 +288,8 @@ importers:
         version: 3.4.15(typescript@5.3.3)
     devDependencies:
       '@advjs/gui':
-        specifier: 0.0.4
-        version: 0.0.4(vue@3.4.15)
+        specifier: 0.0.5-beta.0
+        version: 0.0.5-beta.0(vue@3.4.15)
       '@antfu/eslint-config':
         specifier: ^2.6.3
         version: 2.6.3(@vue/compiler-sfc@3.4.15)(eslint@8.56.0)(typescript@5.3.3)
@@ -381,10 +381,10 @@ packages:
       - typescript
     dev: true
 
-  /@advjs/gui@0.0.4(vue@3.4.15):
-    resolution: {integrity: sha512-Lo3S7NlwuBpiMj5H+DINCESaMtxAuhJiU1q8qCDx59uk0fEheWInzITshVgiMPI5YxetpwekRztfWPMZzAcxLA==}
+  /@advjs/gui@0.0.5-beta.0(vue@3.4.15):
+    resolution: {integrity: sha512-AfZWMEW1O7HrdT0MAUxJGP4G/Z8F3SXhDEnBH4cwl3T8ZwbvOyU48ybg7MFXUBM8BpG78QFbUiZrE0ER0FoEaw==}
     dependencies:
-      '@headlessui/vue': 1.7.17(vue@3.4.15)
+      '@headlessui/vue': 1.7.18(vue@3.4.15)
       '@iconify-json/vscode-icons': 1.1.33
       '@iconify/vue': 4.1.1(vue@3.4.15)
       '@radix-ui/colors': 3.0.0
@@ -392,7 +392,7 @@ packages:
       '@types/wicg-file-system-access': 2023.10.4
       colord: 2.9.3
       consola: 3.2.3
-      radix-vue: 1.3.2(vue@3.4.15)
+      radix-vue: 1.4.1(vue@3.4.15)
       splitpanes: 3.1.5
     transitivePeerDependencies:
       - '@vue/composition-api'
@@ -2575,6 +2575,12 @@ packages:
       '@floating-ui/utils': 0.2.1
     dev: true
 
+  /@floating-ui/core@1.6.0:
+    resolution: {integrity: sha512-PcF++MykgmTj3CIyOQbKA/hDzOAiqI3mhuoN44WRCopIs1sgoDoU4oty4Jtqaj/y3oDU6fnVSm4QG0a3t5i0+g==}
+    dependencies:
+      '@floating-ui/utils': 0.2.1
+    dev: true
+
   /@floating-ui/dom@1.5.4:
     resolution: {integrity: sha512-jByEsHIY+eEdCjnTVu+E3ephzTOzkQ8hgUfGwos+bg7NlH33Zc5uO+QHz1mrQUOgIKKDD1RtS201P9NvAfq3XQ==}
     dependencies:
@@ -2582,14 +2588,21 @@ packages:
       '@floating-ui/utils': 0.2.1
     dev: true
 
+  /@floating-ui/dom@1.6.1:
+    resolution: {integrity: sha512-iA8qE43/H5iGozC3W0YSnVSW42Vh522yyM1gj+BqRwVsTNOyr231PsXDaV04yT39PsO0QL2QpbI/M0ZaLUQgRQ==}
+    dependencies:
+      '@floating-ui/core': 1.6.0
+      '@floating-ui/utils': 0.2.1
+    dev: true
+
   /@floating-ui/utils@0.2.1:
     resolution: {integrity: sha512-9TANp6GPoMtYzQdt54kfAyMmz1+osLlXdg2ENroU7zzrtflTLrrC/lgrIfaSe+Wu0b89GKccT7vxXA0MoAIO+Q==}
     dev: true
 
-  /@floating-ui/vue@1.0.3(vue@3.4.15):
-    resolution: {integrity: sha512-XCXiEoRDN1oT4z+wWUvQAuUg8qjJFDQByq/7wkT/d1FoXvoOK/vLD0wa/QcvwjjaT7C2dgXZ10AnLptM3s0u8w==}
+  /@floating-ui/vue@1.0.6(vue@3.4.15):
+    resolution: {integrity: sha512-EdrOljjkpkkqZnrpqUcPoz9NvHxuTjUtSInh6GMv3+Mcy+giY2cE2pHh9rpacRcZ2eMSCxel9jWkWXTjLmY55w==}
     dependencies:
-      '@floating-ui/dom': 1.5.4
+      '@floating-ui/dom': 1.6.1
       '@floating-ui/utils': 0.2.1
       vue-demi: 0.14.6(vue@3.4.15)
     transitivePeerDependencies:
@@ -2606,8 +2619,8 @@ packages:
     resolution: {integrity: sha512-BGs70djsX5/PQH8zG0US4pR840SMB3UT1IvglHba4bNUoQqzpcQL5Na0S4YZbV6BPzKLnW5A3r1LAI1ZWEKC1A==}
     dev: false
 
-  /@headlessui/vue@1.7.17(vue@3.4.15):
-    resolution: {integrity: sha512-hmJChv8HzKorxd9F70RGnECAwZfkvmmwOqreuKLWY/19d5qbWnSdw+DNbuA/Uo6X5rb4U5B3NrT+qBKPmjhRqw==}
+  /@headlessui/vue@1.7.18(vue@3.4.15):
+    resolution: {integrity: sha512-N9EUJY0sHhuJQ81oQlk+vmB80NwUXsyJjxOaBrzUyO+VHIZz7v/ffFICAlrtM4TxZaZFMCzehe74yEPSqkEJ9g==}
     engines: {node: '>=10'}
     peerDependencies:
       vue: ^3.2.0
@@ -7161,11 +7174,11 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
-  /radix-vue@1.3.2(vue@3.4.15):
-    resolution: {integrity: sha512-XhY1Cs6AvRgb1DvTisrY4XfX4aLWj9S1u/u/NCqOjfEHYaJsZ61Fbo66xB5EC22TV258Eu4njYI2CBpwV0dVxg==}
+  /radix-vue@1.4.1(vue@3.4.15):
+    resolution: {integrity: sha512-eJsyIHDZPfIdH0iqrfTODuklPqDXfO0iNDNI1isOYIr+ejmeCjP6Yw1LA7LtDryPnjsSkqj0t04DF7eBn2wtMQ==}
     dependencies:
       '@floating-ui/dom': 1.5.4
-      '@floating-ui/vue': 1.0.3(vue@3.4.15)
+      '@floating-ui/vue': 1.0.6(vue@3.4.15)
       fast-deep-equal: 3.1.3
     transitivePeerDependencies:
       - '@vue/composition-api'

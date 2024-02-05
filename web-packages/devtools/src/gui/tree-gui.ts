@@ -5,6 +5,7 @@ export class TreeGui {
   activeItem: VFXItem<VFXItemContent>;
   panel: any;
   private composition: Composition;
+  private guidToTreeNode: Record<string, any> = {};
 
   constructor () {
     this.panel =

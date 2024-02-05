@@ -35,7 +35,6 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
   await loadJson(json);
 
   await guiMainLoop();
-  inputControllerUpdate();
 }
 
 async function guiMainLoop () {
@@ -46,13 +45,10 @@ async function guiMainLoop () {
   treeGui.update();
   // inspectorGuiOld.update();
   await inspectorGui.update();
-  requestAnimationFrame(guiMainLoop);
-}
 
-function inputControllerUpdate () {
   orbitController.update();
   input.refreshStatus();
-  requestAnimationFrame(inputControllerUpdate);
+  requestAnimationFrame(guiMainLoop);
 }
 
 async function saveJSONFile (json: any) {
@@ -160,7 +156,9 @@ function buildProject (composition: Composition, json: any) {
   json.materials = [];
   json.textures = [];
   json.items = [];
-  for (const data of Object.values(effectsObjectDataMap)) {
+  for (const key of Object.keys(effectsObjectDataMap)) {
+    const data = effectsObjectDataMap[key];
+
     if (!data.id) {
       continue;
     }
@@ -252,7 +250,9 @@ async function saveScene (composition: Composition, json: any) {
   // json.materials = [];
   json.textures = [];
   json.items = [];
-  for (const data of Object.values(effectsObjectDataMap)) {
+  for (const key of Object.keys(effectsObjectDataMap)) {
+    const data = effectsObjectDataMap[key];
+
     if (!data.id) {
       continue;
     }
