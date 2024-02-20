@@ -1,5 +1,5 @@
 import type { Engine, GeometryData, GeometryProps, spec } from '@galacean/effects-core';
-import { BYTES_TYPE_MAP, Geometry, assertExist, generateEmptyTypedArray, glContext } from '@galacean/effects-core';
+import { assertExist, BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
 import { GLGPUBuffer } from './gl-gpu-buffer';
@@ -28,7 +28,7 @@ export class GLGeometry extends Geometry {
    * 索引缓冲区
    */
   indicesBuffer?: GLGPUBuffer;
-  drawCount: number;
+  drawCount = 0;
   drawStart: number;
   mode: number;
   /**
@@ -172,7 +172,7 @@ export class GLGeometry extends Geometry {
     return this.indices;
   }
 
-  setIndexData (data?: spec.TypedArray): void {
+  setIndexData (data: spec.TypedArray): void {
     if (
       data instanceof Uint8Array ||
       data instanceof Uint16Array ||
@@ -191,7 +191,7 @@ export class GLGeometry extends Geometry {
 
       if (this.indices.length < length) {
         // @ts-expect-error safe to use
-        const newData = new data.constructor(end);
+        const newData = new data.constructor(length);
 
         newData.set(this.indices);
         this.indices = newData;
@@ -328,7 +328,9 @@ export class GLGeometry extends Geometry {
     const usage = bufferUsage;
 
     this.drawStart = drawStart;
-    this.drawCount = isNaN(+(drawCount as number)) ? NaN : (drawCount as number);
+    if (drawCount !== undefined) {
+      this.drawCount = drawCount;
+    }
     this.mode = (isNaN(mode as number) ? glContext.TRIANGLES : mode) as number;
 
     Object.keys(props.attributes).forEach(name => {
@@ -430,7 +432,7 @@ export class GLGeometry extends Geometry {
       geometryProps.indices = { data: new Uint32Array(fullGeometryData.indices) };
       geometryProps.drawCount = fullGeometryData.indices.length;
     } else {
-      geometryProps.drawCount = fullGeometryData.vertices.length;
+      geometryProps.drawCount = fullGeometryData.vertices.length / 3;
     }
 
     this.processProps(geometryProps);
