@@ -5,7 +5,7 @@ type Vector3 = math.Vector3;
 
 export class Gizmos {
   private engine: Engine;
-  private rendere: Renderer;
+  private renderer: Renderer;
   private geometry: Geometry;
   private material: Material;
 
@@ -39,7 +39,7 @@ export class Gizmos {
 
   constructor (engine: Engine) {
     this.engine = engine;
-    this.rendere = this.engine.renderer;
+    this.renderer = this.engine.renderer;
     this.material = Material.create(
       this.engine,
       {
@@ -68,7 +68,7 @@ export class Gizmos {
     this.geometry.mode = glContext.LINE_STRIP;
     this.geometry.setDrawCount(points.length);
     this.geometry.flush();
-    this.rendere.drawGeometry(this.geometry, this.material);
+    this.renderer.drawGeometry(this.geometry, this.material);
   }
 
   drawLine (from: Vector3, to: Vector3) {
@@ -86,6 +86,6 @@ export class Gizmos {
     this.geometry.mode = glContext.LINES;
     this.geometry.setDrawCount(2);
     this.geometry.flush();
-    this.rendere.drawGeometry(this.geometry, this.material);
+    this.renderer.drawGeometry(this.geometry, this.material);
   }
 }
