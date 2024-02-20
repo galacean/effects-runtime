@@ -136,13 +136,13 @@ export class EffectComponent extends RendererComponent implements Disposable {
   getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    const res = [];
+    const area = [];
 
     for (const triangle of this.triangles) {
-      res.push({ p0:triangle.p0, p1:triangle.p1, p2:triangle.p2 });
+      area.push({ p0: triangle.p0, p1: triangle.p1, p2: triangle.p2 });
     }
 
-    res.forEach(triangle => {
+    area.forEach(triangle => {
       triangle.p0 = worldMatrix.transformPoint(triangle.p0 as Vector3, new Vector3());
       triangle.p1 = worldMatrix.transformPoint(triangle.p1 as Vector3, new Vector3());
       triangle.p2 = worldMatrix.transformPoint(triangle.p2 as Vector3, new Vector3());
@@ -150,7 +150,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
 
     return {
       type: HitTestType.triangle,
-      area: res,
+      area,
     };
   }
 
@@ -204,13 +204,13 @@ function geometryToTriangles (geometry: Geometry) {
 
   const res: TriangleLike[] = [];
 
-  for (let i = 0;i < indices.length;i += 3) {
+  for (let i = 0; i < indices.length; i += 3) {
     const index0 = indices[i] * 3;
     const index1 = indices[i + 1] * 3;
     const index2 = indices[i + 2] * 3;
-    const p0 = { x:vertices[index0], y:vertices[index0 + 1], z:vertices[index0 + 2] };
-    const p1 = { x:vertices[index1], y:vertices[index1 + 1], z:vertices[index1 + 2] };
-    const p2 = { x:vertices[index2], y:vertices[index2 + 1], z:vertices[index2 + 2] };
+    const p0 = { x: vertices[index0], y: vertices[index0 + 1], z: vertices[index0 + 2] };
+    const p1 = { x: vertices[index1], y: vertices[index1 + 1], z: vertices[index1 + 2] };
+    const p2 = { x: vertices[index2], y: vertices[index2 + 1], z: vertices[index2 + 2] };
 
     res.push({ p0, p1, p2 });
   }
