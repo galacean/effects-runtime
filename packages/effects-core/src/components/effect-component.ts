@@ -121,6 +121,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
     this.material = material;
   }
 
+  // TODO 点击测试后续抽象一个 Collider 组件
   getHitTestParams = (force?: boolean): HitTestTriangleParams | void => {
     const area = this.getBoundingBox();
 
