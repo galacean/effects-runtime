@@ -11,7 +11,7 @@ export function colorToArr (hex: string | number[], normalized?: boolean): color
   let ret: color = [0, 0, 0, 0];
 
   if (isString(hex)) {
-    hex = (hex as string).replace(/[\s\t\r\n]/g, '');
+    hex = hex.replace(/[\s\t\r\n]/g, '');
     let m = /rgba?\(([.\d]+),([.\d]+),([.\d]+),?([.\d]+)?\)/.exec(hex);
 
     if (m) {

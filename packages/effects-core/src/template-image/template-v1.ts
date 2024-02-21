@@ -132,7 +132,7 @@ export async function combineImageTemplate1Async (
 }
 
 function loadURL (url: string | HTMLImageElement) {
-  return isString(url) ? loadImage(url as string) : Promise.resolve(url as HTMLImageElement);
+  return isString(url) ? loadImage(url) : Promise.resolve(url);
 }
 
 function requestImageBase64 (first: string, alt: string) {
