@@ -4,7 +4,9 @@ import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 import { TreeGui } from './gui/tree-gui';
 
-const json = inspireList.turnplate.url;
+const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240222051658521/mars-preview.json';
+// 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240221055727706/mars-preview.json';
+// 'https://mdn.alipayobjects.com/mars/afts/file/A*v5nvSbp7ysAAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 const treeGui = new TreeGui();
@@ -14,10 +16,7 @@ const treeGui = new TreeGui();
     const player = createPlayer();
 
     const comp = await player.loadScene(json, {
-      autoplay: false,
     });
-
-    player.gotoAndStop(0);
 
     treeGui.setComposition(comp);
   } catch (e) {
