@@ -10,6 +10,7 @@ export class Input {
   mouseMovement: Vector2;
   mouseWheelDeltaY: number;
   canvas: HTMLElement;
+  canvasRect: DOMRect;
 
   constructor (canvas: HTMLElement) {
     this.canvas = canvas;
@@ -17,6 +18,7 @@ export class Input {
     this.mousePosition = new Vector2();
     this.mouseMovement = new Vector2();
     this.mouseWheelDeltaY = 0;
+    this.canvasRect = canvas.getBoundingClientRect();
   }
 
   startup () {
@@ -103,7 +105,7 @@ export class Input {
   }
 
   dispose () {
-    this.canvas.removeEventListener('pointermove', this.onPointerMove);
+    document.addEventListener('pointermove', this.onPointerMove);
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
     this.canvas.removeEventListener('pointerup', this.onPointerUp);
     this.canvas.removeEventListener('wheel', this.onMouseWheel);
@@ -112,8 +114,8 @@ export class Input {
   }
 
   private onPointerMove = (event: PointerEvent) => {
-    this.mousePosition.x = event.clientX;
-    this.mousePosition.y = event.clientY;
+    this.mousePosition.x = event.clientX - this.canvasRect.left;
+    this.mousePosition.y = event.clientY - this.canvasRect.top;
     this.mouseMovement.x = event.movementX;
     this.mouseMovement.y = event.movementY;
   };

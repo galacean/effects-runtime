@@ -7,19 +7,9 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import {
-  createShaderWithMarcos,
-  getPreMultiAlpha,
-  Material,
-  setBlendMode,
-  setMaskMode,
-  ShaderType,
+  createShaderWithMarcos, getPreMultiAlpha, Material, setBlendMode, setMaskMode, ShaderType,
 } from '../../material';
-import {
-  createKeyFrameMeta,
-  createValueGetter,
-  CurveValue,
-  getKeyFrameMetaByRawValue,
-} from '../../math';
+import { createKeyFrameMeta, createValueGetter, CurveValue, getKeyFrameMetaByRawValue } from '../../math';
 import type { GeometryProps, ShaderMarcos, ShaderWithSource, GPUCapability } from '../../render';
 import { Geometry, GLSLVersion, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
@@ -403,9 +393,9 @@ export class TrailMesh {
     if (this.trailCursors[index] !== 0) {
       const pointCountPerTrail = this.pointCountPerTrail;
       const indicesPerTrail = (pointCountPerTrail - 1) * 6;
-      const indices = this.geometry.getIndexData();
+      const indices = this.geometry.getIndexData()!;
 
-      indices?.set(new Uint16Array(indicesPerTrail), index * indicesPerTrail);
+      indices.set(new Uint16Array(indicesPerTrail), index * indicesPerTrail);
       this.geometry.setIndexData(indices);
 
       this.trailCursors[index] = 0;

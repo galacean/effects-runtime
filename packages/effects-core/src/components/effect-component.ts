@@ -1,8 +1,12 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import type { TriangleLike } from '@galacean/effects-math/es/core/type';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { GeometryData } from '../deserializer';
 import { DataType } from '../deserializer';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
+import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
+import { HitTestType } from '../plugins';
 import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
 import type { Disposable } from '../utils';
@@ -28,6 +32,8 @@ export class EffectComponent extends RendererComponent implements Disposable {
    * Mesh 的 Geometry
    */
   geometry: Geometry;
+
+  triangles: TriangleLike[] = [];
 
   protected destroyed = false;
 
@@ -55,6 +61,8 @@ export class EffectComponent extends RendererComponent implements Disposable {
     };
 
     this.geometry.fromData(geometryData);
+
+    this.triangles = geometryToTriangles(this.geometry);
   }
 
   get isDestroyed (): boolean {
@@ -67,6 +75,10 @@ export class EffectComponent extends RendererComponent implements Disposable {
    */
   setVisible (visible: boolean) {
     this.visible = visible;
+  }
+
+  override start (): void {
+    this.item.getHitTestParams = this.getHitTestParams;
   }
 
   override render (renderer: Renderer) {
@@ -109,12 +121,47 @@ export class EffectComponent extends RendererComponent implements Disposable {
     this.material = material;
   }
 
+  // TODO 点击测试后续抽象一个 Collider 组件
+  getHitTestParams = (force?: boolean): HitTestTriangleParams | void => {
+    const area = this.getBoundingBox();
+
+    if (area) {
+      return {
+        type: area.type,
+        triangles: area.area,
+      };
+    }
+  };
+
+  getBoundingBox (): BoundingBoxTriangle | void {
+    const worldMatrix = this.transform.getWorldMatrix();
+
+    const area = [];
+
+    for (const triangle of this.triangles) {
+      area.push({ p0: triangle.p0, p1: triangle.p1, p2: triangle.p2 });
+    }
+
+    area.forEach(triangle => {
+      triangle.p0 = worldMatrix.transformPoint(triangle.p0 as Vector3, new Vector3());
+      triangle.p1 = worldMatrix.transformPoint(triangle.p1 as Vector3, new Vector3());
+      triangle.p2 = worldMatrix.transformPoint(triangle.p2 as Vector3, new Vector3());
+    });
+
+    return {
+      type: HitTestType.triangle,
+      area,
+    };
+  }
+
   override fromData (data: any): void {
     super.fromData(data);
     this._enabled = data._enabled;
     this._priority = data._priority;
     this.material = data.materials[0];
     this.geometry = data.geometry;
+
+    this.triangles = geometryToTriangles(this.geometry);
   }
 
   override toData (): void {
@@ -149,4 +196,24 @@ export class EffectComponent extends RendererComponent implements Disposable {
 
     super.dispose();
   }
+}
+
+function geometryToTriangles (geometry: Geometry) {
+  const indices = geometry.getIndexData()!;
+  const vertices = geometry.getAttributeData('aPos')!;
+
+  const res: TriangleLike[] = [];
+
+  for (let i = 0; i < indices.length; i += 3) {
+    const index0 = indices[i] * 3;
+    const index1 = indices[i + 1] * 3;
+    const index2 = indices[i + 2] * 3;
+    const p0 = { x: vertices[index0], y: vertices[index0 + 1], z: vertices[index0 + 2] };
+    const p1 = { x: vertices[index1], y: vertices[index1 + 1], z: vertices[index1 + 2] };
+    const p2 = { x: vertices[index2], y: vertices[index2 + 1], z: vertices[index2 + 2] };
+
+    res.push({ p0, p1, p2 });
+  }
+
+  return res;
 }
