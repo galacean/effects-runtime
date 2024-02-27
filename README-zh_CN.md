@@ -8,7 +8,7 @@
 ![GitHub License](https://img.shields.io/github/license/galacean/effects-runtime)
 ![GitHub top language](https://img.shields.io/github/languages/top/galacean/effects-runtime)
 
-[更新日志](./CHANGELOG.md) · [报告问题][github-issues-url] · [特性需求][github-issues-url] · [English](./README.md) · 中文
+[客户端版](https://github.com/galacean/effects-native) · [更新日志](./CHANGELOG.md) · [报告问题][github-issues-url] · [特性需求][github-issues-url] · [English](./README.md) · 中文
 
 ![](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
 
