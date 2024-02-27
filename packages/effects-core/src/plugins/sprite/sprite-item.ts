@@ -495,8 +495,7 @@ export class SpriteComponent extends RendererComponent {
       return;
     }
     const worldMatrix = this.transform.getWorldMatrix();
-    const size = this.transform.size;
-    const triangles = trianglesFromRect(Vector3.ZERO, size.x / 2, size.y / 2);
+    const triangles = trianglesFromRect(Vector3.ZERO, 1 / 2, 1 / 2);
 
     triangles.forEach(triangle => {
       worldMatrix.transformPoint(triangle.p0 as Vector3);
