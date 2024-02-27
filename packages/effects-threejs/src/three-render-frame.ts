@@ -138,7 +138,6 @@ export class ThreeRenderFrame extends RenderFrame {
 
     group.children.forEach(mesh => {
       const material = (mesh as THREE.Mesh).material as THREE.ShaderMaterial;
-      // setUniformValue(material.uniforms, '_Size', [1, 1]);
 
       setUniformValue(material.uniforms, 'effects_MatrixInvV', camera.getInverseViewMatrix().toArray());
       setUniformValue(material.uniforms, 'effects_MatrixVP', camera.getViewProjectionMatrix().toArray());

@@ -43,8 +43,6 @@ export class ThreeMaterial extends Material {
       this.uniforms[`uSampler${i}`] = new THREE.Uniform(null);
     }
     this.uniforms['uEditorTransform'] = new THREE.Uniform([1, 1, 0, 0]);
-    // FIXME:
-    this.uniforms['_Size'] = new THREE.Uniform([1, 1]);
     this.uniforms['effects_ObjectToWorld'] = new THREE.Uniform(new THREE.Matrix4().identity());
 
     this.uniforms['effects_MatrixInvV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
