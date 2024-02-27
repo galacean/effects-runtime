@@ -2,6 +2,9 @@ import type {
   Disposable, GLType, GPUCapability, JSONValue, LostHandler, MessageItem, RestoreHandler, Scene,
   SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
   Texture,
+  SceneLoadType,
+  SceneType,
+  SceneWithOptionsType,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
@@ -124,10 +127,6 @@ export interface PlayerConfig {
 
   [key: string]: any,
 }
-
-export type SceneType = string | JSONValue | Scene;
-export type SceneWithOptionsType = { scene: SceneType, options: SceneLoadOptions };
-export type SceneLoadType = SceneType | SceneWithOptionsType;
 
 const playerMap = new Map<HTMLCanvasElement, Player>();
 let enableDebugType = false;

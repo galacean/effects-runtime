@@ -33,16 +33,18 @@ export class ThreeMaterial extends Material {
    *
    * @param props - 材质属性
    */
-  constructor (engine: Engine, props: MaterialProps) {
+  constructor (engine: Engine, props?: MaterialProps) {
     super(engine, props);
 
-    const shader = props.shader;
+    const shader = props?.shader;
     const { level } = engine.gpuCapability;
 
     for (let i = 0; i < maxSpriteMeshItemCount; i++) {
       this.uniforms[`uSampler${i}`] = new THREE.Uniform(null);
     }
     this.uniforms['uEditorTransform'] = new THREE.Uniform([1, 1, 0, 0]);
+    // FIXME:
+    this.uniforms['_Size'] = new THREE.Uniform([1, 1]);
     this.uniforms['effects_ObjectToWorld'] = new THREE.Uniform(new THREE.Matrix4().identity());
 
     this.uniforms['effects_MatrixInvV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
@@ -50,8 +52,8 @@ export class ThreeMaterial extends Material {
     this.uniforms['effects_MatrixV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
 
     this.material = new THREE.RawShaderMaterial({
-      vertexShader: shader.vertex,
-      fragmentShader: shader.fragment,
+      vertexShader: shader?.vertex,
+      fragmentShader: shader?.fragment,
       alphaToCoverage: false,
       depthFunc: THREE.LessDepth,
       polygonOffsetFactor: THREE.ZeroFactor,

@@ -17,33 +17,35 @@ export class ThreeMesh extends Mesh implements Sortable {
    * 构造函数
    * @param props - mesh 创建参数
    */
-  constructor (engine: Engine, props: GeometryMeshProps) {
-    const {
-      material,
-      geometry,
-      priority = 0,
-    } = props;
+  constructor (engine: Engine, props?: GeometryMeshProps) {
+    if (props) {
+      const {
+        material,
+        geometry,
+        priority = 0,
+      } = props;
 
-    super(engine, props);
+      super(engine, props);
 
-    this.geometry = geometry;
-    this.material = material;
+      this.geometry = geometry;
+      this.material = material;
 
-    if ((geometry as ThreeGeometry).mode === glContext.LINES) {
-      this.mesh = new THREE.LineSegments(
-        (geometry as ThreeGeometry).geometry,
-        (material as ThreeMaterial).material);
-    } else {
-      this.mesh = new THREE.Mesh(
-        (geometry as ThreeGeometry).geometry,
-        (material as ThreeMaterial).material
-      );
+      if ((geometry as ThreeGeometry).mode === glContext.LINES) {
+        this.mesh = new THREE.LineSegments(
+          (geometry as ThreeGeometry).geometry,
+          (material as ThreeMaterial).material);
+      } else {
+        this.mesh = new THREE.Mesh(
+          (geometry as ThreeGeometry).geometry,
+          (material as ThreeMaterial).material
+        );
+      }
+      // TODO: 注释修复
+      //@ts-expect-error
+      this.worldMatrix = this.mesh.matrixWorld;
+      // 在抽象Mesh设置priority时，THREE 的 Mesh 还未创建
+      this.priority = priority;
     }
-    // TODO: 注释修复
-    //@ts-expect-error
-    this.worldMatrix = this.mesh.matrixWorld;
-    // 在抽象Mesh设置priority时，THREE 的 Mesh 还未创建
-    this.priority = priority;
   }
 
   /**

@@ -208,10 +208,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 添加组件
    * @param classConstructor - 要添加的组件类型
    */
-  addComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T {
+  addComponent<T extends Component>(classConstructor: new (engine: Engine) => T): T {
     const newComponent = new classConstructor(this.engine);
 
     newComponent.item = this;
+
     this.components.push(newComponent);
     newComponent.onAttached();
 

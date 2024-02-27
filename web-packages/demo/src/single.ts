@@ -4,7 +4,7 @@ import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 import { TreeGui } from './gui/tree-gui';
 
-const json = inspireList.turnplate.url;
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*y7gTQZ5WELwAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 const treeGui = new TreeGui();

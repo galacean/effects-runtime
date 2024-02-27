@@ -548,7 +548,7 @@ export class Composition implements Disposable, LostHandler {
 
       for (const rendererComponent of rendererComponents) {
         if (rendererComponent.isActiveAndEnabled) {
-          frame._renderPasses[0].addMesh(rendererComponent);
+          frame.addMeshToDefaultRenderPass(rendererComponent);
         }
       }
     }
@@ -559,7 +559,7 @@ export class Composition implements Disposable, LostHandler {
 
         for (const rendererComponent of rendererComponents) {
           if (rendererComponent.isActiveAndEnabled) {
-            frame._renderPasses[0].addMesh(rendererComponent);
+            frame.addMeshToDefaultRenderPass(rendererComponent);
           }
         }
       }

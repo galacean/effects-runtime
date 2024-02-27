@@ -9,7 +9,7 @@ import { Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode } fr
 import type { ValueGetter } from '../../math';
 import { createValueGetter, trianglesFromRect, vecFill, vecMulCombine } from '../../math';
 import type { GeometryDrawMode, Renderer } from '../../render';
-import { Geometry } from '../../render';
+import { Geometry, Mesh } from '../../render';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
@@ -152,6 +152,7 @@ export class SpriteComponent extends RendererComponent {
   private readonly wireframe?: boolean;
   private preMultiAlpha: number;
   private visible = true;
+  mesh: Mesh;
 
   constructor (engine: Engine, props?: SpriteItemProps) {
     super(engine);
@@ -561,6 +562,10 @@ export class SpriteComponent extends RendererComponent {
     const geometry = this.createGeometry(glContext.TRIANGLES);
     const material = this.createMaterial(this.renderInfo, 2);
 
+    this.mesh = Mesh.create(this.engine, {
+      geometry,
+      material,
+    });
     this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
     this.geometry = geometry;

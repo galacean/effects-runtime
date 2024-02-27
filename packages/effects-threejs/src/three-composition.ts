@@ -83,7 +83,7 @@ export class ThreeComposition extends Composition {
     super(props, scene);
     this.compositionSourceManager.sourceContent?.items.forEach(item => {
       //@ts-expect-error
-      const shape = item.content.renderer.shape;
+      const shape = item.content?.renderer?.shape;
 
       if (shape) {
         Object.keys(shape).forEach(name => {
