@@ -1,3 +1,6 @@
+/**
+ * 抽象插值采样器
+ */
 export abstract class InterpolationSampler {
   protected cachedIndex = 0;
 
@@ -7,6 +10,11 @@ export abstract class InterpolationSampler {
     protected componentCount: number,
   ) { }
 
+  /**
+   * 计算当前 t 时刻的插值
+   * @param t 当前时间
+   * @returns 插值结果
+   */
   evaluate (t: number) {
     const pp = this.time;
     let i1 = this.cachedIndex;
@@ -130,6 +138,9 @@ export abstract class InterpolationSampler {
     return this.interpolate(i1, t0, t, t1);
   }
 
+  /**
+   * 销毁采样器
+   */
   dispose () {
     // @ts-expect-error
     this.time = undefined;
@@ -282,6 +293,7 @@ class QuaternionInner {
     dst[dstOffset + 3] = w0;
   }
 }
+
 class QuaternionLinearSampler extends InterpolationSampler {
 
   constructor (time: Float32Array, data: Float32Array, size: number) {
@@ -307,6 +319,15 @@ class QuaternionLinearSampler extends InterpolationSampler {
 
 }
 
+/**
+ * 创建动画采样器，支持线性和跳变两种模式，类别上支持平移、旋转和缩放
+ * @param type 动画类型，线性和跳变
+ * @param times 时间点数组
+ * @param data 关键帧数组
+ * @param size 数据分量
+ * @param path 动画类别，平移、旋转和缩放
+ * @returns 动画采样器
+ */
 export function createAnimationSampler (type: string, times: Float32Array, data: Float32Array, size: number, path?: string): InterpolationSampler {
   switch (type) {
     case 'LINEAR':
@@ -314,10 +335,13 @@ export function createAnimationSampler (type: string, times: Float32Array, data:
         return new QuaternionLinearSampler(times, data, size);
       } else {
         return new LinearSampler(times, data, size);
-      }    case 'STEP':
-      return new DiscreteSampler(times, data, size);    case 'CUBICSPLINE':
+      }
+    case 'STEP':
+      return new DiscreteSampler(times, data, size);
+    case 'CUBICSPLINE':
       // FIXME: support cubic spline
-      return new LinearSampler(times, data, size);    default:
+      return new LinearSampler(times, data, size);
+    default:
       return new LinearSampler(times, data, size);
   }
 }

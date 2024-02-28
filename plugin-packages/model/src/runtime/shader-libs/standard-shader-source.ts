@@ -18,7 +18,17 @@ const glsl: Record<string, string> = {
   'shadowCommon.vert.glsl': shadowCommonVert,
 };
 
+/**
+ * GLSL Shader 代码编译预处理
+ */
 export namespace StandardShaderSource {
+  /**
+   * 预处理 GLSL 代码，生成最终的 GLSL 代码
+   * @param source GLSL 代码
+   * @param features 宏定义
+   * @param isWebGL2 是否 WebGL2
+   * @returns 最终的 GLSL 代码
+   */
   export function build (source: string, features: string[], isWebGL2: boolean): string {
     let match: RegExpExecArray | null;
 
