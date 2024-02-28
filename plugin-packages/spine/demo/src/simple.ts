@@ -247,9 +247,9 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
     const comp = await player.loadScene(animation, {
       autoplay: false,
     });
-    const item = comp.getItemByName('spine_item') as SpineVFXItem;
-
-    item.setMixDuration('run', 'jump', 0.7);
+    // const item = comp.getItemByName('spine_item') as SpineVFXItem;
+    //
+    // item.setMixDuration('run', 'jump', 0.7);
 
     player.play();
     // item.deleteMixForLoop()
