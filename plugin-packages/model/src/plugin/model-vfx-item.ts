@@ -27,14 +27,36 @@ type Vector2 = math.Vector2;
 type Euler = math.Euler;
 type Ray = math.Ray;
 
+/**
+ * 3D 元素联合类型：网格、相机、灯光和天空盒
+ */
 export type ModelItem = PMesh | PCamera | PLight | PSkybox;
+
+/**
+ * 3D 元素数据联合类型：网格、相机、灯光和天空盒
+ */
 export type ModelItemOptions = ModelItemMesh | ModelItemCamera | ModelItemLight | ModelItemSkybox;
 
+/**
+ * 3D VFX 元素，支持 Galacean Effects 的 3D 能力
+ */
 export class ModelVFXItem extends VFXItem<ModelItem> {
+  /**
+   * 3D 元素数据
+   */
   options?: ModelItemOptions;
+  /**
+   * 3D 元素包围盒
+   */
   bounding?: ModelItemBounding;
+  /**
+   * 时间轴组件
+   */
   timeline?: TimelineComponent;
 
+  /**
+   * 获取元素类型，始终是 VFX_ITEM_TYPE_3D
+   */
   override get type () {
     return VFX_ITEM_TYPE_3D;
   }
@@ -43,6 +65,10 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     // empty
   }
 
+  /**
+   * 元素创建，需要为相机和灯光元素创建时间轴组件
+   * @param options 元素数据
+   */
   override onConstructed (options: ModelItemOptions) {
     this.options = options;
     this.duration = options.duration;
@@ -65,12 +91,21 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     }
   }
 
+  /**
+   * 元素可见性改动
+   * @param visible 是否可见
+   */
   override handleVisibleChanged (visible: boolean): void {
     if (this.content !== undefined) {
       this.content.onVisibleChanged(visible);
     }
   }
 
+  /**
+   * 元素内容创建，按照具体类型创建具体对象
+   * @param composition 合成
+   * @returns 创建的 3D 对象
+   */
   override doCreateContent (composition: Composition) {
     switch (this.options?.type) {
       case 'mesh': {
@@ -133,6 +168,10 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     options.specularMipCount = newOpts.specularMipCount;
   }
 
+  /**
+   * 计算元素包围盒，只针对 Mesh 对象
+   * @returns 包围盒数据
+   */
   computeBoundingBox (): ModelItemBounding | undefined {
     if (this._content === undefined) { return; }
     if (this._content instanceof PMesh) {
@@ -154,6 +193,9 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     }
   }
 
+  /**
+   * 元素变换更新后，对于相机元素需要更新到合成的相机
+   */
   updateTransform () {
     const itemContent = this._content;
 
@@ -172,6 +214,11 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     }
   }
 
+  /**
+   * 设置元素变换，需要更新到时间轴组件中
+   * @param position 位置
+   * @param rotation 旋转
+   */
   setTransform (position?: Vector3, rotation?: Euler): void {
     if (position !== undefined) {
       this.transform.setPosition(position.x, position.y, position.z);
@@ -184,6 +231,12 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     this.updateTransform();
   }
 
+  /**
+   * 元素生命周期开始，需要更新 Mesh 对象父元素和同时可见性改变
+   * @param composition 合成
+   * @param content 元素内容
+   * @returns
+   */
   override onLifetimeBegin (composition: Composition, content: ModelItem) {
     if (this.content === undefined) {
       return;
@@ -196,6 +249,11 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     this.content.onVisibleChanged(true);
   }
 
+  /**
+   * 元素更新，需要更新时间轴组件
+   * @param dt 时间间隔
+   * @param lifetime 生命时间
+   */
   override onItemUpdate (dt: number, lifetime: number) {
     const time = (this.timeInms - this.delayInms) * 0.001;
 
@@ -204,6 +262,11 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     this.updateTransform();
   }
 
+  /**
+   * 元素删除，需要通知删除和销毁元素内容
+   * @param composition 合成
+   * @param content 元素内容
+   */
   override onItemRemoved (composition: Composition, content?: ModelItem) {
     if (this.content !== undefined) {
       this.content.onEntityRemoved();
@@ -211,6 +274,11 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     }
   }
 
+  /**
+   * 元素点击测试，根据元素包围盒进行相交测试，Mesh 对象会进行更加精确的点击测试
+   * @param force 是否强制进行点击测试
+   * @returns 点击测试结果
+   */
   override getHitTestParams (force?: boolean): HitTestBoxParams | HitTestSphereParams | HitTestCustomParams | undefined {
     this.computeBoundingBox();
     const bounding = this.bounding;
