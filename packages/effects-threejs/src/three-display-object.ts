@@ -1,5 +1,5 @@
 import type { EventSystem, JSONValue, SceneLoadOptions, Renderer } from '@galacean/effects-core';
-import { AssetManager } from '@galacean/effects-core';
+import { AssetManager, CompositionSourceManager } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import type { ThreeRenderFrame } from './three-render-frame';
@@ -67,11 +67,12 @@ export class ThreeDisplayObject extends THREE.Group {
   async loadScene (url: string | JSONValue, options: SceneLoadOptions = {}) {
     const assetManager = new AssetManager({});
     const scene = await assetManager.loadScene(url);
+    const csm = new CompositionSourceManager(scene, this.renderer.engine);
     const composition = new ThreeComposition({
       renderer: this.renderer,
       width: this.width,
       height: this.height,
-    }, scene);
+    }, scene, csm);
 
     (composition.renderFrame as ThreeRenderFrame).group = this;
     (composition.renderFrame as ThreeRenderFrame).threeCamera = this.camera;

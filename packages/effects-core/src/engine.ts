@@ -1,14 +1,14 @@
 import * as spec from '@galacean/effects-specification';
 import type { Database, EffectsObjectData, SceneData } from './deserializer';
 import { Deserializer } from './deserializer';
+import type { EffectsObject } from './effects-object';
 import { glContext } from './gl';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
+import type { Scene } from './scene';
 import { Texture, TextureSourceType } from './texture';
 import type { Disposable } from './utils';
-import { addItem, removeItem, logger } from './utils';
-import type { EffectsObject } from './effects-object';
-import type { Scene } from './scene';
+import { addItem, logger, removeItem } from './utils';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的销毁
@@ -67,7 +67,7 @@ export class Engine implements Disposable {
     delete this.objectInstance[id];
   }
 
-  async addPackageDatas (scene: Scene) {
+  addPackageDatas (scene: Scene) {
     const jsonScene = scene.jsonScene;
 
     //@ts-expect-error
@@ -112,19 +112,24 @@ export class Engine implements Disposable {
       }
     }
 
+  }
+
+  async createVFXItemsAsync (scene: Scene) {
+    const jsonScene = scene.jsonScene;
+
     //@ts-expect-error
     for (const itemData of jsonScene.items) {
       if (!(
         itemData.type === 'ECS' ||
-        itemData.type === spec.ItemType.sprite ||
-        itemData.type === spec.ItemType.particle ||
-        itemData.type === spec.ItemType.mesh ||
-        itemData.type === spec.ItemType.skybox ||
-        itemData.type === spec.ItemType.light ||
-        itemData.type === 'camera' ||
-        itemData.type === spec.ItemType.tree ||
-        itemData.type === spec.ItemType.interact ||
-        itemData.type === spec.ItemType.camera)
+    itemData.type === spec.ItemType.sprite ||
+    itemData.type === spec.ItemType.particle ||
+    itemData.type === spec.ItemType.mesh ||
+    itemData.type === spec.ItemType.skybox ||
+    itemData.type === spec.ItemType.light ||
+    itemData.type === 'camera' ||
+    itemData.type === spec.ItemType.tree ||
+    itemData.type === spec.ItemType.interact ||
+    itemData.type === spec.ItemType.camera)
       ) {
         continue;
       }

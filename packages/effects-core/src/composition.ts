@@ -1,24 +1,24 @@
-import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/index';
+import * as spec from '@galacean/effects-specification';
+import { Camera } from './camera';
+import { CompositionComponent } from './comp-vfx-item';
+import { RendererComponent } from './components';
+import type { CompositionSourceManager } from './composition-source-manager';
 import type { JSONValue } from './downloader';
-import type { Scene } from './scene';
-import type { Disposable, LostHandler } from './utils';
-import { assertExist, logger, noop, removeItem } from './utils';
-import { Transform } from './transform';
-import type { VFXItemContent, VFXItemProps } from './vfx-item';
-import { VFXItem } from './vfx-item';
+import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
 import { TimelineComponent } from './plugins';
 import type { GlobalVolume, MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
+import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
-import { CompositionSourceManager } from './composition-source-manager';
-import { Camera } from './camera';
-import { CompositionComponent } from './comp-vfx-item';
-import { setRayFromCamera } from './math';
-import { RendererComponent } from './components';
+import { Transform } from './transform';
+import type { Disposable, LostHandler } from './utils';
+import { assertExist, logger, noop, removeItem } from './utils';
+import type { VFXItemContent, VFXItemProps } from './vfx-item';
+import { VFXItem } from './vfx-item';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -211,7 +211,7 @@ export class Composition implements Disposable, LostHandler {
    * Composition 构造函数
    * @param props - composition 的创建参数
    */
-  constructor (props: CompositionProps, scene: Scene) {
+  constructor (props: CompositionProps, scene: Scene, csm: CompositionSourceManager) {
     const {
       reusable = false,
       speed = 1,
@@ -220,8 +220,7 @@ export class Composition implements Disposable, LostHandler {
       event, width, height,
     } = props;
 
-    this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
-
+    this.compositionSourceManager = csm;
     scene.jsonScene.imgUsage = undefined;
 
     if (reusable) {
@@ -606,7 +605,9 @@ export class Composition implements Disposable, LostHandler {
     const time = this.getUpdateTime(deltaTime * this.speed);
 
     this.globalTime += time;
-    this.rootTimeline.setTime(this.globalTime / 1000);
+    if (this.rootTimeline.isActiveAndEnabled) {
+      this.rootTimeline.setTime(this.globalTime / 1000);
+    }
     this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
