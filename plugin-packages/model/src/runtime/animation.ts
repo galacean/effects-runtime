@@ -17,20 +17,50 @@ import type { ModelTreeVFXItem } from '../plugin';
 
 const forceTextureSkinning = false;
 
+/**
+ * 纹理数据模式，包含浮点（float）和半浮点（half_float）
+ */
 export enum TextureDataMode {
   none = 0,
   float,
   half_float,
 }
 
+/**
+ * 蒙皮类，支持蒙皮动画
+ */
 export class PSkin extends PObject {
+  /**
+   * 场景树父元素
+   */
   parentItem?: ModelTreeVFXItem;
+  /**
+   * 骨骼索引
+   */
   skeleton = 0;
+  /**
+   * 关节索引
+   */
   jointList: number[] = [];
+  /**
+   * 逆绑定矩阵
+   */
   inverseBindMatrices: Matrix4[] = [];
+  /**
+   * 动画矩阵
+   */
   animationMatrices: Matrix4[] = [];
+  /**
+   * 纹理数据模式
+   */
   textureDataMode = TextureDataMode.none;
 
+  /**
+   * 创建蒙皮对象
+   * @param options 蒙皮相关数据
+   * @param engine 引擎对象
+   * @param parentItem 场景树父元素
+   */
   create (options: ModelSkinOptions, engine: Engine, parentItem?: ModelTreeVFXItem) {
     this.name = this.genName(options.name ?? 'Unnamed skin');
     this.type = PObjectType.skin;
@@ -61,6 +91,9 @@ export class PSkin extends PObject {
     }
   }
 
+  /**
+   * 更新蒙皮矩阵
+   */
   updateSkinMatrices () {
     this.animationMatrices = [];
     if (this.parentItem !== undefined) {
@@ -97,6 +130,12 @@ export class PSkin extends PObject {
     }
   }
 
+  /**
+   * 计算 Mesh 的动画矩阵
+   * @param worldMatrix 世界矩阵
+   * @param matrixList 矩阵列表
+   * @param normalMatList 法线矩阵列表
+   */
   computeMeshAnimMatrices (worldMatrix: Matrix4, matrixList: Float32Array, normalMatList: Float32Array) {
     const inverseWorldMatrix = worldMatrix.clone().invert();
     const tempMatrix = new Matrix4();
@@ -112,18 +151,33 @@ export class PSkin extends PObject {
     });
   }
 
+  /**
+   * 更新父元素
+   * @param parentItem 场景树父元素
+   */
   updateParentItem (parentItem: ModelTreeVFXItem) {
     this.parentItem = parentItem;
   }
 
+  /**
+   * 返回节点数
+   * @returns
+   */
   getJointCount (): number {
     return this.jointList.length;
   }
 
+  /**
+   * 是否纹理数据模式
+   * @returns
+   */
   isTextureDataMode (): boolean {
     return this.textureDataMode !== TextureDataMode.none;
   }
 
+  /**
+   * 销毁蒙皮对象
+   */
   override dispose (): void {
     this.parentItem = undefined;
     this.jointList = [];
@@ -186,6 +240,7 @@ export class PMorph extends PObject {
    * 通过 Geometry 数据创建 Morph 动画相关状态，并进行必要的正确性检查
    *
    * @param geometry - Mesh 的几何对象，是否包含 Morph 动画都是可以的
+   * @returns 是否创建成功
    */
   create (geometry: Geometry): boolean {
     this.name = this.genName('Morph target');
@@ -365,12 +420,18 @@ export class PMorph extends PObject {
   ];
 }
 
+/**
+ * 动画插值模式
+ */
 export enum PAnimInterpType {
   linear = 0,
   step,
   cubicSpline,
 }
 
+/**
+ * 动画路径类型
+ */
 export enum PAnimPathType {
   translation = 0,
   rotation,
@@ -378,16 +439,41 @@ export enum PAnimPathType {
   weights,
 }
 
+/**
+ * 动画轨道
+ */
 export class PAnimTrack {
+  /**
+   * 节点索引
+   */
   node: number;
+  /**
+   * 时间数组
+   */
   timeArray: Float32Array;
+  /**
+   * 数据数组
+   */
   dataArray: Float32Array;
+  /**
+   * 路径类型
+   */
   path = PAnimPathType.translation;
+  /**
+   * 插值类型
+   */
   interp = PAnimInterpType.linear;
+  /**
+   * 分量
+   */
   component: number;
   //
   private sampler?: InterpolationSampler;
 
+  /**
+   * 创建动画轨道对象
+   * @param options 动画轨道数据
+   */
   constructor (options: ModelAnimTrackOptions) {
     const { node, input, output, path, interpolation } = options;
 
@@ -435,6 +521,9 @@ export class PAnimTrack {
     );
   }
 
+  /**
+   * 销毁动画轨道对象
+   */
   dispose () {
     // @ts-expect-error
     this.timeArray = undefined;
@@ -444,6 +533,12 @@ export class PAnimTrack {
     this.sampler = undefined;
   }
 
+  /**
+   * 更新节点动画数据
+   * @param time 当前播放时间
+   * @param treeItem 节点树元素
+   * @param sceneManager 3D 场景管理对象
+   */
   tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
     const node = treeItem.content.getNodeById(this.node);
 
@@ -487,6 +582,10 @@ export class PAnimTrack {
     }
   }
 
+  /**
+   * 获取动画结束时间
+   * @returns
+   */
   getEndTime (): number {
     const index = this.timeArray.length - 1;
 
@@ -526,6 +625,9 @@ export class PAnimTrack {
   }
 }
 
+/**
+ * 动画纹理对象
+ */
 export class PAnimTexture {
   private isHalfFloat = true;
   //
@@ -536,6 +638,12 @@ export class PAnimTexture {
 
   constructor (private engine: Engine) {}
 
+  /**
+   * 创建动画纹理对象
+   * @param jointCount 骨骼数目
+   * @param isHalfFloat 是否半浮点精度
+   * @param name 名称
+   */
   create (jointCount: number, isHalfFloat: boolean, name: string) {
     this.width = 4;
     this.height = jointCount;
@@ -567,6 +675,10 @@ export class PAnimTexture {
       });
   }
 
+  /**
+   * 更新动画数据
+   * @param buffer 创建的新动画数据
+   */
   update (buffer: Float32Array) {
     if (this.buffer !== undefined) {
       this.buffer.set(buffer, 0);
@@ -586,6 +698,9 @@ export class PAnimTexture {
 
   }
 
+  /**
+   * 销毁动画纹理对象
+   */
   dispose () {
     // @ts-expect-error
     this.engine = null;
@@ -593,21 +708,36 @@ export class PAnimTexture {
     this.texture?.dispose();
   }
 
+  /**
+   * 获取纹理大小
+   * @returns
+   */
   getSize () {
     return this.width * this.height;
   }
 
+  /**
+   * 获取纹理对象
+   * @returns
+   */
   getTexture () {
     return this.texture as Texture;
   }
 
 }
 
+/**
+ * 动画对象，负责动画数据的更新
+ */
 export class PAnimation extends PObject {
   private time = 0;
   private duration = 0;
   private tracks: PAnimTrack[] = [];
 
+  /**
+   * 创建动画对象
+   * @param options 动画数据
+   */
   create (options: ModelAnimationOptions) {
     this.name = this.genName(options.name ?? 'Unnamed animation');
     this.type = PObjectType.animation;
@@ -624,6 +754,12 @@ export class PAnimation extends PObject {
     });
   }
 
+  /**
+   * 动画内容更新
+   * @param time 当前时间
+   * @param treeItem 场景树元素
+   * @param sceneManager 3D 场景对象
+   */
   tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
     this.time = time;
     // TODO: 这里时间事件定义不明确，先兼容原先实现
@@ -634,6 +770,9 @@ export class PAnimation extends PObject {
     });
   }
 
+  /**
+   * 销毁动画对象
+   */
   override dispose () {
     this.tracks.forEach(track => {
       track.dispose();
@@ -642,6 +781,9 @@ export class PAnimation extends PObject {
   }
 }
 
+/**
+ * 动画管理器，负责管理动画对象
+ */
 export class PAnimationManager extends PObject {
   private ownerItem: ModelTreeVFXItem;
   private animation = 0;
@@ -651,6 +793,11 @@ export class PAnimationManager extends PObject {
   private animations: PAnimation[] = [];
   private sceneManager: PSceneManager;
 
+  /**
+   * 创建动画管理器
+   * @param treeOptions 动画相关数据
+   * @param ownerItem 场景树父节点
+   */
   constructor (treeOptions: ModelTreeOptions, ownerItem: ModelTreeVFXItem) {
     super();
     this.name = this.genName(ownerItem.name ?? 'Unnamed tree');
@@ -677,6 +824,11 @@ export class PAnimationManager extends PObject {
     }
   }
 
+  /**
+   * 创建动画对象
+   * @param animationOpts 动画数据
+   * @returns 动画对象
+   */
   createAnimation (animationOpts: ModelAnimationOptions) {
     const animation = new PAnimation();
 
@@ -685,6 +837,10 @@ export class PAnimationManager extends PObject {
     return animation;
   }
 
+  /**
+   * 动画更新
+   * @param deltaSeconds 更新时间段
+   */
   tick (deltaSeconds: number) {
     const newDeltaSeconds = deltaSeconds * this.speed * 0.001;
 
@@ -705,6 +861,9 @@ export class PAnimationManager extends PObject {
     }
   }
 
+  /**
+   * 销毁动画管理器
+   */
   override dispose () {
     // @ts-expect-error
     this.ownerItem = null;
@@ -716,16 +875,27 @@ export class PAnimationManager extends PObject {
     this.sceneManager = null;
   }
 
+  /**
+   * 获取场景树元素
+   * @returns
+   */
   getTreeItem () {
     return this.ownerItem;
   }
 }
 
+/**
+ * 动画系统，负责动画管理器的更新
+ */
 export class PAnimationSystem {
   private managers: PAnimationManager[] = [];
 
   constructor (private engine: Engine) {}
 
+  /**
+   * 创建动画系统
+   * @param treeItems 场景树元素数组
+   */
   create (treeItems: ModelTreeVFXItem[]) {
     this.managers = [];
     treeItems.forEach(tree => {
@@ -735,10 +905,18 @@ export class PAnimationSystem {
     });
   }
 
+  /**
+   * 插入动画管理器
+   * @param animationManager 动画管理器
+   */
   insert (animationManager: PAnimationManager) {
     this.managers.push(animationManager);
   }
 
+  /**
+   * 删除动画管理器
+   * @param animationManager 动画管理器
+   */
   delete (animationManager: PAnimationManager) {
     let findIndex = -1;
 
@@ -752,6 +930,9 @@ export class PAnimationSystem {
     }
   }
 
+  /**
+   * 销毁动画系统
+   */
   dispose () {
     this.managers.forEach(mgr => {
       mgr.dispose();
