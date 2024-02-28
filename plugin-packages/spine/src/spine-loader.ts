@@ -91,15 +91,15 @@ export class SpineLoader extends AbstractPlugin {
       const atlas = new TextureAtlas(atlasText);
 
       [index, start = 0, bufferLength] = skeletonPointer[1];
-      const skeletonBuffer = bins[index];
+      const skeletonBuffer = bufferLength ? bins[index].slice(start, start + bufferLength) : bins[index].slice(start);
       let skeletonFile;
+      const skeletonArray = new Uint8Array(skeletonBuffer);
 
       if (skeletonType === 'json') {
-        skeletonFile = bufferLength ? decodeText(new Uint8Array(skeletonBuffer, start, bufferLength)) : decodeText(new Uint8Array(skeletonBuffer, start));
+        skeletonFile = decodeText(skeletonArray);
       } else {
-        skeletonFile = bufferLength ? new DataView(skeletonBuffer, start, bufferLength) : new DataView(skeletonBuffer, start);
+        skeletonFile = new DataView(skeletonArray.buffer);
       }
-
       const skeletonData = createSkeletonData(atlas, skeletonFile, skeletonType); //VFXItem用此skeletonData新建skeleton实例会造成纹理丢失
       const skinList = getSkinList(skeletonData);
       const animationList = getAnimationList(skeletonData);
