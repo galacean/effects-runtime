@@ -142,3 +142,33 @@ export function getSpineVersion (skeleton: Uint8Array) {
 
   return input.readString();
 }
+
+/**
+ * 从二进制数据中解析 atlas 数据
+ * @param buffer
+ * @return {TextureAtlas}
+ */
+export function getAtlasFromBuffer (buffer: ArrayBuffer): TextureAtlas {
+  const atlasText = decodeText(new Uint8Array(buffer));
+
+  return new TextureAtlas(atlasText);
+}
+
+/**
+ * 从二进制数据中解析用于创建 skeletonData 的数据
+ * @param {ArrayBuffer} buffer
+ * @param {"json" | "skel"} skeletonType
+ * @return {DataView | string}
+ */
+export function getSkeletonFromBuffer (buffer: ArrayBuffer, skeletonType: 'json' | 'skel'): DataView | string {
+  let skeletonFile;
+  const skeletonArray = new Uint8Array(buffer);
+
+  if (skeletonType === 'json') {
+    skeletonFile = decodeText(skeletonArray);
+  } else {
+    skeletonFile = new DataView(skeletonArray.buffer);
+  }
+
+  return skeletonFile;
+}

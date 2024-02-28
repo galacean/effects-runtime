@@ -1,13 +1,18 @@
 import { DestroyOptions, AbstractPlugin } from '@galacean/effects';
 import type { spec, Scene, VFXItem, RenderFrame, SceneLoadOptions, Composition } from '@galacean/effects';
-import type { SkeletonData, Texture } from '@esotericsoftware/spine-core';
-import { Skeleton, TextureAtlas } from '@esotericsoftware/spine-core';
-import { decodeText } from './polyfill';
+import type { SkeletonData, Texture, TextureAtlas } from '@esotericsoftware/spine-core';
+import { Skeleton } from '@esotericsoftware/spine-core';
 import type { SlotGroup } from './slot-group';
 import type { SpineMesh } from './spine-mesh';
 import type { SpineContent } from './spine-vfx-item';
 import { SpineVFXItem } from './spine-vfx-item';
-import { createSkeletonData, getAnimationList, getSkinList } from './utils';
+import {
+  createSkeletonData,
+  getAnimationList,
+  getAtlasFromBuffer,
+  getSkeletonFromBuffer,
+  getSkinList,
+} from './utils';
 
 /**
  *
@@ -67,9 +72,6 @@ export class SpineLoader extends AbstractPlugin {
 
     const spineData: SpineResource[] = [];
     const bins = scn.bins;
-    let bufferLength;
-    let start;
-    let index;
 
     for (const spineIndexData of jsonScene.spines) {
       // 编辑器的逻辑
@@ -85,21 +87,13 @@ export class SpineLoader extends AbstractPlugin {
       const { atlas: atlasPointer, skeleton: skeletonPointer, images, skeletonType, id = '' } = spineIndexData;
       const texturesOptions = images.map((pointer: number) => jsonScene.textures![pointer]);
 
-      [index, start = 0, bufferLength] = atlasPointer[1];
-      const atlasBuffer = bins[index];
-      const atlasText = bufferLength ? decodeText(new Uint8Array(atlasBuffer, start, bufferLength)) : decodeText(new Uint8Array(atlasBuffer, start));
-      const atlas = new TextureAtlas(atlasText);
+      const [atlasIndex, atlasStart = 0, atlasBufferLength] = atlasPointer[1];
+      const atlasBuffer = atlasBufferLength ? bins[atlasIndex].slice(atlasStart, atlasStart + atlasBufferLength) : bins[atlasIndex].slice(atlasStart);
+      const [skelIndex, skelStart = 0, skelBufferLength] = skeletonPointer[1];
+      const skeletonBuffer = skelBufferLength ? bins[skelIndex].slice(skelStart, skelStart + skelBufferLength) : bins[skelIndex].slice(skelStart);
 
-      [index, start = 0, bufferLength] = skeletonPointer[1];
-      const skeletonBuffer = bufferLength ? bins[index].slice(start, start + bufferLength) : bins[index].slice(start);
-      let skeletonFile;
-      const skeletonArray = new Uint8Array(skeletonBuffer);
-
-      if (skeletonType === 'json') {
-        skeletonFile = decodeText(skeletonArray);
-      } else {
-        skeletonFile = new DataView(skeletonArray.buffer);
-      }
+      const atlas = getAtlasFromBuffer(atlasBuffer);
+      const skeletonFile = getSkeletonFromBuffer(skeletonBuffer, skeletonType);
       const skeletonData = createSkeletonData(atlas, skeletonFile, skeletonType); //VFXItem用此skeletonData新建skeleton实例会造成纹理丢失
       const skinList = getSkinList(skeletonData);
       const animationList = getAnimationList(skeletonData);
