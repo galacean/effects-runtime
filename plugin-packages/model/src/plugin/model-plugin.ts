@@ -14,9 +14,18 @@ import { PluginHelper } from '../utility/plugin-helper';
 import { Vector3, DEG2RAD } from '../runtime/math';
 import { PCoordinate, PObjectType, PTransform } from '../runtime/common';
 
+/**
+ * 3D 插件类，负责 Galacean Effects 中的 3D 能力
+ */
 export class ModelPlugin extends AbstractPlugin {
+  /**
+   * 插件名称
+   */
   override name = 'model';
 
+  /**
+   * 更新间隔时间
+   */
   deltaTime = 0;
 
   private runtimeEnv = PLAYER_OPTIONS_ENV_EDITOR;
@@ -40,7 +49,11 @@ export class ModelPlugin extends AbstractPlugin {
    */
   private renderMode3DUVGridSize = 1 / 16;
 
-  // 整个 load 阶段都不会创建 GL 相关的对象，只创建 JS 对象
+  /**
+   * 整个 load 阶段都不会创建 GL 相关的对象，只创建 JS 对象
+   * @param scene 场景
+   * @param options 加载选项
+   */
   static override async prepareResource (scene: Scene, options: SceneLoadOptions): Promise<void> {
     const runtimeEnv = options.env ?? '';
     let compatibleMode = 'gltf';
@@ -65,6 +78,11 @@ export class ModelPlugin extends AbstractPlugin {
     await CompositionCache.loadStaticResources();
   }
 
+  /**
+   * 创建 3D 场景管理器
+   * @param composition 合成
+   * @param scene 场景
+   */
   override onCompositionConstructed (composition: Composition, scene: Scene): void {
     this.runtimeEnv = scene.storage['runtimeEnv'] ?? this.runtimeEnv;
     this.compatibleMode = scene.storage['compatibleMode'] ?? this.compatibleMode;
@@ -86,9 +104,14 @@ export class ModelPlugin extends AbstractPlugin {
     PluginHelper.setupItem3DOptions(scene, cache, composition);
   }
 
+  /**
+   * 在reset前，从render frame中删除自己添加的pass，因此在Player删除render frame时不删除这些pass
+   * 自己添加的pass是自己管理生命周期的
+   * @param composition 合成
+   * @param renderFrame 渲染帧
+   */
   override onCompositionWillReset (composition: Composition, renderFrame: RenderFrame) {
-    // 在reset前，从render frame中删除自己添加的pass，因此在Player删除render frame时不删除这些pass
-    // 自己添加的pass是自己管理生命周期的
+    //
     const cache = this.getCache(composition);
     const renderPasses = cache.getRenderPasses();
 
@@ -102,8 +125,12 @@ export class ModelPlugin extends AbstractPlugin {
     sceneManager.removeAllMeshesFromDefaultPass(renderFrame);
   }
 
+  /**
+   * 每次播放都会执行，包括重播，所以这里执行“小的销毁”和新的初始化
+   * @param composition 合成
+   * @param renderFrame 渲染帧
+   */
   override onCompositionReset (composition: Composition, renderFrame: RenderFrame) {
-    // 每次播放都会执行，包括重播，所以这里执行“小的销毁”和新的初始化
     const sceneManager = this.getSceneManager(composition);
     const sceneCache = this.getCache(composition);
     const lightItemCount = this.getLightItemCount(composition);
@@ -124,16 +151,30 @@ export class ModelPlugin extends AbstractPlugin {
     this.updateSceneCamera(composition, sceneManager);
   }
 
+  /**
+   * 合成销毁，同时销毁 3D 场景对象和缓存
+   * @param composition 合成
+   */
   override onCompositionDestroyed (composition: Composition) {
     // 最终的销毁，销毁后特效就结束了
     this.disposeSceneManager(composition);
     this.disposeCache(composition);
   }
 
+  /**
+   * 更新时间间隔
+   * @param composition 合成
+   * @param dt 时间间隔
+   */
   override onCompositionUpdate (composition: Composition, dt: number) {
     this.deltaTime = dt;
   }
 
+  /**
+   * 元素生命周期开始，将 3D 元素添加到 3D 场景管理器中
+   * @param composition 合成
+   * @param item 元素
+   */
   override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<any>) {
     if (item.type === VFX_ITEM_TYPE_3D) {
       const sceneManager = this.getSceneManager(composition);
@@ -142,6 +183,11 @@ export class ModelPlugin extends AbstractPlugin {
     }
   }
 
+  /**
+   * 删除元素时，同时删除 3D 场景管理器中的元素
+   * @param composition 合成
+   * @param item 元素
+   */
   override onCompositionItemRemoved (composition: Composition, item: VFXItem<any>) {
     if (item.type === VFX_ITEM_TYPE_3D) {
       const sceneManager = this.getSceneManager(composition);
@@ -150,6 +196,12 @@ export class ModelPlugin extends AbstractPlugin {
     }
   }
 
+  /**
+   * 更新 3D 管理器和将需要渲染的对象添加到渲染帧中
+   * @param composition 合成
+   * @param frame 渲染帧
+   * @returns
+   */
   override prepareRenderFrame (composition: Composition, frame: RenderFrame): boolean {
     const sceneManager = this.getSceneManager(composition);
 
@@ -204,6 +256,11 @@ export class ModelPlugin extends AbstractPlugin {
     return true;
   }
 
+  /**
+   * 这里可以添加渲染时 Pass
+   * @param composition 合成
+   * @param frame 渲染帧
+   */
   override postProcessFrame (composition: Composition, frame: RenderFrame): void {
     const sceneManager = this.getSceneManager(composition);
     const shadowManager = sceneManager.shadowManager;
