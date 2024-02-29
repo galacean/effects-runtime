@@ -145,8 +145,7 @@ export function getSpineVersion (skeleton: Uint8Array) {
 
 /**
  * 从二进制数据中解析 atlas 数据
- * @param buffer
- * @return {TextureAtlas}
+ * @param buffer - atlas 文件对应的二进制数据
  */
 export function getAtlasFromBuffer (buffer: ArrayBuffer): TextureAtlas {
   const atlasText = decodeText(new Uint8Array(buffer));
@@ -156,9 +155,8 @@ export function getAtlasFromBuffer (buffer: ArrayBuffer): TextureAtlas {
 
 /**
  * 从二进制数据中解析用于创建 skeletonData 的数据
- * @param {ArrayBuffer} buffer
- * @param {"json" | "skel"} skeletonType
- * @return {DataView | string}
+ * @param buffer - skeleton文件 对应的二进制数据
+ * @param skeletonType - 导出的skeleton 文件对应的类型
  */
 export function getSkeletonFromBuffer (buffer: ArrayBuffer, skeletonType: 'json' | 'skel'): DataView | string {
   let skeletonFile;
