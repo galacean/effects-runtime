@@ -7,6 +7,15 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.2.1
+
+`2024-03-01`
+
+- Fix: 修复 `Arraybuffer` 导致的 Spine 版本信息获取错误。[#179](https://github.com/galacean/effects-runtime/pull/179) @RGCHN
+- Fix: add type assertion for `isString` util function. [#171](https://github.com/galacean/effects-runtime/pull/171) @zheeeng
+- Fix: 增加 `loadScene` 中函数错误捕获。[#164](https://github.com/galacean/effects-runtime/pull/164) @RGCHN
+- Fix: 修复 `AssetManager` 定时器未及时取消的问题。[#159](https://github.com/galacean/effects-runtime/pull/159) @RGCHN
+
 ## 1.2.0
 
 `2024-01-30`
