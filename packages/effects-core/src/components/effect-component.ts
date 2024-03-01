@@ -12,6 +12,7 @@ import { Geometry } from '../render';
 import type { Disposable } from '../utils';
 import { DestroyOptions, generateGUID } from '../utils';
 import { RendererComponent } from './renderer-component';
+import { serialize } from '../decorators';
 
 let seed = 1;
 
@@ -31,7 +32,8 @@ export class EffectComponent extends RendererComponent implements Disposable {
   /**
    * Mesh 的 Geometry
    */
-  geometry: Geometry;
+  @serialize()
+  public geometry: Geometry;
 
   triangles: TriangleLike[] = [];
 

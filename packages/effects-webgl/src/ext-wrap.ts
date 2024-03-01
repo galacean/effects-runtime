@@ -134,7 +134,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
       },
     });
 
-    material.blending = false;
+    material.blend = false;
     material.depthTest = false;
     material.culling = false;
 

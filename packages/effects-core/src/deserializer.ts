@@ -6,6 +6,7 @@ import { Material } from './material';
 import { Geometry } from './render';
 import type { VFXItemProps } from './vfx-item';
 import { Texture } from '.';
+import { getMergedStore } from './decorators';
 
 /**
  * @since 2.0.0
@@ -154,11 +155,13 @@ export class Deserializer {
     this.collectSerializableObject(effectsObject, serializableMap);
 
     // 依次序列化
-    for (const effectsObject of Object.values(serializableMap)) {
-      if (!serializedDatas[effectsObject.getInstanceId()]) {
-        serializedDatas[effectsObject.getInstanceId()] = {};
+    for (const guid of Object.keys(serializableMap)) {
+      const serializeObject = serializableMap[guid];
+
+      if (!serializedDatas[serializeObject.getInstanceId()]) {
+        serializedDatas[serializeObject.getInstanceId()] = {};
       }
-      this.serializeTaggedProperties(effectsObject, serializedDatas[effectsObject.getInstanceId()]);
+      this.serializeTaggedProperties(serializeObject, serializedDatas[serializeObject.getInstanceId()]);
     }
 
     return serializedDatas;
@@ -170,7 +173,9 @@ export class Deserializer {
     }
     effectsObject.toData();
     res[effectsObject.getInstanceId()] = effectsObject;
-    for (const value of Object.values(effectsObject.taggedProperties)) {
+    for (const key of Object.keys(effectsObject.taggedProperties)) {
+      const value = effectsObject.taggedProperties[key];
+
       if (value instanceof EffectsObject) {
         this.collectSerializableObject(value, res);
       } else if (value instanceof Array) {
@@ -220,8 +225,11 @@ export class Deserializer {
     if (!serializedData) {
       serializedData = {};
     }
-    for (const key of Object.keys(taggedProperties)) {
-      const value = taggedProperties[key];
+
+    const serializedProperties = getMergedStore(effectsObject);
+
+    for (const key of Object.keys(serializedProperties)) {
+      const value = (effectsObject as any)[key];
 
       if (typeof value === 'number' ||
         typeof value === 'string' ||

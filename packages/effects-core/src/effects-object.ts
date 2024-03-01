@@ -1,12 +1,14 @@
 import type { EffectsObjectData } from './deserializer';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
+import { serialize } from './decorators';
 
 /**
  * @since 2.0.0
  * @internal
  */
 export abstract class EffectsObject {
+  @serialize()
   protected guid: string;
   taggedProperties: Record<string, any>;
 

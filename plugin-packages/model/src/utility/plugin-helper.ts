@@ -328,7 +328,7 @@ export class WebGLHelper {
    * @return 是否半透明
    */
   static isTransparentMesh (mesh: Mesh): boolean {
-    return mesh.material.blending === true;
+    return mesh.material.blend === true;
   }
 
   /**

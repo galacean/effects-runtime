@@ -1,3 +1,4 @@
+import { serialize } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
 import type { VFXItem, VFXItemContent } from '../vfx-item';
@@ -11,7 +12,8 @@ export abstract class Component extends EffectsObject {
   /**
    * 附加到的 VFXItem 对象
    */
-  item: VFXItem<VFXItemContent>;
+  @serialize()
+  public item: VFXItem<VFXItemContent>;
   /**
    * 附加到的 VFXItem 对象 Transform 组件
    */
@@ -42,7 +44,8 @@ export abstract class Component extends EffectsObject {
  * @internal
  */
 export abstract class Behaviour extends Component {
-  _enabled = true;
+  @serialize()
+  public _enabled = true;
 
   /**
    * 组件是否可以更新，true 更新，false 不更新

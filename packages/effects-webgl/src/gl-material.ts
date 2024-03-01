@@ -3,7 +3,7 @@ import type {
   Renderer, MaterialData,
 } from '@galacean/effects-core';
 import {
-  DestroyOptions, Material, assertExist, throwDestroyedError, math, isFunction, logger, DataType,
+  DestroyOptions, Material, assertExist, throwDestroyedError, math, isFunction, logger, DataType, serialize,
 } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
@@ -22,33 +22,47 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-  shader: GLShader;
+  @serialize()
+  public shader: GLShader;
 
   // material存放的uniform数据。
-  floats: Record<string, number> = {};
-  ints: Record<string, number> = {};
-  vector2s: Record<string, Vector2> = {};
-  vector3s: Record<string, Vector3> = {};
-  vector4s: Record<string, Vector4> = {};
-  colors: Record<string, Color> = {};
-  quaternions: Record<string, Quaternion> = {};
-  matrices: Record<string, Matrix4> = {};
-  matrice3s: Record<string, Matrix3> = {};
-  textures: Record<string, Texture> = {};
-  floatArrays: Record<string, number[]> = {};
-  vector4Arrays: Record<string, number[]> = {};
-  matrixArrays: Record<string, number[]> = {};
+  @serialize()
+  private floats: Record<string, number> = {};
+  private ints: Record<string, number> = {};
+  private vector2s: Record<string, Vector2> = {};
+  private vector3s: Record<string, Vector3> = {};
+  private vector4s: Record<string, Vector4> = {};
+
+  @serialize()
+  private colors: Record<string, Color> = {};
+  private quaternions: Record<string, Quaternion> = {};
+  private matrices: Record<string, Matrix4> = {};
+  private matrice3s: Record<string, Matrix3> = {};
+  private textures: Record<string, Texture> = {};
+  private floatArrays: Record<string, number[]> = {};
+  private vector4Arrays: Record<string, number[]> = {};
+  private matrixArrays: Record<string, number[]> = {};
 
   samplers: string[] = [];  // material存放的sampler名称。
   uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
 
   uniformDirtyFlag = true;
+
+  @serialize()
+  private zTest = false;
+
+  @serialize()
+  private zWrite = false;
+
+  @serialize()
+  private blending = false;
+
   glMaterialState = new GLMaterialState();
 
-  override get blending () {
+  override get blend () {
     return this.glMaterialState.blending;
   }
-  override set blending (blending: UndefinedAble<boolean>) {
+  override set blend (blending: UndefinedAble<boolean>) {
     blending !== undefined && this.glMaterialState.setBlending(blending);
   }
 
@@ -219,7 +233,7 @@ export class GLMaterial extends Material {
     this.colorMask = states.colorMask;
     this.polygonOffset = states.polygonOffset;
     this.polygonOffsetFill = states.polygonOffsetFill;
-    this.blending = states.blending;
+    this.blend = states.blending;
     this.blendFunction = states.blendFunction;
     this.stencilTest = states.stencilTest;
   }
@@ -516,9 +530,13 @@ export class GLMaterial extends Material {
       ...data,
     };
 
-    this.blending = propertiesData.blending;
+    this.blend = propertiesData.blending;
     this.depthTest = propertiesData.zTest;
     this.depthMask = propertiesData.zWrite;
+
+    this.blending = propertiesData.blending;
+    this.zTest = propertiesData.zTest;
+    this.zWrite = propertiesData.zWrite;
 
     let name: string;
 
@@ -566,18 +584,6 @@ export class GLMaterial extends Material {
     //@ts-expect-error
     const materialData: MaterialData = this.taggedProperties;
 
-    // if (!materialData) {
-    //   materialData = {
-    //     id: this.instanceId.toString(),
-    //     dataType:DataType.Material,
-    //     shader:{ id:(this.shaderSource as ShaderData).id },
-    //     floats:{},
-    //     ints:{},
-    //     vector4s:{},
-    //   };
-    //   sceneData.effectsObjects[this.instanceId.toString()] = materialData;
-    // }
-    // console.log(this.shader);
     if (this.shader) {
       materialData.shader = this.shader;
     }
@@ -585,8 +591,8 @@ export class GLMaterial extends Material {
     materialData.ints = {};
     materialData.vector4s = {};
     materialData.dataType = DataType.Material;
-    if (this.blending) {
-      materialData.blending = this.blending;
+    if (this.blend) {
+      materialData.blending = this.blend;
     }
     if (this.depthTest) {
       materialData.zTest = this.depthTest;
