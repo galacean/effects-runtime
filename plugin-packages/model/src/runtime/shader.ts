@@ -2,23 +2,52 @@ import { PMaterialType } from './common';
 import type { PMaterialBase } from './material';
 import * as Helper from '../utility/shader-helper';
 
+/**
+ * 着色器上下文
+ */
 export interface PShaderContext {
+  /**
+   * 材质
+   */
   material: PMaterialBase,
+  /**
+   * 是否 WebGL2
+   */
   isWebGL2: boolean,
+  /**
+   * 特性列表
+   */
   featureList: string[],
 }
 
+/**
+ * 着色器返回的代码结果
+ */
 export interface PShaderResults {
+  /**
+   * 顶点着色器代码
+   */
   vertexShaderCode: string,
+  /**
+   * 片段着色器代码
+   */
   fragmentShaderCode: string,
 }
 
-export type ShaderCodeFuncType = (context: PShaderContext) => PShaderResults;
+type ShaderCodeFuncType = (context: PShaderContext) => PShaderResults;
 
+/**
+ * 着色器管理类
+ */
 export class PShaderManager {
   private funcMap: Map<PMaterialType, ShaderCodeFuncType>;
   private static _instance: PShaderManager;
 
+  /**
+   * 获取着色器单例对象
+   *
+   * @returns
+   */
   static getInstance (): PShaderManager {
     // Do you need arguments? Make it a regular static method instead.
     return this._instance || (this._instance = new this());
@@ -35,6 +64,12 @@ export class PShaderManager {
     this.funcMap.set(PMaterialType.skyboxFilter, Helper.getSkyBoxShaderCode);
   }
 
+  /**
+   * 生成着色器代码
+   *
+   * @param context 着色器上下文
+   * @returns
+   */
   genShaderCode (context: PShaderContext): PShaderResults {
     const materialType = context.material.materialType;
     const func = this.funcMap.get(materialType);
