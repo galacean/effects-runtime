@@ -413,6 +413,11 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     }
 
     const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
+
+    // 加载期间 player 销毁
+    if (this.disposed) {
+      throw new Error('Disposed player can not used to create Composition');
+    }
     const composition = new Composition({
       ...opts,
       renderer,
@@ -825,6 +830,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.resize = throwErrorFunc;
     this.loadScene = throwErrorPromiseFunc;
     this.play = throwErrorPromiseFunc;
+    this.gotoAndPlay = throwErrorPromiseFunc;
+    this.gotoAndStop = throwErrorPromiseFunc;
+    this.playSequence = throwErrorFunc;
+    this.destroyCurrentCompositions = throwErrorFunc;
     this.resume = throwErrorPromiseFunc;
     this.disposed = true;
   }
