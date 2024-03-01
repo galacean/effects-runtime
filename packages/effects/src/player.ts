@@ -1,12 +1,12 @@
 import type {
   Disposable, GLType, GPUCapability, JSONValue, LostHandler, MessageItem, RestoreHandler, Scene,
-  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
-  Texture,
+  SceneLoadOptions, Texture, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent,
+  math,
 } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
+  AssetManager, Composition, CompositionComponent, CompositionSourceManager, EVENT_TYPE_CLICK,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  isArray, isObject, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
+  EventSystem, isArray, isObject, logger, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -376,6 +376,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
   private async createComposition (url: SceneLoadType, options: SceneLoadOptions = {}): Promise<Composition> {
     const renderer = this.renderer;
+    const engine = this.renderer.engine;
     const last = performance.now();
     let opts = {
       autoplay: true,
@@ -400,14 +401,19 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     }
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    this.renderer.engine.clearResources(); // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
+    engine.clearResources(); // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
     const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
 
-    await this.renderer.engine.addPackageDatas(scene);
-
+    engine.addPackageDatas(scene);
     for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textureOptions[i] = this.renderer.engine.deserializer.loadGUID(scene.textureOptions[i].id);
+      scene.textureOptions[i] = engine.deserializer.loadGUID(scene.textureOptions[i].id);
       (scene.textureOptions[i] as Texture).initialize();
+    }
+
+    const compositionSourceManager = new CompositionSourceManager(scene, engine);
+
+    if (engine.database) {
+      await engine.createVFXItemsAsync(scene);
     }
 
     const composition = new Composition({
@@ -418,7 +424,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       event: this.event,
       onPlayerPause: this.handlePlayerPause,
       onMessageItem: this.handleMessageItem,
-    }, scene);
+    }, scene, compositionSourceManager);
 
     if (this.ticker) {
       if (composition.renderLevel === spec.RenderLevel.B) {
