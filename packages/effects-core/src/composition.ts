@@ -80,8 +80,6 @@ export class Composition implements Disposable, LostHandler {
    * 场景中视频的播放进度
    */
   videoState: (number | undefined)[];
-
-  compositionSourceManager: CompositionSourceManager;
   /**
    * 合成渲染顺序，默认按升序渲染
    */
@@ -210,8 +208,14 @@ export class Composition implements Disposable, LostHandler {
   /**
    * Composition 构造函数
    * @param props - composition 的创建参数
+   * @param scene
+   * @param compositionSourceManager
    */
-  constructor (props: CompositionProps, scene: Scene, csm: CompositionSourceManager) {
+  constructor (
+    props: CompositionProps,
+    scene: Scene,
+    public compositionSourceManager: CompositionSourceManager,
+  ) {
     const {
       reusable = false,
       speed = 1,
@@ -220,7 +224,6 @@ export class Composition implements Disposable, LostHandler {
       event, width, height,
     } = props;
 
-    this.compositionSourceManager = csm;
     scene.jsonScene.imgUsage = undefined;
 
     if (reusable) {

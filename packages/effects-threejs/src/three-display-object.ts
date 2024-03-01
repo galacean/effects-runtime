@@ -67,12 +67,12 @@ export class ThreeDisplayObject extends THREE.Group {
   async loadScene (url: string | JSONValue, options: SceneLoadOptions = {}) {
     const assetManager = new AssetManager({});
     const scene = await assetManager.loadScene(url);
-    const csm = new CompositionSourceManager(scene, this.renderer.engine);
+    const compositionSourceManager = new CompositionSourceManager(scene, this.renderer.engine);
     const composition = new ThreeComposition({
       renderer: this.renderer,
       width: this.width,
       height: this.height,
-    }, scene, csm);
+    }, scene, compositionSourceManager);
 
     (composition.renderFrame as ThreeRenderFrame).group = this;
     (composition.renderFrame as ThreeRenderFrame).threeCamera = this.camera;

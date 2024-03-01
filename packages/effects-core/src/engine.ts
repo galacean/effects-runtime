@@ -111,7 +111,6 @@ export class Engine implements Disposable {
         this.addEffectsObjectData(textureData);
       }
     }
-
   }
 
   async createVFXItemsAsync (scene: Scene) {
@@ -121,15 +120,15 @@ export class Engine implements Disposable {
     for (const itemData of jsonScene.items) {
       if (!(
         itemData.type === 'ECS' ||
-    itemData.type === spec.ItemType.sprite ||
-    itemData.type === spec.ItemType.particle ||
-    itemData.type === spec.ItemType.mesh ||
-    itemData.type === spec.ItemType.skybox ||
-    itemData.type === spec.ItemType.light ||
-    itemData.type === 'camera' ||
-    itemData.type === spec.ItemType.tree ||
-    itemData.type === spec.ItemType.interact ||
-    itemData.type === spec.ItemType.camera)
+        itemData.type === spec.ItemType.sprite ||
+        itemData.type === spec.ItemType.particle ||
+        itemData.type === spec.ItemType.mesh ||
+        itemData.type === spec.ItemType.skybox ||
+        itemData.type === spec.ItemType.light ||
+        itemData.type === 'camera' ||
+        itemData.type === spec.ItemType.tree ||
+        itemData.type === spec.ItemType.interact ||
+        itemData.type === spec.ItemType.camera)
       ) {
         continue;
       }

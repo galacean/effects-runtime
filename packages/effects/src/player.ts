@@ -1,17 +1,12 @@
 import type {
   Disposable, GLType, GPUCapability, JSONValue, LostHandler, MessageItem, RestoreHandler, Scene,
-  SceneLoadOptions,
-  Texture,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
+  SceneLoadOptions, Texture, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent,
+  math,
 } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, CompositionComponent,
-  CompositionSourceManager,
-  EVENT_TYPE_CLICK, EventSystem,
+  AssetManager, Composition, CompositionComponent, CompositionSourceManager, EVENT_TYPE_CLICK,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  isArray, isObject,
-  logger,
-  pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
+  EventSystem, isArray, isObject, logger, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -415,7 +410,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       (scene.textureOptions[i] as Texture).initialize();
     }
 
-    const csm = new CompositionSourceManager(scene, engine);
+    const compositionSourceManager = new CompositionSourceManager(scene, engine);
 
     if (engine.database) {
       await engine.createVFXItemsAsync(scene);
@@ -429,7 +424,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       event: this.event,
       onPlayerPause: this.handlePlayerPause,
       onMessageItem: this.handleMessageItem,
-    }, scene, csm);
+    }, scene, compositionSourceManager);
 
     if (this.ticker) {
       if (composition.renderLevel === spec.RenderLevel.B) {
