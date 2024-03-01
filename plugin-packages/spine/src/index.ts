@@ -8,6 +8,8 @@ import {
   getSkinList,
   getSpineVersion,
   getTextureOptions,
+  getAtlasFromBuffer,
+  getSkeletonFromBuffer,
 } from './utils';
 
 export { SpineVFXItem } from './spine-vfx-item';
@@ -21,6 +23,8 @@ export {
   getSkinList,
   getTextureOptions,
   getSpineVersion,
+  getAtlasFromBuffer,
+  getSkeletonFromBuffer,
 };
 
 registerPlugin('spine', SpineLoader, SpineVFXItem);

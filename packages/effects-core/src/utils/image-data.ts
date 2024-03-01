@@ -8,7 +8,7 @@ export function imageDataFromColor (value: string | number[]) {
     value = colorToArr(value);
   }
 
-  const color = value as number[];
+  const color = value;
   const image = {
     width: 1,
     height: 1,
