@@ -3,7 +3,7 @@ import type { spec, Scene, Composition, Texture } from '@galacean/effects';
 import type { SkeletonData, Texture as SpineTexture } from '@esotericsoftware/spine-core';
 import { Skeleton, TextureAtlas } from '@esotericsoftware/spine-core';
 import { decodeText } from './polyfill';
-import { createSkeletonData, getAnimationList, getSkinList } from './utils';
+import { createSkeletonData, getAnimationList, getSkeletonFromBuffer, getSkinList } from './utils';
 
 /**
  *
@@ -62,10 +62,8 @@ export class SpineLoader extends AbstractPlugin {
 }
 
 function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textures: Texture[]): SpineResource {
-  let bufferLength, start, skeletonFile, index;
   const { atlas: atlasPointer, skeleton: skeletonPointer, images, skeletonType } = resource;
-
-  [index, start = 0, bufferLength] = atlasPointer[1];
+  const [index, start = 0, bufferLength] = atlasPointer[1];
   const atlasBuffer = bins[index];
   const atlasText = bufferLength ? decodeText(new Uint8Array(atlasBuffer, start, bufferLength)) : decodeText(new Uint8Array(atlasBuffer, start));
   const atlas = new TextureAtlas(atlasText);
@@ -83,15 +81,10 @@ function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textu
     }
     page.texture = tex as unknown as SpineTexture;
   }
-  [index, start = 0, bufferLength] = skeletonPointer[1];
-  const skeletonBuffer = bins[index];
 
-  if (skeletonType === 'json') {
-    skeletonFile = bufferLength ? decodeText(new Uint8Array(skeletonBuffer, start, bufferLength)) : decodeText(new Uint8Array(skeletonBuffer, start));
-  } else {
-    skeletonFile = bufferLength ? new DataView(skeletonBuffer, start, bufferLength) : new DataView(skeletonBuffer, start);
-  }
-
+  const [skelIndex, skelStart = 0, skelBufferLength] = skeletonPointer[1];
+  const skeletonBuffer = skelBufferLength ? bins[skelIndex].slice(skelStart, skelStart + skelBufferLength) : bins[skelIndex].slice(skelStart);
+  const skeletonFile = getSkeletonFromBuffer(skeletonBuffer, skeletonType);
   const skeletonData = createSkeletonData(atlas, skeletonFile, skeletonType); //VFXItem用此skeletonData新建skeleton实例会造成纹理丢失
   const skinList = getSkinList(skeletonData);
   const animationList = getAnimationList(skeletonData);

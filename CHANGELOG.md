@@ -6,6 +6,15 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.2.1
+
+`2024-03-01`
+
+- Fix: Fixed the issue of incorrect Spine version information retrieval caused by `Arraybuffer`. [#179](https://github.com/galacean/effects-runtime/pull/179) @RGCHN
+- Fix: Added type assertion for `isString` util function. [#171](https://github.com/galacean/effects-runtime/pull/171) @zheeeng
+- Fix: Added error handling for functions in `loadScene`. [#164](https://github.com/galacean/effects-runtime/pull/164) @RGCHN
+- Fix: Fixed the problem of `AssetManager` timers not being cancelled in a timely manner. [#159](https://github.com/galacean/effects-runtime/pull/159) @RGCHN
+
 ## 1.2.0
 
 `2024-01-30`

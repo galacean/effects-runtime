@@ -121,6 +121,10 @@ export class AssetManager implements Disposable {
    * @default 10
    */
   private timeout: number;
+  /**
+   * 场景加载的超时定时器
+   */
+  private timers: number[] = [];
 
   /**
    * 构造函数
@@ -166,21 +170,29 @@ export class AssetManager implements Disposable {
     let loadTimer: number;
     let cancelLoading = false;
 
-    const waitPromise = new Promise<Scene>((resolve, reject) =>
+    const waitPromise = new Promise<Scene>((resolve, reject) => {
       loadTimer = window.setTimeout(() => {
         cancelLoading = true;
+        this.removeTimer(loadTimer);
         const totalTime = performance.now() - startTime;
 
         reject(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
-      }, this.timeout * 1000));
+      }, this.timeout * 1000);
+      this.timers.push(loadTimer);
+    });
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
       if (!cancelLoading) {
         const st = performance.now();
-        const result = await func();
 
-        timeInfos.push(`[${label}: ${(performance.now() - st).toFixed(2)}]`);
+        try {
+          const result = await func();
 
-        return result;
+          timeInfos.push(`[${label}: ${(performance.now() - st).toFixed(2)}]`);
+
+          return result;
+        } catch (e) {
+          throw new Error(`load error in ${label}, ${e}`);
+        }
       }
       throw new Error('load canceled.');
     };
@@ -254,6 +266,7 @@ export class AssetManager implements Disposable {
 
       logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
       window.clearTimeout(loadTimer);
+      this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
       scene.startTime = startTime;
 
@@ -537,16 +550,27 @@ export class AssetManager implements Disposable {
     });
   }
 
+  private removeTimer (id: number) {
+    const index = this.timers.indexOf(id);
+
+    if (index !== -1) {
+      this.timers.splice(index, 1);
+    }
+  }
   /**
    * 销毁方法
    */
   dispose (): void {
+    if (this.timers.length) {
+      this.timers.map(id => window.clearTimeout(id));
+    }
     for (const key in this.assets) {
       const asset = this.assets[key];
 
       asset?.dispose?.();
     }
     this.assets = {};
+    this.timers = [];
   }
 }
 

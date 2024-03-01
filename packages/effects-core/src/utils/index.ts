@@ -46,7 +46,7 @@ export function noop () {
  * @param {object} obj - 要判断的对象
  * @return {boolean}
  */
-export function isString (obj: any) {
+export function isString (obj: any): obj is string {
   return typeof obj === 'string';
 }
 

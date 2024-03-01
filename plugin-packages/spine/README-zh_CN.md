@@ -37,6 +37,15 @@ const comp = await new Player().loadScene(scene);
 const { skinList, animationList } = comp.loaderData.spineDatas[index];
 ```
 
+3. 从 atals 和 skeleton 二进制数据中获取
+```ts
+const atlas = getAtlasFromBuffer(atlasBuffer);
+const skeletonFile = getSkeletonFromBuffer(skeletonBuffer, skeletonType);
+const skeletonData = createSkeletonData(atlas, skeletonFile, skeletonType);
+const skinList = getSkinList(skeletonData);
+const animationList = getAnimationList(skeletonData);
+```
+
 ### 获取指定动画时长
 
 ``` ts

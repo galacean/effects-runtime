@@ -8,7 +8,7 @@ It can load and render cool animation effects, The APIs provided by effects-core
 ![GitHub License](https://img.shields.io/github/license/galacean/effects-runtime)
 ![GitHub top language](https://img.shields.io/github/languages/top/galacean/effects-runtime)
 
-[Changelog](./CHANGELOG.md) · [Report Bug][github-issues-url] · [Request Feature][github-issues-url] · English · [中文](./README-zh_CN.md)
+[Native](https://github.com/galacean/effects-native) · [Changelog](./CHANGELOG.md) · [Report Bug][github-issues-url] · [Request Feature][github-issues-url] · English · [中文](./README-zh_CN.md)
 
 ![](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
 
