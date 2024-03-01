@@ -9,22 +9,42 @@ type Euler = math.Euler;
 
 let objectIndex = 1;
 
+/**
+ * 抽象对象基类，提供公共的成员变量和成员函数
+ */
 export abstract class PObject {
+  /**
+   * 名称
+   */
   name = 'Unnamed Object';
+  /**
+   * 类型
+   */
   type: PObjectType = PObjectType.none;
 
   // create () {
   //   // create everything in this object
   // }
 
+  /**
+   * 销毁
+   */
   dispose () {
     // delete everything in this object
   }
 
+  /**
+   * 是否 PObjectType.none
+   * @returns
+   */
   isNone () {
     return this.type === PObjectType.none;
   }
 
+  /**
+   * 是否有效，也就是类型不是 PObjectType.none
+   * @returns
+   */
   isValid (): boolean {
     return this.type !== PObjectType.none;
   }
@@ -34,25 +54,49 @@ export abstract class PObject {
   }
 }
 
+/**
+ * 抽象实体类，支持可见性、变换和所属 VFX 元素
+ */
 export abstract class PEntity extends PObject {
   private _visible = false;
   private _transform = new PTransform();
-  //
+  /**
+   * 是否删除
+   */
   deleted = false;
+  /**
+   * 所属 VFX 元素
+   */
   ownerItem?: ModelVFXItem;
 
+  /**
+   * 逻辑更新
+   * @param deltaSeconds 更新间隔
+   */
   tick (deltaSeconds: number) {
     // OVERRIDE
   }
 
+  /**
+   * 外部改变可见性时的回调
+   * @param visible 可见性
+   */
   onVisibleChanged (visible: boolean) {
     this.visible = visible;
   }
 
+  /**
+   * 将内部需要渲染的 Mesh 添加的到渲染对象集合中
+   * @param renderObjectSet 渲染对象集合
+   */
   addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
     // OVERRIDE
   }
 
+  /**
+   * 更新着色器 Uniform 数据，根据当前场景状态
+   * @param sceneStates
+   */
   updateUniformsForScene (sceneStates: PSceneStates) {
     // OVERRIDE
   }
@@ -66,18 +110,30 @@ export abstract class PEntity extends PObject {
     this.deleted = true;
   }
 
+  /**
+   * 获取可见性，如果实体非法也是不可见
+   */
   get visible (): boolean {
     return this._visible && this.isValid();
   }
 
+  /**
+   * 设置可见性
+   */
   set visible (val: boolean) {
     this._visible = val;
   }
 
+  /**
+   * 获取变换
+   */
   get transform (): PTransform {
     return this._transform;
   }
 
+  /**
+   * 设置变换，可以传入 PTranform 对象或变换数据
+   */
   set transform (val: PTransform | BaseTransform) {
     if (val instanceof PTransform) {
       this._transform = val;
@@ -94,46 +150,79 @@ export abstract class PEntity extends PObject {
     }
   }
 
+  /**
+   * 获取位移
+   */
   get translation (): Vector3 {
     return this._transform.getTranslation();
   }
 
+  /**
+   * 设置位移
+   */
   set translation (val: Vector3 | spec.vec3) {
     this._transform.setTranslation(val);
   }
 
+  /**
+   * 获取位置
+   */
   get position (): Vector3 {
     return this._transform.getTranslation();
   }
 
+  /**
+   * 设置位置
+   */
   set position (val: Vector3 | spec.vec3) {
     this._transform.setTranslation(val);
   }
 
+  /**
+   * 获取旋转
+   */
   get rotation (): Quaternion {
     return this._transform.getRotation();
   }
 
+  /**
+   * 设置旋转
+   */
   set rotation (val: Quaternion | Euler | Vector3 | spec.vec4 | spec.vec3) {
     this._transform.setRotation(val);
   }
 
+  /**
+   * 获取缩放
+   */
   get scale (): Vector3 {
     return this._transform.getScale();
   }
 
+  /**
+   * 设置缩放
+   */
   set scale (val: Vector3 | spec.vec3) {
     this._transform.setScale(val);
   }
 
+  /**
+   * 获取矩阵
+   */
   get matrix (): Matrix4 {
     return this._transform.getMatrix();
   }
 
+  /**
+   * 设置矩阵
+   */
   set matrix (val: Matrix4) {
     this._transform.setMatrix(val);
   }
 
+  /**
+   * 获取坐标系
+   */
   get coordinate () {
     const coord = new PCoordinate();
 

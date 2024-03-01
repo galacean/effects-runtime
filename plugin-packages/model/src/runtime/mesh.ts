@@ -40,6 +40,9 @@ import type { ModelTreeVFXItem, ModelTreeNode } from '../plugin';
 
 type Box3 = math.Box3;
 
+/**
+ * 3D Mesh 类，负责 Mesh 相关的骨骼动画和 PBR 渲染
+ */
 export class PMesh extends PEntity {
   /**
    * 3D 元素父节点
@@ -53,20 +56,54 @@ export class PMesh extends PEntity {
    * 元素的父节点 Id
    */
   parentItemId?: string;
+  /**
+   * 蒙皮
+   */
   skin?: PSkin;
   /**
    * morph 动画状态数据，主要是 weights 数组
    */
   morph?: PMorph;
+  /**
+   * primitive 对象数组
+   */
   primitives: PPrimitive[] = [];
+  /**
+   * 是否隐藏，默认是隐藏
+   */
   hide = true;
+  /**
+   * 优先级
+   */
   priority = 0;
+  /**
+   * 包围盒
+   */
   boundingBox: Box3 = new Box3();
+  /**
+   * 是否显示包围盒
+   */
   visBoundingBox = false;
+  /**
+   * 包围盒 Mesh
+   */
   boundingBoxMesh?: BoxMesh;
+  /**
+   * 是否调用 Build
+   */
   isBuilt = false;
+  /**
+   * 是否销毁
+   */
   isDisposed = false;
 
+  /**
+   * 构造函数，创建 Mesh 对象，并与所属的 VFX 元素和父元素相关联
+   * @param engine 引擎
+   * @param itemMesh Mesh 参数
+   * @param ownerItem 所属 VFX 元素
+   * @param parentItem 父 VFX 元素
+   */
   constructor (private engine: Engine, itemMesh: ModelItemMesh, ownerItem?: ModelVFXItem, parentItem?: ModelTreeVFXItem) {
     super();
     const proxy = new EffectsMeshProxy(itemMesh, parentItem);
@@ -103,6 +140,13 @@ export class PMesh extends PEntity {
     }
   }
 
+  /**
+   * 创建 Core 层相关的 Mesh、Geometry 和 Material 对象
+   * @param lightCount 场景中灯光数目
+   * @param uniformSemantics 着色器 Uniform 数据
+   * @param skybox 天空盒
+   * @returns
+   */
   build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
     if (this.isBuilt) {
       return;
@@ -114,6 +158,11 @@ export class PMesh extends PEntity {
     });
   }
 
+  /**
+   * 更新变换数据和蒙皮数据
+   * @param deltaSeconds 更新间隔
+   * @returns
+   */
   override tick (deltaSeconds: number) {
     if (!this.visible) { return; }
 
@@ -126,6 +175,10 @@ export class PMesh extends PEntity {
     }
   }
 
+  /**
+   * 根据可见性状态，将内部相关的 Core 层 Mesh 添加到渲染对象集合中
+   * @param renderObjectSet 渲染对象集合
+   */
   override addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
     if (this.visible) {
       this.primitives.forEach(prim => {
@@ -138,6 +191,10 @@ export class PMesh extends PEntity {
     }
   }
 
+  /**
+   * 销毁，需要主动释放蒙皮、morph 和 Mesh 等相关的对象
+   * @returns
+   */
   override dispose () {
     if (this.isDisposed) {
       return;
@@ -186,6 +243,10 @@ export class PMesh extends PEntity {
     }
   }
 
+  /**
+   * 更新父 VFX 元素
+   * @param parentItem 父 VFX 元素
+   */
   updateParentItem (parentItem: ModelTreeVFXItem) {
     this.parentItem = parentItem;
     if (this.skin !== undefined) {
@@ -193,6 +254,10 @@ export class PMesh extends PEntity {
     }
   }
 
+  /**
+   * 更新着色器 Uniform 数据，根据当前场景状态
+   * @param sceneStates 场景状态
+   */
   override updateUniformsForScene (sceneStates: PSceneStates) {
     const worldMatrix = this.matrix;
     const normalMatrix = worldMatrix.clone().invert().transpose();
@@ -228,6 +293,12 @@ export class PMesh extends PEntity {
     });
   }
 
+  /**
+   * 点击测试，对于编辑器模式会进行精准的点击测试，否则就和内部的包围盒进行测试
+   * @param rayOrigin 射线原点
+   * @param rayDirection 射线方向
+   * @returns 交点列表
+   */
   hitTesting (rayOrigin: Vector3, rayDirection: Vector3): Vector3[] {
     const worldMatrix = this.matrix;
     const invWorldMatrix = worldMatrix.clone().invert();
@@ -268,6 +339,11 @@ export class PMesh extends PEntity {
     return [newOrigin];
   }
 
+  /**
+   * 计算包围盒，根据传入的世界矩阵
+   * @param worldMatrix 世界矩阵
+   * @returns
+   */
   computeBoundingBox (worldMatrix: Matrix4): Box3 {
     const box = this.boundingBox.makeEmpty();
     const inverseWorldMatrix = worldMatrix.clone().invert();
@@ -306,14 +382,24 @@ export class PMesh extends PEntity {
     }
   }
 
+  /**
+   * 获取父节点 id
+   * @returns
+   */
   getParentId (): string | undefined {
     return this.parentItemId;
   }
 
+  /**
+   * 是否有蒙皮
+   */
   get hasSkin (): boolean {
     return this.skin !== undefined;
   }
 
+  /**
+   * 获取 Core 层 Mesh 数组
+   */
   get mriMeshs (): Mesh[] {
     return this.primitives.map(prim => {
       return prim.effectsMesh;
@@ -322,6 +408,9 @@ export class PMesh extends PEntity {
 
 }
 
+/**
+ * 3D Primitive 类，负责 Sub Mesh相关的功能，支持骨骼动画和 PBR 渲染
+ */
 export class PPrimitive {
   /**
    * 宿主 Mesh，包含了当前 Primitive
@@ -339,11 +428,25 @@ export class PPrimitive {
   private jointNormalMatList?: Float32Array;
   private jointMatrixTexture?: PAnimTexture;
   private jointNormalMatTexture?: PAnimTexture;
-  //
+  /**
+   * 名称
+   */
   name = '';
+  /**
+   * Core 层 Mesh
+   */
   effectsMesh!: Mesh;
+  /**
+   * 渲染优先级
+   */
   effectsPriority = 0;
+  /**
+   * 包围盒
+   */
   boundingBox = new Box3();
+  /**
+   * 是否压缩，模式不压缩
+   */
   isCompressed = false;
   //
   shadowType = PShadowType.none;
@@ -354,6 +457,11 @@ export class PPrimitive {
 
   }
 
+  /**
+   * 创建 Primitive 对象
+   * @param options Primitive 参数
+   * @param parent 父 Mesh 对象
+   */
   create (options: ModelPrimitiveOptions, parent: PMesh) {
     this.parent = parent;
     this.skin = parent.skin;
@@ -397,6 +505,13 @@ export class PPrimitive {
     //}
   }
 
+  /**
+   * 创建 Core 层 Mesh、Geometry 和 Material 对象，用于后面的渲染
+   * 部分着色器 Uniform 数据来自 uniformSemantics
+   * @param lightCount 灯光数目
+   * @param uniformSemantics Uniform 数据集
+   * @param skybox 天空盒
+   */
   build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
     const globalState = PGlobalState.getInstance();
     const featureList = this.getFeatureList(lightCount, true, skybox);
@@ -577,10 +692,17 @@ export class PPrimitive {
     return featureList;
   }
 
+  /**
+   * 将 Core 层 Mesh 添加到渲染对象集合中
+   * @param renderObjectSet 渲染对象集合
+   */
   addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
     renderObjectSet.add(this.effectsMesh);
   }
 
+  /**
+   * 销毁，需要释放创建的 Core 层对象
+   */
   dispose () {
     // @ts-expect-error
     this.engine = null;
@@ -611,6 +733,12 @@ export class PPrimitive {
     this.shadowMaterial = undefined;
   }
 
+  /**
+   * 更新着色器 Uniform 数据，根据场景状态
+   * @param worldMatrix 世界矩阵
+   * @param nomralMatrix 法线矩阵
+   * @param sceneStates 场景状态
+   */
   updateUniformsForScene (worldMatrix: Matrix4, nomralMatrix: Matrix4, sceneStates: PSceneStates) {
     this.updateUniformsByAnimation(worldMatrix, nomralMatrix);
     this.updateUniformsByScene(sceneStates);
@@ -628,6 +756,14 @@ export class PPrimitive {
     }
   }
 
+  /**
+   * 点击测试，先进行简单的包围合测试，然后再计算精准的点击测试，这个测试非常耗时不要在移动端上使用
+   * @param newOrigin 射线原点
+   * @param newDirection 射线方向
+   * @param worldMatrix 世界矩阵
+   * @param invWorldMatrix 逆世界矩阵
+   * @returns 射线的 t 参数
+   */
   hitTesting (newOrigin: Vector3, newDirection: Vector3, worldMatrix: Matrix4, invWorldMatrix: Matrix4) {
     const bounding = this.boundingBox;
     const boxt = RayBoxTesting(newOrigin, newDirection, bounding.min, bounding.max);
@@ -653,6 +789,11 @@ export class PPrimitive {
     return proxy.getHitPoint(newOrigin, newDirection);
   }
 
+  /**
+   * 计算包围盒
+   * @param inverseWorldMatrix 逆世界坐标
+   * @returns
+   */
   computeBoundingBox (inverseWorldMatrix: Matrix4): Box3 {
     if (this.skin === undefined && !this.boundingBox.isEmpty()) {
       // 包围盒缓存了，直接返回计算的结果
@@ -830,14 +971,26 @@ export class PPrimitive {
     }
   }
 
+  /**
+   * 是否有蒙皮
+   * @returns
+   */
   hasSkin (): boolean {
     return this.skin !== undefined;
   }
 
+  /**
+   * 获取 Core 层几何对象
+   * @returns
+   */
   getEffectsGeometry (): Geometry {
     return this.geometry.geometry;
   }
 
+  /**
+   * 设置几何
+   * @param val 3D 或 Core 层几何对象
+   */
   setGeometry (val: PGeometry | Geometry) {
     if (val instanceof PGeometry) {
       this.geometry = val;
@@ -846,6 +999,10 @@ export class PPrimitive {
     }
   }
 
+  /**
+   * 设置材质
+   * @param val 3D 材质或材质参数
+   */
   setMaterial (val: PMaterial | ModelMaterialOptions) {
     if (val instanceof PMaterialUnlit) {
       this.material = val;
@@ -856,6 +1013,10 @@ export class PPrimitive {
     }
   }
 
+  /**
+   * 获取 Core 层材质
+   * @returns
+   */
   getModelMaterial (): Material {
     return this.effectsMesh.material;
   }
@@ -868,6 +1029,10 @@ export class PPrimitive {
     return this.shadowType !== PShadowType.none && this.material.materialType !== PMaterialType.unlit;
   }
 
+  /**
+   * 是否无光照材质
+   * @returns
+   */
   isUnlitMaterial (): boolean {
     return this.material.materialType === PMaterialType.unlit;
   }
@@ -886,6 +1051,10 @@ export class PPrimitive {
     return this.morph.hasMorph();
   }
 
+  /**
+   * 获取世界坐标下的包围盒
+   * @returns
+   */
   getWorldBoundingBox (): Box3 {
     if (this.parent === undefined) {
       if (this.boundingBox.isEmpty()) {
@@ -905,19 +1074,37 @@ export class PPrimitive {
   }
 }
 
+/**
+ * 3D 几何类
+ */
 export class PGeometry {
+  /**
+   * 属性名称数组
+   */
   attributeNames: string[];
 
+  /**
+   * 创建 3D 几何对象，根据 Core 层几何对象
+   * @param geometry
+   */
   constructor (public geometry: Geometry) {
     this.attributeNames = geometry.getAttributeNames();
   }
 
+  /**
+   * 销毁
+   */
   dispose () {
     // @ts-expect-error
     this.geometry = undefined;
     this.attributeNames = [];
   }
 
+  /**
+   * 是否有某个属性
+   * @param name 属性名
+   * @returns
+   */
   hasAttribute (name: string): boolean {
     const index = this.attributeNames.findIndex(item => {
       return item === name;
@@ -926,6 +1113,10 @@ export class PGeometry {
     return index !== -1;
   }
 
+  /**
+   * 设置隐藏，通过修改几何对象中的渲染数目
+   * @param hide
+   */
   setHide (hide: boolean) {
     const geomExt = this.geometry as GeometryExt;
 
@@ -947,6 +1138,10 @@ export class PGeometry {
     }
   }
 
+  /**
+   * 是否压缩格式
+   * @returns
+   */
   isCompressed (): boolean {
     const positionAttrib = this.geometry.getAttributeData('a_Position');
 
@@ -959,30 +1154,59 @@ export class PGeometry {
     return false;
   }
 
+  /**
+   * 是否有位置属性
+   * @returns
+   */
   hasPositions (): boolean {
     return this.hasAttribute('a_Position');
   }
 
+  /**
+   * 是否有法线属性
+   * @returns
+   */
   hasNormals (): boolean {
     return this.hasAttribute('a_Normal');
   }
 
+  /**
+   * 是否有切线属性
+   * @returns
+   */
   hasTangents (): boolean {
     return this.hasAttribute('a_Tangent');
   }
 
+  /**
+   * 是否有纹理坐标属性
+   * @param index
+   * @returns
+   */
   hasUVCoords (index: number): boolean {
     return this.hasAttribute(`a_UV${index}`);
   }
 
+  /**
+   * 是否有颜色属性
+   * @returns
+   */
   hasColors (): boolean {
     return this.hasAttribute('a_Color');
   }
 
+  /**
+   * 是否有关节点属性
+   * @returns
+   */
   hasJoints (): boolean {
     return this.hasAttribute('a_Joint1');
   }
 
+  /**
+   * 是否有权重属性
+   * @returns
+   */
   hasWeights (): boolean {
     return this.hasAttribute('a_Weight1');
   }
