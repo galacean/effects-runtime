@@ -1,3 +1,4 @@
+import { serialize } from '../decorators';
 import type { Material } from '../material';
 import type { Renderer } from '../render';
 import { removeItem } from '../utils';
@@ -9,9 +10,14 @@ import { Component } from './component';
  */
 export class RendererComponent extends Component {
   started = false;
-  materials: Material[] = [];
 
+  @serialize()
+  public materials: Material[] = [];
+
+  @serialize()
   protected _priority: number;
+
+  @serialize()
   protected _enabled = true;
 
   get priority (): number {

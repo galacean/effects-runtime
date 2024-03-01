@@ -3,6 +3,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
 import type { Engine } from './engine';
+import { serialize } from './decorators';
 
 export interface TransformProps {
   position?: spec.vec3 | Vector3,
@@ -39,6 +40,7 @@ export class Transform implements Disposable {
   /**
    * 自身位移
    */
+  @serialize()
   readonly position = new Vector3(0, 0, 0);
   /**
    * 自身旋转对应的四元数，右手坐标系，旋转正方向左手螺旋（轴向的顺时针），旋转欧拉角的顺序为 ZYX
@@ -47,10 +49,12 @@ export class Transform implements Disposable {
   /**
    * 自身旋转角度
    */
+  @serialize()
   readonly rotation = new Euler(0, 0, 0);
   /**
    * 自身缩放
    */
+  @serialize()
   readonly scale = new Vector3(1, 1, 1);
   /**
    * 自身锚点

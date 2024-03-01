@@ -110,7 +110,7 @@ export abstract class Material extends EffectsObject implements Disposable {
    * 设置 Material 的颜色融合开关
    * @param blending - 是否开启混合效果
    */
-  set blending (blending: UndefinedAble<boolean>) { }
+  set blend (blending: UndefinedAble<boolean>) { }
 
   /**
    * 分别指定 Material 的颜色混合函数乘数

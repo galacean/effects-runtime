@@ -106,10 +106,10 @@ export class ThreeMaterial extends Material {
   /**
    * 获取混合模式
    */
-  override get blending () {
+  override get blend () {
     return this.material.blending !== THREE.NoBlending;
   }
-  override set blending (blending: UndefinedAble<boolean>) {
+  override set blend (blending: UndefinedAble<boolean>) {
     this.material.blending = blending ? THREE.CustomBlending : THREE.NoBlending;
   }
 

@@ -193,7 +193,7 @@ export class TrailMesh {
     const preMulAlpha = getPreMultiAlpha(blending);
     const material = Material.create(engine, mtl);
 
-    material.blending = true;
+    material.blend = true;
     material.depthMask = occlusion;
     material.depthTest = true;
     setMaskMode(material, maskMode);

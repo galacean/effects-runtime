@@ -19,6 +19,7 @@ import type {
 import { ActivationClipPlayable, AnimationClipPlayable, TimelineComponent, Track } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
+import { serialize } from './decorators';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | TimelineComponent | CameraController | InteractComponent | void | {};
 export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
@@ -50,7 +51,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素的变换包含位置、旋转、缩放。
    */
-  transform: Transform = new Transform();
+  @serialize()
+  public transform: Transform = new Transform();
   /**
    * 合成属性
    */
@@ -58,7 +60,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素动画的持续时间
    */
-  duration = 0;
+  @serialize()
+  public duration = 0;
   /**
    * 元素当前更新归一化时间，开始时为 0，结束时为 1
    */
@@ -86,7 +89,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素名称
    */
-  name: string;
+  @serialize()
+  public name: string;
   /**
    * 元素 id 唯一
    */
@@ -102,11 +106,13 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素动画的速度
    */
-  type: spec.ItemType = spec.ItemType.base;
+  @serialize()
+  public type: spec.ItemType = spec.ItemType.base;
   stopped = false;
   props: VFXItemProps;
 
-  components: Component[] = [];
+  @serialize()
+  public components: Component[] = [];
   itemBehaviours: ItemBehaviour[] = [];
   rendererComponents: RendererComponent[] = [];
 

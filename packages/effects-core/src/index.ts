@@ -43,6 +43,7 @@ export * from './utils';
 export * from './vfx-item';
 export * from './deserializer';
 export * from './effects-object';
+export * from './decorators';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);
