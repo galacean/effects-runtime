@@ -16,10 +16,10 @@ const treeGui = new TreeGui();
     const player = createPlayer();
 
     const comp = await player.loadScene(json, {
-      autoplay: false,
+      // autoplay: false,
     });
 
-    player.gotoAndStop(0);
+    // player.gotoAndStop(0);
 
     treeGui.setComposition(comp);
   } catch (e) {

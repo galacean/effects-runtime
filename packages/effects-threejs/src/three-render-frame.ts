@@ -87,7 +87,7 @@ export class ThreeRenderFrame extends RenderFrame {
       const camera = this.camera;
 
       uniformSemanticsMap = {
-        'effects_ObjectToWorld': mesh.worldMatrix.toArray(),
+        'effects_ObjectToWorld': mesh.transform.getWorldMatrix(),
         'effects_MatrixV': camera.getViewMatrix().toArray(),
         'effects_MatrixVP': camera.getViewProjectionMatrix().toArray(),
         'effects_MatrixInvV': camera.getInverseViewMatrix().toArray(),
@@ -100,6 +100,8 @@ export class ThreeRenderFrame extends RenderFrame {
       }
     });
     material.uniformsNeedUpdate = true;
+    //@ts-expect-error
+    (mesh as ThreeMesh).mesh.mesh.component = mesh;
     // @ts-expect-error
     this.group.add((mesh as ThreeMesh).mesh.mesh);
   }
@@ -126,7 +128,8 @@ export class ThreeRenderFrame extends RenderFrame {
       const uniforms = material.uniforms;
       const threeViewProjectionMatrix = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
 
-      setUniformValue(uniforms, 'effects_ObjectToWorld', mesh.matrixWorld);
+      //@ts-expect-error
+      setUniformValue(uniforms, 'effects_ObjectToWorld', mesh.component.transform.getWorldMatrix());
       setUniformValue(uniforms, 'effects_MatrixVP', threeViewProjectionMatrix);
       material.uniformsNeedUpdate = true;
     });
@@ -138,6 +141,14 @@ export class ThreeRenderFrame extends RenderFrame {
 
     group.children.forEach(mesh => {
       const material = (mesh as THREE.Mesh).material as THREE.ShaderMaterial;
+
+      //@ts-expect-error
+      if (!mesh.component.isActiveAndEnabled) {
+        return;
+      }
+
+      //@ts-expect-error
+      setUniformValue(material.uniforms, 'effects_ObjectToWorld', mesh.component.transform.getWorldMatrix());
 
       setUniformValue(material.uniforms, 'effects_MatrixInvV', camera.getInverseViewMatrix().toArray());
       setUniformValue(material.uniforms, 'effects_MatrixVP', camera.getViewProjectionMatrix().toArray());

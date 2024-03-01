@@ -177,6 +177,7 @@ export class SpriteComponent extends RendererComponent {
   }
 
   override render (renderer: Renderer) {
+
     if (!this.getVisible()) {
       return;
     }
