@@ -106,7 +106,7 @@ export class SpineMesh implements Disposable {
 
     material.setTexture('uTexture', this.lastTexture);
     material.setMatrix('uModel', math.Matrix4.fromIdentity());
-    material.blend = true;
+    material.blending = true;
     material.culling = false;
     material.depthTest = false;
     material.depthMask = false;

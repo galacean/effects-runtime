@@ -374,7 +374,7 @@ export class SpriteComponent extends RendererComponent {
       depthMask: occlusion,
     };
 
-    material.blend = states.blending;
+    material.blending = states.blending;
     material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
     material.depthTest = states.depthTest;
     material.depthMask = states.depthMask;

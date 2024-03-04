@@ -22,18 +22,14 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-  @serialize()
   public shader: GLShader;
 
   // material存放的uniform数据。
-  @serialize()
   private floats: Record<string, number> = {};
   private ints: Record<string, number> = {};
   private vector2s: Record<string, Vector2> = {};
   private vector3s: Record<string, Vector3> = {};
   private vector4s: Record<string, Vector4> = {};
-
-  @serialize()
   private colors: Record<string, Color> = {};
   private quaternions: Record<string, Quaternion> = {};
   private matrices: Record<string, Matrix4> = {};
@@ -47,22 +43,12 @@ export class GLMaterial extends Material {
   uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
 
   uniformDirtyFlag = true;
-
-  @serialize()
-  private zTest = false;
-
-  @serialize()
-  private zWrite = false;
-
-  @serialize()
-  private blending = false;
-
   glMaterialState = new GLMaterialState();
 
-  override get blend () {
+  override get blending () {
     return this.glMaterialState.blending;
   }
-  override set blend (blending: UndefinedAble<boolean>) {
+  override set blending (blending: UndefinedAble<boolean>) {
     blending !== undefined && this.glMaterialState.setBlending(blending);
   }
 
@@ -233,7 +219,7 @@ export class GLMaterial extends Material {
     this.colorMask = states.colorMask;
     this.polygonOffset = states.polygonOffset;
     this.polygonOffsetFill = states.polygonOffsetFill;
-    this.blend = states.blending;
+    this.blending = states.blending;
     this.blendFunction = states.blendFunction;
     this.stencilTest = states.stencilTest;
   }
@@ -530,13 +516,9 @@ export class GLMaterial extends Material {
       ...data,
     };
 
-    this.blend = propertiesData.blending;
+    this.blending = propertiesData.blending;
     this.depthTest = propertiesData.zTest;
     this.depthMask = propertiesData.zWrite;
-
-    this.blending = propertiesData.blending;
-    this.zTest = propertiesData.zTest;
-    this.zWrite = propertiesData.zWrite;
 
     let name: string;
 
@@ -591,8 +573,8 @@ export class GLMaterial extends Material {
     materialData.ints = {};
     materialData.vector4s = {};
     materialData.dataType = DataType.Material;
-    if (this.blend) {
-      materialData.blending = this.blend;
+    if (this.blending) {
+      materialData.blending = this.blending;
     }
     if (this.depthTest) {
       materialData.zTest = this.depthTest;

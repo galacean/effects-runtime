@@ -11,10 +11,6 @@ function getDirectStore (target: any): any {
   return (<any>decoratorInitialStore)[classKey];
 }
 
-/**
- * Return the list of properties flagged as serializable
- * @param target host object
- */
 export function getMergedStore (target: any): any {
   const classKey = target.constructor.name;
 

@@ -329,7 +329,7 @@ function createMesh (engine: Engine, points: Float32Array, indices: Uint16Array,
   material.setMatrix('u_model', Matrix4.IDENTITY);
   material.depthTest = depthTest;
   material.stencilTest = false;
-  material.blend = false;
+  material.blending = false;
   material.depthMask = true;
   const geometry = Geometry.create(
     engine,

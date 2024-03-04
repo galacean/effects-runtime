@@ -11,7 +11,6 @@ import { Component } from './component';
 export class RendererComponent extends Component {
   started = false;
 
-  @serialize()
   public materials: Material[] = [];
 
   @serialize()
@@ -79,11 +78,6 @@ export class RendererComponent extends Component {
 
   override toData (): void {
     super.toData();
-    // 数据改造后可移除
-    this.taggedProperties = {
-      _enabled:this._enabled,
-      ...this.taggedProperties,
-    };
   }
 
   override dispose (): void {

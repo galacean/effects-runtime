@@ -118,7 +118,7 @@ export abstract class PMaterialBase extends PObject {
 
   setMaterialStates (material: Material) {
     if (this.blendMode === PBlendMode.translucent || this.blendMode === PBlendMode.additive) {
-      material.blend = true;
+      material.blending = true;
       material.depthTest = true;
       material.blendEquation = [glContext.FUNC_ADD, glContext.FUNC_ADD];
       if (this.blendMode === PBlendMode.translucent) {
@@ -135,12 +135,12 @@ export abstract class PMaterialBase extends PObject {
       material.depthMask = this.depthMask;
     } else {
       if (PGlobalState.getInstance().isTiny3dMode) {
-        material.blend = false;
+        material.blending = false;
         material.depthTest = true;
         // Tiny兼容模式下不透明的深度写入始终开
         material.depthMask = true;
       } else {
-        material.blend = false;
+        material.blending = false;
         material.depthTest = this.depthTestHint;
         material.depthMask = this.depthMask;
       }

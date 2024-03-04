@@ -51,7 +51,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素的变换包含位置、旋转、缩放。
    */
-  @serialize()
   public transform: Transform = new Transform();
   /**
    * 合成属性
@@ -111,7 +110,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   stopped = false;
   props: VFXItemProps;
 
-  @serialize()
   public components: Component[] = [];
   itemBehaviours: ItemBehaviour[] = [];
   rendererComponents: RendererComponent[] = [];
@@ -577,9 +575,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
   override toData (): void {
     this.taggedProperties.id = this.guid;
-    this.taggedProperties.name = this.name;
-    this.taggedProperties.type = this.type;
-    this.taggedProperties.duration = this.duration;
     this.taggedProperties.transform = this.transform.toData();
     this.taggedProperties.dataType = DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {

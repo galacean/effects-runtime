@@ -225,6 +225,5 @@ export class TimelineComponent extends ItemBehaviour {
 
   override toData (): void {
     super.toData();
-    this.taggedProperties.time = this.time;
   }
 }

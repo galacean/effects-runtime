@@ -107,10 +107,6 @@ export class InspectorGui {
     const serializedProperties = getMergedStore(component);
 
     for (const key of Object.keys(serializedProperties)) {
-      // 如果 serializedData 中没有值，那么取装饰器修饰的变量值
-      if (serializedData[key] === undefined) {
-        serializedData[key] = (component as any)[key];
-      }
       this.addGuiProperty(properties, key, serializedData);
     }
   }

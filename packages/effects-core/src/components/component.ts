@@ -12,7 +12,6 @@ export abstract class Component extends EffectsObject {
   /**
    * 附加到的 VFXItem 对象
    */
-  @serialize()
   public item: VFXItem<VFXItemContent>;
   /**
    * 附加到的 VFXItem 对象 Transform 组件
@@ -76,7 +75,6 @@ export abstract class Behaviour extends Component {
 
   override toData (): void {
     super.toData();
-    this.taggedProperties._enabled = this._enabled;
   }
 }
 

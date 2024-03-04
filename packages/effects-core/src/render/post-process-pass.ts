@@ -42,7 +42,7 @@ export class BloomThresholdPass extends RenderPass {
       },
     });
 
-    material.blend = false;
+    material.blending = false;
     material.depthTest = false;
     material.culling = false;
 
@@ -113,7 +113,7 @@ export class HQGaussianDownSamplePass extends RenderPass {
       shader,
     });
 
-    material.blend = false;
+    material.blending = false;
     material.depthTest = false;
     material.culling = false;
 
@@ -174,7 +174,7 @@ export class HQGaussianUpSamplePass extends RenderPass {
       shader,
     });
 
-    material.blend = false;
+    material.blending = false;
     material.depthTest = false;
     material.culling = false;
 
@@ -237,7 +237,7 @@ export class ToneMappingPass extends RenderPass {
       },
     });
 
-    material.blend = false;
+    material.blending = false;
     material.depthTest = false;
     material.culling = false;
 

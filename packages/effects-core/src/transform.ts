@@ -40,7 +40,6 @@ export class Transform implements Disposable {
   /**
    * 自身位移
    */
-  @serialize()
   readonly position = new Vector3(0, 0, 0);
   /**
    * 自身旋转对应的四元数，右手坐标系，旋转正方向左手螺旋（轴向的顺时针），旋转欧拉角的顺序为 ZYX
@@ -49,12 +48,10 @@ export class Transform implements Disposable {
   /**
    * 自身旋转角度
    */
-  @serialize()
   readonly rotation = new Euler(0, 0, 0);
   /**
    * 自身缩放
    */
-  @serialize()
   readonly scale = new Vector3(1, 1, 1);
   /**
    * 自身锚点

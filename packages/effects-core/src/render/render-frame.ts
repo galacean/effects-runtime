@@ -969,12 +969,12 @@ export class RenderFrame implements Disposable {
         shader,
       });
 
-    material.blend = false;
+    material.blending = false;
     material.depthTest = false;
     material.culling = false;
 
     if (semantics?.blend) {
-      material.blend = true;
+      material.blending = true;
       material.blendFunction = [glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA];
     }
 

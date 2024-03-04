@@ -173,8 +173,15 @@ export class Deserializer {
     }
     effectsObject.toData();
     res[effectsObject.getInstanceId()] = effectsObject;
-    for (const key of Object.keys(effectsObject.taggedProperties)) {
-      const value = effectsObject.taggedProperties[key];
+    const serializedProperties = getMergedStore(effectsObject);
+
+    for (const key of Object.keys(serializedProperties)) {
+      // TODO 待移除，序列化属性通过 effectsObject 对象直接获取
+      let value = effectsObject.taggedProperties[key];
+
+      if (value === undefined) {
+        value = (effectsObject as any)[key];
+      }
 
       if (value instanceof EffectsObject) {
         this.collectSerializableObject(value, res);
@@ -203,7 +210,13 @@ export class Deserializer {
 
       taggedProperties[key] = this.deserializeProperty(value, 0);
     }
+    const serializedProperties = getMergedStore(effectsObject);
 
+    for (const key of Object.keys(serializedProperties)) {
+      const value = serializedData[key];
+
+      (effectsObject as any)[key] = this.deserializeProperty(value, 0);
+    }
     effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
 
@@ -215,21 +228,61 @@ export class Deserializer {
 
       taggedProperties[key] = await this.deserializePropertyAsync(value, 0);
     }
+    const serializedProperties = getMergedStore(effectsObject);
+
+    for (const key of Object.keys(serializedProperties)) {
+      const value = serializedData[key];
+
+      (effectsObject as any)[key] = await this.deserializePropertyAsync(value, 0);
+    }
     effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
 
   serializeTaggedProperties (effectsObject: EffectsObject, serializedData?: Record<string, any>) {
     effectsObject.toData();
-    const taggedProperties = effectsObject.taggedProperties;
-
     if (!serializedData) {
       serializedData = {};
     }
-
     const serializedProperties = getMergedStore(effectsObject);
 
     for (const key of Object.keys(serializedProperties)) {
-      const value = (effectsObject as any)[key];
+      // TODO 待移除，序列化属性通过 effectsObject 对象直接获取
+      let value = effectsObject.taggedProperties[key];
+
+      if (value === undefined) {
+        value = (effectsObject as any)[key];
+      }
+
+      if (typeof value === 'number' ||
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        this.checkTypedArray(value)) { // TODO json 数据避免传 typedArray
+        serializedData[key] = value;
+      } else if (value instanceof Array) {
+        if (!serializedData[key]) {
+          serializedData[key] = [];
+        }
+        this.serializeArrayProperty(value, serializedData[key], 0);
+      } else if (value instanceof EffectsObject) {
+        // TODO 处理 EffectsObject 递归序列化
+        serializedData[key] = { id: value.getInstanceId() };
+      } else if (value instanceof Object) {
+
+        if (!serializedData[key]) {
+          serializedData[key] = {};
+        }
+        this.serializeObjectProperty(value, serializedData[key], 0);
+      }
+    }
+
+    // TODO 待移除 tagggedProperties 为没有装饰器的临时方案
+    for (const key of Object.keys(effectsObject.taggedProperties)) {
+      // TODO 待移除，序列化属性通过 effectsObject 对象直接获取
+      let value = effectsObject.taggedProperties[key];
+
+      if (value === undefined) {
+        value = (effectsObject as any)[key];
+      }
 
       if (typeof value === 'number' ||
         typeof value === 'string' ||

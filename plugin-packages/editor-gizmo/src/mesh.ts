@@ -724,7 +724,7 @@ function createMaterial (engine: Engine, color?: vec3, depthTest?: boolean): Mat
   material.setMatrix('u_model', Matrix4.IDENTITY);
   material.depthTest = myDepthTest;
   material.stencilTest = false;
-  material.blend = false;
+  material.blending = false;
   material.depthMask = true;
 
   return material;
@@ -803,7 +803,7 @@ function createHideBackMaterial (engine: Engine, color?: vec3, depthTest?: boole
 
   material.depthTest = myDepthTest;
   material.stencilTest = false;
-  material.blend = false;
+  material.blending = false;
   material.depthMask = true;
 
   return material;
@@ -868,7 +868,7 @@ function createBlendMaterial (engine: Engine, color?: vec3, depthTest?: boolean,
   material.setMatrix('u_model', Matrix4.IDENTITY);
   material.depthTest = myDepthTest;
   material.stencilTest = false;
-  material.blend = true;
+  material.blending = true;
   material.blendEquation = [glContext.FUNC_ADD, glContext.FUNC_ADD];
   material.blendFunction = [glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA];
   material.depthMask = true;
@@ -957,7 +957,7 @@ function createSpriteMaterial (engine: Engine, data?: vec3 | Texture, depthTest?
 
   material.depthTest = myDepthTest;
   material.stencilTest = false;
-  material.blend = true;
+  material.blending = true;
   material.blendEquation = [glContext.FUNC_ADD, glContext.FUNC_ADD];
   material.blendFunction = [glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA];
 

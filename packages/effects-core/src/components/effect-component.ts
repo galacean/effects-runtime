@@ -32,7 +32,6 @@ export class EffectComponent extends RendererComponent implements Disposable {
   /**
    * Mesh 的 Geometry
    */
-  @serialize()
   public geometry: Geometry;
 
   triangles: TriangleLike[] = [];
