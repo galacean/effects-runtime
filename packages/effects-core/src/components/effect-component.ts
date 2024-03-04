@@ -167,9 +167,6 @@ export class EffectComponent extends RendererComponent implements Disposable {
 
   override toData (): void {
     this.taggedProperties.id = this.guid;
-    this.taggedProperties.dataType = DataType.EffectComponent;
-    this.taggedProperties._enabled = this._enabled;
-    this.taggedProperties._priority = this._priority;
     this.taggedProperties.materials = this.materials;
     this.taggedProperties.geometry = this.geometry;
     this.taggedProperties.item = this.item;

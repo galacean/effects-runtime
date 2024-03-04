@@ -109,6 +109,10 @@ export class InspectorGui {
     for (const key of Object.keys(serializedProperties)) {
       this.addGuiProperty(properties, key, serializedData);
     }
+
+    for (const key of Object.keys(component.taggedProperties)) {
+      this.addGuiProperty(properties, key, serializedData);
+    }
   }
 
   addGuiProperty (guiProperties: AGUIPropertyProps[], key: string, object: any, name?: string) {
