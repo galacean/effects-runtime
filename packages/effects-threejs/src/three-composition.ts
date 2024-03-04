@@ -1,5 +1,5 @@
 import type { Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem, MessageItem, CompositionProps } from '@galacean/effects-core';
-import { Composition, CompositionComponent } from '@galacean/effects-core';
+import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
 import { ThreeRenderFrame } from './three-render-frame';
 import { ThreeTexture } from './three-texture';
 import type THREE from 'three';
@@ -54,15 +54,15 @@ export interface CompositionBaseProps {
   onPlayerPause?: (item: VFXItem<VFXItemContent>) => void,
 }
 
-export interface ThreeCompositionProps extends CompositionBaseProps {
+export interface ThreeCompositionProps extends CompositionProps {
   /**
-   * 指定合成名字
+   * Three.js 中的相机对象
    */
-  compositionName?: string,
+  threeCamera?: THREE.Camera,
   /**
-   * 是否多合成
+   * Three.js 中的 Group 对象
    */
-  multipleCompositions?: boolean,
+  threeGroup?: THREE.Group,
 }
 
 /**
@@ -79,8 +79,14 @@ export class ThreeComposition extends Composition {
    */
   threeCamera: THREE.Camera;
 
-  constructor (props: CompositionProps, scene: Scene) {
+  threeGroup: THREE.Group;
+
+  constructor (props: ThreeCompositionProps, scene: Scene) {
     super(props, scene);
+    const { threeCamera, threeGroup } = props;
+
+    this.threeCamera = threeCamera!;
+    this.threeGroup = threeGroup!;
     this.compositionSourceManager.sourceContent?.items.forEach(item => {
       //@ts-expect-error
       const shape = item.content?.renderer?.shape;
@@ -118,6 +124,7 @@ export class ThreeComposition extends Composition {
   }
 
   /**
+   * FIXME: 1.0 兼容代码
    * 更新相机
    */
   override updateCamera () {
@@ -128,6 +135,36 @@ export class ThreeComposition extends Composition {
       renderFrame.updateMatrix();
     } else {
       renderFrame.updateUniform();
+    }
+  }
+
+  override prepareRender (): void {
+    const render = this.renderer;
+    const frame = this.renderFrame;
+
+    frame._renderPasses[0].meshes.length = 0;
+
+    // 主合成元素
+    for (const vfxItem of this.rootComposition.items) {
+      const rendererComponents = vfxItem.getComponents(RendererComponent);
+
+      for (const rendererComponent of rendererComponents) {
+        if (rendererComponent.isActiveAndEnabled) {
+          rendererComponent.render(render);
+        }
+      }
+    }
+    // 预合成元素
+    for (const refContent of this.refContent) {
+      for (const vfxItem of refContent.getComponent(CompositionComponent)!.items) {
+        const rendererComponents = vfxItem.getComponents(RendererComponent);
+
+        for (const rendererComponent of rendererComponents) {
+          if (rendererComponent.isActiveAndEnabled) {
+            rendererComponent.render(render);
+          }
+        }
+      }
     }
   }
 

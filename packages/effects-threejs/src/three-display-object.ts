@@ -131,6 +131,9 @@ export class ThreeDisplayObject extends THREE.Group {
       width: this.width,
       height: this.height,
       renderer: this.renderer,
+      // Three.js 中的对象
+      threeCamera: this.camera,
+      threeGroup: this,
     }, scene);
 
     (composition.renderFrame as ThreeRenderFrame).group = this;

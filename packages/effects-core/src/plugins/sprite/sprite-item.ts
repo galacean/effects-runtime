@@ -8,8 +8,8 @@ import type { MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode } from '../../material';
 import type { ValueGetter } from '../../math';
 import { createValueGetter, trianglesFromRect, vecFill, vecMulCombine } from '../../math';
-import type { GeometryDrawMode, Renderer } from '../../render';
-import { Geometry, Mesh } from '../../render';
+import type { GeometryDrawMode, Renderer, Mesh } from '../../render';
+import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
@@ -316,7 +316,7 @@ export class SpriteComponent extends RendererComponent {
     geometry.setIndexData(indexData);
     geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
     geometry.setDrawCount(data.index.length);
-    this.setVisible(geometry.getDrawCount() > 0 ? true : false);
+    // this.setVisible(geometry.getDrawCount() > 0 ? true : false);
     for (let i = 0; i < textures.length; i++) {
       const texture = textures[i];
 
@@ -562,10 +562,6 @@ export class SpriteComponent extends RendererComponent {
     const geometry = this.createGeometry(glContext.TRIANGLES);
     const material = this.createMaterial(this.renderInfo, 2);
 
-    this.mesh = Mesh.create(this.engine, {
-      geometry,
-      material,
-    });
     this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
     this.geometry = geometry;

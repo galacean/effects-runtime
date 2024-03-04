@@ -204,7 +204,7 @@ export class Composition implements Disposable, LostHandler {
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   private readonly postLoaders: Plugin[] = [];
-  private rootComposition: CompositionComponent;
+  protected rootComposition: CompositionComponent;
   private rootTimeline: TimelineComponent;
 
   /**
@@ -530,7 +530,7 @@ export class Composition implements Disposable, LostHandler {
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
-  private prepareRender () {
+  prepareRender () {
     const frame = this.renderFrame;
 
     frame._renderPasses[0].meshes.length = 0;

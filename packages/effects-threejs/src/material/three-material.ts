@@ -67,9 +67,6 @@ export class ThreeMaterial extends Material {
     } else {
       this.material.glslVersion = THREE.GLSL3;
     }
-
-    // this.material.needsUpdate = true;
-
   }
 
   /**

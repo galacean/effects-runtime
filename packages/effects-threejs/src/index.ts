@@ -6,11 +6,12 @@ import type {
   TextureSourceOptions,
   Engine,
 } from '@galacean/effects-core';
-import { Texture, Geometry, Material, Mesh, setMaxSpriteMeshItemCount, logger, RenderPass } from '@galacean/effects-core';
+import { Texture, Geometry, Material, Mesh, setMaxSpriteMeshItemCount, logger, RenderPass, Deserializer, DataType } from '@galacean/effects-core';
 import { ThreeGeometry } from './three-geometry';
 import { ThreeMesh } from './three-mesh';
 import { ThreeTexture } from './three-texture';
 import { ThreeMaterial } from './material';
+import { ThreeSpriteComponent } from './three-sprite-component';
 
 export * from '@galacean/effects-core';
 export * from './three-display-object';
@@ -74,3 +75,5 @@ Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
 export const version = __VERSION__;
 
 logger.info('THREEJS plugin version: ' + version);
+
+Deserializer.addConstructor(ThreeSpriteComponent, DataType.SpriteComponent);

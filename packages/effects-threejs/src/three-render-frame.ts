@@ -143,7 +143,7 @@ export class ThreeRenderFrame extends RenderFrame {
       const material = (mesh as THREE.Mesh).material as THREE.ShaderMaterial;
 
       //@ts-expect-error
-      if (!mesh.component.isActiveAndEnabled) {
+      if (!mesh?.component?.isActiveAndEnabled || mesh.name === 'sprite') {
         return;
       }
 
