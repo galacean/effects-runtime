@@ -20,7 +20,7 @@ let seed = 1;
  * @since 2.0.0
  * @internal
  */
-export class EffectComponent extends RendererComponent implements Disposable {
+export class EffectComponent extends RendererComponent {
   /**
    * Mesh 的全局唯一 id
    */
