@@ -163,7 +163,7 @@ export class ModelPlugin extends AbstractPlugin {
   /**
    * 更新时间间隔
    * @param composition - 合成
-   * @param dt 时间间隔
+   * @param dt - 时间间隔
    */
   override onCompositionUpdate (composition: Composition, dt: number) {
     this.deltaTime = dt;
