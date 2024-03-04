@@ -157,8 +157,6 @@ export class EffectComponent extends RendererComponent {
 
   override fromData (data: any): void {
     super.fromData(data);
-    this._enabled = data._enabled;
-    this._priority = data._priority;
     this.material = data.materials[0];
     this.geometry = data.geometry;
 

@@ -204,14 +204,16 @@ export class Deserializer {
 
   deserializeTaggedProperties (serializedData: Record<string, any>, effectsObject: EffectsObject) {
     const taggedProperties = effectsObject.taggedProperties;
+    const serializedProperties = getMergedStore(effectsObject);
 
     for (const key of Object.keys(serializedData)) {
+      if (serializedProperties[key]) {
+        continue;
+      }
       const value = serializedData[key];
 
       taggedProperties[key] = this.deserializeProperty(value, 0);
     }
-    const serializedProperties = getMergedStore(effectsObject);
-
     for (const key of Object.keys(serializedProperties)) {
       const value = serializedData[key];
 
@@ -226,14 +228,16 @@ export class Deserializer {
 
   async deserializeTaggedPropertiesAsync (serializedData: Record<string, any>, effectsObject: EffectsObject) {
     const taggedProperties = effectsObject.taggedProperties;
+    const serializedProperties = getMergedStore(effectsObject);
 
     for (const key of Object.keys(serializedData)) {
+      if (serializedProperties[key]) {
+        continue;
+      }
       const value = serializedData[key];
 
       taggedProperties[key] = await this.deserializePropertyAsync(value, 0);
     }
-    const serializedProperties = getMergedStore(effectsObject);
-
     for (const key of Object.keys(serializedProperties)) {
       const value = serializedData[key];
 

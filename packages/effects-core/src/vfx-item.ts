@@ -51,7 +51,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素的变换包含位置、旋转、缩放。
    */
-  public transform: Transform = new Transform();
+  transform: Transform = new Transform();
   /**
    * 合成属性
    */
@@ -59,8 +59,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素动画的持续时间
    */
-  @serialize()
-  public duration = 0;
+  duration = 0;
   /**
    * 元素当前更新归一化时间，开始时为 0，结束时为 1
    */
@@ -88,8 +87,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素名称
    */
-  @serialize()
-  public name: string;
+  name: string;
   /**
    * 元素 id 唯一
    */
@@ -105,12 +103,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素动画的速度
    */
-  @serialize()
-  public type: spec.ItemType = spec.ItemType.base;
+  type: spec.ItemType = spec.ItemType.base;
   stopped = false;
   props: VFXItemProps;
 
-  public components: Component[] = [];
+  components: Component[] = [];
   itemBehaviours: ItemBehaviour[] = [];
   rendererComponents: RendererComponent[] = [];
 
