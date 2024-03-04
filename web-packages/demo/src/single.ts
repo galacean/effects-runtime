@@ -4,9 +4,9 @@ import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 import { TreeGui } from './gui/tree-gui';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240222051658521/mars-preview.json';
-// 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240221055727706/mars-preview.json';
-// 'https://mdn.alipayobjects.com/mars/afts/file/A*v5nvSbp7ysAAAAAAAAAAAAAADlB4AQ';
+const json = 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240304052625290/mars-preview.json'; // 首尾复制
+// 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240304051328538/mars-preview.json'; // 中间线性
+// 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240304043452170/mars-preview.json'; // 4个控制点 不带直线
 const container = document.getElementById('J-container');
 
 const treeGui = new TreeGui();
@@ -16,9 +16,12 @@ const treeGui = new TreeGui();
     const player = createPlayer();
 
     const comp = await player.loadScene(json, {
+      // autoplay:false
     });
 
-    treeGui.setComposition(comp);
+    // player.gotoAndStop(1.5)
+
+    // treeGui.setComposition(comp);
   } catch (e) {
     console.error('biz', e);
   }
