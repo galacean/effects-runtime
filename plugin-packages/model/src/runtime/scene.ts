@@ -408,7 +408,6 @@ export class PSceneManager {
   /**
    * 更新插件场景，需要更新内部的相关的插件对象，特别是 Mesh 对象的骨骼动画
    * 并将需要渲染的对象添加到渲染对象集合中
-   *
    * @param deltaTime - 更新间隔
    */
   tick (deltaTime: number) {
@@ -457,7 +456,6 @@ export class PSceneManager {
    * 更新渲染帧中默认 Pass 的渲染队列
    * 如果是动态排序模式，需要重新添加所有的 Mesh，这样优先级才能生效
    * 如果是正常模式，那就增量添加和删除
-   *
    * @param frame - 渲染帧
    */
   updateDefaultRenderPass (frame: RenderFrame) {
@@ -489,7 +487,6 @@ export class PSceneManager {
   /**
    * 动态调整 Mesh 渲染优先级
    * 主要是为了和 Tiny3d 渲染对齐，正常渲染不进行调整
-   *
    * @param states - 场景中的状态数据
    */
   dynamicSortMeshes (states: PSceneStates) {
@@ -539,7 +536,6 @@ export class PSceneManager {
   /**
    * 查询场景中的 Mesh
    * 通过 parentId 查询 Mesh 对象，可能找不到 Mesh 对象
-   *
    * @param parentId - 元素中定义的 parentId
    * @returns 查询到的 Mesh，或者是没找到。如果 Mesh 不可见，也是没找到。
    */
@@ -555,7 +551,6 @@ export class PSceneManager {
 
   /**
    * 删除 RenderFrame DefaultRenderPass 中添加的 Mesh，Player 要执行 Reset 操作
-   *
    * @param renderFrame - 当前渲染帧对象
    */
   removeAllMeshesFromDefaultPass (renderFrame: RenderFrame) {

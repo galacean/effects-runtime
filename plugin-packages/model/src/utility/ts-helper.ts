@@ -37,7 +37,6 @@ export class TwoStatesSet<T> {
 
   /**
    * 遍历当前帧新加的元素
-   *
    * @param callbackfn - 增加新元素的回调
    */
   forAddedItem (callbackfn: (value: T) => void) {
@@ -50,7 +49,6 @@ export class TwoStatesSet<T> {
 
   /**
    * 遍历当前帧删除的元素
-   *
    * @param callbackfn - 删除旧元素的回调
    */
   forRemovedItem (callbackfn: (value: T) => void) {

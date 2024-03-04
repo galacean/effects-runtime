@@ -220,7 +220,6 @@ export class PMesh extends PEntity {
    * 更新 Morph 动画权重
    * 每帧都会更新 Morph 动画权重，需要小心检查 Morph 动画参数
    * 对于数组长度对不上的情况，直接报错
-   *
    * @param weightsArray - Morph 动画的权重数组
    */
   updateMorphWeights (weightsArray: Float32Array) {
@@ -820,7 +819,6 @@ export class PPrimitive {
 
   /**
    * 渲染输出模式转成着色器中的宏定义
-   *
    * @param mode - 渲染输出模式
    * @returns 返回相应的宏定义
    */
@@ -1040,7 +1038,6 @@ export class PPrimitive {
   /**
    * 是否有 Morph 动画：
    * 需要注意 Morph 对象存在，但还是没有 Morph 动画的情况
-   *
    * @returns 返回是否有 Morph 动画
    */
   hasMorph (): boolean {
@@ -1266,7 +1263,6 @@ class EffectsMeshProxy {
   /**
    * 返回 Morph 对象
    * 需要先判断是否有 Morph 动画，如果没有就直接返回 undefined
-   *
    * @returns 缓存的 Morph 对象，或者 undefined
    */
   getMorphObj (): PMorph | undefined {

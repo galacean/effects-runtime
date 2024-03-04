@@ -11,7 +11,6 @@ export class ModelTreePlugin extends AbstractPlugin {
    * 插件名称
    */
   override name = 'tree';
-
   /**
    * 高优先级更新
    */

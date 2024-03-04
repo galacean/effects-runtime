@@ -22,7 +22,6 @@ export class ModelPlugin extends AbstractPlugin {
    * 插件名称
    */
   override name = 'model';
-
   /**
    * 更新间隔时间
    */
@@ -284,7 +283,6 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 更新 SceneManager 中渲染用的相机，相机参数来自 composition.camera
-   *
    * @param composition - 当前合成对象
    * @param sceneManager - 当前合成对象绑定的 SceneManager
    */

@@ -45,7 +45,6 @@ export class PShaderManager {
 
   /**
    * 获取着色器单例对象
-   *
    * @returns
    */
   static getInstance (): PShaderManager {
@@ -66,7 +65,6 @@ export class PShaderManager {
 
   /**
    * 生成着色器代码
-   *
    * @param context - 着色器上下文
    * @returns
    */

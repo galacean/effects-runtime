@@ -418,7 +418,6 @@ export class WebGLHelper {
 
   /**
    * 返回 Mesh 是否半透明
-   *
    * @param mesh - gl mesh 对象
    * @return 是否半透明
    */
@@ -428,7 +427,6 @@ export class WebGLHelper {
 
   /**
    * renderer 是否支持 Float 纹理
-   *
    * @param engine - 引擎对象
    * @returns
    */
@@ -764,7 +762,6 @@ export class PluginHelper {
   /**
    * 根据相机的位置、Y 轴旋转角度和目标点位置来计算相机变换，
    * 使得相机能够专注于目标点上
-   *
    * @param cameraPosition - 相机位置
    * @param YRotationAngle - Y 轴旋转角度
    * @param targetPoint - 目标点
@@ -1260,7 +1257,6 @@ export class WebHelper {
 
   /**
    * 获取画布渲染的内容，转成 PNG 图片数据
-   *
    * @param canvas - HTML 画布元素
    * @returns PNG 图片数据
    */

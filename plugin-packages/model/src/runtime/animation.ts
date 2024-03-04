@@ -238,7 +238,6 @@ export class PMorph extends PObject {
 
   /**
    * 通过 Geometry 数据创建 Morph 动画相关状态，并进行必要的正确性检查
-   *
    * @param geometry - Mesh 的几何体，是否包含 Morph 动画都是可以的
    * @returns 是否创建成功
    */
@@ -311,7 +310,6 @@ export class PMorph extends PObject {
 
   /**
    * 初始化 Morph target 的权重数组
-   *
    * @param weights - glTF Mesh 的权重数组，长度必须严格一致
    */
   initWeights (weights: number[]) {
@@ -331,7 +329,6 @@ export class PMorph extends PObject {
   /**
    * 当前状态是否有 Morph 动画：
    * 需要判断 weights 数组长度，以及 Position、Normal 和 Tangent 是否有动画
-   *
    * @returns 返回是否有 Morph 动画
    */
   hasMorph (): boolean {
@@ -341,7 +338,6 @@ export class PMorph extends PObject {
   /**
    * 两个 Morph 动画状态是否相等：
    * 这里只比较初始状态是否一样，不考虑 weights 数组的情况，提供给 Mesh 进行 Geometry 检查使用
-   *
    * @param morph - Morph 动画状态对象
    * @returns 返回两个 Morph 动画状态是否相等
    */
@@ -359,7 +355,6 @@ export class PMorph extends PObject {
   /**
    * 统计 Geometry 中 Attribute 名称个数：
    * 主要用于统计 Morph 动画中新增的 Attribute 名称的个数，会作为最终的 weights 数组长度使用
-   *
    * @param attributeNameList - Attribute 名数组列表，只与 Morph Target 中的属性有关
    * @param geometry - Geometry 对象，是否有 Morph 动画都可以
    * @returns 存在的 Attribute 名称数目
