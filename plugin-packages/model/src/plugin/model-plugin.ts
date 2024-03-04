@@ -21,12 +21,28 @@ import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
 import { ModelCameraComponent } from './model-item';
 
+/**
+ * Model 插件类，负责支持播放器中的 3D 功能
+ */
 export class ModelPlugin extends AbstractPlugin {
+  /**
+   * 插件名称
+   */
   override name = 'model';
-
+  /**
+   * 合成缓存器
+   */
   cache: CompositionCache;
+  /**
+   * 场景参数
+   */
   sceneParams: Record<string, any>;
 
+  /**
+   * 整个 load 阶段都不会创建 GL 相关的对象，只创建 JS 对象
+   * @param scene - 场景
+   * @param options - 加载选项
+   */
   static override async prepareResource (scene: Scene, options: SceneLoadOptions): Promise<void> {
     if (options.pluginData !== undefined) {
       const keyList = [
@@ -54,6 +70,11 @@ export class ModelPlugin extends AbstractPlugin {
     await CompositionCache.loadStaticResources();
   }
 
+  /**
+   * 创建 3D 场景管理器和缓存器
+   * @param composition - 合成
+   * @param scene - 场景
+   */
   override onCompositionConstructed (composition: Composition, scene: Scene): void {
     this.sceneParams = scene.storage;
 
@@ -64,6 +85,11 @@ export class ModelPlugin extends AbstractPlugin {
     PluginHelper.setupItem3DOptions(scene, this.cache, composition);
   }
 
+  /**
+   * 每次播放都会执行，包括重播，所以这里执行“小的销毁”和新的初始化
+   * @param composition - 合成
+   * @param renderFrame - 渲染帧
+   */
   override onCompositionReset (composition: Composition, renderFrame: RenderFrame) {
     const props = {
       id: 'ModelPluginItem',
@@ -81,6 +107,10 @@ export class ModelPlugin extends AbstractPlugin {
     comp.initial(this.sceneParams);
   }
 
+  /**
+   * 合成销毁，同时销毁 3D 场景对象和缓存
+   * @param composition - 合成
+   */
   override onCompositionDestroyed (composition: Composition) {
     this.cache.dispose();
     // @ts-expect-error
@@ -95,6 +125,7 @@ export interface ModelPluginOptions {
 }
 
 /**
+ * 插件组件类，实现特定的插件功能
  * @since 2.0.0
  * @internal
  */
@@ -119,10 +150,20 @@ export class ModelPluginComponent extends ItemBehaviour {
    * 取值范围(0, 1)
    */
   private renderMode3DUVGridSize = 1 / 16;
-  //
+  /**
+   * 合成缓存器
+   */
   cache: CompositionCache;
+  /**
+   * 场景管理器
+   */
   scene: PSceneManager;
 
+  /**
+   * 构造函数，创建场景管理器
+   * @param engine - 引擎
+   * @param options - Mesh 参数
+   */
   constructor (engine: Engine, options?: ModelPluginOptions) {
     super(engine);
     if (options) {
@@ -130,6 +171,10 @@ export class ModelPluginComponent extends ItemBehaviour {
     }
   }
 
+  /**
+   * 组件后更新，合成相机和场景管理器更新
+   * @param dt - 更新间隔
+   */
   override lateUpdate (dt: number): void {
     const composition = this.item.composition as Composition;
 
@@ -179,6 +224,9 @@ export class ModelPluginComponent extends ItemBehaviour {
     this.scene.tick(dt);
   }
 
+  /**
+   * 组件销毁，同时销毁场景管理器和缓存器
+   */
   override onDestroy (): void {
     this.scene.dispose();
     // @ts-expect-error
@@ -187,6 +235,10 @@ export class ModelPluginComponent extends ItemBehaviour {
     this.cache = null;
   }
 
+  /**
+   * 反序列化，创建场景管理器
+   * @param date - 组件参数
+   */
   override fromData (data: any): void {
     super.fromData(data);
     //
@@ -196,6 +248,10 @@ export class ModelPluginComponent extends ItemBehaviour {
     this.scene = new PSceneManager(this.engine);
   }
 
+  /**
+   * 组件初始化，初始化场景管理器并更新合成相机
+   * @param sceneParams - 场景参数
+   */
   initial (sceneParams: Record<string, any>) {
     this.runtimeEnv = sceneParams['runtimeEnv'] ?? this.runtimeEnv;
     this.compatibleMode = sceneParams['compatibleMode'] ?? this.compatibleMode;
@@ -248,6 +304,11 @@ export class ModelPluginComponent extends ItemBehaviour {
   }
 }
 
+/**
+ * 获取场景管理器，从合成中查找
+ * @param component
+ * @returns
+ */
 export function getSceneManager (component?: Component): PSceneManager | undefined {
   const composition = component?.item?.composition;
   const pluginItem = composition?.getItemByName('ModelPluginItem');
