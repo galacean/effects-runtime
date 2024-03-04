@@ -134,11 +134,11 @@ export class CompositionCache {
   }
 
   /**
-   * 获取或者创建几何对象
+   * 获取或者创建几何体
    * @param name 名称
    * @param geomJson 几何参数
    * @param bins 几何数据
-   * @returns 几何对象
+   * @returns 几何体
    */
   getOrCreateGeometry (name: string, geomJson: spec.GeometryOptionsJSON, bins: ArrayBuffer[]): Geometry {
     const cachedGeom = this.geometryCache.get(name);

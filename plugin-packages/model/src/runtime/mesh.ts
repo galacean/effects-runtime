@@ -980,7 +980,7 @@ export class PPrimitive {
   }
 
   /**
-   * 获取 Core 层几何对象
+   * 获取 Core 层几何体
    * @returns
    */
   getEffectsGeometry (): Geometry {
@@ -989,7 +989,7 @@ export class PPrimitive {
 
   /**
    * 设置几何
-   * @param val 3D 或 Core 层几何对象
+   * @param val 3D 或 Core 层几何体
    */
   setGeometry (val: PGeometry | Geometry) {
     if (val instanceof PGeometry) {
@@ -1084,7 +1084,7 @@ export class PGeometry {
   attributeNames: string[];
 
   /**
-   * 创建 3D 几何对象，根据 Core 层几何对象
+   * 创建 3D 几何体，根据 Core 层几何体
    * @param geometry
    */
   constructor (public geometry: Geometry) {
@@ -1114,7 +1114,7 @@ export class PGeometry {
   }
 
   /**
-   * 设置隐藏，通过修改几何对象中的渲染数目
+   * 设置隐藏，通过修改几何体中的渲染数目
    * @param hide
    */
   setHide (hide: boolean) {

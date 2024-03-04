@@ -239,7 +239,7 @@ export class PMorph extends PObject {
   /**
    * 通过 Geometry 数据创建 Morph 动画相关状态，并进行必要的正确性检查
    *
-   * @param geometry - Mesh 的几何对象，是否包含 Morph 动画都是可以的
+   * @param geometry - Mesh 的几何体，是否包含 Morph 动画都是可以的
    * @returns 是否创建成功
    */
   create (geometry: Geometry): boolean {
