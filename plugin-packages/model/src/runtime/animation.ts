@@ -18,7 +18,7 @@ import type { ModelTreeVFXItem } from '../plugin';
 const forceTextureSkinning = false;
 
 /**
- * 纹理数据模式，包含浮点（float）和半浮点（half_float）
+ * 纹理数据模式，包含浮点和半精度浮点
  */
 export enum TextureDataMode {
   none = 0,
@@ -160,7 +160,7 @@ export class PSkin extends PObject {
   }
 
   /**
-   * 返回节点数
+   * 获取关节点数
    * @returns
    */
   getJointCount (): number {
@@ -176,7 +176,7 @@ export class PSkin extends PObject {
   }
 
   /**
-   * 销毁蒙皮对象
+   * 销毁
    */
   override dispose (): void {
     this.parentItem = undefined;
@@ -207,7 +207,7 @@ export class PSkin extends PObject {
 }
 
 /**
- * Morph 动画状态：
+ * Morph 动画类
  * 保存了动画状态相关的数据，包括 weights 数组数据
  * 增加了状态数据的检查，保证数据的正确性
  * Morph 动画非常消耗内存，谨慎使用。
@@ -421,7 +421,7 @@ export class PMorph extends PObject {
 }
 
 /**
- * 动画插值模式
+ * 动画插值类型
  */
 export enum PAnimInterpType {
   linear = 0,
@@ -440,7 +440,7 @@ export enum PAnimPathType {
 }
 
 /**
- * 动画轨道
+ * 动画轨道类
  */
 export class PAnimTrack {
   /**
@@ -472,7 +472,7 @@ export class PAnimTrack {
 
   /**
    * 创建动画轨道对象
-   * @param options 动画轨道数据
+   * @param options 动画轨道参数
    */
   constructor (options: ModelAnimTrackOptions) {
     const { node, input, output, path, interpolation } = options;
@@ -522,7 +522,7 @@ export class PAnimTrack {
   }
 
   /**
-   * 销毁动画轨道对象
+   * 销毁
    */
   dispose () {
     // @ts-expect-error
@@ -537,7 +537,7 @@ export class PAnimTrack {
    * 更新节点动画数据
    * @param time 当前播放时间
    * @param treeItem 节点树元素
-   * @param sceneManager 3D 场景管理对象
+   * @param sceneManager 3D 场景管理器
    */
   tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
     const node = treeItem.content.getNodeById(this.node);
@@ -592,14 +592,6 @@ export class PAnimTrack {
     return this.timeArray[index];
   }
 
-  /**
-   * 生成 Mesh 元素的父节点
-   *
-   * @param parentId - 父节点 id 名称
-   * @param nodeIndex - Mesh 节点索引
-   *
-   * @returns 生成的 Mesh 节点名称
-   */
   private genParentId (parentId: string, nodeIndex: number): string {
     return `${parentId}^${nodeIndex}`;
   }
@@ -626,7 +618,7 @@ export class PAnimTrack {
 }
 
 /**
- * 动画纹理对象
+ * 动画纹理类
  */
 export class PAnimTexture {
   private isHalfFloat = true;
@@ -677,7 +669,7 @@ export class PAnimTexture {
 
   /**
    * 更新动画数据
-   * @param buffer 创建的新动画数据
+   * @param buffer 新的动画数据
    */
   update (buffer: Float32Array) {
     if (this.buffer !== undefined) {
@@ -699,7 +691,7 @@ export class PAnimTexture {
   }
 
   /**
-   * 销毁动画纹理对象
+   * 销毁
    */
   dispose () {
     // @ts-expect-error
@@ -727,7 +719,7 @@ export class PAnimTexture {
 }
 
 /**
- * 动画对象，负责动画数据的更新
+ * 动画类，负责动画数据创建、更新和销毁
  */
 export class PAnimation extends PObject {
   private time = 0;
@@ -736,7 +728,7 @@ export class PAnimation extends PObject {
 
   /**
    * 创建动画对象
-   * @param options 动画数据
+   * @param options 动画参数
    */
   create (options: ModelAnimationOptions) {
     this.name = this.genName(options.name ?? 'Unnamed animation');
@@ -755,10 +747,10 @@ export class PAnimation extends PObject {
   }
 
   /**
-   * 动画内容更新
+   * 动画更新
    * @param time 当前时间
    * @param treeItem 场景树元素
-   * @param sceneManager 3D 场景对象
+   * @param sceneManager 3D 场景管理器
    */
   tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
     this.time = time;
@@ -771,7 +763,7 @@ export class PAnimation extends PObject {
   }
 
   /**
-   * 销毁动画对象
+   * 销毁
    */
   override dispose () {
     this.tracks.forEach(track => {
@@ -782,7 +774,7 @@ export class PAnimation extends PObject {
 }
 
 /**
- * 动画管理器，负责管理动画对象
+ * 动画管理类，负责管理动画对象
  */
 export class PAnimationManager extends PObject {
   private ownerItem: ModelTreeVFXItem;
@@ -795,8 +787,8 @@ export class PAnimationManager extends PObject {
 
   /**
    * 创建动画管理器
-   * @param treeOptions 动画相关数据
-   * @param ownerItem 场景树父节点
+   * @param treeOptions 场景树参数
+   * @param ownerItem 场景树所属元素
    */
   constructor (treeOptions: ModelTreeOptions, ownerItem: ModelTreeVFXItem) {
     super();
@@ -839,7 +831,7 @@ export class PAnimationManager extends PObject {
 
   /**
    * 动画更新
-   * @param deltaSeconds 更新时间段
+   * @param deltaSeconds 更新间隔
    */
   tick (deltaSeconds: number) {
     const newDeltaSeconds = deltaSeconds * this.speed * 0.001;
@@ -862,7 +854,7 @@ export class PAnimationManager extends PObject {
   }
 
   /**
-   * 销毁动画管理器
+   * 销毁
    */
   override dispose () {
     // @ts-expect-error
@@ -885,7 +877,7 @@ export class PAnimationManager extends PObject {
 }
 
 /**
- * 动画系统，负责动画管理器的更新
+ * 动画系统类，负责动画管理器的更新
  */
 export class PAnimationSystem {
   private managers: PAnimationManager[] = [];
@@ -931,7 +923,7 @@ export class PAnimationSystem {
   }
 
   /**
-   * 销毁动画系统
+   * 销毁
    */
   dispose () {
     this.managers.forEach(mgr => {

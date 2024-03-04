@@ -12,7 +12,7 @@ type Quaternion = math.Quaternion;
 const deg2rad = Math.PI / 180;
 
 /**
- * 3D 相机类，支持基础的相机功能
+ * 相机类，支持基础的相机功能
  */
 export class PCamera extends PEntity {
   /**
@@ -178,7 +178,7 @@ export class PCamera extends PEntity {
 }
 
 /**
- * 相机管理类，复杂管理场景中的 3D 相机对象
+ * 相机管理类，负责管理场景中的 3D 相机对象
  */
 export class PCameraManager {
   private winWidth = 512;
@@ -321,7 +321,7 @@ export class PCameraManager {
   }
 
   /**
-   * 获取相机个数
+   * 获取相机数目
    * @returns
    */
   getCameraCount (): number {

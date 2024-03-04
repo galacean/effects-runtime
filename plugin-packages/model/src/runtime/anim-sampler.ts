@@ -1,5 +1,5 @@
 /**
- * 抽象插值采样器
+ * 抽象插值采样类
  */
 export abstract class InterpolationSampler {
   protected cachedIndex = 0;
@@ -139,7 +139,7 @@ export abstract class InterpolationSampler {
   }
 
   /**
-   * 销毁采样器
+   * 销毁
    */
   dispose () {
     // @ts-expect-error

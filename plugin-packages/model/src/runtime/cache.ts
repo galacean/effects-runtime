@@ -8,7 +8,7 @@ import { PSkyboxCreator } from './skybox';
 import { WebGLHelper, MeshHelper, PluginHelper } from '../utility/plugin-helper';
 
 /**
- * 合成缓存类，负责管理插件的WebGL相关资源加载和创建
+ * 合成缓存类，负责管理插件 WebGL 相关资源加载和创建
  */
 export class CompositionCache {
   private loadSkybox = false;
@@ -136,8 +136,8 @@ export class CompositionCache {
   /**
    * 获取或者创建几何体
    * @param name 名称
-   * @param geomJson 几何参数
-   * @param bins 几何数据
+   * @param geomJson 几何体参数
+   * @param bins 几何体数据
    * @returns 几何体
    */
   getOrCreateGeometry (name: string, geomJson: spec.GeometryOptionsJSON, bins: ArrayBuffer[]): Geometry {
@@ -159,7 +159,7 @@ export class CompositionCache {
    * @param name 名称
    * @param material 材质
    * @param uniformSemantics Uniform 语义信息
-   * @returns Mesh
+   * @returns
    */
   getFilterMesh (name: string, material: PMaterialBase, uniformSemantics: Record<string, any>): Mesh {
     const cachedMesh = this.meshCache.get(name);
@@ -189,7 +189,7 @@ export class CompositionCache {
    * @param priority 优先级
    * @param meshList Mesh 列表
    * @param fboOptions FBO 参数
-   * @returns 渲染 Pass
+   * @returns
    */
   getRenderPass (name: string, priority: number, meshList: Mesh[], fboOptions: FBOOptions): RenderPass {
     const cachedPass = this.renderPassCache.get(name);
@@ -252,7 +252,7 @@ export class CompositionCache {
   }
 
   /**
-   * 获取查询纹理对象
+   * 获取纹理对象，用户 IBL 渲染
    * @returns
    */
   getBrdfLutTexture (): Texture | undefined {

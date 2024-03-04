@@ -41,19 +41,19 @@ import type { ModelTreeVFXItem, ModelTreeNode } from '../plugin';
 type Box3 = math.Box3;
 
 /**
- * 3D Mesh 类，负责 Mesh 相关的骨骼动画和 PBR 渲染
+ * Mesh 类，负责 Mesh 相关的骨骼动画和 PBR 渲染
  */
 export class PMesh extends PEntity {
   /**
-   * 3D 元素父节点
+   * 父元素索引
    */
   parentIndex = -1;
   /**
-   * 元素的父节点
+   * 父元素
    */
   parentItem?: ModelTreeVFXItem;
   /**
-   * 元素的父节点 Id
+   * 父元素 Id，包含节点树信息
    */
   parentItemId?: string;
   /**
@@ -141,7 +141,7 @@ export class PMesh extends PEntity {
   }
 
   /**
-   * 创建 Core 层相关的 Mesh、Geometry 和 Material 对象
+   * 创建 GE 的 Mesh、Geometry 和 Material 对象
    * @param lightCount 场景中灯光数目
    * @param uniformSemantics 着色器 Uniform 数据
    * @param skybox 天空盒
@@ -176,7 +176,7 @@ export class PMesh extends PEntity {
   }
 
   /**
-   * 根据可见性状态，将内部相关的 Core 层 Mesh 添加到渲染对象集合中
+   * 根据可见性状态，将相关的 GE Mesh 添加到渲染对象集合中
    * @param renderObjectSet 渲染对象集合
    */
   override addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
@@ -398,7 +398,7 @@ export class PMesh extends PEntity {
   }
 
   /**
-   * 获取 Core 层 Mesh 数组
+   * 获取 GE Mesh 数组
    */
   get mriMeshs (): Mesh[] {
     return this.primitives.map(prim => {
@@ -409,11 +409,11 @@ export class PMesh extends PEntity {
 }
 
 /**
- * 3D Primitive 类，负责 Sub Mesh相关的功能，支持骨骼动画和 PBR 渲染
+ * Primitive 类，负责 Sub Mesh相关的功能，支持骨骼动画和 PBR 渲染
  */
 export class PPrimitive {
   /**
-   * 宿主 Mesh，包含了当前 Primitive
+   * 所属 Mesh，它包含了当前 Primitive
    */
   private parent?: PMesh;
   private skin?: PSkin; // from owner mesh
@@ -433,7 +433,7 @@ export class PPrimitive {
    */
   name = '';
   /**
-   * Core 层 Mesh
+   * GE Mesh
    */
   effectsMesh!: Mesh;
   /**
@@ -460,7 +460,7 @@ export class PPrimitive {
   /**
    * 创建 Primitive 对象
    * @param options Primitive 参数
-   * @param parent 父 Mesh 对象
+   * @param parent 所属 Mesh 对象
    */
   create (options: ModelPrimitiveOptions, parent: PMesh) {
     this.parent = parent;
@@ -506,10 +506,10 @@ export class PPrimitive {
   }
 
   /**
-   * 创建 Core 层 Mesh、Geometry 和 Material 对象，用于后面的渲染
-   * 部分着色器 Uniform 数据来自 uniformSemantics
+   * 创建 GE Mesh、Geometry 和 Material 对象，用于后面的渲染
+   * 着色器部分 Uniform 数据来自 uniformSemantics
    * @param lightCount 灯光数目
-   * @param uniformSemantics Uniform 数据集
+   * @param uniformSemantics Uniform 语义数据
    * @param skybox 天空盒
    */
   build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
@@ -693,7 +693,7 @@ export class PPrimitive {
   }
 
   /**
-   * 将 Core 层 Mesh 添加到渲染对象集合中
+   * 将 GE Mesh 添加到渲染对象集合中
    * @param renderObjectSet 渲染对象集合
    */
   addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
@@ -701,7 +701,7 @@ export class PPrimitive {
   }
 
   /**
-   * 销毁，需要释放创建的 Core 层对象
+   * 销毁，需要释放创建的 GE 对象
    */
   dispose () {
     // @ts-expect-error
@@ -791,7 +791,7 @@ export class PPrimitive {
 
   /**
    * 计算包围盒
-   * @param inverseWorldMatrix 逆世界坐标
+   * @param inverseWorldMatrix 逆世界矩阵
    * @returns
    */
   computeBoundingBox (inverseWorldMatrix: Matrix4): Box3 {
@@ -819,10 +819,10 @@ export class PPrimitive {
   }
 
   /**
-   * 渲染输出模式转成 Shader 中的宏定义
+   * 渲染输出模式转成着色器中的宏定义
    *
    * @param mode - 渲染输出模式
-   * @returns none 模式返回 undefined，其他模式返回相应宏定义
+   * @returns 返回相应的宏定义
    */
   getRenderMode3DDefine (mode: spec.RenderMode3D): string | undefined {
     switch (mode) {
@@ -980,7 +980,7 @@ export class PPrimitive {
   }
 
   /**
-   * 获取 Core 层几何体
+   * 获取 GE 几何体
    * @returns
    */
   getEffectsGeometry (): Geometry {
@@ -988,8 +988,8 @@ export class PPrimitive {
   }
 
   /**
-   * 设置几何
-   * @param val 3D 或 Core 层几何体
+   * 设置几何体
+   * @param val 插件或 GE 几何体
    */
   setGeometry (val: PGeometry | Geometry) {
     if (val instanceof PGeometry) {
@@ -1001,7 +1001,7 @@ export class PPrimitive {
 
   /**
    * 设置材质
-   * @param val 3D 材质或材质参数
+   * @param val 插件材质对象或材质参数
    */
   setMaterial (val: PMaterial | ModelMaterialOptions) {
     if (val instanceof PMaterialUnlit) {
@@ -1014,7 +1014,7 @@ export class PPrimitive {
   }
 
   /**
-   * 获取 Core 层材质
+   * 获取 GE 材质
    * @returns
    */
   getModelMaterial (): Material {
@@ -1084,7 +1084,7 @@ export class PGeometry {
   attributeNames: string[];
 
   /**
-   * 创建 3D 几何体，根据 Core 层几何体
+   * 创建 3D 几何体，根据 GE 几何体
    * @param geometry
    */
   constructor (public geometry: Geometry) {

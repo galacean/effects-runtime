@@ -10,7 +10,7 @@ type Euler = math.Euler;
 let objectIndex = 1;
 
 /**
- * 抽象对象基类，提供公共的成员变量和成员函数
+ * 抽象对象类，提供公共的成员变量和成员函数
  */
 export abstract class PObject {
   /**
@@ -34,7 +34,7 @@ export abstract class PObject {
   }
 
   /**
-   * 是否 PObjectType.none
+   * 是否空对象
    * @returns
    */
   isNone () {
@@ -86,7 +86,7 @@ export abstract class PEntity extends PObject {
   }
 
   /**
-   * 将内部需要渲染的 Mesh 添加的到渲染对象集合中
+   * 将内部需要渲染的对象，添加的到渲染对象集合中
    * @param renderObjectSet 渲染对象集合
    */
   addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
@@ -132,7 +132,7 @@ export abstract class PEntity extends PObject {
   }
 
   /**
-   * 设置变换，可以传入 PTranform 对象或变换数据
+   * 设置变换，可以传入插件变换对象或变换参数
    */
   set transform (val: PTransform | BaseTransform) {
     if (val instanceof PTransform) {

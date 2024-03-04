@@ -12,7 +12,7 @@ import type { BaseTransform } from '../index';
 type Euler = math.Euler;
 
 /**
- * 3D 场景中的对象类型
+ * Model 插件中的对象类型
  */
 export enum PObjectType {
   none = 0,
@@ -85,9 +85,6 @@ export enum PFaceSideMode {
   back,
 }
 
-/**
- * 阴影类型
- */
 export enum PShadowType {
   none = 0,
   standard,
@@ -96,7 +93,7 @@ export enum PShadowType {
 }
 
 /**
- * 3D 变换类
+ * 插件变换类
  */
 export class PTransform {
   private translation = new Vector3(0, 0, 0);
@@ -150,8 +147,8 @@ export class PTransform {
   }
 
   /**
-   * 从 GE 变换数据设置
-   * @param trans 变换数据
+   * 通过 GE 变换参数设置
+   * @param trans GE 变换参数
    * @returns
    */
   fromBaseTransform (trans: BaseTransform) {
@@ -320,7 +317,7 @@ export class PCoordinate {
   }
 
   /**
-   * 从 PTransform 创建坐标系
+   * 从插件变换创建坐标系
    * @param trans 变换
    * @param invert 是否旋转取反
    * @returns 坐标系对象

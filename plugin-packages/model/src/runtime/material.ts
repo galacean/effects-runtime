@@ -34,7 +34,7 @@ export abstract class PMaterialBase extends PObject {
    */
   fragmentShaderCode = '';
   /**
-   * 深度是否写入，默认是写入(true)
+   * 深度是否写入，默认是写入
    */
   depthMask = true;
   /**
@@ -55,8 +55,8 @@ export abstract class PMaterialBase extends PObject {
   faceSideMode: PFaceSideMode = PFaceSideMode.front;
 
   /**
-   * 获取着色器功能列表，根据材质状态
-   * @returns 功能列表
+   * 获取着色器特性列表，根据材质状态
+   * @returns 特性列表
    */
   getShaderFeatures (): string[] {
     const featureList: string[] = [];
@@ -75,8 +75,8 @@ export abstract class PMaterialBase extends PObject {
   }
 
   /**
-   * 根据 3D 材质状态，更新 Core 层材质状态
-   * @param material Core 层材质
+   * 根据材质状态，更新 GE 材质状态
+   * @param material GE 材质
    */
   updateUniforms (material: Material) {
     if (this.isMasked()) {
@@ -95,8 +95,8 @@ export abstract class PMaterialBase extends PObject {
 
   /**
    * 生成顶点和片段着色器代码
-   * 先获取着色器功能，再根据材质和 3D 全局状态，生成着色器代码
-   * @param inFeatureList 外部功能列表
+   * 先获取着色器特性，再根据材质和全局状态，生成着色器代码
+   * @param inFeatureList 外部特性列表
    */
   build (inFeatureList?: string[]) {
     const finalFeatureList = this.getShaderFeatures();
@@ -132,8 +132,8 @@ export abstract class PMaterialBase extends PObject {
   }
 
   /**
-   * 获取 3D 混合模式，根据 Core 层混合模式
-   * @param mode Core 层混合模式
+   * 获取混合模式，根据 GE 混合模式
+   * @param mode GE 混合模式
    * @returns
    */
   getBlendMode (mode?: spec.MaterialBlending): PBlendMode {
@@ -149,8 +149,8 @@ export abstract class PMaterialBase extends PObject {
   }
 
   /**
-   * 获取 3D 面侧模式，根据 Core 层面侧模式
-   * @param mode Core 层面侧模式
+   * 获取面侧模式，根据 GE 面侧模式
+   * @param mode GE 面侧模式
    * @returns
    */
   getFaceSideMode (mode?: spec.SideMode): PFaceSideMode {
@@ -164,8 +164,8 @@ export abstract class PMaterialBase extends PObject {
   }
 
   /**
-   * 设置 3D 材质状态，根据 Core 层材质状态
-   * @param material Core 层材质
+   * 设置材质状态，根据 GE 材质状态
+   * @param material GE 材质
    */
   setMaterialStates (material: Material) {
     if (this.blendMode === PBlendMode.translucent || this.blendMode === PBlendMode.additive) {
@@ -337,8 +337,8 @@ export class PMaterialUnlit extends PMaterialBase {
   }
 
   /**
-   * 获取着色器功能列表，根据材质状态
-   * @returns 着色器功能列表
+   * 获取着色器特性列表，根据材质状态
+   * @returns 着色器特性列表
    */
   override getShaderFeatures (): string[] {
     const featureList = super.getShaderFeatures();
@@ -354,7 +354,7 @@ export class PMaterialUnlit extends PMaterialBase {
   }
 
   /**
-   * 更新 Core 层对应的材质中着色器的 Uniform 数据
+   * 更新对应的 GE 材质中着色器的 Uniform 数据
    * @param material
    */
   override updateUniforms (material: Material) {
@@ -571,8 +571,8 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   /**
-   * 获取材质功能列表
-   * @returns 材质功能列表
+   * 获取材质特性列表
+   * @returns 材质特性列表
    */
   override getShaderFeatures (): string[] {
     const featureList = super.getShaderFeatures();
@@ -618,7 +618,7 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   /**
-   * 更新关联的 Core 层材质中着色器的 Uniform 数据
+   * 更新关联的 GE 材质中着色器的 Uniform 数据
    * @param material
    */
   override updateUniforms (material: Material) {
@@ -775,7 +775,7 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   /**
-   * 是否有法向纹理
+   * 是否有法线纹理
    * @returns
    */
   hasNormalTexture (): boolean {
@@ -783,7 +783,7 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   /**
-   * 是否有法向纹理坐标变换
+   * 是否有法线纹理坐标变换
    * @returns
    */
   hasNormalTextureTrans (): boolean {
@@ -903,7 +903,7 @@ export class PMaterialPBR extends PMaterialBase {
 }
 
 /**
- * 3D 材质类型，包括无光照材质和 PBR 材质
+ * 材质类型，包括无光照材质和 PBR 材质
  */
 export type PMaterial = PMaterialUnlit | PMaterialPBR;
 

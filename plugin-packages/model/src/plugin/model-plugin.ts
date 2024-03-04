@@ -15,7 +15,7 @@ import { Vector3, DEG2RAD } from '../runtime/math';
 import { PCoordinate, PObjectType, PTransform } from '../runtime/common';
 
 /**
- * 3D 插件类，负责 Galacean Effects 中的 3D 能力
+ * Model 插件类，负责支持播放器中的 3D 功能
  */
 export class ModelPlugin extends AbstractPlugin {
   /**
@@ -34,7 +34,7 @@ export class ModelPlugin extends AbstractPlugin {
   private visBoundingBox = false;
   private autoAdjustScene = false;
   /**
-   * 渲染插件是否启用动态排序功能
+   * 渲染元素时是否启用动态排序功能
    * 支持在渲染的时候对透明 Mesh 进行动态排序
    */
   private enableDynamicSort = false;
@@ -105,8 +105,7 @@ export class ModelPlugin extends AbstractPlugin {
   }
 
   /**
-   * 在reset前，从render frame中删除自己添加的pass，因此在Player删除render frame时不删除这些pass
-   * 自己添加的pass是自己管理生命周期的
+   * 在重置前，从渲染帧中删除自己添加的 pass
    * @param composition 合成
    * @param renderFrame 渲染帧
    */

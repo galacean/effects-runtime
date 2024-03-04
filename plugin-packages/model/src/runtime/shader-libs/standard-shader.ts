@@ -8,7 +8,7 @@ import { PMaterialType } from '../common';
 import type { PShaderContext } from '../shader';
 
 /**
- * Shader 代码生成类
+ * 着色器代码生成类
  */
 export class StandardShader {
   /**
@@ -17,8 +17,8 @@ export class StandardShader {
   static environment = 'webgl1';
 
   /**
-   * 获取 Vertex Shader 代码
-   * @param context Shader 环境数据
+   * 获取顶点着色器代码
+   * @param context 着色器上下文
    * @returns
    */
   static getVertexShaderCode (context: PShaderContext): string {
@@ -39,8 +39,8 @@ export class StandardShader {
   }
 
   /**
-   * 获取 Fragment Shader 代码
-   * @param context Shader 环境数据
+   * 获取片段着色器代码
+   * @param context 着色器上下文
    * @returns
    */
   static getFragmentShaderCode (context: PShaderContext): string {

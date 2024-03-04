@@ -4,7 +4,7 @@ import { ModelTreeItem } from './model-tree-item';
 import type { ModelItemTree, ModelTreeOptions } from '../index';
 
 /**
- * 场景树 VFX 元素
+ * 场景树 VFX 元素类
  */
 export class ModelTreeVFXItem extends VFXItem<ModelTreeItem> {
   /**

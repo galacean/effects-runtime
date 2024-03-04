@@ -28,25 +28,25 @@ type Euler = math.Euler;
 type Ray = math.Ray;
 
 /**
- * 3D 元素联合类型：网格、相机、灯光和天空盒
+ * Model 元素联合类型：网格、相机、灯光和天空盒
  */
 export type ModelItem = PMesh | PCamera | PLight | PSkybox;
 
 /**
- * 3D 元素数据联合类型：网格、相机、灯光和天空盒
+ * Model 元素参数联合类型：网格、相机、灯光和天空盒
  */
 export type ModelItemOptions = ModelItemMesh | ModelItemCamera | ModelItemLight | ModelItemSkybox;
 
 /**
- * 3D VFX 元素，支持 Galacean Effects 的 3D 能力
+ * Model 插件 VFX 元素
  */
 export class ModelVFXItem extends VFXItem<ModelItem> {
   /**
-   * 3D 元素数据
+   * 元素参数
    */
   options?: ModelItemOptions;
   /**
-   * 3D 元素包围盒
+   * 元素包围盒
    */
   bounding?: ModelItemBounding;
   /**
@@ -66,8 +66,8 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
   }
 
   /**
-   * 元素创建，需要为相机和灯光元素创建时间轴组件
-   * @param options 元素数据
+   * 创建元素，需要为相机和灯光元素创建时间轴组件
+   * @param options 元素参数
    */
   override onConstructed (options: ModelItemOptions) {
     this.options = options;
@@ -92,7 +92,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
   }
 
   /**
-   * 元素可见性改动
+   * 元素可见性变化
    * @param visible 是否可见
    */
   override handleVisibleChanged (visible: boolean): void {
@@ -102,9 +102,9 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
   }
 
   /**
-   * 元素内容创建，按照具体类型创建具体对象
+   * 创建元素内容，按照具体类型创建具体对象
    * @param composition 合成
-   * @returns 创建的 3D 对象
+   * @returns 创建的对象
    */
   override doCreateContent (composition: Composition) {
     switch (this.options?.type) {
@@ -170,7 +170,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 计算元素包围盒，只针对 Mesh 对象
-   * @returns 包围盒数据
+   * @returns 包围盒
    */
   computeBoundingBox (): ModelItemBounding | undefined {
     if (this._content === undefined) { return; }
@@ -194,7 +194,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
   }
 
   /**
-   * 元素变换更新后，对于相机元素需要更新到合成的相机
+   * 更新变换，对于相机元素需要更新到合成的相机
    */
   updateTransform () {
     const itemContent = this._content;
@@ -215,7 +215,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
   }
 
   /**
-   * 设置元素变换，需要更新到时间轴组件中
+   * 设置变换，需要更新到时间轴组件中
    * @param position 位置
    * @param rotation 旋转
    */
@@ -275,9 +275,9 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
   }
 
   /**
-   * 元素点击测试，根据元素包围盒进行相交测试，Mesh 对象会进行更加精确的点击测试
+   * 获取点击测试参数，根据元素包围盒进行相交测试，Mesh 对象会进行更加精确的点击测试
    * @param force 是否强制进行点击测试
-   * @returns 点击测试结果
+   * @returns 点击测试参数
    */
   override getHitTestParams (force?: boolean): HitTestBoxParams | HitTestSphereParams | HitTestCustomParams | undefined {
     this.computeBoundingBox();

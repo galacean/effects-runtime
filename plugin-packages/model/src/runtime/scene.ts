@@ -18,7 +18,7 @@ type Box3 = math.Box3;
 type Vector2 = math.Vector2;
 
 /**
- * 场景选项，初始化场景对象时使用
+ * 场景参数接口，初始化场景对象时使用
  */
 export interface PSceneOptions {
   /**
@@ -72,7 +72,7 @@ export interface PSceneOptions {
 }
 
 /**
- * 场景状态，每次 Tick 时都会更新
+ * 场景状态接口，每次场景管理器 Tick 时都会生成
  */
 export interface PSceneStates {
   /**
@@ -127,7 +127,7 @@ export interface PSceneStates {
 }
 
 /**
- * 3D 场景管理类，如果存在 3D 元素才会创建
+ * 场景管理类，如果存在 Model 插件中的元素才会创建
  */
 export class PSceneManager {
   /**
@@ -294,8 +294,8 @@ export class PSceneManager {
   }
 
   /**
-   * 添加 3D VFX 元素到场景中
-   * @param item 3D VFX 元素
+   * 添加插件 VFX 元素到场景中
+   * @param item 插件 VFX 元素
    */
   addItem (item: ModelVFXItem) {
     const entity = item.content;
@@ -332,8 +332,8 @@ export class PSceneManager {
   }
 
   /**
-   * 从场景中删除 3D VFX 元素
-   * @param item 3D VFX 元素
+   * 从场景中删除插件 VFX 元素
+   * @param item 插件 VFX 元素
    */
   removeItem (item: ModelVFXItem) {
     const entity = item.content;
@@ -381,7 +381,7 @@ export class PSceneManager {
   }
 
   /**
-   * 创建 3D 对象，主要是 Mesh 对象和天空盒对象
+   * 创建插件相关的对象，主要是 Mesh 对象和天空盒对象
    * @param item
    */
   buildItem (item: ModelItem) {
@@ -393,7 +393,7 @@ export class PSceneManager {
   }
 
   /**
-   * 编译运行时需要的 Shader 代码，包括 PBR、天空盒与阴影。
+   * 编译运行时需要的着色器代码，包括 PBR、天空盒与阴影。
    */
   private build () {
     this.meshList.forEach(mesh => {
@@ -406,7 +406,7 @@ export class PSceneManager {
   }
 
   /**
-   * 更新 3D 场景，需要更新内部的所有 3D 对象，特别是 Mesh 对象的骨骼动画
+   * 更新插件场景，需要更新内部的相关的插件对象，特别是 Mesh 对象的骨骼动画
    * 并将需要渲染的对象添加到渲染对象集合中
    *
    * @param deltaTime 更新间隔
@@ -455,7 +455,7 @@ export class PSceneManager {
 
   /**
    * 更新渲染帧中默认 Pass 的渲染队列
-   * 如果是动态排序模式，需要重新添加所有的 mesh，这样优先级才能生效
+   * 如果是动态排序模式，需要重新添加所有的 Mesh，这样优先级才能生效
    * 如果是正常模式，那就增量添加和删除
    *
    * @param frame - 渲染帧
@@ -488,7 +488,7 @@ export class PSceneManager {
 
   /**
    * 动态调整 Mesh 渲染优先级
-   * 主要是为了和 Tiny 渲染对齐，正常渲染不进行调整
+   * 主要是为了和 Tiny3d 渲染对齐，正常渲染不进行调整
    *
    * @param states - 场景中的状态数据
    */
@@ -540,8 +540,8 @@ export class PSceneManager {
    * 查询场景中的 Mesh
    * 通过 parentId 查询 Mesh 对象，可能找不到 Mesh 对象
    *
-   * @param parentId - Item 中定义的 parentId
-   * @returns 查询到的 PMesh，或者是没找到。如果 Mesh 不可见，也是没找到。
+   * @param parentId - 元素中定义的 parentId
+   * @returns 查询到的 Mesh，或者是没找到。如果 Mesh 不可见，也是没找到。
    */
   queryMesh (parentId: string): PMesh | undefined {
     const mesh = this.parentId2Mesh.get(parentId);

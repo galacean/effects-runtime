@@ -37,9 +37,6 @@ export class PLight extends PEntity {
    * 类型
    */
   lightType = PLightType.ambient;
-  /**
-   * 填充
-   */
   padding: Vector2 = new Vector2(0, 0);
 
   /**
@@ -201,7 +198,7 @@ export class PLightManager {
   }
 
   /**
-   * 删除灯光对象，从灯光数组中查找改对象并进行删除，如果没有找到就忽略
+   * 删除灯光对象，从灯光数组中查找对象并进行删除，如果没有找到就忽略
    * @param inLight 删除的灯光对象
    */
   remove (inLight: PLight) {

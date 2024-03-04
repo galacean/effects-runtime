@@ -4,7 +4,7 @@ import type { ModelTreeVFXItem } from './model-tree-vfx-item';
 import type { ModelTreeOptions } from '../index';
 
 /**
- * 3D 节点数据描述
+ * 场景树节点描述
  */
 export interface ModelTreeNode {
   /**
@@ -12,7 +12,7 @@ export interface ModelTreeNode {
    */
   name?: string,
   /**
-   * 3D 变换
+   * 变换
    */
   transform: Transform,
   /**
@@ -30,7 +30,7 @@ export interface ModelTreeNode {
 }
 
 /**
- * 场景树元素，支持 3D 中节点树相关的动画能力
+ * 场景树元素类，支持插件中节点树相关的动画能力
  */
 export class ModelTreeItem {
   private allNodes: ModelTreeNode[];

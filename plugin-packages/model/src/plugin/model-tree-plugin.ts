@@ -4,7 +4,7 @@ import { PAnimationSystem } from '../runtime/animation';
 import type { ModelTreeItem } from './model-tree-item';
 
 /**
- * 场景树插件，支持 3D 相关的节点动画和骨骼动画等
+ * 场景树插件类，支持 3D 相关的节点动画和骨骼动画等
  */
 export class ModelTreePlugin extends AbstractPlugin {
   /**
