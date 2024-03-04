@@ -3,7 +3,7 @@ import type { PShaderContext, PShaderResults } from '../runtime/shader';
 
 /**
  * 获取 PBR 材质着色器代码
- * @param context 着色器上下文
+ * @param context - 着色器上下文
  * @returns
  */
 export function getPBRPassShaderCode (context: PShaderContext): PShaderResults {
@@ -28,7 +28,7 @@ export function getShadowPassShaderCode (context: PShaderContext): PShaderResult
 
 /**
  * 获取天空盒着色器代码
- * @param context 着色器上下文
+ * @param context - 着色器上下文
  * @returns
  */
 export function getSkyBoxShaderCode (context: PShaderContext): PShaderResults {
@@ -43,7 +43,7 @@ export function getSkyBoxShaderCode (context: PShaderContext): PShaderResults {
 
 /**
  * 获取四边形滤波着色器代码
- * @param context 着色器上下文
+ * @param context - 着色器上下文
  * @returns
  */
 export function getQuadFilterShaderCode (context: PShaderContext): PShaderResults {
@@ -66,7 +66,7 @@ export function getQuadFilterShaderCode (context: PShaderContext): PShaderResult
 
 /**
  * 获取法线可视化着色器代码
- * @param context 着色器上下文
+ * @param context - 着色器上下文
  * @returns
  */
 export function getNormalVisShaderCode (context: PShaderContext): PShaderResults {
@@ -87,7 +87,7 @@ export function getNormalVisShaderCode (context: PShaderContext): PShaderResults
 
 /**
  * 获取仅漫反射着色器代码
- * @param context 着色器上下文
+ * @param context - 着色器上下文
  * @returns
  */
 export function getDiffuseOnlyShaderCode (context: PShaderContext): PShaderResults {
@@ -109,7 +109,7 @@ export function getDiffuseOnlyShaderCode (context: PShaderContext): PShaderResul
 
 /**
  * 获取 Kawase 模糊着色器代码
- * @param context 着色器上下文
+ * @param context - 着色器上下文
  * @returns
  */
 export function getKawaseBlurShaderCode (context: PShaderContext): PShaderResults {
@@ -139,7 +139,7 @@ export function getKawaseBlurShaderCode (context: PShaderContext): PShaderResult
 
 /**
  * 获取简单滤波着色器代码
- * @param context
+ * @param context - 着色器上下文
  * @returns
  */
 export function getSimpleFilterShaderCode (context: PShaderContext): PShaderResults {
@@ -162,7 +162,7 @@ export function getSimpleFilterShaderCode (context: PShaderContext): PShaderResu
 
 /**
  * 获取高斯模糊着色器代码
- * @param context 着色器上下文
+ * @param context - 着色器上下文
  * @returns
  */
 export function getGaussianBlurShaderCodeV2 (context: PShaderContext): PShaderResults {
@@ -191,7 +191,7 @@ export function getGaussianBlurShaderCodeV2 (context: PShaderContext): PShaderRe
 
 /**
  * 获取高斯模糊着色器代码
- * @param context 着色器上下文
+ * @param context - 着色器上下文
  * @returns
  */
 export function getGaussianBlurShaderCodeV1 (context: PShaderContext): PShaderResults {
@@ -223,7 +223,7 @@ export function getGaussianBlurShaderCodeV1 (context: PShaderContext): PShaderRe
 
 /**
  * 获取透明效果着色器代码
- * @param isVertexShader 是否顶点着色器
+ * @param isVertexShader - 是否顶点着色器
  * @returns
  */
 export function getTransparecyBaseShader (isVertexShader: boolean): string {
@@ -266,7 +266,7 @@ export function getTransparecyBaseShader (isVertexShader: boolean): string {
 
 /**
  * 获取透明效果滤波着色器代码
- * @param isVertexShader 是否顶点着色器
+ * @param isVertexShader - 是否顶点着色器
  * @returns
  */
 export function getTransparecyFilterShader (isVertexShader: boolean): string {

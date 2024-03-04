@@ -385,8 +385,7 @@ export class InputController {
 
   /**
    * 相机开始事件的回调
-   *
-   * @param eventName 事件名称
+   * @param eventName - 事件名称
    */
   private launchBeginEventCallback (eventName: string) {
     if (this.beginEventCallback !== undefined) {
@@ -396,8 +395,7 @@ export class InputController {
 
   /**
    * 相机持续事件的回调
-   *
-   * @param eventName 事件名称
+   * @param eventName - 事件名称
    */
   private launchMoveEventCallback (eventName: string) {
     if (this.moveEventCallback !== undefined) {
@@ -407,8 +405,7 @@ export class InputController {
 
   /**
    * 相机结束事件的回调
-   *
-   * @param eventName 事件名称
+   * @param eventName - 事件名称
    */
   private launchEndEventCallback (eventName: string) {
     if (this.endEventCallback !== undefined) {

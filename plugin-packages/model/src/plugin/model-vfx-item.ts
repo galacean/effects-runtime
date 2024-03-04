@@ -67,7 +67,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 创建元素，需要为相机和灯光元素创建时间轴组件
-   * @param options 元素参数
+   * @param options - 元素参数
    */
   override onConstructed (options: ModelItemOptions) {
     this.options = options;
@@ -93,7 +93,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 元素可见性变化
-   * @param visible 是否可见
+   * @param visible - 是否可见
    */
   override handleVisibleChanged (visible: boolean): void {
     if (this.content !== undefined) {
@@ -103,7 +103,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 创建元素内容，按照具体类型创建具体对象
-   * @param composition 合成
+   * @param composition - 合成
    * @returns 创建的对象
    */
   override doCreateContent (composition: Composition) {
@@ -216,8 +216,8 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 设置变换，需要更新到时间轴组件中
-   * @param position 位置
-   * @param rotation 旋转
+   * @param position - 位置
+   * @param rotation - 旋转
    */
   setTransform (position?: Vector3, rotation?: Euler): void {
     if (position !== undefined) {
@@ -233,8 +233,8 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 元素生命周期开始，需要更新 Mesh 对象父元素和同时可见性改变
-   * @param composition 合成
-   * @param content 元素内容
+   * @param composition - 合成
+   * @param content - 元素内容
    * @returns
    */
   override onLifetimeBegin (composition: Composition, content: ModelItem) {
@@ -251,8 +251,8 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 元素更新，需要更新时间轴组件
-   * @param dt 时间间隔
-   * @param lifetime 生命时间
+   * @param dt - 时间间隔
+   * @param lifetime - 生命时间
    */
   override onItemUpdate (dt: number, lifetime: number) {
     const time = (this.timeInms - this.delayInms) * 0.001;
@@ -264,8 +264,8 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 元素删除，需要通知删除和销毁元素内容
-   * @param composition 合成
-   * @param content 元素内容
+   * @param composition - 合成
+   * @param content - 元素内容
    */
   override onItemRemoved (composition: Composition, content?: ModelItem) {
     if (this.content !== undefined) {
@@ -276,7 +276,7 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
 
   /**
    * 获取点击测试参数，根据元素包围盒进行相交测试，Mesh 对象会进行更加精确的点击测试
-   * @param force 是否强制进行点击测试
+   * @param force - 是否强制进行点击测试
    * @returns 点击测试参数
    */
   override getHitTestParams (force?: boolean): HitTestBoxParams | HitTestSphereParams | HitTestCustomParams | undefined {

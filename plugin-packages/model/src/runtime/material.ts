@@ -76,7 +76,7 @@ export abstract class PMaterialBase extends PObject {
 
   /**
    * 根据材质状态，更新 GE 材质状态
-   * @param material GE 材质
+   * @param material - GE 材质
    */
   updateUniforms (material: Material) {
     if (this.isMasked()) {
@@ -96,7 +96,7 @@ export abstract class PMaterialBase extends PObject {
   /**
    * 生成顶点和片段着色器代码
    * 先获取着色器特性，再根据材质和全局状态，生成着色器代码
-   * @param inFeatureList 外部特性列表
+   * @param inFeatureList - 外部特性列表
    */
   build (inFeatureList?: string[]) {
     const finalFeatureList = this.getShaderFeatures();
@@ -133,7 +133,7 @@ export abstract class PMaterialBase extends PObject {
 
   /**
    * 获取混合模式，根据 GE 混合模式
-   * @param mode GE 混合模式
+   * @param mode - GE 混合模式
    * @returns
    */
   getBlendMode (mode?: spec.MaterialBlending): PBlendMode {
@@ -150,7 +150,7 @@ export abstract class PMaterialBase extends PObject {
 
   /**
    * 获取面侧模式，根据 GE 面侧模式
-   * @param mode GE 面侧模式
+   * @param mode - GE 面侧模式
    * @returns
    */
   getFaceSideMode (mode?: spec.SideMode): PFaceSideMode {
@@ -165,7 +165,7 @@ export abstract class PMaterialBase extends PObject {
 
   /**
    * 设置材质状态，根据 GE 材质状态
-   * @param material GE 材质
+   * @param material - GE 材质
    */
   setMaterialStates (material: Material) {
     if (this.blendMode === PBlendMode.translucent || this.blendMode === PBlendMode.additive) {
@@ -304,7 +304,7 @@ export class PMaterialUnlit extends PMaterialBase {
 
   /**
    * 创建无光照材质，支持基础颜色纹理
-   * @param options 无光照材质参数
+   * @param options - 无光照材质参数
    */
   create (options: ModelMaterialUnlitOptions) {
     this.name = options.name;
@@ -355,7 +355,7 @@ export class PMaterialUnlit extends PMaterialBase {
 
   /**
    * 更新对应的 GE 材质中着色器的 Uniform 数据
-   * @param material
+   * @param material - GE 材质
    */
   override updateUniforms (material: Material) {
     super.updateUniforms(material);
@@ -392,7 +392,7 @@ export class PMaterialUnlit extends PMaterialBase {
 
   /**
    * 设置基础颜色纹理
-   * @param val 纹理对象
+   * @param val - 纹理对象
    */
   setBaseColorTexture (val: Texture) {
     this.baseColorTexture = val;
@@ -408,7 +408,7 @@ export class PMaterialUnlit extends PMaterialBase {
 
   /**
    * 设置基础颜色值
-   * @param val 颜色值
+   * @param val - 颜色值
    */
   setBaseColorFactor (val: Vector4 | spec.vec4) {
     if (val instanceof Vector4) {
@@ -502,7 +502,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 创建材质
-   * @param options PBR 材质参数
+   * @param options - PBR 材质参数
    */
   create (options: ModelMaterialPBROptions) {
     this.name = options.name;
@@ -619,7 +619,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 更新关联的 GE 材质中着色器的 Uniform 数据
-   * @param material
+   * @param material - GE 材质
    */
   override updateUniforms (material: Material) {
     super.updateUniforms(material);
@@ -714,7 +714,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 设置基础颜色纹理
-   * @param val 纹理
+   * @param val - 纹理
    */
   setBaseColorTexture (val: Texture) {
     this.baseColorTexture = val;
@@ -730,7 +730,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 设置基础颜色值
-   * @param val 颜色值
+   * @param val - 颜色值
    */
   setBaseColorFactor (val: Vector4 | spec.vec4) {
     if (val instanceof Vector4) {
@@ -768,7 +768,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 设置金属度粗超度纹理
-   * @param val 纹理
+   * @param val - 纹理
    */
   setMetallicRoughnessTexture (val: Texture) {
     this.metallicRoughnessTexture = val;
@@ -800,7 +800,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 设置法线纹理
-   * @param val 纹理
+   * @param val - 纹理
    */
   setNormalTexture (val: Texture) {
     this.normalTexture = val;
@@ -832,7 +832,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 设置遮挡纹理
-   * @param val 纹理
+   * @param val - 纹理
    */
   setOcclusionTexture (val: Texture) {
     this.occlusionTexture = val;
@@ -864,7 +864,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 设置自发光纹理
-   * @param val 纹理
+   * @param val - 纹理
    */
   setEmissiveTexture (val: Texture) {
     this.emissiveTexture = val;
@@ -888,7 +888,7 @@ export class PMaterialPBR extends PMaterialBase {
 
   /**
    * 设置自发光颜色
-   * @param val 颜色
+   * @param val - 颜色
    */
   setEmissiveFactor (val: Vector3 | spec.vec3) {
     if (val instanceof Vector3) {
@@ -909,7 +909,7 @@ export type PMaterial = PMaterialUnlit | PMaterialPBR;
 
 /**
  * 创建插件材质对象
- * @param options 材质参数
+ * @param options - 材质参数
  * @returns 材质对象
  */
 export function createPluginMaterial (options: ModelMaterialOptions): PMaterial {

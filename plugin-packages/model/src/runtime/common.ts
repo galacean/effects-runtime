@@ -102,7 +102,7 @@ export class PTransform {
 
   /**
    * 从矩阵设置数据
-   * @param matrix 4阶矩阵
+   * @param matrix - 4阶矩阵
    * @returns
    */
   fromMatrix4 (matrix: Matrix4) {
@@ -113,7 +113,7 @@ export class PTransform {
 
   /**
    * 从 GE 变换设置数据
-   * @param trans GE 变换对象或数据
+   * @param trans - GE 变换对象或数据
    * @returns
    */
   fromEffectsTransform (trans: EffectsTransform | BaseTransform) {
@@ -135,7 +135,7 @@ export class PTransform {
 
   /**
    * 转成 GE 变换对象
-   * @param transform GE 变换对象
+   * @param transform - GE 变换对象
    * @returns
    */
   toEffectsTransform (transform: EffectsTransform) {
@@ -148,7 +148,7 @@ export class PTransform {
 
   /**
    * 通过 GE 变换参数设置
-   * @param trans GE 变换参数
+   * @param trans - GE 变换参数
    * @returns
    */
   fromBaseTransform (trans: BaseTransform) {
@@ -183,7 +183,7 @@ export class PTransform {
 
   /**
    * 设置平移
-   * @param val 平移
+   * @param val - 平移
    */
   setTranslation (val: Vector3 | spec.vec3) {
     if (val instanceof Vector3) {
@@ -203,7 +203,7 @@ export class PTransform {
 
   /**
    * 设置位置
-   * @param val 位置
+   * @param val - 位置
    */
   setPosition (val: Vector3 | spec.vec3) {
     if (val instanceof Vector3) {
@@ -223,7 +223,7 @@ export class PTransform {
 
   /**
    * 设置旋转
-   * @param val 旋转，可能是四元数或欧拉角
+   * @param val - 旋转，可能是四元数或欧拉角
    */
   setRotation (val: Quaternion | Euler | Vector3 | spec.vec4 | spec.vec3) {
     if (val instanceof Quaternion) {
@@ -249,7 +249,7 @@ export class PTransform {
 
   /**
    * 设置缩放
-   * @param val 缩放
+   * @param val - 缩放
    */
   setScale (val: Vector3 | spec.vec3) {
     if (val instanceof Vector3) {
@@ -269,7 +269,7 @@ export class PTransform {
 
   /**
    * 设置矩阵
-   * @param mat 4阶矩阵
+   * @param mat - 4阶矩阵
    */
   setMatrix (mat: Matrix4 | spec.mat4) {
     if (mat instanceof Matrix4) {
@@ -318,8 +318,8 @@ export class PCoordinate {
 
   /**
    * 从插件变换创建坐标系
-   * @param trans 变换
-   * @param invert 是否旋转取反
+   * @param trans - 变换
+   * @param invert - 是否旋转取反
    * @returns 坐标系对象
    */
   fromPTransform (trans: PTransform, invert = false) {
@@ -336,7 +336,7 @@ export class PCoordinate {
 
   /**
    * 从旋转矩阵创建坐标系
-   * @param matrix 矩阵
+   * @param matrix - 矩阵
    */
   fromRotationMatrix (matrix: Matrix4) {
     const me = matrix.elements;

@@ -54,10 +54,10 @@ export class PCamera extends PEntity {
 
   /**
    * 构造函数，创建相机对象
-   * @param camera 相机数据
-   * @param width 画布宽度
-   * @param height 画布高度
-   * @param ownerItem 所属的相机元素对象
+   * @param camera - 相机数据
+   * @param width - 画布宽度
+   * @param height - 画布高度
+   * @param ownerItem - 所属的相机元素对象
    */
   constructor (camera: ModelItemCamera, width: number, height: number, ownerItem?: ModelVFXItem) {
     super();
@@ -94,7 +94,7 @@ export class PCamera extends PEntity {
 
   /**
    * 获取新的透视矩阵，视角大小乘 1.25 倍
-   * @param fov 视角大小
+   * @param fov - 视角大小
    * @returns 投影矩阵
    */
   getNewProjectionMatrix (fov: number): Matrix4 {
@@ -105,7 +105,7 @@ export class PCamera extends PEntity {
 
   /**
    * 计算视角中的包围盒大小
-   * @param box 包围盒
+   * @param box - 包围盒
    * @returns 视角中的包围盒
    */
   computeViewAABB (box: Box3): Box3 {
@@ -170,7 +170,7 @@ export class PCamera extends PEntity {
 
   /**
    * 设置眼睛位置
-   * @param val 眼睛位置
+   * @param val - 眼睛位置
    */
   setEye (val: Vector3) {
     this.translation = val;
@@ -211,8 +211,8 @@ export class PCameraManager {
 
   /**
    * 初始化画布大小，更新默认相机
-   * @param width 画布宽度
-   * @param height 画布高度
+   * @param width - 画布宽度
+   * @param height - 画布高度
    */
   initial (width: number, height: number) {
     this.winWidth = width;
@@ -228,8 +228,8 @@ export class PCameraManager {
 
   /**
    * 插入相机数据，创建新的相机对象
-   * @param inCamera 相机数据
-   * @param ownerItem 所属元素
+   * @param inCamera - 相机数据
+   * @param ownerItem - 所属元素
    * @returns 新的相机对象
    */
   insert (inCamera: ModelItemCamera, ownerItem?: ModelVFXItem): PCamera {
@@ -242,7 +242,7 @@ export class PCameraManager {
 
   /**
    * 插入相机对象
-   * @param camera 相机对象
+   * @param camera - 相机对象
    */
   insertCamera (camera: PCamera) {
     this.cameraList.push(camera);
@@ -250,7 +250,7 @@ export class PCameraManager {
 
   /**
    * 根据对象或者索引，删除相机对象
-   * @param camera 索引或相机对象
+   * @param camera - 索引或相机对象
    */
   remove (camera: PCamera | number) {
     if (camera instanceof PCamera) {
@@ -277,13 +277,13 @@ export class PCameraManager {
 
   /**
    * 更新默认相机状态，并计算新的透视和相机矩阵
-   * @param fovy 视角
-   * @param nearPlane 近裁剪平面
-   * @param farPlane 远裁剪平面
-   * @param position 位置
-   * @param rotation 旋转
-   * @param aspect 纵横比
-   * @param clipMode 剪裁模式
+   * @param fovy - 视角
+   * @param nearPlane - 近裁剪平面
+   * @param farPlane - 远裁剪平面
+   * @param position - 位置
+   * @param rotation - 旋转
+   * @param aspect - 纵横比
+   * @param clipMode - 剪裁模式
    */
   updateDefaultCamera (
     fovy: number,

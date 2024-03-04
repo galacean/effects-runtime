@@ -51,8 +51,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 整个 load 阶段都不会创建 GL 相关的对象，只创建 JS 对象
-   * @param scene 场景
-   * @param options 加载选项
+   * @param scene - 场景
+   * @param options - 加载选项
    */
   static override async prepareResource (scene: Scene, options: SceneLoadOptions): Promise<void> {
     const runtimeEnv = options.env ?? '';
@@ -80,8 +80,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 创建 3D 场景管理器
-   * @param composition 合成
-   * @param scene 场景
+   * @param composition - 合成
+   * @param scene - 场景
    */
   override onCompositionConstructed (composition: Composition, scene: Scene): void {
     this.runtimeEnv = scene.storage['runtimeEnv'] ?? this.runtimeEnv;
@@ -106,8 +106,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 在重置前，从渲染帧中删除自己添加的 pass
-   * @param composition 合成
-   * @param renderFrame 渲染帧
+   * @param composition - 合成
+   * @param renderFrame - 渲染帧
    */
   override onCompositionWillReset (composition: Composition, renderFrame: RenderFrame) {
     //
@@ -126,8 +126,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 每次播放都会执行，包括重播，所以这里执行“小的销毁”和新的初始化
-   * @param composition 合成
-   * @param renderFrame 渲染帧
+   * @param composition - 合成
+   * @param renderFrame - 渲染帧
    */
   override onCompositionReset (composition: Composition, renderFrame: RenderFrame) {
     const sceneManager = this.getSceneManager(composition);
@@ -152,7 +152,7 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 合成销毁，同时销毁 3D 场景对象和缓存
-   * @param composition 合成
+   * @param composition - 合成
    */
   override onCompositionDestroyed (composition: Composition) {
     // 最终的销毁，销毁后特效就结束了
@@ -162,7 +162,7 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 更新时间间隔
-   * @param composition 合成
+   * @param composition - 合成
    * @param dt 时间间隔
    */
   override onCompositionUpdate (composition: Composition, dt: number) {
@@ -171,8 +171,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 元素生命周期开始，将 3D 元素添加到 3D 场景管理器中
-   * @param composition 合成
-   * @param item 元素
+   * @param composition - 合成
+   * @param item - 元素
    */
   override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<any>) {
     if (item.type === VFX_ITEM_TYPE_3D) {
@@ -184,8 +184,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 删除元素时，同时删除 3D 场景管理器中的元素
-   * @param composition 合成
-   * @param item 元素
+   * @param composition - 合成
+   * @param item - 元素
    */
   override onCompositionItemRemoved (composition: Composition, item: VFXItem<any>) {
     if (item.type === VFX_ITEM_TYPE_3D) {
@@ -197,8 +197,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 更新 3D 管理器和将需要渲染的对象添加到渲染帧中
-   * @param composition 合成
-   * @param frame 渲染帧
+   * @param composition - 合成
+   * @param frame - 渲染帧
    * @returns
    */
   override prepareRenderFrame (composition: Composition, frame: RenderFrame): boolean {
@@ -257,8 +257,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   /**
    * 这里可以添加渲染时 Pass
-   * @param composition 合成
-   * @param frame 渲染帧
+   * @param composition - 合成
+   * @param frame - 渲染帧
    */
   override postProcessFrame (composition: Composition, frame: RenderFrame): void {
     const sceneManager = this.getSceneManager(composition);

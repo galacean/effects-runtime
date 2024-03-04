@@ -99,10 +99,10 @@ export class PMesh extends PEntity {
 
   /**
    * 构造函数，创建 Mesh 对象，并与所属的 VFX 元素和父元素相关联
-   * @param engine 引擎
-   * @param itemMesh Mesh 参数
-   * @param ownerItem 所属 VFX 元素
-   * @param parentItem 父 VFX 元素
+   * @param engine - 引擎
+   * @param itemMesh - Mesh 参数
+   * @param ownerItem - 所属 VFX 元素
+   * @param parentItem - 父 VFX 元素
    */
   constructor (private engine: Engine, itemMesh: ModelItemMesh, ownerItem?: ModelVFXItem, parentItem?: ModelTreeVFXItem) {
     super();
@@ -142,9 +142,9 @@ export class PMesh extends PEntity {
 
   /**
    * 创建 GE 的 Mesh、Geometry 和 Material 对象
-   * @param lightCount 场景中灯光数目
-   * @param uniformSemantics 着色器 Uniform 数据
-   * @param skybox 天空盒
+   * @param lightCount - 场景中灯光数目
+   * @param uniformSemantics - 着色器 Uniform 数据
+   * @param skybox - 天空盒
    * @returns
    */
   build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
@@ -160,7 +160,7 @@ export class PMesh extends PEntity {
 
   /**
    * 更新变换数据和蒙皮数据
-   * @param deltaSeconds 更新间隔
+   * @param deltaSeconds - 更新间隔
    * @returns
    */
   override tick (deltaSeconds: number) {
@@ -177,7 +177,7 @@ export class PMesh extends PEntity {
 
   /**
    * 根据可见性状态，将相关的 GE Mesh 添加到渲染对象集合中
-   * @param renderObjectSet 渲染对象集合
+   * @param renderObjectSet - 渲染对象集合
    */
   override addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
     if (this.visible) {
@@ -245,7 +245,7 @@ export class PMesh extends PEntity {
 
   /**
    * 更新父 VFX 元素
-   * @param parentItem 父 VFX 元素
+   * @param parentItem - 父 VFX 元素
    */
   updateParentItem (parentItem: ModelTreeVFXItem) {
     this.parentItem = parentItem;
@@ -256,7 +256,7 @@ export class PMesh extends PEntity {
 
   /**
    * 更新着色器 Uniform 数据，根据当前场景状态
-   * @param sceneStates 场景状态
+   * @param sceneStates - 场景状态
    */
   override updateUniformsForScene (sceneStates: PSceneStates) {
     const worldMatrix = this.matrix;
@@ -295,8 +295,8 @@ export class PMesh extends PEntity {
 
   /**
    * 点击测试，对于编辑器模式会进行精准的点击测试，否则就和内部的包围盒进行测试
-   * @param rayOrigin 射线原点
-   * @param rayDirection 射线方向
+   * @param rayOrigin - 射线原点
+   * @param rayDirection - 射线方向
    * @returns 交点列表
    */
   hitTesting (rayOrigin: Vector3, rayDirection: Vector3): Vector3[] {
@@ -341,7 +341,7 @@ export class PMesh extends PEntity {
 
   /**
    * 计算包围盒，根据传入的世界矩阵
-   * @param worldMatrix 世界矩阵
+   * @param worldMatrix - 世界矩阵
    * @returns
    */
   computeBoundingBox (worldMatrix: Matrix4): Box3 {
@@ -459,8 +459,8 @@ export class PPrimitive {
 
   /**
    * 创建 Primitive 对象
-   * @param options Primitive 参数
-   * @param parent 所属 Mesh 对象
+   * @param options - Primitive 参数
+   * @param parent - 所属 Mesh 对象
    */
   create (options: ModelPrimitiveOptions, parent: PMesh) {
     this.parent = parent;
@@ -508,9 +508,9 @@ export class PPrimitive {
   /**
    * 创建 GE Mesh、Geometry 和 Material 对象，用于后面的渲染
    * 着色器部分 Uniform 数据来自 uniformSemantics
-   * @param lightCount 灯光数目
-   * @param uniformSemantics Uniform 语义数据
-   * @param skybox 天空盒
+   * @param lightCount - 灯光数目
+   * @param uniformSemantics - Uniform 语义数据
+   * @param skybox - 天空盒
    */
   build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
     const globalState = PGlobalState.getInstance();
@@ -694,7 +694,7 @@ export class PPrimitive {
 
   /**
    * 将 GE Mesh 添加到渲染对象集合中
-   * @param renderObjectSet 渲染对象集合
+   * @param renderObjectSet - 渲染对象集合
    */
   addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
     renderObjectSet.add(this.effectsMesh);
@@ -735,9 +735,9 @@ export class PPrimitive {
 
   /**
    * 更新着色器 Uniform 数据，根据场景状态
-   * @param worldMatrix 世界矩阵
-   * @param nomralMatrix 法线矩阵
-   * @param sceneStates 场景状态
+   * @param worldMatrix - 世界矩阵
+   * @param nomralMatrix - 法线矩阵
+   * @param sceneStates - 场景状态
    */
   updateUniformsForScene (worldMatrix: Matrix4, nomralMatrix: Matrix4, sceneStates: PSceneStates) {
     this.updateUniformsByAnimation(worldMatrix, nomralMatrix);
@@ -758,10 +758,10 @@ export class PPrimitive {
 
   /**
    * 点击测试，先进行简单的包围合测试，然后再计算精准的点击测试，这个测试非常耗时不要在移动端上使用
-   * @param newOrigin 射线原点
-   * @param newDirection 射线方向
-   * @param worldMatrix 世界矩阵
-   * @param invWorldMatrix 逆世界矩阵
+   * @param newOrigin - 射线原点
+   * @param newDirection - 射线方向
+   * @param worldMatrix - 世界矩阵
+   * @param invWorldMatrix - 逆世界矩阵
    * @returns 射线的 t 参数
    */
   hitTesting (newOrigin: Vector3, newDirection: Vector3, worldMatrix: Matrix4, invWorldMatrix: Matrix4) {
@@ -791,7 +791,7 @@ export class PPrimitive {
 
   /**
    * 计算包围盒
-   * @param inverseWorldMatrix 逆世界矩阵
+   * @param inverseWorldMatrix - 逆世界矩阵
    * @returns
    */
   computeBoundingBox (inverseWorldMatrix: Matrix4): Box3 {
@@ -989,7 +989,7 @@ export class PPrimitive {
 
   /**
    * 设置几何体
-   * @param val 插件或 GE 几何体
+   * @param val - 插件或 GE 几何体
    */
   setGeometry (val: PGeometry | Geometry) {
     if (val instanceof PGeometry) {
@@ -1001,7 +1001,7 @@ export class PPrimitive {
 
   /**
    * 设置材质
-   * @param val 插件材质对象或材质参数
+   * @param val - 插件材质对象或材质参数
    */
   setMaterial (val: PMaterial | ModelMaterialOptions) {
     if (val instanceof PMaterialUnlit) {
@@ -1085,7 +1085,7 @@ export class PGeometry {
 
   /**
    * 创建 3D 几何体，根据 GE 几何体
-   * @param geometry
+   * @param geometry - GE 几何体
    */
   constructor (public geometry: Geometry) {
     this.attributeNames = geometry.getAttributeNames();
@@ -1102,7 +1102,7 @@ export class PGeometry {
 
   /**
    * 是否有某个属性
-   * @param name 属性名
+   * @param name - 属性名
    * @returns
    */
   hasAttribute (name: string): boolean {
@@ -1115,7 +1115,7 @@ export class PGeometry {
 
   /**
    * 设置隐藏，通过修改几何体中的渲染数目
-   * @param hide
+   * @param hide - 隐藏值
    */
   setHide (hide: boolean) {
     const geomExt = this.geometry as GeometryExt;
@@ -1180,7 +1180,7 @@ export class PGeometry {
 
   /**
    * 是否有纹理坐标属性
-   * @param index
+   * @param index - 纹理坐标索引
    * @returns
    */
   hasUVCoords (index: number): boolean {

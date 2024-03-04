@@ -214,7 +214,7 @@ export class PSceneManager {
 
   /**
    * 初始化场景管理器，设置全局状态
-   * @param opts
+   * @param opts - 场景参数
    */
   initial (opts: PSceneOptions) {
     this.clean();
@@ -295,7 +295,7 @@ export class PSceneManager {
 
   /**
    * 添加插件 VFX 元素到场景中
-   * @param item 插件 VFX 元素
+   * @param item - 插件 VFX 元素
    */
   addItem (item: ModelVFXItem) {
     const entity = item.content;
@@ -333,7 +333,7 @@ export class PSceneManager {
 
   /**
    * 从场景中删除插件 VFX 元素
-   * @param item 插件 VFX 元素
+   * @param item - 插件 VFX 元素
    */
   removeItem (item: ModelVFXItem) {
     const entity = item.content;
@@ -359,7 +359,7 @@ export class PSceneManager {
 
   /**
    * 更新默认相机状态，根据传入的相机参数
-   * @param camera 相机参数
+   * @param camera - 相机参数
    */
   updateDefaultCamera (camera: CameraOptionsEx) {
     const effectsTransfrom = new Transform({
@@ -382,7 +382,7 @@ export class PSceneManager {
 
   /**
    * 创建插件相关的对象，主要是 Mesh 对象和天空盒对象
-   * @param item
+   * @param item - 插件相关对象
    */
   buildItem (item: ModelItem) {
     if (item instanceof PMesh) {
@@ -409,7 +409,7 @@ export class PSceneManager {
    * 更新插件场景，需要更新内部的相关的插件对象，特别是 Mesh 对象的骨骼动画
    * 并将需要渲染的对象添加到渲染对象集合中
    *
-   * @param deltaTime 更新间隔
+   * @param deltaTime - 更新间隔
    */
   tick (deltaTime: number) {
     const deltaSeconds = deltaTime;
@@ -568,7 +568,7 @@ export class PSceneManager {
 
   /**
    * 获取场景的包围盒
-   * @param box 包围盒
+   * @param box - 包围盒
    * @returns 场景的包围盒
    */
   getSceneAABB (box?: Box3): Box3 {

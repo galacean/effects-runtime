@@ -47,8 +47,8 @@ export class ModelTreeItem {
 
   /**
    * 构造函数，创建场景树结构
-   * @param props 场景树数据
-   * @param owner 场景树元素
+   * @param props - 场景树数据
+   * @param owner - 场景树元素
    */
   constructor (props: ModelTreeOptions, owner: ModelTreeVFXItem) {
     this.baseTransform = owner.transform;
@@ -58,7 +58,7 @@ export class ModelTreeItem {
 
   /**
    * 场景树更新，主要是动画更新
-   * @param dt 时间间隔
+   * @param dt - 时间间隔
    */
   tick (dt: number) {
     this.animationManager.tick(dt);
@@ -74,7 +74,7 @@ export class ModelTreeItem {
 
   /**
    * 根据节点编号，查询节点
-   * @param nodeId 节点编号
+   * @param nodeId - 节点编号
    * @returns
    */
   getNodeById (nodeId: string | number): ModelTreeNode | undefined {
@@ -92,7 +92,7 @@ export class ModelTreeItem {
 
   /**
    * 根据节点名称，查询节点
-   * @param name 名称
+   * @param name - 名称
    * @returns
    */
   getNodeByName (name: string): ModelTreeNode | undefined {
@@ -108,7 +108,7 @@ export class ModelTreeItem {
 
   /**
    * 根据节点 id 查询节点变换，如果查询不到节点就直接返回基础变换
-   * @param nodeId 节点 id
+   * @param nodeId - 节点 id
    * @returns
    */
   getNodeTransform (nodeId: string): Transform {

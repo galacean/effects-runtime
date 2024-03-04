@@ -10,7 +10,7 @@ const number2GLName = new Map();
 
 /**
  * Hook WebGL 相关的 API 调用
- * @param ctx WebGL 上下文
+ * @param ctx - WebGL 上下文
  */
 export function HookOGLFunc (ctx: WebGLContext) {
   console.info('HookOGLFunc ' + Object.getPrototypeOf(ctx));
@@ -92,7 +92,7 @@ function GetNum2GLName (ctx: WebGLContext) {
 
 /**
  * 获取播放器关联的 GPU 信息
- * @param player 播放器
+ * @param player - 播放器
  * @returns
  */
 export function getRendererGPUInfo (player: Player) {
@@ -103,7 +103,7 @@ export function getRendererGPUInfo (player: Player) {
 
 /**
  * 获取播放器中 PMesh 对象列表
- * @param player 播放器
+ * @param player - 播放器
  * @returns
  */
 export function getPMeshList (player: Player) {

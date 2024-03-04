@@ -25,7 +25,7 @@ export class ModelTreeVFXItem extends VFXItem<ModelTreeItem> {
 
   /**
    * 创建元素，同时创建时间轴组件
-   * @param props 场景树数据
+   * @param props - 场景树数据
    */
   override onConstructed (props: ModelItemTree) {
     this.options = props.content.options.tree;
@@ -48,8 +48,8 @@ export class ModelTreeVFXItem extends VFXItem<ModelTreeItem> {
 
   /**
    * 元素更新，更新时间轴和动画
-   * @param dt 时间间隔
-   * @param lifetime 生命时间
+   * @param dt - 时间间隔
+   * @param lifetime - 生命时间
    */
   override onItemUpdate (dt: number, lifetime: number) {
     const time = (this.timeInms - this.delayInms) * 0.001;
@@ -65,7 +65,7 @@ export class ModelTreeVFXItem extends VFXItem<ModelTreeItem> {
 
   /**
    * 获取元素的变换
-   * @param itemId 元素索引
+   * @param itemId - 元素索引
    * @returns
    */
   override getNodeTransform (itemId: string): Transform {

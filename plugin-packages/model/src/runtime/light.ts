@@ -41,8 +41,8 @@ export class PLight extends PEntity {
 
   /**
    * 创建灯光对象
-   * @param light 灯光参数
-   * @param ownerItem 所属 VFX 元素
+   * @param light - 灯光参数
+   * @param ownerItem - 所属 VFX 元素
    */
   constructor (light: ModelItemLight, ownerItem?: ModelVFXItem) {
     super();
@@ -85,7 +85,7 @@ export class PLight extends PEntity {
 
   /**
    * 更新灯光变换
-   * @param deltaSeconds 更新间隔
+   * @param deltaSeconds - 更新间隔
    */
   override tick (deltaSeconds: number) {
     if (this.ownerItem !== undefined) {
@@ -164,7 +164,7 @@ export class PLightManager {
 
   /**
    * 更新灯光数组
-   * @param deltaSeconds 更新间隔
+   * @param deltaSeconds - 更新间隔
    */
   tick (deltaSeconds: number) {
     this.lightList.forEach(light => {
@@ -174,8 +174,8 @@ export class PLightManager {
 
   /**
    * 通过灯光参数，创建灯光对象，并保存到灯光数组中
-   * @param inLight 灯光参数
-   * @param ownerItem 所属 VFX 元素
+   * @param inLight - 灯光参数
+   * @param ownerItem - 所属 VFX 元素
    * @returns 插入的灯光对象
    */
   insertItem (inLight: ModelItemLight, ownerItem?: ModelVFXItem): PLight {
@@ -188,7 +188,7 @@ export class PLightManager {
 
   /**
    * 插入灯光对象
-   * @param inLight 灯光对象
+   * @param inLight - 灯光对象
    * @returns 插入的灯光对象
    */
   insertLight (inLight: PLight): PLight {
@@ -199,7 +199,7 @@ export class PLightManager {
 
   /**
    * 删除灯光对象，从灯光数组中查找对象并进行删除，如果没有找到就忽略
-   * @param inLight 删除的灯光对象
+   * @param inLight - 删除的灯光对象
    */
   remove (inLight: PLight) {
     const findResult = this.lightList.findIndex(item => {

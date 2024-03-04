@@ -57,9 +57,9 @@ export class PSkin extends PObject {
 
   /**
    * 创建蒙皮对象
-   * @param options 蒙皮相关数据
-   * @param engine 引擎对象
-   * @param parentItem 场景树父元素
+   * @param options - 蒙皮相关数据
+   * @param engine - 引擎对象
+   * @param parentItem - 场景树父元素
    */
   create (options: ModelSkinOptions, engine: Engine, parentItem?: ModelTreeVFXItem) {
     this.name = this.genName(options.name ?? 'Unnamed skin');
@@ -132,9 +132,9 @@ export class PSkin extends PObject {
 
   /**
    * 计算 Mesh 的动画矩阵
-   * @param worldMatrix 世界矩阵
-   * @param matrixList 矩阵列表
-   * @param normalMatList 法线矩阵列表
+   * @param worldMatrix - 世界矩阵
+   * @param matrixList - 矩阵列表
+   * @param normalMatList - 法线矩阵列表
    */
   computeMeshAnimMatrices (worldMatrix: Matrix4, matrixList: Float32Array, normalMatList: Float32Array) {
     const inverseWorldMatrix = worldMatrix.clone().invert();
@@ -153,7 +153,7 @@ export class PSkin extends PObject {
 
   /**
    * 更新父元素
-   * @param parentItem 场景树父元素
+   * @param parentItem - 场景树父元素
    */
   updateParentItem (parentItem: ModelTreeVFXItem) {
     this.parentItem = parentItem;
@@ -472,7 +472,7 @@ export class PAnimTrack {
 
   /**
    * 创建动画轨道对象
-   * @param options 动画轨道参数
+   * @param options - 动画轨道参数
    */
   constructor (options: ModelAnimTrackOptions) {
     const { node, input, output, path, interpolation } = options;
@@ -535,9 +535,9 @@ export class PAnimTrack {
 
   /**
    * 更新节点动画数据
-   * @param time 当前播放时间
-   * @param treeItem 节点树元素
-   * @param sceneManager 3D 场景管理器
+   * @param time - 当前播放时间
+   * @param treeItem - 节点树元素
+   * @param sceneManager - 3D 场景管理器
    */
   tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
     const node = treeItem.content.getNodeById(this.node);
@@ -632,9 +632,9 @@ export class PAnimTexture {
 
   /**
    * 创建动画纹理对象
-   * @param jointCount 骨骼数目
-   * @param isHalfFloat 是否半浮点精度
-   * @param name 名称
+   * @param jointCount - 骨骼数目
+   * @param isHalfFloat - 是否半浮点精度
+   * @param name - 名称
    */
   create (jointCount: number, isHalfFloat: boolean, name: string) {
     this.width = 4;
@@ -669,7 +669,7 @@ export class PAnimTexture {
 
   /**
    * 更新动画数据
-   * @param buffer 新的动画数据
+   * @param buffer - 新的动画数据
    */
   update (buffer: Float32Array) {
     if (this.buffer !== undefined) {
@@ -728,7 +728,7 @@ export class PAnimation extends PObject {
 
   /**
    * 创建动画对象
-   * @param options 动画参数
+   * @param options - 动画参数
    */
   create (options: ModelAnimationOptions) {
     this.name = this.genName(options.name ?? 'Unnamed animation');
@@ -748,9 +748,9 @@ export class PAnimation extends PObject {
 
   /**
    * 动画更新
-   * @param time 当前时间
-   * @param treeItem 场景树元素
-   * @param sceneManager 3D 场景管理器
+   * @param time - 当前时间
+   * @param treeItem - 场景树元素
+   * @param sceneManager - 3D 场景管理器
    */
   tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
     this.time = time;
@@ -787,8 +787,8 @@ export class PAnimationManager extends PObject {
 
   /**
    * 创建动画管理器
-   * @param treeOptions 场景树参数
-   * @param ownerItem 场景树所属元素
+   * @param treeOptions - 场景树参数
+   * @param ownerItem - 场景树所属元素
    */
   constructor (treeOptions: ModelTreeOptions, ownerItem: ModelTreeVFXItem) {
     super();
@@ -818,7 +818,7 @@ export class PAnimationManager extends PObject {
 
   /**
    * 创建动画对象
-   * @param animationOpts 动画数据
+   * @param animationOpts - 动画参数
    * @returns 动画对象
    */
   createAnimation (animationOpts: ModelAnimationOptions) {
@@ -831,7 +831,7 @@ export class PAnimationManager extends PObject {
 
   /**
    * 动画更新
-   * @param deltaSeconds 更新间隔
+   * @param deltaSeconds - 更新间隔
    */
   tick (deltaSeconds: number) {
     const newDeltaSeconds = deltaSeconds * this.speed * 0.001;
@@ -886,7 +886,7 @@ export class PAnimationSystem {
 
   /**
    * 创建动画系统
-   * @param treeItems 场景树元素数组
+   * @param treeItems - 场景树元素数组
    */
   create (treeItems: ModelTreeVFXItem[]) {
     this.managers = [];
@@ -899,7 +899,7 @@ export class PAnimationSystem {
 
   /**
    * 插入动画管理器
-   * @param animationManager 动画管理器
+   * @param animationManager - 动画管理器
    */
   insert (animationManager: PAnimationManager) {
     this.managers.push(animationManager);
@@ -907,7 +907,7 @@ export class PAnimationSystem {
 
   /**
    * 删除动画管理器
-   * @param animationManager 动画管理器
+   * @param animationManager - 动画管理器
    */
   delete (animationManager: PAnimationManager) {
     let findIndex = -1;

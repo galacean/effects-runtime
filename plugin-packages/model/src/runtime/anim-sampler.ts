@@ -12,7 +12,7 @@ export abstract class InterpolationSampler {
 
   /**
    * 计算当前 t 时刻的插值
-   * @param t 当前时间
+   * @param t - 当前时间
    * @returns 插值结果
    */
   evaluate (t: number) {
@@ -321,11 +321,11 @@ class QuaternionLinearSampler extends InterpolationSampler {
 
 /**
  * 创建动画采样器，支持线性和跳变两种模式，类别上支持平移、旋转和缩放
- * @param type 动画类型，线性和跳变
- * @param times 时间点数组
- * @param data 关键帧数组
- * @param size 数据分量
- * @param path 动画类别，平移、旋转和缩放
+ * @param type - 动画类型，线性和跳变
+ * @param times - 时间点数组
+ * @param data - 关键帧数组
+ * @param size - 数据分量
+ * @param path - 动画类别，平移、旋转和缩放
  * @returns 动画采样器
  */
 export function createAnimationSampler (type: string, times: Float32Array, data: Float32Array, size: number, path?: string): InterpolationSampler {

@@ -28,7 +28,7 @@ export class FBOOptions {
 
   /**
    * 构造函数
-   * @param options FBO 参数
+   * @param options - FBO 参数
    */
   constructor (options: Record<string, any>) {
     this.resolution = options.resolution ?? new Vector2(512, 512);
@@ -38,7 +38,7 @@ export class FBOOptions {
 
   /**
    * 添加深度附件
-   * @param options 深度附件参数
+   * @param options - 深度附件参数
    */
   addDepthAttachment (options: Record<string, any>) {
     this.depthAttachment = {
@@ -62,7 +62,7 @@ export class FBOOptions {
 
   /**
    * 添加颜色附件
-   * @param options 颜色附件参数
+   * @param options - 颜色附件参数
    */
   addColorAttachment (options: Record<string, any>) {
     this.colorAttachments.push({
@@ -77,7 +77,7 @@ export class FBOOptions {
 
   /**
    * 删除颜色附件，按照索引值
-   * @param target 颜色附件索引值
+   * @param target - 颜色附件索引值
    */
   deleteColorAttachment (target: number) {
     if (target >= 0 && target < this.colorAttachments.length) {
@@ -104,8 +104,8 @@ export class BoxMesh {
 
   /**
    * 构造函数，创建基础 Mesh 对象
-   * @param engine 引擎
-   * @param priority 优先级
+   * @param engine - 引擎
+   * @param priority - 优先级
    */
   constructor (engine: Engine, priority: number) {
     const material = Material.create(
@@ -134,10 +134,10 @@ export class BoxMesh {
 
   /**
    * 更新包围盒着色器 Uniform 数据
-   * @param modelMatrix 模型矩阵
-   * @param viewProjMatrix 相机投影矩阵
-   * @param positions 位置数组
-   * @param lineColor 线颜色
+   * @param modelMatrix - 模型矩阵
+   * @param viewProjMatrix - 相机投影矩阵
+   * @param positions - 位置数组
+   * @param lineColor - 线颜色
    */
   update (modelMatrix: Matrix4, viewProjMatrix: Matrix4, positions: Float32Array, lineColor: Vector3) {
     const material = this.mesh.material;

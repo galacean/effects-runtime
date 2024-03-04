@@ -67,7 +67,7 @@ export class PShaderManager {
   /**
    * 生成着色器代码
    *
-   * @param context 着色器上下文
+   * @param context - 着色器上下文
    * @returns
    */
   genShaderCode (context: PShaderContext): PShaderResults {

@@ -71,7 +71,7 @@ export abstract class PEntity extends PObject {
 
   /**
    * 逻辑更新
-   * @param deltaSeconds 更新间隔
+   * @param deltaSeconds - 更新间隔
    */
   tick (deltaSeconds: number) {
     // OVERRIDE
@@ -79,7 +79,7 @@ export abstract class PEntity extends PObject {
 
   /**
    * 外部改变可见性时的回调
-   * @param visible 可见性
+   * @param visible - 可见性
    */
   onVisibleChanged (visible: boolean) {
     this.visible = visible;
@@ -87,7 +87,7 @@ export abstract class PEntity extends PObject {
 
   /**
    * 将内部需要渲染的对象，添加的到渲染对象集合中
-   * @param renderObjectSet 渲染对象集合
+   * @param renderObjectSet - 渲染对象集合
    */
   addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
     // OVERRIDE
@@ -95,7 +95,7 @@ export abstract class PEntity extends PObject {
 
   /**
    * 更新着色器 Uniform 数据，根据当前场景状态
-   * @param sceneStates
+   * @param sceneStates - 当前场景状态
    */
   updateUniformsForScene (sceneStates: PSceneStates) {
     // OVERRIDE

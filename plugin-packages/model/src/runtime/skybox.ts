@@ -69,8 +69,8 @@ export class PSkybox extends PEntity {
 
   /**
    * 构造函数
-   * @param skybox 天空盒参数
-   * @param ownerItem 所属 VFX 元素
+   * @param skybox - 天空盒参数
+   * @param ownerItem - 所属 VFX 元素
    */
   constructor (skybox: ModelItemSkybox, ownerItem?: ModelVFXItem) {
     super();
@@ -95,7 +95,7 @@ export class PSkybox extends PEntity {
 
   /**
    * 设置 BRDF 查询纹理
-   * @param brdfLUT 纹理
+   * @param brdfLUT - 纹理
    */
   setup (brdfLUT?: Texture) {
     this.brdfLUT = brdfLUT;
@@ -103,7 +103,7 @@ export class PSkybox extends PEntity {
 
   /**
    * 构建天空盒，创建天空盒材质，从场景缓存中创建天空盒 Mesh
-   * @param sceneCache 场景缓存
+   * @param sceneCache - 场景缓存
    * @returns
    */
   build (sceneCache: CompositionCache) {
@@ -136,7 +136,7 @@ export class PSkybox extends PEntity {
 
   /**
    * 将天空盒添加到渲染对象集合中，根据可见性和渲染标志
-   * @param renderObjectSet 渲染对象集合
+   * @param renderObjectSet - 渲染对象集合
    */
   override addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
     if (this.visible && this.renderable && this.skyboxMesh !== undefined) {
@@ -146,7 +146,7 @@ export class PSkybox extends PEntity {
 
   /**
    * 更新着色器 Uniform 数据
-   * @param sceneStates 场景当前状态
+   * @param sceneStates - 场景当前状态
    */
   override updateUniformsForScene (sceneStates: PSceneStates) {
     if (this.visible && this.renderable && this.skyboxMesh !== undefined && this.skyboxMaterial !== undefined) {
@@ -238,7 +238,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
 
   /**
    * 创建天空盒材质，从天空盒对象
-   * @param skybox 天空盒对象
+   * @param skybox - 天空盒对象
    */
   create (skybox: PSkybox) {
     this.type = PObjectType.material;
@@ -283,7 +283,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
 
   /**
    * 更新着色器 Uniform 数据
-   * @param material 对应的 Core 层材质
+   * @param material - 对应的 Core 层材质
    */
   override updateUniforms (material: Material) {
     if (this.brdfLUT === undefined) {
@@ -311,7 +311,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
 
   /**
    * 设置对应的材质状态
-   * @param material 对应的 Core 层材质
+   * @param material - 对应的 Core 层材质
    */
   override setMaterialStates (material: Material) {
     material.depthTest = true;
@@ -451,7 +451,7 @@ export class PSkyboxCreator {
 
   /**
    * 创建 BRDF 查询纹理
-   * @param engine 引擎
+   * @param engine - 引擎
    * @returns 纹理
    */
   static async createBrdfLutTexture (engine: Engine): Promise<Texture> {
@@ -463,8 +463,8 @@ export class PSkyboxCreator {
 
   /**
    * 创建天空盒选项
-   * @param engine 引擎
-   * @param params 天空盒参数
+   * @param engine - 引擎
+   * @param params - 天空盒参数
    * @returns 天空盒选项
    */
   static async createSkyboxOptions (engine: Engine, params: PSkyboxParams): Promise<ModelSkyboxOptions> {
@@ -487,8 +487,8 @@ export class PSkyboxCreator {
 
   /**
    * 创建高光 Cube Map 纹理
-   * @param engine 引擎
-   * @param params 天空盒参数
+   * @param engine - 引擎
+   * @param params - 天空盒参数
    * @returns 纹理
    */
   static async createSpecularCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture> {
@@ -508,8 +508,8 @@ export class PSkyboxCreator {
 
   /**
    * 创建漫反射纹理
-   * @param engine 引擎
-   * @param params 天空盒参数
+   * @param engine - 引擎
+   * @param params - 天空盒参数
    * @returns 纹理或未定义
    */
   static async createDiffuseCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture | undefined> {
@@ -524,7 +524,7 @@ export class PSkyboxCreator {
 
   /**
    * 创建天空盒参数
-   * @param skyboxType 天空盒类型
+   * @param skyboxType - 天空盒类型
    * @returns 天空盒参数
    */
   static getSkyboxParams (skyboxType = PSkyboxType.NFT): PSkyboxURLParams {

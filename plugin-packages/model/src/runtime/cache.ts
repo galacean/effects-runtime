@@ -38,8 +38,8 @@ export class CompositionCache {
 
   /**
    * 创建天空盒数据，如果传入的 params 为空，会使用内置的天空盒参数
-   * @param engine 引擎
-   * @param params 天空盒参数
+   * @param engine - 引擎
+   * @param params - 天空盒参数
    * @returns 天空盒数据
    */
   static async genSkyboxOptions (engine: Engine, params?: PSkyboxParams): Promise<ModelSkyboxOptions> {
@@ -63,7 +63,7 @@ export class CompositionCache {
 
   /**
    * 记录是否加载天空盒，缓存天空盒相关的查询纹理
-   * @param loadSkybox 是否加载天空盒
+   * @param loadSkybox - 是否加载天空盒
    */
   setup (loadSkybox: boolean) {
     this.loadSkybox = loadSkybox;
@@ -83,7 +83,7 @@ export class CompositionCache {
 
   /**
    * 获取缓存的纹理对象
-   * @param name 名称
+   * @param name - 名称
    * @returns 纹理对象
    */
   getTexture (name: string): Texture | undefined {
@@ -92,8 +92,8 @@ export class CompositionCache {
 
   /**
    * 设置纹理对象缓存
-   * @param name 名称
-   * @param tex 纹理对象
+   * @param name - 名称
+   * @param tex - 纹理对象
    */
   setTexture (name: string, tex: Texture) {
     this.textureCache.set(name, tex);
@@ -101,8 +101,8 @@ export class CompositionCache {
 
   /**
    * 获取或者创建纹理对象
-   * @param name 名称
-   * @param options 纹理参数
+   * @param name - 名称
+   * @param options - 纹理参数
    * @returns 纹理对象
    */
   getOrCreateTexture (name: string, options: TextureSourceOptions): Texture {
@@ -120,7 +120,7 @@ export class CompositionCache {
 
   /**
    * 根据名称删除纹理对象
-   * @param name 名称
+   * @param name - 名称
    * @returns 是否删除成功
    */
   deleteTexture (name: string): boolean {
@@ -135,9 +135,9 @@ export class CompositionCache {
 
   /**
    * 获取或者创建几何体
-   * @param name 名称
-   * @param geomJson 几何体参数
-   * @param bins 几何体数据
+   * @param name - 名称
+   * @param geomJson - 几何体参数
+   * @param bins - 几何体数据
    * @returns 几何体
    */
   getOrCreateGeometry (name: string, geomJson: spec.GeometryOptionsJSON, bins: ArrayBuffer[]): Geometry {
@@ -156,9 +156,9 @@ export class CompositionCache {
 
   /**
    * 获取滤波 Mesh
-   * @param name 名称
-   * @param material 材质
-   * @param uniformSemantics Uniform 语义信息
+   * @param name - 名称
+   * @param material - 材质
+   * @param uniformSemantics - Uniform 语义信息
    * @returns
    */
   getFilterMesh (name: string, material: PMaterialBase, uniformSemantics: Record<string, any>): Mesh {
@@ -185,10 +185,10 @@ export class CompositionCache {
 
   /**
    * 获取渲染 Pass
-   * @param name 名称
-   * @param priority 优先级
-   * @param meshList Mesh 列表
-   * @param fboOptions FBO 参数
+   * @param name - 名称
+   * @param priority - 优先级
+   * @param meshList - Mesh 列表
+   * @param fboOptions - FBO 参数
    * @returns
    */
   getRenderPass (name: string, priority: number, meshList: Mesh[], fboOptions: FBOOptions): RenderPass {

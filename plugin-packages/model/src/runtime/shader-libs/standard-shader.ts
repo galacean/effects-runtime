@@ -18,7 +18,7 @@ export class StandardShader {
 
   /**
    * 获取顶点着色器代码
-   * @param context 着色器上下文
+   * @param context - 着色器上下文
    * @returns
    */
   static getVertexShaderCode (context: PShaderContext): string {
@@ -40,7 +40,7 @@ export class StandardShader {
 
   /**
    * 获取片段着色器代码
-   * @param context 着色器上下文
+   * @param context - 着色器上下文
    * @returns
    */
   static getFragmentShaderCode (context: PShaderContext): string {
