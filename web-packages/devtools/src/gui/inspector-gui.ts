@@ -191,6 +191,7 @@ export class InspectorGui {
           assetDatabase.effectsPackages[guid] = effectsPackage;
           effectsPackage.fileSummary = packageData.fileSummary;
           for (const objectData of packageData.exportObjects) {
+            assetDatabase.engine.removeInstance(objectData.id);
             effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
           }
 
@@ -337,10 +338,6 @@ export class InspectorGui {
             }
 
             serializedData.textures[uniformName] = { id:packageData.exportObjects[0].id };
-            // await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData, material);
-            // material.fromData(material.taggedProperties as EffectsObjectData);
-          // eslint-disable-next-line no-console
-            //   console.log(file);
           },
         });
       }
