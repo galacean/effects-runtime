@@ -1833,7 +1833,7 @@ export class CheckerHelper {
    * @param v - 数值或未定义
    * @returns
    */
-  static checkNumberUndef (v: number | undefined): boolean {
+  static checkNumberUndef (v?: number): boolean {
     return v === undefined ? true : this.checkNumber(v);
   }
 
@@ -1851,7 +1851,7 @@ export class CheckerHelper {
    * @param v - 数值或未定义
    * @returns
    */
-  static checkNumber01Undef (v: number | undefined): boolean {
+  static checkNumber01Undef (v?: number): boolean {
     return v === undefined ? true : this.checkNumber01(v);
   }
 
@@ -1878,7 +1878,7 @@ export class CheckerHelper {
    * @param v - 数值
    * @returns
    */
-  static checkNonnegativeUndef (v: number | undefined): boolean {
+  static checkNonnegativeUndef (v?: number): boolean {
     return v === undefined ? true : this.checkNonnegative(v);
   }
 
@@ -1896,7 +1896,7 @@ export class CheckerHelper {
    * @param v - 布尔值或未定义
    * @returns
    */
-  static checkBooleanUndef (v: boolean | undefined): boolean {
+  static checkBooleanUndef (v?: boolean): boolean {
     return v === undefined ? true : this.checkBoolean(v);
   }
 
@@ -1914,7 +1914,7 @@ export class CheckerHelper {
    * @param v - 字符串或未定义
    * @returns
    */
-  static checkStringUndef (v: string | undefined): boolean {
+  static checkStringUndef (v?: string): boolean {
     return v === undefined ? true : this.checkString(v);
   }
 
@@ -1932,7 +1932,7 @@ export class CheckerHelper {
    * @param v - 浮点数组或未定义
    * @returns
    */
-  static checkFloat32ArrayUndef (v: Float32Array | undefined): boolean {
+  static checkFloat32ArrayUndef (v?: Float32Array): boolean {
     return v === undefined ? true : this.checkFloat32Array(v);
   }
 
@@ -1941,7 +1941,7 @@ export class CheckerHelper {
    * @param v - 数值或未定义
    * @returns
    */
-  static checkParent (v: number | undefined): boolean {
+  static checkParent (v?: number): boolean {
     if (v === undefined) { return true; }
     if (!this.checkNumber(v)) { return false; }
 
@@ -1953,7 +1953,7 @@ export class CheckerHelper {
    * @param v - 纹理坐标或未定义
    * @returns
    */
-  static checkTexCoord (v: number | undefined): boolean {
+  static checkTexCoord (v?: number): boolean {
     if (v === undefined) { return true; }
     if (!this.checkNumber(v)) { return false; }
 
@@ -2062,7 +2062,7 @@ export class CheckerHelper {
    * @param v - 纹理对象或未定义
    * @returns
    */
-  static checkTextureUndef (v: Texture | undefined): boolean {
+  static checkTextureUndef (v?: Texture): boolean {
     return v === undefined ? true : this.checkTexture(v);
   }
 
@@ -2091,7 +2091,7 @@ export class CheckerHelper {
    * @param v - 纹理变换参数或未定义
    * @returns
    */
-  static checkTexTransformUndef (v: ModelTextureTransform | undefined): boolean {
+  static checkTexTransformUndef (v?: ModelTextureTransform): boolean {
     return v === undefined ? true : this.checkTexTransform(v);
   }
 
@@ -2100,7 +2100,7 @@ export class CheckerHelper {
    * @param v - 材质混合参数或未定义
    * @returns
    */
-  static checkMatBlending (v: spec.MaterialBlending | undefined): boolean {
+  static checkMatBlending (v?: spec.MaterialBlending): boolean {
     return v === undefined
       || v === spec.MaterialBlending.opaque
       || v === spec.MaterialBlending.masked
@@ -2113,7 +2113,7 @@ export class CheckerHelper {
    * @param v - 材质单双面模式或未定义
    * @returns
    */
-  static checkMatSide (v: spec.SideMode | undefined): boolean {
+  static checkMatSide (v?: spec.SideMode): boolean {
     return v === undefined || v === spec.SideMode.BACK || v === spec.SideMode.DOUBLE || v === spec.SideMode.FRONT;
   }
 
