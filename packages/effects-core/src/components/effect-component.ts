@@ -9,7 +9,6 @@ import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType } from '../plugins';
 import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
-import type { Disposable } from '../utils';
 import { DestroyOptions, generateGUID } from '../utils';
 import { RendererComponent } from './renderer-component';
 import { serialize } from '../decorators';
@@ -32,6 +31,7 @@ export class EffectComponent extends RendererComponent {
   /**
    * Mesh 的 Geometry
    */
+  @serialize()
   public geometry: Geometry;
 
   triangles: TriangleLike[] = [];
@@ -157,17 +157,12 @@ export class EffectComponent extends RendererComponent {
 
   override fromData (data: any): void {
     super.fromData(data);
-    this.material = data.materials[0];
-    this.geometry = data.geometry;
-
+    this.material = this.materials[0];
     this.triangles = geometryToTriangles(this.geometry);
   }
 
   override toData (): void {
     this.taggedProperties.id = this.guid;
-    this.taggedProperties.materials = this.materials;
-    this.taggedProperties.geometry = this.geometry;
-    this.taggedProperties.item = this.item;
   }
 
   /**
