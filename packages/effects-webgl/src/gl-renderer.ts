@@ -140,9 +140,6 @@ export class GLRenderer extends Renderer implements Disposable {
     const delegate = this.renderingData.currentPass.delegate;
 
     for (const mesh of meshes) {
-      for (const material of mesh.materials) {
-        material.initialize();
-      }
       delegate.willRenderMesh?.(mesh, this.renderingData);
       mesh.render(this);
       delegate.didRenderMesh?.(mesh, this.renderingData);
@@ -198,7 +195,13 @@ export class GLRenderer extends Renderer implements Disposable {
         material.setFloat('emissionIntensity', getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['intensity']);
       }
     }
-    material.use(this, renderingData.currentFrame.globalUniforms);
+    try {
+      material.use(this, renderingData.currentFrame.globalUniforms);
+    } catch (e) {
+      console.error(e);
+
+      return;
+    }
     this.glRenderer.drawGeometry(geometry, material);
   }
 
