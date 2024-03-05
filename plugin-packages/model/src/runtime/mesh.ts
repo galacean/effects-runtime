@@ -86,22 +86,22 @@ export class PMesh extends PEntity {
   isDisposed = false;
 
   /**
-   *
-   * @param engine
-   * @param itemMesh
-   * @param ownerItem - 所属 VFX 元素
-   * @param parentItem - 父 VFX 元素
-   */
-  /**
    * 构造函数，创建 Mesh 对象，并与所属组件和父元素相关联
    * @param engine - 引擎
    * @param name - 名称
    * @param meshContent - Mesh 参数
    * @param owner - 所属的 Mesh 组件
-   * @param parentId 父元素索引
-   * @param parent 父元素
+   * @param parentId - 父元素索引
+   * @param parent - 父元素
    */
-  constructor (private engine: Engine, name: string, meshContent: ModelMeshContent, owner?: ModelMeshComponent, parentId?: string, parent?: VFXItem<VFXItemContent>) {
+  constructor (
+    private engine: Engine,
+    name: string,
+    meshContent: ModelMeshContent,
+    owner?: ModelMeshComponent,
+    parentId?: string,
+    parent?: VFXItem<VFXItemContent>,
+  ) {
     super();
     const proxy = new EffectsMeshProxy(meshContent, parent);
 

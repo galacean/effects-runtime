@@ -815,7 +815,7 @@ export class PAnimationManager extends PObject {
 
   /**
    * 设置场景管理器
-   * @param sceneManager 场景管理器
+   * @param sceneManager - 场景管理器
    */
   setSceneManager (sceneManager: PSceneManager) {
     this.sceneManager = sceneManager;
