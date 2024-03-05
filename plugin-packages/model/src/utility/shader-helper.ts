@@ -1,6 +1,11 @@
 import { StandardShader } from '../runtime/shader-libs/standard-shader';
 import type { PShaderContext, PShaderResults } from '../runtime/shader';
 
+/**
+ * 获取 PBR 材质着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getPBRPassShaderCode (context: PShaderContext): PShaderResults {
   const vertexShaderCode = StandardShader.getVertexShaderCode(context);
   const fragmentShaderCode = StandardShader.getFragmentShaderCode(context);
@@ -21,6 +26,11 @@ export function getShadowPassShaderCode (context: PShaderContext): PShaderResult
   };
 }
 
+/**
+ * 获取天空盒着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getSkyBoxShaderCode (context: PShaderContext): PShaderResults {
   const vertexShaderCode = StandardShader.getVertexShaderCode(context);
   const fragmentShaderCode = StandardShader.getFragmentShaderCode(context);
@@ -31,6 +41,11 @@ export function getSkyBoxShaderCode (context: PShaderContext): PShaderResults {
   };
 }
 
+/**
+ * 获取四边形滤波着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getQuadFilterShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -49,6 +64,11 @@ export function getQuadFilterShaderCode (context: PShaderContext): PShaderResult
   };
 }
 
+/**
+ * 获取法线可视化着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getNormalVisShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -65,6 +85,11 @@ export function getNormalVisShaderCode (context: PShaderContext): PShaderResults
   };
 }
 
+/**
+ * 获取仅漫反射着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getDiffuseOnlyShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -82,6 +107,11 @@ export function getDiffuseOnlyShaderCode (context: PShaderContext): PShaderResul
   };
 }
 
+/**
+ * 获取 Kawase 模糊着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getKawaseBlurShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -107,6 +137,11 @@ export function getKawaseBlurShaderCode (context: PShaderContext): PShaderResult
   };
 }
 
+/**
+ * 获取简单滤波着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getSimpleFilterShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -125,6 +160,11 @@ export function getSimpleFilterShaderCode (context: PShaderContext): PShaderResu
   };
 }
 
+/**
+ * 获取高斯模糊着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getGaussianBlurShaderCodeV2 (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -149,6 +189,11 @@ export function getGaussianBlurShaderCodeV2 (context: PShaderContext): PShaderRe
   };
 }
 
+/**
+ * 获取高斯模糊着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getGaussianBlurShaderCodeV1 (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -176,6 +221,11 @@ export function getGaussianBlurShaderCodeV1 (context: PShaderContext): PShaderRe
   };
 }
 
+/**
+ * 获取透明效果着色器代码
+ * @param isVertexShader - 是否顶点着色器
+ * @returns
+ */
 export function getTransparecyBaseShader (isVertexShader: boolean): string {
   if (isVertexShader) {
     return getBasicVS({ hasNormals: true });
@@ -214,6 +264,11 @@ export function getTransparecyBaseShader (isVertexShader: boolean): string {
   }
 }
 
+/**
+ * 获取透明效果滤波着色器代码
+ * @param isVertexShader - 是否顶点着色器
+ * @returns
+ */
 export function getTransparecyFilterShader (isVertexShader: boolean): string {
   if (isVertexShader) {
     return getQuadFilterVS();
