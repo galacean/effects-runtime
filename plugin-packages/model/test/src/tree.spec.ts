@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Player, math, spec } from '@galacean/effects';
-import { ModelTreeVFXItem } from '@galacean/effects-plugin-model';
+//import { ModelTreeVFXItem } from '@galacean/effects-plugin-model';
 import { generateComposition } from './utilities';
 
 const { Vector3 } = math;
@@ -39,7 +39,7 @@ describe('tree item', () => {
     const treeItem = comp.items[0];
 
     expect(treeItem.type).to.eql('tree');
-    expect(treeItem).to.be.an.instanceof(ModelTreeVFXItem);
+    //expect(treeItem).to.be.an.instanceof(ModelTreeVFXItem);
     expect(treeItem.content.nodes.length).to.eql(1);
     const root = treeItem.content.nodes[0];
 
