@@ -1,5 +1,4 @@
 import type * as spec from '@galacean/effects-specification';
-import { v4 as uuidv4 } from 'uuid';
 
 export * from './array';
 export * from './color';
@@ -118,5 +117,5 @@ export function throwDestroyedError () {
 }
 
 export function generateGUID (): string {
-  return uuidv4().replace(/-/g, '');
+  return crypto.randomUUID().replace(/-/g, '');
 }

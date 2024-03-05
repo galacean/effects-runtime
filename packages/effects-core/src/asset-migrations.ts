@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemProps } from './vfx-item';
 import { DataType, type DataPath } from './deserializer';
@@ -115,7 +114,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
     }
 
     // item 的 content 转为 component data 加入 JSONScene.components
-    const uuid = uuidv4().replace(/-/g, '');
+    const uuid = generateGUID().replace(/-/g, '');
 
     if (item.type === spec.ItemType.sprite) {
       //@ts-expect-error
