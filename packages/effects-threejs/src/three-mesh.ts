@@ -1,4 +1,7 @@
-import type { Geometry, Material, MaterialDestroyOptions, MeshDestroyOptions, GeometryMeshProps, Sortable, Engine, Renderer } from '@galacean/effects-core';
+import type {
+  Geometry, Material, MaterialDestroyOptions, MeshDestroyOptions, GeometryMeshProps, Sortable,
+  Engine, Renderer,
+} from '@galacean/effects-core';
 import { DestroyOptions, glContext, Mesh } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeMaterial } from './material';
@@ -19,33 +22,32 @@ export class ThreeMesh extends Mesh implements Sortable {
    * @param props - mesh 创建参数
    */
   constructor (engine: Engine, props?: GeometryMeshProps) {
-    if (props) {
-      const {
-        material,
-        geometry,
-        priority = 0,
-      } = props;
-
-      super(engine, props);
-
-      this.geometry = geometry;
-      this.material = material;
-
-      if ((geometry as ThreeGeometry).mode === glContext.LINES) {
-        this.mesh = new THREE.LineSegments(
-          (geometry as ThreeGeometry).geometry,
-          (material as ThreeMaterial).material);
-      } else {
-        this.mesh = new THREE.Mesh(
-          (geometry as ThreeGeometry).geometry,
-          (material as ThreeMaterial).material
-        );
-      }
-      // 在抽象Mesh设置priority时，THREE 的 Mesh 还未创建
-      this.priority = priority;
-
+    if (!props) {
+      return;
     }
 
+    const {
+      material, geometry,
+      priority = 0,
+    } = props;
+
+    super(engine, props);
+
+    this.geometry = geometry;
+    this.material = material;
+
+    if ((geometry as ThreeGeometry).mode === glContext.LINES) {
+      this.mesh = new THREE.LineSegments(
+        (geometry as ThreeGeometry).geometry,
+        (material as ThreeMaterial).material);
+    } else {
+      this.mesh = new THREE.Mesh(
+        (geometry as ThreeGeometry).geometry,
+        (material as ThreeMaterial).material
+      );
+    }
+    // 在抽象Mesh设置priority时，THREE 的 Mesh 还未创建
+    this.priority = priority;
   }
 
   /**
@@ -141,5 +143,4 @@ export class ThreeMesh extends Mesh implements Sortable {
       this.destroyed = true;
     }
   }
-
 }

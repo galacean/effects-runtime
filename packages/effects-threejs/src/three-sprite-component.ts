@@ -1,6 +1,5 @@
-import type { Renderer, SpriteItemProps, math } from '@galacean/effects-core';
+import type { Renderer, SpriteItemProps } from '@galacean/effects-core';
 import { SpriteComponent, glContext } from '@galacean/effects-core';
-import type { ThreeComposition } from './three-composition';
 import type { ThreeGeometry } from './three-geometry';
 import type { ThreeMaterial } from './material';
 import * as THREE from 'three';
@@ -9,10 +8,10 @@ import type { ThreeEngine } from './three-engine';
 export class ThreeSpriteComponent extends SpriteComponent {
   threeMesh: THREE.Mesh | THREE.LineSegments;
   /**
-     * 设置 mesh 的渲染顺序
-     *
-     * @param v - 顺序 index
-     */
+   * 设置 mesh 的渲染顺序
+   *
+   * @param v - 顺序 index
+   */
   override set priority (v: number) {
     if (this.threeMesh) {
       this.threeMesh.renderOrder = v;
@@ -20,28 +19,28 @@ export class ThreeSpriteComponent extends SpriteComponent {
   }
 
   /**
-       * 获取 mesh 的渲染顺序
-       */
+   * 获取 mesh 的渲染顺序
+   */
   override get priority () {
     return this.threeMesh.renderOrder;
   }
 
   /**
-       * TODO: 待移除
-       * 设置 mesh 可见性
-       *
-       * @param val - 可见性开关
-       */
+   * TODO: 待移除
+   * 设置 mesh 可见性
+   *
+   * @param val - 可见性开关
+   */
   override setVisible (val: boolean): void {
     this.threeMesh.visible = val;
   }
 
   /**
-       * TODO: 待移除
-       * 获取 mesh 的可见性
-       *
-       * @returns
-       */
+   * TODO: 待移除
+   * 获取 mesh 的可见性
+   *
+   * @returns
+   */
   override getVisible (): boolean {
     return this.threeMesh.visible;
   }
@@ -57,9 +56,9 @@ export class ThreeSpriteComponent extends SpriteComponent {
   }
 
   /**
-       * 销毁方法
-       *
-       */
+   * 销毁方法
+   *
+   */
   override dispose (): void {
     super.dispose();
     if (!this.isActiveAndEnabled) {

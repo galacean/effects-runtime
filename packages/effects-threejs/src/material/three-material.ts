@@ -1,8 +1,14 @@
-import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math, GlobalUniforms, Renderer } from '@galacean/effects-core';
+import type {
+  MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
+  GlobalUniforms, Renderer,
+} from '@galacean/effects-core';
 import { Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
-import { CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP, TEXTURE_UNIFORM_MAP } from './three-material-util';
+import {
+  CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP,
+  TEXTURE_UNIFORM_MAP,
+} from './three-material-util';
 import type { ThreeEngine } from '../three-engine';
 
 type Matrix4 = math.Matrix4;
@@ -92,7 +98,7 @@ export class ThreeMaterial extends Material {
 
   override use (render: Renderer, globalUniforms: GlobalUniforms): void {
     const engine = this.engine as ThreeEngine;
-    const composition = engine.compsoiton;
+    const composition = engine.composition;
     const threeCamera = engine.threeCamera;
 
     if (threeCamera) {

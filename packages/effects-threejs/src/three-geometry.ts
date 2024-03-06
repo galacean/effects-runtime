@@ -1,7 +1,6 @@
 import type { Attribute, Engine, GeometryProps, spec } from '@galacean/effects-core';
 import { BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext } from '@galacean/effects-core';
 import * as THREE from 'three';
-import { ThreeComposition } from './three-composition';
 
 let seed = 1;
 

@@ -1,7 +1,10 @@
-import type { Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem, MessageItem, CompositionProps, CompositionSourceManager } from '@galacean/effects-core';
+import type {
+  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem,
+  MessageItem, CompositionProps, CompositionSourceManager,
+} from '@galacean/effects-core';
 import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
-import { ThreeTexture } from './three-texture';
 import type THREE from 'three';
+import { ThreeTexture } from './three-texture';
 
 /**
  * 基础 composition 参数
@@ -73,7 +76,11 @@ export class ThreeComposition extends Composition {
    */
   static shape: Record<string, number> = {};
 
-  constructor (props: ThreeCompositionProps, scene: Scene, compositionSourceManager: CompositionSourceManager) {
+  constructor (
+    props: ThreeCompositionProps,
+    scene: Scene,
+    compositionSourceManager: CompositionSourceManager,
+  ) {
     super(props, scene, compositionSourceManager);
 
     this.rootItem.getComponent(CompositionComponent)!.resetStatus();

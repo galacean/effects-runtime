@@ -188,6 +188,7 @@ export class Composition implements Disposable, LostHandler {
    * 是否是否每次渲染时清除 RenderFrame 颜色缓存
    */
   protected readonly keepColorBuffer: boolean;
+  protected rootComposition: CompositionComponent;
 
   /**
    * 合成暂停/播放 标识
@@ -202,7 +203,6 @@ export class Composition implements Disposable, LostHandler {
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   private readonly postLoaders: Plugin[] = [];
-  protected rootComposition: CompositionComponent;
   private rootTimeline: TimelineComponent;
 
   /**

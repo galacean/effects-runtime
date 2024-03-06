@@ -14,7 +14,7 @@ export interface ThreeEngineOptions {
 export class ThreeEngine extends Engine {
   threeCamera?: THREE.Camera;
   threeGroup: THREE.Group;
-  compsoiton: Composition;
+  composition: Composition;
 
   constructor (gl: WebGL2RenderingContext | WebGLRenderingContext) {
     super();
@@ -26,6 +26,6 @@ export class ThreeEngine extends Engine {
 
     this.threeCamera = threeCamera;
     this.threeGroup = threeGroup;
-    this.compsoiton = composition;
+    this.composition = composition;
   }
 }

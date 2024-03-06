@@ -5,7 +5,7 @@ import type { Engine } from './engine';
 import { Material } from './material';
 import { Geometry } from './render';
 import type { VFXItemProps } from './vfx-item';
-import { Texture, value } from '.';
+import { Texture } from './texture';
 
 /**
  * @since 2.0.0

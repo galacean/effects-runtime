@@ -8,7 +8,7 @@ import type { MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode, setMaskMode, setSideMode } from '../../material';
 import type { ValueGetter } from '../../math';
 import { createValueGetter, trianglesFromRect, vecFill, vecMulCombine } from '../../math';
-import type { GeometryDrawMode, Renderer, Mesh } from '../../render';
+import type { GeometryDrawMode, Renderer } from '../../render';
 import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
@@ -176,7 +176,6 @@ export class SpriteComponent extends RendererComponent {
   }
 
   override render (renderer: Renderer) {
-
     if (!this.getVisible()) {
       return;
     }

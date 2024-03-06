@@ -1,4 +1,7 @@
-import type { EventSystem, JSONValue, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, SceneWithOptionsType, Texture } from '@galacean/effects-core';
+import type {
+  EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType,
+  SceneWithOptionsType, Texture,
+} from '@galacean/effects-core';
 import { AssetManager, CompositionSourceManager, isArray, isObject, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
@@ -120,7 +123,7 @@ export class ThreeDisplayObject extends THREE.Group {
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
     engine.clearResources();
-    await engine.addPackageDatas(scene);
+    engine.addPackageDatas(scene);
 
     for (let i = 0; i < scene.textureOptions.length; i++) {
       scene.textureOptions[i] = engine.deserializer.loadGUID(scene.textureOptions[i].id);
