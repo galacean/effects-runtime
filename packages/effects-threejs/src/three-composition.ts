@@ -75,21 +75,6 @@ export class ThreeComposition extends Composition {
 
   constructor (props: ThreeCompositionProps, scene: Scene, compositionSourceManager: CompositionSourceManager) {
     super(props, scene, compositionSourceManager);
-    // this.compositionSourceManager.sourceContent?.items.forEach(item => {
-    //   //@ts-expect-error
-    //   const shape = item.content?.renderer?.shape;
-
-    //   if (shape) {
-    //     Object.keys(shape).forEach(name => {
-    //       const buffer = shape[name];
-
-    //       if (!ThreeComposition.shape[name]) {
-    //         ThreeComposition.shape[name] = 0;
-    //       }
-    //       ThreeComposition.shape[name] += buffer.length;
-    //     });
-    //   }
-    // });
 
     this.rootItem.getComponent(CompositionComponent)!.resetStatus();
   }

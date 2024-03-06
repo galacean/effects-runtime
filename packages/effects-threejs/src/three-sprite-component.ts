@@ -8,18 +8,13 @@ import type { ThreeEngine } from './three-engine';
 
 export class ThreeSpriteComponent extends SpriteComponent {
   threeMesh: THREE.Mesh | THREE.LineSegments;
-  // constructor(engine: Engine, props?: SpriteItemProps) {
-  //     super(engine, props);
-
-  // }
-
   /**
      * 设置 mesh 的渲染顺序
      *
      * @param v - 顺序 index
      */
   override set priority (v: number) {
-    if (this.mesh) {
+    if (this.threeMesh) {
       this.threeMesh.renderOrder = v;
     }
   }

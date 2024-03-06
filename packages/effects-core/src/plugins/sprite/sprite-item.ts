@@ -152,7 +152,6 @@ export class SpriteComponent extends RendererComponent {
   private readonly wireframe?: boolean;
   private preMultiAlpha: number;
   private visible = true;
-  mesh: Mesh;
 
   constructor (engine: Engine, props?: SpriteItemProps) {
     super(engine);
@@ -316,7 +315,6 @@ export class SpriteComponent extends RendererComponent {
     geometry.setIndexData(indexData);
     geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
     geometry.setDrawCount(data.index.length);
-    // this.setVisible(geometry.getDrawCount() > 0 ? true : false);
     for (let i = 0; i < textures.length; i++) {
       const texture = textures[i];
 
@@ -331,11 +329,7 @@ export class SpriteComponent extends RendererComponent {
   }
 
   private createGeometry (mode: GeometryDrawMode) {
-    let maxVertex = 12 * this.splits.length;
-
-    if (this.renderer.shape) {
-      maxVertex = this.renderer.shape.aPoint.length / 6 * 4;
-    }
+    const maxVertex = 12 * this.splits.length;
 
     return Geometry.create(this.engine, {
       attributes: {
