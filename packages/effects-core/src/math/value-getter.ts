@@ -1,4 +1,5 @@
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import {
   isArray,
@@ -10,7 +11,15 @@ import {
   assertExist,
 } from '../utils';
 import type { ColorStop } from '../utils';
-import { BezierEasing, BezierMap, getControlPoints } from './bezier';
+import type {
+  BezierLengthData } from './bezier';
+import {
+  BezierEasing,
+  BezierMap,
+  BezierPointData,
+  buildBezierData,
+  getControlPoints,
+} from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
 import { decimalEqual } from './utils';
 
@@ -670,7 +679,7 @@ export class BezierCurve extends ValueGetter<number> {
       const { type, p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe);
 
       if (type === 'line') {
-        this.curveMap[`${p0.x}-${p1.x}`] = {
+        this.curveMap[`${p0.x}&${p1.x}`] = {
           points: [p0, p1],
           curve: new LinearValue([p0.y, p1.y]),
         };
@@ -683,9 +692,9 @@ export class BezierCurve extends ValueGetter<number> {
         const valueInterval = p3.y - p0.y;
 
         if (decimalEqual(valueInterval, 0)) {
-          this.curveMap[`${p0.x}-${p3.x}`] = {
+          this.curveMap[`${p0.x}&${p3.x}`] = {
             points: [p0, p1, p2, p3],
-            curve:  new LinearValue([p3.y, p3.y]),
+            curve: new LinearValue([p3.y, p3.y]),
           };
 
           return;
@@ -715,16 +724,16 @@ export class BezierCurve extends ValueGetter<number> {
         const str = ('bez_' + x1 + '_' + y1 + '_' + x2 + '_' + y2).replace(/\./g, 'p');
 
         if (BezierMap[str]) {
-          this.curveMap[`${p0.x}-${p3.x}`] = {
+          this.curveMap[`${p0.x}&${p3.x}`] = {
             points: [p0, p1, p2, p3],
             curve: BezierMap[str],
           };
         } else {
 
-          const bezEasing = new BezierEasing('ease', x1, x2, y1, y2);
+          const bezEasing = new BezierEasing(x1, x2, y1, y2);
 
           BezierMap[str] = bezEasing;
-          this.curveMap[`${p0.x}-${p3.x}`] = {
+          this.curveMap[`${p0.x}&${p3.x}`] = {
             points: [p0, p1, p2, p3],
             curve: bezEasing,
           };
@@ -746,9 +755,9 @@ export class BezierCurve extends ValueGetter<number> {
     }
 
     for (let i = 0; i < keyTimeData.length ; i++) {
-      const [xMin, xMax] = keyTimeData[i].split('-');
+      const [xMin, xMax] = keyTimeData[i].split('&');
 
-      if (time >= Number(xMin) && time <= Number(xMax)) {
+      if (time >= Number(xMin) && time < Number(xMax)) {
         result = this.getCurveValue(keyTimeData[i], time);
 
         break;
@@ -778,7 +787,193 @@ export class BezierCurve extends ValueGetter<number> {
   }
 }
 
-export class BezierCurvePath extends ValueGetter<number[][][]> {
+export class BezierCurvePath extends ValueGetter<Vector3> {
+  curve: BezierEasing;
+  curveSegments: Record<string, {
+    points: Vector2[],
+    easingCurve: BezierEasing | LinearValue,
+    bezierData: BezierLengthData,
+  }>;
+  catching: {
+    lastPoint: number,
+    lastAddedLength: number,
+    lastKeyframeIndex: number,
+  } = {
+      lastPoint: 0,
+      lastAddedLength: 0,
+      lastKeyframeIndex: 0,
+    };
+
+  override onCreate (props: spec.BezierCurvePathValue) {
+    const [keyframes, points, controlPoints] = props;
+
+    // this.easingCurve = new BezierCurve(keyframes);
+    this.curveSegments = {};
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      const leftKeyframe = keyframes[i];
+      const rightKeyframe = keyframes[i + 1];
+      const ps1 = new Vector3(...points[i]), ps2 = new Vector3(...points[i + 1]);
+      const cp1 = new Vector3(...controlPoints[2 * i]), cp2 = new Vector3(...controlPoints[2 * i + 1]);
+
+      // 获取控制点和曲线类型
+      const { type, p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe);
+
+      if (type === 'line') {
+        this.curveSegments[`${p0.x}&${p1.x}`] = {
+          points: [p0, p1],
+          easingCurve: new LinearValue([p0.y, p1.y]),
+          bezierData: buildBezierData(ps1, ps2, cp1, cp2),
+        };
+
+        // 2. 左右两边至少有一边为ease
+      } else {
+        assertExist(p2);
+        assertExist(p3);
+        const timeInterval = p3.x - p0.x;
+        const valueInterval = p3.y - p0.y;
+
+        if (decimalEqual(valueInterval, 0)) {
+          this.curveSegments[`${p0.x}&${p3.x}`] = {
+            points: [p0, p1, p2, p3],
+            easingCurve: new LinearValue([p3.y, p3.y]),
+            bezierData: buildBezierData(ps1, ps2, cp1, cp2),
+          };
+
+          return;
+        }
+        let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
+        let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;
+        const y1 = Math.round((p1.y - p0.y) / valueInterval * 100000) / 100000;
+        const y2 = Math.round((p2.y - p0.y) / valueInterval * 100000) / 100000;
+
+        if (x1 < 0) {
+          console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
+          x1 = 0;
+        }
+        if (x2 < 0) {
+          console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
+          x2 = 0;
+        }
+        if (x1 > 1) {
+          console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
+          x1 = 1;
+        }
+        if (x2 > 1) {
+          console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
+          x2 = 1;
+        }
+
+        const str = ('bez_' + x1 + '_' + y1 + '_' + x2 + '_' + y2).replace(/\./g, 'p');
+
+        if (BezierMap[str]) {
+          this.curveSegments[`${p0.x}&${p3.x}`] = {
+            points: [p0, p1, p2, p3],
+            easingCurve: BezierMap[str],
+            bezierData: buildBezierData(ps1, ps2, cp1, cp2),
+          };
+        } else {
+
+          const bezEasing = new BezierEasing(x1, x2, y1, y2);
+
+          BezierMap[str] = bezEasing;
+          this.curveSegments[`${p0.x}&${p3.x}`] = {
+            points: [p0, p1, p2, p3],
+            easingCurve: bezEasing,
+            bezierData: buildBezierData(ps1, ps2, cp1, cp2),
+          };
+        }
+      }
+    }
+  }
+
+  override getValue (time: number): Vector3 {
+    let perc = 0, point = new Vector3();
+    const keyTimeData = Object.keys(this.curveSegments);
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+
+    if (time < keyTimeStart) {
+      return point;
+    }
+    if (time > keyTimeEnd) {
+      point = this.getPointInPerc(1, this.curveSegments[keyTimeData[keyTimeData.length - 1]].bezierData);
+
+      return point;
+    }
+
+    for (let i = 0; i < keyTimeData.length ; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (time >= Number(xMin) && time < Number(xMax)) {
+        if (i !== this.catching.lastKeyframeIndex) {
+          this.catching.lastPoint = 0;
+          this.catching.lastAddedLength = 0;
+          this.catching.lastKeyframeIndex = i;
+        }
+        const segmentData = this.curveSegments[keyTimeData[i]].bezierData;
+
+        perc = this.getPercValue(keyTimeData[i], time);
+        point = this.getPointInPerc(perc, segmentData);
+      }
+    }
+
+    return point;
+  }
+
+  getPercValue (curveKey: string, time: number) {
+    const curveInfo = this.curveSegments[curveKey];
+    const [p0, p1, , p3] = curveInfo.points;
+
+    if (curveInfo.easingCurve instanceof LinearValue) {
+      const timeInterval = (p1.x - p0.x);
+      const relativeTime = Math.round((time - p0.x) * 10000) / 10000;
+
+      return curveInfo.easingCurve.getValue(relativeTime / timeInterval);
+    }
+
+    const timeInterval = p3.x - p0.x;
+    const normalizeTime = (time - p0.x) / timeInterval;
+
+    return curveInfo.easingCurve.getValue(normalizeTime);
+  }
+
+  getPointInPerc (perc: number, curveSegment: BezierLengthData) {
+    const point = new Vector3();
+    const bezierData = curveSegment;
+    let flag = true, addedLength = this.catching.lastAddedLength;
+    let j = this.catching.lastPoint;
+    const distanceInLine = curveSegment.segmentLength * perc;
+    const pNum = curveSegment.points.length;
+
+    while (flag) {
+      addedLength += curveSegment.points[j].partialLength;
+      if (distanceInLine === 0 || perc === 0 || j === pNum - 1) {
+        point.x = bezierData.points[j].point.x;
+        point.y = bezierData.points[j].point.y;
+        point.z = bezierData.points[j].point.z;
+
+        break;
+      } else if (distanceInLine >= addedLength && distanceInLine < addedLength + bezierData.points[j + 1].partialLength) {
+        const segmentPerc = (distanceInLine - addedLength) / bezierData.points[j + 1].partialLength;
+
+        point.x = bezierData.points[j].point.x + (bezierData.points[j + 1].point.x - bezierData.points[j].point.x) * segmentPerc;
+        point.y = bezierData.points[j].point.y + (bezierData.points[j + 1].point.y - bezierData.points[j].point.y) * segmentPerc;
+        point.z = bezierData.points[j].point.z + (bezierData.points[j + 1].point.z - bezierData.points[j].point.z) * segmentPerc;
+
+        break;
+      }
+      if (j < pNum - 1) {
+        j += 1;
+      } else {
+        flag = false;
+      }
+    }
+
+    this.catching.lastPoint = j;
+    this.catching.lastAddedLength = addedLength - bezierData.points[j].partialLength;
+
+    return point;
+  }
 
 }
 

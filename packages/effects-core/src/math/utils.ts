@@ -129,3 +129,9 @@ export function decimalEqual (a: number, b: number) {
 
   return Math.abs(a - b) < epsilon;
 }
+
+export function pointOnLine (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) {
+  const det1 = (x1 * y2) + (y1 * x3) + (x2 * y3) - (x3 * y2) - (y3 * x1) - (x2 * y1);
+
+  return det1 > -0.001 && det1 < 0.001;
+}

@@ -1,12 +1,24 @@
-import { ValueGetter } from '@galacean/effects-core';
+import { pointOnLine } from '@galacean/effects-core';
 import * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { keyframeInfo } from './keyframe-info';
+
+export class BezierPointData {
+  constructor (public partialLength: number, public point: Vector3) {
+  }
+}
+
+export class BezierLengthData {
+  constructor (public points: BezierPointData[], public segmentLength: number) {
+  }
+}
 export const BezierMap: Record<string, BezierEasing> = {};
 const NEWTON_ITERATIONS = 4;
 const NEWTON_MIN_SLOPE = 0.001;
 const SUBDIVISION_PRECISION = 0.0000001;
 const SUBDIVISION_MAX_ITERATIONS = 10;
+const CURVE_SEGMENTS = 120;
 
 const kSplineTableSize = 11;
 const kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
@@ -57,11 +69,47 @@ function newtonRaphsonIterate (aX: number, aGuessT: number, mX1: number, mX2: nu
   return aGuessT;
 }
 
+// de Casteljau算法构建曲线
+export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vector3): BezierLengthData {
+  const samples = [];
+  let lastPoint = null, addedLength = 0, ptDistance = 0;
+  let curveSegments = CURVE_SEGMENTS;
+
+  // 直线判断
+  // 需要保证没有z坐标再判断
+  if ((p1.x !== p2.x || p1.y !== p2.y) && pointOnLine(p1.x, p1.y, p2.x, p2.y, p1.x + p3.x, p1.y + p3.y) && pointOnLine(p1.x, p1.y, p2.x, p2.y, p2.x + p4.x, p2.y + p4.y)) {
+    curveSegments = 2;
+  }
+  for (let k = 0; k < curveSegments; k += 1) {
+    const point = new Vector3();
+    const perc = k / (curveSegments - 1);
+
+    ptDistance = 0;
+    point.x = Math.pow(1 - perc, 3) * p1.x + 3 * Math.pow(1 - perc, 2) * perc * (p3.x) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.x) + Math.pow(perc, 3) * p2.x;
+    point.y = Math.pow(1 - perc, 3) * p1.y + 3 * Math.pow(1 - perc, 2) * perc * (p3.y) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.y) + Math.pow(perc, 3) * p2.y;
+    point.z = Math.pow(1 - perc, 3) * p1.z + 3 * Math.pow(1 - perc, 2) * perc * (p3.z) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.z) + Math.pow(perc, 3) * p2.z;
+
+    if (lastPoint !== null) {
+      ptDistance += Math.pow(point.x - lastPoint.x, 2);
+      ptDistance += Math.pow(point.y - lastPoint.y, 2);
+      ptDistance += Math.pow(point.z - lastPoint.z, 2);
+    }
+    ptDistance = Math.sqrt(ptDistance);
+    addedLength += ptDistance;
+    samples[k] = new BezierPointData(ptDistance, point);
+    lastPoint = point;
+  }
+
+  // 需要增加一下缓存数据
+  // const str = ('bez_' + p1.toArray() + '_' + p2.toArray() + '_' + p3.toArray() + '_' + p4.toArray()).replace(/\./g, 'p');
+
+  return new BezierLengthData(samples, addedLength);
+}
 export class BezierEasing {
   private precomputed: boolean;
   private mSampleValues: Float32Array | Array<number>;
 
-  constructor (public type: 'line' | 'ease', public mX1: number, public mY1: number, public mX2: number, public mY2: number) {
+  constructor (public mX1: number, public mY1: number, public mX2: number, public mY2: number) {
     this.mSampleValues = typeof Float32Array === 'function' ? new Float32Array(kSplineTableSize) : new Array(kSplineTableSize);
     this.precomputed = false;
   }
@@ -101,9 +149,6 @@ export class BezierEasing {
   }
 
   getTForX (aX: number) {
-    if (this.type === 'line') {
-      return aX;
-    }
     const mSampleValues = this.mSampleValues, lastSample = kSplineTableSize - 1;
     let intervalStart = 0, currentSample = 1;
 
