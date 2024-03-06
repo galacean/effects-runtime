@@ -102,7 +102,7 @@ export class ThreeMaterial extends Material {
     } else {
       const camera = composition.camera;
 
-      this.setMatrix('effects_MatrixInvV', camera.getInverseProjectionMatrix());
+      // this.setMatrix('effects_MatrixInvV', camera.getInverseProjectionMatrix());
       this.setMatrix('effects_MatrixVP', camera.getViewProjectionMatrix());
       this.setMatrix('effects_MatrixV', camera.getViewMatrix());
     }

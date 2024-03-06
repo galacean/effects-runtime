@@ -167,11 +167,20 @@ export class ThreeGeometry extends Geometry {
       return;
     }
 
-    const attributeBuffer = this.attributes[name].buffer;
+    let attributeBuffer = this.attributes[name].buffer;
 
-    attributeBuffer.updateRange.count = data.length;
-    attributeBuffer.updateRange.offset = 0;
-    attributeBuffer.set(data, 0);
+    if (data.length > attributeBuffer.array.length) {
+      const buffer = new THREE.InterleavedBuffer(data, attributeBuffer.stride);
+
+      attributeBuffer = this.attributes[name].attribute.data = buffer;
+
+      this.geometry.setAttribute(name, this.attributes[name].attribute);
+    } else {
+      attributeBuffer.set(data, 0);
+      attributeBuffer.updateRange.count = data.length;
+      attributeBuffer.updateRange.offset = 0;
+    }
+
     this.geometry.attributes[name].needsUpdate = true;
   }
 
@@ -184,6 +193,7 @@ export class ThreeGeometry extends Geometry {
    * @returns
    */
   setAttributeSubData (name: string, dataOffset: number, data: spec.TypedArray): void {
+
     if (this.attributes[name] == undefined) {
       return;
     }
@@ -335,17 +345,15 @@ export class ThreeGeometry extends Geometry {
     const dataLength = data instanceof Float32Array ? Float32Array.BYTES_PER_ELEMENT : Uint16Array.BYTES_PER_ELEMENT;
     const threeStride = stride / dataLength;
 
-    maxCount = (maxCount ?? 0);
+    maxCount = (maxCount ?? 0) * threeStride;
 
     const count = maxCount || size * dataLength;
 
     if (count) {
 
-      const length = count + (ThreeComposition.shape[name] ?? 0);
-
       // 如果传入了data且data.length不为0 使用传入的data 否则根据length新建数组
       if (data.length === 0) {
-        data = data instanceof Float32Array ? new Float32Array(length) : new Uint16Array(length);
+        data = data instanceof Float32Array ? new Float32Array(count) : new Uint16Array(count);
       }
 
     }

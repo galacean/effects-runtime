@@ -331,6 +331,12 @@ export class SpriteComponent extends RendererComponent {
   }
 
   private createGeometry (mode: GeometryDrawMode) {
+    let maxVertex = 12 * this.splits.length;
+
+    if (this.renderer.shape) {
+      maxVertex = this.renderer.shape.aPoint.length / 6 * 4;
+    }
+
     return Geometry.create(this.engine, {
       attributes: {
         aPos: {
@@ -353,7 +359,7 @@ export class SpriteComponent extends RendererComponent {
       },
       indices: { data: new Uint16Array(0), releasable: true },
       mode,
-      // maxVertex: 12 * this.splits.length,
+      maxVertex,
     });
 
   }

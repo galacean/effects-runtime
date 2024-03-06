@@ -99,7 +99,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
       return;
     }
     this.material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-
+    this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);
   }
 
   override onDestroy (): void {
