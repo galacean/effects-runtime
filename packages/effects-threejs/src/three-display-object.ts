@@ -2,8 +2,8 @@ import type { EventSystem, JSONValue, SceneLoadOptions, Renderer, Composition, S
 import { AssetManager, isArray, isObject, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
-import type { ThreeRenderFrame } from './three-render-frame';
 import { ThreeRenderer } from './three-renderer';
+import type { ThreeEngine } from './three-engine';
 
 export type ThreeDisplayObjectOptions = {
   width: number,
@@ -131,13 +131,10 @@ export class ThreeDisplayObject extends THREE.Group {
       width: this.width,
       height: this.height,
       renderer: this.renderer,
-      // Three.js 中的对象
-      threeCamera: this.camera,
-      threeGroup: this,
     }, scene);
 
-    (composition.renderFrame as ThreeRenderFrame).group = this;
-    (composition.renderFrame as ThreeRenderFrame).threeCamera = this.camera;
+    (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });
+
     if (opts.autoplay) {
       composition.play();
     } else {

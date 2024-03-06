@@ -334,7 +334,10 @@ export class ThreeGeometry extends Geometry {
 
     const dataLength = data instanceof Float32Array ? Float32Array.BYTES_PER_ELEMENT : Uint16Array.BYTES_PER_ELEMENT;
     const threeStride = stride / dataLength;
-    const count = maxCount ?? size * dataLength;
+
+    maxCount = (maxCount ?? 0);
+
+    const count = maxCount || size * dataLength;
 
     if (count) {
 

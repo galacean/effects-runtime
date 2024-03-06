@@ -1,6 +1,5 @@
 import type { Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem, MessageItem, CompositionProps } from '@galacean/effects-core';
 import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
-import { ThreeRenderFrame } from './three-render-frame';
 import { ThreeTexture } from './three-texture';
 import type THREE from 'three';
 
@@ -74,19 +73,9 @@ export class ThreeComposition extends Composition {
    */
   static shape: Record<string, number> = {};
 
-  /**
-   * 相机参数
-   */
-  threeCamera: THREE.Camera;
-
-  threeGroup: THREE.Group;
-
   constructor (props: ThreeCompositionProps, scene: Scene) {
     super(props, scene);
-    const { threeCamera, threeGroup } = props;
 
-    this.threeCamera = threeCamera!;
-    this.threeGroup = threeGroup!;
     this.compositionSourceManager.sourceContent?.items.forEach(item => {
       //@ts-expect-error
       const shape = item.content?.renderer?.shape;
@@ -106,36 +95,10 @@ export class ThreeComposition extends Composition {
   }
 
   /**
-   * 开始
-   */
-  override createRenderFrame () {
-    this.renderFrame = new ThreeRenderFrame({
-      camera: this.camera,
-      keepColorBuffer: this.keepColorBuffer,
-      renderer: this.renderer,
-    });
-  }
-
-  /**
    * 更新 video texture 数据
    */
   override updateVideo () {
     this.textures.map(tex => (tex as ThreeTexture).startVideo());
-  }
-
-  /**
-   * FIXME: 1.0 兼容代码
-   * 更新相机
-   */
-  override updateCamera () {
-    const renderFrame = (this.renderFrame as ThreeRenderFrame);
-
-    // TODO: 这些后面可以挪到renderframe中去，目前composition干的事太多了
-    if (renderFrame.threeCamera) {
-      renderFrame.updateMatrix();
-    } else {
-      renderFrame.updateUniform();
-    }
   }
 
   override prepareRender (): void {

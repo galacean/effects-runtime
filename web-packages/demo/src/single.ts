@@ -3,9 +3,11 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 import { TreeGui } from './gui/tree-gui';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*XsSLQa4TovoAAAAAAAAAAAAADlB4AQ';
 
 // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*y7gTQZ5WELwAAAAAAAAAAAAADlB4AQ';
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*-C-CT4k3JWEAAAAAAAAAAAAADlB4AQ';
+// const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*-C-CT4k3JWEAAAAAAAAAAAAADlB4AQ';
+// const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*XtQWS6PCthkAAAAAAAAAAAAADlB4AQ';
 
 const container = document.getElementById('J-container');
 

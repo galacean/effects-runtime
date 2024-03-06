@@ -4,6 +4,7 @@ import type { ThreeComposition } from './three-composition';
 import type { ThreeGeometry } from './three-geometry';
 import type { ThreeMaterial } from './material';
 import * as THREE from 'three';
+import type { ThreeEngine } from './three-engine';
 
 export class ThreeSpriteComponent extends SpriteComponent {
   threeMesh: THREE.Mesh | THREE.LineSegments;
@@ -13,10 +14,10 @@ export class ThreeSpriteComponent extends SpriteComponent {
   // }
 
   /**
-   * 设置 mesh 的渲染顺序
-   *
-   * @param v - 顺序 index
-   */
+     * 设置 mesh 的渲染顺序
+     *
+     * @param v - 顺序 index
+     */
   override set priority (v: number) {
     if (this.mesh) {
       this.threeMesh.renderOrder = v;
@@ -24,28 +25,28 @@ export class ThreeSpriteComponent extends SpriteComponent {
   }
 
   /**
-     * 获取 mesh 的渲染顺序
-     */
+       * 获取 mesh 的渲染顺序
+       */
   override get priority () {
     return this.threeMesh.renderOrder;
   }
 
   /**
-     * TODO: 待移除
-     * 设置 mesh 可见性
-     *
-     * @param val - 可见性开关
-     */
+       * TODO: 待移除
+       * 设置 mesh 可见性
+       *
+       * @param val - 可见性开关
+       */
   override setVisible (val: boolean): void {
     this.threeMesh.visible = val;
   }
 
   /**
-     * TODO: 待移除
-     * 获取 mesh 的可见性
-     *
-     * @returns
-     */
+       * TODO: 待移除
+       * 获取 mesh 的可见性
+       *
+       * @returns
+       */
   override getVisible (): boolean {
     return this.threeMesh.visible;
   }
@@ -61,9 +62,9 @@ export class ThreeSpriteComponent extends SpriteComponent {
   }
 
   /**
-     * 销毁方法
-     *
-     */
+       * 销毁方法
+       *
+       */
   override dispose (): void {
     super.dispose();
     if (!this.isActiveAndEnabled) {
@@ -84,38 +85,24 @@ export class ThreeSpriteComponent extends SpriteComponent {
           (this.material as ThreeMaterial).material
         );
       }
-      // FIXME: 兼容代码
-      this.threeMesh.name = 'sprite';
     }
   }
 
   override start (): void {
     super.start();
-    (this.item.composition as ThreeComposition).threeGroup.add(this.threeMesh);
+    (this.engine as ThreeEngine).threeGroup.add(this.threeMesh);
   }
 
   override render (renderer: Renderer): void {
-    const composition = this.item.composition as ThreeComposition;
 
     if (!this.isActiveAndEnabled) {
       return;
     }
     this.material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    if (composition.threeCamera) {
-      const camera = composition.threeCamera;
-      const threeViewProjectionMatrix = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
 
-      this.material.setMatrix('effects_MatrixVP', threeViewProjectionMatrix as unknown as math.Matrix4);
-    } else {
-      const camera = composition.camera;
-
-      this.material.setMatrix('effects_MatrixInvV', camera.getInverseProjectionMatrix());
-      this.material.setMatrix('effects_MatrixVP', camera.getViewProjectionMatrix());
-      this.material.setMatrix('effects_MatrixV', camera.getViewMatrix());
-    }
   }
 
   override onDestroy (): void {
-    this.mesh.dispose();
+    this.threeMesh.clear();
   }
 }

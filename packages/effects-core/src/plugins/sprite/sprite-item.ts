@@ -353,7 +353,9 @@ export class SpriteComponent extends RendererComponent {
       },
       indices: { data: new Uint16Array(0), releasable: true },
       mode,
+      // maxVertex: 12 * this.splits.length,
     });
+
   }
 
   private createMaterial (renderInfo: SpriteItemRenderInfo, count: number): Material {
