@@ -288,7 +288,7 @@ async function drawImageAndTemplate (
 
     if (templateBackground && templateBackground !== image.src) {
       // @ts-expect-error
-      drawImage = isString(templateBackground) ? await loadImage(templateBackground as string) : templateBackground;
+      drawImage = isString(templateBackground) ? await loadImage(templateBackground) : templateBackground;
     }
 
     // 转换文字对象到qtext

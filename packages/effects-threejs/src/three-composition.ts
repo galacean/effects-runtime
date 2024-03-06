@@ -1,4 +1,4 @@
-import type { Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem, MessageItem, CompositionProps } from '@galacean/effects-core';
+import type { Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem, MessageItem, CompositionProps, CompositionSourceManager } from '@galacean/effects-core';
 import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
 import { ThreeTexture } from './three-texture';
 import type THREE from 'three';
@@ -73,8 +73,8 @@ export class ThreeComposition extends Composition {
    */
   static shape: Record<string, number> = {};
 
-  constructor (props: ThreeCompositionProps, scene: Scene) {
-    super(props, scene);
+  constructor (props: ThreeCompositionProps, scene: Scene, compositionSourceManager: CompositionSourceManager) {
+    super(props, scene, compositionSourceManager);
     // this.compositionSourceManager.sourceContent?.items.forEach(item => {
     //   //@ts-expect-error
     //   const shape = item.content?.renderer?.shape;

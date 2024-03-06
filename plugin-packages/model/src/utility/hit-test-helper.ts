@@ -22,6 +22,13 @@ function transformDirection (m: Matrix4, direction: Vector3) {
 
 }
 
+/**
+ * 带旋转的射线与包围盒求交
+ * @param ray - 射线
+ * @param matrixData - 矩阵
+ * @param bounding - 包围盒
+ * @returns 交点列表或者 undefined
+ */
 function RayIntersectsBoxWithRotation (ray: Ray, matrixData: Matrix4, bounding: ModelItemBounding): Vector3[] | undefined {
   const local2World = matrixData;
   const world2Local = local2World.clone().invert();
@@ -42,6 +49,14 @@ function RayIntersectsBoxWithRotation (ray: Ray, matrixData: Matrix4, bounding: 
   }
 }
 
+/**
+ * 射线与包围盒求交
+ * @param ro - 射线原点
+ * @param rd - 射线方向
+ * @param bmin - 包围盒左下点
+ * @param bmax - 包围盒右上点
+ * @returns 交点参数或者 undefined
+ */
 function RayBoxTesting (ro: Vector3, rd: Vector3, bmin: Vector3, bmax: Vector3): number | undefined {
   let tmin = 0, tmax = 0;
   let tymin = 0, tymax = 0;
@@ -110,6 +125,16 @@ const edge1 = new Vector3();
 const edge2 = new Vector3();
 const normal = new Vector3();
 
+/**
+ * 射线与三角形求交
+ * @param ro - 射线原点
+ * @param rd - 射线方向
+ * @param a - 三角形点
+ * @param b - 三角形点
+ * @param c - 三角形点
+ * @param backfaceCulling - 是否剔除背面
+ * @returns 交点参数或者 undefined
+ */
 function RayTriangleTesting (ro: Vector3, rd: Vector3, a: Vector3, b: Vector3, c: Vector3, backfaceCulling: boolean): number | undefined {
   // Compute the offset origin, edges, and normal.
   // from https://github.com/pmjoniak/GeometricTools/blob/master/GTEngine/Include/Mathematics/GteIntrRay3Triangle3.h
@@ -164,6 +189,13 @@ function RayTriangleTesting (ro: Vector3, rd: Vector3, a: Vector3, b: Vector3, c
   return QdN / DdN;
 }
 
+/**
+ * 合成点击测试，支持获取多个交点，并按照远近排序
+ * @param composition - 合成
+ * @param x - 点击 x 坐标
+ * @param y - 点击 y 坐标
+ * @returns 点击信息列表
+ */
 function CompositionHitTest (composition: Composition, x: number, y: number): Region[] {
   const regions = composition.hitTest(x, y, true);
   const ray = composition.getHitTestRay(x, y);
@@ -198,6 +230,11 @@ function CompositionHitTest (composition: Composition, x: number, y: number): Re
   });
 }
 
+/**
+ * 切换 3D Mesh 元素的包围盒显示标志
+ * @param composition - 合成
+ * @param itemId - 元素 id
+ */
 function ToggleItemBounding (composition: Composition, itemId: string) {
   composition.items?.forEach(item => {
     if (item.type === VFX_ITEM_TYPE_3D) {

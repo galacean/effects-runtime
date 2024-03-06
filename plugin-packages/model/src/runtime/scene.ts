@@ -15,57 +15,159 @@ import { TwoStatesSet } from '../utility/ts-helper';
 type Box3 = math.Box3;
 type Vector2 = math.Vector2;
 
+/**
+ * 场景参数接口，初始化场景对象时使用
+ */
 export interface PSceneOptions {
+  /**
+   * 合成名称
+   */
   componentName: string,
+  /**
+   * 渲染器
+   */
   renderer: Renderer,
+  /**
+   * 场景缓存
+   */
   sceneCache: CompositionCache,
+  /**
+   * 是否只渲染线框
+   */
   wireframeOnly?: boolean,
+  /**
+   * 运行时环境
+   */
   runtimeEnv?: string,
+  /**
+   * 兼容模式
+   */
   compatibleMode?: string,
+  /**
+   * 是否可视化包围盒
+   */
   visBoundingBox?: boolean,
+  /**
+   * 是否动态排序
+   */
   enableDynamicSort?: boolean,
+  /**
+   * 3D 渲染模式
+   */
   renderMode3D?: spec.RenderMode3D,
+  /**
+   * 3D 渲染模式中棋盘格大小
+   */
   renderMode3DUVGridSize?: number,
+  /**
+   * 是否渲染天空盒
+   */
   renderSkybox: boolean,
+  /**
+   * 灯光元素数目
+   */
   lightItemCount: number,
 }
 
+/**
+ * 场景状态接口，每次场景管理器 Tick 时都会生成
+ */
 export interface PSceneStates {
+  /**
+   * 时间间隔
+   */
   deltaSeconds: number,
-  //
+  /**
+   * 相机对象
+   */
   camera: PCamera,
+  /**
+   * 相机位置
+   */
   cameraPosition: Vector3,
+  /**
+   * 相机矩阵
+   */
   viewMatrix: Matrix4,
+  /**
+   * 投影矩阵
+   */
   projectionMatrix: Matrix4,
+  /**
+   * 相机投影矩阵
+   */
   viewProjectionMatrix: Matrix4,
+  /**
+   * 画布大小
+   */
   winSize: Vector2,
+  /**
+   * 场景半径
+   */
   sceneRadius: number,
   // for shadow
   shadowMapSizeInv?: Vector2,
   lightViewMatrix?: Matrix4,
   lightProjectionMatrix?: Matrix4,
   lightViewProjectionMatrix?: Matrix4,
-  //
+  /**
+   * 灯光对象列表
+   */
   lightList: PLight[],
+  /**
+   * 最大灯光数目
+   */
   maxLightCount: number,
+  /**
+   * 天空盒对象
+   */
   skybox?: PSkybox,
 }
 
+/**
+ * 场景管理类，如果存在 Model 插件中的元素才会创建
+ */
 export class PSceneManager {
+  /**
+   * 合成名称
+   */
   compName: string;
+  /**
+   * 实体列表
+   */
   itemList: PEntity[];
+  /**
+   * Mesh 列表
+   */
   meshList: PMesh[];
+  /**
+   * 灯光管理器
+   */
   lightManager: PLightManager;
+  /**
+   * 相机管理器
+   */
   cameraManager: PCameraManager;
   /**
    * 是否动态排序 Mesh 渲染优先级
    * 默认 false，需要和 Tiny 对齐时为 true
    */
   enableDynamicSort: boolean;
+  /**
+   * IBL 渲染时的 BRDF 查询纹理
+   */
   brdfLUT?: Texture;
+  /**
+   * 天空盒
+   */
   skybox?: PSkybox;
-  //
+  /**
+   * Tick 次数
+   */
   tickCount: number;
+  /**
+   * 最近 Tick 时间
+   */
   lastTickSecond: number;
   /**
    * 当前场景包围盒缓存，在阴影渲染中使用
@@ -75,7 +177,13 @@ export class PSceneManager {
    * 场景前帧和当前帧渲染的 Mesh 集合
    */
   renderedMeshSet: TwoStatesSet<Mesh>;
+  /**
+   * 最多灯光数目
+   */
   maxLightCount = 16;
+  /**
+   * 场景状态
+   */
   sceneStates: PSceneStates;
 
   private renderer?: Renderer;
@@ -102,6 +210,10 @@ export class PSceneManager {
     this.renderedMeshSet = new TwoStatesSet();
   }
 
+  /**
+   * 初始化场景管理器，设置全局状态
+   * @param opts - 场景参数
+   */
   initial (opts: PSceneOptions) {
     this.clean();
     this.compName = opts.componentName;
@@ -154,6 +266,9 @@ export class PSceneManager {
     this.renderedMeshSet = new TwoStatesSet();
   }
 
+  /**
+   * 销毁，需要销毁各种管理器和创建的 WebGL 资源
+   */
   dispose () {
     this.itemList.forEach(item => item.dispose());
     this.itemList = [];
@@ -173,6 +288,10 @@ export class PSceneManager {
     this.parentId2Mesh.clear();
   }
 
+  /**
+   * 添加插件元素到场景中
+   * @param item - 插件元素
+   */
   addItem (item: PMesh | PCamera | PLight | PSkybox) {
     if (item instanceof PMesh) {
       const mesh = item;
@@ -203,6 +322,10 @@ export class PSceneManager {
     addItem(this.itemList, item);
   }
 
+  /**
+   * 从场景中删除插件元素
+   * @param item - 插件元素
+   */
   removeItem (item: PMesh | PCamera | PLight | PSkybox) {
     if (item instanceof PMesh) {
       const mesh = item;
@@ -223,6 +346,10 @@ export class PSceneManager {
     removeItem(this.itemList, item);
   }
 
+  /**
+   * 更新默认相机状态，根据传入的相机参数
+   * @param camera - 相机参数
+   */
   updateDefaultCamera (camera: CameraOptionsEx) {
     const effectsTransfrom = new Transform({
       ...camera,
@@ -242,6 +369,11 @@ export class PSceneManager {
     );
   }
 
+  /**
+   * 更新插件场景，需要更新内部的相关的插件对象，特别是 Mesh 对象的骨骼动画
+   * 并将需要渲染的对象添加到渲染对象集合中
+   * @param deltaTime - 更新间隔
+   */
   tick (deltaTime: number) {
     const deltaSeconds = deltaTime;
     const camera = this.activeCamera;
@@ -276,7 +408,6 @@ export class PSceneManager {
   /**
    * 动态调整 Mesh 渲染优先级
    * 主要是为了和 Tiny 渲染对齐，正常渲染不进行调整
-   *
    * @param states - 场景中的状态数据
    */
   dynamicSortMeshes (states: PSceneStates) {
@@ -326,7 +457,6 @@ export class PSceneManager {
   /**
    * 查询场景中的 Mesh
    * 通过 parentId 查询 Mesh 对象，可能找不到 Mesh 对象
-   *
    * @param parentId - Item 中定义的 parentId
    * @returns 查询到的 PMesh，或者是没找到。如果 Mesh 不可见，也是没找到。
    */
@@ -340,6 +470,11 @@ export class PSceneManager {
     return mesh;
   }
 
+  /**
+   * 获取场景的包围盒
+   * @param box - 包围盒
+   * @returns 场景的包围盒
+   */
   getSceneAABB (box?: Box3): Box3 {
     const sceneBox = box ?? new Box3();
 
@@ -380,22 +515,39 @@ export class PSceneManager {
     console.info('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@');
   }
 
+  /**
+   * 获取渲染器
+   * @returns
+   */
   getRenderer (): Renderer {
     return this.renderer as Renderer;
   }
 
+  /**
+   * 获取场景中缓存
+   * @returns
+   */
   getSceneCache (): CompositionCache {
     return this.sceneCache as CompositionCache;
   }
 
+  /**
+   * 获取激活的相机
+   */
   get activeCamera (): PCamera {
     return this.cameraManager.getActiveCamera();
   }
 
+  /**
+   * 获取灯光数目
+   */
   get lightCount (): number {
     return this.lightManager.lightCount;
   }
 
+  /**
+   * 获取着色器灯光数目，最小是 10
+   */
   get shaderLightCount (): number {
     return Math.min(10, this.lightManager.lightCount);
   }

@@ -119,8 +119,11 @@ export class InspectorGui {
 
     if (typeof value === 'number') {
       guiProperties.push({
-        type: 'number',
+        type: 'number-field',
         name,
+        max: 1000000,
+        min: -1000000,
+        step: 0.03,
         key,
         object,
       });
@@ -270,6 +273,9 @@ export class InspectorGui {
           key: uniformName,
         });
       } else if (type === 'Color') {
+        if (!serializedData.colors[uniformName]) {
+          serializedData.colors[uniformName] = { r:1.0, g:1.0, b:1.0, a:1.0 };
+        }
         guiProperties.push({
           name: inspectorName,
           type: 'color',
@@ -340,18 +346,6 @@ export class InspectorGui {
       return;
     }
 
-    // if (!this.serializedData) {
-    //   return;
-    // }
-
-    // const transformData = {
-    //   position:[0],
-    // };
-
-    // //@ts-expect-error
-    // transformData.position = [components.value[0].properties[0].value!.x, components.value[0].properties[0].value!.y, components.value[0].properties[0].value!.z];
-    // this.item.transform.fromData(transformData);
-    // const position = components.value[0].properties[0].value;
     for (const serializedObject of this.serializedObjects) {
       await serializedObject.applyModifiedProperties();
 
@@ -541,97 +535,6 @@ export const components = ref<AGUIPropertiesPanelProps[]>([
       },
     ],
   },
-  // {
-  //   title: 'EffectComponent',
-  //   properties: [
-  //     {
-  //       type: 'file',
-  //       name: 'Material',
-  //       placeholder: 'Placeholder',
-  //       async onFileChange (fileItem) {
-  //         const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
-
-  //         let res: string;
-
-  //         try {
-  //           res = await readFileAsText(file);
-  //         } catch (error) {
-  //           console.error('读取文件出错:', error);
-
-  //           return;
-  //         }
-  //         const packageData = JSON.parse(res) as EffectsPackageData;
-  //         const guid = packageData.fileSummary.guid;
-
-  //         // TODO 纹理 image 特殊逻辑，待移除
-  //         if (packageData.fileSummary.assetType === 'Texture') {
-  //           await assetDatabase.convertImageData(packageData);
-  //         }
-
-  //         for (const objectData of packageData.exportObjects) {
-  //           assetDatabase.engine.addEffectsObjectData(objectData);
-  //         }
-
-  //         const effectsPackage = new EffectsPackage(assetDatabase.engine);
-
-  //         assetDatabase.effectsPackages[guid] = effectsPackage;
-  //         effectsPackage.fileSummary = packageData.fileSummary;
-  //         for (const objectData of packageData.exportObjects) {
-  //           effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
-  //         }
-
-  //         inspectorGui.serializedData.materials = [{ id:packageData.exportObjects[0].id }];
-  //         await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(inspectorGui.serializedData, inspectorGui.effectComponent.taggedProperties);
-  //         inspectorGui.effectComponent.fromData(inspectorGui.effectComponent.taggedProperties);
-  //         // eslint-disable-next-line no-console
-  //       //   console.log(file);
-  //       },
-  //     },
-  //     {
-  //       type: 'file',
-  //       name: 'Geometry',
-  //       placeholder: 'Placeholder',
-  //       async onFileChange (fileItem) {
-  //         const file = await (fileItem?.handle as FileSystemFileHandle).getFile();
-
-  //         let res: string;
-
-  //         try {
-  //           res = await readFileAsText(file);
-  //         } catch (error) {
-  //           console.error('读取文件出错:', error);
-
-  //           return;
-  //         }
-  //         const packageData = JSON.parse(res) as EffectsPackageData;
-  //         const guid = packageData.fileSummary.guid;
-
-  //         // TODO 纹理 image 特殊逻辑，待移除
-  //         if (packageData.fileSummary.assetType === 'Texture') {
-  //           await assetDatabase.convertImageData(packageData);
-  //         }
-
-  //         for (const objectData of packageData.exportObjects) {
-  //           assetDatabase.engine.addEffectsObjectData(objectData);
-  //         }
-
-  //         const effectsPackage = new EffectsPackage(assetDatabase.engine);
-
-  //         assetDatabase.effectsPackages[guid] = effectsPackage;
-  //         effectsPackage.fileSummary = packageData.fileSummary;
-  //         for (const objectData of packageData.exportObjects) {
-  //           effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
-  //         }
-
-  //         inspectorGui.serializedData.geometry = { id:packageData.exportObjects[0].id };
-  //         await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(inspectorGui.serializedData, inspectorGui.effectComponent.taggedProperties);
-  //         inspectorGui.effectComponent.fromData(inspectorGui.effectComponent.taggedProperties);
-  //         // eslint-disable-next-line no-console
-  //       //   console.log(file);
-  //       },
-  //     },
-  //   ],
-  // },
 ]);
 
 export class SerializedObject {

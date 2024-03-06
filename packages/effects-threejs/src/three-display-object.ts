@@ -1,5 +1,5 @@
 import type { EventSystem, JSONValue, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, SceneWithOptionsType, Texture } from '@galacean/effects-core';
-import { AssetManager, isArray, isObject, logger } from '@galacean/effects-core';
+import { AssetManager, CompositionSourceManager, isArray, isObject, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeRenderer } from './three-renderer';
@@ -116,22 +116,28 @@ export class ThreeDisplayObject extends THREE.Group {
     }
 
     const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
+    const engine = this.renderer.engine;
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    this.renderer.engine.clearResources();
-    await this.renderer.engine.addPackageDatas(scene);
+    engine.clearResources();
+    await engine.addPackageDatas(scene);
 
     for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textureOptions[i] = this.renderer.engine.deserializer.loadGUID(scene.textureOptions[i].id);
+      scene.textureOptions[i] = engine.deserializer.loadGUID(scene.textureOptions[i].id);
       (scene.textureOptions[i] as Texture).initialize();
     }
 
+    const compositionSourceManager = new CompositionSourceManager(scene, engine);
+
+    if (engine.database) {
+      await engine.createVFXItemsAsync(scene);
+    }
     const composition = new ThreeComposition({
       ...opts,
       width: this.width,
       height: this.height,
       renderer: this.renderer,
-    }, scene);
+    }, scene, compositionSourceManager);
 
     (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });
 
