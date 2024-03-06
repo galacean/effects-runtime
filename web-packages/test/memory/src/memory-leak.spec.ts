@@ -95,29 +95,26 @@ describe('multiple scenes', function () {
         renderFramework: 'webgl2',
       });
       //
-      const marsScenes: Scene[] = [];
+      const urlList = [];
 
       for (let j = 0; j < count; j++) {
         const index = indexList[j];
         const { url } = sceneList[keyList[index]];
-        const scene = await player.loadScene(url, { timeout: 100 });
 
-        marsScenes.push(scene);
+        urlList.push(url);
       }
+
+      const compList = await player.loadScene(urlList, { timeout: 100 });
       //
       let leftTime = 0;
-      const speed = 0.5 + 2.0 * Math.random();
 
       for (let j = 0; j < count; j++) {
-        const scene = marsScenes[j];
-        const comp = player.play(scene, { speed, multipleCompositions: true });
+        const comp = compList[j];
 
         leftTime = Math.max(leftTime, comp.content.duration);
-        const sleepTime = Math.max(0, (leftTime + 5) * Math.random());
-
-        await sleep(sleepTime * 1000 / speed);
-        leftTime -= sleepTime;
       }
+      const speed = 0.5 + 2.0 * Math.random();
+
       await sleep((leftTime + 8) * Math.random() * 1000 / speed);
       player.pause();
       player.dispose(true);
