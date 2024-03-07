@@ -1,12 +1,12 @@
 import type {
-  Disposable, GLType, GPUCapability, JSONValue, LostHandler, MessageItem, RestoreHandler, Scene,
-  SceneLoadOptions, Texture, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent,
-  math,
+  Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
+  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math, Texture,
+  SceneLoadType, SceneType, SceneWithOptionsType,
 } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, CompositionComponent, CompositionSourceManager, EVENT_TYPE_CLICK,
+  AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  EventSystem, isArray, isObject, logger, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec,
+  isArray, isObject, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, CompositionSourceManager,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -124,10 +124,6 @@ export interface PlayerConfig {
 
   [key: string]: any,
 }
-
-export type SceneType = string | JSONValue | Scene;
-export type SceneWithOptionsType = { scene: SceneType, options: SceneLoadOptions };
-export type SceneLoadType = SceneType | SceneWithOptionsType;
 
 const playerMap = new Map<HTMLCanvasElement, Player>();
 let enableDebugType = false;

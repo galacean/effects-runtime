@@ -679,7 +679,7 @@ function generateGeometryProps (
   };
 
   if (useSprite) {
-    attributes['aSprite'] = { size: 3, data: new Float32Array(0) };
+    attributes['aSprite'] = { size: 3, stride: 3 * bpe, data: new Float32Array(0) };
   }
 
   return { attributes, indices: { data: new Uint16Array(0) }, name, maxVertex };

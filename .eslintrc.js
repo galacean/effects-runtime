@@ -149,7 +149,7 @@ module.exports = {
   },
   overrides: [
     {
-      "files": ["**/test/**/*.ts", "**/demo/**/*.ts", '**/polyfill/*.ts'],
+      "files": ["**/test/**/*.ts", "**/demo/**/*.ts"],
       "rules": {
         "compat/compat": "off"
       }

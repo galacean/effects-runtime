@@ -49,6 +49,9 @@ export class ParticleSystemRenderer extends RendererComponent {
   override start (): void {
     this._priority = this.item.listIndex;
     this.particleMesh.gravityModifier.scaleXCoord(this.item.duration);
+    for (const mesh of this.meshes) {
+      mesh.start();
+    }
   }
 
   override update (dt: number): void {

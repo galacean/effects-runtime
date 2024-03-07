@@ -11,10 +11,10 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json, {
-      autoplay: false,
+      // autoplay: false,
     });
 
-    player.gotoAndStop(0);
+    // player.gotoAndStop(0);
   } catch (e) {
     console.error('biz', e);
   }

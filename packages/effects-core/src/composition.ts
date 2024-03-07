@@ -188,6 +188,7 @@ export class Composition implements Disposable, LostHandler {
    * 是否是否每次渲染时清除 RenderFrame 颜色缓存
    */
   protected readonly keepColorBuffer: boolean;
+  protected rootComposition: CompositionComponent;
 
   /**
    * 合成暂停/播放 标识
@@ -202,7 +203,6 @@ export class Composition implements Disposable, LostHandler {
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   private readonly postLoaders: Plugin[] = [];
-  private rootComposition: CompositionComponent;
   private rootTimeline: TimelineComponent;
 
   /**
@@ -532,7 +532,7 @@ export class Composition implements Disposable, LostHandler {
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
-  private prepareRender () {
+  prepareRender () {
     const frame = this.renderFrame;
 
     frame._renderPasses[0].meshes.length = 0;
@@ -550,7 +550,7 @@ export class Composition implements Disposable, LostHandler {
 
       for (const rendererComponent of rendererComponents) {
         if (rendererComponent.isActiveAndEnabled) {
-          frame._renderPasses[0].addMesh(rendererComponent);
+          frame.addMeshToDefaultRenderPass(rendererComponent);
         }
       }
     }
@@ -561,7 +561,7 @@ export class Composition implements Disposable, LostHandler {
 
         for (const rendererComponent of rendererComponents) {
           if (rendererComponent.isActiveAndEnabled) {
-            frame._renderPasses[0].addMesh(rendererComponent);
+            frame.addMeshToDefaultRenderPass(rendererComponent);
           }
         }
       }

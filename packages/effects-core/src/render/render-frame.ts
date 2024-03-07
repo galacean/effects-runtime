@@ -427,6 +427,7 @@ export class RenderFrame implements Disposable {
     if (!mesh) {
       return;
     }
+
     this.renderPasses[0].addMesh(mesh);
 
     // const renderPasses = this.renderPasses;

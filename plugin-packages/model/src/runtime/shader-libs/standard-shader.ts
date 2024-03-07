@@ -7,9 +7,20 @@ import { StandardShaderSource } from './standard-shader-source';
 import { PMaterialType } from '../common';
 import type { PShaderContext } from '../shader';
 
+/**
+ * 着色器代码生成类
+ */
 export class StandardShader {
+  /**
+   * WebGL 环境
+   */
   static environment = 'webgl1';
 
+  /**
+   * 获取顶点着色器代码
+   * @param context - 着色器上下文
+   * @returns
+   */
   static getVertexShaderCode (context: PShaderContext): string {
     const isWebGL2 = context.isWebGL2;
     const features = context.featureList;
@@ -27,6 +38,11 @@ export class StandardShader {
     }
   }
 
+  /**
+   * 获取片段着色器代码
+   * @param context - 着色器上下文
+   * @returns
+   */
   static getFragmentShaderCode (context: PShaderContext): string {
     const isWebGL2 = context.isWebGL2;
     const features = context.featureList;

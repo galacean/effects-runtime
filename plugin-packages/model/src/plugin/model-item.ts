@@ -25,15 +25,33 @@ import { CheckerHelper, RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
 
 /**
+ * 插件 Mesh 组件类，支持 3D Mesh 渲染能力
  * @since 2.0.0
  * @internal
  */
 export class ModelMeshComponent extends RendererComponent {
+  /**
+   * 内部 Mesh 对象
+   */
   content: PMesh;
+  /**
+   * 参数
+   */
   options?: ModelMeshContent;
+  /**
+   * 包围盒
+   */
   bounding?: ModelItemBounding;
+  /**
+   * 场景管理器
+   */
   sceneManager?: PSceneManager;
 
+  /**
+   * 构造函数，只保存传入参数，不在这里创建内部对象
+   * @param engine - 引擎
+   * @param options - Mesh 参数
+   */
   constructor (engine: Engine, options?: ModelMeshContent) {
     super(engine);
     if (options) {
@@ -41,6 +59,9 @@ export class ModelMeshComponent extends RendererComponent {
     }
   }
 
+  /**
+   * 组件开始，需要创建内部对象，更新父元素信息和添加到场景管理器中
+   */
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
@@ -54,6 +75,10 @@ export class ModelMeshComponent extends RendererComponent {
     this.item.getHitTestParams = this.getHitTestParams;
   }
 
+  /**
+   * 组件更新，更新内部对象状态
+   * @param dt - 更新间隔
+   */
   override update (dt: number): void {
     if (this.sceneManager) {
       this.content.build(this.sceneManager);
@@ -62,6 +87,11 @@ export class ModelMeshComponent extends RendererComponent {
     this.content.update();
   }
 
+  /**
+   * 组件渲染，需要检查可见性
+   * @param renderer - 渲染器
+   * @returns
+   */
   override render (renderer: Renderer) {
     if (!this.getVisible() || !this.sceneManager) {
       return;
@@ -70,17 +100,27 @@ export class ModelMeshComponent extends RendererComponent {
     this.content.render(this.sceneManager, renderer);
   }
 
+  /**
+   * 组件销毁，需要重场景管理器中删除
+   */
   override onDestroy (): void {
     this.sceneManager?.removeItem(this.content);
     this.sceneManager = undefined;
     this.content.dispose();
   }
 
+  /**
+   * 反序列化，记录传入参数
+   * @param options - 组件参数
+   */
   override fromData (options: ModelMeshContent): void {
     super.fromData(options);
     this.options = options;
   }
 
+  /**
+   * 创建内部对象
+   */
   createContent () {
     if (this.options) {
       const bounding = this.options.interaction;
@@ -109,6 +149,11 @@ export class ModelMeshComponent extends RendererComponent {
     return this.content?.visible ?? false;
   }
 
+  /**
+   * 获取点击测试参数，根据元素包围盒进行相交测试，Mesh 对象会进行更加精确的点击测试
+   * @param force - 是否强制进行点击测试
+   * @returns 点击测试参数
+   */
   getHitTestParams = (force?: boolean): HitTestBoxParams | HitTestSphereParams | HitTestCustomParams | undefined => {
     this.computeBoundingBox();
     const bounding = this.bounding;
@@ -166,6 +211,10 @@ export class ModelMeshComponent extends RendererComponent {
     }
   };
 
+  /**
+   * 计算元素包围盒，只针对 Mesh 对象
+   * @returns 包围盒
+   */
   computeBoundingBox (): ModelItemBounding | undefined {
     if (this.content && this.content instanceof PMesh) {
       const worldMatrix = this.transform.getWorldMatrix();
@@ -188,14 +237,29 @@ export class ModelMeshComponent extends RendererComponent {
 }
 
 /**
+ * 插件天空盒组件类，支持 3D 天空盒渲染能力
  * @since 2.0.0
  * @internal
  */
 export class ModelSkyboxComponent extends RendererComponent {
+  /**
+   * 内部天空盒对象
+   */
   content: PSkybox;
+  /**
+   * 天空盒参数
+   */
   options?: ModelSkyboxContent;
+  /**
+   * 场景管理器
+   */
   sceneManager?: PSceneManager;
 
+  /**
+   * 构造函数，只保存传入参数，不在这里创建内部对象
+   * @param engine - 引擎
+   * @param options - Mesh 参数
+   */
   constructor (engine: Engine, options?: ModelSkyboxContent) {
     super(engine);
     if (options) {
@@ -203,6 +267,9 @@ export class ModelSkyboxComponent extends RendererComponent {
     }
   }
 
+  /**
+   * 组件开始，需要创建内部对象和添加到场景管理器中
+   */
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
@@ -212,6 +279,11 @@ export class ModelSkyboxComponent extends RendererComponent {
     this.setVisible(true);
   }
 
+  /**
+   * 组件渲染，需要检查可见性
+   * @param renderer - 渲染器
+   * @returns
+   */
   override render (renderer: Renderer) {
     if (!this.getVisible() || !this.sceneManager) {
       return;
@@ -220,17 +292,27 @@ export class ModelSkyboxComponent extends RendererComponent {
     this.content.render(this.sceneManager, renderer);
   }
 
+  /**
+   * 组件销毁，需要重场景管理器中删除
+   */
   override onDestroy (): void {
     this.sceneManager?.removeItem(this.content);
     this.sceneManager = undefined;
     this.content.dispose();
   }
 
+  /**
+   * 反序列化，记录传入参数
+   * @param options - 组件参数
+   */
   override fromData (options: ModelSkyboxContent): void {
     super.fromData(options);
     this.options = options;
   }
 
+  /**
+   * 创建内部对象
+   */
   createContent () {
     if (this.options) {
       const skyboxOptions = this.options.options;
@@ -241,7 +323,99 @@ export class ModelSkyboxComponent extends RendererComponent {
   }
 
   /**
-   * 设置当前 Mesh 的可见性。
+   * 设置当前可见性。
+   * @param visible - true：可见，false：不可见
+   */
+  setVisible (visible: boolean) {
+    this.content?.onVisibleChanged(visible);
+  }
+
+  /**
+   * 获取当前可见性。
+   */
+  getVisible (): boolean {
+    return this.content?.visible ?? false;
+  }
+}
+
+/**
+ * 插件灯光组件类，支持 3D 灯光能力
+ * @since 2.0.0
+ * @internal
+ */
+export class ModelLightComponent extends ItemBehaviour {
+  /**
+   * 内部灯光对象
+   */
+  content: PLight;
+  /**
+   * 参数
+   */
+  options?: ModelLightContent;
+
+  /**
+   * 构造函数，只保存传入参数，不在这里创建内部对象
+   * @param engine - 引擎
+   * @param options - Mesh 参数
+   */
+  constructor (engine: Engine, options?: ModelLightContent) {
+    super(engine);
+    if (options) {
+      this.fromData(options);
+    }
+  }
+
+  /**
+   * 组件开始，需要创建内部对象和添加到场景管理器中
+   */
+  override start (): void {
+    this.createContent();
+    this.item.type = VFX_ITEM_TYPE_3D;
+    const scene = getSceneManager(this);
+
+    scene?.addItem(this.content);
+    this.setVisible(true);
+  }
+
+  /**
+   * 组件更新，更新内部对象状态
+   * @param dt - 更新间隔
+   */
+  override update (dt: number): void {
+    this.content.update();
+  }
+
+  /**
+   * 组件销毁
+   */
+  override onDestroy (): void {
+    this.content.dispose();
+  }
+
+  /**
+   * 反序列化，记录传入参数
+   * @param options - 组件参数
+   */
+  override fromData (options: ModelLightContent): void {
+    super.fromData(options);
+
+    this.options = options;
+  }
+
+  /**
+   * 创建内部对象
+   */
+  createContent () {
+    if (this.options) {
+      const lightOptions = this.options.options;
+
+      CheckerHelper.assertModelLightOptions(lightOptions);
+      this.content = new PLight(this.item.name, lightOptions, this);
+    }
+  }
+
+  /**
+   * 设置当前可见性。
    * @param visible - true：可见，false：不可见
    */
   setVisible (visible: boolean) {
@@ -257,77 +431,29 @@ export class ModelSkyboxComponent extends RendererComponent {
 }
 
 /**
- * @since 2.0.0
- * @internal
- */
-export class ModelLightComponent extends ItemBehaviour {
-  content: PLight;
-  options?: ModelLightContent;
-
-  constructor (engine: Engine, options?: ModelLightContent) {
-    super(engine);
-    if (options) {
-      this.fromData(options);
-    }
-  }
-
-  override start (): void {
-    this.createContent();
-    this.item.type = VFX_ITEM_TYPE_3D;
-    const scene = getSceneManager(this);
-
-    scene?.addItem(this.content);
-    this.setVisible(true);
-  }
-
-  override update (dt: number): void {
-    this.content.update();
-  }
-
-  override onDestroy (): void {
-    this.content.dispose();
-  }
-
-  override fromData (options: ModelLightContent): void {
-    super.fromData(options);
-
-    this.options = options;
-  }
-
-  createContent () {
-    if (this.options) {
-      const lightOptions = this.options.options;
-
-      CheckerHelper.assertModelLightOptions(lightOptions);
-      this.content = new PLight(this.item.name, lightOptions, this);
-    }
-  }
-
-  /**
- * 设置当前 Mesh 的可见性。
- * @param visible - true：可见，false：不可见
- */
-  setVisible (visible: boolean) {
-    this.content?.onVisibleChanged(visible);
-  }
-
-  /**
-   * 获取当前 Mesh 的可见性。
-   */
-  getVisible (): boolean {
-    return this.content?.visible ?? false;
-  }
-}
-
-/**
+ * 插件相机组件类，支持 3D 相机能力
  * @since 2.0.0
  * @internal
  */
 export class ModelCameraComponent extends ItemBehaviour {
+  /**
+   * 内部相机对象
+   */
   content: PCamera;
+  /**
+   * 参数
+   */
   options?: ModelCameraContent;
+  /**
+   * 时间轴组件
+   */
   timeline?: TimelineComponent;
 
+  /**
+   * 构造函数，只保存传入参数，不在这里创建内部对象
+   * @param engine - 引擎
+   * @param options - Mesh 参数
+   */
   constructor (engine: Engine, options?: ModelCameraContent) {
     super(engine);
     if (options) {
@@ -335,6 +461,9 @@ export class ModelCameraComponent extends ItemBehaviour {
     }
   }
 
+  /**
+   * 组件开始，需要创建内部对象和添加到场景管理器中
+   */
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
@@ -344,21 +473,35 @@ export class ModelCameraComponent extends ItemBehaviour {
     scene?.addItem(this.content);
   }
 
+  /**
+   * 组件更新，更新内部对象状态
+   * @param dt - 更新间隔
+   */
   override update (dt: number): void {
     this.content.update();
     this.updateMainCamera();
   }
 
+  /**
+   * 组件销毁
+   */
   override onDestroy (): void {
     this.content.dispose();
   }
 
+  /**
+   * 反序列化，记录传入参数
+   * @param options - 组件参数
+   */
   override fromData (options: ModelCameraContent): void {
     super.fromData(options);
 
     this.options = options;
   }
 
+  /**
+   * 创建内部对象
+   */
   createContent () {
     if (this.options) {
       const cameraOptions = this.options.options;
@@ -371,6 +514,9 @@ export class ModelCameraComponent extends ItemBehaviour {
     }
   }
 
+  /**
+   * 更新合成主相机，更加当前相机元素状态
+   */
   updateMainCamera () {
     this.content.matrix = this.transform.getWorldMatrix();
     const composition = this.item.composition;
@@ -384,6 +530,11 @@ export class ModelCameraComponent extends ItemBehaviour {
     }
   }
 
+  /**
+   * 设置变换
+   * @param position - 位置
+   * @param rotation - 旋转
+   */
   setTransform (position?: Vector3, rotation?: Euler): void {
     const clip = this.timeline?.findTrack('AnimationTrack')?.findClip('AnimationTimelineClip');
 

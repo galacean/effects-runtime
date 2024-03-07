@@ -5,8 +5,8 @@ import type { Engine } from './engine';
 import { Material } from './material';
 import { Geometry } from './render';
 import type { VFXItemProps } from './vfx-item';
-import { Texture } from '.';
 import { getMergedStore } from './decorators';
+import { Texture } from './texture';
 
 /**
  * @since 2.0.0
@@ -193,7 +193,9 @@ export class Deserializer {
         }
       } else if (value instanceof Object) {
         // 非 EffectsObject 对象只递归一层
-        for (const objectValue of Object.values(value)) {
+        for (const objectKey of Object.keys(value)) {
+          const objectValue = value[objectKey];
+
           if (objectValue instanceof EffectsObject) {
             this.collectSerializableObject(objectValue, res);
           }
@@ -492,6 +494,7 @@ export enum DataType {
   CameraController,
   Geometry,
   Texture,
+  TextComponent,
 
   // FIXME: 先完成ECS的场景转换，后面移到spec中
   MeshComponent = 10000,

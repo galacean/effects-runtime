@@ -9,26 +9,73 @@ import { WebGLHelper } from '../utility/plugin-helper';
 import { Vector2, Vector3 } from './math';
 import type { ModelSkyboxComponent } from '../plugin/model-item';
 
+/**
+ * 天空盒类，支持天空盒的渲染和 IBL 光照效果
+ */
 export class PSkybox extends PEntity {
+  /**
+   * 所属的天空盒组件
+   */
   owner?: ModelSkyboxComponent;
+  /**
+   * 是否渲染
+   */
   renderable = true;
+  /**
+   * 强度
+   */
   intensity = 1.0;
+  /**
+   * 反射强度
+   */
   reflectionsIntensity = 1.0;
-  //
+  /**
+   * 辐射照度系数
+   */
   irradianceCoeffs?: number[][];
+  /**
+   * 漫反射贴图
+   */
   diffuseImage?: Texture;
-  //
+  /**
+   * 高光贴图
+   */
   specularImage!: Texture;
+  /**
+   * 高光贴图大小
+   */
   specularImageSize = 0;
+  /**
+   * 高光贴图 Mip 层数目
+   */
   specularMipCount = 0;
-  //
+  /**
+   * BRDF 查询纹理
+   */
   brdfLUT?: Texture;
-  //
+  /**
+   * 优先级
+   */
   priority = 0;
+  /**
+   * 天空盒 Mesh
+   */
   skyboxMesh?: Mesh;
+  /**
+   * 天空盒材质
+   */
   skyboxMaterial?: PMaterialSkyboxFilter;
+  /**
+   * 是否构建过
+   */
   isBuilt = false;
 
+  /**
+   * 构造函数
+   * @param name - 名称
+   * @param options - 天空盒参数
+   * @param owner - 所属天空盒组件元素
+   */
   constructor (name: string, options: ModelSkyboxOptions, owner?: ModelSkyboxComponent) {
     super();
     this.name = name;
@@ -48,10 +95,19 @@ export class PSkybox extends PEntity {
     this.priority = owner?.item?.listIndex || 0;
   }
 
+  /**
+   * 设置 BRDF 查询纹理
+   * @param brdfLUT - 纹理
+   */
   setup (brdfLUT?: Texture) {
     this.brdfLUT = brdfLUT;
   }
 
+  /**
+   * 构建天空盒，创建天空盒材质，从场景缓存中创建天空盒 Mesh
+   * @param sceneCache - 场景缓存
+   * @returns
+   */
   build (scene: PSceneManager) {
     if (this.isBuilt) {
       return;
@@ -69,6 +125,11 @@ export class PSkybox extends PEntity {
     this.skyboxMaterial.updateUniforms(this.skyboxMesh.material);
   }
 
+  /**
+   * 渲染天空盒
+   * @param scene - 场景
+   * @param renderer - 渲染器
+   */
   override render (scene: PSceneManager, renderer: Renderer) {
     this.updateMaterial(scene);
 
@@ -81,6 +142,9 @@ export class PSkybox extends PEntity {
     }
   }
 
+  /**
+   * 销毁
+   */
   override dispose () {
     super.dispose();
     this.owner = undefined;
@@ -108,6 +172,9 @@ export class PSkybox extends PEntity {
     }
   }
 
+  /**
+   * 是否可用，根据内部的强度、辐射照度系数、漫反射贴图和高光贴图状态
+   */
   get available (): boolean {
     if (!this.isValid()) { return false; }
 
@@ -118,33 +185,73 @@ export class PSkybox extends PEntity {
     return this.specularImage !== undefined && this.specularMipCount > 0;
   }
 
+  /**
+   * 当前强度，如果不可见返回 0
+   */
   get currentIntensity (): number {
     return this.visible ? this.intensity : 0;
   }
 
+  /**
+   * 当前反射强度，如果不可见返回 0
+   */
   get currentReflectionsIntensity (): number {
     return this.visible ? this.reflectionsIntensity : 0;
   }
 
+  /**
+   * 是否有漫反射贴图
+   */
   get hasDiffuseImage (): boolean {
     return this.diffuseImage !== undefined;
   }
 
+  /**
+   * 是否有辐射照度系数
+   */
   get hasIrradianceCoeffs (): boolean {
     return this.irradianceCoeffs !== undefined;
   }
 
 }
 
+/**
+ * 天空盒材质类
+ */
 export class PMaterialSkyboxFilter extends PMaterialBase {
+  /**
+   * 强度
+   */
   intensity = 1.0;
+  /**
+   * 反射强度
+   */
   reflectionsIntensity = 1.0;
+  /**
+   * BRDF 查询纹理
+   */
   brdfLUT?: Texture;
+  /**
+   * 辐射照度系数
+   */
   irradianceCoeffs?: number[][];
+  /**
+   * 漫反射贴图
+   */
   diffuseImage?: Texture;
+  /**
+   * 高光贴图
+   */
   specularImage!: Texture;
+  /**
+   * 高光贴图 Mip 数目
+   */
   specularMipCount = 0;
 
+  /**
+   * 创建天空盒材质，从天空盒对象
+   * @param skybox - 天空盒对象
+   */
   create (skybox: PSkybox) {
     this.type = PObjectType.material;
     this.materialType = PMaterialType.skyboxFilter;
@@ -160,6 +267,9 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
     this.specularMipCount = skybox.specularMipCount;
   }
 
+  /**
+   * 销毁，需要解除资源引用
+   */
   override dispose () {
     super.dispose();
     this.brdfLUT = undefined;
@@ -169,6 +279,10 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
     this.specularImage = undefined;
   }
 
+  /**
+   * 获取着色器特性列表
+   * @returns
+   */
   override getShaderFeatures (): string[] {
     const featureList: string[] = [];
 
@@ -179,6 +293,10 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
     return featureList;
   }
 
+  /**
+   * 更新着色器 Uniform 数据
+   * @param material - 对应的 Core 层材质
+   */
   override updateUniforms (material: Material) {
     if (this.brdfLUT === undefined) {
       throw new Error('Setup brdfLUT for skybox at first.');
@@ -203,6 +321,10 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
     material.setTexture('u_SpecularEnvSampler', this.specularImage);
   }
 
+  /**
+   * 设置对应的材质状态
+   * @param material - 对应的 Core 层材质
+   */
   override setMaterialStates (material: Material) {
     material.depthTest = true;
     material.depthMask = false;
@@ -210,35 +332,98 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
   }
 }
 
+/**
+ * 图像缓冲区数据接口
+ */
 export interface PImageBufferData {
+  /**
+   * 类型，总是 buffer
+   */
   type: 'buffer',
+  /**
+   * 数组
+   */
   data: Uint8Array,
+  /**
+   * MIME 类型
+   */
   mimeType: string,
 }
 
+/**
+ * 图像数据类型，字符串（URL）或者图像缓冲区数据
+ */
 export type PImageData = string | PImageBufferData;
 
+/**
+ * 天空盒基础参数接口
+ */
 export interface PSkyboxBaseParams {
+  /**
+   * 是否渲染
+   */
   renderable: boolean,
+  /**
+   * 强度
+   */
   intensity: number,
+  /**
+   * 反射强度
+   */
   reflectionsIntensity: number,
+  /**
+   * 辐射照度系数
+   */
   irradianceCoeffs?: number[][],
+  /**
+   * 高光贴图 Mip 层数
+   */
   specularMipCount: number,
+  /**
+   * 高光贴图大小
+   */
   specularImageSize: number,
 }
 
+/**
+ * 天空盒 URL 参数接口
+ */
 export interface PSkyboxURLParams extends PSkyboxBaseParams {
+  /**
+   * 类型，总是 url
+   */
   type: 'url',
+  /**
+   * 漫反射贴图 URL 列表
+   */
   diffuseImage?: string[],
+  /**
+   * 高光贴图 URL 二级列表
+   */
   specularImage: string[][],
 }
 
+/**
+ * 天空盒缓冲区参数接口
+ */
 export interface PSkyboxBufferParams extends PSkyboxBaseParams {
+  /**
+   * 类型，总是 buffer
+   */
   type: 'buffer',
+  /**
+   * 漫反射贴图列表
+   */
   diffuseImage?: PImageBufferData[],
+  /**
+   * 高光贴图二级列表
+   */
   specularImage: PImageBufferData[][],
 }
 
+/**
+ * 天空盒参数类型
+ */
 export type PSkyboxParams = PSkyboxURLParams | PSkyboxBufferParams;
 
 export enum PSkyboxType {
@@ -246,7 +431,14 @@ export enum PSkyboxType {
   FARM,
 }
 
+/**
+ * 天空盒创建类
+ */
 export class PSkyboxCreator {
+  /**
+   * 获取 BRDF 查询纹理选项
+   * @returns 纹理源选项
+   */
   static async getBrdfLutTextureOptions (): Promise<TextureSourceOptions> {
     const brdfURL = 'https://gw.alipayobjects.com/zos/gltf-asset/61420044606400/lut-ggx.png';
     //const brdfURL = 'https://gw.alipayobjects.com/zos/gltf-asset/58540818729423/a4191420-a8cd-432c-8e36-9bd02a67ec85.png';
@@ -269,6 +461,11 @@ export class PSkyboxCreator {
     return brdfLutOpts;
   }
 
+  /**
+   * 创建 BRDF 查询纹理
+   * @param engine - 引擎
+   * @returns 纹理
+   */
   static async createBrdfLutTexture (engine: Engine): Promise<Texture> {
     const brdfLutOpts = await this.getBrdfLutTextureOptions();
     const brdfLutTexture = Texture.create(engine, brdfLutOpts);
@@ -276,6 +473,12 @@ export class PSkyboxCreator {
     return brdfLutTexture;
   }
 
+  /**
+   * 创建天空盒选项
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 天空盒选项
+   */
   static async createSkyboxOptions (engine: Engine, params: PSkyboxParams): Promise<ModelSkyboxOptions> {
     const specularImage = await this.createSpecularCubeMap(engine, params);
     const diffuseImage = await this.createDiffuseCubeMap(engine, params);
@@ -294,6 +497,12 @@ export class PSkyboxCreator {
     return skyboxOptions;
   }
 
+  /**
+   * 创建高光 Cube Map 纹理
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 纹理
+   */
   static async createSpecularCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture> {
     const configOptions: TextureConfigOptions = {
       wrapS: glContext.CLAMP_TO_EDGE,
@@ -309,6 +518,12 @@ export class PSkyboxCreator {
     }
   }
 
+  /**
+   * 创建漫反射纹理
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 纹理或未定义
+   */
   static async createDiffuseCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture | undefined> {
     if (params.diffuseImage === undefined) { return; }
 
@@ -319,6 +534,11 @@ export class PSkyboxCreator {
     }
   }
 
+  /**
+   * 创建天空盒参数
+   * @param skyboxType - 天空盒类型
+   * @returns 天空盒参数
+   */
   static getSkyboxParams (skyboxType = PSkyboxType.NFT): PSkyboxURLParams {
     const specularImage = this.getSpecularImageList(skyboxType);
     const params: PSkyboxURLParams = {

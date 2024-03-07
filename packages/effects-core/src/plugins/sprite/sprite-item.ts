@@ -314,7 +314,6 @@ export class SpriteComponent extends RendererComponent {
     geometry.setIndexData(indexData);
     geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
     geometry.setDrawCount(data.index.length);
-    this.setVisible(geometry.getDrawCount() > 0 ? true : false);
     for (let i = 0; i < textures.length; i++) {
       const texture = textures[i];
 
@@ -329,6 +328,8 @@ export class SpriteComponent extends RendererComponent {
   }
 
   private createGeometry (mode: GeometryDrawMode) {
+    const maxVertex = 12 * this.splits.length;
+
     return Geometry.create(this.engine, {
       attributes: {
         aPos: {
@@ -351,7 +352,9 @@ export class SpriteComponent extends RendererComponent {
       },
       indices: { data: new Uint16Array(0), releasable: true },
       mode,
+      maxVertex,
     });
+
   }
 
   private createMaterial (renderInfo: SpriteItemRenderInfo, count: number): Material {
