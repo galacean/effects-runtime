@@ -6,7 +6,7 @@ import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
 import { Transform } from '../../transform';
 import { effectsClass } from '../../decorators';
-import { DataType } from '@galacean/effects-core';
+import { DataType } from '../../deserializer';
 
 @effectsClass(DataType.CameraController)
 export class CameraController extends ItemBehaviour {
