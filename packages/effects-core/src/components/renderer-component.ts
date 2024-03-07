@@ -11,8 +11,7 @@ import { Component } from './component';
 export class RendererComponent extends Component {
   started = false;
 
-  @serialize()
-  public materials: Material[] = [];
+  @serialize() materials: Material[] = [];
 
   @serialize()
   protected _priority: number;

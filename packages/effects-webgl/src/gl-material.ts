@@ -3,7 +3,7 @@ import type {
   Renderer, MaterialData,
 } from '@galacean/effects-core';
 import {
-  DestroyOptions, Material, assertExist, throwDestroyedError, math, isFunction, logger, DataType, serialize,
+  DestroyOptions, Material, assertExist, throwDestroyedError, math, isFunction, logger, DataType,
 } from '@galacean/effects-core';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
@@ -22,7 +22,7 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-  public shader: GLShader;
+  shader: GLShader;
 
   // material存放的uniform数据。
   private floats: Record<string, number> = {};

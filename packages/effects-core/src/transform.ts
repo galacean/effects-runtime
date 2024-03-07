@@ -3,7 +3,6 @@ import type * as spec from '@galacean/effects-specification';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
 import type { Engine } from './engine';
-import { serialize } from './decorators';
 
 export interface TransformProps {
   position?: spec.vec3 | Vector3,

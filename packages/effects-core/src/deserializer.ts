@@ -14,7 +14,9 @@ import { Texture } from './texture';
  */
 export class Deserializer {
   private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
+
   constructor (private engine: Engine) { }
+
   static addConstructor (constructor: new (engine: Engine) => EffectsObject | Component, type: number) {
     Deserializer.constructorMap[type] = constructor;
   }
@@ -180,7 +182,7 @@ export class Deserializer {
       let value = effectsObject.taggedProperties[key];
 
       if (value === undefined) {
-        value = (effectsObject as any)[key];
+        value = effectsObject[key as keyof EffectsObject];
       }
 
       if (value instanceof EffectsObject) {
@@ -223,7 +225,9 @@ export class Deserializer {
         continue;
       }
 
-      (effectsObject as any)[key] = this.deserializeProperty(value, 0);
+      // FIXME: taggedProperties 为 readonly，这里存在强制赋值
+      // @ts-expect-error
+      effectsObject[key as keyof EffectsObject] = this.deserializeProperty(value, 0);
     }
     effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
@@ -247,7 +251,9 @@ export class Deserializer {
         continue;
       }
 
-      (effectsObject as any)[key] = await this.deserializePropertyAsync(value, 0);
+      // FIXME: taggedProperties 为 readonly，这里存在强制赋值
+      // @ts-expect-error
+      effectsObject[key as keyof EffectsObject] = await this.deserializePropertyAsync(value, 0);
     }
     effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
@@ -260,12 +266,15 @@ export class Deserializer {
     const serializedProperties = getMergedStore(effectsObject);
 
     for (const key of Object.keys(serializedProperties)) {
-      const value = (effectsObject as any)[key];
+      const value = effectsObject[key as keyof EffectsObject];
 
-      if (typeof value === 'number' ||
+      if (
+        typeof value === 'number' ||
         typeof value === 'string' ||
         typeof value === 'boolean' ||
-        this.checkTypedArray(value)) { // TODO json 数据避免传 typedArray
+        this.checkTypedArray(value)
+      ) {
+        // TODO json 数据避免传 typedArray
         serializedData[key] = value;
       } else if (value instanceof Array) {
         if (!serializedData[key]) {
@@ -276,7 +285,6 @@ export class Deserializer {
         // TODO 处理 EffectsObject 递归序列化
         serializedData[key] = { id: value.getInstanceId() };
       } else if (value instanceof Object) {
-
         if (!serializedData[key]) {
           serializedData[key] = {};
         }
@@ -288,10 +296,13 @@ export class Deserializer {
     for (const key of Object.keys(effectsObject.taggedProperties)) {
       const value = effectsObject.taggedProperties[key];
 
-      if (typeof value === 'number' ||
+      if (
+        typeof value === 'number' ||
         typeof value === 'string' ||
         typeof value === 'boolean' ||
-        this.checkTypedArray(value)) { // TODO json 数据避免传 typedArray
+        this.checkTypedArray(value)
+      ) {
+        // TODO json 数据避免传 typedArray
         serializedData[key] = value;
       } else if (value instanceof Array) {
         if (!serializedData[key]) {
@@ -302,7 +313,6 @@ export class Deserializer {
         // TODO 处理 EffectsObject 递归序列化
         serializedData[key] = { id: value.getInstanceId() };
       } else if (value instanceof Object) {
-
         if (!serializedData[key]) {
           serializedData[key] = {};
         }
@@ -319,9 +329,11 @@ export class Deserializer {
 
       return;
     }
-    if (typeof property === 'number' ||
+    if (
+      typeof property === 'number' ||
       typeof property === 'string' ||
-      typeof property === 'boolean') {
+      typeof property === 'boolean'
+    ) {
       return property;
     } else if (property instanceof Array) {
       const res = [];
@@ -385,7 +397,7 @@ export class Deserializer {
     }
   }
 
-  private serializeObjectProperty<T> (objectProperty: Record<string, any>, serializedData: Record<string, any>, level: number): any {
+  private serializeObjectProperty (objectProperty: Record<string, any>, serializedData: Record<string, any>, level: number): any {
     if (level > 10) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -398,10 +410,13 @@ export class Deserializer {
     for (const key of Object.keys(objectProperty)) {
       const value = objectProperty[key];
 
-      if (typeof value === 'number' ||
+      if (
+        typeof value === 'number' ||
         typeof value === 'string' ||
         typeof value === 'boolean' ||
-        this.checkTypedArray(objectProperty)) { // TODO json 数据避免传 typedArray
+        this.checkTypedArray(objectProperty)
+      ) {
+        // TODO json 数据避免传 typedArray
         serializedData[key] = value;
       } else if (value instanceof Array) {
         if (!serializedData[key]) {
@@ -420,7 +435,7 @@ export class Deserializer {
     }
   }
 
-  private serializeArrayProperty<T> (arrayProperty: Array<any>, serializedData: Array<any>, level: number): any {
+  private serializeArrayProperty (arrayProperty: Array<any>, serializedData: Array<any>, level: number): any {
     if (level > 10) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -433,10 +448,13 @@ export class Deserializer {
     for (let i = 0; i < arrayProperty.length; i++) {
       const value = arrayProperty[i];
 
-      if (typeof value === 'number' ||
+      if (
+        typeof value === 'number' ||
         typeof value === 'string' ||
         typeof value === 'boolean' ||
-        this.checkTypedArray(arrayProperty)) { // TODO json 数据避免传 typedArray
+        this.checkTypedArray(arrayProperty)
+      ) {
+        // TODO json 数据避免传 typedArray
         serializedData[i] = value;
       } else if (value instanceof Array) {
         if (!serializedData[i]) {
@@ -469,7 +487,10 @@ export class Deserializer {
 
   private checkDataPath (value: any): boolean {
     // check value is { id: 7e69662e964e4892ae8933f24562395b }
-    return value instanceof Object && Object.keys(value).length === 1 && value.id && value.id.length === 32;
+    return value instanceof Object &&
+      Object.keys(value).length === 1 &&
+      value.id &&
+      value.id.length === 32;
   }
 
   private findData (uuid: string): EffectsObjectData | undefined {

@@ -1,31 +1,31 @@
-const decoratorInitialStore = {};
-const mergedStore = {};
+const decoratorInitialStore: Record<string, any> = {};
+const mergedStore: Record<string, any> = {};
 
-function getDirectStore (target: any): any {
+function getDirectStore (target: any) {
   const classKey = target.constructor.name;
 
-  if (!(<any>decoratorInitialStore)[classKey]) {
-    (<any>decoratorInitialStore)[classKey] = {};
+  if (!(decoratorInitialStore)[classKey]) {
+    (decoratorInitialStore)[classKey] = {};
   }
 
-  return (<any>decoratorInitialStore)[classKey];
+  return decoratorInitialStore[classKey];
 }
 
 export function getMergedStore (target: any): any {
   const classKey = target.constructor.name;
 
-  if ((<any>mergedStore)[classKey]) {
-    return (<any>mergedStore)[classKey];
+  if (mergedStore[classKey]) {
+    return mergedStore[classKey];
   }
 
-  (<any>mergedStore)[classKey] = {};
+  mergedStore[classKey] = {};
 
-  const store = (<any>mergedStore)[classKey];
+  const store = mergedStore[classKey];
   let currentTarget = target;
   let currentKey = classKey;
 
   while (currentKey) {
-    const initialStore = (<any>decoratorInitialStore)[currentKey];
+    const initialStore = decoratorInitialStore[currentKey];
 
     for (const property in initialStore) {
       store[property] = initialStore[property];
