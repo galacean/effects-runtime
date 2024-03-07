@@ -1,14 +1,10 @@
 import { disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger, registerPlugin } from '@galacean/effects';
 import { AlipayDowngradePlugin } from './alipay-downgrade-plugin';
 import { DowngradeVFXItem } from './downgrade-vfx-item';
-import { getDeviceName } from './utils';
 
 export * from './utils';
 export * from './native-log';
 
-/**
- *
- */
 export interface AlipayDowngradeOptions {
   /**
    * 发生 gl lost 时，是否忽略
@@ -22,6 +18,8 @@ export interface AlipayDowngradeOptions {
   autoPause?: boolean,
 }
 
+export const version = __VERSION__;
+
 let registered = false;
 
 /**
@@ -30,17 +28,13 @@ let registered = false;
  * @param bizId - 降级 ID，如果为 `mock-pass` 将 mock 不降级场景，如果为 `mock-fail` 将 mock 降级场景，业务请不要使用这两个字符串
  * @param options - 优化策略
  */
-export function setAlipayDowngradeBizId (bizId: string, options: AlipayDowngradeOptions = {}) {
+export function setAlipayDowngradeBizId (options: AlipayDowngradeOptions = {}) {
   const { ignoreGLLost, autoPause } = options;
   const downgradeWhenGLLost = ignoreGLLost !== true;
-
-  AlipayDowngradePlugin.currentBizId = bizId;
 
   if (registered) {
     return;
   }
-
-  registerPlugin('alipay-downgrade', AlipayDowngradePlugin, DowngradeVFXItem, true);
 
   window.addEventListener('unload', () => {
     getActivePlayers().forEach(player => player.dispose());
@@ -64,15 +58,6 @@ export function setAlipayDowngradeBizId (bizId: string, options: AlipayDowngrade
   }
 
   registered = true;
-  void getDeviceName();
-}
-
-/**
- *
- * @returns
- */
-export function getAlipayDowngradeBizId () {
-  return AlipayDowngradePlugin.currentBizId;
 }
 
 const internalPaused = Symbol('@@_inter_pause');
@@ -108,6 +93,6 @@ function resumePausedPlayers (e: Event) {
   }
 }
 
-export const version = __VERSION__;
+registerPlugin('alipay-downgrade', AlipayDowngradePlugin, DowngradeVFXItem, true);
 
 logger.info('plugin alipay downgrade version: ' + version);

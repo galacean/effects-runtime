@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Player, disableAllPlayer } from '@galacean/effects';
-import { checkDowngrade, setAlipayDowngradeBizId, resetDevicePending } from '@galacean/effects-plugin-alipay-downgrade';
+import { getDowngradeResult, setAlipayDowngradeBizId, resetDevicePending } from '@galacean/effects-plugin-alipay-downgrade';
 
 const { expect } = chai;
 
