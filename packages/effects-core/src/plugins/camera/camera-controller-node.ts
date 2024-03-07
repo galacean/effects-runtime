@@ -5,7 +5,10 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
 import { Transform } from '../../transform';
+import { effectsClass } from '../../decorators';
+import { DataType } from '@galacean/effects-core';
 
+@effectsClass(DataType.CameraController)
 export class CameraController extends ItemBehaviour {
   near: number;
   far: number;

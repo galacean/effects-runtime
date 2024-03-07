@@ -5,21 +5,15 @@ import type { Engine } from './engine';
 import { Material } from './material';
 import { Geometry } from './render';
 import type { VFXItemProps } from './vfx-item';
-import { getMergedStore } from './decorators';
 import { Texture } from './texture';
+import { effectsClassStore, getMergedStore } from './decorators';
 
 /**
  * @since 2.0.0
  * @internal
  */
 export class Deserializer {
-  private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
-
   constructor (private engine: Engine) { }
-
-  static addConstructor (constructor: new (engine: Engine) => EffectsObject | Component, type: number) {
-    Deserializer.constructorMap[type] = constructor;
-  }
 
   loadGUID<T> (guid: string): T {
     if (this.engine.objectInstance[guid]) {
@@ -52,10 +46,13 @@ export class Deserializer {
         effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
 
         break;
-      default:
-        if (Deserializer.constructorMap[effectsObjectData.dataType]) {
-          effectsObject = new Deserializer.constructorMap[effectsObjectData.dataType](this.engine);
+      default:{
+        const classConstructor = this.getClass(effectsObjectData.dataType);
+
+        if (classConstructor) {
+          effectsObject = new classConstructor(this.engine);
         }
+      }
     }
     if (!effectsObject) {
       console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
@@ -115,10 +112,13 @@ export class Deserializer {
         effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
 
         break;
-      default:
-        if (Deserializer.constructorMap[effectsObjectData.dataType]) {
-          effectsObject = new Deserializer.constructorMap[effectsObjectData.dataType](this.engine);
+      default:{
+        const classConstructor = this.getClass(effectsObjectData.dataType);
+
+        if (classConstructor) {
+          effectsObject = new classConstructor(this.engine);
         }
+      }
     }
     if (!effectsObject) {
       console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
@@ -496,6 +496,9 @@ export class Deserializer {
   private findData (uuid: string): EffectsObjectData | undefined {
     return this.engine.jsonSceneData[uuid];
   }
+  private getClass (dataType: number): new (engine: Engine) => EffectsObject {
+    return effectsClassStore[dataType];
+  }
 }
 
 export class Database {
@@ -533,7 +536,7 @@ export interface DataPath {
 export interface EffectsObjectData {
   id: string,
   name?: string,
-  dataType: DataType,
+  dataType: number,
 }
 
 export interface MaterialData extends EffectsObjectData {

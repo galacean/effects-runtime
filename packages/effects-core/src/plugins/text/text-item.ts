@@ -7,6 +7,8 @@ import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import { DEFAULT_FONTS, canvasPool } from '../../template-image';
 import { glContext } from '../../gl';
+import { effectsClass } from '../../decorators';
+import { DataType } from '@galacean/effects-core';
 
 interface CharInfo {
   /**
@@ -28,6 +30,7 @@ interface CharInfo {
  * @since 2.0.0
  * @internal
  */
+@effectsClass(DataType.TextComponent)
 export class TextComponent extends SpriteComponent {
   textStyle: TextStyle;
   isDirty = true;

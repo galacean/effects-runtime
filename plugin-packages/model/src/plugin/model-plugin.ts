@@ -13,13 +13,14 @@ import {
   spec,
   ItemBehaviour,
   PLAYER_OPTIONS_ENV_EDITOR,
+  effectsClass,
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
 import { PTransform, PSceneManager, PCoordinate } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
-import { ModelCameraComponent } from './model-item';
+import { ModelCameraComponent, ModelDataType } from './model-item';
 
 /**
  * Model 插件类，负责支持播放器中的 3D 功能
@@ -129,6 +130,7 @@ export interface ModelPluginOptions {
  * @since 2.0.0
  * @internal
  */
+@effectsClass(ModelDataType.ModelPluginComponent)
 export class ModelPluginComponent extends ItemBehaviour {
   private runtimeEnv = PLAYER_OPTIONS_ENV_EDITOR;
   private compatibleMode = 'gltf';

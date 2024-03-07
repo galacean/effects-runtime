@@ -20,6 +20,8 @@ import { Track } from '../cal/track';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
+import { effectsClass } from '../../decorators';
+import { DataType } from '@galacean/effects-core';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -128,6 +130,7 @@ export class SpriteColorPlayable extends Playable {
   }
 }
 
+@effectsClass(DataType.SpriteComponent)
 export class SpriteComponent extends RendererComponent {
   renderer: SpriteItemRenderer;
   interaction?: { behavior: spec.InteractBehavior };
