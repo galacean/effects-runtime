@@ -82,8 +82,8 @@ importers:
         specifier: ^11.1.1
         version: 11.1.1
       husky:
-        specifier: ^7.0.4
-        version: 7.0.4
+        specifier: ^9.0.11
+        version: 9.0.11
       ip:
         specifier: ^2.0.1
         version: 2.0.1
@@ -3659,9 +3659,9 @@ packages:
     engines: {node: '>=10.17.0'}
     dev: true
 
-  /husky@7.0.4:
-    resolution: {integrity: sha1-JCBIJF3EnI+xvwzHz7mN1yJTFTU=, tarball: https://registry.npmmirror.com/husky/download/husky-7.0.4.tgz}
-    engines: {node: '>=12'}
+  /husky@9.0.11:
+    resolution: {integrity: sha512-AB6lFlbwwyIqMdHYhwPe+kjOC3Oc5P3nThEoW/AaO2BX3vJDjWPFxYLxokUZOo6RNX20He3AaT8sESs9NJcmEw==}
+    engines: {node: '>=18'}
     hasBin: true
     dev: true
 
