@@ -31,7 +31,8 @@ export class EffectComponent extends RendererComponent {
   /**
    * Mesh 的 Geometry
    */
-  @serialize() geometry: Geometry;
+  @serialize()
+  geometry: Geometry;
 
   triangles: TriangleLike[] = [];
 
