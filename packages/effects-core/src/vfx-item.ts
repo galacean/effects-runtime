@@ -212,6 +212,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     const newComponent = new classConstructor(this.engine);
 
     newComponent.item = this;
+
     this.components.push(newComponent);
     newComponent.onAttached();
 

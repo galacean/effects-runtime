@@ -2,7 +2,7 @@
 import { EventSystem, EVENT_TYPE_CLICK, InteractBehavior, ThreeDisplayObject, spec } from '@galacean/effects-threejs';
 
 export function createThreePlayer (options) {
-  const { container, renderFramework = 'webgl2' } = options;
+  const { container, renderFramework = 'webgl' } = options;
   const renderOptions = {
     alpha: true,
     stencil: true,
@@ -54,6 +54,7 @@ export async function renderbyThreeDisplayObject (player, json) {
     }
   });
   scene.add(displayObject);
+
   const { currentComposition } = displayObject;
 
   renderer.render(scene, camera);
