@@ -38,14 +38,16 @@ export class TextComponent extends SpriteComponent {
 
   private char: string[];
 
-  constructor (engine: Engine, props: spec.TextContent) {
+  constructor (engine: Engine, props?: spec.TextContent) {
     super(engine, props as unknown as SpriteItemProps);
-
-    const { options } = props;
 
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+    if (!props) {
+      return;
+    }
+    const { options } = props;
 
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
@@ -55,7 +57,6 @@ export class TextComponent extends SpriteComponent {
     // Text
     this.updateTexture();
   }
-
   /**
    * 设置字号大小
    * @param value - 字号
@@ -392,6 +393,15 @@ export class TextComponent extends SpriteComponent {
 
   override fromData (data: SpriteItemProps): void {
     super.fromData(data);
+    const options = data.options as spec.TextContentOptions;
+
+    this.textStyle = new TextStyle(options);
+    this.textLayout = new TextLayout(options);
+
+    this.text = options.text;
+
+    // Text
+    this.updateTexture();
   }
 
   private getFontDesc (): string {

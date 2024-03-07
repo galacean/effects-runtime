@@ -193,7 +193,9 @@ export class Deserializer {
         }
       } else if (value instanceof Object) {
         // 非 EffectsObject 对象只递归一层
-        for (const objectValue of Object.values(value)) {
+        for (const objectKey of Object.keys(value)) {
+          const objectValue = value[objectKey];
+
           if (objectValue instanceof EffectsObject) {
             this.collectSerializableObject(objectValue, res);
           }
@@ -492,6 +494,7 @@ export enum DataType {
   CameraController,
   Geometry,
   Texture,
+  TextComponent,
 
   // FIXME: 先完成ECS的场景转换，后面移到spec中
   MeshComponent = 10000,

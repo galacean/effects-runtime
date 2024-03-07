@@ -14,6 +14,7 @@ export * from './particle/particle-loader';
 export * from './particle/particle-mesh';
 export * from './particle/particle-vfx-item';
 export * from './particle/particle-system';
+export * from './particle/particle-system-renderer';
 export * from './cal/calculate-loader';
 export * from './cal/calculate-vfx-item';
 export * from './cal/calculate-item';
