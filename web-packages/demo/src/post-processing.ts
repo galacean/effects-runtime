@@ -1,8 +1,7 @@
-// @ts-nocheck
+//@ts-nocheck
 import type { Composition } from '@galacean/effects';
 import { POST_PROCESS_SETTINGS, Player, defaultGlobalVolume, setConfig } from '@galacean/effects';
 import { InspireList } from './common/inspire-list';
-import { TreeGui } from './gui/tree-gui';
 import { InspectorGui } from './gui/inspector-gui';
 
 const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*YIKpS69QTaoAAAAAAAAAAAAADlB4AQ';
@@ -11,14 +10,9 @@ const container = document.getElementById('J-container');
 const speed = 0.5;
 const inspireList = new InspireList();
 
-const treeGui = new TreeGui();
 const inspectorGui = new InspectorGui();
 
 setInterval(()=>{
-  if (treeGui.activeItem) {
-    inspectorGui.setItem(treeGui.activeItem);
-  }
-  treeGui.update();
   inspectorGui.update();
 }, 100);
 
@@ -71,7 +65,6 @@ async function handlePlay (url) {
 
     void player.play(comp, { speed });
     setDatGUI(comp);
-    treeGui.setComposition(comp);
 
   } catch (e) {
     console.error('biz', e);

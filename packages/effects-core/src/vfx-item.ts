@@ -572,9 +572,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
   override toData (): void {
     this.taggedProperties.id = this.guid;
-    this.taggedProperties.name = this.name;
-    this.taggedProperties.type = this.type;
-    this.taggedProperties.duration = this.duration;
     this.taggedProperties.transform = this.transform.toData();
     this.taggedProperties.dataType = DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {

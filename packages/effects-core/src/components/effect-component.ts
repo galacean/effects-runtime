@@ -9,9 +9,9 @@ import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType } from '../plugins';
 import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
-import type { Disposable } from '../utils';
 import { DestroyOptions, generateGUID } from '../utils';
 import { RendererComponent } from './renderer-component';
+import { serialize } from '../decorators';
 
 let seed = 1;
 
@@ -19,7 +19,7 @@ let seed = 1;
  * @since 2.0.0
  * @internal
  */
-export class EffectComponent extends RendererComponent implements Disposable {
+export class EffectComponent extends RendererComponent {
   /**
    * Mesh 的全局唯一 id
    */
@@ -31,6 +31,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
   /**
    * Mesh 的 Geometry
    */
+  @serialize()
   geometry: Geometry;
 
   triangles: TriangleLike[] = [];
@@ -156,22 +157,12 @@ export class EffectComponent extends RendererComponent implements Disposable {
 
   override fromData (data: any): void {
     super.fromData(data);
-    this._enabled = data._enabled;
-    this._priority = data._priority;
-    this.material = data.materials[0];
-    this.geometry = data.geometry;
-
+    this.material = this.materials[0];
     this.triangles = geometryToTriangles(this.geometry);
   }
 
   override toData (): void {
     this.taggedProperties.id = this.guid;
-    this.taggedProperties.dataType = DataType.EffectComponent;
-    this.taggedProperties._enabled = this._enabled;
-    this.taggedProperties._priority = this._priority;
-    this.taggedProperties.materials = this.materials;
-    this.taggedProperties.geometry = this.geometry;
-    this.taggedProperties.item = this.item;
   }
 
   /**

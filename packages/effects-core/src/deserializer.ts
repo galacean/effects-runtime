@@ -5,6 +5,7 @@ import type { Engine } from './engine';
 import { Material } from './material';
 import { Geometry } from './render';
 import type { VFXItemProps } from './vfx-item';
+import { getMergedStore } from './decorators';
 import { Texture } from './texture';
 
 /**
@@ -13,7 +14,9 @@ import { Texture } from './texture';
  */
 export class Deserializer {
   private static constructorMap: Record<number, new (engine: Engine) => EffectsObject> = {};
+
   constructor (private engine: Engine) { }
+
   static addConstructor (constructor: new (engine: Engine) => EffectsObject | Component, type: number) {
     Deserializer.constructorMap[type] = constructor;
   }
@@ -154,13 +157,13 @@ export class Deserializer {
     this.collectSerializableObject(effectsObject, serializableMap);
 
     // 依次序列化
-    for (const effectsObjectKey of Object.keys(serializableMap)) {
-      const effectsObject = serializableMap[effectsObjectKey];
+    for (const guid of Object.keys(serializableMap)) {
+      const serializeObject = serializableMap[guid];
 
-      if (!serializedDatas[effectsObject.getInstanceId()]) {
-        serializedDatas[effectsObject.getInstanceId()] = {};
+      if (!serializedDatas[serializeObject.getInstanceId()]) {
+        serializedDatas[serializeObject.getInstanceId()] = {};
       }
-      this.serializeTaggedProperties(effectsObject, serializedDatas[effectsObject.getInstanceId()]);
+      this.serializeTaggedProperties(serializeObject, serializedDatas[serializeObject.getInstanceId()]);
     }
 
     return serializedDatas;
@@ -172,8 +175,15 @@ export class Deserializer {
     }
     effectsObject.toData();
     res[effectsObject.getInstanceId()] = effectsObject;
-    for (const key of Object.keys(effectsObject.taggedProperties)) {
-      const value = effectsObject.taggedProperties[key];
+    const serializedProperties = getMergedStore(effectsObject);
+
+    for (const key of Object.keys(serializedProperties)) {
+      // TODO 待移除，序列化属性通过 effectsObject 对象直接获取
+      let value = effectsObject.taggedProperties[key];
+
+      if (value === undefined) {
+        value = effectsObject[key as keyof EffectsObject];
+      }
 
       if (value instanceof EffectsObject) {
         this.collectSerializableObject(value, res);
@@ -198,41 +208,73 @@ export class Deserializer {
 
   deserializeTaggedProperties (serializedData: Record<string, any>, effectsObject: EffectsObject) {
     const taggedProperties = effectsObject.taggedProperties;
+    const serializedProperties = getMergedStore(effectsObject);
 
     for (const key of Object.keys(serializedData)) {
+      if (serializedProperties[key]) {
+        continue;
+      }
       const value = serializedData[key];
 
       taggedProperties[key] = this.deserializeProperty(value, 0);
     }
+    for (const key of Object.keys(serializedProperties)) {
+      const value = serializedData[key];
 
+      if (value === undefined) {
+        continue;
+      }
+
+      // FIXME: taggedProperties 为 readonly，这里存在强制赋值
+      // @ts-expect-error
+      effectsObject[key as keyof EffectsObject] = this.deserializeProperty(value, 0);
+    }
     effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
 
   async deserializeTaggedPropertiesAsync (serializedData: Record<string, any>, effectsObject: EffectsObject) {
     const taggedProperties = effectsObject.taggedProperties;
+    const serializedProperties = getMergedStore(effectsObject);
 
     for (const key of Object.keys(serializedData)) {
+      if (serializedProperties[key]) {
+        continue;
+      }
       const value = serializedData[key];
 
       taggedProperties[key] = await this.deserializePropertyAsync(value, 0);
+    }
+    for (const key of Object.keys(serializedProperties)) {
+      const value = serializedData[key];
+
+      if (value === undefined) {
+        continue;
+      }
+
+      // FIXME: taggedProperties 为 readonly，这里存在强制赋值
+      // @ts-expect-error
+      effectsObject[key as keyof EffectsObject] = await this.deserializePropertyAsync(value, 0);
     }
     effectsObject.fromData(taggedProperties as EffectsObjectData);
   }
 
   serializeTaggedProperties (effectsObject: EffectsObject, serializedData?: Record<string, any>) {
     effectsObject.toData();
-    const taggedProperties = effectsObject.taggedProperties;
-
     if (!serializedData) {
       serializedData = {};
     }
-    for (const key of Object.keys(taggedProperties)) {
-      const value = taggedProperties[key];
+    const serializedProperties = getMergedStore(effectsObject);
 
-      if (typeof value === 'number' ||
+    for (const key of Object.keys(serializedProperties)) {
+      const value = effectsObject[key as keyof EffectsObject];
+
+      if (
+        typeof value === 'number' ||
         typeof value === 'string' ||
         typeof value === 'boolean' ||
-        this.checkTypedArray(value)) { // TODO json 数据避免传 typedArray
+        this.checkTypedArray(value)
+      ) {
+        // TODO json 数据避免传 typedArray
         serializedData[key] = value;
       } else if (value instanceof Array) {
         if (!serializedData[key]) {
@@ -243,7 +285,34 @@ export class Deserializer {
         // TODO 处理 EffectsObject 递归序列化
         serializedData[key] = { id: value.getInstanceId() };
       } else if (value instanceof Object) {
+        if (!serializedData[key]) {
+          serializedData[key] = {};
+        }
+        this.serializeObjectProperty(value, serializedData[key], 0);
+      }
+    }
 
+    // TODO 待移除 tagggedProperties 为没有装饰器的临时方案
+    for (const key of Object.keys(effectsObject.taggedProperties)) {
+      const value = effectsObject.taggedProperties[key];
+
+      if (
+        typeof value === 'number' ||
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        this.checkTypedArray(value)
+      ) {
+        // TODO json 数据避免传 typedArray
+        serializedData[key] = value;
+      } else if (value instanceof Array) {
+        if (!serializedData[key]) {
+          serializedData[key] = [];
+        }
+        this.serializeArrayProperty(value, serializedData[key], 0);
+      } else if (value instanceof EffectsObject) {
+        // TODO 处理 EffectsObject 递归序列化
+        serializedData[key] = { id: value.getInstanceId() };
+      } else if (value instanceof Object) {
         if (!serializedData[key]) {
           serializedData[key] = {};
         }
@@ -260,9 +329,11 @@ export class Deserializer {
 
       return;
     }
-    if (typeof property === 'number' ||
+    if (
+      typeof property === 'number' ||
       typeof property === 'string' ||
-      typeof property === 'boolean') {
+      typeof property === 'boolean'
+    ) {
       return property;
     } else if (property instanceof Array) {
       const res = [];
@@ -326,7 +397,7 @@ export class Deserializer {
     }
   }
 
-  private serializeObjectProperty<T> (objectProperty: Record<string, any>, serializedData: Record<string, any>, level: number): any {
+  private serializeObjectProperty (objectProperty: Record<string, any>, serializedData: Record<string, any>, level: number): any {
     if (level > 10) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -339,10 +410,13 @@ export class Deserializer {
     for (const key of Object.keys(objectProperty)) {
       const value = objectProperty[key];
 
-      if (typeof value === 'number' ||
+      if (
+        typeof value === 'number' ||
         typeof value === 'string' ||
         typeof value === 'boolean' ||
-        this.checkTypedArray(objectProperty)) { // TODO json 数据避免传 typedArray
+        this.checkTypedArray(objectProperty)
+      ) {
+        // TODO json 数据避免传 typedArray
         serializedData[key] = value;
       } else if (value instanceof Array) {
         if (!serializedData[key]) {
@@ -361,7 +435,7 @@ export class Deserializer {
     }
   }
 
-  private serializeArrayProperty<T> (arrayProperty: Array<any>, serializedData: Array<any>, level: number): any {
+  private serializeArrayProperty (arrayProperty: Array<any>, serializedData: Array<any>, level: number): any {
     if (level > 10) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -374,10 +448,13 @@ export class Deserializer {
     for (let i = 0; i < arrayProperty.length; i++) {
       const value = arrayProperty[i];
 
-      if (typeof value === 'number' ||
+      if (
+        typeof value === 'number' ||
         typeof value === 'string' ||
         typeof value === 'boolean' ||
-        this.checkTypedArray(arrayProperty)) { // TODO json 数据避免传 typedArray
+        this.checkTypedArray(arrayProperty)
+      ) {
+        // TODO json 数据避免传 typedArray
         serializedData[i] = value;
       } else if (value instanceof Array) {
         if (!serializedData[i]) {
@@ -410,7 +487,10 @@ export class Deserializer {
 
   private checkDataPath (value: any): boolean {
     // check value is { id: 7e69662e964e4892ae8933f24562395b }
-    return value instanceof Object && Object.keys(value).length === 1 && value.id && value.id.length === 32;
+    return value instanceof Object &&
+      Object.keys(value).length === 1 &&
+      value.id &&
+      value.id.length === 32;
   }
 
   private findData (uuid: string): EffectsObjectData | undefined {

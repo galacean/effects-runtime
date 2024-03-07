@@ -79,7 +79,12 @@ module.exports = {
     "@typescript-eslint/ban-ts-comment": "off",
     // TODO:: will be opened
     "@typescript-eslint/ban-types": "off",
-    "@typescript-eslint/indent": ["error", 2],
+    "@typescript-eslint/indent": ["error", 2, {
+      "SwitchCase": 1,
+      "ignoredNodes": [
+        `ClassBody.body > PropertyDefinition[decorators.length > 0] > .key`,
+      ],
+    }],
     "@typescript-eslint/keyword-spacing": "error",
     // TODO:: will be opened
     "@typescript-eslint/no-var-requires": "off",
@@ -149,7 +154,7 @@ module.exports = {
   },
   overrides: [
     {
-      "files": ["**/test/**/*.ts", "**/demo/**/*.ts"],
+      "files": ["**/test/**/*.ts", "**/demo/**/*.ts", "**/web-packages/**/*.ts"],
       "rules": {
         "compat/compat": "off"
       }

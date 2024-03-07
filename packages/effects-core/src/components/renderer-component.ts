@@ -1,3 +1,4 @@
+import { serialize } from '../decorators';
 import type { Material } from '../material';
 import type { Renderer } from '../render';
 import { removeItem } from '../utils';
@@ -9,9 +10,14 @@ import { Component } from './component';
  */
 export class RendererComponent extends Component {
   started = false;
+
+  @serialize()
   materials: Material[] = [];
 
+  @serialize()
   protected _priority: number;
+
+  @serialize()
   protected _enabled = true;
 
   get priority (): number {
@@ -65,19 +71,10 @@ export class RendererComponent extends Component {
 
   override fromData (data: any): void {
     super.fromData(data);
-    // TODO 数据改造后可移除判断
-    if (data._enabled !== undefined) {
-      this._enabled = data._enabled;
-    }
   }
 
   override toData (): void {
     super.toData();
-    // 数据改造后可移除
-    this.taggedProperties = {
-      _enabled:this._enabled,
-      ...this.taggedProperties,
-    };
   }
 
   override dispose (): void {

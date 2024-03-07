@@ -1,7 +1,7 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
 import type { Component, EffectsObject, EffectsPackageData, Engine, Material, ShaderData } from '@galacean/effects';
-import { ParticleSystem, RendererComponent, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import { ParticleSystem, RendererComponent, Transform, getMergedStore, type VFXItem, type VFXItemContent } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { reactive, ref } from 'vue';
 import { assetDatabase } from '../utils';
@@ -103,7 +103,14 @@ export class InspectorGui {
     const properties: AGUIPropertyProps[] = [];
 
     this.componentProperties.push({ title: component.constructor.name, properties });
-    for (const key of Object.keys(serializedData)) {
+
+    const serializedProperties = getMergedStore(component);
+
+    for (const key of Object.keys(serializedProperties)) {
+      this.addGuiProperty(properties, key, serializedData);
+    }
+
+    for (const key of Object.keys(component.taggedProperties)) {
       this.addGuiProperty(properties, key, serializedData);
     }
   }
@@ -135,6 +142,13 @@ export class InspectorGui {
         object,
       });
     } else if (this.checkVector3(value)) {
+      guiProperties.push({
+        type: 'vector',
+        name,
+        key,
+        object,
+      });
+    } else if (this.checkEuler(value)) {
       guiProperties.push({
         type: 'vector',
         name,
@@ -177,6 +191,7 @@ export class InspectorGui {
           assetDatabase.effectsPackages[guid] = effectsPackage;
           effectsPackage.fileSummary = packageData.fileSummary;
           for (const objectData of packageData.exportObjects) {
+            assetDatabase.engine.removeInstance(objectData.id);
             effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
           }
 
@@ -323,10 +338,6 @@ export class InspectorGui {
             }
 
             serializedData.textures[uniformName] = { id:packageData.exportObjects[0].id };
-            // await inspectorGui.item.engine.deserializer.deserializeTaggedPropertiesAsync(serializedData, material);
-            // material.fromData(material.taggedProperties as EffectsObjectData);
-          // eslint-disable-next-line no-console
-            //   console.log(file);
           },
         });
       }
@@ -335,6 +346,10 @@ export class InspectorGui {
 
   checkVector3 (property: Record<string, any>) {
     return Object.keys(property).length === 3 && property['x'] !== undefined && property['y'] !== undefined && property['z'] !== undefined;
+  }
+
+  checkEuler (property: Record<string, any>) {
+    return Object.keys(property).length === 4 && property['x'] !== undefined && property['y'] !== undefined && property['z'] !== undefined;
   }
 
   checkGUID (property: Record<string, any>) {

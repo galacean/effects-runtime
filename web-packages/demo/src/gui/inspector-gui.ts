@@ -1,6 +1,5 @@
 import type { EffectComponentData, EffectsObject, EffectsPackageData, Engine, Material, SceneData, ShaderData, VFXItem, VFXItemContent } from '@galacean/effects';
 import { DataType, EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, generateGUID, glContext, loadImage } from '@galacean/effects';
-import { assetDataBase } from './asset-data-base';
 
 export class InspectorGui {
   gui: any;
@@ -15,7 +14,6 @@ export class InspectorGui {
     this.gui = new GUI();
     this.gui.addFolder('Inspector');
 
-    this.sceneData = assetDataBase.assetsData;
     // setInterval(this.updateInspector, 500);
   }
 
