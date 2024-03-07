@@ -43,8 +43,7 @@ export abstract class Component extends EffectsObject {
  * @internal
  */
 export abstract class Behaviour extends Component {
-  @serialize()
-  public _enabled = true;
+  @serialize() _enabled = true;
 
   /**
    * 组件是否可以更新，true 更新，false 不更新
