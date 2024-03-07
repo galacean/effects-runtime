@@ -4,7 +4,7 @@ import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 import { TreeGui } from './gui/tree-gui';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240306050522200/mars-preview.json'; // 贝塞尔+线性路径
+const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240307042905805/mars-preview.json';
 // 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240305030946984/mars-preview.json'; // 1条路径
 // 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240304060128455/mars-preview.json'; // 定格
 // 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240304052625290/mars-preview.json'; // 首尾复制

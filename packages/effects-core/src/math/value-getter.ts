@@ -12,16 +12,12 @@ import {
 } from '../utils';
 import type { ColorStop } from '../utils';
 import type {
-  BezierLengthData } from './bezier';
+  BezierLengthData,
+  BezierEasing } from './bezier';
 import {
-  BezierEasing,
-  BezierMap,
-  BezierPointData,
-  buildBezierData,
-  getControlPoints,
+  buildBezierData, buildEasingCurve,
 } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
-import { decimalEqual } from './utils';
 
 interface KeyFrameMeta {
   curves: ValueGetter<any>[],
@@ -670,75 +666,18 @@ export class BezierCurve extends ValueGetter<number> {
     const keyframes = props;
 
     this.curveMap = {};
-    // n个点需要分解成n-1段曲线
     for (let i = 0; i < keyframes.length - 1; i++) {
       const leftKeyframe = keyframes[i];
       const rightKeyframe = keyframes[i + 1];
 
-      // 获取控制点和曲线类型
-      const { type, p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe);
+      const { points, curve } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const s = points[0];
+      const e = points[points.length - 1];
 
-      if (type === 'line') {
-        this.curveMap[`${p0.x}&${p1.x}`] = {
-          points: [p0, p1],
-          curve: new LinearValue([p0.y, p1.y]),
-        };
-
-        // 2. 左右两边至少有一边为ease
-      } else {
-        assertExist(p2);
-        assertExist(p3);
-        const timeInterval = p3.x - p0.x;
-        const valueInterval = p3.y - p0.y;
-
-        if (decimalEqual(valueInterval, 0)) {
-          this.curveMap[`${p0.x}&${p3.x}`] = {
-            points: [p0, p1, p2, p3],
-            curve: new LinearValue([p3.y, p3.y]),
-          };
-
-          return;
-        }
-        let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
-        let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;
-        const y1 = Math.round((p1.y - p0.y) / valueInterval * 100000) / 100000;
-        const y2 = Math.round((p2.y - p0.y) / valueInterval * 100000) / 100000;
-
-        if (x1 < 0) {
-          console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
-          x1 = 0;
-        }
-        if (x2 < 0) {
-          console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
-          x2 = 0;
-        }
-        if (x1 > 1) {
-          console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
-          x1 = 1;
-        }
-        if (x2 > 1) {
-          console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
-          x2 = 1;
-        }
-
-        const str = ('bez_' + x1 + '_' + y1 + '_' + x2 + '_' + y2).replace(/\./g, 'p');
-
-        if (BezierMap[str]) {
-          this.curveMap[`${p0.x}&${p3.x}`] = {
-            points: [p0, p1, p2, p3],
-            curve: BezierMap[str],
-          };
-        } else {
-
-          const bezEasing = new BezierEasing(x1, x2, y1, y2);
-
-          BezierMap[str] = bezEasing;
-          this.curveMap[`${p0.x}&${p3.x}`] = {
-            points: [p0, p1, p2, p3],
-            curve: bezEasing,
-          };
-        }
-      }
+      this.curveMap[`${s.x}&${e.x}`] = {
+        points,
+        curve,
+      };
     }
   }
   override getValue (time: number) {
@@ -788,11 +727,13 @@ export class BezierCurve extends ValueGetter<number> {
 }
 
 export class BezierCurvePath extends ValueGetter<Vector3> {
-  curve: BezierEasing;
   curveSegments: Record<string, {
     points: Vector2[],
     easingCurve: BezierEasing | LinearValue,
-    bezierData: BezierLengthData,
+    bezierData: {
+      data: BezierLengthData,
+      interval: number[],
+    },
   }>;
   catching: {
     lastPoint: number,
@@ -807,82 +748,22 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
   override onCreate (props: spec.BezierCurvePathValue) {
     const [keyframes, points, controlPoints] = props;
 
-    // this.easingCurve = new BezierCurve(keyframes);
     this.curveSegments = {};
     for (let i = 0; i < keyframes.length - 1; i++) {
       const leftKeyframe = keyframes[i];
       const rightKeyframe = keyframes[i + 1];
-      const ps1 = new Vector3(...points[i]), ps2 = new Vector3(...points[i + 1]);
-      const cp1 = new Vector3(...controlPoints[2 * i]), cp2 = new Vector3(...controlPoints[2 * i + 1]);
+      const ps1 = new Vector3(points[i][0], points[i][1], points[i][2]), ps2 = new Vector3(points[i + 1][0], points[i + 1][1], points[i + 1][2]);
+      const cp1 = new Vector3(controlPoints[2 * i][0], controlPoints[2 * i][1], controlPoints[2 * i][2]), cp2 = new Vector3(controlPoints[2 * i + 1][0], controlPoints[2 * i + 1][1], controlPoints[2 * i + 1][2]);
 
-      // 获取控制点和曲线类型
-      const { type, p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe);
+      const { points: ps, curve: easingCurve } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const s = ps[0];
+      const e = ps[ps.length - 1];
 
-      if (type === 'line') {
-        this.curveSegments[`${p0.x}&${p1.x}`] = {
-          points: [p0, p1],
-          easingCurve: new LinearValue([p0.y, p1.y]),
-          bezierData: buildBezierData(ps1, ps2, cp1, cp2),
-        };
-
-        // 2. 左右两边至少有一边为ease
-      } else {
-        assertExist(p2);
-        assertExist(p3);
-        const timeInterval = p3.x - p0.x;
-        const valueInterval = p3.y - p0.y;
-
-        if (decimalEqual(valueInterval, 0)) {
-          this.curveSegments[`${p0.x}&${p3.x}`] = {
-            points: [p0, p1, p2, p3],
-            easingCurve: new LinearValue([p3.y, p3.y]),
-            bezierData: buildBezierData(ps1, ps2, cp1, cp2),
-          };
-
-          return;
-        }
-        let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
-        let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;
-        const y1 = Math.round((p1.y - p0.y) / valueInterval * 100000) / 100000;
-        const y2 = Math.round((p2.y - p0.y) / valueInterval * 100000) / 100000;
-
-        if (x1 < 0) {
-          console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
-          x1 = 0;
-        }
-        if (x2 < 0) {
-          console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
-          x2 = 0;
-        }
-        if (x1 > 1) {
-          console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
-          x1 = 1;
-        }
-        if (x2 > 1) {
-          console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
-          x2 = 1;
-        }
-
-        const str = ('bez_' + x1 + '_' + y1 + '_' + x2 + '_' + y2).replace(/\./g, 'p');
-
-        if (BezierMap[str]) {
-          this.curveSegments[`${p0.x}&${p3.x}`] = {
-            points: [p0, p1, p2, p3],
-            easingCurve: BezierMap[str],
-            bezierData: buildBezierData(ps1, ps2, cp1, cp2),
-          };
-        } else {
-
-          const bezEasing = new BezierEasing(x1, x2, y1, y2);
-
-          BezierMap[str] = bezEasing;
-          this.curveSegments[`${p0.x}&${p3.x}`] = {
-            points: [p0, p1, p2, p3],
-            easingCurve: bezEasing,
-            bezierData: buildBezierData(ps1, ps2, cp1, cp2),
-          };
-        }
-      }
+      this.curveSegments[`${s.x}&${e.x}`] = {
+        points: ps,
+        easingCurve,
+        bezierData: buildBezierData(ps1, ps2, cp1, cp2),
+      };
     }
   }
 
@@ -896,7 +777,9 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       return point;
     }
     if (time > keyTimeEnd) {
-      point = this.getPointInPerc(1, this.curveSegments[keyTimeData[keyTimeData.length - 1]].bezierData);
+      const bezierData = this.curveSegments[keyTimeData[keyTimeData.length - 1]].bezierData;
+
+      point = this.getPointInPerc(1, bezierData.data, bezierData.interval);
 
       return point;
     }
@@ -913,7 +796,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
         const segmentData = this.curveSegments[keyTimeData[i]].bezierData;
 
         perc = this.getPercValue(keyTimeData[i], time);
-        point = this.getPointInPerc(perc, segmentData);
+        point = this.getPointInPerc(perc, segmentData.data, segmentData.interval);
       }
     }
 
@@ -932,12 +815,12 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     }
 
     const timeInterval = p3.x - p0.x;
-    const normalizeTime = (time - p0.x) / timeInterval;
+    const normalizeTime = Math.round((time - p0.x) / timeInterval * 10000) / 10000;
 
     return curveInfo.easingCurve.getValue(normalizeTime);
   }
 
-  getPointInPerc (perc: number, curveSegment: BezierLengthData) {
+  getPointInPerc (perc: number, curveSegment: BezierLengthData, interval: number[]) {
     const point = new Vector3();
     const bezierData = curveSegment;
     let flag = true, addedLength = this.catching.lastAddedLength;
@@ -972,6 +855,12 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     this.catching.lastPoint = j;
     this.catching.lastAddedLength = addedLength - bezierData.points[j].partialLength;
 
+    point.x += interval[0];
+    point.y += interval[1];
+    point.z += interval[2];
+
+    //
+    // console.log(point, interval)
     return point;
   }
 
