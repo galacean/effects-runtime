@@ -7,6 +7,7 @@ import type { Component } from './components/component';
 import { ItemBehaviour } from './components/component';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
+import { effectsClass } from './decorators';
 import { DataType, type VFXItemData } from './deserializer';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
@@ -36,6 +37,7 @@ export type VFXItemProps =
 /**
  * 所有元素的继承的抽象类
  */
+@effectsClass(DataType.VFXItemData)
 export class VFXItem<T extends VFXItemContent> extends EffectsObject implements Disposable {
   /**
    * 元素绑定的父元素，

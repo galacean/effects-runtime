@@ -10,11 +10,14 @@ import { InteractMesh } from './interact-mesh';
 import { RendererComponent } from '../../components';
 import type { DragEventType } from './interact-vfx-item';
 import type { Renderer } from '../../render';
+import { effectsClass } from '../../decorators';
+import { DataType } from '../../deserializer';
 
 /**
  * @since 2.0.0
  * @internal
  */
+@effectsClass(DataType.InteractComponent)
 export class InteractComponent extends RendererComponent {
   clickable: boolean;
   dragEvent: DragEventType | null;

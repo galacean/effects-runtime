@@ -1,3 +1,4 @@
+export const effectsClassStore: Record<number, any> = {};
 const decoratorInitialStore: Record<string, any> = {};
 const mergedStore: Record<string, any> = {};
 
@@ -43,6 +44,20 @@ export function getMergedStore (target: any): any {
   return store;
 }
 
+export function serialize (sourceName?: string) {
+  return generateSerializableMember(0, sourceName); // value member
+}
+
+export function effectsClass (className: any) {
+  return (target: any, context?: any) => {
+    if (effectsClassStore[className]) {
+      console.warn('Class ' + className + ' 重复注册');
+    }
+    //TODO: three修改json dataType, 这边重复注册直接 return
+    effectsClassStore[className] = target;
+  };
+}
+
 function generateSerializableMember (type: number, sourceName?: string) {
   return (target: any, propertyKey: any) => {
     const classStore = getDirectStore(target);
@@ -51,8 +66,4 @@ function generateSerializableMember (type: number, sourceName?: string) {
       classStore[propertyKey] = { type: type, sourceName: sourceName };
     }
   };
-}
-
-export function serialize (sourceName?: string) {
-  return generateSerializableMember(0, sourceName); // value member
 }

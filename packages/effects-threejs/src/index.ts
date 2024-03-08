@@ -72,5 +72,3 @@ Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
 export const version = __VERSION__;
 
 logger.info('THREEJS plugin version: ' + version);
-
-Deserializer.addConstructor(ThreeSpriteComponent, DataType.SpriteComponent);

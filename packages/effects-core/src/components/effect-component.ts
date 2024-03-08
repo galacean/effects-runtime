@@ -11,7 +11,7 @@ import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
 import { DestroyOptions, generateGUID } from '../utils';
 import { RendererComponent } from './renderer-component';
-import { serialize } from '../decorators';
+import { effectsClass, serialize } from '../decorators';
 
 let seed = 1;
 
@@ -19,6 +19,7 @@ let seed = 1;
  * @since 2.0.0
  * @internal
  */
+@effectsClass(DataType.EffectComponent)
 export class EffectComponent extends RendererComponent {
   /**
    * Mesh 的全局唯一 id
