@@ -53,6 +53,7 @@ export function effectsClass (className: any) {
     if (effectsClassStore[className]) {
       console.warn('Class ' + className + ' 重复注册');
     }
+    //TODO: three修改json dataType, 这边重复注册直接 return
     effectsClassStore[className] = target;
   };
 }
