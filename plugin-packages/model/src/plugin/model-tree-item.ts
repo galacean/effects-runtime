@@ -1,6 +1,6 @@
 import { Transform, ItemBehaviour, spec, effectsClass } from '@galacean/effects';
 import type { TimelineComponent, VFXItemContent, Engine, VFXItem } from '@galacean/effects';
-import { type ModelTreeOptions, type ModelTreeContent } from '../index';
+import type { ModelTreeOptions, ModelTreeContent } from '../index';
 import { PAnimationManager } from '../runtime';
 import { getSceneManager } from './model-plugin';
 import { ModelDataType } from './model-item';
