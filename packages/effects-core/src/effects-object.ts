@@ -1,4 +1,4 @@
-import type { EffectsObjectData } from './deserializer';
+import type { EffectsObjectData } from './asset-loader';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
 import { serialize } from './decorators';
@@ -39,7 +39,6 @@ export abstract class EffectsObject {
    * 反序列化函数
    *
    * @param data - 对象的序列化的数据
-   * @param deserializer - 反序列化器
    */
   fromData (data: EffectsObjectData) {
     if (data.id) {

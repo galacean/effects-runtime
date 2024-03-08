@@ -6,7 +6,7 @@ import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
 import { Transform } from '../../transform';
 import { effectsClass } from '../../decorators';
-import { DataType } from '../../deserializer';
+import { DataType } from '../../asset-loader';
 
 @effectsClass(DataType.CameraController)
 export class CameraController extends ItemBehaviour {

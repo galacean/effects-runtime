@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import type { Database, EffectsObjectData, SceneData } from './deserializer';
-import { Deserializer } from './deserializer';
+import type { Database, EffectsObjectData, SceneData } from './asset-loader';
+import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import { glContext } from './gl';
 import type { Material } from './material';
@@ -20,7 +20,7 @@ export class Engine implements Disposable {
   gpuCapability: GPUCapability;
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
-  deserializer: Deserializer;
+  assetLoader: AssetLoader;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
 
   protected destroyed = false;
@@ -33,7 +33,7 @@ export class Engine implements Disposable {
   constructor () {
     this.jsonSceneData = {};
     this.objectInstance = {};
-    this.deserializer = new Deserializer(this);
+    this.assetLoader = new AssetLoader(this);
     this.createDefaultTexture();
   }
 
@@ -44,7 +44,7 @@ export class Engine implements Disposable {
 
   clearResources () {
     this.jsonSceneData = {};
-    this.deserializer.clearInstancePool();
+    this.objectInstance = {};
   }
 
   addEffectsObjectData (data: EffectsObjectData) {
@@ -133,7 +133,7 @@ export class Engine implements Disposable {
         continue;
       }
       if (this.database) {
-        await this.deserializer.loadGUIDAsync(itemData.id);
+        await this.assetLoader.loadGUIDAsync(itemData.id);
       }
     }
   }

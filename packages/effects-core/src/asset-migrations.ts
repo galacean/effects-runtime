@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemProps } from './vfx-item';
-import { DataType, type DataPath } from './deserializer';
+import { DataType, type DataPath } from './asset-loader';
 import type { Scene } from './scene';
 import { generateGUID } from './utils';
 

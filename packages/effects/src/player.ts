@@ -402,7 +402,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
     engine.addPackageDatas(scene);
     for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textureOptions[i] = engine.deserializer.loadGUID(scene.textureOptions[i].id);
+      scene.textureOptions[i] = engine.assetLoader.loadGUID(scene.textureOptions[i].id);
       (scene.textureOptions[i] as Texture).initialize();
     }
 

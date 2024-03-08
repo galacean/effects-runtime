@@ -11,7 +11,7 @@ import { RendererComponent } from '../../components';
 import type { DragEventType } from './interact-vfx-item';
 import type { Renderer } from '../../render';
 import { effectsClass } from '../../decorators';
-import { DataType } from '../../deserializer';
+import { DataType } from '../../asset-loader';
 
 /**
  * @since 2.0.0

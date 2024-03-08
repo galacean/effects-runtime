@@ -1,8 +1,8 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { GeometryData } from '../deserializer';
-import { DataType } from '../deserializer';
+import type { GeometryData } from '../asset-loader';
+import { DataType } from '../asset-loader';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';

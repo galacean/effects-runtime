@@ -1,7 +1,7 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
 import type { Component, EffectsObject, EffectsPackageData, Engine, Material, ShaderData } from '@galacean/effects';
-import { ParticleSystem, RendererComponent, Transform, getMergedStore, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import { ParticleSystem, RendererComponent, Transform, getMergedStore, type VFXItem, type VFXItemContent, SerializationHelper } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { reactive, ref } from 'vue';
 import { assetDatabase } from '../utils';
@@ -192,7 +192,7 @@ export class InspectorGui {
           effectsPackage.fileSummary = packageData.fileSummary;
           for (const objectData of packageData.exportObjects) {
             assetDatabase.engine.removeInstance(objectData.id);
-            effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+            effectsPackage.exportObjects.push(await assetDatabase.engine.assetLoader.loadGUIDAsync(objectData.id));
           }
 
           object[key] = { id:packageData.exportObjects[0].id };
@@ -334,7 +334,7 @@ export class InspectorGui {
             assetDatabase.effectsPackages[guid] = effectsPackage;
             effectsPackage.fileSummary = packageData.fileSummary;
             for (const objectData of packageData.exportObjects) {
-              effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+              effectsPackage.exportObjects.push(await assetDatabase.engine.assetLoader.loadGUIDAsync(objectData.id));
             }
 
             serializedData.textures[uniformName] = { id:packageData.exportObjects[0].id };
@@ -575,11 +575,11 @@ export class SerializedObject {
   }
 
   update () {
-    this.engine.deserializer.serializeTaggedProperties(this.target, this.serializedData);
+    SerializationHelper.serializeTaggedProperties(this.target, this.serializedData);
   }
 
   async applyModifiedProperties () {
-    await this.engine.deserializer.deserializeTaggedPropertiesAsync(this.serializedData, this.target);
+    await SerializationHelper.deserializeTaggedPropertiesAsync(this.serializedData, this.target);
     // assetDatabase.setDirty(this.target);
   }
 }
