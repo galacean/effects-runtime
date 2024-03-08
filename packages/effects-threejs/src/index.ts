@@ -1,13 +1,7 @@
 import type {
-  Engine,
-  GeometryMeshProps, GeometryProps, MaterialProps, TextureDataType, TextureSourceOptions,
+  Engine, GeometryMeshProps, GeometryProps, MaterialProps, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
-import {
-  Geometry, Material, Mesh,
-  Texture,
-  logger,
-  setMaxSpriteMeshItemCount,
-} from '@galacean/effects-core';
+import { Geometry, Material, Mesh, Texture, logger, setMaxSpriteMeshItemCount } from '@galacean/effects-core';
 import { ThreeMaterial } from './material';
 import { ThreeGeometry } from './three-geometry';
 import { ThreeMesh } from './three-mesh';

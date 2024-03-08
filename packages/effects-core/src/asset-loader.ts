@@ -13,7 +13,9 @@ import type { VFXItemProps } from './vfx-item';
  * @internal
  */
 export class AssetLoader {
-  constructor (private engine: Engine) { }
+  constructor (
+    private engine: Engine,
+  ) { }
 
   loadGUID<T> (guid: string): T {
     if (this.engine.objectInstance[guid]) {
@@ -46,7 +48,7 @@ export class AssetLoader {
         effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
 
         break;
-      default:{
+      default: {
         const classConstructor = AssetLoader.getClass(effectsObjectData.dataType);
 
         if (classConstructor) {
@@ -112,7 +114,7 @@ export class AssetLoader {
         effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
 
         break;
-      default:{
+      default: {
         const classConstructor = AssetLoader.getClass(effectsObjectData.dataType);
 
         if (classConstructor) {

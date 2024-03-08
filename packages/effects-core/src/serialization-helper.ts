@@ -1,10 +1,9 @@
-import { effectsClassStore, getMergedStore } from './decorators';
+import { getMergedStore } from './decorators';
 import type { EffectsObjectData, DataPath } from './asset-loader';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 
 export class SerializationHelper {
-
   static collectSerializableObject (effectsObject: EffectsObject, res: Record<string, EffectsObject>) {
     if (res[effectsObject.getInstanceId()]) {
       return;
@@ -80,9 +79,9 @@ export class SerializationHelper {
 
       if (
         typeof value === 'number' ||
-          typeof value === 'string' ||
-          typeof value === 'boolean' ||
-          SerializationHelper.checkTypedArray(value)
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        SerializationHelper.checkTypedArray(value)
       ) {
         // TODO json 数据避免传 typedArray
         serializedData[key] = value;
@@ -108,9 +107,9 @@ export class SerializationHelper {
 
       if (
         typeof value === 'number' ||
-          typeof value === 'string' ||
-          typeof value === 'boolean' ||
-          SerializationHelper.checkTypedArray(value)
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        SerializationHelper.checkTypedArray(value)
       ) {
         // TODO json 数据避免传 typedArray
         serializedData[key] = value;
@@ -296,9 +295,9 @@ export class SerializationHelper {
 
       if (
         typeof value === 'number' ||
-          typeof value === 'string' ||
-          typeof value === 'boolean' ||
-          SerializationHelper.checkTypedArray(objectProperty)
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        SerializationHelper.checkTypedArray(objectProperty)
       ) {
         // TODO json 数据避免传 typedArray
         serializedData[key] = value;
@@ -334,9 +333,9 @@ export class SerializationHelper {
 
       if (
         typeof value === 'number' ||
-          typeof value === 'string' ||
-          typeof value === 'boolean' ||
-          SerializationHelper.checkTypedArray(arrayProperty)
+        typeof value === 'string' ||
+        typeof value === 'boolean' ||
+        SerializationHelper.checkTypedArray(arrayProperty)
       ) {
         // TODO json 数据避免传 typedArray
         serializedData[i] = value;
