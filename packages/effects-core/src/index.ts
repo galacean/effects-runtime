@@ -34,7 +34,7 @@ export * from './shader';
 export * from './shape';
 export * from './template-image';
 export * from './texture';
-export * from './serializationHelper';
+export * from './serialization-helper';
 export * from './ticker';
 export * from './transform';
 export * from './utils';

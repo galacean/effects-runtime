@@ -4,7 +4,7 @@ import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { Material } from './material';
 import { Geometry } from './render';
-import { SerializationHelper } from './serializationHelper';
+import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
 import type { VFXItemProps } from './vfx-item';
 
