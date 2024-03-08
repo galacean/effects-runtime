@@ -36,6 +36,8 @@ export class EffectComponent extends RendererComponent {
   geometry: Geometry;
 
   triangles: TriangleLike[] = [];
+  //TODO 抽象到射线碰撞检测组件
+  hitTestGeometry: Geometry;
 
   protected destroyed = false;
 
@@ -138,7 +140,10 @@ export class EffectComponent extends RendererComponent {
   getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
 
-    this.triangles = geometryToTriangles(this.geometry);
+    if (this.hitTestGeometry !== this.geometry) {
+      this.triangles = geometryToTriangles(this.geometry);
+      this.hitTestGeometry = this.geometry;
+    }
     const area = [];
 
     for (const triangle of this.triangles) {
