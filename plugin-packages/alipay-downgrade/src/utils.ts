@@ -1,4 +1,5 @@
-import { spec, isString } from '@galacean/effects';
+import { spec, isString, disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger } from '@galacean/effects';
+import { AlipayDowngradePlugin } from './alipay-downgrade-plugin';
 
 declare global {
   interface Window {
@@ -7,6 +8,19 @@ declare global {
 }
 
 export interface DowngradeOptions {
+  /**
+   * 发生 gl lost 时，是否忽略
+   * @default false - 不忽略，将不再允许任何播放器创建，会全部走降级逻辑
+   */
+  ignoreGLLost?: boolean,
+  /**
+   * 禁用压后台的时候自动暂停播放器
+   * @default false
+   */
+  autoPause?: boolean,
+  /**
+   * 技术点列表
+   */
   techPoint?: string[],
   callBridge?: (bizId: string, option: any, callback: (res: any) => void) => void,
 }
@@ -42,10 +56,18 @@ const DEVICE_LEVEL_MEDIUM = 'medium';
 const DEVICE_LEVEL_LOW = 'low';
 const DEVICE_LEVEL_NONE = 'none';
 
+let hasRegisterEvent = false;
+
 export async function getDowngradeResult (
   bizId?: string,
   options: DowngradeOptions = {},
 ): Promise<DowngradeResult> {
+
+  if (!hasRegisterEvent) {
+    registerEvent(options);
+    hasRegisterEvent = true;
+  }
+
   if (bizId === mockIdFail || bizId === mockIdPass) {
     return Promise.resolve({ mock : { downgrade: bizId === mockIdFail } });
   }
@@ -84,6 +106,32 @@ export async function getDowngradeResult (
     });
   } else {
     return Promise.resolve({ noAlipayEnv: true });
+  }
+}
+
+function registerEvent (options: DowngradeOptions) {
+  const { ignoreGLLost, autoPause } = options;
+  const downgradeWhenGLLost = ignoreGLLost !== true;
+
+  window.addEventListener('unload', () => {
+    getActivePlayers().forEach(player => player.dispose());
+  });
+
+  window.addEventListener('webglcontextlost', e => {
+    if (isCanvasUsedByPlayer(e.target as HTMLCanvasElement)) {
+      AlipayDowngradePlugin.glLostOccurred = true;
+      console.error('webgl lost occur');
+      if (downgradeWhenGLLost) {
+        console.warn('webgl lost occur, all players will be downgraded from now on');
+        disableAllPlayer(true);
+        getActivePlayers().forEach(player => player.dispose());
+      }
+    }
+  }, true);
+
+  if (autoPause) {
+    document.addEventListener('pause', pauseAllActivePlayers);
+    document.addEventListener('resume', resumePausedPlayers);
   }
 }
 
@@ -265,5 +313,38 @@ export function getRenderLevelByDevice (renderLevel?: spec.RenderLevel): spec.Re
     return device.getRenderLevel();
   } else {
     return /[ABS]/.test(renderLevel) ? renderLevel : spec.RenderLevel.S;
+  }
+}
+
+const internalPaused = Symbol('@@_inter_pause');
+
+function pauseAllActivePlayers (e: Event) {
+  if (e.target === document) {
+    logger.info('Auto pause all players with data offloaded');
+    const players = getActivePlayers();
+
+    players.forEach(player => {
+      if (!player.paused) {
+        player.pause({ offloadTexture: true });
+        // @ts-expect-error
+        player[internalPaused] = true;
+      }
+    });
+  }
+}
+
+function resumePausedPlayers (e: Event) {
+  if (e.target === document) {
+    logger.info('auto resume all players');
+    const players = getActivePlayers();
+
+    players.forEach(player => {
+      // @ts-expect-error
+      if (player[internalPaused]) {
+        void player.resume();
+        // @ts-expect-error
+        player[internalPaused] = false;
+      }
+    });
   }
 }
