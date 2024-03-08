@@ -36,12 +36,12 @@ export class EffectComponent extends RendererComponent {
   geometry: Geometry;
 
   triangles: TriangleLike[] = [];
-  //TODO 抽象到射线碰撞检测组件
-  hitTestGeometry: Geometry;
 
   protected destroyed = false;
 
   private visible = false;
+  // TODO: 抽象到射线碰撞检测组件
+  private hitTestGeometry: Geometry;
 
   constructor (engine: Engine) {
     super(engine);
