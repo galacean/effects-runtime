@@ -138,6 +138,7 @@ export class EffectComponent extends RendererComponent {
   getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
 
+    this.triangles = geometryToTriangles(this.geometry);
     const area = [];
 
     for (const triangle of this.triangles) {
@@ -159,7 +160,6 @@ export class EffectComponent extends RendererComponent {
   override fromData (data: any): void {
     super.fromData(data);
     this.material = this.materials[0];
-    this.triangles = geometryToTriangles(this.geometry);
   }
 
   override toData (): void {
