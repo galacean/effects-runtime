@@ -113,7 +113,7 @@ export async function loadJson (data: any) {
 }
 
 function buildProject (composition: Composition, json: any) {
-  const deserializer = composition.getEngine().deserializer;
+  const assetLoader = composition.getEngine().assetLoader;
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
   for (const item of composition.items) {
@@ -205,7 +205,7 @@ function buildProject (composition: Composition, json: any) {
 }
 
 async function saveScene (composition: Composition, json: any) {
-  const deserializer = composition.getEngine().deserializer;
+  const assetLoader = composition.getEngine().assetLoader;
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
   for (const item of composition.items) {

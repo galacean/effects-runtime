@@ -192,7 +192,7 @@ export class InspectorGui {
           effectsPackage.fileSummary = packageData.fileSummary;
           for (const objectData of packageData.exportObjects) {
             assetDatabase.engine.removeInstance(objectData.id);
-            effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+            effectsPackage.exportObjects.push(await assetDatabase.engine.assetLoader.loadGUIDAsync(objectData.id));
           }
 
           object[key] = { id:packageData.exportObjects[0].id };
@@ -334,7 +334,7 @@ export class InspectorGui {
             assetDatabase.effectsPackages[guid] = effectsPackage;
             effectsPackage.fileSummary = packageData.fileSummary;
             for (const objectData of packageData.exportObjects) {
-              effectsPackage.exportObjects.push(await assetDatabase.engine.deserializer.loadGUIDAsync(objectData.id));
+              effectsPackage.exportObjects.push(await assetDatabase.engine.assetLoader.loadGUIDAsync(objectData.id));
             }
 
             serializedData.textures[uniformName] = { id:packageData.exportObjects[0].id };

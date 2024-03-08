@@ -39,7 +39,6 @@ export abstract class EffectsObject {
    * 反序列化函数
    *
    * @param data - 对象的序列化的数据
-   * @param deserializer - 反序列化器
    */
   fromData (data: EffectsObjectData) {
     if (data.id) {

@@ -229,7 +229,7 @@ export class SerializationHelper {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
-      return engine.deserializer.loadGUID((property as DataPath).id);
+      return engine.assetLoader.loadGUID((property as DataPath).id);
     } else if (property instanceof EffectsObject || SerializationHelper.checkTypedArray(property)) {
       return property;
     } else if (property instanceof Object) {
@@ -264,7 +264,7 @@ export class SerializationHelper {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
-      const res = await engine.deserializer.loadGUIDAsync((property as DataPath).id);
+      const res = await engine.assetLoader.loadGUIDAsync((property as DataPath).id);
 
       return res;
     } else if (property instanceof EffectsObject || SerializationHelper.checkTypedArray(property)) {

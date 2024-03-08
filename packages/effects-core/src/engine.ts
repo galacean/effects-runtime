@@ -20,7 +20,7 @@ export class Engine implements Disposable {
   gpuCapability: GPUCapability;
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
-  deserializer: AssetLoader;
+  assetLoader: AssetLoader;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
 
   protected destroyed = false;
@@ -33,7 +33,7 @@ export class Engine implements Disposable {
   constructor () {
     this.jsonSceneData = {};
     this.objectInstance = {};
-    this.deserializer = new AssetLoader(this);
+    this.assetLoader = new AssetLoader(this);
     this.createDefaultTexture();
   }
 
@@ -133,7 +133,7 @@ export class Engine implements Disposable {
         continue;
       }
       if (this.database) {
-        await this.deserializer.loadGUIDAsync(itemData.id);
+        await this.assetLoader.loadGUIDAsync(itemData.id);
       }
     }
   }
