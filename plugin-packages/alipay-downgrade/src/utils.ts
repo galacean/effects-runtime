@@ -15,13 +15,20 @@ export interface DowngradeOptions {
   ignoreGLLost?: boolean,
   /**
    * 禁用压后台的时候自动暂停播放器
-   * @default false
+   * @default false - 不自动暂停
    */
   autoPause?: boolean,
   /**
    * 技术点列表
    */
   techPoint?: string[],
+  /**
+   * 降级 API
+   * @param bizId - 业务Id
+   * @param option - 参数
+   * @param callback - 回调函数
+   * @returns 降级结果
+   */
   callBridge?: (bizId: string, option: any, callback: (res: any) => void) => void,
 }
 
@@ -210,7 +217,7 @@ class DeviceProxy {
     return {
       isIOS: this.isIOS,
       model: this.model,
-      performance: this.deviceLevel,
+      deviceLevel: this.deviceLevel,
     };
   }
 }

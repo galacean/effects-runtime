@@ -17,6 +17,7 @@ export class AlipayDowngradePlugin extends AbstractPlugin {
     if (AlipayDowngradePlugin.glLostOccurred) {
       return Promise.reject('gl lost happened');
     }
+
     const downgradeResult = options.pluginData?.['downgrade'];
 
     if (downgradeResult) {
@@ -26,7 +27,7 @@ export class AlipayDowngradePlugin extends AbstractPlugin {
         throw new Error(`downgraded, reason: ${downgradeDecision.reason}`);
       }
     } else {
-      console.warn('No downgrade result in pluginData');
+      console.warn('No downgrade result in pluginData of SceneLoadOptions');
     }
 
     if (!options.renderLevel) {

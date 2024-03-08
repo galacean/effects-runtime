@@ -1,4 +1,4 @@
-import { getDowngradeResult, setAlipayDowngradeBizId } from '@galacean/effects-plugin-alipay-downgrade';
+import { getDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
 
 (async () => {
   let bizId = 'test';
@@ -8,7 +8,7 @@ import { getDowngradeResult, setAlipayDowngradeBizId } from '@galacean/effects-p
     bizId = matches[1];
     console.info('Input bizId:', bizId);
   }
-  setAlipayDowngradeBizId();
+
   const result = await getDowngradeResult(bizId);
   const label = document.createElement('label');
 
