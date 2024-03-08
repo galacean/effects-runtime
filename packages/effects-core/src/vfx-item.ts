@@ -8,7 +8,7 @@ import { ItemBehaviour } from './components/component';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
-import { DataType, type VFXItemData } from './deserializer';
+import { DataType, type VFXItemData } from './asset-loader';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { convertAnchor } from './math';

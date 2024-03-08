@@ -1,7 +1,7 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
 import type { Component, EffectsObject, EffectsPackageData, Engine, Material, ShaderData } from '@galacean/effects';
-import { ParticleSystem, RendererComponent, Transform, getMergedStore, type VFXItem, type VFXItemContent } from '@galacean/effects';
+import { ParticleSystem, RendererComponent, Transform, getMergedStore, type VFXItem, type VFXItemContent, SerializationHelper } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { reactive, ref } from 'vue';
 import { assetDatabase } from '../utils';
@@ -575,11 +575,11 @@ export class SerializedObject {
   }
 
   update () {
-    this.engine.deserializer.serializeTaggedProperties(this.target, this.serializedData);
+    SerializationHelper.serializeTaggedProperties(this.target, this.serializedData);
   }
 
   async applyModifiedProperties () {
-    await this.engine.deserializer.deserializeTaggedPropertiesAsync(this.serializedData, this.target);
+    await SerializationHelper.deserializeTaggedPropertiesAsync(this.serializedData, this.target);
     // assetDatabase.setDirty(this.target);
   }
 }

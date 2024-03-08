@@ -1,5 +1,5 @@
 import type { EffectComponentData, EffectsObject, EffectsPackageData, Engine, Material, SceneData, ShaderData, VFXItem, VFXItemContent } from '@galacean/effects';
-import { DataType, EffectComponent, ItemBehaviour, RendererComponent, Texture, TimelineComponent, generateGUID, glContext, loadImage } from '@galacean/effects';
+import { DataType, EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, TimelineComponent, generateGUID, glContext, loadImage } from '@galacean/effects';
 
 export class InspectorGui {
   gui: any;
@@ -79,7 +79,7 @@ export class InspectorGui {
                     const guid = effectComponent.getInstanceId();
 
                     (this.item.engine.jsonSceneData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
-                    this.item.engine.deserializer.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent);
+                    SerializationHelper.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent);
                   }
                 }
                 this.itemDirtyFlag = true;
@@ -98,7 +98,7 @@ export class InspectorGui {
                     const guid = effectComponent.getInstanceId();
 
                     (this.item.engine.jsonSceneData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
-                    this.item.engine.deserializer.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent);
+                    SerializationHelper.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent);
                   }
                 }
               });
@@ -243,7 +243,7 @@ export class InspectorGui {
             const texture = Texture.create(this.item.engine, { image: image, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT });
 
             texture.setInstanceId(assetUuid);
-            serializeObject.engine.deserializer.addInstance(texture);
+            serializeObject.engine.addInstance(texture);
             serializeObject.serializedData.textures[uniformName] = { id: texture.getInstanceId() };
             serializeObject.applyModifiedProperties();
           },
@@ -307,10 +307,10 @@ export class SerializedObject {
   }
 
   update () {
-    this.engine.deserializer.serializeTaggedProperties(this.target, this.serializedData);
+    SerializationHelper.serializeTaggedProperties(this.target, this.serializedData);
   }
 
   applyModifiedProperties () {
-    this.engine.deserializer.deserializeTaggedProperties(this.serializedData, this.target);
+    SerializationHelper.deserializeTaggedProperties(this.serializedData, this.target);
   }
 }

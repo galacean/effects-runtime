@@ -1,4 +1,4 @@
-import type { EffectsObjectData } from './deserializer';
+import type { EffectsObjectData } from './asset-loader';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
 import { serialize } from './decorators';

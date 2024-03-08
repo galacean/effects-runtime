@@ -8,7 +8,7 @@ import { TextStyle } from './text-style';
 import { DEFAULT_FONTS, canvasPool } from '../../template-image';
 import { glContext } from '../../gl';
 import { effectsClass } from '../../decorators';
-import { DataType } from '../../deserializer';
+import { DataType } from '../../asset-loader';
 
 interface CharInfo {
   /**
