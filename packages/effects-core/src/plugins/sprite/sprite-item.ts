@@ -21,7 +21,7 @@ import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/cli
 import { HitTestType } from '../interact/click-handler';
 import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
 import { effectsClass } from '../../decorators';
-import { DataType } from '@galacean/effects-core';
+import { DataType } from '../../deserializer';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent

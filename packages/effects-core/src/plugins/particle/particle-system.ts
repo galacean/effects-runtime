@@ -23,7 +23,7 @@ import { TimelineComponent } from '../cal/calculate-item';
 import { Track } from '../cal/track';
 import { ParticleBehaviourPlayable } from './particle-vfx-item';
 import { effectsClass } from '../../decorators';
-import { DataType } from '@galacean/effects-core';
+import { DataType } from '../../deserializer';
 
 type ParticleSystemRayCastOptions = {
   ray: Ray,
