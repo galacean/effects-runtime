@@ -40,6 +40,8 @@ export class EffectComponent extends RendererComponent {
   protected destroyed = false;
 
   private visible = false;
+  // TODO: 抽象到射线碰撞检测组件
+  private hitTestGeometry: Geometry;
 
   constructor (engine: Engine) {
     super(engine);
@@ -138,6 +140,10 @@ export class EffectComponent extends RendererComponent {
   getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
 
+    if (this.hitTestGeometry !== this.geometry) {
+      this.triangles = geometryToTriangles(this.geometry);
+      this.hitTestGeometry = this.geometry;
+    }
     const area = [];
 
     for (const triangle of this.triangles) {
@@ -159,7 +165,6 @@ export class EffectComponent extends RendererComponent {
   override fromData (data: any): void {
     super.fromData(data);
     this.material = this.materials[0];
-    this.triangles = geometryToTriangles(this.geometry);
   }
 
   override toData (): void {
