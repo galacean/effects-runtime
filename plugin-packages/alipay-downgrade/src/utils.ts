@@ -65,11 +65,7 @@ const DEVICE_LEVEL_NONE = 'none';
 
 let hasRegisterEvent = false;
 
-export async function getDowngradeResult (
-  bizId?: string,
-  options: DowngradeOptions = {},
-): Promise<DowngradeResult> {
-
+export async function getDowngradeResult (bizId: string, options: DowngradeOptions = {}): Promise<DowngradeResult> {
   if (!hasRegisterEvent) {
     registerEvent(options);
     hasRegisterEvent = true;
@@ -179,9 +175,7 @@ class DeviceProxy {
   }
 
   hasDeviceLevel (): boolean {
-    return this.deviceLevel === DEVICE_LEVEL_HIGH
-      || this.deviceLevel === DEVICE_LEVEL_MEDIUM
-      || this.deviceLevel === DEVICE_LEVEL_LOW;
+    return isDeviceLevel(this.deviceLevel);
   }
 
   setBySystemInfo (systemInfo: SystemInfo) {
@@ -271,7 +265,7 @@ function parseDowngradeResult (result: any) {
         if (deviceInfo) {
           const { deviceLevel } = deviceInfo;
 
-          if (deviceLevel) {
+          if (isDeviceLevel(deviceLevel)) {
             device.deviceLevel = deviceLevel;
           }
         }
@@ -321,6 +315,12 @@ export function getRenderLevelByDevice (renderLevel?: spec.RenderLevel): spec.Re
   } else {
     return /[ABS]/.test(renderLevel) ? renderLevel : spec.RenderLevel.S;
   }
+}
+
+function isDeviceLevel (deviceLevel?: string): boolean {
+  return deviceLevel === DEVICE_LEVEL_HIGH
+    || deviceLevel === DEVICE_LEVEL_MEDIUM
+    || deviceLevel === DEVICE_LEVEL_LOW;
 }
 
 const internalPaused = Symbol('@@_inter_pause');
