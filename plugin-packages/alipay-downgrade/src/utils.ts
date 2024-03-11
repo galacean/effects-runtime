@@ -45,6 +45,7 @@ export interface DowngradeResult {
   bizId?: string,
   systemInfo?: any,
   downgradeResult?: any,
+  totalTime?: number,
   mock?: {
     downgrade: boolean,
     deviceLevel?: string,
@@ -99,8 +100,10 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
         };
 
         const downgradeCallback = (result: any) => {
-          console.info(`downgrade time: ${performance.now() - now}ms`);
-          resolve({ bizId, systemInfo, downgradeResult: result });
+          const totalTime = performance.now() - now;
+
+          console.info(`downgrade time: ${totalTime}ms`);
+          resolve({ bizId, systemInfo, downgradeResult: result, totalTime });
         };
 
         const callBridge = options.callBridge ?? ap.call;
