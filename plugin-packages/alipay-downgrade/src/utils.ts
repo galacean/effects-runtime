@@ -42,6 +42,7 @@ type SystemInfo = {
 
 export interface DowngradeResult {
   noAlipayEnv?: boolean,
+  bizId?: string,
   systemInfo?: any,
   downgradeResult?: any,
   mock?: {
@@ -99,7 +100,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 
         const downgradeCallback = (result: any) => {
           console.info(`downgrade time: ${performance.now() - now}ms`);
-          resolve({ systemInfo, downgradeResult: result });
+          resolve({ bizId, systemInfo, downgradeResult: result });
         };
 
         const callBridge = options.callBridge ?? ap.call;
