@@ -26,6 +26,12 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
       },
     });
   } catch (e) {
+    const label = document.createElement('label');
+
+    // @ts-expect-error
+    label.innerText = JSON.stringify(e.message, undefined, 2);
+    document.body.appendChild(document.createElement('br'));
+    document.body.appendChild(label);
     console.error('biz', e);
     // @ts-expect-error
     container.innerHTML = `<img src="${imageUrl}" />`;
