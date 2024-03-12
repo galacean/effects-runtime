@@ -390,7 +390,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     if (!this.skeleton) {
       throw new Error('Set skin before skeleton create');
     }
-    if (!skin || !this.skinList.includes(skin)) {
+    if (!skin || (skin !== 'default' && !this.skinList.includes(skin))) {
       throw new Error(`skin ${skin} not exists in skinList: ${this.skinList}`);
     }
     this.skeleton.setSkinByName(skin);
