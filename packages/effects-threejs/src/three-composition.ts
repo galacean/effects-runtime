@@ -2,10 +2,9 @@ import type {
   Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem,
   MessageItem, CompositionProps, CompositionSourceManager,
 } from '@galacean/effects-core';
-import { Composition, CompositionComponent } from '@galacean/effects-core';
-import { ThreeRenderFrame } from './three-render-frame';
-import { ThreeTexture } from './three-texture';
+import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
 import type THREE from 'three';
+import { ThreeTexture } from './three-texture';
 
 /**
  * 基础 composition 参数
@@ -57,15 +56,15 @@ export interface CompositionBaseProps {
   onPlayerPause?: (item: VFXItem<VFXItemContent>) => void,
 }
 
-export interface ThreeCompositionProps extends CompositionBaseProps {
+export interface ThreeCompositionProps extends CompositionProps {
   /**
-   * 指定合成名字
+   * Three.js 中的相机对象
    */
-  compositionName?: string,
+  threeCamera?: THREE.Camera,
   /**
-   * 是否多合成
+   * Three.js 中的 Group 对象
    */
-  multipleCompositions?: boolean,
+  threeGroup?: THREE.Group,
 }
 
 /**
@@ -77,44 +76,14 @@ export class ThreeComposition extends Composition {
    */
   static shape: Record<string, number> = {};
 
-  /**
-   * 相机参数
-   */
-  threeCamera: THREE.Camera;
-
   constructor (
-    props: CompositionProps,
+    props: ThreeCompositionProps,
     scene: Scene,
     compositionSourceManager: CompositionSourceManager,
   ) {
     super(props, scene, compositionSourceManager);
-    this.compositionSourceManager.sourceContent?.items.forEach(item => {
-      //@ts-expect-error
-      const shape = item.content.renderer.shape;
 
-      if (shape) {
-        Object.keys(shape).forEach(name => {
-          const buffer = shape[name];
-
-          if (!ThreeComposition.shape[name]) {
-            ThreeComposition.shape[name] = 0;
-          }
-          ThreeComposition.shape[name] += buffer.length;
-        });
-      }
-    });
     this.rootItem.getComponent(CompositionComponent)!.resetStatus();
-  }
-
-  /**
-   * 开始
-   */
-  override createRenderFrame () {
-    this.renderFrame = new ThreeRenderFrame({
-      camera: this.camera,
-      keepColorBuffer: this.keepColorBuffer,
-      renderer: this.renderer,
-    });
   }
 
   /**
@@ -124,17 +93,33 @@ export class ThreeComposition extends Composition {
     this.textures.map(tex => (tex as ThreeTexture).startVideo());
   }
 
-  /**
-   * 更新相机
-   */
-  override updateCamera () {
-    const renderFrame = (this.renderFrame as ThreeRenderFrame);
+  override prepareRender (): void {
+    const render = this.renderer;
+    const frame = this.renderFrame;
 
-    // TODO: 这些后面可以挪到renderframe中去，目前composition干的事太多了
-    if (renderFrame.threeCamera) {
-      renderFrame.updateMatrix();
-    } else {
-      renderFrame.updateUniform();
+    frame._renderPasses[0].meshes.length = 0;
+
+    // 主合成元素
+    for (const vfxItem of this.rootComposition.items) {
+      const rendererComponents = vfxItem.getComponents(RendererComponent);
+
+      for (const rendererComponent of rendererComponents) {
+        if (rendererComponent.isActiveAndEnabled) {
+          rendererComponent.render(render);
+        }
+      }
+    }
+    // 预合成元素
+    for (const refContent of this.refContent) {
+      for (const vfxItem of refContent.getComponent(CompositionComponent)!.items) {
+        const rendererComponents = vfxItem.getComponents(RendererComponent);
+
+        for (const rendererComponent of rendererComponents) {
+          if (rendererComponent.isActiveAndEnabled) {
+            rendererComponent.render(render);
+          }
+        }
+      }
     }
   }
 

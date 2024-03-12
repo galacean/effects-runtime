@@ -68,7 +68,7 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.items.length = 0;
     if (this.item.composition) {
-      const deserializer = this.item.engine.deserializer;
+      const assetLoader = this.item.engine.assetLoader;
       // TODO spec 定义新类型后 as 移除
       const jsonScene = this.item.composition.compositionSourceManager.jsonScene!;
 
@@ -111,6 +111,7 @@ export class CompositionComponent extends ItemBehaviour {
         } else if (
           itemData.type === 'ECS' ||
           itemData.type === spec.ItemType.sprite ||
+          itemData.type === spec.ItemType.text ||
           itemData.type === spec.ItemType.particle ||
           itemData.type === spec.ItemType.mesh ||
           itemData.type === spec.ItemType.skybox ||
@@ -120,8 +121,10 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === spec.ItemType.interact ||
           itemData.type === spec.ItemType.camera
         ) {
-          item = deserializer.loadGUID(itemData.id);
+
+          item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
+
         } else {
           // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣
           item = new VFXItem(this.engine, itemData);

@@ -1,11 +1,10 @@
 import type { VFXItemContent } from '@galacean/effects';
 import { EffectComponent, VFXItem, type Composition } from '@galacean/effects';
-import { M_DUCK, G_QUAD, G_CUBE } from '@galacean/effects-assets';
 
 export class MenuGui {
   composition: Composition;
 
-  constructor () {}
+  constructor () { }
 
   setComposition (composition: Composition) {
     this.composition = composition;
@@ -22,11 +21,8 @@ export class MenuGui {
     effectItem.type = 'ECS';
     const effectComponent = effectItem.addComponent(EffectComponent);
 
-    const trailMaterialData = M_DUCK.exportObjects[0];
-    const quadGeometryData = G_CUBE.exportObjects[0];
-
-    effectComponent.geometry = await engine.deserializer.loadGUIDAsync(geometryGuid);
-    effectComponent.material = await engine.deserializer.loadGUIDAsync('f23adccff3694fd98a0b905c9698188a');
+    effectComponent.geometry = await engine.assetLoader.loadGUIDAsync(geometryGuid);
+    effectComponent.material = await engine.assetLoader.loadGUIDAsync('f23adccff3694fd98a0b905c9698188a');
     composition.addItem(effectItem);
     if (parent) {
       effectItem.setParent(parent);

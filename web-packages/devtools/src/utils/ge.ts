@@ -1,5 +1,5 @@
 import type { Composition, EffectsObjectData } from '@galacean/effects';
-import { DataType, Player, TimelineComponent } from '@galacean/effects';
+import { DataType, Player, SerializationHelper, TimelineComponent } from '@galacean/effects';
 import demoJson from '../assets/scenes/trail-demo.scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
@@ -113,13 +113,13 @@ export async function loadJson (data: any) {
 }
 
 function buildProject (composition: Composition, json: any) {
-  const deserializer = composition.getEngine().deserializer;
+  const assetLoader = composition.getEngine().assetLoader;
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
   for (const item of composition.items) {
     serializedDatas = {
       ...serializedDatas,
-      ...deserializer.serializeEffectObject(item),
+      ...SerializationHelper.serializeEffectObject(item),
     };
     for (const component of item.components) {
       if (component instanceof TimelineComponent) {
@@ -127,7 +127,7 @@ function buildProject (composition: Composition, json: any) {
       }
       serializedDatas = {
         ...serializedDatas,
-        ...deserializer.serializeEffectObject(component),
+        ...SerializationHelper.serializeEffectObject(component),
       };
     }
   }
@@ -205,13 +205,13 @@ function buildProject (composition: Composition, json: any) {
 }
 
 async function saveScene (composition: Composition, json: any) {
-  const deserializer = composition.getEngine().deserializer;
+  const assetLoader = composition.getEngine().assetLoader;
   let serializedDatas: Record<string, EffectsObjectData> = {};
 
   for (const item of composition.items) {
     serializedDatas = {
       ...serializedDatas,
-      ...deserializer.serializeEffectObject(item),
+      ...SerializationHelper.serializeEffectObject(item),
     };
     for (const component of item.components) {
       if (component instanceof TimelineComponent) {
@@ -219,7 +219,7 @@ async function saveScene (composition: Composition, json: any) {
       }
       serializedDatas = {
         ...serializedDatas,
-        ...deserializer.serializeEffectObject(component),
+        ...SerializationHelper.serializeEffectObject(component),
       };
     }
   }

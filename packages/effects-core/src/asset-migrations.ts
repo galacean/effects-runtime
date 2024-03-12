@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemProps } from './vfx-item';
-import { DataType, type DataPath } from './deserializer';
+import { DataType, type DataPath } from './asset-loader';
 import type { Scene } from './scene';
 import { generateGUID } from './utils';
 
@@ -246,6 +246,21 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.id = uuid;
       //@ts-expect-error
       item.content.dataType = DataType.CameraController;
+      //@ts-expect-error
+      item.content.item = { id: item.id };
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
+      //@ts-expect-error
+      item.components.push({ id: item.content.id });
+    } else if (item.type === spec.ItemType.text) {
+      //@ts-expect-error
+      item.components = [];
+      //@ts-expect-error
+      components.push(item.content);
+      //@ts-expect-error
+      item.content.id = uuid;
+      //@ts-expect-error
+      item.content.dataType = DataType.TextComponent;
       //@ts-expect-error
       item.content.item = { id: item.id };
       //@ts-expect-error

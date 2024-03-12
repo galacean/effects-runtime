@@ -1,8 +1,15 @@
-import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math } from '@galacean/effects-core';
+import type {
+  MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
+  GlobalUniforms, Renderer,
+} from '@galacean/effects-core';
 import { Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
-import { CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP, TEXTURE_UNIFORM_MAP } from './three-material-util';
+import {
+  CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP,
+  TEXTURE_UNIFORM_MAP,
+} from './three-material-util';
+import type { ThreeEngine } from '../three-engine';
 
 type Matrix4 = math.Matrix4;
 type Vector2 = math.Vector2;
@@ -33,16 +40,17 @@ export class ThreeMaterial extends Material {
    *
    * @param props - 材质属性
    */
-  constructor (engine: Engine, props: MaterialProps) {
+  constructor (engine: Engine, props?: MaterialProps) {
     super(engine, props);
 
-    const shader = props.shader;
+    const shader = props?.shader;
     const { level } = engine.gpuCapability;
 
     for (let i = 0; i < maxSpriteMeshItemCount; i++) {
       this.uniforms[`uSampler${i}`] = new THREE.Uniform(null);
     }
     this.uniforms['uEditorTransform'] = new THREE.Uniform([1, 1, 0, 0]);
+
     this.uniforms['effects_ObjectToWorld'] = new THREE.Uniform(new THREE.Matrix4().identity());
 
     this.uniforms['effects_MatrixInvV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
@@ -50,8 +58,8 @@ export class ThreeMaterial extends Material {
     this.uniforms['effects_MatrixV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
 
     this.material = new THREE.RawShaderMaterial({
-      vertexShader: shader.vertex,
-      fragmentShader: shader.fragment,
+      vertexShader: shader?.vertex,
+      fragmentShader: shader?.fragment,
       alphaToCoverage: false,
       depthFunc: THREE.LessDepth,
       polygonOffsetFactor: THREE.ZeroFactor,
@@ -66,9 +74,6 @@ export class ThreeMaterial extends Material {
     } else {
       this.material.glslVersion = THREE.GLSL3;
     }
-
-    // this.material.needsUpdate = true;
-
   }
 
   /**
@@ -91,6 +96,24 @@ export class ThreeMaterial extends Material {
     }
   }
 
+  override use (render: Renderer, globalUniforms: GlobalUniforms): void {
+    const engine = this.engine as ThreeEngine;
+    const composition = engine.composition;
+    const threeCamera = engine.threeCamera;
+
+    if (threeCamera) {
+      const threeViewProjectionMatrix = new THREE.Matrix4().multiplyMatrices(threeCamera.projectionMatrix, threeCamera.matrixWorldInverse);
+
+      this.setMatrix('effects_MatrixVP', threeViewProjectionMatrix as unknown as math.Matrix4);
+    } else {
+      const camera = composition.camera;
+
+      // this.setMatrix('effects_MatrixInvV', camera.getInverseProjectionMatrix());
+      this.setMatrix('effects_MatrixVP', camera.getViewProjectionMatrix());
+      this.setMatrix('effects_MatrixV', camera.getViewMatrix());
+    }
+  }
+
   /**
    * 移除 uniform 变量值的回调函数
    *
@@ -99,7 +122,6 @@ export class ThreeMaterial extends Material {
   onRemoveUniformValue (name: string) {
     if (this.material.uniforms[name]) {
       this.material.uniforms[name].value = null;
-
     }
   }
 

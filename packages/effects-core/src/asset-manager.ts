@@ -97,6 +97,13 @@ export interface SceneLoadOptions {
 let seed = 1;
 
 /**
+ * 场景类型
+ */
+export type SceneType = string | JSONValue | Scene;
+export type SceneWithOptionsType = { scene: SceneType, options: SceneLoadOptions };
+export type SceneLoadType = SceneType | SceneWithOptionsType;
+
+/**
  * 资源管理器
  * 用于加载和动效中所有的资源文件，包括图片、插件、图层粒子数据等
  */

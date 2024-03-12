@@ -1,8 +1,12 @@
-import type { Geometry, Material, MaterialDestroyOptions, MeshDestroyOptions, GeometryMeshProps, Sortable, Engine } from '@galacean/effects-core';
+import type {
+  Geometry, Material, MaterialDestroyOptions, MeshDestroyOptions, GeometryMeshProps, Sortable,
+  Engine, Renderer,
+} from '@galacean/effects-core';
 import { DestroyOptions, glContext, Mesh } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeMaterial } from './material';
 import type { ThreeGeometry } from './three-geometry';
+import type { ThreeEngine } from './three-engine';
 
 /**
  * mesh 抽象类的 THREE 实现
@@ -17,10 +21,13 @@ export class ThreeMesh extends Mesh implements Sortable {
    * 构造函数
    * @param props - mesh 创建参数
    */
-  constructor (engine: Engine, props: GeometryMeshProps) {
+  constructor (engine: Engine, props?: GeometryMeshProps) {
+    if (!props) {
+      return;
+    }
+
     const {
-      material,
-      geometry,
+      material, geometry,
       priority = 0,
     } = props;
 
@@ -39,9 +46,6 @@ export class ThreeMesh extends Mesh implements Sortable {
         (material as ThreeMaterial).material
       );
     }
-    // TODO: 注释修复
-    //@ts-expect-error
-    this.worldMatrix = this.mesh.matrixWorld;
     // 在抽象Mesh设置priority时，THREE 的 Mesh 还未创建
     this.priority = priority;
   }
@@ -106,10 +110,26 @@ export class ThreeMesh extends Mesh implements Sortable {
     this.mesh.material = (mtl as ThreeMaterial).material;
   }
 
+  override start (): void {
+    super.start();
+    (this.engine as ThreeEngine).threeGroup.add(this.mesh);
+  }
+
   /**
    * 重建方法
    */
   override restore (): void {
+  }
+
+  override render (renderer: Renderer): void {
+    if (this.isDestroyed) {
+      return;
+    }
+    if (!this.getVisible()) {
+      return;
+    }
+    this.material.setMatrix('effects_ObjectToWorld', this.worldMatrix);
+    this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);
   }
 
   /**
@@ -123,5 +143,4 @@ export class ThreeMesh extends Mesh implements Sortable {
       this.destroyed = true;
     }
   }
-
 }

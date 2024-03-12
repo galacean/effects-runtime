@@ -7,7 +7,8 @@ import type { Component } from './components/component';
 import { ItemBehaviour } from './components/component';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
-import { DataType, type VFXItemData } from './deserializer';
+import { effectsClass } from './decorators';
+import { DataType, type VFXItemData } from './asset-loader';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { convertAnchor } from './math';
@@ -36,6 +37,7 @@ export type VFXItemProps =
 /**
  * 所有元素的继承的抽象类
  */
+@effectsClass(DataType.VFXItemData)
 export class VFXItem<T extends VFXItemContent> extends EffectsObject implements Disposable {
   /**
    * 元素绑定的父元素，
@@ -212,6 +214,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     const newComponent = new classConstructor(this.engine);
 
     newComponent.item = this;
+
     this.components.push(newComponent);
     newComponent.onAttached();
 
@@ -571,9 +574,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
   override toData (): void {
     this.taggedProperties.id = this.guid;
-    this.taggedProperties.name = this.name;
-    this.taggedProperties.type = this.type;
-    this.taggedProperties.duration = this.duration;
     this.taggedProperties.transform = this.transform.toData();
     this.taggedProperties.dataType = DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {

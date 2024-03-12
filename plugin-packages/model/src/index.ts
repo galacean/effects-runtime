@@ -1,28 +1,9 @@
 import type { spec } from '@galacean/effects';
-import { registerPlugin, Deserializer, VFXItem, logger } from '@galacean/effects';
-import { ModelTreeComponent, ModelTreePlugin, ModelPlugin, ModelPluginComponent } from './plugin';
-import {
-  ModelCameraComponent, ModelLightComponent, ModelMeshComponent, ModelSkyboxComponent,
-} from './plugin/model-item';
-
-export enum ModelDataType {
-  MeshComponent = 10000,
-  SkyboxComponent,
-  LightComponent,
-  CameraComponent,
-  ModelPluginComponent,
-  TreeComponent,
-}
+import { VFXItem, logger, registerPlugin } from '@galacean/effects';
+import { ModelPlugin, ModelTreePlugin } from './plugin';
 
 registerPlugin<void>('tree', ModelTreePlugin, VFXItem, true);
 registerPlugin<void>('model', ModelPlugin, VFXItem);
-
-Deserializer.addConstructor(ModelMeshComponent, ModelDataType.MeshComponent);
-Deserializer.addConstructor(ModelSkyboxComponent, ModelDataType.SkyboxComponent);
-Deserializer.addConstructor(ModelLightComponent, ModelDataType.LightComponent);
-Deserializer.addConstructor(ModelCameraComponent, ModelDataType.CameraComponent);
-Deserializer.addConstructor(ModelPluginComponent, ModelDataType.ModelPluginComponent);
-Deserializer.addConstructor(ModelTreeComponent, ModelDataType.TreeComponent);
 
 export const version = __VERSION__;
 

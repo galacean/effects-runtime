@@ -1,5 +1,5 @@
 import type { EffectsObject, Engine } from '@galacean/effects';
-import { Database, loadImage, type EffectsPackageData } from '@galacean/effects';
+import { Database, loadImage, type EffectsPackageData, SerializationHelper } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { base64ToFile } from '../gui/project-gui';
 
@@ -89,7 +89,7 @@ export class AssetDatabase extends Database {
     this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
     for (const objectData of packageData.exportObjects) {
-      effectsPackage.exportObjects.push(await this.engine.deserializer.loadGUIDAsync(objectData.id));
+      effectsPackage.exportObjects.push(await this.engine.assetLoader.loadGUIDAsync(objectData.id));
     }
 
     return effectsPackage;
@@ -116,7 +116,7 @@ export class AssetDatabase extends Database {
         effectsPackage = (await this.loadPackage(this.GUIDToAssetPath(dirtyPackageGuid)))!;
       }
 
-      const assetData = this.engine.deserializer.serializeTaggedProperties(effectsPackage) as EffectsPackageData;
+      const assetData = SerializationHelper.serializeTaggedProperties(effectsPackage) as EffectsPackageData;
       const path = this.GUIDToAssetPath(dirtyPackageGuid);
 
       console.info(assetData, path);

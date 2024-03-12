@@ -1,14 +1,19 @@
-import type { EffectsObjectData } from './deserializer';
+import type { EffectsObjectData } from './asset-loader';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
+import { serialize } from './decorators';
 
 /**
  * @since 2.0.0
  * @internal
  */
 export abstract class EffectsObject {
+  @serialize()
   protected guid: string;
-  taggedProperties: Record<string, any>;
+  /**
+   * 存储需要序列化的数据
+   */
+  readonly taggedProperties: Record<string, any>;
 
   constructor (
     public engine: Engine,
@@ -22,9 +27,9 @@ export abstract class EffectsObject {
     return this.guid;
   }
 
-  setInstanceId (id: string) {
+  setInstanceId (guid: string) {
     this.engine.removeInstance(this.guid);
-    this.guid = id;
+    this.guid = guid;
     this.engine.addInstance(this);
   }
 
@@ -34,7 +39,6 @@ export abstract class EffectsObject {
    * 反序列化函数
    *
    * @param data - 对象的序列化的数据
-   * @param deserializer - 反序列化器
    */
   fromData (data: EffectsObjectData) {
     if (data.id) {

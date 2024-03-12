@@ -1,22 +1,18 @@
 import type {
-  GeometryMeshProps,
-  GeometryProps,
-  MaterialProps,
-  TextureDataType,
-  TextureSourceOptions,
-  Engine,
+  Engine, GeometryMeshProps, GeometryProps, MaterialProps, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
-import { Texture, Geometry, Material, Mesh, setMaxSpriteMeshItemCount, logger } from '@galacean/effects-core';
+import { Geometry, Material, Mesh, Texture, logger, setMaxSpriteMeshItemCount } from '@galacean/effects-core';
+import { ThreeMaterial } from './material';
 import { ThreeGeometry } from './three-geometry';
 import { ThreeMesh } from './three-mesh';
 import { ThreeTexture } from './three-texture';
-import { ThreeMaterial } from './material';
 
 export * from '@galacean/effects-core';
-export * from './three-display-object';
-export * from './three-texture';
 export * from './material';
 export * from './three-composition';
+export * from './three-display-object';
+export * from './three-engine';
+export * from './three-texture';
 
 setMaxSpriteMeshItemCount(8);
 /**
@@ -46,8 +42,7 @@ Texture.createWithData = (engine: Engine, data?: TextureDataType, options?: Reco
  * @param props - 材质球创建参数
  * @returns THREE 中的抽象材质球对象
  */
-// @ts-expect-error
-Material.create = (engine: Engine, props: MaterialProps) => {
+Material.create = (engine: Engine, props?: MaterialProps) => {
   return new ThreeMaterial(engine, props);
 };
 
@@ -67,8 +62,7 @@ Geometry.create = (engine: Engine, options?: GeometryProps) => {
  * @param props - mesh 创建参数
  * @returns THREE 中的抽象 mesh 对象
  */
-// @ts-expect-error
-Mesh.create = (engine: Engine, props: GeometryMeshProps) => {
+Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
   return new ThreeMesh(engine, props);
 };
 

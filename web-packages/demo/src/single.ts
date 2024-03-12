@@ -2,24 +2,19 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
-import { TreeGui } from './gui/tree-gui';
 
 const json = inspireList.turnplate.url;
 const container = document.getElementById('J-container');
-
-const treeGui = new TreeGui();
 
 (async () => {
   try {
     const player = createPlayer();
 
     const comp = await player.loadScene(json, {
-      autoplay: false,
+      // autoplay: false,
     });
 
-    player.gotoAndStop(0);
-
-    treeGui.setComposition(comp);
+    // player.gotoAndStop(0);
   } catch (e) {
     console.error('biz', e);
   }

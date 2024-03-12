@@ -1,17 +1,17 @@
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { GeometryData } from '../deserializer';
-import { DataType } from '../deserializer';
+import type { GeometryData } from '../asset-loader';
+import { DataType } from '../asset-loader';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType } from '../plugins';
 import type { MeshDestroyOptions, Renderer } from '../render';
 import { Geometry } from '../render';
-import type { Disposable } from '../utils';
 import { DestroyOptions, generateGUID } from '../utils';
 import { RendererComponent } from './renderer-component';
+import { effectsClass, serialize } from '../decorators';
 
 let seed = 1;
 
@@ -19,7 +19,8 @@ let seed = 1;
  * @since 2.0.0
  * @internal
  */
-export class EffectComponent extends RendererComponent implements Disposable {
+@effectsClass(DataType.EffectComponent)
+export class EffectComponent extends RendererComponent {
   /**
    * Mesh 的全局唯一 id
    */
@@ -31,6 +32,7 @@ export class EffectComponent extends RendererComponent implements Disposable {
   /**
    * Mesh 的 Geometry
    */
+  @serialize()
   geometry: Geometry;
 
   triangles: TriangleLike[] = [];
@@ -38,6 +40,8 @@ export class EffectComponent extends RendererComponent implements Disposable {
   protected destroyed = false;
 
   private visible = false;
+  // TODO: 抽象到射线碰撞检测组件
+  private hitTestGeometry: Geometry;
 
   constructor (engine: Engine) {
     super(engine);
@@ -136,6 +140,10 @@ export class EffectComponent extends RendererComponent implements Disposable {
   getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
 
+    if (this.hitTestGeometry !== this.geometry) {
+      this.triangles = geometryToTriangles(this.geometry);
+      this.hitTestGeometry = this.geometry;
+    }
     const area = [];
 
     for (const triangle of this.triangles) {
@@ -156,22 +164,11 @@ export class EffectComponent extends RendererComponent implements Disposable {
 
   override fromData (data: any): void {
     super.fromData(data);
-    this._enabled = data._enabled;
-    this._priority = data._priority;
-    this.material = data.materials[0];
-    this.geometry = data.geometry;
-
-    this.triangles = geometryToTriangles(this.geometry);
+    this.material = this.materials[0];
   }
 
   override toData (): void {
     this.taggedProperties.id = this.guid;
-    this.taggedProperties.dataType = DataType.EffectComponent;
-    this.taggedProperties._enabled = this._enabled;
-    this.taggedProperties._priority = this._priority;
-    this.taggedProperties.materials = this.materials;
-    this.taggedProperties.geometry = this.geometry;
-    this.taggedProperties.item = this.item;
   }
 
   /**

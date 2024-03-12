@@ -16,6 +16,7 @@
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
     "moduleResolution": "node",
     "module": "ESNext",
     "target": "ES6",
