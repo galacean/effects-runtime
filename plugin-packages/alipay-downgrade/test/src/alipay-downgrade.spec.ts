@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Player, disableAllPlayer } from '@galacean/effects';
-import { getDowngradeResult, setAlipayDowngradeBizId, resetDevicePending } from '@galacean/effects-plugin-alipay-downgrade';
+import { getDowngradeResult, checkDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
 
 const { expect } = chai;
 
@@ -8,21 +8,24 @@ describe('downgrade plugin', () => {
   let player: Player;
 
   beforeEach(() => {
-    setAlipayDowngradeBizId('test');
     player = new Player({ canvas: document.createElement('canvas') });
   });
 
   afterEach(() => {
-    setAlipayDowngradeBizId('mock-pass');
+    player.dispose();
   });
 
   it('fake downgrade', async () => {
-    setAlipayDowngradeBizId('mock-fail');
+    const downgrade = await getDowngradeResult('mock-fail');
     const catchFunc = chai.spy('error');
     const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1,"anchor":[0.5,0.5]}}}],"meta":{"previewSize":[750,1624]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
     try {
-      await player.loadScene(JSON.parse(json));
+      await player.loadScene(JSON.parse(json), {
+        pluginData: {
+          downgrade,
+        },
+      });
     } catch (e) {
       catchFunc();
     }
