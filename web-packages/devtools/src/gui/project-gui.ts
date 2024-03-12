@@ -204,7 +204,7 @@ async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
       dataType: DataType.Geometry,
       vertices: modelData.vertices,
       uvs: modelData.uvs,
-      normals:modelData.normals,
+      normals: modelData.normals,
       indices: modelData.indices,
     };
     const geometryAsset = JSON.stringify(createPackageData([geometryData], 'Geometry'), null, 2);

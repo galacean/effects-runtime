@@ -425,7 +425,7 @@ export class GLGeometry extends Geometry {
           size: 2,
           data: new Float32Array(fullGeometryData.uvs),
         },
-        aNormal:{
+        aNormal: {
           type: glContext.FLOAT,
           size: 3,
           data: new Float32Array(fullGeometryData.normals),
