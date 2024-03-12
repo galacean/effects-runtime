@@ -14,6 +14,17 @@
   </style>
 </head>
 <body>
+<script>
+  window.addEventListener('error',function (e){
+    // Demo出错时Windows和Mac不弹窗
+    const platform = navigator.platform.toLowerCase();
+    if (platform.search('win') >= 0 || platform.search('mac') >= 0) {
+      return;
+    }
+
+    alert(e.message);
+  })
+</script>
 <script type="module" src="./src/status.ts"></script>
 </body>
 </html>

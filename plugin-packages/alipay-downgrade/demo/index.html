@@ -8,6 +8,17 @@
 <link rel="stylesheet" href="https://gw.alipayobjects.com/as/g/antui/antui/10.1.32/dpl/antui.css"/>
 </head>
 <body>
+<script>
+  window.addEventListener('error',function (e){
+    // Demo出错时Windows和Mac不弹窗
+    const platform = navigator.platform.toLowerCase();
+    if (platform.search('win') >= 0 || platform.search('mac') >= 0) {
+      return;
+    }
+
+    alert(e.message);
+  })
+</script>
 <div class="am-list">
   <div class="am-list-header">降级插件 Demo</div>
   <div class="am-list-body">
