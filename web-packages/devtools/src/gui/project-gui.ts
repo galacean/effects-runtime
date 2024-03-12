@@ -204,6 +204,7 @@ async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
       dataType: DataType.Geometry,
       vertices: modelData.vertices,
       uvs: modelData.uvs,
+      normals:modelData.normals,
       indices: modelData.indices,
     };
     const geometryAsset = JSON.stringify(createPackageData([geometryData], 'Geometry'), null, 2);
@@ -216,6 +217,7 @@ async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
 interface ModelData {
   vertices: number[],
   uvs: number[],
+  normals: number[],
   indices: number[],
   name: string,
 }
@@ -230,6 +232,7 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
       let vertices: number[] = [];
       let uvs: number[] = [];
       let indices: number[] = [];
+      let normals: number[] = [];
 
       object.traverse(child => {
         if ((child as THREE.Mesh).isMesh) {
@@ -257,6 +260,12 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
             uvs = Array.from(uvAttribute.array);
           }
 
+          if (geometry.attributes.normal) {
+            const normalAttribute = geometry.attributes.normal;
+
+            normals = Array.from(normalAttribute.array);
+          }
+
           // 确保有索引
           if (geometry.index) {
             indices = Array.from(geometry.index.array);
@@ -264,6 +273,7 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
           modelDatas.push({
             vertices,
             uvs,
+            normals,
             indices,
             name: mesh.name,
           });
