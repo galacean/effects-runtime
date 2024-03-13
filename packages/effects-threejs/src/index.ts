@@ -13,6 +13,7 @@ export * from './three-composition';
 export * from './three-display-object';
 export * from './three-engine';
 export * from './three-texture';
+export * from './three-sprite-component';
 
 setMaxSpriteMeshItemCount(8);
 /**
