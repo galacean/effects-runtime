@@ -11,7 +11,6 @@ import { effectsClass } from './decorators';
 import { DataType, type VFXItemData } from './asset-loader';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
-import { convertAnchor } from './math';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent, SpriteItemProps,
