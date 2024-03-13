@@ -525,9 +525,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
       track.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(data.content as TransformAnimationData);
     }
-    const activationTrack = timelineComponent.createTrack(Track, 'ActivationTrack');
-
-    activationTrack.createClip(ActivationClipPlayable, 'ActivationTimelineClip');
 
     if (duration <= 0) {
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);

@@ -2,28 +2,28 @@ import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
+import { DataType } from '../../asset-loader';
 import { Component } from '../../components';
+import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
-import { calculateTranslation, convertAnchor, createValueGetter, ensureVec3 } from '../../math';
+import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
 import type { ShapeGenerator, ShapeGeneratorOptions } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
 import { Transform } from '../../transform';
 import { DestroyOptions, type color } from '../../utils';
+import { TimelineComponent } from '../cal/calculate-item';
+import { Track } from '../cal/track';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { Burst } from './burst';
 import { Link } from './link';
 import type { ParticleMeshProps, Point } from './particle-mesh';
 import { ParticleSystemRenderer } from './particle-system-renderer';
-import type { TrailMeshProps } from './trail-mesh';
-import { TimelineComponent } from '../cal/calculate-item';
-import { Track } from '../cal/track';
 import { ParticleBehaviourPlayable } from './particle-vfx-item';
-import { effectsClass } from '../../decorators';
-import { DataType } from '../../asset-loader';
+import type { TrailMeshProps } from './trail-mesh';
 
 type ParticleSystemRayCastOptions = {
   ray: Ray,
@@ -915,7 +915,7 @@ export class ParticleSystem extends Component {
         separateAxes: false,
         x: createValueGetter(('size' in sizeOverLifetime ? sizeOverLifetime.size : sizeOverLifetime.x) || 1),
       };
-    const anchor = Vector2.fromArray(convertAnchor(renderer.anchor, renderer.particleOrigin));
+    const anchor = Vector2.fromArray(renderer.anchor!);
 
     this.options = {
       particleFollowParent: !!options.particleFollowParent,

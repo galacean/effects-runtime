@@ -149,6 +149,21 @@ export function version3Migration (scene: Record<string, any>): Scene {
       }
     }
 
+    if (item.type === spec.ItemType.particle) {
+      const content = item.content;
+
+      //@ts-expect-error
+      if (!content.renderer) {
+        //@ts-expect-error
+        content.renderer = {};
+      }
+      //@ts-expect-error
+      const renderer = content.renderer;
+
+      //@ts-expect-error
+      content.renderer.anchor = convertAnchor(renderer.anchor, renderer.particleOrigin);
+    }
+
     // item 的 endbehaviour 兼容
     // @ts-expect-error
     if (item.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY || item.endBehavior === spec.END_BEHAVIOR_PAUSE) {

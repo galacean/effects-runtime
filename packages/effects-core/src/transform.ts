@@ -279,7 +279,6 @@ export class Transform implements Disposable {
    * 设置锚点
    * @param x
    * @param y
-   * @param z
    */
   setAnchor (x: number, y: number) {
     if (this.anchor.x !== x || this.anchor.y !== y) {
