@@ -5,8 +5,9 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
 import { PlayableGraph } from './playable-graph';
-import type { Track } from './track';
+import { Track } from './track';
 import { serialize } from '../../decorators';
+import { ActivationClipPlayable } from './calculate-vfx-item';
 
 /**
  * 基础位移属性数据
@@ -217,6 +218,9 @@ export class TimelineComponent extends ItemBehaviour {
     };
     this.id = this.item.id;
     this.name = this.item.name;
+    const activationTrack = this.createTrack(Track, 'ActivationTrack');
+
+    activationTrack.createClip(ActivationClipPlayable, 'ActivationTimelineClip');
   }
 
   override toData (): void {
