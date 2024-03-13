@@ -68,7 +68,7 @@ export class TextItem extends SpriteItem {
    * 设置字号大小
    * @param value - 字号
    * @returns
-  */
+   */
   setFontSize (value: number): void {
     if (this.textStyle.fontSize === value) {
       return;
