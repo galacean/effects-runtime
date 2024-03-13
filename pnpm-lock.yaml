@@ -285,8 +285,8 @@ importers:
         version: 3.4.15(typescript@5.3.3)
     devDependencies:
       '@advjs/gui':
-        specifier: 0.0.5
-        version: 0.0.5(vue@3.4.15)
+        specifier: 0.0.7-beta.1
+        version: 0.0.7-beta.1(vue@3.4.15)
       '@antfu/eslint-config':
         specifier: ^2.6.3
         version: 2.6.3(@vue/compiler-sfc@3.4.15)(eslint@8.56.0)(typescript@5.3.3)
@@ -370,8 +370,8 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /@advjs/gui@0.0.5(vue@3.4.15):
-    resolution: {integrity: sha512-wErnbwBfqQZZJjvM2hcTgArE0N7AT7LNXTWji9xHSwW7e6ZwdDzuccYTFZtrrQeg+guoQHp8yUqpiW0GG0aWdQ==}
+  /@advjs/gui@0.0.7-beta.1(vue@3.4.15):
+    resolution: {integrity: sha512-xquOU5RzEWtYFAq1HnNipWjTKVHu+S7BmlpqOA5STRb/xs9ummEIbxn4DW2gMQEZ/Ybcprk9gf/rIsIK0Us5sQ==}
     dependencies:
       '@headlessui/vue': 1.7.19(vue@3.4.15)
       '@iconify-json/radix-icons': 1.1.14
@@ -379,10 +379,10 @@ packages:
       '@iconify/vue': 4.1.1(vue@3.4.15)
       '@radix-ui/colors': 3.0.0
       '@types/splitpanes': 2.2.6
-      '@types/wicg-file-system-access': 2023.10.4
+      '@types/wicg-file-system-access': 2023.10.5
       colord: 2.9.3
       consola: 3.2.3
-      radix-vue: 1.5.0(vue@3.4.15)
+      radix-vue: 1.5.2(vue@3.4.15)
       splitpanes: 3.1.5
     transitivePeerDependencies:
       - '@vue/composition-api'
@@ -2565,13 +2565,6 @@ packages:
       '@floating-ui/utils': 0.2.1
     dev: true
 
-  /@floating-ui/dom@1.5.4:
-    resolution: {integrity: sha512-jByEsHIY+eEdCjnTVu+E3ephzTOzkQ8hgUfGwos+bg7NlH33Zc5uO+QHz1mrQUOgIKKDD1RtS201P9NvAfq3XQ==}
-    dependencies:
-      '@floating-ui/core': 1.5.3
-      '@floating-ui/utils': 0.2.1
-    dev: true
-
   /@floating-ui/dom@1.6.3:
     resolution: {integrity: sha512-RnDthu3mzPlQ31Ss/BTwQ1zjzIhr3lk1gZB1OC56h/1vEtaXkESrOqL5fQVMfXpwGtRwX+YsZBdyHtJMQnkArw==}
     dependencies:
@@ -3289,6 +3282,10 @@ packages:
 
   /@types/wicg-file-system-access@2023.10.4:
     resolution: {integrity: sha512-ewOj7hWhsUTS2+aY6zY+7BwlgqGBj5ZXxKuHt3TAWpIJH0bDW/6bO1N1SdUDAzV8r0Nc+/ZtpAEETYTwrehBMw==}
+    dev: true
+
+  /@types/wicg-file-system-access@2023.10.5:
+    resolution: {integrity: sha512-e9kZO9kCdLqT2h9Tw38oGv9UNzBBWaR1MzuAavxPcsV/7FJ3tWbU6RI3uB+yKIDPGLkGVbplS52ub0AcRLvrhA==}
     dev: true
 
   /@typescript-eslint/eslint-plugin@5.62.0(@typescript-eslint/parser@5.62.0)(eslint@8.48.0)(typescript@5.2.2):
@@ -7109,10 +7106,10 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
-  /radix-vue@1.5.0(vue@3.4.15):
-    resolution: {integrity: sha512-kjWp5D+UyJCylwnVhPgJMhf4/7Sc4PxJ0Mdn2Mlr3BkO2VYDNQ6WwiI241IgmVMdRTY7uB9fpdt0HaMUMX6N6w==}
+  /radix-vue@1.5.2(vue@3.4.15):
+    resolution: {integrity: sha512-XyXB6mYm7dthW56LDHG4ttR3x+XtspTi48nSq4vHoHldgGZzAEa5VXlqUCr2J21fNKrt3NIYhIIRLB6kKwWwrA==}
     dependencies:
-      '@floating-ui/dom': 1.5.4
+      '@floating-ui/dom': 1.6.3
       '@floating-ui/vue': 1.0.6(vue@3.4.15)
       '@internationalized/date': 3.5.2
       fast-deep-equal: 3.1.3
