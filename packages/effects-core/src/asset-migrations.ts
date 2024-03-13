@@ -1,10 +1,11 @@
-import { v4 as uuidv4 } from 'uuid';
 import * as spec from '@galacean/effects-specification';
-import type { VFXItemProps } from './vfx-item';
+import { v4 as uuidv4 } from 'uuid';
+import type { EffectsObjectData } from './asset-loader';
 import { DataType, type DataPath } from './asset-loader';
+import { particleOriginTranslateMap } from './math';
 import type { Scene } from './scene';
 import { generateGUID } from './utils';
-import { particleOriginTranslateMap } from './math';
+import type { VFXItemProps } from './vfx-item';
 
 type ecScene = spec.JSONScene & { items: VFXItemProps[], components: DataPath[] };
 
@@ -149,6 +150,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
       }
     }
 
+    // particle 的 anchor 修正
     if (item.type === spec.ItemType.particle) {
       const content = item.content;
 
@@ -173,9 +175,10 @@ export function version3Migration (scene: Record<string, any>): Scene {
     // item 的 content 转为 component data 加入 JSONScene.components
     const uuid = uuidv4().replace(/-/g, '');
 
+    //@ts-expect-error
+    item.components = [];
+
     if (item.type === spec.ItemType.sprite) {
-      //@ts-expect-error
-      item.components = [];
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
@@ -190,8 +193,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.particle) {
       //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
       item.content.id = uuid;
@@ -204,8 +205,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.mesh) {
-      //@ts-expect-error
-      item.components = [];
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
@@ -220,8 +219,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.skybox) {
       //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
       item.content.id = uuid;
@@ -234,8 +231,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.light) {
-      //@ts-expect-error
-      item.components = [];
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
@@ -250,8 +245,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.components.push({ id: item.content.id });
     } else if (item.type === 'camera') {
       //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
       item.content.id = uuid;
@@ -264,8 +257,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.tree) {
-      //@ts-expect-error
-      item.components = [];
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
@@ -280,8 +271,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.interact) {
       //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
       item.content.id = uuid;
@@ -294,8 +283,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.camera) {
-      //@ts-expect-error
-      item.components = [];
       //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
@@ -310,8 +297,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.text) {
       //@ts-expect-error
-      item.components = [];
-      //@ts-expect-error
       components.push(item.content);
       //@ts-expect-error
       item.content.id = uuid;
@@ -323,7 +308,40 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
+    } else if (item.type === spec.ItemType.null) {
+      //@ts-expect-error
+      item.dataType = DataType.VFXItemData;
     }
+
+    // 动画 K 帧数据移至 timelineComponentData.transformAnimationData
+    // const guid = generateGUID();
+    // const timelineComponentData = {
+    //   id: guid,
+    //   dataType: DataType.TimelineComponent,
+    //   item: { id: item.id },
+    // };
+
+    // components.push(timelineComponentData);
+    if (item.type !== spec.ItemType.particle) {
+      const nullContent = item.content as spec.NullContent;
+
+      //@ts-expect-error
+      item.content.transformAnimationData = {
+        sizeOverLifetime: nullContent.sizeOverLifetime,
+        rotationOverLifetime: nullContent.rotationOverLifetime,
+        positionOverLifetime: nullContent.positionOverLifetime,
+      };
+    }
+    if (item.type === spec.ItemType.sprite) {
+      const nullContent = item.content as spec.NullContent;
+
+      //@ts-expect-error
+      item.content.spriteColorAnimation = {
+        colorOverLifetime: nullContent.colorOverLifetime,
+        startColor: nullContent.options.startColor,
+      };
+    }
+    // item.components.push({ id: timelineComponentData.id });
   }
 
   return scene as Scene;

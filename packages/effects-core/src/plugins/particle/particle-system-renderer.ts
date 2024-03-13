@@ -9,6 +9,9 @@ import { ParticleMesh } from './particle-mesh';
 import type { Mesh, Renderer } from '../../render';
 import type { Engine } from '../../engine';
 import { RendererComponent } from '../../components';
+import { TimelineComponent } from '../cal/calculate-item';
+import { Track } from '../cal/track';
+import { ParticleBehaviourPlayable } from './particle-vfx-item';
 
 /**
  * @since 2.0.0
@@ -47,6 +50,11 @@ export class ParticleSystemRenderer extends RendererComponent {
   }
 
   override start (): void {
+    // 添加粒子动画 clip
+    const timeline = this.item.getComponent(TimelineComponent)!;
+
+    timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
+    timeline.rebuildGraph();
     this._priority = this.item.listIndex;
     this.particleMesh.gravityModifier.scaleXCoord(this.item.duration);
     for (const mesh of this.meshes) {

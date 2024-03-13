@@ -32,7 +32,7 @@ export async function initGEPlayer (canvas: HTMLCanvasElement) {
 
   input = new Input(canvas);
   input.startup();
-  await loadJson(json);
+  await loadJson('https://mdn.alipayobjects.com/mars/afts/file/A*dnU-SprU5pAAAAAAAAAAAAAADlB4AQ');
 
   await guiMainLoop();
   inputControllerUpdate();

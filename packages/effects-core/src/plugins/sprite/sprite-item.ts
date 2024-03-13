@@ -575,11 +575,6 @@ export class SpriteComponent extends RendererComponent {
     this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.setItem();
-
-    // 添加K帧动画
-    const colorTrack = this.item.getComponent(TimelineComponent)!.createTrack(Track, 'SpriteColorTrack');
-
-    colorTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData({ colorOverLifetime: data.colorOverLifetime, startColor: data.options.startColor });
   }
 
   override toData (): void {

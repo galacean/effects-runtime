@@ -119,7 +119,8 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === 'camera' ||
           itemData.type === spec.ItemType.tree ||
           itemData.type === spec.ItemType.interact ||
-          itemData.type === spec.ItemType.camera
+          itemData.type === spec.ItemType.camera ||
+          itemData.type === spec.ItemType.null
         ) {
 
           item = assetLoader.loadGUID(itemData.id);

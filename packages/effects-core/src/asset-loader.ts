@@ -161,6 +161,7 @@ export enum DataType {
   Geometry,
   Texture,
   TextComponent,
+  TimelineComponent,
 
   // FIXME: 先完成ECS的场景转换，后面移到spec中
   MeshComponent = 10000,

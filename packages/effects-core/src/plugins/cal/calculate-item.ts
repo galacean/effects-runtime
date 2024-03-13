@@ -6,8 +6,10 @@ import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
 import { PlayableGraph } from './playable-graph';
 import { Track } from './track';
-import { serialize } from '../../decorators';
-import { ActivationClipPlayable } from './calculate-vfx-item';
+import { effectsClass, serialize } from '../../decorators';
+import { ActivationClipPlayable, AnimationClipPlayable } from './calculate-vfx-item';
+import { DataType } from '../../asset-loader';
+import { SpriteColorPlayable } from '../sprite/sprite-item';
 
 /**
  * 基础位移属性数据
@@ -40,6 +42,7 @@ export interface CalculateItemOptions {
  * @since 2.0.0
  * @internal
  */
+@effectsClass(DataType.TimelineComponent)
 export class TimelineComponent extends ItemBehaviour {
   id: string;
   reusable = false;
@@ -221,6 +224,22 @@ export class TimelineComponent extends ItemBehaviour {
     const activationTrack = this.createTrack(Track, 'ActivationTrack');
 
     activationTrack.createClip(ActivationClipPlayable, 'ActivationTimelineClip');
+
+    //@ts-expect-error
+    if (data.transformAnimationData) {
+      const track = this.createTrack(Track, 'AnimationTrack');
+
+      //@ts-expect-error
+      track.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(data.transformAnimationData as TransformAnimationData);
+    }
+    //@ts-expect-error
+    if (data.spriteColorAnimation) {
+      // 添加K帧动画
+      const colorTrack = this.createTrack(Track, 'SpriteColorTrack');
+
+      //@ts-expect-error
+      colorTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData({ colorOverLifetime: data.spriteColorAnimation.colorOverLifetime, startColor: data.spriteColorAnimation.startColor });
+    }
   }
 
   override toData (): void {
