@@ -1,19 +1,19 @@
-import { pointOnLine } from '@galacean/effects-core';
+import { assertExist, decimalEqual, LinearValue, pointOnLine } from '@galacean/effects-core';
 import * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { BezierKeyframeValue } from '@galacean/effects-specification/dist/src/numberExpression';
 import { keyframeInfo } from './keyframe-info';
 
-export class BezierPointData {
-  constructor (public partialLength: number, public point: Vector3) {
-  }
-}
-
 export class BezierLengthData {
-  constructor (public points: BezierPointData[], public segmentLength: number) {
+  constructor (
+    public points: Array<{ partialLength: number, point: Vector3 }>,
+    public segmentLength: number,
+  ) {
   }
 }
 export const BezierMap: Record<string, BezierEasing> = {};
+export const BezierDataMap: Record<string, BezierLengthData> = {};
 const NEWTON_ITERATIONS = 4;
 const NEWTON_MIN_SLOPE = 0.001;
 const SUBDIVISION_PRECISION = 0.0000001;
@@ -70,48 +70,79 @@ function newtonRaphsonIterate (aX: number, aGuessT: number, mX1: number, mX2: nu
 }
 
 // de Casteljau算法构建曲线
-export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vector3): BezierLengthData {
-  const samples = [];
-  let lastPoint = null, addedLength = 0, ptDistance = 0;
-  let curveSegments = CURVE_SEGMENTS;
+/**
+ *
+ * @param p1 起始点
+ * @param p2 终点
+ * @param p3 起始控制点
+ * @param p4 终止控制点
+ * @returns
+ */
+export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vector3): {
+  data: BezierLengthData,
+  interval: number[],
+} {
+  // 使用平移后的终点、控制点作为key
+  const s1 = Math.round((p2.x - p1.x) * 1000) / 1000 + '_' + Math.round((p2.y - p1.y) * 1000) / 1000 + '_' + Math.round((p2.z - p1.z) * 1000) / 1000;
+  const s2 = Math.round((p3.x - p1.x) * 1000) / 1000 + '_' + Math.round((p3.y - p1.y) * 1000) / 1000 + '_' + Math.round((p3.z - p1.z) * 1000) / 1000;
+  const s3 = Math.round((p4.x - p1.x) * 1000) / 1000 + '_' + Math.round((p4.y - p1.y) * 1000) / 1000 + '_' + Math.round((p4.z - p1.z) * 1000) / 1000;
 
-  // 直线判断
-  // 需要保证没有z坐标再判断
-  if ((p1.x !== p2.x || p1.y !== p2.y) && pointOnLine(p1.x, p1.y, p2.x, p2.y, p1.x + p3.x, p1.y + p3.y) && pointOnLine(p1.x, p1.y, p2.x, p2.y, p2.x + p4.x, p2.y + p4.y)) {
-    curveSegments = 2;
-  }
-  for (let k = 0; k < curveSegments; k += 1) {
-    const point = new Vector3();
-    const perc = k / (curveSegments - 1);
+  const str = s1 + '&' + s2 + '&' + s3;
 
-    ptDistance = 0;
-    point.x = Math.pow(1 - perc, 3) * p1.x + 3 * Math.pow(1 - perc, 2) * perc * (p3.x) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.x) + Math.pow(perc, 3) * p2.x;
-    point.y = Math.pow(1 - perc, 3) * p1.y + 3 * Math.pow(1 - perc, 2) * perc * (p3.y) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.y) + Math.pow(perc, 3) * p2.y;
-    point.z = Math.pow(1 - perc, 3) * p1.z + 3 * Math.pow(1 - perc, 2) * perc * (p3.z) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.z) + Math.pow(perc, 3) * p2.z;
+  if (BezierDataMap[str]) {
+    return {
+      data: BezierDataMap[str],
+      interval: p1.toArray(),
+    };
+  } else {
+    const samples = [];
+    let lastPoint = null, addedLength = 0, ptDistance = 0;
+    const curveSegments = CURVE_SEGMENTS;
 
-    if (lastPoint !== null) {
-      ptDistance += Math.pow(point.x - lastPoint.x, 2);
-      ptDistance += Math.pow(point.y - lastPoint.y, 2);
-      ptDistance += Math.pow(point.z - lastPoint.z, 2);
+    for (let k = 0; k < curveSegments; k += 1) {
+      const point = new Vector3();
+      const perc = k / (curveSegments - 1);
+
+      ptDistance = 0;
+
+      point.x = 3 * Math.pow(1 - perc, 2) * perc * (p3.x - p1.x) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.x - p1.x) + Math.pow(perc, 3) * (p2.x - p1.x);
+      point.y = 3 * Math.pow(1 - perc, 2) * perc * (p3.y - p1.y) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.y - p1.y) + Math.pow(perc, 3) * (p2.y - p1.y);
+      point.z = 3 * Math.pow(1 - perc, 2) * perc * (p3.z - p1.z) + 3 * (1 - perc) * Math.pow(perc, 2) * (p4.z - p1.z) + Math.pow(perc, 3) * (p2.z - p1.z);
+
+      if (lastPoint !== null) {
+        ptDistance += Math.pow(point.x - lastPoint.x, 2);
+        ptDistance += Math.pow(point.y - lastPoint.y, 2);
+        ptDistance += Math.pow(point.z - lastPoint.z, 2);
+      }
+      lastPoint = point;
+      ptDistance = Math.sqrt(ptDistance);
+      addedLength += ptDistance;
+      samples[k] = {
+        partialLength: ptDistance,
+        point,
+      };
+
     }
-    ptDistance = Math.sqrt(ptDistance);
-    addedLength += ptDistance;
-    samples[k] = new BezierPointData(ptDistance, point);
-    lastPoint = point;
+    const data = new BezierLengthData(samples, addedLength);
+
+    BezierDataMap[str] = data;
+
+    return {
+      data,
+      interval: [p1.x, p1.y, p1.z],
+    };
   }
 
-  // 需要增加一下缓存数据
-  // const str = ('bez_' + p1.toArray() + '_' + p2.toArray() + '_' + p3.toArray() + '_' + p4.toArray()).replace(/\./g, 'p');
-
-  return new BezierLengthData(samples, addedLength);
 }
 export class BezierEasing {
   private precomputed: boolean;
   private mSampleValues: Float32Array | Array<number>;
+  public cachingValue: Record<string, number>;
 
   constructor (public mX1: number, public mY1: number, public mX2: number, public mY2: number) {
     this.mSampleValues = typeof Float32Array === 'function' ? new Float32Array(kSplineTableSize) : new Array(kSplineTableSize);
     this.precomputed = false;
+    this.cachingValue = {};
   }
 
   precompute () {
@@ -126,6 +157,7 @@ export class BezierEasing {
     if (!this.precomputed) {
       this.precompute();
     }
+
     // linear
     if (this.mX1 === this.mY1 && this.mX2 === this.mY2) {
       return x;
@@ -138,7 +170,20 @@ export class BezierEasing {
       return 1;
     }
 
-    return calcBezier(this.getTForX(x), this.mY1, this.mY2);
+    const keys = Object.keys(this.cachingValue);
+    const index = keys.findIndex(key => decimalEqual(Number(key), x, 0.005));
+
+    if (index !== -1) {
+      return this.cachingValue[keys[index]];
+    }
+
+    const value = calcBezier(this.getTForX(x), this.mY1, this.mY2);
+
+    if (keys.length < 300) {
+      this.cachingValue[x] = value;
+    }
+
+    return value;
   }
 
   calcSampleValues () {
@@ -174,6 +219,72 @@ export class BezierEasing {
 
 }
 
+export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyframe: BezierKeyframeValue): {
+  points: Vector2[],
+  curve: LinearValue | BezierEasing,
+} {
+  // 获取控制点和曲线类型
+  const { type, p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe);
+
+  if (type === 'line') {
+    return {
+      points: [p0, p1, p0, p1],
+      curve: new LinearValue([p0.y, p1.y]),
+    };
+
+    // 2. 左右两边至少有一边为ease
+  } else {
+    assertExist(p2);
+    assertExist(p3);
+    const timeInterval = p3.x - p0.x;
+    const valueInterval = p3.y - p0.y;
+
+    if (decimalEqual(valueInterval, 0)) {
+      return {
+        points: [p0, p1, p2, p3],
+        curve: new LinearValue([p3.y, p3.y]),
+      };
+    }
+
+    let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
+    let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;
+    const y1 = Math.round((p1.y - p0.y) / valueInterval * 100000) / 100000;
+    const y2 = Math.round((p2.y - p0.y) / valueInterval * 100000) / 100000;
+
+    if (x1 < 0) {
+      console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
+      x1 = 0;
+    }
+    if (x2 < 0) {
+      console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
+      x2 = 0;
+    }
+    if (x1 > 1) {
+      console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
+      x1 = 1;
+    }
+    if (x2 > 1) {
+      console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
+      x2 = 1;
+    }
+
+    const str = ('bez_' + x1 + '_' + y1 + '_' + x2 + '_' + y2).replace(/\./g, 'p');
+    let bezEasing;
+
+    if (BezierMap[str]) {
+      bezEasing = BezierMap[str];
+    } else {
+      bezEasing = new BezierEasing(x1, x2, y1, y2);
+      BezierMap[str] = bezEasing;
+    }
+
+    return {
+      points: [p0, p1, p2, p3],
+      curve: bezEasing,
+    };
+  }
+}
+
 /**
  * 根据不同关键帧类型，获取位于曲线上的点的索引
  */
@@ -191,21 +302,6 @@ export function getPointIndexInCurve (keyframe: spec.BezierKeyframeValue): {
             : 0;
 
   return { xIndex: index, yIndex: index + 1 };
-}
-
-/**
- * 根据不同关键帧类型，获取位于曲线上的点
- */
-function getPointInCurve (keyframe: spec.BezierKeyframeValue): {
-  x: number,
-  y: number,
-} {
-  const [_, data] = keyframe;
-  const { xIndex, yIndex } = getPointIndexInCurve(keyframe);
-  const time = data[xIndex];
-  const value = data[yIndex];
-
-  return new Vector2(time, value);
 }
 
 /**

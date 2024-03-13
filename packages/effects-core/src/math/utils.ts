@@ -124,9 +124,7 @@ export function trianglesFromRect (position: Vector3, halfWidth: number, halfHei
   ];
 }
 
-export function decimalEqual (a: number, b: number) {
-  const epsilon = 0.000001; // 取一个比较小但又不需要太小的数
-
+export function decimalEqual (a: number, b: number, epsilon = 0.000001) {
   return Math.abs(a - b) < epsilon;
 }
 
