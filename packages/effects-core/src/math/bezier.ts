@@ -170,7 +170,6 @@ export function getControlPoints (
   leftKeyframe: spec.BezierKeyframeValue,
   rightKeyframe: spec.BezierKeyframeValue,
   lineToBezier = false):
-  { xMin: number, xMax: number } &
   ({ type: 'ease', p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, isHold?: boolean, leftHoldLine?: boolean, rightHoldLine?: boolean }
   | { type: 'line', p0: Vector2, p1: Vector2, p2?: Vector2, p3?: Vector2, isHold?: boolean, leftHoldLine?: boolean, rightHoldLine?: boolean }) {
 
@@ -190,7 +189,7 @@ export function getControlPoints (
     const p3 = new Vector2(rightPoint.x, rightPoint.y);
     const p2 = new Vector2(p3.x - (p3.x - p0.x) / 10, p3.y);
 
-    return { type: 'ease', p0, p1, p2, p3, xMin: leftValue[leftValue.length - 4], xMax: rightKeyframe[1][0] };
+    return { type: 'ease', p0, p1, p2, p3 };
   }
 
   // 2. 左边为line，右边为ease（补充左边的控制点，该点在曲线上的点的偏右边位置）
@@ -202,7 +201,7 @@ export function getControlPoints (
     const p3 = new Vector2(rightValue[2], rightValue[3]);
     const p1 = new Vector2(p0.x + (p3.x - p0.x) / 10, p0.y);
 
-    return { type: 'ease', p0, p1, p2, p3, xMin: leftKeyframe[1][0], xMax: rightValue[2] };
+    return { type: 'ease', p0, p1, p2, p3 };
   }
 
   // 3. 左边为ease，右边为ease
@@ -213,7 +212,7 @@ export function getControlPoints (
     const p2 = new Vector2(rightValue[0], rightValue[1]);
     const p3 = new Vector2(rightValue[2], rightValue[3]);
 
-    return { type: 'ease', p0, p1, p2, p3, xMin: leftValue[leftValue.length - 4], xMax: rightValue[2] };
+    return { type: 'ease', p0, p1, p2, p3 };
   }
 
   // 4. 左边为line，右边为line
@@ -231,8 +230,8 @@ export function getControlPoints (
     const p2 = new Vector2((p1.x - p0.x) / 3 + p0.x, (p1.y - p0.y) / 3 + p0.y);
     const p3 = new Vector2((p1.x - p0.x) / 3 * 2 + p0.x, (p1.y - p0.y) / 3 * 2 + p0.y);
 
-    return { type: 'ease', p0, p1: p2, p2: p3, p3: p1, isHold: leftHoldLine || rightHoldLine, leftHoldLine, rightHoldLine, xMin: leftKeyframe[1][0], xMax: rightKeyframe[1][0] };
+    return { type: 'ease', p0, p1: p2, p2: p3, p3: p1, isHold: leftHoldLine || rightHoldLine, leftHoldLine, rightHoldLine };
   } else {
-    return { type: 'line', p0, p1, isHold: leftHoldLine || rightHoldLine, leftHoldLine, rightHoldLine, xMin: leftKeyframe[1][0], xMax: rightKeyframe[1][0] };
+    return { type: 'line', p0, p1, isHold: leftHoldLine || rightHoldLine, leftHoldLine, rightHoldLine };
   }
 }

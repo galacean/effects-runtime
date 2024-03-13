@@ -1,6 +1,14 @@
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
-import { isArray, random, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
+import {
+  isArray,
+  random,
+  colorToArr,
+  colorStopsFromGradient,
+  interpolateColor,
+  isFunction,
+  assertExist,
+} from '../utils';
 import type { ColorStop } from '../utils';
 import { BezierEasing, BezierMap, getControlPoints } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
@@ -646,79 +654,77 @@ export class BezierSegments extends PathSegments {
 export class BezierCurve extends ValueGetter<number> {
   curveMap: Record<string, {
     points: Vector2[],
-    curve: BezierEasing | StaticValue,
+    curve: BezierEasing | LinearValue,
   }>;
 
-  // 1. 先根据关键帧类型恢复n段贝塞尔曲线
-  // 2. 根据lifetime 得当前需要对第几段贝塞尔曲线求值，并把lifetime 换算成 [0, 1]的值x
-  // 3. 根据x求得当前值
   override onCreate (props: spec.BezierKeyframeValue[]) {
     const keyframes = props;
 
     this.curveMap = {};
-
+    // n个点需要分解成n-1段曲线
     for (let i = 0; i < keyframes.length - 1; i++) {
       const leftKeyframe = keyframes[i];
       const rightKeyframe = keyframes[i + 1];
 
       // 获取控制点和曲线类型
-      const { type, p0, p1, p2, p3, xMin, xMax } = getControlPoints(leftKeyframe, rightKeyframe, true);
+      const { type, p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe);
 
       if (type === 'line') {
-        const { x: x0, y: y0 } = p0;
-        const { x: x1, y: y1 } = p1;
-
-        this.curveMap[`${xMin}-${xMax}`] = {
+        this.curveMap[`${p0.x}-${p1.x}`] = {
           points: [p0, p1],
-          curve: new BezierEasing('line', x0, y0, x1, y1),
+          curve: new LinearValue([p0.y, p1.y]),
         };
 
         // 2. 左右两边至少有一边为ease
       } else {
-        const str = ('bez_' + p0.toArray() + '_' + p1.toArray() + '_' + p2?.toArray() + '_' + p3?.toArray()).replace(/\./g, 'p');
+        assertExist(p2);
+        assertExist(p3);
+        const timeInterval = p3.x - p0.x;
+        const valueInterval = p3.y - p0.y;
+
+        if (decimalEqual(valueInterval, 0)) {
+          this.curveMap[`${p0.x}-${p3.x}`] = {
+            points: [p0, p1, p2, p3],
+            curve:  new LinearValue([p3.y, p3.y]),
+          };
+
+          return;
+        }
+        let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
+        let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;
+        const y1 = Math.round((p1.y - p0.y) / valueInterval * 100000) / 100000;
+        const y2 = Math.round((p2.y - p0.y) / valueInterval * 100000) / 100000;
+
+        if (x1 < 0) {
+          console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
+          x1 = 0;
+        }
+        if (x2 < 0) {
+          console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
+          x2 = 0;
+        }
+        if (x1 > 1) {
+          console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
+          x1 = 1;
+        }
+        if (x2 > 1) {
+          console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
+          x2 = 1;
+        }
+
+        const str = ('bez_' + x1 + '_' + y1 + '_' + x2 + '_' + y2).replace(/\./g, 'p');
 
         if (BezierMap[str]) {
-          this.curveMap[`${xMin}-${xMax}`] = {
+          this.curveMap[`${p0.x}-${p3.x}`] = {
             points: [p0, p1, p2, p3],
             curve: BezierMap[str],
           };
         } else {
-          const timeInterval = p3.x - p0.x;
-          const valueInterval = p3.y - p0.y;
 
-          if (decimalEqual(valueInterval, 0)) {
-            this.curveMap[`${xMin}-${xMax}`] = {
-              points: [p0, p1, p2, p3],
-              curve: new StaticValue(p3.y),
-            };
-
-            return;
-          }
-          let x1 = (p1.x - p0.x) / timeInterval;
-          let x2 = (p2.x - p0.x) / timeInterval;
-          const y1 = (p1.y - p0.y) / valueInterval;
-          const y2 = (p2.y - p0.y) / valueInterval;
-
-          if (x1 < 0) {
-            console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
-            x1 = 0;
-          }
-          if (x2 < 0) {
-            console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
-            x2 = 0;
-          }
-          if (x1 > 1) {
-            console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
-            x1 = 1;
-          }
-          if (x2 > 1) {
-            console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
-            x2 = 1;
-          }
           const bezEasing = new BezierEasing('ease', x1, x2, y1, y2);
 
           BezierMap[str] = bezEasing;
-          this.curveMap[`${xMin}-${xMax}`] = {
+          this.curveMap[`${p0.x}-${p3.x}`] = {
             points: [p0, p1, p2, p3],
             curve: bezEasing,
           };
@@ -728,25 +734,47 @@ export class BezierCurve extends ValueGetter<number> {
   }
   override getValue (time: number) {
     let result = 0;
+    const keyTimeData = Object.keys(this.curveMap);
+    const keyTimeStart = Number(keyTimeData[0].split('-')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('-')[1]);
 
-    Object.keys(this.curveMap).forEach(timeInfo => {
-      const [xMin, xMax] = timeInfo.split('-');
+    if (time < keyTimeStart) {
+      return 1;
+    }
+    if (time > keyTimeEnd) {
+      return this.getCurveValue(keyTimeData[keyTimeData.length - 1], keyTimeEnd);
+    }
+
+    for (let i = 0; i < keyTimeData.length ; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('-');
 
       if (time >= Number(xMin) && time <= Number(xMax)) {
-        const curveInfo = this.curveMap[timeInfo];
-        const [p0, , , p3] = curveInfo.points;
-        const timeInterval = p3.x - p0.x;
-        const valueInterval = p3.y - p0.y;
-        const normalizeTime = (time - p0.x) / timeInterval;
+        result = this.getCurveValue(keyTimeData[i], time);
 
-        const value = curveInfo.curve.getValue(normalizeTime);
-
-        result = p0.y + valueInterval * value;
-
+        break;
       }
-    });
+    }
 
     return result;
+  }
+
+  getCurveValue (curveKey: string, time: number) {
+    const curveInfo = this.curveMap[curveKey];
+    const [p0, p1, , p3] = curveInfo.points;
+
+    if (curveInfo.curve instanceof LinearValue) {
+      const timeInterval = (p1.x - p0.x);
+      const relativeTime = Math.round((time - p0.x) * 10000) / 10000;
+
+      return curveInfo.curve.getValue(relativeTime / timeInterval);
+    }
+
+    const timeInterval = p3.x - p0.x;
+    const valueInterval = p3.y - p0.y;
+    const normalizeTime = (time - p0.x) / timeInterval;
+    const value = curveInfo.curve.getValue(normalizeTime);
+
+    return p0.y + valueInterval * value;
   }
 }
 
