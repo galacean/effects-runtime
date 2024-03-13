@@ -507,15 +507,9 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
-
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-
-    // TODO: 放到 Spec 处理
-    if (this.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY || this.endBehavior === spec.END_BEHAVIOR_PAUSE) {
-      this.endBehavior = spec.END_BEHAVIOR_FREEZE;
-    }
     this.lifetime = -(this.start / this.duration);
     this.listIndex = listIndex;
 

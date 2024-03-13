@@ -149,6 +149,12 @@ export function version3Migration (scene: Record<string, any>): Scene {
       }
     }
 
+    // item 的 endbehaviour 兼容
+    // @ts-expect-error
+    if (item.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY || item.endBehavior === spec.END_BEHAVIOR_PAUSE) {
+      item.endBehavior = spec.END_BEHAVIOR_FREEZE;
+    }
+
     // item 的 content 转为 component data 加入 JSONScene.components
     const uuid = uuidv4().replace(/-/g, '');
 
