@@ -20,6 +20,7 @@ import type {
 import { ActivationClipPlayable, AnimationClipPlayable, TimelineComponent, Track } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | TimelineComponent | CameraController | InteractComponent | void | {};
 export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
@@ -484,11 +485,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.name = name;
     this.start = delay ? delay : this.start;
-    // TODO spec 数据需要区分 scale 和 size
-    if (transform && transform.scale && data.type !== 'ECS') {
-      //@ts-expect-error  TODO 数据改造后移除 expect-error
-      transform.scale.z = transform.scale.x;
-    }
 
     if (transform) {
       //@ts-expect-error TODO 数据改造后移除 expect-error
@@ -497,17 +493,22 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       transform.rotation = new Euler().copyFrom(transform.rotation);
       //@ts-expect-error
       transform.scale = new Vector3().copyFrom(transform.scale);
+      //@ts-expect-error
+      if (transform.size) {
+        //@ts-expect-error
+        transform.size = new Vector2().copyFrom(transform.size);
+      }
+      //@ts-expect-error
+      if (transform.anchor) {
+        //@ts-expect-error
+        transform.anchor = new Vector2().copyFrom(transform.anchor);
+      }
       this.transform.setTransform(transform);
     }
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
 
-    // TODO spec 数据需要区分 scale 和 size
-    if (data.type === spec.ItemType.sprite && transform) {
-      this.transform.setSize(this.transform.scale.x, this.transform.scale.y);
-      this.transform.setScale(1, 1, 1);
-    }
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
@@ -526,25 +527,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
     timelineComponent.fromData(data.content as spec.NullContent);
 
-    // TODO anchor 应该放在 transform data
-    if (data.type === spec.ItemType.sprite) {
-      const content = data.content as unknown as SpriteItemProps;
-
-      if (!content.renderer) {
-        //@ts-expect-error
-        content.renderer = {};
-      }
-      const realAnchor = convertAnchor(content.renderer.anchor, content.renderer.particleOrigin);
-      const startSize = this.transform.size;
-
-      // 兼容旧JSON（anchor和particleOrigin可能同时存在）
-      if (!content.renderer.anchor && content.renderer.particleOrigin !== undefined) {
-        this.transform.position.add([-realAnchor[0] * startSize.x, -realAnchor[1] * startSize.y, 0]);
-      }
-      this.transform.setAnchor(realAnchor[0] * startSize.x, realAnchor[1] * startSize.y, 0);
-    }
-
-    // TODO 要放在上面的 if 后面添加，否则会 position 初始化错误
     if (this.type !== spec.ItemType.particle) {
       const track = timelineComponent.createTrack(Track, 'AnimationTrack');
 

@@ -4,6 +4,7 @@ import type { VFXItemProps } from './vfx-item';
 import { DataType, type DataPath } from './asset-loader';
 import type { Scene } from './scene';
 import { generateGUID } from './utils';
+import { particleOriginTranslateMap } from './math';
 
 type ecScene = spec.JSONScene & { items: VFXItemProps[], components: DataPath[] };
 
@@ -111,7 +112,41 @@ export function version3Migration (scene: Record<string, any>): Scene {
       //@ts-expect-error
       item.transform.rotation = { x: rotation[0], y: rotation[1], z: rotation[2] };
       //@ts-expect-error
-      item.transform.scale = { x: scale[0], y: scale[1], z: scale[2] };
+      item.transform.scale = { x: scale[0], y: scale[1], z: scale[0] };  // z 取 x 的值兼容老数据
+
+      // sprite 的 scale 转为 size
+      if (item.type === spec.ItemType.sprite) {
+        //@ts-expect-error
+        item.transform.size = { x: scale[0], y: scale[1] };
+        //@ts-expect-error
+        item.transform.scale = { x: 1, y: 1, z: 1 };
+      }
+
+      // sprite 的 anchor 修正
+      if (item.type === spec.ItemType.sprite) {
+        const content = item.content;
+
+        //@ts-expect-error
+        if (!content.renderer) {
+          //@ts-expect-error
+          content.renderer = {};
+        }
+        //@ts-expect-error
+        const renderer = content.renderer;
+        const realAnchor = convertAnchor(renderer.anchor, renderer.particleOrigin);
+        //@ts-expect-error
+        const startSize = item.transform.size;
+
+        // 兼容旧JSON（anchor和particleOrigin可能同时存在）
+        if (!renderer.anchor && renderer.particleOrigin !== undefined) {
+          //@ts-expect-error
+          item.transform.position.x += -realAnchor[0] * startSize.x;
+          //@ts-expect-error
+          item.transform.position.y += -realAnchor[1] * startSize.y;
+        }
+        //@ts-expect-error
+        item.transform.anchor = { x:realAnchor[0] * startSize.x, y:realAnchor[1] * startSize.y };
+      }
     }
 
     // item 的 content 转为 component data 加入 JSONScene.components
@@ -271,4 +306,17 @@ export function version3Migration (scene: Record<string, any>): Scene {
   }
 
   return scene as Scene;
+}
+
+/**
+ * 提取并转换 JSON 数据中的 anchor 值
+ */
+export function convertAnchor (anchor?: spec.vec2, particleOrigin?: spec.ParticleOrigin): spec.vec2 {
+  if (anchor) {
+    return [anchor[0] - 0.5, 0.5 - anchor[1]];
+  } else if (particleOrigin) {
+    return particleOriginTranslateMap[particleOrigin];
+  } else {
+    return [0, 0];
+  }
 }

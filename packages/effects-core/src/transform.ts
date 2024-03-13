@@ -9,8 +9,9 @@ export interface TransformProps {
   rotation?: spec.vec3 | Euler,
   quat?: spec.vec4 | Quaternion,
   scale?: spec.vec3 | Vector3,
+  size?: Vector2,
   name?: string,
-  anchor?: spec.vec2 | spec.vec3 | Vector3,
+  anchor?: spec.vec2 | Vector2,
   valid?: boolean,
 }
 
@@ -280,11 +281,10 @@ export class Transform implements Disposable {
    * @param y
    * @param z
    */
-  setAnchor (x: number, y: number, z: number) {
-    if (this.anchor.x !== x || this.anchor.y !== y || this.anchor.z !== z) {
+  setAnchor (x: number, y: number) {
+    if (this.anchor.x !== x || this.anchor.y !== y) {
       this.anchor.x = x;
       this.anchor.y = y;
-      this.anchor.z = z;
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -296,7 +296,7 @@ export class Transform implements Disposable {
    * @param reverseEuler - 设置 rotation时，欧拉角是否需要取负值
    */
   setTransform (props: TransformProps, reverseEuler?: boolean) {
-    const { position, rotation, scale, quat, name, anchor } = props;
+    const { position, rotation, scale, size, quat, name, anchor } = props;
 
     if (name) {
       this.name = name;
@@ -330,11 +330,14 @@ export class Transform implements Disposable {
         this.setScale(scale[0], scale[1], scale[2]);
       }
     }
+    if (size) {
+      this.setSize(size.x, size.y);
+    }
     if (anchor) {
-      if (anchor instanceof Vector3) {
-        this.setAnchor(anchor.x, anchor.y, anchor.z);
+      if (anchor instanceof Vector2) {
+        this.setAnchor(anchor.x, anchor.y);
       } else {
-        this.setAnchor(anchor[0], anchor[1], anchor[2] ?? 0);
+        this.setAnchor(anchor[0], anchor[1]);
       }
     }
   }
