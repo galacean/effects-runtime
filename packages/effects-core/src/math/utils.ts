@@ -123,3 +123,9 @@ export function trianglesFromRect (position: Vector3, halfWidth: number, halfHei
     { p0: p0.clone(), p1: p2.clone(), p2: p3 },
   ];
 }
+
+export function decimalEqual (a: number, b: number) {
+  const epsilon = 0.000001; // 取一个比较小但又不需要太小的数
+
+  return Math.abs(a - b) < epsilon;
+}
