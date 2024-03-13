@@ -148,7 +148,7 @@ void main() {
   finalColor = max(finalColor, 0.0);
 
   if(_UseToneMapping){
-    finalColor = ACESToneMapping(finalColor);
+    finalColor = max(vec3(0.0), ACESToneMapping(finalColor));
   }
   gl_FragColor = vec4(clamp(GammaCorrection(finalColor), 0.0, 1.0), 1.0);
 }
