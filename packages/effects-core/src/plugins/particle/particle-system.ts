@@ -915,7 +915,11 @@ export class ParticleSystem extends Component {
         separateAxes: false,
         x: createValueGetter(('size' in sizeOverLifetime ? sizeOverLifetime.size : sizeOverLifetime.x) || 1),
       };
-    const anchor = Vector2.fromArray(renderer.anchor!);
+
+    if (!renderer.anchor) {
+      renderer.anchor = [0, 0];
+    }
+    const anchor = Vector2.fromArray(renderer.anchor);
 
     this.options = {
       particleFollowParent: !!options.particleFollowParent,
