@@ -6,7 +6,7 @@ import type {
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  isArray, isObject, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, CompositionSourceManager,
+  isArray, isObject, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, CompositionSourceManager, EventEmitter,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -21,6 +21,21 @@ export interface ItemClickedData {
   id: string,
   hitPositions: math.Vector3[],
   compositionId: number,
+}
+// 示例使用
+interface Events {
+  login: [username: string, password: string],
+  logout: [],
+}
+
+export interface EventName {
+  ITEMCLICK: [
+    name: string,
+    player: Player,
+    id: string,
+    hitPositions: math.Vector3[],
+    compositionId: number,
+  ],
 }
 
 /**
@@ -154,7 +169,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    */
   protected compositions: Composition[] = [];
 
-  private readonly event: EventSystem;
+  private readonly event: EventEmitter<Events>;
   private readonly handleWebGLContextLost?: (event: Event) => void;
   private readonly handleWebGLContextRestored?: () => void;
   private readonly handleMessageItem?: (item: MessageItem) => void;
@@ -266,10 +281,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.ticker = new Ticker(fps);
       this.ticker.add(this.tick.bind(this));
     }
-    this.event = new EventSystem(this.canvas, !!notifyTouch);
-    this.event.bindListeners();
-    this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
-    this.interactive = interactive ?? false;
+    this.event = new EventEmitter();
+
+    // this.event = new EventSystem(this.canvas, !!notifyTouch);
+    // this.event.bindListeners();
+    // this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
+    // this.interactive = interactive ?? false;
     this.name = name || `${seed++}`;
     if (!gl) {
       this.resize();
@@ -328,14 +345,15 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    * 获取播放器是否可交互
    */
   get interactive () {
-    return this.event.enabled;
+    return '';
+    // return this.event.enabled;
   }
 
   /**
    * 设置播放器是否可交互
    */
   set interactive (enable) {
-    this.event.enabled = enable;
+    // this.event.enabled = enable;
   }
 
   /**
@@ -421,7 +439,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       renderer,
       width: renderer.getWidth(),
       height: renderer.getHeight(),
-      event: this.event,
+      // event: this.event,
       onPlayerPause: this.handlePlayerPause,
       onMessageItem: this.handleMessageItem,
     }, scene, compositionSourceManager);
@@ -794,7 +812,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.compositions.length = 0;
     (this.renderer as GLRenderer).context.removeLostHandler({ lost: this.lost });
     (this.renderer as GLRenderer).context.removeRestoreHandler({ restore: this.restore });
-    this.event.dispose();
+    // this.event.dispose();
     this.renderer.dispose(!keepCanvas);
     broadcastPlayerEvent(this, false);
     if (
