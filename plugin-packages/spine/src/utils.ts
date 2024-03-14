@@ -128,15 +128,7 @@ export function getAnimationDuration (skeletonData: SkeletonData, animationName:
  * @returns 指定骨骼动画的动画名数组
  */
 export function getSkinList (skeletonData: SkeletonData): string[] {
-  const res = [];
-
-  for (let i = 0; i < skeletonData.skins.length; i++) {
-    if (skeletonData.skins[i].name !== 'default') {
-      res.push(skeletonData.skins[i].name);
-    }
-  }
-
-  return res;
+  return skeletonData.skins.filter(skin => skin.name !== 'default').map(skin => skin.name);
 }
 
 /**

@@ -367,7 +367,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     }
     this.animationStateData.defaultMix = mixDuration;
     if (this.state.tracks[0]) {
-      this.state.tracks[0]!.mixDuration = mixDuration;
+      this.state.tracks[0].mixDuration = mixDuration;
     }
 
   }
