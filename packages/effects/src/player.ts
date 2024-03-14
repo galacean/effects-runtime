@@ -1,6 +1,7 @@
 import type {
-  Disposable, GLType, JSONValue, LostHandler, MessageItem, RestoreHandler,
-  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, Scene, math, GPUCapability,
+  Disposable, GLType, LostHandler, MessageItem, RestoreHandler,
+  SceneLoadOptions, Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent,
+  SceneType, math, GPUCapability,
 } from '@galacean/effects-core';
 import {
   Ticker,
@@ -139,7 +140,6 @@ export interface PlayerConfig {
   [key: string]: any,
 }
 
-export type SceneType = string | JSONValue | Scene;
 export type SceneWithOptionsType = { scene: SceneType, options: SceneLoadOptions };
 export type SceneLoadType = SceneType | SceneWithOptionsType;
 
@@ -914,7 +914,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
 export function isSceneWithOptions (scene: any): scene is SceneWithOptionsType {
   // TODO: 判断不太优雅，后期试情况优化
-  return isObject(scene) && 'scene' in scene;
+  return isObject(scene) && 'scene' in scene && 'options' in scene;
 }
 
 /**

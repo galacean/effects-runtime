@@ -191,7 +191,7 @@ export async function loadImage (
 
 }
 
-/**
+/*
  * 异步加载一个二进制文件
  * @param url - 二进制文件的 URL
  */
