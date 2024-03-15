@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/index';
-import type { JSONValue } from './downloader';
+import type { SceneType } from './asset-manager';
 import type { Scene } from './scene';
 import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop } from './utils';
@@ -153,7 +153,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 合成对应的 url 或者 JSON
    */
-  readonly url: string | JSONValue;
+  readonly url: SceneType;
   /**
    * 合成对象
    */

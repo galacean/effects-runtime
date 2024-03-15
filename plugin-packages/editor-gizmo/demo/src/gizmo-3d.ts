@@ -21,5 +21,5 @@ import { gizmo3D } from './assets';
     },
   });
 
-  await player.loadScene(gizmo3D as unknown as JSONValue);
+  await player.loadScene(gizmo3D);
 })();

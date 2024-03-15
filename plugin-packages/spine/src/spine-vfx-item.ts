@@ -259,8 +259,9 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     if (listener) {
       listener.end = () => { };
     }
-    this.state.clearTracks();
-    this.skeleton.setToSetupPose();
+
+    this.state.setEmptyAnimation(0);
+
     if (!this.animationList.includes(animation)) {
       console.warn(`animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}`);
 
@@ -270,6 +271,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
       this.state.setAnimation(0, animation, loop);
       this.activeAnimation = [animation];
     }
+
     if (!isNaN(speed as number)) {
       this.setSpeed(speed as number);
     }
@@ -292,8 +294,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     if (listener) {
       listener.end = () => { };
     }
-    this.state.clearTracks();
-    this.skeleton.setToSetupPose();
+    this.state.setEmptyAnimation(0);
     for (const animation of animationList) {
       const trackEntry = this.state.addAnimation(0, animation, false);
 
@@ -361,10 +362,14 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
    * @param mixDuration - 融合时间
    */
   setDefaultMixDuration (mixDuration: number) {
-    if (!this.state || this.state.tracks[0]) {
+    if (!this.state) {
       return;
     }
-    this.state.tracks[0]!.mixDuration = mixDuration;
+    this.animationStateData.defaultMix = mixDuration;
+    if (this.state.tracks[0]) {
+      this.state.tracks[0].mixDuration = mixDuration;
+    }
+
   }
 
   /**
@@ -385,7 +390,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     if (!this.skeleton) {
       throw new Error('Set skin before skeleton create');
     }
-    if (!skin || !this.skinList.includes(skin)) {
+    if (!skin || (skin !== 'default' && !this.skinList.includes(skin))) {
       throw new Error(`skin ${skin} not exists in skinList: ${this.skinList}`);
     }
     this.skeleton.setSkinByName(skin);
