@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>降级插件 - Galacean Effects demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<!-- 主文件 -->
+<link rel="stylesheet" href="https://gw.alipayobjects.com/as/g/antui/antui/10.1.32/dpl/antui.css"/>
+</head>
+<body>
+<script>
+  window.addEventListener('error',function (e){
+    // Demo出错时Windows和Mac不弹窗
+    const platform = navigator.platform.toLowerCase();
+    if (platform.search('win') >= 0 || platform.search('mac') >= 0) {
+      return;
+    }
+
+    alert(e.message);
+  })
+</script>
+<div class="am-list">
+  <div class="am-list-header">降级插件 Demo</div>
+  <div class="am-list-body">
+    <a href="simple.html" class="am-list-item">
+      <div class="am-list-content">简单使用</div>
+      <div class="am-list-arrow"><span class="am-icon arrow horizontal"></span></div>
+    </a>
+    <a href="mock-fail.html" class="am-list-item">
+      <div class="am-list-content">Mock Fail</div>
+      <div class="am-list-arrow"><span class="am-icon arrow horizontal"></span></div>
+    </a>
+    <a href="status.html" class="am-list-item">
+      <div class="am-list-content">降级状态</div>
+      <div class="am-list-arrow"><span class="am-icon arrow horizontal"></span></div>
+    </a>
+  </div>
+</div>
+</body>
+</html>
