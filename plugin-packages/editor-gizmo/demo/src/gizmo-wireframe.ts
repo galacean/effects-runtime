@@ -21,5 +21,5 @@ import test_scene from './json/wireframe-mode.json';
     },
   });
 
-  await player.loadScene(test_scene as unknown as JSONValue);
+  await player.loadScene(test_scene);
 })();
