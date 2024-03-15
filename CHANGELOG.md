@@ -6,6 +6,15 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.2.2
+
+`2024-03-15`
+
+- Fix: Fixed the type inference issue in `loadScene`. [#206](https://github.com/galacean/effects-runtime/pull/206) @RGCHN
+- Fix: Fixed the flickering issue when switching spine animations. [#200](https://github.com/galacean/effects-runtime/pull/200) @RGCHN
+- Fix: Text line height bug with setFontSize. [#199](https://github.com/galacean/effects-runtime/pull/199) @Sruimeng
+- Test: Fix memory cases. [#190](https://github.com/galacean/effects-runtime/pull/190) @liuxi150
+
 ## 1.2.1
 
 `2024-03-01`

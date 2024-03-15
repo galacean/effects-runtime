@@ -7,6 +7,15 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.2.2
+
+`2024-03-15`
+
+- Fix: 修复 `loadScene` 的类型推断问题。[#206](https://github.com/galacean/effects-runtime/pull/206) @RGCHN
+- Fix: 修复 spine 动作切换闪烁问题。[#200](https://github.com/galacean/effects-runtime/pull/200) @RGCHN
+- Fix: text line height bug with `setFontSize`. [#199](https://github.com/galacean/effects-runtime/pull/199) @Sruimeng
+- Test: fix memory cases. [#190](https://github.com/galacean/effects-runtime/pull/190) @liuxi150
+
 ## 1.2.1
 
 `2024-03-01`
