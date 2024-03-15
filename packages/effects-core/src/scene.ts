@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import type { JSONValue } from './downloader';
+import type { SceneType } from './asset-manager';
 import type { Texture } from './texture';
 import type { PluginSystem } from './plugin-system';
 import { isObject } from './utils';
@@ -28,7 +28,7 @@ export interface Scene {
    * 加载开始时间
    */
   startTime?: number,
-  url: string | JSONValue,
+  url: SceneType,
   usedImages: Record<number, boolean>,
 }
 

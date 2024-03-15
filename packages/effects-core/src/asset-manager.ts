@@ -97,9 +97,9 @@ export interface SceneLoadOptions {
 let seed = 1;
 
 /**
- * 场景类型
+ * 接受用于加载的数据类型
  */
-export type SceneType = string | JSONValue | Scene;
+export type SceneType = string | Scene | Record<string, unknown>;
 export type SceneWithOptionsType = { scene: SceneType, options: SceneLoadOptions };
 export type SceneLoadType = SceneType | SceneWithOptionsType;
 
@@ -163,11 +163,11 @@ export class AssetManager implements Disposable {
    * @returns
    */
   async loadScene (
-    url: string | JSONValue | Scene,
+    url: SceneType,
     renderer?: Renderer,
     options?: { env: string },
   ): Promise<Scene> {
-    let rawJSON: JSONValue | Scene;
+    let rawJSON: SceneType | JSONValue;
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfos: string[] = [];
@@ -254,7 +254,7 @@ export class AssetManager implements Disposable {
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
         scene = {
-          url: url as JSONValue | string,
+          url: url,
           renderLevel: this.options.renderLevel,
           storage: {},
           pluginSystem,
