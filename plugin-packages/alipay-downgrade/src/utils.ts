@@ -74,7 +74,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
   }
 
   if (bizId === mockIdFail || bizId === mockIdPass) {
-    return Promise.resolve({ mock : { downgrade: bizId === mockIdFail } });
+    return Promise.resolve({ mock: { downgrade: bizId === mockIdFail } });
   }
 
   const ap = window.AlipayJSBridge;

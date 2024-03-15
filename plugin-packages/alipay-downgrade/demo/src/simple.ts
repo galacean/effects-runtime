@@ -5,8 +5,6 @@ const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*liH3SI2hhHUAAAAAAAA
 const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7HAgrIAAAAAAAAAAAAADuJ6AQ/original';
 
 (async () => {
-  console.info('alipay-downgrade');
-
   const container = document.getElementById('J-container');
   const player = new Player({
     container,
@@ -14,10 +12,8 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
   });
 
   const downgrade = await getDowngradeResult('test');
-  const label = document.createElement('label');
 
-  label.innerText = JSON.stringify(downgrade, undefined, 2);
-  document.body.appendChild(label);
+  document.getElementById('J-downgradeResult')!.innerHTML = JSON.stringify(downgrade, undefined, 2);
 
   try {
     const scene = await player.loadScene(json, {
@@ -25,15 +21,9 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
         downgrade,
       },
     });
-  } catch (e) {
-    const label = document.createElement('label');
-
-    // @ts-expect-error
-    label.innerText = JSON.stringify(e.message, undefined, 2);
-    document.body.appendChild(document.createElement('br'));
-    document.body.appendChild(label);
+  } catch (e: any) {
     console.error('biz', e);
-    // @ts-expect-error
-    container.innerHTML = `<img src="${imageUrl}" />`;
+    document.getElementById('J-errorMessage')!.innerHTML = JSON.stringify(e.message, undefined, 2);
+    container!.innerHTML = `<img src="${imageUrl}" />`;
   }
 })();

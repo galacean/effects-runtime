@@ -23,7 +23,6 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
     });
   } catch (e) {
     console.error('biz', e);
-    // @ts-expect-error
-    container.innerHTML = `<img src="${imageUrl}" />`;
+    container!.innerHTML = `<img src="${imageUrl}" />`;
   }
 })();
