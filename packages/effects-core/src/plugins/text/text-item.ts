@@ -69,9 +69,11 @@ export class TextComponent extends SpriteComponent {
     if (this.textStyle.fontSize === value) {
       return;
     }
+    // 保证字号变化后位置正常
+    const diff = this.textStyle.fontSize - value;
+
+    this.textLayout.lineHeight += diff;
     this.textStyle.fontSize = value;
-    // 1.5175 = 31.43 / 20
-    this.textLayout.lineHeight = this.textStyle.fontSize * 1.5175;
 
     this.isDirty = true;
   }

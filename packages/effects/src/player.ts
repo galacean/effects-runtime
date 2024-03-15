@@ -903,7 +903,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
 export function isSceneWithOptions (scene: any): scene is SceneWithOptionsType {
   // TODO: 判断不太优雅，后期试情况优化
-  return isObject(scene) && 'scene' in scene;
+  return isObject(scene) && 'scene' in scene && 'options' in scene;
 }
 
 /**

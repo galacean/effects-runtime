@@ -4,7 +4,6 @@ import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
 import { RendererComponent } from './components';
 import type { CompositionSourceManager } from './composition-source-manager';
-import type { JSONValue } from './downloader';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
@@ -19,6 +18,7 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
+import type { SceneType } from './asset-manager';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -154,7 +154,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 合成对应的 url 或者 JSON
    */
-  readonly url: string | JSONValue;
+  readonly url: SceneType;
   /**
    * 合成根元素
    */
