@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-alipay-downgrade",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Galacean Effects player downgrade plugin for Alipay",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
