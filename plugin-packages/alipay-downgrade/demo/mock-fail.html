@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>简单使用 - 降级插件 - Galacean Effects demo</title>
+  <title>mock fail - 降级插件 - Galacean Effects demo</title>
   <style>
     html, body, div, canvas { margin: 0; padding: 0; }
     .container {
@@ -15,8 +15,6 @@
 </head>
 <body>
 <div class="container" id="J-container"></div>
-<div>降级结果：<pre id="J-downgradeResult"></pre></div>
-<div>错误信息：<pre id="J-errorMessage"></pre></div>
 <script>
   window.addEventListener('error',function (e){
     // Demo出错时Windows和Mac不弹窗
@@ -28,6 +26,6 @@
     alert(e.message);
   })
 </script>
-<script type="module" src="./src/simple.ts"></script>
+<script type="module" src="./src/mock-fail.ts"></script>
 </body>
 </html>
