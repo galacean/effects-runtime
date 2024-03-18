@@ -273,3 +273,14 @@ function resumePausedPlayers (e: Event) {
     });
   }
 }
+
+export class UADecoder {
+  osName: string;
+  osVersion: string;
+  architecture: string;
+
+  constructor () {
+    const ua = navigator.userAgent;
+
+  }
+}
