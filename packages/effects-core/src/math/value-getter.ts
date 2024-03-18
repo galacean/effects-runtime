@@ -14,6 +14,8 @@ import type { ColorStop } from '../utils';
 import type {
   BezierLengthData,
   BezierEasing } from './bezier';
+import { BezierPath,
+} from './bezier';
 import {
   buildBezierData, buildEasingCurve,
 } from './bezier';
@@ -730,6 +732,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
   curveSegments: Record<string, {
     points: Vector2[],
     easingCurve: BezierEasing | LinearValue,
+    pathCurve: BezierPath,
     bezierData: {
       data: BezierLengthData,
       interval: number[],
@@ -762,6 +765,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       this.curveSegments[`${s.x}&${e.x}`] = {
         points: ps,
         easingCurve,
+        pathCurve: new BezierPath(ps1, ps2, cp1, cp2),
         bezierData: buildBezierData(ps1, ps2, cp1, cp2),
       };
     }
@@ -777,9 +781,9 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       return point;
     }
     if (time > keyTimeEnd) {
-      const bezierData = this.curveSegments[keyTimeData[keyTimeData.length - 1]].bezierData;
+      const pathCurve = this.curveSegments[keyTimeData[keyTimeData.length - 1]].pathCurve;
 
-      point = this.getPointInPerc(1, bezierData.data, bezierData.interval);
+      point = pathCurve.getPointInPercent(1);
 
       return point;
     }
@@ -788,15 +792,10 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       const [xMin, xMax] = keyTimeData[i].split('&');
 
       if (time >= Number(xMin) && time < Number(xMax)) {
-        if (i !== this.catching.lastKeyframeIndex) {
-          this.catching.lastPoint = 0;
-          this.catching.lastAddedLength = 0;
-          this.catching.lastKeyframeIndex = i;
-        }
-        const segmentData = this.curveSegments[keyTimeData[i]].bezierData;
+        const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
 
         perc = this.getPercValue(keyTimeData[i], time);
-        point = this.getPointInPerc(perc, segmentData.data, segmentData.interval);
+        point = bezierPath.getPointInPercent(perc);
       }
     }
 
@@ -818,50 +817,6 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     const normalizeTime = Math.round((time - p0.x) / timeInterval * 10000) / 10000;
 
     return curveInfo.easingCurve.getValue(normalizeTime);
-  }
-
-  getPointInPerc (perc: number, curveSegment: BezierLengthData, interval: number[]) {
-    const point = new Vector3();
-    const bezierData = curveSegment;
-    let flag = true, addedLength = this.catching.lastAddedLength;
-    let j = this.catching.lastPoint;
-    const distanceInLine = curveSegment.segmentLength * perc;
-    const pNum = curveSegment.points.length;
-
-    while (flag) {
-      addedLength += curveSegment.points[j].partialLength;
-      if (distanceInLine === 0 || perc === 0 || j === pNum - 1) {
-        point.x = bezierData.points[j].point.x;
-        point.y = bezierData.points[j].point.y;
-        point.z = bezierData.points[j].point.z;
-
-        break;
-      } else if (distanceInLine >= addedLength && distanceInLine < addedLength + bezierData.points[j + 1].partialLength) {
-        const segmentPerc = (distanceInLine - addedLength) / bezierData.points[j + 1].partialLength;
-
-        point.x = bezierData.points[j].point.x + (bezierData.points[j + 1].point.x - bezierData.points[j].point.x) * segmentPerc;
-        point.y = bezierData.points[j].point.y + (bezierData.points[j + 1].point.y - bezierData.points[j].point.y) * segmentPerc;
-        point.z = bezierData.points[j].point.z + (bezierData.points[j + 1].point.z - bezierData.points[j].point.z) * segmentPerc;
-
-        break;
-      }
-      if (j < pNum - 1) {
-        j += 1;
-      } else {
-        flag = false;
-      }
-    }
-
-    this.catching.lastPoint = j;
-    this.catching.lastAddedLength = addedLength - bezierData.points[j].partialLength;
-
-    point.x += interval[0];
-    point.y += interval[1];
-    point.z += interval[2];
-
-    //
-    // console.log(point, interval)
-    return point;
   }
 
 }
@@ -1057,3 +1012,4 @@ export function createKeyFrameMeta () {
     curveCount: 0,
   };
 }
+

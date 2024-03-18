@@ -1,5 +1,5 @@
 import { assertExist, decimalEqual, LinearValue, pointOnLine } from '@galacean/effects-core';
-import * as spec from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { BezierKeyframeValue } from '@galacean/effects-specification/dist/src/numberExpression';
@@ -8,7 +8,7 @@ import { keyframeInfo } from './keyframe-info';
 export class BezierLengthData {
   constructor (
     public points: Array<{ partialLength: number, point: Vector3 }>,
-    public segmentLength: number,
+    public totalLength: number,
   ) {
   }
 }
@@ -71,7 +71,6 @@ function newtonRaphsonIterate (aX: number, aGuessT: number, mX1: number, mX2: nu
 
 // de Casteljau算法构建曲线
 /**
- *
  * @param p1 起始点
  * @param p2 终点
  * @param p3 起始控制点
@@ -131,6 +130,75 @@ export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vect
       data,
       interval: [p1.x, p1.y, p1.z],
     };
+  }
+
+}
+
+export class BezierPath {
+  public readonly lengthData: BezierLengthData;
+  public readonly interval: number[];
+  public readonly totalLength: number;
+  private catching: {
+    lastPoint: number,
+    lastAddedLength: number,
+  } = {
+      lastPoint: 0,
+      lastAddedLength: 0,
+    };
+
+  constructor (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vector3) {
+    const { data, interval } = buildBezierData(p1, p2, p3, p4);
+
+    this.lengthData = data;
+    this.interval = interval;
+    this.totalLength = data.totalLength;
+  }
+
+  /**
+   * 获取路径在指定比例长度上点的坐标
+   * @param percent 路径长度的比例
+   * @param lastIndex 开始计算的点
+   */
+  getPointInPercent (percent: number) {
+    const point = new Vector3();
+    const bezierData = this.lengthData;
+    let flag = true, addedLength = this.catching.lastAddedLength;
+    const distanceInLine = bezierData.totalLength * percent;
+    const pNum = bezierData.points.length;
+    let j = distanceInLine < this.catching.lastAddedLength ? 0 : this.catching.lastPoint;
+
+    while (flag) {
+      addedLength += bezierData.points[j].partialLength;
+      if (distanceInLine === 0 || percent === 0 || j === pNum - 1) {
+        point.x = bezierData.points[j].point.x;
+        point.y = bezierData.points[j].point.y;
+        point.z = bezierData.points[j].point.z;
+
+        break;
+      } else if (distanceInLine >= addedLength && distanceInLine < addedLength + bezierData.points[j + 1].partialLength) {
+        const segmentPerc = (distanceInLine - addedLength) / bezierData.points[j + 1].partialLength;
+
+        point.x = bezierData.points[j].point.x + (bezierData.points[j + 1].point.x - bezierData.points[j].point.x) * segmentPerc;
+        point.y = bezierData.points[j].point.y + (bezierData.points[j + 1].point.y - bezierData.points[j].point.y) * segmentPerc;
+        point.z = bezierData.points[j].point.z + (bezierData.points[j + 1].point.z - bezierData.points[j].point.z) * segmentPerc;
+
+        break;
+      }
+      if (j < pNum - 1) {
+        j += 1;
+      } else {
+        flag = false;
+      }
+    }
+
+    this.catching.lastPoint = j;
+    this.catching.lastAddedLength = addedLength - bezierData.points[j].partialLength;
+
+    point.x += this.interval[0];
+    point.y += this.interval[1];
+    point.z += this.interval[2];
+
+    return point;
   }
 
 }
@@ -283,25 +351,6 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
       curve: bezEasing,
     };
   }
-}
-
-/**
- * 根据不同关键帧类型，获取位于曲线上的点的索引
- */
-export function getPointIndexInCurve (keyframe: spec.BezierKeyframeValue): {
-  xIndex: number,
-  yIndex: number,
-} {
-  const [type, , markType] = keyframe;
-  // 不同类型，存放的时间不同
-  const index = type === spec.BezierKeyframeType.LINE ? 0
-    : type === spec.BezierKeyframeType.EASE_OUT ? 0
-      : type === spec.BezierKeyframeType.EASE_IN ? 2
-        : type === spec.BezierKeyframeType.EASE ? 2
-          : type === spec.BezierKeyframeType.HOLD ? (markType === spec.BezierKeyframeType.EASE_IN ? 2 : 0)
-            : 0;
-
-  return { xIndex: index, yIndex: index + 1 };
 }
 
 /**
