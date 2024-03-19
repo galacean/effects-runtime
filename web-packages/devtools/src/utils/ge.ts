@@ -385,9 +385,40 @@ function mergeAndEncodeToBase64 (floatArray: Float32Array, uint16Array: Uint16Ar
   return btoa(binaryString);
 }
 
+const vertices_uvs = [
+  -1,
+  1,
+  0,
+  -1,
+  -1,
+  0,
+  1,
+  1,
+  0,
+  1,
+  -1,
+  0,
+  0,
+  1,
+  0,
+  0,
+  1,
+  1,
+  1,
+  0,
+];
+const indices = [
+  0,
+  1,
+  2,
+  2,
+  1,
+  3,
+];
+
 // 示例用法
-const myFloats = new Float32Array([1.0, 0.5, -0.5, 2.5]);
-const myUnsignedShorts = new Uint16Array([65535, 1024, 2048]);
+const myFloats = new Float32Array(vertices_uvs);
+const myUnsignedShorts = new Uint16Array(indices);
 const base64String = mergeAndEncodeToBase64(myFloats, myUnsignedShorts);
 
 // eslint-disable-next-line no-console
@@ -418,8 +449,8 @@ function decodeBase64ToArrays (base64String: string, floatArrayLength: number, u
 }
 
 // 示例用法
-const floatArrayLength = 4; // Float32Array 的元素数量
-const uint16ArrayLength = 3; // Uint16Array 的元素数量
+const floatArrayLength = vertices_uvs.length; // Float32Array 的元素数量
+const uint16ArrayLength = indices.length; // Uint16Array 的元素数量
 const arrays = decodeBase64ToArrays(base64String, floatArrayLength, uint16ArrayLength);
 
 // eslint-disable-next-line no-console

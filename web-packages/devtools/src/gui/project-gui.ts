@@ -195,22 +195,22 @@ function importPng (file: File, curDirHandle: FileSystemDirectoryHandle) {
 }
 
 async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
-  const url = URL.createObjectURL(file);
-  const modelDatas = await parseFBX(url);
+  // const url = URL.createObjectURL(file);
+  // const modelDatas = await parseFBX(url);
 
-  for (const modelData of modelDatas) {
-    const geometryData: GeometryData = {
-      id: generateGUID(),
-      dataType: DataType.Geometry,
-      vertices: modelData.vertices,
-      uvs: modelData.uvs,
-      normals: modelData.normals,
-      indices: modelData.indices,
-    };
-    const geometryAsset = JSON.stringify(createPackageData([geometryData], 'Geometry'), null, 2);
+  // for (const modelData of modelDatas) {
+  //   const geometryData: GeometryData = {
+  //     id: generateGUID(),
+  //     dataType: DataType.Geometry,
+  //     vertices: modelData.vertices,
+  //     uvs: modelData.uvs,
+  //     normals: modelData.normals,
+  //     indices: modelData.indices,
+  //   };
+  //   const geometryAsset = JSON.stringify(createPackageData([geometryData], 'Geometry'), null, 2);
 
-    await saveFile(createJsonFile(geometryAsset, modelData.name + '.json'), curDirHandle);
-  }
+  //   await saveFile(createJsonFile(geometryAsset, modelData.name + '.json'), curDirHandle);
+  // }
 }
 
 // 定义返回类型
