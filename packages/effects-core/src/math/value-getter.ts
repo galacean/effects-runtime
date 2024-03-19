@@ -685,13 +685,13 @@ export class BezierCurve extends ValueGetter<number> {
   override getValue (time: number) {
     let result = 0;
     const keyTimeData = Object.keys(this.curveMap);
-    const keyTimeStart = Number(keyTimeData[0].split('-')[0]);
-    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('-')[1]);
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
 
-    if (time < keyTimeStart) {
-      return 1;
+    if (time <= keyTimeStart) {
+      return this.getCurveValue(keyTimeData[0], keyTimeStart);
     }
-    if (time > keyTimeEnd) {
+    if (time >= keyTimeEnd) {
       return this.getCurveValue(keyTimeData[keyTimeData.length - 1], keyTimeEnd);
     }
 
@@ -777,10 +777,15 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
     const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
 
-    if (time < keyTimeStart) {
+    if (time <= keyTimeStart) {
+      const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+      point = pathCurve.getPointInPercent(0);
+
       return point;
+
     }
-    if (time > keyTimeEnd) {
+    if (time >= keyTimeEnd) {
       const pathCurve = this.curveSegments[keyTimeData[keyTimeData.length - 1]].pathCurve;
 
       point = pathCurve.getPointInPercent(1);

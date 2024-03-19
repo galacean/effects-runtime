@@ -302,8 +302,6 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
 
     // 2. 左右两边至少有一边为ease
   } else {
-    assertExist(p2);
-    assertExist(p3);
     const timeInterval = p3.x - p0.x;
     const valueInterval = p3.y - p0.y;
 
