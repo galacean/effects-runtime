@@ -1,6 +1,6 @@
 import type { Composition, EffectsObjectData } from '@galacean/effects';
 import { DataType, Player, SerializationHelper, TimelineComponent } from '@galacean/effects';
-import demoJson from '../assets/scenes/trail-demo.scene.json';
+import demoJson from '../assets/scenes/geometry-test-scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
 import { MenuGui } from '../gui/menu-gui';
@@ -353,3 +353,76 @@ loadButton.onclick = async () => {
   // await importAssets(player.renderer.engine);
   await selectAndLoadJSONFile();
 };
+
+function mergeAndEncodeToBase64 (floatArray: Float32Array, uint16Array: Uint16Array): string {
+  // 计算新 ArrayBuffer 的总大小（以字节为单位）
+  const totalSize = floatArray.byteLength + uint16Array.byteLength;
+
+  // 创建一个足够大的 ArrayBuffer 来存储两个数组的数据
+  const buffer = new ArrayBuffer(totalSize);
+
+  // 创建一个视图来按照 Float32 格式写入数据
+  const floatView = new Float32Array(buffer, 0, floatArray.length);
+
+  floatView.set(floatArray);
+
+  // 创建一个视图来按照 Uint16 格式写入数据，紧接着 Float32 数据之后
+  const uint16View = new Uint16Array(buffer, floatArray.byteLength, uint16Array.length);
+
+  uint16View.set(uint16Array);
+
+  // 创建一个 Uint8Array 视图以便逐字节访问 ArrayBuffer 的数据
+  const uint8View = new Uint8Array(buffer);
+
+  // 将 Uint8Array 转换为二进制字符串
+  let binaryString = '';
+
+  for (let i = 0; i < uint8View.length; i++) {
+    binaryString += String.fromCharCode(uint8View[i]);
+  }
+
+  // 使用 btoa 函数将二进制字符串转换为 Base64 编码的字符串
+  return btoa(binaryString);
+}
+
+// 示例用法
+const myFloats = new Float32Array([1.0, 0.5, -0.5, 2.5]);
+const myUnsignedShorts = new Uint16Array([65535, 1024, 2048]);
+const base64String = mergeAndEncodeToBase64(myFloats, myUnsignedShorts);
+
+// eslint-disable-next-line no-console
+console.log(base64String); // 输出 Base64 编码的字符串
+
+function decodeBase64ToArrays (base64String: string, floatArrayLength: number, uint16ArrayLength: number): { floatArray: Float32Array, uint16Array: Uint16Array } {
+  // 将 Base64 编码的字符串转换为二进制字符串
+  const binaryString = atob(base64String);
+
+  // 将二进制字符串转换为字节数组
+  const bytes = new Uint8Array(binaryString.length);
+
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // 创建 ArrayBuffer 并为其创建视图
+  const buffer = bytes.buffer;
+
+  // 根据提供的长度信息创建 Float32Array
+  const floatView = new Float32Array(buffer, 0, floatArrayLength);
+
+  // 根据提供的长度信息创建 Uint16Array，它紧随 Float32Array 数据之后
+  const uint16View = new Uint16Array(buffer, floatArrayLength * 4, uint16ArrayLength);
+
+  // 返回解码后的数组
+  return { floatArray: floatView, uint16Array: uint16View };
+}
+
+// 示例用法
+const floatArrayLength = 4; // Float32Array 的元素数量
+const uint16ArrayLength = 3; // Uint16Array 的元素数量
+const arrays = decodeBase64ToArrays(base64String, floatArrayLength, uint16ArrayLength);
+
+// eslint-disable-next-line no-console
+console.log(arrays.floatArray); // 输出 Float32Array
+// eslint-disable-next-line no-console
+console.log(arrays.uint16Array); // 输出 Uint16Array
