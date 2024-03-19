@@ -1,4 +1,5 @@
 import UAParser from 'ua-parser-js';
+import { UADecoder } from '@galacean/effects-plugin-downgrade';
 
 (async () => {
   const parser = new UAParser();
@@ -9,14 +10,17 @@ import UAParser from 'ua-parser-js';
   document.body.appendChild(label0);
   console.info(result0);
 
-  // const downgradeResult = getDowngradeResult();
-  // const downgradeDecision = checkDowngradeResult(downgradeResult);
-  // const resultLabel = document.createElement('label');
+  const decoder = new UADecoder();
 
-  // resultLabel.textContent = `Result:${JSON.stringify(downgradeResult, undefined, 2)}`;
-  // const decisionLabel = document.createElement('label');
+  document.body.appendChild(document.createElement('br'));
+  const label1 = document.createElement('label');
 
-  // decisionLabel.textContent = `Decision:${JSON.stringify(downgradeDecision, undefined, 2)}`;
-  // document.body.append(resultLabel);
-  // document.body.append(decisionLabel);
+  label1.innerText = 'UA: ' + navigator.userAgent;
+  document.body.appendChild(label1);
+
+  document.body.appendChild(document.createElement('br'));
+  const label2 = document.createElement('label');
+
+  label2.innerText = 'UADecoder result: ' + JSON.stringify(decoder, undefined, 2);
+  document.body.appendChild(label2);
 })();

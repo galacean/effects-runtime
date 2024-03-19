@@ -274,13 +274,183 @@ function resumePausedPlayers (e: Event) {
   }
 }
 
+interface OSInfo {
+  name?: string,
+  version?: string,
+}
+
+interface DeviceInfo {
+  vendor?: string,
+  model?: string,
+}
+
+interface ProductInfo {
+  name: string,
+  comment?: string,
+}
+
 export class UADecoder {
-  osName: string;
-  osVersion: string;
-  architecture: string;
+  os: OSInfo = {};
+  device: DeviceInfo = {};
 
   constructor () {
-    const ua = navigator.userAgent;
+    this.initial(navigator.userAgent);
+  }
+
+  isiOS () {
+    return this.os.name === 'iOS';
+  }
+
+  isAndroid () {
+    return this.os.name === 'Android';
+  }
+
+  isWindows () {
+    return this.os.name === 'Windows';
+  }
+
+  isMacintosh () {
+    return this.os.name === 'Macintosh';
+  }
+
+  isMobile () {
+    return this.os.name === 'iOS' || this.os.name === 'Android';
+  }
+
+  getOSVersion () {
+    return this.os.version;
+  }
+
+  getDeviceModel () {
+    return this.device.model;
+  }
+
+  private initial (ua: string) {
+    const pattern = /(\w+\/[\w.]+)(\s+\([^\)]+))?/g;
+    const productInfos: ProductInfo[] = [];
+
+    let match;
+
+    while ((match = pattern.exec(ua)) !== null) {
+      const name = match[1];
+      const comment = match[2]?.trim();
+
+      productInfos.push({ name, comment });
+    }
+
+    for (const productInfo of productInfos) {
+      const { name, comment } = productInfo;
+
+      if (name?.startsWith('Mozilla/')) {
+        if (comment) {
+          this.parseData(comment);
+        }
+
+        break;
+      }
+    }
+  }
+
+  private parseData (data: string) {
+    if (this.testiOS(data)) {
+      this.os.name = 'iOS';
+      this.os.version = this.parseiOSVersion(data);
+    } else if (this.testAndroid(data)) {
+      this.os.name = 'Android';
+      this.os.version = this.parseAndroidVersion(data);
+      this.device.model = this.parseAndroidModel(data);
+    } else if (this.testMacintosh(data)) {
+      this.os.name = 'Mac OS';
+      this.os.version = this.parseMacOSVersion(data);
+    } else if (this.testWindows(data)) {
+      this.os.name = 'Windows';
+      this.os.version = this.parseWindowsVersion(data);
+    } else {
+      console.error(`Unkonw info: ${data}`);
+    }
+  }
+
+  private parseiOSVersion (data: string) {
+    const pattern = /OS (\d+)(?:_(\d+))?_(\d+)/;
+    const match = data.match(pattern);
+
+    if (match) {
+      const versionList: string[] = [];
+
+      for (let i = 1; i <= 3; i++) {
+        if (match[i]) {
+          versionList.push(match[i]);
+        }
+      }
+
+      return versionList.join('.');
+    }
 
   }
+
+  private parseAndroidVersion (data: string) {
+    const pattern = /Android ([\d.]+);/;
+    const match = data.match(pattern);
+
+    if (match && match.length >= 2) {
+      return match[1];
+    }
+  }
+
+  private parseAndroidModel (data: string) {
+    const itemList = data.split(';');
+
+    for (const item of itemList) {
+      const modelPattern = /(.*) Build/;
+      const modelMatch = item.match(modelPattern);
+
+      if (modelMatch && modelMatch.length >= 2) {
+        return modelMatch[1];
+      }
+    }
+  }
+
+  private parseWindowsVersion (data: string) {
+    const pattern = /Windows NT ([\d.]+);/;
+    const match = data.match(pattern);
+
+    if (match && match.length >= 2) {
+      return match[1];
+    }
+  }
+
+  private parseMacOSVersion (data: string) {
+    const pattern = /OS X (\d+)(?:_(\d+))?_(\d+)/;
+    const match = data.match(pattern);
+
+    if (match) {
+      const versionList: string[] = [];
+
+      for (let i = 1; i <= 3; i++) {
+        if (match[i]) {
+          versionList.push(match[i]);
+        }
+      }
+
+      return versionList.join('.');
+    }
+
+  }
+
+  private testiOS (data: string) {
+    return data.includes('iPhone') || data.includes('iPad');
+  }
+
+  private testAndroid (data: string) {
+    return data.includes('Android');
+  }
+
+  private testMacintosh (data: string) {
+    return data.includes('Macintosh');
+  }
+
+  private testWindows (data: string) {
+    return data.includes('Windows');
+  }
+
 }

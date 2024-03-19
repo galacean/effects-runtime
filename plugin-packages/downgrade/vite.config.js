@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
           'simple': resolve(__dirname, 'demo/simple.html'),
           'status': resolve(__dirname, 'demo/status.html'),
           'mock-fail': resolve(__dirname, 'demo/mock-fail.html'),
+          'ua-parser': resolve(__dirname, 'demo/ua-parser.html'),
         }
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常
