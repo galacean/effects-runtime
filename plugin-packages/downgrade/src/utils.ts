@@ -282,6 +282,8 @@ interface OSInfo {
 interface DeviceInfo {
   vendor?: string,
   model?: string,
+  level?: string,
+  totalMemoryMB?: number,
 }
 
 interface ProductInfo {
@@ -326,7 +328,7 @@ export class UADecoder {
   }
 
   private initial (ua: string) {
-    const pattern = /(\w+\/[\w.]+)(\s+\([^\)]+))?/g;
+    const pattern = /(\w+\/[\w.]+)(\s+\([^)]+\))?/g;
     const productInfos: ProductInfo[] = [];
 
     let match;
