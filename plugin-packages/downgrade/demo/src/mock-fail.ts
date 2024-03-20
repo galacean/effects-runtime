@@ -13,7 +13,7 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
     pixelRatio: window.devicePixelRatio,
   });
 
-  const downgrade = getDowngradeResult();
+  const downgrade = getDowngradeResult({ mock: { downgrade: true } });
 
   try {
     const scene = await player.loadScene(json, {
