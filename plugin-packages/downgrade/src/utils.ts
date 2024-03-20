@@ -1,4 +1,4 @@
-import { spec, isString, disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger } from '@galacean/effects';
+import { spec, disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger } from '@galacean/effects';
 import { DowngradePlugin } from './downgrade-plugin';
 
 export interface DowngradeOptions {
@@ -20,15 +20,7 @@ export interface DowngradeOptions {
     downgrade: boolean,
     deviceLevel?: string,
   },
-  downgradeCallback?: (device: DeviceInfo) => DowngradeDecision | undefined,
-}
-
-export interface DeviceInfo {
-  osName?: string,
-  osVersion?: string,
-  model?: string,
-  level?: string,
-  totalMemoryMB?: number,
+  downgradeCallback?: DowngradeCallback,
 }
 
 export interface DowngradeResult {
@@ -38,19 +30,30 @@ export interface DowngradeResult {
     osVersion?: string,
     model?: string,
     level?: string,
-    totalMemoryMB?: number,
+    memoryMB?: number,
   },
   mock?: {
     downgrade: boolean,
     deviceLevel?: string,
   },
-  downgradeCallback?: (device: DeviceInfo) => DowngradeDecision | undefined,
+  downgradeCallback?: DowngradeCallback,
 }
 
-interface DowngradeDecision {
+export interface DeviceInfo {
+  osName?: string,
+  osVersion?: string,
+  model?: string,
+  level?: string,
+  memoryMB?: number,
+  isIOS: boolean,
+}
+
+export interface DowngradeDecision {
   downgrade: boolean,
   reason: string,
 }
+
+export type DowngradeCallback = (device: DeviceInfo) => DowngradeDecision | undefined;
 
 interface ProductInfo {
   name: string,
@@ -319,13 +322,13 @@ export function getDowngradeResult (options: DowngradeOptions = {}): DowngradeRe
     hasRegisterEvent = true;
   }
 
-  const { mock, autoQueryDevice: autoCallJSApi } = options;
+  const { mock, autoQueryDevice } = options;
 
   if (mock) {
     return { mock };
   }
 
-  if (autoCallJSApi) {
+  if (autoQueryDevice) {
     // FIXME: 支付宝小程序，https://opendocs.alipay.com/mini/api/system-info?pathHash=3ca534f3
     // FIXME: 微信小程序，https://developers.weixin.qq.com/miniprogram/dev/api/base/system/wx.getDeviceInfo.html
   }
@@ -411,78 +414,85 @@ const downgradeiOSVersions: string[] = [
 ];
 
 class DeviceProxy {
-  isIOS = false;
+  osName?: string;
+  osVersion?: string;
   model?: string;
-  deviceLevel?: string;
+  level?: string;
+  memoryMB?: number;
+  isIOS = false;
 
   getDowngradeDecision (result: DowngradeResult): DowngradeDecision {
     const { device = {}, downgradeCallback } = result;
 
-    if (downgradeCallback) {
-      const decision = downgradeCallback(this);
+    this.osName = device.osName;
+    this.osVersion = device.osVersion;
+    this.model = device.model;
+    this.level = device.level;
+    this.memoryMB = device.memoryMB;
+    this.isIOS = this.osName === 'iOS';
 
-      if (decision) {
-        return decision;
-      }
+    if (this.level === undefined) {
+      this.level = this.getDeviceLevel();
     }
 
-    this.isIOS = device.osName === 'iOS';
-    this.model = device.model;
-    this.deviceLevel = device.level;
+    const decision = downgradeCallback && downgradeCallback(this);
+
+    if (decision) {
+      return decision;
+    }
 
     const modelList = this.isIOS ? downgradeiOSModels : downgradeAndroidModels;
     const osVersionList = this.isIOS ? downgradeiOSVersions : downgradeAndroidVersions;
 
-    const findModel = modelList.find(m => m == device.model);
+    const findModel = modelList.find(m => m == this.model);
 
     if (findModel !== undefined) {
-      return { downgrade: true, reason: 'Downgrade by default model list' };
+      return { downgrade: true, reason: 'Downgrade by downgrade model list' };
     }
-    const findOS = osVersionList.find(v => v === device.osVersion);
+    const findOS = osVersionList.find(v => v === this.osVersion);
 
     if (findOS !== undefined) {
-      return { downgrade: true, reason: 'Downgrade by default OS version list' };
-    }
-
-    if (this.deviceLevel === undefined) {
-      if (device.totalMemoryMB) {
-        if (device.totalMemoryMB < 4000) {
-          this.deviceLevel = DEVICE_LEVEL_LOW;
-        } else if (device.totalMemoryMB < 6000) {
-          this.deviceLevel = DEVICE_LEVEL_MEDIUM;
-        } else {
-          this.deviceLevel = DEVICE_LEVEL_HIGH;
-        }
-      } else if (this.isIOS && device.model) {
-        if (/iPhone(\d+),/.test(device.model)) {
-          const gen = +RegExp.$1;
-
-          if (gen <= 9) {
-            this.deviceLevel = DEVICE_LEVEL_LOW;
-          } else if (gen < 10) {
-            this.deviceLevel = DEVICE_LEVEL_MEDIUM;
-          } else {
-            this.deviceLevel = DEVICE_LEVEL_HIGH;
-          }
-        }
-      }
+      return { downgrade: true, reason: 'Downgrade by downgrade OS version list' };
     }
 
     return { downgrade: false, reason: '' };
   }
 
   getRenderLevel (): spec.RenderLevel {
-    if (this.deviceLevel === DEVICE_LEVEL_HIGH) {
+    if (this.level === DEVICE_LEVEL_HIGH) {
       return spec.RenderLevel.S;
-    } else if (this.deviceLevel === DEVICE_LEVEL_MEDIUM) {
+    } else if (this.level === DEVICE_LEVEL_MEDIUM) {
       return spec.RenderLevel.A;
-    } else if (this.deviceLevel === DEVICE_LEVEL_LOW) {
+    } else if (this.level === DEVICE_LEVEL_LOW) {
       return spec.RenderLevel.B;
     } else {
       return this.isIOS ? spec.RenderLevel.S : spec.RenderLevel.B;
     }
   }
 
+  private getDeviceLevel () {
+    if (this.memoryMB) {
+      if (this.memoryMB < 4000) {
+        return DEVICE_LEVEL_LOW;
+      } else if (this.memoryMB < 6000) {
+        return DEVICE_LEVEL_MEDIUM;
+      } else {
+        return DEVICE_LEVEL_HIGH;
+      }
+    } else if (this.isIOS && this.model) {
+      if (/iPhone(\d+),/.test(this.model)) {
+        const gen = +RegExp.$1;
+
+        if (gen <= 9) {
+          return DEVICE_LEVEL_LOW;
+        } else if (gen < 10) {
+          return DEVICE_LEVEL_MEDIUM;
+        } else {
+          return DEVICE_LEVEL_HIGH;
+        }
+      }
+    }
+  }
 }
 
 const deviceProxy = new DeviceProxy();
@@ -493,14 +503,14 @@ export function checkDowngradeResult (result: DowngradeResult): DowngradeDecisio
   if (mock) {
     const { downgrade, deviceLevel = DEVICE_LEVEL_HIGH } = mock;
 
-    deviceProxy.deviceLevel = deviceLevel;
+    deviceProxy.level = deviceLevel;
 
     return { downgrade, reason: 'Mock' };
   }
 
   if (device) {
     if (device.downgrade) {
-      return { downgrade: true, reason: 'Downgrade by result' };
+      return { downgrade: true, reason: 'Downgrade by device downgrade flag' };
     } else {
       return deviceProxy.getDowngradeDecision(result);
     }
@@ -549,4 +559,3 @@ function resumePausedPlayers (e: Event) {
     });
   }
 }
-
