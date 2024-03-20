@@ -413,6 +413,20 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     }
 
     const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
+    // 兼容数据模版替换文字
+    const variables = options.variables!;
+
+    scene.jsonScene.compositions.forEach(composition => {
+      composition.items.forEach(item => {
+        if (item.type === spec.ItemType.text) {
+          const textVariable = variables[item.name];
+
+          if (textVariable) {
+            (item as spec.TextItem).content.options.text = textVariable as string;
+          }
+        }
+      });
+    });
 
     // 加载期间 player 销毁
     if (this.disposed) {
