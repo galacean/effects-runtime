@@ -17,6 +17,7 @@ import {
   ShaderType,
 } from '../../material';
 import type { ValueGetter } from '../../math';
+import { BezierCurve } from '../../math';
 import {
   createKeyFrameMeta,
   createValueGetter,
@@ -253,6 +254,7 @@ export class ParticleMesh implements ParticleMeshData {
       }
       uniformValues.uOrbCenter = new Float32Array(orbitalVelOverLifetime?.center || [0, 0, 0]);
     }
+
     uniformValues.uSizeByLifetimeValue = sizeOverLifetime?.x.toUniform(vertexKeyFrameMeta);
     if (sizeOverLifetime?.separateAxes) {
       marcos.push(['SIZE_Y_BY_LIFE', 1]);
@@ -312,7 +314,7 @@ export class ParticleMesh implements ParticleMeshData {
       uniformValues.uVCurveValueTexture = tex;
       vertex_lookup_texture = 1;
     } else {
-      uniformValues.uVCurveValues = CurveValue.getAllData(vertexKeyFrameMeta);
+      uniformValues.uVCurveValues = BezierCurve.getAllData(vertexKeyFrameMeta);
     }
     const shaderCache = ['-p:', renderMode, shaderCacheId, vertexKeyFrameMeta.index, vertexKeyFrameMeta.max, fragmentKeyFrameMeta.index, fragmentKeyFrameMeta.max].join('+');
 
@@ -440,6 +442,7 @@ export class ParticleMesh implements ParticleMeshData {
           console.warn(`uniform ${name}'s type not in typeMap`);
       }
     });
+
     material.setVector3('emissionColor', new Vector3(0, 0, 0));
     material.setFloat('emissionIntensity', 0.0);
 

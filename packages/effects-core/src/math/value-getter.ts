@@ -8,7 +8,6 @@ import {
   colorStopsFromGradient,
   interpolateColor,
   isFunction,
-  assertExist,
 } from '../utils';
 import type { ColorStop } from '../utils';
 import type {
@@ -663,11 +662,26 @@ export class BezierCurve extends ValueGetter<number> {
     points: Vector2[],
     curve: BezierEasing | LinearValue,
   }>;
+  keys: number[][];
+
+  static getAllData (meta: KeyFrameMeta, halfFloat?: boolean): Uint16Array | Float32Array {
+    const ret = new (halfFloat ? Float16ArrayWrapper : Float32Array)(meta.index * 4);
+
+    for (let i = 0, cursor = 0, curves = meta.curves; i < curves.length; i++) {
+      const data = (curves[i] as BezierCurve).toData();
+
+      ret.set(data, cursor);
+      cursor += data.length;
+    }
+
+    return halfFloat ? (ret as Float16ArrayWrapper).data : (ret as Float32Array);
+  }
 
   override onCreate (props: spec.BezierKeyframeValue[]) {
     const keyframes = props;
 
     this.curveMap = {};
+    this.keys = [];
     for (let i = 0; i < keyframes.length - 1; i++) {
       const leftKeyframe = keyframes[i];
       const rightKeyframe = keyframes[i + 1];
@@ -676,11 +690,22 @@ export class BezierCurve extends ValueGetter<number> {
       const s = points[0];
       const e = points[points.length - 1];
 
+      this.keys.push([...s.toArray(), ...points[1].toArray()]);
+      this.keys.push([...e.toArray(), ...points[2].toArray()]);
+
       this.curveMap[`${s.x}&${e.x}`] = {
         points,
         curve,
       };
     }
+    // const key0 = this.keys[0];
+    // const key1 = this.keys[this.keys.length - 1];
+    // if (key0[0] > 0) {
+    //   this.keys.unshift([0, key0[1], key0[2], key0[3]]);
+    // }
+    // if (key1[0] < 1) {
+    //   this.keys.push([1, key1[1], key1[2], key1[3]]);
+    // }
   }
   override getValue (time: number) {
     let result = 0;
@@ -725,6 +750,29 @@ export class BezierCurve extends ValueGetter<number> {
     const value = curveInfo.curve.getValue(normalizeTime);
 
     return p0.y + valueInterval * value;
+  }
+
+  override toUniform (meta: KeyFrameMeta): Float32Array {
+    const index = meta.index;
+    const count = this.keys.length;
+
+    meta.curves.push(this);
+    meta.index = index + count;
+    meta.max = Math.max(meta.max, count / 2);
+    meta.curveCount += count / 2;
+
+    return new Float32Array([5, index + 1 / count, count, count]);
+  }
+
+  toData (): Float32Array {
+    const keys = this.keys;
+    const data = new Float32Array(keys.length * 4);
+
+    for (let i = 0, cursor = 0; i < keys.length; i++, cursor += 4) {
+      data.set(keys[i], cursor);
+    }
+
+    return data;
   }
 }
 
@@ -1004,6 +1052,13 @@ export function getKeyFrameMetaByRawValue (meta: KeyFrameMeta, value?: [type: sp
       meta.curves.push(keys as any);
       meta.index += uniformCount;
       meta.max = Math.max(meta.max, uniformCount);
+    } else if (type === spec.ValueType.BEZIER_CURVE) {
+      const keyLen = keys.length;
+
+      meta.index += keyLen;
+      meta.curves.push(keys as any);
+      meta.max = Math.max(meta.max, keyLen);
+      meta.curveCount += keyLen;
     }
   }
 }
