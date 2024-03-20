@@ -12,278 +12,44 @@ export interface DowngradeOptions {
    * @default false - 不自动暂停
    */
   autoPause?: boolean,
+  autoQueryDevice?: boolean,
   /**
    * mock相关信息
    */
   mock?: {
-    id: string,
+    downgrade: boolean,
     deviceLevel?: string,
   },
+  downgradeCallback?: (device: DeviceInfo) => DowngradeDecision | undefined,
+}
+
+export interface DeviceInfo {
+  osName?: string,
+  osVersion?: string,
+  model?: string,
+  level?: string,
+  totalMemoryMB?: number,
 }
 
 export interface DowngradeResult {
   device?: {
     downgrade?: boolean,
-    level?: string,
-    model?: string,
-    platform?: string,
-    isSystem64?: boolean,
+    osName?: string,
     osVersion?: string,
+    model?: string,
+    level?: string,
     totalMemoryMB?: number,
   },
   mock?: {
     downgrade: boolean,
     deviceLevel?: string,
   },
+  downgradeCallback?: (device: DeviceInfo) => DowngradeDecision | undefined,
 }
 
 interface DowngradeDecision {
   downgrade: boolean,
   reason: string,
-}
-
-const mockIdPass = 'mock-pass';
-const mockIdFail = 'mock-fail';
-
-const DEVICE_LEVEL_HIGH = 'high';
-const DEVICE_LEVEL_MEDIUM = 'medium';
-const DEVICE_LEVEL_LOW = 'low';
-const DEVICE_LEVEL_NONE = 'none';
-
-let hasRegisterEvent = false;
-
-export function getDowngradeResult (options: DowngradeOptions = {}): DowngradeResult {
-  if (!hasRegisterEvent) {
-    registerEvent(options);
-    hasRegisterEvent = true;
-  }
-
-  const { mock } = options;
-
-  if (mock) {
-    return {
-      mock : {
-        downgrade: mock.id === mockIdFail,
-        deviceLevel: mock.deviceLevel,
-      },
-    };
-  }
-
-  return {};
-
-}
-
-function registerEvent (options: DowngradeOptions) {
-  const { ignoreGLLost, autoPause } = options;
-  const downgradeWhenGLLost = ignoreGLLost !== true;
-
-  window.addEventListener('unload', () => {
-    getActivePlayers().forEach(player => player.dispose());
-  });
-
-  window.addEventListener('webglcontextlost', e => {
-    if (isCanvasUsedByPlayer(e.target as HTMLCanvasElement)) {
-      DowngradePlugin.glLostOccurred = true;
-      console.error('webgl lost occur');
-      if (downgradeWhenGLLost) {
-        console.warn('webgl lost occur, all players will be downgraded from now on');
-        disableAllPlayer(true);
-        getActivePlayers().forEach(player => player.dispose());
-      }
-    }
-  }, true);
-
-  if (autoPause) {
-    document.addEventListener('pause', pauseAllActivePlayers);
-    document.addEventListener('resume', resumePausedPlayers);
-  }
-}
-
-class DeviceProxy {
-  isIOS = false;
-  model = 'DESKTOP_DEBUG';
-  deviceLevel = DEVICE_LEVEL_NONE;
-  isDowngrade = false;
-
-  getRenderLevel (): spec.RenderLevel {
-    if (this.deviceLevel === DEVICE_LEVEL_HIGH) {
-      return spec.RenderLevel.S;
-    } else if (this.deviceLevel === DEVICE_LEVEL_MEDIUM) {
-      return spec.RenderLevel.A;
-    } else if (this.deviceLevel === DEVICE_LEVEL_LOW) {
-      return spec.RenderLevel.B;
-    } else {
-      return this.isIOS ? spec.RenderLevel.S : spec.RenderLevel.B;
-    }
-  }
-
-  hasDeviceLevel (): boolean {
-    return isDeviceLevel(this.deviceLevel);
-  }
-
-  updateDeviceLevel () {
-    if (this.hasDeviceLevel()) {
-      return;
-    }
-
-    if (/iPhone(\d+),/.test(this.model)) {
-      const gen = +RegExp.$1;
-
-      if (gen <= 9) {
-        this.deviceLevel = DEVICE_LEVEL_LOW;
-      } else if (gen < 10) {
-        this.deviceLevel = DEVICE_LEVEL_MEDIUM;
-      } else {
-        this.deviceLevel = DEVICE_LEVEL_HIGH;
-      }
-    }
-  }
-
-  getDeviceInfo () {
-    return {
-      isIOS: this.isIOS,
-      model: this.model,
-      deviceLevel: this.deviceLevel,
-    };
-  }
-}
-
-const device = new DeviceProxy();
-
-export function checkDowngradeResult (result: DowngradeResult): DowngradeDecision {
-  if (result.mock) {
-    const { downgrade, deviceLevel = DEVICE_LEVEL_HIGH } = result.mock;
-
-    device.deviceLevel = deviceLevel;
-
-    return { downgrade, reason: 'mock' };
-  }
-
-  return { downgrade: false, reason: 'mock' };
-}
-
-function parseDowngradeResult (result: any) {
-  let resultType = undefined;
-  let resultReason = undefined;
-
-  if (!result.error) {
-    try {
-      const ret = isString(result) ? JSON.parse(result) : result;
-
-      if ('downgradeResultType' in ret) {
-        resultType = ret.downgradeResultType;
-      } else if ('resultType' in ret) {
-        resultType = ret.resultType;
-        resultReason = ret.resultReason;
-      }
-
-      if (result.context) {
-        const deviceInfo = result.context.deviceInfo;
-
-        if (deviceInfo) {
-          const { deviceLevel } = deviceInfo;
-
-          if (isDeviceLevel(deviceLevel)) {
-            device.deviceLevel = deviceLevel;
-          }
-        }
-      }
-
-      device.updateDeviceLevel();
-    } catch (ex) {
-      console.error(ex);
-    }
-
-    if (resultType === undefined) {
-      return { downgrade: true, reason: 'call downgrade fail' };
-    } else {
-      if (resultType === 1) {
-        return { downgrade: true, reason: getDowngradeReason(resultReason) };
-      } else {
-        return { downgrade: false, reason: resultType };
-      }
-    }
-  } else {
-    // 无权调用的情况下不降级
-    return { downgrade: result.error !== 4, reason: 'api error: ' + result.error };
-  }
-}
-
-function getDowngradeReason (reason: number): string {
-  if (reason === -1) {
-    return `${reason}-no config`;
-  } else if (reason === 0) {
-    return `${reason}-none`;
-  } else if (reason === 1) {
-    return `${reason}-downgrade by memory`;
-  } else if (reason === 2) {
-    return `${reason}-downgrade by crash`;
-  } else if (reason === 3) {
-    return `${reason}-downgrade by device`;
-  } else if (reason === 4) {
-    return `${reason}-downgrade by force`;
-  } else {
-    return `${reason}`;
-  }
-}
-
-export function getRenderLevelByDevice (renderLevel?: spec.RenderLevel): spec.RenderLevel {
-  if (!renderLevel) {
-    return device.getRenderLevel();
-  } else {
-    return /[ABS]/.test(renderLevel) ? renderLevel : spec.RenderLevel.S;
-  }
-}
-
-function isDeviceLevel (deviceLevel?: string): boolean {
-  return deviceLevel === DEVICE_LEVEL_HIGH
-    || deviceLevel === DEVICE_LEVEL_MEDIUM
-    || deviceLevel === DEVICE_LEVEL_LOW;
-}
-
-const internalPaused = Symbol('@@_inter_pause');
-
-function pauseAllActivePlayers (e: Event) {
-  if (e.target === document) {
-    logger.info('Auto pause all players with data offloaded');
-    const players = getActivePlayers();
-
-    players.forEach(player => {
-      if (!player.paused) {
-        player.pause({ offloadTexture: true });
-        // @ts-expect-error
-        player[internalPaused] = true;
-      }
-    });
-  }
-}
-
-function resumePausedPlayers (e: Event) {
-  if (e.target === document) {
-    logger.info('auto resume all players');
-    const players = getActivePlayers();
-
-    players.forEach(player => {
-      // @ts-expect-error
-      if (player[internalPaused]) {
-        void player.resume();
-        // @ts-expect-error
-        player[internalPaused] = false;
-      }
-    });
-  }
-}
-
-interface OSInfo {
-  name?: string,
-  version?: string,
-}
-
-interface DeviceInfo {
-  vendor?: string,
-  model?: string,
-  level?: string,
-  totalMemoryMB?: number,
 }
 
 interface ProductInfo {
@@ -292,39 +58,42 @@ interface ProductInfo {
 }
 
 export class UADecoder {
-  os: OSInfo = {};
-  device: DeviceInfo = {};
+  osName?: string;
+  osVersion?: string;
+  deviceModel?: string;
 
   constructor () {
     this.initial(navigator.userAgent);
   }
 
+  getDowngradeResult (): DowngradeResult {
+    return {
+      device: {
+        osName: this.osName,
+        osVersion: this.osVersion,
+        model: this.deviceModel,
+      },
+    };
+  }
+
   isiOS () {
-    return this.os.name === 'iOS';
+    return this.osName === 'iOS';
   }
 
   isAndroid () {
-    return this.os.name === 'Android';
+    return this.osName === 'Android';
   }
 
   isWindows () {
-    return this.os.name === 'Windows';
+    return this.osName === 'Windows';
   }
 
   isMacintosh () {
-    return this.os.name === 'Macintosh';
+    return this.osName === 'Macintosh';
   }
 
   isMobile () {
-    return this.os.name === 'iOS' || this.os.name === 'Android';
-  }
-
-  getOSVersion () {
-    return this.os.version;
-  }
-
-  getDeviceModel () {
-    return this.device.model;
+    return this.osName === 'iOS' || this.osName === 'Android';
   }
 
   private initial (ua: string) {
@@ -355,18 +124,18 @@ export class UADecoder {
 
   private parseData (data: string) {
     if (this.testiOS(data)) {
-      this.os.name = 'iOS';
-      this.os.version = this.parseiOSVersion(data);
+      this.osName = 'iOS';
+      this.osVersion = this.parseiOSVersion(data);
     } else if (this.testAndroid(data)) {
-      this.os.name = 'Android';
-      this.os.version = this.parseAndroidVersion(data);
-      this.device.model = this.parseAndroidModel(data);
+      this.osName = 'Android';
+      this.osVersion = this.parseAndroidVersion(data);
+      this.deviceModel = this.parseAndroidModel(data);
     } else if (this.testMacintosh(data)) {
-      this.os.name = 'Mac OS';
-      this.os.version = this.parseMacOSVersion(data);
+      this.osName = 'Mac OS';
+      this.osVersion = this.parseMacOSVersion(data);
     } else if (this.testWindows(data)) {
-      this.os.name = 'Windows';
-      this.os.version = this.parseWindowsVersion(data);
+      this.osName = 'Windows';
+      this.osVersion = this.parseWindowsVersion(data);
     } else {
       console.error(`Unkonw info: ${data}`);
     }
@@ -388,6 +157,36 @@ export class UADecoder {
       return versionList.join('.');
     }
 
+  }
+
+  private getiPhoneModel () {
+    const screenWidth = window.screen.width * window.devicePixelRatio;
+    const screenHeight = window.screen.height * window.devicePixelRatio;
+
+    // iPhone 分辨率和设备像素比列表
+    const models = [
+      { width: 1125, height: 2436, model: 'iPhone X / XS / 11 Pro' },
+      { width: 828, height: 1792, model: 'iPhone XR / 11' },
+      { width: 1242, height: 2688, model: 'iPhone XS Max / 11 Pro Max' },
+      // 添加其他已知分辨率和型号
+
+      { width: 320, height: 480, model: 'iPhone 2G/3G/3GS' },
+      { width: 320, height: 568, model: 'iPhone 5/5s/5c/SE (1st generation)' },
+      { width: 375, height: 667, model: 'iPhone 6/6s/7/8/SE (2nd generation)' },
+      { width: 414, height: 736, model: 'iPhone 6 Plus/6s Plus/7 Plus/8 Plus' },
+      { width: 375, height: 812, model: 'iPhone X/XS/11 Pro/12 mini' },
+      { width: 414, height: 896, model: 'iPhone XR/11/11 Pro Max' },
+      { width: 390, height: 844, model: 'iPhone 12/12 Pro' },
+      { width: 428, height: 926, model: 'iPhone 12 Pro Max' },
+      { width: 375, height: 812, model: 'iPhone 13 mini' },
+      { width: 390, height: 844, model: 'iPhone 13/13 Pro' },
+      { width: 428, height: 926, model: 'iPhone 13 Pro Max' },
+    ];
+
+    // 匹配分辨率
+    const match = models.find(m => m.width === screenWidth && m.height === screenHeight);
+
+    return match ? match.model : 'Unknown iPhone';
   }
 
   private parseAndroidVersion (data: string) {
@@ -456,3 +255,298 @@ export class UADecoder {
   }
 
 }
+
+interface iPhoneInfo {
+  name: string,
+  width: number,
+  height: number,
+}
+
+const iPhoneInfoList: iPhoneInfo[] = [
+  { name: 'iPhone 15 Pro Max', width: 1290, height: 2796 },
+  { name: 'iPhone 15 Pro', width: 1179, height: 2556 },
+  { name: 'iPhone 15 Plus', width: 1290, height: 2796 },
+  { name: 'iPhone 15', width: 1179, height: 2556 },
+  { name: 'iPhone 14 Plus', width: 1284, height: 2778 },
+  { name: 'iPhone 14 Pro Max', width: 1290, height: 2796 },
+  { name: 'iPhone 14 Pro', width: 1179, height: 2556 },
+  { name: 'iPhone 14', width: 1170, height: 2532 },
+  { name: 'iPhone SE 3rd gen', width: 750, height: 1334 },
+  { name: 'iPhone 13', width: 1170, height: 2532 },
+  { name: 'iPhone 13 mini', width: 1080, height: 2340 },
+  { name: 'iPhone 13 Pro Max', width: 1284, height: 2778 },
+  { name: 'iPhone 13 Pro', width: 1170, height: 2532 },
+  { name: 'iPhone 12', width: 1170, height: 2532 },
+  { name: 'iPhone 12 mini', width: 1080, height: 2340 },
+  { name: 'iPhone 12 Pro Max', width: 1284, height: 2778 },
+  { name: 'iPhone 12 Pro', width: 1170, height: 2532 },
+  { name: 'iPhone SE 2nd gen', width: 750, height: 1334 },
+  { name: 'iPhone 11 Pro Max', width: 1242, height: 2688 },
+  { name: 'iPhone 11 Pro', width: 1125, height: 2436 },
+  { name: 'iPhone 11', width: 828, height: 1792 },
+  { name: 'iPhone XR', width: 828, height: 1792 },
+  { name: 'iPhone XS Max', width: 1242, height: 2688 },
+  { name: 'iPhone XS', width: 1125, height: 2436 },
+  { name: 'iPhone X', width: 1125, height: 2436 },
+  { name: 'iPhone 8 Plus', width: 1080, height: 1920 },
+  { name: 'iPhone 8', width: 750, height: 1334 },
+  { name: 'iPhone 7 Plus', width: 1080, height: 1920 },
+  { name: 'iPhone 7', width: 750, height: 1334 },
+  { name: 'iPhone SE 1st gen', width: 640, height: 1136 },
+  { name: 'iPhone 6s Plus', width: 1080, height: 1920 },
+  { name: 'iPhone 6s', width: 750, height: 1334 },
+  { name: 'iPhone 6 Plus', width: 1080, height: 1920 },
+  { name: 'iPhone 6', width: 750, height: 1334 },
+  { name: 'iPhone 5C', width: 640, height: 1136 },
+  { name: 'iPhone 5S', width: 640, height: 1136 },
+  { name: 'iPhone 5', width: 640, height: 1136 },
+  { name: 'iPhone 4S', width: 640, height: 960 },
+  { name: 'iPhone 4', width: 640, height: 960 },
+  { name: 'iPhone 3GS', width: 320, height: 480 },
+  { name: 'iPhone 3G', width: 320, height: 480 },
+  { name: 'iPhone 1st gen', width: 320, height: 480 },
+];
+
+export const DEVICE_LEVEL_HIGH = 'high';
+export const DEVICE_LEVEL_MEDIUM = 'medium';
+export const DEVICE_LEVEL_LOW = 'low';
+
+let hasRegisterEvent = false;
+
+export function getDowngradeResult (options: DowngradeOptions = {}): DowngradeResult {
+  if (!hasRegisterEvent) {
+    registerEvent(options);
+    hasRegisterEvent = true;
+  }
+
+  const { mock, autoQueryDevice: autoCallJSApi } = options;
+
+  if (mock) {
+    return { mock };
+  }
+
+  if (autoCallJSApi) {
+    // FIXME: 支付宝小程序，https://opendocs.alipay.com/mini/api/system-info?pathHash=3ca534f3
+    // FIXME: 微信小程序，https://developers.weixin.qq.com/miniprogram/dev/api/base/system/wx.getDeviceInfo.html
+  }
+
+  const decoder = new UADecoder();
+
+  return decoder.getDowngradeResult();
+}
+
+function registerEvent (options: DowngradeOptions) {
+  const { ignoreGLLost, autoPause } = options;
+  const downgradeWhenGLLost = ignoreGLLost !== true;
+
+  window.addEventListener('unload', () => {
+    getActivePlayers().forEach(player => player.dispose());
+  });
+
+  window.addEventListener('webglcontextlost', e => {
+    if (isCanvasUsedByPlayer(e.target as HTMLCanvasElement)) {
+      DowngradePlugin.glLostOccurred = true;
+      console.error('webgl lost occur');
+      if (downgradeWhenGLLost) {
+        console.warn('webgl lost occur, all players will be downgraded from now on');
+        disableAllPlayer(true);
+        getActivePlayers().forEach(player => player.dispose());
+      }
+    }
+  }, true);
+
+  if (autoPause) {
+    document.addEventListener('pause', pauseAllActivePlayers);
+    document.addEventListener('resume', resumePausedPlayers);
+  }
+}
+
+// FIXME: 安卓机型校对
+const downgradeAndroidModels: string[] = [
+  'OPPO R9s Plus',
+  'GM1910',
+  'V1824A',
+  'V1916A',
+  'SM-G9650',
+  'V1936A',
+  'MI9 PRO 5G',
+  'REDMI K20',
+  'V1914A',
+  'GM1900',
+  'RMX1971',
+  'SM-A6060',
+  'SM-G9600',
+  'V1922A',
+  'PBAM00',
+  'PCAM10',
+  'PACT00',
+  'PBBM00',
+  'PCEM00',
+  'V1818A',
+  'vivo X6A',
+  'vivo X6Plus A',
+];
+const downgradeAndroidVersions: string[] = [];
+const downgradeiOSModels: string[] = [
+  'iPhone 8 Plus',
+  'iPhone 8',
+  'iPhone 7 Plus',
+  'iPhone 7',
+  'iPhone SE 1st gen',
+  'iPhone 6s Plus',
+  'iPhone 6s',
+  'iPhone 6 Plus',
+  'iPhone 6',
+  'iPhone 5C',
+  'iPhone 5S',
+  'iPhone 5',
+  'iPhone 4S',
+  'iPhone 4',
+  'iPhone 3GS',
+  'iPhone 3G',
+  'iPhone 1st gen',
+];
+const downgradeiOSVersions: string[] = [
+  '16.7',
+];
+
+class DeviceProxy {
+  isIOS = false;
+  model?: string;
+  deviceLevel?: string;
+
+  getDowngradeDecision (result: DowngradeResult): DowngradeDecision {
+    const { device = {}, downgradeCallback } = result;
+
+    if (downgradeCallback) {
+      const decision = downgradeCallback(this);
+
+      if (decision) {
+        return decision;
+      }
+    }
+
+    this.isIOS = device.osName === 'iOS';
+    this.model = device.model;
+    this.deviceLevel = device.level;
+
+    const modelList = this.isIOS ? downgradeiOSModels : downgradeAndroidModels;
+    const osVersionList = this.isIOS ? downgradeiOSVersions : downgradeAndroidVersions;
+
+    const findModel = modelList.find(m => m == device.model);
+
+    if (findModel !== undefined) {
+      return { downgrade: true, reason: 'Downgrade by default model list' };
+    }
+    const findOS = osVersionList.find(v => v === device.osVersion);
+
+    if (findOS !== undefined) {
+      return { downgrade: true, reason: 'Downgrade by default OS version list' };
+    }
+
+    if (this.deviceLevel === undefined) {
+      if (device.totalMemoryMB) {
+        if (device.totalMemoryMB < 4000) {
+          this.deviceLevel = DEVICE_LEVEL_LOW;
+        } else if (device.totalMemoryMB < 6000) {
+          this.deviceLevel = DEVICE_LEVEL_MEDIUM;
+        } else {
+          this.deviceLevel = DEVICE_LEVEL_HIGH;
+        }
+      } else if (this.isIOS && device.model) {
+        if (/iPhone(\d+),/.test(device.model)) {
+          const gen = +RegExp.$1;
+
+          if (gen <= 9) {
+            this.deviceLevel = DEVICE_LEVEL_LOW;
+          } else if (gen < 10) {
+            this.deviceLevel = DEVICE_LEVEL_MEDIUM;
+          } else {
+            this.deviceLevel = DEVICE_LEVEL_HIGH;
+          }
+        }
+      }
+    }
+
+    return { downgrade: false, reason: '' };
+  }
+
+  getRenderLevel (): spec.RenderLevel {
+    if (this.deviceLevel === DEVICE_LEVEL_HIGH) {
+      return spec.RenderLevel.S;
+    } else if (this.deviceLevel === DEVICE_LEVEL_MEDIUM) {
+      return spec.RenderLevel.A;
+    } else if (this.deviceLevel === DEVICE_LEVEL_LOW) {
+      return spec.RenderLevel.B;
+    } else {
+      return this.isIOS ? spec.RenderLevel.S : spec.RenderLevel.B;
+    }
+  }
+
+}
+
+const deviceProxy = new DeviceProxy();
+
+export function checkDowngradeResult (result: DowngradeResult): DowngradeDecision {
+  const { mock, device } = result;
+
+  if (mock) {
+    const { downgrade, deviceLevel = DEVICE_LEVEL_HIGH } = mock;
+
+    deviceProxy.deviceLevel = deviceLevel;
+
+    return { downgrade, reason: 'Mock' };
+  }
+
+  if (device) {
+    if (device.downgrade) {
+      return { downgrade: true, reason: 'Downgrade by result' };
+    } else {
+      return deviceProxy.getDowngradeDecision(result);
+    }
+  } else {
+    return { downgrade: false, reason: 'No device info' };
+  }
+}
+
+export function getRenderLevelByDevice (renderLevel?: spec.RenderLevel): spec.RenderLevel {
+  if (!renderLevel) {
+    return deviceProxy.getRenderLevel();
+  } else {
+    return /[ABS]/.test(renderLevel) ? renderLevel : spec.RenderLevel.S;
+  }
+}
+
+const internalPaused = Symbol('@@_inter_pause');
+
+function pauseAllActivePlayers (e: Event) {
+  if (e.target === document) {
+    logger.info('Auto pause all players with data offloaded');
+    const players = getActivePlayers();
+
+    players.forEach(player => {
+      if (!player.paused) {
+        player.pause({ offloadTexture: true });
+        // @ts-expect-error
+        player[internalPaused] = true;
+      }
+    });
+  }
+}
+
+function resumePausedPlayers (e: Event) {
+  if (e.target === document) {
+    logger.info('auto resume all players');
+    const players = getActivePlayers();
+
+    players.forEach(player => {
+      // @ts-expect-error
+      if (player[internalPaused]) {
+        void player.resume();
+        // @ts-expect-error
+        player[internalPaused] = false;
+      }
+    });
+  }
+}
+
