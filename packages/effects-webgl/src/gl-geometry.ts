@@ -408,10 +408,12 @@ export class GLGeometry extends Geometry {
     const vertexCount = data.vertexData.vertexCount;
     const positionChannel = data.vertexData.channels[0];
     const uvChannel = data.vertexData.channels[1];
+    const normalChannel = data.vertexData.channels[2];
 
     // 根据提供的长度信息创建 Float32Array
     const positionBuffer = new Float32Array(buffer, positionChannel.offset, positionChannel.dimension * vertexCount);
     const uvBuffer = new Float32Array(buffer, uvChannel.offset, uvChannel.dimension * vertexCount);
+    const normalBuffer = new Float32Array(buffer, normalChannel.offset, normalChannel.dimension * vertexCount);
     // 根据提供的长度信息创建 Uint16Array，它紧随 Float32Array 数据之后
     const indexBuffer = new Uint16Array(buffer, data.indexOffset);
 
@@ -428,11 +430,11 @@ export class GLGeometry extends Geometry {
           size: 2,
           data: uvBuffer,
         },
-        // aNormal: {
-        //   type: glContext.FLOAT,
-        //   size: 3,
-        //   data: new Float32Array(fullGeometryData.normals),
-        // },
+        aNormal: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: normalBuffer,
+        },
       },
     };
 

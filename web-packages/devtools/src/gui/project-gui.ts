@@ -195,22 +195,82 @@ function importPng (file: File, curDirHandle: FileSystemDirectoryHandle) {
 }
 
 async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
-  // const url = URL.createObjectURL(file);
-  // const modelDatas = await parseFBX(url);
+  const url = URL.createObjectURL(file);
+  const modelDatas = await parseFBX(url);
 
-  // for (const modelData of modelDatas) {
-  //   const geometryData: GeometryData = {
-  //     id: generateGUID(),
-  //     dataType: DataType.Geometry,
-  //     vertices: modelData.vertices,
-  //     uvs: modelData.uvs,
-  //     normals: modelData.normals,
-  //     indices: modelData.indices,
-  //   };
-  //   const geometryAsset = JSON.stringify(createPackageData([geometryData], 'Geometry'), null, 2);
+  for (const modelData of modelDatas) {
+    const vertexCount = modelData.vertices.length / 3;
+    const geometryData: GeometryData = {
+      id: generateGUID(),
+      dataType: DataType.Geometry,
+      vertexData: {
+        vertexCount: vertexCount,
+        channels: [
+          {
+            offset: 0,
+            format: 0,
+            dimension: 3,
+          },
+          {
+            offset: vertexCount * 3 * 4,
+            format: 0,
+            dimension: 2,
+          },
+          {
+            offset: vertexCount * 5 * 4,
+            format: 0,
+            dimension: 3,
+          },
+        ],
+      },
+      indexFormat: 0,
+      indexOffset: vertexCount * 8 * 4,
+      buffer: encodeVertexData(modelData),
+    };
+    const geometryAsset = JSON.stringify(createPackageData([geometryData], 'Geometry'), null, 2);
 
-  //   await saveFile(createJsonFile(geometryAsset, modelData.name + '.json'), curDirHandle);
-  // }
+    await saveFile(createJsonFile(geometryAsset, modelData.name + '.json'), curDirHandle);
+  }
+}
+
+function encodeVertexData (modelData: ModelData): string {
+  const vertices = new Float32Array(modelData.vertices);
+  const uvs = new Float32Array(modelData.uvs);
+  const normals = new Float32Array(modelData.normals);
+  const indices = new Uint16Array(modelData.indices);
+
+  // 计算新 ArrayBuffer 的总大小（以字节为单位）
+  const totalSize = vertices.byteLength + uvs.byteLength + normals.byteLength + indices.byteLength;
+
+  // 创建一个足够大的 ArrayBuffer 来存储两个数组的数据
+  const buffer = new ArrayBuffer(totalSize);
+
+  // 创建一个视图来按照 Float32 格式写入数据
+  let floatView = new Float32Array(buffer, 0, vertices.length);
+
+  floatView.set(vertices);
+  floatView = new Float32Array(buffer, vertices.byteLength, uvs.length);
+  floatView.set(uvs);
+  floatView = new Float32Array(buffer, vertices.byteLength + uvs.byteLength, normals.length);
+  floatView.set(normals);
+
+  // 创建一个视图来按照 Uint16 格式写入数据，紧接着 Float32 数据之后
+  const uint16View = new Uint16Array(buffer, vertices.byteLength + uvs.byteLength + normals.byteLength, indices.length);
+
+  uint16View.set(indices);
+
+  // 创建一个 Uint8Array 视图以便逐字节访问 ArrayBuffer 的数据
+  const uint8View = new Uint8Array(buffer);
+
+  // 将 Uint8Array 转换为二进制字符串
+  let binaryString = '';
+
+  for (let i = 0; i < uint8View.length; i++) {
+    binaryString += String.fromCharCode(uint8View[i]);
+  }
+
+  // 使用 btoa 函数将二进制字符串转换为 Base64 编码的字符串
+  return btoa(binaryString);
 }
 
 // 定义返回类型
