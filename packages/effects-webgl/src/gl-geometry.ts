@@ -404,42 +404,42 @@ export class GLGeometry extends Geometry {
   override fromData (data: GeometryData): void {
     super.fromData(data);
 
-    const geometryData = data;
-    const fullGeometryData = {
-      vertices: [],
-      uvs: [],
-      normals: [],
-      indices: [],
-      ...geometryData,
-    };
+    const buffer = decodeBase64ToArrays(data.buffer);
+    const vertexCount = data.vertexData.vertexCount;
+    const positionChannel = data.vertexData.channels[0];
+    const uvChannel = data.vertexData.channels[1];
+    const normalChannel = data.vertexData.channels[2];
+
+    // 根据提供的长度信息创建 Float32Array
+    const positionBuffer = new Float32Array(buffer, positionChannel.offset, positionChannel.dimension * vertexCount);
+    const uvBuffer = new Float32Array(buffer, uvChannel.offset, uvChannel.dimension * vertexCount);
+    const normalBuffer = new Float32Array(buffer, normalChannel.offset, normalChannel.dimension * vertexCount);
+    // 根据提供的长度信息创建 Uint16Array，它紧随 Float32Array 数据之后
+    const indexBuffer = new Uint16Array(buffer, data.indexOffset);
+
     const geometryProps: GeometryProps = {
       mode: glContext.TRIANGLES,
       attributes: {
         aPos: {
           type: glContext.FLOAT,
           size: 3,
-          data: new Float32Array(fullGeometryData.vertices),
+          data: positionBuffer,
         },
         aUV: {
           type: glContext.FLOAT,
           size: 2,
-          data: new Float32Array(fullGeometryData.uvs),
+          data: uvBuffer,
         },
         aNormal: {
           type: glContext.FLOAT,
           size: 3,
-          data: new Float32Array(fullGeometryData.normals),
+          data: normalBuffer,
         },
       },
     };
 
-    if (fullGeometryData.indices.length !== 0) {
-      geometryProps.indices = { data: new Uint32Array(fullGeometryData.indices) };
-      geometryProps.drawCount = fullGeometryData.indices.length;
-    } else {
-      geometryProps.drawCount = fullGeometryData.vertices.length / 3;
-    }
-
+    geometryProps.indices = { data: indexBuffer };
+    geometryProps.drawCount = indexBuffer.length;
     this.processProps(geometryProps);
   }
 
@@ -472,4 +472,22 @@ export class GLGeometry extends Geometry {
     }
     this.destroyed = true;
   }
+}
+
+function decodeBase64ToArrays (base64String: string) {
+  // 将 Base64 编码的字符串转换为二进制字符串
+  const binaryString = atob(base64String);
+
+  // 将二进制字符串转换为字节数组
+  const bytes = new Uint8Array(binaryString.length);
+
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // 创建 ArrayBuffer 并为其创建视图
+  const buffer = bytes.buffer;
+
+  // 返回解码后的数组
+  return buffer;
 }

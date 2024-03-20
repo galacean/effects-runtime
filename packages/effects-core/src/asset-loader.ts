@@ -201,10 +201,21 @@ export interface MaterialData extends EffectsObjectData {
 }
 
 export interface GeometryData extends EffectsObjectData {
-  vertices?: number[],
-  uvs?: number[],
-  normals?: number[],
-  indices?: number[],
+  vertexData: VertexData,
+  indexFormat: number,
+  indexOffset: number,
+  buffer: string,
+}
+
+export interface VertexData {
+  vertexCount: number,
+  channels: VertexChannel[],
+}
+
+export interface VertexChannel {
+  offset: number,
+  format: number,
+  dimension: number,
 }
 
 export interface ShaderData extends EffectsObjectData {
