@@ -13,11 +13,13 @@ import { UADecoder } from '@galacean/effects-plugin-downgrade';
   const decoder = new UADecoder();
 
   document.body.appendChild(document.createElement('br'));
+  document.body.appendChild(document.createElement('br'));
   const label1 = document.createElement('label');
 
   label1.innerText = 'UA: ' + navigator.userAgent;
   document.body.appendChild(label1);
 
+  document.body.appendChild(document.createElement('br'));
   document.body.appendChild(document.createElement('br'));
   const label2 = document.createElement('label');
 

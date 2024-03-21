@@ -126,9 +126,17 @@ export class UADecoder {
   }
 
   private parseData (data: string) {
+    if (data.length && data[0] === '(') {
+      data = data.substring(1);
+    }
+
+    if (data.length && data[data.length - 1] == ')') {
+      data = data.substring(0, data.length - 1);
+    }
     if (this.testiOS(data)) {
       this.osName = 'iOS';
       this.osVersion = this.parseiOSVersion(data);
+      this.deviceModel = this.getiPhoneModel();
     } else if (this.testAndroid(data)) {
       this.osName = 'Android';
       this.osVersion = this.parseAndroidVersion(data);
@@ -159,37 +167,15 @@ export class UADecoder {
 
       return versionList.join('.');
     }
-
   }
 
-  private getiPhoneModel () {
+  getiPhoneModel () {
     const screenWidth = window.screen.width * window.devicePixelRatio;
     const screenHeight = window.screen.height * window.devicePixelRatio;
 
-    // iPhone 分辨率和设备像素比列表
-    const models = [
-      { width: 1125, height: 2436, model: 'iPhone X / XS / 11 Pro' },
-      { width: 828, height: 1792, model: 'iPhone XR / 11' },
-      { width: 1242, height: 2688, model: 'iPhone XS Max / 11 Pro Max' },
-      // 添加其他已知分辨率和型号
+    const match = iPhoneInfoList.find(m => m.width === screenWidth && m.height === screenHeight);
 
-      { width: 320, height: 480, model: 'iPhone 2G/3G/3GS' },
-      { width: 320, height: 568, model: 'iPhone 5/5s/5c/SE (1st generation)' },
-      { width: 375, height: 667, model: 'iPhone 6/6s/7/8/SE (2nd generation)' },
-      { width: 414, height: 736, model: 'iPhone 6 Plus/6s Plus/7 Plus/8 Plus' },
-      { width: 375, height: 812, model: 'iPhone X/XS/11 Pro/12 mini' },
-      { width: 414, height: 896, model: 'iPhone XR/11/11 Pro Max' },
-      { width: 390, height: 844, model: 'iPhone 12/12 Pro' },
-      { width: 428, height: 926, model: 'iPhone 12 Pro Max' },
-      { width: 375, height: 812, model: 'iPhone 13 mini' },
-      { width: 390, height: 844, model: 'iPhone 13/13 Pro' },
-      { width: 428, height: 926, model: 'iPhone 13 Pro Max' },
-    ];
-
-    // 匹配分辨率
-    const match = models.find(m => m.width === screenWidth && m.height === screenHeight);
-
-    return match ? match.model : 'Unknown iPhone';
+    return match?.name;
   }
 
   private parseAndroidVersion (data: string) {
@@ -209,7 +195,18 @@ export class UADecoder {
       const modelMatch = item.match(modelPattern);
 
       if (modelMatch && modelMatch.length >= 2) {
-        return modelMatch[1];
+        return modelMatch[1].trim().toLowerCase();
+      }
+    }
+    if (itemList.length > 0) {
+      const lastItem = itemList[itemList.length - 1].trim().toLowerCase();
+
+      if (lastItem) {
+        for (const vender of venderInfoList) {
+          if (lastItem.startsWith(vender)) {
+            return lastItem.substring(vender.length).trim();
+          }
+        }
       }
     }
   }
@@ -259,47 +256,52 @@ export class UADecoder {
 
 }
 
+const venderInfoList: string[] = [
+  'samsung',
+];
+
 interface iPhoneInfo {
   name: string,
+  gpu?: string,
   width: number,
   height: number,
 }
 
 const iPhoneInfoList: iPhoneInfo[] = [
-  { name: 'iPhone 15 Pro Max', width: 1290, height: 2796 },
-  { name: 'iPhone 15 Pro', width: 1179, height: 2556 },
-  { name: 'iPhone 15 Plus', width: 1290, height: 2796 },
-  { name: 'iPhone 15', width: 1179, height: 2556 },
-  { name: 'iPhone 14 Plus', width: 1284, height: 2778 },
-  { name: 'iPhone 14 Pro Max', width: 1290, height: 2796 },
-  { name: 'iPhone 14 Pro', width: 1179, height: 2556 },
-  { name: 'iPhone 14', width: 1170, height: 2532 },
-  { name: 'iPhone SE 3rd gen', width: 750, height: 1334 },
-  { name: 'iPhone 13', width: 1170, height: 2532 },
-  { name: 'iPhone 13 mini', width: 1080, height: 2340 },
-  { name: 'iPhone 13 Pro Max', width: 1284, height: 2778 },
-  { name: 'iPhone 13 Pro', width: 1170, height: 2532 },
-  { name: 'iPhone 12', width: 1170, height: 2532 },
-  { name: 'iPhone 12 mini', width: 1080, height: 2340 },
-  { name: 'iPhone 12 Pro Max', width: 1284, height: 2778 },
-  { name: 'iPhone 12 Pro', width: 1170, height: 2532 },
-  { name: 'iPhone SE 2nd gen', width: 750, height: 1334 },
-  { name: 'iPhone 11 Pro Max', width: 1242, height: 2688 },
-  { name: 'iPhone 11 Pro', width: 1125, height: 2436 },
-  { name: 'iPhone 11', width: 828, height: 1792 },
-  { name: 'iPhone XR', width: 828, height: 1792 },
-  { name: 'iPhone XS Max', width: 1242, height: 2688 },
-  { name: 'iPhone XS', width: 1125, height: 2436 },
-  { name: 'iPhone X', width: 1125, height: 2436 },
-  { name: 'iPhone 8 Plus', width: 1080, height: 1920 },
-  { name: 'iPhone 8', width: 750, height: 1334 },
-  { name: 'iPhone 7 Plus', width: 1080, height: 1920 },
-  { name: 'iPhone 7', width: 750, height: 1334 },
-  { name: 'iPhone SE 1st gen', width: 640, height: 1136 },
-  { name: 'iPhone 6s Plus', width: 1080, height: 1920 },
-  { name: 'iPhone 6s', width: 750, height: 1334 },
-  { name: 'iPhone 6 Plus', width: 1080, height: 1920 },
-  { name: 'iPhone 6', width: 750, height: 1334 },
+  { name: 'iPhone 15 Pro Max', gpu: 'A17', width: 1290, height: 2796 },
+  { name: 'iPhone 15 Pro', gpu: 'A17', width: 1179, height: 2556 },
+  { name: 'iPhone 15 Plus', gpu: 'A16', width: 1290, height: 2796 },
+  { name: 'iPhone 15', gpu: 'A16', width: 1179, height: 2556 },
+  { name: 'iPhone 14 Pro Max', gpu: 'A16', width: 1290, height: 2796 },
+  { name: 'iPhone 14 Pro', gpu: 'A16', width: 1179, height: 2556 },
+  { name: 'iPhone 14 Plus', gpu: 'A15', width: 1284, height: 2778 },
+  { name: 'iPhone 14', gpu: 'A15', width: 1170, height: 2532 },
+  { name: 'iPhone 13 Pro Max', gpu: 'A15', width: 1284, height: 2778 },
+  { name: 'iPhone 13 Pro', gpu: 'A15', width: 1170, height: 2532 },
+  { name: 'iPhone 13', gpu: 'A15', width: 1170, height: 2532 },
+  { name: 'iPhone 13 mini', gpu: 'A15', width: 1080, height: 2340 },
+  { name: 'iPhone SE 3rd gen', gpu: 'A15', width: 750, height: 1334 },
+  { name: 'iPhone 12 Pro Max', gpu: 'A14', width: 1284, height: 2778 },
+  { name: 'iPhone 12 Pro', gpu: 'A14', width: 1170, height: 2532 },
+  { name: 'iPhone 12', gpu: 'A14', width: 1170, height: 2532 },
+  { name: 'iPhone 12 mini', gpu: 'A14', width: 1080, height: 2340 },
+  { name: 'iPhone 11 Pro Max', gpu: 'A13', width: 1242, height: 2688 },
+  { name: 'iPhone 11 Pro', gpu: 'A13', width: 1125, height: 2436 },
+  { name: 'iPhone 11', gpu: 'A13', width: 828, height: 1792 },
+  { name: 'iPhone SE 2nd gen', gpu: 'A13', width: 750, height: 1334 },
+  { name: 'iPhone XR', gpu: 'A12', width: 828, height: 1792 },
+  { name: 'iPhone XS Max', gpu: 'A12', width: 1242, height: 2688 },
+  { name: 'iPhone XS', gpu: 'A12', width: 1125, height: 2436 },
+  { name: 'iPhone X', gpu: 'A11', width: 1125, height: 2436 },
+  { name: 'iPhone 8 Plus', gpu: 'A11', width: 1080, height: 1920 },
+  { name: 'iPhone 8', gpu: 'A11', width: 750, height: 1334 },
+  { name: 'iPhone 7 Plus', gpu: 'A10', width: 1080, height: 1920 },
+  { name: 'iPhone 7', gpu: 'A10', width: 750, height: 1334 },
+  { name: 'iPhone 6s Plus', gpu: 'A9', width: 1080, height: 1920 },
+  { name: 'iPhone 6s', gpu: 'A9', width: 750, height: 1334 },
+  { name: 'iPhone SE 1st gen', gpu: 'A9', width: 640, height: 1136 },
+  { name: 'iPhone 6 Plus', gpu: 'A8', width: 1080, height: 1920 },
+  { name: 'iPhone 6', gpu: 'A8', width: 750, height: 1334 },
   { name: 'iPhone 5C', width: 640, height: 1136 },
   { name: 'iPhone 5S', width: 640, height: 1136 },
   { name: 'iPhone 5', width: 640, height: 1136 },
@@ -366,28 +368,28 @@ function registerEvent (options: DowngradeOptions) {
 
 // FIXME: 安卓机型校对
 const downgradeAndroidModels: string[] = [
-  'OPPO R9s Plus',
-  'GM1910',
-  'V1824A',
-  'V1916A',
-  'SM-G9650',
-  'V1936A',
-  'MI9 PRO 5G',
-  'REDMI K20',
-  'V1914A',
-  'GM1900',
-  'RMX1971',
-  'SM-A6060',
-  'SM-G9600',
-  'V1922A',
-  'PBAM00',
-  'PCAM10',
-  'PACT00',
-  'PBBM00',
-  'PCEM00',
-  'V1818A',
-  'vivo X6A',
-  'vivo X6Plus A',
+  'oppo r9s plus',
+  'gm1910',
+  'v1824a',
+  'v1916a', // checked
+  'sm-g9650', // checked
+  'v1936a',
+  'mi9 pro 5g', // checked
+  'redmi k20',
+  'v1914a',
+  'gm1900',
+  'rmx1971',
+  'sm-a6060',
+  'sm-g9600', // checked
+  'v1922a',
+  'pbam00', // checked
+  'pcam10', // checked
+  'pact00', // checked
+  'pbbm00',
+  'pcem00',
+  'v1818a', // checked
+  'vivo x6a',
+  'vivo x6plus a',
 ];
 const downgradeAndroidVersions: string[] = [];
 const downgradeiOSModels: string[] = [
@@ -411,6 +413,12 @@ const downgradeiOSModels: string[] = [
 ];
 const downgradeiOSVersions: string[] = [
   '16.7',
+  '16.7.1',
+  '16.7.2',
+  '16.7.3',
+  '16.7.4',
+  '16.7.5',
+  '16.7.6',
 ];
 
 class DeviceProxy {
@@ -444,7 +452,7 @@ class DeviceProxy {
     const modelList = this.isIOS ? downgradeiOSModels : downgradeAndroidModels;
     const osVersionList = this.isIOS ? downgradeiOSVersions : downgradeAndroidVersions;
 
-    const findModel = modelList.find(m => m == this.model);
+    const findModel = modelList.find(m => m.toLowerCase() == this.model?.toLowerCase());
 
     if (findModel !== undefined) {
       return { downgrade: true, reason: 'Downgrade by downgrade model list' };

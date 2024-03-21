@@ -14,10 +14,6 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
   });
 
   const downgrade = getDowngradeResult();
-  const label = document.createElement('label');
-
-  label.innerText = JSON.stringify(downgrade, undefined, 2);
-  document.body.appendChild(label);
 
   try {
     const scene = await player.loadScene(json, {
@@ -25,15 +21,24 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
         downgrade,
       },
     });
-  } catch (e) {
     const label = document.createElement('label');
 
-    // @ts-expect-error
-    label.innerText = JSON.stringify(e.message, undefined, 2);
-    document.body.appendChild(document.createElement('br'));
+    label.innerText = JSON.stringify(downgrade, undefined, 2);
     document.body.appendChild(label);
+  } catch (e) {
     console.error('biz', e);
     // @ts-expect-error
     container.innerHTML = `<img src="${imageUrl}" />`;
+
+    const label = document.createElement('label');
+
+    label.innerText = JSON.stringify(downgrade, undefined, 2);
+    const labelMessage = document.createElement('label');
+
+    // @ts-expect-error
+    labelMessage.innerText = JSON.stringify(e.message, undefined, 2);
+    container?.appendChild(label);
+    container?.appendChild(document.createElement('br'));
+    container?.appendChild(labelMessage);
   }
 })();
