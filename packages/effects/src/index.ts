@@ -77,8 +77,8 @@ Renderer.create = (canvas: HTMLCanvasElement | OffscreenCanvas,
   return new GLRenderer(canvas, framework, renderOptions);
 };
 
-Engine.create = (gl: WebGLRenderingContext | WebGL2RenderingContext) => {
-  return new GLEngine(gl);
+Engine.create = (canvas: HTMLCanvasElement | OffscreenCanvas, gl: WebGLRenderingContext | WebGL2RenderingContext) => {
+  return new GLEngine(canvas, gl);
 };
 
 export const version = __VERSION__;

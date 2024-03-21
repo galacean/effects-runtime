@@ -1,7 +1,7 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math, Texture,
-  SceneLoadType, SceneType, SceneWithOptionsType,
+  SceneLoadType, SceneType, SceneWithOptionsType, Engine,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
@@ -12,30 +12,9 @@ import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { isDowngradeIOS } from './utils';
 
-/**
- * `onItemClicked` 点击回调函数的传入参数
- */
-export interface ItemClickedData {
-  name: string,
-  player: Player,
-  id: string,
-  hitPositions: math.Vector3[],
-  compositionId: number,
-}
-// 示例使用
-interface Events {
-  login: [username: string, password: string],
-  logout: [],
-}
+export enum PlayerEvent {
+  ItemClick = 'itemClick',
 
-export interface EventName {
-  ITEMCLICK: [
-    name: string,
-    player: Player,
-    id: string,
-    hitPositions: math.Vector3[],
-    compositionId: number,
-  ],
 }
 
 /**
@@ -116,7 +95,7 @@ export interface PlayerConfig {
   /**
    * 交互元素被点击的回调
    */
-  onItemClicked?: (data: ItemClickedData) => void,
+  // onItemClicked?: (data: ItemClickedData) => void,
   /**
    * 交互元素发送 message 的回调
    */
@@ -169,7 +148,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    */
   protected compositions: Composition[] = [];
 
-  private readonly event: EventEmitter<Events>;
+  private readonly event: EventEmitter;
   private readonly handleWebGLContextLost?: (event: Event) => void;
   private readonly handleWebGLContextRestored?: () => void;
   private readonly handleMessageItem?: (item: MessageItem) => void;
@@ -188,6 +167,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   private assetManager: AssetManager;
   private speed = 1;
   private baseCompositionIndex = 0;
+  engine: Engine;
 
   /**
    * 播放器的构造函数
@@ -221,6 +201,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     if (glType) {
       framework = glType === 'webgl' ? 'webgl' : 'webgl2';
     }
+
+    this.event = new EventEmitter();
+    this.event.on('WEBGLLOST', onWebGLContextLost!);
+    this.event.on('ITEMCLICK', onItemClicked);
 
     this.handleWebGLContextLost = onWebGLContextLost;
     this.handleWebGLContextRestored = onWebGLContextRestored;
@@ -265,10 +249,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       }
     );
 
+    this.engine = this.renderer.engine;
+    // this.engine.on()
     this.renderer.env = env;
     this.renderer.addLostHandler({ lost: this.lost });
     this.renderer.addRestoreHandler({ restore: this.restore });
-    this.gpuCapability = this.renderer.engine.gpuCapability;
+    this.gpuCapability = this.engine.gpuCapability;
 
     // 如果存在WebGL和WebGL2的Player，需要给出警告
     playerMap.forEach(player => {
@@ -281,8 +267,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.ticker = new Ticker(fps);
       this.ticker.add(this.tick.bind(this));
     }
-    this.event = new EventEmitter();
-
     // this.event = new EventSystem(this.canvas, !!notifyTouch);
     // this.event.bindListeners();
     // this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
@@ -345,14 +329,17 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    * 获取播放器是否可交互
    */
   get interactive () {
-    return '';
+    return true;
     // return this.event.enabled;
   }
 
   /**
    * 设置播放器是否可交互
    */
-  set interactive (enable) {
+  set interactive (enable: boolean) {
+    if (enable) {
+      // this.event.on("ITEMCLICK",())
+    }
     // this.event.enabled = enable;
   }
 
@@ -867,11 +854,18 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           const behavior = regions[i].behavior || spec.InteractBehavior.NOTIFY;
 
           if (behavior === spec.InteractBehavior.NOTIFY) {
-            this.handleItemClicked?.({
-              ...regions[i],
-              composition: composition.name,
-              player: this,
-            });
+            // const name = composition.name;
+            this.event.emit('ITEMCLICK',
+              {
+                ...regions[i],
+                composition: composition.name,
+                player: this,
+              });
+            // this.handleItemClicked?.({
+            //   ...regions[i],
+            //   composition: composition.name,
+            //   player: this,
+            // });
           } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
             void this.resume();
           }

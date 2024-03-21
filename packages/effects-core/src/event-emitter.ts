@@ -1,75 +1,42 @@
-export interface ListenerFn<Args extends any[] = any[]> {
-  (...args: Args): void,
-}
-export type ValidEventTypes = string | symbol | object;
+type EventType = { [key: string]: any };
 
-export type EventNames<T extends ValidEventTypes> = T extends string | symbol
-  ? T
-  : keyof T;
+export class EventEmitter {
+  private listeners: { [K: string]: Function[] } = {};
 
-export type ArgumentMap<T extends object> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => void
-    ? Parameters<T[K]>
-    : T[K] extends any[]
-      ? T[K]
-      : any[];
-};
-
-export type EventListener<
-  T extends ValidEventTypes,
-  K extends EventNames<T>
-> = T extends string | symbol
-  ? (...args: any[]) => void
-  : (
-    ...args: ArgumentMap<Exclude<T, string | symbol>>[Extract<K, keyof T>]
-  ) => void;
-
-export type EventArgs<
-  T extends ValidEventTypes,
-  K extends EventNames<T>
-> = Parameters<EventListener<T, K>>;
-
-export class EventEmitter<T extends ValidEventTypes> {
-  private eventListeners: Map<EventNames<T>, ListenerFn[]> = new Map();
-
-  on<K extends EventNames<T>>(eventName: K, listener: EventListener<T, K>): void {
-    const listeners = this.eventListeners.get(eventName) || [];
-
-    listeners.push(listener as ListenerFn);
-    this.eventListeners.set(eventName, listeners);
+  on (eventName: string, listener: Function): void {
+    this.listeners[eventName] = this.listeners[eventName] || [];
+    this.listeners[eventName].push(listener);
   }
 
-  once<K extends EventNames<T>>(eventName: K, listener: EventListener<T, K>): void {
+  // 处理一次性事件监听器
+  once (eventName: string, listener: Function): void {
+    // 一次性监听器的包装函数
     const onceWrapper = (...args: any[]) => {
-      this.off(eventName, onceWrapper as EventListener<T, K>);
-      (listener as ListenerFn)(...args);
+      this.off(eventName, onceWrapper); // 移除监听器
+      listener.apply(this, args); // 调用原始监听器
     };
 
-    this.on(eventName, onceWrapper as EventListener<T, K>);
+    this.on(eventName, onceWrapper);
   }
 
-  off<K extends EventNames<T>>(eventName: K, listener: EventListener<T, K>): void {
-    const listeners = this.eventListeners.get(eventName);
-
-    if (!listeners) {return;}
-    const index = listeners.indexOf(listener as ListenerFn);
+  // 移除特定的事件监听器
+  off (eventName: string, listener: Function): void {
+    if (!this.listeners[eventName]) {return;}
+    const index = this.listeners[eventName].indexOf(listener);
 
     if (index !== -1) {
-      listeners.splice(index, 1);
-    }
-    if (listeners.length === 0) {
-      this.eventListeners.delete(eventName);
-    } else {
-      this.eventListeners.set(eventName, listeners);
+      this.listeners[eventName].splice(index, 1);
     }
   }
 
-  emit<K extends EventNames<T>>(eventName: K, ...args: EventArgs<T, K>): void {
-    const listeners = this.eventListeners.get(eventName);
+  // 触发事件
+  emit (eventName: string, args?: EventType): void {
+    const eventListeners = this.listeners[eventName];
 
-    if (!listeners) {return;}
-    listeners.forEach(listener => {
-      (listener as ListenerFn<EventArgs<T, K>>)(...args);
-    });
+    if (eventListeners) {
+      eventListeners.slice().forEach(listener => {
+        listener(args);
+      });
+    }
   }
 }

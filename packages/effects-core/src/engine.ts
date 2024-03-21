@@ -9,11 +9,11 @@ import type { Scene } from './scene';
 import { Texture, TextureSourceType } from './texture';
 import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
-
+import { EventEmitter } from './event-emitter';
 /**
- * Engine 基类，负责维护所有 GPU 资源的销毁
- */
-export class Engine implements Disposable {
+ * Engine 基类，负责维护及单个Player的全局可用对象及GPU 资源的销毁
+*/
+export class Engine extends EventEmitter implements Disposable {
   renderer: Renderer;
   emptyTexture: Texture;
   transparentTexture: Texture;
@@ -31,6 +31,7 @@ export class Engine implements Disposable {
   protected renderPasses: RenderPass[] = [];
 
   constructor () {
+    super();
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.assetLoader = new AssetLoader(this);
@@ -40,7 +41,7 @@ export class Engine implements Disposable {
   /**
    * 创建 Engine 对象。
    */
-  static create: (gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
+  static create: (canvas: HTMLCanvasElement | OffscreenCanvas, gl: WebGLRenderingContext | WebGL2RenderingContext) => Engine;
 
   clearResources () {
     this.jsonSceneData = {};

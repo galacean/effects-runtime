@@ -48,7 +48,7 @@ export class GLRenderer extends Renderer implements Disposable {
 
     assertExist(gl);
     // engine 先创建
-    this.engine = new GLEngine(gl);
+    this.engine = new GLEngine(canvas, gl);
     this.engine.renderer = this;
     this.pipelineContext = new GLPipelineContext(this.engine as GLEngine, gl);
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
@@ -350,7 +350,7 @@ export class GLRenderer extends Renderer implements Disposable {
     if (!gl) {
       throw new Error('Can not restore automatically because losing gl context');
     }
-    this.engine = new GLEngine(gl);
+    this.engine = new GLEngine(this.canvas, gl);
     this.engine.renderer = this;
     this.pipelineContext = new GLPipelineContext(this.engine as GLEngine, gl);
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);

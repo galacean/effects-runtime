@@ -1,9 +1,11 @@
-import { Player } from '@galacean/effects';
+import { EventEmitter, Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.turnplate.url;
+// const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*GsUXQJUTRqoAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*Wu__ToIiGLkAAAAAAAAAAAAADlB4AQ';
+
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -11,7 +13,25 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json, {
-      // autoplay: false,
+    // autoplay: false,
+    });
+
+    comp.onEnd = () => {
+      // console.log('end');
+    };
+
+    const event = new EventEmitter();
+
+    //@ts-expect-error
+    event.on('TEXT', prop => {
+      console.info('text....');
+      console.info('====', prop.a);
+      console.info('====', prop.b);
+    });
+
+    event.emit('TEXT', {
+      a: 'abc',
+      b: 'bac',
     });
 
     // player.gotoAndStop(0);
