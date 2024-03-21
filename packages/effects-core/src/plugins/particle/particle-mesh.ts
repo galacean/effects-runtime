@@ -309,7 +309,7 @@ export class ParticleMesh implements ParticleMeshData {
       }
     }
     if (vertexCurveTexture && halfFloatTexture && enableVertexTexture) {
-      const tex = generateHalfFloatTexture(engine, CurveValue.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
+      const tex = generateHalfFloatTexture(engine, BezierCurve.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
 
       uniformValues.uVCurveValueTexture = tex;
       vertex_lookup_texture = 1;

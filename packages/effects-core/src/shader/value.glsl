@@ -21,18 +21,18 @@ out float vSeed;
 #endif
 
 mat4 cubicBezierMatrix = mat4(
--1.0,  3.0, -3.0,  1.0,
-3.0, -6.0,  3.0,  0.0,
--3.0,  3.0,  0.0,  0.0,
-1.0,  0.0,  0.0,  0.0
+1.0, -3.0, 3.0, -1.0,
+0.0, 3.0, -6.0, 3.0,
+0.0, 0.0, 3.0, -3.0,
+0.0, 0.0, 0.0, 1.0
 );
 
-float cubicBezier(float t, float y1, float y2, float y3, float y4 ) {
-  vec4 tVec = vec4(t * t * t, t * t, t, 1.0);
+float cubicBezier(float t, float y1, float y2, float y3, float y4) {
+  vec4 tVec = vec4(1.0, t, t * t, t * t * t);
   vec4 yVec = vec4(y1, y2, y3, y4);
-
   vec4 result = tVec * cubicBezierMatrix * yVec;
-  return result.x;
+
+  return result.x + result.y + result.z + result.w;
 }
 
 float binarySearchT(float x, float x1, float x2, float x3, float x4) {
@@ -40,7 +40,7 @@ float binarySearchT(float x, float x1, float x2, float x3, float x4) {
   float right = 1.0;
   float mid = 0.0;
   float computedX;
-  int maxIterations = 100;
+  int maxIterations = 12;
 
   for (int i = 0; i < maxIterations; i++) {
     mid = (left + right) * 0.5;
@@ -60,10 +60,29 @@ float valueFromBezierCurveFrames(float time, float frameStart, float frameCount)
   int start = int(frameStart);
   int count = int(frameCount - 1.);
   int end = start + count;
-  vec4 k0 = lookup_curve(start);
-  vec4 k1 = lookup_curve(start + 1);
-  float t = binarySearchT(time, k0.x, k0.z,k1.z, k1.x);
-  return cubicBezier(time, k0.y, k0.w, k1.w, k1.y);
+  for(int i = 0; i < ITR_END; i += 2) {
+    #ifdef NONE_CONST_INDEX
+    if(i == count) {
+      return lookup_curve(count).y;
+    }
+    vec4 k0 = lookup_curve(i + start);
+    vec4 k1 = lookup_curve(i + 1 + start);
+    #else
+    if(i < start) {
+      continue;
+    }
+    vec4 k0 = lookup_curve(i);
+    vec4 k1 = lookup_curve(i + 1);
+    if(i == end) {
+      return k1.y;
+    }
+    #endif
+    if(time >= k0.x && time <= k1.x) {
+      float t = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
+      return cubicBezier(t, k0.y, k0.w, k1.w, k1.y);
+    }
+  }
+  return lookup_curve(0).y;
 }
 
 float evaluateCurveFrames(float time, vec4 keyframe0, vec4 keyframe1) {

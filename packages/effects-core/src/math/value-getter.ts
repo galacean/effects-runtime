@@ -735,7 +735,7 @@ export class BezierCurve extends ValueGetter<number> {
 
   getCurveValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
-    const [p0, p1, , p3] = curveInfo.points;
+    const [p0, p1, p2, p3] = curveInfo.points;
 
     if (curveInfo.curve instanceof LinearValue) {
       const timeInterval = (p1.x - p0.x);
@@ -747,9 +747,11 @@ export class BezierCurve extends ValueGetter<number> {
     const timeInterval = p3.x - p0.x;
     const valueInterval = p3.y - p0.y;
     const normalizeTime = (time - p0.x) / timeInterval;
+
     const value = curveInfo.curve.getValue(normalizeTime);
 
     return p0.y + valueInterval * value;
+
   }
 
   override toUniform (meta: KeyFrameMeta): Float32Array {
@@ -758,10 +760,10 @@ export class BezierCurve extends ValueGetter<number> {
 
     meta.curves.push(this);
     meta.index = index + count;
-    meta.max = Math.max(meta.max, count / 2);
-    meta.curveCount += count / 2;
+    meta.max = Math.max(meta.max);
+    meta.curveCount += count;
 
-    return new Float32Array([5, index + 1 / count, count, count]);
+    return new Float32Array([5, index + 1 / count, index, index + count]);
   }
 
   toData (): Float32Array {
@@ -1053,12 +1055,12 @@ export function getKeyFrameMetaByRawValue (meta: KeyFrameMeta, value?: [type: sp
       meta.index += uniformCount;
       meta.max = Math.max(meta.max, uniformCount);
     } else if (type === spec.ValueType.BEZIER_CURVE) {
-      const keyLen = keys.length;
+      const keyLen = keys.length - 1;
 
-      meta.index += keyLen;
+      meta.index += 2 * keyLen;
       meta.curves.push(keys as any);
-      meta.max = Math.max(meta.max, keyLen);
-      meta.curveCount += keyLen;
+      meta.max = Math.max(meta.max, 2 * keyLen);
+      meta.curveCount += 2 * keyLen;
     }
   }
 }
