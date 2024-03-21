@@ -190,22 +190,29 @@ export class UADecoder {
   private parseAndroidModel (data: string) {
     const itemList = data.split(';');
 
+    let lastItem;
+
     for (const item of itemList) {
       const modelPattern = /(.*) Build/;
       const modelMatch = item.match(modelPattern);
 
       if (modelMatch && modelMatch.length >= 2) {
-        return modelMatch[1].trim().toLowerCase();
+        return modelMatch[1].trim();
       }
-    }
-    if (itemList.length > 0) {
-      const lastItem = itemList[itemList.length - 1].trim().toLowerCase();
 
-      if (lastItem) {
-        for (const vender of venderInfoList) {
-          if (lastItem.startsWith(vender)) {
-            return lastItem.substring(vender.length).trim();
-          }
+      if (item.includes('HMSCore') && lastItem) {
+        return lastItem.trim();
+      }
+
+      lastItem = item;
+    }
+
+    if (itemList.length > 0) {
+      const lastItem = itemList[itemList.length - 1].trim();
+
+      for (const vender of venderInfoList) {
+        if (lastItem.startsWith(vender)) {
+          return lastItem.substring(vender.length).trim();
         }
       }
     }
@@ -257,7 +264,7 @@ export class UADecoder {
 }
 
 const venderInfoList: string[] = [
-  'samsung',
+  'SAMSUNG',
 ];
 
 interface iPhoneInfo {
@@ -368,28 +375,28 @@ function registerEvent (options: DowngradeOptions) {
 
 // FIXME: 安卓机型校对
 const downgradeAndroidModels: string[] = [
-  'oppo r9s plus',
-  'gm1910',
-  'v1824a',
-  'v1916a', // checked
-  'sm-g9650', // checked
-  'v1936a',
-  'mi9 pro 5g', // checked
-  'redmi k20',
-  'v1914a',
-  'gm1900',
-  'rmx1971',
-  'sm-a6060',
-  'sm-g9600', // checked
-  'v1922a',
-  'pbam00', // checked
-  'pcam10', // checked
-  'pact00', // checked
-  'pbbm00',
-  'pcem00',
-  'v1818a', // checked
-  'vivo x6a',
-  'vivo x6plus a',
+  'OPPO R9s Plus',
+  'GM1910',
+  'V1824A',
+  'V1916A', // checked
+  'SM-G9650', // checked
+  'V1936A',
+  'MI9 PRO 5G', // checked
+  'REDMI K20',
+  'V1914A',
+  'GM1900',
+  'RMX1971',
+  'SM-A6060',
+  'SM-G9600', // checked
+  'V1922A',
+  'PBAM00', // checked
+  'PCAM10', // checked
+  'PACT00', // checked
+  'PBBM00',
+  'PCEM00',
+  'V1818A', // checked
+  'vivo X6A',
+  'vivo X6Plus A',
 ];
 const downgradeAndroidVersions: string[] = [];
 const downgradeiOSModels: string[] = [
