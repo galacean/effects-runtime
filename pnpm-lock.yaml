@@ -43,8 +43,8 @@ importers:
         specifier: 4.3.4
         version: 4.3.4
       '@types/chai-spies':
-        specifier: 1.0.0
-        version: 1.0.0
+        specifier: 1.0.6
+        version: 1.0.6
       '@types/mocha':
         specifier: 10.0.1
         version: 10.0.1
@@ -2186,8 +2186,8 @@ packages:
     engines: {node: '>= 10'}
     dev: true
 
-  /@types/chai-spies@1.0.0:
-    resolution: {integrity: sha1-FELaqSTSqMPyAlPbXl6P3R/U8ik=, tarball: https://registry.npmmirror.com/@types/chai-spies/download/@types/chai-spies-1.0.0.tgz}
+  /@types/chai-spies@1.0.6:
+    resolution: {integrity: sha512-xkk4HmhBB9OQeTAifa9MJ+6R5/Rq9+ungDe4JidZD+vqZVeiWZwc2i7/pd1ZKjyGlSBIQePoWdyUyFUGT0rv5w==}
     dependencies:
       '@types/chai': 4.3.4
     dev: true

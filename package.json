@@ -39,7 +39,7 @@
     "@rollup/plugin-replace": "^5.0.2",
     "@rollup/plugin-terser": "^0.4.3",
     "@types/chai": "4.3.4",
-    "@types/chai-spies": "1.0.0",
+    "@types/chai-spies": "1.0.6",
     "@types/mocha": "10.0.1",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
