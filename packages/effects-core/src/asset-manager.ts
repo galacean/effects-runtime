@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
 import { glContext } from './gl';
 import type { PrecompileOptions } from './plugin-system';
@@ -153,6 +153,32 @@ export class AssetManager implements Disposable {
   }
 
   /**
+   * 根据用户传入的参数修改场景数据
+   */
+  private updateSceneData (compositions: spec.Composition[]): spec.Composition[] {
+    const variables = this.options.variables;
+
+    if (!variables || Object.keys(variables).length <= 0) {
+      return compositions;
+    }
+
+    compositions.forEach(composition => {
+      composition.items.forEach(item => {
+        if (item.type === spec.ItemType.text) {
+          const textVariable = variables[item.name];
+
+          if (textVariable) {
+            (item as spec.TextItem).content.options.text = textVariable as string;
+          }
+        }
+      });
+    });
+
+    return compositions;
+
+  }
+
+  /**
    * 场景创建，通过 json 创建出场景对象，并进行提前编译等工作
    * @param url - json 的 URL 链接或者 json 对象
    * @param renderer - renderer 对象，用于获取管理、编译 shader 及 GPU 上下文的参数
@@ -236,11 +262,13 @@ export class AssetManager implements Disposable {
           for (let i = 0; i < scene.images.length; i++) {
             scene.textureOptions[i].image = scene.images[i];
           }
+          scene.jsonScene.compositions = this.updateSceneData(scene.jsonScene.compositions);
         }
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
+
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, usedImages, compressedTexture)),
@@ -249,6 +277,8 @@ export class AssetManager implements Disposable {
 
         await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+
+        jsonScene.compositions = this.updateSceneData(jsonScene.compositions);
 
         scene = {
           url: url,
