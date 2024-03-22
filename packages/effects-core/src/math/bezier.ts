@@ -1,4 +1,5 @@
-import { assertExist, decimalEqual, LinearValue, pointOnLine } from '@galacean/effects-core';
+import type { LinearValue } from '@galacean/effects-core';
+import { assertExist, decimalEqual, pointOnLine } from '@galacean/effects-core';
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
@@ -289,66 +290,60 @@ export class BezierEasing {
 
 export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyframe: BezierKeyframeValue): {
   points: Vector2[],
-  curve: LinearValue | BezierEasing,
+  curve: BezierEasing,
 } {
   // 获取控制点和曲线类型
-  const { type, p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe);
+  const { p0, p1, p2, p3 } = getControlPoints(leftKeyframe, rightKeyframe, true);
 
-  if (type === 'line') {
-    return {
-      points: [p0, p1, p0, p1],
-      curve: new LinearValue([p0.y, p1.y]),
-    };
+  assertExist(p2);
+  assertExist(p3);
+  const timeInterval = p3.x - p0.x;
+  const valueInterval = p3.y - p0.y;
 
-    // 2. 左右两边至少有一边为ease
-  } else {
-    const timeInterval = p3.x - p0.x;
-    const valueInterval = p3.y - p0.y;
+  // 编辑器处理
+  // if (decimalEqual(valueInterval, 0)) {
+  //   return {
+  //     points: [p0, p1, p2, p3],
+  //     curve: new LinearValue([p3.y, p3.y]),
+  //   };
+  // }
 
-    if (decimalEqual(valueInterval, 0)) {
-      return {
-        points: [p0, p1, p2, p3],
-        curve: new LinearValue([p3.y, p3.y]),
-      };
-    }
+  let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
+  let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;
+  const y1 = Math.round((p1.y - p0.y) / valueInterval * 100000) / 100000;
+  const y2 = Math.round((p2.y - p0.y) / valueInterval * 100000) / 100000;
 
-    let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
-    let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;
-    const y1 = Math.round((p1.y - p0.y) / valueInterval * 100000) / 100000;
-    const y2 = Math.round((p2.y - p0.y) / valueInterval * 100000) / 100000;
-
-    if (x1 < 0) {
-      console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
-      x1 = 0;
-    }
-    if (x2 < 0) {
-      console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
-      x2 = 0;
-    }
-    if (x1 > 1) {
-      console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
-      x1 = 1;
-    }
-    if (x2 > 1) {
-      console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
-      x2 = 1;
-    }
-
-    const str = ('bez_' + x1 + '_' + y1 + '_' + x2 + '_' + y2).replace(/\./g, 'p');
-    let bezEasing;
-
-    if (BezierMap[str]) {
-      bezEasing = BezierMap[str];
-    } else {
-      bezEasing = new BezierEasing(x1, x2, y1, y2);
-      BezierMap[str] = bezEasing;
-    }
-
-    return {
-      points: [p0, p1, p2, p3],
-      curve: bezEasing,
-    };
+  if (x1 < 0) {
+    console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
+    x1 = 0;
   }
+  if (x2 < 0) {
+    console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
+    x2 = 0;
+  }
+  if (x1 > 1) {
+    console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
+    x1 = 1;
+  }
+  if (x2 > 1) {
+    console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
+    x2 = 1;
+  }
+
+  const str = ('bez_' + x1 + '_' + y1 + '_' + x2 + '_' + y2).replace(/\./g, 'p');
+  let bezEasing;
+
+  if (BezierMap[str]) {
+    bezEasing = BezierMap[str];
+  } else {
+    bezEasing = new BezierEasing(x1, x2, y1, y2);
+    BezierMap[str] = bezEasing;
+  }
+
+  return {
+    points: [p0, p1, p2, p3],
+    curve: bezEasing,
+  };
 }
 
 /**
@@ -357,7 +352,7 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
 export function getControlPoints (
   leftKeyframe: spec.BezierKeyframeValue,
   rightKeyframe: spec.BezierKeyframeValue,
-  lineToBezier = false):
+  lineToBezier: boolean):
   ({ type: 'ease', p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, isHold?: boolean, leftHoldLine?: boolean, rightHoldLine?: boolean }
   | { type: 'line', p0: Vector2, p1: Vector2, p2?: Vector2, p3?: Vector2, isHold?: boolean, leftHoldLine?: boolean, rightHoldLine?: boolean }) {
 

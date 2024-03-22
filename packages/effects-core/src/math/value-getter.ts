@@ -698,14 +698,6 @@ export class BezierCurve extends ValueGetter<number> {
         curve,
       };
     }
-    // const key0 = this.keys[0];
-    // const key1 = this.keys[this.keys.length - 1];
-    // if (key0[0] > 0) {
-    //   this.keys.unshift([0, key0[1], key0[2], key0[3]]);
-    // }
-    // if (key1[0] < 1) {
-    //   this.keys.push([1, key1[1], key1[2], key1[3]]);
-    // }
   }
   override getValue (time: number) {
     let result = 0;
@@ -735,15 +727,7 @@ export class BezierCurve extends ValueGetter<number> {
 
   getCurveValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
-    const [p0, p1, p2, p3] = curveInfo.points;
-
-    if (curveInfo.curve instanceof LinearValue) {
-      const timeInterval = (p1.x - p0.x);
-      const relativeTime = Math.round((time - p0.x) * 10000) / 10000;
-
-      return curveInfo.curve.getValue(relativeTime / timeInterval);
-    }
-
+    const [p0, , , p3] = curveInfo.points;
     const timeInterval = p3.x - p0.x;
     const valueInterval = p3.y - p0.y;
     const normalizeTime = (time - p0.x) / timeInterval;
@@ -763,7 +747,7 @@ export class BezierCurve extends ValueGetter<number> {
     meta.max = Math.max(meta.max);
     meta.curveCount += count;
 
-    return new Float32Array([5, index + 1 / count, index, index + count]);
+    return new Float32Array([5, index + 1 / count, index, count]);
   }
 
   toData (): Float32Array {
@@ -859,14 +843,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
   getPercValue (curveKey: string, time: number) {
     const curveInfo = this.curveSegments[curveKey];
-    const [p0, p1, , p3] = curveInfo.points;
-
-    if (curveInfo.easingCurve instanceof LinearValue) {
-      const timeInterval = (p1.x - p0.x);
-      const relativeTime = Math.round((time - p0.x) * 10000) / 10000;
-
-      return curveInfo.easingCurve.getValue(relativeTime / timeInterval);
-    }
+    const [p0,, , p3] = curveInfo.points;
 
     const timeInterval = p3.x - p0.x;
     const normalizeTime = Math.round((time - p0.x) / timeInterval * 10000) / 10000;

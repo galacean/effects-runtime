@@ -31,6 +31,7 @@ import { particleFrag, particleVert } from '../../shader';
 import { generateHalfFloatTexture, Texture } from '../../texture';
 import { Transform } from '../../transform';
 import { enlargeBuffer, imageDataFromGradient } from '../../utils';
+import { particleUniformTypeMap } from './particle-vfx-item';
 
 export type Point = {
   vel: Vector3,
@@ -371,39 +372,6 @@ export class ParticleMesh implements ParticleMeshData {
     setBlendMode(material, blending);
     setSideMode(material, side);
 
-    const typeMap: Record<string, string> = {
-      'uSprite': 'vec4',
-      'uParams': 'vec4',
-      'uAcceleration': 'vec4',
-      'uGravityModifierValue': 'vec4',
-      'uOpacityOverLifetimeValue': 'vec4',
-      'uRXByLifeTimeValue': 'vec4',
-      'uRYByLifeTimeValue': 'vec4',
-      'uRZByLifeTimeValue': 'vec4',
-      'uLinearXByLifetimeValue': 'vec4',
-      'uLinearYByLifetimeValue': 'vec4',
-      'uLinearZByLifetimeValue': 'vec4',
-      'uSpeedLifetimeValue': 'vec4',
-      'uOrbXByLifetimeValue': 'vec4',
-      'uOrbYByLifetimeValue': 'vec4',
-      'uOrbZByLifetimeValue': 'vec4',
-      'uSizeByLifetimeValue': 'vec4',
-      'uSizeYByLifetimeValue': 'vec4',
-      'uColorParams': 'vec4',
-      'uFSprite': 'vec4',
-      'uPreviewColor': 'vec4',
-      'uVCurveValues': 'vec4Array',
-      'uFCurveValues': 'vec4',
-      'uFinalTarget': 'vec3',
-      'uForceCurve': 'vec4',
-      'uOrbCenter': 'vec3',
-      'uTexOffset': 'vec2',
-      'uPeriodValue': 'vec4',
-      'uMovementValue': 'vec4',
-      'uStrengthValue': 'vec4',
-      'uWaveParams': 'vec4',
-    };
-
     Object.keys(uniformValues).map(name => {
       const value = uniformValues[name];
 
@@ -414,7 +382,7 @@ export class ParticleMesh implements ParticleMeshData {
       }
       const res: Vector4[] = [];
 
-      switch (typeMap[name]) {
+      switch (particleUniformTypeMap[name]) {
         case 'vec4':
           material.setVector4(name, Vector4.fromArray(value));
 
