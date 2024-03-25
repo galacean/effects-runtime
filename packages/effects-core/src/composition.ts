@@ -31,7 +31,7 @@ export interface MessageItem {
   id: string,
   name: string,
   phrase: number,
-  compositionId: number,
+  compositionId: string,
 }
 
 /**
@@ -55,8 +55,6 @@ export interface CompositionProps {
   height: number,
   speed?: number,
 }
-
-let seed = 1;
 
 /**
  * 合成抽象类：核心对象，通常一个场景只包含一个合成，可能会有多个合成。
@@ -115,7 +113,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 合成id
    */
-  readonly id: number;
+  readonly id: string;
   /**
    * 画布宽度
    */
@@ -257,7 +255,7 @@ export class Composition implements Disposable, LostHandler {
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
-    this.id = seed++;
+    this.id = sourceContent.id;
     this.renderer = renderer;
     this.texInfo = imageUsage ?? {};
     this.event = event;
