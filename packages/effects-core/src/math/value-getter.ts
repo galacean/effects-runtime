@@ -660,7 +660,7 @@ export class BezierSegments extends PathSegments {
 export class BezierCurve extends ValueGetter<number> {
   curveMap: Record<string, {
     points: Vector2[],
-    curve: BezierEasing | LinearValue,
+    curve: BezierEasing,
   }>;
   keys: number[][];
 
@@ -723,6 +723,44 @@ export class BezierCurve extends ValueGetter<number> {
     }
 
     return result;
+  }
+
+  override getIntegrateValue (t0: number, t1: number, ts = 1) {
+    const time = (t1 - t0) / ts;
+    let result = 0;
+    const keyTimeData = Object.keys(this.curveMap);
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+
+    if (time <= keyTimeStart) {
+      return 0;
+    }
+
+    for (let i = 0; i < keyTimeData.length ; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (time >= Number(xMax)) {
+        result += this.getCurveIntegrateValue(keyTimeData[i], Number(xMax));
+      }
+
+      if (time >= Number(xMin) && time < Number(xMax)) {
+        result += this.getCurveIntegrateValue(keyTimeData[i], time);
+
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  getCurveIntegrateValue (curveKey: string, time: number) {
+    const curveInfo = this.curveMap[curveKey];
+    const [p0, , , p3] = curveInfo.points;
+    const timeInterval = p3.x - p0.x;
+    const valueInterval = p3.y - p0.y;
+    const normalizeTime = (time - p0.x) / timeInterval;
+    const value = curveInfo.curve.getIntegrateValue(normalizeTime);
+
+    return valueInterval * value;
   }
 
   getCurveValue (curveKey: string, time: number) {

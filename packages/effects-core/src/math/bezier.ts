@@ -21,7 +21,7 @@ const SUBDIVISION_PRECISION = 0.0000001;
 const SUBDIVISION_MAX_ITERATIONS = 10;
 const CURVE_SEGMENTS = 120;
 
-const kSplineTableSize = 11;
+const kSplineTableSize = 21;
 const kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
 
 function A (a1: number, a2: number) { return 1.0 - 3.0 * a2 + 3.0 * a1; }
@@ -204,14 +204,16 @@ export class BezierPath {
 
 }
 export class BezierEasing {
-  private precomputed: boolean;
-  private mSampleValues: Float32Array | Array<number>;
+  private precomputed = false;
+  private mSampleValues: number[];
+  private areaSample: number[];
   public cachingValue: Record<string, number>;
 
   constructor (public mX1: number, public mY1: number, public mX2: number, public mY2: number) {
-    this.mSampleValues = typeof Float32Array === 'function' ? new Float32Array(kSplineTableSize) : new Array(kSplineTableSize);
-    this.precomputed = false;
+    this.mSampleValues = new Array(kSplineTableSize);
+    this.areaSample = new Array(kSplineTableSize);
     this.cachingValue = {};
+    this.precompute();
   }
 
   precompute () {
@@ -256,10 +258,35 @@ export class BezierEasing {
   }
 
   calcSampleValues () {
+    let lastSample = 0, currentSample = 0, total = 0;
 
     for (let i = 0; i < kSplineTableSize; ++i) {
-      this.mSampleValues[i] = calcBezier(i * kSampleStepSize, this.mX1, this.mX2);
+
+      this.mSampleValues[i] = currentSample = calcBezier(i * kSampleStepSize, this.mX1, this.mX2);
+      const area = (currentSample + lastSample) * kSampleStepSize / 2;
+
+      lastSample = currentSample;
+
+      total += area;
+      this.areaSample[i] = total;
     }
+  }
+
+  getIntegrateValue (t: number) {
+
+    const minIndex = Math.floor(t * kSplineTableSize);
+
+    if (t === 0) {
+      return 0;
+    }
+    if (t === 1 || minIndex >= (kSplineTableSize - 1)) {
+      return this.areaSample[kSplineTableSize - 1];
+    }
+    const over = t * kSplineTableSize - minIndex;
+
+    const result = this.areaSample[minIndex] + over * (this.areaSample[minIndex + 1] - this.areaSample[minIndex]);
+
+    return result;
   }
 
   getTForX (aX: number) {
@@ -299,14 +326,6 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
   assertExist(p3);
   const timeInterval = p3.x - p0.x;
   const valueInterval = p3.y - p0.y;
-
-  // 编辑器处理
-  // if (decimalEqual(valueInterval, 0)) {
-  //   return {
-  //     points: [p0, p1, p2, p3],
-  //     curve: new LinearValue([p3.y, p3.y]),
-  //   };
-  // }
 
   let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
   let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;

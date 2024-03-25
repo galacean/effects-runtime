@@ -3,10 +3,7 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240322072832872/mars-preview.json'; // 拖尾和随机
-// 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240322042710121/mars-preview.json'; // 环绕
-// 'https://mdn.alipayobjects.com/mars/afts/file/A*tGq0T4zX_8gAAAAAAAAAAAAADlB4AQ';
-// 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240321041512636/mars-preview.json';
+const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240325030101422/mars-preview.json';
 
 const container = document.getElementById('J-container');
 

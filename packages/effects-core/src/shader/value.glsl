@@ -68,7 +68,6 @@ float cubicBezier(float time, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
 float valueFromBezierCurveFrames(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
   int count = int(frameCount - 1.);
-  int end = start + count;
 
   for(int i = 0; i < count; i += 2) {
     vec4 k0 = lookup_curve(i + start);
