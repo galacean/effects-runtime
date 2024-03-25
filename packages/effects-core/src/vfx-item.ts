@@ -93,6 +93,9 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 元素 id 唯一
    */
   id: string;
+
+  // TODO: 2.0 编辑器测试用变量，后续移除
+  oldId: number;
   /**
    * 元素创建的数据图层/粒子/模型等
    */
@@ -512,6 +515,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.endBehavior = endBehavior;
     this.lifetime = -(this.start / this.duration);
     this.listIndex = listIndex;
+    //@ts-expect-error
+    this.oldId = data.oldId;
 
     if (!data.content) {
       data.content = { options: {} };

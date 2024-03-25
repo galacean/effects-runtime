@@ -19,6 +19,7 @@ import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import type { SceneType } from './asset-manager';
+import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -349,8 +350,8 @@ export class Composition implements Disposable, LostHandler {
   restart () {
     const contentItems = this.rootComposition.items;
 
-    contentItems.forEach(item => item.dispose());
-    contentItems.length = 0;
+    // contentItems.forEach(item => item.dispose());
+    // contentItems.length = 0;
     this.prepareRender();
     this.reset();
     this.transform.setValid(true);
@@ -609,7 +610,9 @@ export class Composition implements Disposable, LostHandler {
 
     this.globalTime += time;
     if (this.rootTimeline.isActiveAndEnabled) {
-      this.rootTimeline.setTime(this.globalTime / 1000);
+      const localTime = this.rootTimeline.toLocalTime(this.globalTime / 1000);
+
+      this.rootTimeline.setTime(localTime);
     }
     this.updateVideo();
     // 更新 model-tree-plugin
@@ -987,6 +990,10 @@ export class Composition implements Disposable, LostHandler {
     }
     this.compositionSourceManager.dispose();
     this.refCompositionProps.clear();
+
+    if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+      return;
+    }
     this.renderer.clear({
       stencilAction: TextureLoadAction.clear,
       clearStencil: 0,

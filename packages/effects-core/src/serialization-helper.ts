@@ -206,6 +206,13 @@ export class SerializationHelper {
       value.id.length === 32;
   }
 
+  // TODO 测试函数，2.0 上线后移除
+  static checkGLTFNode (value: any) {
+    return value instanceof Object &&
+    value.nodeIndex !== undefined &&
+    value.isJoint !== undefined;
+  }
+
   private static deserializeProperty<T> (property: T, engine: Engine, level: number): any {
     if (level > 10) {
       console.error('序列化数据的内嵌对象层数大于上限');
@@ -229,7 +236,9 @@ export class SerializationHelper {
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
       return engine.assetLoader.loadGUID((property as DataPath).id);
-    } else if (property instanceof EffectsObject || SerializationHelper.checkTypedArray(property)) {
+    } else if (property instanceof EffectsObject ||
+      SerializationHelper.checkTypedArray(property) ||
+      SerializationHelper.checkGLTFNode(property)) {
       return property;
     } else if (property instanceof Object) {
       const res: Record<string, any> = {};
@@ -266,7 +275,9 @@ export class SerializationHelper {
       const res = await engine.assetLoader.loadGUIDAsync((property as DataPath).id);
 
       return res;
-    } else if (property instanceof EffectsObject || SerializationHelper.checkTypedArray(property)) {
+    } else if (property instanceof EffectsObject ||
+      SerializationHelper.checkTypedArray(property) ||
+      SerializationHelper.checkGLTFNode(property)) {
       return property;
     } else if (property instanceof Object) {
       const res: Record<string, any> = {};

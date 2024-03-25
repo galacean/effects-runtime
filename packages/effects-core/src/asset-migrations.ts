@@ -9,7 +9,7 @@ import { particleOriginTranslateMap } from './math';
 type ecScene = spec.JSONScene & { items: VFXItemProps[], components: DataPath[] };
 
 export function version3Migration (scene: Record<string, any>): Scene {
-  scene.jsonScene.version = 3.0;
+  scene.jsonScene.version = '3.0';
   const ecScene = scene.jsonScene as ecScene;
 
   if (!ecScene.items) {
@@ -21,6 +21,10 @@ export function version3Migration (scene: Record<string, any>): Scene {
     for (let i = 0; i < composition.items.length; i++) {
       ecScene.items.push(composition.items[i]);
     }
+    // composition 的 endbehaviour 兼容
+    if (composition.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY || composition.endBehavior === spec.END_BEHAVIOR_PAUSE) {
+      composition.endBehavior = spec.END_BEHAVIOR_FREEZE;
+    }
   }
 
   // item.id 转为 uuid
@@ -28,6 +32,9 @@ export function version3Migration (scene: Record<string, any>): Scene {
 
   for (const item of ecScene.items) {
     itemGuidMap[item.id] = generateGUID();
+    // TODO: 编辑器测试用，上线后删除
+    //@ts-expect-error
+    item.oldId = item.id;
     item.id = itemGuidMap[item.id];
   }
 
@@ -107,12 +114,14 @@ export function version3Migration (scene: Record<string, any>): Scene {
         scale = [1, 1, 1];
       }
 
-      //@ts-expect-error
-      item.transform.position = { x: position[0], y: position[1], z: position[2] };
-      //@ts-expect-error
-      item.transform.rotation = { x: rotation[0], y: rotation[1], z: rotation[2] };
-      //@ts-expect-error
-      item.transform.scale = { x: scale[0], y: scale[1], z: scale[0] };  // z 取 x 的值兼容老数据
+      item.transform = {
+        //@ts-expect-error
+        position: { x: position[0], y: position[1], z: position[2] },
+        //@ts-expect-error
+        rotation: { x: rotation[0], y: rotation[1], z: rotation[2] },
+        //@ts-expect-error
+        scale: { x: scale[0], y: scale[1], z: scale[0] },
+      };
 
       // sprite 的 scale 转为 size
       if (item.type === spec.ItemType.sprite) {
