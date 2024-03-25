@@ -207,6 +207,7 @@ export class InspectorGui {
       } else if (type === '2D') {
         const controller = this.gui.add({
           click: async () => {
+            // @ts-expect-error
             const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
             const file = await fileHandle[0].getFile();
             const assetUuid = generateGUID();
@@ -279,6 +280,7 @@ export class InspectorGui {
 }
 
 async function selectJsonFile (callback: (data: any) => void) {
+  // @ts-expect-error
   const fileHandle: FileSystemFileHandle[] = await window.showOpenFilePicker();
   const file = await fileHandle[0].getFile();
   const reader = new FileReader();
