@@ -2,15 +2,19 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
-
-const json = inspireList.applause.url;
+// const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*b-TmTKeXLgIAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*t73rS5K6bjAAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
   try {
     const player = createPlayer();
 
-    const comp = await player.loadScene(json);
+    const comp = await player.loadScene(json, {
+      variables: {
+        btnText: 'https://mdn.alipayobjects.com/mars/afts/img/A*RHR4Qpzs5csAAAAAAAAAAAAADlB4AQ/original',
+      },
+    });
   } catch (e) {
     console.error('biz', e);
   }

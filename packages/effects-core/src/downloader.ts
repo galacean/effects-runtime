@@ -236,9 +236,6 @@ export async function loadVideo (url: string | MediaProvider, options: VideoLoad
   }
   video.crossOrigin = 'anonymous';
   video.muted = true;
-  if (options.loop) {
-    video.addEventListener('ended', () => video.play());
-  }
   if (isAndroid()) {
     video.setAttribute('renderer', 'standard');
   }

@@ -421,62 +421,72 @@ export class AssetManager implements Disposable {
         const webpURL = webp && new URL(webp, baseUrl).href;
 
         if ('template' in img) {
+
           const template = img.template as (spec.TemplateContentV1 | spec.TemplateContentV2);
-          let result: { image: HTMLImageElement, type?: string, url: string };
 
-          // 新版数据模版
-          if ('v' in template && template.v === 2 && template.background) {
-            const url = getBackgroundImage(template, variables);
+          // 判断是否为新版数据模板
+          const isTemplateV2 = 'v' in template && template.v === 2 && template.background;
+          // 获取新版数据模板 background 参数
+          const background = isTemplateV2 ? template.background : undefined;
 
-            if (url instanceof Array) {
-              const { name } = template.background;
-
-              try {
-                result = {
-                  image: await loadImage(url[0]),
-                  url: url[0],
-                };
-              } catch (e) {
-                result = {
-                  image: await loadImage(url[1]),
-                  url: url[1],
-                };
-              }
-
-              if (variables) {
-                variables[name] = result.url;
-              }
-            } else if (typeof url === 'string') {
-              result = {
-                image: await loadImage(url),
-                url,
-              };
-            }
+          if (background?.type === 'video') {
+            // 视频
+            return loadVideo(background.url);
           } else {
+            let result: { image: HTMLImageElement, type?: string, url: string };
+
+            // 新版数据模版
+            if (isTemplateV2 && background) {
+              const url = getBackgroundImage(template, variables);
+
+              if (url instanceof Array) {
+                const { name } = background;
+
+                try {
+                  result = {
+                    image: await loadImage(url[0]),
+                    url: url[0],
+                  };
+                } catch (e) {
+                  result = {
+                    image: await loadImage(url[1]),
+                    url: url[1],
+                  };
+                }
+
+                if (variables) {
+                  variables[name] = result.url;
+                }
+              }
+
+              if (typeof url === 'string') {
+                result = {
+                  image: await loadImage(url),
+                  url,
+                };
+              }
+            } else {
             // 测试场景：'年兽大爆炸——8个彩蛋t1'
-            result = await loadWebPOptional(imageURL, webpURL);
+              result = await loadWebPOptional(imageURL, webpURL);
+            }
+
+            let templateImage;
+
+            try {
+              templateImage = await combineImageTemplate(
+                result!.image,
+                template,
+                variables as Record<string, number | string>,
+                this.options,
+                img.oriY === -1,
+              );
+            } catch (e) {
+              throw new Error(`image template fail: ${imageURL}`);
+            }
+
+            return templateImage;
           }
 
-          let templateImage;
-
-          try {
-            templateImage = await combineImageTemplate(
-              result!.image,
-              template,
-              variables as Record<string, number | string>,
-              this.options,
-              img.oriY === -1,
-            );
-          } catch (e) {
-            throw new Error(`image template fail: ${imageURL}`);
-          }
-
-          return templateImage;
-        } else if ('type' in img && img.type === 'video') {
-          const { loop } = img as spec.VideoImage;
-
-          // 视频
-          return loadVideo(img.url, { loop });
         } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
           // 压缩纹理
           const { compressed } = img as spec.CompressedImage;
