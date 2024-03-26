@@ -1,22 +1,21 @@
-// @ts-nocheck
-import { Player, BezierSegments, CameraController, CurveValue, PathSegments, spec, math } from '@galacean/effects';
+import { Player } from '@galacean/effects';
 
-const { Vector3 } = math;
 const { expect } = chai;
 
 describe('asset manager', () => {
-  let player;
+  let player: Player | null;
 
   before(() => {
     player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
   });
 
   after(() => {
-    // player.dispose();
-    // player = null;
+    player!.dispose();
+    player = null;
   });
 
   it('templateV2 video', async () => {
+    player = player!;
     const assets = {
       'images': [
         {
@@ -45,11 +44,20 @@ describe('asset manager', () => {
 
     const comp = await player.loadScene(generateScene(assets));
 
+    const textureOptions = comp.compositionSourceManager.textureOptions;
+
+    expect(textureOptions.length).to.deep.equals(1);
+    expect(textureOptions[0]).to.haveOwnProperty('video');
+    const videoElement = textureOptions[0].video;
+
+    expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
+
     player.gotoAndStop(0.1);
 
   });
 });
 
+//@ts-expect-error
 const generateScene = assets => {
   const res = {
     'playerVersion': {
