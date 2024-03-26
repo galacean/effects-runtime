@@ -34,6 +34,47 @@ float integrateByTimeCurveFrames(float t1, vec4 k0, vec4 k1) {
   return dot(a, b) / 60. / k3;
 }
 
+
+float calculateMovement(float t, float y1, float y2, float y3, float y4) {
+  int numIntervals = 50 + 50 * int(step(0.5, t));
+  float step = t / float(numIntervals);
+  float movement = 0.0;
+
+  for (int i = 1; i <= numIntervals; i++) {
+    float u0 = float(i - 1) * step;
+    float u1 = float(i) * step;
+
+    float speed0 = cubicBezier(u0, y1, y2, y3, y4);
+    float speed1 = cubicBezier(u1, y1, y2, y3, y4);
+
+    float area = (speed0 + speed1) * 0.5 * step;
+
+    movement += area;
+  }
+
+  return movement;
+}
+
+
+float integrateFromBezierCurveFrames(float time, float frameStart, float frameCount) {
+  int start = int(frameStart);
+  int count = int(frameCount - 1.);
+  float ret = 0.;
+  for(int i = 0; i < count; i += 2) {
+    vec4 k0 = lookup_curve(i + start);
+    vec4 k1 = lookup_curve(i + 1 + start);
+    if(time >= k0.x && time <= k1.x) {
+      float t = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
+      return ret + calculateMovement(t, k0.y, k0.w, k1.w, k1.y);
+
+    }
+    ret += calculateMovement(1., k0.y, k0.w, k1.w, k1.y);
+
+  }
+
+  return ret;
+}
+
 float integrateByTimeFromCurveFrames(float t1, float frameStart, float frameCount) {
   if(t1 == 0.) {
     return 0.;
@@ -176,6 +217,9 @@ float getIntegrateFromTime0(float t1, vec4 value) {
   if(type == 4.) {
     return mix(value.y, value.z, aSeed) * t1;
   }
+  if(type == 5.) {
+    return integrateFromBezierCurveFrames(t1, value.z, value.w);
+  }
   return 0.;
 }
 
@@ -202,6 +246,9 @@ float getIntegrateByTimeFromTime(float t0, float t1, vec4 value) {
 
   if(type == 4.) {
     return mix(value.y, value.z, aSeed) * (t1 * t1 - t0 * t0) / 2.;
+  }
+  if (type == 5.) {
+    return integrateFromBezierCurveFrames(t1, value.z, value.w) - integrateFromBezierCurveFrames(t0, value.z, value.w);
   }
   return 0.;
 }

@@ -206,14 +206,11 @@ export class BezierPath {
 export class BezierEasing {
   private precomputed = false;
   private mSampleValues: number[];
-  private areaSample: number[];
   public cachingValue: Record<string, number>;
 
   constructor (public mX1: number, public mY1: number, public mX2: number, public mY2: number) {
     this.mSampleValues = new Array(kSplineTableSize);
-    this.areaSample = new Array(kSplineTableSize);
     this.cachingValue = {};
-    this.precompute();
   }
 
   precompute () {
@@ -258,35 +255,9 @@ export class BezierEasing {
   }
 
   calcSampleValues () {
-    let lastSample = 0, currentSample = 0, total = 0;
-
     for (let i = 0; i < kSplineTableSize; ++i) {
-
-      this.mSampleValues[i] = currentSample = calcBezier(i * kSampleStepSize, this.mX1, this.mX2);
-      const area = (currentSample + lastSample) * kSampleStepSize / 2;
-
-      lastSample = currentSample;
-
-      total += area;
-      this.areaSample[i] = total;
+      this.mSampleValues[i] = calcBezier(i * kSampleStepSize, this.mX1, this.mX2);
     }
-  }
-
-  getIntegrateValue (t: number) {
-
-    const minIndex = Math.floor(t * kSplineTableSize);
-
-    if (t === 0) {
-      return 0;
-    }
-    if (t === 1 || minIndex >= (kSplineTableSize - 1)) {
-      return this.areaSample[kSplineTableSize - 1];
-    }
-    const over = t * kSplineTableSize - minIndex;
-
-    const result = this.areaSample[minIndex] + over * (this.areaSample[minIndex + 1] - this.areaSample[minIndex]);
-
-    return result;
   }
 
   getTForX (aX: number) {

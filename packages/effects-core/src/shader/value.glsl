@@ -56,15 +56,6 @@ float binarySearchT(float x, float x1, float x2, float x3, float x4) {
   return mid;
 }
 
-float cubicBezier(float time, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
-  float t = binarySearchT(time, p1.x, p2.x, p3.x, p4.x);
-  vec4 tVec = vec4(1.0, t, t * t, t * t * t);
-  vec4 yVec = vec4(p1.y, p2.y, p3.y, p4.y);
-  vec4 result = tVec * cubicBezierMatrix * yVec;
-
-  return result.x + result.y + result.z + result.w;
-}
-
 float valueFromBezierCurveFrames(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
   int count = int(frameCount - 1.);

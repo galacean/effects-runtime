@@ -3,7 +3,8 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240325030101422/mars-preview.json';
+const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240326053400737/mars-preview.json';
+// 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240325054707620/mars-preview.json';
 
 const container = document.getElementById('J-container');
 
@@ -12,12 +13,8 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     const comp = await player.loadScene(json, {
-      autoplay: false,
+      timeout: 9999,
     });
-
-    setTimeout(() => {
-      comp.play();
-    }, 1000);
 
   } catch (e) {
     console.error('biz', e);

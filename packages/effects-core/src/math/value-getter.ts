@@ -752,15 +752,27 @@ export class BezierCurve extends ValueGetter<number> {
     return result;
   }
 
+  // 面板移除后下线
   getCurveIntegrateValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
     const [p0, , , p3] = curveInfo.points;
     const timeInterval = p3.x - p0.x;
     const valueInterval = p3.y - p0.y;
-    const normalizeTime = (time - p0.x) / timeInterval;
-    const value = curveInfo.curve.getIntegrateValue(normalizeTime);
 
-    return valueInterval * value;
+    let lastSample = 0, currentSample = 0, total = 0;
+
+    for (let i = 1; i < 101; i++) {
+      const normalizeTime = (time / 100 * i - p0.x) / timeInterval;
+
+      currentSample = p0.y + valueInterval * curveInfo.curve.getValue(normalizeTime);
+      const area = (currentSample + lastSample) * 0.01 / 2;
+
+      lastSample = currentSample;
+
+      total += area;
+    }
+
+    return total;
   }
 
   getCurveValue (curveKey: string, time: number) {
@@ -937,6 +949,11 @@ const map: Record<any, any> = {
     return new BezierSegments(pros);
   },
   [spec.ValueType.BEZIER_CURVE] (props: number[][][]) {
+    if (props.length === 1) {
+
+      return new StaticValue(props[0][1][1]);
+    }
+
     return new BezierCurve(props);
   },
   [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][]) {
