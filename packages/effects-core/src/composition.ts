@@ -277,7 +277,7 @@ export class Composition implements Disposable, LostHandler {
     this.globalTime = 0;
     this.onPlayerPause = onPlayerPause;
     this.onMessageItem = onMessageItem;
-    this.onEnd = onEnd ?? (()=>{});
+    this.onEnd = onEnd ?? (() => { });
     this.createRenderFrame();
     this.rendererOptions = null;
     this.rootComposition.createContent();
