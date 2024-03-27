@@ -429,8 +429,6 @@ export class AssetManager implements Disposable {
           // 获取新版数据模板 background 参数
           const background = isTemplateV2 ? template.background : undefined;
 
-          // background!.type = 'video';
-
           if (isTemplateV2 && background) {
             const url = getBackgroundImage(template, variables)!;
 
