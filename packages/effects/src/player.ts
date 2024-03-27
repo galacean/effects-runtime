@@ -581,12 +581,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     let skipRender = false;
 
     comps.sort((a, b) => a.getIndex() - b.getIndex());
-    if (this.autoPlaying) {
-      this.handlePlayableUpdate?.({
-        player: this,
-        playing: true,
-      });
-    }
     this.compositions = [];
     for (let i = 0; i < comps.length; i++) {
       const composition = comps[i];
@@ -634,6 +628,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       time?.getTime()
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
+      if (this.autoPlaying) {
+        this.handlePlayableUpdate?.({
+          player: this,
+          playing: true,
+        });
+      }
     }
   }
 
