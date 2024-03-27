@@ -209,8 +209,8 @@ export class SerializationHelper {
   // TODO 测试函数，2.0 上线后移除
   static checkGLTFNode (value: any) {
     return value instanceof Object &&
-    value.nodeIndex !== undefined &&
-    value.isJoint !== undefined;
+      value.nodeIndex !== undefined &&
+      value.isJoint !== undefined;
   }
 
   private static deserializeProperty<T> (property: T, engine: Engine, level: number): any {

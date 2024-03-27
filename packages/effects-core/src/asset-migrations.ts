@@ -154,7 +154,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
           item.transform.position.y += -realAnchor[1] * startSize.y;
         }
         //@ts-expect-error
-        item.transform.anchor = { x:realAnchor[0] * startSize.x, y:realAnchor[1] * startSize.y };
+        item.transform.anchor = { x: realAnchor[0] * startSize.x, y: realAnchor[1] * startSize.y };
       }
     }
 
