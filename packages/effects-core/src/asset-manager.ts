@@ -14,7 +14,7 @@ import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
-import { combineImageTemplate, getBackgroundImage } from './template-image';
+import { combineImageTemplate, getBackgroundImage, loadMedia } from './template-image';
 
 /**
  * 场景加载参数
@@ -429,62 +429,53 @@ export class AssetManager implements Disposable {
           // 获取新版数据模板 background 参数
           const background = isTemplateV2 ? template.background : undefined;
 
-          if (background?.type === 'video') {
-            // 视频
-            return loadVideo(background.url);
-          } else {
-            let result: { image: HTMLImageElement, type?: string, url: string };
+          // background!.type = 'video';
 
-            // 新版数据模版
-            if (isTemplateV2 && background) {
-              const url = getBackgroundImage(template, variables);
+          if (isTemplateV2 && background) {
+            const url = getBackgroundImage(template, variables)!;
 
-              if (url instanceof Array) {
-                const { name } = background;
+            // 根据背景类型确定加载函数
+            const loadFn = background && background.type === 'video' ? loadVideo : loadImage;
 
-                try {
-                  result = {
-                    image: await loadImage(url[0]),
-                    url: url[0],
-                  };
-                } catch (e) {
-                  result = {
-                    image: await loadImage(url[1]),
-                    url: url[1],
-                  };
-                }
-
-                if (variables) {
-                  variables[name] = result.url;
-                }
-              }
-
-              if (typeof url === 'string') {
-                result = {
-                  image: await loadImage(url),
-                  url,
-                };
-              }
-            } else {
-            // 测试场景：'年兽大爆炸——8个彩蛋t1'
-              result = await loadWebPOptional(imageURL, webpURL);
-            }
-
-            let templateImage;
-
+            // 处理加载资源
             try {
-              templateImage = await combineImageTemplate(
-                result!.image,
+              const resultImage = await loadMedia(url, loadFn);
+
+              if (resultImage instanceof HTMLVideoElement) {
+                return resultImage;
+              } else {
+                // 如果是加载图片且是数组，设置变量，视频情况下不需要
+                if (background && !Array.isArray(url) && variables) {
+                  variables[background.name] = url;
+                }
+
+                return await combineImageTemplate(
+                  resultImage,
+                  template,
+                  variables as Record<string, number | string>,
+                  this.options,
+                  img.oriY === -1,
+                );
+              }
+
+            } catch (e) {
+              throw new Error(`Failed to load or template error with URL: ${url}`);
+            }
+          } else {
+            // 旧版模板或没有背景的处理
+            try {
+              const resultImage = await loadWebPOptional(imageURL, webpURL);
+
+              return await combineImageTemplate(
+                resultImage.image,
                 template,
                 variables as Record<string, number | string>,
                 this.options,
                 img.oriY === -1,
               );
             } catch (e) {
-              throw new Error(`image template fail: ${imageURL}`);
+              throw new Error(`Failed to load or template error with URL: ${imageURL}`);
             }
-
-            return templateImage;
           }
 
         } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
@@ -675,3 +666,4 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
 
   throw new Error('Invalid texture options');
 }
+

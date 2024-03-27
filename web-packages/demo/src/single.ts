@@ -12,6 +12,7 @@ const container = document.getElementById('J-container');
 
     const comp = await player.loadScene(json, {
       variables: {
+        // btnText: 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
         btnText: 'https://mdn.alipayobjects.com/mars/afts/img/A*RHR4Qpzs5csAAAAAAAAAAAAADlB4AQ/original',
       },
     });

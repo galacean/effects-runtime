@@ -22,14 +22,14 @@ describe('asset manager', () => {
           'template': {
             'v': 2,
             'variables': {
-              'test': 'https://gw.alipayobjects.com/v/cloud_render/afts/video/mHnxQoAVS_EAAAAAAAAAAAAAJ3S9AQBr',
+              'test': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
             },
             'width': 126,
             'height': 130,
             'background': {
               'type': 'video',
               'name': 'test',
-              'url': 'https://gw.alipayobjects.com/v/cloud_render/afts/video/mHnxQoAVS_EAAAAAAAAAAAAAJ3S9AQBr',
+              'url': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
             },
           },
           'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*oKwARKdkWhEAAAAAAAAAAAAADlB4AQ/original',
@@ -43,6 +43,53 @@ describe('asset manager', () => {
     };
 
     const comp = await player.loadScene(generateScene(assets));
+
+    const textureOptions = comp.compositionSourceManager.textureOptions;
+
+    expect(textureOptions.length).to.deep.equals(1);
+    expect(textureOptions[0]).to.haveOwnProperty('video');
+    const videoElement = textureOptions[0].video;
+
+    expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
+
+    player.gotoAndStop(0.1);
+
+  });
+
+  it('templateV2 video variables', async () => {
+    player = player!;
+    const assets = {
+      'images': [
+        {
+          'template': {
+            'v': 2,
+            'variables': {
+              'test': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
+            },
+            'width': 126,
+            'height': 130,
+            'background': {
+              'type': 'video',
+              'name': 'test',
+              'url': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
+            },
+          },
+          'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*oKwARKdkWhEAAAAAAAAAAAAADlB4AQ/original',
+          'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*eOLVQpT57FcAAAAAAAAAAAAADlB4AQ/original',
+          'renderLevel': 'B+',
+        },
+      ],
+      'fonts': [],
+      'spines': [],
+      'shapes': [],
+    };
+
+    const comp = await player.loadScene(generateScene(assets), {
+      variables: {
+        // 视频地址
+        test: 'https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*dftzSq2szUsAAAAAAAAAAAAADtN3AQ',
+      },
+    });
 
     const textureOptions = comp.compositionSourceManager.textureOptions;
 
