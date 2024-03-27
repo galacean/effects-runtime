@@ -3,7 +3,7 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240326053400737/mars-preview.json';
+const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240327103414976/mars-preview.json';
 // 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240325054707620/mars-preview.json';
 
 const container = document.getElementById('J-container');

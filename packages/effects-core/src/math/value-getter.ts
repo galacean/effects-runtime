@@ -815,22 +815,13 @@ export class BezierCurve extends ValueGetter<number> {
 export class BezierCurvePath extends ValueGetter<Vector3> {
   curveSegments: Record<string, {
     points: Vector2[],
-    easingCurve: BezierEasing | LinearValue,
+    easingCurve: BezierEasing,
     pathCurve: BezierPath,
     bezierData: {
       data: BezierLengthData,
       interval: number[],
     },
   }>;
-  catching: {
-    lastPoint: number,
-    lastAddedLength: number,
-    lastKeyframeIndex: number,
-  } = {
-      lastPoint: 0,
-      lastAddedLength: 0,
-      lastKeyframeIndex: 0,
-    };
 
   override onCreate (props: spec.BezierCurvePathValue) {
     const [keyframes, points, controlPoints] = props;
@@ -950,13 +941,16 @@ const map: Record<any, any> = {
   },
   [spec.ValueType.BEZIER_CURVE] (props: number[][][]) {
     if (props.length === 1) {
-
       return new StaticValue(props[0][1][1]);
     }
 
     return new BezierCurve(props);
   },
-  [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][]) {
+  [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][][]) {
+    if (props[0].length === 1) {
+      return new StaticValue(new Vector3(props[0][0][1][1], props[1][0][1][1], props[2][0][1][1]));
+    }
+
     return new BezierCurvePath(props);
   },
 };
