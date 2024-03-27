@@ -765,11 +765,8 @@ export class BezierCurve extends ValueGetter<number> {
       const normalizeTime = (time / 100 * i - p0.x) / timeInterval;
 
       currentSample = p0.y + valueInterval * curveInfo.curve.getValue(normalizeTime);
-      const area = (currentSample + lastSample) * 0.01 / 2;
-
+      total += (currentSample + lastSample) * 0.01 / 2;
       lastSample = currentSample;
-
-      total += area;
     }
 
     return total;
@@ -781,7 +778,6 @@ export class BezierCurve extends ValueGetter<number> {
     const timeInterval = p3.x - p0.x;
     const valueInterval = p3.y - p0.y;
     const normalizeTime = (time - p0.x) / timeInterval;
-
     const value = curveInfo.curve.getValue(normalizeTime);
 
     return p0.y + valueInterval * value;

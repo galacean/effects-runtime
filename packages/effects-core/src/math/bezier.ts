@@ -1,5 +1,4 @@
-import type { LinearValue } from '@galacean/effects-core';
-import { assertExist, decimalEqual, pointOnLine } from '@galacean/effects-core';
+import { assertExist, decimalEqual } from '@galacean/effects-core';
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
@@ -21,7 +20,7 @@ const SUBDIVISION_PRECISION = 0.0000001;
 const SUBDIVISION_MAX_ITERATIONS = 10;
 const CURVE_SEGMENTS = 120;
 
-const kSplineTableSize = 21;
+const kSplineTableSize = 11;
 const kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
 
 function A (a1: number, a2: number) { return 1.0 - 3.0 * a2 + 3.0 * a1; }
@@ -40,9 +39,7 @@ function getSlope (t: number, a1: number, a2: number) {
 }
 
 function binarySubdivide (aX: number, aA: number, aB: number, mX1: number, mX2: number) {
-  let currentX,
-    currentT,
-    i = 0;
+  let currentX, currentT, i = 0;
 
   do {
     currentT = aA + (aB - aA) / 2.0;
@@ -222,22 +219,16 @@ export class BezierEasing {
   }
 
   getValue (x: number) {
-    if (!this.precomputed) {
-      this.precompute();
-    }
-
     // linear
     if (this.mX1 === this.mY1 && this.mX2 === this.mY2) {
       return x;
     }
-    // Because JavaScript number are imprecise, we should guarantee the extremes are right.
-    if (x === 0) {
-      return 0;
+    if (x === 0 || x === 1) {
+      return x;
     }
-    if (x === 1) {
-      return 1;
+    if (!this.precomputed) {
+      this.precompute();
     }
-
     const keys = Object.keys(this.cachingValue);
     const index = keys.findIndex(key => decimalEqual(Number(key), x, 0.005));
 
@@ -326,7 +317,7 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
   if (BezierMap[str]) {
     bezEasing = BezierMap[str];
   } else {
-    bezEasing = new BezierEasing(x1, x2, y1, y2);
+    bezEasing = new BezierEasing(x1, y1, x2, y2);
     BezierMap[str] = bezEasing;
   }
 
