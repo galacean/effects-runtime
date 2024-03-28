@@ -214,7 +214,7 @@ export class SerializationHelper {
   }
 
   private static deserializeProperty<T> (property: T, engine: Engine, level: number): any {
-    if (level > 10) {
+    if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
       return;
@@ -253,7 +253,7 @@ export class SerializationHelper {
   }
 
   private static async deserializePropertyAsync<T> (property: T, engine: Engine, level: number): Promise<any> {
-    if (level > 10) {
+    if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
       return;
@@ -292,7 +292,7 @@ export class SerializationHelper {
   }
 
   private static serializeObjectProperty (objectProperty: Record<string, any>, serializedData: Record<string, any>, level: number): any {
-    if (level > 10) {
+    if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
       return;
@@ -330,7 +330,7 @@ export class SerializationHelper {
   }
 
   private static serializeArrayProperty (arrayProperty: Array<any>, serializedData: Array<any>, level: number): any {
-    if (level > 10) {
+    if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
       return;

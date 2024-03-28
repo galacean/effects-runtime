@@ -5,7 +5,7 @@ import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import { AnimationPlayable } from './animation-playable';
 import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-item';
-import { Playable } from './playable-graph';
+import { Playable, PlayableAsset } from './playable-graph';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);
@@ -15,7 +15,7 @@ const tempPos = new Vector3();
  * @since 2.0.0
  * @internal
  */
-export class AnimationClipPlayable extends AnimationPlayable {
+export class TransformAnimationPlayable extends AnimationPlayable {
   originalTransform: ItemBasicTransform;
   protected sizeSeparateAxes: boolean;
   protected sizeXOverLifetime: ValueGetter<number>;
@@ -188,6 +188,22 @@ export class AnimationClipPlayable extends AnimationPlayable {
   }
 }
 
+export class TransformAnimationPlayableAsset extends PlayableAsset {
+  transformAnimationData: TransformAnimationData;
+
+  override createPlayable (): Playable {
+    const transformAnimationPlayable = new TransformAnimationPlayable();
+
+    transformAnimationPlayable.fromData(this.transformAnimationData);
+
+    return transformAnimationPlayable;
+  }
+
+  override fromData (data: TransformAnimationData): void {
+    this.transformAnimationData = data;
+  }
+}
+
 export interface TransformAnimationData {
   /**
    * 元素大小变化属性
@@ -207,7 +223,7 @@ export interface TransformAnimationData {
  * @since 2.0.0
  * @internal
  */
-export class ActivationClipPlayable extends Playable {
+export class ActivationPlayable extends Playable {
   override onGraphStart (): void {
     this.bindingItem.transform.setValid(false);
     this.hideRendererComponents();

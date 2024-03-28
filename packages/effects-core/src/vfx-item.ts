@@ -1,25 +1,24 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
+import { DataType, type VFXItemData } from './asset-loader';
 import { EffectComponent, RendererComponent } from './components';
 import type { Component } from './components/component';
 import { ItemBehaviour } from './components/component';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
-import { DataType, type VFXItemData } from './asset-loader';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent, SpriteItemProps,
-  TransformAnimationData,
+  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
 } from './plugins';
-import { ActivationClipPlayable, AnimationClipPlayable, TimelineComponent, Track } from './plugins';
+import { TimelineComponent } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | TimelineComponent | CameraController | InteractComponent | void | {};
 export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
@@ -524,12 +523,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     const timelineComponent = this.getComponent(TimelineComponent)!;
 
     timelineComponent.fromData(data.content as spec.NullContent);
-
-    if (this.type !== spec.ItemType.particle) {
-      const track = timelineComponent.createTrack(Track, 'AnimationTrack');
-
-      track.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(data.content as TransformAnimationData);
-    }
 
     if (duration <= 0) {
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
