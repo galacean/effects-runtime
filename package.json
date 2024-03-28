@@ -26,7 +26,6 @@
     "iOS 9"
   ],
   "dependencies": {
-    "core-js": "^3.32.1",
     "string-hash": "^1.1.3"
   },
   "devDependencies": {
