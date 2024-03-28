@@ -327,12 +327,6 @@ export class AssetManager implements Disposable {
 
   private async processJSON (json: JSONValue) {
     // TODO: 后面切换到新的数据版本，就不用掉用 getStandardJSON 做转换了
-    // if (IS_PRO) {
-    //   if (/^0\./.test(json.version)) {
-    //     throw Error('animation json need fallback');
-    //   }
-    //   this._json = json;
-    // }
     const jsonScene = getStandardJSON(json);
 
     // FIXME: hack globalVolume，specification 更新后需移除
@@ -415,103 +409,107 @@ export class AssetManager implements Disposable {
     const { useCompressedTexture, variables } = this.options;
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img: spec.Image, idx: number) => {
-      if (usage[idx]) {
-        const { url: png, webp } = img;
-        const imageURL = new URL(png, baseUrl).href;
-        const webpURL = webp && new URL(webp, baseUrl).href;
+      if (!usage[idx]) {
+        return undefined;
+      }
+      const { url: png, webp } = img;
+      // eslint-disable-next-line compat/compat
+      const imageURL = new URL(png, baseUrl).href;
+      // eslint-disable-next-line compat/compat
+      const webpURL = webp && new URL(webp, baseUrl).href;
 
-        if ('template' in img) {
+      if ('template' in img) {
+        // 1. 数据模板
+        const template = img.template as (spec.TemplateContentV1 | spec.TemplateContentV2);
+        // 判断是否为新版数据模板
+        const isTemplateV2 = 'v' in template && template.v === 2 && template.background;
+        // 获取新版数据模板 background 参数
+        const background = isTemplateV2 ? template.background : undefined;
 
-          const template = img.template as (spec.TemplateContentV1 | spec.TemplateContentV2);
+        if (isTemplateV2 && background) {
+          const url = getBackgroundImage(template, variables)!;
+          const isVideo = background.type === spec.BackgroundType.video;
+          // 根据背景类型确定加载函数
+          const loadFn = background && isVideo ? loadVideo : loadImage;
 
-          // 判断是否为新版数据模板
-          const isTemplateV2 = 'v' in template && template.v === 2 && template.background;
-          // 获取新版数据模板 background 参数
-          const background = isTemplateV2 ? template.background : undefined;
+          // 处理加载资源
+          try {
+            const resultImage = await loadMedia(url, loadFn);
 
-          if (isTemplateV2 && background) {
-            const url = getBackgroundImage(template, variables)!;
-
-            // 根据背景类型确定加载函数
-            const loadFn = background && background.type === 'video' ? loadVideo : loadImage;
-
-            // 处理加载资源
-            try {
-              const resultImage = await loadMedia(url, loadFn);
-
-              if (resultImage instanceof HTMLVideoElement) {
-                return resultImage;
-              } else {
-                // 如果是加载图片且是数组，设置变量，视频情况下不需要
-                if (background && !Array.isArray(url) && variables) {
-                  variables[background.name] = url;
-                }
-
-                return await combineImageTemplate(
-                  resultImage,
-                  template,
-                  variables as Record<string, number | string>,
-                  this.options,
-                  img.oriY === -1,
-                );
+            if (resultImage instanceof HTMLVideoElement) {
+              return resultImage;
+            } else {
+              // 如果是加载图片且是数组，设置变量，视频情况下不需要
+              if (background && !Array.isArray(url) && variables) {
+                variables[background.name] = url;
               }
 
-            } catch (e) {
-              throw new Error(`Failed to load or template error with URL: ${url}`);
-            }
-          } else {
-            // 旧版模板或没有背景的处理
-            try {
-              const resultImage = await loadWebPOptional(imageURL, webpURL);
-
               return await combineImageTemplate(
-                resultImage.image,
+                resultImage,
                 template,
                 variables as Record<string, number | string>,
                 this.options,
                 img.oriY === -1,
               );
-            } catch (e) {
-              throw new Error(`Failed to load or template error with URL: ${imageURL}`);
             }
+          } catch (e) {
+            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}.`);
           }
+        } else {
+          // 旧版模板或没有背景的处理
+          try {
+            const resultImage = await loadWebPOptional(imageURL, webpURL);
 
-        } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
-          // 压缩纹理
-          const { compressed } = img as spec.CompressedImage;
-          let src;
-
-          if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
-            src = compressed.astc;
-          } else if (compressedTexture === COMPRESSED_TEXTURE.PVRTC) {
-            src = compressed.pvrtc;
+            return await combineImageTemplate(
+              resultImage.image,
+              template,
+              variables as Record<string, number | string>,
+              this.options,
+              img.oriY === -1,
+            );
+          } catch (e) {
+            throw new Error(`Failed to load. Check the template, URL: ${imageURL}.`);
           }
-          if (src) {
-            const bufferURL = new URL(src, baseUrl).href;
-
-            this.assets[idx] = { url: bufferURL, type: TextureSourceType.compressed };
-
-            return this.loadBins(bufferURL);
-          }
-        } else if ('sourceType' in img) {
-          return img;
-        } else if (
-          img instanceof HTMLImageElement ||
-          img instanceof HTMLCanvasElement ||
-          img instanceof HTMLVideoElement ||
-          img instanceof Texture
-        ) {
-          return img;
         }
+      } else if ('type' in img && img.type === 'video') {
+        // 视频
+        // TODO: 2024.03.28 后面考虑下掉非推荐的视频元素使用方式
+        console.warn('The video element is deprecated. Use template BackgroundType.video instead.');
 
-        const { url, image } = await loadWebPOptional(imageURL, webpURL);
+        return loadVideo(img.url);
+      } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
+        // 2. 压缩纹理
+        const { compressed } = img as spec.CompressedImage;
+        let src;
 
-        this.assets[idx] = { url, type: TextureSourceType.image };
+        if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
+          src = compressed.astc;
+        } else if (compressedTexture === COMPRESSED_TEXTURE.PVRTC) {
+          src = compressed.pvrtc;
+        }
+        if (src) {
+          const bufferURL = new URL(src, baseUrl).href;
 
-        return image;
+          this.assets[idx] = { url: bufferURL, type: TextureSourceType.compressed };
+
+          return this.loadBins(bufferURL);
+        }
+      } else if ('sourceType' in img) {
+        return img;
+      } else if (
+        img instanceof HTMLImageElement ||
+        img instanceof HTMLCanvasElement ||
+        img instanceof HTMLVideoElement ||
+        img instanceof Texture
+      ) {
+        return img;
       }
 
-      return undefined;
+      const { url, image } = await loadWebPOptional(imageURL, webpURL);
+
+      this.assets[idx] = { url, type: TextureSourceType.image };
+
+      return image;
     });
 
     return Promise.all(jobs);
