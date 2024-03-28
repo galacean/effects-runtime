@@ -284,9 +284,7 @@ export class Composition implements Disposable, LostHandler {
     this.buildItemTree(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
-        if (this.onEnd) {
-          this.onEnd(this);
-        }
+        this.onEnd?.(this);
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
