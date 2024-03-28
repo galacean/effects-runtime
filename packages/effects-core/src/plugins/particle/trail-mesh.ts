@@ -96,6 +96,7 @@ export class TrailMesh {
       lifetime,
       matrix,
     } = props;
+
     const { detail, level } = engine.gpuCapability;
     const pointCountPerTrail = Math.max(props.pointCountPerTrail, 2);
     const keyFrameMeta = createKeyFrameMeta();

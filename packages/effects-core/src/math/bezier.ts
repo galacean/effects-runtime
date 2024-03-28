@@ -18,7 +18,7 @@ const NEWTON_ITERATIONS = 4;
 const NEWTON_MIN_SLOPE = 0.001;
 const SUBDIVISION_PRECISION = 0.0000001;
 const SUBDIVISION_MAX_ITERATIONS = 10;
-const CURVE_SEGMENTS = 120;
+const CURVE_SEGMENTS = 300;
 
 const kSplineTableSize = 11;
 const kSampleStepSize = 1.0 / (kSplineTableSize - 1.0);
@@ -229,18 +229,18 @@ export class BezierEasing {
     if (!this.precomputed) {
       this.precompute();
     }
-    const keys = Object.keys(this.cachingValue);
-    const index = keys.findIndex(key => decimalEqual(Number(key), x, 0.005));
-
-    if (index !== -1) {
-      return this.cachingValue[keys[index]];
-    }
+    // const keys = Object.keys(this.cachingValue);
+    // const index = keys.findIndex(key => decimalEqual(Number(key), x, 0.005));
+    //
+    // if (index !== -1) {
+    //   return this.cachingValue[keys[index]];
+    // }
 
     const value = calcBezier(this.getTForX(x), this.mY1, this.mY2);
 
-    if (keys.length < 300) {
-      this.cachingValue[x] = value;
-    }
+    // if (keys.length < 300) {
+    //   this.cachingValue[x] = value;
+    // }
 
     return value;
   }
