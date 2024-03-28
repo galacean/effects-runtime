@@ -19,6 +19,7 @@ import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import type { SceneType } from './asset-manager';
+import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -30,7 +31,7 @@ export interface MessageItem {
   id: string,
   name: string,
   phrase: number,
-  compositionId: number,
+  compositionId: string,
 }
 
 /**
@@ -54,8 +55,6 @@ export interface CompositionProps {
   height: number,
   speed?: number,
 }
-
-let seed = 1;
 
 /**
  * 合成抽象类：核心对象，通常一个场景只包含一个合成，可能会有多个合成。
@@ -114,7 +113,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 合成id
    */
-  readonly id: number;
+  readonly id: string;
   /**
    * 画布宽度
    */
@@ -256,7 +255,7 @@ export class Composition implements Disposable, LostHandler {
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
-    this.id = seed++;
+    this.id = sourceContent.id;
     this.renderer = renderer;
     this.texInfo = imageUsage ?? {};
     this.event = event;
@@ -285,7 +284,7 @@ export class Composition implements Disposable, LostHandler {
     this.buildItemTree(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
-        this.handleEnd?.(this);
+        this.onEnd?.(this);
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
@@ -349,8 +348,8 @@ export class Composition implements Disposable, LostHandler {
   restart () {
     const contentItems = this.rootComposition.items;
 
-    contentItems.forEach(item => item.dispose());
-    contentItems.length = 0;
+    // contentItems.forEach(item => item.dispose());
+    // contentItems.length = 0;
     this.prepareRender();
     this.reset();
     this.transform.setValid(true);
@@ -609,7 +608,9 @@ export class Composition implements Disposable, LostHandler {
 
     this.globalTime += time;
     if (this.rootTimeline.isActiveAndEnabled) {
-      this.rootTimeline.setTime(this.globalTime / 1000);
+      const localTime = this.rootTimeline.toLocalTime(this.globalTime / 1000);
+
+      this.rootTimeline.setTime(localTime);
     }
     this.updateVideo();
     // 更新 model-tree-plugin
@@ -987,6 +988,10 @@ export class Composition implements Disposable, LostHandler {
     }
     this.compositionSourceManager.dispose();
     this.refCompositionProps.clear();
+
+    if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+      return;
+    }
     this.renderer.clear({
       stencilAction: TextureLoadAction.clear,
       clearStencil: 0,

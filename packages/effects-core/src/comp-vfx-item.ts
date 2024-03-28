@@ -97,6 +97,8 @@ export class CompositionComponent extends ItemBehaviour {
             endBehavior: itemData.endBehavior,
             parentId: itemData.parentId,
             transform: itemData.transform,
+            // @ts-expect-error TODO: 2.0 编辑器测试代码，后续移除
+            oldId: itemData.oldId,
           });
           // TODO 编辑器数据传入 composition type 后移除
           item.type = spec.ItemType.composition;
