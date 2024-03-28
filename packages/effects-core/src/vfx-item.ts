@@ -95,7 +95,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   id: string;
 
   // TODO: 2.0 编辑器测试用变量，后续移除
-  oldId: number;
+  oldId: string;
   /**
    * 元素创建的数据图层/粒子/模型等
    */
