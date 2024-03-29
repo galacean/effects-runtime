@@ -667,5 +667,6 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
 }
 
 function isCanvas (cavnas: HTMLCanvasElement) {
+  // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
   return typeof cavnas === 'object' && cavnas !== null && cavnas.tagName?.toUpperCase() === 'CANVAS';
 }
