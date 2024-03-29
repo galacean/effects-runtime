@@ -624,7 +624,9 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
     return image.source;
   } else if (
     image instanceof HTMLImageElement ||
-    image instanceof HTMLCanvasElement
+    image instanceof HTMLCanvasElement ||
+    // FIX: 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
+    image.tagName === 'CANVAS'
   ) {
     return {
       image,
