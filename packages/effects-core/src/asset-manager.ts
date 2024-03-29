@@ -392,7 +392,7 @@ export class AssetManager implements Disposable {
     const jobs = fonts.map(async font => {
       // 数据模版兼容判断
       if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
-        const url = new URL(font.fontURL, this.baseUrl);
+        const url = new URL(font.fontURL, this.baseUrl).href;
         const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
 
         try {
