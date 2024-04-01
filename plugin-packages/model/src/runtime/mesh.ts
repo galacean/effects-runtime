@@ -1,11 +1,11 @@
 import type { Texture, Geometry, Engine, math, VFXItemContent, VFXItem, Renderer } from '@galacean/effects';
 import { spec, Mesh, DestroyOptions, Material } from '@galacean/effects';
 import type {
-  ModelMeshContent,
+  ModelMeshComponentData,
   ModelMaterialOptions,
-  ModelMeshOptions,
+  ModelMeshComponentOptions,
+  ModelPrimitiveComponentOptions,
   ModelItemBounding,
-  ModelPrimitiveOptions,
 } from '../index';
 import { PObjectType, PMaterialType, PGlobalState, PFaceSideMode } from './common';
 import { PEntity } from './object';
@@ -89,7 +89,7 @@ export class PMesh extends PEntity {
    * 构造函数，创建 Mesh 对象，并与所属组件和父元素相关联
    * @param engine - 引擎
    * @param name - 名称
-   * @param meshContent - Mesh 参数
+   * @param meshData - Mesh 参数
    * @param owner - 所属的 Mesh 组件
    * @param parentId - 父元素索引
    * @param parent - 父元素
@@ -97,13 +97,13 @@ export class PMesh extends PEntity {
   constructor (
     private engine: Engine,
     name: string,
-    meshContent: ModelMeshContent,
+    meshData: ModelMeshComponentData,
     owner?: ModelMeshComponent,
     parentId?: string,
     parent?: VFXItem<VFXItemContent>,
   ) {
     super();
-    const proxy = new EffectsMeshProxy(meshContent, parent);
+    const proxy = new EffectsMeshProxy(meshData, parent);
 
     this.name = name;
     this.type = PObjectType.mesh;
@@ -130,7 +130,7 @@ export class PMesh extends PEntity {
       console.warn(`No primitive inside mesh item ${name}`);
     }
 
-    this.boundingBox = this.getItemBoundingBox(meshContent.interaction);
+    this.boundingBox = this.getItemBoundingBox(meshData.interaction);
   }
 
   /**
@@ -455,12 +455,12 @@ export class PPrimitive {
    * @param options - Primitive 参数
    * @param parent - 所属 Mesh 对象
    */
-  create (options: ModelPrimitiveOptions, parent: PMesh) {
+  create (options: ModelPrimitiveComponentOptions, parent: PMesh) {
     this.parent = parent;
     this.skin = parent.skin;
     this.morph = parent.morph;
-    this.setGeometry(options.geometry);
-    this.setMaterial(options.material);
+    this.setGeometry(options.geometry as unknown as Geometry);
+    this.setMaterial(options.material as unknown as Material);
     this.name = parent.name;
     this.effectsPriority = parent.priority;
     this.geometry.setHide(parent.hide);
@@ -880,7 +880,7 @@ export class PPrimitive {
    * 设置材质
    * @param val - 插件材质对象或材质参数
    */
-  setMaterial (val: PMaterial | ModelMaterialOptions) {
+  setMaterial (val: PMaterial | Material) {
     if (val instanceof PMaterialUnlit) {
       this.material = val;
     } else if (val instanceof PMaterialPBR) {
@@ -1081,29 +1081,29 @@ export class PGeometry {
 }
 
 class EffectsMeshProxy {
-  options: ModelMeshOptions;
+  options: ModelMeshComponentOptions;
   morphObj: PMorph;
 
   constructor (
-    public itemContent: ModelMeshContent,
+    public itemData: ModelMeshComponentData,
     public parentItem?: VFXItem<VFXItemContent>,
   ) {
-    this.options = itemContent.options;
+    this.options = itemData.options;
 
     // Morph 对象创建，需要为每个 Primitive 中 Geometry 对象创建 Morph
     // 并且要求创建的 Morph 对象状态是相同的，否则就报错
     let isSuccess = true;
     const morphObj = new PMorph();
-    const meshOptions = itemContent.options;
+    const meshOptions = itemData.options;
     const primitives = meshOptions.primitives;
 
     primitives.forEach((prim, idx) => {
       if (idx === 0) {
-        morphObj.create(prim.geometry);
+        morphObj.create(prim.geometry as unknown as Geometry);
       } else {
         const tempMorph = new PMorph();
 
-        if (!tempMorph.create(prim.geometry)) {
+        if (!tempMorph.create(prim.geometry as unknown as Geometry)) {
           isSuccess = false;
         } else {
           if (!morphObj.equals(tempMorph)) {
@@ -1173,11 +1173,15 @@ class EffectsMeshProxy {
   }
 
   hasSkin (): boolean {
-    return this.options.skin !== undefined;
+    // FIXME: skin
+    //return this.options.skin !== undefined;
+    return false;
   }
 
   getSkinOpts () {
-    return this.options.skin;
+    // FIXME: skin
+    //return this.options.skin;
+    return;
   }
 
   getSkinObj (engine: Engine): PSkin | undefined {

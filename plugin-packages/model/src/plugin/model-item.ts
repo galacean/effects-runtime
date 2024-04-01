@@ -13,7 +13,7 @@ import type {
   ModelItemBounding,
   ModelLightContent,
   ModelCameraContent,
-  ModelMeshContent,
+  ModelMeshComponentData,
   ModelSkyboxContent,
 } from '../index';
 import {
@@ -47,7 +47,7 @@ export class ModelMeshComponent extends RendererComponent {
   /**
    * 参数
    */
-  options?: ModelMeshContent;
+  data?: ModelMeshComponentData;
   /**
    * 包围盒
    */
@@ -62,10 +62,10 @@ export class ModelMeshComponent extends RendererComponent {
    * @param engine - 引擎
    * @param options - Mesh 参数
    */
-  constructor (engine: Engine, options?: ModelMeshContent) {
+  constructor (engine: Engine, data?: ModelMeshComponentData) {
     super(engine);
-    if (options) {
-      this.fromData(options);
+    if (data) {
+      this.fromData(data);
     }
   }
 
@@ -123,24 +123,24 @@ export class ModelMeshComponent extends RendererComponent {
    * 反序列化，记录传入参数
    * @param options - 组件参数
    */
-  override fromData (options: ModelMeshContent): void {
-    super.fromData(options);
-    this.options = options;
+  override fromData (data: ModelMeshComponentData): void {
+    super.fromData(data);
+    this.data = data;
   }
 
   /**
    * 创建内部对象
    */
   createContent () {
-    if (this.options) {
-      const bounding = this.options.interaction;
+    if (this.data) {
+      const bounding = this.data.interaction;
 
       this.bounding = bounding && JSON.parse(JSON.stringify(bounding));
 
-      const meshOptions = this.options.options;
+      const meshOptions = this.data.options;
 
-      CheckerHelper.assertModelMeshOptions(meshOptions);
-      this.content = new PMesh(this.engine, this.item.name, this.options, this, this.item.parentId);
+      //CheckerHelper.assertModelMeshOptions(meshOptions);
+      this.content = new PMesh(this.engine, this.item.name, this.data, this, this.item.parentId);
     }
   }
 

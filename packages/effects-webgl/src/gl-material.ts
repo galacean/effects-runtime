@@ -22,8 +22,6 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-  shader: GLShader;
-
   // material存放的uniform数据。
   private floats: Record<string, number> = {};
   private ints: Record<string, number> = {};
@@ -241,7 +239,7 @@ export class GLMaterial extends Material {
 
       this.shader = pipelineContext.shaderLibrary.createShader(this.shaderSource);
     }
-    this.shader.initialize(glEngine);
+    (this.shader as GLShader).initialize(glEngine);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
 
@@ -262,8 +260,9 @@ export class GLMaterial extends Material {
   override use (renderer: Renderer, globalUniforms?: GlobalUniforms) {
     const engine = renderer.engine as GLEngine;
     const pipelineContext = engine.getGLPipelineContext();
+    const shader = this.shader as GLShader;
 
-    this.shader.program.bind();
+    shader.program.bind();
     this.setupStates(pipelineContext);
     let name: string;
 
@@ -282,20 +281,20 @@ export class GLMaterial extends Material {
 
     // 更新 cached uniform location
     if (this.uniformDirtyFlag) {
-      this.shader.fillShaderInformation(this.uniforms, this.samplers);
+      shader.fillShaderInformation(this.uniforms, this.samplers);
       this.uniformDirtyFlag = false;
     }
 
     if (globalUniforms) {
       // 设置全局 uniform
       for (name in globalUniforms.floats) {
-        this.shader.setFloat(name, globalUniforms.floats[name]);
+        shader.setFloat(name, globalUniforms.floats[name]);
       }
       for (name in globalUniforms.ints) {
-        this.shader.setInt(name, globalUniforms.ints[name]);
+        shader.setInt(name, globalUniforms.ints[name]);
       }
       for (name in globalUniforms.matrices) {
-        this.shader.setMatrix(name, globalUniforms.matrices[name]);
+        shader.setMatrix(name, globalUniforms.matrices[name]);
       }
     }
 
@@ -306,43 +305,43 @@ export class GLMaterial extends Material {
       }
     }
     for (name in this.floats) {
-      this.shader.setFloat(name, this.floats[name]);
+      shader.setFloat(name, this.floats[name]);
     }
     for (name in this.ints) {
-      this.shader.setInt(name, this.ints[name]);
+      shader.setInt(name, this.ints[name]);
     }
     for (name in this.floatArrays) {
-      this.shader.setFloats(name, this.floatArrays[name]);
+      shader.setFloats(name, this.floatArrays[name]);
     }
     for (name in this.textures) {
-      this.shader.setTexture(name, this.textures[name]);
+      shader.setTexture(name, this.textures[name]);
     }
     for (name in this.vector2s) {
-      this.shader.setVector2(name, this.vector2s[name]);
+      shader.setVector2(name, this.vector2s[name]);
     }
     for (name in this.vector3s) {
-      this.shader.setVector3(name, this.vector3s[name]);
+      shader.setVector3(name, this.vector3s[name]);
     }
     for (name in this.vector4s) {
-      this.shader.setVector4(name, this.vector4s[name]);
+      shader.setVector4(name, this.vector4s[name]);
     }
     for (name in this.colors) {
-      this.shader.setColor(name, this.colors[name]);
+      shader.setColor(name, this.colors[name]);
     }
     for (name in this.quaternions) {
-      this.shader.setQuaternion(name, this.quaternions[name]);
+      shader.setQuaternion(name, this.quaternions[name]);
     }
     for (name in this.matrices) {
-      this.shader.setMatrix(name, this.matrices[name]);
+      shader.setMatrix(name, this.matrices[name]);
     }
     for (name in this.matrice3s) {
-      this.shader.setMatrix3(name, this.matrice3s[name]);
+      shader.setMatrix3(name, this.matrice3s[name]);
     }
     for (name in this.vector4Arrays) {
-      this.shader.setVector4Array(name, this.vector4Arrays[name]);
+      shader.setVector4Array(name, this.vector4Arrays[name]);
     }
     for (name in this.matrixArrays) {
-      this.shader.setMatrixArray(name, this.matrixArrays[name]);
+      shader.setMatrixArray(name, this.matrixArrays[name]);
     }
   }
 
@@ -567,6 +566,7 @@ export class GLMaterial extends Material {
     const materialData: MaterialData = this.taggedProperties;
 
     if (this.shader) {
+      //@ts-expect-error
       materialData.shader = this.shader;
     }
     materialData.floats = {};

@@ -6,6 +6,7 @@ import type {
   VFXItemProps,
   Engine,
   Component,
+  Renderer,
 } from '@galacean/effects';
 import {
   VFXItem,
@@ -17,10 +18,12 @@ import {
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
-import { PTransform, PSceneManager, PCoordinate } from '../runtime';
+import type { PShaderContext } from '../runtime';
+import { PTransform, PSceneManager, PCoordinate, PMaterialType } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
 import { ModelCameraComponent, ModelDataType } from './model-item';
+import { getPBRPassShaderCode } from '../utility';
 
 /**
  * Model 插件类，负责支持播放器中的 3D 功能
@@ -69,6 +72,29 @@ export class ModelPlugin extends AbstractPlugin {
     //
     PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode, autoAdjustScene);
     await CompositionCache.loadStaticResources();
+  }
+
+  static override precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
+    const context: PShaderContext = {
+      // @ts-expect-error
+      material: {
+        materialType: PMaterialType.pbr,
+      },
+      isWebGL2: false,
+      featureList: [],
+    };
+
+    const pbrShader = getPBRPassShaderCode(context);
+
+    const effectsObject = renderer.engine.getShaderLibrary().createShader({
+      fragment: pbrShader.fragmentShaderCode,
+      vertex: pbrShader.vertexShaderCode,
+    });
+
+    effectsObject.setInstanceId('10000000000000000000000000000000');
+    renderer.engine.addInstance(effectsObject);
+
+    return Promise.resolve();
   }
 
   /**

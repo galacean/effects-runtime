@@ -32,6 +32,22 @@
     {
       "url": "./textures/ge-icon.png",
       "renderLevel": "B+"
+    },
+    {
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*EkYyQpUOH54AAAAAAAAAAAAADlB4AQ/original",
+      "renderLevel": "B+"
+    },
+    {
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*fMXUS4mlrm8AAAAAAAAAAAAADlB4AQ/original",
+      "renderLevel": "B+"
+    },
+    {
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*mg52QqeIG00AAAAAAAAAAAAADlB4AQ/original",
+      "renderLevel": "B+"
+    },
+    {
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*sM37R7Qny64AAAAAAAAAAAAADlB4AQ/original",
+      "renderLevel": "B+"
     }
   ],
   "spines": [],
@@ -835,16 +851,28 @@
     },
     {
       "id": "d34dc6a9d6124543923042f9e304365c",
+      "shader": {
+        "id": "10000000000000000000000000000000"
+      },
+      "name": "3d-material",
       "dataType": 2,
-      "customType": "pbr",
+      "zTest": true,
+      "zWrite": true,
+      "blending": false,
+      "ints": {
+        "shaderType": 0,
+        "useSpecularAA": 1,
+        "baseColorTextureCoordinate": 0,
+        "side": 1028,
+        "blending": 100,
+        "alphaCutOff": 0.3
+      },
       "floats": {
         "metallicFactor": 0.8,
         "roughnessFactor": 0.5,
         "normalTextureScale": 0.5,
         "occlusionTextureStrength": 0.9,
-        "emissiveIntensity": 2,
-        "side": 1028,
-        "blending": 100
+        "emissiveIntensity": 2
       },
       "vector4s": {},
       "colors": {
@@ -890,6 +918,15 @@
       "vertex": "precision highp float;attribute vec3 aPos;attribute vec2 aUV;varying vec2 uv;uniform mat4 effects_ObjectToWorld;uniform mat4 effects_MatrixInvV;uniform mat4 effects_MatrixVP;void main(){uv=aUV;gl_Position=effects_MatrixVP*effects_ObjectToWorld*vec4(aPos,1.0);}",
       "fragment": "precision highp float;varying vec2 uv;uniform vec4 _MainColor;uniform sampler2D _MainTex;uniform sampler2D _Tex2;uniform sampler2D _Tex3;void main(){vec3 texColor=texture2D(_MainTex,uv).rgb;vec3 color=texColor*_MainColor.rgb;gl_FragColor=vec4(color,1.0);}",
       "properties": "_MainTex(\"MainTex\", 2D) = {}\n_MainColor(\"MainColor\", Color) = (1,1,1,1)"
+    }
+    ,
+    {
+      "id": "84cae4c25b9a416bbd406475418a2b53",
+      "name": "unlit",
+      "dataType": 3,
+      "vertex": "",
+      "fragment": "",
+      "properties": ""
     }
   ],
   "geometries": [
@@ -1136,6 +1173,7 @@
       "minFilter": 9987,
       "magFilter": 9729,
       "id": "1366ea75f3264fadb0f0e1f7fac56512",
+      "dataType": 9,
       "wrapS": 10497,
       "wrapT": 10497,
       "target": 3553,
@@ -1144,7 +1182,6 @@
       "type": 5121,
       "anisotropic": 1,
       "premultiplyAlpha": false,
-      
       "generateMipmap": true,
       "source": 9
     },
@@ -1157,6 +1194,7 @@
       "minFilter": 9987,
       "magFilter": 9729,
       "id": "4d80032470944d6fb550bf7bb587b22f",
+      "dataType": 9,
       "wrapS": 10497,
       "wrapT": 10497,
       "target": 3553,
@@ -1178,6 +1216,7 @@
       "minFilter": 9987,
       "magFilter": 9729,
       "id": "a21f304a931347a6bdddcc632e962445",
+      "dataType": 9,
       "wrapS": 10497,
       "wrapT": 10497,
       "target": 3553,
