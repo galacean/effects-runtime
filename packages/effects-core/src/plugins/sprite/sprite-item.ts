@@ -1,7 +1,9 @@
 import { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { vec2, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
+import { DataType } from '../../asset-loader';
 import { RendererComponent } from '../../components/renderer-component';
+import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
@@ -16,12 +18,9 @@ import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../.
 import type { CalculateItemOptions } from '../cal/calculate-item';
 import { TimelineComponent } from '../cal/calculate-item';
 import { Playable } from '../cal/playable-graph';
-import { Track } from '../cal/track';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
-import { effectsClass } from '../../decorators';
-import { DataType } from '../../asset-loader';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -575,11 +574,6 @@ export class SpriteComponent extends RendererComponent {
     this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.setItem();
-
-    // 添加K帧动画
-    const colorTrack = this.item.getComponent(TimelineComponent)!.createTrack(Track, 'SpriteColorTrack');
-
-    colorTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData({ colorOverLifetime: data.colorOverLifetime, startColor: data.options.startColor });
   }
 
   override toData (): void {

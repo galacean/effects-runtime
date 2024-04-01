@@ -179,6 +179,46 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.endBehavior = spec.END_BEHAVIOR_FREEZE;
     }
 
+    // 动画数据转化 TODO: 动画数据移到 TimelineComponentData
+    //@ts-expect-error
+    item.content.tracks = [];
+    //@ts-expect-error
+    const tracks = item.content.tracks;
+
+    if (item.type !== spec.ItemType.particle) {
+      tracks.push({
+        clips:[
+          {
+            dataType:'TransformAnimationPlayableAsset',
+            animationClip:{
+              //@ts-expect-error
+              sizeOverLifetime: item.content.sizeOverLifetime,
+              //@ts-expect-error
+              rotationOverLifetime: item.content.rotationOverLifetime,
+              //@ts-expect-error
+              positionOverLifetime: item.content.positionOverLifetime,
+            },
+          },
+        ],
+      });
+    }
+
+    if (item.type === spec.ItemType.sprite) {
+      tracks.push({
+        clips:[
+          {
+            dataType:'SpriteColorAnimationPlayableAsset',
+            animationClip:{
+              //@ts-expect-error
+              colorOverLifetime:item.content.colorOverLifetime,
+              //@ts-expect-error
+              startColor:item.content.options.startColor,
+            },
+          },
+        ],
+      });
+    }
+
     // item 的 content 转为 component data 加入 JSONScene.components
     const uuid = uuidv4().replace(/-/g, '');
 

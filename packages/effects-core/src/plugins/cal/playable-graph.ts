@@ -133,3 +133,11 @@ export class PlayableOutput {
   processFrame (dt: number) {
   }
 }
+
+export abstract class PlayableAsset {
+  abstract createPlayable (): Playable;
+
+  fromData (data: any) {
+
+  }
+}
