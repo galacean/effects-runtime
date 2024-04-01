@@ -77,7 +77,7 @@ export type GizmoItemBounding =
  *
  */
 export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
-  target!: number;
+  target!: string;
   subType!: GizmoSubType;
   size: any;
   contents?: Map<Mesh, Transform>;
