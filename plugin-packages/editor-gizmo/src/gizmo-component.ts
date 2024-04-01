@@ -30,7 +30,7 @@ export class GizmoComponent extends ItemBehaviour {
 
   override start (): void {
     for (const item of this.item.composition!.items) {
-      if (item.id === (this.item as GizmoVFXItem).target.toString()) {
+      if (item.id === (this.item as GizmoVFXItem).target) {
         this.targetItem = item;
       }
     }
