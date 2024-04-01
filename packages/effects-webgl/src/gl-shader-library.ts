@@ -3,7 +3,7 @@ import type {
   Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderWithSource,
   SharedShaderWithSource,
 } from '@galacean/effects-core';
-import { ShaderCompileResultStatus, GLSLVersion } from '@galacean/effects-core';
+import { ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMarcos } from '@galacean/effects-core';
 import { GLProgram } from './gl-program';
 import { GLShader } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
@@ -64,27 +64,32 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
 
   // TODO 创建shader的ShaderWithSource和shader的source类型一样，待优化。
   addShader (shaderSource: ShaderWithSource): string {
-    const shaderCacheId = this.computeShaderCacheId(shaderSource);
+    const shaderWithMacros = {
+      ...shaderSource,
+      vertex: createShaderWithMarcos(shaderSource.marcos!, shaderSource.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
+      fragment: createShaderWithMarcos(shaderSource.marcos!, shaderSource.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
+    };
+    const shaderCacheId = this.computeShaderCacheId(shaderWithMacros);
 
     if (this.cachedShaders[shaderCacheId]) {
       return shaderCacheId;
     }
     this.shaderAllDone = false;
 
-    const header = shaderSource.glslVersion === GLSLVersion.GLSL3 ? '#version 300 es\n' : '';
-    const vertex = shaderSource.vertex ? header + shaderSource.vertex : '';
-    const fragment = shaderSource.fragment ? header + shaderSource.fragment : '';
+    const header = shaderWithMacros.glslVersion === GLSLVersion.GLSL3 ? '#version 300 es\n' : '';
+    const vertex = shaderWithMacros.vertex ? header + shaderWithMacros.vertex : '';
+    const fragment = shaderWithMacros.fragment ? header + shaderWithMacros.fragment : '';
 
     let shared = false;
 
-    if (shaderSource.shared || (shaderSource as SharedShaderWithSource).cacheId) {
+    if (shaderWithMacros.shared || (shaderWithMacros as SharedShaderWithSource).cacheId) {
       shared = true;
     }
     this.cachedShaders[shaderCacheId] = new GLShader(this.engine, {
-      ...shaderSource,
+      ...shaderWithMacros,
       vertex,
       fragment,
-      name: shaderSource.name || shaderCacheId,
+      name: shaderWithMacros.name || shaderCacheId,
       shared,
     });
     this.cachedShaders[shaderCacheId].id = shaderCacheId;

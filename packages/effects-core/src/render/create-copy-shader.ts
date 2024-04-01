@@ -1,4 +1,3 @@
-import { createShaderWithMarcos, ShaderType } from '../material';
 import copy from '../shader/adjust/copy.frag.glsl';
 import type { SharedShaderWithSource } from './shader';
 import { GLSLVersion } from './shader';
@@ -59,8 +58,8 @@ export function createCopyShader (level: number, writeDepth?: boolean): SharedSh
 
   return {
     name: EFFECTS_COPY_MESH_NAME,
-    vertex: createShaderWithMarcos([], version + '\n' + COPY_VERTEX_SHADER, ShaderType.vertex, level),
-    fragment: createShaderWithMarcos([], version + '\n' + COPY_FRAGMENT_SHADER, ShaderType.fragment, level),
+    vertex: version + '\n' + COPY_VERTEX_SHADER,
+    fragment: version + '\n' + COPY_FRAGMENT_SHADER,
     glslVersion: webgl2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
     marcos: [
       ['WEBGL2', !!webgl2],
