@@ -624,7 +624,7 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
     return image.source;
   } else if (
     image instanceof HTMLImageElement ||
-    image instanceof HTMLCanvasElement
+    isCanvas(image)
   ) {
     return {
       image,
@@ -664,4 +664,9 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
   }
 
   throw new Error('Invalid texture options');
+}
+
+function isCanvas (cavnas: HTMLCanvasElement) {
+  // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
+  return typeof cavnas === 'object' && cavnas !== null && cavnas.tagName?.toUpperCase() === 'CANVAS';
 }
