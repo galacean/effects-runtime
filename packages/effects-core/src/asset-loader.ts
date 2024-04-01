@@ -138,7 +138,7 @@ export class AssetLoader {
     return this.engine.jsonSceneData[uuid];
   }
 
-  private static getClass (dataType: number): new (engine: Engine) => EffectsObject {
+  private static getClass (dataType: string): new (engine: Engine) => EffectsObject {
     return effectsClassStore[dataType];
   }
 }
@@ -150,25 +150,25 @@ export class Database {
 }
 
 export enum DataType {
-  VFXItemData = 0,
-  EffectComponent,
-  Material,
-  Shader,
-  SpriteComponent,
-  ParticleSystem,
-  InteractComponent,
-  CameraController,
-  Geometry,
-  Texture,
-  TextComponent,
+  VFXItemData = 'VFXItemData',
+  EffectComponent = 'EffectComponent',
+  Material = 'Material',
+  Shader = 'Shader',
+  SpriteComponent = 'SpriteComponent',
+  ParticleSystem = 'ParticleSystem',
+  InteractComponent = 'InteractComponent',
+  CameraController = 'CameraController',
+  Geometry = 'Geometry',
+  Texture = 'Texture',
+  TextComponent = 'TextComponent',
 
   // FIXME: 先完成ECS的场景转换，后面移到spec中
-  MeshComponent = 10000,
-  SkyboxComponent,
-  LightComponent,
-  CameraComponent,
-  ModelPluginComponent,
-  TreeComponent,
+  MeshComponent = 'MeshComponent',
+  SkyboxComponent = 'SkyboxComponent',
+  LightComponent = 'LightComponent',
+  CameraComponent = 'CameraComponent',
+  ModelPluginComponent = 'ModelPluginComponent',
+  TreeComponent = 'TreeComponent',
 }
 
 export interface DataPath {
@@ -178,7 +178,7 @@ export interface DataPath {
 export interface EffectsObjectData {
   id: string,
   name?: string,
-  dataType: number,
+  dataType: string,
 }
 
 export interface MaterialData extends EffectsObjectData {

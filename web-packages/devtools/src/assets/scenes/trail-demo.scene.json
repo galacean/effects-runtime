@@ -104,7 +104,7 @@
       "id": "2f29a793b96a47a692239e8c858a0a33",
       "name": "background",
       "duration": 1000,
-      "dataType": 0,
+      "dataType": "VFXItemData",
       "type": "1",
       "visible": true,
       "endBehavior": 2,
@@ -139,7 +139,7 @@
       "id": "9dbf4c91c5394f1dbe08010c9ed2f1a1",
       "name": "particle",
       "duration": 1000,
-      "dataType": 0,
+      "dataType": "VFXItemData",
       "type": "2",
       "visible": true,
       "endBehavior": 5,
@@ -175,7 +175,7 @@
       "name": "Trail1",
       "duration": 1000,
       "type": "ECS",
-      "dataType": 0,
+      "dataType": "VFXItemData",
       "visible": true,
       "endBehavior": 0,
       "delay": 0,
@@ -210,7 +210,7 @@
       "name": "Trail2",
       "duration": 1000,
       "type": "ECS",
-      "dataType": 0,
+      "dataType": "VFXItemData",
       "visible": true,
       "endBehavior": 0,
       "delay": 0,
@@ -245,7 +245,7 @@
       "name": "Trail3",
       "duration": 1000,
       "type": "ECS",
-      "dataType": 0,
+      "dataType": "VFXItemData",
       "visible": true,
       "endBehavior": 0,
       "delay": 0,
@@ -279,7 +279,7 @@
       "id": "6b668d8ea2ef4965ad90d0a57446b8d8",
       "name": "Ge",
       "duration": 1000,
-      "dataType": 0,
+      "dataType": "VFXItemData",
       "type": "1",
       "visible": true,
       "endBehavior": 2,
@@ -314,7 +314,7 @@
   "components": [
     {
       "id": "a5f8d715a06b4acba79b891566de8754",
-      "dataType": 1,
+      "dataType": "EffectComponent",
       "item": {
         "id": "e412b3bcf7ee4019ab882a41aec9efdf"
       },
@@ -329,7 +329,7 @@
     },
     {
       "id": "8264d22a44124050b5a2d3dc476875fa",
-      "dataType": 5,
+      "dataType": "ParticleSystem",
       "item": {
         "id": "9dbf4c91c5394f1dbe08010c9ed2f1a1"
       },
@@ -440,7 +440,7 @@
     },
     {
       "id": "333faa0ad3974003a5e13a6d433d8bc7",
-      "dataType": 4,
+      "dataType": "SpriteComponent",
       "item": {
         "id": "2f29a793b96a47a692239e8c858a0a33"
       },
@@ -488,7 +488,7 @@
     },
     {
       "id": "7cb4f4f2a0994941ab535552ac774237",
-      "dataType": 1,
+      "dataType": "EffectComponent",
       "item": {
         "id": "9830e941be074b6da820819eee0e884d"
       },
@@ -503,7 +503,7 @@
     },
     {
       "id": "24b05ca55c0f4f1a86f97699ba907099",
-      "dataType": 1,
+      "dataType": "EffectComponent",
       "item": {
         "id": "90d16d7487674f08aaf398aca5f91b0e"
       },
@@ -518,7 +518,7 @@
     },
     {
       "id": "bcc377b9ec064a7fb110033e805ef462",
-      "dataType": 4,
+      "dataType": "SpriteComponent",
       "item": {
         "id": "6b668d8ea2ef4965ad90d0a57446b8d8"
       },
@@ -559,7 +559,7 @@
   "materials": [
     {
       "id": "378d35e08fee497f901b70f1144a5f6d",
-      "dataType": 2,
+      "dataType": "Material",
       "shader": {
         "id": "a070be488c9c424d9e91d56ec1f0a591"
       },
@@ -636,7 +636,7 @@
     },
     {
       "id": "11f66680df4d4665884d16de06a52216",
-      "dataType": 2,
+      "dataType": "Material",
       "shader": {
         "id": "a070be488c9c424d9e91d56ec1f0a591"
       },
@@ -713,7 +713,7 @@
     },
     {
       "id": "992e087df9154793a34b66658f4be1ca",
-      "dataType": 2,
+      "dataType": "Material",
       "shader": {
         "id": "a070be488c9c424d9e91d56ec1f0a591"
       },
@@ -790,7 +790,7 @@
     },
     {
       "id": "db5e35b6e4be4edbac59c402f218dfb0",
-      "dataType": 2,
+      "dataType": "Material",
       "shader": {
         "id": "84cae4c25b9a416bbd406475418a2b53"
       },
@@ -853,7 +853,7 @@
     {
       "id": "a070be488c9c424d9e91d56ec1f0a591",
       "name": "Trail",
-      "dataType": 3,
+      "dataType": "Shader",
       "vertex": "precision highp float;attribute vec3 aPos;attribute vec2 aUV;varying vec2 uv;uniform mat4 effects_ObjectToWorld;uniform mat4 effects_MatrixInvV;uniform mat4 effects_MatrixVP;uniform vec4 uEditorTransform;void main(){uv=aUV;gl_Position=effects_MatrixVP*effects_ObjectToWorld*vec4(aPos,1.0);}",
       "fragment": "precision highp float;varying vec2 uv;uniform float _GlobalTime;uniform float _Speed;uniform vec4 _StartColor;uniform vec4 _EndColor;uniform sampler2D _MainTex;uniform sampler2D _Tex2;uniform sampler2D _Tex3;void main(){vec2 uv0=uv+vec2(-_GlobalTime,0.0)*_Speed;vec3 startColor=_StartColor.rgb*1.0;vec3 endColor=_EndColor.rgb*1.0;vec3 gradientColor=startColor*(1.0-uv.x)+endColor*uv.x;vec3 texColor=texture2D(_Tex2,uv0).rgb;vec3 color=gradientColor+texColor;float mask=texture2D(_MainTex,uv0).r+texture2D(_Tex3,uv0).r;mask=min(mask,1.0);float trailEnd=0.8;if(uv.x>trailEnd){mask=(1.0-(uv.x-trailEnd)/(1.0-trailEnd))*mask;}gl_FragColor=vec4(color*mask,mask);}",
       "properties": "_StartColor(\"StartColor\",Color) = (1,1,1,1)\n_EndColor(\"EndColor\",Color) = (1,1,1,1)\n_Speed(\"Speed\",Range(0,1.5)) = 1\n_MainTex(\"MainTex\", 2D) = {}\n_Tex2(\"Tex2\", 2D) = {}\n_Tex3(\"Tex3\", 2D) = {}"
@@ -861,7 +861,7 @@
     {
       "id": "84cae4c25b9a416bbd406475418a2b53",
       "name": "unlit",
-      "dataType": 3,
+      "dataType": "Shader",
       "vertex": "precision highp float;attribute vec3 aPos;attribute vec2 aUV;varying vec2 uv;uniform mat4 effects_ObjectToWorld;uniform mat4 effects_MatrixInvV;uniform mat4 effects_MatrixVP;void main(){uv=aUV;gl_Position=effects_MatrixVP*effects_ObjectToWorld*vec4(aPos,1.0);}",
       "fragment": "precision highp float;varying vec2 uv;uniform vec4 _MainColor;uniform sampler2D _MainTex;uniform sampler2D _Tex2;uniform sampler2D _Tex3;void main(){vec3 texColor=texture2D(_MainTex,uv).rgb;vec3 color=texColor*_MainColor.rgb;gl_FragColor=vec4(color,1.0);}",
       "properties": "_MainTex(\"MainTex\", 2D) = {}\n_MainColor(\"MainColor\", Color) = (1,1,1,1)"
@@ -871,7 +871,7 @@
     {
       "id": "7e69662e964e4892ae8933f24562395b",
       "name": "Trail",
-      "dataType": 8,
+      "dataType": "Geometry",
       "vertexData": {
         "vertexCount": 104,
         "channels": [
@@ -898,7 +898,7 @@
     },
     {
       "id": "eee1bee74243426e9dd9a5d0f7c85aa2",
-      "dataType": 8,
+      "dataType": "Geometry",
       "vertexData": {
         "vertexCount": 121,
         "channels": [
@@ -938,7 +938,7 @@
       "minFilter": 9729,
       "magFilter": 9729,
       "id": "c8e75e0b46a44b9ca6e9c98b9b461f37",
-      "dataType": 9,
+      "dataType": "Texture",
       "source": 0,
       "flipY": true
     },
@@ -952,7 +952,7 @@
       "minFilter": 9729,
       "magFilter": 9729,
       "id": "0622cbce2a724bec976e09988f192ee9",
-      "dataType": 9,
+      "dataType": "Texture",
       "source": 1,
       "flipY": true,
       "wrapS": 10497,
@@ -968,7 +968,7 @@
       "minFilter": 9729,
       "magFilter": 9729,
       "id": "05d2cdc5814b412aa69b1a5e794aeca8",
-      "dataType": 9,
+      "dataType": "Texture",
       "source": 2,
       "flipY": false,
       "wrapS": 10497,
@@ -984,7 +984,7 @@
       "minFilter": 9729,
       "magFilter": 9729,
       "id": "83f7b031365f481192873e908fd442a6",
-      "dataType": 9,
+      "dataType": "Texture",
       "source": 3,
       "flipY": true
     },
@@ -998,7 +998,7 @@
       "minFilter": 9729,
       "magFilter": 9729,
       "id": "080f94ebcff64c81a67f31187015697e",
-      "dataType": 9,
+      "dataType": "Texture",
       "source": 4,
       "flipY": true,
       "wrapS": 10497,
@@ -1014,7 +1014,7 @@
       "minFilter": 9729,
       "magFilter": 9729,
       "id": "69c42f62abcb4962803df425a65b7281",
-      "dataType": 9,
+      "dataType": "Texture",
       "source": 5,
       "flipY": true,
       "wrapS": 10497,
@@ -1030,7 +1030,7 @@
       "minFilter": 9729,
       "magFilter": 9729,
       "id": "8f33267d4f8647acbc51f34d2fe1a428",
-      "dataType": 9,
+      "dataType": "Texture",
       "source": 6,
       "flipY": true,
       "wrapS": 10497,
@@ -1046,7 +1046,7 @@
       "minFilter": 9729,
       "magFilter": 9729,
       "id": "82d245433af641d48d670bace307a9fe",
-      "dataType": 9,
+      "dataType": "Texture",
       "source": 7,
       "flipY": true,
       "wrapS": 10497,
