@@ -467,7 +467,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       }
     }
     for (const child of this.children) {
-      return child.find(name);
+      const res = child.find(name);
+
+      if (res) {
+        return res;
+      }
     }
 
     return undefined;
