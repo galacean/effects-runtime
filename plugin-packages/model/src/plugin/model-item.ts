@@ -6,7 +6,7 @@ import type {
   Renderer,
   TransformAnimationPlayable,
 } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec } from '@galacean/effects';
+import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec, DataType } from '@galacean/effects';
 import { Vector3 } from '../runtime/math';
 import type { Ray, Euler, Vector2 } from '../runtime/math';
 import type {
@@ -24,21 +24,12 @@ import { PCamera, PLight, PMesh, PSkybox } from '../runtime';
 import { CheckerHelper, RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
 
-export enum ModelDataType {
-  MeshComponent = 10000,
-  SkyboxComponent,
-  LightComponent,
-  CameraComponent,
-  ModelPluginComponent,
-  TreeComponent,
-}
-
 /**
  * 插件 Mesh 组件类，支持 3D Mesh 渲染能力
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.MeshComponent)
+@effectsClass(DataType.MeshComponent)
 export class ModelMeshComponent extends RendererComponent {
   /**
    * 内部 Mesh 对象
@@ -248,7 +239,7 @@ export class ModelMeshComponent extends RendererComponent {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.SkyboxComponent)
+@effectsClass(DataType.SkyboxComponent)
 export class ModelSkyboxComponent extends RendererComponent {
   /**
    * 内部天空盒对象
@@ -351,7 +342,7 @@ export class ModelSkyboxComponent extends RendererComponent {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.LightComponent)
+@effectsClass(DataType.LightComponent)
 export class ModelLightComponent extends ItemBehaviour {
   /**
    * 内部灯光对象
@@ -444,7 +435,7 @@ export class ModelLightComponent extends ItemBehaviour {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.CameraComponent)
+@effectsClass(DataType.CameraComponent)
 export class ModelCameraComponent extends ItemBehaviour {
   /**
    * 内部相机对象

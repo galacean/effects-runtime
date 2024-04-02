@@ -15,6 +15,7 @@ import {
   ItemBehaviour,
   PLAYER_OPTIONS_ENV_EDITOR,
   effectsClass,
+  DataType,
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
@@ -22,7 +23,7 @@ import type { PShaderContext } from '../runtime';
 import { PTransform, PSceneManager, PCoordinate, PMaterialType } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
-import { ModelCameraComponent, ModelDataType, ModelLightComponent } from './model-item';
+import { ModelCameraComponent, ModelLightComponent } from './model-item';
 import { getPBRPassShaderCode } from '../utility';
 
 /**
@@ -156,7 +157,7 @@ export interface ModelPluginOptions {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.ModelPluginComponent)
+@effectsClass(DataType.ModelPluginComponent)
 export class ModelPluginComponent extends ItemBehaviour {
   private runtimeEnv = PLAYER_OPTIONS_ENV_EDITOR;
   private compatibleMode = 'gltf';
