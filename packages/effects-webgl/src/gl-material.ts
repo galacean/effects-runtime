@@ -1,21 +1,10 @@
 import type {
-  Engine,
-  GlobalUniforms,
-  MaterialData,
-  MaterialDestroyOptions, MaterialProps, MaterialStates,
-  Renderer,
-  Texture,
-  UndefinedAble,
+  Engine, GlobalUniforms, MaterialData, MaterialDestroyOptions, MaterialProps, MaterialStates,
+  Renderer, Texture, UndefinedAble,
 } from '@galacean/effects-core';
 import {
-  DataType,
-  DestroyOptions, Material,
-  Shader,
-  assertExist,
-  generateGUID,
-  isFunction, logger,
-  math,
-  throwDestroyedError,
+  DataType, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
+  math, throwDestroyedError,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
@@ -69,8 +58,8 @@ export class GLMaterial extends Material {
       this.shader = new Shader(engine);
       this.shader.shaderData = {
         ...props.shader,
-        id:generateGUID(),
-        dataType:DataType.Shader,
+        id: generateGUID(),
+        dataType: DataType.Shader,
       };
     }
   }

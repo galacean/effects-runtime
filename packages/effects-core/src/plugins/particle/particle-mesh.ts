@@ -297,8 +297,8 @@ export class ParticleMesh implements ParticleMeshData {
     const vertex = originalVertex;
 
     const shader = {
-      fragment: fragment,
-      vertex: vertex,
+      fragment,
+      vertex,
       glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
       shared: true,
       cacheId: shaderCache,

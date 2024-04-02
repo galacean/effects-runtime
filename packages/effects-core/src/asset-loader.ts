@@ -1,4 +1,3 @@
-import type * as spec from '@galacean/effects-specification';
 import { effectsClassStore } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
