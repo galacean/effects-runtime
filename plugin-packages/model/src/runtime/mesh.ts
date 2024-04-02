@@ -1,5 +1,5 @@
 import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer } from '@galacean/effects';
-import { Geometry, spec, Mesh, DestroyOptions, Material } from '@galacean/effects';
+import { Geometry, spec, Mesh, DestroyOptions, Material, GLSLVersion } from '@galacean/effects';
 import type {
   ModelMeshComponentData,
   ModelMaterialOptions,
@@ -512,18 +512,18 @@ export class PPrimitive {
     newSemantics['u_ModelMatrix'] = 'MODEL';
     newSemantics['uEditorTransform'] = 'EDITOR_TRANSFORM';
     let material: Material;
+    const isWebGL2 = PGlobalState.getInstance().isWebGL2;
 
     if (this.material.material) {
-      const shader = this.engine.getShaderLibrary().createShader({
-        vertex: this.material.vertexShaderCode,
-        fragment: this.material.fragmentShaderCode,
-        shared: globalState.shaderShared,
-      });
-
       material = this.material.material;
       // @ts-expect-error
       material.uniformSemantics = newSemantics;
-      material.shader = shader;
+      // @ts-expect-error
+      material.shader = {
+        vertex: this.material.vertexShaderCode,
+        fragment: this.material.fragmentShaderCode,
+        glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+      };
 
       this.material.setMaterialStates(material);
     } else {
@@ -534,6 +534,7 @@ export class PPrimitive {
             vertex: this.material.vertexShaderCode,
             fragment: this.material.fragmentShaderCode,
             shared: globalState.shaderShared,
+            glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
           },
           uniformSemantics: newSemantics,
         }

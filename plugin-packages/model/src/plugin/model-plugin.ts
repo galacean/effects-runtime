@@ -16,6 +16,7 @@ import {
   PLAYER_OPTIONS_ENV_EDITOR,
   effectsClass,
   DataType,
+  GLSLVersion,
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
@@ -76,24 +77,26 @@ export class ModelPlugin extends AbstractPlugin {
   }
 
   static override precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
+    const isWebGL2 = renderer.engine.gpuCapability.level === 2;
     const context: PShaderContext = {
       // @ts-expect-error
       material: {
         materialType: PMaterialType.pbr,
       },
-      isWebGL2: false,
+      isWebGL2,
       featureList: [],
     };
 
     const pbrShader = getPBRPassShaderCode(context);
 
-    const effectsObject = renderer.engine.getShaderLibrary().createShader({
+    renderer.engine.addEffectsObjectData({
+      id: '10000000000000000000000000000000',
+      dataType: 'Shader',
+      // @ts-expect-error
       fragment: pbrShader.fragmentShaderCode,
       vertex: pbrShader.vertexShaderCode,
+      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
     });
-
-    effectsObject.setInstanceId('10000000000000000000000000000000');
-    renderer.engine.addInstance(effectsObject);
 
     return Promise.resolve();
   }

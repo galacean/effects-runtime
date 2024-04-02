@@ -393,7 +393,7 @@ export abstract class Material extends EffectsObject implements Disposable {
   abstract hasUniform (name: string): boolean;
 
   /******** 预留接口，暂时不用实现 ***********************/
-  abstract enableMacro (keyword: string): void;
+  abstract enableMacro (keyword: string, value?: boolean | number): void;
   abstract disableMacro (keyword: string): void;
   abstract isMacroEnabled (keyword: string): boolean;
   /***************************************************/

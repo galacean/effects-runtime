@@ -229,9 +229,9 @@ export class GLMaterial extends Material {
     value !== undefined && this.glMaterialState.setCullFace(value);
   }
 
-  override enableMacro (keyword: string): void {
+  override enableMacro (keyword: string, value?: boolean | number): void {
     if (!this.isMacroEnabled(keyword)) {
-      this.macros[keyword] = true;
+      this.macros[keyword] = value ?? true;
       this.macrosDirtyFlag = true;
     }
   }

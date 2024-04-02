@@ -102,6 +102,21 @@ export abstract class PMaterialBase extends PObject {
    * @param inFeatureList - 外部特性列表
    */
   build (inFeatureList?: string[]) {
+    const finalFeatureList = this.getFeatureList(inFeatureList);
+    const isWebGL2 = PGlobalState.getInstance().isWebGL2;
+    //
+    const shaderManager = PShaderManager.getInstance();
+    const shaderResult = shaderManager.genShaderCode({
+      material: this,
+      isWebGL2,
+      featureList: finalFeatureList,
+    });
+
+    this.vertexShaderCode = shaderResult.vertexShaderCode;
+    this.fragmentShaderCode = shaderResult.fragmentShaderCode;
+  }
+
+  getFeatureList (inFeatureList?: string[]) {
     const finalFeatureList = this.getShaderFeatures();
 
     if (inFeatureList !== undefined) {
@@ -122,16 +137,8 @@ export abstract class PMaterialBase extends PObject {
         finalFeatureList.push('EDITOR_TRANSFORM');
       }
     }
-    //
-    const shaderManager = PShaderManager.getInstance();
-    const shaderResult = shaderManager.genShaderCode({
-      material: this,
-      isWebGL2,
-      featureList: finalFeatureList,
-    });
 
-    this.vertexShaderCode = shaderResult.vertexShaderCode;
-    this.fragmentShaderCode = shaderResult.fragmentShaderCode;
+    return finalFeatureList;
   }
 
   /**
