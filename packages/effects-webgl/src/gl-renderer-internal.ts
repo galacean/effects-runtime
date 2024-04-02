@@ -9,7 +9,6 @@ import { GLTexture } from './gl-texture';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLEngine } from './gl-engine';
 import type { GLMaterial } from './gl-material';
-import type { GLShader } from './gl-shader';
 
 let seed = 1;
 
@@ -149,8 +148,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
     }
     const glGeometry = geometry as GLGeometry;
     const glMaterial = material as GLMaterial;
-    const glShader = glMaterial.shader as GLShader;
-    const program = glShader.program;
+    const program = glMaterial.shaderVariant.program;
 
     if (!program) {
       console.warn('Material ' + glMaterial.name + ' 的shader着色器程序未初始化。');

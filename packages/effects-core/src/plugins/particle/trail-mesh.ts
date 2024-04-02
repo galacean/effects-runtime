@@ -1,22 +1,24 @@
-import type * as spec from '@galacean/effects-specification';
-import type { vec3, vec4, GradientStop } from '@galacean/effects-specification';
-import { Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Matrix4 } from '@galacean/effects-math/es/core/index';
-import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
+import { Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import type * as spec from '@galacean/effects-specification';
+import type { GradientStop, vec3, vec4 } from '@galacean/effects-specification';
+import { RENDER_PREFER_LOOKUP_TEXTURE, getConfig } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
+import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import {
-  createShaderWithMarcos, getPreMultiAlpha, Material, setBlendMode, setMaskMode, ShaderType,
+  Material,
+  getPreMultiAlpha,
+  setBlendMode, setMaskMode,
 } from '../../material';
-import { createKeyFrameMeta, createValueGetter, CurveValue, getKeyFrameMetaByRawValue } from '../../math';
-import type { GeometryProps, ShaderMarcos, ShaderWithSource, GPUCapability } from '../../render';
-import { Geometry, GLSLVersion, Mesh } from '../../render';
-import { particleFrag, trailVert } from '../../shader';
-import { generateHalfFloatTexture, Texture } from '../../texture';
-import { imageDataFromGradient } from '../../utils';
-import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
+import { CurveValue, createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue } from '../../math';
+import type { GPUCapability, GeometryProps, ShaderMarcos, ShaderWithSource } from '../../render';
+import { GLSLVersion, Geometry, Mesh } from '../../render';
+import { particleFrag, trailVert } from '../../shader';
+import { Texture, generateHalfFloatTexture } from '../../texture';
+import { imageDataFromGradient } from '../../utils';
 
 export type TrailMeshProps = {
   maxTrailCount: number,
@@ -133,8 +135,8 @@ export class TrailMesh {
       uniformValues.uVCurveValues = CurveValue.getAllData(keyFrameMeta);
     }
 
-    const vertex = createShaderWithMarcos(marcos, trailVert, ShaderType.vertex, level);
-    const fragment = createShaderWithMarcos(marcos, particleFrag, ShaderType.fragment, level);
+    const vertex = trailVert;
+    const fragment = particleFrag;
     const mtl: MaterialProps = ({
       shader: {
         vertex,

@@ -221,7 +221,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
 
     // gizmo 的 target id 转换为新的 item guid
     //@ts-expect-error
-    if (item.content.options.target) {
+    if (item.content && item.content.options && item.content.options.target) {
       //@ts-expect-error
       item.content.options.target = itemGuidMap[item.content.options.target];
     }

@@ -67,7 +67,7 @@ let seed = 1;
  * Material 抽象类
  */
 export abstract class Material extends EffectsObject implements Disposable {
-  shader: Shader;
+  // TODO: 待移除
   shaderSource: ShaderWithSource;
   readonly uniformSemantics: Record<string, UniformSemantic>;
   readonly renderType: MaterialRenderType;
@@ -393,9 +393,9 @@ export abstract class Material extends EffectsObject implements Disposable {
   abstract hasUniform (name: string): boolean;
 
   /******** 预留接口，暂时不用实现 ***********************/
-  abstract enableKeyword (keyword: string): void;
-  abstract disableKeyword (keyword: string): void;
-  abstract isKeywordEnabled (keyword: string): boolean;
+  abstract enableMacro (keyword: string): void;
+  abstract disableMacro (keyword: string): void;
+  abstract isMacroEnabled (keyword: string): boolean;
   /***************************************************/
 
   /**

@@ -1,13 +1,18 @@
-import type { Texture, Attribute, SharedShaderWithSource, Engine, Disposable } from '@galacean/effects';
-import {
-  PLAYER_OPTIONS_ENV_EDITOR, Mesh, Geometry, Material, setMaskMode,
-  GLSLVersion, glContext, createShaderWithMarcos, ShaderType, math,
-} from '@galacean/effects';
 import type { BlendMode } from '@esotericsoftware/spine-core';
-import { SlotGroup } from './slot-group';
-import { setBlending } from './utils';
+import type { Attribute, Disposable, Engine, SharedShaderWithSource, Texture } from '@galacean/effects';
+import {
+  GLSLVersion,
+  Geometry, Material,
+  Mesh,
+  PLAYER_OPTIONS_ENV_EDITOR,
+  glContext,
+  math,
+  setMaskMode,
+} from '@galacean/effects';
 import fs from './shader/fragment.glsl';
 import vs from './shader/vertex.glsl';
+import { SlotGroup } from './slot-group';
+import { setBlending } from './utils';
 
 export interface SpineMeshRenderInfo {
   texture: Texture,
@@ -171,8 +176,8 @@ export function createShader (engine: Engine): SharedShaderWithSource {
   ];
 
   return {
-    fragment: createShaderWithMarcos(marcos, fs, ShaderType.fragment, level),
-    vertex: createShaderWithMarcos(marcos, vs, ShaderType.vertex, level),
+    fragment: fs,
+    vertex: vs,
     glslVersion: GLSLVersion.GLSL1,
     marcos,
     shared: true,
