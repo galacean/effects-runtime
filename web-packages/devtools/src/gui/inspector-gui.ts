@@ -337,7 +337,7 @@ export class InspectorGui {
               effectsPackage.exportObjects.push(await assetDatabase.engine.assetLoader.loadGUIDAsync(objectData.id));
             }
 
-            serializedData.textures[uniformName] = { id:packageData.exportObjects[0].id };
+            serializedData.textures[uniformName] = { texture: { id:packageData.exportObjects[0].id } };
           },
         });
       }

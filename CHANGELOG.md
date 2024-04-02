@@ -6,6 +6,12 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.2.3
+
+`2024-03-22`
+
+- Fix: Compatibility with data template text modification method. [#214](https://github.com/galacean/effects-runtime/pull/214) @Sruimeng
+
 ## 1.2.2
 
 `2024-03-15`

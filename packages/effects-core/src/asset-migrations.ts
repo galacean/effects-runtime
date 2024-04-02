@@ -154,7 +154,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
           item.transform.position.y += -realAnchor[1] * startSize.y;
         }
         //@ts-expect-error
-        item.transform.anchor = { x:realAnchor[0] * startSize.x, y:realAnchor[1] * startSize.y };
+        item.transform.anchor = { x: realAnchor[0] * startSize.x, y: realAnchor[1] * startSize.y };
       }
     }
 
@@ -177,6 +177,53 @@ export function version3Migration (scene: Record<string, any>): Scene {
     // @ts-expect-error
     if (item.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY || item.endBehavior === spec.END_BEHAVIOR_PAUSE) {
       item.endBehavior = spec.END_BEHAVIOR_FREEZE;
+    }
+
+    // 动画数据转化 TODO: 动画数据移到 TimelineComponentData
+    //@ts-expect-error
+    item.content.tracks = [];
+    //@ts-expect-error
+    const tracks = item.content.tracks;
+
+    if (item.type !== spec.ItemType.particle) {
+      tracks.push({
+        clips:[
+          {
+            dataType:'TransformAnimationPlayableAsset',
+            animationClip:{
+              //@ts-expect-error
+              sizeOverLifetime: item.content.sizeOverLifetime,
+              //@ts-expect-error
+              rotationOverLifetime: item.content.rotationOverLifetime,
+              //@ts-expect-error
+              positionOverLifetime: item.content.positionOverLifetime,
+            },
+          },
+        ],
+      });
+    }
+
+    if (item.type === spec.ItemType.sprite) {
+      tracks.push({
+        clips:[
+          {
+            dataType:'SpriteColorAnimationPlayableAsset',
+            animationClip:{
+              //@ts-expect-error
+              colorOverLifetime:item.content.colorOverLifetime,
+              //@ts-expect-error
+              startColor:item.content.options.startColor,
+            },
+          },
+        ],
+      });
+    }
+
+    // gizmo 的 target id 转换为新的 item guid
+    //@ts-expect-error
+    if (item.content.options.target) {
+      //@ts-expect-error
+      item.content.options.target = itemGuidMap[item.content.options.target];
     }
 
     // item 的 content 转为 component data 加入 JSONScene.components

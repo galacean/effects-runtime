@@ -52,6 +52,7 @@ export class Ticker {
    */
   start () {
     this.paused = false;
+    this._deltaTime = 0;
     if (!this.intervalId) {
       this.lastTime = performance.now();
       const raf = requestAnimationFrame || function (func) {
@@ -76,6 +77,7 @@ export class Ticker {
     this.intervalId = 0;
     this.lastTime = 0;
     this.paused = true;
+    this._deltaTime = 0;
     this.tickers = [];
   }
 
@@ -84,6 +86,7 @@ export class Ticker {
    */
   pause () {
     this.paused = true;
+    this._deltaTime = 0;
   }
 
   /**
@@ -91,6 +94,7 @@ export class Ticker {
    */
   resume () {
     this.paused = false;
+    this._deltaTime = 0;
   }
 
   /**

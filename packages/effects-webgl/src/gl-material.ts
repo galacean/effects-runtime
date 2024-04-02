@@ -542,10 +542,10 @@ export class GLMaterial extends Material {
     }
 
     for (name in propertiesData.textures) {
-      const texture = propertiesData.textures[name] as Texture;
+      const textureProperties = propertiesData.textures[name] as any;
 
       // TODO 纹理通过 id 加入场景数据
-      this.setTexture(name, texture);
+      this.setTexture(name, textureProperties.texture);
     }
 
     if (data.shader) {

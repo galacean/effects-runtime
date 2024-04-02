@@ -4,7 +4,7 @@ import type {
   HitTestSphereParams,
   Engine,
   Renderer,
-  AnimationClipPlayable,
+  TransformAnimationPlayable,
 } from '@galacean/effects';
 import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec } from '@galacean/effects';
 import { Vector3 } from '../runtime/math';
@@ -551,13 +551,13 @@ export class ModelCameraComponent extends ItemBehaviour {
     if (position !== undefined) {
       this.transform.setPosition(position.x, position.y, position.z);
       if (clip) {
-        (clip.playable as AnimationClipPlayable).originalTransform.position = position.clone();
+        (clip.playable as TransformAnimationPlayable).originalTransform.position = position.clone();
       }
     }
     if (rotation !== undefined) {
       this.transform.setRotation(rotation.x, rotation.y, rotation.z);
       if (clip) {
-        (clip.playable as AnimationClipPlayable).originalTransform.rotation = rotation.clone();
+        (clip.playable as TransformAnimationPlayable).originalTransform.rotation = rotation.clone();
       }
     }
     this.updateMainCamera();

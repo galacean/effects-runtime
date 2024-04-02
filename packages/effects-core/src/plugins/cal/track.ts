@@ -1,20 +1,17 @@
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
-import { Playable, PlayableOutput } from './playable-graph';
+import { Playable, PlayableAsset, PlayableOutput } from './playable-graph';
 
 /**
  * @since 2.0.0
  * @internal
  */
-export class Track {
+export class Track extends PlayableAsset {
   id: string;
   name: string;
   bindingItem: VFXItem<VFXItemContent>;
 
   private clips: TimelineClip[] = [];
   private clipSeed = 0;
-
-  constructor () {
-  }
 
   createOutput (): PlayableOutput {
     const output = new PlayableOutput();
@@ -29,7 +26,7 @@ export class Track {
     return new Playable();
   }
 
-  createPlayebleTree (): Playable {
+  override createPlayable (): Playable {
     const defaultMixPlayable = this.createMixerPlayable();
 
     for (const clip of this.clips) {
