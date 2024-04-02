@@ -67,6 +67,7 @@ let seed = 1;
  * Material 抽象类
  */
 export abstract class Material extends EffectsObject implements Disposable {
+  // TODO: 待移除
   shaderSource: ShaderWithSource;
   readonly uniformSemantics: Record<string, UniformSemantic>;
   readonly renderType: MaterialRenderType;

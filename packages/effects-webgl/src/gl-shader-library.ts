@@ -5,7 +5,7 @@ import type {
 } from '@galacean/effects-core';
 import { ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMarcos } from '@galacean/effects-core';
 import { GLProgram } from './gl-program';
-import { GLShader } from './gl-shader';
+import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
@@ -24,7 +24,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   private glVertShaderMap = new Map<number, WebGLShader>();
   private glFragShaderMap = new Map<number, WebGLShader>();
   private shaderAllDone = false;
-  private cachedShaders: Record<string, GLShader> = {};
+  private cachedShaders: Record<string, GLShaderVariant> = {};
 
   constructor (
     public engine: GLEngine,
@@ -85,7 +85,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     if (shaderWithMacros.shared || (shaderWithMacros as SharedShaderWithSource).cacheId) {
       shared = true;
     }
-    this.cachedShaders[shaderCacheId] = new GLShader(this.engine, {
+    this.cachedShaders[shaderCacheId] = new GLShaderVariant(this.engine, {
       ...shaderWithMacros,
       vertex,
       fragment,
@@ -103,7 +103,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     return this.cachedShaders[shaderCacheId];
   }
 
-  compileShader (shader: GLShader, asyncCallback?: (result: ShaderCompileResult) => void) {
+  compileShader (shader: GLShaderVariant, asyncCallback?: (result: ShaderCompileResult) => void) {
     const shaderSource = shader.source;
     let shared = false;
 

@@ -1,3 +1,6 @@
+import type { ShaderData } from '../asset-loader';
+import { EffectsObjectData } from '../asset-loader';
+import { effectsClass } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
 
@@ -85,12 +88,31 @@ export interface SharedShaderWithSource {
 
 export type ShaderWithSource = InstancedShaderWithSource | SharedShaderWithSource;
 
-export abstract class Shader extends EffectsObject {
+export abstract class ShaderVariant extends EffectsObject {
+  shader: Shader;
   constructor (
     engine: Engine,
     public readonly source: ShaderWithSource,
   ) {
     super(engine);
+  }
+}
+
+@effectsClass('Shader')
+export class Shader extends EffectsObject {
+  shaderData: ShaderData;
+
+  createVariant () {
+    const shaderVariant = this.engine.getShaderLibrary().createShader(this.shaderData);
+
+    shaderVariant.shader = this;
+
+    return shaderVariant;
+  }
+
+  override fromData (data: ShaderData): void {
+    super.fromData(data);
+    this.shaderData = data;
   }
 }
 
@@ -100,7 +122,7 @@ export interface ShaderLibrary {
 
   addShader(shader: ShaderWithSource): void,
 
-  createShader (shaderSource: ShaderWithSource): Shader,
+  createShader (shaderSource: ShaderWithSource): ShaderVariant,
 
   /**
    * @param cacheId
