@@ -163,8 +163,13 @@ export class BezierPath {
     let flag = true, addedLength = this.catching.lastAddedLength;
     const distanceInLine = bezierData.totalLength * percent;
     const pNum = bezierData.points.length;
-    let j = distanceInLine < this.catching.lastAddedLength ? 0 : this.catching.lastPoint;
 
+    let j = this.catching.lastPoint;
+
+    if (distanceInLine < this.catching.lastAddedLength) {
+      j = 0;
+      addedLength = 0;
+    }
     while (flag) {
       addedLength += bezierData.points[j].partialLength;
       if (distanceInLine === 0 || percent === 0 || j === pNum - 1) {
