@@ -48,12 +48,16 @@
     {
       "url": "https://mdn.alipayobjects.com/mars/afts/img/A*sM37R7Qny64AAAAAAAAAAAAADlB4AQ/original",
       "renderLevel": "B+"
+    },
+    {
+      "url": "https://mdn.alipayobjects.com/mars/afts/img/A*wEpbTq1BvAUAAAAAAAAAAAAADlB4AQ/original",
+      "renderLevel": "B+"
     }
   ],
   "spines": [],
   "version": "3.0",
   "shapes": [],
-  "plugins": [],
+  "plugins": ["model"],
   "type": "mars",
   "compositions": [
     {
@@ -68,29 +72,17 @@
       ],
       "items": [
         {
-          "id": "2f29a793b96a47a692239e8c858a0a33"
+          "id": "ceaa0ba9bf204438ac74bc8840f332b8"
         },
         {
-          "id": "9dbf4c91c5394f1dbe08010c9ed2f1a1"
-        },
-        {
-          "id": "e412b3bcf7ee4019ab882a41aec9efdf"
-        },
-        {
-          "id": "9830e941be074b6da820819eee0e884d"
-        },
-        {
-          "id": "90d16d7487674f08aaf398aca5f91b0e"
-        },
-        {
-          "id": "6b668d8ea2ef4965ad90d0a57446b8d8"
+          "id": "5d2ea6f25e2b40308d824d6db9c89661"
         }
       ],
       "camera": {
         "fov": 60,
         "far": 1000,
-        "near": 0.3,
-        "clipMode": 0,
+        "near": 0.1,
+        "clipMode": 1,
         "position": [
           0,
           0,
@@ -103,15 +95,15 @@
         ]
       },
       "globalVolume": {
-        "usePostProcessing": true,
-        "useHDR": true,
-        "useBloom": 1,
+        "usePostProcessing": false,
+        "useHDR": false,
+        "useBloom": 0,
         "threshold": 0.8,
         "bloomIntensity": 1,
         "brightness": 1.5,
         "saturation": 1,
         "contrast": 1,
-        "useToneMapping": 1
+        "useToneMapping": 0
       }
     }
   ],
@@ -348,7 +340,7 @@
           "z": 0
         },
         "scale": {
-          "x": 5,
+          "x": 1,
           "y": 1,
           "z": 1
         }
@@ -375,7 +367,7 @@
         "position": {
           "x": 0,
           "y": 0,
-          "z": 0
+          "z": 5
         },
         "rotation": {
           "x": 0,
@@ -383,7 +375,7 @@
           "z": 0
         },
         "scale": {
-          "x": 5,
+          "x": 1,
           "y": 1,
           "z": 1
         }
@@ -660,19 +652,19 @@
     },
     {
       "id": "35be2cb10a014194844c6ce89c8a41c4",
-      "dataType": 10000,
+      "dataType": 10002,
       "item": {
         "id": "5d2ea6f25e2b40308d824d6db9c89661"
       },
       "options": {
         "lightType": "point",
-        "color": {
-          "r": 0.5,
-          "g": 0.1,
-          "b": 1,
-          "a": 1
-        },
-        "intensity": 10,
+        "color": [
+          255,
+          255,
+          255,
+          255
+        ],
+        "intensity": 1,
         "range": 100
       }
     }
@@ -862,42 +854,38 @@
       "ints": {
         "shaderType": 0,
         "useSpecularAA": 1,
-        "baseColorTextureCoordinate": 0,
         "side": 1028,
-        "blending": 100,
-        "alphaCutOff": 0.3
+        "blending": 100
       },
       "floats": {
-        "metallicFactor": 0.8,
-        "roughnessFactor": 0.5,
-        "normalTextureScale": 0.5,
-        "occlusionTextureStrength": 0.9,
-        "emissiveIntensity": 2
+        "u_AlphaCutoff": 0.3,
+        "u_MetallicFactor": 1,
+        "u_RoughnessFactor": 0.3,
+        "u_NormalScale": 1,
+        "u_OcclusionStrength": 1,
+        "u_EmissiveIntensity": 1
       },
-      "vector4s": {},
-      "colors": {
-        "baseColorFactor": {
-          "r": 1,
-          "g": 0.5,
-          "b": 0.1,
-          "a": 1
+      "vector4s": {
+        "u_BaseColorFactor": {
+          "x": 255,
+          "y": 255,
+          "z": 255,
+          "w": 255
         },
-        "emissiveFactor": {
-          "r": 0,
-          "g": 0.0,
-          "b": 0.5,
-          "a": 1
+        "u_EmissiveFactor": {
+          "x": 172,
+          "y": 43,
+          "z": 217,
+          "w": 255
         }
       },
+      "colors": {
+        
+      },
       "textures": {
-        "metallicRoughnessTexture": {
-          "id": "1366ea75f3264fadb0f0e1f7fac56512"
-        },
-        "normalTexture": {
-          "id": "4d80032470944d6fb550bf7bb587b22f"
-        },
-        "baseColorTexture": {
-          "id": "a21f304a931347a6bdddcc632e962445"
+        
+        "u_BaseColorSampler": {
+          "id": "a21f304a931347a6bdddcc632e962446"
         }
       }
     }
@@ -960,6 +948,7 @@
     },
     {
       "id": "eee1bee74243426e9dd9a5d0f7c85aa2",
+      "name": "plane",
       "dataType": 8,
       "vertexData": {
         "vertexCount": 121,
@@ -1228,6 +1217,28 @@
       
       "generateMipmap": true,
       "source": 11
+    },
+    {
+      "sourceType": 2,
+      "sourceFrom": {
+        "url": "https://mdn.alipayobjects.com/mars/afts/img/A*sM37R7Qny64AAAAAAAAAAAAADlB4AQ/original",
+        "type": 2
+      },
+      "minFilter": 9987,
+      "magFilter": 9729,
+      "id": "a21f304a931347a6bdddcc632e962446",
+      "dataType": 9,
+      "wrapS": 10497,
+      "wrapT": 10497,
+      "target": 3553,
+      "format": 6408,
+      "internalFormat": 6408,
+      "type": 5121,
+      "anisotropic": 1,
+      "premultiplyAlpha": false,
+      
+      "generateMipmap": true,
+      "source": 12
     }
   ]
 }

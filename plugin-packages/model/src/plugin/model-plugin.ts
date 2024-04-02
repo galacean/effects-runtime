@@ -22,7 +22,7 @@ import type { PShaderContext } from '../runtime';
 import { PTransform, PSceneManager, PCoordinate, PMaterialType } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
-import { ModelCameraComponent, ModelDataType } from './model-item';
+import { ModelCameraComponent, ModelDataType, ModelLightComponent } from './model-item';
 import { getPBRPassShaderCode } from '../utility';
 
 /**
@@ -323,7 +323,7 @@ export class ModelPluginComponent extends ItemBehaviour {
     const items = this.item.composition?.items ?? [];
 
     items.forEach(item => {
-      if (item.type === spec.ItemType.light) {
+      if (item.getComponent(ModelLightComponent)) {
         lightItemCount++;
       }
     });

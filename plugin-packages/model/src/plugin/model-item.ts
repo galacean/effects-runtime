@@ -137,9 +137,6 @@ export class ModelMeshComponent extends RendererComponent {
 
       this.bounding = bounding && JSON.parse(JSON.stringify(bounding));
 
-      const meshOptions = this.data.options;
-
-      //CheckerHelper.assertModelMeshOptions(meshOptions);
       this.content = new PMesh(this.engine, this.item.name, this.data, this, this.item.parentId);
     }
   }

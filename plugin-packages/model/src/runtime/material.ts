@@ -1,4 +1,5 @@
-import type { Material, Texture } from '@galacean/effects';
+import type { Texture } from '@galacean/effects';
+import { Material } from '@galacean/effects';
 import { spec, glContext } from '@galacean/effects';
 import type {
   ModelMaterialOptions,
@@ -21,6 +22,8 @@ import { PShaderManager } from './shader';
  * 3D 材质基础类，支持公共的材质功能
  */
 export abstract class PMaterialBase extends PObject {
+  fromMaterial = false;
+  material?: Material;
   /**
    * 材质类型，主要是 pbr 和 unlit 两类
    */
@@ -492,7 +495,7 @@ export class PMaterialPBR extends PMaterialBase {
   /**
    * 自发光颜色值，默认是黑色 Vector3(0, 0, 0)
    */
-  emissiveFactor: Vector3 = new Vector3(0, 0, 0);
+  emissiveFactor: Vector4 = new Vector4(0, 0, 0, 0);
   /**
    * 自发光强度
    */
@@ -541,7 +544,7 @@ export class PMaterialPBR extends PMaterialBase {
     }
     const emissiveFactor = PluginHelper.toPluginColor4(options.emissiveFactor);
 
-    this.emissiveFactor = Vector3.fromArray(emissiveFactor);
+    this.setEmissiveFactor(Vector3.fromArray(emissiveFactor));
     this.emissiveIntensity = options.emissiveIntensity;
 
     this.enableShadow = options.enableShadow ?? false;
@@ -556,6 +559,47 @@ export class PMaterialPBR extends PMaterialBase {
     this.blendMode = this.getBlendMode(options.blending);
     this.alphaCutOff = options.alphaCutOff ?? 0;
     this.faceSideMode = this.getFaceSideMode(options.side);
+  }
+
+  createFromMaterial (mat: Material) {
+    this.fromMaterial = true;
+    this.material = mat;
+    this.name = mat.name;
+    this.type = PObjectType.material;
+    this.materialType = mat.getInt('shaderType') ? PMaterialType.unlit : PMaterialType.pbr;
+    //
+    this.baseColorTexture = mat.getTexture('u_BaseColorSampler') ?? undefined;
+    this.baseColorFactor = mat.getVector4('u_BaseColorFactor') ?? new Vector4(255, 255, 255, 255);
+    this.baseColorFactor.multiply(1 / 255.0);
+    this.metallicRoughnessTexture = mat.getTexture('u_MetallicRoughnessSampler') ?? undefined;
+
+    this.useSpecularAA = mat.getInt('useSpecularAA') === 1;
+    this.metallicFactor = mat.getFloat('u_MetallicFactor') ?? 1;
+    this.roughnessFactor = mat.getFloat('u_RoughnessFactor') ?? 1;
+
+    this.normalTexture = mat.getTexture('u_NormalSampler') ?? undefined;
+    this.normalTextureScale = mat.getFloat('u_NormalScale') ?? 1;
+
+    this.occlusionTexture = mat.getTexture('u_OcclusionSampler') ?? undefined;
+    this.occlusionTextureStrength = mat.getFloat('u_OcclusionTextureStrength') ?? 1;
+
+    this.emissiveTexture = mat.getTexture('u_EmissiveSampler') ?? undefined;
+    this.emissiveFactor = mat.getVector4('u_EmissiveFactor') ?? new Vector4(0, 0, 0, 0);
+    this.emissiveFactor.multiply(1 / 255.0);
+    this.emissiveIntensity = mat.getFloat('u_EmissiveIntensity') ?? 1;
+    const emissiveFactor = this.emissiveFactor.clone().multiply(this.emissiveIntensity);
+
+    mat.setVector4('u_EmissiveFactor', emissiveFactor);
+
+    this.enableShadow = false;
+    this.depthMask = false;
+    const blending = mat.getInt('blending') ?? spec.MaterialBlending.opaque;
+
+    this.blendMode = this.getBlendMode(blending);
+    this.alphaCutOff = mat.getFloat('u_AlphaCutoff') ?? 0;
+    const side = mat.getInt('side') ?? spec.SideMode.FRONT;
+
+    this.faceSideMode = this.getFaceSideMode(side);
   }
 
   /**
@@ -623,6 +667,38 @@ export class PMaterialPBR extends PMaterialBase {
    */
   override updateUniforms (material: Material) {
     super.updateUniforms(material);
+    if (this.fromMaterial) {
+      const uvTransform = new Matrix3().identity();
+
+      if (this.baseColorTexture !== undefined) {
+        material.setInt('u_BaseColorUVSet', 0);
+        material.setMatrix3('u_BaseColorUVTransform', uvTransform);
+      }
+      //
+      if (this.metallicRoughnessTexture !== undefined) {
+        material.setInt('u_MetallicRoughnessUVSet', 0);
+        material.setMatrix3('u_MetallicRoughnessUVTransform', uvTransform);
+      }
+      //
+      if (this.normalTexture !== undefined) {
+        material.setInt('u_NormalUVSet', 0);
+        material.setMatrix3('u_NormalUVTransform', uvTransform);
+      }
+      //
+      if (this.occlusionTexture !== undefined) {
+        material.setInt('u_OcclusionUVSet', 0);
+        material.setMatrix3('u_OcclusionUVTransform', uvTransform);
+      }
+      //
+      if (this.emissiveTexture !== undefined) {
+        material.setInt('u_EmissiveUVSet', 0);
+        material.setMatrix3('u_EmissiveUVTransform', uvTransform);
+      }
+
+      material.setFloat('u_Exposure', 3.0);
+
+      return;
+    }
     //
     const uvTransform = new Matrix3().identity();
 
@@ -679,7 +755,7 @@ export class PMaterialPBR extends PMaterialBase {
       const emissiveFactor = this.getEmissiveFactor();
 
       material.setTexture('u_EmissiveSampler', this.emissiveTexture);
-      material.setVector3('u_EmissiveFactor', emissiveFactor);
+      material.setVector4('u_EmissiveFactor', emissiveFactor);
       material.setInt('u_EmissiveUVSet', 0);
       if (this.emissiveTextureTrans !== undefined) {
         material.setMatrix3('u_EmissiveUVTransform', this.emissiveTextureTrans);
@@ -690,7 +766,7 @@ export class PMaterialPBR extends PMaterialBase {
     } else if (this.hasEmissiveFactor()) {
       const emissiveFactor = this.getEmissiveFactor();
 
-      material.setVector3('u_EmissiveFactor', emissiveFactor);
+      material.setVector4('u_EmissiveFactor', emissiveFactor);
     }
 
     material.setFloat('u_Exposure', 3.0);
@@ -882,7 +958,7 @@ export class PMaterialPBR extends PMaterialBase {
    * 获取自发光颜色，包含强度
    * @returns
    */
-  getEmissiveFactor (): Vector3 {
+  getEmissiveFactor (): Vector4 {
     return this.emissiveFactor.clone().multiply(this.emissiveIntensity);
   }
 
@@ -893,10 +969,18 @@ export class PMaterialPBR extends PMaterialBase {
   setEmissiveFactor (val: Vector3 | spec.vec3) {
     if (val instanceof Vector3) {
       // Vector3
-      this.emissiveFactor.set(val.x, val.y, val.z);
+      this.emissiveFactor.set(val.x, val.y, val.z, 0);
     } else {
       // vec3
-      this.emissiveFactor.set(val[0], val[1], val[2]);
+      this.emissiveFactor.set(val[0], val[1], val[2], 0);
+    }
+  }
+
+  getTextureFromMaterial (mat: Material, texName: string): Texture | undefined {
+    const tex = mat.getTexture(texName);
+
+    if (tex !== null) {
+      return tex;
     }
   }
 
@@ -912,19 +996,27 @@ export type PMaterial = PMaterialUnlit | PMaterialPBR;
  * @param options - 材质参数
  * @returns 材质对象
  */
-export function createPluginMaterial (options: ModelMaterialOptions): PMaterial {
-  if (options.type === spec.MaterialType.pbr) {
+export function createPluginMaterial (options: ModelMaterialOptions | Material): PMaterial {
+  if (options instanceof Material) {
     const materialPBR = new PMaterialPBR();
 
-    materialPBR.create(options);
+    materialPBR.createFromMaterial(options);
 
     return materialPBR;
   } else {
-    const materialUnlit = new PMaterialUnlit();
+    if (options.type === spec.MaterialType.pbr) {
+      const materialPBR = new PMaterialPBR();
 
-    materialUnlit.create(options);
+      materialPBR.create(options);
 
-    return materialUnlit;
+      return materialPBR;
+    } else {
+      const materialUnlit = new PMaterialUnlit();
+
+      materialUnlit.create(options);
+
+      return materialUnlit;
+    }
   }
 }
 
