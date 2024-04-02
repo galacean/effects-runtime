@@ -219,6 +219,13 @@ export function version3Migration (scene: Record<string, any>): Scene {
       });
     }
 
+    // gizmo 的 target id 转换为新的 item guid
+    //@ts-expect-error
+    if (item.content.options.target) {
+      //@ts-expect-error
+      item.content.options.target = itemGuidMap[item.content.options.target];
+    }
+
     // item 的 content 转为 component data 加入 JSONScene.components
     const uuid = uuidv4().replace(/-/g, '');
 
