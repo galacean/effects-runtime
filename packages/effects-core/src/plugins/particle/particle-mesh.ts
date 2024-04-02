@@ -1,33 +1,31 @@
-import type * as spec from '@galacean/effects-specification';
 import type { Matrix4 } from '@galacean/effects-math/es/core/index';
 import { Euler, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
-import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
+import type * as spec from '@galacean/effects-specification';
+import { RENDER_PREFER_LOOKUP_TEXTURE, getConfig } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
+import type { Engine } from '../../engine';
 import type { MaterialProps } from '../../material';
 import {
-  createShaderWithMarcos,
-  getPreMultiAlpha,
   Material,
+  getPreMultiAlpha,
   setBlendMode,
   setMaskMode,
   setSideMode,
-  ShaderType,
 } from '../../material';
 import type { ValueGetter } from '../../math';
 import {
+  CurveValue,
+  calculateTranslation,
   createKeyFrameMeta,
   createValueGetter,
-  CurveValue,
   getKeyFrameMetaByRawValue,
-  calculateTranslation,
 } from '../../math';
-import type { Attribute, GeometryProps, ShaderMarcos, SharedShaderWithSource, GPUCapability } from '../../render';
-import { Geometry, GLSLVersion, Mesh } from '../../render';
+import type { Attribute, GPUCapability, GeometryProps, ShaderMarcos, SharedShaderWithSource } from '../../render';
+import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
-import { generateHalfFloatTexture, Texture } from '../../texture';
+import { Texture, generateHalfFloatTexture } from '../../texture';
 import { Transform } from '../../transform';
 import { enlargeBuffer, imageDataFromGradient } from '../../utils';
-import type { Engine } from '../../engine';
 
 export type Point = {
   vel: Vector3,
@@ -299,8 +297,8 @@ export class ParticleMesh implements ParticleMeshData {
     const vertex = originalVertex;
 
     const shader = {
-      fragment: createShaderWithMarcos(marcos, fragment, ShaderType.fragment, level),
-      vertex: createShaderWithMarcos(marcos, vertex, ShaderType.vertex, level),
+      fragment,
+      vertex,
       glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
       shared: true,
       cacheId: shaderCache,

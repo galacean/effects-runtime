@@ -1,8 +1,8 @@
-import type * as spec from '@galacean/effects-specification';
 import { effectsClassStore } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { Material } from './material';
+import type { ShaderMarcos } from './render';
 import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
@@ -42,10 +42,6 @@ export class AssetLoader {
         effectsObject = Texture.create(this.engine, effectsObjectData);
 
         return effectsObject as T;
-
-        break;
-      case DataType.Shader:
-        effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
 
         break;
       default: {
@@ -108,10 +104,6 @@ export class AssetLoader {
         effectsObject = Texture.create(this.engine, effectsObjectData);
 
         return effectsObject as T;
-
-        break;
-      case DataType.Shader:
-        effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
 
         break;
       default: {
@@ -181,23 +173,45 @@ export interface EffectsObjectData {
   dataType: string,
 }
 
+export interface ColorData {
+  r: number,
+  g: number,
+  b: number,
+  a: number,
+}
+
+export interface Vector4Data {
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+}
+
+export interface Vector2Data {
+  x: number,
+  y: number,
+}
+
+export interface MaterialTextureProperty {
+  texture: DataPath,
+  offset: Vector2Data,
+  scale: Vector2Data,
+}
+
 export interface MaterialData extends EffectsObjectData {
   shader: DataPath,
   blending?: boolean,
   zWrite?: boolean,
   zTest?: boolean,
-  floats: Record<string, number>,
   ints: Record<string, number>,
-  vector2s?: Record<string, spec.vec2>,
-  vector3s?: Record<string, spec.vec3>,
-  vector4s: Record<string, { x: number, y: number, z: number, w: number }>,
-  colors: Record<string, { r: number, g: number, b: number, a: number }>,
-  matrices?: Record<string, spec.mat4>,
-  matrice3s?: Record<string, spec.mat3>,
-  textures?: Record<string, DataPath>,
-  floatArrays?: Record<string, number[]>,
-  vector4Arrays?: Record<string, number[]>,
-  matrixArrays?: Record<string, number[]>,
+  floats: Record<string, number>,
+  vector4s: Record<string, Vector4Data>,
+  colors: Record<string, ColorData>,
+  textures: Record<string, MaterialTextureProperty>,
+  /**
+   * shader的宏定义
+   */
+  marcos?: ShaderMarcos,
 }
 
 export interface GeometryData extends EffectsObjectData {

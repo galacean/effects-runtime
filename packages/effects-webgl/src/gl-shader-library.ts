@@ -1,11 +1,11 @@
 import stringHash from 'string-hash';
 import type {
-  Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderWithSource,
+  Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderMarcos, ShaderWithSource,
   SharedShaderWithSource,
 } from '@galacean/effects-core';
-import { ShaderCompileResultStatus, GLSLVersion } from '@galacean/effects-core';
+import { ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMarcos } from '@galacean/effects-core';
 import { GLProgram } from './gl-program';
-import { GLShader } from './gl-shader';
+import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
@@ -24,7 +24,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   private glVertShaderMap = new Map<number, WebGLShader>();
   private glFragShaderMap = new Map<number, WebGLShader>();
   private shaderAllDone = false;
-  private cachedShaders: Record<string, GLShader> = {};
+  private cachedShaders: Record<string, GLShaderVariant> = {};
 
   constructor (
     public engine: GLEngine,
@@ -63,28 +63,41 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   }
 
   // TODO 创建shader的ShaderWithSource和shader的source类型一样，待优化。
-  addShader (shaderSource: ShaderWithSource): string {
-    const shaderCacheId = this.computeShaderCacheId(shaderSource);
+  addShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos): string {
+    const mergedMacros: ShaderMarcos = [];
+
+    if (shaderSource.marcos) {
+      mergedMacros.push(...shaderSource.marcos);
+    }
+    if (macros) {
+      mergedMacros.push(...macros);
+    }
+    const shaderWithMacros = {
+      ...shaderSource,
+      vertex: createShaderWithMarcos(mergedMacros, shaderSource.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
+      fragment: createShaderWithMarcos(mergedMacros, shaderSource.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
+    };
+    const shaderCacheId = this.computeShaderCacheId(shaderWithMacros);
 
     if (this.cachedShaders[shaderCacheId]) {
       return shaderCacheId;
     }
     this.shaderAllDone = false;
 
-    const header = shaderSource.glslVersion === GLSLVersion.GLSL3 ? '#version 300 es\n' : '';
-    const vertex = shaderSource.vertex ? header + shaderSource.vertex : '';
-    const fragment = shaderSource.fragment ? header + shaderSource.fragment : '';
+    const header = shaderWithMacros.glslVersion === GLSLVersion.GLSL3 ? '#version 300 es\n' : '';
+    const vertex = shaderWithMacros.vertex ? header + shaderWithMacros.vertex : '';
+    const fragment = shaderWithMacros.fragment ? header + shaderWithMacros.fragment : '';
 
     let shared = false;
 
-    if (shaderSource.shared || (shaderSource as SharedShaderWithSource).cacheId) {
+    if (shaderWithMacros.shared || (shaderWithMacros as SharedShaderWithSource).cacheId) {
       shared = true;
     }
-    this.cachedShaders[shaderCacheId] = new GLShader(this.engine, {
-      ...shaderSource,
+    this.cachedShaders[shaderCacheId] = new GLShaderVariant(this.engine, {
+      ...shaderWithMacros,
       vertex,
       fragment,
-      name: shaderSource.name || shaderCacheId,
+      name: shaderWithMacros.name || shaderCacheId,
       shared,
     });
     this.cachedShaders[shaderCacheId].id = shaderCacheId;
@@ -92,13 +105,13 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     return shaderCacheId;
   }
 
-  createShader (shaderSource: ShaderWithSource) {
-    const shaderCacheId = this.addShader(shaderSource);
+  createShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos) {
+    const shaderCacheId = this.addShader(shaderSource, macros);
 
     return this.cachedShaders[shaderCacheId];
   }
 
-  compileShader (shader: GLShader, asyncCallback?: (result: ShaderCompileResult) => void) {
+  compileShader (shader: GLShaderVariant, asyncCallback?: (result: ShaderCompileResult) => void) {
     const shaderSource = shader.source;
     let shared = false;
 

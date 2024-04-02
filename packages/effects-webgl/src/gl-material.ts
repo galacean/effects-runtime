@@ -1,15 +1,16 @@
 import type {
-  MaterialDestroyOptions, MaterialProps, MaterialStates, UndefinedAble, Texture, GlobalUniforms,
-  Renderer, MaterialData,
+  Engine, GlobalUniforms, MaterialData, MaterialDestroyOptions, MaterialProps, MaterialStates,
+  Renderer, Texture, UndefinedAble,
 } from '@galacean/effects-core';
 import {
-  DestroyOptions, Material, assertExist, throwDestroyedError, math, isFunction, logger, DataType,
+  DataType, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
+  math, throwDestroyedError,
 } from '@galacean/effects-core';
+import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
-import type { GLShader } from './gl-shader';
+import type { GLShaderVariant } from './gl-shader';
 import type { GLTexture } from './gl-texture';
-import type { GLEngine } from './gl-engine';
 
 type Color = math.Color;
 type Vector2 = math.Vector2;
@@ -22,7 +23,8 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-  shader: GLShader;
+  shader: Shader;
+  shaderVariant: GLShaderVariant;
 
   // material存放的uniform数据。
   private floats: Record<string, number> = {};
@@ -39,11 +41,28 @@ export class GLMaterial extends Material {
   private vector4Arrays: Record<string, number[]> = {};
   private matrixArrays: Record<string, number[]> = {};
 
-  samplers: string[] = [];  // material存放的sampler名称。
-  uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
+  private samplers: string[] = [];  // material存放的sampler名称。
+  private uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
 
-  uniformDirtyFlag = true;
-  glMaterialState = new GLMaterialState();
+  private uniformDirtyFlag = true;
+  private macrosDirtyFlag = true;
+  private readonly macros: Record<string, number | boolean> = {};
+  private glMaterialState = new GLMaterialState();
+
+  constructor (
+    engine: Engine,
+    props?: MaterialProps,
+  ) {
+    super(engine, props);
+    if (props) {
+      this.shader = new Shader(engine);
+      this.shader.shaderData = {
+        ...props.shader,
+        id: generateGUID(),
+        dataType: DataType.Shader,
+      };
+    }
+  }
 
   override get blending () {
     return this.glMaterialState.blending;
@@ -199,14 +218,22 @@ export class GLMaterial extends Material {
     value !== undefined && this.glMaterialState.setCullFace(value);
   }
 
-  enableKeyword (keyword: string): void {
-    throw new Error('Method not implemented.');
+  override enableMacro (keyword: string): void {
+    if (!this.isMacroEnabled(keyword)) {
+      this.macros[keyword] = true;
+      this.macrosDirtyFlag = true;
+    }
   }
-  disableKeyword (keyword: string): void {
-    throw new Error('Method not implemented.');
+
+  override disableMacro (keyword: string): void {
+    if (this.isMacroEnabled(keyword)) {
+      delete this.macros[keyword];
+      this.macrosDirtyFlag = true;
+    }
   }
-  isKeywordEnabled (keyword: string): boolean {
-    throw new Error('Method not implemented.');
+
+  override isMacroEnabled (keyword: string): boolean {
+    return this.macros[keyword] !== undefined;
   }
 
   // TODO 待废弃 兼容 model/spine 插件 改造后可移除
@@ -236,12 +263,11 @@ export class GLMaterial extends Material {
     const glEngine = this.engine as GLEngine;
 
     glEngine.addMaterial(this);
-    if (!this.shader) {
-      const pipelineContext = glEngine.getGLPipelineContext();
-
-      this.shader = pipelineContext.shaderLibrary.createShader(this.shaderSource);
+    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
+      this.shaderVariant = this.shader.createVariant(this.macros) as GLShaderVariant;
+      this.macrosDirtyFlag = false;
     }
-    this.shader.initialize(glEngine);
+    this.shaderVariant.initialize(glEngine);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
 
@@ -263,7 +289,7 @@ export class GLMaterial extends Material {
     const engine = renderer.engine as GLEngine;
     const pipelineContext = engine.getGLPipelineContext();
 
-    this.shader.program.bind();
+    this.shaderVariant.program.bind();
     this.setupStates(pipelineContext);
     let name: string;
 
@@ -282,20 +308,20 @@ export class GLMaterial extends Material {
 
     // 更新 cached uniform location
     if (this.uniformDirtyFlag) {
-      this.shader.fillShaderInformation(this.uniforms, this.samplers);
+      this.shaderVariant.fillShaderInformation(this.uniforms, this.samplers);
       this.uniformDirtyFlag = false;
     }
 
     if (globalUniforms) {
       // 设置全局 uniform
       for (name in globalUniforms.floats) {
-        this.shader.setFloat(name, globalUniforms.floats[name]);
+        this.shaderVariant.setFloat(name, globalUniforms.floats[name]);
       }
       for (name in globalUniforms.ints) {
-        this.shader.setInt(name, globalUniforms.ints[name]);
+        this.shaderVariant.setInt(name, globalUniforms.ints[name]);
       }
       for (name in globalUniforms.matrices) {
-        this.shader.setMatrix(name, globalUniforms.matrices[name]);
+        this.shaderVariant.setMatrix(name, globalUniforms.matrices[name]);
       }
     }
 
@@ -306,43 +332,43 @@ export class GLMaterial extends Material {
       }
     }
     for (name in this.floats) {
-      this.shader.setFloat(name, this.floats[name]);
+      this.shaderVariant.setFloat(name, this.floats[name]);
     }
     for (name in this.ints) {
-      this.shader.setInt(name, this.ints[name]);
+      this.shaderVariant.setInt(name, this.ints[name]);
     }
     for (name in this.floatArrays) {
-      this.shader.setFloats(name, this.floatArrays[name]);
+      this.shaderVariant.setFloats(name, this.floatArrays[name]);
     }
     for (name in this.textures) {
-      this.shader.setTexture(name, this.textures[name]);
+      this.shaderVariant.setTexture(name, this.textures[name]);
     }
     for (name in this.vector2s) {
-      this.shader.setVector2(name, this.vector2s[name]);
+      this.shaderVariant.setVector2(name, this.vector2s[name]);
     }
     for (name in this.vector3s) {
-      this.shader.setVector3(name, this.vector3s[name]);
+      this.shaderVariant.setVector3(name, this.vector3s[name]);
     }
     for (name in this.vector4s) {
-      this.shader.setVector4(name, this.vector4s[name]);
+      this.shaderVariant.setVector4(name, this.vector4s[name]);
     }
     for (name in this.colors) {
-      this.shader.setColor(name, this.colors[name]);
+      this.shaderVariant.setColor(name, this.colors[name]);
     }
     for (name in this.quaternions) {
-      this.shader.setQuaternion(name, this.quaternions[name]);
+      this.shaderVariant.setQuaternion(name, this.quaternions[name]);
     }
     for (name in this.matrices) {
-      this.shader.setMatrix(name, this.matrices[name]);
+      this.shaderVariant.setMatrix(name, this.matrices[name]);
     }
     for (name in this.matrice3s) {
-      this.shader.setMatrix3(name, this.matrice3s[name]);
+      this.shaderVariant.setMatrix3(name, this.matrice3s[name]);
     }
     for (name in this.vector4Arrays) {
-      this.shader.setVector4Array(name, this.vector4Arrays[name]);
+      this.shaderVariant.setVector4Array(name, this.vector4Arrays[name]);
     }
     for (name in this.matrixArrays) {
-      this.shader.setMatrixArray(name, this.matrixArrays[name]);
+      this.shaderVariant.setMatrixArray(name, this.matrixArrays[name]);
     }
   }
 
@@ -506,10 +532,6 @@ export class GLMaterial extends Material {
     this.vector4s = {};
 
     const propertiesData = {
-      vector2s: {},
-      matrices: {},
-      textures: {},
-      floatArrays: {},
       blending: false,
       zTest: false,
       zWrite: false,
@@ -543,15 +565,15 @@ export class GLMaterial extends Material {
     }
 
     for (name in propertiesData.textures) {
-      const textureProperties = propertiesData.textures[name] as any;
+      const textureProperties = propertiesData.textures[name];
 
       // TODO 纹理通过 id 加入场景数据
-      this.setTexture(name, textureProperties.texture);
+      this.setTexture(name, textureProperties.texture as Texture);
     }
 
     if (data.shader) {
-      this.shader = data.shader as GLShader;
-      this.shaderSource = this.shader.source;
+      this.shader = data.shader as unknown as Shader;
+      this.shaderSource = this.shader.shaderData;
     }
 
     this.initialized = false;
@@ -567,6 +589,7 @@ export class GLMaterial extends Material {
     const materialData: MaterialData = this.taggedProperties;
 
     if (this.shader) {
+      //@ts-expect-error
       materialData.shader = this.shader;
     }
     materialData.floats = {};
@@ -672,7 +695,7 @@ export class GLMaterial extends Material {
     if (this.destroyed) {
       return;
     }
-    this.shader?.dispose();
+    this.shaderVariant?.dispose();
     if (options?.textures !== DestroyOptions.keep) {
       Object.keys(this.textures).forEach(key => {
         const texture = this.textures[key];

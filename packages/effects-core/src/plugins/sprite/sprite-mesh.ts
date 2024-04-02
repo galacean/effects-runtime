@@ -3,7 +3,6 @@ import type * as spec from '@galacean/effects-specification';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
-import { createShaderWithMarcos, ShaderType } from '../../material';
 import type { ValueGetter } from '../../math';
 import type { GPUCapabilityDetail, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
@@ -74,8 +73,8 @@ export function spriteMeshShaderFromFilter (level: number, options?: { count?: n
   const vertex = itemVert.replace(/#pragma\s+FILTER_VERT/, 'vec4 filterMain(float t,vec4 pos){return effects_MatrixVP * pos;}');
 
   return {
-    fragment: createShaderWithMarcos(marcos, fragment, ShaderType.fragment, level),
-    vertex: createShaderWithMarcos(marcos, vertex, ShaderType.vertex, level),
+    fragment,
+    vertex,
     glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
     marcos,
     shared: true,
