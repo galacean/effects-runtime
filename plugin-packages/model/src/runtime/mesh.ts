@@ -555,6 +555,8 @@ export class PPrimitive {
     }
 
     this.effectsMesh = mesh;
+
+    this.material.setMaterialStates(material);
   }
 
   private getFeatureList (lightCount: number, pbrPass: boolean, skybox?: PSkybox): string[] {
@@ -893,46 +895,51 @@ export class PPrimitive {
       const aPos = val.attributes['aPos'];
       // @ts-expect-error
       const aUV = val.attributes['aUV'];
-      const aNormalData = val.getAttributeData('aNormal')!;
-      const aPosData = val.getAttributeData('aPos')!;
-      const aUVData = val.getAttributeData('aUV');
 
-      if (__DEBUG__) {
-        for (let i = 0; i < aNormalData?.length; i += 3) {
-          const x = aPosData[i];
-          const y = aPosData[i + 1];
-          const z = aPosData[i + 2];
-          const len = Math.sqrt(x * x + y * y + z * z);
+      if (aNormal && aPos && aUV) {
+        const aNormalData = val.getAttributeData('aNormal')!;
+        const aPosData = val.getAttributeData('aPos')!;
+        const aUVData = val.getAttributeData('aUV');
 
-          aNormalData[i] = x / len;
-          aNormalData[i + 1] = y / len;
-          aNormalData[i + 2] = z / len;
+        if (__DEBUG__) {
+          for (let i = 0; i < aNormalData?.length; i += 3) {
+            const x = aPosData[i];
+            const y = aPosData[i + 1];
+            const z = aPosData[i + 2];
+            const len = Math.sqrt(x * x + y * y + z * z);
+
+            aNormalData[i] = x / len;
+            aNormalData[i + 1] = y / len;
+            aNormalData[i + 2] = z / len;
+          }
         }
-      }
-      const newGeom = Geometry.create(val.engine, {
-        attributes: {
-          a_Position: {
-            ...aPos,
-            data: aPosData,
+        const newGeom = Geometry.create(val.engine, {
+          attributes: {
+            a_Position: {
+              ...aPos,
+              data: aPosData,
+            },
+            a_UV1: {
+              ...aUV,
+              data: aUVData,
+            },
+            a_Normal: {
+              ...aNormal,
+              data: aNormalData,
+            },
           },
-          a_UV1: {
-            ...aUV,
-            data: aUVData,
-          },
-          a_Normal: {
-            ...aNormal,
-            data: aNormalData,
-          },
-        },
-        // @ts-expect-error
-        indices: { data: val.getIndexData() },
-        // @ts-expect-error
-        mode: val.mode,
-        drawStart: val.getDrawStart(),
-        drawCount: val.getDrawCount(),
-      });
+          // @ts-expect-error
+          indices: { data: val.getIndexData() },
+          // @ts-expect-error
+          mode: val.mode,
+          drawStart: val.getDrawStart(),
+          drawCount: val.getDrawCount(),
+        });
 
-      this.geometry = new PGeometry(newGeom);
+        this.geometry = new PGeometry(newGeom);
+      } else {
+        this.geometry = new PGeometry(val);
+      }
     }
   }
 
