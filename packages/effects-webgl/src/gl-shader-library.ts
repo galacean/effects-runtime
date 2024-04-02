@@ -1,6 +1,6 @@
 import stringHash from 'string-hash';
 import type {
-  Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderWithSource,
+  Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderMarcos, ShaderWithSource,
   SharedShaderWithSource,
 } from '@galacean/effects-core';
 import { ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMarcos } from '@galacean/effects-core';
@@ -63,11 +63,19 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   }
 
   // TODO 创建shader的ShaderWithSource和shader的source类型一样，待优化。
-  addShader (shaderSource: ShaderWithSource): string {
+  addShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos): string {
+    const mergedMacros: ShaderMarcos = [];
+
+    if (shaderSource.marcos) {
+      mergedMacros.push(...shaderSource.marcos);
+    }
+    if (macros) {
+      mergedMacros.push(...macros);
+    }
     const shaderWithMacros = {
       ...shaderSource,
-      vertex: createShaderWithMarcos(shaderSource.marcos!, shaderSource.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
-      fragment: createShaderWithMarcos(shaderSource.marcos!, shaderSource.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
+      vertex: createShaderWithMarcos(mergedMacros, shaderSource.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
+      fragment: createShaderWithMarcos(mergedMacros, shaderSource.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
     };
     const shaderCacheId = this.computeShaderCacheId(shaderWithMacros);
 
@@ -97,8 +105,8 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     return shaderCacheId;
   }
 
-  createShader (shaderSource: ShaderWithSource) {
-    const shaderCacheId = this.addShader(shaderSource);
+  createShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos) {
+    const shaderCacheId = this.addShader(shaderSource, macros);
 
     return this.cachedShaders[shaderCacheId];
   }

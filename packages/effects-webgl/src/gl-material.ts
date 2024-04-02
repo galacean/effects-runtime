@@ -52,11 +52,13 @@ export class GLMaterial extends Material {
   private vector4Arrays: Record<string, number[]> = {};
   private matrixArrays: Record<string, number[]> = {};
 
-  samplers: string[] = [];  // material存放的sampler名称。
-  uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
+  private samplers: string[] = [];  // material存放的sampler名称。
+  private uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
 
-  uniformDirtyFlag = true;
-  glMaterialState = new GLMaterialState();
+  private uniformDirtyFlag = true;
+  private macrosDirtyFlag = true;
+  private readonly macros: Record<string, number | boolean> = {};
+  private glMaterialState = new GLMaterialState();
 
   constructor (
     engine: Engine,
@@ -227,14 +229,22 @@ export class GLMaterial extends Material {
     value !== undefined && this.glMaterialState.setCullFace(value);
   }
 
-  enableKeyword (keyword: string): void {
-    throw new Error('Method not implemented.');
+  override enableMacro (keyword: string): void {
+    if (!this.isMacroEnabled(keyword)) {
+      this.macros[keyword] = true;
+      this.macrosDirtyFlag = true;
+    }
   }
-  disableKeyword (keyword: string): void {
-    throw new Error('Method not implemented.');
+
+  override disableMacro (keyword: string): void {
+    if (this.isMacroEnabled(keyword)) {
+      delete this.macros[keyword];
+      this.macrosDirtyFlag = true;
+    }
   }
-  isKeywordEnabled (keyword: string): boolean {
-    throw new Error('Method not implemented.');
+
+  override isMacroEnabled (keyword: string): boolean {
+    return this.macros[keyword] !== undefined;
   }
 
   // TODO 待废弃 兼容 model/spine 插件 改造后可移除
@@ -264,8 +274,9 @@ export class GLMaterial extends Material {
     const glEngine = this.engine as GLEngine;
 
     glEngine.addMaterial(this);
-    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader) {
-      this.shaderVariant = this.shader.createVariant() as GLShaderVariant;
+    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
+      this.shaderVariant = this.shader.createVariant(this.macros) as GLShaderVariant;
+      this.macrosDirtyFlag = false;
     }
     this.shaderVariant.initialize(glEngine);
     Object.keys(this.textures).forEach(key => {

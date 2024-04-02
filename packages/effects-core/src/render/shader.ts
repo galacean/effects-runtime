@@ -102,8 +102,15 @@ export abstract class ShaderVariant extends EffectsObject {
 export class Shader extends EffectsObject {
   shaderData: ShaderData;
 
-  createVariant () {
-    const shaderVariant = this.engine.getShaderLibrary().createShader(this.shaderData);
+  createVariant (macros?: Record<string, number | boolean>) {
+    const shaderMacros: ShaderMarcos = [];
+
+    if (macros) {
+      for (const key of Object.keys(macros)) {
+        shaderMacros.push([key, macros[key]]);
+      }
+    }
+    const shaderVariant = this.engine.getShaderLibrary().createShader(this.shaderData, shaderMacros);
 
     shaderVariant.shader = this;
 
@@ -122,7 +129,7 @@ export interface ShaderLibrary {
 
   addShader(shader: ShaderWithSource): void,
 
-  createShader (shaderSource: ShaderWithSource): ShaderVariant,
+  createShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos): ShaderVariant,
 
   /**
    * @param cacheId
