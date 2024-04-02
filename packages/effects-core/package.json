@@ -2,24 +2,20 @@
   "name": "@galacean/effects-core",
   "version": "1.2.3",
   "description": "Galacean Effects runtime core for the web",
-  "module": "./dist/index.mjs",
-  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
+      "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
     "prebuild": "pnpm clean",
-    "build": "pnpm build:declaration && pnpm build:module",
-    "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
+    "build": "tsc -d --declarationDir dist",
     "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
     "prepublishOnly": "pnpm build"
   },
@@ -51,7 +47,7 @@
   },
   "dependencies": {
     "@galacean/effects-specification": "1.0.1",
-    "@galacean/effects-math": "1.0.1",
+    "@galacean/effects-math": "1.1.0-alpha.0",
     "uuid": "9.0.1"
   }
 }

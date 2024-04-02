@@ -1,8 +1,7 @@
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import replace from '@rollup/plugin-replace';
-import typescript from "rollup-plugin-typescript2";
-import terser from '@rollup/plugin-terser';
+import { swc, defineRollupSwcOption, minify } from 'rollup-plugin-swc3';
 import glslInner from '../../scripts/rollup-plugin-glsl-inner';
 import appxConfig from './rollup.appx.config';
 
@@ -26,7 +25,17 @@ const plugins = [
     values: defines,
   }),
   glslInner(),
-  typescript({ tsconfig: '../../tsconfig.bundle.json' }),
+  swc(
+    defineRollupSwcOption({
+      exclude: [],
+      jsc: {
+        loose: true,
+        externalHelpers: true,
+        target: 'es5',
+      },
+      sourceMaps: true,
+    }),
+  ),
   resolve(),
   commonjs(),
 ];
@@ -57,7 +66,7 @@ export default (commandLineArgs) => {
         sourcemap: true,
       },
       plugins: plugins.concat(
-        terser()
+        minify({ sourceMap: true })
       ),
     },
     ...appxConfig.map(config => ({ ...config, plugins: plugins.concat(config.plugins) }))

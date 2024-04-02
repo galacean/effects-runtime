@@ -1,8 +1,7 @@
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import replace from '@rollup/plugin-replace';
-import typescript from 'rollup-plugin-typescript2';
-import terser from '@rollup/plugin-terser';
+import { swc, defineRollupSwcOption, minify } from 'rollup-plugin-swc3';
 import glslInner from '../../scripts/rollup-plugin-glsl-inner';
 
 const pkg = require('./package.json');
@@ -22,13 +21,24 @@ const defines = {
 const globals = {
   '@galacean/effects': 'ge',
 };
+const external = Object.keys(globals);
 const plugins = [
   replace({
     preventAssignment: true,
     values: defines,
   }),
   glslInner(),
-  typescript({ tsconfig: '../../tsconfig.bundle.json' }),
+  swc(
+    defineRollupSwcOption({
+      exclude: [],
+      jsc: {
+        loose: true,
+        externalHelpers: true,
+        target: 'es5',
+      },
+      sourceMaps: true,
+    }),
+  ),
   resolve(),
   commonjs(),
 ];
@@ -49,7 +59,7 @@ export default (commandLineArgs) => {
       globals,
       sourcemap: true,
     }],
-    external: ['@galacean/effects'],
+    external,
     plugins,
   }, {
     input: 'src/index.ts',
@@ -61,9 +71,9 @@ export default (commandLineArgs) => {
       globals,
       sourcemap: true,
     },
-    external: ['@galacean/effects'],
+    external,
     plugins: plugins.concat(
-      terser()
+      minify({ sourceMap: true })
     ),
   }];
 };

@@ -2,22 +2,20 @@
   "name": "@galacean/effects-helper",
   "version": "1.2.3",
   "description": "Galacean Effects runtime helper for the web",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
     "prebuild": "pnpm clean",
-    "build": "pnpm build:declaration && pnpm build:module",
-    "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
+    "build": "tsc -d --declarationDir dist",
     "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
     "prepublishOnly": "pnpm build"
   },

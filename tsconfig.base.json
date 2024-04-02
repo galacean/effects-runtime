@@ -19,7 +19,7 @@
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "module": "ESNext",
-    "target": "ES6",
+    "target": "ESNext",
     "lib": [
       "DOM",
       "ES2015",
