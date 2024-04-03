@@ -104,12 +104,10 @@ export class InteractMesh {
       ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const color = createValueGetter(this.color).getValue(0);
-    const { level } = this.engine.gpuCapability;
-
     const materialProps: MaterialProps = {
       shader: {
-        vertex: vertex,
-        fragment: fragment,
+        vertex,
+        fragment,
         glslVersion: GLSLVersion.GLSL1,
         cacheId: `${rendererOptions.cachePrefix}_effects_interact`,
         marcos,

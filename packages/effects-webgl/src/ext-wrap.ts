@@ -1,12 +1,5 @@
 import type { Disposable, FrameBuffer, Renderer, SharedShaderWithSource } from '@galacean/effects-core';
-import {
-  GLSLVersion,
-  Mesh,
-  RenderPass,
-  TextureLoadAction,
-  TextureSourceType,
-  glContext,
-} from '@galacean/effects-core';
+import { GLSLVersion, Mesh, RenderPass, TextureLoadAction, TextureSourceType, glContext } from '@galacean/effects-core';
 import type { GLFrameBuffer } from './gl-frame-buffer';
 import { GLGeometry } from './gl-geometry';
 import { GLMaterial } from './gl-material';

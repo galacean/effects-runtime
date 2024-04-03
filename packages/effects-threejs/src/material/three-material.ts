@@ -455,7 +455,7 @@ export class ThreeMaterial extends Material {
   }
 
   // 下列三个方法暂时不需要实现
-  enableMacro (keyword: string, value?: boolean | number): void {
+  enableMacro (keyword: string): void {
     throw new Error('Method not implemented.');
   }
   disableMacro (keyword: string): void {

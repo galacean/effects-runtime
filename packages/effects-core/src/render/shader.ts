@@ -1,5 +1,4 @@
 import type { ShaderData } from '../asset-loader';
-import { EffectsObjectData } from '../asset-loader';
 import { effectsClass } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';

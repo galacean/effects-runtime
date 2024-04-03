@@ -73,8 +73,8 @@ export function spriteMeshShaderFromFilter (level: number, options?: { count?: n
   const vertex = itemVert.replace(/#pragma\s+FILTER_VERT/, 'vec4 filterMain(float t,vec4 pos){return effects_MatrixVP * pos;}');
 
   return {
-    fragment: fragment,
-    vertex: vertex,
+    fragment,
+    vertex,
     glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
     marcos,
     shared: true,
