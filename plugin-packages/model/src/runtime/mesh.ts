@@ -896,6 +896,7 @@ export class PPrimitive {
     if (val instanceof PGeometry) {
       this.geometry = val;
     } else {
+      // FIXME: 临时兼容代码，后续要解决掉
       // @ts-expect-error
       const aNormal = val.attributes['aNormal'];
       // @ts-expect-error
@@ -908,6 +909,7 @@ export class PPrimitive {
         const aPosData = val.getAttributeData('aPos')!;
         const aUVData = val.getAttributeData('aUV');
 
+        // FIXME: 临时解决模型法线错误的问题
         if (__DEBUG__) {
           for (let i = 0; i < aNormalData?.length; i += 3) {
             const x = aPosData[i];
