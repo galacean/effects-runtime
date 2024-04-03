@@ -500,7 +500,7 @@ export class PMaterialPBR extends PMaterialBase {
    */
   emissiveTextureTrans?: Matrix3;
   /**
-   * 自发光颜色值，默认是黑色 Vector3(0, 0, 0)
+   * 自发光颜色值，默认是黑色 Vector4(0, 0, 0, 0)
    */
   emissiveFactor: Vector4 = new Vector4(0, 0, 0, 0);
   /**
