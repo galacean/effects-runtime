@@ -8,7 +8,7 @@ const globals = {
 };
 const external = Object.keys(globals);
 
-export default (commandLineArgs) => {
+export default () => {
   return [{
     input: 'src/index.ts',
     output: [{
@@ -37,7 +37,7 @@ export default (commandLineArgs) => {
       sourcemap: true,
     },
     external,
-    plugins: getPlugins(pkg, true),
+    plugins: getPlugins(pkg, { min: true }),
   }, {
     input: 'src/loader.ts',
     output: [{

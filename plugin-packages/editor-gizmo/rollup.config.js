@@ -8,7 +8,7 @@ const globals = {
 };
 const external = Object.keys(globals);
 
-export default (commandLineArgs) => {
+export default () => {
   return [{
     input: 'src/index.ts',
     output: [{

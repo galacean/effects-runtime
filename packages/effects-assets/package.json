@@ -15,7 +15,7 @@
   },
   "scripts": {
     "prebuild": "pnpm clean",
-    "build": "tsc -d --declarationDir dist",
+    "build": "tsc -d",
     "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
     "prepublishOnly": "pnpm build"
   },

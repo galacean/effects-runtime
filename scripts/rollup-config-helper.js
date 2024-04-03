@@ -4,7 +4,8 @@ import replace from '@rollup/plugin-replace';
 import { swc, defineRollupSwcOption, minify } from 'rollup-plugin-swc3';
 import glslInner from './rollup-plugin-glsl-inner';
 
-export function getPlugins(pkg, min) {
+export function getPlugins(pkg, options = {}) {
+  const { min = false, target = 'es5' } = options;
   const defines = {
     __VERSION__: JSON.stringify(pkg.version),
     __DEBUG__: false,
@@ -21,7 +22,7 @@ export function getPlugins(pkg, min) {
         jsc: {
           loose: true,
           externalHelpers: true,
-          target: 'es5',
+          target,
         },
         sourceMaps: true,
       }),
