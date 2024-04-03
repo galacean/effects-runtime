@@ -2,7 +2,7 @@ import { getBanner, getPlugins } from '../../scripts/rollup-config-helper';
 
 const pkg = require('./package.json');
 const banner = getBanner(pkg);
-const plugins = getPlugins(pkg, { target: 'es6' });
+const plugins = getPlugins(pkg, { target: 'ES6' });
 
 export default () => {
   return [

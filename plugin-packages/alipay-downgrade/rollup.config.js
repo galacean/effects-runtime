@@ -15,13 +15,11 @@ export default () => {
       file: pkg.module,
       format: 'es',
       banner,
-      globals,
       sourcemap: true,
     }, {
       file: pkg.main,
       format: 'cjs',
       banner,
-      globals,
       sourcemap: true,
     }],
     external,

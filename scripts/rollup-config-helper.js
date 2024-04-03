@@ -5,7 +5,7 @@ import { swc, defineRollupSwcOption, minify } from 'rollup-plugin-swc3';
 import glslInner from './rollup-plugin-glsl-inner';
 
 export function getPlugins(pkg, options = {}) {
-  const { min = false, target = 'es5' } = options;
+  const { min = false, target } = options;
   const defines = {
     __VERSION__: JSON.stringify(pkg.version),
     __DEBUG__: false,
@@ -16,17 +16,7 @@ export function getPlugins(pkg, options = {}) {
       values: defines,
     }),
     glslInner(),
-    swc(
-      defineRollupSwcOption({
-        exclude: [],
-        jsc: {
-          loose: true,
-          externalHelpers: true,
-          target,
-        },
-        sourceMaps: true,
-      }),
-    ),
+    getSWCPlugin(target),
     resolve(),
     commonjs(),
   ];
@@ -36,6 +26,22 @@ export function getPlugins(pkg, options = {}) {
   }
 
   return plugins;
+}
+
+export { glslInner };
+
+export function getSWCPlugin(target = 'ES5') {
+  return swc(
+    defineRollupSwcOption({
+      exclude: [],
+      jsc: {
+        loose: true,
+        externalHelpers: true,
+        target,
+      },
+      sourceMaps: true,
+    }),
+  );
 }
 
 export function getBanner(pkg) {

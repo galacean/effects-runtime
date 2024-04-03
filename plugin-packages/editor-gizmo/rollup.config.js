@@ -15,13 +15,11 @@ export default () => {
       file: pkg.module,
       format: 'es',
       banner,
-      globals,
       sourcemap: true,
     }, {
       file: pkg.main,
       format: 'cjs',
       banner,
-      globals,
       sourcemap: true,
     }],
     external,
@@ -37,6 +35,6 @@ export default () => {
       sourcemap: true,
     },
     external,
-    plugins: getPlugins(pkg, true),
+    plugins: getPlugins(pkg, { min: true }),
   }];
 };

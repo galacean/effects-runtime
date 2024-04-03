@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import glslInner from '../../scripts/rollup-plugin-glsl-inner';
+import { glslInner, getSWCPlugin } from '../../scripts/rollup-config-helper';
 
 const defines = {
   __VERSION__: 0,
@@ -11,7 +11,6 @@ export default defineConfig({
   build: {
     sourcemap: true,
   },
-  esbuild: {},
   server: {
     host: '0.0.0.0',
     port: 9090,
@@ -19,6 +18,7 @@ export default defineConfig({
   define: defines,
   plugins: [
     glslInner(),
+    getSWCPlugin(),
     tsconfigPaths(),
   ]
 });
