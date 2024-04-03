@@ -20,7 +20,6 @@ export default defineConfig(({ mode }) => {
           'inspire-pre-player': resolve(__dirname, 'html/inspire/pre-player.html'),
           'compressed': resolve(__dirname, 'html/compressed.html'),
           'context-lost-restore': resolve(__dirname, 'html/context-lost-restore.html'),
-          'custom-material': resolve(__dirname, 'html/custom-material.html'),
           'dashboard': resolve(__dirname, 'html/dashboard.html'),
           'post-processing': resolve(__dirname, 'html/post-processing.html'),
           'single': resolve(__dirname, 'html/single.html'),

@@ -5,7 +5,7 @@ import { swc, defineRollupSwcOption, minify } from 'rollup-plugin-swc3';
 import glslInner from './rollup-plugin-glsl-inner';
 
 export function getPlugins(pkg, options = {}) {
-  const { min = false, target } = options;
+  const { min = false, target, external } = options;
   const defines = {
     __VERSION__: JSON.stringify(pkg.version),
     __DEBUG__: false,
@@ -16,7 +16,7 @@ export function getPlugins(pkg, options = {}) {
       values: defines,
     }),
     glslInner(),
-    getSWCPlugin(target),
+    getSWCPlugin(target, external),
     resolve(),
     commonjs(),
   ];
@@ -30,17 +30,25 @@ export function getPlugins(pkg, options = {}) {
 
 export { glslInner };
 
-export function getSWCPlugin(target = 'ES5') {
+export function getSWCPlugin(target = 'ES5', external = []) {
+  const options = {
+    exclude: [],
+    jsc: {
+      loose: true,
+      externalHelpers: true,
+      target,
+    },
+    sourceMaps: true,
+  };
+
+  // swc 会把 tsconfig 中配置的 paths 当作依赖打进包中，rollup 设置的 external 无效
+  // 故此处通过独立的 tsconfig 配置 paths 为空来做
+  if (external.length !== 0) {
+    options['tsconfig'] = './tsconfig.external.json';
+  }
+
   return swc(
-    defineRollupSwcOption({
-      exclude: [],
-      jsc: {
-        loose: true,
-        externalHelpers: true,
-        target,
-      },
-      sourceMaps: true,
-    }),
+    defineRollupSwcOption(options),
   );
 }
 

@@ -46,10 +46,7 @@
       ],
       "@galacean/effects-plugin-*": [
         "./plugin-packages/*/src"
-      ],
-      "@galacean/effects-plugin-model/*": [
-        "./plugin-packages/model/src/*"
-      ],
+      ]
     }
   }
 }

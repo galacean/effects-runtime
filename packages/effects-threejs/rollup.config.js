@@ -1,12 +1,12 @@
 import { getBanner, getPlugins } from '../../scripts/rollup-config-helper';
 
 const pkg = require('./package.json');
-const banner = getBanner(pkg);
-const plugins = getPlugins(pkg);
 const globals = {
   'three': 'THREE',
 };
 const external = Object.keys(globals);
+const banner = getBanner(pkg);
+const plugins = getPlugins(pkg);
 
 export default () => {
   return [{
