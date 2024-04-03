@@ -1,5 +1,5 @@
 import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer } from '@galacean/effects';
-import { Geometry, spec, Mesh, DestroyOptions, Material, GLSLVersion } from '@galacean/effects';
+import { Geometry, spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader } from '@galacean/effects';
 import type {
   ModelMeshComponentData,
   ModelMaterialOptions,
@@ -518,12 +518,18 @@ export class PPrimitive {
       material = this.material.material;
       // @ts-expect-error
       material.uniformSemantics = newSemantics;
-      // @ts-expect-error
-      material.shader = {
+      const shader = new Shader(this.engine);
+
+      shader.fromData({
+        id: '10000000000000000000000000000000',
+        dataType: 'Shader',
         vertex: this.material.vertexShaderCode,
         fragment: this.material.fragmentShaderCode,
+        // @ts-expect-error
         glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-      };
+      });
+      // @ts-expect-error
+      material.shader = shader;
 
       this.material.setMaterialStates(material);
     } else {
