@@ -665,7 +665,7 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
   throw new Error('Invalid texture options');
 }
 
-function isCanvas (cavnas: HTMLCanvasElement) {
+function isCanvas (canvas: HTMLCanvasElement) {
   // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
-  return typeof cavnas === 'object' && cavnas !== null && cavnas.tagName?.toUpperCase() === 'CANVAS';
+  return typeof canvas === 'object' && canvas !== null && canvas.tagName?.toUpperCase() === 'CANVAS';
 }
