@@ -6,6 +6,7 @@ import type {
   VFXItemProps,
   Engine,
   Component,
+  Renderer,
 } from '@galacean/effects';
 import {
   VFXItem,
@@ -14,13 +15,17 @@ import {
   ItemBehaviour,
   PLAYER_OPTIONS_ENV_EDITOR,
   effectsClass,
+  DataType,
+  GLSLVersion,
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
-import { PTransform, PSceneManager, PCoordinate } from '../runtime';
+import type { PShaderContext } from '../runtime';
+import { PTransform, PSceneManager, PCoordinate, PMaterialType } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
-import { ModelCameraComponent, ModelDataType } from './model-item';
+import { ModelCameraComponent, ModelLightComponent } from './model-item';
+import { getPBRPassShaderCode } from '../utility';
 
 /**
  * Model 插件类，负责支持播放器中的 3D 功能
@@ -69,6 +74,31 @@ export class ModelPlugin extends AbstractPlugin {
     //
     PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode, autoAdjustScene);
     await CompositionCache.loadStaticResources();
+  }
+
+  static override precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
+    const isWebGL2 = renderer.engine.gpuCapability.level === 2;
+    const context: PShaderContext = {
+      // @ts-expect-error
+      material: {
+        materialType: PMaterialType.pbr,
+      },
+      isWebGL2,
+      featureList: [],
+    };
+
+    const pbrShader = getPBRPassShaderCode(context);
+
+    renderer.engine.addEffectsObjectData({
+      id: '10000000000000000000000000000000',
+      dataType: 'Shader',
+      // @ts-expect-error
+      fragment: pbrShader.fragmentShaderCode,
+      vertex: pbrShader.vertexShaderCode,
+      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+    });
+
+    return Promise.resolve();
   }
 
   /**
@@ -130,7 +160,7 @@ export interface ModelPluginOptions {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.ModelPluginComponent)
+@effectsClass(DataType.ModelPluginComponent)
 export class ModelPluginComponent extends ItemBehaviour {
   private runtimeEnv = PLAYER_OPTIONS_ENV_EDITOR;
   private compatibleMode = 'gltf';
@@ -297,7 +327,7 @@ export class ModelPluginComponent extends ItemBehaviour {
     const items = this.item.composition?.items ?? [];
 
     items.forEach(item => {
-      if (item.type === spec.ItemType.light) {
+      if (item.getComponent(ModelLightComponent)) {
         lightItemCount++;
       }
     });

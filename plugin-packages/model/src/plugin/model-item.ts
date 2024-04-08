@@ -6,14 +6,14 @@ import type {
   Renderer,
   TransformAnimationPlayable,
 } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec } from '@galacean/effects';
+import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec, DataType } from '@galacean/effects';
 import { Vector3 } from '../runtime/math';
 import type { Ray, Euler, Vector2 } from '../runtime/math';
 import type {
   ModelItemBounding,
   ModelLightContent,
   ModelCameraContent,
-  ModelMeshContent,
+  ModelMeshComponentData,
   ModelSkyboxContent,
 } from '../index';
 import {
@@ -24,21 +24,12 @@ import { PCamera, PLight, PMesh, PSkybox } from '../runtime';
 import { CheckerHelper, RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
 
-export enum ModelDataType {
-  MeshComponent = 10000,
-  SkyboxComponent,
-  LightComponent,
-  CameraComponent,
-  ModelPluginComponent,
-  TreeComponent,
-}
-
 /**
  * 插件 Mesh 组件类，支持 3D Mesh 渲染能力
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.MeshComponent)
+@effectsClass(DataType.MeshComponent)
 export class ModelMeshComponent extends RendererComponent {
   /**
    * 内部 Mesh 对象
@@ -47,7 +38,7 @@ export class ModelMeshComponent extends RendererComponent {
   /**
    * 参数
    */
-  options?: ModelMeshContent;
+  data?: ModelMeshComponentData;
   /**
    * 包围盒
    */
@@ -62,10 +53,10 @@ export class ModelMeshComponent extends RendererComponent {
    * @param engine - 引擎
    * @param options - Mesh 参数
    */
-  constructor (engine: Engine, options?: ModelMeshContent) {
+  constructor (engine: Engine, data?: ModelMeshComponentData) {
     super(engine);
-    if (options) {
-      this.fromData(options);
+    if (data) {
+      this.fromData(data);
     }
   }
 
@@ -123,24 +114,21 @@ export class ModelMeshComponent extends RendererComponent {
    * 反序列化，记录传入参数
    * @param options - 组件参数
    */
-  override fromData (options: ModelMeshContent): void {
-    super.fromData(options);
-    this.options = options;
+  override fromData (data: ModelMeshComponentData): void {
+    super.fromData(data);
+    this.data = data;
   }
 
   /**
    * 创建内部对象
    */
   createContent () {
-    if (this.options) {
-      const bounding = this.options.interaction;
+    if (this.data) {
+      const bounding = this.data.interaction;
 
       this.bounding = bounding && JSON.parse(JSON.stringify(bounding));
 
-      const meshOptions = this.options.options;
-
-      CheckerHelper.assertModelMeshOptions(meshOptions);
-      this.content = new PMesh(this.engine, this.item.name, this.options, this, this.item.parentId);
+      this.content = new PMesh(this.engine, this.item.name, this.data, this, this.item.parentId);
     }
   }
 
@@ -251,7 +239,7 @@ export class ModelMeshComponent extends RendererComponent {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.SkyboxComponent)
+@effectsClass(DataType.SkyboxComponent)
 export class ModelSkyboxComponent extends RendererComponent {
   /**
    * 内部天空盒对象
@@ -354,7 +342,7 @@ export class ModelSkyboxComponent extends RendererComponent {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.LightComponent)
+@effectsClass(DataType.LightComponent)
 export class ModelLightComponent extends ItemBehaviour {
   /**
    * 内部灯光对象
@@ -447,7 +435,7 @@ export class ModelLightComponent extends ItemBehaviour {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.CameraComponent)
+@effectsClass(DataType.CameraComponent)
 export class ModelCameraComponent extends ItemBehaviour {
   /**
    * 内部相机对象

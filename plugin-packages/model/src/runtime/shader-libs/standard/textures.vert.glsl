@@ -15,12 +15,12 @@ uniform mat3 u_NormalUVTransform;
 #ifdef HAS_EMISSIVE_MAP
 uniform sampler2D u_EmissiveSampler;
 uniform int u_EmissiveUVSet;
-uniform vec3 u_EmissiveFactor;
+uniform vec4 u_EmissiveFactor;
 uniform mat3 u_EmissiveUVTransform;
 #endif
 
 #ifdef HAS_EMISSIVE
-uniform vec3 u_EmissiveFactor;
+uniform vec4 u_EmissiveFactor;
 #endif
 
 #ifdef HAS_OCCLUSION_MAP
