@@ -7,6 +7,15 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.2.4
+
+`2024-04-08`
+
+- Fix: 修复 assetManager 参数未隔离的问题。[#242](https://github.com/galacean/effects-runtime/pull/242) @RGCHN
+- Fix: 修复 fonts 和 bins 文件路径问题。[#226](https://github.com/galacean/effects-runtime/pull/226) @RGCHN
+- Fix: 修复像素和世界坐标转换错误。[#233](https://github.com/galacean/effects-runtime/pull/233) @RGCHN
+- Fix: miniprogram cavnas type. [#230](https://github.com/galacean/effects-runtime/pull/230) @Sruimeng
+
 ## 1.2.3
 
 `2024-03-22`
