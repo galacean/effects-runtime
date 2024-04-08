@@ -639,16 +639,14 @@
       "item": {
         "id": "ceaa0ba9bf204438ac74bc8840f332b8"
       },
-      "options": {
-        "primitives": [{
-          "material":{
-            "id": "d34dc6a9d6124543923042f9e304365c"
-          },
-          "geometry": {
-            "id": "49de4544b22345caa3d44e79ae69c360"
-          }
-        }]
-      }
+      "primitives": [{
+        "material":{
+          "id": "d34dc6a9d6124543923042f9e304365c"
+        },
+        "geometry": {
+          "id": "49de4544b22345caa3d44e79ae69c360"
+        }
+      }]
     },
     {
       "id": "35be2cb10a014194844c6ce89c8a41c4",
@@ -656,17 +654,15 @@
       "item": {
         "id": "5d2ea6f25e2b40308d824d6db9c89661"
       },
-      "options": {
-        "lightType": "point",
-        "color": [
-          255,
-          255,
-          255,
-          255
-        ],
-        "intensity": 1,
-        "range": 100
-      }
+      "lightType": "point",
+      "color": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "intensity": 1,
+      "range": 100
     }
   ],
   "materials": [
@@ -868,7 +864,7 @@
     {
       "id": "d34dc6a9d6124543923042f9e304365c",
       "shader": {
-        "id": "10000000000000000000000000000000"
+        "id": "pbr00000000000000000000000000000"
       },
       "name": "3d-material",
       "dataType": "Material",
