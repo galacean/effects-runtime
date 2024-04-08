@@ -14,7 +14,7 @@
 - Fix: Fixed the file path issue with fonts and bins.
 [#226](https://github.com/galacean/effects-runtime/pull/226) @RGCHN
 - Fix: Fixed the error in pixel to world coordinate conversion. [#233](https://github.com/galacean/effects-runtime/pull/233) @RGCHN
-- Fix: miniprogram cavnas type. [#230](https://github.com/galacean/effects-runtime/pull/230) @Sruimeng
+- Fix: miniprogram canvas type. [#230](https://github.com/galacean/effects-runtime/pull/230) @Sruimeng
 
 ## 1.2.3
 
