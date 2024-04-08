@@ -7,7 +7,12 @@ describe('comp-vfxItem', () => {
   let player: Player;
 
   before(() => {
-    player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+    const container = document.createElement('div');
+
+    container.style.width = '100px';
+    container.style.height = '120px';
+    document.body.appendChild(container);
+    player = new Player({ container });
   });
 
   after(() => {
@@ -2605,6 +2610,21 @@ describe('comp-vfxItem', () => {
     comp2.duration = 5;
     comp2.endBehavior = 5;
 
+  });
+
+  it('translate by pixel', async () => {
+    const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*3VDzQI83d9sAAAAAAAAAAAAADlB4AQ', {
+      autoplay: false,
+    });
+
+    player.gotoAndStop(1);
+
+    const sprite = comp.getItemByName('sprite_2');
+    const pos = sprite.transform.position;
+
+    sprite.translateByPixel(50, 60);
+    expect(pos.toArray()[0]).to.closeTo(0, 0.1);
+    expect(pos.toArray()[1]).to.closeTo(0, 0.1);
   });
 
 });

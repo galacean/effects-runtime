@@ -188,7 +188,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   private resumePending = false;
   private offscreenMode: boolean;
   private disposed = false;
-  private assetManager: AssetManager;
+  private assetManagers: AssetManager[] = [];
   private speed = 1;
   private baseCompositionIndex = 0;
 
@@ -406,13 +406,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       source = url;
     }
 
-    if (this.assetManager) {
-      this.assetManager.updateOptions(opts);
-    } else {
-      this.assetManager = new AssetManager(opts);
-    }
+    const assetManager = new AssetManager(opts);
 
-    const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
+    this.assetManagers.push(assetManager);
+    const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
     // 加载期间 player 销毁
     if (this.disposed) {
@@ -800,7 +797,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     playerMap.delete(this.canvas);
     this.pause();
     this.ticker?.stop();
-    this.assetManager?.dispose();
+    this.assetManagers.forEach(assetManager => assetManager.dispose());
     this.compositions.forEach(comp => comp.dispose());
     this.compositions.length = 0;
     (this.renderer as GLRenderer).context.removeLostHandler({ lost: this.lost });
