@@ -369,12 +369,13 @@ export class AssetManager implements Disposable {
 
   private async processBins (bins: (spec.BinaryFile | ArrayBuffer)[]) {
     const { renderLevel } = this.options;
+    const baseUrl = this.baseUrl;
     const jobs = bins.map(bin => {
       if (bin instanceof ArrayBuffer) {
         return bin;
       }
       if (passRenderLevel(bin.renderLevel, renderLevel)) {
-        return this.loadBins(bin.url);
+        return this.loadBins(new URL(bin.url, baseUrl).href);
       }
 
       throw new Error(`Invalid bins source: ${JSON.stringify(bins)}`);
@@ -391,7 +392,8 @@ export class AssetManager implements Disposable {
     const jobs = fonts.map(async font => {
       // 数据模版兼容判断
       if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
-        const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + font.fontURL + ')');
+        const url = new URL(font.fontURL, this.baseUrl).href;
+        const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
 
         try {
           await fontFace.load();
@@ -399,7 +401,7 @@ export class AssetManager implements Disposable {
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
         } catch (e) {
-          logger.warn(`Invalid fonts source: ${JSON.stringify(font.fontURL)}`);
+          logger.warn(`Invalid fonts source: ${JSON.stringify(url)}`);
         }
       }
     });
@@ -624,7 +626,7 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
     return image.source;
   } else if (
     image instanceof HTMLImageElement ||
-    image instanceof HTMLCanvasElement
+    isCanvas(image)
   ) {
     return {
       image,
@@ -664,4 +666,9 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
   }
 
   throw new Error('Invalid texture options');
+}
+
+function isCanvas (cavnas: HTMLCanvasElement) {
+  // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
+  return typeof cavnas === 'object' && cavnas !== null && cavnas.tagName?.toUpperCase() === 'CANVAS';
 }

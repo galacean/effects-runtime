@@ -3,14 +3,14 @@ import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.applause.url;
+const json = inspireList.spring.url;
 const container = document.getElementById('J-container');
 
 (async () => {
   try {
     const player = createPlayer();
 
-    const comp = await player.loadScene(json);
+    await player.loadScene(json);
   } catch (e) {
     console.error('biz', e);
   }

@@ -280,9 +280,10 @@ export class Camera {
   getInverseVPRatio (z: number) {
     const pos = new Vector3(0, 0, z);
     const mat = this.getViewProjectionMatrix();
-    const { z: nz } = pos.applyMatrix(mat);
+    const inverseVP = this.getInverseViewProjectionMatrix();
+    const { z: nz } = mat.projectPoint(pos);
 
-    return new Vector3(1, 1, nz).applyMatrix(mat);
+    return inverseVP.projectPoint(new Vector3(1, 1, nz));
   }
 
   /**
@@ -294,8 +295,6 @@ export class Camera {
       this.options.quat = value.clone();
       this.dirty = true;
     } else {
-      const quat = this.options.quat;
-
       if (!this.options.quat.equals(value)) {
         this.options.quat.copyFrom(value);
         this.dirty = true;
