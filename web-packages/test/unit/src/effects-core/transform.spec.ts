@@ -35,6 +35,7 @@ describe('transform methods', () => {
     expect(rotation.y).to.be.closeTo(20, 0.00001);
     expect(rotation.z).to.be.closeTo(30, 0.00001);
   });
+
   it('transform get rotation', () => {
     const r = new Transform({
       valid: true,

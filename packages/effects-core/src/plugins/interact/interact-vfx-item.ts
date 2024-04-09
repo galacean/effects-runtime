@@ -7,4 +7,3 @@ export interface DragEventType extends TouchEventType {
     fov: number,
   },
 }
-
