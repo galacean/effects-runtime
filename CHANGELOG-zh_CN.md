@@ -7,6 +7,12 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.2.5
+
+`2024-04-09`
+
+- Fix: 修复 reusable 时消息元素结束无法触发的问题。[#247](https://github.com/galacean/effects-runtime/pull/247) @RGCHN
+
 ## 1.2.4
 
 `2024-04-08`
