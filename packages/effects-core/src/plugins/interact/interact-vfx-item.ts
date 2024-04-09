@@ -77,8 +77,13 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
     }
   }
 
-  override onItemRemoved (composition: Composition) {
-    composition.removeInteractiveItem(this, this.ui.options.type);
+  override onEnd () {
+    if (this.composition) {
+      this.composition.removeInteractiveItem(this, this.ui.options.type);
+    }
+  }
+
+  override onItemRemoved () {
     this.clickable = false;
     this.previewContent?.mesh.dispose();
     this.endDragTarget();

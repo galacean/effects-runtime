@@ -6,6 +6,12 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.2.5
+
+`2024-04-09`
+
+- Fix: Fixed the issue where the message element did not trigger the end event when reused. [#247](https://github.com/galacean/effects-runtime/pull/247) @RGCHN
+
 ## 1.2.4
 
 `2024-04-08`
