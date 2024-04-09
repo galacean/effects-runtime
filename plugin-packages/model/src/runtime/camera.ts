@@ -221,8 +221,9 @@ export class PCameraManager {
 
   /**
    * 插入相机数据，创建新的相机对象
-   * @param inCamera - 相机数据
-   * @param owner - 所属的相机组件
+   * @param name - 相机名称
+   * @param data - 相机相关数据
+   * @param owner - 相机所属组件
    * @returns 新的相机对象
    */
   insert (name: string, data: ModelCameraComponentData, owner?: ModelCameraComponent): PCamera {

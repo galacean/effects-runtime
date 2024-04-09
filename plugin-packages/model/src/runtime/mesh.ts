@@ -450,15 +450,15 @@ export class PPrimitive {
 
   /**
    * 创建 Primitive 对象
-   * @param options - Primitive 参数
+   * @param data - Primitive 参数
    * @param parent - 所属 Mesh 对象
    */
-  create (options: ModelMeshPrimitiveData, parent: PMesh) {
+  create (data: ModelMeshPrimitiveData, parent: PMesh) {
     this.parent = parent;
     this.skin = parent.skin;
     this.morph = parent.morph;
-    this.setGeometry(options.geometry as unknown as Geometry);
-    this.setMaterial(options.material as unknown as Material);
+    this.setGeometry(data.geometry as unknown as Geometry);
+    this.setMaterial(data.material as unknown as Material);
     this.name = parent.name;
     this.effectsPriority = parent.priority;
     this.geometry.setHide(parent.hide);

@@ -45,8 +45,9 @@ export class PLight extends PEntity {
 
   /**
    * 创建灯光对象
-   * @param light - 灯光参数
-   * @param ownerI - 所属灯光组件
+   * @param name - 灯光名称
+   * @param data - 灯光相关数据
+   * @param owner - 所属灯光组件
    */
   constructor (name: string, data: ModelLightComponentData, owner?: ModelLightComponent) {
     super();

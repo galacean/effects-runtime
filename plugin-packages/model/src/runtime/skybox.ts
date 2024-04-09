@@ -73,21 +73,21 @@ export class PSkybox extends PEntity {
   /**
    * 构造函数
    * @param name - 名称
-   * @param options - 天空盒参数
+   * @param data - 天空盒参数
    * @param owner - 所属天空盒组件元素
    */
-  constructor (name: string, options: ModelSkyboxComponentData, owner?: ModelSkyboxComponent) {
+  constructor (name: string, data: ModelSkyboxComponentData, owner?: ModelSkyboxComponent) {
     super();
     this.name = name;
     this.type = PObjectType.skybox;
     this.visible = false;
     this.owner = owner;
 
-    const { irradianceCoeffs } = options;
+    const { irradianceCoeffs } = data;
 
-    this.renderable = options.renderable;
-    this.intensity = options.intensity;
-    this.reflectionsIntensity = options.reflectionsIntensity;
+    this.renderable = data.renderable;
+    this.intensity = data.intensity;
+    this.reflectionsIntensity = data.reflectionsIntensity;
     if (irradianceCoeffs) {
       this.irradianceCoeffs = [];
       for (let i = 0; i < irradianceCoeffs.length; i += 3) {
@@ -101,10 +101,10 @@ export class PSkybox extends PEntity {
       this.irradianceCoeffs = [];
     }
 
-    this.diffuseImage = options.diffuseImage as unknown as Texture;
-    this.specularImage = options.specularImage as unknown as Texture;
-    this.specularImageSize = options.specularImageSize;
-    this.specularMipCount = options.specularMipCount;
+    this.diffuseImage = data.diffuseImage as unknown as Texture;
+    this.specularImage = data.specularImage as unknown as Texture;
+    this.specularImageSize = data.specularImageSize;
+    this.specularMipCount = data.specularMipCount;
 
     this.priority = owner?.item?.listIndex || 0;
   }

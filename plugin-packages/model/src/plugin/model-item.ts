@@ -54,7 +54,7 @@ export class ModelMeshComponent extends RendererComponent {
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param options - Mesh 参数
+   * @param data - Mesh 参数
    */
   constructor (engine: Engine, data?: ModelMeshComponentData) {
     super(engine);
@@ -115,7 +115,7 @@ export class ModelMeshComponent extends RendererComponent {
 
   /**
    * 反序列化，记录传入参数
-   * @param options - 组件参数
+   * @param data - 组件参数
    */
   override fromData (data: ModelMeshComponentData): void {
     super.fromData(data);
@@ -260,7 +260,7 @@ export class ModelSkyboxComponent extends RendererComponent {
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param options - Mesh 参数
+   * @param data - Mesh 参数
    */
   constructor (engine: Engine, data?: ModelSkyboxComponentData) {
     super(engine);
@@ -305,7 +305,7 @@ export class ModelSkyboxComponent extends RendererComponent {
 
   /**
    * 反序列化，记录传入参数
-   * @param options - 组件参数
+   * @param data - 组件参数
    */
   override fromData (data: ModelSkyboxComponentData): void {
     super.fromData(data);
@@ -358,7 +358,7 @@ export class ModelLightComponent extends ItemBehaviour {
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param options - Mesh 参数
+   * @param data - Mesh 参数
    */
   constructor (engine: Engine, data?: ModelLightComponentData) {
     super(engine);
@@ -396,7 +396,7 @@ export class ModelLightComponent extends ItemBehaviour {
 
   /**
    * 反序列化，记录传入参数
-   * @param options - 组件参数
+   * @param data - 组件参数
    */
   override fromData (data: ModelLightComponentData): void {
     super.fromData(data);
@@ -454,7 +454,7 @@ export class ModelCameraComponent extends ItemBehaviour {
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param options - Mesh 参数
+   * @param data - Mesh 参数
    */
   constructor (engine: Engine, data?: ModelCameraComponentData) {
     super(engine);
