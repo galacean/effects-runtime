@@ -227,11 +227,13 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
 
       return function () {
         delete result.program;
-        // FIXME: error 没用？
-        let error!: string | null;
-        const linked = !error && gl.getProgramParameter(program, gl.LINK_STATUS);
+        const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
 
         if (!linked) {
+          // 链接失败，获取并打印错误信息
+          const info = gl.getProgramInfoLog(program);
+
+          console.error('Failed to link program: ' + info);
           const vsCheckResult = checkShader(gl, vertexShader, 'vertex', vs);
           const fsCheckResult = checkShader(gl, fragShader, 'fragment', fs);
 
