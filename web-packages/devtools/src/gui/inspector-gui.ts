@@ -270,7 +270,9 @@ export class InspectorGui {
         const start = Number(match[1]);
         const end = Number(match[2]);
 
-        // materialData.floats[uniformName] = Number(value);
+        if (!serializedData.floats[uniformName]) {
+          serializedData.floats[uniformName] = Number(value);
+        }
         guiProperties.push({
           name: inspectorName,
           type: 'number-slider',
@@ -281,6 +283,9 @@ export class InspectorGui {
           key: uniformName,
         });
       } else if (type === 'Float') {
+        if (!serializedData.floats[uniformName]) {
+          serializedData.floats[uniformName] = Number(value);
+        }
         guiProperties.push({
           name: inspectorName,
           type: 'number',
