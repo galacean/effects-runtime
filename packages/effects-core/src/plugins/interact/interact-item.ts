@@ -40,10 +40,8 @@ export class InteractComponent extends RendererComponent {
         this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
       }
     }
-    if (this.item.composition) {
-      this.item.composition?.addInteractiveItem(this.item, options.type);
-      this.item.onEnd = () => composition.removeInteractiveItem(this.item, options.type);
-    }
+    composition.addInteractiveItem(this.item, options.type);
+    this.item.onEnd = () => composition.removeInteractiveItem(this.item, options.type);
     if (options.type === spec.InteractType.DRAG) {
       if (env !== PLAYER_OPTIONS_ENV_EDITOR || options.enableInEditor) {
         composition.event && this.beginDragTarget(options, composition.event);
