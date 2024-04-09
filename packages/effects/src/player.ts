@@ -170,7 +170,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   private resumePending = false;
   private offscreenMode: boolean;
   private disposed = false;
-  private assetManager: AssetManager;
+  private assetManagers: AssetManager[] = [];
   private speed = 1;
   private baseCompositionIndex = 0;
 
@@ -390,15 +390,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       source = url;
     }
 
-    if (this.assetManager) {
-      this.assetManager.updateOptions(opts);
-    } else {
-      this.assetManager = new AssetManager(opts);
-    }
+    const assetManager = new AssetManager(opts);
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
     engine.clearResources(); // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
-    const scene = await this.assetManager.loadScene(source, this.renderer, { env: this.env });
+    this.assetManagers.push(assetManager);
+    const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
     engine.addPackageDatas(scene);
     for (let i = 0; i < scene.textureOptions.length; i++) {
@@ -789,7 +786,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     playerMap.delete(this.canvas);
     this.pause();
     this.ticker?.stop();
-    this.assetManager?.dispose();
+    this.assetManagers.forEach(assetManager => assetManager.dispose());
     this.compositions.forEach(comp => comp.dispose());
     this.compositions.length = 0;
     (this.renderer as GLRenderer).context.removeLostHandler({ lost: this.lost });
