@@ -43,12 +43,14 @@ export type ModelTreeContent = spec.ModelTreeContent<'studio'>;
 export type ModelAnimTrackOptions = spec.ModelAnimTrackOptions<'studio'>;
 export type ModelAnimationOptions = spec.ModelAnimationOptions<'studio'>;
 
+export type ModelMeshSkinData = spec.SkinData;
+export type ModelMeshMorphData = spec.MorphData;
+export type ModelMeshPrimitiveData = spec.PrimitiveData;
 export type ModelMeshComponentData = spec.ModelMeshComponentData;
-export type ModelMeshComponentOptions = spec.ModelMeshComponentOptions;
-export type ModelPrimitiveComponentOptions = spec.PrimitiveComponentOptions;
-export type ModelSkyboxComponentData = spec.SkyboxComponentData;
+export type ModelLightType = spec.LightType;
 export type ModelLightComponentData = spec.ModelLightComponentData;
 export type ModelCameraComponentData = spec.ModelCameraComponentData;
+export type ModelSkyboxComponentData = spec.SkyboxComponentData;
 
 export * from './gesture';
 export * from './gltf';

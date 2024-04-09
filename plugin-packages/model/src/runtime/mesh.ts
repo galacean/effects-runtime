@@ -2,9 +2,7 @@ import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer } from '@
 import { Geometry, spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader } from '@galacean/effects';
 import type {
   ModelMeshComponentData,
-  ModelMaterialOptions,
-  ModelMeshComponentOptions,
-  ModelPrimitiveComponentOptions,
+  ModelMeshPrimitiveData,
   ModelItemBounding,
 } from '../index';
 import { PObjectType, PMaterialType, PGlobalState, PFaceSideMode } from './common';
@@ -452,15 +450,15 @@ export class PPrimitive {
 
   /**
    * 创建 Primitive 对象
-   * @param options - Primitive 参数
+   * @param data - Primitive 参数
    * @param parent - 所属 Mesh 对象
    */
-  create (options: ModelPrimitiveComponentOptions, parent: PMesh) {
+  create (data: ModelMeshPrimitiveData, parent: PMesh) {
     this.parent = parent;
     this.skin = parent.skin;
     this.morph = parent.morph;
-    this.setGeometry(options.geometry as unknown as Geometry);
-    this.setMaterial(options.material as unknown as Material);
+    this.setGeometry(data.geometry as unknown as Geometry);
+    this.setMaterial(data.material as unknown as Material);
     this.name = parent.name;
     this.effectsPriority = parent.priority;
     this.geometry.setHide(parent.hide);
@@ -1157,21 +1155,20 @@ export class PGeometry {
 }
 
 class EffectsMeshProxy {
-  options: ModelMeshComponentOptions;
+  data: ModelMeshComponentData;
   morphObj: PMorph;
 
   constructor (
     public itemData: ModelMeshComponentData,
     public parentItem?: VFXItem<VFXItemContent>,
   ) {
-    this.options = itemData.options;
+    this.data = itemData;
 
     // Morph 对象创建，需要为每个 Primitive 中 Geometry 对象创建 Morph
     // 并且要求创建的 Morph 对象状态是相同的，否则就报错
     let isSuccess = true;
     const morphObj = new PMorph();
-    const meshOptions = itemData.options;
-    const primitives = meshOptions.primitives;
+    const { primitives, morph } = this.data;
 
     primitives.forEach((prim, idx) => {
       if (idx === 0) {
@@ -1192,8 +1189,8 @@ class EffectsMeshProxy {
 
     if (isSuccess) {
       // 设置初始权重数组
-      if (meshOptions.weights !== undefined) {
-        morphObj.initWeights(meshOptions.weights);
+      if (morph?.weights !== undefined) {
+        morphObj.initWeights(morph.weights);
       }
 
       this.morphObj = morphObj;
@@ -1222,7 +1219,7 @@ class EffectsMeshProxy {
   }
 
   isHide (): boolean {
-    return this.options.hide === true;
+    return this.data.hide === true;
   }
 
   getParentNode (): ModelTreeNode | undefined {
@@ -1237,15 +1234,15 @@ class EffectsMeshProxy {
   }
 
   getParentIndex (): number {
-    return this.options.parent ?? -1;
+    return -1;
   }
 
   getPrimitives () {
-    return this.options.primitives;
+    return this.data.primitives;
   }
 
   getPrimitiveCount (): number {
-    return this.options.primitives.length;
+    return this.data.primitives.length;
   }
 
   hasSkin (): boolean {

@@ -1,4 +1,4 @@
-import type { ModelItemLight, ModelLightOptions } from '../index';
+import type { ModelItemLight, ModelLightOptions, ModelLightComponentData } from '../index';
 import { Vector2, Vector3 } from './math';
 import { PObjectType, PLightType } from './common';
 import { PEntity } from './object';
@@ -45,10 +45,11 @@ export class PLight extends PEntity {
 
   /**
    * 创建灯光对象
-   * @param light - 灯光参数
-   * @param ownerI - 所属灯光组件
+   * @param name - 灯光名称
+   * @param data - 灯光相关数据
+   * @param owner - 所属灯光组件
    */
-  constructor (name: string, options: ModelLightOptions, owner?: ModelLightComponent) {
+  constructor (name: string, data: ModelLightComponentData, owner?: ModelLightComponent) {
     super();
     this.name = name;
     this.type = PObjectType.light;
@@ -59,23 +60,23 @@ export class PLight extends PEntity {
     this.outerConeAngle = 0;
     this.innerConeAngle = 0;
     //
-    const pluginColor = PluginHelper.toPluginColor4(options.color);
+    const { color } = data;
 
     this.color = new Vector3(
-      pluginColor[0],
-      pluginColor[1],
-      pluginColor[2],
+      color.r,
+      color.g,
+      color.b,
     );
-    this.intensity = options.intensity;
-    if (options.lightType === 'point') {
+    this.intensity = data.intensity;
+    if (data.lightType === 'point') {
       this.lightType = PLightType.point;
-      this.range = options.range;
-    } else if (options.lightType === 'spot') {
+      this.range = data.range ?? -1;
+    } else if (data.lightType === 'spot') {
       this.lightType = PLightType.spot;
-      this.range = options.range;
-      this.outerConeAngle = options.outerConeAngle;
-      this.innerConeAngle = options.innerConeAngle;
-    } else if (options.lightType === 'directional') {
+      this.range = data.range ?? -1;
+      this.outerConeAngle = data.outerConeAngle ?? Math.PI;
+      this.innerConeAngle = data.innerConeAngle ?? 0;
+    } else if (data.lightType === 'directional') {
       this.lightType = PLightType.directional;
     } else {
       this.lightType = PLightType.ambient;
@@ -166,7 +167,7 @@ export class PLightManager {
    * @param owner - 所属灯光组件
    * @returns 插入的灯光对象
    */
-  insertItem (name: string, inLight: ModelLightOptions, owner?: ModelLightComponent): PLight {
+  insertItem (name: string, inLight: ModelLightComponentData, owner?: ModelLightComponent): PLight {
     const light = new PLight(name, inLight, owner);
 
     this.lightList.push(light);

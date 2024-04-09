@@ -90,7 +90,8 @@ export class ModelPlugin extends AbstractPlugin {
     const pbrShader = getPBRPassShaderCode(context);
 
     renderer.engine.addEffectsObjectData({
-      id: '10000000000000000000000000000000',
+      // FIXME: 'unlit000000000000000000000000000',
+      id: 'pbr00000000000000000000000000000',
       dataType: 'Shader',
       // @ts-expect-error
       fragment: pbrShader.fragmentShaderCode,
