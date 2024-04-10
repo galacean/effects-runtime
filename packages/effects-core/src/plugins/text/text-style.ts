@@ -78,7 +78,9 @@ export class TextStyle {
     const { textColor = [1, 1, 1, 1], fontSize = 40, outline, shadow, fontWeight = 'normal', fontStyle = 'normal', fontFamily = 'sans-serif' } = options;
 
     this.textColor = textColor;
+    //@ts-expect-error
     this.textWeight = fontWeight;
+    //@ts-expect-error
     this.fontStyle = fontStyle;
     this.fontFamily = fontFamily;
     this.fontSize = fontSize; // 暂时取消字号限制 Math.min(fontSize, this.maxFontSize);

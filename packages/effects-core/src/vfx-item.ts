@@ -486,6 +486,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     } = data;
 
     this.props = data;
+    //@ts-expect-error
     this.type = data.type;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.name = name;
@@ -656,7 +657,6 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
   if (!pluginName) {
     switch (type) {
       case spec.ItemType.null:
-      case spec.ItemType.base:
         pluginName = 'cal';
 
         break;
