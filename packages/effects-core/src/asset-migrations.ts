@@ -73,26 +73,18 @@ export function version3Migration (scene: Record<string, any>): Scene {
 
     // 原 texture 索引转为统一 guid 索引
     if (item.content) {
-      //@ts-expect-error
       if (item.content.renderer) {
-        //@ts-expect-error
         if (item.content.renderer.texture !== undefined) {
-          //@ts-expect-error
           const oldTextureId = item.content.renderer.texture;
 
-          //@ts-expect-error
           item.content.renderer.texture = { id: scene.textureOptions[oldTextureId].id };
         }
       }
 
-      //@ts-expect-error
       if (item.content.trails) {
-        //@ts-expect-error
         if (item.content.trails.texture !== undefined) {
-          //@ts-expect-error
           const oldTextureId = item.content.trails.texture;
 
-          //@ts-expect-error
           item.content.trails.texture = { id: scene.textureOptions[oldTextureId].id };
         }
       }
@@ -105,12 +97,14 @@ export function version3Migration (scene: Record<string, any>): Scene {
       let scale = item.transform.scale;
 
       if (!position) {
+        //@ts-expect-error
         position = [0, 0, 0];
       }
       if (!rotation) {
         rotation = [0, 0, 0];
       }
       if (!scale) {
+        //@ts-expect-error
         scale = [1, 1, 1];
       }
 
@@ -135,12 +129,9 @@ export function version3Migration (scene: Record<string, any>): Scene {
       if (item.type === spec.ItemType.sprite) {
         const content = item.content;
 
-        //@ts-expect-error
         if (!content.renderer) {
-          //@ts-expect-error
           content.renderer = {};
         }
-        //@ts-expect-error
         const renderer = content.renderer;
         const realAnchor = convertAnchor(renderer.anchor, renderer.particleOrigin);
         //@ts-expect-error
@@ -161,15 +152,11 @@ export function version3Migration (scene: Record<string, any>): Scene {
     if (item.type === spec.ItemType.particle) {
       const content = item.content;
 
-      //@ts-expect-error
       if (!content.renderer) {
-        //@ts-expect-error
         content.renderer = {};
       }
-      //@ts-expect-error
       const renderer = content.renderer;
 
-      //@ts-expect-error
       content.renderer.anchor = convertAnchor(renderer.anchor, renderer.particleOrigin);
     }
 
@@ -180,9 +167,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
     }
 
     // 动画数据转化 TODO: 动画数据移到 TimelineComponentData
-    //@ts-expect-error
     item.content.tracks = [];
-    //@ts-expect-error
     const tracks = item.content.tracks;
 
     if (item.type !== spec.ItemType.particle) {
@@ -191,11 +176,8 @@ export function version3Migration (scene: Record<string, any>): Scene {
           {
             dataType:'TransformAnimationPlayableAsset',
             animationClip:{
-              //@ts-expect-error
               sizeOverLifetime: item.content.sizeOverLifetime,
-              //@ts-expect-error
               rotationOverLifetime: item.content.rotationOverLifetime,
-              //@ts-expect-error
               positionOverLifetime: item.content.positionOverLifetime,
             },
           },
@@ -209,9 +191,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
           {
             dataType:'SpriteColorAnimationPlayableAsset',
             animationClip:{
-              //@ts-expect-error
               colorOverLifetime:item.content.colorOverLifetime,
-              //@ts-expect-error
               startColor:item.content.options.startColor,
             },
           },
@@ -220,9 +200,7 @@ export function version3Migration (scene: Record<string, any>): Scene {
     }
 
     // gizmo 的 target id 转换为新的 item guid
-    //@ts-expect-error
     if (item.content && item.content.options && item.content.options.target) {
-      //@ts-expect-error
       item.content.options.target = itemGuidMap[item.content.options.target];
     }
 
@@ -230,152 +208,92 @@ export function version3Migration (scene: Record<string, any>): Scene {
     const uuid = uuidv4().replace(/-/g, '');
 
     if (item.type === spec.ItemType.sprite) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.SpriteComponent;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.particle) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.ParticleSystem;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.mesh) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.MeshComponent;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.skybox) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.SkyboxComponent;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.light) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.LightComponent;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === 'camera') {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.CameraComponent;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.tree) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.TreeComponent;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.interact) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.InteractComponent;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.camera) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.CameraController;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.text) {
-      //@ts-expect-error
       item.components = [];
-      //@ts-expect-error
       components.push(item.content);
-      //@ts-expect-error
       item.content.id = uuid;
-      //@ts-expect-error
       item.content.dataType = DataType.TextComponent;
-      //@ts-expect-error
       item.content.item = { id: item.id };
-      //@ts-expect-error
       item.dataType = DataType.VFXItemData;
       //@ts-expect-error
       item.components.push({ id: item.content.id });
