@@ -136,7 +136,6 @@ export class SpriteItem extends CalculateItem {
       this.basicTransform.position.add([-realAnchor[0] * scale.x, -realAnchor[1] * scale.y, 0]);
     }
     this.transform.setAnchor(realAnchor[0] * scale.x, realAnchor[1] * scale.y, 0);
-
     const colorOverLifetime = props.colorOverLifetime;
 
     if (colorOverLifetime) {
@@ -290,7 +289,6 @@ export class SpriteItem extends CalculateItem {
       ret.texOffset = [0, 0, 1, 1];
     }
     ret.visible = this.vfxItem.contentVisible;
-    // 图层元素作为父节点时，除了k的大小变换，自身的尺寸也需要传递给子元素，子元素可以通过startSize读取
     ret.startSize = this.startSize;
 
     return ret;
