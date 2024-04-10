@@ -232,8 +232,11 @@ export class TrailMesh {
       } else if (name === 'uVCurveValues') {
         const array: Vector4[] = [];
 
-        array.push(new Vector4(value[0], value[1], value[2], value[3]));
-        array.push(new Vector4(value[4], value[5], value[6], value[7]));
+        for (let i = 0; i < value.length; i = i + 4) {
+          const v = new Vector4(value[i], value[i + 1], value[i + 2], value[i + 3]);
+
+          array.push(v);
+        }
         material.setVector4Array(name, array);
       } else {
         material.setVector4(name, Vector4.fromArray(value));

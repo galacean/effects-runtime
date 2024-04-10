@@ -727,6 +727,7 @@ export class BezierCurve extends ValueGetter<number> {
 
   override getIntegrateValue (t0: number, t1: number, ts = 1) {
     const time = (t1 - t0) / ts;
+
     let result = 0;
     const keyTimeData = Object.keys(this.curveMap);
     const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
@@ -739,11 +740,11 @@ export class BezierCurve extends ValueGetter<number> {
       const [xMin, xMax] = keyTimeData[i].split('&');
 
       if (time >= Number(xMax)) {
-        result += this.getCurveIntegrateValue(keyTimeData[i], Number(xMax));
+        result += ts * this.getCurveIntegrateValue(keyTimeData[i], Number(xMax));
       }
 
       if (time >= Number(xMin) && time < Number(xMax)) {
-        result += this.getCurveIntegrateValue(keyTimeData[i], time);
+        result += ts * this.getCurveIntegrateValue(keyTimeData[i], time);
 
         break;
       }
@@ -758,16 +759,25 @@ export class BezierCurve extends ValueGetter<number> {
     const [p0, , , p3] = curveInfo.points;
     const timeInterval = p3.x - p0.x;
     const valueInterval = p3.y - p0.y;
+    const segments = 50;
+    let total = 0;
+    const h = (time - p0.x) / segments;
 
-    let lastSample = 0, currentSample = 0, total = 0;
+    for (let i = 0; i <= segments; i++) {
+      const t = p0.x + i * h;
+      const normalizeTime = t / timeInterval;
+      const y = p0.y + valueInterval * curveInfo.curve.getValue(normalizeTime);
 
-    for (let i = 1; i < 101; i++) {
-      const normalizeTime = (time / 100 * i - p0.x) / timeInterval;
+      if (i === 0 || i === segments) {
+        total += y;
+      } else if (i % 2 === 1) {
+        total += 4 * y;
+      } else {
+        total += 2 * y;
+      }
 
-      currentSample = p0.y + valueInterval * curveInfo.curve.getValue(normalizeTime);
-      total += (currentSample + lastSample) * 0.01 / 2;
-      lastSample = currentSample;
     }
+    total *= h / 3;
 
     return total;
   }

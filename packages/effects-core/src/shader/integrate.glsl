@@ -34,25 +34,27 @@ float integrateByTimeCurveFrames(float t1, vec4 k0, vec4 k1) {
   return dot(a, b) / 60. / k3;
 }
 
-
 float calculateMovement(float t, float y1, float y2, float y3, float y4) {
-  int numIntervals = 50 + 50 * int(step(0.5, t));
+  int numIntervals = 100;
   float step = t / float(numIntervals);
   float movement = 0.0;
+  float h = t / float(numIntervals);
 
-  for (int i = 1; i <= numIntervals; i++) {
-    float u0 = float(i - 1) * step;
-    float u1 = float(i) * step;
-
-    float speed0 = cubicBezier(u0, y1, y2, y3, y4);
-    float speed1 = cubicBezier(u1, y1, y2, y3, y4);
-
-    float area = (speed0 + speed1) * 0.5 * step;
-
-    movement += area;
+  for (int i = 0; i <= numIntervals; i++) {
+    float t = float(i) * h;
+    float y = cubicBezier(t, y1, y2, y3, y4);
+    if (i == 0 || i == numIntervals) {
+      movement += y;
+    } else if (mod(float(i), 2.) == 1.) {
+      movement += 4. * y;
+    } else {
+      movement += 2. * y;
+    }
   }
 
+  movement *= h / 3.;
   return movement;
+
 }
 
 
@@ -63,13 +65,17 @@ float integrateFromBezierCurveFrames(float time, float frameStart, float frameCo
   for(int i = 0; i < count; i += 2) {
     vec4 k0 = lookup_curve(i + start);
     vec4 k1 = lookup_curve(i + 1 + start);
-    if(time >= k0.x && time <= k1.x) {
-      float t = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
-      return ret + calculateMovement(t, k0.y, k0.w, k1.w, k1.y);
-
+    if (i == 0 && time < k0.x) {
+      return ret;
     }
-    ret += calculateMovement(1., k0.y, k0.w, k1.w, k1.y);
-
+    if (time >= k1.x) {
+      ret += calculateMovement(1., k0.y, k0.w, k1.w, k1.y);
+    }
+    if(time >= k0.x && time < k1.x) {
+      float nt = (time - k0.x) / (k1.x - k0.x);
+      float t = binarySearchT(nt, k0.x, k0.z, k1.z, k1.x);
+      return ret + calculateMovement(t, k0.y, k0.w, k1.w, k1.y);
+    }
   }
 
   return ret;

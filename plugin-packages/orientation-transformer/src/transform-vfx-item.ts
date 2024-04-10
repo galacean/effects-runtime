@@ -20,6 +20,10 @@ export class TransformVFXItem extends VFXItem<TransformItem> {
         yMin: +t.yMin || 0,
         xMax: +t.xMax || 0,
         yMax: +t.yMax || 0,
+        hMin: +t.hMin || 0,
+        vMin: +t.vMin || 0,
+        hMax: +t.hMax || 0,
+        vMax: +t.vMax || 0,
       }));
     }
   }

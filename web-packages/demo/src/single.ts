@@ -1,26 +1,21 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
-import inspireList from './assets/inspire-list';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240402015523979/mars-preview.json';
-// 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240329095904692/mars-preview.json';
+const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240410102826011/mars-preview.json';
+// 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240409084951679/mars-preview.json';
 
+// 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240409083607425/mars-preview.json';
+
+// json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240409075831453/mars-preview.json';// 一段speed
+// json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240409080452290/mars-preview.json'; // 2段速度曲线
 const container = document.getElementById('J-container');
 
 (async () => {
   try {
     const player = createPlayer();
 
-    const comp = await player.loadScene(json, {
-      autoplay: false,
-    });
-
-    player.gotoAndStop(0.5);
-    setTimeout(() => {
-      player.gotoAndStop(0.1);
-
-    }, 300);
+    await player.loadScene(json, {});
   } catch (e) {
     console.error('biz', e);
   }

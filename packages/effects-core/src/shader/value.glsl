@@ -70,6 +70,7 @@ float valueFromBezierCurveFrames(float time, float frameStart, float frameCount)
       return k1.y;
     }
     if(time >= k0.x && time <= k1.x) {
+      float nt = (time - k0.x) / (k1.x - k0.x);
       float t = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
       return cubicBezier(t, k0.y, k0.w, k1.w, k1.y);
     }
