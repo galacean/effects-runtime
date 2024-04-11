@@ -171,7 +171,7 @@ export class AssetManager implements Disposable {
           const textVariable = variables[item.name];
 
           if (textVariable) {
-            (item as spec.TextItem).content.options.text = textVariable as string;
+            item.content.options.text = textVariable as string;
           }
         }
       });
@@ -431,7 +431,7 @@ export class AssetManager implements Disposable {
         const webpURL = webp && new URL(webp, baseUrl).href;
 
         if ('template' in img) {
-          const template = img.template as (spec.TemplateContentV1 | spec.TemplateContentV2);
+          const template = img.template as spec.TemplateContent;
           let result: { image: HTMLImageElement, type?: string, url: string };
 
           // 新版数据模版
@@ -474,8 +474,10 @@ export class AssetManager implements Disposable {
               result!.image,
               template,
               variables as Record<string, number | string>,
-              this.options,
-              img.oriY === -1,
+              {
+                ...this.options,
+                flipY: img.oriY === -1,
+              },
             );
           } catch (e) {
             throw new Error(`image template fail: ${imageURL}`);
