@@ -153,7 +153,7 @@ export class TestPlayer {
 
           viewProjection.projectPoint(pos, inPosition);
         } else {
-          const pos = mesh.getPointPosition(subIndex);
+          const pos = item.content.getPointPosition(subIndex);
 
           viewProjection.projectPoint(pos, inPosition);
         }
