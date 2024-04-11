@@ -1168,44 +1168,6 @@ const json = {
           },
         },
         {
-          'name': '按钮',
-          'delay': 0,
-          'id': 193,
-          'parentId': 198,
-          'ro': 0.005,
-          'sprite': {
-            'options': {
-              'startLifetime': 2,
-              'startSize': 2,
-              'sizeAspect': 2,
-              'startColor': [
-                'color',
-                [
-                  255,
-                  255,
-                  255,
-                ],
-              ],
-              'duration': 2,
-              'gravityModifier': 1,
-              'renderLevel': 'B+',
-              'looping': true,
-            },
-            'renderer': {
-              'renderMode': 1,
-              'texture': 4,
-              'maskMode': 2,
-            },
-            'transform': {
-              'position': [
-                0.03,
-                -1.88,
-                0,
-              ],
-            },
-          },
-        },
-        {
           'name': '边框（选中）',
           'delay': 0,
           'id': 196,
@@ -1319,52 +1281,6 @@ const json = {
             },
           },
         },
-        {
-          'name': 'scan-click',
-          'delay': 0,
-          'id': 199,
-          'parentId': 198,
-          'ui': {
-            'options': {
-              'duration': 20000,
-              'type': 'click',
-              'width': 2.4,
-              'height': 3.8,
-              'showPreview': false,
-              'renderLevel': 'B+',
-            },
-            'transform': {
-              'position': [
-                0,
-                -0.40000010155374455,
-                -0.0000023182466755145015,
-              ],
-            },
-          },
-        },
-        {
-          'name': 'scan-btn-click',
-          'delay': 0,
-          'id': 200,
-          'parentId': 198,
-          'ui': {
-            'options': {
-              'duration': 20000,
-              'type': 'click',
-              'width': 1.5,
-              'height': 0.8,
-              'showPreview': false,
-              'renderLevel': 'B+',
-            },
-            'transform': {
-              'position': [
-                0.02442937684098387,
-                -1.7807544058275369,
-                -0.000006954744002030111,
-              ],
-            },
-          },
-        },
       ],
       'meta': {
         'previewSize': [
@@ -1380,26 +1296,6 @@ const json = {
     'https://gw.alipayobjects.com/zos/gltf-asset/mars-cli/TCFWNOIAYQRL/-1300736739-1491c.png',
     'https://gw.alipayobjects.com/zos/gltf-asset/mars-cli/TCFWNOIAYQRL/-1979178489-505a9.png',
     'https://gw.alipayobjects.com/zos/gltf-asset/mars-cli/TCFWNOIAYQRL/-1203398720-5a3ae.png',
-    {
-      'template': {
-        'content': '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="512px" height="256px" viewBox="0 0 512 256">\n  <path d="M369.719 10.38a26.465 26.465 0 0 1 18.771 7.775 26.465 26.465 0 0 1 7.776 18.773v32.107H115.228V36.928a26.465 26.465 0 0 1 7.775-18.772 26.465 26.465 0 0 1 18.772-7.775H369.72Z" stroke="$scan_bubble_stroke_color$" stroke-width="2.502" fill="$scan_bubble_fill_color$"/><path d="M373.89 64.726c16.503 0 31.445 6.69 42.26 17.505 10.816 10.815 17.505 25.757 17.505 42.26s-6.69 31.446-17.504 42.262c-10.816 10.815-25.758 17.504-42.261 17.504H137.607c-16.504 0-31.446-6.69-42.261-17.504-10.815-10.816-17.505-25.758-17.505-42.261s6.69-31.446 17.505-42.261c10.814-10.815 25.756-17.505 42.26-17.505Z" stroke="$scan_btn_stroke_color$" stroke-width="5.56" fill="$scan_btn_fill_color$"/>\n  <image width="512" height="302" x="0" y="0" xlink:href="$image_scan_url$"/>\n  <text x="256" y="46" font-family="PingFangSC-Medium, PingFang SC" font-size="28.6" font-weight="400" fill="#C65C34" text-anchor="middle">\n    $scan_bubble_text$\n  </text>\n  <text x="256" y="138.53" font-family="PingFangSC-Semibold, PingFang SC" font-size="48.6" font-weight="700" fill="$scan_btn_text_color$" text-anchor="middle">\n    $scan_btn_text$\n  </text>\n</svg>',
-        'width': 512,
-        'height': 256,
-        'backgroundWidth': 512,
-        'backgroundHeight': 256,
-        'variables': {
-          'scan_bubble_stroke_color': 'scan_bubble_stroke_color',
-          'scan_bubble_fill_color': 'scan_bubble_fill_color',
-          'scan_btn_stroke_color': 'scan_btn_stroke_color',
-          'scan_btn_fill_color': 'scan_btn_fill_color',
-          'image_scan_url': 'https://gw.alipayobjects.com/mdn/rms_569823/afts/img/A*16erTbyK2rYAAAAAAAAAAAAAARQnAQ',
-          'scan_bubble_text': 'scan_bubble_text',
-          'scan_btn_text_color': '#FFF1D5',
-          'scan_btn_text': 'scan_btn_text',
-        },
-      },
-      'url': 'https://gw.alipayobjects.com/zos/gltf-asset/mars-cli/TCFWNOIAYQRL/390025513-0d883.png',
-    },
   ],
   'version': '0.1.47',
   'shapes': [
@@ -1600,7 +1496,6 @@ const json = {
       1,
       2,
       3,
-      4,
     ],
   },
   'imageTags': [
@@ -1608,7 +1503,6 @@ const json = {
     'B+',
     'B+',
     'A+',
-    'B+',
   ],
 };
 const container = document.getElementById('J-container');

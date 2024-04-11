@@ -1,29 +1,5 @@
-import type { Composition } from '@galacean/effects';
+import type { Composition, spec } from '@galacean/effects';
 import { VERTICAL_INIT_DEGREE } from './transform-vfx-item';
-
-export interface CompositionTransformerTarget {
-  name: string,
-  xMin: number,
-  xMax: number,
-  yMin: number,
-  yMax: number,
-  /**
-   * 绕x轴（水平）旋转角度最小值
-   */
-  hMin: number,
-  /**
-   * 绕x轴（水平）旋转角度最大值
-   */
-  hMax: number,
-  /**
-   * 绕y轴（垂直）旋转角度最小值
-   */
-  vMin: number,
-  /**
-   * 绕y轴（垂直）旋转角度最大值
-   */
-  vMax: number,
-}
 
 type EventType = {
   x: number,
@@ -31,7 +7,7 @@ type EventType = {
 };
 
 export class CompositionTransformerAcceler {
-  private readonly targets: Record<string, CompositionTransformerTarget> = {};
+  private readonly targets: Record<string, spec.PluginGyroscopeTarget> = {};
   private readonly records: Record<string, { item: any, position: number[], current?: number[], rotation: number[] }> = {};
   private readonly currentPos: Record<string, number[]> = {};
   private readonly currentRot: Record<string, number[]> = {};
@@ -88,7 +64,7 @@ export class CompositionTransformerAcceler {
     }
   }
 
-  addTarget (target: CompositionTransformerTarget) {
+  addTarget (target: spec.PluginGyroscopeTarget) {
     this.targets[target.name] = target;
   }
 
