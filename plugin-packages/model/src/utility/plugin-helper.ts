@@ -30,6 +30,7 @@ import {
   DestroyOptions,
   loadImage,
   PLAYER_OPTIONS_ENV_EDITOR,
+  GLSLVersion,
 } from '@galacean/effects';
 import { deserializeGeometry, typedArrayFromBinary } from '@galacean/effects-helper';
 import type { GLTFCamera, GLTFImage, GLTFLight, GLTFTexture } from '@vvfx/resource-detection';
@@ -474,6 +475,7 @@ export class MeshHelper {
     const vertexShader = material.vertexShaderCode;
     const fragmentShader = material.fragmentShaderCode;
     const geometry = Geometry.create(engine, MeshHelper.getPlaneGeometry());
+    const isWebGL2 = engine.gpuCapability.level === 2;
     const effectsMaterial = Material.create(
       engine,
       {
@@ -481,6 +483,7 @@ export class MeshHelper {
           vertex: vertexShader,
           fragment: fragmentShader,
           shared: globalState.shaderShared,
+          glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
         },
         uniformSemantics,
       }

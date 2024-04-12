@@ -70,37 +70,27 @@ export class Engine implements Disposable {
   addPackageDatas (scene: Scene) {
     const jsonScene = scene.jsonScene;
 
-    //@ts-expect-error
     if (jsonScene.items) {
-      //@ts-expect-error
       for (const vfxItemData of jsonScene.items) {
         this.addEffectsObjectData(vfxItemData);
       }
     }
-    //@ts-expect-error
     if (jsonScene.materials) {
-      //@ts-expect-error
       for (const materialData of jsonScene.materials) {
         this.addEffectsObjectData(materialData);
       }
     }
-    //@ts-expect-error
     if (jsonScene.shaders) {
-      //@ts-expect-error
       for (const shaderData of jsonScene.shaders) {
         this.addEffectsObjectData(shaderData);
       }
     }
-    //@ts-expect-error
     if (jsonScene.geometries) {
-      //@ts-expect-error
       for (const geometryData of jsonScene.geometries) {
         this.addEffectsObjectData(geometryData);
       }
     }
-    //@ts-expect-error
     if (jsonScene.components) {
-      //@ts-expect-error
       for (const componentData of jsonScene.components) {
         this.addEffectsObjectData(componentData);
       }
@@ -116,7 +106,6 @@ export class Engine implements Disposable {
   async createVFXItemsAsync (scene: Scene) {
     const jsonScene = scene.jsonScene;
 
-    //@ts-expect-error
     for (const itemData of jsonScene.items) {
       if (!(
         itemData.type === 'ECS' ||

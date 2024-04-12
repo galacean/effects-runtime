@@ -111,7 +111,6 @@ export class CompositionComponent extends ItemBehaviour {
           }
           item.getComponent(CompositionComponent)!.createContent();
         } else if (
-          itemData.type === 'ECS' ||
           itemData.type === spec.ItemType.sprite ||
           itemData.type === spec.ItemType.text ||
           itemData.type === spec.ItemType.particle ||
@@ -131,24 +130,9 @@ export class CompositionComponent extends ItemBehaviour {
           // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣
           item = new VFXItem(this.engine, itemData);
           item.composition = this.item.composition;
-
           // 兼容老的数据代码，json 更新后可移除
-          switch (itemData.type) {
-            case spec.ItemType.text: {
-              // 添加文本组件
-              const textItem = new TextComponent(this.engine, itemData.content as spec.TextContent);
+          item = createVFXItem(itemData, this.item.composition);
 
-              textItem.item = item;
-              item.components.push(textItem);
-              item.rendererComponents.push(textItem);
-              item._content = textItem;
-
-              break;
-            }
-            default: {
-              item = createVFXItem(itemData, this.item.composition);
-            }
-          }
         }
         item.parent = this.item;
         // 相机不跟随合成移动

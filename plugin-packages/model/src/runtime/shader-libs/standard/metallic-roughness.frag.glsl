@@ -590,12 +590,12 @@ void main()
 
     vec3 emissive = vec3(0);
 /*#ifdef HAS_EMISSIVE_MAP
-    emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor;
+    emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
     color += emissive;
 #endif
 
 #ifdef HAS_EMISSIVE
-    color += u_EmissiveFactor;
+    color += u_EmissiveFactor.rgb;
 #endif*/
 
 #ifndef DEBUG_OUTPUT // no debug
@@ -610,10 +610,10 @@ void main()
         color = toneMap(color) * baseColor.a;
         // emmisive要放在tone mapping之后，否则会导致光影过弱
         #ifdef HAS_EMISSIVE
-          color += u_EmissiveFactor;
+          color += u_EmissiveFactor.rgb;
         #endif
         #ifdef HAS_EMISSIVE_MAP
-          emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor;
+          emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
           color += emissive;
         #endif
         vec4 fragColorOut = vec4(color, baseColor.a);
@@ -652,11 +652,11 @@ void main()
     #ifdef DEBUG_EMISSIVE
         // fetch emissive data
         #ifdef HAS_EMISSIVE
-            emissive = u_EmissiveFactor;
+            emissive = u_EmissiveFactor.rgb;
         #endif
 
         #ifdef HAS_EMISSIVE_MAP
-            emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor;
+            emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
         #endif
 
         outFragColor.rgb = LINEARtoSRGB(emissive);

@@ -9,7 +9,8 @@ let currentTime = 0;
 let pauseOnFirstFrame = false;
 
 let infoElement;
-const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
+//const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
+const url = './trail-demo.scene.json';
 
 const compatibleMode = 'tiny3d';
 

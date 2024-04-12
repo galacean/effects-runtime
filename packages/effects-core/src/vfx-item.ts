@@ -467,7 +467,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       }
     }
     for (const child of this.children) {
-      return child.find(name);
+      const res = child.find(name);
+
+      if (res) {
+        return res;
+      }
     }
 
     return undefined;
@@ -482,6 +486,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     } = data;
 
     this.props = data;
+    //@ts-expect-error
     this.type = data.type;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.name = name;
@@ -564,10 +569,10 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
+      // @ts-expect-error
+      const { width, height } = this.composition.renderer.canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
-      const width = this.composition.renderer.getWidth() / 2;
-      const height = this.composition.renderer.getHeight() / 2;
 
       this.transform.translate(2 * x * rx / width, -2 * y * ry / height, 0);
     }
@@ -652,7 +657,6 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
   if (!pluginName) {
     switch (type) {
       case spec.ItemType.null:
-      case spec.ItemType.base:
         pluginName = 'cal';
 
         break;
