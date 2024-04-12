@@ -109,8 +109,11 @@ export class SpriteVFXItem extends VFXItem<SpriteItem> {
 
   protected override doCreateContent (composition: Composition) {
     const { emptyTexture } = composition.getRendererOptions();
+    const content = new SpriteItem(this.sprite as SpriteItemProps, { emptyTexture }, this);
 
-    return new SpriteItem(this.sprite as SpriteItemProps, { emptyTexture }, this);
+    content.getRenderData(0, true);
+
+    return content;
   }
 
   createWireframeMesh (item: SpriteItem, color: spec.vec4): SpriteMesh {
