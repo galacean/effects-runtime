@@ -10,24 +10,14 @@ export const DEFAULT_FONTS = [
   'courier',
 ];
 
-// 文本框在canvas中的位置
-export interface TextLayout {
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-}
-
 export interface TemplateOptions {
   templateScale?: number, // 画布缩放系数
-  canvas?: HTMLCanvasElement, // 绘制画布
-  textLayouts?: TextLayout[], // 返回文本布局信息
   debug?: boolean, // 显示边框
   borderColor?: string, // 边框颜色
   borderWidth?: number, // 边框宽度
   flipY?: boolean, // 是否反转画布
-  scaleX?: number, // x轴缩放
-  scaleY?: number, // y轴缩放
+  scaleX?: number, // x 轴缩放
+  scaleY?: number, // y 轴缩放
 }
 
 class CanvasPool {
@@ -52,7 +42,7 @@ class CanvasPool {
       // @ts-expect-error
       return window._createOffscreenCanvas(10, 10);
     } else {
-      // in hongmeng system,create too many canvas will case render error
+      // in hongmeng system, create too many canvas will case render error
       const defCanvas = document.createElement('canvas');
 
       defCanvas.getContext('2d', { willReadFrequently: true });
@@ -99,7 +89,7 @@ async function drawImageByTemplate (
   image?: HTMLImageElement,
   template?: TemplateContent,
   variables?: Record<string, number | string>,
-  opts?: TemplateOptions
+  options?: TemplateOptions,
 ) {
   if (!image) {
     throw Error('image not provided');
@@ -109,7 +99,7 @@ async function drawImageByTemplate (
     return image;
   }
 
-  const templateScale = opts?.templateScale || 1;
+  const templateScale = options?.templateScale || 1;
   const width = template.width;
   const height = template.height;
   let scaleX = templateScale;
