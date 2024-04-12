@@ -112,7 +112,7 @@ export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vect
         ptDistance += Math.pow(point.z - lastPoint.z, 2);
       }
       lastPoint = point;
-      ptDistance = Math.sqrt(ptDistance);
+      ptDistance = Math.floor(Math.sqrt(ptDistance) * 10000) / 10000;
       addedLength += ptDistance;
       samples[k] = {
         partialLength: ptDistance,
@@ -155,31 +155,34 @@ export class BezierPath {
   /**
    * 获取路径在指定比例长度上点的坐标
    * @param percent 路径长度的比例
-   * @param lastIndex 开始计算的点
    */
   getPointInPercent (percent: number) {
-    const point = new Vector3();
     const bezierData = this.lengthData;
-    let flag = true, addedLength = this.catching.lastAddedLength;
-    const distanceInLine = bezierData.totalLength * percent;
-    const pNum = bezierData.points.length;
 
+    if (percent === 0) {
+      return bezierData.points[0].point;
+    }
+
+    if (percent === 1) {
+      return bezierData.points[CURVE_SEGMENTS - 1 ].point;
+    }
+
+    const point = new Vector3();
+
+    const segmentLength = Math.floor(bezierData.totalLength * percent * 1000) / 1000;
+    const pNum = bezierData.points.length;
+    let flag = true;
+    let addedLength = this.catching.lastAddedLength;
     let j = this.catching.lastPoint;
 
-    if (distanceInLine < this.catching.lastAddedLength) {
-      j = 0;
-      addedLength = 0;
+    let dir = 1;
+
+    if (segmentLength < this.catching.lastAddedLength) {
+      dir = -1;
     }
     while (flag) {
-      addedLength += bezierData.points[j].partialLength;
-      if (distanceInLine === 0 || percent === 0 || j === pNum - 1) {
-        point.x = bezierData.points[j].point.x;
-        point.y = bezierData.points[j].point.y;
-        point.z = bezierData.points[j].point.z;
-
-        break;
-      } else if (distanceInLine >= addedLength && distanceInLine < addedLength + bezierData.points[j + 1].partialLength) {
-        const segmentPerc = (distanceInLine - addedLength) / bezierData.points[j + 1].partialLength;
+      if (segmentLength >= addedLength && segmentLength < addedLength + bezierData.points[j + 1].partialLength) {
+        const segmentPerc = (segmentLength - addedLength) / bezierData.points[j + 1].partialLength;
 
         point.x = bezierData.points[j].point.x + (bezierData.points[j + 1].point.x - bezierData.points[j].point.x) * segmentPerc;
         point.y = bezierData.points[j].point.y + (bezierData.points[j + 1].point.y - bezierData.points[j].point.y) * segmentPerc;
@@ -187,15 +190,16 @@ export class BezierPath {
 
         break;
       }
-      if (j < pNum - 1) {
-        j += 1;
+      j += dir;
+      if (j >= 0 && j < pNum - 1) {
+        addedLength = addedLength + Math.floor(dir * bezierData.points[j].partialLength * 100000) / 100000;
       } else {
         flag = false;
+        point.copyFrom(bezierData.points[this.catching.lastPoint].point);
       }
     }
-
     this.catching.lastPoint = j;
-    this.catching.lastAddedLength = addedLength - bezierData.points[j].partialLength;
+    this.catching.lastAddedLength = addedLength;
 
     point.x += this.interval[0];
     point.y += this.interval[1];

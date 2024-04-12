@@ -222,7 +222,7 @@ mat3 transformFromRotation(vec3 rot, float _life, float _dur) {
 
 void main() {
   float time = uParams.x - aOffset.z;
-  float dur = aOffset.w;
+  float dur = aOffset.w; // 粒子生命周期
   if(time < 0. || time > dur) {
     gl_Position = vec4(-3., -3., -3., 1.);
   } else {

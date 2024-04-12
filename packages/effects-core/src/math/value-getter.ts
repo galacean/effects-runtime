@@ -880,10 +880,12 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       if (time >= Number(xMin) && time < Number(xMax)) {
         const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
 
-        perc = this.getPercValue(keyTimeData[i], time);
+        perc = Math.floor(this.getPercValue(keyTimeData[i], time) * 10000) / 10000;
         point = bezierPath.getPointInPercent(perc);
+
       }
     }
+    // console.log(point.y);
 
     return point;
   }
