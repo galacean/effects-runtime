@@ -820,12 +820,10 @@ export class BezierCurve extends ValueGetter<number> {
 export class BezierCurvePath extends ValueGetter<Vector3> {
   curveSegments: Record<string, {
     points: Vector2[],
+    // 缓动曲线
     easingCurve: BezierEasing,
+    // 路径曲线
     pathCurve: BezierPath,
-    bezierData: {
-      data: BezierLengthData,
-      interval: number[],
-    },
   }>;
 
   override onCreate (props: spec.BezierCurvePathValue) {
@@ -842,22 +840,25 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       const s = ps[0];
       const e = ps[ps.length - 1];
 
+      const pathCurve = new BezierPath(ps1, ps2, cp1, cp2);
+
       this.curveSegments[`${s.x}&${e.x}`] = {
         points: ps,
         easingCurve,
-        pathCurve: new BezierPath(ps1, ps2, cp1, cp2),
-        bezierData: buildBezierData(ps1, ps2, cp1, cp2),
+        pathCurve: pathCurve,
       };
     }
+
   }
 
   override getValue (time: number): Vector3 {
+    const t = Math.floor(time * 100000) / 100000;
     let perc = 0, point = new Vector3();
     const keyTimeData = Object.keys(this.curveSegments);
     const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
     const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
 
-    if (time <= keyTimeStart) {
+    if (t <= keyTimeStart) {
       const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
 
       point = pathCurve.getPointInPercent(0);
@@ -865,7 +866,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       return point;
 
     }
-    if (time >= keyTimeEnd) {
+    if (t >= keyTimeEnd) {
       const pathCurve = this.curveSegments[keyTimeData[keyTimeData.length - 1]].pathCurve;
 
       point = pathCurve.getPointInPercent(1);
@@ -876,10 +877,11 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     for (let i = 0; i < keyTimeData.length ; i++) {
       const [xMin, xMax] = keyTimeData[i].split('&');
 
-      if (time >= Number(xMin) && time < Number(xMax)) {
+      if (t >= Number(xMin) && t < Number(xMax)) {
         const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
 
-        perc = Math.floor(this.getPercValue(keyTimeData[i], time) * 10000) / 10000;
+        perc = Math.floor(this.getPercValue(keyTimeData[i], t) * 10000) / 10000;
+
         point = bezierPath.getPointInPercent(perc);
 
       }

@@ -77,7 +77,7 @@ function newtonRaphsonIterate (aX: number, aGuessT: number, mX1: number, mX2: nu
  */
 export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vector3): {
   data: BezierLengthData,
-  interval: number[],
+  interval: Vector3,
 } {
   // 使用平移后的终点、控制点作为key
   const s1 = Math.round((p2.x - p1.x) * 1000) / 1000 + '_' + Math.round((p2.y - p1.y) * 1000) / 1000 + '_' + Math.round((p2.z - p1.z) * 1000) / 1000;
@@ -89,7 +89,7 @@ export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vect
   if (BezierDataMap[str]) {
     return {
       data: BezierDataMap[str],
-      interval: p1.toArray(),
+      interval: p1,
     };
   } else {
     const samples = [];
@@ -112,7 +112,7 @@ export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vect
         ptDistance += Math.pow(point.z - lastPoint.z, 2);
       }
       lastPoint = point;
-      ptDistance = Math.floor(Math.sqrt(ptDistance) * 10000) / 10000;
+      ptDistance = Math.sqrt(ptDistance);
       addedLength += ptDistance;
       samples[k] = {
         partialLength: ptDistance,
@@ -126,7 +126,7 @@ export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vect
 
     return {
       data,
-      interval: [p1.x, p1.y, p1.z],
+      interval: new Vector3(p1.x, p1.y, p1.z),
     };
   }
 
@@ -134,7 +134,7 @@ export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vect
 
 export class BezierPath {
   public readonly lengthData: BezierLengthData;
-  public readonly interval: number[];
+  public readonly interval: Vector3;
   public readonly totalLength: number;
   private catching: {
     lastPoint: number,
@@ -144,7 +144,7 @@ export class BezierPath {
       lastAddedLength: 0,
     };
 
-  constructor (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vector3) {
+  constructor (public p1: Vector3, public p2: Vector3, public p3: Vector3, public p4: Vector3) {
     const { data, interval } = buildBezierData(p1, p2, p3, p4);
 
     this.lengthData = data;
@@ -160,17 +160,18 @@ export class BezierPath {
     const bezierData = this.lengthData;
 
     if (percent === 0) {
-      return bezierData.points[0].point;
+      return bezierData.points[0].point.clone().add(this.interval);
     }
 
-    if (percent === 1) {
-      return bezierData.points[CURVE_SEGMENTS - 1 ].point;
+    if (Math.floor((1 - percent) * 1000) / 1000 === 0) {
+      return bezierData.points[CURVE_SEGMENTS - 1].point.clone().add(this.interval);
+    }
+    if (decimalEqual(bezierData.totalLength, 0)) {
+      return this.p1.add(this.interval);
     }
 
     const point = new Vector3();
-
     const segmentLength = Math.floor(bezierData.totalLength * percent * 1000) / 1000;
-    const pNum = bezierData.points.length;
     let flag = true;
     let addedLength = this.catching.lastAddedLength;
     let j = this.catching.lastPoint;
@@ -180,6 +181,7 @@ export class BezierPath {
     if (segmentLength < this.catching.lastAddedLength) {
       dir = -1;
     }
+
     while (flag) {
       if (segmentLength >= addedLength && segmentLength < addedLength + bezierData.points[j + 1].partialLength) {
         const segmentPerc = (segmentLength - addedLength) / bezierData.points[j + 1].partialLength;
@@ -191,19 +193,17 @@ export class BezierPath {
         break;
       }
       j += dir;
-      if (j >= 0 && j < pNum - 1) {
+      if (j >= 0 && j < CURVE_SEGMENTS - 1) {
         addedLength = addedLength + Math.floor(dir * bezierData.points[j].partialLength * 100000) / 100000;
       } else {
         flag = false;
-        point.copyFrom(bezierData.points[this.catching.lastPoint].point);
+        point.copyFrom(bezierData.points[j].point);
       }
     }
-    this.catching.lastPoint = j;
+    this.catching.lastPoint = j === CURVE_SEGMENTS - 1 ? j - 1 : j;
     this.catching.lastAddedLength = addedLength;
 
-    point.x += this.interval[0];
-    point.y += this.interval[1];
-    point.z += this.interval[2];
+    point.add(this.interval);
 
     return point;
   }
