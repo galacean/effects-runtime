@@ -2,6 +2,7 @@
  * 小程序产物编译配置
  */
 import inject from '@rollup/plugin-inject';
+
 const module = '@galacean/appx-adapter';
 const commonAdapterList = [
   'window',
@@ -24,13 +25,16 @@ const commonAdapterList = [
 const adapterList = {
   weapp: [...commonAdapterList],
 }
+
 export default [
   'weapp',
 ].map(platform => {
   const adapterVars = {};
+
   adapterList[platform].forEach(name => {
     adapterVars[name] = [`${module}/${platform}`, name];
   });
+
   return {
     input: `src/index.ts`,
     output: [{
