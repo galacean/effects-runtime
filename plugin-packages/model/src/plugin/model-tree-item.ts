@@ -1,9 +1,8 @@
-import { Transform, ItemBehaviour, spec, effectsClass } from '@galacean/effects';
+import { Transform, ItemBehaviour, spec, effectsClass, DataType } from '@galacean/effects';
 import type { TimelineComponent, VFXItemContent, Engine, VFXItem } from '@galacean/effects';
 import type { ModelTreeOptions, ModelTreeContent } from '../index';
 import { PAnimationManager } from '../runtime';
 import { getSceneManager } from './model-plugin';
-import { ModelDataType } from './model-item';
 
 /**
  * 场景树节点描述
@@ -177,7 +176,7 @@ export class ModelTreeItem {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.TreeComponent)
+@effectsClass(DataType.TreeComponent)
 export class ModelTreeComponent extends ItemBehaviour {
   /**
    * 内部节点树元素

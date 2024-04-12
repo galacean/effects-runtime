@@ -477,7 +477,38 @@ describe('interact item', () => {
       },
     ];
 
-    const scene = await generateScene(items, player);
+    await generateScene(items, player);
+
+    player.gotoAndPlay(0.1);
+    expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
+    player.gotoAndPlay(1.1);
+
+    expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
+
+  });
+
+  it('message item with reusable', async () => {
+    messagePhrase = undefined;
+    const items = [
+      {
+        'name': 'ui_11',
+        'delay': 0,
+        'id': 12,
+        'ui': {
+          'options': {
+            'duration': 1,
+            'type': 'message',
+            'width': 0.6,
+            'height': 0.4,
+            'showPreview': true,
+          },
+        },
+      },
+    ];
+
+    await generateScene(items, player, {
+      reusable: true,
+    });
 
     player.gotoAndPlay(0.1);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
@@ -540,7 +571,7 @@ describe('interact item', () => {
   });
 });
 
-function generateScene (items, player) {
+function generateScene (items, player, options?) {
   const json = {
     'compositionId': 5,
     'requires': [],
@@ -584,7 +615,7 @@ function generateScene (items, player) {
     ],
   };
 
-  return player.createComposition(json);
+  return player.createComposition(json, options);
 }
 
 async function generateComposition (items, player, playerOptions) {

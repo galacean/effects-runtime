@@ -1,6 +1,6 @@
 import type { spec, Mesh, Material, TextureSourceOptions, TextureConfigOptions, Engine, Renderer } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType, loadImage } from '@galacean/effects';
-import type { ModelItemSkybox, ModelSkyboxOptions } from '../index';
+import type { ModelItemSkybox, ModelSkyboxComponentData, ModelSkyboxOptions } from '../index';
 import { PObjectType, PMaterialType } from './common';
 import { PEntity } from './object';
 import { PMaterialBase } from './material';
@@ -73,24 +73,38 @@ export class PSkybox extends PEntity {
   /**
    * 构造函数
    * @param name - 名称
-   * @param options - 天空盒参数
+   * @param data - 天空盒参数
    * @param owner - 所属天空盒组件元素
    */
-  constructor (name: string, options: ModelSkyboxOptions, owner?: ModelSkyboxComponent) {
+  constructor (name: string, data: ModelSkyboxComponentData, owner?: ModelSkyboxComponent) {
     super();
     this.name = name;
     this.type = PObjectType.skybox;
     this.visible = false;
     this.owner = owner;
 
-    this.renderable = options.renderable;
-    this.intensity = options.intensity;
-    this.reflectionsIntensity = options.reflectionsIntensity;
-    this.irradianceCoeffs = options.irradianceCoeffs;
-    this.diffuseImage = options.diffuseImage;
-    this.specularImage = options.specularImage;
-    this.specularImageSize = options.specularImageSize;
-    this.specularMipCount = options.specularMipCount;
+    const { irradianceCoeffs } = data;
+
+    this.renderable = data.renderable;
+    this.intensity = data.intensity;
+    this.reflectionsIntensity = data.reflectionsIntensity;
+    if (irradianceCoeffs) {
+      this.irradianceCoeffs = [];
+      for (let i = 0; i < irradianceCoeffs.length; i += 3) {
+        this.irradianceCoeffs.push([
+          irradianceCoeffs[i],
+          irradianceCoeffs[i + 1],
+          irradianceCoeffs[i + 2],
+        ]);
+      }
+    } else {
+      this.irradianceCoeffs = [];
+    }
+
+    this.diffuseImage = data.diffuseImage as unknown as Texture;
+    this.specularImage = data.specularImage as unknown as Texture;
+    this.specularImageSize = data.specularImageSize;
+    this.specularMipCount = data.specularMipCount;
 
     this.priority = owner?.item?.listIndex || 0;
   }
@@ -164,7 +178,7 @@ export class PSkybox extends PEntity {
       const sceneStates = scene.sceneStates;
       const camera = sceneStates.camera;
       const viewMatrix = sceneStates.viewMatrix;
-      const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fovy).multiply(viewMatrix).invert();
+      const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fov).multiply(viewMatrix).invert();
       const material = this.skyboxMesh.material;
 
       this.skyboxMaterial.updateUniforms(material);

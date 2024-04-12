@@ -1,8 +1,5 @@
 import type { Disposable, FrameBuffer, Renderer, SharedShaderWithSource } from '@galacean/effects-core';
-import {
-  createShaderWithMarcos, glContext, GLSLVersion, RenderPass, ShaderType, TextureLoadAction,
-  TextureSourceType, Mesh,
-} from '@galacean/effects-core';
+import { GLSLVersion, Mesh, RenderPass, TextureLoadAction, TextureSourceType, glContext } from '@galacean/effects-core';
 import type { GLFrameBuffer } from './gl-frame-buffer';
 import { GLGeometry } from './gl-geometry';
 import { GLMaterial } from './gl-material';
@@ -128,8 +125,8 @@ export class ExtWrap implements RendererExtensions, Disposable {
       shader: {
         cacheId: copyShaderId,
         name,
-        vertex: createShaderWithMarcos([], vertexShader, ShaderType.vertex, level),
-        fragment: createShaderWithMarcos([], fragmentShader, ShaderType.fragment, level),
+        vertex: vertexShader,
+        fragment: fragmentShader,
         glslVersion: level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
       },
     });

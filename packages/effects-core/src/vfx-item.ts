@@ -1,23 +1,22 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
+import { DataType, type VFXItemData } from './asset-loader';
 import { EffectComponent, RendererComponent } from './components';
 import type { Component } from './components/component';
 import { ItemBehaviour } from './components/component';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
-import { DataType, type VFXItemData } from './asset-loader';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
-import { convertAnchor } from './math';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent, SpriteItemProps,
-  TransformAnimationData,
+  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
 } from './plugins';
-import { ActivationClipPlayable, AnimationClipPlayable, TimelineComponent, Track } from './plugins';
+import { TimelineComponent } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
 
@@ -93,6 +92,9 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 元素 id 唯一
    */
   id: string;
+
+  // TODO: 2.0 编辑器测试用变量，后续移除
+  oldId: string;
   /**
    * 元素创建的数据图层/粒子/模型等
    */
@@ -465,7 +467,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       }
     }
     for (const child of this.children) {
-      return child.find(name);
+      const res = child.find(name);
+
+      if (res) {
+        return res;
+      }
     }
 
     return undefined;
@@ -480,15 +486,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     } = data;
 
     this.props = data;
+    //@ts-expect-error
     this.type = data.type;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.name = name;
     this.start = delay ? delay : this.start;
-    // TODO spec 数据需要区分 scale 和 size
-    if (transform && transform.scale && data.type !== 'ECS') {
-      //@ts-expect-error  TODO 数据改造后移除 expect-error
-      transform.scale.z = transform.scale.x;
-    }
 
     if (transform) {
       //@ts-expect-error TODO 数据改造后移除 expect-error
@@ -497,27 +499,28 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       transform.rotation = new Euler().copyFrom(transform.rotation);
       //@ts-expect-error
       transform.scale = new Vector3().copyFrom(transform.scale);
+      //@ts-expect-error
+      if (transform.size) {
+        //@ts-expect-error
+        transform.size = new Vector2().copyFrom(transform.size);
+      }
+      //@ts-expect-error
+      if (transform.anchor) {
+        //@ts-expect-error
+        transform.anchor = new Vector2().copyFrom(transform.anchor);
+      }
       this.transform.setTransform(transform);
     }
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
-
-    // TODO spec 数据需要区分 scale 和 size
-    if (data.type === spec.ItemType.sprite && transform) {
-      this.transform.setSize(this.transform.scale.x, this.transform.scale.y);
-      this.transform.setScale(1, 1, 1);
-    }
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-
-    // TODO: 放到 Spec 处理
-    if (this.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY || this.endBehavior === spec.END_BEHAVIOR_PAUSE) {
-      this.endBehavior = spec.END_BEHAVIOR_FREEZE;
-    }
     this.lifetime = -(this.start / this.duration);
     this.listIndex = listIndex;
+    //@ts-expect-error
+    this.oldId = data.oldId;
 
     if (!data.content) {
       data.content = { options: {} };
@@ -525,34 +528,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     const timelineComponent = this.getComponent(TimelineComponent)!;
 
     timelineComponent.fromData(data.content as spec.NullContent);
-
-    // TODO anchor 应该放在 transform data
-    if (data.type === spec.ItemType.sprite) {
-      const content = data.content as unknown as SpriteItemProps;
-
-      if (!content.renderer) {
-        //@ts-expect-error
-        content.renderer = {};
-      }
-      const realAnchor = convertAnchor(content.renderer.anchor, content.renderer.particleOrigin);
-      const startSize = this.transform.size;
-
-      // 兼容旧JSON（anchor和particleOrigin可能同时存在）
-      if (!content.renderer.anchor && content.renderer.particleOrigin !== undefined) {
-        this.transform.position.add([-realAnchor[0] * startSize.x, -realAnchor[1] * startSize.y, 0]);
-      }
-      this.transform.setAnchor(realAnchor[0] * startSize.x, realAnchor[1] * startSize.y, 0);
-    }
-
-    // TODO 要放在上面的 if 后面添加，否则会 position 初始化错误
-    if (this.type !== spec.ItemType.particle) {
-      const track = timelineComponent.createTrack(Track, 'AnimationTrack');
-
-      track.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(data.content as TransformAnimationData);
-    }
-    const activationTrack = timelineComponent.createTrack(Track, 'ActivationTrack');
-
-    activationTrack.createClip(ActivationClipPlayable, 'ActivationTimelineClip');
 
     if (duration <= 0) {
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
@@ -594,10 +569,10 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
+      // @ts-expect-error
+      const { width, height } = this.composition.renderer.canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
-      const width = this.composition.renderer.getWidth() / 2;
-      const height = this.composition.renderer.getHeight() / 2;
 
       this.transform.translate(2 * x * rx / width, -2 * y * ry / height, 0);
     }
@@ -682,7 +657,6 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
   if (!pluginName) {
     switch (type) {
       case spec.ItemType.null:
-      case spec.ItemType.base:
         pluginName = 'cal';
 
         break;

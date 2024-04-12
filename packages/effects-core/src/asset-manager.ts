@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
 import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
@@ -97,9 +97,9 @@ export interface SceneLoadOptions {
 let seed = 1;
 
 /**
- * 场景类型
+ * 接受用于加载的数据类型
  */
-export type SceneType = string | JSONValue | Scene;
+export type SceneType = string | Scene | Record<string, unknown>;
 export type SceneWithOptionsType = { scene: SceneType, options: SceneLoadOptions };
 export type SceneLoadType = SceneType | SceneWithOptionsType;
 
@@ -156,6 +156,32 @@ export class AssetManager implements Disposable {
   }
 
   /**
+   * 根据用户传入的参数修改场景数据
+   */
+  private updateSceneData (compositions: spec.Composition[]): spec.Composition[] {
+    const variables = this.options.variables;
+
+    if (!variables || Object.keys(variables).length <= 0) {
+      return compositions;
+    }
+
+    compositions.forEach(composition => {
+      composition.items.forEach(item => {
+        if (item.type === spec.ItemType.text) {
+          const textVariable = variables[item.name];
+
+          if (textVariable) {
+            (item as spec.TextItem).content.options.text = textVariable as string;
+          }
+        }
+      });
+    });
+
+    return compositions;
+
+  }
+
+  /**
    * 场景创建，通过 json 创建出场景对象，并进行提前编译等工作
    * @param url - json 的 URL 链接或者 json 对象
    * @param renderer - renderer 对象，用于获取管理、编译 shader 及 GPU 上下文的参数
@@ -163,11 +189,11 @@ export class AssetManager implements Disposable {
    * @returns
    */
   async loadScene (
-    url: string | JSONValue | Scene,
+    url: SceneType,
     renderer?: Renderer,
     options?: { env: string },
   ): Promise<Scene> {
-    let rawJSON: JSONValue | Scene;
+    let rawJSON: SceneType | JSONValue;
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfos: string[] = [];
@@ -239,11 +265,13 @@ export class AssetManager implements Disposable {
           for (let i = 0; i < scene.images.length; i++) {
             scene.textureOptions[i].image = scene.images[i];
           }
+          scene.jsonScene.compositions = this.updateSceneData(scene.jsonScene.compositions);
         }
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
+
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, usedImages, compressedTexture)),
@@ -253,8 +281,10 @@ export class AssetManager implements Disposable {
         await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
+        jsonScene.compositions = this.updateSceneData(jsonScene.compositions);
+
         scene = {
-          url: url as JSONValue | string,
+          url: url,
           renderLevel: this.options.renderLevel,
           storage: {},
           pluginSystem,
@@ -347,12 +377,13 @@ export class AssetManager implements Disposable {
 
   private async processBins (bins: (spec.BinaryFile | ArrayBuffer)[]) {
     const { renderLevel } = this.options;
+    const baseUrl = this.baseUrl;
     const jobs = bins.map(bin => {
       if (bin instanceof ArrayBuffer) {
         return bin;
       }
       if (passRenderLevel(bin.renderLevel, renderLevel)) {
-        return this.loadBins(bin.url);
+        return this.loadBins(new URL(bin.url, baseUrl).href);
       }
 
       throw new Error(`Invalid bins source: ${JSON.stringify(bins)}`);
@@ -369,7 +400,8 @@ export class AssetManager implements Disposable {
     const jobs = fonts.map(async font => {
       // 数据模版兼容判断
       if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
-        const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + font.fontURL + ')');
+        const url = new URL(font.fontURL, this.baseUrl).href;
+        const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
 
         try {
           await fontFace.load();
@@ -377,7 +409,7 @@ export class AssetManager implements Disposable {
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
         } catch (e) {
-          logger.warn(`Invalid fonts source: ${JSON.stringify(font.fontURL)}`);
+          logger.warn(`Invalid fonts source: ${JSON.stringify(url)}`);
         }
       }
     });
@@ -610,7 +642,7 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
     return image.source;
   } else if (
     image instanceof HTMLImageElement ||
-    image instanceof HTMLCanvasElement
+    isCanvas(image)
   ) {
     return {
       image,
@@ -683,3 +715,7 @@ function base64ToFile (base64: string, filename = 'base64File', contentType = ''
   return file;
 }
 
+function isCanvas (cavnas: HTMLCanvasElement) {
+  // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
+  return typeof cavnas === 'object' && cavnas !== null && cavnas.tagName?.toUpperCase() === 'CANVAS';
+}

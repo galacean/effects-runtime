@@ -5,8 +5,10 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
 import { PlayableGraph } from './playable-graph';
-import type { Track } from './track';
+import { Track } from './track';
 import { serialize } from '../../decorators';
+import { ActivationPlayable, TransformAnimationPlayable } from './calculate-vfx-item';
+import { SpriteColorPlayable } from '../sprite/sprite-item';
 
 /**
  * 基础位移属性数据
@@ -197,7 +199,7 @@ export class TimelineComponent extends ItemBehaviour {
 
   compileTracks (graph: PlayableGraph) {
     for (const track of this.tracks) {
-      const trackMixPlayable = track.createPlayebleTree();
+      const trackMixPlayable = track.createPlayable();
       const trackOutput = track.createOutput();
 
       graph.addOutput(trackOutput);
@@ -217,6 +219,35 @@ export class TimelineComponent extends ItemBehaviour {
     };
     this.id = this.item.id;
     this.name = this.item.name;
+    const activationTrack = this.createTrack(Track, 'ActivationTrack');
+
+    activationTrack.createClip(ActivationPlayable, 'ActivationTimelineClip');
+
+    //@ts-expect-error
+    if (data.tracks) {
+      //@ts-expect-error
+      const tracks = data.tracks;
+
+      for (const track of tracks) {
+        const newTrack = this.createTrack(Track);
+
+        for (const clipAsset of track.clips) {
+          switch (clipAsset.dataType) {
+            case 'TransformAnimationPlayableAsset':
+              newTrack.name = 'AnimationTrack';
+              newTrack.createClip(TransformAnimationPlayable, 'AnimationTimelineClip').playable.fromData(clipAsset.animationClip);
+
+              break;
+            case 'SpriteColorAnimationPlayableAsset':
+              newTrack.name = 'SpriteColorTrack';
+              newTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData(clipAsset.animationClip);
+
+              break;
+          }
+
+        }
+      }
+    }
   }
 
   override toData (): void {

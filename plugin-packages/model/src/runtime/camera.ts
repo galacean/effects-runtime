@@ -1,6 +1,6 @@
 import type { math } from '@galacean/effects';
 import { spec } from '@galacean/effects';
-import type { ModelCameraOptions } from '../index';
+import type { ModelCameraComponentData } from '../index';
 import { Vector2, Vector3, Matrix4 } from './math';
 import { PObjectType } from './common';
 import { PEntity } from './object';
@@ -38,7 +38,7 @@ export class PCamera extends PEntity {
   /**
    * Y 轴上视角
    */
-  fovy = 45;
+  fov = 45;
   /**
    * 纵横比
    */
@@ -63,7 +63,7 @@ export class PCamera extends PEntity {
    * @param height - 画布高度
    * @param owner - 所属的相机组件
    */
-  constructor (name: string, width: number, height: number, options: ModelCameraOptions, owner?: ModelCameraComponent) {
+  constructor (name: string, width: number, height: number, data: ModelCameraComponentData, owner?: ModelCameraComponent) {
     super();
     this.type = PObjectType.camera;
     this.visible = false;
@@ -73,11 +73,11 @@ export class PCamera extends PEntity {
     this.width = width;
     this.height = height;
 
-    this.nearPlane = options.near;
-    this.farPlane = options.far;
-    this.fovy = options.fov;
-    this.aspect = options.aspect ?? (this.width / this.height);
-    this.clipMode = options.clipMode;
+    this.nearPlane = data.near ?? 0.001;
+    this.farPlane = data.far ?? 1000;
+    this.fov = data.fov ?? 45;
+    this.aspect = data.aspect ?? (this.width / this.height);
+    this.clipMode = data.clipMode ?? spec.CameraClipMode.landscape;
     this.update();
   }
 
@@ -91,7 +91,7 @@ export class PCamera extends PEntity {
 
     const reverse = this.clipMode === spec.CameraClipMode.portrait;
 
-    this.projectionMatrix.perspective(this.fovy * deg2rad, this.aspect, this.nearPlane, this.farPlane, reverse);
+    this.projectionMatrix.perspective(this.fov * deg2rad, this.aspect, this.nearPlane, this.farPlane, reverse);
     this.viewMatrix = this.matrix.invert();
   }
 
@@ -112,7 +112,7 @@ export class PCamera extends PEntity {
    * @returns 视角中的包围盒
    */
   computeViewAABB (box: Box3): Box3 {
-    const tanTheta = Math.tan(this.fovy * deg2rad * 0.5);
+    const tanTheta = Math.tan(this.fov * deg2rad * 0.5);
     const aspect = this.aspect;
     let yFarCoord = 0;
     let yNearCoord = 0;
@@ -193,11 +193,13 @@ export class PCameraManager {
     this.defaultCamera = new PCamera(
       'camera', 512, 512,
       {
+        id:'0',
+        dataType:'camera',
         fov: 60,
         far: 1000,
         near: 0.001,
-        position: [0, 0, -1.5],
         clipMode: spec.CameraClipMode.portrait,
+        item: { id: '0' },
       },
     );
   }
@@ -221,12 +223,13 @@ export class PCameraManager {
 
   /**
    * 插入相机数据，创建新的相机对象
-   * @param inCamera - 相机数据
-   * @param owner - 所属的相机组件
+   * @param name - 相机名称
+   * @param data - 相机相关数据
+   * @param owner - 相机所属组件
    * @returns 新的相机对象
    */
-  insert (name: string, options: ModelCameraOptions, owner?: ModelCameraComponent): PCamera {
-    const camera = new PCamera(name, this.winWidth, this.winHeight, options, owner);
+  insert (name: string, data: ModelCameraComponentData, owner?: ModelCameraComponent): PCamera {
+    const camera = new PCamera(name, this.winWidth, this.winHeight, data, owner);
 
     this.cameraList.push(camera);
 
@@ -287,7 +290,7 @@ export class PCameraManager {
     rotation: Quaternion,
     clipMode: number,
   ) {
-    this.defaultCamera.fovy = fovy;
+    this.defaultCamera.fov = fovy;
     this.defaultCamera.aspect = aspect;
     this.defaultCamera.nearPlane = nearPlane;
     this.defaultCamera.farPlane = farPlane;

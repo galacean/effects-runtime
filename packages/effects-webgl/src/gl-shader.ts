@@ -1,5 +1,5 @@
 import type { ShaderCompileResult, ShaderWithSource, Texture, Engine, math, ShaderData } from '@galacean/effects-core';
-import { DataType, Shader } from '@galacean/effects-core';
+import { DataType, ShaderVariant } from '@galacean/effects-core';
 import type { GLProgram } from './gl-program';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLEngine } from './gl-engine';
@@ -12,7 +12,7 @@ type Matrix3 = math.Matrix3;
 type Matrix4 = math.Matrix4;
 type Quaternion = math.Quaternion;
 
-export class GLShader extends Shader {
+export class GLShaderVariant extends ShaderVariant {
   pipelineContext: GLPipelineContext;
   program: GLProgram;
   compileResult: ShaderCompileResult;

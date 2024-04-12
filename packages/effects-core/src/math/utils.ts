@@ -81,19 +81,6 @@ export const particleOriginTranslateMap: Record<number, vec2> = {
   [spec.ParticleOrigin.PARTICLE_ORIGIN_RIGHT_TOP]: [0.5, 0.5],
 };
 
-/**
- * 提取并转换 JSON 数据中的 anchor 值
- */
-export function convertAnchor (anchor?: vec2, particleOrigin?: spec.ParticleOrigin): vec2 {
-  if (anchor) {
-    return [anchor[0] - 0.5, 0.5 - anchor[1]];
-  } else if (particleOrigin) {
-    return particleOriginTranslateMap[particleOrigin];
-  } else {
-    return [0, 0];
-  }
-}
-
 export function nearestPowerOfTwo (value: number): number {
   return 2 ** Math.round(Math.log(value) / Math.LN2);
 }

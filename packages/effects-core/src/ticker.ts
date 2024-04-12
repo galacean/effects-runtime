@@ -11,10 +11,18 @@ export class Ticker {
   private interval: number;
   private intervalId: number;
   private resetTickers: boolean;
+  private _deltaTime = 0;
 
   constructor (fps = 60) {
     this.setFPS(fps);
     this.tickers = [];
+  }
+
+  /**
+   * 获取定时器当前帧更新的时间
+   */
+  get deltaTime () {
+    return this._deltaTime;
   }
 
   /**
@@ -44,6 +52,7 @@ export class Ticker {
    */
   start () {
     this.paused = false;
+    this._deltaTime = 0;
     if (!this.intervalId) {
       this.lastTime = performance.now();
       const raf = requestAnimationFrame || function (func) {
@@ -68,6 +77,7 @@ export class Ticker {
     this.intervalId = 0;
     this.lastTime = 0;
     this.paused = true;
+    this._deltaTime = 0;
     this.tickers = [];
   }
 
@@ -76,6 +86,7 @@ export class Ticker {
    */
   pause () {
     this.paused = true;
+    this._deltaTime = 0;
   }
 
   /**
@@ -83,6 +94,7 @@ export class Ticker {
    */
   resume () {
     this.paused = false;
+    this._deltaTime = 0;
   }
 
   /**
@@ -93,9 +105,9 @@ export class Ticker {
       return;
     }
     const startTime = performance.now();
-    const deltaTime = startTime - this.lastTime;
 
-    if (deltaTime >= this.interval) {
+    this._deltaTime = startTime - this.lastTime;
+    if (this._deltaTime >= this.interval) {
       this.lastTime = startTime;
 
       if (this.resetTickers) {
@@ -106,7 +118,7 @@ export class Ticker {
       for (let i = 0, len = this.tickers.length; i < len; i++) {
         const tick = this.tickers[i];
 
-        tick(deltaTime);
+        tick(this._deltaTime);
       }
     }
   }

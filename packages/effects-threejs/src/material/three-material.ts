@@ -455,13 +455,13 @@ export class ThreeMaterial extends Material {
   }
 
   // 下列三个方法暂时不需要实现
-  enableKeyword (keyword: string): void {
+  enableMacro (keyword: string): void {
     throw new Error('Method not implemented.');
   }
-  disableKeyword (keyword: string): void {
+  disableMacro (keyword: string): void {
     throw new Error('Method not implemented.');
   }
-  isKeywordEnabled (keyword: string): boolean {
+  isMacroEnabled (keyword: string): boolean {
     throw new Error('Method not implemented.');
   }
 

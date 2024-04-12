@@ -628,7 +628,7 @@ export class LoaderImpl implements Loader {
       name: 'skybox',
       duration: this.getItemDuration(),
       endBehavior: this.getItemEndBehavior(),
-      type: 'skybox',
+      type: spec.ItemType.skybox,
       pluginName: 'model',
       content: {
         options: this._skyboxOptions,

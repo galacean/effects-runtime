@@ -52,40 +52,38 @@ export class Gizmos {
     this.geometry = Geometry.create(this.engine);
   }
 
-  drawLineStrip (points: Vector3[]) {
-    const vertices = [];
+  // drawLineStrip (points: Vector3[]) {
+  //   const vertices = [];
 
-    for (const point of points) {
-      vertices.push(point.x, point.y, point.z);
-    }
-    //@ts-expect-error
-    const geometryData: GeometryData = {
-      vertices: vertices,
-    };
+  //   for (const point of points) {
+  //     vertices.push(point.x, point.y, point.z);
+  //   }
+  //   const geometryData: GeometryData = {
+  //     vertices: vertices,
+  //   };
 
-    this.geometry.fromData(geometryData);
-    //@ts-expect-error TODO mode 在 core 层提供设置
-    this.geometry.mode = glContext.LINE_STRIP;
-    this.geometry.setDrawCount(points.length);
-    this.geometry.flush();
-    this.renderer.drawGeometry(this.geometry, this.material);
-  }
+  //   this.geometry.fromData(geometryData);
+  //   //@ts-expect-error TODO mode 在 core 层提供设置
+  //   this.geometry.mode = glContext.LINE_STRIP;
+  //   this.geometry.setDrawCount(points.length);
+  //   this.geometry.flush();
+  //   this.renderer.drawGeometry(this.geometry, this.material);
+  // }
 
-  drawLine (from: Vector3, to: Vector3) {
-    const vertices = [];
+  // drawLine (from: Vector3, to: Vector3) {
+  //   const vertices = [];
 
-    vertices.push(from.x, from.y, from.z);
-    vertices.push(to.x, to.y, to.z);
-    //@ts-expect-error
-    const geometryData: GeometryData = {
-      vertices: vertices,
-    };
+  //   vertices.push(from.x, from.y, from.z);
+  //   vertices.push(to.x, to.y, to.z);
+  //   const geometryData: GeometryData = {
+  //     vertices: vertices,
+  //   };
 
-    this.geometry.fromData(geometryData);
-    //@ts-expect-error TODO mode 在 core 层提供设置
-    this.geometry.mode = glContext.LINES;
-    this.geometry.setDrawCount(2);
-    this.geometry.flush();
-    this.renderer.drawGeometry(this.geometry, this.material);
-  }
+  //   this.geometry.fromData(geometryData);
+  //   //@ts-expect-error TODO mode 在 core 层提供设置
+  //   this.geometry.mode = glContext.LINES;
+  //   this.geometry.setDrawCount(2);
+  //   this.geometry.flush();
+  //   this.renderer.drawGeometry(this.geometry, this.material);
+  // }
 }

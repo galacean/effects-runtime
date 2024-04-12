@@ -1,8 +1,8 @@
-import type * as spec from '@galacean/effects-specification';
 import { effectsClassStore } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { Material } from './material';
+import type { ShaderMarcos } from './render';
 import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
@@ -42,10 +42,6 @@ export class AssetLoader {
         effectsObject = Texture.create(this.engine, effectsObjectData);
 
         return effectsObject as T;
-
-        break;
-      case DataType.Shader:
-        effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
 
         break;
       default: {
@@ -110,10 +106,6 @@ export class AssetLoader {
         return effectsObject as T;
 
         break;
-      case DataType.Shader:
-        effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
-
-        break;
       default: {
         const classConstructor = AssetLoader.getClass(effectsObjectData.dataType);
 
@@ -138,7 +130,7 @@ export class AssetLoader {
     return this.engine.jsonSceneData[uuid];
   }
 
-  private static getClass (dataType: number): new (engine: Engine) => EffectsObject {
+  private static getClass (dataType: string): new (engine: Engine) => EffectsObject {
     return effectsClassStore[dataType];
   }
 }
@@ -150,25 +142,25 @@ export class Database {
 }
 
 export enum DataType {
-  VFXItemData = 0,
-  EffectComponent,
-  Material,
-  Shader,
-  SpriteComponent,
-  ParticleSystem,
-  InteractComponent,
-  CameraController,
-  Geometry,
-  Texture,
-  TextComponent,
+  VFXItemData = 'VFXItemData',
+  EffectComponent = 'EffectComponent',
+  Material = 'Material',
+  Shader = 'Shader',
+  SpriteComponent = 'SpriteComponent',
+  ParticleSystem = 'ParticleSystem',
+  InteractComponent = 'InteractComponent',
+  CameraController = 'CameraController',
+  Geometry = 'Geometry',
+  Texture = 'Texture',
+  TextComponent = 'TextComponent',
 
   // FIXME: 先完成ECS的场景转换，后面移到spec中
-  MeshComponent = 10000,
-  SkyboxComponent,
-  LightComponent,
-  CameraComponent,
-  ModelPluginComponent,
-  TreeComponent,
+  MeshComponent = 'MeshComponent',
+  SkyboxComponent = 'SkyboxComponent',
+  LightComponent = 'LightComponent',
+  CameraComponent = 'CameraComponent',
+  ModelPluginComponent = 'ModelPluginComponent',
+  TreeComponent = 'TreeComponent',
 }
 
 export interface DataPath {
@@ -178,7 +170,32 @@ export interface DataPath {
 export interface EffectsObjectData {
   id: string,
   name?: string,
-  dataType: number,
+  dataType: string,
+}
+
+export interface ColorData {
+  r: number,
+  g: number,
+  b: number,
+  a: number,
+}
+
+export interface Vector4Data {
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+}
+
+export interface Vector2Data {
+  x: number,
+  y: number,
+}
+
+export interface MaterialTextureProperty {
+  texture: DataPath,
+  offset: Vector2Data,
+  scale: Vector2Data,
 }
 
 export interface MaterialData extends EffectsObjectData {
@@ -186,25 +203,33 @@ export interface MaterialData extends EffectsObjectData {
   blending?: boolean,
   zWrite?: boolean,
   zTest?: boolean,
-  floats: Record<string, number>,
   ints: Record<string, number>,
-  vector2s?: Record<string, spec.vec2>,
-  vector3s?: Record<string, spec.vec3>,
-  vector4s: Record<string, { x: number, y: number, z: number, w: number }>,
-  colors: Record<string, { r: number, g: number, b: number, a: number }>,
-  matrices?: Record<string, spec.mat4>,
-  matrice3s?: Record<string, spec.mat3>,
-  textures?: Record<string, DataPath>,
-  floatArrays?: Record<string, number[]>,
-  vector4Arrays?: Record<string, number[]>,
-  matrixArrays?: Record<string, number[]>,
+  floats: Record<string, number>,
+  vector4s: Record<string, Vector4Data>,
+  colors: Record<string, ColorData>,
+  textures: Record<string, MaterialTextureProperty>,
+  /**
+   * shader的宏定义
+   */
+  marcos?: ShaderMarcos,
 }
 
 export interface GeometryData extends EffectsObjectData {
-  vertices?: number[],
-  uvs?: number[],
-  normals?: number[],
-  indices?: number[],
+  vertexData: VertexData,
+  indexFormat: number,
+  indexOffset: number,
+  buffer: string,
+}
+
+export interface VertexData {
+  vertexCount: number,
+  channels: VertexChannel[],
+}
+
+export interface VertexChannel {
+  offset: number,
+  format: number,
+  dimension: number,
 }
 
 export interface ShaderData extends EffectsObjectData {

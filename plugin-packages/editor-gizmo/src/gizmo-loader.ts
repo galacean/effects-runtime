@@ -45,7 +45,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
 
   override onCompositionReset (composition: Composition) {
     const items = composition.items;
-    const targetMap: { [key: number]: GizmoVFXItem[] } = {};
+    const targetMap: { [key: string]: GizmoVFXItem[] } = {};
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];

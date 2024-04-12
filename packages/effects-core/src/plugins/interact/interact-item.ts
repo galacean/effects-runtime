@@ -27,7 +27,7 @@ export class InteractComponent extends RendererComponent {
 
   override start (): void {
     const options = this.item.props.content.options as spec.DragInteractOption;
-    const { env } = this.item.engine?.renderer ?? {};
+    const { env } = this.item.engine.renderer;
     const composition = this.item.composition!;
 
     const { type, showPreview } = this.interactData.options as spec.ClickInteractOption;
@@ -40,8 +40,8 @@ export class InteractComponent extends RendererComponent {
         this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
       }
     }
-
-    this.item.composition?.addInteractiveItem(this.item, options.type);
+    composition.addInteractiveItem(this.item, options.type);
+    this.item.onEnd = () => composition.removeInteractiveItem(this.item, options.type);
     if (options.type === spec.InteractType.DRAG) {
       if (env !== PLAYER_OPTIONS_ENV_EDITOR || options.enableInEditor) {
         composition.event && this.beginDragTarget(options, composition.event);
@@ -51,7 +51,6 @@ export class InteractComponent extends RendererComponent {
       this.previewContent.mesh.item = this.item;
       this.materials = this.previewContent.mesh.materials;
     }
-
     this.item.getHitTestParams = this.getHitTestParams;
   }
 

@@ -1,4 +1,4 @@
-export const effectsClassStore: Record<number, any> = {};
+export const effectsClassStore: Record<string, any> = {};
 const decoratorInitialStore: Record<string, any> = {};
 const mergedStore: Record<string, any> = {};
 
