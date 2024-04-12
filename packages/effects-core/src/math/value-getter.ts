@@ -726,7 +726,7 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override getIntegrateValue (t0: number, t1: number, ts = 1) {
-    const time = (t1 - t0) / ts;
+    const time = (t1 - t0);
 
     let result = 0;
     const keyTimeData = Object.keys(this.curveMap);
@@ -735,7 +735,6 @@ export class BezierCurve extends ValueGetter<number> {
     if (time <= keyTimeStart) {
       return 0;
     }
-
     for (let i = 0; i < keyTimeData.length ; i++) {
       const [xMin, xMax] = keyTimeData[i].split('&');
 
@@ -759,12 +758,12 @@ export class BezierCurve extends ValueGetter<number> {
     const [p0, , , p3] = curveInfo.points;
     const timeInterval = p3.x - p0.x;
     const valueInterval = p3.y - p0.y;
-    const segments = 50;
+    const segments = 100;
     let total = 0;
     const h = (time - p0.x) / segments;
 
     for (let i = 0; i <= segments; i++) {
-      const t = p0.x + i * h;
+      const t = i * h;
       const normalizeTime = t / timeInterval;
       const y = p0.y + valueInterval * curveInfo.curve.getValue(normalizeTime);
 
@@ -885,7 +884,6 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
       }
     }
-    // console.log(point.y);
 
     return point;
   }

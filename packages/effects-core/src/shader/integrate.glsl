@@ -54,9 +54,30 @@ float calculateMovement(float t, float y1, float y2, float y3, float y4) {
 
   movement *= h / 3.;
   return movement;
-
 }
 
+
+float calculateMovement(float t, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
+  int numIntervals = 100;
+  float movement = 0.0;
+  float h = (t - p1.x) / float(numIntervals);
+  float timeInterval = p4.x - p1.x;
+  for (int i = 0; i <= numIntervals; i++) {
+    float t = float(i) * h / timeInterval;
+    float nt = binarySearchT(t, p1.x, p2.x, p3.x, p4.x);
+    float y = cubicBezier(nt, p1.y, p2.y, p3.y, p3.y);
+    if (i == 0 || i == numIntervals) {
+      movement += y;
+    } else if (mod(float(i), 2.) == 1.) {
+      movement += 4. * y;
+    } else {
+      movement += 2. * y;
+    }
+  }
+
+  movement *= h / 3.;
+  return movement;
+}
 
 float integrateFromBezierCurveFrames(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
@@ -68,12 +89,15 @@ float integrateFromBezierCurveFrames(float time, float frameStart, float frameCo
     if (i == 0 && time < k0.x) {
       return ret;
     }
+    vec2 p1 = vec2(k0.x, k0.y);
+    vec2 p2 = vec2(k0.z, k0.w);
+    vec2 p3 = vec2(k1.z, k1.w);
+    vec2 p4 = vec2(k1.x, k1.y);
     if (time >= k1.x) {
-      ret += calculateMovement(1., k0.y, k0.w, k1.w, k1.y);
+      ret += calculateMovement(k1.x,p1, p2, p3,p4);
     }
     if(time >= k0.x && time < k1.x) {
-      float t = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
-      return ret + calculateMovement(t, k0.y, k0.w, k1.w, k1.y);
+      return ret + calculateMovement(time, p1, p2, p3,p4);
     }
   }
 
