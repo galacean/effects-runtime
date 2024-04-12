@@ -171,7 +171,7 @@ export class AssetManager implements Disposable {
           const textVariable = variables[item.name];
 
           if (textVariable) {
-            (item as spec.TextItem).content.options.text = textVariable as string;
+            (item).content.options.text = textVariable as string;
           }
         }
       });

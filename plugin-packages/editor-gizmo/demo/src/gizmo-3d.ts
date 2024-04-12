@@ -1,4 +1,3 @@
-import type { JSONValue } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import type { GizmoVFXItem } from '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-editor-gizmo';

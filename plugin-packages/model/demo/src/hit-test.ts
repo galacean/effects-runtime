@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { Transform } from '@galacean/effects';
 import { ToggleItemBounding, CompositionHitTest } from '@galacean/effects-plugin-model';
-import { LoaderImplEx, InputController } from '@galacean/effects-plugin-model/helper';
+import { LoaderImplEx, InputController } from '../../src/helper';
 import { createSlider } from './utility';
 
 let player;

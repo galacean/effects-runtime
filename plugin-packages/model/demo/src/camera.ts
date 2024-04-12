@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { math } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
-import { LoaderImplEx } from '@galacean/effects-plugin-model/helper';
+import { LoaderImplEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 

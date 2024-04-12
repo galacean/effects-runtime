@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-loss-of-precision */
 /* eslint-disable padding-line-between-statements */
-import { LoaderImplEx } from '@galacean/effects-plugin-model/helper';
+import { LoaderImplEx } from '../../src/helper';
 
 const { expect } = chai;
 

@@ -36,10 +36,6 @@ export class Sphere implements Shape {
 }
 
 export class Hemisphere extends Sphere {
-  override arc: number;
-  override radius: number;
-  override arcMode: number;
-
   override getHorizontalAngle () {
     return random(0, 90);
   }
