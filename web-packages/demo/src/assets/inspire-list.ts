@@ -712,6 +712,11 @@ export default {
     name: '直接认父——图层',
     pass: true,
   },
+  parentSprite2: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*enfjQrKbio8AAAAAAAAAAAAADlB4AQ',
+    name: '直接认父——图层2',
+    pass: true,
+  },
   parentParticle: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/92178974741421/particle.json',
     name: '直接认父——粒子',
