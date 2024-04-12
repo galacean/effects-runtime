@@ -16,7 +16,7 @@ export function getPlugins(pkg, options = {}) {
       values: defines,
     }),
     glslInner(),
-    getSWCPlugin(target, external),
+    getSWCPlugin({ target }, external),
     resolve(),
     commonjs(),
   ];
@@ -30,14 +30,19 @@ export function getPlugins(pkg, options = {}) {
 
 export { glslInner };
 
-export function getSWCPlugin(target = 'ES5', external = []) {
+export function getSWCPlugin(
+  jscOptions = {},
+  external = [],
+) {
+  const jsc = {
+    loose: true,
+    externalHelpers: true,
+    target: 'ES5',
+    ...jscOptions,
+  }
   const options = {
     exclude: [],
-    jsc: {
-      loose: true,
-      externalHelpers: true,
-      target,
-    },
+    jsc,
     sourceMaps: true,
   };
 
