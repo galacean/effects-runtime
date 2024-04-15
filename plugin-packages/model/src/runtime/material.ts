@@ -576,8 +576,7 @@ export class PMaterialPBR extends PMaterialBase {
     this.materialType = mat.getInt('shaderType') ? PMaterialType.unlit : PMaterialType.pbr;
     //
     this.baseColorTexture = mat.getTexture('_BaseColorSampler') ?? undefined;
-    this.baseColorFactor = mat.getVector4('_BaseColorFactor') ?? new Vector4(255, 255, 255, 255);
-    this.baseColorFactor.multiply(1 / 255.0);
+    this.baseColorFactor = mat.getVector4('_BaseColorFactor') ?? new Vector4(1.0, 1.0, 1.0, 1.0);
     this.metallicRoughnessTexture = mat.getTexture('_MetallicRoughnessSampler') ?? undefined;
 
     this.useSpecularAA = mat.getInt('useSpecularAA') === 1;
@@ -592,7 +591,6 @@ export class PMaterialPBR extends PMaterialBase {
 
     this.emissiveTexture = mat.getTexture('_EmissiveSampler') ?? undefined;
     this.emissiveFactor = mat.getVector4('_EmissiveFactor') ?? new Vector4(0, 0, 0, 0);
-    this.emissiveFactor.multiply(1 / 255.0);
     this.emissiveIntensity = mat.getFloat('u_EmissiveIntensity') ?? 1;
     const emissiveFactor = this.emissiveFactor.clone().multiply(this.emissiveIntensity);
 
