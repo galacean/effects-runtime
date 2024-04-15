@@ -48,7 +48,10 @@ export default defineConfig(({ mode }) => {
         targets: ['iOS >= 9'],
       }),
       glslInner(),
-      getSWCPlugin('ES6'),
+      getSWCPlugin({
+        target: 'ES6',
+        baseUrl: resolve(__dirname, '..', '..'),
+      }),
       tsconfigPaths(),
       viteExternalsPlugin({
         'three': 'THREE',

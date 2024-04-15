@@ -37,7 +37,9 @@ export default defineConfig(({ mode }) => {
         modernPolyfills: ['es/global-this'],
       }),
       glslInner(),
-      getSWCPlugin(),
+      getSWCPlugin({
+        baseUrl: resolve(__dirname, '..', '..'),
+      }),
       tsconfigPaths(),
     ],
   };
