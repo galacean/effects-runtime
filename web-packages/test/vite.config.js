@@ -23,5 +23,5 @@ export default defineConfig({
       baseUrl: resolve(__dirname, '..', '..'),
     }),
     tsconfigPaths(),
-  ]
+  ],
 });
