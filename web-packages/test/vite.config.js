@@ -18,7 +18,9 @@ export default defineConfig({
   define: defines,
   plugins: [
     glslInner(),
-    getSWCPlugin(),
+    getSWCPlugin({
+      baseUrl: resolve(__dirname, '..', '..'),
+    }),
     tsconfigPaths(),
-  ]
+  ],
 });

@@ -37,7 +37,7 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^13.3.0",
     "@rollup/plugin-replace": "^5.0.2",
-    "@swc/core": "^1.4.11",
+    "@swc/core": "^1.4.13",
     "@swc/helpers": "^0.5.8",
     "@types/chai": "4.3.14",
     "@types/chai-spies": "1.0.6",
