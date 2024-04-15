@@ -6,6 +6,7 @@ import Components from 'unplugin-vue-components/vite';
 import UnoCSS from 'unocss/vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import glslInner from '../../scripts/rollup-plugin-glsl-inner';
+import { getSWCPlugin } from '../../scripts/rollup-config-helper';
 
 // https://vitejs.dev/config/
 // @ts-expect-error mode
@@ -32,7 +33,7 @@ export default defineConfig(({ mode }) => {
       }),
 
       glslInner(),
-
+      getSWCPlugin('ES6'),
       tsconfigPaths(),
     ],
   };
