@@ -119,7 +119,7 @@ export class PluginSystem {
       const ctrl = pluginLoaderMap[plugin.name];
 
       if (name in ctrl) {
-        pendings.push(Promise.resolve(ctrl[name](...args)));
+        pendings.push(Promise.resolve(ctrl[name]?.(...args)));
       }
     }
 

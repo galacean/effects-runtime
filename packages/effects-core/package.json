@@ -19,7 +19,7 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
     "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
     "prepublishOnly": "pnpm build"
   },
@@ -51,7 +51,7 @@
   },
   "dependencies": {
     "@galacean/effects-specification": "2.0.0-alpha.3",
-    "@galacean/effects-math": "1.0.1",
+    "@galacean/effects-math": "1.1.0-alpha.0",
     "uuid": "9.0.1"
   }
 }

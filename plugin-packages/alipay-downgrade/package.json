@@ -22,7 +22,7 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
     "build:demo": "rimraf dist && vite build",
     "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
     "prepublishOnly": "pnpm build"
@@ -33,6 +33,9 @@
     },
     {
       "name": "意绮"
+    },
+    {
+      "name": "飂兮"
     }
   ],
   "author": "Ant Group CO., Ltd.",

@@ -2,13 +2,12 @@ import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import ip from 'ip';
-import glslInner from '../../scripts/rollup-plugin-glsl-inner';
+import { glslInner, getSWCPlugin } from '../../scripts/rollup-config-helper';
 
 export default defineConfig(({ mode }) => {
   const development = mode === 'development';
 
   return {
-    esbuild: {},
     server: {
       host: '0.0.0.0',
       port: 8081,
@@ -19,6 +18,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       glslInner(),
+      getSWCPlugin(),
       tsconfigPaths(),
       configureServerPlugin(),
     ],

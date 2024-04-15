@@ -15,7 +15,6 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { version3Migration } from './asset-migrations';
 
 /**
  * 场景加载参数
@@ -171,7 +170,7 @@ export class AssetManager implements Disposable {
           const textVariable = variables[item.name];
 
           if (textVariable) {
-            (item as spec.TextItem).content.options.text = textVariable as string;
+            (item).content.options.text = textVariable as string;
           }
         }
       });
@@ -306,11 +305,6 @@ export class AssetManager implements Disposable {
       this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
       scene.startTime = startTime;
-
-      if (Number(scene.jsonScene.version) < 3.0) {
-        console.warn('The current json version ' + scene.jsonScene.version + ' is less than 3.0, try to convert to the new version.');
-        scene = version3Migration(scene);
-      }
 
       return scene;
     };
@@ -558,6 +552,10 @@ export class AssetManager implements Disposable {
 
       if (image) {
         const tex = createTextureOptionsBySource(image, this.assets[idx]);
+
+        //@ts-expect-error
+        tex.id = texOpts.id;
+        tex.dataType = spec.DataType.Texture;
 
         return tex.sourceType === TextureSourceType.compressed ? tex : { ...tex, ...texOpts };
       }

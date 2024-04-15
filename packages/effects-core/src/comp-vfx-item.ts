@@ -111,6 +111,8 @@ export class CompositionComponent extends ItemBehaviour {
           }
           item.getComponent(CompositionComponent)!.createContent();
         } else if (
+          //@ts-expect-error
+          itemData.type === 'ECS' ||
           itemData.type === spec.ItemType.sprite ||
           itemData.type === spec.ItemType.text ||
           itemData.type === spec.ItemType.particle ||
