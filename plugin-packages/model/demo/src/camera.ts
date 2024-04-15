@@ -1,5 +1,5 @@
 //@ts-nocheck
-import { math } from '@galacean/effects';
+import { math, spec, generateGUID } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
 import { LoaderECSEx } from '@galacean/effects-plugin-model/helper';
 
@@ -51,6 +51,62 @@ async function getCurrentScene () {
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
   const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
+  const cameraItemId = generateGUID();
+  const cameraComponent: spec.ModelCameraComponentData = {
+    id: generateGUID(),
+    item: { id: cameraItemId },
+    dataType: spec.DataType.CameraComponent,
+    near: 0.001,
+    far: 5000,
+    fov: 60,
+    clipMode: 0,
+  };
+  const cameraItem: spec.VFXItemData = {
+    id: cameraItemId,
+    name: 'extra-camera',
+    duration: duration,
+    type: 'camera',
+    pn: 0,
+    visible: true,
+    endBehavior: 5,
+    transform: {
+      position: {
+        x: 0,
+        y: 0,
+        z: 8,
+      },
+      eulerHint: {
+        x: 0,
+        y: 0,
+        z: 0,
+      },
+      rotation: {
+        x: 0,
+        y: 0,
+        z: 0,
+      },
+      scale: {
+        x: 1,
+        y: 1,
+        z: 1,
+      },
+    },
+
+    content: {
+      options: {
+        duration: duration,
+
+      },
+    },
+    components: [
+      { id: cameraComponent.id },
+    ],
+    dataType: spec.DataType.VFXItemData,
+  };
+
+  items.push(cameraItem);
+  loadResult.components.push(cameraComponent);
+
   // items.push({
   //   id: '321',
   //   duration: duration,

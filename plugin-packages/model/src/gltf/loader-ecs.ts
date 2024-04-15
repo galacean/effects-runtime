@@ -271,30 +271,35 @@ export class LoaderECS {
     const materials = this._gltfMaterials.map(material => material.materialData);
     const components: spec.ComponentData[] = [];
     const geometries: spec.GeometryData[] = [];
-    const items: spec.VFXItemData[] = [];
+    const items: spec.VFXItemData[] = [...gltfResource.scenes[0].vfxItemData];
 
-    for (const gltfMesh of this._gltfMeshs) {
-      geometries.push(...gltfMesh.geometrysData);
-      const itemId = generateGUID();
+    gltfResource.meshes.forEach(mesh => {
+      geometries.push(...mesh.geometrysData);
+      components.push(mesh.meshData);
+    });
 
-      gltfMesh.meshData.item = { id: itemId };
-      components.push(gltfMesh.meshData);
-      items.push({
-        name: '',
-        id: itemId,
-        visible: true,
-        type: spec.ItemType.mesh,
-        renderLevel: spec.RenderLevel.BPlus,
-        dataType: spec.DataType.VFXItemData,
-        duration: options.effects.duration ?? 9999,
-        endBehavior: options.effects.endBehavior ?? 0,
-        content: {} as spec.BaseContent,
-        components: [
-          // @ts-expect-error
-          { id: gltfMesh.meshData.id },
-        ],
-      });
-    }
+    // for (const gltfMesh of this._gltfMeshs) {
+    //   geometries.push(...gltfMesh.geometrysData);
+    //   const itemId = generateGUID();
+
+    //   gltfMesh.meshData.item = { id: itemId };
+    //   components.push(gltfMesh.meshData);
+    //   items.push({
+    //     name: '',
+    //     id: itemId,
+    //     visible: true,
+    //     type: spec.ItemType.mesh,
+    //     renderLevel: spec.RenderLevel.BPlus,
+    //     dataType: spec.DataType.VFXItemData,
+    //     duration: options.effects.duration ?? 9999,
+    //     endBehavior: options.effects.endBehavior ?? 0,
+    //     content: {} as spec.BaseContent,
+    //     components: [
+    //       // @ts-expect-error
+    //       { id: gltfMesh.meshData.id },
+    //     ],
+    //   });
+    // }
 
     return {
       source: this.getRemarkString(),
