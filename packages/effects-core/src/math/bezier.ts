@@ -319,11 +319,16 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
   assertExist(p3);
   const timeInterval = p3.x - p0.x;
   const valueInterval = p3.y - p0.y;
+  let y1, y2;
+  let x1 = numberToFix((p1.x - p0.x) / timeInterval, 5);
+  let x2 = numberToFix((p2.x - p0.x) / timeInterval, 5);
 
-  let x1 = Math.round((p1.x - p0.x) / timeInterval * 100000) / 100000;
-  let x2 = Math.round((p2.x - p0.x) / timeInterval * 100000) / 100000;
-  const y1 = Math.round((p1.y - p0.y) / valueInterval * 100000) / 100000;
-  const y2 = Math.round((p2.y - p0.y) / valueInterval * 100000) / 100000;
+  if (decimalEqual(valueInterval, 0)) {
+    y1 = y2 = NaN;
+  } else {
+    y1 = numberToFix((p1.y - p0.y) / valueInterval, 5);
+    y2 = numberToFix((p2.y - p0.y) / valueInterval, 5) ;
+  }
 
   if (x1 < 0) {
     console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);

@@ -15,9 +15,9 @@ import {
   ShaderType,
 } from '../../material';
 import {
+  BezierCurve,
   createKeyFrameMeta,
   createValueGetter,
-  CurveValue,
   getKeyFrameMetaByRawValue,
 } from '../../math';
 import type { GeometryProps, ShaderMarcos, ShaderWithSource, GPUCapability } from '../../render';
@@ -138,11 +138,11 @@ export class TrailMesh {
       ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
 
     if (enableVertexTexture && lookUpTexture) {
-      const tex = generateHalfFloatTexture(engine, CurveValue.getAllData(keyFrameMeta, true) as Uint16Array, keyFrameMeta.index, 1);
+      const tex = generateHalfFloatTexture(engine, BezierCurve.getAllData(keyFrameMeta, true) as Uint16Array, keyFrameMeta.index, 1);
 
       uniformValues.uVCurveValueTexture = tex;
     } else {
-      uniformValues.uVCurveValues = CurveValue.getAllData(keyFrameMeta);
+      uniformValues.uVCurveValues = BezierCurve.getAllData(keyFrameMeta);
     }
 
     const vertex = createShaderWithMarcos(marcos, trailVert, ShaderType.vertex, level);

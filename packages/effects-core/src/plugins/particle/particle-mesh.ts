@@ -21,7 +21,6 @@ import { BezierCurve } from '../../math';
 import {
   createKeyFrameMeta,
   createValueGetter,
-  CurveValue,
   getKeyFrameMetaByRawValue,
   calculateTranslation,
 } from '../../math';
@@ -292,9 +291,9 @@ export class ParticleMesh implements ParticleMeshData {
 
     if (halfFloatTexture && fragmentKeyFrameMeta.max) {
       shaderCacheId |= 1 << 20;
-      uniformValues.uFCurveValueTexture = generateHalfFloatTexture(engine, CurveValue.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1);
+      uniformValues.uFCurveValueTexture = generateHalfFloatTexture(engine, BezierCurve.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1);
     } else {
-      uniformValues.uFCurveValues = CurveValue.getAllData(fragmentKeyFrameMeta);
+      uniformValues.uFCurveValues = BezierCurve.getAllData(fragmentKeyFrameMeta);
     }
     const vertexCurveTexture = vertexKeyFrameMeta.max + vertexKeyFrameMeta.curves.length - 32 > maxVertexUniforms;
 
