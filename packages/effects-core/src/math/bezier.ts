@@ -82,9 +82,9 @@ export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vect
   interval: Vector3,
 } {
   // 使用平移后的终点、控制点作为key
-  const s1 = Math.round((p2.x - p1.x) * 1000) / 1000 + '_' + Math.round((p2.y - p1.y) * 1000) / 1000 + '_' + Math.round((p2.z - p1.z) * 1000) / 1000;
-  const s2 = Math.round((p3.x - p1.x) * 1000) / 1000 + '_' + Math.round((p3.y - p1.y) * 1000) / 1000 + '_' + Math.round((p3.z - p1.z) * 1000) / 1000;
-  const s3 = Math.round((p4.x - p1.x) * 1000) / 1000 + '_' + Math.round((p4.y - p1.y) * 1000) / 1000 + '_' + Math.round((p4.z - p1.z) * 1000) / 1000;
+  const s1 = numberToFix(p2.x - p1.x, 3) + '_' + numberToFix(p2.y - p1.y, 3) + '_' + numberToFix(p2.z - p1.z, 3);
+  const s2 = numberToFix(p3.x - p1.x, 3) + '_' + numberToFix(p3.y - p1.y, 3) + '_' + numberToFix(p3.z - p1.z, 3);
+  const s3 = numberToFix(p4.x - p1.x, 3) + '_' + numberToFix(p4.y - p1.y, 3) + '_' + numberToFix(p4.z - p1.z, 3) ;
 
   const str = s1 + '&' + s2 + '&' + s3;
 
@@ -169,7 +169,7 @@ export class BezierPath {
       return bezierData.points[CURVE_SEGMENTS - 1].point.clone().add(this.interval);
     }
     if (decimalEqual(bezierData.totalLength, 0)) {
-      return this.p1.add(this.interval);
+      return this.p1.clone();
     }
 
     const point = new Vector3();
