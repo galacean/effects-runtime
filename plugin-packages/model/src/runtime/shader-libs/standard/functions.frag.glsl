@@ -74,7 +74,7 @@ vec3 getNormal()
 #endif
 
 #ifdef HAS_NORMAL_MAP
-    vec3 n = texture2D(u_NormalSampler, UV).rgb;
+    vec3 n = texture2D(_NormalSampler, UV).rgb;
     n = normalize(tbn * ((2.0 * n - 1.0) * vec3(u_NormalScale, u_NormalScale, 1.0)));
 #else
     // The tbn matrix is linearly interpolated, so we need to re-normalize

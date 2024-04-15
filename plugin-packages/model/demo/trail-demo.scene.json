@@ -879,20 +879,20 @@
       },
       "floats": {
         "u_AlphaCutoff": 0.3,
-        "u_MetallicFactor": 1,
-        "u_RoughnessFactor": 0.3,
+        "_MetallicFactor": 1,
+        "_RoughnessFactor": 0.3,
         "u_NormalScale": 1,
         "u_OcclusionStrength": 1,
         "u_EmissiveIntensity": 1
       },
       "vector4s": {
-        "u_BaseColorFactor": {
+        "_BaseColorFactor": {
           "x": 255,
           "y": 255,
           "z": 255,
           "w": 255
         },
-        "u_EmissiveFactor": {
+        "_EmissiveFactor": {
           "x": 172,
           "y": 43,
           "z": 217,

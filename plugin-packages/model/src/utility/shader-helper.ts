@@ -235,10 +235,10 @@ export function getTransparecyBaseShader (isVertexShader: boolean): string {
     #extension GL_EXT_draw_buffers: require
 
     precision highp float;
-    uniform vec4 u_BaseColorFactor;
+    uniform vec4 _BaseColorFactor;
 
     #ifdef HAS_UVS
-    uniform sampler2D u_BaseColorSampler;
+    uniform sampler2D _BaseColorSampler;
     varying vec2 v_UVCoord1;
     #endif
 
@@ -249,10 +249,10 @@ export function getTransparecyBaseShader (isVertexShader: boolean): string {
     }
 
     void main() {
-      vec4 color = u_BaseColorFactor;
+      vec4 color = _BaseColorFactor;
 
       #ifdef HAS_UVS
-      color *= texture2D(u_BaseColorSampler, v_UVCoord1);
+      color *= texture2D(_BaseColorSampler, v_UVCoord1);
       #endif
 
       color.rgb *= color.a * dot(normalize(v_Normal), normalize(vec3(0, 1, 3))) * 5.0;

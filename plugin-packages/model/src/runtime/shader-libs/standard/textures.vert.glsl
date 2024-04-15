@@ -6,25 +6,25 @@ fsIn vec2 v_UVCoord2;
 
 // General Material
 #ifdef HAS_NORMAL_MAP
-uniform sampler2D u_NormalSampler;
+uniform sampler2D _NormalSampler;
 uniform float u_NormalScale;
 uniform int u_NormalUVSet;
 uniform mat3 u_NormalUVTransform;
 #endif
 
 #ifdef HAS_EMISSIVE_MAP
-uniform sampler2D u_EmissiveSampler;
+uniform sampler2D _EmissiveSampler;
 uniform int u_EmissiveUVSet;
-uniform vec4 u_EmissiveFactor;
+uniform vec4 _EmissiveFactor;
 uniform mat3 u_EmissiveUVTransform;
 #endif
 
 #ifdef HAS_EMISSIVE
-uniform vec4 u_EmissiveFactor;
+uniform vec4 _EmissiveFactor;
 #endif
 
 #ifdef HAS_OCCLUSION_MAP
-uniform sampler2D u_OcclusionSampler;
+uniform sampler2D _OcclusionSampler;
 uniform int u_OcclusionUVSet;
 uniform float u_OcclusionStrength;
 uniform mat3 u_OcclusionUVTransform;
@@ -32,13 +32,13 @@ uniform mat3 u_OcclusionUVTransform;
 
 // Metallic Roughness Material
 #ifdef HAS_BASE_COLOR_MAP
-uniform sampler2D u_BaseColorSampler;
+uniform sampler2D _BaseColorSampler;
 uniform int u_BaseColorUVSet;
 uniform mat3 u_BaseColorUVTransform;
 #endif
 
 #ifdef HAS_METALLIC_ROUGHNESS_MAP
-uniform sampler2D u_MetallicRoughnessSampler;
+uniform sampler2D _MetallicRoughnessSampler;
 uniform int u_MetallicRoughnessUVSet;
 uniform mat3 u_MetallicRoughnessUVTransform;
 #endif

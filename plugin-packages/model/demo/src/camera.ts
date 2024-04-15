@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { math } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
-import { LoaderImplEx } from '@galacean/effects-plugin-model/helper';
+import { LoaderECSEx } from '@galacean/effects-plugin-model/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
@@ -29,7 +29,7 @@ const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb
 async function getCurrentScene () {
   const duration = 9999;
   const endBehavior = 5;
-  const loader = new LoaderImplEx();
+  const loader = new LoaderECSEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
@@ -51,46 +51,48 @@ async function getCurrentScene () {
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
   const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
+  // items.push({
+  //   id: '321',
+  //   duration: duration,
+  //   name: 'item_1',
+  //   type: '1',
+  //   sprite: {
+  //     options: {
+  //       duration: 100,
+  //       delay: 0,
+  //       startSize: 1,
+  //       sizeAspect: 1,
+  //       startColor: [255, 255, 255, 1],
+  //     },
+  //     renderer: {
+  //       renderMode: 1,
+  //     },
+  //   },
+  // });
 
-  items.push({
-    id: '321',
-    duration: duration,
-    name: 'item_1',
-    type: '1',
-    sprite: {
-      options: {
-        duration: 100,
-        delay: 0,
-        startSize: 1,
-        sizeAspect: 1,
-        startColor: [255, 255, 255, 1],
-      },
-      renderer: {
-        renderMode: 1,
-      },
-    },
-  });
+  // items.push({
+  //   id: 'extra-camera',
+  //   duration: 100,
+  //   name: 'extra-camera',
+  //   pn: 0,
+  //   type: 'camera',
+  //   transform: {
+  //     position: position.toArray(),
+  //     rotation: [0, 0, 0],
+  //   },
+  //   content: {
+  //     options: {
+  //       duration: 100,
+  //       near: 0.1,
+  //       far: 5000,
+  //       fov: 60,
+  //       clipMode: 0,
+  //     },
+  //   },
+  // });
+  const itemIds = [];
 
-  items.push({
-    id: 'extra-camera',
-    duration: 100,
-    name: 'extra-camera',
-    pn: 0,
-    type: 'camera',
-    transform: {
-      position: position.toArray(),
-      rotation: [0, 0, 0],
-    },
-    content: {
-      options: {
-        duration: 100,
-        near: 0.1,
-        far: 5000,
-        fov: 60,
-        clipMode: 0,
-      },
-    },
-  });
+  items.forEach(item => itemIds.push({ id: item.id }));
 
   return {
     'compositionId': 1,
@@ -100,17 +102,14 @@ async function getCurrentScene () {
       'id': 1,
       'duration': duration,
       'endBehavior': 2,
-      'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-      'items': items,
+      'camera': { 'fov': 45, 'far': 2000, 'near': 0.001, 'position': [0, 0, 10], 'clipMode': 1 },
+      'items': itemIds,
       'meta': { 'previewSize': [750, 1334] },
     }],
-    'gltf': [],
-    'images': [],
-    'version': '0.8.9-beta.9',
-    'shapes': [],
+    'version': '3.0',
     'plugins': ['model'],
-    'type': 'mars',
-    '_imgs': { '1': [] },
+    'type': 'ge',
+    ...loadResult,
   };
 }
 

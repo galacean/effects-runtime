@@ -83,7 +83,7 @@ export abstract class PMaterialBase extends PObject {
    */
   updateUniforms (material: Material) {
     if (this.isMasked()) {
-      material.setFloat('u_AlphaCutoff', this.alphaCutOff);
+      material.setFloat('_AlphaCutoff', this.alphaCutOff);
     }
 
     // 渲染 UV 结果输出时，设置 uv 大小
@@ -372,14 +372,14 @@ export class PMaterialUnlit extends PMaterialBase {
     //
     const uvTransform = new Matrix3().identity();
 
-    material.setVector4('u_BaseColorFactor', this.baseColorFactor);
+    material.setVector4('_BaseColorFactor', this.baseColorFactor);
     if (this.hasBaseColorTexture()) {
-      material.setTexture('u_BaseColorSampler', this.getBaseColorTexture());
+      material.setTexture('_BaseColorSampler', this.getBaseColorTexture());
       material.setInt('u_BaseColorUVSet', 0);
       material.setMatrix3('u_BaseColorUVTransform', uvTransform);
     }
-    material.setFloat('u_MetallicFactor', 0.0);
-    material.setFloat('u_RoughnessFactor', 0.0);
+    material.setFloat('_MetallicFactor', 0.0);
+    material.setFloat('_RoughnessFactor', 0.0);
 
     material.setFloat('u_Exposure', 1.0);
   }
@@ -575,35 +575,35 @@ export class PMaterialPBR extends PMaterialBase {
     this.type = PObjectType.material;
     this.materialType = mat.getInt('shaderType') ? PMaterialType.unlit : PMaterialType.pbr;
     //
-    this.baseColorTexture = mat.getTexture('u_BaseColorSampler') ?? undefined;
-    this.baseColorFactor = mat.getVector4('u_BaseColorFactor') ?? new Vector4(255, 255, 255, 255);
+    this.baseColorTexture = mat.getTexture('_BaseColorSampler') ?? undefined;
+    this.baseColorFactor = mat.getVector4('_BaseColorFactor') ?? new Vector4(255, 255, 255, 255);
     this.baseColorFactor.multiply(1 / 255.0);
-    this.metallicRoughnessTexture = mat.getTexture('u_MetallicRoughnessSampler') ?? undefined;
+    this.metallicRoughnessTexture = mat.getTexture('_MetallicRoughnessSampler') ?? undefined;
 
     this.useSpecularAA = mat.getInt('useSpecularAA') === 1;
-    this.metallicFactor = mat.getFloat('u_MetallicFactor') ?? 1;
-    this.roughnessFactor = mat.getFloat('u_RoughnessFactor') ?? 1;
+    this.metallicFactor = mat.getFloat('_MetallicFactor') ?? 1;
+    this.roughnessFactor = mat.getFloat('_RoughnessFactor') ?? 1;
 
-    this.normalTexture = mat.getTexture('u_NormalSampler') ?? undefined;
+    this.normalTexture = mat.getTexture('_NormalSampler') ?? undefined;
     this.normalTextureScale = mat.getFloat('u_NormalScale') ?? 1;
 
-    this.occlusionTexture = mat.getTexture('u_OcclusionSampler') ?? undefined;
+    this.occlusionTexture = mat.getTexture('_OcclusionSampler') ?? undefined;
     this.occlusionTextureStrength = mat.getFloat('u_OcclusionTextureStrength') ?? 1;
 
-    this.emissiveTexture = mat.getTexture('u_EmissiveSampler') ?? undefined;
-    this.emissiveFactor = mat.getVector4('u_EmissiveFactor') ?? new Vector4(0, 0, 0, 0);
+    this.emissiveTexture = mat.getTexture('_EmissiveSampler') ?? undefined;
+    this.emissiveFactor = mat.getVector4('_EmissiveFactor') ?? new Vector4(0, 0, 0, 0);
     this.emissiveFactor.multiply(1 / 255.0);
     this.emissiveIntensity = mat.getFloat('u_EmissiveIntensity') ?? 1;
     const emissiveFactor = this.emissiveFactor.clone().multiply(this.emissiveIntensity);
 
-    mat.setVector4('u_EmissiveFactor', emissiveFactor);
+    mat.setVector4('_EmissiveFactor', emissiveFactor);
 
     this.enableShadow = false;
     this.depthMask = false;
     const blending = mat.getInt('blending') ?? spec.MaterialBlending.opaque;
 
     this.blendMode = this.getBlendMode(blending);
-    this.alphaCutOff = mat.getFloat('u_AlphaCutoff') ?? 0;
+    this.alphaCutOff = mat.getFloat('_AlphaCutoff') ?? 0;
     const side = mat.getInt('side') ?? spec.SideMode.FRONT;
 
     this.faceSideMode = this.getFaceSideMode(side);
@@ -709,9 +709,9 @@ export class PMaterialPBR extends PMaterialBase {
     //
     const uvTransform = new Matrix3().identity();
 
-    material.setVector4('u_BaseColorFactor', this.baseColorFactor);
+    material.setVector4('_BaseColorFactor', this.baseColorFactor);
     if (this.baseColorTexture !== undefined) {
-      material.setTexture('u_BaseColorSampler', this.baseColorTexture);
+      material.setTexture('_BaseColorSampler', this.baseColorTexture);
       material.setInt('u_BaseColorUVSet', 0);
       if (this.baseColorTextureTrans !== undefined) {
         material.setMatrix3('u_BaseColorUVTransform', this.baseColorTextureTrans);
@@ -721,10 +721,10 @@ export class PMaterialPBR extends PMaterialBase {
       }
     }
     //
-    material.setFloat('u_MetallicFactor', this.metallicFactor);
-    material.setFloat('u_RoughnessFactor', this.roughnessFactor);
+    material.setFloat('_MetallicFactor', this.metallicFactor);
+    material.setFloat('_RoughnessFactor', this.roughnessFactor);
     if (this.metallicRoughnessTexture !== undefined) {
-      material.setTexture('u_MetallicRoughnessSampler', this.metallicRoughnessTexture);
+      material.setTexture('_MetallicRoughnessSampler', this.metallicRoughnessTexture);
       material.setInt('u_MetallicRoughnessUVSet', 0);
       if (this.metallicRoughnessTextureTrans !== undefined) {
         material.setMatrix3('u_MetallicRoughnessUVTransform', this.metallicRoughnessTextureTrans);
@@ -735,7 +735,7 @@ export class PMaterialPBR extends PMaterialBase {
     }
     //
     if (this.normalTexture !== undefined) {
-      material.setTexture('u_NormalSampler', this.normalTexture);
+      material.setTexture('_NormalSampler', this.normalTexture);
       material.setFloat('u_NormalScale', this.normalTextureScale);
       material.setInt('u_NormalUVSet', 0);
       if (this.normalTextureTrans !== undefined) {
@@ -747,7 +747,7 @@ export class PMaterialPBR extends PMaterialBase {
     }
     //
     if (this.occlusionTexture !== undefined) {
-      material.setTexture('u_OcclusionSampler', this.occlusionTexture);
+      material.setTexture('_OcclusionSampler', this.occlusionTexture);
       material.setFloat('u_OcclusionStrength', this.occlusionTextureStrength);
       material.setInt('u_OcclusionUVSet', 0);
       if (this.occlusionTextureTrans !== undefined) {
@@ -761,8 +761,8 @@ export class PMaterialPBR extends PMaterialBase {
     if (this.emissiveTexture !== undefined) {
       const emissiveFactor = this.getEmissiveFactor();
 
-      material.setTexture('u_EmissiveSampler', this.emissiveTexture);
-      material.setVector4('u_EmissiveFactor', emissiveFactor);
+      material.setTexture('_EmissiveSampler', this.emissiveTexture);
+      material.setVector4('_EmissiveFactor', emissiveFactor);
       material.setInt('u_EmissiveUVSet', 0);
       if (this.emissiveTextureTrans !== undefined) {
         material.setMatrix3('u_EmissiveUVTransform', this.emissiveTextureTrans);
@@ -773,7 +773,7 @@ export class PMaterialPBR extends PMaterialBase {
     } else if (this.hasEmissiveFactor()) {
       const emissiveFactor = this.getEmissiveFactor();
 
-      material.setVector4('u_EmissiveFactor', emissiveFactor);
+      material.setVector4('_EmissiveFactor', emissiveFactor);
     }
 
     material.setFloat('u_Exposure', 3.0);

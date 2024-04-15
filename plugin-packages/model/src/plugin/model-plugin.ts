@@ -72,7 +72,7 @@ export class ModelPlugin extends AbstractPlugin {
     const autoAdjustScene = options.pluginData?.['autoAdjustScene'] ?? false;
 
     //
-    PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode, autoAdjustScene);
+    //PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode, autoAdjustScene);
     await CompositionCache.loadStaticResources();
   }
 

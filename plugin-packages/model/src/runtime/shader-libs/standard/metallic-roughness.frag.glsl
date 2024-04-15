@@ -92,9 +92,9 @@ uniform Light u_Lights[LIGHT_COUNT];
 #endif
 
 #if defined(MATERIAL_SPECULARGLOSSINESS) || defined(MATERIAL_METALLICROUGHNESS)
-uniform float u_MetallicFactor;
-uniform float u_RoughnessFactor;
-uniform vec4 u_BaseColorFactor;
+uniform float _MetallicFactor;
+uniform float _RoughnessFactor;
+uniform vec4 _BaseColorFactor;
 #endif
 
 #ifdef MATERIAL_SPECULARGLOSSINESS
@@ -104,7 +104,7 @@ uniform float u_GlossinessFactor;
 #endif
 
 #ifdef ALPHAMODE_MASK
-uniform float u_AlphaCutoff;
+uniform float _AlphaCutoff;
 #endif
 
 #ifdef ADD_FOG
@@ -422,21 +422,21 @@ void main()
 #ifdef HAS_METALLIC_ROUGHNESS_MAP
     // Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
     // This layout intentionally reserves the 'r' channel for (optional) occlusion map data
-    vec4 mrSample = texture2D(u_MetallicRoughnessSampler, getMetallicRoughnessUV());
-    perceptualRoughness = mrSample.g * u_RoughnessFactor;
+    vec4 mrSample = texture2D(_MetallicRoughnessSampler, getMetallicRoughnessUV());
+    perceptualRoughness = mrSample.g * _RoughnessFactor;
     /*注： 适配unity的效果，unity中对metallic使用orm贴图时，roughness仍为数值
-    perceptualRoughness = u_RoughnessFactor;*/
-    metallic = mrSample.b * u_MetallicFactor;
+    perceptualRoughness = _RoughnessFactor;*/
+    metallic = mrSample.b * _MetallicFactor;
 #else
-    metallic = u_MetallicFactor;
-    perceptualRoughness = u_RoughnessFactor;
+    metallic = _MetallicFactor;
+    perceptualRoughness = _RoughnessFactor;
 #endif
 
     // The albedo may be defined from a base texture or a flat color
 #ifdef HAS_BASE_COLOR_MAP
-    baseColor = SRGBtoLINEAR(texture2D(u_BaseColorSampler, getBaseColorUV())) * u_BaseColorFactor;
+    baseColor = SRGBtoLINEAR(texture2D(_BaseColorSampler, getBaseColorUV())) * _BaseColorFactor;
 #else
-    baseColor = SRGBtoLINEAR(u_BaseColorFactor);
+    baseColor = SRGBtoLINEAR(_BaseColorFactor);
 #endif
 
     baseColor *= getVertexColor();
@@ -448,7 +448,7 @@ void main()
 #endif // ! MATERIAL_METALLICROUGHNESS
 
 #ifdef ALPHAMODE_MASK
-    if(baseColor.a < u_AlphaCutoff)
+    if(baseColor.a < _AlphaCutoff)
     {
         discard;
     }
@@ -583,19 +583,19 @@ void main()
     // Apply optional PBR terms for additional (optional) shading
 #ifdef HAS_OCCLUSION_MAP
     /* unity exporter orm 适配的写法
-    ao = texture2D(u_OcclusionSampler,  getOcclusionUV()).g;*/
-    ao = texture2D(u_OcclusionSampler,  getOcclusionUV()).r;
+    ao = texture2D(_OcclusionSampler,  getOcclusionUV()).g;*/
+    ao = texture2D(_OcclusionSampler,  getOcclusionUV()).r;
     color = mix(color, color * ao, u_OcclusionStrength);
 #endif
 
     vec3 emissive = vec3(0);
 /*#ifdef HAS_EMISSIVE_MAP
-    emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
+    emissive = SRGBtoLINEAR(texture2D(_EmissiveSampler, getEmissiveUV())).rgb * _EmissiveFactor.rgb;
     color += emissive;
 #endif
 
 #ifdef HAS_EMISSIVE
-    color += u_EmissiveFactor.rgb;
+    color += _EmissiveFactor.rgb;
 #endif*/
 
 #ifndef DEBUG_OUTPUT // no debug
@@ -610,10 +610,10 @@ void main()
         color = toneMap(color) * baseColor.a;
         // emmisive要放在tone mapping之后，否则会导致光影过弱
         #ifdef HAS_EMISSIVE
-          color += u_EmissiveFactor.rgb;
+          color += _EmissiveFactor.rgb;
         #endif
         #ifdef HAS_EMISSIVE_MAP
-          emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
+          emissive = SRGBtoLINEAR(texture2D(_EmissiveSampler, getEmissiveUV())).rgb * _EmissiveFactor.rgb;
           color += emissive;
         #endif
         vec4 fragColorOut = vec4(color, baseColor.a);
@@ -652,11 +652,11 @@ void main()
     #ifdef DEBUG_EMISSIVE
         // fetch emissive data
         #ifdef HAS_EMISSIVE
-            emissive = u_EmissiveFactor.rgb;
+            emissive = _EmissiveFactor.rgb;
         #endif
 
         #ifdef HAS_EMISSIVE_MAP
-            emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
+            emissive = SRGBtoLINEAR(texture2D(_EmissiveSampler, getEmissiveUV())).rgb * _EmissiveFactor.rgb;
         #endif
 
         outFragColor.rgb = LINEARtoSRGB(emissive);
