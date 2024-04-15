@@ -174,35 +174,51 @@ export class BezierPath {
 
     const point = new Vector3();
     const segmentLength = numberToFix(bezierData.totalLength * percent, 4);
-    let flag = true;
+
     let addedLength = this.catching.lastAddedLength;
     let j = this.catching.lastPoint;
 
+    if (decimalEqual(addedLength, segmentLength)) {
+      return bezierData.points[j].point.clone().add(this.interval);
+    }
+
+    let flag = true;
     let dir = 1;
 
-    if (segmentLength < this.catching.lastAddedLength) {
+    if (segmentLength < addedLength) {
       dir = -1;
     }
 
     while (flag) {
-      if (segmentLength >= addedLength && segmentLength < addedLength + bezierData.points[j + 1].partialLength) {
-        const segmentPerc = (segmentLength - addedLength) / bezierData.points[j + 1].partialLength;
+      if (segmentLength >= addedLength) {
+        if (j === CURVE_SEGMENTS - 1) {
+          point.x = bezierData.points[j].point.x;
+          point.y = bezierData.points[j].point.y;
+          point.z = bezierData.points[j].point.z;
 
-        point.x = bezierData.points[j].point.x + (bezierData.points[j + 1].point.x - bezierData.points[j].point.x) * segmentPerc;
-        point.y = bezierData.points[j].point.y + (bezierData.points[j + 1].point.y - bezierData.points[j].point.y) * segmentPerc;
-        point.z = bezierData.points[j].point.z + (bezierData.points[j + 1].point.z - bezierData.points[j].point.z) * segmentPerc;
+          break;
+        }
+        if (segmentLength < addedLength + bezierData.points[j + 1].partialLength) {
+          const segmentPerc = (segmentLength - addedLength) / bezierData.points[j + 1].partialLength;
 
-        break;
+          point.x = bezierData.points[j].point.x + (bezierData.points[j + 1].point.x - bezierData.points[j].point.x) * segmentPerc;
+          point.y = bezierData.points[j].point.y + (bezierData.points[j + 1].point.y - bezierData.points[j].point.y) * segmentPerc;
+          point.z = bezierData.points[j].point.z + (bezierData.points[j + 1].point.z - bezierData.points[j].point.z) * segmentPerc;
+
+          break;
+        }
       }
-      j += dir;
-      if (j >= 0 && j < CURVE_SEGMENTS - 1) {
-        addedLength = addedLength + numberToFix(dir * bezierData.points[j].partialLength, 5);
+      if (dir > 0 && j < (CURVE_SEGMENTS - 1)) {
+        j += dir;
+        addedLength += numberToFix(bezierData.points[j].partialLength, 5);
+      } else if (dir < 0 && j > 0) {
+        addedLength -= numberToFix(bezierData.points[j].partialLength, 5);
+        j += dir;
       } else {
         flag = false;
-        point.copyFrom(bezierData.points[j].point);
       }
     }
-    this.catching.lastPoint = j === CURVE_SEGMENTS - 1 ? j - 1 : j;
+    this.catching.lastPoint = j;
     this.catching.lastAddedLength = addedLength;
 
     point.add(this.interval);
