@@ -661,6 +661,8 @@ export class BezierSegments extends PathSegments {
 export class BezierCurve extends ValueGetter<number> {
   curveMap: Record<string, {
     points: Vector2[],
+    timeInterval: number,
+    valueInterval: number,
     curve: BezierEasing,
   }>;
   keys: number[][];
@@ -687,7 +689,7 @@ export class BezierCurve extends ValueGetter<number> {
       const leftKeyframe = keyframes[i];
       const rightKeyframe = keyframes[i + 1];
 
-      const { points, curve } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const { points, curve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
       const s = points[0];
       const e = points[points.length - 1];
 
@@ -696,6 +698,8 @@ export class BezierCurve extends ValueGetter<number> {
 
       this.curveMap[`${s.x}&${e.x}`] = {
         points,
+        timeInterval,
+        valueInterval,
         curve,
       };
     }
@@ -753,12 +757,12 @@ export class BezierCurve extends ValueGetter<number> {
     return result;
   }
 
-  // 面板移除后下线
+  // 速度变化曲线面板移除后下线
   getCurveIntegrateValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
-    const [p0, , , p3] = curveInfo.points;
-    const timeInterval = p3.x - p0.x;
-    const valueInterval = p3.y - p0.y;
+    const [p0] = curveInfo.points;
+    const timeInterval = curveInfo.timeInterval;
+    const valueInterval = curveInfo.valueInterval;
     const segments = 100;
     let total = 0;
     const h = (time - p0.x) / segments;
@@ -784,9 +788,9 @@ export class BezierCurve extends ValueGetter<number> {
 
   getCurveValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
-    const [p0, , , p3] = curveInfo.points;
-    const timeInterval = p3.x - p0.x;
-    const valueInterval = p3.y - p0.y;
+    const [p0] = curveInfo.points;
+    const timeInterval = curveInfo.timeInterval;
+    const valueInterval = curveInfo.valueInterval;
     const normalizeTime = (time - p0.x) / timeInterval;
     const value = curveInfo.curve.getValue(normalizeTime);
 
@@ -823,6 +827,8 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     points: Vector2[],
     // 缓动曲线
     easingCurve: BezierEasing,
+    timeInterval: number,
+    valueInterval: number,
     // 路径曲线
     pathCurve: BezierPath,
   }>;
@@ -837,7 +843,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       const ps1 = new Vector3(points[i][0], points[i][1], points[i][2]), ps2 = new Vector3(points[i + 1][0], points[i + 1][1], points[i + 1][2]);
       const cp1 = new Vector3(controlPoints[2 * i][0], controlPoints[2 * i][1], controlPoints[2 * i][2]), cp2 = new Vector3(controlPoints[2 * i + 1][0], controlPoints[2 * i + 1][1], controlPoints[2 * i + 1][2]);
 
-      const { points: ps, curve: easingCurve } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const { points: ps, curve: easingCurve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
       const s = ps[0];
       const e = ps[ps.length - 1];
 
@@ -845,6 +851,8 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
       this.curveSegments[`${s.x}&${e.x}`] = {
         points: ps,
+        timeInterval,
+        valueInterval,
         easingCurve,
         pathCurve: pathCurve,
       };
@@ -882,7 +890,6 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
         const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
 
         perc = this.getPercValue(keyTimeData[i], t);
-
         point = bezierPath.getPointInPercent(perc);
 
       }
@@ -893,15 +900,14 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
   getPercValue (curveKey: string, time: number) {
     const curveInfo = this.curveSegments[curveKey];
-    const [p0,, , p3] = curveInfo.points;
+    const [p0] = curveInfo.points;
 
-    const timeInterval = p3.x - p0.x;
+    const timeInterval = curveInfo.timeInterval;
     const normalizeTime = numberToFix((time - p0.x) / timeInterval, 4);
-    const valueInterval = p3.y - p0.y;
     const value = curveInfo.easingCurve.getValue(normalizeTime);
 
     // TODO 测试用 编辑器限制值域后移除clamp
-    return clamp((p0.y + valueInterval * value) / valueInterval, p0.y, p3.y);
+    return clamp(value, 0, 1);
   }
 
 }

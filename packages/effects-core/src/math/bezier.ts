@@ -1,4 +1,6 @@
+import type { LinearValue } from '@galacean/effects-core';
 import { assertExist, decimalEqual, numberToFix } from '@galacean/effects-core';
+import { LineValue } from '@galacean/effects-specification';
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
@@ -231,6 +233,9 @@ export class BezierEasing {
     if (this.mX1 === this.mY1 && this.mX2 === this.mY2) {
       return x;
     }
+    if (isNaN(this.mY1) || isNaN(this.mY2)) {
+      return 0;
+    }
     if (x === 0 || x === 1) {
       return x;
     }
@@ -287,6 +292,8 @@ export class BezierEasing {
 
 export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyframe: BezierKeyframeValue): {
   points: Vector2[],
+  timeInterval: number,
+  valueInterval: number,
   curve: BezierEasing,
 } {
   // 获取控制点和曲线类型
@@ -331,6 +338,8 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
 
   return {
     points: [p0, p1, p2, p3],
+    timeInterval,
+    valueInterval,
     curve: bezEasing,
   };
 }
