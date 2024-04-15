@@ -1,69 +1,39 @@
-import { combineImageTemplate, loadImage } from '@galacean/effects';
+import { Player, combineImageTemplate, loadImage } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('Image template', async () => {
-  // 背景图 url
-  const imageURL = 'https://gw.alipayobjects.com/mdn/lifeNews_f/afts/img/A*kqtER7-CHoUAAAAAAAAAAAAAARQnAQ';
-  // 模版数据
-  const template = {
-    width: 300,
-    height: 300,
-    variables: {},
-    background: {
-      name: 'image',
-      url: 'https://gw.alipayobjects.com/zos/gltf-asset/66157568550483/image0.jpg',
-    },
-  };
-
   after(() => {
   });
 
-  // it('测试图片尺寸与模版尺寸不同时，对模版的 canvas 缩放到图片尺寸', async () => {
-  //   const image = 'https://gw.alipayobjects.com/zos/gltf-asset/67989981184436/test_300_300.png';
-  //   // 图片是模版尺寸的二倍
-  //   const image2x = 'https://gw.alipayobjects.com/zos/gltf-asset/67989981184436/test_600_600.png';
-  //   let result = await combineImageTemplate(
-  //     image,
-  //     template,
-  //     {},
-  //     {
-  //       canvas,
-  //       templateScale: 1.0,
-  //     }
-  //   ) as HTMLImageElement;
+  it('设置动态文本不会报错', async () => {
+    let container: HTMLDivElement | null = document.createElement('div');
+    const player = new Player({
+      container,
+    });
+    const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*T1U4SqWhvioAAAAAAAAAAAAADlB4AQ';
 
-  //   expect(result.width).to.eql(300);
-  //   expect(result.height).to.eql(300);
+    document.body.appendChild(container);
+    await player.loadScene(json, {
+      variables: {
+        'text1-bold': 'text1-bold',
+        'text1': '1111111111111',
+        'btnText4': '2222',
+      },
+    });
 
-  //   result = await combineImageTemplate(
-  //     image2x,
-  //     template,
-  //     {},
-  //     {
-  //       canvas: canvas,
-  //       templateScale: 1.0,
-  //     }
-  //   ) as HTMLImageElement;
-
-  //   expect(result.width).to.eql(600);
-  //   expect(result.height).to.eql(600);
-  // });
+    player.dispose();
+    container.remove();
+    container = null;
+  });
 
   it('测试 template background 的 url 无效', async () => {
+    // 1. 使用 canvas 绘制图片并得到 imageData
     // 30x30 背景图
-    const url = 'https://gw.alipayobjects.com/zos/gltf-asset/69720573582093/test.jpg';
-    const image = await loadImage(url);
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d')!;
-    const canvas2 = document.createElement('canvas');
-    const context2 = canvas2.getContext('2d')!;
+    const url1 = 'https://gw.alipayobjects.com/zos/gltf-asset/69720573582093/test.jpg';
+    const { canvas: canvas1, imageData: imageData1, width, height } = await getImageDataByUrl(url1);
 
-    canvas2.width = image.width;
-    canvas2.height = image.height;
-    context2.drawImage(image, 0, 0, image.width, image.height, 0, 0, image.width, image.height);
-
-    const imageData2 = context2.getImageData(0, 0, image.width, image.height).data;
+    // 2. 使用 canvas 绘制动态图片并得到 imageData
     const template = {
       width: 30,
       height: 30,
@@ -73,88 +43,81 @@ describe('Image template', async () => {
         url: '',
       },
     };
-    const canvasResult = await combineImageTemplate(
-      image,
-      template,
-      {},
-      {
-        templateScale: 1.0,
-      }
-    ) as HTMLImageElement;
-    const imageData0 = context.getImageData(0, 0, canvasResult.width, canvasResult.height).data;
-    const pixels = canvasResult.width * canvasResult.height;
+    const image2 = await combineImageTemplate(url1, template, {}) as HTMLImageElement;
+    const { canvas: canvas2, imageData: imageData2 } = await getImageDataByUrl(image2);
+
+    // 3. 对比
+    const pixels = width * height;
 
     for (let i = 0; i < pixels; ++i) {
       const index = i * 4;
 
       for (let j = 0; j < 3; ++j) {
-        const a = imageData0[index + j];
+        const b = imageData1[index + j];
+        const a = imageData2[index + j];
+
+        expect(a).to.eql(b);
+      }
+    }
+
+    canvas1.remove();
+    canvas2.remove();
+  });
+
+  it('测试 template 换图成功', async () => {
+    // 1. 通过 canvas 绘制原始图片，获得 imageData
+    const url1 = 'https://mdn.alipayobjects.com/mars/afts/img/A*JKibRacHibcAAAAAAAAAAAAADlB4AQ/original';
+    const { canvas: canvas1, imageData: imageData1 } = await getImageDataByUrl(url1);
+
+    // 2. 通过 template 动画换图并使用 canvas 绘制结果，获得 imageData
+    const url2 = 'https://mdn.alipayobjects.com/huamei_uj3n0k/afts/img/A*oelLS68rL4kAAAAAAAAAAAAADt_KAQ/original';
+    const template = {
+      width: 179,
+      height: 194,
+      variables: {},
+      background: {
+        name: 'test',
+        url: '',
+      },
+    };
+    const image2 = await combineImageTemplate(
+      url2,
+      template,
+      {
+        'test': url1,
+      }
+    ) as HTMLImageElement;
+    const { canvas: canvas2, imageData: imageData2 } = await getImageDataByUrl(image2);
+
+    // 3. 对比
+    const pixels = image2.width * image2.height;
+
+    for (let i = 0; i < pixels; ++i) {
+      const index = i * 4;
+
+      for (let j = 0; j < 3; ++j) {
+        const a = imageData1[index + j];
         const b = imageData2[index + j];
 
         expect(a).to.eql(b);
       }
     }
 
-    canvas.remove();
+    canvas1.remove();
     canvas2.remove();
   });
-
-  // it('测试template Background的url为空', async () => {
-  //   // 30x30背景图
-  //   const imageURL = 'https://gw.alipayobjects.com/zos/gltf-asset/69720573582093/test.jpg';
-  //   const image0 = await loadImage(imageURL);
-  //   const textLayouts: TextLayout[] = [];
-  //   const canvas0 = document.createElement('canvas');
-  //   const context0 = canvas0.getContext('2d')!;
-  //   const canvas2 = document.createElement('canvas');
-
-  //   canvas2.width = image0.width;
-  //   canvas2.height = image0.height;
-  //   const renderContext2 = canvas2.getContext('2d')!;
-
-  //   renderContext2.drawImage(image0, 0, 0, image0.width, image0.height, 0, 0, image0.width, image0.height);
-  //   const imageData2 = renderContext2.getImageData(0, 0, image0.width, image0.height).data;
-  //   const textTemplate = {
-  //     v: 2,
-  //     content: {
-  //       fonts: fonts,
-  //       texts: [],
-  //       colors: colors,
-  //     },
-  //     width: 30,
-  //     height: 30,
-  //     background: {
-  //       name: 'test',
-  //       url: '',
-  //     },
-  //   };
-
-  //   const canvasResult = await combineImageTemplate(
-  //     image0,
-  //     textTemplate,
-  //     {},
-  //     {
-  //       textLayouts,
-  //       canvas: canvas0,
-  //       templateScale: 1.0,
-  //     }
-  //   ) as HTMLImageElement;
-  //   const imageData0 = renderContext0.getImageData(0, 0, canvasResult.width, canvasResult.height).data;
-  //   const pixels = canvasResult.width * canvasResult.height;
-
-  //   for (let i = 0; i < pixels; ++i) {
-  //     const index = i * 4;
-
-  //     for (let j = 0; j < 3; ++j) {
-  //       const a = imageData0[index + j];
-  //       const b = imageData2[index + j];
-
-  //       expect(a).to.eql(b);
-  //     }
-  //   }
-
-  //   canvas0.remove();
-  //   canvas2.remove();
-  // });
 });
 
+async function getImageDataByUrl (url: string | HTMLImageElement) {
+  const image = url instanceof HTMLImageElement ? url : await loadImage(url);
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d')!;
+  const { width, height } = image;
+
+  canvas.width = width;
+  canvas.height = height;
+  context.drawImage(image, 0, 0, width, height, 0, 0, width, height);
+  const imageData = context.getImageData(0, 0, width, height).data;
+
+  return { canvas, imageData, width, height };
+}

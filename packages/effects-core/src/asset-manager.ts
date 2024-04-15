@@ -42,12 +42,6 @@ export interface SceneLoadOptions {
   variables?: Record<string, number | string | string[]>,
 
   /**
-   * 模板图片缩放倍数
-   * @default 1 如果图片比较糊，可以用 2（但会增大图片内存）
-   */
-  templateScale?: number,
-
-  /**
    * 是否使用压缩纹理
    */
   useCompressedTexture?: boolean,
@@ -474,10 +468,6 @@ export class AssetManager implements Disposable {
               result!.image,
               template,
               variables as Record<string, number | string>,
-              {
-                ...this.options,
-                flipY: img.oriY === -1,
-              },
             );
           } catch (e) {
             throw new Error(`image template fail: ${imageURL}`);

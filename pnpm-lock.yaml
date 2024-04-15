@@ -154,8 +154,8 @@ importers:
         specifier: 1.1.0-alpha.0
         version: 1.1.0-alpha.0
       '@galacean/effects-specification':
-        specifier: 2.0.0-alpha.3
-        version: 2.0.0-alpha.3
+        specifier: link://Users/yiqi/git/galacean/effects-specification
+        version: link:../../../effects-specification
       uuid:
         specifier: 9.0.1
         version: 9.0.1
@@ -2685,10 +2685,6 @@ packages:
   /@galacean/effects-math@1.1.0-alpha.0:
     resolution: {integrity: sha512-QJHwoGbF+WSosPY0De4ry7dHts2LNjBnYjPYlWtDsYcy4HXGQ2RS+6kzfQ3nIZu5cd6QSd7zsUCjQdUyPnc7jw==}
     engines: {node: '>=10.0.0'}
-    dev: false
-
-  /@galacean/effects-specification@2.0.0-alpha.3:
-    resolution: {integrity: sha512-myq5I79KI6n9F6cjxlZ7zVVeJ1Cd9WGrFtsWnLLsC4CKTXLZcSHT6so/dDYaMnSINfP3MIKexY98UJzaq/0c5Q==}
     dev: false
 
   /@headlessui/vue@1.7.19(vue@3.4.21):
