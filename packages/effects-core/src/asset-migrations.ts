@@ -214,7 +214,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.SpriteComponent;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.particle) {
       item.components = [];
@@ -223,7 +222,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.ParticleSystem;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.mesh) {
       item.components = [];
@@ -232,7 +230,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.MeshComponent;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.skybox) {
       item.components = [];
@@ -241,7 +238,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.SkyboxComponent;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.light) {
       item.components = [];
@@ -250,7 +246,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.LightComponent;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === 'camera') {
       item.components = [];
@@ -259,7 +254,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.CameraComponent;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.tree) {
       item.components = [];
@@ -268,7 +262,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.TreeComponent;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.interact) {
       item.components = [];
@@ -277,7 +270,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.InteractComponent;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.camera) {
       item.components = [];
@@ -286,7 +278,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.CameraController;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     } else if (item.type === spec.ItemType.text) {
       item.components = [];
@@ -295,7 +286,6 @@ export function version3Migration (scene: Record<string, any>): Scene {
       item.content.dataType = DataType.TextComponent;
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
-      //@ts-expect-error
       item.components.push({ id: item.content.id });
     }
   }

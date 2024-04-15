@@ -3,28 +3,30 @@ import { Player, combineImageTemplate, loadImage } from '@galacean/effects';
 const { expect } = chai;
 
 describe('Image template', async () => {
-  after(() => {
+  let container: HTMLDivElement | null;
+  let player: Player;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    container.style.width = '300px';
+    container.style.height = '200px';
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    player.pause();
+    player?.dispose();
+    container?.remove();
+    container = null;
   });
 
   it('设置动态文本不会报错', async () => {
-    let container: HTMLDivElement | null = document.createElement('div');
-    const player = new Player({
+    const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*40vJRJf5nAAAAAAAAAAAAAAADlB4AQ';
+
+    player = new Player({
       container,
     });
-    const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*T1U4SqWhvioAAAAAAAAAAAAADlB4AQ';
 
-    document.body.appendChild(container);
-    await player.loadScene(json, {
-      variables: {
-        'text1-bold': 'text1-bold',
-        'text1': '1111111111111',
-        'btnText4': '2222',
-      },
-    });
-
-    player.dispose();
-    container.remove();
-    container = null;
+    await player.loadScene(json);
   });
 
   it('测试 template background 的 url 无效', async () => {
