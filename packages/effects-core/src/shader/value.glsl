@@ -129,6 +129,9 @@ float getValueFromTime(float time, vec4 value) {
   if(type == 1.) {
     return mix(value.y, value.z, time / value.w);
   }
+ /* if(type == 2.) {
+    return valueFromCurveFrames(time, floor(value.y), floor(1. / fract(value.y) + 0.5)) * value.w + value.z;
+  }*/
   if(type == 3.) {
     return valueFromLineSegs(time, value.y, value.z);
   }

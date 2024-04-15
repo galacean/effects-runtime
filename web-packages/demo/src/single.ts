@@ -2,7 +2,7 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240415052324650/mars-preview.json';
+const json = 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240415082514774/mars-preview.json';
 const container = document.getElementById('J-container');
 
 (async () => {

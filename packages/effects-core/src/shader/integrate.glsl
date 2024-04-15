@@ -1,4 +1,4 @@
-float integrateCurveFrames(float t1, vec4 k0, vec4 k1) {
+/*float integrateCurveFrames(float t1, vec4 k0, vec4 k1) {
   float k = k1.x - k0.x;
   float m0 = k0.w * k;
   float m1 = k1.z * k;
@@ -13,9 +13,9 @@ float integrateCurveFrames(float t1, vec4 k0, vec4 k1) {
   vec4 a = vec4(dt3 * dt, dt3, dt2, dt) / vec4(4. * k * k * k, 3. * k * k, 2. * k, 1.);
   vec4 b = vec4(m0 + m1 + 2. * v0 - 2. * v1, 2. * m0 + m1 + 3. * v0 - 3. * v1, m0, -v0);
   return dot(a, b);
-}
+}*/
 
-float integrateByTimeCurveFrames(float t1, vec4 k0, vec4 k1) {
+/*float integrateByTimeCurveFrames(float t1, vec4 k0, vec4 k1) {
   float k = k1.x - k0.x;
   float m0 = k0.w * k;
   float m1 = k1.z * k;
@@ -32,7 +32,7 @@ float integrateByTimeCurveFrames(float t1, vec4 k0, vec4 k1) {
   vec4 a = vec4(-30. * k3, 10. * k2, 5. * k, 3.) * vec4(dt, dt2, dt3, dt3 * dt);
   vec4 b = vec4(v0, m0, 2. * m0 + m1 + 3. * v0 - 3. * v1, m0 + m1 + 2. * v0 - 2. * v1) * vec4(t0 + t1, t0 + 2. * t1, t0 + 3. * t1, t0 + 4. * t1);
   return dot(a, b) / 60. / k3;
-}
+}*/
 
 float calculateMovement(float t, float y1, float y2, float y3, float y4) {
   int numIntervals = 100;
@@ -104,7 +104,7 @@ float integrateFromBezierCurveFrames(float time, float frameStart, float frameCo
   return ret;
 }
 
-float integrateByTimeFromCurveFrames(float t1, float frameStart, float frameCount) {
+/*float integrateByTimeFromCurveFrames(float t1, float frameStart, float frameCount) {
   if(t1 == 0.) {
     return 0.;
   }
@@ -123,9 +123,9 @@ float integrateByTimeFromCurveFrames(float t1, float frameStart, float frameCoun
     ret += integrateByTimeCurveFrames(k1.x, k0, k1);
   }
   return ret;
-}
+}*/
 
-float integrateFromCurveFrames(float time, float frameStart, float frameCount) {
+/*float integrateFromCurveFrames(float time, float frameStart, float frameCount) {
   if(time == 0.) {
     return 0.;
   }
@@ -144,7 +144,7 @@ float integrateFromCurveFrames(float time, float frameStart, float frameCount) {
     ret += integrateCurveFrames(k1.x, k0, k1);
   }
   return ret;
-}
+}*/
 
 float integrateByTimeLineSeg(float t, vec2 p0, vec2 p1) {
   float t0 = p0.x;
@@ -236,12 +236,14 @@ float getIntegrateFromTime0(float t1, vec4 value) {
     return integrateFromLineSeg(t1, value.y, value.z);
   }
 
+/*
   if(type == 2.) {
     float idx = floor(value.y);
     float ilen = floor(1. / fract(value.y) + 0.5);
     float d = integrateFromCurveFrames(t1, idx, ilen);
     return d * value.w + value.z * t1;
   }
+*/
 
   if(type == 4.) {
     return mix(value.y, value.z, aSeed) * t1;
@@ -262,12 +264,12 @@ float getIntegrateByTimeFromTime(float t0, float t1, vec4 value) {
     return integrateByTimeLineSeg(t1, p0, p1) - integrateByTimeLineSeg(t0, p0, p1);
   }
 
-  if(type == 2.) {
+/*  if(type == 2.) {
     float idx = floor(value.y);
     float ilen = floor(1. / fract(value.y) + 0.5);
     float d = integrateByTimeFromCurveFrames(t1, idx, ilen) - integrateByTimeFromCurveFrames(t0, idx, ilen);
     return d * value.w + value.z * pow(t1 - t0, 2.) * 0.5;
-  }
+  }*/
 
   if(type == 3.) {
     return integrateByTimeFromLineSeg(t1, value.y, value.z) - integrateByTimeFromLineSeg(t0, value.y, value.z);
