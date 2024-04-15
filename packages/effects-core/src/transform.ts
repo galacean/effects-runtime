@@ -547,7 +547,7 @@ export class Transform implements Disposable {
   fromData (data: any) {
     const transformData = {
       position: new Vector3().copyFrom(data.position),
-      rotation: new Euler(data.rotation.x, data.rotation.y, data.rotation.z),
+      rotation: new Euler(data.eulerHint.x, data.eulerHint.y, data.eulerHint.z),
       scale: new Vector3().copyFrom(data.scale),
     };
 
