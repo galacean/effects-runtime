@@ -362,7 +362,7 @@ export class SerializationHelper {
         if (!serializedData[i]) {
           serializedData[i] = {};
         }
-        SerializationHelper.serializeObjectProperty(value[i], serializedData[i], level + 1);
+        SerializationHelper.serializeObjectProperty(value, serializedData[i], level + 1);
       }
     }
   }
