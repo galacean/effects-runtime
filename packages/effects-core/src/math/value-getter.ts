@@ -1,3 +1,4 @@
+import { clamp } from '@galacean/effects-math/es/core/index';
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
@@ -11,14 +12,14 @@ import {
 } from '../utils';
 import type { ColorStop } from '../utils';
 import type {
-  BezierLengthData,
   BezierEasing } from './bezier';
 import { BezierPath,
 } from './bezier';
 import {
-  buildBezierData, buildEasingCurve,
+  buildEasingCurve,
 } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
+import { numberToFix } from './utils';
 
 interface KeyFrameMeta {
   curves: ValueGetter<any>[],
@@ -852,7 +853,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
   }
 
   override getValue (time: number): Vector3 {
-    const t = Math.floor(time * 100000) / 100000;
+    const t = numberToFix(time, 5);
     let perc = 0, point = new Vector3();
     const keyTimeData = Object.keys(this.curveSegments);
     const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
@@ -880,7 +881,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       if (t >= Number(xMin) && t < Number(xMax)) {
         const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
 
-        perc = Math.floor(this.getPercValue(keyTimeData[i], t) * 10000) / 10000;
+        perc = this.getPercValue(keyTimeData[i], t);
 
         point = bezierPath.getPointInPercent(perc);
 
@@ -895,9 +896,12 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     const [p0,, , p3] = curveInfo.points;
 
     const timeInterval = p3.x - p0.x;
-    const normalizeTime = Math.round((time - p0.x) / timeInterval * 10000) / 10000;
+    const normalizeTime = numberToFix((time - p0.x) / timeInterval, 4);
+    const valueInterval = p3.y - p0.y;
+    const value = curveInfo.easingCurve.getValue(normalizeTime);
 
-    return curveInfo.easingCurve.getValue(normalizeTime);
+    // TODO 测试用 编辑器限制值域后移除clamp
+    return clamp((p0.y + valueInterval * value) / valueInterval, p0.y, p3.y);
   }
 
 }

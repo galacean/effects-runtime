@@ -128,6 +128,12 @@ export function decimalEqual (a: number, b: number, epsilon = 0.000001) {
   return Math.abs(a - b) < epsilon;
 }
 
+export function numberToFix (a: number, fixed = 2) {
+  const base = Math.pow(10, fixed);
+
+  return Math.floor(a * base) / base;
+}
+
 export function pointOnLine (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) {
   const det1 = (x1 * y2) + (y1 * x3) + (x2 * y3) - (x3 * y2) - (y3 * x1) - (x2 * y1);
 

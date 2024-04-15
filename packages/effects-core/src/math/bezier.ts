@@ -1,4 +1,4 @@
-import { assertExist, decimalEqual } from '@galacean/effects-core';
+import { assertExist, decimalEqual, numberToFix } from '@galacean/effects-core';
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
@@ -163,7 +163,7 @@ export class BezierPath {
       return bezierData.points[0].point.clone().add(this.interval);
     }
 
-    if (Math.floor((1 - percent) * 1000) / 1000 === 0) {
+    if (decimalEqual(1 - percent, 0)) {
       return bezierData.points[CURVE_SEGMENTS - 1].point.clone().add(this.interval);
     }
     if (decimalEqual(bezierData.totalLength, 0)) {
@@ -171,7 +171,7 @@ export class BezierPath {
     }
 
     const point = new Vector3();
-    const segmentLength = Math.floor(bezierData.totalLength * percent * 1000) / 1000;
+    const segmentLength = numberToFix(bezierData.totalLength * percent, 4);
     let flag = true;
     let addedLength = this.catching.lastAddedLength;
     let j = this.catching.lastPoint;
@@ -194,7 +194,7 @@ export class BezierPath {
       }
       j += dir;
       if (j >= 0 && j < CURVE_SEGMENTS - 1) {
-        addedLength = addedLength + Math.floor(dir * bezierData.points[j].partialLength * 100000) / 100000;
+        addedLength = addedLength + numberToFix(dir * bezierData.points[j].partialLength, 5);
       } else {
         flag = false;
         point.copyFrom(bezierData.points[j].point);
@@ -228,7 +228,6 @@ export class BezierEasing {
   }
 
   getValue (x: number) {
-    // linear
     if (this.mX1 === this.mY1 && this.mX2 === this.mY2) {
       return x;
     }
@@ -238,18 +237,18 @@ export class BezierEasing {
     if (!this.precomputed) {
       this.precompute();
     }
-    // const keys = Object.keys(this.cachingValue);
-    // const index = keys.findIndex(key => decimalEqual(Number(key), x, 0.005));
-    //
-    // if (index !== -1) {
-    //   return this.cachingValue[keys[index]];
-    // }
+    const keys = Object.keys(this.cachingValue);
+    const index = keys.findIndex(key => decimalEqual(Number(key), x, 0.005));
+
+    if (index !== -1) {
+      return this.cachingValue[keys[index]];
+    }
 
     const value = calcBezier(this.getTForX(x), this.mY1, this.mY2);
 
-    // if (keys.length < 300) {
-    //   this.cachingValue[x] = value;
-    // }
+    if (keys.length < 300) {
+      this.cachingValue[x] = value;
+    }
 
     return value;
   }
