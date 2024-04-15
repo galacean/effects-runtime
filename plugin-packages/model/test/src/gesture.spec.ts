@@ -3,7 +3,7 @@ import type { PlayOptions } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import { CameraGestureHandlerImp, CameraGestureType } from '@galacean/effects-plugin-model';
 // LoaderImplEx没有导出，这里直接从代码目录引用
-import { LoaderImplEx } from '@galacean/effects-plugin-model/helper';
+import { LoaderImplEx } from '../../src/helper';
 import { generateComposition } from './utilities';
 
 const { expect } = chai;
