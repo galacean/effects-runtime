@@ -2,7 +2,10 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 
-const json = 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240415082514774/mars-preview.json';
+const json = 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416113301879/mars-preview.json';
+// 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416032119032/mars-preview.json';
+// 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416031410602/mars-preview.json';
+// ' http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416113301879/mars-preview.json';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -10,7 +13,6 @@ const container = document.getElementById('J-container');
     const player = createPlayer();
 
     await player.loadScene(json, {
-      autoplay: true,
     });
 
   } catch (e) {
@@ -24,8 +26,8 @@ function createPlayer () {
     interactive: true,
     onPlayableUpdate: ({ player, playing }) => {
     },
-    // renderFramework: 'webgl',
-    env: 'editor',
+    renderFramework: 'webgl',
+    // env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {
       console.info('onPausedByItem', data);

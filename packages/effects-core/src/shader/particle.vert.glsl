@@ -28,7 +28,7 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime);
 out vec4 vTexCoordBlend;
 #endif
 
-#pragma EDITOR_VERT_DEFINE
+//#pragma EDITOR_VERT_DEFINE
 
 #ifdef FINAL_TARGET
 uniform vec3 uFinalTarget;
@@ -298,6 +298,6 @@ void main() {
     gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
         #endif
 
-        #pragma EDITOR_VERT_TRANSFORM
+//        #pragma EDITOR_VERT_TRANSFORM
   }
 }

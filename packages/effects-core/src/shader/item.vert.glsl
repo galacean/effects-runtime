@@ -5,7 +5,9 @@ precision highp float;
 in vec4 aPoint;//x y
 in vec2 aIndex;//tex
 
-#pragma "./item.define.glsl"
+uniform mat4 uMainData[MAX_ITEM_COUNT];
+uniform vec4 uTexParams[MAX_ITEM_COUNT];//transparentOcclusion blending renderMode
+uniform vec4 uTexOffset[MAX_ITEM_COUNT];// x y sx sy
 
 uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixInvV;

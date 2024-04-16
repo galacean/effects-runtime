@@ -31,6 +31,19 @@ interface KeyFrameMeta {
 const NOT_IMPLEMENT = 'not_implement';
 
 export class ValueGetter<T> {
+  static getAllData (meta: KeyFrameMeta, halfFloat?: boolean): Uint16Array | Float32Array {
+    const ret = new (halfFloat ? Float16ArrayWrapper : Float32Array)(meta.index * 4);
+
+    for (let i = 0, cursor = 0, curves = meta.curves; i < curves.length; i++) {
+      const data = curves[i].toData();
+
+      ret.set(data, cursor);
+      cursor += data.length;
+    }
+
+    return halfFloat ? (ret as Float16ArrayWrapper).data : (ret as Float32Array);
+  }
+
   constructor (arg: any) {
     this.onCreate(arg);
   }
@@ -61,6 +74,11 @@ export class ValueGetter<T> {
 
   scaleXCoord (scale: number): ValueGetter<T> {
     return this;
+  }
+
+  // 通过 Float32Array 传递曲线参数到GPU
+  toData (): ArrayLike<number> {
+    throw Error(NOT_IMPLEMENT);
   }
 }
 
@@ -538,7 +556,7 @@ export class LineSegments extends ValueGetter<number> {
     return ret;
   }
 
-  toData () {
+  override toData (): Float32Array {
     const keys = this.keys;
     const data = new Float32Array(Math.ceil(keys.length / 2) * 4);
 
@@ -660,28 +678,18 @@ export class PathSegments extends ValueGetter<number[]> {
 export class BezierCurve extends ValueGetter<number> {
   curveMap: Record<string, {
     points: Vector2[],
+    // 时间区间（归一化的）
     timeInterval: number,
+    // 取值区间
     valueInterval: number,
     curve: BezierEasing,
+    // 积分计算缓存
     integrateCaching?: {
       lastTime: number,
       lastValue: number,
     },
   }>;
   keys: number[][];
-
-  static getAllData (meta: KeyFrameMeta, halfFloat?: boolean): Uint16Array | Float32Array {
-    const ret = new (halfFloat ? Float16ArrayWrapper : Float32Array)(meta.index * 4);
-
-    for (let i = 0, cursor = 0, curves = meta.curves; i < curves.length; i++) {
-      const data = (curves[i] as BezierCurve).toData();
-
-      ret.set(data, cursor);
-      cursor += data.length;
-    }
-
-    return halfFloat ? (ret as Float16ArrayWrapper).data : (ret as Float32Array);
-  }
 
   override onCreate (props: spec.BezierKeyframeValue[]) {
     const keyframes = props;
@@ -763,24 +771,22 @@ export class BezierCurve extends ValueGetter<number> {
   // 速度变化曲线面板移除后下线
   getCurveIntegrateValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
+
+    const [p0] = curveInfo.points;
     let lastTime = 0, lastValue = 0;
 
     if (curveInfo.integrateCaching) {
       lastTime = curveInfo.integrateCaching.lastTime;
       lastValue = curveInfo.integrateCaching.lastValue;
     }
-    const [p0] = curveInfo.points;
-    const timeInterval = curveInfo.timeInterval;
-    const valueInterval = curveInfo.valueInterval;
-    const segments = 5;
+    const segments = 3;
+    let total = 0;
     const dir = time < lastTime ? -1 : 1;
-    let total = lastValue;
-    const h = (time - lastTime) / segments;
+    const h = Math.abs(time - lastTime) / segments;
 
     for (let i = 0; i <= segments; i++) {
-      const t = i * h;
-      const normalizeTime = t / timeInterval;
-      const y = dir * (p0.y + valueInterval * curveInfo.curve.getValue(normalizeTime));
+      const t = i * h + lastTime;
+      const y = dir * (p0.y + curveInfo.valueInterval * curveInfo.curve.getValue(t / curveInfo.timeInterval));
 
       if (i === 0 || i === segments) {
         total += y;
@@ -793,23 +799,22 @@ export class BezierCurve extends ValueGetter<number> {
     }
     total *= h / 3;
 
+    lastValue += total;
     curveInfo.integrateCaching = {
       lastTime: time,
-      lastValue: total,
+      lastValue,
     };
 
-    return total;
+    return lastValue;
   }
 
   getCurveValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
     const [p0] = curveInfo.points;
-    const timeInterval = curveInfo.timeInterval;
-    const valueInterval = curveInfo.valueInterval;
-    const normalizeTime = (time - p0.x) / timeInterval;
+    const normalizeTime = (time - p0.x) / curveInfo.timeInterval;
     const value = curveInfo.curve.getValue(normalizeTime);
 
-    return p0.y + valueInterval * value;
+    return p0.y + curveInfo.valueInterval * value;
 
   }
 
@@ -819,13 +824,14 @@ export class BezierCurve extends ValueGetter<number> {
 
     meta.curves.push(this);
     meta.index = index + count;
-    meta.max = Math.max(meta.max);
+    // 兼容 WebGL1
+    meta.max = Math.max(meta.max, count);
     meta.curveCount += count;
 
     return new Float32Array([5, index + 1 / count, index, count]);
   }
 
-  toData (): Float32Array {
+  override toData (): Float32Array {
     const keys = this.keys;
     const data = new Float32Array(keys.length * 4);
 
@@ -917,8 +923,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     const curveInfo = this.curveSegments[curveKey];
     const [p0] = curveInfo.points;
 
-    const timeInterval = curveInfo.timeInterval;
-    const normalizeTime = numberToFix((time - p0.x) / timeInterval, 4);
+    const normalizeTime = numberToFix((time - p0.x) / curveInfo.timeInterval, 6);
     const value = curveInfo.easingCurve.getValue(normalizeTime);
 
     // TODO 测试用 编辑器限制值域后移除clamp

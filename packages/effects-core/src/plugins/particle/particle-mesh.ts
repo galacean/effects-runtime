@@ -16,8 +16,7 @@ import {
   setSideMode,
   ShaderType,
 } from '../../material';
-import type { ValueGetter } from '../../math';
-import { BezierCurve } from '../../math';
+import { ValueGetter } from '../../math';
 import {
   createKeyFrameMeta,
   createValueGetter,
@@ -291,9 +290,9 @@ export class ParticleMesh implements ParticleMeshData {
 
     if (halfFloatTexture && fragmentKeyFrameMeta.max) {
       shaderCacheId |= 1 << 20;
-      uniformValues.uFCurveValueTexture = generateHalfFloatTexture(engine, BezierCurve.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1);
+      uniformValues.uFCurveValueTexture = generateHalfFloatTexture(engine, ValueGetter.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1);
     } else {
-      uniformValues.uFCurveValues = BezierCurve.getAllData(fragmentKeyFrameMeta);
+      uniformValues.uFCurveValues = ValueGetter.getAllData(fragmentKeyFrameMeta);
     }
     const vertexCurveTexture = vertexKeyFrameMeta.max + vertexKeyFrameMeta.curves.length - 32 > maxVertexUniforms;
 
@@ -309,12 +308,12 @@ export class ParticleMesh implements ParticleMeshData {
       }
     }
     if (vertexCurveTexture && halfFloatTexture && enableVertexTexture) {
-      const tex = generateHalfFloatTexture(engine, BezierCurve.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
+      const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
 
       uniformValues.uVCurveValueTexture = tex;
       vertex_lookup_texture = 1;
     } else {
-      uniformValues.uVCurveValues = BezierCurve.getAllData(vertexKeyFrameMeta);
+      uniformValues.uVCurveValues = ValueGetter.getAllData(vertexKeyFrameMeta);
     }
     const shaderCache = ['-p:', renderMode, shaderCacheId, vertexKeyFrameMeta.index, vertexKeyFrameMeta.max, fragmentKeyFrameMeta.index, fragmentKeyFrameMeta.max].join('+');
 

@@ -1,24 +1,17 @@
 #pragma "./value-define.glsl"
 
+#define NONE_CONST_INDEX 1
 #ifdef SHADER_VERTEX
 in float aSeed;
 out float vSeed;
-#define NONE_CONST_INDEX 1
-#else
-    #if LOOKUP_TEXTURE_CURVE
-    #define NONE_CONST_INDEX 1
-    #endif
 #endif
 
-#ifdef NONE_CONST_INDEX
-    #ifdef SHADER_VERTEX
-        #define MAX_C VERT_MAX_KEY_FRAME_COUNT
-    #else
-        #define MAX_C FRAG_MAX_KEY_FRAME_COUNT
-    #endif
+#ifdef SHADER_VERTEX
+  #define MAX_C VERT_MAX_KEY_FRAME_COUNT
 #else
-    #define MAX_C CURVE_VALUE_COUNT
+  #define MAX_C FRAG_MAX_KEY_FRAME_COUNT
 #endif
+
 
 mat4 cubicBezierMatrix = mat4(
 1.0, -3.0, 3.0, -1.0,
@@ -40,9 +33,8 @@ float binarySearchT(float x, float x1, float x2, float x3, float x4) {
   float right = 1.0;
   float mid = 0.0;
   float computedX;
-  int maxIterations = 12;
 
-  for (int i = 0; i < maxIterations; i++) {
+  for (int i = 0; i < 12; i++) {
     mid = (left + right) * 0.5;
     computedX = cubicBezier(mid, x1, x2, x3, x4);
     if (abs(computedX - x) < 0.0001) {
@@ -58,20 +50,22 @@ float binarySearchT(float x, float x1, float x2, float x3, float x4) {
 
 float valueFromBezierCurveFrames(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
-  int count = int(frameCount - 1.);
 
-  for(int i = 0; i < count; i += 2) {
+  for(int i = 0; i < ITR_END; i += 2) {
     vec4 k0 = lookup_curve(i + start);
     vec4 k1 = lookup_curve(i + 1 + start);
+    if (i >= int(frameCount - 1.)) {
+      break;
+    }
     if (i == 0 && time < k0.x) {
       return k0.y;
     }
-    if (i == count - 1 && time > k1.x) {
+    if (i == int(frameCount - 2.) && time >= k1.x) {
       return k1.y;
     }
     if(time >= k0.x && time <= k1.x) {
-      float nt = (time - k0.x) / (k1.x - k0.x);
-      float t = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
+      float t = (time - k0.x) / (k1.x - k0.x);
+      // float t = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
       return cubicBezier(t, k0.y, k0.w, k1.w, k1.y);
     }
   }
@@ -85,35 +79,50 @@ float valueFromLineSegs(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
   int count = int(frameCount - 1.);
   int end = start + count;
+//  for(int i = 0; i < ITR_END; i++) {
+//        #ifdef NONE_CONST_INDEX
+//    if(i > count) {
+//      return lookup_curve(i).w;
+//    }
+//            #else
+//    if(i < start) {
+//      continue;
+//    }
+//    if(i > end) {
+//      return lookup_curve(i - 2).w;
+//    }
+//            #endif
+//
+//            #ifdef NONE_CONST_INDEX
+//    vec4 seg = lookup_curve(i + start);
+//        #else
+//    vec4 seg = lookup_curve(i);
+//        #endif
+//    vec2 p0 = seg.xy;
+//    vec2 p1 = seg.zw;
+//    if(time >= p0.x && time <= p1.x) {
+//      return evaluteLineSeg(time, p0, p1);
+//    }
+//        #ifdef NONE_CONST_INDEX
+//    vec2 p2 = lookup_curve(i + start + 1).xy;
+//        #else
+//    vec2 p2 = lookup_curve(i + 1).xy;
+//        #endif
+//    if(time > p1.x && time <= p2.x) {
+//      return evaluteLineSeg(time, p1, p2);
+//    }
+//  }
   for(int i = 0; i < ITR_END; i++) {
-        #ifdef NONE_CONST_INDEX
     if(i > count) {
       return lookup_curve(i).w;
     }
-            #else
-    if(i < start) {
-      continue;
-    }
-    if(i > end) {
-      return lookup_curve(i - 2).w;
-    }
-            #endif
-
-            #ifdef NONE_CONST_INDEX
     vec4 seg = lookup_curve(i + start);
-        #else
-    vec4 seg = lookup_curve(i);
-        #endif
     vec2 p0 = seg.xy;
     vec2 p1 = seg.zw;
     if(time >= p0.x && time <= p1.x) {
       return evaluteLineSeg(time, p0, p1);
     }
-        #ifdef NONE_CONST_INDEX
     vec2 p2 = lookup_curve(i + start + 1).xy;
-        #else
-    vec2 p2 = lookup_curve(i + 1).xy;
-        #endif
     if(time > p1.x && time <= p2.x) {
       return evaluteLineSeg(time, p1, p2);
     }
