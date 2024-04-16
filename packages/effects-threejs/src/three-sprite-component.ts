@@ -93,6 +93,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
     if (!this.isActiveAndEnabled) {
       return;
     }
+    this.material.setVector2('_Size', this.transform.size);
     this.material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);
   }
