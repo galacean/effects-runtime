@@ -249,7 +249,19 @@ export function getBackgroundImage (template: TemplateContentV2, variables?: Rec
     }
   }
 
-  return templateBackground;
+  return templateBackground as string | string[];
+}
+
+export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<any>) {
+  if (Array.isArray(url)) {
+    try {
+      return await loadFn(url[0]);
+    } catch (e) {
+      return await loadFn(url[1]);
+    }
+  }
+
+  return loadFn(url);
 }
 
 async function drawImageAndTemplate (
