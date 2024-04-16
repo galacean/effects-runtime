@@ -1,5 +1,5 @@
 import type { TransformProps, Texture, Attribute, Engine, math } from '@galacean/effects';
-import { Transform as EffectsTransform, spec, glContext, Geometry, generateGUID } from '@galacean/effects';
+import { Transform as EffectsTransform, spec, glContext, Geometry } from '@galacean/effects';
 import type {
   LoaderOptions,
   SkyboxType,
@@ -9,21 +9,16 @@ import type {
 import type {
   ModelAnimationOptions,
   ModelAnimTrackOptions,
-  ModelMeshOptions,
   ModelCameraOptions,
   ModelMaterialOptions,
   ModelLightOptions,
   ModelSkyboxOptions,
-  ModelItemBoundingBox,
   ModelBaseItem,
-  ModelItemMesh,
   ModelItemLight,
   ModelItemCamera,
   ModelItemSkybox,
   ModelTreeOptions,
-  ModelPrimitiveOptions,
   ModelItemTree,
-  ModelSkinOptions,
   ModelTextureTransform,
 } from '../index';
 import { Vector3, Box3, Matrix4 } from '../runtime/math';
@@ -46,7 +41,6 @@ import type {
   GLTFAnimation,
   GLTFImageBasedLight,
 } from '@vvfx/resource-detection';
-import type { PImageBufferData, PSkyboxBufferParams } from '../runtime/skybox';
 import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 
 type Box3 = math.Box3;
