@@ -379,10 +379,6 @@ export class Transform implements Disposable {
     if (this.valid) {
       if (this.dirtyFlags.localData) {
         this.localMatrix.compose(this.position, this.quat, this.scale, this.anchor);
-        this.localMatrix.multiply(new Matrix4(this.size.x, 0, 0, 0,
-          0, this.size.y, 0, 0,
-          0, 0, 1, 0,
-          0, 0, 0, 1));
         this.dirtyFlags.localMatrix = true;
       }
       this.dirtyFlags.localData = false;
