@@ -579,7 +579,7 @@ export class PMaterialPBR extends PMaterialBase {
     this.baseColorFactor = mat.getVector4('_BaseColorFactor') ?? new Vector4(1.0, 1.0, 1.0, 1.0);
     this.metallicRoughnessTexture = mat.getTexture('_MetallicRoughnessSampler') ?? undefined;
 
-    this.useSpecularAA = mat.getInt('useSpecularAA') === 1;
+    this.useSpecularAA = mat.getFloat('_useSpecularAA') === 1;
     this.metallicFactor = mat.getFloat('_MetallicFactor') ?? 1;
     this.roughnessFactor = mat.getFloat('_RoughnessFactor') ?? 1;
 
