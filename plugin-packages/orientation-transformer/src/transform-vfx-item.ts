@@ -2,7 +2,11 @@ import type { spec, Composition } from '@galacean/effects';
 import { VFXItem } from '@galacean/effects';
 import type { CompositionTransformerAcceler } from './composition-transformer-acceler';
 import type { TransformItem } from './transform-item';
-
+/**
+ * 水平旋转变化起始角（手机处于改角度时无变化）
+ * 待调试
+ */
+export const VERTICAL_INIT_DEGREE = 45;
 export class TransformVFXItem extends VFXItem<TransformItem> {
   private targets?: any[];
 
@@ -20,6 +24,10 @@ export class TransformVFXItem extends VFXItem<TransformItem> {
         yMin: +t.yMin || 0,
         xMax: +t.xMax || 0,
         yMax: +t.yMax || 0,
+        vMin: +t.vMin || 0,
+        hMin: +t.hMin || 0,
+        vMax: +t.vMax || 0,
+        hMax: +t.hMax || 0,
       }));
     }
   }
