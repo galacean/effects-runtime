@@ -2,7 +2,7 @@ import type {
   MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
   GlobalUniforms, Renderer,
 } from '@galacean/effects-core';
-import { Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
+import { Material, ShaderType, createShaderWithMarcos, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
 import {
@@ -58,8 +58,8 @@ export class ThreeMaterial extends Material {
     this.uniforms['effects_MatrixV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
 
     this.material = new THREE.RawShaderMaterial({
-      vertexShader: shader?.vertex,
-      fragmentShader: shader?.fragment,
+      vertexShader: createShaderWithMarcos(shader!.marcos!, shader!.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
+      fragmentShader: createShaderWithMarcos(shader!.marcos!, shader!.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
       alphaToCoverage: false,
       depthFunc: THREE.LessDepth,
       polygonOffsetFactor: THREE.ZeroFactor,
