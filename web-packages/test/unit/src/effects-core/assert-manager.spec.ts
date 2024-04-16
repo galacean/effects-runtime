@@ -1,3 +1,4 @@
+import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 
 const { expect } = chai;
@@ -43,13 +44,11 @@ describe('asset manager', () => {
     };
 
     const comp = await player.loadScene(generateScene(assets));
-    // TODO: 修复
-    // @ts-expect-error
-    const textureOptions = comp.compositionSourceManager.textureOptions;
+    const textures = comp.compositionSourceManager.textures;
 
-    expect(textureOptions.length).to.deep.equals(1);
-    expect(textureOptions[0]).to.haveOwnProperty('video');
-    const videoElement = textureOptions[0].video;
+    expect(textures.length).to.deep.equals(1);
+    expect(textures[0].source).to.not.be.empty;
+    const videoElement = (textures[0].source as Texture2DSourceOptionsVideo).video;
 
     expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
 
@@ -92,13 +91,11 @@ describe('asset manager', () => {
       },
     });
 
-    // TODO: 修复
-    // @ts-expect-error
-    const textureOptions = comp.compositionSourceManager.textureOptions;
+    const textures = comp.compositionSourceManager.textures;
 
-    expect(textureOptions.length).to.deep.equals(1);
-    expect(textureOptions[0]).to.haveOwnProperty('video');
-    const videoElement = textureOptions[0].video;
+    expect(textures.length).to.deep.equals(1);
+    expect(textures[0].source).to.not.be.empty;
+    const videoElement = (textures[0].source as Texture2DSourceOptionsVideo).video;
 
     expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
 
