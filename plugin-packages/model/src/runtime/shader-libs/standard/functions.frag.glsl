@@ -75,7 +75,7 @@ vec3 getNormal()
 
 #ifdef HAS_NORMAL_MAP
     vec3 n = texture2D(_NormalSampler, UV).rgb;
-    n = normalize(tbn * ((2.0 * n - 1.0) * vec3(u_NormalScale, u_NormalScale, 1.0)));
+    n = normalize(tbn * ((2.0 * n - 1.0) * vec3(_NormalScale, _NormalScale, 1.0)));
 #else
     // The tbn matrix is linearly interpolated, so we need to re-normalize
     vec3 n = normalize(tbn[2].xyz);
@@ -146,12 +146,12 @@ float getAARoughnessFactor(vec3 normal)
 
 #ifdef DEBUG_UV
 
-uniform float u_DebugUVGridSize;
-//const float u_DebugUVGridSize = 1.0 / 12.0;
+uniform float _DebugUVGridSize;
+//const float _DebugUVGridSize = 1.0 / 12.0;
 
 float getDebugUVColor(vec2 uv, vec3 n) {
     float s = dot(abs(n), vec3(1,1,1)) * 0.6;
-    uv = uv / (u_DebugUVGridSize * 2.0);
+    uv = uv / (_DebugUVGridSize * 2.0);
     uv = uv - floor(uv);
     uv = uv * 2.0 - vec2(1.0);
     return s * (uv.x * uv.y >= 0.0 ? 0.2: 1.0);

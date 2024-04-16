@@ -878,12 +878,12 @@
         "blending": 100
       },
       "floats": {
-        "u_AlphaCutoff": 0.3,
+        "_AlphaCutoff": 0.3,
         "_MetallicFactor": 1,
         "_RoughnessFactor": 0.3,
-        "u_NormalScale": 1,
-        "u_OcclusionStrength": 1,
-        "u_EmissiveIntensity": 1
+        "_NormalScale": 1,
+        "_OcclusionStrength": 1,
+        "_EmissiveIntensity": 1
       },
       "vector4s": {
         "_BaseColorFactor": {
@@ -903,8 +903,7 @@
         
       },
       "textures": {
-        
-        "u_BaseColorSampler": {
+        "_BaseColorSampler": {
           "texture": {
           "id": "a21f304a931347a6bdddcc632e962446"
           }

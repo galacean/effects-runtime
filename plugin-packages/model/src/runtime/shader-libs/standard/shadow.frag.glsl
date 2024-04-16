@@ -1,5 +1,5 @@
 #ifdef USE_SHADOW_MAPPING
-uniform vec2 u_ShadowMapSizeInv;
+uniform vec2 _ShadowMapSizeInv;
 fsIn vec4 v_PositionLightSpace;
 fsIn vec4 v_dPositionLightSpace;
 #endif
@@ -26,7 +26,7 @@ float getShadowContributionSM()
     if (coords.z < 0.01 || coords.z > 0.99 || coords.x < 0.01 || coords.x > 0.99 || coords.y < 0.01 || coords.y > 0.99) {
         return 1.0;
     }
-    vec2 moments = vec2(1.0) - texture2D(u_ShadowSampler, coords.xy).xy;
+    vec2 moments = vec2(1.0) - texture2D(_ShadowSampler, coords.xy).xy;
     return coords.z < moments.x * 1.008 + 0.008? 1.0: 0.2;
 }
 
@@ -36,13 +36,13 @@ float getShadowContributionVSM()
     if (coords.z < 0.01 || coords.z > 0.99 || coords.x < 0.01 || coords.x > 0.99 || coords.y < 0.01 || coords.y > 0.99) {
         return 1.0;
     }
-    vec2 moments = vec2(1.0) - texture2D(u_ShadowSampler, coords.xy).xy;
+    vec2 moments = vec2(1.0) - texture2D(_ShadowSampler, coords.xy).xy;
     return chebyshev(moments, coords.z, 0.00002);
 }
 
 float computeEVSMShadow(vec2 coords, float pos, float neg)
 {
-    vec4 moments = texture2D(u_ShadowSampler, coords);
+    vec4 moments = texture2D(_ShadowSampler, coords);
     float posShadow = chebyshev(moments.xy, pos, 0.00002);
     float negShadow = chebyshev(moments.zw, neg, 0.00002);
     return min(posShadow, negShadow);
@@ -60,8 +60,8 @@ float getShadowContributionEVSM()
     float neg = EVSM_FUNC1(depth);
     #ifdef SHADOWMAP_EVSM_PCF
         vec2 newCoords = v_dPositionLightSpace.xy / v_dPositionLightSpace.w * 0.5 + 0.5;
-        vec2 dCoords = min(abs(newCoords - coords.xy), u_ShadowMapSizeInv);
-        if(max(dCoords.x, dCoords.y) >= min(u_ShadowMapSizeInv.x, u_ShadowMapSizeInv.y) * 0.5){
+        vec2 dCoords = min(abs(newCoords - coords.xy), _ShadowMapSizeInv);
+        if(max(dCoords.x, dCoords.y) >= min(_ShadowMapSizeInv.x, _ShadowMapSizeInv.y) * 0.5){
             vec2 coords0 = coords.xy + vec2(-1.0,-1.0) * dCoords;
             vec2 coords1 = coords.xy + vec2(-1.0, 1.0) * dCoords;
             vec2 coords2 = coords.xy + vec2( 1.0,-1.0) * dCoords;

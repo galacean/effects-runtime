@@ -142,12 +142,12 @@ export class BoxMesh {
   update (modelMatrix: Matrix4, viewProjMatrix: Matrix4, positions: Float32Array, lineColor: Vector3) {
     const material = this.mesh.material;
 
-    material.setMatrix('u_ModelMatrix', modelMatrix);
-    material.setMatrix('u_ViewProjectionMatrix', viewProjMatrix);
+    material.setMatrix('_ModelMatrix', modelMatrix);
+    material.setMatrix('_ViewProjectionMatrix', viewProjMatrix);
     for (let i = 0; i < positions.length; i += 3) {
-      material.setVector3(`u_PositionList[${i / 3}]`, Vector3.fromArray(positions, i));
+      material.setVector3(`_PositionList[${i / 3}]`, Vector3.fromArray(positions, i));
     }
-    material.setVector3('u_LineColor', lineColor);
+    material.setVector3('_LineColor', lineColor);
   }
 
   /**
@@ -167,14 +167,14 @@ export class BoxMesh {
       #version 100
       precision highp float;
 
-      uniform mat4 u_ModelMatrix;
-      uniform mat4 u_ViewProjectionMatrix;
-      uniform vec3 u_PositionList[8];
+      uniform mat4 _ModelMatrix;
+      uniform mat4 _ViewProjectionMatrix;
+      uniform vec3 _PositionList[8];
       attribute vec3 a_Position;
       void main(){
         int index = int(a_Position.x + 0.5);
-        vec4 pos = u_ModelMatrix * vec4(u_PositionList[index], 1);
-        gl_Position = u_ViewProjectionMatrix * pos;
+        vec4 pos = _ModelMatrix * vec4(_PositionList[index], 1);
+        gl_Position = _ViewProjectionMatrix * pos;
       }
     `;
   }
@@ -187,9 +187,9 @@ export class BoxMesh {
       #version 100
       precision highp float;
 
-      uniform vec3 u_LineColor;
+      uniform vec3 _LineColor;
       void main(){
-        gl_FragColor = vec4(u_LineColor, 1);
+        gl_FragColor = vec4(_LineColor, 1);
       }
     `;
   }

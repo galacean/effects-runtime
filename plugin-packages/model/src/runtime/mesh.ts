@@ -505,9 +505,9 @@ export class PPrimitive {
     this.material.build(featureList);
     const newSemantics = uniformSemantics ?? {};
 
-    newSemantics['u_ViewProjectionMatrix'] = 'VIEWPROJECTION';
+    newSemantics['_ViewProjectionMatrix'] = 'VIEWPROJECTION';
     //newSemantics["uView"] = 'VIEWINVERSE';
-    newSemantics['u_ModelMatrix'] = 'MODEL';
+    newSemantics['_ModelMatrix'] = 'MODEL';
     newSemantics['uEditorTransform'] = 'EDITOR_TRANSFORM';
     let material: Material;
     const isWebGL2 = PGlobalState.getInstance().isWebGL2;
@@ -772,8 +772,8 @@ export class PPrimitive {
   private updateUniformsByAnimation (worldMatrix: Matrix4, normalMatrix: Matrix4) {
     const material = this.getModelMaterial();
 
-    material.setMatrix('u_ModelMatrix', worldMatrix);
-    material.setMatrix('u_NormalMatrix', normalMatrix);
+    material.setMatrix('_ModelMatrix', worldMatrix);
+    material.setMatrix('_NormalMatrix', normalMatrix);
     //
     const skin = this.skin;
 
@@ -788,16 +788,16 @@ export class PPrimitive {
 
         jointMatrixTexture.update(jointMatrixList);
         jointNormalMatTexture.update(jointNormalMatList);
-        material.setTexture('u_jointMatrixSampler', jointMatrixTexture.getTexture());
-        material.setTexture('u_jointNormalMatrixSampler', jointNormalMatTexture.getTexture());
+        material.setTexture('_jointMatrixSampler', jointMatrixTexture.getTexture());
+        material.setTexture('_jointNormalMatrixSampler', jointNormalMatTexture.getTexture());
       } else {
         const jointMatrixNumbers: number[] = [];
         const jointNormalMatNumbers: number[] = [];
 
         jointMatrixList.forEach(val => jointMatrixNumbers.push(val));
         jointNormalMatList.forEach(val => jointNormalMatNumbers.push(val));
-        material.setMatrixNumberArray('u_jointMatrix', jointMatrixNumbers);
-        material.setMatrixNumberArray('u_jointNormalMatrix', jointNormalMatNumbers);
+        material.setMatrixNumberArray('_jointMatrix', jointMatrixNumbers);
+        material.setMatrixNumberArray('_jointNormalMatrix', jointNormalMatNumbers);
       }
     }
 
@@ -809,15 +809,15 @@ export class PPrimitive {
       const morphWeightNumbers: number[] = [];
 
       morphWeights.forEach(val => morphWeightNumbers.push(val));
-      material.setFloats('u_morphWeights', morphWeightNumbers);
+      material.setFloats('_morphWeights', morphWeightNumbers);
     }
   }
 
   private updateUniformsByScene (sceneStates: PSceneStates) {
     const material = this.getModelMaterial();
 
-    material.setMatrix('u_ViewProjectionMatrix', sceneStates.viewProjectionMatrix);
-    material.setVector3('u_Camera', sceneStates.cameraPosition);
+    material.setMatrix('_ViewProjectionMatrix', sceneStates.viewProjectionMatrix);
+    material.setVector3('_Camera', sceneStates.cameraPosition);
     //
     if (!this.isUnlitMaterial()) {
       const { maxLightCount, lightList } = sceneStates;
@@ -827,45 +827,45 @@ export class PPrimitive {
           const light = lightList[i];
           const intensity = light.visible ? light.intensity : 0;
 
-          material.setVector3(`u_Lights[${i}].direction`, light.getWorldDirection());
-          material.setFloat(`u_Lights[${i}].range`, light.range);
-          material.setVector3(`u_Lights[${i}].color`, light.color);
-          material.setFloat(`u_Lights[${i}].intensity`, intensity);
-          material.setVector3(`u_Lights[${i}].position`, light.getWorldPosition());
-          material.setFloat(`u_Lights[${i}].innerConeCos`, Math.cos(light.innerConeAngle));
-          material.setFloat(`u_Lights[${i}].outerConeCos`, Math.cos(light.outerConeAngle));
-          material.setInt(`u_Lights[${i}].type`, light.lightType);
-          material.setVector2(`u_Lights[${i}].padding`, light.padding);
+          material.setVector3(`_Lights[${i}].direction`, light.getWorldDirection());
+          material.setFloat(`_Lights[${i}].range`, light.range);
+          material.setVector3(`_Lights[${i}].color`, light.color);
+          material.setFloat(`_Lights[${i}].intensity`, intensity);
+          material.setVector3(`_Lights[${i}].position`, light.getWorldPosition());
+          material.setFloat(`_Lights[${i}].innerConeCos`, Math.cos(light.innerConeAngle));
+          material.setFloat(`_Lights[${i}].outerConeCos`, Math.cos(light.outerConeAngle));
+          material.setInt(`_Lights[${i}].type`, light.lightType);
+          material.setVector2(`_Lights[${i}].padding`, light.padding);
         } else {
-          material.setVector3(`u_Lights[${i}].direction`, Vector3.ZERO);
-          material.setFloat(`u_Lights[${i}].range`, 0);
-          material.setVector3(`u_Lights[${i}].color`, Vector3.ZERO);
-          material.setFloat(`u_Lights[${i}].intensity`, 0);
-          material.setVector3(`u_Lights[${i}].position`, Vector3.ZERO);
-          material.setFloat(`u_Lights[${i}].innerConeCos`, 0);
-          material.setFloat(`u_Lights[${i}].outerConeCos`, 0);
-          material.setInt(`u_Lights[${i}].type`, 99999);
-          material.setVector2(`u_Lights[${i}].padding`, Vector2.ZERO);
+          material.setVector3(`_Lights[${i}].direction`, Vector3.ZERO);
+          material.setFloat(`_Lights[${i}].range`, 0);
+          material.setVector3(`_Lights[${i}].color`, Vector3.ZERO);
+          material.setFloat(`_Lights[${i}].intensity`, 0);
+          material.setVector3(`_Lights[${i}].position`, Vector3.ZERO);
+          material.setFloat(`_Lights[${i}].innerConeCos`, 0);
+          material.setFloat(`_Lights[${i}].outerConeCos`, 0);
+          material.setInt(`_Lights[${i}].type`, 99999);
+          material.setVector2(`_Lights[${i}].padding`, Vector2.ZERO);
         }
       }
 
       const skybox = sceneStates.skybox;
 
       if (skybox !== undefined && skybox.available) {
-        material.setVector2('u_IblIntensity', new Vector2(skybox.currentIntensity, skybox.currentReflectionsIntensity));
-        material.setTexture('u_brdfLUT', skybox.brdfLUT as Texture);
+        material.setVector2('_IblIntensity', new Vector2(skybox.currentIntensity, skybox.currentReflectionsIntensity));
+        material.setTexture('_brdfLUT', skybox.brdfLUT as Texture);
         if (skybox.diffuseImage !== undefined) {
-          material.setTexture('u_DiffuseEnvSampler', skybox.diffuseImage);
+          material.setTexture('_DiffuseEnvSampler', skybox.diffuseImage);
         } else {
           const coeffs = skybox.irradianceCoeffs as number[][];
           const aliasName = ['l00', 'l1m1', 'l10', 'l11', 'l2m2', 'l2m1', 'l20', 'l21', 'l22'];
 
           aliasName.forEach((n, i) => {
-            material.setVector3(`u_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
+            material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
           });
         }
-        material.setInt('u_MipCount', skybox.specularMipCount ?? 1);
-        material.setTexture('u_SpecularEnvSampler', skybox.specularImage);
+        material.setInt('_MipCount', skybox.specularMipCount ?? 1);
+        material.setTexture('_SpecularEnvSampler', skybox.specularImage);
       }
     }
   }
