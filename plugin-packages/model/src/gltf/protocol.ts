@@ -10,7 +10,7 @@ import type {
   GLTFImageBasedLight,
 } from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
-import type { GLTFResources } from '@vvfx/resource-detection/dist/src/gltf-tools';
+import type { GLTFResources } from '@vvfx/resource-detection';
 import type { spec, Renderer, Texture, Geometry } from '@galacean/effects';
 import type {
   ModelAnimationOptions,

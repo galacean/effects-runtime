@@ -46,26 +46,26 @@ import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 type Box3 = math.Box3;
 
 export class LoaderECS {
-  private _sceneOptions!: LoadSceneOptions;
-  private _loaderOptions!: LoaderOptions;
-  private _gltfScene!: GLTFScene;
-  private _gltfSkins!: GLTFSkin[];
-  private _gltfMeshs!: GLTFMesh[];
-  private _gltfLights!: GLTFLight[];
-  private _gltfCameras!: GLTFCamera[];
-  private _gltfImages!: GLTFImage[];
-  private _gltfTextures!: GLTFTexture[];
-  private _gltfMaterials!: GLTFMaterial[];
-  private _gltfAnimations!: GLTFAnimation[];
-  private _gltfImageBasedLights!: GLTFImageBasedLight[];
-  private _textureManager?: TextureManager;
-  private _skyboxOptions?: ModelSkyboxOptions;
+  private sceneOptions!: LoadSceneOptions;
+  private loaderOptions!: LoaderOptions;
+  private gltfScene!: GLTFScene;
+  private gltfSkins!: GLTFSkin[];
+  private gltfMeshs!: GLTFMesh[];
+  private gltfLights!: GLTFLight[];
+  private gltfCameras!: GLTFCamera[];
+  private gltfImages!: GLTFImage[];
+  private gltfTextures!: GLTFTexture[];
+  private gltfMaterials!: GLTFMaterial[];
+  private gltfAnimations!: GLTFAnimation[];
+  private gltfImageBasedLights!: GLTFImageBasedLight[];
+  private textureManager?: TextureManager;
+  private skyboxOptions?: ModelSkyboxOptions;
 
   engine: Engine;
 
   initial (engine: Engine, options?: LoaderOptions) {
     this.engine = engine;
-    this._loaderOptions = options ?? {};
+    this.loaderOptions = options ?? {};
   }
 
   processLight (lights: GLTFLight[], fromGLTF: boolean): void {
@@ -230,39 +230,39 @@ export class LoaderECS {
   }
 
   async loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult> {
-    this._clear();
-    this._sceneOptions = options;
+    this.clear();
+    this.sceneOptions = options;
     this.engine = options.effects.renderer?.engine as Engine;
-    this._loaderOptions = { compatibleMode: options.gltf.compatibleMode };
+    this.loaderOptions = { compatibleMode: options.gltf.compatibleMode };
     const gltfResource = options.gltf.resource;
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
       throw new Error('Please load resource by GLTFTools at first');
     }
 
-    this._gltfScene = gltfResource.scenes[0];
-    this._gltfSkins = this._gltfScene.skins;
-    this._gltfMeshs = gltfResource.meshes;
-    this._gltfLights = this._gltfScene.lights;
-    this._gltfCameras = this._gltfScene.cameras;
-    this._gltfImages = gltfResource.images;
-    this._gltfTextures = gltfResource.textures;
-    this._gltfMaterials = gltfResource.materials;
-    this._gltfAnimations = gltfResource.animations;
-    this._gltfImageBasedLights = gltfResource.imageBasedLights;
+    this.gltfScene = gltfResource.scenes[0];
+    this.gltfSkins = this.gltfScene.skins;
+    this.gltfMeshs = gltfResource.meshes;
+    this.gltfLights = this.gltfScene.lights;
+    this.gltfCameras = this.gltfScene.cameras;
+    this.gltfImages = gltfResource.images;
+    this.gltfTextures = gltfResource.textures;
+    this.gltfMaterials = gltfResource.materials;
+    this.gltfAnimations = gltfResource.animations;
+    this.gltfImageBasedLights = gltfResource.imageBasedLights;
     const modelItems: ModelBaseItem[] = [];
 
     const sceneAABB = new Box3();
 
-    const images = this._gltfImages.map(gltfImage => {
+    const images = this.gltfImages.map(gltfImage => {
       const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
 
       return {
         url: URL.createObjectURL(blob),
       };
     });
-    const textures = this._gltfTextures.map(texture => texture.textureOptions);
-    const materials = this._gltfMaterials.map(material => material.materialData);
+    const textures = this.gltfTextures.map(texture => texture.textureOptions);
+    const materials = this.gltfMaterials.map(material => material.materialData);
     const components: spec.ComponentData[] = [];
     const geometries: spec.GeometryData[] = [];
     const items: spec.VFXItemData[] = [...gltfResource.scenes[0].vfxItemData];
@@ -319,8 +319,8 @@ export class LoaderECS {
     if (cacheTex !== undefined) { return; }
     //
     const texIndex = texInfo.index;
-    const tex = this._gltfTextures[texIndex];
-    const img = this._gltfImages[tex.source];
+    const tex = this.gltfTextures[texIndex];
+    const img = this.gltfImages[tex.source];
 
     return WebGLHelper.createTexture2D(this.engine, img, tex, isBaseColor, this.isTiny3dMode()).then(tex => {
       this.getTextureManager().addTexture(matIndex, texIndex, tex, isBaseColor);
@@ -340,15 +340,15 @@ export class LoaderECS {
     return tex;
   }
 
-  private _gltfData2PlayerData (scene: GLTFScene, materials: GLTFMaterial[]) {
+  private gltfData2PlayerData (scene: GLTFScene, materials: GLTFMaterial[]) {
     this.processCamera(scene.cameras, true);
     this.processLight(scene.lights, true);
     this.processMaterial(materials, true);
   }
 
-  private _createItemTree (treeId: string, scene: GLTFScene): ModelItemTree {
+  private createItemTree (treeId: string, scene: GLTFScene): ModelItemTree {
     const treeOptions = this.createTreeOptions(scene);
-    const animOptions = this.createAnimations(this._gltfAnimations);
+    const animOptions = this.createAnimations(this.gltfAnimations);
 
     treeOptions.animations = animOptions;
     treeOptions.animation = this.getPlayAnimationIndex(treeOptions);
@@ -369,12 +369,12 @@ export class LoaderECS {
     return itemTree;
   }
 
-  private _createItemLight (node: GLTFNode, parentId?: string): ModelItemLight | undefined {
+  private createItemLight (node: GLTFNode, parentId?: string): ModelItemLight | undefined {
     const lightIndex = node.light;
 
     if (lightIndex === undefined) { return; }
 
-    const light = this._gltfLights[lightIndex];
+    const light = this.gltfLights[lightIndex];
     const lightOptions = this.createLightOptions(light);
     const itemLight: ModelItemLight = {
       id: `light_ni${node.nodeIndex ?? 0}_li${lightIndex}`,
@@ -392,12 +392,12 @@ export class LoaderECS {
     return itemLight;
   }
 
-  private _createItemCamera (node: GLTFNode, parentId?: string): ModelItemCamera | undefined {
+  private createItemCamera (node: GLTFNode, parentId?: string): ModelItemCamera | undefined {
     const cameraIndex = node.camera;
 
     if (cameraIndex === undefined) { return; }
 
-    const camera = this._gltfCameras[cameraIndex];
+    const camera = this.gltfCameras[cameraIndex];
     const cameraOptions = this.createCameraOptions(camera);
 
     if (cameraOptions === undefined) { return; }
@@ -418,8 +418,8 @@ export class LoaderECS {
     return itemCamera;
   }
 
-  private _createItemSkybox (): ModelItemSkybox | undefined {
-    if (this._skyboxOptions === undefined) { return; }
+  private createItemSkybox (): ModelItemSkybox | undefined {
+    if (this.skyboxOptions === undefined) { return; }
 
     const itemSkybox: ModelItemSkybox = {
       id: 'skybox_0',
@@ -429,14 +429,14 @@ export class LoaderECS {
       type: spec.ItemType.skybox,
       pluginName: 'model',
       content: {
-        options: this._skyboxOptions,
+        options: this.skyboxOptions,
       },
     };
 
     return itemSkybox;
   }
 
-  private _computeSceneAABB (node: GLTFNode, parentTransform: EffectsTransform, sceneAABB: Box3) {
+  private computeSceneAABB (node: GLTFNode, parentTransform: EffectsTransform, sceneAABB: Box3) {
     const transformData: TransformProps = {};
 
     if (node.matrix) {
@@ -456,7 +456,7 @@ export class LoaderECS {
 
     //
     if (node.mesh !== undefined) {
-      const mesh = this._gltfMeshs[node.mesh];
+      const mesh = this.gltfMeshs[node.mesh];
       const meshAABB = GLTFHelper.createBoxFromGLTFBound(mesh.bounds as GLTFBounds);
 
       meshAABB.applyMatrix4(nodeTransform.getWorldMatrix());
@@ -476,12 +476,12 @@ export class LoaderECS {
     return PluginHelper.createCameraOptions(camera);
   }
 
-  private _clear () {
-    if (this._textureManager) {
-      this._textureManager.dispose();
-      this._textureManager = undefined;
+  private clear () {
+    if (this.textureManager) {
+      this.textureManager.dispose();
+      this.textureManager = undefined;
     }
-    this._textureManager = new TextureManager(this);
+    this.textureManager = new TextureManager(this);
   }
 
   /**
@@ -503,7 +503,7 @@ export class LoaderECS {
       return -88888888;
     }
 
-    const animationInfo = this._sceneOptions.effects.playAnimation;
+    const animationInfo = this.sceneOptions.effects.playAnimation;
 
     if (animationInfo === undefined) {
       return -1;
@@ -531,15 +531,15 @@ export class LoaderECS {
   }
 
   isPlayAnimation (): boolean {
-    return this._sceneOptions.effects.playAnimation !== undefined;
+    return this.sceneOptions.effects.playAnimation !== undefined;
   }
 
   isPlayAllAnimation (): boolean {
-    return this._sceneOptions.effects.playAllAnimation === true;
+    return this.sceneOptions.effects.playAllAnimation === true;
   }
 
   getRemarkString (): string {
-    const remark = this._sceneOptions.gltf.remark;
+    const remark = this.sceneOptions.gltf.remark;
 
     if (remark === undefined) {
       return 'Unknown';
@@ -551,23 +551,23 @@ export class LoaderECS {
   }
 
   isTiny3dMode (): boolean {
-    return this._loaderOptions.compatibleMode === 'tiny3d';
+    return this.loaderOptions.compatibleMode === 'tiny3d';
   }
 
   getTextureManager (): TextureManager {
-    return this._textureManager as TextureManager;
+    return this.textureManager as TextureManager;
   }
 
   getItemDuration (): number {
-    return this._sceneOptions.effects.duration ?? 9999;
+    return this.sceneOptions.effects.duration ?? 9999;
   }
 
   getItemEndBehavior (): spec.ItemEndBehavior {
-    return this._sceneOptions.effects.endBehavior ?? spec.ItemEndBehavior.loop;
+    return this.sceneOptions.effects.endBehavior ?? spec.ItemEndBehavior.loop;
   }
 
   getSkyboxType (): PSkyboxType | undefined {
-    const typeName = this._sceneOptions.gltf.skyboxType;
+    const typeName = this.sceneOptions.gltf.skyboxType;
 
     switch (typeName) {
       case 'NFT': return PSkyboxType.NFT;
@@ -576,16 +576,16 @@ export class LoaderECS {
   }
 
   isSkyboxVis (): boolean {
-    return this._sceneOptions.gltf.skyboxVis === true;
+    return this.sceneOptions.gltf.skyboxVis === true;
   }
 
   ignoreSkybox (): boolean {
-    return this._sceneOptions.gltf.ignoreSkybox === true;
+    return this.sceneOptions.gltf.ignoreSkybox === true;
   }
 
   isEnvironmentTest (): boolean {
-    if (typeof this._sceneOptions.gltf.remark === 'string') {
-      return this._sceneOptions.gltf.remark.includes('EnvironmentTest');
+    if (typeof this.sceneOptions.gltf.remark === 'string') {
+      return this.sceneOptions.gltf.remark.includes('EnvironmentTest');
     } else {
       return false;
     }
@@ -594,38 +594,38 @@ export class LoaderECS {
 }
 
 class TextureManager {
-  private _owner: LoaderECS;
-  private _gltfImages: GLTFImage[];
-  private _gltfTextures: GLTFTexture[];
-  private _textureMap: Map<number, Texture>;
+  private owner: LoaderECS;
+  private gltfImages: GLTFImage[];
+  private gltfTextures: GLTFTexture[];
+  private textureMap: Map<number, Texture>;
 
   constructor (owner: LoaderECS) {
-    this._owner = owner;
-    this._gltfImages = [];
-    this._gltfTextures = [];
-    this._textureMap = new Map();
+    this.owner = owner;
+    this.gltfImages = [];
+    this.gltfTextures = [];
+    this.textureMap = new Map();
   }
 
   initial (gltfImages: GLTFImage[], gltfTextures: GLTFTexture[]) {
-    this._gltfImages = gltfImages;
-    this._gltfTextures = gltfTextures;
-    this._textureMap.clear();
+    this.gltfImages = gltfImages;
+    this.gltfTextures = gltfTextures;
+    this.textureMap.clear();
   }
 
   dispose () {
-    this._textureMap.clear();
+    this.textureMap.clear();
   }
 
   addTexture (matIndex: number, texIndex: number, tex: Texture, isBaseColor: boolean) {
     const index = isBaseColor ? matIndex * 100000 + texIndex : texIndex;
 
-    this._textureMap.set(index, tex);
+    this.textureMap.set(index, tex);
   }
 
   getTexture (matIndex: number, texIndex: number, isBaseColor: boolean): Texture | undefined {
     const index = isBaseColor ? matIndex * 100000 + texIndex : texIndex;
 
-    return this._textureMap.get(index);
+    return this.textureMap.get(index);
   }
 
 }
@@ -644,7 +644,7 @@ class GeometryProxy {
     if (this.hasPosition) {
       const attrib = this.positionAttrib;
 
-      attributes['a_Position'] = this._getBufferAttrib(attrib);
+      attributes['a_Position'] = this.getBufferAttrib(attrib);
     } else {
       throw new Error('Position attribute missing');
     }
@@ -652,32 +652,32 @@ class GeometryProxy {
       const attrib = this.normalAttrib;
 
       if (attrib !== undefined) {
-        attributes['a_Normal'] = this._getBufferAttrib(attrib);
+        attributes['a_Normal'] = this.getBufferAttrib(attrib);
       }
     }
     if (this.hasTangent) {
       const attrib = this.tangentAttrib;
 
       if (attrib !== undefined) {
-        attributes['a_Tangent'] = this._getBufferAttrib(attrib);
+        attributes['a_Tangent'] = this.getBufferAttrib(attrib);
       }
     }
     this.texCoordList.forEach(val => {
       const attrib = this.texCoordAttrib(val);
       const attribName = `a_UV${val + 1}`;
 
-      attributes[attribName] = this._getBufferAttrib(attrib);
+      attributes[attribName] = this.getBufferAttrib(attrib);
     });
     if (this.hasSkinAnimation) {
       const jointAttrib = this.jointAttribute;
 
       if (jointAttrib !== undefined) {
-        attributes['a_Joint1'] = this._getBufferAttrib(jointAttrib);
+        attributes['a_Joint1'] = this.getBufferAttrib(jointAttrib);
       }
       const weightAttrib = this.weightAttribute;
 
       if (weightAttrib !== undefined) {
-        attributes['a_Weight1'] = this._getBufferAttrib(weightAttrib);
+        attributes['a_Weight1'] = this.getBufferAttrib(weightAttrib);
       }
     }
 
@@ -688,19 +688,19 @@ class GeometryProxy {
       const positionAttrib = this.getTargetPosition(i);
 
       if (positionAttrib !== undefined) {
-        attributes[`a_Target_Position${i}`] = this._getBufferAttrib(positionAttrib);
+        attributes[`a_Target_Position${i}`] = this.getBufferAttrib(positionAttrib);
       }
 
       const normalAttrib = this.getTargetNormal(i);
 
       if (normalAttrib !== undefined) {
-        attributes[`a_Target_Normal${i}`] = this._getBufferAttrib(normalAttrib);
+        attributes[`a_Target_Normal${i}`] = this.getBufferAttrib(normalAttrib);
       }
 
       const tangentAttrib = this.getTargetTangent(i);
 
       if (tangentAttrib !== undefined) {
-        attributes[`a_Target_Tangent${i}`] = this._getBufferAttrib(tangentAttrib);
+        attributes[`a_Target_Tangent${i}`] = this.getBufferAttrib(tangentAttrib);
       }
     }
 
@@ -730,7 +730,7 @@ class GeometryProxy {
     }
   }
 
-  private _getBufferAttrib (inAttrib: GLTFBufferAttribute): Attribute {
+  private getBufferAttrib (inAttrib: GLTFBufferAttribute): Attribute {
     const attrib: spec.AttributeWithData = {
       type: inAttrib.type,
       size: inAttrib.itemSize,
