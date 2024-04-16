@@ -15,9 +15,9 @@ import {
   ShaderType,
 } from '../../material';
 import {
-  ValueGetter,
   createKeyFrameMeta,
   createValueGetter,
+  ValueGetter,
   getKeyFrameMetaByRawValue,
 } from '../../math';
 import type { GeometryProps, ShaderMarcos, ShaderWithSource, GPUCapability } from '../../render';

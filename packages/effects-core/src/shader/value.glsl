@@ -50,13 +50,15 @@ float binarySearchT(float x, float x1, float x2, float x3, float x4) {
 
 float valueFromBezierCurveFrames(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
+  int count = int(frameCount - 1.);
 
   for(int i = 0; i < ITR_END; i += 2) {
-    vec4 k0 = lookup_curve(i + start);
-    vec4 k1 = lookup_curve(i + 1 + start);
-    if (i >= int(frameCount - 1.)) {
+    if (i >= count) {
       break;
     }
+    vec4 k0 = lookup_curve(i + start);
+    vec4 k1 = lookup_curve(i + 1 + start);
+
     if (i == 0 && time < k0.x) {
       return k0.y;
     }
@@ -65,8 +67,8 @@ float valueFromBezierCurveFrames(float time, float frameStart, float frameCount)
     }
     if(time >= k0.x && time <= k1.x) {
       float t = (time - k0.x) / (k1.x - k0.x);
-      // float t = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
-      return cubicBezier(t, k0.y, k0.w, k1.w, k1.y);
+      float nt = binarySearchT(time, k0.x, k0.z, k1.z, k1.x);
+      return cubicBezier(nt, k0.y, k0.w, k1.w, k1.y);
     }
   }
 }
@@ -79,39 +81,6 @@ float valueFromLineSegs(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
   int count = int(frameCount - 1.);
   int end = start + count;
-//  for(int i = 0; i < ITR_END; i++) {
-//        #ifdef NONE_CONST_INDEX
-//    if(i > count) {
-//      return lookup_curve(i).w;
-//    }
-//            #else
-//    if(i < start) {
-//      continue;
-//    }
-//    if(i > end) {
-//      return lookup_curve(i - 2).w;
-//    }
-//            #endif
-//
-//            #ifdef NONE_CONST_INDEX
-//    vec4 seg = lookup_curve(i + start);
-//        #else
-//    vec4 seg = lookup_curve(i);
-//        #endif
-//    vec2 p0 = seg.xy;
-//    vec2 p1 = seg.zw;
-//    if(time >= p0.x && time <= p1.x) {
-//      return evaluteLineSeg(time, p0, p1);
-//    }
-//        #ifdef NONE_CONST_INDEX
-//    vec2 p2 = lookup_curve(i + start + 1).xy;
-//        #else
-//    vec2 p2 = lookup_curve(i + 1).xy;
-//        #endif
-//    if(time > p1.x && time <= p2.x) {
-//      return evaluteLineSeg(time, p1, p2);
-//    }
-//  }
   for(int i = 0; i < ITR_END; i++) {
     if(i > count) {
       return lookup_curve(i).w;

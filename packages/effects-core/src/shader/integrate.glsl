@@ -1,49 +1,27 @@
-/*float integrateCurveFrames(float t1, vec4 k0, vec4 k1) {
-  float k = k1.x - k0.x;
-  float m0 = k0.w * k;
-  float m1 = k1.z * k;
-  float t0 = k0.x;
-  float v0 = k0.y;
-  float v1 = k1.y;
+//float calculateMovement(float t, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
+//  float movement = 0.0;
+//  float nt = binarySearchT((t - p1.x) / (p4.x - p1.x), p1.x, p2.x, p3.x, p4.x);
+//  float h = nt / 100.;
+//  for (int i = 0; i <= 100; i++) {
+//    float y = cubicBezier(float(i) * h, p1.y, p2.y, p3.y, p3.y);
+//    movement += (i == 0 || i == 100) ? y : ((mod(float(i), 2.) == 1.) ? 4.: 2.);
+//  }
+//
+//  movement *= h / 3.;
+//  return movement;
+//}
 
-  float dt = t0 - t1;
-  float dt2 = dt * dt;
-  float dt3 = dt2 * dt;
-
-  vec4 a = vec4(dt3 * dt, dt3, dt2, dt) / vec4(4. * k * k * k, 3. * k * k, 2. * k, 1.);
-  vec4 b = vec4(m0 + m1 + 2. * v0 - 2. * v1, 2. * m0 + m1 + 3. * v0 - 3. * v1, m0, -v0);
-  return dot(a, b);
-}*/
-
-/*float integrateByTimeCurveFrames(float t1, vec4 k0, vec4 k1) {
-  float k = k1.x - k0.x;
-  float m0 = k0.w * k;
-  float m1 = k1.z * k;
-  float t0 = k0.x;
-  float v0 = k0.y;
-  float v1 = k1.y;
-
-  float dt = t0 - t1;
-  float dt2 = dt * dt;
-  float dt3 = dt2 * dt;
-  float k2 = k * k;
-  float k3 = k2 * k;
-
-  vec4 a = vec4(-30. * k3, 10. * k2, 5. * k, 3.) * vec4(dt, dt2, dt3, dt3 * dt);
-  vec4 b = vec4(v0, m0, 2. * m0 + m1 + 3. * v0 - 3. * v1, m0 + m1 + 2. * v0 - 2. * v1) * vec4(t0 + t1, t0 + 2. * t1, t0 + 3. * t1, t0 + 4. * t1);
-  return dot(a, b) / 60. / k3;
-}*/
 
 
 float calculateMovement(float t, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
   float movement = 0.0;
-  float h = (t - p1.x) / 100.;
-  float timeInterval = p4.x - p1.x;
+  float timeInterval = 1/ (p4.x - p1.x);
+  float h = ((t - p1.x) ) * 0.01 * timeInterval ;
   for (int i = 0; i <= 100; i++) {
-    float t = float(i) * h / timeInterval;
-    float nt = binarySearchT(t, p1.x, p2.x, p3.x, p4.x);
+    float target =  ( h ) * float(i);
+    float nt = binarySearchT(target, p1.x, p2.x, p3.x, p4.x);
     float y = cubicBezier(nt, p1.y, p2.y, p3.y, p3.y);
-    if (i == 0 || i == 100) {
+    if (i == 0 || i == 10) {
       movement += y;
     } else if (mod(float(i), 2.) == 1.) {
       movement += 4. * y;
@@ -58,11 +36,9 @@ float calculateMovement(float t, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
 
 float integrateFromBezierCurveFrames(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
+  int count = int(frameCount - 1.);
   float ret = 0.;
   for(int i = 0; i < ITR_END; i += 2) {
-    if (i >= int(frameCount - 1.)) {
-      return ret;
-    }
     vec4 k0 = lookup_curve(i + start);
     vec4 k1 = lookup_curve(i + 1 + start);
     if (i == 0 && time < k0.x) {
@@ -82,48 +58,6 @@ float integrateFromBezierCurveFrames(float time, float frameStart, float frameCo
 
   return ret;
 }
-
-/*float integrateByTimeFromCurveFrames(float t1, float frameStart, float frameCount) {
-  if(t1 == 0.) {
-    return 0.;
-  }
-  int start = int(frameStart);
-  int count = int(frameCount - 1.);
-  float ret = 0.;
-  for(int i = 0; i < ITR_END; i++) {
-    if(i == count) {
-      return ret;
-    }
-    vec4 k0 = lookup_curve(i + start);
-    vec4 k1 = lookup_curve(i + 1 + start);
-    if(t1 > k0.x && t1 <= k1.x) {
-      return ret + integrateByTimeCurveFrames(t1, k0, k1);
-    }
-    ret += integrateByTimeCurveFrames(k1.x, k0, k1);
-  }
-  return ret;
-}*/
-
-/*float integrateFromCurveFrames(float time, float frameStart, float frameCount) {
-  if(time == 0.) {
-    return 0.;
-  }
-  int start = int(frameStart);
-  int count = int(frameCount - 1.);
-  float ret = 0.;
-  for(int i = 0; i < ITR_END; i++) {
-    if(i == count) {
-      return ret;
-    }
-    vec4 k0 = lookup_curve(i + start);
-    vec4 k1 = lookup_curve(i + 1 + start);
-    if(time > k0.x && time <= k1.x) {
-      return ret + integrateCurveFrames(time, k0, k1);
-    }
-    ret += integrateCurveFrames(k1.x, k0, k1);
-  }
-  return ret;
-}*/
 
 float integrateByTimeLineSeg(float t, vec2 p0, vec2 p1) {
   float t0 = p0.x;

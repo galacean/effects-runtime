@@ -16,10 +16,10 @@ import {
   setSideMode,
   ShaderType,
 } from '../../material';
-import { ValueGetter } from '../../math';
 import {
   createKeyFrameMeta,
   createValueGetter,
+  ValueGetter,
   getKeyFrameMetaByRawValue,
   calculateTranslation,
 } from '../../math';
