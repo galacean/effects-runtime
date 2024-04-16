@@ -6,6 +6,13 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.3.0
+
+`2024-04-16`
+
+- Feat: Added gyroscope support for changing the rotation angle of elements. [#259](https://github.com/galacean/effects-runtime/pull/259) @RGCHN
+- Feat: video template。[#224](https://github.com/galacean/effects-runtime/pull/224) @Sruimeng
+
 ## 1.2.6
 
 `2024-04-12`
