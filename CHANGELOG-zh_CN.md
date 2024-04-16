@@ -7,6 +7,13 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.3.0
+
+`2024-04-16`
+
+- Feat: 陀螺仪支持元素的旋转角度变化。[#259](https://github.com/galacean/effects-runtime/pull/259) @RGCHN
+- Feat: video template。[#224](https://github.com/galacean/effects-runtime/pull/224) @Sruimeng
+
 ## 1.2.6
 
 `2024-04-12`
