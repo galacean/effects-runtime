@@ -224,9 +224,8 @@ export async function loadBlob (url: string): Promise<Blob> {
 /**
  * 异步加载一个视频文件
  * @param url - 视频文件的 URL 或 MediaProvider 对象
- * @param options - 加载参数
  */
-export async function loadVideo (url: string | MediaProvider, options: VideoLoadOptions = {}): Promise<HTMLVideoElement> {
+export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideoElement> {
   const video = document.createElement('video');
 
   if (typeof url === 'string') {
@@ -236,9 +235,6 @@ export async function loadVideo (url: string | MediaProvider, options: VideoLoad
   }
   video.crossOrigin = 'anonymous';
   video.muted = true;
-  if (options.loop) {
-    video.addEventListener('ended', () => video.play());
-  }
   if (isAndroid()) {
     video.setAttribute('renderer', 'standard');
   }

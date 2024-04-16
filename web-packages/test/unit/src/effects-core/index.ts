@@ -20,3 +20,4 @@ import './plugins/sprite/sprite-combine.spec';
 import './plugins/sprite/sprite-adjust-layer.spec';
 
 import './composition/index';
+import './assert-manager.spec';
