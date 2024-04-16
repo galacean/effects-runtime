@@ -11,7 +11,7 @@ import type {
 } from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
 import type { GLTFResources } from '@vvfx/resource-detection/dist/src/gltf-tools';
-import type { spec, Renderer, Texture, Geometry, VFXItemData } from '@galacean/effects';
+import type { spec, Renderer, Texture, Geometry } from '@galacean/effects';
 import type {
   ModelAnimationOptions,
   ModelMaterialOptions,
