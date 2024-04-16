@@ -1,7 +1,7 @@
 //@ts-nocheck
-import { math } from '@galacean/effects';
+import { math, spec, generateGUID } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
-import { LoaderImplEx } from '../../src/helper';
+import { LoaderECSEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
@@ -29,7 +29,7 @@ const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb
 async function getCurrentScene () {
   const duration = 9999;
   const endBehavior = 5;
-  const loader = new LoaderImplEx();
+  const loader = new LoaderECSEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
@@ -51,46 +51,104 @@ async function getCurrentScene () {
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
   const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
-
-  items.push({
-    id: '321',
-    duration: duration,
-    name: 'item_1',
-    type: '1',
-    sprite: {
-      options: {
-        duration: 100,
-        delay: 0,
-        startSize: 1,
-        sizeAspect: 1,
-        startColor: [255, 255, 255, 1],
-      },
-      renderer: {
-        renderMode: 1,
-      },
-    },
-  });
-
-  items.push({
-    id: 'extra-camera',
-    duration: 100,
+  const cameraItemId = generateGUID();
+  const cameraComponent: spec.ModelCameraComponentData = {
+    id: generateGUID(),
+    item: { id: cameraItemId },
+    dataType: spec.DataType.CameraComponent,
+    near: 0.001,
+    far: 5000,
+    fov: 60,
+    clipMode: 0,
+  };
+  const cameraItem: spec.VFXItemData = {
+    id: cameraItemId,
     name: 'extra-camera',
-    pn: 0,
+    duration: duration,
     type: 'camera',
+    pn: 0,
+    visible: true,
+    endBehavior: 5,
     transform: {
-      position: position.toArray(),
-      rotation: [0, 0, 0],
+      position: {
+        x: 0,
+        y: 0,
+        z: 8,
+      },
+      eulerHint: {
+        x: 0,
+        y: 0,
+        z: 0,
+      },
+      rotation: {
+        x: 0,
+        y: 0,
+        z: 0,
+      },
+      scale: {
+        x: 1,
+        y: 1,
+        z: 1,
+      },
     },
+
     content: {
       options: {
-        duration: 100,
-        near: 0.1,
-        far: 5000,
-        fov: 60,
-        clipMode: 0,
+        duration: duration,
+
       },
     },
-  });
+    components: [
+      { id: cameraComponent.id },
+    ],
+    dataType: spec.DataType.VFXItemData,
+  };
+
+  items.push(cameraItem);
+  loadResult.components.push(cameraComponent);
+
+  // items.push({
+  //   id: '321',
+  //   duration: duration,
+  //   name: 'item_1',
+  //   type: '1',
+  //   sprite: {
+  //     options: {
+  //       duration: 100,
+  //       delay: 0,
+  //       startSize: 1,
+  //       sizeAspect: 1,
+  //       startColor: [255, 255, 255, 1],
+  //     },
+  //     renderer: {
+  //       renderMode: 1,
+  //     },
+  //   },
+  // });
+
+  // items.push({
+  //   id: 'extra-camera',
+  //   duration: 100,
+  //   name: 'extra-camera',
+  //   pn: 0,
+  //   type: 'camera',
+  //   transform: {
+  //     position: position.toArray(),
+  //     rotation: [0, 0, 0],
+  //   },
+  //   content: {
+  //     options: {
+  //       duration: 100,
+  //       near: 0.1,
+  //       far: 5000,
+  //       fov: 60,
+  //       clipMode: 0,
+  //     },
+  //   },
+  // });
+  const itemIds = [];
+
+  items.forEach(item => itemIds.push({ id: item.id }));
 
   return {
     'compositionId': 1,
@@ -100,17 +158,14 @@ async function getCurrentScene () {
       'id': 1,
       'duration': duration,
       'endBehavior': 2,
-      'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-      'items': items,
+      'camera': { 'fov': 45, 'far': 2000, 'near': 0.001, 'position': [0, 0, 10], 'clipMode': 1 },
+      'items': itemIds,
       'meta': { 'previewSize': [750, 1334] },
     }],
-    'gltf': [],
-    'images': [],
-    'version': '0.8.9-beta.9',
-    'shapes': [],
+    'version': '3.0',
     'plugins': ['model'],
-    'type': 'mars',
-    '_imgs': { '1': [] },
+    'type': 'ge',
+    ...loadResult,
   };
 }
 
@@ -394,7 +449,7 @@ function registerMouseEvent () {
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.compositions[0].items.find(item => item.id === 'extra-camera');
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
   const position = player.compositions[0].camera.position;
   const rotation = player.compositions[0].camera.rotation;
 

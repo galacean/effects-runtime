@@ -10,7 +10,7 @@ import {
   PCamera, PLight, PMesh, PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit,
   VFX_ITEM_TYPE_3D, RayBoxTesting, RayTriangleTesting,
 } from '@galacean/effects-plugin-model';
-import { LoaderImplEx } from '@galacean/effects-plugin-model/helper';
+import { LoaderImplEx } from '../../src/helper';
 import { generateComposition } from './utilities';
 
 const { expect } = chai;

@@ -39,6 +39,9 @@ export default defineConfig(({ mode }) => {
       glslInner(),
       getSWCPlugin({
         baseUrl: resolve(__dirname, '..', '..'),
+        transform: {
+          legacyDecorator: true,
+        },
       }),
       tsconfigPaths(),
       configureServerPlugin(),

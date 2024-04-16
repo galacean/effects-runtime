@@ -6,31 +6,7 @@
       "renderLevel": "B+"
     },
     {
-      "url": "./textures/trail.png",
-      "renderLevel": "B+"
-    },
-    {
-      "url": "./textures/ge.png",
-      "renderLevel": "B+"
-    },
-    {
       "url": "https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original",
-      "renderLevel": "B+"
-    },
-    {
-      "url": "./textures/trail2.png",
-      "renderLevel": "B+"
-    },
-    {
-      "url": "./textures/trail3.png",
-      "renderLevel": "B+"
-    },
-    {
-      "url": "./textures/trail5.png",
-      "renderLevel": "B+"
-    },
-    {
-      "url": "./textures/ge-icon.png",
       "renderLevel": "B+"
     },
     {
@@ -756,17 +732,17 @@
       "textures": {
         "_MainTex": {
           "texture": {
-          "id": "0622cbce2a724bec976e09988f192ee9"
+            "id": "0622cbce2a724bec976e09988f192ee9"
           }
         },
         "_Tex2": {
           "texture": {
-          "id": "69c42f62abcb4962803df425a65b7281"
+            "id": "69c42f62abcb4962803df425a65b7281"
           }
         },
         "_Tex3": {
           "texture": {
-          "id": "080f94ebcff64c81a67f31187015697e"
+            "id": "080f94ebcff64c81a67f31187015697e"
           }
         }
       },
@@ -809,17 +785,17 @@
       "textures": {
         "_MainTex": {
           "texture": {
-          "id": "0622cbce2a724bec976e09988f192ee9"
+            "id": "0622cbce2a724bec976e09988f192ee9"
           }
         },
         "_Tex2": {
           "texture": {
-          "id": "8f33267d4f8647acbc51f34d2fe1a428"
+            "id": "8f33267d4f8647acbc51f34d2fe1a428"
           }
         },
         "_Tex3": {
           "texture": {
-          "id": "080f94ebcff64c81a67f31187015697e"
+            "id": "080f94ebcff64c81a67f31187015697e"
           }
         }
       },
@@ -846,17 +822,17 @@
       "textures": {
         "_MainTex": {
           "texture": {
-          "id": "0622cbce2a724bec976e09988f192ee9"
+            "id": "0622cbce2a724bec976e09988f192ee9"
           }
         },
         "_Tex2": {
           "texture": {
-          "id": "8f33267d4f8647acbc51f34d2fe1a428"
+            "id": "8f33267d4f8647acbc51f34d2fe1a428"
           }
         },
         "_Tex3": {
           "texture": {
-          "id": "080f94ebcff64c81a67f31187015697e"
+            "id": "080f94ebcff64c81a67f31187015697e"
           }
         }
       }
@@ -878,12 +854,12 @@
         "blending": 100
       },
       "floats": {
-        "_AlphaCutoff": 0.3,
+        "u_AlphaCutoff": 0.3,
         "_MetallicFactor": 1,
         "_RoughnessFactor": 0.3,
-        "_NormalScale": 1,
-        "_OcclusionStrength": 1,
-        "_EmissiveIntensity": 1
+        "u_NormalScale": 1,
+        "u_OcclusionStrength": 1,
+        "u_EmissiveIntensity": 1
       },
       "vector4s": {
         "_BaseColorFactor": {
@@ -900,12 +876,13 @@
         }
       },
       "colors": {
-        
+
       },
       "textures": {
-        "_BaseColorSampler": {
+
+        "u_BaseColorSampler": {
           "texture": {
-          "id": "a21f304a931347a6bdddcc632e962446"
+            "id": "a21f304a931347a6bdddcc632e962446"
           }
         }
       }
@@ -928,7 +905,7 @@
       "fragment": "precision highp float;varying vec2 uv;uniform vec4 _MainColor;uniform sampler2D _MainTex;uniform sampler2D _Tex2;uniform sampler2D _Tex3;void main(){vec3 texColor=texture2D(_MainTex,uv).rgb;vec3 color=texColor*_MainColor.rgb;gl_FragColor=vec4(color,1.0);}",
       "properties": "_MainTex(\"MainTex\", 2D) = {}\n_MainColor(\"MainColor\", Color) = (1,1,1,1)"
     }
-    ,
+  ,
     {
       "id": "84cae4c25b9a416bbd406475418a2b53",
       "name": "unlit",
@@ -1044,38 +1021,6 @@
     {
       "sourceType": 2,
       "sourceFrom": {
-        "url": "http://localhost:5173/src/assets/textures/trail.png",
-        "type": 2
-      },
-      "keepImageSource": true,
-      "minFilter": 9729,
-      "magFilter": 9729,
-      "id": "0622cbce2a724bec976e09988f192ee9",
-      "dataType": "Texture",
-      "source": 1,
-      "flipY": true,
-      "wrapS": 10497,
-      "wrapT": 10497
-    },
-    {
-      "sourceType": 2,
-      "sourceFrom": {
-        "url": "http://localhost:5173/src/assets/textures/ge.png",
-        "type": 2
-      },
-      "keepImageSource": true,
-      "minFilter": 9729,
-      "magFilter": 9729,
-      "id": "05d2cdc5814b412aa69b1a5e794aeca8",
-      "dataType": "Texture",
-      "source": 2,
-      "flipY": false,
-      "wrapS": 10497,
-      "wrapT": 10497
-    },
-    {
-      "sourceType": 2,
-      "sourceFrom": {
         "url": "https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original",
         "type": 2
       },
@@ -1084,72 +1029,8 @@
       "magFilter": 9729,
       "id": "83f7b031365f481192873e908fd442a6",
       "dataType": "Texture",
-      "source": 3,
+      "source": 1,
       "flipY": true
-    },
-    {
-      "sourceType": 2,
-      "sourceFrom": {
-        "url": "http://localhost:5173/src/assets/textures/trail2.png",
-        "type": 2
-      },
-      "keepImageSource": true,
-      "minFilter": 9729,
-      "magFilter": 9729,
-      "id": "080f94ebcff64c81a67f31187015697e",
-      "dataType": "Texture",
-      "source": 4,
-      "flipY": true,
-      "wrapS": 10497,
-      "wrapT": 10497
-    },
-    {
-      "sourceType": 2,
-      "sourceFrom": {
-        "url": "http://localhost:5173/src/assets/textures/trail3.png",
-        "type": 2
-      },
-      "keepImageSource": true,
-      "minFilter": 9729,
-      "magFilter": 9729,
-      "id": "69c42f62abcb4962803df425a65b7281",
-      "dataType": "Texture",
-      "source": 5,
-      "flipY": true,
-      "wrapS": 10497,
-      "wrapT": 10497
-    },
-    {
-      "sourceType": 2,
-      "sourceFrom": {
-        "url": "http://localhost:5173/src/assets/textures/trail5.png",
-        "type": 2
-      },
-      "keepImageSource": true,
-      "minFilter": 9729,
-      "magFilter": 9729,
-      "id": "8f33267d4f8647acbc51f34d2fe1a428",
-      "dataType": "Texture",
-      "source": 6,
-      "flipY": true,
-      "wrapS": 10497,
-      "wrapT": 10497
-    },
-    {
-      "sourceType": 2,
-      "sourceFrom": {
-        "url": "http://localhost:5173/src/assets/textures/ge-icon.png",
-        "type": 2
-      },
-      "keepImageSource": true,
-      "minFilter": 9729,
-      "magFilter": 9729,
-      "id": "82d245433af641d48d670bace307a9fe",
-      "dataType": "Texture",
-      "source": 7,
-      "flipY": true,
-      "wrapS": 10497,
-      "wrapT": 10497
     },
     {
       "sourceType": 2,
@@ -1162,7 +1043,7 @@
       "magFilter": 9729,
       "id": "250fbc5027c7472bad8d47eba388f215",
       "dataType": "Texture",
-      "source": 8,
+      "source": 2,
       "flipY": true,
       "wrapS": 10497,
       "wrapT": 10497,
@@ -1193,7 +1074,7 @@
       "anisotropic": 1,
       "premultiplyAlpha": false,
       "generateMipmap": true,
-      "source": 9
+      "source": 3
     },
     {
       "sourceType": 2,
@@ -1213,9 +1094,9 @@
       "type": 5121,
       "anisotropic": 1,
       "premultiplyAlpha": false,
-      
+
       "generateMipmap": true,
-      "source": 10
+      "source": 4
     },
     {
       "sourceType": 2,
@@ -1235,9 +1116,9 @@
       "type": 5121,
       "anisotropic": 1,
       "premultiplyAlpha": false,
-      
+
       "generateMipmap": true,
-      "source": 11
+      "source": 5
     },
     {
       "sourceType": 2,
@@ -1257,9 +1138,10 @@
       "type": 5121,
       "anisotropic": 1,
       "premultiplyAlpha": false,
-      
+
       "generateMipmap": true,
-      "source": 12
+      "source": 6
     }
   ]
 }
+

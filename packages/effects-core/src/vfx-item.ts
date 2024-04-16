@@ -495,6 +495,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     if (transform) {
       //@ts-expect-error TODO 数据改造后移除 expect-error
       transform.position = new Vector3().copyFrom(transform.position);
+      // FIXME: transform.rotation待删除
       //@ts-expect-error
       transform.rotation = new Euler().copyFrom(transform.eulerHint ?? transform.rotation);
       //@ts-expect-error

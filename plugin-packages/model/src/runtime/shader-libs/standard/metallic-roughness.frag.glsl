@@ -88,34 +88,34 @@ const int LightType_Spot = 2;
 const int LightType_Ambient = 3;
 
 #ifdef USE_PUNCTUAL
-uniform Light u_Lights[LIGHT_COUNT];
+uniform Light _Lights[LIGHT_COUNT];
 #endif
 
 #if defined(MATERIAL_SPECULARGLOSSINESS) || defined(MATERIAL_METALLICROUGHNESS)
-uniform float u_MetallicFactor;
-uniform float u_RoughnessFactor;
-uniform vec4 u_BaseColorFactor;
+uniform float _MetallicFactor;
+uniform float _RoughnessFactor;
+uniform vec4 _BaseColorFactor;
 #endif
 
 #ifdef MATERIAL_SPECULARGLOSSINESS
-uniform vec3 u_SpecularFactor;
-uniform vec4 u_DiffuseFactor;
-uniform float u_GlossinessFactor;
+uniform vec3 _SpecularFactor;
+uniform vec4 _DiffuseFactor;
+uniform float _GlossinessFactor;
 #endif
 
 #ifdef ALPHAMODE_MASK
-uniform float u_AlphaCutoff;
+uniform float _AlphaCutoff;
 #endif
 
 #ifdef ADD_FOG
-uniform vec4 u_FogColor;
+uniform vec4 _FogColor;
     #ifdef LINEAR_FOG
-        uniform float u_FogNear;
-        uniform float u_FogFar;
+        uniform float _FogNear;
+        uniform float _FogFar;
     #endif
 
     #ifdef EXP_FOG
-        uniform float u_FogDensity;
+        uniform float _FogDensity;
     #endif
 #endif
 
@@ -124,9 +124,9 @@ uniform vec4 uPreviewColor;
 #endif
 
 
-uniform vec3 u_Camera;
+uniform vec3 _Camera;
 
-uniform int u_MipCount;
+uniform int _MipCount;
 
 struct MaterialInfo
 {
@@ -142,20 +142,20 @@ struct MaterialInfo
 
 #ifdef ADD_FOG
     vec3 getMixFogColor(vec3 baseColor) {
-        vec3 distance = u_Camera - v_Position;
+        vec3 distance = _Camera - v_Position;
         float fogAmount = 0.0;
 
         #ifdef LINEAR_FOG
-            fogAmount = smoothstep(u_FogNear, u_FogFar, distance[2]);
+            fogAmount = smoothstep(_FogNear, _FogFar, distance[2]);
         #endif
 
         #ifdef EXP_FOG
             #define LOG2 1.442695
-            fogAmount = 1. - exp2(-u_FogDensity * u_FogDensity * distance[2] * distance[2] * LOG2);
+            fogAmount = 1. - exp2(-_FogDensity * _FogDensity * distance[2] * distance[2] * LOG2);
             fogAmount = clamp(fogAmount, 0., 1.);
         #endif
 
-        vec3 mixColor = baseColor.rgb + (vec3(u_FogColor)- baseColor.rgb) * fogAmount;
+        vec3 mixColor = baseColor.rgb + (vec3(_FogColor)- baseColor.rgb) * fogAmount;
         return mixColor;
     }
 #endif
@@ -189,25 +189,25 @@ vec3 getIBLContribution(MaterialInfo materialInfo, vec3 n, vec3 v)
 {
     float NdotV = clamp(dot(n, v), 0.0, 1.0);
 
-    float lod = clamp(materialInfo.perceptualRoughness * float(u_MipCount), 0.0, float(u_MipCount));
+    float lod = clamp(materialInfo.perceptualRoughness * float(_MipCount), 0.0, float(_MipCount));
     vec3 reflection = normalize(reflect(-v, n));
 
     vec2 brdfSamplePoint = clamp(vec2(NdotV, materialInfo.perceptualRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
     // retrieve a scale and bias to F0. See [1], Figure 3
-    vec2 brdf = texture2D(u_brdfLUT, brdfSamplePoint).rg;
-    //vec4 diffuseSample = textureCube(u_DiffuseEnvSampler, n);
+    vec2 brdf = texture2D(_brdfLUT, brdfSamplePoint).rg;
+    //vec4 diffuseSample = textureCube(_DiffuseEnvSampler, n);
     vec4 diffuseColor = vec4(1.0,0.0,0.0,1.0);
     #ifdef IRRADIANCE_COEFFICIENTS
-    vec3 irradiance = getIrradiance( n, u_shCoefficients );
+    vec3 irradiance = getIrradiance( n, _shCoefficients );
     diffuseColor = vec4(irradiance,1.0);
     #else
-    diffuseColor = textureCube(u_DiffuseEnvSampler, n);
+    diffuseColor = textureCube(_DiffuseEnvSampler, n);
     #endif
 
 #ifdef USE_TEX_LOD
-    vec4 specularSample = _textureCubeLodEXT(u_SpecularEnvSampler, reflection, lod);
+    vec4 specularSample = _textureCubeLodEXT(_SpecularEnvSampler, reflection, lod);
 #else
-    vec4 specularSample = textureCube(u_SpecularEnvSampler, reflection, lod);
+    vec4 specularSample = textureCube(_SpecularEnvSampler, reflection, lod);
 #endif
 
 #ifdef USE_HDR
@@ -222,7 +222,7 @@ vec3 getIBLContribution(MaterialInfo materialInfo, vec3 n, vec3 v)
     vec3 diffuse = diffuseLight * materialInfo.diffuseColor;
     vec3 specular = specularLight * (materialInfo.specularColor * brdf.x + brdf.y);
 
-    return diffuse * u_IblIntensity[0] + specular * u_IblIntensity[1];
+    return diffuse * _IblIntensity[0] + specular * _IblIntensity[1];
 }
 #endif
 
@@ -389,18 +389,18 @@ void main()
 #ifdef MATERIAL_SPECULARGLOSSINESS
 
 #ifdef HAS_SPECULAR_GLOSSINESS_MAP
-    vec4 sgSample = SRGBtoLINEAR(texture2D(u_SpecularGlossinessSampler, getSpecularGlossinessUV()));
-    perceptualRoughness = (1.0 - sgSample.a * u_GlossinessFactor); // glossiness to roughness
-    f0 = sgSample.rgb * u_SpecularFactor; // specular
+    vec4 sgSample = SRGBtoLINEAR(texture2D(_SpecularGlossinessSampler, getSpecularGlossinessUV()));
+    perceptualRoughness = (1.0 - sgSample.a * _GlossinessFactor); // glossiness to roughness
+    f0 = sgSample.rgb * _SpecularFactor; // specular
 #else
-    f0 = u_SpecularFactor;
-    perceptualRoughness = 1.0 - u_GlossinessFactor;
+    f0 = _SpecularFactor;
+    perceptualRoughness = 1.0 - _GlossinessFactor;
 #endif // ! HAS_SPECULAR_GLOSSINESS_MAP
 
 #ifdef HAS_DIFFUSE_MAP
-    baseColor = SRGBtoLINEAR(texture2D(u_DiffuseSampler, getDiffuseUV())) * u_DiffuseFactor;
+    baseColor = SRGBtoLINEAR(texture2D(_DiffuseSampler, getDiffuseUV())) * _DiffuseFactor;
 #else
-    baseColor = SRGBtoLINEAR(u_DiffuseFactor);
+    baseColor = SRGBtoLINEAR(_DiffuseFactor);
 #endif // !HAS_DIFFUSE_MAP
 
     baseColor *= getVertexColor();
@@ -422,21 +422,21 @@ void main()
 #ifdef HAS_METALLIC_ROUGHNESS_MAP
     // Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
     // This layout intentionally reserves the 'r' channel for (optional) occlusion map data
-    vec4 mrSample = texture2D(u_MetallicRoughnessSampler, getMetallicRoughnessUV());
-    perceptualRoughness = mrSample.g * u_RoughnessFactor;
+    vec4 mrSample = texture2D(_MetallicRoughnessSampler, getMetallicRoughnessUV());
+    perceptualRoughness = mrSample.g * _RoughnessFactor;
     /*注： 适配unity的效果，unity中对metallic使用orm贴图时，roughness仍为数值
-    perceptualRoughness = u_RoughnessFactor;*/
-    metallic = mrSample.b * u_MetallicFactor;
+    perceptualRoughness = _RoughnessFactor;*/
+    metallic = mrSample.b * _MetallicFactor;
 #else
-    metallic = u_MetallicFactor;
-    perceptualRoughness = u_RoughnessFactor;
+    metallic = _MetallicFactor;
+    perceptualRoughness = _RoughnessFactor;
 #endif
 
     // The albedo may be defined from a base texture or a flat color
 #ifdef HAS_BASE_COLOR_MAP
-    baseColor = SRGBtoLINEAR(texture2D(u_BaseColorSampler, getBaseColorUV())) * u_BaseColorFactor;
+    baseColor = SRGBtoLINEAR(texture2D(_BaseColorSampler, getBaseColorUV())) * _BaseColorFactor;
 #else
-    baseColor = SRGBtoLINEAR(u_BaseColorFactor);
+    baseColor = SRGBtoLINEAR(_BaseColorFactor);
 #endif
 
     baseColor *= getVertexColor();
@@ -448,7 +448,7 @@ void main()
 #endif // ! MATERIAL_METALLICROUGHNESS
 
 #ifdef ALPHAMODE_MASK
-    if(baseColor.a < u_AlphaCutoff)
+    if(baseColor.a < _AlphaCutoff)
     {
         discard;
     }
@@ -544,7 +544,7 @@ void main()
     // LIGHTING
 
     vec3 color = vec3(0.0, 0.0, 0.0);
-    vec3 view = normalize(u_Camera - v_Position);
+    vec3 view = normalize(_Camera - v_Position);
 
     float shadow = 1.0;
     #ifdef USE_SHADOW_MAPPING
@@ -554,7 +554,7 @@ void main()
 #ifdef USE_PUNCTUAL
     for (int i = 0; i < LIGHT_COUNT; ++i)
     {
-        Light light = u_Lights[i];
+        Light light = _Lights[i];
         if (light.type == LightType_Directional)
         {
             color += applyDirectionalLight(light, materialInfo, normal, view, shadow);
@@ -583,19 +583,19 @@ void main()
     // Apply optional PBR terms for additional (optional) shading
 #ifdef HAS_OCCLUSION_MAP
     /* unity exporter orm 适配的写法
-    ao = texture2D(u_OcclusionSampler,  getOcclusionUV()).g;*/
-    ao = texture2D(u_OcclusionSampler,  getOcclusionUV()).r;
-    color = mix(color, color * ao, u_OcclusionStrength);
+    ao = texture2D(_OcclusionSampler,  getOcclusionUV()).g;*/
+    ao = texture2D(_OcclusionSampler,  getOcclusionUV()).r;
+    color = mix(color, color * ao, _OcclusionStrength);
 #endif
 
     vec3 emissive = vec3(0);
 /*#ifdef HAS_EMISSIVE_MAP
-    emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
+    emissive = SRGBtoLINEAR(texture2D(_EmissiveSampler, getEmissiveUV())).rgb * _EmissiveFactor.rgb;
     color += emissive;
 #endif
 
 #ifdef HAS_EMISSIVE
-    color += u_EmissiveFactor.rgb;
+    color += _EmissiveFactor.rgb;
 #endif*/
 
 #ifndef DEBUG_OUTPUT // no debug
@@ -610,10 +610,10 @@ void main()
         color = toneMap(color) * baseColor.a;
         // emmisive要放在tone mapping之后，否则会导致光影过弱
         #ifdef HAS_EMISSIVE
-          color += u_EmissiveFactor.rgb;
+          color += _EmissiveFactor.rgb;
         #endif
         #ifdef HAS_EMISSIVE_MAP
-          emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
+          emissive = SRGBtoLINEAR(texture2D(_EmissiveSampler, getEmissiveUV())).rgb * _EmissiveFactor.rgb;
           color += emissive;
         #endif
         vec4 fragColorOut = vec4(color, baseColor.a);
@@ -643,7 +643,7 @@ void main()
 
     #ifdef DEBUG_OCCLUSION
         #ifdef HAS_OCCLUSION_MAP
-            outFragColor.rgb = vec3(mix(1.0, ao, u_OcclusionStrength));
+            outFragColor.rgb = vec3(mix(1.0, ao, _OcclusionStrength));
         #else
             outFragColor.rgb = vec3(1.0);
         #endif
@@ -652,11 +652,11 @@ void main()
     #ifdef DEBUG_EMISSIVE
         // fetch emissive data
         #ifdef HAS_EMISSIVE
-            emissive = u_EmissiveFactor.rgb;
+            emissive = _EmissiveFactor.rgb;
         #endif
 
         #ifdef HAS_EMISSIVE_MAP
-            emissive = SRGBtoLINEAR(texture2D(u_EmissiveSampler, getEmissiveUV())).rgb * u_EmissiveFactor.rgb;
+            emissive = SRGBtoLINEAR(texture2D(_EmissiveSampler, getEmissiveUV())).rgb * _EmissiveFactor.rgb;
         #endif
 
         outFragColor.rgb = LINEARtoSRGB(emissive);

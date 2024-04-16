@@ -1,4 +1,4 @@
-uniform float u_Exposure;
+uniform float _Exposure;
 
 const float GAMMA = 2.2;
 const float INV_GAMMA = 1.0 / GAMMA;
@@ -60,7 +60,7 @@ vec3 toneMapACES(vec3 color)
 
 vec3 toneMap(vec3 color)
 {
-    color *= u_Exposure;
+    color *= _Exposure;
 
 #ifdef TONEMAP_UNCHARTED
     return toneMapUncharted(color);
