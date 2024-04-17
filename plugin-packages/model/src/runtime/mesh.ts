@@ -1076,7 +1076,11 @@ export class PGeometry {
    * @returns
    */
   hasUVCoords (index: number): boolean {
-    return this.hasAttribute(`a_UV${index}`);
+    if (index === 1) {
+      return this.hasAttribute('aUV');
+    } else {
+      return this.hasAttribute(`aUV${index}`);
+    }
   }
 
   /**

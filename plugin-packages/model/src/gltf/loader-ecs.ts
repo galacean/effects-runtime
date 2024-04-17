@@ -123,7 +123,12 @@ export class LoaderECS {
       };
     });
 
-    this.textures = this.gltfTextures.map(texture => texture.textureOptions);
+    this.textures = this.gltfTextures.map(texture => {
+      // @ts-expect-error
+      texture.textureOptions.generateMipmap = true;
+
+      return texture.textureOptions;
+    });
     this.materials = this.gltfMaterials.map(material => material.materialData);
 
     gltfResource.meshes.forEach(mesh => {
