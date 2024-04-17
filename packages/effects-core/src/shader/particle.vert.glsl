@@ -1,5 +1,5 @@
 #version 300 es
-precision highp float;
+precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 

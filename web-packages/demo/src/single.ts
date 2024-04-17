@@ -2,8 +2,7 @@ import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416074108386/mars-preview.json';
-// 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416052725759/mars-preview.json'; //粒子
+const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416052725759/mars-preview.json'; //粒子
 // 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416032119032/mars-preview.json';
 // 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416031410602/mars-preview.json';
 // ' http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416113301879/mars-preview.json';
