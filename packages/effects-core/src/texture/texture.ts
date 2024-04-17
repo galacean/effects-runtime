@@ -40,6 +40,27 @@ export abstract class Texture extends EffectsObject {
   static create: (engine: Engine, options?: TextureSourceOptions) => Texture;
 
   /**
+   * 通过 URL 创建 Texture 对象。
+   * @param url - 要创建的 Texture URL
+   */
+  static async fromURL(url: string, engine: Engine): Promise<Texture> {
+    const img = new Image();
+
+    img.src = url;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+    const texture = Texture.create(engine, {
+      sourceType: TextureSourceType.image,
+      image: img,
+    });
+
+    texture.initialize();
+
+    return texture;
+  }
+  /**
    * 通过数据创建 Texture 对象。
    * @param data - 要创建的 Texture 数据
    * @param options - 可选的 Texture 选项

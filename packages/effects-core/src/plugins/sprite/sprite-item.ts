@@ -177,6 +177,25 @@ export class SpriteComponent extends RendererComponent {
     return this.visible;
   }
 
+  /**
+   * 设置当前 图层 的颜色。
+   * tips: 透明度也属于颜色的一部分，当有透明度/颜色K帧变化时，该API会失效
+   * @param color - 颜色值
+   */
+  setColor (color: vec4) {
+    this.color = color;
+    this.material.setVector4('_Color', new Vector4().setFromArray(color));
+  }
+
+  /**
+   * 设置当前 Mesh 的纹理。
+   * @param texture - 纹理对象
+   */
+  setTexture (texture: Texture) {
+    this.renderer.texture = texture;
+    this.material.setTexture('uSampler0', texture);
+  }
+
   override render (renderer: Renderer) {
     if (!this.getVisible()) {
       return;
