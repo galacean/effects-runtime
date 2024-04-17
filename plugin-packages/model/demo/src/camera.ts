@@ -52,7 +52,7 @@ async function getCurrentScene () {
 
   loader.addCamera({
     near: 0.001,
-    far: 5000,
+    far: 400,
     fov: 60,
     clipMode: 0,
     //
@@ -67,10 +67,10 @@ async function getCurrentScene () {
     lightType: spec.LightType.point,
     color: { r: 1, g: 1, b: 1, a: 1 },
     intensity: 1,
-    range: -1,
+    range: 100,
     //
     name: 'test',
-    position: [0, 0, 100],
+    position: [0, 0, 10],
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
     duration: duration,
