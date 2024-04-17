@@ -511,26 +511,26 @@ export class MeshHelper {
 
     return {
       attributes: {
-        a_Position: {
+        aPos: {
           type: glContext.FLOAT,
           size: 3,
           data,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: 0,
         },
-        a_UV1: {
+        aUV: {
           type: glContext.FLOAT,
           size: 2,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 3,
-          dataSource: 'a_Position',
+          dataSource: 'aPos',
         },
-        a_Normal: {
+        aNormal: {
           type: glContext.FLOAT,
           size: 3,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 5,
-          dataSource: 'a_Position',
+          dataSource: 'aPos',
         },
       },
       drawStart: 0,
@@ -1133,18 +1133,18 @@ export class PluginHelper {
    */
   static getAttributeName (name: string): string {
     switch (name) {
-      case 'POSITION': return 'a_Position';
-      case 'NORMAL': return 'a_Normal';
+      case 'POSITION': return 'aPos';
+      case 'NORMAL': return 'aNormal';
       case 'TANGENT': return 'a_Tangent';
-      case 'TEXCOORD_0': return 'a_UV1';
+      case 'TEXCOORD_0': return 'aUV';
       case 'TEXCOORD_1': return 'a_UV2';
       case 'JOINTS_0': return 'a_Joint1';
       case 'WEIGHTS_0': return 'a_Weight1';
     }
 
     if (!name.startsWith('a_')) {
-      // a_Position, a_Normal, a_Tangent,
-      // a_UV1, a_UV2, a_Joint1, a_Weight1
+      // aPos, aNormal, a_Tangent,
+      // aUV, a_UV2, a_Joint1, a_Weight1
       // a_Target_XXX
       console.warn(`Unknown attribute name: ${name}`);
     }
@@ -1250,7 +1250,7 @@ export class WebHelper {
    * @returns HTML 图像元素
    */
   static async loadImageFromGLTFImage (image: GLTFImage): Promise<HTMLImageElement> {
-    return loadImage(new Blob([image.imageData as Uint8Array], { type: image.mimeType }));
+    return loadImage(new Blob([image.imageData], { type: image.mimeType }));
   }
 
   /**
@@ -1549,8 +1549,8 @@ export class GeometryBoxProxy {
 
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['a_Position'];
-    const positionArray = geometry.getAttributeData('a_Position') as spec.TypedArray;
+    const positionAttrib = attributes['aPos'];
+    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
@@ -1705,8 +1705,8 @@ export class HitTestingProxy {
 
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['a_Position'];
-    const positionArray = geometry.getAttributeData('a_Position') as spec.TypedArray;
+    const positionAttrib = attributes['aPos'];
+    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
@@ -2179,15 +2179,15 @@ export class CheckerHelper {
     //     }
     //     maxLength = maxIndex + 1;
     //   }
-    //   const positionAttrib = opts.attributes['a_Position'] as Attribute;
+    //   const positionAttrib = opts.attributes['aPos'] as Attribute;
 
     //   if (positionAttrib === undefined) {
     //     throw new Error(`Position attribute is required, ${this.stringify(v)}`);
     //   }
-    //   this.assertGeometryBuffer(v, 'a_Position', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Normal', maxLength);
+    //   this.assertGeometryBuffer(v, 'aPos', maxLength);
+    //   this.assertGeometryBuffer(v, 'aNormal', maxLength);
     //   this.assertGeometryBuffer(v, 'a_Tangent', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_UV1', maxLength);
+    //   this.assertGeometryBuffer(v, 'aUV', maxLength);
     //   this.assertGeometryBuffer(v, 'a_Joint1', maxLength);
     //   this.assertGeometryBuffer(v, 'a_Weight1', maxLength);
 

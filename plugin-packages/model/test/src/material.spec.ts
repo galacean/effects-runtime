@@ -134,13 +134,13 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       //
       const geom0 = options1.primitives[0].geometry;
 
-      expect(geom0.getAttributeNames()).to.eql(['a_Position', 'a_Normal']);
-      const posAttrib0 = geom0.attributes['a_Position'];
+      expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal']);
+      const posAttrib0 = geom0.attributes['aPos'];
 
       expect(posAttrib0.size).to.eql(3);
       expect(posAttrib0.type).to.eql(5126);
       expect(posAttrib0.normalize).to.eql(false);
-      const posData0 = geom0.getAttributeData('a_Position');
+      const posData0 = geom0.getAttributeData('aPos');
 
       expect(posData0.length).to.eql(6036);
       [
@@ -153,12 +153,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       ].forEach((v, i) => {
         expect(posData0[i]).closeTo(v, 1e-5);
       });
-      const normAttrib0 = geom0.attributes['a_Normal'];
+      const normAttrib0 = geom0.attributes['aNormal'];
 
       expect(normAttrib0.size).to.eql(3);
       expect(normAttrib0.type).to.eql(5126);
       expect(normAttrib0.normalize).to.eql(false);
-      const normData0 = geom0.getAttributeData('a_Normal');
+      const normData0 = geom0.getAttributeData('aNormal');
 
       expect(normData0.length).to.eql(6036);
       [
@@ -191,12 +191,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       expect(mat0.type).to.eql('pbr');
       //
       const geom1 = options1.primitives[1].geometry;
-      expect(geom1.getAttributeNames()).to.eql(['a_Position', 'a_Normal']);
-      const posAttrib1 = geom1.attributes['a_Position'];
+      expect(geom1.getAttributeNames()).to.eql(['aPos', 'aNormal']);
+      const posAttrib1 = geom1.attributes['aPos'];
       expect(posAttrib1.size).to.eql(3);
       expect(posAttrib1.type).to.eql(5126);
       expect(posAttrib1.normalize).to.eql(false);
-      const posData1 = geom1.getAttributeData('a_Position');
+      const posData1 = geom1.getAttributeData('aPos');
       expect(posData1.length).to.eql(3888);
       [
         31.869285583496094, 51.86198806762695, 19.2335205078125, 31.869285583496094, 48.87227249145508, 24.781694412231445, 31.869285583496094,
@@ -209,11 +209,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       ].forEach((v, i) => {
         expect(v).closeTo(posData1[i], 1e-5);
       });
-      const normAttrib1 = geom1.attributes['a_Normal'];
+      const normAttrib1 = geom1.attributes['aNormal'];
       expect(normAttrib1.size).to.eql(3);
       expect(normAttrib1.type).to.eql(5126);
       expect(normAttrib1.normalize).to.eql(false);
-      const normData1 = geom1.getAttributeData('a_Normal');
+      const normData1 = geom1.getAttributeData('aNormal');
       expect(normData1.length).to.eql(3888);
       [
         1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
@@ -273,12 +273,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         expect(v).to.eql(indexData[i]);
       });
 
-      expect(geom0.getAttributeNames()).to.eql(['a_Position', 'a_Normal']);
-      const posAttrib0 = geom0.attributes['a_Position'];
+      expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal']);
+      const posAttrib0 = geom0.attributes['aPos'];
       expect(posAttrib0.size).to.eql(3);
       expect(posAttrib0.type).to.eql(5126);
       expect(posAttrib0.normalize).to.eql(false);
-      const posData0 = geom0.getAttributeData('a_Position');
+      const posData0 = geom0.getAttributeData('aPos');
       expect(posData0.length).to.eql(792);
       [
         -247.99253845214844, 87.06302642822266, 0, -245.52316284179688, 89.00714874267578, 0, -246.68165588378906, 87.95148468017578, 0,
@@ -292,11 +292,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       ].forEach((v, i) => {
         expect(posData0[i]).closeTo(v, 1e-5);
       });
-      const normAttrib0 = geom0.attributes['a_Normal'];
+      const normAttrib0 = geom0.attributes['aNormal'];
       expect(normAttrib0.size).to.eql(3);
       expect(normAttrib0.type).to.eql(5126);
       expect(normAttrib0.normalize).to.eql(false);
-      const normData0 = geom0.getAttributeData('a_Normal');
+      const normData0 = geom0.getAttributeData('aNormal');
       expect(normData0.length).to.eql(792);
       [
         0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
@@ -356,12 +356,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           expect(v).to.eql(indexData[i]);
         });
 
-        expect(geom0.getAttributeNames()).to.eql(['a_Position', 'a_Normal']);
-        const posAttrib0 = geom0.attributes['a_Position'];
+        expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal']);
+        const posAttrib0 = geom0.attributes['aPos'];
         expect(posAttrib0.size).to.eql(3);
         expect(posAttrib0.type).to.eql(5126);
         expect(posAttrib0.normalize).to.eql(false);
-        const posData0 = geom0.getAttributeData('a_Position');
+        const posData0 = geom0.getAttributeData('aPos');
         expect(posData0.length).to.eql(129);
         [
           131.05416870117188, -36.00284957885742, 5, 131.15240478515625, -36.39981460571289, 5, 130.7267608642578, -35.66258239746094, 5,
@@ -374,11 +374,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         ].forEach((v, i) => {
           expect(posData0[i]).closeTo(v, 1e-5);
         });
-        const normAttrib0 = geom0.attributes['a_Normal'];
+        const normAttrib0 = geom0.attributes['aNormal'];
         expect(normAttrib0.size).to.eql(3);
         expect(normAttrib0.type).to.eql(5126);
         expect(normAttrib0.normalize).to.eql(false);
-        const normData0 = geom0.getAttributeData('a_Normal');
+        const normData0 = geom0.getAttributeData('aNormal');
         expect(normData0.length).to.eql(129);
         [
           0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
@@ -425,12 +425,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           expect(v).to.eql(indexData[i]);
         });
 
-        expect(geom0.getAttributeNames()).to.eql(['a_Position', 'a_Normal']);
-        const posAttrib0 = geom0.attributes['a_Position'];
+        expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal']);
+        const posAttrib0 = geom0.attributes['aPos'];
         expect(posAttrib0.size).to.eql(3);
         expect(posAttrib0.type).to.eql(5126);
         expect(posAttrib0.normalize).to.eql(false);
-        const posData0 = geom0.getAttributeData('a_Position');
+        const posData0 = geom0.getAttributeData('aPos');
         expect(posData0.length).to.eql(129);
         [
           130.7181396484375, -63.19089126586914, 5, 130.30111694335938, -63.2940788269043, 5, 131.07557678222656, -62.846946716308594, 5,
@@ -443,11 +443,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         ].forEach((v, i) => {
           expect(posData0[i]).closeTo(v, 1e-5);
         });
-        const normAttrib0 = geom0.attributes['a_Normal'];
+        const normAttrib0 = geom0.attributes['aNormal'];
         expect(normAttrib0.size).to.eql(3);
         expect(normAttrib0.type).to.eql(5126);
         expect(normAttrib0.normalize).to.eql(false);
-        const normData0 = geom0.getAttributeData('a_Normal');
+        const normData0 = geom0.getAttributeData('aNormal');
         expect(normData0.length).to.eql(129);
         [
           0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
@@ -738,12 +738,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           expect(v).to.eql(indexData[i]);
         });
 
-        expect(geom0.getAttributeNames()).to.eql(['a_Position', 'a_Normal', 'a_UV1', 'a_Joint1', 'a_Weight1']);
-        const posAttrib0 = geom0.attributes['a_Position'];
+        expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal', 'aUV', 'a_Joint1', 'a_Weight1']);
+        const posAttrib0 = geom0.attributes['aPos'];
         expect(posAttrib0.size).to.eql(3);
         expect(posAttrib0.type).to.eql(5126);
         expect(posAttrib0.normalize).to.eql(false);
-        const posData0 = geom0.getAttributeData('a_Position');
+        const posData0 = geom0.getAttributeData('aPos');
         expect(posData0.length).to.eql(9819);
         [
           0.09342920035123825, 0.048714570701122284, 0.9735749959945679, 0.07329291105270386, 0.08925402164459229, 0.9775350093841553, 0.0848226472735405,
@@ -757,11 +757,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         ].forEach((v, i) => {
           expect(posData0[i]).closeTo(v, 1e-5);
         });
-        const normAttrib0 = geom0.attributes['a_Normal'];
+        const normAttrib0 = geom0.attributes['aNormal'];
         expect(normAttrib0.size).to.eql(3);
         expect(normAttrib0.type).to.eql(5126);
         expect(normAttrib0.normalize).to.eql(false);
-        const normData0 = geom0.getAttributeData('a_Normal');
+        const normData0 = geom0.getAttributeData('aNormal');
         expect(normData0.length).to.eql(9819);
         [
           0.9666681289672852, 0.2427504062652588, 0.08139491081237793, 0.5926201343536377, 0.8049721121788025, 0.028657428920269012, 0.9823477268218994,
@@ -774,11 +774,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         ].forEach((v, i) => {
           expect(v).closeTo(normData0[i], 1e-5);
         });
-        const uvAttrib0 = geom0.attributes['a_UV1'];
+        const uvAttrib0 = geom0.attributes['aUV'];
         expect(uvAttrib0.size).to.eql(2);
         expect(uvAttrib0.type).to.eql(5126);
         expect(uvAttrib0.normalize).to.eql(false);
-        const uvData0 = geom0.getAttributeData('a_UV1');
+        const uvData0 = geom0.getAttributeData('aUV');
         expect(uvData0.length).to.eql(6546);
         [
           0.2736569941043854, 0.8036180138587952, 0.3031649887561798, 0.799481987953186, 0.2714029848575592, 0.7648169994354248, 0.29099100828170776,
@@ -917,12 +917,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           expect(v).to.eql(indexData[i]);
         });
 
-        expect(geom0.getAttributeNames()).to.eql(['a_Position', 'a_Normal', 'a_UV1']);
-        const posAttrib0 = geom0.attributes['a_Position'];
+        expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal', 'aUV']);
+        const posAttrib0 = geom0.attributes['aPos'];
         expect(posAttrib0.size).to.eql(3);
         expect(posAttrib0.type).to.eql(5126);
         expect(posAttrib0.normalize).to.eql(false);
-        const posData0 = geom0.getAttributeData('a_Position');
+        const posData0 = geom0.getAttributeData('aPos');
         expect(posData0.length).to.eql(43668);
         [
           -0.6119945645332336, -0.03094087541103363, 0.48309004306793213, -0.5795046091079712, 0.05627411603927612, 0.5217580199241638, -0.5735836029052734,
@@ -937,11 +937,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         ].forEach((v, i) => {
           expect(posData0[i]).closeTo(v, 1e-5);
         });
-        const normAttrib0 = geom0.attributes['a_Normal'];
+        const normAttrib0 = geom0.attributes['aNormal'];
         expect(normAttrib0.size).to.eql(3);
         expect(normAttrib0.type).to.eql(5126);
         expect(normAttrib0.normalize).to.eql(false);
-        const normData0 = geom0.getAttributeData('a_Normal');
+        const normData0 = geom0.getAttributeData('aNormal');
         expect(normData0.length).to.eql(43668);
         [
           -0.9183019399642944, 0.38380077481269836, 0.09683523327112198, -0.9186681509017944, 0.3896298110485077, -0.06460768729448318, -0.8807947039604187,
@@ -955,11 +955,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         ].forEach((v, i) => {
           expect(v).closeTo(normData0[i], 1e-5);
         });
-        const uvAttrib0 = geom0.attributes['a_UV1'];
+        const uvAttrib0 = geom0.attributes['aUV'];
         expect(uvAttrib0.size).to.eql(2);
         expect(uvAttrib0.type).to.eql(5126);
         expect(uvAttrib0.normalize).to.eql(false);
-        const uvData0 = geom0.getAttributeData('a_UV1');
+        const uvData0 = geom0.getAttributeData('aUV');
         expect(uvData0.length).to.eql(29112);
         [
           0.7046859860420227, 1.2456040382385254, 0.6757779717445374, 1.2566219568252563, 0.6726840138435364, 1.2459670305252075, 0.697708010673523,
@@ -1292,12 +1292,12 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
             expect(v).to.eql(indexData[i]);
           });
 
-          expect(geom0.getAttributeNames()).to.eql(['a_Position', 'a_Normal', 'a_Tangent', 'a_UV1', 'a_UV2']);
-          const posAttrib0 = geom0.attributes['a_Position'];
+          expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal', 'a_Tangent', 'aUV', 'a_UV2']);
+          const posAttrib0 = geom0.attributes['aPos'];
           expect(posAttrib0.size).to.eql(3);
           expect(posAttrib0.type).to.eql(5126);
           expect(posAttrib0.normalize).to.eql(false);
-          const posData0 = geom0.getAttributeData('a_Position');
+          const posData0 = geom0.getAttributeData('aPos');
           expect(posData0.length).to.eql(72945);
           [
             -0.003058979520574212, 0.0921643078327179, 0.02988342195749283, 0.003241629572585225, 0.16409727931022644, 0.03475647047162056, 0.0026272486429661512,
@@ -1312,11 +1312,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           ].forEach((v, i) => {
             expect(posData0[i]).closeTo(v, 1e-5);
           });
-          const normAttrib0 = geom0.attributes['a_Normal'];
+          const normAttrib0 = geom0.attributes['aNormal'];
           expect(normAttrib0.size).to.eql(3);
           expect(normAttrib0.type).to.eql(5126);
           expect(normAttrib0.normalize).to.eql(false);
-          const normData0 = geom0.getAttributeData('a_Normal');
+          const normData0 = geom0.getAttributeData('aNormal');
           expect(normData0.length).to.eql(72945);
           [
             -0.050654299557209015, -0.06762711703777313, 0.9964240193367004, 0.03568694368004799, -0.0668693259358406, 0.9971233010292053, 0.03534643352031708,
@@ -1331,11 +1331,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           ].forEach((v, i) => {
             expect(v).closeTo(normData0[i], 1e-5);
           });
-          const uvAttrib0 = geom0.attributes['a_UV1'];
+          const uvAttrib0 = geom0.attributes['aUV'];
           expect(uvAttrib0.size).to.eql(2);
           expect(uvAttrib0.type).to.eql(5126);
           expect(uvAttrib0.normalize).to.eql(false);
-          const uvData0 = geom0.getAttributeData('a_UV1');
+          const uvData0 = geom0.getAttributeData('aUV');
           expect(uvData0.length).to.eql(48630);
           [
             0.4850638210773468, 0.7611932158470154, 0.49748745560646057, 0.9797379374504089, 0.49748745560646057, 0.7611932158470154, 0.4850638210773468, 0.9797379374504089,

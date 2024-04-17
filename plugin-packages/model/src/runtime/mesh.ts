@@ -1,5 +1,5 @@
-import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer } from '@galacean/effects';
-import { Geometry, spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader, generateGUID } from '@galacean/effects';
+import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer, Geometry } from '@galacean/effects';
+import { spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader, generateGUID } from '@galacean/effects';
 import type {
   ModelMeshComponentData,
   ModelMeshPrimitiveData,
@@ -896,59 +896,7 @@ export class PPrimitive {
     if (val instanceof PGeometry) {
       this.geometry = val;
     } else {
-      // FIXME: 临时兼容代码，后续要解决掉
-      // @ts-expect-error
-      const aNormal = val.attributes['aNormal'];
-      // @ts-expect-error
-      const aPos = val.attributes['aPos'];
-      // @ts-expect-error
-      const aUV = val.attributes['aUV'];
-
-      if (aNormal && aPos && aUV) {
-        const aNormalData = val.getAttributeData('aNormal')!;
-        const aPosData = val.getAttributeData('aPos')!;
-        const aUVData = val.getAttributeData('aUV');
-
-        // FIXME: 临时解决模型法线错误的问题
-        if (__DEBUG__) {
-          for (let i = 0; i < aNormalData?.length; i += 3) {
-            const x = aPosData[i];
-            const y = aPosData[i + 1];
-            const z = aPosData[i + 2];
-            const len = Math.sqrt(x * x + y * y + z * z);
-
-            aNormalData[i] = x / len;
-            aNormalData[i + 1] = y / len;
-            aNormalData[i + 2] = z / len;
-          }
-        }
-        const newGeom = Geometry.create(val.engine, {
-          attributes: {
-            a_Position: {
-              ...aPos,
-              data: aPosData,
-            },
-            a_UV1: {
-              ...aUV,
-              data: aUVData,
-            },
-            a_Normal: {
-              ...aNormal,
-              data: aNormalData,
-            },
-          },
-          // @ts-expect-error
-          indices: { data: val.getIndexData() },
-          // @ts-expect-error
-          mode: val.mode,
-          drawStart: val.getDrawStart(),
-          drawCount: val.getDrawCount(),
-        });
-
-        this.geometry = new PGeometry(newGeom);
-      } else {
-        this.geometry = new PGeometry(val);
-      }
+      this.geometry = new PGeometry(val);
     }
   }
 
@@ -1087,7 +1035,7 @@ export class PGeometry {
    * @returns
    */
   isCompressed (): boolean {
-    const positionAttrib = this.geometry.getAttributeData('a_Position');
+    const positionAttrib = this.geometry.getAttributeData('aPos');
 
     if (positionAttrib === undefined) {
       return false;
@@ -1103,7 +1051,7 @@ export class PGeometry {
    * @returns
    */
   hasPositions (): boolean {
-    return this.hasAttribute('a_Position');
+    return this.hasAttribute('aPos');
   }
 
   /**
@@ -1111,7 +1059,7 @@ export class PGeometry {
    * @returns
    */
   hasNormals (): boolean {
-    return this.hasAttribute('a_Normal');
+    return this.hasAttribute('aNormal');
   }
 
   /**

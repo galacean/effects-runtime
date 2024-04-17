@@ -280,7 +280,7 @@ export class LoaderImpl implements Loader {
       const newImages = images.map(img => {
         const outImg: PImageBufferData = {
           type: 'buffer',
-          data: img.imageData as Uint8Array,
+          data: img.imageData,
           mimeType: img.mimeType,
         };
 
@@ -846,7 +846,7 @@ class GeometryProxy {
     if (this.hasPosition) {
       const attrib = this.positionAttrib;
 
-      attributes['a_Position'] = this._getBufferAttrib(attrib);
+      attributes['aPos'] = this._getBufferAttrib(attrib);
     } else {
       throw new Error('Position attribute missing');
     }
@@ -854,7 +854,7 @@ class GeometryProxy {
       const attrib = this.normalAttrib;
 
       if (attrib !== undefined) {
-        attributes['a_Normal'] = this._getBufferAttrib(attrib);
+        attributes['aNormal'] = this._getBufferAttrib(attrib);
       }
     }
     if (this.hasTangent) {
