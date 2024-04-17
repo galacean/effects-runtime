@@ -1,5 +1,5 @@
 import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer } from '@galacean/effects';
-import { Geometry, spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader } from '@galacean/effects';
+import { Geometry, spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader, generateGUID } from '@galacean/effects';
 import type {
   ModelMeshComponentData,
   ModelMeshPrimitiveData,
@@ -519,7 +519,9 @@ export class PPrimitive {
       const shader = new Shader(this.engine);
 
       shader.fromData({
-        id: '10000000000000000000000000000000',
+        // FIXME: check shader id
+        //id: 'pbr00000000000000000000000000000',
+        id: generateGUID(),
         dataType: 'Shader',
         vertex: this.material.vertexShaderCode,
         fragment: this.material.fragmentShaderCode,

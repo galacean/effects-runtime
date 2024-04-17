@@ -66,11 +66,11 @@ async function getCurrentScene () {
   loader.addLight({
     lightType: spec.LightType.point,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 100,
-    range: 1000,
+    intensity: 1,
+    range: -1,
     //
     name: 'test',
-    position: [0, 0, 0],
+    position: [0, 0, 100],
     rotation: [0, 0, 0],
     scale: [1, 1, 1],
     duration: duration,
