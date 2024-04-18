@@ -14,11 +14,9 @@ import {
   GLTFTools,
 } from '@vvfx/resource-detection';
 import type { Player, spec } from '@galacean/effects';
-import { generateGUID } from '@galacean/effects';
 import type { LoadSceneOptions, LoadSceneECSResult } from './protocol';
 import { LoaderECS } from './loader-ecs';
 import { Box3, Vector3, Sphere } from '../runtime/math';
-import type { ModelCameraComponentData } from '../index';
 
 export class LoaderECSEx extends LoaderECS {
   override async loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult> {

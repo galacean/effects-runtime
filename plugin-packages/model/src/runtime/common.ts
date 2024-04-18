@@ -1,11 +1,5 @@
 import { Transform as EffectsTransform, PLAYER_OPTIONS_ENV_EDITOR, spec } from '@galacean/effects';
-import {
-  Quaternion,
-  Euler,
-  Vector3,
-  Matrix4,
-  EulerOrder,
-} from './math';
+import { Quaternion, Euler, Vector3, Matrix4, EulerOrder } from './math';
 import type { BaseTransform } from '../index';
 
 /**

@@ -1,8 +1,7 @@
-import type { ModelItemLight, ModelLightOptions, ModelLightComponentData } from '../index';
+import type { ModelLightComponentData } from '../index';
 import { Vector2, Vector3 } from './math';
 import { PObjectType, PLightType } from './common';
 import { PEntity } from './object';
-import { PluginHelper } from '../utility/plugin-helper';
 import type { ModelLightComponent } from '../plugin/model-item';
 
 /**

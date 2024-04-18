@@ -1,6 +1,6 @@
 import type { spec, Mesh, Material, TextureSourceOptions, TextureConfigOptions, Engine, Renderer } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType, loadImage } from '@galacean/effects';
-import type { ModelItemSkybox, ModelSkyboxComponentData, ModelSkyboxOptions } from '../index';
+import type { ModelSkyboxComponentData, ModelSkyboxOptions } from '../index';
 import { PObjectType, PMaterialType } from './common';
 import { PEntity } from './object';
 import { PMaterialBase } from './material';

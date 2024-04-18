@@ -11,20 +11,15 @@ import { Vector3 } from '../runtime/math';
 import type { Ray, Euler, Vector2 } from '../runtime/math';
 import type {
   ModelItemBounding,
-  ModelLightContent,
-  ModelCameraContent,
   ModelMeshComponentData,
-  ModelSkyboxContent,
   ModelCameraComponentData,
   ModelSkyboxComponentData,
   ModelLightComponentData,
 } from '../index';
-import {
-  VFX_ITEM_TYPE_3D,
-} from '../index';
+import { VFX_ITEM_TYPE_3D } from '../index';
 import type { PSceneManager } from '../runtime';
 import { PCamera, PLight, PMesh, PSkybox } from '../runtime';
-import { CheckerHelper, RayIntersectsBoxWithRotation } from '../utility';
+import { RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
 
 /**
