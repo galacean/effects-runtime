@@ -597,7 +597,7 @@ export class PMaterialPBR extends PMaterialBase {
     mat.setVector4('_EmissiveFactor', emissiveFactor);
 
     this.enableShadow = false;
-    this.depthMask = false;
+    this.depthMask = true;
     const blending = mat.getInt('blending') ?? spec.MaterialBlending.opaque;
 
     this.blendMode = this.getBlendMode(blending);

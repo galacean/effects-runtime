@@ -170,9 +170,9 @@ export class BoxMesh {
       uniform mat4 _ModelMatrix;
       uniform mat4 _ViewProjectionMatrix;
       uniform vec3 _PositionList[8];
-      attribute vec3 a_Position;
+      attribute vec3 aPos;
       void main(){
-        int index = int(a_Position.x + 0.5);
+        int index = int(aPos.x + 0.5);
         vec4 pos = _ModelMatrix * vec4(_PositionList[index], 1);
         gl_Position = _ViewProjectionMatrix * pos;
       }
@@ -207,7 +207,7 @@ export class BoxMesh {
 
     return {
       attributes: {
-        a_Position: {
+        aPos: {
           type: glContext.FLOAT,
           size: 1,
           data,
