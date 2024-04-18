@@ -1,6 +1,7 @@
 import type {
-  Engine, GlobalUniforms, MaterialData, MaterialDestroyOptions, MaterialProps, MaterialStates,
+  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps, MaterialStates,
   Renderer, Texture, UndefinedAble,
+  spec,
 } from '@galacean/effects-core';
 import {
   DataType, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
@@ -520,7 +521,7 @@ export class GLMaterial extends Material {
     return clonedMaterial;
   }
 
-  override fromData (data: MaterialData): void {
+  override fromData (data: spec.MaterialData): void {
     super.fromData(data);
 
     this.uniforms = [];
@@ -550,9 +551,6 @@ export class GLMaterial extends Material {
     for (name in propertiesData.ints) {
       this.setInt(name, propertiesData.ints[name]);
     }
-    // for (name in materialData.vector2s) {
-    //   this.setVector2(name, Vector propertiesData.vector2s[name]);
-    // }
     for (name in propertiesData.vector4s) {
       const vector4Value = propertiesData.vector4s[name];
 
@@ -575,7 +573,7 @@ export class GLMaterial extends Material {
       this.shader = data.shader as unknown as Shader;
       this.shaderSource = this.shader.shaderData;
     }
-
+    this.stringTags = data.stringTags;
     this.initialized = false;
   }
 
@@ -584,12 +582,11 @@ export class GLMaterial extends Material {
    * @param sceneData
    * @returns
    */
-  override toData (): MaterialData {
+  override toData (): spec.MaterialData {
     //@ts-expect-error
     const materialData: MaterialData = this.taggedProperties;
 
     if (this.shader) {
-      //@ts-expect-error
       materialData.shader = this.shader;
     }
     materialData.floats = {};
