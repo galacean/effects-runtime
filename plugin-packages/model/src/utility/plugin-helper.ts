@@ -814,7 +814,7 @@ export class PluginHelper {
 
       jsonScene.compositions.forEach(comp => {
         comp.items.forEach(item => {
-          if (item.type === 'mesh') {
+          if (item.type === spec.ItemType.mesh) {
             const meshItem = item as spec.ModelMeshItem<'json'>;
             const primitives = meshItem.content.options.primitives;
 
@@ -843,7 +843,7 @@ export class PluginHelper {
                 }
               }
             });
-          } else if (item.type === 'skybox') {
+          } else if (item.type === spec.ItemType.skybox) {
             loadSkybox = true;
             //
             const skyboxItem = item as spec.ModelSkyboxItem<'json'>;
@@ -859,7 +859,7 @@ export class PluginHelper {
     } else {
       jsonScene.compositions.forEach(comp => {
         comp.items.forEach(item => {
-          if (item.type === 'skybox') {
+          if (item.type === spec.ItemType.skybox) {
             loadSkybox = true;
           }
         });
@@ -871,7 +871,10 @@ export class PluginHelper {
         let lightCount = 0;
 
         comp.items.forEach(item => {
-          if (item.type === 'light' || item.type === 'skybox') {
+          if (
+            item.type === spec.ItemType.light ||
+            item.type === spec.ItemType.skybox
+          ) {
             ++lightCount;
           }
         });
@@ -990,7 +993,7 @@ export class PluginHelper {
         const itemId = data.id;
         const item = composition.getEngine().jsonSceneData[itemId] as VFXItemData;
 
-        if (item.type === 'mesh') {
+        if (item.type === spec.ItemType.mesh) {
           const meshItem = item as spec.ModelMeshItem<'json'>;
           const skin = meshItem.content.options.skin;
           const primitives = meshItem.content.options.primitives;
@@ -1033,7 +1036,7 @@ export class PluginHelper {
               console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}`);
             }
           }
-        } else if (item.type === 'tree') {
+        } else if (item.type === spec.ItemType.tree) {
           const jsonItem = item as spec.ModelTreeItem<'json'>;
           const studioItem = item as spec.ModelTreeItem<'studio'>;
           const jsonAnimations = jsonItem.content.options.tree.animations;
@@ -1061,7 +1064,7 @@ export class PluginHelper {
               });
             });
           }
-        } else if (item.type === 'skybox') {
+        } else if (item.type === spec.ItemType.skybox) {
           const skybox = item as spec.ModelSkyboxItem<'json'>;
           const studioSkybox = item as spec.ModelSkyboxItem<'studio'>;
           const options = skybox.content.options;
