@@ -1292,7 +1292,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
             expect(v).to.eql(indexData[i]);
           });
 
-          expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal', 'a_Tangent', 'aUV', 'a_UV2']);
+          expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal', 'a_Tangent', 'aUV', 'aUV2']);
           const posAttrib0 = geom0.attributes['aPos'];
           expect(posAttrib0.size).to.eql(3);
           expect(posAttrib0.type).to.eql(5126);
@@ -1351,11 +1351,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           ].forEach((v, i) => {
             expect(v).closeTo(uvData0[i], 1e-5);
           });
-          const uvAttrib1 = geom0.attributes['a_UV2'];
+          const uvAttrib1 = geom0.attributes['aUV2'];
           expect(uvAttrib1.size).to.eql(2);
           expect(uvAttrib1.type).to.eql(5126);
           expect(uvAttrib1.normalize).to.eql(false);
-          const uvData1 = geom0.getAttributeData('a_UV2');
+          const uvData1 = geom0.getAttributeData('aUV2');
           expect(uvData1.length).to.eql(48630);
           [
             3.213132619857788, 30.68535041809082, -3.274282932281494, 35.702880859375, -2.6416878700256348, 30.7797794342041, 3.080014944076538,

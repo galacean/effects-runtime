@@ -1137,14 +1137,14 @@ export class PluginHelper {
       case 'NORMAL': return 'aNormal';
       case 'TANGENT': return 'a_Tangent';
       case 'TEXCOORD_0': return 'aUV';
-      case 'TEXCOORD_1': return 'a_UV2';
+      case 'TEXCOORD_1': return 'aUV2';
       case 'JOINTS_0': return 'a_Joint1';
       case 'WEIGHTS_0': return 'a_Weight1';
     }
 
     if (!name.startsWith('a_')) {
       // aPos, aNormal, a_Tangent,
-      // aUV, a_UV2, a_Joint1, a_Weight1
+      // aUV, aUV2, a_Joint1, a_Weight1
       // a_Target_XXX
       console.warn(`Unknown attribute name: ${name}`);
     }

@@ -866,7 +866,7 @@ class GeometryProxy {
     }
     this.texCoordList.forEach(val => {
       const attrib = this.texCoordAttrib(val);
-      const attribName = `a_UV${val + 1}`;
+      const attribName = `aUV${val + 1}`;
 
       attributes[attribName] = this._getBufferAttrib(attrib);
     });
