@@ -1,6 +1,4 @@
-import type { LinearValue } from '@galacean/effects-core';
 import { assertExist, decimalEqual, numberToFix } from '@galacean/effects-core';
-import { LineValue } from '@galacean/effects-specification';
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';

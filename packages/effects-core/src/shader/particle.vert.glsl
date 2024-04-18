@@ -298,6 +298,5 @@ void main() {
     gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
         #endif
 
-//        #pragma EDITOR_VERT_TRANSFORM
   }
 }

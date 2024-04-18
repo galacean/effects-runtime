@@ -128,16 +128,6 @@ float getIntegrateFromTime0(float t1, vec4 value) {
   if(type == 3.) {
     return integrateFromLineSeg(t1, value.y, value.z);
   }
-
-/*
-  if(type == 2.) {
-    float idx = floor(value.y);
-    float ilen = floor(1. / fract(value.y) + 0.5);
-    float d = integrateFromCurveFrames(t1, idx, ilen);
-    return d * value.w + value.z * t1;
-  }
-*/
-
   if(type == 4.) {
     return mix(value.y, value.z, aSeed) * t1;
   }
