@@ -1,4 +1,4 @@
-import type { EventSystem, JSONValue, SceneLoadOptions, Renderer } from '@galacean/effects-core';
+import type { EventSystem, JSONValue, SceneLoadOptions, Renderer, SceneType } from '@galacean/effects-core';
 import { AssetManager } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
@@ -64,7 +64,7 @@ export class ThreeDisplayObject extends THREE.Group {
    * @param options - 加载可选参数
    * @returns
    */
-  async loadScene (url: string | JSONValue, options: SceneLoadOptions = {}) {
+  async loadScene (url: SceneType, options: SceneLoadOptions = {}) {
     const assetManager = new AssetManager({});
     const scene = await assetManager.loadScene(url);
     const composition = new ThreeComposition({

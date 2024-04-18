@@ -7,6 +7,49 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.3.0
+
+`2024-04-16`
+
+- Feat: 陀螺仪支持元素的旋转角度变化。[#259](https://github.com/galacean/effects-runtime/pull/259) @RGCHN
+- Feat: video template。[#224](https://github.com/galacean/effects-runtime/pull/224) @Sruimeng
+
+## 1.2.6
+
+`2024-04-12`
+
+- Fix: 修复更新顺序导致的图层大小继承问题。[#256](https://github.com/galacean/effects-runtime/pull/256) @RGCHN
+
+## 1.2.5
+
+`2024-04-09`
+
+- Fix: 修复 reusable 时消息元素结束无法触发的问题。[#247](https://github.com/galacean/effects-runtime/pull/247) @RGCHN
+
+## 1.2.4
+
+`2024-04-08`
+
+- Fix: 修复 assetManager 参数未隔离的问题。[#242](https://github.com/galacean/effects-runtime/pull/242) @RGCHN
+- Fix: 修复 fonts 和 bins 文件路径问题。[#226](https://github.com/galacean/effects-runtime/pull/226) @RGCHN
+- Fix: 修复像素和世界坐标转换错误。[#233](https://github.com/galacean/effects-runtime/pull/233) @RGCHN
+- Fix: miniprogram canvas type. [#230](https://github.com/galacean/effects-runtime/pull/230) @Sruimeng
+
+## 1.2.3
+
+`2024-03-22`
+
+- Fix: 兼容数据模板文本修改方式。[#214](https://github.com/galacean/effects-runtime/pull/214) @Sruimeng
+
+## 1.2.2
+
+`2024-03-15`
+
+- Fix: 修复 `loadScene` 的类型推断问题。[#206](https://github.com/galacean/effects-runtime/pull/206) @RGCHN
+- Fix: 修复 spine 动作切换闪烁问题。[#200](https://github.com/galacean/effects-runtime/pull/200) @RGCHN
+- Fix: text line height bug with `setFontSize`. [#199](https://github.com/galacean/effects-runtime/pull/199) @Sruimeng
+- Test: fix memory cases. [#190](https://github.com/galacean/effects-runtime/pull/190) @liuxi150
+
 ## 1.2.1
 
 `2024-03-01`

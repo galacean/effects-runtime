@@ -6,6 +6,50 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+## 1.3.0
+
+`2024-04-16`
+
+- Feat: Added gyroscope support for changing the rotation angle of elements. [#259](https://github.com/galacean/effects-runtime/pull/259) @RGCHN
+- Feat: video template。[#224](https://github.com/galacean/effects-runtime/pull/224) @Sruimeng
+
+## 1.2.6
+
+`2024-04-12`
+
+- Fix: Resolved an issue with layer size inheritance caused by the update order. [#256](https://github.com/galacean/effects-runtime/pull/256) @RGCHN
+
+## 1.2.5
+
+`2024-04-09`
+
+- Fix: Fixed the issue where the message element did not trigger the end event when reused. [#247](https://github.com/galacean/effects-runtime/pull/247) @RGCHN
+
+## 1.2.4
+
+`2024-04-08`
+
+- Fix: Fixed the issue of unisolated assetManager parameters.[#242](https://github.com/galacean/effects-runtime/pull/242) @RGCHN
+- Fix: Fixed the file path issue with fonts and bins.
+[#226](https://github.com/galacean/effects-runtime/pull/226) @RGCHN
+- Fix: Fixed the error in pixel to world coordinate conversion. [#233](https://github.com/galacean/effects-runtime/pull/233) @RGCHN
+- Fix: miniprogram canvas type. [#230](https://github.com/galacean/effects-runtime/pull/230) @Sruimeng
+
+## 1.2.3
+
+`2024-03-22`
+
+- Fix: Compatibility with data template text modification method. [#214](https://github.com/galacean/effects-runtime/pull/214) @Sruimeng
+
+## 1.2.2
+
+`2024-03-15`
+
+- Fix: Fixed the type inference issue in `loadScene`. [#206](https://github.com/galacean/effects-runtime/pull/206) @RGCHN
+- Fix: Fixed the flickering issue when switching spine animations. [#200](https://github.com/galacean/effects-runtime/pull/200) @RGCHN
+- Fix: Text line height bug with setFontSize. [#199](https://github.com/galacean/effects-runtime/pull/199) @Sruimeng
+- Test: Fix memory cases. [#190](https://github.com/galacean/effects-runtime/pull/190) @liuxi150
+
 ## 1.2.1
 
 `2024-03-01`
