@@ -11,6 +11,8 @@ import { RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
 import type { ShaderWithSource } from './shader';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 
 // Bloom 阈值 Pass
 export class BloomThresholdPass extends RenderPass {
@@ -262,7 +264,12 @@ export class ToneMappingPass extends RenderPass {
       depthAction: TextureStoreAction.clear,
       stencilAction: TextureStoreAction.clear,
     });
-    const { bloomIntensity, brightness, saturation, contrast, useBloom, useToneMapping } = renderer.renderingData.currentFrame.globalVolume;
+    const {
+      useBloom, bloomIntensity,
+      brightness, saturation, contrast,
+      useToneMapping,
+      vignetteIntensity, vignetteSmoothness, vignetteRoundness,
+    } = renderer.renderingData.currentFrame.globalVolume;
 
     this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
     this.screenMesh.material.setFloat('_Brightness', brightness);
@@ -273,6 +280,13 @@ export class ToneMappingPass extends RenderPass {
     if (useBloom) {
       this.screenMesh.material.setTexture('_GaussianTex', this.mainTexture);
       this.screenMesh.material.setFloat('_BloomIntensity', bloomIntensity);
+    }
+    if (vignetteIntensity > 0) {
+      this.screenMesh.material.setFloat('_VignetteIntensity', vignetteIntensity);
+      this.screenMesh.material.setFloat('_VignetteSmoothness', vignetteSmoothness);
+      this.screenMesh.material.setFloat('_VignetteRoundness', vignetteRoundness);
+      this.screenMesh.material.setVector2('_VignetteCenter', new Vector2(0.5, 0.5));
+      this.screenMesh.material.setVector3('_VignetteColor', new Vector3(0.0, 0.0, 0.0));
     }
     this.screenMesh.material.setInt('_UseToneMapping', useToneMapping);
     renderer.renderMeshes([this.screenMesh]);

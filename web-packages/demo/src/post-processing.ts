@@ -82,6 +82,7 @@ function setDatGUI (composition: Composition) {
   const ParticleFolder = gui.addFolder('Particle');
   const BloomFolder = gui.addFolder('Bloom');
   const ToneMappingFlolder = gui.addFolder('ToneMapping');
+  const VignetteFolder = gui.addFolder('Vignette');
   const ColorAdjustmentsFolder = gui.addFolder('ColorAdjustments');
 
   const globalVolume = composition.renderFrame.globalVolume;
@@ -94,6 +95,10 @@ function setDatGUI (composition: Composition) {
   BloomFolder.add(globalVolume, 'threshold', 0, 40).step(0.1);
   BloomFolder.add(globalVolume, 'bloomIntensity', 0, 10);
   BloomFolder.open();
+
+  VignetteFolder.add(globalVolume, 'vignetteIntensity', 0, 2);
+  VignetteFolder.add(globalVolume, 'vignetteSmoothness', 0, 2);
+  VignetteFolder.add(globalVolume, 'vignetteRoundness', 0, 1.5);
 
   ColorAdjustmentsFolder.add(globalVolume, 'brightness', -5, 5).step(0.1);
   ColorAdjustmentsFolder.add(globalVolume, 'saturation', 0, 2);

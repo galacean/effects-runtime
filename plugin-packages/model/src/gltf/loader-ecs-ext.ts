@@ -190,7 +190,6 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
         },
       },
       components: [
-        // @ts-expect-error
         { id: cameraComponent.id },
       ],
       dataType: 'camera',
