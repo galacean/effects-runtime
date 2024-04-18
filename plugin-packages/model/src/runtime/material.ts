@@ -1,19 +1,8 @@
 import type { Texture } from '@galacean/effects';
-import { Material } from '@galacean/effects';
-import { spec, glContext } from '@galacean/effects';
-import type {
-  ModelMaterialOptions,
-  ModelMaterialUnlitOptions,
-  ModelMaterialPBROptions,
-} from '../index';
+import { spec, glContext, Material } from '@galacean/effects';
+import type { ModelMaterialOptions, ModelMaterialUnlitOptions, ModelMaterialPBROptions } from '../index';
 import { Vector3, Vector4, Matrix3 } from './math';
-import {
-  PObjectType,
-  PMaterialType,
-  PBlendMode,
-  PFaceSideMode,
-  PGlobalState,
-} from './common';
+import { PObjectType, PMaterialType, PBlendMode, PFaceSideMode, PGlobalState } from './common';
 import { PObject } from './object';
 import { PluginHelper } from '../utility/plugin-helper';
 import { PShaderManager } from './shader';
@@ -597,7 +586,7 @@ export class PMaterialPBR extends PMaterialBase {
     mat.setVector4('_EmissiveFactor', emissiveFactor);
 
     this.enableShadow = false;
-    this.depthMask = false;
+    this.depthMask = true;
     const blending = mat.getInt('blending') ?? spec.MaterialBlending.opaque;
 
     this.blendMode = this.getBlendMode(blending);

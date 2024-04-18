@@ -13,12 +13,10 @@ import {
   GLTFImageBasedLight,
   GLTFTools,
 } from '@vvfx/resource-detection';
-import type { Player } from '@galacean/effects';
-import { generateGUID, spec } from '@galacean/effects';
+import type { Player, spec } from '@galacean/effects';
 import type { LoadSceneOptions, LoadSceneECSResult } from './protocol';
 import { LoaderECS } from './loader-ecs';
 import { Box3, Vector3, Sphere } from '../runtime/math';
-import type { ModelCameraComponentData } from '../index';
 
 export class LoaderECSEx extends LoaderECS {
   override async loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult> {
@@ -138,7 +136,7 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       playAnimation: options.playAnimation,
     },
   }).then(result => {
-    const items = result.items;
+
     const sceneMin = Vector3.fromArray(result.sceneAABB.min);
     const sceneMax = Vector3.fromArray(result.sceneAABB.max);
     const sceneAABB = new Box3(sceneMin, sceneMax);
@@ -147,56 +145,20 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
     const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 1.71));
     const cameraPosition = options.camera?.position ?? position.toArray();
     const cameraRotation = options.camera?.rotation ?? [0, 0, 0];
-    const cameraItemId = generateGUID();
-    const cameraComponent: ModelCameraComponentData = {
-      id: generateGUID(),
-      item: { id: cameraItemId },
-      dataType: spec.DataType.CameraComponent,
+
+    loader.addCamera({
       near: 0.001,
       far: 5000,
       fov: 60,
       clipMode: 0,
-    };
-    const cameraItem: spec.VFXItemData = {
-      id: cameraItemId,
       name: 'extra-camera',
-      duration: duration,
-      type: 'camera',
-      pn: 0,
-      visible: true,
       endBehavior: 5,
-      transform: {
-        position: {
-          x: cameraPosition[0],
-          y: cameraPosition[0],
-          z: cameraPosition[0],
-        },
-        eulerHint: {
-          x: cameraRotation[0],
-          y: cameraRotation[0],
-          z: cameraRotation[0],
-        },
-        scale: {
-          x: 1,
-          y: 1,
-          z: 1,
-        },
-      },
+      duration: duration,
+      position: cameraPosition,
+      rotation: cameraRotation,
+    });
 
-      content: {
-        options: {
-          duration: duration,
-
-        },
-      },
-      components: [
-        // @ts-expect-error
-        { id: cameraComponent.id },
-      ],
-      dataType: 'camera',
-    };
-
-    items.push();
+    const loadResult = loader.getLoadResult();
 
     // items.push({
     //   id: 'env-light',
@@ -218,23 +180,6 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
     //   },
     // });
 
-    return {
-      'compositionId': 1,
-      'requires': [],
-      'compositions': [{
-        'name': 'composition_1',
-        'id': 1,
-        'duration': duration,
-        'endBehavior': 5,
-        'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-        'items': items,
-        'meta': { 'previewSize': [750, 1334] },
-      }],
-      'gltf': [],
-      'images': [],
-      'shapes': [],
-      'plugins': ['model'],
-      'version': '2.1',
-    };
+    return loadResult.jsonScene;
   });
 }

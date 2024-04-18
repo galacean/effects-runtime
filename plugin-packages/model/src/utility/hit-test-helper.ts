@@ -3,7 +3,6 @@ import type { Ray, Matrix4 } from '../runtime/math';
 import { Vector3 } from '../runtime/math';
 import type { ModelItemBounding, ModelItemBoundingBox } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../plugin/const';
-import { PObjectType } from '../runtime/common';
 import { ModelMeshComponent } from '../plugin/model-item';
 
 // 射线与带旋转的包围盒求交
