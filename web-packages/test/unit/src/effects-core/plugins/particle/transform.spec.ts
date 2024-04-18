@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Player, ParticleVFXItem, ParticleSystem, PathSegments } from '@galacean/effects';
+import { Player, ParticleVFXItem, ParticleSystem, BezierCurve } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
@@ -190,7 +190,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
     expect(sanitizeNumbers(rotation)).to.eql([0, 0, -180]);
     expect(position.toArray()).to.eql([0, 0, 0]);
-    expect(path).to.be.an.instanceof(PathSegments);
+    expect(path).to.be.an.instanceof(BezierCurve);
     expect(path.keys).to.eql([[0, 0, 1, 1], [1, 1, 1, 1]]);
     expect(path.values).to.eql([[0, -1.5, -1], [0.2, 1.2, 0]]);
     expect(ps.particleMesh.linearVelOverLifetime.asMovement).to.be.true;

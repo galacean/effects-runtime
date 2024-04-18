@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Player, BezierSegments, CameraController, CurveValue, PathSegments, spec, math } from '@galacean/effects';
+import { Player, BezierSegments, CameraController, CurveValue, spec, math, BezierCurve } from '@galacean/effects';
 
 const { Vector3 } = math;
 const { expect } = chai;
@@ -223,7 +223,7 @@ describe('camera item', () => {
 
     player.gotoAndStop(2.5);
     const pos1 = comp1.camera.position;
-    const val = new PathSegments([[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [1, 1, 1]]]).getValue(0.5);
+    const val = new BezierCurve([[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [1, 1, 1]]]).getValue(0.5);
 
     expect(pos1.x).to.eql(val[0], 'linear path');
     expect(pos1.y).to.eql(val[1], 'linear path');

@@ -402,57 +402,57 @@ export class LineSegments extends ValueGetter<number> {
   }
 }
 
-export class PathSegments extends ValueGetter<number[]> {
-  keys: number[][];
-  values: number[][];
-
-  override onCreate (props: number[][][]) {
-    this.keys = props[0];
-    this.values = props[1];
-  }
-
-  override getValue (time: number) {
-    const keys = this.keys;
-    const values = this.values;
-
-    for (let i = 0; i < keys.length - 1; i++) {
-      const k0 = keys[i];
-      const k1 = keys[i + 1];
-
-      if (k0[0] <= time && k1[0] >= time) {
-        const dis = k1[1] - k0[1];
-        let dt;
-
-        if (dis === 0) {
-          dt = (time - k0[0]) / (k1[0] - k0[0]);
-        } else {
-          const val = curveValueEvaluate(time, k0, k1);
-
-          dt = (val - k0[1]) / dis;
-        }
-
-        return this.calculateVec(i, dt);
-      }
-    }
-    if (time <= keys[0][0]) {
-      return values[0].slice();
-    }
-
-    return values[values.length - 1].slice();
-  }
-
-  calculateVec (i: number, dt: number) {
-    const vec0 = this.values[i];
-    const vec1 = this.values[i + 1];
-    const ret = [0, 0, 0];
-
-    for (let j = 0; j < vec0.length; j++) {
-      ret[j] = vec0[j] * (1 - dt) + vec1[j] * dt;
-    }
-
-    return ret;
-  }
-}
+// export class PathSegments extends ValueGetter<number[]> {
+//   keys: number[][];
+//   values: number[][];
+//
+//   override onCreate (props: number[][][]) {
+//     this.keys = props[0];
+//     this.values = props[1];
+//   }
+//
+//   override getValue (time: number) {
+//     const keys = this.keys;
+//     const values = this.values;
+//
+//     for (let i = 0; i < keys.length - 1; i++) {
+//       const k0 = keys[i];
+//       const k1 = keys[i + 1];
+//
+//       if (k0[0] <= time && k1[0] >= time) {
+//         const dis = k1[1] - k0[1];
+//         let dt;
+//
+//         if (dis === 0) {
+//           dt = (time - k0[0]) / (k1[0] - k0[0]);
+//         } else {
+//           const val = curveValueEvaluate(time, k0, k1);
+//
+//           dt = (val - k0[1]) / dis;
+//         }
+//
+//         return this.calculateVec(i, dt);
+//       }
+//     }
+//     if (time <= keys[0][0]) {
+//       return values[0].slice();
+//     }
+//
+//     return values[values.length - 1].slice();
+//   }
+//
+//   calculateVec (i: number, dt: number) {
+//     const vec0 = this.values[i];
+//     const vec1 = this.values[i + 1];
+//     const ret = [0, 0, 0];
+//
+//     for (let j = 0; j < vec0.length; j++) {
+//       ret[j] = vec0[j] * (1 - dt) + vec1[j] * dt;
+//     }
+//
+//     return ret;
+//   }
+// }
 
 export class BezierCurve extends ValueGetter<number> {
   curveMap: Record<string, {
@@ -741,9 +741,9 @@ const map: Record<any, any> = {
   [spec.ValueType.GRADIENT_COLOR] (props: number[][] | Record<string, string>) {
     return new GradientValue(props);
   },
-  [spec.ValueType.LINEAR_PATH] (pros: number[][][]) {
-    return new PathSegments(pros);
-  },
+  // [spec.ValueType.LINEAR_PATH] (pros: number[][][]) {
+  //   return new PathSegments(pros);
+  // },
   [spec.ValueType.BEZIER_CURVE] (props: number[][][]) {
     if (props.length === 1) {
       return new StaticValue(props[0][1][1]);
