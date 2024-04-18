@@ -1,10 +1,6 @@
 import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer, Geometry } from '@galacean/effects';
 import { spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader, generateGUID } from '@galacean/effects';
-import type {
-  ModelMeshComponentData,
-  ModelMeshPrimitiveData,
-  ModelItemBounding,
-} from '../index';
+import type { ModelMeshComponentData, ModelMeshPrimitiveData, ModelItemBounding } from '../index';
 import { PObjectType, PMaterialType, PGlobalState, PFaceSideMode } from './common';
 import { PEntity } from './object';
 import type { PMaterial } from './material';

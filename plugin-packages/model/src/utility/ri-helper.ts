@@ -1,11 +1,5 @@
 import type { GeometryProps, Engine } from '@galacean/effects';
-import {
-  glContext,
-  Geometry,
-  Material,
-  Mesh,
-  RenderPassAttachmentStorageType,
-} from '@galacean/effects';
+import { glContext, Geometry, Material, Mesh, RenderPassAttachmentStorageType } from '@galacean/effects';
 import type { Matrix4 } from '../runtime/math';
 import { Vector2, Vector3 } from '../runtime/math';
 
