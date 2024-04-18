@@ -1,4 +1,4 @@
-import type { Texture, Engine, math } from '@galacean/effects';
+import type { Texture, Engine } from '@galacean/effects';
 import { spec, generateGUID } from '@galacean/effects';
 import type {
   LoaderOptions,
@@ -30,7 +30,7 @@ import type {
 } from '@vvfx/resource-detection';
 import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 
-type Box3 = math.Box3;
+// type Box3 = math.Box3;
 
 export class LoaderECS {
   private sceneOptions: LoadSceneOptions;

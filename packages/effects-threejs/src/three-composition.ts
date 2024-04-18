@@ -90,7 +90,7 @@ export class ThreeComposition extends Composition {
    * 更新 video texture 数据
    */
   override updateVideo () {
-    this.textures.map(tex => (tex as ThreeTexture).startVideo());
+    void this.textures.map(tex => (tex as ThreeTexture).startVideo());
   }
 
   override prepareRender (): void {

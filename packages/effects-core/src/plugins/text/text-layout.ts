@@ -60,15 +60,15 @@ export class TextLayout {
     const offset = (style.fontSize + style.outlineWidth) * style.fontScale ;
 
     switch (this.textBaseline) {
-      case 0:
+      case spec.TextBaseline.top:
         offsetY = offset;
 
         break;
-      case 1:
+      case spec.TextBaseline.middle:
         offsetY = (this.height + offset) / 2; // fonSize;
 
         break;
-      case 2:
+      case spec.TextBaseline.bottom:
         offsetY = this.height - offset / 2;
 
         break;
@@ -83,15 +83,15 @@ export class TextLayout {
     let offsetX = 0;
 
     switch (this.textAlign) {
-      case 0:
+      case spec.TextAlignment.left:
         offsetX = style.outlineWidth * style.fontScale;
 
         break;
-      case 1:
+      case spec.TextAlignment.middle:
         offsetX = (this.width * style.fontScale - maxWidth) / 2;
 
         break;
-      case 2:
+      case spec.TextAlignment.right:
 
         offsetX = (this.width * style.fontScale - maxWidth) ;
 

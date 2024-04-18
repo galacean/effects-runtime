@@ -1,7 +1,6 @@
 import { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { vec2, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
-import { DataType } from '../../asset-loader';
 import { RendererComponent } from '../../components/renderer-component';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
@@ -129,7 +128,7 @@ export class SpriteColorPlayable extends Playable {
   }
 }
 
-@effectsClass(DataType.SpriteComponent)
+@effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends RendererComponent {
   renderer: SpriteItemRenderer;
   interaction?: { behavior: spec.InteractBehavior };

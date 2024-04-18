@@ -518,7 +518,7 @@ export class PPrimitive {
         // FIXME: check shader id
         //id: 'pbr00000000000000000000000000000',
         id: generateGUID(),
-        dataType: 'Shader',
+        dataType: spec.DataType.Shader,
         vertex: this.material.vertexShaderCode,
         fragment: this.material.fragmentShaderCode,
         // @ts-expect-error
@@ -605,16 +605,16 @@ export class PPrimitive {
     }
 
     if (this.material.materialType !== PMaterialType.unlit) {
-      let hasLight = false;
+      // let hasLight = false;
 
       if (lightCount > 0 && this.geometry.hasNormals()) {
-        hasLight = true;
+        // hasLight = true;
         featureList.push('USE_PUNCTUAL 1');
         featureList.push(`LIGHT_COUNT ${lightCount}`);
       }
 
       if (skybox !== undefined && skybox.available) {
-        hasLight = true;
+        // hasLight = true;
         featureList.push('USE_IBL 1');
         featureList.push('USE_TEX_LOD 1');
         if (skybox.hasDiffuseImage) {

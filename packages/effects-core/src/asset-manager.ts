@@ -396,6 +396,7 @@ export class AssetManager implements Disposable {
           //@ts-expect-error
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
           logger.warn(`Invalid fonts source: ${JSON.stringify(url)}`);
         }
@@ -431,7 +432,7 @@ export class AssetManager implements Disposable {
         const background = isTemplateV2 ? template.background : undefined;
 
         if (isTemplateV2 && background) {
-          const url = getBackgroundImage(template, variables)!;
+          const url = getBackgroundImage(template, variables);
           const isVideo = background.type === spec.BackgroundType.video;
           // 根据背景类型确定加载函数
           const loadFn = background && isVideo ? loadVideo : loadImage;
@@ -456,6 +457,7 @@ export class AssetManager implements Disposable {
                 img.oriY === -1,
               );
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}.`);
           }
@@ -471,6 +473,7 @@ export class AssetManager implements Disposable {
               this.options,
               img.oriY === -1,
             );
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
             throw new Error(`Failed to load. Check the template, URL: ${imageURL}.`);
           }

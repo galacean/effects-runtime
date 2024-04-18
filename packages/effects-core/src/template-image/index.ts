@@ -256,7 +256,8 @@ export async function loadMedia (url: string | string[], loadFn: (url: string) =
   if (Array.isArray(url)) {
     try {
       return await loadFn(url[0]);
-    } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e: any) {
       return await loadFn(url[1]);
     }
   }

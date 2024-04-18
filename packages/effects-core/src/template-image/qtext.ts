@@ -581,7 +581,7 @@ class QText {
   }
 
   private drawBorders (ctx: CanvasRenderingContext2D) {
-    const padding = this.padding;
+    // const padding = this.padding;
     const strokeWidth = this.borderWidth;
 
     ctx.strokeStyle = this.borderColor;

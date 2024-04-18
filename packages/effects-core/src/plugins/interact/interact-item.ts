@@ -11,13 +11,12 @@ import { RendererComponent } from '../../components';
 import type { DragEventType } from './interact-vfx-item';
 import type { Renderer } from '../../render';
 import { effectsClass } from '../../decorators';
-import { DataType } from '../../asset-loader';
 
 /**
  * @since 2.0.0
  * @internal
  */
-@effectsClass(DataType.InteractComponent)
+@effectsClass(spec.DataType.InteractComponent)
 export class InteractComponent extends RendererComponent {
   clickable: boolean;
   dragEvent: DragEventType | null;

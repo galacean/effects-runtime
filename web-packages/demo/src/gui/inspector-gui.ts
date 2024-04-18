@@ -1,5 +1,5 @@
-import type { EffectComponentData, EffectsObject, EffectsPackageData, Engine, Material, SceneData, ShaderData, VFXItem, VFXItemContent } from '@galacean/effects';
-import { DataType, EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, TimelineComponent, generateGUID, glContext, loadImage } from '@galacean/effects';
+import type { EffectComponentData, EffectsObject, Engine, Material, SceneData, VFXItem, VFXItemContent } from '@galacean/effects';
+import { spec, EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, TimelineComponent, generateGUID, glContext, loadImage } from '@galacean/effects';
 
 export class InspectorGui {
   gui: any;
@@ -70,7 +70,7 @@ export class InspectorGui {
         if (component instanceof EffectComponent) {
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: EffectsPackageData) => {
+              await selectJsonFile((data: spec.EffectsPackageData) => {
                 for (const effectsObjectData of data.exportObjects) {
                   this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(RendererComponent);
@@ -89,7 +89,7 @@ export class InspectorGui {
 
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: EffectsPackageData) => {
+              await selectJsonFile((data: spec.EffectsPackageData) => {
                 for (const effectsObjectData of data.exportObjects) {
                   this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(EffectComponent);
@@ -160,7 +160,7 @@ export class InspectorGui {
 
   private parseMaterialProperties (material: Material, gui: any, serializeObject: SerializedObject) {
     const serializedData = serializeObject.serializedData;
-    const shaderProperties = (material.shaderSource as ShaderData).properties;
+    const shaderProperties = (material.shaderSource as spec.ShaderData).properties;
 
     if (!shaderProperties) {
       return;
@@ -216,7 +216,7 @@ export class InspectorGui {
 
             reader.onload = async function (e) {
               const result = e.target?.result;
-              const textureData = { id: assetUuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+              const textureData = { id: assetUuid, source: result, dataType: spec.DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
 
               serializeObject.engine.jsonSceneData[textureData.id] = textureData;
             };
