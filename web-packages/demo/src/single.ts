@@ -1,8 +1,12 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-model';
+import '@galacean/effects-plugin-orientation-transformer';
+import inspireList from './assets/inspire-list';
 
-const json = 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416052725759/mars-preview.json'; //粒子
+const json = inspireList.blackCard.url;
+
+'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416113301879/mars-preview.json';
 // 'https://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416032119032/mars-preview.json';
 // 'http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416031410602/mars-preview.json';
 // ' http://mmtcdp.stable.alipay.net/graph_jupitercyc/uri/file/as/20240416113301879/mars-preview.json';
@@ -26,8 +30,8 @@ function createPlayer () {
     interactive: true,
     onPlayableUpdate: ({ player, playing }) => {
     },
-    // renderFramework: 'webgl',
-    env: 'editor',
+    renderFramework: 'webgl',
+    // env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {
       console.info('onPausedByItem', data);

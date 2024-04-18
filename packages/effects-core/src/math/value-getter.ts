@@ -587,7 +587,8 @@ export class BezierCurve extends ValueGetter<number> {
 
     meta.curves.push(this);
     meta.index = index + count;
-    meta.max = Math.max(meta.max);
+    // 兼容 WebGL1
+    meta.max = Math.max(meta.max, count);
     meta.curveCount += count;
 
     return new Float32Array([5, index + 1 / count, index, count]);
@@ -620,10 +621,15 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     const [keyframes, points, controlPoints] = props;
 
     this.curveSegments = {};
+    if (!controlPoints.length) {
+      return;
+    }
+
     for (let i = 0; i < keyframes.length - 1; i++) {
       const leftKeyframe = keyframes[i];
       const rightKeyframe = keyframes[i + 1];
       const ps1 = new Vector3(points[i][0], points[i][1], points[i][2]), ps2 = new Vector3(points[i + 1][0], points[i + 1][1], points[i + 1][2]);
+
       const cp1 = new Vector3(controlPoints[2 * i][0], controlPoints[2 * i][1], controlPoints[2 * i][2]), cp2 = new Vector3(controlPoints[2 * i + 1][0], controlPoints[2 * i + 1][1], controlPoints[2 * i + 1][2]);
 
       const { points: ps, curve: easingCurve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
@@ -647,6 +653,10 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     const t = numberToFix(time, 5);
     let perc = 0, point = new Vector3();
     const keyTimeData = Object.keys(this.curveSegments);
+
+    if (!keyTimeData.length) {
+      return point;
+    }
     const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
     const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
 

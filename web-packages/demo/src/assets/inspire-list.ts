@@ -358,6 +358,7 @@ export default {
     name: '圆形弹窗',
     pass: true,
   },
+  // 不兼容 透明度有random值 不在规范
   plain: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RJGLUHXYUYVU/751328825-319d7.json',
     name: '平淡弹窗',
@@ -457,6 +458,7 @@ export default {
   },
 
   // 故事
+  // 透明度存在random值 不兼容 无法重新发布
   fiveinone: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WATVNRNSNIMG/-225780559-f11a1.json',
     name: '五福首页2022——五合一',
