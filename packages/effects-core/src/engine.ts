@@ -107,18 +107,20 @@ export class Engine implements Disposable {
     const jsonScene = scene.jsonScene;
 
     for (const itemData of jsonScene.items) {
+      const itemType = itemData.type;
+
       if (!(
-        itemData.type === 'ECS' ||
-        itemData.type === spec.ItemType.sprite ||
-        itemData.type === spec.ItemType.particle ||
-        itemData.type === spec.ItemType.mesh ||
-        itemData.type === spec.ItemType.skybox ||
-        itemData.type === spec.ItemType.light ||
-        itemData.type === 'camera' ||
-        itemData.type === spec.ItemType.tree ||
-        itemData.type === spec.ItemType.interact ||
-        itemData.type === spec.ItemType.camera)
-      ) {
+        itemType === 'ECS' ||
+        itemType === 'camera' ||
+        itemType === spec.ItemType.sprite ||
+        itemType === spec.ItemType.particle ||
+        itemType === spec.ItemType.mesh ||
+        itemType === spec.ItemType.skybox ||
+        itemType === spec.ItemType.light ||
+        itemType === spec.ItemType.tree ||
+        itemType === spec.ItemType.interact ||
+        itemType === spec.ItemType.camera
+      )) {
         continue;
       }
       if (this.database) {

@@ -113,8 +113,10 @@ export class CompositionSourceManager implements Disposable {
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
 
-        if (itemProps.type === spec.ItemType.sprite ||
-          itemProps.type === spec.ItemType.particle) {
+        if (
+          itemProps.type === spec.ItemType.sprite ||
+          itemProps.type === spec.ItemType.particle
+        ) {
           for (const componentPath of itemProps.components) {
             const componentData = componentMap[componentPath.id];
 
@@ -219,15 +221,18 @@ export class CompositionSourceManager implements Disposable {
    * 处理蒙版和遮挡关系写入 stencil 的 ref 值
    */
   private processMask (renderer: Record<string, number>) {
-    if (renderer.maskMode === spec.MaskMode.NONE) {
+    const maskMode: spec.MaskMode = renderer.maskMode;
+
+    if (maskMode === spec.MaskMode.NONE) {
       return;
     }
     if (!renderer.mask) {
-      const maskMode: spec.MaskMode = renderer.maskMode;
-
       if (maskMode === spec.MaskMode.MASK) {
         renderer.mask = ++this.mask;
-      } else if (maskMode === spec.MaskMode.OBSCURED || maskMode === spec.MaskMode.REVERSE_OBSCURED) {
+      } else if (
+        maskMode === spec.MaskMode.OBSCURED ||
+        maskMode === spec.MaskMode.REVERSE_OBSCURED
+      ) {
         renderer.mask = this.mask;
       }
     }
