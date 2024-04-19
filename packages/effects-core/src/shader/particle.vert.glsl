@@ -7,7 +7,7 @@ precision mediump float;
 #import "./value.glsl";
 #import "./integrate.glsl";
 
-const float d2r = 3.141592653589793 / 180.;
+const float d2r = 3.141592653589793f / 180.f;
 
 in vec3 aPos;
 in vec4 aOffset;//texcoord.xy time:start duration
@@ -106,7 +106,7 @@ uniform vec4 uEditorTransform; //sx sy dx dy
 #endif
 
 vec3 calOrbitalMov(float _life, float _dur) {
-  vec3 orb = vec3(0.0);
+  vec3 orb = vec3(0.0f);
     #ifdef AS_ORBITAL_MOVEMENT
     #define FUNC(a) getValueFromTime(_life,a)
     #else
@@ -129,7 +129,7 @@ vec3 calOrbitalMov(float _life, float _dur) {
 }
 
 vec3 calLinearMov(float _life, float _dur) {
-  vec3 mov = vec3(0.0);
+  vec3 mov = vec3(0.0f);
     #ifdef AS_LINEAR_MOVEMENT
     #define FUNC(a) getValueFromTime(_life,a)
     #else
@@ -154,38 +154,38 @@ vec3 calLinearMov(float _life, float _dur) {
 mat3 mat3FromRotation(vec3 rotation) {
   vec3 sinR = sin(rotation * d2r);
   vec3 cosR = cos(rotation * d2r);
-  return mat3(cosR.z, -sinR.z, 0., sinR.z, cosR.z, 0., 0., 0., 1.) *
-    mat3(cosR.y, 0., sinR.y, 0., 1., 0., -sinR.y, 0, cosR.y) *
-    mat3(1., 0., 0., 0, cosR.x, -sinR.x, 0., sinR.x, cosR.x);
+  return mat3(cosR.z, -sinR.z, 0.f, sinR.z, cosR.z, 0.f, 0.f, 0.f, 1.f) *
+    mat3(cosR.y, 0.f, sinR.y, 0.f, 1.f, 0.f, -sinR.y, 0, cosR.y) *
+    mat3(1.f, 0.f, 0.f, 0, cosR.x, -sinR.x, 0.f, sinR.x, cosR.x);
 }
 
     #ifdef USE_SPRITE
 
 UVDetail getSpriteUV(vec2 uv, float lifeTime) {
-  float t = fract(clamp((lifeTime - aSprite.x) / aSprite.y, 0.0, 1.) * aSprite.z);
+  float t = fract(clamp((lifeTime - aSprite.x) / aSprite.y, 0.0f, 1.f) * aSprite.z);
   float frame = uSprite.z * t;
-  float frameIndex = max(ceil(frame) - 1., 0.);
-  float row = floor((frameIndex + 0.1) / uSprite.x);
+  float frameIndex = max(ceil(frame) - 1.f, 0.f);
+  float row = floor((frameIndex + 0.1f) / uSprite.x);
   float col = frameIndex - row * uSprite.x;
 
   vec2 retUV = (vec2(col, row) + uv) / uSprite.xy;
   UVDetail ret;
-  if(uSprite.w > 0.) {
+  if(uSprite.w > 0.f) {
     float blend = frame - frameIndex;
-    float frameIndex1 = min(ceil(frame), uSprite.z - 1.);
-    float row1 = floor((frameIndex1 + 0.1) / uSprite.x);
+    float frameIndex1 = min(ceil(frame), uSprite.z - 1.f);
+    float row1 = floor((frameIndex1 + 0.1f) / uSprite.x);
     float col1 = frameIndex1 - row1 * uSprite.x;
     vec2 coord = (vec2(col1, row1) + uv) / uSprite.xy - retUV;
-    ret.uv1 = vec3(coord.x, 1. - coord.y, blend);
+    ret.uv1 = vec3(coord.x, 1.f - coord.y, blend);
   }
-  ret.uv0 = vec2(retUV.x, 1. - retUV.y);
+  ret.uv0 = vec2(retUV.x, 1.f - retUV.y);
   return ret;
 }
     #endif
 
 vec3 calculateTranslation(vec3 vel, float t0, float t1, float dur) {
   float dt = t1 - t0;
-  float d = getIntegrateByTimeFromTime(0., dt, uGravityModifierValue);
+  float d = getIntegrateByTimeFromTime(0.f, dt, uGravityModifierValue);
   vec3 acc = uAcceleration.xyz * d;
     #ifdef SPEED_OVER_LIFETIME
   return vel * getIntegrateFromTime0(dt / dur, uSpeedLifetimeValue) * dur + acc;
@@ -213,8 +213,8 @@ mat3 transformFromRotation(vec3 rot, float _life, float _dur) {
   rotation.z += FUNC1(uRZByLifeTimeValue);
     #endif
 
-  if(dot(rotation, rotation) == 0.0) {
-    return mat3(1.0);
+  if(dot(rotation, rotation) == 0.0f) {
+    return mat3(1.0f);
   }
         #undef FUNC1
   return mat3FromRotation(rotation);
@@ -223,10 +223,10 @@ mat3 transformFromRotation(vec3 rot, float _life, float _dur) {
 void main() {
   float time = uParams.x - aOffset.z;
   float dur = aOffset.w; // 粒子生命周期
-  if(time < 0. || time > dur) {
-    gl_Position = vec4(-3., -3., -3., 1.);
+  if(time < 0.f || time > dur) {
+    gl_Position = vec4(-3.f, -3.f, -3.f, 1.f);
   } else {
-    float life = clamp(time / dur, 0.0, 1.0);
+    float life = clamp(time / dur, 0.0f, 1.0f);
     vLife = life;
 
         #ifdef USE_SPRITE
@@ -241,13 +241,13 @@ void main() {
 
         #ifdef COLOR_OVER_LIFETIME
         #ifdef ENABLE_VERTEX_TEXTURE
-    vColor *= texture2D(uColorOverLifetime, vec2(life, 0.));
+    vColor *= texture2D(uColorOverLifetime, vec2(life, 0.f));
         #endif
         #endif
 
-    vColor.a *= clamp(getValueFromTime(life, uOpacityOverLifetimeValue), 0., 1.);
+    vColor.a *= clamp(getValueFromTime(life, uOpacityOverLifetimeValue), 0.f, 1.f);
 
-    vec3 size = vec3(vec2(getValueFromTime(life, uSizeByLifetimeValue)), 1.0);
+    vec3 size = vec3(vec2(getValueFromTime(life, uSizeByLifetimeValue)), 1.0f);
 
         #ifdef SIZE_Y_BY_LIFE
     size.y = getValueFromTime(life, uSizeYByLifetimeValue);
@@ -267,9 +267,9 @@ void main() {
 
         #ifdef FINAL_TARGET
     float force = getValueFromTime(life, uForceCurve);
-    vec4 pos = vec4(mix(_pos, uFinalTarget, force), 1.);
+    vec4 pos = vec4(mix(_pos, uFinalTarget, force), 1.f);
         #else
-    vec4 pos = vec4(_pos, 1.0);
+    vec4 pos = vec4(_pos, 1.0f);
         #endif
 
         #if RENDER_MODE == 1
@@ -288,7 +288,7 @@ void main() {
     gl_Position = effects_MatrixVP * pos;
     vSeed = aSeed;
 
-    gl_PointSize = 6.0;
+    gl_PointSize = 6.0f;
 
         #ifdef USE_FILTER
     filterMain(life);

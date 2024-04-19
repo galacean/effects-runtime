@@ -1,5 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import type { Ray, Vector3 } from '@galacean/effects-math/es/core/index';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Composition } from '../../composition';
 import { assertExist, DestroyOptions } from '../../utils';
 import { VFXItem } from '../../vfx-item';

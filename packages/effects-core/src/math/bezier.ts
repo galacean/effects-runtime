@@ -1,11 +1,9 @@
-import type { LinearValue } from '@galacean/effects-core';
-import { assertExist, decimalEqual, numberToFix } from '@galacean/effects-core';
-import { LineValue } from '@galacean/effects-specification';
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { BezierKeyframeValue } from '@galacean/effects-specification/dist/src/numberExpression';
 import { keyframeInfo } from './keyframe-info';
+import { decimalEqual, numberToFix } from './utils';
+import { assertExist } from '../utils';
 
 export class BezierLengthData {
   constructor (
@@ -60,7 +58,7 @@ function newtonRaphsonIterate (aX: number, aGuessT: number, mX1: number, mX2: nu
   for (let i = 0; i < NEWTON_ITERATIONS; ++i) {
     const currentSlope = getSlope(aGuessT, mX1, mX2);
 
-    if (currentSlope === 0.0) {return aGuessT;}
+    if (currentSlope === 0.0) { return aGuessT; }
     const currentX = calcBezier(aGuessT, mX1, mX2) - aX;
 
     aGuessT -= currentX / currentSlope;
@@ -84,7 +82,7 @@ export function buildBezierData (p1: Vector3, p2: Vector3, p3: Vector3, p4: Vect
   // 使用平移后的终点、控制点作为key
   const s1 = numberToFix(p2.x - p1.x, 3) + '_' + numberToFix(p2.y - p1.y, 3) + '_' + numberToFix(p2.z - p1.z, 3);
   const s2 = numberToFix(p3.x - p1.x, 3) + '_' + numberToFix(p3.y - p1.y, 3) + '_' + numberToFix(p3.z - p1.z, 3);
-  const s3 = numberToFix(p4.x - p1.x, 3) + '_' + numberToFix(p4.y - p1.y, 3) + '_' + numberToFix(p4.z - p1.z, 3) ;
+  const s3 = numberToFix(p4.x - p1.x, 3) + '_' + numberToFix(p4.y - p1.y, 3) + '_' + numberToFix(p4.z - p1.z, 3);
 
   const str = s1 + '&' + s2 + '&' + s3;
 
@@ -306,7 +304,7 @@ export class BezierEasing {
 
 }
 
-export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyframe: BezierKeyframeValue): {
+export function buildEasingCurve (leftKeyframe: spec.BezierKeyframeValue, rightKeyframe: spec.BezierKeyframeValue): {
   points: Vector2[],
   timeInterval: number,
   valueInterval: number,
@@ -327,7 +325,7 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
     y1 = y2 = NaN;
   } else {
     y1 = numberToFix((p1.y - p0.y) / valueInterval, 5);
-    y2 = numberToFix((p2.y - p0.y) / valueInterval, 5) ;
+    y2 = numberToFix((p2.y - p0.y) / valueInterval, 5);
   }
 
   if (x1 < 0) {
@@ -371,12 +369,9 @@ export function buildEasingCurve (leftKeyframe: BezierKeyframeValue, rightKeyfra
 export function getControlPoints (
   leftKeyframe: spec.BezierKeyframeValue,
   rightKeyframe: spec.BezierKeyframeValue,
-  lineToBezier: boolean):
-  ({ type: 'ease', p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, isHold?: boolean, leftHoldLine?: boolean, rightHoldLine?: boolean }
-  | { type: 'line', p0: Vector2, p1: Vector2, p2?: Vector2, p3?: Vector2, isHold?: boolean, leftHoldLine?: boolean, rightHoldLine?: boolean }) {
-
+  lineToBezier: boolean,
+): ({ type: 'ease', p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, isHold?: boolean, leftHoldLine?: boolean, rightHoldLine?: boolean } | { type: 'line', p0: Vector2, p1: Vector2, p2?: Vector2, p3?: Vector2, isHold?: boolean, leftHoldLine?: boolean, rightHoldLine?: boolean }) {
   const [, leftValue] = leftKeyframe;
-
   const leftHoldLine = keyframeInfo.isHoldOutKeyframe(leftKeyframe);
   const rightHoldLine = keyframeInfo.isHoldInKeyframe(rightKeyframe);
 

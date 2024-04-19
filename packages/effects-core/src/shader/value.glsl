@@ -12,13 +12,7 @@ out float vSeed;
   #define MAX_C FRAG_MAX_KEY_FRAME_COUNT
 #endif
 
-
-mat4 cubicBezierMatrix = mat4(
-1.0, -3.0, 3.0, -1.0,
-0.0, 3.0, -6.0, 3.0,
-0.0, 0.0, 3.0, -3.0,
-0.0, 0.0, 0.0, 1.0
-);
+mat4 cubicBezierMatrix = mat4(1.0, -3.0, 3.0, -1.0, 0.0, 3.0, -6.0, 3.0, 0.0, 0.0, 3.0, -3.0, 0.0, 0.0, 0.0, 1.0);
 
 float cubicBezier(float t, float y1, float y2, float y3, float y4) {
   vec4 tVec = vec4(1.0, t, t * t, t * t * t);
@@ -34,12 +28,12 @@ float binarySearchT(float x, float x1, float x2, float x3, float x4) {
   float mid = 0.0;
   float computedX;
 
-  for (int i = 0; i < 12; i++) {
+  for(int i = 0; i < 12; i++) {
     mid = (left + right) * 0.5;
     computedX = cubicBezier(mid, x1, x2, x3, x4);
-    if (abs(computedX - x) < 0.0001) {
+    if(abs(computedX - x) < 0.0001) {
       break;
-    } else if (computedX > x) {
+    } else if(computedX > x) {
       right = mid;
     } else {
       left = mid;
@@ -53,16 +47,16 @@ float valueFromBezierCurveFrames(float time, float frameStart, float frameCount)
   int count = int(frameCount - 1.);
 
   for(int i = 0; i < ITR_END; i += 2) {
-    if (i >= count) {
+    if(i >= count) {
       break;
     }
     vec4 k0 = lookup_curve(i + start);
     vec4 k1 = lookup_curve(i + 1 + start);
 
-    if (i == 0 && time < k0.x) {
+    if(i == 0 && time < k0.x) {
       return k0.y;
     }
-    if (i == int(frameCount - 2.) && time >= k1.x) {
+    if(i == int(frameCount - 2.) && time >= k1.x) {
       return k1.y;
     }
     if(time >= k0.x && time <= k1.x) {
@@ -116,7 +110,7 @@ float getValueFromTime(float time, vec4 value) {
   if(type == 4.) {
     return mix(value.y, value.z, aSeed);
   }
-  if (type == 5.) {
+  if(type == 5.) {
     return valueFromBezierCurveFrames(time, value.z, value.w);
   }
   return 0.;

@@ -1,22 +1,11 @@
-import { clamp } from '@galacean/effects-math/es/core/index';
+import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import {
-  random,
-  colorToArr,
-  colorStopsFromGradient,
-  interpolateColor,
-  isFunction,
-} from '../utils';
+import { random, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
 import type { ColorStop } from '../utils';
-import type {
-  BezierEasing } from './bezier';
-import { BezierPath,
-} from './bezier';
-import {
-  buildEasingCurve,
-} from './bezier';
+import type { BezierEasing } from './bezier';
+import { BezierPath, buildEasingCurve } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
 import { numberToFix } from './utils';
 
@@ -500,7 +489,7 @@ export class BezierCurve extends ValueGetter<number> {
       return this.getCurveValue(keyTimeData[keyTimeData.length - 1], keyTimeEnd);
     }
 
-    for (let i = 0; i < keyTimeData.length ; i++) {
+    for (let i = 0; i < keyTimeData.length; i++) {
       const [xMin, xMax] = keyTimeData[i].split('&');
 
       if (time >= Number(xMin) && time < Number(xMax)) {
@@ -523,7 +512,7 @@ export class BezierCurve extends ValueGetter<number> {
     if (time <= keyTimeStart) {
       return 0;
     }
-    for (let i = 0; i < keyTimeData.length ; i++) {
+    for (let i = 0; i < keyTimeData.length; i++) {
       const [xMin, xMax] = keyTimeData[i].split('&');
 
       if (time >= Number(xMax)) {
@@ -676,7 +665,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       return point;
     }
 
-    for (let i = 0; i < keyTimeData.length ; i++) {
+    for (let i = 0; i < keyTimeData.length; i++) {
       const [xMin, xMax] = keyTimeData[i].split('&');
 
       if (t >= Number(xMin) && t < Number(xMax)) {

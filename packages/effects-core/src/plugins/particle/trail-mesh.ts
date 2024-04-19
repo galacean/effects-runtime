@@ -1,25 +1,17 @@
 import type * as spec from '@galacean/effects-specification';
 import type { vec3, vec4, GradientStop } from '@galacean/effects-specification';
-import { Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
-import type { Matrix4 } from '@galacean/effects-math/es/core/index';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import {
-  createShaderWithMarcos,
-  getPreMultiAlpha,
-  Material,
-  setBlendMode,
-  setMaskMode,
-  ShaderType,
+  createShaderWithMarcos, getPreMultiAlpha, Material, setBlendMode, setMaskMode, ShaderType,
 } from '../../material';
-import {
-  createKeyFrameMeta,
-  createValueGetter,
-  ValueGetter,
-  getKeyFrameMetaByRawValue,
-} from '../../math';
+import { createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue } from '../../math';
 import type { GeometryProps, ShaderMarcos, ShaderWithSource, GPUCapability } from '../../render';
 import { Geometry, GLSLVersion, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
