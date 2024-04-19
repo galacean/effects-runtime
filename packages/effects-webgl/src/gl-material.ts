@@ -561,12 +561,17 @@ export class GLMaterial extends Material {
 
       this.setColor(name, new math.Color(colorValue.r, colorValue.g, colorValue.b, colorValue.a));
     }
-
     for (name in propertiesData.textures) {
       const textureProperties = propertiesData.textures[name];
 
       // TODO 纹理通过 id 加入场景数据
       this.setTexture(name, textureProperties.texture as Texture);
+      const offset = textureProperties.offset;
+      const scale = textureProperties.scale;
+
+      if (offset && scale) {
+        this.setVector4(name + '_ST', new Vector4(scale.x, scale.y, offset.x, offset.y));
+      }
     }
 
     if (data.shader) {
