@@ -20,7 +20,7 @@ out vec2 vFeatherCoord;
 #endif
 out highp vec3 vParams;// texIndex mulAplha
 
-const float d2r = 3.141592653589793f / 180.f;
+const float d2r = 3.141592653589793 / 180.;
 
 #ifdef ENV_EDITOR
 uniform vec4 uEditorTransform;
@@ -33,8 +33,8 @@ vec4 filterMain(float t, vec4 position);
 vec3 rotateByQuat(vec3 a, vec4 quat) {
   vec3 qvec = quat.xyz;
   vec3 uv = cross(qvec, a);
-  vec3 uuv = cross(qvec, uv) * 2.f;
-  return a + (uv * 2.f * quat.w + uuv);
+  vec3 uuv = cross(qvec, uv) * 2.;
+  return a + (uv * 2. * quat.w + uuv);
 }
 
 void main() {
@@ -42,25 +42,25 @@ void main() {
   vec4 texParams = uTexParams[index];
   mat4 mainData = uMainData[index];
   float life = mainData[1].z;
-  if(life < 0.f || life > 1.f) {
-    gl_Position = vec4(3.f, 3.f, 3.f, 1.f);
+  if(life < 0. || life > 1.) {
+    gl_Position = vec4(3., 3., 3., 1.);
   } else {
     vec4 _pos = mainData[0];
     vec2 size = mainData[1].xy;
-    vec3 point = rotateByQuat(vec3(aPoint.xy * size, 0.f), mainData[2]);
-    vec4 pos = vec4(_pos.xyz, 1.0f);
+    vec3 point = rotateByQuat(vec3(aPoint.xy * size, 0.), mainData[2]);
+    vec4 pos = vec4(_pos.xyz, 1.0);
 
     float renderMode = texParams.z;
-    if(renderMode == 0.f) {
+    if(renderMode == 0.) {
       pos = effects_ObjectToWorld * pos;
       pos.xyz += effects_MatrixInvV[0].xyz * point.x + effects_MatrixInvV[1].xyz * point.y;
-    } else if(renderMode == 1.f) {
+    } else if(renderMode == 1.) {
       pos.xyz += point;
       pos = effects_ObjectToWorld * pos;
-    } else if(renderMode == 2.f) {
+    } else if(renderMode == 2.) {
       pos = effects_ObjectToWorld * pos;
       pos.xy += point.xy;
-    } else if(renderMode == 3.f) {
+    } else if(renderMode == 3.) {
       pos = effects_ObjectToWorld * pos;
       pos.xyz += effects_MatrixInvV[0].xyz * point.x + effects_MatrixInvV[2].xyz * point.y;
     }
@@ -70,7 +70,7 @@ void main() {
         #ifdef ADJUST_LAYER
     vec4 filter_Position = filterMain(life, pos);
         #endif
-    gl_PointSize = 6.0f;
+    gl_PointSize = 6.0;
 
         #ifdef ENV_EDITOR
     gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
@@ -80,7 +80,7 @@ void main() {
         #endif
 
         #ifdef ADJUST_LAYER
-    vTexCoord = vec4(filter_Position.xy / filter_Position.w + 1.f, gl_Position.xy / gl_Position.w + 1.f) / 2.f;
+    vTexCoord = vec4(filter_Position.xy / filter_Position.w + 1., gl_Position.xy / gl_Position.w + 1.) / 2.;
     vFeatherCoord = aPoint.zw;
         #else
     vec4 texOffset = uTexOffset[index];
