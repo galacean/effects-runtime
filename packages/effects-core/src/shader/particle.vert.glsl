@@ -165,7 +165,7 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime) {
   float t = fract(clamp((lifeTime - aSprite.x) / aSprite.y, 0.0, 1.) * aSprite.z);
   float frame = uSprite.z * t;
   float frameIndex = max(ceil(frame) - 1., 0.);
-  float row = floor((frameIndex + 0.1) / uSprite.x);
+  float row = floor((frameIndex + 0.1f) / uSprite.x);
   float col = frameIndex - row * uSprite.x;
 
   vec2 retUV = (vec2(col, row) + uv) / uSprite.xy;
@@ -173,7 +173,7 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime) {
   if(uSprite.w > 0.) {
     float blend = frame - frameIndex;
     float frameIndex1 = min(ceil(frame), uSprite.z - 1.);
-    float row1 = floor((frameIndex1 + 0.1) / uSprite.x);
+    float row1 = floor((frameIndex1 + 0.1f) / uSprite.x);
     float col1 = frameIndex1 - row1 * uSprite.x;
     vec2 coord = (vec2(col1, row1) + uv) / uSprite.xy - retUV;
     ret.uv1 = vec3(coord.x, 1. - coord.y, blend);

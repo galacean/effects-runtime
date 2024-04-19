@@ -1,6 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
-import type { Matrix4 } from '@galacean/effects-math/es/core/index';
-import { Euler, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Euler } from '@galacean/effects-math/es/core/euler';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Composition } from '../../composition';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { FILTER_NAME_NONE, PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
@@ -8,12 +12,7 @@ import type { FilterShaderDefine, ParticleFilterDefine } from '../../filter';
 import { createFilter, createFilterShaders } from '../../filter';
 import type { MaterialProps } from '../../material';
 import {
-  createShaderWithMarcos,
-  getPreMultiAlpha,
-  Material,
-  setBlendMode,
-  setMaskMode,
-  setSideMode,
+  createShaderWithMarcos, getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode,
   ShaderType,
 } from '../../material';
 import {
