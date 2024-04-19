@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import type { Database, EffectsObjectData, SceneData } from './asset-loader';
+import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
 import { glContext } from './gl';
@@ -47,7 +47,7 @@ export class Engine implements Disposable {
     this.objectInstance = {};
   }
 
-  addEffectsObjectData (data: EffectsObjectData) {
+  addEffectsObjectData (data: spec.EffectsObjectData) {
     this.jsonSceneData[data.id] = data;
   }
 

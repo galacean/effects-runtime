@@ -1,4 +1,4 @@
-import { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
+// import { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
 
 export interface TimelineComponentOptions {
@@ -7,9 +7,9 @@ export interface TimelineComponentOptions {
   positionOverLifetime?: spec.PositionOverLifetime,
 }
 
-const tempRot = new Euler();
-const tempSize = new Vector3(1, 1, 1);
-const tempPos = new Vector3(0, 0, 0);
+// const tempRot = new Euler();
+// const tempSize = new Vector3(1, 1, 1);
+// const tempPos = new Vector3(0, 0, 0);
 
 // export class TimelineComponentOld {
 //   options: Omit<SpriteItemOptions, 'delay'>;

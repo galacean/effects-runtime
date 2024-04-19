@@ -15,7 +15,6 @@ import {
   ItemBehaviour,
   PLAYER_OPTIONS_ENV_EDITOR,
   effectsClass,
-  DataType,
   GLSLVersion,
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
@@ -68,8 +67,8 @@ export class ModelPlugin extends AbstractPlugin {
     const runtimeEnv = options.env ?? '';
 
     scene.storage['runtimeEnv'] = runtimeEnv;
-    const compatibleMode = options.pluginData?.['compatibleMode'] ?? 'gltf';
-    const autoAdjustScene = options.pluginData?.['autoAdjustScene'] ?? false;
+    // const compatibleMode = options.pluginData?.['compatibleMode'] ?? 'gltf';
+    // const autoAdjustScene = options.pluginData?.['autoAdjustScene'] ?? false;
 
     //
     //PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode, autoAdjustScene);
@@ -92,7 +91,7 @@ export class ModelPlugin extends AbstractPlugin {
     renderer.engine.addEffectsObjectData({
       // FIXME: 'unlit000000000000000000000000000',
       id: 'pbr00000000000000000000000000000',
-      dataType: 'Shader',
+      dataType: spec.DataType.Shader,
       // @ts-expect-error
       fragment: pbrShader.fragmentShaderCode,
       vertex: pbrShader.vertexShaderCode,
@@ -161,7 +160,7 @@ export interface ModelPluginOptions {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(DataType.ModelPluginComponent)
+@effectsClass(spec.DataType.ModelPluginComponent)
 export class ModelPluginComponent extends ItemBehaviour {
   private runtimeEnv = PLAYER_OPTIONS_ENV_EDITOR;
   private compatibleMode = 'gltf';

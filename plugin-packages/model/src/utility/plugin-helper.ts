@@ -609,13 +609,13 @@ export class PluginHelper {
   static createCameraOptions (camera: GLTFCamera): ModelCameraOptions | undefined {
     if (camera.perspective === undefined) { return; }
 
-    const p = camera.perspective;
-    const options: ModelCameraOptions = {
-      near: p.znear,
-      far: p.zfar ?? 1000,
-      fov: p.yfov,
-      clipMode: 0,
-    };
+    // const p = camera.perspective;
+    // const options: ModelCameraOptions = {
+    //   near: p.znear,
+    //   far: p.zfar ?? 1000,
+    //   fov: p.yfov,
+    //   clipMode: 0,
+    // };
   }
 
   /**

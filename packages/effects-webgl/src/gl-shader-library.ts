@@ -195,12 +195,12 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     const vertex = shader.vertex ? shader.vertex : '';
     const fragment = shader.fragment ? shader.fragment : '';
     let shaderCacheId: string;
-    let shared = false;
+    // let shared = false;
 
     if (shader.shared || (shader as SharedShaderWithSource).cacheId) {
       // FIXME: string-hash有冲突，这里先用strHashCode替代
       shaderCacheId = (shader as SharedShaderWithSource).cacheId || `shared_${strHashCode(vertex, fragment)}`;
-      shared = true;
+      // shared = true;
     } else {
       shaderCacheId = 'instanced_' + shaderSeed++;
     }

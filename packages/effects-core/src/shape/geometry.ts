@@ -4,12 +4,12 @@ import { SPRITE_VERTEX_STRIDE } from '../constants';
 import { earcut } from './earcut';
 
 type BezierPoint = [x: number, y: number, inx: number, iny: number, outx: number, outy: number];
-type Geometry = {
-  s: number[][],
-  p: BezierPoint[],
-  c?: vec2,
-  t: number,
-};
+// type Geometry = {
+//   s: number[][],
+//   p: BezierPoint[],
+//   c?: vec2,
+//   t: number,
+// };
 
 export type Shape2D = {
   gs?: spec.ShapeGeometry[], // multiple geometries

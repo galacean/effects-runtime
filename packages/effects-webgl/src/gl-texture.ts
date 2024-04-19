@@ -324,7 +324,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     type: GLenum,
     image: HTMLImageLike,
   ): spec.vec2 {
-    const { sourceType, minFilter, magFilter, flipY, wrapS, wrapT } = this.source;
+    const { sourceType, minFilter, magFilter, wrapS, wrapT } = this.source;
     const maxSize = this.engine.gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
 

@@ -1,5 +1,5 @@
 import type { Composition, EffectsObjectData } from '@galacean/effects';
-import { DataType, Player, SerializationHelper, TimelineComponent } from '@galacean/effects';
+import { spec, Player, SerializationHelper, TimelineComponent } from '@galacean/effects';
 import demoJson from '../assets/scenes/trail-demo.scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
@@ -165,33 +165,33 @@ function buildProject (composition: Composition, json: any) {
       continue;
     }
     switch (data.dataType) {
-      case DataType.EffectComponent:
+      case spec.DataType.EffectComponent:
         json.components.push(data);
 
         break;
-      case DataType.SpriteComponent:
+      case spec.DataType.SpriteComponent:
         json.components.push(data);
 
         break;
-      case DataType.ParticleSystem:
+      case spec.DataType.ParticleSystem:
         json.components.push(data);
 
         break;
-      case DataType.Material:
+      case spec.DataType.Material:
         json.materials.push(data);
 
         break;
-      case DataType.Geometry:
+      case spec.DataType.Geometry:
         json.geometries.push(data);
 
         break;
-      case DataType.Texture:
+      case spec.DataType.Texture:
         //@ts-expect-error
         data.image = undefined;
         json.textures.push(data);
 
         break;
-      case DataType.VFXItemData:
+      case spec.DataType.VFXItemData:
         json.items.push(data);
 
         break;
@@ -257,19 +257,19 @@ async function saveScene (composition: Composition, json: any) {
       continue;
     }
     switch (data.dataType) {
-      case DataType.EffectComponent:
+      case spec.DataType.EffectComponent:
         json.components.push(data);
 
         break;
-      case DataType.SpriteComponent:
+      case spec.DataType.SpriteComponent:
         json.components.push(data);
 
         break;
-      case DataType.ParticleSystem:
+      case spec.DataType.ParticleSystem:
         json.components.push(data);
 
         break;
-      case DataType.Texture:
+      case spec.DataType.Texture:
         //@ts-expect-error
         data.image = undefined;
         json.textures.push(data);

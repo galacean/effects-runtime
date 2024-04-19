@@ -75,7 +75,10 @@ module.exports = {
     // TODO:: will be ["error", "never"]
     "import/prefer-default-export": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { "vars": "all", "varsIgnorePattern": "^_", "args": "none", "caughtErrors": "all", "caughtErrorsIgnorePattern": "^ignore" }
+    ],
     "@typescript-eslint/ban-ts-comment": "off",
     // TODO:: will be opened
     "@typescript-eslint/ban-types": "off",
@@ -156,7 +159,8 @@ module.exports = {
     {
       "files": ["**/test/**/*.ts", "**/demo/**/*.ts", "**/web-packages/**/*.ts"],
       "rules": {
-        "compat/compat": "off"
+        "compat/compat": "off",
+        "@typescript-eslint/no-unused-vars": "off"
       }
     }
   ]

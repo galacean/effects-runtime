@@ -143,7 +143,7 @@ export class ParticleMesh implements ParticleMeshData {
     const {
       speedOverLifetime, colorOverLifetime, linearVelOverLifetime, orbitalVelOverLifetime, sizeOverLifetime, rotationOverLifetime,
       sprite, gravityModifier, maxCount, textureFlip, useSprite, name,
-      filter, gravity, forceTarget, side, occlusion, anchor, blending,
+      gravity, forceTarget, side, occlusion, anchor, blending,
       maskMode, mask, transparentOcclusion, meshSlots,
       renderMode = 0,
       diffuse = Texture.createWithData(engine),

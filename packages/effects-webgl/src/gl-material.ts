@@ -4,7 +4,7 @@ import type {
   spec,
 } from '@galacean/effects-core';
 import {
-  DataType, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
+  spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
   math, throwDestroyedError,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
@@ -60,7 +60,7 @@ export class GLMaterial extends Material {
       this.shader.shaderData = {
         ...props.shader,
         id: generateGUID(),
-        dataType: DataType.Shader,
+        dataType: spec.DataType.Shader,
       };
     }
   }
@@ -592,7 +592,7 @@ export class GLMaterial extends Material {
     materialData.floats = {};
     materialData.ints = {};
     materialData.vector4s = {};
-    materialData.dataType = DataType.Material;
+    materialData.dataType = spec.DataType.Material;
     if (this.blending) {
       materialData.blending = this.blending;
     }

@@ -1,4 +1,4 @@
-import type { spec, Mesh, Material, TextureSourceOptions, TextureConfigOptions, Engine, Renderer } from '@galacean/effects';
+import type { spec, Mesh, Material, TextureSourceOptions, Engine, Renderer } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType, loadImage } from '@galacean/effects';
 import type { ModelSkyboxComponentData, ModelSkyboxOptions } from '../index';
 import { PObjectType, PMaterialType } from './common';
@@ -518,12 +518,12 @@ export class PSkyboxCreator {
    * @returns 纹理
    */
   static async createSpecularCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture> {
-    const configOptions: TextureConfigOptions = {
-      wrapS: glContext.CLAMP_TO_EDGE,
-      wrapT: glContext.CLAMP_TO_EDGE,
-      magFilter: glContext.LINEAR,
-      minFilter: glContext.LINEAR_MIPMAP_LINEAR,
-    };
+    // const configOptions: TextureConfigOptions = {
+    //   wrapS: glContext.CLAMP_TO_EDGE,
+    //   wrapT: glContext.CLAMP_TO_EDGE,
+    //   magFilter: glContext.LINEAR,
+    //   minFilter: glContext.LINEAR_MIPMAP_LINEAR,
+    // };
 
     if (params.type === 'url') {
       return WebGLHelper.createTextureCubeMipmapFromURL(engine, params.specularImage);
@@ -596,11 +596,13 @@ export class PSkyboxCreator {
     }
   }
 
-  private static getIrradianceCoeffs (skyboxType: number): number[][] | undefined {
+  private static getIrradianceCoeffs (skyboxType: PSkyboxType): number[][] | undefined {
     let dataArray: number[] = [];
 
     switch (skyboxType) {
-      case PSkyboxType.NFT: return undefined;
+      case PSkyboxType.NFT: {
+        return undefined;
+      }
       case PSkyboxType.FARM: dataArray = [
         0.2665672302246094, 0.27008703351020813, 0.2836797833442688, -0.15421263873577118, -0.15587495267391205,
         -0.16371899843215942, 0.06483837962150574, 0.06468029320240021, 0.06616337597370148, -0.11598809063434601,

@@ -149,7 +149,7 @@ export function setSideMode (material: Material, side: spec.SideMode) {
   }
 }
 
-export function setMaskMode (material: Material, maskMode: number) {
+export function setMaskMode (material: Material, maskMode: spec.MaskMode) {
   switch (maskMode) {
     case undefined:
       material.stencilTest = false;
