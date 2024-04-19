@@ -1,5 +1,5 @@
 import type { Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
-import type { GlobalUniforms, Renderer, ShaderWithSource } from '../render';
+import type { GlobalUniforms, Renderer, Shader, ShaderWithSource } from '../render';
 import type { Texture } from '../texture';
 import type { DestroyOptions, Disposable } from '../utils';
 import type { UniformSemantic, UniformValue } from './types';
@@ -67,6 +67,7 @@ let seed = 1;
  * Material 抽象类
  */
 export abstract class Material extends EffectsObject implements Disposable {
+  shader: Shader;
   // TODO: 待移除
   shaderSource: ShaderWithSource;
   readonly uniformSemantics: Record<string, UniformSemantic>;
@@ -393,7 +394,7 @@ export abstract class Material extends EffectsObject implements Disposable {
   abstract hasUniform (name: string): boolean;
 
   /******** 预留接口，暂时不用实现 ***********************/
-  abstract enableMacro (keyword: string): void;
+  abstract enableMacro (keyword: string, value?: boolean | number): void;
   abstract disableMacro (keyword: string): void;
   abstract isMacroEnabled (keyword: string): boolean;
   /***************************************************/

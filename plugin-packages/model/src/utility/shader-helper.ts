@@ -1,5 +1,26 @@
 import { StandardShader } from '../runtime/shader-libs/standard-shader';
 import type { PShaderContext, PShaderResults } from '../runtime/shader';
+import { PMaterialType } from '../runtime';
+
+export function fetchPBRShaderCode (isWebGL2?: boolean): PShaderResults {
+  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.pbr, isWebGL2);
+  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.pbr, isWebGL2);
+
+  return {
+    vertexShaderCode,
+    fragmentShaderCode,
+  };
+}
+
+export function fetchUnlitShaderCode (isWebGL2?: boolean): PShaderResults {
+  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.unlit, isWebGL2);
+  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.unlit, isWebGL2);
+
+  return {
+    vertexShaderCode,
+    fragmentShaderCode,
+  };
+}
 
 /**
  * 获取 PBR 材质着色器代码

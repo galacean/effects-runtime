@@ -29,7 +29,7 @@ vsIn vec2 aUV;
 #endif
 
 #ifdef HAS_UV_SET2
-vsIn vec2 a_UV2;
+vsIn vec2 aUV2;
 #endif
 
 vsOut vec2 v_UVCoord1;
@@ -136,7 +136,7 @@ void main()
     #endif
 
     #ifdef HAS_UV_SET2
-    v_UVCoord2 = a_UV2;
+    v_UVCoord2 = aUV2;
     #endif
 
     #if defined(HAS_VERTEX_COLOR_VEC3) || defined(HAS_VERTEX_COLOR_VEC4)
