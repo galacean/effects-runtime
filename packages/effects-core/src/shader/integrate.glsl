@@ -1,9 +1,9 @@
 float calculateMovement(float t, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
   float movement = 0.0;
   float h = (t - p1.x) * 0.1;
-  float detla = 1. / (p4.x - p1.x);
+  float delta = 1. / (p4.x - p1.x);
   for(int i = 0; i <= 10; i++) {
-    float t = float(i) * h * detla;
+    float t = float(i) * h * delta;
     float nt = binarySearchT(t, p1.x, p2.x, p3.x, p4.x);
     float y = cubicBezier(nt, p1.y, p2.y, p3.y, p4.y);
     float weight = (i == 0 || i == 10) ? 1.0 : (mod(float(i), 2.) != 0.) ? 4.0 : 2.0;
