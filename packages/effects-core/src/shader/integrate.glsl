@@ -5,7 +5,7 @@ float calculateMovement(float t, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
   for(int i = 0; i <= 10; i++) {
     float t = float(i) * h * detla;
     float nt = binarySearchT(t, p1.x, p2.x, p3.x, p4.x);
-    float y = cubicBezier(nt, p1.y, p2.y, p3.y, p3.y);
+    float y = cubicBezier(nt, p1.y, p2.y, p3.y, p4.y);
     float weight = (i == 0 || i == 10) ? 1.0 : (mod(float(i), 2.) != 0.) ? 4.0 : 2.0;
     movement += weight * y;
   }
