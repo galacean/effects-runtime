@@ -228,11 +228,9 @@ export class BezierPath {
 export class BezierEasing {
   private precomputed = false;
   private mSampleValues: number[];
-  public cachingValue: Record<string, number>;
 
   constructor (public mX1: number, public mY1: number, public mX2: number, public mY2: number) {
     this.mSampleValues = new Array(kSplineTableSize);
-    this.cachingValue = {};
   }
 
   precompute () {
@@ -256,18 +254,7 @@ export class BezierEasing {
     if (!this.precomputed) {
       this.precompute();
     }
-    const keys = Object.keys(this.cachingValue);
-    const index = keys.findIndex(key => decimalEqual(Number(key), x, 0.005));
-
-    if (index !== -1) {
-      return this.cachingValue[keys[index]];
-    }
-
     const value = calcBezier(this.getTForX(x), this.mY1, this.mY2);
-
-    if (keys.length < 300) {
-      this.cachingValue[x] = value;
-    }
 
     return value;
   }
