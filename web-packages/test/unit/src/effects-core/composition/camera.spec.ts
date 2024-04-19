@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Player, BezierSegments, CameraController, CurveValue, spec, math, BezierCurve } from '@galacean/effects';
+import { Player, BezierCurvePath, CameraController, spec, math, BezierCurve } from '@galacean/effects';
 
 const { Vector3 } = math;
 const { expect } = chai;
@@ -88,7 +88,7 @@ describe('camera item', () => {
     const pos = comp.camera.position;
 
     expect(pos).to.deep.equals(new Vector3(2, 0.5, 0));
-    const z = new CurveValue([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
+    const z = new BezierCurve([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
 
     expect(pos.z).to.eql(z.getValue(0.5));
   });
@@ -157,7 +157,7 @@ describe('camera item', () => {
 
     expect(ro2.x).to.closeTo(2, 0.0001);
     expect(ro2.y).to.closeTo(0, 0.0001);
-    const z = new CurveValue([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
+    const z = new BezierCurve([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
 
     expect(ro2.z).to.closeTo(z.getValue(0.5), 0.00001);
   });
@@ -256,7 +256,7 @@ describe('camera item', () => {
 
     player.gotoAndStop(2.5);
     const pos2 = comp2.camera.position;
-    const val2 = new BezierSegments([[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [3, 1, 0]], [[1, 1, 0], [2, 1, 0]]]).getValue(0.5);
+    const val2 = new BezierCurvePath([[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [3, 1, 0]], [[1, 1, 0], [2, 1, 0]]]).getValue(0.5);
 
     expect(pos2.x).to.eql(val2[0], 'bezier path');
     expect(pos2.y).to.eql(val2[1], 'bezier path');
