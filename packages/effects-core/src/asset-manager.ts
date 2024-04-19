@@ -445,8 +445,8 @@ export class AssetManager implements Disposable {
               return resultImage;
             } else {
               // 如果是加载图片且是数组，设置变量，视频情况下不需要
-              if (background && !Array.isArray(url) && variables) {
-                variables[background.name] = url;
+              if (background && Array.isArray(url) && variables) {
+                variables[background.name] = resultImage.src;
               }
 
               return await combineImageTemplate(
