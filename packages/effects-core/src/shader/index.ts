@@ -4,7 +4,6 @@ export { default as compatibleVert } from './compatible.vert.glsl';
 export { default as itemFrameFrag } from './item-frame.frag.glsl';
 export { default as integrate } from './integrate.glsl';
 export { default as itemVert } from './item.vert.glsl';
-export { default as itemDefine } from './item.define.glsl';
 export { default as itemFrag } from './item.frag.glsl';
 export { default as particleFrag } from './particle.frag.glsl';
 export { default as particleVert } from './particle.vert.glsl';

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Player, LinearValue, CurveValue } from '@galacean/effects';
+import { Player, LinearValue } from '@galacean/effects';
 import { generateSceneJSON } from './utils';
 
 const { expect } = chai;

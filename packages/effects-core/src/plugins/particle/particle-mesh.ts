@@ -1,6 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
-import type { Matrix4 } from '@galacean/effects-math/es/core/index';
-import { Euler, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Euler } from '@galacean/effects-math/es/core/euler';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Composition } from '../../composition';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { FILTER_NAME_NONE, PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
@@ -8,19 +12,13 @@ import type { FilterShaderDefine, ParticleFilterDefine } from '../../filter';
 import { createFilter, createFilterShaders } from '../../filter';
 import type { MaterialProps } from '../../material';
 import {
-  createShaderWithMarcos,
-  getPreMultiAlpha,
-  Material,
-  setBlendMode,
-  setMaskMode,
-  setSideMode,
+  createShaderWithMarcos, getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode,
   ShaderType,
 } from '../../material';
-import type { ValueGetter } from '../../math';
 import {
   createKeyFrameMeta,
   createValueGetter,
-  CurveValue,
+  ValueGetter,
   getKeyFrameMetaByRawValue,
   calculateTranslation,
 } from '../../math';
@@ -30,6 +28,7 @@ import { particleFrag, particleVert } from '../../shader';
 import { generateHalfFloatTexture, Texture } from '../../texture';
 import { Transform } from '../../transform';
 import { enlargeBuffer, imageDataFromGradient } from '../../utils';
+import { particleUniformTypeMap } from './particle-vfx-item';
 
 export type Point = {
   vel: Vector3,
@@ -253,6 +252,7 @@ export class ParticleMesh implements ParticleMeshData {
       }
       uniformValues.uOrbCenter = new Float32Array(orbitalVelOverLifetime?.center || [0, 0, 0]);
     }
+
     uniformValues.uSizeByLifetimeValue = sizeOverLifetime?.x.toUniform(vertexKeyFrameMeta);
     if (sizeOverLifetime?.separateAxes) {
       marcos.push(['SIZE_Y_BY_LIFE', 1]);
@@ -289,9 +289,9 @@ export class ParticleMesh implements ParticleMeshData {
 
     if (halfFloatTexture && fragmentKeyFrameMeta.max) {
       shaderCacheId |= 1 << 20;
-      uniformValues.uFCurveValueTexture = generateHalfFloatTexture(engine, CurveValue.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1);
+      uniformValues.uFCurveValueTexture = generateHalfFloatTexture(engine, ValueGetter.getAllData(fragmentKeyFrameMeta, true) as Uint16Array, fragmentKeyFrameMeta.index, 1);
     } else {
-      uniformValues.uFCurveValues = CurveValue.getAllData(fragmentKeyFrameMeta);
+      uniformValues.uFCurveValues = ValueGetter.getAllData(fragmentKeyFrameMeta);
     }
     const vertexCurveTexture = vertexKeyFrameMeta.max + vertexKeyFrameMeta.curves.length - 32 > maxVertexUniforms;
 
@@ -307,12 +307,12 @@ export class ParticleMesh implements ParticleMeshData {
       }
     }
     if (vertexCurveTexture && halfFloatTexture && enableVertexTexture) {
-      const tex = generateHalfFloatTexture(engine, CurveValue.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
+      const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(vertexKeyFrameMeta, true) as Uint16Array, vertexKeyFrameMeta.index, 1);
 
       uniformValues.uVCurveValueTexture = tex;
       vertex_lookup_texture = 1;
     } else {
-      uniformValues.uVCurveValues = CurveValue.getAllData(vertexKeyFrameMeta);
+      uniformValues.uVCurveValues = ValueGetter.getAllData(vertexKeyFrameMeta);
     }
     const shaderCache = ['-p:', renderMode, shaderCacheId, vertexKeyFrameMeta.index, vertexKeyFrameMeta.max, fragmentKeyFrameMeta.index, fragmentKeyFrameMeta.max].join('+');
 
@@ -369,39 +369,6 @@ export class ParticleMesh implements ParticleMeshData {
     setBlendMode(material, blending);
     setSideMode(material, side);
 
-    const typeMap: Record<string, string> = {
-      'uSprite': 'vec4',
-      'uParams': 'vec4',
-      'uAcceleration': 'vec4',
-      'uGravityModifierValue': 'vec4',
-      'uOpacityOverLifetimeValue': 'vec4',
-      'uRXByLifeTimeValue': 'vec4',
-      'uRYByLifeTimeValue': 'vec4',
-      'uRZByLifeTimeValue': 'vec4',
-      'uLinearXByLifetimeValue': 'vec4',
-      'uLinearYByLifetimeValue': 'vec4',
-      'uLinearZByLifetimeValue': 'vec4',
-      'uSpeedLifetimeValue': 'vec4',
-      'uOrbXByLifetimeValue': 'vec4',
-      'uOrbYByLifetimeValue': 'vec4',
-      'uOrbZByLifetimeValue': 'vec4',
-      'uSizeByLifetimeValue': 'vec4',
-      'uSizeYByLifetimeValue': 'vec4',
-      'uColorParams': 'vec4',
-      'uFSprite': 'vec4',
-      'uPreviewColor': 'vec4',
-      'uVCurveValues': 'vec4Array',
-      'uFCurveValues': 'vec4',
-      'uFinalTarget': 'vec3',
-      'uForceCurve': 'vec4',
-      'uOrbCenter': 'vec3',
-      'uTexOffset': 'vec2',
-      'uPeriodValue': 'vec4',
-      'uMovementValue': 'vec4',
-      'uStrengthValue': 'vec4',
-      'uWaveParams': 'vec4',
-    };
-
     Object.keys(uniformValues).map(name => {
       const value = uniformValues[name];
 
@@ -412,7 +379,7 @@ export class ParticleMesh implements ParticleMeshData {
       }
       const res: Vector4[] = [];
 
-      switch (typeMap[name]) {
+      switch (particleUniformTypeMap[name]) {
         case 'vec4':
           material.setVector4(name, Vector4.fromArray(value));
 
@@ -440,6 +407,7 @@ export class ParticleMesh implements ParticleMeshData {
           console.warn(`uniform ${name}'s type not in typeMap`);
       }
     });
+
     material.setVector3('emissionColor', new Vector3(0, 0, 0));
     material.setFloat('emissionIntensity', 0.0);
 

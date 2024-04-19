@@ -1,5 +1,5 @@
 #version 300 es
-precision highp float;
+precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 
@@ -28,7 +28,7 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime);
 out vec4 vTexCoordBlend;
 #endif
 
-#pragma EDITOR_VERT_DEFINE
+//#pragma EDITOR_VERT_DEFINE
 
 #ifdef FINAL_TARGET
 uniform vec3 uFinalTarget;
@@ -165,7 +165,7 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime) {
   float t = fract(clamp((lifeTime - aSprite.x) / aSprite.y, 0.0, 1.) * aSprite.z);
   float frame = uSprite.z * t;
   float frameIndex = max(ceil(frame) - 1., 0.);
-  float row = floor((frameIndex + 0.1) / uSprite.x);
+  float row = floor((frameIndex + 0.1f) / uSprite.x);
   float col = frameIndex - row * uSprite.x;
 
   vec2 retUV = (vec2(col, row) + uv) / uSprite.xy;
@@ -173,7 +173,7 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime) {
   if(uSprite.w > 0.) {
     float blend = frame - frameIndex;
     float frameIndex1 = min(ceil(frame), uSprite.z - 1.);
-    float row1 = floor((frameIndex1 + 0.1) / uSprite.x);
+    float row1 = floor((frameIndex1 + 0.1f) / uSprite.x);
     float col1 = frameIndex1 - row1 * uSprite.x;
     vec2 coord = (vec2(col1, row1) + uv) / uSprite.xy - retUV;
     ret.uv1 = vec3(coord.x, 1. - coord.y, blend);
@@ -222,7 +222,7 @@ mat3 transformFromRotation(vec3 rot, float _life, float _dur) {
 
 void main() {
   float time = uParams.x - aOffset.z;
-  float dur = aOffset.w;
+  float dur = aOffset.w; // 粒子生命周期
   if(time < 0. || time > dur) {
     gl_Position = vec4(-3., -3., -3., 1.);
   } else {
@@ -298,6 +298,5 @@ void main() {
     gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
         #endif
 
-        #pragma EDITOR_VERT_TRANSFORM
   }
 }
