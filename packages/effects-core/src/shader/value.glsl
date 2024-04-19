@@ -28,7 +28,7 @@ float binarySearchT(float x, float x1, float x2, float x3, float x4) {
   float mid = 0.0;
   float computedX;
 
-  for(int i = 0; i < 12; i++) {
+  for(int i = 0; i < 8; i++) {
     mid = (left + right) * 0.5;
     computedX = cubicBezier(mid, x1, x2, x3, x4);
     if(abs(computedX - x) < 0.0001) {

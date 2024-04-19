@@ -391,58 +391,6 @@ export class LineSegments extends ValueGetter<number> {
   }
 }
 
-// export class PathSegments extends ValueGetter<number[]> {
-//   keys: number[][];
-//   values: number[][];
-//
-//   override onCreate (props: number[][][]) {
-//     this.keys = props[0];
-//     this.values = props[1];
-//   }
-//
-//   override getValue (time: number) {
-//     const keys = this.keys;
-//     const values = this.values;
-//
-//     for (let i = 0; i < keys.length - 1; i++) {
-//       const k0 = keys[i];
-//       const k1 = keys[i + 1];
-//
-//       if (k0[0] <= time && k1[0] >= time) {
-//         const dis = k1[1] - k0[1];
-//         let dt;
-//
-//         if (dis === 0) {
-//           dt = (time - k0[0]) / (k1[0] - k0[0]);
-//         } else {
-//           const val = curveValueEvaluate(time, k0, k1);
-//
-//           dt = (val - k0[1]) / dis;
-//         }
-//
-//         return this.calculateVec(i, dt);
-//       }
-//     }
-//     if (time <= keys[0][0]) {
-//       return values[0].slice();
-//     }
-//
-//     return values[values.length - 1].slice();
-//   }
-//
-//   calculateVec (i: number, dt: number) {
-//     const vec0 = this.values[i];
-//     const vec1 = this.values[i + 1];
-//     const ret = [0, 0, 0];
-//
-//     for (let j = 0; j < vec0.length; j++) {
-//       ret[j] = vec0[j] * (1 - dt) + vec1[j] * dt;
-//     }
-//
-//     return ret;
-//   }
-// }
-
 export class BezierCurve extends ValueGetter<number> {
   curveMap: Record<string, {
     points: Vector2[],
@@ -503,7 +451,7 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override getIntegrateValue (t0: number, t1: number, ts = 1) {
-    const time = (t1 - t0);
+    const time = (t1 - t0) / ts;
 
     let result = 0;
     const keyTimeData = Object.keys(this.curveMap);
@@ -535,7 +483,7 @@ export class BezierCurve extends ValueGetter<number> {
     const [p0] = curveInfo.points;
     const timeInterval = curveInfo.timeInterval;
     const valueInterval = curveInfo.valueInterval;
-    const segments = 100;
+    const segments = 20;
     let total = 0;
     const h = (time - p0.x) / segments;
 
