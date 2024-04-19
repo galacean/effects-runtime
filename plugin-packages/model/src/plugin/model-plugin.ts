@@ -7,7 +7,6 @@ import type {
   Engine,
   Component,
   Renderer,
-  ShaderData,
 } from '@galacean/effects';
 import {
   VFXItem,
@@ -16,13 +15,11 @@ import {
   ItemBehaviour,
   PLAYER_OPTIONS_ENV_EDITOR,
   effectsClass,
-  DataType,
   GLSLVersion,
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
-import type { PShaderContext } from '../runtime';
-import { PTransform, PSceneManager, PCoordinate, PMaterialType, PBRShaderGUID, UnlitShaderGUID } from '../runtime';
+import { PTransform, PSceneManager, PCoordinate, PBRShaderGUID, UnlitShaderGUID } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
 import { ModelCameraComponent, ModelLightComponent } from './model-item';
@@ -69,8 +66,8 @@ export class ModelPlugin extends AbstractPlugin {
     const runtimeEnv = options.env ?? '';
 
     scene.storage['runtimeEnv'] = runtimeEnv;
-    const compatibleMode = options.pluginData?.['compatibleMode'] ?? 'gltf';
-    const autoAdjustScene = options.pluginData?.['autoAdjustScene'] ?? false;
+    // const compatibleMode = options.pluginData?.['compatibleMode'] ?? 'gltf';
+    // const autoAdjustScene = options.pluginData?.['autoAdjustScene'] ?? false;
 
     //
     //PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode, autoAdjustScene);
@@ -81,7 +78,7 @@ export class ModelPlugin extends AbstractPlugin {
     const isWebGL2 = renderer.engine.gpuCapability.level === 2;
     const pbrShaderCode = fetchPBRShaderCode(isWebGL2);
     const unlitShaderCode = fetchUnlitShaderCode(isWebGL2);
-    const pbrShaderData: ShaderData = {
+    const pbrShaderData: spec.ShaderData = {
       id: PBRShaderGUID,
       name: 'PBR Shader',
       dataType: 'Shader',
@@ -90,10 +87,10 @@ export class ModelPlugin extends AbstractPlugin {
       // @ts-expect-error
       glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
     };
-    const unlitShaderData: ShaderData = {
+    const unlitShaderData: spec.ShaderData = {
       id: UnlitShaderGUID,
       name: 'Unlit Shader',
-      dataType: 'Shader',
+      dataType: spec.DataType.Shader,
       fragment: unlitShaderCode.fragmentShaderCode,
       vertex: unlitShaderCode.vertexShaderCode,
       // @ts-expect-error
@@ -165,7 +162,7 @@ export interface ModelPluginOptions {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(DataType.ModelPluginComponent)
+@effectsClass(spec.DataType.ModelPluginComponent)
 export class ModelPluginComponent extends ItemBehaviour {
   private runtimeEnv = PLAYER_OPTIONS_ENV_EDITOR;
   private compatibleMode = 'gltf';

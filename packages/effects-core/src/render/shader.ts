@@ -1,4 +1,4 @@
-import type { ShaderData } from '../asset-loader';
+import type * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
@@ -99,7 +99,7 @@ export abstract class ShaderVariant extends EffectsObject {
 
 @effectsClass('Shader')
 export class Shader extends EffectsObject {
-  shaderData: ShaderData;
+  shaderData: spec.ShaderData;
 
   createVariant (macros?: Record<string, number | boolean>) {
     const shaderMacros: ShaderMarcos = [];
@@ -116,7 +116,7 @@ export class Shader extends EffectsObject {
     return shaderVariant;
   }
 
-  override fromData (data: ShaderData): void {
+  override fromData (data: spec.ShaderData): void {
     super.fromData(data);
     this.shaderData = data;
   }
@@ -126,7 +126,7 @@ export class Shader extends EffectsObject {
 export interface ShaderLibrary {
   readonly shaderResults: { [cacheId: string]: ShaderCompileResult },
 
-  addShader(shader: ShaderWithSource): void,
+  addShader (shader: ShaderWithSource): void,
 
   createShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos): ShaderVariant,
 

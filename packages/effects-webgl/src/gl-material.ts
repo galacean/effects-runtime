@@ -1,9 +1,9 @@
 import type {
-  Engine, GlobalUniforms, MaterialData, MaterialDestroyOptions, MaterialProps, MaterialStates,
+  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps, MaterialStates,
   Renderer, Texture, UndefinedAble,
 } from '@galacean/effects-core';
 import {
-  DataType, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
+  spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
   math, throwDestroyedError,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
@@ -58,7 +58,7 @@ export class GLMaterial extends Material {
       this.shader.shaderData = {
         ...props.shader,
         id: generateGUID(),
-        dataType: DataType.Shader,
+        dataType: spec.DataType.Shader,
       };
     }
   }
@@ -519,7 +519,7 @@ export class GLMaterial extends Material {
     return clonedMaterial;
   }
 
-  override fromData (data: MaterialData): void {
+  override fromData (data: spec.MaterialData): void {
     super.fromData(data);
 
     this.uniforms = [];
@@ -549,9 +549,6 @@ export class GLMaterial extends Material {
     for (name in propertiesData.ints) {
       this.setInt(name, propertiesData.ints[name]);
     }
-    // for (name in materialData.vector2s) {
-    //   this.setVector2(name, Vector propertiesData.vector2s[name]);
-    // }
     for (name in propertiesData.vector4s) {
       const vector4Value = propertiesData.vector4s[name];
 
@@ -562,19 +559,24 @@ export class GLMaterial extends Material {
 
       this.setColor(name, new math.Color(colorValue.r, colorValue.g, colorValue.b, colorValue.a));
     }
-
     for (name in propertiesData.textures) {
       const textureProperties = propertiesData.textures[name];
 
       // TODO 纹理通过 id 加入场景数据
       this.setTexture(name, textureProperties.texture as Texture);
+      const offset = textureProperties.offset;
+      const scale = textureProperties.scale;
+
+      if (offset && scale) {
+        this.setVector4(name + '_ST', new Vector4(scale.x, scale.y, offset.x, offset.y));
+      }
     }
 
     if (data.shader) {
       this.shader = data.shader as unknown as Shader;
       this.shaderSource = this.shader.shaderData;
     }
-
+    this.stringTags = data.stringTags;
     this.initialized = false;
   }
 
@@ -583,18 +585,17 @@ export class GLMaterial extends Material {
    * @param sceneData
    * @returns
    */
-  override toData (): MaterialData {
+  override toData (): spec.MaterialData {
     //@ts-expect-error
     const materialData: MaterialData = this.taggedProperties;
 
     if (this.shader) {
-      //@ts-expect-error
       materialData.shader = this.shader;
     }
     materialData.floats = {};
     materialData.ints = {};
     materialData.vector4s = {};
-    materialData.dataType = DataType.Material;
+    materialData.dataType = spec.DataType.Material;
     if (this.blending) {
       materialData.blending = this.blending;
     }

@@ -5,7 +5,7 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region } from './plugins';
-import { HitTestType, TextComponent, TimelineComponent } from './plugins';
+import { HitTestType, TimelineComponent } from './plugins';
 import { noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
@@ -69,9 +69,6 @@ export class CompositionComponent extends ItemBehaviour {
     this.items.length = 0;
     if (this.item.composition) {
       const assetLoader = this.item.engine.assetLoader;
-      // TODO spec 定义新类型后 as 移除
-      const jsonScene = this.item.composition.compositionSourceManager.jsonScene!;
-
       const itemProps = this.item.props.items ? this.item.props.items : [];
 
       for (let i = 0; i < itemProps.length; i++) {
@@ -124,10 +121,8 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === spec.ItemType.interact ||
           itemData.type === spec.ItemType.camera
         ) {
-
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
-
         } else {
           // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣
           item = new VFXItem(this.engine, itemData);

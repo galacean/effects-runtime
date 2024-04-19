@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-
+import { resolve } from 'path';
 import { componentsDir } from '@advjs/gui/node';
 import Components from 'unplugin-vue-components/vite';
 import UnoCSS from 'unocss/vite';
@@ -31,9 +31,10 @@ export default defineConfig(({ mode }) => {
           componentsDir,
         ],
       }),
-
       glslInner(),
-      getSWCPlugin('ES6'),
+      getSWCPlugin({
+        baseUrl: resolve(__dirname, '..', '..'),
+      }),
       tsconfigPaths(),
     ],
   };

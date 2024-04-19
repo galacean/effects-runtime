@@ -6,20 +6,20 @@ import { VFX_ITEM_TYPE_3D } from '../plugin/const';
 import { ModelMeshComponent } from '../plugin/model-item';
 
 // 射线与带旋转的包围盒求交
-function transformDirection (m: Matrix4, direction: Vector3) {
-  const x = direction.x;
-  const y = direction.y;
-  const z = direction.z;
-  const me = m.elements;
-  const result = new Vector3();
+// function transformDirection (m: Matrix4, direction: Vector3) {
+//   const x = direction.x;
+//   const y = direction.y;
+//   const z = direction.z;
+//   const me = m.elements;
+//   const result = new Vector3();
 
-  result.x = me[0] * x + me[4] * y + me[8] * z;
-  result.y = me[1] * x + me[5] * y + me[9] * z;
-  result.z = me[2] * x + me[6] * y + me[10] * z;
+//   result.x = me[0] * x + me[4] * y + me[8] * z;
+//   result.y = me[1] * x + me[5] * y + me[9] * z;
+//   result.z = me[2] * x + me[6] * y + me[10] * z;
 
-  return result.normalize();
+//   return result.normalize();
 
-}
+// }
 
 /**
  * 带旋转的射线与包围盒求交

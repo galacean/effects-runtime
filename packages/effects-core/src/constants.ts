@@ -1,5 +1,3 @@
-import type * as spec from '@galacean/effects-specification';
-
 export const SPRITE_VERTEX_STRIDE = 6;
 
 export const SEMANTIC_PRE_COLOR_ATTACHMENT_0 = 'PRE_COLOR_0';

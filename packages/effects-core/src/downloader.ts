@@ -5,12 +5,12 @@ type ErrorHandler = (status: number, responseText: string) => void;
 /**
  *
  */
-type VideoLoadOptions = {
-  /**
-   * 视频是否循环播放
-   */
-  loop?: boolean,
-};
+// type VideoLoadOptions = {
+//   /**
+//    * 视频是否循环播放
+//    */
+//   loop?: boolean,
+// };
 
 /**
  * JSON 值，它可以是字符串、数字、布尔值、对象或者 JSON 值的数组。
@@ -128,7 +128,8 @@ export async function loadWebPOptional (png: string, webp?: string) {
     const image = await loadImage(webp);
 
     return { image, url: webp };
-  } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e: any) {
     webPFailed = true;
     const image = await loadImage(png);
 

@@ -1,5 +1,5 @@
 import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer, Geometry } from '@galacean/effects';
-import { spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader, generateGUID } from '@galacean/effects';
+import { spec, Mesh, DestroyOptions, Material, GLSLVersion } from '@galacean/effects';
 import type { ModelMeshComponentData, ModelMeshPrimitiveData, ModelItemBounding } from '../index';
 import { PObjectType, PMaterialType, PGlobalState, PFaceSideMode } from './common';
 import { PEntity } from './object';
@@ -596,16 +596,16 @@ export class PPrimitive {
     }
 
     if (this.material.materialType !== PMaterialType.unlit) {
-      let hasLight = false;
+      // let hasLight = false;
 
       if (lightCount > 0 && this.geometry.hasNormals()) {
-        hasLight = true;
+        // hasLight = true;
         featureList.push('USE_PUNCTUAL 1');
         featureList.push(`LIGHT_COUNT ${lightCount}`);
       }
 
       if (skybox !== undefined && skybox.available) {
-        hasLight = true;
+        // hasLight = true;
         featureList.push('USE_IBL 1');
         featureList.push('USE_TEX_LOD 1');
         if (skybox.hasDiffuseImage) {
@@ -677,16 +677,12 @@ export class PPrimitive {
     }
 
     if (this.material.materialType !== PMaterialType.unlit) {
-      let hasLight = false;
-
       if (lightCount > 0 && this.geometry.hasNormals()) {
-        hasLight = true;
         macroList.push({ name: 'USE_PUNCTUAL' });
         macroList.push({ name: 'LIGHT_COUNT', value: lightCount });
       }
 
       if (skybox !== undefined && skybox.available) {
-        hasLight = true;
         macroList.push({ name: 'USE_IBL' });
         macroList.push({ name: 'USE_TEX_LOD' });
         if (skybox.hasDiffuseImage) {

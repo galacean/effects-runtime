@@ -1,3 +1,4 @@
+import { spec } from '@galacean/effects';
 import type { ModelLightComponentData } from '../index';
 import { Vector2, Vector3 } from './math';
 import { PObjectType, PLightType } from './common';
@@ -67,15 +68,15 @@ export class PLight extends PEntity {
       color.b,
     );
     this.intensity = data.intensity;
-    if (data.lightType === 'point') {
+    if (data.lightType === spec.LightType.point) {
       this.lightType = PLightType.point;
       this.range = data.range ?? -1;
-    } else if (data.lightType === 'spot') {
+    } else if (data.lightType === spec.LightType.spot) {
       this.lightType = PLightType.spot;
       this.range = data.range ?? -1;
       this.outerConeAngle = data.outerConeAngle ?? Math.PI;
       this.innerConeAngle = data.innerConeAngle ?? 0;
-    } else if (data.lightType === 'directional') {
+    } else if (data.lightType === spec.LightType.directional) {
       this.lightType = PLightType.directional;
     } else {
       this.lightType = PLightType.ambient;

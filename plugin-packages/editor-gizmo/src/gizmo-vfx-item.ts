@@ -224,8 +224,8 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
                   const vpMat4 = proMat4.clone().multiply(viewMat4);
                   const mvpMat4 = vpMat4.clone().multiply(modelMat4);
                   const screenCenter = mvpMat4.projectPoint(center, new Vector3());
-                  const screenCenterX = screenCenter.x;
-                  const screenCenterY = screenCenter.y;
+                  // const screenCenterX = screenCenter.x;
+                  // const screenCenterY = screenCenter.y;
 
                   // 包围球上的点正交投影到屏幕上
                   const radius = bounding.radius;
@@ -240,8 +240,8 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
                   point.add(center);
 
                   const screenPoint = mvpMat4.projectPoint(point, new Vector3());
-                  const screenPointX = screenPoint.x;
-                  const screenPointY = screenPoint.y;
+                  // const screenPointX = screenPoint.x;
+                  // const screenPointY = screenPoint.y;
 
                   // 计算正交投影到屏幕上的包围球的半径
                   const screenCenter2 = screenCenter.toVector2();

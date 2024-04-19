@@ -70,6 +70,7 @@ export abstract class Material extends EffectsObject implements Disposable {
   shader: Shader;
   // TODO: 待移除
   shaderSource: ShaderWithSource;
+  stringTags: Record<string, string> = {};
   readonly uniformSemantics: Record<string, UniformSemantic>;
   readonly renderType: MaterialRenderType;
   readonly name: string;

@@ -1,7 +1,7 @@
+import * as spec from '@galacean/effects-specification';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { DataType } from '../asset-loader';
 import { effectsClass, serialize } from '../decorators';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
@@ -18,7 +18,7 @@ let seed = 1;
  * @since 2.0.0
  * @internal
  */
-@effectsClass(DataType.EffectComponent)
+@effectsClass(spec.DataType.EffectComponent)
 export class EffectComponent extends RendererComponent {
   /**
    * Mesh 的全局唯一 id
