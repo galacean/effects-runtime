@@ -249,6 +249,22 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
     this.items.forEach(item => item.setVisible(visible));
   }
 
+  override setScale (x: number, y: number, z: number) {
+    if (this.content) {
+      this.content.startSize = new Vector3(x, y, z);
+    }
+
+  }
+
+  override scale (x: number, y: number, z: number) {
+    if (this.content) {
+      const startSize = this.content.startSize.clone();
+
+      this.content.startSize = new Vector3(x * startSize.x, y * startSize.y, z * startSize.z);
+
+    }
+  }
+
   getUpdateTime (t: number) {
     const startTime = this.startTimeInms;
     const now = this.timeInms;
