@@ -21,6 +21,11 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
 
   override onConstructed (props: spec.ParticleItem) {
     this.particle = props.content as unknown as ParticleSystemProps;
+
+    if (this.composition) {
+      this.content = new ParticleSystem(this.particle, this.composition.getRendererOptions(), this);
+    }
+
   }
 
   override onLifetimeBegin (composition: Composition, particleSystem: ParticleSystem) {
@@ -90,9 +95,14 @@ export class ParticleVFXItem extends VFXItem<ParticleSystem> {
   }
 
   protected override doCreateContent (composition: Composition) {
-    assertExist(this.particle);
+    // assertExist(this.particle);
 
-    return new ParticleSystem(this.particle, composition.getRendererOptions(), this);
+    // return new ParticleSystem(this.particle, composition.getRendererOptions(), this);
+    if (!this.content) {
+      return new ParticleSystem(this.particle, composition.getRendererOptions(), this);
+    } else {
+      return this.content;
+    }
   }
 
   override isEnded (now: number): boolean {

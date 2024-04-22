@@ -26,7 +26,7 @@ export default {
     pass: true,
   },
   fireworks: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EDQRDRYRXERJ/551346662-76ba9.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*WXEqSadfOKcAAAAAAAAAAAAADlB4AQ',
     name: '烟花',
     pass: true,
   },
@@ -284,7 +284,7 @@ export default {
     pass: true,
   },
   WuFu1: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*pn-zQotSdEUAAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*7vwwSbbDZfwAAAAAAAAAAAAADlB4AQ',
     name: '五福弹窗',
     pass: true,
   },
@@ -358,9 +358,11 @@ export default {
     name: '圆形弹窗',
     pass: true,
   },
-  // 不兼容 透明度有random值 不在规范
+
   plain: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RJGLUHXYUYVU/751328825-319d7.json',
+    //透明度有random值  不兼容 不在规范
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RJGLUHXYUYVU/751328825-319d7.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*c-GcT7L3iCwAAAAAAAAAAAAADlB4AQ',
     name: '平淡弹窗',
     pass: true,
   },
@@ -458,11 +460,12 @@ export default {
   },
 
   // 故事
-  // 透明度存在random值 不兼容 无法重新发布
+
   fiveinone: {
+    // 透明度存在random值 不兼容 无法重新发布，用下方单独 JSON 测试
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WATVNRNSNIMG/-225780559-f11a1.json',
     name: '五福首页2022——五合一',
-    pass: true,
+    pass: false,
   },
   four: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/GRPXATAUECLT/49510158-65ef1.json',
@@ -480,7 +483,9 @@ export default {
     pass: true,
   },
   forest: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HUHNTRYCTBNX/-382630129-e18d6.json',
+    // 透明度有random值 不兼容
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HUHNTRYCTBNX/-382630129-e18d6.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*5APHSozLoaEAAAAAAAAAAAAADlB4AQ',
     name: '五福首页2022——森林',
     pass: true,
   },
@@ -490,17 +495,23 @@ export default {
     pass: true,
   },
   write: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FVKURDGLVCTO/-1407450823-e9f98.json',
+    // 透明度有random值 不兼容
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FVKURDGLVCTO/-1407450823-e9f98.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*-7nQTrlh6qQAAAAAAAAAAAAADlB4AQ',
     name: '五福首页2022——写福',
     pass: true,
   },
   scan: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/TCFWNOIAYQRL/-891621161-b18e1.json',
+    // 透明度有random值 不兼容
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/TCFWNOIAYQRL/-891621161-b18e1.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*GjAtTLy8tCsAAAAAAAAAAAAADlB4AQ',
     name: '五福首页2022——扫福',
     pass: true,
   },
   shake: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/CKGSSBJBJHMW/-1783558944-a64a3.json',
+    // 透明度有random值 不兼容
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/CKGSSBJBJHMW/-1783558944-a64a3.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*V0xHSI6yih4AAAAAAAAAAAAADlB4AQ',
     name: '五福首页2022——摇一摇',
     pass: true,
   },
@@ -529,8 +540,11 @@ export default {
     name: '支付宝2021——跑步',
     pass: true,
   },
+
   door: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EJAYICIVXVEB/1200639368-999bc.json',
+    // 路径曲线缺少控制点数据
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EJAYICIVXVEB/1200639368-999bc.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*XkbvQpf-_uwAAAAAAAAAAAAADlB4AQ',
     name: '支付宝2021——开门动画',
     pass: true,
   },
@@ -692,6 +706,17 @@ export default {
   suprise: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*J69-TpS3MjoAAAAAAAAAAAAADlB4AQ',
     name: '拼手气开奖',
+    pass: true,
+  },
+
+  midAutumn: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*E8WcRom4-4cAAAAAAAAAAAAADlB4AQ',
+    name: '支付宝会员中秋',
+    pass: true,
+  },
+  autumn2023: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*6fYqTZWauTkAAAAAAAAAAAAADlB4AQ',
+    name: '秋促2023',
     pass: true,
   },
   video: {

@@ -1,5 +1,5 @@
 #version 300 es
-precision highp float;
+precision mediump float;
 #pragma "./compatible.frag.glsl";
 #import "./blend.glsl";
 #define PATICLE_SHADER 1
