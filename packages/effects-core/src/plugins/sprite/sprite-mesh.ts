@@ -65,8 +65,8 @@ export function spriteMeshShaderFromFilter (level: number, options?: { count?: n
     ['USE_BLEND', !ignoreBlend],
     ['MAX_FRAG_TEX', maxSpriteTextureCount >= 16 ? 16 : 8],
   ];
-  const fragment = wireframe ? itemFrameFrag : itemFrag.replace(/#pragma\s+FILTER_FRAG/, '');
-  const vertex = itemVert.replace(/#pragma\s+FILTER_VERT/, 'vec4 filterMain(float t,vec4 pos){return effects_MatrixVP * pos;}');
+  const fragment = wireframe ? itemFrameFrag : itemFrag;
+  const vertex = itemVert;
 
   return {
     fragment,

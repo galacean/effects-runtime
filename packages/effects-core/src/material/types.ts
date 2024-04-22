@@ -48,12 +48,6 @@ export interface MaterialStates extends MaterialBlendingStates, MaterialStencilS
   polygonOffsetFill?: boolean,
 }
 
-export interface FilterMaterialStates extends MaterialStates {
-  blendMode?: spec.BlendingMode,
-  side?: spec.SideMode,
-  maskMode?: spec.MaskMode,
-}
-
 export interface MaterialDataBlockDestroyOptions {
   textures?: DestroyOptions,
 }
