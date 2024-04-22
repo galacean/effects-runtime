@@ -553,7 +553,6 @@ export class AssetManager implements Disposable {
       if (image) {
         const tex = createTextureOptionsBySource(image, this.assets[idx]);
 
-        //@ts-expect-error
         tex.id = texOpts.id;
         tex.dataType = spec.DataType.Texture;
 

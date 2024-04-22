@@ -31,9 +31,6 @@ export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
     shape: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
-  filter?: {
-    feather: number | spec.FunctionExpression,
-  } & Omit<spec.FilterParams, 'feather'>,
 }
 
 /**

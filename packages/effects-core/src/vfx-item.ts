@@ -629,10 +629,6 @@ export namespace Item {
     return item.type === type;
   }
 
-  export function isFilter (item: spec.Item): item is spec.FilterItem {
-    return item.type === spec.ItemType.filter;
-  }
-
   export function isComposition (item: spec.Item): item is spec.CompositionItem {
     return item.type === spec.ItemType.composition;
   }
@@ -675,10 +671,6 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
         break;
       case spec.ItemType.camera:
         pluginName = 'camera';
-
-        break;
-      case spec.ItemType.filter:
-        pluginName = 'filter';
 
         break;
       case spec.ItemType.text:

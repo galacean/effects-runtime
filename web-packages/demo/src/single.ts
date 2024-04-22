@@ -1,8 +1,10 @@
 import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.applause.url;
-// const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*enfjQrKbio8AAAAAAAAAAAAADlB4AQ';
+// 滤镜
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*9IytQIW9BIMAAAAAAAAAAAAADlB4AQ';
+// 粒子滤镜
+// const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*rEYJT47ECfwAAAAAAAAAAAAADlB4AQ';
 
 (async () => {
   try {

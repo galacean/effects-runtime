@@ -1,7 +1,6 @@
 import type {
   Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps, MaterialStates,
   Renderer, Texture, UndefinedAble,
-  spec,
 } from '@galacean/effects-core';
 import {
   spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,

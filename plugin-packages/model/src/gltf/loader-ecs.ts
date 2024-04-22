@@ -149,7 +149,6 @@ export class LoaderECS {
       images: this.images,
       shapes: [],
       plugins: ['model'],
-      requires: [],
       textures: this.textures,
       items: this.items,
       components: this.components,
