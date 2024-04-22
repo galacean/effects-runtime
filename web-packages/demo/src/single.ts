@@ -14,10 +14,29 @@ const json = inspireList.wufu2022.url;
     const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*kJqJRIV7dyMAAAAAAAAAAAAADlB4AQ');
 
     const item = comp.getItemByName('sprite_1');
-    // const sprite = item?.getComponent(SpriteComponent);
-    // sprite?.setColor([1, 1, 0, 1]);
-    // const texture = await Texture.fromURL('https://mdn.alipayobjects.com/mars/afts/img/A*ZbcvRItTn8AAAAAAAAAAAAAADlB4AQ/original', player.renderer.engine);
+    const sprite = item?.getComponent(SpriteComponent);
 
+    sprite?.setColor([0.3,0.4, 0.4, 1]);
+    const texture = await Texture.fromImage('https://mdn.alipayobjects.com/mars/afts/img/A*ZbcvRItTn8AAAAAAAAAAAAAADlB4AQ/original', player.renderer.engine);
+
+    sprite?.setTexture(texture);
+    console.info('texture', texture);
+
+    setTimeout(() => {
+      sprite?.setVisible(false);
+
+    }, 1000);
+
+    setTimeout(() => {
+    comp.setVisible(false);
+    }, 1500);
+    setTimeout(() => {
+      sprite?.setVisible(true);
+    }, 2000);
+    setTimeout(() => {
+      comp.setVisible(true);
+      comp.setSpeed(-1);
+      }, 2500);
     // sprite?.setTexture(texture);
     // console.log('item', sprite);
     // player.gotoAndStop(0.5);

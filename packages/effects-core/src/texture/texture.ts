@@ -3,6 +3,7 @@ import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType } 
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
 import { EffectsObject } from '../effects-object';
+import { loadImage } from '../downloader';
 
 let seed = 1;
 
@@ -42,15 +43,11 @@ export abstract class Texture extends EffectsObject {
   /**
    * 通过 URL 创建 Texture 对象。
    * @param url - 要创建的 Texture URL
+   * @since 2.0.0
    */
-  static async fromURL(url: string, engine: Engine): Promise<Texture> {
-    const img = new Image();
+  static async fromImage (url: string, engine: Engine): Promise<Texture> {
+    const img = await loadImage(url);
 
-    img.src = url;
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-    });
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.image,
       image: img,

@@ -180,6 +180,7 @@ export class SpriteComponent extends RendererComponent {
   /**
    * 设置当前 图层 的颜色。
    * tips: 透明度也属于颜色的一部分，当有透明度/颜色K帧变化时，该API会失效
+   * @since 2.0.0
    * @param color - 颜色值
    */
   setColor (color: vec4) {
@@ -189,6 +190,7 @@ export class SpriteComponent extends RendererComponent {
 
   /**
    * 设置当前 Mesh 的纹理。
+   * @since 2.0.0
    * @param texture - 纹理对象
    */
   setTexture (texture: Texture) {
