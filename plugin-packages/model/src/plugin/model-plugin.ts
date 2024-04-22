@@ -19,12 +19,11 @@ import {
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
-import type { PShaderContext } from '../runtime';
-import { PTransform, PSceneManager, PCoordinate, PMaterialType } from '../runtime';
+import { PTransform, PSceneManager, PCoordinate, PBRShaderGUID, UnlitShaderGUID } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
 import { ModelCameraComponent, ModelLightComponent } from './model-item';
-import { getPBRPassShaderCode } from '../utility';
+import { fetchPBRShaderCode, fetchUnlitShaderCode } from '../utility';
 
 /**
  * Model 插件类，负责支持播放器中的 3D 功能
@@ -77,26 +76,29 @@ export class ModelPlugin extends AbstractPlugin {
 
   static override precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
     const isWebGL2 = renderer.engine.gpuCapability.level === 2;
-    const context: PShaderContext = {
+    const pbrShaderCode = fetchPBRShaderCode(isWebGL2);
+    const unlitShaderCode = fetchUnlitShaderCode(isWebGL2);
+    const pbrShaderData: spec.ShaderData = {
+      id: PBRShaderGUID,
+      name: 'PBR Shader',
+      dataType: 'Shader',
+      fragment: pbrShaderCode.fragmentShaderCode,
+      vertex: pbrShaderCode.vertexShaderCode,
       // @ts-expect-error
-      material: {
-        materialType: PMaterialType.pbr,
-      },
-      isWebGL2,
-      featureList: [],
+      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+    };
+    const unlitShaderData: spec.ShaderData = {
+      id: UnlitShaderGUID,
+      name: 'Unlit Shader',
+      dataType: spec.DataType.Shader,
+      fragment: unlitShaderCode.fragmentShaderCode,
+      vertex: unlitShaderCode.vertexShaderCode,
+      // @ts-expect-error
+      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
     };
 
-    const pbrShader = getPBRPassShaderCode(context);
-
-    renderer.engine.addEffectsObjectData({
-      // FIXME: 'unlit000000000000000000000000000',
-      id: 'pbr00000000000000000000000000000',
-      dataType: spec.DataType.Shader,
-      // @ts-expect-error
-      fragment: pbrShader.fragmentShaderCode,
-      vertex: pbrShader.vertexShaderCode,
-      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-    });
+    renderer.engine.addEffectsObjectData(pbrShaderData);
+    renderer.engine.addEffectsObjectData(unlitShaderData);
 
     return Promise.resolve();
   }

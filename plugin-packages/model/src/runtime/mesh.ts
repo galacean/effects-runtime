@@ -1,5 +1,5 @@
 import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer, Geometry } from '@galacean/effects';
-import { spec, Mesh, DestroyOptions, Material, GLSLVersion, Shader, generateGUID } from '@galacean/effects';
+import { spec, Mesh, DestroyOptions, Material, GLSLVersion } from '@galacean/effects';
 import type { ModelMeshComponentData, ModelMeshPrimitiveData, ModelItemBounding } from '../index';
 import { PObjectType, PMaterialType, PGlobalState, PFaceSideMode } from './common';
 import { PEntity } from './object';
@@ -496,9 +496,8 @@ export class PPrimitive {
    */
   build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
     const globalState = PGlobalState.getInstance();
-    const featureList = this.getFeatureList(lightCount, true, skybox);
-
-    this.material.build(featureList);
+    const primitiveMacroList = this.getMacroList(lightCount, true, skybox);
+    const materialMacroList = this.material.getMacroList(primitiveMacroList);
     const newSemantics = uniformSemantics ?? {};
 
     newSemantics['_ViewProjectionMatrix'] = 'VIEWPROJECTION';
@@ -512,20 +511,12 @@ export class PPrimitive {
       material = this.material.material;
       // @ts-expect-error
       material.uniformSemantics = newSemantics;
-      const shader = new Shader(this.engine);
 
-      shader.fromData({
-        // FIXME: check shader id
-        //id: 'pbr00000000000000000000000000000',
-        id: generateGUID(),
-        dataType: spec.DataType.Shader,
-        vertex: this.material.vertexShaderCode,
-        fragment: this.material.fragmentShaderCode,
-        // @ts-expect-error
-        glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+      materialMacroList.forEach(macro => {
+        const { name, value } = macro;
+
+        material.enableMacro(name, value);
       });
-      // @ts-expect-error
-      material.shader = shader;
 
       this.material.setMaterialStates(material);
     } else {
@@ -639,6 +630,83 @@ export class PPrimitive {
     }
 
     return featureList;
+  }
+
+  private getMacroList (lightCount: number, pbrPass: boolean, skybox?: PSkybox): MacroInfo[] {
+    const macroList: MacroInfo[] = [];
+
+    if (this.geometry.hasNormals()) {
+      macroList.push({ name: 'HAS_NORMALS' });
+    }
+    if (this.geometry.hasTangents()) {
+      macroList.push({ name: 'HAS_TANGENTS' });
+    }
+    if (this.geometry.hasUVCoords(1)) {
+      macroList.push({ name: 'HAS_UV_SET1' });
+    }
+    if (this.geometry.hasUVCoords(2)) {
+      macroList.push({ name: 'HAS_UV_SET2' });
+    }
+
+    if (this.morph !== undefined && this.morph.hasMorph()) {
+      // 存在 Morph 动画，需要配置 Morph 动画相关的 Shader 宏定义
+      // USE_MORPHING 是总开关，WEIGHT_COUNT 是 weights 数组长度（Shader）
+      macroList.push({ name: 'USE_MORPHING' });
+      macroList.push({ name: 'WEIGHT_COUNT', value: this.morph.morphWeightsLength });
+      for (let i = 0; i < this.morph.morphWeightsLength; i++) {
+        if (this.morph.hasPositionMorph) {
+          macroList.push({ name: `HAS_TARGET_POSITION${i}` });
+        }
+        if (this.morph.hasNormalMorph) {
+          macroList.push({ name: `HAS_TARGET_NORMAL${i}` });
+        }
+        if (this.morph.hasTangentMorph) {
+          macroList.push({ name: `HAS_TARGET_TANGENT${i}` });
+        }
+      }
+    }
+
+    if (this.skin !== undefined) {
+      macroList.push({ name: 'USE_SKINNING' });
+      macroList.push({ name: 'JOINT_COUNT', value: this.skin.getJointCount() });
+      macroList.push({ name: 'HAS_JOINT_SET1' });
+      macroList.push({ name: 'HAS_WEIGHT_SET1' });
+      if (this.skin.textureDataMode) {
+        macroList.push({ name: 'USE_SKINNING_TEXTURE' });
+      }
+    }
+
+    if (this.material.materialType !== PMaterialType.unlit) {
+      if (lightCount > 0 && this.geometry.hasNormals()) {
+        macroList.push({ name: 'USE_PUNCTUAL' });
+        macroList.push({ name: 'LIGHT_COUNT', value: lightCount });
+      }
+
+      if (skybox !== undefined && skybox.available) {
+        macroList.push({ name: 'USE_IBL' });
+        macroList.push({ name: 'USE_TEX_LOD' });
+        if (skybox.hasDiffuseImage) {
+          // do nothing
+        } else {
+          macroList.push({ name: 'IRRADIANCE_COEFFICIENTS' });
+        }
+      }
+
+      // if(!hasLight){
+      //   featureList.push('MATERIAL_UNLIT 1');
+      // }
+    }
+
+    // 渲染中间结果输出，用于渲染效果调试，支持 pbr 和 unlit
+    const renderMode = PGlobalState.getInstance().renderMode3D;
+    const outputDefine = this.getRenderMode3DDefine(renderMode);
+
+    if (outputDefine !== undefined) {
+      macroList.push({ name: 'DEBUG_OUTPUT' });
+      macroList.push({ name: outputDefine });
+    }
+
+    return macroList;
   }
 
   /**
@@ -1220,6 +1288,11 @@ class EffectsMeshProxy {
 
     return undefined;
   }
+}
+
+export interface MacroInfo {
+  name: string,
+  value?: boolean | number,
 }
 
 interface GeometryExt extends Geometry {

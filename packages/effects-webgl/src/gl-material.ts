@@ -1,7 +1,6 @@
 import type {
   Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps, MaterialStates,
   Renderer, Texture, UndefinedAble,
-  spec,
 } from '@galacean/effects-core';
 import {
   spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
@@ -24,7 +23,6 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-  shader: Shader;
   shaderVariant: GLShaderVariant;
 
   // material存放的uniform数据。
@@ -219,9 +217,9 @@ export class GLMaterial extends Material {
     value !== undefined && this.glMaterialState.setCullFace(value);
   }
 
-  override enableMacro (keyword: string): void {
-    if (!this.isMacroEnabled(keyword)) {
-      this.macros[keyword] = true;
+  override enableMacro (keyword: string, value?: boolean | number): void {
+    if (!this.isMacroEnabled(keyword) || this.macros[keyword] !== value) {
+      this.macros[keyword] = value ?? true;
       this.macrosDirtyFlag = true;
     }
   }
