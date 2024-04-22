@@ -19,9 +19,6 @@ uniform sampler2D uColorOverLifetime;
 
 #ifdef USE_SPRITE
 in vec4 vTexCoordBlend;
-#ifdef USE_FILTER
-uniform vec4 uFSprite;
-#endif
 #endif
 in float vSeed;
 
@@ -31,7 +28,7 @@ uniform vec4 uPreviewColor;
 
 #ifdef USE_SPRITE
 vec4 getTextureColor(sampler2D tex, vec2 texCoord) {
-  if(vTexCoordBlend.w > 0.) {
+  if(vTexCoordBlend.w > 0.f) {
     return mix(texture2D(tex, texCoord), texture2D(tex, vTexCoordBlend.xy + texCoord), vTexCoordBlend.z);
   }
   return texture2D(tex, texCoord);
@@ -49,41 +46,32 @@ void main() {
   fragColor = uPreviewColor;
 }
 #else
-#pragma FILTER_FRAG
 void main() {
-  vec4 color = vec4(1.0);
+  vec4 color = vec4(1.0f);
   vec4 tempColor = vColor;
   vec2 texOffset = uTexOffset;
-  if(vLife < 0.) {
+  if(vLife < 0.f) {
     discard;
   }
-    #ifdef USE_FILTER
-        #ifdef USE_SPRITE
-  texOffset = uTexOffset / uFSprite.xy;
-        #endif
-  color = filterMain(vTexCoord, uMaskTex);
-    #else
-  if(uColorParams.x > 0.0) {
+  if(uColorParams.x > 0.0f) {
     color = getTextureColor(uMaskTex, vTexCoord);
   }
-        #endif
-
-        #ifdef COLOR_OVER_LIFETIME
-        #ifndef ENABLE_VERTEX_TEXTURE
-  tempColor *= texture2D(uColorOverLifetime, vec2(vLife, 0.));
-        #endif
-        #endif
+  #ifdef COLOR_OVER_LIFETIME
+      #ifndef ENABLE_VERTEX_TEXTURE
+        tempColor *= texture2D(uColorOverLifetime, vec2(vLife, 0.f));
+      #endif
+  #endif
   color = blendColor(color, tempColor, round(uColorParams.y));
-  if(color.a <= 0.01 && uColorParams.w > 0.) {
-    float _at = texture2D(uMaskTex, vTexCoord + texOffset).a + texture2D(uMaskTex, vTexCoord + texOffset * -1.).a;
-    if(_at <= 0.02) {
+  if(color.a <= 0.01f && uColorParams.w > 0.f) {
+    float _at = texture2D(uMaskTex, vTexCoord + texOffset).a + texture2D(uMaskTex, vTexCoord + texOffset * -1.f).a;
+    if(_at <= 0.02f) {
       discard;
     }
   }
 
   // 先对自发光做gamma0.45，后续统一shader着色在线性空间中可去除。
-  vec3 emission = emissionColor * pow(2.0, emissionIntensity);
-  color = vec4(pow(pow(color.rgb, vec3(2.2)) + emission, vec3(1.0/2.2)), color.a);
+  vec3 emission = emissionColor * pow(2.0f, emissionIntensity);
+  color = vec4(pow(pow(color.rgb, vec3(2.2f)) + emission, vec3(1.0f / 2.2f)), color.a);
   fragColor = color;
 }
 #endif

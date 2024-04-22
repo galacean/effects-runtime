@@ -88,7 +88,6 @@ export interface ParticleMeshProps extends ParticleMeshData {
   mask: number,
   maskMode: number,
   side: number,
-  filter?: spec.FilterParams,
   transparentOcclusion?: boolean,
   matrix?: Matrix4,
   sprite?: {
@@ -305,11 +304,6 @@ export class ParticleMesh implements ParticleMeshData {
       marcos,
       name: `particle#${name}`,
     };
-
-    // if (filter) {
-    //   shader.cacheId += filter.name;
-    // }
-
     const mtlOptions: MaterialProps = {
       shader,
       uniformSemantics: {
@@ -714,21 +708,7 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     marcos.push(['USE_SPRITE', true]);
     shaderCacheId |= 1 << 2;
   }
-  // let filter: FilterShaderDefine | undefined = undefined;
 
-  // if (props.filter && (props.filter as any).name !== FILTER_NAME_NONE) {
-  //   marcos.push(['USE_FILTER', true]);
-  //   shaderCacheId |= 1 << 3;
-  //   const f = createFilterShaders(props.filter).find(f => f.isParticle);
-
-  //   if (!f) {
-  //     throw Error(`particle filter ${props.filter.name} not implement`);
-  //   }
-  //   filter = f;
-  //   f.uniforms?.forEach(val => getKeyFrameMetaByRawValue(vertexKeyFrameMeta, val));
-
-  //   // filter = processFilter(props.filter, fragmentKeyFrameMeta, vertexKeyFrameMeta, options);
-  // }
   const colorOverLifetime = props.colorOverLifetime;
 
   if (colorOverLifetime && colorOverLifetime.color) {
@@ -850,11 +830,6 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     name: `particle#${item.name}`,
   };
 
-  // if (filter) {
-  //   shader.fragment = shader.fragment.replace(/#pragma\s+FILTER_FRAG/, filter.fragment ?? '');
-  //   shader.vertex = shader.vertex.replace(/#pragma\s+FILTER_VERT/, filter.vertex || 'void filterMain(float t){}\n');
-  //   shader.cacheId += '+' + props.filter?.name;
-  // }
   marcos.push(
     ['VERT_CURVE_VALUE_COUNT', vertexKeyFrameMeta.index],
     ['FRAG_CURVE_VALUE_COUNT', fragmentKeyFrameMeta.index],
