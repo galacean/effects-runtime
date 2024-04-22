@@ -1,15 +1,13 @@
 import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.applause.url;
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*raBXS422s3IAAAAAAAAAAAAADlB4AQ';
 
 (async () => {
   try {
     const player = createPlayer();
 
     await player.loadScene(json);
-
-    // player.gotoAndStop(1);
 
   } catch (e) {
     console.error('biz', e);

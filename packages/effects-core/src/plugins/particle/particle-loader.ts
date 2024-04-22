@@ -18,6 +18,7 @@ export class ParticleLoader extends AbstractPlugin {
   engine: Engine;
 
   static override precompile (compositions: spec.Composition[], renderer: Renderer, options?: PrecompileOptions): Promise<any> {
+    // TODO 增加预合成中的粒子处理？
     const composition = compositions[0];
     // 计算Shader编译的最大合集
     const compileOptions: Record<string, Record<string, boolean>> = {
@@ -71,55 +72,55 @@ export class ParticleLoader extends AbstractPlugin {
     composition.items.forEach(item => {
       if (Item.isParticle(item)) {
         items.push(item);
-        assignDefValue(item);
-        if (level === 2) {
-          Object.keys(compileOptions).forEach(name => {
-            const content = compileOptions[name];
-            const target = item.content[name as keyof spec.ParticleContent];
-
-            if (target) {
-              Object.keys(content).forEach(pro => {
-                // @ts-expect-error
-                if (target[pro]) {
-                  content[pro] = true;
-                  addItem(pros, name);
-                }
-              });
-            }
-          });
-        }
+        // assignDefValue(item);
+        // if (level === 2) {
+        //   Object.keys(compileOptions).forEach(name => {
+        //     const content = compileOptions[name];
+        //     const target = item.content[name as keyof spec.ParticleContent];
+        //
+        //     if (target) {
+        //       Object.keys(content).forEach(pro => {
+        //         // @ts-expect-error
+        //         if (target[pro]) {
+        //           content[pro] = true;
+        //           addItem(pros, name);
+        //         }
+        //       });
+        //     }
+        //   });
+        // }
       }
     });
     items.forEach(item => {
       const options = item.content;
 
-      if (level === 2) {
-        pros.forEach(name => {
-          const content = compileOptions[name];
-          // @ts-expect-error
-          const target = options[name] || (options[name] = {});
-
-          Object.keys(content).forEach(pro => {
-            if (content[pro] && !target[pro]) {
-              const df = (defValue[name] && defValue[name][pro]) || 0;
-
-              target[pro] = isNaN(df) ? df : [spec.ValueType.CONSTANT, df];
-            }
-          });
-        });
-        if (compileOptions.positionOverLifetime.forceCurve) {
-          // @ts-expect-error
-          options.positionOverLifetime.forceTarget = true;
-        }
-        if (compileOptions.rotationOverLifetime.x || compileOptions.rotationOverLifetime.y) {
-          // @ts-expect-error
-          options.rotationOverLifetime.separateAxes = true;
-        }
-        if (compileOptions.sizeOverLifetime.y) {
-          // @ts-expect-error
-          options.sizeOverLifetime.separateAxes = true;
-        }
-      }
+      // if (level === 2) {
+      //   pros.forEach(name => {
+      //     const content = compileOptions[name];
+      //     // @ts-expect-error
+      //     const target = options[name] || (options[name] = {});
+      //
+      //     Object.keys(content).forEach(pro => {
+      //       if (content[pro] && !target[pro]) {
+      //         const df = (defValue[name] && defValue[name][pro]) || 0;
+      //
+      //         target[pro] = isNaN(df) ? df : [spec.ValueType.CONSTANT, df];
+      //       }
+      //     });
+      //   });
+      //   if (compileOptions.positionOverLifetime.forceCurve) {
+      //     // @ts-expect-error
+      //     options.positionOverLifetime.forceTarget = true;
+      //   }
+      //   if (compileOptions.rotationOverLifetime.x || compileOptions.rotationOverLifetime.y) {
+      //     // @ts-expect-error
+      //     options.rotationOverLifetime.separateAxes = true;
+      //   }
+      //   if (compileOptions.sizeOverLifetime.y) {
+      //     // @ts-expect-error
+      //     options.sizeOverLifetime.separateAxes = true;
+      //   }
+      // }
 
       const { shader, fragment, vertex } = getParticleMeshShader(item, env, gpuCapability);
 
@@ -188,39 +189,5 @@ export class ParticleLoader extends AbstractPlugin {
       removeItem(this.meshes, mesh);
       frame.removeMeshFromDefaultRenderPass(mesh);
     });
-  }
-}
-
-function assignDefValue (item: spec.ParticleItem) {
-  if (Item.isParticle(item)) {
-    const options = item.content;
-
-    if (!options.rotationOverLifetime) {
-      options.rotationOverLifetime = {};
-    }
-    const rot = options.rotationOverLifetime;
-
-    if (!rot.z) {
-      rot.z = [spec.ValueType.CONSTANT, 0];
-    }
-    if (!rot.separateAxes) {
-      delete rot.y;
-      delete rot.x;
-    }
-    if (!options.sizeOverLifetime) {
-      options.sizeOverLifetime = {};
-    }
-    const size = options.sizeOverLifetime;
-
-    if (!size.separateAxes) {
-      delete size.y;
-    }
-    if (size.size) {
-      size.x = size.size;
-      delete size.size;
-    }
-    if (!size.x) {
-      size.x = [spec.ValueType.CONSTANT, 1];
-    }
   }
 }
