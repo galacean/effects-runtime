@@ -7,6 +7,12 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+## 1.3.1
+
+`2024-04-19`
+
+- Fix: image template variables is images. [#282](https://github.com/galacean/effects-runtime/pull/282) @Sruimeng
+
 ## 1.3.0
 
 `2024-04-16`
