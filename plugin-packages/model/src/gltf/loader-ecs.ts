@@ -121,9 +121,14 @@ export class LoaderECS {
     this.materials = this.gltfMaterials.map(material => material.materialData);
 
     gltfResource.meshes.forEach(mesh => {
-      this.geometries.push(...mesh.geometrysData);
-      this.components.push(mesh.meshData);
+      this.geometries.push(...mesh.geometriesData);
     });
+
+    const gltfScene = gltfResource.scenes[0];
+
+    gltfScene.camerasComponentData.forEach(comp => this.components.push(comp));
+    gltfScene.lightsComponentData.forEach(comp => this.components.push(comp));
+    gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
 
     this.items = [...gltfResource.scenes[0].vfxItemData];
 
@@ -298,9 +303,9 @@ export class LoaderECS {
 
         return child.nodeIndex;
       });
-      let pos: spec.vec3 | undefined;
-      let quat: spec.vec4 | undefined;
-      let scale: spec.vec3 | undefined;
+      let pos: spec.vec3 = [0, 0, 0];
+      let quat: spec.vec4 = [0, 0, 0, 0];
+      let scale: spec.vec3 = [0, 0, 0];
 
       if (node.matrix !== undefined) {
         if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
@@ -395,8 +400,13 @@ export class LoaderECS {
     return PluginHelper.createLightOptions(light);
   }
 
-  createCameraOptions (camera: GLTFCamera): ModelCameraOptions | undefined {
-    return PluginHelper.createCameraOptions(camera);
+  createCameraOptions (camera: GLTFCamera): ModelCameraOptions {
+    return PluginHelper.createCameraOptions(camera) ?? {
+      fov: 45,
+      far: 1000,
+      near: 0.01,
+      clipMode: spec.CameraClipMode.portrait,
+    };
   }
 
   private clear () {
