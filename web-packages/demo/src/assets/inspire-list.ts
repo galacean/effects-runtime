@@ -233,27 +233,37 @@ export default {
     pass: true,
   },
   WufuParticle0: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*incgQLS6--IAAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*qTquTKYbk6EAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*incgQLS6--IAAAAAAAAAAAAADlB4AQ',
     name: '24五福烟花-步步高升',
     pass: true,
   },
   WufuParticle1: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*9N1JS6tqGIEAAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*OzJ7QZTxFbUAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*9N1JS6tqGIEAAAAAAAAAAAAADlB4AQ',
     name: '24五福烟花-江山如画',
     pass: true,
   },
   WufuParticle2: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*lke0TIDGOicAAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*sEdkT5cdXGEAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*lke0TIDGOicAAAAAAAAAAAAADlB4AQ',
     name: '24五福烟花-家和万事兴',
     pass: true,
   },
   textParticle1: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*JSn5QqpQRTQAAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*JS2GS4h_2REAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*JSn5QqpQRTQAAAAAAAAAAAAADlB4AQ',
     name: '文字烟花-幸运',
     pass: true,
   },
   textParticle2: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*AprpQpQarfIAAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*yjUxQLnBbJwAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*AprpQpQarfIAAAAAAAAAAAAADlB4AQ',
     name: '文字烟花-泼天富贵',
     pass: true,
   },
