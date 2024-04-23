@@ -1,17 +1,13 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
-  SceneLoadType, SceneType, SceneWithOptionsType,
-  EffectsObject } from '@galacean/effects-core';
-import { Texture } from '@galacean/effects-core';
-import {
-  TextureSourceType,
-  glContext,
+  SceneLoadType, SceneType, SceneWithOptionsType, EffectsObject,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
   isArray, isObject, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, CompositionSourceManager,
+  TextureSourceType, glContext, Texture,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';

@@ -113,7 +113,6 @@ export class LoaderECS {
     });
 
     this.textures = this.gltfTextures.map(texture => {
-      // @ts-expect-error
       texture.textureOptions.generateMipmap = true;
 
       return texture.textureOptions;
@@ -121,7 +120,7 @@ export class LoaderECS {
     this.materials = this.gltfMaterials.map(material => material.materialData);
 
     gltfResource.meshes.forEach(mesh => {
-      this.geometries.push(...mesh.geometrysData);
+      this.geometries.push(...mesh.geometriesData);
       this.components.push(mesh.meshData);
     });
 
