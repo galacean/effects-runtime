@@ -1,7 +1,12 @@
 import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*raBXS422s3IAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*ZrU7SIuNOdkAAAAAAAAAAAAADlB4AQ';
+// 'https://mdn.alipayobjects.com/mars/afts/file/A*_DqDToRcM7oAAAAAAAAAAAAADlB4AQ';
+// 'https://mdn.alipayobjects.com/mars/afts/file/A*VPbASpxweKAAAAAAAAAAAAAADlB4AQ';
+// 'https://mdn.alipayobjects.com/mars/afts/file/A*a8bbR4Zew5AAAAAAAAAAAAAADlB4AQ';
+// 'https://mdn.alipayobjects.com/mars/afts/file/A*Ok3cRL6zvRoAAAAAAAAAAAAADlB4AQ';
+// 'https://mdn.alipayobjects.com/mars/afts/file/A*J7LRRI073y4AAAAAAAAAAAAADlB4AQ';
 
 (async () => {
   try {
@@ -20,7 +25,7 @@ function createPlayer () {
     interactive: true,
     onPlayableUpdate: ({ player, playing }) => {
     },
-    // renderFramework: 'webgl',
+    renderFramework: 'webgl',
     // env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {

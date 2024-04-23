@@ -472,6 +472,9 @@ export class BezierCurve extends ValueGetter<number> {
     return result;
   }
 
+  override getIntegrateByTime (t0: number, t1: number) {
+    return this.getIntegrateValue(0, t1) - this.getIntegrateValue(0, t0);
+  }
   // 速度变化曲线面板移除后下线
   getCurveIntegrateValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
