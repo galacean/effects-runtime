@@ -1,4 +1,4 @@
-import { Player, combineImageTemplate, loadImage } from '@galacean/effects';
+import { Player, combineImageTemplate, loadImage, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -41,6 +41,7 @@ describe('Image template', async () => {
       height: 30,
       variables: {},
       background: {
+        type: spec.BackgroundType.image,
         name: 'test',
         url: '',
       },
@@ -78,6 +79,7 @@ describe('Image template', async () => {
       height: 194,
       variables: {},
       background: {
+        type: spec.BackgroundType.image,
         name: 'test',
         url: '',
       },

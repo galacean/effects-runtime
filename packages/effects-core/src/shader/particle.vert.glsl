@@ -97,10 +97,6 @@ out float vLife;
 out vec4 vColor;
 out vec2 vTexCoord;
 
-#ifdef USE_FILTER
-#pragma FILTER_VERT
-#endif
-
 #ifdef ENV_EDITOR
 uniform vec4 uEditorTransform; //sx sy dx dy
 #endif
@@ -289,10 +285,6 @@ void main() {
     vSeed = aSeed;
 
     gl_PointSize = 6.0;
-
-        #ifdef USE_FILTER
-    filterMain(life);
-        #endif
 
         #ifdef ENV_EDITOR
     gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);

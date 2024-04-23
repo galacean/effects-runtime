@@ -1,11 +1,11 @@
 import type { Renderer, SpriteItemProps } from '@galacean/effects-core';
-import { DataType, SpriteComponent, effectsClass, glContext } from '@galacean/effects-core';
+import { SpriteComponent, effectsClass, glContext, spec } from '@galacean/effects-core';
 import type { ThreeGeometry } from './three-geometry';
 import type { ThreeMaterial } from './material';
 import * as THREE from 'three';
 import type { ThreeEngine } from './three-engine';
 
-@effectsClass(DataType.SpriteComponent)
+@effectsClass(spec.DataType.SpriteComponent)
 export class ThreeSpriteComponent extends SpriteComponent {
   threeMesh: THREE.Mesh | THREE.LineSegments;
   /**
@@ -93,6 +93,7 @@ export class ThreeSpriteComponent extends SpriteComponent {
     if (!this.isActiveAndEnabled) {
       return;
     }
+    this.material.setVector2('_Size', this.transform.size);
     this.material.setMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     this.material.use(renderer, renderer.renderingData.currentFrame.globalUniforms);
   }

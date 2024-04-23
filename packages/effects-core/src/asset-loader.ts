@@ -1,3 +1,4 @@
+import * as spec from '@galacean/effects-specification';
 import { effectsClassStore } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
@@ -30,15 +31,16 @@ export class AssetLoader {
       return undefined as T;
     }
     switch (effectsObjectData.dataType) {
-      case DataType.Material:
+      case spec.DataType.Material:
         effectsObject = Material.create(this.engine);
 
         break;
-      case DataType.Geometry:
+      case spec.DataType.Geometry:
         effectsObject = Geometry.create(this.engine);
 
         break;
-      case DataType.Texture:
+      case spec.DataType.Texture:
+        // @ts-expect-error
         effectsObject = Texture.create(this.engine, effectsObjectData);
 
         return effectsObject as T;
@@ -92,15 +94,16 @@ export class AssetLoader {
     }
 
     switch (effectsObjectData.dataType) {
-      case DataType.Material:
+      case spec.DataType.Material:
         effectsObject = Material.create(this.engine);
 
         break;
-      case DataType.Geometry:
+      case spec.DataType.Geometry:
         effectsObject = Geometry.create(this.engine);
 
         break;
-      case DataType.Texture:
+      case spec.DataType.Texture:
+        // @ts-expect-error
         effectsObject = Texture.create(this.engine, effectsObjectData);
 
         return effectsObject as T;
@@ -126,7 +129,7 @@ export class AssetLoader {
     return effectsObject as T;
   }
 
-  private findData (uuid: string): EffectsObjectData | undefined {
+  private findData (uuid: string): spec.EffectsObjectData | undefined {
     return this.engine.jsonSceneData[uuid];
   }
 
@@ -141,115 +144,31 @@ export class Database {
   }
 }
 
-export enum DataType {
-  VFXItemData = 'VFXItemData',
-  EffectComponent = 'EffectComponent',
-  Material = 'Material',
-  Shader = 'Shader',
-  SpriteComponent = 'SpriteComponent',
-  ParticleSystem = 'ParticleSystem',
-  InteractComponent = 'InteractComponent',
-  CameraController = 'CameraController',
-  Geometry = 'Geometry',
-  Texture = 'Texture',
-  TextComponent = 'TextComponent',
-
-  // FIXME: 先完成ECS的场景转换，后面移到spec中
-  MeshComponent = 'MeshComponent',
-  SkyboxComponent = 'SkyboxComponent',
-  LightComponent = 'LightComponent',
-  CameraComponent = 'CameraComponent',
-  ModelPluginComponent = 'ModelPluginComponent',
-  TreeComponent = 'TreeComponent',
-}
-
-export interface DataPath {
-  id: string,
-}
-
-export interface EffectsObjectData {
-  id: string,
-  name?: string,
-  dataType: string,
-}
-
-export interface ColorData {
-  r: number,
-  g: number,
-  b: number,
-  a: number,
-}
-
-export interface Vector4Data {
-  x: number,
-  y: number,
-  z: number,
-  w: number,
-}
-
-export interface Vector2Data {
-  x: number,
-  y: number,
-}
-
-export interface MaterialTextureProperty {
-  texture: DataPath,
-  offset: Vector2Data,
-  scale: Vector2Data,
-}
-
-export interface MaterialData extends EffectsObjectData {
-  shader: DataPath,
-  blending?: boolean,
-  zWrite?: boolean,
-  zTest?: boolean,
-  ints: Record<string, number>,
-  floats: Record<string, number>,
-  vector4s: Record<string, Vector4Data>,
-  colors: Record<string, ColorData>,
-  textures: Record<string, MaterialTextureProperty>,
+// TODO: 待统一
+export interface MaterialData extends spec.MaterialData {
   /**
    * shader的宏定义
    */
   marcos?: ShaderMarcos,
 }
 
-export interface GeometryData extends EffectsObjectData {
-  vertexData: VertexData,
+// TODO: 待统一
+export interface GeometryData extends spec.EffectsObjectData {
+  vertexData: spec.VertexData,
   indexFormat: number,
   indexOffset: number,
   buffer: string,
 }
 
-export interface VertexData {
-  vertexCount: number,
-  channels: VertexChannel[],
-}
-
-export interface VertexChannel {
-  offset: number,
-  format: number,
-  dimension: number,
-}
-
-export interface ShaderData extends EffectsObjectData {
-  vertex: string,
-  fragment: string,
-  properties?: string,
-}
-
-export interface EffectComponentData extends EffectsObjectData {
+// TODO: 待统一
+export interface EffectComponentData extends spec.EffectsObjectData {
   _priority: number,
-  item: DataPath,
-  materials: DataPath[],
-  geometry: DataPath,
+  item: spec.DataPath,
+  materials: spec.DataPath[],
+  geometry: spec.DataPath,
 }
 
-export type VFXItemData = VFXItemProps & { dataType: DataType, components: DataPath[] };
+export type VFXItemData = VFXItemProps & { dataType: spec.DataType, components: spec.DataPath[] };
 
-export type SceneData = Record<string, EffectsObjectData>;
+export type SceneData = Record<string, spec.EffectsObjectData>;
 
-export interface EffectsPackageData {
-  fileSummary: { guid: string, assetType: string },
-  exportObjects: EffectsObjectData[],
-}

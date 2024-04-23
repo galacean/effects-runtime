@@ -1,5 +1,5 @@
+import type * as spec from '@galacean/effects-specification';
 import { getMergedStore } from './decorators';
-import type { EffectsObjectData, DataPath } from './asset-loader';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 
@@ -156,7 +156,7 @@ export class SerializationHelper {
       // @ts-expect-error
       effectsObject[key as keyof EffectsObject] = SerializationHelper.deserializeProperty(value, engine, 0);
     }
-    effectsObject.fromData(taggedProperties as EffectsObjectData);
+    effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
 
   static async deserializeTaggedPropertiesAsync (serializedData: Record<string, any>, effectsObject: EffectsObject) {
@@ -183,7 +183,7 @@ export class SerializationHelper {
       // @ts-expect-error
       effectsObject[key as keyof EffectsObject] = await SerializationHelper.deserializePropertyAsync(value, engine, 0);
     }
-    effectsObject.fromData(taggedProperties as EffectsObjectData);
+    effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
 
   static checkTypedArray (obj: any): boolean {
@@ -235,7 +235,7 @@ export class SerializationHelper {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
-      return engine.assetLoader.loadGUID((property as DataPath).id);
+      return engine.assetLoader.loadGUID((property as spec.DataPath).id);
     } else if (property instanceof EffectsObject ||
       SerializationHelper.checkTypedArray(property) ||
       SerializationHelper.checkGLTFNode(property)) {
@@ -272,7 +272,7 @@ export class SerializationHelper {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
-      const res = await engine.assetLoader.loadGUIDAsync((property as DataPath).id);
+      const res = await engine.assetLoader.loadGUIDAsync((property as spec.DataPath).id);
 
       return res;
     } else if (property instanceof EffectsObject ||
@@ -362,7 +362,7 @@ export class SerializationHelper {
         if (!serializedData[i]) {
           serializedData[i] = {};
         }
-        SerializationHelper.serializeObjectProperty(value[i], serializedData[i], level + 1);
+        SerializationHelper.serializeObjectProperty(value, serializedData[i], level + 1);
       }
     }
   }

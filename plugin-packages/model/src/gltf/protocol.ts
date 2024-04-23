@@ -10,7 +10,7 @@ import type {
   GLTFImageBasedLight,
 } from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
-import type { GLTFResources } from '@vvfx/resource-detection/dist/src/gltf-tools';
+import type { GLTFResources } from '@vvfx/resource-detection';
 import type { spec, Renderer, Texture, Geometry } from '@galacean/effects';
 import type {
   ModelAnimationOptions,
@@ -81,6 +81,15 @@ export interface LoadSceneOptions {
 export interface LoadSceneResult {
   source: string,
   items: ModelBaseItem[],
+  sceneAABB: {
+    min: spec.vec3,
+    max: spec.vec3,
+  },
+}
+
+export interface LoadSceneECSResult {
+  source: string,
+  jsonScene: spec.JSONScene,
   sceneAABB: {
     min: spec.vec3,
     max: spec.vec3,

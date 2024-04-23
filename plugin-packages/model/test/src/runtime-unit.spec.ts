@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { PLight, PLightType, PObjectType, WebHelper } from '@galacean/effects-plugin-model';
-import { loadGLTFScene } from '@galacean/effects-plugin-model/helper';
+import { loadGLTFScene } from '../../src/helper';
 import { generateComposition } from './utilities';
 
 const { expect } = chai;

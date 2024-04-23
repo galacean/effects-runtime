@@ -2,7 +2,6 @@ import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
-import { DataType } from '../../asset-loader';
 import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
@@ -145,7 +144,7 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture'> 
 
 // 粒子节点包含的数据
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
-@effectsClass(DataType.ParticleSystem)
+@effectsClass(spec.DataType.ParticleSystem)
 export class ParticleSystem extends Component {
   renderer: ParticleSystemRenderer;
   options: ParticleOptions;
@@ -258,7 +257,7 @@ export class ParticleSystem extends Component {
       const first = link.first;
 
       link.removeNode(first);
-      pointIndex = linkContent[1] = (first.content as ParticleContent)[1];
+      pointIndex = linkContent[1] = first.content[1];
     }
     link.pushNode(linkContent);
     this.renderer.setParticlePoint(pointIndex, point);
@@ -657,7 +656,7 @@ export class ParticleSystem extends Component {
     direction = matrix4.transformNormal(direction, tempDir).normalize();
     if (options.startTurbulence && options.turbulence) {
       for (let i = 0; i < 3; i++) {
-        tempVec3.setElement(i, options.turbulence[i]!.getValue(lifetime));
+        tempVec3.setElement(i, options.turbulence[i].getValue(lifetime));
       }
       tempEuler.setFromVector3(tempVec3.negate());
       const mat4 = tempMat4.setFromEuler(tempEuler);
@@ -917,7 +916,7 @@ export class ParticleSystem extends Component {
       };
 
     renderer.anchor = renderer.anchor || [0, 0];
-    const anchor = Vector2.fromArray(renderer.anchor) ;
+    const anchor = Vector2.fromArray(renderer.anchor);
 
     this.options = {
       particleFollowParent: !!options.particleFollowParent,
@@ -961,7 +960,6 @@ export class ParticleSystem extends Component {
       meshSlots: options.meshSlots,
       name: this.name,
       matrix: Matrix4.IDENTITY,
-      filter: props.filter,
       shaderCachePrefix,
       renderMode: renderer.renderMode || spec.RenderMode.BILLBOARD,
       side: renderer.side || spec.SideMode.DOUBLE,
@@ -1074,10 +1072,10 @@ export class ParticleSystem extends Component {
       };
 
       if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {
-        trailMeshProps.colorOverLifetime = (trails.colorOverLifetime as spec.GradientColor)[1];
+        trailMeshProps.colorOverLifetime = trails.colorOverLifetime[1];
       }
       if (trails.colorOverTrail && trails.colorOverTrail[0] === spec.ValueType.GRADIENT_COLOR) {
-        trailMeshProps.colorOverTrail = (trails.colorOverTrail as spec.GradientColor)[1];
+        trailMeshProps.colorOverTrail = trails.colorOverTrail[1];
       }
     }
 

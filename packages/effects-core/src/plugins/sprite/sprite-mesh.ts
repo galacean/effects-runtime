@@ -1,13 +1,9 @@
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
-import type { ValueGetter } from '../../math';
 import type { GPUCapabilityDetail, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
-import { Texture } from '../../texture';
 import type { Transform } from '../../transform';
 import type { SpriteComponent, SpriteItemRenderInfo } from './sprite-item';
 
@@ -69,8 +65,8 @@ export function spriteMeshShaderFromFilter (level: number, options?: { count?: n
     ['USE_BLEND', !ignoreBlend],
     ['MAX_FRAG_TEX', maxSpriteTextureCount >= 16 ? 16 : 8],
   ];
-  const fragment = wireframe ? itemFrameFrag : itemFrag.replace(/#pragma\s+FILTER_FRAG/, '');
-  const vertex = itemVert.replace(/#pragma\s+FILTER_VERT/, 'vec4 filterMain(float t,vec4 pos){return effects_MatrixVP * pos;}');
+  const fragment = wireframe ? itemFrameFrag : itemFrag;
+  const vertex = itemVert;
 
   return {
     fragment,
@@ -99,35 +95,6 @@ export function spriteMeshShaderFromRenderInfo (renderInfo: SpriteItemRenderInfo
   }
 
   return shader;
-}
-
-// TODO: 待移除
-function generateFeatureTexture (engine: Engine, feather?: ValueGetter<number>): Texture {
-  let tex: Texture;
-
-  if (!feather) {
-    tex = Texture.createWithData(engine);
-  } else {
-    const len = 128;
-    const data = new Uint8Array(len);
-
-    for (let i = 0, s = len - 1; i < len; i++) {
-      const p = i / s;
-      const val = feather.getValue(p);
-
-      data[i] = Math.round(val * 255);
-    }
-    tex = Texture.createWithData(engine, { width: len, height: 1, data }, {
-      name: 'feather',
-      format: glContext.LUMINANCE,
-      minFilter: glContext.LINEAR,
-      magFilter: glContext.LINEAR,
-      wrapS: glContext.CLAMP_TO_EDGE,
-      wrapT: glContext.CLAMP_TO_EDGE,
-    });
-  }
-
-  return tex;
 }
 
 // TODO: 只有单测用

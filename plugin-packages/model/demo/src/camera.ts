@@ -1,7 +1,7 @@
 //@ts-nocheck
-import { math } from '@galacean/effects';
+import { math, spec, generateGUID } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
-import { LoaderImplEx } from '../../src/helper';
+import { LoaderECSEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
@@ -29,7 +29,7 @@ const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb
 async function getCurrentScene () {
   const duration = 9999;
   const endBehavior = 5;
-  const loader = new LoaderImplEx();
+  const loader = new LoaderECSEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
@@ -43,75 +43,81 @@ async function getCurrentScene () {
     },
   });
 
-  const items = loadResult.items;
   const sceneMin = Vector3.fromArray(loadResult.sceneAABB.min);
   const sceneMax = Vector3.fromArray(loadResult.sceneAABB.max);
 
   sceneAABB = new Box3(sceneMin, sceneMax);
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
-  const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
 
-  items.push({
-    id: '321',
-    duration: duration,
-    name: 'item_1',
-    type: '1',
-    sprite: {
-      options: {
-        duration: 100,
-        delay: 0,
-        startSize: 1,
-        sizeAspect: 1,
-        startColor: [255, 255, 255, 1],
-      },
-      renderer: {
-        renderMode: 1,
-      },
-    },
-  });
-
-  items.push({
-    id: 'extra-camera',
-    duration: 100,
+  loader.addCamera({
+    near: 0.001,
+    far: 400,
+    fov: 60,
+    clipMode: 0,
+    //
     name: 'extra-camera',
-    pn: 0,
-    type: 'camera',
-    transform: {
-      position: position.toArray(),
-      rotation: [0, 0, 0],
-    },
-    content: {
-      options: {
-        duration: 100,
-        near: 0.1,
-        far: 5000,
-        fov: 60,
-        clipMode: 0,
-      },
-    },
+    duration: duration,
+    endBehavior: spec.ItemEndBehavior.loop,
+    position: [0, 0, 8],
+    rotation: [0, 0, 0],
   });
 
-  return {
-    'compositionId': 1,
-    'requires': [],
-    'compositions': [{
-      'name': 'composition_1',
-      'id': 1,
-      'duration': duration,
-      'endBehavior': 2,
-      'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-      'items': items,
-      'meta': { 'previewSize': [750, 1334] },
-    }],
-    'gltf': [],
-    'images': [],
-    'version': '0.8.9-beta.9',
-    'shapes': [],
-    'plugins': ['model'],
-    'type': 'mars',
-    '_imgs': { '1': [] },
-  };
+  loader.addLight({
+    lightType: spec.LightType.point,
+    color: { r: 1, g: 1, b: 1, a: 1 },
+    intensity: 1,
+    range: 100,
+    //
+    name: 'test',
+    position: [0, 0, 10],
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+    duration: duration,
+    endBehavior: spec.ItemEndBehavior.loop,
+  });
+
+  // items.push({
+  //   id: '321',
+  //   duration: duration,
+  //   name: 'item_1',
+  //   type: '1',
+  //   sprite: {
+  //     options: {
+  //       duration: 100,
+  //       delay: 0,
+  //       startSize: 1,
+  //       sizeAspect: 1,
+  //       startColor: [255, 255, 255, 1],
+  //     },
+  //     renderer: {
+  //       renderMode: 1,
+  //     },
+  //   },
+  // });
+
+  // items.push({
+  //   id: 'extra-camera',
+  //   duration: 100,
+  //   name: 'extra-camera',
+  //   pn: 0,
+  //   type: 'camera',
+  //   transform: {
+  //     position: position.toArray(),
+  //     rotation: [0, 0, 0],
+  //   },
+  //   content: {
+  //     options: {
+  //       duration: 100,
+  //       near: 0.1,
+  //       far: 5000,
+  //       fov: 60,
+  //       clipMode: 0,
+  //     },
+  //   },
+  // });
+
+  return loader.getLoadResult().jsonScene;
 }
 
 export async function loadScene (inPlayer) {
@@ -394,7 +400,7 @@ function registerMouseEvent () {
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.compositions[0].items.find(item => item.id === 'extra-camera');
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
   const position = player.compositions[0].camera.position;
   const rotation = player.compositions[0].camera.rotation;
 

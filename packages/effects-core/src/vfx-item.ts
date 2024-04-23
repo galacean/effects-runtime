@@ -3,7 +3,7 @@ import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { DataType, type VFXItemData } from './asset-loader';
+import type { VFXItemData } from './asset-loader';
 import { EffectComponent, RendererComponent } from './components';
 import type { Component } from './components/component';
 import { ItemBehaviour } from './components/component';
@@ -36,7 +36,7 @@ export type VFXItemProps =
 /**
  * 所有元素的继承的抽象类
  */
-@effectsClass(DataType.VFXItemData)
+@effectsClass(spec.DataType.VFXItemData)
 export class VFXItem<T extends VFXItemContent> extends EffectsObject implements Disposable {
   /**
    * 元素绑定的父元素，
@@ -495,6 +495,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     if (transform) {
       //@ts-expect-error TODO 数据改造后移除 expect-error
       transform.position = new Vector3().copyFrom(transform.position);
+      // FIXME: transform.rotation待删除
       //@ts-expect-error
       transform.rotation = new Euler().copyFrom(transform.eulerHint ?? transform.rotation);
       //@ts-expect-error
@@ -550,7 +551,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   override toData (): void {
     this.taggedProperties.id = this.guid;
     this.taggedProperties.transform = this.transform.toData();
-    this.taggedProperties.dataType = DataType.VFXItemData;
+    this.taggedProperties.dataType = spec.DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {
       this.taggedProperties.parentId = this.parent?.guid;
     }
@@ -628,10 +629,6 @@ export namespace Item {
     return item.type === type;
   }
 
-  export function isFilter (item: spec.Item): item is spec.FilterItem {
-    return item.type === spec.ItemType.filter;
-  }
-
   export function isComposition (item: spec.Item): item is spec.CompositionItem {
     return item.type === spec.ItemType.composition;
   }
@@ -674,10 +671,6 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
         break;
       case spec.ItemType.camera:
         pluginName = 'camera';
-
-        break;
-      case spec.ItemType.filter:
-        pluginName = 'filter';
 
         break;
       case spec.ItemType.text:

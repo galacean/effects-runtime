@@ -193,8 +193,8 @@ export class PCameraManager {
     this.defaultCamera = new PCamera(
       'camera', 512, 512,
       {
-        id:'0',
-        dataType:'camera',
+        id: '0',
+        dataType: 'camera' as spec.DataType,
         fov: 60,
         far: 1000,
         near: 0.001,

@@ -1,14 +1,13 @@
 import { clamp, Euler, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from '../../components';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { createValueGetter } from '../../math';
 import { Transform } from '../../transform';
 import { effectsClass } from '../../decorators';
-import { DataType } from '../../asset-loader';
 
-@effectsClass(DataType.CameraController)
+@effectsClass(spec.DataType.CameraController)
 export class CameraController extends ItemBehaviour {
   near: number;
   far: number;

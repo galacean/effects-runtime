@@ -10,7 +10,7 @@ import {
   PCamera, PLight, PMesh, PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit,
   VFX_ITEM_TYPE_3D, RayBoxTesting, RayTriangleTesting,
 } from '@galacean/effects-plugin-model';
-import { LoaderImplEx } from '@galacean/effects-plugin-model/helper';
+import { LoaderImplEx } from '../../src/helper';
 import { generateComposition } from './utilities';
 
 const { expect } = chai;
@@ -797,14 +797,14 @@ describe('渲染插件单测', function () {
     const geometry = primitive.getEffectsGeometry();
     expect(geometry).to.eql(itemMesh.content.options.primitives[0].geometry);
     expect(geometry.getAttributeNames()).to.eql([
-      'a_Position', 'a_Normal', 'a_UV1', 'a_Joint1', 'a_Weight1',
+      'aPos', 'aNormal', 'aUV', 'a_Joint1', 'a_Weight1',
     ]);
     expect(geometry.drawStart).to.eql(0);
     expect(geometry.drawCount).to.eql(14016);
     expect(geometry.getIndexData()).not.to.eql(undefined);
-    expect(geometry.getAttributeData('a_Position').length).to.eql(9819);
-    expect(geometry.getAttributeData('a_Normal').length).to.eql(9819);
-    expect(geometry.getAttributeData('a_UV1').length).to.eql(6546);
+    expect(geometry.getAttributeData('aPos').length).to.eql(9819);
+    expect(geometry.getAttributeData('aNormal').length).to.eql(9819);
+    expect(geometry.getAttributeData('aUV').length).to.eql(6546);
     expect(geometry.getAttributeData('a_Joint1').length).to.eql(13092);
     expect(geometry.getAttributeData('a_Weight1').length).to.eql(13092);
     expect(geometry.attributes).not.to.eql(undefined);
@@ -817,24 +817,24 @@ describe('渲染插件单测', function () {
         stride: undefined,
         type: 5123,
       });
-      expect(geometry.attributes['a_Normal']).to.eql({
-        dataSource: 'a_Normal',
+      expect(geometry.attributes['aNormal']).to.eql({
+        dataSource: 'aNormal',
         normalize: false,
         offset: undefined,
         size: 3,
         stride: undefined,
         type: 5126,
       });
-      expect(geometry.attributes['a_Position']).to.eql({
-        dataSource: 'a_Position',
+      expect(geometry.attributes['aPos']).to.eql({
+        dataSource: 'aPos',
         normalize: false,
         offset: undefined,
         size: 3,
         stride: undefined,
         type: 5126,
       });
-      expect(geometry.attributes['a_UV1']).to.eql({
-        dataSource: 'a_UV1',
+      expect(geometry.attributes['aUV']).to.eql({
+        dataSource: 'aUV',
         normalize: false,
         offset: undefined,
         size: 2,
@@ -915,27 +915,27 @@ describe('渲染插件单测', function () {
       const geometry = mesh.primitives[0].getEffectsGeometry();
       expect(geometry).to.eql(itemMesh.content.options.primitives[0].geometry);
       expect(geometry.getAttributeNames()).to.eql([
-        'a_Position', 'a_Normal', 'a_Tangent', 'a_UV1',
+        'aPos', 'aNormal', 'a_Tangent', 'aUV',
       ]);
       expect(geometry.drawStart).to.eql(0);
       expect(geometry.drawCount).to.eql(13530);
       expect(geometry.getIndexData()).not.to.eql(undefined);
-      expect(geometry.getAttributeData('a_Position').length).to.eql(7647);
-      expect(geometry.getAttributeData('a_Normal').length).to.eql(7647);
-      expect(geometry.getAttributeData('a_UV1').length).to.eql(5098);
+      expect(geometry.getAttributeData('aPos').length).to.eql(7647);
+      expect(geometry.getAttributeData('aNormal').length).to.eql(7647);
+      expect(geometry.getAttributeData('aUV').length).to.eql(5098);
       expect(geometry.getAttributeData('a_Tangent').length).to.eql(10196);
       expect(geometry.attributes).not.to.eql(undefined);
       if (geometry.attributes !== undefined) {
-        expect(geometry.attributes['a_Normal']).to.eql({
-          dataSource: 'a_Normal',
+        expect(geometry.attributes['aNormal']).to.eql({
+          dataSource: 'aNormal',
           normalize: false,
           offset: undefined,
           size: 3,
           stride: undefined,
           type: 5126,
         });
-        expect(geometry.attributes['a_Position']).to.eql({
-          dataSource: 'a_Position',
+        expect(geometry.attributes['aPos']).to.eql({
+          dataSource: 'aPos',
           normalize: false,
           offset: undefined,
           size: 3,
@@ -950,8 +950,8 @@ describe('渲染插件单测', function () {
           stride: undefined,
           type: 5126,
         });
-        expect(geometry.attributes['a_UV1']).to.eql({
-          dataSource: 'a_UV1',
+        expect(geometry.attributes['aUV']).to.eql({
+          dataSource: 'aUV',
           normalize: false,
           offset: undefined,
           size: 2,
@@ -1181,11 +1181,11 @@ describe('渲染插件单测', function () {
     const geometry = primitives[0].geometry;
     expect(geometry.attributesName.length).to.eql(5);
     geometry.attributesName.forEach((val, idx) => {
-      expect(val).to.eql(['a_Joint1', 'a_Normal', 'a_Position', 'a_UV1', 'a_Weight1'][idx]);
+      expect(val).to.eql(['a_Joint1', 'aNormal', 'aPos', 'aUV', 'a_Weight1'][idx]);
     });
-    const position = geometry.attributes.a_Position;
-    const normal = geometry.attributes.a_Normal;
-    const uv1 = geometry.attributes.a_UV1;
+    const position = geometry.attributes.aPos;
+    const normal = geometry.attributes.aNormal;
+    const uv1 = geometry.attributes.aUV;
     const joint = geometry.attributes.a_Joint1;
     const weight = geometry.attributes.a_Weight1;
     expect(position.size).to.eql(3);
@@ -1203,9 +1203,9 @@ describe('渲染插件单测', function () {
     expect(weight.size).to.eql(4);
     expect(weight.type).to.eql(5126);
     expect(weight.normalize).to.eql(false);
-    const positionBuffer = geometry.bufferProps.a_Position.data;
-    const normalBuffer = geometry.bufferProps.a_Normal.data;
-    const uvBuffer = geometry.bufferProps.a_UV1.data;
+    const positionBuffer = geometry.bufferProps.aPos.data;
+    const normalBuffer = geometry.bufferProps.aNormal.data;
+    const uvBuffer = geometry.bufferProps.aUV.data;
     const jointBuffer = geometry.bufferProps.a_Joint1.data;
     const weightBuffer = geometry.bufferProps.a_Weight1.data;
     [

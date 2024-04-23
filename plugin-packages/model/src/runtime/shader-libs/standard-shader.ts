@@ -60,4 +60,37 @@ export class StandardShader {
         throw new Error(`Invalid material type ${materialType} for getFragmentShaderString!`);
     }
   }
+
+  static genVertexShaderCode (materialType: PMaterialType, isWebGL2?: boolean): string {
+    switch (materialType) {
+      case PMaterialType.unlit:
+      case PMaterialType.pbr:
+      case PMaterialType.shadowBase:
+        return StandardShaderSource.getSourceCode(primitiveVert, isWebGL2);
+      case PMaterialType.skyboxFilter:
+        return StandardShaderSource.getSourceCode(skyboxVert, isWebGL2);
+      default:
+        throw new Error(`Invalid material type ${materialType} for genVertexShaderCode!`);
+    }
+  }
+
+  /**
+   * 获取片段着色器代码
+   * @param materialType - 材质类型
+   * @returns
+   */
+  static genFragmentShaderCode (materialType: PMaterialType, isWebGL2?: boolean): string {
+    switch (materialType) {
+      case PMaterialType.unlit:
+      case PMaterialType.pbr:
+        return StandardShaderSource.getSourceCode(metallicRoughnessFrag, isWebGL2);
+      case PMaterialType.shadowBase:
+        return StandardShaderSource.getSourceCode(shadowPassFrag, isWebGL2);
+      case PMaterialType.skyboxFilter:
+        return StandardShaderSource.getSourceCode(skyboxFrag, isWebGL2);
+      default:
+        throw new Error(`Invalid material type ${materialType} for genFragmentShaderCode!`);
+    }
+  }
+
 }
