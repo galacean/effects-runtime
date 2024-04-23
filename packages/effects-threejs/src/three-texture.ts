@@ -103,8 +103,7 @@ export class ThreeTexture extends Texture {
    * @param options - 纹理选项
    * @returns 组装后的纹理选项
    */
-  // @ts-expect-error
-  assembleOptions (options: TextureSourceOptions) {
+  override assembleOptions (options: TextureSourceOptions): TextureSourceOptions {
     const { target = glContext.TEXTURE_2D } = options;
 
     if (!options.sourceType) {
@@ -119,6 +118,7 @@ export class ThreeTexture extends Texture {
       }
     }
 
+    // @ts-expect-error
     return {
       target,
       format: THREE.RGBAFormat,
@@ -139,7 +139,7 @@ export class ThreeTexture extends Texture {
   }
 
   private createTextureByType (options: TextureSourceOptions): THREE.Texture {
-    const assembleOptions = this.assembleOptions(options);
+    const assembleOptions = this.assembleOptions(options) as Required<TextureSourceOptions>;
     // TODO renderer.getMaxAnisotropy() 查询最大各向异性
     const {
       flipY,
