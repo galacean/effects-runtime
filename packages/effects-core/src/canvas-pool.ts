@@ -9,8 +9,8 @@ class CanvasPool {
 
   dispose () {
     this.elements.forEach(e => e.remove());
-    // @ts-expect-error
-    this.elements = [];
+    // clearing the array
+    this.elements.length = 0;
   }
 
   getCanvas (): HTMLCanvasElement {

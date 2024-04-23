@@ -52,7 +52,11 @@ export async function combineImageTemplate (
   // 获取动态换图的图片对象或 url 地址
   const templateBackground = getBackgroundImage(template, variables);
 
-  if (templateBackground && templateBackground !== image.src) {
+  if (
+    templateBackground &&
+    isString(templateBackground) &&
+    templateBackground !== image.src
+  ) {
     drawImage = isString(templateBackground) ? await loadImage(templateBackground) : templateBackground;
   }
 
