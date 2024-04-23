@@ -576,7 +576,7 @@ export class GLMaterial extends Material {
       this.shader = data.shader as unknown as Shader;
       this.shaderSource = this.shader.shaderData;
     }
-    this.stringTags = data.stringTags;
+    this.stringTags = data.stringTags ?? {};
     this.initialized = false;
   }
 

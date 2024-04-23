@@ -269,7 +269,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
   create (skybox: PSkybox) {
     this.type = PObjectType.material;
     this.materialType = PMaterialType.skyboxFilter;
-    this.depthTestHint = false;
+    this.depthTest = false;
     //
     this.name = skybox.name;
     this.intensity = skybox.intensity;
@@ -538,8 +538,8 @@ export class PSkyboxCreator {
    * @param params - 天空盒参数
    * @returns 纹理或未定义
    */
-  static async createDiffuseCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture | undefined> {
-    if (params.diffuseImage === undefined) { return; }
+  static async createDiffuseCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture | null> {
+    if (params.diffuseImage === undefined) { return null; }
 
     if (params.type === 'url') {
       return WebGLHelper.createTextureCubeFromURL(engine, params.diffuseImage);
