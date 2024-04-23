@@ -39,6 +39,7 @@ export * from './ticker';
 export * from './transform';
 export * from './utils';
 export * from './vfx-item';
+export * from './canvas-pool';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);

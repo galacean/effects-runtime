@@ -5,9 +5,16 @@ import type { SpriteItemProps } from '../sprite/sprite-item';
 import { SpriteComponent } from '../sprite/sprite-item';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
-import { DEFAULT_FONTS, canvasPool } from '../../template-image';
 import { glContext } from '../../gl';
 import { effectsClass } from '../../decorators';
+import { canvasPool } from '../../canvas-pool';
+
+export const DEFAULT_FONTS = [
+  'serif',
+  'sans-serif',
+  'monospace',
+  'courier',
+];
 
 interface CharInfo {
   /**
