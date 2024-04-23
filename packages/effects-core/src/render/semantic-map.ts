@@ -1,7 +1,7 @@
-import type { UniformValue } from './material';
-import type { RenderingData } from './render';
-import type { Disposable } from './utils';
-import { isFunction } from './utils';
+import type { UniformValue } from '../material';
+import type { RenderingData } from '.';
+import type { Disposable } from '../utils';
+import { isFunction } from '../utils';
 
 export type SemanticFunc = (state: RenderingData) => UniformValue | undefined;
 export type SemanticGetter = UniformValue | SemanticFunc;

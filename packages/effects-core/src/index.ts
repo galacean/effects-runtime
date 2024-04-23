@@ -29,7 +29,6 @@ export * from './plugin-system';
 export * from './plugins';
 export * from './render';
 export * from './scene';
-export * from './semantic-map';
 export * from './shader';
 export * from './shape';
 export * from './template-image';
