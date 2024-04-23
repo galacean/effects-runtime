@@ -1,4 +1,4 @@
-import * as spec from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
 import type { Composition } from '../../composition';
 import { createShaderWithMarcos, ShaderType } from '../../material';
 import type { Mesh, Renderer, RenderFrame, SharedShaderWithSource } from '../../render';
@@ -18,110 +18,25 @@ export class ParticleLoader extends AbstractPlugin {
   engine: Engine;
 
   static override precompile (compositions: spec.Composition[], renderer: Renderer, options?: PrecompileOptions): Promise<any> {
-    // TODO 增加预合成中的粒子处理？
-    const composition = compositions[0];
-    // 计算Shader编译的最大合集
-    const compileOptions: Record<string, Record<string, boolean>> = {
-      rotationOverLifetime: {
-        x: false,
-        y: false,
-        z: false,
-      },
-      positionOverLifetime: {
-        speedOverLifetime: false,
-        linearX: false,
-        linearY: false,
-        linearZ: false,
-        orbitalX: false,
-        orbitalY: false,
-        orbitalZ: false,
-        forceCurve: false,
-      },
-      colorOverLifetime: {
-        opacity: false,
-        color: false,
-      },
-      sizeOverLifetime: {
-        x: false,
-        y: false,
-      },
-    };
-    const defValue: Record<string, any> = {
-      colorOverLifetime: {
-        opacity: 1,
-        color: [spec.ValueType.RGBA_COLOR, [255, 255, 255, 255]],
-      },
-      positionOverLifetime: {
-        speedOverLifetime: 1,
-      },
-      sizeOverLifetime: {
-        x: 1,
-        y: 1,
-      },
-    };
     const gpuCapability = renderer.engine.gpuCapability;
     const { level } = gpuCapability;
     const { env } = options ?? {};
     const shaderLibrary = renderer.getShaderLibrary()!;
-    const pros: string[] = [];
     const items: spec.ParticleItem[] = [];
     const shaders: SharedShaderWithSource[] = [];
     let maxFragmentCount = 0;
     let maxVertexCount = 0;
 
-    composition.items.forEach(item => {
-      if (Item.isParticle(item)) {
-        items.push(item);
-        // assignDefValue(item);
-        // if (level === 2) {
-        //   Object.keys(compileOptions).forEach(name => {
-        //     const content = compileOptions[name];
-        //     const target = item.content[name as keyof spec.ParticleContent];
-        //
-        //     if (target) {
-        //       Object.keys(content).forEach(pro => {
-        //         // @ts-expect-error
-        //         if (target[pro]) {
-        //           content[pro] = true;
-        //           addItem(pros, name);
-        //         }
-        //       });
-        //     }
-        //   });
-        // }
-      }
+    // 增加预合成中的粒子处理
+    compositions.forEach(comp => {
+      comp.items.forEach(item => {
+        if (Item.isParticle(item)) {
+          items.push(item);
+        }
+      });
     });
+
     items.forEach(item => {
-      const options = item.content;
-
-      // if (level === 2) {
-      //   pros.forEach(name => {
-      //     const content = compileOptions[name];
-      //     // @ts-expect-error
-      //     const target = options[name] || (options[name] = {});
-      //
-      //     Object.keys(content).forEach(pro => {
-      //       if (content[pro] && !target[pro]) {
-      //         const df = (defValue[name] && defValue[name][pro]) || 0;
-      //
-      //         target[pro] = isNaN(df) ? df : [spec.ValueType.CONSTANT, df];
-      //       }
-      //     });
-      //   });
-      //   if (compileOptions.positionOverLifetime.forceCurve) {
-      //     // @ts-expect-error
-      //     options.positionOverLifetime.forceTarget = true;
-      //   }
-      //   if (compileOptions.rotationOverLifetime.x || compileOptions.rotationOverLifetime.y) {
-      //     // @ts-expect-error
-      //     options.rotationOverLifetime.separateAxes = true;
-      //   }
-      //   if (compileOptions.sizeOverLifetime.y) {
-      //     // @ts-expect-error
-      //     options.sizeOverLifetime.separateAxes = true;
-      //   }
-      // }
-
       const { shader, fragment, vertex } = getParticleMeshShader(item, env, gpuCapability);
 
       shaders.push(shader);
