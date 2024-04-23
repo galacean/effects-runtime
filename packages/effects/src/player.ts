@@ -1,7 +1,12 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math, Texture,
+  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
   SceneLoadType, SceneType, SceneWithOptionsType,
+  EffectsObject } from '@galacean/effects-core';
+import { Texture } from '@galacean/effects-core';
+import {
+  TextureSourceType,
+  glContext,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
@@ -154,6 +159,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    */
   protected compositions: Composition[] = [];
 
+  private readonly builtinObjects: EffectsObject[] = [];
   private readonly event: EventSystem;
   private readonly handleWebGLContextLost?: (event: Event) => void;
   private readonly handleWebGLContextRestored?: () => void;
@@ -254,6 +260,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.renderer.addLostHandler({ lost: this.lost });
     this.renderer.addRestoreHandler({ restore: this.restore });
     this.gpuCapability = this.renderer.engine.gpuCapability;
+    this.createBuiltinObject();
 
     // 如果存在WebGL和WebGL2的Player，需要给出警告
     playerMap.forEach(player => {
@@ -397,12 +404,16 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.assetManagers.push(assetManager);
     const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
+    // 加入 json 资产数据
     engine.addPackageDatas(scene);
+    // 加入内置引擎对象
+    for (const effectsObject of this.builtinObjects) {
+      engine.addInstance(effectsObject);
+    }
     for (let i = 0; i < scene.textureOptions.length; i++) {
       scene.textureOptions[i] = engine.assetLoader.loadGUID(scene.textureOptions[i].id);
       (scene.textureOptions[i] as Texture).initialize();
     }
-
     const compositionSourceManager = new CompositionSourceManager(scene, engine);
 
     if (engine.database) {
@@ -793,6 +804,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     (this.renderer as GLRenderer).context.removeRestoreHandler({ restore: this.restore });
     this.event.dispose();
     this.renderer.dispose(!keepCanvas);
+    this.destroyBuiltinObject();
     broadcastPlayerEvent(this, false);
     if (
       this.canvas instanceof HTMLCanvasElement &&
@@ -894,6 +906,38 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     }
 
     return [containerWidth, containerHeight, targetWidth, targetHeight];
+  }
+
+  private createBuiltinObject () {
+    const whiteTexture = Texture.create(
+      this.renderer.engine,
+      {
+        id: 'whitetexture00000000000000000000',
+        data: {
+          width: 1,
+          height: 1,
+          data: new Uint8Array([255, 255, 255, 255]),
+        },
+        sourceType: TextureSourceType.data,
+        type: glContext.UNSIGNED_BYTE,
+        format: glContext.RGBA,
+        internalFormat: glContext.RGBA,
+        wrapS: glContext.MIRRORED_REPEAT,
+        wrapT: glContext.MIRRORED_REPEAT,
+        minFilter: glContext.NEAREST,
+        magFilter: glContext.NEAREST,
+      },
+    );
+
+    this.builtinObjects.push(whiteTexture);
+  }
+
+  private destroyBuiltinObject () {
+    for (const effectsObject of this.builtinObjects) {
+      effectsObject.dispose();
+    }
+
+    this.builtinObjects.length = 0;
   }
 
 }
