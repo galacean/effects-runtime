@@ -346,7 +346,7 @@ export class Composition implements Disposable, LostHandler {
    * 重新开始合成
    */
   restart () {
-    const contentItems = this.rootComposition.items;
+    // const contentItems = this.rootComposition.items;
 
     // contentItems.forEach(item => item.dispose());
     // contentItems.length = 0;
@@ -644,7 +644,7 @@ export class Composition implements Disposable, LostHandler {
 
   private getUpdateTime (t: number) {
     const startTimeInMs = this.startTime * 1000;
-    const content = this.rootItem;
+    // const content = this.rootItem;
     const now = this.rootTimeline.getTime() * 1000;
 
     if (t < 0 && (now + t) < startTimeInMs) {

@@ -19,9 +19,6 @@ uniform sampler2D uColorOverLifetime;
 
 #ifdef USE_SPRITE
 in vec4 vTexCoordBlend;
-#ifdef USE_FILTER
-uniform vec4 uFSprite;
-#endif
 #endif
 in float vSeed;
 
@@ -49,7 +46,6 @@ void main() {
   fragColor = uPreviewColor;
 }
 #else
-#pragma FILTER_FRAG
 void main() {
   vec4 color = vec4(1.0);
   vec4 tempColor = vColor;
@@ -57,22 +53,14 @@ void main() {
   if(vLife < 0.) {
     discard;
   }
-    #ifdef USE_FILTER
-        #ifdef USE_SPRITE
-  texOffset = uTexOffset / uFSprite.xy;
-        #endif
-  color = filterMain(vTexCoord, uMaskTex);
-    #else
   if(uColorParams.x > 0.0) {
     color = getTextureColor(uMaskTex, vTexCoord);
   }
-        #endif
-
-        #ifdef COLOR_OVER_LIFETIME
-        #ifndef ENABLE_VERTEX_TEXTURE
-  tempColor *= texture2D(uColorOverLifetime, vec2(vLife, 0.));
-        #endif
-        #endif
+  #ifdef COLOR_OVER_LIFETIME
+      #ifndef ENABLE_VERTEX_TEXTURE
+        tempColor *= texture2D(uColorOverLifetime, vec2(vLife, 0.));
+      #endif
+  #endif
   color = blendColor(color, tempColor, round(uColorParams.y));
   if(color.a <= 0.01 && uColorParams.w > 0.) {
     float _at = texture2D(uMaskTex, vTexCoord + texOffset).a + texture2D(uMaskTex, vTexCoord + texOffset * -1.).a;
@@ -83,7 +71,7 @@ void main() {
 
   // 先对自发光做gamma0.45，后续统一shader着色在线性空间中可去除。
   vec3 emission = emissionColor * pow(2.0, emissionIntensity);
-  color = vec4(pow(pow(color.rgb, vec3(2.2)) + emission, vec3(1.0/2.2)), color.a);
+  color = vec4(pow(pow(color.rgb, vec3(2.2)) + emission, vec3(1.0 / 2.2)), color.a);
   fragColor = color;
 }
 #endif

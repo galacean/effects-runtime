@@ -144,7 +144,7 @@ export class UniformBlockBuffer implements Disposable {
 
       if (uniformInfo && dirtyFlags[name]) {
         const range = uniformValueOffsets[name] || fullRange;
-        const setter = memorySetter[uniformInfo[BlockUniformInfoType]]!;
+        const setter = memorySetter[uniformInfo[BlockUniformInfoType]];
 
         this.dirtyFlags[name] = setter(value, uniformInfo, name, range);
       }

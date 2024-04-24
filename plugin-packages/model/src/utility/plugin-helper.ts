@@ -511,26 +511,26 @@ export class MeshHelper {
 
     return {
       attributes: {
-        a_Position: {
+        aPos: {
           type: glContext.FLOAT,
           size: 3,
           data,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: 0,
         },
-        a_UV1: {
+        aUV: {
           type: glContext.FLOAT,
           size: 2,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 3,
-          dataSource: 'a_Position',
+          dataSource: 'aPos',
         },
-        a_Normal: {
+        aNormal: {
           type: glContext.FLOAT,
           size: 3,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 5,
-          dataSource: 'a_Position',
+          dataSource: 'aPos',
         },
       },
       drawStart: 0,
@@ -609,13 +609,13 @@ export class PluginHelper {
   static createCameraOptions (camera: GLTFCamera): ModelCameraOptions | undefined {
     if (camera.perspective === undefined) { return; }
 
-    const p = camera.perspective;
-    const options: ModelCameraOptions = {
-      near: p.znear,
-      far: p.zfar ?? 1000,
-      fov: p.yfov,
-      clipMode: 0,
-    };
+    // const p = camera.perspective;
+    // const options: ModelCameraOptions = {
+    //   near: p.znear,
+    //   far: p.zfar ?? 1000,
+    //   fov: p.yfov,
+    //   clipMode: 0,
+    // };
   }
 
   /**
@@ -814,7 +814,7 @@ export class PluginHelper {
 
       jsonScene.compositions.forEach(comp => {
         comp.items.forEach(item => {
-          if (item.type === 'mesh') {
+          if (item.type === spec.ItemType.mesh) {
             const meshItem = item as spec.ModelMeshItem<'json'>;
             const primitives = meshItem.content.options.primitives;
 
@@ -843,7 +843,7 @@ export class PluginHelper {
                 }
               }
             });
-          } else if (item.type === 'skybox') {
+          } else if (item.type === spec.ItemType.skybox) {
             loadSkybox = true;
             //
             const skyboxItem = item as spec.ModelSkyboxItem<'json'>;
@@ -859,7 +859,7 @@ export class PluginHelper {
     } else {
       jsonScene.compositions.forEach(comp => {
         comp.items.forEach(item => {
-          if (item.type === 'skybox') {
+          if (item.type === spec.ItemType.skybox) {
             loadSkybox = true;
           }
         });
@@ -871,7 +871,10 @@ export class PluginHelper {
         let lightCount = 0;
 
         comp.items.forEach(item => {
-          if (item.type === 'light' || item.type === 'skybox') {
+          if (
+            item.type === spec.ItemType.light ||
+            item.type === spec.ItemType.skybox
+          ) {
             ++lightCount;
           }
         });
@@ -990,7 +993,7 @@ export class PluginHelper {
         const itemId = data.id;
         const item = composition.getEngine().jsonSceneData[itemId] as VFXItemData;
 
-        if (item.type === 'mesh') {
+        if (item.type === spec.ItemType.mesh) {
           const meshItem = item as spec.ModelMeshItem<'json'>;
           const skin = meshItem.content.options.skin;
           const primitives = meshItem.content.options.primitives;
@@ -1033,7 +1036,7 @@ export class PluginHelper {
               console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}`);
             }
           }
-        } else if (item.type === 'tree') {
+        } else if (item.type === spec.ItemType.tree) {
           const jsonItem = item as spec.ModelTreeItem<'json'>;
           const studioItem = item as spec.ModelTreeItem<'studio'>;
           const jsonAnimations = jsonItem.content.options.tree.animations;
@@ -1061,7 +1064,7 @@ export class PluginHelper {
               });
             });
           }
-        } else if (item.type === 'skybox') {
+        } else if (item.type === spec.ItemType.skybox) {
           const skybox = item as spec.ModelSkyboxItem<'json'>;
           const studioSkybox = item as spec.ModelSkyboxItem<'studio'>;
           const options = skybox.content.options;
@@ -1133,18 +1136,18 @@ export class PluginHelper {
    */
   static getAttributeName (name: string): string {
     switch (name) {
-      case 'POSITION': return 'a_Position';
-      case 'NORMAL': return 'a_Normal';
+      case 'POSITION': return 'aPos';
+      case 'NORMAL': return 'aNormal';
       case 'TANGENT': return 'a_Tangent';
-      case 'TEXCOORD_0': return 'a_UV1';
-      case 'TEXCOORD_1': return 'a_UV2';
+      case 'TEXCOORD_0': return 'aUV';
+      case 'TEXCOORD_1': return 'aUV2';
       case 'JOINTS_0': return 'a_Joint1';
       case 'WEIGHTS_0': return 'a_Weight1';
     }
 
     if (!name.startsWith('a_')) {
-      // a_Position, a_Normal, a_Tangent,
-      // a_UV1, a_UV2, a_Joint1, a_Weight1
+      // aPos, aNormal, a_Tangent,
+      // aUV, aUV2, a_Joint1, a_Weight1
       // a_Target_XXX
       console.warn(`Unknown attribute name: ${name}`);
     }
@@ -1250,7 +1253,7 @@ export class WebHelper {
    * @returns HTML 图像元素
    */
   static async loadImageFromGLTFImage (image: GLTFImage): Promise<HTMLImageElement> {
-    return loadImage(new Blob([image.imageData as Uint8Array], { type: image.mimeType }));
+    return loadImage(new Blob([image.imageData], { type: image.mimeType }));
   }
 
   /**
@@ -1549,8 +1552,8 @@ export class GeometryBoxProxy {
 
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['a_Position'];
-    const positionArray = geometry.getAttributeData('a_Position') as spec.TypedArray;
+    const positionAttrib = attributes['aPos'];
+    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
@@ -1705,8 +1708,8 @@ export class HitTestingProxy {
 
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['a_Position'];
-    const positionArray = geometry.getAttributeData('a_Position') as spec.TypedArray;
+    const positionAttrib = attributes['aPos'];
+    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
@@ -2179,15 +2182,15 @@ export class CheckerHelper {
     //     }
     //     maxLength = maxIndex + 1;
     //   }
-    //   const positionAttrib = opts.attributes['a_Position'] as Attribute;
+    //   const positionAttrib = opts.attributes['aPos'] as Attribute;
 
     //   if (positionAttrib === undefined) {
     //     throw new Error(`Position attribute is required, ${this.stringify(v)}`);
     //   }
-    //   this.assertGeometryBuffer(v, 'a_Position', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Normal', maxLength);
+    //   this.assertGeometryBuffer(v, 'aPos', maxLength);
+    //   this.assertGeometryBuffer(v, 'aNormal', maxLength);
     //   this.assertGeometryBuffer(v, 'a_Tangent', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_UV1', maxLength);
+    //   this.assertGeometryBuffer(v, 'aUV', maxLength);
     //   this.assertGeometryBuffer(v, 'a_Joint1', maxLength);
     //   this.assertGeometryBuffer(v, 'a_Weight1', maxLength);
 

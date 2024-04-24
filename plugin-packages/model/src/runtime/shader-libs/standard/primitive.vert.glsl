@@ -5,11 +5,11 @@ precision highp float;
 #include <webglCompatibility.glsl>
 #include <animation.vert.glsl>
 
-vsIn vec4 a_Position;
+vsIn vec4 aPos;
 vsOut vec3 v_Position;
 
 #ifdef HAS_NORMALS
-vsIn vec4 a_Normal;
+vsIn vec4 aNormal;
 #endif
 
 #ifdef HAS_TANGENTS
@@ -25,11 +25,11 @@ vsOut vec3 v_Normal;
 #endif
 
 #ifdef HAS_UV_SET1
-vsIn vec2 a_UV1;
+vsIn vec2 aUV;
 #endif
 
 #ifdef HAS_UV_SET2
-vsIn vec2 a_UV2;
+vsIn vec2 aUV2;
 #endif
 
 vsOut vec2 v_UVCoord1;
@@ -65,7 +65,7 @@ vsOut vec4 v_dPositionLightSpace;
 
 vec4 getPosition()
 {
-    vec4 pos = vec4(a_Position.xyz, 1.0);
+    vec4 pos = vec4(aPos.xyz, 1.0);
 
 #ifdef USE_MORPHING
     pos += getTargetPosition();
@@ -81,7 +81,7 @@ vec4 getPosition()
 #ifdef HAS_NORMALS
 vec4 getNormal()
 {
-    vec4 normal = a_Normal;
+    vec4 normal = aNormal;
 
 #ifdef USE_MORPHING
     normal += getTargetNormal();
@@ -132,11 +132,11 @@ void main()
     v_UVCoord1 = vec2(0.0, 0.0);
 
     #ifdef HAS_UV_SET1
-    v_UVCoord1 = a_UV1;
+    v_UVCoord1 = aUV;
     #endif
 
     #ifdef HAS_UV_SET2
-    v_UVCoord2 = a_UV2;
+    v_UVCoord2 = aUV2;
     #endif
 
     #if defined(HAS_VERTEX_COLOR_VEC3) || defined(HAS_VERTEX_COLOR_VEC4)

@@ -1,4 +1,3 @@
-import type { AnimationPlayable } from './animation-playable';
 import { PlayableOutput } from './playable-graph';
 
 export class AnimationPlayableOutput extends PlayableOutput {

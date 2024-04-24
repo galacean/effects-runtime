@@ -5,7 +5,7 @@ import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
-import { Downloader, loadWebPOptional, loadImage, loadVideo } from './downloader';
+import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia } from './downloader';
 import type { ImageSource, Scene } from './scene';
 import { isScene } from './scene';
 import { isObject, isString, logger } from './utils';
@@ -14,7 +14,7 @@ import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
-import { combineImageTemplate, getBackgroundImage, loadMedia } from './template-image';
+import { combineImageTemplate, getBackgroundImage } from './template-image';
 
 /**
  * 场景加载参数
@@ -39,12 +39,6 @@ export interface SceneLoadOptions {
    * ```
    */
   variables?: Record<string, number | string | string[]>,
-
-  /**
-   * 模板图片缩放倍数
-   * @default 1 如果图片比较糊，可以用 2（但会增大图片内存）
-   */
-  templateScale?: number,
 
   /**
    * 是否使用压缩纹理
@@ -170,7 +164,7 @@ export class AssetManager implements Disposable {
           const textVariable = variables[item.name];
 
           if (textVariable) {
-            (item).content.options.text = textVariable as string;
+            item.content.options.text = textVariable as string;
           }
         }
       });
@@ -396,6 +390,7 @@ export class AssetManager implements Disposable {
           //@ts-expect-error
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
           logger.warn(`Invalid fonts source: ${JSON.stringify(url)}`);
         }
@@ -424,38 +419,37 @@ export class AssetManager implements Disposable {
 
       if ('template' in img) {
         // 1. 数据模板
-        const template = img.template as (spec.TemplateContentV1 | spec.TemplateContentV2);
+        const template = img.template as spec.TemplateContent;
         // 判断是否为新版数据模板
         const isTemplateV2 = 'v' in template && template.v === 2 && template.background;
         // 获取新版数据模板 background 参数
         const background = isTemplateV2 ? template.background : undefined;
 
         if (isTemplateV2 && background) {
-          const url = getBackgroundImage(template, variables)!;
+          const url = getBackgroundImage(template, variables);
           const isVideo = background.type === spec.BackgroundType.video;
           // 根据背景类型确定加载函数
           const loadFn = background && isVideo ? loadVideo : loadImage;
 
           // 处理加载资源
           try {
-            const resultImage = await loadMedia(url, loadFn);
+            const resultImage = await loadMedia(url as string | string[], loadFn);
 
             if (resultImage instanceof HTMLVideoElement) {
               return resultImage;
             } else {
               // 如果是加载图片且是数组，设置变量，视频情况下不需要
-              if (background && !Array.isArray(url) && variables) {
-                variables[background.name] = url;
+              if (background && Array.isArray(url) && variables) {
+                variables[background.name] = resultImage.src;
               }
 
               return await combineImageTemplate(
                 resultImage,
                 template,
                 variables as Record<string, number | string>,
-                this.options,
-                img.oriY === -1,
               );
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}.`);
           }
@@ -468,9 +462,8 @@ export class AssetManager implements Disposable {
               resultImage.image,
               template,
               variables as Record<string, number | string>,
-              this.options,
-              img.oriY === -1,
             );
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
             throw new Error(`Failed to load. Check the template, URL: ${imageURL}.`);
           }
@@ -550,7 +543,6 @@ export class AssetManager implements Disposable {
       if (image) {
         const tex = createTextureOptionsBySource(image, this.assets[idx]);
 
-        //@ts-expect-error
         tex.id = texOpts.id;
         tex.dataType = spec.DataType.Texture;
 

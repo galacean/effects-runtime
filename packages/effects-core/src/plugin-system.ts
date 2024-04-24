@@ -23,6 +23,7 @@ const pluginCtrlMap: Record<string, VFXItemConstructor> = {};
  * @param itemClass class of item
  * @param isDefault load
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function registerPlugin<T> (
   name: string,
   pluginClass: PluginConstructor,

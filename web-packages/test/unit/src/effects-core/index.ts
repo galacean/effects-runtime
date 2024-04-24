@@ -1,6 +1,5 @@
 import './composition/composition.spec';
-import './image-template/image-template-v1.spec';
-import './image-template/image-template-v2.spec';
+import './image-template/image-template.spec';
 import './interact/interact.spec';
 import './math/value-getter.spec';
 import './transform.spec';

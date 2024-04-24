@@ -89,12 +89,7 @@ export interface LoadSceneResult {
 
 export interface LoadSceneECSResult {
   source: string,
-  images: spec.Image[],
-  textures: spec.TextureDefine[],
-  items: spec.VFXItemData[],
-  components: spec.ComponentData[],
-  materials: spec.MaterialData[],
-  geometries: spec.GeometryData[],
+  jsonScene: spec.JSONScene,
   sceneAABB: {
     min: spec.vec3,
     max: spec.vec3,

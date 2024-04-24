@@ -1,7 +1,7 @@
 import type { FSFileItem } from '@advjs/gui';
 import { saveFile } from '@advjs/gui';
-import type { EffectsObjectData, EffectsPackageData, GeometryData } from '@galacean/effects';
-import { DataType, generateGUID, glContext } from '@galacean/effects';
+import type { GeometryData } from '@galacean/effects';
+import { spec, generateGUID, glContext } from '@galacean/effects';
 import type * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
 import type { FSDirItem } from '@advjs/gui';
@@ -105,7 +105,7 @@ function importEAsset (file: File, curDirHandle: FileSystemDirectoryHandle) {
     // event.target.result 包含文件的内容
     if (event.target) {
       const fileContent = event.target.result as string;
-      const eAsset: EffectsPackageData = JSON.parse(fileContent);
+      const eAsset: spec.EffectsPackageData = JSON.parse(fileContent);
 
       eAsset.fileSummary.guid = generateGUID();
       for (const data of eAsset.exportObjects) {
@@ -179,7 +179,7 @@ function importPng (file: File, curDirHandle: FileSystemDirectoryHandle) {
   reader.onload = async function (e) {
     const result = e.target?.result;
 
-    const textureData = { id: generateGUID(), source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+    const textureData = { id: generateGUID(), source: result, dataType: spec.DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
     const textureAsset = JSON.stringify(createPackageData([textureData], 'Texture'), null, 2);
 
     await saveFile(createJsonFile(textureAsset, file.name + '.json'), curDirHandle);
@@ -202,7 +202,7 @@ async function importFBX (file: File, curDirHandle: FileSystemDirectoryHandle) {
     const vertexCount = modelData.vertices.length / 3;
     const geometryData: GeometryData = {
       id: generateGUID(),
-      dataType: DataType.Geometry,
+      dataType: spec.DataType.Geometry,
       vertexData: {
         vertexCount: vertexCount,
         channels: [
@@ -347,8 +347,8 @@ async function parseFBX (fbxFilePath: string): Promise<ModelData[]> {
   });
 }
 
-function createPackageData (effectsObjectDatas: EffectsObjectData[], assetType = 'any') {
-  const newPackageData: EffectsPackageData = {
+function createPackageData (effectsObjectDatas: spec.EffectsObjectData[], assetType = 'any') {
+  const newPackageData: spec.EffectsPackageData = {
     fileSummary: { guid: generateGUID(), assetType },
     exportObjects: effectsObjectDatas,
   };

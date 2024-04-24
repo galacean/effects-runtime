@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import type { TextStyle } from './text-style';
 
 export class TextLayout {
-
   // Layout common
   textBaseline: spec.TextBaseline; // Enum
   textAlign: spec.TextAlignment; // Enum
@@ -10,7 +9,6 @@ export class TextLayout {
   overFlow: spec.TextOverflow;// Enum  // both
 
   width = 0;
-
   height = 0;
 
   /**
@@ -57,18 +55,18 @@ export class TextLayout {
 
   getOffsetY (style: TextStyle) {
     let offsetY = 0;
-    const offset = (style.fontSize + style.outlineWidth) * style.fontScale ;
+    const offset = (style.fontSize + style.outlineWidth) * style.fontScale;
 
     switch (this.textBaseline) {
-      case 0:
+      case spec.TextBaseline.top:
         offsetY = offset;
 
         break;
-      case 1:
+      case spec.TextBaseline.middle:
         offsetY = (this.height + offset) / 2; // fonSize;
 
         break;
-      case 2:
+      case spec.TextBaseline.bottom:
         offsetY = this.height - offset / 2;
 
         break;
@@ -83,17 +81,17 @@ export class TextLayout {
     let offsetX = 0;
 
     switch (this.textAlign) {
-      case 0:
+      case spec.TextAlignment.left:
         offsetX = style.outlineWidth * style.fontScale;
 
         break;
-      case 1:
+      case spec.TextAlignment.middle:
         offsetX = (this.width * style.fontScale - maxWidth) / 2;
 
         break;
-      case 2:
+      case spec.TextAlignment.right:
 
-        offsetX = (this.width * style.fontScale - maxWidth) ;
+        offsetX = (this.width * style.fontScale - maxWidth);
 
         break;
       default:

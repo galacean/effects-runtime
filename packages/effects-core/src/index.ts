@@ -46,4 +46,3 @@ registerPlugin<SpriteComponent>('sprite', SpriteLoader, VFXItem, true);
 registerPlugin<ParticleSystem>('particle', ParticleLoader, VFXItem, true);
 registerPlugin<TimelineComponent>('cal', CalculateLoader, VFXItem, true);
 registerPlugin<InteractComponent>('interact', InteractLoader, VFXItem, true);
-// registerFilters(filters);

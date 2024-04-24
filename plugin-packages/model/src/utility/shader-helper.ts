@@ -1,5 +1,26 @@
 import { StandardShader } from '../runtime/shader-libs/standard-shader';
 import type { PShaderContext, PShaderResults } from '../runtime/shader';
+import { PMaterialType } from '../runtime';
+
+export function fetchPBRShaderCode (isWebGL2?: boolean): PShaderResults {
+  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.pbr, isWebGL2);
+  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.pbr, isWebGL2);
+
+  return {
+    vertexShaderCode,
+    fragmentShaderCode,
+  };
+}
+
+export function fetchUnlitShaderCode (isWebGL2?: boolean): PShaderResults {
+  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.unlit, isWebGL2);
+  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.unlit, isWebGL2);
+
+  return {
+    vertexShaderCode,
+    fragmentShaderCode,
+  };
+}
 
 /**
  * 获取 PBR 材质着色器代码
@@ -302,30 +323,30 @@ function getBasicVS (params: Record<string, boolean> = {}): string {
 
     uniform mat4 _ModelMatrix;
     uniform mat4 _ViewProjectionMatrix;
-    attribute vec3 a_Position;
+    attribute vec3 aPos;
     varying vec3 v_Position;
 
     #ifdef HAS_UVS
-    attribute vec2 a_UV1;
+    attribute vec2 aUV;
     varying vec2 v_UVCoord1;
     #endif
 
     #ifdef HAS_NORMALS
     uniform mat4 _NormalMatrix;
-    attribute vec3 a_Normal;
+    attribute vec3 aNormal;
     varying vec3 v_Normal;
     #endif
 
     void main(){
-      vec4 pos = _ModelMatrix * vec4(a_Position, 1);
+      vec4 pos = _ModelMatrix * vec4(aPos, 1);
       v_Position = pos.xyz / pos.w;
 
       #ifdef HAS_UVS
-      v_UVCoord1 = a_UV1;
+      v_UVCoord1 = aUV;
       #endif
 
       #ifdef HAS_NORMALS
-      v_Normal = normalize(vec3(_ModelMatrix * vec4(a_Normal, 0)));
+      v_Normal = normalize(vec3(_ModelMatrix * vec4(aNormal, 0)));
       #endif
 
       gl_Position = _ViewProjectionMatrix * pos;
@@ -339,13 +360,13 @@ function getQuadFilterVS (): string {
   return `
     #version 100
     precision highp float;
-    attribute vec3 a_Position;
-    attribute vec2 a_UV1;
+    attribute vec3 aPos;
+    attribute vec2 aUV;
 
     varying vec2 v_UVCoord1;
     void main(){
-      v_UVCoord1 = a_UV1;
-      gl_Position = vec4(a_Position.xy, 0.0, 1.0);
+      v_UVCoord1 = aUV;
+      gl_Position = vec4(aPos.xy, 0.0, 1.0);
     }
   `;
 }

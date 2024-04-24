@@ -43,69 +43,39 @@ async function getCurrentScene () {
     },
   });
 
-  const items = loadResult.items;
   const sceneMin = Vector3.fromArray(loadResult.sceneAABB.min);
   const sceneMax = Vector3.fromArray(loadResult.sceneAABB.max);
 
   sceneAABB = new Box3(sceneMin, sceneMax);
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
-  const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
-  const cameraItemId = generateGUID();
-  const cameraComponent: spec.ModelCameraComponentData = {
-    id: generateGUID(),
-    item: { id: cameraItemId },
-    dataType: spec.DataType.CameraComponent,
+
+  loader.addCamera({
     near: 0.001,
-    far: 5000,
+    far: 400,
     fov: 60,
     clipMode: 0,
-  };
-  const cameraItem: spec.VFXItemData = {
-    id: cameraItemId,
+    //
     name: 'extra-camera',
     duration: duration,
-    type: 'camera',
-    pn: 0,
-    visible: true,
-    endBehavior: 5,
-    transform: {
-      position: {
-        x: 0,
-        y: 0,
-        z: 8,
-      },
-      eulerHint: {
-        x: 0,
-        y: 0,
-        z: 0,
-      },
-      rotation: {
-        x: 0,
-        y: 0,
-        z: 0,
-      },
-      scale: {
-        x: 1,
-        y: 1,
-        z: 1,
-      },
-    },
+    endBehavior: spec.ItemEndBehavior.loop,
+    position: [0, 0, 8],
+    rotation: [0, 0, 0],
+  });
 
-    content: {
-      options: {
-        duration: duration,
-
-      },
-    },
-    components: [
-      { id: cameraComponent.id },
-    ],
-    dataType: spec.DataType.VFXItemData,
-  };
-
-  items.push(cameraItem);
-  loadResult.components.push(cameraComponent);
+  loader.addLight({
+    lightType: spec.LightType.point,
+    color: { r: 1, g: 1, b: 1, a: 1 },
+    intensity: 1,
+    range: 100,
+    //
+    name: 'test',
+    position: [0, 0, 10],
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+    duration: duration,
+    endBehavior: spec.ItemEndBehavior.loop,
+  });
 
   // items.push({
   //   id: '321',
@@ -146,27 +116,8 @@ async function getCurrentScene () {
   //     },
   //   },
   // });
-  const itemIds = [];
 
-  items.forEach(item => itemIds.push({ id: item.id }));
-
-  return {
-    'compositionId': 1,
-    'requires': [],
-    'compositions': [{
-      'name': 'composition_1',
-      'id': 1,
-      'duration': duration,
-      'endBehavior': 2,
-      'camera': { 'fov': 45, 'far': 2000, 'near': 0.001, 'position': [0, 0, 10], 'clipMode': 1 },
-      'items': itemIds,
-      'meta': { 'previewSize': [750, 1334] },
-    }],
-    'version': '3.0',
-    'plugins': ['model'],
-    'type': 'ge',
-    ...loadResult,
-  };
+  return loader.getLoadResult().jsonScene;
 }
 
 export async function loadScene (inPlayer) {
