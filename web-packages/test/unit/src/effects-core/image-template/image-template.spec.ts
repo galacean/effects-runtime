@@ -6,13 +6,13 @@ describe('Image template', async () => {
   let container: HTMLDivElement | null;
   let player: Player;
 
-  beforeEach(() => {
+  before(() => {
     container = document.createElement('div');
     container.style.width = '300px';
     container.style.height = '200px';
-    document.body.appendChild(container);
   });
-  afterEach(() => {
+
+  after(() => {
     player.pause();
     player?.dispose();
     container?.remove();
@@ -109,6 +109,16 @@ describe('Image template', async () => {
 
     canvas1.remove();
     canvas2.remove();
+  });
+
+  it('运行时不加载 template 外的 url 和 webp', async () => {
+    const json = JSON.parse('{"compositionId":37,"requires":[],"compositions":[{"name":"超级红包","id":37,"duration":4,"endBehavior":2,"camera":{"fov":60,"far":20,"near":0.1,"aspect":null,"clipMode":0,"position":[0,0,8],"rotation":[0,0,0]},"items":[],"startTime":0,"meta":{"previewSize":[750,856]}}],"gltf":[],"images":[{"url":"https://mdn.alipayobjects.com/mars/afts/img/A*NNUKRaaQ0M8AAAAAAAAAAAAADlB4AQ/original","webp":"https://mdn.alipayobjects.com/mars/afts/img/A*Dm4nSrj1HwMAAAAAAAAAAAAADlB4AQ/original","renderLevel":"B+"},{"url":"https://mdn.alipayobjects.com/mars/afts/img/A*ympoT6SNxk0AAAAAAAAAAAAADlB4AQ/original","webp":"https://mdn.alipayobjects.com/mars/afts/img/A*qB7eR7z0ORQAAAAAAAAAAAAADlB4AQ/original","renderLevel":"B+"},{"template":{"v":2,"content":{"fonts":[],"texts":[],"colors":[]},"variables":{"text":"这是         文案","img":"https://mdn.alipayobjects.com/graph_jupiter/afts/img/A*L6tQQbF6oMMAAAAAAAAAAAAADsF2AQ/original"},"width":346,"height":150,"background":{"name":"img","url":"https://mdn.alipayobjects.com/graph_jupiter/afts/img/A*L6tQQbF6oMMAAAAAAAAAAAAADsF2AQ/original"}},"url":"https://x.com","webp":"https://x.com","renderLevel":"B+"}],"spines":[],"version":"0.1.47","shapes":[],"plugins":[],"type":"mars","bins":[],"textures":[{"source":0,"flipY":true},{"source":1,"flipY":true},{"source":2,"flipY":true}]}');
+    const spy = chai.spy();
+
+    await player.loadScene(json).catch(e => {
+      spy();
+    });
+    expect(spy).to.not.have.been.called();
   });
 });
 

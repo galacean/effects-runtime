@@ -1,8 +1,9 @@
 import type {
-  EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType,
-  SceneWithOptionsType, Texture,
+  EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, Texture,
 } from '@galacean/effects-core';
-import { AssetManager, CompositionSourceManager, isArray, isObject, logger } from '@galacean/effects-core';
+import {
+  AssetManager, CompositionSourceManager, isArray, isSceneURL, isSceneWithOptions, logger,
+} from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeRenderer } from './three-renderer';
@@ -102,12 +103,14 @@ export class ThreeDisplayObject extends THREE.Group {
     };
     let source: SceneType;
 
-    if (isSceneWithOptions(url)) {
-      source = url.scene;
-      opts = {
-        ...opts,
-        ...url.options || {},
-      };
+    if (isSceneURL(url)) {
+      source = url.url;
+      if (isSceneWithOptions(url)) {
+        opts = {
+          ...opts,
+          ...url.options || {},
+        };
+      }
     } else {
       source = url;
     }
@@ -169,9 +172,4 @@ export class ThreeDisplayObject extends THREE.Group {
       composition.update(delta);
     });
   }
-}
-
-export function isSceneWithOptions (scene: any): scene is SceneWithOptionsType {
-  // TODO: 判断不太优雅，后期试情况优化
-  return isObject(scene) && 'scene' in scene;
 }

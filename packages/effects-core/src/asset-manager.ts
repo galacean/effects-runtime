@@ -6,8 +6,8 @@ import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia } from './downloader';
-import type { ImageSource, Scene } from './scene';
-import { isScene } from './scene';
+import type { ImageSource, Scene, SceneLoadOptions, SceneType } from './scene';
+import { isSceneJSON } from './scene';
 import { isObject, isString, logger } from './utils';
 import type { Disposable } from './utils';
 import type { TextureSourceOptions } from './texture';
@@ -16,85 +16,7 @@ import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 
-/**
- * 场景加载参数
- */
-export interface SceneLoadOptions {
-  /**
-   * 动态数据的参数
-   * key 是 JSON 中配置的字段名
-   * value 是要使用的值，图片使用 url 链接
-   * 图片链接可以使用数组传递，如果第一个加载失败，将尝试使用第二个地址
-   *
-   * @example
-   * ``` ts
-   * {
-   *   variables: {
-   *     bg: ['url','fallback_url'], // 如果两个图片都失败，将会触发加载失败
-   *     fg: 'url' // 如果图片加载失败，将会触发加载失败,
-   *     amount: 88.8,
-   *     name: 'abc'
-   *   }
-   * }
-   * ```
-   */
-  variables?: Record<string, number | string | string[]>,
-
-  /**
-   * 是否使用压缩纹理
-   */
-  useCompressedTexture?: boolean,
-
-  /**
-   * 渲染分级。
-   * 分级之后，只会加载当前渲染等级的资源。
-   * 当渲染等级被设置为 B 后，player 的 fps 会降到 30 帧
-   * @default 's'
-   */
-  renderLevel?: spec.RenderLevel,
-
-  /**
-   * 资源加载超时，时间单位秒
-   * @default 10s
-   */
-  timeout?: number,
-
-  /***
-   * 用于给 plugin 的加载数据
-   * key/value 的内容由 plugin 自己实现
-   */
-  pluginData?: Record<string, any>,
-
-  /**
-   * 场景加载时的环境（加载后把 env 结果写入 scene）
-   * @default '' - 编辑器中为 'editor'
-   */
-  env?: string,
-
-  /**
-   * 加载后是否自动播放
-   * @default true
-   */
-  autoplay?: boolean,
-  /**
-   * 合成播放完成后是否需要再使用，是的话生命周期结束后不会 `dispose`
-   * @default false
-   */
-  reusable?: boolean,
-  /**
-   * 播放速度，当速度为负数时，合成倒播
-   */
-  speed?: number,
-}
-
 let seed = 1;
-
-/**
- * 接受用于加载的数据类型
- */
-export type SceneType = string | Scene | Record<string, unknown>;
-export type SceneWithOptionsType = { scene: SceneType, options: SceneLoadOptions };
-export type SceneLoadType = SceneType | SceneWithOptionsType;
 
 /**
  * 资源管理器
@@ -151,27 +73,22 @@ export class AssetManager implements Disposable {
   /**
    * 根据用户传入的参数修改场景数据
    */
-  private updateSceneData (compositions: spec.Composition[]): spec.Composition[] {
+  private updateSceneData (items: spec.VFXItemData[]): void {
     const variables = this.options.variables;
 
-    if (!variables || Object.keys(variables).length <= 0) {
-      return compositions;
+    if (!variables || Object.keys(variables).length === 0) {
+      return;
     }
 
-    compositions.forEach(composition => {
-      composition.items.forEach(item => {
-        if (item.type === spec.ItemType.text) {
-          const textVariable = variables[item.name];
+    items.forEach(item => {
+      if (item.type === spec.ItemType.text) {
+        const textVariable = variables[item.name] as string;
 
-          if (textVariable) {
-            item.content.options.text = textVariable as string;
-          }
+        if (textVariable) {
+          item.content.options.text = textVariable;
         }
-      });
+      }
     });
-
-    return compositions;
-
   }
 
   /**
@@ -202,7 +119,7 @@ export class AssetManager implements Disposable {
         this.removeTimer(loadTimer);
         const totalTime = performance.now() - startTime;
 
-        reject(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
+        reject(new Error(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`));
       }, this.timeout * 1000);
       this.timers.push(loadTimer);
     });
@@ -217,10 +134,10 @@ export class AssetManager implements Disposable {
 
           return result;
         } catch (e) {
-          throw new Error(`load error in ${label}, ${e}`);
+          throw new Error(`Load error in ${label}, ${e}`);
         }
       }
-      throw new Error('load canceled.');
+      throw new Error('Load canceled.');
     };
     const loadResourcePromise = async () => {
       let scene: Scene;
@@ -237,7 +154,7 @@ export class AssetManager implements Disposable {
         rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(url as string));
       }
 
-      if (isScene(rawJSON)) {
+      if (isSceneJSON(rawJSON)) {
         // 已经加载过的 可能需要更新数据模板
         scene = {
           ...rawJSON,
@@ -258,7 +175,8 @@ export class AssetManager implements Disposable {
           for (let i = 0; i < scene.images.length; i++) {
             scene.textureOptions[i].image = scene.images[i];
           }
-          scene.jsonScene.compositions = this.updateSceneData(scene.jsonScene.compositions);
+
+          this.updateSceneData(scene.jsonScene.items);
         }
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
@@ -274,7 +192,7 @@ export class AssetManager implements Disposable {
         await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
-        jsonScene.compositions = this.updateSceneData(jsonScene.compositions);
+        this.updateSceneData(jsonScene.items);
 
         scene = {
           url: url,

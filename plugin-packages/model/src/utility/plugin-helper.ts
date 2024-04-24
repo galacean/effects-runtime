@@ -1276,7 +1276,7 @@ export class WebHelper {
         if (b) {
           resolve(b.arrayBuffer());
         } else {
-          reject(Error('no canvas blob'));
+          reject(new Error('no canvas blob'));
         }
       }, 'image/png', 1);
     });
