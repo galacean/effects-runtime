@@ -52,7 +52,6 @@ export abstract class Texture extends EffectsObject {
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.image,
       image: img,
-      //@ts-expect-error
       id: generateGUID(),
     });
 

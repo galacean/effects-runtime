@@ -17,8 +17,7 @@ import './plugins/sprite/sprite-renderder.spec';
 import './plugins/sprite/sprite-interact.spec';
 import './plugins/sprite/sprite-transform.spec';
 import './plugins/sprite/sprite-combine.spec';
-import './plugins/sprite/sprite-adjust-layer.spec';
-import './plugins/sprite/sprite-item.spce';
+import './plugins/sprite/sprite-item.spec';
 
 import './composition/index';
 import './assert-manager.spec';
