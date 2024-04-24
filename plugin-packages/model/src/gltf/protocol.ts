@@ -8,16 +8,20 @@ import type {
   GLTFCamera,
   GLTFAnimation,
   GLTFImageBasedLight,
+  GLTFResources,
 } from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
-import type { GLTFResources } from '@vvfx/resource-detection';
-import type { spec, Renderer, Texture, Geometry } from '@galacean/effects';
+import type { spec, Renderer, Texture, Geometry, TextureSourceOptions, EffectComponentData, MaterialData } from '@galacean/effects';
 import type {
   ModelAnimationOptions,
   ModelMaterialOptions,
   ModelSkyboxOptions,
   ModelTreeOptions,
   ModelBaseItem,
+  ModelLightComponentData,
+  ModelCameraComponentData,
+  ModelMeshComponentData,
+  ModelSkyboxComponentData,
 } from '../index';
 
 /**
@@ -34,9 +38,9 @@ export interface LoadSceneOptions {
      */
     resource: string | Uint8Array | GLTFResources,
     /**
-     * 兼容模式，目前只支持tiny3d
+     * 兼容模式，目前支持 gltf 和 tiny3d
      */
-    compatibleMode?: 'gltf' | 'tiny3d' | 'oasis',
+    compatibleMode?: 'gltf' | 'tiny3d',
     /**
      * 检查ResourceDetection序列化和反序列逻辑
      */
@@ -97,7 +101,7 @@ export interface LoadSceneECSResult {
 }
 
 export interface LoaderOptions {
-  compatibleMode?: 'gltf' | 'tiny3d' | 'oasis',
+  compatibleMode?: 'gltf' | 'tiny3d',
 }
 
 export type SkyboxType = 'NFT' | 'FARM';
@@ -134,4 +138,24 @@ export interface Loader {
 
   scaleColorVec (vec: number[], fromGLTF: boolean): number[],
 
+}
+
+export interface LoaderECS {
+  loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult>,
+
+  processGLTFResource (resource: GLTFResources): void,
+
+  processComponentData (components: EffectComponentData[]): void,
+
+  processLightComponentData (light: ModelLightComponentData): void,
+
+  processCameraComponentData (camera: ModelCameraComponentData): void,
+
+  processMeshComponentData (mesh: ModelMeshComponentData): void,
+
+  processSkyboxComponentData (skybox: ModelSkyboxComponentData): void,
+
+  processMaterial (material: MaterialData): void,
+
+  processTextureOptions(options: TextureSourceOptions, isBaseColor: boolean): void,
 }

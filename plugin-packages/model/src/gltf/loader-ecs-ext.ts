@@ -15,10 +15,10 @@ import {
 } from '@vvfx/resource-detection';
 import type { Player, spec } from '@galacean/effects';
 import type { LoadSceneOptions, LoadSceneECSResult } from './protocol';
-import { LoaderECS } from './loader-ecs';
+import { LoaderECSImpl } from './loader-ecs';
 import { Box3, Vector3, Sphere } from '../runtime/math';
 
-export class LoaderECSEx extends LoaderECS {
+export class LoaderECSEx extends LoaderECSImpl {
   override async loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult> {
     const gltfResource = options.gltf.resource;
 

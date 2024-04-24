@@ -40,11 +40,11 @@ export abstract class PMaterialBase extends PObject {
   /**
    * 深度是否写入，默认是写入
    */
-  depthMask = true;
+  ZWrite = true;
   /**
    * 是否深度测试提示，默认开启
    */
-  depthTest = true;
+  ZTest = true;
   /**
    * 渲染类型，默认是不透明
    */
@@ -192,7 +192,7 @@ export abstract class PMaterialBase extends PObject {
         glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
         glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
       ];
-      material.depthMask = this.depthMask;
+      material.depthMask = this.ZWrite;
     } else {
       if (PGlobalState.getInstance().isTiny3dMode) {
         material.blending = false;
@@ -201,8 +201,8 @@ export abstract class PMaterialBase extends PObject {
         material.depthMask = true;
       } else {
         material.blending = false;
-        material.depthTest = this.depthTest;
-        material.depthMask = this.depthMask;
+        material.depthTest = this.ZTest;
+        material.depthMask = this.ZWrite;
       }
     }
 
@@ -318,9 +318,9 @@ export class PMaterialUnlit extends PMaterialBase {
     this.baseColorTexture = material.getTexture('_BaseColorSampler') ?? undefined;
     this.baseColorTextureTrans = PluginHelper.createUVTransform(material, '_BaseColorSampler_ST', '_BaseColorRotation');
     this.baseColorFactor = material.getColor('_BaseColorFactor') ?? new Color(1.0, 1.0, 1.0, 1.0);
-
-    this.depthMask = material.stringTags['DepthMask'] !== 'false';
-    this.depthTest = true;
+    //
+    this.ZWrite = material.stringTags['ZWrite'] !== 'false';
+    this.ZTest = material.stringTags['ZTest'] !== 'false';
     this.renderType = material.stringTags['RenderType'] as RenderType ?? RenderType.Opaque;
     this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
@@ -540,11 +540,11 @@ export class PMaterialPBR extends PMaterialBase {
     //
     this.emissiveTexture = material.getTexture('_EmissiveSampler') ?? undefined;
     this.emissiveTextureTrans = PluginHelper.createUVTransform(material, '_EmissiveSampler_ST', '_EmissiveRotation');
-    this.emissiveFactor = material.getColor('_EmissiveFactor') ?? new Color(0, 0, 0, 0);
+    this.emissiveFactor = material.getColor('_EmissiveFactor') ?? new Color(0, 0, 0, 1);
     this.emissiveIntensity = material.getFloat('_EmissiveIntensity') ?? 1;
-
-    this.depthMask = material.stringTags['DepthMask'] !== 'false';
-    this.depthTest = true;
+    //
+    this.ZWrite = material.stringTags['ZWrite'] !== 'false';
+    this.ZTest = material.stringTags['ZTest'] !== 'false';
     this.renderType = material.stringTags['RenderType'] as RenderType ?? RenderType.Opaque;
     this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;

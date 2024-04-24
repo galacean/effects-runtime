@@ -269,7 +269,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
   create (skybox: PSkybox) {
     this.type = PObjectType.material;
     this.materialType = PMaterialType.skyboxFilter;
-    this.depthTest = false;
+    this.ZTest = false;
     //
     this.name = skybox.name;
     this.intensity = skybox.intensity;
