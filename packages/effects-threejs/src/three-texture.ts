@@ -103,8 +103,7 @@ export class ThreeTexture extends Texture {
    * @param options - 纹理选项
    * @returns 组装后的纹理选项
    */
-  // @ts-expect-error
-  assembleOptions (options: TextureSourceOptions) {
+  override assembleOptions (options: TextureSourceOptions): TextureSourceOptions {
     const { target = glContext.TEXTURE_2D } = options;
 
     if (!options.sourceType) {
@@ -119,6 +118,7 @@ export class ThreeTexture extends Texture {
       }
     }
 
+    // @ts-expect-error
     return {
       target,
       format: THREE.RGBAFormat,
@@ -207,7 +207,7 @@ export class ThreeTexture extends Texture {
         const width = data.width ?? 0;
         const height = data.height ?? 0;
 
-        texture = new THREE.FramebufferTexture(width, height, format);
+        texture = new THREE.FramebufferTexture(width, height, format as THREE.PixelFormat);
         this.width = width;
         this.height = height;
       }

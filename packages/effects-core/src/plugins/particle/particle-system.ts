@@ -960,7 +960,6 @@ export class ParticleSystem extends Component {
       meshSlots: options.meshSlots,
       name: this.name,
       matrix: Matrix4.IDENTITY,
-      filter: props.filter,
       shaderCachePrefix,
       renderMode: renderer.renderMode || spec.RenderMode.BILLBOARD,
       side: renderer.side || spec.SideMode.DOUBLE,

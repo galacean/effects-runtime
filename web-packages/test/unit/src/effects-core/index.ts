@@ -1,5 +1,4 @@
-import './image-template/image-template-v1.spec';
-import './image-template/image-template-v2.spec';
+import './image-template/image-template.spec';
 import './interact/interact.spec';
 import './math/value-getter.spec';
 import './transform.spec';
@@ -17,7 +16,6 @@ import './plugins/sprite/sprite-renderder.spec';
 import './plugins/sprite/sprite-interact.spec';
 import './plugins/sprite/sprite-transform.spec';
 import './plugins/sprite/sprite-combine.spec';
-import './plugins/sprite/sprite-adjust-layer.spec';
 
 import './composition/index';
 import './assert-manager.spec';

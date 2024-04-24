@@ -81,7 +81,7 @@ export class ModelPlugin extends AbstractPlugin {
     const pbrShaderData: spec.ShaderData = {
       id: PBRShaderGUID,
       name: 'PBR Shader',
-      dataType: 'Shader',
+      dataType: spec.DataType.Shader,
       fragment: pbrShaderCode.fragmentShaderCode,
       vertex: pbrShaderCode.vertexShaderCode,
       // @ts-expect-error

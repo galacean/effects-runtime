@@ -257,3 +257,16 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
     });
   });
 }
+
+export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<HTMLImageElement | HTMLVideoElement>) {
+  if (Array.isArray(url)) {
+    try {
+      return await loadFn(url[0]);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e: any) {
+      return await loadFn(url[1]);
+    }
+  }
+
+  return loadFn(url);
+}

@@ -5,7 +5,7 @@ import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
-import { Downloader, loadWebPOptional, loadImage, loadVideo } from './downloader';
+import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia } from './downloader';
 import type { ImageSource, Scene } from './scene';
 import { isScene } from './scene';
 import { isObject, isString, logger } from './utils';
@@ -14,7 +14,7 @@ import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
-import { combineImageTemplate, getBackgroundImage, loadMedia } from './template-image';
+import { combineImageTemplate, getBackgroundImage } from './template-image';
 
 /**
  * 场景加载参数
@@ -39,12 +39,6 @@ export interface SceneLoadOptions {
    * ```
    */
   variables?: Record<string, number | string | string[]>,
-
-  /**
-   * 模板图片缩放倍数
-   * @default 1 如果图片比较糊，可以用 2（但会增大图片内存）
-   */
-  templateScale?: number,
 
   /**
    * 是否使用压缩纹理
@@ -170,7 +164,7 @@ export class AssetManager implements Disposable {
           const textVariable = variables[item.name];
 
           if (textVariable) {
-            (item).content.options.text = textVariable as string;
+            item.content.options.text = textVariable as string;
           }
         }
       });
@@ -425,7 +419,7 @@ export class AssetManager implements Disposable {
 
       if ('template' in img) {
         // 1. 数据模板
-        const template = img.template as (spec.TemplateContentV1 | spec.TemplateContentV2);
+        const template = img.template as spec.TemplateContent;
         // 判断是否为新版数据模板
         const isTemplateV2 = 'v' in template && template.v === 2 && template.background;
         // 获取新版数据模板 background 参数
@@ -439,7 +433,7 @@ export class AssetManager implements Disposable {
 
           // 处理加载资源
           try {
-            const resultImage = await loadMedia(url, loadFn);
+            const resultImage = await loadMedia(url as string | string[], loadFn);
 
             if (resultImage instanceof HTMLVideoElement) {
               return resultImage;
@@ -453,8 +447,6 @@ export class AssetManager implements Disposable {
                 resultImage,
                 template,
                 variables as Record<string, number | string>,
-                this.options,
-                img.oriY === -1,
               );
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -470,8 +462,6 @@ export class AssetManager implements Disposable {
               resultImage.image,
               template,
               variables as Record<string, number | string>,
-              this.options,
-              img.oriY === -1,
             );
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
@@ -553,7 +543,6 @@ export class AssetManager implements Disposable {
       if (image) {
         const tex = createTextureOptionsBySource(image, this.assets[idx]);
 
-        //@ts-expect-error
         tex.id = texOpts.id;
         tex.dataType = spec.DataType.Texture;
 

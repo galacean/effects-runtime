@@ -145,12 +145,12 @@ export class LoaderECSImpl implements LoaderECS {
   }
 
   processGLTFResource (resource: GLTFResources): void {
-    const dataMap: Record<string, spec.EffectsObjectData> = {};
+    const dataMap: Record<string, TextureSourceOptions> = {};
     const { textures, materials, scenes } = resource;
 
     textures.forEach(tex => {
-      const texData = tex.textureOptions as unknown as spec.EffectsObjectData;
-      const texId = texData.id;
+      const texData = tex.textureOptions;
+      const texId = (texData as unknown as spec.EffectsObjectData).id;
 
       if (texId) {
         if (dataMap[texId]) {
@@ -364,11 +364,10 @@ export class LoaderECSImpl implements LoaderECS {
     options.minFilter = minFilter;
     options.anisotropic = 1;
     options.premultiplyAlpha = premultiplyAlpha;
-    // @ts-expect-error
     options.generateMipmap = generateMipmap;
   }
 
-  processMaterialTexture (material: MaterialData, textureName: string, isBaseColor: boolean, dataMap: Record<string, spec.EffectsObjectData>) {
+  processMaterialTexture (material: MaterialData, textureName: string, isBaseColor: boolean, dataMap: Record<string, TextureSourceOptions>) {
     const texture = material.textures[textureName];
 
     if (texture) {
@@ -400,7 +399,6 @@ export class LoaderECSImpl implements LoaderECS {
       images: this.images,
       shapes: [],
       plugins: ['model'],
-      requires: [],
       textures: this.textures,
       items: this.items,
       components: this.components,
@@ -820,7 +818,7 @@ export function getDefaultPBRMaterialData (): MaterialData {
   const material: MaterialData = {
     'id': '00000000000000000000000000000000',
     'name': 'PBR Material',
-    'dataType': 'Material',
+    'dataType': spec.DataType.Material,
     'stringTags': {
       'ZWrite': 'true',
       'ZTest': 'true',
@@ -871,7 +869,7 @@ export function getDefaultUnlitMaterialData (): MaterialData {
   const material: MaterialData = {
     'id': '00000000000000000000000000000000',
     'name': 'Unlit Material',
-    'dataType': 'Material',
+    'dataType': spec.DataType.Material,
     'stringTags': {
       'ZWrite': 'true',
       'ZTest': 'true',

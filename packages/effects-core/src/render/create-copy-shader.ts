@@ -1,4 +1,3 @@
-import copy from '../shader/adjust/copy.frag.glsl';
 import type { SharedShaderWithSource } from './shader';
 import { GLSLVersion } from './shader';
 
@@ -29,7 +28,6 @@ export const COPY_FRAGMENT_SHADER = `precision mediump float;
 #else
 #define fsIn varying
 #endif
-${copy}
 fsIn vec2 vTex;
 #ifdef WEBGL2
 layout (location = 0) out vec4 fragColor;
@@ -45,7 +43,6 @@ uniform sampler2D uDepth;
 #endif
 #endif
 void main(){
-    fragColor = filterMain(vTex,uFilterSource);
     #ifdef DEPTH_TEXTURE
     gl_FragDepth = texture2D(uDepth,vTex).r;
     #endif
