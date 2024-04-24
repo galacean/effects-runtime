@@ -4,6 +4,7 @@ import { glContext } from '../gl';
 import type { Engine } from '../engine';
 import { EffectsObject } from '../effects-object';
 import { loadImage } from '../downloader';
+import { generateGUID } from '../utils';
 
 let seed = 1;
 
@@ -51,6 +52,8 @@ export abstract class Texture extends EffectsObject {
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.image,
       image: img,
+      //@ts-expect-error
+      id: generateGUID(),
     });
 
     texture.initialize();

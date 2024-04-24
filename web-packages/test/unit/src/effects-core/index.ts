@@ -1,3 +1,4 @@
+import './composition/composition.spec';
 import './image-template/image-template-v1.spec';
 import './image-template/image-template-v2.spec';
 import './interact/interact.spec';
@@ -18,6 +19,8 @@ import './plugins/sprite/sprite-interact.spec';
 import './plugins/sprite/sprite-transform.spec';
 import './plugins/sprite/sprite-combine.spec';
 import './plugins/sprite/sprite-adjust-layer.spec';
+import './plugins/sprite/sprite-item.spce';
 
 import './composition/index';
 import './assert-manager.spec';
+import './texture.spec';
