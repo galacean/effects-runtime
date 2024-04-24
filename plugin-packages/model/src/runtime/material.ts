@@ -528,7 +528,7 @@ export class PMaterialPBR extends PMaterialBase {
     this.metallicRoughnessTextureTrans = PluginHelper.createUVTransform(material, '_MetallicRoughnessSampler_ST', '_MetallicRoughnessRotation');
     this.useSpecularAA = material.getFloat('_SpecularAA') === 1;
     this.metallicFactor = material.getFloat('_MetallicFactor') ?? 1;
-    this.roughnessFactor = material.getFloat('_RoughnessFactor') ?? 1;
+    this.roughnessFactor = material.getFloat('_RoughnessFactor') ?? 0;
     //
     this.normalTexture = material.getTexture('_NormalSampler') ?? undefined;
     this.normalTextureTrans = PluginHelper.createUVTransform(material, '_NormalSampler_ST', '_NormalRotation');
@@ -536,7 +536,7 @@ export class PMaterialPBR extends PMaterialBase {
     //
     this.occlusionTexture = material.getTexture('_OcclusionSampler') ?? undefined;
     this.occlusionTextureTrans = PluginHelper.createUVTransform(material, '_OcclusionSampler_ST', '_OcclusionRotation');
-    this.occlusionTextureStrength = material.getFloat('_OcclusionTextureStrength') ?? 1;
+    this.occlusionTextureStrength = material.getFloat('_OcclusionStrength') ?? 1;
     //
     this.emissiveTexture = material.getTexture('_EmissiveSampler') ?? undefined;
     this.emissiveTextureTrans = PluginHelper.createUVTransform(material, '_EmissiveSampler_ST', '_EmissiveRotation');

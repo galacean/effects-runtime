@@ -303,8 +303,8 @@ export class LoaderECSImpl implements LoaderECS {
         material.floats['_NormalScale'] = 1;
       }
 
-      if (material.floats['_OcclusionTextureStrength'] === undefined) {
-        material.floats['_OcclusionTextureStrength'] = this.isTiny3dMode() ? 0 : 1;
+      if (material.floats['_OcclusionStrength'] === undefined) {
+        material.floats['_OcclusionStrength'] = this.isTiny3dMode() ? 0 : 1;
       }
 
       if (!material.colors['_EmissiveFactor']) {
@@ -791,28 +791,28 @@ export function setDefaultEffectsGLTFLoaderECS (loader: LoaderECS): void {
 
 export function getPBRShaderProperties (): string {
   return `
-  _BaseColorSampler ("Base Color Texture", 2D) = "" {}
-  _BaseColorFactor ("Base Color", Color) = (1, 1, 1, 1)
-  _MetallicRoughnessSampler ("Metallic Roughness Texture", 2D) = "" {}
-  _MetallicFactor ("Metallic Factor", Float) = 1
-  _RoughnessFactor ("Roughness Factor", Float) = 1
-  _NormalSampler ("Normal Texture", 2D) = "" {}
-  _NormalScale ("Normal Scale", Float) = 1.0
-  _OcclusionSampler ("Occlusion Texture", 2D) = "" {}
-  _OcclusionStrength ("Occlusion Strength", Float) = 1
-  _EmissiveSampler ("Emissive Texture", 2D) = "" {}
-  _EmissiveIntensity ("Emissive Intensity", Float) = 1
-  _EmissiveFactor ("Emissive Factor", Color) = (0, 0, 0, 1)
-  [Toggle] _SpecularAA ("Specular AA", Float) = 0.0 
-  _AlphaCutoff ("Alpha Cutoff", Float) = 0.5
+  _BaseColorSampler ("基础贴图", 2D) = "" {}
+  _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
+  _MetallicRoughnessSampler ("金属贴图", 2D) = "" {}
+  _MetallicFactor ("金属度", Range(0, 1)) = 1
+  _RoughnessFactor ("粗糙度", Range(0, 1)) = 1
+  [Toggle] _SpecularAA ("高光抗锯齿", Float) = 0 
+  _NormalSampler ("法线贴图", 2D) = "" {}
+  _NormalScale ("法线贴图强度", Range(0, 2)) = 1
+  _OcclusionSampler ("AO贴图", 2D) = "" {}
+  _OcclusionStrength ("AO贴图强度", Range(0, 1)) = 1
+  _EmissiveSampler ("自发光贴图", 2D) = "" {}
+  _EmissiveIntensity ("自发光贴图强度", Float) = 1
+  _EmissiveFactor ("自发光颜色", Color) = (0, 0, 0, 1)
+  _AlphaCutoff ("Alpha测试值", Range(0, 1)) = 0.5
   `;
 }
 
 export function getUnlitShaderProperties (): string {
   return `
-  _BaseColorSampler ("Base Color Texture", 2D) = "" {}
-  _BaseColorFactor ("Base Color", Color) = (1, 1, 1, 1)
-  _AlphaCutoff ("Alpha Cutoff", Float) = 0.5
+  _BaseColorSampler ("基础贴图", 2D) = "" {}
+  _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
+  _AlphaCutoff ("Alpha测试值", Range(0, 1)) = 0.5
   `;
 }
 
@@ -822,26 +822,25 @@ export function getDefaultPBRMaterialData (): MaterialData {
     'name': 'PBR Material',
     'dataType': 'Material',
     'stringTags': {
-
+      'ZWrite': 'true',
+      'ZTest': 'true',
+      'RenderType': 'Opaque',
+      'Cull': 'Front',
     },
     'shader': {
       'id': 'pbr00000000000000000000000000000',
     },
-    'blending': false,
-    'zWrite': true,
-    'zTest': true,
     'ints': {
-      'useSpecularAA': 0,
-      'side': 1028,
-      'blending': 100,
+
     },
     'floats': {
-      '_AlphaCutoff': 0.3,
+      '_SpecularAA': 0,
       '_MetallicFactor': 1,
-      '_RoughnessFactor': 0.3,
+      '_RoughnessFactor': 0.0,
       '_NormalScale': 1,
       '_OcclusionStrength': 1,
       '_EmissiveIntensity': 1,
+      '_AlphaCutoff': 0.5,
     },
     'vector4s': {
 
@@ -874,21 +873,19 @@ export function getDefaultUnlitMaterialData (): MaterialData {
     'name': 'Unlit Material',
     'dataType': 'Material',
     'stringTags': {
-
+      'ZWrite': 'true',
+      'ZTest': 'true',
+      'RenderType': 'Opaque',
+      'Cull': 'Front',
     },
     'shader': {
       'id': 'unlit000000000000000000000000000',
     },
-    'blending': false,
-    'zWrite': true,
-    'zTest': true,
     'ints': {
-      'useSpecularAA': 0,
-      'side': 1028,
-      'blending': 100,
+
     },
     'floats': {
-      '_AlphaCutoff': 0.3,
+      '_AlphaCutoff': 0.5,
     },
     'vector4s': {
 
