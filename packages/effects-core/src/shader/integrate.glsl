@@ -1,18 +1,18 @@
 float calculateMovement(float t, vec2 p1, vec2 p2, vec2 p3, vec2 p4) {
   float movement = 0.0;
-  float h = (t - p1.x) * 0.1;
-  float delta = 1. / (p4.x - p1.x);
-  for(int i = 0; i <= 10; i++) {
-    float t = float(i) * h * delta;
+  float h = (t - p1.x) * 0.05;
+  for(int i = 0; i <= 20; i++) {
+    float t = float(i) * h;
     float nt = binarySearchT(t, p1.x, p2.x, p3.x, p4.x);
     float y = cubicBezier(nt, p1.y, p2.y, p3.y, p4.y);
-    float weight = (i == 0 || i == 10) ? 1.0 : (mod(float(i), 2.) != 0.) ? 4.0 : 2.0;
+    float weight = (i == 0 || i == 20) ? 1.0 : (mod(float(i), 2.) != 0.) ? 4.0 : 2.0;
     movement += weight * y;
   }
 
-  movement *= h / 3.;
+  movement *= h  / 3.;
   return movement;
 }
+
 
 float integrateFromBezierCurveFrames(float time, float frameStart, float frameCount) {
   int start = int(frameStart);
@@ -119,7 +119,8 @@ float getIntegrateFromTime0(float t1, vec4 value) {
   float type = value.x;
   if(type == 0.) {
     return value.y * t1;
-  } else if(type == 1.) {
+  }
+  if(type == 1.) {
     vec2 p0 = vec2(0., value.y);
     vec2 p1 = vec2(value.w, value.z);
     return integrateLineSeg(t1, p0, p1);

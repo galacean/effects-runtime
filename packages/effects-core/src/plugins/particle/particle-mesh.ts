@@ -773,38 +773,44 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     }
   }
 
-  const sizeOverLifetime = props.sizeOverLifetime;
+  if (props.sizeOverLifetime) {
+    const sizeOverLifetime = props.sizeOverLifetime;
+    const separateAxes = sizeOverLifetime.separateAxes;
 
-  getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime?.x);
-  if (sizeOverLifetime?.separateAxes) {
-    marcos.push(['SIZE_Y_BY_LIFE', 1]);
-    shaderCacheId |= 1 << 14;
-    getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime?.y);
-  }
-
-  const rot = props.rotationOverLifetime;
-
-  if (rot?.z) {
-    getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot?.z);
-    shaderCacheId |= 1 << 15;
-    marcos.push(['ROT_Z_LIFETIME', 1]);
-  }
-  if (rot?.separateAxes) {
-    if (rot.x) {
-      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.x);
-      shaderCacheId |= 1 << 16;
-      marcos.push(['ROT_X_LIFETIME', 1]);
-    }
-    if (rot.y) {
-      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.y);
-      shaderCacheId |= 1 << 17;
-      marcos.push(['ROT_Y_LIFETIME', 1]);
+    if (separateAxes) {
+      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.x);
+      marcos.push(['SIZE_Y_BY_LIFE', 1]);
+      shaderCacheId |= 1 << 14;
+      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.y);
+    } else {
+      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.size);
     }
   }
 
-  if (rot?.asRotation) {
-    marcos.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
-    shaderCacheId |= 1 << 18;
+  if (props.rotationOverLifetime) {
+    const rot = props.rotationOverLifetime;
+
+    if (rot.z) {
+      getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot?.z);
+      shaderCacheId |= 1 << 15;
+      marcos.push(['ROT_Z_LIFETIME', 1]);
+    }
+    if (rot.separateAxes) {
+      if (rot.x) {
+        getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.x);
+        shaderCacheId |= 1 << 16;
+        marcos.push(['ROT_X_LIFETIME', 1]);
+      }
+      if (rot.y) {
+        getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.y);
+        shaderCacheId |= 1 << 17;
+        marcos.push(['ROT_Y_LIFETIME', 1]);
+      }
+    }
+    if (rot?.asRotation) {
+      marcos.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
+      shaderCacheId |= 1 << 18;
+    }
   }
 
   getKeyFrameMetaByRawValue(vertexKeyFrameMeta, positionOverLifetime?.gravityOverLifetime);

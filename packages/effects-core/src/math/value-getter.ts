@@ -259,11 +259,6 @@ export class GradientValue extends ValueGetter<number[]> {
   }
 }
 
-const CURVE_PRO_TIME = 0;
-const CURVE_PRO_VALUE = 1;
-const CURVE_PRO_IN_TANGENT = 2;
-const CURVE_PRO_OUT_TANGENT = 3;
-
 export class LineSegments extends ValueGetter<number> {
   isLineSeg: boolean;
 
@@ -391,58 +386,6 @@ export class LineSegments extends ValueGetter<number> {
   }
 }
 
-// export class PathSegments extends ValueGetter<number[]> {
-//   keys: number[][];
-//   values: number[][];
-//
-//   override onCreate (props: number[][][]) {
-//     this.keys = props[0];
-//     this.values = props[1];
-//   }
-//
-//   override getValue (time: number) {
-//     const keys = this.keys;
-//     const values = this.values;
-//
-//     for (let i = 0; i < keys.length - 1; i++) {
-//       const k0 = keys[i];
-//       const k1 = keys[i + 1];
-//
-//       if (k0[0] <= time && k1[0] >= time) {
-//         const dis = k1[1] - k0[1];
-//         let dt;
-//
-//         if (dis === 0) {
-//           dt = (time - k0[0]) / (k1[0] - k0[0]);
-//         } else {
-//           const val = curveValueEvaluate(time, k0, k1);
-//
-//           dt = (val - k0[1]) / dis;
-//         }
-//
-//         return this.calculateVec(i, dt);
-//       }
-//     }
-//     if (time <= keys[0][0]) {
-//       return values[0].slice();
-//     }
-//
-//     return values[values.length - 1].slice();
-//   }
-//
-//   calculateVec (i: number, dt: number) {
-//     const vec0 = this.values[i];
-//     const vec1 = this.values[i + 1];
-//     const ret = [0, 0, 0];
-//
-//     for (let j = 0; j < vec0.length; j++) {
-//       ret[j] = vec0[j] * (1 - dt) + vec1[j] * dt;
-//     }
-//
-//     return ret;
-//   }
-// }
-
 export class BezierCurve extends ValueGetter<number> {
   curveMap: Record<string, {
     points: Vector2[],
@@ -503,7 +446,7 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override getIntegrateValue (t0: number, t1: number, ts = 1) {
-    const time = (t1 - t0);
+    const time = (t1 - t0) / ts;
 
     let result = 0;
     const keyTimeData = Object.keys(this.curveMap);
@@ -529,13 +472,16 @@ export class BezierCurve extends ValueGetter<number> {
     return result;
   }
 
+  override getIntegrateByTime (t0: number, t1: number) {
+    return this.getIntegrateValue(0, t1) - this.getIntegrateValue(0, t0);
+  }
   // 速度变化曲线面板移除后下线
   getCurveIntegrateValue (curveKey: string, time: number) {
     const curveInfo = this.curveMap[curveKey];
     const [p0] = curveInfo.points;
     const timeInterval = curveInfo.timeInterval;
     const valueInterval = curveInfo.valueInterval;
-    const segments = 100;
+    const segments = 20;
     let total = 0;
     const h = (time - p0.x) / segments;
 
@@ -778,25 +724,6 @@ function lineSegIntegrateByTime (t: number, t0: number, t1: number, y0: number, 
   const t03 = t02 * t0;
 
   return (2 * t3 * (y0 - y1) + 3 * t2 * (t0 * y1 - t1 * y0) - t03 * (2 * y0 + y1) + 3 * t02 * t1 * y0) / (6 * (t0 - t1));
-}
-
-function curveValueEvaluate (time: number, keyframe0: number[], keyframe1: number[]) {
-  const dt = keyframe1[CURVE_PRO_TIME] - keyframe0[CURVE_PRO_TIME];
-
-  const m0 = keyframe0[CURVE_PRO_OUT_TANGENT] * dt;
-  const m1 = keyframe1[CURVE_PRO_IN_TANGENT] * dt;
-
-  const t = (time - keyframe0[CURVE_PRO_TIME]) / dt;
-  const t2 = t * t;
-  const t3 = t2 * t;
-
-  const a = 2 * t3 - 3 * t2 + 1;
-  const b = t3 - 2 * t2 + t;
-  const c = t3 - t2;
-  const d = -2 * t3 + 3 * t2;
-
-  //(2*v0+m0+m1-2*v1)*(t-t0)^3/k^3+(3*v1-3*v0-2*m0-m1)*(t-t0)^2/k^2+m0 *(t-t0)/k+v0
-  return a * keyframe0[CURVE_PRO_VALUE] + b * m0 + c * m1 + d * keyframe1[CURVE_PRO_VALUE];
 }
 
 export function getKeyFrameMetaByRawValue (meta: KeyFrameMeta, value?: [type: spec.ValueType, value: any]) {
