@@ -155,7 +155,7 @@ export interface LoaderECS {
 
   processSkyboxComponentData (skybox: ModelSkyboxComponentData): void,
 
-  processMaterial (material: MaterialData): void,
+  processMaterialData (material: MaterialData): void,
 
   processTextureOptions(options: TextureSourceOptions, isBaseColor: boolean): void,
 }

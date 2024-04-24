@@ -165,7 +165,7 @@ export class LoaderECSImpl implements LoaderECS {
     materials.forEach(mat => {
       const { materialData } = mat;
 
-      this.processMaterial(materialData);
+      this.processMaterialData(materialData);
 
       if (materialData.shader?.id === UnlitShaderGUID) {
         this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
@@ -236,14 +236,28 @@ export class LoaderECSImpl implements LoaderECS {
   }
 
   processMeshComponentData (mesh: ModelMeshComponentData): void {
-    // TODO: complete mesh component data
+    if (mesh.primitives.length <= 0) {
+      console.error('Primitive array is empty');
+    } else {
+      mesh.primitives.forEach(prim => {
+        if (!prim.geometry || !prim.material) {
+          console.error('Geometry or material of primitive is empty');
+        }
+      });
+    }
   }
 
   processSkyboxComponentData (skybox: ModelSkyboxComponentData): void {
-    // TODO: complete skybox component data
+    if (skybox.intensity === undefined) {
+      skybox.intensity = 1;
+    }
+
+    if (skybox.reflectionsIntensity === undefined) {
+      skybox.reflectionsIntensity = 1;
+    }
   }
 
-  processMaterial (material: MaterialData): void {
+  processMaterialData (material: MaterialData): void {
     if (material.shader?.id === UnlitShaderGUID) {
       if (!material.colors['_BaseColorFactor']) {
         material.colors['_BaseColorFactor'] = { r: 1, g: 1, b: 1, a: 1 };
@@ -320,6 +334,8 @@ export class LoaderECSImpl implements LoaderECS {
       if (!material.stringTags['Cull']) {
         material.stringTags['Cull'] = CullMode.Front;
       }
+    } else {
+      console.error(`Unknown shader id in material: ${material}`);
     }
   }
 
@@ -363,22 +379,6 @@ export class LoaderECSImpl implements LoaderECS {
         this.processTextureOptions(texData, isBaseColor);
       }
     }
-  }
-
-  getPBRShaderProperties (): string {
-    return '';
-  }
-
-  getUnlitShaderProperties (): string {
-    return '';
-  }
-
-  getDefaultPBRMaterialData (): string {
-    return '';
-  }
-
-  getDefaultUnlitMaterialData (): string {
-    return '';
   }
 
   getLoadResult (): LoadSceneECSResult {
