@@ -15,7 +15,7 @@ describe('asset manager', () => {
     player = null;
   });
 
-  it('templateV2 video', async () => {
+  it('template video', async () => {
     player = player!;
     const assets = {
       'images': [
@@ -53,7 +53,6 @@ describe('asset manager', () => {
     expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
 
     player.gotoAndStop(0.1);
-
   });
 
   it('templateV2 video variables', async () => {
@@ -100,7 +99,6 @@ describe('asset manager', () => {
     expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
 
     player.gotoAndStop(0.1);
-
   });
 });
 

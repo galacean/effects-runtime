@@ -29,7 +29,6 @@ export * from './plugin-system';
 export * from './plugins';
 export * from './render';
 export * from './scene';
-export * from './semantic-map';
 export * from './shader';
 export * from './shape';
 export * from './template-image';
@@ -39,6 +38,7 @@ export * from './ticker';
 export * from './transform';
 export * from './utils';
 export * from './vfx-item';
+export * from './canvas-pool';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);
