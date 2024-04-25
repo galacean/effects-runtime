@@ -1,18 +1,30 @@
-import type { Texture } from '@galacean/effects';
-import { spec, glContext, Material } from '@galacean/effects';
-import type { ModelMaterialOptions, ModelMaterialUnlitOptions, ModelMaterialPBROptions, MacroInfo } from '../index';
-import { Vector3, Vector4, Matrix3 } from './math';
-import { PObjectType, PMaterialType, PBlendMode, PFaceSideMode, PGlobalState, PBRShaderGUID } from './common';
+import type { Texture, Material } from '@galacean/effects';
+import { spec, glContext } from '@galacean/effects';
+import type { MacroInfo } from '../index';
+import type { Matrix3 } from './math';
+import { Vector3, Vector4, Color } from './math';
+import { PObjectType, PMaterialType, PGlobalState, PBRShaderGUID } from './common';
 import { PObject } from './object';
 import { PluginHelper } from '../utility/plugin-helper';
 import { PShaderManager } from './shader';
+
+export enum RenderType {
+  Opaque = 'Opaque',
+  Mask = 'Mask',
+  Blend = 'Blend',
+}
+
+export enum CullMode {
+  Front = 'Front',
+  Back = 'Back',
+  Double = 'Double',
+}
 
 /**
  * 3D 材质基础类，支持公共的材质功能
  */
 export abstract class PMaterialBase extends PObject {
-  fromMaterial = false;
-  material?: Material;
+  effectMaterial: Material;
   /**
    * 材质类型，主要是 pbr 和 unlit 两类
    */
@@ -28,15 +40,15 @@ export abstract class PMaterialBase extends PObject {
   /**
    * 深度是否写入，默认是写入
    */
-  depthMask = true;
+  ZWrite = true;
   /**
    * 是否深度测试提示，默认开启
    */
-  depthTestHint = true;
+  ZTest = true;
   /**
-   * 混合模式，默认是不透明
+   * 渲染类型，默认是不透明
    */
-  blendMode: PBlendMode = PBlendMode.opaque;
+  renderType: RenderType = RenderType.Opaque;
   /**
    * Alpha 测试截断值
    */
@@ -44,7 +56,7 @@ export abstract class PMaterialBase extends PObject {
   /**
    * 面侧模式，默认是正面
    */
-  faceSideMode: PFaceSideMode = PFaceSideMode.front;
+  cullMode: CullMode = CullMode.Front;
 
   /**
    * 获取着色器特性列表，根据材质状态
@@ -59,7 +71,7 @@ export abstract class PMaterialBase extends PObject {
       featureList.push('ALPHAMODE_MASK 1');
     }
 
-    if (this.faceSideMode === PFaceSideMode.both) {
+    if (this.cullMode === CullMode.Double) {
       featureList.push('DOUBLE_SIDED 1');
     }
 
@@ -75,7 +87,7 @@ export abstract class PMaterialBase extends PObject {
       macroList.push({ name: 'ALPHAMODE_MASK' });
     }
 
-    if (this.faceSideMode === PFaceSideMode.both) {
+    if (this.cullMode === CullMode.Double) {
       macroList.push({ name: 'DOUBLE_SIDED' });
     }
 
@@ -87,10 +99,6 @@ export abstract class PMaterialBase extends PObject {
    * @param material - GE 材质
    */
   updateUniforms (material: Material) {
-    if (this.isMasked()) {
-      material.setFloat('_AlphaCutoff', this.alphaCutOff);
-    }
-
     // 渲染 UV 结果输出时，设置 uv 大小
     const renderMode = PGlobalState.getInstance().renderMode3D;
 
@@ -172,58 +180,19 @@ export abstract class PMaterialBase extends PObject {
   }
 
   /**
-   * 获取混合模式，根据 GE 混合模式
-   * @param mode - GE 混合模式
-   * @returns
-   */
-  getBlendMode (mode?: spec.MaterialBlending): PBlendMode {
-    if (mode === spec.MaterialBlending.masked) {
-      return PBlendMode.masked;
-    } else if (mode === spec.MaterialBlending.translucent) {
-      return PBlendMode.translucent;
-    } else if (mode === spec.MaterialBlending.additive) {
-      return PBlendMode.additive;
-    } else {
-      return PBlendMode.opaque;
-    }
-  }
-
-  /**
-   * 获取面侧模式，根据 GE 面侧模式
-   * @param mode - GE 面侧模式
-   * @returns
-   */
-  getFaceSideMode (mode?: spec.SideMode): PFaceSideMode {
-    if (mode === spec.SideMode.DOUBLE) {
-      return PFaceSideMode.both;
-    } else if (mode === spec.SideMode.BACK) {
-      return PFaceSideMode.back;
-    } else {
-      return PFaceSideMode.front;
-    }
-  }
-
-  /**
    * 设置材质状态，根据 GE 材质状态
    * @param material - GE 材质
    */
   setMaterialStates (material: Material) {
-    if (this.blendMode === PBlendMode.translucent || this.blendMode === PBlendMode.additive) {
+    if (this.renderType === RenderType.Blend) {
       material.blending = true;
       material.depthTest = true;
       material.blendEquation = [glContext.FUNC_ADD, glContext.FUNC_ADD];
-      if (this.blendMode === PBlendMode.translucent) {
-        material.blendFunction = [
-          glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
-          glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
-        ];
-      } else {
-        material.blendFunction = [
-          glContext.ONE, glContext.ONE,
-          glContext.ONE, glContext.ONE,
-        ];
-      }
-      material.depthMask = this.depthMask;
+      material.blendFunction = [
+        glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
+        glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
+      ];
+      material.depthMask = this.ZWrite;
     } else {
       if (PGlobalState.getInstance().isTiny3dMode) {
         material.blending = false;
@@ -232,8 +201,8 @@ export abstract class PMaterialBase extends PObject {
         material.depthMask = true;
       } else {
         material.blending = false;
-        material.depthTest = this.depthTestHint;
-        material.depthMask = this.depthMask;
+        material.depthTest = this.ZTest;
+        material.depthMask = this.ZWrite;
       }
     }
 
@@ -241,9 +210,9 @@ export abstract class PMaterialBase extends PObject {
   }
 
   protected setFaceSideStates (material: Material) {
-    if (this.isBothFace()) {
+    if (this.isDoubleSide()) {
       material.culling = false;
-    } else if (this.isBackFace()) {
+    } else if (this.isBackSide()) {
       material.cullFace = glContext.FRONT;
       material.frontFace = glContext.CCW;
       material.culling = true;
@@ -275,7 +244,7 @@ export abstract class PMaterialBase extends PObject {
    * @returns
    */
   isOpaque (): boolean {
-    return this.blendMode === PBlendMode.opaque;
+    return this.renderType === RenderType.Opaque;
   }
 
   /**
@@ -283,55 +252,39 @@ export abstract class PMaterialBase extends PObject {
    * @returns
    */
   isMasked (): boolean {
-    return this.blendMode === PBlendMode.masked;
+    return this.renderType === RenderType.Mask;
   }
 
   /**
    * 是否半透明
    * @returns
    */
-  isTranslucent (): boolean {
-    return this.blendMode === PBlendMode.translucent;
-  }
-
-  /**
-   * 是否加法混合
-   * @returns
-   */
-  isAdditive (): boolean {
-    return this.blendMode === PBlendMode.additive;
-  }
-
-  /**
-   * 是否需要混合
-   * @returns
-   */
-  requireBlend (): boolean {
-    return this.blendMode === PBlendMode.translucent || this.blendMode === PBlendMode.additive;
+  isBlend (): boolean {
+    return this.renderType === RenderType.Blend;
   }
 
   /**
    * 是否正面模式
    * @returns
    */
-  isFrontFace (): boolean {
-    return this.faceSideMode === PFaceSideMode.front;
+  isFrontSide (): boolean {
+    return this.cullMode === CullMode.Front;
   }
 
   /**
    * 是否背面模式
    * @returns
    */
-  isBackFace (): boolean {
-    return this.faceSideMode === PFaceSideMode.back;
+  isBackSide (): boolean {
+    return this.cullMode === CullMode.Back;
   }
 
   /**
    * 是否双面模式
    * @returns
    */
-  isBothFace (): boolean {
-    return this.faceSideMode === PFaceSideMode.both;
+  isDoubleSide (): boolean {
+    return this.cullMode === CullMode.Double;
   }
 }
 
@@ -339,50 +292,38 @@ export abstract class PMaterialBase extends PObject {
  * 无光照材质类，负责无关照或者不接受光照情况下的物体材质效果
  */
 export class PMaterialUnlit extends PMaterialBase {
-  private baseColorTexture?: Texture;
+  /**
+   * 基础颜色纹理
+   */
+  baseColorTexture?: Texture;
+  /**
+   * 基础颜色纹理变换
+   */
+  baseColorTextureTrans: Matrix3;
+  /**
+   * 基础颜色值，默认是白色 Color(1, 1, 1, 1)
+   */
+  baseColorFactor: Color = new Color(1, 1, 1, 1);
 
   /**
    * 创建无光照材质，支持基础颜色纹理
-   * @param options - 无光照材质参数
+   * @param material - effect 材质对象
    */
-  create (options: ModelMaterialUnlitOptions) {
-    this.name = options.name;
+  create (material: Material) {
+    this.effectMaterial = material;
+    this.name = material.name;
     this.type = PObjectType.material;
     this.materialType = PMaterialType.unlit;
     //
-    if (options.baseColorTexture) {
-      this.baseColorTexture = options.baseColorTexture;
-    }
-    /**
-     * 默认需要写入深度值，只有传入false才是false
-     */
-    if (options.depthMask === false) {
-      this.depthMask = false;
-    } else {
-      this.depthMask = true;
-    }
-    this.blendMode = this.getBlendMode(options.blending);
-    this.alphaCutOff = options.alphaCutOff ?? 0;
-    this.faceSideMode = this.getFaceSideMode(options.side);
-  }
-
-  createFromMaterial (mat: Material) {
-    this.fromMaterial = true;
-    this.material = mat;
-    this.name = mat.name;
-    this.type = PObjectType.material;
-    this.materialType = PMaterialType.unlit;
+    this.baseColorTexture = material.getTexture('_BaseColorSampler') ?? undefined;
+    this.baseColorTextureTrans = PluginHelper.createUVTransform(material, '_BaseColorSampler_ST', '_BaseColorRotation');
+    this.baseColorFactor = material.getColor('_BaseColorFactor') ?? new Color(1.0, 1.0, 1.0, 1.0);
     //
-    this.baseColorTexture = mat.getTexture('_BaseColorSampler') ?? undefined;
-
-    this.depthMask = true;
-    const blending = mat.getInt('blending') ?? spec.MaterialBlending.opaque;
-
-    this.blendMode = this.getBlendMode(blending);
-    this.alphaCutOff = mat.getFloat('_AlphaCutoff') ?? 0;
-    const side = mat.getInt('side') ?? spec.SideMode.FRONT;
-
-    this.faceSideMode = this.getFaceSideMode(side);
+    this.ZWrite = material.stringTags['ZWrite'] !== 'false';
+    this.ZTest = material.stringTags['ZTest'] !== 'false';
+    this.renderType = material.stringTags['RenderType'] as RenderType ?? RenderType.Opaque;
+    this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
+    this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
 
   /**
@@ -429,12 +370,10 @@ export class PMaterialUnlit extends PMaterialBase {
    */
   override updateUniforms (material: Material) {
     super.updateUniforms(material);
-    //
-    const uvTransform = new Matrix3().identity();
 
-    if (this.hasBaseColorTexture()) {
+    if (this.baseColorTexture !== undefined) {
       material.setInt('_BaseColorUVSet', 0);
-      material.setMatrix3('_BaseColorUVTransform', uvTransform);
+      material.setMatrix3('_BaseColorUVTransform', this.baseColorTextureTrans);
     }
 
     material.setFloat('_MetallicFactor', 0);
@@ -467,6 +406,30 @@ export class PMaterialUnlit extends PMaterialBase {
     this.baseColorTexture = val;
   }
 
+  /**
+   * 获取基础颜色纹理
+   * @returns
+   */
+  getBaseColorFactor (): Color {
+    return this.baseColorFactor;
+  }
+
+  /**
+   * 设置基础颜色值
+   * @param val - 颜色值
+   */
+  setBaseColorFactor (val: Color | Vector4 | spec.vec4) {
+    if (val instanceof Color) {
+      // for Color
+      this.baseColorFactor.set(val.r, val.g, val.b, val.a);
+    } else if (val instanceof Vector4) {
+      // for Vector4
+      this.baseColorFactor.set(val.x, val.y, val.z, val.w);
+    } else {
+      // for vec4
+      this.baseColorFactor.set(val[0], val[1], val[2], val[3]);
+    }
+  }
 }
 
 /**
@@ -481,11 +444,11 @@ export class PMaterialPBR extends PMaterialBase {
   /**
    * 基础颜色纹理变换
    */
-  baseColorTextureTrans?: Matrix3;
+  baseColorTextureTrans: Matrix3;
   /**
-   * 基础颜色值，默认是白色 Vector4(1, 1, 1, 1)
+   * 基础颜色值，默认是白色 Color(1, 1, 1, 1)
    */
-  baseColorFactor: Vector4 = new Vector4(1, 1, 1, 1);
+  baseColorFactor: Color = new Color(1, 1, 1, 1);
   /**
    * 金属度粗超度纹理
    */
@@ -493,7 +456,7 @@ export class PMaterialPBR extends PMaterialBase {
   /**
    * 金属度粗超度纹理变换
    */
-  metallicRoughnessTextureTrans?: Matrix3;
+  metallicRoughnessTextureTrans: Matrix3;
   /**
    * 是否高光抗锯齿，能够明显提升高光表现效果
    */
@@ -513,7 +476,7 @@ export class PMaterialPBR extends PMaterialBase {
   /**
    * 法线纹理变换
    */
-  normalTextureTrans?: Matrix3;
+  normalTextureTrans: Matrix3;
   /**
    * 法线纹理缩放
    */
@@ -525,7 +488,7 @@ export class PMaterialPBR extends PMaterialBase {
   /**
    * AO 纹理变换
    */
-  occlusionTextureTrans?: Matrix3;
+  occlusionTextureTrans: Matrix3;
   /**
    * AO 纹理强度
    */
@@ -537,112 +500,54 @@ export class PMaterialPBR extends PMaterialBase {
   /**
    * 自发光纹理变换
    */
-  emissiveTextureTrans?: Matrix3;
+  emissiveTextureTrans: Matrix3;
   /**
    * 自发光颜色值，默认是黑色 Vector4(0, 0, 0, 0)
    */
-  emissiveFactor: Vector4 = new Vector4(0, 0, 0, 0);
+  emissiveFactor: Color = new Color(0, 0, 0, 0);
   /**
    * 自发光强度
    */
   emissiveIntensity = 1;
-  //
-  enableShadow = false;
 
   /**
    * 创建材质
-   * @param options - PBR 材质参数
+   * @param material - effect 材质对象
    */
-  create (options: ModelMaterialPBROptions) {
-    this.name = options.name;
+  create (material: Material) {
+    this.effectMaterial = material;
+    this.name = material.name;
     this.type = PObjectType.material;
     this.materialType = PMaterialType.pbr;
     //
-    if (options.baseColorTexture) { this.baseColorTexture = options.baseColorTexture; }
-    if (options.baseColorTextureTransform) {
-      this.baseColorTextureTrans = PluginHelper.createUVTransform(options.baseColorTextureTransform);
-    }
-    this.setBaseColorFactor(PluginHelper.toPluginColor4(options.baseColorFactor));
-
-    if (options.metallicRoughnessTexture) { this.metallicRoughnessTexture = options.metallicRoughnessTexture; }
-    if (options.metallicRoughnessTextureTransform) {
-      this.metallicRoughnessTextureTrans = PluginHelper.createUVTransform(options.metallicRoughnessTextureTransform);
-    }
-    this.useSpecularAA = options.useSpecularAA ?? false;
-    this.metallicFactor = options.metallicFactor;
-    this.roughnessFactor = PluginHelper.clamp(options.roughnessFactor, 0, 1);
-
-    if (options.normalTexture) { this.normalTexture = options.normalTexture; }
-    if (options.normalTextureTransform) {
-      this.normalTextureTrans = PluginHelper.createUVTransform(options.normalTextureTransform);
-    }
-    this.normalTextureScale = options.normalTextureScale ?? 1.0;
-
-    if (options.occlusionTexture) { this.occlusionTexture = options.occlusionTexture; }
-    if (options.occlusionTextureTransform) {
-      this.occlusionTextureTrans = PluginHelper.createUVTransform(options.occlusionTextureTransform);
-    }
-    this.occlusionTextureStrength = options.occlusionTextureStrength ?? 1.0;
-
-    if (options.emissiveTexture) { this.emissiveTexture = options.emissiveTexture; }
-    if (options.emissiveTextureTransform) {
-      this.emissiveTextureTrans = PluginHelper.createUVTransform(options.emissiveTextureTransform);
-    }
-    const emissiveFactor = PluginHelper.toPluginColor4(options.emissiveFactor);
-
-    this.setEmissiveFactor(Vector3.fromArray(emissiveFactor));
-    this.emissiveIntensity = options.emissiveIntensity;
-
-    this.enableShadow = options.enableShadow ?? false;
-    /**
-     * 默认需要写入深度值，只有传入false才是false
-     */
-    if (options.depthMask === false) {
-      this.depthMask = false;
-    } else {
-      this.depthMask = true;
-    }
-    this.blendMode = this.getBlendMode(options.blending);
-    this.faceSideMode = this.getFaceSideMode(options.side);
-  }
-
-  createFromMaterial (mat: Material) {
-    this.fromMaterial = true;
-    this.material = mat;
-    this.name = mat.name;
-    this.type = PObjectType.material;
-    this.materialType = PMaterialType.pbr;
+    this.baseColorTexture = material.getTexture('_BaseColorSampler') ?? undefined;
+    this.baseColorTextureTrans = PluginHelper.createUVTransform(material, '_BaseColorSampler_ST', '_BaseColorRotation');
+    this.baseColorFactor = material.getColor('_BaseColorFactor') ?? new Color(1.0, 1.0, 1.0, 1.0);
     //
-    this.baseColorTexture = mat.getTexture('_BaseColorSampler') ?? undefined;
-    this.baseColorFactor = mat.getVector4('_BaseColorFactor') ?? new Vector4(1.0, 1.0, 1.0, 1.0);
-    this.metallicRoughnessTexture = mat.getTexture('_MetallicRoughnessSampler') ?? undefined;
-
-    this.useSpecularAA = mat.getFloat('_useSpecularAA') === 1;
-    this.metallicFactor = mat.getFloat('_MetallicFactor') ?? 1;
-    this.roughnessFactor = mat.getFloat('_RoughnessFactor') ?? 1;
-
-    this.normalTexture = mat.getTexture('_NormalSampler') ?? undefined;
-    this.normalTextureScale = mat.getFloat('_NormalScale') ?? 1;
-
-    this.occlusionTexture = mat.getTexture('_OcclusionSampler') ?? undefined;
-    this.occlusionTextureStrength = mat.getFloat('_OcclusionTextureStrength') ?? 1;
-
-    this.emissiveTexture = mat.getTexture('_EmissiveSampler') ?? undefined;
-    this.emissiveFactor = mat.getVector4('_EmissiveFactor') ?? new Vector4(0, 0, 0, 0);
-    this.emissiveIntensity = mat.getFloat('_EmissiveIntensity') ?? 1;
-    const emissiveFactor = this.emissiveFactor.clone().multiply(this.emissiveIntensity);
-
-    mat.setVector4('_EmissiveFactor', emissiveFactor);
-
-    this.enableShadow = false;
-    this.depthMask = true;
-    const blending = mat.getInt('blending') ?? spec.MaterialBlending.opaque;
-
-    this.blendMode = this.getBlendMode(blending);
-    this.alphaCutOff = mat.getFloat('_AlphaCutoff') ?? 0;
-    const side = mat.getInt('side') ?? spec.SideMode.FRONT;
-
-    this.faceSideMode = this.getFaceSideMode(side);
+    this.metallicRoughnessTexture = material.getTexture('_MetallicRoughnessSampler') ?? undefined;
+    this.metallicRoughnessTextureTrans = PluginHelper.createUVTransform(material, '_MetallicRoughnessSampler_ST', '_MetallicRoughnessRotation');
+    this.useSpecularAA = material.getFloat('_SpecularAA') === 1;
+    this.metallicFactor = material.getFloat('_MetallicFactor') ?? 1;
+    this.roughnessFactor = material.getFloat('_RoughnessFactor') ?? 0;
+    //
+    this.normalTexture = material.getTexture('_NormalSampler') ?? undefined;
+    this.normalTextureTrans = PluginHelper.createUVTransform(material, '_NormalSampler_ST', '_NormalRotation');
+    this.normalTextureScale = material.getFloat('_NormalScale') ?? 1;
+    //
+    this.occlusionTexture = material.getTexture('_OcclusionSampler') ?? undefined;
+    this.occlusionTextureTrans = PluginHelper.createUVTransform(material, '_OcclusionSampler_ST', '_OcclusionRotation');
+    this.occlusionTextureStrength = material.getFloat('_OcclusionStrength') ?? 1;
+    //
+    this.emissiveTexture = material.getTexture('_EmissiveSampler') ?? undefined;
+    this.emissiveTextureTrans = PluginHelper.createUVTransform(material, '_EmissiveSampler_ST', '_EmissiveRotation');
+    this.emissiveFactor = material.getColor('_EmissiveFactor') ?? new Color(0, 0, 0, 1);
+    this.emissiveIntensity = material.getFloat('_EmissiveIntensity') ?? 1;
+    //
+    this.ZWrite = material.stringTags['ZWrite'] !== 'false';
+    this.ZTest = material.stringTags['ZTest'] !== 'false';
+    this.renderType = material.stringTags['RenderType'] as RenderType ?? RenderType.Opaque;
+    this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
+    this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
 
   /**
@@ -697,7 +602,7 @@ export class PMaterialPBR extends PMaterialBase {
       if (this.emissiveTextureTrans !== undefined) {
         featureList.push('HAS_EMISSIVE_UV_TRANSFORM 1');
       }
-    } else if (this.hasEmissiveFactor()) {
+    } else if (this.hasEmissiveValue()) {
       featureList.push('HAS_EMISSIVE 1');
     }
 
@@ -740,7 +645,7 @@ export class PMaterialPBR extends PMaterialBase {
       if (this.emissiveTextureTrans !== undefined) {
         macroList.push({ name: 'HAS_EMISSIVE_UV_TRANSFORM' });
       }
-    } else if (this.hasEmissiveFactor()) {
+    } else if (this.hasEmissiveValue()) {
       macroList.push({ name: 'HAS_EMISSIVE' });
     }
 
@@ -753,106 +658,30 @@ export class PMaterialPBR extends PMaterialBase {
    */
   override updateUniforms (material: Material) {
     super.updateUniforms(material);
-    if (this.fromMaterial) {
-      const uvTransform = new Matrix3().identity();
 
-      if (this.baseColorTexture !== undefined) {
-        material.setInt('_BaseColorUVSet', 0);
-        material.setMatrix3('_BaseColorUVTransform', uvTransform);
-      }
-      //
-      if (this.metallicRoughnessTexture !== undefined) {
-        material.setInt('_MetallicRoughnessUVSet', 0);
-        material.setMatrix3('_MetallicRoughnessUVTransform', uvTransform);
-      }
-      //
-      if (this.normalTexture !== undefined) {
-        material.setInt('_NormalUVSet', 0);
-        material.setMatrix3('_NormalUVTransform', uvTransform);
-      }
-      //
-      if (this.occlusionTexture !== undefined) {
-        material.setInt('_OcclusionUVSet', 0);
-        material.setMatrix3('_OcclusionUVTransform', uvTransform);
-      }
-      //
-      if (this.emissiveTexture !== undefined) {
-        material.setInt('_EmissiveUVSet', 0);
-        material.setMatrix3('_EmissiveUVTransform', uvTransform);
-      }
-
-      material.setFloat('_Exposure', 3.0);
-
-      return;
-    }
-    //
-    const uvTransform = new Matrix3().identity();
-
-    material.setVector4('_BaseColorFactor', this.baseColorFactor);
     if (this.baseColorTexture !== undefined) {
-      material.setTexture('_BaseColorSampler', this.baseColorTexture);
       material.setInt('_BaseColorUVSet', 0);
-      if (this.baseColorTextureTrans !== undefined) {
-        material.setMatrix3('_BaseColorUVTransform', this.baseColorTextureTrans);
-      } else {
-        // fill other data
-        material.setMatrix3('_BaseColorUVTransform', uvTransform);
-      }
+      material.setMatrix3('_BaseColorUVTransform', this.baseColorTextureTrans);
     }
     //
-    material.setFloat('_MetallicFactor', this.metallicFactor);
-    material.setFloat('_RoughnessFactor', this.roughnessFactor);
     if (this.metallicRoughnessTexture !== undefined) {
-      material.setTexture('_MetallicRoughnessSampler', this.metallicRoughnessTexture);
       material.setInt('_MetallicRoughnessUVSet', 0);
-      if (this.metallicRoughnessTextureTrans !== undefined) {
-        material.setMatrix3('_MetallicRoughnessUVTransform', this.metallicRoughnessTextureTrans);
-      } else {
-        // fill other data
-        material.setMatrix3('_MetallicRoughnessUVTransform', uvTransform);
-      }
+      material.setMatrix3('_MetallicRoughnessUVTransform', this.metallicRoughnessTextureTrans);
     }
     //
     if (this.normalTexture !== undefined) {
-      material.setTexture('_NormalSampler', this.normalTexture);
-      material.setFloat('_NormalScale', this.normalTextureScale);
       material.setInt('_NormalUVSet', 0);
-      if (this.normalTextureTrans !== undefined) {
-        material.setMatrix3('_NormalUVTransform', this.normalTextureTrans);
-      } else {
-        // fill other data
-        material.setMatrix3('_NormalUVTransform', uvTransform);
-      }
+      material.setMatrix3('_NormalUVTransform', this.normalTextureTrans);
     }
     //
     if (this.occlusionTexture !== undefined) {
-      material.setTexture('_OcclusionSampler', this.occlusionTexture);
-      material.setFloat('_OcclusionStrength', this.occlusionTextureStrength);
       material.setInt('_OcclusionUVSet', 0);
-      if (this.occlusionTextureTrans !== undefined) {
-        material.setMatrix3('_OcclusionUVTransform', this.occlusionTextureTrans);
-      } else {
-        // fill other data
-        material.setMatrix3('_OcclusionUVTransform', uvTransform);
-      }
+      material.setMatrix3('_OcclusionUVTransform', this.occlusionTextureTrans);
     }
     //
     if (this.emissiveTexture !== undefined) {
-      const emissiveFactor = this.getEmissiveFactor();
-
-      material.setTexture('_EmissiveSampler', this.emissiveTexture);
-      material.setVector4('_EmissiveFactor', emissiveFactor);
       material.setInt('_EmissiveUVSet', 0);
-      if (this.emissiveTextureTrans !== undefined) {
-        material.setMatrix3('_EmissiveUVTransform', this.emissiveTextureTrans);
-      } else {
-        // fill other data
-        material.setMatrix3('_EmissiveUVTransform', uvTransform);
-      }
-    } else if (this.hasEmissiveFactor()) {
-      const emissiveFactor = this.getEmissiveFactor();
-
-      material.setVector4('_EmissiveFactor', emissiveFactor);
+      material.setMatrix3('_EmissiveUVTransform', this.emissiveTextureTrans);
     }
 
     material.setFloat('_Exposure', 3.0);
@@ -867,14 +696,6 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   /**
-   * 是否有基础颜色纹理变换
-   * @returns
-   */
-  hasBaseColorTextureTrans (): boolean {
-    return this.baseColorTextureTrans !== undefined;
-  }
-
-  /**
    * 设置基础颜色纹理
    * @param val - 纹理
    */
@@ -886,7 +707,7 @@ export class PMaterialPBR extends PMaterialBase {
    * 获取基础颜色纹理
    * @returns
    */
-  getBaseColorFactor (): Vector4 {
+  getBaseColorFactor (): Color {
     return this.baseColorFactor;
   }
 
@@ -894,8 +715,11 @@ export class PMaterialPBR extends PMaterialBase {
    * 设置基础颜色值
    * @param val - 颜色值
    */
-  setBaseColorFactor (val: Vector4 | spec.vec4) {
-    if (val instanceof Vector4) {
+  setBaseColorFactor (val: Color | Vector4 | spec.vec4) {
+    if (val instanceof Color) {
+      // for Vector4
+      this.baseColorFactor.set(val.r, val.g, val.b, val.a);
+    } else if (val instanceof Vector4) {
       // for Vector4
       this.baseColorFactor.set(val.x, val.y, val.z, val.w);
     } else {
@@ -910,14 +734,6 @@ export class PMaterialPBR extends PMaterialBase {
    */
   hasMetallicRoughnessTexture (): boolean {
     return this.metallicRoughnessTexture !== undefined;
-  }
-
-  /**
-   * 是否有金属度粗超度纹理坐标变换
-   * @returns
-   */
-  hasMetallicRoughnessTextureTrans (): boolean {
-    return this.metallicRoughnessTextureTrans !== undefined;
   }
 
   /**
@@ -945,14 +761,6 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   /**
-   * 是否有法线纹理坐标变换
-   * @returns
-   */
-  hasNormalTextureTrans (): boolean {
-    return this.normalTextureTrans !== undefined;
-  }
-
-  /**
    * 获取法线纹理
    * @returns
    */
@@ -974,14 +782,6 @@ export class PMaterialPBR extends PMaterialBase {
    */
   hasOcclusionTexture (): boolean {
     return this.occlusionTexture !== undefined;
-  }
-
-  /**
-   * 是否有遮挡纹理坐标变换
-   * @returns
-   */
-  hasOcclusionTextureTrans (): boolean {
-    return this.occlusionTextureTrans !== undefined;
   }
 
   /**
@@ -1009,14 +809,6 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   /**
-   * 是否有自发光纹理坐标变换
-   * @returns
-   */
-  hasEmissiveTextureTrans (): boolean {
-    return this.emissiveTextureTrans !== undefined;
-  }
-
-  /**
    * 获取自发光纹理
    * @returns
    */
@@ -1033,27 +825,30 @@ export class PMaterialPBR extends PMaterialBase {
   }
 
   /**
-   * 是否有自发光颜色，包含强度
+   * 是否有自发光值，包含强度
    * @returns
    */
-  hasEmissiveFactor (): boolean {
-    return this.emissiveFactor.sum() * this.emissiveIntensity > 0;
+  hasEmissiveValue (): boolean {
+    return this.emissiveFactor.luminance() * this.emissiveIntensity > 0;
   }
 
   /**
-   * 获取自发光颜色，包含强度
+   * 获取自发光颜色
    * @returns
    */
-  getEmissiveFactor (): Vector4 {
-    return this.emissiveFactor.clone().multiply(this.emissiveIntensity);
+  getEmissiveFactor (): Color {
+    return this.emissiveFactor;
   }
 
   /**
    * 设置自发光颜色
    * @param val - 颜色
    */
-  setEmissiveFactor (val: Vector3 | spec.vec3) {
-    if (val instanceof Vector3) {
+  setEmissiveFactor (val: Color | Vector3 | spec.vec3) {
+    if (val instanceof Color) {
+      // Color
+      this.emissiveFactor.set(val.r, val.g, val.b, val.a);
+    } else if (val instanceof Vector3) {
       // Vector3
       this.emissiveFactor.set(val.x, val.y, val.z, 0);
     } else {
@@ -1062,14 +857,21 @@ export class PMaterialPBR extends PMaterialBase {
     }
   }
 
-  getTextureFromMaterial (mat: Material, texName: string): Texture | undefined {
-    const tex = mat.getTexture(texName);
-
-    if (tex !== null) {
-      return tex;
-    }
+  /**
+   * 获取自发光强度
+   * @returns
+   */
+  getEmissiveIntensity (): number {
+    return this.emissiveIntensity;
   }
 
+  /**
+   * 设置自发光强度
+   * @param val - 强度
+   */
+  setEmissiveIntensity (val: number) {
+    this.emissiveIntensity = val;
+  }
 }
 
 /**
@@ -1079,41 +881,21 @@ export type PMaterial = PMaterialUnlit | PMaterialPBR;
 
 /**
  * 创建插件材质对象
- * @param options - 材质参数
+ * @param material - Effects 材质对象
  * @returns 材质对象
  */
-export function createPluginMaterial (options: ModelMaterialOptions | Material): PMaterial {
-  if (options instanceof Material) {
-    if (options.shader.getInstanceId() === PBRShaderGUID) {
-      const materialPBR = new PMaterialPBR();
+export function createPluginMaterial (material: Material): PMaterial {
+  if (material.shader.getInstanceId() === PBRShaderGUID) {
+    const materialPBR = new PMaterialPBR();
 
-      materialPBR.createFromMaterial(options);
+    materialPBR.create(material);
 
-      return materialPBR;
-    } else {
-      const materialUnlit = new PMaterialUnlit();
-
-      materialUnlit.createFromMaterial(options);
-
-      return materialUnlit;
-    }
+    return materialPBR;
   } else {
-    if (options.type === spec.MaterialType.pbr) {
-      const materialPBR = new PMaterialPBR();
+    const materialUnlit = new PMaterialUnlit();
 
-      materialPBR.create(options);
+    materialUnlit.create(material);
 
-      return materialPBR;
-    } else {
-      const materialUnlit = new PMaterialUnlit();
-
-      materialUnlit.create(options);
-
-      return materialUnlit;
-    }
+    return materialUnlit;
   }
-}
-
-export function createInternalMaterial (options: {}): {} {
-  return {};
 }
