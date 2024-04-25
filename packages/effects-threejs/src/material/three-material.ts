@@ -1,6 +1,6 @@
 import type {
   MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
-  GlobalUniforms, Renderer,
+  GlobalUniforms, Renderer, ShaderMarcos,
 } from '@galacean/effects-core';
 import { Material, ShaderType, createShaderWithMarcos, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
@@ -17,6 +17,7 @@ type Vector3 = math.Vector3;
 type Vector4 = math.Vector4;
 type Matrix3 = math.Matrix3;
 type Quaternion = math.Quaternion;
+type Color = math.Color;
 
 /**
  * THREE 抽象材质类
@@ -58,8 +59,8 @@ export class ThreeMaterial extends Material {
     this.uniforms['effects_MatrixV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
 
     this.material = new THREE.RawShaderMaterial({
-      vertexShader: createShaderWithMarcos(shader!.marcos!, shader!.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
-      fragmentShader: createShaderWithMarcos(shader!.marcos!, shader!.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
+      vertexShader: createShaderWithMarcos(shader!.marcos as ShaderMarcos, shader!.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
+      fragmentShader: createShaderWithMarcos(shader!.marcos as ShaderMarcos, shader!.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
       alphaToCoverage: false,
       depthFunc: THREE.LessDepth,
       polygonOffsetFactor: THREE.ZeroFactor,
@@ -416,6 +417,13 @@ export class ThreeMaterial extends Material {
     this.setUniform(name, value);
   }
 
+  getColor (name: string): Color | null {
+    return this.uniforms[name].value;
+  }
+  setColor (name: string, value: Color): void {
+    this.setUniform(name, value);
+  }
+
   getQuaternion (name: string): Quaternion | null {
     return this.uniforms[name].value;
   }
@@ -448,7 +456,7 @@ export class ThreeMaterial extends Material {
     return !!this.uniforms[name];
   }
 
-  private setUniform (name: string, value: THREE.Texture | number | number[] | Matrix4 | Matrix3 | Quaternion | Vector2 | Vector3 | Vector4 | Vector4[]) {
+  private setUniform (name: string, value: THREE.Texture | number | number[] | Matrix4 | Matrix3 | Quaternion | Vector2 | Vector3 | Vector4 | Vector4[] | Color) {
     const uniform = new THREE.Uniform(value);
 
     this.uniforms[name] = this.material.uniforms[name] = uniform;

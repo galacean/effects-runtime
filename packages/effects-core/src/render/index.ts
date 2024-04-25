@@ -10,3 +10,4 @@ export * from './geometry';
 export * from './frame-buffer';
 export * from './renderer';
 export * from './global-volume';
+export * from './semantic-map';

@@ -1,38 +1,25 @@
-import type { Texture, Engine } from '@galacean/effects';
-import { spec, generateGUID } from '@galacean/effects';
+import { spec, generateGUID, glContext } from '@galacean/effects';
+import type { Texture, Engine, EffectComponentData, TextureSourceOptions, MaterialData } from '@galacean/effects';
 import type {
-  LoaderOptions,
-  SkyboxType,
-  LoadSceneOptions,
-  LoadSceneECSResult,
+  LoaderOptions, SkyboxType, LoadSceneOptions, LoadSceneECSResult, LoaderECS,
 } from './protocol';
 import type {
-  ModelAnimationOptions,
-  ModelAnimTrackOptions,
-  ModelCameraOptions,
-  ModelLightOptions,
-  ModelSkyboxOptions,
-  ModelTreeOptions,
+  ModelMeshComponentData, ModelSkyboxComponentData, ModelAnimationOptions,
+  ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions, ModelSkyboxOptions,
+  ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
+import { UnlitShaderGUID, PBRShaderGUID, RenderType, CullMode } from '../index';
 import { Matrix4 } from '../runtime/math';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
 import type {
-  GLTFSkin,
-  GLTFMesh,
-  GLTFImage,
-  GLTFMaterial,
-  GLTFTexture,
-  GLTFScene,
-  GLTFLight,
-  GLTFCamera,
-  GLTFAnimation,
+  GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
+  GLTFCamera, GLTFAnimation, GLTFResources,
 } from '@vvfx/resource-detection';
+
 import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 
-// type Box3 = math.Box3;
-
-export class LoaderECS {
+export class LoaderECSImpl implements LoaderECS {
   private sceneOptions: LoadSceneOptions;
   private loaderOptions: LoaderOptions;
   private gltfScene: GLTFScene;
@@ -93,6 +80,7 @@ export class LoaderECS {
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
       throw new Error('Please load resource by GLTFTools at first');
     }
+    this.processGLTFResource(gltfResource);
 
     this.gltfScene = gltfResource.scenes[0];
     this.gltfSkins = this.gltfScene.skins;
@@ -113,20 +101,260 @@ export class LoaderECS {
     });
 
     this.textures = this.gltfTextures.map(texture => {
-      texture.textureOptions.generateMipmap = true;
-
+      // texture.textureOptions.generateMipmap = true;
       return texture.textureOptions;
     });
     this.materials = this.gltfMaterials.map(material => material.materialData);
 
     gltfResource.meshes.forEach(mesh => {
       this.geometries.push(...mesh.geometriesData);
-      this.components.push(mesh.meshData);
     });
+
+    const gltfScene = gltfResource.scenes[0];
+
+    gltfScene.camerasComponentData.forEach(comp => this.components.push(comp));
+    gltfScene.lightsComponentData.forEach(comp => this.components.push(comp));
+    gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
 
     this.items = [...gltfResource.scenes[0].vfxItemData];
 
     return this.getLoadResult();
+  }
+
+  processGLTFResource (resource: GLTFResources): void {
+    const dataMap: Record<string, TextureSourceOptions> = {};
+    const { textures, materials, scenes } = resource;
+
+    textures.forEach(tex => {
+      const texData = tex.textureOptions;
+      const texId = (texData as unknown as spec.EffectsObjectData).id;
+
+      if (texId) {
+        if (dataMap[texId]) {
+          console.error(`Duplicate GUID found: ${texId}, Old ${dataMap[texId]}, New ${texData}`);
+        }
+        dataMap[texId] = texData;
+      } else {
+        console.error(`No GUID in texture Data: ${texData}`);
+      }
+    });
+
+    materials.forEach(mat => {
+      const { materialData } = mat;
+
+      this.processMaterialData(materialData);
+
+      if (materialData.shader?.id === UnlitShaderGUID) {
+        this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
+      } else if (materialData.shader?.id === PBRShaderGUID) {
+        this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
+        this.processMaterialTexture(materialData, '_MetallicRoughnessSampler', false, dataMap);
+        this.processMaterialTexture(materialData, '_NormalSampler', false, dataMap);
+        this.processMaterialTexture(materialData, '_OcclusionSampler', false, dataMap);
+        this.processMaterialTexture(materialData, '_EmissiveSampler', false, dataMap);
+      }
+    });
+
+    const gltfScene = scenes[0];
+
+    gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
+    gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
+    gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
+  }
+
+  processComponentData (components: EffectComponentData[]): void {
+    components.forEach(comp => {
+      if (comp.dataType === spec.DataType.LightComponent) {
+        this.processLightComponentData(comp as unknown as ModelLightComponentData);
+      } else if (comp.dataType === spec.DataType.CameraComponent) {
+        this.processCameraComponentData(comp as unknown as ModelCameraComponentData);
+      } else if (comp.dataType === spec.DataType.MeshComponent) {
+        this.processMeshComponentData(comp as unknown as ModelMeshComponentData);
+      } else if (comp.dataType === spec.DataType.SkyboxComponent) {
+        this.processSkyboxComponentData(comp as unknown as ModelSkyboxComponentData);
+      }
+    });
+  }
+
+  processLightComponentData (light: ModelLightComponentData): void {
+    if (!light.color) {
+      light.color = { r: 1, g: 1, b: 1, a: 1 };
+    }
+
+    if (!light.intensity) {
+      light.intensity = 1;
+    }
+
+    if (light.lightType === spec.LightType.point) {
+      if (!light.range) {
+        light.range = 0;
+      }
+    } else if (light.lightType === spec.LightType.spot) {
+      if (!light.range) {
+        light.range = 0;
+      }
+
+      if (!light.innerConeAngle) {
+        light.innerConeAngle = 0;
+      }
+
+      if (!light.outerConeAngle) {
+        light.outerConeAngle = Math.PI / 4;
+      }
+    }
+  }
+
+  processCameraComponentData (camera: ModelCameraComponentData): void {
+    if (camera.type === spec.CameraType.perspective) {
+      if (camera.fov) {
+        camera.fov *= Math.PI / 180;
+      }
+    }
+  }
+
+  processMeshComponentData (mesh: ModelMeshComponentData): void {
+    if (mesh.primitives.length <= 0) {
+      console.error('Primitive array is empty');
+    } else {
+      mesh.primitives.forEach(prim => {
+        if (!prim.geometry || !prim.material) {
+          console.error('Geometry or material of primitive is empty');
+        }
+      });
+    }
+  }
+
+  processSkyboxComponentData (skybox: ModelSkyboxComponentData): void {
+    if (skybox.intensity === undefined) {
+      skybox.intensity = 1;
+    }
+
+    if (skybox.reflectionsIntensity === undefined) {
+      skybox.reflectionsIntensity = 1;
+    }
+  }
+
+  processMaterialData (material: MaterialData): void {
+    if (material.shader?.id === UnlitShaderGUID) {
+      if (!material.colors['_BaseColorFactor']) {
+        material.colors['_BaseColorFactor'] = { r: 1, g: 1, b: 1, a: 1 };
+      }
+
+      if (material.floats['_AlphaCutoff'] === undefined) {
+        material.floats['_AlphaCutoff'] = 0;
+      }
+
+      if (!material.stringTags['ZWrite']) {
+        material.stringTags['ZWrite'] = String(true);
+      }
+
+      if (!material.stringTags['ZTest']) {
+        material.stringTags['ZTest'] = String(true);
+      }
+
+      if (!material.stringTags['RenderType']) {
+        material.stringTags['RenderType'] = RenderType.Opaque;
+      }
+
+      if (!material.stringTags['Cull']) {
+        material.stringTags['Cull'] = CullMode.Front;
+      }
+    } else if (material.shader?.id === PBRShaderGUID) {
+      if (!material.colors['_BaseColorFactor']) {
+        material.colors['_BaseColorFactor'] = { r: 1, g: 1, b: 1, a: 1 };
+      }
+
+      if (material.floats['_SpecularAA'] === undefined) {
+        material.floats['_SpecularAA'] = 0;
+      }
+
+      if (material.floats['_MetallicFactor'] === undefined) {
+        material.floats['_MetallicFactor'] = 1;
+      }
+
+      if (material.floats['_RoughnessFactor'] === undefined) {
+        material.floats['_RoughnessFactor'] = 0;
+      }
+
+      if (material.floats['_NormalScale'] === undefined) {
+        material.floats['_NormalScale'] = 1;
+      }
+
+      if (material.floats['_OcclusionStrength'] === undefined) {
+        material.floats['_OcclusionStrength'] = this.isTiny3dMode() ? 0 : 1;
+      }
+
+      if (!material.colors['_EmissiveFactor']) {
+        material.colors['_EmissiveFactor'] = { r: 0, g: 0, b: 0, a: 1 };
+      }
+
+      if (material.floats['_EmissiveIntensity'] === undefined) {
+        material.floats['_EmissiveIntensity'] = 1;
+      }
+
+      if (material.floats['_AlphaCutoff'] === undefined) {
+        material.floats['_AlphaCutoff'] = 0;
+      }
+
+      if (!material.stringTags['ZWrite']) {
+        material.stringTags['ZWrite'] = String(true);
+      }
+
+      if (!material.stringTags['ZTest']) {
+        material.stringTags['ZTest'] = String(true);
+      }
+
+      if (!material.stringTags['RenderType']) {
+        material.stringTags['RenderType'] = RenderType.Opaque;
+      }
+
+      if (!material.stringTags['Cull']) {
+        material.stringTags['Cull'] = CullMode.Front;
+      }
+    } else {
+      console.error(`Unknown shader id in material: ${material}`);
+    }
+  }
+
+  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean): void {
+    let premultiplyAlpha = false;
+
+    if (this.isTiny3dMode()) {
+      // FIXME: 这里因为拿不到图像大小，所以只能先注释掉
+      // if (!WebGLHelper.isPow2(imageObj.width) || !WebGLHelper.isPow2(imageObj.height)) {
+      //   minFilter = glContext.LINEAR;
+      // }
+      //
+      premultiplyAlpha = isBaseColor ? false : true;
+    }
+
+    // FIXME: 需要确认minFilter是否对齐Tiny
+    const minFilter = options.minFilter ?? glContext.LINEAR_MIPMAP_LINEAR;
+    const generateMipmap = minFilter == glContext.NEAREST_MIPMAP_NEAREST
+      || minFilter == glContext.LINEAR_MIPMAP_NEAREST
+      || minFilter == glContext.NEAREST_MIPMAP_LINEAR
+      || minFilter == glContext.LINEAR_MIPMAP_LINEAR;
+
+    options.wrapS = options.wrapS ?? glContext.REPEAT;
+    options.wrapT = options.wrapT ?? glContext.REPEAT;
+    options.magFilter = options.magFilter ?? glContext.LINEAR;
+    options.minFilter = minFilter;
+    options.anisotropic = 1;
+    options.premultiplyAlpha = premultiplyAlpha;
+    options.generateMipmap = generateMipmap;
+  }
+
+  processMaterialTexture (material: MaterialData, textureName: string, isBaseColor: boolean, dataMap: Record<string, TextureSourceOptions>) {
+    const texture = material.textures[textureName];
+
+    if (texture) {
+      const id = texture.texture.id;
+      const texData = dataMap[id];
+
+      if (texData) {
+        this.processTextureOptions(texData, isBaseColor);
+      }
+    }
   }
 
   getLoadResult (): LoadSceneECSResult {
@@ -263,32 +491,6 @@ export class LoaderECS {
     this.components.push(component);
   }
 
-  processMaterial (materials: GLTFMaterial[], fromGLTF: boolean): void {
-    materials.forEach(mat => {
-      if (mat.baseColorFactor === undefined) {
-        if (fromGLTF) { mat.baseColorFactor = [255, 255, 255, 255]; } else { mat.baseColorFactor = [1, 1, 1, 1]; }
-      } else {
-        mat.baseColorFactor[0] = this.scaleColorVal(mat.baseColorFactor[0], fromGLTF);
-        mat.baseColorFactor[1] = this.scaleColorVal(mat.baseColorFactor[1], fromGLTF);
-        mat.baseColorFactor[2] = this.scaleColorVal(mat.baseColorFactor[2], fromGLTF);
-        mat.baseColorFactor[3] = this.scaleColorVal(mat.baseColorFactor[3], fromGLTF);
-      }
-
-      if (mat.emissiveFactor === undefined) {
-        if (fromGLTF) { mat.emissiveFactor = [255, 255, 255, 255]; } else { mat.emissiveFactor = [1, 1, 1, 1]; }
-      } else {
-        mat.emissiveFactor[0] = this.scaleColorVal(mat.emissiveFactor[0], fromGLTF);
-        mat.emissiveFactor[1] = this.scaleColorVal(mat.emissiveFactor[1], fromGLTF);
-        mat.emissiveFactor[2] = this.scaleColorVal(mat.emissiveFactor[2], fromGLTF);
-        mat.emissiveFactor[3] = this.scaleColorVal(mat.emissiveFactor[3], fromGLTF);
-      }
-
-      if (fromGLTF && mat.occlusionTexture !== undefined && mat.occlusionTexture.strength === undefined) {
-        mat.occlusionTexture.strength = this.isTiny3dMode() ? 0 : 1;
-      }
-    });
-  }
-
   createTreeOptions (scene: GLTFScene): ModelTreeOptions {
     const nodeList = scene.nodes.map((node, nodeIndex) => {
       const children = node.children.map(child => {
@@ -296,9 +498,9 @@ export class LoaderECS {
 
         return child.nodeIndex;
       });
-      let pos: spec.vec3 | undefined;
-      let quat: spec.vec4 | undefined;
-      let scale: spec.vec3 | undefined;
+      let pos: spec.vec3 = [0, 0, 0];
+      let quat: spec.vec4 = [0, 0, 0, 0];
+      let scale: spec.vec3 = [0, 0, 0];
 
       if (node.matrix !== undefined) {
         if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
@@ -393,8 +595,13 @@ export class LoaderECS {
     return PluginHelper.createLightOptions(light);
   }
 
-  createCameraOptions (camera: GLTFCamera): ModelCameraOptions | undefined {
-    return PluginHelper.createCameraOptions(camera);
+  createCameraOptions (camera: GLTFCamera): ModelCameraOptions {
+    return PluginHelper.createCameraOptions(camera) ?? {
+      fov: 45,
+      far: 1000,
+      near: 0.01,
+      clipMode: spec.CameraClipMode.portrait,
+    };
   }
 
   private clear () {
@@ -539,4 +746,137 @@ export interface ModelLight {
   scale: spec.vec3,
   duration: number,
   endBehavior: spec.ItemEndBehavior,
+}
+
+let globalLoader: LoaderECS;
+
+export function getDefaultEffectsGLTFLoaderECS (engine: Engine, options?: LoaderOptions): LoaderECS {
+  if (!globalLoader) {
+    globalLoader = new LoaderECSImpl();
+  }
+
+  (globalLoader as LoaderECSImpl).initial(engine, options);
+
+  return globalLoader;
+}
+
+export function setDefaultEffectsGLTFLoaderECS (loader: LoaderECS): void {
+  globalLoader = loader;
+}
+
+export function getPBRShaderProperties (): string {
+  return `
+  _BaseColorSampler ("基础贴图", 2D) = "" {}
+  _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
+  _MetallicRoughnessSampler ("金属贴图", 2D) = "" {}
+  _MetallicFactor ("金属度", Range(0, 1)) = 1
+  _RoughnessFactor ("粗糙度", Range(0, 1)) = 1
+  [Toggle] _SpecularAA ("高光抗锯齿", Float) = 0
+  _NormalSampler ("法线贴图", 2D) = "" {}
+  _NormalScale ("法线贴图强度", Range(0, 2)) = 1
+  _OcclusionSampler ("AO贴图", 2D) = "" {}
+  _OcclusionStrength ("AO贴图强度", Range(0, 1)) = 1
+  _EmissiveSampler ("自发光贴图", 2D) = "" {}
+  _EmissiveIntensity ("自发光贴图强度", Float) = 1
+  _EmissiveFactor ("自发光颜色", Color) = (0, 0, 0, 1)
+  _AlphaCutoff ("Alpha测试值", Range(0, 1)) = 0.5
+  `;
+}
+
+export function getUnlitShaderProperties (): string {
+  return `
+  _BaseColorSampler ("基础贴图", 2D) = "" {}
+  _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
+  _AlphaCutoff ("Alpha测试值", Range(0, 1)) = 0.5
+  `;
+}
+
+export function getDefaultPBRMaterialData (): MaterialData {
+  const material: MaterialData = {
+    'id': '00000000000000000000000000000000',
+    'name': 'PBR Material',
+    'dataType': spec.DataType.Material,
+    'stringTags': {
+      'ZWrite': 'true',
+      'ZTest': 'true',
+      'RenderType': 'Opaque',
+      'Cull': 'Front',
+    },
+    'shader': {
+      'id': 'pbr00000000000000000000000000000',
+    },
+    'ints': {
+
+    },
+    'floats': {
+      '_SpecularAA': 0,
+      '_MetallicFactor': 1,
+      '_RoughnessFactor': 0.0,
+      '_NormalScale': 1,
+      '_OcclusionStrength': 1,
+      '_EmissiveIntensity': 1,
+      '_AlphaCutoff': 0.5,
+    },
+    'vector4s': {
+
+    },
+    'colors': {
+      '_BaseColorFactor': {
+        'r': 1,
+        'g': 1,
+        'b': 1,
+        'a': 1,
+      },
+      '_EmissiveFactor': {
+        'r': 0,
+        'g': 0,
+        'b': 0,
+        'a': 1,
+      },
+    },
+    'textures': {
+
+    },
+  };
+
+  return material;
+}
+
+export function getDefaultUnlitMaterialData (): MaterialData {
+  const material: MaterialData = {
+    'id': '00000000000000000000000000000000',
+    'name': 'Unlit Material',
+    'dataType': spec.DataType.Material,
+    'stringTags': {
+      'ZWrite': 'true',
+      'ZTest': 'true',
+      'RenderType': 'Opaque',
+      'Cull': 'Front',
+    },
+    'shader': {
+      'id': 'unlit000000000000000000000000000',
+    },
+    'ints': {
+
+    },
+    'floats': {
+      '_AlphaCutoff': 0.5,
+    },
+    'vector4s': {
+
+    },
+    'colors': {
+      '_BaseColorFactor': {
+        'r': 1,
+        'g': 1,
+        'b': 1,
+        'a': 1,
+      },
+    },
+    'textures': {
+
+    },
+  };
+
+  return material;
 }

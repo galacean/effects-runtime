@@ -1,7 +1,7 @@
 import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer, Geometry } from '@galacean/effects';
 import { spec, Mesh, DestroyOptions, Material, GLSLVersion } from '@galacean/effects';
 import type { ModelMeshComponentData, ModelMeshPrimitiveData, ModelItemBounding } from '../index';
-import { PObjectType, PMaterialType, PGlobalState, PFaceSideMode } from './common';
+import { PObjectType, PMaterialType, PGlobalState } from './common';
 import { PEntity } from './object';
 import type { PMaterial } from './material';
 import { PMaterialPBR, PMaterialUnlit, createPluginMaterial } from './material';
@@ -507,8 +507,8 @@ export class PPrimitive {
     let material: Material;
     const isWebGL2 = PGlobalState.getInstance().isWebGL2;
 
-    if (this.material.material) {
-      material = this.material.material;
+    if (this.material.effectMaterial) {
+      material = this.material.effectMaterial;
       // @ts-expect-error
       material.uniformSemantics = newSemantics;
 
@@ -773,7 +773,7 @@ export class PPrimitive {
     }
 
     const proxy = new HitTestingProxy();
-    const doubleSided = this.material.faceSideMode === PFaceSideMode.both;
+    const doubleSided = this.material.isDoubleSide();
 
     proxy.create(this.geometry.geometry, doubleSided, bindMatrices);
 

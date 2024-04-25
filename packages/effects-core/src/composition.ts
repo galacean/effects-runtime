@@ -384,6 +384,17 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
+   * 设置合成的可见性
+   * @since 2.0.0
+   * @param visible - 是否可见
+   */
+  setVisible (visible: boolean) {
+    this.items.forEach(item => {
+      item.setVisible(visible);
+    });
+  }
+
+  /**
    * 获取合成的动画速度
    * @returns
    */

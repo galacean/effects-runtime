@@ -1,24 +1,16 @@
 // 插件在这里强依赖resource-detection，只给demo使用，不会影响发包。发包的代码不会依赖resource-detection。
 // 所以插件其他位置使用resource-detection必须import type，否则会导致编辑器出错。
-import type {
-  GLTFResources,
-} from '@vvfx/resource-detection';
+import type { GLTFResources } from '@vvfx/resource-detection';
 import {
-  GLTFImage,
-  GLTFTexture,
-  GLTFMaterial,
-  GLTFMesh,
-  GLTFScene,
-  GLTFAnimation,
-  GLTFImageBasedLight,
-  GLTFTools,
+  GLTFImage, GLTFTexture, GLTFMaterial, GLTFMesh, GLTFScene, GLTFAnimation,
+  GLTFImageBasedLight, GLTFTools,
 } from '@vvfx/resource-detection';
 import type { Player, spec } from '@galacean/effects';
 import type { LoadSceneOptions, LoadSceneECSResult } from './protocol';
-import { LoaderECS } from './loader-ecs';
+import { LoaderECSImpl } from './loader-ecs';
 import { Box3, Vector3, Sphere } from '../runtime/math';
 
-export class LoaderECSEx extends LoaderECS {
+export class LoaderECSEx extends LoaderECSImpl {
   override async loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult> {
     const gltfResource = options.gltf.resource;
 

@@ -6,3 +6,4 @@ import './order.spec';
 import './plugin.spec';
 import './raycast.spec';
 import './comp-vfx-item.spec';
+import './composition.spec';

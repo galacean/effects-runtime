@@ -338,12 +338,10 @@ export class AssetManager implements Disposable {
       if ('template' in img) {
         // 1. 数据模板
         const template = img.template as spec.TemplateContent;
-        // 判断是否为新版数据模板
-        const isTemplateV2 = 'v' in template && template.v === 2 && template.background;
-        // 获取新版数据模板 background 参数
-        const background = isTemplateV2 ? template.background : undefined;
+        // 获取数据模板 background 参数
+        const background = template.background;
 
-        if (isTemplateV2 && background) {
+        if (background) {
           const url = getBackgroundImage(template, variables);
           const isVideo = background.type === spec.BackgroundType.video;
           // 根据背景类型确定加载函数
@@ -371,27 +369,7 @@ export class AssetManager implements Disposable {
           } catch (e) {
             throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}.`);
           }
-        } else {
-          // 旧版模板或没有背景的处理
-          try {
-            const resultImage = await loadWebPOptional(imageURL, webpURL);
-
-            return await combineImageTemplate(
-              resultImage.image,
-              template,
-              variables as Record<string, number | string>,
-            );
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          } catch (e) {
-            throw new Error(`Failed to load. Check the template, URL: ${imageURL}.`);
-          }
         }
-      } else if ('type' in img && img.type === 'video') {
-        // 视频
-        // TODO: 2024.03.28 后面考虑下掉非推荐的视频元素使用方式
-        console.warn('The video element is deprecated. Use template BackgroundType.video instead.');
-
-        return loadVideo(img.url);
       } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
         // 2. 压缩纹理
         const { compressed } = img as spec.CompressedImage;
@@ -410,6 +388,7 @@ export class AssetManager implements Disposable {
           return this.loadBins(bufferURL);
         }
       } else if ('sourceType' in img) {
+        // TODO: 确定是否有用
         return img;
       } else if (
         img instanceof HTMLImageElement ||
@@ -419,7 +398,6 @@ export class AssetManager implements Disposable {
       ) {
         return img;
       }
-
       const { url, image } = await loadWebPOptional(imageURL, webpURL);
 
       this.assets[idx] = { url, type: TextureSourceType.image };

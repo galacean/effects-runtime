@@ -871,13 +871,14 @@
       "zTest": true,
       "zWrite": true,
       "blending": false,
+      "stringTags": {
+        "RenderType": "Opaque",
+        "Cull": "Front"
+      },
       "ints": {
-        "shaderType": 0,
-        "useSpecularAA": 1,
-        "side": 1028,
-        "blending": 100
       },
       "floats": {
+        "_SpecularAA": 1,
         "_AlphaCutoff": 0.3,
         "_MetallicFactor": 1,
         "_RoughnessFactor": 0.3,
@@ -886,26 +887,25 @@
         "_EmissiveIntensity": 1
       },
       "vector4s": {
-        "_BaseColorFactor": {
-          "x": 1,
-          "y": 1,
-          "z": 1,
-          "w": 1
-        },
-        "_EmissiveFactor": {
-          "x": 0.6,
-          "y": 0.2,
-          "z": 0.8,
-          "w": 1
-        }
       },
       "colors": {
-        
+        "_BaseColorFactor": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "_EmissiveFactor": {
+          "r": 0.6,
+          "g": 0.2,
+          "b": 0.8,
+          "a": 1
+        }
       },
       "textures": {
         "_BaseColorSampler": {
           "texture": {
-          "id": "a21f304a931347a6bdddcc632e962446"
+            "id": "a21f304a931347a6bdddcc632e962446"
           }
         }
       }

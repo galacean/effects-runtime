@@ -310,9 +310,9 @@ export class WebGLHelper {
    * @param textures - 纹理数组
    * @returns 纹理获取或 undefined
    */
-  static getTexture (index: number, textures: Texture[]): Texture | undefined {
+  static getTexture (index: number, textures: Texture[]): Texture | null {
     if (index < 0 || index >= textures.length) {
-      return undefined;
+      return null;
     } else {
       return textures[index];
     }
@@ -609,13 +609,15 @@ export class PluginHelper {
   static createCameraOptions (camera: GLTFCamera): ModelCameraOptions | undefined {
     if (camera.perspective === undefined) { return; }
 
-    // const p = camera.perspective;
-    // const options: ModelCameraOptions = {
-    //   near: p.znear,
-    //   far: p.zfar ?? 1000,
-    //   fov: p.yfov,
-    //   clipMode: 0,
-    // };
+    const p = camera.perspective;
+    const options: ModelCameraOptions = {
+      near: p.znear,
+      far: p.zfar ?? 1000,
+      fov: p.yfov,
+      clipMode: 0,
+    };
+
+    return options;
   }
 
   /**
@@ -678,35 +680,29 @@ export class PluginHelper {
 
   /**
    * 创建 UV 变换矩阵，从 UV 变换参数中
-   * @param transform - 变换参数
+   * @param stValue - UV 的缩放和平移参数
+   * @param rotateValue - UV 的旋转参数
    * @returns 3阶变换矩阵
    */
-  static createUVTransform (transform?: spec.ModelTextureTransform): Matrix3 | undefined {
-    if (transform === undefined) {
-      // no transform
-      return;
-    }
-
-    if (transform.offset === undefined && transform.rotation === undefined && transform.scale === undefined) {
-      // no transform, again
-      return;
-    }
+  static createUVTransform (material: Material, stName: string, rotateName: string): Matrix3 {
+    const stValue = material.getVector4(stName);
+    const rotateValue = material.getFloat(rotateName);
 
     const res = Matrix3.fromIdentity();
-    const temp = new Matrix3();
 
-    if (transform.offset !== undefined) {
-      temp.setFromArray([
+    if (stValue) {
+      res.setFromArray([
         1, 0, 0,
         0, 1, 0,
-        transform.offset[0], transform.offset[1], 1,
+        stValue.z, stValue.w, 1,
       ]);
-      res.multiply(temp);
     }
 
-    if (transform.rotation !== undefined) {
-      const cosTheta = Math.cos(transform.rotation);
-      const sinTheta = Math.sin(transform.rotation);
+    const temp = new Matrix3();
+
+    if (rotateValue) {
+      const cosTheta = Math.cos(rotateValue);
+      const sinTheta = Math.sin(rotateValue);
 
       temp.setFromArray([
         cosTheta, sinTheta, 0,
@@ -716,10 +712,10 @@ export class PluginHelper {
       res.multiply(temp);
     }
 
-    if (transform.scale !== undefined) {
+    if (stValue) {
       temp.setFromArray([
-        transform.scale[0], 0, 0,
-        0, transform.scale[1], 0,
+        stValue.x, 0, 0,
+        0, stValue.y, 0,
         0, 0, 1,
       ]);
       res.multiply(temp);
@@ -1161,9 +1157,9 @@ export class PluginHelper {
    * @param index - 索引
    * @returns
    */
-  static getTextureObj (textures: Texture[], index?: number): Texture | undefined {
+  static getTextureObj (textures: Texture[], index?: number): Texture | null {
     if (typeof index !== 'number') {
-      return index;
+      return null;
     }
 
     if (index < 0 || index >= textures.length) {
@@ -1758,7 +1754,7 @@ export class HitTestingProxy {
       const r1 = this.getPosition(i1, p1, q1);
       const r2 = this.getPosition(i2, p2, q2);
 
-      if (r0 === undefined || r1 === undefined || r2 === undefined) {
+      if (!r0 || !r1 || !r2) {
         continue;
       }
 
@@ -1783,11 +1779,11 @@ export class HitTestingProxy {
    * @param vec4 - 临时变量，用于骨骼动画时的计算
    * @returns 顶点位置
    */
-  getPosition (index: number, vec3: Vector3, vec4: Vector4): Vector3 | undefined {
+  getPosition (index: number, vec3: Vector3, vec4: Vector4): Vector3 | null {
     const posData = this.position.getData(index);
 
     if (posData === undefined) {
-      return;
+      return null;
     }
 
     if (this.hasAnimation) {

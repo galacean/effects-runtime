@@ -1,12 +1,7 @@
 import type {
-  Engine,
-  Texture2DSourceOptionsCompressed,
-  Texture2DSourceOptionsData,
-  Texture2DSourceOptionsFrameBuffer,
-  Texture2DSourceOptionsImage,
-  Texture2DSourceOptionsVideo,
-  TextureDataType,
-  TextureSourceOptions,
+  Engine, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
+  Texture2DSourceOptionsFrameBuffer, Texture2DSourceOptionsImage,
+  Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects-core';
 import * as THREE from 'three';
@@ -139,7 +134,7 @@ export class ThreeTexture extends Texture {
   }
 
   private createTextureByType (options: TextureSourceOptions): THREE.Texture {
-    const assembleOptions = this.assembleOptions(options) as Required<TextureSourceOptions>;
+    const assembleOptions = this.assembleOptions(options);
     // TODO renderer.getMaxAnisotropy() 查询最大各向异性
     const {
       flipY,
@@ -207,7 +202,7 @@ export class ThreeTexture extends Texture {
         const width = data.width ?? 0;
         const height = data.height ?? 0;
 
-        texture = new THREE.FramebufferTexture(width, height, format);
+        texture = new THREE.FramebufferTexture(width, height, format as THREE.PixelFormat);
         this.width = width;
         this.height = height;
       }
