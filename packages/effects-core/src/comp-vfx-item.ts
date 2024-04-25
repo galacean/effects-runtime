@@ -103,6 +103,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           if (item.endBehavior === spec.END_BEHAVIOR_RESTART) {
             this.composition.autoRefTex = false;
           }
+          item.createContent();
         } else {
           item = createVFXItem(this.itemProps[i], this.composition);
           // 相机不跟随合成移动
