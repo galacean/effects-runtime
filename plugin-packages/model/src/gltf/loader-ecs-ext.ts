@@ -1,17 +1,9 @@
 // 插件在这里强依赖resource-detection，只给demo使用，不会影响发包。发包的代码不会依赖resource-detection。
 // 所以插件其他位置使用resource-detection必须import type，否则会导致编辑器出错。
-import type {
-  GLTFResources,
-} from '@vvfx/resource-detection';
+import type { GLTFResources } from '@vvfx/resource-detection';
 import {
-  GLTFImage,
-  GLTFTexture,
-  GLTFMaterial,
-  GLTFMesh,
-  GLTFScene,
-  GLTFAnimation,
-  GLTFImageBasedLight,
-  GLTFTools,
+  GLTFImage, GLTFTexture, GLTFMaterial, GLTFMesh, GLTFScene, GLTFAnimation,
+  GLTFImageBasedLight, GLTFTools,
 } from '@vvfx/resource-detection';
 import type { Player, spec } from '@galacean/effects';
 import type { LoadSceneOptions, LoadSceneECSResult } from './protocol';

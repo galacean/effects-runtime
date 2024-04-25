@@ -1,26 +1,15 @@
 import type {
-  GLTFMaterial,
-  GLTFPrimitive,
-  GLTFLight,
-  GLTFScene,
-  GLTFImage,
-  GLTFTexture,
-  GLTFCamera,
-  GLTFAnimation,
-  GLTFImageBasedLight,
-  GLTFResources,
+  GLTFMaterial, GLTFPrimitive, GLTFLight, GLTFScene, GLTFImage, GLTFTexture,
+  GLTFCamera, GLTFAnimation, GLTFImageBasedLight, GLTFResources,
 } from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
-import type { spec, Renderer, Texture, Geometry, TextureSourceOptions, EffectComponentData, MaterialData } from '@galacean/effects';
 import type {
-  ModelAnimationOptions,
-  ModelMaterialOptions,
-  ModelSkyboxOptions,
-  ModelTreeOptions,
-  ModelBaseItem,
-  ModelLightComponentData,
-  ModelCameraComponentData,
-  ModelMeshComponentData,
+  spec, Renderer, Texture, Geometry, TextureSourceOptions, EffectComponentData,
+  MaterialData,
+} from '@galacean/effects';
+import type {
+  ModelAnimationOptions, ModelMaterialOptions, ModelSkyboxOptions, ModelTreeOptions,
+  ModelBaseItem, ModelLightComponentData, ModelCameraComponentData, ModelMeshComponentData,
   ModelSkyboxComponentData,
 } from '../index';
 
@@ -157,5 +146,5 @@ export interface LoaderECS {
 
   processMaterialData (material: MaterialData): void,
 
-  processTextureOptions(options: TextureSourceOptions, isBaseColor: boolean): void,
+  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean): void,
 }

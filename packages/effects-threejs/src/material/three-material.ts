@@ -1,7 +1,6 @@
 import type {
   MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
-  GlobalUniforms, Renderer,
-  ShaderMarcos,
+  GlobalUniforms, Renderer, ShaderMarcos,
 } from '@galacean/effects-core';
 import { Material, ShaderType, createShaderWithMarcos, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';

@@ -1,12 +1,7 @@
 import type {
-  Engine,
-  Texture2DSourceOptionsCompressed,
-  Texture2DSourceOptionsData,
-  Texture2DSourceOptionsFrameBuffer,
-  Texture2DSourceOptionsImage,
-  Texture2DSourceOptionsVideo,
-  TextureDataType,
-  TextureSourceOptions,
+  Engine, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
+  Texture2DSourceOptionsFrameBuffer, Texture2DSourceOptionsImage,
+  Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects-core';
 import * as THREE from 'three';

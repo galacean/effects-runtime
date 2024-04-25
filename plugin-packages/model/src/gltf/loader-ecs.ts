@@ -1,43 +1,20 @@
 import { spec, generateGUID, glContext } from '@galacean/effects';
 import type { Texture, Engine, EffectComponentData, TextureSourceOptions, MaterialData } from '@galacean/effects';
 import type {
-  LoaderOptions,
-  SkyboxType,
-  LoadSceneOptions,
-  LoadSceneECSResult,
-  LoaderECS,
+  LoaderOptions, SkyboxType, LoadSceneOptions, LoadSceneECSResult, LoaderECS,
 } from './protocol';
 import type {
-  ModelMeshComponentData,
-  ModelSkyboxComponentData } from '../index';
-import {
-  type ModelAnimationOptions,
-  type ModelAnimTrackOptions,
-  type ModelCameraOptions,
-  type ModelLightOptions,
-  type ModelSkyboxOptions,
-  type ModelTreeOptions,
-  type ModelLightComponentData,
-  type ModelCameraComponentData,
-  UnlitShaderGUID,
-  PBRShaderGUID,
-  RenderType,
-  CullMode,
+  ModelMeshComponentData, ModelSkyboxComponentData, ModelAnimationOptions,
+  ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions, ModelSkyboxOptions,
+  ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
+import { UnlitShaderGUID, PBRShaderGUID, RenderType, CullMode } from '../index';
 import { Matrix4 } from '../runtime/math';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
 import type {
-  GLTFSkin,
-  GLTFMesh,
-  GLTFImage,
-  GLTFMaterial,
-  GLTFTexture,
-  GLTFScene,
-  GLTFLight,
-  GLTFCamera,
-  GLTFAnimation,
-  GLTFResources,
+  GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
+  GLTFCamera, GLTFAnimation, GLTFResources,
 } from '@vvfx/resource-detection';
 
 import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
@@ -794,7 +771,7 @@ export function getPBRShaderProperties (): string {
   _MetallicRoughnessSampler ("金属贴图", 2D) = "" {}
   _MetallicFactor ("金属度", Range(0, 1)) = 1
   _RoughnessFactor ("粗糙度", Range(0, 1)) = 1
-  [Toggle] _SpecularAA ("高光抗锯齿", Float) = 0 
+  [Toggle] _SpecularAA ("高光抗锯齿", Float) = 0
   _NormalSampler ("法线贴图", 2D) = "" {}
   _NormalScale ("法线贴图强度", Range(0, 2)) = 1
   _OcclusionSampler ("AO贴图", 2D) = "" {}

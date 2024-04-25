@@ -1,8 +1,7 @@
 import { math } from '@galacean/effects';
 
 export const {
-  Vector2, Vector3, Vector4, Matrix3, Matrix4,
-  Color, Euler, EulerOrder, Quaternion,
+  Vector2, Vector3, Vector4, Matrix3, Matrix4, Color, Euler, EulerOrder, Quaternion,
   Box3, Sphere, Ray, DEG2RAD,
 } = math;
 
