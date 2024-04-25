@@ -10,7 +10,7 @@ import type { EventSystem, Plugin, Region } from './plugins';
 import { TimelineComponent } from './plugins';
 import type { GlobalVolume, MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene } from './scene';
+import type { Scene, SceneType } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
 import { Transform } from './transform';
@@ -18,7 +18,6 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
-import type { SceneType } from './asset-manager';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 
 export interface CompositionStatistic {

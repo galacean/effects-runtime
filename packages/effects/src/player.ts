@@ -1,13 +1,13 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
-  SceneLoadType, SceneType, SceneWithOptionsType, EffectsObject,
+  SceneLoadType, SceneType, EffectsObject,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  isArray, isObject, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, CompositionSourceManager,
-  TextureSourceType, glContext, Texture,
+  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, CompositionSourceManager,
+  TextureSourceType, glContext, Texture, isSceneWithOptions, isSceneURL,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -185,16 +185,15 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       container, canvas, gl, fps, name, pixelRatio, manualRender, interactive, reportGPUTime,
       onMessageItem, onPausedByItem, onItemClicked, onPlayableUpdate, onRenderError,
       onWebGLContextLost, onWebGLContextRestored,
-      renderFramework: glType,
+      renderFramework: glType, notifyTouch,
       env = '',
-      notifyTouch,
     } = config;
 
     if (initErrors.length) {
       throw new Error(`Errors before player create: ${initErrors.map((message, index) => `\n ${index + 1}: ${message}`)}`);
     }
 
-    // v2.0.0 将 willCaptureImage, premultiplyAlpha 统一到 renderOptions 下
+    // 将 willCaptureImage, premultiplyAlpha 统一到 renderOptions 下
     const { willCaptureImage, premultiplyAlpha } = config.renderOptions ?? config ?? {};
 
     // 原 debug-disable 直接返回
@@ -258,7 +257,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.gpuCapability = this.renderer.engine.gpuCapability;
     this.createBuiltinObject();
 
-    // 如果存在WebGL和WebGL2的Player，需要给出警告
+    // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
     playerMap.forEach(player => {
       if (player.gpuCapability.type !== this.gpuCapability.type) {
         logger.warn(`Create player with different webgl version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}`);
@@ -285,7 +284,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
 
   /**
-   * 设置 player 的播放速度，
+   * 设置当前 Player 的播放速度
    * @param speed - 播放速度
    */
   setSpeed (speed: number) {
@@ -293,13 +292,20 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.speed = speed;
     }
   }
-
+  /**
+   * 获取当前 Player 的播放速度
+   * @returns
+   */
   getSpeed (): number {
     return this.speed;
   }
 
   /**
-   * 根据名称查找对应的合成，可能找不到
+   * 根据名称查找对应的合成（可能找不到，如果有同名的合成，默认返回第一个）
+   * @example
+   * ``` ts
+   * const composition = player.getCompositionByName('新建合成1');
+   * ```
    * @param name - 目标合成名称
    */
   getCompositionByName (name: string) {
@@ -307,7 +313,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
 
   /**
-   * 获取当前播放的所有合成, 请不要修改返回数组的内容
+   * 获取当前播放的所有合成（请不要修改返回的数组内容）
    */
   getCompositions () {
     return this.compositions;
@@ -343,6 +349,60 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
   /**
    * 加载动画资源
+   * @example
+   * ``` ts
+   * // 1. 加载单个合成链接并设置可选参数
+   * const composition = await player.loadScene('xxx.json', { ... });
+   * const composition = await player.loadScene({ url: 'xxx.json' }, { ... });
+   *
+   * // 2. 加载单个合成的 JSON 对象并设置可选参数
+   * const composition = await player.loadScene(JSONValue, { ... });
+   *
+   * // 3. 加载多个合成链接或 JSON 对象
+   * const [_, _, _] = await player.loadScene(['x1.json', 'x2.json', JSONValue]);
+   *
+   * // 4. 加载多个合成链接并各自设置可选参数
+   * const [_, _] = await player.loadScene([{
+   *   url: 'x1.json',
+   *   options: { autoplay: false, ... },
+   * }, {
+   *   url: 'x2.json',
+   *   options: { speed: 2, ... },
+   * }, { ... }]);
+   *
+   * // 5. 加载多个合成链接并统一设置可选参数（共用）
+   * const [_, _, _] = await player.loadScene(['x1.json', 'x2.json', ...], { ... });
+   * const [_, _] = await player.loadScene(
+   *   [{ url: 'x1.json' }, { url: 'x2.json' }, { ... }],
+   *   {
+   *     variables: {
+   *       'name': 'value',
+   *     },
+   *     speed: 2,
+   *     ...
+   *    },
+   * );
+   *
+   * // 6. 疯狂混合
+   * await player.loadScene([
+   *   {
+   *     url: 'x1.json',
+   *     options: {
+   *       variables: {
+   *         'name1': 'value1',
+   *       },
+   *       speed: 2,
+   *     },
+   *   },
+   *   'x2.json',
+   *   JSONValue,
+   * ], {
+   *   variables: {
+   *     'name2': 'value2',
+   *   },
+   *   speed: 0.1,
+   * });
+   * ```
    * @param scene - 一个或一组 URL 或者通过 URL 请求的 JSONObject 或者 Scene 对象
    * @param options - 加载可选参数
    * @returns
@@ -375,7 +435,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
   private async createComposition (url: SceneLoadType, options: SceneLoadOptions = {}): Promise<Composition> {
     const renderer = this.renderer;
-    const engine = this.renderer.engine;
+    const engine = renderer.engine;
     const last = performance.now();
     let opts = {
       autoplay: true,
@@ -383,12 +443,14 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     };
     let source: SceneType;
 
-    if (isSceneWithOptions(url)) {
-      source = url.scene;
-      opts = {
-        ...opts,
-        ...url.options || {},
-      };
+    if (isSceneURL(url)) {
+      source = url.url;
+      if (isSceneWithOptions(url)) {
+        opts = {
+          ...opts,
+          ...url.options,
+        };
+      }
     } else {
       source = url;
     }
@@ -936,11 +998,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.builtinObjects.length = 0;
   }
 
-}
-
-export function isSceneWithOptions (scene: any): scene is SceneWithOptionsType {
-  // TODO: 判断不太优雅，后期试情况优化
-  return isObject(scene) && 'scene' in scene && 'options' in scene;
 }
 
 /**

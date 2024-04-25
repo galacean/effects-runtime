@@ -14,7 +14,7 @@ export async function loadMipmaps (
         return getImageFileContent(imageLike);
       }
 
-      return Promise.reject('invalid image format');
+      return Promise.reject(new Error('Invalid image format'));
     })
   ));
   const newMipmaps = await Promise.all(jobs);
@@ -57,7 +57,7 @@ export async function getImageFileContent (image: HTMLImageElement | ImageBitmap
         if (blob) {
           resolve(blob.arrayBuffer());
         } else {
-          reject(Error('no canvas blob'));
+          reject(new Error('no canvas blob'));
         }
       },
       'image/png',

@@ -1,9 +1,8 @@
 import type * as spec from '@galacean/effects-specification';
-import type { SceneLoadOptions } from './asset-manager';
 import type { Composition } from './composition';
 import type { Plugin, PluginConstructor } from './plugins';
 import type { RenderFrame, Renderer } from './render';
-import type { Scene } from './scene';
+import type { Scene, SceneLoadOptions } from './scene';
 import { addItem, removeItem } from './utils';
 import type { VFXItemConstructor, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
