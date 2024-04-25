@@ -1,4 +1,4 @@
-import { Player, SpriteComponent, Texture } from '@galacean/effects';
+import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
 // 动态文本

@@ -47,11 +47,11 @@ export abstract class Texture extends EffectsObject {
    * @since 2.0.0
    */
   static async fromImage (url: string, engine: Engine): Promise<Texture> {
-    const img = await loadImage(url);
+    const image = await loadImage(url);
 
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.image,
-      image: img,
+      image,
       id: generateGUID(),
     });
 
