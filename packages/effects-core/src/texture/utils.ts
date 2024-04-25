@@ -2,6 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { Texture2DSourceOptions, TextureCubeSourceOptions } from './types';
 import { TextureSourceType } from './types';
 import { loadImage } from '../downloader';
+import type { Engine } from '../engine';
 
 type TextureJSONOptions = spec.SerializedTextureSource & spec.TextureConfigOptionsBase & spec.TextureFormatOptions;
 
@@ -9,12 +10,26 @@ export async function deserializeMipmapTexture (
   texOpts: TextureJSONOptions,
   bins: ArrayBuffer[],
   files: spec.BinaryFile[] = [],
+  engine: Engine
 ): Promise<Texture2DSourceOptions | TextureCubeSourceOptions> {
   if (texOpts.target === 34067) {
     const { mipmaps, target } = texOpts as spec.SerializedTextureCube;
-    const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => loadMipmapImage(pointer, bins))));
-    const loadedMipmaps = await Promise.all(jobs);
-    const bin = files[mipmaps[0][0][1][0]].url;
+    // const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => loadMipmapImage(pointer, bins))));
+    const loadedMipmaps: HTMLElement[][] = [];
+
+    for (const level of mipmaps) {
+      const newLevel = [];
+
+      for (const face of level) {
+        // @ts-expect-error
+        const loadedImageAsset = engine.assetLoader.loadGUID(face.id);
+
+        // @ts-expect-error
+        newLevel.push(loadedImageAsset.data);
+      }
+      loadedMipmaps.push(newLevel);
+    }
+    // const bin = files[mipmaps[0][0][1][0]].url;
 
     return {
       keepImageSource: false,
@@ -23,9 +38,9 @@ export async function deserializeMipmapTexture (
         mipmaps: loadedMipmaps,
         sourceFrom: {
           target,
-          bin,
+          // bin,
           type: TextureSourceType.mipmaps,
-          mipmaps: mipmaps.map(mipmap => mipmap.map(pointer => [pointer[1][1], pointer[1][2]])),
+          // mipmaps: mipmaps.map(mipmap => mipmap.map(pointer => [pointer[1][1], pointer[1][2]])),
         },
       } as TextureCubeSourceOptions,
     };

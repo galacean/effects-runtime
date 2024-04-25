@@ -1,5 +1,5 @@
 import { spec, generateGUID, glContext } from '@galacean/effects';
-import type { Texture, Engine, EffectComponentData, TextureSourceOptions, MaterialData } from '@galacean/effects';
+import type { Texture, Engine, EffectComponentData, TextureSourceOptions } from '@galacean/effects';
 import type {
   LoaderOptions, SkyboxType, LoadSceneOptions, LoadSceneECSResult, LoaderECS,
 } from './protocol';
@@ -104,7 +104,7 @@ export class LoaderECSImpl implements LoaderECS {
       // texture.textureOptions.generateMipmap = true;
       return texture.textureOptions;
     });
-    this.materials = this.gltfMaterials.map(material => material.materialData);
+    this.materials = this.gltfMaterials.map(material => material.materialData as spec.MaterialData);
 
     gltfResource.meshes.forEach(mesh => {
       this.geometries.push(...mesh.geometriesData);
@@ -140,7 +140,7 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     materials.forEach(mat => {
-      const { materialData } = mat;
+      const materialData = mat.materialData as spec.MaterialData;
 
       this.processMaterialData(materialData);
 
@@ -234,7 +234,7 @@ export class LoaderECSImpl implements LoaderECS {
     }
   }
 
-  processMaterialData (material: MaterialData): void {
+  processMaterialData (material: spec.MaterialData): void {
     if (material.shader?.id === UnlitShaderGUID) {
       if (!material.colors['_BaseColorFactor']) {
         material.colors['_BaseColorFactor'] = { r: 1, g: 1, b: 1, a: 1 };
@@ -344,7 +344,7 @@ export class LoaderECSImpl implements LoaderECS {
     options.generateMipmap = generateMipmap;
   }
 
-  processMaterialTexture (material: MaterialData, textureName: string, isBaseColor: boolean, dataMap: Record<string, TextureSourceOptions>) {
+  processMaterialTexture (material: spec.MaterialData, textureName: string, isBaseColor: boolean, dataMap: Record<string, TextureSourceOptions>) {
     const texture = material.textures[textureName];
 
     if (texture) {
@@ -791,8 +791,8 @@ export function getUnlitShaderProperties (): string {
   `;
 }
 
-export function getDefaultPBRMaterialData (): MaterialData {
-  const material: MaterialData = {
+export function getDefaultPBRMaterialData (): spec.MaterialData {
+  const material: spec.MaterialData = {
     'id': '00000000000000000000000000000000',
     'name': 'PBR Material',
     'dataType': spec.DataType.Material,
@@ -802,6 +802,7 @@ export function getDefaultPBRMaterialData (): MaterialData {
       'RenderType': 'Opaque',
       'Cull': 'Front',
     },
+    'macros':[],
     'shader': {
       'id': 'pbr00000000000000000000000000000',
     },
@@ -842,8 +843,8 @@ export function getDefaultPBRMaterialData (): MaterialData {
   return material;
 }
 
-export function getDefaultUnlitMaterialData (): MaterialData {
-  const material: MaterialData = {
+export function getDefaultUnlitMaterialData (): spec.MaterialData {
+  const material: spec.MaterialData = {
     'id': '00000000000000000000000000000000',
     'name': 'Unlit Material',
     'dataType': spec.DataType.Material,
@@ -853,6 +854,7 @@ export function getDefaultUnlitMaterialData (): MaterialData {
       'RenderType': 'Opaque',
       'Cull': 'Front',
     },
+    'macros':[],
     'shader': {
       'id': 'unlit000000000000000000000000000',
     },

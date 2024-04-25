@@ -3,7 +3,6 @@ import { effectsClassStore } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { Material } from './material';
-import type { ShaderMarcos } from './render';
 import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
@@ -142,14 +141,6 @@ export class Database {
   async loadGUID (guid: string): Promise<EffectsObject | undefined> {
     return undefined;
   }
-}
-
-// TODO: 待统一
-export interface MaterialData extends spec.MaterialData {
-  /**
-   * shader的宏定义
-   */
-  marcos?: ShaderMarcos,
 }
 
 // TODO: 待统一
