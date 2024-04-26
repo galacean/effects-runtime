@@ -518,10 +518,26 @@ export class PSkyboxCreator {
    * @param params - 天空盒参数
    * @returns 天空盒选项
    */
-  static async createSkyboxComponentData (engine: Engine, params: PSkyboxParams): Promise<ModelSkyboxComponentData> {
-    const specularImage = await this.createSpecularCubeMap(engine, params);
-    const diffuseImage = await this.createDiffuseCubeMap(engine, params);
+  static createSkyboxComponentData (engine: Engine, params: PSkyboxParams) {
+    const specularCubeData = this.getSpecularCubeMapData(engine, params);
+    const diffuseCubeData = this.getDiffuseCubeMapData(engine, params);
     const { renderable, intensity, reflectionsIntensity, irradianceCoeffs, specularImageSize, specularMipCount } = params;
+
+    let diffuseImage: spec.DataPath;
+    const imageList: spec.Image[] = [];
+    const textureOptionsList: TextureSourceOptions[] = [];
+
+    if (diffuseCubeData) {
+      imageList.push(...diffuseCubeData.images);
+      textureOptionsList.push(diffuseCubeData.textureOptions);
+      diffuseImage = {
+        id: diffuseCubeData.textureOptions.id!,
+      };
+    }
+    imageList.push(...specularCubeData.images);
+    textureOptionsList.push(specularCubeData.textureOptions);
+    const specularImage = { id: specularCubeData.textureOptions.id };
+
     const componentData: ModelSkyboxComponentData = {
       id: generateGUID(),
       dataType: spec.DataType.SkyboxComponent,
@@ -534,12 +550,17 @@ export class PSkyboxCreator {
       irradianceCoeffs,
       // @ts-expect-error
       diffuseImage,
+      // @ts-expect-error
       specularImage,
       specularImageSize,
       specularMipCount,
     };
 
-    return componentData;
+    return {
+      imageList,
+      textureOptionsList,
+      component: componentData,
+    };
   }
 
   /**
@@ -563,6 +584,41 @@ export class PSkyboxCreator {
     }
   }
 
+  static getSpecularCubeMapData (engine: Engine, params: PSkyboxParams) {
+    const imageDatas: spec.Image[] = [];
+    const mipmaps: spec.DataPath[][] = [];
+
+    params.specularImage.forEach(cubemap => {
+      const mipmap: spec.DataPath[] = [];
+
+      cubemap.forEach(image => {
+        const imageId = generateGUID();
+
+        imageDatas.push({
+          id: imageId,
+          // @ts-expect-error
+          url: image,
+        });
+        mipmap.push({ id: imageId });
+      });
+      mipmaps.push(mipmap);
+    });
+    const textureOptions: TextureSourceOptions = {
+      id: generateGUID(),
+      dataType: spec.DataType.Texture,
+      sourceType: TextureSourceType.mipmaps,
+      target: glContext.TEXTURE_CUBE_MAP,
+      // @ts-expect-error
+      mipmaps,
+      ...WebGLHelper.cubemapMipTexConfig,
+    };
+
+    return {
+      images: imageDatas,
+      textureOptions,
+    };
+  }
+
   /**
    * 创建漫反射纹理
    * @param engine - 引擎
@@ -577,6 +633,41 @@ export class PSkyboxCreator {
     } else {
       return WebGLHelper.createTextureCubeFromBuffer(engine, params.diffuseImage);
     }
+  }
+
+  static getDiffuseCubeMapData (engine: Engine, params: PSkyboxParams) {
+    if (params.diffuseImage === undefined) {
+      return;
+    }
+
+    const imageDatas: spec.Image[] = [];
+    const cubemap: spec.DataPath[] = [];
+
+    params.diffuseImage.forEach(image => {
+      const imageId = generateGUID();
+
+      imageDatas.push({
+        id: imageId,
+        // @ts-expect-error
+        url: image,
+      });
+      cubemap.push({ id: imageId });
+    });
+
+    const textureOptions: TextureSourceOptions = {
+      id: generateGUID(),
+      dataType: spec.DataType.Texture,
+      sourceType: TextureSourceType.mipmaps,
+      target: glContext.TEXTURE_CUBE_MAP,
+      // @ts-expect-error
+      mipmaps: [cubemap],
+      ...WebGLHelper.cubemapTexConfig,
+    };
+
+    return {
+      images: imageDatas,
+      textureOptions,
+    };
   }
 
   /**

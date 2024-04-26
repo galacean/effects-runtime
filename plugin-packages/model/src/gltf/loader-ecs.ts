@@ -516,7 +516,8 @@ export class LoaderECSImpl implements LoaderECS {
 
   async addSkybox (skybox: ModelSkybox) {
     const itemId = generateGUID();
-    const component = await this.createSkyboxComponentData(skybox.skyboxType as SkyboxType);
+    const skyboxInfo = this.createSkyboxComponentData(skybox.skyboxType as SkyboxType);
+    const { imageList, textureOptionsList, component } = skyboxInfo;
 
     component.item.id = itemId;
     component.intensity = skybox.intensity ?? 1;
@@ -555,6 +556,9 @@ export class LoaderECSImpl implements LoaderECS {
       dataType: spec.DataType.VFXItemData,
     };
 
+    this.images.push(...imageList);
+    // @ts-expect-error
+    this.textures.push(...textureOptionsList);
     this.items.push(item);
     this.components.push(component);
   }
@@ -642,7 +646,7 @@ export class LoaderECSImpl implements LoaderECS {
     return WebGLHelper.createTexture2D(this.engine, image, texture, isBaseColor, this.isTiny3dMode());
   }
 
-  createSkyboxComponentData (typeName: SkyboxType): Promise<ModelSkyboxComponentData> {
+  createSkyboxComponentData (typeName: SkyboxType) {
     if (typeName !== 'NFT' && typeName !== 'FARM') {
       throw new Error(`Invalid skybox type name ${typeName}`);
     }

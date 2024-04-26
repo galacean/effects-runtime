@@ -885,8 +885,13 @@ export class PluginHelper {
       texOptions.wrapS = glContext.CLAMP_TO_EDGE;
       texOptions.wrapT = glContext.CLAMP_TO_EDGE;
       if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps !== undefined) {
-        texOptions.magFilter = glContext.LINEAR;
-        texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+        if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps.length === 1) {
+          texOptions.magFilter = glContext.LINEAR;
+          texOptions.minFilter = glContext.LINEAR;
+        } else {
+          texOptions.magFilter = glContext.LINEAR;
+          texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+        }
       } else {
         texOptions.magFilter = glContext.LINEAR;
         texOptions.minFilter = glContext.LINEAR;
