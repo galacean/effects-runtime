@@ -274,7 +274,7 @@ export class LoaderImpl implements Loader {
 
   createSkybox (ibl: GLTFImageBasedLight): Promise<ModelSkyboxOptions> {
     const reflectionsIntensity = ibl.reflectionsIntensity ?? ibl.intensity;
-    const irradianceCoeffs = ibl.irradianceCoefficients as number[][];
+    const irradianceCoeffs = ibl.irradianceCoefficients as unknown as number[];
     const inSpecularImages = ibl.specularImages as CubeImage[];
     const specularImages = inSpecularImages.map(images => {
       const newImages = images.map(img => {

@@ -5,7 +5,7 @@ import type {
 } from './protocol';
 import type {
   ModelMeshComponentData, ModelSkyboxComponentData, ModelAnimationOptions,
-  ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions, ModelSkyboxOptions,
+  ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions,
   ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
 import { UnlitShaderGUID, PBRShaderGUID, RenderType, CullMode } from '../index';
@@ -101,10 +101,26 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     this.textures = this.gltfTextures.map(texture => {
+      const textureOptions = texture.textureOptions;
+      const source = textureOptions.source;
+
+      if (typeof source === 'number') {
+        const imageId = generateGUID();
+
+        // @ts-expect-error
+        textureOptions.source = {
+          id: imageId,
+        };
+        // @ts-expect-error
+        this.images[source].id = imageId;
+      }
+
       // texture.textureOptions.generateMipmap = true;
-      return texture.textureOptions;
+      return textureOptions;
     });
-    this.materials = this.gltfMaterials.map(material => material.materialData as spec.MaterialData);
+    this.materials = this.gltfMaterials.map(material => {
+      return material.materialData as spec.MaterialData;
+    });
 
     gltfResource.meshes.forEach(mesh => {
       this.geometries.push(...mesh.geometriesData);
@@ -117,6 +133,13 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
 
     this.items = [...gltfResource.scenes[0].vfxItemData];
+
+    if (options.gltf.skyboxType) {
+      await this.addSkybox({
+        skyboxType: options.gltf.skyboxType,
+        renderable: options.gltf.skyboxVis,
+      });
+    }
 
     return this.getLoadResult();
   }
@@ -491,6 +514,51 @@ export class LoaderECSImpl implements LoaderECS {
     this.components.push(component);
   }
 
+  async addSkybox (skybox: ModelSkybox) {
+    const itemId = generateGUID();
+    const component = await this.createSkyboxComponentData(skybox.skyboxType as SkyboxType);
+
+    component.item.id = itemId;
+    component.intensity = skybox.intensity ?? 1;
+    component.reflectionsIntensity = skybox.reflectionsIntensity ?? 1;
+    component.renderable = skybox.renderable ?? true;
+
+    const item: spec.VFXItemData = {
+      id: itemId,
+      name: `Skybox-${skybox.skyboxType}`,
+      duration: skybox.duration ?? 999,
+      type: spec.ItemType.skybox,
+      pn: 0,
+      visible: true,
+      endBehavior: spec.END_BEHAVIOR_FORWARD,
+      transform: {
+        position: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        eulerHint: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        scale: {
+          x: 1,
+          y: 1,
+          z: 1,
+        },
+      },
+      components: [
+        { id: component.id },
+      ],
+      content: {},
+      dataType: spec.DataType.VFXItemData,
+    };
+
+    this.items.push(item);
+    this.components.push(component);
+  }
+
   createTreeOptions (scene: GLTFScene): ModelTreeOptions {
     const nodeList = scene.nodes.map((node, nodeIndex) => {
       const children = node.children.map(child => {
@@ -574,13 +642,15 @@ export class LoaderECSImpl implements LoaderECS {
     return WebGLHelper.createTexture2D(this.engine, image, texture, isBaseColor, this.isTiny3dMode());
   }
 
-  createDefaultSkybox (typeName: SkyboxType): Promise<ModelSkyboxOptions> {
-    if (typeName !== 'NFT' && typeName !== 'FARM') { throw new Error(`Invalid skybox type name ${typeName}`); }
+  createSkyboxComponentData (typeName: SkyboxType): Promise<ModelSkyboxComponentData> {
+    if (typeName !== 'NFT' && typeName !== 'FARM') {
+      throw new Error(`Invalid skybox type name ${typeName}`);
+    }
     //
     const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
     const params = PSkyboxCreator.getSkyboxParams(typ);
 
-    return PSkyboxCreator.createSkyboxOptions(this.engine, params);
+    return PSkyboxCreator.createSkyboxComponentData(this.engine, params);
   }
 
   scaleColorVal (val: number, fromGLTF: boolean): number {
@@ -746,6 +816,14 @@ export interface ModelLight {
   scale: spec.vec3,
   duration: number,
   endBehavior: spec.ItemEndBehavior,
+}
+
+export interface ModelSkybox {
+  skyboxType: string,
+  renderable?: boolean,
+  intensity?: number,
+  reflectionsIntensity?: number,
+  duration?: number,
 }
 
 let globalLoader: LoaderECS;

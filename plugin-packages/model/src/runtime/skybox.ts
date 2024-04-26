@@ -1,5 +1,5 @@
-import type { spec, Mesh, Material, TextureSourceOptions, Engine, Renderer } from '@galacean/effects';
-import { glContext, Texture, TextureSourceType, loadImage } from '@galacean/effects';
+import type { Mesh, Material, TextureSourceOptions, Engine, Renderer } from '@galacean/effects';
+import { spec, glContext, Texture, TextureSourceType, loadImage, generateGUID } from '@galacean/effects';
 import type { ModelSkyboxComponentData, ModelSkyboxOptions } from '../index';
 import { PObjectType, PMaterialType } from './common';
 import { PEntity } from './object';
@@ -388,7 +388,7 @@ export interface PSkyboxBaseParams {
   /**
    * 辐射照度系数
    */
-  irradianceCoeffs?: number[][],
+  irradianceCoeffs?: number[],
   /**
    * 高光贴图 Mip 层数
    */
@@ -501,6 +501,7 @@ export class PSkyboxCreator {
       renderable,
       intensity,
       reflectionsIntensity,
+      // @ts-expect-error
       irradianceCoeffs,
       diffuseImage,
       specularImage,
@@ -509,6 +510,36 @@ export class PSkyboxCreator {
     };
 
     return skyboxOptions;
+  }
+
+  /**
+   * 创建天空盒选项
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 天空盒选项
+   */
+  static async createSkyboxComponentData (engine: Engine, params: PSkyboxParams): Promise<ModelSkyboxComponentData> {
+    const specularImage = await this.createSpecularCubeMap(engine, params);
+    const diffuseImage = await this.createDiffuseCubeMap(engine, params);
+    const { renderable, intensity, reflectionsIntensity, irradianceCoeffs, specularImageSize, specularMipCount } = params;
+    const componentData: ModelSkyboxComponentData = {
+      id: generateGUID(),
+      dataType: spec.DataType.SkyboxComponent,
+      item: {
+        id: generateGUID(),
+      },
+      renderable,
+      intensity,
+      reflectionsIntensity,
+      irradianceCoeffs,
+      // @ts-expect-error
+      diffuseImage,
+      specularImage,
+      specularImageSize,
+      specularMipCount,
+    };
+
+    return componentData;
   }
 
   /**
@@ -596,7 +627,7 @@ export class PSkyboxCreator {
     }
   }
 
-  private static getIrradianceCoeffs (skyboxType: PSkyboxType): number[][] | undefined {
+  private static getIrradianceCoeffs (skyboxType: PSkyboxType): number[] | undefined {
     let dataArray: number[] = [];
 
     switch (skyboxType) {
@@ -625,11 +656,7 @@ export class PSkyboxCreator {
         break;
     }
 
-    const returnArray: number[][] = [];
-
-    for (let i = 0; i < dataArray.length; i += 3) { returnArray.push([dataArray[i], dataArray[i + 1], dataArray[i + 2]]); }
-
-    return returnArray;
+    return dataArray;
   }
 
   private static getDiffuseImageList (skyboxType: PSkyboxType, images: string[][]): string[] | undefined {

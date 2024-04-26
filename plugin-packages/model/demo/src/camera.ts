@@ -33,7 +33,7 @@ async function getCurrentScene () {
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
-      skyboxType: 'FARM',
+      skyboxType: 'NFT',
     },
     effects: {
       renderer: player.renderer,

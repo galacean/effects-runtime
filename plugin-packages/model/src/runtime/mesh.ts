@@ -532,6 +532,7 @@ export class PPrimitive {
           uniformSemantics: newSemantics,
         }
       );
+      this.material.setMaterialStates(material);
     }
 
     const mesh = Mesh.create(
@@ -549,8 +550,6 @@ export class PPrimitive {
     }
 
     this.effectsMesh = mesh;
-
-    this.material.setMaterialStates(material);
   }
 
   private getFeatureList (lightCount: number, pbrPass: boolean, skybox?: PSkybox): string[] {

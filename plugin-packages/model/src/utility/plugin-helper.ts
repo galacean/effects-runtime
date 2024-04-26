@@ -792,125 +792,48 @@ export class PluginHelper {
    * @param autoAdjustScene - 是否自动调整
    * @returns 场景信息描述
    */
-  static preprocessScene (scene: Scene, runtimeEnv: string, compatibleMode: string, autoAdjustScene: boolean): EffectsSceneInfo {
+  static preprocessScene (scene: Scene, runtimeEnv: string, compatibleMode: string): EffectsSceneInfo {
     const deviceEnv = (runtimeEnv !== PLAYER_OPTIONS_ENV_EDITOR);
     const tiny3dMode = (compatibleMode === 'tiny3d');
     // 默认skybox如何处理需要讨论
     const jsonScene = scene.jsonScene;
 
-    if (jsonScene === undefined || jsonScene.compositions === undefined) {
+    if (!(jsonScene && jsonScene.textures && jsonScene.materials)) {
       // 安全检查
       return {};
     }
 
+    const dataMap: Record<string, TextureSourceOptions> = {};
+
+    scene.textureOptions.forEach(tex => {
+      const id = tex.id;
+
+      if (id) {
+        dataMap[id] = tex;
+      }
+    });
+
     let loadSkybox = false;
 
     if (deviceEnv) {
-      const textures = scene.textureOptions;
-
-      jsonScene.compositions.forEach(comp => {
-        comp.items.forEach(item => {
-          if (item.type === spec.ItemType.mesh) {
-            const meshItem = item as spec.ModelMeshItem<'json'>;
-            const primitives = meshItem.content.options.primitives;
-
-            primitives.forEach(prim => {
-              const mat = prim.material;
-
-              if (mat.type === spec.MaterialType.pbr) {
-                if (mat.baseColorTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.baseColorTexture, textures, true, tiny3dMode);
-                }
-                if (mat.metallicRoughnessTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.metallicRoughnessTexture, textures, false, tiny3dMode);
-                }
-                if (mat.normalTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.normalTexture, textures, false, tiny3dMode);
-                }
-                if (mat.occlusionTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.occlusionTexture, textures, false, tiny3dMode);
-                }
-                if (mat.emissiveTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.emissiveTexture, textures, false, tiny3dMode);
-                }
-              } else {
-                if (mat.baseColorTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.baseColorTexture, textures, true, tiny3dMode);
-                }
-              }
-            });
-          } else if (item.type === spec.ItemType.skybox) {
-            loadSkybox = true;
-            //
-            const skyboxItem = item as spec.ModelSkyboxItem<'json'>;
-            const options = skyboxItem.content.options;
-
-            this.preprocessTextureOptions(options.specularImage, textures, false, tiny3dMode);
-            if (options.diffuseImage !== undefined) {
-              this.preprocessTextureOptions(options.diffuseImage, textures, false, tiny3dMode);
-            }
-          }
-        });
+      jsonScene.materials.forEach(mat => {
+        this.preprocessTextureOptions(dataMap, mat.textures['_BaseColorSampler'], true, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_MetallicRoughnessSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_NormalSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_OcclusionSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_EmissiveSampler'], false, tiny3dMode);
       });
-    } else {
-      jsonScene.compositions.forEach(comp => {
-        comp.items.forEach(item => {
-          if (item.type === spec.ItemType.skybox) {
-            loadSkybox = true;
-          }
-        });
-      });
-    }
+      jsonScene.components.forEach(comp => {
+        if (comp.dataType === spec.DataType.SkyboxComponent) {
+          loadSkybox = true;
+          const skybox = comp as spec.SkyboxComponentData;
 
-    if (autoAdjustScene) {
-      jsonScene.compositions.forEach(comp => {
-        let lightCount = 0;
-
-        comp.items.forEach(item => {
-          if (
-            item.type === spec.ItemType.light ||
-            item.type === spec.ItemType.skybox
-          ) {
-            ++lightCount;
+          if (skybox.diffuseImage) {
+            this.preprocessTextureOptions(dataMap, skybox.diffuseImage, false, tiny3dMode);
           }
-        });
-        if (lightCount == 0) {
-          comp.items.push({
-            id: 'dir-light1',
-            duration: 100,
-            name: 'dir-light1',
-            type: spec.ItemType.light,
-            transform: {
-              rotation: [45, -45, 0],
-            },
-            pluginName: 'model',
-            endBehavior: 0,
-            content: {
-              options: {
-                lightType: 'directional',
-                color: [255, 255, 255, 255],
-                intensity: 1.5,
-              },
-            },
-          });
-          comp.items.push({
-            id: 'dir-light2',
-            duration: 100,
-            name: 'dir-light2',
-            type: spec.ItemType.light,
-            transform: {
-              rotation: [0, 90, 0],
-            },
-            pluginName: 'model',
-            endBehavior: 0,
-            content: {
-              options: {
-                lightType: 'directional',
-                color: [255, 255, 255, 255],
-                intensity: 0.2,
-              },
-            },
-          });
+          if (skybox.specularImage) {
+            this.preprocessTextureOptions(dataMap, skybox.specularImage, false, tiny3dMode);
+          }
         }
       });
     }
@@ -926,33 +849,47 @@ export class PluginHelper {
    * @param tiny3dMode - 是否 Tiny3d 模式
    * @returns
    */
-  static preprocessTextureOptions (index: number, textures: Array<TextureSourceOptions>, isBaseColor: boolean, tiny3dMode: boolean) {
-    if (index < 0 || index >= textures.length) {
+  static preprocessTextureOptions (dataMap: Record<string, TextureSourceOptions>, textureInfo: spec.MaterialTextureProperty | spec.DataPath, isBaseColor: boolean, tiny3dMode: boolean) {
+    if (!tiny3dMode || !textureInfo) {
       return;
     }
 
-    const texOptions = textures[index];
+    let texId;
 
-    if (tiny3dMode && texOptions !== undefined) {
-      if (texOptions.target === undefined || texOptions.target === glContext.TEXTURE_2D) {
-        texOptions.wrapS = glContext.REPEAT;
-        texOptions.wrapT = glContext.REPEAT;
+    if ('texture' in textureInfo) {
+      texId = textureInfo.texture.id;
+    } else {
+      texId = textureInfo.id;
+    }
+
+    if (!texId) {
+      return;
+    }
+
+    const texOptions = dataMap[texId];
+
+    if (!texOptions) {
+      return;
+    }
+
+    if (texOptions.target === undefined || texOptions.target === glContext.TEXTURE_2D) {
+      texOptions.wrapS = glContext.REPEAT;
+      texOptions.wrapT = glContext.REPEAT;
+      texOptions.magFilter = glContext.LINEAR;
+      texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+      (texOptions as Texture2DSourceOptionsImage).generateMipmap = true;
+      if (!isBaseColor) {
+        texOptions.premultiplyAlpha = true;
+      }
+    } else if (texOptions.target === glContext.TEXTURE_CUBE_MAP) {
+      texOptions.wrapS = glContext.CLAMP_TO_EDGE;
+      texOptions.wrapT = glContext.CLAMP_TO_EDGE;
+      if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps !== undefined) {
         texOptions.magFilter = glContext.LINEAR;
         texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
-        (texOptions as Texture2DSourceOptionsImage).generateMipmap = true;
-        if (!isBaseColor) {
-          texOptions.premultiplyAlpha = true;
-        }
-      } else if (texOptions.target === glContext.TEXTURE_CUBE_MAP) {
-        texOptions.wrapS = glContext.CLAMP_TO_EDGE;
-        texOptions.wrapT = glContext.CLAMP_TO_EDGE;
-        if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps !== undefined) {
-          texOptions.magFilter = glContext.LINEAR;
-          texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
-        } else {
-          texOptions.magFilter = glContext.LINEAR;
-          texOptions.minFilter = glContext.LINEAR;
-        }
+      } else {
+        texOptions.magFilter = glContext.LINEAR;
+        texOptions.minFilter = glContext.LINEAR;
       }
     }
   }
