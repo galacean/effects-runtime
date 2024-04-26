@@ -7,6 +7,15 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+
+## 1.3.2
+
+`2024-04-26`
+
+- Fix: Fixed a rendering order issue when multiple references to the same pre-composition element were made. [#312](https://github.com/galacean/effects-runtime/pull/312) @RGCHN
+- Fix: Addressed the issue where pre-composition elements were not created at initialization. [#309](https://github.com/galacean/effects-runtime/pull/309) @RGCHN
+- Fix: Resolved the issue where pre-composition scaling settings were not taking effect. [#296](https://github.com/galacean/effects-runtime/pull/296) @RGCHN
+
 ## 1.3.1
 
 `2024-04-19`
