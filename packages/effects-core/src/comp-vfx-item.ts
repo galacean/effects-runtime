@@ -80,22 +80,10 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
         // 设置预合成作为元素时的时长、结束行为和渲染延时
         if (Item.isComposition(itemProps)) {
           const refId = itemProps.content.options.refId;
-          const props = this.composition.refCompositionProps.get(refId);
 
-          if (!props) {
-            throw new Error(`引用的Id: ${refId} 的预合成不存在`);
-          }
-          props.content = itemProps.content;
           item = new CompVFXItem({
-            ...props,
             refId,
-            delay: itemProps.delay,
-            id: itemProps.id,
-            name: itemProps.name,
-            duration: itemProps.duration,
-            endBehavior: itemProps.endBehavior,
-            parentId: itemProps.parentId,
-            transform: itemProps.transform,
+            ...itemProps,
           }, this.composition);
           (item as CompVFXItem).contentProps = itemProps.content;
           item.transform.parentTransform = this.transform;
