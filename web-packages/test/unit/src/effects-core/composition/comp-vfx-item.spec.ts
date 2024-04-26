@@ -749,6 +749,30 @@ describe('comp-vfxItem', () => {
     expect(pos.toArray()[1]).to.closeTo(0, 0.1);
   });
 
+  // 预合成设置缩放
+  it('set scale in compVFXItem', async () => {
+    const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*bkLLToY54tgAAAAAAAAAAAAADlB4AQ');
+
+    player.gotoAndStop(0);
+    const ref = comp.getItemByName('ref');
+
+    ref.setScale(0.1, 0.5, 2);
+    player.gotoAndStop(1);
+    let size = ref.content.startSize;
+
+    expect(size.x).to.eql(0.1);
+    expect(size.y).to.eql(0.5);
+    expect(size.z).to.eql(2);
+    ref.scale(2, 2, 0.1);
+
+    player.gotoAndStop(2);
+    size = ref.content.startSize;
+
+    expect(size.x).to.eql(0.2);
+    expect(size.y).to.eql(1);
+    expect(size.z).to.eql(0.2);
+  });
+
 });
 
 const generateScene = items => ({
