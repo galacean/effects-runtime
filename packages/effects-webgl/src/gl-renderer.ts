@@ -167,6 +167,7 @@ export class GLRenderer extends Renderer implements Disposable {
     }
     material.initialize();
     geometry.initialize();
+    geometry.flush();
     const renderingData = this.renderingData;
 
     // TODO 后面移到管线相机渲染开始位置
