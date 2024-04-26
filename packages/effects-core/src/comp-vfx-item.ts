@@ -80,22 +80,10 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
         // 设置预合成作为元素时的时长、结束行为和渲染延时
         if (Item.isComposition(itemProps)) {
           const refId = itemProps.content.options.refId;
-          const props = this.composition.refCompositionProps.get(refId);
 
-          if (!props) {
-            throw new Error(`引用的Id: ${refId} 的预合成不存在`);
-          }
-          props.content = itemProps.content;
           item = new CompVFXItem({
-            ...props,
             refId,
-            delay: itemProps.delay,
-            id: itemProps.id,
-            name: itemProps.name,
-            duration: itemProps.duration,
-            endBehavior: itemProps.endBehavior,
-            parentId: itemProps.parentId,
-            transform: itemProps.transform,
+            ...itemProps,
           }, this.composition);
           (item as CompVFXItem).contentProps = itemProps.content;
           item.transform.parentTransform = this.transform;
@@ -103,6 +91,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           if (item.endBehavior === spec.END_BEHAVIOR_RESTART) {
             this.composition.autoRefTex = false;
           }
+          item.createContent();
         } else {
           item = createVFXItem(this.itemProps[i], this.composition);
           // 相机不跟随合成移动
@@ -247,6 +236,22 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
 
   override handleVisibleChanged (visible: boolean) {
     this.items.forEach(item => item.setVisible(visible));
+  }
+
+  override setScale (x: number, y: number, z: number) {
+    if (this.content) {
+      this.content.startSize = new Vector3(x, y, z);
+    }
+
+  }
+
+  override scale (x: number, y: number, z: number) {
+    if (this.content) {
+      const startSize = this.content.startSize.clone();
+
+      this.content.startSize = new Vector3(x * startSize.x, y * startSize.y, z * startSize.z);
+
+    }
   }
 
   getUpdateTime (t: number) {

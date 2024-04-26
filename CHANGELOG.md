@@ -6,6 +6,15 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+
+## 1.3.2
+
+`2024-04-26`
+
+- Fix: 修复多次引用同一个预合成元素的渲染顺序问题。[#312](https://github.com/galacean/effects-runtime/pull/312) @RGCHN
+- Fix: 预合成元素初始化时未创建的问题。[#309](https://github.com/galacean/effects-runtime/pull/309) @RGCHN
+- Fix: 修复预合成缩放设置不生效的问题。[#296](https://github.com/galacean/effects-runtime/pull/296) @RGCHN
+
 ## 1.3.1
 
 `2024-04-19`
