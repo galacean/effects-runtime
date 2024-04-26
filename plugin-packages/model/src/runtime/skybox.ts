@@ -150,8 +150,6 @@ export class PSkybox extends PEntity {
     if (this.visible && this.renderable && this.skyboxMesh !== undefined) {
       const mesh = this.skyboxMesh;
 
-      mesh.geometry.flush();
-      mesh.material.initialize();
       renderer.drawGeometry(mesh.geometry, mesh.material);
     }
   }

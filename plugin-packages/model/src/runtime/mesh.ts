@@ -168,16 +168,12 @@ export class PMesh extends PEntity {
     this.primitives.forEach(prim => {
       const mesh = prim.effectsMesh;
 
-      mesh.geometry.flush();
-      mesh.material.initialize();
       renderer.drawGeometry(mesh.geometry, mesh.material);
     });
 
     if (this.visBoundingBox && this.boundingBoxMesh !== undefined) {
       const mesh = this.boundingBoxMesh.mesh;
 
-      mesh.geometry.flush();
-      mesh.material.initialize();
       renderer.drawGeometry(mesh.geometry, mesh.material);
     }
   }

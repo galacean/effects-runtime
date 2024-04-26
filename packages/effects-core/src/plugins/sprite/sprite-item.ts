@@ -205,10 +205,6 @@ export class SpriteComponent extends RendererComponent {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
     this.material.setVector2('_Size', this.transform.size);
-
-    // 执行 Geometry 的数据刷新
-    geo.flush();
-
     renderer.drawGeometry(geo, material);
   }
 
