@@ -541,7 +541,7 @@ export class BezierCurve extends ValueGetter<number> {
   }
 }
 
-export class BezierCurvePath extends ValueGetter<Vector3> {
+export class BezierCurvePath extends ValueGetter<spec.vec3> {
   curveSegments: Record<string, {
     points: Vector2[],
     // 缓动曲线
@@ -584,13 +584,13 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
   }
 
-  override getValue (time: number): Vector3 {
+  override getValue (time: number) {
     const t = numberToFix(time, 5);
     let perc = 0, point = new Vector3();
     const keyTimeData = Object.keys(this.curveSegments);
 
     if (!keyTimeData.length) {
-      return point;
+      return point.toArray();
     }
     const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
     const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
@@ -600,7 +600,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
       point = pathCurve.getPointInPercent(0);
 
-      return point;
+      return point.toArray();
 
     }
     if (t >= keyTimeEnd) {
@@ -608,7 +608,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
       point = pathCurve.getPointInPercent(1);
 
-      return point;
+      return point.toArray();
     }
 
     for (let i = 0; i < keyTimeData.length; i++) {
@@ -623,7 +623,7 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
       }
     }
 
-    return point;
+    return point.toArray();
   }
 
   getPercValue (curveKey: string, time: number) {
