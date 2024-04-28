@@ -148,8 +148,8 @@ importers:
         specifier: 1.0.1
         version: 1.0.1
       '@galacean/effects-specification':
-        specifier: 1.1.0
-        version: 1.1.0
+        specifier: 1.2.0
+        version: 1.2.0
 
   packages/effects-helper:
     devDependencies:
@@ -1934,8 +1934,8 @@ packages:
     engines: {node: '>=10.0.0'}
     dev: false
 
-  /@galacean/effects-specification@1.1.0:
-    resolution: {integrity: sha512-gYyIfoKv1HVFE5aw1NbtdY1qUcLB5dXjrbeMdNgAIG0GcRZA8JvQQP8vclXQratUkydFNyUXSxg8vhFtHqaZHg==}
+  /@galacean/effects-specification@1.2.0:
+    resolution: {integrity: sha512-MwTOE3ji63FUOgBastZZ5aUNiPWJ9N0oUn31ib/pclTdZjv3Ox0qwnLauLvL0HuYksbVKq7/PMb1/SIBNmm+AQ==}
     dev: false
 
   /@humanwhocodes/config-array@0.11.10:

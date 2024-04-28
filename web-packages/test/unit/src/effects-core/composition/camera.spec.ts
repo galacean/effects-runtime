@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Player, BezierSegments, CameraController, CurveValue, PathSegments, spec, math } from '@galacean/effects';
+import { Player, BezierCurvePath, CameraController, spec, math, BezierCurve } from '@galacean/effects';
 
 const { Vector3 } = math;
 const { expect } = chai;
@@ -88,7 +88,7 @@ describe('camera item', () => {
     const pos = comp.camera.position;
 
     expect(pos).to.deep.equals(new Vector3(2, 0.5, 0));
-    const z = new CurveValue([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
+    const z = new BezierCurve([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
 
     expect(pos.z).to.eql(z.getValue(0.5));
   });
@@ -157,7 +157,7 @@ describe('camera item', () => {
 
     expect(ro2.x).to.closeTo(2, 0.0001);
     expect(ro2.y).to.closeTo(0, 0.0001);
-    const z = new CurveValue([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
+    const z = new BezierCurve([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
 
     expect(ro2.z).to.closeTo(z.getValue(0.5), 0.00001);
   });
@@ -165,28 +165,52 @@ describe('camera item', () => {
   it('camera position with path', async () => {
     const items = [
       {
+        'id': '6',
         'name': 'constant',
+        'duration': 2,
+        'type': '6',
+        'visible': true,
+        'endBehavior': 0,
         'delay': 0,
-        'id': 11,
-        'model': {
+        'renderLevel': 'B+',
+        'content': {
           'options': {
-            'type': 1,
-            'duration': 5,
-            'near': 0.2,
-            'far': 25,
             'fov': 60,
-            'renderLevel': 'B+',
-            'looping': true,
+            'far': 40,
+            'near': 0.1,
+            'clipMode': 1,
           },
-          'transform': {
-            'position': [0, 0, 0],
-            'rotation': [0, 0, 0],
-            'path': [1, 1, 1],
+          'positionOverLifetime': {
+            'path': [
+              2,
+              [
+                1,
+                1,
+                1,
+              ],
+            ],
           },
+        },
+        'transform': {
+          'position': [
+            0,
+            0,
+            0,
+          ],
+          'rotation': [
+            0,
+            0,
+            0,
+          ],
+          'scale': [
+            1,
+            1,
+            1,
+          ],
         },
       },
     ];
-    const comp = await player.loadScene(generateScene(items));
+    const comp = await player.loadScene(generateSceneNew(items));
 
     player.gotoAndStop(2.5);
     const pos = comp.camera.position;
@@ -195,72 +219,98 @@ describe('camera item', () => {
     expect(pos.y).to.eql(1, 'constant path');
     expect(pos.z).to.eql(1, 'constant path');
 
+    const lineatPath = [
+      [
+        [
+          4,
+          [
+            0,
+            0,
+          ],
+        ],
+        [
+          4,
+          [
+            1,
+            1,
+          ],
+        ],
+      ],
+      [
+        [
+          0,
+          0,
+          0,
+        ],
+        [
+          3,
+          3,
+          3,
+        ],
+      ],
+      [
+        [
+          1,
+          1,
+          1,
+        ],
+        [
+          2,
+          2,
+          2,
+        ],
+      ],
+    ];
     const linear = [
       {
-        'name': 'linear',
+        'id': '4',
+        'name': 'camera_4',
+        'duration': 5,
+        'type': '6',
+        'visible': true,
+        'endBehavior': 0,
         'delay': 0,
-        'id': 11,
-        'model': {
+        'renderLevel': 'B+',
+        'content': {
           'options': {
-            'type': 1,
-            'duration': 5,
-            'near': 0.2,
-            'far': 25,
             'fov': 60,
-            'renderLevel': 'B+',
-            'looping': true,
+            'far': 40,
+            'near': 0.1,
+            'clipMode': 1,
           },
-          'transform': {
-            'position': [0, 0, 0],
-            'rotation': [0, 0, 0],
-            'path': ['path', [[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [1, 1, 1]]]],
+          'positionOverLifetime': {
+            'path': [22, lineatPath],
           },
+        },
+        'transform': {
+          'position': [
+            0,
+            0,
+            0,
+          ],
+          'rotation': [
+            0,
+            0,
+            0,
+          ],
+          'scale': [
+            1,
+            1,
+            1,
+          ],
         },
       },
     ];
 
-    const comp1 = await player.loadScene(generateScene(linear));
+    const comp1 = await player.loadScene(generateSceneNew(linear));
 
     player.gotoAndStop(2.5);
     const pos1 = comp1.camera.position;
-    const val = new PathSegments([[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [1, 1, 1]]]).getValue(0.5);
+    const val = new BezierCurvePath(lineatPath).getValue(0.5);
 
-    expect(pos1.x).to.eql(val[0], 'linear path');
-    expect(pos1.y).to.eql(val[1], 'linear path');
-    expect(pos1.z).to.eql(val[2], 'linear path');
-
-    const curve = [
-      {
-        'name': 'curve',
-        'delay': 0,
-        'id': 11,
-        'model': {
-          'options': {
-            'type': 1,
-            'duration': 5,
-            'near': 0.2,
-            'far': 25,
-            'fov': 60,
-            'renderLevel': 'B+',
-            'looping': true,
-          },
-          'transform': {
-            'position': [0, 0, 0],
-            'rotation': [0, 0, 0],
-            'path': ['bezier', [[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [3, 1, 0]], [[1, 1, 0], [2, 1, 0]]]],
-          },
-        },
-      }];
-
-    const comp2 = await player.loadScene(generateScene(curve));
-
-    player.gotoAndStop(2.5);
-    const pos2 = comp2.camera.position;
-    const val2 = new BezierSegments([[[0, 0, 1, 1], [1, 1, 1, 1]], [[0, 0, 0], [3, 1, 0]], [[1, 1, 0], [2, 1, 0]]]).getValue(0.5);
-
-    expect(pos2.x).to.eql(val2[0], 'bezier path');
-    expect(pos2.y).to.eql(val2[1], 'bezier path');
-    expect(pos2.z).to.eql(val2[2], 'bezier path');
+    expect(pos1.x).to.eql(val[0], 'curve path');
+    expect(pos1.y).to.eql(val[1], 'curve path');
+    expect(pos1.z).to.eql(val[2], 'curve path');
   });
 
   it('camera 2D item affected by parent', async () => {
@@ -443,4 +493,52 @@ const generateScene = items => ({
   '_imgs': {
     '1': [],
   },
+});
+
+const generateSceneNew = items => ({
+  'playerVersion': {
+    'web': '1.3.1',
+    'native': '0.0.1.202311221223',
+  },
+  'images': [],
+  'fonts': [],
+  'spines': [],
+  'version': '2.4',
+  'shapes': [],
+  'plugins': [],
+  'type': 'ge',
+  'compositions': [
+    {
+      'id': '1',
+      'name': '新建合成10',
+      'duration': 5,
+      'startTime': 0,
+      'endBehavior': 1,
+      'previewSize': [
+        750,
+        1624,
+      ],
+      'items': items,
+      'camera': {
+        'fov': 60,
+        'far': 40,
+        'near': 0.1,
+        'clipMode': 1,
+        'position': [
+          0,
+          0,
+          8,
+        ],
+        'rotation': [
+          0,
+          0,
+          0,
+        ],
+      },
+    },
+  ],
+  'requires': [],
+  'compositionId': '1',
+  'bins': [],
+  'textures': [],
 });
