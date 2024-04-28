@@ -293,10 +293,19 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       gpuCapability.setTextureAnisotropic(gl, this.target, anisotropic);
     }
     const isPot = isWebGL2(gl) || (isPowerOfTwo(this.width) && isPowerOfTwo(this.height));
-    const minFiler = options.minFilter ? options.minFilter : gl.NEAREST;
+    let minFilter = options.minFilter ? options.minFilter : gl.NEAREST;
     const magFilter = options.magFilter ? options.magFilter : gl.NEAREST;
 
-    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, minFiler);
+    if (!isPot) {
+      if (minFilter === gl.LINEAR_MIPMAP_LINEAR
+      || minFilter === gl.LINEAR_MIPMAP_NEAREST
+      || minFilter === gl.NEAREST_MIPMAP_LINEAR
+      || minFilter === gl.NEAREST_MIPMAP_NEAREST) {
+        minFilter = gl.LINEAR;
+      }
+    }
+
+    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, minFilter);
     gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magFilter);
     gl.texParameteri(target, gl.TEXTURE_WRAP_S, isPot ? wrapS : gl.CLAMP_TO_EDGE);
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, isPot ? wrapT : gl.CLAMP_TO_EDGE);

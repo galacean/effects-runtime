@@ -754,6 +754,10 @@ export class LoaderECSImpl implements LoaderECS {
     }
   }
 
+  getCompositionDuration () {
+    return this.composition.duration;
+  }
+
   isTiny3dMode (): boolean {
     return this.loaderOptions.compatibleMode === 'tiny3d';
   }
