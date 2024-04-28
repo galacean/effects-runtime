@@ -7,6 +7,14 @@
 
 ---
 
+## 1.4.0
+
+`2024-04-28`
+
+- Feat: Added support for Bezier velocity and path curve processing. [#288](https://github.com/galacean/effects-runtime/pull/288) @RGCHN
+- Fix: Fixed issues with Bezier integration and occasional stuttering of some particles. [#305](https://github.com/galacean/effects-runtime/pull/305) @RGCHN
+- Test: Updated unit tests related to curves. [#318](https://github.com/galacean/effects-runtime/pull/318) @RGCHN
+
 ## 1.3.2
 
 `2024-04-26`
