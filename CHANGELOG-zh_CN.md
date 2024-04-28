@@ -8,6 +8,14 @@
 
 ---
 
+## 1.4.0
+
+`2024-04-28`
+
+- Feat: 支持贝塞尔速度和路径曲线处理。[#288](https://github.com/galacean/effects-runtime/pull/288) @RGCHN
+- Fix: 修复贝塞尔积分和部分粒子卡顿问题。[#305](https://github.com/galacean/effects-runtime/pull/305) @RGCHN
+- Test: 曲线相关单测更新。[#318](https://github.com/galacean/effects-runtime/pull/318) @RGCHN
+
 ## 1.3.2
 
 `2024-04-26`
