@@ -53,13 +53,63 @@ describe('sprite transform', () => {
     const items = generateItem(opts);
 
     items.map(item => {
-      item.content.positionOverLifetime.path = [7, [[[0, 0, 1, 1], [0.375, 0.375, 1, 1], [1, 0.375, 1, 1]], [[0, 0, 0], [2, 1.5, 0], [2, 1.5, 0]], [[1, 0, -0], [1, 1.5, -0], [2, 1.5, -0], [2, 1.5, -0]]]];
+      item.content.positionOverLifetime.path = [
+        22,
+        [
+          [
+            [
+              3,
+              [
+                0,
+                0,
+                0.0667,
+                0,
+              ],
+              1,
+            ],
+            [
+              2,
+              [
+                0.1333,
+                1,
+                0.2,
+                1,
+              ],
+              1,
+            ],
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+            ],
+            [
+              1,
+              2,
+              0,
+            ],
+          ],
+          [
+            [
+              0.3333,
+              0.6667,
+              0,
+            ],
+            [
+              0.6667,
+              1.3333,
+              0,
+            ],
+          ],
+        ],
+      ];
     });
     const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
     const item = comp.getItemByName('sprite_1');
     const worldTransform = item.getWorldTransform();
 
-    expect(worldTransform.position.toArray()).to.deep.equals([2, 1.5, 0]);
+    expect(worldTransform.position.toArray()).to.deep.equals([1, 2, 0]);
   });
 
   // transform 受空节点父节点的影响
@@ -130,12 +180,63 @@ describe('sprite transform', () => {
     ];
     const items = generateItem(opts);
 
-    items[0].content.positionOverLifetime.path = [7, [[[0, 0, 1, 1], [0.375, 0.375, 1, 1], [1, 0.375, 1, 1]], [[0, 0, 0], [2, 1.5, 0], [2, 1.5, 0]], [[1, 0, -0], [1, 1.5, -0], [2, 1.5, -0], [2, 1.5, -0]]]];
+    items[0].content.positionOverLifetime.path =
+      [
+        22,
+        [
+          [
+            [
+              3,
+              [
+                0,
+                0,
+                0.0667,
+                0,
+              ],
+              1,
+            ],
+            [
+              2,
+              [
+                0.1333,
+                1,
+                0.2,
+                1,
+              ],
+              1,
+            ],
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+            ],
+            [
+              1,
+              2,
+              0,
+            ],
+          ],
+          [
+            [
+              0.3333,
+              0.6667,
+              0,
+            ],
+            [
+              0.6667,
+              1.3333,
+              0,
+            ],
+          ],
+        ],
+      ];
     const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
     const item = comp.getItemByName('sp');
     const worldTransform = item.getWorldTransform();
 
-    expect(worldTransform.position.toArray()).to.deep.equals([2, 1.5, 0]);
+    expect(worldTransform.position.toArray()).to.deep.equals([1, 2, 0]);
   });
 
   // transform 受图层父节点的路径影响
@@ -146,12 +247,62 @@ describe('sprite transform', () => {
     ];
     const items = generateItem(opts);
 
-    items[0].content.positionOverLifetime.path = [7, [[[0, 0, 1, 1], [0.375, 0.375, 1, 1], [1, 0.375, 1, 1]], [[0, 0, 0], [2, 1.5, 0], [2, 1.5, 0]], [[1, 0, -0], [1, 1.5, -0], [2, 1.5, -0], [2, 1.5, -0]]]];
+    items[0].content.positionOverLifetime.path = [
+      22,
+      [
+        [
+          [
+            3,
+            [
+              0,
+              0,
+              0.0667,
+              0,
+            ],
+            1,
+          ],
+          [
+            2,
+            [
+              0.1333,
+              1,
+              0.2,
+              1,
+            ],
+            1,
+          ],
+        ],
+        [
+          [
+            0,
+            0,
+            0,
+          ],
+          [
+            1,
+            2,
+            0,
+          ],
+        ],
+        [
+          [
+            0.3333,
+            0.6667,
+            0,
+          ],
+          [
+            0.6667,
+            1.3333,
+            0,
+          ],
+        ],
+      ],
+    ];
     const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
     const item = comp.getItemByName('sp');
     const worldTransform = item.getWorldTransform();
 
-    expect(worldTransform.position.toArray()).to.deep.equals([2, 1.5, 0]);
+    expect(worldTransform.position.toArray()).to.deep.equals([1, 2, 0]);
   });
 
   // 多个空父节点同时影响position

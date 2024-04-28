@@ -23,12 +23,32 @@ describe('value getter', () => {
   });
 
   it('curve value with hole', () => {
-    const v = createValueGetter([spec.ValueType.CURVE, [[0.281, 90, -5.607, -5.607], [0.781, 10, -7.653, -7.653]]]);
+    const v = createValueGetter([spec.ValueType.BEZIER_CURVE, [
+      [
+        3,
+        [
+          0.28,
+          90,
+          0.4466,
+          90,
+        ],
+        1,
+      ],
+      [
+        2,
+        [
+          0.6134,
+          10,
+          0.78,
+          10,
+        ],
+        1,
+      ],
+    ]]);
 
     expect(v.getValue(0)).to.eql(90);
     expect(v.getValue(1)).to.eql(10);
-    expect(v.getIntegrateValue(0, 0.25), '3').to.eql(90 * 0.25);
-    expect(v.getIntegrateValue(0.8, 1), '4').to.be.closeTo(10 * 0.2, 0.00000001);
+    expect(v.getIntegrateValue(0, 1), '4').to.be.closeTo(25, 0.001);
   });
 
   it('line value with hole', () => {
