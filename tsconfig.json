@@ -11,6 +11,9 @@
     },
     {
       "path": "./packages/effects-threejs"
+    },
+    {
+      "path": "./packages/effects-pixi"
     }
   ],
   "files": []
