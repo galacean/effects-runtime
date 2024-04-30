@@ -686,11 +686,9 @@ const map: Record<any, any> = {
 
     return new BezierCurve(props);
   },
-  [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][][]) {
+  [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][]) {
     if (props[0].length === 1) {
-      const [, points] = props[1];
-
-      return new StaticValue(new Vector3(...points[0]));
+      return new StaticValue(new Vector3(...props[1][0]));
     }
 
     return new BezierCurvePath(props);
