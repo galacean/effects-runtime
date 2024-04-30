@@ -20,7 +20,7 @@ export class CameraController {
     fov: ValueGetter<number>,
   };
   private readonly translateOverLifetime?: {
-    path?: ValueGetter<spec.vec3>,
+    path?: ValueGetter<Vector3>,
     x: ValueGetter<number>,
     y: ValueGetter<number>,
     z: ValueGetter<number>,

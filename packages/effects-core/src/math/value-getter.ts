@@ -688,7 +688,7 @@ const map: Record<any, any> = {
   },
   [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][][]) {
     if (props[0].length === 1) {
-      return new StaticValue([props[0][0][1][1], props[1][0][1][1], props[2][0][1][1]]);
+      return new StaticValue(new Vector3(props[0][0][1][1], props[1][0][1][1], props[2][0][1][1]));
     }
 
     return new BezierCurvePath(props);
