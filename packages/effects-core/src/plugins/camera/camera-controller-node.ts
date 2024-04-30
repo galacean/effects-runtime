@@ -91,9 +91,7 @@ export class CameraController {
       if (translateOverLifetime.path) {
         const val = translateOverLifetime.path.getValue(lifetime);
 
-        position.x += val[0];
-        position.y += val[1];
-        position.z += val[2];
+        position.add(val);
       }
     }
     if (rotationOverLifetime) {
