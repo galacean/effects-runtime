@@ -1,7 +1,8 @@
 //@ts-nocheck
-import { isObject } from '@galacean/effects';
+import { isObject, getStandardJSON } from '@galacean/effects';
 import { getPMeshList, getRendererGPUInfo } from '@galacean/effects-plugin-model';
 import { createButton, createPlayer, disposePlayer, createSlider, loadJsonFromURL } from './utility';
+import { JsonConverter } from '@galacean/effects-plugin-model';
 
 let player;
 let pending = false;
@@ -9,9 +10,9 @@ let currentTime = 0;
 let pauseOnFirstFrame = false;
 
 let infoElement;
-//const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
+const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
 //const url = './trail-demo.scene.json';
-const url = './ibl.json';
+//const url = './ibl.json';
 
 const compatibleMode = 'tiny3d';
 
@@ -34,7 +35,9 @@ export async function loadScene (inPlayer) {
   }
   //
   const scene = await getCurrentScene();
+  const converter = new JsonConverter(player);
 
+  await converter.processScene(scene);
   //
   if (!pending) {
     pending = true;

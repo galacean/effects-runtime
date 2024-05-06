@@ -1,5 +1,5 @@
 //@ts-nocheck
-import { math, spec, generateGUID } from '@galacean/effects';
+import { math, spec } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
 import { LoaderECSEx } from '../../src/helper';
 
@@ -33,7 +33,7 @@ async function getCurrentScene () {
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
-      skyboxType: 'FARM',
+      skyboxType: 'NFT',
     },
     effects: {
       renderer: player.renderer,
