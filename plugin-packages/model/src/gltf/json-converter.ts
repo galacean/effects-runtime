@@ -1,7 +1,9 @@
-import { spec, generateGUID, Downloader, loadImage, TextureSourceType, getStandardJSON } from '@galacean/effects';
-import type { Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions } from '@galacean/effects';
-import { CullMode, PBRShaderGUID, RenderType } from '../runtime';
+import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON } from '@galacean/effects';
+import type { Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps } from '@galacean/effects';
+import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
 import { Color } from '../runtime/math';
+import { deserializeGeometry } from '@galacean/effects-helper';
+import type { ModelTreeContent } from '../index';
 
 export class JsonConverter {
   newScene: spec.JSONScene;
@@ -59,6 +61,9 @@ export class JsonConverter {
     this.setImage(newScene, oldScene);
     await this.setTexture(newScene, oldScene);
     this.setComponent(newScene, oldScene);
+    this.setComposition(newScene, oldScene);
+
+    return newScene;
   }
 
   setImage (newScene: spec.JSONScene, oldScene: spec.JSONScene) {
@@ -84,11 +89,25 @@ export class JsonConverter {
           const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => this.loadMipmapImage(pointer, bins))));
           const loadedMipmaps = await Promise.all(jobs);
 
+          const newMipmaps = loadedMipmaps.map(mipmaps => mipmaps.map(img => {
+            const id = generateGUID();
+            const sceneImage: spec.Image = {
+              url: img,
+              // @ts-expect-error
+              id,
+            };
+
+            newScene.images.push(sceneImage);
+            const dataPath: spec.DataPath = { id };
+
+            return dataPath;
+          }));
+
           const newTex = {
             keepImageSource: false,
             ...tex,
             ...{
-              mipmaps: loadedMipmaps,
+              mipmaps: newMipmaps,
               sourceFrom: {
                 target,
                 type: TextureSourceType.mipmaps,
@@ -116,14 +135,24 @@ export class JsonConverter {
   }
 
   setComponent (newScene: spec.JSONScene, oldScene: spec.JSONScene) {
-    const newComponents: spec.ComponentData[] = [];
+    const newComponents = newScene.components;
 
     for (const comp of oldScene.components) {
       if (comp.dataType === spec.DataType.SkyboxComponent) {
-        newComponents.push(this.createSkyboxComponent(comp));
+        newComponents.push(this.createSkyboxComponent(comp, newScene));
       } else if (comp.dataType === spec.DataType.MeshComponent) {
+        newComponents.push(this.createMeshComponent(comp, newScene, oldScene));
+      } else if (comp.dataType === spec.DataType.LightComponent) {
         newComponents.push(comp);
+        console.warn('Find light component', comp);
+      } else if (comp.dataType === spec.DataType.CameraComponent) {
+        newComponents.push(comp);
+        console.warn('Find camera component', comp);
       } else if (comp.dataType === spec.DataType.TreeComponent) {
+        const treeComp = comp as unknown as ModelTreeContent;
+
+        treeComp.options.tree.animation = undefined;
+        treeComp.options.tree.animations = undefined;
         newComponents.push(comp);
       } else {
         newComponents.push(comp);
@@ -132,16 +161,9 @@ export class JsonConverter {
   }
 
   setComposition (newScene: spec.JSONScene, oldScene: spec.JSONScene) {
-    // const oldCompositions = oldScene.compositions;
-    // const newCompositions: spec.Composition[] = [];
-    // oldCompositions.forEach(comp => {
-    //   // const newComp: spec.Composition = {
-    //   //   ...comp
-    //   // };
-    //   // comp.items.forEach(item => {
-
-    //   // })
-    // })
+    newScene.items = oldScene.items;
+    newScene.compositionId = oldScene.compositionId;
+    newScene.compositions = oldScene.compositions;
   }
 
   private async loadJSON (url: string) {
@@ -174,10 +196,10 @@ export class JsonConverter {
       throw new Error(`invalid bin pointer: ${JSON.stringify(pointer)}`);
     }
 
-    return loadImage(new Blob([new Uint8Array(bin, start, length)]));
+    return URL.createObjectURL((new Blob([new Uint8Array(bin, start, length)])));
   }
 
-  private createSkyboxComponent (component: spec.ComponentData): spec.SkyboxComponentData {
+  private createSkyboxComponent (component: spec.ComponentData, scene: spec.JSONScene): spec.SkyboxComponentData {
     const skyboxOptions = (component as unknown as spec.SkyboxContent<'json'>).options;
     let irradianceCoeffs;
 
@@ -190,7 +212,7 @@ export class JsonConverter {
 
     if (skyboxOptions.diffuseImage) {
       // @ts-expect-error
-      diffuseImage = { id: newScene.textures[skyboxOptions.diffuseImage].id } as spec.DataPath;
+      diffuseImage = { id: scene.textures[skyboxOptions.diffuseImage].id } as spec.DataPath;
     }
 
     const skyboxComponent: spec.SkyboxComponentData = {
@@ -204,7 +226,7 @@ export class JsonConverter {
       diffuseImage,
       specularImage: {
         // @ts-expect-error
-        id: newScene.textures[skyboxOptions.specularImage].id,
+        id: scene.textures[skyboxOptions.specularImage].id,
       },
       specularImageSize: skyboxOptions.specularImageSize,
       specularMipCount: skyboxOptions.specularMipCount,
@@ -213,12 +235,20 @@ export class JsonConverter {
     return skyboxComponent;
   }
 
-  private createMeshComponent (component: spec.ComponentData): spec.ModelMeshComponentData {
+  private createMeshComponent (component: spec.ComponentData, newScene: spec.JSONScene, oldScene: spec.JSONScene): spec.ModelMeshComponentData {
     const meshOptions = (component as unknown as spec.ModelMeshItemContent<'json'>).options;
     const primitives: spec.PrimitiveData[] = [];
 
     meshOptions.primitives.forEach(prim => {
+      const geometryData = this.getGeometryData(prim.geometry, oldScene);
+      const materialData = this.getMaterialData(prim.material, oldScene);
 
+      newScene.geometries.push(geometryData);
+      newScene.materials.push(materialData);
+      primitives.push({
+        geometry: { id: geometryData.id },
+        material: { id: materialData.id },
+      });
     });
 
     const meshComponent: spec.ModelMeshComponentData = {
@@ -231,9 +261,51 @@ export class JsonConverter {
     return meshComponent;
   }
 
-  private createMaterial (material: spec.MaterialOptions<'json'>, scene: spec.JSONScene) {
+  private getGeometryData (geometry: spec.GeometryOptionsJSON, scene: spec.JSONScene) {
+    const geomOptions = deserializeGeometry(geometry, scene.bins as unknown as ArrayBuffer[]);
+
+    return getGeometryDataFromOptions(geomOptions);
+  }
+
+  private getMaterialData (material: spec.MaterialOptions<'json'>, scene: spec.JSONScene) {
     if (material.type === spec.MaterialType.unlit) {
-      return material;
+      const floats: Record<string, number> = {};
+
+      if (material.alphaCutOff !== undefined) {
+        floats['_AlphaCutoff'] = material.alphaCutOff;
+      }
+      const colors: Record<string, Color> = {
+        '_BaseColorFactor': new Color(
+          material.baseColorFactor[0],
+          material.baseColorFactor[1],
+          material.baseColorFactor[2],
+          material.baseColorFactor[3],
+        ).divide(255),
+      };
+
+      const textures: Record<string, spec.MaterialTextureProperty> = {};
+
+      if (material.baseColorTexture) {
+        textures['_BaseColorSampler'] = this.getTextureData(scene, floats, material.baseColorTexture, material.baseColorTextureTransform);
+      }
+
+      const newMaterial: spec.MaterialData = {
+        id: generateGUID(),
+        name: material.name,
+        dataType: spec.DataType.Material,
+        shader: {
+          id: UnlitShaderGUID,
+        },
+        stringTags: this.getStringTags(material),
+        macros: [],
+        ints: {},
+        floats,
+        vector4s: {},
+        colors,
+        textures,
+      };
+
+      return newMaterial;
     } else {
       const floats: Record<string, number> = {
         '_MetallicFactor': material.metallicFactor,
@@ -273,17 +345,23 @@ export class JsonConverter {
       const textures: Record<string, spec.MaterialTextureProperty> = {};
 
       if (material.baseColorTexture) {
-        if (material.baseColorTextureTransform) {
-          textures['_BaseColorSampler'] = {
-            // @ts-expect-error
-            texture: { id: scene.textures[material.baseColorTexture].id },
-          };
-        } else {
-          textures['_BaseColorSampler'] = {
-            // @ts-expect-error
-            texture: { id: scene.textures[material.baseColorTexture].id },
-          };
-        }
+        textures['_BaseColorSampler'] = this.getTextureData(scene, floats, material.baseColorTexture, material.baseColorTextureTransform);
+      }
+
+      if (material.metallicRoughnessTexture) {
+        textures['_MetallicRoughnessSampler'] = this.getTextureData(scene, floats, material.metallicRoughnessTexture, material.metallicRoughnessTextureTransform);
+      }
+
+      if (material.normalTexture) {
+        textures['_NormalSampler'] = this.getTextureData(scene, floats, material.normalTexture, material.normalTextureTransform);
+      }
+
+      if (material.occlusionTexture) {
+        textures['_OcclusionSampler'] = this.getTextureData(scene, floats, material.occlusionTexture, material.occlusionTextureTransform);
+      }
+
+      if (material.emissiveTexture) {
+        textures['_EmissiveSampler'] = this.getTextureData(scene, floats, material.emissiveTexture, material.emissiveTextureTransform);
       }
 
       const newMaterial: spec.MaterialData = {
@@ -329,7 +407,152 @@ export class JsonConverter {
     return stringTags;
   }
 
-  private getTextureData (scene: spec.JSONScene, material: spec.MaterialData, name: string, texIndex: number, texTransform: spec.ModelTextureTransform) {
+  private getTextureData (scene: spec.JSONScene, floats: Record<string, number>, texIndex: number, texTransform?: spec.ModelTextureTransform) {
+    const id = scene.textures![texIndex].id ?? '0';
+    const texProperty: spec.MaterialTextureProperty = {
+      texture: { id },
+    };
 
+    if (texTransform) {
+      if (texTransform.scale) {
+        texProperty.scale = {
+          x: texTransform.scale[0],
+          y: texTransform.scale[1],
+        };
+      }
+      if (texTransform.offset) {
+        texProperty.offset = {
+          x: texTransform.offset[0],
+          y: texTransform.offset[1],
+        };
+      }
+      if (texTransform.rotation) {
+        floats['_BaseColorRotation'] = texTransform.rotation;
+      }
+    }
+
+    return texProperty;
   }
+}
+
+interface ModelData {
+  vertices: number[],
+  uvs: number[],
+  normals: number[],
+  indices: number[],
+  name: string,
+}
+
+function getGeometryDataFromOptions (geomOptions: GeometryProps) {
+  let vertexCount = 0;
+  const modelData: ModelData = {
+    vertices: [],
+    uvs: [],
+    normals: [],
+    indices: [],
+    name: geomOptions.name ?? '<empty>',
+  };
+
+  for (const attrib in geomOptions.attributes) {
+    const attribData = geomOptions.attributes[attrib];
+
+    if (attrib === 'a_Position') {
+      // @ts-expect-error
+      vertexCount = attribData.data.length / attribData.size;
+      // @ts-expect-error
+      modelData.vertices = array2Number(attribData.data);
+    } else if (attrib === 'a_Normal') {
+      // @ts-expect-error
+      modelData.normals = array2Number(attribData.data);
+    } else if (attrib === 'a_UV1') {
+      // @ts-expect-error
+      modelData.uvs = array2Number(attribData.data);
+    }
+  }
+
+  if (geomOptions.indices) {
+    // @ts-expect-error
+    modelData.indices = array2Number(geomOptions.indices.data);
+  } else {
+    throw Error('indices is required');
+  }
+
+  const geometryData: spec.GeometryData = {
+    id: generateGUID(),
+    dataType: spec.DataType.Geometry,
+    vertexData: {
+      vertexCount: vertexCount,
+      channels: [
+        {
+          offset: 0,
+          format: 0,
+          dimension: 3,
+        },
+        {
+          offset: vertexCount * 3 * 4,
+          format: 0,
+          dimension: 2,
+        },
+        {
+          offset: vertexCount * 5 * 4,
+          format: 0,
+          dimension: 3,
+        },
+      ],
+    },
+    mode: spec.GeometryType.TRIANGLES,
+    indexFormat: 0,
+    indexOffset: vertexCount * 8 * 4,
+    buffer: encodeVertexData(modelData),
+  };
+
+  return geometryData;
+}
+
+function encodeVertexData (modelData: ModelData): string {
+  const vertices = new Float32Array(modelData.vertices);
+  const uvs = new Float32Array(modelData.uvs);
+  const normals = new Float32Array(modelData.normals);
+  const indices = new Uint16Array(modelData.indices);
+
+  // 计算新 ArrayBuffer 的总大小（以字节为单位）
+  const totalSize = vertices.byteLength + uvs.byteLength + normals.byteLength + indices.byteLength;
+
+  // 创建一个足够大的 ArrayBuffer 来存储两个数组的数据
+  const buffer = new ArrayBuffer(totalSize);
+
+  // 创建一个视图来按照 Float32 格式写入数据
+  let floatView = new Float32Array(buffer, 0, vertices.length);
+
+  floatView.set(vertices);
+  floatView = new Float32Array(buffer, vertices.byteLength, uvs.length);
+  floatView.set(uvs);
+  floatView = new Float32Array(buffer, vertices.byteLength + uvs.byteLength, normals.length);
+  floatView.set(normals);
+
+  // 创建一个视图来按照 Uint16 格式写入数据，紧接着 Float32 数据之后
+  const uint16View = new Uint16Array(buffer, vertices.byteLength + uvs.byteLength + normals.byteLength, indices.length);
+
+  uint16View.set(indices);
+
+  // 创建一个 Uint8Array 视图以便逐字节访问 ArrayBuffer 的数据
+  const uint8View = new Uint8Array(buffer);
+
+  // 将 Uint8Array 转换为二进制字符串
+  let binaryString = '';
+
+  for (let i = 0; i < uint8View.length; i++) {
+    binaryString += String.fromCharCode(uint8View[i]);
+  }
+
+  // 使用 btoa 函数将二进制字符串转换为 Base64 编码的字符串
+  return btoa(binaryString);
+}
+
+function array2Number (array: Float32Array | Uint16Array): number[] {
+  const result: number[] = [];
+
+  array.forEach(v => result.push(v));
+
+  return result;
 }

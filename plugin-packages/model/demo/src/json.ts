@@ -34,10 +34,10 @@ export async function loadScene (inPlayer) {
     addRealTimeTicker();
   }
   //
-  const scene = await getCurrentScene();
+  let scene = await getCurrentScene();
   const converter = new JsonConverter(player);
 
-  await converter.processScene(scene);
+  scene = await converter.processScene(scene);
   //
   if (!pending) {
     pending = true;
