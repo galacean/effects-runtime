@@ -308,9 +308,9 @@ describe('camera item', () => {
     const pos1 = comp1.camera.position;
     const val = new BezierCurvePath(lineatPath).getValue(0.5);
 
-    expect(pos1.x).to.eql(val[0], 'curve path');
-    expect(pos1.y).to.eql(val[1], 'curve path');
-    expect(pos1.z).to.eql(val[2], 'curve path');
+    expect(pos1.x).to.eql(val.x, 'curve path');
+    expect(pos1.y).to.eql(val.y, 'curve path');
+    expect(pos1.z).to.eql(val.z, 'curve path');
   });
 
   it('camera 2D item affected by parent', async () => {
