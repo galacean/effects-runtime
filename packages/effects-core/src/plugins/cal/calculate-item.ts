@@ -13,7 +13,7 @@ export type ItemBasicTransform = {
   position: Vector3,
   rotation: Euler,
   scale: Vector3,
-  path?: ValueGetter<spec.vec3>,
+  path?: ValueGetter<Vector3>,
 };
 
 export type ItemLinearVelOverLifetime = {

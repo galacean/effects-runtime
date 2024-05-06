@@ -1,5 +1,4 @@
 // @ts-nocheck
-
 window.Mars.registerFilters(window.MarsFilters.filters);
 
 const container = document.getElementById('J-container');

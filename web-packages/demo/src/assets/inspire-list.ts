@@ -26,7 +26,7 @@ export default {
     pass: true,
   },
   fireworks: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EDQRDRYRXERJ/551346662-76ba9.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*WXEqSadfOKcAAAAAAAAAAAAADlB4AQ',
     name: '烟花',
     pass: true,
   },
@@ -232,44 +232,39 @@ export default {
     name: '跨年烟花——烟花组合',
     pass: true,
   },
-  city: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HRMQQUJTBAVY/-1481002344-3d427.json',
-    name: '跨年烟花——城市背景',
+  WufuParticle0: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*qTquTKYbk6EAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*incgQLS6--IAAAAAAAAAAAAADlB4AQ',
+    name: '24五福烟花-步步高升',
     pass: true,
   },
-  yellow4: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/OXHAIUJACCID/-887962239-f315c.json',
-    name: '跨年烟花——黄4',
+  WufuParticle1: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*OzJ7QZTxFbUAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*9N1JS6tqGIEAAAAAAAAAAAAADlB4AQ',
+    name: '24五福烟花-江山如画',
     pass: true,
   },
-  orange: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EDTPYJOOGNML/-1090908152-baec0.json',
-    name: '跨年烟花——橙',
+  WufuParticle2: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*sEdkT5cdXGEAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*lke0TIDGOicAAAAAAAAAAAAADlB4AQ',
+    name: '24五福烟花-家和万事兴',
     pass: true,
   },
-  dream: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/UVJAJPDEFJAY/-617826901-dc284.json',
-    name: '跨年烟花——梦',
+  textParticle1: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*JS2GS4h_2REAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*JSn5QqpQRTQAAAAAAAAAAAAADlB4AQ',
+    name: '文字烟花-幸运',
     pass: true,
   },
-  orange2: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FBNFUWSACRAY/496136531-ca927.json',
-    name: '跨年烟花—橙烟花2',
-    pass: true,
-  },
-  tigerHead: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/ODJHRLCSFQUF/1912262535-47e13.json',
-    name: '跨年烟花——虎头',
-    pass: true,
-  },
-  whiteBlue2: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/NBKFNEIAXUIG/-510674142-4ff0d.json',
-    name: '跨年烟花——白蓝2',
-    pass: true,
-  },
-  yellow1: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/PLGJTAQNBEIO/-890732802-8d4c4.json',
-    name: '跨年烟花——黄1',
+  textParticle2: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*yjUxQLnBbJwAAAAAAAAAAAAADsF2AQ',
+    // 2.4版本JSON 旧player无法识别
+    // url: 'https://mdn.alipayobjects.com/mars/afts/file/A*AprpQpQarfIAAAAAAAAAAAAADlB4AQ',
+    name: '文字烟花-泼天富贵',
     pass: true,
   },
   // 弹窗
@@ -284,50 +279,10 @@ export default {
     pass: true,
   },
   WuFu1: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*pn-zQotSdEUAAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*7vwwSbbDZfwAAAAAAAAAAAAADlB4AQ',
     name: '五福弹窗',
     pass: true,
   },
-  // WuFu1_2: {
-  //     url: ' https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HDFQTNQGUQQP/-989527426-49aae.json',
-  //     name: '五福弹窗——福1_2',
-  //     pass: true,
-  // },
-  // WuFu1_3: {
-  //     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LRJGJPYXOERJ/-988603905-f565a.json',
-  //     name: '五福弹窗——福1_3',
-  //     pass: true,
-  // },
-  // WuFu1_4: {
-  //     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/PVDCTTEWTUJF/-987680384-cd3b0.json',
-  //     name: '五福弹窗——福1_4',
-  //     pass: true,
-  // },
-  // WuFu1_5: {
-  //     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/ITNCLJFINAQE/-986756863-fb546.json',
-  //     name: '五福弹窗——福1_5',
-  //     pass: true,
-  // },
-  // WuFu1_6: {
-  //     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/XOXWCFMRMVED/-985833342-99731.json',
-  //     name: '五福弹窗——福1_6',
-  //     pass: true,
-  // },
-  // WuFu1_7: {
-  //     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/QBMEAYDGYCBS/-984909821-cdb44.json',
-  //     name: '五福弹窗——福1_7',
-  //     pass: true,
-  // },
-  // WuFu1_8: {
-  //     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EXKDJKHQFUIV/-983986300-7b84c.json',
-  //     name: '五福弹窗——福1_8',
-  //     pass: true,
-  // },
-  // WuFu1_9: {
-  //     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/MFFHJURMGBEH/-983062779-468ca.json',
-  //     name: '五福弹窗——福1_9',
-  //     pass: true,
-  // },
   lighting: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WEPWUNCGNVQI/-1695824449-958ba.json',
     name: '闪光弹窗',
@@ -358,8 +313,11 @@ export default {
     name: '圆形弹窗',
     pass: true,
   },
+
   plain: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RJGLUHXYUYVU/751328825-319d7.json',
+    //透明度有random值  不兼容 不在规范
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RJGLUHXYUYVU/751328825-319d7.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*c-GcT7L3iCwAAAAAAAAAAAAADlB4AQ',
     name: '平淡弹窗',
     pass: true,
   },
@@ -457,10 +415,12 @@ export default {
   },
 
   // 故事
+
   fiveinone: {
+    // 透明度存在random值 不兼容 无法重新发布，用下方单独 JSON 测试
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WATVNRNSNIMG/-225780559-f11a1.json',
     name: '五福首页2022——五合一',
-    pass: true,
+    pass: false,
   },
   four: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/GRPXATAUECLT/49510158-65ef1.json',
@@ -478,7 +438,9 @@ export default {
     pass: true,
   },
   forest: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HUHNTRYCTBNX/-382630129-e18d6.json',
+    // 透明度有random值 不兼容
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HUHNTRYCTBNX/-382630129-e18d6.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*5APHSozLoaEAAAAAAAAAAAAADlB4AQ',
     name: '五福首页2022——森林',
     pass: true,
   },
@@ -488,17 +450,23 @@ export default {
     pass: true,
   },
   write: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FVKURDGLVCTO/-1407450823-e9f98.json',
+    // 透明度有random值 不兼容
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FVKURDGLVCTO/-1407450823-e9f98.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*-7nQTrlh6qQAAAAAAAAAAAAADlB4AQ',
     name: '五福首页2022——写福',
     pass: true,
   },
   scan: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/TCFWNOIAYQRL/-891621161-b18e1.json',
+    // 透明度有random值 不兼容
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/TCFWNOIAYQRL/-891621161-b18e1.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*GjAtTLy8tCsAAAAAAAAAAAAADlB4AQ',
     name: '五福首页2022——扫福',
     pass: true,
   },
   shake: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/CKGSSBJBJHMW/-1783558944-a64a3.json',
+    // 透明度有random值 不兼容
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/CKGSSBJBJHMW/-1783558944-a64a3.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*V0xHSI6yih4AAAAAAAAAAAAADlB4AQ',
     name: '五福首页2022——摇一摇',
     pass: true,
   },
@@ -527,8 +495,11 @@ export default {
     name: '支付宝2021——跑步',
     pass: true,
   },
+
   door: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EJAYICIVXVEB/1200639368-999bc.json',
+    // 路径曲线缺少控制点数据
+    // url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EJAYICIVXVEB/1200639368-999bc.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*XkbvQpf-_uwAAAAAAAAAAAAADlB4AQ',
     name: '支付宝2021——开门动画',
     pass: true,
   },
@@ -690,6 +661,17 @@ export default {
   suprise: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*J69-TpS3MjoAAAAAAAAAAAAADlB4AQ',
     name: '拼手气开奖',
+    pass: true,
+  },
+
+  midAutumn: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*E8WcRom4-4cAAAAAAAAAAAAADlB4AQ',
+    name: '支付宝会员中秋',
+    pass: true,
+  },
+  autumn2023: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*6fYqTZWauTkAAAAAAAAAAAAADlB4AQ',
+    name: '秋促2023',
     pass: true,
   },
   video: {

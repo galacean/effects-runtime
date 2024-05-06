@@ -1,32 +1,23 @@
 import type * as spec from '@galacean/effects-specification';
 import type { vec3, vec4, GradientStop } from '@galacean/effects-specification';
-import { Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
-import type { Matrix4 } from '@galacean/effects-math/es/core/index';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import {
-  createShaderWithMarcos,
-  getPreMultiAlpha,
-  Material,
-  setBlendMode,
-  setMaskMode,
-  ShaderType,
+  createShaderWithMarcos, getPreMultiAlpha, Material, setBlendMode, setMaskMode, ShaderType,
 } from '../../material';
-import {
-  createKeyFrameMeta,
-  createValueGetter,
-  CurveValue,
-  getKeyFrameMetaByRawValue,
-} from '../../math';
+import { createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue } from '../../math';
 import type { GeometryProps, ShaderMarcos, ShaderWithSource, GPUCapability } from '../../render';
 import { Geometry, GLSLVersion, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
 import { generateHalfFloatTexture, Texture } from '../../texture';
 import { imageDataFromGradient } from '../../utils';
 import type { Engine } from '../../engine';
-import type { ValueGetter } from '../../math';
 
 export type TrailMeshConstructor = {
   maxTrailCount: number,
@@ -96,6 +87,7 @@ export class TrailMesh {
       lifetime,
       matrix,
     } = props;
+
     const { detail, level } = engine.gpuCapability;
     const pointCountPerTrail = Math.max(props.pointCountPerTrail, 2);
     const keyFrameMeta = createKeyFrameMeta();
@@ -137,11 +129,11 @@ export class TrailMesh {
       ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
 
     if (enableVertexTexture && lookUpTexture) {
-      const tex = generateHalfFloatTexture(engine, CurveValue.getAllData(keyFrameMeta, true) as Uint16Array, keyFrameMeta.index, 1);
+      const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(keyFrameMeta, true) as Uint16Array, keyFrameMeta.index, 1);
 
       uniformValues.uVCurveValueTexture = tex;
     } else {
-      uniformValues.uVCurveValues = CurveValue.getAllData(keyFrameMeta);
+      uniformValues.uVCurveValues = ValueGetter.getAllData(keyFrameMeta);
     }
 
     const vertex = createShaderWithMarcos(marcos, trailVert, ShaderType.vertex, level);
@@ -231,8 +223,11 @@ export class TrailMesh {
       } else if (name === 'uVCurveValues') {
         const array: Vector4[] = [];
 
-        array.push(new Vector4(value[0], value[1], value[2], value[3]));
-        array.push(new Vector4(value[4], value[5], value[6], value[7]));
+        for (let i = 0; i < value.length; i = i + 4) {
+          const v = new Vector4(value[i], value[i + 1], value[i + 2], value[i + 3]);
+
+          array.push(v);
+        }
         material.setVector4Array(name, array);
       } else {
         material.setVector4(name, Vector4.fromArray(value));
