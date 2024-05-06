@@ -1,8 +1,7 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-orientation-transformer';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*ss_NQJcDY8wAAAAAAAAAAAAADlB4AQ';
-const bg = 'https://mdn.alipayobjects.com/mars/afts/file/A*DeAMQ6K7POoAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*boRsTqJ4QAkAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -10,7 +9,5 @@ const container = document.getElementById('J-container');
     container,
   });
 
-  await player.loadScene([
-    bg, json,
-  ]);
+  await player.loadScene(json);
 })();
