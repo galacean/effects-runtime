@@ -24,7 +24,7 @@ export class CameraController extends ItemBehaviour {
     fov: ValueGetter<number>,
   };
   private translateOverLifetime?: {
-    path?: ValueGetter<spec.vec3>,
+    path?: ValueGetter<Vector3>,
     x: ValueGetter<number>,
     y: ValueGetter<number>,
     z: ValueGetter<number>,
@@ -77,9 +77,7 @@ export class CameraController extends ItemBehaviour {
       if (translateOverLifetime.path) {
         const val = translateOverLifetime.path.getValue(lifetime);
 
-        position.x += val[0];
-        position.y += val[1];
-        position.z += val[2];
+        position.add(val);
       }
     }
     if (rotationOverLifetime) {

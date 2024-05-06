@@ -1,11 +1,11 @@
 // @ts-nocheck
-import { Player, VFXItem, ParticleSystem, PathSegments } from '@galacean/effects';
+import { Player, ParticleSystem, VFXItem, BezierCurvePath } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
 
 describe('effects-core/plugins/particle-transform', () => {
-  let player;
+  let player: Player;
 
   beforeEach(() => {
     player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
@@ -28,7 +28,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('set null parent transform', async () => {
     const comp = await generateComposition(player, [
-      { parentId: '1', type:'2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
+      { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '3', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2');
 
@@ -41,7 +41,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('set sprite parent transform', async () => {
     const comp = await generateComposition(player, [
-      { parentId: '1', type:'2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
+      { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '1', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2');
 
@@ -54,7 +54,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('set particle parent transform', async () => {
     const comp = await generateComposition(player, [
-      { parentId: '1', type:'2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
+      { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '2', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
     const item = comp.getItemByName('2');
 
@@ -67,7 +67,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('cascade null parent transform', async () => {
     const comp = await generateComposition(player, [
-      { parentId: '3', type:'2', id: 2, name: '2', transform: { position: [1, 0, 0] } },
+      { parentId: '3', type: '2', id: 2, name: '2', transform: { position: [1, 0, 0] } },
       { type: '3', id: '3', parentId: '1', transform: { position: [1, 0, 0] } },
       { type: '3', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
@@ -83,7 +83,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('cascade sprite parent transform', async () => {
     const comp = await generateComposition(player, [
-      { parentId: '3', type:'2', id: 2, name: '2', transform: { position: [1, 0, 0] } },
+      { parentId: '3', type: '2', id: 2, name: '2', transform: { position: [1, 0, 0] } },
       { type: '1', id: '3', parentId: '1', transform: { position: [1, 0, 0] } },
       { type: '1', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
@@ -99,7 +99,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('cascade sprite parent transform', async () => {
     const comp = await generateComposition(player, [
-      { parentId: '3', type:'2', id: 2, name: '2', transform: { position: [1, 0, 0] } },
+      { parentId: '3', type: '2', id: 2, name: '2', transform: { position: [1, 0, 0] } },
       { type: '2', id: '3', parentId: '1', transform: { position: [1, 0, 0] } },
       { type: '2', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
@@ -116,7 +116,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('cascade null and sprite parent transform', async () => {
     const comp = await generateComposition(player, [
-      { parentId: '3', type:'2', id: 2, name: '2', transform: { position: [1, 0, 0] } },
+      { parentId: '3', type: '2', id: 2, name: '2', transform: { position: [1, 0, 0] } },
       { type: '1', id: '3', parentId: '1', transform: { position: [1, 0, 0] } },
       { type: '3', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
@@ -132,7 +132,7 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('transform affects particle start position', async () => {
     const comp = await generateComposition(player, [
-      { id: 2, type:'2', name: '1', transform: { position: [1, 0, 0] } },
+      { id: 2, type: '2', name: '1', transform: { position: [1, 0, 0] } },
     ]);
 
     comp.forwardTime(1);
@@ -147,8 +147,8 @@ describe('effects-core/plugins/particle-transform', () => {
 
   it('world transform affects particle start position', async () => {
     const comp = await generateComposition(player, [
-      { id: 2, name: '1', type:'2', parentId: '1', transform: { position: [1, 0, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
-      { type:'3', id: '1', transform: { position: [1, 0, 0], rotation: [0, 0, 90], scale: [1, 1, 1] } },
+      { id: 2, name: '1', type: '2', parentId: '1', transform: { position: [1, 0, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
+      { type: '3', id: '1', transform: { position: [1, 0, 0], rotation: [0, 0, 90], scale: [1, 1, 1] } },
     ]);
 
     comp.forwardTime(1);
@@ -190,11 +190,9 @@ describe('effects-core/plugins/particle-transform', () => {
 
     expect(sanitizeNumbers(rotation)).to.eql([0, 0, -180]);
     expect(position.toArray()).to.eql([0, 0, 0]);
-    expect(path).to.be.an.instanceof(PathSegments);
-    expect(path.keys).to.eql([[0, 0, 1, 1], [1, 1, 1, 1]]);
-    expect(path.values).to.eql([[0, -1.5, -1], [0.2, 1.2, 0]]);
-    expect(ps.renderer.particleMesh.linearVelOverLifetime.asMovement).to.be.true;
-    expect(ps.renderer.particleMesh.speedOverLifetime).to.not.exist;
+    expect(path).to.be.an.instanceof(BezierCurvePath);
+    expect(ps.particleMesh.linearVelOverLifetime.asMovement).to.be.true;
+    expect(ps.particleMesh.speedOverLifetime).to.not.exist;
   });
 });
 

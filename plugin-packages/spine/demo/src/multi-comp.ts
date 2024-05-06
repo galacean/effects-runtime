@@ -10,6 +10,7 @@ const jsonList = [
   // 'https://mdn.alipayobjects.com/mars/afts/file/A*DVfLTIrQFGQAAAAAAAAAAAAADlB4AQ',
   // 'https://mdn.alipayobjects.com/mars/afts/file/A*0f-eS6SNpmkAAAAAAAAAAAAADlB4AQ',
   // 'https://mdn.alipayobjects.com/mars/afts/file/A*54V2R6A8jFcAAAAAAAAAAAAADlB4AQ',
+  'https://mdn.alipayobjects.com/mars/afts/file/A*6fYqTZWauTkAAAAAAAAAAAAADlB4AQ',
   'https://mdn.alipayobjects.com/mars/afts/file/A*W7MRT7ZOaLAAAAAAAAAAAAAADlB4AQ',
 ];
 
