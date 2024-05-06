@@ -8,6 +8,12 @@
 
 ---
 
+## 1.4.1
+
+`2024-05-06`
+
+- Fix: BEZIER_CURVE_PATH 计算返回都改为 Vector3。[#326](https://github.com/galacean/effects-runtime/pull/326) @RGCHN
+
 ## 1.4.0
 
 `2024-04-28`
@@ -20,9 +26,9 @@
 
 `2024-04-26`
 
-- Fix: Fixed a rendering order issue when multiple references to the same pre-composition element were made. [#312](https://github.com/galacean/effects-runtime/pull/312) @RGCHN
-- Fix: Addressed the issue where pre-composition elements were not created at initialization. [#309](https://github.com/galacean/effects-runtime/pull/309) @RGCHN
-- Fix: Resolved the issue where pre-composition scaling settings were not taking effect. [#296](https://github.com/galacean/effects-runtime/pull/296) @RGCHN
+- Fix: 修复多次引用同一个预合成元素的渲染顺序问题。[#312](https://github.com/galacean/effects-runtime/pull/312) @RGCHN
+- Fix: 预合成元素初始化时未创建的问题。[#309](https://github.com/galacean/effects-runtime/pull/309) @RGCHN
+- Fix: 修复预合成缩放设置不生效的问题。[#296](https://github.com/galacean/effects-runtime/pull/296) @RGCHN
 
 ## 1.3.1
 
