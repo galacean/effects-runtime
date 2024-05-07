@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from 'uuid';
 import type {
   FixedNumberExpression, RGBAColorValue, ColorExpression, NumberExpression, GradientColor,
   GradientStop, FixedVec3Expression, vec4, vec3, BezierKeyframeValue,
@@ -304,10 +303,6 @@ export function rotationZYXFromQuat (out: vec3 | number[], quat: vec4): vec3 {
   }
 
   return out as vec3;
-}
-
-export function generateGUID (): string {
-  return uuidv4().replace(/-/g, '');
 }
 
 /**

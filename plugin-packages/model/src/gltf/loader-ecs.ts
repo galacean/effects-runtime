@@ -96,6 +96,7 @@ export class LoaderECSImpl implements LoaderECS {
       const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
 
       return {
+        id: generateGUID(),
         url: URL.createObjectURL(blob),
       };
     });
@@ -808,7 +809,7 @@ export function getDefaultPBRMaterialData (): spec.MaterialData {
     'shader': {
       'id': 'pbr00000000000000000000000000000',
     },
-    'macros':[],
+    'macros': [],
     'ints': {
 
     },
@@ -860,7 +861,7 @@ export function getDefaultUnlitMaterialData (): spec.MaterialData {
     'shader': {
       'id': 'unlit000000000000000000000000000',
     },
-    'macros':[],
+    'macros': [],
     'ints': {
 
     },

@@ -1,6 +1,7 @@
 import type { JSONScene, JSONSceneLegacy, BaseContent } from '@galacean/effects-specification';
 import { ItemType, ItemEndBehavior, END_BEHAVIOR_FREEZE, DataType, CompositionEndBehavior } from '@galacean/effects-specification';
-import { convertAnchor, generateGUID, ensureFixedNumber, ensureFixedVec3 } from './utils';
+import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
+import { generateGUID } from '../utils';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -55,11 +56,18 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     geometries: [],
   };
 
+  // image数据添加 guid
+  for (const image of result.images) {
+    image.id = generateGUID();
+  }
+
   // 兼容老版本数据中不存在textures的情况
   result.textures ??= [];
   result.textures.forEach(textureOptions => {
     textureOptions.id = generateGUID();
     textureOptions.dataType = DataType.Texture;
+    // @ts-expect-error
+    textureOptions.source = { id: result.images[textureOptions.source].id };
   });
 
   if (result.textures.length < result.images.length) {
@@ -67,7 +75,8 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       result.textures.push({
         id: generateGUID(),
         dataType: DataType.Texture,
-        source: i,
+        //@ts-expect-error
+        source: { id: result.images[i].id },
         flipY: true,
       });
     }
