@@ -67,17 +67,10 @@ export class EffectComponent extends RendererComponent {
   }
 
   override render (renderer: Renderer) {
-    const material = this.material;
-    const geo = this.geometry;
-
     if (renderer.renderingData.currentFrame.globalUniforms) {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
-
-    // 执行 Geometry 的数据刷新
-    geo.flush();
-
-    renderer.drawGeometry(geo, material);
+    renderer.drawGeometry(this.geometry, this.material);
   }
 
   /**

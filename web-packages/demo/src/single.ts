@@ -13,7 +13,7 @@ const container = document.getElementById('J-container');
       container,
     });
 
-    await player.loadScene(json, {
+    await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*s4IgQru1WyEAAAAAAAAAAAAADlB4AQ', {
       variables: {
         'text1-bold': 'text1-bold',
         'text1': '1111111111111',
@@ -26,4 +26,3 @@ const container = document.getElementById('J-container');
     console.error('biz', e);
   }
 })();
-
