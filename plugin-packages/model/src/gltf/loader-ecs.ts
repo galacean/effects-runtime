@@ -791,8 +791,8 @@ export function getUnlitShaderProperties (): string {
   `;
 }
 
-export function getDefaultPBRMaterialData (): MaterialData {
-  const material: MaterialData = {
+export function getDefaultPBRMaterialData (): spec.MaterialData {
+  const material: spec.MaterialData = {
     'id': '00000000000000000000000000000000',
     'name': 'PBR Material',
     'dataType': spec.DataType.Material,
@@ -805,6 +805,7 @@ export function getDefaultPBRMaterialData (): MaterialData {
     'shader': {
       'id': 'pbr00000000000000000000000000000',
     },
+    'macros':[],
     'ints': {
 
     },
@@ -842,8 +843,8 @@ export function getDefaultPBRMaterialData (): MaterialData {
   return material;
 }
 
-export function getDefaultUnlitMaterialData (): MaterialData {
-  const material: MaterialData = {
+export function getDefaultUnlitMaterialData (): spec.MaterialData {
+  const material: spec.MaterialData = {
     'id': '00000000000000000000000000000000',
     'name': 'Unlit Material',
     'dataType': spec.DataType.Material,
@@ -856,6 +857,7 @@ export function getDefaultUnlitMaterialData (): MaterialData {
     'shader': {
       'id': 'unlit000000000000000000000000000',
     },
+    'macros':[],
     'ints': {
 
     },
