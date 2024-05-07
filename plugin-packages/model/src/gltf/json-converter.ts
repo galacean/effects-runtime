@@ -49,7 +49,7 @@ export class JsonConverter {
       compositions: [],
       compositionId: oldScene.compositionId,
       images: [],
-      shapes: [],
+      shapes: oldScene.shapes,
       plugins: oldScene.plugins,
       textures: [],
       items: [],
@@ -146,8 +146,7 @@ export class JsonConverter {
       } else if (comp.dataType === spec.DataType.MeshComponent) {
         newComponents.push(this.createMeshComponent(comp, newScene, oldScene));
       } else if (comp.dataType === spec.DataType.LightComponent) {
-        newComponents.push(comp);
-        console.warn('Find light component', comp);
+        newComponents.push(this.createLightComponent(comp, newScene));
       } else if (comp.dataType === spec.DataType.CameraComponent) {
         newComponents.push(comp);
         console.warn('Find camera component', comp);
@@ -338,6 +337,34 @@ export class JsonConverter {
     });
 
     this.treeNodes = itemList;
+  }
+
+  private createLightComponent (component: spec.ComponentData, scene: spec.JSONScene): spec.ModelLightComponentData {
+    const lightOptions = (component as unknown as spec.ModelLightContent).options;
+
+    const lightComponent: spec.ModelLightComponentData = {
+      id: component.id,
+      dataType: component.dataType,
+      item: component.item,
+      lightType: lightOptions.lightType as spec.LightType,
+      color: {
+        r: lightOptions.color[0] / 255.0,
+        g: lightOptions.color[1] / 255.0,
+        b: lightOptions.color[2] / 255.0,
+        a: lightOptions.color[3] / 255.0,
+      },
+      intensity: lightOptions.intensity,
+    };
+
+    if (lightOptions.lightType === 'point') {
+      lightComponent.range = lightOptions.range;
+    } else if (lightOptions.lightType === 'spot') {
+      lightComponent.range = lightOptions.range;
+      lightComponent.innerConeAngle = lightOptions.innerConeAngle;
+      lightComponent.outerConeAngle = lightOptions.outerConeAngle;
+    }
+
+    return lightComponent;
   }
 
   private getGeometryData (geometry: spec.GeometryOptionsJSON, scene: spec.JSONScene) {
