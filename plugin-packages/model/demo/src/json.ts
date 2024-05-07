@@ -2,6 +2,7 @@
 import { isObject } from '@galacean/effects';
 import { getPMeshList, getRendererGPUInfo } from '@galacean/effects-plugin-model';
 import { createButton, createPlayer, disposePlayer, createSlider, loadJsonFromURL } from './utility';
+import { JSONConverter } from '@galacean/effects-plugin-model';
 
 let player;
 let pending = false;
@@ -9,9 +10,11 @@ let currentTime = 0;
 let pauseOnFirstFrame = false;
 
 let infoElement;
-//const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
-//const url = './trail-demo.scene.json';
-const url = './long_text.json';
+let url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
+
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*sA-6TJ695dYAAAAAAAAAAAAADlB4AQ';
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ';
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*NPMMTbrZrJAAAAAAAAAAAAAADlB4AQ';
 
 const compatibleMode = 'tiny3d';
 
@@ -21,7 +24,7 @@ async function getCurrentScene () {
   }
 
   return loadJsonFromURL(url).then(scene => {
-    if (scene.imgUsage && Object.getOwnPropertyNames(scene.imgUsage).length === 0) {scene.imgUsage = undefined;}
+    if (scene.imgUsage && Object.getOwnPropertyNames(scene.imgUsage).length === 0) { scene.imgUsage = undefined; }
 
     return scene;
   });
@@ -33,8 +36,10 @@ export async function loadScene (inPlayer) {
     addRealTimeTicker();
   }
   //
-  const scene = await getCurrentScene();
+  let scene = await getCurrentScene();
+  const converter = new JSONConverter(player);
 
+  scene = await converter.processScene(scene);
   //
   if (!pending) {
     pending = true;
@@ -99,7 +104,7 @@ export function createUI () {
   infoElement.innerHTML = '<h4>加载中...</h4>';
   parentElement.appendChild(infoElement);
 
-  const demoInfo = document.getElementsByClassName('demo-info')[ 0 ];
+  const demoInfo = document.getElementsByClassName('demo-info')[0];
 
   demoInfo.appendChild(parentElement);
 }
@@ -129,7 +134,7 @@ function addRealTimeTicker () {
             skinTextureMode = true;
           }
           mesh.primitives.forEach(prim => {
-            if (prim.jointMatrixTexture?.isHalfFloat) {skinHalfFloat = true;}
+            if (prim.jointMatrixTexture?.isHalfFloat) { skinHalfFloat = true; }
           });
         });
         infoList.push(`<p>蒙皮信息: HalfFloat ${skinHalfFloat}, 纹理模式 ${skinTextureMode}</p>`);

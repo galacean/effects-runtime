@@ -54,8 +54,8 @@ export class TestPlayer {
     Math.seedrandom('mars-runtime');
     this.player.destroyCurrentCompositions();
     // getDefaultTemplateCanvasPool().dispose();
-    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false });
-    const json = await assetManager.loadScene(url);
+    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false }) as AssetManager;
+    const json = await assetManager.loadScene(url, (this.player as Player).renderer);
 
     // TODO 兼容函数，endbehaviour 改造后移除
     compatibleCalculateItem(json.jsonScene.compositions[0]);

@@ -15,6 +15,8 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
+import { ImageAsset } from './image-asset';
+import type { Engine } from './engine';
 
 let seed = 1;
 
@@ -170,7 +172,7 @@ export class AssetManager implements Disposable {
               images[i] = rawImages[i];
             }
           }
-          scene.images = await hookTimeInfo('processImages', () => this.processImages(images, scene.usedImages, compressedTexture));
+          scene.images = await hookTimeInfo('processImages', () => this.processImages(images, compressedTexture));
           // 更新 TextureOptions 中的 image 指向
           for (let i = 0; i < scene.images.length; i++) {
             scene.textureOptions[i].image = scene.images[i];
@@ -185,12 +187,21 @@ export class AssetManager implements Disposable {
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
-          hookTimeInfo('processImages', () => this.processImages(images, usedImages, compressedTexture)),
+          hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
           hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
 
+        for (let i = 0 ;i < images.length;i++) {
+          const imageAsset = new ImageAsset(renderer!.engine);
+
+          imageAsset.data = loadedImages[i];
+          //@ts-expect-error
+          imageAsset.setInstanceId(images[i].id);
+          renderer?.engine.addInstance(imageAsset);
+        }
+
         await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene, renderer!.engine));
 
         this.updateSceneData(jsonScene.items);
 
@@ -320,15 +331,11 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: any,
-    usage: Record<number, boolean>,
     compressedTexture: number,
   ): Promise<ImageSource[]> {
     const { useCompressedTexture, variables } = this.options;
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img: spec.Image, idx: number) => {
-      if (!usage[idx]) {
-        return undefined;
-      }
       const { url: png, webp } = img;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
@@ -412,6 +419,7 @@ export class AssetManager implements Disposable {
     images: any,
     bins: ArrayBuffer[],
     jsonScene: spec.JSONScene,
+    engine: Engine
   ) {
     const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
     const jobs = textures.map(async (texOpts, idx) => {
@@ -420,18 +428,18 @@ export class AssetManager implements Disposable {
       }
       if ('mipmaps' in texOpts) {
         try {
-          return await deserializeMipmapTexture(texOpts, bins, jsonScene.bins);
+          return await deserializeMipmapTexture(texOpts, bins, jsonScene.bins, engine);
         } catch (e) {
           throw new Error(`load texture ${idx} fails, error message: ${e}`);
         }
       }
       const { source } = texOpts;
 
-      // TODO: 测试代码，待移除
       let image: any;
 
-      if (typeof source === 'number') { // source 为 images 数组 id
-        image = images[source];
+      if (isObject(source)) { // source 为 images 数组 id
+        //@ts-expect-error
+        image = engine.assetLoader.loadGUID<ImageAsset>(source.id).data;
       } else if (typeof source === 'string') { // source 为 base64 数据
         image = await loadImage(base64ToFile(source));
       }

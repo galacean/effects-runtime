@@ -274,7 +274,7 @@ export class LoaderImpl implements Loader {
 
   createSkybox (ibl: GLTFImageBasedLight): Promise<ModelSkyboxOptions> {
     const reflectionsIntensity = ibl.reflectionsIntensity ?? ibl.intensity;
-    const irradianceCoeffs = ibl.irradianceCoefficients as number[][];
+    const irradianceCoeffs = ibl.irradianceCoefficients as unknown as number[];
     const inSpecularImages = ibl.specularImages as CubeImage[];
     const specularImages = inSpecularImages.map(images => {
       const newImages = images.map(img => {
@@ -311,7 +311,9 @@ export class LoaderImpl implements Loader {
   }
 
   createDefaultSkybox (typeName: SkyboxType): Promise<ModelSkyboxOptions> {
-    if (typeName !== 'NFT' && typeName !== 'FARM') { throw new Error(`Invalid skybox type name ${typeName}`); }
+    if (typeName !== 'NFT' && typeName !== 'FARM') {
+      throw new Error(`Invalid skybox type name ${typeName}`);
+    }
     //
     const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
     const params = PSkyboxCreator.getSkyboxParams(typ);
