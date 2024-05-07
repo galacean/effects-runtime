@@ -11,6 +11,7 @@ export class JsonConverter {
   engine: Engine;
   renderer: Renderer;
   downloader: Downloader;
+  treeNodes: spec.VFXItemData[] = [];
 
   constructor (player: Player) {
     this.engine = player.renderer.engine;
@@ -58,9 +59,11 @@ export class JsonConverter {
       geometries: [],
     };
 
+    this.treeNodes = [];
     this.setImage(newScene, oldScene);
     await this.setTexture(newScene, oldScene);
     this.setComponent(newScene, oldScene);
+    this.setItem(newScene, oldScene);
     this.setComposition(newScene, oldScene);
 
     return newScene;
@@ -151,6 +154,7 @@ export class JsonConverter {
       } else if (comp.dataType === spec.DataType.TreeComponent) {
         const treeComp = comp as unknown as ModelTreeContent;
 
+        this.createItemsFromTreeComponent(comp, newScene, oldScene);
         treeComp.options.tree.animation = undefined;
         treeComp.options.tree.animations = undefined;
         newComponents.push(comp);
@@ -160,10 +164,19 @@ export class JsonConverter {
     }
   }
 
+  setItem (newScene: spec.JSONScene, oldScene: spec.JSONScene) {
+
+  }
+
   setComposition (newScene: spec.JSONScene, oldScene: spec.JSONScene) {
     newScene.items = oldScene.items;
+    newScene.items.push(...this.treeNodes);
     newScene.compositionId = oldScene.compositionId;
     newScene.compositions = oldScene.compositions;
+    // @ts-expect-error
+    newScene.compositions[0].items = newScene.items.map(item => {
+      return { id: item.id } as spec.DataPath;
+    });
   }
 
   private async loadJSON (url: string) {
@@ -259,6 +272,72 @@ export class JsonConverter {
     };
 
     return meshComponent;
+  }
+
+  private createItemsFromTreeComponent (component: spec.ComponentData, newScene: spec.JSONScene, oldScene: spec.JSONScene) {
+    let treeItem = oldScene.items[0];
+
+    oldScene.items.forEach(item => {
+      if (item.id === component.item.id) {
+        treeItem = item;
+      }
+    });
+
+    const treeComp = component as unknown as ModelTreeContent;
+    const treeData = treeComp.options.tree;
+    const itemList: spec.VFXItemData[] = [];
+
+    treeData.nodes.forEach(node => {
+      const item: spec.VFXItemData = {
+        id: generateGUID(),
+        parentId: treeItem.id,
+        name: node.name ?? '<unnamed>',
+        duration: treeItem.duration,
+        type: 'ECS',
+        dataType: spec.DataType.VFXItemData,
+        visible: treeItem.visible,
+        endBehavior: treeItem.endBehavior,
+        delay: treeItem.delay,
+        content: {},
+        renderLevel: treeItem.renderLevel,
+        pn: treeItem.pn,
+        pluginName: treeItem.pluginName,
+        transform: this.getTransformData(node.transform),
+        components: [],
+      };
+
+      itemList.push(item);
+      newScene.items.push(item);
+    });
+
+    treeData.nodes.forEach((node, index) => {
+      const item = itemList[index];
+
+      node.children?.forEach(child => {
+        const childItem = itemList[child];
+
+        childItem.parentId = item.id;
+      });
+    });
+
+    oldScene.items.forEach(item => {
+      if (item.parentId) {
+        const index = item.parentId.indexOf('^');
+
+        if (index >= 0) {
+          const parentId = item.parentId.substring(0, index);
+          const subIndex = +item.parentId.substring(index + 1);
+
+          if (parentId === treeItem.id) {
+            item.parentId = itemList[subIndex].id;
+          } else {
+            console.error(`Invalid parent id ${item.parentId}`);
+          }
+        }
+      }
+    });
+
+    this.treeNodes = itemList;
   }
 
   private getGeometryData (geometry: spec.GeometryOptionsJSON, scene: spec.JSONScene) {
@@ -432,6 +511,45 @@ export class JsonConverter {
     }
 
     return texProperty;
+  }
+
+  private getTransformData (transform?: spec.BaseItemTransform) {
+    const result: spec.TransformData = {
+      position: { x: 0, y: 0, z: 0 },
+      eulerHint: { x: 0, y: 0, z: 0 },
+      scale: { x: 1, y: 1, z: 1 },
+    };
+
+    if (transform?.position) {
+      result.position.x = transform.position[0];
+      result.position.y = transform.position[1];
+      result.position.z = transform.position[2];
+    }
+
+    if (transform?.quat) {
+      // @ts-expect-error
+      result.quat = {};
+      // @ts-expect-error
+      result.quat.x = transform.quat[0];
+      // @ts-expect-error
+      result.quat.y = transform.quat[1];
+      // @ts-expect-error
+      result.quat.z = transform.quat[2];
+      // @ts-expect-error
+      result.quat.w = transform.quat[3];
+    } else if (transform?.rotation) {
+      result.eulerHint.x = transform.rotation[0];
+      result.eulerHint.y = transform.rotation[1];
+      result.eulerHint.z = transform.rotation[2];
+    }
+
+    if (transform?.scale) {
+      result.scale.x = transform.scale[0];
+      result.scale.y = transform.scale[1];
+      result.scale.z = transform.scale[2];
+    }
+
+    return result;
   }
 }
 
