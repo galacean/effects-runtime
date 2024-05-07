@@ -75,7 +75,6 @@ export class JSONConverter {
     const newImages: spec.Image[] = [];
 
     oldScene.images.forEach(image => {
-      // @ts-expect-error
       image.id = generateGUID();
       newImages.push(image);
     });
@@ -98,7 +97,6 @@ export class JSONConverter {
             const id = generateGUID();
             const sceneImage: spec.Image = {
               url: img,
-              // @ts-expect-error
               id,
             };
 
@@ -294,6 +292,7 @@ export class JSONConverter {
         parentId: treeItem.id,
         name: node.name ?? '<unnamed>',
         duration: treeItem.duration,
+        // @ts-expect-error
         type: 'ECS',
         dataType: spec.DataType.VFXItemData,
         visible: treeItem.visible,

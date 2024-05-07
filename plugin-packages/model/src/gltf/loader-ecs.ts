@@ -95,6 +95,7 @@ export class LoaderECSImpl implements LoaderECS {
       const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
 
       return {
+        id: generateGUID(),
         url: URL.createObjectURL(blob),
       };
     });
@@ -110,7 +111,6 @@ export class LoaderECSImpl implements LoaderECS {
         textureOptions.source = {
           id: imageId,
         };
-        // @ts-expect-error
         this.images[source].id = imageId;
       }
 
@@ -131,6 +131,7 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.lightsComponentData.forEach(comp => this.components.push(comp));
     gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
 
+    // @ts-expect-error
     this.items = [...gltfResource.scenes[0].vfxItemData];
 
     if (options.gltf.skyboxType) {
@@ -179,6 +180,7 @@ export class LoaderECSImpl implements LoaderECS {
 
     const gltfScene = scenes[0];
 
+    // @ts-expect-error
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
@@ -481,6 +483,7 @@ export class LoaderECSImpl implements LoaderECS {
       id: itemId,
       name: camera.name,
       duration: camera.duration,
+      // @ts-expect-error
       type: 'camera',
       pn: 0,
       visible: true,
@@ -530,7 +533,7 @@ export class LoaderECSImpl implements LoaderECS {
       type: spec.ItemType.skybox,
       pn: 0,
       visible: true,
-      endBehavior: spec.END_BEHAVIOR_FORWARD,
+      endBehavior: spec.ItemEndBehavior.freeze,
       transform: {
         position: {
           x: 0,

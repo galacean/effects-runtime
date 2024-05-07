@@ -6,8 +6,9 @@ import { VFXItem } from './vfx-item';
 export * as math from '@galacean/effects-math/es/core/index';
 export * as spec from '@galacean/effects-specification';
 export {
-  getStandardComposition, getStandardImage, getStandardItem, getStandardJSON,
-} from '@galacean/effects-specification/dist/fallback';
+  getStandardComposition, getStandardImage, getStandardItem, getStandardJSON, ensureFixedNumber,
+  normalizeColor,
+} from './fallback';
 export * from './asset-manager';
 export * from './camera';
 export * from './comp-vfx-item';

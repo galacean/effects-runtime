@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
+import { getStandardJSON } from './fallback';
 import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';
@@ -191,11 +191,10 @@ export class AssetManager implements Disposable {
           hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
 
-        for (let i = 0 ;i < images.length;i++) {
+        for (let i = 0; i < images.length; i++) {
           const imageAsset = new ImageAsset(renderer!.engine);
 
           imageAsset.data = loadedImages[i];
-          //@ts-expect-error
           imageAsset.setInstanceId(images[i].id);
           renderer?.engine.addInstance(imageAsset);
         }

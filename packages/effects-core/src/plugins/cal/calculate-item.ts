@@ -114,7 +114,7 @@ export class TimelineComponent extends ItemBehaviour {
         this.item.ended = true;
         this.item.onEnd();
 
-        if (endBehavior === spec.END_BEHAVIOR_DESTROY) {
+        if (endBehavior === spec.ItemEndBehavior.destroy) {
           for (const track of this.tracks) {
             for (const clip of track.getClips()) {
               clip.playable.onPlayableDestroy();
@@ -214,8 +214,8 @@ export class TimelineComponent extends ItemBehaviour {
     this.options = {
       start: this.item.start,
       duration: this.item.duration,
-      looping: this.item.endBehavior === spec.END_BEHAVIOR_RESTART,
-      endBehavior: this.item.endBehavior || spec.END_BEHAVIOR_DESTROY,
+      looping: this.item.endBehavior === spec.ItemEndBehavior.loop,
+      endBehavior: this.item.endBehavior || spec.ItemEndBehavior.destroy,
     };
     this.id = this.item.id;
     this.name = this.item.name;

@@ -154,8 +154,8 @@ importers:
         specifier: 1.1.0-alpha.0
         version: 1.1.0-alpha.0
       '@galacean/effects-specification':
-        specifier: 2.0.0-alpha.9
-        version: 2.0.0-alpha.9
+        specifier: 2.0.0-alpha.10
+        version: 2.0.0-alpha.10
       uuid:
         specifier: 9.0.1
         version: 9.0.1
@@ -216,8 +216,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: 0.6.0-alpha.3
-        version: 0.6.0-alpha.3
+        specifier: 0.6.0-alpha.4
+        version: 0.6.0-alpha.4
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -2655,8 +2655,13 @@ packages:
     engines: {node: '>=10.0.0'}
     dev: false
 
+  /@galacean/effects-specification@2.0.0-alpha.10:
+    resolution: {integrity: sha512-NusDTuD+HUVqTwAXRsYfZeqhwtHZZAxQh/aRpy4e5Oai4cM95DCeVX3s3OC0qjrRBbXpmHOKY41XiJ/TqxNkzA==}
+    dev: false
+
   /@galacean/effects-specification@2.0.0-alpha.9:
     resolution: {integrity: sha512-g8B/Q+rCit9A9cG04B8k9oVjp5Ll6o72OVuQv9MaWCxtk+VLXbdPzcnTVYNaSUd0Z0vg1LHbVtWxw9+3KdXnIg==}
+    dev: true
 
   /@headlessui/vue@1.7.19(vue@3.4.21):
     resolution: {integrity: sha512-VFjKPybogux/5/QYGSq4zgG/x3RcxId15W8uguAJAjPBxelI23dwjOjTx/mIiMkM/Hd3rzFxcf2aIp56eEWRcA==}
@@ -4261,8 +4266,8 @@ packages:
       - vue
     dev: true
 
-  /@vvfx/resource-detection@0.6.0-alpha.3:
-    resolution: {integrity: sha512-5QdwcWQcf9Fc1RAh8dg/Z8woVekCR6pydWig9r3fn66L30492W0ZgsQ5O5NOxapPfnJ8gyHymGjayrTDMoDVjw==}
+  /@vvfx/resource-detection@0.6.0-alpha.4:
+    resolution: {integrity: sha512-LeIUoJOM2D5+BDbATZxd3/2zUJEqQ+GECoWeYbqFyLA2THFpSpmXkCqGcezMhm8cgygj2z36stXLt1f4+2m1HQ==}
     engines: {node: '>=10.0.0'}
     dependencies:
       '@galacean/effects-specification': 2.0.0-alpha.9

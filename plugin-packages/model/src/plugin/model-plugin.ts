@@ -129,7 +129,7 @@ export class ModelPlugin extends AbstractPlugin {
       name: 'ModelPluginItem',
       duration: 9999999,
       endBehavior: spec.END_BEHAVIOR_FORWARD,
-    } as VFXItemProps;
+    } as unknown as VFXItemProps;
     const item = new VFXItem(composition.getEngine(), props);
 
     composition.addItem(item);
