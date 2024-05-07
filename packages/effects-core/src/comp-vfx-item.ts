@@ -37,7 +37,10 @@ export class CompositionComponent extends ItemBehaviour {
       if (timeline) {
         this.timelineComponents.push(timeline);
         // 重播不销毁元素
-        if (this.item.endBehavior !== spec.END_BEHAVIOR_DESTROY || this.timelineComponent.reusable) {
+        if (
+          this.item.endBehavior !== spec.ItemEndBehavior.destroy ||
+          this.timelineComponent.reusable
+        ) {
           timeline.reusable = true;
         }
       }
@@ -97,7 +100,7 @@ export class CompositionComponent extends ItemBehaviour {
           item.addComponent(CompositionComponent).refId = refId;
           item.transform.parentTransform = this.transform;
           this.item.composition.refContent.push(item);
-          if (item.endBehavior === spec.END_BEHAVIOR_RESTART) {
+          if (item.endBehavior === spec.ItemEndBehavior.loop) {
             this.item.composition.autoRefTex = false;
           }
           item.getComponent(CompositionComponent)!.createContent();

@@ -1,4 +1,5 @@
 import './composition';
+import './fallback';
 import './image-template/image-template.spec';
 import './interact/interact.spec';
 import './math';
@@ -12,4 +13,3 @@ import './plugins/sprite';
 import './assert-manager.spec';
 import './texture.spec';
 import './transform.spec';
-

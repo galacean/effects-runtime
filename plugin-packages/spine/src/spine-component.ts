@@ -106,7 +106,7 @@ export class SpineComponent extends RendererComponent {
   }
 
   override onDestroy () {
-    if (this.item.endBehavior === spec.END_BEHAVIOR_DESTROY && this.state) {
+    if (this.item.endBehavior === spec.ItemEndBehavior.destroy && this.state) {
       this.state.clearListeners();
       this.state.clearTracks();
     }

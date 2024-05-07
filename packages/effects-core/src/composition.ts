@@ -262,7 +262,7 @@ export class Composition implements Disposable, LostHandler {
     this.reusable = reusable;
     this.speed = speed;
     this.renderLevel = renderLevel;
-    this.autoRefTex = !this.keepResource && imageUsage && vfxItem.endBehavior !== spec.END_BEHAVIOR_RESTART;
+    this.autoRefTex = !this.keepResource && imageUsage && vfxItem.endBehavior !== spec.ItemEndBehavior.loop;
     this.rootItem = vfxItem;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
@@ -585,7 +585,7 @@ export class Composition implements Disposable, LostHandler {
   private shouldRestart () {
     const { ended, endBehavior } = this.rootItem;
 
-    return ended && endBehavior === spec.END_BEHAVIOR_RESTART;
+    return ended && endBehavior === spec.ItemEndBehavior.loop;
   }
 
   /**
@@ -598,6 +598,8 @@ export class Composition implements Disposable, LostHandler {
     }
     const { ended, endBehavior } = this.rootItem;
 
+    // TODO: 合成结束行为
+    // @ts-expect-error
     return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY);
   }
 
@@ -686,7 +688,7 @@ export class Composition implements Disposable, LostHandler {
       if (VFXItem.isComposition(child)) {
         if (
           child.ended &&
-          child.endBehavior === spec.END_BEHAVIOR_RESTART
+          child.endBehavior === spec.ItemEndBehavior.loop
         ) {
           child.getComponent(CompositionComponent)!.resetStatus();
           // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
@@ -932,7 +934,7 @@ export class Composition implements Disposable, LostHandler {
   destroyItem (item: VFXItem<VFXItemContent>) {
     // 预合成元素销毁时销毁其中的item
     if (item.type == spec.ItemType.composition) {
-      if (item.endBehavior !== spec.END_BEHAVIOR_FREEZE) {
+      if (item.endBehavior !== spec.ItemEndBehavior.freeze) {
         const contentItems = item.getComponent(CompositionComponent)!.items;
 
         contentItems.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));

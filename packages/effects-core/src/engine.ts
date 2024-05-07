@@ -110,7 +110,9 @@ export class Engine implements Disposable {
       const itemType = itemData.type;
 
       if (!(
+        // @ts-expect-error
         itemType === 'ECS' ||
+        // @ts-expect-error
         itemType === 'camera' ||
         itemType === spec.ItemType.sprite ||
         itemType === spec.ItemType.particle ||

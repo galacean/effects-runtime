@@ -446,12 +446,12 @@ export class ParticleSystem extends Component {
           this.onEnd(this);
           const endBehavior = this.item.endBehavior;
 
-          if (endBehavior === spec.END_BEHAVIOR_FREEZE) {
+          if (endBehavior === spec.ItemEndBehavior.freeze) {
             this.frozen = true;
           }
         }
       } else if (this.item.endBehavior !== spec.ItemEndBehavior.loop) {
-        if (spec.END_BEHAVIOR_DESTROY === this.item.endBehavior) {
+        if (spec.ItemEndBehavior.destroy === this.item.endBehavior) {
           const node = link.last;
 
           if (node && (node.content[0]) < this.lastUpdate) {

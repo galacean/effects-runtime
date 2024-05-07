@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import { getStandardJSON } from '@galacean/effects-specification/dist/fallback';
+import { getStandardJSON } from './fallback';
 import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';

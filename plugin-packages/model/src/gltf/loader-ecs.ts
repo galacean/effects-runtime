@@ -116,6 +116,7 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.lightsComponentData.forEach(comp => this.components.push(comp));
     gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
 
+    // @ts-expect-error
     this.items = [...gltfResource.scenes[0].vfxItemData];
 
     return this.getLoadResult();
@@ -157,6 +158,7 @@ export class LoaderECSImpl implements LoaderECS {
 
     const gltfScene = scenes[0];
 
+    // @ts-expect-error
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
@@ -459,6 +461,7 @@ export class LoaderECSImpl implements LoaderECS {
       id: itemId,
       name: camera.name,
       duration: camera.duration,
+      // @ts-expect-error
       type: 'camera',
       pn: 0,
       visible: true,
