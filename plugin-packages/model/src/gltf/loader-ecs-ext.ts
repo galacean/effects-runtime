@@ -56,7 +56,6 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       playAnimation: options.playAnimation,
     },
   }).then(result => {
-
     const sceneMin = Vector3.fromArray(result.sceneAABB.min);
     const sceneMax = Vector3.fromArray(result.sceneAABB.max);
     const sceneAABB = new Box3(sceneMin, sceneMax);

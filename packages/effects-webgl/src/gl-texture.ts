@@ -297,10 +297,12 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const magFilter = options.magFilter ? options.magFilter : gl.NEAREST;
 
     if (!isPot) {
-      if (minFilter === gl.LINEAR_MIPMAP_LINEAR
-      || minFilter === gl.LINEAR_MIPMAP_NEAREST
-      || minFilter === gl.NEAREST_MIPMAP_LINEAR
-      || minFilter === gl.NEAREST_MIPMAP_NEAREST) {
+      if (
+        minFilter === gl.LINEAR_MIPMAP_LINEAR ||
+        minFilter === gl.LINEAR_MIPMAP_NEAREST ||
+        minFilter === gl.NEAREST_MIPMAP_LINEAR ||
+        minFilter === gl.NEAREST_MIPMAP_NEAREST
+      ) {
         minFilter = gl.LINEAR;
       }
     }

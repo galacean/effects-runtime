@@ -16,7 +16,6 @@ import type {
   GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
   GLTFCamera, GLTFAnimation, GLTFResources,
 } from '@vvfx/resource-detection';
-
 import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 
 export class LoaderECSImpl implements LoaderECS {
@@ -888,7 +887,7 @@ export function getDefaultPBRMaterialData (): spec.MaterialData {
       'RenderType': 'Opaque',
       'Cull': 'Front',
     },
-    'macros':[],
+    'macros': [],
     'shader': {
       'id': 'pbr00000000000000000000000000000',
     },
@@ -940,7 +939,7 @@ export function getDefaultUnlitMaterialData (): spec.MaterialData {
       'RenderType': 'Opaque',
       'Cull': 'Front',
     },
-    'macros':[],
+    'macros': [],
     'shader': {
       'id': 'unlit000000000000000000000000000',
     },

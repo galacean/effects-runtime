@@ -1,11 +1,13 @@
 import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON } from '@galacean/effects';
-import type { Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps } from '@galacean/effects';
+import type {
+  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
+} from '@galacean/effects';
 import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
 import { Color } from '../runtime/math';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { ModelTreeContent } from '../index';
 
-export class JsonConverter {
+export class JSONConverter {
   newScene: spec.JSONScene;
 
   engine: Engine;
@@ -88,7 +90,7 @@ export class JsonConverter {
     if (oldScene.textures) {
       for (const tex of oldScene.textures) {
         if (tex.target === 34067) {
-          const { mipmaps, target } = tex as spec.SerializedTextureCube;
+          const { mipmaps, target } = tex;
           const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => this.loadMipmapImage(pointer, bins))));
           const loadedMipmaps = await Promise.all(jobs);
 
