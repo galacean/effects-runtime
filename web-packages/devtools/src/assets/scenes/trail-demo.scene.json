@@ -1,35 +1,43 @@
 {
   "images": [
     {
+      "id": "6f693750701744338d45b60767f88625",
       "url": "https://mdn.alipayobjects.com/mars/afts/img/A*MeN0T6slLYEAAAAAAAAAAAAADlB4AQ/original",
       "webp": "https://mdn.alipayobjects.com/mars/afts/img/A*8ZhTRa_BlToAAAAAAAAAAAAADlB4AQ/original",
       "renderLevel": "B+"
     },
     {
+      "id": "39f9cb18aa774cbda9929a1d63b56876",
       "url": "../src/assets/textures/trail.png",
       "renderLevel": "B+"
     },
     {
+      "id": "23e992d05f7b49ff898b755899de7fe8",
       "url": "../src/assets/textures/ge.png",
       "renderLevel": "B+"
     },
     {
+      "id": "332068e1dee04ab79557efb5553a2876",
       "url": "https://mdn.alipayobjects.com/mars/afts/img/A*XrKtT5cF_58AAAAAAAAAAAAADlB4AQ/original",
       "renderLevel": "B+"
     },
     {
+      "id": "b3ea5544969546ecb76ce46afaf43d10",
       "url": "../src/assets/textures/trail2.png",
       "renderLevel": "B+"
     },
     {
+      "id": "7d1a8ec80cb349628ca83a0f90b07b4c",
       "url": "../src/assets/textures/trail3.png",
       "renderLevel": "B+"
     },
     {
+      "id": "ddc3558ba5d14b52a12685da0de5ac21",
       "url": "../src/assets/textures/trail5.png",
       "renderLevel": "B+"
     },
     {
+      "id": "4182340a9f1342c084f9bf340ed8c8f6",
       "url": "../src/assets/textures/ge-icon.png",
       "renderLevel": "B+"
     }
@@ -939,7 +947,9 @@
       "magFilter": 9729,
       "id": "c8e75e0b46a44b9ca6e9c98b9b461f37",
       "dataType": "Texture",
-      "source": 0,
+      "source": {
+        "id": "6f693750701744338d45b60767f88625"
+      },
       "flipY": true
     },
     {
@@ -953,7 +963,9 @@
       "magFilter": 9729,
       "id": "0622cbce2a724bec976e09988f192ee9",
       "dataType": "Texture",
-      "source": 1,
+      "source": {
+        "id": "39f9cb18aa774cbda9929a1d63b56876"
+      },
       "flipY": true,
       "wrapS": 10497,
       "wrapT": 10497
@@ -969,7 +981,9 @@
       "magFilter": 9729,
       "id": "05d2cdc5814b412aa69b1a5e794aeca8",
       "dataType": "Texture",
-      "source": 2,
+      "source": {
+        "id": "23e992d05f7b49ff898b755899de7fe8"
+      },
       "flipY": false,
       "wrapS": 10497,
       "wrapT": 10497
@@ -985,7 +999,9 @@
       "magFilter": 9729,
       "id": "83f7b031365f481192873e908fd442a6",
       "dataType": "Texture",
-      "source": 3,
+      "source": {
+        "id": "332068e1dee04ab79557efb5553a2876"
+      },
       "flipY": true
     },
     {
@@ -999,7 +1015,9 @@
       "magFilter": 9729,
       "id": "080f94ebcff64c81a67f31187015697e",
       "dataType": "Texture",
-      "source": 4,
+      "source": {
+        "id": "b3ea5544969546ecb76ce46afaf43d10"
+      },
       "flipY": true,
       "wrapS": 10497,
       "wrapT": 10497
@@ -1015,7 +1033,9 @@
       "magFilter": 9729,
       "id": "69c42f62abcb4962803df425a65b7281",
       "dataType": "Texture",
-      "source": 5,
+      "source": {
+        "id": "7d1a8ec80cb349628ca83a0f90b07b4c"
+      },
       "flipY": true,
       "wrapS": 10497,
       "wrapT": 10497
@@ -1031,7 +1051,9 @@
       "magFilter": 9729,
       "id": "8f33267d4f8647acbc51f34d2fe1a428",
       "dataType": "Texture",
-      "source": 6,
+      "source": {
+        "id": "ddc3558ba5d14b52a12685da0de5ac21"
+      },
       "flipY": true,
       "wrapS": 10497,
       "wrapT": 10497
@@ -1047,10 +1069,43 @@
       "magFilter": 9729,
       "id": "82d245433af641d48d670bace307a9fe",
       "dataType": "Texture",
-      "source": 7,
+      "source": {
+        "id": "4182340a9f1342c084f9bf340ed8c8f6"
+      },
       "flipY": true,
       "wrapS": 10497,
       "wrapT": 10497
+    },
+    {
+      "id": "bf727a3e283a4142b0e630dd6dccd420",
+      "dataType": "Texture",
+      "minFilter": 9987,
+      "magFilter": 9729,
+      "wrapS": 33071,
+      "wrapT": 33071,
+      "target": 34067,
+      "format": 6408,
+      "internalFormat": 6408,
+      "type": 5121,
+      "mipmaps": [
+        [
+          {"id": "6f693750701744338d45b60767f88625"},
+          {"id": "6f693750701744338d45b60767f88625"},
+          {"id": "6f693750701744338d45b60767f88625"},
+          {"id": "6f693750701744338d45b60767f88625"},
+          {"id": "6f693750701744338d45b60767f88625"},
+          {"id": "6f693750701744338d45b60767f88625"}
+        ],
+        [
+          {"id": "39f9cb18aa774cbda9929a1d63b56876"},
+          {"id": "39f9cb18aa774cbda9929a1d63b56876"},
+          {"id": "39f9cb18aa774cbda9929a1d63b56876"},
+          {"id": "39f9cb18aa774cbda9929a1d63b56876"},
+          {"id": "39f9cb18aa774cbda9929a1d63b56876"},
+          {"id": "39f9cb18aa774cbda9929a1d63b56876"}
+        ]
+      ],
+      "sourceType": 7
     }
   ]
 }

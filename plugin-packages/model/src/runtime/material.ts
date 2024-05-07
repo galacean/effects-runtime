@@ -186,13 +186,13 @@ export abstract class PMaterialBase extends PObject {
   setMaterialStates (material: Material) {
     if (this.renderType === RenderType.Blend) {
       material.blending = true;
-      material.depthTest = true;
+      material.depthTest = this.ZTest;
+      material.depthMask = this.ZWrite;
       material.blendEquation = [glContext.FUNC_ADD, glContext.FUNC_ADD];
       material.blendFunction = [
         glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
         glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA,
       ];
-      material.depthMask = this.ZWrite;
     } else {
       if (PGlobalState.getInstance().isTiny3dMode) {
         material.blending = false;

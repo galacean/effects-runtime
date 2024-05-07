@@ -1,5 +1,5 @@
-import type { spec, Mesh, Material, TextureSourceOptions, Engine, Renderer } from '@galacean/effects';
-import { glContext, Texture, TextureSourceType, loadImage } from '@galacean/effects';
+import type { Mesh, Material, TextureSourceOptions, Engine, Renderer } from '@galacean/effects';
+import { spec, glContext, Texture, TextureSourceType, loadImage, generateGUID } from '@galacean/effects';
 import type { ModelSkyboxComponentData, ModelSkyboxOptions } from '../index';
 import { PObjectType, PMaterialType } from './common';
 import { PEntity } from './object';
@@ -386,7 +386,7 @@ export interface PSkyboxBaseParams {
   /**
    * 辐射照度系数
    */
-  irradianceCoeffs?: number[][],
+  irradianceCoeffs?: number[],
   /**
    * 高光贴图 Mip 层数
    */
@@ -499,6 +499,7 @@ export class PSkyboxCreator {
       renderable,
       intensity,
       reflectionsIntensity,
+      // @ts-expect-error
       irradianceCoeffs,
       diffuseImage,
       specularImage,
@@ -507,6 +508,57 @@ export class PSkyboxCreator {
     };
 
     return skyboxOptions;
+  }
+
+  /**
+   * 创建天空盒选项
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 天空盒选项
+   */
+  static createSkyboxComponentData (engine: Engine, params: PSkyboxParams) {
+    const specularCubeData = this.getSpecularCubeMapData(engine, params);
+    const diffuseCubeData = this.getDiffuseCubeMapData(engine, params);
+    const { renderable, intensity, reflectionsIntensity, irradianceCoeffs, specularImageSize, specularMipCount } = params;
+
+    let diffuseImage: spec.DataPath;
+    const imageList: spec.Image[] = [];
+    const textureOptionsList: TextureSourceOptions[] = [];
+
+    if (diffuseCubeData) {
+      imageList.push(...diffuseCubeData.images);
+      textureOptionsList.push(diffuseCubeData.textureOptions);
+      diffuseImage = {
+        id: diffuseCubeData.textureOptions.id!,
+      };
+    }
+    imageList.push(...specularCubeData.images);
+    textureOptionsList.push(specularCubeData.textureOptions);
+    const specularImage = { id: specularCubeData.textureOptions.id };
+
+    const componentData: ModelSkyboxComponentData = {
+      id: generateGUID(),
+      dataType: spec.DataType.SkyboxComponent,
+      item: {
+        id: generateGUID(),
+      },
+      renderable,
+      intensity,
+      reflectionsIntensity,
+      irradianceCoeffs,
+      // @ts-expect-error
+      diffuseImage,
+      // @ts-expect-error
+      specularImage,
+      specularImageSize,
+      specularMipCount,
+    };
+
+    return {
+      imageList,
+      textureOptionsList,
+      component: componentData,
+    };
   }
 
   /**
@@ -530,6 +582,41 @@ export class PSkyboxCreator {
     }
   }
 
+  static getSpecularCubeMapData (engine: Engine, params: PSkyboxParams) {
+    const imageDatas: spec.Image[] = [];
+    const mipmaps: spec.DataPath[][] = [];
+
+    params.specularImage.forEach(cubemap => {
+      const mipmap: spec.DataPath[] = [];
+
+      cubemap.forEach(image => {
+        const imageId = generateGUID();
+
+        imageDatas.push({
+          id: imageId,
+          // @ts-expect-error
+          url: image,
+        });
+        mipmap.push({ id: imageId });
+      });
+      mipmaps.push(mipmap);
+    });
+    const textureOptions: TextureSourceOptions = {
+      id: generateGUID(),
+      dataType: spec.DataType.Texture,
+      sourceType: TextureSourceType.mipmaps,
+      target: glContext.TEXTURE_CUBE_MAP,
+      // @ts-expect-error
+      mipmaps,
+      ...WebGLHelper.cubemapMipTexConfig,
+    };
+
+    return {
+      images: imageDatas,
+      textureOptions,
+    };
+  }
+
   /**
    * 创建漫反射纹理
    * @param engine - 引擎
@@ -544,6 +631,41 @@ export class PSkyboxCreator {
     } else {
       return WebGLHelper.createTextureCubeFromBuffer(engine, params.diffuseImage);
     }
+  }
+
+  static getDiffuseCubeMapData (engine: Engine, params: PSkyboxParams) {
+    if (params.diffuseImage === undefined) {
+      return;
+    }
+
+    const imageDatas: spec.Image[] = [];
+    const cubemap: spec.DataPath[] = [];
+
+    params.diffuseImage.forEach(image => {
+      const imageId = generateGUID();
+
+      imageDatas.push({
+        id: imageId,
+        // @ts-expect-error
+        url: image,
+      });
+      cubemap.push({ id: imageId });
+    });
+
+    const textureOptions: TextureSourceOptions = {
+      id: generateGUID(),
+      dataType: spec.DataType.Texture,
+      sourceType: TextureSourceType.mipmaps,
+      target: glContext.TEXTURE_CUBE_MAP,
+      // @ts-expect-error
+      mipmaps: [cubemap],
+      ...WebGLHelper.cubemapTexConfig,
+    };
+
+    return {
+      images: imageDatas,
+      textureOptions,
+    };
   }
 
   /**
@@ -594,7 +716,7 @@ export class PSkyboxCreator {
     }
   }
 
-  private static getIrradianceCoeffs (skyboxType: PSkyboxType): number[][] | undefined {
+  private static getIrradianceCoeffs (skyboxType: PSkyboxType): number[] | undefined {
     let dataArray: number[] = [];
 
     switch (skyboxType) {
@@ -623,11 +745,7 @@ export class PSkyboxCreator {
         break;
     }
 
-    const returnArray: number[][] = [];
-
-    for (let i = 0; i < dataArray.length; i += 3) { returnArray.push([dataArray[i], dataArray[i + 1], dataArray[i + 2]]); }
-
-    return returnArray;
+    return dataArray;
   }
 
   private static getDiffuseImageList (skyboxType: PSkyboxType, images: string[][]): string[] | undefined {
