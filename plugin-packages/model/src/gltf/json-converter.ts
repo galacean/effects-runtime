@@ -184,7 +184,7 @@ export class JsonConverter {
         url,
         resolve,
         (status, responseText) => {
-          reject(`Couldn't load JSON ${JSON.stringify(url)}: status ${status}, ${responseText}`);
+          reject(new Error(`Couldn't load JSON ${JSON.stringify(url)}: status ${status}, ${responseText}`));
         });
     });
   }
