@@ -1,5 +1,6 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
+import '@galacean/effects-plugin-spine';
 import '@galacean/effects-plugin-orientation-transformer';
 import { compatibleCalculateItem } from '../common/utils';
 

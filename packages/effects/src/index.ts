@@ -3,8 +3,8 @@ import type {
   TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
 import {
-  FrameBuffer, Geometry, glContext, imageDataFromColor, Material,
-  Mesh, RenderBuffer, Renderer, Texture, TextureSourceType, Engine, logger,
+  FrameBuffer, Geometry, glContext, imageDataFromColor, Material, Mesh, RenderBuffer,
+  Renderer, Texture, TextureSourceType, Engine, logger,
 } from '@galacean/effects-core';
 import {
   GLFrameBuffer, GLGeometry, GLMaterial, GLRenderBuffer, GLRenderer, GLTexture, GLEngine,

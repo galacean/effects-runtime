@@ -6,6 +6,29 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+
+## 1.4.1
+
+`2024-05-06`
+
+- Fix: Changed all calculations returning from BEZIER_CURVE_PATH to Vector3. [#326](https://github.com/galacean/effects-runtime/pull/326) @RGCHN
+
+## 1.4.0
+
+`2024-04-28`
+
+- Feat: Added support for Bezier velocity and path curve processing. [#288](https://github.com/galacean/effects-runtime/pull/288) @RGCHN
+- Fix: Fixed issues with Bezier integration and occasional stuttering of some particles. [#305](https://github.com/galacean/effects-runtime/pull/305) @RGCHN
+- Test: Updated unit tests related to curves. [#318](https://github.com/galacean/effects-runtime/pull/318) @RGCHN
+
+## 1.3.2
+
+`2024-04-26`
+
+- Fix: Fixed a rendering order issue when multiple references to the same pre-composition element were made. [#312](https://github.com/galacean/effects-runtime/pull/312) @RGCHN
+- Fix: Addressed the issue where pre-composition elements were not created at initialization. [#309](https://github.com/galacean/effects-runtime/pull/309) @RGCHN
+- Fix: Resolved the issue where pre-composition scaling settings were not taking effect. [#296](https://github.com/galacean/effects-runtime/pull/296) @RGCHN
+
 ## 1.3.1
 
 `2024-04-19`

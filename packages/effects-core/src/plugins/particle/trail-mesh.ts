@@ -7,13 +7,9 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
-import {
-  Material,
-  getPreMultiAlpha,
-  setBlendMode, setMaskMode,
-} from '../../material';
-import type { ValueGetter } from '../../math';
-import { CurveValue, createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue } from '../../math';
+import { Material, getPreMultiAlpha, setBlendMode, setMaskMode } from '../../material';
+import { ValueGetter } from '../../math';
+import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue } from '../../math';
 import type { GPUCapability, GeometryProps, ShaderMarcos, ShaderWithSource } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
@@ -87,6 +83,7 @@ export class TrailMesh {
       lifetime,
       matrix,
     } = props;
+
     const { detail, level } = engine.gpuCapability;
     const pointCountPerTrail = Math.max(props.pointCountPerTrail, 2);
     const keyFrameMeta = createKeyFrameMeta();
@@ -128,11 +125,11 @@ export class TrailMesh {
       ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
 
     if (enableVertexTexture && lookUpTexture) {
-      const tex = generateHalfFloatTexture(engine, CurveValue.getAllData(keyFrameMeta, true) as Uint16Array, keyFrameMeta.index, 1);
+      const tex = generateHalfFloatTexture(engine, ValueGetter.getAllData(keyFrameMeta, true) as Uint16Array, keyFrameMeta.index, 1);
 
       uniformValues.uVCurveValueTexture = tex;
     } else {
-      uniformValues.uVCurveValues = CurveValue.getAllData(keyFrameMeta);
+      uniformValues.uVCurveValues = ValueGetter.getAllData(keyFrameMeta);
     }
 
     const vertex = trailVert;
@@ -222,8 +219,11 @@ export class TrailMesh {
       } else if (name === 'uVCurveValues') {
         const array: Vector4[] = [];
 
-        array.push(new Vector4(value[0], value[1], value[2], value[3]));
-        array.push(new Vector4(value[4], value[5], value[6], value[7]));
+        for (let i = 0; i < value.length; i = i + 4) {
+          const v = new Vector4(value[i], value[i + 1], value[i + 2], value[i + 3]);
+
+          array.push(v);
+        }
         material.setVector4Array(name, array);
       } else {
         material.setVector4(name, Vector4.fromArray(value));
