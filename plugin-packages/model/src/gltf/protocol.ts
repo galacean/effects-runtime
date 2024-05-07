@@ -5,7 +5,6 @@ import type {
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
 import type {
   spec, Renderer, Texture, Geometry, TextureSourceOptions, EffectComponentData,
-  MaterialData,
 } from '@galacean/effects';
 import type {
   ModelAnimationOptions, ModelMaterialOptions, ModelSkyboxOptions, ModelTreeOptions,
@@ -144,7 +143,7 @@ export interface LoaderECS {
 
   processSkyboxComponentData (skybox: ModelSkyboxComponentData): void,
 
-  processMaterialData (material: MaterialData): void,
+  processMaterialData (material: spec.MaterialData): void,
 
   processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean): void,
 }
