@@ -1,11 +1,11 @@
 // @ts-nocheck
 import { Player, spec } from '@galacean/effects';
-import { loadSceneAndPlay, sanitizeNumbers, generateSceneJSON } from './utils';
+import { loadSceneAndPlay, sanitizeNumbers } from './utils';
 
 const { expect } = chai;
 
 describe('sprite transform', () => {
-  let player;
+  let player: Player;
 
   before(() => {
     player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
@@ -42,14 +42,64 @@ describe('sprite transform', () => {
     const items = generateItem(opts);
 
     items.map(item => {
-      item.content.positionOverLifetime.path = [7, [[[0, 0, 1, 1], [0.375, 0.375, 1, 1], [1, 0.375, 1, 1]], [[0, 0, 0], [2, 1.5, 0], [2, 1.5, 0]], [[1, 0, -0], [1, 1.5, -0], [2, 1.5, -0], [2, 1.5, -0]]]];
+      item.content.positionOverLifetime.path = [
+        22,
+        [
+          [
+            [
+              3,
+              [
+                0,
+                0,
+                0.0667,
+                0,
+              ],
+              1,
+            ],
+            [
+              2,
+              [
+                0.1333,
+                1,
+                0.2,
+                1,
+              ],
+              1,
+            ],
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+            ],
+            [
+              1,
+              2,
+              0,
+            ],
+          ],
+          [
+            [
+              0.3333,
+              0.6667,
+              0,
+            ],
+            [
+              0.6667,
+              1.3333,
+              0,
+            ],
+          ],
+        ],
+      ];
     });
     const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
     const item = comp.getItemByName('sprite_1');
     const worldTransform = item.getWorldTransform();
 
     const pos = worldTransform.position.toArray();
-    const epsilon = [Math.abs(pos[0] - 2), Math.abs(pos[1] - 1.5), Math.abs(pos[2] - 0)];
+    const epsilon = [Math.abs(pos[0] - 1), Math.abs(pos[1] - 2), Math.abs(pos[2] - 0)];
 
     expect(epsilon[0]).to.be.closeTo(0, 0.001);
     expect(epsilon[1]).to.be.closeTo(0, 0.001);
@@ -124,15 +174,132 @@ describe('sprite transform', () => {
     ];
     const items = generateItem(opts);
 
-    items[0].content.positionOverLifetime.path = [7, [[[0, 0, 1, 1], [0.375, 0.375, 1, 1], [1, 0.375, 1, 1]], [[0, 0, 0], [2, 1.5, 0], [2, 1.5, 0]], [[1, 0, -0], [1, 1.5, -0], [2, 1.5, -0], [2, 1.5, -0]]]];
+    items[0].content.positionOverLifetime.path =
+      [
+        22,
+        [
+          [
+            [
+              3,
+              [
+                0,
+                0,
+                0.0667,
+                0,
+              ],
+              1,
+            ],
+            [
+              2,
+              [
+                0.1333,
+                1,
+                0.2,
+                1,
+              ],
+              1,
+            ],
+          ],
+          [
+            [
+              0,
+              0,
+              0,
+            ],
+            [
+              1,
+              2,
+              0,
+            ],
+          ],
+          [
+            [
+              0.3333,
+              0.6667,
+              0,
+            ],
+            [
+              0.6667,
+              1.3333,
+              0,
+            ],
+          ],
+        ],
+      ];
     const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
     const item = comp.getItemByName('sp');
     const worldTransform = item.getWorldTransform();
     const pos = worldTransform.position.toArray();
 
-    expect(pos[0]).to.be.closeTo(2.0, 0.001);
-    expect(pos[1]).to.be.closeTo(1.5, 0.001);
+    expect(pos[0]).to.be.closeTo(1.0, 0.001);
+    expect(pos[1]).to.be.closeTo(2.0, 0.001);
     expect(pos[2]).to.be.closeTo(0, 0.001);
+  });
+
+  // transform 受图层父节点的路径影响
+  it('item transform affected by sprite parent\'s path', async () => {
+    const opts = [
+      { id: '1', name: 'p', isNull: false },
+      { id: '2', name: 'sp', parentId: '1' },
+    ];
+    const items = generateItem(opts);
+
+    items[0].content.positionOverLifetime.path = [
+      22,
+      [
+        [
+          [
+            3,
+            [
+              0,
+              0,
+              0.0667,
+              0,
+            ],
+            1,
+          ],
+          [
+            2,
+            [
+              0.1333,
+              1,
+              0.2,
+              1,
+            ],
+            1,
+          ],
+        ],
+        [
+          [
+            0,
+            0,
+            0,
+          ],
+          [
+            1,
+            2,
+            0,
+          ],
+        ],
+        [
+          [
+            0.3333,
+            0.6667,
+            0,
+          ],
+          [
+            0.6667,
+            1.3333,
+            0,
+          ],
+        ],
+      ],
+    ];
+    const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
+    const item = comp.getItemByName('sp');
+    const worldTransform = item.getWorldTransform();
+
+    expect(worldTransform.position.toArray()).to.deep.equals([1, 2, 0]);
   });
 
   // 多个空父节点同时影响position

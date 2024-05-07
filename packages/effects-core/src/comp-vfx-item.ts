@@ -6,7 +6,7 @@ import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region } from './plugins';
 import { HitTestType, TimelineComponent } from './plugins';
-import { noop } from './utils';
+import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
 import { Transform } from './transform';
@@ -87,15 +87,9 @@ export class CompositionComponent extends ItemBehaviour {
           props.content = itemData.content;
           item = new VFXItem(this.engine, {
             ...props,
-            id: itemData.id,
-            name: itemData.name,
-            delay: itemData.delay,
-            duration: itemData.duration,
-            endBehavior: itemData.endBehavior,
-            parentId: itemData.parentId,
-            transform: itemData.transform,
-            // @ts-expect-error TODO: 2.0 编辑器测试代码，后续移除
-            oldId: itemData.oldId,
+            ...itemData,
+            // TODO: 2.0 编辑器测试代码，后续移除
+            // oldId: itemData.oldId,
           });
           // TODO 编辑器数据传入 composition type 后移除
           item.type = spec.ItemType.composition;
@@ -107,6 +101,12 @@ export class CompositionComponent extends ItemBehaviour {
             this.item.composition.autoRefTex = false;
           }
           item.getComponent(CompositionComponent)!.createContent();
+          for (const vfxItem of item.getComponent(CompositionComponent)!.items) {
+            vfxItem.setInstanceId(generateGUID());
+            for (const component of vfxItem.components) {
+              component.setInstanceId(generateGUID());
+            }
+          }
         } else if (
           //@ts-expect-error
           itemData.type === 'ECS' ||

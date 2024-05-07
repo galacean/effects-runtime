@@ -86,6 +86,7 @@ async function generateComposition (endBehavior, player, playerOptions) {
         'ro': 0.1,
         'duration': 2,
         endBehavior,
+        'content': {},
       }],
       'meta': { 'previewSize': [750, 1334] },
     }],

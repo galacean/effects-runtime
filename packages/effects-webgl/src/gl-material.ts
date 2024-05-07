@@ -586,10 +586,11 @@ export class GLMaterial extends Material {
    * @returns
    */
   override toData (): spec.MaterialData {
-    //@ts-expect-error
-    const materialData: MaterialData = this.taggedProperties;
+    // @ts-expect-error
+    const materialData: spec.MaterialData = this.taggedProperties;
 
     if (this.shader) {
+      // @ts-expect-error
       materialData.shader = this.shader;
     }
     materialData.floats = {};
