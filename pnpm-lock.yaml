@@ -151,8 +151,8 @@ importers:
   packages/effects-core:
     dependencies:
       '@galacean/effects-math':
-        specifier: 1.1.0-alpha.0
-        version: 1.1.0-alpha.0
+        specifier: 1.1.0
+        version: 1.1.0
       '@galacean/effects-specification':
         specifier: 2.0.0-alpha.10
         version: 2.0.0-alpha.10
@@ -2650,8 +2650,8 @@ packages:
       - vue
     dev: true
 
-  /@galacean/effects-math@1.1.0-alpha.0:
-    resolution: {integrity: sha512-QJHwoGbF+WSosPY0De4ry7dHts2LNjBnYjPYlWtDsYcy4HXGQ2RS+6kzfQ3nIZu5cd6QSd7zsUCjQdUyPnc7jw==}
+  /@galacean/effects-math@1.1.0:
+    resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
     engines: {node: '>=10.0.0'}
     dev: false
 
