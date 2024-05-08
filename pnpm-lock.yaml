@@ -151,8 +151,8 @@ importers:
   packages/effects-core:
     dependencies:
       '@galacean/effects-math':
-        specifier: 1.1.0-alpha.0
-        version: 1.1.0-alpha.0
+        specifier: 1.1.0
+        version: 1.1.0
       '@galacean/effects-specification':
         specifier: 2.0.0-alpha.10
         version: 2.0.0-alpha.10
@@ -216,8 +216,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: 0.6.0-alpha.4
-        version: 0.6.0-alpha.4
+        specifier: 0.6.0-alpha.5
+        version: 0.6.0-alpha.5
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -2650,18 +2650,13 @@ packages:
       - vue
     dev: true
 
-  /@galacean/effects-math@1.1.0-alpha.0:
-    resolution: {integrity: sha512-QJHwoGbF+WSosPY0De4ry7dHts2LNjBnYjPYlWtDsYcy4HXGQ2RS+6kzfQ3nIZu5cd6QSd7zsUCjQdUyPnc7jw==}
+  /@galacean/effects-math@1.1.0:
+    resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
     engines: {node: '>=10.0.0'}
     dev: false
 
   /@galacean/effects-specification@2.0.0-alpha.10:
     resolution: {integrity: sha512-NusDTuD+HUVqTwAXRsYfZeqhwtHZZAxQh/aRpy4e5Oai4cM95DCeVX3s3OC0qjrRBbXpmHOKY41XiJ/TqxNkzA==}
-    dev: false
-
-  /@galacean/effects-specification@2.0.0-alpha.9:
-    resolution: {integrity: sha512-g8B/Q+rCit9A9cG04B8k9oVjp5Ll6o72OVuQv9MaWCxtk+VLXbdPzcnTVYNaSUd0Z0vg1LHbVtWxw9+3KdXnIg==}
-    dev: true
 
   /@headlessui/vue@1.7.19(vue@3.4.21):
     resolution: {integrity: sha512-VFjKPybogux/5/QYGSq4zgG/x3RcxId15W8uguAJAjPBxelI23dwjOjTx/mIiMkM/Hd3rzFxcf2aIp56eEWRcA==}
@@ -4266,11 +4261,11 @@ packages:
       - vue
     dev: true
 
-  /@vvfx/resource-detection@0.6.0-alpha.4:
-    resolution: {integrity: sha512-LeIUoJOM2D5+BDbATZxd3/2zUJEqQ+GECoWeYbqFyLA2THFpSpmXkCqGcezMhm8cgygj2z36stXLt1f4+2m1HQ==}
+  /@vvfx/resource-detection@0.6.0-alpha.5:
+    resolution: {integrity: sha512-/VroVyiNEQ7U2cj/ecb9DjLnEyw+Y4EtVdLIxo4p5E6FUkVPjlRQE9rZDzmZ3Pm6EURF6iv8zQBYyUuGh9b+zQ==}
     engines: {node: '>=10.0.0'}
     dependencies:
-      '@galacean/effects-specification': 2.0.0-alpha.9
+      '@galacean/effects-specification': 2.0.0-alpha.10
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1
