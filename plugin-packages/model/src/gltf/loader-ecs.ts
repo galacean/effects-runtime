@@ -118,7 +118,7 @@ export class LoaderECSImpl implements LoaderECS {
       return textureOptions;
     });
     this.materials = this.gltfMaterials.map(material => {
-      return material.materialData as spec.MaterialData;
+      return material.materialData;
     });
 
     gltfResource.meshes.forEach(mesh => {
@@ -131,7 +131,6 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.lightsComponentData.forEach(comp => this.components.push(comp));
     gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
 
-    // @ts-expect-error
     this.items = [...gltfResource.scenes[0].vfxItemData];
 
     if (options.gltf.skyboxType) {
@@ -163,7 +162,7 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     materials.forEach(mat => {
-      const materialData = mat.materialData as spec.MaterialData;
+      const materialData = mat.materialData;
 
       this.processMaterialData(materialData);
 
@@ -180,7 +179,6 @@ export class LoaderECSImpl implements LoaderECS {
 
     const gltfScene = scenes[0];
 
-    // @ts-expect-error
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
