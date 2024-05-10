@@ -30,6 +30,13 @@ export class JSONConverter {
       sceneJSON = await this.loadJSON(sceneData);
     }
 
+    // @ts-expect-error
+    sceneJSON.textures.forEach(tex => {
+      if (tex.source === undefined) {
+        tex.source = 0;
+      }
+    });
+
     const oldScene = getStandardJSON(sceneJSON);
     const binFiles: ArrayBuffer[] = [];
 
@@ -75,7 +82,6 @@ export class JSONConverter {
     const newImages: spec.Image[] = [];
 
     oldScene.images.forEach(image => {
-      image.id = generateGUID();
       newImages.push(image);
     });
 
