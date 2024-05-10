@@ -165,7 +165,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
     const mode = glGeometry.mode;
     const subMeshes = glGeometry.subMeshes;
 
-    if (subMeshes) {
+    if (subMeshes && subMeshes.length) {
       const subMesh = subMeshes[subMeshIndex];
 
       offset = subMesh.offset;

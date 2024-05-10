@@ -245,18 +245,8 @@ export class LoaderECSImpl implements LoaderECS {
   }
 
   processMeshComponentData (mesh: ModelMeshComponentData): void {
-    // FIXME: 需要马上修改
-    // @ts-expect-error
-    if (mesh.primitives.length <= 0) {
-      console.error('Primitive array is empty');
-    } else {
-      // FIXME: 需要马上修改
-      // @ts-expect-error
-      mesh.primitives.forEach(prim => {
-        if (!prim.geometry || !prim.material) {
-          console.error('Geometry or material of primitive is empty');
-        }
-      });
+    if (mesh.materials.length <= 0) {
+      console.error('Submesh array is empty');
     }
   }
 

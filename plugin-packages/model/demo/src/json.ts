@@ -133,8 +133,8 @@ function addRealTimeTicker () {
           if (mesh.skin?.textureDataMode) {
             skinTextureMode = true;
           }
-          mesh.primitives.forEach(prim => {
-            if (prim.jointMatrixTexture?.isHalfFloat) { skinHalfFloat = true; }
+          mesh.subMeshes.forEach(subMesh => {
+            if (subMesh.jointMatrixTexture?.isHalfFloat) { skinHalfFloat = true; }
           });
         });
         infoList.push(`<p>蒙皮信息: HalfFloat ${skinHalfFloat}, 纹理模式 ${skinTextureMode}</p>`);

@@ -114,7 +114,7 @@ export class PMesh extends PEntity {
     //
     this.subMeshes = [];
     const geometry = proxy.getGeometry() as unknown as Geometry;
-    const materials: Material[] = [];
+    const materials = owner?.materials ?? [];
 
     materials.forEach(material => {
       const subMesh = new PSubMesh(this.engine);
