@@ -118,7 +118,7 @@ export class LoaderECSImpl implements LoaderECS {
       return textureOptions;
     });
     this.materials = this.gltfMaterials.map(material => {
-      return material.materialData;
+      return material.materialData as spec.MaterialData;
     });
 
     gltfResource.meshes.forEach(mesh => {
@@ -134,6 +134,13 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
 
     this.items = [...gltfResource.scenes[0].vfxItemData];
+    this.items.forEach(item => {
+      // @ts-expect-error
+      if (item.type === 'root') {
+        // @ts-expect-error
+        item.type = 'ECS';
+      }
+    });
 
     if (options.gltf.skyboxType) {
       await this.addSkybox({
@@ -164,7 +171,7 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     materials.forEach(mat => {
-      const materialData = mat.materialData;
+      const materialData = mat.materialData as spec.MaterialData;
 
       this.processMaterialData(materialData);
 
@@ -183,7 +190,6 @@ export class LoaderECSImpl implements LoaderECS {
 
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
-    // FIXME: 需要马上修改
     // @ts-expect-error
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
   }
