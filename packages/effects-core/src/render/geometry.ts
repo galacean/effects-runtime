@@ -45,6 +45,11 @@ export interface GeometryProps {
   maxVertex?: number,
 }
 
+export interface SubMesh {
+  offset: number,
+  count: number,
+}
+
 /**
  * Geometry 抽象类
  */
@@ -54,6 +59,10 @@ export abstract class Geometry extends EffectsObject {
    */
   name: string;
 
+  /**
+   * 子网格数据
+   */
+  subMeshes: SubMesh[];
   /**
    * Geometry 创建函数
    */

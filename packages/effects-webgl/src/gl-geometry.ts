@@ -1,4 +1,4 @@
-import type { Engine, GeometryData, GeometryProps, spec } from '@galacean/effects-core';
+import type { Engine, GeometryProps, spec } from '@galacean/effects-core';
 import { assertExist, BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
@@ -18,6 +18,7 @@ const INDEX_TYPE_MAP = {
   [Uint16Array.BYTES_PER_ELEMENT]: glContext.UNSIGNED_SHORT,
   [Uint32Array.BYTES_PER_ELEMENT]: glContext.UNSIGNED_INT,
 };
+
 let seed = 1;
 
 /**
@@ -47,7 +48,6 @@ export class GLGeometry extends Geometry {
   readonly vaos: Record<string, GLVertexArrayObject | undefined> = {};
 
   protected initialized = false;
-
   private options?: GeometryProps;
   private attributesReleasable: Record<string, boolean>;
   private indicesReleasable = false;
@@ -401,9 +401,10 @@ export class GLGeometry extends Geometry {
     this.initialized = false;
   }
 
-  override fromData (data: GeometryData): void {
+  override fromData (data: spec.GeometryData): void {
     super.fromData(data);
 
+    this.subMeshes = data.subMeshes;
     const buffer = decodeBase64ToArrays(data.buffer);
     const vertexCount = data.vertexData.vertexCount;
     const positionChannel = data.vertexData.channels[0];

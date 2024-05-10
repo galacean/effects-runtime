@@ -144,14 +144,6 @@ export class Database {
 }
 
 // TODO: 待统一
-export interface GeometryData extends spec.EffectsObjectData {
-  vertexData: spec.VertexData,
-  indexFormat: number,
-  indexOffset: number,
-  buffer: string,
-}
-
-// TODO: 待统一
 export interface EffectComponentData extends spec.EffectsObjectData {
   _priority: number,
   item: spec.DataPath,

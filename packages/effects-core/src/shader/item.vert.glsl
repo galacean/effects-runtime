@@ -28,5 +28,5 @@ void main() {
   gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
 #ifdef ENV_EDITOR
   gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
-#endif
+#endif 
 }
