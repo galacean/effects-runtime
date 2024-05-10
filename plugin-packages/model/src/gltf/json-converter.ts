@@ -249,27 +249,40 @@ export class JSONConverter {
 
   private createMeshComponent (component: spec.ComponentData, newScene: spec.JSONScene, oldScene: spec.JSONScene): spec.ModelMeshComponentData {
     const meshOptions = (component as unknown as spec.ModelMeshItemContent<'json'>).options;
-    const primitives: spec.PrimitiveData[] = [];
+
+    let geometryData: spec.GeometryData | undefined;
+    const materialDatas: spec.MaterialData[] = [];
 
     meshOptions.primitives.forEach(prim => {
-      const geometryData = this.getGeometryData(prim.geometry, oldScene);
+      if (geometryData) {
+        throw new Error('Find two primitives');
+      }
+
+      geometryData = this.getGeometryData(prim.geometry, oldScene);
       const materialData = this.getMaterialData(prim.material, oldScene);
+
+      materialDatas.push(materialData);
 
       newScene.geometries.push(geometryData);
       newScene.materials.push(materialData);
-      primitives.push({
-        geometry: { id: geometryData.id },
-        material: { id: materialData.id },
-      });
     });
+
+    if (!geometryData) {
+      throw new Error('no primitives');
+    }
 
     const meshComponent: spec.ModelMeshComponentData = {
       id: component.id,
       dataType: component.dataType,
       item: component.item,
-      // FIXME: 需要马上修改
-      // @ts-expect-error
-      primitives,
+      geometry: { id: geometryData.id },
+      materials: materialDatas.map(mat => {
+        const data: spec.DataPath = {
+          id: mat.id,
+        };
+
+        return data;
+      }),
     };
 
     return meshComponent;
