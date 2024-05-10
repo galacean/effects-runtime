@@ -8,6 +8,12 @@
 
 ---
 
+## 1.4.2
+
+`2024-05-10`
+
+- Feat: 陀螺仪以用户初始角度作变化基准。[#323](https://github.com/galacean/effects-runtime/pull/323) @RGCHN
+
 ## 1.4.1
 
 `2024-05-06`
