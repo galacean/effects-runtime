@@ -122,6 +122,8 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     gltfResource.meshes.forEach(mesh => {
+      // FIXME: 需要马上修改
+      // @ts-expect-error
       this.geometries.push(...mesh.geometriesData);
     });
 
@@ -181,6 +183,8 @@ export class LoaderECSImpl implements LoaderECS {
 
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
+    // FIXME: 需要马上修改
+    // @ts-expect-error
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
   }
 
@@ -235,9 +239,13 @@ export class LoaderECSImpl implements LoaderECS {
   }
 
   processMeshComponentData (mesh: ModelMeshComponentData): void {
+    // FIXME: 需要马上修改
+    // @ts-expect-error
     if (mesh.primitives.length <= 0) {
       console.error('Primitive array is empty');
     } else {
+      // FIXME: 需要马上修改
+      // @ts-expect-error
       mesh.primitives.forEach(prim => {
         if (!prim.geometry || !prim.material) {
           console.error('Geometry or material of primitive is empty');

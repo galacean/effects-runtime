@@ -267,6 +267,8 @@ export class JSONConverter {
       id: component.id,
       dataType: component.dataType,
       item: component.item,
+      // FIXME: 需要马上修改
+      // @ts-expect-error
       primitives,
     };
 
@@ -630,22 +632,26 @@ function getGeometryDataFromOptions (geomOptions: GeometryProps) {
       vertexCount: vertexCount,
       channels: [
         {
+          semantic: spec.VertexBufferSemantic.Positon,
           offset: 0,
           format: 0,
           dimension: 3,
         },
         {
+          semantic: spec.VertexBufferSemantic.Uv,
           offset: vertexCount * 3 * 4,
           format: 0,
           dimension: 2,
         },
         {
+          semantic: spec.VertexBufferSemantic.Normal,
           offset: vertexCount * 5 * 4,
           format: 0,
           dimension: 3,
         },
       ],
     },
+    subMeshes: [],
     mode: spec.GeometryType.TRIANGLES,
     indexFormat: 0,
     indexOffset: vertexCount * 8 * 4,

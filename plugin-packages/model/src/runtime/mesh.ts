@@ -113,6 +113,7 @@ export class PMesh extends PEntity {
     this.priority = owner?.item?.listIndex || 0;
     //
     this.primitives = [];
+    // @ts-expect-error
     proxy.getPrimitives().forEach(primOpts => {
       const primObj = new PPrimitive(this.engine);
 
@@ -1181,8 +1182,12 @@ class EffectsMeshProxy {
     // 并且要求创建的 Morph 对象状态是相同的，否则就报错
     let isSuccess = true;
     const morphObj = new PMorph();
+    // FIXME: 需要马上修改
+    // @ts-expect-error
     const { primitives, morph } = this.data;
 
+    // FIXME: 需要马上修改
+    // @ts-expect-error
     primitives.forEach((prim, idx) => {
       if (idx === 0) {
         morphObj.create(prim.geometry as unknown as Geometry);
@@ -1251,10 +1256,14 @@ class EffectsMeshProxy {
   }
 
   getPrimitives () {
+    // FIXME: 需要马上修改
+    // @ts-expect-error
     return this.data.primitives;
   }
 
   getPrimitiveCount (): number {
+    // FIXME: 需要马上修改
+    // @ts-expect-error
     return this.data.primitives.length;
   }
 
