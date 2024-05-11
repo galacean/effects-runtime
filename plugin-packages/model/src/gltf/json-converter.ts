@@ -286,6 +286,7 @@ export class JSONConverter {
       throw new Error('no primitives');
     }
 
+    //@ts-expect-error
     const meshComponent: spec.ModelMeshComponentData = {
       id: component.id,
       dataType: component.dataType,
