@@ -1,10 +1,5 @@
 import type { Composition, spec } from '@galacean/effects';
-import { VERTICAL_INIT_DEGREE } from './transform-vfx-item';
-
-type EventType = {
-  x: number,
-  y: number,
-};
+import type { AccelerMotionData } from './orientation-adapter-acceler';
 
 export class CompositionTransformerAcceler {
   private readonly targets: Record<string, spec.PluginGyroscopeTarget> = {};
@@ -13,15 +8,15 @@ export class CompositionTransformerAcceler {
   private readonly currentRot: Record<string, number[]> = {};
   private gammaRange: [x: number, y: number] = [-89, 89];
   private betaRange: [x: number, y: number] = [-89, 89];
-  private currentEvent?: EventType;
+  private currentEvent?: AccelerMotionData;
 
   constructor (
     private readonly composition: Composition,
   ) {
   }
 
-  update ({ x, y }: EventType) {
-    this.currentEvent = { x, y };
+  update ({ x, y, beta, gamma }: AccelerMotionData) {
+    this.currentEvent = { x, y, beta, gamma };
   }
 
   updateOrientation () {
@@ -73,7 +68,7 @@ export class CompositionTransformerAcceler {
     delete this.records[name];
   }
 
-  private moveLayer (name: string, { x, y }: EventType) {
+  private moveLayer (name: string, { x, y, beta: b, gamma: g }: AccelerMotionData) {
     const layer = this.records[name]?.item;
 
     if (layer) {
@@ -84,18 +79,21 @@ export class CompositionTransformerAcceler {
 
       if (target) {
         const position = [
-          initPosition[0] + 1.2 * mapRange((beta - this.gammaRange[0]) / (this.gammaRange[1] - this.gammaRange[0]), target.xMin, target.xMax),
-          initPosition[1] + 1.2 * mapRange((gamma - this.betaRange[0]) / (this.betaRange[1] - this.betaRange[0]), target.yMin, target.yMax),
+          initPosition[0] + 1.2 * mapRange(normalize(beta, this.gammaRange[0], this.gammaRange[1]), target.xMin, target.xMax),
+          initPosition[1] + 1.2 * mapRange(normalize(gamma, this.betaRange[0], this.betaRange[1]), target.yMin, target.yMax),
           initPosition[2],
         ];
 
-        const br = (clamp(x * 2, this.betaRange) - this.betaRange[0]) / (this.betaRange[1] - this.betaRange[0]);
-        const gr = (clamp(y * 2 - VERTICAL_INIT_DEGREE, this.gammaRange) - this.gammaRange[0]) / (this.gammaRange[1] - this.gammaRange[0]);
+        const br = normalize(clamp(g * 0.8, this.gammaRange), this.gammaRange[0], this.gammaRange[1]);
+        const gr = normalize(clamp(b * 0.8, this.betaRange), this.betaRange[0], this.betaRange[1]);
+
         const rotation = [
           initRotation[0] + mapRange(gr, target.hMin, target.hMax),
           initRotation[1] + mapRange(br, target.vMin, target.vMax),
           initRotation[2],
         ];
+
+        // console.log(y, initY, y - initY);
 
         layer.transform.setPosition(...position);
         layer.transform.setRotation(...rotation);
@@ -118,4 +116,8 @@ function clamp (x: number, range: [x: number, y: number]) {
 
 function mapRange (t: number, min: number, max: number): number {
   return min + (max - min) * t;
+}
+
+function normalize (a: number, min: number, max: number) {
+  return (a - min) / (max - min);
 }
