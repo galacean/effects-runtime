@@ -190,3 +190,25 @@ export function generateHalfFloatTexture (engine: Engine, data: Uint16Array, wid
       wrapT: glContext.CLAMP_TO_EDGE,
     });
 }
+
+export function generateWhiteTexture (engine: Engine) {
+  return Texture.create(
+    engine,
+    {
+      id: 'whitetexture00000000000000000000',
+      data: {
+        width: 1,
+        height: 1,
+        data: new Uint8Array([255, 255, 255, 255]),
+      },
+      sourceType: TextureSourceType.data,
+      type: glContext.UNSIGNED_BYTE,
+      format: glContext.RGBA,
+      internalFormat: glContext.RGBA,
+      wrapS: glContext.MIRRORED_REPEAT,
+      wrapT: glContext.MIRRORED_REPEAT,
+      minFilter: glContext.NEAREST,
+      magFilter: glContext.NEAREST,
+    },
+  );
+}

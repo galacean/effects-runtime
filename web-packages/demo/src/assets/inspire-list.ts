@@ -20,6 +20,26 @@ export default {
     pass: true,
   },
   // 氛围
+  jiahewanshixing: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*ZrU7SIuNOdkAAAAAAAAAAAAADlB4AQ',
+    name: '家和万事兴',
+    pass: true,
+  },
+  jiangshanruhua: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*_DqDToRcM7oAAAAAAAAAAAAADlB4AQ',
+    name: '江山如画',
+    pass: true,
+  },
+  bubugaosheng: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*VPbASpxweKAAAAAAAAAAAAAADlB4AQ',
+    name: '步步高升',
+    pass: true,
+  },
+  potianfuguai: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Ok3cRL6zvRoAAAAAAAAAAAAADlB4AQ',
+    name: '泼天富贵',
+    pass: true,
+  },
   ribbons: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/MNJVBYCSYDWN/1425978492-8d707.json',
     name: '彩带下落',
