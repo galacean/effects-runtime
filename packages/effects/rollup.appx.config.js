@@ -16,6 +16,7 @@ const commonAdapterList = [
   "Event",
   "EventTarget",
   "HTMLCanvasElement",
+  "HTMLImageElement",
   "HTMLElement",
   "HTMLMediaElement",
   "HTMLVideoElement",
@@ -35,7 +36,7 @@ const commonAdapterList = [
   "URLSearchParams"
 ];
 const adapterList = {
-  // weapp: [...commonAdapterList],
+  weapp: [...commonAdapterList],
   alipay: [...commonAdapterList],
 }
 export default [

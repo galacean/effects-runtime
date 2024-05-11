@@ -39,7 +39,7 @@
   "scripts": {
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
-    "build:module": "rollup -c",
+    "build:module": "rollup -c && cp -Rf ./dist ../../../../miniProgram/galacean-effects-alipay-miniprogram-demo/node_modules/@galacean/effects",
     "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
     "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
     "prepublishOnly": "pnpm build"

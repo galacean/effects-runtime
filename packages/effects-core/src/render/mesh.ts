@@ -1,11 +1,11 @@
-import type * as spec from '@galacean/effects-specification';
 import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
+import type * as spec from '@galacean/effects-specification';
 import { getConfig, POST_PROCESS_SETTINGS } from '../config';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { Geometry, Renderer } from '../render';
 import type { Disposable } from '../utils';
-import { DestroyOptions } from '../utils';
+import { DestroyOptions, logger } from '../utils';
 
 export interface MeshOptionsBase {
   material: Material,
@@ -24,6 +24,7 @@ export interface MeshDestroyOptions {
 }
 
 let seed = 1;
+let count = 0;
 
 /**
  * Mesh 抽象类
@@ -129,14 +130,16 @@ export class Mesh implements Disposable {
         material.setFloat('emissionIntensity', getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['intensity']);
       }
     }
-    material.use(renderer, renderingData.currentFrame.globalUniforms);
 
+    logger.info(`第${count}次render ${this.name}`, material);
+    material.use(renderer, renderingData.currentFrame.globalUniforms);
     const geo = this.geometry;
 
     // 执行 Geometry 的数据刷新
     geo.flush();
 
     renderer.drawGeometry(geo, material);
+    count ++;
   }
 
   /**
