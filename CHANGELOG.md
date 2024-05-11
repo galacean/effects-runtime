@@ -7,6 +7,13 @@
 
 ---
 
+## 1.4.2
+
+`2024-05-10`
+
+- Feat: Gyroscope changes are based on the user's initial angle. [#323](https://github.com/galacean/effects-runtime/pull/323) @RGCHN
+
+
 ## 1.4.1
 
 `2024-05-06`
