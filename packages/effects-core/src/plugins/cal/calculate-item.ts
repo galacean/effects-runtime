@@ -7,7 +7,7 @@ import { VFXItem } from '../../vfx-item';
 import { PlayableGraph } from './playable-graph';
 import { Track } from './track';
 import { serialize } from '../../decorators';
-import { ActivationPlayable, TransformAnimationPlayable } from './calculate-vfx-item';
+import { ActivationPlayable, AnimationClipPlayable, TransformAnimationPlayable } from './calculate-vfx-item';
 import { SpriteColorPlayable } from '../sprite/sprite-item';
 
 /**
@@ -234,13 +234,18 @@ export class TimelineComponent extends ItemBehaviour {
         for (const clipAsset of track.clips) {
           switch (clipAsset.dataType) {
             case 'TransformAnimationPlayableAsset':
-              newTrack.name = 'AnimationTrack';
-              newTrack.createClip(TransformAnimationPlayable, 'AnimationTimelineClip').playable.fromData(clipAsset.animationClip);
+              newTrack.name = 'TransformAnimationTrack';
+              newTrack.createClip(TransformAnimationPlayable, 'TransformAnimationTimelineClip').playable.fromData(clipAsset.animationClip);
 
               break;
             case 'SpriteColorAnimationPlayableAsset':
               newTrack.name = 'SpriteColorTrack';
               newTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData(clipAsset.animationClip);
+
+              break;
+            case 'AnimationClipPlayableAsset':
+              newTrack.name = 'AnimationTrack';
+              newTrack.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(clipAsset.animationClip);
 
               break;
           }
