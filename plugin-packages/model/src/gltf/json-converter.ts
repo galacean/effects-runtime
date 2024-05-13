@@ -273,6 +273,17 @@ export class JSONConverter {
       const geomProps = deserializeGeometry(prim.geometry, oldScene.bins as unknown as ArrayBuffer[]);
       const material = this.getMaterialData(prim.material, oldScene);
 
+      if (geomProps.indices?.data instanceof Uint8Array) {
+        const oldIndices = geomProps.indices.data;
+        const newIndices = new Uint16Array(oldIndices.length);
+
+        for (let i = 0; i < oldIndices.length; i++) {
+          newIndices[i] = oldIndices[i];
+        }
+
+        geomProps.indices.data = newIndices;
+      }
+
       geometryPropsList.push(geomProps);
       materialDatas.push(material);
     });
