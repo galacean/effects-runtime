@@ -4,7 +4,7 @@ export * from './gl-material';
 export * from './gl-renderer-internal';
 export * from './gl-render-buffer';
 export * from './gl-texture';
-export * from './gl-frame-buffer';
+export * from './gl-framebuffer';
 export * from './gl-gpu-buffer';
 export * from './gl-vertex-array-object';
 export * from './gl-pipeline-context';

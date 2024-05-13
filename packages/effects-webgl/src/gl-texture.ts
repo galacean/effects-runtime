@@ -2,7 +2,7 @@ import type {
   Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
   TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
-  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFrameBuffer, spec, Engine,
+  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFramebuffer, spec, Engine,
 } from '@galacean/effects-core';
 import {
   getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,
@@ -134,7 +134,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const { video } = source as Texture2DSourceOptionsVideo;
     const { mipmaps } = source as Texture2DSourceOptionsImageMipmaps;
     const { mipmaps: cubeMipmaps } = source as TextureCubeSourceOptionsImageMipmaps;
-    const { data: optionsData } = sourceOptions as Texture2DSourceOptionsFrameBuffer;
+    const { data: optionsData } = sourceOptions as Texture2DSourceOptionsFramebuffer;
     const { cube: optionsCube } = sourceOptions as TextureCubeSourceOptionsImage;
     const { generateMipmap } = sourceOptions as Texture2DSourceOptionsImage;
     const { mipmaps: optionsMipmaps } = sourceOptions as Texture2DSourceOptionsCompressed;

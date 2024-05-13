@@ -1,6 +1,6 @@
 import type { Disposable, LostHandler, Material, Geometry } from '@galacean/effects-core';
 import { TextureSourceType, addItem, logger, removeItem } from '@galacean/effects-core';
-import type { GLFrameBuffer } from './gl-frame-buffer';
+import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLGeometry } from './gl-geometry';
 import type { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLPipelineContext } from './gl-pipeline-context';
@@ -22,7 +22,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   readonly textures: GLTexture[] = [];
 
   private readonly renderBuffers: GLRenderBuffer[] = [];
-  private readonly frameBuffers: GLFrameBuffer[] = [];
+  private readonly framebuffers: GLFramebuffer[] = [];
   private sourceFbo: WebGLFramebuffer | null;
   private targetFbo: WebGLFramebuffer | null;
   private destroyed = false;
@@ -83,32 +83,34 @@ export class GLRendererInternal implements Disposable, LostHandler {
   copy2 (source: GLTexture, target: GLTexture) {
     const gl = this.gl as WebGL2RenderingContext;
 
-    if (gl) {
-      if (!this.sourceFbo) {
-        this.sourceFbo = gl.createFramebuffer();
-      }
-      if (!this.targetFbo) {
-        this.targetFbo = gl.createFramebuffer();
-      }
-      const state = this.pipelineContext;
-      const COLOR_ATTACHMENT0 = gl.COLOR_ATTACHMENT0;
-
-      state.bindFramebuffer(gl.FRAMEBUFFER, this.sourceFbo);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, COLOR_ATTACHMENT0, gl.TEXTURE_2D, source.textureBuffer, 0);
-      state.bindFramebuffer(gl.FRAMEBUFFER, this.targetFbo);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.textureBuffer, 0);
-      state.bindFramebuffer(gl.READ_FRAMEBUFFER, this.sourceFbo);
-      state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.targetFbo);
-      const filter = source.getWidth() === source.getHeight() && target.getWidth() == target.getHeight() ? gl.NEAREST : gl.LINEAR;
-
-      gl.blitFramebuffer(0, 0, source.getWidth(), source.getHeight(), 0, 0, target.getWidth(), target.getHeight(), gl.COLOR_BUFFER_BIT, filter);
-      state.bindFramebuffer(gl.FRAMEBUFFER, null);
-      state.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-      state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    if (!gl) {
+      return;
     }
+
+    if (!this.sourceFbo) {
+      this.sourceFbo = gl.createFramebuffer();
+    }
+    if (!this.targetFbo) {
+      this.targetFbo = gl.createFramebuffer();
+    }
+    const state = this.pipelineContext;
+
+    state.bindFramebuffer(gl.FRAMEBUFFER, this.sourceFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, source.textureBuffer, 0);
+    state.bindFramebuffer(gl.FRAMEBUFFER, this.targetFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.textureBuffer, 0);
+    state.bindFramebuffer(gl.READ_FRAMEBUFFER, this.sourceFbo);
+    state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.targetFbo);
+
+    const filter = source.getWidth() === source.getHeight() && target.getWidth() == target.getHeight() ? gl.NEAREST : gl.LINEAR;
+
+    gl.blitFramebuffer(0, 0, source.getWidth(), source.getHeight(), 0, 0, target.getWidth(), target.getHeight(), gl.COLOR_BUFFER_BIT, filter);
+    state.bindFramebuffer(gl.FRAMEBUFFER, null);
+    state.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
   }
 
-  resetColorAttachments (rp: GLFrameBuffer, colors: GLTexture[]) {
+  resetColorAttachments (rp: GLFramebuffer, colors: GLTexture[]) {
     rp.bind();
     rp.resetColorTextures(colors);
   }
@@ -130,11 +132,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
       gl.canvas.width = width;
       gl.canvas.height = height;
       gl.viewport(0, 0, width, height);
-      this.frameBuffers.forEach(frameBuffer => {
-        const viewport = frameBuffer.viewport;
+      this.framebuffers.forEach(framebuffer => {
+        const viewport = framebuffer.viewport;
 
-        if (!frameBuffer.isCustomViewport) {
-          frameBuffer.resize(viewport[0], viewport[1], width * frameBuffer.viewportScale, height * frameBuffer.viewportScale);
+        if (!framebuffer.isCustomViewport) {
+          framebuffer.resize(viewport[0], viewport[1], width * framebuffer.viewportScale, height * framebuffer.viewportScale);
         }
       });
     }
@@ -178,11 +180,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
     vao?.unbind();
   }
 
-  createGLFrameBuffer (frameBuffer: GLFrameBuffer, name?: string): WebGLFramebuffer | null {
+  createGLFramebuffer (framebuffer: GLFramebuffer, name?: string): WebGLFramebuffer | null {
     const fbo = this.gl.createFramebuffer();
 
     if (fbo) {
-      addItem(this.frameBuffers, frameBuffer);
+      addItem(this.framebuffers, framebuffer);
       assignInspectorName(fbo, name, name);
     }
 
@@ -213,11 +215,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
     }
   }
 
-  deleteGLFrameBuffer (frameBuffer: GLFrameBuffer) {
-    if (frameBuffer && !this.destroyed) {
-      this.gl.deleteFramebuffer(frameBuffer.fbo as WebGLFramebuffer);
-      removeItem(this.frameBuffers, frameBuffer);
-      delete frameBuffer.fbo;
+  deleteGLFramebuffer (framebuffer: GLFramebuffer) {
+    if (framebuffer && !this.destroyed) {
+      this.gl.deleteFramebuffer(framebuffer.fbo as WebGLFramebuffer);
+      removeItem(this.framebuffers, framebuffer);
+      delete framebuffer.fbo;
     }
   }
 
@@ -238,8 +240,8 @@ export class GLRendererInternal implements Disposable, LostHandler {
       gl.deleteFramebuffer(this.targetFbo);
       this.emptyTexture2D.dispose();
       this.emptyTextureCube.dispose();
-      this.frameBuffers.forEach(fb => this.deleteGLFrameBuffer(fb));
-      this.frameBuffers.length = 0;
+      this.framebuffers.forEach(fb => this.deleteGLFramebuffer(fb));
+      this.framebuffers.length = 0;
       this.renderBuffers.forEach(rb => this.deleteGLRenderBuffer(rb));
       this.renderBuffers.length = 0;
       this.textures.forEach(tex => this.deleteGLTexture(tex));

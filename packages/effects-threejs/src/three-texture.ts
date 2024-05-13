@@ -1,6 +1,6 @@
 import type {
   Engine, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
-  Texture2DSourceOptionsFrameBuffer, Texture2DSourceOptionsImage,
+  Texture2DSourceOptionsFramebuffer, Texture2DSourceOptionsImage,
   Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects-core';
@@ -196,7 +196,7 @@ export class ThreeTexture extends Texture {
         mapping, wrapS, wrapT, magFilter, minFilter, format, type
       );
     } else if (sourceType === TextureSourceType.framebuffer) {
-      const { data } = options as Texture2DSourceOptionsFrameBuffer;
+      const { data } = options as Texture2DSourceOptionsFramebuffer;
 
       if (data) {
         const width = data.width ?? 0;

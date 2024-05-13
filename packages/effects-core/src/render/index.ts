@@ -7,7 +7,7 @@ export * from './gpu-capability';
 export * from './mesh';
 export * from './types';
 export * from './geometry';
-export * from './frame-buffer';
+export * from './framebuffer';
 export * from './renderer';
 export * from './global-volume';
 export * from './semantic-map';

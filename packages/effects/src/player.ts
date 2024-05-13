@@ -682,7 +682,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
         this.compositions.length < comps.length ||
         forceRender
       ) {
-        this.renderer.setFrameBuffer(null);
+        this.renderer.setFramebuffer(null);
         this.renderer.clear({
           stencilAction: TextureLoadAction.clear,
           clearStencil: 0,

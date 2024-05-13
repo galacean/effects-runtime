@@ -3,7 +3,7 @@ import type { RendererComponent } from '../components/renderer-component';
 import type { Engine } from '../engine';
 import type { Material } from '../material';
 import type { LostHandler, RestoreHandler } from '../utils';
-import type { FilterMode, FrameBuffer, RenderTextureFormat } from './frame-buffer';
+import type { FilterMode, Framebuffer, RenderTextureFormat } from './framebuffer';
 import type { Geometry } from './geometry';
 import type { RenderFrame, RenderingData } from './render-frame';
 import type { RenderPassClearAction, RenderPassStoreAction } from './render-pass';
@@ -40,12 +40,12 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  getFrameBuffer (): FrameBuffer | null {
+  getFramebuffer (): Framebuffer | null {
     // OVERRIDE
     return null;
   }
 
-  setFrameBuffer (frameBuffer: FrameBuffer | null) {
+  setFramebuffer (framebuffer: Framebuffer | null) {
   }
 
   setViewport (x: number, y: number, width: number, height: number) {
@@ -125,7 +125,7 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): FrameBuffer | null {
+  getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer | null {
     // OVERRIDE
     return null;
   }

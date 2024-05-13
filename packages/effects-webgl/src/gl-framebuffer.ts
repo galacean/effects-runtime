@@ -1,9 +1,9 @@
 import type {
-  Disposable, FrameBufferProps, RenderBuffer, Renderer, RenderPassStoreAction, Texture,
-  Texture2DSourceOptionsFrameBuffer,
+  Disposable, FramebufferProps, RenderBuffer, Renderer, RenderPassStoreAction, Texture,
+  Texture2DSourceOptionsFramebuffer,
 } from '@galacean/effects-core';
 import {
-  isWebGL2, addItem, FrameBuffer, glContext, RenderPassAttachmentStorageType,
+  isWebGL2, addItem, Framebuffer, glContext, RenderPassAttachmentStorageType,
   RenderPassDestroyAttachmentType, TextureSourceType, TextureStoreAction,
 } from '@galacean/effects-core';
 import { GLRenderBuffer } from './gl-render-buffer';
@@ -13,7 +13,7 @@ import type { GLEngine } from './gl-engine';
 
 let seed = 1;
 
-export class GLFrameBuffer extends FrameBuffer implements Disposable {
+export class GLFramebuffer extends Framebuffer implements Disposable {
   storeInvalidAttachments?: GLenum[]; // Pass渲染结束是否保留attachment的渲染内容，不保留可以提升部分性能。
   depthStencilRenderBuffer?: GLRenderBuffer;
   depthTexture?: GLTexture;
@@ -27,7 +27,7 @@ export class GLFrameBuffer extends FrameBuffer implements Disposable {
   private readonly attachmentTextures: WebGLTexture[] = [];
 
   constructor (
-    props: FrameBufferProps,
+    props: FramebufferProps,
     renderer: Renderer,
   ) {
     super();
@@ -36,7 +36,7 @@ export class GLFrameBuffer extends FrameBuffer implements Disposable {
     const {
       depthStencilAttachment, viewport, isCustomViewport, storeAction,
       viewportScale = 1,
-      name = `GLFrameBuffer${seed++}`,
+      name = `GLFramebuffer${seed++}`,
     } = props;
 
     this.depthStencilStorageType = depthStencilAttachment?.storageType ?? RenderPassAttachmentStorageType.none;
@@ -88,7 +88,7 @@ export class GLFrameBuffer extends FrameBuffer implements Disposable {
     }
   }
 
-  private updateProps (props: FrameBufferProps) {
+  private updateProps (props: FramebufferProps) {
     const renderer = this.renderer;
     const gpuCapability = this.engine.gpuCapability;
     const depthStencilAttachment = props.depthStencilAttachment ?? { storageType: RenderPassAttachmentStorageType.none };
@@ -108,7 +108,7 @@ export class GLFrameBuffer extends FrameBuffer implements Disposable {
       throw Error('use depth stencil attachment without color attachments');
     }
     if (willUseFbo) {
-      this.fbo = renderer.glRenderer.createGLFrameBuffer(this, this.name) as WebGLFramebuffer;
+      this.fbo = renderer.glRenderer.createGLFramebuffer(this, this.name) as WebGLFramebuffer;
     }
     const storageType = depthStencilAttachment.storageType;
 
@@ -264,7 +264,7 @@ export class GLFrameBuffer extends FrameBuffer implements Disposable {
           gl.framebufferRenderbuffer(FRAMEBUFFER, depthStencilRenderBuffer.attachment, gl.RENDERBUFFER, depthStencilRenderBuffer.buffer);
         } else if (depthTexture) {
           // 解决RenderPass在Clone深度贴图时width和height丢失的问题
-          (depthTexture.source as Texture2DSourceOptionsFrameBuffer).data = { width, height };
+          (depthTexture.source as Texture2DSourceOptionsFramebuffer).data = { width, height };
           depthTexture.update({ data: { width, height, data: new Uint16Array(0) } });
           const attachment = depthTexture && stencilTexture ? gl.DEPTH_STENCIL_ATTACHMENT : gl.DEPTH_ATTACHMENT;
 
@@ -323,7 +323,7 @@ export class GLFrameBuffer extends FrameBuffer implements Disposable {
     const renderer = this.renderer;
 
     if (renderer) {
-      renderer.glRenderer.deleteGLFrameBuffer(this);
+      renderer.glRenderer.deleteGLFramebuffer(this);
       delete this.fbo;
       const clearAttachment = opt?.depthStencilAttachment ? opt.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
 
