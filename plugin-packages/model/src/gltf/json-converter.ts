@@ -1,6 +1,7 @@
 import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glType2VertexFormatType, glContext } from '@galacean/effects';
 import type {
   Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
+  SubMesh,
 } from '@galacean/effects';
 import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
 import { Color } from '../runtime/math';
@@ -265,26 +266,25 @@ export class JSONConverter {
   private createMeshComponent (component: spec.ComponentData, newScene: spec.JSONScene, oldScene: spec.JSONScene): spec.ModelMeshComponentData {
     const meshOptions = (component as unknown as spec.ModelMeshItemContent<'json'>).options;
 
-    let geometryData: spec.GeometryData | undefined;
+    const geometryPropsList: GeometryProps[] = [];
     const materialDatas: spec.MaterialData[] = [];
 
     meshOptions.primitives.forEach(prim => {
-      if (geometryData) {
-        throw new Error('Find two primitives');
-      }
+      const geomProps = deserializeGeometry(prim.geometry, oldScene.bins as unknown as ArrayBuffer[]);
+      const material = this.getMaterialData(prim.material, oldScene);
 
-      geometryData = this.getGeometryData(prim.geometry, oldScene);
-      const materialData = this.getMaterialData(prim.material, oldScene);
-
-      materialDatas.push(materialData);
-
-      newScene.geometries.push(geometryData);
-      newScene.materials.push(materialData);
+      geometryPropsList.push(geomProps);
+      materialDatas.push(material);
     });
+
+    const geometryData = getGeometryDataFromPropsList (geometryPropsList);
 
     if (!geometryData) {
       throw new Error('no primitives');
     }
+
+    newScene.geometries.push(geometryData);
+    newScene.materials.push(...materialDatas);
 
     const meshComponent: spec.ModelMeshComponentData = {
       id: component.id,
@@ -394,12 +394,6 @@ export class JSONConverter {
     }
 
     return lightComponent;
-  }
-
-  private getGeometryData (geometry: spec.GeometryOptionsJSON, scene: spec.JSONScene) {
-    const geomOptions = deserializeGeometry(geometry, scene.bins as unknown as ArrayBuffer[]);
-
-    return getGeometryDataFromOptions(geomOptions);
   }
 
   private getMaterialData (material: spec.MaterialOptions<'json'>, scene: spec.JSONScene) {
@@ -609,7 +603,7 @@ export class JSONConverter {
   }
 }
 
-interface ModelData {
+export interface ModelData {
   vertices: spec.TypedArray,
   uvs: spec.TypedArray,
   normals: spec.TypedArray,
@@ -617,7 +611,7 @@ interface ModelData {
   name: string,
 }
 
-function getGeometryDataFromOptions (geomOptions: GeometryProps) {
+export function getGeometryDataFromOptions (geomOptions: GeometryProps) {
   let vertexCount = 0;
   let verticesType: spec.VertexFormatType = spec.VertexFormatType.Float32;
   let verticesNormalize = false;
@@ -662,16 +656,26 @@ function getGeometryDataFromOptions (geomOptions: GeometryProps) {
 
   if (geomOptions.indices) {
     modelData.indices = geomOptions.indices.data;
-  } else {
+  } else if (vertexCount <= 65535) {
     const indices = new Uint16Array(vertexCount);
 
     for (let i = 0; i < vertexCount; i++) {
       indices[i] = i;
     }
     modelData.indices = indices;
-    if (indices.length > 65535) {
-      console.error('overflow!!!!!');
+  } else {
+    const indices = new Uint32Array(vertexCount);
+
+    for (let i = 0; i < vertexCount; i++) {
+      indices[i] = i;
     }
+    modelData.indices = indices;
+  }
+
+  let indicesType: spec.IndexFormatType = spec.IndexFormatType.UInt16;
+
+  if (modelData.indices.BYTES_PER_ELEMENT === 4) {
+    indicesType = spec.IndexFormatType.UInt32;
   }
 
   const geometryData: spec.GeometryData = {
@@ -705,7 +709,173 @@ function getGeometryDataFromOptions (geomOptions: GeometryProps) {
     },
     subMeshes: [],
     mode: spec.GeometryType.TRIANGLES,
-    indexFormat: 0,
+    indexFormat: indicesType,
+    indexOffset: verticesOffset + uvsOffset + normalsOffset,
+    buffer: encodeVertexData(modelData),
+  };
+
+  return geometryData;
+}
+
+export function getGeometryDataFromPropsList (geomPropsList: GeometryProps[]) {
+  if (geomPropsList.length <= 0) {
+    return;
+  }
+
+  let totalCount = 0;
+  const subMeshes: SubMesh[] = [];
+
+  for (let i = 0; i < geomPropsList.length; i++) {
+    const count = getDrawCount(geomPropsList[i]);
+    const offset = totalCount + (geomPropsList[i].drawStart ?? 0);
+    const scale = geomPropsList[0].indices?.data.BYTES_PER_ELEMENT ?? 1;
+
+    subMeshes.push({ offset: offset * scale, count });
+    if (i) {
+      const geom0 = geomPropsList[0];
+      const geom1 = geomPropsList[i];
+
+      let isSame = true;
+
+      Object.keys(geom0.attributes).forEach(name => {
+        const attrib = geom0.attributes[name];
+        // @ts-expect-error
+        const array1 = attrib.data as spec.TypedArray;
+        // @ts-expect-error
+        const array2 = geom1.attributes[name].data as spec.TypedArray;
+
+        if (array1.length !== array2.length || array1[0] !== array2[0]) {
+          isSame = false;
+        }
+      });
+
+      if (isSame) {
+        if (geom0.indices && geom1.indices) {
+          geom0.indices.data = mergeTypedArray(geom0.indices.data, geom1.indices.data);
+        }
+      } else {
+        if (geom0.indices && geom1.indices) {
+          const vertexCount = getVertexCount(geom0);
+
+          geom0.indices.data = mergeTypedArray(geom0.indices.data, geom1.indices.data, vertexCount);
+        }
+
+        Object.keys(geom0.attributes).forEach(name => {
+          const attrib = geom0.attributes[name];
+          // @ts-expect-error
+          const array1 = attrib.data as spec.TypedArray;
+          // @ts-expect-error
+          const array2 = geom1.attributes[name].data as spec.TypedArray;
+
+          // @ts-expect-error
+          attrib.data = mergeTypedArray(array1, array2);
+        });
+      }
+
+    }
+    totalCount = offset + count;
+  }
+
+  let vertexCount = 0;
+  let verticesType: spec.VertexFormatType = spec.VertexFormatType.Float32;
+  let verticesNormalize = false;
+  let uvsType: spec.VertexFormatType = spec.VertexFormatType.Float32;
+  let uvsNormalize = false;
+  let normalsType: spec.VertexFormatType = spec.VertexFormatType.Float32;
+  let normalsNormalize = false;
+  const modelData: ModelData = {
+    vertices: new Float32Array(),
+    uvs: new Float32Array(),
+    normals: new Float32Array(),
+    indices: new Float32Array(),
+    name: '',
+  };
+
+  const geom1 = geomPropsList[0];
+
+  for (const attrib in geom1.attributes) {
+    const attribData = geom1.attributes[attrib];
+
+    if (attrib === 'a_Position') {
+      // @ts-expect-error
+      vertexCount = attribData.data.length / attribData.size;
+      // @ts-expect-error
+      modelData.vertices = attribData.data;
+      verticesNormalize = attribData.normalize ?? false;
+      verticesType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
+    } else if (attrib === 'a_Normal') {
+      // @ts-expect-error
+      modelData.normals = attribData.data;
+      normalsNormalize = attribData.normalize ?? false;
+      normalsType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
+    } else if (attrib === 'a_UV1') {
+      // @ts-expect-error
+      modelData.uvs = attribData.data;
+      uvsNormalize = attribData.normalize ?? false;
+      uvsType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
+    }
+  }
+
+  const verticesOffset = getOffset(verticesType, 3, vertexCount);
+  const uvsOffset = getOffset(uvsType, 2, vertexCount);
+  const normalsOffset = getOffset(normalsType, 3, vertexCount);
+
+  if (geom1.indices) {
+    modelData.indices = geom1.indices.data;
+  } else if (vertexCount <= 65535) {
+    const indices = new Uint16Array(vertexCount);
+
+    for (let i = 0; i < vertexCount; i++) {
+      indices[i] = i;
+    }
+    modelData.indices = indices;
+  } else {
+    const indices = new Uint32Array(vertexCount);
+
+    for (let i = 0; i < vertexCount; i++) {
+      indices[i] = i;
+    }
+    modelData.indices = indices;
+  }
+
+  let indicesType: spec.IndexFormatType = spec.IndexFormatType.UInt16;
+
+  if (modelData.indices.BYTES_PER_ELEMENT === 4) {
+    indicesType = spec.IndexFormatType.UInt32;
+  }
+
+  const geometryData: spec.GeometryData = {
+    id: generateGUID(),
+    dataType: spec.DataType.Geometry,
+    vertexData: {
+      vertexCount: vertexCount,
+      channels: [
+        {
+          semantic: spec.VertexBufferSemantic.Positon,
+          offset: 0,
+          format: verticesType,
+          dimension: 3,
+          normalize: verticesNormalize,
+        },
+        {
+          semantic: spec.VertexBufferSemantic.Uv,
+          offset: verticesOffset,
+          format: uvsType,
+          dimension: 2,
+          normalize: uvsNormalize,
+        },
+        {
+          semantic: spec.VertexBufferSemantic.Normal,
+          offset: verticesOffset + uvsOffset,
+          format: normalsType,
+          dimension: 3,
+          normalize: normalsNormalize,
+        },
+      ],
+    },
+    subMeshes,
+    mode: spec.GeometryType.TRIANGLES,
+    indexFormat: indicesType,
     indexOffset: verticesOffset + uvsOffset + normalsOffset,
     buffer: encodeVertexData(modelData),
   };
@@ -764,4 +934,97 @@ function encodeVertexData (modelData: ModelData): string {
 
   // 使用 btoa 函数将二进制字符串转换为 Base64 编码的字符串
   return btoa(binaryString);
+}
+
+function getDrawCount (geomProps: GeometryProps) {
+  if (geomProps.drawCount) {
+    return geomProps.drawCount;
+  } else if (geomProps.indices) {
+    return geomProps.indices.data.length;
+  } else {
+    let drawCount = 0;
+
+    // @ts-expect-error
+    geomProps.attributes.forEach(attrib => {
+      drawCount = attrib.data.length / attrib.size;
+    });
+
+    return drawCount;
+  }
+}
+
+function getVertexCount (geomProps: GeometryProps) {
+  let vertexCount = 0;
+
+  Object.keys(geomProps.attributes).forEach(name => {
+    const attrib = geomProps.attributes[name];
+
+    // @ts-expect-error
+    vertexCount = attrib.data.length / attrib.size;
+  });
+
+  return vertexCount;
+}
+
+function mergeTypedArray (array1: spec.TypedArray, array2: spec.TypedArray, offset?: number) {
+  if (array1 instanceof Float32Array) {
+    const result = new Float32Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  } else if (array1 instanceof Int32Array) {
+    const result = new Int32Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  } else if (array1 instanceof Uint32Array) {
+    const result = new Uint32Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+    if (offset) {
+      for (let i = 0; i < array2.length; i++) {
+        result[array1.length + i] += offset;
+      }
+    }
+
+    return result;
+  } else if (array1 instanceof Int16Array) {
+    const result = new Int16Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  } else if (array1 instanceof Uint16Array) {
+    const result = new Uint16Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+    if (offset) {
+      for (let i = 0; i < array2.length; i++) {
+        result[array1.length + i] += offset;
+      }
+    }
+
+    return result;
+  } else if (array1 instanceof Int8Array) {
+    const result = new Int8Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  } else {
+    const result = new Uint8Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  }
 }

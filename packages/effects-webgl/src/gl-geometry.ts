@@ -412,11 +412,11 @@ export class GLGeometry extends Geometry {
     const normalChannel = data.vertexData.channels[2];
 
     // 根据提供的长度信息创建 Float32Array
-    const positionBuffer = this.createTypedArray(positionChannel, buffer, vertexCount);
-    const uvBuffer = this.createTypedArray(uvChannel, buffer, vertexCount);
-    const normalBuffer = this.createTypedArray(normalChannel, buffer, vertexCount);
+    const positionBuffer = this.createVertexTypedArray(positionChannel, buffer, vertexCount);
+    const uvBuffer = this.createVertexTypedArray(uvChannel, buffer, vertexCount);
+    const normalBuffer = this.createVertexTypedArray(normalChannel, buffer, vertexCount);
     // 根据提供的长度信息创建 Uint16Array，它紧随 Float32Array 数据之后
-    const indexBuffer = new Uint16Array(buffer, data.indexOffset);
+    const indexBuffer = this.createIndexTypedArray(data.indexFormat, buffer, data.indexOffset);
 
     const geometryProps: GeometryProps = {
       mode: glContext.TRIANGLES,
@@ -477,7 +477,7 @@ export class GLGeometry extends Geometry {
     this.destroyed = true;
   }
 
-  private createTypedArray (channel: spec.VertexChannel, baseBuffer: ArrayBufferLike, vertexCount: number) {
+  private createVertexTypedArray (channel: spec.VertexChannel, baseBuffer: ArrayBufferLike, vertexCount: number) {
     switch (channel.format) {
       case spec.VertexFormatType.Float32:
         return new Float32Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
@@ -490,7 +490,22 @@ export class GLGeometry extends Geometry {
       case spec.VertexFormatType.UInt8:
         return new Uint8Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
       default:
+        console.error(`Invalid vertex format type: ${channel.format}`);
+
         return new Float32Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+    }
+  }
+
+  private createIndexTypedArray (type: spec.IndexFormatType, baseBuffer: ArrayBufferLike, offset: number) {
+    switch (type) {
+      case spec.IndexFormatType.UInt16:
+        return new Uint16Array(baseBuffer, offset);
+      case spec.IndexFormatType.UInt32:
+        return new Uint32Array(baseBuffer, offset);
+      default:
+        console.error(`Invalid index format type: ${type}`);
+
+        return new Uint32Array(baseBuffer, offset);
     }
   }
 }
