@@ -15,7 +15,7 @@ let max = 0;
 
     const scene = await player.loadScene(json);
 
-    scene.handleEnd = () => {
+    scene.onEnd = () => {
       document.getElementById('J-gpuInfo')!.innerText = `
         frame: ${gpuFrame}
         gpu avg: ${(gpuTimes.reduce((x, y) => { return x + y; }, 0) / gpuFrame).toFixed(2)}ms
