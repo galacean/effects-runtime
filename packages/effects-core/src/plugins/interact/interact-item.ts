@@ -198,7 +198,7 @@ export class InteractComponent extends RendererComponent {
 
   getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
-    const triangles = trianglesFromRect(Vector3.ZERO, 0.5, 0.5);
+    const triangles = trianglesFromRect(Vector3.ZERO, 0.5 * this.transform.size.x, 0.5 * this.transform.size.y);
 
     triangles.forEach(triangle => {
       worldMatrix.transformPoint(triangle.p0 as Vector3);

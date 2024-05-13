@@ -297,6 +297,7 @@ export class JSONConverter {
     newScene.geometries.push(geometryData);
     newScene.materials.push(...materialDatas);
 
+    //@ts-expect-error
     const meshComponent: spec.ModelMeshComponentData = {
       id: component.id,
       dataType: component.dataType,
