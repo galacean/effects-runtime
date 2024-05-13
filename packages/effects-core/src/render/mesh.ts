@@ -5,7 +5,7 @@ import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { Geometry, Renderer } from '../render';
 import type { Disposable } from '../utils';
-import { DestroyOptions, logger } from '../utils';
+import { DestroyOptions } from '../utils';
 
 export interface MeshOptionsBase {
   material: Material,
@@ -131,7 +131,6 @@ export class Mesh implements Disposable {
       }
     }
 
-    logger.info(`第${count}次render ${this.name}`, material);
     material.use(renderer, renderingData.currentFrame.globalUniforms);
     const geo = this.geometry;
 

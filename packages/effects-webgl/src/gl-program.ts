@@ -1,11 +1,11 @@
 import type { Disposable } from '@galacean/effects-core';
 import { isWebGL2 } from '@galacean/effects-core';
+import type { GLEngine } from './gl-engine';
 import type { GLGeometry } from './gl-geometry';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { UniformBlockSpec } from './gl-uniform-utils';
 import { createUniformBlockDataFromProgram } from './gl-uniform-utils';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
-import type { GLEngine } from './gl-engine';
 
 export interface ProgramAttributeInfo {
   readonly name: string,
@@ -84,7 +84,8 @@ export class GLProgram implements Disposable {
       geometry.vaos[programId] = vao;
     }
 
-    if (vao) {
+    // 兼容小程序下不支持vao
+    if (vao && vao.vao) {
       vao.bind();
       if (vao.ready) {
         return vao;
