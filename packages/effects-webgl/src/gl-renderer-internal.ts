@@ -4,7 +4,7 @@ import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLGeometry } from './gl-geometry';
 import type { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLPipelineContext } from './gl-pipeline-context';
-import type { GLRenderBuffer } from './gl-render-buffer';
+import type { GLRenderbuffer } from './gl-renderbuffer';
 import { GLTexture } from './gl-texture';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLEngine } from './gl-engine';
@@ -21,7 +21,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   readonly name: string;
   readonly textures: GLTexture[] = [];
 
-  private readonly renderBuffers: GLRenderBuffer[] = [];
+  private readonly renderbuffers: GLRenderbuffer[] = [];
   private readonly framebuffers: GLFramebuffer[] = [];
   private sourceFbo: WebGLFramebuffer | null;
   private targetFbo: WebGLFramebuffer | null;
@@ -115,11 +115,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
     rp.resetColorTextures(colors);
   }
 
-  createGLRenderBuffer (renderbuffer: GLRenderBuffer): WebGLRenderbuffer | null {
+  createGLRenderbuffer (renderbuffer: GLRenderbuffer): WebGLRenderbuffer | null {
     const rb = this.gl.createRenderbuffer();
 
     if (rb) {
-      addItem(this.renderBuffers, renderbuffer);
+      addItem(this.renderbuffers, renderbuffer);
     }
 
     return rb;
@@ -223,10 +223,10 @@ export class GLRendererInternal implements Disposable, LostHandler {
     }
   }
 
-  deleteGLRenderBuffer (renderbuffer: GLRenderBuffer) {
+  deleteGLRenderbuffer (renderbuffer: GLRenderbuffer) {
     if (renderbuffer && !this.destroyed) {
       this.gl.deleteRenderbuffer(renderbuffer.buffer);
-      removeItem(this.renderBuffers, renderbuffer);
+      removeItem(this.renderbuffers, renderbuffer);
       // @ts-expect-error
       delete renderbuffer.buffer;
     }
@@ -242,8 +242,8 @@ export class GLRendererInternal implements Disposable, LostHandler {
       this.emptyTextureCube.dispose();
       this.framebuffers.forEach(fb => this.deleteGLFramebuffer(fb));
       this.framebuffers.length = 0;
-      this.renderBuffers.forEach(rb => this.deleteGLRenderBuffer(rb));
-      this.renderBuffers.length = 0;
+      this.renderbuffers.forEach(rb => this.deleteGLRenderbuffer(rb));
+      this.renderbuffers.length = 0;
       this.textures.forEach(tex => this.deleteGLTexture(tex));
       this.textures.length = 0;
     }

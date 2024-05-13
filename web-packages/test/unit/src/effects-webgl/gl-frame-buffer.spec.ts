@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
-import { GLFramebuffer, GLRenderBuffer, GLRenderer, GLTexture } from '@galacean/effects-webgl';
+import { GLFramebuffer, GLRenderbuffer, GLRenderer, GLTexture } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
 const { expect } = chai;
@@ -56,14 +56,14 @@ function mainTest (canvas, framework) {
       if (gpu.level === 2) {
         expect(framebuffer.storeInvalidAttachments).to.deep.equals([gl.COLOR_ATTACHMENT0]);
       }
-      expect(framebuffer.depthStencilRenderBuffer).is.undefined;
+      expect(framebuffer.depthStencilRenderbuffer).is.undefined;
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       expect(framebuffer.stencilStorage).is.undefined;
       expect(framebuffer.depthStorage).is.undefined;
       checkColorAttachment(framebuffer);
     });
 
-    it('fbo with depth & stencil renderBuffer', () => {
+    it('fbo with depth & stencil renderbuffer', () => {
       const storageType = RenderPassAttachmentStorageType.depth_stencil_opaque;
       const framebuffer = new GLFramebuffer({
         attachments: [new GLTexture(engine, {
@@ -87,8 +87,8 @@ function mainTest (canvas, framework) {
       if (gpu.level === 2) {
         expect(framebuffer.storeInvalidAttachments).to.deep.equals([gl.DEPTH_STENCIL_ATTACHMENT, gl.COLOR_ATTACHMENT0]);
       }
-      expect(framebuffer.depthStencilRenderBuffer).is.instanceof(GLRenderBuffer);
-      expect(framebuffer.depthStencilRenderBuffer?.storageType).is.eql(storageType);
+      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GLRenderbuffer);
+      expect(framebuffer.depthStencilRenderbuffer?.storageType).is.eql(storageType);
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;
 
@@ -99,7 +99,7 @@ function mainTest (canvas, framework) {
       checkColorAttachment(framebuffer);
     });
 
-    it('fbo only with depth uint16 renderBuffer', () => {
+    it('fbo only with depth uint16 renderbuffer', () => {
       const storageType = RenderPassAttachmentStorageType.depth_16_opaque;
       const framebuffer = new GLFramebuffer({
         attachments: [new GLTexture(engine, {
@@ -118,8 +118,8 @@ function mainTest (canvas, framework) {
       if (gpu.level === 2) {
         expect(framebuffer.storeInvalidAttachments).to.deep.equals([gl.DEPTH_ATTACHMENT]);
       }
-      expect(framebuffer.depthStencilRenderBuffer).is.instanceof(GLRenderBuffer);
-      expect(framebuffer.depthStencilRenderBuffer?.storageType).is.eql(storageType, 'depthStencilRenderBuffer?.storageType');
+      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GLRenderbuffer);
+      expect(framebuffer.depthStencilRenderbuffer?.storageType).is.eql(storageType, 'depthStencilRenderbuffer?.storageType');
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const depthStorage = framebuffer.depthStorage;
 
@@ -130,7 +130,7 @@ function mainTest (canvas, framework) {
       checkColorAttachment(framebuffer);
     });
 
-    it('fbo only with stencil uint8 renderBuffer', () => {
+    it('fbo only with stencil uint8 renderbuffer', () => {
       const storageType = RenderPassAttachmentStorageType.stencil_8_opaque;
       const framebuffer = new GLFramebuffer({
         attachments: [new GLTexture(engine, {
@@ -150,8 +150,8 @@ function mainTest (canvas, framework) {
       if (gpu.level === 2) {
         expect(framebuffer.storeInvalidAttachments).to.deep.equals([gl.STENCIL_ATTACHMENT, gl.COLOR_ATTACHMENT0]);
       }
-      expect(framebuffer.depthStencilRenderBuffer).is.instanceof(GLRenderBuffer);
-      expect(framebuffer.depthStencilRenderBuffer?.storageType).is.eql(storageType);
+      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GLRenderbuffer);
+      expect(framebuffer.depthStencilRenderbuffer?.storageType).is.eql(storageType);
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;
 
@@ -162,7 +162,7 @@ function mainTest (canvas, framework) {
       checkColorAttachment(framebuffer);
     });
 
-    it('fbo use other renderBuffer', () => {
+    it('fbo use other renderbuffer', () => {
       const storageType = RenderPassAttachmentStorageType.depth_stencil_opaque;
       const framebuffer0 = new GLFramebuffer({
         storeAction: {},
@@ -190,8 +190,8 @@ function mainTest (canvas, framework) {
       }, fakeRenderer);
 
       framebuffer.bind();
-      expect(framebuffer.depthStencilRenderBuffer).is.instanceof(GLRenderBuffer);
-      expect(framebuffer.depthStencilRenderBuffer?.storageType).is.eql(storageType);
+      expect(framebuffer.depthStencilRenderbuffer).is.instanceof(GLRenderbuffer);
+      expect(framebuffer.depthStencilRenderbuffer?.storageType).is.eql(storageType);
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;
 

@@ -22,7 +22,7 @@ export class GLPipelineContext implements Disposable {
   private glCapabilityCache: Record<string, any>;
   private currentFramebuffer: Record<number, WebGLFramebuffer | null>;
   private currentTextureBinding: WebGLTexture | null;
-  private currentRenderBuffer: Record<number, WebGLRenderbuffer | null>;
+  private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
 
@@ -47,7 +47,7 @@ export class GLPipelineContext implements Disposable {
     this.textureUnitDict = {};
     this.currentFramebuffer = {};
     this.pixelStorei = {};
-    this.currentRenderBuffer = {};
+    this.currentRenderbuffer = {};
   }
 
   toggle (capability: GLenum, enable?: boolean) {
@@ -103,10 +103,10 @@ export class GLPipelineContext implements Disposable {
     }
   }
 
-  bindRenderBuffer (target: GLenum, renderBuffer: WebGLRenderbuffer | null) {
-    if (this.currentRenderBuffer[target] !== renderBuffer) {
-      this.currentRenderBuffer[target] = renderBuffer;
-      this.gl.bindRenderbuffer(target, renderBuffer);
+  bindRenderbuffer (target: GLenum, renderbuffer: WebGLRenderbuffer | null) {
+    if (this.currentRenderbuffer[target] !== renderbuffer) {
+      this.currentRenderbuffer[target] = renderbuffer;
+      this.gl.bindRenderbuffer(target, renderbuffer);
     }
   }
 

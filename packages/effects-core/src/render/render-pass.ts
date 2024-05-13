@@ -12,7 +12,7 @@ import type { TextureConfigOptions, TextureLoadAction } from '../texture';
 import { Texture, TextureSourceType } from '../texture';
 import type { Disposable, Sortable } from '../utils';
 import { addByOrder, DestroyOptions, OrderType, removeItem, sortByOrder, throwDestroyedError } from '../utils';
-import type { RenderBuffer } from './render-buffer';
+import type { Renderbuffer } from './renderbuffer';
 import type { RenderingData } from './render-frame';
 
 export const RenderPassPriorityPrepare = 0;
@@ -89,9 +89,9 @@ export interface RenderPassColorAttachmentOptions {
   /**
    * ColorAttachment 的 Buffer 参数
    */
-  buffer?: RenderBuffer,
+  buffer?: Renderbuffer,
   /**
-   * WebGL2 下 RenderBuffer 超采数目。默认是0，即不启用超采。
+   * WebGL2 下 Renderbuffer 超采数目。默认是0，即不启用超采。
    * @default 0
    */
   multiSample?: number,
@@ -181,13 +181,13 @@ export class RenderTargetHandle implements Disposable {
 
 export interface RenderPassDepthStencilAttachment {
   readonly storageType: RenderPassAttachmentStorageType,
-  readonly storage?: RenderBuffer,
+  readonly storage?: Renderbuffer,
   readonly texture?: Texture,
 }
 
 export interface RenderPassDepthStencilAttachmentOptions {
   storageType: RenderPassAttachmentStorageType,
-  storage?: RenderBuffer,
+  storage?: Renderbuffer,
   texture?: Texture,
 }
 
@@ -315,7 +315,7 @@ export class RenderPass implements Disposable, Sortable {
    */
   readonly camera?: Camera;
   /**
-   * 深度和蒙版 Attachment 类型，注意区分纹理和 RenderBuffer
+   * 深度和蒙版 Attachment 类型，注意区分纹理和 Renderbuffer
    */
   readonly depthStencilType: RenderPassAttachmentStorageType;
   /**

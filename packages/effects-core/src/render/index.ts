@@ -1,6 +1,6 @@
 export * from './create-copy-shader';
 export * from './render-frame';
-export * from './render-buffer';
+export * from './renderbuffer';
 export * from './render-pass';
 export * from './shader';
 export * from './gpu-capability';

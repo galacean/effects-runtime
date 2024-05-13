@@ -600,7 +600,7 @@ describe('dispose gl-mesh / gl-render-frame / gl-render-pass', function () {
     const framebuffer = renderPass.framebuffer;
     const externalTexture = renderPass.attachments[0];
     const att1 = renderPass.attachments[1];
-    const depthStencilRenderBuffer = framebuffer.depthStencilRenderBuffer;
+    const depthStencilRenderbuffer = framebuffer.depthStencilRenderbuffer;
 
     expect(framebuffer.externalStorage).to.be.true;
 
@@ -617,7 +617,7 @@ describe('dispose gl-mesh / gl-render-frame / gl-render-pass', function () {
     expect(externalTexture.texture.isDestroyed).to.be.true;
     expect(att1.texture.isDestroyed).to.be.true;
     expect(framebuffer.renderer).to.eql(null);
-    expect(depthStencilRenderBuffer.renderer).to.exist;
+    expect(depthStencilRenderbuffer.renderer).to.exist;
   });
 
   // 销毁renderFrame

@@ -27,7 +27,7 @@ export class GPUMemoryTool {
   private fbos: WebGLFramebuffer[] = [];
   private vaos: VertexArrayObject[] = [];
   private buffers: WebGLBuffer[] = [];
-  private renderBuffers: WebGLRenderbuffer[] = [];
+  private renderbuffers: WebGLRenderbuffer[] = [];
 
   inject () {
     const gpuCap: any = GPUCapability;
@@ -67,7 +67,7 @@ export class GPUMemoryTool {
     this.fbos.splice(0, this.fbos.length);
     this.vaos.splice(0, this.vaos.length);
     this.buffers.splice(0, this.buffers.length);
-    this.renderBuffers.splice(0, this.renderBuffers.length);
+    this.renderbuffers.splice(0, this.renderbuffers.length);
   }
 
   setupContext (context: WebGLContext) {
@@ -89,8 +89,8 @@ export class GPUMemoryTool {
     this.hookList.push({ funcName: 'deleteVertexArrayOES', objectList: this.vaos, isDelete: true });
     this.hookList.push({ funcName: 'createBuffer', objectList: this.buffers });
     this.hookList.push({ funcName: 'deleteBuffer', objectList: this.buffers, isDelete: true });
-    this.hookList.push({ funcName: 'createRenderbuffer', objectList: this.renderBuffers });
-    this.hookList.push({ funcName: 'deleteRenderbuffer', objectList: this.renderBuffers, isDelete: true });
+    this.hookList.push({ funcName: 'createRenderbuffer', objectList: this.renderbuffers });
+    this.hookList.push({ funcName: 'deleteRenderbuffer', objectList: this.renderbuffers, isDelete: true });
     //
     this.checkList = [];
     this.checkList.push({ objectName: 'Texture', queryFunc: 'isTexture', objectList: this.textures });
@@ -100,7 +100,7 @@ export class GPUMemoryTool {
     this.checkList.push({ objectName: 'VAO', queryFunc: 'isVertexArray', objectList: this.vaos });
     this.checkList.push({ objectName: 'VAOES', queryFunc: 'isVertexArrayOES', objectList: this.vaos });
     this.checkList.push({ objectName: 'Buffer', queryFunc: 'isBuffer', objectList: this.buffers });
-    this.checkList.push({ objectName: 'RenderBuffer', queryFunc: 'isRenderbuffer', objectList: this.renderBuffers });
+    this.checkList.push({ objectName: 'Renderbuffer', queryFunc: 'isRenderbuffer', objectList: this.renderbuffers });
     //
     this.hookWebGLFunc(context);
     this.hookWebGLFunc(this.getVAOExt(context));

@@ -1,5 +1,5 @@
 import type { Texture } from '../texture';
-import type { RenderBuffer } from './render-buffer';
+import type { Renderbuffer } from './renderbuffer';
 import type { RenderPassAttachmentStorageType, RenderPassDepthStencilAttachmentOptions } from './render-pass';
 import type { RenderPassDestroyAttachmentType, RenderPassStoreAction } from './render-pass';
 import type { Renderer } from './renderer';
@@ -55,12 +55,12 @@ export class Framebuffer {
     // OVERRIDE
   }
 
-  get stencilStorage (): RenderBuffer | undefined {
+  get stencilStorage (): Renderbuffer | undefined {
     // OVERRIDE
     return undefined;
   }
 
-  get depthStorage (): RenderBuffer | undefined {
+  get depthStorage (): Renderbuffer | undefined {
     // OVERRIDE
     return undefined;
   }

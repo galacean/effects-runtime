@@ -24,7 +24,7 @@ export interface GPUCapabilityDetail {
   //draw elements use uint32 Array
   intIndexElementBuffer?: boolean,
   //render pass depth and stencil texture readable
-  //in webgl, if not readable,use RenderBuffer which cannot readable
+  //in webgl, if not readable,use Renderbuffer which cannot readable
   readableDepthStencilTextures?: boolean,
   writableFragDepth?: boolean,
   standardDerivatives: boolean,
