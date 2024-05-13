@@ -212,7 +212,6 @@ export class GLRenderer extends Renderer implements Disposable {
       this.framebuffer.bind();
       this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
-      //this.framebuffer = null;
       this.pipelineContext.bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }

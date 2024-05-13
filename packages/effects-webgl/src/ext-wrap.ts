@@ -61,7 +61,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
     // 保存当前的 fbo
     const framebuffer = this.renderer.getFramebuffer();
 
-    this.renderer?.glRenderer.copy2(source, target);
+    this.renderer.glRenderer.copy2(source, target);
     // 还原 fbo
     this.renderer.setFramebuffer(framebuffer);
   }
