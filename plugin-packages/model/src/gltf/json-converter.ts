@@ -1031,8 +1031,8 @@ const vertexBufferSemanticMap: Record<string, string> = {
   aNormal: 'NORMAL',
   aTangent: 'TANGENT',
   aColor: 'COLOR',
-  a_Joint1: 'JOINTS',
-  a_Weight1: 'WEIGHTS',
+  aJoints: 'JOINTS',
+  aWeights: 'WEIGHTS',
   //
   a_Position: 'POSITION',
   a_UV: 'TEXCOORD0',

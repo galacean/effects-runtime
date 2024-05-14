@@ -75,7 +75,7 @@ uniform float _morphWeights[WEIGHT_COUNT];
 #endif
 
 #ifdef HAS_JOINT_SET1
-vsIn vec4 aJoint1;
+vsIn vec4 aJoints;
 #endif
 
 #ifdef HAS_JOINT_SET2
@@ -83,7 +83,7 @@ vsIn vec4 aJoint2;
 #endif
 
 #ifdef HAS_WEIGHT_SET1
-vsIn vec4 aWeight1;
+vsIn vec4 aWeights;
 #endif
 
 #ifdef HAS_WEIGHT_SET2
@@ -141,10 +141,10 @@ mat4 getSkinningMatrix()
 
     #if defined(HAS_WEIGHT_SET1) && defined(HAS_JOINT_SET1)
     skin +=
-        aWeight1.x * getJointMatrix(aJoint1.x) +
-        aWeight1.y * getJointMatrix(aJoint1.y) +
-        aWeight1.z * getJointMatrix(aJoint1.z) +
-        aWeight1.w * getJointMatrix(aJoint1.w);
+        aWeights.x * getJointMatrix(aJoints.x) +
+        aWeights.y * getJointMatrix(aJoints.y) +
+        aWeights.z * getJointMatrix(aJoints.z) +
+        aWeights.w * getJointMatrix(aJoints.w);
     #endif
 
     return skin;
@@ -156,10 +156,10 @@ mat4 getSkinningNormalMatrix()
 
     #if defined(HAS_WEIGHT_SET1) && defined(HAS_JOINT_SET1)
     skin +=
-        aWeight1.x * getJointNormalMatrix(aJoint1.x) +
-        aWeight1.y * getJointNormalMatrix(aJoint1.y) +
-        aWeight1.z * getJointNormalMatrix(aJoint1.z) +
-        aWeight1.w * getJointNormalMatrix(aJoint1.w);
+        aWeights.x * getJointNormalMatrix(aJoints.x) +
+        aWeights.y * getJointNormalMatrix(aJoints.y) +
+        aWeights.z * getJointNormalMatrix(aJoints.z) +
+        aWeights.w * getJointNormalMatrix(aJoints.w);
     #endif
 
     return skin;

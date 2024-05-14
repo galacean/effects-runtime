@@ -739,7 +739,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           expect(v).to.eql(indexData[i]);
         });
 
-        expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal', 'aUV', 'aJoint1', 'aWeight1']);
+        expect(geom0.getAttributeNames()).to.eql(['aPos', 'aNormal', 'aUV', 'aJoints', 'aWeights']);
         const posAttrib0 = geom0.attributes['aPos'];
         expect(posAttrib0.size).to.eql(3);
         expect(posAttrib0.type).to.eql(5126);
@@ -791,11 +791,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         ].forEach((v, i) => {
           expect(v).closeTo(uvData0[i], 1e-5);
         });
-        const jointAttrib0 = geom0.attributes['aJoint1'];
+        const jointAttrib0 = geom0.attributes['aJoints'];
         expect(jointAttrib0.size).to.eql(4);
         expect(jointAttrib0.type).to.eql(5123);
         expect(jointAttrib0.normalize).to.eql(false);
-        const jointData0 = geom0.getAttributeData('aJoint1');
+        const jointData0 = geom0.getAttributeData('aJoints');
         expect(jointData0.length).to.eql(13092);
         [
           0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 7, 9, 0, 0, 7, 9, 0, 0, 9, 0, 0, 0, 9, 0, 0, 0, 7, 9, 0, 0, 7, 9, 0, 0,
@@ -804,11 +804,11 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         ].forEach((v, i) => {
           expect(v).closeTo(jointData0[i], 1e-5);
         });
-        const weightAttrib0 = geom0.attributes['aWeight1'];
+        const weightAttrib0 = geom0.attributes['aWeights'];
         expect(weightAttrib0.size).to.eql(4);
         expect(weightAttrib0.type).to.eql(5126);
         expect(weightAttrib0.normalize).to.eql(false);
-        const weightData0 = geom0.getAttributeData('aWeight1');
+        const weightData0 = geom0.getAttributeData('aWeights');
         expect(weightData0.length).to.eql(13092);
         [
           0.17160889506340027, 0.6451614499092102, 0.13225100934505463, 0.05097858980298042, 0.2263036072254181, 0.5693775415420532, 0.160634845495224,

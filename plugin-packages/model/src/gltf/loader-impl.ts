@@ -876,12 +876,12 @@ class GeometryProxy {
       const jointAttrib = this.jointAttribute;
 
       if (jointAttrib !== undefined) {
-        attributes['aJoint1'] = this._getBufferAttrib(jointAttrib);
+        attributes['aJoints'] = this._getBufferAttrib(jointAttrib);
       }
       const weightAttrib = this.weightAttribute;
 
       if (weightAttrib !== undefined) {
-        attributes['aWeight1'] = this._getBufferAttrib(weightAttrib);
+        attributes['aWeights'] = this._getBufferAttrib(weightAttrib);
       }
     }
 

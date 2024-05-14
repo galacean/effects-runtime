@@ -1128,7 +1128,7 @@ export class PGeometry {
    * @returns
    */
   hasJoints (): boolean {
-    return this.hasAttribute('aJoint1');
+    return this.hasAttribute('aJoints');
   }
 
   /**
@@ -1136,7 +1136,7 @@ export class PGeometry {
    * @returns
    */
   hasWeights (): boolean {
-    return this.hasAttribute('aWeight1');
+    return this.hasAttribute('aWeights');
   }
 }
 
