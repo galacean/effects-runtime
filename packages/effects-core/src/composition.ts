@@ -290,16 +290,6 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
-   * 合成结束回调
-   * @param {(composition: Composition) => void} func
-   * @deprecated since 2.0 - use `onEnd` instead
-   */
-  set handleEnd (func: (composition: Composition) => void) {
-    console.warn('The handleEnd property is deprecated. Use onEnd instead.');
-    this.onEnd = func;
-  }
-
-  /**
    * 获取场景中的纹理数组
    */
   get textures () {

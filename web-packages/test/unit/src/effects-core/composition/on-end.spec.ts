@@ -41,7 +41,7 @@ describe('composition onEnd', () => {
 
     expect(player.paused).to.be.false;
     expect(comp.renderer).to.exist;
-    const spy = comp.handleEnd;
+    const spy = comp.onEnd;
 
     comp.forwardTime(2);
     await sleep(10);
@@ -174,16 +174,16 @@ describe('composition onEnd', () => {
       'type': 'mars',
       '_imgs': { '1': [] },
     };
-    const onEnd = chai.spy(label);
+    const endHandler = chai.spy(label);
     const scn = await player.loadScene(json);
-    const comp = await player.play(scn, { onEnd });
+    const comp = await player.play(scn, { onEnd: endHandler });
 
-    expect(onEnd).not.has.been.called;
+    expect(endHandler).not.has.been.called;
     comp.forwardTime(2.1);
     await sleep(10);
-    expect(onEnd).to.has.been.called.once;
+    expect(endHandler).to.has.been.called.once;
 
-    comp.handleEnd = onEnd;
+    comp.onEnd = endHandler;
 
     return comp;
   }

@@ -110,8 +110,6 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       }
     });
 
-    const itemGuidMap: Record<string, string> = {};
-
     for (const item of composition.items) {
       itemGuidMap[item.id] = generateGUID();
       // TODO: 编辑器测试用，上线后删除

@@ -161,7 +161,7 @@ export interface Texture2DSourceOptionsCompressed extends TextureOptionsBase {
   target?: WebGLRenderingContext['TEXTURE_2D'] | WebGLRenderingContext['TEXTURE_CUBE_MAP'],
 }
 
-export interface Texture2DSourceOptionsFrameBuffer extends TextureOptionsBase {
+export interface Texture2DSourceOptionsFramebuffer extends TextureOptionsBase {
   sourceType: TextureSourceType.framebuffer,
   data?: { width: number, height: number },
   target?: WebGLRenderingContext['TEXTURE_2D'],
@@ -178,7 +178,7 @@ export type Texture2DSourceOptions =
   | Texture2DSourceOptionsVideo
   | Texture2DSourceOptionsImageMipmaps
   | Texture2DSourceOptionsCompressed
-  | Texture2DSourceOptionsFrameBuffer
+  | Texture2DSourceOptionsFramebuffer
   | Texture2DSourceOptionsNone;
 
 // TODO texture的options太复杂，需要精简，构造函数很多参数传进去后没有给对象赋值，导致获取不到真实值（比如width和height）

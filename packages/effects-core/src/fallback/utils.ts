@@ -13,24 +13,6 @@ export function arrAdd<T> (arr: T[], item: T): boolean | undefined {
   }
 }
 
-/**
- * @deprecated 请直接使用 Array.prototype.forEach 或 for...of
- * @param object
- * @param callback
- * @returns the mutated input object
- */
-export function forEach<T> (object: null | undefined | { [key: string]: T | Record<any, T> }, callback: (val: T, key: string) => void, thisObj?: any) {
-  if (object) {
-    for (const name in object) {
-      if (Object.hasOwnProperty.call(object, name)) {
-        callback.call(thisObj, object[name] as T, name);
-      }
-    }
-  }
-
-  return object;
-}
-
 export function ensureFixedNumber (a: any): FixedNumberExpression | undefined {
   if (Number.isFinite(a)) {
     return [ValueType.CONSTANT, a];
