@@ -797,7 +797,7 @@ describe('渲染插件单测', function () {
     const geometry = primitive.getEffectsGeometry();
     expect(geometry).to.eql(itemMesh.content.options.primitives[0].geometry);
     expect(geometry.getAttributeNames()).to.eql([
-      'aPos', 'aNormal', 'aUV', 'a_Joint1', 'a_Weight1',
+      'aPos', 'aNormal', 'aUV', 'aJoint1', 'aWeight1',
     ]);
     expect(geometry.drawStart).to.eql(0);
     expect(geometry.drawCount).to.eql(14016);
@@ -805,12 +805,12 @@ describe('渲染插件单测', function () {
     expect(geometry.getAttributeData('aPos').length).to.eql(9819);
     expect(geometry.getAttributeData('aNormal').length).to.eql(9819);
     expect(geometry.getAttributeData('aUV').length).to.eql(6546);
-    expect(geometry.getAttributeData('a_Joint1').length).to.eql(13092);
-    expect(geometry.getAttributeData('a_Weight1').length).to.eql(13092);
+    expect(geometry.getAttributeData('aJoint1').length).to.eql(13092);
+    expect(geometry.getAttributeData('aWeight1').length).to.eql(13092);
     expect(geometry.attributes).not.to.eql(undefined);
     if (geometry.attributes !== undefined) {
-      expect(geometry.attributes['a_Joint1']).to.eql({
-        dataSource: 'a_Joint1',
+      expect(geometry.attributes['aJoint1']).to.eql({
+        dataSource: 'aJoint1',
         normalize: false,
         offset: undefined,
         size: 4,
@@ -841,8 +841,8 @@ describe('渲染插件单测', function () {
         stride: undefined,
         type: 5126,
       });
-      expect(geometry.attributes['a_Weight1']).to.eql({
-        dataSource: 'a_Weight1',
+      expect(geometry.attributes['aWeight1']).to.eql({
+        dataSource: 'aWeight1',
         normalize: false,
         offset: undefined,
         size: 4,
@@ -915,7 +915,7 @@ describe('渲染插件单测', function () {
       const geometry = mesh.primitives[0].getEffectsGeometry();
       expect(geometry).to.eql(itemMesh.content.options.primitives[0].geometry);
       expect(geometry.getAttributeNames()).to.eql([
-        'aPos', 'aNormal', 'a_Tangent', 'aUV',
+        'aPos', 'aNormal', 'aTangent', 'aUV',
       ]);
       expect(geometry.drawStart).to.eql(0);
       expect(geometry.drawCount).to.eql(13530);
@@ -923,7 +923,7 @@ describe('渲染插件单测', function () {
       expect(geometry.getAttributeData('aPos').length).to.eql(7647);
       expect(geometry.getAttributeData('aNormal').length).to.eql(7647);
       expect(geometry.getAttributeData('aUV').length).to.eql(5098);
-      expect(geometry.getAttributeData('a_Tangent').length).to.eql(10196);
+      expect(geometry.getAttributeData('aTangent').length).to.eql(10196);
       expect(geometry.attributes).not.to.eql(undefined);
       if (geometry.attributes !== undefined) {
         expect(geometry.attributes['aNormal']).to.eql({
@@ -942,8 +942,8 @@ describe('渲染插件单测', function () {
           stride: undefined,
           type: 5126,
         });
-        expect(geometry.attributes['a_Tangent']).to.eql({
-          dataSource: 'a_Tangent',
+        expect(geometry.attributes['aTangent']).to.eql({
+          dataSource: 'aTangent',
           normalize: false,
           offset: undefined,
           size: 4,
@@ -1181,13 +1181,13 @@ describe('渲染插件单测', function () {
     const geometry = primitives[0].geometry;
     expect(geometry.attributesName.length).to.eql(5);
     geometry.attributesName.forEach((val, idx) => {
-      expect(val).to.eql(['a_Joint1', 'aNormal', 'aPos', 'aUV', 'a_Weight1'][idx]);
+      expect(val).to.eql(['aJoint1', 'aNormal', 'aPos', 'aUV', 'aWeight1'][idx]);
     });
     const position = geometry.attributes.aPos;
     const normal = geometry.attributes.aNormal;
     const uv1 = geometry.attributes.aUV;
-    const joint = geometry.attributes.a_Joint1;
-    const weight = geometry.attributes.a_Weight1;
+    const joint = geometry.attributes.aJoint1;
+    const weight = geometry.attributes.aWeight1;
     expect(position.size).to.eql(3);
     expect(position.type).to.eql(5126);
     expect(position.normalize).to.eql(false);
@@ -1206,8 +1206,8 @@ describe('渲染插件单测', function () {
     const positionBuffer = geometry.bufferProps.aPos.data;
     const normalBuffer = geometry.bufferProps.aNormal.data;
     const uvBuffer = geometry.bufferProps.aUV.data;
-    const jointBuffer = geometry.bufferProps.a_Joint1.data;
-    const weightBuffer = geometry.bufferProps.a_Weight1.data;
+    const jointBuffer = geometry.bufferProps.aJoint1.data;
+    const weightBuffer = geometry.bufferProps.aWeight1.data;
     [
       0.09342920035123825, 0.048714570701122284, 0.9735749959945679, 0.07329291105270386, 0.08925402164459229, 0.9775350093841553,
       0.0848226472735405, 0.04660588130354881, 1.0469099283218384, 0.0763043686747551, 0.0814896821975708, 1.0501099824905396,

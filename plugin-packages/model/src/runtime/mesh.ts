@@ -1099,7 +1099,7 @@ export class PGeometry {
    * @returns
    */
   hasTangents (): boolean {
-    return this.hasAttribute('a_Tangent');
+    return this.hasAttribute('aTangent');
   }
 
   /**
@@ -1120,7 +1120,7 @@ export class PGeometry {
    * @returns
    */
   hasColors (): boolean {
-    return this.hasAttribute('a_Color');
+    return this.hasAttribute('aColor');
   }
 
   /**
@@ -1128,7 +1128,7 @@ export class PGeometry {
    * @returns
    */
   hasJoints (): boolean {
-    return this.hasAttribute('a_Joint1');
+    return this.hasAttribute('aJoint1');
   }
 
   /**
@@ -1136,7 +1136,7 @@ export class PGeometry {
    * @returns
    */
   hasWeights (): boolean {
-    return this.hasAttribute('a_Weight1');
+    return this.hasAttribute('aWeight1');
   }
 }
 
