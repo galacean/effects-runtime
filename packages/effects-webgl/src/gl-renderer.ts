@@ -161,7 +161,7 @@ export class GLRenderer extends Renderer implements Disposable {
     this.renderingData.currentFrame.globalUniforms.matrices[name] = value;
   }
 
-  override drawGeometry (geometry: Geometry, material: Material): void {
+  override drawGeometry (geometry: Geometry, material: Material, subMeshIndex = 0): void {
     if (!geometry || !material) {
       return;
     }
@@ -203,7 +203,7 @@ export class GLRenderer extends Renderer implements Disposable {
 
       return;
     }
-    this.glRenderer.drawGeometry(geometry, material);
+    this.glRenderer.drawGeometry(geometry, material, subMeshIndex);
   }
 
   override setFramebuffer (framebuffer: Framebuffer | null) {

@@ -1,6 +1,6 @@
 import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer, Geometry } from '@galacean/effects';
-import { spec, Mesh, DestroyOptions, Material, GLSLVersion } from '@galacean/effects';
-import type { ModelMeshComponentData, ModelMeshPrimitiveData, ModelItemBounding } from '../index';
+import { spec, Material, GLSLVersion } from '@galacean/effects';
+import type { ModelMeshComponentData, ModelItemBounding } from '../index';
 import { PObjectType, PMaterialType, PGlobalState } from './common';
 import { PEntity } from './object';
 import type { PMaterial } from './material';
@@ -49,7 +49,7 @@ export class PMesh extends PEntity {
   /**
    * primitive 对象数组
    */
-  primitives: PPrimitive[] = [];
+  subMeshes: PSubMesh[] = [];
   /**
    * 是否隐藏，默认是隐藏
    */
@@ -112,15 +112,18 @@ export class PMesh extends PEntity {
     this.hide = proxy.isHide();
     this.priority = owner?.item?.listIndex || 0;
     //
-    this.primitives = [];
-    proxy.getPrimitives().forEach(primOpts => {
-      const primObj = new PPrimitive(this.engine);
+    this.subMeshes = [];
+    const geometry = proxy.getGeometry() as unknown as Geometry;
+    const materials = owner?.materials ?? [];
 
-      primObj.create(primOpts, this);
-      this.primitives.push(primObj);
+    materials.forEach(material => {
+      const subMesh = new PSubMesh(this.engine);
+
+      subMesh.create(geometry, material, this);
+      this.subMeshes.push(subMesh);
     });
 
-    if (this.primitives.length <= 0) {
+    if (this.subMeshes.length <= 0) {
       console.warn(`No primitive inside mesh item ${name}`);
     }
 
@@ -138,7 +141,7 @@ export class PMesh extends PEntity {
     }
 
     this.isBuilt = true;
-    this.primitives.forEach(prim => {
+    this.subMeshes.forEach(prim => {
       prim.build(scene.maxLightCount, {}, scene.skybox);
     });
 
@@ -165,10 +168,13 @@ export class PMesh extends PEntity {
     this.skin?.updateSkinMatrices();
     this.updateMaterial(scene);
 
-    this.primitives.forEach(prim => {
-      const mesh = prim.effectsMesh;
+    this.subMeshes.forEach((subMesh, index) => {
 
-      renderer.drawGeometry(mesh.geometry, mesh.material);
+      renderer.drawGeometry(
+        subMesh.getEffectsGeometry(),
+        subMesh.getEffectsMaterial(),
+        index
+      );
     });
 
     if (this.visBoundingBox && this.boundingBoxMesh !== undefined) {
@@ -198,10 +204,10 @@ export class PMesh extends PEntity {
     this.skin = undefined;
     this.morph?.dispose();
     this.morph = undefined;
-    this.primitives.forEach(prim => {
+    this.subMeshes.forEach(prim => {
       prim.dispose();
     });
-    this.primitives = [];
+    this.subMeshes = [];
     this.boundingBoxMesh?.dispose();
     this.boundingBoxMesh = undefined;
   }
@@ -255,7 +261,7 @@ export class PMesh extends PEntity {
     const normalMatrix = worldMatrix.clone().invert().transpose();
     const sceneStates = scene.sceneStates;
 
-    this.primitives.forEach(prim => {
+    this.subMeshes.forEach(prim => {
       prim.updateMaterial(worldMatrix, normalMatrix, sceneStates);
     });
 
@@ -302,7 +308,7 @@ export class PMesh extends PEntity {
     let mint: number | undefined;
 
     if (PGlobalState.getInstance().isEditorEnv) {
-      this.primitives.forEach(prim => {
+      this.subMeshes.forEach(prim => {
         const primt = prim.hitTesting(newOrigin, newDirection, worldMatrix, invWorldMatrix);
 
         if (primt !== undefined) {
@@ -335,7 +341,7 @@ export class PMesh extends PEntity {
     const box = this.boundingBox.makeEmpty();
     const inverseWorldMatrix = worldMatrix.clone().invert();
 
-    this.primitives.forEach(prim => {
+    this.subMeshes.forEach(prim => {
       const subbox = prim.computeBoundingBox(inverseWorldMatrix);
 
       box.union(subbox);
@@ -384,21 +390,12 @@ export class PMesh extends PEntity {
     return this.skin !== undefined;
   }
 
-  /**
-   * 获取 GE Mesh 数组
-   */
-  get mriMeshs (): Mesh[] {
-    return this.primitives.map(prim => {
-      return prim.effectsMesh;
-    });
-  }
-
 }
 
 /**
- * Primitive 类，负责 Sub Mesh相关的功能，支持骨骼动画和 PBR 渲染
+ * PSubMesh 类，负责 Sub Mesh相关的功能，支持骨骼动画和 PBR 渲染
  */
-export class PPrimitive {
+export class PSubMesh {
   /**
    * 宿主 Mesh，包含了当前 Primitive
    */
@@ -408,8 +405,8 @@ export class PPrimitive {
    * Morph 动画状态数据，来自 Mesh 对象，这里不创建不删除
    */
   private morph?: PMorph;
-  private geometry!: PGeometry;
-  private material!: PMaterial;
+  private geometry: PGeometry;
+  private material: PMaterial;
   //
   private jointMatrixList?: Float32Array;
   private jointNormalMatList?: Float32Array;
@@ -419,10 +416,6 @@ export class PPrimitive {
    * 名称
    */
   name = '';
-  /**
-   * GE Mesh
-   */
-  effectsMesh!: Mesh;
   /**
    * 渲染优先级
    */
@@ -445,12 +438,12 @@ export class PPrimitive {
    * @param data - Primitive 参数
    * @param parent - 所属 Mesh 对象
    */
-  create (data: ModelMeshPrimitiveData, parent: PMesh) {
+  create (geometry: Geometry, material: Material, parent: PMesh) {
     this.parent = parent;
     this.skin = parent.skin;
     this.morph = parent.morph;
-    this.setGeometry(data.geometry as unknown as Geometry);
-    this.setMaterial(data.material as unknown as Material);
+    this.setGeometry(geometry);
+    this.setMaterial(material);
     this.name = parent.name;
     this.effectsPriority = parent.priority;
     this.geometry.setHide(parent.hide);
@@ -496,6 +489,7 @@ export class PPrimitive {
     const materialMacroList = this.material.getMacroList(primitiveMacroList);
     const newSemantics = uniformSemantics ?? {};
 
+    // FIXME: Semantics整体移除
     newSemantics['_ViewProjectionMatrix'] = 'VIEWPROJECTION';
     //newSemantics["uView"] = 'VIEWINVERSE';
     newSemantics['_ModelMatrix'] = 'MODEL';
@@ -505,6 +499,7 @@ export class PPrimitive {
 
     if (this.material.effectMaterial) {
       material = this.material.effectMaterial;
+      // FIXME: Semantics整体移除
       // @ts-expect-error
       material.uniformSemantics = newSemantics;
 
@@ -530,22 +525,6 @@ export class PPrimitive {
       );
       this.material.setMaterialStates(material);
     }
-
-    const mesh = Mesh.create(
-      this.engine,
-      {
-        name: this.name,
-        material,
-        geometry: this.getEffectsGeometry(),
-        priority: this.effectsPriority,
-      }
-    );
-
-    if (this.effectsMesh !== undefined) {
-      this.effectsMesh.dispose();
-    }
-
-    this.effectsMesh = mesh;
   }
 
   private getFeatureList (lightCount: number, pbrPass: boolean, skybox?: PSkybox): string[] {
@@ -722,12 +701,6 @@ export class PPrimitive {
     this.jointMatrixTexture = undefined;
     this.jointNormalMatTexture?.dispose();
     this.jointNormalMatTexture = undefined;
-    this.effectsMesh?.dispose({
-      geometries: DestroyOptions.keep,
-      material: DestroyOptions.keep,
-    });
-    // @ts-expect-error
-    this.effectsMesh = undefined;
   }
 
   /**
@@ -739,7 +712,7 @@ export class PPrimitive {
   updateMaterial (worldMatrix: Matrix4, nomralMatrix: Matrix4, sceneStates: PSceneStates) {
     this.updateUniformsByAnimation(worldMatrix, nomralMatrix);
     this.updateUniformsByScene(sceneStates);
-    this.material.updateUniforms(this.getModelMaterial());
+    this.material.updateUniforms(this.getEffectsMaterial());
   }
 
   /**
@@ -831,7 +804,7 @@ export class PPrimitive {
   }
 
   private updateUniformsByAnimation (worldMatrix: Matrix4, normalMatrix: Matrix4) {
-    const material = this.getModelMaterial();
+    const material = this.getEffectsMaterial();
 
     material.setMatrix('_ModelMatrix', worldMatrix);
     material.setMatrix('_NormalMatrix', normalMatrix);
@@ -875,7 +848,7 @@ export class PPrimitive {
   }
 
   private updateUniformsByScene (sceneStates: PSceneStates) {
-    const material = this.getModelMaterial();
+    const material = this.getEffectsMaterial();
 
     material.setMatrix('_ViewProjectionMatrix', sceneStates.viewProjectionMatrix);
     material.setVector3('_Camera', sceneStates.cameraPosition);
@@ -977,8 +950,8 @@ export class PPrimitive {
    * 获取 GE 材质
    * @returns
    */
-  getModelMaterial (): Material {
-    return this.effectsMesh.material;
+  getEffectsMaterial (): Material {
+    return this.material.effectMaterial;
   }
 
   /**
@@ -1176,40 +1149,42 @@ class EffectsMeshProxy {
     public parentItem?: VFXItem<VFXItemContent>,
   ) {
     this.data = itemData;
+    this.morphObj = new PMorph();
 
+    // FIXME: 支持Morph动画
     // Morph 对象创建，需要为每个 Primitive 中 Geometry 对象创建 Morph
     // 并且要求创建的 Morph 对象状态是相同的，否则就报错
-    let isSuccess = true;
-    const morphObj = new PMorph();
-    const { primitives, morph } = this.data;
+    // let isSuccess = true;
+    // const morphObj = new PMorph();
+    // const { primitives, morph } = this.data;
 
-    primitives.forEach((prim, idx) => {
-      if (idx === 0) {
-        morphObj.create(prim.geometry as unknown as Geometry);
-      } else {
-        const tempMorph = new PMorph();
+    // primitives.forEach((prim, idx) => {
+    //   if (idx === 0) {
+    //     morphObj.create(prim.geometry as unknown as Geometry);
+    //   } else {
+    //     const tempMorph = new PMorph();
 
-        if (!tempMorph.create(prim.geometry as unknown as Geometry)) {
-          isSuccess = false;
-        } else {
-          if (!morphObj.equals(tempMorph)) {
-            isSuccess = false;
-            console.error(`Morpth target mismatch between primtives: ${JSON.stringify(morphObj)}, ${JSON.stringify(tempMorph)}`);
-          }
-        }
-      }
-    });
+    //     if (!tempMorph.create(prim.geometry as unknown as Geometry)) {
+    //       isSuccess = false;
+    //     } else {
+    //       if (!morphObj.equals(tempMorph)) {
+    //         isSuccess = false;
+    //         console.error(`Morpth target mismatch between primtives: ${JSON.stringify(morphObj)}, ${JSON.stringify(tempMorph)}`);
+    //       }
+    //     }
+    //   }
+    // });
 
-    if (isSuccess) {
-      // 设置初始权重数组
-      if (morph?.weights !== undefined) {
-        morphObj.initWeights(morph.weights);
-      }
+    // if (isSuccess) {
+    //   // 设置初始权重数组
+    //   if (morph?.weights !== undefined) {
+    //     morphObj.initWeights(morph.weights);
+    //   }
 
-      this.morphObj = morphObj;
-    } else {
-      this.morphObj = new PMorph();
-    }
+    //   this.morphObj = morphObj;
+    // } else {
+    //   this.morphObj = new PMorph();
+    // }
 
   }
 
@@ -1250,12 +1225,16 @@ class EffectsMeshProxy {
     return -1;
   }
 
-  getPrimitives () {
-    return this.data.primitives;
+  getGeometry () {
+    return this.data.geometry;
   }
 
-  getPrimitiveCount (): number {
-    return this.data.primitives.length;
+  getMaterials () {
+    return this.data.materials;
+  }
+
+  getMaterialCount () {
+    return this.data.materials.length;
   }
 
   hasSkin (): boolean {

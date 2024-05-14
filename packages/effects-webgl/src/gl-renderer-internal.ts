@@ -142,7 +142,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
     }
   }
 
-  drawGeometry (geometry: Geometry, material: Material): void {
+  drawGeometry (geometry: Geometry, material: Material, subMeshIndex: number): void {
     if (!this.gl) {
       console.warn('GLGPURenderer没有绑定gl对象, 无法绘制geometry');
 
@@ -162,21 +162,28 @@ export class GLRendererInternal implements Disposable, LostHandler {
 
     const gl = this.gl;
     const indicesBuffer = glGeometry.indicesBuffer;
-    const offset = glGeometry.drawStart;
-    const mode = glGeometry.mode;
+    let offset = glGeometry.drawStart;
     let count = glGeometry.drawCount;
+    const mode = glGeometry.mode;
+    const subMeshes = glGeometry.subMeshes;
 
-    if (indicesBuffer) {
-      const { type, elementCount } = indicesBuffer;
+    if (subMeshes && subMeshes.length) {
+      const subMesh = subMeshes[subMeshIndex];
 
-      count = isNaN(count) ? elementCount : count;
-      if (count > 0) {
-        gl.drawElements(mode, count, type, offset ?? 0);
+      offset = subMesh.offset;
+      count = subMesh.count;
+      if (indicesBuffer) {
+        gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+      } else {
+        gl.drawArrays(mode, offset, count);
       }
-    } else if (count > 0) {
-      gl.drawArrays(mode, offset, count);
+    } else {
+      if (indicesBuffer) {
+        gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+      } else {
+        gl.drawArrays(mode, offset, count);
+      }
     }
-
     vao?.unbind();
   }
 

@@ -6,6 +6,8 @@ import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math'
 import { AnimationPlayable } from './animation-playable';
 import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-item';
 import { Playable, PlayableAsset } from './playable-graph';
+import { EffectsObject } from '../../effects-object';
+import type { VFXItem, VFXItemContent } from '../../vfx-item';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);
@@ -253,5 +255,142 @@ export class ActivationPlayable extends Playable {
         rendererComponent.enabled = true;
       }
     }
+  }
+}
+
+export interface PositionCurve {
+  path: string[],
+  keyFrames: ValueGetter<Vector3>,
+}
+
+export interface EulerCurve {
+  path: string[],
+  keyFrames: ValueGetter<Vector3>,
+}
+
+export interface ScaleCurve {
+  path: string[],
+  keyFrames: ValueGetter<Vector3>,
+}
+
+export interface FloatCurve {
+  path: string[],
+  property: string[],
+  className: string,
+  keyFrames: ValueGetter<number>,
+}
+
+export class AnimationClip extends EffectsObject {
+  positionCurves: PositionCurve[] = [];
+  eulerCurves: EulerCurve[] = [];
+  scaleCurves: ScaleCurve[] = [];
+  floatCurves: FloatCurve[] = [];
+
+  sampleAnimation (vfxItem: VFXItem<VFXItemContent>, time: number) {
+    const duration = vfxItem.duration;
+    let life = time / duration;
+
+    life = life < 0 ? 0 : (life > 1 ? 1 : life);
+
+    for (const curve of this.positionCurves) {
+      const value = curve.keyFrames.getValue(life);
+      const target = this.findTarget(vfxItem, curve.path);
+
+      target?.transform.setPosition(value.x, value.y, value.z);
+    }
+
+    for (const curve of this.eulerCurves) {
+      const value = curve.keyFrames.getValue(life);
+      const target = this.findTarget(vfxItem, curve.path);
+
+      target?.transform.setRotation(value.x, value.y, value.z);
+    }
+
+    for (const curve of this.scaleCurves) {
+      const value = curve.keyFrames.getValue(life);
+      const target = this.findTarget(vfxItem, curve.path);
+
+      target?.transform.setScale(value.x, value.y, value.z);
+    }
+
+    // TODO float curves 采样
+  }
+
+  override fromData (data: spec.AnimationClipData): void {
+    this.positionCurves.length = 0;
+    this.eulerCurves.length = 0;
+    this.scaleCurves.length = 0;
+    this.floatCurves.length = 0;
+
+    for (const positionCurveData of data.positionCurves) {
+      const curve: PositionCurve = {
+        path: positionCurveData.path,
+        keyFrames: createValueGetter(positionCurveData.keyFrames),
+      };
+
+      this.positionCurves.push(curve);
+    }
+    for (const eulerCurveData of data.eulerCurves) {
+      const curve: PositionCurve = {
+        path: eulerCurveData.path,
+        keyFrames: createValueGetter(eulerCurveData.keyFrames),
+      };
+
+      this.eulerCurves.push(curve);
+    }
+    for (const scaleCurvesData of data.scaleCurves) {
+      const curve: PositionCurve = {
+        path: scaleCurvesData.path,
+        keyFrames: createValueGetter(scaleCurvesData.keyFrames),
+      };
+
+      this.scaleCurves.push(curve);
+    }
+    for (const floatCurveData of data.floatCurves) {
+      const curve: FloatCurve = {
+        path: floatCurveData.path,
+        keyFrames: createValueGetter(floatCurveData.keyFrames),
+        property: floatCurveData.property,
+        className: floatCurveData.className,
+      };
+
+      this.floatCurves.push(curve);
+    }
+  }
+
+  private findTarget (vfxItem: VFXItem<VFXItemContent>, path: string[]) {
+    let target = vfxItem;
+
+    for (const name of path) {
+      let findTag = false;
+
+      for (const child of target.children) {
+        if (child.name === name) {
+          target = child;
+          findTag = true;
+
+          break;
+        }
+      }
+      if (!findTag) {
+        return;
+      }
+    }
+
+    return target;
+  }
+}
+
+export class AnimationClipPlayable extends Playable {
+  clip: AnimationClip;
+
+  override processFrame (dt: number): void {
+    if (this.bindingItem.composition) {
+      this.clip.sampleAnimation(this.bindingItem, this.time);
+    }
+  }
+
+  override fromData (data: any): void {
+    this.clip = data.clip;
   }
 }

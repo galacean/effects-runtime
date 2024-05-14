@@ -122,6 +122,8 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     gltfResource.meshes.forEach(mesh => {
+      // FIXME: 需要马上修改
+      // @ts-expect-error
       this.geometries.push(...mesh.geometriesData);
     });
 
@@ -132,6 +134,13 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
 
     this.items = [...gltfResource.scenes[0].vfxItemData];
+    this.items.forEach(item => {
+      // @ts-expect-error
+      if (item.type === 'root') {
+        // @ts-expect-error
+        item.type = 'ECS';
+      }
+    });
 
     if (options.gltf.skyboxType) {
       await this.addSkybox({
@@ -181,6 +190,7 @@ export class LoaderECSImpl implements LoaderECS {
 
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
+    // @ts-expect-error
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
   }
 
@@ -235,14 +245,8 @@ export class LoaderECSImpl implements LoaderECS {
   }
 
   processMeshComponentData (mesh: ModelMeshComponentData): void {
-    if (mesh.primitives.length <= 0) {
-      console.error('Primitive array is empty');
-    } else {
-      mesh.primitives.forEach(prim => {
-        if (!prim.geometry || !prim.material) {
-          console.error('Geometry or material of primitive is empty');
-        }
-      });
+    if (mesh.materials.length <= 0) {
+      console.error('Submesh array is empty');
     }
   }
 
