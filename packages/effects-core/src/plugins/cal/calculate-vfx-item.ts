@@ -324,7 +324,7 @@ export class AnimationClip extends EffectsObject {
 
     for (const positionCurveData of data.positionCurves) {
       const curve: PositionCurve = {
-        path:positionCurveData.path,
+        path: positionCurveData.path,
         keyFrames: createValueGetter(positionCurveData.keyFrames),
       };
 
@@ -332,7 +332,7 @@ export class AnimationClip extends EffectsObject {
     }
     for (const eulerCurveData of data.eulerCurves) {
       const curve: PositionCurve = {
-        path:eulerCurveData.path,
+        path: eulerCurveData.path,
         keyFrames: createValueGetter(eulerCurveData.keyFrames),
       };
 
@@ -340,7 +340,7 @@ export class AnimationClip extends EffectsObject {
     }
     for (const scaleCurvesData of data.scaleCurves) {
       const curve: PositionCurve = {
-        path:scaleCurvesData.path,
+        path: scaleCurvesData.path,
         keyFrames: createValueGetter(scaleCurvesData.keyFrames),
       };
 

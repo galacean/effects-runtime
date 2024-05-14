@@ -1,7 +1,6 @@
 import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glType2VertexFormatType, glContext } from '@galacean/effects';
 import type {
-  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
-  SubMesh,
+  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps, SubMesh,
 } from '@galacean/effects';
 import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
 import { Color } from '../runtime/math';
@@ -288,7 +287,7 @@ export class JSONConverter {
       materialDatas.push(material);
     });
 
-    const geometryData = getGeometryDataFromPropsList (geometryPropsList);
+    const geometryData = getGeometryDataFromPropsList(geometryPropsList);
 
     if (!geometryData) {
       throw new Error('no primitives');
@@ -309,7 +308,7 @@ export class JSONConverter {
 
         return data;
       }),
-      rootBone: { id:'' },
+      rootBone: { id: '' },
     };
 
     return meshComponent;
@@ -377,7 +376,7 @@ export class JSONConverter {
       }
     });
 
-    this.treeItemList.push(... treeItemList);
+    this.treeItemList.push(...treeItemList);
   }
 
   private createLightComponent (component: spec.ComponentData, scene: spec.JSONScene): spec.ModelLightComponentData {
@@ -697,7 +696,7 @@ export function getGeometryDataFromOptions (geomOptions: GeometryProps) {
       vertexCount: vertexCount,
       channels: [
         {
-          semantic: spec.VertexBufferSemantic.Positon,
+          semantic: spec.VertexBufferSemantic.Position,
           offset: 0,
           format: verticesType,
           dimension: 3,
@@ -863,7 +862,7 @@ export function getGeometryDataFromPropsList (geomPropsList: GeometryProps[]) {
       vertexCount: vertexCount,
       channels: [
         {
-          semantic: spec.VertexBufferSemantic.Positon,
+          semantic: spec.VertexBufferSemantic.Position,
           offset: 0,
           format: verticesType,
           dimension: 3,

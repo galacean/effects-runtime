@@ -118,7 +118,7 @@ export class LoaderECSImpl implements LoaderECS {
       return textureOptions;
     });
     this.materials = this.gltfMaterials.map(material => {
-      return material.materialData as spec.MaterialData;
+      return material.materialData;
     });
 
     gltfResource.meshes.forEach(mesh => {
@@ -171,7 +171,7 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     materials.forEach(mat => {
-      const materialData = mat.materialData as spec.MaterialData;
+      const materialData = mat.materialData;
 
       this.processMaterialData(materialData);
 
