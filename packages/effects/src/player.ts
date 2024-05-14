@@ -1,13 +1,43 @@
 import type {
-  Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math, SceneLoadType,
-  SceneType, EffectsObject,
-} from '@galacean/effects-core';
+  Disposable,
+  EffectsObject,
+  GLType,
+  GPUCapability,
+  LostHandler,
+  math,
+  MessageItem,
+  RestoreHandler,
+  SceneLoadOptions,
+  SceneLoadType,
+  SceneType,
+  Texture2DSourceOptionsVideo,
+  TouchEventType,
+  VFXItem,
+  VFXItemContent } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
-  Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
-  isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
-  generateWhiteTexture, CompositionSourceManager, isSceneWithOptions,
+  AssetManager,
+  canvasPool,
+  Composition,
+  CompositionComponent,
+  CompositionSourceManager,
+  EVENT_TYPE_CLICK,
+  EventSystem,
+  generateWhiteTexture,
+  getPixelRatio,
+  gpuTimer,
+  initErrors,
+  isAndroid,
+  isArray,
+  isSceneURL,
+  isSceneWithOptions,
+  logger,
+  pluginLoaderMap,
+  Renderer,
+  setSpriteMeshMaxItemCountByGPU,
+  spec,
+  Texture,
+  TextureLoadAction,
+  Ticker,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -471,7 +501,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       engine.addInstance(effectsObject);
     }
     for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textureOptions[i] = engine.assetLoader.loadGUID(scene.textureOptions[i].id);
+      scene.textureOptions[i] = scene.textureOptions[i] instanceof Texture ? scene.textureOptions[i]
+        : engine.assetLoader.loadGUID(scene.textureOptions[i].id);
       scene.textureOptions[i].initialize();
     }
     const compositionSourceManager = new CompositionSourceManager(scene, engine);

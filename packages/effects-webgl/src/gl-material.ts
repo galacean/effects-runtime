@@ -1,16 +1,30 @@
 import type {
-  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps, MaterialStates,
-  Renderer, Texture, UndefinedAble,
+  Engine,
+  GlobalUniforms,
+  MaterialDestroyOptions,
+  MaterialProps,
+  MaterialStates,
+  Renderer,
+  Texture,
+  UndefinedAble,
 } from '@galacean/effects-core';
 import {
-  spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
-  math, throwDestroyedError,
+  assertExist,
+  DestroyOptions,
+  generateGUID,
+  isFunction,
+  logger,
+  Material,
+  math,
+  Shader,
+  spec,
+  throwDestroyedError,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShaderVariant } from './gl-shader';
-import type { GLTexture } from './gl-texture';
+import { GLTexture } from './gl-texture';
 
 type Color = math.Color;
 type Vector2 = math.Vector2;
@@ -269,6 +283,10 @@ export class GLMaterial extends Material {
     this.shaderVariant.initialize(glEngine);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
+
+      if (texture instanceof GLTexture) {
+        return;
+      }
 
       if (!isFunction(texture.initialize)) {
         logger.error(`${JSON.stringify(texture)} is not valid Texture to initialize`);
@@ -586,11 +604,10 @@ export class GLMaterial extends Material {
    * @returns
    */
   override toData (): spec.MaterialData {
-    // @ts-expect-error
-    const materialData: spec.MaterialData = this.taggedProperties;
+    //@ts-expect-error
+    const materialData: MaterialData = this.taggedProperties;
 
     if (this.shader) {
-      // @ts-expect-error
       materialData.shader = this.shader;
     }
     materialData.floats = {};
