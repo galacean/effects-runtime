@@ -722,7 +722,7 @@ export class PPrimitive {
     this.jointMatrixTexture = undefined;
     this.jointNormalMatTexture?.dispose();
     this.jointNormalMatTexture = undefined;
-    this.effectsMesh.dispose({
+    this.effectsMesh?.dispose({
       geometries: DestroyOptions.keep,
       material: DestroyOptions.keep,
     });
