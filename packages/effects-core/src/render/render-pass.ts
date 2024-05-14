@@ -5,14 +5,14 @@ import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { Mesh, MeshDestroyOptions, Renderer } from '../render';
-import { FrameBuffer } from '../render';
+import { Framebuffer } from '../render';
 import type { SemanticGetter } from './semantic-map';
 import { SemanticMap } from './semantic-map';
 import type { TextureConfigOptions, TextureLoadAction } from '../texture';
 import { Texture, TextureSourceType } from '../texture';
 import type { Disposable, Sortable } from '../utils';
 import { addByOrder, DestroyOptions, OrderType, removeItem, sortByOrder, throwDestroyedError } from '../utils';
-import type { RenderBuffer } from './render-buffer';
+import type { Renderbuffer } from './renderbuffer';
 import type { RenderingData } from './render-frame';
 
 export const RenderPassPriorityPrepare = 0;
@@ -89,9 +89,9 @@ export interface RenderPassColorAttachmentOptions {
   /**
    * ColorAttachment 的 Buffer 参数
    */
-  buffer?: RenderBuffer,
+  buffer?: Renderbuffer,
   /**
-   * WebGL2 下 RenderBuffer 超采数目。默认是0，即不启用超采。
+   * WebGL2 下 Renderbuffer 超采数目。默认是0，即不启用超采。
    * @default 0
    */
   multiSample?: number,
@@ -181,13 +181,13 @@ export class RenderTargetHandle implements Disposable {
 
 export interface RenderPassDepthStencilAttachment {
   readonly storageType: RenderPassAttachmentStorageType,
-  readonly storage?: RenderBuffer,
+  readonly storage?: Renderbuffer,
   readonly texture?: Texture,
 }
 
 export interface RenderPassDepthStencilAttachmentOptions {
   storageType: RenderPassAttachmentStorageType,
-  storage?: RenderBuffer,
+  storage?: Renderbuffer,
   texture?: Texture,
 }
 
@@ -297,7 +297,7 @@ export class RenderPass implements Disposable, Sortable {
    * ColorAttachment 数组
    */
   attachments: RenderTargetHandle[] = [];
-  frameBuffer?: FrameBuffer;
+  framebuffer: Framebuffer | null;
   /**
    * 名称
    */
@@ -315,7 +315,7 @@ export class RenderPass implements Disposable, Sortable {
    */
   readonly camera?: Camera;
   /**
-   * 深度和蒙版 Attachment 类型，注意区分纹理和 RenderBuffer
+   * 深度和蒙版 Attachment 类型，注意区分纹理和 Renderbuffer
    */
   readonly depthStencilType: RenderPassAttachmentStorageType;
   /**
@@ -423,8 +423,8 @@ export class RenderPass implements Disposable, Sortable {
    * 配置当前pass的RT，在每帧渲染前调用
    */
   configure (renderer: Renderer) {
-    if (this.frameBuffer) {
-      renderer.setFrameBuffer(this.frameBuffer);
+    if (this.framebuffer) {
+      renderer.setFramebuffer(this.framebuffer);
     } else {
       const [x, y, width, height] = this.getViewport();
 
@@ -467,9 +467,9 @@ export class RenderPass implements Disposable, Sortable {
 
       this.attachments.forEach(att => !att.externalTexture && att.dispose());
       this.attachments = attachments;
-      if (this.frameBuffer) {
-        this.frameBuffer.bind();
-        this.frameBuffer.resetColorTextures(colors.map(color => color));
+      if (this.framebuffer) {
+        this.framebuffer.bind();
+        this.framebuffer.resetColorTextures(colors.map(color => color));
       }
     }
   }
@@ -491,19 +491,19 @@ export class RenderPass implements Disposable, Sortable {
       this.isCustomViewport = true;
       this.viewportScale = 1;
       this.customViewport = options.viewport.slice(0, 4) as [x: number, y: number, width: number, height: number];
-      if (this.frameBuffer) {
+      if (this.framebuffer) {
         const vp = this.customViewport;
 
         // TODO 为什么framebuffer和renderpass的isCustomViewport不一样？
-        this.frameBuffer.isCustomViewport = false;
-        this.frameBuffer.resize(vp[0], vp[1], vp[2], vp[3]);
+        this.framebuffer.isCustomViewport = false;
+        this.framebuffer.resize(vp[0], vp[1], vp[2], vp[3]);
       }
     } else {
       this.isCustomViewport = false;
       this.viewportScale = options.viewportScale || 1;
-      if (this.frameBuffer) {
-        this.frameBuffer.isCustomViewport = true;
-        this.frameBuffer.viewportScale = this.viewportScale;
+      if (this.framebuffer) {
+        this.framebuffer.isCustomViewport = true;
+        this.framebuffer.viewportScale = this.viewportScale;
       }
     }
   }
@@ -515,9 +515,8 @@ export class RenderPass implements Disposable, Sortable {
     if (this.attachments.length) {
       this.attachments.forEach(att => !att.externalTexture && att.dispose());
       this.attachments.length = 0;
-      this.frameBuffer?.dispose({ depthStencilAttachment: RenderPassDestroyAttachmentType.keepExternal });
-      // @ts-expect-error safe to assign
-      this.frameBuffer = null;
+      this.framebuffer?.dispose({ depthStencilAttachment: RenderPassDestroyAttachmentType.keepExternal });
+      this.framebuffer = null;
     }
     const vs = this.viewportScale;
     // renderpass 的 viewport 相关参数都需要动态的修改
@@ -540,7 +539,7 @@ export class RenderPass implements Disposable, Sortable {
       });
 
       this.attachments = attachments;
-      const framebuffer = FrameBuffer.create({
+      const framebuffer = Framebuffer.create({
         storeAction: this.storeAction,
         name,
         viewport,
@@ -552,7 +551,7 @@ export class RenderPass implements Disposable, Sortable {
 
       framebuffer.bind();
       framebuffer.unbind();
-      this.frameBuffer = framebuffer;
+      this.framebuffer = framebuffer;
     } else {
       this.attachments.length = 0;
     }
@@ -562,7 +561,7 @@ export class RenderPass implements Disposable, Sortable {
    * 获取当前视口大小，格式：[x偏移，y偏移，宽度，高度]
    */
   getViewport (): vec4 {
-    const ret = this.frameBuffer?.viewport || this.customViewport;
+    const ret = this.framebuffer?.viewport || this.customViewport;
 
     if (ret) {
       return ret;
@@ -577,14 +576,14 @@ export class RenderPass implements Disposable, Sortable {
    * 获取深度 Attachment，可能没有
    */
   getDepthAttachment (): RenderPassDepthStencilAttachment | undefined {
-    const frameBuffer = this.frameBuffer;
+    const framebuffer = this.framebuffer;
 
-    if (frameBuffer) {
+    if (framebuffer) {
 
       return {
-        storageType: frameBuffer.depthStencilStorageType,
-        storage: frameBuffer.depthStorage,
-        texture: frameBuffer.getDepthTexture() ? this.getDepthTexture(frameBuffer.getDepthTexture()!, frameBuffer.externalStorage) : undefined,
+        storageType: framebuffer.depthStencilStorageType,
+        storage: framebuffer.depthStorage,
+        texture: framebuffer.getDepthTexture() ? this.getDepthTexture(framebuffer.getDepthTexture()!, framebuffer.externalStorage) : undefined,
       };
     }
   }
@@ -593,13 +592,13 @@ export class RenderPass implements Disposable, Sortable {
    * 获取蒙版 Attachment，可能没有
    */
   getStencilAttachment (): RenderPassDepthStencilAttachment | undefined {
-    const frameBuffer = this.frameBuffer;
+    const framebuffer = this.framebuffer;
 
-    if (frameBuffer) {
+    if (framebuffer) {
       return {
-        storageType: frameBuffer.depthStencilStorageType,
-        storage: frameBuffer.stencilStorage,
-        texture: frameBuffer.getStencilTexture() ? this.getStencilTexture(frameBuffer.getStencilTexture()!, frameBuffer.externalStorage) : undefined,
+        storageType: framebuffer.depthStencilStorageType,
+        storage: framebuffer.stencilStorage,
+        texture: framebuffer.getStencilTexture() ? this.getStencilTexture(framebuffer.getStencilTexture()!, framebuffer.externalStorage) : undefined,
       };
     }
   }
@@ -679,7 +678,7 @@ export class RenderPass implements Disposable, Sortable {
 
     this.destroyed = true;
     const depthStencilOpt = options?.depthStencilAttachment ? options.depthStencilAttachment : RenderPassDestroyAttachmentType.force;
-    const fbo = this.frameBuffer;
+    const fbo = this.framebuffer;
 
     if (fbo) {
       fbo.dispose({ depthStencilAttachment: depthStencilOpt });

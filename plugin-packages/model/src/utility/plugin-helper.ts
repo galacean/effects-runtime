@@ -1171,7 +1171,9 @@ export class WebHelper {
       canvas,
       renderFramework: 'webgl2',
       env: PLAYER_OPTIONS_ENV_EDITOR,
-      willCaptureImage: true,
+      renderOptions: {
+        willCaptureImage: true,
+      },
       manualRender,
     });
   }

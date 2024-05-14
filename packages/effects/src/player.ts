@@ -1,13 +1,13 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math,
-  SceneLoadType, SceneType, EffectsObject,
+  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math, SceneLoadType,
+  SceneType, EffectsObject,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
-  Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, CompositionSourceManager,
-  TextureSourceType, glContext, Texture, isSceneWithOptions, isSceneURL,
+  Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
+  isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
+  generateWhiteTexture, CompositionSourceManager, isSceneWithOptions,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -72,6 +72,7 @@ export interface PlayerConfig {
    * player 的 name
    */
   name?: string,
+  gl?: WebGLRenderingContext,
   renderOptions?: {
     /**
      * 播放器是否需要截图（对应 WebGL 的 preserveDrawingBuffer 参数）
@@ -81,7 +82,7 @@ export interface PlayerConfig {
      * 图片预乘 Alpha
      * @default false
      */
-    premultiplyAlpha?: boolean,
+    premultipliedAlpha?: boolean,
   },
   /**
    * 是否通知 container touchend / mouseup 事件, 默认不通知
@@ -122,8 +123,6 @@ export interface PlayerConfig {
    * @param time - GPU 渲染使用的时间，秒
    */
   reportGPUTime?: (time: number) => void,
-
-  [key: string]: any,
 }
 
 const playerMap = new Map<HTMLCanvasElement, Player>();
@@ -150,21 +149,20 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    */
   readonly ticker: Ticker;
 
-  /**
-   * 当前播放的合成对象数组，请不要修改内容
-   */
-  protected compositions: Composition[] = [];
-
   private readonly builtinObjects: EffectsObject[] = [];
   private readonly event: EventSystem;
   private readonly handleWebGLContextLost?: (event: Event) => void;
   private readonly handleWebGLContextRestored?: () => void;
   private readonly handleMessageItem?: (item: MessageItem) => void;
   private readonly handlePlayerPause?: (item: VFXItem<VFXItemContent>) => void;
-  private readonly reportGPUTime?: (time: number) => void;
   private readonly handleItemClicked?: (event: any) => void;
   private readonly handlePlayableUpdate?: (event: { playing: boolean, player: Player }) => void;
   private readonly handleRenderError?: (err: Error) => void;
+  private readonly reportGPUTime?: (time: number) => void;
+  /**
+   * 当前播放的合成对象数组，请不要修改内容
+   */
+  private compositions: Composition[] = [];
   private displayAspect: number;
   private displayScale = 1;
   private forceRenderNextFrame: boolean;
@@ -182,10 +180,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    */
   constructor (config: PlayerConfig) {
     const {
-      container, canvas, gl, fps, name, pixelRatio, manualRender, interactive, reportGPUTime,
+      container, canvas, gl, fps, name, pixelRatio, manualRender, reportGPUTime,
       onMessageItem, onPausedByItem, onItemClicked, onPlayableUpdate, onRenderError,
       onWebGLContextLost, onWebGLContextRestored,
       renderFramework: glType, notifyTouch,
+      interactive = false,
+      renderOptions = {},
       env = '',
     } = config;
 
@@ -193,8 +193,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       throw new Error(`Errors before player create: ${initErrors.map((message, index) => `\n ${index + 1}: ${message}`)}`);
     }
 
-    // 将 willCaptureImage, premultiplyAlpha 统一到 renderOptions 下
-    const { willCaptureImage, premultiplyAlpha } = config.renderOptions ?? config ?? {};
+    const { willCaptureImage: preserveDrawingBuffer, premultipliedAlpha } = renderOptions;
 
     // 原 debug-disable 直接返回
     if (enableDebugType || glType === 'debug-disable') {
@@ -229,7 +228,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     if (canvas) {
       this.canvas = canvas;
     } else if (gl) {
-      this.canvas = gl.canvas;
+      this.canvas = gl.canvas as HTMLCanvasElement;
       const version = gl instanceof WebGLRenderingContext ? 'webgl' : 'webgl2';
 
       if (framework !== version) {
@@ -246,16 +245,15 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.canvas,
       framework,
       {
-        preserveDrawingBuffer: willCaptureImage,
-        premultipliedAlpha: premultiplyAlpha,
+        preserveDrawingBuffer,
+        premultipliedAlpha,
       }
     );
-
     this.renderer.env = env;
     this.renderer.addLostHandler({ lost: this.lost });
     this.renderer.addRestoreHandler({ restore: this.restore });
     this.gpuCapability = this.renderer.engine.gpuCapability;
-    this.createBuiltinObject();
+    this.builtinObjects.push(generateWhiteTexture(this.renderer.engine));
 
     // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
     playerMap.forEach(player => {
@@ -271,7 +269,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.event = new EventSystem(this.canvas, !!notifyTouch);
     this.event.bindListeners();
     this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
-    this.interactive = interactive ?? false;
+    this.interactive = interactive;
     this.name = name || `${seed++}`;
     if (!gl) {
       this.resize();
@@ -433,7 +431,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     return composition;
   }
 
-  private async createComposition (url: SceneLoadType, options: SceneLoadOptions = {}): Promise<Composition> {
+  private async createComposition (
+    url: SceneLoadType,
+    options: SceneLoadOptions = {},
+  ): Promise<Composition> {
     const renderer = this.renderer;
     const engine = renderer.engine;
     const last = performance.now();
@@ -458,7 +459,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     const assetManager = new AssetManager(opts);
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    engine.clearResources(); // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
+    // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
+    engine.clearResources();
     this.assetManagers.push(assetManager);
     const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
@@ -470,7 +472,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     }
     for (let i = 0; i < scene.textureOptions.length; i++) {
       scene.textureOptions[i] = engine.assetLoader.loadGUID(scene.textureOptions[i].id);
-      (scene.textureOptions[i] as Texture).initialize();
+      scene.textureOptions[i].initialize();
     }
     const compositionSourceManager = new CompositionSourceManager(scene, engine);
 
@@ -492,6 +494,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       onMessageItem: this.handleMessageItem,
     }, scene, compositionSourceManager);
 
+    // 中低端设备降帧到 30fps
     if (this.ticker) {
       if (composition.renderLevel === spec.RenderLevel.B) {
         this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
@@ -499,7 +502,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     }
 
     await new Promise(resolve => {
-      this.renderer.getShaderLibrary()!.compileAllShaders(() => {
+      this.renderer.getShaderLibrary()?.compileAllShaders(() => {
         resolve(null);
       });
     });
@@ -549,10 +552,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.compositions.map(composition => {
       composition.gotoAndPlay(time);
     });
-    if (!this.ticker) {
-      this.doTick(0, true);
-    } else {
+    if (this.ticker) {
       this.ticker.start();
+    } else {
+      this.doTick(0, true);
     }
   }
 
@@ -676,8 +679,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       const time = (level === 2 && this.reportGPUTime) ? gpuTimer(gl as WebGL2RenderingContext) : undefined;
 
       time?.begin();
-      if (this.compositions.length || this.compositions.length < comps.length || forceRender) {
-        this.renderer.setFrameBuffer(null);
+      if (
+        this.compositions.length ||
+        this.compositions.length < comps.length ||
+        forceRender
+      ) {
+        this.renderer.setFramebuffer(null);
         this.renderer.clear({
           stencilAction: TextureLoadAction.clear,
           clearStencil: 0,
@@ -862,7 +869,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     (this.renderer as GLRenderer).context.removeRestoreHandler({ restore: this.restore });
     this.event.dispose();
     this.renderer.dispose(!keepCanvas);
-    this.destroyBuiltinObject();
+    this.destroyBuiltinObjects();
     broadcastPlayerEvent(this, false);
     if (
       this.canvas instanceof HTMLCanvasElement &&
@@ -966,38 +973,13 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     return [containerWidth, containerHeight, targetWidth, targetHeight];
   }
 
-  private createBuiltinObject () {
-    const whiteTexture = Texture.create(
-      this.renderer.engine,
-      {
-        id: 'whitetexture00000000000000000000',
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([255, 255, 255, 255]),
-        },
-        sourceType: TextureSourceType.data,
-        type: glContext.UNSIGNED_BYTE,
-        format: glContext.RGBA,
-        internalFormat: glContext.RGBA,
-        wrapS: glContext.MIRRORED_REPEAT,
-        wrapT: glContext.MIRRORED_REPEAT,
-        minFilter: glContext.NEAREST,
-        magFilter: glContext.NEAREST,
-      },
-    );
-
-    this.builtinObjects.push(whiteTexture);
-  }
-
-  private destroyBuiltinObject () {
+  private destroyBuiltinObjects () {
     for (const effectsObject of this.builtinObjects) {
       effectsObject.dispose();
     }
 
     this.builtinObjects.length = 0;
   }
-
 }
 
 /**

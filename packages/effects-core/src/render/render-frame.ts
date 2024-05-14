@@ -75,11 +75,11 @@ export interface RenderPassInfo {
  */
 export interface RenderFrameResource {
   /**
-   * 纹理对象，用于 FrameBuffer 的颜色 Attachment
+   * 纹理对象，用于 Framebuffer 的颜色 Attachment
    */
   color_a: Texture,
   /**
-   * 纹理对象，用于 FrameBuffer 的颜色 Attachment
+   * 纹理对象，用于 Framebuffer 的颜色 Attachment
    */
   color_b: Texture,
   /**
@@ -704,7 +704,7 @@ export class RenderFrame implements Disposable {
   }
 
   /**
-   * 重置 RenderPass ColorAttachment，解决 FrameBuffer 即读又写的问题
+   * 重置 RenderPass ColorAttachment，解决 Framebuffer 即读又写的问题
    * @param renderPasses - RenderPass 对象数组
    * @param startIndex - 开始重置的索引
    */
@@ -935,7 +935,7 @@ export class RenderFrame implements Disposable {
   // TODO tex和size没有地方用到。
   /**
    * 创建拷贝 RenderPass 用到的 Mesh 对象
-   * @param semantics - RenderPass 渲染时 FrameBuffer 的颜色和深度纹理、大小和是否混合
+   * @param semantics - RenderPass 渲染时 Framebuffer 的颜色和深度纹理、大小和是否混合
    */
   createCopyMesh (semantics?: { tex?: string, size?: string, blend?: boolean, depthTexture?: Texture }): Mesh {
     const name = EFFECTS_COPY_MESH_NAME;
@@ -1010,8 +1010,8 @@ export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: 
 class FinalCopyRP extends RenderPass {
   prePassTexture: Texture;
   override configure (renderer: Renderer): void {
-    this.prePassTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
-    renderer.setFrameBuffer(null);
+    this.prePassTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    renderer.setFramebuffer(null);
   }
 
   override execute (renderer: Renderer): void {

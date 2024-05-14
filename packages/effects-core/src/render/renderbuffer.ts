@@ -1,13 +1,13 @@
 import type { Disposable } from '../utils';
 import type { RenderPassAttachmentStorageType } from './render-pass';
 
-export interface RenderBufferProps {
+export interface RenderbufferProps {
   storageType: RenderPassAttachmentStorageType,
   format: GLenum,
   attachment: GLenum,
 }
 
-export abstract class RenderBuffer implements Disposable {
+export abstract class Renderbuffer implements Disposable {
   readonly size: [x: number, y: number] = [0, 0];
   readonly multiSample = 1;
   readonly storageType: RenderPassAttachmentStorageType;
@@ -16,9 +16,9 @@ export abstract class RenderBuffer implements Disposable {
 
   protected destroyed = false;
 
-  static create: (props: RenderBufferProps) => RenderBuffer;
+  static create: (props: RenderbufferProps) => Renderbuffer;
 
-  constructor (props: RenderBufferProps) {
+  constructor (props: RenderbufferProps) {
     const { storageType, format, attachment } = props;
 
     this.storageType = storageType;

@@ -1,10 +1,10 @@
 import type { Texture } from '../texture';
-import type { RenderBuffer } from './render-buffer';
+import type { Renderbuffer } from './renderbuffer';
 import type { RenderPassAttachmentStorageType, RenderPassDepthStencilAttachmentOptions } from './render-pass';
 import type { RenderPassDestroyAttachmentType, RenderPassStoreAction } from './render-pass';
 import type { Renderer } from './renderer';
 
-export interface FrameBufferProps {
+export interface FramebufferProps {
   attachments: Texture[],
   depthStencilAttachment?: RenderPassDepthStencilAttachmentOptions,
   isCustomViewport?: boolean,
@@ -27,7 +27,7 @@ export enum RenderTextureFormat {
 /**
  *
  */
-export class FrameBuffer {
+export class Framebuffer {
   depthStencilStorageType: RenderPassAttachmentStorageType;
   name: string;
   viewportScale: number;
@@ -37,7 +37,7 @@ export class FrameBuffer {
   storeAction: RenderPassStoreAction;
   isCustomViewport: boolean;
 
-  static create: (props: FrameBufferProps, renderer: Renderer) => FrameBuffer;
+  static create: (props: FramebufferProps, renderer: Renderer) => Framebuffer;
 
   resize (x: number, y: number, width: number, height: number) {
     // OVERRIDE
@@ -55,12 +55,12 @@ export class FrameBuffer {
     // OVERRIDE
   }
 
-  get stencilStorage (): RenderBuffer | undefined {
+  get stencilStorage (): Renderbuffer | undefined {
     // OVERRIDE
     return undefined;
   }
 
-  get depthStorage (): RenderBuffer | undefined {
+  get depthStorage (): Renderbuffer | undefined {
     // OVERRIDE
     return undefined;
   }
