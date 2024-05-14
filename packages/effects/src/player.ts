@@ -533,7 +533,9 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       this.offscreenMode = false;
     }
     this.autoPlaying = true;
-    this.compositions.map(composition => composition.play);
+    this.compositions.map(composition => {
+      composition.play();
+    });
     this.ticker?.start();
   }
 
