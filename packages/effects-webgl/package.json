@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-webgl",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Galacean Effects runtime webgl for the web",
   "types": "./dist/index.d.ts",
   "files": [
@@ -15,7 +15,7 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration",
     "build:declaration": "tsc -d --emitDeclarationOnly",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [

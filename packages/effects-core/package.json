@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-core",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Galacean Effects runtime core for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -20,7 +20,7 @@
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
     "build:declaration": "tsc -d --emitDeclarationOnly",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [

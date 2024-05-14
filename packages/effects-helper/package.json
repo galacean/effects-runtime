@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-helper",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Galacean Effects runtime helper for the web",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,7 +16,7 @@
   "scripts": {
     "prebuild": "pnpm clean",
     "build": "tsc -d",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [
