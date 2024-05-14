@@ -1,7 +1,7 @@
-import { AbstractPlugin } from '@galacean/effects';
-import type { spec, Scene, Composition, Texture } from '@galacean/effects';
 import type { SkeletonData, Texture as SpineTexture } from '@esotericsoftware/spine-core';
 import { Skeleton, TextureAtlas } from '@esotericsoftware/spine-core';
+import type { Composition, Scene, spec, Texture } from '@galacean/effects';
+import { AbstractPlugin } from '@galacean/effects';
 import { decodeText } from './polyfill';
 import { createSkeletonData, getAnimationList, getSkeletonFromBuffer, getSkinList } from './utils';
 
@@ -74,7 +74,9 @@ function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textu
   }
   for (let i = 0; i < pageCount; i++) {
     const page = atlas.pages[i];
-    const tex = textures[images[i]];
+
+    // 直接获取Texture
+    const tex = images[i];
 
     if (!tex) {
       throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);

@@ -1,5 +1,4 @@
 import { Player } from '@galacean/effects';
-import inspireList from './assets/inspire-list';
 
 // 动态文本
 // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*40vJRJf5nAAAAAAAAAAAAAAADlB4AQ';
