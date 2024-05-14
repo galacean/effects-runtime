@@ -16,7 +16,7 @@
   "scripts": {
     "prebuild": "pnpm clean",
     "build": "tsc -d",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [
