@@ -12,18 +12,20 @@ let pauseOnFirstFrame = false;
 let infoElement;
 let url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
 
+// 兔子
 url = 'https://mdn.alipayobjects.com/mars/afts/file/A*sA-6TJ695dYAAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*NPMMTbrZrJAAAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*ZQq_SKRrEKsAAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*16M9QrFglbUAAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ';
-url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/restart.json';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*MBmNSbmPOIIAAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*cnCMTo1seD0AAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*16M9QrFglbUAAAAAAAAAAAAADlB4AQ';
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*NPMMTbrZrJAAAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*ZQq_SKRrEKsAAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*16M9QrFglbUAAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ';
+//url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/restart.json';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*MBmNSbmPOIIAAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*cnCMTo1seD0AAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*16M9QrFglbUAAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ';
+// 虚拟人
 url = 'https://mdn.alipayobjects.com/mars/afts/file/A*ZQq_SKRrEKsAAAAAAAAAAAAADlB4AQ';
 
 const compatibleMode = 'tiny3d';

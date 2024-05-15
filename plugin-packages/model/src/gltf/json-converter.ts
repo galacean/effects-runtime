@@ -14,7 +14,7 @@ export class JSONConverter {
   engine: Engine;
   renderer: Renderer;
   downloader: Downloader;
-  treeItemList: spec.VFXItemData[] = [];
+  treeInfo = new TreeInfo();
 
   constructor (player: Player) {
     this.engine = player.renderer.engine;
@@ -69,7 +69,6 @@ export class JSONConverter {
       geometries: [],
     };
 
-    this.treeItemList = [];
     this.setImage(newScene, oldScene);
     await this.setTexture(newScene, oldScene);
     this.setComponent(newScene, oldScene);
@@ -180,7 +179,7 @@ export class JSONConverter {
 
   setComposition (newScene: spec.JSONScene, oldScene: spec.JSONScene) {
     newScene.items = oldScene.items;
-    newScene.items.push(...this.treeItemList);
+    newScene.items.push(...this.treeInfo.getAllTreeNodeList());
     newScene.compositionId = oldScene.compositionId;
     newScene.compositions = oldScene.compositions;
 
@@ -298,10 +297,6 @@ export class JSONConverter {
       throw new Error('no primitives');
     }
 
-    if (meshOptions.skin) {
-      this.setupBoneData(geometryData, meshOptions.skin, oldScene, this.treeItemList);
-    }
-
     newScene.geometries.push(geometryData);
     newScene.materials.push(...materialDatas);
 
@@ -317,8 +312,30 @@ export class JSONConverter {
 
         return data;
       }),
-      rootBone: { id: '' },
     };
+
+    if (meshOptions.skin) {
+      let parentItemId = component.item.id;
+
+      for (const item of oldScene.items) {
+        if (item.id === component.item.id) {
+          parentItemId = item.parentId as string;
+        }
+      }
+
+      if (parentItemId === component.item.id) {
+        throw new Error(`Can't item ${component.item}`);
+      }
+
+      const treeNodeList = this.treeInfo.getTreeNodeListByNodeId(parentItemId);
+
+      if (!treeNodeList) {
+        throw new Error(`Can't find tree node list for ${component.item}`);
+      }
+      const rootBoneItem = this.setupBoneData(geometryData, meshOptions.skin, oldScene, treeNodeList);
+
+      meshComponent.rootBone = { id: rootBoneItem.id };
+    }
 
     return meshComponent;
   }
@@ -334,7 +351,7 @@ export class JSONConverter {
 
     const treeComp = component as unknown as ModelTreeContent;
     const treeData = treeComp.options.tree;
-    const treeItemList: spec.VFXItemData[] = [];
+    const treeNodeList: spec.VFXItemData[] = [];
 
     treeData.nodes.forEach((node, index) => {
       const item: spec.VFXItemData = {
@@ -356,15 +373,15 @@ export class JSONConverter {
         components: [],
       };
 
-      treeItemList.push(item);
+      treeNodeList.push(item);
       newScene.items.push(item);
     });
 
     treeData.nodes.forEach((node, index) => {
-      const item = treeItemList[index];
+      const item = treeNodeList[index];
 
       node.children?.forEach(child => {
-        const childItem = treeItemList[child];
+        const childItem = treeNodeList[child];
 
         childItem.parentId = item.id;
       });
@@ -379,13 +396,13 @@ export class JSONConverter {
           const subIndex = +item.parentId.substring(index + 1);
 
           if (parentId === treeItem.id) {
-            item.parentId = treeItemList[subIndex].id;
+            item.parentId = treeNodeList[subIndex].id;
           }
         }
       }
     });
 
-    this.treeItemList.push(...treeItemList);
+    this.treeInfo.add(treeItem, treeNodeList);
   }
 
   private createLightComponent (component: spec.ComponentData, scene: spec.JSONScene): spec.ModelLightComponentData {
@@ -672,6 +689,49 @@ export class JSONConverter {
     geom.boneNames = boneNames;
 
     return rootBoneItem;
+  }
+}
+
+class TreeInfo {
+  tree2NodeList: Record<string, spec.VFXItemData[]> = {};
+  nodeList2Tree: Record<string, spec.VFXItemData> = {};
+
+  add (treeItem: spec.VFXItemData, treeNodeList: spec.VFXItemData[]) {
+    if (this.tree2NodeList[treeItem.id]) {
+      throw new Error(`Find duplicate treeItem id: ${treeItem.id}`);
+    }
+
+    this.tree2NodeList[treeItem.id] = treeNodeList;
+    treeNodeList.forEach(node => {
+      if (this.nodeList2Tree[node.id]) {
+        throw new Error(`Find duplicate tree node id: ${node.id}`);
+      }
+      this.nodeList2Tree[node.id] = treeItem;
+    });
+  }
+
+  getTreeNodeListByTreeId (id: string) {
+    return this.tree2NodeList[id];
+  }
+
+  getTreeNodeListByNodeId (id: string) {
+    const treeItem = this.nodeList2Tree[id];
+
+    if (!treeItem) {
+      throw new Error(`Invalid id ${id}`);
+    }
+
+    return this.getTreeNodeListByTreeId(treeItem.id);
+  }
+
+  getAllTreeNodeList () {
+    const nodeList: spec.VFXItemData[] = [];
+
+    Object.keys(this.tree2NodeList).forEach(key => {
+      nodeList.push(...this.tree2NodeList[key]);
+    });
+
+    return nodeList;
   }
 }
 
