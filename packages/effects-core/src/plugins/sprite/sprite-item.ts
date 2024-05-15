@@ -118,11 +118,6 @@ export class SpriteColorPlayable extends Playable {
         this.colorOverLifetime = colorStopsFromGradient(colorOverLifetime.color[1]);
       }
     }
-    if (clipData.startColor) {
-      clipData.startColor[0] /= 255;
-      clipData.startColor[1] /= 255;
-      clipData.startColor[2] /= 255;
-    }
     this.startColor = clipData.startColor || [1, 1, 1, 1];
 
     return this;
