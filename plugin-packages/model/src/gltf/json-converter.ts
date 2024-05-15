@@ -6,6 +6,7 @@ import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime
 import { Color } from '../runtime/math';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { ModelTreeContent } from '../index';
+import { typedArrayFromBinary } from '@galacean/effects-helper';
 
 export class JSONConverter {
   newScene: spec.JSONScene;
@@ -149,8 +150,6 @@ export class JSONConverter {
     for (const comp of oldScene.components) {
       if (comp.dataType === spec.DataType.SkyboxComponent) {
         newComponents.push(this.createSkyboxComponent(comp, newScene));
-      } else if (comp.dataType === spec.DataType.MeshComponent) {
-        newComponents.push(this.createMeshComponent(comp, newScene, oldScene));
       } else if (comp.dataType === spec.DataType.LightComponent) {
         newComponents.push(this.createLightComponent(comp, newScene));
       } else if (comp.dataType === spec.DataType.CameraComponent) {
@@ -163,8 +162,14 @@ export class JSONConverter {
         treeComp.options.tree.animation = undefined;
         treeComp.options.tree.animations = undefined;
         newComponents.push(comp);
-      } else {
+      } else if (comp.dataType !== spec.DataType.MeshComponent) {
         newComponents.push(comp);
+      }
+    }
+
+    for (const comp of oldScene.components) {
+      if (comp.dataType === spec.DataType.MeshComponent) {
+        newComponents.push(this.createMeshComponent(comp, newScene, oldScene));
       }
     }
   }
@@ -293,6 +298,10 @@ export class JSONConverter {
       throw new Error('no primitives');
     }
 
+    if (meshOptions.skin) {
+      this.setupBoneData(geometryData, meshOptions.skin, oldScene, this.treeItemList);
+    }
+
     newScene.geometries.push(geometryData);
     newScene.materials.push(...materialDatas);
 
@@ -327,11 +336,11 @@ export class JSONConverter {
     const treeData = treeComp.options.tree;
     const treeItemList: spec.VFXItemData[] = [];
 
-    treeData.nodes.forEach(node => {
+    treeData.nodes.forEach((node, index) => {
       const item: spec.VFXItemData = {
         id: generateGUID(),
         parentId: treeItem.id,
-        name: node.name ?? '<unnamed>',
+        name: node.name ?? `node${index}`,
         duration: treeItem.duration,
         // @ts-expect-error
         type: 'ECS',
@@ -611,6 +620,58 @@ export class JSONConverter {
     }
 
     return result;
+  }
+
+  private setupBoneData (geom: spec.GeometryData, skin: spec.SkinOptions<'json'>, oldScene: spec.JSONScene, treeNodeList: spec.VFXItemData[]) {
+    const bins = oldScene.bins as unknown as ArrayBuffer[];
+    const { joints, skeleton, inverseBindMatrices } = skin;
+
+    if (!inverseBindMatrices) {
+      throw new Error(`inverseBindMatrices is undefined ${skin}`);
+    }
+    const bindMatrixArray = typedArrayFromBinary(bins, inverseBindMatrices) as Float32Array;
+
+    geom.inverseBindMatrices = Array.from(bindMatrixArray);
+
+    let rootBoneItem = treeNodeList[0];
+
+    if (skeleton !== undefined) {
+      rootBoneItem = treeNodeList[skeleton];
+    } else {
+      console.warn('Root bone is missing');
+    }
+
+    geom.rootBoneName = rootBoneItem.name;
+
+    const boneNames: string[] = [];
+
+    joints.forEach(joint => {
+      let currentItem = treeNodeList[joint];
+      const nodeList: string[] = [];
+
+      while (currentItem != rootBoneItem) {
+        nodeList.push(currentItem.name);
+        let parentItem = currentItem;
+
+        for (const node of treeNodeList) {
+          if (node.id === currentItem.parentId) {
+            parentItem = node;
+
+            break;
+          }
+        }
+        if (parentItem === currentItem) {
+          break;
+        }
+        currentItem = parentItem;
+      }
+
+      boneNames.push(nodeList.reverse().join('.'));
+    });
+
+    geom.boneNames = boneNames;
+
+    return rootBoneItem;
   }
 }
 
@@ -1042,7 +1103,9 @@ const vertexBufferSemanticMap: Record<string, string> = {
   a_Tangent: 'TANGENT',
   a_Color: 'COLOR',
   a_Joints: 'JOINTS',
+  a_Joint1: 'JOINTS',
   a_Weights: 'WEIGHTS',
+  a_Weight1: 'WEIGHTS',
   //
   a_Target_Position0: 'POSITION_BS0',
   a_Target_Position1: 'POSITION_BS1',
