@@ -1,7 +1,7 @@
-import type { BoundingBoxTriangle, HitTestTriangleParams, Engine, Renderer } from '@galacean/effects';
-import { HitTestType, PLAYER_OPTIONS_ENV_EDITOR, spec, math, RendererComponent } from '@galacean/effects';
-import type { AnimationStateListener, SkeletonData, Skeleton } from '@esotericsoftware/spine-core';
+import type { AnimationStateListener, Skeleton, SkeletonData } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics } from '@esotericsoftware/spine-core';
+import type { BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer } from '@galacean/effects';
+import { HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, spec } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import type { SpineResource } from './spine-loader';
 import { getAnimationDuration } from './utils';
@@ -84,6 +84,9 @@ export class SpineComponent extends RendererComponent {
     // @ts-expect-error
     this.renderer = options.content.renderer;
 
+    if (!this.state) {
+      return;
+    }
     this.state.apply(this.skeleton);
     this.update(0);
     this.resize();

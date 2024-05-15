@@ -10,7 +10,7 @@ import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLShaderVariant } from './gl-shader';
-import type { GLTexture } from './gl-texture';
+import { GLTexture } from './gl-texture';
 
 type Color = math.Color;
 type Vector2 = math.Vector2;
@@ -269,6 +269,10 @@ export class GLMaterial extends Material {
     this.shaderVariant.initialize(glEngine);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
+
+      if (texture instanceof GLTexture) {
+        return;
+      }
 
       if (!isFunction(texture.initialize)) {
         logger.error(`${JSON.stringify(texture)} is not valid Texture to initialize`);
