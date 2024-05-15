@@ -13,7 +13,7 @@ vsIn vec4 aNormal;
 #endif
 
 #ifdef HAS_TANGENTS
-vsIn vec4 a_Tangent;
+vsIn vec4 aTangent;
 #endif
 
 #ifdef HAS_NORMALS
@@ -39,12 +39,12 @@ vsOut vec2 v_UVCoord2;
 #endif
 
 #ifdef HAS_VERTEX_COLOR_VEC3
-vsIn vec3 a_Color;
+vsIn vec3 aColor;
 vsOut vec3 v_Color;
 #endif
 
 #ifdef HAS_VERTEX_COLOR_VEC4
-vsIn vec4 a_Color;
+vsIn vec4 aColor;
 vsOut vec4 v_Color;
 #endif
 
@@ -98,7 +98,7 @@ vec4 getNormal()
 #ifdef HAS_TANGENTS
 vec4 getTangent()
 {
-    vec4 tangent = a_Tangent;
+    vec4 tangent = aTangent;
 
 #ifdef USE_MORPHING
     tangent += getTargetTangent();
@@ -140,7 +140,7 @@ void main()
     #endif
 
     #if defined(HAS_VERTEX_COLOR_VEC3) || defined(HAS_VERTEX_COLOR_VEC4)
-    v_Color = a_Color;
+    v_Color = aColor;
     #endif
 
     #ifdef USE_SHADOW_MAPPING

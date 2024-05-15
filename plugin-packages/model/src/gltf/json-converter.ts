@@ -641,19 +641,19 @@ export function getGeometryDataFromOptions (geomOptions: GeometryProps) {
   for (const attrib in geomOptions.attributes) {
     const attribData = geomOptions.attributes[attrib];
 
-    if (attrib === 'a_Position') {
+    if (attrib === 'aPosition') {
       // @ts-expect-error
       vertexCount = attribData.data.length / attribData.size;
       // @ts-expect-error
       modelData.vertices = attribData.data;
       verticesNormalize = attribData.normalize ?? false;
       verticesType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
-    } else if (attrib === 'a_Normal') {
+    } else if (attrib === 'aNormal') {
       // @ts-expect-error
       modelData.normals = attribData.data;
       normalsNormalize = attribData.normalize ?? false;
       normalsType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
-    } else if (attrib === 'a_UV1') {
+    } else if (attrib === 'aUV1') {
       // @ts-expect-error
       modelData.uvs = attribData.data;
       uvsNormalize = attribData.normalize ?? false;
@@ -787,111 +787,7 @@ export function getGeometryDataFromPropsList (geomPropsList: GeometryProps[]) {
     totalCount = offset + count;
   }
 
-  let vertexCount = 0;
-  let verticesType: spec.VertexFormatType = spec.VertexFormatType.Float32;
-  let verticesNormalize = false;
-  let uvsType: spec.VertexFormatType = spec.VertexFormatType.Float32;
-  let uvsNormalize = false;
-  let normalsType: spec.VertexFormatType = spec.VertexFormatType.Float32;
-  let normalsNormalize = false;
-  const modelData: ModelData = {
-    vertices: new Float32Array(),
-    uvs: new Float32Array(),
-    normals: new Float32Array(),
-    indices: new Float32Array(),
-    name: '',
-  };
-
-  const geom1 = geomPropsList[0];
-
-  for (const attrib in geom1.attributes) {
-    const attribData = geom1.attributes[attrib];
-
-    if (attrib === 'a_Position') {
-      // @ts-expect-error
-      vertexCount = attribData.data.length / attribData.size;
-      // @ts-expect-error
-      modelData.vertices = attribData.data;
-      verticesNormalize = attribData.normalize ?? false;
-      verticesType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
-    } else if (attrib === 'a_Normal') {
-      // @ts-expect-error
-      modelData.normals = attribData.data;
-      normalsNormalize = attribData.normalize ?? false;
-      normalsType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
-    } else if (attrib === 'a_UV1') {
-      // @ts-expect-error
-      modelData.uvs = attribData.data;
-      uvsNormalize = attribData.normalize ?? false;
-      uvsType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
-    }
-  }
-
-  const verticesOffset = getOffset(verticesType, 3, vertexCount);
-  const uvsOffset = getOffset(uvsType, 2, vertexCount);
-  const normalsOffset = getOffset(normalsType, 3, vertexCount);
-
-  if (geom1.indices) {
-    modelData.indices = geom1.indices.data;
-  } else if (vertexCount <= 65535) {
-    const indices = new Uint16Array(vertexCount);
-
-    for (let i = 0; i < vertexCount; i++) {
-      indices[i] = i;
-    }
-    modelData.indices = indices;
-  } else {
-    const indices = new Uint32Array(vertexCount);
-
-    for (let i = 0; i < vertexCount; i++) {
-      indices[i] = i;
-    }
-    modelData.indices = indices;
-  }
-
-  let indicesType: spec.IndexFormatType = spec.IndexFormatType.UInt16;
-
-  if (modelData.indices.BYTES_PER_ELEMENT === 4) {
-    indicesType = spec.IndexFormatType.UInt32;
-  }
-
-  const geometryData: spec.GeometryData = {
-    id: generateGUID(),
-    dataType: spec.DataType.Geometry,
-    vertexData: {
-      vertexCount: vertexCount,
-      channels: [
-        {
-          semantic: spec.VertexBufferSemantic.Position,
-          offset: 0,
-          format: verticesType,
-          dimension: 3,
-          normalize: verticesNormalize,
-        },
-        {
-          semantic: spec.VertexBufferSemantic.Uv,
-          offset: verticesOffset,
-          format: uvsType,
-          dimension: 2,
-          normalize: uvsNormalize,
-        },
-        {
-          semantic: spec.VertexBufferSemantic.Normal,
-          offset: verticesOffset + uvsOffset,
-          format: normalsType,
-          dimension: 3,
-          normalize: normalsNormalize,
-        },
-      ],
-    },
-    subMeshes,
-    mode: spec.GeometryType.TRIANGLES,
-    indexFormat: indicesType,
-    indexOffset: verticesOffset + uvsOffset + normalsOffset,
-    buffer: encodeVertexData(modelData),
-  };
-
-  return geometryData;
+  return createGeometryData(geomPropsList[0], subMeshes);
 }
 
 function getOffset (formatType: spec.VertexFormatType, dimension: number, count: number) {
@@ -905,6 +801,82 @@ function getOffset (formatType: spec.VertexFormatType, dimension: number, count:
     default:
       return dimension * count * 4;
   }
+}
+
+function createGeometryData (props: GeometryProps, subMeshes: SubMesh[]) {
+  let totalByteLength = 0;
+
+  for (const attrib in props.attributes) {
+    const attribData = props.attributes[attrib];
+
+    // @ts-expect-error
+    totalByteLength += attribData.data.byteLength;
+  }
+
+  if (props.indices) {
+    totalByteLength += props.indices.data.byteLength;
+  }
+
+  let vertexCount = 0;
+  let bufferOffset = 0;
+  const buffer = new Uint8Array(totalByteLength);
+  const vertexChannels: spec.VertexChannel[] = [];
+
+  for (const attrib in props.attributes) {
+    const attribData = props.attributes[attrib];
+    const semantic = vertexBufferSemanticMap[attrib];
+
+    if (!semantic) {
+      throw new Error(`Invalid attrib ${attrib}`);
+    }
+
+    // @ts-expect-error
+    vertexCount = attribData.data.length / attribData.size;
+    const vertexChannel: spec.VertexChannel = {
+      semantic,
+      offset: bufferOffset,
+      format: glType2VertexFormatType(attribData.type ?? glContext.FLOAT),
+      dimension: attribData.size,
+      normalize: attribData.normalize,
+    };
+
+    vertexChannels.push(vertexChannel);
+    // @ts-expect-error
+    const data = attribData.data as spec.TypedArray;
+    const subBuffer = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+
+    buffer.set(subBuffer, bufferOffset);
+    bufferOffset += subBuffer.byteLength;
+  }
+
+  const geometryData: spec.GeometryData = {
+    id: generateGUID(),
+    dataType: spec.DataType.Geometry,
+    vertexData: {
+      vertexCount: vertexCount,
+      channels: vertexChannels,
+    },
+    subMeshes,
+    mode: spec.GeometryType.TRIANGLES,
+    indexFormat: spec.IndexFormatType.UInt16,
+    indexOffset: -1,
+    buffer: '',
+  };
+
+  if (props.indices) {
+    const indices = props.indices.data;
+    const subBuffer = new Uint8Array(indices.buffer, indices.byteOffset, indices.byteLength);
+
+    buffer.set(subBuffer, bufferOffset);
+    geometryData.indexOffset = bufferOffset;
+    if (indices instanceof Uint32Array) {
+      geometryData.indexFormat = spec.IndexFormatType.UInt32;
+    }
+  }
+
+  geometryData.buffer = toBase64String(buffer);
+
+  return geometryData;
 }
 
 function encodeVertexData (modelData: ModelData): string {
@@ -941,6 +913,18 @@ function encodeVertexData (modelData: ModelData): string {
 
   for (let i = 0; i < uint8View.length; i++) {
     binaryString += String.fromCharCode(uint8View[i]);
+  }
+
+  // 使用 btoa 函数将二进制字符串转换为 Base64 编码的字符串
+  return btoa(binaryString);
+}
+
+function toBase64String (array: Uint8Array) {
+  // 将 Uint8Array 转换为二进制字符串
+  let binaryString = '';
+
+  for (let i = 0; i < array.length; i++) {
+    binaryString += String.fromCharCode(array[i]);
   }
 
   // 使用 btoa 函数将二进制字符串转换为 Base64 编码的字符串
@@ -1039,3 +1023,41 @@ function mergeTypedArray (array1: spec.TypedArray, array2: spec.TypedArray, offs
     return result;
   }
 }
+
+const vertexBufferSemanticMap: Record<string, string> = {
+  aPos: 'POSITION',
+  aUV: 'TEXCOORD0',
+  aUV2: 'TEXCOORD1',
+  aNormal: 'NORMAL',
+  aTangent: 'TANGENT',
+  aColor: 'COLOR',
+  aJoints: 'JOINTS',
+  aWeights: 'WEIGHTS',
+  //
+  a_Position: 'POSITION',
+  a_UV: 'TEXCOORD0',
+  a_UV1: 'TEXCOORD0',
+  a_UV2: 'TEXCOORD1',
+  a_Normal: 'NORMAL',
+  a_Tangent: 'TANGENT',
+  a_Color: 'COLOR',
+  a_Joints: 'JOINTS',
+  a_Weights: 'WEIGHTS',
+  //
+  a_Target_Position0: 'POSITION_BS0',
+  a_Target_Position1: 'POSITION_BS1',
+  a_Target_Position2: 'POSITION_BS2',
+  a_Target_Position3: 'POSITION_BS3',
+  a_Target_Position4: 'POSITION_BS4',
+  a_Target_Position5: 'POSITION_BS5',
+  a_Target_Position6: 'POSITION_BS6',
+  a_Target_Position7: 'POSITION_BS7',
+  a_Target_Normal0: 'NORMAL_BS0',
+  a_Target_Normal1: 'NORMAL_BS1',
+  a_Target_Normal2: 'NORMAL_BS2',
+  a_Target_Normal3: 'NORMAL_BS3',
+  a_Target_Tangent0: 'TANGENT_BS0',
+  a_Target_Tangent1: 'TANGENT_BS1',
+  a_Target_Tangent2: 'TANGENT_BS2',
+  a_Target_Tangent3: 'TANGENT_BS3',
+};

@@ -407,44 +407,75 @@ export class GLGeometry extends Geometry {
     this.subMeshes = data.subMeshes;
     const buffer = decodeBase64ToArrays(data.buffer);
     const vertexCount = data.vertexData.vertexCount;
-    const positionChannel = data.vertexData.channels[0];
-    const uvChannel = data.vertexData.channels[1];
-    const normalChannel = data.vertexData.channels[2];
 
-    // 根据提供的长度信息创建 Float32Array
-    const positionBuffer = this.createVertexTypedArray(positionChannel, buffer, vertexCount);
-    const uvBuffer = this.createVertexTypedArray(uvChannel, buffer, vertexCount);
-    const normalBuffer = this.createVertexTypedArray(normalChannel, buffer, vertexCount);
-    // 根据提供的长度信息创建 Uint16Array，它紧随 Float32Array 数据之后
-    const indexBuffer = this.createIndexTypedArray(data.indexFormat, buffer, data.indexOffset);
+    if (this.hasSemantic(data)) {
+      const geometryProps: GeometryProps = {
+        mode: glContext.TRIANGLES,
+        attributes: {},
+      };
 
-    const geometryProps: GeometryProps = {
-      mode: glContext.TRIANGLES,
-      attributes: {
-        aPos: {
-          type: vertexFormatType2GLType(positionChannel.format),
-          size: 3,
-          data: positionBuffer,
-          normalize: positionChannel.normalize,
-        },
-        aUV: {
-          type: vertexFormatType2GLType(uvChannel.format),
-          size: 2,
-          data: uvBuffer,
-          normalize: uvChannel.normalize,
-        },
-        aNormal: {
-          type: vertexFormatType2GLType(normalChannel.format),
-          size: 3,
-          data: normalBuffer,
-          normalize: normalChannel.normalize,
-        },
-      },
-    };
+      data.vertexData.channels.forEach(channel => {
+        const attribName = vertexBufferSemanticMap[channel.semantic] ?? channel.semantic;
+        const attribBuffer = this.createVertexTypedArray(channel, buffer, vertexCount);
 
-    geometryProps.indices = { data: indexBuffer };
-    geometryProps.drawCount = indexBuffer.length;
-    this.processProps(geometryProps);
+        geometryProps.attributes[attribName] = {
+          type: vertexFormatType2GLType(channel.format),
+          size: channel.dimension,
+          data: attribBuffer,
+          normalize: channel.normalize,
+        };
+      });
+
+      if (data.indexOffset >= 0) {
+        const indexBuffer = this.createIndexTypedArray(data.indexFormat, buffer, data.indexOffset);
+
+        geometryProps.indices = { data: indexBuffer };
+        geometryProps.drawCount = indexBuffer.length;
+      } else {
+        geometryProps.drawCount = vertexCount;
+      }
+
+      this.processProps(geometryProps);
+    } else {
+      const positionChannel = data.vertexData.channels[0];
+      const uvChannel = data.vertexData.channels[1];
+      const normalChannel = data.vertexData.channels[2];
+
+      // 根据提供的长度信息创建 Float32Array
+      const positionBuffer = this.createVertexTypedArray(positionChannel, buffer, vertexCount);
+      const uvBuffer = this.createVertexTypedArray(uvChannel, buffer, vertexCount);
+      const normalBuffer = this.createVertexTypedArray(normalChannel, buffer, vertexCount);
+      // 根据提供的长度信息创建 Uint16Array，它紧随 Float32Array 数据之后
+      const indexBuffer = this.createIndexTypedArray(data.indexFormat, buffer, data.indexOffset);
+
+      const geometryProps: GeometryProps = {
+        mode: glContext.TRIANGLES,
+        attributes: {
+          aPos: {
+            type: vertexFormatType2GLType(positionChannel.format),
+            size: 3,
+            data: positionBuffer,
+            normalize: positionChannel.normalize,
+          },
+          aUV: {
+            type: vertexFormatType2GLType(uvChannel.format),
+            size: 2,
+            data: uvBuffer,
+            normalize: uvChannel.normalize,
+          },
+          aNormal: {
+            type: vertexFormatType2GLType(normalChannel.format),
+            size: 3,
+            data: normalBuffer,
+            normalize: normalChannel.normalize,
+          },
+        },
+      };
+
+      geometryProps.indices = { data: indexBuffer };
+      geometryProps.drawCount = indexBuffer.length;
+      this.processProps(geometryProps);
+    }
   }
 
   override dispose (): void {
@@ -508,7 +539,49 @@ export class GLGeometry extends Geometry {
         return new Uint32Array(baseBuffer, offset);
     }
   }
+
+  private hasSemantic (data: spec.GeometryData) {
+    let hasSemantic = false;
+    const { vertexData } = data;
+
+    vertexData.channels.forEach(channel => {
+      if (channel.semantic && channel.semantic.length > 0) {
+        hasSemantic = true;
+      }
+    });
+
+    return hasSemantic;
+  }
+
 }
+
+const vertexBufferSemanticMap: Record<string, string> = {
+  POSITION: 'aPos',
+  TEXCOORD0: 'aUV',
+  TEXCOORD1: 'aUV2',
+  NORMAL: 'aNormal',
+  TANGENT: 'aTangent',
+  COLOR: 'aColor',
+  JOINTS: 'aJoints',
+  WEIGHTS: 'aWeights',
+  //
+  POSITION_BS0: 'aTargetPosition0',
+  POSITION_BS1: 'aTargetPosition1',
+  POSITION_BS2: 'aTargetPosition2',
+  POSITION_BS3: 'aTargetPosition3',
+  POSITION_BS4: 'aTargetPosition4',
+  POSITION_BS5: 'aTargetPosition5',
+  POSITION_BS6: 'aTargetPosition6',
+  POSITION_BS7: 'aTargetPosition7',
+  NORMAL_BS0: 'aTargetNormal0',
+  NORMAL_BS1: 'aTargetNormal1',
+  NORMAL_BS2: 'aTargetNormal2',
+  NORMAL_BS3: 'aTargetNormal3',
+  TANGENT_BS0: 'aTargetTangent0',
+  TANGENT_BS1: 'aTargetTangent1',
+  TANGENT_BS2: 'aTargetTangent2',
+  TANGENT_BS3: 'aTargetTangent3',
+};
 
 function decodeBase64ToArrays (base64String: string) {
   // 将 Base64 编码的字符串转换为二进制字符串

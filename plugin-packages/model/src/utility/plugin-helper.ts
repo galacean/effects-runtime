@@ -1076,17 +1076,17 @@ export class PluginHelper {
     switch (name) {
       case 'POSITION': return 'aPos';
       case 'NORMAL': return 'aNormal';
-      case 'TANGENT': return 'a_Tangent';
+      case 'TANGENT': return 'aTangent';
       case 'TEXCOORD_0': return 'aUV';
       case 'TEXCOORD_1': return 'aUV2';
-      case 'JOINTS_0': return 'a_Joint1';
-      case 'WEIGHTS_0': return 'a_Weight1';
+      case 'JOINTS_0': return 'aJoints';
+      case 'WEIGHTS_0': return 'aWeights';
     }
 
-    if (!name.startsWith('a_')) {
-      // aPos, aNormal, a_Tangent,
-      // aUV, aUV2, a_Joint1, a_Weight1
-      // a_Target_XXX
+    if (!name.startsWith('a')) {
+      // aPos, aNormal, aTangent,
+      // aUV, aUV2, aJoints, aWeights
+      // aTargetXXX
       console.warn(`Unknown attribute name: ${name}`);
     }
 
@@ -1498,12 +1498,12 @@ export class GeometryBoxProxy {
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
     //
-    const jointAttrib = attributes['a_Joint1'];
-    const weightAttrib = attributes['a_Weight1'];
+    const jointAttrib = attributes['aJoints'];
+    const weightAttrib = attributes['aWeights'];
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('a_Joint1') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('a_Weight1') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
+      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1654,12 +1654,12 @@ export class HitTestingProxy {
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
     //
-    const jointAttrib = attributes['a_Joint1'];
-    const weightAttrib = attributes['a_Weight1'];
+    const jointAttrib = attributes['aJoints'];
+    const weightAttrib = attributes['aWeights'];
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('a_Joint1') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('a_Weight1') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
+      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -2129,16 +2129,16 @@ export class CheckerHelper {
     //   }
     //   this.assertGeometryBuffer(v, 'aPos', maxLength);
     //   this.assertGeometryBuffer(v, 'aNormal', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Tangent', maxLength);
+    //   this.assertGeometryBuffer(v, 'aTangent', maxLength);
     //   this.assertGeometryBuffer(v, 'aUV', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Joint1', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Weight1', maxLength);
+    //   this.assertGeometryBuffer(v, 'aJoints', maxLength);
+    //   this.assertGeometryBuffer(v, 'aWeights', maxLength);
 
     //   // 索引检查
     //   if(s !== undefined){
     //     const matLen = s.inverseBindMatrices?.length ?? 0;
     //     if(matLen > 0){
-    //       const jointArray = this.createAttributeArray(v, "a_Joint1");
+    //       const jointArray = this.createAttributeArray(v, "aJoints");
     //       if(jointArray !== undefined){
     //         for(let i = 0; i < maxLength; i++){
     //           const data = jointArray.getData(i);
