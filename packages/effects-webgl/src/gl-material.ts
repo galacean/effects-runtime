@@ -1,24 +1,10 @@
 import type {
-  Engine,
-  GlobalUniforms,
-  MaterialDestroyOptions,
-  MaterialProps,
-  MaterialStates,
-  Renderer,
-  Texture,
-  UndefinedAble,
+  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps, MaterialStates,
+  Renderer, Texture, UndefinedAble,
 } from '@galacean/effects-core';
 import {
-  assertExist,
-  DestroyOptions,
-  generateGUID,
-  isFunction,
-  logger,
-  Material,
-  math,
-  Shader,
-  spec,
-  throwDestroyedError,
+  spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
+  math, throwDestroyedError,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
