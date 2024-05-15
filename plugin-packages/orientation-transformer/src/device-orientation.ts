@@ -118,14 +118,11 @@ export class DeviceOrientation {
 
     let timefragment = 0; // 时间片计时
     let nowts = 0; // 当前时间
-    let referGamma = 0; // 初始化角度，作为单独一个用户的空间旋转的参照
-    let referBeta = 0;
-    let referAlpha = 0;
+    // 初始化角度，作为单独一个用户的空间旋转的参照
+    let referGamma = NaN, referBeta = NaN, referAlpha = NaN;
     let alpha: number;
     let beta: number;
     let gamma: number;
-    let gammaFixed;
-    let betaFixed;
     let isInValidDegRange;
     let x: number; // 最终输出的 x
     let y: number; // 最终输出的 y
@@ -136,27 +133,29 @@ export class DeviceOrientation {
       alpha = e.alpha!; // 垂直于屏幕的轴 0 ~ 360
       beta = e.beta!; // 横向 X 轴 -180 ~ 180
       gamma = e.gamma!; // 纵向 Y 轴 -90 ~ 90
-      // 对 alpha beta gamma 初始化位置
-      if (!referAlpha) {
-        referAlpha = alpha || 0;
-      }
-      if (!referBeta) {
-        referBeta = beta || 0;
-      }
-      if (!referGamma) {
-        referGamma = gamma || 0;
-      }
-      //
+
       isInValidDegRange = angleLimit.call(this, {
         alpha,
         beta,
         gamma,
       }, this.options.validRange);
+
+      // 对 alpha beta gamma 初始化位置
+      if (isNaN(referAlpha)) {
+        referAlpha = alpha || 0;
+      }
+      if (isNaN(referGamma)) {
+        referGamma = gamma;
+        this.filterX.lastValue = gamma;
+      }
+      if (isNaN(referBeta)) {
+        referBeta = beta;
+        this.filterY.lastValue = beta;
+      }
       if (isInValidDegRange) {
         // 最终结果值
         if (this.options.X) {
-          gammaFixed = gamma - referGamma;
-          x = this.options.relativeGamma ? gammaFixed : gamma;
+          x = this.options.relativeGamma ? gamma - referGamma : gamma;
           x = this.filterX.stableFix(x);
           x = this.filterX.changeLimit(x);
           x = this.filterX.linearRegressionMedian(+x);
@@ -164,22 +163,21 @@ export class DeviceOrientation {
           x = 0;
         }
         if (this.options.Y) {
-          // beta 相对 referBeta 的角度
-          betaFixed = beta - referBeta;
-          y = this.options.relativeBeta ? betaFixed : beta;
+          y = this.options.relativeBeta ? beta - referBeta : beta;
           y = this.filterY.stableFix(y);
           y = this.filterY.changeLimit(y);
           y = this.filterY.linearRegressionMedian(+y);
         } else {
           y = 0;
         }
+
         if (this.isValid(x, y)) {
           if (this.options.useRequestAnimationFrame) {
             window.requestAnimationFrame(() => {
-              callback(x, y, { alpha, beta, gamma });
+              callback(x, y, { alpha, beta: y - referBeta, gamma:x - referGamma });
             });
           } else {
-            callback(x, y, { alpha, beta, gamma });
+            callback(x, y, { alpha, beta: y - referBeta, gamma:x - referGamma });
           }
           this.lastX = x;
           this.lastY = y;

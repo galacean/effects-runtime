@@ -211,6 +211,12 @@ export class ModelVFXItem extends VFXItem<ModelItem> {
     }
   }
 
+  override onEnd (): void {
+    if (this.endBehavior === spec.END_BEHAVIOR_DESTROY && this.content) {
+      this.content.onVisibleChanged(false);
+    }
+  }
+
   override getHitTestParams (force?: boolean): HitTestBoxParams | HitTestSphereParams | HitTestCustomParams | undefined {
     this.computeBoundingBox();
     const bounding = this.bounding;
