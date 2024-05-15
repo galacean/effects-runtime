@@ -51,7 +51,7 @@ export class SpineLoader extends AbstractPlugin {
       return;
     }
 
-    composition.loaderData.spineDatas = scene.jsonScene.spines.map((resource, index) => readSpineData(resource, scene.bins, composition.textures));
+    composition.loaderData.spineDatas = scene.jsonScene.spines.map((resource, index) => readSpineData(resource, scene.bins, composition.textures, composition));
   }
 
   override onCompositionDestroyed (composition: Composition) {
@@ -61,13 +61,14 @@ export class SpineLoader extends AbstractPlugin {
   }
 }
 
-function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textures: Texture[]): SpineResource {
+function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textures: Texture[], composition: Composition): SpineResource {
   const { atlas: atlasPointer, skeleton: skeletonPointer, images, skeletonType } = resource;
   const [index, start = 0, bufferLength] = atlasPointer[1];
   const atlasBuffer = bins[index];
   const atlasText = bufferLength ? decodeText(new Uint8Array(atlasBuffer, start, bufferLength)) : decodeText(new Uint8Array(atlasBuffer, start));
   const atlas = new TextureAtlas(atlasText);
   const pageCount = atlas.pages.length;
+  const engine = composition.getEngine();
 
   if (images.length !== pageCount) {
     throw new Error('atlas.page\'s length not equal spine.textures\' length');
@@ -76,7 +77,8 @@ function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textu
     const page = atlas.pages[i];
 
     // 直接获取Texture
-    const tex = images[i];
+    const textureId = (images[i] as unknown as spec.DataPath).id;
+    const tex = engine.assetLoader.loadGUID<Texture>(textureId);
 
     if (!tex) {
       throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
