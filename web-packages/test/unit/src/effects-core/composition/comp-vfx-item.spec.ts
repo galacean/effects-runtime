@@ -760,8 +760,10 @@ describe('comp-vfxItem', () => {
     const sprite = comp.getItemByName('sprite_1');
     const pos = sprite.transform.position;
 
+    const { width, height } = player.canvas.getBoundingClientRect();
+
     // 正中心
-    sprite?.setPositionByPixel(50, 60);
+    sprite?.setPositionByPixel(width / 2, height / 2);
     expect(pos.toArray()[0]).to.closeTo(0, 0.1);
     expect(pos.toArray()[1]).to.closeTo(0, 0.1);
   });
