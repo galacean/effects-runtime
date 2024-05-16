@@ -750,6 +750,7 @@ describe('comp-vfxItem', () => {
   });
 
   it('setPosition by pixel', async () => {
+    // FIXME: 老版本数据，需要更新
     const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*dFfLQp7L0TsAAAAAAAAAAAAADlB4AQ', {
       autoplay: false,
     });
