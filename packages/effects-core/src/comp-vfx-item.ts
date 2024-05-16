@@ -31,45 +31,45 @@ export class CompositionComponent extends ItemBehaviour {
     this.objectBindingTracks = [];
     this.compositionTrack = new ObjectBindingTrack();
     this.compositionTrack.bindingItem = this.item;
-    this.compositionTrack.start();
+    this.compositionTrack.create();
 
     this.compositionTrack.fromData(this.item.props.content as spec.NullContent);
     this.items = this.sortItemsByParentRelation(this.items);
     for (const item of this.items) {
-      // 获取所有的合成元素 Timeline 组件
-      const timeline = new ObjectBindingTrack();
+      // 获取所有的合成元素绑定 Track
+      const newObjectBindingTrack = new ObjectBindingTrack();
 
-      timeline.bindingItem = item;
-      timeline.fromData(item.props.content as spec.NullContent);
-      if (timeline) {
-        this.objectBindingTracks.push(timeline);
+      newObjectBindingTrack.bindingItem = item;
+      newObjectBindingTrack.fromData(item.props.content as spec.NullContent);
+      if (newObjectBindingTrack) {
+        this.objectBindingTracks.push(newObjectBindingTrack);
         // 重播不销毁元素
         if (
           this.item.endBehavior !== spec.ItemEndBehavior.destroy ||
           this.compositionTrack.reusable
         ) {
-          timeline.reusable = true;
+          newObjectBindingTrack.reusable = true;
         }
 
         // 添加粒子动画 clip
         if (item.getComponent(ParticleSystem)) {
-          timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
+          newObjectBindingTrack.createTrack(Track).createClip(ParticleBehaviourPlayable);
         }
       }
 
-      timeline.start();
+      newObjectBindingTrack.create();
     }
   }
 
   override update (dt: number): void {
     const time = this.time;
 
-    for (const timeline of this.objectBindingTracks) {
+    for (const track of this.objectBindingTracks) {
       // TODO 统一时间为 s
-      const localTime = timeline.toLocalTime(time);
+      const localTime = track.toLocalTime(time);
 
-      timeline.setTime(localTime);
-      timeline.timelineUpdate(dt);
+      track.setTime(localTime);
+      track.update(dt);
     }
 
     for (let i = 0;i < this.items.length;i++) {
@@ -77,9 +77,9 @@ export class CompositionComponent extends ItemBehaviour {
       const subCompostionComponent = item.getComponent(CompositionComponent);
 
       if (subCompostionComponent) {
-        const subTimeline = this.objectBindingTracks[i];
+        const subCompositionTrack = this.objectBindingTracks[i];
 
-        subCompostionComponent.time = subTimeline.toLocalTime(time);
+        subCompostionComponent.time = subCompositionTrack.toLocalTime(time);
       }
     }
   }

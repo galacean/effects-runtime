@@ -41,7 +41,7 @@ export interface CalculateItemOptions {
  */
 export class ObjectBindingTrack extends Track {
   reusable = false;
-  timelineStarted = false;
+  started = false;
   playableGraph = new PlayableGraph();
   options: CalculateItemOptions;
 
@@ -53,7 +53,7 @@ export class ObjectBindingTrack extends Track {
   private tracks: Track[] = [];
   private trackSeed = 0;
 
-  start (): void {
+  create (): void {
     // TODO TimelineClip 需要传入 start 和 duration 数据
     for (const track of this.tracks) {
       for (const clip of track.getClips()) {
@@ -65,18 +65,18 @@ export class ObjectBindingTrack extends Track {
   }
 
   // TODO: [1.31] @十弦 vfx-item 下 onUpdate 的改动验证
-  timelineUpdate (dt: number): void {
+  update (dt: number): void {
     if (this.bindingItem.stopped || !this.bindingItem.composition) {
       return;
     }
 
-    if (!this.timelineStarted) {
+    if (!this.started) {
       for (const track of this.tracks) {
         for (const clip of track.getClips()) {
           clip.playable.onGraphStart();
         }
       }
-      this.timelineStarted = true;
+      this.started = true;
     }
 
     const now = this.time;
