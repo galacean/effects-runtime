@@ -3,8 +3,8 @@ export function getFontFamily (fontFamily: string): string {
   if (/^[0-9]/.test(fontFamily)) {
     fontFamily = `_${fontFamily}`;
   }
-  // fix: 有些字体名字中带有分号，会导致无法正确设置字体
-  fontFamily = fontFamily.replace(/[.;]/g, '_');
+  // fix: 非英文/数字/下划线/横杠的字符替换
+  fontFamily = fontFamily.replace(/[^a-zA-Z0-9]/g, '_');
 
   return fontFamily;
 }
