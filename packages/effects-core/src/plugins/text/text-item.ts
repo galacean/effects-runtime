@@ -11,6 +11,7 @@ import { TextLayout } from './text-layout';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { SpriteVFXItem } from '../sprite/sprite-vfx-item';
+import { getFontFamily } from '../../utils/text';
 
 interface CharInfo {
   /**
@@ -166,10 +167,11 @@ export class TextItem extends SpriteItem {
    * @returns
    */
   setFontFamily (value: string): void {
+
     if (this.textStyle.fontFamily === value) {
       return;
     }
-    this.textStyle.fontFamily = value;
+    this.textStyle.fontFamily = getFontFamily(value);
     this.isDirty = true;
   }
 
@@ -404,7 +406,6 @@ export class TextItem extends SpriteItem {
     } else {
       fontDesc += textStyle.fontFamily;
     }
-
     if (textStyle.textWeight !== spec.TextWeight.normal) {
       fontDesc = `${textStyle.textWeight} ${fontDesc}`;
     }
