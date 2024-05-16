@@ -788,6 +788,8 @@ export class JSONConverter {
 
     geom.inverseBindMatrices = Array.from(bindMatrixArray);
 
+    const id2Node: Record<string, spec.VFXItemData> = {};
+
     let rootBoneItem = treeItem;
 
     if (skeleton !== undefined) {
@@ -795,6 +797,14 @@ export class JSONConverter {
     } else {
       console.warn('Root bone is missing');
     }
+
+    treeNodeList.forEach(node => {
+      id2Node[node.id] = node;
+      if (node.parentId === rootBoneItem.parentId) {
+        console.error('Find invalid node for rootBoneItem and adjust rootBoneItem');
+        rootBoneItem = treeItem;
+      }
+    });
 
     geom.rootBoneName = rootBoneItem.name;
 
@@ -804,21 +814,13 @@ export class JSONConverter {
       let currentItem = treeNodeList[joint];
       const nodeList: string[] = [];
 
-      while (currentItem != rootBoneItem) {
+      while (currentItem && currentItem != rootBoneItem) {
         nodeList.push(currentItem.name);
-        let parentItem = currentItem;
-
-        for (const node of treeNodeList) {
-          if (node.id === currentItem.parentId) {
-            parentItem = node;
-
-            break;
-          }
-        }
-        if (parentItem === currentItem) {
+        if (currentItem.parentId) {
+          currentItem = id2Node[currentItem.parentId];
+        } else {
           break;
         }
-        currentItem = parentItem;
       }
 
       boneNames.push(nodeList.reverse().join('/'));
