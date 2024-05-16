@@ -6,6 +6,7 @@ import inject from '@rollup/plugin-inject';
 const module = "@galacean/appx-adapter";
 const commonAdapterList = [
   "window",
+  "document",
 ];
 const adapterList = {
   alipay: [...commonAdapterList],
@@ -28,6 +29,7 @@ export default [
       format: 'cjs',
       sourcemap: true,
     }],
+    external: ['@galacean/effects'],
     plugins: [
       inject(adapterVars),
     ],
