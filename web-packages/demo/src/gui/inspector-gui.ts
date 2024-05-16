@@ -1,5 +1,5 @@
 import type { EffectComponentData, EffectsObject, Engine, Material, SceneData, VFXItem, VFXItemContent } from '@galacean/effects';
-import { spec, EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, TimelineComponent, generateGUID, glContext, loadImage } from '@galacean/effects';
+import { EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, generateGUID, glContext, loadImage, spec } from '@galacean/effects';
 
 export class InspectorGui {
   gui: any;
@@ -110,14 +110,6 @@ export class InspectorGui {
           const controller = componentFolder.add(component, '_enabled');
 
           this.guiControllers.push(controller);
-        }
-
-        if (component instanceof TimelineComponent) {
-          const controller = componentFolder.add(component, 'time');
-          const controller2 = componentFolder.add(component, 'reusable');
-
-          this.guiControllers.push(controller);
-          this.guiControllers.push(controller2);
         }
 
         componentFolder.open();

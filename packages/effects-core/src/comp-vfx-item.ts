@@ -5,7 +5,7 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region } from './plugins';
-import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, TimelineComponent, Track } from './plugins';
+import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, ObjectBindingTrack, Track } from './plugins';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
@@ -19,8 +19,8 @@ export class CompositionComponent extends ItemBehaviour {
   startTime: number;
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
-  timelineComponents: TimelineComponent[];
-  timelineComponent: TimelineComponent;
+  objectBindingTracks: ObjectBindingTrack[];
+  compositionTrack: ObjectBindingTrack;
   time = 0;
 
   override start (): void {
@@ -28,22 +28,25 @@ export class CompositionComponent extends ItemBehaviour {
     const { startTime = 0 } = item.props;
 
     this.startTime = startTime;
-    this.timelineComponents = [];
-    this.timelineComponent = this.item.addComponent(TimelineComponent)!;
-    this.timelineComponent.fromData(this.item.props.content as spec.NullContent);
+    this.objectBindingTracks = [];
+    this.compositionTrack = new ObjectBindingTrack();
+    this.compositionTrack.bindingItem = this.item;
+    this.compositionTrack.start();
+
+    this.compositionTrack.fromData(this.item.props.content as spec.NullContent);
     this.items = this.sortItemsByParentRelation(this.items);
     for (const item of this.items) {
       // 获取所有的合成元素 Timeline 组件
-      const timeline = item.addComponent(TimelineComponent);
+      const timeline = new ObjectBindingTrack();
 
+      timeline.bindingItem = item;
       timeline.fromData(item.props.content as spec.NullContent);
-
       if (timeline) {
-        this.timelineComponents.push(timeline);
+        this.objectBindingTracks.push(timeline);
         // 重播不销毁元素
         if (
           this.item.endBehavior !== spec.ItemEndBehavior.destroy ||
-          this.timelineComponent.reusable
+          this.compositionTrack.reusable
         ) {
           timeline.reusable = true;
         }
@@ -53,27 +56,28 @@ export class CompositionComponent extends ItemBehaviour {
           timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
         }
       }
+
+      timeline.start();
     }
   }
 
   override update (dt: number): void {
     const time = this.time;
 
-    for (const timeline of this.timelineComponents) {
+    for (const timeline of this.objectBindingTracks) {
       // TODO 统一时间为 s
       const localTime = timeline.toLocalTime(time);
 
       timeline.setTime(localTime);
-      if (timeline.isActiveAndEnabled && timeline.started) {
-        timeline.timelineUpdate(dt);
-      }
+      timeline.timelineUpdate(dt);
     }
 
-    for (const item of this.items) {
+    for (let i = 0;i < this.items.length;i++) {
+      const item = this.items[i];
       const subCompostionComponent = item.getComponent(CompositionComponent);
 
       if (subCompostionComponent) {
-        const subTimeline = item.getComponent(TimelineComponent)!;
+        const subTimeline = this.objectBindingTracks[i];
 
         subCompostionComponent.time = subTimeline.toLocalTime(time);
       }

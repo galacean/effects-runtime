@@ -1095,10 +1095,6 @@ export class ParticleSystem extends Component {
     this.renderer.item = this.item;
     this.item.components.push(this.renderer);
     this.item.rendererComponents.push(this.renderer);
-    // 添加粒子动画 clip
-    // const timeline = this.item.getComponent(TimelineComponent)!;
-
-    // timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
   }
 }
 
