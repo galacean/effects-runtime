@@ -1028,6 +1028,23 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
+   * 设置元素在画布上的像素位置
+   * Tips:
+   *  - 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
+   *  - 设置后会覆盖原有的位置信息
+   * @param x - x 坐标
+   * @param y - y 坐标
+   */
+  setPositionByPixel (x: number, y: number) {
+    if (!this.renderer) {
+      console.warn('Can not setPosition when container not assigned');
+
+      return;
+    }
+    this.rootItem.setPositionByPixel(x, y);
+  }
+
+  /**
    * 设置合成在 3D 坐标轴上相对当前的位移
    */
   translate (x: number, y: number, z: number) {

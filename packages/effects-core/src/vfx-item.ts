@@ -388,7 +388,10 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   }
 
   /**
-   * 设置元素的在画布上的像素位置, 坐标原点在 canvas 中心，x 正方向水平向右， y 正方向垂直向下
+   * 设置元素在画布上的像素位置
+   * Tips: 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
+   * @param x - x 坐标
+   * @param y - y 坐标
    */
   setPositionByPixel (x: number, y: number) {
     if (this.composition) {
@@ -397,7 +400,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       const width = this.composition.renderer.getWidth() / 2;
       const height = this.composition.renderer.getHeight() / 2;
 
-      this.transform.setPosition(2 * x * rx / width, -2 * y * ry / height, z);
+      this.transform.setPosition((2 * x / width - 1) * rx, (1 - 2 * y / height) * ry, z);
     }
   }
   /**

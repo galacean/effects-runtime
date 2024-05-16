@@ -749,6 +749,21 @@ describe('comp-vfxItem', () => {
     expect(pos.toArray()[1]).to.closeTo(0, 0.1);
   });
 
+  it('setPosition by pixel', async () => {
+    const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*dFfLQp7L0TsAAAAAAAAAAAAADlB4AQ', {
+      autoplay: false,
+    });
+
+    player.gotoAndStop(1);
+
+    const sprite = comp.getItemByName('sprite_1');
+    const pos = sprite.transform.position;
+
+    // 正中心
+    sprite?.setPositionByPixel(50, 60);
+    expect(pos.toArray()[0]).to.closeTo(0, 0.1);
+    expect(pos.toArray()[1]).to.closeTo(0, 0.1);
+  });
   // 预合成设置缩放
   it('set scale in compVFXItem', async () => {
     const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*bkLLToY54tgAAAAAAAAAAAAADlB4AQ');
