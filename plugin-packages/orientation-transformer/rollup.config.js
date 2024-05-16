@@ -1,9 +1,10 @@
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import replace from '@rollup/plugin-replace';
-import typescript from 'rollup-plugin-typescript2';
 import terser from '@rollup/plugin-terser';
+import typescript from 'rollup-plugin-typescript2';
 import glslInner from '../../scripts/rollup-plugin-glsl-inner';
+import appxConfig from './rollup.appx.config';
 
 const pkg = require('./package.json');
 const banner = `/*!
@@ -65,5 +66,7 @@ export default (commandLineArgs) => {
     plugins: plugins.concat(
       terser()
     ),
-  }];
+  },
+    ...appxConfig.map(config => ({ ...config, plugins: plugins.concat(config.plugins)}))
+  ];
 };

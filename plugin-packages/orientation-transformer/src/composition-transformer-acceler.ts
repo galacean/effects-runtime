@@ -93,8 +93,6 @@ export class CompositionTransformerAcceler {
           initRotation[2],
         ];
 
-        // console.log(y, initY, y - initY);
-
         layer.transform.setPosition(...position);
         layer.transform.setRotation(...rotation);
         this.currentPos[name] = position.slice();
