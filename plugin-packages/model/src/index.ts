@@ -51,6 +51,7 @@ export type ModelLightType = spec.LightType;
 export type ModelLightComponentData = spec.ModelLightComponentData;
 export type ModelCameraComponentData = spec.ModelCameraComponentData;
 export type ModelSkyboxComponentData = spec.SkyboxComponentData;
+export type AnimationComponentData = spec.AnimationComponentData;
 
 export * from './gesture';
 export * from './gltf';

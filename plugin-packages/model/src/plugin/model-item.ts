@@ -15,6 +15,7 @@ import type {
   ModelCameraComponentData,
   ModelSkyboxComponentData,
   ModelLightComponentData,
+  AnimationComponentData,
 } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../index';
 import type { PSceneManager } from '../runtime';
@@ -547,5 +548,70 @@ export class ModelCameraComponent extends ItemBehaviour {
       }
     }
     this.updateMainCamera();
+  }
+}
+
+/**
+ * 插件动画组件类，支持 3D 动画能力
+ * @since 2.0.0
+ * @internal
+ */
+@effectsClass(spec.DataType.AnimationController)
+export class ModelAnimationController extends ItemBehaviour {
+  /**
+   * 参数
+   */
+  data?: AnimationComponentData;
+
+  /**
+   * 构造函数，只保存传入参数，不在这里创建内部对象
+   * @param engine - 引擎
+   * @param data - Mesh 参数
+   */
+  constructor (engine: Engine, data?: AnimationComponentData) {
+    super(engine);
+    if (data) {
+      this.fromData(data);
+    }
+  }
+
+  /**
+   * 组件开始，需要创建内部对象和添加到场景管理器中
+   */
+  override start (): void {
+    this.createContent();
+    this.item.type = VFX_ITEM_TYPE_3D;
+  }
+
+  /**
+   * 组件更新，更新内部对象状态
+   * @param dt - 更新间隔
+   */
+  override update (dt: number): void {
+
+  }
+
+  /**
+   * 组件销毁
+   */
+  override onDestroy (): void {
+
+  }
+
+  /**
+   * 反序列化，记录传入参数
+   * @param data - 组件参数
+   */
+  override fromData (data: AnimationComponentData): void {
+    super.fromData(data);
+
+    this.data = data;
+  }
+
+  /**
+   * 创建内部对象
+   */
+  createContent () {
+
   }
 }

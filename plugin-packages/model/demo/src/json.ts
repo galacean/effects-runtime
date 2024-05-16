@@ -26,7 +26,7 @@ url = 'https://mdn.alipayobjects.com/mars/afts/file/A*sA-6TJ695dYAAAAAAAAAAAAADl
 //url = 'https://mdn.alipayobjects.com/mars/afts/file/A*16M9QrFglbUAAAAAAAAAAAAADlB4AQ';
 //url = 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ';
 // 虚拟人
-url = 'https://mdn.alipayobjects.com/mars/afts/file/A*ZQq_SKRrEKsAAAAAAAAAAAAADlB4AQ';
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*ZQq_SKRrEKsAAAAAAAAAAAAADlB4AQ';
 
 const compatibleMode = 'tiny3d';
 

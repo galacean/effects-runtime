@@ -3,7 +3,7 @@ import type {
   Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps, SubMesh,
 } from '@galacean/effects';
 import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
-import { Color } from '../runtime/math';
+import { Color, Quaternion, Euler, Vector3 } from '../runtime/math';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { ModelTreeContent } from '../index';
 import { typedArrayFromBinary } from '@galacean/effects-helper';
@@ -403,6 +403,8 @@ export class JSONConverter {
     });
 
     this.treeInfo.add(treeItem, treeNodeList);
+
+    this.createAnimationComponent(treeData as any, treeItem, newScene, oldScene);
   }
 
   private createLightComponent (component: spec.ComponentData, scene: spec.JSONScene): spec.ModelLightComponentData {
@@ -431,6 +433,136 @@ export class JSONConverter {
     }
 
     return lightComponent;
+  }
+
+  private createAnimationComponent (treeOptions: spec.ModelTreeOptions<'json'>, treeItem: spec.VFXItemData, newScene: spec.JSONScene, oldScene: spec.JSONScene) {
+    const { animation, animations } = treeOptions;
+
+    const animationComponent: spec.AnimationComponentData = {
+      id: generateGUID(),
+      dataType: spec.DataType.AnimationController,
+      item: { id: treeItem.id },
+      animation,
+      animationClips: [],
+    };
+
+    if (animations && animations.length) {
+      const bins = oldScene.bins as unknown as ArrayBuffer[];
+
+      animations.forEach(anim => {
+        const clipData: spec.AnimationClipData = {
+          id: generateGUID(),
+          name: anim.name,
+          dataType: spec.DataType.AnimationClip,
+          positionCurves: [],
+          eulerCurves: [],
+          scaleCurves: [],
+          floatCurves: [],
+        };
+
+        let totalAnimationTime = 0;
+
+        anim.tracks.forEach(track => {
+          const inputArray = typedArrayFromBinary(bins, track.input) as Float32Array;
+
+          totalAnimationTime = Math.max(totalAnimationTime, inputArray[inputArray.length - 1]);
+        });
+
+        anim.tracks.forEach(track => {
+          const inputArray = typedArrayFromBinary(bins, track.input);
+          let outputArray = typedArrayFromBinary(bins, track.output) as Float32Array;
+
+          if (!(inputArray instanceof Float32Array)) {
+            throw new Error(`Type of inputArray should be float32, ${inputArray}`);
+          }
+          if (!(outputArray instanceof Float32Array)) {
+            throw new Error(`Type of outputArray should be float32, ${outputArray}`);
+          }
+          if (track.interpolation !== 'LINEAR') {
+            throw new Error(`Invalid interpolation type ${track.interpolation}`);
+          }
+
+          if (track.path === 'rotation') {
+            const totalCount = outputArray.length / 4;
+            const newOutputArray = new Float32Array(totalCount * 3);
+
+            for (let i = 0; i < totalCount; i++) {
+              const quat = new Quaternion(
+                outputArray[i * 4],
+                outputArray[i * 4 + 1],
+                outputArray[i * 4 + 2],
+                outputArray[i * 4 + 3],
+              );
+              const euler = quat.invert().toEuler(new Euler());
+
+              newOutputArray[i * 3] = euler.x;
+              newOutputArray[i * 3 + 1] = euler.y;
+              newOutputArray[i * 3 + 2] = euler.z;
+            }
+            outputArray = newOutputArray;
+          }
+
+          const points: spec.vec3[] = [];
+          const controlPoints: spec.vec3[] = [];
+          const lineValue: spec.LineKeyframeValue[] = [];
+
+          for (let i = 0; i < inputArray.length; i++) {
+            points.push([
+              outputArray[i * 3],
+              outputArray[i * 3 + 1],
+              outputArray[i * 3 + 2],
+            ]);
+
+            if (i > 0) {
+              const p0 = Vector3.fromArray(points[i - 1]);
+              const p3 = Vector3.fromArray(points[i]);
+              const p1 = new Vector3().lerpVectors(p0, p3, 1 / 3);
+              const p2 = new Vector3().lerpVectors(p0, p3, 2 / 3);
+
+              controlPoints.push(p1.toArray());
+              controlPoints.push(p2.toArray());
+            }
+
+            lineValue.push([
+              spec.BezierKeyframeType.LINE,
+              [inputArray[i] / totalAnimationTime, i],
+            ]);
+          }
+
+          const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
+          const path = this.treeInfo.getNodePath(node.id);
+
+          const keyFrames: spec.BezierCurvePath = [
+            spec.ValueType.BEZIER_CURVE_PATH,
+            [lineValue, points, controlPoints],
+          ];
+
+          switch (track.path) {
+            case 'translation':
+              clipData.positionCurves.push({ path, keyFrames });
+
+              break;
+            case 'rotation':
+              clipData.eulerCurves.push({ path, keyFrames });
+
+              break;
+            case 'scale':
+              clipData.scaleCurves.push({ path, keyFrames });
+
+              break;
+            case 'weights':
+              console.error('Find weight key frames');
+
+              break;
+          }
+        });
+
+        animationComponent.animationClips.push(clipData);
+      });
+    }
+
+    treeItem.components.push({ id: animationComponent.id });
+    newScene.components.push(animationComponent);
   }
 
   private getMaterialData (material: spec.MaterialOptions<'json'>, scene: spec.JSONScene) {
@@ -683,7 +815,7 @@ export class JSONConverter {
         currentItem = parentItem;
       }
 
-      boneNames.push(nodeList.reverse().join('.'));
+      boneNames.push(nodeList.reverse().join('/'));
     });
 
     geom.boneNames = boneNames;
@@ -695,6 +827,8 @@ export class JSONConverter {
 class TreeInfo {
   tree2NodeList: Record<string, spec.VFXItemData[]> = {};
   nodeList2Tree: Record<string, spec.VFXItemData> = {};
+  nodeId2Node: Record<string, spec.VFXItemData> = {};
+  node2Path: Record<string, string> = {};
 
   add (treeItem: spec.VFXItemData, treeNodeList: spec.VFXItemData[]) {
     if (this.tree2NodeList[treeItem.id]) {
@@ -707,7 +841,27 @@ class TreeInfo {
         throw new Error(`Find duplicate tree node id: ${node.id}`);
       }
       this.nodeList2Tree[node.id] = treeItem;
+      this.nodeId2Node[node.id] = node;
     });
+
+    treeNodeList.forEach(node => {
+      this.setNodePath(node);
+    });
+  }
+
+  setNodePath (node: spec.VFXItemData) {
+    if (node.parentId) {
+      if (this.node2Path[node.parentId]) {
+        this.node2Path[node.id] = this.node2Path[node.parentId] + '/' + node.name;
+      } else if (this.nodeId2Node[node.parentId]) {
+        this.setNodePath(this.nodeId2Node[node.parentId]);
+        this.node2Path[node.id] = this.node2Path[node.parentId] + '/' + node.name;
+      } else {
+        this.node2Path[node.id] = node.name;
+      }
+    } else {
+      this.node2Path[node.id] = node.name;
+    }
   }
 
   getTreeNodeListByTreeId (id: string) {
@@ -724,6 +878,12 @@ class TreeInfo {
     return this.getTreeNodeListByTreeId(treeItem.id);
   }
 
+  getTreeNode (treeId: string, nodeIndex: number) {
+    const nodeList = this.getTreeNodeListByTreeId(treeId);
+
+    return nodeList[nodeIndex];
+  }
+
   getAllTreeNodeList () {
     const nodeList: spec.VFXItemData[] = [];
 
@@ -732,6 +892,10 @@ class TreeInfo {
     });
 
     return nodeList;
+  }
+
+  getNodePath (id: string) {
+    return this.node2Path[id];
   }
 }
 

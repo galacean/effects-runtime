@@ -880,3 +880,9 @@ export class PAnimationManager extends PObject {
     return this.ownerItem;
   }
 }
+
+export class PAnimationController extends PObject {
+  constructor () {
+    super();
+  }
+}
