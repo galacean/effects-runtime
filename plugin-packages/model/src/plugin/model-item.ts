@@ -5,8 +5,10 @@ import type {
   Engine,
   Renderer,
   TransformAnimationPlayable,
+  VFXItem,
+  VFXItemContent,
 } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec } from '@galacean/effects';
+import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec, AnimationClip } from '@galacean/effects';
 import { Vector3 } from '../runtime/math';
 import type { Ray, Euler, Vector2 } from '../runtime/math';
 import type {
@@ -563,6 +565,9 @@ export class ModelAnimationController extends ItemBehaviour {
    */
   data?: AnimationComponentData;
 
+  elapsedTime = 0;
+  animation = -1;
+  clips: ModelAnimationClip[] = [];
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
@@ -579,7 +584,7 @@ export class ModelAnimationController extends ItemBehaviour {
    * 组件开始，需要创建内部对象和添加到场景管理器中
    */
   override start (): void {
-    this.createContent();
+    this.elapsedTime = 0;
     this.item.type = VFX_ITEM_TYPE_3D;
   }
 
@@ -588,7 +593,10 @@ export class ModelAnimationController extends ItemBehaviour {
    * @param dt - 更新间隔
    */
   override update (dt: number): void {
-
+    this.elapsedTime += dt;
+    if (this.animation >= 0 && this.animation < this.clips.length) {
+      this.clips[this.animation].sampleAnimation(this.item, this.elapsedTime);
+    }
   }
 
   /**
@@ -604,14 +612,79 @@ export class ModelAnimationController extends ItemBehaviour {
    */
   override fromData (data: AnimationComponentData): void {
     super.fromData(data);
-
     this.data = data;
+    //
+    this.name = data.name ?? '<empty>';
+    this.animation = data.animation ?? -1;
+    this.clips = [];
+    data.animationClips.forEach(clipData => {
+      const clipObj = new ModelAnimationClip(this.engine);
+
+      clipObj.fromData(clipData);
+      this.clips.push(clipObj);
+    });
+  }
+}
+
+class ModelAnimationClip extends AnimationClip {
+  path2Node: Record<string, VFXItem<VFXItemContent>> = {};
+
+  override sampleAnimation (vfxItem: VFXItem<VFXItemContent>, time: number) {
+    const duration = vfxItem.duration;
+    let life = time / duration;
+
+    life = life < 0 ? 0 : (life > 1 ? 1 : life);
+
+    for (const curve of this.positionCurves) {
+      const value = curve.keyFrames.getValue(life);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setPosition(value.x, value.y, value.z);
+    }
+
+    for (const curve of this.eulerCurves) {
+      const value = curve.keyFrames.getValue(life);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setRotation(value.x, value.y, value.z);
+    }
+
+    for (const curve of this.scaleCurves) {
+      const value = curve.keyFrames.getValue(life);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setScale(value.x, value.y, value.z);
+    }
+
+    // TODO float curves 采样
   }
 
-  /**
-   * 创建内部对象
-   */
-  createContent () {
+  getTargetItem (rootItem: VFXItem<VFXItemContent>, path: string) {
+    if (this.path2Node[path]) {
+      return this.path2Node[path];
+    }
 
+    let target = rootItem;
+    const nameList = path.split('/');
+
+    for (const name of nameList) {
+      let findTag = false;
+
+      for (const child of target.children) {
+        if (child.name === name) {
+          target = child;
+          findTag = true;
+
+          break;
+        }
+      }
+      if (!findTag) {
+        throw new Error(`Can't find path in tree ${rootItem.id}, ${path}`);
+      }
+    }
+
+    this.path2Node[path] = target;
+
+    return target;
   }
 }

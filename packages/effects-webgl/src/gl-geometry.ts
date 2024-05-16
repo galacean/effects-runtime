@@ -1,4 +1,4 @@
-import type { Engine, GeometryProps } from '@galacean/effects-core';
+import type { Engine, GeometryProps, SkinProps } from '@galacean/effects-core';
 import { spec, assertExist, BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext, vertexFormatType2GLType } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
@@ -46,6 +46,8 @@ export class GLGeometry extends Geometry {
   buffers: Record<string, GLGPUBuffer> = {};
   indices?: spec.TypedArray;
   readonly vaos: Record<string, GLVertexArrayObject | undefined> = {};
+
+  skin: SkinProps = {};
 
   protected initialized = false;
   private options?: GeometryProps;
@@ -232,6 +234,10 @@ export class GLGeometry extends Geometry {
 
   getDrawCount (): number {
     return this.drawCount;
+  }
+
+  getSkinProps (): SkinProps {
+    return this.skin;
   }
 
   // 根据 attribute 的 datasource 获取 js 端 buffer
@@ -476,6 +482,12 @@ export class GLGeometry extends Geometry {
       geometryProps.drawCount = indexBuffer.length;
       this.processProps(geometryProps);
     }
+
+    this.skin = {
+      boneNames: data.boneNames,
+      rootBoneName: data.rootBoneName,
+      inverseBindMatrices: data.inverseBindMatrices,
+    };
   }
 
   override dispose (): void {

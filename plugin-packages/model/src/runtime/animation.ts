@@ -1,7 +1,6 @@
-import type { Geometry, Engine, VFXItemContent, VFXItem } from '@galacean/effects';
+import type { Geometry, Engine, VFXItemContent, VFXItem, SkinProps } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects';
 import type {
-  ModelSkinOptions,
   ModelAnimTrackOptions,
   ModelAnimationOptions,
   ModelTreeOptions,
@@ -33,7 +32,7 @@ export class PSkin extends PObject {
   /**
    * 场景树父元素
    */
-  parentItem?: VFXItem<VFXItemContent>;
+  rootBoneItem?: VFXItem<VFXItemContent>;
   /**
    * 骨骼索引
    */
@@ -41,7 +40,7 @@ export class PSkin extends PObject {
   /**
    * 关节索引
    */
-  jointList: number[] = [];
+  jointItem: VFXItem<VFXItemContent>[] = [];
   /**
    * 逆绑定矩阵
    */
@@ -57,28 +56,27 @@ export class PSkin extends PObject {
 
   /**
    * 创建蒙皮对象
-   * @param options - 蒙皮相关数据
+   * @param props - 蒙皮相关数据
    * @param engine - 引擎对象
-   * @param parentItem - 场景树父元素
+   * @param rootBoneItem - 场景树父元素
    */
-  create (options: ModelSkinOptions, engine: Engine, parentItem?: VFXItem<VFXItemContent>) {
-    this.name = this.genName(options.name ?? 'Unnamed skin');
+  create (props: SkinProps, engine: Engine, rootBoneItem: VFXItem<VFXItemContent>) {
+    this.name = props.rootBoneName ?? 'Unnamed skin';
     this.type = PObjectType.skin;
     //
-    this.parentItem = parentItem;
-    this.skeleton = options.skeleton ?? -1;
-    this.jointList = options.joints;
+    this.rootBoneItem = rootBoneItem;
+    this.skeleton = -1;
+    this.jointItem = this.getJointItems(props, rootBoneItem);
     this.animationMatrices = [];
     //
     this.inverseBindMatrices = [];
-
     //
     this.textureDataMode = this.getTextureDataMode(this.getJointCount(), engine);
-    const matList = options.inverseBindMatrices;
+    const matList = props.inverseBindMatrices;
 
     if (matList !== undefined && matList.length > 0) {
-      if (matList.length % 16 !== 0 || matList.length !== this.jointList.length * 16) {
-        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointList.length}`);
+      if (matList.length % 16 !== 0 || matList.length !== this.jointItem.length * 16) {
+        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointItem.length}`);
       }
 
       const matrixCount = matList.length / 16;
@@ -96,28 +94,20 @@ export class PSkin extends PObject {
    */
   updateSkinMatrices () {
     this.animationMatrices = [];
-    const parentTree = this.parentItem?.getComponent(ModelTreeComponent);
 
-    if (parentTree !== undefined) {
-      for (let i = 0; i < this.jointList.length; i++) {
-        const joint = this.jointList[i];
-        const node = parentTree.content.getNodeById(joint);
+    for (let i = 0; i < this.jointItem.length; i++) {
+      const node = this.jointItem[i];
 
-        // let parent = node?.transform.parentTransform;
-        // while(parent !== undefined){
-        //   const pos = parent.position;
-        //   parent.setPosition(pos[0], pos[1], pos[2]);
-        //   parent = parent.parentTransform;
-        // }
-        if (node === undefined) {
-          console.error(`Can't find joint ${joint} in node tree ${this.parentItem}.`);
+      // let parent = node?.transform.parentTransform;
+      // while(parent !== undefined){
+      //   const pos = parent.position;
+      //   parent.setPosition(pos[0], pos[1], pos[2]);
+      //   parent = parent.parentTransform;
+      // }
 
-          break;
-        }
-        const mat4 = node.transform.getWorldMatrix();
+      const mat4 = node.transform.getWorldMatrix();
 
-        this.animationMatrices.push(mat4.clone());
-      }
+      this.animationMatrices.push(mat4.clone());
     }
 
     if (this.animationMatrices.length === this.inverseBindMatrices.length) {
@@ -156,7 +146,7 @@ export class PSkin extends PObject {
    * @param parentItem - 场景树父元素
    */
   updateParentItem (parentItem: VFXItem<VFXItemContent>) {
-    this.parentItem = parentItem;
+    this.rootBoneItem = parentItem;
   }
 
   /**
@@ -164,7 +154,7 @@ export class PSkin extends PObject {
    * @returns
    */
   getJointCount (): number {
-    return this.jointList.length;
+    return this.jointItem.length;
   }
 
   /**
@@ -179,8 +169,8 @@ export class PSkin extends PObject {
    * 销毁
    */
   override dispose (): void {
-    this.parentItem = undefined;
-    this.jointList = [];
+    this.rootBoneItem = undefined;
+    this.jointItem = [];
     this.inverseBindMatrices = [];
     this.animationMatrices = [];
   }
@@ -203,6 +193,44 @@ export class PSkin extends PObject {
     } else {
       return TextureDataMode.none;
     }
+  }
+
+  private getJointItems (props: SkinProps, rootBoneItem: VFXItem<VFXItemContent>) {
+    const name2Item = this.genNodeName(rootBoneItem);
+
+    const jointItems: VFXItem<VFXItemContent>[] = [];
+
+    props.boneNames?.forEach(boneName => {
+      const node = name2Item[boneName];
+
+      if (!node) {
+        throw new Error(`Can't find node of bone name ${boneName}`);
+      }
+      jointItems.push(node);
+    });
+
+    return jointItems;
+  }
+
+  private genNodeName (node: VFXItem<VFXItemContent>) {
+    const name2Item: Record<string, VFXItem<VFXItemContent>> = {};
+    const nameList: string[] = [];
+
+    name2Item[''] = node;
+    for (const child of node.children) {
+      this.genNodeNameDFS(child, nameList, name2Item);
+    }
+
+    return name2Item;
+  }
+
+  private genNodeNameDFS (node: VFXItem<VFXItemContent>, nameList: string[], name2Item: Record<string, VFXItem<VFXItemContent>>) {
+    nameList.push(node.name);
+    name2Item[nameList.join('/')] = node;
+    for (const child of node.children) {
+      this.genNodeNameDFS(child, nameList, name2Item);
+    }
+    nameList.pop();
   }
 }
 

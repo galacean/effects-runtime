@@ -50,6 +50,12 @@ export interface SubMesh {
   count: number,
 }
 
+export interface SkinProps {
+  boneNames?: string[],
+  rootBoneName?: string,
+  inverseBindMatrices?: number[],
+}
+
 /**
  * Geometry 抽象类
  */
@@ -139,6 +145,11 @@ export abstract class Geometry extends EffectsObject {
    * 获取当前 Geometry 的 drawcount
    */
   abstract getDrawCount (): number;
+
+  /**
+   * 获取当前 Geometry 关联的蒙皮数据
+   */
+  abstract getSkinProps (): SkinProps;
 
   /**
    * 初始化 GPU 资源

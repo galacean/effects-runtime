@@ -447,6 +447,8 @@ export class JSONConverter {
     };
 
     if (animations && animations.length) {
+      // FIXME: calcuate tree item duration
+      treeItem.duration = 0;
       const bins = oldScene.bins as unknown as ArrayBuffer[];
 
       animations.forEach(anim => {
@@ -467,6 +469,9 @@ export class JSONConverter {
 
           totalAnimationTime = Math.max(totalAnimationTime, inputArray[inputArray.length - 1]);
         });
+
+        // FIXME: calcuate tree item duration
+        treeItem.duration = Math.max(treeItem.duration, totalAnimationTime * 1000);
 
         anim.tracks.forEach(track => {
           const inputArray = typedArrayFromBinary(bins, track.input);
