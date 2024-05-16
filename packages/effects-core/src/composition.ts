@@ -1028,7 +1028,7 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
-   * 设置元素在画布上的像素位置
+   * 设置合成在画布上的像素位置
    * Tips:
    *  - 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
    *  - 设置后会覆盖原有的位置信息
