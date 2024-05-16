@@ -327,12 +327,13 @@ export class JSONConverter {
         throw new Error(`Can't item ${component.item}`);
       }
 
+      const treeItem = this.treeInfo.getTreeItemByNodeId(parentItemId);
       const treeNodeList = this.treeInfo.getTreeNodeListByNodeId(parentItemId);
 
-      if (!treeNodeList) {
+      if (!treeItem || !treeNodeList) {
         throw new Error(`Can't find tree node list for ${component.item}`);
       }
-      const rootBoneItem = this.setupBoneData(geometryData, meshOptions.skin, oldScene, treeNodeList);
+      const rootBoneItem = this.setupBoneData(geometryData, meshOptions.skin, oldScene, treeItem, treeNodeList);
 
       meshComponent.rootBone = { id: rootBoneItem.id };
     }
@@ -776,7 +777,7 @@ export class JSONConverter {
     return result;
   }
 
-  private setupBoneData (geom: spec.GeometryData, skin: spec.SkinOptions<'json'>, oldScene: spec.JSONScene, treeNodeList: spec.VFXItemData[]) {
+  private setupBoneData (geom: spec.GeometryData, skin: spec.SkinOptions<'json'>, oldScene: spec.JSONScene, treeItem: spec.VFXItemData, treeNodeList: spec.VFXItemData[]) {
     const bins = oldScene.bins as unknown as ArrayBuffer[];
     const { joints, skeleton, inverseBindMatrices } = skin;
 
@@ -787,7 +788,7 @@ export class JSONConverter {
 
     geom.inverseBindMatrices = Array.from(bindMatrixArray);
 
-    let rootBoneItem = treeNodeList[0];
+    let rootBoneItem = treeItem;
 
     if (skeleton !== undefined) {
       rootBoneItem = treeNodeList[skeleton];
@@ -881,6 +882,10 @@ class TreeInfo {
     }
 
     return this.getTreeNodeListByTreeId(treeItem.id);
+  }
+
+  getTreeItemByNodeId (id: string) {
+    return this.nodeList2Tree[id];
   }
 
   getTreeNode (treeId: string, nodeIndex: number) {
