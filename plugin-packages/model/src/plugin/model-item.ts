@@ -468,6 +468,7 @@ export class ModelCameraComponent extends ItemBehaviour {
     const scene = getSceneManager(this);
 
     scene?.addItem(this.content);
+    this.updateMainCamera();
   }
 
   /**
