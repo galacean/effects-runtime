@@ -72,7 +72,7 @@ export class TimelineComponent extends ItemBehaviour {
   }
 
   // TODO: [1.31] @十弦 vfx-item 下 onUpdate 的改动验证
-  override update (dt: number): void {
+  timelineUpdate (dt: number): void {
     if (this.item.stopped || !this.item.composition) {
       return;
     }

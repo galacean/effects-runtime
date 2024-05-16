@@ -13,15 +13,12 @@ import { createShape } from '../../shape';
 import { Texture } from '../../texture';
 import { Transform } from '../../transform';
 import { DestroyOptions, type color } from '../../utils';
-import { TimelineComponent } from '../cal/calculate-item';
-import { Track } from '../cal/track';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { Burst } from './burst';
 import { Link } from './link';
 import type { ParticleMeshProps, Point } from './particle-mesh';
 import { ParticleSystemRenderer } from './particle-system-renderer';
-import { ParticleBehaviourPlayable } from './particle-vfx-item';
 import type { TrailMeshProps } from './trail-mesh';
 
 type ParticleSystemRayCastOptions = {
@@ -1099,9 +1096,9 @@ export class ParticleSystem extends Component {
     this.item.components.push(this.renderer);
     this.item.rendererComponents.push(this.renderer);
     // 添加粒子动画 clip
-    const timeline = this.item.getComponent(TimelineComponent)!;
+    // const timeline = this.item.getComponent(TimelineComponent)!;
 
-    timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
+    // timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
   }
 }
 

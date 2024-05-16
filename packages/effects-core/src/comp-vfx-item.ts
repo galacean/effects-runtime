@@ -5,7 +5,7 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region } from './plugins';
-import { HitTestType, TimelineComponent } from './plugins';
+import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, TimelineComponent, Track } from './plugins';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
@@ -21,6 +21,7 @@ export class CompositionComponent extends ItemBehaviour {
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
   timelineComponents: TimelineComponent[];
   timelineComponent: TimelineComponent;
+  time = 0;
 
   override start (): void {
     const item = this.item;
@@ -28,11 +29,14 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.startTime = startTime;
     this.timelineComponents = [];
-    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
-
+    this.timelineComponent = this.item.addComponent(TimelineComponent)!;
+    this.timelineComponent.fromData(this.item.props.content as spec.NullContent);
+    this.items = this.sortItemsByParentRelation(this.items);
     for (const item of this.items) {
       // 获取所有的合成元素 Timeline 组件
-      const timeline = item.getComponent(TimelineComponent);
+      const timeline = item.addComponent(TimelineComponent);
+
+      timeline.fromData(item.props.content as spec.NullContent);
 
       if (timeline) {
         this.timelineComponents.push(timeline);
@@ -43,18 +47,36 @@ export class CompositionComponent extends ItemBehaviour {
         ) {
           timeline.reusable = true;
         }
+
+        // 添加粒子动画 clip
+        if (item.getComponent(ParticleSystem)) {
+          timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
+        }
       }
     }
   }
 
   override update (dt: number): void {
-    const time = this.timelineComponent.getTime();
+    const time = this.time;
 
     for (const timeline of this.timelineComponents) {
       // TODO 统一时间为 s
       const localTime = timeline.toLocalTime(time);
 
       timeline.setTime(localTime);
+      if (timeline.isActiveAndEnabled && timeline.started) {
+        timeline.timelineUpdate(dt);
+      }
+    }
+
+    for (const item of this.items) {
+      const subCompostionComponent = item.getComponent(CompositionComponent);
+
+      if (subCompostionComponent) {
+        const subTimeline = item.getComponent(TimelineComponent)!;
+
+        subCompostionComponent.time = subTimeline.toLocalTime(time);
+      }
     }
   }
 
@@ -230,5 +252,49 @@ export class CompositionComponent extends ItemBehaviour {
     }
 
     return regions;
+  }
+
+  // 深度优先遍历，创建排序后的数组
+  private dfsVFXItem (sortedArray: VFXItem<VFXItemContent>[], node: VFXItem<VFXItemContent>, childrenMap: Map<string, VFXItem<VFXItemContent>[]>): void {
+    // 首先，将当前节点添加到排序数组
+    sortedArray.push(node);
+
+    // 如果此节点有子节点，则递归添加它们
+    if (childrenMap.has(node.id)) {
+      const children = childrenMap.get(node.id);
+
+      children?.forEach(child => this.dfsVFXItem(sortedArray, child, childrenMap));
+    }
+  }
+
+  // 按父子关系排序节点，并保持原先同层级的元素顺序
+  private sortItemsByParentRelation (items: VFXItem<VFXItemContent>[]): VFXItem<VFXItemContent>[] {
+    // 映射：parentId => children
+    const childrenMap = new Map<string, VFXItem<VFXItemContent>[]>();
+    // 根节点数组
+    const roots: VFXItem<VFXItemContent>[] = [];
+
+    // 第一步：构建 childrenMap 和 根节点数组
+    items.forEach(item => {
+      // 父节点是合成元素的是根节点
+      if (item.parent === this.item) {
+        roots.push(item);
+      } else {
+        if (!childrenMap.has(item.parent!.id)) {
+          childrenMap.set(item.parent!.id, []);
+        }
+        childrenMap.get(item.parent!.id)?.push(item);
+      }
+    });
+
+    // 第二步：从每个根节点开始深度优先遍历，并构建排序后的数组
+    const sortedArray: VFXItem<VFXItemContent>[] = [];
+
+    roots.forEach(root => {
+      // 对每个根节点及其子节点进行深度优先遍历
+      this.dfsVFXItem(sortedArray, root, childrenMap);
+    });
+
+    return sortedArray;
   }
 }
