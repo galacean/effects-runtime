@@ -82,6 +82,17 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
   }
 
+  // 更正spine数据中的images属性
+  json.spines?.forEach(spine => {
+    for (let i = 0; i < spine.images.length; i++) {
+      //@ts-expect-error
+      const textureId = json.textures[spine.images[i]]?.id;
+
+      //@ts-expect-error
+      spine.images[i] = { id: textureId };
+    }
+  });
+
   const itemGuidMap: Record<string, string> = {};
 
   // 更正Composition.endBehavior
