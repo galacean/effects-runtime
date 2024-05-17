@@ -259,22 +259,22 @@ export class ActivationPlayable extends Playable {
 }
 
 export interface PositionCurve {
-  path: string[],
+  path: string,
   keyFrames: ValueGetter<Vector3>,
 }
 
 export interface EulerCurve {
-  path: string[],
+  path: string,
   keyFrames: ValueGetter<Vector3>,
 }
 
 export interface ScaleCurve {
-  path: string[],
+  path: string,
   keyFrames: ValueGetter<Vector3>,
 }
 
 export interface FloatCurve {
-  path: string[],
+  path: string,
   property: string[],
   className: string,
   keyFrames: ValueGetter<number>,
@@ -294,6 +294,7 @@ export class AnimationClip extends EffectsObject {
 
     for (const curve of this.positionCurves) {
       const value = curve.keyFrames.getValue(life);
+      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setPosition(value.x, value.y, value.z);
@@ -301,6 +302,7 @@ export class AnimationClip extends EffectsObject {
 
     for (const curve of this.eulerCurves) {
       const value = curve.keyFrames.getValue(life);
+      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setRotation(value.x, value.y, value.z);
@@ -308,6 +310,7 @@ export class AnimationClip extends EffectsObject {
 
     for (const curve of this.scaleCurves) {
       const value = curve.keyFrames.getValue(life);
+      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setScale(value.x, value.y, value.z);
@@ -335,6 +338,10 @@ export class AnimationClip extends EffectsObject {
         path: eulerCurveData.path,
         keyFrames: createValueGetter(eulerCurveData.keyFrames),
       };
+
+      // FIXME: 临时解决四元数插值问题
+      // @ts-expect-error
+      curve.keyFrames.quaternion = true;
 
       this.eulerCurves.push(curve);
     }
