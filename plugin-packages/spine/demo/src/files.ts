@@ -194,6 +194,11 @@ export const direct: Record<string, FileFormat> = {
     json: 'https://gw.alipayobjects.com/os/gltf-asset/95023136604660/skeleton.json',
     png: ['https://gw.alipayobjects.com/zos/gltf-asset/95023136604660/skeleton.png'],
   },
+  noDefault: {
+    json: 'https://gw.alipayobjects.com/os/gltf-asset/15687627881185/zJ.json',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/15687627881185/zJ.atlas',
+    png: ['https://gw.alipayobjects.com/zos/gltf-asset/15687627881185/zJ.png'],
+  },
 };
 
 export interface FileFormat {

@@ -1,11 +1,11 @@
-import { HitTestType, VFXItem, spec, PLAYER_OPTIONS_ENV_EDITOR, assertExist, math } from '@galacean/effects';
-import type { HitTestTriangleParams, Engine, Composition, VFXItemProps, BoundingBoxTriangle } from '@galacean/effects';
 import type { AnimationStateListener, SkeletonData } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
+import type { BoundingBoxTriangle, Composition, Engine, HitTestTriangleParams, VFXItemProps } from '@galacean/effects';
+import { assertExist, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, spec, VFXItem } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import type { SpineResource } from './spine-loader';
-import { createSkeletonData, getAnimationDuration } from './utils';
 import type { SpineMesh } from './spine-mesh';
+import { createSkeletonData, getAnimationDuration } from './utils';
 
 const { Vector2, Vector3 } = math;
 
@@ -86,7 +86,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     if (isNaN(index)) {
       return;
     }
-    const skin = spineOptions.activeSkin || 'default';
+
     const { atlas, skeletonFile, skeletonType, skinList, animationList } = spineDatas[index];
     const activeAnimation = typeof spineOptions.activeAnimation === 'string' ? [spineOptions.activeAnimation] : spineOptions.activeAnimation;
 
@@ -97,7 +97,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     this.skinList = skinList.slice();
     this.animationList = animationList.slice();
     this.skeleton = new Skeleton(this.skeletonData);
-    this.setSkin(skin);
+    this.setSkin(spineOptions.activeSkin || (skinList.length ? skinList[0] : 'default'));
     this.state = new AnimationState(this.animationStateData);
     if (activeAnimation.length === 1) {
       // 兼容旧JSON，根据时长计算速度

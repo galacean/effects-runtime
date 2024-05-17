@@ -3,6 +3,7 @@ import './image-template/image-template-v2.spec';
 import './interact/interact.spec';
 import './math/value-getter.spec';
 import './transform.spec';
+import './utils.spec';
 //
 import './plugins/common/end-behevior.spec';
 import './plugins/cal/transform.spec';
