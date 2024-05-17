@@ -391,7 +391,6 @@ export class AssetManager implements Disposable {
         if (isFontFamily(font.fontFamily)) {
           // 在所有设备上提醒开发者
           console.warn(`Unsupported font family: ${font.fontFamily}`);
-          alert(`Unsupported font family: ${font.fontFamily}`);
         }
         try {
           const url = new URL(font.fontURL, this.baseUrl).href;
