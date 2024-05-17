@@ -7,6 +7,15 @@
 
 ---
 
+## 1.4.4
+
+`2024-05-17`
+
+- Fix: Fixed an issue with fontFamily parsing errors on iOS11/12.
+ [#356](https://github.com/galacean/effects-runtime/pull/356) [#361](https://github.com/galacean/effects-runtime/pull/361) @Sruimeng @yiiqii
+- Fix: Added compatibility for Spine products that do not have a default skin.
+ [#352](https://github.com/galacean/effects-runtime/pull/352) @RGCHN
+
 ## 1.4.3
 
 `2024-05-14`
