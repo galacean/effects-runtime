@@ -19,9 +19,9 @@ export class CompositionComponent extends ItemBehaviour {
   startTime: number;
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
-  objectBindingTracks: ObjectBindingTrack[];
+  objectBindingTracks: ObjectBindingTrack[] = [];
   time = 0;
-  reusable: boolean = false;
+  reusable = false;
 
   override start (): void {
     const item = this.item;
