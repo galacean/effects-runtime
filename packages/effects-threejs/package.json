@@ -54,7 +54,7 @@
     "@galacean/effects-core": "workspace:*"
   },
   "devDependencies": {
-    "three": "^0.149.0",
+    "three": "^0.164.1",
     "@types/three": "^0.149.0"
   }
 }
