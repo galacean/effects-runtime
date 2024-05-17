@@ -80,7 +80,6 @@ export class TextStyle {
     this.textColor = textColor;
     this.textWeight = fontWeight;
     this.fontStyle = fontStyle;
-
     this.fontFamily = fontFamily;
     this.fontSize = fontSize; // 暂时取消字号限制 Math.min(fontSize, this.maxFontSize);
 

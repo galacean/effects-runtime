@@ -167,7 +167,6 @@ export class TextItem extends SpriteItem {
    * @returns
    */
   setFontFamily (value: string): void {
-
     if (this.textStyle.fontFamily === value && isFontFamily(value)) {
       console.warn('The font is either the current font or an unsupported font name.');
 
@@ -290,7 +289,7 @@ export class TextItem extends SpriteItem {
 
     this.char = (this.text || '').split('');
 
-    this.canvas.width = width ;
+    this.canvas.width = width;
     this.canvas.height = height;
 
     context.clearRect(0, 0, width, this.canvas.height);
@@ -358,10 +357,10 @@ export class TextItem extends SpriteItem {
       charOffsetX,
     });
 
-    charsInfo.forEach(charInfo=>{
+    charsInfo.forEach(charInfo => {
       const x = layout.getOffsetX(style, charInfo.width);
 
-      charInfo.chars.forEach((str, i)=>{
+      charInfo.chars.forEach((str, i) => {
         if (style.isOutlined) {
 
           context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
@@ -388,7 +387,7 @@ export class TextItem extends SpriteItem {
         height: imageData.height,
       },
       {
-        flipY:true,
+        flipY: true,
         magFilter: glContext.LINEAR,
         minFilter: glContext.LINEAR,
         wrapS: glContext.CLAMP_TO_EDGE,
@@ -433,8 +432,8 @@ export class TextItem extends SpriteItem {
     const style = this.textStyle;
 
     context!.shadowColor = `rgba(${style.shadowColor[0] * 255}, ${style.shadowColor[1] * 255}, ${style.shadowColor[2] * 255}, ${style.shadowColor[3]})`;
-    context!.shadowBlur = style.shadowBlur ;
-    context!.shadowOffsetX = style.shadowOffsetX ;
-    context!.shadowOffsetY = -style.shadowOffsetY ;
+    context!.shadowBlur = style.shadowBlur;
+    context!.shadowOffsetX = style.shadowOffsetX;
+    context!.shadowOffsetY = -style.shadowOffsetY;
   }
 }

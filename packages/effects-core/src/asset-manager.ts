@@ -401,7 +401,6 @@ export class AssetManager implements Disposable {
           //@ts-expect-error
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
-
         } catch (e) {
           console.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}`);
         }
