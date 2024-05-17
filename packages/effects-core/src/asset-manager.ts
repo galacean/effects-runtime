@@ -15,6 +15,7 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage, loadMedia } from './template-image';
+import { isFontFamily } from './utils/text';
 
 /**
  * 场景加载参数
@@ -383,19 +384,25 @@ export class AssetManager implements Disposable {
     if (!fonts) {
       return;
     }
+
     const jobs = fonts.map(async font => {
       // 数据模版兼容判断
       if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
-        const url = new URL(font.fontURL, this.baseUrl).href;
-        const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
-
+        if (isFontFamily(font.fontFamily)) {
+          // 在所有设备上提醒开发者
+          console.warn(`Unsupported font family: ${font.fontFamily}`);
+        }
         try {
+          const url = new URL(font.fontURL, this.baseUrl).href;
+
+          const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
+
           await fontFace.load();
           //@ts-expect-error
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
         } catch (e) {
-          logger.warn(`Invalid fonts source: ${JSON.stringify(url)}`);
+          console.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}`);
         }
       }
     });
