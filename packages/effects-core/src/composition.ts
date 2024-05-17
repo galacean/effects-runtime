@@ -393,7 +393,6 @@ export class Composition implements Disposable, LostHandler {
     if (this.rootItem.ended && this.reusable) {
       this.restart();
     }
-    // TODO: [1.31] @茂安 this.content.started 验证
     if (!this.rootComposition.started) {
       this.gotoAndPlay(this.time - this.startTime);
 
@@ -636,9 +635,9 @@ export class Composition implements Disposable, LostHandler {
     const duration = this.rootItem.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.rootItem.endBehavior === spec.END_BEHAVIOR_RESTART) {
+      if (this.rootItem.endBehavior === spec.ItemEndBehavior.loop) {
         localTime = localTime % duration;
-      } else if (this.rootItem.endBehavior === spec.END_BEHAVIOR_FREEZE) {
+      } else if (this.rootItem.endBehavior === spec.ItemEndBehavior.freeze) {
         localTime = Math.min(duration, localTime);
       }
     }
