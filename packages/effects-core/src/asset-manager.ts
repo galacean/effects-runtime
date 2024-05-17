@@ -8,8 +8,8 @@ import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia } from './downloader';
 import type { ImageSource, Scene, SceneLoadOptions, SceneType } from './scene';
 import { isSceneJSON } from './scene';
-import { isObject, isString, logger } from './utils';
 import type { Disposable } from './utils';
+import { isObject, isString, logger, isValidFontFamily } from './utils';
 import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
 import type { Renderer } from './render';
@@ -307,20 +307,25 @@ export class AssetManager implements Disposable {
     if (!fonts) {
       return;
     }
+
     const jobs = fonts.map(async font => {
       // 数据模版兼容判断
       if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
-        const url = new URL(font.fontURL, this.baseUrl).href;
-        const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
-
+        if (!isValidFontFamily(font.fontFamily)) {
+          // 在所有设备上提醒开发者
+          console.warn(`Risky font family: ${font.fontFamily}`);
+        }
         try {
+          const url = new URL(font.fontURL, this.baseUrl).href;
+          const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
+
           await fontFace.load();
           //@ts-expect-error
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
-          logger.warn(`Invalid fonts source: ${JSON.stringify(url)}`);
+          logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}`);
         }
       }
     });

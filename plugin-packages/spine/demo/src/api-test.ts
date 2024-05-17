@@ -1,8 +1,6 @@
 // @ts-nocheck
 import type { Camera, JSONValue } from '@galacean/effects';
-import { Player, loadBinary } from '@galacean/effects';
-import type { FileFormat } from './files';
-import { direct, premultiply } from './files';
+import { loadBinary, Player } from '@galacean/effects';
 import type { SkeletonData } from '@galacean/effects-plugin-spine';
 import {
   createSkeletonData,
@@ -11,6 +9,8 @@ import {
   getSkinList,
   TextureAtlas,
 } from '@galacean/effects-plugin-spine';
+import type { FileFormat } from './files';
+import { direct, premultiply } from './files';
 import 'fpsmeter';
 
 const playerOptions = {
@@ -44,7 +44,7 @@ const format = document.getElementById('J-formatList') as HTMLSelectElement;
 // format.onchange = handleChange;
 // delay.onchange = handleChange;
 
-const files: Record<string, FileFormat> = premultiply;
+const files: Record<string, FileFormat> = direct;
 
 if (files === premultiply) {
   filetype.innerText = '纹理打包选择预乘alpha: true';

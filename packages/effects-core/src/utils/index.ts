@@ -7,6 +7,7 @@ export * from './device';
 export * from './image-data';
 export * from './sortable';
 export * from './asserts';
+export * from './text';
 export * from './logger';
 
 export type Immutable<O> = O extends Record<any, any>
