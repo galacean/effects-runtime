@@ -20,8 +20,8 @@ export class CompositionComponent extends ItemBehaviour {
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
   objectBindingTracks: ObjectBindingTrack[];
-  compositionTrack: ObjectBindingTrack;
   time = 0;
+  reusable: boolean = false;
 
   override start (): void {
     const item = this.item;
@@ -29,11 +29,6 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.startTime = startTime;
     this.objectBindingTracks = [];
-    this.compositionTrack = new ObjectBindingTrack();
-    this.compositionTrack.bindingItem = this.item;
-    this.compositionTrack.create();
-
-    this.compositionTrack.fromData(this.item.props.content as spec.NullContent);
     this.items = this.sortItemsByParentRelation(this.items);
     for (const item of this.items) {
       // 获取所有的合成元素绑定 Track
@@ -41,20 +36,20 @@ export class CompositionComponent extends ItemBehaviour {
 
       newObjectBindingTrack.bindingItem = item;
       newObjectBindingTrack.fromData(item.props.content as spec.NullContent);
-      if (newObjectBindingTrack) {
-        this.objectBindingTracks.push(newObjectBindingTrack);
-        // 重播不销毁元素
-        if (
-          this.item.endBehavior !== spec.ItemEndBehavior.destroy ||
-          this.compositionTrack.reusable
-        ) {
-          newObjectBindingTrack.reusable = true;
-        }
+      this.objectBindingTracks.push(newObjectBindingTrack);
+      // 重播不销毁元素
+      if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
+        newObjectBindingTrack.reusable = true;
+        const subCompositionComponent = item.getComponent(CompositionComponent);
 
-        // 添加粒子动画 clip
-        if (item.getComponent(ParticleSystem)) {
-          newObjectBindingTrack.createTrack(Track).createClip(ParticleBehaviourPlayable);
+        if (subCompositionComponent) {
+          subCompositionComponent.reusable = true;
         }
+      }
+
+      // 添加粒子动画 clip
+      if (item.getComponent(ParticleSystem)) {
+        newObjectBindingTrack.createTrack(Track).createClip(ParticleBehaviourPlayable);
       }
 
       newObjectBindingTrack.create();
