@@ -376,42 +376,42 @@ export class PMorph extends PObject {
    * Morph 动画中 Position 相关的 Attribute 名称
    */
   private static positionNameList = [
-    'a_Target_Position0',
-    'a_Target_Position1',
-    'a_Target_Position2',
-    'a_Target_Position3',
-    'a_Target_Position4',
-    'a_Target_Position5',
-    'a_Target_Position6',
-    'a_Target_Position7',
+    'aTargetPosition0',
+    'aTargetPosition1',
+    'aTargetPosition2',
+    'aTargetPosition3',
+    'aTargetPosition4',
+    'aTargetPosition5',
+    'aTargetPosition6',
+    'aTargetPosition7',
   ];
 
   /**
    * Morph 动画中 Normal 相关的 Attribute 名称
    */
   private static normalNameList = [
-    'a_Target_Normal0',
-    'a_Target_Normal1',
-    'a_Target_Normal2',
-    'a_Target_Normal3',
-    'a_Target_Normal4',
-    'a_Target_Normal5',
-    'a_Target_Normal6',
-    'a_Target_Normal7',
+    'aTargetNormal0',
+    'aTargetNormal1',
+    'aTargetNormal2',
+    'aTargetNormal3',
+    'aTargetNormal4',
+    'aTargetNormal5',
+    'aTargetNormal6',
+    'aTargetNormal7',
   ];
 
   /**
    * Morph 动画中 Tangent 相关的 Attribute 名称
    */
   private static tangentNameList = [
-    'a_Target_Tangent0',
-    'a_Target_Tangent1',
-    'a_Target_Tangent2',
-    'a_Target_Tangent3',
-    'a_Target_Tangent4',
-    'a_Target_Tangent5',
-    'a_Target_Tangent6',
-    'a_Target_Tangent7',
+    'aTargetTangent0',
+    'aTargetTangent1',
+    'aTargetTangent2',
+    'aTargetTangent3',
+    'aTargetTangent4',
+    'aTargetTangent5',
+    'aTargetTangent6',
+    'aTargetTangent7',
   ];
 }
 

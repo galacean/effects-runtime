@@ -5,7 +5,7 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region } from './plugins';
-import { HitTestType, TimelineComponent } from './plugins';
+import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, ObjectBindingTrack, Track } from './plugins';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
@@ -19,42 +19,63 @@ export class CompositionComponent extends ItemBehaviour {
   startTime: number;
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
-  timelineComponents: TimelineComponent[];
-  timelineComponent: TimelineComponent;
+  objectBindingTracks: ObjectBindingTrack[] = [];
+  time = 0;
+  reusable = false;
 
   override start (): void {
     const item = this.item;
     const { startTime = 0 } = item.props;
 
     this.startTime = startTime;
-    this.timelineComponents = [];
-    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
-
+    this.objectBindingTracks = [];
+    this.items = this.sortItemsByParentRelation(this.items);
     for (const item of this.items) {
-      // 获取所有的合成元素 Timeline 组件
-      const timeline = item.getComponent(TimelineComponent);
+      // 获取所有的合成元素绑定 Track
+      const newObjectBindingTrack = new ObjectBindingTrack();
 
-      if (timeline) {
-        this.timelineComponents.push(timeline);
-        // 重播不销毁元素
-        if (
-          this.item.endBehavior !== spec.ItemEndBehavior.destroy ||
-          this.timelineComponent.reusable
-        ) {
-          timeline.reusable = true;
+      newObjectBindingTrack.bindingItem = item;
+      newObjectBindingTrack.fromData(item.props.content as spec.NullContent);
+      this.objectBindingTracks.push(newObjectBindingTrack);
+      // 重播不销毁元素
+      if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
+        newObjectBindingTrack.reusable = true;
+        const subCompositionComponent = item.getComponent(CompositionComponent);
+
+        if (subCompositionComponent) {
+          subCompositionComponent.reusable = true;
         }
       }
+
+      // 添加粒子动画 clip
+      if (item.getComponent(ParticleSystem)) {
+        newObjectBindingTrack.createTrack(Track).createClip(ParticleBehaviourPlayable);
+      }
+
+      newObjectBindingTrack.create();
     }
   }
 
   override update (dt: number): void {
-    const time = this.timelineComponent.getTime();
+    const time = this.time;
 
-    for (const timeline of this.timelineComponents) {
+    for (const track of this.objectBindingTracks) {
       // TODO 统一时间为 s
-      const localTime = timeline.toLocalTime(time);
+      const localTime = track.toLocalTime(time);
 
-      timeline.setTime(localTime);
+      track.setTime(localTime);
+      track.update(dt);
+    }
+
+    for (let i = 0;i < this.items.length;i++) {
+      const item = this.items[i];
+      const subCompostionComponent = item.getComponent(CompositionComponent);
+
+      if (subCompostionComponent) {
+        const subCompositionTrack = this.objectBindingTracks[i];
+
+        subCompostionComponent.time = subCompositionTrack.toLocalTime(time);
+      }
     }
   }
 
@@ -230,5 +251,49 @@ export class CompositionComponent extends ItemBehaviour {
     }
 
     return regions;
+  }
+
+  // 深度优先遍历，创建排序后的数组
+  private dfsVFXItem (sortedArray: VFXItem<VFXItemContent>[], node: VFXItem<VFXItemContent>, childrenMap: Map<string, VFXItem<VFXItemContent>[]>): void {
+    // 首先，将当前节点添加到排序数组
+    sortedArray.push(node);
+
+    // 如果此节点有子节点，则递归添加它们
+    if (childrenMap.has(node.id)) {
+      const children = childrenMap.get(node.id);
+
+      children?.forEach(child => this.dfsVFXItem(sortedArray, child, childrenMap));
+    }
+  }
+
+  // 按父子关系排序节点，并保持原先同层级的元素顺序
+  private sortItemsByParentRelation (items: VFXItem<VFXItemContent>[]): VFXItem<VFXItemContent>[] {
+    // 映射：parentId => children
+    const childrenMap = new Map<string, VFXItem<VFXItemContent>[]>();
+    // 根节点数组
+    const roots: VFXItem<VFXItemContent>[] = [];
+
+    // 第一步：构建 childrenMap 和 根节点数组
+    items.forEach(item => {
+      // 父节点是合成元素的是根节点
+      if (item.parent === this.item) {
+        roots.push(item);
+      } else {
+        if (!childrenMap.has(item.parent!.id)) {
+          childrenMap.set(item.parent!.id, []);
+        }
+        childrenMap.get(item.parent!.id)?.push(item);
+      }
+    });
+
+    // 第二步：从每个根节点开始深度优先遍历，并构建排序后的数组
+    const sortedArray: VFXItem<VFXItemContent>[] = [];
+
+    roots.forEach(root => {
+      // 对每个根节点及其子节点进行深度优先遍历
+      this.dfsVFXItem(sortedArray, root, childrenMap);
+    });
+
+    return sortedArray;
   }
 }

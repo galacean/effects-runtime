@@ -15,29 +15,10 @@ import type {
   VFXItem,
   VFXItemContent } from '@galacean/effects-core';
 import {
-  AssetManager,
-  canvasPool,
-  Composition,
-  CompositionComponent,
-  CompositionSourceManager,
-  EVENT_TYPE_CLICK,
-  EventSystem,
-  generateWhiteTexture,
-  getPixelRatio,
-  gpuTimer,
-  initErrors,
-  isAndroid,
-  isArray,
-  isSceneURL,
-  isSceneWithOptions,
-  logger,
-  pluginLoaderMap,
-  Renderer,
-  setSpriteMeshMaxItemCountByGPU,
-  spec,
-  Texture,
-  TextureLoadAction,
-  Ticker,
+  AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
+  Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
+  isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
+  generateWhiteTexture, CompositionSourceManager, isSceneWithOptions, Texture,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';

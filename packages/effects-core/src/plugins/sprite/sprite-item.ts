@@ -15,7 +15,6 @@ import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
 import type { CalculateItemOptions } from '../cal/calculate-item';
-import { TimelineComponent } from '../cal/calculate-item';
 import { Playable } from '../cal/playable-graph';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
@@ -132,9 +131,9 @@ export class SpriteComponent extends RendererComponent {
   cachePrefix: string;
   geoData: { atlasOffset: number[] | spec.TypedArray, index: number[] | spec.TypedArray };
   anchor?: vec2;
-  timelineComponent: TimelineComponent;
 
   textureSheetAnimation?: spec.TextureSheetAnimation;
+  frameAnimationTime = 0;
   splits: splitsDataType;
   emptyTexture: Texture;
   color: vec4 = [1, 1, 1, 1];
@@ -210,12 +209,12 @@ export class SpriteComponent extends RendererComponent {
 
   override start (): void {
     this.priority = this.item.listIndex;
-    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
     this.item.getHitTestParams = this.getHitTestParams;
   }
 
   override update (dt: number): void {
-    const time = this.timelineComponent.getTime();
+    this.frameAnimationTime += dt / 1000;
+    const time = this.frameAnimationTime;
     const duration = this.item.duration;
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
     const ta = this.textureSheetAnimation;
@@ -512,7 +511,7 @@ export class SpriteComponent extends RendererComponent {
       return;
     }
     const worldMatrix = this.transform.getWorldMatrix();
-    const triangles = trianglesFromRect(Vector3.ZERO, 1 / 2, 1 / 2);
+    const triangles = trianglesFromRect(Vector3.ZERO, 0.5 * this.transform.size.x, 0.5 * this.transform.size.y);
 
     triangles.forEach(triangle => {
       worldMatrix.transformPoint(triangle.p0 as Vector3);

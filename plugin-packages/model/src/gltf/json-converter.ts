@@ -1,6 +1,6 @@
-import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON } from '@galacean/effects';
+import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glType2VertexFormatType, glContext } from '@galacean/effects';
 import type {
-  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
+  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps, SubMesh,
 } from '@galacean/effects';
 import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
 import { Color } from '../runtime/math';
@@ -13,7 +13,7 @@ export class JSONConverter {
   engine: Engine;
   renderer: Renderer;
   downloader: Downloader;
-  treeNodes: spec.VFXItemData[] = [];
+  treeItemList: spec.VFXItemData[] = [];
 
   constructor (player: Player) {
     this.engine = player.renderer.engine;
@@ -68,7 +68,7 @@ export class JSONConverter {
       geometries: [],
     };
 
-    this.treeNodes = [];
+    this.treeItemList = [];
     this.setImage(newScene, oldScene);
     await this.setTexture(newScene, oldScene);
     this.setComponent(newScene, oldScene);
@@ -175,9 +175,18 @@ export class JSONConverter {
 
   setComposition (newScene: spec.JSONScene, oldScene: spec.JSONScene) {
     newScene.items = oldScene.items;
-    newScene.items.push(...this.treeNodes);
+    newScene.items.push(...this.treeItemList);
     newScene.compositionId = oldScene.compositionId;
     newScene.compositions = oldScene.compositions;
+
+    newScene.items.forEach(item => {
+      // @ts-expect-error
+      if (item.type === 'root') {
+        // @ts-expect-error
+        item.type = 'ECS';
+      }
+    });
+
     // @ts-expect-error
     newScene.compositions[0].items = newScene.items.map(item => {
       return { id: item.id } as spec.DataPath;
@@ -255,25 +264,51 @@ export class JSONConverter {
 
   private createMeshComponent (component: spec.ComponentData, newScene: spec.JSONScene, oldScene: spec.JSONScene): spec.ModelMeshComponentData {
     const meshOptions = (component as unknown as spec.ModelMeshItemContent<'json'>).options;
-    const primitives: spec.PrimitiveData[] = [];
+
+    const geometryPropsList: GeometryProps[] = [];
+    const materialDatas: spec.MaterialData[] = [];
 
     meshOptions.primitives.forEach(prim => {
-      const geometryData = this.getGeometryData(prim.geometry, oldScene);
-      const materialData = this.getMaterialData(prim.material, oldScene);
+      const geomProps = deserializeGeometry(prim.geometry, oldScene.bins as unknown as ArrayBuffer[]);
+      const material = this.getMaterialData(prim.material, oldScene);
 
-      newScene.geometries.push(geometryData);
-      newScene.materials.push(materialData);
-      primitives.push({
-        geometry: { id: geometryData.id },
-        material: { id: materialData.id },
-      });
+      if (geomProps.indices?.data instanceof Uint8Array) {
+        const oldIndices = geomProps.indices.data;
+        const newIndices = new Uint16Array(oldIndices.length);
+
+        for (let i = 0; i < oldIndices.length; i++) {
+          newIndices[i] = oldIndices[i];
+        }
+
+        geomProps.indices.data = newIndices;
+      }
+
+      geometryPropsList.push(geomProps);
+      materialDatas.push(material);
     });
+
+    const geometryData = getGeometryDataFromPropsList(geometryPropsList);
+
+    if (!geometryData) {
+      throw new Error('no primitives');
+    }
+
+    newScene.geometries.push(geometryData);
+    newScene.materials.push(...materialDatas);
 
     const meshComponent: spec.ModelMeshComponentData = {
       id: component.id,
       dataType: component.dataType,
       item: component.item,
-      primitives,
+      geometry: { id: geometryData.id },
+      materials: materialDatas.map(mat => {
+        const data: spec.DataPath = {
+          id: mat.id,
+        };
+
+        return data;
+      }),
+      rootBone: { id: '' },
     };
 
     return meshComponent;
@@ -290,7 +325,7 @@ export class JSONConverter {
 
     const treeComp = component as unknown as ModelTreeContent;
     const treeData = treeComp.options.tree;
-    const itemList: spec.VFXItemData[] = [];
+    const treeItemList: spec.VFXItemData[] = [];
 
     treeData.nodes.forEach(node => {
       const item: spec.VFXItemData = {
@@ -312,15 +347,15 @@ export class JSONConverter {
         components: [],
       };
 
-      itemList.push(item);
+      treeItemList.push(item);
       newScene.items.push(item);
     });
 
     treeData.nodes.forEach((node, index) => {
-      const item = itemList[index];
+      const item = treeItemList[index];
 
       node.children?.forEach(child => {
-        const childItem = itemList[child];
+        const childItem = treeItemList[child];
 
         childItem.parentId = item.id;
       });
@@ -335,15 +370,13 @@ export class JSONConverter {
           const subIndex = +item.parentId.substring(index + 1);
 
           if (parentId === treeItem.id) {
-            item.parentId = itemList[subIndex].id;
-          } else {
-            console.error(`Invalid parent id ${item.parentId}`);
+            item.parentId = treeItemList[subIndex].id;
           }
         }
       }
     });
 
-    this.treeNodes = itemList;
+    this.treeItemList.push(...treeItemList);
   }
 
   private createLightComponent (component: spec.ComponentData, scene: spec.JSONScene): spec.ModelLightComponentData {
@@ -372,12 +405,6 @@ export class JSONConverter {
     }
 
     return lightComponent;
-  }
-
-  private getGeometryData (geometry: spec.GeometryOptionsJSON, scene: spec.JSONScene) {
-    const geomOptions = deserializeGeometry(geometry, scene.bins as unknown as ArrayBuffer[]);
-
-    return getGeometryDataFromOptions(geomOptions);
   }
 
   private getMaterialData (material: spec.MaterialOptions<'json'>, scene: spec.JSONScene) {
@@ -503,7 +530,7 @@ export class JSONConverter {
     stringTags['ZWrite'] = String(material.depthMask ?? true);
     stringTags['ZTest'] = String(true);
     if (material.blending === spec.MaterialBlending.masked) {
-      throw Error('Alpha mask not support');
+      stringTags['RenderType'] = RenderType.Mask;
     } else if (material.blending === spec.MaterialBlending.translucent) {
       stringTags['RenderType'] = RenderType.Blend;
     } else {
@@ -587,46 +614,79 @@ export class JSONConverter {
   }
 }
 
-interface ModelData {
-  vertices: number[],
-  uvs: number[],
-  normals: number[],
-  indices: number[],
+export interface ModelData {
+  vertices: spec.TypedArray,
+  uvs: spec.TypedArray,
+  normals: spec.TypedArray,
+  indices: spec.TypedArray,
   name: string,
 }
 
-function getGeometryDataFromOptions (geomOptions: GeometryProps) {
+export function getGeometryDataFromOptions (geomOptions: GeometryProps) {
   let vertexCount = 0;
+  let verticesType: spec.VertexFormatType = spec.VertexFormatType.Float32;
+  let verticesNormalize = false;
+  let uvsType: spec.VertexFormatType = spec.VertexFormatType.Float32;
+  let uvsNormalize = false;
+  let normalsType: spec.VertexFormatType = spec.VertexFormatType.Float32;
+  let normalsNormalize = false;
   const modelData: ModelData = {
-    vertices: [],
-    uvs: [],
-    normals: [],
-    indices: [],
+    vertices: new Float32Array(),
+    uvs: new Float32Array(),
+    normals: new Float32Array(),
+    indices: new Float32Array(),
     name: geomOptions.name ?? '<empty>',
   };
 
   for (const attrib in geomOptions.attributes) {
     const attribData = geomOptions.attributes[attrib];
 
-    if (attrib === 'a_Position') {
+    if (attrib === 'aPosition') {
       // @ts-expect-error
       vertexCount = attribData.data.length / attribData.size;
       // @ts-expect-error
-      modelData.vertices = array2Number(attribData.data);
-    } else if (attrib === 'a_Normal') {
+      modelData.vertices = attribData.data;
+      verticesNormalize = attribData.normalize ?? false;
+      verticesType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
+    } else if (attrib === 'aNormal') {
       // @ts-expect-error
-      modelData.normals = array2Number(attribData.data);
-    } else if (attrib === 'a_UV1') {
+      modelData.normals = attribData.data;
+      normalsNormalize = attribData.normalize ?? false;
+      normalsType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
+    } else if (attrib === 'aUV1') {
       // @ts-expect-error
-      modelData.uvs = array2Number(attribData.data);
+      modelData.uvs = attribData.data;
+      uvsNormalize = attribData.normalize ?? false;
+      uvsType = glType2VertexFormatType(attribData.type ?? glContext.FLOAT);
     }
   }
 
+  const verticesOffset = getOffset(verticesType, 3, vertexCount);
+  const uvsOffset = getOffset(uvsType, 2, vertexCount);
+  const normalsOffset = getOffset(normalsType, 3, vertexCount);
+
   if (geomOptions.indices) {
-    // @ts-expect-error
-    modelData.indices = array2Number(geomOptions.indices.data);
+    modelData.indices = geomOptions.indices.data;
+  } else if (vertexCount <= 65535) {
+    const indices = new Uint16Array(vertexCount);
+
+    for (let i = 0; i < vertexCount; i++) {
+      indices[i] = i;
+    }
+    modelData.indices = indices;
   } else {
-    throw Error('indices is required');
+    const indices = new Uint32Array(vertexCount);
+
+    for (let i = 0; i < vertexCount; i++) {
+      indices[i] = i;
+    }
+    modelData.indices = indices;
+  }
+
+  let indicesType: spec.IndexFormatType = spec.IndexFormatType.UInt16;
+
+  if (modelData.indices.BYTES_PER_ELEMENT === 4) {
+    indicesType = spec.IndexFormatType.UInt32;
   }
 
   const geometryData: spec.GeometryData = {
@@ -636,36 +696,194 @@ function getGeometryDataFromOptions (geomOptions: GeometryProps) {
       vertexCount: vertexCount,
       channels: [
         {
+          semantic: spec.VertexBufferSemantic.Position,
           offset: 0,
-          format: 0,
+          format: verticesType,
           dimension: 3,
+          normalize: verticesNormalize,
         },
         {
-          offset: vertexCount * 3 * 4,
-          format: 0,
+          semantic: spec.VertexBufferSemantic.Uv,
+          offset: verticesOffset,
+          format: uvsType,
           dimension: 2,
+          normalize: uvsNormalize,
         },
         {
-          offset: vertexCount * 5 * 4,
-          format: 0,
+          semantic: spec.VertexBufferSemantic.Normal,
+          offset: verticesOffset + uvsOffset,
+          format: normalsType,
           dimension: 3,
+          normalize: normalsNormalize,
         },
       ],
     },
+    subMeshes: [],
     mode: spec.GeometryType.TRIANGLES,
-    indexFormat: 0,
-    indexOffset: vertexCount * 8 * 4,
+    indexFormat: indicesType,
+    indexOffset: verticesOffset + uvsOffset + normalsOffset,
     buffer: encodeVertexData(modelData),
   };
 
   return geometryData;
 }
 
+export function getGeometryDataFromPropsList (geomPropsList: GeometryProps[]) {
+  if (geomPropsList.length <= 0) {
+    return;
+  }
+
+  let totalCount = 0;
+  const subMeshes: SubMesh[] = [];
+
+  for (let i = 0; i < geomPropsList.length; i++) {
+    const count = getDrawCount(geomPropsList[i]);
+    const offset = totalCount + (geomPropsList[i].drawStart ?? 0);
+    const scale = geomPropsList[0].indices?.data.BYTES_PER_ELEMENT ?? 1;
+
+    subMeshes.push({ offset: offset * scale, count });
+    if (i) {
+      const geom0 = geomPropsList[0];
+      const geom1 = geomPropsList[i];
+
+      let isSame = true;
+
+      Object.keys(geom0.attributes).forEach(name => {
+        const attrib = geom0.attributes[name];
+        // @ts-expect-error
+        const array1 = attrib.data as spec.TypedArray;
+        // @ts-expect-error
+        const array2 = geom1.attributes[name].data as spec.TypedArray;
+
+        if (array1.length !== array2.length || array1[0] !== array2[0]) {
+          isSame = false;
+        }
+      });
+
+      if (isSame) {
+        if (geom0.indices && geom1.indices) {
+          geom0.indices.data = mergeTypedArray(geom0.indices.data, geom1.indices.data);
+        }
+      } else {
+        if (geom0.indices && geom1.indices) {
+          const vertexCount = getVertexCount(geom0);
+
+          geom0.indices.data = mergeTypedArray(geom0.indices.data, geom1.indices.data, vertexCount);
+        }
+
+        Object.keys(geom0.attributes).forEach(name => {
+          const attrib = geom0.attributes[name];
+          // @ts-expect-error
+          const array1 = attrib.data as spec.TypedArray;
+          // @ts-expect-error
+          const array2 = geom1.attributes[name].data as spec.TypedArray;
+
+          // @ts-expect-error
+          attrib.data = mergeTypedArray(array1, array2);
+        });
+      }
+
+    }
+    totalCount = offset + count;
+  }
+
+  return createGeometryData(geomPropsList[0], subMeshes);
+}
+
+function getOffset (formatType: spec.VertexFormatType, dimension: number, count: number) {
+  switch (formatType) {
+    case spec.VertexFormatType.Int8:
+    case spec.VertexFormatType.UInt8:
+      return dimension * count;
+    case spec.VertexFormatType.Int16:
+    case spec.VertexFormatType.UInt16:
+      return dimension * count * 2;
+    default:
+      return dimension * count * 4;
+  }
+}
+
+function createGeometryData (props: GeometryProps, subMeshes: SubMesh[]) {
+  let totalByteLength = 0;
+
+  for (const attrib in props.attributes) {
+    const attribData = props.attributes[attrib];
+
+    // @ts-expect-error
+    totalByteLength += attribData.data.byteLength;
+  }
+
+  if (props.indices) {
+    totalByteLength += props.indices.data.byteLength;
+  }
+
+  let vertexCount = 0;
+  let bufferOffset = 0;
+  const buffer = new Uint8Array(totalByteLength);
+  const vertexChannels: spec.VertexChannel[] = [];
+
+  for (const attrib in props.attributes) {
+    const attribData = props.attributes[attrib];
+    const semantic = vertexBufferSemanticMap[attrib];
+
+    if (!semantic) {
+      throw new Error(`Invalid attrib ${attrib}`);
+    }
+
+    // @ts-expect-error
+    vertexCount = attribData.data.length / attribData.size;
+    const vertexChannel: spec.VertexChannel = {
+      semantic,
+      offset: bufferOffset,
+      format: glType2VertexFormatType(attribData.type ?? glContext.FLOAT),
+      dimension: attribData.size,
+      normalize: attribData.normalize,
+    };
+
+    vertexChannels.push(vertexChannel);
+    // @ts-expect-error
+    const data = attribData.data as spec.TypedArray;
+    const subBuffer = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+
+    buffer.set(subBuffer, bufferOffset);
+    bufferOffset += subBuffer.byteLength;
+  }
+
+  const geometryData: spec.GeometryData = {
+    id: generateGUID(),
+    dataType: spec.DataType.Geometry,
+    vertexData: {
+      vertexCount: vertexCount,
+      channels: vertexChannels,
+    },
+    subMeshes,
+    mode: spec.GeometryType.TRIANGLES,
+    indexFormat: spec.IndexFormatType.UInt16,
+    indexOffset: -1,
+    buffer: '',
+  };
+
+  if (props.indices) {
+    const indices = props.indices.data;
+    const subBuffer = new Uint8Array(indices.buffer, indices.byteOffset, indices.byteLength);
+
+    buffer.set(subBuffer, bufferOffset);
+    geometryData.indexOffset = bufferOffset;
+    if (indices instanceof Uint32Array) {
+      geometryData.indexFormat = spec.IndexFormatType.UInt32;
+    }
+  }
+
+  geometryData.buffer = toBase64String(buffer);
+
+  return geometryData;
+}
+
 function encodeVertexData (modelData: ModelData): string {
-  const vertices = new Float32Array(modelData.vertices);
-  const uvs = new Float32Array(modelData.uvs);
-  const normals = new Float32Array(modelData.normals);
-  const indices = new Uint16Array(modelData.indices);
+  const vertices = new Uint8Array(modelData.vertices.buffer, modelData.vertices.byteOffset, modelData.vertices.byteLength);
+  const uvs = new Uint8Array(modelData.uvs.buffer, modelData.uvs.byteOffset, modelData.uvs.byteLength);
+  const normals = new Uint8Array(modelData.normals.buffer, modelData.normals.byteOffset, modelData.normals.byteLength);
+  const indices = new Uint8Array(modelData.indices.buffer, modelData.indices.byteOffset, modelData.indices.byteLength);
 
   // 计算新 ArrayBuffer 的总大小（以字节为单位）
   const totalSize = vertices.byteLength + uvs.byteLength + normals.byteLength + indices.byteLength;
@@ -674,16 +892,16 @@ function encodeVertexData (modelData: ModelData): string {
   const buffer = new ArrayBuffer(totalSize);
 
   // 创建一个视图来按照 Float32 格式写入数据
-  let floatView = new Float32Array(buffer, 0, vertices.length);
+  let floatView = new Uint8Array(buffer, 0, vertices.byteLength);
 
   floatView.set(vertices);
-  floatView = new Float32Array(buffer, vertices.byteLength, uvs.length);
+  floatView = new Uint8Array(buffer, vertices.byteLength, uvs.byteLength);
   floatView.set(uvs);
-  floatView = new Float32Array(buffer, vertices.byteLength + uvs.byteLength, normals.length);
+  floatView = new Uint8Array(buffer, vertices.byteLength + uvs.byteLength, normals.byteLength);
   floatView.set(normals);
 
   // 创建一个视图来按照 Uint16 格式写入数据，紧接着 Float32 数据之后
-  const uint16View = new Uint16Array(buffer, vertices.byteLength + uvs.byteLength + normals.byteLength, indices.length);
+  const uint16View = new Uint8Array(buffer, vertices.byteLength + uvs.byteLength + normals.byteLength, indices.byteLength);
 
   uint16View.set(indices);
 
@@ -701,10 +919,145 @@ function encodeVertexData (modelData: ModelData): string {
   return btoa(binaryString);
 }
 
-function array2Number (array: Float32Array | Uint16Array): number[] {
-  const result: number[] = [];
+function toBase64String (array: Uint8Array) {
+  // 将 Uint8Array 转换为二进制字符串
+  let binaryString = '';
 
-  array.forEach(v => result.push(v));
+  for (let i = 0; i < array.length; i++) {
+    binaryString += String.fromCharCode(array[i]);
+  }
 
-  return result;
+  // 使用 btoa 函数将二进制字符串转换为 Base64 编码的字符串
+  return btoa(binaryString);
 }
+
+function getDrawCount (geomProps: GeometryProps) {
+  if (geomProps.drawCount) {
+    return geomProps.drawCount;
+  } else if (geomProps.indices) {
+    return geomProps.indices.data.length;
+  } else {
+    let drawCount = 0;
+
+    // @ts-expect-error
+    geomProps.attributes.forEach(attrib => {
+      drawCount = attrib.data.length / attrib.size;
+    });
+
+    return drawCount;
+  }
+}
+
+function getVertexCount (geomProps: GeometryProps) {
+  let vertexCount = 0;
+
+  Object.keys(geomProps.attributes).forEach(name => {
+    const attrib = geomProps.attributes[name];
+
+    // @ts-expect-error
+    vertexCount = attrib.data.length / attrib.size;
+  });
+
+  return vertexCount;
+}
+
+function mergeTypedArray (array1: spec.TypedArray, array2: spec.TypedArray, offset?: number) {
+  if (array1 instanceof Float32Array) {
+    const result = new Float32Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  } else if (array1 instanceof Int32Array) {
+    const result = new Int32Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  } else if (array1 instanceof Uint32Array) {
+    const result = new Uint32Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+    if (offset) {
+      for (let i = 0; i < array2.length; i++) {
+        result[array1.length + i] += offset;
+      }
+    }
+
+    return result;
+  } else if (array1 instanceof Int16Array) {
+    const result = new Int16Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  } else if (array1 instanceof Uint16Array) {
+    const result = new Uint16Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+    if (offset) {
+      for (let i = 0; i < array2.length; i++) {
+        result[array1.length + i] += offset;
+      }
+    }
+
+    return result;
+  } else if (array1 instanceof Int8Array) {
+    const result = new Int8Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  } else {
+    const result = new Uint8Array(array1.length + array2.length);
+
+    result.set(array1);
+    result.set(array2, array1.length);
+
+    return result;
+  }
+}
+
+const vertexBufferSemanticMap: Record<string, string> = {
+  aPos: 'POSITION',
+  aUV: 'TEXCOORD0',
+  aUV2: 'TEXCOORD1',
+  aNormal: 'NORMAL',
+  aTangent: 'TANGENT',
+  aColor: 'COLOR',
+  aJoints: 'JOINTS',
+  aWeights: 'WEIGHTS',
+  //
+  a_Position: 'POSITION',
+  a_UV: 'TEXCOORD0',
+  a_UV1: 'TEXCOORD0',
+  a_UV2: 'TEXCOORD1',
+  a_Normal: 'NORMAL',
+  a_Tangent: 'TANGENT',
+  a_Color: 'COLOR',
+  a_Joints: 'JOINTS',
+  a_Weights: 'WEIGHTS',
+  //
+  a_Target_Position0: 'POSITION_BS0',
+  a_Target_Position1: 'POSITION_BS1',
+  a_Target_Position2: 'POSITION_BS2',
+  a_Target_Position3: 'POSITION_BS3',
+  a_Target_Position4: 'POSITION_BS4',
+  a_Target_Position5: 'POSITION_BS5',
+  a_Target_Position6: 'POSITION_BS6',
+  a_Target_Position7: 'POSITION_BS7',
+  a_Target_Normal0: 'NORMAL_BS0',
+  a_Target_Normal1: 'NORMAL_BS1',
+  a_Target_Normal2: 'NORMAL_BS2',
+  a_Target_Normal3: 'NORMAL_BS3',
+  a_Target_Tangent0: 'TANGENT_BS0',
+  a_Target_Tangent1: 'TANGENT_BS1',
+  a_Target_Tangent2: 'TANGENT_BS2',
+  a_Target_Tangent3: 'TANGENT_BS3',
+};

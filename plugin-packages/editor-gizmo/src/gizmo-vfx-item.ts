@@ -81,7 +81,6 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
   subType!: GizmoSubType;
   size: any;
   contents?: Map<Mesh, Transform>;
-  targetItem?: VFXItem<any>;
   boundingMap: Map<string, GizmoItemBounding> = new Map();
   hitBounding?: { key: string, position: Vector3 };
   wireframeMesh?: Mesh;
@@ -114,14 +113,15 @@ export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
       let worldMat4: Matrix4;
 
       worldMat4 = this.transform.getWorldMatrix();
+      const targetItem = this.getComponent(GizmoComponent)?.targetItem;
 
-      if (this.targetItem) {
+      if (targetItem) {
         //const targetTransform = this.targetItem.transform.clone();
         const worldPos = new Vector3();
         const worldQuat = new Quaternion();
         const worldSca = new Vector3(1, 1, 1);
 
-        this.targetItem.transform.assignWorldTRS(worldPos, worldQuat);
+        targetItem.transform.assignWorldTRS(worldPos, worldQuat);
 
         const targetTransform = new Transform({
           position: worldPos,

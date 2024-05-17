@@ -863,7 +863,7 @@ class GeometryProxy {
       const attrib = this.tangentAttrib;
 
       if (attrib !== undefined) {
-        attributes['a_Tangent'] = this._getBufferAttrib(attrib);
+        attributes['aTangent'] = this._getBufferAttrib(attrib);
       }
     }
     this.texCoordList.forEach(val => {
@@ -876,12 +876,12 @@ class GeometryProxy {
       const jointAttrib = this.jointAttribute;
 
       if (jointAttrib !== undefined) {
-        attributes['a_Joint1'] = this._getBufferAttrib(jointAttrib);
+        attributes['aJoints'] = this._getBufferAttrib(jointAttrib);
       }
       const weightAttrib = this.weightAttribute;
 
       if (weightAttrib !== undefined) {
-        attributes['a_Weight1'] = this._getBufferAttrib(weightAttrib);
+        attributes['aWeights'] = this._getBufferAttrib(weightAttrib);
       }
     }
 
@@ -892,19 +892,19 @@ class GeometryProxy {
       const positionAttrib = this.getTargetPosition(i);
 
       if (positionAttrib !== undefined) {
-        attributes[`a_Target_Position${i}`] = this._getBufferAttrib(positionAttrib);
+        attributes[`aTargetPosition${i}`] = this._getBufferAttrib(positionAttrib);
       }
 
       const normalAttrib = this.getTargetNormal(i);
 
       if (normalAttrib !== undefined) {
-        attributes[`a_Target_Normal${i}`] = this._getBufferAttrib(normalAttrib);
+        attributes[`aTargetNormal${i}`] = this._getBufferAttrib(normalAttrib);
       }
 
       const tangentAttrib = this.getTargetTangent(i);
 
       if (tangentAttrib !== undefined) {
-        attributes[`a_Target_Tangent${i}`] = this._getBufferAttrib(tangentAttrib);
+        attributes[`aTargetTangent${i}`] = this._getBufferAttrib(tangentAttrib);
       }
     }
 

@@ -1,14 +1,12 @@
-import * as spec from '@galacean/effects-specification';
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
-import { ItemBehaviour } from '../../components';
-import type { Engine } from '../../engine';
+import * as spec from '@galacean/effects-specification';
+import { serialize } from '../../decorators';
 import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
+import { SpriteColorPlayable } from '../sprite/sprite-item';
+import { ActivationPlayable, AnimationClipPlayable, TransformAnimationPlayable } from './calculate-vfx-item';
 import { PlayableGraph } from './playable-graph';
 import { Track } from './track';
-import { serialize } from '../../decorators';
-import { ActivationPlayable, TransformAnimationPlayable } from './calculate-vfx-item';
-import { SpriteColorPlayable } from '../sprite/sprite-item';
 
 /**
  * 基础位移属性数据
@@ -41,10 +39,9 @@ export interface CalculateItemOptions {
  * @since 2.0.0
  * @internal
  */
-export class TimelineComponent extends ItemBehaviour {
-  id: string;
+export class ObjectBindingTrack extends Track {
   reusable = false;
-  timelineStarted = false;
+  started = false;
   playableGraph = new PlayableGraph();
   options: CalculateItemOptions;
 
@@ -56,41 +53,37 @@ export class TimelineComponent extends ItemBehaviour {
   private tracks: Track[] = [];
   private trackSeed = 0;
 
-  constructor (engine: Engine) {
-    super(engine);
-  }
-
-  override start (): void {
+  create (): void {
     // TODO TimelineClip 需要传入 start 和 duration 数据
     for (const track of this.tracks) {
       for (const clip of track.getClips()) {
-        clip.start = this.item.start;
-        clip.duration = this.item.duration;
+        clip.start = this.bindingItem.start;
+        clip.duration = this.bindingItem.duration;
       }
     }
     this.compileTracks(this.playableGraph);
   }
 
   // TODO: [1.31] @十弦 vfx-item 下 onUpdate 的改动验证
-  override update (dt: number): void {
-    if (this.item.stopped || !this.item.composition) {
+  update (dt: number): void {
+    if (this.bindingItem.stopped || !this.bindingItem.composition) {
       return;
     }
 
-    if (!this.timelineStarted) {
+    if (!this.started) {
       for (const track of this.tracks) {
         for (const clip of track.getClips()) {
           clip.playable.onGraphStart();
         }
       }
-      this.timelineStarted = true;
+      this.started = true;
     }
 
     const now = this.time;
 
     // 判断动画是否开始
-    if (this.item.delaying && now >= 0 && now <= this.item.duration) {
-      this.item.delaying = false;
+    if (this.bindingItem.delaying && now >= 0 && now <= this.bindingItem.duration) {
+      this.bindingItem.delaying = false;
       for (const track of this.tracks) {
         for (const clip of track.getClips()) {
           clip.playable.onPlayablePlay();
@@ -101,18 +94,18 @@ export class TimelineComponent extends ItemBehaviour {
     // 判断动画是否结束
     let ended;
 
-    if (VFXItem.isParticle(this.item)) {
-      ended = this.item.isEnded(now) && this.item.content.destoryed;
+    if (VFXItem.isParticle(this.bindingItem)) {
+      ended = this.bindingItem.isEnded(now) && this.bindingItem.content.destoryed;
     } else {
-      ended = this.item.isEnded(now);
+      ended = this.bindingItem.isEnded(now);
     }
 
     if (ended) {
-      const endBehavior = this.item.endBehavior;
+      const endBehavior = this.bindingItem.endBehavior;
 
-      if (!this.item.ended) {
-        this.item.ended = true;
-        this.item.onEnd();
+      if (!this.bindingItem.ended) {
+        this.bindingItem.ended = true;
+        this.bindingItem.onEnd();
 
         if (endBehavior === spec.ItemEndBehavior.destroy) {
           for (const track of this.tracks) {
@@ -120,9 +113,9 @@ export class TimelineComponent extends ItemBehaviour {
               clip.playable.onPlayableDestroy();
             }
           }
-          this.item.delaying = true;
-          if (!this.item.reusable && !this.reusable) {
-            this.item.dispose();
+          this.bindingItem.delaying = true;
+          if (!this.bindingItem.reusable && !this.reusable) {
+            this.bindingItem.dispose();
 
             return;
           }
@@ -132,10 +125,10 @@ export class TimelineComponent extends ItemBehaviour {
 
     // TODO: [1.31] @茂安 验证 https://github.com/galacean/effects-runtime/commits/main/packages/effects-core/src/vfx-item.ts
     // 在生命周期内更新动画
-    if (!this.item.delaying) {
-      const lifetime = this.time / this.item.duration;
+    if (!this.bindingItem.delaying) {
+      const lifetime = this.time / this.bindingItem.duration;
 
-      this.item.lifetime = lifetime;
+      this.bindingItem.lifetime = lifetime;
       for (const track of this.tracks) {
         for (const clip of track.getClips()) {
           clip.playable.setTime(this.time);
@@ -172,7 +165,7 @@ export class TimelineComponent extends ItemBehaviour {
   createTrack<T extends Track> (classConstructor: new () => T, name?: string): T {
     const newTrack = new classConstructor();
 
-    newTrack.bindingItem = this.item;
+    newTrack.bindingItem = this.bindingItem;
     newTrack.id = (this.trackSeed++).toString();
     newTrack.name = name ? name : 'Track' + newTrack.id;
     this.tracks.push(newTrack);
@@ -212,13 +205,13 @@ export class TimelineComponent extends ItemBehaviour {
     super.fromData(data);
 
     this.options = {
-      start: this.item.start,
-      duration: this.item.duration,
-      looping: this.item.endBehavior === spec.ItemEndBehavior.loop,
-      endBehavior: this.item.endBehavior || spec.ItemEndBehavior.destroy,
+      start: this.bindingItem.start,
+      duration: this.bindingItem.duration,
+      looping: this.bindingItem.endBehavior === spec.ItemEndBehavior.loop,
+      endBehavior: this.bindingItem.endBehavior || spec.ItemEndBehavior.destroy,
     };
-    this.id = this.item.id;
-    this.name = this.item.name;
+    this.id = this.bindingItem.id;
+    this.name = this.bindingItem.name;
     const activationTrack = this.createTrack(Track, 'ActivationTrack');
 
     activationTrack.createClip(ActivationPlayable, 'ActivationTimelineClip');
@@ -234,8 +227,8 @@ export class TimelineComponent extends ItemBehaviour {
         for (const clipAsset of track.clips) {
           switch (clipAsset.dataType) {
             case 'TransformAnimationPlayableAsset':
-              newTrack.name = 'AnimationTrack';
-              newTrack.createClip(TransformAnimationPlayable, 'AnimationTimelineClip').playable.fromData(clipAsset.animationClip);
+              newTrack.name = 'TransformAnimationTrack';
+              newTrack.createClip(TransformAnimationPlayable, 'TransformAnimationTimelineClip').playable.fromData(clipAsset.animationClip);
 
               break;
             case 'SpriteColorAnimationPlayableAsset':
@@ -243,14 +236,15 @@ export class TimelineComponent extends ItemBehaviour {
               newTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData(clipAsset.animationClip);
 
               break;
+            case 'AnimationClipPlayableAsset':
+              newTrack.name = 'AnimationTrack';
+              newTrack.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(clipAsset.animationClip);
+
+              break;
           }
 
         }
       }
     }
-  }
-
-  override toData (): void {
-    super.toData();
   }
 }

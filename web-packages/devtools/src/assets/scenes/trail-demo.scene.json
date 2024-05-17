@@ -63,9 +63,6 @@
           "id": "2f29a793b96a47a692239e8c858a0a33"
         },
         {
-          "id": "9dbf4c91c5394f1dbe08010c9ed2f1a1"
-        },
-        {
           "id": "e412b3bcf7ee4019ab882a41aec9efdf"
         },
         {
@@ -141,41 +138,6 @@
         }
       ],
       "listIndex": 0,
-      "content": {}
-    },
-    {
-      "id": "9dbf4c91c5394f1dbe08010c9ed2f1a1",
-      "name": "particle",
-      "duration": 1000,
-      "dataType": "VFXItemData",
-      "type": "2",
-      "visible": true,
-      "endBehavior": 5,
-      "delay": 0,
-      "renderLevel": "B+",
-      "transform": {
-        "position": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "rotation": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "scale": {
-          "x": 1,
-          "y": 1,
-          "z": 1
-        }
-      },
-      "components": [
-        {
-          "id": "8264d22a44124050b5a2d3dc476875fa"
-        }
-      ],
-      "listIndex": 1,
       "content": {}
     },
     {

@@ -8,7 +8,6 @@ import {useStorage} from '@vueuse/core'
 const defaultOpenItems = [
   'Transform',
   "EffectComponent",
-  "TimelineComponent",
   "SpriteComponent",
   "ParticleSystemRenderer",
   "Material"
