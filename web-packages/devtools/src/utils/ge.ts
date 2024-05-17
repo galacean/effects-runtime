@@ -1,5 +1,5 @@
-import type { Composition, EffectsObjectData } from '@galacean/effects';
-import { spec, Player, SerializationHelper, TimelineComponent } from '@galacean/effects';
+import type { Composition } from '@galacean/effects';
+import { Player, SerializationHelper, spec } from '@galacean/effects';
 import demoJson from '../assets/scenes/trail-demo.scene.json';
 import { Input } from '../gui/input';
 import { InspectorGui } from '../gui/inspector-gui';
@@ -114,7 +114,7 @@ export async function loadJson (data: any) {
 
 function buildProject (composition: Composition, json: any) {
   const assetLoader = composition.getEngine().assetLoader;
-  let serializedDatas: Record<string, EffectsObjectData> = {};
+  let serializedDatas: Record<string, spec.EffectsObjectData> = {};
 
   for (const item of composition.items) {
     serializedDatas = {
@@ -122,9 +122,6 @@ function buildProject (composition: Composition, json: any) {
       ...SerializationHelper.serializeEffectObject(item),
     };
     for (const component of item.components) {
-      if (component instanceof TimelineComponent) {
-        continue;
-      }
       serializedDatas = {
         ...serializedDatas,
         ...SerializationHelper.serializeEffectObject(component),
@@ -132,7 +129,7 @@ function buildProject (composition: Composition, json: any) {
     }
   }
 
-  let effectsObjectDataMap: Record<string, EffectsObjectData> = {};
+  let effectsObjectDataMap: Record<string, spec.EffectsObjectData> = {};
 
   for (const data of json.components) {
     effectsObjectDataMap[data.id] = data;
@@ -206,7 +203,7 @@ function buildProject (composition: Composition, json: any) {
 
 async function saveScene (composition: Composition, json: any) {
   const assetLoader = composition.getEngine().assetLoader;
-  let serializedDatas: Record<string, EffectsObjectData> = {};
+  let serializedDatas: Record<string, spec.EffectsObjectData> = {};
 
   for (const item of composition.items) {
     serializedDatas = {
@@ -214,9 +211,6 @@ async function saveScene (composition: Composition, json: any) {
       ...SerializationHelper.serializeEffectObject(item),
     };
     for (const component of item.components) {
-      if (component instanceof TimelineComponent) {
-        continue;
-      }
       serializedDatas = {
         ...serializedDatas,
         ...SerializationHelper.serializeEffectObject(component),
@@ -224,7 +218,7 @@ async function saveScene (composition: Composition, json: any) {
     }
   }
 
-  let effectsObjectDataMap: Record<string, EffectsObjectData> = {};
+  let effectsObjectDataMap: Record<string, spec.EffectsObjectData> = {};
 
   for (const data of json.components) {
     effectsObjectDataMap[data.id] = data;

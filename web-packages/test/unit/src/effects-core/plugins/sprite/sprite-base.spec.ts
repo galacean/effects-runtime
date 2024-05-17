@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Player, SpriteComponent, StaticValue, TimelineComponent, math } from '@galacean/effects';
+import { CompositionComponent, Player, SpriteComponent, StaticValue, math } from '@galacean/effects';
 import { generateSceneJSON } from './utils';
 
 const Vector3 = math.Vector3;
@@ -44,7 +44,15 @@ describe('sprite item base options', () => {
 
     player.gotoAndPlay(0.01);
     const spriteItem = comp.getItemByName('sprite_1').getComponent(SpriteComponent);
-    const spriteColorClip = comp.getItemByName('sprite_1').getComponent(TimelineComponent).findTrack('SpriteColorTrack').findClip('SpriteColorClip').playable;
+    const sprite1 = comp.getItemByName('sprite_1');
+    let spriteColorTrack;
+
+    for (const track of comp.rootItem.getComponent(CompositionComponent)!.objectBindingTracks) {
+      if (track.bindingItem === sprite1) {
+        spriteColorTrack = track;
+      }
+    }
+    const spriteColorClip = spriteColorTrack.findTrack('SpriteColorTrack').findClip('SpriteColorClip').playable;
 
     const color = spriteItem.material.getVector4('_Color').toArray();
 
@@ -179,8 +187,14 @@ describe('sprite item base options', () => {
 
     spriteItem.update();
     const texOffset0 = spriteItem.material.getVector4('_TexOffset').clone().toArray();
+    let spriteColorTrack;
 
-    spriteItem.item.getComponent(TimelineComponent).setTime(0.2);
+    for (const track of comp.rootItem.getComponent(CompositionComponent)!.objectBindingTracks) {
+      if (track.bindingItem === spriteItem) {
+        spriteColorTrack = track;
+      }
+    }
+    spriteColorTrack.setTime(0.2);
     spriteItem.update();
 
     const texOffset2 = spriteItem.material.getVector4('_TexOffset').clone().toArray();

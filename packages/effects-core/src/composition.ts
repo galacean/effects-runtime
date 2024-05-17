@@ -4,10 +4,10 @@ import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
 import { RendererComponent } from './components';
 import type { CompositionSourceManager } from './composition-source-manager';
+import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
-import { TimelineComponent } from './plugins';
 import type { GlobalVolume, MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene, SceneType } from './scene';
@@ -18,7 +18,6 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemContent, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
-import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -201,7 +200,6 @@ export class Composition implements Disposable, LostHandler {
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   private readonly postLoaders: Plugin[] = [];
-  private rootTimeline: TimelineComponent;
 
   /**
    * Composition 构造函数
@@ -242,7 +240,6 @@ export class Composition implements Disposable, LostHandler {
     vfxItem.type = spec.ItemType.composition;
     vfxItem.composition = this;
     this.rootComposition = vfxItem.addComponent(CompositionComponent);
-    this.rootTimeline = vfxItem.getComponent(TimelineComponent)!;
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
     this.transform = new Transform({
@@ -314,7 +311,7 @@ export class Composition implements Disposable, LostHandler {
    * 获取合成当前时间
    */
   get time () {
-    return this.rootTimeline.getTime();
+    return this.rootComposition.time;
   }
 
   /**
@@ -396,8 +393,7 @@ export class Composition implements Disposable, LostHandler {
     if (this.rootItem.ended && this.reusable) {
       this.restart();
     }
-    // TODO: [1.31] @茂安 this.content.started 验证
-    if (this.rootTimeline.timelineStarted) {
+    if (!this.rootComposition.started) {
       this.gotoAndPlay(this.time - this.startTime);
 
     } else {
@@ -429,8 +425,9 @@ export class Composition implements Disposable, LostHandler {
    */
   gotoAndPlay (time: number) {
     this.resume();
-    if (!this.rootTimeline.timelineStarted) {
+    if (!this.rootComposition.started) {
       this.rootComposition.start();
+      this.rootComposition.started = true;
     }
     this.forwardTime(time + this.startTime);
   }
@@ -469,8 +466,9 @@ export class Composition implements Disposable, LostHandler {
     if (pause) {
       this.resume();
     }
-    if (!this.rootTimeline.timelineStarted) {
+    if (!this.rootComposition.started) {
       this.rootComposition.start();
+      this.rootComposition.started = true;
     }
     this.forwardTime(time + this.startTime, true);
 
@@ -490,7 +488,7 @@ export class Composition implements Disposable, LostHandler {
    * @param skipRender - 是否跳过渲染
    */
   private forwardTime (time: number, skipRender = false) {
-    const deltaTime = time * 1000 - this.rootTimeline.getTime() * 1000;
+    const deltaTime = time * 1000 - this.rootComposition.time * 1000;
     const reverse = deltaTime < 0;
     const step = 15;
     let t = Math.abs(deltaTime);
@@ -512,7 +510,6 @@ export class Composition implements Disposable, LostHandler {
     vfxItem.type = spec.ItemType.composition;
     vfxItem.composition = this;
     this.rootComposition = vfxItem.addComponent(CompositionComponent);
-    this.rootTimeline = vfxItem.getComponent(TimelineComponent)!;
     this.transform = new Transform({
       name: this.name,
     });
@@ -609,10 +606,10 @@ export class Composition implements Disposable, LostHandler {
     const time = this.getUpdateTime(deltaTime * this.speed);
 
     this.globalTime += time;
-    if (this.rootTimeline.isActiveAndEnabled) {
-      const localTime = this.rootTimeline.toLocalTime(this.globalTime / 1000);
+    if (this.rootComposition.isActiveAndEnabled) {
+      const localTime = this.toLocalTime(this.globalTime / 1000);
 
-      this.rootTimeline.setTime(localTime);
+      this.rootComposition.time = localTime;
     }
     this.updateVideo();
     // 更新 model-tree-plugin
@@ -622,7 +619,7 @@ export class Composition implements Disposable, LostHandler {
     this.callUpdate(this.rootItem, time);
     this.callLateUpdate(this.rootItem, time);
 
-    this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
+    // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
       this.dispose();
@@ -633,10 +630,25 @@ export class Composition implements Disposable, LostHandler {
     }
   }
 
+  private toLocalTime (time: number) {
+    let localTime = time - this.rootItem.start;
+    const duration = this.rootItem.duration;
+
+    if (localTime - duration > 0.001) {
+      if (this.rootItem.endBehavior === spec.ItemEndBehavior.loop) {
+        localTime = localTime % duration;
+      } else if (this.rootItem.endBehavior === spec.ItemEndBehavior.freeze) {
+        localTime = Math.min(duration, localTime);
+      }
+    }
+
+    return localTime;
+  }
+
   private getUpdateTime (t: number) {
     const startTimeInMs = this.startTime * 1000;
     // const content = this.rootItem;
-    const now = this.rootTimeline.getTime() * 1000;
+    const now = this.rootComposition.time * 1000;
 
     if (t < 0 && (now + t) < startTimeInMs) {
       return startTimeInMs - now;

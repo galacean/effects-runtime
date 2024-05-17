@@ -1,6 +1,6 @@
-import { Transform, ItemBehaviour, spec, effectsClass } from '@galacean/effects';
-import type { TimelineComponent, VFXItemContent, Engine, VFXItem } from '@galacean/effects';
-import type { ModelTreeOptions, ModelTreeContent } from '../index';
+import type { Engine, VFXItem, VFXItemContent } from '@galacean/effects';
+import { ItemBehaviour, Transform, effectsClass, spec } from '@galacean/effects';
+import type { ModelTreeContent, ModelTreeOptions } from '../index';
 import { PAnimationManager } from '../runtime';
 import { getSceneManager } from './model-plugin';
 
@@ -186,10 +186,6 @@ export class ModelTreeComponent extends ItemBehaviour {
    * 参数
    */
   options?: ModelTreeContent;
-  /**
-   * 时间轴组件
-   */
-  timeline?: TimelineComponent;
 
   /**
    * 构造函数，创建节点树元素

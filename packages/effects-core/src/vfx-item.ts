@@ -16,11 +16,10 @@ import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
 } from './plugins';
-import { TimelineComponent } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
 
-export type VFXItemContent = ParticleSystem | SpriteComponent | TimelineComponent | CameraController | InteractComponent | void | {};
+export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | void | {};
 export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
 export type VFXItemProps =
   & spec.Item
@@ -163,9 +162,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.name = 'VFXItem';
     this.transform.name = this.name;
     this.transform.engine = engine;
-    this.addComponent(TimelineComponent);
     if (props) {
-      // TODO VFXItemProps 添加 components 属性
       this.fromData(props as VFXItemData);
     }
   }
@@ -536,9 +533,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     if (!data.content) {
       data.content = { options: {} };
     }
-    const timelineComponent = this.getComponent(TimelineComponent)!;
-
-    timelineComponent.fromData(data.content as spec.NullContent);
 
     if (duration <= 0) {
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
