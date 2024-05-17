@@ -1,10 +1,9 @@
-export function getFontFamily (fontFamily: string): string {
-  // fix: IOS 11 以下不支持数字开头的字体 且不支持点号
-  if (/^[0-9]/.test(fontFamily)) {
-    fontFamily = `_${fontFamily}`;
-  }
-  // fix: 非英文/数字/下划线/横杠的字符替换
-  fontFamily = fontFamily.replace(/[^a-zA-Z0-9]/g, '_');
-
-  return fontFamily;
+/**
+ * 判断是否为可解析的字体
+ * @param fontFamily - 字体名称
+ * @returns - 是否为可解析的字体
+ */
+export function isFontFamily (fontFamily: string): boolean {
+  // FontFamily仅支持字母、数字、-、_,其他字符会导致加载错误或设置错误
+  return /[^a-zA-Z0-9-_]/.test(fontFamily);
 }

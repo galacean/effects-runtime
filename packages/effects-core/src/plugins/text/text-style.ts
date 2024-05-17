@@ -1,5 +1,4 @@
 import * as spec from '@galacean/effects-specification';
-import { getFontFamily } from '../../utils/text';
 
 export class TextStyle {
   /**
@@ -82,7 +81,7 @@ export class TextStyle {
     this.textWeight = fontWeight;
     this.fontStyle = fontStyle;
 
-    this.fontFamily = getFontFamily(fontFamily);
+    this.fontFamily = fontFamily;
     this.fontSize = fontSize; // 暂时取消字号限制 Math.min(fontSize, this.maxFontSize);
 
     if (outline) {

@@ -11,7 +11,7 @@ import { TextLayout } from './text-layout';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { SpriteVFXItem } from '../sprite/sprite-vfx-item';
-import { getFontFamily } from '../../utils/text';
+import { isFontFamily } from '../../utils/text';
 
 interface CharInfo {
   /**
@@ -168,10 +168,12 @@ export class TextItem extends SpriteItem {
    */
   setFontFamily (value: string): void {
 
-    if (this.textStyle.fontFamily === value) {
+    if (this.textStyle.fontFamily === value && isFontFamily(value)) {
+      console.warn('The font is either the current font or an unsupported font name.');
+
       return;
     }
-    this.textStyle.fontFamily = getFontFamily(value);
+    this.textStyle.fontFamily = value;
     this.isDirty = true;
   }
 
