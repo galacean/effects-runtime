@@ -1,19 +1,8 @@
 import type {
-  Disposable,
-  EffectsObject,
-  GLType,
-  GPUCapability,
-  LostHandler,
-  math,
-  MessageItem,
-  RestoreHandler,
-  SceneLoadOptions,
-  SceneLoadType,
-  SceneType,
-  Texture2DSourceOptionsVideo,
-  TouchEventType,
-  VFXItem,
-  VFXItemContent } from '@galacean/effects-core';
+  Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
+  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math, SceneLoadType,
+  SceneType, EffectsObject,
+} from '@galacean/effects-core';
 import {
   AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
