@@ -4,13 +4,13 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { Region, ObjectBindingTrack } from './plugins';
-import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, Track } from './plugins';
+import type { Region } from './plugins';
+import { HitTestType, ObjectBindingTrack, ParticleBehaviourPlayable, ParticleSystem, Track } from './plugins';
+import type { TimelineAsset } from './plugins/cal/timeline-asset';
+import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
-import { Transform } from './transform';
-import type { TimelineAsset } from './plugins/cal/timeline-asset';
 
 export interface sceneBinding {
   key: ObjectBindingTrack,
@@ -45,10 +45,11 @@ export class CompositionComponent extends ItemBehaviour {
 
     for (const item of this.items) {
       // 获取所有的合成元素绑定 Track
-      const newObjectBindingTrack = bindingTrackMap.get(item);
+      let newObjectBindingTrack = bindingTrackMap.get(item);
 
       if (!newObjectBindingTrack) {
-        continue;
+        newObjectBindingTrack = new ObjectBindingTrack(this.engine);
+        newObjectBindingTrack.fromData(item.props.content as unknown as spec.EffectsObjectData);
       }
 
       newObjectBindingTrack.bindingItem = item;
