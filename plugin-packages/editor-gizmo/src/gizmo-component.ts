@@ -157,7 +157,7 @@ export class GizmoComponent extends ItemBehaviour {
         const wireframeMeshes = this.wireframeMeshes;
 
         if (meshes?.length > 0) {
-          for (let i = 0;i < meshes.length;i++) {
+          for (let i = 0; i < meshes.length; i++) {
             updateWireframeMesh(meshes[i], wireframeMeshes[i], WireframeGeometryType.triangle);
           }
         }
@@ -482,7 +482,7 @@ export class GizmoComponent extends ItemBehaviour {
    * 射线检测算法
    * @returns 包含射线检测算法回调方法的参数
    */
-  private getHitTestParams = (): void | HitTestCustomParams=> {
+  private getHitTestParams = (): void | HitTestCustomParams => {
     const item = this.item;
     const boundingMap = this.boundingMap;
 

@@ -345,12 +345,12 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
         item.content.dataType = DataType.CameraComponent;
 
         break;
-        // @ts-expect-error
+      // @ts-expect-error
       case 'editor-gizmo':
         item.content.dataType = 'GizmoComponent';
 
         break;
-        // @ts-expect-error
+      // @ts-expect-error
       case 'orientation-transformer':
         item.content.dataType = 'OrientationComponent';
 
@@ -465,8 +465,8 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
 
     trackDatas.push(objectBindingTrackData);
     sceneBindings.push({
-      key:{ id:objectBindingTrackData.id },
-      value:{ id:item.id },
+      key: { id: objectBindingTrackData.id },
+      value: { id: item.id },
     });
   }
 
@@ -476,7 +476,7 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     trackIds.push({ id: trackData.id });
   }
   const timelineAssetData: TimelineAssetData = {
-    tracks:trackIds,
+    tracks: trackIds,
     id: generateGUID(),
     //@ts-expect-error
     dataType: 'TimelineAsset',
@@ -491,7 +491,7 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
   }
 
   //@ts-expect-error
-  composition.timelineAsset = { id:timelineAssetData.id };
+  composition.timelineAsset = { id: timelineAssetData.id };
   //@ts-expect-error
   composition.sceneBindings = sceneBindings;
 }

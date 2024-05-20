@@ -12,7 +12,7 @@ import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem } from './vfx-item';
 
-export interface sceneBinding {
+export interface SceneBinding {
   key: ObjectBindingTrack,
   value: VFXItem<VFXItemContent>,
 }
@@ -28,7 +28,7 @@ export class CompositionComponent extends ItemBehaviour {
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
   objectBindingTracks: ObjectBindingTrack[] = [];
-  sceneBindings: sceneBinding[] = [];
+  sceneBindings: SceneBinding[] = [];
   timelineAsset: TimelineAsset;
 
   override start (): void {
@@ -85,7 +85,7 @@ export class CompositionComponent extends ItemBehaviour {
       track.update(dt);
     }
 
-    for (let i = 0;i < this.items.length;i++) {
+    for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       const subCompostionComponent = item.getComponent(CompositionComponent);
 

@@ -141,7 +141,7 @@ export class ObjectBindingTrack extends Track {
     let ended;
 
     if (VFXItem.isParticle(this.bindingItem)) {
-      ended = this.bindingItem.isEnded(now) && this.bindingItem._content!.destoryed;
+      ended = this.bindingItem.isEnded(now) && this.bindingItem._content?.destoryed;
     } else {
       ended = this.bindingItem.isEnded(now);
     }
@@ -207,7 +207,7 @@ export class ObjectBindingTrack extends Track {
     return localTime;
   }
 
-  createTrack<T extends Track>(classConstructor: new (engine: Engine) => T, name?: string): T {
+  createTrack<T extends Track> (classConstructor: new (engine: Engine) => T, name?: string): T {
     const newTrack = new classConstructor(this.engine);
 
     newTrack.bindingItem = this.bindingItem;

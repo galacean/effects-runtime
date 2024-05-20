@@ -11,7 +11,7 @@ import type { Disposable } from './utils';
 import { isObject } from './utils';
 import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
 import type { TimelineAsset } from './plugins/cal/timeline-asset';
-import type { sceneBinding } from './comp-vfx-item';
+import type { SceneBinding } from './comp-vfx-item';
 import type { ObjectBindingTrack } from './plugins';
 
 let listOrder = 0;
@@ -26,7 +26,7 @@ export interface ContentOptions {
   startTime: number,
   globalVolume: GlobalVolume,
   timelineAsset: TimelineAsset,
-  sceneBindings: sceneBinding[],
+  sceneBindings: SceneBinding[],
 }
 
 /**
