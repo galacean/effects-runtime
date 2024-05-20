@@ -402,12 +402,15 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   resize () {
     const res = this.getBounds();
 
-    if (!res) {
+    if (!res || !this.composition) {
       return;
     }
-    const { width } = res;
     const scale = this.transform.scale;
-    const scaleFactor = 1 / width;
+
+    const { z } = this.transform.getWorldPosition();
+    const { x: rx } = this.composition.camera.getInverseVPRatio(z);
+
+    const scaleFactor = rx / 1500;
 
     this.scaleFactor = scaleFactor;
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
