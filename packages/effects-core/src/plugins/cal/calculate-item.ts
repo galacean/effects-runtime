@@ -1,12 +1,13 @@
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { serialize } from '../../decorators';
+import { effectsClass, serialize } from '../../decorators';
 import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
 import { SpriteColorPlayable } from '../sprite/sprite-item';
 import { ActivationPlayable, AnimationClipPlayable, TransformAnimationPlayable } from './calculate-vfx-item';
 import { PlayableGraph } from './playable-graph';
 import { Track } from './track';
+import type { Engine } from '../../engine';
 
 /**
  * 基础位移属性数据
@@ -39,11 +40,13 @@ export interface CalculateItemOptions {
  * @since 2.0.0
  * @internal
  */
+@effectsClass('ObjectBindingTrack')
 export class ObjectBindingTrack extends Track {
   reusable = false;
   started = false;
   playableGraph = new PlayableGraph();
   options: CalculateItemOptions;
+  data: spec.EffectsObjectData;
 
   /**
    * 元素动画已经播放的时间
@@ -54,6 +57,49 @@ export class ObjectBindingTrack extends Track {
   private trackSeed = 0;
 
   create (): void {
+    this.options = {
+      start: this.bindingItem.start,
+      duration: this.bindingItem.duration,
+      looping: this.bindingItem.endBehavior === spec.ItemEndBehavior.loop,
+      endBehavior: this.bindingItem.endBehavior || spec.ItemEndBehavior.destroy,
+    };
+    this.id = this.bindingItem.id;
+    this.name = this.bindingItem.name;
+    const activationTrack = this.createTrack(Track, 'ActivationTrack');
+
+    activationTrack.createClip(ActivationPlayable, 'ActivationTimelineClip');
+    const data = this.data;
+
+    //@ts-expect-error
+    if (data.tracks) {
+      //@ts-expect-error
+      const tracks = data.tracks;
+
+      for (const track of tracks) {
+        const newTrack = this.createTrack(Track);
+
+        for (const clipAsset of track.clips) {
+          switch (clipAsset.dataType) {
+            case 'TransformAnimationPlayableAsset':
+              newTrack.name = 'TransformAnimationTrack';
+              newTrack.createClip(TransformAnimationPlayable, 'TransformAnimationTimelineClip').playable.fromData(clipAsset.animationClip);
+
+              break;
+            case 'SpriteColorAnimationPlayableAsset':
+              newTrack.name = 'SpriteColorTrack';
+              newTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData(clipAsset.animationClip);
+
+              break;
+            case 'AnimationClipPlayableAsset':
+              newTrack.name = 'AnimationTrack';
+              newTrack.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(clipAsset.animationClip);
+
+              break;
+          }
+        }
+      }
+    }
+
     // TODO TimelineClip 需要传入 start 和 duration 数据
     for (const track of this.tracks) {
       for (const clip of track.getClips()) {
@@ -123,7 +169,6 @@ export class ObjectBindingTrack extends Track {
       }
     }
 
-    // TODO: [1.31] @茂安 验证 https://github.com/galacean/effects-runtime/commits/main/packages/effects-core/src/vfx-item.ts
     // 在生命周期内更新动画
     if (!this.bindingItem.delaying) {
       const lifetime = this.time / this.bindingItem.duration;
@@ -162,8 +207,8 @@ export class ObjectBindingTrack extends Track {
     return localTime;
   }
 
-  createTrack<T extends Track> (classConstructor: new () => T, name?: string): T {
-    const newTrack = new classConstructor();
+  createTrack<T extends Track>(classConstructor: new (engine: Engine) => T, name?: string): T {
+    const newTrack = new classConstructor(this.engine);
 
     newTrack.bindingItem = this.bindingItem;
     newTrack.id = (this.trackSeed++).toString();
@@ -196,55 +241,12 @@ export class ObjectBindingTrack extends Track {
       const trackOutput = track.createOutput();
 
       graph.addOutput(trackOutput);
-
       trackOutput.setSourcePlayeble(trackMixPlayable);
     }
   }
 
-  override fromData (data: spec.NullContent): void {
+  override fromData (data: spec.EffectsObjectData): void {
     super.fromData(data);
-
-    this.options = {
-      start: this.bindingItem.start,
-      duration: this.bindingItem.duration,
-      looping: this.bindingItem.endBehavior === spec.ItemEndBehavior.loop,
-      endBehavior: this.bindingItem.endBehavior || spec.ItemEndBehavior.destroy,
-    };
-    this.id = this.bindingItem.id;
-    this.name = this.bindingItem.name;
-    const activationTrack = this.createTrack(Track, 'ActivationTrack');
-
-    activationTrack.createClip(ActivationPlayable, 'ActivationTimelineClip');
-
-    //@ts-expect-error
-    if (data.tracks) {
-      //@ts-expect-error
-      const tracks = data.tracks;
-
-      for (const track of tracks) {
-        const newTrack = this.createTrack(Track);
-
-        for (const clipAsset of track.clips) {
-          switch (clipAsset.dataType) {
-            case 'TransformAnimationPlayableAsset':
-              newTrack.name = 'TransformAnimationTrack';
-              newTrack.createClip(TransformAnimationPlayable, 'TransformAnimationTimelineClip').playable.fromData(clipAsset.animationClip);
-
-              break;
-            case 'SpriteColorAnimationPlayableAsset':
-              newTrack.name = 'SpriteColorTrack';
-              newTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData(clipAsset.animationClip);
-
-              break;
-            case 'AnimationClipPlayableAsset':
-              newTrack.name = 'AnimationTrack';
-              newTrack.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(clipAsset.animationClip);
-
-              break;
-          }
-
-        }
-      }
-    }
+    this.data = data;
   }
 }

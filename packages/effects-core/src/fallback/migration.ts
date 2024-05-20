@@ -1,7 +1,8 @@
-import type { JSONScene, JSONSceneLegacy, BaseContent } from '@galacean/effects-specification';
-import { ItemType, ItemEndBehavior, END_BEHAVIOR_FREEZE, DataType, CompositionEndBehavior } from '@galacean/effects-specification';
-import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
+import type { BaseContent, Composition, Item, JSONScene, JSONSceneLegacy } from '@galacean/effects-specification';
+import { CompositionEndBehavior, DataType, END_BEHAVIOR_FREEZE, ItemEndBehavior, ItemType } from '@galacean/effects-specification';
+import type { TimelineAssetData } from '../plugins/cal/timeline-asset';
 import { generateGUID } from '../utils';
+import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -82,7 +83,8 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
   }
 
-  const itemGuidMap: Record<string, string> = {};
+  const itemOldIdToGuidMap: Record<string, string> = {};
+  const guidToItemMap: Record<string, Item> = {};
 
   // 更正Composition.endBehavior
   for (const composition of json.compositions) {
@@ -111,11 +113,12 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     });
 
     for (const item of composition.items) {
-      itemGuidMap[item.id] = generateGUID();
+      itemOldIdToGuidMap[item.id] = generateGUID();
       // TODO: 编辑器测试用，上线后删除
       //@ts-expect-error
       item.oldId = item.id;
-      item.id = itemGuidMap[item.id];
+      item.id = itemOldIdToGuidMap[item.id];
+      guidToItemMap[item.id] = item;
     }
 
     composition.items.forEach((item, index) => {
@@ -124,9 +127,9 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
           const parentId = (item.parentId).split('^')[0];
           const nodeId = (item.parentId).split('^')[1];
 
-          item.parentId = itemGuidMap[parentId] + '^' + nodeId;
+          item.parentId = itemOldIdToGuidMap[parentId] + '^' + nodeId;
         } else {
-          item.parentId = itemGuidMap[item.parentId];
+          item.parentId = itemOldIdToGuidMap[item.parentId];
         }
       }
 
@@ -136,7 +139,11 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       // @ts-expect-error fix item type
       composition.items[index] = { id: item.id };
     });
+
+    // 生成时间轴数据
+    convertTimelineAsset(composition, guidToItemMap, result);
   }
+
   for (const item of result.items) {
     // 原 texture 索引转为统一 guid 索引
     if (item.content) {
@@ -246,7 +253,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
     // gizmo 的 target id 转换为新的 item guid
     if (item.content.options.target) {
-      item.content.options.target = itemGuidMap[item.content.options.target];
+      item.content.options.target = itemOldIdToGuidMap[item.content.options.target];
     }
 
     // item 的 content 转为 component data 加入 JSONScene.components
@@ -271,6 +278,11 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
       item.components.push({ id: item.content.id });
+    }
+
+    if (item.type === ItemType.null) {
+      item.components = [];
+      item.dataType = DataType.VFXItemData;
     }
 
     switch (item.type) {
@@ -355,4 +367,83 @@ export function convertParam (content: BaseContent | undefined | null) {
       convertParam(value);
     }
   }
+}
+
+function convertTimelineAsset (composition: Composition, guidToItemMap: Record<string, Item>, jsonScene: JSONScene) {
+  const sceneBindings = [];
+  const trackDatas = [];
+
+  for (const itemDataPath of composition.items) {
+    const item = guidToItemMap[itemDataPath.id];
+    const subTrackDatas = [];
+
+    if (item.type !== ItemType.particle) {
+      subTrackDatas.push({
+        clips: [
+          {
+            dataType: 'TransformAnimationPlayableAsset',
+            animationClip: {
+              //@ts-expect-error
+              sizeOverLifetime: item.content.sizeOverLifetime,
+              //@ts-expect-error
+              rotationOverLifetime: item.content.rotationOverLifetime,
+              //@ts-expect-error
+              positionOverLifetime: item.content.positionOverLifetime,
+            },
+          },
+        ],
+      });
+    }
+
+    if (item.type === ItemType.sprite) {
+      subTrackDatas.push({
+        clips: [
+          {
+            dataType: 'SpriteColorAnimationPlayableAsset',
+            animationClip: {
+              colorOverLifetime: item.content.colorOverLifetime,
+              startColor: item.content.options.startColor,
+            },
+          },
+        ],
+      });
+    }
+
+    const objectBindingTrackData = {
+      id: generateGUID(),
+      dataType: 'ObjectBindingTrack',
+      tracks: subTrackDatas,
+    };
+
+    trackDatas.push(objectBindingTrackData);
+    sceneBindings.push({
+      key:{ id:objectBindingTrackData.id },
+      value:{ id:item.id },
+    });
+  }
+
+  const trackIds = [];
+
+  for (const trackData of trackDatas) {
+    trackIds.push({ id: trackData.id });
+  }
+  const timelineAssetData: TimelineAssetData = {
+    tracks:trackIds,
+    id: generateGUID(),
+    //@ts-expect-error
+    dataType: 'TimelineAsset',
+  };
+
+  // @ts-expect-error
+  jsonScene.materials.push(timelineAssetData);
+
+  for (const trackData of trackDatas) {
+    //@ts-expect-error
+    jsonScene.materials.push(trackData);
+  }
+
+  //@ts-expect-error
+  composition.timelineAsset = { id:timelineAssetData.id };
+  //@ts-expect-error
+  composition.sceneBindings = sceneBindings;
 }

@@ -4,38 +4,55 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { Region } from './plugins';
-import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, ObjectBindingTrack, Track } from './plugins';
+import type { Region, ObjectBindingTrack } from './plugins';
+import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, Track } from './plugins';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem, createVFXItem } from './vfx-item';
 import { Transform } from './transform';
+import type { TimelineAsset } from './plugins/cal/timeline-asset';
+
+export interface sceneBinding {
+  key: ObjectBindingTrack,
+  value: VFXItem<VFXItemContent>,
+}
 
 /**
  * @since 2.0.0
  * @internal
  */
 export class CompositionComponent extends ItemBehaviour {
-  startTime: number;
+  time = 0;
+  startTime = 0;
+  reusable = false;
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
   objectBindingTracks: ObjectBindingTrack[] = [];
-  time = 0;
-  reusable = false;
+  sceneBindings: sceneBinding[] = [];
+  timelineAsset: TimelineAsset;
 
   override start (): void {
-    const item = this.item;
-    const { startTime = 0 } = item.props;
+    const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
     this.objectBindingTracks = [];
     this.items = this.sortItemsByParentRelation(this.items);
+    const bindingTrackMap = new Map<VFXItem<VFXItemContent>, ObjectBindingTrack>();
+
+    for (const sceneBinding of this.sceneBindings) {
+      bindingTrackMap.set(sceneBinding.value, sceneBinding.key);
+    }
+
     for (const item of this.items) {
       // 获取所有的合成元素绑定 Track
-      const newObjectBindingTrack = new ObjectBindingTrack();
+      const newObjectBindingTrack = bindingTrackMap.get(item);
+
+      if (!newObjectBindingTrack) {
+        continue;
+      }
 
       newObjectBindingTrack.bindingItem = item;
-      newObjectBindingTrack.fromData(item.props.content as spec.NullContent);
+      // newObjectBindingTrack.fromData(item.props.content as unknown as spec.EffectsObjectData);
       this.objectBindingTracks.push(newObjectBindingTrack);
       // 重播不销毁元素
       if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
@@ -125,6 +142,8 @@ export class CompositionComponent extends ItemBehaviour {
             this.item.composition.autoRefTex = false;
           }
           item.getComponent(CompositionComponent)!.createContent();
+          //@ts-expect-error
+          item.getComponent(CompositionComponent)!.timelineAsset = props.timelineAsset;
           for (const vfxItem of item.getComponent(CompositionComponent)!.items) {
             vfxItem.setInstanceId(generateGUID());
             for (const component of vfxItem.components) {
@@ -143,7 +162,8 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === 'camera' ||
           itemData.type === spec.ItemType.tree ||
           itemData.type === spec.ItemType.interact ||
-          itemData.type === spec.ItemType.camera
+          itemData.type === spec.ItemType.camera ||
+          itemData.type === spec.ItemType.null
         ) {
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
@@ -295,5 +315,9 @@ export class CompositionComponent extends ItemBehaviour {
     });
 
     return sortedArray;
+  }
+
+  override fromData (data: any): void {
+    // this.timelineAsset = data.timelineAsset;
   }
 }
