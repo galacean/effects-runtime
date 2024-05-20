@@ -1,7 +1,7 @@
 import type { AnimationStateListener, Skeleton, SkeletonData } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics } from '@esotericsoftware/spine-core';
 import type { BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer } from '@galacean/effects';
-import { HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, spec } from '@galacean/effects';
+import { effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, spec } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import type { SpineResource } from './spine-loader';
 import { getAnimationDuration } from './utils';
@@ -18,6 +18,7 @@ export interface BoundsData {
 /**
  * @since 2.0.0
  */
+@effectsClass('SpineComponent')
 export class SpineComponent extends RendererComponent {
   startSize: number;
   /**
@@ -41,7 +42,7 @@ export class SpineComponent extends RendererComponent {
    */
   renderer: {};
   spineDataCache: SpineResource;
-  options?: spec.SpineItem;
+  options?: spec.SpineContent;
 
   private content: SlotGroup | null;
   private skeleton: Skeleton;
@@ -71,18 +72,18 @@ export class SpineComponent extends RendererComponent {
 
   override start () {
     super.start();
-    const options = this.options;
+    const content = this.options;
 
-    if (!options) {
+    if (!content) {
       console.error('options used to create SpineComponent is undefined');
 
       return;
     }
-    this.initContent(options.content.options, this.item.composition?.loaderData.spineDatas);
+    this.initContent(content.options, this.item.composition?.loaderData.spineDatas);
     // @ts-expect-error
-    this.startSize = options.content.options.startSize;
+    this.startSize = content.options.startSize;
     // @ts-expect-error
-    this.renderer = options.content.renderer;
+    this.renderer = content.renderer;
 
     if (!this.state) {
       return;

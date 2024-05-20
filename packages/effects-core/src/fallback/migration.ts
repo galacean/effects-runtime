@@ -288,8 +288,6 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
 
     // item 的 content 转为 component data 加入 JSONScene.components
-    const uuid = generateGUID();
-
     if (
       item.type === ItemType.sprite ||
       item.type === ItemType.particle ||
@@ -302,6 +300,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.type === ItemType.interact ||
       item.type === ItemType.camera ||
       item.type === ItemType.text ||
+      item.type === ItemType.spine ||
       // @ts-expect-error
       item.type === 'editor-gizmo' ||
       // @ts-expect-error
@@ -309,7 +308,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     ) {
       item.components = [];
       result.components.push(item.content);
-      item.content.id = uuid;
+      item.content.id = generateGUID();
       item.content.item = { id: item.id };
       item.dataType = DataType.VFXItemData;
       item.components.push({ id: item.content.id });
@@ -370,6 +369,10 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
         break;
       case ItemType.text:
         item.content.dataType = DataType.TextComponent;
+
+        break;
+      case ItemType.spine:
+        item.content.dataType = 'SpineComponent';
 
         break;
     }

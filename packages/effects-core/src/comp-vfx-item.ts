@@ -168,7 +168,8 @@ export class CompositionComponent extends ItemBehaviour {
           //@ts-expect-error
           itemData.type === 'editor-gizmo' ||
           //@ts-expect-error
-          itemData.type === 'orientation-transformer'
+          itemData.type === 'orientation-transformer' ||
+          itemData.type === spec.ItemType.spine
         ) {
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;

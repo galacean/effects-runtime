@@ -1,6 +1,6 @@
-import { logger, registerPlugin } from '@galacean/effects';
+import type { VFXItemContent } from '@galacean/effects';
+import { VFXItem, logger, registerPlugin } from '@galacean/effects';
 import { SpineLoader } from './spine-loader';
-import { SpineVFXItem } from './spine-vfx-item';
 import {
   createSkeletonData,
   getAnimationDuration,
@@ -12,7 +12,6 @@ import {
   getSkeletonFromBuffer,
 } from './utils';
 
-export { SpineVFXItem } from './spine-vfx-item';
 export { SpineComponent } from './spine-component';
 export * from '@esotericsoftware/spine-core';
 export * from './spine-loader';
@@ -27,7 +26,7 @@ export {
   getSkeletonFromBuffer,
 };
 
-registerPlugin('spine', SpineLoader, SpineVFXItem);
+registerPlugin('spine', SpineLoader, VFXItem<VFXItemContent>);
 
 export const version = __VERSION__;
 
