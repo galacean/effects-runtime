@@ -256,7 +256,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.content.options.target = itemOldIdToGuidMap[item.content.options.target];
     }
 
-    // 修正老 json 的 pluginName
+    // 修正老 json 的 item.pluginName
     if (item.pn !== undefined) {
       const pn = item.pn;
       const { plugins = [] } = json;
@@ -264,6 +264,16 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       if (pn !== undefined && Number.isInteger(pn)) {
         item.pluginName = plugins[pn];
       }
+    }
+
+    // 修正老 json 的 item.type
+    if (item.pluginName === 'editor-gizmo') {
+      //@ts-expect-error
+      item.type = 'editor-gizmo';
+    }
+    if (item.pluginName === 'orientation-transformer') {
+      //@ts-expect-error
+      item.type = 'orientation-transformer';
     }
 
     // item 的 content 转为 component data 加入 JSONScene.components
@@ -281,7 +291,10 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.type === ItemType.interact ||
       item.type === ItemType.camera ||
       item.type === ItemType.text ||
-      item.pluginName === 'editor-gizmo'
+      // @ts-expect-error
+      item.type === 'editor-gizmo' ||
+      // @ts-expect-error
+      item.type === 'orientation-transformer'
     ) {
       item.components = [];
       result.components.push(item.content);
@@ -294,11 +307,6 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     if (item.type === ItemType.null) {
       item.components = [];
       item.dataType = DataType.VFXItemData;
-    }
-
-    if (item.pluginName === 'editor-gizmo') {
-      //@ts-expect-error
-      item.type = 'editor-gizmo';
     }
 
     switch (item.type) {
@@ -330,6 +338,11 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
         // @ts-expect-error
       case 'editor-gizmo':
         item.content.dataType = 'GizmoComponent';
+
+        break;
+        // @ts-expect-error
+      case 'orientation-transformer':
+        item.content.dataType = 'OrientationComponent';
 
         break;
       case ItemType.tree:

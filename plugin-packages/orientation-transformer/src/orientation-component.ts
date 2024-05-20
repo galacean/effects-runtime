@@ -1,14 +1,15 @@
 import type { spec } from '@galacean/effects';
-import { ItemBehaviour } from '@galacean/effects';
+import { ItemBehaviour, effectsClass } from '@galacean/effects';
 import type { CompositionTransformerAcceler } from './composition-transformer-acceler';
 
+@effectsClass('OrientationComponent')
 export class OrientationComponent extends ItemBehaviour {
   private targets: spec.PluginGyroscopeTarget[];
 
   override fromData (data: any) {
     super.fromData(data);
 
-    const { targets } = data.content.options;
+    const { targets } = data.options;
 
     if (targets) {
       this.targets = targets.map((t: any) => ({

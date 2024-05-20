@@ -166,7 +166,9 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === spec.ItemType.camera ||
           itemData.type === spec.ItemType.null ||
           //@ts-expect-error
-          itemData.type === 'editor-gizmo'
+          itemData.type === 'editor-gizmo' ||
+          //@ts-expect-error
+          itemData.type === 'orientation-transformer'
         ) {
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
