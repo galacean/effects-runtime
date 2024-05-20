@@ -141,7 +141,7 @@ export class ObjectBindingTrack extends Track {
     let ended;
 
     if (VFXItem.isParticle(this.bindingItem)) {
-      ended = this.bindingItem.isEnded(now) && this.bindingItem.content.destoryed;
+      ended = this.bindingItem.isEnded(now) && this.bindingItem._content!.destoryed;
     } else {
       ended = this.bindingItem.isEnded(now);
     }

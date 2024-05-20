@@ -146,13 +146,7 @@ export class CompositionSourceManager implements Disposable {
           }
         }
 
-        const pn = sourceItemData.pn;
-        const { plugins = [] } = this.jsonScene as spec.JSONScene;
-
         itemProps.listIndex = listOrder++;
-        if (pn !== undefined && Number.isInteger(pn)) {
-          itemProps.pluginName = plugins[pn];
-        }
 
         // 处理预合成的渲染顺序
         if (itemProps.type === spec.ItemType.composition) {

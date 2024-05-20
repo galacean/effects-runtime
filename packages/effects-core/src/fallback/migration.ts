@@ -256,6 +256,16 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.content.options.target = itemOldIdToGuidMap[item.content.options.target];
     }
 
+    // 修正老 json 的 pluginName
+    if (item.pn !== undefined) {
+      const pn = item.pn;
+      const { plugins = [] } = json;
+
+      if (pn !== undefined && Number.isInteger(pn)) {
+        item.pluginName = plugins[pn];
+      }
+    }
+
     // item 的 content 转为 component data 加入 JSONScene.components
     const uuid = generateGUID();
 
@@ -270,7 +280,8 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.type === ItemType.tree ||
       item.type === ItemType.interact ||
       item.type === ItemType.camera ||
-      item.type === ItemType.text
+      item.type === ItemType.text ||
+      item.pluginName === 'editor-gizmo'
     ) {
       item.components = [];
       result.components.push(item.content);
@@ -283,6 +294,11 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     if (item.type === ItemType.null) {
       item.components = [];
       item.dataType = DataType.VFXItemData;
+    }
+
+    if (item.pluginName === 'editor-gizmo') {
+      //@ts-expect-error
+      item.type = 'editor-gizmo';
     }
 
     switch (item.type) {
@@ -309,6 +325,11 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       // @ts-expect-error
       case 'camera':
         item.content.dataType = DataType.CameraComponent;
+
+        break;
+        // @ts-expect-error
+      case 'editor-gizmo':
+        item.content.dataType = 'GizmoComponent';
 
         break;
       case ItemType.tree:

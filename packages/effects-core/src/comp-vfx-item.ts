@@ -164,7 +164,9 @@ export class CompositionComponent extends ItemBehaviour {
           itemData.type === spec.ItemType.tree ||
           itemData.type === spec.ItemType.interact ||
           itemData.type === spec.ItemType.camera ||
-          itemData.type === spec.ItemType.null
+          itemData.type === spec.ItemType.null ||
+          //@ts-expect-error
+          itemData.type === 'editor-gizmo'
         ) {
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
