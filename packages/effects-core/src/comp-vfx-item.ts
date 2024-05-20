@@ -10,7 +10,7 @@ import type { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
-import { Item, VFXItem, createVFXItem } from './vfx-item';
+import { Item, VFXItem } from './vfx-item';
 
 export interface sceneBinding {
   key: ObjectBindingTrack,
@@ -151,35 +151,9 @@ export class CompositionComponent extends ItemBehaviour {
               component.setInstanceId(generateGUID());
             }
           }
-        } else if (
-          //@ts-expect-error
-          itemData.type === 'ECS' ||
-          itemData.type === spec.ItemType.sprite ||
-          itemData.type === spec.ItemType.text ||
-          itemData.type === spec.ItemType.particle ||
-          itemData.type === spec.ItemType.mesh ||
-          itemData.type === spec.ItemType.skybox ||
-          itemData.type === spec.ItemType.light ||
-          itemData.type === 'camera' ||
-          itemData.type === spec.ItemType.tree ||
-          itemData.type === spec.ItemType.interact ||
-          itemData.type === spec.ItemType.camera ||
-          itemData.type === spec.ItemType.null ||
-          //@ts-expect-error
-          itemData.type === 'editor-gizmo' ||
-          //@ts-expect-error
-          itemData.type === 'orientation-transformer' ||
-          itemData.type === spec.ItemType.spine
-        ) {
+        } else {
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
-        } else {
-          // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣
-          item = new VFXItem(this.engine, itemData);
-          item.composition = this.item.composition;
-          // 兼容老的数据代码，json 更新后可移除
-          item = createVFXItem(itemData, this.item.composition);
-
         }
         item.parent = this.item;
         // 相机不跟随合成移动
