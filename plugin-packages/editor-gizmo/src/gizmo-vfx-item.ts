@@ -64,17 +64,3 @@ export type GizmoItemBounding =
   | GizmoItemBoundingTriangle
   | GizmoItemBoundingLine
   ;
-
-/**
- *
- */
-// export class GizmoVFXItem extends VFXItem<Mesh | undefined> {
-//   constructor (engine: Engine, props?: VFXItemProps) {
-//     super(engine, props);
-//     const gizmoComponent = this.addComponent(GizmoComponent);
-
-//     if (props) {
-//       gizmoComponent.fromData(props);
-//     }
-//   }
-// }
