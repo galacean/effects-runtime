@@ -121,7 +121,6 @@ export class SpineComponent extends RendererComponent {
     if (isNaN(index)) {
       return;
     }
-    const skin = spineOptions.activeSkin || 'default';
     const { atlas, skeletonData, skeletonInstance, skinList, animationList } = spineDatas[index];
     const activeAnimation = typeof spineOptions.activeAnimation === 'string' ? [spineOptions.activeAnimation] : spineOptions.activeAnimation;
 
@@ -133,7 +132,7 @@ export class SpineComponent extends RendererComponent {
     this.skinList = skinList.slice();
     this.animationList = animationList.slice();
 
-    this.setSkin(skin);
+    this.setSkin(spineOptions.activeSkin || (skinList.length ? skinList[0] : 'default'));
     this.state = new AnimationState(this.animationStateData);
 
     if (activeAnimation.length === 1) {

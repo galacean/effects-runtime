@@ -75,10 +75,18 @@ function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textu
   }
   for (let i = 0; i < pageCount; i++) {
     const page = atlas.pages[i];
-
     // 直接获取Texture
-    const textureId = (images[i] as unknown as spec.DataPath).id;
-    const tex = engine.assetLoader.loadGUID<Texture>(textureId);
+    let tex: number | Texture | string = images[i];
+
+    // @ts-expect-error
+    if (images[i].id) {
+      const textureId = (images[i] as unknown as spec.DataPath).id;
+
+      tex = engine.assetLoader.loadGUID<Texture>(textureId);
+    } else if (typeof images[i] === 'number') {
+      // TODO 老JSON的兼容逻辑
+      tex = textures[images[i]];
+    }
 
     if (!tex) {
       throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);

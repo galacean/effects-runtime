@@ -13,3 +13,4 @@ import './composition';
 // import './assert-manager.spec';
 // import './texture.spec';
 // import './transform.spec';
+import './utils.spec';
