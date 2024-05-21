@@ -206,7 +206,7 @@ export class TransformAnimationPlayableAsset extends PlayableAsset {
   }
 }
 
-export interface TransformAnimationData {
+export interface TransformAnimationData extends spec.EffectsObjectData {
   /**
    * 元素大小变化属性
    */

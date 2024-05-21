@@ -1,6 +1,5 @@
-import type { Composition, Mesh, RenderFrame, Scene, Texture, VFXItem } from '@galacean/effects';
+import type { Composition, Mesh, RenderFrame, Scene, Texture, VFXItem, VFXItemContent } from '@galacean/effects';
 import { AbstractPlugin, RenderPass, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, TextureLoadAction, removeItem } from '@galacean/effects';
-import { GizmoVFXItem } from './gizmo-vfx-item';
 import { GizmoVFXItemType } from './define';
 import { destroyWireframeMesh } from './wireframe';
 import { axisIconMap } from './constants';
@@ -45,16 +44,17 @@ export class EditorGizmoPlugin extends AbstractPlugin {
 
   override onCompositionReset (composition: Composition) {
     const items = composition.items;
-    const targetMap: { [key: string]: GizmoVFXItem[] } = {};
+    const targetMap: { [key: string]: VFXItem<VFXItemContent>[] } = {};
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+      const gizmoComponent = item.getComponent(GizmoComponent);
 
-      if (item instanceof GizmoVFXItem) {
-        if (!targetMap[item.target]) {
-          targetMap[item.target] = [];
+      if (gizmoComponent) {
+        if (!targetMap[gizmoComponent.target]) {
+          targetMap[gizmoComponent.target] = [];
         }
-        targetMap[item.target].push(item);
+        targetMap[gizmoComponent.target].push(item);
       }
     }
     composition.loaderData.gizmoTarget = targetMap;
@@ -123,9 +123,9 @@ export class EditorGizmoPlugin extends AbstractPlugin {
 
   override onCompositionItemRemoved (composition: Composition, item: VFXItem<any>) {
     if (item.type === GizmoVFXItemType) {
-      this.removeGizmoItem(composition, item as unknown as GizmoVFXItem);
+      this.removeGizmoItem(composition, item);
     } else {
-      const gizmoVFXItemList: GizmoVFXItem[] = composition.loaderData.gizmoTarget[item.id];
+      const gizmoVFXItemList: VFXItem<VFXItemContent>[] = composition.loaderData.gizmoTarget[item.id];
 
       if (gizmoVFXItemList && gizmoVFXItemList.length > 0) {
         gizmoVFXItemList.forEach(gizmoVFXItem => {
@@ -135,18 +135,20 @@ export class EditorGizmoPlugin extends AbstractPlugin {
     }
   }
 
-  removeGizmoItem (composition: Composition, gizmoVFXItem: GizmoVFXItem) {
-    if (gizmoVFXItem.content && !gizmoVFXItem.content.isDestroyed) {
-      gizmoVFXItem.content.dispose();
+  removeGizmoItem (composition: Composition, gizmoVFXItem: VFXItem<VFXItemContent>) {
+    const gizmoMesh = gizmoVFXItem.content as Mesh;
 
-      if (gizmoVFXItem.content.name === GeometryType.FloorGrid.toString() || gizmoVFXItem.content.name === 'Box') {
-        this.getFrontRenderPass(composition.renderFrame).removeMesh(gizmoVFXItem.content);
+    if (gizmoMesh && !gizmoMesh.isDestroyed) {
+      gizmoMesh.dispose();
+
+      if (gizmoMesh.name === GeometryType.FloorGrid.toString() || gizmoMesh.name === 'Box') {
+        this.getFrontRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
       } else {
-        this.getEditorRenderPass(composition.renderFrame).removeMesh(gizmoVFXItem.content);
+        this.getEditorRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
       }
     }
-    if (gizmoVFXItem.contents) {
-      for (const [mesh] of gizmoVFXItem.contents) {
+    if (gizmoVFXItem.getComponent(GizmoComponent)!.contents) {
+      for (const [mesh] of gizmoVFXItem.getComponent(GizmoComponent)!.contents!) {
         if (!mesh.isDestroyed) {
           mesh.dispose();
           if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
@@ -168,7 +170,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
         }
       });
     } else {
-      const wireframeMesh = gizmoVFXItem.wireframeMesh;
+      const wireframeMesh = gizmoVFXItem.getComponent(GizmoComponent)!.wireframeMesh;
 
       if (wireframeMesh && !wireframeMesh.isDestroyed) {
         destroyWireframeMesh(wireframeMesh);
@@ -176,7 +178,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
       }
     }
 
-    const arr: GizmoVFXItem[] = composition.loaderData.gizmoItems;
+    const arr: VFXItem<VFXItemContent>[] = composition.loaderData.gizmoItems;
     const index = arr.indexOf(gizmoVFXItem);
 
     if (index > -1) {

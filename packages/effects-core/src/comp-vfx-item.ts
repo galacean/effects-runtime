@@ -5,37 +5,55 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region } from './plugins';
-import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, ObjectBindingTrack, Track } from './plugins';
+import { HitTestType, ObjectBindingTrack, ParticleBehaviourPlayable, ParticleSystem, Track } from './plugins';
+import type { TimelineAsset } from './plugins/cal/timeline-asset';
+import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
-import { Item, VFXItem, createVFXItem } from './vfx-item';
-import { Transform } from './transform';
+import { Item, VFXItem } from './vfx-item';
+
+export interface SceneBinding {
+  key: ObjectBindingTrack,
+  value: VFXItem<VFXItemContent>,
+}
 
 /**
  * @since 2.0.0
  * @internal
  */
 export class CompositionComponent extends ItemBehaviour {
-  startTime: number;
+  time = 0;
+  startTime = 0;
+  reusable = false;
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
   objectBindingTracks: ObjectBindingTrack[] = [];
-  time = 0;
-  reusable = false;
+  sceneBindings: SceneBinding[] = [];
+  timelineAsset: TimelineAsset;
 
   override start (): void {
-    const item = this.item;
-    const { startTime = 0 } = item.props;
+    const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
     this.objectBindingTracks = [];
     this.items = this.sortItemsByParentRelation(this.items);
+    const bindingTrackMap = new Map<VFXItem<VFXItemContent>, ObjectBindingTrack>();
+
+    for (const sceneBinding of this.sceneBindings) {
+      bindingTrackMap.set(sceneBinding.value, sceneBinding.key);
+    }
+
     for (const item of this.items) {
       // 获取所有的合成元素绑定 Track
-      const newObjectBindingTrack = new ObjectBindingTrack();
+      let newObjectBindingTrack = bindingTrackMap.get(item);
+
+      if (!newObjectBindingTrack) {
+        newObjectBindingTrack = new ObjectBindingTrack(this.engine);
+        newObjectBindingTrack.fromData(item.props.content as unknown as spec.EffectsObjectData);
+      }
 
       newObjectBindingTrack.bindingItem = item;
-      newObjectBindingTrack.fromData(item.props.content as spec.NullContent);
+      // newObjectBindingTrack.fromData(item.props.content as unknown as spec.EffectsObjectData);
       this.objectBindingTracks.push(newObjectBindingTrack);
       // 重播不销毁元素
       if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
@@ -67,7 +85,7 @@ export class CompositionComponent extends ItemBehaviour {
       track.update(dt);
     }
 
-    for (let i = 0;i < this.items.length;i++) {
+    for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];
       const subCompostionComponent = item.getComponent(CompositionComponent);
 
@@ -125,35 +143,17 @@ export class CompositionComponent extends ItemBehaviour {
             this.item.composition.autoRefTex = false;
           }
           item.getComponent(CompositionComponent)!.createContent();
+          //@ts-expect-error
+          item.getComponent(CompositionComponent)!.timelineAsset = props.timelineAsset;
           for (const vfxItem of item.getComponent(CompositionComponent)!.items) {
             vfxItem.setInstanceId(generateGUID());
             for (const component of vfxItem.components) {
               component.setInstanceId(generateGUID());
             }
           }
-        } else if (
-          //@ts-expect-error
-          itemData.type === 'ECS' ||
-          itemData.type === spec.ItemType.sprite ||
-          itemData.type === spec.ItemType.text ||
-          itemData.type === spec.ItemType.particle ||
-          itemData.type === spec.ItemType.mesh ||
-          itemData.type === spec.ItemType.skybox ||
-          itemData.type === spec.ItemType.light ||
-          itemData.type === 'camera' ||
-          itemData.type === spec.ItemType.tree ||
-          itemData.type === spec.ItemType.interact ||
-          itemData.type === spec.ItemType.camera
-        ) {
+        } else {
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
-        } else {
-          // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣
-          item = new VFXItem(this.engine, itemData);
-          item.composition = this.item.composition;
-          // 兼容老的数据代码，json 更新后可移除
-          item = createVFXItem(itemData, this.item.composition);
-
         }
         item.parent = this.item;
         // 相机不跟随合成移动
@@ -295,5 +295,9 @@ export class CompositionComponent extends ItemBehaviour {
     });
 
     return sortedArray;
+  }
+
+  override fromData (data: any): void {
+    // this.timelineAsset = data.timelineAsset;
   }
 }
