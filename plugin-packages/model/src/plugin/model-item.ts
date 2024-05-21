@@ -559,7 +559,7 @@ export class ModelCameraComponent extends ItemBehaviour {
  * @internal
  */
 @effectsClass(spec.DataType.AnimationComponent)
-export class ModelAnimationController extends ItemBehaviour {
+export class ModelAnimationComponent extends ItemBehaviour {
   /**
    * 参数
    */
@@ -571,13 +571,9 @@ export class ModelAnimationController extends ItemBehaviour {
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param data - Mesh 参数
    */
-  constructor (engine: Engine, data?: AnimationComponentData) {
+  constructor (engine: Engine) {
     super(engine);
-    if (data) {
-      this.fromData(data);
-    }
   }
 
   /**
