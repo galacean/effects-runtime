@@ -58,6 +58,10 @@ export class ValueGetter<T> {
     throw Error(NOT_IMPLEMENT);
   }
 
+  getMaxTime (): number {
+    throw Error(NOT_IMPLEMENT);
+  }
+
   toUniform (meta: KeyFrameMeta): Float32Array {
     throw Error(NOT_IMPLEMENT);
   }
@@ -695,6 +699,11 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     return clamp(value, 0, 1);
   }
 
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
 }
 
 export class BezierCurveQuat extends ValueGetter<Quaternion> {
@@ -791,6 +800,11 @@ export class BezierCurveQuat extends ValueGetter<Quaternion> {
     return clamp(value, 0, 1);
   }
 
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
 }
 
 const map: Record<any, any> = {

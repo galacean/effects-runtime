@@ -593,7 +593,7 @@ export class ModelAnimationController extends ItemBehaviour {
    * @param dt - 更新间隔
    */
   override update (dt: number): void {
-    this.elapsedTime += dt;
+    this.elapsedTime += dt * 0.001;
     if (this.animation >= 0 && this.animation < this.clips.length) {
       this.clips[this.animation].sampleAnimation(this.item, this.elapsedTime);
     }
@@ -631,26 +631,27 @@ class ModelAnimationClip extends AnimationClip {
 
   override sampleAnimation (vfxItem: VFXItem<VFXItemContent>, time: number) {
     const duration = vfxItem.duration;
-    let life = time;
-
-    life = life < 0 ? 0 : (life > duration ? duration : life);
+    const life = Math.max(0, time) % duration;
 
     for (const curve of this.positionCurves) {
-      const value = curve.keyFrames.getValue(life);
+      const maxTime = curve.keyFrames.getMaxTime();
+      const value = curve.keyFrames.getValue(life % maxTime);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setPosition(value.x, value.y, value.z);
     }
 
     for (const curve of this.rotationCurves) {
-      const value = curve.keyFrames.getValue(life);
+      const maxTime = curve.keyFrames.getMaxTime();
+      const value = curve.keyFrames.getValue(life % maxTime);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
     }
 
     for (const curve of this.scaleCurves) {
-      const value = curve.keyFrames.getValue(life);
+      const maxTime = curve.keyFrames.getMaxTime();
+      const value = curve.keyFrames.getValue(life % maxTime);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setScale(value.x, value.y, value.z);
