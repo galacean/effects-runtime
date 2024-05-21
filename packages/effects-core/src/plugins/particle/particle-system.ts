@@ -3,6 +3,7 @@ import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-mat
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
+import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
@@ -641,8 +642,15 @@ export class ParticleSystem extends Component {
     const shape = this.shape;
     const speed = options.startSpeed.getValue(lifetime);
     const matrix4 = options.particleFollowParent ? this.transform.getMatrix() : this.transform.getWorldMatrix();
+    const pointPosition: Vector3 = data.position;
+
+    if (this.item.composition?.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+      pointPosition.x /= this.item.composition.transform.scale.x;
+      pointPosition.y /= this.item.composition.transform.scale.y;
+    }
+
     // 粒子的位置受发射器的位置影响，自身的旋转和缩放不受影响
-    const position = matrix4.transformPoint(data.position, new Vector3());
+    const position = matrix4.transformPoint(pointPosition, new Vector3());
     const transform = new Transform({
       position,
       valid: true,
@@ -734,6 +742,11 @@ export class ParticleSystem extends Component {
       size.x *= tempScale.x;
       size.y *= tempScale.y;
     }
+    if (this.item.composition?.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+      size.x /= this.item.composition.transform.scale.x;
+      size.y /= this.item.composition.transform.scale.y;
+    }
+
     transform.setScale(size.x, size.y, 1);
 
     return {

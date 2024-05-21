@@ -10,7 +10,7 @@ import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import { isObject } from './utils';
 import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
-import type { TimelineAsset } from './plugins/cal/timeline-asset';
+import { TimelineAsset } from './plugins/cal/timeline-asset';
 import type { SceneBinding } from './comp-vfx-item';
 import type { ObjectBindingTrack } from './plugins';
 
@@ -84,9 +84,15 @@ export class CompositionSourceManager implements Disposable {
   private getContent (composition: spec.Composition): ContentOptions {
     // TODO: specification 中补充 globalVolume 类型
     // @ts-expect-error
-    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0, timelineAsset } = composition;
+    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0, timelineAsset = {} } = composition;
     const items = this.assembleItems(composition);
     const sceneBindings = [];
+
+    //@ts-expect-error
+    if (!composition.sceneBindings) {
+      //@ts-expect-error
+      composition.sceneBindings = [];
+    }
 
     //@ts-expect-error
     for (const sceneBindingData of composition.sceneBindings) {
@@ -106,7 +112,7 @@ export class CompositionSourceManager implements Disposable {
       camera,
       startTime,
       globalVolume,
-      timelineAsset: this.engine.assetLoader.loadGUID(timelineAsset.id),
+      timelineAsset: timelineAsset.id ? this.engine.assetLoader.loadGUID(timelineAsset.id) : new TimelineAsset(this.engine),
       sceneBindings,
     };
   }
