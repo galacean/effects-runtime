@@ -1,13 +1,12 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
 import { random, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
 import type { ColorStop } from '../utils';
 import type { BezierEasing } from './bezier';
-import { BezierPath, buildEasingCurve } from './bezier';
+import { BezierPath, buildEasingCurve, BezierQuat } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
 import { numberToFix } from './utils';
 
@@ -600,9 +599,6 @@ export class PathSegments extends ValueGetter<number[]> {
 }
 
 export class BezierCurvePath extends ValueGetter<Vector3> {
-  // FIXME: 临时支持四元数插值
-  quaternion = false;
-
   curveSegments: Record<string, {
     points: Vector2[],
     // 缓动曲线
@@ -680,26 +676,107 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
 
         perc = this.getPercValue(keyTimeData[i], t);
 
-        if (this.quaternion) {
-          const last = bezierPath.lengthData.points.length - 1;
-          const p0 = bezierPath.lengthData.points[0].point;
-          const p1 = bezierPath.lengthData.points[last].point;
-
-          const q0 = Quaternion.fromEuler(Euler.fromVector3(p0.clone().add(bezierPath.interval)));
-          const q1 = Quaternion.fromEuler(Euler.fromVector3(p1.clone().add(bezierPath.interval)));
-          const q = new Quaternion();
-
-          QuaternionInner.slerpFlat(q, q0, q1, perc);
-          const e = q.toEuler(new Euler());
-
-          e.toVector3(point);
-        } else {
-          point = bezierPath.getPointInPercent(perc);
-        }
+        point = bezierPath.getPointInPercent(perc);
       }
     }
 
     return point;
+  }
+
+  getPercValue (curveKey: string, time: number) {
+    const curveInfo = this.curveSegments[curveKey];
+    const [p0] = curveInfo.points;
+
+    const timeInterval = curveInfo.timeInterval;
+    const normalizeTime = numberToFix((time - p0.x) / timeInterval, 4);
+    const value = curveInfo.easingCurve.getValue(normalizeTime);
+
+    // TODO 测试用 编辑器限制值域后移除clamp
+    return clamp(value, 0, 1);
+  }
+
+}
+
+export class BezierCurveQuat extends ValueGetter<Quaternion> {
+  curveSegments: Record<string, {
+    points: Vector2[],
+    // 缓动曲线
+    easingCurve: BezierEasing,
+    timeInterval: number,
+    valueInterval: number,
+    // 路径曲线
+    pathCurve: BezierQuat,
+  }>;
+
+  override onCreate (props: spec.BezierCurveQuatValue) {
+    const [keyframes, points, controlPoints] = props;
+
+    this.curveSegments = {};
+    if (!controlPoints.length) {
+      return;
+    }
+
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      const leftKeyframe = keyframes[i];
+      const rightKeyframe = keyframes[i + 1];
+      const ps1 = Quaternion.fromArray(points[i]);
+      const ps2 = Quaternion.fromArray(points[i + 1]);
+
+      const cp1 = Quaternion.fromArray(controlPoints[2 * i]);
+      const cp2 = Quaternion.fromArray(controlPoints[2 * i + 1]);
+
+      const { points: ps, curve: easingCurve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const s = ps[0];
+      const e = ps[ps.length - 1];
+
+      const pathCurve = new BezierQuat(ps1, ps2, cp1, cp2);
+
+      this.curveSegments[`${s.x}&${e.x}`] = {
+        points: ps,
+        timeInterval,
+        valueInterval,
+        easingCurve,
+        pathCurve: pathCurve,
+      };
+    }
+
+  }
+
+  override getValue (time: number): Quaternion {
+    let perc = 0;
+    const t = numberToFix(time, 5);
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+
+    if (t <= keyTimeStart) {
+      const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+      return pathCurve.getPointInPercent(0);
+
+    }
+    if (t >= keyTimeEnd) {
+      const pathCurve = this.curveSegments[keyTimeData[keyTimeData.length - 1]].pathCurve;
+
+      return pathCurve.getPointInPercent(1);
+    }
+
+    for (let i = 0; i < keyTimeData.length; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (t >= Number(xMin) && t < Number(xMax)) {
+        const pathCurve = this.curveSegments[keyTimeData[i]].pathCurve;
+
+        perc = this.getPercValue(keyTimeData[i], t);
+
+        return pathCurve.getPointInPercent(perc);
+      }
+    }
+
+    const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+    return pathCurve.getPointInPercent(0);
   }
 
   getPercValue (curveKey: string, time: number) {
@@ -768,6 +845,13 @@ const map: Record<any, any> = {
     }
 
     return new BezierCurvePath(props);
+  },
+  [spec.ValueType.BEZIER_CURVE_QUAT] (props: number[][][]) {
+    if (props[0].length === 1) {
+      return new StaticValue(new Quaternion(...props[1][0]));
+    }
+
+    return new BezierCurveQuat(props);
   },
 };
 
@@ -876,76 +960,4 @@ export function createKeyFrameMeta () {
     lineSegCount: 0,
     curveCount: 0,
   };
-}
-
-class QuaternionInner {
-
-  static slerpFlat (dst: Quaternion, src0: Quaternion, src1: Quaternion, t: number) {
-    // fuzz-free, array-based Quaternion SLERP operation
-    let x0 = src0.x;
-    let y0 = src0.y;
-    let z0 = src0.z;
-    let w0 = src0.w;
-
-    const x1 = src1.x;
-    const y1 = src1.y;
-    const z1 = src1.z;
-    const w1 = src1.w;
-
-    if (t === 0) {
-      dst.x = x0;
-      dst.y = y0;
-      dst.z = z0;
-      dst.w = w0;
-
-      return;
-    }
-
-    if (t === 1) {
-      dst.x = x1;
-      dst.y = y1;
-      dst.z = z1;
-      dst.w = w1;
-
-      return;
-    }
-
-    if (w0 !== w1 || x0 !== x1 || y0 !== y1 || z0 !== z1) {
-      let s = 1 - t;
-      const cos = x0 * x1 + y0 * y1 + z0 * z1 + w0 * w1;
-      const dir = (cos >= 0 ? 1 : - 1);
-      const sqrSin = 1 - cos * cos;
-
-      // Skip the Slerp for tiny steps to avoid numeric problems:
-      if (sqrSin > Number.EPSILON) {
-        const sin = Math.sqrt(sqrSin);
-        const len = Math.atan2(sin, cos * dir);
-
-        s = Math.sin(s * len) / sin;
-        t = Math.sin(t * len) / sin;
-      }
-
-      const tDir = t * dir;
-
-      x0 = x0 * s + x1 * tDir;
-      y0 = y0 * s + y1 * tDir;
-      z0 = z0 * s + z1 * tDir;
-      w0 = w0 * s + w1 * tDir;
-
-      // Normalize in case we just did a lerp:
-      if (s === 1 - t) {
-        const f = 1 / Math.sqrt(x0 * x0 + y0 * y0 + z0 * z0 + w0 * w0);
-
-        x0 *= f;
-        y0 *= f;
-        z0 *= f;
-        w0 *= f;
-      }
-    }
-
-    dst.x = x0;
-    dst.y = y0;
-    dst.z = z0;
-    dst.w = w0;
-  }
 }

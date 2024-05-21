@@ -649,6 +649,13 @@ class ModelAnimationClip extends AnimationClip {
       target?.transform.setRotation(value.x, value.y, value.z);
     }
 
+    for (const curve of this.quatCurves) {
+      const value = curve.keyFrames.getValue(life);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
+    }
+
     for (const curve of this.scaleCurves) {
       const value = curve.keyFrames.getValue(life);
       const target = this.getTargetItem(vfxItem, curve.path);

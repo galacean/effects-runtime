@@ -1,5 +1,6 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
@@ -268,6 +269,11 @@ export interface EulerCurve {
   keyFrames: ValueGetter<Vector3>,
 }
 
+export interface QuatCurve {
+  path: string,
+  keyFrames: ValueGetter<Quaternion>,
+}
+
 export interface ScaleCurve {
   path: string,
   keyFrames: ValueGetter<Vector3>,
@@ -283,6 +289,7 @@ export interface FloatCurve {
 export class AnimationClip extends EffectsObject {
   positionCurves: PositionCurve[] = [];
   eulerCurves: EulerCurve[] = [];
+  quatCurves: QuatCurve[] = [];
   scaleCurves: ScaleCurve[] = [];
   floatCurves: FloatCurve[] = [];
 
@@ -306,6 +313,14 @@ export class AnimationClip extends EffectsObject {
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setRotation(value.x, value.y, value.z);
+    }
+
+    for (const curve of this.quatCurves) {
+      const value = curve.keyFrames.getValue(life);
+      // @ts-expect-error
+      const target = this.findTarget(vfxItem, curve.path);
+
+      target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
     }
 
     for (const curve of this.scaleCurves) {
@@ -334,19 +349,24 @@ export class AnimationClip extends EffectsObject {
       this.positionCurves.push(curve);
     }
     for (const eulerCurveData of data.eulerCurves) {
-      const curve: PositionCurve = {
+      const curve: EulerCurve = {
         path: eulerCurveData.path,
         keyFrames: createValueGetter(eulerCurveData.keyFrames),
       };
 
-      // FIXME: 临时解决四元数插值问题
-      // @ts-expect-error
-      curve.keyFrames.quaternion = true;
-
       this.eulerCurves.push(curve);
     }
+    for (const quatCurveData of data.quatCurves) {
+      const curve: QuatCurve = {
+        path: quatCurveData.path,
+        keyFrames: createValueGetter(quatCurveData.keyFrames),
+      };
+
+      this.quatCurves.push(curve);
+    }
+
     for (const scaleCurvesData of data.scaleCurves) {
-      const curve: PositionCurve = {
+      const curve: ScaleCurve = {
         path: scaleCurvesData.path,
         keyFrames: createValueGetter(scaleCurvesData.keyFrames),
       };

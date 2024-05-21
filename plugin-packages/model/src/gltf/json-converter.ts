@@ -3,7 +3,7 @@ import type {
   Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps, SubMesh,
 } from '@galacean/effects';
 import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
-import { Color, Quaternion, Euler, Vector3 } from '../runtime/math';
+import { Color, Quaternion, Vector3 } from '../runtime/math';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { ModelTreeContent } from '../index';
 import { typedArrayFromBinary } from '@galacean/effects-helper';
@@ -459,6 +459,7 @@ export class JSONConverter {
           dataType: spec.DataType.AnimationClip,
           positionCurves: [],
           eulerCurves: [],
+          quatCurves: [],
           scaleCurves: [],
           floatCurves: [],
         };
@@ -476,7 +477,7 @@ export class JSONConverter {
 
         anim.tracks.forEach(track => {
           const inputArray = typedArrayFromBinary(bins, track.input);
-          let outputArray = typedArrayFromBinary(bins, track.output) as Float32Array;
+          const outputArray = typedArrayFromBinary(bins, track.output) as Float32Array;
 
           if (!(inputArray instanceof Float32Array)) {
             throw new Error(`Type of inputArray should be float32, ${inputArray}`);
@@ -489,77 +490,96 @@ export class JSONConverter {
           }
 
           if (track.path === 'rotation') {
-            const totalCount = outputArray.length / 4;
-            const newOutputArray = new Float32Array(totalCount * 3);
+            const points: spec.vec4[] = [];
+            const controlPoints: spec.vec4[] = [];
+            const lineValue: spec.LineKeyframeValue[] = [];
 
-            for (let i = 0; i < totalCount; i++) {
-              const quat = new Quaternion(
+            for (let i = 0; i < inputArray.length; i++) {
+              points.push([
                 outputArray[i * 4],
                 outputArray[i * 4 + 1],
                 outputArray[i * 4 + 2],
                 outputArray[i * 4 + 3],
-              );
-              const euler = quat.invert().toEuler(new Euler());
+              ]);
 
-              newOutputArray[i * 3] = euler.x;
-              newOutputArray[i * 3 + 1] = euler.y;
-              newOutputArray[i * 3 + 2] = euler.z;
-            }
-            outputArray = newOutputArray;
-          }
+              if (i > 0) {
+                const p0 = Quaternion.fromArray(points[i - 1]);
+                const p3 = Quaternion.fromArray(points[i]);
+                const p1 = new Quaternion();
+                const p2 = new Quaternion();
 
-          const points: spec.vec3[] = [];
-          const controlPoints: spec.vec3[] = [];
-          const lineValue: spec.LineKeyframeValue[] = [];
+                p1.slerpQuaternions(p0, p3, 1 / 3);
+                p2.slerpQuaternions(p0, p3, 2 / 3);
 
-          for (let i = 0; i < inputArray.length; i++) {
-            points.push([
-              outputArray[i * 3],
-              outputArray[i * 3 + 1],
-              outputArray[i * 3 + 2],
-            ]);
+                controlPoints.push(p1.toArray());
+                controlPoints.push(p2.toArray());
+              }
 
-            if (i > 0) {
-              const p0 = Vector3.fromArray(points[i - 1]);
-              const p3 = Vector3.fromArray(points[i]);
-              const p1 = new Vector3().lerpVectors(p0, p3, 1 / 3);
-              const p2 = new Vector3().lerpVectors(p0, p3, 2 / 3);
-
-              controlPoints.push(p1.toArray());
-              controlPoints.push(p2.toArray());
+              lineValue.push([
+                spec.BezierKeyframeType.LINE,
+                [inputArray[i] / totalAnimationTime, i],
+              ]);
             }
 
-            lineValue.push([
-              spec.BezierKeyframeType.LINE,
-              [inputArray[i] / totalAnimationTime, i],
-            ]);
-          }
+            const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
+            const path = this.treeInfo.getNodePath(node.id);
 
-          const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
-          const path = this.treeInfo.getNodePath(node.id);
+            const keyFrames: spec.BezierCurveQuat = [
+              spec.ValueType.BEZIER_CURVE_QUAT,
+              [lineValue, points, controlPoints],
+            ];
 
-          const keyFrames: spec.BezierCurvePath = [
-            spec.ValueType.BEZIER_CURVE_PATH,
-            [lineValue, points, controlPoints],
-          ];
+            clipData.quatCurves.push({ path, keyFrames });
+          } else {
+            const points: spec.vec3[] = [];
+            const controlPoints: spec.vec3[] = [];
+            const lineValue: spec.LineKeyframeValue[] = [];
 
-          switch (track.path) {
-            case 'translation':
-              clipData.positionCurves.push({ path, keyFrames });
+            for (let i = 0; i < inputArray.length; i++) {
+              points.push([
+                outputArray[i * 3],
+                outputArray[i * 3 + 1],
+                outputArray[i * 3 + 2],
+              ]);
 
-              break;
-            case 'rotation':
-              clipData.eulerCurves.push({ path, keyFrames });
+              if (i > 0) {
+                const p0 = Vector3.fromArray(points[i - 1]);
+                const p3 = Vector3.fromArray(points[i]);
+                const p1 = new Vector3().lerpVectors(p0, p3, 1 / 3);
+                const p2 = new Vector3().lerpVectors(p0, p3, 2 / 3);
 
-              break;
-            case 'scale':
-              clipData.scaleCurves.push({ path, keyFrames });
+                controlPoints.push(p1.toArray());
+                controlPoints.push(p2.toArray());
+              }
 
-              break;
-            case 'weights':
-              console.error('Find weight key frames');
+              lineValue.push([
+                spec.BezierKeyframeType.LINE,
+                [inputArray[i] / totalAnimationTime, i],
+              ]);
+            }
 
-              break;
+            const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
+            const path = this.treeInfo.getNodePath(node.id);
+
+            const keyFrames: spec.BezierCurvePath = [
+              spec.ValueType.BEZIER_CURVE_PATH,
+              [lineValue, points, controlPoints],
+            ];
+
+            switch (track.path) {
+              case 'translation':
+                clipData.positionCurves.push({ path, keyFrames });
+
+                break;
+              case 'scale':
+                clipData.scaleCurves.push({ path, keyFrames });
+
+                break;
+              case 'weights':
+                console.error('Find weight key frames');
+
+                break;
+            }
           }
         });
 
