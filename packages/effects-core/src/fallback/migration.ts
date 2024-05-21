@@ -345,12 +345,12 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
         item.content.dataType = DataType.CameraComponent;
 
         break;
-      // @ts-expect-error
+        // @ts-expect-error
       case 'editor-gizmo':
         item.content.dataType = 'GizmoComponent';
 
         break;
-      // @ts-expect-error
+        // @ts-expect-error
       case 'orientation-transformer':
         item.content.dataType = 'OrientationComponent';
 
@@ -420,23 +420,30 @@ export function convertParam (content: BaseContent | undefined | null) {
 function convertTimelineAsset (composition: Composition, guidToItemMap: Record<string, Item>, jsonScene: JSONScene) {
   const sceneBindings = [];
   const trackDatas = [];
+  const playableAssetDatas = [];
 
   for (const itemDataPath of composition.items) {
     const item = guidToItemMap[itemDataPath.id];
     const subTrackDatas = [];
 
     if (item.type !== ItemType.particle) {
+      const newPlayableAssetData = {
+        id: generateGUID(),
+        dataType: 'TransformAnimationPlayableAsset',
+        //@ts-expect-error
+        sizeOverLifetime: item.content.sizeOverLifetime,
+        //@ts-expect-error
+        rotationOverLifetime: item.content.rotationOverLifetime,
+        //@ts-expect-error
+        positionOverLifetime: item.content.positionOverLifetime,
+      };
+
+      playableAssetDatas.push(newPlayableAssetData);
       subTrackDatas.push({
         clips: [
           {
-            dataType: 'TransformAnimationPlayableAsset',
-            animationClip: {
-              //@ts-expect-error
-              sizeOverLifetime: item.content.sizeOverLifetime,
-              //@ts-expect-error
-              rotationOverLifetime: item.content.rotationOverLifetime,
-              //@ts-expect-error
-              positionOverLifetime: item.content.positionOverLifetime,
+            asset:{
+              id:newPlayableAssetData.id,
             },
           },
         ],
@@ -444,13 +451,19 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     }
 
     if (item.type === ItemType.sprite) {
+      const newPlayableAssetData = {
+        id: generateGUID(),
+        dataType: 'SpriteColorPlayableAsset',
+        colorOverLifetime: item.content.colorOverLifetime,
+        startColor: item.content.options.startColor,
+      };
+
+      playableAssetDatas.push(newPlayableAssetData);
       subTrackDatas.push({
         clips: [
           {
-            dataType: 'SpriteColorAnimationPlayableAsset',
-            animationClip: {
-              colorOverLifetime: item.content.colorOverLifetime,
-              startColor: item.content.options.startColor,
+            asset:{
+              id:newPlayableAssetData.id,
             },
           },
         ],
@@ -465,8 +478,8 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
 
     trackDatas.push(objectBindingTrackData);
     sceneBindings.push({
-      key: { id: objectBindingTrackData.id },
-      value: { id: item.id },
+      key:{ id:objectBindingTrackData.id },
+      value:{ id:item.id },
     });
   }
 
@@ -476,22 +489,28 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     trackIds.push({ id: trackData.id });
   }
   const timelineAssetData: TimelineAssetData = {
-    tracks: trackIds,
+    tracks:trackIds,
     id: generateGUID(),
     //@ts-expect-error
     dataType: 'TimelineAsset',
   };
 
-  // @ts-expect-error
-  jsonScene.materials.push(timelineAssetData);
-
-  for (const trackData of trackDatas) {
-    //@ts-expect-error
-    jsonScene.materials.push(trackData);
-  }
-
   //@ts-expect-error
-  composition.timelineAsset = { id: timelineAssetData.id };
+  composition.timelineAsset = { id:timelineAssetData.id };
   //@ts-expect-error
   composition.sceneBindings = sceneBindings;
+
+  // @ts-expect-error
+  jsonScene.animations = [];
+  // @ts-expect-error
+  jsonScene.animations.push(timelineAssetData);
+
+  for (const trackData of trackDatas) {
+  //@ts-expect-error
+    jsonScene.animations.push(trackData);
+  }
+  for (const playableAsset of playableAssetDatas) {
+  //@ts-expect-error
+    jsonScene.animations.push(playableAsset);
+  }
 }

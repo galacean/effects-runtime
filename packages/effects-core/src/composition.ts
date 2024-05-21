@@ -174,6 +174,8 @@ export class Composition implements Disposable, LostHandler {
    */
   globalTime: number;
 
+  editorScaleRatio = 1.0;
+
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
   protected assigned = false;

@@ -645,8 +645,8 @@ export class ParticleSystem extends Component {
     const pointPosition: Vector3 = data.position;
 
     if (this.item.composition?.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
-      pointPosition.x /= this.item.composition.transform.scale.x;
-      pointPosition.y /= this.item.composition.transform.scale.y;
+      pointPosition.x /= this.item.composition.editorScaleRatio;
+      pointPosition.y /= this.item.composition.editorScaleRatio;
     }
 
     // 粒子的位置受发射器的位置影响，自身的旋转和缩放不受影响
@@ -743,8 +743,8 @@ export class ParticleSystem extends Component {
       size.y *= tempScale.y;
     }
     if (this.item.composition?.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
-      size.x /= this.item.composition.transform.scale.x;
-      size.y /= this.item.composition.transform.scale.y;
+      size.x /= this.item.composition.editorScaleRatio;
+      size.y /= this.item.composition.editorScaleRatio;
     }
 
     transform.setScale(size.x, size.y, 1);
