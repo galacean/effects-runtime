@@ -8,6 +8,7 @@ import { TextStyle } from './text-style';
 import { glContext } from '../../gl';
 import { effectsClass } from '../../decorators';
 import { canvasPool } from '../../canvas-pool';
+import { isValidFontFamily } from '../../utils';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -168,7 +169,9 @@ export class TextComponent extends SpriteComponent {
    * @returns
    */
   setFontFamily (value: string): void {
-    if (this.textStyle.fontFamily === value) {
+    if (this.textStyle.fontFamily === value && !isValidFontFamily(value)) {
+      console.warn('The font is either the current font or an risky font family.');
+
       return;
     }
     this.textStyle.fontFamily = value;
@@ -424,7 +427,6 @@ export class TextComponent extends SpriteComponent {
     } else {
       fontDesc += textStyle.fontFamily;
     }
-
     if (textStyle.textWeight !== spec.TextWeight.normal) {
       fontDesc = `${textStyle.textWeight} ${fontDesc}`;
     }

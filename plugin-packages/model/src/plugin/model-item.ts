@@ -1,27 +1,26 @@
 import type {
+  Engine,
   HitTestBoxParams,
   HitTestCustomParams,
   HitTestSphereParams,
-  Engine,
   Renderer,
-  TransformAnimationPlayable,
   VFXItem,
   VFXItemContent,
 } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec, AnimationClip } from '@galacean/effects';
-import { Vector3 } from '../runtime/math';
-import type { Ray, Euler, Vector2 } from '../runtime/math';
+import { HitTestType, ItemBehaviour, RendererComponent, effectsClass, spec, AnimationClip } from '@galacean/effects';
 import type {
-  ModelItemBounding,
-  ModelMeshComponentData,
   ModelCameraComponentData,
-  ModelSkyboxComponentData,
+  ModelItemBounding,
   ModelLightComponentData,
+  ModelMeshComponentData,
+  ModelSkyboxComponentData,
   AnimationComponentData,
 } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../index';
 import type { PSceneManager } from '../runtime';
 import { PCamera, PLight, PMesh, PSkybox } from '../runtime';
+import type { Euler, Ray, Vector2 } from '../runtime/math';
+import { Vector3 } from '../runtime/math';
 import { RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
 
@@ -445,11 +444,6 @@ export class ModelCameraComponent extends ItemBehaviour {
    */
   data?: ModelCameraComponentData;
   /**
-   * 时间轴组件
-   */
-  timeline?: TimelineComponent;
-
-  /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
    * @param data - Mesh 参数
@@ -467,10 +461,10 @@ export class ModelCameraComponent extends ItemBehaviour {
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
-    this.timeline = this.item.getComponent(TimelineComponent);
     const scene = getSceneManager(this);
 
     scene?.addItem(this.content);
+    this.updateMainCamera();
   }
 
   /**
@@ -535,20 +529,6 @@ export class ModelCameraComponent extends ItemBehaviour {
    * @param rotation - 旋转
    */
   setTransform (position?: Vector3, rotation?: Euler): void {
-    const clip = this.timeline?.findTrack('AnimationTrack')?.findClip('AnimationTimelineClip');
-
-    if (position !== undefined) {
-      this.transform.setPosition(position.x, position.y, position.z);
-      if (clip) {
-        (clip.playable as TransformAnimationPlayable).originalTransform.position = position.clone();
-      }
-    }
-    if (rotation !== undefined) {
-      this.transform.setRotation(rotation.x, rotation.y, rotation.z);
-      if (clip) {
-        (clip.playable as TransformAnimationPlayable).originalTransform.rotation = rotation.clone();
-      }
-    }
     this.updateMainCamera();
   }
 }

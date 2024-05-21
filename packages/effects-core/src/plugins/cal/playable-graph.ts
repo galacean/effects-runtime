@@ -1,3 +1,4 @@
+import { EffectsObject } from '../../effects-object';
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
 
 /**
@@ -134,10 +135,6 @@ export class PlayableOutput {
   }
 }
 
-export abstract class PlayableAsset {
+export abstract class PlayableAsset extends EffectsObject {
   abstract createPlayable (): Playable;
-
-  fromData (data: any) {
-
-  }
 }

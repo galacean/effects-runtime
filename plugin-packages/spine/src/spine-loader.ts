@@ -1,7 +1,7 @@
-import { AbstractPlugin } from '@galacean/effects';
-import type { spec, Scene, Composition, Texture } from '@galacean/effects';
 import type { SkeletonData, Texture as SpineTexture } from '@esotericsoftware/spine-core';
 import { Skeleton, TextureAtlas } from '@esotericsoftware/spine-core';
+import type { Composition, Scene, spec, Texture } from '@galacean/effects';
+import { AbstractPlugin } from '@galacean/effects';
 import { decodeText } from './polyfill';
 import { createSkeletonData, getAnimationList, getSkeletonFromBuffer, getSkinList } from './utils';
 
@@ -51,7 +51,7 @@ export class SpineLoader extends AbstractPlugin {
       return;
     }
 
-    composition.loaderData.spineDatas = scene.jsonScene.spines.map((resource, index) => readSpineData(resource, scene.bins, composition.textures));
+    composition.loaderData.spineDatas = scene.jsonScene.spines.map((resource, index) => readSpineData(resource, scene.bins, composition.textures, composition));
   }
 
   override onCompositionDestroyed (composition: Composition) {
@@ -61,20 +61,32 @@ export class SpineLoader extends AbstractPlugin {
   }
 }
 
-function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textures: Texture[]): SpineResource {
+function readSpineData (resource: spec.SpineResource, bins: ArrayBuffer[], textures: Texture[], composition: Composition): SpineResource {
   const { atlas: atlasPointer, skeleton: skeletonPointer, images, skeletonType } = resource;
   const [index, start = 0, bufferLength] = atlasPointer[1];
   const atlasBuffer = bins[index];
   const atlasText = bufferLength ? decodeText(new Uint8Array(atlasBuffer, start, bufferLength)) : decodeText(new Uint8Array(atlasBuffer, start));
   const atlas = new TextureAtlas(atlasText);
   const pageCount = atlas.pages.length;
+  const engine = composition.getEngine();
 
   if (images.length !== pageCount) {
     throw new Error('atlas.page\'s length not equal spine.textures\' length');
   }
   for (let i = 0; i < pageCount; i++) {
     const page = atlas.pages[i];
-    const tex = textures[images[i]];
+    // 直接获取Texture
+    let tex: number | Texture | string = images[i];
+
+    // @ts-expect-error
+    if (images[i].id) {
+      const textureId = (images[i] as unknown as spec.DataPath).id;
+
+      tex = engine.assetLoader.loadGUID<Texture>(textureId);
+    } else if (typeof images[i] === 'number') {
+      // TODO 老JSON的兼容逻辑
+      tex = textures[images[i]];
+    }
 
     if (!tex) {
       throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);

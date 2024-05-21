@@ -5,56 +5,95 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region } from './plugins';
-import { HitTestType, TimelineComponent } from './plugins';
+import { HitTestType, ObjectBindingTrack, ParticleBehaviourPlayable, ParticleSystem, Track } from './plugins';
+import type { TimelineAsset } from './plugins/cal/timeline-asset';
+import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
-import { Item, VFXItem, createVFXItem } from './vfx-item';
-import { Transform } from './transform';
+import { Item, VFXItem } from './vfx-item';
+
+export interface SceneBinding {
+  key: ObjectBindingTrack,
+  value: VFXItem<VFXItemContent>,
+}
 
 /**
  * @since 2.0.0
  * @internal
  */
 export class CompositionComponent extends ItemBehaviour {
-  startTime: number;
+  time = 0;
+  startTime = 0;
+  reusable = false;
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
-  timelineComponents: TimelineComponent[];
-  timelineComponent: TimelineComponent;
+  objectBindingTracks: ObjectBindingTrack[] = [];
+  sceneBindings: SceneBinding[] = [];
+  timelineAsset: TimelineAsset;
 
   override start (): void {
-    const item = this.item;
-    const { startTime = 0 } = item.props;
+    const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
-    this.timelineComponents = [];
-    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
+    this.objectBindingTracks = [];
+    this.items = this.sortItemsByParentRelation(this.items);
+    const bindingTrackMap = new Map<VFXItem<VFXItemContent>, ObjectBindingTrack>();
+
+    for (const sceneBinding of this.sceneBindings) {
+      bindingTrackMap.set(sceneBinding.value, sceneBinding.key);
+    }
 
     for (const item of this.items) {
-      // 获取所有的合成元素 Timeline 组件
-      const timeline = item.getComponent(TimelineComponent);
+      // 获取所有的合成元素绑定 Track
+      let newObjectBindingTrack = bindingTrackMap.get(item);
 
-      if (timeline) {
-        this.timelineComponents.push(timeline);
-        // 重播不销毁元素
-        if (
-          this.item.endBehavior !== spec.ItemEndBehavior.destroy ||
-          this.timelineComponent.reusable
-        ) {
-          timeline.reusable = true;
+      if (!newObjectBindingTrack) {
+        newObjectBindingTrack = new ObjectBindingTrack(this.engine);
+        newObjectBindingTrack.fromData(item.props.content as unknown as spec.EffectsObjectData);
+      }
+
+      newObjectBindingTrack.bindingItem = item;
+      // newObjectBindingTrack.fromData(item.props.content as unknown as spec.EffectsObjectData);
+      this.objectBindingTracks.push(newObjectBindingTrack);
+      // 重播不销毁元素
+      if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
+        newObjectBindingTrack.reusable = true;
+        const subCompositionComponent = item.getComponent(CompositionComponent);
+
+        if (subCompositionComponent) {
+          subCompositionComponent.reusable = true;
         }
       }
+
+      // 添加粒子动画 clip
+      if (item.getComponent(ParticleSystem)) {
+        newObjectBindingTrack.createTrack(Track).createClip(ParticleBehaviourPlayable);
+      }
+
+      newObjectBindingTrack.create();
     }
   }
 
   override update (dt: number): void {
-    const time = this.timelineComponent.getTime();
+    const time = this.time;
 
-    for (const timeline of this.timelineComponents) {
+    for (const track of this.objectBindingTracks) {
       // TODO 统一时间为 s
-      const localTime = timeline.toLocalTime(time);
+      const localTime = track.toLocalTime(time);
 
-      timeline.setTime(localTime);
+      track.setTime(localTime);
+      track.update(dt);
+    }
+
+    for (let i = 0; i < this.items.length; i++) {
+      const item = this.items[i];
+      const subCompostionComponent = item.getComponent(CompositionComponent);
+
+      if (subCompostionComponent) {
+        const subCompositionTrack = this.objectBindingTracks[i];
+
+        subCompostionComponent.time = subCompositionTrack.toLocalTime(time);
+      }
     }
   }
 
@@ -104,35 +143,17 @@ export class CompositionComponent extends ItemBehaviour {
             this.item.composition.autoRefTex = false;
           }
           item.getComponent(CompositionComponent)!.createContent();
+          //@ts-expect-error
+          item.getComponent(CompositionComponent)!.timelineAsset = props.timelineAsset;
           for (const vfxItem of item.getComponent(CompositionComponent)!.items) {
             vfxItem.setInstanceId(generateGUID());
             for (const component of vfxItem.components) {
               component.setInstanceId(generateGUID());
             }
           }
-        } else if (
-          //@ts-expect-error
-          itemData.type === 'ECS' ||
-          itemData.type === spec.ItemType.sprite ||
-          itemData.type === spec.ItemType.text ||
-          itemData.type === spec.ItemType.particle ||
-          itemData.type === spec.ItemType.mesh ||
-          itemData.type === spec.ItemType.skybox ||
-          itemData.type === spec.ItemType.light ||
-          itemData.type === 'camera' ||
-          itemData.type === spec.ItemType.tree ||
-          itemData.type === spec.ItemType.interact ||
-          itemData.type === spec.ItemType.camera
-        ) {
+        } else {
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
-        } else {
-          // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣
-          item = new VFXItem(this.engine, itemData);
-          item.composition = this.item.composition;
-          // 兼容老的数据代码，json 更新后可移除
-          item = createVFXItem(itemData, this.item.composition);
-
         }
         item.parent = this.item;
         // 相机不跟随合成移动
@@ -230,5 +251,53 @@ export class CompositionComponent extends ItemBehaviour {
     }
 
     return regions;
+  }
+
+  // 深度优先遍历，创建排序后的数组
+  private dfsVFXItem (sortedArray: VFXItem<VFXItemContent>[], node: VFXItem<VFXItemContent>, childrenMap: Map<string, VFXItem<VFXItemContent>[]>): void {
+    // 首先，将当前节点添加到排序数组
+    sortedArray.push(node);
+
+    // 如果此节点有子节点，则递归添加它们
+    if (childrenMap.has(node.id)) {
+      const children = childrenMap.get(node.id);
+
+      children?.forEach(child => this.dfsVFXItem(sortedArray, child, childrenMap));
+    }
+  }
+
+  // 按父子关系排序节点，并保持原先同层级的元素顺序
+  private sortItemsByParentRelation (items: VFXItem<VFXItemContent>[]): VFXItem<VFXItemContent>[] {
+    // 映射：parentId => children
+    const childrenMap = new Map<string, VFXItem<VFXItemContent>[]>();
+    // 根节点数组
+    const roots: VFXItem<VFXItemContent>[] = [];
+
+    // 第一步：构建 childrenMap 和 根节点数组
+    items.forEach(item => {
+      // 父节点是合成元素的是根节点
+      if (item.parent === this.item) {
+        roots.push(item);
+      } else {
+        if (!childrenMap.has(item.parent!.id)) {
+          childrenMap.set(item.parent!.id, []);
+        }
+        childrenMap.get(item.parent!.id)?.push(item);
+      }
+    });
+
+    // 第二步：从每个根节点开始深度优先遍历，并构建排序后的数组
+    const sortedArray: VFXItem<VFXItemContent>[] = [];
+
+    roots.forEach(root => {
+      // 对每个根节点及其子节点进行深度优先遍历
+      this.dfsVFXItem(sortedArray, root, childrenMap);
+    });
+
+    return sortedArray;
+  }
+
+  override fromData (data: any): void {
+    // this.timelineAsset = data.timelineAsset;
   }
 }

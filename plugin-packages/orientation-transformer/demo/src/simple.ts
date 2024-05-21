@@ -172,6 +172,8 @@ function handleInputChange (adapter: OrientationAdapterAcceler) {
   adapter.dispatchMotion({
     x: +betaInput.value / 100,
     y: +gammaInput.value / 100,
+    beta: +betaInput.value / 100,
+    gamma:+gammaInput.value / 100,
   });
   document.getElementById('J-info').innerText = `[info] x: ${betaInput.value}, y: ${gammaInput.value}`;
 }

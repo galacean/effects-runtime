@@ -8,6 +8,13 @@
 
 ---
 
+## 1.4.4
+
+`2024-05-17`
+
+- Fix: 修复 iOS11/12 fontFamily 解析错误问题。[#356](https://github.com/galacean/effects-runtime/pull/356) [#361](https://github.com/galacean/effects-runtime/pull/361) @Sruimeng @yiiqii
+- Fix: 兼容 Spine 产物没有 default 皮肤的情况。[#352](https://github.com/galacean/effects-runtime/pull/352) @RGCHN
+
 ## 1.4.3
 
 `2024-05-14`

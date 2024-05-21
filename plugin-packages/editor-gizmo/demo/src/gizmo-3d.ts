@@ -1,8 +1,8 @@
 import { Player } from '@galacean/effects';
-import type { GizmoVFXItem } from '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-model';
 import { gizmo3D } from './assets';
+import { GizmoComponent } from 'plugin-packages/editor-gizmo/src/gizmo-component';
 
 (async () => {
   const player = new Player({
@@ -13,10 +13,10 @@ import { gizmo3D } from './assets';
     onItemClicked: e => {
       const { player, id } = e;
       const composition = player.getCompositions()[0];
-      const item = composition.items.find(item => item.id === String(id)) as GizmoVFXItem;
+      const item = composition.items.find(item => item.id === String(id))!;
 
       console.info('itemId: ' + item.id);
-      console.info('hitBoundingKey: ' + item.hitBounding?.key);
+      console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
     },
   });
 

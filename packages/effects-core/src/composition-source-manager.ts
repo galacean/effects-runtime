@@ -9,7 +9,10 @@ import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import { isObject } from './utils';
-import type { VFXItemProps } from './vfx-item';
+import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
+import type { TimelineAsset } from './plugins/cal/timeline-asset';
+import type { SceneBinding } from './comp-vfx-item';
+import type { ObjectBindingTrack } from './plugins';
 
 let listOrder = 0;
 
@@ -22,6 +25,8 @@ export interface ContentOptions {
   camera: spec.CameraOptions,
   startTime: number,
   globalVolume: GlobalVolume,
+  timelineAsset: TimelineAsset,
+  sceneBindings: SceneBinding[],
 }
 
 /**
@@ -79,8 +84,17 @@ export class CompositionSourceManager implements Disposable {
   private getContent (composition: spec.Composition): ContentOptions {
     // TODO: specification 中补充 globalVolume 类型
     // @ts-expect-error
-    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0 } = composition;
+    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0, timelineAsset } = composition;
     const items = this.assembleItems(composition);
+    const sceneBindings = [];
+
+    //@ts-expect-error
+    for (const sceneBindingData of composition.sceneBindings) {
+      sceneBindings.push({
+        key: this.engine.assetLoader.loadGUID<ObjectBindingTrack>(sceneBindingData.key.id),
+        value: this.engine.assetLoader.loadGUID<VFXItem<VFXItemContent>>(sceneBindingData.value.id),
+      });
+    }
 
     return {
       id,
@@ -92,6 +106,8 @@ export class CompositionSourceManager implements Disposable {
       camera,
       startTime,
       globalVolume,
+      timelineAsset: this.engine.assetLoader.loadGUID(timelineAsset.id),
+      sceneBindings,
     };
   }
 
@@ -130,13 +146,7 @@ export class CompositionSourceManager implements Disposable {
           }
         }
 
-        const pn = sourceItemData.pn;
-        const { plugins = [] } = this.jsonScene as spec.JSONScene;
-
         itemProps.listIndex = listOrder++;
-        if (pn !== undefined && Number.isInteger(pn)) {
-          itemProps.pluginName = plugins[pn];
-        }
 
         // 处理预合成的渲染顺序
         if (itemProps.type === spec.ItemType.composition) {

@@ -16,11 +16,10 @@ import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
 } from './plugins';
-import { TimelineComponent } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
 
-export type VFXItemContent = ParticleSystem | SpriteComponent | TimelineComponent | CameraController | InteractComponent | void | {};
+export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | void | {};
 export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
 export type VFXItemProps =
   & spec.Item
@@ -163,9 +162,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.name = 'VFXItem';
     this.transform.name = this.name;
     this.transform.engine = engine;
-    this.addComponent(TimelineComponent);
     if (props) {
-      // TODO VFXItemProps 添加 components 属性
       this.fromData(props as VFXItemData);
     }
   }
@@ -388,7 +385,12 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   }
 
   /**
-   * 设置元素的在画布上的像素位置, 坐标原点在 canvas 中心，x 正方向水平向右， y 正方向垂直向下
+   * 设置元素在画布上的像素位置
+   * Tips:
+   *  - 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
+   *  - 设置后会覆盖原有的位置信息
+   * @param x - x 坐标
+   * @param y - y 坐标
    */
   setPositionByPixel (x: number, y: number) {
     if (this.composition) {
@@ -397,7 +399,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       const width = this.composition.renderer.getWidth() / 2;
       const height = this.composition.renderer.getHeight() / 2;
 
-      this.transform.setPosition(2 * x * rx / width, -2 * y * ry / height, z);
+      this.transform.setPosition((2 * x / width - 1) * rx, (1 - 2 * y / height) * ry, z);
     }
   }
   /**
@@ -531,9 +533,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     if (!data.content) {
       data.content = { options: {} };
     }
-    const timelineComponent = this.getComponent(TimelineComponent)!;
-
-    timelineComponent.fromData(data.content as spec.NullContent);
 
     if (duration <= 0) {
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
