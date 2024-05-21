@@ -45,11 +45,6 @@ export interface GeometryProps {
   maxVertex?: number,
 }
 
-export interface SubMesh {
-  offset: number,
-  count: number,
-}
-
 export interface SkinProps {
   boneNames?: string[],
   rootBoneName?: string,
@@ -68,7 +63,7 @@ export abstract class Geometry extends EffectsObject {
   /**
    * 子网格数据
    */
-  subMeshes: SubMesh[];
+  subMeshes: spec.SubMesh[];
   /**
    * Geometry 创建函数
    */

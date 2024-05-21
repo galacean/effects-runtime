@@ -269,7 +269,7 @@ export interface EulerCurve {
   keyFrames: ValueGetter<Vector3>,
 }
 
-export interface QuatCurve {
+export interface RotationCurve {
   path: string,
   keyFrames: ValueGetter<Quaternion>,
 }
@@ -281,15 +281,14 @@ export interface ScaleCurve {
 
 export interface FloatCurve {
   path: string,
-  property: string[],
+  property: string,
   className: string,
   keyFrames: ValueGetter<number>,
 }
 
 export class AnimationClip extends EffectsObject {
   positionCurves: PositionCurve[] = [];
-  eulerCurves: EulerCurve[] = [];
-  quatCurves: QuatCurve[] = [];
+  rotationCurves: RotationCurve[] = [];
   scaleCurves: ScaleCurve[] = [];
   floatCurves: FloatCurve[] = [];
 
@@ -307,15 +306,7 @@ export class AnimationClip extends EffectsObject {
       target?.transform.setPosition(value.x, value.y, value.z);
     }
 
-    for (const curve of this.eulerCurves) {
-      const value = curve.keyFrames.getValue(life);
-      // @ts-expect-error
-      const target = this.findTarget(vfxItem, curve.path);
-
-      target?.transform.setRotation(value.x, value.y, value.z);
-    }
-
-    for (const curve of this.quatCurves) {
+    for (const curve of this.rotationCurves) {
       const value = curve.keyFrames.getValue(life);
       // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
@@ -336,7 +327,6 @@ export class AnimationClip extends EffectsObject {
 
   override fromData (data: spec.AnimationClipData): void {
     this.positionCurves.length = 0;
-    this.eulerCurves.length = 0;
     this.scaleCurves.length = 0;
     this.floatCurves.length = 0;
 
@@ -348,21 +338,13 @@ export class AnimationClip extends EffectsObject {
 
       this.positionCurves.push(curve);
     }
-    for (const eulerCurveData of data.eulerCurves) {
-      const curve: EulerCurve = {
-        path: eulerCurveData.path,
-        keyFrames: createValueGetter(eulerCurveData.keyFrames),
+    for (const rotationCurveData of data.rotationCurves) {
+      const curve: RotationCurve = {
+        path: rotationCurveData.path,
+        keyFrames: createValueGetter(rotationCurveData.keyFrames),
       };
 
-      this.eulerCurves.push(curve);
-    }
-    for (const quatCurveData of data.quatCurves) {
-      const curve: QuatCurve = {
-        path: quatCurveData.path,
-        keyFrames: createValueGetter(quatCurveData.keyFrames),
-      };
-
-      this.quatCurves.push(curve);
+      this.rotationCurves.push(curve);
     }
 
     for (const scaleCurvesData of data.scaleCurves) {

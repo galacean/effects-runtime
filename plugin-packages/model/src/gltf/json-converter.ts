@@ -1,6 +1,6 @@
 import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glType2VertexFormatType, glContext } from '@galacean/effects';
 import type {
-  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps, SubMesh,
+  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
 } from '@galacean/effects';
 import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
 import { Color, Quaternion, Vector3 } from '../runtime/math';
@@ -441,7 +441,7 @@ export class JSONConverter {
 
     const animationComponent: spec.AnimationComponentData = {
       id: generateGUID(),
-      dataType: spec.DataType.AnimationController,
+      dataType: spec.DataType.AnimationComponent,
       item: { id: treeItem.id },
       animation,
       animationClips: [],
@@ -457,8 +457,7 @@ export class JSONConverter {
           name: anim.name,
           dataType: spec.DataType.AnimationClip,
           positionCurves: [],
-          eulerCurves: [],
-          quatCurves: [],
+          rotationCurves: [],
           scaleCurves: [],
           floatCurves: [],
         };
@@ -525,7 +524,7 @@ export class JSONConverter {
               [lineValue, points, controlPoints],
             ];
 
-            clipData.quatCurves.push({ path, keyFrames });
+            clipData.rotationCurves.push({ path, keyFrames });
           } else {
             const points: spec.vec3[] = [];
             const controlPoints: spec.vec3[] = [];
@@ -1047,14 +1046,14 @@ export function getGeometryDataFromPropsList (geomPropsList: GeometryProps[]) {
   }
 
   let totalCount = 0;
-  const subMeshes: SubMesh[] = [];
+  const subMeshes: spec.SubMesh[] = [];
 
   for (let i = 0; i < geomPropsList.length; i++) {
     const count = getDrawCount(geomPropsList[i]);
     const offset = totalCount + (geomPropsList[i].drawStart ?? 0);
     const scale = geomPropsList[0].indices?.data.BYTES_PER_ELEMENT ?? 1;
 
-    subMeshes.push({ offset: offset * scale, count });
+    subMeshes.push({ offset: offset * scale, indexCount: count, vertexCount: count });
     if (i) {
       const geom0 = geomPropsList[0];
       const geom1 = geomPropsList[i];
@@ -1116,7 +1115,7 @@ function getOffset (formatType: spec.VertexFormatType, dimension: number, count:
   }
 }
 
-function createGeometryData (props: GeometryProps, subMeshes: SubMesh[]) {
+function createGeometryData (props: GeometryProps, subMeshes: spec.SubMesh[]) {
   let totalByteLength = 0;
 
   for (const attrib in props.attributes) {

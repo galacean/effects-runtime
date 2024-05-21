@@ -558,7 +558,7 @@ export class ModelCameraComponent extends ItemBehaviour {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(spec.DataType.AnimationController)
+@effectsClass(spec.DataType.AnimationComponent)
 export class ModelAnimationController extends ItemBehaviour {
   /**
    * 参数
@@ -642,14 +642,7 @@ class ModelAnimationClip extends AnimationClip {
       target?.transform.setPosition(value.x, value.y, value.z);
     }
 
-    for (const curve of this.eulerCurves) {
-      const value = curve.keyFrames.getValue(life);
-      const target = this.getTargetItem(vfxItem, curve.path);
-
-      target?.transform.setRotation(value.x, value.y, value.z);
-    }
-
-    for (const curve of this.quatCurves) {
+    for (const curve of this.rotationCurves) {
       const value = curve.keyFrames.getValue(life);
       const target = this.getTargetItem(vfxItem, curve.path);
 
