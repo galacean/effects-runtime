@@ -631,9 +631,9 @@ class ModelAnimationClip extends AnimationClip {
 
   override sampleAnimation (vfxItem: VFXItem<VFXItemContent>, time: number) {
     const duration = vfxItem.duration;
-    let life = time / duration;
+    let life = time;
 
-    life = life < 0 ? 0 : (life > 1 ? 1 : life);
+    life = life < 0 ? 0 : (life > duration ? duration : life);
 
     for (const curve of this.positionCurves) {
       const value = curve.keyFrames.getValue(life);
