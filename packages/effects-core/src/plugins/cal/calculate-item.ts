@@ -1,13 +1,12 @@
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
+import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
-import { SpriteColorPlayable } from '../sprite/sprite-item';
-import { ActivationPlayable, AnimationClipPlayable, TransformAnimationPlayable } from './calculate-vfx-item';
+import { ActivationPlayable } from './calculate-vfx-item';
 import { PlayableGraph } from './playable-graph';
-import { Track } from './track';
-import type { Engine } from '../../engine';
+import { TimelineClip, Track } from './track';
 
 /**
  * 基础位移属性数据
@@ -78,24 +77,12 @@ export class ObjectBindingTrack extends Track {
       for (const track of tracks) {
         const newTrack = this.createTrack(Track);
 
-        for (const clipAsset of track.clips) {
-          switch (clipAsset.dataType) {
-            case 'TransformAnimationPlayableAsset':
-              newTrack.name = 'TransformAnimationTrack';
-              newTrack.createClip(TransformAnimationPlayable, 'TransformAnimationTimelineClip').playable.fromData(clipAsset.animationClip);
+        for (const clip of track.clips) {
+          const newClip = new TimelineClip();
 
-              break;
-            case 'SpriteColorAnimationPlayableAsset':
-              newTrack.name = 'SpriteColorTrack';
-              newTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData(clipAsset.animationClip);
-
-              break;
-            case 'AnimationClipPlayableAsset':
-              newTrack.name = 'AnimationTrack';
-              newTrack.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(clipAsset.animationClip);
-
-              break;
-          }
+          newClip.playable = clip.asset.createPlayable();
+          newClip.name = 'TimelineClip';
+          newTrack.addClip(newClip);
         }
       }
     }

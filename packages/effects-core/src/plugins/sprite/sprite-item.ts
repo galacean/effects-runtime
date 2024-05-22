@@ -15,7 +15,7 @@ import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
 import type { CalculateItemOptions } from '../cal/calculate-item';
-import { Playable } from '../cal/playable-graph';
+import { Playable, PlayableAsset } from '../cal/playable-graph';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
@@ -108,7 +108,7 @@ export class SpriteColorPlayable extends Playable {
     }
   }
 
-  override fromData (clipData: { colorOverLifetime?: spec.ColorOverLifetime, startColor?: spec.RGBAColorValue }) {
+  override fromData (clipData: SpriteColorPlayableAssetData) {
     this.clipData = clipData;
     const colorOverLifetime = clipData.colorOverLifetime;
 
@@ -122,6 +122,28 @@ export class SpriteColorPlayable extends Playable {
 
     return this;
   }
+}
+
+@effectsClass('SpriteColorPlayableAsset')
+export class SpriteColorPlayableAsset extends PlayableAsset {
+  data: SpriteColorPlayableAssetData;
+
+  override createPlayable (): Playable {
+    const spriteColorPlayable = new SpriteColorPlayable();
+
+    spriteColorPlayable.fromData(this.data);
+
+    return spriteColorPlayable;
+  }
+
+  override fromData (data: SpriteColorPlayableAssetData): void {
+    this.data = data;
+  }
+}
+
+export interface SpriteColorPlayableAssetData extends spec.EffectsObjectData {
+  colorOverLifetime?: spec.ColorOverLifetime,
+  startColor?: spec.RGBAColorValue,
 }
 
 @effectsClass(spec.DataType.SpriteComponent)
