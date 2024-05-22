@@ -9,6 +9,7 @@ import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-
 import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
+import { effectsClass } from '../../decorators';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);
@@ -48,70 +49,10 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   direction: Vector3;
   startSpeed: number;
 
+  private data: TransformAnimationData;
   private velocity: Vector3;
 
-  override processFrame (dt: number): void {
-    if (this.bindingItem.composition) {
-      this.sampleAnimation();
-    }
-  }
-
-  /**
-   * 应用时间轴K帧数据到对象
-   */
-  private sampleAnimation () {
-    const duration = this.bindingItem.duration;
-    let life = this.time / duration;
-
-    life = life < 0 ? 0 : (life > 1 ? 1 : life);
-
-    if (this.sizeXOverLifetime) {
-      tempSize.x = this.sizeXOverLifetime.getValue(life);
-      if (this.sizeSeparateAxes) {
-        tempSize.y = this.sizeYOverLifetime.getValue(life);
-        tempSize.z = this.sizeZOverLifetime.getValue(life);
-      } else {
-        tempSize.z = tempSize.y = tempSize.x;
-      }
-      const startSize = this.originalTransform.scale;
-
-      this.bindingItem.transform.setScale(tempSize.x * startSize.x, tempSize.y * startSize.y, tempSize.z * startSize.z);
-      // this.animationStream.setCurveValue('transform', 'scale.x', tempSize.x * startSize.x);
-      // this.animationStream.setCurveValue('transform', 'scale.y', tempSize.y * startSize.y);
-      // this.animationStream.setCurveValue('transform', 'scale.z', tempSize.z * startSize.z);
-    }
-
-    if (this.rotationOverLifetime) {
-      const func = (v: ValueGetter<number>) => this.rotationOverLifetime.asRotation ? v.getValue(life) : v.getIntegrateValue(0, life, duration);
-      const incZ = func(this.rotationOverLifetime.z!);
-      const separateAxes = this.rotationOverLifetime.separateAxes;
-
-      tempRot.x = separateAxes ? func(this.rotationOverLifetime.x!) : 0;
-      tempRot.y = separateAxes ? func(this.rotationOverLifetime.y!) : 0;
-      tempRot.z = incZ;
-      const rot = tempRot.addEulers(this.originalTransform.rotation, tempRot);
-
-      this.bindingItem.transform.setRotation(rot.x, rot.y, rot.z);
-      // this.animationStream.setCurveValue('transform', 'rotation.x', rot.x);
-      // this.animationStream.setCurveValue('transform', 'rotation.y', rot.y);
-      // this.animationStream.setCurveValue('transform', 'rotation.z', rot.z);
-    }
-
-    if (this.positionOverLifetime) {
-      const pos = tempPos;
-
-      calculateTranslation(pos, this, this.gravity, this.time, duration, this.originalTransform.position, this.velocity);
-      if (this.originalTransform.path) {
-        pos.add(this.originalTransform.path.getValue(life));
-      }
-      this.bindingItem.transform.setPosition(pos.x, pos.y, pos.z);
-      // this.animationStream.setCurveValue('transform', 'position.x', pos.x);
-      // this.animationStream.setCurveValue('transform', 'position.y', pos.y);
-      // this.animationStream.setCurveValue('transform', 'position.z', pos.z);
-    }
-  }
-
-  override fromData (data: TransformAnimationData): void {
+  override onGraphStart (): void {
     const scale = this.bindingItem.transform.scale;
 
     this.originalTransform = {
@@ -120,9 +61,9 @@ export class TransformAnimationPlayable extends AnimationPlayable {
       // TODO 编辑器 scale 没有z轴控制
       scale: new Vector3(scale.x, scale.y, scale.x),
     };
-    const positionOverLifetime = data.positionOverLifetime;
-    const rotationOverLifetime = data.rotationOverLifetime;
-    const sizeOverLifetime = data.sizeOverLifetime;
+    const positionOverLifetime = this.data.positionOverLifetime;
+    const rotationOverLifetime = this.data.rotationOverLifetime;
+    const sizeOverLifetime = this.data.sizeOverLifetime;
 
     // TODO: 没有 K 帧数据的不需要传 positionOverLifetime 空对象
     if (positionOverLifetime && Object.keys(positionOverLifetime).length !== 0) {
@@ -189,8 +130,74 @@ export class TransformAnimationPlayable extends AnimationPlayable {
     this.velocity = this.direction.clone();
     this.velocity.multiply(this.startSpeed);
   }
+
+  override processFrame (dt: number): void {
+    if (this.bindingItem.composition) {
+      this.sampleAnimation();
+    }
+  }
+
+  /**
+   * 应用时间轴K帧数据到对象
+   */
+  private sampleAnimation () {
+    const duration = this.bindingItem.duration;
+    let life = this.time / duration;
+
+    life = life < 0 ? 0 : (life > 1 ? 1 : life);
+
+    if (this.sizeXOverLifetime) {
+      tempSize.x = this.sizeXOverLifetime.getValue(life);
+      if (this.sizeSeparateAxes) {
+        tempSize.y = this.sizeYOverLifetime.getValue(life);
+        tempSize.z = this.sizeZOverLifetime.getValue(life);
+      } else {
+        tempSize.z = tempSize.y = tempSize.x;
+      }
+      const startSize = this.originalTransform.scale;
+
+      this.bindingItem.transform.setScale(tempSize.x * startSize.x, tempSize.y * startSize.y, tempSize.z * startSize.z);
+      // this.animationStream.setCurveValue('transform', 'scale.x', tempSize.x * startSize.x);
+      // this.animationStream.setCurveValue('transform', 'scale.y', tempSize.y * startSize.y);
+      // this.animationStream.setCurveValue('transform', 'scale.z', tempSize.z * startSize.z);
+    }
+
+    if (this.rotationOverLifetime) {
+      const func = (v: ValueGetter<number>) => this.rotationOverLifetime.asRotation ? v.getValue(life) : v.getIntegrateValue(0, life, duration);
+      const incZ = func(this.rotationOverLifetime.z!);
+      const separateAxes = this.rotationOverLifetime.separateAxes;
+
+      tempRot.x = separateAxes ? func(this.rotationOverLifetime.x!) : 0;
+      tempRot.y = separateAxes ? func(this.rotationOverLifetime.y!) : 0;
+      tempRot.z = incZ;
+      const rot = tempRot.addEulers(this.originalTransform.rotation, tempRot);
+
+      this.bindingItem.transform.setRotation(rot.x, rot.y, rot.z);
+      // this.animationStream.setCurveValue('transform', 'rotation.x', rot.x);
+      // this.animationStream.setCurveValue('transform', 'rotation.y', rot.y);
+      // this.animationStream.setCurveValue('transform', 'rotation.z', rot.z);
+    }
+
+    if (this.positionOverLifetime) {
+      const pos = tempPos;
+
+      calculateTranslation(pos, this, this.gravity, this.time, duration, this.originalTransform.position, this.velocity);
+      if (this.originalTransform.path) {
+        pos.add(this.originalTransform.path.getValue(life));
+      }
+      this.bindingItem.transform.setPosition(pos.x, pos.y, pos.z);
+      // this.animationStream.setCurveValue('transform', 'position.x', pos.x);
+      // this.animationStream.setCurveValue('transform', 'position.y', pos.y);
+      // this.animationStream.setCurveValue('transform', 'position.z', pos.z);
+    }
+  }
+
+  override fromData (data: TransformAnimationData): void {
+    this.data = data;
+  }
 }
 
+@effectsClass('TransformAnimationPlayableAsset')
 export class TransformAnimationPlayableAsset extends PlayableAsset {
   transformAnimationData: TransformAnimationData;
 

@@ -61,7 +61,7 @@ export class Track extends PlayableAsset {
     }
   }
 
-  private addClip (clip: TimelineClip): void {
+  addClip (clip: TimelineClip): void {
     clip.playable.bindingItem = this.bindingItem;
     clip.id = (this.clipSeed++).toString();
     this.clips.push(clip);
