@@ -47,6 +47,10 @@ export class ModelMeshComponent extends RendererComponent {
    * 场景管理器
    */
   sceneManager?: PSceneManager;
+  /**
+   * morph 动画权重
+   */
+  morphWeights: number[] = [];
 
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
@@ -633,7 +637,25 @@ class ModelAnimationClip extends AnimationClip {
       target?.transform.setScale(value.x, value.y, value.z);
     }
 
-    // TODO float curves 采样
+    for (const curve of this.floatCurves) {
+      const maxTime = curve.keyFrames.getMaxTime();
+      const value = curve.keyFrames.getValue(life % maxTime);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      if (curve.className === 'ModelMeshComponent') {
+        const component = target?.getComponent(ModelMeshComponent);
+
+        if (component) {
+          const properties = curve.property.split('.');
+
+          setProperty(component, properties, value);
+        } else {
+          console.error('Can\'t find mesh component');
+        }
+      } else {
+        console.warn(`Ignore curve: className ${curve.className}`);
+      }
+    }
   }
 
   getTargetItem (rootItem: VFXItem<VFXItemContent>, path: string) {
@@ -664,4 +686,22 @@ class ModelAnimationClip extends AnimationClip {
 
     return target;
   }
+}
+
+function setProperty<T> (obj: Object, properties: string[], value: T) {
+  const len = properties.length;
+  let current: any = obj;
+
+  for (let i = 0; i < len - 1; i++) {
+    const propName = properties[i];
+
+    if (!(propName in current) || typeof current[propName] !== 'object') {
+      console.error(`Invalid properties ${properties}`);
+
+      return;
+    }
+    current = current[propName];
+  }
+
+  current[properties[len - 1]] = value;
 }

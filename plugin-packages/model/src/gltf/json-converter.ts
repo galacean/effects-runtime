@@ -336,6 +336,12 @@ export class JSONConverter {
       meshComponent.rootBone = { id: rootBoneItem.id };
     }
 
+    if (meshOptions.weights !== undefined) {
+      meshComponent.morph = {
+        weights: meshOptions.weights,
+      };
+    }
+
     return meshComponent;
   }
 
@@ -523,6 +529,45 @@ export class JSONConverter {
             ];
 
             clipData.rotationCurves.push({ path, keyFrames });
+          } else if (track.path === 'weights') {
+            const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
+            let path = this.treeInfo.getNodePath(node.id);
+
+            if (node.components.length === 0) {
+              for (let i = 0; i < oldScene.items.length; i++) {
+                const child = oldScene.items[i];
+
+                if (child.parentId === node.id) {
+                  path += '/' + child.name;
+
+                  break;
+                }
+              }
+            }
+            const component = outputArray.length / inputArray.length;
+
+            for (let c = 0; c < component; c++) {
+              const lineValue: spec.LineKeyframeValue[] = [];
+
+              for (let i = 0; i < inputArray.length; i++) {
+                lineValue.push([
+                  spec.BezierKeyframeType.LINE,
+                  [inputArray[i], outputArray[i * component + c]],
+                ]);
+              }
+
+              const keyFrames: spec.BezierValue = [
+                spec.ValueType.BEZIER_CURVE,
+                lineValue,
+              ];
+
+              clipData.floatCurves.push({
+                path,
+                className: 'ModelMeshComponent',
+                property: `morphWeights.${c}`,
+                keyFrames,
+              });
+            }
           } else {
             const points: spec.vec3[] = [];
             const controlPoints: spec.vec3[] = [];
@@ -559,19 +604,10 @@ export class JSONConverter {
               [lineValue, points, controlPoints],
             ];
 
-            switch (track.path) {
-              case 'translation':
-                clipData.positionCurves.push({ path, keyFrames });
-
-                break;
-              case 'scale':
-                clipData.scaleCurves.push({ path, keyFrames });
-
-                break;
-              case 'weights':
-                console.error('Find weight key frames');
-
-                break;
+            if (track.path === 'translation') {
+              clipData.positionCurves.push({ path, keyFrames });
+            } else {
+              clipData.scaleCurves.push({ path, keyFrames });
             }
           }
         });
