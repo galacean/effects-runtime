@@ -24,7 +24,6 @@ export interface MeshDestroyOptions {
 }
 
 let seed = 1;
-let count = 0;
 
 /**
  * Mesh 抽象类
@@ -138,7 +137,6 @@ export class Mesh implements Disposable {
     geo.flush();
 
     renderer.drawGeometry(geo, material);
-    count ++;
   }
 
   /**

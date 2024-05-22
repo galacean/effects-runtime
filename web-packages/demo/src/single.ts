@@ -7,7 +7,7 @@ const json = inspireList.turnplate.url;
   try {
     const player = createPlayer();
 
-    await player.loadScene(json, {});
+    await player.loadScene(json);
 
   } catch (e) {
     console.error('biz', e);
