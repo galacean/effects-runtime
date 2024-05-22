@@ -21,7 +21,7 @@
     "preview": "concurrently -k \"vite build -w\" \"sleep 6 && vite preview\"",
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
-    "build:module": "rollup -c && cp -Rf ./dist /Users/cr/Workzone/miniProgram/galacean-effects-alipay-miniprogram-demo/node_modules/@galacean/effects-plugin-spine",
+    "build:module": "rollup -c",
     "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
     "build:demo": "rimraf dist && vite build",
     "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
