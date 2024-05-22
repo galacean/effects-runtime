@@ -4,17 +4,23 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { Region } from './plugins';
-import { HitTestType, ObjectBindingTrack, ParticleBehaviourPlayable, ParticleSystem, Track } from './plugins';
-import type { TimelineAsset } from './plugins/cal/timeline-asset';
+import type { Region, ObjectBindingTrack } from './plugins';
+import { HitTestType, ParticleBehaviourPlayable, ParticleSystem, Track } from './plugins';
+import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem } from './vfx-item';
+import type { ContentOptions } from './composition-source-manager';
 
 export interface SceneBinding {
   key: ObjectBindingTrack,
   value: VFXItem<VFXItemContent>,
+}
+
+export interface SceneBindingData {
+  key: spec.DataPath,
+  value: spec.DataPath,
 }
 
 /**
@@ -30,6 +36,7 @@ export class CompositionComponent extends ItemBehaviour {
   objectBindingTracks: ObjectBindingTrack[] = [];
   sceneBindings: SceneBinding[] = [];
   timelineAsset: TimelineAsset;
+  data: ContentOptions;
 
   override start (): void {
     const { startTime = 0 } = this.item.props;
@@ -45,11 +52,12 @@ export class CompositionComponent extends ItemBehaviour {
 
     for (const item of this.items) {
       // 获取所有的合成元素绑定 Track
-      let newObjectBindingTrack = bindingTrackMap.get(item);
+      const newObjectBindingTrack = bindingTrackMap.get(item);
 
       if (!newObjectBindingTrack) {
-        newObjectBindingTrack = new ObjectBindingTrack(this.engine);
-        newObjectBindingTrack.fromData(item.props.content as unknown as spec.EffectsObjectData);
+        continue;
+        // newObjectBindingTrack = new ObjectBindingTrack(this.engine);
+        // newObjectBindingTrack.fromData(item.props.content as unknown as spec.EffectsObjectData);
       }
 
       newObjectBindingTrack.bindingItem = item;
@@ -106,6 +114,18 @@ export class CompositionComponent extends ItemBehaviour {
   }
 
   createContent () {
+    const sceneBindings = [];
+
+    for (const sceneBindingData of this.data.sceneBindings) {
+      sceneBindings.push({
+        key: this.engine.assetLoader.loadGUID<ObjectBindingTrack>(sceneBindingData.key.id),
+        value: this.engine.assetLoader.loadGUID<VFXItem<VFXItemContent>>(sceneBindingData.value.id),
+      });
+    }
+    this.sceneBindings = sceneBindings;
+    const timelineAsset = this.data.timelineAsset ? this.engine.assetLoader.loadGUID<TimelineAsset>(this.data.timelineAsset.id) : new TimelineAsset(this.engine);
+
+    this.timelineAsset = timelineAsset;
     const items = this.items;
 
     this.items.length = 0;
@@ -127,25 +147,27 @@ export class CompositionComponent extends ItemBehaviour {
           }
           // endBehaviour 类型需优化
           props.content = itemData.content;
-          item = new VFXItem(this.engine, {
-            ...props,
-            ...itemData,
-            // TODO: 2.0 编辑器测试代码，后续移除
-            // oldId: itemData.oldId,
-          });
+          item = assetLoader.loadGUID(itemData.id);
+          item.composition = this.item.composition;
+          // item = new VFXItem(this.engine, {
+          //   ...props,
+          //   ...itemData,
+          //   // TODO: 2.0 编辑器测试代码，后续移除
+          //   // oldId: itemData.oldId,
+          // });
           // TODO 编辑器数据传入 composition type 后移除
           item.type = spec.ItemType.composition;
-          item.composition = this.item.composition;
-          item.addComponent(CompositionComponent).refId = refId;
+          const compositionComponent = item.addComponent(CompositionComponent);
+
+          compositionComponent.data = props as unknown as ContentOptions;
+          compositionComponent.refId = refId;
           item.transform.parentTransform = this.transform;
           this.item.composition.refContent.push(item);
           if (item.endBehavior === spec.ItemEndBehavior.loop) {
             this.item.composition.autoRefTex = false;
           }
-          item.getComponent(CompositionComponent)!.createContent();
-          //@ts-expect-error
-          item.getComponent(CompositionComponent)!.timelineAsset = props.timelineAsset;
-          for (const vfxItem of item.getComponent(CompositionComponent)!.items) {
+          compositionComponent.createContent();
+          for (const vfxItem of compositionComponent.items) {
             vfxItem.setInstanceId(generateGUID());
             for (const component of vfxItem.components) {
               component.setInstanceId(generateGUID());
