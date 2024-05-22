@@ -50,6 +50,7 @@ export class JSONConverter {
     oldScene.bins = binFiles;
 
     const newScene: spec.JSONScene = {
+      ...oldScene,
       version: '3.0',
       playerVersion: {
         web: '3.0',
@@ -57,10 +58,7 @@ export class JSONConverter {
       },
       type: 'ge',
       compositions: [],
-      compositionId: oldScene.compositionId,
       images: [],
-      shapes: oldScene.shapes,
-      plugins: oldScene.plugins,
       textures: [],
       items: [],
       components: [],
