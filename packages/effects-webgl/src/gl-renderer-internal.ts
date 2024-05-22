@@ -171,7 +171,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
       const subMesh = subMeshes[subMeshIndex];
 
       offset = subMesh.offset;
-      count = subMesh.count;
+      count = subMesh.indexCount ?? subMesh.vertexCount;
       if (indicesBuffer) {
         gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
       } else {

@@ -1,11 +1,12 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
 import { random, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
 import type { ColorStop } from '../utils';
 import type { BezierEasing } from './bezier';
-import { BezierPath, buildEasingCurve } from './bezier';
+import { BezierPath, buildEasingCurve, BezierQuat } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
 import { numberToFix } from './utils';
 
@@ -54,6 +55,10 @@ export class ValueGetter<T> {
   }
 
   getValue (time?: number): T {
+    throw Error(NOT_IMPLEMENT);
+  }
+
+  getMaxTime (): number {
     throw Error(NOT_IMPLEMENT);
   }
 
@@ -674,8 +679,8 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
         const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
 
         perc = this.getPercValue(keyTimeData[i], t);
-        point = bezierPath.getPointInPercent(perc);
 
+        point = bezierPath.getPointInPercent(perc);
       }
     }
 
@@ -694,6 +699,112 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     return clamp(value, 0, 1);
   }
 
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
+}
+
+export class BezierCurveQuat extends ValueGetter<Quaternion> {
+  curveSegments: Record<string, {
+    points: Vector2[],
+    // 缓动曲线
+    easingCurve: BezierEasing,
+    timeInterval: number,
+    valueInterval: number,
+    // 路径曲线
+    pathCurve: BezierQuat,
+  }>;
+
+  override onCreate (props: spec.BezierCurveQuatValue) {
+    const [keyframes, points, controlPoints] = props;
+
+    this.curveSegments = {};
+    if (!controlPoints.length) {
+      return;
+    }
+
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      const leftKeyframe = keyframes[i];
+      const rightKeyframe = keyframes[i + 1];
+      const ps1 = Quaternion.fromArray(points[i]);
+      const ps2 = Quaternion.fromArray(points[i + 1]);
+
+      const cp1 = Quaternion.fromArray(controlPoints[2 * i]);
+      const cp2 = Quaternion.fromArray(controlPoints[2 * i + 1]);
+
+      const { points: ps, curve: easingCurve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const s = ps[0];
+      const e = ps[ps.length - 1];
+
+      const pathCurve = new BezierQuat(ps1, ps2, cp1, cp2);
+
+      this.curveSegments[`${s.x}&${e.x}`] = {
+        points: ps,
+        timeInterval,
+        valueInterval,
+        easingCurve,
+        pathCurve: pathCurve,
+      };
+    }
+
+  }
+
+  override getValue (time: number): Quaternion {
+    let perc = 0;
+    const t = numberToFix(time, 5);
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+
+    if (t <= keyTimeStart) {
+      const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+      return pathCurve.getPointInPercent(0);
+
+    }
+    if (t >= keyTimeEnd) {
+      const pathCurve = this.curveSegments[keyTimeData[keyTimeData.length - 1]].pathCurve;
+
+      return pathCurve.getPointInPercent(1);
+    }
+
+    for (let i = 0; i < keyTimeData.length; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (t >= Number(xMin) && t < Number(xMax)) {
+        const pathCurve = this.curveSegments[keyTimeData[i]].pathCurve;
+
+        perc = this.getPercValue(keyTimeData[i], t);
+
+        return pathCurve.getPointInPercent(perc);
+      }
+    }
+
+    const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+    return pathCurve.getPointInPercent(0);
+  }
+
+  getPercValue (curveKey: string, time: number) {
+    const curveInfo = this.curveSegments[curveKey];
+    const [p0] = curveInfo.points;
+
+    const timeInterval = curveInfo.timeInterval;
+    const normalizeTime = numberToFix((time - p0.x) / timeInterval, 4);
+    const value = curveInfo.easingCurve.getValue(normalizeTime);
+
+    // TODO 测试用 编辑器限制值域后移除clamp
+    return clamp(value, 0, 1);
+  }
+
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
 }
 
 const map: Record<any, any> = {
@@ -748,6 +859,13 @@ const map: Record<any, any> = {
     }
 
     return new BezierCurvePath(props);
+  },
+  [spec.ValueType.BEZIER_CURVE_QUAT] (props: number[][][]) {
+    if (props[0].length === 1) {
+      return new StaticValue(new Quaternion(...props[1][0]));
+    }
+
+    return new BezierCurveQuat(props);
   },
 };
 
@@ -857,4 +975,3 @@ export function createKeyFrameMeta () {
     curveCount: 0,
   };
 }
-

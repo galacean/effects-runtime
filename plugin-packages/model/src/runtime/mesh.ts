@@ -38,6 +38,7 @@ export class PMesh extends PEntity {
    * 父元素索引
    */
   parentItemId?: string;
+  rootBoneItem?: VFXItem<VFXItemContent>;
   /**
    * 蒙皮
    */
@@ -107,6 +108,7 @@ export class PMesh extends PEntity {
     this.parentIndex = proxy.getParentIndex();
     this.parentItem = proxy.parentItem;
     this.parentItemId = parentId;
+    this.rootBoneItem = meshData.rootBone as unknown as VFXItem<VFXItemContent>;
     this.skin = proxy.getSkinObj(engine);
     this.morph = proxy.getMorphObj();
     this.hide = proxy.isHide();
@@ -1142,6 +1144,8 @@ export class PGeometry {
 
 class EffectsMeshProxy {
   data: ModelMeshComponentData;
+  geometry: Geometry;
+  rootBoneItem: VFXItem<VFXItemContent>;
   morphObj: PMorph;
 
   constructor (
@@ -1149,6 +1153,8 @@ class EffectsMeshProxy {
     public parentItem?: VFXItem<VFXItemContent>,
   ) {
     this.data = itemData;
+    this.geometry = itemData.geometry as unknown as Geometry;
+    this.rootBoneItem = itemData.rootBone as unknown as VFXItem<VFXItemContent>;
     this.morphObj = new PMorph();
 
     // FIXME: 支持Morph动画
@@ -1238,24 +1244,22 @@ class EffectsMeshProxy {
   }
 
   hasSkin (): boolean {
-    // FIXME: skin
-    //return this.options.skin !== undefined;
-    return false;
+    const skin = this.geometry.getSkinProps();
+
+    return !!(skin.rootBoneName && skin.boneNames && skin.inverseBindMatrices && this.rootBoneItem);
   }
 
   getSkinOpts () {
-    // FIXME: skin
-    //return this.options.skin;
-    return;
+    return this.geometry.getSkinProps();
   }
 
   getSkinObj (engine: Engine): PSkin | undefined {
     const skin = this.getSkinOpts();
 
-    if (skin !== undefined) {
+    if (skin.rootBoneName && skin.boneNames && skin.inverseBindMatrices && this.rootBoneItem) {
       const skinObj = new PSkin();
 
-      skinObj.create(skin, engine, this.parentItem);
+      skinObj.create(skin, engine, this.rootBoneItem);
 
       return skinObj;
     }

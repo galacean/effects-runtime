@@ -1,11 +1,12 @@
 import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glType2VertexFormatType, glContext } from '@galacean/effects';
 import type {
-  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps, SubMesh,
+  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
 } from '@galacean/effects';
 import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
-import { Color } from '../runtime/math';
+import { Color, Quaternion, Vector3 } from '../runtime/math';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { ModelTreeContent } from '../index';
+import { typedArrayFromBinary } from '@galacean/effects-helper';
 
 export class JSONConverter {
   newScene: spec.JSONScene;
@@ -13,7 +14,7 @@ export class JSONConverter {
   engine: Engine;
   renderer: Renderer;
   downloader: Downloader;
-  treeItemList: spec.VFXItemData[] = [];
+  treeInfo = new TreeInfo();
 
   constructor (player: Player) {
     this.engine = player.renderer.engine;
@@ -49,6 +50,7 @@ export class JSONConverter {
     oldScene.bins = binFiles;
 
     const newScene: spec.JSONScene = {
+      ...oldScene,
       version: '3.0',
       playerVersion: {
         web: '3.0',
@@ -56,10 +58,7 @@ export class JSONConverter {
       },
       type: 'ge',
       compositions: [],
-      compositionId: oldScene.compositionId,
       images: [],
-      shapes: oldScene.shapes,
-      plugins: oldScene.plugins,
       textures: [],
       items: [],
       components: [],
@@ -68,7 +67,6 @@ export class JSONConverter {
       geometries: [],
     };
 
-    this.treeItemList = [];
     this.setImage(newScene, oldScene);
     await this.setTexture(newScene, oldScene);
     this.setComponent(newScene, oldScene);
@@ -149,8 +147,6 @@ export class JSONConverter {
     for (const comp of oldScene.components) {
       if (comp.dataType === spec.DataType.SkyboxComponent) {
         newComponents.push(this.createSkyboxComponent(comp, newScene));
-      } else if (comp.dataType === spec.DataType.MeshComponent) {
-        newComponents.push(this.createMeshComponent(comp, newScene, oldScene));
       } else if (comp.dataType === spec.DataType.LightComponent) {
         newComponents.push(this.createLightComponent(comp, newScene));
       } else if (comp.dataType === spec.DataType.CameraComponent) {
@@ -163,8 +159,14 @@ export class JSONConverter {
         treeComp.options.tree.animation = undefined;
         treeComp.options.tree.animations = undefined;
         newComponents.push(comp);
-      } else {
+      } else if (comp.dataType !== spec.DataType.MeshComponent) {
         newComponents.push(comp);
+      }
+    }
+
+    for (const comp of oldScene.components) {
+      if (comp.dataType === spec.DataType.MeshComponent) {
+        newComponents.push(this.createMeshComponent(comp, newScene, oldScene));
       }
     }
   }
@@ -175,7 +177,7 @@ export class JSONConverter {
 
   setComposition (newScene: spec.JSONScene, oldScene: spec.JSONScene) {
     newScene.items = oldScene.items;
-    newScene.items.push(...this.treeItemList);
+    newScene.items.push(...this.treeInfo.getAllTreeNodeList());
     newScene.compositionId = oldScene.compositionId;
     newScene.compositions = oldScene.compositions;
 
@@ -308,8 +310,31 @@ export class JSONConverter {
 
         return data;
       }),
-      rootBone: { id: '' },
     };
+
+    if (meshOptions.skin) {
+      let parentItemId = component.item.id;
+
+      for (const item of oldScene.items) {
+        if (item.id === component.item.id) {
+          parentItemId = item.parentId as string;
+        }
+      }
+
+      if (parentItemId === component.item.id) {
+        throw new Error(`Can't item ${component.item}`);
+      }
+
+      const treeItem = this.treeInfo.getTreeItemByNodeId(parentItemId);
+      const treeNodeList = this.treeInfo.getTreeNodeListByNodeId(parentItemId);
+
+      if (!treeItem || !treeNodeList) {
+        throw new Error(`Can't find tree node list for ${component.item}`);
+      }
+      const rootBoneItem = this.setupBoneData(geometryData, meshOptions.skin, oldScene, treeItem, treeNodeList);
+
+      meshComponent.rootBone = { id: rootBoneItem.id };
+    }
 
     return meshComponent;
   }
@@ -325,13 +350,13 @@ export class JSONConverter {
 
     const treeComp = component as unknown as ModelTreeContent;
     const treeData = treeComp.options.tree;
-    const treeItemList: spec.VFXItemData[] = [];
+    const treeNodeList: spec.VFXItemData[] = [];
 
-    treeData.nodes.forEach(node => {
+    treeData.nodes.forEach((node, index) => {
       const item: spec.VFXItemData = {
         id: generateGUID(),
         parentId: treeItem.id,
-        name: node.name ?? '<unnamed>',
+        name: node.name ?? `node${index}`,
         duration: treeItem.duration,
         // @ts-expect-error
         type: 'ECS',
@@ -347,15 +372,15 @@ export class JSONConverter {
         components: [],
       };
 
-      treeItemList.push(item);
+      treeNodeList.push(item);
       newScene.items.push(item);
     });
 
     treeData.nodes.forEach((node, index) => {
-      const item = treeItemList[index];
+      const item = treeNodeList[index];
 
       node.children?.forEach(child => {
-        const childItem = treeItemList[child];
+        const childItem = treeNodeList[child];
 
         childItem.parentId = item.id;
       });
@@ -370,13 +395,15 @@ export class JSONConverter {
           const subIndex = +item.parentId.substring(index + 1);
 
           if (parentId === treeItem.id) {
-            item.parentId = treeItemList[subIndex].id;
+            item.parentId = treeNodeList[subIndex].id;
           }
         }
       }
     });
 
-    this.treeItemList.push(...treeItemList);
+    this.treeInfo.add(treeItem, treeNodeList);
+
+    this.createAnimationComponent(treeData as any, treeItem, newScene, oldScene);
   }
 
   private createLightComponent (component: spec.ComponentData, scene: spec.JSONScene): spec.ModelLightComponentData {
@@ -405,6 +432,156 @@ export class JSONConverter {
     }
 
     return lightComponent;
+  }
+
+  private createAnimationComponent (treeOptions: spec.ModelTreeOptions<'json'>, treeItem: spec.VFXItemData, newScene: spec.JSONScene, oldScene: spec.JSONScene) {
+    const { animation, animations } = treeOptions;
+
+    const animationComponent: spec.AnimationComponentData = {
+      id: generateGUID(),
+      dataType: spec.DataType.AnimationComponent,
+      item: { id: treeItem.id },
+      animation,
+      animationClips: [],
+    };
+
+    if (animations && animations.length) {
+      // FIXME: calcuate tree item duration
+      const bins = oldScene.bins as unknown as ArrayBuffer[];
+
+      animations.forEach(anim => {
+        const clipData: spec.AnimationClipData = {
+          id: generateGUID(),
+          name: anim.name,
+          dataType: spec.DataType.AnimationClip,
+          positionCurves: [],
+          rotationCurves: [],
+          scaleCurves: [],
+          floatCurves: [],
+        };
+
+        let totalAnimationTime = 0;
+
+        anim.tracks.forEach(track => {
+          const inputArray = typedArrayFromBinary(bins, track.input) as Float32Array;
+
+          totalAnimationTime = Math.max(totalAnimationTime, inputArray[inputArray.length - 1]);
+        });
+
+        anim.tracks.forEach(track => {
+          const inputArray = typedArrayFromBinary(bins, track.input);
+          const outputArray = typedArrayFromBinary(bins, track.output) as Float32Array;
+
+          if (!(inputArray instanceof Float32Array)) {
+            throw new Error(`Type of inputArray should be float32, ${inputArray}`);
+          }
+          if (!(outputArray instanceof Float32Array)) {
+            throw new Error(`Type of outputArray should be float32, ${outputArray}`);
+          }
+          if (track.interpolation !== 'LINEAR') {
+            throw new Error(`Invalid interpolation type ${track.interpolation}`);
+          }
+
+          if (track.path === 'rotation') {
+            const points: spec.vec4[] = [];
+            const controlPoints: spec.vec4[] = [];
+            const lineValue: spec.LineKeyframeValue[] = [];
+
+            for (let i = 0; i < inputArray.length; i++) {
+              points.push([
+                outputArray[i * 4],
+                outputArray[i * 4 + 1],
+                outputArray[i * 4 + 2],
+                outputArray[i * 4 + 3],
+              ]);
+
+              if (i > 0) {
+                const p0 = Quaternion.fromArray(points[i - 1]);
+                const p3 = Quaternion.fromArray(points[i]);
+                const p1 = new Quaternion();
+                const p2 = new Quaternion();
+
+                p1.slerpQuaternions(p0, p3, 1 / 3);
+                p2.slerpQuaternions(p0, p3, 2 / 3);
+
+                controlPoints.push(p1.toArray());
+                controlPoints.push(p2.toArray());
+              }
+
+              lineValue.push([
+                spec.BezierKeyframeType.LINE,
+                [inputArray[i], i],
+              ]);
+            }
+
+            const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
+            const path = this.treeInfo.getNodePath(node.id);
+
+            const keyFrames: spec.BezierCurveQuat = [
+              spec.ValueType.BEZIER_CURVE_QUAT,
+              [lineValue, points, controlPoints],
+            ];
+
+            clipData.rotationCurves.push({ path, keyFrames });
+          } else {
+            const points: spec.vec3[] = [];
+            const controlPoints: spec.vec3[] = [];
+            const lineValue: spec.LineKeyframeValue[] = [];
+
+            for (let i = 0; i < inputArray.length; i++) {
+              points.push([
+                outputArray[i * 3],
+                outputArray[i * 3 + 1],
+                outputArray[i * 3 + 2],
+              ]);
+
+              if (i > 0) {
+                const p0 = Vector3.fromArray(points[i - 1]);
+                const p3 = Vector3.fromArray(points[i]);
+                const p1 = new Vector3().lerpVectors(p0, p3, 1 / 3);
+                const p2 = new Vector3().lerpVectors(p0, p3, 2 / 3);
+
+                controlPoints.push(p1.toArray());
+                controlPoints.push(p2.toArray());
+              }
+
+              lineValue.push([
+                spec.BezierKeyframeType.LINE,
+                [inputArray[i], i],
+              ]);
+            }
+
+            const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
+            const path = this.treeInfo.getNodePath(node.id);
+
+            const keyFrames: spec.BezierCurvePath = [
+              spec.ValueType.BEZIER_CURVE_PATH,
+              [lineValue, points, controlPoints],
+            ];
+
+            switch (track.path) {
+              case 'translation':
+                clipData.positionCurves.push({ path, keyFrames });
+
+                break;
+              case 'scale':
+                clipData.scaleCurves.push({ path, keyFrames });
+
+                break;
+              case 'weights':
+                console.error('Find weight key frames');
+
+                break;
+            }
+          }
+        });
+
+        animationComponent.animationClips.push(clipData);
+      });
+    }
+
+    treeItem.components.push({ id: animationComponent.id });
+    newScene.components.push(animationComponent);
   }
 
   private getMaterialData (material: spec.MaterialOptions<'json'>, scene: spec.JSONScene) {
@@ -612,6 +789,139 @@ export class JSONConverter {
 
     return result;
   }
+
+  private setupBoneData (geom: spec.GeometryData, skin: spec.SkinOptions<'json'>, oldScene: spec.JSONScene, treeItem: spec.VFXItemData, treeNodeList: spec.VFXItemData[]) {
+    const bins = oldScene.bins as unknown as ArrayBuffer[];
+    const { joints, skeleton, inverseBindMatrices } = skin;
+
+    if (!inverseBindMatrices) {
+      throw new Error(`inverseBindMatrices is undefined ${skin}`);
+    }
+    const bindMatrixArray = typedArrayFromBinary(bins, inverseBindMatrices) as Float32Array;
+
+    geom.inverseBindMatrices = Array.from(bindMatrixArray);
+
+    const id2Node: Record<string, spec.VFXItemData> = {};
+
+    let rootBoneItem = treeItem;
+
+    if (skeleton !== undefined) {
+      rootBoneItem = treeNodeList[skeleton];
+    } else {
+      console.warn('Root bone is missing');
+    }
+
+    treeNodeList.forEach(node => {
+      id2Node[node.id] = node;
+      if (node.parentId === rootBoneItem.parentId) {
+        console.error('Find invalid node for rootBoneItem and adjust rootBoneItem');
+        rootBoneItem = treeItem;
+      }
+    });
+
+    geom.rootBoneName = rootBoneItem.name;
+
+    const boneNames: string[] = [];
+
+    joints.forEach(joint => {
+      let currentItem = treeNodeList[joint];
+      const nodeList: string[] = [];
+
+      while (currentItem && currentItem != rootBoneItem) {
+        nodeList.push(currentItem.name);
+        if (currentItem.parentId) {
+          currentItem = id2Node[currentItem.parentId];
+        } else {
+          break;
+        }
+      }
+
+      boneNames.push(nodeList.reverse().join('/'));
+    });
+
+    geom.boneNames = boneNames;
+
+    return rootBoneItem;
+  }
+}
+
+class TreeInfo {
+  tree2NodeList: Record<string, spec.VFXItemData[]> = {};
+  nodeList2Tree: Record<string, spec.VFXItemData> = {};
+  nodeId2Node: Record<string, spec.VFXItemData> = {};
+  node2Path: Record<string, string> = {};
+
+  add (treeItem: spec.VFXItemData, treeNodeList: spec.VFXItemData[]) {
+    if (this.tree2NodeList[treeItem.id]) {
+      throw new Error(`Find duplicate treeItem id: ${treeItem.id}`);
+    }
+
+    this.tree2NodeList[treeItem.id] = treeNodeList;
+    treeNodeList.forEach(node => {
+      if (this.nodeList2Tree[node.id]) {
+        throw new Error(`Find duplicate tree node id: ${node.id}`);
+      }
+      this.nodeList2Tree[node.id] = treeItem;
+      this.nodeId2Node[node.id] = node;
+    });
+
+    treeNodeList.forEach(node => {
+      this.setNodePath(node);
+    });
+  }
+
+  setNodePath (node: spec.VFXItemData) {
+    if (node.parentId) {
+      if (this.node2Path[node.parentId]) {
+        this.node2Path[node.id] = this.node2Path[node.parentId] + '/' + node.name;
+      } else if (this.nodeId2Node[node.parentId]) {
+        this.setNodePath(this.nodeId2Node[node.parentId]);
+        this.node2Path[node.id] = this.node2Path[node.parentId] + '/' + node.name;
+      } else {
+        this.node2Path[node.id] = node.name;
+      }
+    } else {
+      this.node2Path[node.id] = node.name;
+    }
+  }
+
+  getTreeNodeListByTreeId (id: string) {
+    return this.tree2NodeList[id];
+  }
+
+  getTreeNodeListByNodeId (id: string) {
+    const treeItem = this.nodeList2Tree[id];
+
+    if (!treeItem) {
+      throw new Error(`Invalid id ${id}`);
+    }
+
+    return this.getTreeNodeListByTreeId(treeItem.id);
+  }
+
+  getTreeItemByNodeId (id: string) {
+    return this.nodeList2Tree[id];
+  }
+
+  getTreeNode (treeId: string, nodeIndex: number) {
+    const nodeList = this.getTreeNodeListByTreeId(treeId);
+
+    return nodeList[nodeIndex];
+  }
+
+  getAllTreeNodeList () {
+    const nodeList: spec.VFXItemData[] = [];
+
+    Object.keys(this.tree2NodeList).forEach(key => {
+      nodeList.push(...this.tree2NodeList[key]);
+    });
+
+    return nodeList;
+  }
+
+  getNodePath (id: string) {
+    return this.node2Path[id];
+  }
 }
 
 export interface ModelData {
@@ -734,14 +1044,14 @@ export function getGeometryDataFromPropsList (geomPropsList: GeometryProps[]) {
   }
 
   let totalCount = 0;
-  const subMeshes: SubMesh[] = [];
+  const subMeshes: spec.SubMesh[] = [];
 
   for (let i = 0; i < geomPropsList.length; i++) {
     const count = getDrawCount(geomPropsList[i]);
     const offset = totalCount + (geomPropsList[i].drawStart ?? 0);
     const scale = geomPropsList[0].indices?.data.BYTES_PER_ELEMENT ?? 1;
 
-    subMeshes.push({ offset: offset * scale, count });
+    subMeshes.push({ offset: offset * scale, indexCount: count, vertexCount: count });
     if (i) {
       const geom0 = geomPropsList[0];
       const geom1 = geomPropsList[i];
@@ -803,7 +1113,7 @@ function getOffset (formatType: spec.VertexFormatType, dimension: number, count:
   }
 }
 
-function createGeometryData (props: GeometryProps, subMeshes: SubMesh[]) {
+function createGeometryData (props: GeometryProps, subMeshes: spec.SubMesh[]) {
   let totalByteLength = 0;
 
   for (const attrib in props.attributes) {
@@ -1042,7 +1352,9 @@ const vertexBufferSemanticMap: Record<string, string> = {
   a_Tangent: 'TANGENT',
   a_Color: 'COLOR',
   a_Joints: 'JOINTS',
+  a_Joint1: 'JOINTS',
   a_Weights: 'WEIGHTS',
+  a_Weight1: 'WEIGHTS',
   //
   a_Target_Position0: 'POSITION_BS0',
   a_Target_Position1: 'POSITION_BS1',

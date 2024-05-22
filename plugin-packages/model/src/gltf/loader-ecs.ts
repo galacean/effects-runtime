@@ -122,11 +122,8 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     gltfResource.meshes.forEach(mesh => {
-      // FIXME: 需要马上修改
-      // @ts-expect-error
-      this.geometries.push(...mesh.geometriesData);
+      this.geometries.push(mesh.geometryData);
     });
-
     const gltfScene = gltfResource.scenes[0];
 
     gltfScene.camerasComponentData.forEach(comp => this.components.push(comp));
@@ -190,7 +187,6 @@ export class LoaderECSImpl implements LoaderECS {
 
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
-    // @ts-expect-error
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
   }
 

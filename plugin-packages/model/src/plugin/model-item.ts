@@ -4,14 +4,17 @@ import type {
   HitTestCustomParams,
   HitTestSphereParams,
   Renderer,
+  VFXItem,
+  VFXItemContent,
 } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, effectsClass, spec } from '@galacean/effects';
+import { HitTestType, ItemBehaviour, RendererComponent, effectsClass, spec, AnimationClip } from '@galacean/effects';
 import type {
   ModelCameraComponentData,
   ModelItemBounding,
   ModelLightComponentData,
   ModelMeshComponentData,
   ModelSkyboxComponentData,
+  AnimationComponentData,
 } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../index';
 import type { PSceneManager } from '../runtime';
@@ -527,5 +530,138 @@ export class ModelCameraComponent extends ItemBehaviour {
    */
   setTransform (position?: Vector3, rotation?: Euler): void {
     this.updateMainCamera();
+  }
+}
+
+/**
+ * 插件动画组件类，支持 3D 动画能力
+ * @since 2.0.0
+ * @internal
+ */
+@effectsClass(spec.DataType.AnimationComponent)
+export class ModelAnimationComponent extends ItemBehaviour {
+  /**
+   * 参数
+   */
+  data?: AnimationComponentData;
+
+  elapsedTime = 0;
+  animation = -1;
+  clips: ModelAnimationClip[] = [];
+  /**
+   * 构造函数，只保存传入参数，不在这里创建内部对象
+   * @param engine - 引擎
+   */
+  constructor (engine: Engine) {
+    super(engine);
+  }
+
+  /**
+   * 组件开始，需要创建内部对象和添加到场景管理器中
+   */
+  override start (): void {
+    this.elapsedTime = 0;
+    this.item.type = VFX_ITEM_TYPE_3D;
+  }
+
+  /**
+   * 组件更新，更新内部对象状态
+   * @param dt - 更新间隔
+   */
+  override update (dt: number): void {
+    this.elapsedTime += dt * 0.001;
+    if (this.animation >= 0 && this.animation < this.clips.length) {
+      this.clips[this.animation].sampleAnimation(this.item, this.elapsedTime);
+    }
+  }
+
+  /**
+   * 组件销毁
+   */
+  override onDestroy (): void {
+
+  }
+
+  /**
+   * 反序列化，记录传入参数
+   * @param data - 组件参数
+   */
+  override fromData (data: AnimationComponentData): void {
+    super.fromData(data);
+    this.data = data;
+    //
+    this.name = data.name ?? '<empty>';
+    this.animation = data.animation ?? -1;
+    this.clips = [];
+    data.animationClips.forEach(clipData => {
+      const clipObj = new ModelAnimationClip(this.engine);
+
+      clipObj.fromData(clipData);
+      this.clips.push(clipObj);
+    });
+  }
+}
+
+class ModelAnimationClip extends AnimationClip {
+  path2Node: Record<string, VFXItem<VFXItemContent>> = {};
+
+  override sampleAnimation (vfxItem: VFXItem<VFXItemContent>, time: number) {
+    const duration = vfxItem.duration;
+    const life = Math.max(0, time) % duration;
+
+    for (const curve of this.positionCurves) {
+      const maxTime = curve.keyFrames.getMaxTime();
+      const value = curve.keyFrames.getValue(life % maxTime);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setPosition(value.x, value.y, value.z);
+    }
+
+    for (const curve of this.rotationCurves) {
+      const maxTime = curve.keyFrames.getMaxTime();
+      const value = curve.keyFrames.getValue(life % maxTime);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
+    }
+
+    for (const curve of this.scaleCurves) {
+      const maxTime = curve.keyFrames.getMaxTime();
+      const value = curve.keyFrames.getValue(life % maxTime);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setScale(value.x, value.y, value.z);
+    }
+
+    // TODO float curves 采样
+  }
+
+  getTargetItem (rootItem: VFXItem<VFXItemContent>, path: string) {
+    if (this.path2Node[path]) {
+      return this.path2Node[path];
+    }
+
+    let target = rootItem;
+    const nameList = path.split('/');
+
+    for (const name of nameList) {
+      let findTag = false;
+
+      for (const child of target.children) {
+        if (child.name === name) {
+          target = child;
+          findTag = true;
+
+          break;
+        }
+      }
+      if (!findTag) {
+        throw new Error(`Can't find path in tree ${rootItem.id}, ${path}`);
+      }
+    }
+
+    this.path2Node[path] = target;
+
+    return target;
   }
 }

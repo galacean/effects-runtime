@@ -1,5 +1,6 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import type * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
@@ -266,30 +267,35 @@ export class ActivationPlayable extends Playable {
 }
 
 export interface PositionCurve {
-  path: string[],
+  path: string,
   keyFrames: ValueGetter<Vector3>,
 }
 
 export interface EulerCurve {
-  path: string[],
+  path: string,
   keyFrames: ValueGetter<Vector3>,
 }
 
+export interface RotationCurve {
+  path: string,
+  keyFrames: ValueGetter<Quaternion>,
+}
+
 export interface ScaleCurve {
-  path: string[],
+  path: string,
   keyFrames: ValueGetter<Vector3>,
 }
 
 export interface FloatCurve {
-  path: string[],
-  property: string[],
+  path: string,
+  property: string,
   className: string,
   keyFrames: ValueGetter<number>,
 }
 
 export class AnimationClip extends EffectsObject {
   positionCurves: PositionCurve[] = [];
-  eulerCurves: EulerCurve[] = [];
+  rotationCurves: RotationCurve[] = [];
   scaleCurves: ScaleCurve[] = [];
   floatCurves: FloatCurve[] = [];
 
@@ -301,20 +307,23 @@ export class AnimationClip extends EffectsObject {
 
     for (const curve of this.positionCurves) {
       const value = curve.keyFrames.getValue(life);
+      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setPosition(value.x, value.y, value.z);
     }
 
-    for (const curve of this.eulerCurves) {
+    for (const curve of this.rotationCurves) {
       const value = curve.keyFrames.getValue(life);
+      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
-      target?.transform.setRotation(value.x, value.y, value.z);
+      target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
     }
 
     for (const curve of this.scaleCurves) {
       const value = curve.keyFrames.getValue(life);
+      // @ts-expect-error
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setScale(value.x, value.y, value.z);
@@ -325,7 +334,6 @@ export class AnimationClip extends EffectsObject {
 
   override fromData (data: spec.AnimationClipData): void {
     this.positionCurves.length = 0;
-    this.eulerCurves.length = 0;
     this.scaleCurves.length = 0;
     this.floatCurves.length = 0;
 
@@ -337,16 +345,17 @@ export class AnimationClip extends EffectsObject {
 
       this.positionCurves.push(curve);
     }
-    for (const eulerCurveData of data.eulerCurves) {
-      const curve: PositionCurve = {
-        path: eulerCurveData.path,
-        keyFrames: createValueGetter(eulerCurveData.keyFrames),
+    for (const rotationCurveData of data.rotationCurves) {
+      const curve: RotationCurve = {
+        path: rotationCurveData.path,
+        keyFrames: createValueGetter(rotationCurveData.keyFrames),
       };
 
-      this.eulerCurves.push(curve);
+      this.rotationCurves.push(curve);
     }
+
     for (const scaleCurvesData of data.scaleCurves) {
-      const curve: PositionCurve = {
+      const curve: ScaleCurve = {
         path: scaleCurvesData.path,
         keyFrames: createValueGetter(scaleCurvesData.keyFrames),
       };

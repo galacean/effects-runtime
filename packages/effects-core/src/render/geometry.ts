@@ -45,9 +45,10 @@ export interface GeometryProps {
   maxVertex?: number,
 }
 
-export interface SubMesh {
-  offset: number,
-  count: number,
+export interface SkinProps {
+  boneNames?: string[],
+  rootBoneName?: string,
+  inverseBindMatrices?: number[],
 }
 
 /**
@@ -62,7 +63,7 @@ export abstract class Geometry extends EffectsObject {
   /**
    * 子网格数据
    */
-  subMeshes: SubMesh[];
+  subMeshes: spec.SubMesh[];
   /**
    * Geometry 创建函数
    */
@@ -139,6 +140,11 @@ export abstract class Geometry extends EffectsObject {
    * 获取当前 Geometry 的 drawcount
    */
   abstract getDrawCount (): number;
+
+  /**
+   * 获取当前 Geometry 关联的蒙皮数据
+   */
+  abstract getSkinProps (): SkinProps;
 
   /**
    * 初始化 GPU 资源
