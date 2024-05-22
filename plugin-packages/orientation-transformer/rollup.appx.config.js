@@ -7,6 +7,7 @@ const module = "@galacean/appx-adapter";
 const commonAdapterList = [
   "window",
   "document",
+  "navigator"
 ];
 const adapterList = {
   alipay: [...commonAdapterList],
