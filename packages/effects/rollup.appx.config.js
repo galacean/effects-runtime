@@ -3,50 +3,53 @@
  */
 import inject from '@rollup/plugin-inject';
 
-const module = "@galacean/appx-adapter";
+const module = '@galacean/appx-adapter';
 const commonAdapterList = [
-  "btoa",
-  "URL",
-  "Blob",
-  "window",
-  "atob",
-  "devicePixelRatio",
-  "document",
-  "Element",
-  "Event",
-  "EventTarget",
-  "HTMLCanvasElement",
-  "HTMLImageElement",
-  "HTMLElement",
-  "HTMLMediaElement",
-  "HTMLVideoElement",
-  "Image",
-  "navigator",
-  "Node",
-  "requestAnimationFrame",
-  "cancelAnimationFrame",
-  "screen",
-  "XMLHttpRequest",
-  "performance",
-  "WebGLRenderingContext",
-  "WebGL2RenderingContext",
-  "ImageData",
-  "location",
-  "OffscreenCanvas",
-  "URLSearchParams"
+  'window',
+  'navigator',
+  'HTMLElement',
+  'HTMLImageElement',
+  'HTMLCanvasElement',
+  'HTMLVideoElement',
+  'document',
+  'WebGLRenderingContext',
+  'Image',
+  'URL',
+  'location',
+  'XMLHttpRequest',
+  'Blob',
+  'performance',
+  'requestAnimationFrame',
+  'cancelAnimationFrame',
+  'btoa',
+  'atob',
+  'devicePixelRatio',
+  'Element',
+  'Event',
+  'EventTarget',
+  'HTMLMediaElement',
+  'Node',
+  'screen',
+  'WebGL2RenderingContext',
+  'ImageData',
+  'OffscreenCanvas',
+  'URLSearchParams'
 ];
 const adapterList = {
   weapp: [...commonAdapterList],
   alipay: [...commonAdapterList],
 }
+
 export default [
   'weapp',
   'alipay'
 ].map(platform => {
   const adapterVars = {};
+
   adapterList[platform].forEach(name => {
     adapterVars[name] = [`${module}/${platform}`, name];
   });
+
   return {
     input: `src/index.ts`,
     output: [{

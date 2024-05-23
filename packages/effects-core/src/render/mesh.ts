@@ -1,5 +1,5 @@
-import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
+import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 import { getConfig, POST_PROCESS_SETTINGS } from '../config';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
@@ -129,8 +129,8 @@ export class Mesh implements Disposable {
         material.setFloat('emissionIntensity', getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['intensity']);
       }
     }
-
     material.use(renderer, renderingData.currentFrame.globalUniforms);
+
     const geo = this.geometry;
 
     // 执行 Geometry 的数据刷新

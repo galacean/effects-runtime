@@ -3,22 +3,25 @@
  */
 import inject from '@rollup/plugin-inject';
 
-const module = "@galacean/appx-adapter";
+const module = '@galacean/appx-adapter';
 const commonAdapterList = [
-  "window",
-  "document",
-  "navigator"
+  'window',
+  'document',
+  'navigator'
 ];
 const adapterList = {
   alipay: [...commonAdapterList],
 }
+
 export default [
   'alipay'
 ].map(platform => {
   const adapterVars = {};
+
   adapterList[platform].forEach(name => {
     adapterVars[name] = [`${module}/${platform}`, name];
   });
+
   return {
     input: `src/index.ts`,
     output: [{

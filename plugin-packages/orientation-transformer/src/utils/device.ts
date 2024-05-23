@@ -5,16 +5,16 @@ export function isIOS () {
   return ver ? parseInt(ver[2], 10) : 0;
 }
 
-export function isMiniProgram (): boolean {
+export function isMiniProgram () {
   return isAlipayMiniApp() || isWechatMiniApp();
 }
 
-export function isAlipayMiniApp (): boolean {
+export function isAlipayMiniApp () {
   //@ts-expect-error
   return typeof my !== 'undefined' && my?.renderTarget === 'web';
 }
 
-export function isWechatMiniApp (): boolean {
+export function isWechatMiniApp () {
   //@ts-expect-error
   return window.__wxjs_environment === 'miniprogram';
 }

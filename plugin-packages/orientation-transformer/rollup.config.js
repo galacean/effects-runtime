@@ -1,8 +1,8 @@
 import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import replace from '@rollup/plugin-replace';
-import terser from '@rollup/plugin-terser';
 import typescript from 'rollup-plugin-typescript2';
+import terser from '@rollup/plugin-terser';
 import glslInner from '../../scripts/rollup-plugin-glsl-inner';
 import appxConfig from './rollup.appx.config';
 
@@ -35,38 +35,39 @@ const plugins = [
 ];
 
 export default (commandLineArgs) => {
-  return [{
-    input: 'src/index.ts',
-    output: [{
-      file: pkg.module,
-      format: 'es',
-      banner,
-      globals,
-      sourcemap: true,
+  return [
+    {
+      input: 'src/index.ts',
+      output: [{
+        file: pkg.module,
+        format: 'es',
+        banner,
+        globals,
+        sourcemap: true,
+      }, {
+        file: pkg.main,
+        format: 'cjs',
+        banner,
+        globals,
+        sourcemap: true,
+      }],
+      external: ['@galacean/effects'],
+      plugins,
     }, {
-      file: pkg.main,
-      format: 'cjs',
-      banner,
-      globals,
-      sourcemap: true,
-    }],
-    external: ['@galacean/effects'],
-    plugins,
-  }, {
-    input: 'src/index.ts',
-    output: {
-      file: pkg.brower,
-      format: 'umd',
-      name: 'ge.orientationTransformerPlugin',
-      banner,
-      globals,
-      sourcemap: true,
+      input: 'src/index.ts',
+      output: {
+        file: pkg.brower,
+        format: 'umd',
+        name: 'ge.orientationTransformerPlugin',
+        banner,
+        globals,
+        sourcemap: true,
+      },
+      external: ['@galacean/effects'],
+      plugins: plugins.concat(
+        terser()
+      ),
     },
-    external: ['@galacean/effects'],
-    plugins: plugins.concat(
-      terser()
-    ),
-  },
-    ...appxConfig.map(config => ({ ...config, plugins: plugins.concat(config.plugins)}))
+    ...appxConfig.map(config => ({ ...config, plugins: plugins.concat(config.plugins) }))
   ];
 };

@@ -1,11 +1,11 @@
 import type { Disposable } from '@galacean/effects-core';
 import { isWebGL2 } from '@galacean/effects-core';
-import type { GLEngine } from './gl-engine';
 import type { GLGeometry } from './gl-geometry';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { UniformBlockSpec } from './gl-uniform-utils';
 import { createUniformBlockDataFromProgram } from './gl-uniform-utils';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
+import type { GLEngine } from './gl-engine';
 
 export interface ProgramAttributeInfo {
   readonly name: string,
@@ -35,7 +35,6 @@ export class GLProgram implements Disposable {
     private readonly shared: boolean,
     private readonly id: string,
   ) {
-
     let blockUniformNames: string[] = [];
 
     this.pipelineContext = engine.getGLPipelineContext();
