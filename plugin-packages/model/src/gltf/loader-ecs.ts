@@ -117,7 +117,6 @@ export class LoaderECSImpl implements LoaderECS {
         this.images[source].id = imageId;
       }
 
-      // texture.textureOptions.generateMipmap = true;
       return textureOptions;
     });
     this.materials = this.gltfMaterials.map(material => {

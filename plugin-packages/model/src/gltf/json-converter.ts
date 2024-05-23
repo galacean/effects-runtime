@@ -2,7 +2,7 @@ import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glT
 import type {
   Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
 } from '@galacean/effects';
-import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
+import { PBRShaderGUID, UnlitShaderGUID } from '../runtime';
 import { Color, Quaternion, Vector3 } from '../runtime/math';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { ModelTreeContent } from '../index';
@@ -652,7 +652,7 @@ export class JSONConverter {
         shader: {
           id: UnlitShaderGUID,
         },
-        stringTags: this.getStringTags(material),
+        stringTags: {},
         macros: [],
         ints: {},
         floats,
@@ -660,6 +660,8 @@ export class JSONConverter {
         colors,
         textures,
       };
+
+      this.setupMaterial(material, newMaterial);
 
       return newMaterial;
     } else {
@@ -727,7 +729,7 @@ export class JSONConverter {
         shader: {
           id: PBRShaderGUID,
         },
-        stringTags: this.getStringTags(material),
+        stringTags: {},
         macros: [],
         ints: {},
         floats,
@@ -736,31 +738,40 @@ export class JSONConverter {
         textures,
       };
 
+      this.setupMaterial(material, newMaterial);
+
       return newMaterial;
     }
   }
 
-  private getStringTags (material: spec.MaterialOptions<'json'>): Record<string, string> {
-    const stringTags: Record<string, string> = {};
-
-    stringTags['ZWrite'] = String(material.depthMask ?? true);
-    stringTags['ZTest'] = String(true);
-    if (material.blending === spec.MaterialBlending.masked) {
-      stringTags['RenderType'] = RenderType.Mask;
-    } else if (material.blending === spec.MaterialBlending.translucent) {
-      stringTags['RenderType'] = RenderType.Blend;
+  private setupMaterial (oldMat: spec.MaterialOptions<'json'>, newMat: spec.MaterialData) {
+    if (oldMat.blending === spec.MaterialBlending.translucent) {
+      newMat.stringTags['RenderType'] = spec.RenderType.Transparent;
     } else {
-      stringTags['RenderType'] = RenderType.Opaque;
-    }
-    if (material.side === spec.SideMode.BACK) {
-      stringTags['Cull'] = CullMode.Back;
-    } else if (material.side === spec.SideMode.DOUBLE) {
-      stringTags['Cull'] = CullMode.Double;
-    } else {
-      stringTags['Cull'] = CullMode.Front;
+      newMat.stringTags['RenderType'] = spec.RenderType.Opaque;
     }
 
-    return stringTags;
+    if (oldMat.blending === spec.MaterialBlending.masked) {
+      newMat.floats['AlphaClip'] = 1;
+      newMat.floats['_Cutoff'] = oldMat.alphaCutOff ?? 0;
+    } else {
+      newMat.floats['AlphaClip'] = 0;
+    }
+
+    if (oldMat.side === spec.SideMode.BACK) {
+      newMat.stringTags['RenderFace'] = spec.RenderFace.Back;
+    } else if (oldMat.side === spec.SideMode.DOUBLE) {
+      newMat.stringTags['RenderFace'] = spec.RenderFace.Both;
+    } else {
+      newMat.stringTags['RenderFace'] = spec.RenderFace.Front;
+    }
+
+    if (oldMat.type === spec.MaterialType.pbr) {
+      newMat.floats['_SpecularAA'] = oldMat.useSpecularAA ? 1 : 0;
+    }
+
+    newMat.stringTags['ZWrite'] = String(oldMat.depthMask ?? true);
+    newMat.stringTags['ZTest'] = String(true);
   }
 
   private getTextureData (scene: spec.JSONScene, floats: Record<string, number>, texIndex: number, texTransform?: spec.ModelTextureTransform) {
