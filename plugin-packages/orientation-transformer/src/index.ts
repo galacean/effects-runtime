@@ -10,8 +10,9 @@ declare global {
 
 registerPlugin('orientation-transformer', OrientationPluginLoader, TransformVFXItem);
 
-export { getAdapter, closeDeviceMotion, openDeviceMotion } from './orientation-plugin-loader';
+export { getAdapter, closeDeviceMotion, openDeviceMotion, OrientationPluginLoader } from './orientation-plugin-loader';
 export { OrientationAdapterAcceler } from './orientation-adapter-acceler';
+export { TransformVFXItem } from './transform-vfx-item';
 
 export const version = __VERSION__;
 
