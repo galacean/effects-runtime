@@ -1,5 +1,5 @@
 import { spec, generateGUID, glContext } from '@galacean/effects';
-import type { Texture, Engine, EffectComponentData, TextureSourceOptions } from '@galacean/effects';
+import type { Texture, Engine, TextureSourceOptions } from '@galacean/effects';
 import type {
   LoaderOptions, SkyboxType, LoadSceneOptions, LoadSceneECSResult, LoaderECS,
 } from './protocol';
@@ -39,6 +39,7 @@ export class LoaderECSImpl implements LoaderECS {
   materials: spec.MaterialData[] = [];
   shaders: spec.ShaderData[] = [];
   geometries: spec.GeometryData[] = [];
+  animations: spec.AnimationClipData[] = [];
 
   engine: Engine;
 
@@ -83,7 +84,6 @@ export class LoaderECSImpl implements LoaderECS {
       throw new Error('Please load resource by GLTFTools at first');
     }
     this.processGLTFResource(gltfResource);
-
     this.gltfScene = gltfResource.scenes[0];
     this.gltfSkins = this.gltfScene.skins;
     this.gltfMeshs = gltfResource.meshes;
@@ -128,9 +128,15 @@ export class LoaderECSImpl implements LoaderECS {
     });
     const gltfScene = gltfResource.scenes[0];
 
-    gltfScene.camerasComponentData.forEach(comp => this.components.push(comp));
-    gltfScene.lightsComponentData.forEach(comp => this.components.push(comp));
-    gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
+    this.components.push(...gltfScene.camerasComponentData);
+    this.components.push(...gltfScene.lightsComponentData);
+    this.components.push(...gltfScene.meshesComponentData);
+    this.components.push(...gltfScene.animationsComponentData);
+
+    this.animations = [];
+    this.gltfAnimations.forEach(anim => {
+      this.animations.push(anim.animationClipData);
+    });
 
     this.items = [...gltfResource.scenes[0].vfxItemData];
     this.items.forEach(item => {
@@ -192,7 +198,7 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
   }
 
-  processComponentData (components: EffectComponentData[]): void {
+  processComponentData (components: spec.EffectComponentData[]): void {
     components.forEach(comp => {
       if (comp.dataType === spec.DataType.LightComponent) {
         this.processLightComponentData(comp as unknown as ModelLightComponentData);
@@ -406,6 +412,7 @@ export class LoaderECSImpl implements LoaderECS {
       materials: this.materials,
       shaders: this.shaders,
       geometries: this.geometries,
+      animations: this.animations,
     };
 
     return {

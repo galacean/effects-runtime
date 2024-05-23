@@ -612,7 +612,6 @@ export class JSONConverter {
           }
         });
 
-        // @ts-expect-error
         newScene.animations.push(clipData);
 
         animationComponent.animationClips.push({ id: clipData.id });

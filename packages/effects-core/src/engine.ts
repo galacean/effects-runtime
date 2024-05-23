@@ -95,9 +95,7 @@ export class Engine implements Disposable {
         this.addEffectsObjectData(componentData);
       }
     }
-    //@ts-expect-error
     if (jsonScene.animations) {
-      //@ts-expect-error
       for (const animationData of jsonScene.animations) {
         this.addEffectsObjectData(animationData);
       }

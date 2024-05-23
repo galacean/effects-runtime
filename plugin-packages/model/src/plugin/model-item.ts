@@ -543,7 +543,7 @@ export class ModelCameraComponent extends ItemBehaviour {
  * @internal
  */
 @effectsClass(spec.DataType.AnimationComponent)
-export class ModelAnimationComponent extends ItemBehaviour {
+export class AnimationComponent extends ItemBehaviour {
   /**
    * 参数
    */
