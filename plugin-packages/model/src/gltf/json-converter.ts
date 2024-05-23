@@ -93,7 +93,7 @@ export class JSONConverter {
     if (oldScene.textures) {
       for (const tex of oldScene.textures) {
         if (tex.target === 34067) {
-          const { mipmaps, target } = tex;
+          const { mipmaps, target } = tex as spec.SerializedTextureCube;
           const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => this.loadMipmapImage(pointer, bins))));
           const loadedMipmaps = await Promise.all(jobs);
 
@@ -612,7 +612,10 @@ export class JSONConverter {
           }
         });
 
-        animationComponent.animationClips.push(clipData);
+        // @ts-expect-error
+        newScene.animations.push(clipData);
+
+        animationComponent.animationClips.push({ id: clipData.id });
       });
     }
 
@@ -847,12 +850,17 @@ export class JSONConverter {
       console.warn('Root bone is missing');
     }
 
-    treeNodeList.forEach(node => {
-      id2Node[node.id] = node;
-      if (node.parentId === rootBoneItem.parentId) {
+    joints.forEach(joint => {
+      const node = treeNodeList[joint];
+
+      if (node !== rootBoneItem && node.parentId === rootBoneItem.parentId) {
         console.error('Find invalid node for rootBoneItem and adjust rootBoneItem');
         rootBoneItem = treeItem;
       }
+    });
+
+    treeNodeList.forEach(node => {
+      id2Node[node.id] = node;
     });
 
     geom.rootBoneName = rootBoneItem.name;

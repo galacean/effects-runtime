@@ -1,7 +1,7 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import { AnimationPlayable } from './animation-playable';
@@ -293,6 +293,7 @@ export interface FloatCurve {
   keyFrames: ValueGetter<number>,
 }
 
+@effectsClass(spec.DataType.AnimationClip)
 export class AnimationClip extends EffectsObject {
   positionCurves: PositionCurve[] = [];
   rotationCurves: RotationCurve[] = [];

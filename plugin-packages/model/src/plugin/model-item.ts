@@ -600,7 +600,7 @@ export class ModelAnimationComponent extends ItemBehaviour {
     data.animationClips.forEach(clipData => {
       const clipObj = new ModelAnimationClip(this.engine);
 
-      clipObj.fromData(clipData);
+      clipObj.setFromAnimationClip(clipData as unknown as AnimationClip);
       this.clips.push(clipObj);
     });
   }
@@ -656,6 +656,13 @@ class ModelAnimationClip extends AnimationClip {
         console.warn(`Ignore curve: className ${curve.className}`);
       }
     }
+  }
+
+  setFromAnimationClip (clip: AnimationClip) {
+    this.positionCurves = clip.positionCurves.slice();
+    this.rotationCurves = clip.rotationCurves.slice();
+    this.scaleCurves = clip.scaleCurves.slice();
+    this.floatCurves = clip.floatCurves.slice();
   }
 
   getTargetItem (rootItem: VFXItem<VFXItemContent>, path: string) {
