@@ -1,19 +1,13 @@
 import { Player } from '@galacean/effects';
-import inspireList from './assets/inspire-list';
+import '@galacean/effects-plugin-spine';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*NXOAQ6Su4sMAAAAAAAAAAAAADlB4AQ';
-// 'https://mdn.alipayobjects.com/mars/afts/file/A*ZrU7SIuNOdkAAAAAAAAAAAAADlB4AQ';
-// 'https://mdn.alipayobjects.com/mars/afts/file/A*_DqDToRcM7oAAAAAAAAAAAAADlB4AQ';
-// 'https://mdn.alipayobjects.com/mars/afts/file/A*VPbASpxweKAAAAAAAAAAAAAADlB4AQ';
-// 'https://mdn.alipayobjects.com/mars/afts/file/A*a8bbR4Zew5AAAAAAAAAAAAAADlB4AQ';
-// 'https://mdn.alipayobjects.com/mars/afts/file/A*Ok3cRL6zvRoAAAAAAAAAAAAADlB4AQ';
-// 'https://mdn.alipayobjects.com/mars/afts/file/A*J7LRRI073y4AAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*fqAMRYy9g1QAAAAAAAAAAAAADlB4AQ';
 
 (async () => {
   try {
     const player = createPlayer();
 
-    await player.loadScene(json);
+    const comp = await player.loadScene(json);
 
   } catch (e) {
     console.error('biz', e);
