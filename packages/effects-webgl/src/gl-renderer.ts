@@ -319,12 +319,11 @@ export class GLRenderer extends Renderer implements Disposable {
   override dispose (): void {
     this.context.dispose();
     this.extension.dispose();
+    this.pipelineContext.dispose();
     this.glRenderer?.dispose();
-
     // @ts-expect-error
     this.canvas = null;
     this.engine.dispose();
-    this.pipelineContext.dispose();
   }
 
   override lost (e: Event) {
