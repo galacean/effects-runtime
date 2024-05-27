@@ -48,7 +48,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   direction: Vector3;
   startSpeed: number;
 
-  private data: TransformAnimationData;
+  private data: TransformAnimationPlayableAssetData;
   private velocity: Vector3;
 
   override onGraphStart (): void {
@@ -191,14 +191,14 @@ export class TransformAnimationPlayable extends AnimationPlayable {
     }
   }
 
-  override fromData (data: TransformAnimationData): void {
+  override fromData (data: TransformAnimationPlayableAssetData): void {
     this.data = data;
   }
 }
 
 @effectsClass('TransformAnimationPlayableAsset')
 export class TransformAnimationPlayableAsset extends PlayableAsset {
-  transformAnimationData: TransformAnimationData;
+  transformAnimationData: TransformAnimationPlayableAssetData;
 
   override createPlayable (): Playable {
     const transformAnimationPlayable = new TransformAnimationPlayable();
@@ -208,12 +208,12 @@ export class TransformAnimationPlayableAsset extends PlayableAsset {
     return transformAnimationPlayable;
   }
 
-  override fromData (data: TransformAnimationData): void {
+  override fromData (data: TransformAnimationPlayableAssetData): void {
     this.transformAnimationData = data;
   }
 }
 
-export interface TransformAnimationData extends spec.EffectsObjectData {
+export interface TransformAnimationPlayableAssetData extends spec.EffectsObjectData {
   /**
    * 元素大小变化属性
    */
@@ -248,6 +248,12 @@ export class ActivationPlayable extends Playable {
     this.hideRendererComponents();
   }
 
+  override processFrame (dt: number): void {
+    const lifetime = this.time / this.bindingItem.duration;
+
+    this.bindingItem.lifetime = lifetime;
+  }
+
   private hideRendererComponents () {
     for (const rendererComponent of this.bindingItem.rendererComponents) {
       if (rendererComponent.enabled) {
@@ -262,6 +268,12 @@ export class ActivationPlayable extends Playable {
         rendererComponent.enabled = true;
       }
     }
+  }
+}
+
+export class ActivationPlayableAsset extends PlayableAsset {
+  override createPlayable (): Playable {
+    return new ActivationPlayable();
   }
 }
 

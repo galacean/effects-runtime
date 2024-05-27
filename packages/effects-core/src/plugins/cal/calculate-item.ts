@@ -1,12 +1,12 @@
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { effectsClass, serialize } from '../../decorators';
+import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
-import { VFXItem } from '../../vfx-item';
-import { ActivationPlayable } from './calculate-vfx-item';
-import { PlayableGraph } from './playable-graph';
-import { TimelineClip, Track } from './track';
+import { ParticleSystem } from '../particle/particle-system';
+import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
+import { ActivationPlayableAsset } from './calculate-vfx-item';
+import { TrackAsset } from './track';
 
 /**
  * 基础位移属性数据
@@ -40,19 +40,10 @@ export interface CalculateItemOptions {
  * @internal
  */
 @effectsClass('ObjectBindingTrack')
-export class ObjectBindingTrack extends Track {
-  reusable = false;
-  started = false;
-  playableGraph = new PlayableGraph();
+export class ObjectBindingTrack extends TrackAsset {
   options: CalculateItemOptions;
   data: spec.EffectsObjectData;
 
-  /**
-   * 元素动画已经播放的时间
-   */
-  @serialize()
-  private time = 0;
-  private tracks: Track[] = [];
   private trackSeed = 0;
 
   create (): void {
@@ -64,119 +55,27 @@ export class ObjectBindingTrack extends Track {
     };
     this.id = this.bindingItem.id;
     this.name = this.bindingItem.name;
-    const activationTrack = this.createTrack(Track, 'ActivationTrack');
+    const activationTrack = this.createTrack(TrackAsset, 'ActivationTrack');
 
-    activationTrack.createClip(ActivationPlayable, 'ActivationTimelineClip');
-    const data = this.data;
+    activationTrack.bindingItem = this.bindingItem;
+    activationTrack.createClip(ActivationPlayableAsset, 'ActivationTimelineClip');
 
-    //@ts-expect-error
-    if (data.tracks) {
-      //@ts-expect-error
-      const tracks = data.tracks;
+    // 添加粒子动画 clip
+    if (this.bindingItem.getComponent(ParticleSystem)) {
+      const particleTrack = this.createTrack(TrackAsset, 'ParticleTrack');
 
-      for (const track of tracks) {
-        const newTrack = this.createTrack(Track);
-
-        for (const clip of track.clips) {
-          const newClip = new TimelineClip();
-
-          newClip.playable = clip.asset.createPlayable();
-          newClip.name = 'TimelineClip';
-          newTrack.addClip(newClip);
-        }
-      }
+      particleTrack.bindingItem = this.bindingItem;
+      particleTrack.createClip(ParticleBehaviourPlayableAsset);
     }
 
     // TODO TimelineClip 需要传入 start 和 duration 数据
-    for (const track of this.tracks) {
+    for (const track of this.children) {
       for (const clip of track.getClips()) {
         clip.start = this.bindingItem.start;
         clip.duration = this.bindingItem.duration;
+        clip.endBehaviour = this.bindingItem.endBehavior as spec.ItemEndBehavior;
       }
     }
-    this.compileTracks(this.playableGraph);
-  }
-
-  // TODO: [1.31] @十弦 vfx-item 下 onUpdate 的改动验证
-  update (dt: number): void {
-    if (this.bindingItem.stopped || !this.bindingItem.composition) {
-      return;
-    }
-
-    if (!this.started) {
-      for (const track of this.tracks) {
-        for (const clip of track.getClips()) {
-          clip.playable.onGraphStart();
-        }
-      }
-      this.started = true;
-    }
-
-    const now = this.time;
-
-    // 判断动画是否开始
-    if (this.bindingItem.delaying && now >= 0 && now <= this.bindingItem.duration) {
-      this.bindingItem.delaying = false;
-      for (const track of this.tracks) {
-        for (const clip of track.getClips()) {
-          clip.playable.onPlayablePlay();
-        }
-      }
-    }
-
-    // 判断动画是否结束
-    let ended;
-
-    if (VFXItem.isParticle(this.bindingItem)) {
-      ended = this.bindingItem.isEnded(now) && this.bindingItem._content?.destoryed;
-    } else {
-      ended = this.bindingItem.isEnded(now);
-    }
-
-    if (ended) {
-      const endBehavior = this.bindingItem.endBehavior;
-
-      if (!this.bindingItem.ended) {
-        this.bindingItem.ended = true;
-        this.bindingItem.onEnd();
-
-        if (endBehavior === spec.ItemEndBehavior.destroy) {
-          for (const track of this.tracks) {
-            for (const clip of track.getClips()) {
-              clip.playable.onPlayableDestroy();
-            }
-          }
-          this.bindingItem.delaying = true;
-          if (!this.bindingItem.reusable && !this.reusable) {
-            this.bindingItem.dispose();
-
-            return;
-          }
-        }
-      }
-    }
-
-    // 在生命周期内更新动画
-    if (!this.bindingItem.delaying) {
-      const lifetime = this.time / this.bindingItem.duration;
-
-      this.bindingItem.lifetime = lifetime;
-      for (const track of this.tracks) {
-        for (const clip of track.getClips()) {
-          clip.playable.setTime(this.time);
-        }
-      }
-      this.playableGraph.evaluate(dt);
-    }
-  }
-
-  // time 单位秒
-  setTime (time: number) {
-    this.time = time;
-  }
-
-  getTime () {
-    return this.time;
   }
 
   toLocalTime (time: number) {
@@ -194,41 +93,26 @@ export class ObjectBindingTrack extends Track {
     return localTime;
   }
 
-  createTrack<T extends Track> (classConstructor: new (engine: Engine) => T, name?: string): T {
+  createTrack<T extends TrackAsset> (classConstructor: new (engine: Engine) => T, name?: string): T {
     const newTrack = new classConstructor(this.engine);
 
     newTrack.bindingItem = this.bindingItem;
     newTrack.id = (this.trackSeed++).toString();
     newTrack.name = name ? name : 'Track' + newTrack.id;
-    this.tracks.push(newTrack);
+    this.children.push(newTrack);
 
     return newTrack;
   }
 
-  getTracks (): Track[] {
-    return this.tracks;
+  getTracks (): TrackAsset[] {
+    return this.children;
   }
 
-  findTrack (name: string): Track | undefined {
-    for (const track of this.tracks) {
+  findTrack (name: string): TrackAsset | undefined {
+    for (const track of this.children) {
       if (track.name === name) {
         return track;
       }
-    }
-  }
-
-  rebuildGraph () {
-    this.playableGraph = new PlayableGraph();
-    this.compileTracks(this.playableGraph);
-  }
-
-  compileTracks (graph: PlayableGraph) {
-    for (const track of this.tracks) {
-      const trackMixPlayable = track.createPlayable();
-      const trackOutput = track.createOutput();
-
-      graph.addOutput(trackOutput);
-      trackOutput.setSourcePlayeble(trackMixPlayable);
     }
   }
 

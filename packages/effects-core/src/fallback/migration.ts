@@ -419,6 +419,12 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
   const sceneBindings = [];
   const trackDatas = [];
   const playableAssetDatas = [];
+  const timelineAssetData: TimelineAssetData = {
+    tracks:[],
+    id: generateGUID(),
+    //@ts-expect-error
+    dataType: 'TimelineAsset',
+  };
 
   for (const itemDataPath of composition.items) {
     const item = guidToItemMap[itemDataPath.id];
@@ -437,7 +443,10 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
       };
 
       playableAssetDatas.push(newPlayableAssetData);
-      subTrackDatas.push({
+      const newTrackData = {
+        id:generateGUID(),
+        dataType:'TrackAsset',
+        children:[],
         clips: [
           {
             asset:{
@@ -445,7 +454,10 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
             },
           },
         ],
-      });
+      };
+
+      subTrackDatas.push({ id:newTrackData.id });
+      trackDatas.push(newTrackData);
     }
 
     if (item.type === ItemType.sprite) {
@@ -457,7 +469,10 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
       };
 
       playableAssetDatas.push(newPlayableAssetData);
-      subTrackDatas.push({
+      const newTrackData = {
+        id:generateGUID(),
+        dataType:'TrackAsset',
+        children:[],
         clips: [
           {
             asset:{
@@ -465,16 +480,21 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
             },
           },
         ],
-      });
+      };
+
+      subTrackDatas.push({ id:newTrackData.id });
+      trackDatas.push(newTrackData);
     }
 
     const objectBindingTrackData = {
       id: generateGUID(),
       dataType: 'ObjectBindingTrack',
-      tracks: subTrackDatas,
+      children: subTrackDatas,
+      clips:[],
     };
 
     trackDatas.push(objectBindingTrackData);
+    timelineAssetData.tracks.push({ id:objectBindingTrackData.id });
     sceneBindings.push({
       key:{ id:objectBindingTrackData.id },
       value:{ id:item.id },
@@ -486,12 +506,6 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
   for (const trackData of trackDatas) {
     trackIds.push({ id: trackData.id });
   }
-  const timelineAssetData: TimelineAssetData = {
-    tracks:trackIds,
-    id: generateGUID(),
-    //@ts-expect-error
-    dataType: 'TimelineAsset',
-  };
 
   //@ts-expect-error
   composition.timelineAsset = { id:timelineAssetData.id };

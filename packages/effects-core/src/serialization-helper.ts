@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import { getMergedStore } from './decorators';
+import { effectsClassStore, getMergedStore } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 
@@ -152,9 +152,11 @@ export class SerializationHelper {
         continue;
       }
 
+      const propertyType = serializedProperties[key].type;
+
       // FIXME: taggedProperties 为 readonly，这里存在强制赋值
       // @ts-expect-error
-      effectsObject[key as keyof EffectsObject] = SerializationHelper.deserializeProperty(value, engine, 0);
+      effectsObject[key as keyof EffectsObject] = SerializationHelper.deserializeProperty(value, engine, 0, propertyType);
     }
     effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
@@ -179,9 +181,11 @@ export class SerializationHelper {
         continue;
       }
 
+      const propertyType = serializedProperties[key].type;
+
       // FIXME: taggedProperties 为 readonly，这里存在强制赋值
       // @ts-expect-error
-      effectsObject[key as keyof EffectsObject] = await SerializationHelper.deserializePropertyAsync(value, engine, 0);
+      effectsObject[key as keyof EffectsObject] = await SerializationHelper.deserializePropertyAsync(value, engine, 0, propertyType);
     }
     effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
@@ -213,7 +217,7 @@ export class SerializationHelper {
       value.isJoint !== undefined;
   }
 
-  private static deserializeProperty<T> (property: T, engine: Engine, level: number): any {
+  private static deserializeProperty<T> (property: T, engine: Engine, level: number, type?: string): any {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -229,7 +233,7 @@ export class SerializationHelper {
       const res = [];
 
       for (const value of property) {
-        res.push(SerializationHelper.deserializeProperty(value, engine, level + 1));
+        res.push(SerializationHelper.deserializeProperty(value, engine, level + 1, type));
       }
 
       return res;
@@ -241,8 +245,15 @@ export class SerializationHelper {
       SerializationHelper.checkGLTFNode(property)) {
       return property;
     } else if (property instanceof Object) {
-      const res: Record<string, any> = {};
+      let res: Object;
 
+      if (type) {
+        const classConstructor = effectsClassStore[type];
+
+        res = new classConstructor();
+      } else {
+        res = {};
+      }
       for (const key of Object.keys(property)) {
         // @ts-expect-error
         res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
@@ -252,7 +263,7 @@ export class SerializationHelper {
     }
   }
 
-  private static async deserializePropertyAsync<T> (property: T, engine: Engine, level: number): Promise<any> {
+  private static async deserializePropertyAsync<T> (property: T, engine: Engine, level: number, type?: string): Promise<any> {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -266,7 +277,7 @@ export class SerializationHelper {
       const res = [];
 
       for (const value of property) {
-        res.push(await SerializationHelper.deserializePropertyAsync(value, engine, level + 1));
+        res.push(await SerializationHelper.deserializePropertyAsync(value, engine, level + 1, type));
       }
 
       return res;
@@ -280,11 +291,18 @@ export class SerializationHelper {
       SerializationHelper.checkGLTFNode(property)) {
       return property;
     } else if (property instanceof Object) {
-      const res: Record<string, any> = {};
+      let res: Object;
 
+      if (type) {
+        const classConstructor = effectsClassStore[type];
+
+        res = new classConstructor();
+      } else {
+        res = {};
+      }
       for (const key of Object.keys(property)) {
         // @ts-expect-error
-        res[key] = await SerializationHelper.deserializePropertyAsync(property[key], engine, level + 1);
+        res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
       }
 
       return res;

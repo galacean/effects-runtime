@@ -8,14 +8,14 @@ import type { VFXItem, VFXItemContent } from '../../vfx-item';
  */
 export class PlayableGraph {
   private playableOutputs: PlayableOutput[] = [];
+  private playables: Playable[] = [];
 
   constructor () {
   }
 
   evaluate (dt: number) {
     for (const playableOutput of this.playableOutputs) {
-      this.callProcessFrame(playableOutput.sourcePlayable, dt);
-      playableOutput.processFrame(dt);
+      this.processFrameWithRoot(playableOutput, dt);
     }
   }
 
@@ -27,12 +27,8 @@ export class PlayableGraph {
     this.playableOutputs.push(output);
   }
 
-  private callProcessFrame (playable: Playable, dt: number) {
-    // 后序遍历，保证 playable 拿到的 input 节点数据是最新的
-    for (const inputPlayable of playable.getInputs()) {
-      this.callProcessFrame(inputPlayable, dt);
-    }
-    playable.processFrame(dt);
+  private processFrameWithRoot (output: PlayableOutput, dt: number) {
+    output.processFrameRecursive(dt);
   }
 }
 
@@ -42,9 +38,13 @@ export class PlayableGraph {
  * @internal
  */
 export class Playable {
+  static nullPlayable = new Playable();
   bindingItem: VFXItem<VFXItemContent>;
 
+  private destroyed = false;
   private inputs: Playable[] = [];
+  private inputWeight: number[] = [];
+  private playState: PlayState = PlayState.Delayed;
 
   /**
    * 当前本地播放的时间
@@ -56,18 +56,41 @@ export class Playable {
 
   connect (playable: Playable) {
     this.inputs.push(playable);
+    this.inputWeight.push(1);
+  }
+
+  getInputCount () {
+    return this.inputs.length;
   }
 
   getInputs (): Playable[] {
     return this.inputs;
   }
 
-  getInput (index: number): Playable | undefined {
-    if (index > this.inputs.length - 1) {
-      return;
-    }
-
+  getInput (index: number): Playable {
     return this.inputs[index];
+  }
+
+  getInputWeight (inputIndex: number): number {
+    return this.inputWeight[inputIndex];
+  }
+
+  setInputWeight (playable: Playable, weight: number): void;
+
+  setInputWeight (inputIndex: number, weight: number): void;
+
+  setInputWeight (playableOrIndex: Playable | number, weight: number): void {
+    if (playableOrIndex instanceof Playable) {
+      for (let i = 0;i < this.inputs.length;i++) {
+        if (this.inputs[i] === playableOrIndex) {
+          this.inputWeight[i] = weight;
+
+          return;
+        }
+      }
+    } else {
+      this.inputWeight[playableOrIndex] = weight;
+    }
   }
 
   setTime (time: number) {
@@ -76,6 +99,14 @@ export class Playable {
 
   getTime () {
     return this.time;
+  }
+
+  destroy () {
+    if (this.destroyed) {
+      return;
+    }
+    this.onPlayableDestroy();
+    this.destroyed = true;
   }
 
   onGraphStart () {
@@ -99,6 +130,27 @@ export class Playable {
   }
 
   fromData (data: any) { }
+
+  /**
+   * @internal
+   */
+  processFrameRecursive (dt: number) {
+    // 后序遍历，保证 playable 拿到的 input 节点数据是最新的
+    for (let i = 0;i < this.getInputCount();i++) {
+      if (this.getInputWeight(i) <= 0) {
+        continue;
+      }
+      this.getInput(i).processFrameRecursive(dt);
+    }
+    if (this.playState === PlayState.Delayed) {
+      this.onPlayablePlay();
+      this.playState = PlayState.Playing;
+    }
+    if (this.destroyed) {
+      return;
+    }
+    this.processFrame(dt);
+  }
 }
 
 /**
@@ -133,8 +185,22 @@ export class PlayableOutput {
 
   processFrame (dt: number) {
   }
+
+  /**
+   * @internal
+   */
+  processFrameRecursive (dt: number) {
+    this.sourcePlayable.processFrameRecursive(dt);
+    this.processFrame(dt);
+  }
 }
 
 export abstract class PlayableAsset extends EffectsObject {
   abstract createPlayable (): Playable;
+}
+
+export enum PlayState {
+  Playing,
+  Paused,
+  Delayed,
 }

@@ -56,7 +56,7 @@ export class CameraController extends ItemBehaviour {
   override update () {
     let lifetime = this.item.lifetime;
 
-    if (lifetime < 0 || !this.item.transform.getValid()) {
+    if (!this.item.transform.getValid()) {
       return;
     }
     const quat = new Quaternion();
