@@ -79,7 +79,7 @@ export class TimelinePlayable extends Playable {
   sortTracks (tracks: TrackAsset[]) {
     const sortedTracks = [];
 
-    for (let i = 0;i < tracks.length;i++) {
+    for (let i = 0; i < tracks.length; i++) {
       sortedTracks.push(new TrackSortWrapper(tracks[i], i));
     }
     sortedTracks.sort(compareTracks);
@@ -100,7 +100,10 @@ export class TrackSortWrapper {
   }
 }
 
-function isAncestor (ancestorCandidate: VFXItem<VFXItemContent>, descendantCandidate: VFXItem<VFXItemContent>): boolean {
+function isAncestor (
+  ancestorCandidate: VFXItem<VFXItemContent>,
+  descendantCandidate: VFXItem<VFXItemContent>,
+) {
   let current = descendantCandidate.parent;
 
   while (current) {

@@ -1,4 +1,5 @@
 import { EffectsObject } from '../../effects-object';
+import type { Disposable } from '../../utils';
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
 
 /**
@@ -37,7 +38,7 @@ export class PlayableGraph {
  * @since 2.0.0
  * @internal
  */
-export class Playable {
+export class Playable implements Disposable {
   static nullPlayable = new Playable();
   bindingItem: VFXItem<VFXItemContent>;
 
@@ -81,7 +82,7 @@ export class Playable {
 
   setInputWeight (playableOrIndex: Playable | number, weight: number): void {
     if (playableOrIndex instanceof Playable) {
-      for (let i = 0;i < this.inputs.length;i++) {
+      for (let i = 0; i < this.inputs.length; i++) {
         if (this.inputs[i] === playableOrIndex) {
           this.inputWeight[i] = weight;
 
@@ -101,7 +102,7 @@ export class Playable {
     return this.time;
   }
 
-  destroy () {
+  dispose (): void {
     if (this.destroyed) {
       return;
     }
@@ -136,7 +137,7 @@ export class Playable {
    */
   processFrameRecursive (dt: number) {
     // 后序遍历，保证 playable 拿到的 input 节点数据是最新的
-    for (let i = 0;i < this.getInputCount();i++) {
+    for (let i = 0; i < this.getInputCount(); i++) {
       if (this.getInputWeight(i) <= 0) {
         continue;
       }

@@ -153,7 +153,7 @@ export class ParticleSystem extends Component {
   textureSheetAnimation?: ParticleTextureSheetAnimation;
   interaction?: ParticleInteraction;
   emissionStopped: boolean;
-  destoryed = false;
+  destroyed = false;
   props: ParticleSystemProps;
 
   private generatedCount: number;
@@ -453,7 +453,7 @@ export class ParticleSystem extends Component {
           const node = link.last;
 
           if (node && (node.content[0]) < this.lastUpdate) {
-            this.destoryed = true;
+            this.destroyed = true;
           }
         }
       }
@@ -841,7 +841,7 @@ export class ParticleSystem extends Component {
     const props = data as ParticleSystemProps;
 
     this.props = props;
-    this.destoryed = false;
+    this.destroyed = false;
     const cachePrefix = '';
     const options = props.options;
     const positionOverLifetime = props.positionOverLifetime!;

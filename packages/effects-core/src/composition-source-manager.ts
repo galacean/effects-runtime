@@ -103,7 +103,7 @@ export class CompositionSourceManager implements Disposable {
       globalVolume,
       timelineAsset: timelineAsset,
       //@ts-expect-error
-      sceneBindings:composition.sceneBindings,
+      sceneBindings: composition.sceneBindings,
     };
   }
 
