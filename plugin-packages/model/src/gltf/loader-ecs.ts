@@ -128,6 +128,8 @@ export class LoaderECSImpl implements LoaderECS {
     });
     const gltfScene = gltfResource.scenes[0];
 
+    gltfScene.meshesComponentData.forEach(mesh => this.checkMeshComponentData(mesh, gltfResource));
+
     this.components.push(...gltfScene.camerasComponentData);
     this.components.push(...gltfScene.lightsComponentData);
     this.components.push(...gltfScene.meshesComponentData);
@@ -155,6 +157,29 @@ export class LoaderECSImpl implements LoaderECS {
     }
 
     return this.getLoadResult();
+  }
+
+  checkMeshComponentData (mesh: ModelMeshComponentData, resource: GLTFResources): void {
+    if (mesh.materials.length <= 0) {
+      throw new Error(`Submesh array is empty: ${mesh}`);
+    }
+
+    let geometryData: spec.GeometryData | undefined;
+
+    resource.meshes.forEach(meshData => {
+      if (meshData.geometryData.id === mesh.geometry.id) {
+        geometryData = meshData.geometryData;
+      }
+    });
+
+    if (geometryData === undefined) {
+      throw new Error(`Can't find geometry data for ${mesh.geometry.id}`);
+    }
+
+    if (geometryData.subMeshes.length != mesh.materials.length) {
+      throw new Error(`Submeshes and materials mismach: ${geometryData.subMeshes.length}, ${mesh.materials.length}`);
+    }
+    //mesh.materials.length !=
   }
 
   processGLTFResource (resource: GLTFResources): void {
@@ -249,9 +274,7 @@ export class LoaderECSImpl implements LoaderECS {
   }
 
   processMeshComponentData (mesh: ModelMeshComponentData): void {
-    if (mesh.materials.length <= 0) {
-      console.error('Submesh array is empty');
-    }
+
   }
 
   processSkyboxComponentData (skybox: ModelSkyboxComponentData): void {
