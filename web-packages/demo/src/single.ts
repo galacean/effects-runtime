@@ -1,5 +1,4 @@
 import { Player } from '@galacean/effects';
-import inspireList from './assets/inspire-list';
 
 const json = inspireList.turnplate.url;
 
