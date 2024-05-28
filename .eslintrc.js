@@ -46,6 +46,8 @@ module.exports = {
       "method": "neither"
     }],
     "new-parens": "error",
+    // TODO:: will be opened
+    "spaced-comment": "off",
     "no-multi-spaces": [
       "error",
       {
@@ -65,23 +67,19 @@ module.exports = {
       { "blankLine": "any", "prev": ["const", "let", "var"], "next": ["const", "let", "var"] }
     ],
     "promise/always-return": "off",
-    // TODO:: will be opened
-    "promise/catch-or-return": "off",
+    "promise/catch-or-return": "error",
     "prefer-rest-params": "off",
     "semi": ["error", "always"],
     "space-in-parens": ["error", "never"],
     "@typescript-eslint/comma-spacing": "error",
     "@typescript-eslint/no-namespace": "off",
-    // TODO:: will be ["error", "never"]
-    "import/prefer-default-export": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
     "@typescript-eslint/no-unused-vars": [
       "error",
       { "vars": "all", "varsIgnorePattern": "^_", "args": "none", "caughtErrors": "all", "caughtErrorsIgnorePattern": "^ignore" }
     ],
     "@typescript-eslint/ban-ts-comment": "off",
-    // TODO:: will be opened
-    "@typescript-eslint/ban-types": "off",
+    "@typescript-eslint/ban-types": ["error", { "types": { "{}": false, "Function": false, "Object": false } }],
     "@typescript-eslint/indent": ["error", 2, {
       "SwitchCase": 1,
       "ignoredNodes": [
