@@ -2,7 +2,8 @@ import type { DataPath, EffectsObjectData } from '@galacean/effects-specificatio
 import { effectsClass } from '../../decorators';
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
 import type { ObjectBindingTrack } from './calculate-item';
-import { PlayableGraph, PlayableTraversalMode } from './playable-graph';
+import type { PlayableGraph } from './playable-graph';
+import { PlayableTraversalMode } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import type { RuntimeClip, TrackAsset } from './track';
 
@@ -13,13 +14,14 @@ export interface TimelineAssetData extends EffectsObjectData {
 @effectsClass('TimelineAsset')
 export class TimelineAsset extends PlayableAsset {
   tracks: TrackAsset[] = [];
-  graph = new PlayableGraph();
+  graph: PlayableGraph;
 
-  override createPlayable (): Playable {
-    const timelinePlayable = new TimelinePlayable();
+  override createPlayable (graph: PlayableGraph): Playable {
+    this.graph = graph;
+    const timelinePlayable = new TimelinePlayable(graph);
 
     timelinePlayable.setTraversalMode(PlayableTraversalMode.Passthrough);
-    timelinePlayable.compileTracks(this.graph, this.tracks);
+    timelinePlayable.compileTracks(graph, this.tracks);
 
     return timelinePlayable;
   }
@@ -43,6 +45,10 @@ export class TimelinePlayable extends Playable {
   masterTracks: ObjectBindingTrack[] = [];
 
   private graphStarted = false;
+
+  override prepareFrame (dt: number): void {
+    this.evaluate();
+  }
 
   evaluate () {
     // TODO 移到 graph 调用
@@ -69,7 +75,7 @@ export class TimelinePlayable extends Playable {
       this.masterTracks.push(newObjectBindingTrack);
     }
     for (const track of tracks) {
-      const trackMixPlayable = track.createPlayableGraph(this.clips);
+      const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
 
       this.connect(trackMixPlayable);
       const trackOutput = track.createOutput();

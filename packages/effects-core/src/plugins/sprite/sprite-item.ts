@@ -15,6 +15,7 @@ import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
 import type { CalculateItemOptions } from '../cal/calculate-item';
+import type { PlayableGraph } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
@@ -128,8 +129,8 @@ export class SpriteColorPlayable extends Playable {
 export class SpriteColorPlayableAsset extends PlayableAsset {
   data: SpriteColorPlayableAssetData;
 
-  override createPlayable (): Playable {
-    const spriteColorPlayable = new SpriteColorPlayable();
+  override createPlayable (graph: PlayableGraph): Playable {
+    const spriteColorPlayable = new SpriteColorPlayable(graph);
 
     spriteColorPlayable.fromData(this.data);
 

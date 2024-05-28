@@ -1,3 +1,4 @@
+import type { PlayableGraph } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import { ParticleSystem } from './particle-system';
 
@@ -33,8 +34,8 @@ export class ParticleBehaviourPlayable extends Playable {
 }
 
 export class ParticleBehaviourPlayableAsset extends PlayableAsset {
-  override createPlayable (): Playable {
-    return new ParticleBehaviourPlayable();
+  override createPlayable (graph: PlayableGraph): Playable {
+    return new ParticleBehaviourPlayable(graph);
   }
 }
 

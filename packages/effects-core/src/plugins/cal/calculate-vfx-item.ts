@@ -6,6 +6,7 @@ import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import { AnimationPlayable } from './animation-playable';
 import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-item';
+import type { PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
@@ -201,8 +202,8 @@ export class TransformAnimationPlayable extends AnimationPlayable {
 export class TransformAnimationPlayableAsset extends PlayableAsset {
   transformAnimationData: TransformAnimationPlayableAssetData;
 
-  override createPlayable (): Playable {
-    const transformAnimationPlayable = new TransformAnimationPlayable();
+  override createPlayable (graph: PlayableGraph): Playable {
+    const transformAnimationPlayable = new TransformAnimationPlayable(graph);
 
     transformAnimationPlayable.fromData(this.transformAnimationData);
 
@@ -273,8 +274,8 @@ export class ActivationPlayable extends Playable {
 }
 
 export class ActivationPlayableAsset extends PlayableAsset {
-  override createPlayable (): Playable {
-    return new ActivationPlayable();
+  override createPlayable (graph: PlayableGraph): Playable {
+    return new ActivationPlayable(graph);
   }
 }
 

@@ -15,6 +15,14 @@ export class PlayableGraph {
   }
 
   evaluate (dt: number) {
+    for (const playable of this.playables) {
+      playable.prepareFrameFlag = false;
+      if (!playable.overrideTimeNextEvaluation) {
+        playable.setTime(playable.getTime() + dt);
+      } else {
+        playable.overrideTimeNextEvaluation = false;
+      }
+    }
     for (const playableOutput of this.playableOutputs) {
       this.prepareFrameWithRoot(playableOutput, dt);
     }
@@ -29,6 +37,10 @@ export class PlayableGraph {
 
   addOutput (output: PlayableOutput) {
     this.playableOutputs.push(output);
+  }
+
+  addPlayable (playable: Playable) {
+    this.playables.push(playable);
   }
 
   private processFrameWithRoot (output: PlayableOutput, dt: number) {
@@ -48,8 +60,9 @@ export class PlayableGraph {
  * @internal
  */
 export class Playable implements Disposable {
-  static nullPlayable = new Playable();
   bindingItem: VFXItem<VFXItemContent>;
+  prepareFrameFlag = false;
+  overrideTimeNextEvaluation = false;
 
   private destroyed = false;
 
@@ -65,7 +78,8 @@ export class Playable implements Disposable {
    */
   protected time: number;
 
-  constructor () {
+  constructor (graph: PlayableGraph) {
+    graph.addPlayable(this);
   }
 
   connect (playable: Playable) {
@@ -123,6 +137,7 @@ export class Playable implements Disposable {
 
   setTime (time: number) {
     this.time = time;
+    this.overrideTimeNextEvaluation = true;
   }
 
   getTime () {
@@ -175,10 +190,11 @@ export class Playable implements Disposable {
    * @internal
    */
   prepareFrameRecursive (dt: number, passthroughPort: number) {
-    if (this.destroyed) {
+    if (this.destroyed || this.prepareFrameFlag) {
       return;
     }
     this.prepareFrame(dt);
+    this.prepareFrameFlag = true;
 
     // 前序遍历，用于设置节点的初始状态，weight etc.
     if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
@@ -274,7 +290,7 @@ export class PlayableOutput {
 }
 
 export abstract class PlayableAsset extends EffectsObject {
-  abstract createPlayable (): Playable;
+  abstract createPlayable (graph: PlayableGraph): Playable;
 }
 
 export enum PlayState {
