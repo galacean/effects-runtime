@@ -63,7 +63,7 @@ export class TrackAsset extends PlayableAsset {
 
       clipPlayable.bindingItem = this.bindingItem;
       timelineClip.playable = clipPlayable;
-      mixer.connect(clipPlayable);
+      mixer.addInput(clipPlayable, 0);
       mixer.setInputWeight(clipPlayable, 0);
     }
 

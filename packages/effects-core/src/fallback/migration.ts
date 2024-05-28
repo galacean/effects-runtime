@@ -239,7 +239,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
         clips: [
           {
             id: generateGUID(),
-            dataType: 'TransformAnimationPlayableAsset',
+            dataType: 'TransformPlayableAsset',
             sizeOverLifetime: item.content.sizeOverLifetime,
             rotationOverLifetime: item.content.rotationOverLifetime,
             positionOverLifetime: item.content.positionOverLifetime,
@@ -434,7 +434,7 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     if (item.type !== ItemType.particle) {
       const newPlayableAssetData = {
         id: generateGUID(),
-        dataType: 'TransformAnimationPlayableAsset',
+        dataType: 'TransformPlayableAsset',
         //@ts-expect-error
         sizeOverLifetime: item.content.sizeOverLifetime,
         //@ts-expect-error
