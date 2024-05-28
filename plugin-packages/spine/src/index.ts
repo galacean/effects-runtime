@@ -1,4 +1,3 @@
-import type { VFXItemContent } from '@galacean/effects';
 import { VFXItem, logger, registerPlugin } from '@galacean/effects';
 import { SpineLoader } from './spine-loader';
 import {
@@ -26,7 +25,7 @@ export {
   getSkeletonFromBuffer,
 };
 
-registerPlugin('spine', SpineLoader, VFXItem<VFXItemContent>);
+registerPlugin('spine', SpineLoader, VFXItem);
 
 export const version = __VERSION__;
 

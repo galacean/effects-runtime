@@ -1,6 +1,6 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, VFXItemContent, math, SceneLoadType,
+  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, math, SceneLoadType,
   SceneType, EffectsObject,
 } from '@galacean/effects-core';
 import {
@@ -154,7 +154,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   private readonly handleWebGLContextLost?: (event: Event) => void;
   private readonly handleWebGLContextRestored?: () => void;
   private readonly handleMessageItem?: (item: MessageItem) => void;
-  private readonly handlePlayerPause?: (item: VFXItem<VFXItemContent>) => void;
+  private readonly handlePlayerPause?: (item: VFXItem) => void;
   private readonly handleItemClicked?: (event: any) => void;
   private readonly handlePlayableUpdate?: (event: { playing: boolean, player: Player }) => void;
   private readonly handleRenderError?: (err: Error) => void;
@@ -214,7 +214,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.handleMessageItem = onMessageItem;
     this.handlePlayableUpdate = onPlayableUpdate;
     this.handleRenderError = onRenderError;
-    this.handlePlayerPause = (item: VFXItem<VFXItemContent>) => {
+    this.handlePlayerPause = (item: VFXItem) => {
       this.pause();
       onPausedByItem?.({
         name: item.name,

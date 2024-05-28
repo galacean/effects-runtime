@@ -5,7 +5,6 @@ import type {
   HitTestSphereParams,
   Renderer,
   VFXItem,
-  VFXItemContent,
 } from '@galacean/effects';
 import { HitTestType, ItemBehaviour, RendererComponent, effectsClass, spec, AnimationClip } from '@galacean/effects';
 import type {
@@ -604,9 +603,9 @@ export class ModelAnimationComponent extends ItemBehaviour {
 }
 
 class ModelAnimationClip extends AnimationClip {
-  path2Node: Record<string, VFXItem<VFXItemContent>> = {};
+  path2Node: Record<string, VFXItem> = {};
 
-  override sampleAnimation (vfxItem: VFXItem<VFXItemContent>, time: number) {
+  override sampleAnimation (vfxItem: VFXItem, time: number) {
     const duration = vfxItem.duration;
     const life = Math.max(0, time) % duration;
 
@@ -637,7 +636,7 @@ class ModelAnimationClip extends AnimationClip {
     // TODO float curves 采样
   }
 
-  getTargetItem (rootItem: VFXItem<VFXItemContent>, path: string) {
+  getTargetItem (rootItem: VFXItem, path: string) {
     if (this.path2Node[path]) {
       return this.path2Node[path];
     }

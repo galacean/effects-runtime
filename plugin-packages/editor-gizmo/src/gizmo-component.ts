@@ -1,5 +1,5 @@
-import type { GeometryDrawMode, HitTestCustomParams, Mesh, Texture, VFXItem, VFXItemContent } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, Transform, assertExist, effectsClass, glContext, math, spec } from '@galacean/effects';
+import type { GeometryDrawMode, HitTestCustomParams, Mesh, Texture, VFXItem } from '@galacean/effects';
+import { HitTestType, ItemBehaviour, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, spec } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
 import { iconTextures, type EditorGizmoPlugin } from './gizmo-loader';
@@ -22,7 +22,7 @@ const constants = glContext;
 @effectsClass('GizmoComponent')
 export class GizmoComponent extends ItemBehaviour {
   gizmoPlugin: EditorGizmoPlugin;
-  targetItem: VFXItem<any>;
+  targetItem: VFXItem;
   needCreateModelContent: boolean;
   target: string;
   subType: GizmoSubType;
@@ -64,7 +64,7 @@ export class GizmoComponent extends ItemBehaviour {
     if (targetItem.type === '7' || !gizmoPlugin) {
       return;
     }
-    const gizmoVFXItemList: VFXItem<VFXItemContent>[] = composition.loaderData.gizmoTarget[targetItem.id];
+    const gizmoVFXItemList: VFXItem[] = composition.loaderData.gizmoTarget[targetItem.id];
 
     if (gizmoVFXItemList && gizmoVFXItemList.length > 0) {
       for (const gizmoVFXItem of gizmoVFXItemList) {
@@ -143,7 +143,7 @@ export class GizmoComponent extends ItemBehaviour {
         item.content.material.setMatrix('u_model', this.mat);
       }
       if (this.wireframeMesh && this.targetItem) {
-        const particle = this.targetItem.content;
+        const particle = this.targetItem.getComponent(ParticleSystemRenderer)!;
 
         if (particle) {
           updateWireframeMesh(particle.particleMesh.mesh as Mesh, this.wireframeMesh, WireframeGeometryType.quad);
@@ -152,7 +152,7 @@ export class GizmoComponent extends ItemBehaviour {
       }
     } else if (gizmoSubType === GizmoSubType.modelWireframe) { // 模型线框
       if (this.wireframeMesh && this.targetItem) {
-        // @ts-expect-error
+        //@ts-expect-error
         const meshes = this.targetItem.getComponent(RendererComponent)?.content.mriMeshs as Mesh[];
         const wireframeMeshes = this.wireframeMeshes;
 
@@ -351,9 +351,9 @@ export class GizmoComponent extends ItemBehaviour {
     return result;
   }
 
-  createModelContent (item: VFXItem<any>, meshesToAdd: Mesh[]) {
+  createModelContent (item: VFXItem, meshesToAdd: Mesh[]) {
     const modelComponent = item.getComponent(RendererComponent)!;
-    // @ts-expect-error
+    //@ts-expect-error
     const ms = modelComponent.content.mriMeshs as Mesh[];
     const engine = item.composition?.renderer.engine;
 
@@ -371,7 +371,7 @@ export class GizmoComponent extends ItemBehaviour {
     }
   }
 
-  createParticleContent (item: VFXItem<any>, meshesToAdd: Mesh[]) {
+  createParticleContent (item: VFXItem, meshesToAdd: Mesh[]) {
     const shape = (item as any).props.content.shape;
     const engine = this.item.composition?.renderer.engine;
 
@@ -390,7 +390,7 @@ export class GizmoComponent extends ItemBehaviour {
    * @param item - VFXItem
    * @param meshesToAdd - 插件缓存的 Mesh 数组
    */
-  createBoundingBoxContent (item: VFXItem<any>, meshesToAdd: Mesh[]) {
+  createBoundingBoxContent (item: VFXItem, meshesToAdd: Mesh[]) {
     const gizmoItem = this.item;
     const shape = {
       shape: 'Box',
@@ -417,7 +417,7 @@ export class GizmoComponent extends ItemBehaviour {
    * @param meshesToAdd - 插件缓存的 Mesh 数组
    * @param subType - GizmoSubType 类型
    */
-  createBasicContent (item: VFXItem<Mesh | undefined>, meshesToAdd: Mesh[], subType: GizmoSubType, iconTextures?: Map<string, Texture>) {
+  createBasicContent (item: VFXItem, meshesToAdd: Mesh[], subType: GizmoSubType, iconTextures?: Map<string, Texture>) {
     const gizmoItem = this.item;
     const options = {
       size: this.size,
@@ -442,7 +442,7 @@ export class GizmoComponent extends ItemBehaviour {
    * @param subType - GizmoSubType 类型
    * @param iconTextures - XYZ 图标纹理（viewHelper 专用）
    */
-  createCombinationContent (item: VFXItem<Mesh | undefined>, meshesToAdd: Mesh[], subType: GizmoSubType, iconTextures?: Map<string, Texture>) {
+  createCombinationContent (item: VFXItem, meshesToAdd: Mesh[], subType: GizmoSubType, iconTextures?: Map<string, Texture>) {
     const gizmoItem = this.item;
     const options = {
       size: this.size,

@@ -1,5 +1,5 @@
 import type {
-  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem,
+  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItem,
   MessageItem, CompositionProps, CompositionSourceManager,
 } from '@galacean/effects-core';
 import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
@@ -53,7 +53,7 @@ export interface CompositionBaseProps {
    * @param item
    * @returns
    */
-  onPlayerPause?: (item: VFXItem<VFXItemContent>) => void,
+  onPlayerPause?: (item: VFXItem) => void,
 }
 
 export interface ThreeCompositionProps extends CompositionProps {

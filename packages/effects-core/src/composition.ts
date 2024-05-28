@@ -16,7 +16,7 @@ import { TextureLoadAction, TextureSourceType } from './texture';
 import { Transform } from './transform';
 import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
-import type { VFXItemContent, VFXItemProps } from './vfx-item';
+import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 
 export interface CompositionStatistic {
@@ -38,14 +38,14 @@ export interface MessageItem {
 export interface CompositionHitTestOptions {
   maxCount?: number,
   stop?: (region: Region) => boolean,
-  skip?: (item: VFXItem<VFXItemContent>) => boolean,
+  skip?: (item: VFXItem) => boolean,
 }
 
 export interface CompositionProps {
   reusable?: boolean,
   baseRenderOrder?: number,
   renderer: Renderer,
-  onPlayerPause?: (item: VFXItem<any>) => void,
+  onPlayerPause?: (item: VFXItem) => void,
   onMessageItem?: (item: MessageItem) => void,
   onEnd?: (composition: Composition) => void,
   event?: EventSystem,
@@ -94,12 +94,12 @@ export class Composition implements Disposable, LostHandler {
    */
   keepResource: boolean;
   // 3D 模式下创建的场景相机 需要最后更新参数, TODO: 太 hack 了, 待移除
-  extraCamera: VFXItem<VFXItemContent>;
+  extraCamera: VFXItem;
   /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
    * @internal
    */
-  onPlayerPause?: (item: VFXItem<any>) => void;
+  onPlayerPause?: (item: VFXItem) => void;
   /**
    * 单个合成结束时的回调
    */
@@ -155,11 +155,11 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 合成根元素
    */
-  rootItem: VFXItem<VFXItemContent>;
+  rootItem: VFXItem;
   /**
    * 预合成数组
    */
-  readonly refContent: VFXItem<VFXItemContent>[] = [];
+  readonly refContent: VFXItem[] = [];
   /**
    * 预合成的合成属性，在 content 中会被其元素属性覆盖
    */
@@ -299,7 +299,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 获取合成中所有元素
    */
-  get items (): VFXItem<VFXItemContent>[] {
+  get items (): VFXItem[] {
     return this.rootComposition.items;
   }
 
@@ -480,7 +480,7 @@ export class Composition implements Disposable, LostHandler {
     }
   }
 
-  addItem (item: VFXItem<VFXItemContent>) {
+  addItem (item: VFXItem) {
     this.items.push(item);
     item.setParent(this.rootItem);
   }
@@ -661,7 +661,7 @@ export class Composition implements Disposable, LostHandler {
     return t;
   }
 
-  private callStart (item: VFXItem<VFXItemContent>) {
+  private callStart (item: VFXItem) {
     for (const itemBehaviour of item.itemBehaviours) {
       if (itemBehaviour.isActiveAndEnabled && !itemBehaviour.started) {
         itemBehaviour.start();
@@ -679,7 +679,7 @@ export class Composition implements Disposable, LostHandler {
     }
   }
 
-  private callUpdate (item: VFXItem<VFXItemContent>, dt: number) {
+  private callUpdate (item: VFXItem, dt: number) {
     for (const itemBehaviour of item.itemBehaviours) {
       if (itemBehaviour.isActiveAndEnabled && itemBehaviour.started) {
         itemBehaviour.update(dt);
@@ -708,7 +708,7 @@ export class Composition implements Disposable, LostHandler {
     }
   }
 
-  private callLateUpdate (item: VFXItem<VFXItemContent>, dt: number) {
+  private callLateUpdate (item: VFXItem, dt: number) {
     for (const itemBehaviour of item.itemBehaviours) {
       if (itemBehaviour.isActiveAndEnabled && itemBehaviour.started) {
         itemBehaviour.lateUpdate(dt);
@@ -727,12 +727,12 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 构建父子树，同时保存到 itemCacheMap 中便于查找
    */
-  private buildItemTree (compVFXItem: VFXItem<VFXItemContent>) {
+  private buildItemTree (compVFXItem: VFXItem) {
     if (!compVFXItem.composition) {
       return;
     }
 
-    const itemMap = new Map<string, VFXItem<VFXItemContent>>();
+    const itemMap = new Map<string, VFXItem>();
 
     const contentItems = compVFXItem.getComponent(CompositionComponent)!.items;
 
@@ -863,7 +863,7 @@ export class Composition implements Disposable, LostHandler {
    * @param item - 交互元素
    * @param type - 交互类型
    */
-  addInteractiveItem (item: VFXItem<VFXItemContent>, type: spec.InteractType) {
+  addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
       this.onMessageItem?.({
         name: item.name,
@@ -881,7 +881,7 @@ export class Composition implements Disposable, LostHandler {
    * @param item - 交互元素
    * @param type - 交互类型
    */
-  removeInteractiveItem (item: VFXItem<VFXItemContent>, type: spec.InteractType) {
+  removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM的结束行为
     if (type === spec.InteractType.MESSAGE) {
       this.onMessageItem?.({
@@ -937,7 +937,7 @@ export class Composition implements Disposable, LostHandler {
    * @internal
    * @param item - 需要销毁的 item
    */
-  destroyItem (item: VFXItem<VFXItemContent>) {
+  destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
     if (item.type == spec.ItemType.composition) {
       if (item.endBehavior !== spec.ItemEndBehavior.freeze) {

@@ -1,6 +1,6 @@
 import { EffectsObject } from '../../effects-object';
 import type { Disposable } from '../../utils';
-import type { VFXItem, VFXItemContent } from '../../vfx-item';
+import type { VFXItem } from '../../vfx-item';
 
 /**
  * 动画图，负责更新所有的动画节点
@@ -60,7 +60,7 @@ export class PlayableGraph {
  * @internal
  */
 export class Playable implements Disposable {
-  bindingItem: VFXItem<VFXItemContent>;
+  bindingItem: VFXItem;
   prepareFrameFlag = false;
   overrideTimeNextEvaluation = false;
 
@@ -281,7 +281,7 @@ export class PlayableOutput {
   /**
    * 绑定到的动画 item
    */
-  bindingItem: VFXItem<VFXItemContent>;
+  bindingItem: VFXItem;
   /**
    * 源 playable 对象
    */

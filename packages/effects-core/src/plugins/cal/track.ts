@@ -1,11 +1,10 @@
 import { ItemEndBehavior } from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import type { Engine } from '../../engine';
-import type { VFXItemContent } from '../../vfx-item';
 import { VFXItem } from '../../vfx-item';
 import type { PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset, PlayableOutput } from './playable-graph';
-import { spec } from '@galacean/effects-core';
+import { ParticleSystem, spec } from '@galacean/effects-core';
 
 /**
  * @since 2.0.0
@@ -15,7 +14,7 @@ import { spec } from '@galacean/effects-core';
 export class TrackAsset extends PlayableAsset {
   id: string;
   name: string;
-  bindingItem: VFXItem<VFXItemContent>;
+  bindingItem: VFXItem;
 
   private clipSeed = 0;
   @serialize('TimelineClip')
@@ -188,7 +187,7 @@ export class RuntimeClip {
     let started = false;
 
     if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
-      if (VFXItem.isParticle(this.playable.bindingItem) && !this.playable.bindingItem._content?.destroyed) {
+      if (VFXItem.isParticle(this.playable.bindingItem) && !this.playable.bindingItem.getComponent(ParticleSystem)?.destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;

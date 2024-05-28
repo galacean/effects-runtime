@@ -1,4 +1,4 @@
-import type { Engine, VFXItem, VFXItemContent } from '@galacean/effects';
+import type { Engine, VFXItem } from '@galacean/effects';
 import { ItemBehaviour, Transform, effectsClass, spec } from '@galacean/effects';
 import type { ModelTreeContent, ModelTreeOptions } from '../index';
 import { PAnimationManager } from '../runtime';
@@ -51,7 +51,7 @@ export class ModelTreeItem {
    * @param props - 场景树数据
    * @param owner - 场景树元素
    */
-  constructor (props: ModelTreeOptions, owner: VFXItem<VFXItemContent>) {
+  constructor (props: ModelTreeOptions, owner: VFXItem) {
     this.baseTransform = owner.transform;
     this.animationManager = new PAnimationManager(props, owner);
     this.build(props);

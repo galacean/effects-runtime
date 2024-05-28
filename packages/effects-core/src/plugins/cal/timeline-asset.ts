@@ -1,6 +1,6 @@
 import type { DataPath, EffectsObjectData } from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
-import type { VFXItem, VFXItemContent } from '../../vfx-item';
+import type { VFXItem } from '../../vfx-item';
 import type { ObjectBindingTrack } from './calculate-item';
 import type { PlayableGraph } from './playable-graph';
 import { PlayableTraversalMode } from './playable-graph';
@@ -110,8 +110,8 @@ export class TrackSortWrapper {
 }
 
 function isAncestor (
-  ancestorCandidate: VFXItem<VFXItemContent>,
-  descendantCandidate: VFXItem<VFXItemContent>,
+  ancestorCandidate: VFXItem,
+  descendantCandidate: VFXItem,
 ) {
   let current = descendantCandidate.parent;
 

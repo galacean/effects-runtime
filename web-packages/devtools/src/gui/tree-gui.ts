@@ -1,8 +1,8 @@
-import type { Composition, VFXItem, VFXItemContent } from '@galacean/effects';
+import type { Composition, VFXItem } from '@galacean/effects';
 import { treeData } from '../utils';
 
 export class TreeGui {
-  activeItem: VFXItem<VFXItemContent>;
+  activeItem: VFXItem;
   panel: any;
   private composition: Composition;
 
@@ -37,7 +37,7 @@ export class TreeGui {
     }
   };
 
-  private addTreeData (item: VFXItem<VFXItemContent>, oldTreeData: any) {
+  private addTreeData (item: VFXItem, oldTreeData: any) {
     const treeData: any = {};
 
     treeData.name = item.name;

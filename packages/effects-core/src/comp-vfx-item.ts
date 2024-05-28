@@ -10,13 +10,12 @@ import { HitTestType, ObjectBindingTrack } from './plugins';
 import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
-import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem } from './vfx-item';
 import { PlayableGraph } from './plugins/cal/playable-graph';
 
 export interface SceneBinding {
   key: ObjectBindingTrack,
-  value: VFXItem<VFXItemContent>,
+  value: VFXItem,
 }
 
 export interface SceneBindingData {
@@ -32,7 +31,7 @@ export class CompositionComponent extends ItemBehaviour {
   time = 0;
   startTime = 0;
   refId: string;
-  items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
+  items: VFXItem[] = [];  // 场景的所有元素
   data: ContentOptions;
 
   private reusable = false;
@@ -47,7 +46,7 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.startTime = startTime;
     this.masterTracks = [];
-    const bindingTrackMap = new Map<VFXItem<VFXItemContent>, ObjectBindingTrack>();
+    const bindingTrackMap = new Map<VFXItem, ObjectBindingTrack>();
 
     for (const sceneBinding of this.sceneBindings) {
       sceneBinding.key.bindingItem = sceneBinding.value;
@@ -108,7 +107,7 @@ export class CompositionComponent extends ItemBehaviour {
     for (const sceneBindingData of this.data.sceneBindings) {
       sceneBindings.push({
         key: this.engine.assetLoader.loadGUID<ObjectBindingTrack>(sceneBindingData.key.id),
-        value: this.engine.assetLoader.loadGUID<VFXItem<VFXItemContent>>(sceneBindingData.value.id),
+        value: this.engine.assetLoader.loadGUID<VFXItem>(sceneBindingData.value.id),
       });
     }
     this.sceneBindings = sceneBindings;
@@ -123,7 +122,7 @@ export class CompositionComponent extends ItemBehaviour {
       const itemProps = this.item.props.items ? this.item.props.items : [];
 
       for (let i = 0; i < itemProps.length; i++) {
-        let item: VFXItem<any>;
+        let item: VFXItem;
         const itemData = itemProps[i];
 
         // 设置预合成作为元素时的时长、结束行为和渲染延时
