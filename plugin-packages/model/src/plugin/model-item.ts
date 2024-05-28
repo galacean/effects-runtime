@@ -533,6 +533,12 @@ export class ModelCameraComponent extends ItemBehaviour {
    * @param rotation - 旋转
    */
   setTransform (position?: Vector3, rotation?: Euler): void {
+    if (position) {
+      this.transform.setPosition(position.x, position.y, position.z);
+    }
+    if (rotation) {
+      this.transform.setRotation(rotation.x, rotation.y, rotation.z);
+    }
     this.updateMainCamera();
   }
 }
