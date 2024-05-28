@@ -404,6 +404,7 @@ export class LoaderECSImpl implements LoaderECS {
       materials: this.materials,
       shaders: this.shaders,
       geometries: this.geometries,
+      animations: [],
     };
 
     return {

@@ -596,6 +596,7 @@ export class ModelAnimationComponent extends ItemBehaviour {
     data.animationClips.forEach(clipData => {
       const clipObj = new ModelAnimationClip(this.engine);
 
+      //@ts-expect-error
       clipObj.fromData(clipData);
       this.clips.push(clipObj);
     });

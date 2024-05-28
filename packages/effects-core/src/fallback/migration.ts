@@ -55,6 +55,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     materials: [],
     shaders: [],
     geometries: [],
+    animations: [],
   };
 
   // image数据添加 guid
@@ -512,9 +513,7 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
   //@ts-expect-error
   composition.sceneBindings = sceneBindings;
 
-  // @ts-expect-error
   if (!jsonScene.animations) {
-    // @ts-expect-error
     jsonScene.animations = [];
   }
   // @ts-expect-error

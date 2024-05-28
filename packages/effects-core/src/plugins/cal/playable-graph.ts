@@ -31,6 +31,10 @@ export class PlayableGraph {
     this.playableOutputs.push(output);
   }
 
+  addPlayable (playable: Playable) {
+    this.playables.push(playable);
+  }
+
   private processFrameWithRoot (output: PlayableOutput, dt: number) {
     output.sourcePlayable.processFrameRecursive(dt, output.getSourceOutputPort());
     output.processFrame(dt);
@@ -48,7 +52,6 @@ export class PlayableGraph {
  * @internal
  */
 export class Playable implements Disposable {
-  static nullPlayable = new Playable();
   bindingItem: VFXItem<VFXItemContent>;
 
   private destroyed = false;
@@ -65,7 +68,8 @@ export class Playable implements Disposable {
    */
   protected time: number;
 
-  constructor () {
+  constructor (graph: PlayableGraph) {
+    graph.addPlayable(this);
   }
 
   connect (playable: Playable) {
@@ -274,7 +278,7 @@ export class PlayableOutput {
 }
 
 export abstract class PlayableAsset extends EffectsObject {
-  abstract createPlayable (): Playable;
+  abstract createPlayable (graph: PlayableGraph): Playable;
 }
 
 export enum PlayState {

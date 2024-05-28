@@ -12,6 +12,7 @@ import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import type { VFXItemContent } from './vfx-item';
 import { Item, VFXItem } from './vfx-item';
+import { PlayableGraph } from './plugins/cal/playable-graph';
 
 export interface SceneBinding {
   key: ObjectBindingTrack,
@@ -51,8 +52,9 @@ export class CompositionComponent extends ItemBehaviour {
       sceneBinding.key.bindingItem = sceneBinding.value;
       bindingTrackMap.set(sceneBinding.value, sceneBinding.key);
     }
+    const playableGraph = new PlayableGraph();
 
-    this.timelinePlayable = this.timelineAsset.createPlayable() as TimelinePlayable;
+    this.timelinePlayable = this.timelineAsset.createPlayable(playableGraph) as TimelinePlayable;
 
     for (const track of this.timelineAsset.tracks) {
       // 重播不销毁元素
