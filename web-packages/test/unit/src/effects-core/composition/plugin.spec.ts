@@ -99,7 +99,7 @@ describe('plugin', () => {
   it('call destroy before reset', async () => {
     const resetSpy = chai.spy('reset');
     const constructSpy = chai.spy('constructed');
-    const destroySpy = chai.spy('destory');
+    const destroySpy = chai.spy('destroy');
     let j = 0;
 
     class TesPlugin extends AbstractPlugin {

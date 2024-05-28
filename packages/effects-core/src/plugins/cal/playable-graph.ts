@@ -1,4 +1,5 @@
 import { EffectsObject } from '../../effects-object';
+import type { Disposable } from '../../utils';
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
 
 /**
@@ -46,7 +47,7 @@ export class PlayableGraph {
  * @since 2.0.0
  * @internal
  */
-export class Playable {
+export class Playable implements Disposable {
   static nullPlayable = new Playable();
   bindingItem: VFXItem<VFXItemContent>;
 
@@ -108,7 +109,7 @@ export class Playable {
 
   setInputWeight (playableOrIndex: Playable | number, weight: number): void {
     if (playableOrIndex instanceof Playable) {
-      for (let i = 0;i < this.inputs.length;i++) {
+      for (let i = 0; i < this.inputs.length; i++) {
         if (this.inputs[i] === playableOrIndex) {
           this.inputWeight[i] = weight;
 
@@ -136,7 +137,7 @@ export class Playable {
     return this.traversalMode;
   }
 
-  destroy () {
+  dispose (): void {
     if (this.destroyed) {
       return;
     }
@@ -181,7 +182,7 @@ export class Playable {
 
     // 前序遍历，用于设置节点的初始状态，weight etc.
     if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
-      for (let i = 0;i < this.getInputCount();i++) {
+      for (let i = 0; i < this.getInputCount(); i++) {
         const input = this.getInput(i);
 
         input.prepareFrameRecursive(dt, this.inputOuputPorts[i]);
@@ -199,7 +200,7 @@ export class Playable {
   processFrameRecursive (dt: number, passthroughPort: number) {
     // 后序遍历，保证 playable 拿到的 input 节点的估计数据是最新的
     if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
-      for (let i = 0;i < this.getInputCount();i++) {
+      for (let i = 0; i < this.getInputCount(); i++) {
         if (this.getInputWeight(i) <= 0) {
           continue;
         }

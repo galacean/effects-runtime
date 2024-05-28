@@ -187,7 +187,7 @@ export class RuntimeClip {
     let started = false;
 
     if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
-      if (VFXItem.isParticle(this.playable.bindingItem) && !this.playable.bindingItem._content?.destoryed) {
+      if (VFXItem.isParticle(this.playable.bindingItem) && !this.playable.bindingItem._content?.destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;
@@ -221,7 +221,7 @@ export class RuntimeClip {
   }
 
   private onClipEnd () {
-    this.clip.playable.destroy();
+    this.clip.playable.dispose();
     const bindingItem = this.clip.playable.bindingItem;
 
     bindingItem.delaying = true;
