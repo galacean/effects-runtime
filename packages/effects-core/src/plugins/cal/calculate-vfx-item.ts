@@ -249,7 +249,7 @@ export class ActivationPlayable extends Playable {
   }
 
   override processFrame (dt: number): void {
-    const lifetime = this.time / this.bindingItem.duration;
+    const lifetime = this.bindingItem.duration > 0 ? this.time / this.bindingItem.duration : 0;
 
     this.bindingItem.lifetime = lifetime;
   }

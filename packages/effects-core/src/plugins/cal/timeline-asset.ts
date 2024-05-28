@@ -2,7 +2,7 @@ import type { DataPath, EffectsObjectData } from '@galacean/effects-specificatio
 import { effectsClass } from '../../decorators';
 import type { VFXItem, VFXItemContent } from '../../vfx-item';
 import type { ObjectBindingTrack } from './calculate-item';
-import { PlayableGraph } from './playable-graph';
+import { PlayableGraph, PlayableTraversalMode } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import type { RuntimeClip, TrackAsset } from './track';
 
@@ -18,6 +18,7 @@ export class TimelineAsset extends PlayableAsset {
   override createPlayable (): Playable {
     const timelinePlayable = new TimelinePlayable();
 
+    timelinePlayable.setTraversalMode(PlayableTraversalMode.Passthrough);
     timelinePlayable.compileTracks(this.graph, this.tracks);
 
     return timelinePlayable;
@@ -69,10 +70,12 @@ export class TimelinePlayable extends Playable {
     }
     for (const track of tracks) {
       const trackMixPlayable = track.createPlayableGraph(this.clips);
+
+      this.connect(trackMixPlayable);
       const trackOutput = track.createOutput();
 
       graph.addOutput(trackOutput);
-      trackOutput.setSourcePlayeble(trackMixPlayable);
+      trackOutput.setSourcePlayeble(this, this.getInputCount() - 1);
     }
   }
 
