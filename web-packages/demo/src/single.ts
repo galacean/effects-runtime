@@ -12,15 +12,7 @@ const container = document.getElementById('J-container');
       container,
     });
 
-    await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*s4IgQru1WyEAAAAAAAAAAAAADlB4AQ', {
-      variables: {
-        'text1-bold': 'text1-bold',
-        'text1': '1111111111111',
-        'btnText4': '2222',
-        'avatar1': 'https://mdn.alipayobjects.com/huamei_uj3n0k/afts/img/A*st1QSIvJEBcAAAAAAAAAAAAADt_KAQ/original',
-        'avatar2': 'https://mdn.alipayobjects.com/huamei_uj3n0k/afts/img/A*oelLS68rL4kAAAAAAAAAAAAADt_KAQ/original',
-      },
-    });
+    await player.loadScene('https://gw.alipayobjects.com/os/gltf-asset/97436498253707/pre.json');
   } catch (e) {
     console.error('biz', e);
   }

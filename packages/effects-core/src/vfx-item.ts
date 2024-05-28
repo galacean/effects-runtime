@@ -62,7 +62,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素当前更新归一化时间，开始时为 0，结束时为 1
    */
-  lifetime: number;
+  lifetime = -1;
   /**
    * 父元素的 id
    */
@@ -102,11 +102,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 元素动画是否延迟播放
    */
   delaying = true;
-  /**
-   * 元素动画的速度
-   */
+  reusable = false;
   type: spec.ItemType = spec.ItemType.base;
-  stopped = false;
   props: VFXItemProps;
 
   components: Component[] = [];
@@ -123,7 +120,9 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * @protected
    */
   protected _contentVisible = false;
-
+  /**
+   * 元素动画的速度
+   */
   private speed = 1;
 
   static isComposition (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
@@ -178,15 +177,8 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会 dispose
    */
-  get reusable (): boolean {
+  get compositionReusable (): boolean {
     return this.composition?.reusable ?? false;
-  }
-
-  /**
-   * 获取元素生命周期是否开始
-   */
-  get lifetimeStarted () {
-    return !this.delaying;
   }
 
   /**
@@ -273,13 +265,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
         this.composition = vfxItem.composition;
       }
     }
-  }
-
-  /**
-   * 停止播放元素动画
-   */
-  stop () {
-    this.stopped = true;
   }
 
   /**
@@ -525,7 +510,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-    this.lifetime = -(this.start / this.duration);
     this.listIndex = listIndex;
     //@ts-expect-error
     this.oldId = data.oldId;

@@ -242,8 +242,7 @@ export class Composition implements Disposable, LostHandler {
     vfxItem.type = spec.ItemType.composition;
     vfxItem.composition = this;
     this.rootComposition = vfxItem.addComponent(CompositionComponent);
-    this.rootComposition.timelineAsset = sourceContent.timelineAsset;
-    this.rootComposition.sceneBindings = sourceContent.sceneBindings;
+    this.rootComposition.data = sourceContent;
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
     this.transform = new Transform({
@@ -514,8 +513,7 @@ export class Composition implements Disposable, LostHandler {
     vfxItem.type = spec.ItemType.composition;
     vfxItem.composition = this;
     this.rootComposition = vfxItem.addComponent(CompositionComponent);
-    this.rootComposition.timelineAsset = this.compositionSourceManager.sourceContent!.timelineAsset;
-    this.rootComposition.sceneBindings = this.compositionSourceManager.sourceContent!.sceneBindings;
+    this.rootComposition.data = this.compositionSourceManager.sourceContent!;
     this.transform = new Transform({
       name: this.name,
     });

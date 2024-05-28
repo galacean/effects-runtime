@@ -1,4 +1,5 @@
 import * as spec from '@galacean/effects-specification';
+import type { SceneBindingData } from './comp-vfx-item';
 import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
 import type { PluginSystem } from './plugin-system';
@@ -9,10 +10,7 @@ import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import { isObject } from './utils';
-import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
-import { TimelineAsset } from './plugins/cal/timeline-asset';
-import type { SceneBinding } from './comp-vfx-item';
-import type { ObjectBindingTrack } from './plugins';
+import type { VFXItemProps } from './vfx-item';
 
 let listOrder = 0;
 
@@ -25,8 +23,8 @@ export interface ContentOptions {
   camera: spec.CameraOptions,
   startTime: number,
   globalVolume: GlobalVolume,
-  timelineAsset: TimelineAsset,
-  sceneBindings: SceneBinding[],
+  timelineAsset: spec.DataPath,
+  sceneBindings: SceneBindingData[],
 }
 
 /**
@@ -84,22 +82,13 @@ export class CompositionSourceManager implements Disposable {
   private getContent (composition: spec.Composition): ContentOptions {
     // TODO: specification 中补充 globalVolume 类型
     // @ts-expect-error
-    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0, timelineAsset = {} } = composition;
+    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0, timelineAsset } = composition;
     const items = this.assembleItems(composition);
-    const sceneBindings = [];
 
     //@ts-expect-error
     if (!composition.sceneBindings) {
       //@ts-expect-error
       composition.sceneBindings = [];
-    }
-
-    //@ts-expect-error
-    for (const sceneBindingData of composition.sceneBindings) {
-      sceneBindings.push({
-        key: this.engine.assetLoader.loadGUID<ObjectBindingTrack>(sceneBindingData.key.id),
-        value: this.engine.assetLoader.loadGUID<VFXItem<VFXItemContent>>(sceneBindingData.value.id),
-      });
     }
 
     return {
@@ -112,8 +101,9 @@ export class CompositionSourceManager implements Disposable {
       camera,
       startTime,
       globalVolume,
-      timelineAsset: timelineAsset.id ? this.engine.assetLoader.loadGUID(timelineAsset.id) : new TimelineAsset(this.engine),
-      sceneBindings,
+      timelineAsset: timelineAsset,
+      //@ts-expect-error
+      sceneBindings: composition.sceneBindings,
     };
   }
 
