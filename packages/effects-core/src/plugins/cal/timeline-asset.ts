@@ -77,7 +77,7 @@ export class TimelinePlayable extends Playable {
     for (const track of tracks) {
       const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
 
-      this.connect(trackMixPlayable);
+      this.addInput(trackMixPlayable, 0);
       const trackOutput = track.createOutput();
 
       graph.addOutput(trackOutput);

@@ -50,7 +50,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   direction: Vector3;
   startSpeed: number;
 
-  private data: TransformAnimationPlayableAssetData;
+  private data: TransformPlayableAssetData;
   private velocity: Vector3;
 
   override onGraphStart (): void {
@@ -193,14 +193,14 @@ export class TransformAnimationPlayable extends AnimationPlayable {
     }
   }
 
-  override fromData (data: TransformAnimationPlayableAssetData): void {
+  override fromData (data: TransformPlayableAssetData): void {
     this.data = data;
   }
 }
 
-@effectsClass('TransformAnimationPlayableAsset')
-export class TransformAnimationPlayableAsset extends PlayableAsset {
-  transformAnimationData: TransformAnimationPlayableAssetData;
+@effectsClass('TransformPlayableAsset')
+export class TransformPlayableAsset extends PlayableAsset {
+  transformAnimationData: TransformPlayableAssetData;
 
   override createPlayable (graph: PlayableGraph): Playable {
     const transformAnimationPlayable = new TransformAnimationPlayable(graph);
@@ -210,12 +210,12 @@ export class TransformAnimationPlayableAsset extends PlayableAsset {
     return transformAnimationPlayable;
   }
 
-  override fromData (data: TransformAnimationPlayableAssetData): void {
+  override fromData (data: TransformPlayableAssetData): void {
     this.transformAnimationData = data;
   }
 }
 
-export interface TransformAnimationPlayableAssetData extends spec.EffectsObjectData {
+export interface TransformPlayableAssetData extends spec.EffectsObjectData {
   /**
    * 元素大小变化属性
    */

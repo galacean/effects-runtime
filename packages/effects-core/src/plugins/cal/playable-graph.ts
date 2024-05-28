@@ -31,8 +31,8 @@ export class PlayableGraph {
     }
   }
 
-  connect (source: Playable, destination: Playable) {
-    destination.connect(source);
+  connect (source: Playable, sourceOutputPort: number, destination: Playable, destinationInputPort: number) {
+    destination.connectInput(destinationInputPort, source, sourceOutputPort);
   }
 
   addOutput (output: PlayableOutput) {
@@ -78,15 +78,26 @@ export class Playable implements Disposable {
    */
   protected time: number;
 
-  constructor (graph: PlayableGraph) {
+  constructor (graph: PlayableGraph, inputCount = 0) {
     graph.addPlayable(this);
+    this.inputs = new Array(inputCount);
+    this.inputOuputPorts = new Array(inputCount);
+    this.inputWeight = new Array(inputCount);
   }
 
-  connect (playable: Playable) {
-    this.inputs.push(playable);
-    this.inputWeight.push(1);
-    playable.outputs.push(this);
-    this.inputOuputPorts.push(playable.outputs.length - 1);
+  connectInput (inputPort: number, sourcePlayable: Playable, sourceOutputPort: number, weight = 1.0) {
+    this.setInput(sourcePlayable, inputPort);
+    this.setInputWeight(inputPort, weight);
+    sourcePlayable.setOutput(this, sourceOutputPort);
+
+    if (this.inputOuputPorts.length < inputPort + 1) {
+      this.inputOuputPorts.length = inputPort + 1;
+    }
+    this.inputOuputPorts[inputPort] = sourceOutputPort;
+  }
+
+  addInput (sourcePlayable: Playable, sourceOutputPort: number, weight = 1.0) {
+    this.connectInput(this.getInputCount(), sourcePlayable, sourceOutputPort, weight);
   }
 
   getInputCount () {
@@ -131,6 +142,9 @@ export class Playable implements Disposable {
         }
       }
     } else {
+      if (this.inputWeight.length < playableOrIndex + 1) {
+        this.inputWeight.length = playableOrIndex + 1;
+      }
       this.inputWeight[playableOrIndex] = weight;
     }
   }
@@ -241,6 +255,20 @@ export class Playable implements Disposable {
       return;
     }
     this.processFrame(dt);
+  }
+
+  private setOutput (outputPlayable: Playable, outputPort: number) {
+    if (this.outputs.length < outputPort + 1) {
+      this.outputs.length = outputPort + 1;
+    }
+    this.outputs[outputPort] = outputPlayable;
+  }
+
+  private setInput (inputPlayable: Playable, inputPort: number) {
+    if (this.inputs.length < inputPort + 1) {
+      this.inputs.length = inputPort + 1;
+    }
+    this.inputs[inputPort] = inputPlayable;
   }
 }
 
