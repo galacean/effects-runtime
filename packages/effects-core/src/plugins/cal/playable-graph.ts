@@ -15,6 +15,14 @@ export class PlayableGraph {
   }
 
   evaluate (dt: number) {
+    for (const playable of this.playables) {
+      playable.prepareFrameFlag = false;
+      if (!playable.overrideTimeNextEvaluation) {
+        playable.setTime(playable.getTime() + dt);
+      } else {
+        playable.overrideTimeNextEvaluation = false;
+      }
+    }
     for (const playableOutput of this.playableOutputs) {
       this.prepareFrameWithRoot(playableOutput, dt);
     }
@@ -53,6 +61,8 @@ export class PlayableGraph {
  */
 export class Playable implements Disposable {
   bindingItem: VFXItem<VFXItemContent>;
+  prepareFrameFlag = false;
+  overrideTimeNextEvaluation = false;
 
   private destroyed = false;
 
@@ -127,6 +137,7 @@ export class Playable implements Disposable {
 
   setTime (time: number) {
     this.time = time;
+    this.overrideTimeNextEvaluation = true;
   }
 
   getTime () {
@@ -179,10 +190,11 @@ export class Playable implements Disposable {
    * @internal
    */
   prepareFrameRecursive (dt: number, passthroughPort: number) {
-    if (this.destroyed) {
+    if (this.destroyed || this.prepareFrameFlag) {
       return;
     }
     this.prepareFrame(dt);
+    this.prepareFrameFlag = true;
 
     // 前序遍历，用于设置节点的初始状态，weight etc.
     if (this.getTraversalMode() === PlayableTraversalMode.Mix) {

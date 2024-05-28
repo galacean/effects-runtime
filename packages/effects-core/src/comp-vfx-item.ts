@@ -31,15 +31,16 @@ export interface SceneBindingData {
 export class CompositionComponent extends ItemBehaviour {
   time = 0;
   startTime = 0;
-  reusable = false;
   refId: string;
   items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
-  masterTracks: ObjectBindingTrack[] = [];
-  sceneBindings: SceneBinding[] = [];
-  timelineAsset: TimelineAsset;
   data: ContentOptions;
 
-  timelinePlayable: TimelinePlayable;
+  private reusable = false;
+  private sceneBindings: SceneBinding[] = [];
+  private masterTracks: ObjectBindingTrack[] = [];
+  private timelineAsset: TimelineAsset;
+  private timelinePlayable: TimelinePlayable;
+  private graph: PlayableGraph = new PlayableGraph();
 
   override start (): void {
     const { startTime = 0 } = this.item.props;
@@ -52,9 +53,8 @@ export class CompositionComponent extends ItemBehaviour {
       sceneBinding.key.bindingItem = sceneBinding.value;
       bindingTrackMap.set(sceneBinding.value, sceneBinding.key);
     }
-    const playableGraph = new PlayableGraph();
 
-    this.timelinePlayable = this.timelineAsset.createPlayable(playableGraph) as TimelinePlayable;
+    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
 
     for (const track of this.timelineAsset.tracks) {
       // 重播不销毁元素
@@ -80,8 +80,7 @@ export class CompositionComponent extends ItemBehaviour {
       this.item.ended = true;
     }
     this.timelinePlayable.setTime(time);
-    this.timelinePlayable.evaluate();
-    this.timelineAsset.graph.evaluate(dt);
+    this.graph.evaluate(dt);
 
     for (let i = 0; i < this.items.length; i++) {
       const item = this.items[i];

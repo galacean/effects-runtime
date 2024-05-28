@@ -46,6 +46,10 @@ export class TimelinePlayable extends Playable {
 
   private graphStarted = false;
 
+  override prepareFrame (dt: number): void {
+    this.evaluate();
+  }
+
   evaluate () {
     // TODO 移到 graph 调用
     if (!this.graphStarted) {
