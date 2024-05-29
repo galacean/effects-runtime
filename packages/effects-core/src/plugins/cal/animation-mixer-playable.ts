@@ -1,7 +1,7 @@
 import { AnimationPlayable } from './animation-playable';
 
 export class AnimationMixerPlayable extends AnimationPlayable {
-  override processFrame (dt: number): void {
+  override processFrame (): void {
     // for (const playable of this.getInputs()) {
     // const animationPlayable = playable as AnimationPlayable;
 

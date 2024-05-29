@@ -1,11 +1,10 @@
 import type { DataPath, EffectsObjectData } from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { VFXItem } from '../../vfx-item';
+import type { RuntimeClip, TrackAsset } from '../timeline/track';
 import type { ObjectBindingTrack } from './calculate-item';
-import type { PlayableGraph } from './playable-graph';
-import { PlayableTraversalMode } from './playable-graph';
-import { Playable, PlayableAsset } from './playable-graph';
-import type { RuntimeClip, TrackAsset } from './track';
+import type { FrameContext, PlayableGraph } from './playable-graph';
+import { Playable, PlayableAsset, PlayableTraversalMode } from './playable-graph';
 
 export interface TimelineAssetData extends EffectsObjectData {
   tracks: DataPath[],
@@ -44,24 +43,17 @@ export class TimelinePlayable extends Playable {
   clips: RuntimeClip[] = [];
   masterTracks: ObjectBindingTrack[] = [];
 
-  private graphStarted = false;
-
-  override prepareFrame (dt: number): void {
+  override prepareFrame (context: FrameContext): void {
     this.evaluate();
   }
 
   evaluate () {
-    // TODO 移到 graph 调用
-    if (!this.graphStarted) {
-      for (const clip of this.clips) {
-        clip.playable.onGraphStart();
-      }
-      this.graphStarted = true;
-    }
     const time = this.getTime();
 
     for (const clip of this.clips) {
-      clip.evaluateAt(time);
+      if (time >= clip.clip.start) {
+        clip.evaluateAt(time);
+      }
     }
   }
 
@@ -77,8 +69,13 @@ export class TimelinePlayable extends Playable {
     for (const track of tracks) {
       const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
 
+      // TODO 移至 Composition Component play
+      trackMixPlayable.play();
+
       this.addInput(trackMixPlayable, 0);
       const trackOutput = track.createOutput();
+
+      trackOutput.setUserData(track.binding);
 
       graph.addOutput(trackOutput);
       trackOutput.setSourcePlayeble(this, this.getInputCount() - 1);
@@ -126,9 +123,9 @@ function isAncestor (
 }
 
 function compareTracks (a: TrackSortWrapper, b: TrackSortWrapper): number {
-  if (isAncestor(a.track.bindingItem, b.track.bindingItem)) {
+  if (isAncestor(a.track.binding, b.track.binding)) {
     return -1;
-  } else if (isAncestor(b.track.bindingItem, a.track.bindingItem)) {
+  } else if (isAncestor(b.track.binding, a.track.binding)) {
     return 1;
   } else {
     return a.originalIndex - b.originalIndex; // 非父子关系的元素保持原始顺序
