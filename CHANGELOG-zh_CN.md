@@ -12,7 +12,7 @@
 
 `2024-05-29`
 
-- Fix: 增加渲染过程中错误捕捉。#380 @Sruimeng
+- Fix: 增加渲染过程中错误捕捉。[#380](https://github.com/galacean/effects-runtime/pull/380) @Sruimeng
 
 ## 1.4.4
 

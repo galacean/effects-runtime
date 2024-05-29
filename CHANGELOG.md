@@ -11,7 +11,7 @@
 
 `2024-05-29`
 
-- Fix: Added error catching during the rendering process. #380 @Sruimeng
+- Fix: Added error catching during the rendering process. [#380](https://github.com/galacean/effects-runtime/pull/380) @Sruimeng
 
 ## 1.4.4
 
