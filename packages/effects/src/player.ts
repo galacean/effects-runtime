@@ -67,7 +67,7 @@ export interface PlayerConfig {
   /**
    * 指定 WebGL 创建的上下文类型，`debug-disable` 表示不创建
    */
-  renderFramework?: 'webgl' | 'webgl2' | 'debug-disable',
+  renderFramework?: GLType | 'debug-disable',
   /**
    * player 的 name
    */
