@@ -281,6 +281,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
     if (!manualRender) {
       this.ticker = new Ticker(fps);
+      this.ticker.onRendererError = this.handleRenderError;
       this.ticker.add(this.tick.bind(this));
     }
     this.event = new EventSystem(this.canvas, !!notifyTouch);

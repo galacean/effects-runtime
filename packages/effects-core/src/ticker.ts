@@ -11,6 +11,10 @@ export class Ticker {
   private interval: number;
   private intervalId: number;
   private resetTickers: boolean;
+  /**
+   * 渲染过程中报错捕捉
+   */
+  onRendererError?: (err: Error) => void;
 
   constructor (fps = 60) {
     this.setFPS(fps);
@@ -50,9 +54,13 @@ export class Ticker {
         return window.setTimeout(func, 16.7);
       };
       const runLoop = () => {
-        this.intervalId = raf(runLoop);
-        if (!this.paused) {
-          this.tick();
+        try {
+          this.intervalId = raf(runLoop);
+          if (!this.paused) {
+            this.tick();
+          }
+        } catch (error) {
+          this.onRendererError?.(error as Error);
         }
       };
 
