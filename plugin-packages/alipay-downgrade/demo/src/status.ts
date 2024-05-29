@@ -20,7 +20,7 @@ import { checkDowngrade, getSystemInfo, setAlipayDowngradeBizId, downgradeForMin
 
   downgradeLabel.innerHTML = `<div><pre>${JSON.stringify(downgradeResult, undefined, 2)}</pre></div>`;
   systemInfoLabel.innerHTML = `<div><pre>${JSON.stringify(systemInfoResult, undefined, 2)}</pre></div>`;
-  miniprogramLabel.innerHTML = `<div><pre>downgradeMiniprogram: ${downgradeMiniprogram}</pre></div>`;
+  miniprogramLabel.innerHTML = `<div><pre>MiniProgram: ${isAlipayMiniProgram}, downgrade: ${downgradeMiniprogram}</pre></div>`;
   document.body.append(downgradeLabel);
   document.body.append(systemInfoLabel);
   document.body.append(miniprogramLabel);
