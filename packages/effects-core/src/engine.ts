@@ -6,7 +6,7 @@ import { addItem, logger, removeItem } from './utils';
 import type { ShaderLibrary, GPUCapability, Renderer } from './render';
 
 /**
- * Engine 基类，负责维护所有 GPU 资源的销毁
+ * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
 export class Engine implements Disposable {
   renderer: Renderer;
@@ -17,6 +17,11 @@ export class Engine implements Disposable {
   protected meshes: Mesh[] = [];
   protected renderPasses: RenderPass[] = [];
   gpuCapability: GPUCapability;
+
+  /**
+   * 渲染过程中错误队列
+   */
+  renderErrors: Set<Error> = new Set();
   /**
    * 创建 Engine 对象。
    */
