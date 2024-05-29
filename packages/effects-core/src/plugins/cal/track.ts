@@ -4,7 +4,7 @@ import type { Engine } from '../../engine';
 import { VFXItem } from '../../vfx-item';
 import type { PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset, PlayableOutput } from './playable-graph';
-import { ParticleSystem, spec } from '@galacean/effects-core';
+import { ParticleSystem } from '../particle/particle-system';
 
 /**
  * @since 2.0.0
@@ -150,9 +150,9 @@ export class TimelineClip {
     const duration = this.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.endBehaviour === spec.ItemEndBehavior.loop) {
+      if (this.endBehaviour === ItemEndBehavior.loop) {
         localTime = localTime % duration;
-      } else if (this.endBehaviour === spec.ItemEndBehavior.freeze) {
+      } else if (this.endBehaviour === ItemEndBehavior.freeze) {
         localTime = Math.min(duration, localTime);
       }
     }
@@ -208,7 +208,7 @@ export class RuntimeClip {
       bindingItem.ended = true;
       bindingItem.onEnd();
     }
-    if (ended && clip.endBehaviour === spec.ItemEndBehavior.destroy) {
+    if (ended && clip.endBehaviour === ItemEndBehavior.destroy) {
       this.onClipEnd();
     }
     // 判断动画是否开始
