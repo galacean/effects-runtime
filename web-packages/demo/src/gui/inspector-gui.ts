@@ -1,9 +1,9 @@
-import type { EffectComponentData, EffectsObject, Engine, Material, SceneData, VFXItem, VFXItemContent } from '@galacean/effects';
+import type { EffectComponentData, EffectsObject, Engine, Material, SceneData, VFXItem } from '@galacean/effects';
 import { EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, generateGUID, glContext, loadImage, spec } from '@galacean/effects';
 
 export class InspectorGui {
   gui: any;
-  item: VFXItem<VFXItemContent>;
+  item: VFXItem;
   itemDirtyFlag = false;
 
   sceneData: SceneData;
@@ -17,7 +17,7 @@ export class InspectorGui {
     // setInterval(this.updateInspector, 500);
   }
 
-  setItem (item: VFXItem<VFXItemContent>) {
+  setItem (item: VFXItem) {
     if (this.item === item) {
       return;
     }

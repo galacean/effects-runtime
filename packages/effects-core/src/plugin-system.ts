@@ -88,7 +88,7 @@ export class PluginSystem {
     this.plugins.forEach(loader => loader.onCompositionReset(comp, renderFrame));
   }
 
-  createPluginItem (name: string, props: VFXItemProps, composition: Composition): VFXItem<any> {
+  createPluginItem (name: string, props: VFXItemProps, composition: Composition): VFXItem {
     const CTRL = pluginCtrlMap[name];
 
     if (!CTRL) {

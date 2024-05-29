@@ -1,4 +1,4 @@
-import type { Composition, CameraOptionsEx, spec, VFXItem, VFXItemContent } from '@galacean/effects';
+import type { Composition, CameraOptionsEx, spec, VFXItem } from '@galacean/effects';
 import { Transform } from '@galacean/effects';
 import type {
   CameraGestureHandler,
@@ -429,7 +429,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.composition.camera.getOptions();
   }
 
-  private setTransform (item: VFXItem<VFXItemContent>, position?: Vector3, rotation?: Euler) {
+  private setTransform (item: VFXItem, position?: Vector3, rotation?: Euler) {
     const camera = item.getComponent(ModelCameraComponent);
 
     if (camera !== undefined) {
@@ -437,7 +437,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     }
   }
 
-  private setPosition (item: VFXItem<VFXItemContent>, position: spec.vec3) {
+  private setPosition (item: VFXItem, position: spec.vec3) {
     item.transform.setPosition(...position);
     const camera = item.getComponent(ModelCameraComponent);
 
@@ -446,7 +446,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     }
   }
 
-  private setQuaternion (item: VFXItem<VFXItemContent>, quat: spec.vec4) {
+  private setQuaternion (item: VFXItem, quat: spec.vec4) {
     item.transform.setQuaternion(...quat);
     const camera = item.getComponent(ModelCameraComponent);
 

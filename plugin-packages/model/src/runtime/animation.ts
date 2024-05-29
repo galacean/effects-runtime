@@ -1,4 +1,4 @@
-import type { Geometry, Engine, VFXItemContent, VFXItem, SkinProps } from '@galacean/effects';
+import type { Geometry, Engine, VFXItem, SkinProps } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects';
 import type {
   ModelAnimTrackOptions,
@@ -32,7 +32,7 @@ export class PSkin extends PObject {
   /**
    * 场景树父元素
    */
-  rootBoneItem?: VFXItem<VFXItemContent>;
+  rootBoneItem?: VFXItem;
   /**
    * 骨骼索引
    */
@@ -40,7 +40,7 @@ export class PSkin extends PObject {
   /**
    * 关节索引
    */
-  jointItem: VFXItem<VFXItemContent>[] = [];
+  jointItem: VFXItem[] = [];
   /**
    * 逆绑定矩阵
    */
@@ -60,7 +60,7 @@ export class PSkin extends PObject {
    * @param engine - 引擎对象
    * @param rootBoneItem - 场景树父元素
    */
-  create (props: SkinProps, engine: Engine, rootBoneItem: VFXItem<VFXItemContent>) {
+  create (props: SkinProps, engine: Engine, rootBoneItem: VFXItem) {
     this.name = props.rootBoneName ?? 'Unnamed skin';
     this.type = PObjectType.skin;
     //
@@ -145,7 +145,7 @@ export class PSkin extends PObject {
    * 更新父元素
    * @param parentItem - 场景树父元素
    */
-  updateParentItem (parentItem: VFXItem<VFXItemContent>) {
+  updateParentItem (parentItem: VFXItem) {
     this.rootBoneItem = parentItem;
   }
 
@@ -195,10 +195,10 @@ export class PSkin extends PObject {
     }
   }
 
-  private getJointItems (props: SkinProps, rootBoneItem: VFXItem<VFXItemContent>) {
+  private getJointItems (props: SkinProps, rootBoneItem: VFXItem) {
     const name2Item = this.genNodeName(rootBoneItem);
 
-    const jointItems: VFXItem<VFXItemContent>[] = [];
+    const jointItems: VFXItem[] = [];
 
     props.boneNames?.forEach(boneName => {
       const node = name2Item[boneName];
@@ -212,8 +212,8 @@ export class PSkin extends PObject {
     return jointItems;
   }
 
-  private genNodeName (node: VFXItem<VFXItemContent>) {
-    const name2Item: Record<string, VFXItem<VFXItemContent>> = {};
+  private genNodeName (node: VFXItem) {
+    const name2Item: Record<string, VFXItem> = {};
     const nameList: string[] = [];
 
     name2Item[''] = node;
@@ -224,7 +224,7 @@ export class PSkin extends PObject {
     return name2Item;
   }
 
-  private genNodeNameDFS (node: VFXItem<VFXItemContent>, nameList: string[], name2Item: Record<string, VFXItem<VFXItemContent>>) {
+  private genNodeNameDFS (node: VFXItem, nameList: string[], name2Item: Record<string, VFXItem>) {
     nameList.push(node.name);
     name2Item[nameList.join('/')] = node;
     for (const child of node.children) {
@@ -562,7 +562,7 @@ export class PAnimTrack {
    * @param treeItem - 节点树元素
    * @param sceneManager - 3D 场景管理器
    */
-  tick (time: number, treeItem: VFXItem<VFXItemContent>, sceneManager?: PSceneManager) {
+  tick (time: number, treeItem: VFXItem, sceneManager?: PSceneManager) {
     const treeComponent = treeItem.getComponent(ModelTreeComponent);
     const node = treeComponent?.content?.getNodeById(this.node);
 
@@ -784,7 +784,7 @@ export class PAnimation extends PObject {
    * @param treeItem - 场景树元素
    * @param sceneManager - 3D 场景管理器
    */
-  tick (time: number, treeItem: VFXItem<VFXItemContent>, sceneManager?: PSceneManager) {
+  tick (time: number, treeItem: VFXItem, sceneManager?: PSceneManager) {
     this.time = time;
     // TODO: 这里时间事件定义不明确，先兼容原先实现
     const newTime = this.time % this.duration;
@@ -809,7 +809,7 @@ export class PAnimation extends PObject {
  * 动画管理类，负责管理动画对象
  */
 export class PAnimationManager extends PObject {
-  private ownerItem: VFXItem<VFXItemContent>;
+  private ownerItem: VFXItem;
   private animation = 0;
   private speed = 0;
   private delay = 0;
@@ -822,7 +822,7 @@ export class PAnimationManager extends PObject {
    * @param treeOptions - 场景树参数
    * @param ownerItem - 场景树所属元素
    */
-  constructor (treeOptions: ModelTreeOptions, ownerItem: VFXItem<VFXItemContent>) {
+  constructor (treeOptions: ModelTreeOptions, ownerItem: VFXItem) {
     super();
     this.name = this.genName(ownerItem.name ?? 'Unnamed tree');
     this.type = PObjectType.animationManager;

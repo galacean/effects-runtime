@@ -20,7 +20,7 @@ import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | void | {};
-export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
+export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
 export type VFXItemProps =
   & spec.Item
   & {
@@ -36,7 +36,7 @@ export type VFXItemProps =
  * 所有元素的继承的抽象类
  */
 @effectsClass(spec.DataType.VFXItemData)
-export class VFXItem<T extends VFXItemContent> extends EffectsObject implements Disposable {
+export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素绑定的父元素，
    * 1. 当元素没有绑定任何父元素时，parent为空，transform.parentTransform 为 composition.transform
@@ -44,9 +44,9 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 3. 当元素绑定 TreeItem 的node时，parent为treeItem, transform.parentTransform 为 tree.nodes[i].transform(绑定的node节点上的transform)
    * 4. 当元素绑定 TreeItem 本身时，行为表现和绑定 nullItem 相同
    */
-  parent?: VFXItem<VFXItemContent>;
+  parent?: VFXItem;
 
-  children: VFXItem<VFXItemContent>[] = [];
+  children: VFXItem[] = [];
   /**
    * 元素的变换包含位置、旋转、缩放。
    */
@@ -97,7 +97,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 元素创建的数据图层/粒子/模型等
    */
-  _content?: T;
+  _content?: VFXItemContent;
   /**
    * 元素动画是否延迟播放
    */
@@ -125,31 +125,31 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    */
   private speed = 1;
 
-  static isComposition (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
   }
 
-  static isSprite (item: VFXItem<VFXItemContent>): item is VFXItem<SpriteComponent> {
+  static isSprite (item: VFXItem) {
     return item.type === spec.ItemType.sprite;
   }
 
-  static isParticle (item: VFXItem<VFXItemContent>): item is VFXItem<ParticleSystem> {
+  static isParticle (item: VFXItem) {
     return item.type === spec.ItemType.particle;
   }
 
-  static isNull (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isNull (item: VFXItem) {
     return item.type === spec.ItemType.null;
   }
 
-  static isTree (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isTree (item: VFXItem) {
     return item.type === spec.ItemType.tree;
   }
 
-  static isCamera (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isCamera (item: VFXItem) {
     return item.type === spec.ItemType.camera;
   }
 
-  static isExtraCamera (item: VFXItem<VFXItemContent>): item is VFXItem<CameraController> {
+  static isExtraCamera (item: VFXItem) {
     return item.id === 'extra-camera' && item.name === 'extra-camera';
   }
 
@@ -169,8 +169,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 返回元素创建的数据
    */
-  get content (): T {
-    // @ts-expect-error
+  get content (): VFXItemContent {
     return this._content;
   }
 
@@ -248,7 +247,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     return res;
   }
 
-  setParent (vfxItem: VFXItem<VFXItemContent>) {
+  setParent (vfxItem: VFXItem) {
     if (vfxItem === this) {
       return;
     }
@@ -444,7 +443,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     return now - this.duration > 0.001;
   }
 
-  find (name: string): VFXItem<VFXItemContent> | undefined {
+  find (name: string): VFXItem | undefined {
     if (this.name === name) {
       return this;
     }
@@ -635,7 +634,7 @@ export namespace Item {
  * @param props
  * @param composition
  */
-export function createVFXItem (props: VFXItemProps, composition: Composition): VFXItem<any> {
+export function createVFXItem (props: VFXItemProps, composition: Composition): VFXItem {
   const { type } = props;
   let { pluginName } = props;
 

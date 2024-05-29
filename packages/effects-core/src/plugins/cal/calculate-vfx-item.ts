@@ -9,7 +9,7 @@ import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-
 import type { PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
-import type { VFXItem, VFXItemContent } from '../../vfx-item';
+import type { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
 
 const tempRot = new Euler();
@@ -312,7 +312,7 @@ export class AnimationClip extends EffectsObject {
   scaleCurves: ScaleCurve[] = [];
   floatCurves: FloatCurve[] = [];
 
-  sampleAnimation (vfxItem: VFXItem<VFXItemContent>, time: number) {
+  sampleAnimation (vfxItem: VFXItem, time: number) {
     const duration = vfxItem.duration;
     let life = time / duration;
 
@@ -387,7 +387,7 @@ export class AnimationClip extends EffectsObject {
     }
   }
 
-  private findTarget (vfxItem: VFXItem<VFXItemContent>, path: string[]) {
+  private findTarget (vfxItem: VFXItem, path: string[]) {
     let target = vfxItem;
 
     for (const name of path) {

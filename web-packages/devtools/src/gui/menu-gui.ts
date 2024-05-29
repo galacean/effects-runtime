@@ -1,4 +1,3 @@
-import type { VFXItemContent } from '@galacean/effects';
 import { EffectComponent, VFXItem, type Composition } from '@galacean/effects';
 
 export class MenuGui {
@@ -10,7 +9,7 @@ export class MenuGui {
     this.composition = composition;
   }
 
-  async createEffectItem (name: string, geometryGuid: string, parent?: VFXItem<VFXItemContent>,) {
+  async createEffectItem (name: string, geometryGuid: string, parent?: VFXItem,) {
     const composition = this.composition;
     const engine = composition.getEngine();
     const effectItem = new VFXItem(engine);

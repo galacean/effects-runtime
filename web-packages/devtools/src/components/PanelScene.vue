@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { VFXItem, VFXItemContent, generateGUID } from '@galacean/effects';
+import { VFXItem, generateGUID } from '@galacean/effects';
 import { nextTick, onMounted, ref } from 'vue';
 import { assetDatabase } from '../utils';
 import { composition, initGEPlayer } from '../utils/ge';
@@ -51,11 +51,11 @@ onMounted(async () => {
       if(!(effectsPackage?.exportObjects[0] instanceof VFXItem)){
         return;
       }
-      const vfxItem = effectsPackage!.exportObjects[0] as VFXItem<VFXItemContent>;
+      const vfxItem = effectsPackage!.exportObjects[0] as VFXItem;
 
       composition.addItem(vfxItem);
-      (effectsPackage!.exportObjects[1] as VFXItem<VFXItemContent>).setParent(vfxItem);
-      composition.items.push(effectsPackage!.exportObjects[1] as VFXItem<VFXItemContent>);
+      (effectsPackage!.exportObjects[1] as VFXItem).setParent(vfxItem);
+      composition.items.push(effectsPackage!.exportObjects[1] as VFXItem);
       vfxItem.setInstanceId(generateGUID());
       for (const component of vfxItem.components) {
         component.setInstanceId(generateGUID());
