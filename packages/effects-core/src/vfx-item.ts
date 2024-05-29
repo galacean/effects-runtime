@@ -20,7 +20,7 @@ import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | void | {};
-export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
+export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
 export type VFXItemProps =
   & spec.Item
   & {
