@@ -575,11 +575,11 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.forceRenderNextFrame = false;
   }
   private doTick (dt: number, forceRender: boolean) {
-    const rendererErrors = this.renderer.engine.rendererErrors;
+    const { renderErrors } = this.renderer.engine;
 
     // TODO: 临时处理，2.0.0 做优化
-    if (rendererErrors.size > 0) {
-      this.handleRenderError?.(rendererErrors.values().next().value);
+    if (renderErrors.size > 0) {
+      this.handleRenderError?.(renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
     }

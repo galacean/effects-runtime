@@ -282,7 +282,7 @@ export class GLMaterial extends Material {
     const pipelineContext = engine.getGLPipelineContext();
 
     if (!this.shader.program) {
-      this.engine?.rendererErrors.add(new Error('Shader program is not initialized'));
+      this.engine?.renderErrors.add(new Error('Shader program is not initialized'));
 
       return;
     }

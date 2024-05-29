@@ -21,7 +21,7 @@ export class Engine implements Disposable {
   /**
    * 渲染过程中错误队列
    */
-  rendererErrors: Set<Error> = new Set();
+  renderErrors: Set<Error> = new Set();
   /**
    * 创建 Engine 对象。
    */
