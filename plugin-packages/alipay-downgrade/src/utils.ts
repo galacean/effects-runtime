@@ -1,4 +1,4 @@
-import { spec, isString } from '@galacean/effects';
+import { spec, isString, isAlipayMiniApp } from '@galacean/effects';
 
 declare global {
   interface Window {
@@ -13,18 +13,20 @@ const DEVICE_PERFORMANCE_HIGH = 'high';
 let devicePending: Promise<string | void> | undefined;
 let devicePerformance: string;
 let deviceName = 'DESKTOP_DEBUG';
+let deviceSystem = 'Unknown';
 let isIOS = false;
 
 export async function getDeviceName () {
   if (!devicePending) {
     devicePending = getSystemInfo().then(info => {
-      const { performance, platform, model = 'UNKNOWN_DEVICE' } = info;
+      const { performance, platform, model = 'UNKNOWN_DEVICE', system = 'Unknown' } = info;
 
       if (!devicePerformance) {
         devicePerformance = performance;
       }
       isIOS = platform === 'iOS';
       deviceName = model;
+      deviceSystem = system;
       if (/iPhone(\d+),/.test(deviceName) && !devicePerformance) {
         const gen = +RegExp.$1;
 
@@ -148,7 +150,11 @@ export async function checkDowngrade (
           if (reason === undefined) {
             resolve({ downgrade: true, reason: 'call downgrade fail' });
           } else {
-            resolve({ reason, downgrade: reason === 1 });
+            if (isAlipayMiniApp() && downgradeForMiniprogram()) {
+              resolve({ downgrade: true, reason: 'Force downgrade by downgrade plugin' });
+            } else {
+              resolve({ downgrade: reason === 1, reason });
+            }
           }
         },
         );
@@ -163,11 +169,13 @@ type SystemInfo = {
   performance: string,
   platform: string,
   model: string,
+  system: string,
   brand: string,
+  version: string,
   error: any,
 };
 
-async function getSystemInfo (): Promise<SystemInfo> {
+export async function getSystemInfo (): Promise<SystemInfo> {
   return new Promise((resolve, reject) => {
     const ap = window.AlipayJSBridge;
 
@@ -183,4 +191,24 @@ async function getSystemInfo (): Promise<SystemInfo> {
       reject('no ap');
     }
   });
+}
+
+const deviceNameList = ['12,8', '13,1', '13,2', '13,3', '13,4'];
+
+/**
+ *
+ * @returns iPhone SE2和12全系列机型，如果是iOS 16系统，在小程序中强制降级
+ */
+export function downgradeForMiniprogram () {
+  if (isIOS) {
+    if (deviceNameList.find(v => v === deviceName)) {
+      const versionList = deviceSystem.split('.');
+
+      if (versionList.length > 0 && versionList[0] === '16') {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
