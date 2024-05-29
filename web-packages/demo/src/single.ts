@@ -35,6 +35,9 @@ function createPlayer () {
     onItemClicked: data => {
       console.info(`item ${data.name} has been clicked`);
     },
+    onRenderError: e => {
+      console.info(`render error: ${e.message}`);
+    },
     // reportGPUTime: console.debug,
   });
 

@@ -281,6 +281,11 @@ export class GLMaterial extends Material {
     const engine = renderer.engine as GLEngine;
     const pipelineContext = engine.getGLPipelineContext();
 
+    if (!this.shader.program) {
+      this.engine?.rendererErrors.add(new Error('Shader program is not initialized'));
+
+      return;
+    }
     this.shader.program.bind();
     this.setupStates(pipelineContext);
     let name: string;

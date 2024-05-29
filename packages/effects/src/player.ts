@@ -281,7 +281,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
     if (!manualRender) {
       this.ticker = new Ticker(fps);
-      this.ticker.onRendererError = this.handleRenderError;
       this.ticker.add(this.tick.bind(this));
     }
     this.event = new EventSystem(this.canvas, !!notifyTouch);
@@ -576,6 +575,14 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.forceRenderNextFrame = false;
   }
   private doTick (dt: number, forceRender: boolean) {
+    const rendererErrors = this.renderer.engine.rendererErrors;
+
+    // TODO: 临时处理，2.0.0 做优化
+    if (rendererErrors.size > 0) {
+      this.handleRenderError?.(rendererErrors.values().next().value);
+      // 有渲染错误时暂停播放
+      this.ticker?.pause();
+    }
     dt = Math.min(dt, 33) * this.speed;
     const comps = this.compositions;
     let skipRender = false;
