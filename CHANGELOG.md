@@ -7,6 +7,12 @@
 
 ---
 
+## 1.4.5
+
+`2024-05-29`
+
+- Fix: Added error catching during the rendering process. #380 @Sruimeng
+
 ## 1.4.4
 
 `2024-05-17`
