@@ -191,6 +191,16 @@ export function generateHalfFloatTexture (engine: Engine, data: Uint16Array, wid
     });
 }
 
+const sourceOptions = {
+  type: glContext.UNSIGNED_BYTE,
+  format: glContext.RGBA,
+  internalFormat: glContext.RGBA,
+  wrapS: glContext.MIRRORED_REPEAT,
+  wrapT: glContext.MIRRORED_REPEAT,
+  minFilter: glContext.NEAREST,
+  magFilter: glContext.NEAREST,
+};
+
 export function generateWhiteTexture (engine: Engine) {
   return Texture.create(
     engine,
@@ -202,13 +212,23 @@ export function generateWhiteTexture (engine: Engine) {
         data: new Uint8Array([255, 255, 255, 255]),
       },
       sourceType: TextureSourceType.data,
-      type: glContext.UNSIGNED_BYTE,
-      format: glContext.RGBA,
-      internalFormat: glContext.RGBA,
-      wrapS: glContext.MIRRORED_REPEAT,
-      wrapT: glContext.MIRRORED_REPEAT,
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
+      ...sourceOptions,
+    },
+  );
+}
+
+export function generateTransparentTexture (engine: Engine) {
+  return Texture.create(
+    engine,
+    {
+      id: 'transparenttexture00000000000000000000',
+      data: {
+        width: 1,
+        height: 1,
+        data: new Uint8Array([0, 0, 0, 0]),
+      },
+      sourceType: TextureSourceType.data,
+      ...sourceOptions,
     },
   );
 }

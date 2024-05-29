@@ -122,6 +122,7 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     gltfResource.meshes.forEach(mesh => {
+      // @ts-expect-error
       this.geometries.push(mesh.geometryData);
     });
     const gltfScene = gltfResource.scenes[0];

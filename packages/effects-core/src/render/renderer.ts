@@ -46,6 +46,7 @@ export class Renderer implements LostHandler, RestoreHandler {
   }
 
   setFramebuffer (framebuffer: Framebuffer | null) {
+    // OVERRIDE
   }
 
   setViewport (x: number, y: number, width: number, height: number) {

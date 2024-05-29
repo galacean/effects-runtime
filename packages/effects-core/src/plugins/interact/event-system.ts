@@ -1,4 +1,3 @@
-import * as spec from '@galacean/effects-specification';
 import type { Disposable } from '../../utils';
 import { addItem, removeItem, isSimulatorCellPhone } from '../../utils';
 
@@ -7,7 +6,6 @@ export const EVENT_TYPE_TOUCH_START = 'touchstart';
 export const EVENT_TYPE_TOUCH_MOVE = 'touchmove';
 export const EVENT_TYPE_TOUCH_END = 'touchend';
 
-export const InteractBehavior = spec.InteractBehavior;
 export type TouchEventType = {
   x: number,
   y: number,
@@ -20,6 +18,7 @@ export type TouchEventType = {
   height: number,
   origin: Event,
 };
+
 export type TouchParams = {
   clientX: number,
   clientY: number,
