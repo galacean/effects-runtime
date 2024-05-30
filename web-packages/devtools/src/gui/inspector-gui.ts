@@ -1,7 +1,7 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
 import type { Component, EffectsObject, EffectsPackageData, Engine, Material, ShaderData } from '@galacean/effects';
-import { ParticleSystem, RendererComponent, Transform, getMergedStore, type VFXItem, type VFXItemContent, SerializationHelper } from '@galacean/effects';
+import { ParticleSystem, RendererComponent, getMergedStore, type VFXItem, SerializationHelper } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { reactive, ref } from 'vue';
 import { assetDatabase } from '../utils';
@@ -37,14 +37,14 @@ export const formData = {
 
 export class InspectorGui {
   gui: any;
-  item: VFXItem<VFXItemContent>;
+  item: VFXItem;
   itemDirtyFlag = false;
   componentProperties: AGUIPropertiesPanelProps[] = [];
   serializedObjects: SerializedObject[] = [];
 
   constructor () { }
 
-  setItem (item: VFXItem<VFXItemContent>) {
+  setItem (item: VFXItem) {
     if (this.item === item) {
       return;
     }

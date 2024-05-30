@@ -80,7 +80,7 @@ export class Framebuffer {
     return [];
   }
 
-  dispose (opt?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
+  dispose (options?: { depthStencilAttachment?: RenderPassDestroyAttachmentType }) {
     // OVERRIDE
   }
 }

@@ -1,9 +1,9 @@
 import { VFXItem } from '@galacean/effects';
 
-class DowngradeItem {
-  // empty
-}
+// class DowngradeItem {
+//   // empty
+// }
 
-export class DowngradeVFXItem extends VFXItem<DowngradeItem> {
+export class DowngradeVFXItem extends VFXItem {
   // empty
 }

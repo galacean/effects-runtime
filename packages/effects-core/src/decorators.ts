@@ -44,8 +44,8 @@ export function getMergedStore (target: any): any {
   return store;
 }
 
-export function serialize (sourceName?: string) {
-  return generateSerializableMember(0, sourceName); // value member
+export function serialize (type?: string, sourceName?: string) {
+  return generateSerializableMember(type, sourceName); // value member
 }
 
 export function effectsClass (className: any) {
@@ -58,7 +58,7 @@ export function effectsClass (className: any) {
   };
 }
 
-function generateSerializableMember (type: number, sourceName?: string) {
+function generateSerializableMember (type?: string, sourceName?: string) {
   return (target: any, propertyKey: any) => {
     const classStore = getDirectStore(target);
 

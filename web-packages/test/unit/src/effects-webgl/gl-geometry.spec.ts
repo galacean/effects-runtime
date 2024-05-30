@@ -100,7 +100,7 @@ describe('webgl/gl-geometry', () => {
     expect(vao).to.be.an.instanceof(GLVertexArrayObject);
   });
 
-  it('test destory', () => {
+  it('test destroy', () => {
     geometry.dispose();
 
     expect(geometry.isDestroyed).to.be.true;

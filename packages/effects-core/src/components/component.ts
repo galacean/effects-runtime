@@ -1,7 +1,7 @@
 import { serialize } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import { removeItem } from '../utils';
-import type { VFXItem, VFXItemContent } from '../vfx-item';
+import type { VFXItem } from '../vfx-item';
 
 /**
  * @since 2.0.0
@@ -12,7 +12,7 @@ export abstract class Component extends EffectsObject {
   /**
    * 附加到的 VFXItem 对象
    */
-  item: VFXItem<VFXItemContent>;
+  item: VFXItem;
   /**
    * 附加到的 VFXItem 对象 Transform 组件
    */

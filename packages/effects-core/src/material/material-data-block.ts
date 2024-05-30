@@ -52,7 +52,7 @@ export abstract class MaterialDataBlock implements Disposable {
 }
 
 export function isUniformStruct (value: UniformValue) {
-  return typeof value === 'object' && value && (value as (number[] | String | Texture[] | number[][] | spec.TypedArray)).length === undefined && value instanceof Texture;
+  return typeof value === 'object' && value && (value as (number[] | string | Texture[] | number[][] | spec.TypedArray)).length === undefined && value instanceof Texture;
 }
 
 export function isUniformStructArray (value: UniformValue) {

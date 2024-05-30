@@ -6,9 +6,10 @@ import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import { AnimationPlayable } from './animation-playable';
 import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-item';
+import type { PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
-import type { VFXItem, VFXItemContent } from '../../vfx-item';
+import type { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
 
 const tempRot = new Euler();
@@ -49,7 +50,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   direction: Vector3;
   startSpeed: number;
 
-  private data: TransformAnimationData;
+  private data: TransformPlayableAssetData;
   private velocity: Vector3;
 
   override onGraphStart (): void {
@@ -192,29 +193,29 @@ export class TransformAnimationPlayable extends AnimationPlayable {
     }
   }
 
-  override fromData (data: TransformAnimationData): void {
+  override fromData (data: TransformPlayableAssetData): void {
     this.data = data;
   }
 }
 
-@effectsClass('TransformAnimationPlayableAsset')
-export class TransformAnimationPlayableAsset extends PlayableAsset {
-  transformAnimationData: TransformAnimationData;
+@effectsClass('TransformPlayableAsset')
+export class TransformPlayableAsset extends PlayableAsset {
+  transformAnimationData: TransformPlayableAssetData;
 
-  override createPlayable (): Playable {
-    const transformAnimationPlayable = new TransformAnimationPlayable();
+  override createPlayable (graph: PlayableGraph): Playable {
+    const transformAnimationPlayable = new TransformAnimationPlayable(graph);
 
     transformAnimationPlayable.fromData(this.transformAnimationData);
 
     return transformAnimationPlayable;
   }
 
-  override fromData (data: TransformAnimationData): void {
+  override fromData (data: TransformPlayableAssetData): void {
     this.transformAnimationData = data;
   }
 }
 
-export interface TransformAnimationData extends spec.EffectsObjectData {
+export interface TransformPlayableAssetData extends spec.EffectsObjectData {
   /**
    * 元素大小变化属性
    */
@@ -249,6 +250,12 @@ export class ActivationPlayable extends Playable {
     this.hideRendererComponents();
   }
 
+  override processFrame (dt: number): void {
+    const lifetime = this.bindingItem.duration > 0 ? this.time / this.bindingItem.duration : 0;
+
+    this.bindingItem.lifetime = lifetime;
+  }
+
   private hideRendererComponents () {
     for (const rendererComponent of this.bindingItem.rendererComponents) {
       if (rendererComponent.enabled) {
@@ -263,6 +270,12 @@ export class ActivationPlayable extends Playable {
         rendererComponent.enabled = true;
       }
     }
+  }
+}
+
+export class ActivationPlayableAsset extends PlayableAsset {
+  override createPlayable (graph: PlayableGraph): Playable {
+    return new ActivationPlayable(graph);
   }
 }
 
@@ -300,7 +313,7 @@ export class AnimationClip extends EffectsObject {
   scaleCurves: ScaleCurve[] = [];
   floatCurves: FloatCurve[] = [];
 
-  sampleAnimation (vfxItem: VFXItem<VFXItemContent>, time: number) {
+  sampleAnimation (vfxItem: VFXItem, time: number) {
     const duration = vfxItem.duration;
     let life = time / duration;
 
@@ -375,7 +388,7 @@ export class AnimationClip extends EffectsObject {
     }
   }
 
-  private findTarget (vfxItem: VFXItem<VFXItemContent>, path: string[]) {
+  private findTarget (vfxItem: VFXItem, path: string[]) {
     let target = vfxItem;
 
     for (const name of path) {

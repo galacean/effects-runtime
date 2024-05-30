@@ -1,4 +1,4 @@
-import type { Texture, Engine, math, VFXItemContent, VFXItem, Renderer, Geometry } from '@galacean/effects';
+import type { Texture, Engine, math, VFXItem, Renderer, Geometry } from '@galacean/effects';
 import { spec, Material, GLSLVersion } from '@galacean/effects';
 import type { ModelMeshComponentData, ModelItemBounding } from '../index';
 import { PObjectType, PMaterialType, PGlobalState } from './common';
@@ -33,12 +33,12 @@ export class PMesh extends PEntity {
   /**
    * 父元素
    */
-  parentItem?: VFXItem<VFXItemContent>;
+  parentItem?: VFXItem;
   /**
    * 父元素索引
    */
   parentItemId?: string;
-  rootBoneItem?: VFXItem<VFXItemContent>;
+  rootBoneItem?: VFXItem;
   /**
    * 蒙皮
    */
@@ -95,7 +95,7 @@ export class PMesh extends PEntity {
     meshData: ModelMeshComponentData,
     owner?: ModelMeshComponent,
     parentId?: string,
-    parent?: VFXItem<VFXItemContent>,
+    parent?: VFXItem,
   ) {
     super();
     const proxy = new EffectsMeshProxy(meshData, parent);
@@ -108,7 +108,7 @@ export class PMesh extends PEntity {
     this.parentIndex = proxy.getParentIndex();
     this.parentItem = proxy.parentItem;
     this.parentItemId = parentId;
-    this.rootBoneItem = meshData.rootBone as unknown as VFXItem<VFXItemContent>;
+    this.rootBoneItem = meshData.rootBone as unknown as VFXItem;
     this.skin = proxy.getSkinObj(engine);
     this.morph = proxy.getMorphObj();
     this.hide = proxy.isHide();
@@ -250,7 +250,7 @@ export class PMesh extends PEntity {
    * @param parentId - 父元素索引
    * @param parentItem - 父 VFX 元素
    */
-  updateParentInfo (parentId: string, parentItem: VFXItem<VFXItemContent>) {
+  updateParentInfo (parentId: string, parentItem: VFXItem) {
     this.parentItemId = parentId;
     this.parentItem = parentItem;
     if (this.skin !== undefined) {
@@ -1147,16 +1147,16 @@ export class PGeometry {
 class EffectsMeshProxy {
   data: ModelMeshComponentData;
   geometry: Geometry;
-  rootBoneItem: VFXItem<VFXItemContent>;
+  rootBoneItem: VFXItem;
   morphObj: PMorph;
 
   constructor (
     public itemData: ModelMeshComponentData,
-    public parentItem?: VFXItem<VFXItemContent>,
+    public parentItem?: VFXItem,
   ) {
     this.data = itemData;
     this.geometry = itemData.geometry as unknown as Geometry;
-    this.rootBoneItem = itemData.rootBone as unknown as VFXItem<VFXItemContent>;
+    this.rootBoneItem = itemData.rootBone as unknown as VFXItem;
 
     const morphObj = new PMorph();
 

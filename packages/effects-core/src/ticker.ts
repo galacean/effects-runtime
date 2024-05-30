@@ -1,17 +1,19 @@
-import { clamp } from '@galacean/effects-math/es/core/index';
+import { clamp } from '@galacean/effects-math/es/core/utils';
 
 /**
  * 定时器类
  */
 export class Ticker {
   tickers: ((dt: number) => void)[];
+
   private paused = true;
   private lastTime = 0;
   private targetFPS: number;
   private interval: number;
   private intervalId: number;
   private resetTickers: boolean;
-  private _deltaTime = 0;
+  // deltaTime
+  private dt = 0;
 
   constructor (fps = 60) {
     this.setFPS(fps);
@@ -22,7 +24,7 @@ export class Ticker {
    * 获取定时器当前帧更新的时间
    */
   get deltaTime () {
-    return this._deltaTime;
+    return this.dt;
   }
 
   /**
@@ -41,7 +43,7 @@ export class Ticker {
 
   /**
    * 获取定时器暂停标志位
-   * @returns 暂停标志位
+   * @returns
    */
   getPaused () {
     return this.paused;
@@ -52,7 +54,8 @@ export class Ticker {
    */
   start () {
     this.paused = false;
-    this._deltaTime = 0;
+    this.dt = 0;
+
     if (!this.intervalId) {
       this.lastTime = performance.now();
       const raf = requestAnimationFrame || function (func) {
@@ -77,7 +80,7 @@ export class Ticker {
     this.intervalId = 0;
     this.lastTime = 0;
     this.paused = true;
-    this._deltaTime = 0;
+    this.dt = 0;
     this.tickers = [];
   }
 
@@ -86,7 +89,7 @@ export class Ticker {
    */
   pause () {
     this.paused = true;
-    this._deltaTime = 0;
+    this.dt = 0;
   }
 
   /**
@@ -94,7 +97,7 @@ export class Ticker {
    */
   resume () {
     this.paused = false;
-    this._deltaTime = 0;
+    this.dt = 0;
   }
 
   /**
@@ -106,8 +109,8 @@ export class Ticker {
     }
     const startTime = performance.now();
 
-    this._deltaTime = startTime - this.lastTime;
-    if (this._deltaTime >= this.interval) {
+    this.dt = startTime - this.lastTime;
+    if (this.dt >= this.interval) {
       this.lastTime = startTime;
 
       if (this.resetTickers) {
@@ -118,7 +121,7 @@ export class Ticker {
       for (let i = 0, len = this.tickers.length; i < len; i++) {
         const tick = this.tickers[i];
 
-        tick(this._deltaTime);
+        tick(this.dt);
       }
     }
   }

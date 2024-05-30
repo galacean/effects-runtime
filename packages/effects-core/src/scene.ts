@@ -111,7 +111,6 @@ export type SceneWithOptionsType = { options: SceneLoadOptions };
 export type SceneLoadType = SceneType | SceneWithOptionsType;
 
 export function isSceneJSON (scene: any): scene is Scene {
-  // TODO: 判断不太优雅，后期试情况优化
   return isObject(scene) && 'jsonScene' in scene;
 }
 
@@ -120,6 +119,5 @@ export function isSceneURL (scene: any): scene is Scene {
 }
 
 export function isSceneWithOptions (scene: any): scene is SceneWithOptionsType {
-  // TODO: 判断不太优雅，后期试情况优化
   return isObject(scene) && 'options' in scene;
 }

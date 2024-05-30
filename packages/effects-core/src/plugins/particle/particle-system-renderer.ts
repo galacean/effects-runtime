@@ -22,15 +22,17 @@ export class ParticleSystemRenderer extends RendererComponent {
 
   constructor (
     engine: Engine,
-    particleMeshProps: ParticleMeshProps,
+    particleMeshProps?: ParticleMeshProps,
     trailMeshProps?: TrailMeshProps,
   ) {
     super(engine);
 
     this.name = 'ParticleSystemRenderer';
-    this.particleMesh = new ParticleMesh(engine, particleMeshProps);
+    if (particleMeshProps) {
+      this.particleMesh = new ParticleMesh(engine, particleMeshProps);
+    }
 
-    if (trailMeshProps !== undefined) {
+    if (trailMeshProps) {
       this.trailMesh = new TrailMesh(engine, trailMeshProps);
     }
 
