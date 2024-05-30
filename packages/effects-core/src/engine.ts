@@ -11,7 +11,7 @@ import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
 
 /**
- * Engine 基类，负责维护所有 GPU 资源的销毁
+ * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
 export class Engine implements Disposable {
   renderer: Renderer;
@@ -22,6 +22,11 @@ export class Engine implements Disposable {
   objectInstance: Record<string, EffectsObject>;
   assetLoader: AssetLoader;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
+
+  /**
+   * 渲染过程中错误队列
+   */
+  renderErrors: Set<Error> = new Set();
 
   protected destroyed = false;
   protected textures: Texture[] = [];
