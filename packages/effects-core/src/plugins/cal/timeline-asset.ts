@@ -2,7 +2,7 @@ import type { DataPath, EffectsObjectData } from '@galacean/effects-specificatio
 import { effectsClass } from '../../decorators';
 import type { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from '../timeline/track';
-import type { ObjectBindingTrack } from './calculate-item';
+import { ObjectBindingTrack } from './calculate-item';
 import type { FrameContext, PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset, PlayableTraversalMode } from './playable-graph';
 
@@ -51,15 +51,15 @@ export class TimelinePlayable extends Playable {
   compileTracks (graph: PlayableGraph, tracks: TrackAsset[]) {
     this.sortTracks(tracks);
     for (const track of tracks) {
-      // 获取所有的合成元素绑定 Track
-      const newBindingTrack = track as ObjectBindingTrack;
-
-      newBindingTrack.create();
-      this.masterTracks.push(newBindingTrack);
+      if (track instanceof ObjectBindingTrack) {
+        track.create();
+      }
+      this.masterTracks.push(track as ObjectBindingTrack);
     }
     const outputTrack: TrackAsset[] = [];
 
     for (const masterTrack of tracks) {
+      outputTrack.push(masterTrack);
       this.addSubTracksRecursive(masterTrack, outputTrack);
     }
 

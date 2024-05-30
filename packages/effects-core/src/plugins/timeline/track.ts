@@ -51,15 +51,10 @@ export class TrackAsset extends PlayableAsset {
   }
 
   createMixerPlayableGraph (graph: PlayableGraph, runtimeClips: RuntimeClip[]) {
-    const tracks: TrackAsset[] = [];
-
-    this.gatherCompilableTracks(tracks);
     const clips: TimelineClip[] = [];
 
-    for (const track of tracks) {
-      for (const clip of track.clips) {
-        clips.push(clip);
-      }
+    for (const clip of this.clips) {
+      clips.push(clip);
     }
     const mixerPlayable = this.compileClips(graph, clips, runtimeClips);
 
@@ -131,14 +126,6 @@ export class TrackAsset extends PlayableAsset {
 
   private createClipPlayable (graph: PlayableGraph, clip: TimelineClip) {
     return clip.asset.createPlayable(graph);
-  }
-
-  private gatherCompilableTracks (tracks: TrackAsset[]) {
-    tracks.push(this);
-
-    for (const subTrack of this.children) {
-      subTrack.gatherCompilableTracks(tracks);
-    }
   }
 }
 
