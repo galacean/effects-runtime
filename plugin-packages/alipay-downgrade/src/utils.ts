@@ -93,7 +93,14 @@ export async function checkDowngrade (
     return Promise.resolve({ downgrade: bizId === mockIdFail, reason: 'mock' });
   }
 
-  const ap = window.AlipayJSBridge;
+  let ap: { call: any };
+
+  if (isAlipayMiniApp()) {
+    //@ts-expect-error
+    ap = my;
+  } else {
+    ap = window.AlipayJSBridge;
+  }
 
   if (ap) {
     const now = performance.now();
@@ -177,8 +184,14 @@ type SystemInfo = {
 
 export async function getSystemInfo (): Promise<SystemInfo> {
   return new Promise((resolve, reject) => {
-    const ap = window.AlipayJSBridge;
+    let ap;
 
+    if (isAlipayMiniApp()) {
+      //@ts-expect-error
+      ap = my;
+    } else {
+      ap = window.AlipayJSBridge;
+    }
     if (ap) {
       ap.call('getSystemInfo', (e: SystemInfo) => {
         if (e.error) {

@@ -14,6 +14,11 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./alipay": {
+      "import": "./dist/alipay.mjs",
+      "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
@@ -43,5 +48,6 @@
   },
   "devDependencies": {
     "@galacean/effects": "workspace:*"
-  }
+  },
+  "repository": "git@github.com:galacean/effects-runtime.git"
 }
