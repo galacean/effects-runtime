@@ -53,13 +53,6 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   private velocity: Vector3;
   private binding: VFXItem;
 
-  override prepareData (context: FrameContext): void {
-    if (!this.binding) {
-      this.binding = context.output.getUserData() as VFXItem;
-      this.start();
-    }
-  }
-
   start (): void {
     const bindingItem = this.binding;
     const scale = bindingItem.transform.scale;
@@ -141,6 +134,10 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   }
 
   override processFrame (context: FrameContext): void {
+    if (!this.binding) {
+      this.binding = context.output.getUserData() as VFXItem;
+      this.start();
+    }
     if (this.binding.composition) {
       this.sampleAnimation();
     }
@@ -240,50 +237,12 @@ export interface TransformPlayableAssetData extends spec.EffectsObjectData {
  * @internal
  */
 export class ActivationPlayable extends Playable {
-  binding: VFXItem;
-
-  override prepareData (context: FrameContext): void {
-    if (!this.binding) {
-      this.binding = context.output.getUserData() as VFXItem;
-      this.start();
-    }
-  }
-
-  start (): void {
-    this.binding.transform.setValid(false);
-    this.hideRendererComponents();
-  }
-
-  override onPlayablePlay (context: FrameContext): void {
-    this.binding.transform.setValid(true);
-    this.showRendererComponents();
-  }
-
-  override onPlayablePause (): void {
-    this.binding.transform.setValid(false);
-    this.hideRendererComponents();
-  }
 
   override processFrame (context: FrameContext): void {
-    const lifetime = this.binding.duration > 0 ? this.time / this.binding.duration : 0;
+    const bindingItem = context.output.getUserData() as VFXItem;
+    const lifetime = bindingItem.duration > 0 ? this.time / bindingItem.duration : 0;
 
-    this.binding.lifetime = lifetime;
-  }
-
-  private hideRendererComponents () {
-    for (const rendererComponent of this.binding.rendererComponents) {
-      if (rendererComponent.enabled) {
-        rendererComponent.enabled = false;
-      }
-    }
-  }
-
-  private showRendererComponents () {
-    for (const rendererComponent of this.binding.rendererComponents) {
-      if (!rendererComponent.enabled) {
-        rendererComponent.enabled = true;
-      }
-    }
+    bindingItem.lifetime = lifetime;
   }
 }
 

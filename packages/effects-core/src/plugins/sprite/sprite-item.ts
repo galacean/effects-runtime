@@ -83,16 +83,15 @@ export class SpriteColorPlayable extends Playable {
   renderColor: vec4 = [1, 1, 1, 1];
   spriteMaterial: Material;
 
-  override onPlayablePlay (context: FrameContext): void {
+  override processFrame (context: FrameContext): void {
     const bindingItem = context.output.getUserData() as VFXItem;
 
-    this.spriteMaterial = bindingItem.getComponent(SpriteComponent)!.material;
-  }
+    if (!this.spriteMaterial) {
+      this.spriteMaterial = bindingItem.getComponent(SpriteComponent).material;
+    }
 
-  override processFrame (context: FrameContext): void {
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
-    const bindingItem = context.output.getUserData() as VFXItem;
     const life = this.time / bindingItem.duration;
 
     const opacityOverLifetime = this.opacityOverLifetime;

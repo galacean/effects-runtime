@@ -25,15 +25,6 @@ export class TimelineAsset extends PlayableAsset {
     return timelinePlayable;
   }
 
-  addSubTracksRecursive (track: TrackAsset, allTracks: TrackAsset[]) {
-    for (const subTrack of track.getChildTracks()) {
-      allTracks.push(subTrack);
-    }
-    for (const subTrack of track.getChildTracks()) {
-      this.addSubTracksRecursive(subTrack, allTracks);
-    }
-  }
-
   override fromData (data: TimelineAssetData): void {
     this.tracks = data.tracks as TrackAsset[];
   }
@@ -66,7 +57,13 @@ export class TimelinePlayable extends Playable {
       newObjectBindingTrack.create();
       this.masterTracks.push(newObjectBindingTrack);
     }
-    for (const track of tracks) {
+    const outputTrack: TrackAsset[] = [];
+
+    for (const masterTrack of tracks) {
+      this.addSubTracksRecursive(masterTrack, outputTrack);
+    }
+
+    for (const track of outputTrack) {
       const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
 
       // TODO 移至 Composition Component play
@@ -92,6 +89,15 @@ export class TimelinePlayable extends Playable {
     tracks.length = 0;
     for (const trackWrapper of sortedTracks) {
       tracks.push(trackWrapper.track);
+    }
+  }
+
+  private addSubTracksRecursive (track: TrackAsset, allTracks: TrackAsset[]) {
+    for (const subTrack of track.getChildTracks()) {
+      allTracks.push(subTrack);
+    }
+    for (const subTrack of track.getChildTracks()) {
+      this.addSubTracksRecursive(subTrack, allTracks);
     }
   }
 }

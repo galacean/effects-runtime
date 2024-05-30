@@ -10,9 +10,6 @@ export class PlayableGraph {
   private playableOutputs: PlayableOutput[] = [];
   private playables: Playable[] = [];
 
-  constructor () {
-  }
-
   evaluate (dt: number) {
     // 初始化节点状态
     for (const playable of this.playables) {
@@ -23,9 +20,6 @@ export class PlayableGraph {
       playableOutput.context.deltaTime = dt;
     }
     // 执行生命周期函数
-    for (const playableOutput of this.playableOutputs) {
-      this.prepareDataWithRoot(playableOutput);
-    }
     for (const playableOutput of this.playableOutputs) {
       this.prepareFrameWithRoot(playableOutput);
     }
@@ -56,11 +50,6 @@ export class PlayableGraph {
     output.prepareFrame();
   }
 
-  private prepareDataWithRoot (output: PlayableOutput) {
-    output.sourcePlayable.prepareDataRecursive(output.context, output.getSourceOutputPort());
-    output.prepareData();
-  }
-
   private updatePlayableTime (playable: Playable, deltaTime: number) {
     if (playable.getPlayState() !== PlayState.Playing) {
       return;
@@ -89,7 +78,7 @@ export class Playable implements Disposable {
   private inputOuputPorts: number[] = [];
   private inputWeight: number[] = [];
   private outputs: Playable[] = [];
-  private playState: PlayState = PlayState.Delayed;
+  private playState: PlayState = PlayState.Playing;
   private traversalMode: PlayableTraversalMode = PlayableTraversalMode.Mix;
 
   /**
@@ -207,10 +196,6 @@ export class Playable implements Disposable {
 
   // }
 
-  prepareData (context: FrameContext) {
-
-  }
-
   onPlayablePlay (context: FrameContext) {
 
   }
@@ -242,39 +227,10 @@ export class Playable implements Disposable {
   /**
    * @internal
    */
-  prepareDataRecursive (context: FrameContext, passthroughPort: number) {
-    if (this.destroyed) {
-      return;
-    }
-    if (passthroughPort === 0 && this.playState === PlayState.Delayed) {
-      this.prepareData(context);
-    }
-
-    // 前序遍历，用于设置节点的初始状态，weight etc.
-    if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
-      for (let i = 0; i < this.getInputCount(); i++) {
-        const input = this.getInput(i);
-
-        input.prepareDataRecursive(context, this.inputOuputPorts[i]);
-      }
-    } else if (this.getTraversalMode() === PlayableTraversalMode.Passthrough) {
-      const input = this.getInput(passthroughPort);
-
-      input.prepareDataRecursive(context, this.inputOuputPorts[passthroughPort]);
-    }
-  }
-
-  /**
-   * @internal
-   */
   prepareFrameRecursive (context: FrameContext, passthroughPort: number) {
     if (this.destroyed) {
       return;
     }
-    if (passthroughPort === 0) {
-      this.prepareFrame(context);
-    }
-
     if (this.onPlayablePlayFlag) {
       this.onPlayablePlay(context);
       this.onPlayablePlayFlag = false;
@@ -283,24 +239,20 @@ export class Playable implements Disposable {
       this.onPlayablePause(context);
       this.onPlayablePauseFlag = false;
     }
-
+    if (passthroughPort === 0) {
+      this.prepareFrame(context);
+    }
     // 前序遍历，用于设置节点的初始状态，weight etc.
     if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
       for (let i = 0; i < this.getInputCount(); i++) {
         const input = this.getInput(i);
-
-        // if (this.getInputWeight(i) <= 0) {
-        //   continue;
-        // }
 
         input.prepareFrameRecursive(context, this.inputOuputPorts[i]);
       }
     } else if (this.getTraversalMode() === PlayableTraversalMode.Passthrough) {
       const input = this.getInput(passthroughPort);
 
-      // if (this.getInputWeight(passthroughPort) > 0) {
       input.prepareFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
-      // }
     }
   }
 
@@ -396,10 +348,6 @@ export class PlayableOutput {
 
   }
 
-  prepareData () {
-
-  }
-
   prepareFrame () {
 
   }
@@ -421,7 +369,6 @@ export interface FrameContext {
 export enum PlayState {
   Playing,
   Paused,
-  Delayed,
 }
 
 export enum PlayableTraversalMode {

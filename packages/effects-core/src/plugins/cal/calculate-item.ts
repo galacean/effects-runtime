@@ -7,6 +7,7 @@ import { ParticleSystem } from '../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
 import { ActivationPlayableAsset } from './calculate-vfx-item';
 import { TrackAsset } from '../timeline/track';
+import { ActivationTrack } from '../timeline/tracks/activation-track';
 
 /**
  * 基础位移属性数据
@@ -55,7 +56,7 @@ export class ObjectBindingTrack extends TrackAsset {
     };
     this.id = this.binding.id;
     this.name = this.binding.name;
-    const activationTrack = this.createTrack(TrackAsset, 'ActivationTrack');
+    const activationTrack = this.createTrack(ActivationTrack, 'ActivationTrack');
 
     activationTrack.binding = this.binding;
     activationTrack.createClip(ActivationPlayableAsset, 'ActivationTimelineClip');

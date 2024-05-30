@@ -10,9 +10,12 @@ import { ParticleSystem } from './particle-system';
 export class ParticleBehaviourPlayable extends Playable {
   particleSystem: ParticleSystem;
 
-  override onPlayablePlay (context: FrameContext): void {
+  start (context: FrameContext): void {
     const binding = context.output.getUserData() as VFXItem;
 
+    if (this.particleSystem) {
+      return;
+    }
     this.particleSystem = binding.getComponent(ParticleSystem);
 
     if (this.particleSystem) {
@@ -23,6 +26,7 @@ export class ParticleBehaviourPlayable extends Playable {
   }
 
   override processFrame (context: FrameContext): void {
+    this.start(context);
     const particleSystem = this.particleSystem;
 
     if (particleSystem) {
