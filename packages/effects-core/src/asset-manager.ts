@@ -460,7 +460,7 @@ export class AssetManager implements Disposable {
               );
             }
           } catch (e) {
-            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}.`);
+            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message}`);
           }
         } else {
           // 旧版模板或没有背景的处理
