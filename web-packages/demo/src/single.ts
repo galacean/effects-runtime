@@ -1,12 +1,10 @@
 import { Player } from '@galacean/effects';
-import { setAlipayDowngradeBizId } from '@galacean/effects-plugin-alipay-downgrade';
 import inspireList from './assets/inspire-list';
 
 const json = inspireList.turnplate.url;
 
 (async () => {
   try {
-    setAlipayDowngradeBizId('aaaaa');
     const player = createPlayer();
 
     await player.loadScene(json);

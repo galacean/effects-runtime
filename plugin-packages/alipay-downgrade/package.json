@@ -48,6 +48,5 @@
   },
   "devDependencies": {
     "@galacean/effects": "workspace:*"
-  },
-  "repository": "git@github.com:galacean/effects-runtime.git"
+  }
 }

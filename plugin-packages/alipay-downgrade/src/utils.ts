@@ -1,4 +1,4 @@
-import { spec, isString, isAlipayMiniApp } from '@galacean/effects';
+import { isAlipayMiniApp, isString, spec } from '@galacean/effects';
 
 declare global {
   interface Window {
@@ -93,14 +93,8 @@ export async function checkDowngrade (
     return Promise.resolve({ downgrade: bizId === mockIdFail, reason: 'mock' });
   }
 
-  let ap: { call: any };
-
-  if (isAlipayMiniApp()) {
-    //@ts-expect-error
-    ap = my;
-  } else {
-    ap = window.AlipayJSBridge;
-  }
+  //@ts-expect-error
+  const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
   if (ap) {
     const now = performance.now();
@@ -184,14 +178,10 @@ type SystemInfo = {
 
 export async function getSystemInfo (): Promise<SystemInfo> {
   return new Promise((resolve, reject) => {
-    let ap;
 
-    if (isAlipayMiniApp()) {
-      //@ts-expect-error
-      ap = my;
-    } else {
-      ap = window.AlipayJSBridge;
-    }
+    //@ts-expect-error
+    const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+
     if (ap) {
       ap.call('getSystemInfo', (e: SystemInfo) => {
         if (e.error) {
