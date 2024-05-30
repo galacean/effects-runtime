@@ -52,10 +52,10 @@ export class TimelinePlayable extends Playable {
     this.sortTracks(tracks);
     for (const track of tracks) {
       // 获取所有的合成元素绑定 Track
-      const newObjectBindingTrack = track as ObjectBindingTrack;
+      const newBindingTrack = track as ObjectBindingTrack;
 
-      newObjectBindingTrack.create();
-      this.masterTracks.push(newObjectBindingTrack);
+      newBindingTrack.create();
+      this.masterTracks.push(newBindingTrack);
     }
     const outputTrack: TrackAsset[] = [];
 

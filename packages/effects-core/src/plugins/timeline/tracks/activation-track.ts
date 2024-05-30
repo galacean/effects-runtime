@@ -1,4 +1,4 @@
-import { effectsClass } from 'packages/effects-core/src/decorators';
+import { effectsClass } from '../../../decorators';
 import type { PlayableGraph, Playable } from '../../cal/playable-graph';
 import { ActivationMixerPlayable } from '../playables/activation-mixer-playable';
 import { TrackAsset } from '../track';

@@ -446,7 +446,7 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
       playableAssetDatas.push(newPlayableAssetData);
       const newTrackData = {
         id: generateGUID(),
-        dataType: 'TrackAsset',
+        dataType: 'TransformTrack',
         children: [],
         clips: [
           {
@@ -472,7 +472,7 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
       playableAssetDatas.push(newPlayableAssetData);
       const newTrackData = {
         id: generateGUID(),
-        dataType: 'TrackAsset',
+        dataType: 'SpriteColorTrack',
         children: [],
         clips: [
           {
@@ -487,17 +487,17 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
       trackDatas.push(newTrackData);
     }
 
-    const objectBindingTrackData = {
+    const bindingTrackData = {
       id: generateGUID(),
       dataType: 'ObjectBindingTrack',
       children: subTrackDatas,
       clips: [],
     };
 
-    trackDatas.push(objectBindingTrackData);
-    timelineAssetData.tracks.push({ id: objectBindingTrackData.id });
+    trackDatas.push(bindingTrackData);
+    timelineAssetData.tracks.push({ id: bindingTrackData.id });
     sceneBindings.push({
-      key: { id: objectBindingTrackData.id },
+      key: { id: bindingTrackData.id },
       value: { id: item.id },
     });
   }

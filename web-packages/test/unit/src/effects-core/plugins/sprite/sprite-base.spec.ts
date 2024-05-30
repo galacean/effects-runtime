@@ -47,7 +47,7 @@ describe('sprite item base options', () => {
     const sprite1 = comp.getItemByName('sprite_1');
     let spriteColorTrack;
 
-    for (const track of comp.rootItem.getComponent(CompositionComponent)!.objectBindingTracks) {
+    for (const track of comp.rootItem.getComponent(CompositionComponent).masterTracks) {
       if (track.bindingItem === sprite1) {
         spriteColorTrack = track;
       }
@@ -189,7 +189,7 @@ describe('sprite item base options', () => {
     const texOffset0 = spriteItem.material.getVector4('_TexOffset').clone().toArray();
     let spriteColorTrack;
 
-    for (const track of comp.rootItem.getComponent(CompositionComponent)!.objectBindingTracks) {
+    for (const track of comp.rootItem.getComponent(CompositionComponent).masterTracks) {
       if (track.bindingItem === spriteItem) {
         spriteColorTrack = track;
       }
