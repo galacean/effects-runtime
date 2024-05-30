@@ -61,9 +61,6 @@ export class LoaderECSImpl implements LoaderECS {
           clipMode: spec.CameraClipMode.portrait,
         },
         items: [],
-        // @ts-expect-error
-        timelineAsset: {},
-        sceneBindings: [],
       };
     }
   }
