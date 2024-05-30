@@ -17,6 +17,7 @@ export default [
   'alipay'
 ].map(platform => {
   const adapterVars = {};
+  const paths = { '@galacean/effects': `@galacean/effects/${platform}`};
 
   adapterList[platform].forEach(name => {
     adapterVars[name] = [`${module}/${platform}`, name];
@@ -28,10 +29,12 @@ export default [
       file: `./dist/${platform}.mjs`,
       format: 'es',
       sourcemap: true,
+      paths,
     }, {
       file: `./dist/${platform}.js`,
       format: 'cjs',
       sourcemap: true,
+      paths,
     }],
     external: ['@galacean/effects'],
     plugins: [
