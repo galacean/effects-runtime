@@ -199,8 +199,8 @@ export async function getSystemInfo (): Promise<SystemInfo> {
 const deviceNameList = ['12,8', '13,1', '13,2', '13,3', '13,4'];
 
 /**
- *
- * @returns iPhone SE2和12全系列机型，如果是iOS 16系统，在小程序中强制降级
+ * iPhone SE2 和 12 全系列机型，如果是 iOS16 系统，在小程序中强制降级
+ * @returns
  */
 export function downgradeForMiniprogram () {
   if (isIOS) {
