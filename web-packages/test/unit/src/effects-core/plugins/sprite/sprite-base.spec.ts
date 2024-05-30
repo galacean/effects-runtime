@@ -45,14 +45,21 @@ describe('sprite item base options', () => {
     player.gotoAndPlay(0.01);
     const spriteItem = comp.getItemByName('sprite_1').getComponent(SpriteComponent);
     const sprite1 = comp.getItemByName('sprite_1');
+    let spriteBindingTrack;
     let spriteColorTrack;
 
     for (const track of comp.rootItem.getComponent(CompositionComponent).masterTracks) {
       if (track.bindingItem === sprite1) {
-        spriteColorTrack = track;
+        spriteBindingTrack = track;
       }
     }
-    const spriteColorClip = spriteColorTrack.findTrack('SpriteColorTrack').findClip('SpriteColorClip').playable;
+
+    for (const subTrack of spriteBindingTrack.getChildTracks()) {
+      if (subTrack.name === 'SpriteColorTrack') {
+        spriteColorTrack = subTrack;
+      }
+    }
+    const spriteColorClip = spriteColorTrack.findClip('SpriteColorClip').playable;
 
     const color = spriteItem.material.getVector4('_Color').toArray();
 

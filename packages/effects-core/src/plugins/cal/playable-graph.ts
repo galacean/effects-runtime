@@ -68,7 +68,7 @@ export class PlayableGraph {
  * @internal
  */
 export class Playable implements Disposable {
-  onPlayablePlayFlag = false;
+  onPlayablePlayFlag = true;
   onPlayablePauseFlag = false;
   overrideTimeNextEvaluation = false;
 
@@ -344,9 +344,9 @@ export class PlayableOutput {
     return this.userData;
   }
 
-  onGraphStart () {
+  // onGraphStart () {
 
-  }
+  // }
 
   prepareFrame () {
 

@@ -105,18 +105,6 @@ export class ObjectBindingTrack extends TrackAsset {
     return newTrack;
   }
 
-  getTracks (): TrackAsset[] {
-    return this.children;
-  }
-
-  findTrack (name: string): TrackAsset | undefined {
-    for (const track of this.children) {
-      if (track.name === name) {
-        return track;
-      }
-    }
-  }
-
   override fromData (data: spec.EffectsObjectData): void {
     super.fromData(data);
     this.data = data;
