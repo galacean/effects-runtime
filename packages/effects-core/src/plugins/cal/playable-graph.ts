@@ -16,8 +16,6 @@ export class PlayableGraph {
   evaluate (dt: number) {
     // 初始化节点状态
     for (const playable of this.playables) {
-      playable.prepareFrameFlag = false;
-      playable.prepareDataFlag = false;
       this.updatePlayableTime(playable, dt);
     }
     // 初始化输出节点状态
@@ -81,9 +79,8 @@ export class PlayableGraph {
  * @internal
  */
 export class Playable implements Disposable {
-  prepareFrameFlag = false;
-  prepareDataFlag = false;
   onPlayablePlayFlag = false;
+  onPlayablePauseFlag = false;
   overrideTimeNextEvaluation = false;
 
   private destroyed = false;
@@ -109,6 +106,12 @@ export class Playable implements Disposable {
 
   play () {
     this.playState = PlayState.Playing;
+    this.onPlayablePlayFlag = true;
+  }
+
+  pause () {
+    this.playState = PlayState.Paused;
+    this.onPlayablePauseFlag = true;
   }
 
   connectInput (inputPort: number, sourcePlayable: Playable, sourceOutputPort: number, weight = 1.0) {
@@ -212,6 +215,10 @@ export class Playable implements Disposable {
 
   }
 
+  onPlayablePause (context: FrameContext) {
+
+  }
+
   prepareFrame (context: FrameContext) {
 
   }
@@ -239,9 +246,8 @@ export class Playable implements Disposable {
     if (this.destroyed) {
       return;
     }
-    if (!this.prepareDataFlag && this.playState === PlayState.Delayed) {
+    if (passthroughPort === 0 && this.playState === PlayState.Delayed) {
       this.prepareData(context);
-      this.prepareDataFlag = true;
     }
 
     // 前序遍历，用于设置节点的初始状态，weight etc.
@@ -262,29 +268,39 @@ export class Playable implements Disposable {
    * @internal
    */
   prepareFrameRecursive (context: FrameContext, passthroughPort: number) {
-    if (this.destroyed || this.prepareFrameFlag || this.playState !== PlayState.Playing) {
+    if (this.destroyed) {
       return;
     }
-    this.prepareFrame(context);
-    this.prepareFrameFlag = true;
+    if (passthroughPort === 0) {
+      this.prepareFrame(context);
+    }
+
+    if (this.onPlayablePlayFlag) {
+      this.onPlayablePlay(context);
+      this.onPlayablePlayFlag = false;
+    }
+    if (this.onPlayablePauseFlag) {
+      this.onPlayablePause(context);
+      this.onPlayablePauseFlag = false;
+    }
 
     // 前序遍历，用于设置节点的初始状态，weight etc.
     if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
       for (let i = 0; i < this.getInputCount(); i++) {
         const input = this.getInput(i);
 
-        if (this.getInputWeight(i) <= 0) {
-          continue;
-        }
+        // if (this.getInputWeight(i) <= 0) {
+        //   continue;
+        // }
 
         input.prepareFrameRecursive(context, this.inputOuputPorts[i]);
       }
     } else if (this.getTraversalMode() === PlayableTraversalMode.Passthrough) {
       const input = this.getInput(passthroughPort);
 
-      if (this.getInputWeight(passthroughPort) > 0) {
-        input.prepareFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
-      }
+      // if (this.getInputWeight(passthroughPort) > 0) {
+      input.prepareFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
+      // }
     }
   }
 
@@ -292,7 +308,7 @@ export class Playable implements Disposable {
    * @internal
    */
   processFrameRecursive (context: FrameContext, passthroughPort: number) {
-    if (this.destroyed || this.playState !== PlayState.Playing) {
+    if (this.destroyed) {
       return;
     }
     // 后序遍历，保证 playable 拿到的 input 节点的估计数据是最新的
@@ -312,10 +328,6 @@ export class Playable implements Disposable {
       if (this.getInputWeight(passthroughPort) > 0) {
         input.processFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
       }
-    }
-    if (!this.onPlayablePlayFlag) {
-      this.onPlayablePlay(context);
-      this.onPlayablePlayFlag = true;
     }
     this.processFrame(context);
   }

@@ -13,7 +13,7 @@ export class ParticleBehaviourPlayable extends Playable {
   override onPlayablePlay (context: FrameContext): void {
     const binding = context.output.getUserData() as VFXItem;
 
-    this.particleSystem = binding.getComponent(ParticleSystem)!;
+    this.particleSystem = binding.getComponent(ParticleSystem);
 
     if (this.particleSystem) {
       this.particleSystem.name = binding.name;

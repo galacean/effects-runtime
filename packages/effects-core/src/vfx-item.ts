@@ -216,7 +216,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */
-  getComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T | undefined {
+  getComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T {
     let res;
 
     for (const com of this.components) {
@@ -227,7 +227,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
     }
 
-    return res;
+    return res as T;
   }
 
   /**

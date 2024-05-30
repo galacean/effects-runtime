@@ -29,11 +29,11 @@ export default {
   // },
   /* ******************************** */
 
-  butterfly: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*uU2JRIjcLIcAAAAAAAAAAAAADlB4AQ',
-    name: '塔奇-蝴蝶飞入',
-    pass: true,
-  },
+  // butterfly: {
+  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*uU2JRIjcLIcAAAAAAAAAAAAADlB4AQ',
+  //   name: '塔奇-蝴蝶飞入',
+  //   pass: true,
+  // },
 
   // 滤镜
   // bloom: {

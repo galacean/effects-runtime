@@ -259,7 +259,7 @@ export class ActivationPlayable extends Playable {
     this.showRendererComponents();
   }
 
-  override onPlayableDestroy (): void {
+  override onPlayablePause (): void {
     this.binding.transform.setValid(false);
     this.hideRendererComponents();
   }

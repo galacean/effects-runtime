@@ -1,10 +1,10 @@
-import { ParticleSystem } from '@galacean/effects-core';
 import { ItemEndBehavior } from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import type { Engine } from '../../engine';
 import { VFXItem } from '../../vfx-item';
 import type { PlayableGraph } from '../cal/playable-graph';
 import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
+import { ParticleSystem } from '../particle/particle-system';
 
 /**
  * @since 2.0.0
@@ -205,9 +205,6 @@ export class RuntimeClip {
   evaluateAt (localTime: number) {
     const clip = this.clip;
 
-    if (clip.playable.getPlayState() === PlayState.Delayed) {
-      clip.playable.play();
-    }
     let weight = 1.0;
     let ended = false;
     let started = false;
@@ -225,6 +222,10 @@ export class RuntimeClip {
     } else if (localTime < clip.start) {
       weight = 0.0;
     }
+
+    if (started && clip.playable.getPlayState() !== PlayState.Playing && !ended) {
+      clip.playable.play();
+    }
     this.parentMixer.setInputWeight(this.playable, weight);
 
     const bindingItem = this.track.binding;
@@ -234,7 +235,8 @@ export class RuntimeClip {
       bindingItem.ended = true;
       bindingItem.onEnd();
     }
-    if (ended && clip.endBehaviour === ItemEndBehavior.destroy) {
+    if (ended && this.clip.playable.getPlayState() === PlayState.Playing && clip.endBehaviour === ItemEndBehavior.destroy) {
+      this.clip.playable.pause();
       this.onClipEnd();
     }
     // 判断动画是否开始
@@ -247,12 +249,12 @@ export class RuntimeClip {
   }
 
   private onClipEnd () {
-    this.clip.playable.dispose();
     const bindingItem = this.track.binding;
 
     bindingItem.delaying = true;
     if (!bindingItem.compositionReusable && !bindingItem.reusable) {
       bindingItem.dispose();
+      this.clip.playable.dispose();
 
       return;
     }
