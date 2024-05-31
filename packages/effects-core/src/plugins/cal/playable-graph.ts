@@ -242,16 +242,24 @@ export class Playable implements Disposable {
       this.prepareFrame(context);
     }
     // 前序遍历，用于设置节点的初始状态，weight etc.
-    if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
-      for (let i = 0; i < this.getInputCount(); i++) {
-        const input = this.getInput(i);
+    switch (this.getTraversalMode()) {
+      case PlayableTraversalMode.Mix:
+        for (let i = 0; i < this.getInputCount(); i++) {
+          const input = this.getInput(i);
 
-        input.prepareFrameRecursive(context, this.inputOuputPorts[i]);
+          input.prepareFrameRecursive(context, this.inputOuputPorts[i]);
+        }
+
+        break;
+      case PlayableTraversalMode.Passthrough: {
+        const input = this.getInput(passthroughPort);
+
+        input.prepareFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
+
+        break;
       }
-    } else if (this.getTraversalMode() === PlayableTraversalMode.Passthrough) {
-      const input = this.getInput(passthroughPort);
-
-      input.prepareFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
+      default:
+      // do nothing
     }
   }
 
@@ -263,22 +271,31 @@ export class Playable implements Disposable {
       return;
     }
     // 后序遍历，保证 playable 拿到的 input 节点的估计数据是最新的
-    if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
-      for (let i = 0; i < this.getInputCount(); i++) {
-        const input = this.getInput(i);
+    switch (this.getTraversalMode()) {
+      case PlayableTraversalMode.Mix: {
+        for (let i = 0; i < this.getInputCount(); i++) {
+          const input = this.getInput(i);
 
-        if (this.getInputWeight(i) <= 0) {
-          continue;
+          if (this.getInputWeight(i) <= 0) {
+            continue;
+          }
+
+          input.processFrameRecursive(context, this.inputOuputPorts[i]);
         }
 
-        input.processFrameRecursive(context, this.inputOuputPorts[i]);
+        break;
       }
-    } else if (this.getTraversalMode() === PlayableTraversalMode.Passthrough) {
-      const input = this.getInput(passthroughPort);
+      case PlayableTraversalMode.Passthrough: {
+        const input = this.getInput(passthroughPort);
 
-      if (this.getInputWeight(passthroughPort) > 0) {
-        input.processFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
+        if (this.getInputWeight(passthroughPort) > 0) {
+          input.processFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
+        }
+
+        break;
       }
+      default:
+      // do nothing
     }
     this.processFrame(context);
   }
