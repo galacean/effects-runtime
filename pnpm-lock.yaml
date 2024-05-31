@@ -216,8 +216,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: 0.6.0-alpha.6
-        version: 0.6.0-alpha.6
+        specifier: 0.6.0-alpha.7
+        version: 0.6.0-alpha.7
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -2655,13 +2655,8 @@ packages:
     engines: {node: '>=10.0.0'}
     dev: false
 
-  /@galacean/effects-specification@2.0.0-alpha.12:
-    resolution: {integrity: sha512-twUwxSwf3fA6iinDJHh7qCvPRFZl8Q+14VQplFuIGJtao3CdajqKwxyi3jhwJbgcFujOYAp++Zz+BwZV4pIzfg==}
-    dev: true
-
   /@galacean/effects-specification@2.0.0-alpha.14:
     resolution: {integrity: sha512-ckqfz0dHkYJupCnSrtzbXh6bmcRz83Zjn10AfpQRDS3PMLiM+X6suMEbBjTsl6iNfDQ6TftedSg5McuwdjcTRw==}
-    dev: false
 
   /@headlessui/vue@1.7.19(vue@3.4.21):
     resolution: {integrity: sha512-VFjKPybogux/5/QYGSq4zgG/x3RcxId15W8uguAJAjPBxelI23dwjOjTx/mIiMkM/Hd3rzFxcf2aIp56eEWRcA==}
@@ -4253,11 +4248,11 @@ packages:
       - vue
     dev: true
 
-  /@vvfx/resource-detection@0.6.0-alpha.6:
-    resolution: {integrity: sha512-gun6ABiU4kcQDlLlJLogVrx9aNYkr+uu1yMGO5y7Vi3HfaxlvVnm/FrqHQ9g94Q6IatL1mXheYlpA4RT7EYmQQ==}
+  /@vvfx/resource-detection@0.6.0-alpha.7:
+    resolution: {integrity: sha512-NOmyIPX/leTlnNuc0A2Ts831eO7IFmRc+2ZhBsJnF+zqFdysXFaJnqS32DXCeIAHMMTuTSeKMJfKpuTJzDP9xw==}
     engines: {node: '>=10.0.0'}
     dependencies:
-      '@galacean/effects-specification': 2.0.0-alpha.12
+      '@galacean/effects-specification': 2.0.0-alpha.14
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1

@@ -93,7 +93,7 @@ export class JSONConverter {
     if (oldScene.textures) {
       for (const tex of oldScene.textures) {
         if (tex.target === 34067) {
-          const { mipmaps, target } = tex as spec.SerializedTextureCube;
+          const { mipmaps, target } = tex;
           const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => this.loadMipmapImage(pointer, bins))));
           const loadedMipmaps = await Promise.all(jobs);
 
@@ -757,12 +757,17 @@ export class JSONConverter {
       newMat.floats['AlphaClip'] = 0;
     }
 
-    if (oldMat.side === spec.SideMode.BACK) {
-      newMat.stringTags['RenderFace'] = spec.RenderFace.Back;
-    } else if (oldMat.side === spec.SideMode.DOUBLE) {
-      newMat.stringTags['RenderFace'] = spec.RenderFace.Both;
-    } else {
-      newMat.stringTags['RenderFace'] = spec.RenderFace.Front;
+    switch (oldMat.side) {
+      case spec.SideMode.BACK:
+        newMat.stringTags['RenderFace'] = spec.RenderFace.Back;
+
+        break;
+      case spec.SideMode.DOUBLE:
+        newMat.stringTags['RenderFace'] = spec.RenderFace.Both;
+
+        break;
+      default:
+        newMat.stringTags['RenderFace'] = spec.RenderFace.Front;
     }
 
     if (oldMat.type === spec.MaterialType.pbr) {
