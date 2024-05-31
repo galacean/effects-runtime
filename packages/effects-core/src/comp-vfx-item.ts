@@ -46,12 +46,15 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.startTime = startTime;
     this.masterTracks = [];
+
     for (const sceneBinding of this.sceneBindings) {
       sceneBinding.key.binding = sceneBinding.value;
     }
+
     this.initializeTrackBindings(this.timelineAsset.tracks);
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
     this.timelinePlayable.play();
+
     for (const track of this.timelineAsset.tracks) {
       // 重播不销毁元素
       if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
@@ -70,7 +73,6 @@ export class CompositionComponent extends ItemBehaviour {
 
   initializeTrackBindings (masterTracks: TrackAsset[]) {
     for (const track of masterTracks) {
-
       track.initializeBindingRecursive(track.binding);
     }
   }

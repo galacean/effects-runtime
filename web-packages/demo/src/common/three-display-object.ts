@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { EventSystem, EVENT_TYPE_CLICK, InteractBehavior, ThreeDisplayObject, spec } from '@galacean/effects-threejs';
+import { EventSystem, EVENT_TYPE_CLICK, ThreeDisplayObject, spec } from '@galacean/effects-threejs';
 
 export function createThreePlayer (options) {
   const { container, renderFramework = 'webgl' } = options;
@@ -76,13 +76,13 @@ export async function renderbyThreeDisplayObject (player, json) {
 
     if (regions.length) {
       for (let i = 0; i < regions.length; i++) {
-        const { name, id, hitPositions, behavior = InteractBehavior.NOTIFY } = regions[i];
+        const { name, id, hitPositions, behavior = spec.InteractBehavior.NOTIFY } = regions[i];
 
-        if (behavior === InteractBehavior.NOTIFY) {
+        if (behavior === spec.InteractBehavior.NOTIFY) {
           // 或者自定义notify的回调参数
           console.info(`item ${name} has been clicked`);
 
-        } else if (behavior === InteractBehavior.RESUME_PLAYER) {
+        } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
           player.resume();
         }
       }

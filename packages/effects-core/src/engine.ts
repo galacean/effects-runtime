@@ -2,16 +2,16 @@ import * as spec from '@galacean/effects-specification';
 import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
-import { glContext } from './gl';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
 import type { Scene } from './scene';
-import { Texture, TextureSourceType } from './texture';
+import type { Texture } from './texture';
+import { generateWhiteTexture, generateTransparentTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
 
 /**
- * Engine 基类，负责维护所有 GPU 资源的销毁
+ * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
 export class Engine implements Disposable {
   renderer: Renderer;
@@ -22,6 +22,11 @@ export class Engine implements Disposable {
   objectInstance: Record<string, EffectsObject>;
   assetLoader: AssetLoader;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
+
+  /**
+   * 渲染过程中错误队列
+   */
+  renderErrors: Set<Error> = new Set();
 
   protected destroyed = false;
   protected textures: Texture[] = [];
@@ -34,7 +39,8 @@ export class Engine implements Disposable {
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.assetLoader = new AssetLoader(this);
-    this.createDefaultTexture();
+    this.emptyTexture = generateWhiteTexture(this);
+    this.transparentTexture = generateTransparentTexture(this);
   }
 
   /**
@@ -102,13 +108,12 @@ export class Engine implements Disposable {
     }
     if (scene.textureOptions) {
       for (const textureData of scene.textureOptions) {
-        //@ts-expect-error
-        this.addEffectsObjectData(textureData);
+        this.addEffectsObjectData(textureData as spec.EffectComponentData);
       }
     }
   }
 
-  async createVFXItemsAsync (scene: Scene) {
+  async createVFXItems (scene: Scene) {
     const jsonScene = scene.jsonScene;
 
     for (const itemData of jsonScene.items) {
@@ -212,43 +217,6 @@ export class Engine implements Disposable {
 
   getShaderLibrary (): ShaderLibrary {
     return this.renderer.getShaderLibrary() as ShaderLibrary;
-  }
-
-  private createDefaultTexture () {
-    const sourceOpts = {
-      type: glContext.UNSIGNED_BYTE,
-      format: glContext.RGBA,
-      internalFormat: glContext.RGBA,
-      wrapS: glContext.MIRRORED_REPEAT,
-      wrapT: glContext.MIRRORED_REPEAT,
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
-    };
-
-    this.emptyTexture = Texture.create(
-      this,
-      {
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([255, 255, 255, 255]),
-        },
-        sourceType: TextureSourceType.data,
-        ...sourceOpts,
-      },
-    );
-    this.transparentTexture = Texture.create(
-      this,
-      {
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([0, 0, 0, 0]),
-        },
-        sourceType: TextureSourceType.data,
-        ...sourceOpts,
-      }
-    );
   }
 
   /**

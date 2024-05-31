@@ -71,9 +71,11 @@ Framebuffer.create = (props: FramebufferProps, renderer: Renderer) => {
   return new GLFramebuffer(props, renderer);
 };
 
-Renderer.create = (canvas: HTMLCanvasElement | OffscreenCanvas,
+Renderer.create = (
+  canvas: HTMLCanvasElement | OffscreenCanvas,
   framework: 'webgl' | 'webgl2',
-  renderOptions?: WebGLContextAttributes) => {
+  renderOptions?: WebGLContextAttributes,
+) => {
   return new GLRenderer(canvas, framework, renderOptions);
 };
 

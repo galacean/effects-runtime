@@ -153,7 +153,6 @@ export class GLRendererInternal implements Disposable, LostHandler {
     const program = glMaterial.shaderVariant.program;
 
     if (!program) {
-      console.warn('Material ' + glMaterial.name + ' 的shader着色器程序未初始化。');
 
       return;
     }

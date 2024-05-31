@@ -73,7 +73,6 @@ export class Playable implements Disposable {
   overrideTimeNextEvaluation = false;
 
   private destroyed = false;
-
   private inputs: Playable[] = [];
   private inputOuputPorts: number[] = [];
   private inputWeight: number[] = [];
@@ -322,8 +321,8 @@ export class PlayableOutput {
 
   constructor () {
     this.context = {
-      deltaTime:0,
-      output:this,
+      deltaTime: 0,
+      output: this,
     };
   }
 
