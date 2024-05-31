@@ -1,4 +1,4 @@
-import type { VFXItem } from 'packages/effects-core/src/vfx-item';
+import type { VFXItem } from '../../../vfx-item';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 
@@ -17,7 +17,7 @@ export class ActivationMixerPlayable extends Playable {
 
     let hasInput = false;
 
-    for (let i = 0;i < this.getInputCount();i++) {
+    for (let i = 0; i < this.getInputCount(); i++) {
       if (this.getInputWeight(i) > 0) {
         hasInput = true;
 

@@ -1,7 +1,7 @@
 import type { Camera } from '@galacean/effects';
 import { Player, math } from '@galacean/effects';
 import { gizmoJSON, transformGizmoScene } from './assets';
-import { GizmoComponent } from 'plugin-packages/editor-gizmo/src/gizmo-component';
+import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
 
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
