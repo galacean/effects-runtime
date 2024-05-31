@@ -2,8 +2,8 @@ import { ItemEndBehavior } from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import type { Engine } from '../../engine';
 import { VFXItem } from '../../vfx-item';
-import type { PlayableGraph } from './playable-graph';
-import { Playable, PlayableAsset, PlayableOutput } from './playable-graph';
+import type { PlayableGraph } from '../cal/playable-graph';
+import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
 import { ParticleSystem } from '../particle/particle-system';
 
 /**
@@ -14,13 +14,29 @@ import { ParticleSystem } from '../particle/particle-system';
 export class TrackAsset extends PlayableAsset {
   id: string;
   name: string;
-  bindingItem: VFXItem;
+  binding: VFXItem;
 
+  trackType = TrackType.MasterTrack;
   private clipSeed = 0;
   @serialize('TimelineClip')
   private clips: TimelineClip[] = [];
   @serialize()
   protected children: TrackAsset[] = [];
+
+  initializeBinding (parentBinding: object) {
+    this.binding = parentBinding as VFXItem;
+  }
+
+  /**
+   * @internal
+   */
+  initializeBindingRecursive (parentBinding: object) {
+    this.initializeBinding(parentBinding);
+
+    for (const subTrack of this.children) {
+      subTrack.initializeBindingRecursive(this.binding);
+    }
+  }
 
   createOutput (): PlayableOutput {
     const output = new PlayableOutput();
@@ -35,15 +51,10 @@ export class TrackAsset extends PlayableAsset {
   }
 
   createMixerPlayableGraph (graph: PlayableGraph, runtimeClips: RuntimeClip[]) {
-    const tracks: TrackAsset[] = [];
-
-    this.gatherCompilableTracks(tracks);
     const clips: TimelineClip[] = [];
 
-    for (const track of tracks) {
-      for (const clip of track.clips) {
-        clips.push(clip);
-      }
+    for (const clip of this.clips) {
+      clips.push(clip);
     }
     const mixerPlayable = this.compileClips(graph, clips, runtimeClips);
 
@@ -56,11 +67,10 @@ export class TrackAsset extends PlayableAsset {
     for (const timelineClip of timelineClips) {
       const clipPlayable = this.createClipPlayable(graph, timelineClip);
 
-      const clip = new RuntimeClip(timelineClip, clipPlayable, mixer);
+      const clip = new RuntimeClip(timelineClip, clipPlayable, mixer, this);
 
       runtimeClips.push(clip);
 
-      clipPlayable.bindingItem = this.bindingItem;
       timelineClip.playable = clipPlayable;
       mixer.addInput(clipPlayable, 0);
       mixer.setInputWeight(clipPlayable, 0);
@@ -117,14 +127,11 @@ export class TrackAsset extends PlayableAsset {
   private createClipPlayable (graph: PlayableGraph, clip: TimelineClip) {
     return clip.asset.createPlayable(graph);
   }
+}
 
-  private gatherCompilableTracks (tracks: TrackAsset[]) {
-    tracks.push(this);
-
-    for (const subTrack of this.children) {
-      subTrack.gatherCompilableTracks(tracks);
-    }
-  }
+export enum TrackType {
+  MasterTrack,
+  ObjectTrack,
 }
 
 /**
@@ -165,11 +172,13 @@ export class RuntimeClip {
   clip: TimelineClip;
   playable: Playable;
   parentMixer: Playable;
+  track: TrackAsset;
 
-  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: Playable) {
+  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: Playable, track: TrackAsset) {
     this.clip = clip;
     this.playable = clipPlayable;
     this.parentMixer = parentMixer;
+    this.track = track;
   }
 
   set enable (value: boolean) {
@@ -182,12 +191,13 @@ export class RuntimeClip {
 
   evaluateAt (localTime: number) {
     const clip = this.clip;
+
     let weight = 1.0;
     let ended = false;
     let started = false;
 
     if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
-      if (VFXItem.isParticle(this.playable.bindingItem) && !this.playable.bindingItem.getComponent(ParticleSystem)?.destroyed) {
+      if (VFXItem.isParticle(this.track.binding) && !this.track.binding.getComponent(ParticleSystem)?.destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;
@@ -199,21 +209,22 @@ export class RuntimeClip {
     } else if (localTime < clip.start) {
       weight = 0.0;
     }
+
+    if (started && clip.playable.getPlayState() !== PlayState.Playing && !ended) {
+      clip.playable.play();
+    }
     this.parentMixer.setInputWeight(this.playable, weight);
 
-    const bindingItem = this.clip.playable.bindingItem;
+    const bindingItem = this.track.binding;
 
     // 判断动画是否结束
     if (ended && !bindingItem.ended) {
       bindingItem.ended = true;
       bindingItem.onEnd();
     }
-    if (ended && clip.endBehaviour === ItemEndBehavior.destroy) {
+    if (ended && this.clip.playable.getPlayState() === PlayState.Playing && clip.endBehaviour === ItemEndBehavior.destroy) {
+      this.clip.playable.pause();
       this.onClipEnd();
-    }
-    // 判断动画是否开始
-    if (bindingItem.delaying && started) {
-      bindingItem.delaying = false;
     }
     const clipTime = clip.toLocalTime(localTime);
 
@@ -221,12 +232,11 @@ export class RuntimeClip {
   }
 
   private onClipEnd () {
-    this.clip.playable.dispose();
-    const bindingItem = this.clip.playable.bindingItem;
+    const bindingItem = this.track.binding;
 
-    bindingItem.delaying = true;
     if (!bindingItem.compositionReusable && !bindingItem.reusable) {
       bindingItem.dispose();
+      this.clip.playable.dispose();
 
       return;
     }

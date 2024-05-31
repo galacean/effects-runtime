@@ -5,7 +5,7 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { ContentOptions } from './composition-source-manager';
-import type { Region, TimelinePlayable } from './plugins';
+import type { Region, TimelinePlayable, TrackAsset } from './plugins';
 import { HitTestType, ObjectBindingTrack } from './plugins';
 import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
@@ -46,28 +46,34 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.startTime = startTime;
     this.masterTracks = [];
-    const bindingTrackMap = new Map<VFXItem, ObjectBindingTrack>();
 
     for (const sceneBinding of this.sceneBindings) {
-      sceneBinding.key.bindingItem = sceneBinding.value;
-      bindingTrackMap.set(sceneBinding.value, sceneBinding.key);
+      sceneBinding.key.binding = sceneBinding.value;
     }
 
+    this.initializeTrackBindings(this.timelineAsset.tracks);
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
+    this.timelinePlayable.play();
 
     for (const track of this.timelineAsset.tracks) {
       // 重播不销毁元素
       if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
         if (track instanceof ObjectBindingTrack) {
-          track.bindingItem.reusable = true;
+          track.binding.reusable = true;
         }
-        const subCompositionComponent = track.bindingItem.getComponent(CompositionComponent);
+        const subCompositionComponent = track.binding.getComponent(CompositionComponent);
 
         if (subCompositionComponent) {
           subCompositionComponent.reusable = true;
         }
       }
       this.masterTracks.push(track as ObjectBindingTrack);
+    }
+  }
+
+  initializeTrackBindings (masterTracks: TrackAsset[]) {
+    for (const track of masterTracks) {
+      track.initializeBindingRecursive(track.binding);
     }
   }
 
@@ -98,7 +104,6 @@ export class CompositionComponent extends ItemBehaviour {
    */
   resetStatus () {
     this.item.ended = false;
-    this.item.delaying = true;
   }
 
   createContent () {
