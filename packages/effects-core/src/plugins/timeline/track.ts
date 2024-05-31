@@ -226,10 +226,6 @@ export class RuntimeClip {
       this.clip.playable.pause();
       this.onClipEnd();
     }
-    // 判断动画是否开始
-    if (bindingItem.delaying && started) {
-      bindingItem.delaying = false;
-    }
     const clipTime = clip.toLocalTime(localTime);
 
     this.playable.setTime(clipTime);
@@ -238,7 +234,6 @@ export class RuntimeClip {
   private onClipEnd () {
     const bindingItem = this.track.binding;
 
-    bindingItem.delaying = true;
     if (!bindingItem.compositionReusable && !bindingItem.reusable) {
       bindingItem.dispose();
       this.clip.playable.dispose();
