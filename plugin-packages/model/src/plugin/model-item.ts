@@ -46,6 +46,10 @@ export class ModelMeshComponent extends RendererComponent {
    * 场景管理器
    */
   sceneManager?: PSceneManager;
+  /**
+   * morph 动画权重
+   */
+  morphWeights: number[] = [];
 
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
@@ -528,6 +532,12 @@ export class ModelCameraComponent extends ItemBehaviour {
    * @param rotation - 旋转
    */
   setTransform (position?: Vector3, rotation?: Euler): void {
+    if (position) {
+      this.transform.setPosition(position.x, position.y, position.z);
+    }
+    if (rotation) {
+      this.transform.setRotation(rotation.x, rotation.y, rotation.z);
+    }
     this.updateMainCamera();
   }
 }
@@ -538,7 +548,7 @@ export class ModelCameraComponent extends ItemBehaviour {
  * @internal
  */
 @effectsClass(spec.DataType.AnimationComponent)
-export class ModelAnimationComponent extends ItemBehaviour {
+export class AnimationComponent extends ItemBehaviour {
   /**
    * 参数
    */
@@ -595,8 +605,7 @@ export class ModelAnimationComponent extends ItemBehaviour {
     data.animationClips.forEach(clipData => {
       const clipObj = new ModelAnimationClip(this.engine);
 
-      //@ts-expect-error
-      clipObj.fromData(clipData);
+      clipObj.setFromAnimationClip(clipData as unknown as AnimationClip);
       this.clips.push(clipObj);
     });
   }
@@ -633,7 +642,32 @@ class ModelAnimationClip extends AnimationClip {
       target?.transform.setScale(value.x, value.y, value.z);
     }
 
-    // TODO float curves 采样
+    for (const curve of this.floatCurves) {
+      const maxTime = curve.keyFrames.getMaxTime();
+      const value = curve.keyFrames.getValue(life % maxTime);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      if (curve.className === 'ModelMeshComponent') {
+        const component = target?.getComponent(ModelMeshComponent);
+
+        if (component) {
+          const properties = curve.property.split('.');
+
+          setProperty(component, properties, value);
+        } else {
+          console.error('Can\'t find mesh component');
+        }
+      } else {
+        console.warn(`Ignore curve: className ${curve.className}`);
+      }
+    }
+  }
+
+  setFromAnimationClip (clip: AnimationClip) {
+    this.positionCurves = clip.positionCurves.slice();
+    this.rotationCurves = clip.rotationCurves.slice();
+    this.scaleCurves = clip.scaleCurves.slice();
+    this.floatCurves = clip.floatCurves.slice();
   }
 
   getTargetItem (rootItem: VFXItem, path: string) {
@@ -664,4 +698,22 @@ class ModelAnimationClip extends AnimationClip {
 
     return target;
   }
+}
+
+function setProperty<T> (obj: Object, properties: string[], value: T) {
+  const len = properties.length;
+  let current: any = obj;
+
+  for (let i = 0; i < len - 1; i++) {
+    const propName = properties[i];
+
+    if (!(propName in current) || typeof current[propName] !== 'object') {
+      console.error(`Invalid properties ${properties}`);
+
+      return;
+    }
+    current = current[propName];
+  }
+
+  current[properties[len - 1]] = value;
 }

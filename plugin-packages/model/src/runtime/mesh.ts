@@ -158,6 +158,10 @@ export class PMesh extends PEntity {
   override update () {
     if (this.owner !== undefined) {
       this.transform.fromEffectsTransform(this.owner.transform);
+
+      if (this.morph && this.morph.hasMorph() && this.owner.morphWeights.length > 0) {
+        this.morph.updateWeights(this.owner.morphWeights);
+      }
     }
   }
 
@@ -841,11 +845,9 @@ export class PSubMesh {
     const morph = this.morph;
 
     if (morph !== undefined && morph.hasMorph()) {
-      const morphWeights = morph.morphWeightsArray as Float32Array;
-      const morphWeightNumbers: number[] = [];
+      const morphWeights = morph.morphWeightsArray.slice();
 
-      morphWeights.forEach(val => morphWeightNumbers.push(val));
-      material.setFloats('_morphWeights', morphWeightNumbers);
+      material.setFloats('_morphWeights', morphWeights);
     }
   }
 
@@ -1155,43 +1157,17 @@ class EffectsMeshProxy {
     this.data = itemData;
     this.geometry = itemData.geometry as unknown as Geometry;
     this.rootBoneItem = itemData.rootBone as unknown as VFXItem;
-    this.morphObj = new PMorph();
 
-    // FIXME: 支持Morph动画
-    // Morph 对象创建，需要为每个 Primitive 中 Geometry 对象创建 Morph
-    // 并且要求创建的 Morph 对象状态是相同的，否则就报错
-    // let isSuccess = true;
-    // const morphObj = new PMorph();
-    // const { primitives, morph } = this.data;
+    const morphObj = new PMorph();
 
-    // primitives.forEach((prim, idx) => {
-    //   if (idx === 0) {
-    //     morphObj.create(prim.geometry as unknown as Geometry);
-    //   } else {
-    //     const tempMorph = new PMorph();
+    if (morphObj.create(this.geometry)) {
+      // 设置初始权重数组
+      if (itemData.morph?.weights) {
+        morphObj.initWeights(itemData.morph?.weights);
+      }
 
-    //     if (!tempMorph.create(prim.geometry as unknown as Geometry)) {
-    //       isSuccess = false;
-    //     } else {
-    //       if (!morphObj.equals(tempMorph)) {
-    //         isSuccess = false;
-    //         console.error(`Morpth target mismatch between primtives: ${JSON.stringify(morphObj)}, ${JSON.stringify(tempMorph)}`);
-    //       }
-    //     }
-    //   }
-    // });
-
-    // if (isSuccess) {
-    //   // 设置初始权重数组
-    //   if (morph?.weights !== undefined) {
-    //     morphObj.initWeights(morph.weights);
-    //   }
-
-    //   this.morphObj = morphObj;
-    // } else {
-    //   this.morphObj = new PMorph();
-    // }
-
+      this.morphObj = morphObj;
+    }
   }
 
   hasMorphTarget (): boolean {
