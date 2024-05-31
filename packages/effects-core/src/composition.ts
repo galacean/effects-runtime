@@ -556,7 +556,7 @@ export class Composition implements Disposable, LostHandler {
     }
     // 预合成元素
     for (const refContent of this.refContent) {
-      for (const vfxItem of refContent.getComponent(CompositionComponent)!.items) {
+      for (const vfxItem of refContent.getComponent(CompositionComponent).items) {
         const rendererComponents = vfxItem.getComponents(RendererComponent);
 
         for (const rendererComponent of rendererComponents) {
@@ -696,7 +696,7 @@ export class Composition implements Disposable, LostHandler {
           child.ended &&
           child.endBehavior === spec.ItemEndBehavior.loop
         ) {
-          child.getComponent(CompositionComponent)!.resetStatus();
+          child.getComponent(CompositionComponent).resetStatus();
           // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
           this.callUpdate(child, 0);
         } else {
@@ -734,7 +734,7 @@ export class Composition implements Disposable, LostHandler {
 
     const itemMap = new Map<string, VFXItem>();
 
-    const contentItems = compVFXItem.getComponent(CompositionComponent)!.items;
+    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
 
     for (const item of contentItems) {
       itemMap.set(item.id, item);
@@ -941,7 +941,7 @@ export class Composition implements Disposable, LostHandler {
     // 预合成元素销毁时销毁其中的item
     if (item.type == spec.ItemType.composition) {
       if (item.endBehavior !== spec.ItemEndBehavior.freeze) {
-        const contentItems = item.getComponent(CompositionComponent)!.items;
+        const contentItems = item.getComponent(CompositionComponent).items;
 
         contentItems.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));
       }

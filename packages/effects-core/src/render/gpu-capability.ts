@@ -1,6 +1,5 @@
+import type { GLType } from '../gl';
 import type { Immutable } from '../utils';
-
-export type GLType = 'webgl' | 'webgl2';
 
 export interface GPUCapabilityDetail {
   floatTexture: number,
@@ -190,11 +189,11 @@ function checkLinearTextureFilter (gl: WebGL2RenderingContext, type: number): bo
   return ret;
 }
 
-export const COMPRESSED_TEXTURE = {
-  NONE : 0,
-  PVRTC : 1,
-  ASTC : 2,
-};
+export enum COMPRESSED_TEXTURE {
+  NONE = 0,
+  PVRTC = 1,
+  ASTC = 2,
+}
 
 function registerCompressedTexture (gl: WebGLRenderingContext | WebGL2RenderingContext): number {
   if (gl.getExtension('WEBGL_compressed_texture_astc')) {

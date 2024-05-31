@@ -173,7 +173,7 @@ export class InteractComponent extends RendererComponent {
     });
 
     handlerMap.touchmove({ dx: 0, dy: 0, width: 1, height: 1 } as TouchEventType);
-    this.item.getComponent(InteractComponent)!.endDragTarget = () => {
+    this.item.getComponent(InteractComponent).endDragTarget = () => {
       Object.keys(handlerMap).forEach(name => {
         eventSystem.removeEventListener(name, handlerMap[name]);
       });

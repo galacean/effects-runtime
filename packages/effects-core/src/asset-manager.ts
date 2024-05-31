@@ -111,7 +111,7 @@ export class AssetManager implements Disposable {
     const timeInfos: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
     const asyncShaderCompile = gpuInstance?.detail?.asyncShaderCompile ?? false;
-    const compressedTexture = gpuInstance?.detail.compressedTexture ?? 0;
+    const compressedTexture = gpuInstance?.detail.compressedTexture ?? COMPRESSED_TEXTURE.NONE;
     let loadTimer: number;
     let cancelLoading = false;
 
@@ -192,6 +192,7 @@ export class AssetManager implements Disposable {
         ]);
 
         for (let i = 0; i < images.length; i++) {
+          // FIXME: 2024.05.29 如果 renderer 为空，这里会抛异常
           const imageAsset = new ImageAsset(renderer!.engine);
 
           imageAsset.data = loadedImages[i];
@@ -335,7 +336,7 @@ export class AssetManager implements Disposable {
 
   private async processImages (
     images: any,
-    compressedTexture: number,
+    compressedTexture: COMPRESSED_TEXTURE = 0,
   ): Promise<ImageSource[]> {
     const { useCompressedTexture, variables } = this.options;
     const baseUrl = this.baseUrl;

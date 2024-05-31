@@ -1,6 +1,6 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
-import type { Component, EffectsObject, EffectsPackageData, Engine, Material, ShaderData } from '@galacean/effects';
+import type { Component, EffectsObject, spec, Engine, Material } from '@galacean/effects';
 import { ParticleSystem, RendererComponent, getMergedStore, type VFXItem, SerializationHelper } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { reactive, ref } from 'vue';
@@ -63,7 +63,7 @@ export class InspectorGui {
       this.addComponentGui(component);
     }
     if (item.getComponent(RendererComponent)) {
-      const material = item.getComponent(RendererComponent)!.material;
+      const material = item.getComponent(RendererComponent).material;
 
       this.addMateraiGui(material);
     }
@@ -87,7 +87,7 @@ export class InspectorGui {
       this.addComponentGui(component);
     }
     if (item.getComponent(RendererComponent)) {
-      const material = item.getComponent(RendererComponent)!.material;
+      const material = item.getComponent(RendererComponent).material;
 
       this.addMateraiGui(material);
     }
@@ -174,7 +174,7 @@ export class InspectorGui {
 
             return;
           }
-          const packageData = JSON.parse(res) as EffectsPackageData;
+          const packageData = JSON.parse(res) as spec.EffectsPackageData;
           const guid = packageData.fileSummary.guid;
 
           // TODO 纹理 image 特殊逻辑，待移除
@@ -241,7 +241,7 @@ export class InspectorGui {
 
   private parseMaterialProperties (guiProperties: AGUIPropertyProps[], material: Material, serializeObject: SerializedObject) {
     const serializedData = serializeObject.serializedData;
-    const shaderProperties = (material.shaderSource as ShaderData).properties;
+    const shaderProperties = (material.shaderSource as spec.ShaderData).properties;
 
     if (!shaderProperties) {
       return;
@@ -322,7 +322,7 @@ export class InspectorGui {
 
               return;
             }
-            const packageData = JSON.parse(res) as EffectsPackageData;
+            const packageData = JSON.parse(res) as spec.EffectsPackageData;
             const guid = packageData.fileSummary.guid;
 
             // TODO 纹理 image 特殊逻辑，待移除

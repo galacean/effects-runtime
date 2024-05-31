@@ -1,5 +1,5 @@
 import type {
-  Disposable, Framebuffer, Geometry, LostHandler, Material, RenderFrame, RenderPass,
+  Disposable, Framebuffer, GLType, Geometry, LostHandler, Material, RenderFrame, RenderPass,
   RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler,
   ShaderLibrary, spec,
 } from '@galacean/effects-core';
@@ -29,7 +29,7 @@ export class GLRenderer extends Renderer implements Disposable {
 
   constructor (
     public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: 'webgl' | 'webgl2',
+    framework: GLType,
     renderOptions?: WebGLContextAttributes,
   ) {
     super();
