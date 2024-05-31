@@ -1,12 +1,12 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import { AnimationPlayable } from './animation-playable';
 import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-item';
-import type { PlayableGraph } from './playable-graph';
+import type { FrameContext, PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import type { VFXItem } from '../../vfx-item';
@@ -49,16 +49,17 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   gravity: Vector3;
   direction: Vector3;
   startSpeed: number;
-
-  private data: TransformPlayableAssetData;
+  data: TransformPlayableAssetData;
   private velocity: Vector3;
+  private binding: VFXItem;
 
-  override onGraphStart (): void {
-    const scale = this.bindingItem.transform.scale;
+  start (): void {
+    const bindingItem = this.binding;
+    const scale = bindingItem.transform.scale;
 
     this.originalTransform = {
-      position: this.bindingItem.transform.position.clone(),
-      rotation: this.bindingItem.transform.getRotation().clone(),
+      position: bindingItem.transform.position.clone(),
+      rotation: bindingItem.transform.getRotation().clone(),
       // TODO 编辑器 scale 没有z轴控制
       scale: new Vector3(scale.x, scale.y, scale.x),
     };
@@ -132,8 +133,12 @@ export class TransformAnimationPlayable extends AnimationPlayable {
     this.velocity.multiply(this.startSpeed);
   }
 
-  override processFrame (dt: number): void {
-    if (this.bindingItem.composition) {
+  override processFrame (context: FrameContext): void {
+    if (!this.binding) {
+      this.binding = context.output.getUserData() as VFXItem;
+      this.start();
+    }
+    if (this.binding.composition) {
       this.sampleAnimation();
     }
   }
@@ -142,7 +147,8 @@ export class TransformAnimationPlayable extends AnimationPlayable {
    * 应用时间轴K帧数据到对象
    */
   private sampleAnimation () {
-    const duration = this.bindingItem.duration;
+    const bindingItem = this.binding;
+    const duration = bindingItem.duration;
     let life = this.time / duration;
 
     life = life < 0 ? 0 : (life > 1 ? 1 : life);
@@ -157,7 +163,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
       }
       const startSize = this.originalTransform.scale;
 
-      this.bindingItem.transform.setScale(tempSize.x * startSize.x, tempSize.y * startSize.y, tempSize.z * startSize.z);
+      bindingItem.transform.setScale(tempSize.x * startSize.x, tempSize.y * startSize.y, tempSize.z * startSize.z);
       // this.animationStream.setCurveValue('transform', 'scale.x', tempSize.x * startSize.x);
       // this.animationStream.setCurveValue('transform', 'scale.y', tempSize.y * startSize.y);
       // this.animationStream.setCurveValue('transform', 'scale.z', tempSize.z * startSize.z);
@@ -173,7 +179,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
       tempRot.z = incZ;
       const rot = tempRot.addEulers(this.originalTransform.rotation, tempRot);
 
-      this.bindingItem.transform.setRotation(rot.x, rot.y, rot.z);
+      bindingItem.transform.setRotation(rot.x, rot.y, rot.z);
       // this.animationStream.setCurveValue('transform', 'rotation.x', rot.x);
       // this.animationStream.setCurveValue('transform', 'rotation.y', rot.y);
       // this.animationStream.setCurveValue('transform', 'rotation.z', rot.z);
@@ -186,15 +192,11 @@ export class TransformAnimationPlayable extends AnimationPlayable {
       if (this.originalTransform.path) {
         pos.add(this.originalTransform.path.getValue(life));
       }
-      this.bindingItem.transform.setPosition(pos.x, pos.y, pos.z);
+      bindingItem.transform.setPosition(pos.x, pos.y, pos.z);
       // this.animationStream.setCurveValue('transform', 'position.x', pos.x);
       // this.animationStream.setCurveValue('transform', 'position.y', pos.y);
       // this.animationStream.setCurveValue('transform', 'position.z', pos.z);
     }
-  }
-
-  override fromData (data: TransformPlayableAssetData): void {
-    this.data = data;
   }
 }
 
@@ -205,7 +207,7 @@ export class TransformPlayableAsset extends PlayableAsset {
   override createPlayable (graph: PlayableGraph): Playable {
     const transformAnimationPlayable = new TransformAnimationPlayable(graph);
 
-    transformAnimationPlayable.fromData(this.transformAnimationData);
+    transformAnimationPlayable.data = this.transformAnimationData;
 
     return transformAnimationPlayable;
   }
@@ -235,41 +237,12 @@ export interface TransformPlayableAssetData extends spec.EffectsObjectData {
  * @internal
  */
 export class ActivationPlayable extends Playable {
-  override onGraphStart (): void {
-    this.bindingItem.transform.setValid(false);
-    this.hideRendererComponents();
-  }
 
-  override onPlayablePlay (): void {
-    this.bindingItem.transform.setValid(true);
-    this.showRendererComponents();
-  }
+  override processFrame (context: FrameContext): void {
+    const bindingItem = context.output.getUserData() as VFXItem;
+    const lifetime = bindingItem.duration > 0 ? this.time / bindingItem.duration : 0;
 
-  override onPlayableDestroy (): void {
-    this.bindingItem.transform.setValid(false);
-    this.hideRendererComponents();
-  }
-
-  override processFrame (dt: number): void {
-    const lifetime = this.bindingItem.duration > 0 ? this.time / this.bindingItem.duration : 0;
-
-    this.bindingItem.lifetime = lifetime;
-  }
-
-  private hideRendererComponents () {
-    for (const rendererComponent of this.bindingItem.rendererComponents) {
-      if (rendererComponent.enabled) {
-        rendererComponent.enabled = false;
-      }
-    }
-  }
-
-  private showRendererComponents () {
-    for (const rendererComponent of this.bindingItem.rendererComponents) {
-      if (!rendererComponent.enabled) {
-        rendererComponent.enabled = true;
-      }
-    }
+    bindingItem.lifetime = lifetime;
   }
 }
 
@@ -306,6 +279,7 @@ export interface FloatCurve {
   keyFrames: ValueGetter<number>,
 }
 
+@effectsClass(spec.DataType.AnimationClip)
 export class AnimationClip extends EffectsObject {
   positionCurves: PositionCurve[] = [];
   rotationCurves: RotationCurve[] = [];
@@ -413,13 +387,11 @@ export class AnimationClip extends EffectsObject {
 export class AnimationClipPlayable extends Playable {
   clip: AnimationClip;
 
-  override processFrame (dt: number): void {
-    if (this.bindingItem.composition) {
-      this.clip.sampleAnimation(this.bindingItem, this.time);
-    }
-  }
+  override processFrame (context: FrameContext): void {
+    const bindingItem = context.output.getUserData() as VFXItem;
 
-  override fromData (data: any): void {
-    this.clip = data.clip;
+    if (bindingItem.composition) {
+      this.clip.sampleAnimation(bindingItem, this.time);
+    }
   }
 }

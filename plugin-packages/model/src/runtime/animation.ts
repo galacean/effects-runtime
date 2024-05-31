@@ -250,7 +250,7 @@ export class PMorph extends PObject {
    * weights 数组的具体数据，来自动画控制器的每帧更新
    * 数组的长度必须和 morphWeightsLength 相同，否则会出错。
    */
-  morphWeightsArray?: Float32Array;
+  morphWeightsArray: number[] = [];
   /**
    * 是否有 Position 相关的 Morph 动画，shader 中需要知道
    */
@@ -293,7 +293,7 @@ export class PMorph extends PObject {
 
     if (this.morphWeightsLength > 0) {
       // 有Morph动画，申请weights数据，判断各个属性是否有相关动画
-      this.morphWeightsArray = new Float32Array(this.morphWeightsLength);
+      this.morphWeightsArray = Array(this.morphWeightsLength).fill(0);
       this.hasPositionMorph = positionCount == this.morphWeightsLength;
       this.hasNormalMorph = normalCount == this.morphWeightsLength;
       this.hasTangentMorph = tangentCount == this.morphWeightsLength;
@@ -332,16 +332,12 @@ export class PMorph extends PObject {
     return true;
   }
 
-  override dispose (): void {
-    this.morphWeightsArray = undefined;
-  }
-
   /**
    * 初始化 Morph target 的权重数组
    * @param weights - glTF Mesh 的权重数组，长度必须严格一致
    */
   initWeights (weights: number[]) {
-    if (this.morphWeightsArray === undefined) {
+    if (this.morphWeightsArray.length === 0) {
       return;
     }
 
@@ -352,6 +348,16 @@ export class PMorph extends PObject {
         morphWeights[index] = val;
       }
     });
+  }
+
+  updateWeights (weights: number[]) {
+    if (weights.length != this.morphWeightsArray.length) {
+      console.error(`Length of morph weights mismatch: input ${weights.length}, internel ${this.morphWeightsArray.length}`);
+
+      return;
+    }
+
+    weights.forEach((value, index) => this.morphWeightsArray[index] = value);
   }
 
   /**
@@ -376,8 +382,8 @@ export class PMorph extends PObject {
       && this.hasTangentMorph === morph.hasTangentMorph;
   }
 
-  getMorphWeightsArray (): Float32Array {
-    return this.morphWeightsArray as Float32Array;
+  getMorphWeightsArray (): number[] {
+    return this.morphWeightsArray;
   }
 
   /**

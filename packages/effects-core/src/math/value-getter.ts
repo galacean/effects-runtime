@@ -548,6 +548,12 @@ export class BezierCurve extends ValueGetter<number> {
 
     return data;
   }
+
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveMap);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
 }
 
 export class PathSegments extends ValueGetter<number[]> {

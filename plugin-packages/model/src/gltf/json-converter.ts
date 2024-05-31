@@ -2,7 +2,7 @@ import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glT
 import type {
   Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
 } from '@galacean/effects';
-import { CullMode, PBRShaderGUID, RenderType, UnlitShaderGUID } from '../runtime';
+import { PBRShaderGUID, UnlitShaderGUID } from '../runtime';
 import { Color, Quaternion, Vector3 } from '../runtime/math';
 import { deserializeGeometry } from '@galacean/effects-helper';
 import type { ModelTreeContent } from '../index';
@@ -336,6 +336,12 @@ export class JSONConverter {
       meshComponent.rootBone = { id: rootBoneItem.id };
     }
 
+    if (meshOptions.weights !== undefined) {
+      meshComponent.morph = {
+        weights: meshOptions.weights,
+      };
+    }
+
     return meshComponent;
   }
 
@@ -523,6 +529,45 @@ export class JSONConverter {
             ];
 
             clipData.rotationCurves.push({ path, keyFrames });
+          } else if (track.path === 'weights') {
+            const node = this.treeInfo.getTreeNode(treeItem.id, track.node);
+            let path = this.treeInfo.getNodePath(node.id);
+
+            if (node.components.length === 0) {
+              for (let i = 0; i < oldScene.items.length; i++) {
+                const child = oldScene.items[i];
+
+                if (child.parentId === node.id) {
+                  path += '/' + child.name;
+
+                  break;
+                }
+              }
+            }
+            const component = outputArray.length / inputArray.length;
+
+            for (let c = 0; c < component; c++) {
+              const lineValue: spec.LineKeyframeValue[] = [];
+
+              for (let i = 0; i < inputArray.length; i++) {
+                lineValue.push([
+                  spec.BezierKeyframeType.LINE,
+                  [inputArray[i], outputArray[i * component + c]],
+                ]);
+              }
+
+              const keyFrames: spec.BezierValue = [
+                spec.ValueType.BEZIER_CURVE,
+                lineValue,
+              ];
+
+              clipData.floatCurves.push({
+                path,
+                className: 'ModelMeshComponent',
+                property: `morphWeights.${c}`,
+                keyFrames,
+              });
+            }
           } else {
             const points: spec.vec3[] = [];
             const controlPoints: spec.vec3[] = [];
@@ -559,24 +604,17 @@ export class JSONConverter {
               [lineValue, points, controlPoints],
             ];
 
-            switch (track.path) {
-              case 'translation':
-                clipData.positionCurves.push({ path, keyFrames });
-
-                break;
-              case 'scale':
-                clipData.scaleCurves.push({ path, keyFrames });
-
-                break;
-              case 'weights':
-                console.error('Find weight key frames');
-
-                break;
+            if (track.path === 'translation') {
+              clipData.positionCurves.push({ path, keyFrames });
+            } else {
+              clipData.scaleCurves.push({ path, keyFrames });
             }
           }
         });
 
-        animationComponent.animationClips.push(clipData);
+        newScene.animations.push(clipData);
+
+        animationComponent.animationClips.push({ id: clipData.id });
       });
     }
 
@@ -613,7 +651,7 @@ export class JSONConverter {
         shader: {
           id: UnlitShaderGUID,
         },
-        stringTags: this.getStringTags(material),
+        stringTags: {},
         macros: [],
         ints: {},
         floats,
@@ -621,6 +659,8 @@ export class JSONConverter {
         colors,
         textures,
       };
+
+      this.setupMaterial(material, newMaterial);
 
       return newMaterial;
     } else {
@@ -688,7 +728,7 @@ export class JSONConverter {
         shader: {
           id: PBRShaderGUID,
         },
-        stringTags: this.getStringTags(material),
+        stringTags: {},
         macros: [],
         ints: {},
         floats,
@@ -697,31 +737,45 @@ export class JSONConverter {
         textures,
       };
 
+      this.setupMaterial(material, newMaterial);
+
       return newMaterial;
     }
   }
 
-  private getStringTags (material: spec.MaterialOptions<'json'>): Record<string, string> {
-    const stringTags: Record<string, string> = {};
-
-    stringTags['ZWrite'] = String(material.depthMask ?? true);
-    stringTags['ZTest'] = String(true);
-    if (material.blending === spec.MaterialBlending.masked) {
-      stringTags['RenderType'] = RenderType.Mask;
-    } else if (material.blending === spec.MaterialBlending.translucent) {
-      stringTags['RenderType'] = RenderType.Blend;
+  private setupMaterial (oldMat: spec.MaterialOptions<'json'>, newMat: spec.MaterialData) {
+    if (oldMat.blending === spec.MaterialBlending.translucent) {
+      newMat.stringTags['RenderType'] = spec.RenderType.Transparent;
     } else {
-      stringTags['RenderType'] = RenderType.Opaque;
-    }
-    if (material.side === spec.SideMode.BACK) {
-      stringTags['Cull'] = CullMode.Back;
-    } else if (material.side === spec.SideMode.DOUBLE) {
-      stringTags['Cull'] = CullMode.Double;
-    } else {
-      stringTags['Cull'] = CullMode.Front;
+      newMat.stringTags['RenderType'] = spec.RenderType.Opaque;
     }
 
-    return stringTags;
+    if (oldMat.blending === spec.MaterialBlending.masked) {
+      newMat.floats['AlphaClip'] = 1;
+      newMat.floats['_Cutoff'] = oldMat.alphaCutOff ?? 0;
+    } else {
+      newMat.floats['AlphaClip'] = 0;
+    }
+
+    switch (oldMat.side) {
+      case spec.SideMode.BACK:
+        newMat.stringTags['RenderFace'] = spec.RenderFace.Back;
+
+        break;
+      case spec.SideMode.DOUBLE:
+        newMat.stringTags['RenderFace'] = spec.RenderFace.Both;
+
+        break;
+      default:
+        newMat.stringTags['RenderFace'] = spec.RenderFace.Front;
+    }
+
+    if (oldMat.type === spec.MaterialType.pbr) {
+      newMat.floats['_SpecularAA'] = oldMat.useSpecularAA ? 1 : 0;
+    }
+
+    newMat.stringTags['ZWrite'] = String(oldMat.depthMask ?? true);
+    newMat.stringTags['ZTest'] = String(true);
   }
 
   private getTextureData (scene: spec.JSONScene, floats: Record<string, number>, texIndex: number, texTransform?: spec.ModelTextureTransform) {
@@ -811,12 +865,17 @@ export class JSONConverter {
       console.warn('Root bone is missing');
     }
 
-    treeNodeList.forEach(node => {
-      id2Node[node.id] = node;
-      if (node.parentId === rootBoneItem.parentId) {
+    joints.forEach(joint => {
+      const node = treeNodeList[joint];
+
+      if (node !== rootBoneItem && node.parentId === rootBoneItem.parentId) {
         console.error('Find invalid node for rootBoneItem and adjust rootBoneItem');
         rootBoneItem = treeItem;
       }
+    });
+
+    treeNodeList.forEach(node => {
+      id2Node[node.id] = node;
     });
 
     geom.rootBoneName = rootBoneItem.name;

@@ -6,7 +6,8 @@ import type { ValueGetter } from '../../math';
 import { ParticleSystem } from '../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
 import { ActivationPlayableAsset } from './calculate-vfx-item';
-import { TrackAsset } from './track';
+import { TrackAsset } from '../timeline/track';
+import { ActivationTrack } from '../timeline/tracks/activation-track';
 
 /**
  * 基础位移属性数据
@@ -48,32 +49,32 @@ export class ObjectBindingTrack extends TrackAsset {
 
   create (): void {
     this.options = {
-      start: this.bindingItem.start,
-      duration: this.bindingItem.duration,
-      looping: this.bindingItem.endBehavior === spec.ItemEndBehavior.loop,
-      endBehavior: this.bindingItem.endBehavior || spec.ItemEndBehavior.destroy,
+      start: this.binding.start,
+      duration: this.binding.duration,
+      looping: this.binding.endBehavior === spec.ItemEndBehavior.loop,
+      endBehavior: this.binding.endBehavior || spec.ItemEndBehavior.destroy,
     };
-    this.id = this.bindingItem.id;
-    this.name = this.bindingItem.name;
-    const activationTrack = this.createTrack(TrackAsset, 'ActivationTrack');
+    this.id = this.binding.id;
+    this.name = this.binding.name;
+    const activationTrack = this.createTrack(ActivationTrack, 'ActivationTrack');
 
-    activationTrack.bindingItem = this.bindingItem;
+    activationTrack.binding = this.binding;
     activationTrack.createClip(ActivationPlayableAsset, 'ActivationTimelineClip');
 
     // 添加粒子动画 clip
-    if (this.bindingItem.getComponent(ParticleSystem)) {
+    if (this.binding.getComponent(ParticleSystem)) {
       const particleTrack = this.createTrack(TrackAsset, 'ParticleTrack');
 
-      particleTrack.bindingItem = this.bindingItem;
+      particleTrack.binding = this.binding;
       particleTrack.createClip(ParticleBehaviourPlayableAsset);
     }
 
     // TODO TimelineClip 需要传入 start 和 duration 数据
     for (const track of this.children) {
       for (const clip of track.getClips()) {
-        clip.start = this.bindingItem.start;
-        clip.duration = this.bindingItem.duration;
-        clip.endBehaviour = this.bindingItem.endBehavior as spec.ItemEndBehavior;
+        clip.start = this.binding.start;
+        clip.duration = this.binding.duration;
+        clip.endBehaviour = this.binding.endBehavior as spec.ItemEndBehavior;
       }
     }
   }
@@ -96,24 +97,12 @@ export class ObjectBindingTrack extends TrackAsset {
   createTrack<T extends TrackAsset> (classConstructor: new (engine: Engine) => T, name?: string): T {
     const newTrack = new classConstructor(this.engine);
 
-    newTrack.bindingItem = this.bindingItem;
+    newTrack.binding = this.binding;
     newTrack.id = (this.trackSeed++).toString();
     newTrack.name = name ? name : 'Track' + newTrack.id;
     this.children.push(newTrack);
 
     return newTrack;
-  }
-
-  getTracks (): TrackAsset[] {
-    return this.children;
-  }
-
-  findTrack (name: string): TrackAsset | undefined {
-    for (const track of this.children) {
-      if (track.name === name) {
-        return track;
-      }
-    }
   }
 
   override fromData (data: spec.EffectsObjectData): void {

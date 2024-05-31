@@ -1,5 +1,5 @@
 import { spec, generateGUID, glContext } from '@galacean/effects';
-import type { Texture, Engine, EffectComponentData, TextureSourceOptions } from '@galacean/effects';
+import type { Texture, Engine, TextureSourceOptions } from '@galacean/effects';
 import type {
   LoaderOptions, SkyboxType, LoadSceneOptions, LoadSceneECSResult, LoaderECS,
 } from './protocol';
@@ -39,6 +39,7 @@ export class LoaderECSImpl implements LoaderECS {
   materials: spec.MaterialData[] = [];
   shaders: spec.ShaderData[] = [];
   geometries: spec.GeometryData[] = [];
+  animations: spec.AnimationClipData[] = [];
 
   engine: Engine;
 
@@ -80,7 +81,6 @@ export class LoaderECSImpl implements LoaderECS {
       throw new Error('Please load resource by GLTFTools at first');
     }
     this.processGLTFResource(gltfResource);
-
     this.gltfScene = gltfResource.scenes[0];
     this.gltfSkins = this.gltfScene.skins;
     this.gltfMeshs = gltfResource.meshes;
@@ -114,7 +114,6 @@ export class LoaderECSImpl implements LoaderECS {
         this.images[source].id = imageId;
       }
 
-      // texture.textureOptions.generateMipmap = true;
       return textureOptions;
     });
     this.materials = this.gltfMaterials.map(material => {
@@ -122,14 +121,21 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     gltfResource.meshes.forEach(mesh => {
-      // @ts-expect-error
       this.geometries.push(mesh.geometryData);
     });
     const gltfScene = gltfResource.scenes[0];
 
-    gltfScene.camerasComponentData.forEach(comp => this.components.push(comp));
-    gltfScene.lightsComponentData.forEach(comp => this.components.push(comp));
-    gltfScene.meshesComponentData.forEach(comp => this.components.push(comp));
+    gltfScene.meshesComponentData.forEach(mesh => this.checkMeshComponentData(mesh, gltfResource));
+
+    this.components.push(...gltfScene.camerasComponentData);
+    this.components.push(...gltfScene.lightsComponentData);
+    this.components.push(...gltfScene.meshesComponentData);
+    this.components.push(...gltfScene.animationsComponentData);
+
+    this.animations = [];
+    this.gltfAnimations.forEach(anim => {
+      this.animations.push(anim.animationClipData);
+    });
 
     this.items = [...gltfResource.scenes[0].vfxItemData];
     this.items.forEach(item => {
@@ -148,6 +154,29 @@ export class LoaderECSImpl implements LoaderECS {
     }
 
     return this.getLoadResult();
+  }
+
+  checkMeshComponentData (mesh: ModelMeshComponentData, resource: GLTFResources): void {
+    if (mesh.materials.length <= 0) {
+      throw new Error(`Submesh array is empty: ${mesh}`);
+    }
+
+    let geometryData: spec.GeometryData | undefined;
+
+    resource.meshes.forEach(meshData => {
+      if (meshData.geometryData.id === mesh.geometry.id) {
+        geometryData = meshData.geometryData;
+      }
+    });
+
+    if (geometryData === undefined) {
+      throw new Error(`Can't find geometry data for ${mesh.geometry.id}`);
+    }
+
+    if (geometryData.subMeshes.length !== mesh.materials.length) {
+      throw new Error(`Submeshes and materials mismach: ${geometryData.subMeshes.length}, ${mesh.materials.length}`);
+    }
+    //mesh.materials.length !=
   }
 
   processGLTFResource (resource: GLTFResources): void {
@@ -191,7 +220,7 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
   }
 
-  processComponentData (components: EffectComponentData[]): void {
+  processComponentData (components: spec.EffectComponentData[]): void {
     components.forEach(comp => {
       if (comp.dataType === spec.DataType.LightComponent) {
         this.processLightComponentData(comp as unknown as ModelLightComponentData);
@@ -242,9 +271,7 @@ export class LoaderECSImpl implements LoaderECS {
   }
 
   processMeshComponentData (mesh: ModelMeshComponentData): void {
-    if (mesh.materials.length <= 0) {
-      console.error('Submesh array is empty');
-    }
+
   }
 
   processSkyboxComponentData (skybox: ModelSkyboxComponentData): void {
@@ -405,7 +432,7 @@ export class LoaderECSImpl implements LoaderECS {
       materials: this.materials,
       shaders: this.shaders,
       geometries: this.geometries,
-      animations: [],
+      animations: this.animations,
     };
 
     return {

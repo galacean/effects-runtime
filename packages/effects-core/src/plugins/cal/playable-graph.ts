@@ -1,6 +1,5 @@
 import { EffectsObject } from '../../effects-object';
 import type { Disposable } from '../../utils';
-import type { VFXItem } from '../../vfx-item';
 
 /**
  * 动画图，负责更新所有的动画节点
@@ -11,23 +10,21 @@ export class PlayableGraph {
   private playableOutputs: PlayableOutput[] = [];
   private playables: Playable[] = [];
 
-  constructor () {
-  }
-
   evaluate (dt: number) {
+    // 初始化节点状态
     for (const playable of this.playables) {
-      playable.prepareFrameFlag = false;
-      if (!playable.overrideTimeNextEvaluation) {
-        playable.setTime(playable.getTime() + dt);
-      } else {
-        playable.overrideTimeNextEvaluation = false;
-      }
+      this.updatePlayableTime(playable, dt);
+    }
+    // 初始化输出节点状态
+    for (const playableOutput of this.playableOutputs) {
+      playableOutput.context.deltaTime = dt;
+    }
+    // 执行生命周期函数
+    for (const playableOutput of this.playableOutputs) {
+      this.prepareFrameWithRoot(playableOutput);
     }
     for (const playableOutput of this.playableOutputs) {
-      this.prepareFrameWithRoot(playableOutput, dt);
-    }
-    for (const playableOutput of this.playableOutputs) {
-      this.processFrameWithRoot(playableOutput, dt);
+      this.processFrameWithRoot(playableOutput);
     }
   }
 
@@ -43,14 +40,25 @@ export class PlayableGraph {
     this.playables.push(playable);
   }
 
-  private processFrameWithRoot (output: PlayableOutput, dt: number) {
-    output.sourcePlayable.processFrameRecursive(dt, output.getSourceOutputPort());
-    output.processFrame(dt);
+  private processFrameWithRoot (output: PlayableOutput) {
+    output.sourcePlayable.processFrameRecursive(output.context, output.getSourceOutputPort());
+    output.processFrame();
   }
 
-  private prepareFrameWithRoot (output: PlayableOutput, dt: number) {
-    output.sourcePlayable.prepareFrameRecursive(dt, output.getSourceOutputPort());
-    output.prepareFrame(dt);
+  private prepareFrameWithRoot (output: PlayableOutput) {
+    output.sourcePlayable.prepareFrameRecursive(output.context, output.getSourceOutputPort());
+    output.prepareFrame();
+  }
+
+  private updatePlayableTime (playable: Playable, deltaTime: number) {
+    if (playable.getPlayState() !== PlayState.Playing) {
+      return;
+    }
+    if (playable.overrideTimeNextEvaluation) {
+      playable.overrideTimeNextEvaluation = false;
+    } else {
+      playable.setTime(playable.getTime() + deltaTime);
+    }
   }
 }
 
@@ -60,17 +68,16 @@ export class PlayableGraph {
  * @internal
  */
 export class Playable implements Disposable {
-  bindingItem: VFXItem;
-  prepareFrameFlag = false;
+  onPlayablePlayFlag = true;
+  onPlayablePauseFlag = false;
   overrideTimeNextEvaluation = false;
 
   private destroyed = false;
-
   private inputs: Playable[] = [];
   private inputOuputPorts: number[] = [];
   private inputWeight: number[] = [];
   private outputs: Playable[] = [];
-  private playState: PlayState = PlayState.Delayed;
+  private playState: PlayState = PlayState.Playing;
   private traversalMode: PlayableTraversalMode = PlayableTraversalMode.Mix;
 
   /**
@@ -83,6 +90,16 @@ export class Playable implements Disposable {
     this.inputs = new Array(inputCount);
     this.inputOuputPorts = new Array(inputCount);
     this.inputWeight = new Array(inputCount);
+  }
+
+  play () {
+    this.playState = PlayState.Playing;
+    this.onPlayablePlayFlag = true;
+  }
+
+  pause () {
+    this.playState = PlayState.Paused;
+    this.onPlayablePauseFlag = true;
   }
 
   connectInput (inputPort: number, sourcePlayable: Playable, sourceOutputPort: number, weight = 1.0) {
@@ -158,12 +175,44 @@ export class Playable implements Disposable {
     return this.time;
   }
 
+  getPlayState () {
+    return this.playState;
+  }
+
   setTraversalMode (mode: PlayableTraversalMode) {
     this.traversalMode = mode;
   }
 
   getTraversalMode () {
     return this.traversalMode;
+  }
+
+  // onGraphStart () {
+
+  // }
+
+  // onGraphStop () {
+
+  // }
+
+  onPlayablePlay (context: FrameContext) {
+
+  }
+
+  onPlayablePause (context: FrameContext) {
+
+  }
+
+  prepareFrame (context: FrameContext) {
+
+  }
+
+  processFrame (context: FrameContext) {
+
+  }
+
+  onPlayableDestroy () {
+
   }
 
   dispose (): void {
@@ -174,87 +223,81 @@ export class Playable implements Disposable {
     this.destroyed = true;
   }
 
-  onGraphStart () {
-
-  }
-
-  onGraphStop () {
-
-  }
-
-  onPlayablePlay () {
-
-  }
-
-  prepareFrame (dt: number) {
-
-  }
-
-  processFrame (dt: number) {
-
-  }
-
-  onPlayableDestroy () {
-
-  }
-
-  fromData (data: any) { }
-
   /**
    * @internal
    */
-  prepareFrameRecursive (dt: number, passthroughPort: number) {
-    if (this.destroyed || this.prepareFrameFlag) {
-      return;
-    }
-    this.prepareFrame(dt);
-    this.prepareFrameFlag = true;
-
-    // 前序遍历，用于设置节点的初始状态，weight etc.
-    if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
-      for (let i = 0; i < this.getInputCount(); i++) {
-        const input = this.getInput(i);
-
-        input.prepareFrameRecursive(dt, this.inputOuputPorts[i]);
-      }
-    } else if (this.getTraversalMode() === PlayableTraversalMode.Passthrough) {
-      const input = this.getInput(passthroughPort);
-
-      input.prepareFrameRecursive(dt, this.inputOuputPorts[passthroughPort]);
-    }
-  }
-
-  /**
-   * @internal
-   */
-  processFrameRecursive (dt: number, passthroughPort: number) {
-    // 后序遍历，保证 playable 拿到的 input 节点的估计数据是最新的
-    if (this.getTraversalMode() === PlayableTraversalMode.Mix) {
-      for (let i = 0; i < this.getInputCount(); i++) {
-        if (this.getInputWeight(i) <= 0) {
-          continue;
-        }
-        const input = this.getInput(i);
-
-        input.processFrameRecursive(dt, this.inputOuputPorts[i]);
-      }
-    } else if (this.getTraversalMode() === PlayableTraversalMode.Passthrough) {
-      const input = this.getInput(passthroughPort);
-
-      if (this.getInputWeight(passthroughPort) <= 0) {
-        return;
-      }
-
-      input.processFrameRecursive(dt, this.inputOuputPorts[passthroughPort]);
-    }
-    if (this.playState === PlayState.Delayed) {
-      this.onPlayablePlay();
-      this.playState = PlayState.Playing;
-    }
+  prepareFrameRecursive (context: FrameContext, passthroughPort: number) {
     if (this.destroyed) {
       return;
     }
-    this.processFrame(dt);
+    if (this.onPlayablePlayFlag) {
+      this.onPlayablePlay(context);
+      this.onPlayablePlayFlag = false;
+    }
+    if (this.onPlayablePauseFlag) {
+      this.onPlayablePause(context);
+      this.onPlayablePauseFlag = false;
+    }
+    if (passthroughPort === 0) {
+      this.prepareFrame(context);
+    }
+    // 前序遍历，用于设置节点的初始状态，weight etc.
+    switch (this.getTraversalMode()) {
+      case PlayableTraversalMode.Mix:
+        for (let i = 0; i < this.getInputCount(); i++) {
+          const input = this.getInput(i);
+
+          input.prepareFrameRecursive(context, this.inputOuputPorts[i]);
+        }
+
+        break;
+      case PlayableTraversalMode.Passthrough: {
+        const input = this.getInput(passthroughPort);
+
+        input.prepareFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
+
+        break;
+      }
+      default:
+      // do nothing
+    }
+  }
+
+  /**
+   * @internal
+   */
+  processFrameRecursive (context: FrameContext, passthroughPort: number) {
+    if (this.destroyed) {
+      return;
+    }
+    // 后序遍历，保证 playable 拿到的 input 节点的估计数据是最新的
+    switch (this.getTraversalMode()) {
+      case PlayableTraversalMode.Mix: {
+        for (let i = 0; i < this.getInputCount(); i++) {
+          const input = this.getInput(i);
+
+          if (this.getInputWeight(i) <= 0) {
+            continue;
+          }
+
+          input.processFrameRecursive(context, this.inputOuputPorts[i]);
+        }
+
+        break;
+      }
+      case PlayableTraversalMode.Passthrough: {
+        const input = this.getInput(passthroughPort);
+
+        if (this.getInputWeight(passthroughPort) > 0) {
+          input.processFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
+        }
+
+        break;
+      }
+      default:
+      // do nothing
+    }
+    this.processFrame(context);
   }
 
   private setOutput (outputPlayable: Playable, outputPort: number) {
@@ -281,11 +324,12 @@ export class PlayableOutput {
   /**
    * 绑定到的动画 item
    */
-  bindingItem: VFXItem;
+  userData: object;
   /**
    * 源 playable 对象
    */
   sourcePlayable: Playable;
+  context: FrameContext;
   /**
    * 当前本地播放的时间
    */
@@ -293,6 +337,10 @@ export class PlayableOutput {
   private sourceOutputPort = 0;
 
   constructor () {
+    this.context = {
+      deltaTime: 0,
+      output: this,
+    };
   }
 
   setSourcePlayeble (playable: Playable, port = 0) {
@@ -304,15 +352,23 @@ export class PlayableOutput {
     return this.sourceOutputPort;
   }
 
-  onGraphStart () {
+  setUserData (value: object) {
+    this.userData = value;
+  }
+
+  getUserData () {
+    return this.userData;
+  }
+
+  // onGraphStart () {
+
+  // }
+
+  prepareFrame () {
 
   }
 
-  prepareFrame (dt: number) {
-
-  }
-
-  processFrame (dt: number) {
+  processFrame () {
 
   }
 }
@@ -321,10 +377,14 @@ export abstract class PlayableAsset extends EffectsObject {
   abstract createPlayable (graph: PlayableGraph): Playable;
 }
 
+export interface FrameContext {
+  deltaTime: number,
+  output: PlayableOutput,
+}
+
 export enum PlayState {
   Playing,
   Paused,
-  Delayed,
 }
 
 export enum PlayableTraversalMode {

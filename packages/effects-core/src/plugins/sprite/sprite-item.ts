@@ -15,11 +15,12 @@ import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
 import type { CalculateItemOptions } from '../cal/calculate-item';
-import type { PlayableGraph } from '../cal/playable-graph';
+import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
+import type { VFXItem } from '../../vfx-item';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -82,14 +83,16 @@ export class SpriteColorPlayable extends Playable {
   renderColor: vec4 = [1, 1, 1, 1];
   spriteMaterial: Material;
 
-  override onPlayablePlay (): void {
-    this.spriteMaterial = this.bindingItem.getComponent(SpriteComponent)!.material;
-  }
+  override processFrame (context: FrameContext): void {
+    const bindingItem = context.output.getUserData() as VFXItem;
 
-  override processFrame (dt: number): void {
+    if (!this.spriteMaterial) {
+      this.spriteMaterial = bindingItem.getComponent(SpriteComponent).material;
+    }
+
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
-    const life = this.time / this.bindingItem.duration;
+    const life = this.time / bindingItem.duration;
 
     const opacityOverLifetime = this.opacityOverLifetime;
     const colorOverLifetime = this.colorOverLifetime;
@@ -109,7 +112,7 @@ export class SpriteColorPlayable extends Playable {
     }
   }
 
-  override fromData (clipData: SpriteColorPlayableAssetData) {
+  create (clipData: SpriteColorPlayableAssetData) {
     this.clipData = clipData;
     const colorOverLifetime = clipData.colorOverLifetime;
 
@@ -132,7 +135,7 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
   override createPlayable (graph: PlayableGraph): Playable {
     const spriteColorPlayable = new SpriteColorPlayable(graph);
 
-    spriteColorPlayable.fromData(this.data);
+    spriteColorPlayable.create(this.data);
 
     return spriteColorPlayable;
   }

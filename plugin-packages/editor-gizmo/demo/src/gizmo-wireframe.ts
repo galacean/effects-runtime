@@ -1,9 +1,8 @@
-import type { JSONValue } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-model';
 import test_scene from './json/wireframe-mode.json';
-import { GizmoComponent } from 'plugin-packages/editor-gizmo/src/gizmo-component';
+import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
 
 (async () => {
   const player = new Player({
