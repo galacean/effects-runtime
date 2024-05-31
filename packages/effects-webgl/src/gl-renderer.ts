@@ -54,7 +54,7 @@ export class GLRenderer extends Renderer implements Disposable {
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
     this.extension = new ExtWrap(this);
     this.renderingData = {
-      //@ts-expect-error
+      // @ts-expect-error
       currentFrame: {},
     };
 
@@ -217,11 +217,11 @@ export class GLRenderer extends Renderer implements Disposable {
     }
   }
 
-  override getFramebuffer (): Framebuffer | null {
+  override getFramebuffer (): Framebuffer {
     return this.framebuffer;
   }
 
-  override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer | null {
+  override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer {
     if (this.temporaryRTs[name]) {
       return this.temporaryRTs[name];
     }

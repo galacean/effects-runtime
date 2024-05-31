@@ -8,7 +8,7 @@ import { Material } from '../material';
 import { PassTextureCache } from '../paas-texture-cache';
 import type { SemanticFunc } from './semantic-map';
 import { SemanticMap } from './semantic-map';
-import { Texture, TextureLoadAction, TextureSourceType } from '../texture';
+import { Texture, TextureLoadAction, TextureSourceType, generateWhiteTexture, generateTransparentTexture } from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, OrderType, removeItem } from '../utils';
 import { createCopyShader, EFFECTS_COPY_MESH_NAME } from './create-copy-shader';
@@ -358,40 +358,9 @@ export class RenderFrame implements Disposable {
     this.name = `RenderFrame${seed++}`;
 
     const firstRP = renderPasses[0];
-    const sourceOpts = {
-      type: glContext.UNSIGNED_BYTE,
-      format: glContext.RGBA,
-      internalFormat: glContext.RGBA,
-      wrapS: glContext.MIRRORED_REPEAT,
-      wrapT: glContext.MIRRORED_REPEAT,
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
-    };
 
-    this.emptyTexture = Texture.create(
-      engine,
-      {
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([255, 255, 255, 255]),
-        },
-        sourceType: TextureSourceType.data,
-        ...sourceOpts,
-      },
-    );
-    this.transparentTexture = Texture.create(
-      engine,
-      {
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([0, 0, 0, 0]),
-        },
-        sourceType: TextureSourceType.data,
-        ...sourceOpts,
-      }
-    );
+    this.emptyTexture = generateWhiteTexture(engine);
+    this.transparentTexture = generateTransparentTexture(engine);
     this.camera = camera;
     this.keepColorBuffer = keepColorBuffer;
     this.renderPassInfoMap.set(firstRP, { listStart: 0, listEnd: 0, renderPass: firstRP, intermedia: false });

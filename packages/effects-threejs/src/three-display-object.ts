@@ -136,7 +136,7 @@ export class ThreeDisplayObject extends THREE.Group {
     const compositionSourceManager = new CompositionSourceManager(scene, engine);
 
     if (engine.database) {
-      await engine.createVFXItemsAsync(scene);
+      await engine.createVFXItems(scene);
     }
     const composition = new ThreeComposition({
       ...opts,
