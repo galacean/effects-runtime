@@ -19,6 +19,11 @@
       "import": "./dist/*.mjs",
       "require": "./dist/*.js",
       "types": "./dist/*.d.ts"
+    },
+    "./alipay": {
+      "import": "./dist/alipay.mjs",
+      "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
