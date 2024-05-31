@@ -102,7 +102,6 @@ export class CompositionComponent extends ItemBehaviour {
    */
   resetStatus () {
     this.item.ended = false;
-    this.item.delaying = true;
   }
 
   createContent () {

@@ -98,10 +98,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素创建的数据图层/粒子/模型等
    */
   _content?: VFXItemContent;
-  /**
-   * 元素动画是否延迟播放
-   */
-  delaying = true;
   reusable = false;
   type: spec.ItemType = spec.ItemType.base;
   props: VFXItemProps;
