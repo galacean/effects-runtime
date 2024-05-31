@@ -173,7 +173,7 @@ export class LoaderECSImpl implements LoaderECS {
       throw new Error(`Can't find geometry data for ${mesh.geometry.id}`);
     }
 
-    if (geometryData.subMeshes.length != mesh.materials.length) {
+    if (geometryData.subMeshes.length !== mesh.materials.length) {
       throw new Error(`Submeshes and materials mismach: ${geometryData.subMeshes.length}, ${mesh.materials.length}`);
     }
     //mesh.materials.length !=
