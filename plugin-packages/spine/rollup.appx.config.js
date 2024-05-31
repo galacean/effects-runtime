@@ -1,11 +1,11 @@
 /**
  * 小程序产物编译配置
  */
-
 export default [
   'alipay'
 ].map(platform => {
-  const paths = { '@galacean/effects': `@galacean/effects/${platform}`};
+  const paths = { '@galacean/effects': `@galacean/effects/${platform}` };
+
   return {
     input: `src/index.ts`,
     output: [{
@@ -20,6 +20,6 @@ export default [
       paths,
     }],
     external: ['@galacean/effects'],
-    plugins: []
+    plugins: [],
   };
 });

@@ -17,7 +17,7 @@ export default [
   'alipay'
 ].map(platform => {
   const adapterVars = {};
-  const paths = { '@galacean/effects': `@galacean/effects/${platform}`};
+  const paths = { '@galacean/effects': `@galacean/effects/${platform}` };
 
   adapterList[platform].forEach(name => {
     adapterVars[name] = [`${module}/${platform}`, name];

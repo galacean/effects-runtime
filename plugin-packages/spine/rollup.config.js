@@ -70,6 +70,6 @@ export default (commandLineArgs) => {
       terser()
     ),
   },
-    ...appxConfig.map(config => ({ ...config, plugins: config.plugins.concat(plugins) }))
+  ...appxConfig.map(config => ({ ...config, plugins: config.plugins.concat(plugins) }))
   ];
 };
