@@ -1,4 +1,4 @@
-import { spec, isString } from '@galacean/effects';
+import { isAlipayMiniApp, isString, spec } from '@galacean/effects';
 
 declare global {
   interface Window {
@@ -13,18 +13,20 @@ const DEVICE_PERFORMANCE_HIGH = 'high';
 let devicePending: Promise<string | void> | undefined;
 let devicePerformance: string;
 let deviceName = 'DESKTOP_DEBUG';
+let deviceSystem = 'Unknown';
 let isIOS = false;
 
 export async function getDeviceName () {
   if (!devicePending) {
     devicePending = getSystemInfo().then(info => {
-      const { performance, platform, model = 'UNKNOWN_DEVICE' } = info;
+      const { performance, platform, model = 'UNKNOWN_DEVICE', system = 'Unknown' } = info;
 
       if (!devicePerformance) {
         devicePerformance = performance;
       }
       isIOS = platform === 'iOS';
       deviceName = model;
+      deviceSystem = system;
       if (/iPhone(\d+),/.test(deviceName) && !devicePerformance) {
         const gen = +RegExp.$1;
 
@@ -91,7 +93,8 @@ export async function checkDowngrade (
     return Promise.resolve({ downgrade: bizId === mockIdFail, reason: 'mock' });
   }
 
-  const ap = window.AlipayJSBridge;
+  //@ts-expect-error
+  const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
   if (ap) {
     const now = performance.now();
@@ -148,7 +151,11 @@ export async function checkDowngrade (
           if (reason === undefined) {
             resolve({ downgrade: true, reason: 'call downgrade fail' });
           } else {
-            resolve({ reason, downgrade: reason === 1 });
+            if (isAlipayMiniApp() && downgradeForMiniprogram()) {
+              resolve({ downgrade: true, reason: 'Force downgrade by downgrade plugin' });
+            } else {
+              resolve({ downgrade: reason === 1, reason });
+            }
           }
         },
         );
@@ -163,13 +170,17 @@ type SystemInfo = {
   performance: string,
   platform: string,
   model: string,
+  system: string,
   brand: string,
+  version: string,
   error: any,
 };
 
-async function getSystemInfo (): Promise<SystemInfo> {
+export async function getSystemInfo (): Promise<SystemInfo> {
   return new Promise((resolve, reject) => {
-    const ap = window.AlipayJSBridge;
+
+    //@ts-expect-error
+    const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
     if (ap) {
       ap.call('getSystemInfo', (e: SystemInfo) => {
@@ -183,4 +194,24 @@ async function getSystemInfo (): Promise<SystemInfo> {
       reject('no ap');
     }
   });
+}
+
+const deviceNameList = ['12,8', '13,1', '13,2', '13,3', '13,4'];
+
+/**
+ * iPhone SE2 和 12 全系列机型，如果是 iOS16 系统，在小程序中强制降级
+ * @returns
+ */
+export function downgradeForMiniprogram () {
+  if (isIOS) {
+    if (deviceNameList.find(v => v === deviceName)) {
+      const versionList = deviceSystem.split('.');
+
+      if (versionList.length > 0 && versionList[0] === '16') {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }

@@ -19,11 +19,19 @@
       "import": "./dist/weapp.mjs",
       "require": "./dist/weapp.js",
       "types": "./dist/index.d.ts"
+    },
+    "./alipay": {
+      "import": "./dist/alipay.mjs",
+      "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "typesVersions": {
     "*": {
       "weapp": [
+        "./dist/index.d.ts"
+      ],
+      "alipay": [
         "./dist/index.d.ts"
       ]
     }

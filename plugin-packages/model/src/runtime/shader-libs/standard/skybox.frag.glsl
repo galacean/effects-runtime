@@ -1,4 +1,4 @@
-precision highp float;
+
 
 #define FEATURES
 
@@ -10,6 +10,7 @@ precision highp float;
 #extension GL_OES_standard_derivatives : enable
 #endif
 
+precision highp float;
 
 #include <webglCompatibility.glsl>
 #include <extensions.frag.glsl>

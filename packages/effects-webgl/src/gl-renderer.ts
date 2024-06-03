@@ -1,12 +1,18 @@
-import type { Disposable, FrameBuffer, Geometry, LostHandler, Material, Mesh, RenderFrame, RenderPass, RenderPassClearAction, RenderPassStoreAction, RestoreHandler, ShaderLibrary, math } from '@galacean/effects-core';
-import { assertExist, glContext, Renderer, RenderPassAttachmentStorageType, TextureLoadAction, TextureSourceType, FilterMode, RenderTextureFormat, sortByOrder } from '@galacean/effects-core';
+import type {
+  Disposable, FrameBuffer, Geometry, LostHandler, Material, Mesh, RenderFrame, RenderPass,
+  RenderPassClearAction, RenderPassStoreAction, RestoreHandler, ShaderLibrary, math,
+} from '@galacean/effects-core';
+import {
+  assertExist, glContext, Renderer, RenderPassAttachmentStorageType, TextureLoadAction,
+  TextureSourceType, FilterMode, RenderTextureFormat, sortByOrder,
+} from '@galacean/effects-core';
 import { ExtWrap } from './ext-wrap';
 import { GLContextManager } from './gl-context-manager';
+import { GLEngine } from './gl-engine';
 import { GLFrameBuffer } from './gl-frame-buffer';
 import { GLPipelineContext } from './gl-pipeline-context';
 import { GLRendererInternal } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
-import { GLEngine } from './gl-engine';
 
 type Matrix4 = math.Matrix4;
 
@@ -292,11 +298,11 @@ export class GLRenderer extends Renderer implements Disposable {
     return this.height;
   }
 
-  override dispose (haltGL?: boolean): void {
+  override dispose (): void {
     this.context.dispose();
     this.extension.dispose();
     this.pipelineContext.dispose();
-    this.glRenderer?.dispose(haltGL);
+    this.glRenderer?.dispose();
     // @ts-expect-error
     this.canvas = null;
     this.engine.dispose();
