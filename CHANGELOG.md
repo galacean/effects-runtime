@@ -7,6 +7,17 @@
 
 ---
 
+## 1.5.0
+
+`2024-06-03`
+
+- Feat: Added compatibility and packaging for Alipay Mini Program. [#370](https://github.com/galacean/effects-runtime/pull/370) @RGCHN
+  - Feat: Downgraded plugin support for mini programs. [#385](https://github.com/galacean/effects-runtime/pull/385) @RGCHN
+  - Build: Added Alipay Mini Program packaging configuration. [#388](https://github.com/galacean/effects-runtime/pull/388) @RGCHN
+- Feat: Spine upgrade and modification of scaling rules. [#367](https://github.com/galacean/effects-runtime/pull/367) @RGCHN
+- Fix: Removed the triggering of webglcontextlost event upon player destruction. [#371](https://github.com/galacean/effects-runtime/pull/371) @RGCHN
+- Test: fix frame compare. [#386](https://github.com/galacean/effects-runtime/pull/386) @liuxi150
+
 ## 1.4.5
 
 `2024-05-29`
