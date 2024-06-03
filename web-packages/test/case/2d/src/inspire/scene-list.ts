@@ -63,6 +63,7 @@ export default {
     name: '彩带下落',
     pass: true,
   },
+  // 不支持random
   // fireworks: {
   //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EDQRDRYRXERJ/551346662-76ba9.json',
   //   name: '烟花',
@@ -372,6 +373,7 @@ export default {
     name: '圆形弹窗',
     pass: true,
   },
+  // 不支持random
   // plain: {
   //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RJGLUHXYUYVU/751328825-319d7.json',
   //   name: '平淡弹窗',
@@ -500,16 +502,19 @@ export default {
   //   name: '五福首页2022——庄园',
   //   pass: true,
   // },
+  // 不支持random
   // write: {
   //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FVKURDGLVCTO/-1407450823-e9f98.json',
   //   name: '五福首页2022——写福',
   //   pass: true,
   // },
+  // 不支持random
   // scan: {
   //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/TCFWNOIAYQRL/-891621161-b18e1.json',
   //   name: '五福首页2022——扫福',
   //   pass: true,
   // },
+  // 不支持random
   // shake: {
   //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/CKGSSBJBJHMW/-1783558944-a64a3.json',
   //   name: '五福首页2022——摇一摇',

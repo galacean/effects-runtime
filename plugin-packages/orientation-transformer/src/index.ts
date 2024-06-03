@@ -9,7 +9,7 @@ declare global {
 
 registerPlugin('orientation-transformer', OrientationPluginLoader, VFXItem);
 
-export { getAdapter, closeDeviceMotion, openDeviceMotion } from './orientation-plugin-loader';
+export { getAdapter, closeDeviceMotion, openDeviceMotion, OrientationPluginLoader } from './orientation-plugin-loader';
 export { OrientationAdapterAcceler } from './orientation-adapter-acceler';
 export * from './orientation-component';
 

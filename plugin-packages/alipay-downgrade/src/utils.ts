@@ -1,4 +1,6 @@
-import { spec, isString, disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger } from '@galacean/effects';
+import {
+  spec, isString, disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger, isAlipayMiniApp,
+} from '@galacean/effects';
 import { AlipayDowngradePlugin } from './alipay-downgrade-plugin';
 
 declare global {
@@ -36,7 +38,9 @@ type SystemInfo = {
   performance: string,
   platform: string,
   model: string,
+  system: string,
   brand: string,
+  version: string,
   error: any,
 };
 
@@ -144,7 +148,8 @@ function registerEvent (options: DowngradeOptions) {
 
 async function getSystemInfo (): Promise<SystemInfo> {
   return new Promise((resolve, reject) => {
-    const ap = window.AlipayJSBridge;
+    // @ts-expect-error
+    const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
     if (ap) {
       ap.call('getSystemInfo', (e: SystemInfo) => {
