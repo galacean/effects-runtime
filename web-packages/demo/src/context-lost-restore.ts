@@ -1,13 +1,15 @@
-import { Player } from '@galacean/effects';
+import { GLRenderer, Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
 const json = inspireList.book.url;
 const container = document.getElementById('J-container');
 const lostButton = document.getElementById('J-lost') as HTMLButtonElement;
 const restoreButton = document.getElementById('J-restore') as HTMLButtonElement;
+const memoryButton = document.getElementById('J-memory') as HTMLButtonElement;
 const gpuTimes: number[] = [];
 let gpuFrame = 0;
 let max = 0;
+let isWebGLLost = false;
 
 (async () => {
   try {
@@ -23,6 +25,13 @@ let max = 0;
 
     };
 
+    player.canvas.addEventListener('webglcontextlost', e => {
+      isWebGLLost = true;
+    });
+    player.canvas.addEventListener('webglcontextrestored', e => {
+      isWebGLLost = false;
+    });
+
     //@ts-expect-error
     const gl = player.renderer.glRenderer.gl;
     const ext = gl.getExtension('WEBGL_lose_context');
@@ -37,6 +46,10 @@ let max = 0;
       ext?.restoreContext();
       lostButton.disabled = false;
       restoreButton.disabled = true;
+    });
+
+    memoryButton?.addEventListener('click', () => {
+      void allocateMemoryForLost(gl);
     });
   } catch (e) {
     console.info(e);
@@ -61,4 +74,31 @@ function createPlayer () {
   });
 
   return player;
+}
+
+function sleep (ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const texSize = 8192;
+const texData = new Uint8Array(texSize * texSize * 4);
+
+async function allocateMemoryForLost (gl: WebGLRenderingContext) {
+  if (!isWebGLLost) {
+    allocateTextureMemory(gl, 500);
+    setTimeout(() => { memoryButton.click(); }, 3000);
+  }
+}
+
+function allocateTextureMemory (gl: WebGLRenderingContext, count: number) {
+  console.info('allocateTextureMemory', count);
+  for (let i = 0; i < count; i++) {
+    if (isWebGLLost) {
+      break;
+    }
+    const texture = gl.createTexture();
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texSize, texSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, texData);
+  }
 }
