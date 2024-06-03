@@ -1,4 +1,4 @@
-import { GLRenderer, Player } from '@galacean/effects';
+import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
 const json = inspireList.book.url;
@@ -10,6 +10,7 @@ const gpuTimes: number[] = [];
 let gpuFrame = 0;
 let max = 0;
 let isWebGLLost = false;
+let allocateTimeout: any;
 
 (async () => {
   try {
@@ -27,6 +28,10 @@ let isWebGLLost = false;
 
     player.canvas.addEventListener('webglcontextlost', e => {
       isWebGLLost = true;
+      if (allocateTimeout) {
+        window.clearTimeout(allocateTimeout);
+        allocateTimeout = null;
+      }
     });
     player.canvas.addEventListener('webglcontextrestored', e => {
       isWebGLLost = false;
@@ -76,17 +81,13 @@ function createPlayer () {
   return player;
 }
 
-function sleep (ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 const texSize = 8192;
 const texData = new Uint8Array(texSize * texSize * 4);
 
 async function allocateMemoryForLost (gl: WebGLRenderingContext) {
   if (!isWebGLLost) {
     allocateTextureMemory(gl, 500);
-    setTimeout(() => { memoryButton.click(); }, 3000);
+    allocateTimeout = setTimeout(() => { memoryButton.click(); }, 3000);
   }
 }
 
