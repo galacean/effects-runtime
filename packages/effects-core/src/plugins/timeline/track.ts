@@ -73,7 +73,7 @@ export class TrackAsset extends PlayableAsset {
 
       timelineClip.playable = clipPlayable;
       mixer.addInput(clipPlayable, 0);
-      mixer.setInputWeight(clipPlayable, 0);
+      mixer.setInputWeight(clipPlayable, 0.0);
     }
 
     return mixer;
@@ -183,9 +183,10 @@ export class RuntimeClip {
 
   set enable (value: boolean) {
     if (value) {
-      this.parentMixer.setInputWeight(this.playable, 1.0);
+      this.playable.play();
     } else {
       this.parentMixer.setInputWeight(this.playable, 0);
+      this.playable.pause();
     }
   }
 
@@ -215,12 +216,12 @@ export class RuntimeClip {
     }
     this.parentMixer.setInputWeight(this.playable, weight);
 
-    const bindingItem = this.track.binding;
+    const boundItem = this.track.binding;
 
     // 判断动画是否结束
-    if (ended && !bindingItem.ended) {
-      bindingItem.ended = true;
-      bindingItem.onEnd();
+    if (ended && !boundItem.ended) {
+      boundItem.ended = true;
+      boundItem.onEnd();
     }
     if (ended && this.clip.playable.getPlayState() === PlayState.Playing && clip.endBehaviour === ItemEndBehavior.destroy) {
       this.clip.playable.pause();
@@ -232,10 +233,10 @@ export class RuntimeClip {
   }
 
   private onClipEnd () {
-    const bindingItem = this.track.binding;
+    const boundItem = this.track.binding;
 
-    if (!bindingItem.compositionReusable && !bindingItem.reusable) {
-      bindingItem.dispose();
+    if (!boundItem.compositionReusable && !boundItem.reusable) {
+      boundItem.dispose();
       this.clip.playable.dispose();
 
       return;
