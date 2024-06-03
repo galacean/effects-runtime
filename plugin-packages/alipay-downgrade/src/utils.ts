@@ -81,7 +81,8 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
     return Promise.resolve({ mock: { downgrade: bizId === mockIdFail } });
   }
 
-  const ap = window.AlipayJSBridge;
+  //@ts-expect-error
+  const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
   if (ap) {
     const now = performance.now();
@@ -168,6 +169,7 @@ async function getSystemInfo (): Promise<SystemInfo> {
 class DeviceProxy {
   isIOS = false;
   model = 'DESKTOP_DEBUG';
+  system = 'Unknown';
   deviceLevel = DEVICE_LEVEL_NONE;
   isDowngrade = false;
 
@@ -188,11 +190,11 @@ class DeviceProxy {
   }
 
   setBySystemInfo (systemInfo: SystemInfo) {
-    const { performance, platform, model = 'UNKNOWN_DEVICE' } = systemInfo;
+    const { performance, platform, model = 'UNKNOWN_DEVICE', system = 'Unknown' } = systemInfo;
 
     this.isIOS = platform === 'iOS';
     this.model = model;
-
+    this.system = system;
     if (performance && !this.hasDeviceLevel()) {
       this.deviceLevel = performance;
     }
@@ -220,6 +222,7 @@ class DeviceProxy {
     return {
       isIOS: this.isIOS,
       model: this.model,
+      system: this.system,
       deviceLevel: this.deviceLevel,
     };
   }
@@ -291,7 +294,11 @@ function parseDowngradeResult (result: any) {
       if (resultType === 1) {
         return { downgrade: true, reason: getDowngradeReason(resultReason) };
       } else {
-        return { downgrade: false, reason: resultType };
+        if (isAlipayMiniApp() && downgradeForMiniprogram()) {
+          return { downgrade: true, reason: 'Force downgrade by downgrade plugin' };
+        } else {
+          return { downgrade: false, reason: resultType };
+        }
       }
     }
   } else {
@@ -363,4 +370,24 @@ function resumePausedPlayers (e: Event) {
       }
     });
   }
+}
+
+const deviceModelList = ['12,8', '13,1', '13,2', '13,3', '13,4'];
+
+/**
+ * iPhone SE2 和 12 全系列机型，如果是 iOS16 系统，在小程序中强制降级
+ * @returns
+ */
+export function downgradeForMiniprogram () {
+  if (device.isIOS) {
+    if (deviceModelList.find(v => v === device.model)) {
+      const versionList = device.system.split('.');
+
+      if (versionList.length > 0 && versionList[0] === '16') {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
