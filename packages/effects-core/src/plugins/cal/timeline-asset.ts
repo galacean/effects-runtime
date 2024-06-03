@@ -76,7 +76,7 @@ export class TimelinePlayable extends Playable {
     }
   }
 
-  sortTracks (tracks: TrackAsset[]) {
+  private sortTracks (tracks: TrackAsset[]) {
     const sortedTracks = [];
 
     for (let i = 0; i < tracks.length; i++) {

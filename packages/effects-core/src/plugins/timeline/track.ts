@@ -71,7 +71,6 @@ export class TrackAsset extends PlayableAsset {
 
       runtimeClips.push(clip);
 
-      timelineClip.playable = clipPlayable;
       mixer.addInput(clipPlayable, 0);
       mixer.setInputWeight(clipPlayable, 0.0);
     }
@@ -144,7 +143,6 @@ export class TimelineClip {
   name: string;
   start = 0;
   duration = 0;
-  playable: Playable;
   asset: PlayableAsset;
   endBehaviour: ItemEndBehavior;
 
@@ -211,8 +209,8 @@ export class RuntimeClip {
       weight = 0.0;
     }
 
-    if (started && clip.playable.getPlayState() !== PlayState.Playing && !ended) {
-      clip.playable.play();
+    if (started && this.playable.getPlayState() !== PlayState.Playing) {
+      this.playable.play();
     }
     this.parentMixer.setInputWeight(this.playable, weight);
 
@@ -223,8 +221,8 @@ export class RuntimeClip {
       boundItem.ended = true;
       boundItem.onEnd();
     }
-    if (ended && this.clip.playable.getPlayState() === PlayState.Playing && clip.endBehaviour === ItemEndBehavior.destroy) {
-      this.clip.playable.pause();
+    if (ended && this.playable.getPlayState() === PlayState.Playing) {
+      this.playable.pause();
       this.onClipEnd();
     }
     const clipTime = clip.toLocalTime(localTime);
@@ -237,7 +235,7 @@ export class RuntimeClip {
 
     if (!boundItem.compositionReusable && !boundItem.reusable) {
       boundItem.dispose();
-      this.clip.playable.dispose();
+      this.playable.dispose();
 
       return;
     }
