@@ -154,8 +154,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.0.0-alpha.14
-        version: 2.0.0-alpha.14
+        specifier: 2.0.0-alpha.16
+        version: 2.0.0-alpha.16
       uuid:
         specifier: 9.0.1
         version: 9.0.1
@@ -216,8 +216,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: 0.6.0-alpha.7
-        version: 0.6.0-alpha.7
+        specifier: 0.6.0-alpha.8
+        version: 0.6.0-alpha.8
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -2653,10 +2653,9 @@ packages:
   /@galacean/effects-math@1.1.0:
     resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
     engines: {node: '>=10.0.0'}
-    dev: false
 
-  /@galacean/effects-specification@2.0.0-alpha.14:
-    resolution: {integrity: sha512-ckqfz0dHkYJupCnSrtzbXh6bmcRz83Zjn10AfpQRDS3PMLiM+X6suMEbBjTsl6iNfDQ6TftedSg5McuwdjcTRw==}
+  /@galacean/effects-specification@2.0.0-alpha.16:
+    resolution: {integrity: sha512-5hQX1Z/R1cD5YE2yiO+ZIWnlaSkn74nEnABz0BLQR5+UXQsbpKc7MLIW+IompRt8bhR47GdRw+pVcpZNs1a5CA==}
 
   /@headlessui/vue@1.7.19(vue@3.4.21):
     resolution: {integrity: sha512-VFjKPybogux/5/QYGSq4zgG/x3RcxId15W8uguAJAjPBxelI23dwjOjTx/mIiMkM/Hd3rzFxcf2aIp56eEWRcA==}
@@ -4248,11 +4247,12 @@ packages:
       - vue
     dev: true
 
-  /@vvfx/resource-detection@0.6.0-alpha.7:
-    resolution: {integrity: sha512-NOmyIPX/leTlnNuc0A2Ts831eO7IFmRc+2ZhBsJnF+zqFdysXFaJnqS32DXCeIAHMMTuTSeKMJfKpuTJzDP9xw==}
+  /@vvfx/resource-detection@0.6.0-alpha.8:
+    resolution: {integrity: sha512-5WjOKfy9GprHfsVYrr3mfnYBSWxA8oElbKhfyAjmbvAIR9MWl8BL1BLGMNNkngI0vhqcsz/+OQsUAW13Ia5new==}
     engines: {node: '>=10.0.0'}
     dependencies:
-      '@galacean/effects-specification': 2.0.0-alpha.14
+      '@galacean/effects-math': 1.1.0
+      '@galacean/effects-specification': 2.0.0-alpha.16
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1

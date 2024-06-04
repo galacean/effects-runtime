@@ -41,10 +41,10 @@ export class TimelinePlayable extends Playable {
   evaluate () {
     const time = this.getTime();
 
+    // TODO search active clips
+
     for (const clip of this.clips) {
-      if (time >= clip.clip.start) {
-        clip.evaluateAt(time);
-      }
+      clip.evaluateAt(time);
     }
   }
 
@@ -66,9 +66,6 @@ export class TimelinePlayable extends Playable {
     for (const track of outputTrack) {
       const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
 
-      // TODO 移至 Composition Component play
-      trackMixPlayable.play();
-
       this.addInput(trackMixPlayable, 0);
       const trackOutput = track.createOutput();
 
@@ -79,7 +76,7 @@ export class TimelinePlayable extends Playable {
     }
   }
 
-  sortTracks (tracks: TrackAsset[]) {
+  private sortTracks (tracks: TrackAsset[]) {
     const sortedTracks = [];
 
     for (let i = 0; i < tracks.length; i++) {

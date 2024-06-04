@@ -199,7 +199,8 @@ export class SerializationHelper {
       obj instanceof Int32Array ||
       obj instanceof Uint32Array ||
       obj instanceof Float32Array ||
-      obj instanceof Float64Array;
+      obj instanceof Float64Array ||
+      obj instanceof ArrayBuffer;
   }
 
   static checkDataPath (value: any): boolean {

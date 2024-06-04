@@ -83,7 +83,7 @@ export class ThreeComposition extends Composition {
   ) {
     super(props, scene, compositionSourceManager);
 
-    this.rootItem.getComponent(CompositionComponent)!.resetStatus();
+    this.rootItem.getComponent(CompositionComponent).resetStatus();
   }
 
   /**
@@ -111,7 +111,7 @@ export class ThreeComposition extends Composition {
     }
     // 预合成元素
     for (const refContent of this.refContent) {
-      for (const vfxItem of refContent.getComponent(CompositionComponent)!.items) {
+      for (const vfxItem of refContent.getComponent(CompositionComponent).items) {
         const rendererComponents = vfxItem.getComponents(RendererComponent);
 
         for (const rendererComponent of rendererComponents) {
