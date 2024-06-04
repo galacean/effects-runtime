@@ -5,46 +5,17 @@ import inject from '@rollup/plugin-inject';
 
 const module = '@galacean/appx-adapter';
 const commonAdapterList = [
-  'window',
-  'navigator',
-  'HTMLElement',
-  'HTMLImageElement',
-  'HTMLCanvasElement',
-  'HTMLVideoElement',
-  'document',
-  'WebGLRenderingContext',
-  'Image',
-  'URL',
-  'location',
-  'XMLHttpRequest',
-  'Blob',
-  'performance',
-  'requestAnimationFrame',
-  'cancelAnimationFrame',
-  'btoa',
-  'atob',
-  'devicePixelRatio',
-  'Element',
-  'Event',
-  'EventTarget',
-  'HTMLMediaElement',
-  'Node',
-  'screen',
-  'WebGL2RenderingContext',
-  'ImageData',
-  'OffscreenCanvas',
-  'URLSearchParams'
+  'window'
 ];
 const adapterList = {
-  weapp: [...commonAdapterList],
   alipay: [...commonAdapterList],
 }
 
 export default [
-  'weapp',
   'alipay'
 ].map(platform => {
   const adapterVars = {};
+  const paths = { '@galacean/effects': `@galacean/effects/${platform}`};
 
   adapterList[platform].forEach(name => {
     adapterVars[name] = [`${module}/${platform}`, name];
@@ -56,11 +27,14 @@ export default [
       file: `./dist/${platform}.mjs`,
       format: 'es',
       sourcemap: true,
+      paths,
     }, {
       file: `./dist/${platform}.js`,
       format: 'cjs',
       sourcemap: true,
+      paths,
     }],
+    external: ['@galacean/effects'],
     plugins: [
       inject(adapterVars),
     ],

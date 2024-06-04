@@ -44,7 +44,7 @@ const format = document.getElementById('J-formatList') as HTMLSelectElement;
 // format.onchange = handleChange;
 // delay.onchange = handleChange;
 
-const files: Record<string, FileFormat> = direct;
+const files: Record<string, FileFormat> = premultiply;
 
 if (files === premultiply) {
   filetype.innerText = '纹理打包选择预乘alpha: true';
@@ -254,7 +254,7 @@ function generateScene (activeSkin: string, activeAnimation: string[], duration:
                   3,
                   3,
                 ],
-                'startSize': 3,
+                'startSize': 2,
                 activeAnimation,
                 mixDuration,
                 speed,

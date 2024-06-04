@@ -326,11 +326,11 @@ export class GLRenderer extends Renderer implements Disposable {
     return this.height;
   }
 
-  override dispose (haltGL?: boolean): void {
+  override dispose (): void {
     this.context.dispose();
     this.extension.dispose();
     this.pipelineContext.dispose();
-    this.glRenderer?.dispose(haltGL);
+    this.glRenderer?.dispose();
     // @ts-expect-error
     this.canvas = null;
     this.engine.dispose();

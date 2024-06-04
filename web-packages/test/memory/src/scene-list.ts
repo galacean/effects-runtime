@@ -38,11 +38,12 @@ export default {
     name: '彩带下落',
     pass: true,
   },
-  fireworks: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EDQRDRYRXERJ/551346662-76ba9.json',
-    name: '烟花',
-    pass: true,
-  },
+  // 不支持 random
+  // fireworks: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EDQRDRYRXERJ/551346662-76ba9.json',
+  //   name: '烟花',
+  //   pass: true,
+  // },
   rotate: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/AEFTPXNTAVWO/-79861579-61067.json',
     name: '旋转出场',
@@ -344,11 +345,12 @@ export default {
     name: '圆形弹窗',
     pass: true,
   },
-  plain: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RJGLUHXYUYVU/751328825-319d7.json',
-    name: '平淡弹窗',
-    pass: true,
-  },
+  // 不支持random
+  // plain: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RJGLUHXYUYVU/751328825-319d7.json',
+  //   name: '平淡弹窗',
+  //   pass: true,
+  // },
   window520: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BQTEQTNCXEEO/1270328461-009fc.json',
     name: '520弹窗',
@@ -438,11 +440,13 @@ export default {
   },
 
   // 故事
-  fiveinone: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WATVNRNSNIMG/-225780559-f11a1.json',
-    name: '五福首页2022——五合一',
-    pass: true,
-  },
+  // 元素的更新顺序先后导致帧对比抛出的随机数不同，造成粒子位置不同
+  // 可以用此 JSON 代替测试：https://mdn.alipayobjects.com/mars/afts/file/A*ls_hTrao640AAAAAAAAAAAAADlB4AQ
+  // fiveinone: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WATVNRNSNIMG/-225780559-f11a1.json',
+  //   name: '五福首页2022——五合一',
+  //   pass: true,
+  // },
   four: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/GRPXATAUECLT/49510158-65ef1.json',
     name: '五福首页2022——四条福',
@@ -458,31 +462,35 @@ export default {
     name: '五福首页2022——tab3',
     pass: true,
   },
-  forest: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HUHNTRYCTBNX/-382630129-e18d6.json',
-    name: '五福首页2022——森林',
-    pass: true,
-  },
+  // 不支持random
+  // forest: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HUHNTRYCTBNX/-382630129-e18d6.json',
+  //   name: '五福首页2022——森林',
+  //   pass: true,
+  // },
   castle: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BPJQQDHVEACP/154040086-c263d.json',
     name: '五福首页2022——庄园',
     pass: true,
   },
-  write: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FVKURDGLVCTO/-1407450823-e9f98.json',
-    name: '五福首页2022——写福',
-    pass: true,
-  },
-  scan: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/TCFWNOIAYQRL/-891621161-b18e1.json',
-    name: '五福首页2022——扫福',
-    pass: true,
-  },
-  shake: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/CKGSSBJBJHMW/-1783558944-a64a3.json',
-    name: '五福首页2022——摇一摇',
-    pass: true,
-  },
+  // 不支持random
+  // write: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FVKURDGLVCTO/-1407450823-e9f98.json',
+  //   name: '五福首页2022——写福',
+  //   pass: true,
+  // },
+  // 不支持random
+  // scan: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/TCFWNOIAYQRL/-891621161-b18e1.json',
+  //   name: '五福首页2022——扫福',
+  //   pass: true,
+  // },
+  // 不支持random
+  // shake: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/CKGSSBJBJHMW/-1783558944-a64a3.json',
+  //   name: '五福首页2022——摇一摇',
+  //   pass: true,
+  // },
   editor: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/ICOJQCDWSWPG/-694518893-40143.json',
     name: '五福首页2022——编辑器装饰',
@@ -508,11 +516,12 @@ export default {
     name: '支付宝2021——跑步',
     pass: true,
   },
-  door: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EJAYICIVXVEB/1200639368-999bc.json',
-    name: '支付宝2021——开门动画',
-    pass: true,
-  },
+  // 路径曲线缺少控制点数据
+  // door: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EJAYICIVXVEB/1200639368-999bc.json',
+  //   name: '支付宝2021——开门动画',
+  //   pass: true,
+  // },
   payment: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DVHWTIBIRXHY/-788542078-c8fed.json',
     name: '支付宝2021——缴费',
