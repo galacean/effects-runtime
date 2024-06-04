@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-orientation-transformer",
-  "version": "1.4.5",
+  "version": "1.5.0",
   "description": "Galacean Effects player orientation transformer plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -14,6 +14,18 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./alipay": {
+      "import": "./dist/alipay.mjs",
+      "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "alipay": [
+        "./dist/index.d.ts"
+      ]
     }
   },
   "scripts": {

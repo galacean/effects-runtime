@@ -379,7 +379,7 @@ export class AssetManager implements Disposable {
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
-            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}.`);
+            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message}`);
           }
         }
       } else if ('compressed' in img && useCompressedTexture && compressedTexture) {

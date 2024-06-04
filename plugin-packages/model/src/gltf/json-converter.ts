@@ -93,7 +93,7 @@ export class JSONConverter {
     if (oldScene.textures) {
       for (const tex of oldScene.textures) {
         if (tex.target === 34067) {
-          const { mipmaps, target } = tex;
+          const { mipmaps, target } = tex as spec.SerializedTextureCube;
           const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => this.loadMipmapImage(pointer, bins))));
           const loadedMipmaps = await Promise.all(jobs);
 

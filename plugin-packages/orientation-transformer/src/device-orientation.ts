@@ -1,7 +1,7 @@
 import { assertExist } from '@galacean/effects';
 import { angleLimit, type AngleType } from './utils/angle-limit';
 import { deepMerge } from './utils/deep-merge';
-import { isIOS } from './utils/device';
+import { isIOS, isMiniProgram } from './utils/device';
 import { Filtering } from './utils/filtering';
 
 declare global {
@@ -208,7 +208,7 @@ export class DeviceOrientation {
         }
       };
       document.addEventListener('motion.gyro', this.watchListener, false);
-    } else if (useJSBridge) {
+    } else if (useJSBridge && !isMiniProgram()) {
       switchIOSEvent(true, this.options.interval / 1000);
       this.watchListener = (e: Event) => {
         if (e && 'data' in e) {

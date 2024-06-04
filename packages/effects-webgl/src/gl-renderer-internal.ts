@@ -3,12 +3,12 @@ import { TextureSourceType, addItem, logger, removeItem } from '@galacean/effect
 import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLGeometry } from './gl-geometry';
 import type { GLGPUBuffer } from './gl-gpu-buffer';
+import type { GLMaterial } from './gl-material';
 import type { GLPipelineContext } from './gl-pipeline-context';
 import type { GLRenderbuffer } from './gl-renderbuffer';
 import { GLTexture } from './gl-texture';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLEngine } from './gl-engine';
-import type { GLMaterial } from './gl-material';
 
 let seed = 1;
 
@@ -260,15 +260,8 @@ export class GLRendererInternal implements Disposable, LostHandler {
     this.deleteResource();
   }
 
-  dispose (haltGL?: boolean) {
+  dispose () {
     this.deleteResource();
-    const gl = this.gl;
-
-    if (gl && haltGL) {
-      const ex = gl.getExtension('WEBGL_lose_context');
-
-      ex?.loseContext();
-    }
     // @ts-expect-error safe to assign
     this.emptyTexture2D = this.emptyTextureCube = this.pipelineContext = this.gpu = this.gl = null;
     this.destroyed = true;
