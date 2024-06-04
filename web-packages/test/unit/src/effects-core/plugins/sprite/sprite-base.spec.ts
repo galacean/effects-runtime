@@ -49,7 +49,7 @@ describe('sprite item base options', () => {
     let spriteColorTrack;
 
     for (const track of comp.rootItem.getComponent(CompositionComponent).masterTracks) {
-      if (track.bindingItem === sprite1) {
+      if (track.boundItem === sprite1) {
         spriteBindingTrack = track;
       }
     }
@@ -197,7 +197,7 @@ describe('sprite item base options', () => {
     let spriteColorTrack;
 
     for (const track of comp.rootItem.getComponent(CompositionComponent).masterTracks) {
-      if (track.bindingItem === spriteItem) {
+      if (track.boundItem === spriteItem) {
         spriteColorTrack = track;
       }
     }

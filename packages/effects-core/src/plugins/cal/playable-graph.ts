@@ -15,10 +15,12 @@ export class PlayableGraph {
     for (const playable of this.playables) {
       this.updatePlayableTime(playable, dt);
     }
+
     // 初始化输出节点状态
     for (const playableOutput of this.playableOutputs) {
       playableOutput.context.deltaTime = dt;
     }
+
     // 执行生命周期函数
     for (const playableOutput of this.playableOutputs) {
       this.prepareFrameWithRoot(playableOutput);
@@ -93,13 +95,29 @@ export class Playable implements Disposable {
   }
 
   play () {
-    this.playState = PlayState.Playing;
-    this.onPlayablePlayFlag = true;
+    switch (this.playState) {
+      case PlayState.Playing:
+        break;
+      case PlayState.Paused:
+        this.playState = PlayState.Playing;
+        this.onPlayablePlayFlag = true;
+        this.onPlayablePauseFlag = false;
+
+        break;
+    }
   }
 
   pause () {
-    this.playState = PlayState.Paused;
-    this.onPlayablePauseFlag = true;
+    switch (this.playState) {
+      case PlayState.Playing:
+        this.playState = PlayState.Paused;
+        this.onPlayablePauseFlag = true;
+        this.onPlayablePlayFlag = false;
+
+        break;
+      case PlayState.Paused:
+        break;
+    }
   }
 
   connectInput (inputPort: number, sourcePlayable: Playable, sourceOutputPort: number, weight = 1.0) {
@@ -220,6 +238,7 @@ export class Playable implements Disposable {
       return;
     }
     this.onPlayableDestroy();
+    // TODO 将节点从动画图中移除
     this.destroyed = true;
   }
 
@@ -227,7 +246,7 @@ export class Playable implements Disposable {
    * @internal
    */
   prepareFrameRecursive (context: FrameContext, passthroughPort: number) {
-    if (this.destroyed) {
+    if (this.destroyed || this.playState !== PlayState.Playing) {
       return;
     }
     if (this.onPlayablePlayFlag) {
@@ -267,7 +286,7 @@ export class Playable implements Disposable {
    * @internal
    */
   processFrameRecursive (context: FrameContext, passthroughPort: number) {
-    if (this.destroyed) {
+    if (this.destroyed || this.playState !== PlayState.Playing) {
       return;
     }
     // 后序遍历，保证 playable 拿到的 input 节点的估计数据是最新的
@@ -275,10 +294,6 @@ export class Playable implements Disposable {
       case PlayableTraversalMode.Mix: {
         for (let i = 0; i < this.getInputCount(); i++) {
           const input = this.getInput(i);
-
-          if (this.getInputWeight(i) <= 0) {
-            continue;
-          }
 
           input.processFrameRecursive(context, this.inputOuputPorts[i]);
         }
@@ -288,9 +303,7 @@ export class Playable implements Disposable {
       case PlayableTraversalMode.Passthrough: {
         const input = this.getInput(passthroughPort);
 
-        if (this.getInputWeight(passthroughPort) > 0) {
-          input.processFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
-        }
+        input.processFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
 
         break;
       }

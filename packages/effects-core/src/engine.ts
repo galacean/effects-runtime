@@ -6,7 +6,7 @@ import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
 import type { Scene } from './scene';
 import type { Texture } from './texture';
-import { generateWhiteTexture, generateTransparentTexture } from './texture';
+import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
 
@@ -104,6 +104,20 @@ export class Engine implements Disposable {
     if (jsonScene.animations) {
       for (const animationData of jsonScene.animations) {
         this.addEffectsObjectData(animationData);
+      }
+    }
+    if (jsonScene.bins) {
+      for (let i = 0;i < jsonScene.bins.length;i++) {
+        const binaryData = jsonScene.bins[i];
+        const binaryBuffer = scene.bins[i];
+
+        //@ts-expect-error
+        binaryData.buffer = binaryBuffer;
+        //@ts-expect-error
+        if (binaryData.id) {
+          //@ts-expect-error
+          this.addEffectsObjectData(binaryData);
+        }
       }
     }
     if (scene.textureOptions) {

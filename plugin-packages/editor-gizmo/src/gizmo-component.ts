@@ -68,7 +68,7 @@ export class GizmoComponent extends ItemBehaviour {
 
     if (gizmoVFXItemList && gizmoVFXItemList.length > 0) {
       for (const gizmoVFXItem of gizmoVFXItemList) {
-        const gizmoSubType = gizmoVFXItem.getComponent(GizmoComponent)!.subType;
+        const gizmoSubType = gizmoVFXItem.getComponent(GizmoComponent).subType;
 
         switch (gizmoSubType) {
           case GizmoSubType.particleEmitter:
@@ -143,10 +143,10 @@ export class GizmoComponent extends ItemBehaviour {
         item.content.material.setMatrix('u_model', this.mat);
       }
       if (this.wireframeMesh && this.targetItem) {
-        const particle = this.targetItem.getComponent(ParticleSystemRenderer)!;
+        const particle = this.targetItem.getComponent(ParticleSystemRenderer);
 
         if (particle) {
-          updateWireframeMesh(particle.particleMesh.mesh as Mesh, this.wireframeMesh, WireframeGeometryType.quad);
+          updateWireframeMesh(particle.particleMesh.mesh, this.wireframeMesh, WireframeGeometryType.quad);
           this.wireframeMesh.worldMatrix = particle.particleMesh.mesh.worldMatrix;
         }
       }
@@ -352,7 +352,7 @@ export class GizmoComponent extends ItemBehaviour {
   }
 
   createModelContent (item: VFXItem, meshesToAdd: Mesh[]) {
-    const modelComponent = item.getComponent(RendererComponent)!;
+    const modelComponent = item.getComponent(RendererComponent);
     //@ts-expect-error
     const ms = modelComponent.content.mriMeshs as Mesh[];
     const engine = item.composition?.renderer.engine;
@@ -543,7 +543,7 @@ export class GizmoComponent extends ItemBehaviour {
          */
         collect (ray: Ray, pointInCanvas: Vector2): Vector3[] | void {
           const hitPositions = [];
-          const gizmoComponent = self.getComponent(GizmoComponent)!;
+          const gizmoComponent = self.getComponent(GizmoComponent);
 
           gizmoComponent.hitBounding = undefined;
           for (const key of boundingKeys) {

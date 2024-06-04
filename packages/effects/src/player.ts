@@ -833,7 +833,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           await video.play();
         }
       }
-      newComposition.rootItem.getComponent(CompositionComponent)!.resetStatus();
+      newComposition.rootItem.getComponent(CompositionComponent).resetStatus();
       newComposition.gotoAndPlay(currentTime);
 
       return newComposition;

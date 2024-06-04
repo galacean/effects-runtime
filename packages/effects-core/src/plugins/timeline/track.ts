@@ -71,9 +71,8 @@ export class TrackAsset extends PlayableAsset {
 
       runtimeClips.push(clip);
 
-      timelineClip.playable = clipPlayable;
       mixer.addInput(clipPlayable, 0);
-      mixer.setInputWeight(clipPlayable, 0);
+      mixer.setInputWeight(clipPlayable, 0.0);
     }
 
     return mixer;
@@ -144,7 +143,6 @@ export class TimelineClip {
   name: string;
   start = 0;
   duration = 0;
-  playable: Playable;
   asset: PlayableAsset;
   endBehaviour: ItemEndBehavior;
 
@@ -183,9 +181,10 @@ export class RuntimeClip {
 
   set enable (value: boolean) {
     if (value) {
-      this.parentMixer.setInputWeight(this.playable, 1.0);
+      this.playable.play();
     } else {
       this.parentMixer.setInputWeight(this.playable, 0);
+      this.playable.pause();
     }
   }
 
@@ -210,20 +209,20 @@ export class RuntimeClip {
       weight = 0.0;
     }
 
-    if (started && clip.playable.getPlayState() !== PlayState.Playing && !ended) {
-      clip.playable.play();
+    if (started && this.playable.getPlayState() !== PlayState.Playing) {
+      this.playable.play();
     }
     this.parentMixer.setInputWeight(this.playable, weight);
 
-    const bindingItem = this.track.binding;
+    const boundItem = this.track.binding;
 
     // 判断动画是否结束
-    if (ended && !bindingItem.ended) {
-      bindingItem.ended = true;
-      bindingItem.onEnd();
+    if (ended && !boundItem.ended) {
+      boundItem.ended = true;
+      boundItem.onEnd();
     }
-    if (ended && this.clip.playable.getPlayState() === PlayState.Playing && clip.endBehaviour === ItemEndBehavior.destroy) {
-      this.clip.playable.pause();
+    if (ended && this.playable.getPlayState() === PlayState.Playing) {
+      this.playable.pause();
       this.onClipEnd();
     }
     const clipTime = clip.toLocalTime(localTime);
@@ -232,11 +231,11 @@ export class RuntimeClip {
   }
 
   private onClipEnd () {
-    const bindingItem = this.track.binding;
+    const boundItem = this.track.binding;
 
-    if (!bindingItem.compositionReusable && !bindingItem.reusable) {
-      bindingItem.dispose();
-      this.clip.playable.dispose();
+    if (!boundItem.compositionReusable && !boundItem.reusable) {
+      boundItem.dispose();
+      this.playable.dispose();
 
       return;
     }

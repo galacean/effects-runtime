@@ -2,7 +2,6 @@ import type { Ray } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
-import { RendererComponent } from './components';
 import type { CompositionSourceManager } from './composition-source-manager';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
@@ -544,29 +543,20 @@ export class Composition implements Disposable, LostHandler {
       }
     });
 
-    // 主合成元素
-    for (const vfxItem of this.rootComposition.items) {
-      const rendererComponents = vfxItem.getComponents(RendererComponent);
-
-      for (const rendererComponent of rendererComponents) {
-        if (rendererComponent.isActiveAndEnabled) {
-          frame.addMeshToDefaultRenderPass(rendererComponent);
-        }
-      }
-    }
-    // 预合成元素
-    for (const refContent of this.refContent) {
-      for (const vfxItem of refContent.getComponent(CompositionComponent).items) {
-        const rendererComponents = vfxItem.getComponents(RendererComponent);
-
-        for (const rendererComponent of rendererComponents) {
-          if (rendererComponent.isActiveAndEnabled) {
-            frame.addMeshToDefaultRenderPass(rendererComponent);
-          }
-        }
-      }
-    }
+    this.gatherRendererComponent(this.rootItem, frame);
     this.postLoaders.forEach(loader => loader.postProcessFrame(this, frame));
+  }
+
+  private gatherRendererComponent (vfxItem: VFXItem, renderFrame: RenderFrame) {
+    for (const rendererComponent of vfxItem.rendererComponents) {
+      if (rendererComponent.isActiveAndEnabled) {
+        renderFrame.addMeshToDefaultRenderPass(rendererComponent);
+      }
+    }
+
+    for (const item of vfxItem.children) {
+      this.gatherRendererComponent(item, renderFrame);
+    }
   }
 
   /**
