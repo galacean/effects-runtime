@@ -8,12 +8,6 @@ import { PObject } from './object';
 import { PluginHelper } from '../utility/plugin-helper';
 import { PShaderManager } from './shader';
 
-export enum RenderType {
-  Opaque = 'Opaque',
-  Mask = 'Mask',
-  Blend = 'Blend',
-}
-
 export enum CullMode {
   Front = 'Front',
   Back = 'Back',
@@ -48,7 +42,11 @@ export abstract class PMaterialBase extends PObject {
   /**
    * 渲染类型，默认是不透明
    */
-  renderType: RenderType = RenderType.Opaque;
+  renderType: spec.RenderType = spec.RenderType.Opaque;
+  /**
+   * 是否 Alpha 裁剪，默认关闭
+   */
+  alphaClip = false;
   /**
    * Alpha 测试截断值
    */
@@ -67,7 +65,7 @@ export abstract class PMaterialBase extends PObject {
 
     if (this.isOpaque()) {
       featureList.push('ALPHAMODE_OPAQUE 1');
-    } else if (this.isMasked()) {
+    } else if (this.isAlphaClip()) {
       featureList.push('ALPHAMODE_MASK 1');
     }
 
@@ -83,7 +81,7 @@ export abstract class PMaterialBase extends PObject {
 
     if (this.isOpaque()) {
       macroList.push({ name: 'ALPHAMODE_OPAQUE' });
-    } else if (this.isMasked()) {
+    } else if (this.isAlphaClip()) {
       macroList.push({ name: 'ALPHAMODE_MASK' });
     }
 
@@ -184,7 +182,7 @@ export abstract class PMaterialBase extends PObject {
    * @param material - GE 材质
    */
   setMaterialStates (material: Material) {
-    if (this.renderType === RenderType.Blend) {
+    if (this.renderType === spec.RenderType.Transparent) {
       material.blending = true;
       material.depthTest = this.ZTest;
       material.depthMask = this.ZWrite;
@@ -244,23 +242,23 @@ export abstract class PMaterialBase extends PObject {
    * @returns
    */
   isOpaque (): boolean {
-    return this.renderType === RenderType.Opaque;
+    return this.renderType === spec.RenderType.Opaque;
   }
 
   /**
-   * 是否遮罩
+   * 是否 Alpha 裁剪
    * @returns
    */
-  isMasked (): boolean {
-    return this.renderType === RenderType.Mask;
+  isAlphaClip (): boolean {
+    return this.alphaClip;
   }
 
   /**
    * 是否半透明
    * @returns
    */
-  isBlend (): boolean {
-    return this.renderType === RenderType.Blend;
+  isTransparent (): boolean {
+    return this.renderType === spec.RenderType.Transparent;
   }
 
   /**
@@ -321,7 +319,7 @@ export class PMaterialUnlit extends PMaterialBase {
     //
     this.ZWrite = material.stringTags['ZWrite'] !== 'false';
     this.ZTest = material.stringTags['ZTest'] !== 'false';
-    this.renderType = material.stringTags['RenderType'] as RenderType ?? RenderType.Opaque;
+    this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
     this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
@@ -545,7 +543,7 @@ export class PMaterialPBR extends PMaterialBase {
     //
     this.ZWrite = material.stringTags['ZWrite'] !== 'false';
     this.ZTest = material.stringTags['ZTest'] !== 'false';
-    this.renderType = material.stringTags['RenderType'] as RenderType ?? RenderType.Opaque;
+    this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
     this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }

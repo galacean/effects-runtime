@@ -8,7 +8,7 @@ import type {
   ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions,
   ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
-import { UnlitShaderGUID, PBRShaderGUID, RenderType, CullMode } from '../index';
+import { UnlitShaderGUID, PBRShaderGUID, CullMode } from '../index';
 import { Matrix4 } from '../runtime/math';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
@@ -303,7 +303,7 @@ export class LoaderECSImpl implements LoaderECS {
       }
 
       if (!material.stringTags['RenderType']) {
-        material.stringTags['RenderType'] = RenderType.Opaque;
+        material.stringTags['RenderType'] = spec.RenderType.Opaque;
       }
 
       if (!material.stringTags['Cull']) {
@@ -355,7 +355,7 @@ export class LoaderECSImpl implements LoaderECS {
       }
 
       if (!material.stringTags['RenderType']) {
-        material.stringTags['RenderType'] = RenderType.Opaque;
+        material.stringTags['RenderType'] = spec.RenderType.Opaque;
       }
 
       if (!material.stringTags['Cull']) {
@@ -914,7 +914,7 @@ export function getDefaultPBRMaterialData (): spec.MaterialData {
     'stringTags': {
       'ZWrite': 'true',
       'ZTest': 'true',
-      'RenderType': 'Opaque',
+      'RenderType': spec.RenderType.Opaque,
       'Cull': 'Front',
     },
     'macros': [],
@@ -966,7 +966,7 @@ export function getDefaultUnlitMaterialData (): spec.MaterialData {
     'stringTags': {
       'ZWrite': 'true',
       'ZTest': 'true',
-      'RenderType': 'Opaque',
+      'RenderType': spec.RenderType.Opaque,
       'Cull': 'Front',
     },
     'macros': [],
