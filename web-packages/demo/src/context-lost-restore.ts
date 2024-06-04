@@ -1,5 +1,6 @@
 import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
+import { setAlipayDowngradeBizId } from '@galacean/effects-plugin-alipay-downgrade';
 
 const json = inspireList.book.url;
 const container = document.getElementById('J-container');
@@ -11,6 +12,7 @@ let max = 0;
 
 (async () => {
   try {
+    setAlipayDowngradeBizId('bizid', { disableGLLostEvent: true });
     const player = createPlayer();
 
     const scene = await player.loadScene(json);
