@@ -10,6 +10,7 @@ import {
   AssetManager,
   getDefaultTemplateCanvasPool,
 } from '@galacean/effects';
+import { JSONConverter } from '@galacean/effects-plugin-model';
 
 const { Vector3, Matrix4 } = math;
 
@@ -27,7 +28,7 @@ const playerOptions: PlayerConfig = {
 };
 
 export class TestPlayer {
-  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, assetManager, oldVersion) {
+  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, assetManager, oldVersion, is3DCase) {
     this.width = width;
     this.height = height;
     //
@@ -43,6 +44,7 @@ export class TestPlayer {
     });
     this.assetManager = assetManager;
     this.oldVersion = oldVersion;
+    this.is3DCase = is3DCase;
     this.scene = undefined;
     this.composition = undefined;
     this.lastTime = 0;
@@ -55,7 +57,16 @@ export class TestPlayer {
     this.player.destroyCurrentCompositions();
     // getDefaultTemplateCanvasPool().dispose();
     const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false }) as AssetManager;
-    const json = await assetManager.loadScene(url, (this.player as Player).renderer);
+
+    let inData = url;
+
+    if (!this.oldVersion && this.is3DCase) {
+      const converter = new JSONConverter(this.player);
+
+      inData = await converter.processScene(url);
+    }
+
+    const json = await assetManager.loadScene(inData, (this.player as Player).renderer);
 
     // TODO 兼容函数，endbehaviour 改造后移除
     compatibleCalculateItem(json.jsonScene.compositions[0]);
@@ -201,7 +212,8 @@ export class TestPlayer {
 }
 
 export class TestController {
-  constructor () {
+  constructor (is3DCase = false) {
+    this.is3DCase = is3DCase;
     this.renderFramework = 'webgl';
     this.oldPlayer = undefined;
     this.newPlayer = undefined;
@@ -219,11 +231,11 @@ export class TestController {
       this.oldPlayer = new TestPlayer(
         width, height, window.ge.Player, playerOptions, renderFramework,
         window.ge.registerPlugin, window.ge.AbstractPlugin, window.ge.VFXItem,
-        window.ge.AssetManager, true
+        window.ge.AssetManager, true, this.is3DCase
       );
       this.newPlayer = new TestPlayer(
         width, height, Player, playerOptions, renderFramework,
-        registerPlugin, AbstractPlugin, VFXItem, AssetManager, false
+        registerPlugin, AbstractPlugin, VFXItem, AssetManager, false, this.is3DCase
       );
       console.info('Create all players');
     } else {

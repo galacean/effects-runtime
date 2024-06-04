@@ -24,7 +24,7 @@ function addDescribe (renderFramework) {
     this.timeout('1800s');
 
     before(async function () {
-      controller = new TestController();
+      controller = new TestController(true);
       await controller.createPlayers(canvasWidth, canvasHeight, renderFramework, false);
       cmpStats = new ComparatorStats(renderFramework);
     });
