@@ -1,7 +1,6 @@
 import {
-  spec, isString, disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger, isAlipayMiniApp,
+  spec, isString, getActivePlayers, logger, isAlipayMiniApp,
 } from '@galacean/effects';
-import { AlipayDowngradePlugin } from './alipay-downgrade-plugin';
 
 declare global {
   interface Window {
@@ -10,11 +9,6 @@ declare global {
 }
 
 export interface DowngradeOptions {
-  /**
-   * 发生 gl lost 时，是否忽略
-   * @default false - 不忽略，将不再允许任何播放器创建，会全部走降级逻辑
-   */
-  ignoreGLLost?: boolean,
   /**
    * 禁用压后台的时候自动暂停播放器
    * @default false - 不自动暂停
@@ -122,24 +116,11 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 }
 
 function registerEvent (options: DowngradeOptions) {
-  const { ignoreGLLost, autoPause } = options;
-  const downgradeWhenGLLost = ignoreGLLost !== true;
+  const { autoPause } = options;
 
   window.addEventListener('unload', () => {
     getActivePlayers().forEach(player => player.dispose());
   });
-
-  window.addEventListener('webglcontextlost', e => {
-    if (isCanvasUsedByPlayer(e.target as HTMLCanvasElement)) {
-      AlipayDowngradePlugin.glLostOccurred = true;
-      console.error('webgl lost occur');
-      if (downgradeWhenGLLost) {
-        console.warn('webgl lost occur, all players will be downgraded from now on');
-        disableAllPlayer(true);
-        getActivePlayers().forEach(player => player.dispose());
-      }
-    }
-  }, true);
 
   if (autoPause) {
     document.addEventListener('pause', pauseAllActivePlayers);
