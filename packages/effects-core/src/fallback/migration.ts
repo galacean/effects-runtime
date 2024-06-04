@@ -230,6 +230,11 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       content.renderer.anchor = convertAnchor(renderer.anchor, renderer.particleOrigin);
     }
 
+    // 修复相机K帧缺失 asMovement 参数
+    if (item.type === ItemType.camera) {
+      item.content.positionOverLifetime.asMovement = true;
+    }
+
     // 动画数据转化 TODO: 动画数据移到 TimelineComponentData
     item.content.tracks = [];
     const tracks = item.content.tracks;

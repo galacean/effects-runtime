@@ -239,10 +239,6 @@ export interface TransformPlayableAssetData extends spec.EffectsObjectData {
 export class ActivationPlayable extends Playable {
 
   override processFrame (context: FrameContext): void {
-    const bindingItem = context.output.getUserData() as VFXItem;
-    const lifetime = bindingItem.duration > 0 ? this.time / bindingItem.duration : 0;
-
-    bindingItem.lifetime = lifetime;
   }
 }
 
