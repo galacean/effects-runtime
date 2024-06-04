@@ -147,8 +147,8 @@ export class EditorGizmoPlugin extends AbstractPlugin {
         this.getEditorRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
       }
     }
-    if (gizmoVFXItem.getComponent(GizmoComponent)!.contents) {
-      for (const [mesh] of gizmoVFXItem.getComponent(GizmoComponent)!.contents!) {
+    if (gizmoVFXItem.getComponent(GizmoComponent).contents) {
+      for (const [mesh] of gizmoVFXItem.getComponent(GizmoComponent).contents!) {
         if (!mesh.isDestroyed) {
           mesh.dispose();
           if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
@@ -170,7 +170,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
         }
       });
     } else {
-      const wireframeMesh = gizmoVFXItem.getComponent(GizmoComponent)!.wireframeMesh;
+      const wireframeMesh = gizmoVFXItem.getComponent(GizmoComponent).wireframeMesh;
 
       if (wireframeMesh && !wireframeMesh.isDestroyed) {
         destroyWireframeMesh(wireframeMesh);
