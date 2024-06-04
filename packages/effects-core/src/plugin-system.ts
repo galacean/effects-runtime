@@ -148,7 +148,10 @@ function getPluginUsageInfo (name: string) {
   const info = pluginInfoMap[name];
 
   if (info) {
-    return `\nInstall Plugin: npm i ${info}@latest --save\nImport Plugin: import '${info}'`;
+    return `
+请按如下命令进行操作（Please follow the commands below to proceed）：
+1、使用 npm 安装插件（Install Plugin）：npm i ${info}@latest --save
+2、导入插件（Import Plugin）：import '${info}'`;
   } else {
     return '';
   }
