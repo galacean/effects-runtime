@@ -84,7 +84,8 @@ export class GLProgram implements Disposable {
       geometry.vaos[programId] = vao;
     }
 
-    if (vao) {
+    // 兼容小程序下不支持vao
+    if (vao && vao.vao) {
       vao.bind();
       if (vao.ready) {
         return vao;
