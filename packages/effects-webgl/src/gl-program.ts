@@ -35,7 +35,6 @@ export class GLProgram implements Disposable {
     private readonly shared: boolean,
     private readonly id: string,
   ) {
-
     let blockUniformNames: string[] = [];
 
     this.pipelineContext = engine.getGLPipelineContext();
@@ -84,7 +83,8 @@ export class GLProgram implements Disposable {
       geometry.vaos[programId] = vao;
     }
 
-    if (vao) {
+    // 兼容小程序下不支持vao
+    if (vao && vao.vao) {
       vao.bind();
       if (vao.ready) {
         return vao;

@@ -8,6 +8,17 @@
 
 ---
 
+## 1.5.0
+
+`2024-06-03`
+
+- Feat: 增加支付宝小程序兼容和打包处理。[#370](https://github.com/galacean/effects-runtime/pull/370) @RGCHN
+  - Feat: 降级插件支持小程序。[#385](https://github.com/galacean/effects-runtime/pull/385) @RGCHN
+  - Build: 增加 alipay 小程序打包配置。[#388](https://github.com/galacean/effects-runtime/pull/388) @RGCHN
+- Feat: Spine 升级和缩放规则修改。[#367](https://github.com/galacean/effects-runtime/pull/367) @RGCHN
+- Fix: 移除 player 销毁时触发 webglcontextlost 事件。[#371](https://github.com/galacean/effects-runtime/pull/371) @RGCHN
+- Test: fix frame compare. [#386](https://github.com/galacean/effects-runtime/pull/386) @liuxi150
+
 ## 1.4.5
 
 `2024-05-29`

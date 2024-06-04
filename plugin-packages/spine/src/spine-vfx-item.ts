@@ -32,6 +32,11 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
    * aabb 包围盒的宽度与高度
    */
   private size = new Vector2();
+  /**
+   * 是否使用新的默认大小计算规则：相机逆投影 + 固定画布大小
+   * 旧版规则：除以包围盒大小
+   */
+  private resizeRule: boolean;
 
   startSize: number;
   /**
@@ -99,6 +104,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     this.skeleton = new Skeleton(this.skeletonData);
     this.setSkin(spineOptions.activeSkin || (skinList.length ? skinList[0] : 'default'));
     this.state = new AnimationState(this.animationStateData);
+    this.resizeRule = spineOptions.resizeRule;
     if (activeAnimation.length === 1) {
       // 兼容旧JSON，根据时长计算速度
       if (isNaN(spineOptions.speed as number)) {
@@ -402,12 +408,22 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   resize () {
     const res = this.getBounds();
 
-    if (!res) {
+    if (!res || !this.composition) {
       return;
     }
-    const { width } = res;
     const scale = this.transform.scale;
-    const scaleFactor = 1 / width;
+    const { width } = res;
+    let scaleFactor;
+
+    if (this.resizeRule) {
+      const { z } = this.transform.getWorldPosition();
+      const { x: rx } = this.composition.camera.getInverseVPRatio(z);
+
+      scaleFactor = rx / 1500;
+
+    } else {
+      scaleFactor = 1 / width;
+    }
 
     this.scaleFactor = scaleFactor;
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);

@@ -148,8 +148,8 @@ importers:
         specifier: 1.0.1
         version: 1.0.1
       '@galacean/effects-specification':
-        specifier: 1.2.0
-        version: 1.2.0
+        specifier: 1.3.0-alpha.0
+        version: 1.3.0-alpha.0
 
   packages/effects-helper:
     devDependencies:
@@ -225,8 +225,8 @@ importers:
   plugin-packages/spine:
     dependencies:
       '@esotericsoftware/spine-core':
-        specifier: ~4.2.35
-        version: 4.2.35
+        specifier: ~4.2.43
+        version: 4.2.43
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
@@ -1925,8 +1925,8 @@ packages:
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dev: true
 
-  /@esotericsoftware/spine-core@4.2.35:
-    resolution: {integrity: sha512-zvVCj5X11sOCNCANN9ndpkVAJV0rHi0dFNGUlMiy8BQvjLVgRPW5n4IZOaCIS2HXs18QVC2q+uTW6ceek4fLWg==}
+  /@esotericsoftware/spine-core@4.2.43:
+    resolution: {integrity: sha512-FzpNkJllTwu7l1bHO6186r8D4/0UR3bkPWqMlLUZf57sh2ErV8iQFyPXiz3suZTXpfAjw4k5dVhAebPVUZMtXw==}
     dev: false
 
   /@galacean/effects-math@1.0.1:
@@ -1934,8 +1934,8 @@ packages:
     engines: {node: '>=10.0.0'}
     dev: false
 
-  /@galacean/effects-specification@1.2.0:
-    resolution: {integrity: sha512-MwTOE3ji63FUOgBastZZ5aUNiPWJ9N0oUn31ib/pclTdZjv3Ox0qwnLauLvL0HuYksbVKq7/PMb1/SIBNmm+AQ==}
+  /@galacean/effects-specification@1.3.0-alpha.0:
+    resolution: {integrity: sha512-BindURC31NPFLoODt2Ncwwa8ODFkjPaSOBRSEzlk9+djpAOfaDwuthisA3vssTXcedfNNxFU2ihLdLi9Xp49nA==}
     dev: false
 
   /@humanwhocodes/config-array@0.11.10:
