@@ -26,6 +26,12 @@ export class SpineComponent extends RendererComponent {
    */
   scaleFactor: number;
   /**
+   * 大小计算规则：
+   * 1 : 相机逆投影 + 固定画布大小
+   * 0 ：除以包围盒大小
+   */
+  resizeRule: number;
+  /**
    * 当前骨架对应的皮肤列表
    */
   skinList: string[];
@@ -132,7 +138,7 @@ export class SpineComponent extends RendererComponent {
     this.spineDataCache = spineDatas[index];
     this.skinList = skinList.slice();
     this.animationList = animationList.slice();
-
+    this.resizeRule = spineOptions.resizeRule;
     this.setSkin(spineOptions.activeSkin || (skinList.length ? skinList[0] : 'default'));
     this.state = new AnimationState(this.animationStateData);
 
@@ -367,13 +373,22 @@ export class SpineComponent extends RendererComponent {
   resize () {
     const res = this.getBounds();
 
-    if (!res) {
+    if (!res || !this.item.composition) {
       return;
     }
     const { width } = res;
     const scale = this.transform.scale;
-    const scaleFactor = 1 / width;
+    let scaleFactor;
 
+    if (this.resizeRule) {
+      const { z } = this.transform.getWorldPosition();
+      const { x: rx } = this.item.composition.camera.getInverseVPRatio(z);
+
+      scaleFactor = rx / 1500;
+
+    } else {
+      scaleFactor = 1 / width;
+    }
     this.scaleFactor = scaleFactor;
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
   }
