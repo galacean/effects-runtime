@@ -33,10 +33,11 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
    */
   private size = new Vector2();
   /**
-   * 是否使用新的默认大小计算规则：相机逆投影 + 固定画布大小
-   * 旧版规则：除以包围盒大小
+   * 默认大小计算规则
+   * 1: 相机逆投影 + 固定画布大小
+   * 0: 除以包围盒大小
    */
-  private resizeRule: boolean;
+  private resizeRule: number;
 
   startSize: number;
   /**
