@@ -894,7 +894,7 @@ export function getPBRShaderProperties (): string {
   _EmissiveSampler ("自发光贴图", 2D) = "" {}
   _EmissiveIntensity ("自发光贴图强度", Float) = 1
   _EmissiveFactor ("自发光颜色", Color) = (0, 0, 0, 1)
-  _AlphaCutoff ("Alpha测试值", Range(0, 1)) = 0.5
+  _AlphaCutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
   `;
 }
 
@@ -902,7 +902,7 @@ export function getUnlitShaderProperties (): string {
   return `
   _BaseColorSampler ("基础贴图", 2D) = "" {}
   _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
-  _AlphaCutoff ("Alpha测试值", Range(0, 1)) = 0.5
+  _AlphaCutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
   `;
 }
 

@@ -320,7 +320,7 @@ export class PMaterialUnlit extends PMaterialBase {
     this.ZWrite = material.stringTags['ZWrite'] !== 'false';
     this.ZTest = material.stringTags['ZTest'] !== 'false';
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
-    this.alphaCutoff = material.getFloat('_Cutoff') ?? 0;
+    this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
 
@@ -544,7 +544,7 @@ export class PMaterialPBR extends PMaterialBase {
     this.ZWrite = material.stringTags['ZWrite'] !== 'false';
     this.ZTest = material.stringTags['ZTest'] !== 'false';
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
-    this.alphaCutoff = material.getFloat('_Cutoff') ?? 0;
+    this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
 
