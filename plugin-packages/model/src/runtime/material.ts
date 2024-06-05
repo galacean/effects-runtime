@@ -79,10 +79,10 @@ export abstract class PMaterialBase extends PObject {
   getShaderMacros (): MacroInfo[] {
     const macroList: MacroInfo[] = [];
 
-    if (this.isOpaque()) {
-      macroList.push({ name: 'ALPHAMODE_OPAQUE' });
-    } else if (this.isAlphaClip()) {
+    if (this.isAlphaClip()) {
       macroList.push({ name: 'ALPHAMODE_MASK' });
+    } else if (this.isOpaque()) {
+      macroList.push({ name: 'ALPHAMODE_OPAQUE' });
     }
 
     if (this.cullMode === CullMode.Double) {
@@ -320,6 +320,7 @@ export class PMaterialUnlit extends PMaterialBase {
     this.ZWrite = material.stringTags['ZWrite'] !== 'false';
     this.ZTest = material.stringTags['ZTest'] !== 'false';
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
+    this.alphaClip = material.getFloat('_AlphaClip') === 1;
     this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
@@ -544,6 +545,7 @@ export class PMaterialPBR extends PMaterialBase {
     this.ZWrite = material.stringTags['ZWrite'] !== 'false';
     this.ZTest = material.stringTags['ZTest'] !== 'false';
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
+    this.alphaClip = material.getFloat('_AlphaClip') === 1;
     this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
