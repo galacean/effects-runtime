@@ -60,10 +60,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   duration = 0;
   /**
-   * 元素当前更新归一化时间，开始时为 0，结束时为 1
-   */
-  lifetime = -1;
-  /**
    * 父元素的 id
    */
   parentId?: string;
@@ -111,11 +107,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @protected
    */
   protected visible = true;
-  /**
-   * 是否允许渲染，元素生命周期开始后为 true，结束时为 false
-   * @protected
-   */
-  protected _contentVisible = false;
   /**
    * 元素动画的速度
    */
@@ -577,7 +568,6 @@ export class VFXItem extends EffectsObject implements Disposable {
       this.components = [];
       this._content = undefined;
       this.composition = null;
-      this._contentVisible = false;
       this.transform.setValid(false);
     }
   }
