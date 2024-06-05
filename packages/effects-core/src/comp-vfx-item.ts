@@ -14,7 +14,7 @@ import { generateGUID, noop } from './utils';
 import { Item, VFXItem } from './vfx-item';
 
 export interface SceneBinding {
-  key: ObjectBindingTrack,
+  key: TrackAsset,
   value: VFXItem,
 }
 
@@ -44,10 +44,7 @@ export class CompositionComponent extends ItemBehaviour {
     const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
-    for (const sceneBinding of this.sceneBindings) {
-      sceneBinding.key.binding = sceneBinding.value;
-    }
-    this.initializeTrackBindings(this.timelineAsset.tracks);
+    this.resolveBindings();
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
     this.timelinePlayable.play();
 
@@ -251,12 +248,22 @@ export class CompositionComponent extends ItemBehaviour {
   }
 
   override fromData (data: any): void {
-    // this.timelineAsset = data.timelineAsset;
   }
 
-  private initializeTrackBindings (masterTracks: TrackAsset[]) {
-    for (const track of masterTracks) {
-      track.initializeBindingRecursive(track.binding);
+  private resolveBindings () {
+    for (const sceneBinding of this.sceneBindings) {
+      sceneBinding.key.binding = sceneBinding.value;
+    }
+    for (const masterTrack of this.timelineAsset.tracks) {
+      this.resolveTrackBindingsWithRoot(masterTrack);
+    }
+  }
+
+  private resolveTrackBindingsWithRoot (track: TrackAsset) {
+    for (const subTrack of track.getChildTracks()) {
+      subTrack.binding = subTrack.resolveBinding(track.binding);
+
+      this.resolveTrackBindingsWithRoot(subTrack);
     }
   }
 }

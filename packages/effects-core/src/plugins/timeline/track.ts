@@ -36,17 +36,6 @@ export class TrackAsset extends PlayableAsset {
     return new Playable(graph);
   }
 
-  /**
-   * @internal
-   */
-  initializeBindingRecursive (parentBinding: object) {
-    this.binding = this.resolveBinding(parentBinding);
-
-    for (const subTrack of this.children) {
-      subTrack.initializeBindingRecursive(this.binding);
-    }
-  }
-
   createOutput (): PlayableOutput {
     const output = new PlayableOutput();
 
