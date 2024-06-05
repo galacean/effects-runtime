@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-orientation-transformer",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Galacean Effects player orientation transformer plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
