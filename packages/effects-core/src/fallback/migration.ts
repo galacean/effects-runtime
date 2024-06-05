@@ -231,7 +231,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
 
     // 修复相机K帧缺失 asMovement 参数
-    if (item.type === ItemType.camera) {
+    if (item.type === ItemType.camera && item.content.positionOverLifetime && Object.keys(item.content.positionOverLifetime).length !== 0) {
       item.content.positionOverLifetime.asMovement = true;
     }
 
