@@ -6,7 +6,7 @@ import { TrackAsset } from '../track';
 @effectsClass('ActivationTrack')
 export class ActivationTrack extends TrackAsset {
 
-  override initializeBinding (parentBinding: object): void {
+  override onBindingInitialize (parentBinding: object): void {
     this.binding = parentBinding;
   }
 

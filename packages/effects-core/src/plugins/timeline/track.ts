@@ -22,7 +22,7 @@ export class TrackAsset extends PlayableAsset {
   @serialize()
   protected children: TrackAsset[] = [];
 
-  initializeBinding (parentBinding: object) {
+  onBindingInitialize (parentBinding: object) {
     this.binding = parentBinding;
   }
 
@@ -30,7 +30,7 @@ export class TrackAsset extends PlayableAsset {
    * @internal
    */
   initializeBindingRecursive (parentBinding: object) {
-    this.initializeBinding(parentBinding);
+    this.onBindingInitialize(parentBinding);
 
     for (const subTrack of this.children) {
       subTrack.initializeBindingRecursive(this.binding);
