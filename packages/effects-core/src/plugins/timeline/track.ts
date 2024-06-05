@@ -12,7 +12,6 @@ import { ParticleSystem } from '../particle/particle-system';
  */
 @effectsClass('TrackAsset')
 export class TrackAsset extends PlayableAsset {
-  id: string;
   name: string;
   binding: object;
 
@@ -91,6 +90,10 @@ export class TrackAsset extends PlayableAsset {
 
   getChildTracks () {
     return this.children;
+  }
+
+  addChild (child: TrackAsset) {
+    this.children.push(child);
   }
 
   createClip<T extends PlayableAsset> (
