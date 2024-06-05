@@ -751,10 +751,10 @@ export class JSONConverter {
     }
 
     if (oldMat.blending === spec.MaterialBlending.masked) {
-      newMat.floats['AlphaClip'] = 1;
+      newMat.floats['_AlphaClip'] = 1;
       newMat.floats['_Cutoff'] = oldMat.alphaCutOff ?? 0;
     } else {
-      newMat.floats['AlphaClip'] = 0;
+      newMat.floats['_AlphaClip'] = 0;
     }
 
     switch (oldMat.side) {

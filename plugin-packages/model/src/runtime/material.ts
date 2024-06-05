@@ -50,7 +50,7 @@ export abstract class PMaterialBase extends PObject {
   /**
    * Alpha 测试截断值
    */
-  alphaCutOff = 0.5;
+  alphaCutoff = 0.5;
   /**
    * 面侧模式，默认是正面
    */
@@ -63,10 +63,10 @@ export abstract class PMaterialBase extends PObject {
   getShaderFeatures (): string[] {
     const featureList: string[] = [];
 
-    if (this.isOpaque()) {
-      featureList.push('ALPHAMODE_OPAQUE 1');
-    } else if (this.isAlphaClip()) {
+    if (this.isAlphaClip()) {
       featureList.push('ALPHAMODE_MASK 1');
+    } else if (this.isOpaque()) {
+      featureList.push('ALPHAMODE_OPAQUE 1');
     }
 
     if (this.cullMode === CullMode.Double) {
@@ -320,7 +320,7 @@ export class PMaterialUnlit extends PMaterialBase {
     this.ZWrite = material.stringTags['ZWrite'] !== 'false';
     this.ZTest = material.stringTags['ZTest'] !== 'false';
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
-    this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
+    this.alphaCutoff = material.getFloat('_Cutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
 
@@ -544,7 +544,7 @@ export class PMaterialPBR extends PMaterialBase {
     this.ZWrite = material.stringTags['ZWrite'] !== 'false';
     this.ZTest = material.stringTags['ZTest'] !== 'false';
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
-    this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
+    this.alphaCutoff = material.getFloat('_Cutoff') ?? 0;
     this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
   }
 
