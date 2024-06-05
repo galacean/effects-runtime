@@ -1227,8 +1227,8 @@ function createGeometryData (props: GeometryProps, subMeshes: spec.SubMesh[]) {
     },
     subMeshes,
     mode: spec.GeometryType.TRIANGLES,
-    indexFormat: spec.IndexFormatType.UInt16,
-    indexOffset: -1,
+    indexFormat: spec.IndexFormatType.None,
+    indexOffset: 0,
     buffer: '',
   };
 
@@ -1240,6 +1240,8 @@ function createGeometryData (props: GeometryProps, subMeshes: spec.SubMesh[]) {
     geometryData.indexOffset = bufferOffset;
     if (indices instanceof Uint32Array) {
       geometryData.indexFormat = spec.IndexFormatType.UInt32;
+    } else {
+      geometryData.indexFormat = spec.IndexFormatType.UInt16;
     }
   }
 
