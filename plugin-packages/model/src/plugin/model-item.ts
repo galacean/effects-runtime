@@ -619,32 +619,28 @@ class ModelAnimationClip extends AnimationClip {
     const life = Math.max(0, time) % duration;
 
     for (const curve of this.positionCurves) {
-      const maxTime = curve.keyFrames.getMaxTime();
-      const value = curve.keyFrames.getValue(life % maxTime);
+      const value = curve.keyFrames.getValue(life % this.duration);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setPosition(value.x, value.y, value.z);
     }
 
     for (const curve of this.rotationCurves) {
-      const maxTime = curve.keyFrames.getMaxTime();
-      const value = curve.keyFrames.getValue(life % maxTime);
+      const value = curve.keyFrames.getValue(life % this.duration);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
     }
 
     for (const curve of this.scaleCurves) {
-      const maxTime = curve.keyFrames.getMaxTime();
-      const value = curve.keyFrames.getValue(life % maxTime);
+      const value = curve.keyFrames.getValue(life % this.duration);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setScale(value.x, value.y, value.z);
     }
 
     for (const curve of this.floatCurves) {
-      const maxTime = curve.keyFrames.getMaxTime();
-      const value = curve.keyFrames.getValue(life % maxTime);
+      const value = curve.keyFrames.getValue(life % this.duration);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       if (curve.className === 'ModelMeshComponent') {
@@ -664,6 +660,7 @@ class ModelAnimationClip extends AnimationClip {
   }
 
   setFromAnimationClip (clip: AnimationClip) {
+    this.duration = clip.duration;
     this.positionCurves = clip.positionCurves.slice();
     this.rotationCurves = clip.rotationCurves.slice();
     this.scaleCurves = clip.scaleCurves.slice();
