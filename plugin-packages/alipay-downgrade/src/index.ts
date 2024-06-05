@@ -11,6 +11,10 @@ export * from './native-log';
  */
 export interface AlipayDowngradeOptions {
   /**
+   * 去除 window 上默认添加的 gl lost 事件
+   */
+  disableGLLostEvent?: boolean,
+  /**
    * 发生 gl lost 时，是否忽略
    * @default false - 不忽略，将不再允许任何播放器创建，会全部走降级逻辑
    */
@@ -31,7 +35,7 @@ let registered = false;
  * @param options - 优化策略
  */
 export function setAlipayDowngradeBizId (bizId: string, options: AlipayDowngradeOptions = {}) {
-  const { ignoreGLLost, autoPause } = options;
+  const { ignoreGLLost, autoPause, disableGLLostEvent = false } = options;
   const downgradeWhenGLLost = ignoreGLLost !== true;
 
   AlipayDowngradePlugin.currentBizId = bizId;
@@ -46,17 +50,19 @@ export function setAlipayDowngradeBizId (bizId: string, options: AlipayDowngrade
     getActivePlayers().forEach(player => player.dispose());
   });
 
-  window.addEventListener('webglcontextlost', e => {
-    if (isCanvasUsedByPlayer(e.target as HTMLCanvasElement)) {
-      AlipayDowngradePlugin.glLostOccurred = true;
-      console.error('webgl lost occur');
-      if (downgradeWhenGLLost) {
-        console.warn('webgl lost occur, all players will be downgraded from now on');
-        disableAllPlayer(true);
-        getActivePlayers().forEach(player => player.dispose());
+  if (!disableGLLostEvent) {
+    window.addEventListener('webglcontextlost', e => {
+      if (isCanvasUsedByPlayer(e.target as HTMLCanvasElement)) {
+        AlipayDowngradePlugin.glLostOccurred = true;
+        console.error('webgl lost occur');
+        if (downgradeWhenGLLost) {
+          console.warn('webgl lost occur, all players will be downgraded from now on');
+          disableAllPlayer(true);
+          getActivePlayers().forEach(player => player.dispose());
+        }
       }
-    }
-  }, true);
+    }, true);
+  }
 
   if (autoPause) {
     document.addEventListener('pause', pauseAllActivePlayers);
