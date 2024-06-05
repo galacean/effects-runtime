@@ -1,4 +1,4 @@
-import { effectsClass } from 'packages/effects-core/src/decorators';
+import { effectsClass } from '../../../decorators';
 import type { Playable, PlayableGraph } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
 import { SubCompositionClipPlayable } from './sub-composition-clip-playable';

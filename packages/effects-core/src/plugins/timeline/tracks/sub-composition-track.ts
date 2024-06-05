@@ -1,7 +1,7 @@
-import { effectsClass } from 'packages/effects-core/src/decorators';
+import { VFXItem } from '../../../vfx-item';
+import { CompositionComponent } from '../../../comp-vfx-item';
 import { TrackAsset } from '../track';
-import { VFXItem } from 'packages/effects-core/src/vfx-item';
-import { CompositionComponent } from 'packages/effects-core/src/comp-vfx-item';
+import { effectsClass } from '../../../decorators';
 
 @effectsClass('SubCompositionTrack')
 export class SubCompositionTrack extends TrackAsset {
