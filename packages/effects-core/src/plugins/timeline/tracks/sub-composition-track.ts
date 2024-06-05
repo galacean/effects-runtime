@@ -6,7 +6,7 @@ import { CompositionComponent } from 'packages/effects-core/src/comp-vfx-item';
 @effectsClass('SubCompositionTrack')
 export class SubCompositionTrack extends TrackAsset {
 
-  override onBindingInitialize (parentBinding: object): void {
-    this.binding = (parentBinding as VFXItem).getComponent(CompositionComponent);
+  override resolveBinding (parentBinding: object): object {
+    return (parentBinding as VFXItem).getComponent(CompositionComponent);
   }
 }

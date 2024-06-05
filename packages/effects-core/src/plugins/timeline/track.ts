@@ -22,15 +22,25 @@ export class TrackAsset extends PlayableAsset {
   @serialize()
   protected children: TrackAsset[] = [];
 
-  onBindingInitialize (parentBinding: object) {
-    this.binding = parentBinding;
+  /**
+   * 重写该方法以获取自定义对象绑定
+   */
+  resolveBinding (parentBinding: object): object {
+    return parentBinding;
+  }
+
+  /**
+   * 重写该方法以创建自定义混合器
+   */
+  createTrackMixer (graph: PlayableGraph): Playable {
+    return new Playable(graph);
   }
 
   /**
    * @internal
    */
   initializeBindingRecursive (parentBinding: object) {
-    this.onBindingInitialize(parentBinding);
+    this.binding = this.resolveBinding(parentBinding);
 
     for (const subTrack of this.children) {
       subTrack.initializeBindingRecursive(this.binding);
@@ -75,13 +85,6 @@ export class TrackAsset extends PlayableAsset {
     }
 
     return mixer;
-  }
-
-  /**
-   * 重写该方法以创建自定义混合器
-   */
-  createTrackMixer (graph: PlayableGraph): Playable {
-    return new Playable(graph);
   }
 
   override createPlayable (graph: PlayableGraph): Playable {
