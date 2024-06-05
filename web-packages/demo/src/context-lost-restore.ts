@@ -15,7 +15,6 @@ let allocateTimeout: any;
 (async () => {
   try {
     const player = createPlayer();
-
     const scene = await player.loadScene(json);
 
     scene.onEnd = () => {
