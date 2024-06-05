@@ -7,6 +7,13 @@
 
 ---
 
+## 1.5.1
+
+`2024-06-05`
+
+- Fix: Added a toggle to enable or disable the listening for the WebGL Context Lost event on the window. [#405](https://github.com/galacean/effects-runtime/pull/405) @liuxi150
+- Chore: Modify the resizeRule type. [#407](https://github.com/galacean/effects-runtime/pull/407) @RGCHN
+
 ## 1.5.0
 
 `2024-06-03`
