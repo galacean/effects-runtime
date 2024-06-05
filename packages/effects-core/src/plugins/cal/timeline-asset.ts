@@ -1,6 +1,6 @@
 import type { DataPath, EffectsObjectData } from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from '../timeline/track';
 import { ObjectBindingTrack } from './calculate-item';
 import type { FrameContext, PlayableGraph } from './playable-graph';
@@ -126,9 +126,16 @@ function isAncestor (
 }
 
 function compareTracks (a: TrackSortWrapper, b: TrackSortWrapper): number {
-  if (isAncestor(a.track.binding, b.track.binding)) {
+  const bindingA = a.track.binding;
+  const bindingB = b.track.binding;
+
+  if (!(bindingA instanceof VFXItem) || !(bindingB instanceof VFXItem)) {
+    return a.originalIndex - b.originalIndex;
+  }
+
+  if (isAncestor(bindingA, bindingB)) {
     return -1;
-  } else if (isAncestor(b.track.binding, a.track.binding)) {
+  } else if (isAncestor(bindingB, bindingA)) {
     return 1;
   } else {
     return a.originalIndex - b.originalIndex; // 非父子关系的元素保持原始顺序

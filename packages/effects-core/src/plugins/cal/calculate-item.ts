@@ -8,6 +8,7 @@ import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
 import { ActivationPlayableAsset } from './calculate-vfx-item';
 import { TrackAsset } from '../timeline/track';
 import { ActivationTrack } from '../timeline/tracks/activation-track';
+import type { VFXItem } from '../../vfx-item';
 
 /**
  * 基础位移属性数据
@@ -48,21 +49,23 @@ export class ObjectBindingTrack extends TrackAsset {
   private trackSeed = 0;
 
   create (): void {
+    const boundItem = this.binding as VFXItem;
+
     this.options = {
-      start: this.binding.start,
-      duration: this.binding.duration,
-      looping: this.binding.endBehavior === spec.ItemEndBehavior.loop,
-      endBehavior: this.binding.endBehavior || spec.ItemEndBehavior.destroy,
+      start: boundItem.start,
+      duration: boundItem.duration,
+      looping: boundItem.endBehavior === spec.ItemEndBehavior.loop,
+      endBehavior: boundItem.endBehavior || spec.ItemEndBehavior.destroy,
     };
-    this.id = this.binding.id;
-    this.name = this.binding.name;
+    this.id = boundItem.id;
+    this.name = boundItem.name;
     const activationTrack = this.createTrack(ActivationTrack, 'ActivationTrack');
 
     activationTrack.binding = this.binding;
     activationTrack.createClip(ActivationPlayableAsset, 'ActivationTimelineClip');
 
     // 添加粒子动画 clip
-    if (this.binding.getComponent(ParticleSystem)) {
+    if (boundItem.getComponent(ParticleSystem)) {
       const particleTrack = this.createTrack(TrackAsset, 'ParticleTrack');
 
       particleTrack.binding = this.binding;
@@ -72,9 +75,9 @@ export class ObjectBindingTrack extends TrackAsset {
     // TODO TimelineClip 需要传入 start 和 duration 数据
     for (const track of this.children) {
       for (const clip of track.getClips()) {
-        clip.start = this.binding.start;
-        clip.duration = this.binding.duration;
-        clip.endBehaviour = this.binding.endBehavior as spec.ItemEndBehavior;
+        clip.start = boundItem.start;
+        clip.duration = boundItem.duration;
+        clip.endBehaviour = boundItem.endBehavior as spec.ItemEndBehavior;
       }
     }
   }
