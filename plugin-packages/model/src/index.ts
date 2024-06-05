@@ -1,5 +1,5 @@
 import type { spec } from '@galacean/effects';
-import { VFXItem, logger, registerPlugin } from '@galacean/effects';
+import { VFXItem, logger, registerPlugin, version as playerVersion } from '@galacean/effects';
 import { ModelPlugin, ModelTreePlugin } from './plugin';
 
 registerPlugin<void>('tree', ModelTreePlugin, VFXItem, true);
@@ -60,3 +60,10 @@ export * from './runtime';
 export * from './utility';
 
 logger.info('plugin model version: ' + version);
+
+if (version !== playerVersion) {
+  console.error(
+    '注意：请统一 Model 插件与 Player 版本，不统一的版本混用会有不可预知的后果！',
+    '\nAttention: Please ensure the Model plugin is synchronized with the Player version. Mixing and matching incompatible versions may result in unpredictable consequences!'
+  );
+}
