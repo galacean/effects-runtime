@@ -231,7 +231,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
 
     // 修复相机K帧缺失 asMovement 参数
-    if (item.type === ItemType.camera) {
+    if (item.type === ItemType.camera && item.content.positionOverLifetime && Object.keys(item.content.positionOverLifetime).length !== 0) {
       item.content.positionOverLifetime.asMovement = true;
     }
 
@@ -436,8 +436,33 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     const item = guidToItemMap[itemDataPath.id];
     const subTrackDatas = [];
 
+    const newActivationPlayableAsset = {
+      id: generateGUID(),
+      dataType: 'ActivationPlayableAsset',
+    };
+
+    playableAssetDatas.push(newActivationPlayableAsset);
+    const newActivationTrackData = {
+      id: generateGUID(),
+      dataType: 'ActivationTrack',
+      children: [],
+      clips: [
+        {
+          start: item.delay,
+          duration: item.duration,
+          endBehaviour: item.endBehavior,
+          asset: {
+            id: newActivationPlayableAsset.id,
+          },
+        },
+      ],
+    };
+
+    subTrackDatas.push({ id: newActivationTrackData.id });
+    trackDatas.push(newActivationTrackData);
+
     if (item.type !== ItemType.particle) {
-      const newPlayableAssetData = {
+      const newTransformPlayableAssetData = {
         id: generateGUID(),
         dataType: 'TransformPlayableAsset',
         //@ts-expect-error
@@ -448,15 +473,18 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
         positionOverLifetime: item.content.positionOverLifetime,
       };
 
-      playableAssetDatas.push(newPlayableAssetData);
+      playableAssetDatas.push(newTransformPlayableAssetData);
       const newTrackData = {
         id: generateGUID(),
         dataType: 'TransformTrack',
         children: [],
         clips: [
           {
+            start: item.delay,
+            duration: item.duration,
+            endBehaviour: item.endBehavior,
             asset: {
-              id: newPlayableAssetData.id,
+              id: newTransformPlayableAssetData.id,
             },
           },
         ],
@@ -467,22 +495,25 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     }
 
     if (item.type === ItemType.sprite) {
-      const newPlayableAssetData = {
+      const newSpriteColorPlayableAssetData = {
         id: generateGUID(),
         dataType: 'SpriteColorPlayableAsset',
         colorOverLifetime: item.content.colorOverLifetime,
         startColor: item.content.options.startColor,
       };
 
-      playableAssetDatas.push(newPlayableAssetData);
+      playableAssetDatas.push(newSpriteColorPlayableAssetData);
       const newTrackData = {
         id: generateGUID(),
         dataType: 'SpriteColorTrack',
         children: [],
         clips: [
           {
+            start: item.delay,
+            duration: item.duration,
+            endBehaviour: item.endBehavior,
             asset: {
-              id: newPlayableAssetData.id,
+              id: newSpriteColorPlayableAssetData.id,
             },
           },
         ],

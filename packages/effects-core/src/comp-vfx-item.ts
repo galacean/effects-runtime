@@ -56,15 +56,19 @@ export class CompositionComponent extends ItemBehaviour {
     this.timelinePlayable.play();
 
     for (const track of this.timelineAsset.tracks) {
-      // 重播不销毁元素
-      if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
-        if (track instanceof ObjectBindingTrack) {
-          track.binding.reusable = true;
-        }
-        const subCompositionComponent = track.binding.getComponent(CompositionComponent);
+      const binding = track.binding;
 
-        if (subCompositionComponent) {
-          subCompositionComponent.reusable = true;
+      if (binding instanceof VFXItem) {
+        // 重播不销毁元素
+        if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
+          if (track instanceof ObjectBindingTrack) {
+            binding.reusable = true;
+          }
+          const subCompositionComponent = binding.getComponent(CompositionComponent);
+
+          if (subCompositionComponent) {
+            subCompositionComponent.reusable = true;
+          }
         }
       }
       this.masterTracks.push(track as ObjectBindingTrack);

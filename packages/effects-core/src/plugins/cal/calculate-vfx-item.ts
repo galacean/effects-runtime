@@ -242,6 +242,7 @@ export class ActivationPlayable extends Playable {
   }
 }
 
+@effectsClass('ActivationPlayableAsset')
 export class ActivationPlayableAsset extends PlayableAsset {
   override createPlayable (graph: PlayableGraph): Playable {
     return new ActivationPlayable(graph);

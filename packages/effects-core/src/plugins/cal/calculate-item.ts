@@ -1,13 +1,12 @@
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
-import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
+import type { VFXItem } from '../../vfx-item';
 import { ParticleSystem } from '../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
-import { ActivationPlayableAsset } from './calculate-vfx-item';
 import { TrackAsset } from '../timeline/track';
-import { ActivationTrack } from '../timeline/tracks/activation-track';
+import type { TimelineAsset } from './timeline-asset';
 
 /**
  * 基础位移属性数据
@@ -45,37 +44,27 @@ export class ObjectBindingTrack extends TrackAsset {
   options: CalculateItemOptions;
   data: spec.EffectsObjectData;
 
-  private trackSeed = 0;
+  create (timelineAsset: TimelineAsset): void {
+    const boundItem = this.binding as VFXItem;
 
-  create (): void {
     this.options = {
-      start: this.binding.start,
-      duration: this.binding.duration,
-      looping: this.binding.endBehavior === spec.ItemEndBehavior.loop,
-      endBehavior: this.binding.endBehavior || spec.ItemEndBehavior.destroy,
+      start: boundItem.start,
+      duration: boundItem.duration,
+      looping: boundItem.endBehavior === spec.ItemEndBehavior.loop,
+      endBehavior: boundItem.endBehavior || spec.ItemEndBehavior.destroy,
     };
-    this.id = this.binding.id;
-    this.name = this.binding.name;
-    const activationTrack = this.createTrack(ActivationTrack, 'ActivationTrack');
-
-    activationTrack.binding = this.binding;
-    activationTrack.createClip(ActivationPlayableAsset, 'ActivationTimelineClip');
+    this.name = boundItem.name;
 
     // 添加粒子动画 clip
-    if (this.binding.getComponent(ParticleSystem)) {
-      const particleTrack = this.createTrack(TrackAsset, 'ParticleTrack');
+    if (boundItem.getComponent(ParticleSystem)) {
+      const particleTrack = timelineAsset.createTrack(TrackAsset, this, 'ParticleTrack');
 
       particleTrack.binding = this.binding;
-      particleTrack.createClip(ParticleBehaviourPlayableAsset);
-    }
+      const particleClip = particleTrack.createClip(ParticleBehaviourPlayableAsset);
 
-    // TODO TimelineClip 需要传入 start 和 duration 数据
-    for (const track of this.children) {
-      for (const clip of track.getClips()) {
-        clip.start = this.binding.start;
-        clip.duration = this.binding.duration;
-        clip.endBehaviour = this.binding.endBehavior as spec.ItemEndBehavior;
-      }
+      particleClip.start = boundItem.start;
+      particleClip.duration = boundItem.duration;
+      particleClip.endBehaviour = boundItem.endBehavior as spec.ItemEndBehavior;
     }
   }
 
@@ -92,17 +81,6 @@ export class ObjectBindingTrack extends TrackAsset {
     }
 
     return localTime;
-  }
-
-  createTrack<T extends TrackAsset> (classConstructor: new (engine: Engine) => T, name?: string): T {
-    const newTrack = new classConstructor(this.engine);
-
-    newTrack.binding = this.binding;
-    newTrack.id = (this.trackSeed++).toString();
-    newTrack.name = name ? name : 'Track' + newTrack.id;
-    this.children.push(newTrack);
-
-    return newTrack;
   }
 
   override fromData (data: spec.EffectsObjectData): void {

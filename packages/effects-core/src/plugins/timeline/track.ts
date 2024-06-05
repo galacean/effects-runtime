@@ -12,9 +12,8 @@ import { ParticleSystem } from '../particle/particle-system';
  */
 @effectsClass('TrackAsset')
 export class TrackAsset extends PlayableAsset {
-  id: string;
   name: string;
-  binding: VFXItem;
+  binding: object;
 
   trackType = TrackType.MasterTrack;
   private clipSeed = 0;
@@ -24,7 +23,7 @@ export class TrackAsset extends PlayableAsset {
   protected children: TrackAsset[] = [];
 
   initializeBinding (parentBinding: object) {
-    this.binding = parentBinding as VFXItem;
+    this.binding = parentBinding;
   }
 
   /**
@@ -91,6 +90,10 @@ export class TrackAsset extends PlayableAsset {
 
   getChildTracks () {
     return this.children;
+  }
+
+  addChild (child: TrackAsset) {
+    this.children.push(child);
   }
 
   createClip<T extends PlayableAsset> (
@@ -194,9 +197,10 @@ export class RuntimeClip {
     let weight = 1.0;
     let ended = false;
     let started = false;
+    const boundItem = this.track.binding as VFXItem;
 
     if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
-      if (VFXItem.isParticle(this.track.binding) && !this.track.binding.getComponent(ParticleSystem)?.destroyed) {
+      if (VFXItem.isParticle(boundItem) && !boundItem.getComponent(ParticleSystem)?.destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;
@@ -214,8 +218,6 @@ export class RuntimeClip {
     }
     this.parentMixer.setInputWeight(this.playable, weight);
 
-    const boundItem = this.track.binding;
-
     // 判断动画是否结束
     if (ended && !boundItem.ended) {
       boundItem.ended = true;
@@ -231,7 +233,7 @@ export class RuntimeClip {
   }
 
   private onClipEnd () {
-    const boundItem = this.track.binding;
+    const boundItem = this.track.binding as VFXItem;
 
     if (!boundItem.compositionReusable && !boundItem.reusable) {
       boundItem.dispose();

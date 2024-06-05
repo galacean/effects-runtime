@@ -1,10 +1,11 @@
 import type { DataPath, EffectsObjectData } from '@galacean/effects-specification';
-import { effectsClass } from '../../decorators';
-import type { VFXItem } from '../../vfx-item';
+import { effectsClass, serialize } from '../../decorators';
+import { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from '../timeline/track';
 import { ObjectBindingTrack } from './calculate-item';
 import type { FrameContext, PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset, PlayableTraversalMode } from './playable-graph';
+import type { Engine } from '../../engine';
 
 export interface TimelineAssetData extends EffectsObjectData {
   tracks: DataPath[],
@@ -12,6 +13,7 @@ export interface TimelineAssetData extends EffectsObjectData {
 
 @effectsClass('TimelineAsset')
 export class TimelineAsset extends PlayableAsset {
+  @serialize()
   tracks: TrackAsset[] = [];
   graph: PlayableGraph;
 
@@ -20,19 +22,31 @@ export class TimelineAsset extends PlayableAsset {
     const timelinePlayable = new TimelinePlayable(graph);
 
     timelinePlayable.setTraversalMode(PlayableTraversalMode.Passthrough);
+    for (const track of this.tracks) {
+      if (track instanceof ObjectBindingTrack) {
+        track.create(this);
+      }
+    }
     timelinePlayable.compileTracks(graph, this.tracks);
 
     return timelinePlayable;
   }
 
+  createTrack<T extends TrackAsset> (classConstructor: new (engine: Engine) => T, parent: TrackAsset, name?: string): T {
+    const newTrack = new classConstructor(this.engine);
+
+    newTrack.name = name ? name : classConstructor.name;
+    parent.addChild(newTrack);
+
+    return newTrack;
+  }
+
   override fromData (data: TimelineAssetData): void {
-    this.tracks = data.tracks as TrackAsset[];
   }
 }
 
 export class TimelinePlayable extends Playable {
   clips: RuntimeClip[] = [];
-  masterTracks: ObjectBindingTrack[] = [];
 
   override prepareFrame (context: FrameContext): void {
     this.evaluate();
@@ -50,12 +64,6 @@ export class TimelinePlayable extends Playable {
 
   compileTracks (graph: PlayableGraph, tracks: TrackAsset[]) {
     this.sortTracks(tracks);
-    for (const track of tracks) {
-      if (track instanceof ObjectBindingTrack) {
-        track.create();
-      }
-      this.masterTracks.push(track as ObjectBindingTrack);
-    }
     const outputTrack: TrackAsset[] = [];
 
     for (const masterTrack of tracks) {
@@ -126,9 +134,16 @@ function isAncestor (
 }
 
 function compareTracks (a: TrackSortWrapper, b: TrackSortWrapper): number {
-  if (isAncestor(a.track.binding, b.track.binding)) {
+  const bindingA = a.track.binding;
+  const bindingB = b.track.binding;
+
+  if (!(bindingA instanceof VFXItem) || !(bindingB instanceof VFXItem)) {
+    return a.originalIndex - b.originalIndex;
+  }
+
+  if (isAncestor(bindingA, bindingB)) {
     return -1;
-  } else if (isAncestor(b.track.binding, a.track.binding)) {
+  } else if (isAncestor(bindingB, bindingA)) {
     return 1;
   } else {
     return a.originalIndex - b.originalIndex; // 非父子关系的元素保持原始顺序
