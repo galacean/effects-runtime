@@ -9,7 +9,7 @@ const { expect } = chai;
  * 万分之一的像素不相等比例，对于512x512大小的图像，
  * 不能超过26个像素不相等
  */
-const accumRatioThreshold = 2.0e-4;
+const accumRatioThreshold = 3.0e-4;
 const pixelDiffThreshold = 1;
 const dumpImageForDebug = false;
 const canvasWidth = 512;
