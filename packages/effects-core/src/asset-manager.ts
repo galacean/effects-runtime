@@ -235,7 +235,7 @@ export class AssetManager implements Disposable {
     return Promise.race([waitPromise, loadResourcePromise()]);
   }
 
-  private async precompile (compositions: spec.Composition[], pluginSystem?: PluginSystem, renderer?: Renderer, options?: PrecompileOptions) {
+  private async precompile (compositions: spec.CompositionData[], pluginSystem?: PluginSystem, renderer?: Renderer, options?: PrecompileOptions) {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }
@@ -511,7 +511,7 @@ export class AssetManager implements Disposable {
 
 function fixOldImageUsage (
   usedImages: Record<number, boolean>,
-  compositions: spec.Composition[],
+  compositions: spec.CompositionData[],
   imgUsage: Record<string, number[]>,
   images: any,
   renderLevel?: string,

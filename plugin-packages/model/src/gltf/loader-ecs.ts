@@ -31,7 +31,7 @@ export class LoaderECSImpl implements LoaderECS {
   private gltfMaterials: GLTFMaterial[] = [];
   private gltfAnimations: GLTFAnimation[] = [];
 
-  composition: spec.Composition;
+  composition: spec.CompositionData;
   images: spec.Image[] = [];
   textures: spec.TextureDefine[] = [];
   items: spec.VFXItemData[] = [];
@@ -43,7 +43,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   engine: Engine;
 
-  constructor (composition?: spec.Composition) {
+  constructor (composition?: spec.CompositionData) {
     if (composition) {
       this.composition = composition;
     } else {
@@ -61,6 +61,8 @@ export class LoaderECSImpl implements LoaderECS {
           clipMode: spec.CameraClipMode.portrait,
         },
         items: [],
+        timelineAsset:{ id:generateGUID() },
+        sceneBindings:[],
       };
     }
   }
@@ -409,7 +411,6 @@ export class LoaderECSImpl implements LoaderECS {
     const itemIds: spec.DataPath[] = [];
 
     this.items.forEach(item => itemIds.push({ id: item.id }));
-    // @ts-expect-error
     this.composition.items = itemIds;
 
     const jsonScene: spec.JSONScene = {

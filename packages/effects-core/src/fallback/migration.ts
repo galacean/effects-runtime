@@ -1,4 +1,4 @@
-import type { BaseContent, Composition, Item, JSONScene, JSONSceneLegacy } from '@galacean/effects-specification';
+import type { BaseContent, CompositionData, Item, JSONScene, JSONSceneLegacy } from '@galacean/effects-specification';
 import { CompositionEndBehavior, DataType, END_BEHAVIOR_FREEZE, ItemEndBehavior, ItemType } from '@galacean/effects-specification';
 import type { TimelineAssetData } from '../plugins/cal/timeline-asset';
 import { generateGUID } from '../utils';
@@ -51,6 +51,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
   const result: JSONScene = {
     ...json,
     items: [],
+    compositions:[],
     components: [],
     materials: [],
     shaders: [],
@@ -152,8 +153,16 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       composition.items[index] = { id: item.id };
     });
 
+    const compositionData: CompositionData = {
+      ...composition,
+      timelineAsset:{ id:'' },
+      sceneBindings:[],
+    };
+
+    result.compositions.push(compositionData);
     // 生成时间轴数据
-    convertTimelineAsset(composition, guidToItemMap, result);
+    convertTimelineAsset(compositionData, guidToItemMap, result);
+
   }
 
   for (const item of result.items) {
@@ -415,7 +424,7 @@ export function convertParam (content?: BaseContent) {
   }
 }
 
-function convertTimelineAsset (composition: Composition, guidToItemMap: Record<string, Item>, jsonScene: JSONScene) {
+function convertTimelineAsset (composition: CompositionData, guidToItemMap: Record<string, Item>, jsonScene: JSONScene) {
   const sceneBindings = [];
   const trackDatas = [];
   const playableAssetDatas = [];
@@ -565,9 +574,7 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     trackIds.push({ id: trackData.id });
   }
 
-  //@ts-expect-error
   composition.timelineAsset = { id: timelineAssetData.id };
-  //@ts-expect-error
   composition.sceneBindings = sceneBindings;
 
   if (!jsonScene.animations) {

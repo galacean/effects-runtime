@@ -31,8 +31,8 @@ export interface ContentOptions {
  * 合成资源管理
  */
 export class CompositionSourceManager implements Disposable {
-  composition?: spec.Composition;
-  refCompositions: Map<string, spec.Composition> = new Map();
+  composition?: spec.CompositionData;
+  refCompositions: Map<string, spec.CompositionData> = new Map();
   sourceContent?: ContentOptions;
   refCompositionProps: Map<string, VFXItemProps> = new Map();
   renderLevel?: spec.RenderLevel;
@@ -79,19 +79,14 @@ export class CompositionSourceManager implements Disposable {
     this.sourceContent = this.getContent(this.composition);
   }
 
-  private getContent (composition: spec.Composition): ContentOptions {
+  private getContent (composition: spec.CompositionData): ContentOptions {
     // TODO: specification 中补充 globalVolume 类型
     // @ts-expect-error
-    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0, timelineAsset } = composition;
+    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0 } = composition;
     const items = this.assembleItems(composition);
 
-    //@ts-expect-error
-    if (!composition.sceneBindings) {
-      //@ts-expect-error
-      composition.sceneBindings = [];
-    }
-
     return {
+      ...composition,
       id,
       duration,
       name,
@@ -101,13 +96,10 @@ export class CompositionSourceManager implements Disposable {
       camera,
       startTime,
       globalVolume,
-      timelineAsset: timelineAsset,
-      //@ts-expect-error
-      sceneBindings: composition.sceneBindings,
     };
   }
 
-  private assembleItems (composition: spec.Composition) {
+  private assembleItems (composition: spec.CompositionData) {
     const items: any[] = [];
 
     this.mask++;
