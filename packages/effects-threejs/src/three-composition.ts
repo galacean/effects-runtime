@@ -82,8 +82,6 @@ export class ThreeComposition extends Composition {
     compositionSourceManager: CompositionSourceManager,
   ) {
     super(props, scene, compositionSourceManager);
-
-    this.rootItem.getComponent(CompositionComponent).resetStatus();
   }
 
   /**

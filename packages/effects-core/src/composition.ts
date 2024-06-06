@@ -154,7 +154,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 合成根元素
    */
-  rootItem: VFXItem;
+  readonly rootItem: VFXItem;
   /**
    * 预合成数组
    */
@@ -334,18 +334,8 @@ export class Composition implements Disposable, LostHandler {
    * 重新开始合成
    */
   restart () {
-    // const contentItems = this.rootComposition.items;
-
-    // contentItems.forEach(item => item.dispose());
-    // contentItems.length = 0;
-    this.prepareRender();
     this.reset();
-    this.transform.setValid(true);
-    this.rootComposition.resetStatus();
     this.forwardTime(this.startTime);
-
-    // this.content.onUpdate(0);
-    // this.loaderData.spriteGroup.onUpdate(0);
   }
 
   /**
@@ -506,28 +496,9 @@ export class Composition implements Disposable, LostHandler {
    * 重置状态函数
    */
   protected reset () {
-    const vfxItem = new VFXItem(this.getEngine(), this.compositionSourceManager.sourceContent as unknown as VFXItemProps);
-
-    // TODO 编辑器数据传入 composition type 后移除
-    vfxItem.type = spec.ItemType.composition;
-    vfxItem.composition = this;
-    this.rootComposition = vfxItem.addComponent(CompositionComponent);
-    this.rootComposition.data = this.compositionSourceManager.sourceContent!;
-    this.transform = new Transform({
-      name: this.name,
-    });
-    this.transform.engine = this.getEngine();
-    vfxItem.transform = this.transform;
-    this.rootItem = vfxItem;
     this.rendererOptions = null;
     this.globalTime = 0;
-    this.rootComposition.createContent();
-    this.buildItemTree(this.rootItem);
-    this.rootItem.onEnd = () => {
-      window.setTimeout(() => {
-        this.onEnd?.(this);
-      }, 0);
-    };
+    this.rootItem.ended = false;
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
@@ -686,7 +657,7 @@ export class Composition implements Disposable, LostHandler {
           child.ended &&
           child.endBehavior === spec.ItemEndBehavior.loop
         ) {
-          child.getComponent(CompositionComponent).resetStatus();
+          child.ended = false;
           // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
           this.callUpdate(child, 0);
         } else {
