@@ -2,6 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import { effectsClassStore, getMergedStore } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
+import { isCanvas } from './utils';
 
 export class SerializationHelper {
   static collectSerializableObject (effectsObject: EffectsObject, res: Record<string, EffectsObject>) {
@@ -212,10 +213,14 @@ export class SerializationHelper {
   }
 
   // TODO 测试函数，2.0 上线后移除
-  static checkGLTFNode (value: any) {
+  static checkGLTFNode (value: any): boolean {
     return value instanceof Object &&
       value.nodeIndex !== undefined &&
       value.isJoint !== undefined;
+  }
+
+  static checkImageSource (value: any): boolean {
+    return isCanvas(value) || value instanceof HTMLImageElement;
   }
 
   private static deserializeProperty<T> (property: T, engine: Engine, level: number, type?: string): any {
@@ -242,8 +247,10 @@ export class SerializationHelper {
     } else if (SerializationHelper.checkDataPath(property)) {
       return engine.assetLoader.loadGUID((property as spec.DataPath).id);
     } else if (property instanceof EffectsObject ||
+      SerializationHelper.checkImageSource(property) ||
       SerializationHelper.checkTypedArray(property) ||
-      SerializationHelper.checkGLTFNode(property)) {
+      SerializationHelper.checkGLTFNode(property)
+    ) {
       return property;
     } else if (property instanceof Object) {
       let res: Object;
@@ -288,6 +295,7 @@ export class SerializationHelper {
 
       return res;
     } else if (property instanceof EffectsObject ||
+      SerializationHelper.checkImageSource(property) ||
       SerializationHelper.checkTypedArray(property) ||
       SerializationHelper.checkGLTFNode(property)) {
       return property;

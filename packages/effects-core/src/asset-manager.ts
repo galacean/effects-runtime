@@ -9,7 +9,7 @@ import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia } from '.
 import type { ImageSource, Scene, SceneLoadOptions, SceneType } from './scene';
 import { isSceneJSON } from './scene';
 import type { Disposable } from './utils';
-import { isObject, isString, logger, isValidFontFamily } from './utils';
+import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
 import type { Renderer } from './render';
@@ -578,40 +578,4 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
   }
 
   throw new Error('Invalid texture options');
-}
-
-function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
-  // 去掉 Base64 字符串的 Data URL 部分（如果存在）
-  const base64WithoutPrefix = base64.split(',')[1] || base64;
-
-  // 将 base64 编码的字符串转换为二进制字符串
-  const byteCharacters = atob(base64WithoutPrefix);
-  // 创建一个 8 位无符号整数值的数组，即“字节数组”
-  const byteArrays = [];
-
-  // 切割二进制字符串为多个片段，并将每个片段转换成一个字节数组
-  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-    const slice = byteCharacters.slice(offset, offset + 512);
-    const byteNumbers = new Array(slice.length);
-
-    for (let i = 0; i < slice.length; i++) {
-      byteNumbers[i] = slice.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-
-    byteArrays.push(byteArray);
-  }
-
-  // 使用字节数组创建 Blob 对象
-  const blob = new Blob(byteArrays, { type: contentType });
-
-  // 创建 File 对象
-  const file = new File([blob], filename, { type: contentType });
-
-  return file;
-}
-
-function isCanvas (canvas: HTMLCanvasElement) {
-  // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
-  return typeof canvas === 'object' && canvas !== null && canvas.tagName?.toUpperCase() === 'CANVAS';
 }
