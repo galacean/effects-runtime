@@ -1,7 +1,13 @@
+import type { BlendMode, NumberArrayLike, Slot } from '@esotericsoftware/spine-core';
+import {
+  ClippingAttachment,
+  Color,
+  MeshAttachment,
+  RegionAttachment,
+  SkeletonClipping,
+} from '@esotericsoftware/spine-core';
+import type { Engine, Mesh, Renderer, Texture, Transform } from '@galacean/effects';
 import { math } from '@galacean/effects';
-import type { Transform, Texture, Mesh, Engine, Renderer } from '@galacean/effects';
-import type { Slot, BlendMode, NumberArrayLike } from '@esotericsoftware/spine-core';
-import { ClippingAttachment, MeshAttachment, RegionAttachment, SkeletonClipping, Color } from '@esotericsoftware/spine-core';
 import { SpineMesh } from './spine-mesh';
 
 export interface SlotGroupProps {
@@ -292,7 +298,7 @@ export class SlotGroup {
     for (let i = startIndex; i < this.meshGroups.length; i++) {
       const mesh = this.meshGroups[i];
 
-      if (mesh && mesh.blending === blendMode && mesh.texture.name === texture.name && (vertexNum + mesh.indicesNum < SlotGroup.MAX_VERTICES)) {
+      if (mesh && mesh.blending === blendMode && mesh.texture === texture && (vertexNum + mesh.indicesNum < SlotGroup.MAX_VERTICES)) {
         res = i;
 
         break;
