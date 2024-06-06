@@ -551,8 +551,7 @@ export class Composition implements Disposable, LostHandler {
     const { ended, endBehavior } = this.rootItem;
 
     // TODO: 合成结束行为
-    // @ts-expect-error
-    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY);
+    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.ItemEndBehavior);
   }
 
   /**

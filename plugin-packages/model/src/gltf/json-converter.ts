@@ -1,12 +1,13 @@
-import { spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glType2VertexFormatType, glContext } from '@galacean/effects';
+import {
+  spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glContext,
+  glType2VertexFormatType,
+} from '@galacean/effects';
 import type {
   Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
 } from '@galacean/effects';
-import { PBRShaderGUID, UnlitShaderGUID } from '../runtime';
-import { Color, Quaternion, Vector3 } from '../runtime/math';
-import { deserializeGeometry } from '@galacean/effects-helper';
+import { deserializeGeometry, typedArrayFromBinary } from '@galacean/effects-helper';
+import { PBRShaderGUID, UnlitShaderGUID, Color, Quaternion, Vector3 } from '../runtime';
 import type { ModelTreeContent } from '../index';
-import { typedArrayFromBinary } from '@galacean/effects-helper';
 
 export class JSONConverter {
   newScene: spec.JSONScene;
@@ -91,9 +92,9 @@ export class JSONConverter {
     const bins = oldScene.bins as unknown as ArrayBuffer[];
 
     if (oldScene.textures) {
-      for (const tex of oldScene.textures) {
+      for (const tex of oldScene.textures as spec.SerializedTextureCube[]) {
         if (tex.target === 34067) {
-          const { mipmaps, target } = tex as spec.SerializedTextureCube;
+          const { mipmaps, target } = tex;
           const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => this.loadMipmapImage(pointer, bins))));
           const loadedMipmaps = await Promise.all(jobs);
 
@@ -182,10 +183,8 @@ export class JSONConverter {
     newScene.compositions = oldScene.compositions;
 
     newScene.items.forEach(item => {
-      // @ts-expect-error
-      if (item.type === 'root') {
-        // @ts-expect-error
-        item.type = 'ECS';
+      if (item.type === 'root' as spec.ItemType) {
+        item.type = 'ECS' as spec.ItemType;
       }
     });
 
