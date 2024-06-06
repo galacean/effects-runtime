@@ -44,7 +44,7 @@ describe('asset manager', () => {
     };
 
     const comp = await player.loadScene(generateScene(assets));
-    const textures = comp.compositionSourceManager.textures;
+    const textures = comp.textures;
 
     expect(textures.length).to.deep.equals(1);
     expect(textures[0].source).to.not.be.empty;
@@ -90,7 +90,7 @@ describe('asset manager', () => {
       },
     });
 
-    const textures = comp.compositionSourceManager.textures;
+    const textures = comp.textures;
 
     expect(textures.length).to.deep.equals(1);
     expect(textures[0].source).to.not.be.empty;

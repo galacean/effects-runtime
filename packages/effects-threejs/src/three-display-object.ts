@@ -2,7 +2,7 @@ import type {
   EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, Texture,
 } from '@galacean/effects-core';
 import {
-  AssetManager, CompositionSourceManager, isArray, isSceneURL, isSceneWithOptions, logger,
+  AssetManager, isArray, isSceneURL, isSceneWithOptions, logger,
 } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
@@ -133,8 +133,6 @@ export class ThreeDisplayObject extends THREE.Group {
       (scene.textureOptions[i] as Texture).initialize();
     }
 
-    const compositionSourceManager = new CompositionSourceManager(scene, engine);
-
     if (engine.database) {
       await engine.createVFXItems(scene);
     }
@@ -143,7 +141,7 @@ export class ThreeDisplayObject extends THREE.Group {
       width: this.width,
       height: this.height,
       renderer: this.renderer,
-    }, scene, compositionSourceManager);
+    }, scene);
 
     (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });
 

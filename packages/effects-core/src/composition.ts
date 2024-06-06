@@ -2,7 +2,7 @@ import type { Ray } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
-import type { CompositionSourceManager } from './composition-source-manager';
+import { CompositionSourceManager } from './composition-source-manager';
 import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
@@ -201,6 +201,7 @@ export class Composition implements Disposable, LostHandler {
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   private readonly postLoaders: Plugin[] = [];
+  private compositionSourceManager: CompositionSourceManager;
 
   /**
    * Composition 构造函数
@@ -211,7 +212,6 @@ export class Composition implements Disposable, LostHandler {
   constructor (
     props: CompositionProps,
     scene: Scene,
-    public compositionSourceManager: CompositionSourceManager,
   ) {
     const {
       reusable = false,
@@ -221,8 +221,8 @@ export class Composition implements Disposable, LostHandler {
       event, width, height,
     } = props;
 
+    this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
     scene.jsonScene.imgUsage = undefined;
-
     if (reusable) {
       this.keepResource = true;
       scene.textures = undefined;
