@@ -8,15 +8,15 @@ import type {
   ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions,
   ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
-import { UnlitShaderGUID, PBRShaderGUID, RenderType, CullMode } from '../index';
-import { Matrix4 } from '../runtime/math';
+import {
+  Matrix4, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID, RenderType, CullMode,
+} from '../runtime';
 import { LoaderHelper } from './loader-helper';
-import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
+import { WebGLHelper, PluginHelper } from '../utility';
 import type {
   GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
   GLTFCamera, GLTFAnimation, GLTFResources,
 } from '@vvfx/resource-detection';
-import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 
 export class LoaderECSImpl implements LoaderECS {
   private sceneOptions: LoadSceneOptions;
@@ -139,10 +139,8 @@ export class LoaderECSImpl implements LoaderECS {
 
     this.items = [...gltfResource.scenes[0].vfxItemData];
     this.items.forEach(item => {
-      // @ts-expect-error
-      if (item.type === 'root') {
-        // @ts-expect-error
-        item.type = 'ECS';
+      if (item.type === 'root' as spec.ItemType) {
+        item.type = 'ECS' as spec.ItemType;
       }
     });
 

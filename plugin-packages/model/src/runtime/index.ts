@@ -10,3 +10,4 @@ export * from './object';
 export * from './scene';
 export * from './shader';
 export * from './skybox';
+export * from './math';

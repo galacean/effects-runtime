@@ -298,17 +298,14 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.type === ItemType.mesh ||
       item.type === ItemType.skybox ||
       item.type === ItemType.light ||
-      // @ts-expect-error
-      item.type === 'camera' ||
+      item.type === 'camera' as ItemType ||
       item.type === ItemType.tree ||
       item.type === ItemType.interact ||
       item.type === ItemType.camera ||
       item.type === ItemType.text ||
       item.type === ItemType.spine ||
-      // @ts-expect-error
-      item.type === 'editor-gizmo' ||
-      // @ts-expect-error
-      item.type === 'orientation-transformer'
+      item.type === 'editor-gizmo' as ItemType ||
+      item.type === 'orientation-transformer' as ItemType
     ) {
       item.components = [];
       result.components.push(item.content);
@@ -344,18 +341,15 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
         item.content.dataType = DataType.LightComponent;
 
         break;
-      // @ts-expect-error
-      case 'camera':
+      case 'camera' as ItemType:
         item.content.dataType = DataType.CameraComponent;
 
         break;
-      // @ts-expect-error
-      case 'editor-gizmo':
+      case 'editor-gizmo' as ItemType:
         item.content.dataType = 'GizmoComponent';
 
         break;
-      // @ts-expect-error
-      case 'orientation-transformer':
+      case 'orientation-transformer' as ItemType:
         item.content.dataType = 'OrientationComponent';
 
         break;
@@ -401,7 +395,7 @@ export function version24Migration (json: JSONScene): JSONScene {
   return json;
 }
 
-export function convertParam (content: BaseContent | undefined | null) {
+export function convertParam (content?: BaseContent) {
   if (!content) {
     return;
   }
