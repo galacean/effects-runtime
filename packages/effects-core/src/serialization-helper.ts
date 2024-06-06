@@ -2,6 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import { effectsClassStore, getMergedStore } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
+import { isCanvas } from './utils';
 
 export class SerializationHelper {
   static collectSerializableObject (effectsObject: EffectsObject, res: Record<string, EffectsObject>) {
@@ -219,10 +220,7 @@ export class SerializationHelper {
   }
 
   static checkImageSource (value: any): boolean {
-    // instanceof HTMLCanvasElement 在小程序无法使用
-    const isHTMLCanvasElement = typeof value === 'object' && value !== null && value.tagName?.toUpperCase() === 'CANVAS';
-
-    return isHTMLCanvasElement || value instanceof HTMLImageElement;
+    return isCanvas(value) || value instanceof HTMLImageElement;
   }
 
   private static deserializeProperty<T> (property: T, engine: Engine, level: number, type?: string): any {
