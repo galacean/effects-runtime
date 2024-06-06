@@ -822,7 +822,9 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       newComposition.reusable = reusable;
       newComposition.keepResource = keepResource;
       newComposition.renderOrder = renderOrder;
-      newComposition.transform = transform;
+      newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
+      newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);
+      newComposition.transform.setScale(transform.scale.x, transform.scale.y, transform.scale.z);
 
       for (let i = 0; i < videoState.length; i++) {
         if (videoState[i]) {

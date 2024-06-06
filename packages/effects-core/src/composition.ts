@@ -12,7 +12,6 @@ import { RenderFrame } from './render';
 import type { Scene, SceneType } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
-import { Transform } from './transform';
 import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
@@ -80,10 +79,6 @@ export class Composition implements Disposable, LostHandler {
    * 合成渲染顺序，默认按升序渲染
    */
   renderOrder: number;
-  /**
-   * 所有合成 Item 的根变换
-   */
-  transform: Transform;
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
    */
@@ -231,24 +226,17 @@ export class Composition implements Disposable, LostHandler {
     const { sourceContent, pluginSystem, imgUsage, totalTime, renderLevel, refCompositionProps } = this.compositionSourceManager;
 
     assertExist(sourceContent);
-
     this.renderer = renderer;
     this.refCompositionProps = refCompositionProps;
-    const vfxItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
 
-    vfxItem.name = 'rootItem';
-    // TODO 编辑器数据传入 composition type 后移除
-    vfxItem.type = spec.ItemType.composition;
-    vfxItem.composition = this;
-    this.rootComposition = vfxItem.addComponent(CompositionComponent);
+    this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
+    this.rootItem.name = 'rootItem';
+    this.rootItem.composition = this;
+    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
     this.rootComposition.data = sourceContent;
+
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
-    this.transform = new Transform({
-      name: this.name,
-    });
-    this.transform.engine = this.getEngine();
-    vfxItem.transform = this.transform;
     this.globalVolume = sourceContent.globalVolume;
     this.width = width;
     this.height = height;
@@ -261,8 +249,7 @@ export class Composition implements Disposable, LostHandler {
     this.reusable = reusable;
     this.speed = speed;
     this.renderLevel = renderLevel;
-    this.autoRefTex = !this.keepResource && imageUsage && vfxItem.endBehavior !== spec.ItemEndBehavior.loop;
-    this.rootItem = vfxItem;
+    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.ItemEndBehavior.loop;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -286,6 +273,13 @@ export class Composition implements Disposable, LostHandler {
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
+  }
+
+  /**
+   * 所有合成 Item 的根变换
+   */
+  get transform () {
+    return this.rootItem.transform;
   }
 
   /**
