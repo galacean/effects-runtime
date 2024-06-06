@@ -1,6 +1,6 @@
 import type {
   Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItem,
-  MessageItem, CompositionProps, CompositionSourceManager,
+  MessageItem, CompositionProps,
 } from '@galacean/effects-core';
 import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
 import type THREE from 'three';
@@ -79,9 +79,8 @@ export class ThreeComposition extends Composition {
   constructor (
     props: ThreeCompositionProps,
     scene: Scene,
-    compositionSourceManager: CompositionSourceManager,
   ) {
-    super(props, scene, compositionSourceManager);
+    super(props, scene);
   }
 
   /**

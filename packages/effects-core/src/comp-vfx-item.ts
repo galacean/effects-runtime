@@ -5,8 +5,9 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { ContentOptions } from './composition-source-manager';
-import type { Region, TimelinePlayable, TrackAsset } from './plugins';
+import type { Region, TrackAsset } from './plugins';
 import { HitTestType, ObjectBindingTrack } from './plugins';
+import type { Playable } from './plugins/cal/playable-graph';
 import { PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
@@ -37,7 +38,7 @@ export class CompositionComponent extends ItemBehaviour {
   private reusable = false;
   private sceneBindings: SceneBinding[] = [];
   private timelineAsset: TimelineAsset;
-  private timelinePlayable: TimelinePlayable;
+  private timelinePlayable: Playable;
   private graph: PlayableGraph = new PlayableGraph();
 
   override start (): void {
@@ -45,7 +46,7 @@ export class CompositionComponent extends ItemBehaviour {
 
     this.startTime = startTime;
     this.resolveBindings();
-    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
+    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
     this.timelinePlayable.play();
 
     // 重播不销毁元素
@@ -91,7 +92,7 @@ export class CompositionComponent extends ItemBehaviour {
 
     for (const sceneBindingData of this.data.sceneBindings) {
       sceneBindings.push({
-        key: this.engine.assetLoader.loadGUID<ObjectBindingTrack>(sceneBindingData.key.id),
+        key: this.engine.assetLoader.loadGUID<TrackAsset>(sceneBindingData.key.id),
         value: this.engine.assetLoader.loadGUID<VFXItem>(sceneBindingData.value.id),
       });
     }

@@ -7,7 +7,7 @@ import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
-  generateWhiteTexture, CompositionSourceManager, isSceneWithOptions, Texture,
+  generateWhiteTexture, isSceneWithOptions, Texture,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -467,7 +467,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
         : engine.assetLoader.loadGUID(scene.textureOptions[i].id);
       scene.textureOptions[i].initialize();
     }
-    const compositionSourceManager = new CompositionSourceManager(scene, engine);
 
     if (engine.database) {
       await engine.createVFXItems(scene);
@@ -485,7 +484,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       event: this.event,
       onPlayerPause: this.handlePlayerPause,
       onMessageItem: this.handleMessageItem,
-    }, scene, compositionSourceManager);
+    }, scene);
 
     // 中低端设备降帧到 30fps
     if (this.ticker) {
@@ -823,7 +822,9 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       newComposition.reusable = reusable;
       newComposition.keepResource = keepResource;
       newComposition.renderOrder = renderOrder;
-      newComposition.transform = transform;
+      newComposition.transform.setPosition(transform.position.x, transform.position.y, transform.position.z);
+      newComposition.transform.setRotation(transform.rotation.x, transform.rotation.y, transform.rotation.z);
+      newComposition.transform.setScale(transform.scale.x, transform.scale.y, transform.scale.z);
 
       for (let i = 0; i < videoState.length; i++) {
         if (videoState[i]) {

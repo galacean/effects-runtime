@@ -15,10 +15,8 @@ export interface TimelineAssetData extends EffectsObjectData {
 export class TimelineAsset extends PlayableAsset {
   @serialize()
   tracks: TrackAsset[] = [];
-  graph: PlayableGraph;
 
   override createPlayable (graph: PlayableGraph): Playable {
-    this.graph = graph;
     const timelinePlayable = new TimelinePlayable(graph);
 
     timelinePlayable.setTraversalMode(PlayableTraversalMode.Passthrough);
