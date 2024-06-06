@@ -7,14 +7,14 @@ import type { CompositionHitTestOptions } from './composition';
 import type { ContentOptions } from './composition-source-manager';
 import type { Region, TimelinePlayable, TrackAsset } from './plugins';
 import { HitTestType, ObjectBindingTrack } from './plugins';
+import { PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import { Item, VFXItem } from './vfx-item';
-import { PlayableGraph } from './plugins/cal/playable-graph';
 
 export interface SceneBinding {
-  key: ObjectBindingTrack,
+  key: TrackAsset,
   value: VFXItem,
 }
 
@@ -36,7 +36,6 @@ export class CompositionComponent extends ItemBehaviour {
 
   private reusable = false;
   private sceneBindings: SceneBinding[] = [];
-  private masterTracks: ObjectBindingTrack[] = [];
   private timelineAsset: TimelineAsset;
   private timelinePlayable: TimelinePlayable;
   private graph: PlayableGraph = new PlayableGraph();
@@ -45,40 +44,35 @@ export class CompositionComponent extends ItemBehaviour {
     const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
-    this.masterTracks = [];
-
-    for (const sceneBinding of this.sceneBindings) {
-      sceneBinding.key.binding = sceneBinding.value;
-    }
-
-    this.initializeTrackBindings(this.timelineAsset.tracks);
+    this.resolveBindings();
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
     this.timelinePlayable.play();
 
+    // 重播不销毁元素
+    if (this.item.endBehavior !== spec.ItemEndBehavior.destroy) {
+      this.setReusable(true);
+    }
+  }
+
+  setReusable (value: boolean) {
     for (const track of this.timelineAsset.tracks) {
       const binding = track.binding;
 
       if (binding instanceof VFXItem) {
-        // 重播不销毁元素
-        if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
-          if (track instanceof ObjectBindingTrack) {
-            binding.reusable = true;
-          }
-          const subCompositionComponent = binding.getComponent(CompositionComponent);
+        if (track instanceof ObjectBindingTrack) {
+          binding.reusable = value;
+        }
+        const subCompositionComponent = binding.getComponent(CompositionComponent);
 
-          if (subCompositionComponent) {
-            subCompositionComponent.reusable = true;
-          }
+        if (subCompositionComponent) {
+          subCompositionComponent.setReusable(value);
         }
       }
-      this.masterTracks.push(track as ObjectBindingTrack);
     }
   }
 
-  initializeTrackBindings (masterTracks: TrackAsset[]) {
-    for (const track of masterTracks) {
-      track.initializeBindingRecursive(track.binding);
-    }
+  getReusable () {
+    return this.reusable;
   }
 
   override update (dt: number): void {
@@ -90,17 +84,6 @@ export class CompositionComponent extends ItemBehaviour {
     }
     this.timelinePlayable.setTime(time);
     this.graph.evaluate(dt);
-
-    for (let i = 0; i < this.items.length; i++) {
-      const item = this.items[i];
-      const subCompostionComponent = item.getComponent(CompositionComponent);
-
-      if (subCompostionComponent) {
-        const subCompositionTrack = this.masterTracks[i];
-
-        subCompostionComponent.time = subCompositionTrack.toLocalTime(time);
-      }
-    }
   }
 
   /**
@@ -265,6 +248,22 @@ export class CompositionComponent extends ItemBehaviour {
   }
 
   override fromData (data: any): void {
-    // this.timelineAsset = data.timelineAsset;
+  }
+
+  private resolveBindings () {
+    for (const sceneBinding of this.sceneBindings) {
+      sceneBinding.key.binding = sceneBinding.value;
+    }
+    for (const masterTrack of this.timelineAsset.tracks) {
+      this.resolveTrackBindingsWithRoot(masterTrack);
+    }
+  }
+
+  private resolveTrackBindingsWithRoot (track: TrackAsset) {
+    for (const subTrack of track.getChildTracks()) {
+      subTrack.binding = subTrack.resolveBinding(track.binding);
+
+      this.resolveTrackBindingsWithRoot(subTrack);
+    }
   }
 }

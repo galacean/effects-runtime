@@ -523,6 +523,33 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
       trackDatas.push(newTrackData);
     }
 
+    if (item.type === ItemType.composition) {
+      const newSubCompositionPlayableAssetData = {
+        id: generateGUID(),
+        dataType: 'SubCompositionPlayableAsset',
+      };
+
+      playableAssetDatas.push(newSubCompositionPlayableAssetData);
+      const newTrackData = {
+        id: generateGUID(),
+        dataType: 'SubCompositionTrack',
+        children: [],
+        clips: [
+          {
+            start: item.delay,
+            duration: item.duration,
+            endBehaviour: item.endBehavior,
+            asset: {
+              id: newSubCompositionPlayableAssetData.id,
+            },
+          },
+        ],
+      };
+
+      subTrackDatas.push({ id: newTrackData.id });
+      trackDatas.push(newTrackData);
+    }
+
     const bindingTrackData = {
       id: generateGUID(),
       dataType: 'ObjectBindingTrack',

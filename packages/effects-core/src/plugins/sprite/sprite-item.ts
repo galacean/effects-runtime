@@ -14,7 +14,6 @@ import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
-import type { CalculateItemOptions } from '../cal/calculate-item';
 import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
@@ -40,7 +39,7 @@ export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
 export type SpriteItemOptions = {
   startColor: vec4,
   renderLevel?: string,
-} & CalculateItemOptions;
+};
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
