@@ -4,7 +4,7 @@ import type {
   SceneType, EffectsObject,
 } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, CompositionComponent, EVENT_TYPE_CLICK, EventSystem, logger,
+  AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
   generateWhiteTexture, CompositionSourceManager, isSceneWithOptions, Texture,
@@ -833,7 +833,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           await video.play();
         }
       }
-      newComposition.rootItem.getComponent(CompositionComponent).resetStatus();
+      newComposition.rootItem.ended = false;
       newComposition.gotoAndPlay(currentTime);
 
       return newComposition;

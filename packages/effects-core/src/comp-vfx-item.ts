@@ -86,13 +86,6 @@ export class CompositionComponent extends ItemBehaviour {
     this.graph.evaluate(dt);
   }
 
-  /**
-   * 重置元素状态属性
-   */
-  resetStatus () {
-    this.item.ended = false;
-  }
-
   createContent () {
     const sceneBindings = [];
 
