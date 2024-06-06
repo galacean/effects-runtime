@@ -212,10 +212,17 @@ export class SerializationHelper {
   }
 
   // TODO 测试函数，2.0 上线后移除
-  static checkGLTFNode (value: any) {
+  static checkGLTFNode (value: any): boolean {
     return value instanceof Object &&
       value.nodeIndex !== undefined &&
       value.isJoint !== undefined;
+  }
+
+  static checkImageSource (value: any): boolean {
+    // instanceof HTMLCanvasElement 在小程序无法使用
+    const isHTMLCanvasElement = typeof value === 'object' && value !== null && value.tagName?.toUpperCase() === 'CANVAS';
+
+    return isHTMLCanvasElement || value instanceof HTMLImageElement;
   }
 
   private static deserializeProperty<T> (property: T, engine: Engine, level: number, type?: string): any {
@@ -242,8 +249,10 @@ export class SerializationHelper {
     } else if (SerializationHelper.checkDataPath(property)) {
       return engine.assetLoader.loadGUID((property as spec.DataPath).id);
     } else if (property instanceof EffectsObject ||
+      SerializationHelper.checkImageSource(property) ||
       SerializationHelper.checkTypedArray(property) ||
-      SerializationHelper.checkGLTFNode(property)) {
+      SerializationHelper.checkGLTFNode(property)
+    ) {
       return property;
     } else if (property instanceof Object) {
       let res: Object;
@@ -288,6 +297,7 @@ export class SerializationHelper {
 
       return res;
     } else if (property instanceof EffectsObject ||
+      SerializationHelper.checkImageSource(property) ||
       SerializationHelper.checkTypedArray(property) ||
       SerializationHelper.checkGLTFNode(property)) {
       return property;

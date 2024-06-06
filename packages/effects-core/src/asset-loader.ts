@@ -39,10 +39,7 @@ export class AssetLoader {
 
         break;
       case spec.DataType.Texture:
-        // @ts-expect-error
-        effectsObject = Texture.create(this.engine, effectsObjectData);
-
-        return effectsObject as T;
+        effectsObject = Texture.create(this.engine);
 
         break;
       default: {
@@ -102,10 +99,7 @@ export class AssetLoader {
 
         break;
       case spec.DataType.Texture:
-        // @ts-expect-error
-        effectsObject = Texture.create(this.engine, effectsObjectData);
-
-        return effectsObject as T;
+        effectsObject = Texture.create(this.engine);
 
         break;
       default: {
