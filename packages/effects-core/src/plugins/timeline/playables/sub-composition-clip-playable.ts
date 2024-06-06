@@ -1,4 +1,4 @@
-import type { CompositionComponent } from 'packages/effects-core/src/comp-vfx-item';
+import type { CompositionComponent } from '../../../comp-vfx-item';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 
