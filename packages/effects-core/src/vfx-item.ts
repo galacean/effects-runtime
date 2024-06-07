@@ -530,6 +530,7 @@ export class VFXItem extends EffectsObject implements Disposable {
         }
       }
     }
+    // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
     this.renderOrder = listIndex;
   }
 
