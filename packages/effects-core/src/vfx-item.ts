@@ -167,6 +167,19 @@ export class VFXItem extends EffectsObject implements Disposable {
     return this.composition?.reusable ?? false;
   }
 
+  get renderOrder () {
+    return this.listIndex;
+  }
+
+  set renderOrder (value: number) {
+    if (this.listIndex !== value) {
+      this.listIndex = value;
+      for (const rendererComponent of this.rendererComponents) {
+        rendererComponent.priority = value;
+      }
+    }
+  }
+
   /**
    * 设置元素的动画速度
    * @param speed - 速度
