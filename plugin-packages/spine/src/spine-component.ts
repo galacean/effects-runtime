@@ -156,9 +156,9 @@ export class SpineComponent extends RendererComponent {
       this.setAnimationList(activeAnimation, spineOptions.speed);
     }
     this.pma = atlas.pages[0].pma;
-    this._priority = this.item.listIndex;
+    this._priority = this.item.renderOrder;
     this.content = new SlotGroup(this.skeleton.drawOrder, {
-      listIndex: this.item.listIndex,
+      listIndex: this.item.renderOrder,
       meshName: this.name,
       transform: this.transform,
       pma: this.pma,
