@@ -1,3 +1,4 @@
+import type { SceneRenderLevel } from '@galacean/effects';
 import { Player, spec } from '@galacean/effects';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*GC99RbcyZiMAAAAAAAAAAAAADlB4AQ';
@@ -16,7 +17,7 @@ const selectEle = document.getElementById('J-select') as HTMLSelectElement;
 
     // 切换机型
     selectEle?.addEventListener('change', async () => {
-      const renderLevel = selectEle.value as spec.RenderLevel;
+      const renderLevel = selectEle.value as SceneRenderLevel;
 
       player.getCompositions().forEach(composition => composition.dispose());
       await player.loadScene(json, {

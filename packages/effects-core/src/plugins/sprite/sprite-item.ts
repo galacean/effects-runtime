@@ -38,7 +38,7 @@ export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
  */
 export type SpriteItemOptions = {
   startColor: vec4,
-  renderLevel?: string,
+  renderLevel?: spec.RenderLevel,
 };
 
 /**
