@@ -235,7 +235,12 @@ export class AssetManager implements Disposable {
     return Promise.race([waitPromise, loadResourcePromise()]);
   }
 
-  private async precompile (compositions: spec.CompositionData[], pluginSystem?: PluginSystem, renderer?: Renderer, options?: PrecompileOptions) {
+  private async precompile (
+    compositions: spec.CompositionData[],
+    pluginSystem?: PluginSystem,
+    renderer?: Renderer,
+    options?: PrecompileOptions,
+  ) {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }

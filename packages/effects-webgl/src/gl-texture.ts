@@ -30,7 +30,6 @@ const FORMAT_FLOAT: Record<string, number> = {
   [glContext.LUMINANCE_ALPHA]: 33328, //RG32F,
   [glContext.LUMINANCE]: 33326, //R32F
 };
-let flipCanvas: HTMLCanvasElement;
 
 export class GLTexture extends Texture implements Disposable, RestoreHandler {
   textureBuffer: WebGLTexture | null;
@@ -46,12 +45,16 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     }
   }
 
-  /** 绑定当前Texture对象。*/
+  /**
+   * 绑定当前 Texture 对象
+   */
   bind (force?: boolean) {
     this.pipelineContext.bindTexture(this.target, this.textureBuffer, force);
   }
 
-  /** 初始化Texture的GPU资源。*/
+  /**
+   * 初始化 Texture 的 GPU 资源
+   */
   override initialize (): void {
     if (this.initialized) {
       return;
@@ -59,16 +62,13 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const glEngine = this.engine as GLEngine;
 
     glEngine.addTexture(this);
-    const pipelineContext = glEngine.getGLPipelineContext();
+    this.pipelineContext = glEngine.getGLPipelineContext();
 
-    this.pipelineContext = pipelineContext;
-    const gl = pipelineContext.gl;
+    const gl = this.pipelineContext.gl;
     const { target = gl.TEXTURE_2D, name } = this.source;
 
     this.textureBuffer = gl.createTexture();
-    if (this.textureBuffer) {
-      assignInspectorName(this.textureBuffer, name);
-    }
+    assignInspectorName(this.textureBuffer, name);
     this.target = target;
     this.update(this.source);
     this.release();
@@ -261,7 +261,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
         });
       }
     } else if (sourceType === TextureSourceType.compressed) {
-      if (optionsMipmaps) {
+      if (optionsMipmaps && optionsMipmaps.length !== 0) {
         width = optionsMipmaps[0].width;
         height = optionsMipmaps[0].height;
         optionsMipmaps.forEach((mipmap, idx) => {
@@ -316,10 +316,10 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   override fromData (data: any): void {
     super.fromData(data);
     const source = data as TextureSourceOptions;
-    const opts = this.assembleOptions(source);
-    const { sourceType, sourceFrom, name = '' } = opts;
+    const options = this.assembleOptions(source);
+    const { sourceType, sourceFrom, name = '' } = options;
 
-    this.source = opts;
+    this.source = options;
     this.sourceType = sourceType;
     this.sourceFrom = sourceFrom;
     this.name = name;
@@ -353,10 +353,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     gl.texImage2D(target, level, internalformat, format, type, img);
     const size: spec.vec2 = [img.width, img.height];
 
-    if (flipCanvas) {
-      flipCanvas.width = flipCanvas.height = 1;
-    }
-
     if (sourceType === TextureSourceType.video) {
       const { videoWidth, videoHeight } = image as HTMLVideoElement;
 
@@ -377,7 +373,14 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   ): spec.vec2 {
     const { data: bufferView, width, height } = data;
     // Uint8ClampedArray is incompatible in android
-    const neoBuffer = format === gl.UNSIGNED_BYTE ? new Uint8Array(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength / bufferView.BYTES_PER_ELEMENT) : bufferView;
+    const neoBuffer =
+      format === gl.UNSIGNED_BYTE
+        ? new Uint8Array(
+          bufferView.buffer,
+          bufferView.byteOffset,
+          bufferView.byteLength / bufferView.BYTES_PER_ELEMENT,
+        )
+        : bufferView;
 
     gl.texImage2D(target, level, internalformat, width, height, 0, format, type, neoBuffer);
 

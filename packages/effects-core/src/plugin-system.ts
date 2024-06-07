@@ -126,7 +126,11 @@ export class PluginSystem {
     return Promise.all(pendings);
   }
 
-  async precompile (compositions: spec.CompositionData[], renderer: Renderer, options?: PrecompileOptions) {
+  async precompile (
+    compositions: spec.CompositionData[],
+    renderer: Renderer,
+    options?: PrecompileOptions,
+  ) {
     return this.callStatic('precompile', compositions, renderer, options);
   }
 

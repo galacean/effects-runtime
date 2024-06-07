@@ -269,11 +269,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
 }
 
 export function assignInspectorName (
-  obj: Record<string, any>,
+  obj: Record<string, any> | null,
   name?: string,
   id?: string,
 ) {
-  if (name === undefined) {
+  if (name === undefined || obj === null) {
     return;
   }
 
