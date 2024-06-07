@@ -3,14 +3,11 @@ import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 
 export class SubCompositionClipPlayable extends Playable {
-
   override processFrame (context: FrameContext): void {
     const boundObject = context.output.getUserData() as CompositionComponent;
 
-    if (!boundObject) {
-      return;
+    if (boundObject) {
+      boundObject.time = this.getTime();
     }
-
-    boundObject.time = this.getTime();
   }
 }

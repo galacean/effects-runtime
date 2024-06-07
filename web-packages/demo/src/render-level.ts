@@ -11,7 +11,7 @@ const selectEle = document.getElementById('J-select') as HTMLSelectElement;
     });
 
     await player.loadScene(json, {
-      renderLevel: spec.RenderLevel.BPlus,
+      renderLevel: spec.RenderLevel.B,
     });
 
     // 切换机型
