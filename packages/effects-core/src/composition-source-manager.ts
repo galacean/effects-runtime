@@ -4,7 +4,7 @@ import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
 import type { PluginSystem } from './plugin-system';
 import type { GlobalVolume } from './render';
-import type { Scene } from './scene';
+import type { Scene, SceneRenderLevel } from './scene';
 import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
@@ -35,7 +35,7 @@ export class CompositionSourceManager implements Disposable {
   refCompositions: Map<string, spec.CompositionData> = new Map();
   sourceContent?: ContentOptions;
   refCompositionProps: Map<string, VFXItemProps> = new Map();
-  renderLevel?: spec.RenderLevel;
+  renderLevel?: SceneRenderLevel;
   pluginSystem?: PluginSystem;
   totalTime: number;
   imgUsage: Record<string, number[]>;
@@ -116,7 +116,6 @@ export class CompositionSourceManager implements Disposable {
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
-
         if (
           itemProps.type === spec.ItemType.sprite ||
           itemProps.type === spec.ItemType.particle

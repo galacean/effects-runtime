@@ -1,9 +1,11 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Texture } from './texture';
 import type { PluginSystem } from './plugin-system';
+import type { PickEnum } from './utils';
 import { isObject } from './utils';
 
 export type ImageSource = spec.TemplateImage | spec.Image | spec.CompressedImage;
+export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | spec.RenderLevel.B | spec.RenderLevel.S>;
 
 /**
  * 场景类型
@@ -12,7 +14,7 @@ export interface Scene {
   readonly jsonScene: spec.JSONScene,
   readonly bins: ArrayBuffer[],
   readonly pluginSystem: PluginSystem,
-  readonly renderLevel?: spec.RenderLevel,
+  readonly renderLevel?: SceneRenderLevel,
   readonly storage: Record<string, any>,
 
   textureOptions: Record<string, any>[],
@@ -64,9 +66,9 @@ export interface SceneLoadOptions {
    * 渲染分级。
    * 分级之后，只会加载当前渲染等级的资源。
    * 当渲染等级被设置为 B 后，player 的 fps 会降到 30 帧
-   * @default 's'
+   * @default 'S'
    */
-  renderLevel?: spec.RenderLevel,
+  renderLevel?: SceneRenderLevel,
 
   /**
    * 资源加载超时，时间单位秒

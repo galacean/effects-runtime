@@ -106,7 +106,7 @@ export class PSkybox extends PEntity {
     this.specularImageSize = data.specularImageSize;
     this.specularMipCount = data.specularMipCount;
 
-    this.priority = owner?.item?.listIndex || 0;
+    this.priority = owner?.item?.renderOrder || 0;
   }
 
   /**
