@@ -1,6 +1,5 @@
-import {
-  spec, isString, getActivePlayers, logger, isAlipayMiniApp,
-} from '@galacean/effects';
+import type { SceneRenderLevel } from '@galacean/effects';
+import { spec, isString, getActivePlayers, logger, isAlipayMiniApp } from '@galacean/effects';
 
 declare global {
   interface Window {
@@ -154,7 +153,7 @@ class DeviceProxy {
   deviceLevel = DEVICE_LEVEL_NONE;
   isDowngrade = false;
 
-  getRenderLevel (): spec.RenderLevel {
+  getRenderLevel (): SceneRenderLevel {
     if (this.deviceLevel === DEVICE_LEVEL_HIGH) {
       return spec.RenderLevel.S;
     } else if (this.deviceLevel === DEVICE_LEVEL_MEDIUM) {
@@ -306,7 +305,7 @@ function getDowngradeReason (reason: number): string {
   }
 }
 
-export function getRenderLevelByDevice (renderLevel?: spec.RenderLevel): spec.RenderLevel {
+export function getRenderLevelByDevice (renderLevel?: SceneRenderLevel): SceneRenderLevel {
   if (!renderLevel) {
     return device.getRenderLevel();
   } else {

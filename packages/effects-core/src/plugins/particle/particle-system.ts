@@ -58,7 +58,7 @@ type ParticleOptions = {
   maxCount: number,
   gravity: vec3,
   gravityModifier: ValueGetter<number>,
-  renderLevel?: string,
+  renderLevel?: spec.RenderLevel,
   particleFollowParent?: boolean,
   forceTarget?: { curve: ValueGetter<number>, target: spec.vec3 },
   speedOverLifetime?: ValueGetter<number>,

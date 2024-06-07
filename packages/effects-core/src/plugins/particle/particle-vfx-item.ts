@@ -1,4 +1,4 @@
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import { ParticleSystem } from './particle-system';
@@ -11,15 +11,15 @@ export class ParticleBehaviourPlayable extends Playable {
   particleSystem: ParticleSystem;
 
   start (context: FrameContext): void {
-    const binding = context.output.getUserData() as VFXItem;
+    const boundObject = context.output.getUserData();
 
-    if (this.particleSystem) {
+    if (this.particleSystem || !(boundObject instanceof VFXItem)) {
       return;
     }
-    this.particleSystem = binding.getComponent(ParticleSystem);
+    this.particleSystem = boundObject.getComponent(ParticleSystem);
 
     if (this.particleSystem) {
-      this.particleSystem.name = binding.name;
+      this.particleSystem.name = boundObject.name;
       this.particleSystem.start();
       this.particleSystem.initEmitterTransform();
     }

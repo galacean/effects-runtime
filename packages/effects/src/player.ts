@@ -488,7 +488,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
     // 中低端设备降帧到 30fps
     if (this.ticker) {
-      if (composition.renderLevel === spec.RenderLevel.B) {
+      if (opts.renderLevel === spec.RenderLevel.B) {
         this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
       }
     }

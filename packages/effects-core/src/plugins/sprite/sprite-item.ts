@@ -19,7 +19,7 @@ import { Playable, PlayableAsset } from '../cal/playable-graph';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -38,7 +38,7 @@ export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
  */
 export type SpriteItemOptions = {
   startColor: vec4,
-  renderLevel?: string,
+  renderLevel?: spec.RenderLevel,
 };
 
 /**
@@ -83,15 +83,19 @@ export class SpriteColorPlayable extends Playable {
   spriteMaterial: Material;
 
   override processFrame (context: FrameContext): void {
-    const boundItem = context.output.getUserData() as VFXItem;
+    const boundObject = context.output.getUserData();
+
+    if (!(boundObject instanceof VFXItem)) {
+      return;
+    }
 
     if (!this.spriteMaterial) {
-      this.spriteMaterial = boundItem.getComponent(SpriteComponent).material;
+      this.spriteMaterial = boundObject.getComponent(SpriteComponent).material;
     }
 
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
-    const life = this.time / boundItem.duration;
+    const life = this.time / boundObject.duration;
 
     const opacityOverLifetime = this.opacityOverLifetime;
     const colorOverLifetime = this.colorOverLifetime;

@@ -9,7 +9,7 @@ import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-
 import type { FrameContext, PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
 
 const tempRot = new Euler();
@@ -135,10 +135,14 @@ export class TransformAnimationPlayable extends AnimationPlayable {
 
   override processFrame (context: FrameContext): void {
     if (!this.binding) {
-      this.binding = context.output.getUserData() as VFXItem;
-      this.start();
+      const boundObject = context.output.getUserData();
+
+      if (boundObject instanceof VFXItem) {
+        this.binding = boundObject;
+        this.start();
+      }
     }
-    if (this.binding.composition) {
+    if (this.binding && this.binding.composition) {
       this.sampleAnimation();
     }
   }
@@ -385,10 +389,13 @@ export class AnimationClipPlayable extends Playable {
   clip: AnimationClip;
 
   override processFrame (context: FrameContext): void {
-    const boundItem = context.output.getUserData() as VFXItem;
+    const boundObject = context.output.getUserData();
 
-    if (boundItem.composition) {
-      this.clip.sampleAnimation(boundItem, this.time);
+    if (!(boundObject instanceof VFXItem)) {
+      return;
+    }
+    if (boundObject.composition) {
+      this.clip.sampleAnimation(boundObject, this.time);
     }
   }
 }
