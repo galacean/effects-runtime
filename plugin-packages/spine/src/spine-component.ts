@@ -103,12 +103,14 @@ export class SpineComponent extends RendererComponent {
     if (!(this.state && this.skeleton)) {
       return;
     }
-
     this.state.update(dt / 1000);
     this.state.apply(this.skeleton);
     this.skeleton.update(dt / 1000);
     this.skeleton.updateWorldTransform(Physics.update);
-    this.content?.update();
+    if (this.content) {
+      this._priority = this.item.listIndex;
+      this.content.update();
+    }
   }
 
   override render (renderer: Renderer) {

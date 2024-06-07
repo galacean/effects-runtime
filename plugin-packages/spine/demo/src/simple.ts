@@ -3,7 +3,6 @@ import type { spec } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import type { SpineVFXItem } from '@galacean/effects-plugin-spine';
-import { SpineComponent } from '@galacean/effects-plugin-spine';
 import { direct, premultiply } from './files';
 
 const startEle = document.getElementById('J-start');
@@ -40,7 +39,7 @@ if (files === premultiply) {
 }
 
 const file = files.spineboy;
-const mix = files.labayu;
+const mix = files.mix;
 const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration = 0, speed = 1;
 
 (async () => {
@@ -83,7 +82,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
       'internalFormat': 6408,
       'type': 5121,
     }))],
-    'bins': [{ url: file.atlas }, { url: file.json }, { url: mix.atlas }, { url: mix.skeleton }],
+    'bins': [{ url: file.atlas }, { url: file.json }, { url: mix.atlas }, { url: mix.json }],
     'spines': [
       {
         'atlas': [20, [0, 0]],
@@ -94,7 +93,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
       {
         'atlas': [20, [2, 0]],
         'skeleton': [20, [3, 0]],
-        'skeletonType': 'skel',
+        'skeletonType': 'json',
         'images': mix.png.map((item, index) => index + file.png.length),
       },
     ],
@@ -176,18 +175,18 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
             'duration': dur,
             'content': {
               'options': {
-                'activeSkin': 'default',
+                'activeSkin': 'full-skins/girl',
                 speed,
                 mixDuration,
-                'activeAnimation': ['animation'],
+                'activeAnimation': ['dance'],
                 'spine': 1,
-                'startSize': 2,
+                'startSize': 3,
               },
             },
             'transform': {
               'position': [
                 0,
-                -5,
+                0,
                 0,
               ],
               'rotation': [
@@ -244,9 +243,12 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
     const comp = await player.loadScene(animation, {
       autoplay: false,
     });
-    const item = comp.getItemByName('spine_item2') as SpineVFXItem;
 
     player.play();
+    const item = comp.getItemByName('spine_item') as SpineVFXItem;
+    const item2 = comp.getItemByName('spine_item2') as SpineVFXItem;
+
+    item.listIndex = item2.listIndex + 1;
     // item.getComponent(SpineComponent).setMixDuration('dance', 'aware', 0.3);
     setCamera(comp);
 

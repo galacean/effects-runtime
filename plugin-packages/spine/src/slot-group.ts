@@ -271,7 +271,10 @@ export class SlotGroup {
 
     clipper.clipEnd();
     this.wm = this.transform.getWorldMatrix();
-    this.meshGroups.map(sp => sp.endUpdate(this.wm));
+
+    this.meshGroups.map((sp, index) => {
+      sp.endUpdate(this.wm);
+    });
   }
 
   /**
