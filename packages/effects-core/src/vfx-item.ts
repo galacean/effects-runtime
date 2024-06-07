@@ -4,9 +4,8 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import { EffectComponent, RendererComponent } from './components';
-import type { Component } from './components/component';
-import { ItemBehaviour } from './components/component';
+import type { Component } from './components';
+import { RendererComponent, EffectComponent, ItemBehaviour } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass } from './decorators';
@@ -76,10 +75,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   ended = false;
   /**
-   * 元素在合成中的索引
-   */
-  listIndex: number;
-  /**
    * 元素名称
    */
   name: string;
@@ -111,6 +106,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素动画的速度
    */
   private speed = 1;
+  private listIndex: number;
 
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
@@ -167,10 +163,12 @@ export class VFXItem extends EffectsObject implements Disposable {
     return this.composition?.reusable ?? false;
   }
 
+  /**
+   * 元素在合成中的索引
+   */
   get renderOrder () {
     return this.listIndex;
   }
-
   set renderOrder (value: number) {
     if (this.listIndex !== value) {
       this.listIndex = value;
@@ -509,7 +507,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-    this.listIndex = listIndex;
+    this.renderOrder = listIndex;
     //@ts-expect-error
     this.oldId = data.oldId;
 
