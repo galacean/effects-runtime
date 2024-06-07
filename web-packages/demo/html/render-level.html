@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分级渲染 - demo</title>
+  <style>
+    html, body, div, canvas { margin: 0; padding: 0; }
+    .container {
+      width: 375px;
+      height: 812px;
+      background-color: rgba(0,0,0,255);
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="J-container"></div>
+<select id="J-select">
+  <option value="B+">全部机型</option>
+  <option value="B">B（低端机）</option>
+  <option value="A">A（中端机）</option>
+  <option value="S">S（高端机）</option>
+</select>
+
+<script type="module" src="../src/render-level.ts"></script>
+</body>
+</html>
