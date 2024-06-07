@@ -229,13 +229,8 @@ export class SerializationHelper {
 
       return;
     }
-    if (
-      typeof property === 'number' ||
-      typeof property === 'string' ||
-      typeof property === 'boolean'
-    ) {
-      return property;
-    } else if (property instanceof Array) {
+    // 加载并链接 DataPath 字段表示的 EffectsObject 引用。Class 对象 copy [key, value] 会丢失对象信息，因此只递归数组对象和普通 js Object 结构对象。
+    if (property instanceof Array) {
       const res = [];
 
       for (const value of property) {
@@ -246,13 +241,7 @@ export class SerializationHelper {
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
       return engine.assetLoader.loadGUID((property as spec.DataPath).id);
-    } else if (property instanceof EffectsObject ||
-      SerializationHelper.checkImageSource(property) ||
-      SerializationHelper.checkTypedArray(property) ||
-      SerializationHelper.checkGLTFNode(property)
-    ) {
-      return property;
-    } else if (property instanceof Object) {
+    } else if (property instanceof Object && property.constructor === Object) {
       let res: Object;
 
       if (type) {
@@ -268,6 +257,8 @@ export class SerializationHelper {
       }
 
       return res;
+    } else {
+      return property;
     }
   }
 
@@ -277,11 +268,7 @@ export class SerializationHelper {
 
       return;
     }
-    if (typeof property === 'number' ||
-      typeof property === 'string' ||
-      typeof property === 'boolean') {
-      return property;
-    } else if (property instanceof Array) {
+    if (property instanceof Array) {
       const res = [];
 
       for (const value of property) {
@@ -294,12 +281,7 @@ export class SerializationHelper {
       const res = await engine.assetLoader.loadGUIDAsync((property as spec.DataPath).id);
 
       return res;
-    } else if (property instanceof EffectsObject ||
-      SerializationHelper.checkImageSource(property) ||
-      SerializationHelper.checkTypedArray(property) ||
-      SerializationHelper.checkGLTFNode(property)) {
-      return property;
-    } else if (property instanceof Object) {
+    } else if (property instanceof Object && property.constructor === Object) {
       let res: Object;
 
       if (type) {
@@ -315,6 +297,8 @@ export class SerializationHelper {
       }
 
       return res;
+    } else {
+      return property;
     }
   }
 
