@@ -233,7 +233,6 @@ export class SpriteComponent extends RendererComponent {
   }
 
   override start (): void {
-    this.priority = this.item.listIndex;
     this.item.getHitTestParams = this.getHitTestParams;
   }
 

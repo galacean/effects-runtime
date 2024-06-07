@@ -4,7 +4,8 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import { EffectComponent, RendererComponent } from './components';
+import { RendererComponent } from './components';
+import { EffectComponent } from './components';
 import type { Component } from './components/component';
 import { ItemBehaviour } from './components/component';
 import type { Composition } from './composition';
@@ -14,7 +15,8 @@ import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
+  HitTestTriangleParams, InteractComponent, ParticleSystem } from './plugins';
+import type { SpriteComponent,
 } from './plugins';
 import { Transform } from './transform';
 import { removeItem, type Disposable } from './utils';
@@ -77,6 +79,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   ended = false;
   /**
    * 元素在合成中的索引
+   * @deprecated listIndex is deprecated. Use renderOrder instead.
    */
   listIndex: number;
   /**
@@ -509,7 +512,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-    this.listIndex = listIndex;
     //@ts-expect-error
     this.oldId = data.oldId;
 
@@ -533,6 +535,8 @@ export class VFXItem extends EffectsObject implements Disposable {
         }
       }
     }
+
+    this.renderOrder = listIndex;
   }
 
   override toData (): void {
