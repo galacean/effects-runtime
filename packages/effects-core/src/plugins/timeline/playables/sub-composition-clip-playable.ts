@@ -7,6 +7,10 @@ export class SubCompositionClipPlayable extends Playable {
   override processFrame (context: FrameContext): void {
     const boundObject = context.output.getUserData() as CompositionComponent;
 
+    if (!boundObject) {
+      return;
+    }
+
     boundObject.time = this.getTime();
   }
 }
