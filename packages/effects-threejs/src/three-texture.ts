@@ -133,6 +133,10 @@ export class ThreeTexture extends Texture {
     this.texture.dispose();
   }
 
+  /**
+   * 通过图层设置创建贴图
+   * @param data - 图层设置
+   */
   override fromData (data: any): void {
     super.fromData(data);
 
