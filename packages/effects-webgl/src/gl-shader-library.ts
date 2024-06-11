@@ -112,22 +112,17 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   }
 
   compileShader (shader: GLShaderVariant, asyncCallback?: (result: ShaderCompileResult) => void) {
-    const shaderSource = shader.source;
+    const { shared: sourceShared, vertex, fragment, name } = shader.source;
+    const { cacheId } = shader.source as SharedShaderWithSource;
     let shared = false;
 
-    if (shaderSource.shared || (shaderSource as SharedShaderWithSource).cacheId) {
+    if (sourceShared || cacheId) {
       shared = true;
     }
-    const shaderData = {
-      vertex: shaderSource.vertex,
-      fragment: shaderSource.fragment,
-      name: shaderSource.name,
-      shared,
-    };
 
     const gl = this.pipelineContext.gl;
-    const result: GLShaderCompileResult = { shared: shaderData.shared, status: ShaderCompileResultStatus.compiling };
-    const linkProgram = this.createProgram(gl, shaderData.vertex, shaderData.fragment, result);
+    const result: GLShaderCompileResult = { shared, status: ShaderCompileResultStatus.compiling };
+    const linkProgram = this.createProgram(gl, vertex, fragment, result);
     const ext = this.glAsyncCompileExt;
     const startTime = performance.now();
     const setupProgram = (glProgram: GLProgram) => {
@@ -144,12 +139,14 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     };
     const checkComplete = () => {
       const shouldLink =
-        !asyncCallback || !ext || (ext && gl.getProgramParameter(result.program!, ext.COMPLETION_STATUS_KHR) == true);
+        !asyncCallback ||
+        !ext ||
+        (ext && gl.getProgramParameter(result.program!, ext.COMPLETION_STATUS_KHR) == true);
       const program = shouldLink && linkProgram();
 
       if (program) {
         if (result.status !== ShaderCompileResultStatus.fail) {
-          assignInspectorName(program, shaderData.name);
+          assignInspectorName(program, name);
           const glProgram = new GLProgram(this.engine, program, shared, shader.id);
 
           // FIXME: 这个检测不能在这里调用，安卓上会有兼容性问题。要么开发版使用，要么移到Shader首次使用时
@@ -169,9 +166,9 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
               console.error(
                 'compileProgramError: ' + error,
                 '\nvertex:\n',
-                shaderData.vertex,
+                vertex,
                 '\nfragment:\n',
-                shaderData.fragment
+                fragment
               );
               gl.deleteProgram(program);
             }
@@ -192,14 +189,14 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   }
 
   private computeShaderCacheId (shader: ShaderWithSource): string {
-    const vertex = shader.vertex ? shader.vertex : '';
-    const fragment = shader.fragment ? shader.fragment : '';
+    const { vertex = '', fragment = '', shared } = shader;
+    const { cacheId } = shader as SharedShaderWithSource;
     let shaderCacheId: string;
     // let shared = false;
 
-    if (shader.shared || (shader as SharedShaderWithSource).cacheId) {
+    if (shared || cacheId) {
       // FIXME: string-hash有冲突，这里先用strHashCode替代
-      shaderCacheId = (shader as SharedShaderWithSource).cacheId || `shared_${strHashCode(vertex, fragment)}`;
+      shaderCacheId = cacheId || `shared_${strHashCode(vertex, fragment)}`;
       // shared = true;
     } else {
       shaderCacheId = 'instanced_' + shaderSeed++;

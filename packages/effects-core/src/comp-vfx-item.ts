@@ -241,7 +241,7 @@ export class CompositionComponent extends ItemBehaviour {
     return regions;
   }
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
   }
 
   private resolveBindings () {

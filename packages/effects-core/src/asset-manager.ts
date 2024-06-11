@@ -249,7 +249,7 @@ export class AssetManager implements Disposable {
     await pluginSystem?.precompile(compositions, renderer, options);
 
     await new Promise(resolve => {
-      shaderLibrary!.compileAllShaders(() => {
+      shaderLibrary?.compileAllShaders(() => {
         resolve(null);
       });
     });

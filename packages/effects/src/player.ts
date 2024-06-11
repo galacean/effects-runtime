@@ -506,7 +506,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       composition.pause();
     }
 
-    const firstFrameTime = (performance.now() - last) + composition.statistic.loadTime;
+    const firstFrameTime = performance.now() - last + composition.statistic.loadTime;
 
     composition.statistic.firstFrameTime = firstFrameTime;
     logger.info(`first frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms`);

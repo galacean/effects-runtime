@@ -836,7 +836,7 @@ export class ParticleSystem extends Component {
     }
   };
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     super.fromData(data);
     const props = data as ParticleSystemProps;
 

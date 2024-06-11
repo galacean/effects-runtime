@@ -434,7 +434,6 @@ export class Composition implements Disposable, LostHandler {
     });
     // TODO 考虑放到构造函数
     this.renderFrame.cachedTextures = this.textures;
-
   }
 
   /**

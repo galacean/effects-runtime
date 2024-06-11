@@ -44,7 +44,7 @@ export abstract class Component extends EffectsObject {
  */
 export abstract class Behaviour extends Component {
   @serialize()
-  _enabled = true;
+  private _enabled = true;
 
   /**
    * 组件是否可以更新，true 更新，false 不更新
@@ -65,7 +65,7 @@ export abstract class Behaviour extends Component {
 
   protected onBehaviourEnable () { }
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     super.fromData(data);
   }
 

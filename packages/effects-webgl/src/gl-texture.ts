@@ -191,7 +191,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     // gl的状态可能在外面被改变了，这里必须重新设置
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, source.flipY);
 
-    // 根据不同的 TextureSourceType 传输对应贴图数据到GPU。
+    // 根据不同的 TextureSourceType 传输对应贴图数据到 GPU
     if (sourceType === TextureSourceType.framebuffer) {
       if (optionsData) {
         width = optionsData.width ?? 0;
@@ -214,7 +214,10 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       } else {
         [width, height] = this.texImage2DData(gl, target, 0, internalFormat, format, type, data);
       }
-    } else if (sourceType === TextureSourceType.image || sourceType === TextureSourceType.video) {
+    } else if (
+      sourceType === TextureSourceType.image ||
+      sourceType === TextureSourceType.video
+    ) {
       if (target === gl.TEXTURE_CUBE_MAP) {
         cube.forEach((image, key) => {
           const [x, y] = this.texImage2D(gl, gl.TEXTURE_CUBE_MAP_POSITIVE_X + key, 0, internalFormat, format, type, image as HTMLImageElement);
@@ -293,8 +296,8 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       gpuCapability.setTextureAnisotropic(gl, this.target, anisotropic);
     }
     const isPot = isWebGL2(gl) || (isPowerOfTwo(this.width) && isPowerOfTwo(this.height));
-    let minFilter = options.minFilter ? options.minFilter : gl.NEAREST;
     const magFilter = options.magFilter ? options.magFilter : gl.NEAREST;
+    let minFilter = options.minFilter ? options.minFilter : gl.NEAREST;
 
     if (!isPot) {
       if (

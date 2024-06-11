@@ -69,7 +69,7 @@ export class RendererComponent extends Component {
     this.item.rendererComponents.push(this);
   }
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     super.fromData(data);
   }
 

@@ -69,7 +69,7 @@ export class SpineComponent extends RendererComponent {
     super(engine);
   }
 
-  override fromData (options: any) {
+  override fromData (options: spec.SpineContent) {
     super.fromData(options);
 
     this.options = options;

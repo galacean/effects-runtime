@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import { DEG2RAD, Vector3 } from '@galacean/effects-math/es/core/index';
-import { random } from '../utils';
+import { randomInRange } from '../utils';
 import { getArcAngle } from './cone';
 import type { Shape, ShapeGeneratorOptions, ShapeParticle } from './shape';
 
@@ -37,8 +37,8 @@ export class Rectangle implements Shape {
   }
 
   generate (opt: ShapeGeneratorOptions): ShapeParticle {
-    const x = random(-this._d, this._d);
-    const y = random(-this._h, this._h);
+    const x = randomInRange(-this._d, this._d);
+    const y = randomInRange(-this._h, this._h);
 
     return {
       direction: new Vector3(0, 0, 1),
@@ -104,7 +104,7 @@ export class Edge implements Shape {
   }
 
   generate (options: ShapeGeneratorOptions): ShapeParticle {
-    const x = this.arcMode === spec.ShapeArcMode.UNIFORM_BURST ? ((options.burstIndex % options.burstCount) / (options.burstCount - 1)) : random(0, 1);
+    const x = this.arcMode === spec.ShapeArcMode.UNIFORM_BURST ? ((options.burstIndex % options.burstCount) / (options.burstCount - 1)) : randomInRange(0, 1);
 
     return {
       direction: new Vector3(0, 1, 0),
