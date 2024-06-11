@@ -507,7 +507,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-    this.renderOrder = listIndex;
     //@ts-expect-error
     this.oldId = data.oldId;
 
@@ -531,6 +530,8 @@ export class VFXItem extends EffectsObject implements Disposable {
         }
       }
     }
+    // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
+    this.renderOrder = listIndex;
   }
 
   override toData (): void {
