@@ -306,6 +306,6 @@ export class SerializedObject {
   }
 
   applyModifiedProperties () {
-    SerializationHelper.deserializeTaggedProperties(this.serializedData, this.target);
+    SerializationHelper.deserializeTaggedProperties(this.serializedData as spec.EffectsObjectData, this.target);
   }
 }

@@ -3,13 +3,6 @@ import { angleLimit, type AngleType } from './utils/angle-limit';
 import { isIOS, isMiniProgram } from './utils/device';
 import { Filtering } from './utils/filtering';
 
-declare global {
-  interface Window {
-    AlipayJSBridge: any,
-    WindVane: any,
-  }
-}
-
 type JSBridgeParam = {
   x: number,
   y: number,

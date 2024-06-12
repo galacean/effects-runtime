@@ -18,7 +18,6 @@ class CanvasPool {
       return this.elements.shift()!;
     }
     if (getConfig(TEMPLATE_USE_OFFSCREEN_CANVAS)) {
-      // @ts-expect-error
       return window._createOffscreenCanvas(10, 10);
     } else {
       // in hongmeng system, create too many canvas will case render error

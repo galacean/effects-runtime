@@ -5,6 +5,7 @@ import { VFXItem } from '../../vfx-item';
 import type { PlayableGraph } from '../cal/playable-graph';
 import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
 import { ParticleSystem } from '../particle/particle-system';
+
 /**
  * @since 2.0.0
  * @internal
@@ -18,7 +19,6 @@ export class TimelineClip {
   endBehaviour: ItemEndBehavior;
 
   constructor () {
-
   }
 
   toLocalTime (time: number) {
@@ -48,8 +48,10 @@ export class TrackAsset extends PlayableAsset {
 
   trackType = TrackType.MasterTrack;
   private clipSeed = 0;
+
   @serialize(TimelineClip)
   private clips: TimelineClip[] = [];
+
   @serialize()
   protected children: TrackAsset[] = [];
 

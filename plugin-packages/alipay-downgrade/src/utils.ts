@@ -1,12 +1,6 @@
 import type { SceneRenderLevel } from '@galacean/effects';
 import { spec, isString, getActivePlayers, logger, isAlipayMiniApp } from '@galacean/effects';
 
-declare global {
-  interface Window {
-    AlipayJSBridge: any,
-  }
-}
-
 export interface DowngradeOptions {
   /**
    * 禁用压后台的时候自动暂停播放器
@@ -74,7 +68,6 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
     return Promise.resolve({ mock: { downgrade: bizId === mockIdFail } });
   }
 
-  //@ts-expect-error
   const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
   if (ap) {
@@ -129,7 +122,6 @@ function registerEvent (options: DowngradeOptions) {
 
 async function getSystemInfo (): Promise<SystemInfo> {
   return new Promise((resolve, reject) => {
-    // @ts-expect-error
     const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
     if (ap) {

@@ -1,4 +1,5 @@
-export type ClassConstructor = new () => Object;
+export type ClassConstructor = new () => any;
+
 type PropertyDescriptor = { type?: ClassConstructor, sourceName?: string };
 type SerializableMemberStoreType = Record<string, Record<string | symbol, PropertyDescriptor>>;
 
