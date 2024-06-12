@@ -1,5 +1,5 @@
-type SerializableMemberType = { type?: string, sourceName?: string };
-type SerializableMemberStoreType = Record<string, Record<string | symbol, SerializableMemberType>>;
+type PropertyDescriptor = { type?: string, sourceName?: string };
+type SerializableMemberStoreType = Record<string, Record<string | symbol, PropertyDescriptor>>;
 
 const decoratorInitialStore: SerializableMemberStoreType = {};
 const mergedStore: SerializableMemberStoreType = {};
