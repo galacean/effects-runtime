@@ -56,7 +56,7 @@ export class LoaderECSImpl implements LoaderECS {
           fov: 45,
           far: 2000,
           near: 0.001,
-          position: [0, 0, 10],
+          position: [0, 0, 8],
           rotation: [0, 0, 0],
           clipMode: spec.CameraClipMode.portrait,
         },
@@ -549,9 +549,15 @@ export class LoaderECSImpl implements LoaderECS {
     const { imageList, textureOptionsList, component } = skyboxInfo;
 
     component.item.id = itemId;
-    component.intensity = skybox.intensity ?? 1;
-    component.reflectionsIntensity = skybox.reflectionsIntensity ?? 1;
-    component.renderable = skybox.renderable ?? true;
+    if (skybox.intensity !== undefined) {
+      component.intensity = skybox.intensity;
+    }
+    if (skybox.reflectionsIntensity !== undefined) {
+      component.reflectionsIntensity = skybox.reflectionsIntensity;
+    }
+    if (skybox.renderable !== undefined) {
+      component.renderable = skybox.renderable;
+    }
 
     const item: spec.VFXItemData = {
       id: itemId,
