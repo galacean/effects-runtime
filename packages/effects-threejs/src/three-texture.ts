@@ -133,6 +133,17 @@ export class ThreeTexture extends Texture {
     this.texture.dispose();
   }
 
+  /**
+   * 通过图层设置创建贴图
+   * @param data - 图层设置
+   */
+  override fromData (data: any): void {
+    super.fromData(data);
+
+    this.texture = this.createTextureByType(data);
+    this.texture.needsUpdate = true;
+  }
+
   private createTextureByType (options: TextureSourceOptions): THREE.Texture {
     const assembleOptions = this.assembleOptions(options);
     // TODO renderer.getMaxAnisotropy() 查询最大各向异性
