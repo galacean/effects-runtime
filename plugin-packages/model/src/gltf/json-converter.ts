@@ -24,13 +24,7 @@ export class JSONConverter {
   }
 
   async processScene (sceneData: string | Record<string | symbol, unknown>) {
-    let sceneJSON;
-
-    if (isObject(sceneData)) {
-      sceneJSON = sceneData;
-    } else {
-      sceneJSON = await this.loadJSON(sceneData);
-    }
+    const sceneJSON = isObject(sceneData) ? sceneData : await this.loadJSON(sceneData);
 
     // @ts-expect-error
     sceneJSON.textures.forEach(tex => {

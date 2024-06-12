@@ -27,11 +27,11 @@ export class SerializationHelper {
       }
 
       if (EffectsObject.is(value)) {
-        this.collectSerializableObject(value, res);
+        SerializationHelper.collectSerializableObject(value, res);
       } else if (isArray(value)) {
         for (const arrayValue of value) {
           if (EffectsObject.is(arrayValue)) {
-            this.collectSerializableObject(arrayValue, res);
+            SerializationHelper.collectSerializableObject(arrayValue, res);
           }
         }
       } else if (isObject(value)) {
@@ -40,7 +40,7 @@ export class SerializationHelper {
           const objectValue = value[objectKey];
 
           if (EffectsObject.is(objectValue)) {
-            this.collectSerializableObject(objectValue, res);
+            SerializationHelper.collectSerializableObject(objectValue, res);
           }
         }
       }
@@ -240,7 +240,7 @@ export class SerializationHelper {
     return isCanvas(value) || value instanceof HTMLImageElement;
   }
 
-  private static deserializeProperty<T extends T[] | Object> (
+  private static deserializeProperty<T extends T[] | Record<string, unknown>> (
     property: T,
     engine: Engine,
     level: number,
@@ -284,12 +284,12 @@ export class SerializationHelper {
     }
   }
 
-  private static async deserializePropertyAsync<T extends T[] | Object> (
+  private static async deserializePropertyAsync<T extends T[] | Record<string, T>> (
     property: T,
     engine: Engine,
     level: number,
     type?: string,
-  ): Promise<any> {
+  ): Promise<unknown> {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -309,7 +309,7 @@ export class SerializationHelper {
 
       return res;
     } else if (isObject(property) && property.constructor === Object) {
-      let res: Object;
+      let res: Record<string, unknown>;
 
       if (type) {
         const classConstructor = effectsClassStore[type];
@@ -319,7 +319,6 @@ export class SerializationHelper {
         res = {};
       }
       for (const key of Object.keys(property)) {
-        // @ts-expect-error
         res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
       }
 
