@@ -652,9 +652,14 @@ export default {
     name: '秋促2023',
     pass: true,
   },
+  dynamicImage: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*PubBSpHUbjYAAAAAAAAAAAAADlB4AQ',
+    name: '动态换图',
+    pass: true,
+  },
   video: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/84302854399924/video.json',
-    name: '视频',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*kENFRbxlKcUAAAAAAAAAAAAADlB4AQ',
+    name: '动态视频',
     pass: true,
   },
   compressed: {
