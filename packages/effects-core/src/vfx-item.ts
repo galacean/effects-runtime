@@ -4,11 +4,11 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import type { Component } from './components';
-import { RendererComponent, EffectComponent, ItemBehaviour } from './components';
+import type { Component, RendererComponent, ItemBehaviour } from './components';
+import { EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
-import { effectsClass } from './decorators';
+import { effectsClass, serialize } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type {
@@ -93,6 +93,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   type: spec.ItemType = spec.ItemType.base;
   props: VFXItemProps;
 
+  @serialize()
   components: Component[] = [];
   itemBehaviours: ItemBehaviour[] = [];
   rendererComponents: RendererComponent[] = [];
@@ -518,17 +519,8 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
     }
 
-    if (data.components) {
-      for (const component of data.components) {
-        const newComponent = component as unknown as Component;
-
-        this.components.push(newComponent);
-        if (newComponent instanceof RendererComponent) {
-          this.rendererComponents.push(newComponent);
-        } else if (newComponent instanceof ItemBehaviour) {
-          this.itemBehaviours.push(newComponent);
-        }
-      }
+    for (const component of this.components) {
+      component.onAttached();
     }
     // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
     this.renderOrder = listIndex;

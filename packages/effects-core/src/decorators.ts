@@ -1,4 +1,6 @@
-type PropertyDescriptor = { type?: string, sourceName?: string };
+export type ClassConstructor = new () => any;
+
+type PropertyDescriptor = { type?: ClassConstructor, sourceName?: string };
 type SerializableMemberStoreType = Record<string, Record<string | symbol, PropertyDescriptor>>;
 
 const decoratorInitialStore: SerializableMemberStoreType = {};
@@ -16,7 +18,7 @@ export function effectsClass (className: string) {
   };
 }
 
-export function serialize (type?: string, sourceName?: string) {
+export function serialize (type?: ClassConstructor, sourceName?: string) {
   return generateSerializableMember(type, sourceName); // value member
 }
 
@@ -52,7 +54,7 @@ export function getMergedStore (target: Object): Record<string, any> {
   return store;
 }
 
-function generateSerializableMember (type?: string, sourceName?: string) {
+function generateSerializableMember (type?: ClassConstructor, sourceName?: string) {
   return (target: Object, propertyKey: string | symbol) => {
     const classStore = getDirectStore(target);
 

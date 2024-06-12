@@ -1,5 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
-import { effectsClassStore, getMergedStore } from './decorators';
+import type { ClassConstructor } from './decorators';
+import { getMergedStore } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { isArray, isCanvas, isObject, isString } from './utils';
@@ -144,7 +145,7 @@ export class SerializationHelper {
   }
 
   static deserializeTaggedProperties (
-    serializedData: Record<string, any>,
+    serializedData: spec.EffectsObjectData,
     effectsObject: EffectsObject,
   ) {
     const taggedProperties = effectsObject.taggedProperties;
@@ -155,12 +156,12 @@ export class SerializationHelper {
       if (serializedProperties[key]) {
         continue;
       }
-      const value = serializedData[key];
+      const value = serializedData[key as keyof spec.EffectsObjectData];
 
       taggedProperties[key] = SerializationHelper.deserializeProperty(value, engine, 0);
     }
     for (const key of Object.keys(serializedProperties)) {
-      const value = serializedData[key];
+      const value = serializedData[key as keyof spec.EffectsObjectData];
 
       if (value === undefined) {
         continue;
@@ -176,7 +177,7 @@ export class SerializationHelper {
   }
 
   static async deserializeTaggedPropertiesAsync (
-    serializedData: Record<string, any>,
+    serializedData: spec.EffectsObjectData,
     effectsObject: EffectsObject,
   ) {
     const taggedProperties = effectsObject.taggedProperties;
@@ -187,12 +188,12 @@ export class SerializationHelper {
       if (serializedProperties[key]) {
         continue;
       }
-      const value = serializedData[key];
+      const value = serializedData[key as keyof spec.EffectsObjectData];
 
       taggedProperties[key] = await SerializationHelper.deserializePropertyAsync(value, engine, 0);
     }
     for (const key of Object.keys(serializedProperties)) {
-      const value = serializedData[key];
+      const value = serializedData[key as keyof spec.EffectsObjectData];
 
       if (value === undefined) {
         continue;
@@ -240,11 +241,11 @@ export class SerializationHelper {
     return isCanvas(value) || value instanceof HTMLImageElement;
   }
 
-  private static deserializeProperty<T extends T[] | Record<string, unknown>> (
+  private static deserializeProperty<T> (
     property: T,
     engine: Engine,
     level: number,
-    type?: string,
+    type?: ClassConstructor,
   ): any {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
@@ -264,17 +265,14 @@ export class SerializationHelper {
     } else if (SerializationHelper.checkDataPath(property)) {
       return engine.assetLoader.loadGUID(property.id);
     } else if (isObject(property) && property.constructor === Object) {
-      let res: Object;
+      let res: Record<string, EffectsObject>;
 
       if (type) {
-        const classConstructor = effectsClassStore[type];
-
-        res = new classConstructor();
+        res = new type();
       } else {
         res = {};
       }
       for (const key of Object.keys(property)) {
-        // @ts-expect-error
         res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
       }
 
@@ -284,11 +282,11 @@ export class SerializationHelper {
     }
   }
 
-  private static async deserializePropertyAsync<T extends T[] | Record<string, T>> (
+  private static async deserializePropertyAsync<T> (
     property: T,
     engine: Engine,
     level: number,
-    type?: string,
+    type?: ClassConstructor,
   ): Promise<unknown> {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
@@ -312,9 +310,7 @@ export class SerializationHelper {
       let res: Record<string, unknown>;
 
       if (type) {
-        const classConstructor = effectsClassStore[type];
-
-        res = new classConstructor();
+        res = new type();
       } else {
         res = {};
       }

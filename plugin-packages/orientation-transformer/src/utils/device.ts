@@ -10,11 +10,9 @@ export function isMiniProgram () {
 }
 
 export function isAlipayMiniApp () {
-  //@ts-expect-error
   return typeof my !== 'undefined' && my?.renderTarget === 'web';
 }
 
 export function isWechatMiniApp () {
-  //@ts-expect-error
   return window.__wxjs_environment === 'miniprogram';
 }

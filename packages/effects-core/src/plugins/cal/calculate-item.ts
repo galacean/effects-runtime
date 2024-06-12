@@ -32,7 +32,6 @@ export type ItemLinearVelOverLifetime = {
  */
 @effectsClass('ObjectBindingTrack')
 export class ObjectBindingTrack extends TrackAsset {
-  data: spec.EffectsObjectData;
 
   create (timelineAsset: TimelineAsset): void {
     const boundItem = this.binding as VFXItem;
@@ -48,10 +47,5 @@ export class ObjectBindingTrack extends TrackAsset {
       particleClip.duration = boundItem.duration;
       particleClip.endBehaviour = boundItem.endBehavior as spec.ItemEndBehavior;
     }
-  }
-
-  override fromData (data: spec.EffectsObjectData): void {
-    super.fromData(data);
-    this.data = data;
   }
 }

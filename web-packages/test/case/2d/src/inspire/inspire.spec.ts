@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats, getWebGLVersionFromURL } from '../common';
 import sceneList from './scene-list';
+import '@galacean/effects-plugin-orientation-transformer';
 
 const { expect } = chai;
 /**
