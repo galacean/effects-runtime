@@ -107,7 +107,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素动画的速度
    */
   private speed = 1;
-  private listIndex: number;
+  private listIndex = 0;
 
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
