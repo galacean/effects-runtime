@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import { DEG2RAD, Vector3 } from '@galacean/effects-math/es/core/index';
-import { random } from '../utils';
+import { randomInRange } from '../utils';
 import type { Shape, ShapeGeneratorOptions, ShapeParticle } from './index';
 
 export class Cone implements Shape {
@@ -29,7 +29,7 @@ export class Cone implements Shape {
     dir.z += 1;
 
     return {
-      position: position.multiply(random(0, 1)),
+      position: position.multiply(randomInRange(0, 1)),
       direction: dir.normalize(),
     };
   }
@@ -37,7 +37,7 @@ export class Cone implements Shape {
 
 export function getArcAngle (arc: number, arcMode: spec.ShapeArcMode, opt: ShapeGeneratorOptions): number {
   if (arcMode === spec.ShapeArcMode.RANDOM) {
-    arc = random(0, arc);
+    arc = randomInRange(0, arc);
   } else if (arcMode === spec.ShapeArcMode.UNIDIRECTIONAL_CYCLE) {
     const d = opt.index % (opt.total + 1);
 

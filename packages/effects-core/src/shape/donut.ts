@@ -1,5 +1,5 @@
 import { DEG2RAD, Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
-import { random } from '../utils';
+import { randomInRange } from '../utils';
 import { getArcAngle } from './cone';
 import type { Shape, ShapeGeneratorOptions, ShapeParticle } from './shape';
 
@@ -20,7 +20,7 @@ export class Donut implements Shape {
   generate (opt: ShapeGeneratorOptions): ShapeParticle {
     const dradius = this.donutRadius;
     const center = this.radius - dradius;
-    const angle = random(0, Math.PI * 2);
+    const angle = randomInRange(0, Math.PI * 2);
     const arc = getArcAngle(this.arc, this.arcMode, opt) * DEG2RAD;
     const rot = tempMat4.setFromRotationZ(arc);
     const direction = new Vector3(Math.cos(angle), Math.sin(angle), 0);

@@ -77,9 +77,7 @@ export class GLGPUBuffer implements Disposable {
   private createGLBuffer (name?: string): WebGLBuffer | null {
     const buffer = this.pipelineContext.gl.createBuffer();
 
-    if (buffer) {
-      assignInspectorName(buffer, name);
-    }
+    assignInspectorName(buffer, name);
 
     return buffer;
   }

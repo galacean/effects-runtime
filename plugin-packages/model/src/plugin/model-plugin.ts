@@ -273,10 +273,10 @@ export class ModelPluginComponent extends ItemBehaviour {
    * 反序列化，创建场景管理器
    * @param date - 组件参数
    */
-  override fromData (data: any): void {
+  override fromData (data: ModelPluginOptions): void {
     super.fromData(data);
     //
-    const options = data as ModelPluginOptions;
+    const options = data;
 
     this.cache = options.cache;
     this.scene = new PSceneManager(this.engine);

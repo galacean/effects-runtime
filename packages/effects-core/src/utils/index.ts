@@ -1,4 +1,3 @@
-import type * as spec from '@galacean/effects-specification';
 import { v4 as uuidv4 } from 'uuid';
 
 export * from './array';
@@ -47,10 +46,10 @@ export function noop () {
  *
  * @static
  * @function isString
- * @param {object} obj - 要判断的对象
- * @return {boolean}
+ * @param obj - 要判断的对象
+ * @return
  */
-export function isString (obj: any): obj is string {
+export function isString (obj: unknown): obj is string {
   return typeof obj === 'string';
 }
 
@@ -59,8 +58,8 @@ export function isString (obj: any): obj is string {
  *
  * @static
  * @function isArray
- * @param {object} obj - 要判断的对象
- * @return {boolean}
+ * @param obj - 要判断的对象
+ * @return
  */
 export const isArray = (Array.isArray || function (obj) {
   return Object.prototype.toString.call(obj) === '[object Array]';
@@ -71,10 +70,10 @@ export const isArray = (Array.isArray || function (obj) {
  *
  * @static
  * @function isFunction
- * @param {object} obj - 要判断的对象
- * @return {boolean}
+ * @param obj - 要判断的对象
+ * @return
  */
-export function isFunction (obj: any) {
+export function isFunction (obj: unknown) {
   return Object.prototype.toString.call(obj) === '[object Function]';
 }
 
@@ -83,10 +82,10 @@ export function isFunction (obj: any) {
  *
  * @static
  * @function isObject
- * @param {object} obj - 要判断的对象
- * @return {boolean}
+ * @param obj - 要判断的对象
+ * @return
  */
-export function isObject (obj: any) {
+export function isObject (obj: unknown): obj is Record<string | symbol, unknown> {
   return Object.prototype.toString.call(obj) === '[object Object]';
 }
 
@@ -95,30 +94,13 @@ export function isCanvas (canvas: HTMLCanvasElement) {
   return typeof canvas === 'object' && canvas !== null && canvas.tagName?.toUpperCase() === 'CANVAS';
 }
 
-export function deepClone (obj: any): any {
-  if (isArray(obj)) {
-    return obj.map(deepClone);
-  } else if (obj && typeof obj === 'object') {
-    if (ArrayBuffer.isView(obj)) {
-      return (obj as spec.TypedArray).slice();
-    }
-    const ret: Record<string, any> = {};
-    const kas = Object.keys(obj);
-
-    for (let i = 0; i < kas.length; i++) {
-      const key = kas[i];
-
-      ret[key] = deepClone(obj[key]);
-    }
-
-    return ret;
-  }
-
-  return obj;
-}
-
-// TODO: 改名
-export function random (min: number, max: number) {
+/**
+ * 生成一个位于 min 和 max 之间的随机数
+ * @param min
+ * @param max
+ * @returns
+ */
+export function randomInRange (min: number, max: number) {
   return min + Math.random() * (max - min);
 }
 

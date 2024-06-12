@@ -104,7 +104,7 @@ export class GLRenderer extends Renderer implements Disposable {
     if (this.isDestroyed) {
       return console.error('renderer is destroyed', this);
     }
-    frame.renderer.getShaderLibrary()!.compileAllShaders();
+    frame.renderer.getShaderLibrary()?.compileAllShaders();
     this.setFramebuffer(null);
     this.clear(frame.clearAction);
 

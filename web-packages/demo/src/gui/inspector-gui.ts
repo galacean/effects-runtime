@@ -50,8 +50,11 @@ export class InspectorGui {
       this.guiControllers.push(positionFolder.add(transformData.position, 'y').name('y').step(0.03).onChange(() => { transform.fromData(transformData); }));
       this.guiControllers.push(positionFolder.add(transformData.position, 'z').name('z').step(0.03).onChange(() => { transform.fromData(transformData); }));
 
+      // @ts-expect-error
       this.guiControllers.push(rotationFolder.add(transformData.rotation, 'x').name('x').step(0.03).onChange(() => { transform.fromData(transformData); }));
+      // @ts-expect-error
       this.guiControllers.push(rotationFolder.add(transformData.rotation, 'y').name('y').step(0.03).onChange(() => { transform.fromData(transformData); }));
+      // @ts-expect-error
       this.guiControllers.push(rotationFolder.add(transformData.rotation, 'z').name('z').step(0.03).onChange(() => { transform.fromData(transformData); }));
 
       this.guiControllers.push(scaleFolder.add(transformData.scale, 'x').name('x').step(0.03).onChange(() => { transform.fromData(transformData); }));

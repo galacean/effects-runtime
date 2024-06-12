@@ -51,7 +51,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
   const result: JSONScene = {
     ...json,
     items: [],
-    compositions:[],
+    compositions: [],
     components: [],
     materials: [],
     shaders: [],
@@ -155,8 +155,8 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
     const compositionData: CompositionData = {
       ...composition,
-      timelineAsset:{ id:'' },
-      sceneBindings:[],
+      timelineAsset: { id: '' },
+      sceneBindings: [],
     };
 
     result.compositions.push(compositionData);

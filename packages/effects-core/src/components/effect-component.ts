@@ -136,7 +136,7 @@ export class EffectComponent extends RendererComponent {
     };
   }
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     super.fromData(data);
     this.material = this.materials[0];
   }

@@ -8,6 +8,10 @@ import { serialize } from './decorators';
  * @internal
  */
 export abstract class EffectsObject {
+  static is (obj: unknown): obj is EffectsObject {
+    return obj instanceof EffectsObject && 'guid' in obj;
+  }
+
   @serialize()
   protected guid: string;
   /**

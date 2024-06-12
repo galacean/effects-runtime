@@ -483,7 +483,7 @@ export class ThreeMaterial extends Material {
     throw new Error('Method not implemented.');
   }
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     //FIXME: 暂时不实现
     throw new Error('Method not implemented.');
   }
