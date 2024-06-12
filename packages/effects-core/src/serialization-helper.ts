@@ -1,5 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
-import { effectsClassStore, getMergedStore } from './decorators';
+import type { ClassConstructor } from './decorators';
+import { getMergedStore } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import { isArray, isCanvas, isObject, isString } from './utils';
@@ -244,7 +245,7 @@ export class SerializationHelper {
     property: T,
     engine: Engine,
     level: number,
-    type?: string,
+    type?: ClassConstructor,
   ): any {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
@@ -267,9 +268,7 @@ export class SerializationHelper {
       let res: Object;
 
       if (type) {
-        const classConstructor = effectsClassStore[type];
-
-        res = new classConstructor();
+        res = new type();
       } else {
         res = {};
       }
@@ -288,7 +287,7 @@ export class SerializationHelper {
     property: T,
     engine: Engine,
     level: number,
-    type?: string,
+    type?: ClassConstructor,
   ): Promise<unknown> {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
@@ -309,16 +308,15 @@ export class SerializationHelper {
 
       return res;
     } else if (isObject(property) && property.constructor === Object) {
-      let res: Record<string, unknown>;
+      let res: Object;
 
       if (type) {
-        const classConstructor = effectsClassStore[type];
-
-        res = new classConstructor();
+        res = new type();
       } else {
         res = {};
       }
       for (const key of Object.keys(property)) {
+        // @ts-expect-error
         res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
       }
 
