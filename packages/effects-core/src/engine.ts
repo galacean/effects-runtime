@@ -77,7 +77,7 @@ export class Engine implements Disposable {
     const { jsonScene, textureOptions = [] } = scene;
     const {
       items = [], materials = [], shaders = [], geometries = [], components = [],
-      animations = [], bins = [],
+      animations = [], bins = [], miscs = [],
     } = jsonScene;
 
     for (const vfxItemData of items) {
@@ -97,6 +97,9 @@ export class Engine implements Disposable {
     }
     for (const animationData of animations) {
       this.addEffectsObjectData(animationData);
+    }
+    for (const miscData of miscs) {
+      this.addEffectsObjectData(miscData);
     }
     for (let i = 0; i < bins.length; i++) {
       const binaryData = bins[i];

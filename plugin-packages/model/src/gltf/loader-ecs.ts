@@ -432,6 +432,7 @@ export class LoaderECSImpl implements LoaderECS {
       shaders: this.shaders,
       geometries: this.geometries,
       animations: this.animations,
+      miscs:[],
     };
 
     return {
