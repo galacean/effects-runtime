@@ -1,8 +1,8 @@
 import type {
   MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
-  GlobalUniforms, Renderer, ShaderMarcos,
+  GlobalUniforms, Renderer, ShaderMacros,
 } from '@galacean/effects-core';
-import { Material, ShaderType, createShaderWithMarcos, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
+import { Material, ShaderType, createShaderWithMacros, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
 import {
@@ -59,8 +59,8 @@ export class ThreeMaterial extends Material {
     this.uniforms['effects_MatrixV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
 
     this.material = new THREE.RawShaderMaterial({
-      vertexShader: createShaderWithMarcos(shader!.marcos as ShaderMarcos, shader!.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
-      fragmentShader: createShaderWithMarcos(shader!.marcos as ShaderMarcos, shader!.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
+      vertexShader: createShaderWithMacros(shader!.macros as ShaderMacros, shader!.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
+      fragmentShader: createShaderWithMacros(shader!.macros as ShaderMacros, shader!.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
       alphaToCoverage: false,
       depthFunc: THREE.LessDepth,
       polygonOffsetFactor: THREE.ZeroFactor,

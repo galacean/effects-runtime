@@ -1,6 +1,6 @@
 import type { BlendMode } from '@esotericsoftware/spine-core';
 import type {
-  Attribute, Disposable, Engine, ShaderMarcos, SharedShaderWithSource, Texture,
+  Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture,
 } from '@galacean/effects';
 import {
   GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, math, setMaskMode,
@@ -166,7 +166,7 @@ export class SpineMesh implements Disposable {
 
 export function createShader (engine: Engine): SharedShaderWithSource {
   const env = engine.renderer.env;
-  const marcos: ShaderMarcos = [
+  const macros: ShaderMacros = [
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];
 
@@ -174,7 +174,7 @@ export function createShader (engine: Engine): SharedShaderWithSource {
     fragment: fs,
     vertex: vs,
     glslVersion: GLSLVersion.GLSL1,
-    marcos,
+    macros,
     shared: true,
   };
 }

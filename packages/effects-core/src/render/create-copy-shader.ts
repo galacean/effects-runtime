@@ -58,7 +58,7 @@ export function createCopyShader (level: number, writeDepth?: boolean): SharedSh
     vertex: version + '\n' + COPY_VERTEX_SHADER,
     fragment: version + '\n' + COPY_FRAGMENT_SHADER,
     glslVersion: webgl2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-    marcos: [
+    macros: [
       ['WEBGL2', !!webgl2],
       ['DEPTH_TEXTURE', !!writeDepth],
     ],

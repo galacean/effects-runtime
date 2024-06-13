@@ -1,7 +1,7 @@
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { GPUCapabilityDetail, ShaderMarcos, SharedShaderWithSource } from '../../render';
+import type { GPUCapabilityDetail, ShaderMacros, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
 import type { Transform } from '../../transform';
@@ -57,7 +57,7 @@ export function spriteMeshShaderFromFilter (
   options?: { wireframe?: boolean, env?: string },
 ): SharedShaderWithSource {
   const { env = '', wireframe } = options ?? {};
-  const marcos: ShaderMarcos = [
+  const macros: ShaderMacros = [
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];
   const fragment = wireframe ? itemFrameFrag : itemFrag;
@@ -67,7 +67,7 @@ export function spriteMeshShaderFromFilter (
     fragment,
     vertex,
     glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
-    marcos,
+    macros,
     shared: true,
   };
 }

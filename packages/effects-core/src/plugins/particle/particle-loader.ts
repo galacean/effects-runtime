@@ -1,6 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
-import { createShaderWithMarcos, ShaderType } from '../../material';
+import { createShaderWithMacros, ShaderType } from '../../material';
 import type { Renderer, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { Item } from '../../vfx-item';
@@ -32,7 +32,7 @@ export class ParticleLoader extends AbstractPlugin {
     });
 
     items.forEach(item => {
-      const { shader, fragment, vertex } = getParticleMeshShader(item, env, gpuCapability);
+      const { shader, fragment, vertex } = getParticleMeshShader(item, gpuCapability, env);
 
       shaders.push(shader);
       maxFragmentCount = Math.max(maxFragmentCount, fragment);
@@ -40,10 +40,10 @@ export class ParticleLoader extends AbstractPlugin {
 
       // TODO 此处add是否有意义？shader变量似乎没有加到this.shaders数组。
       if (item.content.trails) {
-        const shader = getTrailMeshShader(item.content.trails, item.content.options.maxCount, item.name, env, gpuCapability);
+        const shader = getTrailMeshShader(item.content.trails, item.content.options.maxCount, item.name, gpuCapability, env);
 
-        shader.vertex = createShaderWithMarcos(shader.marcos ?? [], shader.vertex, ShaderType.vertex, level);
-        shader.fragment = createShaderWithMarcos(shader.marcos ?? [], shader.fragment, ShaderType.fragment, level);
+        shader.vertex = createShaderWithMacros(shader.macros ?? [], shader.vertex, ShaderType.vertex, level);
+        shader.fragment = createShaderWithMacros(shader.macros ?? [], shader.fragment, ShaderType.fragment, level);
         shader.glslVersion = level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1;
         shaderLibrary.addShader(shader);
       }
@@ -55,8 +55,8 @@ export class ParticleLoader extends AbstractPlugin {
       } else {
         shader.glslVersion = GLSLVersion.GLSL1;
       }
-      shader.vertex = createShaderWithMarcos(shader.marcos ?? [], shader.vertex, ShaderType.vertex, level);
-      shader.fragment = createShaderWithMarcos(shader.marcos ?? [], shader.fragment, ShaderType.fragment, level);
+      shader.vertex = createShaderWithMacros(shader.macros ?? [], shader.vertex, ShaderType.vertex, level);
+      shader.fragment = createShaderWithMacros(shader.macros ?? [], shader.fragment, ShaderType.fragment, level);
       shaderLibrary.addShader(shader);
     });
     if (level === 2) {
