@@ -26,17 +26,13 @@ export type SpriteRegionData = {
 };
 
 export let maxSpriteMeshItemCount = 8;
-export let maxSpriteTextureCount = 8;
 
 export function setSpriteMeshMaxItemCountByGPU (gpuCapability: GPUCapabilityDetail) {
-  // 8 or 16
-  maxSpriteTextureCount = Math.min(gpuCapability.maxFragmentTextures, 16);
   if (gpuCapability.maxVertexUniforms >= 256) {
     return maxSpriteMeshItemCount = 32;
   } else if (gpuCapability.maxVertexUniforms >= 128) {
     return maxSpriteMeshItemCount = 16;
   }
-  maxSpriteTextureCount = 8;
 }
 
 export function getImageItemRenderInfo (item: SpriteComponent): SpriteItemRenderInfo {
@@ -63,7 +59,6 @@ export function spriteMeshShaderFromFilter (
   const { env = '', wireframe } = options ?? {};
   const marcos: ShaderMarcos = [
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
-    ['MAX_FRAG_TEX', maxSpriteTextureCount >= 16 ? 16 : 8],
   ];
   const fragment = wireframe ? itemFrameFrag : itemFrag;
   const vertex = itemVert;
@@ -99,8 +94,4 @@ export function spriteMeshShaderFromRenderInfo (renderInfo: SpriteItemRenderInfo
 // TODO: 只有单测用
 export function setMaxSpriteMeshItemCount (count: number) {
   maxSpriteMeshItemCount = count;
-}
-
-export function setSpriteMeshMaxFragmentTextures (count: number) {
-  maxSpriteTextureCount = count;
 }
