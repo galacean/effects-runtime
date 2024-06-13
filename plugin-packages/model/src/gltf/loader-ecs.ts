@@ -1,5 +1,5 @@
-import { spec, generateGUID, glContext } from '@galacean/effects';
-import type { Texture, Engine, TextureSourceOptions } from '@galacean/effects';
+import { spec, generateGUID, glContext, addItem } from '@galacean/effects';
+import type { Texture, Engine, TextureSourceOptions, TextureCubeSourceOptionsImageMipmaps } from '@galacean/effects';
 import type {
   LoaderOptions, SkyboxType, LoadSceneOptions, LoadSceneECSResult, LoaderECS,
 } from './protocol';
@@ -14,7 +14,7 @@ import { LoaderHelper } from './loader-helper';
 import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
 import type {
   GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
-  GLTFCamera, GLTFAnimation, GLTFResources,
+  GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight,
 } from '@vvfx/resource-detection';
 import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 
@@ -30,6 +30,7 @@ export class LoaderECSImpl implements LoaderECS {
   private gltfTextures: GLTFTexture[] = [];
   private gltfMaterials: GLTFMaterial[] = [];
   private gltfAnimations: GLTFAnimation[] = [];
+  private gltfImageBasedLights: GLTFImageBasedLight[] = [];
 
   composition: spec.Composition;
   images: spec.Image[] = [];
@@ -90,12 +91,13 @@ export class LoaderECSImpl implements LoaderECS {
     this.gltfTextures = gltfResource.textures;
     this.gltfMaterials = gltfResource.materials;
     this.gltfAnimations = gltfResource.animations;
+    this.gltfImageBasedLights = gltfResource.imageBasedLights;
 
     this.images = this.gltfImages.map(gltfImage => {
       const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
 
       return {
-        id: generateGUID(),
+        id: gltfImage.id,
         url: URL.createObjectURL(blob),
       };
     });
@@ -105,13 +107,10 @@ export class LoaderECSImpl implements LoaderECS {
       const source = textureOptions.source;
 
       if (typeof source === 'number') {
-        const imageId = generateGUID();
-
         // @ts-expect-error
         textureOptions.source = {
-          id: imageId,
+          id: this.images[source].id,
         };
-        this.images[source].id = imageId;
       }
 
       return textureOptions;
@@ -146,12 +145,10 @@ export class LoaderECSImpl implements LoaderECS {
       }
     });
 
-    if (options.gltf.skyboxType) {
-      await this.addSkybox({
-        skyboxType: options.gltf.skyboxType,
-        renderable: options.gltf.skyboxVis,
-      });
-    }
+    await this.tryAddSkybox({
+      skyboxType: options.gltf.skyboxType,
+      renderable: options.gltf.skyboxVis,
+    });
 
     return this.getLoadResult();
   }
@@ -181,7 +178,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   processGLTFResource (resource: GLTFResources): void {
     const dataMap: Record<string, TextureSourceOptions> = {};
-    const { textures, materials, scenes } = resource;
+    const { textures, materials, scenes, imageBasedLights } = resource;
 
     textures.forEach(tex => {
       const texData = tex.textureOptions;
@@ -218,6 +215,33 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
+
+    const cubeTextures: TextureSourceOptions[] = [];
+
+    imageBasedLights.forEach(ibl => {
+      const data = ibl.imageBaseLightData;
+
+      if (data.diffuseImage) {
+        const diffuseTexture = dataMap[data.diffuseImage.id];
+
+        addItem(cubeTextures, diffuseTexture);
+      }
+      if (data.specularImage) {
+        const specularImage = dataMap[data.specularImage.id];
+
+        addItem(cubeTextures, specularImage);
+      }
+    });
+
+    cubeTextures.forEach(tex => {
+      if (tex.target === glContext.TEXTURE_CUBE_MAP) {
+        const cube = tex as TextureCubeSourceOptionsImageMipmaps;
+
+        cube.mipmaps.forEach(mipmap => {
+          [mipmap[4], mipmap[5]] = [mipmap[5], mipmap[4]];
+        });
+      }
+    });
   }
 
   processComponentData (components: spec.EffectComponentData[]): void {
@@ -543,57 +567,63 @@ export class LoaderECSImpl implements LoaderECS {
     this.components.push(component);
   }
 
-  async addSkybox (skybox: ModelSkybox) {
-    const itemId = generateGUID();
-    const skyboxInfo = this.createSkyboxComponentData(skybox.skyboxType as SkyboxType);
-    const { imageList, textureOptionsList, component } = skyboxInfo;
+  async tryAddSkybox (skybox: ModelSkybox) {
+    if (this.gltfImageBasedLights.length > 0 && !this.ignoreSkybox()) {
+      const ibl = this.gltfImageBasedLights[0];
 
-    component.item.id = itemId;
-    if (skybox.intensity !== undefined) {
-      component.intensity = skybox.intensity;
+      this.components.push(ibl.imageBaseLightData);
+    } else if (skybox.skyboxType !== undefined) {
+      const itemId = generateGUID();
+      const skyboxInfo = this.createSkyboxComponentData(skybox.skyboxType as SkyboxType);
+      const { imageList, textureOptionsList, component } = skyboxInfo;
+
+      component.item.id = itemId;
+      if (skybox.intensity !== undefined) {
+        component.intensity = skybox.intensity;
+      }
+      if (skybox.reflectionsIntensity !== undefined) {
+        component.reflectionsIntensity = skybox.reflectionsIntensity;
+      }
+      component.renderable = skybox.renderable ?? false;
+
+      const item: spec.VFXItemData = {
+        id: itemId,
+        name: `Skybox-${skybox.skyboxType}`,
+        duration: skybox.duration ?? 999,
+        type: spec.ItemType.skybox,
+        pn: 0,
+        visible: true,
+        endBehavior: spec.ItemEndBehavior.freeze,
+        transform: {
+          position: {
+            x: 0,
+            y: 0,
+            z: 0,
+          },
+          eulerHint: {
+            x: 0,
+            y: 0,
+            z: 0,
+          },
+          scale: {
+            x: 1,
+            y: 1,
+            z: 1,
+          },
+        },
+        components: [
+          { id: component.id },
+        ],
+        content: {},
+        dataType: spec.DataType.VFXItemData,
+      };
+
+      this.images.push(...imageList);
+      // @ts-expect-error
+      this.textures.push(...textureOptionsList);
+      this.items.push(item);
+      this.components.push(component);
     }
-    if (skybox.reflectionsIntensity !== undefined) {
-      component.reflectionsIntensity = skybox.reflectionsIntensity;
-    }
-    component.renderable = skybox.renderable ?? false;
-
-    const item: spec.VFXItemData = {
-      id: itemId,
-      name: `Skybox-${skybox.skyboxType}`,
-      duration: skybox.duration ?? 999,
-      type: spec.ItemType.skybox,
-      pn: 0,
-      visible: true,
-      endBehavior: spec.ItemEndBehavior.freeze,
-      transform: {
-        position: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
-        eulerHint: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
-        scale: {
-          x: 1,
-          y: 1,
-          z: 1,
-        },
-      },
-      components: [
-        { id: component.id },
-      ],
-      content: {},
-      dataType: spec.DataType.VFXItemData,
-    };
-
-    this.images.push(...imageList);
-    // @ts-expect-error
-    this.textures.push(...textureOptionsList);
-    this.items.push(item);
-    this.components.push(component);
   }
 
   createTreeOptions (scene: GLTFScene): ModelTreeOptions {
@@ -860,7 +890,7 @@ export interface ModelLight {
 }
 
 export interface ModelSkybox {
-  skyboxType: string,
+  skyboxType?: string,
   renderable?: boolean,
   intensity?: number,
   reflectionsIntensity?: number,
