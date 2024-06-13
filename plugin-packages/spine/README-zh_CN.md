@@ -12,10 +12,11 @@ import '@galacean/effects-plugin-spine';
 ### 获取 spine 资源列表
 
 ``` ts
-import type { SpineResource } from '@galacean/effects-plugin-spine';
+import type { SpineDataCache } from '@galacean/effects-plugin-spine';
 
 const comp = await player.play(scene);
-const spineData: SpineResource[] = comp.loaderData.spineDatas;
+const item = comp.getItemByName('itemName');
+const spineData: SpineDataCache = item.spineDataCache;
 ```
 
 ### 获取动画列表/皮肤列表
@@ -24,17 +25,18 @@ const spineData: SpineResource[] = comp.loaderData.spineDatas;
 
 ``` ts
 const comp = await new Player().loadScene(scene);
-const item = comp.getItemByName(name)
+const item = comp.getItemByName('itemName')
 const { skeletonData } = item.spineDataCache;
 const animationList = getAnimationList(skeletonData);
 const skinList = getSkinList(skeletonData);
 ```
 
-2. 在 `spineDatas` 数组中获取
+2. 开始后可以在 `spineDataCache` 中获取
 
 ``` ts
 const comp = await new Player().loadScene(scene);
-const { skinList, animationList } = comp.loaderData.spineDatas[index];
+const item = comp.getItemByName('itemName')
+const { skinList, animationList } = item.spineDataCache
 ```
 
 3. 从 atals 和 skeleton 二进制数据中获取

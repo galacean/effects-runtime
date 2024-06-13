@@ -1,8 +1,7 @@
-import type { Material } from '@galacean/effects';
-import { assertExist, glContext } from '@galacean/effects';
-import type { SkeletonData } from '@esotericsoftware/spine-core';
+import type { SkeletonData, Texture as SpineTexture } from '@esotericsoftware/spine-core';
 import {
-  AtlasAttachmentLoader, BinaryInput,
+  AtlasAttachmentLoader,
+  BinaryInput,
   BlendMode,
   SkeletonBinary,
   SkeletonJson,
@@ -10,6 +9,8 @@ import {
   TextureFilter,
   TextureWrap,
 } from '@esotericsoftware/spine-core';
+import type { Material, Texture } from '@galacean/effects';
+import { assertExist, glContext } from '@galacean/effects';
 import { decodeText } from './polyfill';
 
 export function setBlending (material: Material, mode: BlendMode, pma: boolean) {
@@ -146,11 +147,11 @@ export function getSpineVersion (skeleton: Uint8Array) {
 /**
  * 从二进制数据中解析 atlas 数据
  * @param buffer - atlas 文件对应的二进制数据
+ * @param start - buffer 中的起始索引
+ * @param length - buffer 的长度
  */
-export function getAtlasFromBuffer (buffer: ArrayBuffer): TextureAtlas {
-  const atlasText = decodeText(new Uint8Array(buffer));
-
-  return new TextureAtlas(atlasText);
+export function getAtlasFromBuffer (buffer: Uint8Array): TextureAtlas {
+  return new TextureAtlas(decodeText(buffer));
 }
 
 /**
@@ -169,4 +170,21 @@ export function getSkeletonFromBuffer (buffer: ArrayBuffer, skeletonType: 'json'
   }
 
   return skeletonFile;
+}
+
+export function readAtlasData (atlasBuffer: Uint8Array, textures: Texture[]): TextureAtlas {
+  const atlas = getAtlasFromBuffer(atlasBuffer);
+  const pageCount = atlas.pages.length;
+
+  for (let i = 0; i < pageCount; i++) {
+    const page = atlas.pages[i];
+    const tex = textures[i];
+
+    if (!tex) {
+      throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
+    }
+    page.texture = tex as unknown as SpineTexture;
+  }
+
+  return atlas;
 }
