@@ -8,7 +8,7 @@ import type {
   ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions,
   ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
-import { UnlitShaderGUID, PBRShaderGUID, CullMode } from '../index';
+import { UnlitShaderGUID, PBRShaderGUID } from '../index';
 import { Matrix4 } from '../runtime/math';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
@@ -306,8 +306,8 @@ export class LoaderECSImpl implements LoaderECS {
         material.stringTags['RenderType'] = spec.RenderType.Opaque;
       }
 
-      if (!material.stringTags['Cull']) {
-        material.stringTags['Cull'] = CullMode.Front;
+      if (!material.stringTags['RenderFace']) {
+        material.stringTags['RenderFace'] = spec.RenderFace.Front;
       }
     } else if (material.shader?.id === PBRShaderGUID) {
       if (!material.colors['_BaseColorFactor']) {
@@ -358,8 +358,8 @@ export class LoaderECSImpl implements LoaderECS {
         material.stringTags['RenderType'] = spec.RenderType.Opaque;
       }
 
-      if (!material.stringTags['Cull']) {
-        material.stringTags['Cull'] = CullMode.Front;
+      if (!material.stringTags['RenderFace']) {
+        material.stringTags['RenderFace'] = spec.RenderFace.Front;
       }
     } else {
       console.error(`Unknown shader id in material: ${material}`);

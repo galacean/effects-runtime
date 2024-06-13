@@ -747,7 +747,7 @@ export class PSubMesh {
     }
 
     const proxy = new HitTestingProxy();
-    const doubleSided = this.material.isDoubleSide();
+    const doubleSided = this.material.isBothSide();
 
     proxy.create(this.geometry.geometry, doubleSided, bindMatrices);
 

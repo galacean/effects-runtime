@@ -8,12 +8,6 @@ import { PObject } from './object';
 import { PluginHelper } from '../utility/plugin-helper';
 import { PShaderManager } from './shader';
 
-export enum CullMode {
-  Front = 'Front',
-  Back = 'Back',
-  Double = 'Double',
-}
-
 /**
  * 3D 材质基础类，支持公共的材质功能
  */
@@ -54,7 +48,7 @@ export abstract class PMaterialBase extends PObject {
   /**
    * 面侧模式，默认是正面
    */
-  cullMode: CullMode = CullMode.Front;
+  renderFace: spec.RenderFace = spec.RenderFace.Front;
 
   /**
    * 获取着色器特性列表，根据材质状态
@@ -69,7 +63,7 @@ export abstract class PMaterialBase extends PObject {
       featureList.push('ALPHAMODE_OPAQUE 1');
     }
 
-    if (this.cullMode === CullMode.Double) {
+    if (this.renderFace === spec.RenderFace.Both) {
       featureList.push('DOUBLE_SIDED 1');
     }
 
@@ -85,7 +79,7 @@ export abstract class PMaterialBase extends PObject {
       macroList.push({ name: 'ALPHAMODE_OPAQUE' });
     }
 
-    if (this.cullMode === CullMode.Double) {
+    if (this.renderFace === spec.RenderFace.Both) {
       macroList.push({ name: 'DOUBLE_SIDED' });
     }
 
@@ -208,7 +202,7 @@ export abstract class PMaterialBase extends PObject {
   }
 
   protected setFaceSideStates (material: Material) {
-    if (this.isDoubleSide()) {
+    if (this.isBothSide()) {
       material.culling = false;
     } else if (this.isBackSide()) {
       material.cullFace = glContext.FRONT;
@@ -266,7 +260,7 @@ export abstract class PMaterialBase extends PObject {
    * @returns
    */
   isFrontSide (): boolean {
-    return this.cullMode === CullMode.Front;
+    return this.renderFace === spec.RenderFace.Front;
   }
 
   /**
@@ -274,15 +268,15 @@ export abstract class PMaterialBase extends PObject {
    * @returns
    */
   isBackSide (): boolean {
-    return this.cullMode === CullMode.Back;
+    return this.renderFace === spec.RenderFace.Back;
   }
 
   /**
    * 是否双面模式
    * @returns
    */
-  isDoubleSide (): boolean {
-    return this.cullMode === CullMode.Double;
+  isBothSide (): boolean {
+    return this.renderFace === spec.RenderFace.Both;
   }
 }
 
@@ -322,7 +316,7 @@ export class PMaterialUnlit extends PMaterialBase {
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
     this.alphaClip = material.getFloat('_AlphaClip') === 1;
     this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
-    this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
+    this.renderFace = material.stringTags['RenderFace'] as spec.RenderFace ?? spec.RenderFace.Front;
   }
 
   /**
@@ -547,7 +541,7 @@ export class PMaterialPBR extends PMaterialBase {
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
     this.alphaClip = material.getFloat('_AlphaClip') === 1;
     this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
-    this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
+    this.renderFace = material.stringTags['RenderFace'] as spec.RenderFace ?? spec.RenderFace.Front;
   }
 
   /**
