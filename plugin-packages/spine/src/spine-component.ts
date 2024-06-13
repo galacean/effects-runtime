@@ -1,10 +1,17 @@
-import type { AnimationStateListener, Skeleton, SkeletonData } from '@esotericsoftware/spine-core';
-import { AnimationState, AnimationStateData, Physics } from '@esotericsoftware/spine-core';
-import type { BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer } from '@galacean/effects';
-import { effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, spec } from '@galacean/effects';
+import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
+import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
+import type {
+  BinaryAsset, BoundingBoxTriangle, HitTestTriangleParams, Renderer, Texture,
+} from '@galacean/effects';
+import {
+  effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, serialize,
+  spec,
+} from '@galacean/effects';
 import { SlotGroup } from './slot-group';
-import type { SpineResource } from './spine-loader';
-import { getAnimationDuration } from './utils';
+import {
+  createSkeletonData, getAnimationDuration, getAnimationList, getSkeletonFromBuffer,
+  getSkinList, readAtlasData,
+} from './utils';
 
 const { Vector2, Vector3 } = math;
 
@@ -13,6 +20,30 @@ export interface BoundsData {
   y: number,
   width: number,
   height: number,
+}
+
+export interface SpineResource {
+  atlas: {
+    bins: BinaryAsset,
+    source: [start: number, length?: number],
+  },
+  skeleton: {
+    bins: BinaryAsset,
+    source: [start: number, length?: number],
+  },
+  images: Texture[],
+  skeletonType: spec.skeletonFileType,
+}
+
+export interface SpineDataCache {
+  atlas: TextureAtlas,
+  skeletonData: SkeletonData,
+  /**
+   * 缓存给编辑器用
+   */
+  skeletonInstance?: Skeleton | null,
+  skinList?: string[],
+  animationList?: string[],
 }
 
 /**
@@ -47,8 +78,8 @@ export class SpineComponent extends RendererComponent {
    * renderer 数据
    */
   renderer: {};
-  spineDataCache: SpineResource;
-  options?: spec.SpineContent;
+  spineDataCache: SpineDataCache;
+  options: spec.PluginSpineOption;
 
   private content: SlotGroup | null;
   private skeleton: Skeleton;
@@ -65,31 +96,37 @@ export class SpineComponent extends RendererComponent {
    */
   private size = new Vector2();
 
-  constructor (engine: Engine, options?: spec.SpineItem) {
-    super(engine);
-  }
+  @serialize()
+  resource: SpineResource;
 
-  override fromData (options: spec.SpineContent) {
-    super.fromData(options);
+  override fromData (data: spec.SpineComponent) {
+    super.fromData(data);
 
-    this.options = options;
+    const { images: textures, skeletonType, atlas: atlasOptions, skeleton: skeletonOptions } = this.resource;
+    const [start, bufferLength] = atlasOptions.source;
+    const atlasBuffer = bufferLength ? new Uint8Array(atlasOptions.bins.buffer, start, bufferLength) : new Uint8Array(atlasOptions.bins.buffer, start);
+    const atlas = readAtlasData(atlasBuffer, textures);
+
+    const skBuffer = skeletonOptions.bins.buffer;
+    const [skelStart, skelBufferLength] = skeletonOptions.source;
+    const skeletonBuffer = skelBufferLength ? skBuffer.slice(skelStart, skelStart + skelBufferLength) : skBuffer.slice(skelStart);
+    const skeletonFile = getSkeletonFromBuffer(skeletonBuffer, skeletonType);
+    const skeletonData = createSkeletonData(atlas, skeletonFile, skeletonType);
+
+    this.spineDataCache = {
+      atlas, skeletonData,
+    };
+    this.options = data.options;
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
   }
 
   override start () {
     super.start();
-    const content = this.options;
-
-    if (!content) {
-      console.error('options used to create SpineComponent is undefined');
-
-      return;
-    }
-    this.initContent(content.options, this.item.composition?.loaderData.spineDatas);
+    this.initContent(this.spineDataCache.atlas, this.spineDataCache.skeletonData, this.options);
     // @ts-expect-error
-    this.startSize = content.options.startSize;
+    this.startSize = this.options.startSize;
     // @ts-expect-error
-    this.renderer = content.renderer;
+    this.renderer = this.options.renderer;
 
     if (!this.state) {
       return;
@@ -103,12 +140,13 @@ export class SpineComponent extends RendererComponent {
     if (!(this.state && this.skeleton)) {
       return;
     }
-
     this.state.update(dt / 1000);
     this.state.apply(this.skeleton);
     this.skeleton.update(dt / 1000);
     this.skeleton.updateWorldTransform(Physics.update);
-    this.content?.update();
+    if (this.content) {
+      this.content.update();
+    }
   }
 
   override render (renderer: Renderer) {
@@ -122,24 +160,23 @@ export class SpineComponent extends RendererComponent {
     }
   }
 
-  private initContent (spineOptions: spec.PluginSpineOption, spineDatas: SpineResource[]) {
-    const index = spineOptions.spine;
+  private initContent (
+    atlas: TextureAtlas,
+    skeletonData: SkeletonData,
+    spineOptions: spec.PluginSpineOption,
+  ) {
+    const activeAnimation = typeof spineOptions.activeAnimation === 'string'
+      ? [spineOptions.activeAnimation]
+      : spineOptions.activeAnimation;
 
-    if (isNaN(index)) {
-      return;
-    }
-    const { atlas, skeletonData, skeletonInstance, skinList, animationList } = spineDatas[index];
-    const activeAnimation = typeof spineOptions.activeAnimation === 'string' ? [spineOptions.activeAnimation] : spineOptions.activeAnimation;
-
-    this.skeleton = skeletonInstance;
+    this.skeleton = new Skeleton(skeletonData);
     this.skeletonData = skeletonData;
     this.animationStateData = new AnimationStateData(this.skeletonData);
     this.animationStateData.defaultMix = spineOptions.mixDuration || 0;
-    this.spineDataCache = spineDatas[index];
-    this.skinList = skinList.slice();
-    this.animationList = animationList.slice();
+    this.skinList = getSkinList(skeletonData);
+    this.animationList = getAnimationList(skeletonData);
     this.resizeRule = spineOptions.resizeRule;
-    this.setSkin(spineOptions.activeSkin || (skinList.length ? skinList[0] : 'default'));
+    this.setSkin(spineOptions.activeSkin || (this.skinList.length ? this.skinList[0] : 'default'));
     this.state = new AnimationState(this.animationStateData);
 
     if (activeAnimation.length === 1) {
@@ -155,6 +192,13 @@ export class SpineComponent extends RendererComponent {
     } else {
       this.setAnimationList(activeAnimation, spineOptions.speed);
     }
+
+    this.spineDataCache = {
+      ...this.spineDataCache,
+      skeletonInstance: this.skeleton,
+      skinList: this.skinList,
+      animationList: this.animationList,
+    };
     this.pma = atlas.pages[0].pma;
     this._priority = this.item.renderOrder;
     this.content = new SlotGroup(this.skeleton.drawOrder, {

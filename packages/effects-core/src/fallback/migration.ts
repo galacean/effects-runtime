@@ -1,5 +1,10 @@
-import type { BaseContent, CompositionData, Item, JSONScene, JSONSceneLegacy } from '@galacean/effects-specification';
-import { CompositionEndBehavior, DataType, END_BEHAVIOR_FREEZE, ItemEndBehavior, ItemType } from '@galacean/effects-specification';
+import type {
+  BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
+  SpineContent,
+} from '@galacean/effects-specification';
+import {
+  CompositionEndBehavior, DataType, END_BEHAVIOR_FREEZE, ItemEndBehavior, ItemType,
+} from '@galacean/effects-specification';
 import type { TimelineAssetData } from '../plugins/cal/timeline-asset';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
@@ -57,7 +62,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     shaders: [],
     geometries: [],
     animations: [],
-    miscs:[],
+    miscs: [],
   };
 
   // image数据添加 guid
@@ -86,16 +91,10 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
   }
 
-  // 更正 spine 数据中的 images 属性
-  json.spines?.forEach(spine => {
-    for (let i = 0; i < spine.images.length; i++) {
-      //@ts-expect-error
-      const textureId = json.textures[spine.images[i]]?.id;
-
-      //@ts-expect-error
-      spine.images[i] = { id: textureId };
-    }
-  });
+  // 处理老版本数据中 bins 没有 id 的情况
+  if (json.bins) {
+    convertBinaryAsset(json.bins, result);
+  }
 
   const itemOldIdToGuidMap: Record<string, string> = {};
   const guidToItemMap: Record<string, Item> = {};
@@ -299,6 +298,15 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     if (item.pluginName === 'orientation-transformer') {
       //@ts-expect-error
       item.type = 'orientation-transformer';
+    }
+
+    // Spine 元素转为 guid 索引
+    if (
+      item.type === ItemType.spine
+      && json.spines
+      && json.spines.length !== 0
+    ) {
+      convertSpineData(json.spines[item.content.options.spine], item.content, result);
     }
 
     // item 的 content 转为 component data 加入 JSONScene.components
@@ -588,4 +596,39 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
     //@ts-expect-error
     jsonScene.miscs.push(playableAsset);
   }
+}
+
+export function convertBinaryAsset (bins: BinaryFile[], jsonScene: JSONScene) {
+  //@ts-expect-error
+  jsonScene.bins = bins.map(bin => ({
+    url: bin.url,
+    'dataType': 'BinaryAsset',
+    id: generateGUID(),
+  }));
+}
+
+export function convertSpineData (resource: SpineResource, content: SpineContent, jsonScene: JSONScene) {
+  //@ts-expect-error
+  content.resource = {
+    'atlas': {
+      'bins': {
+        //@ts-expect-error
+        'id': jsonScene.bins[resource.atlas[1][0]].id,
+      },
+      'source': resource.atlas[1].slice(1),
+    },
+    'skeleton': {
+      'bins': {
+        //@ts-expect-error
+        'id': jsonScene.bins[resource.skeleton[1][0]].id,
+      },
+      'source': resource.skeleton[1].slice(1),
+    },
+    'skeletonType': resource.skeletonType,
+    'images': resource.images.map(i => ({
+      //@ts-expect-error
+      id: jsonScene.textures[i].id,
+    })),
+  };
+
 }

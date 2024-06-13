@@ -1,6 +1,8 @@
 import { registerPlugin } from './plugin-system';
 import type { CameraController, InteractComponent, ParticleSystem, SpriteComponent, TextComponent } from './plugins';
-import { CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader } from './plugins';
+import {
+  CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
+} from './plugins';
 import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';
@@ -38,6 +40,7 @@ export * from './transform';
 export * from './utils';
 export * from './vfx-item';
 export * from './binary-asset';
+export * from './effects-object';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);

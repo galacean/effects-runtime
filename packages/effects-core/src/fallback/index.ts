@@ -1,6 +1,6 @@
 import type {
-  BaseItem, BaseItemTransform, Composition, CompressedImage, Image, JSONScene, ParticleItem,
-  RenderLevel, SpriteItem, TemplateImage, JSONSceneLegacy,
+  BaseItem, BaseItemTransform, Composition, CompressedImage, Image, JSONScene, JSONSceneLegacy,
+  ParticleItem, RenderLevel, SpriteItem, TemplateImage,
 } from '@galacean/effects-specification';
 import { CAMERA_CLIP_MODE_NORMAL, ItemEndBehavior, ItemType } from '@galacean/effects-specification';
 import { getStandardParticleContent } from './particle';

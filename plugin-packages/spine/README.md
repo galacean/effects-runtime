@@ -12,10 +12,11 @@ import '@galacean/effects-plugin-spine';
 ### Get Spine Resource List
 
 ``` ts
-import type { SpineResource } from '@galacean/effects-plugin-spine';
+import type { SpineDataCache } from '@galacean/effects-plugin-spine';
 
 const comp = await player.play(scene);
-const spineData: SpineResource[] = comp.loaderData.spineDatas;
+const item = comp.getItemByName('itemName');
+const spineData: SpineDataCache = item.spineDataCache;
 ```
 
 ### Get Animation List / Skin List
@@ -24,17 +25,18 @@ const spineData: SpineResource[] = comp.loaderData.spineDatas;
 
 ``` ts
 const comp = await new Player().loadScene(scene);
-const item = comp.getItemByName(name)
+const item = comp.getItemByName('itemName');
 const { skeletonData } = item.spineDataCache;
 const animationList = getAnimationList(skeletonData);
 const skinList = getSkinList(skeletonData);
 ```
 
-2. Get from the `spineDatas` array
+2. After starting, you can access it in the `spineDataCache`.
 
 ``` ts
 const comp = await new Player().loadScene(scene);
-const { skinList, animationList } = comp.loaderData.spineDatas[index];
+const item = comp.getItemByName('itemName')
+const { skinList, animationList } = item.spineDataCache;
 ```
 
 ### Get Duration of a Specific Animation
