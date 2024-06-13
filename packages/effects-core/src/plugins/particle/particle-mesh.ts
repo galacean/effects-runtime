@@ -16,7 +16,7 @@ import {
   calculateTranslation, createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
 } from '../../math';
 import type {
-  Attribute, GPUCapability, GeometryProps, ShaderMarcos, SharedShaderWithSource,
+  Attribute, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
 } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
@@ -147,9 +147,9 @@ export class ParticleMesh implements ParticleMeshData {
     } = props;
     const { detail } = engine.gpuCapability;
     const { halfFloatTexture, maxVertexUniforms } = detail;
-    const marcos: ShaderMarcos = [
+    const macros: ShaderMacros = [
+      // spec.RenderMode
       ['RENDER_MODE', +renderMode],
-      ['PRE_MULTIPLY_ALPHA', false],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const { level } = engine.gpuCapability;
@@ -163,21 +163,21 @@ export class ParticleMesh implements ParticleMeshData {
 
     this.useSprite = useSprite;
     if (enableVertexTexture) {
-      marcos.push(['ENABLE_VERTEX_TEXTURE', true]);
+      macros.push(['ENABLE_VERTEX_TEXTURE', true]);
     }
     if (speedOverLifetime) {
-      marcos.push(['SPEED_OVER_LIFETIME', true]);
+      macros.push(['SPEED_OVER_LIFETIME', true]);
       shaderCacheId |= 1 << 1;
       uniformValues.uSpeedLifetimeValue = speedOverLifetime.toUniform(vertexKeyFrameMeta);
     }
     if (sprite?.animate) {
-      marcos.push(['USE_SPRITE', true]);
+      macros.push(['USE_SPRITE', true]);
       shaderCacheId |= 1 << 2;
       uniformValues.uFSprite = uniformValues.uSprite = new Float32Array([sprite.col, sprite.row, sprite.total, sprite.blend ? 1 : 0]);
       this.useSprite = true;
     }
     if (colorOverLifetime?.color) {
-      marcos.push(['COLOR_OVER_LIFETIME', true]);
+      macros.push(['COLOR_OVER_LIFETIME', true]);
       shaderCacheId |= 1 << 4;
       uniformValues.uColorOverLifetime = colorOverLifetime.color instanceof Texture ? colorOverLifetime.color : Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime.color));
     }
@@ -197,7 +197,7 @@ export class ParticleMesh implements ParticleMeshData {
         shaderCacheId |= 1 << (7 + i);
         linearVelOverLifetime.enabled = true;
       }
-      marcos.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
+      macros.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
       if (orbitalVelOverLifetime?.[pro]) {
         uniformValues[`uOrb${pro.toUpperCase()}ByLifetimeValue`] = orbitalVelOverLifetime[pro].toUniform(vertexKeyFrameMeta);
         defO = 1;
@@ -205,16 +205,16 @@ export class ParticleMesh implements ParticleMeshData {
         useOrbitalVel = true;
         orbitalVelOverLifetime.enabled = true;
       }
-      marcos.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
+      macros.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
     });
     if (linearVelOverLifetime?.asMovement) {
-      marcos.push(['AS_LINEAR_MOVEMENT', true]);
+      macros.push(['AS_LINEAR_MOVEMENT', true]);
       shaderCacheId |= 1 << 5;
     }
 
     if (useOrbitalVel) {
       if (orbitalVelOverLifetime?.asRotation) {
-        marcos.push(['AS_ORBITAL_MOVEMENT', true]);
+        macros.push(['AS_ORBITAL_MOVEMENT', true]);
         shaderCacheId |= 1 << 6;
       }
       uniformValues.uOrbCenter = new Float32Array(orbitalVelOverLifetime?.center || [0, 0, 0]);
@@ -222,33 +222,33 @@ export class ParticleMesh implements ParticleMeshData {
 
     uniformValues.uSizeByLifetimeValue = sizeOverLifetime?.x.toUniform(vertexKeyFrameMeta);
     if (sizeOverLifetime?.separateAxes) {
-      marcos.push(['SIZE_Y_BY_LIFE', 1]);
+      macros.push(['SIZE_Y_BY_LIFE', 1]);
       shaderCacheId |= 1 << 14;
       uniformValues.uSizeYByLifetimeValue = sizeOverLifetime?.y?.toUniform(vertexKeyFrameMeta);
     }
     if (rotationOverLifetime?.z) {
       uniformValues.uRZByLifeTimeValue = rotationOverLifetime.z.toUniform(vertexKeyFrameMeta);
       shaderCacheId |= 1 << 15;
-      marcos.push(['ROT_Z_LIFETIME', 1]);
+      macros.push(['ROT_Z_LIFETIME', 1]);
     }
     if (rotationOverLifetime?.x) {
       uniformValues.uRXByLifeTimeValue = rotationOverLifetime.x.toUniform(vertexKeyFrameMeta);
       shaderCacheId |= 1 << 16;
-      marcos.push(['ROT_X_LIFETIME', 1]);
+      macros.push(['ROT_X_LIFETIME', 1]);
     }
     if (rotationOverLifetime?.y) {
       uniformValues.uRYByLifeTimeValue = rotationOverLifetime.y.toUniform(vertexKeyFrameMeta);
       shaderCacheId |= 1 << 17;
-      marcos.push(['ROT_Y_LIFETIME', 1]);
+      macros.push(['ROT_Y_LIFETIME', 1]);
     }
     if (rotationOverLifetime?.asRotation) {
-      marcos.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
+      macros.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
       shaderCacheId |= 1 << 18;
     }
     uniformValues.uGravityModifierValue = gravityModifier.toUniform(vertexKeyFrameMeta);
 
     if (forceTarget) {
-      marcos.push(['FINAL_TARGET', true]);
+      macros.push(['FINAL_TARGET', true]);
       shaderCacheId |= 1 << 19;
       uniformValues.uFinalTarget = new Float32Array(forceTarget.target || [0, 0, 0]);
       uniformValues.uForceCurve = forceTarget.curve.toUniform(vertexKeyFrameMeta);
@@ -283,7 +283,7 @@ export class ParticleMesh implements ParticleMeshData {
     }
     const shaderCache = ['-p:', renderMode, shaderCacheId, vertexKeyFrameMeta.index, vertexKeyFrameMeta.max, fragmentKeyFrameMeta.index, fragmentKeyFrameMeta.max].join('+');
 
-    marcos.push(
+    macros.push(
       ['VERT_CURVE_VALUE_COUNT', vertexKeyFrameMeta.index],
       ['FRAG_CURVE_VALUE_COUNT', fragmentKeyFrameMeta.index],
       ['VERT_MAX_KEY_FRAME_COUNT', vertexKeyFrameMeta.max],
@@ -300,7 +300,7 @@ export class ParticleMesh implements ParticleMeshData {
       glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
       shared: true,
       cacheId: shaderCache,
-      marcos,
+      macros,
       name: `particle#${name}`,
     };
     const mtlOptions: MaterialProps = {
@@ -644,12 +644,15 @@ function generateGeometryProps (
   return { attributes, indices: { data: new Uint16Array(0) }, name, maxVertex };
 }
 
-export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCapability: GPUCapability) {
+export function getParticleMeshShader (
+  item: spec.ParticleItem,
+  gpuCapability: GPUCapability,
+  env = '',
+) {
   const props = item.content;
   const renderMode = +(props.renderer?.renderMode || 0);
-  const marcos: [key: string, value: boolean | number][] = [
+  const macros: ShaderMacros = [
     ['RENDER_MODE', renderMode],
-    ['PRE_MULTIPLY_ALPHA', false],
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];
   const { level, detail } = gpuCapability;
@@ -661,25 +664,25 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
   let shaderCacheId = 0;
 
   if (enableVertexTexture) {
-    marcos.push(['ENABLE_VERTEX_TEXTURE', true]);
+    macros.push(['ENABLE_VERTEX_TEXTURE', true]);
   }
 
   if (speedOverLifetime) {
-    marcos.push(['SPEED_OVER_LIFETIME', true]);
+    macros.push(['SPEED_OVER_LIFETIME', true]);
     shaderCacheId |= 1 << 1;
     getKeyFrameMetaByRawValue(vertexKeyFrameMeta, speedOverLifetime);
   }
   const sprite = props.textureSheetAnimation;
 
   if (sprite && sprite.animate) {
-    marcos.push(['USE_SPRITE', true]);
+    macros.push(['USE_SPRITE', true]);
     shaderCacheId |= 1 << 2;
   }
 
   const colorOverLifetime = props.colorOverLifetime;
 
   if (colorOverLifetime && colorOverLifetime.color) {
-    marcos.push(['COLOR_OVER_LIFETIME', true]);
+    macros.push(['COLOR_OVER_LIFETIME', true]);
     shaderCacheId |= 1 << 4;
   }
 
@@ -701,7 +704,7 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
       defL = 1;
       shaderCacheId |= 1 << (7 + i);
     }
-    marcos.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
+    macros.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
     let defO = 0;
 
     if (positionOverLifetime?.[orbitalPro as keyof spec.ParticlePositionOverLifetime]) {
@@ -710,15 +713,15 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
       shaderCacheId |= 1 << (10 + i);
       useOrbitalVel = true;
     }
-    marcos.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
+    macros.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
   });
   if (positionOverLifetime?.asMovement) {
-    marcos.push(['AS_LINEAR_MOVEMENT', true]);
+    macros.push(['AS_LINEAR_MOVEMENT', true]);
     shaderCacheId |= 1 << 5;
   }
   if (useOrbitalVel) {
     if (positionOverLifetime?.asRotation) {
-      marcos.push(['AS_ORBITAL_MOVEMENT', true]);
+      macros.push(['AS_ORBITAL_MOVEMENT', true]);
       shaderCacheId |= 1 << 6;
     }
   }
@@ -729,7 +732,7 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
 
     if (separateAxes) {
       getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.x);
-      marcos.push(['SIZE_Y_BY_LIFE', 1]);
+      macros.push(['SIZE_Y_BY_LIFE', 1]);
       shaderCacheId |= 1 << 14;
       getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.y);
     } else {
@@ -743,22 +746,22 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     if (rot.z) {
       getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot?.z);
       shaderCacheId |= 1 << 15;
-      marcos.push(['ROT_Z_LIFETIME', 1]);
+      macros.push(['ROT_Z_LIFETIME', 1]);
     }
     if (rot.separateAxes) {
       if (rot.x) {
         getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.x);
         shaderCacheId |= 1 << 16;
-        marcos.push(['ROT_X_LIFETIME', 1]);
+        macros.push(['ROT_X_LIFETIME', 1]);
       }
       if (rot.y) {
         getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.y);
         shaderCacheId |= 1 << 17;
-        marcos.push(['ROT_Y_LIFETIME', 1]);
+        macros.push(['ROT_Y_LIFETIME', 1]);
       }
     }
     if (rot?.asRotation) {
-      marcos.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
+      macros.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
       shaderCacheId |= 1 << 18;
     }
   }
@@ -767,7 +770,7 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
   const forceOpt = positionOverLifetime?.forceTarget;
 
   if (forceOpt) {
-    marcos.push(['FINAL_TARGET', true]);
+    macros.push(['FINAL_TARGET', true]);
     shaderCacheId |= 1 << 19;
     getKeyFrameMetaByRawValue(vertexKeyFrameMeta, positionOverLifetime.forceCurve);
   }
@@ -799,11 +802,11 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     vertex: `#define LOOKUP_TEXTURE_CURVE ${vertex_lookup_texture}\n${particleVert}`,
     shared: true,
     cacheId: shaderCache,
-    marcos,
+    macros,
     name: `particle#${item.name}`,
   };
 
-  marcos.push(
+  macros.push(
     ['VERT_CURVE_VALUE_COUNT', vertexKeyFrameMeta.index],
     ['FRAG_CURVE_VALUE_COUNT', fragmentKeyFrameMeta.index],
     ['VERT_MAX_KEY_FRAME_COUNT', vertexKeyFrameMeta.max],
@@ -820,12 +823,12 @@ export function modifyMaxKeyframeShader (shader: SharedShaderWithSource, maxVert
   shaderIds[5] = maxFrag;
   shader.cacheId = shaderIds.join('+');
 
-  if (!shader.marcos) {
+  if (!shader.macros) {
     return;
   }
 
-  for (let i = 0; i < shader.marcos.length; i++) {
-    const marco = shader.marcos[i];
+  for (let i = 0; i < shader.macros.length; i++) {
+    const marco = shader.macros[i];
 
     if (marco[0] === 'VERT_CURVE_VALUE_COUNT') {
       marco[1] = maxVertex;

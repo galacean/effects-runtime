@@ -91,27 +91,27 @@ describe('effects-core/plugins/particle-test', function () {
     const billItem = comp.getItemByName('billboard');
     const billMaterial = billItem.content.renderer.particleMesh.mesh.material;
 
-    expect(getMarcosValue(billMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.BILLBOARD);
+    expect(getMacrosValue(billMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.BILLBOARD);
 
     const defaultItem = comp.getItemByName('default');
     const defaultMaterial = defaultItem.content.renderer.particleMesh.mesh.material;
 
-    expect(getMarcosValue(defaultMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.BILLBOARD);
+    expect(getMacrosValue(defaultMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.BILLBOARD);
 
     const meshItem = comp.getItemByName('mesh');
     const meshMaterial = meshItem.content.renderer.particleMesh.mesh.material;
 
-    expect(getMarcosValue(meshMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.MESH);
+    expect(getMacrosValue(meshMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.MESH);
 
     const verticalItem = comp.getItemByName('vertical_billboard');
     const verticalMaterial = verticalItem.content.renderer.particleMesh.mesh.material;
 
-    expect(getMarcosValue(verticalMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.VERTICAL_BILLBOARD);
+    expect(getMacrosValue(verticalMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.VERTICAL_BILLBOARD);
 
     const horizonItem = comp.getItemByName('horizon_billboard');
     const horizonMaterial = horizonItem.content.renderer.particleMesh.mesh.material;
 
-    expect(getMarcosValue(horizonMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.HORIZONTAL_BILLBOARD);
+    expect(getMacrosValue(horizonMaterial, 'RENDER_MODE')).to.eql(spec.RenderMode.HORIZONTAL_BILLBOARD);
   });
 
   it('particle mask mode', async () => {
@@ -406,11 +406,11 @@ function translatePoint (x, y) {
   return origin;
 }
 
-function getMarcosValue (material, name) {
-  const marcos = material.shaderSource.marcos;
+function getMacrosValue (material, name) {
+  const macros = material.shaderSource.macros;
 
-  if (marcos) {
-    const ret = marcos.find(m => m[0] === name);
+  if (macros) {
+    const ret = macros.find(m => m[0] === name);
 
     return ret && ret[1];
   }

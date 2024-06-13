@@ -3,7 +3,7 @@ import { effectsClass } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
 
-export type ShaderMarcos = [key: string, value: string | number | boolean][];
+export type ShaderMacros = [key: string, value: string | number | boolean][];
 
 export enum ShaderCompileResultStatus {
   noShader = 0,
@@ -44,7 +44,7 @@ export interface InstancedShaderWithSource {
   /**
    * shader的宏定义
    */
-  marcos?: ShaderMarcos,
+  macros?: ShaderMacros,
   /**
    * shader是否共享
    */
@@ -71,7 +71,7 @@ export interface SharedShaderWithSource {
   /**
    * shader的宏定义
    */
-  marcos?: ShaderMarcos,
+  macros?: ShaderMacros,
   /**
    * 是否共用GLProgram
    * shared为true时，
@@ -102,7 +102,7 @@ export class Shader extends EffectsObject {
   shaderData: spec.ShaderData;
 
   createVariant (macros?: Record<string, number | boolean>) {
-    const shaderMacros: ShaderMarcos = [];
+    const shaderMacros: ShaderMacros = [];
 
     if (macros) {
       for (const key of Object.keys(macros)) {
@@ -128,7 +128,7 @@ export interface ShaderLibrary {
 
   addShader (shader: ShaderWithSource): void,
 
-  createShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos): ShaderVariant,
+  createShader (shaderSource: ShaderWithSource, macros?: ShaderMacros): ShaderVariant,
 
   /**
    * @param cacheId

@@ -3,9 +3,9 @@ precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 
-#import "./compatible.vert.glsl";
-#import "./value.glsl";
-#import "./integrate.glsl";
+#include "./compatible.vert.glsl";
+#include "./value.glsl";
+#include "./integrate.glsl";
 
 const float d2r = 3.141592653589793 / 180.;
 
@@ -27,8 +27,6 @@ struct UVDetail {
 UVDetail getSpriteUV(vec2 uv, float lifeTime);
 out vec4 vTexCoordBlend;
 #endif
-
-//#pragma EDITOR_VERT_DEFINE
 
 #ifdef FINAL_TARGET
 uniform vec3 uFinalTarget;

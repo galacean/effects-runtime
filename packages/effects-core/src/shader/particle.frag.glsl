@@ -1,7 +1,7 @@
 #version 300 es
 precision mediump float;
-#pragma "./compatible.frag.glsl";
-#import "./blend.glsl";
+#include "./compatible.frag.glsl";
+#include "./blend.glsl";
 #define PATICLE_SHADER 1
 in float vLife;
 in vec2 vTexCoord;

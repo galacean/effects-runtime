@@ -1,9 +1,9 @@
 import stringHash from 'string-hash';
 import type {
-  Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderMarcos, ShaderWithSource,
+  Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderMacros, ShaderWithSource,
   SharedShaderWithSource,
 } from '@galacean/effects-core';
-import { ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMarcos } from '@galacean/effects-core';
+import { ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMacros } from '@galacean/effects-core';
 import { GLProgram } from './gl-program';
 import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
@@ -63,19 +63,19 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
   }
 
   // TODO 创建shader的ShaderWithSource和shader的source类型一样，待优化。
-  addShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos): string {
-    const mergedMacros: ShaderMarcos = [];
+  addShader (shaderSource: ShaderWithSource, macros?: ShaderMacros): string {
+    const mergedMacros: ShaderMacros = [];
 
-    if (shaderSource.marcos) {
-      mergedMacros.push(...shaderSource.marcos);
+    if (shaderSource.macros) {
+      mergedMacros.push(...shaderSource.macros);
     }
     if (macros) {
       mergedMacros.push(...macros);
     }
     const shaderWithMacros = {
       ...shaderSource,
-      vertex: createShaderWithMarcos(mergedMacros, shaderSource.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
-      fragment: createShaderWithMarcos(mergedMacros, shaderSource.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
+      vertex: createShaderWithMacros(mergedMacros, shaderSource.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
+      fragment: createShaderWithMacros(mergedMacros, shaderSource.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
     };
     const shaderCacheId = this.computeShaderCacheId(shaderWithMacros);
 
@@ -105,7 +105,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     return shaderCacheId;
   }
 
-  createShader (shaderSource: ShaderWithSource, macros?: ShaderMarcos) {
+  createShader (shaderSource: ShaderWithSource, macros?: ShaderMacros) {
     const shaderCacheId = this.addShader(shaderSource, macros);
 
     return this.cachedShaders[shaderCacheId];
