@@ -311,11 +311,11 @@ export class PMaterialUnlit extends PMaterialBase {
     this.baseColorTextureTrans = PluginHelper.createUVTransform(material, '_BaseColorSampler_ST', '_BaseColorRotation');
     this.baseColorFactor = material.getColor('_BaseColorFactor') ?? new Color(1.0, 1.0, 1.0, 1.0);
     //
-    this.ZWrite = material.stringTags['ZWrite'] !== 'false';
-    this.ZTest = material.stringTags['ZTest'] !== 'false';
+    this.ZWrite = material.getFloat('ZWrite') !== 0;
+    this.ZTest = material.getFloat('ZTest') !== 0;
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
-    this.alphaClip = material.getFloat('_AlphaClip') === 1;
-    this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
+    this.alphaClip = material.getFloat('AlphaClip') === 1;
+    this.alphaCutoff = material.getFloat('_Cutoff') ?? 0;
     this.renderFace = material.stringTags['RenderFace'] as spec.RenderFace ?? spec.RenderFace.Front;
   }
 
@@ -536,11 +536,11 @@ export class PMaterialPBR extends PMaterialBase {
     this.emissiveFactor = material.getColor('_EmissiveFactor') ?? new Color(0, 0, 0, 1);
     this.emissiveIntensity = material.getFloat('_EmissiveIntensity') ?? 1;
     //
-    this.ZWrite = material.stringTags['ZWrite'] !== 'false';
-    this.ZTest = material.stringTags['ZTest'] !== 'false';
+    this.ZWrite = material.getFloat('ZWrite') !== 0;
+    this.ZTest = material.getFloat('ZTest') !== 0;
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
-    this.alphaClip = material.getFloat('_AlphaClip') === 1;
-    this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
+    this.alphaClip = material.getFloat('AlphaClip') === 1;
+    this.alphaCutoff = material.getFloat('_Cutoff') ?? 0;
     this.renderFace = material.stringTags['RenderFace'] as spec.RenderFace ?? spec.RenderFace.Front;
   }
 

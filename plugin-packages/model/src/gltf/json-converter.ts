@@ -627,7 +627,7 @@ export class JSONConverter {
       const floats: Record<string, number> = {};
 
       if (material.alphaCutOff !== undefined) {
-        floats['_AlphaCutoff'] = material.alphaCutOff;
+        floats['_Cutoff'] = material.alphaCutOff;
       }
       const colors: Record<string, Color> = {
         '_BaseColorFactor': new Color(
@@ -682,7 +682,7 @@ export class JSONConverter {
         floats['_EmissiveIntensity'] = material.emissiveIntensity;
       }
       if (material.alphaCutOff !== undefined) {
-        floats['_AlphaCutoff'] = material.alphaCutOff;
+        floats['_Cutoff'] = material.alphaCutOff;
       }
       const colors: Record<string, Color> = {
         '_BaseColorFactor': new Color(
@@ -751,10 +751,10 @@ export class JSONConverter {
     }
 
     if (oldMat.blending === spec.MaterialBlending.masked) {
-      newMat.floats['_AlphaClip'] = 1;
-      newMat.floats['_AlphaCutoff'] = oldMat.alphaCutOff ?? 0;
+      newMat.floats['AlphaClip'] = 1;
+      newMat.floats['_Cutoff'] = oldMat.alphaCutOff ?? 0;
     } else {
-      newMat.floats['_AlphaClip'] = 0;
+      newMat.floats['AlphaClip'] = 0;
     }
 
     switch (oldMat.side) {
@@ -774,8 +774,8 @@ export class JSONConverter {
       newMat.floats['_SpecularAA'] = oldMat.useSpecularAA ? 1 : 0;
     }
 
-    newMat.stringTags['ZWrite'] = String(oldMat.depthMask ?? true);
-    newMat.stringTags['ZTest'] = String(true);
+    newMat.floats['ZWrite'] = oldMat.depthMask !== false ? 1 : 0;
+    newMat.floats['ZTest'] = 1;
   }
 
   private getTextureData (scene: spec.JSONScene, floats: Record<string, number>, texIndex: number, texTransform?: spec.ModelTextureTransform) {
