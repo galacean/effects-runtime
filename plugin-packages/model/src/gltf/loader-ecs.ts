@@ -368,6 +368,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean): void {
     let premultiplyAlpha = false;
+    let minFilter = options.minFilter ?? glContext.LINEAR_MIPMAP_LINEAR;
 
     if (this.isTiny3dMode()) {
       // FIXME: 这里因为拿不到图像大小，所以只能先注释掉
@@ -375,11 +376,10 @@ export class LoaderECSImpl implements LoaderECS {
       //   minFilter = glContext.LINEAR;
       // }
       //
+      minFilter = glContext.LINEAR_MIPMAP_LINEAR;
       premultiplyAlpha = isBaseColor ? false : true;
     }
 
-    // FIXME: 需要确认minFilter是否对齐Tiny
-    const minFilter = options.minFilter ?? glContext.LINEAR_MIPMAP_LINEAR;
     const generateMipmap = minFilter == glContext.NEAREST_MIPMAP_NEAREST
       || minFilter == glContext.LINEAR_MIPMAP_NEAREST
       || minFilter == glContext.NEAREST_MIPMAP_LINEAR
@@ -555,9 +555,7 @@ export class LoaderECSImpl implements LoaderECS {
     if (skybox.reflectionsIntensity !== undefined) {
       component.reflectionsIntensity = skybox.reflectionsIntensity;
     }
-    if (skybox.renderable !== undefined) {
-      component.renderable = skybox.renderable;
-    }
+    component.renderable = skybox.renderable ?? false;
 
     const item: spec.VFXItemData = {
       id: itemId,
