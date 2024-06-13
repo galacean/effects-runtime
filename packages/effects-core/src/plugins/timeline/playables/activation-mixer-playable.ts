@@ -1,19 +1,17 @@
-import type { VFXItem } from '../../../vfx-item';
+import { VFXItem } from '../../../vfx-item';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 
 export class ActivationMixerPlayable extends Playable {
-  private bindingItem: VFXItem;
 
   override processFrame (context: FrameContext): void {
-    if (!this.bindingItem) {
-      this.bindingItem = context.output.getUserData() as VFXItem;
-    }
+    const boundObject = context.output.getUserData();
 
-    if (!this.bindingItem) {
+    if (!(boundObject instanceof VFXItem)) {
       return;
     }
-    const bindingItem = this.bindingItem;
+
+    const boundItem = boundObject;
 
     let hasInput = false;
 
@@ -26,11 +24,11 @@ export class ActivationMixerPlayable extends Playable {
     }
 
     if (hasInput) {
-      bindingItem.transform.setValid(true);
-      this.showRendererComponents(bindingItem);
+      boundItem.transform.setValid(true);
+      this.showRendererComponents(boundItem);
     } else {
-      bindingItem.transform.setValid(false);
-      this.hideRendererComponents(bindingItem);
+      boundItem.transform.setValid(false);
+      this.hideRendererComponents(boundItem);
     }
   }
 

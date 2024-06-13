@@ -4,12 +4,11 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import { EffectComponent, RendererComponent } from './components';
-import type { Component } from './components/component';
-import { ItemBehaviour } from './components/component';
+import type { Component, RendererComponent, ItemBehaviour } from './components';
+import { EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
-import { effectsClass } from './decorators';
+import { effectsClass, serialize } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type {
@@ -76,10 +75,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   ended = false;
   /**
-   * 元素在合成中的索引
-   */
-  listIndex: number;
-  /**
    * 元素名称
    */
   name: string;
@@ -98,6 +93,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   type: spec.ItemType = spec.ItemType.base;
   props: VFXItemProps;
 
+  @serialize()
   components: Component[] = [];
   itemBehaviours: ItemBehaviour[] = [];
   rendererComponents: RendererComponent[] = [];
@@ -111,6 +107,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素动画的速度
    */
   private speed = 1;
+  private listIndex = 0;
 
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
@@ -165,6 +162,21 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   get compositionReusable (): boolean {
     return this.composition?.reusable ?? false;
+  }
+
+  /**
+   * 元素在合成中的索引
+   */
+  get renderOrder () {
+    return this.listIndex;
+  }
+  set renderOrder (value: number) {
+    if (this.listIndex !== value) {
+      this.listIndex = value;
+      for (const rendererComponent of this.rendererComponents) {
+        rendererComponent.priority = value;
+      }
+    }
   }
 
   /**
@@ -496,7 +508,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-    this.listIndex = listIndex;
     //@ts-expect-error
     this.oldId = data.oldId;
 
@@ -508,18 +519,11 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
     }
 
-    if (data.components) {
-      for (const component of data.components) {
-        const newComponent = component as unknown as Component;
-
-        this.components.push(newComponent);
-        if (newComponent instanceof RendererComponent) {
-          this.rendererComponents.push(newComponent);
-        } else if (newComponent instanceof ItemBehaviour) {
-          this.itemBehaviours.push(newComponent);
-        }
-      }
+    for (const component of this.components) {
+      component.onAttached();
     }
+    // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
+    this.renderOrder = listIndex;
   }
 
   override toData (): void {

@@ -153,12 +153,10 @@ export class GLRendererInternal implements Disposable, LostHandler {
     const program = glMaterial.shaderVariant.program;
 
     if (!program) {
-
       return;
     }
 
     const vao = program.setupAttributes(glGeometry);
-
     const gl = this.gl;
     const indicesBuffer = glGeometry.indicesBuffer;
     let offset = glGeometry.drawStart;
@@ -269,11 +267,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
 }
 
 export function assignInspectorName (
-  obj: Record<string, any>,
+  obj: Record<string, any> | null,
   name?: string,
   id?: string,
 ) {
-  if (name === undefined) {
+  if (name === undefined || obj === null) {
     return;
   }
 

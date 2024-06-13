@@ -36,7 +36,7 @@ export class Transform implements Disposable {
 
   engine: Engine;
   name: string;
-  taggedProperties: Record<string, any> = {};
+  taggedProperties = {} as spec.TransformData;
   /**
    * 自身位移
    */
@@ -540,7 +540,7 @@ export class Transform implements Disposable {
     return transformData;
   }
 
-  fromData (data: any) {
+  fromData (data: spec.TransformData) {
     const transformData = {
       position: new Vector3().copyFrom(data.position),
       rotation: new Euler(data.eulerHint.x, data.eulerHint.y, data.eulerHint.z),

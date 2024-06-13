@@ -112,7 +112,7 @@ export class PMesh extends PEntity {
     this.skin = proxy.getSkinObj(engine);
     this.morph = proxy.getMorphObj();
     this.hide = proxy.isHide();
-    this.priority = owner?.item?.listIndex || 0;
+    this.priority = owner?.item?.renderOrder || 0;
     //
     this.subMeshes = [];
     const geometry = proxy.getGeometry() as unknown as Geometry;

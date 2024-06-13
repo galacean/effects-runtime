@@ -47,7 +47,6 @@ export class CompositionComponent extends ItemBehaviour {
     this.startTime = startTime;
     this.resolveBindings();
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
-    this.timelinePlayable.play();
 
     // 重播不销毁元素
     if (this.item.endBehavior !== spec.ItemEndBehavior.destroy) {
@@ -241,7 +240,7 @@ export class CompositionComponent extends ItemBehaviour {
     return regions;
   }
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
   }
 
   private resolveBindings () {

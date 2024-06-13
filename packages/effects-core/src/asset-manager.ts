@@ -6,7 +6,7 @@ import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia } from './downloader';
-import type { ImageSource, Scene, SceneLoadOptions, SceneType } from './scene';
+import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from './scene';
 import { isSceneJSON } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
@@ -235,7 +235,12 @@ export class AssetManager implements Disposable {
     return Promise.race([waitPromise, loadResourcePromise()]);
   }
 
-  private async precompile (compositions: spec.CompositionData[], pluginSystem?: PluginSystem, renderer?: Renderer, options?: PrecompileOptions) {
+  private async precompile (
+    compositions: spec.CompositionData[],
+    pluginSystem?: PluginSystem,
+    renderer?: Renderer,
+    options?: PrecompileOptions,
+  ) {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }
@@ -244,7 +249,7 @@ export class AssetManager implements Disposable {
     await pluginSystem?.precompile(compositions, renderer, options);
 
     await new Promise(resolve => {
-      shaderLibrary!.compileAllShaders(() => {
+      shaderLibrary?.compileAllShaders(() => {
         resolve(null);
       });
     });
@@ -514,7 +519,7 @@ function fixOldImageUsage (
   compositions: spec.CompositionData[],
   imgUsage: Record<string, number[]>,
   images: any,
-  renderLevel?: string,
+  renderLevel?: SceneRenderLevel,
 ) {
   for (let i = 0; i < compositions.length; i++) {
     const id = compositions[i].id;

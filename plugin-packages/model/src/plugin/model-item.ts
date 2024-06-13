@@ -69,7 +69,7 @@ export class ModelMeshComponent extends RendererComponent {
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
-    this.priority = this.item.listIndex;
+    this.priority = this.item.renderOrder;
     this.sceneManager = getSceneManager(this);
     this.sceneManager?.addItem(this.content);
     if (this.item.parentId && this.item.parent) {
@@ -275,7 +275,7 @@ export class ModelSkyboxComponent extends RendererComponent {
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
-    this.priority = this.item.listIndex;
+    this.priority = this.item.renderOrder;
     this.sceneManager = getSceneManager(this);
     this.sceneManager?.addItem(this.content);
     this.setVisible(true);

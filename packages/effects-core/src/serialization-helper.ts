@@ -1,16 +1,22 @@
 import type * as spec from '@galacean/effects-specification';
-import { effectsClassStore, getMergedStore } from './decorators';
+import type { ClassConstructor } from './decorators';
+import { getMergedStore } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
-import { isCanvas } from './utils';
+import { isArray, isCanvas, isObject, isString } from './utils';
 
 export class SerializationHelper {
-  static collectSerializableObject (effectsObject: EffectsObject, res: Record<string, EffectsObject>) {
+  static collectSerializableObject (
+    effectsObject: EffectsObject,
+    res: Record<string, EffectsObject>,
+  ) {
     if (res[effectsObject.getInstanceId()]) {
       return;
     }
+
     effectsObject.toData();
     res[effectsObject.getInstanceId()] = effectsObject;
+
     const serializedProperties = getMergedStore(effectsObject);
 
     for (const key of Object.keys(serializedProperties)) {
@@ -21,21 +27,21 @@ export class SerializationHelper {
         value = effectsObject[key as keyof EffectsObject];
       }
 
-      if (value instanceof EffectsObject) {
-        this.collectSerializableObject(value, res);
-      } else if (value instanceof Array) {
+      if (EffectsObject.is(value)) {
+        SerializationHelper.collectSerializableObject(value, res);
+      } else if (isArray(value)) {
         for (const arrayValue of value) {
-          if (arrayValue instanceof EffectsObject) {
-            this.collectSerializableObject(arrayValue, res);
+          if (EffectsObject.is(arrayValue)) {
+            SerializationHelper.collectSerializableObject(arrayValue, res);
           }
         }
-      } else if (value instanceof Object) {
+      } else if (isObject(value)) {
         // 非 EffectsObject 对象只递归一层
         for (const objectKey of Object.keys(value)) {
           const objectValue = value[objectKey];
 
-          if (objectValue instanceof EffectsObject) {
-            this.collectSerializableObject(objectValue, res);
+          if (EffectsObject.is(objectValue)) {
+            SerializationHelper.collectSerializableObject(objectValue, res);
           }
         }
       }
@@ -68,11 +74,16 @@ export class SerializationHelper {
     return serializedDatas;
   }
 
-  static serializeTaggedProperties (effectsObject: EffectsObject, serializedData?: Record<string, any>) {
+  static serializeTaggedProperties (
+    effectsObject: EffectsObject,
+    serializedData?: Record<string, any>,
+  ) {
     effectsObject.toData();
+
     if (!serializedData) {
       serializedData = {};
     }
+
     const serializedProperties = getMergedStore(effectsObject);
 
     for (const key of Object.keys(serializedProperties)) {
@@ -86,15 +97,15 @@ export class SerializationHelper {
       ) {
         // TODO json 数据避免传 typedArray
         serializedData[key] = value;
-      } else if (value instanceof Array) {
+      } else if (isArray(value)) {
         if (!serializedData[key]) {
           serializedData[key] = [];
         }
         SerializationHelper.serializeArrayProperty(value, serializedData[key], 0);
-      } else if (value instanceof EffectsObject) {
+      } else if (EffectsObject.is(value)) {
         // TODO 处理 EffectsObject 递归序列化
         serializedData[key] = { id: value.getInstanceId() };
-      } else if (value instanceof Object) {
+      } else if (isObject(value)) {
         if (!serializedData[key]) {
           serializedData[key] = {};
         }
@@ -114,15 +125,15 @@ export class SerializationHelper {
       ) {
         // TODO json 数据避免传 typedArray
         serializedData[key] = value;
-      } else if (value instanceof Array) {
+      } else if (isArray(value)) {
         if (!serializedData[key]) {
           serializedData[key] = [];
         }
         SerializationHelper.serializeArrayProperty(value, serializedData[key], 0);
-      } else if (value instanceof EffectsObject) {
+      } else if (EffectsObject.is(value)) {
         // TODO 处理 EffectsObject 递归序列化
         serializedData[key] = { id: value.getInstanceId() };
-      } else if (value instanceof Object) {
+      } else if (isObject(value)) {
         if (!serializedData[key]) {
           serializedData[key] = {};
         }
@@ -133,7 +144,10 @@ export class SerializationHelper {
     return serializedData;
   }
 
-  static deserializeTaggedProperties (serializedData: Record<string, any>, effectsObject: EffectsObject) {
+  static deserializeTaggedProperties (
+    serializedData: spec.EffectsObjectData,
+    effectsObject: EffectsObject,
+  ) {
     const taggedProperties = effectsObject.taggedProperties;
     const serializedProperties = getMergedStore(effectsObject);
     const engine = effectsObject.engine;
@@ -142,12 +156,12 @@ export class SerializationHelper {
       if (serializedProperties[key]) {
         continue;
       }
-      const value = serializedData[key];
+      const value = serializedData[key as keyof spec.EffectsObjectData];
 
       taggedProperties[key] = SerializationHelper.deserializeProperty(value, engine, 0);
     }
     for (const key of Object.keys(serializedProperties)) {
-      const value = serializedData[key];
+      const value = serializedData[key as keyof spec.EffectsObjectData];
 
       if (value === undefined) {
         continue;
@@ -162,7 +176,10 @@ export class SerializationHelper {
     effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
 
-  static async deserializeTaggedPropertiesAsync (serializedData: Record<string, any>, effectsObject: EffectsObject) {
+  static async deserializeTaggedPropertiesAsync (
+    serializedData: spec.EffectsObjectData,
+    effectsObject: EffectsObject,
+  ) {
     const taggedProperties = effectsObject.taggedProperties;
     const serializedProperties = getMergedStore(effectsObject);
     const engine = effectsObject.engine;
@@ -171,12 +188,12 @@ export class SerializationHelper {
       if (serializedProperties[key]) {
         continue;
       }
-      const value = serializedData[key];
+      const value = serializedData[key as keyof spec.EffectsObjectData];
 
       taggedProperties[key] = await SerializationHelper.deserializePropertyAsync(value, engine, 0);
     }
     for (const key of Object.keys(serializedProperties)) {
-      const value = serializedData[key];
+      const value = serializedData[key as keyof spec.EffectsObjectData];
 
       if (value === undefined) {
         continue;
@@ -191,51 +208,52 @@ export class SerializationHelper {
     effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
 
-  static checkTypedArray (obj: any): boolean {
-    return obj instanceof Int8Array ||
-      obj instanceof Uint8Array ||
-      obj instanceof Uint8ClampedArray ||
-      obj instanceof Int16Array ||
-      obj instanceof Uint16Array ||
-      obj instanceof Int32Array ||
-      obj instanceof Uint32Array ||
-      obj instanceof Float32Array ||
-      obj instanceof Float64Array ||
-      obj instanceof ArrayBuffer;
+  static checkTypedArray (obj: unknown): boolean {
+    return obj instanceof Int8Array
+      || obj instanceof Uint8Array
+      || obj instanceof Uint8ClampedArray
+      || obj instanceof Int16Array
+      || obj instanceof Uint16Array
+      || obj instanceof Int32Array
+      || obj instanceof Uint32Array
+      || obj instanceof Float32Array
+      || obj instanceof Float64Array
+      || obj instanceof ArrayBuffer;
   }
 
-  static checkDataPath (value: any): boolean {
-    // check value is { id: 7e69662e964e4892ae8933f24562395b }
-    return value instanceof Object &&
-      Object.keys(value).length === 1 &&
-      value.id &&
-      value.id.length === 32;
+  // check value is { id: 7e69662e964e4892ae8933f24562395b }
+  static checkDataPath (value: unknown): value is spec.DataPath {
+    return !!(isObject(value)
+      && Object.keys(value).length === 1
+      && 'id' in value
+      && isString(value.id)
+      && value.id.length === 32);
   }
 
   // TODO 测试函数，2.0 上线后移除
   static checkGLTFNode (value: any): boolean {
-    return value instanceof Object &&
-      value.nodeIndex !== undefined &&
-      value.isJoint !== undefined;
+    return isObject(value)
+      && value.nodeIndex !== undefined
+      && value.isJoint !== undefined;
   }
 
-  static checkImageSource (value: any): boolean {
+  static checkImageSource (value: HTMLCanvasElement): boolean {
     return isCanvas(value) || value instanceof HTMLImageElement;
   }
 
-  private static deserializeProperty<T> (property: T, engine: Engine, level: number, type?: string): any {
+  private static deserializeProperty<T> (
+    property: T,
+    engine: Engine,
+    level: number,
+    type?: ClassConstructor,
+  ): any {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
       return;
     }
-    if (
-      typeof property === 'number' ||
-      typeof property === 'string' ||
-      typeof property === 'boolean'
-    ) {
-      return property;
-    } else if (property instanceof Array) {
+    // 加载并链接 DataPath 字段表示的 EffectsObject 引用。Class 对象 copy [key, value] 会丢失对象信息，因此只递归数组对象和普通 js Object 结构对象。
+    if (isArray(property)) {
       const res = [];
 
       for (const value of property) {
@@ -245,43 +263,37 @@ export class SerializationHelper {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
-      return engine.assetLoader.loadGUID((property as spec.DataPath).id);
-    } else if (property instanceof EffectsObject ||
-      SerializationHelper.checkImageSource(property) ||
-      SerializationHelper.checkTypedArray(property) ||
-      SerializationHelper.checkGLTFNode(property)
-    ) {
-      return property;
-    } else if (property instanceof Object) {
-      let res: Object;
+      return engine.assetLoader.loadGUID(property.id);
+    } else if (isObject(property) && property.constructor === Object) {
+      let res: Record<string, EffectsObject>;
 
       if (type) {
-        const classConstructor = effectsClassStore[type];
-
-        res = new classConstructor();
+        res = new type();
       } else {
         res = {};
       }
       for (const key of Object.keys(property)) {
-        // @ts-expect-error
         res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
       }
 
       return res;
+    } else {
+      return property;
     }
   }
 
-  private static async deserializePropertyAsync<T> (property: T, engine: Engine, level: number, type?: string): Promise<any> {
+  private static async deserializePropertyAsync<T> (
+    property: T,
+    engine: Engine,
+    level: number,
+    type?: ClassConstructor,
+  ): Promise<unknown> {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
       return;
     }
-    if (typeof property === 'number' ||
-      typeof property === 'string' ||
-      typeof property === 'boolean') {
-      return property;
-    } else if (property instanceof Array) {
+    if (isArray(property)) {
       const res = [];
 
       for (const value of property) {
@@ -291,34 +303,32 @@ export class SerializationHelper {
       return res;
       // TODO json 数据避免传 typedArray
     } else if (SerializationHelper.checkDataPath(property)) {
-      const res = await engine.assetLoader.loadGUIDAsync((property as spec.DataPath).id);
+      const res = await engine.assetLoader.loadGUIDAsync(property.id);
 
       return res;
-    } else if (property instanceof EffectsObject ||
-      SerializationHelper.checkImageSource(property) ||
-      SerializationHelper.checkTypedArray(property) ||
-      SerializationHelper.checkGLTFNode(property)) {
-      return property;
-    } else if (property instanceof Object) {
-      let res: Object;
+    } else if (isObject(property) && property.constructor === Object) {
+      let res: Record<string, unknown>;
 
       if (type) {
-        const classConstructor = effectsClassStore[type];
-
-        res = new classConstructor();
+        res = new type();
       } else {
         res = {};
       }
       for (const key of Object.keys(property)) {
-        // @ts-expect-error
         res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
       }
 
       return res;
+    } else {
+      return property;
     }
   }
 
-  private static serializeObjectProperty (objectProperty: Record<string, any>, serializedData: Record<string, any>, level: number): any {
+  private static serializeObjectProperty (
+    objectProperty: Record<string, unknown>,
+    serializedData: Record<string, unknown>,
+    level: number,
+  ) {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -339,24 +349,36 @@ export class SerializationHelper {
       ) {
         // TODO json 数据避免传 typedArray
         serializedData[key] = value;
-      } else if (value instanceof Array) {
+      } else if (isArray(value)) {
         if (!serializedData[key]) {
           serializedData[key] = [];
         }
-        SerializationHelper.serializeArrayProperty(value, serializedData[key], level + 1);
-      } else if (value instanceof EffectsObject) {
+        SerializationHelper.serializeArrayProperty(
+          value,
+          serializedData[key] as unknown[],
+          level + 1,
+        );
+      } else if (EffectsObject.is(value)) {
         // TODO 处理 EffectsObject 递归序列化
         serializedData[key] = { id: value.getInstanceId() };
-      } else if (value instanceof Object) {
+      } else if (isObject(value)) {
         if (!serializedData[key]) {
           serializedData[key] = {};
         }
-        SerializationHelper.serializeObjectProperty(value, serializedData[key], level + 1);
+        SerializationHelper.serializeObjectProperty(
+          value,
+          serializedData[key] as Record<string, unknown>,
+          level + 1,
+        );
       }
     }
   }
 
-  private static serializeArrayProperty (arrayProperty: Array<any>, serializedData: Array<any>, level: number): any {
+  private static serializeArrayProperty (
+    arrayProperty: unknown[],
+    serializedData: unknown[],
+    level: number,
+  ) {
     if (level > 14) {
       console.error('序列化数据的内嵌对象层数大于上限');
 
@@ -377,19 +399,27 @@ export class SerializationHelper {
       ) {
         // TODO json 数据避免传 typedArray
         serializedData[i] = value;
-      } else if (value instanceof Array) {
+      } else if (isArray(value)) {
         if (!serializedData[i]) {
           serializedData[i] = [];
         }
-        this.serializeArrayProperty(value, serializedData[i], level + 1);
-      } else if (value instanceof EffectsObject) {
+        SerializationHelper.serializeArrayProperty(
+          value,
+          serializedData[i] as unknown[],
+          level + 1,
+        );
+      } else if (EffectsObject.is(value)) {
         // TODO 处理 EffectsObject 递归序列化
         serializedData[i] = { id: value.getInstanceId() };
-      } else if (value instanceof Object) {
+      } else if (isObject(value)) {
         if (!serializedData[i]) {
           serializedData[i] = {};
         }
-        SerializationHelper.serializeObjectProperty(value, serializedData[i], level + 1);
+        SerializationHelper.serializeObjectProperty(
+          value,
+          serializedData[i] as Record<string, unknown>,
+          level + 1,
+        );
       }
     }
   }

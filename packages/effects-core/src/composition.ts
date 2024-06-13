@@ -135,10 +135,6 @@ export class Composition implements Disposable, LostHandler {
    */
   readonly loaderData: Record<string, any> = {};
   /**
-   * 渲染等级：S，A+，A，B+，B
-   */
-  readonly renderLevel?: spec.RenderLevel;
-  /**
    * 场景加载和首帧渲染时间
    */
   readonly statistic: CompositionStatistic;
@@ -223,7 +219,7 @@ export class Composition implements Disposable, LostHandler {
       scene.textures = undefined;
       scene.consumed = true;
     }
-    const { sourceContent, pluginSystem, imgUsage, totalTime, renderLevel, refCompositionProps } = this.compositionSourceManager;
+    const { sourceContent, pluginSystem, imgUsage, totalTime, refCompositionProps } = this.compositionSourceManager;
 
     assertExist(sourceContent);
     this.renderer = renderer;
@@ -248,7 +244,6 @@ export class Composition implements Disposable, LostHandler {
     this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0 };
     this.reusable = reusable;
     this.speed = speed;
-    this.renderLevel = renderLevel;
     this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.ItemEndBehavior.loop;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
@@ -439,7 +434,6 @@ export class Composition implements Disposable, LostHandler {
     });
     // TODO 考虑放到构造函数
     this.renderFrame.cachedTextures = this.textures;
-
   }
 
   /**

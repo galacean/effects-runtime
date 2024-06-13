@@ -10,6 +10,37 @@ import { ParticleSystem } from '../particle/particle-system';
  * @since 2.0.0
  * @internal
  */
+export class TimelineClip {
+  id: string;
+  name: string;
+  start = 0;
+  duration = 0;
+  asset: PlayableAsset;
+  endBehaviour: ItemEndBehavior;
+
+  constructor () {
+  }
+
+  toLocalTime (time: number) {
+    let localTime = time - this.start;
+    const duration = this.duration;
+
+    if (localTime - duration > 0.001) {
+      if (this.endBehaviour === ItemEndBehavior.loop) {
+        localTime = localTime % duration;
+      } else if (this.endBehaviour === ItemEndBehavior.freeze) {
+        localTime = Math.min(duration, localTime);
+      }
+    }
+
+    return localTime;
+  }
+}
+
+/**
+ * @since 2.0.0
+ * @internal
+ */
 @effectsClass('TrackAsset')
 export class TrackAsset extends PlayableAsset {
   name: string;
@@ -17,8 +48,10 @@ export class TrackAsset extends PlayableAsset {
 
   trackType = TrackType.MasterTrack;
   private clipSeed = 0;
-  @serialize('TimelineClip')
+
+  @serialize(TimelineClip)
   private clips: TimelineClip[] = [];
+
   @serialize()
   protected children: TrackAsset[] = [];
 
@@ -126,39 +159,6 @@ export class TrackAsset extends PlayableAsset {
 export enum TrackType {
   MasterTrack,
   ObjectTrack,
-}
-
-/**
- * @since 2.0.0
- * @internal
- */
-@effectsClass('TimelineClip')
-export class TimelineClip {
-  id: string;
-  name: string;
-  start = 0;
-  duration = 0;
-  asset: PlayableAsset;
-  endBehaviour: ItemEndBehavior;
-
-  constructor () {
-
-  }
-
-  toLocalTime (time: number) {
-    let localTime = time - this.start;
-    const duration = this.duration;
-
-    if (localTime - duration > 0.001) {
-      if (this.endBehaviour === ItemEndBehavior.loop) {
-        localTime = localTime % duration;
-      } else if (this.endBehaviour === ItemEndBehavior.freeze) {
-        localTime = Math.min(duration, localTime);
-      }
-    }
-
-    return localTime;
-  }
 }
 
 export class RuntimeClip {

@@ -1,6 +1,6 @@
 import {
   spec, generateGUID, Downloader, TextureSourceType, getStandardJSON, glContext,
-  glType2VertexFormatType,
+  glType2VertexFormatType, isObject,
 } from '@galacean/effects';
 import type {
   Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
@@ -23,14 +23,8 @@ export class JSONConverter {
     this.downloader = new Downloader();
   }
 
-  async processScene (sceneData: string | Object) {
-    let sceneJSON;
-
-    if (sceneData instanceof Object) {
-      sceneJSON = sceneData;
-    } else {
-      sceneJSON = await this.loadJSON(sceneData);
-    }
+  async processScene (sceneData: string | Record<string | symbol, unknown>) {
+    const sceneJSON = isObject(sceneData) ? sceneData : await this.loadJSON(sceneData);
 
     // @ts-expect-error
     sceneJSON.textures.forEach(tex => {

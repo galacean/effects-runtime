@@ -24,6 +24,5 @@ export function isSimulatorCellPhone (): boolean {
 }
 
 export function isAlipayMiniApp (): boolean {
-  // @ts-expect-error
   return typeof my !== 'undefined' && my?.renderTarget === 'web';
 }

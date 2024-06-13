@@ -51,12 +51,13 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
   const result: JSONScene = {
     ...json,
     items: [],
-    compositions:[],
+    compositions: [],
     components: [],
     materials: [],
     shaders: [],
     geometries: [],
     animations: [],
+    miscs:[],
   };
 
   // image数据添加 guid
@@ -155,8 +156,8 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
     const compositionData: CompositionData = {
       ...composition,
-      timelineAsset:{ id:'' },
-      sceneBindings:[],
+      timelineAsset: { id: '' },
+      sceneBindings: [],
     };
 
     result.compositions.push(compositionData);
@@ -577,18 +578,14 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
   composition.timelineAsset = { id: timelineAssetData.id };
   composition.sceneBindings = sceneBindings;
 
-  if (!jsonScene.animations) {
-    jsonScene.animations = [];
-  }
-  // @ts-expect-error
-  jsonScene.animations.push(timelineAssetData);
+  jsonScene.miscs.push(timelineAssetData);
 
   for (const trackData of trackDatas) {
     //@ts-expect-error
-    jsonScene.animations.push(trackData);
+    jsonScene.miscs.push(trackData);
   }
   for (const playableAsset of playableAssetDatas) {
     //@ts-expect-error
-    jsonScene.animations.push(playableAsset);
+    jsonScene.miscs.push(playableAsset);
   }
 }

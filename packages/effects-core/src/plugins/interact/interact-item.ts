@@ -212,9 +212,9 @@ export class InteractComponent extends RendererComponent {
     };
   }
 
-  override fromData (data: any): void {
+  override fromData (data: spec.InteractContent): void {
     super.fromData(data);
-    this.interactData = data as spec.InteractContent;
+    this.interactData = data;
   }
 }
 

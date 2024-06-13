@@ -4,6 +4,7 @@ import type { GLRendererInternal } from './gl-renderer-internal';
 
 export class GLRenderbuffer extends Renderbuffer {
   buffer: WebGLRenderbuffer | null;
+
   private initialized = false;
   private renderer?: GLRendererInternal | null;
 

@@ -11,7 +11,7 @@ import {
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
-import { isDowngradeIOS } from './utils';
+import { isDowngradeIOS, throwError, throwErrorPromise } from './utils';
 
 /**
  * `onItemClicked` 点击回调函数的传入参数
@@ -488,7 +488,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
     // 中低端设备降帧到 30fps
     if (this.ticker) {
-      if (composition.renderLevel === spec.RenderLevel.B) {
+      if (opts.renderLevel === spec.RenderLevel.B) {
         this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
       }
     }
@@ -506,7 +506,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       composition.pause();
     }
 
-    const firstFrameTime = (performance.now() - last) + composition.statistic.loadTime;
+    const firstFrameTime = performance.now() - last + composition.statistic.loadTime;
 
     composition.statistic.firstFrameTime = firstFrameTime;
     logger.info(`first frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms`);
@@ -888,8 +888,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     }
     // 在报错函数中传入 player.name
     const errorMsg = getDestroyedErrorMessage(this.name);
-    const throwErrorFunc = () => throwDestroyedError(errorMsg);
-    const throwErrorPromiseFunc = () => throwDestroyedErrorPromise(errorMsg);
+    const throwErrorFunc = () => throwError(errorMsg);
+    const throwErrorPromiseFunc = () => throwErrorPromise(errorMsg);
 
     this.tick = throwErrorFunc;
     this.resize = throwErrorFunc;
@@ -1061,12 +1061,4 @@ function assertContainer (container?: HTMLElement | null): asserts container is 
 
 function getDestroyedErrorMessage (name: string) {
   return `Never use destroyed player: ${name} again, see ${HELP_LINK['Never use destroyed player again']}`;
-}
-
-function throwDestroyedError (destroyedErrorMessage: string) {
-  throw new Error(destroyedErrorMessage);
-}
-
-function throwDestroyedErrorPromise (destroyedErrorMessage: string) {
-  return Promise.reject(destroyedErrorMessage);
 }
