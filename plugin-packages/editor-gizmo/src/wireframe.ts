@@ -254,7 +254,12 @@ export class SharedGeometry extends GLGeometry {
   }
 }
 
-function createGizmoShader (marcos: ShaderMarcos, shader: string, shaderType: ShaderType, level: number) {
+function createGizmoShader (
+  marcos: ShaderMarcos,
+  shader: string,
+  shaderType: ShaderType,
+  level: number,
+) {
   const versionTag = /#version\s+\b\d{3}\b\s*(es)?/;
   const shaderMatch = shader.match(versionTag);
   const newShader = shaderMatch ? shader.substring(shaderMatch[0].length) : shader;

@@ -1,8 +1,8 @@
 #version 300 es
 precision mediump float;
 #define SHADER_VERTEX 1
-#import "./compatible.vert.glsl";
-#import "./value.glsl";
+#include "./compatible.vert.glsl";
+#include "./value.glsl";
 in vec4 aPos;
 in vec3 aDir;
 in vec3 aInfo;//lifetime section side

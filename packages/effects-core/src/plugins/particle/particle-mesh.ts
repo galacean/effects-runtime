@@ -148,8 +148,8 @@ export class ParticleMesh implements ParticleMeshData {
     const { detail } = engine.gpuCapability;
     const { halfFloatTexture, maxVertexUniforms } = detail;
     const marcos: ShaderMarcos = [
+      // spec.RenderMode
       ['RENDER_MODE', +renderMode],
-      ['PRE_MULTIPLY_ALPHA', false],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const { level } = engine.gpuCapability;
@@ -647,9 +647,8 @@ function generateGeometryProps (
 export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCapability: GPUCapability) {
   const props = item.content;
   const renderMode = +(props.renderer?.renderMode || 0);
-  const marcos: [key: string, value: boolean | number][] = [
+  const marcos: ShaderMarcos = [
     ['RENDER_MODE', renderMode],
-    ['PRE_MULTIPLY_ALPHA', false],
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];
   const { level, detail } = gpuCapability;

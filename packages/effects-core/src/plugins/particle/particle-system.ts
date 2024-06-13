@@ -142,6 +142,7 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture'> 
 
 // 粒子节点包含的数据
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
+
 @effectsClass(spec.DataType.ParticleSystem)
 export class ParticleSystem extends Component {
   renderer: ParticleSystemRenderer;

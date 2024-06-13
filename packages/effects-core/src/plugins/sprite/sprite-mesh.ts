@@ -1,7 +1,7 @@
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { GPUCapabilityDetail, SharedShaderWithSource } from '../../render';
+import type { GPUCapabilityDetail, ShaderMarcos, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
 import type { Transform } from '../../transform';
@@ -56,13 +56,13 @@ export function getImageItemRenderInfo (item: SpriteComponent): SpriteItemRender
   };
 }
 
-export function spriteMeshShaderFromFilter (level: number, options?: { count?: number, ignoreBlend?: boolean, wireframe?: boolean, env?: string }): SharedShaderWithSource {
-  const { count = 2, env = '', ignoreBlend, wireframe } = options ?? {};
-  const marcos: [key: string, val: boolean | number][] = [
-    ['MAX_ITEM_COUNT', count],
-    ['PRE_MULTIPLY_ALPHA', false],
+export function spriteMeshShaderFromFilter (
+  level: number,
+  options?: { wireframe?: boolean, env?: string },
+): SharedShaderWithSource {
+  const { env = '', wireframe } = options ?? {};
+  const marcos: ShaderMarcos = [
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
-    ['USE_BLEND', !ignoreBlend],
     ['MAX_FRAG_TEX', maxSpriteTextureCount >= 16 ? 16 : 8],
   ];
   const fragment = wireframe ? itemFrameFrag : itemFrag;
@@ -84,7 +84,6 @@ export function spriteMeshShaderIdFromRenderInfo (renderInfo: SpriteItemRenderIn
 export function spriteMeshShaderFromRenderInfo (renderInfo: SpriteItemRenderInfo, count: number, level: number, env?: string): SharedShaderWithSource {
   const { wireframe } = renderInfo;
   const shader = spriteMeshShaderFromFilter(level, {
-    count,
     wireframe,
     env,
   });

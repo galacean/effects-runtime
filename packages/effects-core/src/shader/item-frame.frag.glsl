@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
-#pragma "./compatible.frag.glsl";
-#import "./blend.glsl";
+#include "./compatible.frag.glsl";
+#include "./blend.glsl";
 
 in vec4 vColor;
 in vec4 vTexCoord;//x y transparentOcclusion
