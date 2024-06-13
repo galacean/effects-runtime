@@ -1,30 +1,16 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset,
-  BoundingBoxTriangle,
-  Engine,
-  HitTestTriangleParams,
-  Renderer,
-  Texture,
+  BinaryAsset, BoundingBoxTriangle, HitTestTriangleParams, Renderer, Texture,
 } from '@galacean/effects';
 import {
-  effectsClass,
-  HitTestType,
-  math,
-  PLAYER_OPTIONS_ENV_EDITOR,
-  RendererComponent,
-  serialize,
+  effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, serialize,
   spec,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import {
-  createSkeletonData,
-  getAnimationDuration,
-  getAnimationList,
-  getSkeletonFromBuffer,
-  getSkinList,
-  readAtlasData,
+  createSkeletonData, getAnimationDuration, getAnimationList, getSkeletonFromBuffer,
+  getSkinList, readAtlasData,
 } from './utils';
 
 const { Vector2, Vector3 } = math;
@@ -39,11 +25,11 @@ export interface BoundsData {
 export interface SpineResource {
   atlas: {
     bins: BinaryAsset,
-    source: [start:number, length?: number],
+    source: [start: number, length?: number],
   },
   skeleton: {
     bins: BinaryAsset,
-    source: [start:number, length?: number],
+    source: [start: number, length?: number],
   },
   images: Texture[],
   skeletonType: spec.skeletonFileType,
@@ -113,10 +99,6 @@ export class SpineComponent extends RendererComponent {
   @serialize()
   resource: SpineResource;
 
-  constructor (engine: Engine) {
-    super(engine);
-  }
-
   override fromData (data: spec.SpineComponent) {
     super.fromData(data);
 
@@ -178,8 +160,14 @@ export class SpineComponent extends RendererComponent {
     }
   }
 
-  private initContent (atlas: TextureAtlas, skeletonData: SkeletonData, spineOptions: spec.PluginSpineOption) {
-    const activeAnimation = typeof spineOptions.activeAnimation === 'string' ? [spineOptions.activeAnimation] : spineOptions.activeAnimation;
+  private initContent (
+    atlas: TextureAtlas,
+    skeletonData: SkeletonData,
+    spineOptions: spec.PluginSpineOption,
+  ) {
+    const activeAnimation = typeof spineOptions.activeAnimation === 'string'
+      ? [spineOptions.activeAnimation]
+      : spineOptions.activeAnimation;
 
     this.skeleton = new Skeleton(skeletonData);
     this.skeletonData = skeletonData;

@@ -25,7 +25,7 @@ const spineData: SpineDataCache = item.spineDataCache;
 
 ``` ts
 const comp = await new Player().loadScene(scene);
-const item = comp.getItemByName('itemName')
+const item = comp.getItemByName('itemName');
 const { skeletonData } = item.spineDataCache;
 const animationList = getAnimationList(skeletonData);
 const skinList = getSkinList(skeletonData);
@@ -35,8 +35,8 @@ const skinList = getSkinList(skeletonData);
 
 ``` ts
 const comp = await new Player().loadScene(scene);
-const item = comp.getItemByName('itemName')
-const { skinList, animationList } = item.spineDataCache
+const item = comp.getItemByName('itemName');
+const { skinList, animationList } = item.spineDataCache;
 ```
 
 3. 从 atals 和 skeleton 二进制数据中获取

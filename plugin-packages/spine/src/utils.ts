@@ -1,13 +1,7 @@
 import type { SkeletonData, Texture as SpineTexture } from '@esotericsoftware/spine-core';
 import {
-  AtlasAttachmentLoader,
-  BinaryInput,
-  BlendMode,
-  SkeletonBinary,
-  SkeletonJson,
-  TextureAtlas,
-  TextureFilter,
-  TextureWrap,
+  AtlasAttachmentLoader, BinaryInput, BlendMode, SkeletonBinary, SkeletonJson, TextureAtlas,
+  TextureFilter, TextureWrap,
 } from '@esotericsoftware/spine-core';
 import type { Material, Texture } from '@galacean/effects';
 import { assertExist, glContext } from '@galacean/effects';
@@ -56,11 +50,11 @@ export function createSkeletonData (atlas: TextureAtlas, skeletonFile: any, skel
     const version = input.readString();
 
     if (!version) {
-      throw new Error ('未获取到 Spine 版本信息，请使用 Spine 4.2 导出二进制数据');
+      throw new Error('未获取到 Spine 版本信息，请使用 Spine 4.2 导出二进制数据');
     }
 
     if (version && version.split('.')[1] !== '2') {
-      throw new Error (`请使用 Spine 4.2 导出二进制数据, 当前版本: ${version}`);
+      throw new Error(`请使用 Spine 4.2 导出二进制数据, 当前版本: ${version}`);
     }
   } else {
     skeletonLoader = new SkeletonJson(atlasLoader);
@@ -178,12 +172,12 @@ export function readAtlasData (atlasBuffer: Uint8Array, textures: Texture[]): Te
 
   for (let i = 0; i < pageCount; i++) {
     const page = atlas.pages[i];
-    const tex = textures[i];
+    const texture = textures[i];
 
-    if (!tex) {
+    if (!texture) {
       throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
     }
-    page.texture = tex as unknown as SpineTexture;
+    page.texture = texture as unknown as SpineTexture;
   }
 
   return atlas;

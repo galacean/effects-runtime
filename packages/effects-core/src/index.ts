@@ -1,12 +1,7 @@
 import { registerPlugin } from './plugin-system';
 import type { CameraController, InteractComponent, ParticleSystem, SpriteComponent, TextComponent } from './plugins';
 import {
-  CalculateLoader,
-  CameraVFXItemLoader,
-  InteractLoader,
-  ParticleLoader,
-  SpriteLoader,
-  TextLoader,
+  CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
 } from './plugins';
 import { VFXItem } from './vfx-item';
 

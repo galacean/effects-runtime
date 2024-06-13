@@ -1,20 +1,10 @@
 import type {
-  BaseContent,
-  BinaryFile,
-  CompositionData,
-  Item,
-  JSONScene,
-  JSONSceneLegacy,
-  SpineResource,
+  BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
+  SpineContent,
 } from '@galacean/effects-specification';
 import {
-  CompositionEndBehavior,
-  DataType,
-  END_BEHAVIOR_FREEZE,
-  ItemEndBehavior,
-  ItemType,
+  CompositionEndBehavior, DataType, END_BEHAVIOR_FREEZE, ItemEndBehavior, ItemType,
 } from '@galacean/effects-specification';
-import type { SpineContent } from '@galacean/effects-specification/es/item/spine-item';
 import type { TimelineAssetData } from '../plugins/cal/timeline-asset';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
@@ -72,7 +62,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     shaders: [],
     geometries: [],
     animations: [],
-    miscs:[],
+    miscs: [],
   };
 
   // image数据添加 guid
@@ -311,8 +301,12 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
 
     // Spine 元素转为 guid 索引
-    if (item.type === ItemType.spine) {
-      convertSpineData(json.spines![item.content.options.spine], item.content, result);
+    if (
+      item.type === ItemType.spine
+      && json.spines
+      && json.spines.length !== 0
+    ) {
+      convertSpineData(json.spines[item.content.options.spine], item.content, result);
     }
 
     // item 的 content 转为 component data 加入 JSONScene.components

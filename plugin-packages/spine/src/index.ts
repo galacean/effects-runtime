@@ -1,13 +1,7 @@
 import { AbstractPlugin, logger, registerPlugin, version as playerVersion, VFXItem } from '@galacean/effects';
 import {
-  createSkeletonData,
-  getAnimationDuration,
-  getAnimationList,
-  getAtlasFromBuffer,
-  getSkeletonFromBuffer,
-  getSkinList,
-  getSpineVersion,
-  getTextureOptions,
+  createSkeletonData, getAnimationDuration, getAnimationList, getAtlasFromBuffer,
+  getSkeletonFromBuffer, getSkinList, getSpineVersion, getTextureOptions,
 } from './utils';
 
 export { SpineComponent } from './spine-component';
@@ -23,9 +17,9 @@ export {
   getSkeletonFromBuffer,
 };
 
-export const version = __VERSION__;
+registerPlugin<void>('spine', class SpineLoader extends AbstractPlugin { }, VFXItem);
 
-registerPlugin<void>('spine', class SpineLoader extends AbstractPlugin {}, VFXItem);
+export const version = __VERSION__;
 
 logger.info('plugin spine version: ' + version);
 
