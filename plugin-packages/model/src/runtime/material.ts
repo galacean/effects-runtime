@@ -315,7 +315,7 @@ export class PMaterialUnlit extends PMaterialBase {
     this.ZTest = material.getFloat('ZTest') !== 0;
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
     this.alphaClip = material.getFloat('AlphaClip') === 1;
-    this.alphaCutoff = material.getFloat('_Cutoff') ?? 0;
+    this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
     this.renderFace = material.stringTags['RenderFace'] as spec.RenderFace ?? spec.RenderFace.Front;
   }
 
@@ -540,7 +540,7 @@ export class PMaterialPBR extends PMaterialBase {
     this.ZTest = material.getFloat('ZTest') !== 0;
     this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
     this.alphaClip = material.getFloat('AlphaClip') === 1;
-    this.alphaCutoff = material.getFloat('_Cutoff') ?? 0;
+    this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
     this.renderFace = material.stringTags['RenderFace'] as spec.RenderFace ?? spec.RenderFace.Front;
   }
 

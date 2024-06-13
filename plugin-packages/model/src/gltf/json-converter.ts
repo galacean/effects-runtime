@@ -627,7 +627,7 @@ export class JSONConverter {
       const floats: Record<string, number> = {};
 
       if (material.alphaCutOff !== undefined) {
-        floats['_Cutoff'] = material.alphaCutOff;
+        floats['_AlphaCutoff'] = material.alphaCutOff;
       }
       const colors: Record<string, Color> = {
         '_BaseColorFactor': new Color(
@@ -682,7 +682,7 @@ export class JSONConverter {
         floats['_EmissiveIntensity'] = material.emissiveIntensity;
       }
       if (material.alphaCutOff !== undefined) {
-        floats['_Cutoff'] = material.alphaCutOff;
+        floats['_AlphaCutoff'] = material.alphaCutOff;
       }
       const colors: Record<string, Color> = {
         '_BaseColorFactor': new Color(
@@ -752,7 +752,7 @@ export class JSONConverter {
 
     if (oldMat.blending === spec.MaterialBlending.masked) {
       newMat.floats['AlphaClip'] = 1;
-      newMat.floats['_Cutoff'] = oldMat.alphaCutOff ?? 0;
+      newMat.floats['_AlphaCutoff'] = oldMat.alphaCutOff ?? 0;
     } else {
       newMat.floats['AlphaClip'] = 0;
     }

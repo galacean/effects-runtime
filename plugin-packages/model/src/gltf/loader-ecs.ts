@@ -290,8 +290,8 @@ export class LoaderECSImpl implements LoaderECS {
         material.colors['_BaseColorFactor'] = { r: 1, g: 1, b: 1, a: 1 };
       }
 
-      if (material.floats['_Cutoff'] === undefined) {
-        material.floats['_Cutoff'] = 0;
+      if (material.floats['_AlphaCutoff'] === undefined) {
+        material.floats['_AlphaCutoff'] = 0;
       }
 
       if (!material.floats['ZWrite']) {
@@ -342,8 +342,8 @@ export class LoaderECSImpl implements LoaderECS {
         material.floats['_EmissiveIntensity'] = 1;
       }
 
-      if (material.floats['_Cutoff'] === undefined) {
-        material.floats['_Cutoff'] = 0;
+      if (material.floats['_AlphaCutoff'] === undefined) {
+        material.floats['_AlphaCutoff'] = 0;
       }
 
       if (!material.floats['ZWrite']) {
@@ -900,7 +900,7 @@ export function getPBRShaderProperties (): string {
   _EmissiveSampler ("自发光贴图", 2D) = "" {}
   _EmissiveIntensity ("自发光贴图强度", Float) = 1
   _EmissiveFactor ("自发光颜色", Color) = (0, 0, 0, 1)
-  _Cutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
+  _AlphaCutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
   `;
 }
 
@@ -908,7 +908,7 @@ export function getUnlitShaderProperties (): string {
   return `
   _BaseColorSampler ("基础贴图", 2D) = "" {}
   _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
-  _Cutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
+  _AlphaCutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
   `;
 }
 
@@ -937,7 +937,7 @@ export function getDefaultPBRMaterialData (): spec.MaterialData {
       '_NormalScale': 1,
       '_OcclusionStrength': 1,
       '_EmissiveIntensity': 1,
-      '_Cutoff': 0.5,
+      '_AlphaCutoff': 0.5,
     },
     'vector4s': {
 
@@ -983,7 +983,7 @@ export function getDefaultUnlitMaterialData (): spec.MaterialData {
 
     },
     'floats': {
-      '_Cutoff': 0.5,
+      '_AlphaCutoff': 0.5,
     },
     'vector4s': {
 
