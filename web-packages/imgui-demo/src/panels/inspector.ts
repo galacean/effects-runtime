@@ -1,6 +1,7 @@
 import { ImGui } from '../imgui';
 import { GalaceanEffects } from '../ge';
 import { getMergedStore, type VFXItem } from '@galacean/effects';
+import type { Component } from '@galacean/effects';
 
 type char = number;
 type int = number;
@@ -67,13 +68,19 @@ export class Editor {
 
         const propertyDecoratorStore = getMergedStore(componet);
 
-        for (const key of Object.keys(propertyDecoratorStore)) {
-          //@ts-expect-error
+        for (const peopertyName of Object.keys(componet)) {
+          const key = peopertyName as keyof Component;
+
           if (typeof componet[key] === 'number') {
-            ImGui.Text(key);
+            ImGui.Text(peopertyName);
             ImGui.SameLine(100);
             //@ts-expect-error
-            ImGui.DragFloat('##' + key, (_ = componet[key]) => componet[key] = _);
+            ImGui.DragFloat('##DragFloat' + peopertyName, (_ = componet[key]) => componet[key] = _);
+          } else if (typeof componet[key] === 'boolean') {
+            ImGui.Text(peopertyName);
+            ImGui.SameLine(100);
+            //@ts-expect-error
+            ImGui.Checkbox('##Checkbox' + peopertyName, (_ = componet[key]) => componet[key] = _);
           }
         }
       }
