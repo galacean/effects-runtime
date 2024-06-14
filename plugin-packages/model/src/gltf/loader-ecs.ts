@@ -136,18 +136,20 @@ export class LoaderECSImpl implements LoaderECS {
       this.animations.push(anim.animationClipData);
     });
 
-    this.items = [...gltfResource.scenes[0].vfxItemData];
+    this.items = [];
+
+    await this.tryAddSkybox({
+      skyboxType: options.gltf.skyboxType,
+      renderable: options.gltf.skyboxVis,
+    });
+
+    this.items.push(...gltfResource.scenes[0].vfxItemData);
     this.items.forEach(item => {
       // @ts-expect-error
       if (item.type === 'root') {
         // @ts-expect-error
         item.type = 'ECS';
       }
-    });
-
-    await this.tryAddSkybox({
-      skyboxType: options.gltf.skyboxType,
-      renderable: options.gltf.skyboxVis,
     });
 
     return this.getLoadResult();
