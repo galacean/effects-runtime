@@ -337,6 +337,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
    * 设置播放一组动画，循环播放最后一个
    * @param animationList - 动画名列表
    * @param speed - 播放速度
+   * @since 1.5.2
    */
   setAnimationListLoopEnd (animationList: string[], speed?: number) {
     if (!this.skeleton || !this.state) {
@@ -406,6 +407,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   /**
    * 获取当前 Spine 中的 AnimationState
    * @returns
+   * @since 1.5.2
    */
   getAnimationState (): AnimationState {
     return this.state;
