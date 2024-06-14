@@ -108,7 +108,7 @@ export class Composition implements Disposable, LostHandler {
   keepResource: boolean;
   /**
    * 合成内的元素否允许点击、拖拽交互
-   * @since 1.5.2
+   * @since 1.6.0
    */
   interactive: boolean;
   /**
@@ -127,7 +127,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 合成中元素点击时触发的回调
    * 不推荐使用
-   * @since 1.5.2
+   * @since 1.6.0
    * @ignore
    */
   onItemClicked?: (data: CompItemClickedData) => void;
