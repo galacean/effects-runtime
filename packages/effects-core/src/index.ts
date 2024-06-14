@@ -3,6 +3,7 @@ import type { CameraController, InteractComponent, ParticleSystem, SpriteCompone
 import {
   CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
 } from './plugins';
+import { logger } from './utils';
 import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';
@@ -48,3 +49,7 @@ registerPlugin<SpriteComponent>('sprite', SpriteLoader, VFXItem, true);
 registerPlugin<ParticleSystem>('particle', ParticleLoader, VFXItem, true);
 registerPlugin('cal', CalculateLoader, VFXItem, true);
 registerPlugin<InteractComponent>('interact', InteractLoader, VFXItem, true);
+
+export const version = __VERSION__;
+
+logger.info('player version: ' + version);
