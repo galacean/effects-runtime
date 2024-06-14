@@ -1,5 +1,5 @@
 import * as spec from '@galacean/effects-specification';
-import type { Ray } from '@galacean/effects-math/es/core/index';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { SceneType } from './asset-manager';
 import type { Scene } from './scene';
@@ -126,9 +126,10 @@ export class Composition implements Disposable, LostHandler {
   onMessageItem?: (item: MessageItem) => void;
   /**
    * 合成中元素点击时触发的回调
-   * 不推荐使用
+   * 注意：此接口随时可能下线，请务使用！
    * @since 1.6.0
    * @ignore
+   * @deprecated
    */
   onItemClicked?: (data: CompItemClickedData) => void;
   /**

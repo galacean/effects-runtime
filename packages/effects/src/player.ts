@@ -32,7 +32,11 @@ import { isDowngradeIOS } from './utils';
  */
 export interface ItemClickedData extends CompItemClickedData {
   player: Player,
+  /**
+   * @deprecated since 1.6.0 - use `compositionName` instead
+   */
   composition: string,
+  compositionName: string,
   compositionId: number,
 }
 
@@ -871,6 +875,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
               this.handleItemClicked?.({
                 ...regions[i],
                 compositionId: composition.id,
+                compositionName: composition.name,
                 composition: composition.name,
                 player: this,
               });

@@ -260,10 +260,10 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
    */
   setAnimation (animation: string, speed?: number) {
     if (!this.skeleton || !this.state) {
-      throw new Error('Set animation before skeleton create');
+      throw new Error('set animation before skeleton create.');
     }
     if (!this.animationList.length) {
-      throw new Error('animationList is empty, check your spine file');
+      throw new Error('animationList is empty, check your spine file.');
     }
     const loop = this.endBehavior === spec.ItemEndBehavior.loop;
     const listener = this.state.tracks[0]?.listener;
@@ -275,7 +275,7 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     this.state.setEmptyAnimation(0);
 
     if (!this.animationList.includes(animation)) {
-      console.warn(`animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}`);
+      console.warn(`animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}.`);
 
       this.state.setAnimation(0, this.animationList[0], loop);
       this.activeAnimation = [this.animationList[0]];
@@ -284,8 +284,8 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
       this.activeAnimation = [animation];
     }
 
-    if (!isNaN(speed as number)) {
-      this.setSpeed(speed as number);
+    if (speed !== undefined && !isNaN(speed)) {
+      this.setSpeed(speed);
     }
   }
 
@@ -328,8 +328,8 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
       }
     }
     this.activeAnimation = animationList;
-    if (!isNaN(speed as number)) {
-      this.setSpeed(speed as number);
+    if (speed !== undefined && !isNaN(speed)) {
+      this.setSpeed(speed);
     }
   }
 
@@ -341,10 +341,10 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
    */
   setAnimationListLoopEnd (animationList: string[], speed?: number) {
     if (!this.skeleton || !this.state) {
-      throw new Error('Set animation before skeleton create');
+      throw new Error('set animation before skeleton create.');
     }
     if (!this.animationList.length) {
-      throw new Error('animationList is empty, please check your setting');
+      throw new Error('animationList is empty, please check your setting.');
     }
     if (animationList.length === 1) {
       this.setAnimation(animationList[0], speed);
@@ -354,12 +354,11 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     const listener = this.state.tracks[0]?.listener;
 
     if (listener) {
-      listener.end = () => {};
+      listener.end = () => { };
     }
     this.state.setEmptyAnimation(0);
     for (let i = 0; i < animationList.length - 1; i++) {
       const animation = animationList[i];
-
       const trackEntry = this.state.setAnimation(0, animation, false);
 
       if (i === animationList.length - 2) {

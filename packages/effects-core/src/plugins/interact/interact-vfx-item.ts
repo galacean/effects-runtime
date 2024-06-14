@@ -1,5 +1,5 @@
-import { clamp, Vector3 } from '@galacean/effects-math/es/core/index';
-import type { vec3 } from '@galacean/effects-specification';
+import { clamp } from '@galacean/effects-math/es/core/utils';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { Composition } from '../../composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
@@ -16,7 +16,7 @@ import { InteractMesh } from './interact-mesh';
 
 interface DragEventType extends TouchEventType {
   cameraParam?: {
-    position: vec3,
+    position: spec.vec3,
     fov: number,
   },
 }
