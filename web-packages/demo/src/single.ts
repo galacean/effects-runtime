@@ -7,7 +7,8 @@ const json = inspireList.turnplate.url;
 (async () => {
   try {
     const player = createPlayer();
-    const comp = await player.loadScene(json);
+
+    await player.loadScene(json);
   } catch (e) {
     console.error('biz', e);
   }
@@ -21,7 +22,7 @@ function createPlayer () {
     },
     // manualRender: true,
     renderFramework: 'webgl',
-    // env: 'editor',
+    env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {
       console.info('onPausedByItem', data);

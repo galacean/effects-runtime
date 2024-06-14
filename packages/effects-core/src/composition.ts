@@ -1,5 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/index';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { SceneType } from './asset-manager';
 import type { Scene } from './scene';
 import type { Disposable, LostHandler } from './utils';
@@ -32,6 +33,13 @@ export interface MessageItem {
   compositionId: number,
 }
 
+export interface CompItemClickedData {
+  name: string,
+  id: string,
+  hitPositions: Vector3[],
+  position: Vector3,
+}
+
 /**
  *
  */
@@ -46,6 +54,7 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   renderer: Renderer,
   onPlayerPause?: (item: VFXItem<any>) => void,
+  onItemClicked?: (item: VFXItem<any>) => void,
   onMessageItem?: (item: MessageItem) => void,
   onEnd?: (composition: Composition) => void,
   event?: EventSystem,
@@ -115,6 +124,13 @@ export class Composition implements Disposable, LostHandler {
    * 合成中消息元素创建/销毁时触发的回调
    */
   onMessageItem?: (item: MessageItem) => void;
+  /**
+   * 合成中元素点击时触发的回调
+   * 不推荐使用
+   * @since 1.5.2
+   * @ignore
+   */
+  onItemClicked?: (data: CompItemClickedData) => void;
   /**
    * 合成id
    */
