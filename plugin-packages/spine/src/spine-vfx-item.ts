@@ -253,6 +253,11 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     this.content?.update();
   }
 
+  /**
+   * 设置单个动画
+   * @param animation - 动画名
+   * @param speed - 播放速度
+   */
   setAnimation (animation: string, speed?: number) {
     if (!this.skeleton || !this.state) {
       throw new Error('Set animation before skeleton create');
@@ -284,6 +289,11 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
     }
   }
 
+  /**
+   * 设置播放一组动画
+   * @param animationList - 动画名列表
+   * @param speed - 播放速度
+   */
   setAnimationList (animationList: string[], speed?: number) {
     if (!this.skeleton || !this.state) {
       throw new Error('Set animation before skeleton create');
@@ -324,6 +334,48 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
   }
 
   /**
+   * 设置播放一组动画，循环播放最后一个
+   * @param animationList - 动画名列表
+   * @param speed - 播放速度
+   */
+  setAnimationListLoopEnd (animationList: string[], speed?: number) {
+    if (!this.skeleton || !this.state) {
+      throw new Error('Set animation before skeleton create');
+    }
+    if (!this.animationList.length) {
+      throw new Error('animationList is empty, please check your setting');
+    }
+    if (animationList.length === 1) {
+      this.setAnimation(animationList[0], speed);
+
+      return;
+    }
+    const listener = this.state.tracks[0]?.listener;
+
+    if (listener) {
+      listener.end = () => {};
+    }
+    this.state.setEmptyAnimation(0);
+    for (let i = 0; i < animationList.length - 1; i++) {
+      const animation = animationList[i];
+
+      const trackEntry = this.state.setAnimation(0, animation, false);
+
+      if (i === animationList.length - 2) {
+        trackEntry.listener = {
+          complete: () => {
+            this.state.setAnimation(0, animationList[animationList.length - 1], true);
+          },
+        };
+      }
+
+    }
+    if (!isNaN(speed as number)) {
+      this.setSpeed(speed as number);
+    }
+  }
+
+  /**
    * 设置 Spine 播放的速度
    * @param speed - 速度
    */
@@ -349,6 +401,14 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
    */
   getActiveAnimation (): string[] {
     return this.activeAnimation;
+  }
+
+  /**
+   * 获取当前 Spine 中的 AnimationState
+   * @returns
+   */
+  getAnimationState (): AnimationState {
+    return this.state;
   }
 
   /**
