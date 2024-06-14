@@ -221,6 +221,10 @@ export class LoaderECSImpl implements LoaderECS {
     imageBasedLights.forEach(ibl => {
       const data = ibl.imageBaseLightData;
 
+      if (data.reflectionsIntensity === undefined) {
+        data.reflectionsIntensity = data.intensity;
+      }
+
       if (data.diffuseImage) {
         const diffuseTexture = dataMap[data.diffuseImage.id];
 
@@ -240,6 +244,14 @@ export class LoaderECSImpl implements LoaderECS {
         cube.mipmaps.forEach(mipmap => {
           [mipmap[4], mipmap[5]] = [mipmap[5], mipmap[4]];
         });
+
+        if (cube.mipmaps.length === 1) {
+          cube.minFilter = glContext.LINEAR;
+          cube.magFilter = glContext.LINEAR;
+        } else {
+          cube.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+          cube.magFilter = glContext.LINEAR;
+        }
       }
     });
   }

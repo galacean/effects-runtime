@@ -104,7 +104,7 @@ export class PSkybox extends PEntity {
     this.diffuseImage = data.diffuseImage as unknown as Texture;
     this.specularImage = data.specularImage as unknown as Texture;
     this.specularImageSize = data.specularImageSize;
-    this.specularMipCount = data.specularMipCount;
+    this.specularMipCount = data.specularMipCount - 1;
 
     this.priority = owner?.item?.listIndex || 0;
   }
@@ -194,7 +194,7 @@ export class PSkybox extends PEntity {
 
     if (this.irradianceCoeffs === undefined && this.diffuseImage === undefined) { return false; }
 
-    return this.specularImage !== undefined && this.specularMipCount > 0;
+    return this.specularImage !== undefined && this.specularMipCount >= 0;
   }
 
   /**
@@ -684,7 +684,7 @@ export class PSkyboxCreator {
       diffuseImage: this.getDiffuseImageList(skyboxType, specularImage),
       specularImage: specularImage,
       specularImageSize: Math.pow(2, specularImage.length - 1),
-      specularMipCount: specularImage.length - 1,
+      specularMipCount: specularImage.length,
     };
 
     return params;
