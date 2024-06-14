@@ -24,7 +24,12 @@ export class Editor {
 
       return;
     }
-    const base_flags = STATIC<ImGui.TreeNodeFlags>(UNIQUE('base_flags#f8c171be'), ImGui.TreeNodeFlags.OpenOnArrow | ImGui.TreeNodeFlags.OpenOnDoubleClick | ImGui.TreeNodeFlags.SpanAvailWidth);
+    const base_flags = STATIC<ImGui.TreeNodeFlags>(UNIQUE('base_flags#f8c171be'),
+      ImGui.TreeNodeFlags.OpenOnArrow |
+      ImGui.TreeNodeFlags.OpenOnDoubleClick |
+      ImGui.TreeNodeFlags.SpanAvailWidth |
+      ImGui.TreeNodeFlags.SpanFullWidth
+    );
 
     if (ImGui.TreeNodeEx('Composition', base_flags.value | ImGui.TreeNodeFlags.DefaultOpen)) {
       this.generateHierarchyTree(GalaceanEffects.player.getCompositions()[0].rootItem, base_flags.value);
