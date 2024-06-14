@@ -1,4 +1,5 @@
 import { Player } from '@galacean/effects';
+import '@galacean/effects-plugin-spine';
 import inspireList from './assets/inspire-list';
 
 const json = inspireList.turnplate.url;
@@ -8,7 +9,6 @@ const json = inspireList.turnplate.url;
     const player = createPlayer();
 
     await player.loadScene(json);
-
   } catch (e) {
     console.error('biz', e);
   }
@@ -22,7 +22,7 @@ function createPlayer () {
     },
     // manualRender: true,
     renderFramework: 'webgl',
-    // env: 'editor',
+    env: 'editor',
     notifyTouch: true,
     onPausedByItem: data => {
       console.info('onPausedByItem', data);
