@@ -11,10 +11,20 @@ type double = number;
 
 export class Editor {
   activeItem?: VFXItem;
+  sceneRendederTexture?: WebGLTexture;
 
   onGUI () {
     this.onHierarchyGUI();
     this.onInspectorGUI();
+    this.onSceneGUI();
+  }
+
+  onSceneGUI () {
+    ImGui.Begin('Scene');
+    if (GalaceanEffects.sceneRendederTexture) {
+      ImGui.Image(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(640, 360));
+    }
+    ImGui.End();
   }
 
   onHierarchyGUI () {

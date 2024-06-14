@@ -1,10 +1,9 @@
 /* eslint-disable no-console */
-import * as ImGui from 'maoan-imgui-js';
-import * as ImGui_Impl from './imgui_impl.js';
 import { ShowDemoWindow } from './imgui_demo.js';
 import { MemoryEditor } from './imgui_memory_editor.js';
 import { GalaceanEffects } from './ge.js';
 import { Editor } from './panels/inspector.js';
+import { ImGui, ImGui_Impl } from './imgui.js';
 
 let font: ImGui.Font | null = null;
 
@@ -12,7 +11,7 @@ let font: ImGui.Font | null = null;
 let show_demo_window: boolean = true;
 let show_another_window: boolean = false;
 // const clear_color: ImGui.Vec4 = new ImGui.Vec4(0.45, 0.55, 0.60, 1.0);
-const clear_color: ImGui.Vec4 = new ImGui.Vec4(0, 0, 0, 0);
+const clear_color: ImGui.Vec4 = new ImGui.Vec4(0.25, 0.25, 0.25, 0);
 
 const memory_editor: MemoryEditor = new MemoryEditor();
 const geEditor = new Editor();
@@ -116,7 +115,7 @@ async function _init (): Promise<void> {
     ImGui_Impl.Init(null);
   }
 
-  GalaceanEffects.initialize();
+  await GalaceanEffects.initialize();
 
   StartUpImage();
   StartUpVideo();

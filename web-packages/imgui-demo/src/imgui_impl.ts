@@ -251,7 +251,7 @@ export function Init (value: HTMLCanvasElement | WebGL2RenderingContext | WebGLR
   if (typeof(window) !== 'undefined') {
     if (value instanceof (HTMLCanvasElement)) {
       canvas = value;
-      value = canvas.getContext('webgl2', { alpha: true }) || canvas.getContext('webgl', { alpha: true }) || canvas.getContext('2d');
+      value = canvas.getContext('webgl2', { alpha: false }) || canvas.getContext('webgl', { alpha: false }) || canvas.getContext('2d');
     }
     if (typeof WebGL2RenderingContext !== 'undefined' && value instanceof (WebGL2RenderingContext)) {
       io.BackendRendererName = 'imgui_impl_webgl2';
