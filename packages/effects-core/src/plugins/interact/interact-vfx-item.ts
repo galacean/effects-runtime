@@ -202,7 +202,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
   }
 
   private handleDragMove (evt: Partial<DragEventType>, event: TouchEventType) {
-    if (!(evt && evt.cameraParam) || !this.composition || !this.composition.interactive) {
+    if (!(evt && evt.cameraParam) || !this.composition?.interactive) {
       return;
     }
 
