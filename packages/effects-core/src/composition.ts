@@ -1,23 +1,22 @@
-import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/index';
+import * as spec from '@galacean/effects-specification';
 import type { SceneType } from './asset-manager';
-import type { Scene } from './scene';
-import type { Disposable, LostHandler } from './utils';
-import { assertExist, logger, noop } from './utils';
-import { Transform } from './transform';
-import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
+import { Camera } from './camera';
 import type { ItemNode } from './comp-vfx-item';
 import { CompVFXItem } from './comp-vfx-item';
-import type { InteractVFXItem, Plugin, EventSystem } from './plugins';
+import { CompositionSourceManager } from './composition-source-manager';
+import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
-import type { MeshRendererOptions, Renderer, GlobalVolume } from './render';
+import type { EventSystem, InteractVFXItem, Plugin, Region } from './plugins';
+import type { GlobalVolume, MeshRendererOptions, Renderer } from './render';
+import { RenderFrame } from './render';
+import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureSourceType } from './texture';
-import { RenderFrame } from './render';
-import { Camera } from './camera';
-import { setRayFromCamera } from './math';
-import type { Region } from './plugins';
-import { CompositionSourceManager } from './composition-source-manager';
+import { Transform } from './transform';
+import type { Disposable, LostHandler } from './utils';
+import { assertExist, logger, noop } from './utils';
+import type { VFXItem, VFXItemContent, VFXItemProps } from './vfx-item';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -97,6 +96,11 @@ export class Composition implements Disposable, LostHandler {
    * 是否播放完成后销毁 texture 对象
    */
   keepResource: boolean;
+  /**
+   * 合成内的元素否允许点击、拖拽交互
+   * @since 1.5.2
+   */
+  interactive: boolean;
   /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
    * @internal
@@ -254,6 +258,7 @@ export class Composition implements Disposable, LostHandler {
     });
     this.url = scene.url;
     this.assigned = true;
+    this.interactive = true;
     this.onPlayerPause = onPlayerPause;
     this.onMessageItem = onMessageItem;
     this.onEnd = onEnd;
@@ -648,7 +653,7 @@ export class Composition implements Disposable, LostHandler {
    * @param options - 最大求交数和求交时的回调
    */
   hitTest (x: number, y: number, force?: boolean, options?: CompositionHitTestOptions): Region[] {
-    if (this.isDestroyed) {
+    if (this.isDestroyed || !this.interactive) {
       return [];
     }
     const regions: Region[] = [];

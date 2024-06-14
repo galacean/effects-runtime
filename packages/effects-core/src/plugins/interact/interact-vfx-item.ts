@@ -1,18 +1,18 @@
+import { clamp, Vector3 } from '@galacean/effects-math/es/core/index';
 import type { vec3 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
-import { Vector3, clamp } from '@galacean/effects-math/es/core/index';
+import type { Composition } from '../../composition';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { EventSystem, TouchEventType } from './event-system';
+import type { Engine } from '../../engine';
+import { trianglesFromRect } from '../../math';
+import { assertExist } from '../../utils';
 import type { VFXItemProps } from '../../vfx-item';
 import { VFXItem } from '../../vfx-item';
-import type { HitTestTriangleParams, BoundingBoxTriangle } from './click-handler';
+import type { BoundingBoxTriangle, HitTestTriangleParams } from './click-handler';
 import { HitTestType } from './click-handler';
-import { trianglesFromRect } from '../../math';
-import type { Composition } from '../../composition';
-import { InteractMesh } from './interact-mesh';
+import type { EventSystem, TouchEventType } from './event-system';
 import type { InteractItem } from './interact-item';
-import type { Engine } from '../../engine';
-import { assertExist } from '../../utils';
+import { InteractMesh } from './interact-mesh';
 
 interface DragEventType extends TouchEventType {
   cameraParam?: {
@@ -28,6 +28,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
   private clickable: boolean;
   private dragEvent: DragEventType | null;
   private bouncingArg: TouchEventType | null;
+
   engine?: Engine;
 
   constructor (props: VFXItemProps, composition: Composition) {
@@ -147,6 +148,9 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
     let dragEvent: Partial<DragEventType> | null;
     const handlerMap: Record<string, (event: TouchEventType) => void> = {
       touchstart: (event: TouchEventType) => {
+        if (!this.composition?.interactive) {
+          return;
+        }
         this.dragEvent = null;
         this.bouncingArg = null;
         const camera = this.composition?.camera;
@@ -165,6 +169,9 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
         this.bouncingArg = event;
       },
       touchend: (event: TouchEventType) => {
+        if (!this.composition?.interactive) {
+          return;
+        }
         const bouncingArg = this.bouncingArg as TouchEventType;
 
         if (!shouldIgnoreBouncing(bouncingArg, 3) && bouncingArg) {
@@ -195,7 +202,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
   }
 
   private handleDragMove (evt: Partial<DragEventType>, event: TouchEventType) {
-    if (!(evt && evt.cameraParam) || !this.composition) {
+    if (!(evt && evt.cameraParam) || !this.composition || !this.composition.interactive) {
       return;
     }
 

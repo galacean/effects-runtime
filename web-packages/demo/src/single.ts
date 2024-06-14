@@ -1,4 +1,5 @@
 import { Player } from '@galacean/effects';
+import '@galacean/effects-plugin-spine';
 import inspireList from './assets/inspire-list';
 
 const json = inspireList.turnplate.url;
@@ -6,9 +7,7 @@ const json = inspireList.turnplate.url;
 (async () => {
   try {
     const player = createPlayer();
-
-    await player.loadScene(json);
-
+    const comp = await player.loadScene(json);
   } catch (e) {
     console.error('biz', e);
   }
