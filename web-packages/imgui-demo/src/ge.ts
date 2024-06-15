@@ -6,7 +6,8 @@ export class GalaceanEffects {
   static sceneRendederTexture: WebGLTexture;
   static async initialize () {
     const container = document.getElementById('J-container');
-    const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ';
+    // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ'; // 春促
+    const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*dnU-SprU5pAAAAAAAAAAAAAADlB4AQ'; // 集五福
 
     GalaceanEffects.player = new Player({
       container,

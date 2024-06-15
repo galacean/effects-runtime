@@ -2,6 +2,7 @@ import { ImGui } from '../imgui';
 import { GalaceanEffects } from '../ge';
 import { getMergedStore, type VFXItem } from '@galacean/effects';
 import type { Component } from '@galacean/effects';
+import { OrbitController } from '../core/orbit-controller';
 
 type char = number;
 type int = number;
@@ -12,6 +13,7 @@ type double = number;
 export class Editor {
   activeItem?: VFXItem;
   sceneRendederTexture?: WebGLTexture;
+  cameraController: OrbitController = new OrbitController();
 
   onGUI () {
     this.onHierarchyGUI();
@@ -20,9 +22,31 @@ export class Editor {
   }
 
   onSceneGUI () {
-    ImGui.Begin('Scene');
+    ImGui.Begin('Scene', null, ImGui.ImGuiWindowFlags.NoCollapse);
+    const sceneImageSize = ImGui.GetWindowSize();
+
+    sceneImageSize.x -= 15;
+    sceneImageSize.y -= 40;
+    const player = GalaceanEffects.player;
+
+    if (player.container && (player.container.style.width !== sceneImageSize.x + 'px' ||
+      player.container.style.height !== sceneImageSize.y + 'px')
+    ) {
+      player.container.style.width = sceneImageSize.x + 'px';
+      player.container.style.height = sceneImageSize.y + 'px';
+      player.resize();
+    }
     if (GalaceanEffects.sceneRendederTexture) {
-      ImGui.Image(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(640, 360));
+      const frame_padding: int = 0;                             // -1 === uses default padding (style.FramePadding)
+      const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                        // UV coordinates for lower-left
+      const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);// UV coordinates for (32,32) in our texture
+      const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.0, 0.0, 0.0, 1.0);         // Black background
+
+      ImGui.ImageButton(GalaceanEffects.sceneRendederTexture, new ImGui.Vec2(sceneImageSize.x, sceneImageSize.y), uv0, uv1, frame_padding, bg_col);
+      if (ImGui.IsItemHovered()) {
+        this.cameraController.update(player.getCompositions()[0].camera, sceneImageSize.x, sceneImageSize.y);
+      }
+
     }
     ImGui.End();
   }
