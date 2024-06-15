@@ -89,17 +89,24 @@ export class Editor {
     ImGui.Checkbox('Visiable', (_ = item.visible) => item.visible = _);
 
     if (ImGui.CollapsingHeader('Transform'), ImGui.TreeNodeFlags.DefaultOpen) {
+      const transform = item.transform;
+
       ImGui.Text('Position');
       ImGui.SameLine(100);
-      ImGui.DragFloat3('##Position', item.transform.position, 0.03);
+      ImGui.DragFloat3('##Position', transform.position, 0.03);
       ImGui.Text('Rotation');
       ImGui.SameLine(100);
-      ImGui.DragFloat3('##Rotation', item.transform.rotation, 0.03);
+      ImGui.DragFloat3('##Rotation', transform.rotation, 0.03);
       ImGui.Text('Scale');
       ImGui.SameLine(100);
-      ImGui.DragFloat3('##Scale', item.transform.scale, 0.03);
+      ImGui.DragFloat3('##Scale', transform.scale, 0.03);
+
+      transform.quat.setFromEuler(transform.rotation);
+      transform.quat.conjugate();
       //@ts-expect-error
-      item.transform.dirtyFlags.localData = true;
+      transform.dirtyFlags.localData = true;
+      //@ts-expect-error
+      transform.dispatchValueChange();
     }
 
     for (const componet of item.components) {
