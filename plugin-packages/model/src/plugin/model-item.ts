@@ -483,7 +483,7 @@ export class ModelCameraComponent extends ItemBehaviour {
    * 组件销毁
    */
   override onDestroy (): void {
-    this.content.dispose();
+    this.content?.dispose();
   }
 
   /**
