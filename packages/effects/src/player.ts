@@ -650,6 +650,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     let skipRender = false;
 
     comps.sort((a, b) => a.getIndex() - b.getIndex());
+    const currentComps = [];
+
     this.compositions = [];
     for (let i = 0; i < comps.length; i++) {
       const composition = comps[i];
@@ -657,16 +659,17 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       if (composition.textureOffloaded) {
         skipRender = true;
         logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
-        this.compositions.push(composition);
+        currentComps.push(composition);
         continue;
       }
       if (!composition.isDestroyed && composition.renderer) {
         composition.update(dt, false);
       }
       if (!composition.isDestroyed) {
-        this.compositions.push(composition);
+        currentComps.push(composition);
       }
     }
+    this.compositions = currentComps;
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
       this.handleRenderError?.(new Error('play when texture offloaded'));
