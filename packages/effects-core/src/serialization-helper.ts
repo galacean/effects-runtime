@@ -248,7 +248,7 @@ export class SerializationHelper {
     type?: ClassConstructor,
   ): any {
     if (level > 14) {
-      console.error('序列化数据的内嵌对象层数大于上限');
+      console.error('The nested object layers of the serialized data exceed the maximum limit.');
 
       return;
     }
@@ -289,7 +289,7 @@ export class SerializationHelper {
     type?: ClassConstructor,
   ): Promise<unknown> {
     if (level > 14) {
-      console.error('序列化数据的内嵌对象层数大于上限');
+      console.error('The nested object layers of the serialized data exceed the maximum limit.');
 
       return;
     }
@@ -330,7 +330,7 @@ export class SerializationHelper {
     level: number,
   ) {
     if (level > 14) {
-      console.error('序列化数据的内嵌对象层数大于上限');
+      console.error('The nested object layers of the serialized data exceed the maximum limit.');
 
       return;
     }
@@ -380,7 +380,7 @@ export class SerializationHelper {
     level: number,
   ) {
     if (level > 14) {
-      console.error('序列化数据的内嵌对象层数大于上限');
+      console.error('The nested object layers of the serialized data exceed the maximum limit.');
 
       return;
     }

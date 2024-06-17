@@ -121,7 +121,7 @@ export class AssetManager implements Disposable {
         this.removeTimer(loadTimer);
         const totalTime = performance.now() - startTime;
 
-        reject(new Error(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`));
+        reject(new Error(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}.`));
       }, this.timeout * 1000);
       this.timers.push(loadTimer);
     });
@@ -136,7 +136,7 @@ export class AssetManager implements Disposable {
 
           return result;
         } catch (e) {
-          throw new Error(`Load error in ${label}, ${e}`);
+          throw new Error(`Load error in ${label}, ${e}.`);
         }
       }
       throw new Error('Load canceled.');
@@ -223,7 +223,7 @@ export class AssetManager implements Disposable {
 
       const totalTime = performance.now() - startTime;
 
-      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
+      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}.`);
       window.clearTimeout(loadTimer);
       this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
@@ -302,7 +302,7 @@ export class AssetManager implements Disposable {
         return this.loadBins(new URL(bin.url, baseUrl).href);
       }
 
-      throw new Error(`Invalid bins source: ${JSON.stringify(bins)}`);
+      throw new Error(`Invalid bins source: ${JSON.stringify(bins)}.`);
     });
 
     return Promise.all(jobs);
@@ -319,7 +319,7 @@ export class AssetManager implements Disposable {
       if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
         if (!isValidFontFamily(font.fontFamily)) {
           // 在所有设备上提醒开发者
-          console.warn(`Risky font family: ${font.fontFamily}`);
+          console.warn(`Risky font family: ${font.fontFamily}.`);
         }
         try {
           const url = new URL(font.fontURL, this.baseUrl).href;
@@ -331,7 +331,7 @@ export class AssetManager implements Disposable {
           AssetManager.fonts.add(font.fontFamily);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
-          logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}`);
+          logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}.`);
         }
       }
     });
@@ -384,7 +384,7 @@ export class AssetManager implements Disposable {
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
-            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message}`);
+            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message}.`);
           }
         }
       } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
@@ -440,7 +440,7 @@ export class AssetManager implements Disposable {
         try {
           return await deserializeMipmapTexture(texOpts, bins, jsonScene.bins, engine);
         } catch (e) {
-          throw new Error(`load texture ${idx} fails, error message: ${e}`);
+          throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }
       }
       const { source } = texOpts;
@@ -462,7 +462,7 @@ export class AssetManager implements Disposable {
 
         return tex.sourceType === TextureSourceType.compressed ? tex : { ...tex, ...texOpts };
       }
-      throw new Error(`Invalid texture source: ${source}`);
+      throw new Error(`Invalid texture source: ${source}.`);
     });
 
     return Promise.all(jobs);
@@ -582,5 +582,5 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
     };
   }
 
-  throw new Error('Invalid texture options');
+  throw new Error('Invalid texture options.');
 }

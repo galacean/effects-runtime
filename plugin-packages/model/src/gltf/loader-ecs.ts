@@ -80,7 +80,7 @@ export class LoaderECSImpl implements LoaderECS {
     const gltfResource = options.gltf.resource;
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
-      throw new Error('Please load resource by GLTFTools at first');
+      throw new Error('Please load resource by GLTFTools at first.');
     }
     this.processGLTFResource(gltfResource);
     this.gltfScene = gltfResource.scenes[0];
@@ -158,7 +158,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   checkMeshComponentData (mesh: ModelMeshComponentData, resource: GLTFResources): void {
     if (mesh.materials.length <= 0) {
-      throw new Error(`Submesh array is empty: ${mesh}`);
+      throw new Error(`Submesh array is empty: ${mesh}.`);
     }
 
     let geometryData: spec.GeometryData | undefined;
@@ -170,11 +170,11 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     if (geometryData === undefined) {
-      throw new Error(`Can't find geometry data for ${mesh.geometry.id}`);
+      throw new Error(`Can't find geometry data for ${mesh.geometry.id}.`);
     }
 
     if (geometryData.subMeshes.length !== mesh.materials.length) {
-      throw new Error(`Submeshes and materials mismach: ${geometryData.subMeshes.length}, ${mesh.materials.length}`);
+      throw new Error(`Submeshes and materials mismach: ${geometryData.subMeshes.length}, ${mesh.materials.length}.`);
     }
     //mesh.materials.length !=
   }
@@ -189,11 +189,11 @@ export class LoaderECSImpl implements LoaderECS {
 
       if (texId) {
         if (dataMap[texId]) {
-          console.error(`Duplicate GUID found: ${texId}, Old ${dataMap[texId]}, New ${texData}`);
+          console.error(`Duplicate GUID found: ${texId}, old ${dataMap[texId]}, new ${texData}.`);
         }
         dataMap[texId] = texData;
       } else {
-        console.error(`No GUID in texture Data: ${texData}`);
+        console.error(`No GUID in texture Data: ${texData}.`);
       }
     });
 
@@ -362,7 +362,7 @@ export class LoaderECSImpl implements LoaderECS {
         material.stringTags['Cull'] = CullMode.Front;
       }
     } else {
-      console.error(`Unknown shader id in material: ${material}`);
+      console.error(`Unknown shader id in material: ${material}.`);
     }
   }
 
@@ -595,7 +595,7 @@ export class LoaderECSImpl implements LoaderECS {
   createTreeOptions (scene: GLTFScene): ModelTreeOptions {
     const nodeList = scene.nodes.map((node, nodeIndex) => {
       const children = node.children.map(child => {
-        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}`); }
+        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}.`); }
 
         return child.nodeIndex;
       });
@@ -604,7 +604,7 @@ export class LoaderECSImpl implements LoaderECS {
       let scale: spec.vec3 = [0, 0, 0];
 
       if (node.matrix !== undefined) {
-        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
+        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}.`); }
         const mat = Matrix4.fromArray(node.matrix);
         const transform = mat.getTransform();
 
@@ -633,7 +633,7 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     const rootNodes = scene.rootNodes.map(root => {
-      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}`); }
+      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}.`); }
 
       return root.nodeIndex;
     });
@@ -677,7 +677,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   createSkyboxComponentData (typeName: SkyboxType) {
     if (typeName !== 'NFT' && typeName !== 'FARM') {
-      throw new Error(`Invalid skybox type name ${typeName}`);
+      throw new Error(`Invalid skybox type name ${typeName}.`);
     }
     //
     const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;

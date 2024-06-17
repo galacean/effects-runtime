@@ -366,7 +366,7 @@ export class ParticleMesh implements ParticleMeshData {
 
           break;
         default:
-          console.warn(`uniform ${name}'s type not in typeMap`);
+          console.warn(`Uniform ${name}'s type not in typeMap.`);
       }
     });
 

@@ -43,31 +43,31 @@ export class ValueGetter<T> {
   }
 
   onCreate (props: any) {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getIntegrateValue (t0: number, t1: number, timeScale = 1): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getIntegrateByTime (t0: number, time: number): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getValue (time?: number): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getMaxTime (): number {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   toUniform (meta: KeyFrameMeta): Float32Array {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   map (func: (n: T) => T) {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   scaleXCoord (scale: number): ValueGetter<T> {
@@ -75,7 +75,7 @@ export class ValueGetter<T> {
   }
 
   toData (): ArrayLike<number> {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 }
 
@@ -887,7 +887,7 @@ export function createValueGetter (args: any): ValueGetter<any> {
   if (isFunction(map[args[0]])) {
     return map[args[0]](args[1]);
   } else {
-    throw new Error(`ValueType: ${args[0]} is not support`);
+    throw new Error(`ValueType: ${args[0]} is not support.`);
   }
 }
 

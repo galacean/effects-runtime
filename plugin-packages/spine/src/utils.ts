@@ -27,7 +27,7 @@ export function setBlending (material: Material, mode: BlendMode, pma: boolean) 
 
       break;
     default:
-      throw new Error(`Unknown blend mode: ${mode}`);
+      throw new Error(`Unknown blend mode: ${mode}.`);
   }
 }
 
@@ -50,11 +50,11 @@ export function createSkeletonData (atlas: TextureAtlas, skeletonFile: any, skel
     const version = input.readString();
 
     if (!version) {
-      throw new Error('未获取到 Spine 版本信息，请使用 Spine 4.2 导出二进制数据');
+      throw new Error('Spine version information not retrieved. Please export binary data using Spine 4.2.');
     }
 
     if (version && version.split('.')[1] !== '2') {
-      throw new Error(`请使用 Spine 4.2 导出二进制数据, 当前版本: ${version}`);
+      throw new Error(`Please export binary data using Spine 4.2, current version: ${version}.`);
     }
   } else {
     skeletonLoader = new SkeletonJson(atlasLoader);
@@ -175,7 +175,7 @@ export function readAtlasData (atlasBuffer: Uint8Array, textures: Texture[]): Te
     const texture = textures[i];
 
     if (!texture) {
-      throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
+      throw new Error(`Can not find page ${page.name}'s texture, check the texture name.`);
     }
     page.texture = texture as unknown as SpineTexture;
   }

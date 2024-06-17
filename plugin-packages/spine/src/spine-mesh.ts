@@ -121,7 +121,7 @@ export class SpineMesh implements Disposable {
 
   updateMesh (vertices: number[], indices: number[], verticesLength: number) {
     if (!this.vertices || !this.indices) {
-      throw new Error('Can not update SpineMesh after dispose');
+      throw new Error('Can not update SpineMesh after dispose.');
     }
     const verticesStart = this.verticesLength;
     const indexStart = this.indicesLength;
@@ -138,7 +138,7 @@ export class SpineMesh implements Disposable {
 
   endUpdate (worldMatrix: math.Matrix4) {
     if (!this.vertices || !this.indices) {
-      throw new Error('Can not update SpineMesh after dispose');
+      throw new Error('Can not update SpineMesh after dispose.');
     }
     for (let i = this.verticesLength; i < this.vertices.length; i++) {
       this.vertices[i] = 0;

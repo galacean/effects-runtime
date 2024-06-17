@@ -84,7 +84,7 @@ export class PassTextureCache implements Disposable {
 
     if (refCount <= 1) {
       if (refCount < 0) {
-        console.error('ref count < 0');
+        console.error('Ref count < 0.');
       }
       const tex = this.textureCache[id];
 

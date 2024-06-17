@@ -52,7 +52,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn(`can't find camera item ${this.startParams.target}`);
+      console.warn(`Can't find camera item ${this.startParams.target}.`);
 
       return this.composition.camera.getOptions();
     }
@@ -254,7 +254,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('Can\'t find camera item.');
 
       return;
     }
@@ -268,7 +268,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('Can\'t find camera item.');
 
       return;
     }
@@ -283,7 +283,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('Can\'t find camera item.');
 
       return;
     }
@@ -347,7 +347,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     this.updateCameraTransform(this.composition.camera.getOptions());
 
     if (!this.getItem()) {
-      console.warn('invalid target');
+      console.warn('Invalid target.');
     }
 
     return this.composition.camera.getOptions();
@@ -358,7 +358,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
       const item = this.getItem();
 
       if (item === undefined) {
-        console.warn('can\'t find camera item');
+        console.warn('Can\'t find camera item.');
 
         return this.composition.camera.getOptions();
       }
@@ -420,10 +420,10 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
         item.transform.setQuaternion(newRotation.x, newRotation.y, newRotation.z, newRotation.w);
         this.setTransform(item, newPosition, item.transform.rotation);
       } else {
-        console.warn('not implement');
+        console.warn('Not implement.');
       }
     } else {
-      console.warn('invalid move type');
+      console.warn('Invalid move type.');
     }
 
     return this.composition.camera.getOptions();

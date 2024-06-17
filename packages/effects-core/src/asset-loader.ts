@@ -25,7 +25,7 @@ export class AssetLoader {
     const effectsObjectData = this.findData(guid);
 
     if (!effectsObjectData) {
-      console.error('未找到 uuid: ' + guid + '的对象数据');
+      console.error(`Object data with uuid: ${guid} not found.`);
 
       return undefined as T;
     }
@@ -51,7 +51,7 @@ export class AssetLoader {
       }
     }
     if (!effectsObject) {
-      console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
+      console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }
@@ -72,14 +72,14 @@ export class AssetLoader {
 
     if (!effectsObjectData) {
       if (!this.engine.database) {
-        console.error('未找到 uuid: ' + guid + '的对象数据');
+        console.error(`Object data with uuid: ${guid} not found.`);
 
         return undefined as T;
       }
 
       effectsObject = await this.engine.database.loadGUID(guid);
       if (!effectsObject) {
-        console.error('未找到 uuid: ' + guid + '的磁盘数据');
+        console.error(`Disk data with uuid: ${guid} not found.`);
 
         return undefined as T;
       }
@@ -111,7 +111,7 @@ export class AssetLoader {
       }
     }
     if (!effectsObject) {
-      console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
+      console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }

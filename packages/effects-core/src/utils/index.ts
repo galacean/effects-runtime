@@ -105,7 +105,7 @@ export function randomInRange (min: number, max: number) {
 }
 
 export function throwDestroyedError () {
-  throw Error('destroyed item cannot be used again');
+  throw new Error('Destroyed item cannot be used again.');
 }
 
 export function generateGUID (): string {

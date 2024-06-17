@@ -19,7 +19,7 @@ let reverseParticle = false;
 
 export function getStandardJSON (json: any): JSONScene {
   if (!json || typeof json !== 'object') {
-    throw Error('expect a json object');
+    throw new Error('Expect a json object.');
   }
 
   // 修正老版本数据中，meshItem 以及 lightItem 结束行为错误问题
@@ -46,7 +46,7 @@ export function getStandardJSON (json: any): JSONScene {
     return json;
   }
 
-  throw Error('invalid json version ' + json.version);
+  throw new Error(`Invalid json version: ${json.version}.`);
 }
 
 let currentVersion: '1.0' | '1.1' | '1.3' = '1.0';
@@ -132,7 +132,7 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
   } else if (image && image.sourceType) {
     return image;
   }
-  throw Error('invalid image type');
+  throw new Error('Invalid image type.');
 }
 
 export function getStandardComposition (composition: any, opt: { plugins?: string[], requires?: string[] } = {}): Composition {

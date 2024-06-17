@@ -144,7 +144,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
 
   drawGeometry (geometry: Geometry, material: Material, subMeshIndex: number): void {
     if (!this.gl) {
-      console.warn('GLGPURenderer没有绑定gl对象, 无法绘制geometry');
+      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
 
       return;
     }
@@ -254,7 +254,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   }
 
   lost (e: Event) {
-    logger.error('gl lost, destroy glRenderer by default', e.target);
+    logger.error(`gl lost, destroy glRenderer by default, target: ${e.target}.`);
     this.deleteResource();
   }
 

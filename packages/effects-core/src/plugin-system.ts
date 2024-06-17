@@ -92,7 +92,7 @@ export class PluginSystem {
     const CTRL = pluginCtrlMap[name];
 
     if (!CTRL) {
-      throw new Error(`plugin ${name} no registered constructor`);
+      throw new Error(`plugin ${name} no registered constructor.`);
     }
     const engine = composition.getEngine();
     const item = new CTRL(engine, props, composition);
@@ -100,7 +100,7 @@ export class PluginSystem {
     item.composition = composition;
 
     if (!(item instanceof VFXItem)) {
-      throw new Error(`plugin ${name} invalid constructor type`);
+      throw new Error(`plugin ${name} invalid constructor type.`);
     }
 
     return item;

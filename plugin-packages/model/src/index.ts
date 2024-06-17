@@ -60,7 +60,7 @@ export * from './plugin';
 export * from './runtime';
 export * from './utility';
 
-logger.info('plugin model version: ' + version);
+logger.info(`Plugin model version: ${version}.`);
 
 if (version !== EFFECTS.version) {
   console.error(

@@ -7,13 +7,13 @@ import type { Engine } from '../engine';
 type TextureJSONOptions = spec.SerializedTextureSource & spec.TextureConfigOptionsBase & spec.TextureFormatOptions;
 
 export async function deserializeMipmapTexture (
-  texOpts: TextureJSONOptions,
+  textureOptions: TextureJSONOptions,
   bins: ArrayBuffer[],
   files: spec.BinaryFile[] = [],
   engine: Engine
 ): Promise<Texture2DSourceOptions | TextureCubeSourceOptions> {
-  if (texOpts.target === 34067) {
-    const { mipmaps, target } = texOpts as spec.SerializedTextureCube;
+  if (textureOptions.target === 34067) {
+    const { mipmaps, target } = textureOptions as spec.SerializedTextureCube;
     // const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => loadMipmapImage(pointer, bins))));
     const loadedMipmaps: HTMLElement[][] = [];
 
@@ -33,7 +33,7 @@ export async function deserializeMipmapTexture (
 
     return {
       keepImageSource: false,
-      ...texOpts,
+      ...textureOptions,
       ...{
         mipmaps: loadedMipmaps,
         sourceFrom: {
@@ -46,14 +46,14 @@ export async function deserializeMipmapTexture (
     };
   } else {
     // TODO: 补充测试用例
-    const { mipmaps, target } = texOpts as spec.SerializedTexture2DMipmapSource;
+    const { mipmaps, target } = textureOptions as spec.SerializedTexture2DMipmapSource;
     const jobs = mipmaps.map(pointer => loadMipmapImage(pointer, bins));
     const loadedMipmaps = await Promise.all(jobs);
     const bin = files[mipmaps[0][1][0]].url;
 
     return {
       keepImageSource: false,
-      ...texOpts,
+      ...textureOptions,
       ...{
         mipmaps: loadedMipmaps,
         sourceType: TextureSourceType.mipmaps,
@@ -73,7 +73,7 @@ async function loadMipmapImage (pointer: spec.BinaryPointer, bins: ArrayBuffer[]
   const bin = bins[index];
 
   if (!bin) {
-    throw new Error(`invalid bin pointer: ${JSON.stringify(pointer)}`);
+    throw new Error(`Invalid bin pointer: ${JSON.stringify(pointer)}.`);
   }
 
   return loadImage(new Blob([new Uint8Array(bin, start, length)]));
