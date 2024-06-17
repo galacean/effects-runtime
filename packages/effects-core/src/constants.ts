@@ -9,5 +9,5 @@ export const PLAYER_OPTIONS_ENV_EDITOR = 'editor';
 
 export const HELP_LINK = {
   'Item duration can\'t be less than 0': 'https://galacean.antgroup.com/effects/user/gasrv4ka5sacrwpg#AOnQS',
-  'ValueType: 21 / 22 is not support': 'https://galacean.antgroup.com/effects/user/gasrv4ka5sacrwpg#smO1b',
+  'ValueType: 21/22 is not supported': 'https://galacean.antgroup.com/effects/user/gasrv4ka5sacrwpg#smO1b',
 };
