@@ -8,6 +8,6 @@ export const SEMANTIC_MAIN_PRE_COLOR_ATTACHMENT_SIZE_0 = 'PRE_MAIN_COLOR_SIZE_0'
 export const PLAYER_OPTIONS_ENV_EDITOR = 'editor';
 
 export const HELP_LINK = {
-  'Filter not imported': 'https://galacean.antgroup.com/effects/#/user/gasrv4ka5sacrwpg',
-  'Item duration can\'t be less than 0': 'https://galacean.antgroup.com/effects/#/user/gasrv4ka5sacrwpg',
+  'Item duration can\'t be less than 0': 'https://galacean.antgroup.com/effects/user/gasrv4ka5sacrwpg#AOnQS',
+  'ValueType: 21 / 22 is not support': 'https://galacean.antgroup.com/effects/user/gasrv4ka5sacrwpg#smO1b',
 };

@@ -252,7 +252,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
     playerMap.forEach(player => {
       if (player.gpuCapability.type !== this.gpuCapability.type) {
-        logger.warn(`Create player with different webgl version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}.`);
+        logger.warn(`Create player with different WebGL version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}.\nsee ${HELP_LINK['Create player with different WebGL version']}.`);
       }
     });
 

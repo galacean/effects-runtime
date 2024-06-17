@@ -9,6 +9,7 @@ import type { BezierEasing } from './bezier';
 import { BezierPath, buildEasingCurve, BezierQuat } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
 import { numberToFix } from './utils';
+import { HELP_LINK } from '../constants';
 
 interface KeyFrameMeta {
   curves: ValueGetter<any>[],
@@ -887,7 +888,7 @@ export function createValueGetter (args: any): ValueGetter<any> {
   if (isFunction(map[args[0]])) {
     return map[args[0]](args[1]);
   } else {
-    throw new Error(`ValueType: ${args[0]} is not support.`);
+    throw new Error(`ValueType: ${args[0]} is not support, see ${HELP_LINK['ValueType: 21 / 22 is not support']}.`);
   }
 }
 
