@@ -80,7 +80,7 @@ export async function oldLoadGLTFScene (options: LoadGLTFSceneOptions) {
       renderer: options.player.renderer,
       duration: duration,
       endBehavior: endBehavior,
-      playAnimation: options.playAnimation,
+      playAllAnimation: true,
     },
   }).then(result => {
     const items = result.items;
