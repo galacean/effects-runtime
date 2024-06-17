@@ -109,6 +109,10 @@ export class StaticValue extends ValueGetter<number> {
 
     return this;
   }
+
+  override getMaxTime (): number {
+    return 0;
+  }
 }
 
 export class RandomSetValue<T> extends ValueGetter<T> {
