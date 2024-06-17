@@ -4,6 +4,7 @@ import { MemoryEditor } from './imgui_memory_editor.js';
 import { GalaceanEffects } from './ge.js';
 import { Editor } from './panels/inspector.js';
 import { ImGui, ImGui_Impl } from './imgui.js';
+import { FontConfig, ImFontConfig } from 'maoan-imgui-js';
 
 let font: ImGui.Font | null = null;
 
@@ -59,9 +60,9 @@ async function AddFontFromFileTTF (url: string, size_pixels: number, font_cfg: I
 }
 
 async function _init (): Promise<void> {
-  const EMSCRIPTEN_VERSION = `${ImGui.bind.__EMSCRIPTEN_major__}.${ImGui.bind.__EMSCRIPTEN_minor__}.${ImGui.bind.__EMSCRIPTEN_tiny__}`;
+  // const EMSCRIPTEN_VERSION = `${ImGui.bind.__EMSCRIPTEN_major__}.${ImGui.bind.__EMSCRIPTEN_minor__}.${ImGui.bind.__EMSCRIPTEN_tiny__}`;
 
-  console.log('Emscripten Version', EMSCRIPTEN_VERSION);
+  // console.log('Emscripten Version', EMSCRIPTEN_VERSION);
 
   console.log('Total allocated space (uordblks) @ _init:', ImGui.bind.mallinfo().uordblks);
 
@@ -91,7 +92,14 @@ async function _init (): Promise<void> {
   // font = await AddFontFromFileTTF("./public/fonts/DroidSans.ttf", 16.0);
   // font = await AddFontFromFileTTF("./public/fonts/ProggyTiny.ttf", 10.0);
   // font = await AddFontFromFileTTF('./public/fonts/Arial.ttf', 16.0);
-  font = await AddFontFromFileTTF('./public/fonts/StXinWei.ttf', 16.0, null, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
+
+  const fontConfig = new FontConfig();
+
+  fontConfig.internal.OversampleH = 1;
+  fontConfig.internal.RasterizerMultiply = 1.2;
+  fontConfig.internal.RasterizerFlags = 1;
+
+  font = await AddFontFromFileTTF('./public/fonts/AlibabaPuHuiTi-3-55-Regular.ttf', 22, null, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
   // font = await AddFontFromFileTTF("https://raw.githubusercontent.com/googlei18n/noto-cjk/master/NotoSansJP-Regular.otf", 18.0, null, io.Fonts.GetGlyphRangesJapanese());
   ImGui.ASSERT(font !== null);
 
