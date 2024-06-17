@@ -57,7 +57,7 @@ export async function getImageFileContent (image: HTMLImageElement | ImageBitmap
         if (blob) {
           resolve(blob.arrayBuffer());
         } else {
-          reject(new Error('No canvas blob.'));
+          reject(new Error('Failed to create a blob from the canvas. This may occur if the canvas is empty or not properly configured.'));
         }
       },
       'image/png',

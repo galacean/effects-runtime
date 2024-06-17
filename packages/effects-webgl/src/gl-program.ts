@@ -99,7 +99,7 @@ export class GLProgram implements Disposable {
         const buffer = geometry.buffers[attribute.dataSource];
 
         if (!buffer) {
-          throw new Error(`No buffer named: ${attribute.dataSource || name}.`);
+          throw new Error(`Failed to find a buffer named '${attribute.dataSource || name}'. Please ensure the buffer is correctly initialized and bound.`);
         }
         buffer.bind();
         gl.enableVertexAttribArray(attrInfo.loc);

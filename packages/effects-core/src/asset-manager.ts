@@ -438,7 +438,7 @@ export class AssetManager implements Disposable {
       }
       if ('mipmaps' in texOpts) {
         try {
-          return await deserializeMipmapTexture(texOpts, bins, jsonScene.bins, engine);
+          return await deserializeMipmapTexture(texOpts, bins, engine, jsonScene.bins);
         } catch (e) {
           throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }

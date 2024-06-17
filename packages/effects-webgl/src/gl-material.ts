@@ -271,7 +271,7 @@ export class GLMaterial extends Material {
       const texture = this.textures[key];
 
       if (!isFunction(texture.initialize)) {
-        logger.error(`${JSON.stringify(texture)} is not valid Texture to initialize.`);
+        logger.error(`Failed to initialize texture: ${JSON.stringify(texture)}. Ensure the texture conforms to the expected format.`);
 
         return;
       }

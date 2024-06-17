@@ -312,7 +312,7 @@ export class LoaderImpl implements Loader {
 
   createDefaultSkybox (typeName: SkyboxType): Promise<ModelSkyboxOptions> {
     if (typeName !== 'NFT' && typeName !== 'FARM') {
-      throw new Error(`Invalid skybox type name ${typeName}.`);
+      throw new Error(`Invalid skybox type specified: '${typeName}'. Valid types are: 'NFT', 'FARM'.`);
     }
     //
     const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
@@ -337,7 +337,7 @@ export class LoaderImpl implements Loader {
     const gltfResource = options.gltf.resource;
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
-      throw new Error('Please load resource by GLTFTools at first.');
+      throw new Error('Please load the resource using GLTFTools first.');
     }
 
     this._gltfScene = gltfResource.scenes[0];
@@ -503,7 +503,9 @@ export class LoaderImpl implements Loader {
   private _createItemMesh (node: GLTFNode, parentId?: string): ModelItemMesh {
     const meshIndex = node.mesh;
 
-    if (meshIndex === undefined) { throw new Error(`Invalid mesh index in node ${node}.`); }
+    if (meshIndex === undefined) {
+      throw new Error(`Invalid mesh index in node ${node}.`);
+    }
 
     let skin: ModelSkinOptions | undefined;
 

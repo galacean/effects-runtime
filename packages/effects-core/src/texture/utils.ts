@@ -9,8 +9,8 @@ type TextureJSONOptions = spec.SerializedTextureSource & spec.TextureConfigOptio
 export async function deserializeMipmapTexture (
   textureOptions: TextureJSONOptions,
   bins: ArrayBuffer[],
+  engine: Engine,
   files: spec.BinaryFile[] = [],
-  engine: Engine
 ): Promise<Texture2DSourceOptions | TextureCubeSourceOptions> {
   if (textureOptions.target === 34067) {
     const { mipmaps, target } = textureOptions as spec.SerializedTextureCube;

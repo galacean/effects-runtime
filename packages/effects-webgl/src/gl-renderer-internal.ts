@@ -254,7 +254,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   }
 
   lost (e: Event) {
-    logger.error(`gl lost, destroy glRenderer by default, target: ${e.target}.`);
+    logger.error(`WebGL context lost, destroying glRenderer by default to prevent memory leaks. Event target: ${e.target}.`);
     this.deleteResource();
   }
 

@@ -52,7 +52,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn(`Can't find camera item ${this.startParams.target}.`);
+      console.warn(`[CameraGestureHandlerImp] Unable to locate camera item with ID: ${this.startParams.target}.`);
 
       return this.composition.camera.getOptions();
     }
@@ -254,7 +254,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('Can\'t find camera item.');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
@@ -268,7 +268,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('Can\'t find camera item.');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
@@ -283,7 +283,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('Can\'t find camera item.');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
@@ -347,7 +347,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     this.updateCameraTransform(this.composition.camera.getOptions());
 
     if (!this.getItem()) {
-      console.warn('Invalid target.');
+      console.warn('[CameraGestureHandlerImp] Invalid target specified in startGesture.');
     }
 
     return this.composition.camera.getOptions();
@@ -358,7 +358,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
       const item = this.getItem();
 
       if (item === undefined) {
-        console.warn('Can\'t find camera item.');
+        console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
         return this.composition.camera.getOptions();
       }
@@ -420,10 +420,10 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
         item.transform.setQuaternion(newRotation.x, newRotation.y, newRotation.z, newRotation.w);
         this.setTransform(item, newPosition, item.transform.rotation);
       } else {
-        console.warn('Not implement.');
+        console.warn('[CameraGestureHandlerImp] Movement type not implemented.');
       }
     } else {
-      console.warn('Invalid move type.');
+      console.warn(`[CameraGestureHandlerImp] Invalid move type specified: ${arg.type}`);
     }
 
     return this.composition.camera.getOptions();

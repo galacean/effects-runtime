@@ -146,7 +146,7 @@ export class JSONConverter {
         newComponents.push(this.createLightComponent(comp, newScene));
       } else if (comp.dataType === spec.DataType.CameraComponent) {
         newComponents.push(comp);
-        console.warn(`Find camera component ${comp}.`);
+        console.warn(`Camera component found: ${comp}.`);
       } else if (comp.dataType === spec.DataType.TreeComponent) {
         const treeComp = comp as unknown as ModelTreeContent;
 
@@ -193,7 +193,7 @@ export class JSONConverter {
         url,
         resolve,
         (status, responseText) => {
-          reject(new Error(`Couldn't load JSON ${JSON.stringify(url)}: status ${status}, ${responseText}.`));
+          reject(new Error(`Failed to load JSON from URL '${url}': status ${status} - ${responseText}. Please check the URL or network settings.`));
         });
     });
   }
@@ -284,7 +284,7 @@ export class JSONConverter {
     const geometryData = getGeometryDataFromPropsList(geometryPropsList);
 
     if (!geometryData) {
-      throw new Error('No primitives.');
+      throw new Error('No primitives available to process.');
     }
 
     newScene.geometries.push(geometryData);
@@ -321,7 +321,7 @@ export class JSONConverter {
       const treeNodeList = this.treeInfo.getTreeNodeListByNodeId(parentItemId);
 
       if (!treeItem || !treeNodeList) {
-        throw new Error(`Can't find tree node list for ${component.item}.`);
+        throw new Error(`Failed to retrieve tree node list for item with ID ${component.item.id}. Ensure the item exists and has a valid tree structure.`);
       }
       const rootBoneItem = this.setupBoneData(geometryData, meshOptions.skin, oldScene, treeItem, treeNodeList);
 
@@ -841,7 +841,7 @@ export class JSONConverter {
     const { joints, skeleton, inverseBindMatrices } = skin;
 
     if (!inverseBindMatrices) {
-      throw new Error(`inverseBindMatrices is undefined, skin: ${skin}.`);
+      throw new Error(`'inverseBindMatrices' is undefined for the skin configuration: ${JSON.stringify(skin)}. Ensure 'inverseBindMatrices' is properly defined in your skin data.`);
     }
     const bindMatrixArray = typedArrayFromBinary(bins, inverseBindMatrices) as Float32Array;
 
@@ -854,14 +854,15 @@ export class JSONConverter {
     if (skeleton !== undefined) {
       rootBoneItem = treeNodeList[skeleton];
     } else {
-      console.warn('Root bone is missing.');
+      console.warn('Root bone is missing for the skeleton. Defaulting to the primary tree item as the root bone.');
     }
 
     joints.forEach(joint => {
       const node = treeNodeList[joint];
 
       if (node !== rootBoneItem && node.parentId === rootBoneItem.parentId) {
-        console.error('Find invalid node for rootBoneItem and adjust rootBoneItem.');
+        console.error('Invalid node detected for \'rootBoneItem\'. Adjusting \'rootBoneItem\' to the primary tree item. Please verify the tree structure.');
+
         rootBoneItem = treeItem;
       }
     });
@@ -904,13 +905,13 @@ class TreeInfo {
 
   add (treeItem: spec.VFXItemData, treeNodeList: spec.VFXItemData[]) {
     if (this.tree2NodeList[treeItem.id]) {
-      throw new Error(`Find duplicate treeItem id: ${treeItem.id}.`);
+      throw new Error(`Duplicate treeItem ID detected: ${treeItem.id}. Ensure each tree item has a unique ID.`);
     }
 
     this.tree2NodeList[treeItem.id] = treeNodeList;
     treeNodeList.forEach(node => {
       if (this.nodeList2Tree[node.id]) {
-        throw new Error(`Find duplicate tree node id: ${node.id}.`);
+        throw new Error(`Duplicate tree node ID found: ${node.id}. Each node in the tree must have a unique ID.`);
       }
       this.nodeList2Tree[node.id] = treeItem;
       this.nodeId2Node[node.id] = node;

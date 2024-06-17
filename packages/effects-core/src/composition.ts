@@ -983,7 +983,7 @@ export class Composition implements Disposable, LostHandler {
    */
   translateByPixel (x: number, y: number) {
     if (!this.renderer) {
-      console.warn('Can not translate position when container not assigned.');
+      console.warn('Renderer not assigned. Operation aborted.');
 
       return;
     }
@@ -1000,7 +1000,7 @@ export class Composition implements Disposable, LostHandler {
    */
   setPositionByPixel (x: number, y: number) {
     if (!this.renderer) {
-      console.warn('Can not setPosition when container not assigned.');
+      console.warn('Renderer not assigned. Operation aborted.');
 
       return;
     }

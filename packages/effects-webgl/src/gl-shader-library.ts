@@ -223,7 +223,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       result.status = ShaderCompileResultStatus.compiling;
 
       return function () {
-        delete result.program;
+        result.program = undefined;
         const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
 
         if (!linked) {

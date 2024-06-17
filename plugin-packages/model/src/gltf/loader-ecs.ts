@@ -80,7 +80,7 @@ export class LoaderECSImpl implements LoaderECS {
     const gltfResource = options.gltf.resource;
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
-      throw new Error('Please load resource by GLTFTools at first.');
+      throw new Error('Please load the resource using GLTFTools first.');
     }
     this.processGLTFResource(gltfResource);
     this.gltfScene = gltfResource.scenes[0];
@@ -158,7 +158,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   checkMeshComponentData (mesh: ModelMeshComponentData, resource: GLTFResources): void {
     if (mesh.materials.length <= 0) {
-      throw new Error(`Submesh array is empty: ${mesh}.`);
+      throw new Error(`Submesh array is empty for mesh with ID: ${mesh.id}.`);
     }
 
     let geometryData: spec.GeometryData | undefined;
@@ -170,11 +170,11 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     if (geometryData === undefined) {
-      throw new Error(`Can't find geometry data for ${mesh.geometry.id}.`);
+      throw new Error(`Unable to find geometry data for mesh with ID: ${mesh.geometry.id}.`);
     }
 
     if (geometryData.subMeshes.length !== mesh.materials.length) {
-      throw new Error(`Submeshes and materials mismach: ${geometryData.subMeshes.length}, ${mesh.materials.length}.`);
+      throw new Error(`Mismatch between submeshes count (${geometryData.subMeshes.length}) and materials count (${mesh.materials.length}).`);
     }
     //mesh.materials.length !=
   }
@@ -362,7 +362,7 @@ export class LoaderECSImpl implements LoaderECS {
         material.stringTags['Cull'] = CullMode.Front;
       }
     } else {
-      console.error(`Unknown shader id in material: ${material}.`);
+      console.error(`Encountered unknown shader ID in material with ID: ${material.id}.`);
     }
   }
 
@@ -677,7 +677,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   createSkyboxComponentData (typeName: SkyboxType) {
     if (typeName !== 'NFT' && typeName !== 'FARM') {
-      throw new Error(`Invalid skybox type name ${typeName}.`);
+      throw new Error(`Invalid skybox type specified: '${typeName}'. Valid types are: 'NFT', 'FARM'.`);
     }
     //
     const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
