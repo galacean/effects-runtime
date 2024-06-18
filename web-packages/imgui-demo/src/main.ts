@@ -93,7 +93,11 @@ async function _init (): Promise<void> {
   // font = await AddFontFromFileTTF("./public/fonts/ProggyTiny.ttf", 10.0);
   // font = await AddFontFromFileTTF('./public/fonts/Arial.ttf', 16.0);
 
-  font = await AddFontFromFileTTF('./public/fonts/AlibabaPuHuiTi-3-55-Regular.ttf', 22, null, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
+  const fontConfig = new FontConfig();
+
+  fontConfig.internal.OversampleH = 5;
+  fontConfig.internal.OversampleV = 5;
+  font = await AddFontFromFileTTF('./public/fonts/AlibabaPuHuiTi-3-55-Regular.ttf', 22, fontConfig, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
   // font = await AddFontFromFileTTF("https://raw.githubusercontent.com/googlei18n/noto-cjk/master/NotoSansJP-Regular.otf", 18.0, null, io.Fonts.GetGlyphRangesJapanese());
   ImGui.ASSERT(font !== null);
 
