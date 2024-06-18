@@ -2,9 +2,10 @@
 import { ShowDemoWindow } from './imgui_demo.js';
 import { MemoryEditor } from './imgui_memory_editor.js';
 import { GalaceanEffects } from './ge.js';
-import { Editor } from './panels/inspector.js';
+import { Editor } from './panels/editor.js';
 import { ImGui, ImGui_Impl } from './imgui.js';
 import { FontConfig, ImFontConfig } from 'maoan-imgui-js';
+import { UIManager } from './core/ui-manager.js';
 
 let font: ImGui.Font | null = null;
 
@@ -15,7 +16,7 @@ let show_another_window: boolean = false;
 const clear_color: ImGui.Vec4 = new ImGui.Vec4(0.25, 0.25, 0.25, 0);
 
 const memory_editor: MemoryEditor = new MemoryEditor();
-const geEditor = new Editor();
+const uiManager = new UIManager();
 
 memory_editor.Open = false;
 
@@ -147,6 +148,8 @@ function _loop (time: number): void {
   ImGui_Impl.NewFrame(time);
   ImGui.NewFrame();
 
+  ImGui.DockSpaceOverMainViewport();
+
   // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
   if (!done && show_demo_window) {
     done = /*ImGui.*/ShowDemoWindow((value = show_demo_window) => show_demo_window = value);
@@ -229,7 +232,7 @@ function _loop (time: number): void {
     ImGui.End();
   }
 
-  geEditor.onGUI();
+  uiManager.draw();
 
   ImGui.EndFrame();
 
