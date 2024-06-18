@@ -1,9 +1,9 @@
-import { ImGui } from '../imgui';
-import { GalaceanEffects } from '../ge';
-import { getMergedStore, type VFXItem } from '@galacean/effects';
 import type { Component } from '@galacean/effects';
+import { getMergedStore, type VFXItem } from '@galacean/effects';
 import { OrbitController } from '../core/orbit-controller';
-import { menuNodeStore } from '../widgets/menu-item';
+import { GalaceanEffects } from '../ge';
+import { ImGui } from '../imgui';
+import { MenuItem } from '../core/decorators';
 
 type char = number;
 type int = number;
@@ -24,29 +24,6 @@ export class Editor {
   }
 
   onGUI () {
-    if (ImGui.BeginMainMenuBar()) {
-      if (ImGui.BeginMenu('File')) {
-        // ShowExampleMenuFile();
-        ImGui.EndMenu();
-      }
-      if (ImGui.BeginMenu('Edit')) {
-        if (ImGui.BeginMenu('Test')) {
-          // ShowExampleMenuFile();
-          ImGui.EndMenu();
-        }
-        // if (ImGui.MenuItem('Undo', 'CTRL+Z')) {}
-        // if (ImGui.MenuItem('Redo', 'CTRL+Y', false, false)) {}  // Disabled item
-        // ImGui.Separator();
-        // if (ImGui.MenuItem('Cut', 'CTRL+X')) {}
-        // if (ImGui.MenuItem('Copy', 'CTRL+C')) {}
-        // if (ImGui.MenuItem('Paste', 'CTRL+V')) {}
-        ImGui.EndMenu();
-      }
-      for (const menuNode of menuNodeStore) {
-        menuNode.draw();
-      }
-      ImGui.EndMainMenuBar();
-    }
   }
 
   onSceneGUI () {
