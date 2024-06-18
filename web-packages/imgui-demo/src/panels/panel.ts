@@ -12,6 +12,7 @@ export class EditorWindow {
     if (!this.opened) {
       return;
     }
+    ImGui.SetNextWindowSize(new ImGui.Vec2(500, 300));
     ImGui.Begin(this.title, (value = this.opened) => this.opened = value);
     this.onGUI();
     ImGui.End();
@@ -33,7 +34,7 @@ export class EditorWindow {
 @editorWindow('TestWindow')
 export class TestWindow extends EditorWindow {
 
-  @menuItem('Editor/Test/Test2')
+  @menuItem('Editor/Test')
   static showWindow () {
     UIManager.getWindow(TestWindow).open();
   }
@@ -41,5 +42,19 @@ export class TestWindow extends EditorWindow {
   constructor () {
     super();
     this.title = 'Test Window';
+  }
+}
+
+@editorWindow('Test2Window')
+export class Test2Window extends EditorWindow {
+
+  @menuItem('Editor/Test3')
+  static showWindow () {
+    UIManager.getWindow(Test2Window).open();
+  }
+
+  constructor () {
+    super();
+    this.title = 'Test2 Window';
   }
 }
