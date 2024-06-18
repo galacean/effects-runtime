@@ -1,11 +1,11 @@
-import type { Panel } from '../panels/panel';
+import type { EditorWindow } from '../panels/panel';
 import { Editor } from '../panels/editor';
 import { MenuItemNode, MenuNode } from '../widgets/menu-item';
 import { ImGui } from '../imgui';
 import { editorWindowStore, menuItemStore } from './decorators';
 
 export class UIManager {
-  private panels: Panel[] = [];
+  private static panels: EditorWindow[] = [];
   private editor: Editor = new Editor();
   private menuNodes: MenuNode[] = [];
 
@@ -15,12 +15,24 @@ export class UIManager {
     }
 
     for (const key of Object.keys(editorWindowStore)) {
-      this.panels.push(new editorWindowStore[key]());
+      UIManager.panels.push(new editorWindowStore[key]());
     }
   }
 
+  static getWindow<T extends EditorWindow> (type: new () => T): T {
+    let res;
+
+    for (const panel of UIManager.panels) {
+      if (panel instanceof type) {
+        res = panel;
+      }
+    }
+
+    return res as T;
+  }
+
   draw () {
-    for (const panel of this.panels) {
+    for (const panel of UIManager.panels) {
       panel.draw();
     }
     this.editor.draw();

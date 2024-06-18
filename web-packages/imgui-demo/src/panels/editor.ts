@@ -3,7 +3,6 @@ import { getMergedStore, type VFXItem } from '@galacean/effects';
 import { OrbitController } from '../core/orbit-controller';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { MenuItem } from '../core/decorators';
 
 type char = number;
 type int = number;
@@ -169,7 +168,7 @@ export class Editor {
 
 function UNIQUE (key: string): string { return key; }
 
-class Static<T> {
+export class Static<T> {
   constructor (public value: T) {}
   access: ImGui.Access<T> = (value: T = this.value): T => this.value = value;
 }

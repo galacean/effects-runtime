@@ -1,18 +1,28 @@
-import { EditorWindow } from '../core/decorators';
+import { ImGuiWindowFlags } from 'maoan-imgui-js';
+import { editorWindow, menuItem } from '../core/decorators';
+import { UIManager } from '../core/ui-manager';
 import { ImGui } from '../imgui';
 
-export class Panel {
+export class EditorWindow {
   title = 'New Window';
 
-  private opened = true;
+  private opened = false;
 
   draw () {
     if (!this.opened) {
       return;
     }
-    ImGui.Begin(this.title);
+    ImGui.Begin(this.title, (value = this.opened) => this.opened = value);
     this.onGUI();
     ImGui.End();
+  }
+
+  open () {
+    this.opened = true;
+  }
+
+  close () {
+    this.opened = false;
   }
 
   onGUI () {
@@ -20,11 +30,16 @@ export class Panel {
   }
 }
 
-// @EditorWindow('TestWindow')
-// export class TestWindow extends Panel {
+@editorWindow('TestWindow')
+export class TestWindow extends EditorWindow {
 
-//   constructor () {
-//     super();
-//     this.title = 'Test Window';
-//   }
-// }
+  @menuItem('Editor/Test/Test2')
+  static showWindow () {
+    UIManager.getWindow(TestWindow).open();
+  }
+
+  constructor () {
+    super();
+    this.title = 'Test Window';
+  }
+}
