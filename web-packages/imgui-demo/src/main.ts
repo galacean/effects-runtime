@@ -5,7 +5,7 @@ import { GalaceanEffects } from './ge.js';
 import { ImGui, ImGui_Impl } from './imgui.js';
 import { ShowDemoWindow } from './imgui_demo.js';
 import { MemoryEditor } from './imgui_memory_editor.js';
-import './panels/panel.js';
+import './panels';
 
 let font: ImGui.Font | null = null;
 
