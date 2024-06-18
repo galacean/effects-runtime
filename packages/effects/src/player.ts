@@ -650,26 +650,25 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     let skipRender = false;
 
     comps.sort((a, b) => a.getIndex() - b.getIndex());
-    const currentComps = [];
+    const currentCompositions = [];
 
-    this.compositions = [];
     for (let i = 0; i < comps.length; i++) {
       const composition = comps[i];
 
       if (composition.textureOffloaded) {
         skipRender = true;
         logger.error(`Composition ${composition.name} texture offloaded, skip render.`);
-        currentComps.push(composition);
+        currentCompositions.push(composition);
         continue;
       }
       if (!composition.isDestroyed && composition.renderer) {
         composition.update(dt, false);
       }
       if (!composition.isDestroyed) {
-        currentComps.push(composition);
+        currentCompositions.push(composition);
       }
     }
-    this.compositions = currentComps;
+    this.compositions = currentCompositions;
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
       this.handleRenderError?.(new Error('play when texture offloaded'));
