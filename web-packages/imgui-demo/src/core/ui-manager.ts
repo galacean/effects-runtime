@@ -25,6 +25,8 @@ export class UIManager {
     for (const panel of UIManager.panels) {
       if (panel instanceof type) {
         res = panel;
+
+        break;
       }
     }
 
