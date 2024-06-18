@@ -190,7 +190,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     const { willCaptureImage: preserveDrawingBuffer, premultipliedAlpha } = renderOptions;
 
     if (initErrors.length) {
-      throw new Error(`Errors before player create: ${initErrors.map((message, index) => `\n ${index + 1}: ${message}`)}`);
+      throw new Error(`Errors before player create: ${initErrors.map((message, index) => `\n ${index + 1}: ${message}`)}.`);
     }
 
     // 原 debug-disable 直接返回
@@ -252,7 +252,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
     playerMap.forEach(player => {
       if (player.gpuCapability.type !== this.gpuCapability.type) {
-        logger.warn(`Create player with different webgl version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}`);
+        logger.warn(`Create player with different WebGL version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}.\nsee ${HELP_LINK['Create player with different WebGL version']}.`);
       }
     });
 
@@ -474,7 +474,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
     // 加载期间 player 销毁
     if (this.disposed) {
-      throw new Error('Disposed player can not used to create Composition');
+      throw new Error('Disposed player can not used to create Composition.');
     }
     const composition = new Composition({
       ...opts,
@@ -509,7 +509,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     const firstFrameTime = performance.now() - last + composition.statistic.loadTime;
 
     composition.statistic.firstFrameTime = firstFrameTime;
-    logger.info(`first frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms`);
+    logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
 
     this.compositions.push(composition);
 
@@ -598,15 +598,17 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    * @returns
    */
   pause (options?: { offloadTexture?: boolean }) {
-    if (!this.paused) {
-      this.ticker?.pause();
-      this.handlePlayableUpdate?.({
-        player: this,
-        playing: false,
-      });
-      if (options && options.offloadTexture) {
-        this.offloadTexture();
-      }
+    if (this.paused) {
+      return;
+    }
+
+    this.ticker?.pause();
+    this.handlePlayableUpdate?.({
+      player: this,
+      playing: false,
+    });
+    if (options && options.offloadTexture) {
+      this.offloadTexture();
     }
   }
 
@@ -671,7 +673,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.compositions = currentCompositions;
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
-      this.handleRenderError?.(new Error('play when texture offloaded'));
+      this.handleRenderError?.(new Error('Play when texture offloaded.'));
 
       return this.ticker?.pause();
     }
@@ -754,12 +756,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       const documentWidth = document.documentElement.clientWidth;
 
       if (canvasWidth > documentWidth * 2) {
-        logger.error(`DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}`);
+        logger.error(`DPI overflowed, width ${canvasWidth} is more than 2x document width ${documentWidth}, see ${HELP_LINK['DPI overflowed']}.`);
       }
       const maxSize = this.env ? this.gpuCapability.detail.maxTextureSize : 2048;
 
       if ((canvasWidth > maxSize || canvasHeight > maxSize)) {
-        logger.error(`Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}`);
+        logger.error(`Container size overflowed ${canvasWidth}x${canvasHeight}, see ${HELP_LINK['Container size overflowed']}.`);
         if (aspect > 1) {
           canvasWidth = Math.round(maxSize);
           canvasHeight = Math.round(maxSize / aspect);
@@ -859,7 +861,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    * @param keepCanvas - 是否保留 canvas 画面，默认不保留，canvas 不能再被使用
    */
   dispose (keepCanvas?: boolean): void {
-    logger.info(`call player destroy: ${this.name}`);
+    logger.info(`Call player destroyed: ${this.name}.`);
     if (this.disposed) {
       return;
     }
@@ -970,7 +972,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       if (this.offscreenMode) {
         targetWidth = targetHeight = containerWidth = containerHeight = 1;
       } else {
-        throw Error(`Invalid container size ${targetWidth}x${targetHeight}, see ${HELP_LINK['Invalid container size']}`);
+        throw new Error(`Invalid container size ${targetWidth}x${targetHeight}, see ${HELP_LINK['Invalid container size']}.`);
       }
     }
 
@@ -1047,7 +1049,7 @@ function assertNoConcurrentPlayers () {
   }
 
   if (runningPlayers.length > 1) {
-    logger.error(`Current running player count: ${runningPlayers.length}, see ${HELP_LINK['Current running player count']}`, runningPlayers);
+    logger.error(`Current running player count: ${runningPlayers.length}, see ${HELP_LINK['Current running player count']}.`, runningPlayers);
   }
 }
 
@@ -1057,10 +1059,10 @@ function assertNoConcurrentPlayers () {
  */
 function assertContainer (container?: HTMLElement | null): asserts container is HTMLElement {
   if (container === undefined || container === null) {
-    throw new Error(`Container is not an HTMLElement, see ${HELP_LINK['Container is not an HTMLElement']}`);
+    throw new Error(`Container is not an HTMLElement, see ${HELP_LINK['Container is not an HTMLElement']}.`);
   }
 }
 
 function getDestroyedErrorMessage (name: string) {
-  return `Never use destroyed player: ${name} again, see ${HELP_LINK['Never use destroyed player again']}`;
+  return `Never use destroyed player: ${name} again, see ${HELP_LINK['Never use destroyed player again']}.`;
 }

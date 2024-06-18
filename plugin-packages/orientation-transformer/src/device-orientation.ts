@@ -300,8 +300,8 @@ function switchWindVane (open: boolean, interval?: number) {
   };
 
   window.WindVane.call('WVMotion', 'listenGyro', params, (e: Event) => {
-    console.info('call WVMotion success');
+    console.info('Call WVMotion success.');
   }, (e: Event) => {
-    console.error('call WVMotion failed:' + JSON.stringify(e));
+    console.error(`Call WVMotion failed: ${JSON.stringify(e)}.`);
   });
 }

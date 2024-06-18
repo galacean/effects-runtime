@@ -516,7 +516,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     if (duration <= 0) {
-      throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
+      throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
     for (const component of this.components) {
@@ -659,7 +659,7 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
 
         break;
       default:
-        throw new Error('invalid vfx item type');
+        throw new Error('Invalid vfx item type.');
     }
   }
 

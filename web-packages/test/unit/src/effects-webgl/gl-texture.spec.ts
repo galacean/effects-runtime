@@ -607,7 +607,7 @@ function byteLengthForASTC (type, width, height) {
   if (type === COMPRESSED_RGBA_ASTC_6x6_KHR) {
     return Math.floor((width + 5) / 6) * Math.floor((height + 5) / 6) * 16;
   }
-  throw Error('not implement:https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_compressed_texture_astc');
+  throw new Error('not implement:https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_compressed_texture_astc');
 }
 
 describe('webgl2/gl-texture', () => {

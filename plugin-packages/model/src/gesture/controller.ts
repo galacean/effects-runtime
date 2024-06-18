@@ -280,7 +280,7 @@ export class InputController {
         case 'p':{
           const trans = (owner.gesture as CameraGestureHandlerImp).getCameraTransform();
 
-          console.info(`Camera: [${trans.position}], [${trans.rotation}]`);
+          console.info(`Camera: [${trans.position}], [${trans.rotation}].`);
         }
 
           break;

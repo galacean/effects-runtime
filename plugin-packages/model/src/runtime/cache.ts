@@ -70,7 +70,7 @@ export class CompositionCache {
 
     if (this.brdfLutTexture === undefined || this.brdfLutTexture.isDestroyed) {
       if (CompositionCache.brdfLutTexOptions === undefined) {
-        throw new Error('Please load brdfLutTexOptions at first');
+        throw new Error('Please load brdfLutTexOptions at first.');
       }
       //
       const brdfLutTextureName = 'brdfLutTexture';

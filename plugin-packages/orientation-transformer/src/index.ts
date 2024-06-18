@@ -16,7 +16,7 @@ export * from './orientation-component';
 
 export const version = __VERSION__;
 
-logger.info('plugin orientation transformer version: ' + version);
+logger.info(`Plugin orientation transformer version: ${version}.`);
 
 if (version !== EFFECTS.version) {
   console.error(

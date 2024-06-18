@@ -133,7 +133,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       shader.pipelineContext = this.pipelineContext;
 
       if (this.programMap[shader.id] !== undefined) {
-        console.warn('find duplicated shader id', shader.id);
+        console.warn(`Find duplicated shader id: ${shader.id}.`);
       }
       this.programMap[shader.id] = glProgram;
     };
@@ -223,14 +223,14 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       result.status = ShaderCompileResultStatus.compiling;
 
       return function () {
-        delete result.program;
+        result.program = undefined;
         const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
 
         if (!linked) {
           // 链接失败，获取并打印错误信息
           const info = gl.getProgramInfoLog(program);
 
-          console.error('Failed to link program: ' + info);
+          console.error(`Failed to link program: ${info}.`);
           const vsCheckResult = checkShader(gl, vertexShader, 'vertex', vs);
           const fsCheckResult = checkShader(gl, fragShader, 'fragment', fs);
 

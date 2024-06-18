@@ -528,7 +528,7 @@ function resizeImageByCanvas (
     canvas.width = nw;
     canvas.height = nh;
     ctx?.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
-    logger.warn(`Image resize from ${width}x${height} to ${nw}x${nh}`);
+    logger.warn(`Image resize from ${width}x${height} to ${nw}x${nh}.`);
 
     return canvas;
   }

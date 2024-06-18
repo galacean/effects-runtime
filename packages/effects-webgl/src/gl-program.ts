@@ -79,7 +79,7 @@ export class GLProgram implements Disposable {
     } else {
       vao = new GLVertexArrayObject(this.engine, `${geometry.name}-${programId}`);
       if (!vao) {
-        console.error('创建vao对象失败');
+        console.error('Failed to create VAO object.');
       }
       geometry.vaos[programId] = vao;
     }
@@ -99,7 +99,7 @@ export class GLProgram implements Disposable {
         const buffer = geometry.buffers[attribute.dataSource];
 
         if (!buffer) {
-          throw Error(`no buffer named ${attribute.dataSource || name}`);
+          throw new Error(`Failed to find a buffer named '${attribute.dataSource || name}'. Please ensure the buffer is correctly initialized and bound.`);
         }
         buffer.bind();
         gl.enableVertexAttribArray(attrInfo.loc);

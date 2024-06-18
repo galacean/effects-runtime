@@ -116,7 +116,7 @@ export class CompositionComponent extends ItemBehaviour {
           const props = this.item.composition.refCompositionProps.get(refId);
 
           if (!props) {
-            throw new Error(`引用的Id: ${refId} 的预合成不存在`);
+            throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
           }
           // endBehaviour 类型需优化
           props.content = itemData.content;

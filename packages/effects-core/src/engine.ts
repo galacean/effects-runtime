@@ -247,7 +247,7 @@ export class Engine implements Disposable {
     }
 
     if (info.length > 0) {
-      logger.warn(`Release GPU memory: ${info.join(', ')}`);
+      logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
     this.renderPasses.forEach(pass => pass.dispose());

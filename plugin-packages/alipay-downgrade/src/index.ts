@@ -10,7 +10,7 @@ export const version = __VERSION__;
 
 registerPlugin('alipay-downgrade', AlipayDowngradePlugin, DowngradeVFXItem, true);
 
-logger.info('plugin downgrade version: ' + version);
+logger.info(`Plugin downgrade version: ${version}.`);
 
 if (version !== EFFECTS.version) {
   console.error(

@@ -54,7 +54,7 @@ export class CompositionSourceManager implements Disposable {
     const { compositions, imgUsage, compositionId } = jsonScene;
 
     if (!textureOptions) {
-      throw new Error('scene.textures expected');
+      throw new Error('scene.textures expected.');
     }
     const cachedTextures = textureOptions as Texture[];
 
@@ -67,7 +67,7 @@ export class CompositionSourceManager implements Disposable {
     }
 
     if (!this.composition) {
-      throw new Error('Invalid composition id: ' + compositionId);
+      throw new Error(`Invalid composition id: ${compositionId}.`);
     }
     this.jsonScene = jsonScene;
     this.renderLevel = renderLevel;
@@ -140,7 +140,7 @@ export class CompositionSourceManager implements Disposable {
           const refId = (sourceItemData.content as spec.CompositionContent).options.refId;
 
           if (!this.refCompositions.get(refId)) {
-            throw new Error('Invalid Ref Composition id: ' + refId);
+            throw new Error(`Invalid ref composition id: ${refId}.`);
           }
           const ref = this.getContent(this.refCompositions.get(refId)!);
 
