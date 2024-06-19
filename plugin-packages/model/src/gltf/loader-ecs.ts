@@ -266,17 +266,17 @@ export class LoaderECSImpl implements LoaderECS {
       if (materialData.shader?.id === UnlitShaderGUID) {
         this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
       } else if (materialData.shader?.id === PBRShaderGUID) {
-        // const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
+        const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
 
-        // if (emissiveTexture && textureIdMap[emissiveTexture.id]) {
-        //   emissiveTexture.id = textureIdMap[emissiveTexture.id];
-        // }
+        if (emissiveTexture && textureIdMap[emissiveTexture.id]) {
+          emissiveTexture.id = textureIdMap[emissiveTexture.id];
+        }
 
+        this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
         this.processMaterialTexture(materialData, '_MetallicRoughnessSampler', false, dataMap);
         this.processMaterialTexture(materialData, '_NormalSampler', false, dataMap);
         this.processMaterialTexture(materialData, '_OcclusionSampler', false, dataMap);
         this.processMaterialTexture(materialData, '_EmissiveSampler', false, dataMap);
-        this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
       }
     });
 
