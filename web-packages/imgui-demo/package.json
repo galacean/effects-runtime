@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@galacean/effects": "workspace:*",
+    "@galacean/effects-plugin-orientation-transformer": "workspace:*",
+    "@galacean/effects-plugin-model": "workspace:*",
     "maoan-imgui-js": "^1.0.6"
   }
 }

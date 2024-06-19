@@ -168,7 +168,7 @@ export class Editor {
 
 function UNIQUE (key: string): string { return key; }
 
-export class Static<T> {
+class Static<T> {
   constructor (public value: T) {}
   access: ImGui.Access<T> = (value: T = this.value): T => this.value = value;
 }
