@@ -129,7 +129,23 @@ export class LoaderECSImpl implements LoaderECS {
     this.components.push(...gltfScene.camerasComponentData);
     this.components.push(...gltfScene.lightsComponentData);
     this.components.push(...gltfScene.meshesComponentData);
-    this.components.push(...gltfScene.animationsComponentData);
+    if (gltfScene.animationsComponentData.length === 1) {
+      const component = gltfScene.animationsComponentData[0];
+
+      if (!options.effects.playAllAnimation && options.effects.playAnimation !== undefined) {
+        const clips = component.animationClips;
+        const index = options.effects.playAnimation;
+
+        if (index >= 0 && index < clips.length) {
+          component.animationClips = [clips[index]];
+        } else {
+          component.animationClips = [];
+        }
+      }
+      this.components.push(component);
+    } else if (gltfScene.animationsComponentData.length > 1) {
+      throw new Error(`Find many animation component data ${gltfScene.animationsComponentData.length}`);
+    }
 
     this.animations = [];
     this.gltfAnimations.forEach(anim => {
@@ -196,6 +212,52 @@ export class LoaderECSImpl implements LoaderECS {
       }
     });
 
+    const baseColorIdSet: Set<string> = new Set();
+    const emissiveIdSet: Set<string> = new Set();
+
+    materials.forEach(mat => {
+      const materialData = mat.materialData;
+      const baseColorTexture = materialData.textures['_BaseColorSampler']?.texture;
+      const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
+
+      if (baseColorTexture) {
+        baseColorIdSet.add(baseColorTexture.id);
+      }
+      if (emissiveTexture) {
+        emissiveIdSet.add(emissiveTexture.id);
+      }
+    });
+
+    let mapCount = 0;
+    const textureIdMap: Record<string, string> = {};
+
+    for (const baseColorId of baseColorIdSet) {
+      if (emissiveIdSet.has(baseColorId)) {
+        const texData = textures.find(tex => tex.textureOptions.id === baseColorId);
+
+        if (texData) {
+          const newId = generateGUID();
+          // @ts-expect-error
+          const newTexData: GLTFTexture = {
+            ...texData,
+          };
+
+          newTexData.textureOptions = {
+            ...texData.textureOptions,
+            id: newId,
+          };
+          textures.push(newTexData);
+          dataMap[newId] = newTexData.textureOptions;
+          textureIdMap[baseColorId] = newId;
+          mapCount += 1;
+        }
+      }
+    }
+
+    if (mapCount > 0) {
+      console.warn(`Duplicate emissive texture ${mapCount}`);
+    }
+
     materials.forEach(mat => {
       const materialData = mat.materialData;
 
@@ -204,36 +266,17 @@ export class LoaderECSImpl implements LoaderECS {
       if (materialData.shader?.id === UnlitShaderGUID) {
         this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
       } else if (materialData.shader?.id === PBRShaderGUID) {
-        const baseColorTexture = materialData.textures['_BaseColorSampler']?.texture;
-        const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
+        // const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
 
-        if (baseColorTexture && emissiveTexture && baseColorTexture.id === emissiveTexture.id) {
-          console.warn('basecolor and emissive use same texture, duplicate texture object');
+        // if (emissiveTexture && textureIdMap[emissiveTexture.id]) {
+        //   emissiveTexture.id = textureIdMap[emissiveTexture.id];
+        // }
 
-          const texData = textures.find(tex => tex.textureOptions.id === baseColorTexture.id);
-
-          if (texData) {
-            const newId = generateGUID();
-            // @ts-expect-error
-            const newTexData: GLTFTexture = {
-              ...texData,
-            };
-
-            newTexData.textureOptions = {
-              ...texData.textureOptions,
-              id: newId,
-            };
-            textures.push(newTexData);
-            emissiveTexture.id = newId;
-            dataMap[newId] = newTexData.textureOptions;
-          }
-        }
-
-        this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
         this.processMaterialTexture(materialData, '_MetallicRoughnessSampler', false, dataMap);
         this.processMaterialTexture(materialData, '_NormalSampler', false, dataMap);
         this.processMaterialTexture(materialData, '_OcclusionSampler', false, dataMap);
         this.processMaterialTexture(materialData, '_EmissiveSampler', false, dataMap);
+        this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
       }
     });
 

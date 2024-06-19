@@ -34,7 +34,8 @@ interface LoadSceneResult {
 interface LoadGLTFSceneOptions {
   url: string,
   player: Player,
-  playAnimation?: number | string,
+  playAnimation?: number,
+  playAllAnimation?: boolean,
   camera?: {
     position?: spec.vec3,
     rotation?: spec.vec3,
@@ -80,7 +81,8 @@ export async function oldLoadGLTFScene (options: LoadGLTFSceneOptions) {
       renderer: options.player.renderer,
       duration: duration,
       endBehavior: endBehavior,
-      playAllAnimation: true,
+      playAnimation: options.playAnimation,
+      playAllAnimation: options.playAllAnimation,
     },
   }).then(result => {
     const items = result.items;

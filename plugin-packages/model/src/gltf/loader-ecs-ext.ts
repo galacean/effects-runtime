@@ -31,7 +31,8 @@ export class LoaderECSEx extends LoaderECSImpl {
 export interface LoadGLTFSceneECSOptions {
   url: string,
   player: Player,
-  playAnimation?: number | string,
+  playAnimation?: number,
+  playAllAnimation?: boolean,
   camera?: {
     position?: spec.vec3,
     rotation?: spec.vec3,
@@ -55,6 +56,7 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: options.playAnimation,
+      playAllAnimation: options.playAllAnimation,
     },
   }).then(result => {
     const sceneMin = Vector3.fromArray(result.sceneAABB.min);
@@ -65,13 +67,6 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
     const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 1.71));
     const cameraPosition = options.camera?.position ?? position.toArray();
     const cameraRotation = options.camera?.rotation ?? [0, 0, 0];
-
-    cameraPosition[0] = 0;
-    cameraPosition[1] = 0;
-    cameraPosition[2] = 8;
-    cameraRotation[0] = 0;
-    cameraRotation[1] = 0;
-    cameraRotation[2] = 0;
 
     loader.addCamera({
       near: 0.001,

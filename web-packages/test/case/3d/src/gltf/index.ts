@@ -84,9 +84,9 @@ function addDescribe (renderFramework) {
           },
         };
         const playerOptions = { pauseOnFirstFrame: true };
-
-        const oldScene = await oldLoadGLTFScene({ url, player: oldPlayer.player });
-        const newScene = await loadGLTFSceneECS({ url, player: newPlayer.player });
+        const loadGLTFOptions = getLoadGLTFOptions(name);
+        const oldScene = await oldLoadGLTFScene({ url, player: oldPlayer.player, ...loadGLTFOptions });
+        const newScene = await loadGLTFSceneECS({ url, player: newPlayer.player, ...loadGLTFOptions });
 
         copySceneCamera(oldScene, newScene);
 
@@ -187,6 +187,15 @@ function copySceneCamera (fromScene: spec.JSONScene, toScene: spec.JSONScene) {
     y: fromCameraItem.transform.rotation[1],
     z: fromCameraItem.transform.rotation[2],
   };
+}
+
+function getLoadGLTFOptions (sceneName: string) {
+  if ('ebec344a9fa02bec3b9987d475e04191'.includes(sceneName)
+  || '5eb610471972b998b9d570987d72d784'.includes(sceneName)) {
+    return { playAnimation: 0 };
+  } else {
+    return { playAllAnimation: true };
+  }
 }
 
 const sceneList = {
