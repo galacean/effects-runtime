@@ -1,6 +1,5 @@
 import inspireList from '../asset/inspire-list';
 import { editorWindow, menuItem } from '../core/decorators';
-import { UIManager } from '../core/ui-manager';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './panel';
@@ -15,7 +14,7 @@ export class CompositionWindow extends EditorWindow {
 
   @menuItem('Window/Composition')
   static showWindow () {
-    UIManager.getWindow(CompositionWindow).open();
+    EditorWindow.getWindow(CompositionWindow).open();
   }
 
   constructor () {

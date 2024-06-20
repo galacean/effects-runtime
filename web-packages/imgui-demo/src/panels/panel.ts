@@ -1,3 +1,4 @@
+import { UIManager } from '../core/ui-manager';
 import { ImGui } from '../imgui';
 
 export class EditorWindow {
@@ -5,6 +6,10 @@ export class EditorWindow {
 
   private opened = false;
   private firstFrame = true;
+
+  static getWindow<T extends EditorWindow> (type: new () => T): T {
+    return UIManager.getWindow(type);
+  }
 
   draw () {
     if (!this.opened) {
