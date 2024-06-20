@@ -2,9 +2,9 @@ export const editorWindowStore: Record<string, any> = {};
 export const menuItemStore: Record<string, () => void> = {};
 
 export function editorWindow (className?: string) {
-  return (target: Object, context?: unknown) => {
+  return (target: any, context?: unknown) => {
     if (!className) {
-      className = target.constructor.name;
+      className = target.name as string;
     }
     if (editorWindowStore[className]) {
       console.warn(`Class ${className} 重复注册`);
