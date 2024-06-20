@@ -27,6 +27,11 @@ export class Editor {
 
   onSceneGUI () {
     ImGui.Begin('Scene', null, ImGui.ImGuiWindowFlags.NoCollapse);
+    if (!GalaceanEffects.player.getCompositions()[0]) {
+      ImGui.End();
+
+      return;
+    }
     const sceneImageSize = ImGui.GetWindowSize();
 
     sceneImageSize.x -= 15;
