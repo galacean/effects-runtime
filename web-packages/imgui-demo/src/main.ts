@@ -1,5 +1,6 @@
+/* eslint-disable no-multi-spaces */
 /* eslint-disable no-console */
-import { FontConfig } from 'maoan-imgui-js';
+import { FontConfig, ImGuiCol } from 'maoan-imgui-js';
 import { UIManager } from './core/ui-manager.js';
 import { GalaceanEffects } from './ge.js';
 import { ImGui, ImGui_Impl } from './imgui/index.js';
@@ -86,6 +87,7 @@ async function _init (): Promise<void> {
   // Setup Dear ImGui style
   ImGui.StyleColorsDark();
   //ImGui.StyleColorsClassic();
+  embraceTheDarkness();
 
   // Load Fonts
   // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
@@ -570,4 +572,94 @@ function ShowMovieWindow (title: string, p_open: ImGui.Access<boolean> | null = 
     ImGui.Text('No Video Element');
   }
   ImGui.End();
+}
+
+function embraceTheDarkness () {
+  const colors = ImGui.GetStyle().Colors;
+
+  colors[ImGuiCol.Text]                   = new ImGui.ImVec4(1.00, 1.00, 1.00, 1.00);
+  colors[ImGuiCol.TextDisabled]           = new ImGui.ImVec4(0.50, 0.50, 0.50, 1.00);
+  colors[ImGuiCol.WindowBg]               = new ImGui.ImVec4(0.10, 0.10, 0.10, 1.00);
+  colors[ImGuiCol.ChildBg]                = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.00);
+  colors[ImGuiCol.PopupBg]                = new ImGui.ImVec4(0.19, 0.19, 0.19, 0.92);
+  colors[ImGuiCol.Border]                 = new ImGui.ImVec4(0.19, 0.19, 0.19, 0.29);
+  colors[ImGuiCol.BorderShadow]           = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.24);
+  colors[ImGuiCol.FrameBg]                = new ImGui.ImVec4(0.05, 0.05, 0.05, 0.54);
+  colors[ImGuiCol.FrameBgHovered]         = new ImGui.ImVec4(0.19, 0.19, 0.19, 0.54);
+  colors[ImGuiCol.FrameBgActive]          = new ImGui.ImVec4(0.20, 0.22, 0.23, 1.00);
+  colors[ImGuiCol.TitleBg]                = new ImGui.ImVec4(0.00, 0.00, 0.00, 1.00);
+  colors[ImGuiCol.TitleBgActive]          = new ImGui.ImVec4(0.06, 0.06, 0.06, 1.00);
+  colors[ImGuiCol.TitleBgCollapsed]       = new ImGui.ImVec4(0.00, 0.00, 0.00, 1.00);
+  colors[ImGuiCol.MenuBarBg]              = new ImGui.ImVec4(0.14, 0.14, 0.14, 1.00);
+  colors[ImGuiCol.ScrollbarBg]            = new ImGui.ImVec4(0.05, 0.05, 0.05, 0.54);
+  colors[ImGuiCol.ScrollbarGrab]          = new ImGui.ImVec4(0.34, 0.34, 0.34, 0.54);
+  colors[ImGuiCol.ScrollbarGrabHovered]   = new ImGui.ImVec4(0.40, 0.40, 0.40, 0.54);
+  colors[ImGuiCol.ScrollbarGrabActive]    = new ImGui.ImVec4(0.56, 0.56, 0.56, 0.54);
+  colors[ImGuiCol.CheckMark]              = new ImGui.ImVec4(0.33, 0.67, 0.86, 1.00);
+  colors[ImGuiCol.SliderGrab]             = new ImGui.ImVec4(0.34, 0.34, 0.34, 0.54);
+  colors[ImGuiCol.SliderGrabActive]       = new ImGui.ImVec4(0.56, 0.56, 0.56, 0.54);
+  colors[ImGuiCol.Button]                 = new ImGui.ImVec4(0.05, 0.05, 0.05, 0.54);
+  colors[ImGuiCol.ButtonHovered]          = new ImGui.ImVec4(0.19, 0.19, 0.19, 0.54);
+  colors[ImGuiCol.ButtonActive]           = new ImGui.ImVec4(0.20, 0.22, 0.23, 1.00);
+  colors[ImGuiCol.Header]                 = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.52);
+  colors[ImGuiCol.HeaderHovered]          = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.36);
+  colors[ImGuiCol.HeaderActive]           = new ImGui.ImVec4(0.20, 0.22, 0.23, 0.33);
+  colors[ImGuiCol.Separator]              = new ImGui.ImVec4(0.28, 0.28, 0.28, 0.29);
+  colors[ImGuiCol.SeparatorHovered]       = new ImGui.ImVec4(0.44, 0.44, 0.44, 0.29);
+  colors[ImGuiCol.SeparatorActive]        = new ImGui.ImVec4(0.40, 0.44, 0.47, 1.00);
+  colors[ImGuiCol.ResizeGrip]             = new ImGui.ImVec4(0.28, 0.28, 0.28, 0.29);
+  colors[ImGuiCol.ResizeGripHovered]      = new ImGui.ImVec4(0.44, 0.44, 0.44, 0.29);
+  colors[ImGuiCol.ResizeGripActive]       = new ImGui.ImVec4(0.40, 0.44, 0.47, 1.00);
+  colors[ImGuiCol.Tab]                    = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.52);
+  colors[ImGuiCol.TabHovered]             = new ImGui.ImVec4(0.14, 0.14, 0.14, 1.00);
+  colors[ImGuiCol.TabActive]              = new ImGui.ImVec4(0.20, 0.20, 0.20, 0.36);
+  colors[ImGuiCol.TabUnfocused]           = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.52);
+  colors[ImGuiCol.TabUnfocusedActive]     = new ImGui.ImVec4(0.14, 0.14, 0.14, 1.00);
+  // colors[ImGuiCol.DockingPreview]         = new ImGui.ImVec4(0.33, 0.67, 0.86, 1.00);
+  // colors[ImGuiCol.DockingEmptyBg]         = new ImGui.ImVec4(1.00, 0.00, 0.00, 1.00);
+  colors[ImGuiCol.PlotLines]              = new ImGui.ImVec4(1.00, 0.00, 0.00, 1.00);
+  colors[ImGuiCol.PlotLinesHovered]       = new ImGui.ImVec4(1.00, 0.00, 0.00, 1.00);
+  colors[ImGuiCol.PlotHistogram]          = new ImGui.ImVec4(1.00, 0.00, 0.00, 1.00);
+  colors[ImGuiCol.PlotHistogramHovered]   = new ImGui.ImVec4(1.00, 0.00, 0.00, 1.00);
+  colors[ImGuiCol.TableHeaderBg]          = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.52);
+  colors[ImGuiCol.TableBorderStrong]      = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.52);
+  colors[ImGuiCol.TableBorderLight]       = new ImGui.ImVec4(0.28, 0.28, 0.28, 0.29);
+  colors[ImGuiCol.TableRowBg]             = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.00);
+  colors[ImGuiCol.TableRowBgAlt]          = new ImGui.ImVec4(1.00, 1.00, 1.00, 0.06);
+  colors[ImGuiCol.TextSelectedBg]         = new ImGui.ImVec4(0.20, 0.22, 0.23, 1.00);
+  colors[ImGuiCol.DragDropTarget]         = new ImGui.ImVec4(0.33, 0.67, 0.86, 1.00);
+  colors[ImGuiCol.NavHighlight]           = new ImGui.ImVec4(1.00, 0.00, 0.00, 1.00);
+  colors[ImGuiCol.NavWindowingHighlight]  = new ImGui.ImVec4(1.00, 0.00, 0.00, 0.70);
+  colors[ImGuiCol.NavWindowingDimBg]      = new ImGui.ImVec4(1.00, 0.00, 0.00, 0.20);
+  colors[ImGuiCol.ModalWindowDimBg]       = new ImGui.ImVec4(1.00, 0.00, 0.00, 0.35);
+
+  const style = ImGui.GetStyle();
+
+  // style.internal.WindowPadding                     = new ImGui.ImVec2(8.00, 8.00);
+  // //@ts-expect-error
+  // style.internal.FramePadding                      = new ImGui.ImVec2(5.00, 2.00);
+  // //@ts-expect-error
+  // style.internal.CellPadding                       = new ImGui.ImVec2(6.00, 6.00);
+  // //@ts-expect-error
+  // style.internal.ItemSpacing                       = new ImGui.ImVec2(6.00, 6.00);
+  // //@ts-expect-error
+  // style.internal.ItemInnerSpacing                  = new ImGui.ImVec2(6.00, 6.00);
+  // //@ts-expect-error
+  // style.internal.TouchExtraPadding                 = new ImGui.ImVec2(0.00, 0.00);
+  style.IndentSpacing                     = 25;
+  style.ScrollbarSize                     = 15;
+  style.GrabMinSize                       = 10;
+  style.WindowBorderSize                  = 1;
+  style.ChildBorderSize                   = 1;
+  style.PopupBorderSize                   = 1;
+  style.FrameBorderSize                   = 1;
+  style.TabBorderSize                     = 1;
+  style.WindowRounding                    = 7;
+  style.ChildRounding                     = 4;
+  style.FrameRounding                     = 3;
+  style.PopupRounding                     = 4;
+  style.ScrollbarRounding                 = 9;
+  style.GrabRounding                      = 3;
+  style.LogSliderDeadzone                 = 4;
+  style.TabRounding                       = 4;
 }
