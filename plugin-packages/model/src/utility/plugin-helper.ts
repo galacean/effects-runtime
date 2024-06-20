@@ -46,6 +46,7 @@ import type {
   ModelTextureTransform,
   ModelTreeOptions,
   ModelAnimTrackOptions,
+  ModelMeshComponent,
 } from '../index';
 import { Matrix3, Matrix4, Vector3, Vector4, DEG2RAD } from '../runtime/math';
 import type { FBOOptions } from './ri-helper';
@@ -420,11 +421,11 @@ export class WebGLHelper {
 
   /**
    * 返回 Mesh 是否半透明
-   * @param mesh - gl mesh 对象
+   * @param component - ModelMeshComponent 对象
    * @return 是否半透明
    */
-  static isTransparentMesh (mesh: Mesh): boolean {
-    return mesh.material.blending === true;
+  static isTransparentMesh (component: ModelMeshComponent): boolean {
+    return component.material.blending === true;
   }
 
   /**

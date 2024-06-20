@@ -400,11 +400,11 @@ export class LoaderECSImpl implements LoaderECS {
         material.floats['_AlphaCutoff'] = 0;
       }
 
-      if (!material.floats['ZWrite']) {
+      if (material.floats['ZWrite'] === undefined) {
         material.floats['ZWrite'] = 1;
       }
 
-      if (!material.floats['ZTest']) {
+      if (material.floats['ZTest'] === undefined) {
         material.floats['ZTest'] = 1;
       }
 
@@ -452,11 +452,11 @@ export class LoaderECSImpl implements LoaderECS {
         material.floats['_AlphaCutoff'] = 0;
       }
 
-      if (!material.floats['ZWrite']) {
+      if (material.floats['ZWrite'] === undefined) {
         material.floats['ZWrite'] = 1;
       }
 
-      if (!material.floats['ZTest']) {
+      if (material.floats['ZTest'] === undefined) {
         material.floats['ZTest'] = 1;
       }
 
