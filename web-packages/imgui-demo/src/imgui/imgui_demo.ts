@@ -5513,7 +5513,7 @@ function NodeFont (font: ImGui.Font): void {
       let count: int = 0;
 
       for (let n = 0; n < 256; n++) {
-        if (font.FindGlyphNoFallback(<ImGui.Bind.ImWchar>(base + n))) {count++;}
+        if (font.FindGlyphNoFallback((base + n))) {count++;}
       }
       if (count <= 0) {continue;}
       if (!ImGui.TreeNode(/*(void*)(intptr_t)*/base, `U+${base.toString(16).toUpperCase().padStart(4, '0')}..U+${(base + 255).toString(16).toUpperCase().padStart(4, '0')} (${count} ${count > 1 ? 'glyphs' : 'glyph'})`)) {continue;}
@@ -5527,10 +5527,10 @@ function NodeFont (font: ImGui.Font): void {
         // available here and thus cannot easily generate a zero-terminated UTF-8 encoded string.
         const cell_p1: ImGui.Vec2 = new ImGui.Vec2(base_pos.x + (n % 16) * (cell_size + cell_spacing), base_pos.y + (0 | (n / 16)) * (cell_size + cell_spacing));
         const cell_p2: ImGui.Vec2 = new ImGui.Vec2(cell_p1.x + cell_size, cell_p1.y + cell_size);
-        const glyph: ImGui.FontGlyph | null = font.FindGlyphNoFallback(<ImGui.Bind.ImWchar>(base + n));
+        const glyph: ImGui.FontGlyph | null = font.FindGlyphNoFallback((base + n));
 
         draw_list.AddRect(cell_p1, cell_p2, glyph ? ImGui.COL32(255, 255, 255, 100) : ImGui.COL32(255, 255, 255, 50));
-        if (glyph) {font.RenderChar(draw_list, cell_size, cell_p1, glyph_col, <ImGui.Bind.ImWchar>(base + n));}
+        if (glyph) {font.RenderChar(draw_list, cell_size, cell_p1, glyph_col, (base + n));}
         if (glyph && ImGui.IsMouseHoveringRect(cell_p1, cell_p2)) {
           ImGui.BeginTooltip();
           ImGui.Text(`Codepoint: U+${(base + n).toString(16).toUpperCase().padStart(4, '0')}`);

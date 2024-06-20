@@ -2,10 +2,11 @@
 import { FontConfig } from 'maoan-imgui-js';
 import { UIManager } from './core/ui-manager.js';
 import { GalaceanEffects } from './ge.js';
-import { ImGui, ImGui_Impl } from './imgui.js';
-import { ShowDemoWindow } from './imgui_demo.js';
-import { MemoryEditor } from './imgui_memory_editor.js';
+import { ImGui, ImGui_Impl } from './imgui/index.js';
+import { ShowDemoWindow } from './imgui/imgui_demo.js';
+import { MemoryEditor } from './imgui/imgui_memory_editor.js';
 import './panels';
+import { imGuiIni } from './imgui/imgui-config.js';
 
 let font: ImGui.Font | null = null;
 
@@ -67,6 +68,10 @@ async function _init (): Promise<void> {
   // console.log('Emscripten Version', EMSCRIPTEN_VERSION);
 
   console.log('Total allocated space (uordblks) @ _init:', ImGui.bind.mallinfo().uordblks);
+
+  if (!window.localStorage.getItem('imgui.ini')) {
+    window.localStorage.setItem('imgui.ini', imGuiIni);
+  }
 
   // Setup Dear ImGui context
   ImGui.CHECKVERSION();

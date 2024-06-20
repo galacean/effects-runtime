@@ -13,7 +13,7 @@ export class CompositionWindow extends EditorWindow {
   private compositionURLs: string[] = [];
   private currentCompositionURL: string = '';
 
-  @menuItem('Editor/Composition')
+  @menuItem('Window/Composition')
   static showWindow () {
     UIManager.getWindow(CompositionWindow).open();
   }
@@ -32,10 +32,13 @@ export class CompositionWindow extends EditorWindow {
   }
 
   protected override onGUI (): void {
-    if (ImGui.InputText('合成URL', (value = this.currentCompositionURL) => this.currentCompositionURL = value, undefined, ImGui.InputTextFlags.EnterReturnsTrue)) {
+    ImGui.Text('合成URL');
+    ImGui.SameLine();
+    if (ImGui.InputText('##CompositionURL', (value = this.currentCompositionURL) => this.currentCompositionURL = value, undefined, ImGui.InputTextFlags.EnterReturnsTrue)) {
       void GalaceanEffects.playURL(this.currentCompositionURL);
     }
-
+    ImGui.Text('合成列表');
+    ImGui.SameLine();
     if (ImGui.ListBox('', (value = this.currentItem) => this.currentItem = value, this.compositionNames, this.compositionNames.length, this.compositionNames.length)) {
       this.currentCompositionURL = this.compositionURLs[this.currentItem];
       void GalaceanEffects.playURL(this.currentCompositionURL);
