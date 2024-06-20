@@ -23,7 +23,10 @@ interface DragEventType extends TouchEventType {
 
 export class InteractVFXItem extends VFXItem<InteractItem> {
   previewContent: InteractMesh | null;
-
+  downgrade = 0.95;
+  // 拖拽映射系数，越大越容易拖动
+  dragRatio: number[] = [1, 1];
+  private enabled: boolean;
   private ui: spec.InteractContent;
   private clickable: boolean;
   private dragEvent: DragEventType | null;
@@ -40,8 +43,20 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
     return spec.ItemType.interact;
   }
 
+  set enable (enable: boolean) {
+    this.enabled = enable;
+    if (!enable) {
+      this.bouncingArg = null;
+    }
+  }
+
+  get enable () {
+    return this.enabled;
+  }
+
   override onConstructed (options: spec.InteractItem) {
     this.ui = options.content;
+    this.enabled = true;
   }
 
   override onLifetimeBegin (composition: Composition) {
@@ -62,11 +77,8 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
     if (!this.dragEvent || !this.bouncingArg) {
       return;
     }
-
-    const downgrade = 0.95;
-
-    this.bouncingArg.vx *= downgrade;
-    this.bouncingArg.vy *= downgrade;
+    this.bouncingArg.vx *= this.downgrade;
+    this.bouncingArg.vy *= this.downgrade;
     this.bouncingArg.dy += this.bouncingArg.vy;
     this.bouncingArg.dx += this.bouncingArg.vx;
 
@@ -107,7 +119,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
   }
 
   override getHitTestParams (): HitTestTriangleParams | void {
-    if (!this.clickable) {
+    if (!this.clickable || !this.enabled) {
       return;
     }
     const { behavior } = this.ui.options as spec.ClickInteractOption;
@@ -148,7 +160,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
     let dragEvent: Partial<DragEventType> | null;
     const handlerMap: Record<string, (event: TouchEventType) => void> = {
       touchstart: (event: TouchEventType) => {
-        if (!this.composition?.interactive) {
+        if (!this.composition?.interactive || !this.enabled) {
           return;
         }
         this.dragEvent = null;
@@ -169,7 +181,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
         this.bouncingArg = event;
       },
       touchend: (event: TouchEventType) => {
-        if (!this.composition?.interactive) {
+        if (!this.composition?.interactive || !this.enabled) {
           return;
         }
         const bouncingArg = this.bouncingArg as TouchEventType;
@@ -202,7 +214,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
   }
 
   private handleDragMove (evt: Partial<DragEventType>, event: TouchEventType) {
-    if (!(evt && evt.cameraParam) || !this.composition?.interactive) {
+    if (!(evt && evt.cameraParam) || !this.composition?.interactive || !this.enabled) {
       return;
     }
 
@@ -214,8 +226,8 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
     const sp = Math.tan(fov * Math.PI / 180 / 2) * Math.abs(depth);
     const height = dy * sp;
     const width = dx * sp;
-    let nx = position[0] - width;
-    let ny = position[1] - height;
+    let nx = position[0] - this.dragRatio[0] * width;
+    let ny = position[1] - this.dragRatio[1] * height;
 
     if (options.dxRange) {
       const [min, max] = options.dxRange;
