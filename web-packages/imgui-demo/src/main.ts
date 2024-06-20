@@ -107,11 +107,12 @@ async function _init (): Promise<void> {
 
   fontConfig.internal.OversampleH = 5;
   fontConfig.internal.OversampleV = 5;
+  fontConfig.internal.RasterizerMultiply = 1.5;
   font = await AddFontFromFileTTF('./public/fonts/AlibabaPuHuiTi-3-55-Regular.ttf', 22, fontConfig, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
   // font = await AddFontFromFileTTF("https://raw.githubusercontent.com/googlei18n/noto-cjk/master/NotoSansJP-Regular.otf", 18.0, null, io.Fonts.GetGlyphRangesJapanese());
   ImGui.ASSERT(font !== null);
 
-  ImGui.GetStyle().ScaleAllSizes(1);
+  // ImGui.GetStyle().ScaleAllSizes(1);
 
   // Setup Platform/Renderer backends
   // ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
