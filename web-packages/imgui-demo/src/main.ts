@@ -674,7 +674,7 @@ function SoDark (hue: number) {
   colors[ImGui.ImGuiCol.WindowBg]               = new ImGui.ImVec4(0.10, 0.10, 0.10, 1.00);
   colors[ImGui.ImGuiCol.ChildBg]                = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.00);
   colors[ImGui.ImGuiCol.PopupBg]                = new ImGui.ImVec4(0.19, 0.19, 0.19, 0.92);
-  colors[ImGui.ImGuiCol.Border]                 = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.00);
+  colors[ImGui.ImGuiCol.Border]                 = new ImGui.ImVec4(0.2, 0.2, 0.2, 0.6);
   // colors[ImGui.ImGuiCol.BorderShadow]           = new ImGui.ImVec4(0.00, 0.00, 0.00, 0.24);
   colors[ImGui.ImGuiCol.FrameBg]                = new ImGui.ImVec4(0.25, 0.25, 0.25, 0.54);
   colors[ImGui.ImGuiCol.FrameBgHovered]         = new ImGui.ImVec4(0.19, 0.19, 0.19, 0.54);
@@ -737,7 +737,7 @@ function SoDark (hue: number) {
   style.WindowBorderSize                  = 1;
   style.ChildBorderSize                   = 1;
   style.PopupBorderSize                   = 1;
-  style.FrameBorderSize                   = 1;
+  // style.FrameBorderSize                   = 1;
   style.TabBorderSize                     = 1;
   style.WindowRounding                    = 7;
   style.ChildRounding                     = 4;

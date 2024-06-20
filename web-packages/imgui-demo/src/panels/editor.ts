@@ -97,7 +97,7 @@ export class Editor {
     //@ts-expect-error
     ImGui.Checkbox('Visiable', (_ = item.visible) => item.visible = _);
 
-    if (ImGui.CollapsingHeader('Transform'), ImGui.TreeNodeFlags.DefaultOpen) {
+    if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
       const transform = item.transform;
 
       ImGui.Text('Position');
@@ -119,7 +119,7 @@ export class Editor {
     }
 
     for (const componet of item.components) {
-      if (ImGui.CollapsingHeader(componet.constructor.name), ImGui.TreeNodeFlags.DefaultOpen) {
+      if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
 
         const propertyDecoratorStore = getMergedStore(componet);
 
