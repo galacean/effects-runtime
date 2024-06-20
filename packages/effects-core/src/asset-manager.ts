@@ -193,7 +193,7 @@ export class AssetManager implements Disposable {
     let rawJSON: SceneType | JSONValue;
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
-    const timeInfoMessage: string[] = [];
+    const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
     const asyncShaderCompile = gpuInstance?.detail?.asyncShaderCompile ?? false;
     const compressedTexture = gpuInstance?.detail.compressedTexture ?? 0;
@@ -207,7 +207,7 @@ export class AssetManager implements Disposable {
         this.removeTimer(loadTimer);
         const totalTime = performance.now() - startTime;
 
-        reject(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessage.join(' ')}, url: ${assetUrl}`);
+        reject(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}`);
       }, this.timeout * 1000);
       this.timers.push(loadTimer);
     });
@@ -220,7 +220,7 @@ export class AssetManager implements Disposable {
           const result = await func();
           const time = performance.now() - st;
 
-          timeInfoMessage.push(`[${label}: ${(performance.now() - st).toFixed(2)}]`);
+          timeInfoMessages.push(`[${label}: ${(performance.now() - st).toFixed(2)}]`);
           timeInfos[label] = time;
 
           return result;
@@ -303,7 +303,7 @@ export class AssetManager implements Disposable {
 
       const totalTime = performance.now() - startTime;
 
-      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessage.join(' ')}, url: ${assetUrl}`);
+      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}`);
       window.clearTimeout(loadTimer);
       this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
