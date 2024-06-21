@@ -119,7 +119,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
   }
 
   override getHitTestParams (): HitTestTriangleParams | void {
-    if (!this.clickable || !this.enabled) {
+    if (!this.clickable || !this.canInteract()) {
       return;
     }
     const { behavior } = this.ui.options as spec.ClickInteractOption;
@@ -160,7 +160,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
     let dragEvent: Partial<DragEventType> | null;
     const handlerMap: Record<string, (event: TouchEventType) => void> = {
       touchstart: (event: TouchEventType) => {
-        if (!this.composition?.interactive || !this.enabled) {
+        if (!this.canInteract()) {
           return;
         }
         this.dragEvent = null;
@@ -181,7 +181,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
         this.bouncingArg = event;
       },
       touchend: (event: TouchEventType) => {
-        if (!this.composition?.interactive || !this.enabled) {
+        if (!this.canInteract()) {
           return;
         }
         const bouncingArg = this.bouncingArg as TouchEventType;
@@ -214,7 +214,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
   }
 
   private handleDragMove (evt: Partial<DragEventType>, event: TouchEventType) {
-    if (!(evt && evt.cameraParam) || !this.composition?.interactive || !this.enabled) {
+    if (!(evt?.cameraParam) || !this.canInteract() || !this.composition) {
       return;
     }
 
@@ -246,6 +246,10 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
       }
     }
     this.composition.camera.position = new Vector3(nx, ny, depth);
+  }
+
+  private canInteract (): boolean {
+    return Boolean(this.composition?.interactive) && this.enabled;
   }
 }
 
