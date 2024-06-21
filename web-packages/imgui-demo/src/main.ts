@@ -106,7 +106,7 @@ async function _init (): Promise<void> {
   const fontConfig = new ImGui.FontConfig();
 
   fontConfig.internal.OversampleH = 2;
-  fontConfig.internal.OversampleV = 1;
+  fontConfig.internal.OversampleV = 2;
   font = await AddFontFromFileTTF('./public/fonts/AlibabaPuHuiTi-3-55-Regular.ttf', 44, fontConfig, io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
   // font = await AddFontFromFileTTF("https://raw.githubusercontent.com/googlei18n/noto-cjk/master/NotoSansJP-Regular.otf", 18.0, null, io.Fonts.GetGlyphRangesJapanese());
   ImGui.ASSERT(font !== null);
