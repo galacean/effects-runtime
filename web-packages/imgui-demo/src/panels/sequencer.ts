@@ -1,4 +1,4 @@
-import type { TrackAsset } from '@galacean/effects';
+import type { Composition, TrackAsset } from '@galacean/effects';
 import { CompositionComponent } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
@@ -7,6 +7,12 @@ import { EditorWindow } from './panel';
 
 @editorWindow()
 export class Sequencer extends EditorWindow {
+  isDragging: boolean = false;
+  currentTime: number = 0;
+  trackUIOffset: number = 200;
+  timeCursorPositionX: number = 0;
+
+  currentComposition: Composition;
 
   @menuItem('Window/Sequencer')
   static showWindow () {
@@ -23,7 +29,8 @@ export class Sequencer extends EditorWindow {
     if (GalaceanEffects.player.getCompositions().length === 0) {
       return;
     }
-    const currentComposition = GalaceanEffects.player.getCompositions()[0];
+    this.currentComposition = GalaceanEffects.player.getCompositions()[0];
+    const currentComposition = this.currentComposition;
     const compositionComponent = currentComposition.rootItem.getComponent(CompositionComponent);
 
     if (!compositionComponent) {
@@ -40,6 +47,8 @@ export class Sequencer extends EditorWindow {
     ImGui.SameLine();
     ImGui.Text(currentComposition.time.toFixed(2) + ' s');
 
+    this.currentTime = currentComposition.time;
+
     this.drawTimeCursor();
     const cursorLinePosition = ImGui.GetCursorScreenPos();
 
@@ -48,21 +57,13 @@ export class Sequencer extends EditorWindow {
       const trackAsset = track as TrackAsset;
 
       //@ts-expect-error
-      ImGui.CollapsingHeader(trackAsset.binding.name);
-      this.drawTrack(trackAsset);
+      if (ImGui.CollapsingHeader(trackAsset.binding.name, ImGui.ImGuiTreeNodeFlags.DefaultOpen)) {
+        this.drawTrack(trackAsset);
+      }
     }
-
-    if (!this.isDragging) {
-      cursorLinePosition.x = cursorLinePosition.x + 200 + currentComposition.time * 10;
-      this.timeCursorPosition.x = cursorLinePosition.x - 17;
-    } else {
-      cursorLinePosition.x = this.timeCursorPosition.x + 17;
-      currentComposition.setTime((cursorLinePosition.x - 200) / 10);
-    }
-
     const drawList = ImGui.GetWindowDrawList();
 
-    drawList.AddLine(cursorLinePosition, new ImGui.Vec2(cursorLinePosition.x, cursorLinePosition.y + ImGui.GetCursorPosY()), (new ImGui.Color(1, 1, 1, 1)).toImU32());
+    drawList.AddLine(new ImGui.Vec2(this.timeCursorPositionX, cursorLinePosition.y - 4), new ImGui.Vec2(this.timeCursorPositionX, cursorLinePosition.y + ImGui.GetCursorPosY()), (new ImGui.Color(1, 1, 1, 1)).toImU32());
   }
 
   private drawTrack (track: TrackAsset) {
@@ -72,7 +73,7 @@ export class Sequencer extends EditorWindow {
       for (const clip of trackAsset.getClips()) {
         ImGui.Text(trackAsset.constructor.name);
 
-        ImGui.SameLine(200);
+        ImGui.SameLine(this.trackUIOffset);
         const sizePerScend = ImGui.GetWindowSize().x / 100;
         const totalTime = 100;
 
@@ -85,21 +86,25 @@ export class Sequencer extends EditorWindow {
     }
   }
 
-  timeCursorPosition: ImGui.ImVec2 = new ImGui.ImVec2(200, 0);
-  isDragging: boolean = false;
-
   drawTimeCursor (): void {
     const windowPosition = ImGui.GetCursorScreenPos();
 
-    ImGui.SetCursorScreenPos(new ImGui.ImVec2(windowPosition.x + this.timeCursorPosition.x, windowPosition.y));
+    this.timeCursorPositionX = windowPosition.x + this.trackUIOffset + this.currentTime * 10;
+
+    ImGui.SetCursorScreenPos(new ImGui.ImVec2(this.timeCursorPositionX - 10, windowPosition.y));
     ImGui.PushID('Button');
     ImGui.Button('   ');
     ImGui.PopID();
 
     if (ImGui.IsItemActive() && ImGui.IsMouseDragging(0, 0.0)) {
-      const delta: ImGui.ImVec2 = ImGui.GetIO().MouseDelta;
+      // 获取面板的位置
+      const panelPos: ImGui.ImVec2 = ImGui.GetCursorScreenPos();
 
-      this.timeCursorPosition.x += delta.x;
+      // 获取鼠标相对于面板的位置
+      const mousePos: ImGui.ImVec2 = ImGui.GetMousePos();
+      const mousePosInPanel: ImGui.ImVec2 = new ImGui.ImVec2(mousePos.x - panelPos.x, mousePos.y - panelPos.y);
+
+      this.currentComposition.setTime((mousePosInPanel.x - this.trackUIOffset) / 10);
     }
 
     if (ImGui.IsItemHovered() && ImGui.IsMouseClicked(0)) {
