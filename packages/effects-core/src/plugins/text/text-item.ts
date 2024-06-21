@@ -67,6 +67,7 @@ export class TextComponent extends SpriteComponent {
     // Text
     this.updateTexture();
   }
+
   /**
    * 设置字号大小
    * @param value - 字号
@@ -330,7 +331,6 @@ export class TextComponent extends SpriteComponent {
 
     for (let i = 0; i < this.char.length; i++) {
       const str = this.char[i];
-
       const textMetrics = context.measureText(str);
 
       // 和浏览器行为保持一致
@@ -355,7 +355,6 @@ export class TextComponent extends SpriteComponent {
 
         x += textMetrics.width;
       }
-
     }
     charsInfo.push({
       y,
@@ -369,15 +368,11 @@ export class TextComponent extends SpriteComponent {
 
       charInfo.chars.forEach((str, i) => {
         if (style.isOutlined) {
-
           context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
-
         }
 
         context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
-
       });
-
     });
 
     if (style.hasShadow) {
@@ -411,7 +406,6 @@ export class TextComponent extends SpriteComponent {
 
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
-
     this.text = options.text;
 
     // Text
@@ -419,20 +413,20 @@ export class TextComponent extends SpriteComponent {
   }
 
   private getFontDesc (): string {
-    const textStyle = this.textStyle;
-    let fontDesc = `${(textStyle.fontSize * textStyle.fontScale).toString()}px `;
+    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
+    let fontDesc = `${(fontSize * fontScale).toString()}px `;
 
-    if (!DEFAULT_FONTS.includes(textStyle.fontFamily)) {
-      fontDesc += `"${textStyle.fontFamily}"`;
+    if (!DEFAULT_FONTS.includes(fontFamily)) {
+      fontDesc += `"${fontFamily}"`;
     } else {
-      fontDesc += textStyle.fontFamily;
+      fontDesc += fontFamily;
     }
-    if (textStyle.textWeight !== spec.TextWeight.normal) {
-      fontDesc = `${textStyle.textWeight} ${fontDesc}`;
+    if (textWeight !== spec.TextWeight.normal) {
+      fontDesc = `${textWeight} ${fontDesc}`;
     }
 
-    if (textStyle.fontStyle !== spec.FontStyle.normal) {
-      fontDesc = `${textStyle.fontStyle} ${fontDesc}`;
+    if (fontStyle !== spec.FontStyle.normal) {
+      fontDesc = `${fontStyle} ${fontDesc}`;
     }
 
     return fontDesc;
@@ -440,20 +434,25 @@ export class TextComponent extends SpriteComponent {
 
   private setupOutline (): void {
     const context = this.context;
-    const style = this.textStyle;
+    const { outlineColor, outlineWidth } = this.textStyle;
+    const [r, g, b, a] = outlineColor;
 
-    context!.strokeStyle = `rgba(${style.outlineColor[0] * 255}, ${style.outlineColor[1] * 255}, ${style.outlineColor[2] * 255}, ${style.outlineColor[3]})`;
-    context!.lineWidth = style.outlineWidth * 2;
-
+    if (context) {
+      context.strokeStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
+      context.lineWidth = outlineWidth * 2;
+    }
   }
 
   private setupShadow (): void {
     const context = this.context;
-    const style = this.textStyle;
+    const { outlineColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
+    const [r, g, b, a] = outlineColor;
 
-    context!.shadowColor = `rgba(${style.shadowColor[0] * 255}, ${style.shadowColor[1] * 255}, ${style.shadowColor[2] * 255}, ${style.shadowColor[3]})`;
-    context!.shadowBlur = style.shadowBlur;
-    context!.shadowOffsetX = style.shadowOffsetX;
-    context!.shadowOffsetY = -style.shadowOffsetY;
+    if (context) {
+      context.shadowColor = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
+      context.shadowBlur = shadowBlur;
+      context.shadowOffsetX = shadowOffsetX;
+      context.shadowOffsetY = -shadowOffsetY;
+    }
   }
 }
