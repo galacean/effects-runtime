@@ -823,13 +823,13 @@ class TextureManager {
   }
 
   addTexture (matIndex: number, texIndex: number, tex: Texture, isBaseColor: boolean) {
-    const index = isBaseColor ? matIndex * 100000 + texIndex : texIndex;
+    const index = isBaseColor ? (matIndex + 1) * 100000 + texIndex : texIndex;
 
     this._textureMap.set(index, tex);
   }
 
   getTexture (matIndex: number, texIndex: number, isBaseColor: boolean): Texture | undefined {
-    const index = isBaseColor ? matIndex * 100000 + texIndex : texIndex;
+    const index = isBaseColor ? (matIndex + 1) * 100000 + texIndex : texIndex;
 
     return this._textureMap.get(index);
   }
