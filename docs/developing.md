@@ -26,8 +26,10 @@ pnpm dev
 ## Build
 
 ``` bash
-# Build packages
+# Build all
 pnpm build
+# Build packages
+pnpm build:main
 # Build plugins
 pnpm build:plugins
 ```
