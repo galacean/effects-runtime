@@ -220,7 +220,7 @@ export class AssetManager implements Disposable {
           const result = await func();
           const time = performance.now() - st;
 
-          timeInfoMessages.push(`[${label}: ${(performance.now() - st).toFixed(2)}]`);
+          timeInfoMessages.push(`[${label}: ${time.toFixed(2)}]`);
           timeInfos[label] = time;
 
           return result;
