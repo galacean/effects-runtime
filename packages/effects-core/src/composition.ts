@@ -24,6 +24,7 @@ export interface CompositionStatistic {
   loadTime: number,
   loadStart: number,
   firstFrameTime: number,
+  precompileTime: number,
 }
 
 export interface MessageItem {
@@ -261,7 +262,7 @@ export class Composition implements Disposable, LostHandler {
     this.renderer = renderer;
     this.texInfo = imageUsage ?? {};
     this.event = event;
-    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0 };
+    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
     this.reusable = reusable;
     this.speed = speed;
     this.renderLevel = renderLevel;
