@@ -23,8 +23,13 @@ interface DragEventType extends TouchEventType {
 
 export class InteractVFXItem extends VFXItem<InteractItem> {
   previewContent: InteractMesh | null;
+  /**
+   * 拖拽的惯性衰减系数，范围[0, 1], 越大惯性越强
+   */
   downgrade = 0.95;
-  // 拖拽映射系数，越大越容易拖动
+  /**
+   * 拖拽的距离映射系数，越大越容易拖动
+   */
   dragRatio: number[] = [1, 1];
   private enabled: boolean;
   private ui: spec.InteractContent;
@@ -46,6 +51,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
   set enable (enable: boolean) {
     this.enabled = enable;
     if (!enable) {
+      // 立刻停止惯性滑动
       this.bouncingArg = null;
     }
   }
@@ -118,7 +124,7 @@ export class InteractVFXItem extends VFXItem<InteractItem> {
     };
   }
 
-  override getHitTestParams (): HitTestTriangleParams | void {
+  override getHitTestParams (): HitTestTriangleParams | undefined {
     if (!this.clickable || !this.canInteract()) {
       return;
     }
