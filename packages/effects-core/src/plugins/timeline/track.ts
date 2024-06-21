@@ -167,11 +167,18 @@ export class RuntimeClip {
   parentMixer: Playable;
   track: TrackAsset;
 
+  // TODO: 粒子结束行为有特殊逻辑，这里 cache 一下避免每帧查询组件导致 GC。粒子结束行为判断统一后可移除
+  particleSystem: ParticleSystem;
+
   constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: Playable, track: TrackAsset) {
     this.clip = clip;
     this.playable = clipPlayable;
     this.parentMixer = parentMixer;
     this.track = track;
+
+    if (this.track.binding instanceof VFXItem) {
+      this.particleSystem = this.track.binding.getComponent(ParticleSystem);
+    }
   }
 
   set enable (value: boolean) {
@@ -192,7 +199,7 @@ export class RuntimeClip {
     const boundItem = this.track.binding as VFXItem;
 
     if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
-      if (VFXItem.isParticle(boundItem) && !boundItem.getComponent(ParticleSystem)?.destroyed) {
+      if (VFXItem.isParticle(boundItem) && this.particleSystem && !this.particleSystem.destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;
