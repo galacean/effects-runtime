@@ -1,10 +1,10 @@
 import { ItemEndBehavior } from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
-import type { Engine } from '../../engine';
 import { VFXItem } from '../../vfx-item';
 import type { PlayableGraph } from '../cal/playable-graph';
 import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
 import { ParticleSystem } from '../particle/particle-system';
+import type { Constructor } from '../../utils';
 
 /**
  * @since 2.0.0
@@ -122,7 +122,7 @@ export class TrackAsset extends PlayableAsset {
   }
 
   createClip<T extends PlayableAsset> (
-    classConstructor: new (engine: Engine) => T,
+    classConstructor: Constructor<T>,
     name?: string,
   ): TimelineClip {
     const newClip = new TimelineClip();

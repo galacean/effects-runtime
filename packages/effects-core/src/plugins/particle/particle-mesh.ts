@@ -574,7 +574,7 @@ export class ParticleMesh implements ParticleMeshData {
 
       if (increaseBuffer) {
         const baseIndexData = geometry.getIndexData() as Uint16Array;
-        const idx = enlargeBuffer(baseIndexData, particleCount * 6, inc, maxCount * 6);
+        const idx = enlargeBuffer(baseIndexData, particleCount * 6, maxCount * 6, inc);
 
         idx.set(indexData, index * 6);
         geometry.setIndexData(idx);
@@ -589,7 +589,7 @@ export class ParticleMesh implements ParticleMeshData {
 
         if (increaseBuffer) {
           const baseData = geometry.getAttributeData(name)!;
-          const geoData = enlargeBuffer(baseData, vertexCount * attrSize, inc, maxCount * 4 * attrSize);
+          const geoData = enlargeBuffer(baseData, vertexCount * attrSize, maxCount * 4 * attrSize, inc);
 
           geoData.set(data, data.length * index);
           geometry.setAttributeData(name, geoData);
