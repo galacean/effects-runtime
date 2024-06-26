@@ -315,7 +315,7 @@ export class TextItem extends SpriteItem {
     const charsInfo: CharInfo[] = [];
 
     let x = 0;
-    const lineCount = this.text.split('\n').length ;
+    const lineCount = this.text.split('\n').length;
     let y = layout.getOffsetY(style, lineCount, lineHeight);
     let charsArray = [];
     let charOffsetX = [];
