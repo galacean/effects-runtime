@@ -67,7 +67,12 @@ export function addItemWithOrder<T extends Record<string, any>> (arr: T[], item:
   }
 }
 
-export function enlargeBuffer<T extends TypedArray> (typeArray: T, length: number, increase = 1, maxSize: number): T {
+export function enlargeBuffer<T extends TypedArray> (
+  typeArray: T,
+  length: number,
+  maxSize: number,
+  increase = 1,
+): T {
   const buffer = typeArray.buffer;
 
   if (buffer.byteLength < typeArray.BYTES_PER_ELEMENT * length) {

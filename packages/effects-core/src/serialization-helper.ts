@@ -1,8 +1,8 @@
 import type * as spec from '@galacean/effects-specification';
-import type { ClassConstructor } from './decorators';
 import { getMergedStore } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
+import type { Constructor } from './utils';
 import { isArray, isCanvas, isObject, isString } from './utils';
 
 export class SerializationHelper {
@@ -245,7 +245,7 @@ export class SerializationHelper {
     property: T,
     engine: Engine,
     level: number,
-    type?: ClassConstructor,
+    type?: Constructor,
   ): any {
     if (level > 14) {
       console.error('The nested object layers of the serialized data exceed the maximum limit.');
@@ -286,7 +286,7 @@ export class SerializationHelper {
     property: T,
     engine: Engine,
     level: number,
-    type?: ClassConstructor,
+    type?: Constructor,
   ): Promise<unknown> {
     if (level > 14) {
       console.error('The nested object layers of the serialized data exceed the maximum limit.');

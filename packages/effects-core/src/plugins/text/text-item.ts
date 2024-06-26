@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
 import { Texture } from '../../texture';
@@ -8,7 +9,8 @@ import { TextStyle } from './text-style';
 import { glContext } from '../../gl';
 import { effectsClass } from '../../decorators';
 import { canvasPool } from '../../canvas-pool';
-import { isValidFontFamily } from '../../utils';
+import { applyMixins, isValidFontFamily } from '../../utils';
+import type { Material } from '../../material';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -33,20 +35,15 @@ interface CharInfo {
   width: number,
 }
 
+export interface TextComponent extends TextComponentBase { }
+
 /**
  * @since 2.0.0
  * @internal
  */
 @effectsClass(spec.DataType.TextComponent)
 export class TextComponent extends SpriteComponent {
-  textStyle: TextStyle;
   isDirty = true;
-  canvas: HTMLCanvasElement;
-  context: CanvasRenderingContext2D | null;
-  textLayout: TextLayout;
-  text: string;
-
-  private char: string[];
 
   constructor (engine: Engine, props?: spec.TextContent) {
     super(engine, props as unknown as SpriteItemProps);
@@ -54,18 +51,59 @@ export class TextComponent extends SpriteComponent {
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+
     if (!props) {
       return;
     }
+
     const { options } = props;
 
-    this.textStyle = new TextStyle(options);
-    this.textLayout = new TextLayout(options);
+    this.updateWithOptions(options);
+    this.updateTexture();
+  }
 
-    this.text = options.text;
+  override update (dt: number): void {
+    super.update(dt);
+    this.updateTexture();
+  }
 
+  override fromData (data: SpriteItemProps): void {
+    super.fromData(data);
+    const options = data.options as spec.TextContentOptions;
+
+    this.updateWithOptions(options);
     // Text
     this.updateTexture();
+  }
+
+  updateWithOptions (options: spec.TextContentOptions) {
+    // OVERRIDE by mixins
+  }
+
+  updateTexture (flipY = true) {
+    // OVERRIDE by mixins
+  }
+}
+
+export class TextComponentBase {
+  textStyle: TextStyle;
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D | null;
+  textLayout: TextLayout;
+  text: string;
+
+  /***** mix 类型兼容用 *****/
+  isDirty: boolean;
+  engine: Engine;
+  material: Material;
+  /***** mix 类型兼容用 *****/
+
+  private char: string[];
+
+  updateWithOptions (options: spec.TextContentOptions) {
+    this.textStyle = new TextStyle(options);
+    this.textLayout = new TextLayout(options);
+    this.text = options.text;
   }
 
   /**
@@ -271,16 +309,11 @@ export class TextComponent extends SpriteComponent {
     this.isDirty = true;
   }
 
-  override update (dt: number): void {
-    super.update(dt);
-    this.updateTexture();
-  }
-
   /**
    * 更新文本
    * @returns
    */
-  updateTexture () {
+  updateTexture (flipY = true) {
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
@@ -304,9 +337,13 @@ export class TextComponent extends SpriteComponent {
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
 
+    if (!flipY) {
+      context.translate(0, height);
+      context.scale(1, -1);
+    }
+
     context.fillRect(0, 0, width, this.canvas.height);
     style.fontDesc = this.getFontDesc();
-
     context.font = style.fontDesc;
 
     if (style.hasShadow) {
@@ -321,7 +358,7 @@ export class TextComponent extends SpriteComponent {
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
 
     const charsInfo: CharInfo[] = [];
-    // /3 为了和编辑器行为保持一致
+    // /3 是为了和编辑器行为保持一致
     const offsetY = (lineHeight - fontSize) / 3;
 
     let x = 0;
@@ -382,34 +419,25 @@ export class TextComponent extends SpriteComponent {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.material.setTexture('uSampler0', Texture.createWithData(this.engine,
-      {
-        data: new Uint8Array(imageData.data),
-        width: imageData.width,
-        height: imageData.height,
-      },
-      {
-        flipY: true,
-        magFilter: glContext.LINEAR,
-        minFilter: glContext.LINEAR,
-        wrapS: glContext.CLAMP_TO_EDGE,
-        wrapT: glContext.CLAMP_TO_EDGE,
-      }
-    ));
+    this.material.setTexture('uSampler0',
+      Texture.createWithData(
+        this.engine,
+        {
+          data: new Uint8Array(imageData.data),
+          width: imageData.width,
+          height: imageData.height,
+        },
+        {
+          flipY,
+          magFilter: glContext.LINEAR,
+          minFilter: glContext.LINEAR,
+          wrapS: glContext.CLAMP_TO_EDGE,
+          wrapT: glContext.CLAMP_TO_EDGE,
+        },
+      ),
+    );
 
     this.isDirty = false;
-  }
-
-  override fromData (data: SpriteItemProps): void {
-    super.fromData(data);
-    const options = data.options as spec.TextContentOptions;
-
-    this.textStyle = new TextStyle(options);
-    this.textLayout = new TextLayout(options);
-    this.text = options.text;
-
-    // Text
-    this.updateTexture();
   }
 
   private getFontDesc (): string {
@@ -456,3 +484,5 @@ export class TextComponent extends SpriteComponent {
     }
   }
 }
+
+applyMixins(TextComponent, [TextComponentBase]);
