@@ -55,28 +55,28 @@ export class TextLayout {
     this.lineHeight = lineHeight;
   }
 
-  getOffsetY (style: TextStyle) {
-    let offsetY = 0;
-    const offset = (style.fontSize + style.outlineWidth) * style.fontScale ;
+  getOffsetY (style: TextStyle, lineCount: number, offsetY: number) {
+    let offsetResult = 0;
+    const offset = (style.fontSize + style.outlineWidth) * style.fontScale;
 
     switch (this.textBaseline) {
-      case 0:
-        offsetY = offset;
+      case spec.TextBaseline.top:
+        offsetResult = offset + offsetY;
 
         break;
-      case 1:
-        offsetY = (this.height + offset) / 2; // fonSize;
+      case spec.TextBaseline.middle:
+        offsetResult = (this.height * style.fontScale - offset * (lineCount - 1) - offsetY) / 2; // fonSize;
 
         break;
-      case 2:
-        offsetY = this.height - offset / 2;
+      case spec.TextBaseline.bottom:
+        offsetResult = this.height * style.fontScale - offset * (lineCount) - (offsetY * style.fontScale);
 
         break;
       default:
         break;
     }
 
-    return offsetY;
+    return offsetResult;
   }
 
   getOffsetX (style: TextStyle, maxWidth: number) {
