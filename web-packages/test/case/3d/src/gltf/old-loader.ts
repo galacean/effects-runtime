@@ -1,5 +1,5 @@
 import type { GLTFResources } from '@vvfx/resource-detection';
-import { GLTFTools } from '@vvfx/resource-detection';
+import { GLTFTools, clearPreviousUUIDSet } from '@vvfx/resource-detection';
 import type { Player, spec } from '@galacean/effects';
 import { math } from '@galacean/effects';
 
@@ -52,6 +52,7 @@ export class OldLoaderImplEx {
         console.info(`Load url: ${gltfResource}`);
       }
 
+      clearPreviousUUIDSet();
       const gltfResult = await GLTFTools.loadGLTF(gltfResource);
       const gltfDoc = gltfResult.doc;
       const gltfJson = gltfResult.json;

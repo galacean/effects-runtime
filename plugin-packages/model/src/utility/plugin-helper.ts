@@ -878,9 +878,18 @@ export class PluginHelper {
       texOptions.wrapT = glContext.REPEAT;
       texOptions.magFilter = glContext.LINEAR;
       texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
-      (texOptions as Texture2DSourceOptionsImage).generateMipmap = true;
       if (!isBaseColor) {
         texOptions.premultiplyAlpha = true;
+      }
+      const newOptions = texOptions as Texture2DSourceOptionsImage;
+
+      newOptions.generateMipmap = true;
+      const image = newOptions.image;
+
+      if (image && image.width && image.height) {
+        if (!WebGLHelper.isPow2(image.width) || !WebGLHelper.isPow2(image.height)) {
+          texOptions.minFilter = glContext.LINEAR;
+        }
       }
     } else if (texOptions.target === glContext.TEXTURE_CUBE_MAP) {
       texOptions.wrapS = glContext.CLAMP_TO_EDGE;

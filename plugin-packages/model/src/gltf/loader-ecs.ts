@@ -1,4 +1,4 @@
-import { spec, generateGUID, glContext, addItem } from '@galacean/effects';
+import { spec, generateGUID, glContext, addItem, loadImage } from '@galacean/effects';
 import type { Texture, Engine, TextureSourceOptions, TextureCubeSourceOptionsImageMipmaps } from '@galacean/effects';
 import type {
   LoaderOptions, SkyboxType, LoadSceneOptions, LoadSceneECSResult, LoaderECS,
@@ -34,6 +34,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   composition: spec.Composition;
   images: spec.Image[] = [];
+  imageElements: HTMLImageElement[] = [];
   textures: spec.TextureDefine[] = [];
   items: spec.VFXItemData[] = [];
   components: spec.ComponentData[] = [];
@@ -81,6 +82,19 @@ export class LoaderECSImpl implements LoaderECS {
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
       throw new Error('Please load resource by GLTFTools at first');
     }
+    this.images = gltfResource.images.map(gltfImage => {
+      const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
+
+      return {
+        id: gltfImage.id,
+        url: URL.createObjectURL(blob),
+      };
+    });
+
+    this.imageElements = await Promise.all(this.images.map(async image => {
+      return loadImage(image.url);
+    }));
+
     this.processGLTFResource(gltfResource);
     this.gltfScene = gltfResource.scenes[0];
     this.gltfSkins = this.gltfScene.skins;
@@ -92,15 +106,6 @@ export class LoaderECSImpl implements LoaderECS {
     this.gltfMaterials = gltfResource.materials;
     this.gltfAnimations = gltfResource.animations;
     this.gltfImageBasedLights = gltfResource.imageBasedLights;
-
-    this.images = this.gltfImages.map(gltfImage => {
-      const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
-
-      return {
-        id: gltfImage.id,
-        url: URL.createObjectURL(blob),
-      };
-    });
 
     this.textures = this.gltfTextures.map(texture => {
       const textureOptions = texture.textureOptions;
@@ -472,17 +477,18 @@ export class LoaderECSImpl implements LoaderECS {
     }
   }
 
-  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean): void {
+  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean, image?: { width: number, height: number }): void {
     let premultiplyAlpha = false;
     let minFilter = options.minFilter ?? glContext.LINEAR_MIPMAP_LINEAR;
 
     if (this.isTiny3dMode()) {
-      // FIXME: 这里因为拿不到图像大小，所以只能先注释掉
-      // if (!WebGLHelper.isPow2(imageObj.width) || !WebGLHelper.isPow2(imageObj.height)) {
-      //   minFilter = glContext.LINEAR;
-      // }
-      //
       minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+      if (image) {
+        if (!WebGLHelper.isPow2(image.width) || !WebGLHelper.isPow2(image.height)) {
+          minFilter = glContext.LINEAR;
+        }
+      }
+
       premultiplyAlpha = isBaseColor ? false : true;
     }
 
@@ -506,9 +512,18 @@ export class LoaderECSImpl implements LoaderECS {
     if (texture) {
       const id = texture.texture.id;
       const texData = dataMap[id];
+      let imageObj: HTMLImageElement | undefined;
 
+      // @ts-expect-error
+      if (typeof texData.source !== 'number') {
+        // @ts-expect-error
+        throw new Error(`Invalid texture option source data, ${texData.source}`);
+      } else {
+        // @ts-expect-error
+        imageObj = this.imageElements[texData.source];
+      }
       if (texData) {
-        this.processTextureOptions(texData, isBaseColor);
+        this.processTextureOptions(texData, isBaseColor, imageObj);
       }
     }
   }

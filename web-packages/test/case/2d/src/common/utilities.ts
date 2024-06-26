@@ -54,7 +54,7 @@ export class TestPlayer {
 
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
     Math.seedrandom('mars-runtime');
-    this.player.destroyCurrentCompositions();
+    this.clearResource();
     // getDefaultTemplateCanvasPool().dispose();
     const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false }) as AssetManager;
 
@@ -189,6 +189,20 @@ export class TestPlayer {
     a.target = '_blank';
     a.href = url;
     a.click();
+  }
+
+  clearResource () {
+    this.player.destroyCurrentCompositions();
+    const engine = this.player.renderer.engine;
+
+    engine.geometries.forEach(geo => { geo.dispose(); });
+    engine.geometries = [];
+    engine.materials.forEach(mat => { mat.dispose(); });
+    engine.materials = [];
+    for (let i = 4; i < engine.textures.length; i++) {
+      engine.textures[i].dispose();
+    }
+    engine.textures = engine.textures.slice(0, 4);
   }
 
   disposeScene () {
