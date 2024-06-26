@@ -282,9 +282,8 @@ export class SlotGroup {
     this.meshGroups.forEach(spineMesh => {
       const mesh = spineMesh.mesh;
 
-      mesh.geometry.flush();
-      mesh.material.initialize();
-      renderer.drawGeometry(mesh.geometry, mesh.material);
+      mesh.render(renderer);
+
     });
   }
 
