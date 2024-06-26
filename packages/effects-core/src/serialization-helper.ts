@@ -245,7 +245,7 @@ export class SerializationHelper {
     property: T,
     engine: Engine,
     level: number,
-    type?: Constructor,
+    type?: Constructor<{}>,
   ): any {
     if (level > 14) {
       console.error('The nested object layers of the serialized data exceed the maximum limit.');
@@ -286,7 +286,7 @@ export class SerializationHelper {
     property: T,
     engine: Engine,
     level: number,
-    type?: Constructor,
+    type?: Constructor<{}>,
   ): Promise<unknown> {
     if (level > 14) {
       console.error('The nested object layers of the serialized data exceed the maximum limit.');

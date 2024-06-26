@@ -17,7 +17,7 @@ export type PickEnum<T, K extends T> = {
   [P in keyof K]: P extends K ? P : never;
 };
 
-export interface Constructor<T = {}> {
+export interface Constructor<T = unknown> {
   new(...args: any[]): T,
 }
 

@@ -78,7 +78,7 @@ export function enlargeBuffer<T extends TypedArray> (
   if (buffer.byteLength < typeArray.BYTES_PER_ELEMENT * length) {
     let size = Math.ceil(length * increase);
 
-    if (!isNaN(maxSize)) {
+    if (!Number.isNaN(maxSize)) {
       size = Math.min(size, maxSize);
     }
     const nbuffer = new ArrayBuffer(typeArray.BYTES_PER_ELEMENT * size);
