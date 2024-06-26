@@ -350,6 +350,9 @@ importers:
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer
+      '@galacean/effects-plugin-spine':
+        specifier: workspace:*
+        version: link:../../plugin-packages/spine
       maoan-imgui-js:
         specifier: ^1.0.6
         version: 1.0.6

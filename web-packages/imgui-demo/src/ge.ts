@@ -1,6 +1,7 @@
 import { Player } from '@galacean/effects';
 import '@galacean/effects-plugin-orientation-transformer';
 import '@galacean/effects-plugin-model';
+import '@galacean/effects-plugin-spine';
 import { ImGui_Impl } from './imgui';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 
@@ -20,13 +21,18 @@ export class GalaceanEffects {
     GalaceanEffects.player.ticker.add(GalaceanEffects.updateRenderTexture);
   }
 
-  static playURL (url: string) {
-    const converter = new JSONConverter(GalaceanEffects.player);
-
+  static playURL (url: string, use3DConverter = false) {
     GalaceanEffects.player.destroyCurrentCompositions();
-    void converter.processScene(url).then(async scene =>{
-      await GalaceanEffects.player.loadScene(scene, { autoplay:true });
-    });
+    if (use3DConverter) {
+      const converter = new JSONConverter(GalaceanEffects.player);
+
+      void converter.processScene(url).then(async (scene: any) =>{
+        await GalaceanEffects.player.loadScene(scene, { autoplay:true });
+      });
+    } else {
+      void GalaceanEffects.player.loadScene(url, { autoplay:true });
+    }
+
   }
 
   static updateRenderTexture () {

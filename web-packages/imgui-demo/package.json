@@ -16,6 +16,7 @@
     "@galacean/effects": "workspace:*",
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
     "@galacean/effects-plugin-model": "workspace:*",
+    "@galacean/effects-plugin-spine": "workspace:*",
     "maoan-imgui-js": "^1.0.6"
   }
 }
