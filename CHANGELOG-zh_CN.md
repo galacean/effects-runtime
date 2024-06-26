@@ -8,6 +8,12 @@
 
 ---
 
+## 1.5.2
+
+`2024-06-21`
+
+- Fix: base color index problem. [#441](https://github.com/galacean/effects-runtime/pull/441) @liuxi150
+
 ## 1.5.1
 
 `2024-06-05`
