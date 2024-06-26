@@ -293,8 +293,8 @@ export class LoaderImpl implements Loader {
 
       return newImages;
     });
-    const specularMipCount = specularImages.length - 1;
-    const specularImageSize = ibl.specularImageSize ?? Math.pow(2, specularMipCount);
+    const specularMipCount = specularImages.length;
+    const specularImageSize = ibl.specularImageSize ?? Math.pow(2, specularMipCount - 1);
 
     const params: PSkyboxBufferParams = {
       type: 'buffer',

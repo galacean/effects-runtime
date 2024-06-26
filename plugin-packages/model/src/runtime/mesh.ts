@@ -902,7 +902,7 @@ export class PSubMesh {
             material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
           });
         }
-        material.setInt('_MipCount', skybox.specularMipCount ?? 1);
+        material.setInt('_MipCount', skybox.specularMipCount - 1);
         material.setTexture('_SpecularEnvSampler', skybox.specularImage);
       }
     }
