@@ -42,7 +42,7 @@ async function getCurrentScene () {
       renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
-      playAnimation: -1,
+      playAnimation: 0,
       //playAllAnimation: true,
     },
   });
