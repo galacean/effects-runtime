@@ -34,13 +34,16 @@ async function getCurrentScene () {
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
-      skyboxType: 'FARM',
+      compatibleMode: 'tiny3d',
+      skyboxType: 'NFT',
+      skyboxVis: true,
     },
     effects: {
       renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
-      playAnimation: 0,
+      playAnimation: -1,
+      //playAllAnimation: true,
     },
   });
 
@@ -53,24 +56,7 @@ async function getCurrentScene () {
   sceneCenter = sceneAABB.getCenter(new Vector3());
   const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
 
-  items.push({
-    id: '321',
-    duration: duration,
-    name: 'item_1',
-    type: '1',
-    sprite: {
-      options: {
-        duration: 100,
-        delay: 0,
-        startSize: 1,
-        sizeAspect: 1,
-        startColor: [255, 255, 255, 1],
-      },
-      renderer: {
-        renderMode: 1,
-      },
-    },
-  });
+  console.info(`Camera position: ${position.toArray()}`);
 
   items.push({
     id: 'extra-camera',
@@ -134,10 +120,15 @@ export async function loadScene (inPlayer) {
   }
 
   if (!pending) {
+    const loadOptions = {
+      pluginData: {
+        enableDynamicSort: true,
+      },
+    };
+
     pending = true;
 
-    return player.loadScene(playScene).then(async comp => {
-      player.play();
+    return player.loadScene(playScene, loadOptions).then(async comp => {
 
       gestureHandler = new CameraGestureHandlerImp(comp);
 
