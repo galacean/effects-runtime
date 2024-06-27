@@ -313,11 +313,10 @@ export class TextItem extends SpriteItem {
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
 
     const charsInfo: CharInfo[] = [];
-    // /3 为了和编辑器行为保持一致
-    const offsetY = (lineHeight - fontSize) / 3;
 
     let x = 0;
-    let y = layout.getOffsetY(style) + offsetY;
+    const lineCount = this.text.split('\n').length;
+    let y = layout.getOffsetY(style, lineCount, lineHeight);
     let charsArray = [];
     let charOffsetX = [];
 
