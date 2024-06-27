@@ -69,8 +69,8 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
     const cameraRotation = options.camera?.rotation ?? [0, 0, 0];
 
     loader.addCamera({
-      near: 0.001,
-      far: 5000,
+      near: 0.2,
+      far: 500,
       fov: 60,
       clipMode: 0,
       name: 'extra-camera',

@@ -441,13 +441,13 @@ export class PSceneManager {
         const anewPos = viewMatrix.transformPoint(aposition);
         const bnewPos = viewMatrix.transformPoint(bposition);
 
-        return anewPos.z - bnewPos.z;
+        if (anewPos.z === bnewPos.z) {return a.priority - b.priority;} else {return anewPos.z - bnewPos.z;}
       } else if (atransparent) {
         return 1;
       } else if (btransparent) {
         return -1;
       } else {
-        return 0;
+        return a.priority - b.priority;
       }
     });
 

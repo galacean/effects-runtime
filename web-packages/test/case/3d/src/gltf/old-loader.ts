@@ -110,8 +110,8 @@ export async function oldLoadGLTFScene (options: LoadGLTFSceneOptions) {
       content: {
         options: {
           duration: duration,
-          near: 0.001,
-          far: 5000,
+          near: 0.2,
+          far: 500,
           fov: 60,
           clipMode: 0,
         },

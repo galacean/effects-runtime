@@ -59,9 +59,13 @@ function addDescribe (renderFramework) {
       const tokens = url.split('/');
       const key = tokens[tokens.length - 1];
       const sceneData = {
-        name: key.substring(0, 8),
+        name: key,
         url,
       };
+
+      if (key.length > 24) {
+        sceneData.name = key.substring(0, 24);
+      }
 
       void checkScene(key, sceneData);
     });
@@ -69,7 +73,7 @@ function addDescribe (renderFramework) {
     async function checkScene (keyName, sceneData) {
       const { name, url } = sceneData;
       const autoAdjustScene = sceneData.autoAdjustScene ?? false;
-      const enableDynamicSort = sceneData.enableDynamicSort ?? false;
+      const enableDynamicSort = true;
       const compatibleMode = 'tiny3d';
 
       it(`${name}`, async () => {
@@ -205,7 +209,8 @@ function getLoadGLTFOptions (sceneName: string) {
 
 function isAllTimeTest (sceneName: string) {
   if ('ebec344a9fa02bec3b9987d475e04191'.includes(sceneName)
-  || '5eb610471972b998b9d570987d72d784'.includes(sceneName)) {
+  || '5eb610471972b998b9d570987d72d784'.includes(sceneName)
+  || 'CesiumMan.glb'.includes(sceneName)) {
     return false;
   } else {
     return true;
