@@ -258,7 +258,7 @@ export class JSONConverter {
         id: scene.textures[skyboxOptions.specularImage].id,
       },
       specularImageSize: skyboxOptions.specularImageSize,
-      specularMipCount: skyboxOptions.specularMipCount,
+      specularMipCount: skyboxOptions.specularMipCount + 1,
     };
 
     return skyboxComponent;

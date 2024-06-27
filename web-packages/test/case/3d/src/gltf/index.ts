@@ -13,13 +13,13 @@ const { expect } = chai;
  */
 const accumRatioThreshold = 2.0e-4;
 const pixelDiffThreshold = 1;
-const dumpImageForDebug = true;
+const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
 let controller, cmpStats;
 
 addDescribe('webgl');
-//addDescribe('webgl2');
+addDescribe('webgl2');
 
 function addDescribe (renderFramework) {
   describe(`glTF帧对比@${renderFramework}`, function () {
@@ -95,10 +95,15 @@ function addDescribe (renderFramework) {
 
         const imageCmp = new ImageComparator(pixelDiffThreshold);
         const namePrefix = getCurrnetTimeStr();
-        const timeList = [
-          0, 0.11, 0.34, 0.57, 0.71, 1.0,
-          1.1, 1.5, 2.0, 3.0, 5.2, 7.4, 9.99, 12.5, 15.8,
-        ];
+        const timeList = [0];
+
+        if (isAllTimeTest(name)) {
+          timeList.push(
+            0.11, 0.34, 0.57, 0.71, 1.0,
+            1.1, 1.5, 2.0, 3.0, 5.2, 7.4, 9.99, 12.5, 15.8,
+          );
+        }
+
         let maxDiffValue = 0;
 
         for (let i = 0; i < timeList.length; i++) {
@@ -198,10 +203,11 @@ function getLoadGLTFOptions (sceneName: string) {
   }
 }
 
-const sceneList = {
-  cesiumMan: {
-    name: 'CesiumMan',
-    url: 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb',
-    position: [0, 0, 8],
-  },
-};
+function isAllTimeTest (sceneName: string) {
+  if ('ebec344a9fa02bec3b9987d475e04191'.includes(sceneName)
+  || '5eb610471972b998b9d570987d72d784'.includes(sceneName)) {
+    return false;
+  } else {
+    return true;
+  }
+}

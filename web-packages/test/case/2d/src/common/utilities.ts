@@ -193,16 +193,6 @@ export class TestPlayer {
 
   clearResource () {
     this.player.destroyCurrentCompositions();
-    const engine = this.player.renderer.engine;
-
-    engine.geometries.forEach(geo => { geo.dispose(); });
-    engine.geometries = [];
-    engine.materials.forEach(mat => { mat.dispose(); });
-    engine.materials = [];
-    for (let i = 4; i < engine.textures.length; i++) {
-      engine.textures[i].dispose();
-    }
-    engine.textures = engine.textures.slice(0, 4);
   }
 
   disposeScene () {
