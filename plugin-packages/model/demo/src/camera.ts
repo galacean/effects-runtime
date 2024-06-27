@@ -24,7 +24,7 @@ let rotationFocusBegin = false;
 
 let playScene;
 
-const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
 
 async function getCurrentScene () {
   const duration = 9999;
