@@ -197,7 +197,7 @@ export class AssetManager implements Disposable {
 
             imageAsset.data = loadedImages[i];
             imageAsset.setInstanceId(images[i].id);
-            renderer?.engine.addInstance(imageAsset);
+            renderer.engine.addInstance(imageAsset);
           }
         }
 
