@@ -465,17 +465,23 @@ export class GizmoComponent extends ItemBehaviour {
     const item = this.item;
 
     item.duration = 999;
-    const opt = data.options as GizmoVFXItemOptions;
+    const {
+      target, subType, renderMode, size, depthTest,
+      color = [255, 255, 255],
+    } = data.options as GizmoVFXItemOptions;
 
-    this.target = opt.target;
-    this.subType = opt.subType;
-    this.renderMode = opt.renderMode || this.getDefaultRenderMode();
-    this.size = opt.size || this.getDefaultSize();
-    this.depthTest = opt.depthTest;
-    const c = (opt.color || [255, 255, 255]);
+    this.target = target;
+    this.subType = subType;
+    this.renderMode = renderMode || this.getDefaultRenderMode();
+    this.size = size || this.getDefaultSize();
+    this.depthTest = depthTest;
 
-    this.color = [c[0] / 255, c[1] / 255, c[2] / 255];
-    if (data) { item.transform = new Transform(data.transform); }
+    const [r, g, b] = color;
+
+    this.color = [r / 255, g / 255, b / 255];
+    if (data) {
+      item.transform = new Transform(data.transform);
+    }
   }
 
   /**

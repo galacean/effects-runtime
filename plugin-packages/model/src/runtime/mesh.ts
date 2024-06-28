@@ -112,7 +112,7 @@ export class PMesh extends PEntity {
     this.skin = proxy.getSkinObj(engine);
     this.morph = proxy.getMorphObj();
     this.hide = proxy.isHide();
-    this.priority = owner?.item?.listIndex || 0;
+    this.priority = owner?.item?.renderOrder || 0;
     //
     this.subMeshes = [];
     const geometry = proxy.getGeometry() as unknown as Geometry;
@@ -126,7 +126,7 @@ export class PMesh extends PEntity {
     });
 
     if (this.subMeshes.length <= 0) {
-      console.warn(`No primitive inside mesh item ${name}`);
+      console.warn(`No primitive inside mesh item ${name}.`);
     }
 
     this.boundingBox = this.getItemBoundingBox(meshData.interaction);
@@ -237,7 +237,7 @@ export class PMesh extends PEntity {
     }
 
     if (updatedArray.length != weightsArray.length) {
-      throw new Error('weight array length mismatch');
+      throw new Error('Weight array length mismatch.');
     }
 
     for (let i = 0; i < updatedArray.length; i++) {

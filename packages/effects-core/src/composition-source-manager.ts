@@ -4,7 +4,7 @@ import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
 import type { PluginSystem } from './plugin-system';
 import type { GlobalVolume } from './render';
-import type { Scene } from './scene';
+import type { Scene, SceneRenderLevel } from './scene';
 import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
@@ -31,11 +31,11 @@ export interface ContentOptions {
  * 合成资源管理
  */
 export class CompositionSourceManager implements Disposable {
-  composition?: spec.Composition;
-  refCompositions: Map<string, spec.Composition> = new Map();
+  composition?: spec.CompositionData;
+  refCompositions: Map<string, spec.CompositionData> = new Map();
   sourceContent?: ContentOptions;
   refCompositionProps: Map<string, VFXItemProps> = new Map();
-  renderLevel?: spec.RenderLevel;
+  renderLevel?: SceneRenderLevel;
   pluginSystem?: PluginSystem;
   totalTime: number;
   imgUsage: Record<string, number[]>;
@@ -54,7 +54,7 @@ export class CompositionSourceManager implements Disposable {
     const { compositions, imgUsage, compositionId } = jsonScene;
 
     if (!textureOptions) {
-      throw new Error('scene.textures expected');
+      throw new Error('scene.textures expected.');
     }
     const cachedTextures = textureOptions as Texture[];
 
@@ -67,7 +67,7 @@ export class CompositionSourceManager implements Disposable {
     }
 
     if (!this.composition) {
-      throw new Error('Invalid composition id: ' + compositionId);
+      throw new Error(`Invalid composition id: ${compositionId}.`);
     }
     this.jsonScene = jsonScene;
     this.renderLevel = renderLevel;
@@ -79,19 +79,14 @@ export class CompositionSourceManager implements Disposable {
     this.sourceContent = this.getContent(this.composition);
   }
 
-  private getContent (composition: spec.Composition): ContentOptions {
+  private getContent (composition: spec.CompositionData): ContentOptions {
     // TODO: specification 中补充 globalVolume 类型
     // @ts-expect-error
-    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0, timelineAsset } = composition;
+    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0 } = composition;
     const items = this.assembleItems(composition);
 
-    //@ts-expect-error
-    if (!composition.sceneBindings) {
-      //@ts-expect-error
-      composition.sceneBindings = [];
-    }
-
     return {
+      ...composition,
       id,
       duration,
       name,
@@ -101,13 +96,10 @@ export class CompositionSourceManager implements Disposable {
       camera,
       startTime,
       globalVolume,
-      timelineAsset: timelineAsset,
-      //@ts-expect-error
-      sceneBindings: composition.sceneBindings,
     };
   }
 
-  private assembleItems (composition: spec.Composition) {
+  private assembleItems (composition: spec.CompositionData) {
     const items: any[] = [];
 
     this.mask++;
@@ -124,7 +116,6 @@ export class CompositionSourceManager implements Disposable {
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
-
         if (
           itemProps.type === spec.ItemType.sprite ||
           itemProps.type === spec.ItemType.particle
@@ -149,7 +140,7 @@ export class CompositionSourceManager implements Disposable {
           const refId = (sourceItemData.content as spec.CompositionContent).options.refId;
 
           if (!this.refCompositions.get(refId)) {
-            throw new Error('Invalid Ref Composition id: ' + refId);
+            throw new Error(`Invalid ref composition id: ${refId}.`);
           }
           const ref = this.getContent(this.refCompositions.get(refId)!);
 

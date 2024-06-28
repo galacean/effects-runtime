@@ -14,13 +14,12 @@ import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
-import type { CalculateItemOptions } from '../cal/calculate-item';
 import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -39,8 +38,8 @@ export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
  */
 export type SpriteItemOptions = {
   startColor: vec4,
-  renderLevel?: string,
-} & CalculateItemOptions;
+  renderLevel?: spec.RenderLevel,
+};
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -84,15 +83,19 @@ export class SpriteColorPlayable extends Playable {
   spriteMaterial: Material;
 
   override processFrame (context: FrameContext): void {
-    const bindingItem = context.output.getUserData() as VFXItem;
+    const boundObject = context.output.getUserData();
+
+    if (!(boundObject instanceof VFXItem)) {
+      return;
+    }
 
     if (!this.spriteMaterial) {
-      this.spriteMaterial = bindingItem.getComponent(SpriteComponent).material;
+      this.spriteMaterial = boundObject.getComponent(SpriteComponent).material;
     }
 
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
-    const life = this.time / bindingItem.duration;
+    const life = this.time / boundObject.duration;
 
     const opacityOverLifetime = this.opacityOverLifetime;
     const colorOverLifetime = this.colorOverLifetime;
@@ -234,7 +237,6 @@ export class SpriteComponent extends RendererComponent {
   }
 
   override start (): void {
-    this.priority = this.item.listIndex;
     this.item.getHitTestParams = this.getHitTestParams;
   }
 

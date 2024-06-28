@@ -64,7 +64,7 @@ export class PluginSystem {
         const CTRL = pluginLoaderMap[name];
 
         if (!CTRL) {
-          throw new Error(`plugin '${name}' not found.` + getPluginUsageInfo(name));
+          throw new Error(`The plugin '${name}' not found.` + getPluginUsageInfo(name));
         }
 
         const loader = new CTRL();
@@ -92,7 +92,7 @@ export class PluginSystem {
     const CTRL = pluginCtrlMap[name];
 
     if (!CTRL) {
-      throw new Error(`plugin ${name} no registered constructor`);
+      throw new Error(`The plugin '${name}' does not have a registered constructor.`);
     }
     const engine = composition.getEngine();
     const item = new CTRL(engine, props, composition);
@@ -100,7 +100,7 @@ export class PluginSystem {
     item.composition = composition;
 
     if (!(item instanceof VFXItem)) {
-      throw new Error(`plugin ${name} invalid constructor type`);
+      throw new Error(`The plugin '${name}' invalid constructor type.`);
     }
 
     return item;
@@ -126,7 +126,11 @@ export class PluginSystem {
     return Promise.all(pendings);
   }
 
-  async precompile (compositions: spec.Composition[], renderer: Renderer, options?: PrecompileOptions) {
+  async precompile (
+    compositions: spec.CompositionData[],
+    renderer: Renderer,
+    options?: PrecompileOptions,
+  ) {
     return this.callStatic('precompile', compositions, renderer, options);
   }
 
@@ -148,7 +152,10 @@ function getPluginUsageInfo (name: string) {
   const info = pluginInfoMap[name];
 
   if (info) {
-    return `\nInstall Plugin: npm i ${info}@latest --save\nImport Plugin: import '${info}'`;
+    return `
+请按如下命令进行操作（Please follow the commands below to proceed）：
+1、使用 npm 安装插件（Install Plugin）：npm i ${info}@latest --save
+2、导入插件（Import Plugin）：import '${info}'`;
   } else {
     return '';
   }

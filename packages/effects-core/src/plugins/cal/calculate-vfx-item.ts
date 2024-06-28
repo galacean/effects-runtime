@@ -9,7 +9,7 @@ import type { ItemBasicTransform, ItemLinearVelOverLifetime } from './calculate-
 import type { FrameContext, PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
 
 const tempRot = new Euler();
@@ -54,12 +54,12 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   private binding: VFXItem;
 
   start (): void {
-    const bindingItem = this.binding;
-    const scale = bindingItem.transform.scale;
+    const boundItem = this.binding;
+    const scale = boundItem.transform.scale;
 
     this.originalTransform = {
-      position: bindingItem.transform.position.clone(),
-      rotation: bindingItem.transform.getRotation().clone(),
+      position: boundItem.transform.position.clone(),
+      rotation: boundItem.transform.getRotation().clone(),
       // TODO 编辑器 scale 没有z轴控制
       scale: new Vector3(scale.x, scale.y, scale.x),
     };
@@ -135,10 +135,14 @@ export class TransformAnimationPlayable extends AnimationPlayable {
 
   override processFrame (context: FrameContext): void {
     if (!this.binding) {
-      this.binding = context.output.getUserData() as VFXItem;
-      this.start();
+      const boundObject = context.output.getUserData();
+
+      if (boundObject instanceof VFXItem) {
+        this.binding = boundObject;
+        this.start();
+      }
     }
-    if (this.binding.composition) {
+    if (this.binding && this.binding.composition) {
       this.sampleAnimation();
     }
   }
@@ -147,8 +151,8 @@ export class TransformAnimationPlayable extends AnimationPlayable {
    * 应用时间轴K帧数据到对象
    */
   private sampleAnimation () {
-    const bindingItem = this.binding;
-    const duration = bindingItem.duration;
+    const boundItem = this.binding;
+    const duration = boundItem.duration;
     let life = this.time / duration;
 
     life = life < 0 ? 0 : (life > 1 ? 1 : life);
@@ -163,7 +167,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
       }
       const startSize = this.originalTransform.scale;
 
-      bindingItem.transform.setScale(tempSize.x * startSize.x, tempSize.y * startSize.y, tempSize.z * startSize.z);
+      boundItem.transform.setScale(tempSize.x * startSize.x, tempSize.y * startSize.y, tempSize.z * startSize.z);
       // this.animationStream.setCurveValue('transform', 'scale.x', tempSize.x * startSize.x);
       // this.animationStream.setCurveValue('transform', 'scale.y', tempSize.y * startSize.y);
       // this.animationStream.setCurveValue('transform', 'scale.z', tempSize.z * startSize.z);
@@ -179,7 +183,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
       tempRot.z = incZ;
       const rot = tempRot.addEulers(this.originalTransform.rotation, tempRot);
 
-      bindingItem.transform.setRotation(rot.x, rot.y, rot.z);
+      boundItem.transform.setRotation(rot.x, rot.y, rot.z);
       // this.animationStream.setCurveValue('transform', 'rotation.x', rot.x);
       // this.animationStream.setCurveValue('transform', 'rotation.y', rot.y);
       // this.animationStream.setCurveValue('transform', 'rotation.z', rot.z);
@@ -192,7 +196,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
       if (this.originalTransform.path) {
         pos.add(this.originalTransform.path.getValue(life));
       }
-      bindingItem.transform.setPosition(pos.x, pos.y, pos.z);
+      boundItem.transform.setPosition(pos.x, pos.y, pos.z);
       // this.animationStream.setCurveValue('transform', 'position.x', pos.x);
       // this.animationStream.setCurveValue('transform', 'position.y', pos.y);
       // this.animationStream.setCurveValue('transform', 'position.z', pos.z);
@@ -239,13 +243,10 @@ export interface TransformPlayableAssetData extends spec.EffectsObjectData {
 export class ActivationPlayable extends Playable {
 
   override processFrame (context: FrameContext): void {
-    const bindingItem = context.output.getUserData() as VFXItem;
-    const lifetime = bindingItem.duration > 0 ? this.time / bindingItem.duration : 0;
-
-    bindingItem.lifetime = lifetime;
   }
 }
 
+@effectsClass('ActivationPlayableAsset')
 export class ActivationPlayableAsset extends PlayableAsset {
   override createPlayable (graph: PlayableGraph): Playable {
     return new ActivationPlayable(graph);
@@ -397,10 +398,13 @@ export class AnimationClipPlayable extends Playable {
   clip: AnimationClip;
 
   override processFrame (context: FrameContext): void {
-    const bindingItem = context.output.getUserData() as VFXItem;
+    const boundObject = context.output.getUserData();
 
-    if (bindingItem.composition) {
-      this.clip.sampleAnimation(bindingItem, this.time);
+    if (!(boundObject instanceof VFXItem)) {
+      return;
+    }
+    if (boundObject.composition) {
+      this.clip.sampleAnimation(boundObject, this.time);
     }
   }
 }

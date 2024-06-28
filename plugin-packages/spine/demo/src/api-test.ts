@@ -121,7 +121,7 @@ function loadFile (fileName: string) {
     skeletonData = data;
     addCameraEvent();
   }).catch(e => {
-    console.error(`loadFile error: ${e}`);
+    console.error(`Load file error: ${e}.`);
   });
 }
 
@@ -200,7 +200,7 @@ function generateScene (activeSkin: string, activeAnimation: string[], duration:
   return {
     'playerVersion': {
       'web': '1.0.0',
-      'native': '1.0.0.231013104006',
+      'native': '1.0.0',
     },
     'images': file.png.map(img => {
       return {
@@ -254,7 +254,7 @@ function generateScene (activeSkin: string, activeAnimation: string[], duration:
                   3,
                   3,
                 ],
-                'startSize': 2,
+                'startSize': 3,
                 activeAnimation,
                 mixDuration,
                 speed,

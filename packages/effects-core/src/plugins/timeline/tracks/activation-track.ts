@@ -5,7 +5,6 @@ import { TrackAsset } from '../track';
 
 @effectsClass('ActivationTrack')
 export class ActivationTrack extends TrackAsset {
-
   override createTrackMixer (graph: PlayableGraph): Playable {
     return new ActivationMixerPlayable(graph);
   }

@@ -1,12 +1,5 @@
-import {
-  spec, isString, getActivePlayers, logger, isAlipayMiniApp,
-} from '@galacean/effects';
-
-declare global {
-  interface Window {
-    AlipayJSBridge: any,
-  }
-}
+import type { SceneRenderLevel } from '@galacean/effects';
+import { spec, isString, getActivePlayers, logger, isAlipayMiniApp } from '@galacean/effects';
 
 export interface DowngradeOptions {
   /**
@@ -75,7 +68,6 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
     return Promise.resolve({ mock: { downgrade: bizId === mockIdFail } });
   }
 
-  //@ts-expect-error
   const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
   if (ap) {
@@ -101,7 +93,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
         const downgradeCallback = (result: any) => {
           const totalTime = performance.now() - now;
 
-          console.info(`downgrade time: ${totalTime}ms`);
+          console.info(`Downgrade time: ${totalTime}ms.`);
           resolve({ bizId, systemInfo, downgradeResult: result, totalTime });
         };
 
@@ -130,7 +122,6 @@ function registerEvent (options: DowngradeOptions) {
 
 async function getSystemInfo (): Promise<SystemInfo> {
   return new Promise((resolve, reject) => {
-    // @ts-expect-error
     const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
     if (ap) {
@@ -154,7 +145,7 @@ class DeviceProxy {
   deviceLevel = DEVICE_LEVEL_NONE;
   isDowngrade = false;
 
-  getRenderLevel (): spec.RenderLevel {
+  getRenderLevel (): SceneRenderLevel {
     if (this.deviceLevel === DEVICE_LEVEL_HIGH) {
       return spec.RenderLevel.S;
     } else if (this.deviceLevel === DEVICE_LEVEL_MEDIUM) {
@@ -306,7 +297,7 @@ function getDowngradeReason (reason: number): string {
   }
 }
 
-export function getRenderLevelByDevice (renderLevel?: spec.RenderLevel): spec.RenderLevel {
+export function getRenderLevelByDevice (renderLevel?: SceneRenderLevel): SceneRenderLevel {
   if (!renderLevel) {
     return device.getRenderLevel();
   } else {
@@ -324,7 +315,7 @@ const internalPaused = Symbol('@@_inter_pause');
 
 function pauseAllActivePlayers (e: Event) {
   if (e.target === document) {
-    logger.info('Auto pause all players with data offloaded');
+    logger.info('Auto pause all players with data offloaded.');
     const players = getActivePlayers();
 
     players.forEach(player => {
@@ -339,7 +330,7 @@ function pauseAllActivePlayers (e: Event) {
 
 function resumePausedPlayers (e: Event) {
   if (e.target === document) {
-    logger.info('auto resume all players');
+    logger.info('Auto resume all players.');
     const players = getActivePlayers();
 
     players.forEach(player => {

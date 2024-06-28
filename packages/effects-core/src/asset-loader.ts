@@ -7,6 +7,7 @@ import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
 import type { VFXItemProps } from './vfx-item';
+import type { Constructor } from './utils';
 
 /**
  * @since 2.0.0
@@ -25,7 +26,7 @@ export class AssetLoader {
     const effectsObjectData = this.findData(guid);
 
     if (!effectsObjectData) {
-      console.error('未找到 uuid: ' + guid + '的对象数据');
+      console.error(`Object data with uuid: ${guid} not found.`);
 
       return undefined as T;
     }
@@ -39,10 +40,7 @@ export class AssetLoader {
 
         break;
       case spec.DataType.Texture:
-        // @ts-expect-error
-        effectsObject = Texture.create(this.engine, effectsObjectData);
-
-        return effectsObject as T;
+        effectsObject = Texture.create(this.engine);
 
         break;
       default: {
@@ -54,7 +52,7 @@ export class AssetLoader {
       }
     }
     if (!effectsObject) {
-      console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
+      console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }
@@ -75,14 +73,14 @@ export class AssetLoader {
 
     if (!effectsObjectData) {
       if (!this.engine.database) {
-        console.error('未找到 uuid: ' + guid + '的对象数据');
+        console.error(`Object data with uuid: ${guid} not found.`);
 
         return undefined as T;
       }
 
       effectsObject = await this.engine.database.loadGUID(guid);
       if (!effectsObject) {
-        console.error('未找到 uuid: ' + guid + '的磁盘数据');
+        console.error(`Disk data with uuid: ${guid} not found.`);
 
         return undefined as T;
       }
@@ -102,10 +100,7 @@ export class AssetLoader {
 
         break;
       case spec.DataType.Texture:
-        // @ts-expect-error
-        effectsObject = Texture.create(this.engine, effectsObjectData);
-
-        return effectsObject as T;
+        effectsObject = Texture.create(this.engine);
 
         break;
       default: {
@@ -117,7 +112,7 @@ export class AssetLoader {
       }
     }
     if (!effectsObject) {
-      console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
+      console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }
@@ -132,7 +127,7 @@ export class AssetLoader {
     return this.engine.jsonSceneData[uuid];
   }
 
-  private static getClass (dataType: string): new (engine: Engine) => EffectsObject {
+  private static getClass (dataType: string): Constructor<EffectsObject> {
     return effectsClassStore[dataType];
   }
 }

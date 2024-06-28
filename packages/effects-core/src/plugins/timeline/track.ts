@@ -1,10 +1,41 @@
 import { ItemEndBehavior } from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
-import type { Engine } from '../../engine';
 import { VFXItem } from '../../vfx-item';
 import type { PlayableGraph } from '../cal/playable-graph';
 import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
 import { ParticleSystem } from '../particle/particle-system';
+import type { Constructor } from '../../utils';
+
+/**
+ * @since 2.0.0
+ * @internal
+ */
+export class TimelineClip {
+  id: string;
+  name: string;
+  start = 0;
+  duration = 0;
+  asset: PlayableAsset;
+  endBehaviour: ItemEndBehavior;
+
+  constructor () {
+  }
+
+  toLocalTime (time: number) {
+    let localTime = time - this.start;
+    const duration = this.duration;
+
+    if (localTime - duration > 0.001) {
+      if (this.endBehaviour === ItemEndBehavior.loop) {
+        localTime = localTime % duration;
+      } else if (this.endBehaviour === ItemEndBehavior.freeze) {
+        localTime = Math.min(duration, localTime);
+      }
+    }
+
+    return localTime;
+  }
+}
 
 /**
  * @since 2.0.0
@@ -12,30 +43,30 @@ import { ParticleSystem } from '../particle/particle-system';
  */
 @effectsClass('TrackAsset')
 export class TrackAsset extends PlayableAsset {
-  id: string;
   name: string;
-  binding: VFXItem;
+  binding: object;
 
   trackType = TrackType.MasterTrack;
   private clipSeed = 0;
-  @serialize('TimelineClip')
+
+  @serialize(TimelineClip)
   private clips: TimelineClip[] = [];
+
   @serialize()
   protected children: TrackAsset[] = [];
 
-  initializeBinding (parentBinding: object) {
-    this.binding = parentBinding as VFXItem;
+  /**
+   * 重写该方法以获取自定义对象绑定
+   */
+  resolveBinding (parentBinding: object): object {
+    return parentBinding;
   }
 
   /**
-   * @internal
+   * 重写该方法以创建自定义混合器
    */
-  initializeBindingRecursive (parentBinding: object) {
-    this.initializeBinding(parentBinding);
-
-    for (const subTrack of this.children) {
-      subTrack.initializeBindingRecursive(this.binding);
-    }
+  createTrackMixer (graph: PlayableGraph): Playable {
+    return new Playable(graph);
   }
 
   createOutput (): PlayableOutput {
@@ -78,13 +109,6 @@ export class TrackAsset extends PlayableAsset {
     return mixer;
   }
 
-  /**
-   * 重写该方法以创建自定义混合器
-   */
-  createTrackMixer (graph: PlayableGraph): Playable {
-    return new Playable(graph);
-  }
-
   override createPlayable (graph: PlayableGraph): Playable {
     return new Playable(graph);
   }
@@ -93,8 +117,12 @@ export class TrackAsset extends PlayableAsset {
     return this.children;
   }
 
+  addChild (child: TrackAsset) {
+    this.children.push(child);
+  }
+
   createClip<T extends PlayableAsset> (
-    classConstructor: new (engine: Engine) => T,
+    classConstructor: Constructor<T>,
     name?: string,
   ): TimelineClip {
     const newClip = new TimelineClip();
@@ -133,50 +161,24 @@ export enum TrackType {
   ObjectTrack,
 }
 
-/**
- * @since 2.0.0
- * @internal
- */
-@effectsClass('TimelineClip')
-export class TimelineClip {
-  id: string;
-  name: string;
-  start = 0;
-  duration = 0;
-  asset: PlayableAsset;
-  endBehaviour: ItemEndBehavior;
-
-  constructor () {
-
-  }
-
-  toLocalTime (time: number) {
-    let localTime = time - this.start;
-    const duration = this.duration;
-
-    if (localTime - duration > 0.001) {
-      if (this.endBehaviour === ItemEndBehavior.loop) {
-        localTime = localTime % duration;
-      } else if (this.endBehaviour === ItemEndBehavior.freeze) {
-        localTime = Math.min(duration, localTime);
-      }
-    }
-
-    return localTime;
-  }
-}
-
 export class RuntimeClip {
   clip: TimelineClip;
   playable: Playable;
   parentMixer: Playable;
   track: TrackAsset;
 
+  // TODO: 粒子结束行为有特殊逻辑，这里 cache 一下避免每帧查询组件导致 GC。粒子结束行为判断统一后可移除
+  particleSystem: ParticleSystem;
+
   constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: Playable, track: TrackAsset) {
     this.clip = clip;
     this.playable = clipPlayable;
     this.parentMixer = parentMixer;
     this.track = track;
+
+    if (this.track.binding instanceof VFXItem) {
+      this.particleSystem = this.track.binding.getComponent(ParticleSystem);
+    }
   }
 
   set enable (value: boolean) {
@@ -194,9 +196,10 @@ export class RuntimeClip {
     let weight = 1.0;
     let ended = false;
     let started = false;
+    const boundItem = this.track.binding as VFXItem;
 
     if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
-      if (VFXItem.isParticle(this.track.binding) && !this.track.binding.getComponent(ParticleSystem)?.destroyed) {
+      if (VFXItem.isParticle(boundItem) && this.particleSystem && !this.particleSystem.destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;
@@ -214,8 +217,6 @@ export class RuntimeClip {
     }
     this.parentMixer.setInputWeight(this.playable, weight);
 
-    const boundItem = this.track.binding;
-
     // 判断动画是否结束
     if (ended && !boundItem.ended) {
       boundItem.ended = true;
@@ -231,7 +232,7 @@ export class RuntimeClip {
   }
 
   private onClipEnd () {
-    const boundItem = this.track.binding;
+    const boundItem = this.track.binding as VFXItem;
 
     if (!boundItem.compositionReusable && !boundItem.reusable) {
       boundItem.dispose();

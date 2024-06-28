@@ -74,70 +74,59 @@ export class Engine implements Disposable {
   }
 
   addPackageDatas (scene: Scene) {
-    const jsonScene = scene.jsonScene;
+    const { jsonScene, textureOptions = [] } = scene;
+    const {
+      items = [], materials = [], shaders = [], geometries = [], components = [],
+      animations = [], bins = [], miscs = [],
+    } = jsonScene;
 
-    if (jsonScene.items) {
-      for (const vfxItemData of jsonScene.items) {
-        this.addEffectsObjectData(vfxItemData);
-      }
+    for (const vfxItemData of items) {
+      this.addEffectsObjectData(vfxItemData);
     }
-    if (jsonScene.materials) {
-      for (const materialData of jsonScene.materials) {
-        this.addEffectsObjectData(materialData);
-      }
+    for (const materialData of materials) {
+      this.addEffectsObjectData(materialData);
     }
-    if (jsonScene.shaders) {
-      for (const shaderData of jsonScene.shaders) {
-        this.addEffectsObjectData(shaderData);
-      }
+    for (const shaderData of shaders) {
+      this.addEffectsObjectData(shaderData);
     }
-    if (jsonScene.geometries) {
-      for (const geometryData of jsonScene.geometries) {
-        this.addEffectsObjectData(geometryData);
-      }
+    for (const geometryData of geometries) {
+      this.addEffectsObjectData(geometryData);
     }
-    if (jsonScene.components) {
-      for (const componentData of jsonScene.components) {
-        this.addEffectsObjectData(componentData);
-      }
+    for (const componentData of components) {
+      this.addEffectsObjectData(componentData);
     }
-    if (jsonScene.animations) {
-      for (const animationData of jsonScene.animations) {
-        this.addEffectsObjectData(animationData);
-      }
+    for (const animationData of animations) {
+      this.addEffectsObjectData(animationData);
     }
-    if (jsonScene.bins) {
-      for (let i = 0;i < jsonScene.bins.length;i++) {
-        const binaryData = jsonScene.bins[i];
-        const binaryBuffer = scene.bins[i];
+    for (const miscData of miscs) {
+      this.addEffectsObjectData(miscData);
+    }
+    for (let i = 0; i < bins.length; i++) {
+      const binaryData = bins[i];
+      const binaryBuffer = scene.bins[i];
 
+      //@ts-expect-error
+      binaryData.buffer = binaryBuffer;
+      //@ts-expect-error
+      if (binaryData.id) {
         //@ts-expect-error
-        binaryData.buffer = binaryBuffer;
-        //@ts-expect-error
-        if (binaryData.id) {
-          //@ts-expect-error
-          this.addEffectsObjectData(binaryData);
-        }
+        this.addEffectsObjectData(binaryData);
       }
     }
-    if (scene.textureOptions) {
-      for (const textureData of scene.textureOptions) {
-        this.addEffectsObjectData(textureData as spec.EffectComponentData);
-      }
+    for (const textureData of textureOptions) {
+      this.addEffectsObjectData(textureData as spec.EffectComponentData);
     }
   }
 
   async createVFXItems (scene: Scene) {
-    const jsonScene = scene.jsonScene;
+    const { jsonScene } = scene;
 
     for (const itemData of jsonScene.items) {
       const itemType = itemData.type;
 
       if (!(
-        // @ts-expect-error
-        itemType === 'ECS' ||
-        // @ts-expect-error
-        itemType === 'camera' ||
+        itemType === 'ECS' as spec.ItemType ||
+        itemType === 'camera' as spec.ItemType ||
         itemType === spec.ItemType.sprite ||
         itemType === spec.ItemType.particle ||
         itemType === spec.ItemType.mesh ||
@@ -258,24 +247,14 @@ export class Engine implements Disposable {
     }
 
     if (info.length > 0) {
-      logger.warn(`Release GPU memory: ${info.join(', ')}`);
+      logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
-    this.renderPasses.forEach(pass => {
-      pass.dispose();
-    });
-    this.meshes.forEach(mesh => {
-      mesh.dispose();
-    });
-    this.geometries.forEach(geo => {
-      geo.dispose();
-    });
-    this.materials.forEach(mat => {
-      mat.dispose();
-    });
-    this.textures.forEach(tex => {
-      tex.dispose();
-    });
+    this.renderPasses.forEach(pass => pass.dispose());
+    this.meshes.forEach(mesh => mesh.dispose());
+    this.geometries.forEach(geo => geo.dispose());
+    this.materials.forEach(mat => mat.dispose());
+    this.textures.forEach(tex => tex.dispose());
 
     this.textures = [];
     this.materials = [];

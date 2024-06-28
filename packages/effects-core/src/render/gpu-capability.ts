@@ -123,7 +123,7 @@ export class GPUCapability {
     const ext = this.drawBufferExtension;
 
     if (this.level === 1 && !ext && index > 0) {
-      throw new Error('draw multiple color buffers not available');
+      throw new Error('Draw multiple color buffers not available.');
     }
     const attachment = ext ?
       ext[`COLOR_ATTACHMENT${index}_WEBGL` as keyof WEBGL_draw_buffers] as number :
@@ -132,7 +132,7 @@ export class GPUCapability {
     if (attachment) {
       gl.framebufferTexture2D(target, attachment, textarget, texture, 0);
     } else {
-      console.error('invalid color attachment index: ' + index);
+      console.error(`Invalid color attachment index: ${index}.`);
     }
   }
 
@@ -141,7 +141,7 @@ export class GPUCapability {
 
     if (this.level === 1 && !ext) {
       if (bufferStates.length > 1) {
-        throw Error('draw buffers not available');
+        throw new Error('Draw buffers not available.');
       } else {
         return;
       }

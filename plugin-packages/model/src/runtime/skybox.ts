@@ -106,7 +106,7 @@ export class PSkybox extends PEntity {
     this.specularImageSize = data.specularImageSize;
     this.specularMipCount = data.specularMipCount;
 
-    this.priority = owner?.item?.listIndex || 0;
+    this.priority = owner?.item?.renderOrder || 0;
   }
 
   /**
@@ -321,7 +321,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
     } else {
       const coeffs = this.irradianceCoeffs;
 
-      if (coeffs === undefined || coeffs.length != 9) { throw new Error(`Invalid skybox irradiance coeffs ${coeffs}`); }
+      if (coeffs === undefined || coeffs.length != 9) { throw new Error(`Invalid skybox irradiance coeffs ${coeffs}.`); }
 
       const aliasName = ['l00', 'l1m1', 'l10', 'l11', 'l2m2', 'l2m1', 'l20', 'l21', 'l22'];
 
@@ -700,11 +700,11 @@ export class PSkyboxCreator {
       if (i > 0) {
         if (i % 6 === 0) {
           if (image.width * 2 !== lastImage.width || image.height * 2 !== lastImage.height) {
-            throw new Error(`Invalid cube map list1: index ${i}, image0 ${lastImage}, image1 ${image}`);
+            throw new Error(`Invalid cube map list1: index ${i}, image0 ${lastImage}, image1 ${image}.`);
           }
         } else {
           if (image.width !== lastImage.width || image.height !== lastImage.height) {
-            throw new Error(`Invalid cube map list2: index ${i}, image0 ${lastImage}, image1 ${image}`);
+            throw new Error(`Invalid cube map list2: index ${i}, image0 ${lastImage}, image1 ${image}.`);
           }
         }
       }

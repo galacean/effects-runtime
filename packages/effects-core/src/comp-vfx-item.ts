@@ -5,16 +5,17 @@ import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { ContentOptions } from './composition-source-manager';
-import type { Region, TimelinePlayable, TrackAsset } from './plugins';
+import type { Region, TrackAsset } from './plugins';
 import { HitTestType, ObjectBindingTrack } from './plugins';
+import type { Playable } from './plugins/cal/playable-graph';
+import { PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import { Item, VFXItem } from './vfx-item';
-import { PlayableGraph } from './plugins/cal/playable-graph';
 
 export interface SceneBinding {
-  key: ObjectBindingTrack,
+  key: TrackAsset,
   value: VFXItem,
 }
 
@@ -36,45 +37,42 @@ export class CompositionComponent extends ItemBehaviour {
 
   private reusable = false;
   private sceneBindings: SceneBinding[] = [];
-  private masterTracks: ObjectBindingTrack[] = [];
   private timelineAsset: TimelineAsset;
-  private timelinePlayable: TimelinePlayable;
+  private timelinePlayable: Playable;
   private graph: PlayableGraph = new PlayableGraph();
 
   override start (): void {
     const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
-    this.masterTracks = [];
+    this.resolveBindings();
+    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
 
-    for (const sceneBinding of this.sceneBindings) {
-      sceneBinding.key.binding = sceneBinding.value;
-    }
-
-    this.initializeTrackBindings(this.timelineAsset.tracks);
-    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
-    this.timelinePlayable.play();
-
-    for (const track of this.timelineAsset.tracks) {
-      // 重播不销毁元素
-      if (this.item.endBehavior !== spec.ItemEndBehavior.destroy || this.reusable) {
-        if (track instanceof ObjectBindingTrack) {
-          track.binding.reusable = true;
-        }
-        const subCompositionComponent = track.binding.getComponent(CompositionComponent);
-
-        if (subCompositionComponent) {
-          subCompositionComponent.reusable = true;
-        }
-      }
-      this.masterTracks.push(track as ObjectBindingTrack);
+    // 重播不销毁元素
+    if (this.item.endBehavior !== spec.ItemEndBehavior.destroy) {
+      this.setReusable(true);
     }
   }
 
-  initializeTrackBindings (masterTracks: TrackAsset[]) {
-    for (const track of masterTracks) {
-      track.initializeBindingRecursive(track.binding);
+  setReusable (value: boolean) {
+    for (const track of this.timelineAsset.tracks) {
+      const binding = track.binding;
+
+      if (binding instanceof VFXItem) {
+        if (track instanceof ObjectBindingTrack) {
+          binding.reusable = value;
+        }
+        const subCompositionComponent = binding.getComponent(CompositionComponent);
+
+        if (subCompositionComponent) {
+          subCompositionComponent.setReusable(value);
+        }
+      }
     }
+  }
+
+  getReusable () {
+    return this.reusable;
   }
 
   override update (dt: number): void {
@@ -86,24 +84,6 @@ export class CompositionComponent extends ItemBehaviour {
     }
     this.timelinePlayable.setTime(time);
     this.graph.evaluate(dt);
-
-    for (let i = 0; i < this.items.length; i++) {
-      const item = this.items[i];
-      const subCompostionComponent = item.getComponent(CompositionComponent);
-
-      if (subCompostionComponent) {
-        const subCompositionTrack = this.masterTracks[i];
-
-        subCompostionComponent.time = subCompositionTrack.toLocalTime(time);
-      }
-    }
-  }
-
-  /**
-   * 重置元素状态属性
-   */
-  resetStatus () {
-    this.item.ended = false;
   }
 
   createContent () {
@@ -111,7 +91,7 @@ export class CompositionComponent extends ItemBehaviour {
 
     for (const sceneBindingData of this.data.sceneBindings) {
       sceneBindings.push({
-        key: this.engine.assetLoader.loadGUID<ObjectBindingTrack>(sceneBindingData.key.id),
+        key: this.engine.assetLoader.loadGUID<TrackAsset>(sceneBindingData.key.id),
         value: this.engine.assetLoader.loadGUID<VFXItem>(sceneBindingData.value.id),
       });
     }
@@ -136,7 +116,7 @@ export class CompositionComponent extends ItemBehaviour {
           const props = this.item.composition.refCompositionProps.get(refId);
 
           if (!props) {
-            throw new Error(`引用的Id: ${refId} 的预合成不存在`);
+            throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
           }
           // endBehaviour 类型需优化
           props.content = itemData.content;
@@ -191,7 +171,7 @@ export class CompositionComponent extends ItemBehaviour {
     for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
       const item = this.items[i];
 
-      if (item.lifetime >= 0 && !item.ended && !VFXItem.isComposition(item) && !skip(item)) {
+      if (item.getVisible() && !item.ended && !VFXItem.isComposition(item) && !skip(item)) {
         const hitParams = item.getHitTestParams(force);
 
         if (hitParams) {
@@ -260,7 +240,23 @@ export class CompositionComponent extends ItemBehaviour {
     return regions;
   }
 
-  override fromData (data: any): void {
-    // this.timelineAsset = data.timelineAsset;
+  override fromData (data: unknown): void {
+  }
+
+  private resolveBindings () {
+    for (const sceneBinding of this.sceneBindings) {
+      sceneBinding.key.binding = sceneBinding.value;
+    }
+    for (const masterTrack of this.timelineAsset.tracks) {
+      this.resolveTrackBindingsWithRoot(masterTrack);
+    }
+  }
+
+  private resolveTrackBindingsWithRoot (track: TrackAsset) {
+    for (const subTrack of track.getChildTracks()) {
+      subTrack.binding = subTrack.resolveBinding(track.binding);
+
+      this.resolveTrackBindingsWithRoot(subTrack);
+    }
   }
 }

@@ -75,7 +75,7 @@ export class PShaderManager {
     if (func !== undefined) {
       return func(context);
     } else {
-      throw new Error(`Invalid material type ${materialType}, shader content ${context}`);
+      throw new Error(`Invalid material type ${materialType}, shader content ${context}.`);
     }
   }
 }

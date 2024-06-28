@@ -3,12 +3,13 @@ import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
-import { random, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
+import { randomInRange, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
 import type { ColorStop } from '../utils';
 import type { BezierEasing } from './bezier';
 import { BezierPath, buildEasingCurve, BezierQuat } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
 import { numberToFix } from './utils';
+import { HELP_LINK } from '../constants';
 
 interface KeyFrameMeta {
   curves: ValueGetter<any>[],
@@ -43,31 +44,31 @@ export class ValueGetter<T> {
   }
 
   onCreate (props: any) {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getIntegrateValue (t0: number, t1: number, timeScale = 1): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getIntegrateByTime (t0: number, time: number): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getValue (time?: number): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getMaxTime (): number {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   toUniform (meta: KeyFrameMeta): Float32Array {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   map (func: (n: T) => T) {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   scaleXCoord (scale: number): ValueGetter<T> {
@@ -75,7 +76,7 @@ export class ValueGetter<T> {
   }
 
   toData (): ArrayLike<number> {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 }
 
@@ -145,7 +146,7 @@ export class RandomValue extends ValueGetter<number> {
   }
 
   override getValue (time?: number): number {
-    return random(this.min, this.max);
+    return randomInRange(this.min, this.max);
   }
 
   override toUniform () {
@@ -891,7 +892,7 @@ export function createValueGetter (args: any): ValueGetter<any> {
   if (isFunction(map[args[0]])) {
     return map[args[0]](args[1]);
   } else {
-    throw new Error(`ValueType: ${args[0]} is not support`);
+    throw new Error(`ValueType: ${args[0]} is not supported, see ${HELP_LINK['ValueType: 21/22 is not supported']}.`);
   }
 }
 

@@ -1,4 +1,4 @@
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
 import { Playable, PlayableAsset } from '../cal/playable-graph';
 import { ParticleSystem } from './particle-system';
@@ -9,17 +9,18 @@ import { ParticleSystem } from './particle-system';
  */
 export class ParticleBehaviourPlayable extends Playable {
   particleSystem: ParticleSystem;
+  lastTime: number = 0;
 
   start (context: FrameContext): void {
-    const binding = context.output.getUserData() as VFXItem;
+    const boundObject = context.output.getUserData();
 
-    if (this.particleSystem) {
+    if (this.particleSystem || !(boundObject instanceof VFXItem)) {
       return;
     }
-    this.particleSystem = binding.getComponent(ParticleSystem);
+    this.particleSystem = boundObject.getComponent(ParticleSystem);
 
     if (this.particleSystem) {
-      this.particleSystem.name = binding.name;
+      this.particleSystem.name = boundObject.name;
       this.particleSystem.start();
       this.particleSystem.initEmitterTransform();
     }
@@ -35,8 +36,16 @@ export class ParticleBehaviourPlayable extends Playable {
       // TODO: [1.31] @十弦 验证 https://github.com/galacean/effects-runtime/commit/3e7d73d37b7d98c2a25e4544e80e928b17801ccd#diff-fae062f28caf3771cfedd3a20dc22f9749bd054c7541bf2fd50a9a5e413153d4
       // particleSystem.setParentTransform(parentItem.transform);
       particleSystem.setVisible(true);
-      particleSystem.onUpdate(context.deltaTime);
+
+      let deltaTime = context.deltaTime;
+
+      // 直接用 this.lastTime - this.time 获取 deltaTime 会有精度问题
+      if (this.lastTime === this.time) {
+        deltaTime = 0;
+      }
+      particleSystem.onUpdate(deltaTime);
     }
+    this.lastTime = this.time;
   }
 }
 

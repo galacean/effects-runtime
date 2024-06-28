@@ -58,7 +58,7 @@ type ParticleOptions = {
   maxCount: number,
   gravity: vec3,
   gravityModifier: ValueGetter<number>,
-  renderLevel?: string,
+  renderLevel?: spec.RenderLevel,
   particleFollowParent?: boolean,
   forceTarget?: { curve: ValueGetter<number>, target: spec.vec3 },
   speedOverLifetime?: ValueGetter<number>,
@@ -142,6 +142,7 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture'> 
 
 // 粒子节点包含的数据
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
+
 @effectsClass(spec.DataType.ParticleSystem)
 export class ParticleSystem extends Component {
   renderer: ParticleSystemRenderer;
@@ -836,18 +837,16 @@ export class ParticleSystem extends Component {
     }
   };
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     super.fromData(data);
     const props = data as ParticleSystemProps;
 
     this.props = props;
     this.destroyed = false;
     const cachePrefix = '';
-    const options = props.options;
-    const positionOverLifetime = props.positionOverLifetime!;
-    const shape = props.shape!;
-    const gravityModifier = positionOverLifetime.gravityOverLifetime;
-    const gravity = ensureVec3(positionOverLifetime.gravity);
+    const { options, positionOverLifetime = {}, shape } = props;
+    const gravityModifier = positionOverLifetime?.gravityOverLifetime;
+    const gravity = ensureVec3(positionOverLifetime?.gravity);
     const _textureSheetAnimation = props.textureSheetAnimation;
     const textureSheetAnimation = _textureSheetAnimation ? {
       animationDelay: createValueGetter(_textureSheetAnimation.animationDelay || 0),
@@ -858,7 +857,7 @@ export class ParticleSystem extends Component {
       row: _textureSheetAnimation.row,
       total: _textureSheetAnimation.total || _textureSheetAnimation.col * _textureSheetAnimation.row,
     } : undefined;
-    const startTurbulence = !!(shape && shape.turbulenceX || shape.turbulenceY || shape.turbulenceZ);
+    const startTurbulence = !!(shape && shape.turbulenceX || shape?.turbulenceY || shape?.turbulenceZ);
     let turbulence: ParticleOptions['turbulence'];
 
     if (startTurbulence) {
@@ -892,7 +891,7 @@ export class ParticleSystem extends Component {
 
     let forceTarget;
 
-    if (positionOverLifetime.forceTarget) {
+    if (positionOverLifetime?.forceTarget) {
       forceTarget = {
         target: positionOverLifetime.target || [0, 0, 0],
         curve: createValueGetter(positionOverLifetime.forceCurve || [spec.ValueType.LINE, [[0, 0], [1, 1]]]),

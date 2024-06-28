@@ -144,7 +144,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
 
   drawGeometry (geometry: Geometry, material: Material, subMeshIndex: number): void {
     if (!this.gl) {
-      console.warn('GLGPURenderer没有绑定gl对象, 无法绘制geometry');
+      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
 
       return;
     }
@@ -153,12 +153,10 @@ export class GLRendererInternal implements Disposable, LostHandler {
     const program = glMaterial.shaderVariant.program;
 
     if (!program) {
-
       return;
     }
 
     const vao = program.setupAttributes(glGeometry);
-
     const gl = this.gl;
     const indicesBuffer = glGeometry.indicesBuffer;
     let offset = glGeometry.drawStart;
@@ -256,7 +254,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   }
 
   lost (e: Event) {
-    logger.error('gl lost, destroy glRenderer by default', e.target);
+    logger.error(`WebGL context lost, destroying glRenderer by default to prevent memory leaks. Event target: ${e.target}.`);
     this.deleteResource();
   }
 
@@ -269,11 +267,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
 }
 
 export function assignInspectorName (
-  obj: Record<string, any>,
+  obj: Record<string, any> | null,
   name?: string,
   id?: string,
 ) {
-  if (name === undefined) {
+  if (name === undefined || obj === null) {
     return;
   }
 

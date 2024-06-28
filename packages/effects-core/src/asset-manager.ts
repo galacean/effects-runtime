@@ -6,10 +6,10 @@ import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia } from './downloader';
-import type { ImageSource, Scene, SceneLoadOptions, SceneType } from './scene';
+import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from './scene';
 import { isSceneJSON } from './scene';
 import type { Disposable } from './utils';
-import { isObject, isString, logger, isValidFontFamily } from './utils';
+import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
 import type { Renderer } from './render';
@@ -121,7 +121,7 @@ export class AssetManager implements Disposable {
         this.removeTimer(loadTimer);
         const totalTime = performance.now() - startTime;
 
-        reject(new Error(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`));
+        reject(new Error(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}.`));
       }, this.timeout * 1000);
       this.timers.push(loadTimer);
     });
@@ -136,7 +136,7 @@ export class AssetManager implements Disposable {
 
           return result;
         } catch (e) {
-          throw new Error(`Load error in ${label}, ${e}`);
+          throw new Error(`Load error in ${label}, ${e}.`);
         }
       }
       throw new Error('Load canceled.');
@@ -223,7 +223,7 @@ export class AssetManager implements Disposable {
 
       const totalTime = performance.now() - startTime;
 
-      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
+      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}.`);
       window.clearTimeout(loadTimer);
       this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
@@ -235,7 +235,12 @@ export class AssetManager implements Disposable {
     return Promise.race([waitPromise, loadResourcePromise()]);
   }
 
-  private async precompile (compositions: spec.Composition[], pluginSystem?: PluginSystem, renderer?: Renderer, options?: PrecompileOptions) {
+  private async precompile (
+    compositions: spec.CompositionData[],
+    pluginSystem?: PluginSystem,
+    renderer?: Renderer,
+    options?: PrecompileOptions,
+  ) {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }
@@ -244,7 +249,7 @@ export class AssetManager implements Disposable {
     await pluginSystem?.precompile(compositions, renderer, options);
 
     await new Promise(resolve => {
-      shaderLibrary!.compileAllShaders(() => {
+      shaderLibrary?.compileAllShaders(() => {
         resolve(null);
       });
     });
@@ -297,7 +302,7 @@ export class AssetManager implements Disposable {
         return this.loadBins(new URL(bin.url, baseUrl).href);
       }
 
-      throw new Error(`Invalid bins source: ${JSON.stringify(bins)}`);
+      throw new Error(`Invalid bins source: ${JSON.stringify(bins)}.`);
     });
 
     return Promise.all(jobs);
@@ -314,7 +319,7 @@ export class AssetManager implements Disposable {
       if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
         if (!isValidFontFamily(font.fontFamily)) {
           // 在所有设备上提醒开发者
-          console.warn(`Risky font family: ${font.fontFamily}`);
+          console.warn(`Risky font family: ${font.fontFamily}.`);
         }
         try {
           const url = new URL(font.fontURL, this.baseUrl).href;
@@ -326,7 +331,7 @@ export class AssetManager implements Disposable {
           AssetManager.fonts.add(font.fontFamily);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
-          logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}`);
+          logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}.`);
         }
       }
     });
@@ -379,7 +384,7 @@ export class AssetManager implements Disposable {
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
-            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message}`);
+            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message}.`);
           }
         }
       } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
@@ -433,9 +438,9 @@ export class AssetManager implements Disposable {
       }
       if ('mipmaps' in texOpts) {
         try {
-          return await deserializeMipmapTexture(texOpts, bins, jsonScene.bins, engine);
+          return await deserializeMipmapTexture(texOpts, bins, engine, jsonScene.bins);
         } catch (e) {
-          throw new Error(`load texture ${idx} fails, error message: ${e}`);
+          throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }
       }
       const { source } = texOpts;
@@ -457,7 +462,7 @@ export class AssetManager implements Disposable {
 
         return tex.sourceType === TextureSourceType.compressed ? tex : { ...tex, ...texOpts };
       }
-      throw new Error(`Invalid texture source: ${source}`);
+      throw new Error(`Invalid texture source: ${source}.`);
     });
 
     return Promise.all(jobs);
@@ -511,10 +516,10 @@ export class AssetManager implements Disposable {
 
 function fixOldImageUsage (
   usedImages: Record<number, boolean>,
-  compositions: spec.Composition[],
+  compositions: spec.CompositionData[],
   imgUsage: Record<string, number[]>,
   images: any,
-  renderLevel?: string,
+  renderLevel?: SceneRenderLevel,
 ) {
   for (let i = 0; i < compositions.length; i++) {
     const id = compositions[i].id;
@@ -577,41 +582,5 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
     };
   }
 
-  throw new Error('Invalid texture options');
-}
-
-function base64ToFile (base64: string, filename = 'base64File', contentType = '') {
-  // 去掉 Base64 字符串的 Data URL 部分（如果存在）
-  const base64WithoutPrefix = base64.split(',')[1] || base64;
-
-  // 将 base64 编码的字符串转换为二进制字符串
-  const byteCharacters = atob(base64WithoutPrefix);
-  // 创建一个 8 位无符号整数值的数组，即“字节数组”
-  const byteArrays = [];
-
-  // 切割二进制字符串为多个片段，并将每个片段转换成一个字节数组
-  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-    const slice = byteCharacters.slice(offset, offset + 512);
-    const byteNumbers = new Array(slice.length);
-
-    for (let i = 0; i < slice.length; i++) {
-      byteNumbers[i] = slice.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-
-    byteArrays.push(byteArray);
-  }
-
-  // 使用字节数组创建 Blob 对象
-  const blob = new Blob(byteArrays, { type: contentType });
-
-  // 创建 File 对象
-  const file = new File([blob], filename, { type: contentType });
-
-  return file;
-}
-
-function isCanvas (canvas: HTMLCanvasElement) {
-  // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
-  return typeof canvas === 'object' && canvas !== null && canvas.tagName?.toUpperCase() === 'CANVAS';
+  throw new Error('Invalid texture options.');
 }

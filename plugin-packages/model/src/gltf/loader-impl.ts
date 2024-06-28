@@ -144,7 +144,7 @@ export class LoaderImpl implements Loader {
   createTreeOptions (scene: GLTFScene): ModelTreeOptions {
     const nodeList = scene.nodes.map((node, nodeIndex) => {
       const children = node.children.map(child => {
-        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}`); }
+        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}.`); }
 
         return child.nodeIndex;
       });
@@ -153,7 +153,7 @@ export class LoaderImpl implements Loader {
       let scale: spec.vec3 | undefined;
 
       if (node.matrix !== undefined) {
-        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
+        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}.`); }
         const mat = Matrix4.fromArray(node.matrix);
         const transform = mat.getTransform();
 
@@ -182,7 +182,7 @@ export class LoaderImpl implements Loader {
     });
 
     const rootNodes = scene.rootNodes.map(root => {
-      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}`); }
+      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}.`); }
 
       return root.nodeIndex;
     });
@@ -237,17 +237,17 @@ export class LoaderImpl implements Loader {
   }
 
   createTextureCube (cubeImages: CubeImage[], level0Size?: number): Promise<Texture> {
-    if (cubeImages.length == 0) { throw new Error(`createTextureCube: Invalid cubeImages length ${cubeImages}`); }
+    if (cubeImages.length == 0) { throw new Error(`createTextureCube: Invalid cubeImages length ${cubeImages}.`); }
 
     const mipmaps: PImageBufferData[][] = [];
 
     cubeImages.forEach(cubeImage => {
-      if (cubeImage.length != 6) { throw new Error(`createTextureCube: cubeimage count should always be 6, ${cubeImage}`); }
+      if (cubeImage.length != 6) { throw new Error(`createTextureCube: cubeimage count should always be 6, ${cubeImage}.`); }
       //
       const imgList: PImageBufferData[] = [];
 
       cubeImage.forEach(img => {
-        if (img.imageData === undefined) { throw new Error(`createTextureCube: Invalid image data from ${img}`); }
+        if (img.imageData === undefined) { throw new Error(`createTextureCube: Invalid image data from ${img}.`); }
         //
         imgList.push({
           type: 'buffer',
@@ -312,7 +312,7 @@ export class LoaderImpl implements Loader {
 
   createDefaultSkybox (typeName: SkyboxType): Promise<ModelSkyboxOptions> {
     if (typeName !== 'NFT' && typeName !== 'FARM') {
-      throw new Error(`Invalid skybox type name ${typeName}`);
+      throw new Error(`Invalid skybox type specified: '${typeName}'. Valid types are: 'NFT', 'FARM'.`);
     }
     //
     const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
@@ -337,7 +337,7 @@ export class LoaderImpl implements Loader {
     const gltfResource = options.gltf.resource;
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
-      throw new Error('Please load resource by GLTFTools at first');
+      throw new Error('Please load the resource using GLTFTools first.');
     }
 
     this._gltfScene = gltfResource.scenes[0];
@@ -465,7 +465,7 @@ export class LoaderImpl implements Loader {
     const tex = this.getTextureManager().getTexture(matIndex, texIndex, isBaseColor);
 
     if (tex === undefined && noWarning !== true) {
-      console.warn(`Can't find texture for mat ${matIndex}, tex ${JSON.stringify(texInfo)}, basecolor ${isBaseColor}`);
+      console.warn(`Can't find texture for mat ${matIndex}, tex ${JSON.stringify(texInfo)}, basecolor ${isBaseColor}.`);
     }
 
     return tex;
@@ -503,7 +503,9 @@ export class LoaderImpl implements Loader {
   private _createItemMesh (node: GLTFNode, parentId?: string): ModelItemMesh {
     const meshIndex = node.mesh;
 
-    if (meshIndex === undefined) { throw new Error(`Invalid mesh index in node ${node}`); }
+    if (meshIndex === undefined) {
+      throw new Error(`Invalid mesh index in node ${node}.`);
+    }
 
     let skin: ModelSkinOptions | undefined;
 
@@ -821,13 +823,13 @@ class TextureManager {
   }
 
   addTexture (matIndex: number, texIndex: number, tex: Texture, isBaseColor: boolean) {
-    const index = isBaseColor ? matIndex * 100000 + texIndex : texIndex;
+    const index = isBaseColor ? (matIndex + 1) * 100000 + texIndex : texIndex;
 
     this._textureMap.set(index, tex);
   }
 
   getTexture (matIndex: number, texIndex: number, isBaseColor: boolean): Texture | undefined {
-    const index = isBaseColor ? matIndex * 100000 + texIndex : texIndex;
+    const index = isBaseColor ? (matIndex + 1) * 100000 + texIndex : texIndex;
 
     return this._textureMap.get(index);
   }
@@ -850,7 +852,7 @@ class GeometryProxy {
 
       attributes['aPos'] = this._getBufferAttrib(attrib);
     } else {
-      throw new Error('Position attribute missing');
+      throw new Error('Position attribute missing.');
     }
     if (this.hasNormal) {
       const attrib = this.normalAttrib;

@@ -8,7 +8,6 @@ import {
   spec,
   math,
   AssetManager,
-  getDefaultTemplateCanvasPool,
 } from '@galacean/effects';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 
@@ -24,7 +23,6 @@ const playerOptions: PlayerConfig = {
     willCaptureImage: true,
   },
   manualRender: true,
-  willCaptureImage: true,
 };
 
 export class TestPlayer {

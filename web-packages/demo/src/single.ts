@@ -1,6 +1,6 @@
 import { Player } from '@galacean/effects';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*ENGYTp2rE14AAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*KbBrSa8cFCwAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {

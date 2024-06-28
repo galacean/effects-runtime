@@ -4,12 +4,11 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import { EffectComponent, RendererComponent } from './components';
-import type { Component } from './components/component';
-import { ItemBehaviour } from './components/component';
+import type { Component, RendererComponent, ItemBehaviour } from './components';
+import { EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
-import { effectsClass } from './decorators';
+import { effectsClass, serialize } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type {
@@ -17,9 +16,10 @@ import type {
   HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
 } from './plugins';
 import { Transform } from './transform';
-import { removeItem, type Disposable } from './utils';
+import type { Constructor, Disposable } from './utils';
+import { removeItem } from './utils';
 
-export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | void | {};
+export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
 export type VFXItemProps =
   & spec.Item
@@ -60,10 +60,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   duration = 0;
   /**
-   * 元素当前更新归一化时间，开始时为 0，结束时为 1
-   */
-  lifetime = -1;
-  /**
    * 父元素的 id
    */
   parentId?: string;
@@ -79,10 +75,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素是否可用
    */
   ended = false;
-  /**
-   * 元素在合成中的索引
-   */
-  listIndex: number;
   /**
    * 元素名称
    */
@@ -102,6 +94,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   type: spec.ItemType = spec.ItemType.base;
   props: VFXItemProps;
 
+  @serialize()
   components: Component[] = [];
   itemBehaviours: ItemBehaviour[] = [];
   rendererComponents: RendererComponent[] = [];
@@ -112,14 +105,10 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   protected visible = true;
   /**
-   * 是否允许渲染，元素生命周期开始后为 true，结束时为 false
-   * @protected
-   */
-  protected _contentVisible = false;
-  /**
    * 元素动画的速度
    */
   private speed = 1;
+  private listIndex = 0;
 
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
@@ -177,6 +166,21 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
+   * 元素在合成中的索引
+   */
+  get renderOrder () {
+    return this.listIndex;
+  }
+  set renderOrder (value: number) {
+    if (this.listIndex !== value) {
+      this.listIndex = value;
+      for (const rendererComponent of this.rendererComponents) {
+        rendererComponent.priority = value;
+      }
+    }
+  }
+
+  /**
    * 设置元素的动画速度
    * @param speed - 速度
    */
@@ -196,7 +200,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 添加组件
    * @param classConstructor - 要添加的组件类型
    */
-  addComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T {
+  addComponent<T extends Component> (classConstructor: Constructor<T>): T {
     const newComponent = new classConstructor(this.engine);
 
     newComponent.item = this;
@@ -212,7 +216,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */
-  getComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T {
+  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
     let res;
 
     for (const com of this.components) {
@@ -231,7 +235,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param classConstructor - 要获取的组件
    * @returns 一个组件列表，包含所有符合类型的组件
    */
-  getComponents<T extends Component> (classConstructor: new (engine: Engine) => T) {
+  getComponents<T extends Component> (classConstructor: Constructor<T>) {
     const res = [];
 
     for (const com of this.components) {
@@ -505,7 +509,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-    this.listIndex = listIndex;
     //@ts-expect-error
     this.oldId = data.oldId;
 
@@ -514,21 +517,14 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     if (duration <= 0) {
-      throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
+      throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    if (data.components) {
-      for (const component of data.components) {
-        const newComponent = component as unknown as Component;
-
-        this.components.push(newComponent);
-        if (newComponent instanceof RendererComponent) {
-          this.rendererComponents.push(newComponent);
-        } else if (newComponent instanceof ItemBehaviour) {
-          this.itemBehaviours.push(newComponent);
-        }
-      }
+    for (const component of this.components) {
+      component.onAttached();
     }
+    // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
+    this.renderOrder = listIndex;
   }
 
   override toData (): void {
@@ -577,7 +573,6 @@ export class VFXItem extends EffectsObject implements Disposable {
       this.components = [];
       this._content = undefined;
       this.composition = null;
-      this._contentVisible = false;
       this.transform.setValid(false);
     }
   }
@@ -665,7 +660,7 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
 
         break;
       default:
-        throw new Error('invalid vfx item type');
+        throw new Error('Invalid vfx item type.');
     }
   }
 

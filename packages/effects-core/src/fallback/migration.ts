@@ -1,5 +1,10 @@
-import type { BaseContent, Composition, Item, JSONScene, JSONSceneLegacy } from '@galacean/effects-specification';
-import { CompositionEndBehavior, DataType, END_BEHAVIOR_FREEZE, ItemEndBehavior, ItemType } from '@galacean/effects-specification';
+import type {
+  BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
+  SpineContent,
+} from '@galacean/effects-specification';
+import {
+  CompositionEndBehavior, DataType, END_BEHAVIOR_FREEZE, ItemEndBehavior, ItemType,
+} from '@galacean/effects-specification';
 import type { TimelineAssetData } from '../plugins/cal/timeline-asset';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
@@ -51,11 +56,13 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
   const result: JSONScene = {
     ...json,
     items: [],
+    compositions: [],
     components: [],
     materials: [],
     shaders: [],
     geometries: [],
     animations: [],
+    miscs: [],
   };
 
   // image数据添加 guid
@@ -84,16 +91,10 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
   }
 
-  // 更正 spine 数据中的 images 属性
-  json.spines?.forEach(spine => {
-    for (let i = 0; i < spine.images.length; i++) {
-      //@ts-expect-error
-      const textureId = json.textures[spine.images[i]]?.id;
-
-      //@ts-expect-error
-      spine.images[i] = { id: textureId };
-    }
-  });
+  // 处理老版本数据中 bins 没有 id 的情况
+  if (json.bins) {
+    convertBinaryAsset(json.bins, result);
+  }
 
   const itemOldIdToGuidMap: Record<string, string> = {};
   const guidToItemMap: Record<string, Item> = {};
@@ -152,8 +153,16 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       composition.items[index] = { id: item.id };
     });
 
+    const compositionData: CompositionData = {
+      ...composition,
+      timelineAsset: { id: '' },
+      sceneBindings: [],
+    };
+
+    result.compositions.push(compositionData);
     // 生成时间轴数据
-    convertTimelineAsset(composition, guidToItemMap, result);
+    convertTimelineAsset(compositionData, guidToItemMap, result);
+
   }
 
   for (const item of result.items) {
@@ -230,6 +239,11 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       content.renderer.anchor = convertAnchor(renderer.anchor, renderer.particleOrigin);
     }
 
+    // 修复相机K帧缺失 asMovement 参数
+    if (item.type === ItemType.camera && item.content.positionOverLifetime && Object.keys(item.content.positionOverLifetime).length !== 0) {
+      item.content.positionOverLifetime.asMovement = true;
+    }
+
     // 动画数据转化 TODO: 动画数据移到 TimelineComponentData
     item.content.tracks = [];
     const tracks = item.content.tracks;
@@ -286,6 +300,15 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.type = 'orientation-transformer';
     }
 
+    // Spine 元素转为 guid 索引
+    if (
+      item.type === ItemType.spine
+      && json.spines
+      && json.spines.length !== 0
+    ) {
+      convertSpineData(json.spines[item.content.options.spine], item.content, result);
+    }
+
     // item 的 content 转为 component data 加入 JSONScene.components
     if (
       item.type === ItemType.sprite ||
@@ -293,17 +316,14 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.type === ItemType.mesh ||
       item.type === ItemType.skybox ||
       item.type === ItemType.light ||
-      // @ts-expect-error
-      item.type === 'camera' ||
+      item.type === 'camera' as ItemType ||
       item.type === ItemType.tree ||
       item.type === ItemType.interact ||
       item.type === ItemType.camera ||
       item.type === ItemType.text ||
       item.type === ItemType.spine ||
-      // @ts-expect-error
-      item.type === 'editor-gizmo' ||
-      // @ts-expect-error
-      item.type === 'orientation-transformer'
+      item.type === 'editor-gizmo' as ItemType ||
+      item.type === 'orientation-transformer' as ItemType
     ) {
       item.components = [];
       result.components.push(item.content);
@@ -339,18 +359,15 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
         item.content.dataType = DataType.LightComponent;
 
         break;
-      // @ts-expect-error
-      case 'camera':
+      case 'camera' as ItemType:
         item.content.dataType = DataType.CameraComponent;
 
         break;
-      // @ts-expect-error
-      case 'editor-gizmo':
+      case 'editor-gizmo' as ItemType:
         item.content.dataType = 'GizmoComponent';
 
         break;
-      // @ts-expect-error
-      case 'orientation-transformer':
+      case 'orientation-transformer' as ItemType:
         item.content.dataType = 'OrientationComponent';
 
         break;
@@ -396,7 +413,7 @@ export function version24Migration (json: JSONScene): JSONScene {
   return json;
 }
 
-export function convertParam (content: BaseContent | undefined | null) {
+export function convertParam (content?: BaseContent) {
   if (!content) {
     return;
   }
@@ -416,7 +433,7 @@ export function convertParam (content: BaseContent | undefined | null) {
   }
 }
 
-function convertTimelineAsset (composition: Composition, guidToItemMap: Record<string, Item>, jsonScene: JSONScene) {
+function convertTimelineAsset (composition: CompositionData, guidToItemMap: Record<string, Item>, jsonScene: JSONScene) {
   const sceneBindings = [];
   const trackDatas = [];
   const playableAssetDatas = [];
@@ -431,8 +448,33 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     const item = guidToItemMap[itemDataPath.id];
     const subTrackDatas = [];
 
+    const newActivationPlayableAsset = {
+      id: generateGUID(),
+      dataType: 'ActivationPlayableAsset',
+    };
+
+    playableAssetDatas.push(newActivationPlayableAsset);
+    const newActivationTrackData = {
+      id: generateGUID(),
+      dataType: 'ActivationTrack',
+      children: [],
+      clips: [
+        {
+          start: item.delay,
+          duration: item.duration,
+          endBehaviour: item.endBehavior,
+          asset: {
+            id: newActivationPlayableAsset.id,
+          },
+        },
+      ],
+    };
+
+    subTrackDatas.push({ id: newActivationTrackData.id });
+    trackDatas.push(newActivationTrackData);
+
     if (item.type !== ItemType.particle) {
-      const newPlayableAssetData = {
+      const newTransformPlayableAssetData = {
         id: generateGUID(),
         dataType: 'TransformPlayableAsset',
         //@ts-expect-error
@@ -443,15 +485,18 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
         positionOverLifetime: item.content.positionOverLifetime,
       };
 
-      playableAssetDatas.push(newPlayableAssetData);
+      playableAssetDatas.push(newTransformPlayableAssetData);
       const newTrackData = {
         id: generateGUID(),
         dataType: 'TransformTrack',
         children: [],
         clips: [
           {
+            start: item.delay,
+            duration: item.duration,
+            endBehaviour: item.endBehavior,
             asset: {
-              id: newPlayableAssetData.id,
+              id: newTransformPlayableAssetData.id,
             },
           },
         ],
@@ -462,22 +507,52 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     }
 
     if (item.type === ItemType.sprite) {
-      const newPlayableAssetData = {
+      const newSpriteColorPlayableAssetData = {
         id: generateGUID(),
         dataType: 'SpriteColorPlayableAsset',
         colorOverLifetime: item.content.colorOverLifetime,
         startColor: item.content.options.startColor,
       };
 
-      playableAssetDatas.push(newPlayableAssetData);
+      playableAssetDatas.push(newSpriteColorPlayableAssetData);
       const newTrackData = {
         id: generateGUID(),
         dataType: 'SpriteColorTrack',
         children: [],
         clips: [
           {
+            start: item.delay,
+            duration: item.duration,
+            endBehaviour: item.endBehavior,
             asset: {
-              id: newPlayableAssetData.id,
+              id: newSpriteColorPlayableAssetData.id,
+            },
+          },
+        ],
+      };
+
+      subTrackDatas.push({ id: newTrackData.id });
+      trackDatas.push(newTrackData);
+    }
+
+    if (item.type === ItemType.composition) {
+      const newSubCompositionPlayableAssetData = {
+        id: generateGUID(),
+        dataType: 'SubCompositionPlayableAsset',
+      };
+
+      playableAssetDatas.push(newSubCompositionPlayableAssetData);
+      const newTrackData = {
+        id: generateGUID(),
+        dataType: 'SubCompositionTrack',
+        children: [],
+        clips: [
+          {
+            start: item.delay,
+            duration: item.duration,
+            endBehaviour: item.endBehavior,
+            asset: {
+              id: newSubCompositionPlayableAssetData.id,
             },
           },
         ],
@@ -508,23 +583,52 @@ function convertTimelineAsset (composition: Composition, guidToItemMap: Record<s
     trackIds.push({ id: trackData.id });
   }
 
-  //@ts-expect-error
   composition.timelineAsset = { id: timelineAssetData.id };
-  //@ts-expect-error
   composition.sceneBindings = sceneBindings;
 
-  if (!jsonScene.animations) {
-    jsonScene.animations = [];
-  }
-  // @ts-expect-error
-  jsonScene.animations.push(timelineAssetData);
+  jsonScene.miscs.push(timelineAssetData);
 
   for (const trackData of trackDatas) {
     //@ts-expect-error
-    jsonScene.animations.push(trackData);
+    jsonScene.miscs.push(trackData);
   }
   for (const playableAsset of playableAssetDatas) {
     //@ts-expect-error
-    jsonScene.animations.push(playableAsset);
+    jsonScene.miscs.push(playableAsset);
   }
+}
+
+export function convertBinaryAsset (bins: BinaryFile[], jsonScene: JSONScene) {
+  //@ts-expect-error
+  jsonScene.bins = bins.map(bin => ({
+    url: bin.url,
+    'dataType': 'BinaryAsset',
+    id: generateGUID(),
+  }));
+}
+
+export function convertSpineData (resource: SpineResource, content: SpineContent, jsonScene: JSONScene) {
+  //@ts-expect-error
+  content.resource = {
+    'atlas': {
+      'bins': {
+        //@ts-expect-error
+        'id': jsonScene.bins[resource.atlas[1][0]].id,
+      },
+      'source': resource.atlas[1].slice(1),
+    },
+    'skeleton': {
+      'bins': {
+        //@ts-expect-error
+        'id': jsonScene.bins[resource.skeleton[1][0]].id,
+      },
+      'source': resource.skeleton[1].slice(1),
+    },
+    'skeletonType': resource.skeletonType,
+    'images': resource.images.map(i => ({
+      //@ts-expect-error
+      id: jsonScene.textures[i].id,
+    })),
+  };
+
 }

@@ -15,7 +15,7 @@ export class RendererComponent extends Component {
   materials: Material[] = [];
 
   @serialize()
-  protected _priority: number;
+  protected _priority = 0;
 
   @serialize()
   protected _enabled = true;
@@ -69,7 +69,7 @@ export class RendererComponent extends Component {
     this.item.rendererComponents.push(this);
   }
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     super.fromData(data);
   }
 

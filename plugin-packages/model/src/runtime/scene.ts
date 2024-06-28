@@ -230,7 +230,7 @@ export class PSceneManager {
     this.initGlobalState(opts);
 
     if (this.maxLightCount > 8) {
-      console.warn(`Too many light items: ${this.maxLightCount} light(s)`);
+      console.warn(`Too many light items: ${this.maxLightCount} light(s).`);
     }
   }
 

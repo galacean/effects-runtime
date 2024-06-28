@@ -1,7 +1,7 @@
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { GPUCapabilityDetail, SharedShaderWithSource } from '../../render';
+import type { GPUCapabilityDetail, ShaderMacros, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
 import type { Transform } from '../../transform';
@@ -26,17 +26,13 @@ export type SpriteRegionData = {
 };
 
 export let maxSpriteMeshItemCount = 8;
-export let maxSpriteTextureCount = 8;
 
 export function setSpriteMeshMaxItemCountByGPU (gpuCapability: GPUCapabilityDetail) {
-  // 8 or 16
-  maxSpriteTextureCount = Math.min(gpuCapability.maxFragmentTextures, 16);
   if (gpuCapability.maxVertexUniforms >= 256) {
     return maxSpriteMeshItemCount = 32;
   } else if (gpuCapability.maxVertexUniforms >= 128) {
     return maxSpriteMeshItemCount = 16;
   }
-  maxSpriteTextureCount = 8;
 }
 
 export function getImageItemRenderInfo (item: SpriteComponent): SpriteItemRenderInfo {
@@ -56,14 +52,13 @@ export function getImageItemRenderInfo (item: SpriteComponent): SpriteItemRender
   };
 }
 
-export function spriteMeshShaderFromFilter (level: number, options?: { count?: number, ignoreBlend?: boolean, wireframe?: boolean, env?: string }): SharedShaderWithSource {
-  const { count = 2, env = '', ignoreBlend, wireframe } = options ?? {};
-  const marcos: [key: string, val: boolean | number][] = [
-    ['MAX_ITEM_COUNT', count],
-    ['PRE_MULTIPLY_ALPHA', false],
+export function spriteMeshShaderFromFilter (
+  level: number,
+  options?: { wireframe?: boolean, env?: string },
+): SharedShaderWithSource {
+  const { env = '', wireframe } = options ?? {};
+  const macros: ShaderMacros = [
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
-    ['USE_BLEND', !ignoreBlend],
-    ['MAX_FRAG_TEX', maxSpriteTextureCount >= 16 ? 16 : 8],
   ];
   const fragment = wireframe ? itemFrameFrag : itemFrag;
   const vertex = itemVert;
@@ -72,7 +67,7 @@ export function spriteMeshShaderFromFilter (level: number, options?: { count?: n
     fragment,
     vertex,
     glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
-    marcos,
+    macros,
     shared: true,
   };
 }
@@ -84,7 +79,6 @@ export function spriteMeshShaderIdFromRenderInfo (renderInfo: SpriteItemRenderIn
 export function spriteMeshShaderFromRenderInfo (renderInfo: SpriteItemRenderInfo, count: number, level: number, env?: string): SharedShaderWithSource {
   const { wireframe } = renderInfo;
   const shader = spriteMeshShaderFromFilter(level, {
-    count,
     wireframe,
     env,
   });
@@ -100,8 +94,4 @@ export function spriteMeshShaderFromRenderInfo (renderInfo: SpriteItemRenderInfo
 // TODO: 只有单测用
 export function setMaxSpriteMeshItemCount (count: number) {
   maxSpriteMeshItemCount = count;
-}
-
-export function setSpriteMeshMaxFragmentTextures (count: number) {
-  maxSpriteTextureCount = count;
 }

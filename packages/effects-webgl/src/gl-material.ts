@@ -271,7 +271,7 @@ export class GLMaterial extends Material {
       const texture = this.textures[key];
 
       if (!isFunction(texture.initialize)) {
-        logger.error(`${JSON.stringify(texture)} is not valid Texture to initialize`);
+        logger.error(`Failed to initialize texture: ${JSON.stringify(texture)}. Ensure the texture conforms to the expected format.`);
 
         return;
       }
@@ -289,7 +289,7 @@ export class GLMaterial extends Material {
     const pipelineContext = engine.getGLPipelineContext();
 
     if (!this.shaderVariant.program) {
-      this.engine?.renderErrors.add(new Error('Shader program is not initialized'));
+      this.engine?.renderErrors.add(new Error('Shader program is not initialized.'));
 
       return;
     }

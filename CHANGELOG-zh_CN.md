@@ -8,6 +8,19 @@
 
 ---
 
+## 1.5.2
+
+`2024-06-21`
+
+- Fix: base color index problem. [#441](https://github.com/galacean/effects-runtime/pull/441) @liuxi150
+
+## 1.5.1
+
+`2024-06-05`
+
+- Fix: 增加 window 是否监听 WebGL Context Lost 事件开关。[#405](https://github.com/galacean/effects-runtime/pull/405) @liuxi150
+- Chore: 修改 resizeRule 类型。[#407](https://github.com/galacean/effects-runtime/pull/407) @RGCHN
+
 ## 1.5.0
 
 `2024-06-03`

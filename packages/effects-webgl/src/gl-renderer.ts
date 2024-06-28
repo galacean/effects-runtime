@@ -102,9 +102,11 @@ export class GLRenderer extends Renderer implements Disposable {
     const passes = frame._renderPasses;
 
     if (this.isDestroyed) {
-      return console.error('renderer is destroyed', this);
+      console.error('Renderer is destroyed, target: GLRenderer.');
+
+      return;
     }
-    frame.renderer.getShaderLibrary()!.compileAllShaders();
+    frame.renderer.getShaderLibrary()?.compileAllShaders();
     this.setFramebuffer(null);
     this.clear(frame.clearAction);
 
@@ -348,7 +350,7 @@ export class GLRenderer extends Renderer implements Disposable {
     const { gl } = this.context;
 
     if (!gl) {
-      throw new Error('Can not restore automatically because losing gl context');
+      throw new Error('Can not restore automatically because losing gl context.');
     }
     this.engine = new GLEngine(gl);
     this.engine.renderer = this;

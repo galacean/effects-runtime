@@ -38,9 +38,7 @@ export class GLVertexArrayObject implements Disposable {
     if (!vao && this.vaoExt) {
       vao = this.vaoExt.createVertexArrayOES();
     }
-    if (vao) {
-      assignInspectorName(vao, name);
-    }
+    assignInspectorName(vao, name);
 
     return vao;
   }

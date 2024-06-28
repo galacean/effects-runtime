@@ -8,15 +8,15 @@ import type {
   ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions,
   ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
-import { UnlitShaderGUID, PBRShaderGUID } from '../index';
-import { Matrix4 } from '../runtime/math';
+import {
+  Matrix4, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
+} from '../runtime';
 import { LoaderHelper } from './loader-helper';
-import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
+import { WebGLHelper, PluginHelper } from '../utility';
 import type {
   GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
   GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight,
 } from '@vvfx/resource-detection';
-import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
 
 export class LoaderECSImpl implements LoaderECS {
   private sceneOptions: LoadSceneOptions;
@@ -32,7 +32,7 @@ export class LoaderECSImpl implements LoaderECS {
   private gltfAnimations: GLTFAnimation[] = [];
   private gltfImageBasedLights: GLTFImageBasedLight[] = [];
 
-  composition: spec.Composition;
+  composition: spec.CompositionData;
   images: spec.Image[] = [];
   imageElements: HTMLImageElement[] = [];
   textures: spec.TextureDefine[] = [];
@@ -45,7 +45,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   engine: Engine;
 
-  constructor (composition?: spec.Composition) {
+  constructor (composition?: spec.CompositionData) {
     if (composition) {
       this.composition = composition;
     } else {
@@ -63,6 +63,8 @@ export class LoaderECSImpl implements LoaderECS {
           clipMode: spec.CameraClipMode.portrait,
         },
         items: [],
+        timelineAsset:{ id:generateGUID() },
+        sceneBindings:[],
       };
     }
   }
@@ -80,7 +82,7 @@ export class LoaderECSImpl implements LoaderECS {
     const gltfResource = options.gltf.resource;
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
-      throw new Error('Please load resource by GLTFTools at first');
+      throw new Error('Please load the resource using GLTFTools first.');
     }
     this.images = gltfResource.images.map(gltfImage => {
       const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
@@ -166,10 +168,8 @@ export class LoaderECSImpl implements LoaderECS {
 
     this.items.push(...gltfResource.scenes[0].vfxItemData);
     this.items.forEach(item => {
-      // @ts-expect-error
-      if (item.type === 'root') {
-        // @ts-expect-error
-        item.type = 'ECS';
+      if (item.type === 'root' as spec.ItemType) {
+        item.type = 'ECS' as spec.ItemType;
       }
     });
 
@@ -178,7 +178,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   checkMeshComponentData (mesh: ModelMeshComponentData, resource: GLTFResources): void {
     if (mesh.materials.length <= 0) {
-      throw new Error(`Submesh array is empty: ${mesh}`);
+      throw new Error(`Submesh array is empty for mesh with ID: ${mesh.id}.`);
     }
 
     let geometryData: spec.GeometryData | undefined;
@@ -190,11 +190,11 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     if (geometryData === undefined) {
-      throw new Error(`Can't find geometry data for ${mesh.geometry.id}`);
+      throw new Error(`Unable to find geometry data for mesh with ID: ${mesh.geometry.id}.`);
     }
 
     if (geometryData.subMeshes.length !== mesh.materials.length) {
-      throw new Error(`Submeshes and materials mismach: ${geometryData.subMeshes.length}, ${mesh.materials.length}`);
+      throw new Error(`Mismatch between submeshes count (${geometryData.subMeshes.length}) and materials count (${mesh.materials.length}).`);
     }
     //mesh.materials.length !=
   }
@@ -209,11 +209,11 @@ export class LoaderECSImpl implements LoaderECS {
 
       if (texId) {
         if (dataMap[texId]) {
-          console.error(`Duplicate GUID found: ${texId}, Old ${dataMap[texId]}, New ${texData}`);
+          console.error(`Duplicate GUID found: ${texId}, old ${dataMap[texId]}, new ${texData}.`);
         }
         dataMap[texId] = texData;
       } else {
-        console.error(`No GUID in texture Data: ${texData}`);
+        console.error(`No GUID in texture Data: ${texData}.`);
       }
     });
 
@@ -473,7 +473,7 @@ export class LoaderECSImpl implements LoaderECS {
         material.stringTags['RenderFace'] = spec.RenderFace.Front;
       }
     } else {
-      console.error(`Unknown shader id in material: ${material}`);
+      console.error(`Encountered unknown shader ID in material with ID: ${material.id}.`);
     }
   }
 
@@ -532,7 +532,6 @@ export class LoaderECSImpl implements LoaderECS {
     const itemIds: spec.DataPath[] = [];
 
     this.items.forEach(item => itemIds.push({ id: item.id }));
-    // @ts-expect-error
     this.composition.items = itemIds;
 
     const jsonScene: spec.JSONScene = {
@@ -554,6 +553,7 @@ export class LoaderECSImpl implements LoaderECS {
       shaders: this.shaders,
       geometries: this.geometries,
       animations: this.animations,
+      miscs:[],
     };
 
     return {
@@ -726,7 +726,7 @@ export class LoaderECSImpl implements LoaderECS {
   createTreeOptions (scene: GLTFScene): ModelTreeOptions {
     const nodeList = scene.nodes.map((node, nodeIndex) => {
       const children = node.children.map(child => {
-        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}`); }
+        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}.`); }
 
         return child.nodeIndex;
       });
@@ -735,7 +735,7 @@ export class LoaderECSImpl implements LoaderECS {
       let scale: spec.vec3 = [0, 0, 0];
 
       if (node.matrix !== undefined) {
-        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
+        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}.`); }
         const mat = Matrix4.fromArray(node.matrix);
         const transform = mat.getTransform();
 
@@ -764,7 +764,7 @@ export class LoaderECSImpl implements LoaderECS {
     });
 
     const rootNodes = scene.rootNodes.map(root => {
-      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}`); }
+      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}.`); }
 
       return root.nodeIndex;
     });
@@ -808,7 +808,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   createSkyboxComponentData (typeName: SkyboxType) {
     if (typeName !== 'NFT' && typeName !== 'FARM') {
-      throw new Error(`Invalid skybox type name ${typeName}`);
+      throw new Error(`Invalid skybox type specified: '${typeName}'. Valid types are: 'NFT', 'FARM'.`);
     }
     //
     const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
