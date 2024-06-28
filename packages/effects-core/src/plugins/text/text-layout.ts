@@ -55,45 +55,50 @@ export class TextLayout {
     this.lineHeight = lineHeight;
   }
 
-  getOffsetY (style: TextStyle) {
-    let offsetY = 0;
-    const offset = (style.fontSize + style.outlineWidth) * style.fontScale ;
+  getOffsetY (style: TextStyle, lineCount: number, lineHeight: number) {
+    let offsetResult = 0;
+    const { fontSize, outlineWidth, fontScale } = style;
+    // 计算基础偏移量
+    const baseOffset = (fontSize + outlineWidth) * fontScale;
+    // /3 计算Y轴偏移量，以匹配编辑器行为
+    const offsetY = (lineHeight - fontSize) / 3;
+    const commonCalculation = lineHeight * (lineCount - 1);
 
     switch (this.textBaseline) {
-      case 0:
-        offsetY = offset;
+      case spec.TextBaseline.top:
+        offsetResult = baseOffset + offsetY;
 
         break;
-      case 1:
-        offsetY = (this.height + offset) / 2; // fonSize;
+      case spec.TextBaseline.middle:
+        offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
 
         break;
-      case 2:
-        offsetY = this.height - offset / 2;
+      case spec.TextBaseline.bottom:
+        offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
         break;
       default:
         break;
     }
 
-    return offsetY;
+    return offsetResult;
   }
 
   getOffsetX (style: TextStyle, maxWidth: number) {
     let offsetX = 0;
 
     switch (this.textAlign) {
-      case 0:
+      case spec.TextAlignment.left:
         offsetX = style.outlineWidth * style.fontScale;
 
         break;
-      case 1:
+      case spec.TextAlignment.middle:
         offsetX = (this.width * style.fontScale - maxWidth) / 2;
 
         break;
-      case 2:
+      case spec.TextAlignment.right:
 
-        offsetX = (this.width * style.fontScale - maxWidth) ;
+        offsetX = (this.width * style.fontScale - maxWidth);
 
         break;
       default:

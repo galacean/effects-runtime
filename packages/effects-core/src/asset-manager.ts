@@ -193,10 +193,11 @@ export class AssetManager implements Disposable {
     let rawJSON: SceneType | JSONValue;
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
-    const timeInfos: string[] = [];
+    const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
     const asyncShaderCompile = gpuInstance?.detail?.asyncShaderCompile ?? false;
     const compressedTexture = gpuInstance?.detail.compressedTexture ?? 0;
+    const timeInfos: Record<string, number> = {};
     let loadTimer: number;
     let cancelLoading = false;
 
@@ -206,18 +207,21 @@ export class AssetManager implements Disposable {
         this.removeTimer(loadTimer);
         const totalTime = performance.now() - startTime;
 
-        reject(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
+        reject(`Load time out: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}`);
       }, this.timeout * 1000);
       this.timers.push(loadTimer);
     });
+
     const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
       if (!cancelLoading) {
         const st = performance.now();
 
         try {
           const result = await func();
+          const time = performance.now() - st;
 
-          timeInfos.push(`[${label}: ${(performance.now() - st).toFixed(2)}]`);
+          timeInfoMessages.push(`[${label}: ${time.toFixed(2)}]`);
+          timeInfos[label] = time;
 
           return result;
         } catch (e) {
@@ -272,7 +276,7 @@ export class AssetManager implements Disposable {
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, usedImages, compressedTexture)),
-          hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
+          hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'}Compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
 
         await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
@@ -281,6 +285,7 @@ export class AssetManager implements Disposable {
         jsonScene.compositions = this.updateSceneData(jsonScene.compositions);
 
         scene = {
+          timeInfos,
           url: url,
           renderLevel: this.options.renderLevel,
           storage: {},
@@ -298,11 +303,13 @@ export class AssetManager implements Disposable {
 
       const totalTime = performance.now() - startTime;
 
-      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfos.join(' ')}, url: ${assetUrl}`);
+      logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}`);
       window.clearTimeout(loadTimer);
       this.removeTimer(loadTimer);
       scene.totalTime = totalTime;
       scene.startTime = startTime;
+      // 各部分分段时长
+      scene.timeInfos = timeInfos;
 
       return scene;
     };

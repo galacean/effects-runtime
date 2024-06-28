@@ -30,13 +30,16 @@ interface CharInfo {
 }
 
 export class TextItem extends SpriteItem {
-
   textStyle: TextStyle;
   isDirty = true;
   canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null;
   textLayout: TextLayout;
   text: string;
+  /**
+   * 文本行数
+   */
+  private lineCount = 0;
   private engine: Engine;
   private char: string[];
 
@@ -61,8 +64,36 @@ export class TextItem extends SpriteItem {
 
     this.text = options.text;
 
+    this.lineCount = this.getLineCount(options.text, true);
     // Text
     this.mesh = new TextMesh(this.engine, this.renderInfo, vfxItem.composition) as unknown as SpriteMesh;
+  }
+
+  private getLineCount (text: string, init: boolean) {
+    const context = this.context;
+    const letterSpace = this.textLayout.letterSpace;
+    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+    const width = (this.textLayout.width + this.textStyle.fontOffset);
+    let lineCount = 1;
+    let x = 0;
+
+    for (let i = 0; i < text.length; i++) {
+      const str = text[i];
+      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
+
+      // 和浏览器行为保持一致
+      x += letterSpace;
+
+      if (((x + textMetrics) > width && i > 0) || str === '\n') {
+        lineCount++;
+        x = 0;
+      }
+      if (str !== '\n') {
+        x += textMetrics;
+      }
+    }
+
+    return lineCount;
   }
 
   /**
@@ -119,6 +150,7 @@ export class TextItem extends SpriteItem {
       return;
     }
     this.text = value;
+    this.lineCount = this.getLineCount(value, false);
     this.isDirty = true;
   }
 
@@ -313,11 +345,9 @@ export class TextItem extends SpriteItem {
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
 
     const charsInfo: CharInfo[] = [];
-    // /3 为了和编辑器行为保持一致
-    const offsetY = (lineHeight - fontSize) / 3;
 
     let x = 0;
-    let y = layout.getOffsetY(style) + offsetY;
+    let y = layout.getOffsetY(style, this.lineCount, lineHeight);
     let charsArray = [];
     let charOffsetX = [];
 

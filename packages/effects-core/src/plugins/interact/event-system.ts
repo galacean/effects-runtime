@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import type { Disposable } from '../../utils';
-import { addItem, removeItem, isSimulatorCellPhone } from '../../utils';
+import { addItem, isSimulatorCellPhone, logger, removeItem } from '../../utils';
 
 export const EVENT_TYPE_CLICK = 'click';
 export const EVENT_TYPE_TOUCH_START = 'touchstart';
@@ -51,10 +51,18 @@ export class EventSystem implements Disposable {
     let touchmove = 'mousemove';
     let touchend = 'mouseup';
     const getTouchEventValue = (event: Event, x: number, y: number, dx = 0, dy = 0): TouchEventType => {
-      const { width, height } = this.target!;
-      const ts = performance.now();
       let vx = 0;
       let vy = 0;
+      const ts = performance.now();
+
+      if (!this.target) {
+        logger.error('Trigger TouchEvent after EventSystem is disposed');
+
+        return {
+          x, y, vx: 0, vy, dx, dy, ts, width: 0, height: 0, origin: event,
+        };
+      }
+      const { width, height } = this.target;
 
       if (lastTouch) {
         const dt = ts - lastTouch.ts;
