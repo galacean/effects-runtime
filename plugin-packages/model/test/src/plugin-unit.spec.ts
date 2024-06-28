@@ -441,7 +441,7 @@ describe('渲染插件单测', function () {
     expect(cameraManager.cameraList).to.eql([cam1, cam2]);
     cameraManager.updateDefaultCamera(
       45, 0.001, 606, [30.5, 100, 77],
-      Quaternion.fromAxisAngle(new Vector3(10, -15, 33), 0.3, new Quaternion()), 0
+      Quaternion.fromAxisAngle(new Vector3(10, -15, 33), 0.3, new Quaternion()), 1, 0
     );
     const acam = cameraManager.getActiveCamera();
     expect(acam.width).to.eql(1024);
@@ -450,7 +450,7 @@ describe('渲染插件单测', function () {
     expect(acam.nearPlane).to.eql(0.001);
     expect(acam.fovy).to.eql(45);
     expect(acam.clipMode).to.eql(0);
-    expect(acam.aspect).to.eql(1024 / 768);
+    expect(acam.aspect).to.eql(1);
     acam.position.toArray().forEach((v, i) => {
       expect([30.5, 100, 77][i]).closeTo(v, 1e-5);
     });
