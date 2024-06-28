@@ -266,6 +266,11 @@ export class SpineComponent extends RendererComponent {
     }
   }
 
+  /**
+   * 设置单个动画
+   * @param animation - 动画名
+   * @param speed - 播放速度
+   */
   setAnimation (animation: string, speed?: number) {
     if (!this.skeleton || !this.state) {
       throw new Error('Set animation before skeleton create.');
@@ -289,11 +294,17 @@ export class SpineComponent extends RendererComponent {
       this.state.setAnimation(0, animation, loop);
       this.activeAnimation = [animation];
     }
-    if (!isNaN(speed as number)) {
-      this.setSpeed(speed as number);
+
+    if (speed !== undefined && !Number.isNaN(speed)) {
+      this.setSpeed(speed);
     }
   }
 
+  /**
+   * 设置播放一组动画
+   * @param animationList - 动画名列表
+   * @param speed - 播放速度
+   */
   setAnimationList (animationList: string[], speed?: number) {
     if (!this.skeleton || !this.state) {
       throw new Error('Set animation before skeleton create.');
@@ -328,6 +339,48 @@ export class SpineComponent extends RendererComponent {
       }
     }
     this.activeAnimation = animationList;
+    if (speed !== undefined && !isNaN(speed)) {
+      this.setSpeed(speed);
+    }
+  }
+
+  /**
+   * 设置播放一组动画，循环播放最后一个
+   * @param animationList - 动画名列表
+   * @param speed - 播放速度
+   * @since 1.6.0
+   */
+  setAnimationListLoopEnd (animationList: string[], speed?: number) {
+    if (!this.skeleton || !this.state) {
+      throw new Error('Set animation before skeleton create.');
+    }
+    if (!this.animationList.length) {
+      throw new Error('animationList is empty, please check your setting.');
+    }
+    if (animationList.length === 1) {
+      this.setAnimation(animationList[0], speed);
+
+      return;
+    }
+    const listener = this.state.tracks[0]?.listener;
+
+    if (listener) {
+      listener.end = () => { };
+    }
+    this.state.setEmptyAnimation(0);
+    for (let i = 0; i < animationList.length - 1; i++) {
+      const animation = animationList[i];
+      const trackEntry = this.state.setAnimation(0, animation, false);
+
+      if (i === animationList.length - 2) {
+        trackEntry.listener = {
+          complete: () => {
+            this.state.setAnimation(0, animationList[animationList.length - 1], true);
+          },
+        };
+      }
+
+    }
     if (!isNaN(speed as number)) {
       this.setSpeed(speed as number);
     }
@@ -362,7 +415,16 @@ export class SpineComponent extends RendererComponent {
   }
 
   /**
-   * 设置指定动画之间的融合时间
+   * 获取当前 Spine 中的 AnimationState
+   * @returns
+   * @since 1.6.0
+   */
+  getAnimationState (): AnimationState {
+    return this.state;
+  }
+
+  /**
+   * 设置指定动画之间的融合时间，请在 `player.play` 之前进行设置
    * @param fromName - 淡出动作
    * @param toName - 淡入动作
    * @param duration - 融合时间

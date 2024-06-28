@@ -204,7 +204,7 @@ export async function loadGLTFScene (options: LoadGLTFSceneOptions) {
       'images': [],
       'shapes': [],
       'plugins': ['model'],
-      'version': '2.1',
+      'version': '0.8.9-beta.9',
     };
   });
 }

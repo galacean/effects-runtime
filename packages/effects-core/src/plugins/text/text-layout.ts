@@ -53,28 +53,33 @@ export class TextLayout {
     this.lineHeight = lineHeight;
   }
 
-  getOffsetY (style: TextStyle) {
-    let offsetY = 0;
-    const offset = (style.fontSize + style.outlineWidth) * style.fontScale;
+  getOffsetY (style: TextStyle, lineCount: number, lineHeight: number) {
+    const { fontSize, outlineWidth, fontScale } = style;
+    // 计算基础偏移量
+    const baseOffset = (fontSize + outlineWidth) * fontScale;
+    // /3 计算Y轴偏移量，以匹配编辑器行为
+    const offsetY = (lineHeight - fontSize) / 3;
+    const commonCalculation = lineHeight * (lineCount - 1);
+    let offsetResult = 0;
 
     switch (this.textBaseline) {
       case spec.TextBaseline.top:
-        offsetY = offset;
+        offsetResult = baseOffset + offsetY;
 
         break;
       case spec.TextBaseline.middle:
-        offsetY = (this.height + offset) / 2; // fonSize;
+        offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
 
         break;
       case spec.TextBaseline.bottom:
-        offsetY = this.height - offset / 2;
+        offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
         break;
       default:
         break;
     }
 
-    return offsetY;
+    return offsetResult;
   }
 
   getOffsetX (style: TextStyle, maxWidth: number) {
