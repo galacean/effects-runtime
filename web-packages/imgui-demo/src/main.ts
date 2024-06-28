@@ -1,12 +1,12 @@
 /* eslint-disable no-multi-spaces */
 /* eslint-disable no-console */
-import { UIManager } from './core/ui-manager.js';
 import { GalaceanEffects } from './ge.js';
 import { ImGui, ImGui_Impl } from './imgui/index.js';
 import { ShowDemoWindow } from './imgui/imgui_demo.js';
 import { MemoryEditor } from './imgui/imgui_memory_editor.js';
 import './panels';
 import { imGuiIni } from './imgui/imgui-config.js';
+import { uiManager } from './core/ui-manager.js';
 
 let font: ImGui.Font | null = null;
 
@@ -17,8 +17,6 @@ let show_another_window: boolean = false;
 const clear_color: ImGui.Vec4 = new ImGui.Vec4(0.25, 0.25, 0.25, 0);
 
 const memory_editor: MemoryEditor = new MemoryEditor();
-
-export const uiManager = new UIManager();
 
 memory_editor.Open = false;
 
@@ -134,6 +132,7 @@ async function _init (): Promise<void> {
     ImGui_Impl.Init(null);
   }
 
+  uiManager.createWindows();
   await GalaceanEffects.initialize();
 
   StartUpImage();

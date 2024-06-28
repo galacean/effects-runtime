@@ -6,10 +6,13 @@ import { editorWindowStore, menuItemStore } from './decorators';
 
 export class UIManager {
   private static panels: EditorWindow[] = [];
-  private editor: Editor = new Editor();
+  editor: Editor = new Editor();
   private menuNodes: MenuNode[] = [];
 
   constructor () {
+  }
+
+  createWindows () {
     for (const path of Object.keys(menuItemStore)) {
       this.addMenuItem(path, menuItemStore[path]);
     }
@@ -122,3 +125,5 @@ export class UIManager {
     currentMenuNode.addMenuNode(newMenuItem);
   }
 }
+
+export const uiManager = new UIManager();
