@@ -16,9 +16,10 @@ import type {
   HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
 } from './plugins';
 import { Transform } from './transform';
-import { removeItem, type Disposable } from './utils';
+import type { Constructor, Disposable } from './utils';
+import { removeItem } from './utils';
 
-export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | void | {};
+export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
 export type VFXItemProps =
   & spec.Item
@@ -199,7 +200,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 添加组件
    * @param classConstructor - 要添加的组件类型
    */
-  addComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T {
+  addComponent<T extends Component> (classConstructor: Constructor<T>): T {
     const newComponent = new classConstructor(this.engine);
 
     newComponent.item = this;
@@ -215,7 +216,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */
-  getComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T {
+  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
     let res;
 
     for (const com of this.components) {
@@ -234,7 +235,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param classConstructor - 要获取的组件
    * @returns 一个组件列表，包含所有符合类型的组件
    */
-  getComponents<T extends Component> (classConstructor: new (engine: Engine) => T) {
+  getComponents<T extends Component> (classConstructor: Constructor<T>) {
     const res = [];
 
     for (const com of this.components) {
@@ -516,7 +517,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     if (duration <= 0) {
-      throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
+      throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
     for (const component of this.components) {
@@ -659,7 +660,7 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
 
         break;
       default:
-        throw new Error('invalid vfx item type');
+        throw new Error('Invalid vfx item type.');
     }
   }
 

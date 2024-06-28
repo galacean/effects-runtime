@@ -144,7 +144,7 @@ export class RenderTargetHandle implements Disposable {
         }
       );
     } else {
-      //throw new Error('color attachment must use texture');
+      //throw new Error('Color attachment must use texture.');
     }
   }
 

@@ -22,7 +22,7 @@ registerPlugin<void>('spine', class SpineLoader extends AbstractPlugin { }, VFXI
 
 export const version = __VERSION__;
 
-logger.info('plugin spine version: ' + version);
+logger.info(`Plugin spine version: ${version}.`);
 
 if (version !== EFFECTS.version) {
   console.error(

@@ -268,10 +268,10 @@ export class SpineComponent extends RendererComponent {
 
   setAnimation (animation: string, speed?: number) {
     if (!this.skeleton || !this.state) {
-      throw new Error('Set animation before skeleton create');
+      throw new Error('Set animation before skeleton create.');
     }
     if (!this.animationList.length) {
-      throw new Error('animationList is empty, check your spine file');
+      throw new Error('animationList is empty, check your spine file.');
     }
     const loop = this.item.endBehavior === spec.ItemEndBehavior.loop;
     const listener = this.state.tracks[0]?.listener;
@@ -281,7 +281,7 @@ export class SpineComponent extends RendererComponent {
     }
     this.state.setEmptyAnimation(0);
     if (!this.animationList.includes(animation)) {
-      console.warn(`animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}`);
+      console.warn(`Animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}.`);
 
       this.state.setAnimation(0, this.animationList[0], loop);
       this.activeAnimation = [this.animationList[0]];
@@ -296,10 +296,10 @@ export class SpineComponent extends RendererComponent {
 
   setAnimationList (animationList: string[], speed?: number) {
     if (!this.skeleton || !this.state) {
-      throw new Error('Set animation before skeleton create');
+      throw new Error('Set animation before skeleton create.');
     }
     if (!this.animationList.length) {
-      throw new Error('animationList is empty, please check your setting');
+      throw new Error('animationList is empty, please check your setting.');
     }
     if (animationList.length === 1) {
       this.setAnimation(animationList[0], speed);
@@ -404,10 +404,10 @@ export class SpineComponent extends RendererComponent {
    */
   setSkin (skin: string) {
     if (!this.skeleton) {
-      throw new Error('Set skin before skeleton create');
+      throw new Error('Set skin before skeleton create.');
     }
     if (!skin || (skin !== 'default' && !this.skinList.includes(skin))) {
-      throw new Error(`skin ${skin} not exists in skinList: ${this.skinList}`);
+      throw new Error(`skin ${skin} not exists in skinList: ${this.skinList}.`);
     }
     this.skeleton.setSkinByName(skin);
     this.skeleton.setToSetupPose();

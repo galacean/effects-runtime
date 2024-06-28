@@ -655,10 +655,10 @@ class ModelAnimationClip extends AnimationClip {
 
           setProperty(component, properties, value);
         } else {
-          console.error('Can\'t find mesh component');
+          console.error('Can\'t find mesh component.');
         }
       } else {
-        console.warn(`Ignore curve: className ${curve.className}`);
+        console.warn(`Ignore curve: className ${curve.className}.`);
       }
     }
   }
@@ -690,7 +690,7 @@ class ModelAnimationClip extends AnimationClip {
         }
       }
       if (!findTag) {
-        throw new Error(`Can't find path in tree ${rootItem.id}, ${path}`);
+        throw new Error(`Can't find path in tree ${rootItem.id}, ${path}.`);
       }
     }
 
@@ -708,7 +708,7 @@ function setProperty<T> (obj: Object, properties: string[], value: T) {
     const propName = properties[i];
 
     if (!(propName in current) || typeof current[propName] !== 'object') {
-      console.error(`Invalid properties ${properties}`);
+      console.error(`Invalid properties ${properties}.`);
 
       return;
     }

@@ -41,7 +41,7 @@ export async function combineImageTemplate (
   }
 
   if (!image) {
-    throw new Error('image not provided.');
+    throw new Error('Image not provided.');
   }
 
   if (!template) {

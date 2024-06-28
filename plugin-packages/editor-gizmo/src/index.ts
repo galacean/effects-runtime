@@ -17,7 +17,7 @@ export {
 
 export const version = __VERSION__;
 
-logger.info('plugin editor gizmo version: ' + version);
+logger.info(`Plugin editor gizmo version: ${version}.`);
 
 if (version !== EFFECTS.version) {
   console.error(

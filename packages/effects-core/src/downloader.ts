@@ -162,7 +162,7 @@ export async function loadImage (
 
   // 2. 非法类型
   if (!url) {
-    throw new Error(`Invalid url type: ${JSON.stringify(source)}`);
+    throw new Error(`Invalid url type: ${JSON.stringify(source)}.`);
   }
 
   return new Promise<HTMLImageElement>((resolve, reject) => {

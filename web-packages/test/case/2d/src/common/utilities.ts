@@ -8,7 +8,6 @@ import {
   spec,
   math,
   AssetManager,
-  getDefaultTemplateCanvasPool,
 } from '@galacean/effects';
 
 const { Vector3, Matrix4 } = math;
@@ -23,7 +22,6 @@ const playerOptions: PlayerConfig = {
     willCaptureImage: true,
   },
   manualRender: true,
-  willCaptureImage: true,
 };
 
 export class TestPlayer {

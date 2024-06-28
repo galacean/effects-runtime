@@ -53,7 +53,7 @@ async function fetchPullRequest(pr) {
   try {
     response = await new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new Error(`Fetch timeout of ${timeout}ms exceeded`));
+        reject(new Error(`Fetch timeout of ${timeout}ms exceeded.`));
       }, timeout);
 
       fetch(`https://github.com/galacean/effects-runtime/pull/${pr}`)

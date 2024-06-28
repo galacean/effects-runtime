@@ -83,7 +83,7 @@ export async function serializeTextures (
 
       filesPending.push(job());
     } else {
-      throw new Error(`tex ${i} image should be HTMLImage or HTMLCanvas`);
+      throw new Error(`tex ${i} image should be HTMLImage or HTMLCanvas.`);
     }
   }
 
