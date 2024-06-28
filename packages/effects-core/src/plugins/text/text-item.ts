@@ -30,7 +30,6 @@ interface CharInfo {
 }
 
 export class TextItem extends SpriteItem {
-
   textStyle: TextStyle;
   isDirty = true;
   canvas: HTMLCanvasElement;
@@ -66,23 +65,21 @@ export class TextItem extends SpriteItem {
     this.text = options.text;
 
     this.lineCount = this.getLineCount(options.text, true);
-
     // Text
     this.mesh = new TextMesh(this.engine, this.renderInfo, vfxItem.composition) as unknown as SpriteMesh;
   }
 
   private getLineCount (text: string, init: boolean) {
-    let lineCount = 1;
     const context = this.context;
     const letterSpace = this.textLayout.letterSpace;
     const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
     const width = (this.textLayout.width + this.textStyle.fontOffset);
+    let lineCount = 1;
     let x = 0;
 
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-
-      const textMetrics = context!.measureText(str).width * fontScale;
+      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
 
       // 和浏览器行为保持一致
       x += letterSpace;
@@ -92,7 +89,6 @@ export class TextItem extends SpriteItem {
         x = 0;
       }
       if (str !== '\n') {
-
         x += textMetrics;
       }
     }
