@@ -9,7 +9,9 @@ const speed = 1;
 const inspireList = new InspireList();
 const renderFramework = inspireList.getFramework();
 const playerOptions = {
-  willCaptureImage: true,
+  renderOptions: {
+    willCaptureImage: true,
+  },
   pixelRatio: 2,
   interactive: true,
   env: 'editor',

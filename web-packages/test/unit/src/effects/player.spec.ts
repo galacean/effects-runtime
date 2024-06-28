@@ -236,7 +236,7 @@ describe('create by gl context', function () {
 
       player2.dispose();
     } catch (e) {
-      expect(e.message).to.equal('Initialize player with different webgl version: old=webgl2, new=webgl');
+      expect(e.message).to.equal('Create player with different WebGL version: old=webgl2, new=webgl');
     }
     player1.dispose();
     canvas1.remove();

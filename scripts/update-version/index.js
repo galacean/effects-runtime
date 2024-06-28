@@ -33,6 +33,6 @@ const { error } = require('./logger');
 
     await Promise.all(jobs);
   } catch (e) {
-    error(`Read or write package.json file with some error: ${e.message}`);
+    error(`Read or write package.json file with some error: ${e.message}.`);
   }
 })();

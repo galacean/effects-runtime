@@ -11,10 +11,10 @@ export class AlipayDowngradePlugin extends AbstractPlugin {
       const downgradeDecision = checkDowngradeResult(downgradeResult);
 
       if (downgradeDecision.downgrade) {
-        throw new Error(`downgraded, reason: ${downgradeDecision.reason}`);
+        throw new Error(`Downgraded, reason: ${downgradeDecision.reason}.`);
       }
     } else {
-      console.warn('No downgrade result in pluginData of SceneLoadOptions');
+      console.warn('No downgrade result in pluginData of SceneLoadOptions.');
     }
 
     if (!options.renderLevel) {

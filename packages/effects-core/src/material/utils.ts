@@ -135,7 +135,7 @@ export function setBlendMode (material: Material, blendMode?: number) {
 
       break;
     default:
-      console.warn(`blendMode ${blendMode} not in specification, please set blend params separately`);
+      console.warn(`BlendMode ${blendMode} not in specification, please set blend params separately.`);
   }
 }
 
@@ -176,6 +176,6 @@ export function setMaskMode (material: Material, maskMode: spec.MaskMode) {
 
       break;
     default:
-      console.warn(`maskMode ${maskMode} not in specification, please set stencil params seperately`);
+      console.warn(`MaskMode ${maskMode} not in specification, please set stencil params seperately.`);
   }
 }

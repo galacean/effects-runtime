@@ -93,7 +93,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
         const downgradeCallback = (result: any) => {
           const totalTime = performance.now() - now;
 
-          console.info(`downgrade time: ${totalTime}ms`);
+          console.info(`Downgrade time: ${totalTime}ms.`);
           resolve({ bizId, systemInfo, downgradeResult: result, totalTime });
         };
 
@@ -315,7 +315,7 @@ const internalPaused = Symbol('@@_inter_pause');
 
 function pauseAllActivePlayers (e: Event) {
   if (e.target === document) {
-    logger.info('Auto pause all players with data offloaded');
+    logger.info('Auto pause all players with data offloaded.');
     const players = getActivePlayers();
 
     players.forEach(player => {
@@ -330,7 +330,7 @@ function pauseAllActivePlayers (e: Event) {
 
 function resumePausedPlayers (e: Event) {
   if (e.target === document) {
-    logger.info('auto resume all players');
+    logger.info('Auto resume all players.');
     const players = getActivePlayers();
 
     players.forEach(player => {

@@ -63,7 +63,7 @@ export function createShape (shapeOptions?: spec.ParticleShape): Shape {
   const Ctrl = map[type];
 
   if (!Ctrl) {
-    throw Error('invalid shape:' + type);
+    throw new Error(`Invalid shape: ${type}.`);
   }
   const ctrl = new Ctrl(options);
 

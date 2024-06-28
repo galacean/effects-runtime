@@ -76,7 +76,7 @@ export class PSkin extends PObject {
 
     if (matList !== undefined && matList.length > 0) {
       if (matList.length % 16 !== 0 || matList.length !== this.jointItem.length * 16) {
-        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointItem.length}`);
+        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointItem.length}.`);
       }
 
       const matrixCount = matList.length / 16;
@@ -116,7 +116,7 @@ export class PSkin extends PObject {
       });
     } else {
       this.animationMatrices = this.inverseBindMatrices;
-      console.error('Some error occured, replace skin animation matrices by invert bind matrices');
+      console.error('Some error occured, replace skin animation matrices by invert bind matrices.');
     }
   }
 
@@ -188,7 +188,7 @@ export class PSkin extends PObject {
       } else if (detail.halfFloatTexture) {
         return TextureDataMode.half_float;
       } else {
-        throw new Error(`Too many joint count ${jointCount}, half float texture not support`);
+        throw new Error(`Too many joint count ${jointCount}, half float texture not support.`);
       }
     } else {
       return TextureDataMode.none;
@@ -204,7 +204,7 @@ export class PSkin extends PObject {
       const node = name2Item[boneName];
 
       if (!node) {
-        throw new Error(`Can't find node of bone name ${boneName}`);
+        throw new Error(`Can't find node of bone name ${boneName}.`);
       }
       jointItems.push(node);
     });
@@ -306,25 +306,25 @@ export class PMorph extends PObject {
      */
 
     if (positionCount > 0 && positionCount != this.morphWeightsLength) {
-      console.error(`Position morph count mismatch: ${this.morphWeightsLength}, ${positionCount}`);
+      console.error(`Position morph count mismatch: ${this.morphWeightsLength}, ${positionCount}.`);
 
       return false;
     }
 
     if (normalCount > 0 && normalCount != this.morphWeightsLength) {
-      console.error(`Normal morph count mismatch: ${this.morphWeightsLength}, ${normalCount}`);
+      console.error(`Normal morph count mismatch: ${this.morphWeightsLength}, ${normalCount}.`);
 
       return false;
     }
 
     if (tangentCount > 0 && tangentCount != this.morphWeightsLength) {
-      console.error(`Tangent morph count mismatch: ${this.morphWeightsLength}, ${tangentCount}`);
+      console.error(`Tangent morph count mismatch: ${this.morphWeightsLength}, ${tangentCount}.`);
 
       return false;
     }
 
     if (this.morphWeightsLength > 5) {
-      console.error(`Tangent morph count should not greater than 5, current ${this.morphWeightsLength}`);
+      console.error(`Tangent morph count should not greater than 5, current ${this.morphWeightsLength}.`);
 
       return false;
     }
@@ -352,7 +352,7 @@ export class PMorph extends PObject {
 
   updateWeights (weights: number[]) {
     if (weights.length != this.morphWeightsArray.length) {
-      console.error(`Length of morph weights mismatch: input ${weights.length}, internel ${this.morphWeightsArray.length}`);
+      console.error(`Length of morph weights mismatch: input ${weights.length}, internel ${this.morphWeightsArray.length}.`);
 
       return;
     }
@@ -524,17 +524,17 @@ export class PAnimTrack {
       this.component = this.dataArray.length / this.timeArray.length;
       // special checker for weights animation
       if (this.component <= 0) {
-        console.error(`Invalid weights component: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+        console.error(`Invalid weights component: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
       } else if (this.timeArray.length * this.component != this.dataArray.length) {
-        console.error(`Invalid weights array length: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+        console.error(`Invalid weights array length: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
       }
     } else {
       // should never happened
-      console.error(`Invalid path status: ${path}`);
+      console.error(`Invalid path status: ${path}.`);
     }
 
     if (this.timeArray.length * this.component > this.dataArray.length) {
-      throw new Error(`Data length mismatch: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+      throw new Error(`Data length mismatch: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
     }
 
     if (interpolation === 'LINEAR') {

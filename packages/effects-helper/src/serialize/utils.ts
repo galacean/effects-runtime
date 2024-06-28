@@ -14,7 +14,7 @@ export async function loadMipmaps (
         return getImageFileContent(imageLike);
       }
 
-      return Promise.reject(new Error('Invalid image format'));
+      return Promise.reject(new Error('Invalid image format.'));
     })
   ));
   const newMipmaps = await Promise.all(jobs);
@@ -57,7 +57,7 @@ export async function getImageFileContent (image: HTMLImageElement | ImageBitmap
         if (blob) {
           resolve(blob.arrayBuffer());
         } else {
-          reject(new Error('no canvas blob'));
+          reject(new Error('Failed to create a blob from the canvas. This may occur if the canvas is empty or not properly configured.'));
         }
       },
       'image/png',
@@ -145,7 +145,7 @@ export function concatArrayBuffers (
     const buffer = buffers[content[0]];
 
     if (!buffer) {
-      throw new Error(`buffer index ${content[0]} not found`);
+      throw new Error(`Buffer index ${content[0]} not found.`);
     }
     const originStart = content[1] || 0;
     const byteLength = content[2] || (buffer.byteLength - originStart);

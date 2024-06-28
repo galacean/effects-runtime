@@ -346,19 +346,19 @@ export function buildEasingCurve (leftKeyframe: spec.BezierKeyframeValue, rightK
   }
 
   if (x1 < 0) {
-    console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
+    console.error('Invalid bezier points, x1 < 0', p0, p1, p2, p3);
     x1 = 0;
   }
   if (x2 < 0) {
-    console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
+    console.error('Invalid bezier points, x2 < 0', p0, p1, p2, p3);
     x2 = 0;
   }
   if (x1 > 1) {
-    console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
+    console.error('Invalid bezier points, x1 >= 1', p0, p1, p2, p3);
     x1 = 1;
   }
   if (x2 > 1) {
-    console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
+    console.error('Invalid bezier points, x2 >= 1', p0, p1, p2, p3);
     x2 = 1;
   }
 

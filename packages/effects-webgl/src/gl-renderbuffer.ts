@@ -31,7 +31,7 @@ export class GLRenderbuffer extends Renderbuffer {
 
   setSize (width: number, height: number) {
     if (!this.initialized) {
-      logger.error('Can\'t set size for uninitialized render buffer');
+      logger.error('Can\'t set size for uninitialized render buffer.');
 
       return;
     }
@@ -43,7 +43,7 @@ export class GLRenderbuffer extends Renderbuffer {
       if (width && height) {
         gl.renderbufferStorage(gl.RENDERBUFFER, this.format, this.size[0] = width, this.size[1] = height);
       } else {
-        logger.error(`Invalid render buffer size: ${width}x${height}`);
+        logger.error(`Invalid render buffer size: ${width}x${height}.`);
       }
     }
   }

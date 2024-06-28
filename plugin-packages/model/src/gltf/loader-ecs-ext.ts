@@ -12,7 +12,7 @@ export class LoaderECSEx extends LoaderECSImpl {
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
       if (typeof gltfResource === 'string') {
-        console.info(`Load url: ${gltfResource}`);
+        console.info(`Load url: ${gltfResource}.`);
       }
 
       const gltfResult = await GLTFTools.loadGLTF(gltfResource);

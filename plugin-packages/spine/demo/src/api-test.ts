@@ -121,7 +121,7 @@ function loadFile (fileName: string) {
     skeletonData = data;
     addCameraEvent();
   }).catch(e => {
-    console.error(`loadFile error: ${e}`);
+    console.error(`Load file error: ${e}.`);
   });
 }
 
