@@ -191,13 +191,14 @@ export class AssetManager implements Disposable {
           hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'} compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
 
-        for (let i = 0; i < images.length; i++) {
-          // FIXME: 2024.05.29 如果 renderer 为空，这里会抛异常
-          const imageAsset = new ImageAsset(renderer!.engine);
+        if (renderer) {
+          for (let i = 0; i < images.length; i++) {
+            const imageAsset = new ImageAsset(renderer.engine);
 
-          imageAsset.data = loadedImages[i];
-          imageAsset.setInstanceId(images[i].id);
-          renderer?.engine.addInstance(imageAsset);
+            imageAsset.data = loadedImages[i];
+            imageAsset.setInstanceId(images[i].id);
+            renderer.engine.addInstance(imageAsset);
+          }
         }
 
         await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
