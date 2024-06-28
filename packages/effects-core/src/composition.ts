@@ -1,5 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import type { Ray } from '@galacean/effects-math/es/core/index';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { SceneType } from './asset-manager';
 import type { Scene } from './scene';
 import type { Disposable, LostHandler } from './utils';
@@ -23,6 +24,7 @@ export interface CompositionStatistic {
   loadTime: number,
   loadStart: number,
   firstFrameTime: number,
+  precompileTime: number,
 }
 
 export interface MessageItem {
@@ -30,6 +32,13 @@ export interface MessageItem {
   name: string,
   phrase: number,
   compositionId: number,
+}
+
+export interface CompItemClickedData {
+  name: string,
+  id: string,
+  hitPositions: Vector3[],
+  position: Vector3,
 }
 
 /**
@@ -46,6 +55,7 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   renderer: Renderer,
   onPlayerPause?: (item: VFXItem<any>) => void,
+  onItemClicked?: (item: VFXItem<any>) => void,
   onMessageItem?: (item: MessageItem) => void,
   onEnd?: (composition: Composition) => void,
   event?: EventSystem,
@@ -98,6 +108,11 @@ export class Composition implements Disposable, LostHandler {
    */
   keepResource: boolean;
   /**
+   * 合成内的元素否允许点击、拖拽交互
+   * @since 1.6.0
+   */
+  interactive: boolean;
+  /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
    * @internal
    */
@@ -110,6 +125,14 @@ export class Composition implements Disposable, LostHandler {
    * 合成中消息元素创建/销毁时触发的回调
    */
   onMessageItem?: (item: MessageItem) => void;
+  /**
+   * 合成中元素点击时触发的回调
+   * 注意：此接口随时可能下线，请务使用！
+   * @since 1.6.0
+   * @ignore
+   * @deprecated
+   */
+  onItemClicked?: (data: CompItemClickedData) => void;
   /**
    * 合成id
    */
@@ -239,7 +262,7 @@ export class Composition implements Disposable, LostHandler {
     this.renderer = renderer;
     this.texInfo = imageUsage ?? {};
     this.event = event;
-    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0 };
+    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
     this.reusable = reusable;
     this.speed = speed;
     this.renderLevel = renderLevel;
@@ -254,6 +277,7 @@ export class Composition implements Disposable, LostHandler {
     });
     this.url = scene.url;
     this.assigned = true;
+    this.interactive = true;
     this.onPlayerPause = onPlayerPause;
     this.onMessageItem = onMessageItem;
     this.onEnd = onEnd;
@@ -648,7 +672,7 @@ export class Composition implements Disposable, LostHandler {
    * @param options - 最大求交数和求交时的回调
    */
   hitTest (x: number, y: number, force?: boolean, options?: CompositionHitTestOptions): Region[] {
-    if (this.isDestroyed) {
+    if (this.isDestroyed || !this.interactive) {
       return [];
     }
     const regions: Region[] = [];

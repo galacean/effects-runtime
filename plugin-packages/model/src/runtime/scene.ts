@@ -396,12 +396,19 @@ export class PSceneManager {
       }
     });
 
-    // 重新赋值渲染优先级
+    let prePriority = -99999;
+
     for (let i = 0; i < meshList.length; i++) {
       const mesh = meshList[i];
       const priority = priorityList[i];
 
-      mesh.priority = priority;
+      if (prePriority < priority) {
+        prePriority = priority;
+        mesh.priority = priority;
+      } else {
+        prePriority += 0.1;
+        mesh.priority = prePriority;
+      }
     }
   }
 
