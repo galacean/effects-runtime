@@ -42,7 +42,7 @@ export namespace StandardShaderSource {
     if (isWebGL2) {
       return '#version 300 es\n' + source;
     } else {
-      return '#version 100\n' + source;
+      return source;
     }
   }
 
@@ -57,6 +57,6 @@ export namespace StandardShaderSource {
       return '#version 300 es\n' + source;
     }
 
-    return '#version 100\n' + source;
+    return source;
   }
 }
