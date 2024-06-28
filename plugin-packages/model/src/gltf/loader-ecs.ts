@@ -33,6 +33,7 @@ export class LoaderECSImpl implements LoaderECS {
   private gltfImageBasedLights: GLTFImageBasedLight[] = [];
 
   composition: spec.CompositionData;
+  timelineAssetId: string = '';
   images: spec.Image[] = [];
   imageElements: HTMLImageElement[] = [];
   textures: spec.TextureDefine[] = [];
@@ -49,6 +50,7 @@ export class LoaderECSImpl implements LoaderECS {
     if (composition) {
       this.composition = composition;
     } else {
+      this.timelineAssetId = generateGUID();
       this.composition = {
         id: '1',
         name: 'test1',
@@ -63,7 +65,7 @@ export class LoaderECSImpl implements LoaderECS {
           clipMode: spec.CameraClipMode.portrait,
         },
         items: [],
-        timelineAsset:{ id:generateGUID() },
+        timelineAsset:{ id: this.timelineAssetId },
         sceneBindings:[],
       };
     }
@@ -553,7 +555,12 @@ export class LoaderECSImpl implements LoaderECS {
       shaders: this.shaders,
       geometries: this.geometries,
       animations: this.animations,
-      miscs:[],
+      miscs:[
+        {
+          id: this.timelineAssetId,
+          dataType: spec.DataType.TimelineAsset,
+        },
+      ],
     };
 
     return {

@@ -24,7 +24,7 @@ let rotationFocusBegin = false;
 
 let playScene;
 
-let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
 
 async function getCurrentScene () {
   const duration = 9999;
@@ -41,7 +41,7 @@ async function getCurrentScene () {
       renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
-      playAnimation: -1,
+      playAnimation: 0,
     },
   });
 
@@ -61,7 +61,7 @@ async function getCurrentScene () {
     name: 'extra-camera',
     duration: duration,
     endBehavior: spec.ItemEndBehavior.loop,
-    position: [0, 0.023889441043138504, 0.3289903179961397],
+    position: [0, 0, 8],
     rotation: [0, 0, 0],
   });
 
