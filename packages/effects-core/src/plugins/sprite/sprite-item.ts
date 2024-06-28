@@ -91,7 +91,11 @@ export class SpriteColorPlayable extends Playable {
 
     if (!this.spriteMaterial) {
       this.spriteMaterial = boundObject.getComponent(SpriteComponent).material;
-      this.startColor = this.spriteMaterial.getVector4('_Color')!.toArray();
+      const startColor = this.spriteMaterial.getVector4('_Color');
+
+      if (startColor) {
+        this.startColor = startColor.toArray();
+      }
     }
 
     let colorInc = vecFill(tempColor, 1);
