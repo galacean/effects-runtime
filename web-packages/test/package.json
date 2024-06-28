@@ -9,6 +9,6 @@
     "@galacean/effects": "workspace:*",
     "@galacean/effects-helper": "workspace:*",
     "@galacean/effects-threejs": "workspace:*",
-    "@vvfx/resource-detection": "0.6.0-alpha.8"
+    "@vvfx/resource-detection": "0.6.0-alpha.9"
   }
 }
