@@ -129,6 +129,7 @@ export class PMesh extends PEntity {
   override addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
     if (this.visible) {
       this.primitives.forEach(prim => {
+        prim.effectsMesh.worldMatrix = this.transform.getMatrix();
         renderObjectSet.add(prim.effectsMesh);
       });
 
