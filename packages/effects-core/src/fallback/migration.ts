@@ -511,7 +511,6 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
         id: generateGUID(),
         dataType: 'SpriteColorPlayableAsset',
         colorOverLifetime: item.content.colorOverLifetime,
-        startColor: item.content.options.startColor,
       };
 
       playableAssetDatas.push(newSpriteColorPlayableAssetData);

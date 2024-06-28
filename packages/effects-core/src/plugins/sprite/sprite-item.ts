@@ -91,6 +91,7 @@ export class SpriteColorPlayable extends Playable {
 
     if (!this.spriteMaterial) {
       this.spriteMaterial = boundObject.getComponent(SpriteComponent).material;
+      this.startColor = this.spriteMaterial.getVector4('_Color')!.toArray();
     }
 
     let colorInc = vecFill(tempColor, 1);
@@ -125,7 +126,6 @@ export class SpriteColorPlayable extends Playable {
         this.colorOverLifetime = colorStopsFromGradient(colorOverLifetime.color[1]);
       }
     }
-    this.startColor = clipData.startColor || [1, 1, 1, 1];
 
     return this;
   }
@@ -150,7 +150,6 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
 
 export interface SpriteColorPlayableAssetData extends spec.EffectsObjectData {
   colorOverLifetime?: spec.ColorOverLifetime,
-  startColor?: spec.RGBAColorValue,
 }
 
 @effectsClass(spec.DataType.SpriteComponent)
