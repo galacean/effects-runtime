@@ -1,7 +1,8 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, VFXItem, math, SceneLoadType,
-  SceneType, EffectsObject,
+  SceneType, EffectsObject } from '@galacean/effects-core';
+import { EffectEventName, EventEmitter,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
@@ -89,18 +90,22 @@ export interface PlayerConfig {
   notifyTouch?: boolean,
   /**
    * 当 WebGL context lost 时候发出的回调，这个时候播放器已经自动被销毁，业务需要做兜底逻辑
+   * @deprecated 2.0.0
    */
   onWebGLContextLost?: (event: Event) => void,
   /**
    * 当 WebGL context restore 时候发出的回调，这个时候播放器已经自动恢复，业务可视情况做逻辑处理
+   * @deprecated 2.0.0
    */
   onWebGLContextRestored?: () => void,
   /**
    * 播放器被元素暂停的回调
+   * @deprecated 2.0.0
    */
   onPausedByItem?: (data: { name: string, player: Player }) => void,
   /**
    * 交互元素被点击的回调
+   * @deprecated 2.0.0
    */
   onItemClicked?: (data: ItemClickedData) => void,
   /**
@@ -131,7 +136,7 @@ let seed = 1;
 /**
  * Galacean Effects 播放器
  */
-export class Player implements Disposable, LostHandler, RestoreHandler {
+export class Player extends EventEmitter implements Disposable, LostHandler, RestoreHandler {
   readonly env: string;
   readonly pixelRatio: number;
   readonly canvas: HTMLCanvasElement;
@@ -178,6 +183,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    * @param config
    */
   constructor (config: PlayerConfig) {
+    super();
     const {
       container, canvas, fps, name, pixelRatio, manualRender, reportGPUTime,
       onMessageItem, onPausedByItem, onItemClicked, onPlayableUpdate, onRenderError,
@@ -264,7 +270,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.event = new EventSystem(this.canvas, !!notifyTouch);
     this.event.bindListeners();
     this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
-    this.interactive = interactive;
+    this.interactive = interactive ?? false;
 
     this.resize();
     setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
@@ -808,6 +814,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.ticker?.pause();
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
+    this.emit(EffectEventName.WEBGL_CONTEXT_LOST, e);
+    // TODO: 是否需要废弃
     this.handleWebGLContextLost?.(e);
     broadcastPlayerEvent(this, false);
   };
@@ -843,6 +851,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
       return newComposition;
     }));
+    this.emit(EffectEventName.WEBGL_CONTEXT_RESTORED);
+    // TODO: 是否需要废弃
     this.handleWebGLContextRestored?.();
     this.ticker?.resume();
   };
@@ -929,6 +939,12 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           const behavior = regions[i].behavior || spec.InteractBehavior.NOTIFY;
 
           if (behavior === spec.InteractBehavior.NOTIFY) {
+            this.emit(EffectEventName.ITEM_CLICK, {
+              ...regions[i],
+              composition: composition.name,
+              player: this,
+            });
+            // TODO: 废除 handleItemClicked
             this.handleItemClicked?.({
               ...regions[i],
               composition: composition.name,

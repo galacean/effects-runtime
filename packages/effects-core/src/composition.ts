@@ -16,6 +16,7 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
+import { EffectEventName, EventEmitter } from './event-emitter';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -57,7 +58,7 @@ export interface CompositionProps {
  * 合成中包含了相关的 Item 元素，支持对 Item 元素的创建、更新和销毁。
  * 也负责 Item 相关的动画播放控制，和持有渲染帧数据。
  */
-export class Composition implements Disposable, LostHandler {
+export class Composition extends EventEmitter implements Disposable, LostHandler {
   renderer: Renderer;
   /**
    * 当前帧的渲染数据对象
@@ -204,6 +205,7 @@ export class Composition implements Disposable, LostHandler {
     props: CompositionProps,
     scene: Scene,
   ) {
+    super();
     const {
       reusable = false,
       speed = 1,
@@ -265,6 +267,7 @@ export class Composition implements Disposable, LostHandler {
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
         this.onEnd?.(this);
+        this.emit(EffectEventName.COMPOSITION_END, { composition: this });
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
@@ -551,6 +554,7 @@ export class Composition implements Disposable, LostHandler {
     if (!this.assigned || this.paused) {
       return;
     }
+
     if (this.shouldRestart()) {
       this.restart();
       // restart then tick to avoid flicker
@@ -574,6 +578,10 @@ export class Composition implements Disposable, LostHandler {
     // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
+      if (this.endBehavior === spec.END_BEHAVIOR_FREEZE) {
+        this.emit(EffectEventName.COMPOSITION_FREEZE, { composition: this });
+      }
+      this.emit(EffectEventName.COMPOSITION_END, { composition: this });
       this.dispose();
     } else {
       if (!skipRender) {
