@@ -1,5 +1,5 @@
-import { spec, generateGUID, glContext } from '@galacean/effects';
-import type { Texture, Engine, TextureSourceOptions } from '@galacean/effects';
+import { spec, generateGUID, glContext, addItem, loadImage } from '@galacean/effects';
+import type { Texture, Engine, TextureSourceOptions, TextureCubeSourceOptionsImageMipmaps } from '@galacean/effects';
 import type {
   LoaderOptions, SkyboxType, LoadSceneOptions, LoadSceneECSResult, LoaderECS,
 } from './protocol';
@@ -9,13 +9,13 @@ import type {
   ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
 import {
-  Matrix4, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID, RenderType, CullMode,
+  Matrix4, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
 } from '../runtime';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper, PluginHelper } from '../utility';
 import type {
   GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
-  GLTFCamera, GLTFAnimation, GLTFResources,
+  GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight,
 } from '@vvfx/resource-detection';
 
 export class LoaderECSImpl implements LoaderECS {
@@ -30,9 +30,12 @@ export class LoaderECSImpl implements LoaderECS {
   private gltfTextures: GLTFTexture[] = [];
   private gltfMaterials: GLTFMaterial[] = [];
   private gltfAnimations: GLTFAnimation[] = [];
+  private gltfImageBasedLights: GLTFImageBasedLight[] = [];
 
   composition: spec.CompositionData;
+  timelineAssetId: string = '';
   images: spec.Image[] = [];
+  imageElements: HTMLImageElement[] = [];
   textures: spec.TextureDefine[] = [];
   items: spec.VFXItemData[] = [];
   components: spec.ComponentData[] = [];
@@ -47,6 +50,7 @@ export class LoaderECSImpl implements LoaderECS {
     if (composition) {
       this.composition = composition;
     } else {
+      this.timelineAssetId = generateGUID();
       this.composition = {
         id: '1',
         name: 'test1',
@@ -56,12 +60,12 @@ export class LoaderECSImpl implements LoaderECS {
           fov: 45,
           far: 2000,
           near: 0.001,
-          position: [0, 0, 10],
+          position: [0, 0, 8],
           rotation: [0, 0, 0],
           clipMode: spec.CameraClipMode.portrait,
         },
         items: [],
-        timelineAsset:{ id:generateGUID() },
+        timelineAsset:{ id: this.timelineAssetId },
         sceneBindings:[],
       };
     }
@@ -82,6 +86,19 @@ export class LoaderECSImpl implements LoaderECS {
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
       throw new Error('Please load the resource using GLTFTools first.');
     }
+    this.images = gltfResource.images.map(gltfImage => {
+      const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
+
+      return {
+        id: gltfImage.id,
+        url: URL.createObjectURL(blob),
+      };
+    });
+
+    this.imageElements = await Promise.all(this.images.map(async image => {
+      return loadImage(image.url);
+    }));
+
     this.processGLTFResource(gltfResource);
     this.gltfScene = gltfResource.scenes[0];
     this.gltfSkins = this.gltfScene.skins;
@@ -92,28 +109,17 @@ export class LoaderECSImpl implements LoaderECS {
     this.gltfTextures = gltfResource.textures;
     this.gltfMaterials = gltfResource.materials;
     this.gltfAnimations = gltfResource.animations;
-
-    this.images = this.gltfImages.map(gltfImage => {
-      const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
-
-      return {
-        id: generateGUID(),
-        url: URL.createObjectURL(blob),
-      };
-    });
+    this.gltfImageBasedLights = gltfResource.imageBasedLights;
 
     this.textures = this.gltfTextures.map(texture => {
       const textureOptions = texture.textureOptions;
       const source = textureOptions.source;
 
       if (typeof source === 'number') {
-        const imageId = generateGUID();
-
         // @ts-expect-error
         textureOptions.source = {
-          id: imageId,
+          id: this.images[source].id,
         };
-        this.images[source].id = imageId;
       }
 
       return textureOptions;
@@ -132,26 +138,42 @@ export class LoaderECSImpl implements LoaderECS {
     this.components.push(...gltfScene.camerasComponentData);
     this.components.push(...gltfScene.lightsComponentData);
     this.components.push(...gltfScene.meshesComponentData);
-    this.components.push(...gltfScene.animationsComponentData);
+    if (gltfScene.animationsComponentData.length === 1) {
+      const component = gltfScene.animationsComponentData[0];
+
+      if (!options.effects.playAllAnimation && options.effects.playAnimation !== undefined) {
+        const clips = component.animationClips;
+        const index = options.effects.playAnimation;
+
+        if (index >= 0 && index < clips.length) {
+          component.animationClips = [clips[index]];
+        } else {
+          component.animationClips = [];
+        }
+      }
+      this.components.push(component);
+    } else if (gltfScene.animationsComponentData.length > 1) {
+      throw new Error(`Find many animation component data ${gltfScene.animationsComponentData.length}`);
+    }
 
     this.animations = [];
     this.gltfAnimations.forEach(anim => {
       this.animations.push(anim.animationClipData);
     });
 
-    this.items = [...gltfResource.scenes[0].vfxItemData];
+    this.items = [];
+
+    await this.tryAddSkybox({
+      skyboxType: options.gltf.skyboxType,
+      renderable: options.gltf.skyboxVis,
+    });
+
+    this.items.push(...gltfResource.scenes[0].vfxItemData);
     this.items.forEach(item => {
       if (item.type === 'root' as spec.ItemType) {
         item.type = 'ECS' as spec.ItemType;
       }
     });
-
-    if (options.gltf.skyboxType) {
-      await this.addSkybox({
-        skyboxType: options.gltf.skyboxType,
-        renderable: options.gltf.skyboxVis,
-      });
-    }
 
     return this.getLoadResult();
   }
@@ -181,7 +203,7 @@ export class LoaderECSImpl implements LoaderECS {
 
   processGLTFResource (resource: GLTFResources): void {
     const dataMap: Record<string, TextureSourceOptions> = {};
-    const { textures, materials, scenes } = resource;
+    const { textures, materials, scenes, imageBasedLights } = resource;
 
     textures.forEach(tex => {
       const texData = tex.textureOptions;
@@ -197,6 +219,52 @@ export class LoaderECSImpl implements LoaderECS {
       }
     });
 
+    const baseColorIdSet: Set<string> = new Set();
+    const emissiveIdSet: Set<string> = new Set();
+
+    materials.forEach(mat => {
+      const materialData = mat.materialData;
+      const baseColorTexture = materialData.textures['_BaseColorSampler']?.texture;
+      const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
+
+      if (baseColorTexture) {
+        baseColorIdSet.add(baseColorTexture.id);
+      }
+      if (emissiveTexture) {
+        emissiveIdSet.add(emissiveTexture.id);
+      }
+    });
+
+    let mapCount = 0;
+    const textureIdMap: Record<string, string> = {};
+
+    for (const baseColorId of baseColorIdSet) {
+      if (emissiveIdSet.has(baseColorId)) {
+        const texData = textures.find(tex => tex.textureOptions.id === baseColorId);
+
+        if (texData) {
+          const newId = generateGUID();
+          // @ts-expect-error
+          const newTexData: GLTFTexture = {
+            ...texData,
+          };
+
+          newTexData.textureOptions = {
+            ...texData.textureOptions,
+            id: newId,
+          };
+          textures.push(newTexData);
+          dataMap[newId] = newTexData.textureOptions;
+          textureIdMap[baseColorId] = newId;
+          mapCount += 1;
+        }
+      }
+    }
+
+    if (mapCount > 0) {
+      console.warn(`Duplicate emissive texture ${mapCount}`);
+    }
+
     materials.forEach(mat => {
       const materialData = mat.materialData;
 
@@ -205,6 +273,12 @@ export class LoaderECSImpl implements LoaderECS {
       if (materialData.shader?.id === UnlitShaderGUID) {
         this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
       } else if (materialData.shader?.id === PBRShaderGUID) {
+        const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
+
+        if (emissiveTexture && textureIdMap[emissiveTexture.id]) {
+          emissiveTexture.id = textureIdMap[emissiveTexture.id];
+        }
+
         this.processMaterialTexture(materialData, '_BaseColorSampler', true, dataMap);
         this.processMaterialTexture(materialData, '_MetallicRoughnessSampler', false, dataMap);
         this.processMaterialTexture(materialData, '_NormalSampler', false, dataMap);
@@ -218,6 +292,45 @@ export class LoaderECSImpl implements LoaderECS {
     gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
     gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
     gltfScene.meshesComponentData.forEach(comp => this.processMeshComponentData(comp));
+
+    const cubeTextures: TextureSourceOptions[] = [];
+
+    imageBasedLights.forEach(ibl => {
+      const data = ibl.imageBaseLightData;
+
+      if (data.reflectionsIntensity === undefined) {
+        data.reflectionsIntensity = data.intensity;
+      }
+
+      if (data.diffuseImage) {
+        const diffuseTexture = dataMap[data.diffuseImage.id];
+
+        addItem(cubeTextures, diffuseTexture);
+      }
+      if (data.specularImage) {
+        const specularImage = dataMap[data.specularImage.id];
+
+        addItem(cubeTextures, specularImage);
+      }
+    });
+
+    cubeTextures.forEach(tex => {
+      if (tex.target === glContext.TEXTURE_CUBE_MAP) {
+        const cube = tex as TextureCubeSourceOptionsImageMipmaps;
+
+        cube.mipmaps.forEach(mipmap => {
+          [mipmap[4], mipmap[5]] = [mipmap[5], mipmap[4]];
+        });
+
+        if (cube.mipmaps.length === 1) {
+          cube.minFilter = glContext.LINEAR;
+          cube.magFilter = glContext.LINEAR;
+        } else {
+          cube.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+          cube.magFilter = glContext.LINEAR;
+        }
+      }
+    });
   }
 
   processComponentData (components: spec.EffectComponentData[]): void {
@@ -294,20 +407,20 @@ export class LoaderECSImpl implements LoaderECS {
         material.floats['_AlphaCutoff'] = 0;
       }
 
-      if (!material.stringTags['ZWrite']) {
-        material.stringTags['ZWrite'] = String(true);
+      if (material.floats['ZWrite'] === undefined) {
+        material.floats['ZWrite'] = 1;
       }
 
-      if (!material.stringTags['ZTest']) {
-        material.stringTags['ZTest'] = String(true);
+      if (material.floats['ZTest'] === undefined) {
+        material.floats['ZTest'] = 1;
       }
 
       if (!material.stringTags['RenderType']) {
-        material.stringTags['RenderType'] = RenderType.Opaque;
+        material.stringTags['RenderType'] = spec.RenderType.Opaque;
       }
 
-      if (!material.stringTags['Cull']) {
-        material.stringTags['Cull'] = CullMode.Front;
+      if (!material.stringTags['RenderFace']) {
+        material.stringTags['RenderFace'] = spec.RenderFace.Front;
       }
     } else if (material.shader?.id === PBRShaderGUID) {
       if (!material.colors['_BaseColorFactor']) {
@@ -346,40 +459,41 @@ export class LoaderECSImpl implements LoaderECS {
         material.floats['_AlphaCutoff'] = 0;
       }
 
-      if (!material.stringTags['ZWrite']) {
-        material.stringTags['ZWrite'] = String(true);
+      if (material.floats['ZWrite'] === undefined) {
+        material.floats['ZWrite'] = 1;
       }
 
-      if (!material.stringTags['ZTest']) {
-        material.stringTags['ZTest'] = String(true);
+      if (material.floats['ZTest'] === undefined) {
+        material.floats['ZTest'] = 1;
       }
 
       if (!material.stringTags['RenderType']) {
-        material.stringTags['RenderType'] = RenderType.Opaque;
+        material.stringTags['RenderType'] = spec.RenderType.Opaque;
       }
 
-      if (!material.stringTags['Cull']) {
-        material.stringTags['Cull'] = CullMode.Front;
+      if (!material.stringTags['RenderFace']) {
+        material.stringTags['RenderFace'] = spec.RenderFace.Front;
       }
     } else {
       console.error(`Encountered unknown shader ID in material with ID: ${material.id}.`);
     }
   }
 
-  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean): void {
+  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean, image?: { width: number, height: number }): void {
     let premultiplyAlpha = false;
+    let minFilter = options.minFilter ?? glContext.LINEAR_MIPMAP_LINEAR;
 
     if (this.isTiny3dMode()) {
-      // FIXME: 这里因为拿不到图像大小，所以只能先注释掉
-      // if (!WebGLHelper.isPow2(imageObj.width) || !WebGLHelper.isPow2(imageObj.height)) {
-      //   minFilter = glContext.LINEAR;
-      // }
-      //
+      minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+      if (image) {
+        if (!WebGLHelper.isPow2(image.width) || !WebGLHelper.isPow2(image.height)) {
+          minFilter = glContext.LINEAR;
+        }
+      }
+
       premultiplyAlpha = isBaseColor ? false : true;
     }
 
-    // FIXME: 需要确认minFilter是否对齐Tiny
-    const minFilter = options.minFilter ?? glContext.LINEAR_MIPMAP_LINEAR;
     const generateMipmap = minFilter == glContext.NEAREST_MIPMAP_NEAREST
       || minFilter == glContext.LINEAR_MIPMAP_NEAREST
       || minFilter == glContext.NEAREST_MIPMAP_LINEAR
@@ -400,9 +514,18 @@ export class LoaderECSImpl implements LoaderECS {
     if (texture) {
       const id = texture.texture.id;
       const texData = dataMap[id];
+      let imageObj: HTMLImageElement | undefined;
 
+      // @ts-expect-error
+      if (typeof texData.source !== 'number') {
+        // @ts-expect-error
+        throw new Error(`Invalid texture option source data, ${texData.source}`);
+      } else {
+        // @ts-expect-error
+        imageObj = this.imageElements[texData.source];
+      }
       if (texData) {
-        this.processTextureOptions(texData, isBaseColor);
+        this.processTextureOptions(texData, isBaseColor, imageObj);
       }
     }
   }
@@ -432,7 +555,12 @@ export class LoaderECSImpl implements LoaderECS {
       shaders: this.shaders,
       geometries: this.geometries,
       animations: this.animations,
-      miscs:[],
+      miscs:[
+        {
+          id: this.timelineAssetId,
+          dataType: spec.DataType.TimelineAsset,
+        },
+      ],
     };
 
     return {
@@ -543,53 +671,63 @@ export class LoaderECSImpl implements LoaderECS {
     this.components.push(component);
   }
 
-  async addSkybox (skybox: ModelSkybox) {
-    const itemId = generateGUID();
-    const skyboxInfo = this.createSkyboxComponentData(skybox.skyboxType as SkyboxType);
-    const { imageList, textureOptionsList, component } = skyboxInfo;
+  async tryAddSkybox (skybox: ModelSkybox) {
+    if (this.gltfImageBasedLights.length > 0 && !this.ignoreSkybox()) {
+      const ibl = this.gltfImageBasedLights[0];
 
-    component.item.id = itemId;
-    component.intensity = skybox.intensity ?? 1;
-    component.reflectionsIntensity = skybox.reflectionsIntensity ?? 1;
-    component.renderable = skybox.renderable ?? true;
+      this.components.push(ibl.imageBaseLightData);
+    } else if (skybox.skyboxType !== undefined) {
+      const itemId = generateGUID();
+      const skyboxInfo = this.createSkyboxComponentData(skybox.skyboxType as SkyboxType);
+      const { imageList, textureOptionsList, component } = skyboxInfo;
 
-    const item: spec.VFXItemData = {
-      id: itemId,
-      name: `Skybox-${skybox.skyboxType}`,
-      duration: skybox.duration ?? 999,
-      type: spec.ItemType.skybox,
-      pn: 0,
-      visible: true,
-      endBehavior: spec.ItemEndBehavior.freeze,
-      transform: {
-        position: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
-        eulerHint: {
-          x: 0,
-          y: 0,
-          z: 0,
-        },
-        scale: {
-          x: 1,
-          y: 1,
-          z: 1,
-        },
-      },
-      components: [
-        { id: component.id },
-      ],
-      content: {},
-      dataType: spec.DataType.VFXItemData,
-    };
+      component.item.id = itemId;
+      if (skybox.intensity !== undefined) {
+        component.intensity = skybox.intensity;
+      }
+      if (skybox.reflectionsIntensity !== undefined) {
+        component.reflectionsIntensity = skybox.reflectionsIntensity;
+      }
+      component.renderable = skybox.renderable ?? false;
 
-    this.images.push(...imageList);
-    // @ts-expect-error
-    this.textures.push(...textureOptionsList);
-    this.items.push(item);
-    this.components.push(component);
+      const item: spec.VFXItemData = {
+        id: itemId,
+        name: `Skybox-${skybox.skyboxType}`,
+        duration: skybox.duration ?? 999,
+        type: spec.ItemType.skybox,
+        pn: 0,
+        visible: true,
+        endBehavior: spec.ItemEndBehavior.freeze,
+        transform: {
+          position: {
+            x: 0,
+            y: 0,
+            z: 0,
+          },
+          eulerHint: {
+            x: 0,
+            y: 0,
+            z: 0,
+          },
+          scale: {
+            x: 1,
+            y: 1,
+            z: 1,
+          },
+        },
+        components: [
+          { id: component.id },
+        ],
+        content: {},
+        dataType: spec.DataType.VFXItemData,
+      };
+
+      this.images.push(...imageList);
+      // @ts-expect-error
+      this.textures.push(...textureOptionsList);
+      this.items.push(item);
+      this.components.push(component);
+    }
   }
 
   createTreeOptions (scene: GLTFScene): ModelTreeOptions {
@@ -856,7 +994,7 @@ export interface ModelLight {
 }
 
 export interface ModelSkybox {
-  skyboxType: string,
+  skyboxType?: string,
   renderable?: boolean,
   intensity?: number,
   reflectionsIntensity?: number,
@@ -894,7 +1032,7 @@ export function getPBRShaderProperties (): string {
   _EmissiveSampler ("自发光贴图", 2D) = "" {}
   _EmissiveIntensity ("自发光贴图强度", Float) = 1
   _EmissiveFactor ("自发光颜色", Color) = (0, 0, 0, 1)
-  _AlphaCutoff ("Alpha测试值", Range(0, 1)) = 0.5
+  _AlphaCutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
   `;
 }
 
@@ -902,7 +1040,7 @@ export function getUnlitShaderProperties (): string {
   return `
   _BaseColorSampler ("基础贴图", 2D) = "" {}
   _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
-  _AlphaCutoff ("Alpha测试值", Range(0, 1)) = 0.5
+  _AlphaCutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
   `;
 }
 
@@ -912,10 +1050,8 @@ export function getDefaultPBRMaterialData (): spec.MaterialData {
     'name': 'PBR Material',
     'dataType': spec.DataType.Material,
     'stringTags': {
-      'ZWrite': 'true',
-      'ZTest': 'true',
-      'RenderType': 'Opaque',
-      'Cull': 'Front',
+      'RenderType': spec.RenderType.Opaque,
+      'RenderFace': 'Front',
     },
     'macros': [],
     'shader': {
@@ -925,6 +1061,8 @@ export function getDefaultPBRMaterialData (): spec.MaterialData {
 
     },
     'floats': {
+      'ZWrite': 1,
+      'ZTest': 1,
       '_SpecularAA': 0,
       '_MetallicFactor': 1,
       '_RoughnessFactor': 0.0,
@@ -966,7 +1104,7 @@ export function getDefaultUnlitMaterialData (): spec.MaterialData {
     'stringTags': {
       'ZWrite': 'true',
       'ZTest': 'true',
-      'RenderType': 'Opaque',
+      'RenderType': spec.RenderType.Opaque,
       'Cull': 'Front',
     },
     'macros': [],

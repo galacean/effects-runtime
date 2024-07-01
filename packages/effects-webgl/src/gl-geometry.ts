@@ -432,7 +432,7 @@ export class GLGeometry extends Geometry {
         };
       });
 
-      if (data.indexOffset !== undefined && data.indexFormat !== undefined) {
+      if (data.indexFormat !== spec.IndexFormatType.None) {
         const indexBuffer = this.createIndexTypedArray(data.indexFormat, buffer, data.indexOffset);
 
         geometryProps.indices = { data: indexBuffer };

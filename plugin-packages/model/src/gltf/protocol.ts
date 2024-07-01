@@ -62,7 +62,7 @@ export interface LoadSceneOptions {
     /**
      * 播放动画索引或名称
      */
-    playAnimation?: number | string,
+    playAnimation?: number,
     /**
      * 是否播放全部动画
      */

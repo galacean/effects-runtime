@@ -4,13 +4,15 @@ import { PMesh } from './mesh';
 import type { PCamera } from './camera';
 import { PCameraManager } from './camera';
 import { PLight, PLightManager } from './light';
-import { Vector3, Matrix4, Box3 } from './math';
+import type { Vector3 } from './math';
+import { Matrix4, Box3 } from './math';
 import { PSkybox } from './skybox';
 import { PTransform, PGlobalState, PObjectType } from './common';
 import type { CompositionCache } from './cache';
 import type { PEntity } from './object';
 import { WebGLHelper } from '../utility/plugin-helper';
 import { TwoStatesSet } from '../utility/ts-helper';
+import type { ModelMeshComponent } from '../plugin';
 
 type Box3 = math.Box3;
 type Vector2 = math.Vector2;
@@ -397,9 +399,9 @@ export class PSceneManager {
       skybox: this.skybox,
     };
 
-    // if (this.enableDynamicSort) {
-    //   this.dynamicSortMeshes(states);
-    // }
+    if (this.enableDynamicSort) {
+      this.dynamicSortMeshes(this.sceneStates);
+    }
 
     this.tickCount += 1;
     this.lastTickSecond += deltaSeconds;
@@ -411,43 +413,47 @@ export class PSceneManager {
    * @param states - 场景中的状态数据
    */
   dynamicSortMeshes (states: PSceneStates) {
-    const meshList: Mesh[] = [];
+    const meshComponents: ModelMeshComponent[] = [];
     const priorityList: number[] = [];
-    const meshSet = this.renderedMeshSet.now;
 
-    meshSet.forEach(mesh => {
-      meshList.push(mesh);
-      priorityList.push(mesh.priority);
+    this.meshList.forEach(mesh => {
+      if (mesh.owner && mesh.owner.enabled) {
+        const component = mesh.owner;
+
+        meshComponents.push(component);
+        priorityList.push(component.priority);
+      }
     });
+
     priorityList.sort((a, b) => a - b);
 
     // 按照 Tiny 排序算法，对 Mesh 对象进行排序
     // 将透明和不透明物体拆开，从而渲染正确
     const viewMatrix = states.viewMatrix;
 
-    meshList.sort((a: Mesh, b: Mesh) => {
+    meshComponents.sort((a: ModelMeshComponent, b: ModelMeshComponent) => {
       const atransparent = WebGLHelper.isTransparentMesh(a);
       const btransparent = WebGLHelper.isTransparentMesh(b);
 
       if (atransparent && btransparent) {
-        const aposition = Vector3.fromArray(a.worldMatrix.elements, 12);
-        const bposition = Vector3.fromArray(b.worldMatrix.elements, 12);
+        const aposition = a.transform.getWorldPosition();
+        const bposition = b.transform.getWorldPosition();
         const anewPos = viewMatrix.transformPoint(aposition);
         const bnewPos = viewMatrix.transformPoint(bposition);
 
-        return anewPos.z - bnewPos.z;
+        if (anewPos.z === bnewPos.z) {return a.priority - b.priority;} else {return anewPos.z - bnewPos.z;}
       } else if (atransparent) {
         return 1;
       } else if (btransparent) {
         return -1;
       } else {
-        return 0;
+        return a.priority - b.priority;
       }
     });
 
     // 重新赋值渲染优先级
-    for (let i = 0; i < meshList.length; i++) {
-      const mesh = meshList[i];
+    for (let i = 0; i < meshComponents.length; i++) {
+      const mesh = meshComponents[i];
       const priority = priorityList[i];
 
       mesh.priority = priority;

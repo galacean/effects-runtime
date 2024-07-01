@@ -33,7 +33,9 @@ async function getCurrentScene () {
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
+      compatibleMode: 'tiny3d',
       skyboxType: 'NFT',
+      skyboxVis: true,
     },
     effects: {
       renderer: player.renderer,
@@ -51,8 +53,8 @@ async function getCurrentScene () {
   sceneCenter = sceneAABB.getCenter(new Vector3());
 
   loader.addCamera({
-    near: 0.001,
-    far: 400,
+    near: 0.1,
+    far: 5000,
     fov: 60,
     clipMode: 0,
     //
@@ -62,60 +64,6 @@ async function getCurrentScene () {
     position: [0, 0, 8],
     rotation: [0, 0, 0],
   });
-
-  loader.addLight({
-    lightType: spec.LightType.point,
-    color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 1,
-    range: 100,
-    //
-    name: 'test',
-    position: [0, 0, 10],
-    rotation: [0, 0, 0],
-    scale: [1, 1, 1],
-    duration: duration,
-    endBehavior: spec.ItemEndBehavior.loop,
-  });
-
-  // items.push({
-  //   id: '321',
-  //   duration: duration,
-  //   name: 'item_1',
-  //   type: '1',
-  //   sprite: {
-  //     options: {
-  //       duration: 100,
-  //       delay: 0,
-  //       startSize: 1,
-  //       sizeAspect: 1,
-  //       startColor: [255, 255, 255, 1],
-  //     },
-  //     renderer: {
-  //       renderMode: 1,
-  //     },
-  //   },
-  // });
-
-  // items.push({
-  //   id: 'extra-camera',
-  //   duration: 100,
-  //   name: 'extra-camera',
-  //   pn: 0,
-  //   type: 'camera',
-  //   transform: {
-  //     position: position.toArray(),
-  //     rotation: [0, 0, 0],
-  //   },
-  //   content: {
-  //     options: {
-  //       duration: 100,
-  //       near: 0.1,
-  //       far: 5000,
-  //       fov: 60,
-  //       clipMode: 0,
-  //     },
-  //   },
-  // });
 
   return loader.getLoadResult().jsonScene;
 }
@@ -137,11 +85,15 @@ export async function loadScene (inPlayer) {
   }
 
   if (!pending) {
+    const loadOptions = {
+      pluginData: {
+        enableDynamicSort: true,
+      },
+    };
+
     pending = true;
 
-    return player.loadScene(playScene).then(async comp => {
-      player.play();
-
+    return player.loadScene(playScene, loadOptions).then(async comp => {
       gestureHandler = new CameraGestureHandlerImp(comp);
 
       pending = false;
@@ -393,7 +345,7 @@ function registerMouseEvent () {
       gestureHandler.onKeyEvent({
         cameraID: 'extra-camera',
         zAxis: e.deltaY > 0 ? 1 : -1,
-        speed: sceneRadius * 0.5,
+        speed: sceneRadius * 0.1,
       });
     }
   });
