@@ -108,6 +108,10 @@ export class CompositionSourceManager implements Disposable {
     //@ts-expect-error
     for (const component of this.jsonScene.components) {
       componentMap[component.id] = component;
+
+      if (component.dataType === spec.DataType.SpriteComponent || component.dataType === spec.DataType.ParticleSystem) {
+        this.preProcessItemContent(component);
+      }
     }
 
     for (const itemDataPath of composition.items) {
@@ -116,23 +120,6 @@ export class CompositionSourceManager implements Disposable {
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
-        if (
-          itemProps.type === spec.ItemType.sprite ||
-          itemProps.type === spec.ItemType.particle
-        ) {
-          for (const componentPath of itemProps.components) {
-            const componentData = componentMap[componentPath.id];
-
-            this.preProcessItemContent(componentData);
-          }
-        } else {
-          const renderContent = itemProps.content;
-
-          if (renderContent) {
-            this.preProcessItemContent(renderContent);
-          }
-        }
-
         itemProps.listIndex = listOrder++;
 
         // 处理预合成的渲染顺序
@@ -147,12 +134,7 @@ export class CompositionSourceManager implements Disposable {
           if (!this.refCompositionProps.has(refId)) {
             this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
           }
-
-          ref.items.forEach((item: Record<string, any>) => {
-            this.processMask(item.content);
-          });
           itemProps.items = ref.items;
-
         }
 
         items.push(itemProps as VFXItemProps);
