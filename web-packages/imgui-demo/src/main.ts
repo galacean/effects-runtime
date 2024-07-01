@@ -7,6 +7,7 @@ import { MemoryEditor } from './imgui/imgui_memory_editor.js';
 import './panels';
 import { imGuiIni } from './imgui/imgui-config.js';
 import { uiManager } from './core/ui-manager.js';
+import { Project } from './panels';
 
 let font: ImGui.Font | null = null;
 
@@ -127,6 +128,10 @@ async function _init (): Promise<void> {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     canvas.style.userSelect = 'none';
+
+    canvas.addEventListener('dragover', Project.allowDrop);
+    canvas.addEventListener('drop', Project.drop);
+
     ImGui_Impl.Init(canvas);
   } else {
     ImGui_Impl.Init(null);

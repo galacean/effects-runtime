@@ -5,6 +5,7 @@ export class EditorWindow {
   title = 'New Window';
 
   private opened = false;
+  private hovered = false;
   private firstFrame = true;
 
   static getWindow<T extends EditorWindow> (type: new () => T): T {
@@ -19,7 +20,10 @@ export class EditorWindow {
       ImGui.SetNextWindowSize(new ImGui.Vec2(500, 300));
       this.firstFrame = false;
     }
+
     ImGui.Begin(this.title, (value = this.opened) => this.opened = value);
+    this.hovered = ImGui.IsWindowHovered();
+
     this.onGUI();
     ImGui.End();
   }
@@ -30,6 +34,14 @@ export class EditorWindow {
 
   close () {
     this.opened = false;
+  }
+
+  isOpened () {
+    return this.opened;
+  }
+
+  isHovered () {
+    return this.hovered;
   }
 
   protected onGUI () {
