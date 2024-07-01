@@ -203,9 +203,8 @@ export class VFXItem extends EffectsObject implements Disposable {
   addComponent<T extends Component> (classConstructor: Constructor<T>): T {
     const newComponent = new classConstructor(this.engine);
 
-    newComponent.item = this;
-
     this.components.push(newComponent);
+    newComponent.item = this;
     newComponent.onAttached();
 
     return newComponent;
