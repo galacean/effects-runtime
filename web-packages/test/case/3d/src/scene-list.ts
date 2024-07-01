@@ -31,19 +31,11 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/restart.json',
     name: 'Restart测试',
   },
-  /* z-fighting问题先跳过 */
-  // ring618: {
-  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*MBmNSbmPOIIAAAAAAAAAAAAADlB4AQ',
-  //   name: '618圆环',
-  //   pass: true,
-  // },
-  /* 需要打开父子节点颜色继承兼容代码的项目 */
-  // ring818: {
-  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*cnCMTo1seD0AAAAAAAAAAAAADlB4AQ',
-  //   name: '818圆环',
-  //   pass: true,
-  // },
-  /* ***************************** */
+  ring818: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*cnCMTo1seD0AAAAAAAAAAAAADlB4AQ',
+    name: '818圆环',
+    pass: true,
+  },
   test1: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ',
     name: 'test1',

@@ -8,18 +8,6 @@ import { PObject } from './object';
 import { PluginHelper } from '../utility/plugin-helper';
 import { PShaderManager } from './shader';
 
-export enum RenderType {
-  Opaque = 'Opaque',
-  Mask = 'Mask',
-  Blend = 'Blend',
-}
-
-export enum CullMode {
-  Front = 'Front',
-  Back = 'Back',
-  Double = 'Double',
-}
-
 /**
  * 3D 材质基础类，支持公共的材质功能
  */
@@ -48,15 +36,19 @@ export abstract class PMaterialBase extends PObject {
   /**
    * 渲染类型，默认是不透明
    */
-  renderType: RenderType = RenderType.Opaque;
+  renderType: spec.RenderType = spec.RenderType.Opaque;
+  /**
+   * 是否 Alpha 裁剪，默认关闭
+   */
+  alphaClip = false;
   /**
    * Alpha 测试截断值
    */
-  alphaCutOff = 0.5;
+  alphaCutoff = 0.5;
   /**
    * 面侧模式，默认是正面
    */
-  cullMode: CullMode = CullMode.Front;
+  renderFace: spec.RenderFace = spec.RenderFace.Front;
 
   /**
    * 获取着色器特性列表，根据材质状态
@@ -65,13 +57,13 @@ export abstract class PMaterialBase extends PObject {
   getShaderFeatures (): string[] {
     const featureList: string[] = [];
 
-    if (this.isOpaque()) {
-      featureList.push('ALPHAMODE_OPAQUE 1');
-    } else if (this.isMasked()) {
+    if (this.isAlphaClip()) {
       featureList.push('ALPHAMODE_MASK 1');
+    } else if (this.isOpaque()) {
+      featureList.push('ALPHAMODE_OPAQUE 1');
     }
 
-    if (this.cullMode === CullMode.Double) {
+    if (this.renderFace === spec.RenderFace.Both) {
       featureList.push('DOUBLE_SIDED 1');
     }
 
@@ -81,13 +73,13 @@ export abstract class PMaterialBase extends PObject {
   getShaderMacros (): MacroInfo[] {
     const macroList: MacroInfo[] = [];
 
-    if (this.isOpaque()) {
-      macroList.push({ name: 'ALPHAMODE_OPAQUE' });
-    } else if (this.isMasked()) {
+    if (this.isAlphaClip()) {
       macroList.push({ name: 'ALPHAMODE_MASK' });
+    } else if (this.isOpaque()) {
+      macroList.push({ name: 'ALPHAMODE_OPAQUE' });
     }
 
-    if (this.cullMode === CullMode.Double) {
+    if (this.renderFace === spec.RenderFace.Both) {
       macroList.push({ name: 'DOUBLE_SIDED' });
     }
 
@@ -184,7 +176,7 @@ export abstract class PMaterialBase extends PObject {
    * @param material - GE 材质
    */
   setMaterialStates (material: Material) {
-    if (this.renderType === RenderType.Blend) {
+    if (this.renderType === spec.RenderType.Transparent) {
       material.blending = true;
       material.depthTest = this.ZTest;
       material.depthMask = this.ZWrite;
@@ -210,7 +202,7 @@ export abstract class PMaterialBase extends PObject {
   }
 
   protected setFaceSideStates (material: Material) {
-    if (this.isDoubleSide()) {
+    if (this.isBothSide()) {
       material.culling = false;
     } else if (this.isBackSide()) {
       material.cullFace = glContext.FRONT;
@@ -244,23 +236,23 @@ export abstract class PMaterialBase extends PObject {
    * @returns
    */
   isOpaque (): boolean {
-    return this.renderType === RenderType.Opaque;
+    return this.renderType === spec.RenderType.Opaque;
   }
 
   /**
-   * 是否遮罩
+   * 是否 Alpha 裁剪
    * @returns
    */
-  isMasked (): boolean {
-    return this.renderType === RenderType.Mask;
+  isAlphaClip (): boolean {
+    return this.alphaClip;
   }
 
   /**
    * 是否半透明
    * @returns
    */
-  isBlend (): boolean {
-    return this.renderType === RenderType.Blend;
+  isTransparent (): boolean {
+    return this.renderType === spec.RenderType.Transparent;
   }
 
   /**
@@ -268,7 +260,7 @@ export abstract class PMaterialBase extends PObject {
    * @returns
    */
   isFrontSide (): boolean {
-    return this.cullMode === CullMode.Front;
+    return this.renderFace === spec.RenderFace.Front;
   }
 
   /**
@@ -276,15 +268,15 @@ export abstract class PMaterialBase extends PObject {
    * @returns
    */
   isBackSide (): boolean {
-    return this.cullMode === CullMode.Back;
+    return this.renderFace === spec.RenderFace.Back;
   }
 
   /**
    * 是否双面模式
    * @returns
    */
-  isDoubleSide (): boolean {
-    return this.cullMode === CullMode.Double;
+  isBothSide (): boolean {
+    return this.renderFace === spec.RenderFace.Both;
   }
 }
 
@@ -319,11 +311,12 @@ export class PMaterialUnlit extends PMaterialBase {
     this.baseColorTextureTrans = PluginHelper.createUVTransform(material, '_BaseColorSampler_ST', '_BaseColorRotation');
     this.baseColorFactor = material.getColor('_BaseColorFactor') ?? new Color(1.0, 1.0, 1.0, 1.0);
     //
-    this.ZWrite = material.stringTags['ZWrite'] !== 'false';
-    this.ZTest = material.stringTags['ZTest'] !== 'false';
-    this.renderType = material.stringTags['RenderType'] as RenderType ?? RenderType.Opaque;
-    this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
-    this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
+    this.ZWrite = material.getFloat('ZWrite') !== 0;
+    this.ZTest = material.getFloat('ZTest') !== 0;
+    this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
+    this.alphaClip = material.getFloat('AlphaClip') === 1;
+    this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
+    this.renderFace = material.stringTags['RenderFace'] as spec.RenderFace ?? spec.RenderFace.Front;
   }
 
   /**
@@ -543,11 +536,12 @@ export class PMaterialPBR extends PMaterialBase {
     this.emissiveFactor = material.getColor('_EmissiveFactor') ?? new Color(0, 0, 0, 1);
     this.emissiveIntensity = material.getFloat('_EmissiveIntensity') ?? 1;
     //
-    this.ZWrite = material.stringTags['ZWrite'] !== 'false';
-    this.ZTest = material.stringTags['ZTest'] !== 'false';
-    this.renderType = material.stringTags['RenderType'] as RenderType ?? RenderType.Opaque;
-    this.alphaCutOff = material.getFloat('_AlphaCutoff') ?? 0;
-    this.cullMode = material.stringTags['Cull'] as CullMode ?? CullMode.Front;
+    this.ZWrite = material.getFloat('ZWrite') !== 0;
+    this.ZTest = material.getFloat('ZTest') !== 0;
+    this.renderType = material.stringTags['RenderType'] as spec.RenderType ?? spec.RenderType.Opaque;
+    this.alphaClip = material.getFloat('AlphaClip') === 1;
+    this.alphaCutoff = material.getFloat('_AlphaCutoff') ?? 0;
+    this.renderFace = material.stringTags['RenderFace'] as spec.RenderFace ?? spec.RenderFace.Front;
   }
 
   /**

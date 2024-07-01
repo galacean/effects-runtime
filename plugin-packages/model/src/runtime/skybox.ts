@@ -194,7 +194,7 @@ export class PSkybox extends PEntity {
 
     if (this.irradianceCoeffs === undefined && this.diffuseImage === undefined) { return false; }
 
-    return this.specularImage !== undefined && this.specularMipCount > 0;
+    return this.specularImage !== undefined && this.specularMipCount >= 0;
   }
 
   /**
@@ -329,7 +329,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
         material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
       });
     }
-    material.setInt('_MipCount', this.specularMipCount);
+    material.setInt('_MipCount', this.specularMipCount - 1);
     material.setTexture('_SpecularEnvSampler', this.specularImage);
   }
 
@@ -684,7 +684,7 @@ export class PSkyboxCreator {
       diffuseImage: this.getDiffuseImageList(skyboxType, specularImage),
       specularImage: specularImage,
       specularImageSize: Math.pow(2, specularImage.length - 1),
-      specularMipCount: specularImage.length - 1,
+      specularMipCount: specularImage.length,
     };
 
     return params;

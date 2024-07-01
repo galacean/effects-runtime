@@ -110,7 +110,7 @@ export class LoaderImplEx extends LoaderImpl {
 export interface LoadGLTFSceneOptions {
   url: string,
   player: Player,
-  playAnimation?: number | string,
+  playAnimation?: number,
   camera?: {
     position?: spec.vec3,
     rotation?: spec.vec3,

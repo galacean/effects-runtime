@@ -1,7 +1,9 @@
 // @ts-nocheck
 import '@galacean/effects-plugin-model';
-import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../2d/src/common';
-import sceneList from './scene-list';
+import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../../2d/src/common';
+import gltfList from './gltf-list';
+import { oldLoadGLTFScene } from './old-loader';
+import { loadGLTFSceneECS } from './new-loader';
 
 const { expect } = chai;
 
@@ -9,7 +11,7 @@ const { expect } = chai;
  * 万分之一的像素不相等比例，对于512x512大小的图像，
  * 不能超过26个像素不相等
  */
-const accumRatioThreshold = 3.0e-4;
+const accumRatioThreshold = 2.0e-4;
 const pixelDiffThreshold = 1;
 const dumpImageForDebug = false;
 const canvasWidth = 512;
@@ -20,11 +22,11 @@ addDescribe('webgl');
 addDescribe('webgl2');
 
 function addDescribe (renderFramework) {
-  describe(`3d帧对比@${renderFramework}`, function () {
+  describe(`glTF帧对比@${renderFramework}`, function () {
     this.timeout('1800s');
 
     before(async function () {
-      controller = new TestController(true);
+      controller = new TestController();
       await controller.createPlayers(canvasWidth, canvasHeight, renderFramework, false);
       cmpStats = new ComparatorStats(renderFramework);
     });
@@ -53,22 +55,25 @@ function addDescribe (renderFramework) {
       }
     });
 
-    const ignoreList = getIngoreList();
+    gltfList.forEach(url => {
+      const tokens = url.split('/');
+      const key = tokens[tokens.length - 1];
+      const sceneData = {
+        name: key,
+        url,
+      };
 
-    Object.keys(sceneList).forEach(key => {
-      if (ignoreList.includes(key)) {
-        return;
+      if (key.length > 24) {
+        sceneData.name = key.substring(0, 24);
       }
 
-      const scene = sceneList[key];
-
-      void checkScene(key, scene);
+      void checkScene(key, sceneData);
     });
 
     async function checkScene (keyName, sceneData) {
       const { name, url } = sceneData;
       const autoAdjustScene = sceneData.autoAdjustScene ?? false;
-      const enableDynamicSort = sceneData.enableDynamicSort ?? false;
+      const enableDynamicSort = true;
       const compatibleMode = 'tiny3d';
 
       it(`${name}`, async () => {
@@ -83,19 +88,23 @@ function addDescribe (renderFramework) {
           },
         };
         const playerOptions = { pauseOnFirstFrame: true };
+        const loadGLTFOptions = getLoadGLTFOptions(name);
+        const oldScene = await oldLoadGLTFScene({ url, player: oldPlayer.player, ...loadGLTFOptions });
+        const newScene = await loadGLTFSceneECS({ url, player: newPlayer.player, ...loadGLTFOptions });
 
-        await oldPlayer.initialize(url, loadOptions, playerOptions);
-        await newPlayer.initialize(url, loadOptions, playerOptions);
+        copySceneCamera(oldScene, newScene);
+
+        await oldPlayer.initialize(oldScene, loadOptions, playerOptions);
+        await newPlayer.initialize(newScene, loadOptions, playerOptions);
 
         const imageCmp = new ImageComparator(pixelDiffThreshold);
         const namePrefix = getCurrnetTimeStr();
         const timeList = [0];
 
-        if (isFullTimeTest(name)) {
+        if (isAllTimeTest(name)) {
           timeList.push(
-            0.11, 0.22, 0.34, 0.45, 0.57, 0.65, 0.71, 0.83, 0.96, 1.0,
-            1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.9, 2.0, 2.2, 2.5, 2.7, 3.0, 3.3, 3.8,
-            4.1, 4.7, 5.2, 5.9, 6.8, 7.5, 8.6, 9.7, 9.99, 11.23, 12.5, 15.8, 18.9,
+            0.11, 0.34, 0.57, 0.71, 1.0,
+            1.1, 1.5, 2.0, 3.0, 5.2, 7.4, 9.99, 12.5, 15.8,
           );
         }
 
@@ -104,7 +113,7 @@ function addDescribe (renderFramework) {
         for (let i = 0; i < timeList.length; i++) {
           const time = timeList[i];
 
-          if (!oldPlayer.isLoop() && time >= oldPlayer.duration()) {
+          if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
             break;
           }
           //
@@ -152,21 +161,58 @@ function addDescribe (renderFramework) {
   });
 }
 
-function isFullTimeTest (name) {
-  const nameList = [
-    '简单Morph',
-    'Restart测试',
-    '818圆环',
-    'test1',
-  ];
+function copySceneCamera (fromScene: spec.JSONScene, toScene: spec.JSONScene) {
+  const fromCamera = fromScene.compositions[0].camera;
+  const toCamera = toScene.compositions[0].camera;
 
-  return nameList.includes(name);
+  toCamera.fov = fromCamera.fov;
+  toCamera.far = fromCamera.far;
+  toCamera.near = fromCamera.near;
+  toCamera.position = fromCamera.position.slice();
+  toCamera.rotation = fromCamera.rotation?.slice() ?? [0, 0, 0];
+  toCamera.clipMode = fromCamera.clipMode;
+
+  let fromCameraItem;
+
+  fromScene.compositions[0].items.forEach(item => {
+    if (item.id === 'extra-camera') {
+      fromCameraItem = item;
+    }
+  });
+  let toCameraItem;
+
+  toScene.items.forEach(item => {
+    if (item.type === 'camera') {
+      toCameraItem = item;
+    }
+  });
+  toCameraItem.transform.position = {
+    x: fromCameraItem.transform.position[0],
+    y: fromCameraItem.transform.position[1],
+    z: fromCameraItem.transform.position[2],
+  };
+  toCameraItem.transform.eulerHint = {
+    x: fromCameraItem.transform.rotation[0],
+    y: fromCameraItem.transform.rotation[1],
+    z: fromCameraItem.transform.rotation[2],
+  };
 }
 
-function getIngoreList () {
-  if (navigator.platform.toLowerCase().search('win') >= 0) {
-    return [];
+function getLoadGLTFOptions (sceneName: string) {
+  if ('ebec344a9fa02bec3b9987d475e04191'.includes(sceneName)
+  || '5eb610471972b998b9d570987d72d784'.includes(sceneName)) {
+    return { playAnimation: 0 };
   } else {
-    return ['monster', 'ring618'];
+    return { playAllAnimation: true };
+  }
+}
+
+function isAllTimeTest (sceneName: string) {
+  if ('ebec344a9fa02bec3b9987d475e04191'.includes(sceneName)
+  || '5eb610471972b998b9d570987d72d784'.includes(sceneName)
+  || 'CesiumMan.glb'.includes(sceneName)) {
+    return false;
+  } else {
+    return true;
   }
 }

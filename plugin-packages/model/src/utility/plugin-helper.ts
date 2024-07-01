@@ -46,6 +46,7 @@ import type {
   ModelTextureTransform,
   ModelTreeOptions,
   ModelAnimTrackOptions,
+  ModelMeshComponent,
 } from '../index';
 import { Matrix3, Matrix4, Vector3, Vector4, DEG2RAD } from '../runtime/math';
 import type { FBOOptions } from './ri-helper';
@@ -420,11 +421,11 @@ export class WebGLHelper {
 
   /**
    * 返回 Mesh 是否半透明
-   * @param mesh - gl mesh 对象
+   * @param component - ModelMeshComponent 对象
    * @return 是否半透明
    */
-  static isTransparentMesh (mesh: Mesh): boolean {
-    return mesh.material.blending === true;
+  static isTransparentMesh (component: ModelMeshComponent): boolean {
+    return component.material.blending === true;
   }
 
   /**
@@ -877,9 +878,18 @@ export class PluginHelper {
       texOptions.wrapT = glContext.REPEAT;
       texOptions.magFilter = glContext.LINEAR;
       texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
-      (texOptions as Texture2DSourceOptionsImage).generateMipmap = true;
       if (!isBaseColor) {
         texOptions.premultiplyAlpha = true;
+      }
+      const newOptions = texOptions as Texture2DSourceOptionsImage;
+
+      newOptions.generateMipmap = true;
+      const image = newOptions.image;
+
+      if (image && image.width && image.height) {
+        if (!WebGLHelper.isPow2(image.width) || !WebGLHelper.isPow2(image.height)) {
+          texOptions.minFilter = glContext.LINEAR;
+        }
       }
     } else if (texOptions.target === glContext.TEXTURE_CUBE_MAP) {
       texOptions.wrapS = glContext.CLAMP_TO_EDGE;
