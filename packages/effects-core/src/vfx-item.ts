@@ -519,10 +519,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     if (duration <= 0) {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
-
-    for (const component of this.components) {
-      component.onAttached();
-    }
     // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
     this.renderOrder = listIndex;
   }

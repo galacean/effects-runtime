@@ -27,6 +27,7 @@ export abstract class Component extends EffectsObject {
     super.fromData(data);
     if (data.item) {
       this.item = data.item;
+      this.onAttached();
     }
   }
 
