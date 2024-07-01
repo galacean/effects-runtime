@@ -108,10 +108,6 @@ export class CompositionSourceManager implements Disposable {
     //@ts-expect-error
     for (const component of this.jsonScene.components) {
       componentMap[component.id] = component;
-
-      if (component.dataType === spec.DataType.SpriteComponent || component.dataType === spec.DataType.ParticleSystem) {
-        this.preProcessItemContent(component);
-      }
     }
 
     for (const itemDataPath of composition.items) {
@@ -121,6 +117,17 @@ export class CompositionSourceManager implements Disposable {
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
         itemProps.listIndex = listOrder++;
+
+        if (
+          itemProps.type === spec.ItemType.sprite ||
+          itemProps.type === spec.ItemType.particle
+        ) {
+          for (const componentPath of itemProps.components) {
+            const componentData = componentMap[componentPath.id];
+
+            this.preProcessItemContent(componentData);
+          }
+        }
 
         // 处理预合成的渲染顺序
         if (itemProps.type === spec.ItemType.composition) {
