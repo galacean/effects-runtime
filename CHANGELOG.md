@@ -7,6 +7,12 @@
 
 ---
 
+## 1.6.1
+
+`2024-07-02`
+
+- Fix: Fixed the text layout issue caused by fontSize. [#469](https://github.com/galacean/effects-runtime/pull/469) @Sruimeng
+
 ## 1.6.0
 
 `2024-06-28`
