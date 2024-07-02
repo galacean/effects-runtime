@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { math, spec } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
-import { LoaderECSEx } from '../../src/helper';
+import { LoaderImplEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
@@ -29,7 +29,7 @@ const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb
 async function getCurrentScene () {
   const duration = 9999;
   const endBehavior = 5;
-  const loader = new LoaderECSEx();
+  const loader = new LoaderImplEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
@@ -38,7 +38,6 @@ async function getCurrentScene () {
       skyboxVis: true,
     },
     effects: {
-      renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: 0,

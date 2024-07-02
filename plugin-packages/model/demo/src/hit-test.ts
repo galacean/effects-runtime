@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { Transform, spec } from '@galacean/effects';
 import { ToggleItemBounding, CompositionHitTest } from '@galacean/effects-plugin-model';
-import { LoaderECSEx, InputController } from '../../src/helper';
+import { LoaderImplEx, InputController } from '../../src/helper';
 import { createSlider } from './utility';
 
 let player;
@@ -22,7 +22,7 @@ const autoAdjustScene = true;
 async function getCurrentScene () {
   const duration = 9999;
   const endBehavior = 5;
-  const loader = new LoaderECSEx();
+  const loader = new LoaderImplEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
@@ -31,7 +31,6 @@ async function getCurrentScene () {
       skyboxVis: true,
     },
     effects: {
-      renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: 0,

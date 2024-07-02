@@ -23,7 +23,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
 
     result.sceneAABB.max.forEach((v, i) => { expect([371.6921691894531, 115.25850677490234, 135.25839233398438][i]).closeTo(v, 1e-4); });
     result.sceneAABB.min.forEach((v, i) => { expect([-373.2934875488281, -188.28282165527344, -140][i]).closeTo(v, 4e-5); });
-    const items = result.items;
+    const items = result.jsonScene.items;
 
     expect(items.length).to.eql(68);
     const tree = items[0];
@@ -496,7 +496,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
     });
     result.sceneAABB.max.forEach((v, i) => { expect([0.569136917591095, 1.5065498352050781, 0.18095403909683228][i]).closeTo(v, 1e-5); });
     result.sceneAABB.min.forEach((v, i) => { expect([-0.5691370964050293, -6.193791257658177e-9, -0.13100001215934753][i]).closeTo(v, 1e-5); });
-    const items = result.items;
+    const items = result.jsonScene.items;
     expect(items.length).to.eql(2);
     const tree = items[0];
     expect(tree.duration).to.eql(5);
@@ -858,7 +858,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
 
     result.sceneAABB.max.forEach((v, i) => { expect([0.9424954056739807, 0.9009951949119568, 0.8128453493118286][i]).closeTo(v, 1e-5); });
     result.sceneAABB.min.forEach((v, i) => { expect([-0.9474585652351379, -0.9009741544723511, -1.1871552467346191][i]).closeTo(v, 1e-5); });
-    const items = result.items;
+    const items = result.jsonScene.items;
     expect(items.length).to.eql(2);
     const tree = items[0];
     expect(tree.duration).to.eql(5);
@@ -1018,7 +1018,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
 
       result.sceneAABB.max.forEach((v, i) => { expect([0.23471057415008545, 0.656415581703186, 0.9998422265052795][i]).closeTo(v, 1e-5); });
       result.sceneAABB.min.forEach((v, i) => { expect([-0.23471057415008545, 0.0004017949104309082, -0.9998422265052795][i]).closeTo(v, 1e-5); });
-      const items = result.items;
+      const items = result.jsonScene.items;
       expect(items.length).to.eql(2);
       {
         const item = items[1];
@@ -1087,7 +1087,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
           playAnimation: 0,
         },
       });
-      const items = result.items;
+      const items = result.jsonScene.items;
       expect(items.length).to.eql(7);
       {
         const item = items[1];
@@ -1205,7 +1205,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
 
       result.sceneAABB.max.forEach((v, i) => { expect([0.046618688851594925, 0.375296026468277, 0.047841183841228485][i]).closeTo(v, 1e-5); });
       result.sceneAABB.min.forEach((v, i) => { expect([-0.04690181463956833, -0.3588564991950989, -0.046336669474840164][i]).closeTo(v, 1e-5); });
-      const items = result.items;
+      const items = result.jsonScene.items;
       expect(items.length).to.eql(7);
       {
         const item = items[1];
