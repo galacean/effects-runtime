@@ -1,13 +1,17 @@
 import type { spec } from '@galacean/effects';
+import { EffectComponent, Material, Player, math } from '@galacean/effects';
 import { generateGUID, loadImage } from '@galacean/effects';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { editorWindow, menuItem } from '../core/decorators';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorWindow } from './panel';
 import { folderIcon, jsonIcon } from '../asset/images';
+import { previewScene } from '../asset/preview-scene';
+import { GeometryBoxProxy, Sphere } from '@galacean/effects-plugin-model';
 
 @editorWindow()
 export class Project extends EditorWindow {
+  private previewPlayer: Player;
   private rootFileNode: FileNode;
   private selectedFolder: FileNode;
   private fileViewSize = 100;
@@ -118,6 +122,7 @@ export class Project extends EditorWindow {
     super();
     this.title = 'Project';
     this.open();
+    this.createPreviewPlayer();
     void this.createIconTexture(folderIcon).then(texture=>{
       if (texture) {
         this.folderIcon = texture;
@@ -172,6 +177,8 @@ export class Project extends EditorWindow {
 
         if (child.handle.kind === 'directory') {
           icon = this.folderIcon;
+        } else if (child.icon) {
+          icon = child.icon;
         }
         ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col);
         ImGui.PopID();
@@ -217,17 +224,6 @@ export class Project extends EditorWindow {
   private async readFolder () {
     const folderHandle = await window.showDirectoryPicker();
 
-    // for await (const entry of folderHandle.values()) {
-    //   if (entry.kind === 'directory') {
-    //     console.log('Found sub-directory:', entry.name);
-    //   } else {
-    //     const file = await entry.getFile();
-
-    //     console.log('Found file:', file.name);
-    //     // 你可以使用 FileReader 对象等方法来读取文件内容
-    //   }
-    // }
-
     this.rootFileNode = { handle:folderHandle, children:[] };
     await this.generateFileTree(this.rootFileNode);
   }
@@ -247,7 +243,59 @@ export class Project extends EditorWindow {
         await this.generateFileTree(childNode);
       }
     }
+  }
 
+  private createFileIcons (item: FileNode) {
+    if (item.handle.kind === 'directory') {
+      for (const child of item.children) {
+        if (child.handle.kind === 'file') {
+          void child.handle.getFile().then(async (file: File)=>{
+            if (file.name.endsWith('.json')) {
+              const json = await this.readFile(file);
+              const packageData: spec.EffectsPackageData = JSON.parse(json);
+
+              if (packageData.fileSummary.assetType === 'Geometry' && !child.icon) {
+                const geometryData = packageData.exportObjects[0];
+
+                const clonePreviewScene = JSON.parse(JSON.stringify(previewScene));
+
+                geometryData.id = clonePreviewScene.geometries[0].id;
+                clonePreviewScene.geometries[0] = geometryData;
+                this.previewPlayer.destroyCurrentCompositions();
+                const composition = await this.previewPlayer.loadScene(clonePreviewScene);
+                const previewItem = composition.getItemByName('PreviewItem');
+
+                if (previewItem) {
+                  const geometryproxy = new GeometryBoxProxy();
+                  const boundingBox = new math.Box3();
+
+                  geometryproxy.create(previewItem.getComponent(EffectComponent).geometry, []);
+                  geometryproxy.getBoundingBox(boundingBox);
+                  const sphere = new Sphere();
+
+                  boundingBox.getBoundingSphere(sphere);
+                  const radius = sphere.radius;
+                  const center = sphere.center;
+
+                  const scaleRatio = 4 * 1 / radius;
+
+                  composition.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
+                  composition.setScale(scaleRatio, scaleRatio, scaleRatio);
+                }
+                this.previewPlayer.gotoAndStop(1);
+                this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
+
+                const iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
+
+                if (iconTexture) {
+                  child.icon = iconTexture;
+                }
+              }
+            }
+          });
+        }
+      }
+    }
   }
 
   private drawFileTree (item: FileNode, baseFlags: ImGui.TreeNodeFlags) {
@@ -268,6 +316,7 @@ export class Project extends EditorWindow {
 
     if (handle.kind === 'directory' && ImGui.IsItemClicked() && !ImGui.IsItemToggledOpen()) {
       this.selectedFolder = item;
+      this.createFileIcons(item);
     }
 
     if (node_open) {
@@ -301,26 +350,67 @@ export class Project extends EditorWindow {
     ImGui.PopStyleVar();
   }
 
-  async createIconTexture (imageURL: string) {
+  private async createIconTexture (imageURLOrCanvas: string | HTMLCanvasElement) {
     if (ImGui_Impl && ImGui_Impl.gl) {
       const gl = ImGui_Impl.gl;
       const tex = gl.createTexture();
+      let textureSource = null;
 
-      const image = await loadImage(imageURL);
+      if (imageURLOrCanvas instanceof HTMLCanvasElement) {
+        textureSource = imageURLOrCanvas;
+      } else if (typeof(imageURLOrCanvas) === 'string') {
+        textureSource = await loadImage(imageURLOrCanvas);
+      }
 
+      if (!textureSource) {
+        return;
+      }
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureSource);
 
       return tex;
     }
   }
 
+  private createPreviewPlayer () {
+    // 创建一个新的 div 元素
+    const newDiv = document.createElement('div');
+
+    // 设置 div 的样式
+    newDiv.style.width = '100px';
+    newDiv.style.height = '100px';
+    newDiv.style.backgroundColor = 'black';
+
+    // 将 div 添加到页面中
+    document.body.appendChild(newDiv);
+
+    this.previewPlayer = new Player({ container:newDiv });
+  }
+
+  private readFile (file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        if (reader.result) {
+          resolve(reader.result as string);
+        } else {
+          reject(new Error('Failed to read the file'));
+        }
+      };
+      reader.onerror = () => {
+        reject(new Error('Failed to read the file'));
+      };
+      reader.readAsText(file);
+    });
+  }
 }
 
 interface FileNode {
   handle: FileSystemDirectoryHandle | FileSystemFileHandle,
   children: FileNode[],
+  icon?: WebGLTexture,
 }
