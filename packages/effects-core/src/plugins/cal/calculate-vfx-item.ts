@@ -282,6 +282,7 @@ export interface FloatCurve {
 
 @effectsClass(spec.DataType.AnimationClip)
 export class AnimationClip extends EffectsObject {
+  duration = 0;
   positionCurves: PositionCurve[] = [];
   rotationCurves: RotationCurve[] = [];
   scaleCurves: ScaleCurve[] = [];
@@ -331,6 +332,8 @@ export class AnimationClip extends EffectsObject {
         keyFrames: createValueGetter(positionCurveData.keyFrames),
       };
 
+      this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
+
       this.positionCurves.push(curve);
     }
     for (const rotationCurveData of data.rotationCurves) {
@@ -338,6 +341,8 @@ export class AnimationClip extends EffectsObject {
         path: rotationCurveData.path,
         keyFrames: createValueGetter(rotationCurveData.keyFrames),
       };
+
+      this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
 
       this.rotationCurves.push(curve);
     }
@@ -348,6 +353,8 @@ export class AnimationClip extends EffectsObject {
         keyFrames: createValueGetter(scaleCurvesData.keyFrames),
       };
 
+      this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
+
       this.scaleCurves.push(curve);
     }
     for (const floatCurveData of data.floatCurves) {
@@ -357,6 +364,8 @@ export class AnimationClip extends EffectsObject {
         property: floatCurveData.property,
         className: floatCurveData.className,
       };
+
+      this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
 
       this.floatCurves.push(curve);
     }
