@@ -1,7 +1,7 @@
 //@ts-nocheck
-import { Transform } from '@galacean/effects';
+import { Transform, spec } from '@galacean/effects';
 import { ToggleItemBounding, CompositionHitTest } from '@galacean/effects-plugin-model';
-import { LoaderImplEx, InputController } from '../../src/helper';
+import { LoaderECSEx, InputController } from '../../src/helper';
 import { createSlider } from './utility';
 
 let player;
@@ -14,7 +14,7 @@ let composition;
 
 let playScene;
 
-let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
 
 const compatibleMode = 'tiny3d';
 const autoAdjustScene = true;
@@ -22,65 +22,36 @@ const autoAdjustScene = true;
 async function getCurrentScene () {
   const duration = 9999;
   const endBehavior = 5;
-  const loader = new LoaderImplEx();
+  const loader = new LoaderECSEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
-      compatibleMode: compatibleMode,
-      skyboxType: 'FARM',
+      compatibleMode: 'tiny3d',
+      skyboxType: 'NFT',
+      skyboxVis: true,
     },
     effects: {
       renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
-      playAnimation: -1,
+      playAnimation: 0,
     },
   });
 
-  const items = loadResult.items;
-
-  items.push({
-    id: 'extra-camera',
-    duration: duration,
+  loader.addCamera({
+    near: 0.1,
+    far: 5000,
+    fov: 60,
+    clipMode: 0,
+    //
     name: 'extra-camera',
-    pn: 0,
-    type: 'camera',
-    transform: {
-      position: [0, 0, 8],
-      rotation: [0, 0, 0],
-    },
-    endBehavior: 5,
-    content: {
-      options: {
-        duration: duration,
-        near: 0.1,
-        far: 2000,
-        fov: 60,
-        clipMode: 0,
-      },
-    },
+    duration: duration,
+    endBehavior: spec.ItemEndBehavior.loop,
+    position: [0, 0, 8],
+    rotation: [0, 0, 0],
   });
 
-  return {
-    'compositionId': 1,
-    'requires': [],
-    'compositions': [{
-      'name': 'composition_1',
-      'id': 1,
-      'duration': duration,
-      'endBehavior': 5,
-      'camera': { 'fov': 30, 'far': 1000, 'near': 0.1, 'position': [0, 0, 0], 'clipMode': 1 },
-      'items': items,
-      'meta': { 'previewSize': [750, 1334] },
-    }],
-    'gltf': [],
-    'images': [],
-    'version': '0.8.9-beta.9',
-    'shapes': [],
-    'plugins': ['model'],
-    'type': 'mars',
-    '_imgs': { '1': [] },
-  };
+  return loader.getLoadResult().jsonScene;
 }
 
 export async function loadScene (inPlayer) {
