@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.1
+
+`2024-07-02`
+
+- Fix: 修复 fontSize 导致的文本布局问题。[#469](https://github.com/galacean/effects-runtime/pull/469) @Sruimeng
+
 ## 1.6.0
 
 `2024-06-28`
