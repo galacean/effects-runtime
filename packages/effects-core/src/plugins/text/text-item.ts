@@ -360,6 +360,7 @@ export class TextComponentBase {
     const width = (layout.width + style.fontOffset) * fontScale;
     const height = layout.height * fontScale;
 
+    const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
     this.char = (this.text || '').split('');
@@ -394,7 +395,7 @@ export class TextComponentBase {
     const charsInfo: CharInfo[] = [];
 
     let x = 0;
-    let y = layout.getOffsetY(style, this.lineCount, lineHeight);
+    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
     let charsArray = [];
     let charOffsetX = [];
 
