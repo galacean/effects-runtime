@@ -1,9 +1,10 @@
 import type { spec } from '@galacean/effects';
-import { generateGUID } from '@galacean/effects';
+import { generateGUID, loadImage } from '@galacean/effects';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { editorWindow, menuItem } from '../core/decorators';
-import { ImGui } from '../imgui';
+import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorWindow } from './panel';
+import { folderIcon, jsonIcon } from '../asset/images';
 
 @editorWindow()
 export class Project extends EditorWindow {
@@ -11,6 +12,8 @@ export class Project extends EditorWindow {
   private selectedFolder: FileNode;
   private fileViewSize = 100;
   private fileViewHovered = false;
+  private folderIcon: WebGLTexture;
+  private jsonIcon: WebGLTexture;
 
   @menuItem('Window/Project')
   static showWindow () {
@@ -115,6 +118,16 @@ export class Project extends EditorWindow {
     super();
     this.title = 'Project';
     this.open();
+    void this.createIconTexture(folderIcon).then(texture=>{
+      if (texture) {
+        this.folderIcon = texture;
+      }
+    });
+    void this.createIconTexture(jsonIcon).then(texture=>{
+      if (texture) {
+        this.jsonIcon = texture;
+      }
+    });
   }
 
   isFileViewHovered () {
@@ -143,7 +156,7 @@ export class Project extends EditorWindow {
     const style: ImGui.Style = ImGui.GetStyle();
     const buttons_count = 20;
     const window_visible_x2 = ImGui.GetWindowPos().x + ImGui.GetWindowContentRegionMax().x;
-    const button_sz: ImGui.Vec2 = new ImGui.Vec2(this.fileViewSize, this.fileViewSize * 1.2);
+    const button_sz: ImGui.Vec2 = new ImGui.Vec2(this.fileViewSize, this.fileViewSize);
 
     if (this.selectedFolder) {
       let n = 0;
@@ -151,7 +164,16 @@ export class Project extends EditorWindow {
       for (const child of this.selectedFolder.children) {
         ImGui.BeginGroup();
         ImGui.PushID(n);
-        ImGui.Button('##' + n, button_sz);
+        const frame_padding = 2;                             // -1 === uses default padding (style.FramePadding)
+        const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                        // UV coordinates for lower-left
+        const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);// UV coordinates for (32,32) in our texture
+        const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.2, 0.2, 0.2, 1.0);         // Black background
+        let icon = this.jsonIcon;
+
+        if (child.handle.kind === 'directory') {
+          icon = this.folderIcon;
+        }
+        ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col);
         ImGui.PopID();
         // 获取按钮的尺寸
         const buttonSize = ImGui.GetItemRectSize();
@@ -278,10 +300,27 @@ export class Project extends EditorWindow {
     ImGui.SliderFloat('##RightBottomSlider', (value = this.fileViewSize) => this.fileViewSize = value, 5, 200, '');
     ImGui.PopStyleVar();
   }
+
+  async createIconTexture (imageURL: string) {
+    if (ImGui_Impl && ImGui_Impl.gl) {
+      const gl = ImGui_Impl.gl;
+      const tex = gl.createTexture();
+
+      const image = await loadImage(imageURL);
+
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+
+      return tex;
+    }
+  }
+
 }
 
 interface FileNode {
   handle: FileSystemDirectoryHandle | FileSystemFileHandle,
   children: FileNode[],
 }
-
