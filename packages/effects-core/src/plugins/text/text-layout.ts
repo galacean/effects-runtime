@@ -56,7 +56,7 @@ export class TextLayout {
   }
 
   /**
-   * 获取每一行的偏移值
+   * 获取初始的行高偏移值
    * @param style - 字体基础数据
    * @param lineCount - 渲染行数
    * @param lineHeight - 渲染时的字体行高
