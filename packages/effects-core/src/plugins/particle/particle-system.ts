@@ -837,6 +837,13 @@ export class ParticleSystem extends Component {
     }
   };
 
+  override onAttached (): void {
+    super.onAttached();
+    this.renderer.item = this.item;
+    this.item.components.push(this.renderer);
+    this.item.rendererComponents.push(this.renderer);
+  }
+
   override fromData (data: unknown): void {
     super.fromData(data);
     const props = data as ParticleSystemProps;
@@ -1104,9 +1111,6 @@ export class ParticleSystem extends Component {
     this.item.getHitTestParams = this.getHitTestParams;
 
     this.item._content = this;
-    this.renderer.item = this.item;
-    this.item.components.push(this.renderer);
-    this.item.rendererComponents.push(this.renderer);
   }
 }
 
