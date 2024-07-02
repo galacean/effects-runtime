@@ -347,7 +347,7 @@ export class TextItem extends SpriteItem {
     const charsInfo: CharInfo[] = [];
 
     let x = 0;
-    let y = layout.getOffsetY(style, this.lineCount, lineHeight);
+    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
     let charsArray = [];
     let charOffsetX = [];
 
