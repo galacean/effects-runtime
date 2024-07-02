@@ -14,7 +14,7 @@ let composition;
 
 let playScene;
 
-let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
 
 const compatibleMode = 'tiny3d';
 const autoAdjustScene = true;

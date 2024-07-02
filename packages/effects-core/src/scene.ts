@@ -29,6 +29,10 @@ export interface Scene {
    * 加载开始时间
    */
   startTime?: number,
+  /**
+   * 加载分段时长
+   */
+  timeInfos: Record<string, number>,
   url: SceneType,
   usedImages: Record<number, boolean>,
 }

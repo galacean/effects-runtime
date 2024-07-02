@@ -42,6 +42,7 @@ async function getCurrentScene () {
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: 0,
+      //playAllAnimation: true,
     },
   });
 

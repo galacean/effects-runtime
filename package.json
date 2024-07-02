@@ -4,9 +4,10 @@
   "scripts": {
     "dev": "pnpm --filter @galacean/effects-demo dev",
     "preview": "pnpm --filter @galacean/effects-demo preview",
-    "build": "pnpm --filter \"./packages/**\" build",
-    "build:plugins": "pnpm build && pnpm --filter \"./plugin-packages/**\" build",
-    "build:docs": "pnpm build && pnpm build:plugins && typedoc",
+    "build": "pnpm build:main && pnpm build:plugins",
+    "build:main": "pnpm --filter \"./packages/**\" build",
+    "build:plugins": "pnpm --filter \"./plugin-packages/**\" build",
+    "build:docs": "pnpm build && typedoc",
     "lint": "eslint --ext .ts .",
     "lint:fix": "eslint --fix --ext .ts .",
     "test": "pnpm --filter @galacean/effects-test test",
@@ -20,7 +21,9 @@
     "clean:all": "pnpm clean:artifacts && pnpm clean:declaration && pnpm clean:dist && pnpm clean:nm",
     "preinstall": "npx only-allow pnpm",
     "prepare": "husky install",
-    "publish": "pnpm -r publish --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\""
+    "publish": "pnpm -r publish --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\"",
+    "publish:alpha": "pnpm -r publish --tag alpha --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\"",
+    "publish:beta": "pnpm -r publish --tag beta --no-git-checks --filter \"./packages/**\" --filter \"./plugin-packages/**\""
   },
   "browserslist": [
     "iOS 9"

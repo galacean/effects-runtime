@@ -53,28 +53,41 @@ export class TextLayout {
     this.lineHeight = lineHeight;
   }
 
-  getOffsetY (style: TextStyle) {
-    let offsetY = 0;
-    const offset = (style.fontSize + style.outlineWidth) * style.fontScale;
+  /**
+   * 获取初始的行高偏移值
+   * @param style - 字体基础数据
+   * @param lineCount - 渲染行数
+   * @param lineHeight - 渲染时的字体行高
+   * @param fontSize - 渲染时的字体大小
+   * @returns - 行高偏移值
+   */
+  getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number) {
+    const { outlineWidth, fontScale } = style;
+    // /3 计算Y轴偏移量，以匹配编辑器行为
+    const offsetY = (lineHeight - fontSize) / 3;
+    // 计算基础偏移量
+    const baseOffset = fontSize + outlineWidth * fontScale;
+    const commonCalculation = lineHeight * (lineCount - 1);
+    let offsetResult = 0;
 
     switch (this.textBaseline) {
       case spec.TextBaseline.top:
-        offsetY = offset;
+        offsetResult = baseOffset + offsetY;
 
         break;
       case spec.TextBaseline.middle:
-        offsetY = (this.height + offset) / 2; // fonSize;
+        offsetResult = (this.height * fontScale - commonCalculation + baseOffset) / 2;
 
         break;
       case spec.TextBaseline.bottom:
-        offsetY = this.height - offset / 2;
+        offsetResult = (this.height * fontScale - commonCalculation) - offsetY;
 
         break;
       default:
         break;
     }
 
-    return offsetY;
+    return offsetResult;
   }
 
   getOffsetX (style: TextStyle, maxWidth: number) {

@@ -7,6 +7,23 @@
 
 ---
 
+## 1.6.1
+
+`2024-07-02`
+
+- Fix: Fixed the text layout issue caused by fontSize. [#469](https://github.com/galacean/effects-runtime/pull/469) @Sruimeng
+
+## 1.6.0
+
+`2024-06-28`
+
+- Feat: Add control parameters for interactive elements. [#443](https://github.com/galacean/effects-runtime/pull/443) @RGCHN
+- Feat: Add segment duration during loading. [#442](https://github.com/galacean/effects-runtime/pull/442) @Sruimeng
+- Feat: Add interfaces for Composition and Spine elements. [#432](https://github.com/galacean/effects-runtime/pull/432) @RGCHN
+- Build: Add alpha/beta release commands. [#434](https://github.com/galacean/effects-runtime/pull/434) @yiiqii
+- Fix: Fix the vertical alignment issue with multi-line text. [#455](https://github.com/galacean/effects-runtime/pull/455) [#456](https://github.com/galacean/effects-runtime/pull/456) @Sruimeng
+- Fix: transparent object sort problem. [#458](https://github.com/galacean/effects-runtime/pull/458) @liuxi150
+
 ## 1.5.2
 
 `2024-06-21`

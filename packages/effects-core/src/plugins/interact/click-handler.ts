@@ -61,7 +61,7 @@ export type Region = {
   position: Vector3,
   behavior?: spec.InteractBehavior,
   parentId?: string,
-  hitPositions?: Vector3[],
+  hitPositions: Vector3[],
 };
 
 export type HitTestParams = {

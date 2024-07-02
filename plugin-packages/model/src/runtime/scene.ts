@@ -441,7 +441,7 @@ export class PSceneManager {
         const anewPos = viewMatrix.transformPoint(aposition);
         const bnewPos = viewMatrix.transformPoint(bposition);
 
-        if (anewPos.z === bnewPos.z) {return a.priority - b.priority;} else {return anewPos.z - bnewPos.z;}
+        if (anewPos.z === bnewPos.z) { return a.priority - b.priority; } else { return anewPos.z - bnewPos.z; }
       } else if (atransparent) {
         return 1;
       } else if (btransparent) {
@@ -451,12 +451,20 @@ export class PSceneManager {
       }
     });
 
+    let prePriority = -99999;
+
     // 重新赋值渲染优先级
     for (let i = 0; i < meshComponents.length; i++) {
       const mesh = meshComponents[i];
       const priority = priorityList[i];
 
-      mesh.priority = priority;
+      if (prePriority < priority) {
+        prePriority = priority;
+        mesh.priority = priority;
+      } else {
+        prePriority += 0.1;
+        mesh.priority = prePriority;
+      }
     }
   }
 
