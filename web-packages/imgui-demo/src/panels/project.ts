@@ -40,15 +40,16 @@ export class Project extends EditorWindow {
   static async handleDroppedFiles (files: FileList) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-
-      // 处理拖拽进来的文件，比如显示文件信息，上传文件等等
-      //   console.log('拖拽进来的文件：' + file.name);
-
       const url = URL.createObjectURL(file);
-
       const modelIO = new ModelIO();
 
-      await modelIO.loadModelByURL([url]);
+      let modelType = 'glb';
+
+      if (file.name.endsWith('.fbx')) {
+        modelType = 'FBX';
+      }
+
+      await modelIO.loadModelByURL([url], { modelType });
       await modelIO.writeGLB();
       const glb = modelIO.glb;
       const result = await GLTFTools.loadGLTF(new Uint8Array(glb));
@@ -58,10 +59,13 @@ export class Project extends EditorWindow {
 
       const projectWindow = EditorWindow.getWindow(Project);
       const currentDirHandle = projectWindow.selectedFolder.handle;
-      const geometryAsset = JSON.stringify(Project.createPackageData([editorResult.meshes[0].geometryData], 'Geometry'), null, 2);
 
-      if (currentDirHandle.kind === 'directory') {
-        await Project.saveFile(Project.createJsonFile(geometryAsset, editorResult.meshes[0].geometryData.name + '.json'), currentDirHandle);
+      for (const meshData of editorResult.meshes) {
+        const geometryAsset = JSON.stringify(Project.createPackageData([meshData.geometryData], 'Geometry'), null, 2);
+
+        if (currentDirHandle.kind === 'directory') {
+          await Project.saveFile(Project.createJsonFile(geometryAsset, meshData.geometryData.name + '.json'), currentDirHandle);
+        }
       }
 
       await projectWindow.generateFileTree(projectWindow.selectedFolder);
