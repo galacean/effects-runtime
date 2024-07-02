@@ -1,14 +1,16 @@
+import type { spec } from '@galacean/effects';
+import { generateGUID } from '@galacean/effects';
+import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { editorWindow, menuItem } from '../core/decorators';
 import { ImGui } from '../imgui';
 import { EditorWindow } from './panel';
 
 @editorWindow()
 export class Project extends EditorWindow {
-
   private rootFileNode: FileNode;
   private selectedFolder: FileNode;
-
   private fileViewSize = 100;
+  private fileViewHovered = false;
 
   @menuItem('Window/Project')
   static showWindow () {
@@ -23,28 +25,96 @@ export class Project extends EditorWindow {
     io.MousePos.y = event.offsetY;
   }
 
-  static drop (event: any) {
+  static async drop (event: DragEvent) {
     event.preventDefault();
+    if (!event.dataTransfer) {
+      return;
+    }
     const files = event.dataTransfer.files;
 
-    if (EditorWindow.getWindow(Project).isHovered()) {
-      Project.handleDroppedFiles(files);
+    if (EditorWindow.getWindow(Project).isFileViewHovered()) {
+      await Project.handleDroppedFiles(files);
     }
   }
 
-  static handleDroppedFiles (files: any) {
+  static async handleDroppedFiles (files: FileList) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
       // 处理拖拽进来的文件，比如显示文件信息，上传文件等等
-    //   console.log('拖拽进来的文件：' + file.name);
+      //   console.log('拖拽进来的文件：' + file.name);
+
+      const url = URL.createObjectURL(file);
+
+      const modelIO = new ModelIO();
+
+      await modelIO.loadModelByURL([url]);
+      await modelIO.writeGLB();
+      const glb = modelIO.glb;
+      const result = await GLTFTools.loadGLTF(new Uint8Array(glb));
+      const doc = result.doc;
+      const json = result.json;
+      const editorResult = GLTFTools.processGLTFForEditorECS(doc, json);
+
+      const projectWindow = EditorWindow.getWindow(Project);
+      const currentDirHandle = projectWindow.selectedFolder.handle;
+      const geometryAsset = JSON.stringify(Project.createPackageData([editorResult.meshes[0].geometryData], 'Geometry'), null, 2);
+
+      if (currentDirHandle.kind === 'directory') {
+        await Project.saveFile(Project.createJsonFile(geometryAsset, editorResult.meshes[0].geometryData.name + '.json'), currentDirHandle);
+      }
+
+      await projectWindow.generateFileTree(projectWindow.selectedFolder);
     }
+  }
+
+  static createJsonFile (json: string, fileName: string) {
+    // 将字符串转换为Blob
+    const newBlob = new Blob([json], { type: 'application/json' });
+
+    // 创建File对象，需要提供Blob、文件名和最后修改时间
+    const newFile = new File([newBlob], fileName, { type: 'application/json', lastModified: Date.now() });
+
+    return newFile;
+  }
+
+  static async saveFile (file: File, dirHandle?: FileSystemDirectoryHandle) {
+    if (!dirHandle) {return;}
+
+    // create a new handle
+    const newFileHandle = await dirHandle.getFileHandle(file.name, { create: true });
+
+    if (!newFileHandle) {return;}
+
+    // create a FileSystemWritableFileStream to write to
+    const writableStream = await newFileHandle.createWritable();
+
+    // write our file
+    await writableStream.write(file);
+
+    // close the file and write the contents to disk.
+    await writableStream.close();
+
+    return newFileHandle;
+  }
+
+  static createPackageData (effectsObjectDatas: spec.EffectsObjectData[], assetType = 'any') {
+    const newPackageData: spec.EffectsPackageData = {
+      fileSummary: { guid: generateGUID(), assetType },
+      exportObjects: effectsObjectDatas,
+    };
+
+    return newPackageData;
   }
 
   constructor () {
     super();
     this.title = 'Project';
     this.open();
+  }
+
+  isFileViewHovered () {
+    return this.fileViewHovered;
   }
 
   protected override onGUI (): void {
@@ -65,10 +135,11 @@ export class Project extends EditorWindow {
 
     ImGui.SameLine();
     ImGui.BeginChild('FileView', new ImGui.Vec2(ImGui.GetWindowContentRegionWidth() * 0.8, ImGui.GetWindowContentRegionMax().y - ImGui.GetWindowContentRegionMin().y), true);
+    this.fileViewHovered = ImGui.IsWindowHovered();
     const style: ImGui.Style = ImGui.GetStyle();
     const buttons_count = 20;
     const window_visible_x2 = ImGui.GetWindowPos().x + ImGui.GetWindowContentRegionMax().x;
-    const button_sz: ImGui.Vec2 = new ImGui.Vec2(this.fileViewSize, this.fileViewSize);
+    const button_sz: ImGui.Vec2 = new ImGui.Vec2(this.fileViewSize, this.fileViewSize * 1.2);
 
     if (this.selectedFolder) {
       let n = 0;
@@ -117,7 +188,7 @@ export class Project extends EditorWindow {
     ImGui.EndChild();
   }
 
-  async readFolder () {
+  private async readFolder () {
     const folderHandle = await window.showDirectoryPicker();
 
     // for await (const entry of folderHandle.values()) {
@@ -135,7 +206,8 @@ export class Project extends EditorWindow {
     await this.generateFileTree(this.rootFileNode);
   }
 
-  async generateFileTree (item: FileNode) {
+  private async generateFileTree (item: FileNode) {
+    item.children = [];
     const handle = item.handle;
 
     if (handle.kind === 'directory') {
@@ -152,7 +224,7 @@ export class Project extends EditorWindow {
 
   }
 
-  drawFileTree (item: FileNode, baseFlags: ImGui.TreeNodeFlags) {
+  private drawFileTree (item: FileNode, baseFlags: ImGui.TreeNodeFlags) {
     let nodeFlags: ImGui.TreeNodeFlags = baseFlags;
 
     const handle = item.handle;
@@ -180,7 +252,7 @@ export class Project extends EditorWindow {
     }
   }
 
-  drawFileSizeSlider () {
+  private drawFileSizeSlider () {
     // 获取窗口的尺寸和位置
     const windowSize = ImGui.GetWindowSize();
     const padding: number = 20; // 边距

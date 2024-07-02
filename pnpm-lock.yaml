@@ -353,6 +353,9 @@ importers:
       '@galacean/effects-plugin-spine':
         specifier: workspace:*
         version: link:../../plugin-packages/spine
+      '@vvfx/resource-detection':
+        specifier: 0.6.0-alpha.9
+        version: 0.6.0-alpha.9
       maoan-imgui-js:
         specifier: ^1.0.6
         version: 1.0.6
