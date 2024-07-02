@@ -50,6 +50,7 @@ async function getCurrentScene () {
   sceneAABB = new Box3(sceneMin, sceneMax);
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
+  const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
 
   loader.addCamera({
     near: 0.1,
@@ -60,7 +61,7 @@ async function getCurrentScene () {
     name: 'extra-camera',
     duration: duration,
     endBehavior: spec.ItemEndBehavior.loop,
-    position: [0, 0, 8],
+    position: position.toArray(),
     rotation: [0, 0, 0],
   });
 

@@ -1,18 +1,16 @@
-import { spec, generateGUID, glContext, addItem, loadImage } from '@galacean/effects';
-import type { TextureSourceOptions, TextureCubeSourceOptionsImageMipmaps } from '@galacean/effects';
+import { spec, generateGUID, glContext, addItem, loadImage, Transform } from '@galacean/effects';
+import type { TextureSourceOptions, TextureCubeSourceOptionsImageMipmaps, math, TransformProps } from '@galacean/effects';
 import type {
   SkyboxType, LoadSceneOptions, LoadSceneResult, Loader, ModelCamera, ModelLight, ModelSkybox, ModelImageLike,
 } from './protocol';
 import type {
-  ModelMeshComponentData, ModelSkyboxComponentData, ModelAnimationOptions,
-  ModelAnimTrackOptions, ModelCameraOptions, ModelLightOptions,
+  ModelMeshComponentData, ModelSkyboxComponentData,
   ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
 } from '../index';
 import {
-  Matrix4, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
+  Vector3, Box3, Euler, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
 } from '../runtime';
-import { LoaderHelper } from './loader-helper';
-import { WebGLHelper, PluginHelper } from '../utility';
+import { WebGLHelper } from '../utility';
 import type {
   GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
   GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight,
@@ -37,6 +35,8 @@ export function setDefaultEffectsGLTFLoader (loader: Loader): void {
 }
 
 let defaultGLTFLoader: Loader;
+
+type Box3 = math.Box3;
 
 export class LoaderImpl implements Loader {
   private sceneOptions: LoadSceneOptions;
@@ -63,6 +63,7 @@ export class LoaderImpl implements Loader {
   shaders: spec.ShaderData[] = [];
   geometries: spec.GeometryData[] = [];
   animations: spec.AnimationClipData[] = [];
+  sceneAABB = new Box3();
 
   constructor (composition?: spec.CompositionData) {
     if (composition) {
@@ -572,12 +573,14 @@ export class LoaderImpl implements Loader {
       ],
     };
 
+    const sceneAABB = this.computeSceneAABB();
+
     return {
       source: this.getRemarkString(),
       jsonScene,
       sceneAABB: {
-        min: [-1, -1, -1],
-        max: [1, 1, 1],
+        min: sceneAABB.min.toArray(),
+        max: sceneAABB.max.toArray(),
       },
     };
   }
@@ -739,85 +742,6 @@ export class LoaderImpl implements Loader {
     }
   }
 
-  createTreeOptions (scene: GLTFScene): ModelTreeOptions {
-    const nodeList = scene.nodes.map((node, nodeIndex) => {
-      const children = node.children.map(child => {
-        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}.`); }
-
-        return child.nodeIndex;
-      });
-      let pos: spec.vec3 = [0, 0, 0];
-      let quat: spec.vec4 = [0, 0, 0, 0];
-      let scale: spec.vec3 = [0, 0, 0];
-
-      if (node.matrix !== undefined) {
-        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}.`); }
-        const mat = Matrix4.fromArray(node.matrix);
-        const transform = mat.getTransform();
-
-        pos = transform.translation.toArray();
-        quat = transform.rotation.toArray();
-        scale = transform.scale.toArray();
-      } else {
-        if (node.translation !== undefined) { pos = node.translation as spec.vec3; }
-        if (node.rotation !== undefined) { quat = node.rotation as spec.vec4; }
-        if (node.scale !== undefined) { scale = node.scale as spec.vec3; }
-      }
-      node.nodeIndex = nodeIndex;
-      const treeNode: spec.TreeNodeOptions = {
-        name: node.name,
-        transform: {
-          position: pos,
-          quat: quat,
-          scale: scale,
-        },
-        children: children,
-        id: `${node.nodeIndex}`,
-        // id: index, id不指定就是index，指定后就是指定的值
-      };
-
-      return treeNode;
-    });
-
-    const rootNodes = scene.rootNodes.map(root => {
-      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}.`); }
-
-      return root.nodeIndex;
-    });
-
-    const treeOptions: ModelTreeOptions = {
-      nodes: nodeList,
-      children: rootNodes,
-      animation: -1,
-      animations: [],
-    };
-
-    return treeOptions;
-  }
-
-  createAnimations (animations: GLTFAnimation[]): ModelAnimationOptions[] {
-    return animations.map(anim => {
-      const tracks = anim.channels.map(channel => {
-        const track: ModelAnimTrackOptions = {
-          input: channel.input.array as Float32Array,
-          output: channel.output.array as Float32Array,
-          node: channel.target.node,
-          path: channel.target.path,
-          interpolation: channel.interpolation,
-        };
-
-        return track;
-      });
-
-      const newAnim: ModelAnimationOptions = {
-        name: anim.name,
-        tracks: tracks,
-      };
-
-      return newAnim;
-    });
-  }
-
   createSkyboxComponentData (typeName: SkyboxType) {
     if (typeName !== 'NFT' && typeName !== 'FARM') {
       throw new Error(`Invalid skybox type specified: '${typeName}'. Valid types are: 'NFT', 'FARM'.`);
@@ -829,27 +753,6 @@ export class LoaderImpl implements Loader {
     return PSkyboxCreator.createSkyboxComponentData(params);
   }
 
-  scaleColorVal (val: number, fromGLTF: boolean): number {
-    return fromGLTF ? LoaderHelper.scaleTo255(val) : LoaderHelper.scaleTo1(val);
-  }
-
-  scaleColorVec (vec: number[], fromGLTF: boolean): number[] {
-    return vec.map(val => this.scaleColorVal(val, fromGLTF));
-  }
-
-  createLightOptions (light: GLTFLight): ModelLightOptions {
-    return PluginHelper.createLightOptions(light);
-  }
-
-  createCameraOptions (camera: GLTFCamera): ModelCameraOptions {
-    return PluginHelper.createCameraOptions(camera) ?? {
-      fov: 45,
-      far: 1000,
-      near: 0.01,
-      clipMode: spec.CameraClipMode.portrait,
-    };
-  }
-
   private clear () {
     this.images = [];
     this.textures = [];
@@ -858,6 +761,55 @@ export class LoaderImpl implements Loader {
     this.materials = [];
     this.shaders = [];
     this.geometries = [];
+  }
+
+  private computeSceneAABB () {
+    const geometryDataMap: Record<string, GLTFMesh> = {};
+
+    this.gltfMeshs.forEach(mesh => {
+      const id = mesh.geometryData.id;
+
+      geometryDataMap[id] = mesh;
+    });
+    const componentDataMap: Record<string, GLTFMesh> = {};
+
+    this.components.forEach(component => {
+      if (component.dataType === spec.DataType.MeshComponent) {
+        const meshComponent = component as spec.ModelMeshComponentData;
+
+        componentDataMap[component.id] = geometryDataMap[meshComponent.geometry.id];
+      }
+    });
+
+    const sceneAABB = new Box3();
+    const parentTransformMap: Record<string, Transform> = {};
+
+    this.items.forEach(item => {
+      const parentId = item.parentId ?? '';
+      const parentTransform = parentTransformMap[parentId] ?? new Transform();
+      const props: TransformProps = {};
+
+      if (item.transform) {
+        props.position = new Vector3().copyFrom(item.transform.position);
+        props.rotation = Euler.fromVector3(item.transform.eulerHint as Vector3);
+        props.scale = new Vector3().copyFrom(item.transform.scale);
+      }
+      const transform = new Transform(props, parentTransform);
+
+      parentTransformMap[item.id] = transform;
+      item.components.forEach(component => {
+        const mesh = componentDataMap[component.id];
+
+        if (mesh && mesh.bounds) {
+          const minPos = Vector3.fromArray(mesh.bounds.box.min);
+          const maxPos = Vector3.fromArray(mesh.bounds.box.max);
+
+          sceneAABB.union(new Box3(minPos, maxPos));
+        }
+      });
+    });
+
+    return sceneAABB;
   }
 
   /**
