@@ -164,8 +164,6 @@ export class Composition implements Disposable, LostHandler {
    */
   globalTime: number;
 
-  editorScaleRatio = 1.0;
-
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
   protected assigned = false;
@@ -252,9 +250,6 @@ export class Composition implements Disposable, LostHandler {
       ...sourceContent?.camera,
       aspect: width / height,
     });
-    if (renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
-      this.camera.fovScaleRatio = this.editorScaleRatio;
-    }
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
@@ -313,6 +308,14 @@ export class Composition implements Disposable, LostHandler {
    */
   get isDestroyed (): boolean {
     return this.destroyed;
+  }
+
+  set editorScaleRatio (value: number) {
+    this.camera.fovScaleRatio = value;
+  }
+
+  get editorScaleRatio () {
+    return this.camera.fovScaleRatio;
   }
 
   /**

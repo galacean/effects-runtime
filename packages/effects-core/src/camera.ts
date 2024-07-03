@@ -64,6 +64,9 @@ const tmpScale = new Vector3(1, 1, 1);
  * 合成的相机对象，采用透视投影
  */
 export class Camera {
+  /**
+   * 编辑器用于缩放画布
+   */
   fovScaleRatio: number = 1.0;
   private options: CameraOptionsEx;
   private viewMatrix = Matrix4.fromIdentity();
