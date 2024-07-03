@@ -102,8 +102,8 @@ export class Camera {
       rotation: Euler.fromArray(rotation),
     };
     this.dirty = true;
-    this.updateMatrix();
     this.composition = composition;
+    this.updateMatrix();
   }
 
   /**
