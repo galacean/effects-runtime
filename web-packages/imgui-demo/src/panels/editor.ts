@@ -1,6 +1,7 @@
 import type { Component } from '@galacean/effects';
-import { getMergedStore, type VFXItem } from '@galacean/effects';
+import { VFXItem, getMergedStore } from '@galacean/effects';
 import { OrbitController } from '../core/orbit-controller';
+import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 
@@ -11,7 +12,6 @@ type float = number;
 type double = number;
 
 export class Editor {
-  activeItem?: VFXItem;
   sceneRendederTexture?: WebGLTexture;
   cameraController: OrbitController = new OrbitController();
 
@@ -84,70 +84,70 @@ export class Editor {
 
   onInspectorGUI () {
     ImGui.Begin('Inspector');
-    if (!this.activeItem) {
+    if (!Selection.activeObject) {
       ImGui.End();
 
       return;
     }
+    const item = Selection.activeObject;
 
-    const item = this.activeItem;
-
-    ImGui.Text(item.name);
-    ImGui.Text(item.getInstanceId());
-    //@ts-expect-error
-    ImGui.Checkbox('Visiable', (_ = item.visible) => item.visible = _);
-
-    if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
-      const transform = item.transform;
-
-      ImGui.Text('Position');
-      ImGui.SameLine(100);
-      ImGui.DragFloat3('##Position', transform.position, 0.03);
-      ImGui.Text('Rotation');
-      ImGui.SameLine(100);
-      ImGui.DragFloat3('##Rotation', transform.rotation, 0.03);
-      ImGui.Text('Scale');
-      ImGui.SameLine(100);
-      ImGui.DragFloat3('##Scale', transform.scale, 0.03);
-
-      transform.quat.setFromEuler(transform.rotation);
-      transform.quat.conjugate();
+    if (item instanceof VFXItem) {
+      ImGui.Text(item.name);
+      ImGui.Text(item.getInstanceId());
       //@ts-expect-error
-      transform.dirtyFlags.localData = true;
-      //@ts-expect-error
-      transform.dispatchValueChange();
-    }
+      ImGui.Checkbox('Visiable', (_ = item.visible) => item.visible = _);
 
-    for (const componet of item.components) {
-      if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
+      if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
+        const transform = item.transform;
 
-        const propertyDecoratorStore = getMergedStore(componet);
+        ImGui.Text('Position');
+        ImGui.SameLine(100);
+        ImGui.DragFloat3('##Position', transform.position, 0.03);
+        ImGui.Text('Rotation');
+        ImGui.SameLine(100);
+        ImGui.DragFloat3('##Rotation', transform.rotation, 0.03);
+        ImGui.Text('Scale');
+        ImGui.SameLine(100);
+        ImGui.DragFloat3('##Scale', transform.scale, 0.03);
 
-        for (const peopertyName of Object.keys(componet)) {
-          const key = peopertyName as keyof Component;
+        transform.quat.setFromEuler(transform.rotation);
+        transform.quat.conjugate();
+        //@ts-expect-error
+        transform.dirtyFlags.localData = true;
+        //@ts-expect-error
+        transform.dispatchValueChange();
+      }
 
-          if (typeof componet[key] === 'number') {
-            ImGui.Text(peopertyName);
-            ImGui.SameLine(100);
-            //@ts-expect-error
-            ImGui.DragFloat('##DragFloat' + peopertyName, (_ = componet[key]) => componet[key] = _);
-          } else if (typeof componet[key] === 'boolean') {
-            ImGui.Text(peopertyName);
-            ImGui.SameLine(100);
-            //@ts-expect-error
-            ImGui.Checkbox('##Checkbox' + peopertyName, (_ = componet[key]) => componet[key] = _);
+      for (const componet of item.components) {
+        if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
+
+          const propertyDecoratorStore = getMergedStore(componet);
+
+          for (const peopertyName of Object.keys(componet)) {
+            const key = peopertyName as keyof Component;
+
+            if (typeof componet[key] === 'number') {
+              ImGui.Text(peopertyName);
+              ImGui.SameLine(100);
+              //@ts-expect-error
+              ImGui.DragFloat('##DragFloat' + peopertyName, (_ = componet[key]) => componet[key] = _);
+            } else if (typeof componet[key] === 'boolean') {
+              ImGui.Text(peopertyName);
+              ImGui.SameLine(100);
+              //@ts-expect-error
+              ImGui.Checkbox('##Checkbox' + peopertyName, (_ = componet[key]) => componet[key] = _);
+            }
           }
         }
       }
     }
-
     ImGui.End();
   }
 
   generateHierarchyTree (item: VFXItem, baseFlags: ImGui.TreeNodeFlags) {
     let nodeFlags: ImGui.TreeNodeFlags = baseFlags;
 
-    if (this.activeItem === item) {
+    if (Selection.activeObject === item) {
       nodeFlags |= ImGui.TreeNodeFlags.Selected;
     }
     if (item.children.length === 0) {
@@ -159,7 +159,7 @@ export class Editor {
     const node_open: boolean = ImGui.TreeNodeEx(item.id, nodeFlags, item.name);
 
     if (ImGui.IsItemClicked() && !ImGui.IsItemToggledOpen()) {
-      this.activeItem = item;
+      Selection.setActiveObject(item);
     }
 
     if (node_open) {

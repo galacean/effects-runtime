@@ -1,13 +1,11 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { GLSLVersion, Material, math } from '@galacean/effects';
-import { Geometry, glContext } from '@galacean/effects';
-import { OrderType, Player, RenderPass, RenderPassPriorityPostprocess, RendererComponent } from '@galacean/effects';
-import '@galacean/effects-plugin-orientation-transformer';
+import { GLSLVersion, Geometry, Material, OrderType, Player, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
-import '@galacean/effects-plugin-spine';
-import { ImGui_Impl } from './imgui';
 import { JSONConverter } from '@galacean/effects-plugin-model';
-import { uiManager } from './core/ui-manager';
+import '@galacean/effects-plugin-orientation-transformer';
+import '@galacean/effects-plugin-spine';
+import { Selection } from './core/selection';
+import { ImGui_Impl } from './imgui';
 
 export class GalaceanEffects {
   static player: Player;
@@ -146,8 +144,8 @@ export class OutlinePass extends RenderPass {
   }
 
   override execute (renderer: Renderer): void {
-    if (uiManager.editor.activeItem) {
-      const transform = uiManager.editor.activeItem.transform;
+    if (Selection.activeObject instanceof VFXItem) {
+      const transform = Selection.activeObject.transform;
       const position = transform.getWorldPosition();
       const size = transform.getWorldScale().clone().multiply(new math.Vector3(transform.size.x, transform.size.y, 0));
       const halfWidth = size.x / 2;

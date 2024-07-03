@@ -1,14 +1,14 @@
 import type { spec } from '@galacean/effects';
-import { EffectComponent, Player, math } from '@galacean/effects';
-import { generateGUID, loadImage } from '@galacean/effects';
+import { Player, generateGUID, loadImage, math } from '@galacean/effects';
+import '@galacean/effects-plugin-model';
+import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
-import { editorWindow, menuItem } from '../core/decorators';
-import { ImGui, ImGui_Impl } from '../imgui';
-import { EditorWindow } from './panel';
 import { folderIcon, jsonIcon } from '../asset/images';
 import { previewScene } from '../asset/preview-scene';
-import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
-import '@galacean/effects-plugin-model';
+import { editorWindow, menuItem } from '../core/decorators';
+import { Selection } from '../core/selection';
+import { ImGui, ImGui_Impl } from '../imgui';
+import { EditorWindow } from './panel';
 
 @editorWindow()
 export class Project extends EditorWindow {
@@ -181,10 +181,19 @@ export class Project extends EditorWindow {
         } else if (child.icon) {
           icon = child.icon;
         }
-        ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(40 / 255, 40 / 255, 40 / 255, 1.0));
+        if (Selection.activeObject === child) {
+          ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(0.0, 122 / 255, 215 / 255, 1.0));
+          ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(56 / 255, 122 / 255, 215 / 255, 1.0));
+        } else {
+          ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(40 / 255, 40 / 255, 40 / 255, 1.0));
+          ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(70 / 255, 70 / 255, 70 / 255, 1.0));
+        }
+
         ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImGui.Color(0.0, 122 / 255, 215 / 255, 1.0));
-        ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(70 / 255, 70 / 255, 70 / 255, 1.0));
         ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col);
+        if (ImGui.IsItemClicked()) {
+          Selection.activeObject = child;
+        }
         ImGui.PopID();
         ImGui.PopStyleColor(3);
         // 获取按钮的尺寸
@@ -309,7 +318,7 @@ export class Project extends EditorWindow {
 
     const handle = item.handle;
 
-    if (this.selectedFolder === item) {
+    if (Selection.activeObject === item) {
       nodeFlags |= ImGui.TreeNodeFlags.Selected;
     }
     if (handle.kind === 'file') {
@@ -320,9 +329,12 @@ export class Project extends EditorWindow {
     }
     const node_open: boolean = ImGui.TreeNodeEx(handle.name, nodeFlags, handle.name);
 
-    if (handle.kind === 'directory' && ImGui.IsItemClicked() && !ImGui.IsItemToggledOpen()) {
-      this.selectedFolder = item;
-      void this.createFileIcons(item);
+    if (ImGui.IsItemClicked() && !ImGui.IsItemToggledOpen()) {
+      if (handle.kind === 'directory') {
+        this.selectedFolder = item;
+        void this.createFileIcons(item);
+      }
+      Selection.activeObject = item;
     }
 
     if (node_open) {
