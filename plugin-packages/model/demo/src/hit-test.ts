@@ -16,7 +16,9 @@ let composition;
 
 let playScene;
 
-const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
 const compatibleMode = 'tiny3d';
 const autoAdjustScene = true;
