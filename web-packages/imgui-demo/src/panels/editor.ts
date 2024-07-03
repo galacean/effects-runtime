@@ -4,6 +4,9 @@ import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
+import { EditorWindow } from './panel';
+import { editorWindow } from '../core/decorators';
+import { FileNode } from './project';
 
 type char = number;
 type int = number;
@@ -11,18 +14,24 @@ type short = number;
 type float = number;
 type double = number;
 
-export class Editor {
+@editorWindow()
+export class Editor extends EditorWindow {
   sceneRendederTexture?: WebGLTexture;
   cameraController: OrbitController = new OrbitController();
 
-  draw () {
+  constructor () {
+    super();
+    this.open();
+  }
+
+  override draw () {
     this.onGUI();
     this.onHierarchyGUI();
     this.onInspectorGUI();
     this.onSceneGUI();
   }
 
-  onGUI () {
+  override onGUI () {
   }
 
   onSceneGUI () {
@@ -89,16 +98,16 @@ export class Editor {
 
       return;
     }
-    const item = Selection.activeObject;
+    const activeObject = Selection.activeObject;
 
-    if (item instanceof VFXItem) {
-      ImGui.Text(item.name);
-      ImGui.Text(item.getInstanceId());
+    if (activeObject instanceof VFXItem) {
+      ImGui.Text(activeObject.name);
+      ImGui.Text(activeObject.getInstanceId());
       //@ts-expect-error
-      ImGui.Checkbox('Visiable', (_ = item.visible) => item.visible = _);
+      ImGui.Checkbox('Visiable', (_ = activeObject.visible) => activeObject.visible = _);
 
       if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
-        const transform = item.transform;
+        const transform = activeObject.transform;
 
         ImGui.Text('Position');
         ImGui.SameLine(100);
@@ -118,7 +127,7 @@ export class Editor {
         transform.dispatchValueChange();
       }
 
-      for (const componet of item.components) {
+      for (const componet of activeObject.components) {
         if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
 
           const propertyDecoratorStore = getMergedStore(componet);
@@ -138,6 +147,15 @@ export class Editor {
               ImGui.Checkbox('##Checkbox' + peopertyName, (_ = componet[key]) => componet[key] = _);
             }
           }
+        }
+      }
+    } else if (activeObject instanceof FileNode) {
+      if (activeObject.isFile) {
+        const file = activeObject.getFile();
+
+        if (file) {
+          ImGui.Text(file.name);
+          ImGui.Text(file.size / 1000 + ' KB');
         }
       }
     }

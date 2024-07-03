@@ -182,8 +182,8 @@ export class Project extends EditorWindow {
           icon = child.icon;
         }
         if (Selection.activeObject === child) {
-          ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(0.0, 122 / 255, 215 / 255, 1.0));
-          ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(56 / 255, 122 / 255, 215 / 255, 1.0));
+          ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(0.0, 100 / 255, 215 / 255, 1.0));
+          ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(20 / 255, 122 / 255, 215 / 255, 1.0));
         } else {
           ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(40 / 255, 40 / 255, 40 / 255, 1.0));
           ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(70 / 255, 70 / 255, 70 / 255, 1.0));
@@ -238,7 +238,8 @@ export class Project extends EditorWindow {
   private async readFolder () {
     const folderHandle = await window.showDirectoryPicker();
 
-    this.rootFileNode = { handle:folderHandle, children:[] };
+    this.rootFileNode = new FileNode();
+    this.rootFileNode.handle = folderHandle;
     await this.generateFileTree(this.rootFileNode);
   }
 
@@ -248,11 +249,9 @@ export class Project extends EditorWindow {
 
     if (handle.kind === 'directory') {
       for await (const entry of handle.values()) {
-        const childNode = {
-          handle:entry,
-          children:[],
-        };
+        const childNode = new FileNode();
 
+        childNode.handle = entry;
         item.children.push(childNode);
         await this.generateFileTree(childNode);
       }
@@ -427,8 +426,25 @@ export class Project extends EditorWindow {
   }
 }
 
-interface FileNode {
-  handle: FileSystemDirectoryHandle | FileSystemFileHandle,
-  children: FileNode[],
-  icon?: WebGLTexture,
+export class FileNode {
+  handle: FileSystemDirectoryHandle | FileSystemFileHandle;
+  children: FileNode[] = [];
+  icon?: WebGLTexture;
+  private fileCache: File;
+
+  get isFile () {
+    return this.handle.kind === 'file';
+  }
+
+  getFile () {
+    if (this.fileCache) {
+      return this.fileCache;
+    } else {
+      if (this.handle.kind === 'file') {
+        void this.handle.getFile().then((file: File)=>{
+          this.fileCache = file;
+        });
+      }
+    }
+  }
 }

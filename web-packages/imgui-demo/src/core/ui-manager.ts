@@ -1,12 +1,11 @@
 import type { EditorWindow } from '../panels/panel';
-import { Editor } from '../panels/editor';
 import { MenuItemNode, MenuNode } from '../widgets/menu-item';
 import { ImGui } from '../imgui';
 import { editorWindowStore, menuItemStore } from './decorators';
 
 export class UIManager {
   private static panels: EditorWindow[] = [];
-  editor: Editor = new Editor();
+  // editor: Editor = new Editor();
   private menuNodes: MenuNode[] = [];
 
   constructor () {
@@ -40,7 +39,7 @@ export class UIManager {
     for (const panel of UIManager.panels) {
       panel.draw();
     }
-    this.editor.draw();
+    // this.editor.draw();
 
     if (ImGui.BeginMainMenuBar()) {
       if (ImGui.BeginMenu('File')) {
