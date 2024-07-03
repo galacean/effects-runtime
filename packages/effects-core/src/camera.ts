@@ -1,6 +1,8 @@
 import * as spec from '@galacean/effects-specification';
 import { Matrix4, Vector3, Euler, Quaternion, DEG2RAD } from '@galacean/effects-math/es/core/index';
 import { Transform } from './transform';
+import type { Composition } from './composition';
+import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 
 interface CameraOptionsBase {
   /**
@@ -64,6 +66,7 @@ const tmpScale = new Vector3(1, 1, 1);
  * 合成的相机对象，采用透视投影
  */
 export class Camera {
+  readonly composition: Composition;
   private options: CameraOptionsEx;
   private viewMatrix = Matrix4.fromIdentity();
   private projectionMatrix = Matrix4.fromIdentity();
@@ -81,6 +84,7 @@ export class Camera {
   constructor (
     public name: string,
     options: Partial<CameraOptions> = {},
+    composition: Composition,
   ) {
     const {
       near = 0.1,
@@ -99,6 +103,7 @@ export class Camera {
     };
     this.dirty = true;
     this.updateMatrix();
+    this.composition = composition;
   }
 
   /**
@@ -366,8 +371,13 @@ export class Camera {
     if (this.dirty) {
       const { fov, aspect, near, far, clipMode, position } = this.options;
 
+      let fovScaleRatio = 1.0;
+
+      if (this.composition.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+        fovScaleRatio = this.composition.editorScaleRatio;
+      }
       this.projectionMatrix.perspective(
-        fov * DEG2RAD, aspect, near, far,
+        fov * DEG2RAD * fovScaleRatio, aspect, near, far,
         clipMode === spec.CameraClipMode.portrait
       );
       this.inverseViewMatrix.compose(position, this.getQuat(), tmpScale);

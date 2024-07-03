@@ -251,7 +251,7 @@ export class Composition implements Disposable, LostHandler {
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
-    });
+    }, this);
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
