@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { math, spec } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
-import { LoaderECSEx } from '../../src/helper';
+import { LoaderImplEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
@@ -24,12 +24,14 @@ let rotationFocusBegin = false;
 
 let playScene;
 
-const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
 async function getCurrentScene () {
   const duration = 9999;
   const endBehavior = 5;
-  const loader = new LoaderECSEx();
+  const loader = new LoaderImplEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
@@ -38,7 +40,6 @@ async function getCurrentScene () {
       skyboxVis: true,
     },
     effects: {
-      renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: 0,
@@ -51,6 +52,7 @@ async function getCurrentScene () {
   sceneAABB = new Box3(sceneMin, sceneMax);
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
+  const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
 
   loader.addCamera({
     near: 0.1,
@@ -61,7 +63,7 @@ async function getCurrentScene () {
     name: 'extra-camera',
     duration: duration,
     endBehavior: spec.ItemEndBehavior.loop,
-    position: [0, 0, 8],
+    position: position.toArray(),
     rotation: [0, 0, 0],
   });
 
