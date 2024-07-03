@@ -7,13 +7,13 @@ export const previewScene = {
   'fonts': [],
   'version': '3.0',
   'shapes': [],
-  'plugins': [],
+  'plugins': ['model'],
   'type': 'ge',
   'compositions': [
     {
       'id': '1',
       'name': '新建合成1',
-      'duration': 5,
+      'duration': 10,
       'startTime': 0,
       'endBehavior': 1,
       'previewSize': [
@@ -22,7 +22,10 @@ export const previewScene = {
       ],
       'items': [
         {
-          'id': 'a277a804e09948a0bd2e9622d410b345',
+          'id': 'ceaa0ba9bf204438ac74bc8840f332b8',
+        },
+        {
+          'id': '5d2ea6f25e2b40308d824d6db9c89661',
         },
       ],
       'camera': {
@@ -32,24 +35,17 @@ export const previewScene = {
         'clipMode': 1,
         'position': [
           0,
-          0,
+          3,
           10,
         ],
         'rotation': [
-          0,
+          -16,
           0,
           0,
         ],
       },
       'sceneBindings': [
-        {
-          'key': {
-            'id': 'fdacd4ca5e1a423ca0cefd250ad07a86',
-          },
-          'value': {
-            'id': 'a277a804e09948a0bd2e9622d410b345',
-          },
-        },
+
       ],
       'timelineAsset': {
         'id': '6889598e429d48a2921f67002b46a57d',
@@ -58,33 +54,33 @@ export const previewScene = {
   ],
   'components': [
     {
-      'id': '95beb644053a4896823c6b201044c34f',
+      'id': 'aac897288a7d4e3a94d2bd3cf6a4e06a',
+      'dataType': 'MeshComponent',
       'item': {
-        'id': 'a277a804e09948a0bd2e9622d410b345',
+        'id': 'ceaa0ba9bf204438ac74bc8840f332b8',
       },
-      'dataType': 'EffectComponent',
+      'materials':[{
+        'id': 'd34dc6a9d6124543923042f9e304365c',
+      }],
       'geometry': {
         'id': '78cc7d2350bb417bb5dc93afab243411',
       },
-      'materials': [
-        {
-          'id': '1ff163c446234cd4b802db9224166d81',
-        },
-      ],
-      'tracks': [
-        {
-          'clips': [
-            {
-              'dataType': 'TransformAnimationPlayableAsset',
-              'animationClip': {
-                'sizeOverLifetime': {},
-                'rotationOverLifetime': {},
-                'positionOverLifetime': {},
-              },
-            },
-          ],
-        },
-      ],
+    },
+    {
+      'id': '35be2cb10a014194844c6ce89c8a41c4',
+      'dataType': 'LightComponent',
+      'item': {
+        'id': '5d2ea6f25e2b40308d824d6db9c89661',
+      },
+      'lightType': 'directional',
+      'color': {
+        'r': 1.0,
+        'g': 1.0,
+        'b': 1.0,
+        'a': 1.0,
+      },
+      'intensity': 1,
+      'range': 100,
     },
   ],
   'geometries': [
@@ -156,45 +152,74 @@ export const previewScene = {
         },
       },
     },
+    {
+      'id': 'd34dc6a9d6124543923042f9e304365c',
+      'shader': {
+        'id': 'pbr00000000000000000000000000000',
+      },
+      'name': '3d-material',
+      'dataType': 'Material',
+      'zTest': true,
+      'zWrite': true,
+      'blending': false,
+      'stringTags': {
+        'RenderType': 'Opaque',
+        'Cull': 'Front',
+      },
+      'ints': {
+      },
+      'floats': {
+        '_SpecularAA': 1,
+        '_AlphaCutoff': 0.3,
+        '_MetallicFactor': 0,
+        '_RoughnessFactor': 0.7,
+        '_NormalScale': 1,
+        '_OcclusionStrength': 1,
+        '_EmissiveIntensity': 0,
+      },
+      'vector4s': {
+      },
+      'colors': {
+        '_BaseColorFactor': {
+          'r': 1,
+          'g': 1,
+          'b': 1,
+          'a': 1,
+        },
+        '_EmissiveFactor': {
+          'r': 0.6,
+          'g': 0.2,
+          'b': 0.8,
+          'a': 1,
+        },
+      },
+      'textures': {
+        '_BaseColorSampler': {
+          'texture': {
+            'id': 'whitetexture00000000000000000000',
+          },
+        },
+      },
+    },
   ],
   'items': [
     {
-      'id': 'a277a804e09948a0bd2e9622d410b345',
-      'name': 'PreviewItem',
-      'duration': 5,
-      'type': 'ECS',
+      'id': 'ceaa0ba9bf204438ac74bc8840f332b8',
+      'name': '3d-mesh',
+      'duration': 1000,
+      'dataType': 'VFXItemData',
+      'type': '1',
       'visible': true,
-      'endBehavior': 0,
+      'endBehavior': 2,
       'delay': 0,
       'renderLevel': 'B+',
-      'content': {
-        'tracks': [
-          {
-            'clips': [
-              {
-                'dataType': 'TransformAnimationPlayableAsset',
-                'animationClip': {
-                  'sizeOverLifetime': {},
-                  'rotationOverLifetime': {},
-                  'positionOverLifetime': {},
-                },
-              },
-            ],
-          },
-        ],
-      },
-      'components': [
-        {
-          'id': '95beb644053a4896823c6b201044c34f',
-        },
-      ],
       'transform': {
         'position': {
           'x': 0,
           'y': 0,
           'z': 0,
         },
-        'eulerHint': {
+        'rotation': {
           'x': 0,
           'y': 0,
           'z': 0,
@@ -205,8 +230,48 @@ export const previewScene = {
           'z': 1,
         },
       },
+      'components': [
+        {
+          'id': 'aac897288a7d4e3a94d2bd3cf6a4e06a',
+        },
+      ],
+      'listIndex': 6,
+      'content': {},
+    },
+    {
+      'id': '5d2ea6f25e2b40308d824d6db9c89661',
+      'name': '3d-light',
+      'duration': 1000,
       'dataType': 'VFXItemData',
-      'listIndex': 0,
+      'type': '1',
+      'visible': true,
+      'endBehavior': 2,
+      'delay': 0,
+      'renderLevel': 'B+',
+      'transform': {
+        'position': {
+          'x': 0,
+          'y': 0,
+          'z': 0,
+        },
+        'rotation': {
+          'x': 45,
+          'y': -30,
+          'z': 0,
+        },
+        'scale': {
+          'x': 1,
+          'y': 1,
+          'z': 1,
+        },
+      },
+      'components': [
+        {
+          'id': '35be2cb10a014194844c6ce89c8a41c4',
+        },
+      ],
+      'listIndex': 6,
+      'content': {},
     },
   ],
   'shaders': [
@@ -227,16 +292,7 @@ export const previewScene = {
       'id': '6889598e429d48a2921f67002b46a57d',
       'dataType': 'TimelineAsset',
       'tracks': [
-        {
-          'id': 'fdacd4ca5e1a423ca0cefd250ad07a86',
-        },
       ],
-    },
-    {
-      'id': 'fdacd4ca5e1a423ca0cefd250ad07a86',
-      'dataType': 'ObjectBindingTrack',
-      'children': [],
-      'clips': [],
     },
   ],
   'compositionId': '1',

@@ -1,5 +1,5 @@
 import type { spec } from '@galacean/effects';
-import { EffectComponent, Material, Player, math } from '@galacean/effects';
+import { EffectComponent, Player, math } from '@galacean/effects';
 import { generateGUID, loadImage } from '@galacean/effects';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { editorWindow, menuItem } from '../core/decorators';
@@ -7,7 +7,8 @@ import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorWindow } from './panel';
 import { folderIcon, jsonIcon } from '../asset/images';
 import { previewScene } from '../asset/preview-scene';
-import { GeometryBoxProxy, Sphere } from '@galacean/effects-plugin-model';
+import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
+import '@galacean/effects-plugin-model';
 
 @editorWindow()
 export class Project extends EditorWindow {
@@ -245,16 +246,16 @@ export class Project extends EditorWindow {
     }
   }
 
-  private createFileIcons (item: FileNode) {
+  private async createFileIcons (item: FileNode) {
     if (item.handle.kind === 'directory') {
       for (const child of item.children) {
         if (child.handle.kind === 'file') {
-          void child.handle.getFile().then(async (file: File)=>{
+          await child.handle.getFile().then(async (file: File)=>{
             if (file.name.endsWith('.json')) {
               const json = await this.readFile(file);
               const packageData: spec.EffectsPackageData = JSON.parse(json);
 
-              if (packageData.fileSummary.assetType === 'Geometry' && !child.icon) {
+              if (packageData.fileSummary.assetType === 'Geometry') {
                 const geometryData = packageData.exportObjects[0];
 
                 const clonePreviewScene = JSON.parse(JSON.stringify(previewScene));
@@ -263,13 +264,13 @@ export class Project extends EditorWindow {
                 clonePreviewScene.geometries[0] = geometryData;
                 this.previewPlayer.destroyCurrentCompositions();
                 const composition = await this.previewPlayer.loadScene(clonePreviewScene);
-                const previewItem = composition.getItemByName('PreviewItem');
+                const previewItem = composition.getItemByName('3d-mesh');
 
                 if (previewItem) {
                   const geometryproxy = new GeometryBoxProxy();
                   const boundingBox = new math.Box3();
 
-                  geometryproxy.create(previewItem.getComponent(EffectComponent).geometry, []);
+                  geometryproxy.create(previewItem.getComponent(ModelMeshComponent).content.subMeshes[0].getEffectsGeometry(), []);
                   geometryproxy.getBoundingBox(boundingBox);
                   const sphere = new Sphere();
 
@@ -279,8 +280,9 @@ export class Project extends EditorWindow {
 
                   const scaleRatio = 4 * 1 / radius;
 
-                  composition.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
-                  composition.setScale(scaleRatio, scaleRatio, scaleRatio);
+                  previewItem.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
+                  previewItem.setScale(scaleRatio, scaleRatio, scaleRatio);
+                  previewItem.rotate(0, 25, 0);
                 }
                 this.previewPlayer.gotoAndStop(1);
                 this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
@@ -316,7 +318,7 @@ export class Project extends EditorWindow {
 
     if (handle.kind === 'directory' && ImGui.IsItemClicked() && !ImGui.IsItemToggledOpen()) {
       this.selectedFolder = item;
-      this.createFileIcons(item);
+      void this.createFileIcons(item);
     }
 
     if (node_open) {
