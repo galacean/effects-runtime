@@ -248,10 +248,13 @@ export class Composition implements Disposable, LostHandler {
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
-    this.camera = new Camera(this.name, this, {
+    this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
       aspect: width / height,
     });
+    if (renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+      this.camera.fovScaleRatio = this.editorScaleRatio;
+    }
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
