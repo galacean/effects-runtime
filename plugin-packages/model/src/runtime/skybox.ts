@@ -516,11 +516,9 @@ export class PSkyboxCreator {
    * @param params - 天空盒参数
    * @returns 天空盒选项
    */
-  static createSkyboxComponentData(params: PSkyboxParams) {
+  static createSkyboxComponentData (params: PSkyboxParams) {
     const specularCubeData = PSkyboxCreator.getSpecularCubeMapData(params);
     const diffuseCubeData = PSkyboxCreator.getDiffuseCubeMapData(params);
-    const specularCubeData = this.getSpecularCubeMapData(params);
-    const diffuseCubeData = this.getDiffuseCubeMapData(params);
     const { renderable, intensity, reflectionsIntensity, irradianceCoeffs, specularImageSize, specularMipCount } = params;
 
     let diffuseImage: spec.DataPath;
