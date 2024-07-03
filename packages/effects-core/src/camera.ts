@@ -83,8 +83,8 @@ export class Camera {
    */
   constructor (
     public name: string,
-    options: Partial<CameraOptions> = {},
     composition: Composition,
+    options: Partial<CameraOptions> = {},
   ) {
     const {
       near = 0.1,
