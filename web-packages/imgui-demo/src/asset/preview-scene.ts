@@ -27,6 +27,9 @@ export const previewScene = {
         {
           'id': '5d2ea6f25e2b40308d824d6db9c89661',
         },
+        {
+          'id': 'b570cb441387e98916b993f25ff00e9c',
+        },
       ],
       'camera': {
         'fov': 60,
@@ -81,6 +84,21 @@ export const previewScene = {
       },
       'intensity': 1,
       'range': 100,
+    },
+    {
+      'id': '1de1c5af598b954a6c0dc00735efa3a9',
+      'dataType': 'LightComponent',
+      'item': {
+        'id': 'b570cb441387e98916b993f25ff00e9c',
+      },
+      'lightType': 'ambient',
+      'color': {
+        'r': 0.2,
+        'g': 0.2,
+        'b': 0.2,
+        'a': 1.0,
+      },
+      'intensity': 1,
     },
   ],
   'geometries': [
@@ -268,6 +286,41 @@ export const previewScene = {
       'components': [
         {
           'id': '35be2cb10a014194844c6ce89c8a41c4',
+        },
+      ],
+      'listIndex': 6,
+      'content': {},
+    },
+    {
+      'id': 'b570cb441387e98916b993f25ff00e9c',
+      'name': '3d-ambient-light',
+      'duration': 1000,
+      'dataType': 'VFXItemData',
+      'type': '1',
+      'visible': true,
+      'endBehavior': 2,
+      'delay': 0,
+      'renderLevel': 'B+',
+      'transform': {
+        'position': {
+          'x': 0,
+          'y': 0,
+          'z': 0,
+        },
+        'rotation': {
+          'x': 45,
+          'y': -30,
+          'z': 0,
+        },
+        'scale': {
+          'x': 1,
+          'y': 1,
+          'z': 1,
+        },
+      },
+      'components': [
+        {
+          'id': '1de1c5af598b954a6c0dc00735efa3a9',
         },
       ],
       'listIndex': 6,

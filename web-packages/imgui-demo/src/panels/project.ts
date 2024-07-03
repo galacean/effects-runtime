@@ -173,7 +173,7 @@ export class Project extends EditorWindow {
         const frame_padding = 2;                             // -1 === uses default padding (style.FramePadding)
         const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                        // UV coordinates for lower-left
         const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);// UV coordinates for (32,32) in our texture
-        const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.2, 0.2, 0.2, 1.0);         // Black background
+        const bg_col: ImGui.Vec4 = new ImGui.Vec4(0.0, 0.0, 0.0, 1.0);         // Black background
         let icon = this.jsonIcon;
 
         if (child.handle.kind === 'directory') {
@@ -181,8 +181,12 @@ export class Project extends EditorWindow {
         } else if (child.icon) {
           icon = child.icon;
         }
+        ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(40 / 255, 40 / 255, 40 / 255, 1.0));
+        ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImGui.Color(0.0, 122 / 255, 215 / 255, 1.0));
+        ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(70 / 255, 70 / 255, 70 / 255, 1.0));
         ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col);
         ImGui.PopID();
+        ImGui.PopStyleColor(3);
         // 获取按钮的尺寸
         const buttonSize = ImGui.GetItemRectSize();
 
