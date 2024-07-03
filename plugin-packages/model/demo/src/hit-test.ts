@@ -1,8 +1,10 @@
 //@ts-nocheck
-import { Transform, spec } from '@galacean/effects';
+import { Transform, spec, math } from '@galacean/effects';
 import { ToggleItemBounding, CompositionHitTest } from '@galacean/effects-plugin-model';
 import { LoaderImplEx, InputController } from '../../src/helper';
 import { createSlider } from './utility';
+
+const { Sphere, Vector3, Box3 } = math;
 
 let player;
 
@@ -37,6 +39,14 @@ async function getCurrentScene () {
     },
   });
 
+  const sceneMin = Vector3.fromArray(loadResult.sceneAABB.min);
+  const sceneMax = Vector3.fromArray(loadResult.sceneAABB.max);
+
+  const sceneAABB = new Box3(sceneMin, sceneMax);
+  const sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
+  const sceneCenter = sceneAABB.getCenter(new Vector3());
+  const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
+
   loader.addCamera({
     near: 0.1,
     far: 5000,
@@ -46,7 +56,7 @@ async function getCurrentScene () {
     name: 'extra-camera',
     duration: duration,
     endBehavior: spec.ItemEndBehavior.loop,
-    position: [0, 0, 8],
+    position: position.toArray(),
     rotation: [0, 0, 0],
   });
 
@@ -56,11 +66,17 @@ async function getCurrentScene () {
 export async function loadScene (inPlayer) {
   if (!player) {
     player = inPlayer;
+    registerMouseEvent();
   }
 
   if (!playScene) {
     playScene = await getCurrentScene();
-    registerMouseEvent();
+  } else {
+    playScene.compositions[0].items.forEach(item => {
+      if (item.id === 'extra-camera') {
+        item.transform = player.compositions[0].camera;
+      }
+    });
   }
 
   const opt = {
@@ -114,7 +130,7 @@ function registerMouseEvent () {
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.compositions[0].items.find(item => item.id === 'extra-camera');
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
   const position = player.compositions[0].camera.position;
   const quat = player.compositions[0].camera.getQuat();
 
