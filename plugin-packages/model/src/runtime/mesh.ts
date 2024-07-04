@@ -175,7 +175,6 @@ export class PMesh extends PEntity {
     this.updateMaterial(scene);
 
     this.subMeshes.forEach((subMesh, index) => {
-
       renderer.drawGeometry(
         subMesh.getEffectsGeometry(),
         subMesh.getEffectsMaterial(),
