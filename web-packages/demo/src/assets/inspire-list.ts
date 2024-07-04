@@ -701,5 +701,10 @@ export default {
     name: '预合成',
     pass: true,
   },
+  customFont: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*de5zRbIjhBUAAAAAAAAAAAAADlB4AQ',
+    name: '自定义字体',
+    pass: true,
+  },
 };
 
