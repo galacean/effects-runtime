@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import legacy from '@vitejs/plugin-legacy';
 import { viteExternalsPlugin } from 'vite-plugin-externals';
-import glslInner from '../../scripts/rollup-plugin-glsl-inner';
+import { glslInner, getSWCPlugin } from '../../scripts/rollup-config-helper';
 
 export default defineConfig(({ mode }) => {
   const development = mode === 'development';
@@ -20,7 +20,6 @@ export default defineConfig(({ mode }) => {
           'inspire-pre-player': resolve(__dirname, 'html/inspire/pre-player.html'),
           'compressed': resolve(__dirname, 'html/compressed.html'),
           'context-lost-restore': resolve(__dirname, 'html/context-lost-restore.html'),
-          'custom-material': resolve(__dirname, 'html/custom-material.html'),
           'dashboard': resolve(__dirname, 'html/dashboard.html'),
           'post-processing': resolve(__dirname, 'html/post-processing.html'),
           'single': resolve(__dirname, 'html/single.html'),
@@ -32,7 +31,6 @@ export default defineConfig(({ mode }) => {
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常
     },
-    esbuild: {},
     server: {
       host: '0.0.0.0',
       port: 8080,
@@ -50,6 +48,10 @@ export default defineConfig(({ mode }) => {
         targets: ['iOS >= 9'],
       }),
       glslInner(),
+      getSWCPlugin({
+        target: 'ES6',
+        baseUrl: resolve(__dirname, '..', '..'),
+      }),
       tsconfigPaths(),
       viteExternalsPlugin({
         'three': 'THREE',

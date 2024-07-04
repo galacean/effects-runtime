@@ -1,17 +1,16 @@
+import * as spec from '@galacean/effects-specification';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { GeometryData } from '../asset-loader';
-import { DataType } from '../asset-loader';
+import { effectsClass, serialize } from '../decorators';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType } from '../plugins';
 import type { MeshDestroyOptions, Renderer } from '../render';
-import { Geometry } from '../render';
-import { DestroyOptions, generateGUID } from '../utils';
+import type { Geometry } from '../render';
+import { DestroyOptions } from '../utils';
 import { RendererComponent } from './renderer-component';
-import { effectsClass, serialize } from '../decorators';
 
 let seed = 1;
 
@@ -19,7 +18,7 @@ let seed = 1;
  * @since 2.0.0
  * @internal
  */
-@effectsClass(DataType.EffectComponent)
+@effectsClass(spec.DataType.EffectComponent)
 export class EffectComponent extends RendererComponent {
   /**
    * Mesh 的全局唯一 id
@@ -49,24 +48,6 @@ export class EffectComponent extends RendererComponent {
     this.id = 'Mesh' + seed++;
     this.name = '<unnamed>';
     this._priority = 0;
-    this.geometry = Geometry.create(this.engine);
-
-    const geometryData: GeometryData = {
-      vertices: [
-        -1, 1, 0, //左上
-        -1, -1, 0, //左下
-        1, 1, 0, //右上
-        1, -1, 0, //右下
-      ],
-      uvs: [0, 1, 0, 0, 1, 1, 1, 0],
-      indices: [0, 1, 2, 2, 1, 3],
-      dataType: DataType.Geometry,
-      id: generateGUID(),
-    };
-
-    this.geometry.fromData(geometryData);
-
-    this.triangles = geometryToTriangles(this.geometry);
   }
 
   get isDestroyed (): boolean {
@@ -86,17 +67,10 @@ export class EffectComponent extends RendererComponent {
   }
 
   override render (renderer: Renderer) {
-    const material = this.material;
-    const geo = this.geometry;
-
     if (renderer.renderingData.currentFrame.globalUniforms) {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
-
-    // 执行 Geometry 的数据刷新
-    geo.flush();
-
-    renderer.drawGeometry(geo, material);
+    renderer.drawGeometry(this.geometry, this.material);
   }
 
   /**
@@ -162,7 +136,7 @@ export class EffectComponent extends RendererComponent {
     };
   }
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     super.fromData(data);
     this.material = this.materials[0];
   }

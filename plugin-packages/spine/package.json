@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-spine",
-  "version": "1.2.1",
+  "version": "1.6.1",
   "description": "Galacean Effects player spine plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -14,6 +14,11 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./alipay": {
+      "import": "./dist/alipay.mjs",
+      "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
@@ -22,9 +27,9 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
     "build:demo": "rimraf dist && vite build",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [
@@ -43,6 +48,6 @@
     "fpsmeter": "^0.3.1"
   },
   "dependencies": {
-    "@esotericsoftware/spine-core": "~4.2.35"
+    "@esotericsoftware/spine-core": "~4.2.43"
   }
 }

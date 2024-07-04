@@ -1,4 +1,4 @@
-precision highp float;
+
 
 #define FEATURES
 
@@ -10,6 +10,7 @@ precision highp float;
 #extension GL_OES_standard_derivatives : enable
 #endif
 
+precision highp float;
 
 #include <webglCompatibility.glsl>
 #include <extensions.frag.glsl>
@@ -22,12 +23,12 @@ precision highp float;
 #endif
 
 
-uniform sampler2D u_brdfLUT;
-uniform vec2 u_IblIntensity;
+uniform sampler2D _brdfLUT;
+uniform vec2 _IblIntensity;
 
-uniform int u_MipCount;
-uniform samplerCube u_DiffuseEnvSampler;
-uniform samplerCube u_SpecularEnvSampler;
+uniform int _MipCount;
+uniform samplerCube _DiffuseEnvSampler;
+uniform samplerCube _SpecularEnvSampler;
 
 fsIn vec3 v_CameraDir;
 
@@ -36,7 +37,7 @@ fsIn vec3 v_CameraDir;
 struct SHCoefficients {
     vec3 l00, l1m1, l10, l11, l2m2, l2m1, l20, l21, l22;
 };
-uniform SHCoefficients u_shCoefficients;
+uniform SHCoefficients _shCoefficients;
 
 vec3 getIrradiance( vec3 norm, SHCoefficients c ) {
     float x = norm.x;
@@ -70,24 +71,24 @@ vec3 getIBLContribution(vec3 n, vec3 v)
 
     float NdotV = clamp(dot(n, v), 0.0, 1.0);
 
-    float lod = clamp(perceptualRoughness * float(u_MipCount), 0.0, float(u_MipCount));
+    float lod = clamp(perceptualRoughness * float(_MipCount), 0.0, float(_MipCount));
     vec3 reflection = normalize(reflect(-v, n));
 
     vec2 brdfSamplePoint = clamp(vec2(NdotV, perceptualRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
     // retrieve a scale and bias to F0. See [1], Figure 3
-    vec2 brdf = texture2D(u_brdfLUT, brdfSamplePoint).rg;
+    vec2 brdf = texture2D(_brdfLUT, brdfSamplePoint).rg;
     vec4 diffuseSample = vec4(1.0,0.0,0.0,1.0);
     #ifdef IRRADIANCE_COEFFICIENTS
-    vec3 irradiance = getIrradiance( n, u_shCoefficients );
+    vec3 irradiance = getIrradiance( n, _shCoefficients );
     diffuseSample = vec4(irradiance,1.0);
     #else
-    diffuseSample = textureCube(u_DiffuseEnvSampler, n);
+    diffuseSample = textureCube(_DiffuseEnvSampler, n);
     #endif
 
     #ifdef USE_TEX_LOD
-        vec4 specularSample = _textureCubeLodEXT(u_SpecularEnvSampler, reflection, lod);
+        vec4 specularSample = _textureCubeLodEXT(_SpecularEnvSampler, reflection, lod);
     #else
-        vec4 specularSample = textureCube(u_SpecularEnvSampler, reflection, lod);
+        vec4 specularSample = textureCube(_SpecularEnvSampler, reflection, lod);
     #endif
 
     vec3 diffuseLight = diffuseSample.rgb;
@@ -96,7 +97,7 @@ vec3 getIBLContribution(vec3 n, vec3 v)
     vec3 diffuse = diffuseLight * diffuseColor;
     vec3 specular = specularLight * (specularColor * brdf.x + brdf.y);
 
-    return diffuse * u_IblIntensity[0] + specular * u_IblIntensity[1];
+    return diffuse * _IblIntensity[0] + specular * _IblIntensity[1];
 }
 
 void main(){

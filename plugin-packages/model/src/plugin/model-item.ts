@@ -1,44 +1,34 @@
 import type {
+  Engine,
   HitTestBoxParams,
   HitTestCustomParams,
   HitTestSphereParams,
-  Engine,
   Renderer,
-  AnimationClipPlayable,
+  VFXItem,
 } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, TimelineComponent, effectsClass, spec } from '@galacean/effects';
-import { Vector3 } from '../runtime/math';
-import type { Ray, Euler, Vector2 } from '../runtime/math';
+import { HitTestType, ItemBehaviour, RendererComponent, effectsClass, spec, AnimationClip } from '@galacean/effects';
 import type {
+  ModelCameraComponentData,
   ModelItemBounding,
-  ModelLightContent,
-  ModelCameraContent,
-  ModelMeshContent,
-  ModelSkyboxContent,
+  ModelLightComponentData,
+  ModelMeshComponentData,
+  ModelSkyboxComponentData,
+  AnimationComponentData,
 } from '../index';
-import {
-  VFX_ITEM_TYPE_3D,
-} from '../index';
+import { VFX_ITEM_TYPE_3D } from '../index';
 import type { PSceneManager } from '../runtime';
 import { PCamera, PLight, PMesh, PSkybox } from '../runtime';
-import { CheckerHelper, RayIntersectsBoxWithRotation } from '../utility';
+import type { Euler, Ray, Vector2 } from '../runtime/math';
+import { Vector3 } from '../runtime/math';
+import { RayIntersectsBoxWithRotation } from '../utility';
 import { getSceneManager } from './model-plugin';
-
-export enum ModelDataType {
-  MeshComponent = 10000,
-  SkyboxComponent,
-  LightComponent,
-  CameraComponent,
-  ModelPluginComponent,
-  TreeComponent,
-}
 
 /**
  * 插件 Mesh 组件类，支持 3D Mesh 渲染能力
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.MeshComponent)
+@effectsClass(spec.DataType.MeshComponent)
 export class ModelMeshComponent extends RendererComponent {
   /**
    * 内部 Mesh 对象
@@ -47,7 +37,7 @@ export class ModelMeshComponent extends RendererComponent {
   /**
    * 参数
    */
-  options?: ModelMeshContent;
+  data?: ModelMeshComponentData;
   /**
    * 包围盒
    */
@@ -56,16 +46,20 @@ export class ModelMeshComponent extends RendererComponent {
    * 场景管理器
    */
   sceneManager?: PSceneManager;
+  /**
+   * morph 动画权重
+   */
+  morphWeights: number[] = [];
 
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param options - Mesh 参数
+   * @param data - Mesh 参数
    */
-  constructor (engine: Engine, options?: ModelMeshContent) {
+  constructor (engine: Engine, data?: ModelMeshComponentData) {
     super(engine);
-    if (options) {
-      this.fromData(options);
+    if (data) {
+      this.fromData(data);
     }
   }
 
@@ -75,7 +69,7 @@ export class ModelMeshComponent extends RendererComponent {
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
-    this.priority = this.item.listIndex;
+    this.priority = this.item.renderOrder;
     this.sceneManager = getSceneManager(this);
     this.sceneManager?.addItem(this.content);
     if (this.item.parentId && this.item.parent) {
@@ -121,26 +115,23 @@ export class ModelMeshComponent extends RendererComponent {
 
   /**
    * 反序列化，记录传入参数
-   * @param options - 组件参数
+   * @param data - 组件参数
    */
-  override fromData (options: ModelMeshContent): void {
-    super.fromData(options);
-    this.options = options;
+  override fromData (data: ModelMeshComponentData): void {
+    super.fromData(data);
+    this.data = data;
   }
 
   /**
    * 创建内部对象
    */
   createContent () {
-    if (this.options) {
-      const bounding = this.options.interaction;
+    if (this.data) {
+      const bounding = this.data.interaction;
 
       this.bounding = bounding && JSON.parse(JSON.stringify(bounding));
 
-      const meshOptions = this.options.options;
-
-      CheckerHelper.assertModelMeshOptions(meshOptions);
-      this.content = new PMesh(this.engine, this.item.name, this.options, this, this.item.parentId);
+      this.content = new PMesh(this.engine, this.item.name, this.data, this, this.item.parentId);
     }
   }
 
@@ -251,7 +242,7 @@ export class ModelMeshComponent extends RendererComponent {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.SkyboxComponent)
+@effectsClass(spec.DataType.SkyboxComponent)
 export class ModelSkyboxComponent extends RendererComponent {
   /**
    * 内部天空盒对象
@@ -260,7 +251,7 @@ export class ModelSkyboxComponent extends RendererComponent {
   /**
    * 天空盒参数
    */
-  options?: ModelSkyboxContent;
+  data?: ModelSkyboxComponentData;
   /**
    * 场景管理器
    */
@@ -269,12 +260,12 @@ export class ModelSkyboxComponent extends RendererComponent {
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param options - Mesh 参数
+   * @param data - Mesh 参数
    */
-  constructor (engine: Engine, options?: ModelSkyboxContent) {
+  constructor (engine: Engine, data?: ModelSkyboxComponentData) {
     super(engine);
-    if (options) {
-      this.fromData(options);
+    if (data) {
+      this.fromData(data);
     }
   }
 
@@ -284,7 +275,7 @@ export class ModelSkyboxComponent extends RendererComponent {
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
-    this.priority = this.item.listIndex;
+    this.priority = this.item.renderOrder;
     this.sceneManager = getSceneManager(this);
     this.sceneManager?.addItem(this.content);
     this.setVisible(true);
@@ -314,22 +305,21 @@ export class ModelSkyboxComponent extends RendererComponent {
 
   /**
    * 反序列化，记录传入参数
-   * @param options - 组件参数
+   * @param data - 组件参数
    */
-  override fromData (options: ModelSkyboxContent): void {
-    super.fromData(options);
-    this.options = options;
+  override fromData (data: ModelSkyboxComponentData): void {
+    super.fromData(data);
+    this.data = data;
   }
 
   /**
    * 创建内部对象
    */
   createContent () {
-    if (this.options) {
-      const skyboxOptions = this.options.options;
+    if (this.data) {
+      const skyboxData = this.data;
 
-      CheckerHelper.assertModelSkyboxOptions(skyboxOptions);
-      this.content = new PSkybox(this.item.name, skyboxOptions, this);
+      this.content = new PSkybox(this.item.name, skyboxData, this);
     }
   }
 
@@ -354,7 +344,7 @@ export class ModelSkyboxComponent extends RendererComponent {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.LightComponent)
+@effectsClass(spec.DataType.LightComponent)
 export class ModelLightComponent extends ItemBehaviour {
   /**
    * 内部灯光对象
@@ -363,17 +353,17 @@ export class ModelLightComponent extends ItemBehaviour {
   /**
    * 参数
    */
-  options?: ModelLightContent;
+  data?: ModelLightComponentData;
 
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param options - Mesh 参数
+   * @param data - Mesh 参数
    */
-  constructor (engine: Engine, options?: ModelLightContent) {
+  constructor (engine: Engine, data?: ModelLightComponentData) {
     super(engine);
-    if (options) {
-      this.fromData(options);
+    if (data) {
+      this.fromData(data);
     }
   }
 
@@ -406,23 +396,22 @@ export class ModelLightComponent extends ItemBehaviour {
 
   /**
    * 反序列化，记录传入参数
-   * @param options - 组件参数
+   * @param data - 组件参数
    */
-  override fromData (options: ModelLightContent): void {
-    super.fromData(options);
+  override fromData (data: ModelLightComponentData): void {
+    super.fromData(data);
 
-    this.options = options;
+    this.data = data;
   }
 
   /**
    * 创建内部对象
    */
   createContent () {
-    if (this.options) {
-      const lightOptions = this.options.options;
+    if (this.data) {
+      const lightData = this.data;
 
-      CheckerHelper.assertModelLightOptions(lightOptions);
-      this.content = new PLight(this.item.name, lightOptions, this);
+      this.content = new PLight(this.item.name, lightData, this);
     }
   }
 
@@ -447,7 +436,7 @@ export class ModelLightComponent extends ItemBehaviour {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.CameraComponent)
+@effectsClass(spec.DataType.CameraComponent)
 export class ModelCameraComponent extends ItemBehaviour {
   /**
    * 内部相机对象
@@ -456,21 +445,16 @@ export class ModelCameraComponent extends ItemBehaviour {
   /**
    * 参数
    */
-  options?: ModelCameraContent;
-  /**
-   * 时间轴组件
-   */
-  timeline?: TimelineComponent;
-
+  data?: ModelCameraComponentData;
   /**
    * 构造函数，只保存传入参数，不在这里创建内部对象
    * @param engine - 引擎
-   * @param options - Mesh 参数
+   * @param data - Mesh 参数
    */
-  constructor (engine: Engine, options?: ModelCameraContent) {
+  constructor (engine: Engine, data?: ModelCameraComponentData) {
     super(engine);
-    if (options) {
-      this.fromData(options);
+    if (data) {
+      this.fromData(data);
     }
   }
 
@@ -480,10 +464,10 @@ export class ModelCameraComponent extends ItemBehaviour {
   override start (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
-    this.timeline = this.item.getComponent(TimelineComponent);
     const scene = getSceneManager(this);
 
     scene?.addItem(this.content);
+    this.updateMainCamera();
   }
 
   /**
@@ -499,31 +483,30 @@ export class ModelCameraComponent extends ItemBehaviour {
    * 组件销毁
    */
   override onDestroy (): void {
-    this.content.dispose();
+    this.content?.dispose();
   }
 
   /**
    * 反序列化，记录传入参数
-   * @param options - 组件参数
+   * @param data - 组件参数
    */
-  override fromData (options: ModelCameraContent): void {
-    super.fromData(options);
+  override fromData (data: ModelCameraComponentData): void {
+    super.fromData(data);
 
-    this.options = options;
+    this.data = data;
   }
 
   /**
    * 创建内部对象
    */
   createContent () {
-    if (this.options) {
-      const cameraOptions = this.options.options;
+    if (this.data) {
+      const cameraData = this.data;
 
-      CheckerHelper.assertModelCameraOptions(cameraOptions);
       const width = this.engine.renderer.getWidth();
       const height = this.engine.renderer.getHeight();
 
-      this.content = new PCamera(this.item.name, width, height, cameraOptions, this);
+      this.content = new PCamera(this.item.name, width, height, cameraData, this);
     }
   }
 
@@ -539,7 +522,7 @@ export class ModelCameraComponent extends ItemBehaviour {
       composition.camera.setQuat(this.transform.quat);
       composition.camera.near = this.content.nearPlane;
       composition.camera.far = this.content.farPlane;
-      composition.camera.fov = this.content.fovy;
+      composition.camera.fov = this.content.fov;
     }
   }
 
@@ -549,20 +532,185 @@ export class ModelCameraComponent extends ItemBehaviour {
    * @param rotation - 旋转
    */
   setTransform (position?: Vector3, rotation?: Euler): void {
-    const clip = this.timeline?.findTrack('AnimationTrack')?.findClip('AnimationTimelineClip');
-
-    if (position !== undefined) {
+    if (position) {
       this.transform.setPosition(position.x, position.y, position.z);
-      if (clip) {
-        (clip.playable as AnimationClipPlayable).originalTransform.position = position.clone();
-      }
     }
-    if (rotation !== undefined) {
+    if (rotation) {
       this.transform.setRotation(rotation.x, rotation.y, rotation.z);
-      if (clip) {
-        (clip.playable as AnimationClipPlayable).originalTransform.rotation = rotation.clone();
-      }
     }
     this.updateMainCamera();
   }
+}
+
+/**
+ * 插件动画组件类，支持 3D 动画能力
+ * @since 2.0.0
+ * @internal
+ */
+@effectsClass(spec.DataType.AnimationComponent)
+export class AnimationComponent extends ItemBehaviour {
+  /**
+   * 参数
+   */
+  data?: AnimationComponentData;
+
+  elapsedTime = 0;
+  animation = -1;
+  clips: ModelAnimationClip[] = [];
+  /**
+   * 构造函数，只保存传入参数，不在这里创建内部对象
+   * @param engine - 引擎
+   */
+  constructor (engine: Engine) {
+    super(engine);
+  }
+
+  /**
+   * 组件开始，需要创建内部对象和添加到场景管理器中
+   */
+  override start (): void {
+    this.elapsedTime = 0;
+    this.item.type = VFX_ITEM_TYPE_3D;
+  }
+
+  /**
+   * 组件更新，更新内部对象状态
+   * @param dt - 更新间隔
+   */
+  override update (dt: number): void {
+    this.elapsedTime += dt * 0.001;
+    if (this.animation >= 0 && this.animation < this.clips.length) {
+      this.clips[this.animation].sampleAnimation(this.item, this.elapsedTime);
+    }
+  }
+
+  /**
+   * 组件销毁
+   */
+  override onDestroy (): void {
+
+  }
+
+  /**
+   * 反序列化，记录传入参数
+   * @param data - 组件参数
+   */
+  override fromData (data: AnimationComponentData): void {
+    super.fromData(data);
+    this.data = data;
+    //
+    this.name = data.name ?? '<empty>';
+    this.animation = data.animation ?? -1;
+    this.clips = [];
+    data.animationClips.forEach(clipData => {
+      const clipObj = new ModelAnimationClip(this.engine);
+
+      clipObj.setFromAnimationClip(clipData as unknown as AnimationClip);
+      this.clips.push(clipObj);
+    });
+  }
+}
+
+class ModelAnimationClip extends AnimationClip {
+  path2Node: Record<string, VFXItem> = {};
+
+  override sampleAnimation (vfxItem: VFXItem, time: number) {
+    const duration = vfxItem.duration;
+    const life = Math.max(0, time) % duration;
+
+    for (const curve of this.positionCurves) {
+      const value = curve.keyFrames.getValue(life % this.duration);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setPosition(value.x, value.y, value.z);
+    }
+
+    for (const curve of this.rotationCurves) {
+      const value = curve.keyFrames.getValue(life % this.duration);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
+    }
+
+    for (const curve of this.scaleCurves) {
+      const value = curve.keyFrames.getValue(life % this.duration);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      target?.transform.setScale(value.x, value.y, value.z);
+    }
+
+    for (const curve of this.floatCurves) {
+      const value = curve.keyFrames.getValue(life % this.duration);
+      const target = this.getTargetItem(vfxItem, curve.path);
+
+      if (curve.className === 'ModelMeshComponent') {
+        const component = target?.getComponent(ModelMeshComponent);
+
+        if (component) {
+          const properties = curve.property.split('.');
+
+          setProperty(component, properties, value);
+        } else {
+          console.error('Can\'t find mesh component.');
+        }
+      } else {
+        console.warn(`Ignore curve: className ${curve.className}.`);
+      }
+    }
+  }
+
+  setFromAnimationClip (clip: AnimationClip) {
+    this.duration = clip.duration;
+    this.positionCurves = clip.positionCurves.slice();
+    this.rotationCurves = clip.rotationCurves.slice();
+    this.scaleCurves = clip.scaleCurves.slice();
+    this.floatCurves = clip.floatCurves.slice();
+  }
+
+  getTargetItem (rootItem: VFXItem, path: string) {
+    if (this.path2Node[path]) {
+      return this.path2Node[path];
+    }
+
+    let target = rootItem;
+    const nameList = path.split('/');
+
+    for (const name of nameList) {
+      let findTag = false;
+
+      for (const child of target.children) {
+        if (child.name === name) {
+          target = child;
+          findTag = true;
+
+          break;
+        }
+      }
+      if (!findTag) {
+        throw new Error(`Can't find path in tree ${rootItem.id}, ${path}.`);
+      }
+    }
+
+    this.path2Node[path] = target;
+
+    return target;
+  }
+}
+
+function setProperty<T> (obj: Object, properties: string[], value: T) {
+  const len = properties.length;
+  let current: any = obj;
+
+  for (let i = 0; i < len - 1; i++) {
+    const propName = properties[i];
+
+    if (!(propName in current) || typeof current[propName] !== 'object') {
+      console.error(`Invalid properties ${properties}.`);
+
+      return;
+    }
+    current = current[propName];
+  }
+
+  current[properties[len - 1]] = value;
 }

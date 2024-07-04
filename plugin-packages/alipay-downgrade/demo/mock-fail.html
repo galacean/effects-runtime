@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mock fail - 降级插件 - Galacean Effects demo</title>
+  <style>
+    html, body, div, canvas { margin: 0; padding: 0; }
+    .container {
+      width: 512px;
+      height: 512px;
+      background-color: rgba(0,0,0,255);
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="J-container"></div>
+<script>
+  window.addEventListener('error',function (e){
+    // Demo出错时Windows和Mac不弹窗
+    const platform = navigator.platform.toLowerCase();
+    if (platform.search('win') >= 0 || platform.search('mac') >= 0) {
+      return;
+    }
+
+    alert(e.message);
+  })
+</script>
+<script type="module" src="./src/mock-fail.ts"></script>
+</body>
+</html>

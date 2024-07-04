@@ -2,6 +2,7 @@ import { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index'
 import type { vec2, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { RendererComponent } from '../../components/renderer-component';
+import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
@@ -13,15 +14,12 @@ import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import { addItem, colorStopsFromGradient, getColorFromGradientStops } from '../../utils';
-import type { CalculateItemOptions } from '../cal/calculate-item';
-import { TimelineComponent } from '../cal/calculate-item';
-import { Playable } from '../cal/playable-graph';
-import { Track } from '../cal/track';
+import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
+import { Playable, PlayableAsset } from '../cal/playable-graph';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { getImageItemRenderInfo, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from './sprite-mesh';
-import { effectsClass } from '../../decorators';
-import { DataType } from '../../asset-loader';
+import { VFXItem } from '../../vfx-item';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -33,9 +31,6 @@ export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
     shape: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
-  filter?: {
-    feather: number | spec.FunctionExpression,
-  } & Omit<spec.FilterParams, 'feather'>,
 }
 
 /**
@@ -43,8 +38,8 @@ export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
  */
 export type SpriteItemOptions = {
   startColor: vec4,
-  renderLevel?: string,
-} & CalculateItemOptions;
+  renderLevel?: spec.RenderLevel,
+};
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -87,14 +82,20 @@ export class SpriteColorPlayable extends Playable {
   renderColor: vec4 = [1, 1, 1, 1];
   spriteMaterial: Material;
 
-  override onPlayablePlay (): void {
-    this.spriteMaterial = this.bindingItem.getComponent(SpriteComponent)!.material;
-  }
+  override processFrame (context: FrameContext): void {
+    const boundObject = context.output.getUserData();
 
-  override processFrame (dt: number): void {
+    if (!(boundObject instanceof VFXItem)) {
+      return;
+    }
+
+    if (!this.spriteMaterial) {
+      this.spriteMaterial = boundObject.getComponent(SpriteComponent).material;
+    }
+
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
-    const life = this.time / this.bindingItem.duration;
+    const life = this.time / boundObject.duration;
 
     const opacityOverLifetime = this.opacityOverLifetime;
     const colorOverLifetime = this.colorOverLifetime;
@@ -114,7 +115,7 @@ export class SpriteColorPlayable extends Playable {
     }
   }
 
-  override fromData (clipData: { colorOverLifetime?: spec.ColorOverLifetime, startColor?: spec.RGBAColorValue }) {
+  create (clipData: SpriteColorPlayableAssetData) {
     this.clipData = clipData;
     const colorOverLifetime = clipData.colorOverLifetime;
 
@@ -130,16 +131,38 @@ export class SpriteColorPlayable extends Playable {
   }
 }
 
-@effectsClass(DataType.SpriteComponent)
+@effectsClass('SpriteColorPlayableAsset')
+export class SpriteColorPlayableAsset extends PlayableAsset {
+  data: SpriteColorPlayableAssetData;
+
+  override createPlayable (graph: PlayableGraph): Playable {
+    const spriteColorPlayable = new SpriteColorPlayable(graph);
+
+    spriteColorPlayable.create(this.data);
+
+    return spriteColorPlayable;
+  }
+
+  override fromData (data: SpriteColorPlayableAssetData): void {
+    this.data = data;
+  }
+}
+
+export interface SpriteColorPlayableAssetData extends spec.EffectsObjectData {
+  colorOverLifetime?: spec.ColorOverLifetime,
+  startColor?: spec.RGBAColorValue,
+}
+
+@effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends RendererComponent {
   renderer: SpriteItemRenderer;
   interaction?: { behavior: spec.InteractBehavior };
   cachePrefix: string;
   geoData: { atlasOffset: number[] | spec.TypedArray, index: number[] | spec.TypedArray };
   anchor?: vec2;
-  timelineComponent: TimelineComponent;
 
   textureSheetAnimation?: spec.TextureSheetAnimation;
+  frameAnimationTime = 0;
   splits: splitsDataType;
   emptyTexture: Texture;
   color: vec4 = [1, 1, 1, 1];
@@ -178,6 +201,27 @@ export class SpriteComponent extends RendererComponent {
     return this.visible;
   }
 
+  /**
+   * 设置当前图层的颜色
+   * > Tips: 透明度也属于颜色的一部分，当有透明度/颜色 K 帧变化时，该 API 会失效
+   * @since 2.0.0
+   * @param color - 颜色值
+   */
+  setColor (color: vec4) {
+    this.color = color;
+    this.material.setVector4('_Color', new Vector4().setFromArray(color));
+  }
+
+  /**
+   * 设置当前 Mesh 的纹理
+   * @since 2.0.0
+   * @param texture - 纹理对象
+   */
+  setTexture (texture: Texture) {
+    this.renderer.texture = texture;
+    this.material.setTexture('uSampler0', texture);
+  }
+
   override render (renderer: Renderer) {
     if (!this.getVisible()) {
       return;
@@ -189,21 +233,16 @@ export class SpriteComponent extends RendererComponent {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
     this.material.setVector2('_Size', this.transform.size);
-
-    // 执行 Geometry 的数据刷新
-    geo.flush();
-
     renderer.drawGeometry(geo, material);
   }
 
   override start (): void {
-    this.priority = this.item.listIndex;
-    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
     this.item.getHitTestParams = this.getHitTestParams;
   }
 
   override update (dt: number): void {
-    const time = this.timelineComponent.getTime();
+    this.frameAnimationTime += dt / 1000;
+    const time = this.frameAnimationTime;
     const duration = this.item.duration;
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
     const ta = this.textureSheetAnimation;
@@ -500,7 +539,7 @@ export class SpriteComponent extends RendererComponent {
       return;
     }
     const worldMatrix = this.transform.getWorldMatrix();
-    const triangles = trianglesFromRect(Vector3.ZERO, 1 / 2, 1 / 2);
+    const triangles = trianglesFromRect(Vector3.ZERO, 0.5 * this.transform.size.x, 0.5 * this.transform.size.y);
 
     triangles.forEach(triangle => {
       worldMatrix.transformPoint(triangle.p0 as Vector3);
@@ -575,11 +614,6 @@ export class SpriteComponent extends RendererComponent {
     this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.setItem();
-
-    // 添加K帧动画
-    const colorTrack = this.item.getComponent(TimelineComponent)!.createTrack(Track, 'SpriteColorTrack');
-
-    colorTrack.createClip(SpriteColorPlayable, 'SpriteColorClip').playable.fromData({ colorOverLifetime: data.colorOverLifetime, startColor: data.options.startColor });
   }
 
   override toData (): void {

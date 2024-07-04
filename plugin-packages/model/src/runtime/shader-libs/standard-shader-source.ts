@@ -39,6 +39,24 @@ export namespace StandardShaderSource {
     source = source.replace(/#define FEATURES/,
       features.map(value => `#define ${value}`).join('\n'));
 
-    if (isWebGL2) { return '#version 300 es\n' + source; } else { return '#version 100\n' + source; }
+    if (isWebGL2) {
+      return '#version 300 es\n' + source;
+    } else {
+      return source;
+    }
+  }
+
+  export function getSourceCode (source: string, isWebGL2?: boolean): string {
+    let match: RegExpExecArray | null;
+
+    while ((match = (/#include <(.+)>/gm).exec(source)) !== null) {
+      source = source.replace(match[0], glsl[match[1]]);
+    }
+
+    if (isWebGL2) {
+      return '#version 300 es\n' + source;
+    }
+
+    return source;
   }
 }

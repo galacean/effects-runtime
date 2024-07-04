@@ -33,7 +33,7 @@ type FilteringOptions = {
  * 滤波方法
  */
 export class Filtering {
-  private lastValue = 0;
+  public lastValue = 0;
   private valuePool: number[] = [];
 
   constructor (

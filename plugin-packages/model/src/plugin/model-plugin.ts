@@ -6,6 +6,7 @@ import type {
   VFXItemProps,
   Engine,
   Component,
+  Renderer,
 } from '@galacean/effects';
 import {
   VFXItem,
@@ -14,13 +15,15 @@ import {
   ItemBehaviour,
   PLAYER_OPTIONS_ENV_EDITOR,
   effectsClass,
+  GLSLVersion,
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
-import { PTransform, PSceneManager, PCoordinate } from '../runtime';
+import { PTransform, PSceneManager, PCoordinate, PBRShaderGUID, UnlitShaderGUID } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
-import { ModelCameraComponent, ModelDataType } from './model-item';
+import { ModelCameraComponent, ModelLightComponent } from './model-item';
+import { fetchPBRShaderCode, fetchUnlitShaderCode } from '../utility';
 
 /**
  * Model 插件类，负责支持播放器中的 3D 功能
@@ -64,11 +67,39 @@ export class ModelPlugin extends AbstractPlugin {
 
     scene.storage['runtimeEnv'] = runtimeEnv;
     const compatibleMode = options.pluginData?.['compatibleMode'] ?? 'gltf';
-    const autoAdjustScene = options.pluginData?.['autoAdjustScene'] ?? false;
 
     //
-    PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode, autoAdjustScene);
+    PluginHelper.preprocessScene(scene, runtimeEnv, compatibleMode);
     await CompositionCache.loadStaticResources();
+  }
+
+  static override precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
+    const isWebGL2 = renderer.engine.gpuCapability.level === 2;
+    const pbrShaderCode = fetchPBRShaderCode(isWebGL2);
+    const unlitShaderCode = fetchUnlitShaderCode(isWebGL2);
+    const pbrShaderData: spec.ShaderData = {
+      id: PBRShaderGUID,
+      name: 'PBR Shader',
+      dataType: spec.DataType.Shader,
+      fragment: pbrShaderCode.fragmentShaderCode,
+      vertex: pbrShaderCode.vertexShaderCode,
+      // @ts-expect-error
+      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+    };
+    const unlitShaderData: spec.ShaderData = {
+      id: UnlitShaderGUID,
+      name: 'Unlit Shader',
+      dataType: spec.DataType.Shader,
+      fragment: unlitShaderCode.fragmentShaderCode,
+      vertex: unlitShaderCode.vertexShaderCode,
+      // @ts-expect-error
+      glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+    };
+
+    renderer.engine.addEffectsObjectData(pbrShaderData);
+    renderer.engine.addEffectsObjectData(unlitShaderData);
+
+    return Promise.resolve();
   }
 
   /**
@@ -83,7 +114,8 @@ export class ModelPlugin extends AbstractPlugin {
 
     this.cache = new CompositionCache(engine);
     this.cache.setup(false);
-    PluginHelper.setupItem3DOptions(scene, this.cache, composition);
+    // FIXME: 先注释元素参数的配置
+    //PluginHelper.setupItem3DOptions(scene, this.cache, composition);
   }
 
   /**
@@ -97,7 +129,7 @@ export class ModelPlugin extends AbstractPlugin {
       name: 'ModelPluginItem',
       duration: 9999999,
       endBehavior: spec.END_BEHAVIOR_FORWARD,
-    } as VFXItemProps;
+    } as unknown as VFXItemProps;
     const item = new VFXItem(composition.getEngine(), props);
 
     composition.addItem(item);
@@ -130,7 +162,7 @@ export interface ModelPluginOptions {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.ModelPluginComponent)
+@effectsClass(spec.DataType.ModelPluginComponent)
 export class ModelPluginComponent extends ItemBehaviour {
   private runtimeEnv = PLAYER_OPTIONS_ENV_EDITOR;
   private compatibleMode = 'gltf';
@@ -215,8 +247,8 @@ export class ModelPluginComponent extends ItemBehaviour {
             component.setTransform(newPosition);
 
             // 正式版本不会走到这个流程，只在测试时使用
-            console.info(`Scene AABB [${sceneAABB.min.toArray()}], [${sceneAABB.max.toArray()}]`);
-            console.info(`Update camera position [${newPosition.toArray()}]`);
+            console.info(`Scene AABB [${sceneAABB.min.toArray()}], [${sceneAABB.max.toArray()}].`);
+            console.info(`Update camera position [${newPosition.toArray()}].`);
           }
         }
       });
@@ -241,10 +273,10 @@ export class ModelPluginComponent extends ItemBehaviour {
    * 反序列化，创建场景管理器
    * @param date - 组件参数
    */
-  override fromData (data: any): void {
+  override fromData (data: ModelPluginOptions): void {
     super.fromData(data);
     //
-    const options = data as ModelPluginOptions;
+    const options = data;
 
     this.cache = options.cache;
     this.scene = new PSceneManager(this.engine);
@@ -297,7 +329,7 @@ export class ModelPluginComponent extends ItemBehaviour {
     const items = this.item.composition?.items ?? [];
 
     items.forEach(item => {
-      if (item.type === spec.ItemType.light) {
+      if (item.getComponent(ModelLightComponent)) {
         lightItemCount++;
       }
     });

@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { effectsClassStore } from './decorators';
 import type { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
@@ -7,6 +7,7 @@ import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
 import type { VFXItemProps } from './vfx-item';
+import type { Constructor } from './utils';
 
 /**
  * @since 2.0.0
@@ -25,27 +26,21 @@ export class AssetLoader {
     const effectsObjectData = this.findData(guid);
 
     if (!effectsObjectData) {
-      console.error('未找到 uuid: ' + guid + '的对象数据');
+      console.error(`Object data with uuid: ${guid} not found.`);
 
       return undefined as T;
     }
     switch (effectsObjectData.dataType) {
-      case DataType.Material:
+      case spec.DataType.Material:
         effectsObject = Material.create(this.engine);
 
         break;
-      case DataType.Geometry:
+      case spec.DataType.Geometry:
         effectsObject = Geometry.create(this.engine);
 
         break;
-      case DataType.Texture:
-        effectsObject = Texture.create(this.engine, effectsObjectData);
-
-        return effectsObject as T;
-
-        break;
-      case DataType.Shader:
-        effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
+      case spec.DataType.Texture:
+        effectsObject = Texture.create(this.engine);
 
         break;
       default: {
@@ -57,7 +52,7 @@ export class AssetLoader {
       }
     }
     if (!effectsObject) {
-      console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
+      console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }
@@ -78,14 +73,14 @@ export class AssetLoader {
 
     if (!effectsObjectData) {
       if (!this.engine.database) {
-        console.error('未找到 uuid: ' + guid + '的对象数据');
+        console.error(`Object data with uuid: ${guid} not found.`);
 
         return undefined as T;
       }
 
       effectsObject = await this.engine.database.loadGUID(guid);
       if (!effectsObject) {
-        console.error('未找到 uuid: ' + guid + '的磁盘数据');
+        console.error(`Disk data with uuid: ${guid} not found.`);
 
         return undefined as T;
       }
@@ -96,22 +91,16 @@ export class AssetLoader {
     }
 
     switch (effectsObjectData.dataType) {
-      case DataType.Material:
+      case spec.DataType.Material:
         effectsObject = Material.create(this.engine);
 
         break;
-      case DataType.Geometry:
+      case spec.DataType.Geometry:
         effectsObject = Geometry.create(this.engine);
 
         break;
-      case DataType.Texture:
-        effectsObject = Texture.create(this.engine, effectsObjectData);
-
-        return effectsObject as T;
-
-        break;
-      case DataType.Shader:
-        effectsObject = this.engine.getShaderLibrary().createShader(effectsObjectData as ShaderData);
+      case spec.DataType.Texture:
+        effectsObject = Texture.create(this.engine);
 
         break;
       default: {
@@ -123,7 +112,7 @@ export class AssetLoader {
       }
     }
     if (!effectsObject) {
-      console.error('未找到 DataType: ' + effectsObjectData.dataType + '的构造函数');
+      console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }
@@ -134,11 +123,11 @@ export class AssetLoader {
     return effectsObject as T;
   }
 
-  private findData (uuid: string): EffectsObjectData | undefined {
+  private findData (uuid: string): spec.EffectsObjectData | undefined {
     return this.engine.jsonSceneData[uuid];
   }
 
-  private static getClass (dataType: number): new (engine: Engine) => EffectsObject {
+  private static getClass (dataType: string): Constructor<EffectsObject> {
     return effectsClassStore[dataType];
   }
 }
@@ -149,82 +138,15 @@ export class Database {
   }
 }
 
-export enum DataType {
-  VFXItemData = 0,
-  EffectComponent,
-  Material,
-  Shader,
-  SpriteComponent,
-  ParticleSystem,
-  InteractComponent,
-  CameraController,
-  Geometry,
-  Texture,
-  TextComponent,
-
-  // FIXME: 先完成ECS的场景转换，后面移到spec中
-  MeshComponent = 10000,
-  SkyboxComponent,
-  LightComponent,
-  CameraComponent,
-  ModelPluginComponent,
-  TreeComponent,
-}
-
-export interface DataPath {
-  id: string,
-}
-
-export interface EffectsObjectData {
-  id: string,
-  name?: string,
-  dataType: number,
-}
-
-export interface MaterialData extends EffectsObjectData {
-  shader: DataPath,
-  blending?: boolean,
-  zWrite?: boolean,
-  zTest?: boolean,
-  floats: Record<string, number>,
-  ints: Record<string, number>,
-  vector2s?: Record<string, spec.vec2>,
-  vector3s?: Record<string, spec.vec3>,
-  vector4s: Record<string, { x: number, y: number, z: number, w: number }>,
-  colors: Record<string, { r: number, g: number, b: number, a: number }>,
-  matrices?: Record<string, spec.mat4>,
-  matrice3s?: Record<string, spec.mat3>,
-  textures?: Record<string, DataPath>,
-  floatArrays?: Record<string, number[]>,
-  vector4Arrays?: Record<string, number[]>,
-  matrixArrays?: Record<string, number[]>,
-}
-
-export interface GeometryData extends EffectsObjectData {
-  vertices?: number[],
-  uvs?: number[],
-  normals?: number[],
-  indices?: number[],
-}
-
-export interface ShaderData extends EffectsObjectData {
-  vertex: string,
-  fragment: string,
-  properties?: string,
-}
-
-export interface EffectComponentData extends EffectsObjectData {
+// TODO: 待统一
+export interface EffectComponentData extends spec.EffectsObjectData {
   _priority: number,
-  item: DataPath,
-  materials: DataPath[],
-  geometry: DataPath,
+  item: spec.DataPath,
+  materials: spec.DataPath[],
+  geometry: spec.DataPath,
 }
 
-export type VFXItemData = VFXItemProps & { dataType: DataType, components: DataPath[] };
+export type VFXItemData = VFXItemProps & { dataType: spec.DataType, components: spec.DataPath[] };
 
-export type SceneData = Record<string, EffectsObjectData>;
+export type SceneData = Record<string, spec.EffectsObjectData>;
 
-export interface EffectsPackageData {
-  fileSummary: { guid: string, assetType: string },
-  exportObjects: EffectsObjectData[],
-}

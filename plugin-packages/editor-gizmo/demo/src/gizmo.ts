@@ -1,7 +1,7 @@
 import type { Camera } from '@galacean/effects';
 import { Player, math } from '@galacean/effects';
-import type { GizmoVFXItem } from '@galacean/effects-plugin-editor-gizmo';
 import { gizmoJSON, transformGizmoScene } from './assets';
+import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
 
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
@@ -19,10 +19,10 @@ let orbitController: OrbitController;
     onItemClicked: e => {
       const { player, id } = e;
       const composition = player.getCompositions()[0];
-      const item = composition.items.find(item => item.id === String(id)) as unknown as GizmoVFXItem;
+      const item = composition.items.find(item => item.id === String(id))!;
 
       console.info('itemId: ' + item.id);
-      console.info('hitBoundingKey: ' + item.hitBounding?.key);
+      console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
     },
   });
   const json = JSON.parse(transformGizmoScene);

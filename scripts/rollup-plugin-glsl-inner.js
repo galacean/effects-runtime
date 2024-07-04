@@ -10,18 +10,17 @@ export default function glslInner() {
       }
       const dirPath = path.dirname(id);
       // proceed with the transformation...
-      const assembleImportContent = processContent(code, dirPath);
-      const assemblePragmaContent = processContent(assembleImportContent, dirPath, 'pragma');
+      const assembleIncludeContent = processContent(code, dirPath);
 
       return {
-        code: `export default ${JSON.stringify(compressShader(assemblePragmaContent))}`,
+        code: `export default ${JSON.stringify(compressShader(assembleIncludeContent))}`,
         map: { mappings: '' }
       };
     },
   };
 }
 
-function processContent(content, dirPath, keyword = 'import') {
+function processContent(content, dirPath, keyword = 'include') {
   const reg = new RegExp(`#${keyword}[\\s\\t]+('|")(.*?)\\1;?`);
   let ret;
 

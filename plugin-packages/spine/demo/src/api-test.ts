@@ -1,8 +1,6 @@
 // @ts-nocheck
 import type { Camera, JSONValue } from '@galacean/effects';
-import { Player, loadBinary } from '@galacean/effects';
-import type { FileFormat } from './files';
-import { direct, premultiply } from './files';
+import { loadBinary, Player } from '@galacean/effects';
 import type { SkeletonData } from '@galacean/effects-plugin-spine';
 import {
   createSkeletonData,
@@ -11,6 +9,8 @@ import {
   getSkinList,
   TextureAtlas,
 } from '@galacean/effects-plugin-spine';
+import type { FileFormat } from './files';
+import { direct, premultiply } from './files';
 import 'fpsmeter';
 
 const playerOptions = {
@@ -121,7 +121,7 @@ function loadFile (fileName: string) {
     skeletonData = data;
     addCameraEvent();
   }).catch(e => {
-    console.error(`loadFile error: ${e}`);
+    console.error(`Load file error: ${e}.`);
   });
 }
 
@@ -200,7 +200,7 @@ function generateScene (activeSkin: string, activeAnimation: string[], duration:
   return {
     'playerVersion': {
       'web': '1.0.0',
-      'native': '1.0.0.231013104006',
+      'native': '1.0.0',
     },
     'images': file.png.map(img => {
       return {

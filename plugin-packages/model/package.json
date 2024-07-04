@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-model",
-  "version": "1.2.1",
+  "version": "1.6.1",
   "description": "Galacean Effects player model plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -19,6 +19,11 @@
       "import": "./dist/*.mjs",
       "require": "./dist/*.js",
       "types": "./dist/*.d.ts"
+    },
+    "./alipay": {
+      "import": "./dist/alipay.mjs",
+      "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
@@ -27,9 +32,9 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
     "build:demo": "rimraf dist && vite build",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [
@@ -49,7 +54,7 @@
   "devDependencies": {
     "@galacean/effects": "workspace:*",
     "@galacean/effects-plugin-editor-gizmo": "workspace:*",
-    "@vvfx/resource-detection": "0.4.2-alpha.22",
+    "@vvfx/resource-detection": "0.6.0-alpha.9",
     "@types/hammerjs": "^2.0.45",
     "fpsmeter": "^0.3.1",
     "hammerjs": "^2.0.8"

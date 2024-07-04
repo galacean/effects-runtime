@@ -1,7 +1,6 @@
-import type { Geometry, Engine, VFXItemContent, VFXItem } from '@galacean/effects';
+import type { Geometry, Engine, VFXItem, SkinProps } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects';
 import type {
-  ModelSkinOptions,
   ModelAnimTrackOptions,
   ModelAnimationOptions,
   ModelTreeOptions,
@@ -33,7 +32,7 @@ export class PSkin extends PObject {
   /**
    * 场景树父元素
    */
-  parentItem?: VFXItem<VFXItemContent>;
+  rootBoneItem?: VFXItem;
   /**
    * 骨骼索引
    */
@@ -41,7 +40,7 @@ export class PSkin extends PObject {
   /**
    * 关节索引
    */
-  jointList: number[] = [];
+  jointItem: VFXItem[] = [];
   /**
    * 逆绑定矩阵
    */
@@ -57,28 +56,27 @@ export class PSkin extends PObject {
 
   /**
    * 创建蒙皮对象
-   * @param options - 蒙皮相关数据
+   * @param props - 蒙皮相关数据
    * @param engine - 引擎对象
-   * @param parentItem - 场景树父元素
+   * @param rootBoneItem - 场景树父元素
    */
-  create (options: ModelSkinOptions, engine: Engine, parentItem?: VFXItem<VFXItemContent>) {
-    this.name = this.genName(options.name ?? 'Unnamed skin');
+  create (props: SkinProps, engine: Engine, rootBoneItem: VFXItem) {
+    this.name = props.rootBoneName ?? 'Unnamed skin';
     this.type = PObjectType.skin;
     //
-    this.parentItem = parentItem;
-    this.skeleton = options.skeleton ?? -1;
-    this.jointList = options.joints;
+    this.rootBoneItem = rootBoneItem;
+    this.skeleton = -1;
+    this.jointItem = this.getJointItems(props, rootBoneItem);
     this.animationMatrices = [];
     //
     this.inverseBindMatrices = [];
-
     //
     this.textureDataMode = this.getTextureDataMode(this.getJointCount(), engine);
-    const matList = options.inverseBindMatrices;
+    const matList = props.inverseBindMatrices;
 
     if (matList !== undefined && matList.length > 0) {
-      if (matList.length % 16 !== 0 || matList.length !== this.jointList.length * 16) {
-        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointList.length}`);
+      if (matList.length % 16 !== 0 || matList.length !== this.jointItem.length * 16) {
+        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointItem.length}.`);
       }
 
       const matrixCount = matList.length / 16;
@@ -96,28 +94,20 @@ export class PSkin extends PObject {
    */
   updateSkinMatrices () {
     this.animationMatrices = [];
-    const parentTree = this.parentItem?.getComponent(ModelTreeComponent);
 
-    if (parentTree !== undefined) {
-      for (let i = 0; i < this.jointList.length; i++) {
-        const joint = this.jointList[i];
-        const node = parentTree.content.getNodeById(joint);
+    for (let i = 0; i < this.jointItem.length; i++) {
+      const node = this.jointItem[i];
 
-        // let parent = node?.transform.parentTransform;
-        // while(parent !== undefined){
-        //   const pos = parent.position;
-        //   parent.setPosition(pos[0], pos[1], pos[2]);
-        //   parent = parent.parentTransform;
-        // }
-        if (node === undefined) {
-          console.error(`Can't find joint ${joint} in node tree ${this.parentItem}.`);
+      // let parent = node?.transform.parentTransform;
+      // while(parent !== undefined){
+      //   const pos = parent.position;
+      //   parent.setPosition(pos[0], pos[1], pos[2]);
+      //   parent = parent.parentTransform;
+      // }
 
-          break;
-        }
-        const mat4 = node.transform.getWorldMatrix();
+      const mat4 = node.transform.getWorldMatrix();
 
-        this.animationMatrices.push(mat4.clone());
-      }
+      this.animationMatrices.push(mat4.clone());
     }
 
     if (this.animationMatrices.length === this.inverseBindMatrices.length) {
@@ -126,7 +116,7 @@ export class PSkin extends PObject {
       });
     } else {
       this.animationMatrices = this.inverseBindMatrices;
-      console.error('Some error occured, replace skin animation matrices by invert bind matrices');
+      console.error('Some error occured, replace skin animation matrices by invert bind matrices.');
     }
   }
 
@@ -155,8 +145,8 @@ export class PSkin extends PObject {
    * 更新父元素
    * @param parentItem - 场景树父元素
    */
-  updateParentItem (parentItem: VFXItem<VFXItemContent>) {
-    this.parentItem = parentItem;
+  updateParentItem (parentItem: VFXItem) {
+    this.rootBoneItem = parentItem;
   }
 
   /**
@@ -164,7 +154,7 @@ export class PSkin extends PObject {
    * @returns
    */
   getJointCount (): number {
-    return this.jointList.length;
+    return this.jointItem.length;
   }
 
   /**
@@ -179,8 +169,8 @@ export class PSkin extends PObject {
    * 销毁
    */
   override dispose (): void {
-    this.parentItem = undefined;
-    this.jointList = [];
+    this.rootBoneItem = undefined;
+    this.jointItem = [];
     this.inverseBindMatrices = [];
     this.animationMatrices = [];
   }
@@ -198,11 +188,49 @@ export class PSkin extends PObject {
       } else if (detail.halfFloatTexture) {
         return TextureDataMode.half_float;
       } else {
-        throw new Error(`Too many joint count ${jointCount}, half float texture not support`);
+        throw new Error(`Too many joint count ${jointCount}, half float texture not support.`);
       }
     } else {
       return TextureDataMode.none;
     }
+  }
+
+  private getJointItems (props: SkinProps, rootBoneItem: VFXItem) {
+    const name2Item = this.genNodeName(rootBoneItem);
+
+    const jointItems: VFXItem[] = [];
+
+    props.boneNames?.forEach(boneName => {
+      const node = name2Item[boneName];
+
+      if (!node) {
+        throw new Error(`Can't find node of bone name ${boneName}.`);
+      }
+      jointItems.push(node);
+    });
+
+    return jointItems;
+  }
+
+  private genNodeName (node: VFXItem) {
+    const name2Item: Record<string, VFXItem> = {};
+    const nameList: string[] = [];
+
+    name2Item[''] = node;
+    for (const child of node.children) {
+      this.genNodeNameDFS(child, nameList, name2Item);
+    }
+
+    return name2Item;
+  }
+
+  private genNodeNameDFS (node: VFXItem, nameList: string[], name2Item: Record<string, VFXItem>) {
+    nameList.push(node.name);
+    name2Item[nameList.join('/')] = node;
+    for (const child of node.children) {
+      this.genNodeNameDFS(child, nameList, name2Item);
+    }
+    nameList.pop();
   }
 }
 
@@ -222,7 +250,7 @@ export class PMorph extends PObject {
    * weights 数组的具体数据，来自动画控制器的每帧更新
    * 数组的长度必须和 morphWeightsLength 相同，否则会出错。
    */
-  morphWeightsArray?: Float32Array;
+  morphWeightsArray: number[] = [];
   /**
    * 是否有 Position 相关的 Morph 动画，shader 中需要知道
    */
@@ -265,7 +293,7 @@ export class PMorph extends PObject {
 
     if (this.morphWeightsLength > 0) {
       // 有Morph动画，申请weights数据，判断各个属性是否有相关动画
-      this.morphWeightsArray = new Float32Array(this.morphWeightsLength);
+      this.morphWeightsArray = Array(this.morphWeightsLength).fill(0);
       this.hasPositionMorph = positionCount == this.morphWeightsLength;
       this.hasNormalMorph = normalCount == this.morphWeightsLength;
       this.hasTangentMorph = tangentCount == this.morphWeightsLength;
@@ -278,25 +306,25 @@ export class PMorph extends PObject {
      */
 
     if (positionCount > 0 && positionCount != this.morphWeightsLength) {
-      console.error(`Position morph count mismatch: ${this.morphWeightsLength}, ${positionCount}`);
+      console.error(`Position morph count mismatch: ${this.morphWeightsLength}, ${positionCount}.`);
 
       return false;
     }
 
     if (normalCount > 0 && normalCount != this.morphWeightsLength) {
-      console.error(`Normal morph count mismatch: ${this.morphWeightsLength}, ${normalCount}`);
+      console.error(`Normal morph count mismatch: ${this.morphWeightsLength}, ${normalCount}.`);
 
       return false;
     }
 
     if (tangentCount > 0 && tangentCount != this.morphWeightsLength) {
-      console.error(`Tangent morph count mismatch: ${this.morphWeightsLength}, ${tangentCount}`);
+      console.error(`Tangent morph count mismatch: ${this.morphWeightsLength}, ${tangentCount}.`);
 
       return false;
     }
 
     if (this.morphWeightsLength > 5) {
-      console.error(`Tangent morph count should not greater than 5, current ${this.morphWeightsLength}`);
+      console.error(`Tangent morph count should not greater than 5, current ${this.morphWeightsLength}.`);
 
       return false;
     }
@@ -304,16 +332,12 @@ export class PMorph extends PObject {
     return true;
   }
 
-  override dispose (): void {
-    this.morphWeightsArray = undefined;
-  }
-
   /**
    * 初始化 Morph target 的权重数组
    * @param weights - glTF Mesh 的权重数组，长度必须严格一致
    */
   initWeights (weights: number[]) {
-    if (this.morphWeightsArray === undefined) {
+    if (this.morphWeightsArray.length === 0) {
       return;
     }
 
@@ -324,6 +348,16 @@ export class PMorph extends PObject {
         morphWeights[index] = val;
       }
     });
+  }
+
+  updateWeights (weights: number[]) {
+    if (weights.length != this.morphWeightsArray.length) {
+      console.error(`Length of morph weights mismatch: input ${weights.length}, internel ${this.morphWeightsArray.length}.`);
+
+      return;
+    }
+
+    weights.forEach((value, index) => this.morphWeightsArray[index] = value);
   }
 
   /**
@@ -348,8 +382,8 @@ export class PMorph extends PObject {
       && this.hasTangentMorph === morph.hasTangentMorph;
   }
 
-  getMorphWeightsArray (): Float32Array {
-    return this.morphWeightsArray as Float32Array;
+  getMorphWeightsArray (): number[] {
+    return this.morphWeightsArray;
   }
 
   /**
@@ -376,42 +410,42 @@ export class PMorph extends PObject {
    * Morph 动画中 Position 相关的 Attribute 名称
    */
   private static positionNameList = [
-    'a_Target_Position0',
-    'a_Target_Position1',
-    'a_Target_Position2',
-    'a_Target_Position3',
-    'a_Target_Position4',
-    'a_Target_Position5',
-    'a_Target_Position6',
-    'a_Target_Position7',
+    'aTargetPosition0',
+    'aTargetPosition1',
+    'aTargetPosition2',
+    'aTargetPosition3',
+    'aTargetPosition4',
+    'aTargetPosition5',
+    'aTargetPosition6',
+    'aTargetPosition7',
   ];
 
   /**
    * Morph 动画中 Normal 相关的 Attribute 名称
    */
   private static normalNameList = [
-    'a_Target_Normal0',
-    'a_Target_Normal1',
-    'a_Target_Normal2',
-    'a_Target_Normal3',
-    'a_Target_Normal4',
-    'a_Target_Normal5',
-    'a_Target_Normal6',
-    'a_Target_Normal7',
+    'aTargetNormal0',
+    'aTargetNormal1',
+    'aTargetNormal2',
+    'aTargetNormal3',
+    'aTargetNormal4',
+    'aTargetNormal5',
+    'aTargetNormal6',
+    'aTargetNormal7',
   ];
 
   /**
    * Morph 动画中 Tangent 相关的 Attribute 名称
    */
   private static tangentNameList = [
-    'a_Target_Tangent0',
-    'a_Target_Tangent1',
-    'a_Target_Tangent2',
-    'a_Target_Tangent3',
-    'a_Target_Tangent4',
-    'a_Target_Tangent5',
-    'a_Target_Tangent6',
-    'a_Target_Tangent7',
+    'aTargetTangent0',
+    'aTargetTangent1',
+    'aTargetTangent2',
+    'aTargetTangent3',
+    'aTargetTangent4',
+    'aTargetTangent5',
+    'aTargetTangent6',
+    'aTargetTangent7',
   ];
 }
 
@@ -490,17 +524,17 @@ export class PAnimTrack {
       this.component = this.dataArray.length / this.timeArray.length;
       // special checker for weights animation
       if (this.component <= 0) {
-        console.error(`Invalid weights component: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+        console.error(`Invalid weights component: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
       } else if (this.timeArray.length * this.component != this.dataArray.length) {
-        console.error(`Invalid weights array length: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+        console.error(`Invalid weights array length: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
       }
     } else {
       // should never happened
-      console.error(`Invalid path status: ${path}`);
+      console.error(`Invalid path status: ${path}.`);
     }
 
     if (this.timeArray.length * this.component > this.dataArray.length) {
-      throw new Error(`Data length mismatch: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+      throw new Error(`Data length mismatch: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
     }
 
     if (interpolation === 'LINEAR') {
@@ -534,7 +568,7 @@ export class PAnimTrack {
    * @param treeItem - 节点树元素
    * @param sceneManager - 3D 场景管理器
    */
-  tick (time: number, treeItem: VFXItem<VFXItemContent>, sceneManager?: PSceneManager) {
+  tick (time: number, treeItem: VFXItem, sceneManager?: PSceneManager) {
     const treeComponent = treeItem.getComponent(ModelTreeComponent);
     const node = treeComponent?.content?.getNodeById(this.node);
 
@@ -756,7 +790,7 @@ export class PAnimation extends PObject {
    * @param treeItem - 场景树元素
    * @param sceneManager - 3D 场景管理器
    */
-  tick (time: number, treeItem: VFXItem<VFXItemContent>, sceneManager?: PSceneManager) {
+  tick (time: number, treeItem: VFXItem, sceneManager?: PSceneManager) {
     this.time = time;
     // TODO: 这里时间事件定义不明确，先兼容原先实现
     const newTime = this.time % this.duration;
@@ -781,7 +815,7 @@ export class PAnimation extends PObject {
  * 动画管理类，负责管理动画对象
  */
 export class PAnimationManager extends PObject {
-  private ownerItem: VFXItem<VFXItemContent>;
+  private ownerItem: VFXItem;
   private animation = 0;
   private speed = 0;
   private delay = 0;
@@ -794,7 +828,7 @@ export class PAnimationManager extends PObject {
    * @param treeOptions - 场景树参数
    * @param ownerItem - 场景树所属元素
    */
-  constructor (treeOptions: ModelTreeOptions, ownerItem: VFXItem<VFXItemContent>) {
+  constructor (treeOptions: ModelTreeOptions, ownerItem: VFXItem) {
     super();
     this.name = this.genName(ownerItem.name ?? 'Unnamed tree');
     this.type = PObjectType.animationManager;

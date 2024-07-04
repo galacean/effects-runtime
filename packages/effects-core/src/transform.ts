@@ -9,8 +9,9 @@ export interface TransformProps {
   rotation?: spec.vec3 | Euler,
   quat?: spec.vec4 | Quaternion,
   scale?: spec.vec3 | Vector3,
+  size?: Vector2,
   name?: string,
-  anchor?: spec.vec2 | spec.vec3 | Vector3,
+  anchor?: spec.vec2 | Vector2,
   valid?: boolean,
 }
 
@@ -35,7 +36,7 @@ export class Transform implements Disposable {
 
   engine: Engine;
   name: string;
-  taggedProperties: Record<string, any> = {};
+  taggedProperties = {} as spec.TransformData;
   /**
    * 自身位移
    */
@@ -278,13 +279,11 @@ export class Transform implements Disposable {
    * 设置锚点
    * @param x
    * @param y
-   * @param z
    */
-  setAnchor (x: number, y: number, z: number) {
-    if (this.anchor.x !== x || this.anchor.y !== y || this.anchor.z !== z) {
+  setAnchor (x: number, y: number) {
+    if (this.anchor.x !== x || this.anchor.y !== y) {
       this.anchor.x = x;
       this.anchor.y = y;
-      this.anchor.z = z;
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -296,7 +295,7 @@ export class Transform implements Disposable {
    * @param reverseEuler - 设置 rotation时，欧拉角是否需要取负值
    */
   setTransform (props: TransformProps, reverseEuler?: boolean) {
-    const { position, rotation, scale, quat, name, anchor } = props;
+    const { position, rotation, scale, size, quat, name, anchor } = props;
 
     if (name) {
       this.name = name;
@@ -330,11 +329,14 @@ export class Transform implements Disposable {
         this.setScale(scale[0], scale[1], scale[2]);
       }
     }
+    if (size) {
+      this.setSize(size.x, size.y);
+    }
     if (anchor) {
-      if (anchor instanceof Vector3) {
-        this.setAnchor(anchor.x, anchor.y, anchor.z);
+      if (anchor instanceof Vector2) {
+        this.setAnchor(anchor.x, anchor.y);
       } else {
-        this.setAnchor(anchor[0], anchor[1], anchor[2] ?? 0);
+        this.setAnchor(anchor[0], anchor[1]);
       }
     }
   }
@@ -377,10 +379,6 @@ export class Transform implements Disposable {
     if (this.valid) {
       if (this.dirtyFlags.localData) {
         this.localMatrix.compose(this.position, this.quat, this.scale, this.anchor);
-        this.localMatrix.multiply(new Matrix4(this.size.x, 0, 0, 0,
-          0, this.size.y, 0, 0,
-          0, 0, 1, 0,
-          0, 0, 0, 1));
         this.dirtyFlags.localMatrix = true;
       }
       this.dirtyFlags.localData = false;
@@ -536,16 +534,16 @@ export class Transform implements Disposable {
     const transformData = this.taggedProperties;
 
     transformData.position = this.position.clone();
-    transformData.rotation = { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z };
+    transformData.eulerHint = { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z };
     transformData.scale = this.scale.clone();
 
     return transformData;
   }
 
-  fromData (data: any) {
+  fromData (data: spec.TransformData) {
     const transformData = {
       position: new Vector3().copyFrom(data.position),
-      rotation: new Euler(data.rotation.x, data.rotation.y, data.rotation.z),
+      rotation: new Euler(data.eulerHint.x, data.eulerHint.y, data.eulerHint.z),
       scale: new Vector3().copyFrom(data.scale),
     };
 

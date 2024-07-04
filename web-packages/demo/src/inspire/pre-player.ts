@@ -1,28 +1,29 @@
-// @ts-nocheck
-
-window.Mars.registerFilters(window.MarsFilters.filters);
-
 const container = document.getElementById('J-container');
-let player;
+let player: any;
 
 window.addEventListener('message', async event => {
   const { type, json, playerOptions, currentTime, speed } = event.data;
 
   switch (type) {
     case 'init': {
-      player = new window.Mars.MarsPlayer({
+      player = new window.ge.Player({
         container,
         ...playerOptions,
-        onItemClicked: item => console.info(`item ${item.name} has been clicked`, item),
+        onItemClicked: (item: any) => console.info(`item ${item.name} has been clicked`, item),
       });
 
       break;
     }
     case 'play': {
-      const scene = await player.loadSceneAsync(json);
+      player.destroyCurrentCompositions();
+      const scene = await player.loadScene(json, {
+        autoplay: false,
+        speed,
+      });
 
-      console.debug(`pre-player 渲染模式：${player.renderer.gpu.type}`);
-      void player.play(scene, { currentTime, speed });
+      console.debug(`pre-player 渲染模式：${player.renderer.engine.gpuCapability.type}`);
+      compatibleCalculateItem(scene);
+      void player.gotoAndPlay(currentTime);
 
       break;
     }
@@ -34,9 +35,17 @@ window.addEventListener('message', async event => {
       break;
     }
     case 'resume': {
-      player?.resumeAsync();
+      void player.resume();
 
       break;
     }
   }
 });
+
+export function compatibleCalculateItem (composition: any) {
+  composition.items.forEach((item: any) => {
+    if (window.ge.VFXItem.isNull(item) && item.endBehavior === window.ge.spec.ItemEndBehavior.destroy) {
+      item.endBehavior = window.ge.spec.ItemEndBehavior.freeze;
+    }
+  });
+}

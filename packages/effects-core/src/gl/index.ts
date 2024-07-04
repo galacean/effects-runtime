@@ -1,3 +1,5 @@
+import * as spec from '@galacean/effects-specification';
+
 export * from './create-gl-context';
 export * from './gpu-time';
 
@@ -38,5 +40,39 @@ function copy (target: any) {
       // @ts-expect-error safe to assign
       glContext[name] = target[name];
     }
+  }
+}
+
+export function vertexFormatType2GLType (formatType: spec.VertexFormatType): spec.BufferType {
+  switch (formatType) {
+    case spec.VertexFormatType.Float32:
+      return WebGLRenderingContext['FLOAT'];
+    case spec.VertexFormatType.Int16:
+      return WebGLRenderingContext['SHORT'];
+    case spec.VertexFormatType.Int8:
+      return WebGLRenderingContext['BYTE'];
+    case spec.VertexFormatType.UInt16:
+      return WebGLRenderingContext['UNSIGNED_SHORT'];
+    case spec.VertexFormatType.UInt8:
+      return WebGLRenderingContext['UNSIGNED_BYTE'];
+    default:
+      return WebGLRenderingContext['FLOAT'];
+  }
+}
+
+export function glType2VertexFormatType (webglType: spec.BufferType): spec.VertexFormatType {
+  switch (webglType) {
+    case WebGLRenderingContext['FLOAT']:
+      return spec.VertexFormatType.Float32;
+    case WebGLRenderingContext['SHORT']:
+      return spec.VertexFormatType.Int16;
+    case WebGLRenderingContext['BYTE']:
+      return spec.VertexFormatType.Int8;
+    case WebGLRenderingContext['UNSIGNED_SHORT']:
+      return spec.VertexFormatType.UInt16;
+    case WebGLRenderingContext['UNSIGNED_BYTE']:
+      return spec.VertexFormatType.UInt8;
+    default:
+      return spec.VertexFormatType.Float32;
   }
 }

@@ -1,9 +1,9 @@
-import type { EffectComponentData, EffectsObject, EffectsPackageData, Engine, Material, SceneData, ShaderData, VFXItem, VFXItemContent } from '@galacean/effects';
-import { DataType, EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, TimelineComponent, generateGUID, glContext, loadImage } from '@galacean/effects';
+import type { EffectComponentData, EffectsObject, Engine, Material, SceneData, VFXItem } from '@galacean/effects';
+import { EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, generateGUID, glContext, loadImage, spec } from '@galacean/effects';
 
 export class InspectorGui {
   gui: any;
-  item: VFXItem<VFXItemContent>;
+  item: VFXItem;
   itemDirtyFlag = false;
 
   sceneData: SceneData;
@@ -17,7 +17,7 @@ export class InspectorGui {
     // setInterval(this.updateInspector, 500);
   }
 
-  setItem (item: VFXItem<VFXItemContent>) {
+  setItem (item: VFXItem) {
     if (this.item === item) {
       return;
     }
@@ -50,8 +50,11 @@ export class InspectorGui {
       this.guiControllers.push(positionFolder.add(transformData.position, 'y').name('y').step(0.03).onChange(() => { transform.fromData(transformData); }));
       this.guiControllers.push(positionFolder.add(transformData.position, 'z').name('z').step(0.03).onChange(() => { transform.fromData(transformData); }));
 
+      // @ts-expect-error
       this.guiControllers.push(rotationFolder.add(transformData.rotation, 'x').name('x').step(0.03).onChange(() => { transform.fromData(transformData); }));
+      // @ts-expect-error
       this.guiControllers.push(rotationFolder.add(transformData.rotation, 'y').name('y').step(0.03).onChange(() => { transform.fromData(transformData); }));
+      // @ts-expect-error
       this.guiControllers.push(rotationFolder.add(transformData.rotation, 'z').name('z').step(0.03).onChange(() => { transform.fromData(transformData); }));
 
       this.guiControllers.push(scaleFolder.add(transformData.scale, 'x').name('x').step(0.03).onChange(() => { transform.fromData(transformData); }));
@@ -70,7 +73,7 @@ export class InspectorGui {
         if (component instanceof EffectComponent) {
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: EffectsPackageData) => {
+              await selectJsonFile((data: spec.EffectsPackageData) => {
                 for (const effectsObjectData of data.exportObjects) {
                   this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(RendererComponent);
@@ -89,7 +92,7 @@ export class InspectorGui {
 
           componentFolder.add({
             click: async () => {
-              await selectJsonFile((data: EffectsPackageData) => {
+              await selectJsonFile((data: spec.EffectsPackageData) => {
                 for (const effectsObjectData of data.exportObjects) {
                   this.item.engine.jsonSceneData[effectsObjectData.id] = effectsObjectData;
                   const effectComponent = this.item.getComponent(EffectComponent);
@@ -110,14 +113,6 @@ export class InspectorGui {
           const controller = componentFolder.add(component, '_enabled');
 
           this.guiControllers.push(controller);
-        }
-
-        if (component instanceof TimelineComponent) {
-          const controller = componentFolder.add(component, 'time');
-          const controller2 = componentFolder.add(component, 'reusable');
-
-          this.guiControllers.push(controller);
-          this.guiControllers.push(controller2);
         }
 
         componentFolder.open();
@@ -160,7 +155,7 @@ export class InspectorGui {
 
   private parseMaterialProperties (material: Material, gui: any, serializeObject: SerializedObject) {
     const serializedData = serializeObject.serializedData;
-    const shaderProperties = (material.shaderSource as ShaderData).properties;
+    const shaderProperties = (material.shaderSource as spec.ShaderData).properties;
 
     if (!shaderProperties) {
       return;
@@ -216,7 +211,7 @@ export class InspectorGui {
 
             reader.onload = async function (e) {
               const result = e.target?.result;
-              const textureData = { id: assetUuid, source: result, dataType: DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+              const textureData = { id: assetUuid, source: result, dataType: spec.DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
 
               serializeObject.engine.jsonSceneData[textureData.id] = textureData;
             };
@@ -311,6 +306,6 @@ export class SerializedObject {
   }
 
   applyModifiedProperties () {
-    SerializationHelper.deserializeTaggedProperties(this.serializedData, this.target);
+    SerializationHelper.deserializeTaggedProperties(this.serializedData as spec.EffectsObjectData, this.target);
   }
 }

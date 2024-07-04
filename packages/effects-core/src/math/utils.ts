@@ -1,7 +1,8 @@
 import * as spec from '@galacean/effects-specification';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
-import type { TriangleLike } from '@galacean/effects-math/es/core/index';
-import { Vector3, Ray } from '@galacean/effects-math/es/core/index';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Ray } from '@galacean/effects-math/es/core/ray';
+import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import type { Camera } from '../camera';
 
 export type vec = number[];
@@ -81,19 +82,6 @@ export const particleOriginTranslateMap: Record<number, vec2> = {
   [spec.ParticleOrigin.PARTICLE_ORIGIN_RIGHT_TOP]: [0.5, 0.5],
 };
 
-/**
- * 提取并转换 JSON 数据中的 anchor 值
- */
-export function convertAnchor (anchor?: vec2, particleOrigin?: spec.ParticleOrigin): vec2 {
-  if (anchor) {
-    return [anchor[0] - 0.5, 0.5 - anchor[1]];
-  } else if (particleOrigin) {
-    return particleOriginTranslateMap[particleOrigin];
-  } else {
-    return [0, 0];
-  }
-}
-
 export function nearestPowerOfTwo (value: number): number {
   return 2 ** Math.round(Math.log(value) / Math.LN2);
 }
@@ -122,4 +110,20 @@ export function trianglesFromRect (position: Vector3, halfWidth: number, halfHei
     { p0, p1, p2 },
     { p0: p0.clone(), p1: p2.clone(), p2: p3 },
   ];
+}
+
+export function decimalEqual (a: number, b: number, epsilon = 0.000001) {
+  return Math.abs(a - b) < epsilon;
+}
+
+export function numberToFix (a: number, fixed = 2) {
+  const base = Math.pow(10, fixed);
+
+  return Math.floor(a * base) / base;
+}
+
+export function pointOnLine (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) {
+  const det1 = (x1 * y2) + (y1 * x3) + (x2 * y3) - (x3 * y2) - (y3 * x1) - (x2 * y1);
+
+  return det1 > -0.001 && det1 < 0.001;
 }

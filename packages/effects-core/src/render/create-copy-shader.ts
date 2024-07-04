@@ -1,5 +1,3 @@
-import { createShaderWithMarcos, ShaderType } from '../material';
-import copy from '../shader/adjust/copy.frag.glsl';
 import type { SharedShaderWithSource } from './shader';
 import { GLSLVersion } from './shader';
 
@@ -30,7 +28,6 @@ export const COPY_FRAGMENT_SHADER = `precision mediump float;
 #else
 #define fsIn varying
 #endif
-${copy}
 fsIn vec2 vTex;
 #ifdef WEBGL2
 layout (location = 0) out vec4 fragColor;
@@ -46,7 +43,6 @@ uniform sampler2D uDepth;
 #endif
 #endif
 void main(){
-    fragColor = filterMain(vTex,uFilterSource);
     #ifdef DEPTH_TEXTURE
     gl_FragDepth = texture2D(uDepth,vTex).r;
     #endif
@@ -59,10 +55,10 @@ export function createCopyShader (level: number, writeDepth?: boolean): SharedSh
 
   return {
     name: EFFECTS_COPY_MESH_NAME,
-    vertex: createShaderWithMarcos([], version + '\n' + COPY_VERTEX_SHADER, ShaderType.vertex, level),
-    fragment: createShaderWithMarcos([], version + '\n' + COPY_FRAGMENT_SHADER, ShaderType.fragment, level),
+    vertex: version + '\n' + COPY_VERTEX_SHADER,
+    fragment: version + '\n' + COPY_FRAGMENT_SHADER,
     glslVersion: webgl2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-    marcos: [
+    macros: [
       ['WEBGL2', !!webgl2],
       ['DEPTH_TEXTURE', !!writeDepth],
     ],

@@ -48,7 +48,7 @@ export class KTXTexture {
       identifier[10] !== 0x1a ||
       identifier[11] !== 0x0a
     ) {
-      throw Error('texture missing KTX identifier');
+      throw new Error('Texture missing KTX identifier.');
     }
 
     // load the reset of the header in native 32 bit uint
@@ -74,17 +74,17 @@ export class KTXTexture {
     this.numberOfMipmapLevels = Math.max(1, this.numberOfMipmapLevels);
 
     if (this.pixelHeight === 0 || this.pixelDepth !== 0) {
-      logger.warn('Only 2D textures currently supported');
+      logger.warn('Only 2D textures currently supported.');
 
       return;
     }
     if (this.numberOfArrayElements !== 0) {
-      logger.warn('Texture arrays not currently supported');
+      logger.warn('Texture arrays not currently supported.');
 
       return;
     }
     if (this.numberOfFaces !== facesExpected) {
-      logger.warn('Number of faces expected' + facesExpected + ', but found ' + this.numberOfFaces);
+      logger.warn(`Number of faces expected ${facesExpected}, but found ${this.numberOfFaces}.`);
 
       return;
     }

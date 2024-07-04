@@ -1,9 +1,8 @@
-import type { JSONValue } from '@galacean/effects';
 import { Player } from '@galacean/effects';
-import type { GizmoVFXItem } from '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-model';
 import test_scene from './json/wireframe-mode.json';
+import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
 
 (async () => {
   const player = new Player({
@@ -14,12 +13,12 @@ import test_scene from './json/wireframe-mode.json';
     onItemClicked: e => {
       const { player, id } = e;
       const composition = player.getCompositions()[0];
-      const item = composition.items.find(item => item.id === String(id)) as GizmoVFXItem;
+      const item = composition.items.find(item => item.id === String(id))!;
 
       console.info('itemId: ' + item.id);
-      console.info('hitBoundingKey: ' + item.hitBounding?.key);
+      console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
     },
   });
 
-  await player.loadScene(test_scene as unknown as JSONValue);
+  await player.loadScene(test_scene);
 })();

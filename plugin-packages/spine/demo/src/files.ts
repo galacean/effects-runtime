@@ -6,10 +6,10 @@ export const premultiply: Record<string, FileFormat> = {
     atlas: 'https://gw.alipayobjects.com/os/gltf-asset/05493939668400/coin-pro.atlas',
   },
   mix: {
-    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/67369243935954/mix-and-match-pro.atlas',
-    json: 'https://gw.alipayobjects.com/os/gltf-asset/67369243935954/mix-and-match-pro.json',
-    png: ['https://gw.alipayobjects.com/zos/gltf-asset/67369243935954/mix-and-match-pro.png'],
-    skeleton: ' https://gw.alipayobjects.com/os/gltf-asset/67369243935954/mix-and-match-pro.skel',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/17503768961768/mix-and-match-pro.atlas',
+    json: 'https://gw.alipayobjects.com/os/gltf-asset/17503768961768/mix-and-match-pro.json',
+    png: ['https://gw.alipayobjects.com/zos/gltf-asset/17503768961768/mix-and-match-pro.png'],
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/17503768961768/mix-and-match-pro.skel',
   },
   goblins: {
     atlas: 'https://gw.alipayobjects.com/os/gltf-asset/64519553637848/goblins-pma.atlas',
@@ -24,10 +24,10 @@ export const premultiply: Record<string, FileFormat> = {
     skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/65414953352107/vine-pro.skel',
   },
   spineboy: {
-    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/67286705284570/spineboy-pro.atlas',
-    png: ['https://gw.alipayobjects.com/zos/gltf-asset/67286705284570/spineboy-pro.png'],
-    json: ' https://gw.alipayobjects.com/os/gltf-asset/67286705284570/spineboy-pro.json',
-    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/67286705284570/spineboy-pro.skel',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/17505048672784/spineboy-pro.atlas',
+    png: ['https://gw.alipayobjects.com/zos/gltf-asset/17505048672784/spineboy-pro.png'],
+    json: 'https://gw.alipayobjects.com/os/gltf-asset/17505048672784/spineboy-pro.json',
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/17505048672784/spineboy-pro.skel',
   },
   dragon: {
     atlas: 'https://gw.alipayobjects.com/os/gltf-asset/65473856670153/dragon-pma.atlas',
@@ -107,20 +107,14 @@ export const premultiply: Record<string, FileFormat> = {
     json: 'https://gw.alipayobjects.com/os/gltf-asset/66086090439549/tank-pro.json',
     png: ['https://gw.alipayobjects.com/zos/gltf-asset/66086090439549/tank-pro.png'],
   },
+  // 物理引擎
   celestial: {
-    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/02293829268574/celestial-circus-pro.skel',
-    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/02293829268574/celestial-circus-pma.atlas',
+    skeleton: ' https://gw.alipayobjects.com/os/gltf-asset/16211040994428/celestial-circus-pro.skel',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/16211370123574/celestial-circus-pma.atlas',
     png: [
-      'https://gw.alipayobjects.com/zos/gltf-asset/02293829268574/celestial-circus-pma.png',
-      'https://gw.alipayobjects.com/zos/gltf-asset/02293829268574/celestial-circus-pma_2.png',
+      'https://gw.alipayobjects.com/zos/gltf-asset/16211370123574/celestial-circus-pma.png',
     ],
-    json: '',
-  },
-  labayu: {
-    json:'',
-    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/02297022467078/labayu.atlas',
-    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/02297022467078/labayu-pro.skel',
-    png: ['https://gw.alipayobjects.com/zos/gltf-asset/02297022467078/labayu.png'],
+    json: 'https://gw.alipayobjects.com/os/gltf-asset/16211040994428/celestial-circus-pro.json',
   },
 };
 
@@ -193,6 +187,29 @@ export const direct: Record<string, FileFormat> = {
     atlas: 'https://gw.alipayobjects.com/os/gltf-asset/95023136604660/skeleton.atlas',
     json: 'https://gw.alipayobjects.com/os/gltf-asset/95023136604660/skeleton.json',
     png: ['https://gw.alipayobjects.com/zos/gltf-asset/95023136604660/skeleton.png'],
+  },
+  noDefault: {
+    json: 'https://gw.alipayobjects.com/os/gltf-asset/15687627881185/zJ.json',
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/15687627881185/zJ.atlas',
+    png: ['https://gw.alipayobjects.com/zos/gltf-asset/15687627881185/zJ.png'],
+  },
+  //物理引擎
+  cloudPot: {
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/16209548014801/cloud-pot-pro.atlas',
+    png: [
+      'https://gw.alipayobjects.com/zos/gltf-asset/16209548014801/cloud-pot-pro.png',
+    ],
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/16209548014801/cloud-pot.skel',
+    json:'',
+  },
+  snowglobe: {
+    atlas: ' https://gw.alipayobjects.com/os/gltf-asset/16209641594273/snowglobe-pro.atlas',
+    png: [
+      'https://gw.alipayobjects.com/zos/gltf-asset/16209641594273/snowglobe-pro.png',
+      'https://gw.alipayobjects.com/zos/gltf-asset/16209641594273/snowglobe-pro_2.png',
+    ],
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/16209641594273/snowglobe-pro.skel',
+    json:'',
   },
 };
 

@@ -26,16 +26,18 @@ export interface ProgramUniformInfo {
 export class GLProgram implements Disposable {
   private readonly uniformBlockMap: Record<string, UniformBlockSpec> = {};
   private attribInfoMap: Record<string, ProgramAttributeInfo>;
+  // TODO: 待移除？
   private uniformInfoMap: Record<string, ProgramUniformInfo>;
   private pipelineContext: GLPipelineContext;
 
   constructor (
     public engine: GLEngine,
     public readonly program: WebGLProgram,
+    // TODO: 待移除？
     private readonly shared: boolean,
     private readonly id: string,
   ) {
-    let blockUniformNames: string[] = [];
+    // let blockUniformNames: string[] = [];
 
     this.pipelineContext = engine.getGLPipelineContext();
     const gl = this.pipelineContext.gl;
@@ -44,9 +46,9 @@ export class GLProgram implements Disposable {
 
     this.attribInfoMap = this.createAttribMap();
     if (isWebGL2(gl)) {
-      const { blockSpecs, blockUniformNames: buns } = createUniformBlockDataFromProgram(gl, program);
+      const { blockSpecs } = createUniformBlockDataFromProgram(gl, program);
 
-      blockUniformNames = buns;
+      // blockUniformNames = buns;
       blockSpecs.forEach(b => this.uniformBlockMap[b.name] = b);
     }
 
@@ -77,12 +79,13 @@ export class GLProgram implements Disposable {
     } else {
       vao = new GLVertexArrayObject(this.engine, `${geometry.name}-${programId}`);
       if (!vao) {
-        console.error('创建vao对象失败');
+        console.error('Failed to create VAO object.');
       }
       geometry.vaos[programId] = vao;
     }
 
-    if (vao) {
+    // 兼容小程序下不支持vao
+    if (vao && vao.vao) {
       vao.bind();
       if (vao.ready) {
         return vao;
@@ -96,7 +99,7 @@ export class GLProgram implements Disposable {
         const buffer = geometry.buffers[attribute.dataSource];
 
         if (!buffer) {
-          throw Error(`no buffer named ${attribute.dataSource || name}`);
+          throw new Error(`Failed to find a buffer named '${attribute.dataSource || name}'. Please ensure the buffer is correctly initialized and bound.`);
         }
         buffer.bind();
         gl.enableVertexAttribArray(attrInfo.loc);

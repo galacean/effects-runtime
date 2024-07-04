@@ -1,4 +1,3 @@
-import type * as spec from '@galacean/effects-specification';
 import { v4 as uuidv4 } from 'uuid';
 
 export * from './array';
@@ -7,12 +6,20 @@ export * from './device';
 export * from './image-data';
 export * from './sortable';
 export * from './asserts';
-export * from './timeline-component';
+export * from './text';
 export * from './logger';
 
 export type Immutable<O> = O extends Record<any, any>
   ? { readonly [key in keyof O]: Immutable<O[key]> }
   : O extends Array<infer X> ? ReadonlyArray<X> : O;
+
+export type PickEnum<T, K extends T> = {
+  [P in keyof K]: P extends K ? P : never;
+};
+
+export interface Constructor<T = unknown> {
+  new(...args: any[]): T,
+}
 
 export enum DestroyOptions {
   destroy = 0,
@@ -43,10 +50,10 @@ export function noop () {
  *
  * @static
  * @function isString
- * @param {object} obj - 要判断的对象
- * @return {boolean}
+ * @param obj - 要判断的对象
+ * @return
  */
-export function isString (obj: any): obj is string {
+export function isString (obj: unknown): obj is string {
   return typeof obj === 'string';
 }
 
@@ -55,8 +62,8 @@ export function isString (obj: any): obj is string {
  *
  * @static
  * @function isArray
- * @param {object} obj - 要判断的对象
- * @return {boolean}
+ * @param obj - 要判断的对象
+ * @return
  */
 export const isArray = (Array.isArray || function (obj) {
   return Object.prototype.toString.call(obj) === '[object Array]';
@@ -67,10 +74,10 @@ export const isArray = (Array.isArray || function (obj) {
  *
  * @static
  * @function isFunction
- * @param {object} obj - 要判断的对象
- * @return {boolean}
+ * @param obj - 要判断的对象
+ * @return
  */
-export function isFunction (obj: any) {
+export function isFunction (obj: unknown) {
   return Object.prototype.toString.call(obj) === '[object Function]';
 }
 
@@ -79,44 +86,87 @@ export function isFunction (obj: any) {
  *
  * @static
  * @function isObject
- * @param {object} obj - 要判断的对象
- * @return {boolean}
+ * @param obj - 要判断的对象
+ * @return
  */
-export function isObject (obj: any) {
+export function isObject (obj: unknown): obj is Record<string | symbol, unknown> {
   return Object.prototype.toString.call(obj) === '[object Object]';
 }
 
-export function deepClone (obj: any): any {
-  if (isArray(obj)) {
-    return obj.map(deepClone);
-  } else if (obj && typeof obj === 'object') {
-    if (ArrayBuffer.isView(obj)) {
-      return (obj as spec.TypedArray).slice();
-    }
-    const ret: Record<string, any> = {};
-    const kas = Object.keys(obj);
-
-    for (let i = 0; i < kas.length; i++) {
-      const key = kas[i];
-
-      ret[key] = deepClone(obj[key]);
-    }
-
-    return ret;
-  }
-
-  return obj;
+export function isCanvas (canvas: HTMLCanvasElement) {
+  // 小程序 Canvas 无法使用 instanceof HTMLCanvasElement 判断
+  return typeof canvas === 'object' && canvas !== null && canvas.tagName?.toUpperCase() === 'CANVAS';
 }
 
-// TODO: 改名
-export function random (min: number, max: number) {
+/**
+ * 生成一个位于 min 和 max 之间的随机数
+ * @param min
+ * @param max
+ * @returns
+ */
+export function randomInRange (min: number, max: number) {
   return min + Math.random() * (max - min);
 }
 
 export function throwDestroyedError () {
-  throw Error('destroyed item cannot be used again');
+  throw new Error('Destroyed item cannot be used again.');
 }
 
 export function generateGUID (): string {
   return uuidv4().replace(/-/g, '');
+}
+
+export function base64ToFile (
+  base64: string,
+  filename = 'base64File',
+  contentType = '',
+) {
+  // 去掉 Base64 字符串的 Data URL 部分（如果存在）
+  const base64WithoutPrefix = base64.split(',')[1] || base64;
+
+  // 将 base64 编码的字符串转换为二进制字符串
+  const byteCharacters = atob(base64WithoutPrefix);
+  // 创建一个 8 位无符号整数值的数组，即“字节数组”
+  const byteArrays = [];
+
+  // 切割二进制字符串为多个片段，并将每个片段转换成一个字节数组
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
+
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+
+    byteArrays.push(byteArray);
+  }
+
+  // 使用字节数组创建 Blob 对象
+  const blob = new Blob(byteArrays, { type: contentType });
+
+  // 创建 File 对象
+  const file = new File([blob], filename, { type: contentType });
+
+  return file;
+}
+
+export function applyMixins<T extends Constructor, K extends Constructor> (
+  derivedCtrl: T,
+  baseCtrls: K[],
+) {
+  baseCtrls.forEach(baseCtrl => {
+    Object.getOwnPropertyNames(baseCtrl.prototype).forEach(name => {
+      const propertyDescriptor = Object.getOwnPropertyDescriptor(baseCtrl.prototype, name);
+
+      if (!propertyDescriptor) {
+        throw new Error(`Cannot find property descriptor of class ${baseCtrl}`);
+      }
+      Object.defineProperty(
+        derivedCtrl.prototype,
+        name,
+        propertyDescriptor,
+      );
+    });
+  });
 }

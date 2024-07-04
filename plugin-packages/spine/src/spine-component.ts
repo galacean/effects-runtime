@@ -1,10 +1,17 @@
-import type { BoundingBoxTriangle, HitTestTriangleParams, Engine, Renderer } from '@galacean/effects-core';
-import { HitTestType, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, spec, math } from '@galacean/effects-core';
-import type { AnimationStateListener, SkeletonData, Skeleton } from '@esotericsoftware/spine-core';
-import { AnimationState, AnimationStateData, Physics } from '@esotericsoftware/spine-core';
+import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
+import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
+import type {
+  BinaryAsset, BoundingBoxTriangle, HitTestTriangleParams, Renderer, Texture,
+} from '@galacean/effects';
+import {
+  effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, serialize,
+  spec,
+} from '@galacean/effects';
 import { SlotGroup } from './slot-group';
-import type { SpineResource } from './spine-loader';
-import { getAnimationDuration } from './utils';
+import {
+  createSkeletonData, getAnimationDuration, getAnimationList, getSkeletonFromBuffer,
+  getSkinList, readAtlasData,
+} from './utils';
 
 const { Vector2, Vector3 } = math;
 
@@ -15,15 +22,46 @@ export interface BoundsData {
   height: number,
 }
 
+export interface SpineResource {
+  atlas: {
+    bins: BinaryAsset,
+    source: [start: number, length?: number],
+  },
+  skeleton: {
+    bins: BinaryAsset,
+    source: [start: number, length?: number],
+  },
+  images: Texture[],
+  skeletonType: spec.skeletonFileType,
+}
+
+export interface SpineDataCache {
+  atlas: TextureAtlas,
+  skeletonData: SkeletonData,
+  /**
+   * 缓存给编辑器用
+   */
+  skeletonInstance?: Skeleton | null,
+  skinList?: string[],
+  animationList?: string[],
+}
+
 /**
  * @since 2.0.0
  */
+@effectsClass('SpineComponent')
 export class SpineComponent extends RendererComponent {
   startSize: number;
   /**
    * 根据相机计算的缩放比例
    */
   scaleFactor: number;
+  /**
+   * 大小计算规则：
+   * 1 : 相机逆投影 + 固定画布大小
+   * 0 ：除以包围盒大小
+   */
+  resizeRule: number;
   /**
    * 当前骨架对应的皮肤列表
    */
@@ -40,8 +78,8 @@ export class SpineComponent extends RendererComponent {
    * renderer 数据
    */
   renderer: {};
-  spineDataCache: SpineResource;
-  options?: spec.SpineItem;
+  spineDataCache: SpineDataCache;
+  options: spec.PluginSpineOption;
 
   private content: SlotGroup | null;
   private skeleton: Skeleton;
@@ -58,32 +96,41 @@ export class SpineComponent extends RendererComponent {
    */
   private size = new Vector2();
 
-  constructor (engine: Engine, options?: spec.SpineItem) {
-    super(engine);
-  }
+  @serialize()
+  resource: SpineResource;
 
-  override fromData (options: any) {
-    super.fromData(options);
+  override fromData (data: spec.SpineComponent) {
+    super.fromData(data);
 
-    this.options = options;
+    const { images: textures, skeletonType, atlas: atlasOptions, skeleton: skeletonOptions } = this.resource;
+    const [start, bufferLength] = atlasOptions.source;
+    const atlasBuffer = bufferLength ? new Uint8Array(atlasOptions.bins.buffer, start, bufferLength) : new Uint8Array(atlasOptions.bins.buffer, start);
+    const atlas = readAtlasData(atlasBuffer, textures);
+
+    const skBuffer = skeletonOptions.bins.buffer;
+    const [skelStart, skelBufferLength] = skeletonOptions.source;
+    const skeletonBuffer = skelBufferLength ? skBuffer.slice(skelStart, skelStart + skelBufferLength) : skBuffer.slice(skelStart);
+    const skeletonFile = getSkeletonFromBuffer(skeletonBuffer, skeletonType);
+    const skeletonData = createSkeletonData(atlas, skeletonFile, skeletonType);
+
+    this.spineDataCache = {
+      atlas, skeletonData,
+    };
+    this.options = data.options;
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
   }
 
   override start () {
     super.start();
-    const options = this.options;
+    this.initContent(this.spineDataCache.atlas, this.spineDataCache.skeletonData, this.options);
+    // @ts-expect-error
+    this.startSize = this.options.startSize;
+    // @ts-expect-error
+    this.renderer = this.options.renderer;
 
-    if (!options) {
-      console.error('options used to create SpineComponent is undefined');
-
+    if (!this.state) {
       return;
     }
-    this.initContent(options.content.options, this.item.composition?.loaderData.spineDatas);
-    // @ts-expect-error
-    this.startSize = options.content.options.startSize;
-    // @ts-expect-error
-    this.renderer = options.content.renderer;
-
     this.state.apply(this.skeleton);
     this.update(0);
     this.resize();
@@ -93,12 +140,13 @@ export class SpineComponent extends RendererComponent {
     if (!(this.state && this.skeleton)) {
       return;
     }
-
     this.state.update(dt / 1000);
     this.state.apply(this.skeleton);
     this.skeleton.update(dt / 1000);
     this.skeleton.updateWorldTransform(Physics.update);
-    this.content?.update();
+    if (this.content) {
+      this.content.update();
+    }
   }
 
   override render (renderer: Renderer) {
@@ -106,31 +154,29 @@ export class SpineComponent extends RendererComponent {
   }
 
   override onDestroy () {
-    if (this.item.endBehavior === spec.END_BEHAVIOR_DESTROY && this.state) {
+    if (this.item.endBehavior === spec.ItemEndBehavior.destroy && this.state) {
       this.state.clearListeners();
       this.state.clearTracks();
     }
   }
 
-  private initContent (spineOptions: spec.PluginSpineOption, spineDatas: SpineResource[]) {
-    const index = spineOptions.spine;
+  private initContent (
+    atlas: TextureAtlas,
+    skeletonData: SkeletonData,
+    spineOptions: spec.PluginSpineOption,
+  ) {
+    const activeAnimation = typeof spineOptions.activeAnimation === 'string'
+      ? [spineOptions.activeAnimation]
+      : spineOptions.activeAnimation;
 
-    if (isNaN(index)) {
-      return;
-    }
-    const skin = spineOptions.activeSkin || 'default';
-    const { atlas, skeletonData, skeletonInstance, skinList, animationList } = spineDatas[index];
-    const activeAnimation = typeof spineOptions.activeAnimation === 'string' ? [spineOptions.activeAnimation] : spineOptions.activeAnimation;
-
-    this.skeleton = skeletonInstance;
+    this.skeleton = new Skeleton(skeletonData);
     this.skeletonData = skeletonData;
     this.animationStateData = new AnimationStateData(this.skeletonData);
     this.animationStateData.defaultMix = spineOptions.mixDuration || 0;
-    this.spineDataCache = spineDatas[index];
-    this.skinList = skinList.slice();
-    this.animationList = animationList.slice();
-
-    this.setSkin(skin);
+    this.skinList = getSkinList(skeletonData);
+    this.animationList = getAnimationList(skeletonData);
+    this.resizeRule = spineOptions.resizeRule;
+    this.setSkin(spineOptions.activeSkin || (this.skinList.length ? this.skinList[0] : 'default'));
     this.state = new AnimationState(this.animationStateData);
 
     if (activeAnimation.length === 1) {
@@ -146,9 +192,17 @@ export class SpineComponent extends RendererComponent {
     } else {
       this.setAnimationList(activeAnimation, spineOptions.speed);
     }
+
+    this.spineDataCache = {
+      ...this.spineDataCache,
+      skeletonInstance: this.skeleton,
+      skinList: this.skinList,
+      animationList: this.animationList,
+    };
     this.pma = atlas.pages[0].pma;
+    this._priority = this.item.renderOrder;
     this.content = new SlotGroup(this.skeleton.drawOrder, {
-      listIndex: this.item.listIndex,
+      listIndex: this.item.renderOrder,
       meshName: this.name,
       transform: this.transform,
       pma: this.pma,
@@ -212,12 +266,17 @@ export class SpineComponent extends RendererComponent {
     }
   }
 
+  /**
+   * 设置单个动画
+   * @param animation - 动画名
+   * @param speed - 播放速度
+   */
   setAnimation (animation: string, speed?: number) {
     if (!this.skeleton || !this.state) {
-      throw new Error('Set animation before skeleton create');
+      throw new Error('Set animation before skeleton create.');
     }
     if (!this.animationList.length) {
-      throw new Error('animationList is empty, check your spine file');
+      throw new Error('animationList is empty, check your spine file.');
     }
     const loop = this.item.endBehavior === spec.ItemEndBehavior.loop;
     const listener = this.state.tracks[0]?.listener;
@@ -225,10 +284,9 @@ export class SpineComponent extends RendererComponent {
     if (listener) {
       listener.end = () => { };
     }
-    this.state.clearTracks();
-    this.skeleton.setToSetupPose();
+    this.state.setEmptyAnimation(0);
     if (!this.animationList.includes(animation)) {
-      console.warn(`animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}`);
+      console.warn(`Animation ${JSON.stringify(animation)} not exists in animationList: ${this.animationList}, set to ${this.animationList[0]}.`);
 
       this.state.setAnimation(0, this.animationList[0], loop);
       this.activeAnimation = [this.animationList[0]];
@@ -236,17 +294,23 @@ export class SpineComponent extends RendererComponent {
       this.state.setAnimation(0, animation, loop);
       this.activeAnimation = [animation];
     }
-    if (!isNaN(speed as number)) {
-      this.setSpeed(speed as number);
+
+    if (speed !== undefined && !Number.isNaN(speed)) {
+      this.setSpeed(speed);
     }
   }
 
+  /**
+   * 设置播放一组动画
+   * @param animationList - 动画名列表
+   * @param speed - 播放速度
+   */
   setAnimationList (animationList: string[], speed?: number) {
     if (!this.skeleton || !this.state) {
-      throw new Error('Set animation before skeleton create');
+      throw new Error('Set animation before skeleton create.');
     }
     if (!this.animationList.length) {
-      throw new Error('animationList is empty, please check your setting');
+      throw new Error('animationList is empty, please check your setting.');
     }
     if (animationList.length === 1) {
       this.setAnimation(animationList[0], speed);
@@ -258,8 +322,7 @@ export class SpineComponent extends RendererComponent {
     if (listener) {
       listener.end = () => { };
     }
-    this.state.clearTracks();
-    this.skeleton.setToSetupPose();
+    this.state.setEmptyAnimation(0);
     for (const animation of animationList) {
       const trackEntry = this.state.addAnimation(0, animation, false);
 
@@ -276,6 +339,48 @@ export class SpineComponent extends RendererComponent {
       }
     }
     this.activeAnimation = animationList;
+    if (speed !== undefined && !isNaN(speed)) {
+      this.setSpeed(speed);
+    }
+  }
+
+  /**
+   * 设置播放一组动画，循环播放最后一个
+   * @param animationList - 动画名列表
+   * @param speed - 播放速度
+   * @since 1.6.0
+   */
+  setAnimationListLoopEnd (animationList: string[], speed?: number) {
+    if (!this.skeleton || !this.state) {
+      throw new Error('Set animation before skeleton create.');
+    }
+    if (!this.animationList.length) {
+      throw new Error('animationList is empty, please check your setting.');
+    }
+    if (animationList.length === 1) {
+      this.setAnimation(animationList[0], speed);
+
+      return;
+    }
+    const listener = this.state.tracks[0]?.listener;
+
+    if (listener) {
+      listener.end = () => { };
+    }
+    this.state.setEmptyAnimation(0);
+    for (let i = 0; i < animationList.length - 1; i++) {
+      const animation = animationList[i];
+      const trackEntry = this.state.setAnimation(0, animation, false);
+
+      if (i === animationList.length - 2) {
+        trackEntry.listener = {
+          complete: () => {
+            this.state.setAnimation(0, animationList[animationList.length - 1], true);
+          },
+        };
+      }
+
+    }
     if (!isNaN(speed as number)) {
       this.setSpeed(speed as number);
     }
@@ -310,7 +415,16 @@ export class SpineComponent extends RendererComponent {
   }
 
   /**
-   * 设置指定动画之间的融合时间
+   * 获取当前 Spine 中的 AnimationState
+   * @returns
+   * @since 1.6.0
+   */
+  getAnimationState (): AnimationState {
+    return this.state;
+  }
+
+  /**
+   * 设置指定动画之间的融合时间，请在 `player.play` 之前进行设置
    * @param fromName - 淡出动作
    * @param toName - 淡入动作
    * @param duration - 融合时间
@@ -327,10 +441,13 @@ export class SpineComponent extends RendererComponent {
    * @param mixDuration - 融合时间
    */
   setDefaultMixDuration (mixDuration: number) {
-    if (!this.state || this.state.tracks[0]) {
+    if (!this.state) {
       return;
     }
-    this.state.tracks[0]!.mixDuration = mixDuration;
+    this.animationStateData.defaultMix = mixDuration;
+    if (this.state.tracks[0]) {
+      this.state.tracks[0].mixDuration = mixDuration;
+    }
   }
 
   /**
@@ -349,10 +466,10 @@ export class SpineComponent extends RendererComponent {
    */
   setSkin (skin: string) {
     if (!this.skeleton) {
-      throw new Error('Set skin before skeleton create');
+      throw new Error('Set skin before skeleton create.');
     }
-    if (!skin || !this.skinList.includes(skin)) {
-      throw new Error(`skin ${skin} not exists in skinList: ${this.skinList}`);
+    if (!skin || (skin !== 'default' && !this.skinList.includes(skin))) {
+      throw new Error(`skin ${skin} not exists in skinList: ${this.skinList}.`);
     }
     this.skeleton.setSkinByName(skin);
     this.skeleton.setToSetupPose();
@@ -363,13 +480,22 @@ export class SpineComponent extends RendererComponent {
   resize () {
     const res = this.getBounds();
 
-    if (!res) {
+    if (!res || !this.item.composition) {
       return;
     }
     const { width } = res;
     const scale = this.transform.scale;
-    const scaleFactor = 1 / width;
+    let scaleFactor;
 
+    if (this.resizeRule) {
+      const { z } = this.transform.getWorldPosition();
+      const { x: rx } = this.item.composition.camera.getInverseVPRatio(z);
+
+      scaleFactor = rx / 1500;
+
+    } else {
+      scaleFactor = 1 / width;
+    }
     this.scaleFactor = scaleFactor;
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
   }

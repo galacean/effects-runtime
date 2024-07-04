@@ -2,7 +2,7 @@ import type {
   Disposable, RestoreHandler, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
   Texture2DSourceOptionsImage, Texture2DSourceOptionsImageMipmaps, Texture2DSourceOptionsVideo,
   TextureConfigOptions, TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps,
-  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFrameBuffer, spec, Engine,
+  TextureDataType, TextureSourceOptions, Texture2DSourceOptionsFramebuffer, spec, Engine,
 } from '@galacean/effects-core';
 import {
   getDefaultTextureFactory, glContext, nearestPowerOfTwo, Texture, TextureSourceType, isWebGL2,
@@ -30,7 +30,6 @@ const FORMAT_FLOAT: Record<string, number> = {
   [glContext.LUMINANCE_ALPHA]: 33328, //RG32F,
   [glContext.LUMINANCE]: 33326, //R32F
 };
-let flipCanvas: HTMLCanvasElement;
 
 export class GLTexture extends Texture implements Disposable, RestoreHandler {
   textureBuffer: WebGLTexture | null;
@@ -46,12 +45,16 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     }
   }
 
-  /** 绑定当前Texture对象。*/
+  /**
+   * 绑定当前 Texture 对象
+   */
   bind (force?: boolean) {
     this.pipelineContext.bindTexture(this.target, this.textureBuffer, force);
   }
 
-  /** 初始化Texture的GPU资源。*/
+  /**
+   * 初始化 Texture 的 GPU 资源
+   */
   override initialize (): void {
     if (this.initialized) {
       return;
@@ -59,16 +62,13 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const glEngine = this.engine as GLEngine;
 
     glEngine.addTexture(this);
-    const pipelineContext = glEngine.getGLPipelineContext();
+    this.pipelineContext = glEngine.getGLPipelineContext();
 
-    this.pipelineContext = pipelineContext;
-    const gl = pipelineContext.gl;
+    const gl = this.pipelineContext.gl;
     const { target = gl.TEXTURE_2D, name } = this.source;
 
     this.textureBuffer = gl.createTexture();
-    if (this.textureBuffer) {
-      assignInspectorName(this.textureBuffer, name);
-    }
+    assignInspectorName(this.textureBuffer, name);
     this.target = target;
     this.update(this.source);
     this.release();
@@ -134,7 +134,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     const { video } = source as Texture2DSourceOptionsVideo;
     const { mipmaps } = source as Texture2DSourceOptionsImageMipmaps;
     const { mipmaps: cubeMipmaps } = source as TextureCubeSourceOptionsImageMipmaps;
-    const { data: optionsData } = sourceOptions as Texture2DSourceOptionsFrameBuffer;
+    const { data: optionsData } = sourceOptions as Texture2DSourceOptionsFramebuffer;
     const { cube: optionsCube } = sourceOptions as TextureCubeSourceOptionsImage;
     const { generateMipmap } = sourceOptions as Texture2DSourceOptionsImage;
     const { mipmaps: optionsMipmaps } = sourceOptions as Texture2DSourceOptionsCompressed;
@@ -191,7 +191,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     // gl的状态可能在外面被改变了，这里必须重新设置
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, source.flipY);
 
-    // 根据不同的 TextureSourceType 传输对应贴图数据到GPU。
+    // 根据不同的 TextureSourceType 传输对应贴图数据到 GPU
     if (sourceType === TextureSourceType.framebuffer) {
       if (optionsData) {
         width = optionsData.width ?? 0;
@@ -214,7 +214,10 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       } else {
         [width, height] = this.texImage2DData(gl, target, 0, internalFormat, format, type, data);
       }
-    } else if (sourceType === TextureSourceType.image || sourceType === TextureSourceType.video) {
+    } else if (
+      sourceType === TextureSourceType.image ||
+      sourceType === TextureSourceType.video
+    ) {
       if (target === gl.TEXTURE_CUBE_MAP) {
         cube.forEach((image, key) => {
           const [x, y] = this.texImage2D(gl, gl.TEXTURE_CUBE_MAP_POSITIVE_X + key, 0, internalFormat, format, type, image as HTMLImageElement);
@@ -261,7 +264,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
         });
       }
     } else if (sourceType === TextureSourceType.compressed) {
-      if (optionsMipmaps) {
+      if (optionsMipmaps && optionsMipmaps.length !== 0) {
         width = optionsMipmaps[0].width;
         height = optionsMipmaps[0].height;
         optionsMipmaps.forEach((mipmap, idx) => {
@@ -293,10 +296,21 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       gpuCapability.setTextureAnisotropic(gl, this.target, anisotropic);
     }
     const isPot = isWebGL2(gl) || (isPowerOfTwo(this.width) && isPowerOfTwo(this.height));
-    const minFiler = options.minFilter ? options.minFilter : gl.NEAREST;
     const magFilter = options.magFilter ? options.magFilter : gl.NEAREST;
+    let minFilter = options.minFilter ? options.minFilter : gl.NEAREST;
 
-    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, minFiler);
+    if (!isPot) {
+      if (
+        minFilter === gl.LINEAR_MIPMAP_LINEAR ||
+        minFilter === gl.LINEAR_MIPMAP_NEAREST ||
+        minFilter === gl.NEAREST_MIPMAP_LINEAR ||
+        minFilter === gl.NEAREST_MIPMAP_NEAREST
+      ) {
+        minFilter = gl.LINEAR;
+      }
+    }
+
+    gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, minFilter);
     gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, magFilter);
     gl.texParameteri(target, gl.TEXTURE_WRAP_S, isPot ? wrapS : gl.CLAMP_TO_EDGE);
     gl.texParameteri(target, gl.TEXTURE_WRAP_T, isPot ? wrapT : gl.CLAMP_TO_EDGE);
@@ -305,10 +319,10 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   override fromData (data: any): void {
     super.fromData(data);
     const source = data as TextureSourceOptions;
-    const opts = this.assembleOptions(source);
-    const { sourceType, sourceFrom, name = '' } = opts;
+    const options = this.assembleOptions(source);
+    const { sourceType, sourceFrom, name = '' } = options;
 
-    this.source = opts;
+    this.source = options;
     this.sourceType = sourceType;
     this.sourceFrom = sourceFrom;
     this.name = name;
@@ -324,7 +338,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     type: GLenum,
     image: HTMLImageLike,
   ): spec.vec2 {
-    const { sourceType, minFilter, magFilter, flipY, wrapS, wrapT } = this.source;
+    const { sourceType, minFilter, magFilter, wrapS, wrapT } = this.source;
     const maxSize = this.engine.gpuCapability.detail.maxTextureSize ?? 2048;
     let img = image;
 
@@ -341,10 +355,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     }
     gl.texImage2D(target, level, internalformat, format, type, img);
     const size: spec.vec2 = [img.width, img.height];
-
-    if (flipCanvas) {
-      flipCanvas.width = flipCanvas.height = 1;
-    }
 
     if (sourceType === TextureSourceType.video) {
       const { videoWidth, videoHeight } = image as HTMLVideoElement;
@@ -366,7 +376,14 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
   ): spec.vec2 {
     const { data: bufferView, width, height } = data;
     // Uint8ClampedArray is incompatible in android
-    const neoBuffer = format === gl.UNSIGNED_BYTE ? new Uint8Array(bufferView.buffer, bufferView.byteOffset, bufferView.byteLength / bufferView.BYTES_PER_ELEMENT) : bufferView;
+    const neoBuffer =
+      format === gl.UNSIGNED_BYTE
+        ? new Uint8Array(
+          bufferView.buffer,
+          bufferView.byteOffset,
+          bufferView.byteLength / bufferView.BYTES_PER_ELEMENT,
+        )
+        : bufferView;
 
     gl.texImage2D(target, level, internalformat, width, height, 0, format, type, neoBuffer);
 
@@ -511,7 +528,7 @@ function resizeImageByCanvas (
     canvas.width = nw;
     canvas.height = nh;
     ctx?.drawImage(image, 0, 0, width, height, 0, 0, nw, nh);
-    logger.warn(`Image resize from ${width}x${height} to ${nw}x${nh}`);
+    logger.warn(`Image resize from ${width}x${height} to ${nw}x${nh}.`);
 
     return canvas;
   }

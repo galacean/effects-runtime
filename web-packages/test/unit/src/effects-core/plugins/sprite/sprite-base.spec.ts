@@ -1,6 +1,5 @@
 // @ts-nocheck
-import { math } from '@galacean/effects';
-import { Player, SpriteComponent, TimelineComponent, LinearValue, CurveValue } from '@galacean/effects';
+import { CompositionComponent, Player, SpriteComponent, StaticValue, math } from '@galacean/effects';
 import { generateSceneJSON } from './utils';
 
 const Vector3 = math.Vector3;
@@ -9,7 +8,7 @@ const Quaternion = math.Quaternion;
 const { expect } = chai;
 
 describe('sprite item base options', () => {
-  let player;
+  let player: Player;
   const canvas = document.createElement('canvas');
   const renderOptions = {
     canvas,
@@ -45,7 +44,22 @@ describe('sprite item base options', () => {
 
     player.gotoAndPlay(0.01);
     const spriteItem = comp.getItemByName('sprite_1').getComponent(SpriteComponent);
-    const spriteColorClip = comp.getItemByName('sprite_1').getComponent(TimelineComponent).findTrack('SpriteColorTrack').findClip('SpriteColorClip').playable;
+    const sprite1 = comp.getItemByName('sprite_1');
+    let spriteBindingTrack;
+    let spriteColorTrack;
+
+    for (const track of comp.rootItem.getComponent(CompositionComponent).masterTracks) {
+      if (track.boundItem === sprite1) {
+        spriteBindingTrack = track;
+      }
+    }
+
+    for (const subTrack of spriteBindingTrack.getChildTracks()) {
+      if (subTrack.name === 'SpriteColorTrack') {
+        spriteColorTrack = subTrack;
+      }
+    }
+    const spriteColorClip = spriteColorTrack.findClip('SpriteColorClip').playable;
 
     const color = spriteItem.material.getVector4('_Color').toArray();
 
@@ -62,20 +76,109 @@ describe('sprite item base options', () => {
 
   // 尺寸随时间变换
   it('sprite sizeOverLifetime', async () => {
-    const json = '[{"id":"140","name":"item","duration":2,"type":"1","visible":true,"endBehavior":0,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[0.3,0.2,0.2,1]},"renderer":{"renderMode":1},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]},"sizeOverLifetime":{"size":[5,[[0,1],[0.5,0],[1,1]]],"separateAxes":true,"x":[5,[[0,2],[1,3]]],"y":[6,[[0,1,0,-3],[0.5,0.5,0,0],[1,1,3,0]]]}},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[3,3,1]}}]';
-    const comp = await player.loadScene(generateSceneJSON(JSON.parse(json)));
+    const items = [
+      {
+        'id': '5',
+        'name': 'item',
+        'duration': 5,
+        'type': '1',
+        'visible': true,
+        'endBehavior': 0,
+        'delay': 0,
+        'renderLevel': 'B+',
+        'content': {
+          'options': {
+            'startColor': [
+              1,
+              1,
+              1,
+              1,
+            ],
+          },
+          'renderer': {
+            'renderMode': 1,
+            'texture': 0,
+          },
+          'positionOverLifetime': {
+            'direction': [
+              0,
+              0,
+              0,
+            ],
+            'startSpeed': 0,
+            'gravity': [
+              0,
+              0,
+              0,
+            ],
+            'gravityOverLifetime': [
+              0,
+              1,
+            ],
+          },
+          'sizeOverLifetime': {
+            'size': [
+              21,
+              [
+                [
+                  4,
+                  [
+                    0,
+                    1,
+                  ],
+                ],
+              ],
+            ],
+            'separateAxes': true,
+            'x': [
+              21,
+              [
+                [
+                  4,
+                  [
+                    0,
+                    2,
+                  ],
+                ],
+              ],
+            ],
+          },
+          'splits': [
+            [
+              0,
+              0,
+              1,
+              1,
+              0,
+            ],
+          ],
+        },
+        'transform': {
+          'position': [
+            0,
+            0,
+            0,
+          ],
+          'rotation': [
+            0,
+            0,
+            0,
+          ],
+          'scale': [
+            12.5965,
+            12.5965,
+            1,
+          ],
+        },
+      },
+    ];
+    const comp = await player.loadScene(generateSceneJSON(items));
 
     player.gotoAndPlay(0.01);
 
-    const animationClipPlayable = comp.getItemByName('item').getComponent(TimelineComponent).findTrack('AnimationTrack').findClip('AnimationTimelineClip').playable;
-
-    const sizeX = animationClipPlayable.sizeXOverLifetime;
-    const sizeY = animationClipPlayable.sizeYOverLifetime;
-    const sizeZ = animationClipPlayable.sizeZOverLifetime;
-
-    expect(animationClipPlayable.sizeSeparateAxes, 'sizeSeparateAxes').to.be.true;
-    expect(sizeX, 'sizeXOverLifetime').to.be.an.instanceof(LinearValue);
-    expect(sizeY, 'sizeYOverLifetime').to.be.an.instanceof(CurveValue);
+    expect(spriteItem.sizeSeparateAxes, 'sizeSeparateAxes').to.be.true;
+    expect(sizeX, 'sizeXOverLifetime').to.be.an.instanceof(StaticValue);
+    expect(sizeY, 'sizeYOverLifetime').to.be.an.instanceof(StaticValue);
     expect(sizeX.getValue(0), 'sizeXOverLifetime').to.eql(2);
     expect(sizeY.getValue(0), 'sizeYOverLifetime').to.eql(1);
     expect(sizeZ.getValue(0), 'sizeZOverLifetime').to.eql(1);
@@ -91,8 +194,14 @@ describe('sprite item base options', () => {
 
     spriteItem.update();
     const texOffset0 = spriteItem.material.getVector4('_TexOffset').clone().toArray();
+    let spriteColorTrack;
 
-    spriteItem.item.getComponent(TimelineComponent).setTime(0.2);
+    for (const track of comp.rootItem.getComponent(CompositionComponent).masterTracks) {
+      if (track.boundItem === spriteItem) {
+        spriteColorTrack = track;
+      }
+    }
+    spriteColorTrack.setTime(0.2);
     spriteItem.update();
 
     const texOffset2 = spriteItem.material.getVector4('_TexOffset').clone().toArray();
@@ -194,7 +303,7 @@ describe('sprite item base options', () => {
               'renderLevel': 'B+',
               'content': {
                 'options': {
-                  'startColor':[0.95, 0.93, 0.93, 1],
+                  'startColor': [0.95, 0.93, 0.93, 1],
                 },
                 'positionOverLifetime': {},
               },

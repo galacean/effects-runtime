@@ -1,6 +1,6 @@
 import type {
-  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem,
-  MessageItem, CompositionProps, CompositionSourceManager,
+  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItem,
+  MessageItem, CompositionProps,
 } from '@galacean/effects-core';
 import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
 import type THREE from 'three';
@@ -53,7 +53,7 @@ export interface CompositionBaseProps {
    * @param item
    * @returns
    */
-  onPlayerPause?: (item: VFXItem<VFXItemContent>) => void,
+  onPlayerPause?: (item: VFXItem) => void,
 }
 
 export interface ThreeCompositionProps extends CompositionProps {
@@ -79,18 +79,15 @@ export class ThreeComposition extends Composition {
   constructor (
     props: ThreeCompositionProps,
     scene: Scene,
-    compositionSourceManager: CompositionSourceManager,
   ) {
-    super(props, scene, compositionSourceManager);
-
-    this.rootItem.getComponent(CompositionComponent)!.resetStatus();
+    super(props, scene);
   }
 
   /**
    * 更新 video texture 数据
    */
   override updateVideo () {
-    this.textures.map(tex => (tex as ThreeTexture).startVideo());
+    void this.textures.map(tex => (tex as ThreeTexture).startVideo());
   }
 
   override prepareRender (): void {
@@ -111,7 +108,7 @@ export class ThreeComposition extends Composition {
     }
     // 预合成元素
     for (const refContent of this.refContent) {
-      for (const vfxItem of refContent.getComponent(CompositionComponent)!.items) {
+      for (const vfxItem of refContent.getComponent(CompositionComponent).items) {
         const rendererComponents = vfxItem.getComponents(RendererComponent);
 
         for (const rendererComponent of rendererComponents) {

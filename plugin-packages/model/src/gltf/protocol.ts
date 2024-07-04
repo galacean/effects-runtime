@@ -1,23 +1,9 @@
+import type { GLTFResources } from '@vvfx/resource-detection';
 import type {
-  GLTFMaterial,
-  GLTFPrimitive,
-  GLTFLight,
-  GLTFScene,
-  GLTFImage,
-  GLTFTexture,
-  GLTFCamera,
-  GLTFAnimation,
-  GLTFImageBasedLight,
-} from '@vvfx/resource-detection';
-import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
-import type { GLTFResources } from '@vvfx/resource-detection/dist/src/gltf-tools';
-import type { spec, Renderer, Texture, Geometry } from '@galacean/effects';
+  spec, TextureSourceOptions, EffectComponentData,
+} from '@galacean/effects';
 import type {
-  ModelAnimationOptions,
-  ModelMaterialOptions,
-  ModelSkyboxOptions,
-  ModelTreeOptions,
-  ModelBaseItem,
+  ModelLightComponentData, ModelCameraComponentData, ModelSkyboxComponentData,
 } from '../index';
 
 /**
@@ -34,9 +20,9 @@ export interface LoadSceneOptions {
      */
     resource: string | Uint8Array | GLTFResources,
     /**
-     * 兼容模式，目前只支持tiny3d
+     * 兼容模式，目前支持 gltf 和 tiny3d
      */
-    compatibleMode?: 'gltf' | 'tiny3d' | 'oasis',
+    compatibleMode?: 'gltf' | 'tiny3d',
     /**
      * 检查ResourceDetection序列化和反序列逻辑
      */
@@ -56,10 +42,6 @@ export interface LoadSceneOptions {
   },
   effects: {
     /**
-     * Renderer
-     */
-    renderer?: Renderer,
-    /**
      * 播放时间，单位秒
      */
     duration?: number,
@@ -70,7 +52,7 @@ export interface LoadSceneOptions {
     /**
      * 播放动画索引或名称
      */
-    playAnimation?: number | string,
+    playAnimation?: number,
     /**
      * 是否播放全部动画
      */
@@ -80,49 +62,72 @@ export interface LoadSceneOptions {
 
 export interface LoadSceneResult {
   source: string,
-  items: ModelBaseItem[],
+  jsonScene: spec.JSONScene,
   sceneAABB: {
     min: spec.vec3,
     max: spec.vec3,
   },
 }
 
-export interface LoaderOptions {
-  compatibleMode?: 'gltf' | 'tiny3d' | 'oasis',
-}
-
 export type SkyboxType = 'NFT' | 'FARM';
 
-export interface Loader {
+export interface ModelCamera {
+  fov: number,
+  near: number,
+  far: number,
+  clipMode: spec.CameraClipMode,
+  //
+  name: string,
+  position: spec.vec3,
+  rotation: spec.vec3,
+  duration: number,
+  endBehavior: spec.ItemEndBehavior,
+}
 
+export interface ModelLight {
+  lightType: spec.LightType,
+  color: spec.ColorData,
+  intensity: number,
+  range?: number,
+  innerConeAngle?: number,
+  outerConeAngle?: number,
+  //
+  name: string,
+  position: spec.vec3,
+  rotation: spec.vec3,
+  scale: spec.vec3,
+  duration: number,
+  endBehavior: spec.ItemEndBehavior,
+}
+
+export interface ModelSkybox {
+  skyboxType?: string,
+  renderable?: boolean,
+  intensity?: number,
+  reflectionsIntensity?: number,
+  duration?: number,
+}
+
+export interface ModelImageLike {
+  name?: string,
+  width: number,
+  height: number,
+}
+
+export interface Loader {
   loadScene (options: LoadSceneOptions): Promise<LoadSceneResult>,
 
-  processLight (lights: GLTFLight[], fromGLTF: boolean): void,
+  processGLTFResource (resource: GLTFResources, imageElements: ModelImageLike[]): void,
 
-  processCamera (cameras: GLTFCamera[], fromGLTF: boolean): void,
+  processComponentData (components: EffectComponentData[]): void,
 
-  processMaterial (materials: GLTFMaterial[], fromGLTF: boolean): void,
+  processLightComponentData (light: ModelLightComponentData): void,
 
-  createTreeOptions (scene: GLTFScene): ModelTreeOptions,
+  processCameraComponentData (camera: ModelCameraComponentData): void,
 
-  createAnimations (animations: GLTFAnimation[]): ModelAnimationOptions[],
+  processSkyboxComponentData (skybox: ModelSkyboxComponentData): void,
 
-  createGeometry (primitive: GLTFPrimitive, hasSkinAnim: boolean): Geometry,
+  processMaterialData (material: spec.MaterialData): void,
 
-  // 由于要兼容tiny开启了纹理预乘的模式，需要在外面创建和设置纹理，这里只做渲染Options对象的数据转换
-  createMaterial (material: GLTFMaterial): ModelMaterialOptions,
-
-  createTexture2D (images: GLTFImage, textures: GLTFTexture, isBaseColor: boolean): Promise<Texture>,
-
-  createTextureCube (cubeImages: CubeImage[], level0Size?: number): Promise<Texture>,
-
-  createSkybox (ibl: GLTFImageBasedLight): Promise<ModelSkyboxOptions>,
-
-  createDefaultSkybox (typeName: SkyboxType): Promise<ModelSkyboxOptions>,
-
-  // 用来转换 GLTF 和 Effects 之间颜色值范围
-  scaleColorVal (val: number, fromGLTF: boolean): number,
-
-  scaleColorVec (vec: number[], fromGLTF: boolean): number[],
-
+  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean, image?: ModelImageLike): void,
 }

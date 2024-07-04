@@ -1,5 +1,5 @@
 import type {
-  Disposable, FrameBuffer, Geometry, LostHandler, Material, RenderFrame, RenderPass,
+  Disposable, Framebuffer, GLType, Geometry, LostHandler, Material, RenderFrame, RenderPass,
   RenderPassClearAction, RenderPassStoreAction, RendererComponent, RestoreHandler,
   ShaderLibrary, spec,
 } from '@galacean/effects-core';
@@ -11,7 +11,7 @@ import {
 import { ExtWrap } from './ext-wrap';
 import { GLContextManager } from './gl-context-manager';
 import { GLEngine } from './gl-engine';
-import { GLFrameBuffer } from './gl-frame-buffer';
+import { GLFramebuffer } from './gl-framebuffer';
 import { GLPipelineContext } from './gl-pipeline-context';
 import { GLRendererInternal } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
@@ -21,15 +21,15 @@ type Matrix4 = math.Matrix4;
 export class GLRenderer extends Renderer implements Disposable {
   glRenderer: GLRendererInternal;
   extension: ExtWrap;
-  frameBuffer: FrameBuffer;
-  temporaryRTs: Record<string, FrameBuffer> = {};
+  framebuffer: Framebuffer;
+  temporaryRTs: Record<string, Framebuffer> = {};
   pipelineContext: GLPipelineContext;
 
   readonly context: GLContextManager;
 
   constructor (
     public readonly canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: 'webgl' | 'webgl2',
+    framework: GLType,
     renderOptions?: WebGLContextAttributes,
   ) {
     super();
@@ -54,11 +54,11 @@ export class GLRenderer extends Renderer implements Disposable {
     this.glRenderer = new GLRendererInternal(this.engine as GLEngine);
     this.extension = new ExtWrap(this);
     this.renderingData = {
-      //@ts-expect-error
+      // @ts-expect-error
       currentFrame: {},
     };
 
-    this.frameBuffer = new GLFrameBuffer({
+    this.framebuffer = new GLFramebuffer({
       storeAction: {},
       viewport: [0, 0, this.width, this.height],
       attachments: [new GLTexture(this.engine, {
@@ -102,10 +102,12 @@ export class GLRenderer extends Renderer implements Disposable {
     const passes = frame._renderPasses;
 
     if (this.isDestroyed) {
-      return console.error('renderer is destroyed', this);
+      console.error('Renderer is destroyed, target: GLRenderer.');
+
+      return;
     }
-    frame.renderer.getShaderLibrary()!.compileAllShaders();
-    this.setFrameBuffer(null);
+    frame.renderer.getShaderLibrary()?.compileAllShaders();
+    this.setFramebuffer(null);
     this.clear(frame.clearAction);
 
     this.renderingData.currentFrame = frame;
@@ -161,12 +163,13 @@ export class GLRenderer extends Renderer implements Disposable {
     this.renderingData.currentFrame.globalUniforms.matrices[name] = value;
   }
 
-  override drawGeometry (geometry: Geometry, material: Material): void {
+  override drawGeometry (geometry: Geometry, material: Material, subMeshIndex = 0): void {
     if (!geometry || !material) {
       return;
     }
     material.initialize();
     geometry.initialize();
+    geometry.flush();
     const renderingData = this.renderingData;
 
     // TODO 后面移到管线相机渲染开始位置
@@ -202,26 +205,25 @@ export class GLRenderer extends Renderer implements Disposable {
 
       return;
     }
-    this.glRenderer.drawGeometry(geometry, material);
+    this.glRenderer.drawGeometry(geometry, material, subMeshIndex);
   }
 
-  override setFrameBuffer (frameBuffer: FrameBuffer | null) {
-    if (frameBuffer) {
-      this.frameBuffer = frameBuffer;
-      this.frameBuffer.bind();
-      this.setViewport(frameBuffer.viewport[0], frameBuffer.viewport[1], frameBuffer.viewport[2], frameBuffer.viewport[3]);
+  override setFramebuffer (framebuffer: Framebuffer | null) {
+    if (framebuffer) {
+      this.framebuffer = framebuffer;
+      this.framebuffer.bind();
+      this.setViewport(framebuffer.viewport[0], framebuffer.viewport[1], framebuffer.viewport[2], framebuffer.viewport[3]);
     } else {
-      //this.frameBuffer = null;
       this.pipelineContext.bindSystemFramebuffer();
       this.setViewport(0, 0, this.getWidth(), this.getHeight());
     }
   }
 
-  override getFrameBuffer (): FrameBuffer | null {
-    return this.frameBuffer;
+  override getFramebuffer (): Framebuffer {
+    return this.framebuffer;
   }
 
-  override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): FrameBuffer | null {
+  override getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer {
     if (this.temporaryRTs[name]) {
       return this.temporaryRTs[name];
     }
@@ -257,7 +259,7 @@ export class GLRenderer extends Renderer implements Disposable {
       format: glContext.RGBA,
       type: textureType,
     });
-    const newFrameBuffer = new GLFrameBuffer({
+    const newFramebuffer = new GLFramebuffer({
       name,
       storeAction: {},
       viewport: [0, 0, width, height],
@@ -267,9 +269,9 @@ export class GLRenderer extends Renderer implements Disposable {
       depthStencilAttachment: { storageType: depthType },
     }, this);
 
-    this.temporaryRTs[name] = newFrameBuffer;
+    this.temporaryRTs[name] = newFramebuffer;
 
-    return newFrameBuffer;
+    return newFramebuffer;
   }
 
   override setViewport (x: number, y: number, width: number, height: number) {
@@ -326,11 +328,11 @@ export class GLRenderer extends Renderer implements Disposable {
     return this.height;
   }
 
-  override dispose (haltGL?: boolean): void {
+  override dispose (): void {
     this.context.dispose();
     this.extension.dispose();
     this.pipelineContext.dispose();
-    this.glRenderer?.dispose(haltGL);
+    this.glRenderer?.dispose();
     // @ts-expect-error
     this.canvas = null;
     this.engine.dispose();
@@ -348,7 +350,7 @@ export class GLRenderer extends Renderer implements Disposable {
     const { gl } = this.context;
 
     if (!gl) {
-      throw new Error('Can not restore automatically because losing gl context');
+      throw new Error('Can not restore automatically because losing gl context.');
     }
     this.engine = new GLEngine(gl);
     this.engine.renderer = this;

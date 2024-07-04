@@ -1,36 +1,42 @@
-import type { Ray } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
-import { RendererComponent } from './components';
-import type { CompositionSourceManager } from './composition-source-manager';
-import type { JSONValue } from './downloader';
+import { CompositionSourceManager } from './composition-source-manager';
+import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
-import { TimelineComponent } from './plugins';
 import type { GlobalVolume, MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene } from './scene';
+import type { Scene, SceneType } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
-import { Transform } from './transform';
 import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
-import type { VFXItemContent, VFXItemProps } from './vfx-item';
+import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 
 export interface CompositionStatistic {
   loadTime: number,
   loadStart: number,
   firstFrameTime: number,
+  precompileTime: number,
 }
 
 export interface MessageItem {
   id: string,
   name: string,
   phrase: number,
-  compositionId: number,
+  compositionId: string,
+}
+
+export interface CompItemClickedData {
+  name: string,
+  id: string,
+  hitPositions: Vector3[],
+  position: Vector3,
 }
 
 /**
@@ -39,14 +45,15 @@ export interface MessageItem {
 export interface CompositionHitTestOptions {
   maxCount?: number,
   stop?: (region: Region) => boolean,
-  skip?: (item: VFXItem<VFXItemContent>) => boolean,
+  skip?: (item: VFXItem) => boolean,
 }
 
 export interface CompositionProps {
   reusable?: boolean,
   baseRenderOrder?: number,
   renderer: Renderer,
-  onPlayerPause?: (item: VFXItem<any>) => void,
+  onPlayerPause?: (item: VFXItem) => void,
+  onItemClicked?: (item: VFXItem) => void,
   onMessageItem?: (item: MessageItem) => void,
   onEnd?: (composition: Composition) => void,
   event?: EventSystem,
@@ -54,8 +61,6 @@ export interface CompositionProps {
   height: number,
   speed?: number,
 }
-
-let seed = 1;
 
 /**
  * 合成抽象类：核心对象，通常一个场景只包含一个合成，可能会有多个合成。
@@ -85,10 +90,6 @@ export class Composition implements Disposable, LostHandler {
    */
   renderOrder: number;
   /**
-   * 所有合成 Item 的根变换
-   */
-  transform: Transform;
-  /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会自动 dispose
    */
   reusable: boolean;
@@ -97,12 +98,17 @@ export class Composition implements Disposable, LostHandler {
    */
   keepResource: boolean;
   // 3D 模式下创建的场景相机 需要最后更新参数, TODO: 太 hack 了, 待移除
-  extraCamera: VFXItem<VFXItemContent>;
+  extraCamera: VFXItem;
+  /**
+   * 合成内的元素否允许点击、拖拽交互
+   * @since 1.6.0
+   */
+  interactive: boolean;
   /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
    * @internal
    */
-  onPlayerPause?: (item: VFXItem<any>) => void;
+  onPlayerPause?: (item: VFXItem) => void;
   /**
    * 单个合成结束时的回调
    */
@@ -112,9 +118,17 @@ export class Composition implements Disposable, LostHandler {
    */
   onMessageItem?: (item: MessageItem) => void;
   /**
+   * 合成中元素点击时触发的回调
+   * 注意：此接口随时可能下线，请务使用！
+   * @since 1.6.0
+   * @ignore
+   * @deprecated
+   */
+  onItemClicked?: (data: CompItemClickedData) => void;
+  /**
    * 合成id
    */
-  readonly id: number;
+  readonly id: string;
   /**
    * 画布宽度
    */
@@ -144,25 +158,21 @@ export class Composition implements Disposable, LostHandler {
    */
   readonly loaderData: Record<string, any> = {};
   /**
-   * 渲染等级：S，A+，A，B+，B
-   */
-  readonly renderLevel?: spec.RenderLevel;
-  /**
    * 场景加载和首帧渲染时间
    */
   readonly statistic: CompositionStatistic;
   /**
    * 合成对应的 url 或者 JSON
    */
-  readonly url: string | JSONValue;
+  readonly url: SceneType;
   /**
    * 合成根元素
    */
-  rootItem: VFXItem<VFXItemContent>;
+  readonly rootItem: VFXItem;
   /**
    * 预合成数组
    */
-  readonly refContent: VFXItem<VFXItemContent>[] = [];
+  readonly refContent: VFXItem[] = [];
   /**
    * 预合成的合成属性，在 content 中会被其元素属性覆盖
    */
@@ -189,6 +199,8 @@ export class Composition implements Disposable, LostHandler {
    */
   protected readonly keepColorBuffer: boolean;
   protected rootComposition: CompositionComponent;
+  protected readonly postLoaders: Plugin[] = [];
+  protected compositionSourceManager: CompositionSourceManager;
 
   /**
    * 合成暂停/播放 标识
@@ -202,8 +214,6 @@ export class Composition implements Disposable, LostHandler {
   // private readonly event: EventSystem;
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
-  private readonly postLoaders: Plugin[] = [];
-  private rootTimeline: TimelineComponent;
 
   /**
    * Composition 构造函数
@@ -214,7 +224,6 @@ export class Composition implements Disposable, LostHandler {
   constructor (
     props: CompositionProps,
     scene: Scene,
-    public compositionSourceManager: CompositionSourceManager,
   ) {
     const {
       reusable = false,
@@ -224,48 +233,39 @@ export class Composition implements Disposable, LostHandler {
       event, width, height,
     } = props;
 
+    this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
     scene.jsonScene.imgUsage = undefined;
-
     if (reusable) {
       this.keepResource = true;
       scene.textures = undefined;
       scene.consumed = true;
     }
-    const { sourceContent, pluginSystem, imgUsage, totalTime, renderLevel, refCompositionProps } = this.compositionSourceManager;
+    const { sourceContent, pluginSystem, imgUsage, totalTime, refCompositionProps } = this.compositionSourceManager;
 
     assertExist(sourceContent);
-
     this.renderer = renderer;
     this.refCompositionProps = refCompositionProps;
-    const vfxItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
 
-    vfxItem.name = 'rootItem';
-    // TODO 编辑器数据传入 composition type 后移除
-    vfxItem.type = spec.ItemType.composition;
-    vfxItem.composition = this;
-    this.rootComposition = vfxItem.addComponent(CompositionComponent);
-    this.rootTimeline = vfxItem.getComponent(TimelineComponent)!;
+    this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
+    this.rootItem.name = 'rootItem';
+    this.rootItem.composition = this;
+    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
+    this.rootComposition.data = sourceContent;
+
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
-    this.transform = new Transform({
-      name: this.name,
-    });
-    this.transform.engine = this.getEngine();
-    vfxItem.transform = this.transform;
     this.globalVolume = sourceContent.globalVolume;
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
-    this.id = seed++;
+    this.id = sourceContent.id;
     this.renderer = renderer;
     this.texInfo = imageUsage ?? {};
     this.event = event;
-    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0 };
+    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
     this.reusable = reusable;
     this.speed = speed;
-    this.renderLevel = renderLevel;
-    this.autoRefTex = !this.keepResource && imageUsage && vfxItem.endBehavior !== spec.END_BEHAVIOR_RESTART;
-    this.rootItem = vfxItem;
+    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.ItemEndBehavior.loop;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -276,6 +276,7 @@ export class Composition implements Disposable, LostHandler {
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
+    this.interactive = true;
     this.onPlayerPause = onPlayerPause;
     this.onMessageItem = onMessageItem;
     this.onEnd = onEnd;
@@ -285,20 +286,17 @@ export class Composition implements Disposable, LostHandler {
     this.buildItemTree(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
-        this.handleEnd?.(this);
+        this.onEnd?.(this);
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
   /**
-   * 合成结束回调
-   * @param {(composition: Composition) => void} func
-   * @deprecated since 2.0 - use `onEnd` instead
+   * 所有合成 Item 的根变换
    */
-  set handleEnd (func: (composition: Composition) => void) {
-    console.warn('The handleEnd property is deprecated. Use onEnd instead.');
-    this.onEnd = func;
+  get transform () {
+    return this.rootItem.transform;
   }
 
   /**
@@ -311,7 +309,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 获取合成中所有元素
    */
-  get items (): VFXItem<VFXItemContent>[] {
+  get items (): VFXItem[] {
     return this.rootComposition.items;
   }
 
@@ -326,7 +324,7 @@ export class Composition implements Disposable, LostHandler {
    * 获取合成当前时间
    */
   get time () {
-    return this.rootTimeline.getTime();
+    return this.rootComposition.time;
   }
 
   /**
@@ -334,6 +332,14 @@ export class Composition implements Disposable, LostHandler {
    */
   get isDestroyed (): boolean {
     return this.destroyed;
+  }
+
+  set editorScaleRatio (value: number) {
+    this.camera.fovScaleRatio = value;
+  }
+
+  get editorScaleRatio () {
+    return this.camera.fovScaleRatio;
   }
 
   /**
@@ -347,18 +353,8 @@ export class Composition implements Disposable, LostHandler {
    * 重新开始合成
    */
   restart () {
-    const contentItems = this.rootComposition.items;
-
-    contentItems.forEach(item => item.dispose());
-    contentItems.length = 0;
-    this.prepareRender();
     this.reset();
-    this.transform.setValid(true);
-    this.rootComposition.resetStatus();
     this.forwardTime(this.startTime);
-
-    // this.content.onUpdate(0);
-    // this.loaderData.spriteGroup.onUpdate(0);
   }
 
   /**
@@ -386,6 +382,17 @@ export class Composition implements Disposable, LostHandler {
   }
 
   /**
+   * 设置合成的可见性
+   * @since 2.0.0
+   * @param visible - 是否可见
+   */
+  setVisible (visible: boolean) {
+    this.items.forEach(item => {
+      item.setVisible(visible);
+    });
+  }
+
+  /**
    * 获取合成的动画速度
    * @returns
    */
@@ -397,8 +404,7 @@ export class Composition implements Disposable, LostHandler {
     if (this.rootItem.ended && this.reusable) {
       this.restart();
     }
-    // TODO: [1.31] @茂安 this.content.started 验证
-    if (this.rootTimeline.timelineStarted) {
+    if (!this.rootComposition.started) {
       this.gotoAndPlay(this.time - this.startTime);
 
     } else {
@@ -430,8 +436,9 @@ export class Composition implements Disposable, LostHandler {
    */
   gotoAndPlay (time: number) {
     this.resume();
-    if (!this.rootTimeline.timelineStarted) {
+    if (!this.rootComposition.started) {
       this.rootComposition.start();
+      this.rootComposition.started = true;
     }
     this.forwardTime(time + this.startTime);
   }
@@ -457,7 +464,6 @@ export class Composition implements Disposable, LostHandler {
     });
     // TODO 考虑放到构造函数
     this.renderFrame.cachedTextures = this.textures;
-
   }
 
   /**
@@ -470,8 +476,9 @@ export class Composition implements Disposable, LostHandler {
     if (pause) {
       this.resume();
     }
-    if (!this.rootTimeline.timelineStarted) {
+    if (!this.rootComposition.started) {
       this.rootComposition.start();
+      this.rootComposition.started = true;
     }
     this.forwardTime(time + this.startTime, true);
 
@@ -480,7 +487,7 @@ export class Composition implements Disposable, LostHandler {
     }
   }
 
-  addItem (item: VFXItem<VFXItemContent>) {
+  addItem (item: VFXItem) {
     this.items.push(item);
     item.setParent(this.rootItem);
   }
@@ -491,7 +498,7 @@ export class Composition implements Disposable, LostHandler {
    * @param skipRender - 是否跳过渲染
    */
   private forwardTime (time: number, skipRender = false) {
-    const deltaTime = time * 1000 - this.rootTimeline.getTime() * 1000;
+    const deltaTime = time * 1000 - this.rootComposition.time * 1000;
     const reverse = deltaTime < 0;
     const step = 15;
     let t = Math.abs(deltaTime);
@@ -507,28 +514,9 @@ export class Composition implements Disposable, LostHandler {
    * 重置状态函数
    */
   protected reset () {
-    const vfxItem = new VFXItem(this.getEngine(), this.compositionSourceManager.sourceContent as unknown as VFXItemProps);
-
-    // TODO 编辑器数据传入 composition type 后移除
-    vfxItem.type = spec.ItemType.composition;
-    vfxItem.composition = this;
-    this.rootComposition = vfxItem.addComponent(CompositionComponent);
-    this.rootTimeline = vfxItem.getComponent(TimelineComponent)!;
-    this.transform = new Transform({
-      name: this.name,
-    });
-    this.transform.engine = this.getEngine();
-    vfxItem.transform = this.transform;
-    this.rootItem = vfxItem;
     this.rendererOptions = null;
     this.globalTime = 0;
-    this.rootComposition.createContent();
-    this.buildItemTree(this.rootItem);
-    this.rootItem.onEnd = () => {
-      window.setTimeout(() => {
-        this.onEnd?.(this);
-      }, 0);
-    };
+    this.rootItem.ended = false;
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
@@ -544,29 +532,20 @@ export class Composition implements Disposable, LostHandler {
       }
     });
 
-    // 主合成元素
-    for (const vfxItem of this.rootComposition.items) {
-      const rendererComponents = vfxItem.getComponents(RendererComponent);
-
-      for (const rendererComponent of rendererComponents) {
-        if (rendererComponent.isActiveAndEnabled) {
-          frame.addMeshToDefaultRenderPass(rendererComponent);
-        }
-      }
-    }
-    // 预合成元素
-    for (const refContent of this.refContent) {
-      for (const vfxItem of refContent.getComponent(CompositionComponent)!.items) {
-        const rendererComponents = vfxItem.getComponents(RendererComponent);
-
-        for (const rendererComponent of rendererComponents) {
-          if (rendererComponent.isActiveAndEnabled) {
-            frame.addMeshToDefaultRenderPass(rendererComponent);
-          }
-        }
-      }
-    }
+    this.gatherRendererComponent(this.rootItem, frame);
     this.postLoaders.forEach(loader => loader.postProcessFrame(this, frame));
+  }
+
+  protected gatherRendererComponent (vfxItem: VFXItem, renderFrame: RenderFrame) {
+    for (const rendererComponent of vfxItem.rendererComponents) {
+      if (rendererComponent.isActiveAndEnabled) {
+        renderFrame.addMeshToDefaultRenderPass(rendererComponent);
+      }
+    }
+
+    for (const item of vfxItem.children) {
+      this.gatherRendererComponent(item, renderFrame);
+    }
   }
 
   /**
@@ -576,7 +555,7 @@ export class Composition implements Disposable, LostHandler {
   private shouldRestart () {
     const { ended, endBehavior } = this.rootItem;
 
-    return ended && endBehavior === spec.END_BEHAVIOR_RESTART;
+    return ended && endBehavior === spec.ItemEndBehavior.loop;
   }
 
   /**
@@ -589,7 +568,8 @@ export class Composition implements Disposable, LostHandler {
     }
     const { ended, endBehavior } = this.rootItem;
 
-    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY);
+    // TODO: 合成结束行为
+    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.ItemEndBehavior);
   }
 
   /**
@@ -608,8 +588,10 @@ export class Composition implements Disposable, LostHandler {
     const time = this.getUpdateTime(deltaTime * this.speed);
 
     this.globalTime += time;
-    if (this.rootTimeline.isActiveAndEnabled) {
-      this.rootTimeline.setTime(this.globalTime / 1000);
+    if (this.rootComposition.isActiveAndEnabled) {
+      const localTime = this.toLocalTime(this.globalTime / 1000);
+
+      this.rootComposition.time = localTime;
     }
     this.updateVideo();
     // 更新 model-tree-plugin
@@ -619,7 +601,7 @@ export class Composition implements Disposable, LostHandler {
     this.callUpdate(this.rootItem, time);
     this.callLateUpdate(this.rootItem, time);
 
-    this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
+    // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
       this.dispose();
@@ -630,10 +612,25 @@ export class Composition implements Disposable, LostHandler {
     }
   }
 
+  private toLocalTime (time: number) {
+    let localTime = time - this.rootItem.start;
+    const duration = this.rootItem.duration;
+
+    if (localTime - duration > 0.001) {
+      if (this.rootItem.endBehavior === spec.ItemEndBehavior.loop) {
+        localTime = localTime % duration;
+      } else if (this.rootItem.endBehavior === spec.ItemEndBehavior.freeze) {
+        localTime = Math.min(duration, localTime);
+      }
+    }
+
+    return localTime;
+  }
+
   private getUpdateTime (t: number) {
     const startTimeInMs = this.startTime * 1000;
-    const content = this.rootItem;
-    const now = this.rootTimeline.getTime() * 1000;
+    // const content = this.rootItem;
+    const now = this.rootComposition.time * 1000;
 
     if (t < 0 && (now + t) < startTimeInMs) {
       return startTimeInMs - now;
@@ -642,7 +639,7 @@ export class Composition implements Disposable, LostHandler {
     return t;
   }
 
-  private callStart (item: VFXItem<VFXItemContent>) {
+  private callStart (item: VFXItem) {
     for (const itemBehaviour of item.itemBehaviours) {
       if (itemBehaviour.isActiveAndEnabled && !itemBehaviour.started) {
         itemBehaviour.start();
@@ -660,7 +657,7 @@ export class Composition implements Disposable, LostHandler {
     }
   }
 
-  private callUpdate (item: VFXItem<VFXItemContent>, dt: number) {
+  private callUpdate (item: VFXItem, dt: number) {
     for (const itemBehaviour of item.itemBehaviours) {
       if (itemBehaviour.isActiveAndEnabled && itemBehaviour.started) {
         itemBehaviour.update(dt);
@@ -675,9 +672,9 @@ export class Composition implements Disposable, LostHandler {
       if (VFXItem.isComposition(child)) {
         if (
           child.ended &&
-          child.endBehavior === spec.END_BEHAVIOR_RESTART
+          child.endBehavior === spec.ItemEndBehavior.loop
         ) {
-          child.getComponent(CompositionComponent)!.resetStatus();
+          child.ended = false;
           // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
           this.callUpdate(child, 0);
         } else {
@@ -689,7 +686,7 @@ export class Composition implements Disposable, LostHandler {
     }
   }
 
-  private callLateUpdate (item: VFXItem<VFXItemContent>, dt: number) {
+  private callLateUpdate (item: VFXItem, dt: number) {
     for (const itemBehaviour of item.itemBehaviours) {
       if (itemBehaviour.isActiveAndEnabled && itemBehaviour.started) {
         itemBehaviour.lateUpdate(dt);
@@ -708,14 +705,14 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 构建父子树，同时保存到 itemCacheMap 中便于查找
    */
-  private buildItemTree (compVFXItem: VFXItem<VFXItemContent>) {
+  private buildItemTree (compVFXItem: VFXItem) {
     if (!compVFXItem.composition) {
       return;
     }
 
-    const itemMap = new Map<string, VFXItem<VFXItemContent>>();
+    const itemMap = new Map<string, VFXItem>();
 
-    const contentItems = compVFXItem.getComponent(CompositionComponent)!.items;
+    const contentItems = compVFXItem.getComponent(CompositionComponent).items;
 
     for (const item of contentItems) {
       itemMap.set(item.id, item);
@@ -739,7 +736,7 @@ export class Composition implements Disposable, LostHandler {
           }
           parent.children.push(item);
         } else {
-          throw Error('元素引用了不存在的元素，请检查数据');
+          throw new Error('The element references a non-existent element, please check the data.');
         }
       }
     }
@@ -766,7 +763,6 @@ export class Composition implements Disposable, LostHandler {
 
     // 视频固定30帧更新
     if (now - this.lastVideoUpdateTime > 33) {
-
       (this.textures ?? []).forEach(tex => tex?.uploadCurrentVideoFrame());
       this.lastVideoUpdateTime = now;
     }
@@ -825,7 +821,7 @@ export class Composition implements Disposable, LostHandler {
    * @param options - 最大求交数和求交时的回调
    */
   hitTest (x: number, y: number, force?: boolean, options?: CompositionHitTestOptions): Region[] {
-    if (this.isDestroyed) {
+    if (this.isDestroyed || !this.interactive) {
       return [];
     }
     const regions: Region[] = [];
@@ -844,7 +840,7 @@ export class Composition implements Disposable, LostHandler {
    * @param item - 交互元素
    * @param type - 交互类型
    */
-  addInteractiveItem (item: VFXItem<VFXItemContent>, type: spec.InteractType) {
+  addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
       this.onMessageItem?.({
         name: item.name,
@@ -862,7 +858,7 @@ export class Composition implements Disposable, LostHandler {
    * @param item - 交互元素
    * @param type - 交互类型
    */
-  removeInteractiveItem (item: VFXItem<VFXItemContent>, type: spec.InteractType) {
+  removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM的结束行为
     if (type === spec.InteractType.MESSAGE) {
       this.onMessageItem?.({
@@ -918,11 +914,11 @@ export class Composition implements Disposable, LostHandler {
    * @internal
    * @param item - 需要销毁的 item
    */
-  destroyItem (item: VFXItem<VFXItemContent>) {
+  destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
     if (item.type == spec.ItemType.composition) {
-      if (item.endBehavior !== spec.END_BEHAVIOR_FREEZE) {
-        const contentItems = item.getComponent(CompositionComponent)!.items;
+      if (item.endBehavior !== spec.ItemEndBehavior.freeze) {
+        const contentItems = item.getComponent(CompositionComponent).items;
 
         contentItems.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));
       }
@@ -987,6 +983,10 @@ export class Composition implements Disposable, LostHandler {
     }
     this.compositionSourceManager.dispose();
     this.refCompositionProps.clear();
+
+    if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
+      return;
+    }
     this.renderer.clear({
       stencilAction: TextureLoadAction.clear,
       clearStencil: 0,
@@ -1013,11 +1013,28 @@ export class Composition implements Disposable, LostHandler {
    */
   translateByPixel (x: number, y: number) {
     if (!this.renderer) {
-      console.warn('Can not translate position when container not assigned');
+      console.warn('Renderer not assigned. Operation aborted.');
 
       return;
     }
     this.rootItem.translateByPixel(x, y);
+  }
+
+  /**
+   * 设置合成在画布上的像素位置
+   * Tips:
+   *  - 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
+   *  - 设置后会覆盖原有的位置信息
+   * @param x - x 坐标
+   * @param y - y 坐标
+   */
+  setPositionByPixel (x: number, y: number) {
+    if (!this.renderer) {
+      console.warn('Renderer not assigned. Operation aborted.');
+
+      return;
+    }
+    this.rootItem.setPositionByPixel(x, y);
   }
 
   /**

@@ -1,7 +1,15 @@
+import { clamp } from '@galacean/effects-math/es/core/utils';
+import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
-import { isArray, random, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
+import { randomInRange, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
 import type { ColorStop } from '../utils';
+import type { BezierEasing } from './bezier';
+import { BezierPath, buildEasingCurve, BezierQuat } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
+import { numberToFix } from './utils';
+import { HELP_LINK } from '../constants';
 
 interface KeyFrameMeta {
   curves: ValueGetter<any>[],
@@ -11,39 +19,64 @@ interface KeyFrameMeta {
   curveCount: number,
 }
 
+const CURVE_PRO_TIME = 0;
+const CURVE_PRO_VALUE = 1;
+const CURVE_PRO_IN_TANGENT = 2;
+const CURVE_PRO_OUT_TANGENT = 3;
 const NOT_IMPLEMENT = 'not_implement';
 
 export class ValueGetter<T> {
+  static getAllData (meta: KeyFrameMeta, halfFloat?: boolean): Uint16Array | Float32Array {
+    const ret = new (halfFloat ? Float16ArrayWrapper : Float32Array)(meta.index * 4);
+
+    for (let i = 0, cursor = 0, curves = meta.curves; i < curves.length; i++) {
+      const data = (curves[i] as BezierCurve).toData();
+
+      ret.set(data, cursor);
+      cursor += data.length;
+    }
+
+    return halfFloat ? (ret as Float16ArrayWrapper).data : (ret as Float32Array);
+  }
+
   constructor (arg: any) {
     this.onCreate(arg);
   }
 
   onCreate (props: any) {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getIntegrateValue (t0: number, t1: number, timeScale = 1): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getIntegrateByTime (t0: number, time: number): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getValue (time?: number): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
+  }
+
+  getMaxTime (): number {
+    throw new Error(NOT_IMPLEMENT);
   }
 
   toUniform (meta: KeyFrameMeta): Float32Array {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   map (func: (n: T) => T) {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   scaleXCoord (scale: number): ValueGetter<T> {
     return this;
+  }
+
+  toData (): ArrayLike<number> {
+    throw new Error(NOT_IMPLEMENT);
   }
 }
 
@@ -77,6 +110,10 @@ export class StaticValue extends ValueGetter<number> {
 
     return this;
   }
+
+  override getMaxTime (): number {
+    return 0;
+  }
 }
 
 export class RandomSetValue<T> extends ValueGetter<T> {
@@ -109,7 +146,7 @@ export class RandomValue extends ValueGetter<number> {
   }
 
   override getValue (time?: number): number {
-    return random(this.min, this.max);
+    return randomInRange(this.min, this.max);
   }
 
   override toUniform () {
@@ -236,202 +273,6 @@ export class GradientValue extends ValueGetter<number[]> {
   }
 }
 
-export type KeyFrame = {
-  inTangent: number,
-  outTangent: number,
-  time: number,
-  value: number,
-};
-
-const CURVE_PRO_TIME = 0;
-const CURVE_PRO_VALUE = 1;
-const CURVE_PRO_IN_TANGENT = 2;
-const CURVE_PRO_OUT_TANGENT = 3;
-
-export class CurveValue extends ValueGetter<number> {
-  keys: KeyFrame[] | number[][];
-
-  min: number;
-  dist: number;
-  isCurveValue: boolean;
-
-  static getAllData (meta: KeyFrameMeta, halfFloat?: boolean): Uint16Array | Float32Array {
-    const ret = new (halfFloat ? Float16ArrayWrapper : Float32Array)(meta.index * 4);
-
-    for (let i = 0, cursor = 0, curves = meta.curves; i < curves.length; i++) {
-      const data = (curves[i] as CurveValue).toData();
-
-      ret.set(data, cursor);
-      cursor += data.length;
-    }
-
-    return halfFloat ? (ret as Float16ArrayWrapper).data : (ret as Float32Array);
-  }
-
-  override onCreate (props: number[] & number[][]) {
-    let min = Infinity;
-    let max = -Infinity;
-
-    //formatted number
-    if (Number.isFinite(props[0]) && Number.isFinite(props[1])) {
-      const keys: number[][] = [];
-
-      for (let i = 2; i < props.length; i++) {
-        // FIXME
-        keys.push(props[i].slice(0, 4));
-      }
-      this.keys = keys;
-      this.min = props[0];
-      this.dist = props[1] - props[0];
-    } else {
-      const keys = (props as number[][]).map(item => {
-        if (isArray(item)) {
-          min = Math.min(min, item[1]);
-          max = Math.max(max, item[1]);
-
-          return item.slice(0, 4);
-        } else if (typeof item === 'object' && item) {
-          const { time, value, inTangent = 0, outTangent = 0 } = item as KeyFrame;
-
-          min = Math.min(min, value);
-          max = Math.max(max, value);
-
-          return [time, value, inTangent, outTangent];
-        }
-        throw new Error('invalid keyframe');
-      });
-      const dist = max - min;
-
-      this.keys = keys;
-
-      if (dist !== 0) {
-        for (let i = 0; i < keys.length; i++) {
-          const key = keys[i];
-
-          key[1] = (key[1] - min) / dist;
-        }
-      }
-      const key0 = keys[0];
-
-      if (key0[0] > 0) {
-        key0[2] = 0;
-        keys.unshift([0, key0[1], 0, 0]);
-      }
-      const key1 = keys[keys.length - 1];
-
-      if (key1[0] < 1) {
-        key1[3] = 0;
-        keys.push([1, key1[1], 0, 0]);
-      }
-      this.min = min;
-      this.dist = dist;
-    }
-
-    this.isCurveValue = true;
-  }
-
-  override getValue (time: number): number {
-    const { keys, min, dist } = this;
-    const keysNumerArray = keys as number[][];
-
-    if (time <= keysNumerArray[0][CURVE_PRO_TIME]) {
-      return keysNumerArray[0][CURVE_PRO_VALUE] * dist + min;
-    }
-
-    const end = keysNumerArray.length - 1;
-
-    for (let i = 0; i < end; i++) {
-      const key = keysNumerArray[i];
-      const k2 = keysNumerArray[i + 1];
-
-      if (time > key[CURVE_PRO_TIME] && time <= k2[CURVE_PRO_TIME]) {
-        return curveValueEvaluate(time, key, k2) * dist + min;
-      }
-    }
-
-    return keysNumerArray[end][CURVE_PRO_VALUE] * dist + min;
-  }
-
-  override getIntegrateByTime (t0: number, t1: number) {
-    const d = this.integrate(t1, true) - this.integrate(t0, true);
-
-    return this.min * 0.5 * (t1 - t0) * (t1 - t0) + d * this.dist;
-  }
-
-  override getIntegrateValue (t0: number, t1: number, ts: number) {
-    ts = ts || 1;
-    const d = (this.integrate(t1 / ts, false) - this.integrate(t0 / ts, false)) * ts;
-    const dt = (t1 - t0) / ts;
-
-    return this.min * dt + d * this.dist;
-  }
-
-  integrate (time: number, byTime: boolean) {
-    const keys = this.keys as number[][];
-
-    if (time <= keys[0][CURVE_PRO_TIME]) {
-      return 0;
-    }
-
-    let ret = 0;
-    const end = keys.length - 1;
-    const func = byTime ? curveValueIntegrateByTime : curveValueIntegrate;
-
-    for (let i = 0; i < end; i++) {
-      const key = keys[i];
-      const k2 = keys[i + 1];
-      const t1 = key[CURVE_PRO_TIME];
-      const t2 = k2[CURVE_PRO_TIME];
-
-      if (time > t1 && time <= t2) {
-        return ret + func(time, key, k2);
-      } else {
-        ret += func(t2, key, k2);
-      }
-    }
-
-    return ret;
-  }
-
-  toData (): Float32Array {
-    const keys = this.keys as number[][];
-    const data = new Float32Array(keys.length * 4);
-
-    for (let i = 0, cursor = 0; i < keys.length; i++, cursor += 4) {
-      data.set(keys[i], cursor);
-    }
-
-    return data;
-  }
-
-  override toUniform (meta: any) {
-    const index = meta.index;
-    const keys = this.keys;
-
-    meta.curves.push(this);
-    meta.index += keys.length;
-    meta.max = Math.max(meta.max, keys.length);
-    meta.curveCount += keys.length;
-
-    return new Float32Array([2, index + 1 / keys.length, this.min, this.dist]);
-  }
-
-  override map (func: (num: number) => number) {
-    (this.keys as number[][]).forEach(k => {
-      k[CURVE_PRO_VALUE] = func(k[CURVE_PRO_VALUE]);
-    });
-
-    return this;
-  }
-
-  override scaleXCoord (scale: number) {
-    (this.keys as number[][]).forEach(k => k[CURVE_PRO_TIME] = scale * k[CURVE_PRO_TIME]);
-
-    return this;
-  }
-
-}
-
 export class LineSegments extends ValueGetter<number> {
   isLineSeg: boolean;
 
@@ -521,7 +362,7 @@ export class LineSegments extends ValueGetter<number> {
     return ret;
   }
 
-  toData () {
+  override toData () {
     const keys = this.keys;
     const data = new Float32Array(Math.ceil(keys.length / 2) * 4);
 
@@ -556,6 +397,167 @@ export class LineSegments extends ValueGetter<number> {
     this.keys.forEach(k => k[0] = scale * k[0]);
 
     return this;
+  }
+}
+
+export class BezierCurve extends ValueGetter<number> {
+  curveMap: Record<string, {
+    points: Vector2[],
+    timeInterval: number,
+    valueInterval: number,
+    curve: BezierEasing,
+  }>;
+  keys: number[][];
+
+  override onCreate (props: spec.BezierKeyframeValue[]) {
+    const keyframes = props;
+
+    this.curveMap = {};
+    this.keys = [];
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      const leftKeyframe = keyframes[i];
+      const rightKeyframe = keyframes[i + 1];
+
+      const { points, curve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const s = points[0];
+      const e = points[points.length - 1];
+
+      this.keys.push([...s.toArray(), ...points[1].toArray()]);
+      this.keys.push([...e.toArray(), ...points[2].toArray()]);
+
+      this.curveMap[`${s.x}&${e.x}`] = {
+        points,
+        timeInterval,
+        valueInterval,
+        curve,
+      };
+    }
+  }
+  override getValue (time: number) {
+    let result = 0;
+    const keyTimeData = Object.keys(this.curveMap);
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+
+    if (time <= keyTimeStart) {
+      return this.getCurveValue(keyTimeData[0], keyTimeStart);
+    }
+    if (time >= keyTimeEnd) {
+      return this.getCurveValue(keyTimeData[keyTimeData.length - 1], keyTimeEnd);
+    }
+
+    for (let i = 0; i < keyTimeData.length; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (time >= Number(xMin) && time < Number(xMax)) {
+        result = this.getCurveValue(keyTimeData[i], time);
+
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  override getIntegrateValue (t0: number, t1: number, ts = 1) {
+    const time = (t1 - t0) / ts;
+
+    let result = 0;
+    const keyTimeData = Object.keys(this.curveMap);
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+
+    if (time <= keyTimeStart) {
+      return 0;
+    }
+    for (let i = 0; i < keyTimeData.length; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (time >= Number(xMax)) {
+        result += ts * this.getCurveIntegrateValue(keyTimeData[i], Number(xMax));
+      }
+
+      if (time >= Number(xMin) && time < Number(xMax)) {
+        result += ts * this.getCurveIntegrateValue(keyTimeData[i], time);
+
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  override getIntegrateByTime (t0: number, t1: number) {
+    return this.getIntegrateValue(0, t1) - this.getIntegrateValue(0, t0);
+  }
+  // 速度变化曲线面板移除后下线
+  getCurveIntegrateValue (curveKey: string, time: number) {
+    const curveInfo = this.curveMap[curveKey];
+    const [p0] = curveInfo.points;
+    const timeInterval = curveInfo.timeInterval;
+    const valueInterval = curveInfo.valueInterval;
+    const segments = 20;
+    let total = 0;
+    const h = (time - p0.x) / segments;
+
+    for (let i = 0; i <= segments; i++) {
+      const t = i * h;
+      const normalizeTime = t / timeInterval;
+      const y = p0.y + valueInterval * curveInfo.curve.getValue(normalizeTime);
+
+      if (i === 0 || i === segments) {
+        total += y;
+      } else if (i % 2 === 1) {
+        total += 4 * y;
+      } else {
+        total += 2 * y;
+      }
+
+    }
+    total *= h / 3;
+
+    return total;
+  }
+
+  getCurveValue (curveKey: string, time: number) {
+    const curveInfo = this.curveMap[curveKey];
+    const [p0] = curveInfo.points;
+    const timeInterval = curveInfo.timeInterval;
+    const valueInterval = curveInfo.valueInterval;
+    const normalizeTime = (time - p0.x) / timeInterval;
+    const value = curveInfo.curve.getValue(normalizeTime);
+
+    return p0.y + valueInterval * value;
+
+  }
+
+  override toUniform (meta: KeyFrameMeta): Float32Array {
+    const index = meta.index;
+    const count = this.keys.length;
+
+    meta.curves.push(this);
+    meta.index = index + count;
+    // 兼容 WebGL1
+    meta.max = Math.max(meta.max, count);
+    meta.curveCount += count;
+
+    return new Float32Array([5, index + 1 / count, index, count]);
+  }
+
+  override toData (): Float32Array {
+    const keys = this.keys;
+    const data = new Float32Array(keys.length * 4);
+
+    for (let i = 0, cursor = 0; i < keys.length; i++, cursor += 4) {
+      data.set(keys[i], cursor);
+    }
+
+    return data;
+  }
+
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveMap);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
   }
 }
 
@@ -611,32 +613,208 @@ export class PathSegments extends ValueGetter<number[]> {
   }
 }
 
-export class BezierSegments extends PathSegments {
+export class BezierCurvePath extends ValueGetter<Vector3> {
+  curveSegments: Record<string, {
+    points: Vector2[],
+    // 缓动曲线
+    easingCurve: BezierEasing,
+    timeInterval: number,
+    valueInterval: number,
+    // 路径曲线
+    pathCurve: BezierPath,
+  }>;
 
-  cps: number[][];
+  override onCreate (props: spec.BezierCurvePathValue) {
+    const [keyframes, points, controlPoints] = props;
 
-  override onCreate (props: number[][][]) {
-    super.onCreate(props);
-    this.cps = props[2];
-  }
-
-  override calculateVec (i: number, t: number) {
-    const vec0 = this.values[i];
-    const vec1 = this.values[i + 1];
-    const outCp = this.cps[i + i];
-    const inCp = this.cps[i + i + 1];
-    const ret = [0, 0, 0];
-    const ddt = 1 - t;
-    const a = ddt * ddt * ddt;
-    const b = 3 * t * ddt * ddt;
-    const c = 3 * t * t * ddt;
-    const d = t * t * t;
-
-    for (let j = 0; j < vec0.length; j++) {
-      ret[j] = a * vec0[j] + b * outCp[j] + c * inCp[j] + d * vec1[j];
+    this.curveSegments = {};
+    if (!controlPoints.length) {
+      return;
     }
 
-    return ret;
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      const leftKeyframe = keyframes[i];
+      const rightKeyframe = keyframes[i + 1];
+      const ps1 = new Vector3(points[i][0], points[i][1], points[i][2]), ps2 = new Vector3(points[i + 1][0], points[i + 1][1], points[i + 1][2]);
+
+      const cp1 = new Vector3(controlPoints[2 * i][0], controlPoints[2 * i][1], controlPoints[2 * i][2]), cp2 = new Vector3(controlPoints[2 * i + 1][0], controlPoints[2 * i + 1][1], controlPoints[2 * i + 1][2]);
+
+      const { points: ps, curve: easingCurve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const s = ps[0];
+      const e = ps[ps.length - 1];
+
+      const pathCurve = new BezierPath(ps1, ps2, cp1, cp2);
+
+      this.curveSegments[`${s.x}&${e.x}`] = {
+        points: ps,
+        timeInterval,
+        valueInterval,
+        easingCurve,
+        pathCurve: pathCurve,
+      };
+    }
+
+  }
+
+  override getValue (time: number): Vector3 {
+    const t = numberToFix(time, 5);
+    let perc = 0, point = new Vector3();
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    if (!keyTimeData.length) {
+      return point;
+    }
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+
+    if (t <= keyTimeStart) {
+      const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+      point = pathCurve.getPointInPercent(0);
+
+      return point;
+
+    }
+    if (t >= keyTimeEnd) {
+      const pathCurve = this.curveSegments[keyTimeData[keyTimeData.length - 1]].pathCurve;
+
+      point = pathCurve.getPointInPercent(1);
+
+      return point;
+    }
+
+    for (let i = 0; i < keyTimeData.length; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (t >= Number(xMin) && t < Number(xMax)) {
+        const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
+
+        perc = this.getPercValue(keyTimeData[i], t);
+
+        point = bezierPath.getPointInPercent(perc);
+      }
+    }
+
+    return point;
+  }
+
+  getPercValue (curveKey: string, time: number) {
+    const curveInfo = this.curveSegments[curveKey];
+    const [p0] = curveInfo.points;
+
+    const timeInterval = curveInfo.timeInterval;
+    const normalizeTime = numberToFix((time - p0.x) / timeInterval, 4);
+    const value = curveInfo.easingCurve.getValue(normalizeTime);
+
+    // TODO 测试用 编辑器限制值域后移除clamp
+    return clamp(value, 0, 1);
+  }
+
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
+}
+
+export class BezierCurveQuat extends ValueGetter<Quaternion> {
+  curveSegments: Record<string, {
+    points: Vector2[],
+    // 缓动曲线
+    easingCurve: BezierEasing,
+    timeInterval: number,
+    valueInterval: number,
+    // 路径曲线
+    pathCurve: BezierQuat,
+  }>;
+
+  override onCreate (props: spec.BezierCurveQuatValue) {
+    const [keyframes, points, controlPoints] = props;
+
+    this.curveSegments = {};
+    if (!controlPoints.length) {
+      return;
+    }
+
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      const leftKeyframe = keyframes[i];
+      const rightKeyframe = keyframes[i + 1];
+      const ps1 = Quaternion.fromArray(points[i]);
+      const ps2 = Quaternion.fromArray(points[i + 1]);
+
+      const cp1 = Quaternion.fromArray(controlPoints[2 * i]);
+      const cp2 = Quaternion.fromArray(controlPoints[2 * i + 1]);
+
+      const { points: ps, curve: easingCurve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const s = ps[0];
+      const e = ps[ps.length - 1];
+
+      const pathCurve = new BezierQuat(ps1, ps2, cp1, cp2);
+
+      this.curveSegments[`${s.x}&${e.x}`] = {
+        points: ps,
+        timeInterval,
+        valueInterval,
+        easingCurve,
+        pathCurve: pathCurve,
+      };
+    }
+
+  }
+
+  override getValue (time: number): Quaternion {
+    let perc = 0;
+    const t = numberToFix(time, 5);
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+
+    if (t <= keyTimeStart) {
+      const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+      return pathCurve.getPointInPercent(0);
+
+    }
+    if (t >= keyTimeEnd) {
+      const pathCurve = this.curveSegments[keyTimeData[keyTimeData.length - 1]].pathCurve;
+
+      return pathCurve.getPointInPercent(1);
+    }
+
+    for (let i = 0; i < keyTimeData.length; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (t >= Number(xMin) && t < Number(xMax)) {
+        const pathCurve = this.curveSegments[keyTimeData[i]].pathCurve;
+
+        perc = this.getPercValue(keyTimeData[i], t);
+
+        return pathCurve.getPointInPercent(perc);
+      }
+    }
+
+    const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+    return pathCurve.getPointInPercent(0);
+  }
+
+  getPercValue (curveKey: string, time: number) {
+    const curveInfo = this.curveSegments[curveKey];
+    const [p0] = curveInfo.points;
+
+    const timeInterval = curveInfo.timeInterval;
+    const normalizeTime = numberToFix((time - p0.x) / timeInterval, 4);
+    const value = curveInfo.easingCurve.getValue(normalizeTime);
+
+    // TODO 测试用 编辑器限制值域后移除clamp
+    return clamp(value, 0, 1);
+  }
+
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
   }
 }
 
@@ -660,9 +838,6 @@ const map: Record<any, any> = {
   [spec.ValueType.CONSTANT_VEC4] (props: number) {
     return new StaticValue(props);
   },
-  [spec.ValueType.CURVE] (props: number[] & number[][]) {
-    return new CurveValue(props);
-  },
   [spec.ValueType.RGBA_COLOR] (props: number) {
     return new StaticValue(props);
   },
@@ -682,8 +857,26 @@ const map: Record<any, any> = {
   [spec.ValueType.LINEAR_PATH] (pros: number[][][]) {
     return new PathSegments(pros);
   },
-  [spec.ValueType.BEZIER_PATH] (pros: number[][][]) {
-    return new BezierSegments(pros);
+  [spec.ValueType.BEZIER_CURVE] (props: number[][][]) {
+    if (props.length === 1) {
+      return new StaticValue(props[0][1][1]);
+    }
+
+    return new BezierCurve(props);
+  },
+  [spec.ValueType.BEZIER_CURVE_PATH] (props: number[][][]) {
+    if (props[0].length === 1) {
+      return new StaticValue(new Vector3(...props[1][0]));
+    }
+
+    return new BezierCurvePath(props);
+  },
+  [spec.ValueType.BEZIER_CURVE_QUAT] (props: number[][][]) {
+    if (props[0].length === 1) {
+      return new StaticValue(new Quaternion(...props[1][0]));
+    }
+
+    return new BezierCurveQuat(props);
   },
 };
 
@@ -699,7 +892,7 @@ export function createValueGetter (args: any): ValueGetter<any> {
   if (isFunction(map[args[0]])) {
     return map[args[0]](args[1]);
   } else {
-    throw new Error(`ValueType: ${args[0]} is not support`);
+    throw new Error(`ValueType: ${args[0]} is not supported, see ${HELP_LINK['ValueType: 21/22 is not supported']}.`);
   }
 }
 
@@ -735,45 +928,6 @@ function curveValueEvaluate (time: number, keyframe0: number[], keyframe1: numbe
 
   //(2*v0+m0+m1-2*v1)*(t-t0)^3/k^3+(3*v1-3*v0-2*m0-m1)*(t-t0)^2/k^2+m0 *(t-t0)/k+v0
   return a * keyframe0[CURVE_PRO_VALUE] + b * m0 + c * m1 + d * keyframe1[CURVE_PRO_VALUE];
-}
-
-function curveValueIntegrate (time: number, keyframe0: number[], keyframe1: number[]) {
-  const k = keyframe1[CURVE_PRO_TIME] - keyframe0[CURVE_PRO_TIME];
-  const m0 = keyframe0[CURVE_PRO_OUT_TANGENT] * k;
-  const m1 = keyframe1[CURVE_PRO_IN_TANGENT] * k;
-  const t0 = keyframe0[CURVE_PRO_TIME];
-  const v0 = keyframe0[CURVE_PRO_VALUE];
-  const v1 = keyframe1[CURVE_PRO_VALUE];
-
-  const dt = t0 - time;
-  const dt2 = dt * dt;
-  const dt3 = dt2 * dt;
-
-  return (m0 + m1 + 2 * v0 - 2 * v1) * dt3 * dt / (4 * k * k * k) +
-    (2 * m0 + m1 + 3 * v0 - 3 * v1) * dt3 / (3 * k * k) +
-    m0 * dt2 / 2 / k - v0 * dt;
-}
-
-function curveValueIntegrateByTime (t1: number, keyframe0: number[], keyframe1: number[]) {
-  const k = keyframe1[CURVE_PRO_TIME] - keyframe0[CURVE_PRO_TIME];
-  const m0 = keyframe0[CURVE_PRO_OUT_TANGENT] * k;
-  const m1 = keyframe1[CURVE_PRO_IN_TANGENT] * k;
-  const t0 = keyframe0[CURVE_PRO_TIME];
-  const v0 = keyframe0[CURVE_PRO_VALUE];
-  const v1 = keyframe1[CURVE_PRO_VALUE];
-
-  const dt = t0 - t1;
-  const dt2 = dt * dt;
-  const dt3 = dt2 * dt;
-  const k2 = k * k;
-  const k3 = k2 * k;
-  //(30 k^3 v0 (t1^2 - t0^2) + 10 k^2 m0 (t0 + 2 t1) (t0 - t1)^2 + 5 k (t0 + 3 t1) (t0 - t1)^3 (2 m0 + m1 + 3 v0 - 3 v1) + 3 (t0 + 4 t1) (t0 - t1)^4 (m0 + m1 + 2 v0 - 2 v1))/(60 k^3)
-  const ret = -30 * k3 * v0 * (t0 + t1) * dt +
-    10 * k2 * m0 * (t0 + 2 * t1) * dt2 +
-    5 * k * (t0 + 3 * t1) * (2 * m0 + m1 + 3 * v0 - 3 * v1) * dt3 +
-    3 * (t0 + 4 * t1) * (m0 + m1 + 2 * v0 - 2 * v1) * dt3 * dt;
-
-  return ret / 60 / k3;
 }
 
 export function getKeyFrameMetaByRawValue (meta: KeyFrameMeta, value?: [type: spec.ValueType, value: any]) {
@@ -812,6 +966,13 @@ export function getKeyFrameMetaByRawValue (meta: KeyFrameMeta, value?: [type: sp
       meta.curves.push(keys as any);
       meta.index += uniformCount;
       meta.max = Math.max(meta.max, uniformCount);
+    } else if (type === spec.ValueType.BEZIER_CURVE) {
+      const keyLen = keys.length - 1;
+
+      meta.index += 2 * keyLen;
+      meta.curves.push(keys as any);
+      meta.max = Math.max(meta.max, 2 * keyLen);
+      meta.curveCount += 2 * keyLen;
     }
   }
 }

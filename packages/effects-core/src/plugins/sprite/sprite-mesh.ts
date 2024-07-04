@@ -1,14 +1,9 @@
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type * as spec from '@galacean/effects-specification';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
-import { createShaderWithMarcos, ShaderType } from '../../material';
-import type { ValueGetter } from '../../math';
-import type { GPUCapabilityDetail, SharedShaderWithSource } from '../../render';
+import type { GPUCapabilityDetail, ShaderMacros, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
-import { Texture } from '../../texture';
 import type { Transform } from '../../transform';
 import type { SpriteComponent, SpriteItemRenderInfo } from './sprite-item';
 
@@ -31,17 +26,13 @@ export type SpriteRegionData = {
 };
 
 export let maxSpriteMeshItemCount = 8;
-export let maxSpriteTextureCount = 8;
 
 export function setSpriteMeshMaxItemCountByGPU (gpuCapability: GPUCapabilityDetail) {
-  // 8 or 16
-  maxSpriteTextureCount = Math.min(gpuCapability.maxFragmentTextures, 16);
   if (gpuCapability.maxVertexUniforms >= 256) {
     return maxSpriteMeshItemCount = 32;
   } else if (gpuCapability.maxVertexUniforms >= 128) {
     return maxSpriteMeshItemCount = 16;
   }
-  maxSpriteTextureCount = 8;
 }
 
 export function getImageItemRenderInfo (item: SpriteComponent): SpriteItemRenderInfo {
@@ -61,23 +52,22 @@ export function getImageItemRenderInfo (item: SpriteComponent): SpriteItemRender
   };
 }
 
-export function spriteMeshShaderFromFilter (level: number, options?: { count?: number, ignoreBlend?: boolean, wireframe?: boolean, env?: string }): SharedShaderWithSource {
-  const { count = 2, env = '', ignoreBlend, wireframe } = options ?? {};
-  const marcos: [key: string, val: boolean | number][] = [
-    ['MAX_ITEM_COUNT', count],
-    ['PRE_MULTIPLY_ALPHA', false],
+export function spriteMeshShaderFromFilter (
+  level: number,
+  options?: { wireframe?: boolean, env?: string },
+): SharedShaderWithSource {
+  const { env = '', wireframe } = options ?? {};
+  const macros: ShaderMacros = [
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
-    ['USE_BLEND', !ignoreBlend],
-    ['MAX_FRAG_TEX', maxSpriteTextureCount >= 16 ? 16 : 8],
   ];
-  const fragment = wireframe ? itemFrameFrag : itemFrag.replace(/#pragma\s+FILTER_FRAG/, '');
-  const vertex = itemVert.replace(/#pragma\s+FILTER_VERT/, 'vec4 filterMain(float t,vec4 pos){return effects_MatrixVP * pos;}');
+  const fragment = wireframe ? itemFrameFrag : itemFrag;
+  const vertex = itemVert;
 
   return {
-    fragment: createShaderWithMarcos(marcos, fragment, ShaderType.fragment, level),
-    vertex: createShaderWithMarcos(marcos, vertex, ShaderType.vertex, level),
+    fragment,
+    vertex,
     glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
-    marcos,
+    macros,
     shared: true,
   };
 }
@@ -89,7 +79,6 @@ export function spriteMeshShaderIdFromRenderInfo (renderInfo: SpriteItemRenderIn
 export function spriteMeshShaderFromRenderInfo (renderInfo: SpriteItemRenderInfo, count: number, level: number, env?: string): SharedShaderWithSource {
   const { wireframe } = renderInfo;
   const shader = spriteMeshShaderFromFilter(level, {
-    count,
     wireframe,
     env,
   });
@@ -102,40 +91,7 @@ export function spriteMeshShaderFromRenderInfo (renderInfo: SpriteItemRenderInfo
   return shader;
 }
 
-// TODO: 待移除
-function generateFeatureTexture (engine: Engine, feather?: ValueGetter<number>): Texture {
-  let tex: Texture;
-
-  if (!feather) {
-    tex = Texture.createWithData(engine);
-  } else {
-    const len = 128;
-    const data = new Uint8Array(len);
-
-    for (let i = 0, s = len - 1; i < len; i++) {
-      const p = i / s;
-      const val = feather.getValue(p);
-
-      data[i] = Math.round(val * 255);
-    }
-    tex = Texture.createWithData(engine, { width: len, height: 1, data }, {
-      name: 'feather',
-      format: glContext.LUMINANCE,
-      minFilter: glContext.LINEAR,
-      magFilter: glContext.LINEAR,
-      wrapS: glContext.CLAMP_TO_EDGE,
-      wrapT: glContext.CLAMP_TO_EDGE,
-    });
-  }
-
-  return tex;
-}
-
 // TODO: 只有单测用
 export function setMaxSpriteMeshItemCount (count: number) {
   maxSpriteMeshItemCount = count;
-}
-
-export function setSpriteMeshMaxFragmentTextures (count: number) {
-  maxSpriteTextureCount = count;
 }

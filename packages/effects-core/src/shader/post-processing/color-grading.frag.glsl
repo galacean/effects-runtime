@@ -50,7 +50,7 @@
  * APPLICATIONS THEREOF, HELD BY PARTIES OTHER THAN A.M.P.A.S.,WHETHER DISCLOSED OR
  * UNDISCLOSED.
  */
- 
+
 // 包括合并Bloom、颜色校准、ACES ToneMapping
 precision highp float;
 
@@ -67,15 +67,15 @@ uniform float _Contrast;
 uniform bool _UseBloom;
 uniform bool _UseToneMapping;
 
-mat3 LinearToACES = mat3(
-  0.59719,0.07600,0.02840,
-  0.35458,0.90834,0.13383,
-  0.04823,0.01566,0.83777);
+uniform vec3 _VignetteColor;
+uniform vec2 _VignetteCenter;
+uniform float _VignetteIntensity;
+uniform float _VignetteSmoothness;
+uniform float _VignetteRoundness;
 
-mat3 ACESToLinear = mat3(
-  1.60475, -0.10208, -0.00327,
-  -0.53108, 1.10813, -0.07276,
-  -0.07367, -0.00605, 1.07602);
+mat3 LinearToACES = mat3(0.59719, 0.07600, 0.02840, 0.35458, 0.90834, 0.13383, 0.04823, 0.01566, 0.83777);
+
+mat3 ACESToLinear = mat3(1.60475, -0.10208, -0.00327, -0.53108, 1.10813, -0.07276, -0.07367, -0.00605, 1.07602);
 
 float log10(float x) {
   return log(x) / log(10.0);
@@ -85,51 +85,61 @@ vec3 log10(vec3 v) {
   return vec3(log10(v.x), log10(v.y), log10(v.z));
 }
 
-vec3 LinearToLogC(vec3 x)
-{
-  return  0.244161 * log10(5.555556 * x + 0.047996) + 0.386036;
+vec3 LinearToLogC(vec3 x) {
+  return 0.244161 * log10(5.555556 * x + 0.047996) + 0.386036;
 }
 
-vec3 LogCToLinear(vec3 x)
-{
-  return (pow(vec3(10.0), (x - 0.386036) /  0.244161) - 0.047996) / 5.555556;
+vec3 LogCToLinear(vec3 x) {
+  return (pow(vec3(10.0), (x - 0.386036) / 0.244161) - 0.047996) / 5.555556;
 }
 
 // ACES Reference Render Transform(RRT)
 vec3 rrt_and_odt_fit(vec3 col) {
-    vec3 a = col * (col + 0.0245786) - 0.000090537;
-    vec3 b = col * (0.983729 * col + 0.4329510) + 0.238081;
-    return a / b;
+  vec3 a = col * (col + 0.0245786) - 0.000090537;
+  vec3 b = col * (0.983729 * col + 0.4329510) + 0.238081;
+  return a / b;
 }
 
 // ACES ToneMapping 主函数
 vec3 ACESToneMapping(vec3 col) {
-    vec3 aces = LinearToACES * col;
-    aces = rrt_and_odt_fit(aces);
-    col = ACESToLinear * aces;
-    return col;
+  vec3 aces = LinearToACES * col;
+  aces = rrt_and_odt_fit(aces);
+  col = ACESToLinear * aces;
+  return col;
 }
 
 // 标准 ACES Gamma 矫正, 效果好但是性能一般
 vec3 LinearToSrgb(vec3 c) {
-  return mix(1.055*pow(c, vec3(1./2.4)) - 0.055, 12.92*c, step(c,vec3(0.0031308)));
+  return mix(1.055 * pow(c, vec3(1. / 2.4)) - 0.055, 12.92 * c, step(c, vec3(0.0031308)));
 }
 
 // 传统 Gamma 矫正
 vec3 GammaCorrection(vec3 c) {
-  return pow(c, vec3(1.0/2.2));
+  return pow(c, vec3(1.0 / 2.2));
+}
+
+vec3 ApplyVignette(vec3 inputColor, vec2 uv, vec2 center, float intensity, float roundness, float smoothness, vec3 color) {
+  vec2 dist = abs(uv - center) * intensity;
+
+  dist.x *= roundness;
+  float vfactor = pow(clamp((1.0 - dot(dist, dist)), 0.0, 1.0), smoothness);
+  return inputColor * mix(color, vec3(1.0), vfactor);
 }
 
 void main() {
   vec4 hdrColor = texture2D(_SceneTex, uv);
-  
+
   hdrColor.rgb = pow(hdrColor.rgb, vec3(2.2)); // srgb转linear
-  
-  vec3 finalColor = hdrColor.rgb; 
+
+  vec3 finalColor = hdrColor.rgb;
   if(_UseBloom) {
     vec4 bloomColor = texture2D(_GaussianTex, uv);
     bloomColor.rgb *= _BloomIntensity;
     finalColor += bloomColor.rgb; // 叠加Bloom效果后的颜色
+  }
+
+  if(_VignetteIntensity > 0.0) {
+    finalColor = ApplyVignette(finalColor, uv, _VignetteCenter, _VignetteIntensity, _VignetteRoundness, _VignetteSmoothness, _VignetteColor);
   }
 
   // Apply brightness
@@ -147,8 +157,8 @@ void main() {
   finalColor = (finalColor - luminanceColor) * _Saturation + luminanceColor;
   finalColor = max(finalColor, 0.0);
 
-  if(_UseToneMapping){
-    finalColor = ACESToneMapping(finalColor);
+  if(_UseToneMapping) {
+    finalColor = max(vec3(0.0), ACESToneMapping(finalColor));
   }
   gl_FragColor = vec4(clamp(GammaCorrection(finalColor), 0.0, 1.0), 1.0);
 }

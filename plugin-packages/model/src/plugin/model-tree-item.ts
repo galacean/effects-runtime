@@ -1,9 +1,8 @@
-import { Transform, ItemBehaviour, spec, effectsClass } from '@galacean/effects';
-import type { TimelineComponent, VFXItemContent, Engine, VFXItem } from '@galacean/effects';
-import type { ModelTreeOptions, ModelTreeContent } from '../index';
+import type { Engine, VFXItem } from '@galacean/effects';
+import { ItemBehaviour, Transform, effectsClass, spec } from '@galacean/effects';
+import type { ModelTreeContent, ModelTreeOptions } from '../index';
 import { PAnimationManager } from '../runtime';
 import { getSceneManager } from './model-plugin';
-import { ModelDataType } from './model-item';
 
 /**
  * 场景树节点描述
@@ -52,7 +51,7 @@ export class ModelTreeItem {
    * @param props - 场景树数据
    * @param owner - 场景树元素
    */
-  constructor (props: ModelTreeOptions, owner: VFXItem<VFXItemContent>) {
+  constructor (props: ModelTreeOptions, owner: VFXItem) {
     this.baseTransform = owner.transform;
     this.animationManager = new PAnimationManager(props, owner);
     this.build(props);
@@ -177,7 +176,7 @@ export class ModelTreeItem {
  * @since 2.0.0
  * @internal
  */
-@effectsClass(ModelDataType.TreeComponent)
+@effectsClass(spec.DataType.TreeComponent)
 export class ModelTreeComponent extends ItemBehaviour {
   /**
    * 内部节点树元素
@@ -187,10 +186,6 @@ export class ModelTreeComponent extends ItemBehaviour {
    * 参数
    */
   options?: ModelTreeContent;
-  /**
-   * 时间轴组件
-   */
-  timeline?: TimelineComponent;
 
   /**
    * 构造函数，创建节点树元素

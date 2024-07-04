@@ -11,23 +11,45 @@ import { RendererComponent } from '../../components';
 import type { DragEventType } from './interact-vfx-item';
 import type { Renderer } from '../../render';
 import { effectsClass } from '../../decorators';
-import { DataType } from '../../asset-loader';
 
 /**
  * @since 2.0.0
  * @internal
  */
-@effectsClass(DataType.InteractComponent)
+@effectsClass(spec.DataType.InteractComponent)
 export class InteractComponent extends RendererComponent {
   clickable: boolean;
   dragEvent: DragEventType | null;
   bouncingArg: TouchEventType | null;
   previewContent: InteractMesh | null;
   interactData: spec.InteractContent;
+  /**
+   * 拖拽的惯性衰减系数，范围[0, 1], 越大惯性越强
+   */
+  downgrade = 0.95;
+  /**
+   * 拖拽的距离映射系数，越大越容易拖动
+   */
+  dragRatio: number[] = [1, 1];
+
+  /** 是否响应点击和拖拽交互事件 */
+  private _interactive = true;
+
+  set interactive (enable: boolean) {
+    this._interactive = enable;
+    if (!enable) {
+      // 立刻停止惯性滑动
+      this.bouncingArg = null;
+    }
+  }
+
+  get interactive () {
+    return this._interactive;
+  }
 
   override start (): void {
     const options = this.item.props.content.options as spec.DragInteractOption;
-    const { env } = this.item.engine?.renderer ?? {};
+    const { env } = this.item.engine.renderer;
     const composition = this.item.composition!;
 
     const { type, showPreview } = this.interactData.options as spec.ClickInteractOption;
@@ -40,8 +62,8 @@ export class InteractComponent extends RendererComponent {
         this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
       }
     }
-
-    this.item.composition?.addInteractiveItem(this.item, options.type);
+    composition.addInteractiveItem(this.item, options.type);
+    this.item.onEnd = () => composition.removeInteractiveItem(this.item, options.type);
     if (options.type === spec.InteractType.DRAG) {
       if (env !== PLAYER_OPTIONS_ENV_EDITOR || options.enableInEditor) {
         composition.event && this.beginDragTarget(options, composition.event);
@@ -51,7 +73,6 @@ export class InteractComponent extends RendererComponent {
       this.previewContent.mesh.item = this.item;
       this.materials = this.previewContent.mesh.materials;
     }
-
     this.item.getHitTestParams = this.getHitTestParams;
   }
 
@@ -62,10 +83,8 @@ export class InteractComponent extends RendererComponent {
       return;
     }
 
-    const downgrade = 0.95;
-
-    this.bouncingArg.vx *= downgrade;
-    this.bouncingArg.vy *= downgrade;
+    this.bouncingArg.vx *= this.downgrade;
+    this.bouncingArg.vy *= this.downgrade;
     this.bouncingArg.dy += this.bouncingArg.vy;
     this.bouncingArg.dx += this.bouncingArg.vx;
 
@@ -97,7 +116,7 @@ export class InteractComponent extends RendererComponent {
   }
 
   handleDragMove (evt: Partial<DragEventType>, event: TouchEventType) {
-    if (!(evt && evt.cameraParam) || !this.item.composition) {
+    if (!evt?.cameraParam || !this.canInteract() || !this.item.composition) {
       return;
     }
 
@@ -109,8 +128,8 @@ export class InteractComponent extends RendererComponent {
     const sp = Math.tan(fov * Math.PI / 180 / 2) * Math.abs(depth);
     const height = dy * sp;
     const width = dx * sp;
-    let nx = position[0] - width;
-    let ny = position[1] - height;
+    let nx = position[0] - this.dragRatio[0] * width;
+    let ny = position[1] - this.dragRatio[1] * height;
 
     if (options.dxRange) {
       const [min, max] = options.dxRange;
@@ -139,6 +158,9 @@ export class InteractComponent extends RendererComponent {
     let dragEvent: Partial<DragEventType> | null;
     const handlerMap: Record<string, (event: TouchEventType) => void> = {
       touchstart: (event: TouchEventType) => {
+        if (!this.canInteract()) {
+          return;
+        }
         this.dragEvent = null;
         this.bouncingArg = null;
         const camera = this.item.composition?.camera;
@@ -157,6 +179,9 @@ export class InteractComponent extends RendererComponent {
         this.bouncingArg = event;
       },
       touchend: (event: TouchEventType) => {
+        if (!this.canInteract()) {
+          return;
+        }
         const bouncingArg = this.bouncingArg as TouchEventType;
 
         if (!shouldIgnoreBouncing(bouncingArg, 3) && bouncingArg) {
@@ -175,7 +200,7 @@ export class InteractComponent extends RendererComponent {
     });
 
     handlerMap.touchmove({ dx: 0, dy: 0, width: 1, height: 1 } as TouchEventType);
-    this.item.getComponent(InteractComponent)!.endDragTarget = () => {
+    this.item.getComponent(InteractComponent).endDragTarget = () => {
       Object.keys(handlerMap).forEach(name => {
         eventSystem.removeEventListener(name, handlerMap[name]);
       });
@@ -200,7 +225,7 @@ export class InteractComponent extends RendererComponent {
 
   getBoundingBox (): BoundingBoxTriangle | void {
     const worldMatrix = this.transform.getWorldMatrix();
-    const triangles = trianglesFromRect(Vector3.ZERO, 0.5, 0.5);
+    const triangles = trianglesFromRect(Vector3.ZERO, 0.5 * this.transform.size.x, 0.5 * this.transform.size.y);
 
     triangles.forEach(triangle => {
       worldMatrix.transformPoint(triangle.p0 as Vector3);
@@ -214,10 +239,15 @@ export class InteractComponent extends RendererComponent {
     };
   }
 
-  override fromData (data: any): void {
+  override fromData (data: spec.InteractContent): void {
     super.fromData(data);
-    this.interactData = data as spec.InteractContent;
+    this.interactData = data;
   }
+
+  canInteract (): boolean {
+    return Boolean(this.item.composition?.interactive) && this._interactive;
+  }
+
 }
 
 function shouldIgnoreBouncing (arg: TouchEventType, mul?: number) {

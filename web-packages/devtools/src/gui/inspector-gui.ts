@@ -1,7 +1,7 @@
 import type { AGUIPropertiesPanelProps, AGUIPropertyProps } from '@advjs/gui';
 import { Toast } from '@advjs/gui';
-import type { Component, EffectsObject, EffectsPackageData, Engine, Material, ShaderData } from '@galacean/effects';
-import { ParticleSystem, RendererComponent, Transform, getMergedStore, type VFXItem, type VFXItemContent, SerializationHelper } from '@galacean/effects';
+import type { Component, EffectsObject, spec, Engine, Material } from '@galacean/effects';
+import { ParticleSystem, RendererComponent, getMergedStore, type VFXItem, SerializationHelper } from '@galacean/effects';
 import { EffectsPackage } from '@galacean/effects-assets';
 import { reactive, ref } from 'vue';
 import { assetDatabase } from '../utils';
@@ -37,14 +37,14 @@ export const formData = {
 
 export class InspectorGui {
   gui: any;
-  item: VFXItem<VFXItemContent>;
+  item: VFXItem;
   itemDirtyFlag = false;
   componentProperties: AGUIPropertiesPanelProps[] = [];
   serializedObjects: SerializedObject[] = [];
 
   constructor () { }
 
-  setItem (item: VFXItem<VFXItemContent>) {
+  setItem (item: VFXItem) {
     if (this.item === item) {
       return;
     }
@@ -63,7 +63,7 @@ export class InspectorGui {
       this.addComponentGui(component);
     }
     if (item.getComponent(RendererComponent)) {
-      const material = item.getComponent(RendererComponent)!.material;
+      const material = item.getComponent(RendererComponent).material;
 
       this.addMateraiGui(material);
     }
@@ -87,7 +87,7 @@ export class InspectorGui {
       this.addComponentGui(component);
     }
     if (item.getComponent(RendererComponent)) {
-      const material = item.getComponent(RendererComponent)!.material;
+      const material = item.getComponent(RendererComponent).material;
 
       this.addMateraiGui(material);
     }
@@ -174,7 +174,7 @@ export class InspectorGui {
 
             return;
           }
-          const packageData = JSON.parse(res) as EffectsPackageData;
+          const packageData = JSON.parse(res) as spec.EffectsPackageData;
           const guid = packageData.fileSummary.guid;
 
           // TODO 纹理 image 特殊逻辑，待移除
@@ -241,7 +241,7 @@ export class InspectorGui {
 
   private parseMaterialProperties (guiProperties: AGUIPropertyProps[], material: Material, serializeObject: SerializedObject) {
     const serializedData = serializeObject.serializedData;
-    const shaderProperties = (material.shaderSource as ShaderData).properties;
+    const shaderProperties = (material.shaderSource as spec.ShaderData).properties;
 
     if (!shaderProperties) {
       return;
@@ -270,7 +270,9 @@ export class InspectorGui {
         const start = Number(match[1]);
         const end = Number(match[2]);
 
-        // materialData.floats[uniformName] = Number(value);
+        if (!serializedData.floats[uniformName]) {
+          serializedData.floats[uniformName] = Number(value);
+        }
         guiProperties.push({
           name: inspectorName,
           type: 'number-slider',
@@ -281,6 +283,9 @@ export class InspectorGui {
           key: uniformName,
         });
       } else if (type === 'Float') {
+        if (!serializedData.floats[uniformName]) {
+          serializedData.floats[uniformName] = Number(value);
+        }
         guiProperties.push({
           name: inspectorName,
           type: 'number',
@@ -317,7 +322,7 @@ export class InspectorGui {
 
               return;
             }
-            const packageData = JSON.parse(res) as EffectsPackageData;
+            const packageData = JSON.parse(res) as spec.EffectsPackageData;
             const guid = packageData.fileSummary.guid;
 
             // TODO 纹理 image 特殊逻辑，待移除
@@ -337,7 +342,7 @@ export class InspectorGui {
               effectsPackage.exportObjects.push(await assetDatabase.engine.assetLoader.loadGUIDAsync(objectData.id));
             }
 
-            serializedData.textures[uniformName] = { id:packageData.exportObjects[0].id };
+            serializedData.textures[uniformName] = { texture: { id:packageData.exportObjects[0].id } };
           },
         });
       }

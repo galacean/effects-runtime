@@ -166,15 +166,15 @@ describe('effects-webgl/render-pass', () => {
     const colorAttachment = rp1.attachments[0];
 
     expect(colorAttachment.size).to.deep.equal([150, 75]);
-    const frameBuffer = rp1.frameBuffer;
+    const framebuffer = rp1.framebuffer;
 
-    expect(frameBuffer?.depthStencilStorageType).to.eql(RenderPassAttachmentStorageType.depth_24_stencil_8_texture);
-    expect(frameBuffer?.depthTexture?.width).to.eql(150);
-    expect(frameBuffer?.depthTexture?.height).to.eql(75);
+    expect(framebuffer?.depthStencilStorageType).to.eql(RenderPassAttachmentStorageType.depth_24_stencil_8_texture);
+    expect(framebuffer?.depthTexture?.width).to.eql(150);
+    expect(framebuffer?.depthTexture?.height).to.eql(75);
 
-    expect(frameBuffer?.viewport[2]).to.eql(150);
-    expect(frameBuffer?.viewport[3]).to.eql(75);
-    expect(frameBuffer?.stencilTexture?.source.sourceType).to.eql(
+    expect(framebuffer?.viewport[2]).to.eql(150);
+    expect(framebuffer?.viewport[3]).to.eql(75);
+    expect(framebuffer?.stencilTexture?.source.sourceType).to.eql(
       RenderPassAttachmentStorageType.depth_24_stencil_8_texture
     );
 
@@ -198,7 +198,7 @@ describe('effects-webgl/render-pass', () => {
     rp0.initialize(renderer);
 
     rp0.configure(renderer);
-    expect(rp0.frameBuffer.externalStorage).is.false;
+    expect(rp0.framebuffer.externalStorage).is.false;
     const rp1 = new RenderPass(renderer, {
       attachments: [{ texture }, { texture: { format: gl.RGBA } }],
       depthStencilAttachment: {
@@ -219,7 +219,7 @@ describe('effects-webgl/render-pass', () => {
     expect(att1.size).to.deep.equal([128, 256], 's1');
     expect(att1.externalTexture).is.false;
     expect(rp1.depthAttachment).is.exist;
-    expect(rp1.frameBuffer.externalStorage).is.true;
+    expect(rp1.framebuffer.externalStorage).is.true;
     rp1.resetAttachments({ attachments: [] });
     expect(att0.size).to.deep.equal([128, 256], 's2');
     expect(att1.size).to.deep.equal([0, 0], 's3');
@@ -1137,40 +1137,40 @@ describe('effects-webgl/render-pass', () => {
     expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
     expect(colorAttachment.height).to.eql(oldHeight);
     expect(colorAttachment.width).to.eql(oldWidth);
-    expect(rp1.frameBuffer?.colorTextures[0].height).to.eql(oldHeight);
-    expect(rp1.frameBuffer?.colorTextures[0].width).to.eql(oldWidth);
-    expect(rp1.frameBuffer?.depthTexture?.height).to.eql(oldHeight);
-    expect(rp1.frameBuffer?.depthTexture?.width).to.eql(oldWidth);
-    expect(rp1.frameBuffer?.stencilTexture?.height).to.eql(oldHeight);
-    expect(rp1.frameBuffer?.stencilTexture?.width).to.eql(oldWidth);
-    expect(rp1.frameBuffer?.viewport?.[2]).to.eql(oldWidth);
-    expect(rp1.frameBuffer?.viewport?.[3]).to.eql(oldHeight);
+    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(oldHeight);
+    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(oldWidth);
+    expect(rp1.framebuffer?.depthTexture?.height).to.eql(oldHeight);
+    expect(rp1.framebuffer?.depthTexture?.width).to.eql(oldWidth);
+    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(oldHeight);
+    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(oldWidth);
+    expect(rp1.framebuffer?.viewport?.[2]).to.eql(oldWidth);
+    expect(rp1.framebuffer?.viewport?.[3]).to.eql(oldHeight);
     renderer.glRenderer.resize = spy;
     //传入不同的宽高，renderer要做resize处理，同时renderpass的viewport和所属的color/depth-setencil都要做同步处理 但是用户传入viewport的pass不会发生改变
     renderer.resize(newWidth, newHeight);
     expect(spy).has.been.called.once;
     renderer.glRenderer.resize = call;
     renderer.resize(newWidth, newHeight);
-    expect(rp1.frameBuffer?.colorTextures[0].height).to.eql(newHeight);
-    expect(rp1.frameBuffer?.colorTextures[0].width).to.eql(newWidth);
-    expect(rp1.frameBuffer?.depthTexture?.height).to.eql(newHeight);
-    expect(rp1.frameBuffer?.depthTexture?.width).to.eql(newWidth);
-    expect(rp1.frameBuffer?.stencilTexture?.height).to.eql(newHeight);
-    expect(rp1.frameBuffer?.stencilTexture?.width).to.eql(newWidth);
-    expect(rp1.frameBuffer?.viewport?.[2]).to.eql(newWidth);
-    expect(rp1.frameBuffer?.viewport?.[3]).to.eql(newHeight);
+    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(newHeight);
+    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(newWidth);
+    expect(rp1.framebuffer?.depthTexture?.height).to.eql(newHeight);
+    expect(rp1.framebuffer?.depthTexture?.width).to.eql(newWidth);
+    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(newHeight);
+    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(newWidth);
+    expect(rp1.framebuffer?.viewport?.[2]).to.eql(newWidth);
+    expect(rp1.framebuffer?.viewport?.[3]).to.eql(newHeight);
     expect(rp1.attachments[0].height).to.eql(newHeight);
     expect(rp1.attachments[0].width).to.eql(newWidth);
     expect(rp1.viewport).to.eql([0, 0, newWidth, newHeight]);
     //rp2不会发生改变,rp2为用户传入的viewport
-    expect(rp2.frameBuffer?.colorTextures[0].height).to.eql(rp2Heigth);
-    expect(rp2.frameBuffer?.colorTextures[0].width).to.eql(rp2Width);
-    expect(rp2.frameBuffer?.depthTexture?.height).to.eql(rp2Heigth);
-    expect(rp2.frameBuffer?.depthTexture?.width).to.eql(rp2Width);
-    expect(rp2.frameBuffer?.stencilTexture?.height).to.eql(rp2Heigth);
-    expect(rp2.frameBuffer?.stencilTexture?.width).to.eql(rp2Width);
-    expect(rp2.frameBuffer?.viewport?.[2]).to.eql(rp2Width);
-    expect(rp2.frameBuffer?.viewport?.[3]).to.eql(rp2Heigth);
+    expect(rp2.framebuffer?.colorTextures[0].height).to.eql(rp2Heigth);
+    expect(rp2.framebuffer?.colorTextures[0].width).to.eql(rp2Width);
+    expect(rp2.framebuffer?.depthTexture?.height).to.eql(rp2Heigth);
+    expect(rp2.framebuffer?.depthTexture?.width).to.eql(rp2Width);
+    expect(rp2.framebuffer?.stencilTexture?.height).to.eql(rp2Heigth);
+    expect(rp2.framebuffer?.stencilTexture?.width).to.eql(rp2Width);
+    expect(rp2.framebuffer?.viewport?.[2]).to.eql(rp2Width);
+    expect(rp2.framebuffer?.viewport?.[3]).to.eql(rp2Heigth);
     expect(rp2.attachments[0].height).to.eql(rp2Heigth);
     expect(rp2.attachments[0].width).to.eql(rp2Width);
     expect(rp2.viewport?.[3]).to.eql(rp2Heigth);
@@ -1207,16 +1207,16 @@ describe('effects-webgl/render-pass', () => {
     expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
     expect(colorAttachment.height).to.eql(oldHeight);
     expect(colorAttachment.width).to.eql(oldWidth);
-    const frameBuffer = rp1.frameBuffer;
+    const framebuffer = rp1.framebuffer;
 
-    expect(frameBuffer?.colorTextures[0].height).to.eql(oldHeight);
-    expect(frameBuffer?.colorTextures[0].width).to.eql(oldWidth);
-    expect(frameBuffer?.depthTexture?.height).to.eql(oldHeight);
-    expect(frameBuffer?.depthTexture?.width).to.eql(oldWidth);
-    expect(frameBuffer?.stencilTexture?.height).to.eql(oldHeight);
-    expect(frameBuffer?.stencilTexture?.width).to.eql(oldWidth);
-    expect(frameBuffer?.viewport?.[2]).to.eql(oldWidth);
-    expect(frameBuffer?.viewport?.[3]).to.eql(oldHeight);
+    expect(framebuffer?.colorTextures[0].height).to.eql(oldHeight);
+    expect(framebuffer?.colorTextures[0].width).to.eql(oldWidth);
+    expect(framebuffer?.depthTexture?.height).to.eql(oldHeight);
+    expect(framebuffer?.depthTexture?.width).to.eql(oldWidth);
+    expect(framebuffer?.stencilTexture?.height).to.eql(oldHeight);
+    expect(framebuffer?.stencilTexture?.width).to.eql(oldWidth);
+    expect(framebuffer?.viewport?.[2]).to.eql(oldWidth);
+    expect(framebuffer?.viewport?.[3]).to.eql(oldHeight);
     renderer.glRenderer.resize = spy;
     renderer.resize(300, 150);
     expect(spy).not.has.been.called.once;
@@ -1227,14 +1227,14 @@ describe('effects-webgl/render-pass', () => {
     expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
     expect(colorAttachment.height).to.eql(oldHeight);
     expect(colorAttachment.width).to.eql(oldWidth);
-    expect(frameBuffer?.colorTextures[0].height).to.eql(oldHeight);
-    expect(frameBuffer?.colorTextures[0].width).to.eql(oldWidth);
-    expect(frameBuffer?.depthTexture?.height).to.eql(oldHeight);
-    expect(frameBuffer?.depthTexture?.width).to.eql(oldWidth);
-    expect(frameBuffer?.stencilTexture?.height).to.eql(oldHeight);
-    expect(frameBuffer?.stencilTexture?.width).to.eql(oldWidth);
-    expect(frameBuffer?.viewport?.[2]).to.eql(oldWidth);
-    expect(frameBuffer?.viewport?.[3]).to.eql(oldHeight);
+    expect(framebuffer?.colorTextures[0].height).to.eql(oldHeight);
+    expect(framebuffer?.colorTextures[0].width).to.eql(oldWidth);
+    expect(framebuffer?.depthTexture?.height).to.eql(oldHeight);
+    expect(framebuffer?.depthTexture?.width).to.eql(oldWidth);
+    expect(framebuffer?.stencilTexture?.height).to.eql(oldHeight);
+    expect(framebuffer?.stencilTexture?.width).to.eql(oldWidth);
+    expect(framebuffer?.viewport?.[2]).to.eql(oldWidth);
+    expect(framebuffer?.viewport?.[3]).to.eql(oldHeight);
     rp1.dispose();
   });
 
@@ -1293,16 +1293,16 @@ describe('effects-webgl/render-pass', () => {
     expect(colorAttachment.textureOptions?.format).to.eql(gl.RGBA);
     expect(colorAttachment.height).to.eql(buildHeight);
     expect(colorAttachment.width).to.eql(buildWidth);
-    const frameBuffer = rp1.frameBuffer;
+    const framebuffer = rp1.framebuffer;
 
-    expect(frameBuffer?.colorTextures[0].height).to.eql(buildHeight);
-    expect(frameBuffer?.colorTextures[0].width).to.eql(buildWidth);
-    expect(frameBuffer?.depthTexture?.height).to.eql(buildHeight);
-    expect(frameBuffer?.depthTexture?.width).to.eql(buildWidth);
-    expect(frameBuffer?.stencilTexture?.height).to.eql(buildHeight);
-    expect(frameBuffer?.stencilTexture?.width).to.eql(buildWidth);
-    expect(frameBuffer?.viewport?.[2]).to.eql(buildWidth);
-    expect(frameBuffer?.viewport?.[3]).to.eql(buildHeight);
+    expect(framebuffer?.colorTextures[0].height).to.eql(buildHeight);
+    expect(framebuffer?.colorTextures[0].width).to.eql(buildWidth);
+    expect(framebuffer?.depthTexture?.height).to.eql(buildHeight);
+    expect(framebuffer?.depthTexture?.width).to.eql(buildWidth);
+    expect(framebuffer?.stencilTexture?.height).to.eql(buildHeight);
+    expect(framebuffer?.stencilTexture?.width).to.eql(buildWidth);
+    expect(framebuffer?.viewport?.[2]).to.eql(buildWidth);
+    expect(framebuffer?.viewport?.[3]).to.eql(buildHeight);
     //reset的时候viewportScale传入0.5
     rp1.resetAttachments(
       {
@@ -1319,14 +1319,14 @@ describe('effects-webgl/render-pass', () => {
     //reset后colorAttachment对象销毁掉了
     expect(colorAttachment.height).to.eql(0);
     expect(colorAttachment.width).to.eql(0);
-    expect(rp1.frameBuffer?.colorTextures[0].height).to.eql(resetHeight * 0.5);
-    expect(rp1.frameBuffer?.colorTextures[0].width).to.eql(resetWidth * 0.5);
-    expect(rp1.frameBuffer?.depthTexture?.height).to.eql(resetHeight * 0.5);
-    expect(rp1.frameBuffer?.depthTexture?.width).to.eql(resetWidth * 0.5);
-    expect(rp1.frameBuffer?.stencilTexture?.height).to.eql(resetHeight * 0.5);
-    expect(rp1.frameBuffer?.stencilTexture?.width).to.eql(resetWidth * 0.5);
-    expect(rp1.frameBuffer?.viewport?.[2]).to.eql(resetWidth * 0.5);
-    expect(rp1.frameBuffer?.viewport?.[3]).to.eql(resetHeight * 0.5);
+    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(resetHeight * 0.5);
+    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(resetWidth * 0.5);
+    expect(rp1.framebuffer?.depthTexture?.height).to.eql(resetHeight * 0.5);
+    expect(rp1.framebuffer?.depthTexture?.width).to.eql(resetWidth * 0.5);
+    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(resetHeight * 0.5);
+    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(resetWidth * 0.5);
+    expect(rp1.framebuffer?.viewport?.[2]).to.eql(resetWidth * 0.5);
+    expect(rp1.framebuffer?.viewport?.[3]).to.eql(resetHeight * 0.5);
     //resize后framebuffer的宽高也要跟着变
     renderer.glRenderer.resize = spy;
     renderer.resize(resizeWidth, resizeHeight);
@@ -1334,14 +1334,14 @@ describe('effects-webgl/render-pass', () => {
     renderer.glRenderer.resize = call;
     renderer.resize(resizeWidth, resizeHeight);
     expect(rp1.viewport).to.eql([0, 0, resizeWidth * 0.5, resizeHeight * 0.5]);
-    expect(rp1.frameBuffer?.colorTextures[0].height).to.eql(resizeHeight * 0.5);
-    expect(rp1.frameBuffer?.colorTextures[0].width).to.eql(resizeWidth * 0.5);
-    expect(rp1.frameBuffer?.depthTexture?.height).to.eql(resizeHeight * 0.5);
-    expect(rp1.frameBuffer?.depthTexture?.width).to.eql(resizeWidth * 0.5);
-    expect(rp1.frameBuffer?.stencilTexture?.height).to.eql(resizeHeight * 0.5);
-    expect(rp1.frameBuffer?.stencilTexture?.width).to.eql(resizeWidth * 0.5);
-    expect(rp1.frameBuffer?.viewport?.[2]).to.eql(resizeWidth * 0.5);
-    expect(rp1.frameBuffer?.viewport?.[3]).to.eql(resizeHeight * 0.5);
+    expect(rp1.framebuffer?.colorTextures[0].height).to.eql(resizeHeight * 0.5);
+    expect(rp1.framebuffer?.colorTextures[0].width).to.eql(resizeWidth * 0.5);
+    expect(rp1.framebuffer?.depthTexture?.height).to.eql(resizeHeight * 0.5);
+    expect(rp1.framebuffer?.depthTexture?.width).to.eql(resizeWidth * 0.5);
+    expect(rp1.framebuffer?.stencilTexture?.height).to.eql(resizeHeight * 0.5);
+    expect(rp1.framebuffer?.stencilTexture?.width).to.eql(resizeWidth * 0.5);
+    expect(rp1.framebuffer?.viewport?.[2]).to.eql(resizeWidth * 0.5);
+    expect(rp1.framebuffer?.viewport?.[3]).to.eql(resizeHeight * 0.5);
     //置回默认值，方便其他同学测试
     renderer.resize(300, 150);
     rp1.dispose();

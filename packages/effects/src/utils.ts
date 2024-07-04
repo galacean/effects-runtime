@@ -8,3 +8,11 @@ export function isDowngradeIOS (): boolean {
 
   return false;
 }
+
+export function throwError (destroyedErrorMessage: string) {
+  throw new Error(destroyedErrorMessage);
+}
+
+export function throwErrorPromise (destroyedErrorMessage: string) {
+  return Promise.reject(destroyedErrorMessage);
+}

@@ -3,9 +3,10 @@ import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-mat
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
+import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
-import { calculateTranslation, convertAnchor, createValueGetter, ensureVec3 } from '../../math';
+import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
 import type { ShapeGenerator, ShapeGeneratorOptions } from '../../shape';
 import { createShape } from '../../shape';
@@ -19,11 +20,6 @@ import { Link } from './link';
 import type { ParticleMeshProps, Point } from './particle-mesh';
 import { ParticleSystemRenderer } from './particle-system-renderer';
 import type { TrailMeshProps } from './trail-mesh';
-import { TimelineComponent } from '../cal/calculate-item';
-import { Track } from '../cal/track';
-import { ParticleBehaviourPlayable } from './particle-vfx-item';
-import { effectsClass } from '../../decorators';
-import { DataType } from '../../asset-loader';
 
 type ParticleSystemRayCastOptions = {
   ray: Ray,
@@ -61,7 +57,7 @@ type ParticleOptions = {
   maxCount: number,
   gravity: vec3,
   gravityModifier: ValueGetter<number>,
-  renderLevel?: string,
+  renderLevel?: spec.RenderLevel,
   particleFollowParent?: boolean,
   forceTarget?: { curve: ValueGetter<number>, target: spec.vec3 },
   speedOverLifetime?: ValueGetter<number>,
@@ -145,7 +141,8 @@ export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture'> 
 
 // 粒子节点包含的数据
 export type ParticleContent = [number, number, number, Point]; // delay + lifetime, particleIndex, delay, pointData
-@effectsClass(DataType.ParticleSystem)
+
+@effectsClass(spec.DataType.ParticleSystem)
 export class ParticleSystem extends Component {
   renderer: ParticleSystemRenderer;
   options: ParticleOptions;
@@ -156,7 +153,7 @@ export class ParticleSystem extends Component {
   textureSheetAnimation?: ParticleTextureSheetAnimation;
   interaction?: ParticleInteraction;
   emissionStopped: boolean;
-  destoryed = false;
+  destroyed = false;
   props: ParticleSystemProps;
 
   private generatedCount: number;
@@ -258,7 +255,7 @@ export class ParticleSystem extends Component {
       const first = link.first;
 
       link.removeNode(first);
-      pointIndex = linkContent[1] = (first.content as ParticleContent)[1];
+      pointIndex = linkContent[1] = first.content[1];
     }
     link.pushNode(linkContent);
     this.renderer.setParticlePoint(pointIndex, point);
@@ -447,16 +444,16 @@ export class ParticleSystem extends Component {
           this.onEnd(this);
           const endBehavior = this.item.endBehavior;
 
-          if (endBehavior === spec.END_BEHAVIOR_FREEZE) {
+          if (endBehavior === spec.ItemEndBehavior.freeze) {
             this.frozen = true;
           }
         }
       } else if (this.item.endBehavior !== spec.ItemEndBehavior.loop) {
-        if (spec.END_BEHAVIOR_DESTROY === this.item.endBehavior) {
+        if (spec.ItemEndBehavior.destroy === this.item.endBehavior) {
           const node = link.last;
 
           if (node && (node.content[0]) < this.lastUpdate) {
-            this.destoryed = true;
+            this.destroyed = true;
           }
         }
       }
@@ -645,8 +642,10 @@ export class ParticleSystem extends Component {
     const shape = this.shape;
     const speed = options.startSpeed.getValue(lifetime);
     const matrix4 = options.particleFollowParent ? this.transform.getMatrix() : this.transform.getWorldMatrix();
+    const pointPosition: Vector3 = data.position;
+
     // 粒子的位置受发射器的位置影响，自身的旋转和缩放不受影响
-    const position = matrix4.transformPoint(data.position, new Vector3());
+    const position = matrix4.transformPoint(pointPosition, new Vector3());
     const transform = new Transform({
       position,
       valid: true,
@@ -657,7 +656,7 @@ export class ParticleSystem extends Component {
     direction = matrix4.transformNormal(direction, tempDir).normalize();
     if (options.startTurbulence && options.turbulence) {
       for (let i = 0; i < 3; i++) {
-        tempVec3.setElement(i, options.turbulence[i]!.getValue(lifetime));
+        tempVec3.setElement(i, options.turbulence[i].getValue(lifetime));
       }
       tempEuler.setFromVector3(tempVec3.negate());
       const mat4 = tempMat4.setFromEuler(tempEuler);
@@ -827,18 +826,16 @@ export class ParticleSystem extends Component {
     }
   };
 
-  override fromData (data: any): void {
+  override fromData (data: unknown): void {
     super.fromData(data);
     const props = data as ParticleSystemProps;
 
     this.props = props;
-    this.destoryed = false;
+    this.destroyed = false;
     const cachePrefix = '';
-    const options = props.options;
-    const positionOverLifetime = props.positionOverLifetime!;
-    const shape = props.shape!;
-    const gravityModifier = positionOverLifetime.gravityOverLifetime;
-    const gravity = ensureVec3(positionOverLifetime.gravity);
+    const { options, positionOverLifetime = {}, shape } = props;
+    const gravityModifier = positionOverLifetime?.gravityOverLifetime;
+    const gravity = ensureVec3(positionOverLifetime?.gravity);
     const _textureSheetAnimation = props.textureSheetAnimation;
     const textureSheetAnimation = _textureSheetAnimation ? {
       animationDelay: createValueGetter(_textureSheetAnimation.animationDelay || 0),
@@ -849,7 +846,7 @@ export class ParticleSystem extends Component {
       row: _textureSheetAnimation.row,
       total: _textureSheetAnimation.total || _textureSheetAnimation.col * _textureSheetAnimation.row,
     } : undefined;
-    const startTurbulence = !!(shape && shape.turbulenceX || shape.turbulenceY || shape.turbulenceZ);
+    const startTurbulence = !!(shape && shape.turbulenceX || shape?.turbulenceY || shape?.turbulenceZ);
     let turbulence: ParticleOptions['turbulence'];
 
     if (startTurbulence) {
@@ -883,7 +880,7 @@ export class ParticleSystem extends Component {
 
     let forceTarget;
 
-    if (positionOverLifetime.forceTarget) {
+    if (positionOverLifetime?.forceTarget) {
       forceTarget = {
         target: positionOverLifetime.target || [0, 0, 0],
         curve: createValueGetter(positionOverLifetime.forceCurve || [spec.ValueType.LINE, [[0, 0], [1, 1]]]),
@@ -915,7 +912,9 @@ export class ParticleSystem extends Component {
         separateAxes: false,
         x: createValueGetter(('size' in sizeOverLifetime ? sizeOverLifetime.size : sizeOverLifetime.x) || 1),
       };
-    const anchor = Vector2.fromArray(convertAnchor(renderer.anchor, renderer.particleOrigin));
+
+    renderer.anchor = renderer.anchor || [0, 0];
+    const anchor = Vector2.fromArray(renderer.anchor);
 
     this.options = {
       particleFollowParent: !!options.particleFollowParent,
@@ -959,7 +958,6 @@ export class ParticleSystem extends Component {
       meshSlots: options.meshSlots,
       name: this.name,
       matrix: Matrix4.IDENTITY,
-      filter: props.filter,
       shaderCachePrefix,
       renderMode: renderer.renderMode || spec.RenderMode.BILLBOARD,
       side: renderer.side || spec.SideMode.DOUBLE,
@@ -1072,10 +1070,10 @@ export class ParticleSystem extends Component {
       };
 
       if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {
-        trailMeshProps.colorOverLifetime = (trails.colorOverLifetime as spec.GradientColor)[1];
+        trailMeshProps.colorOverLifetime = trails.colorOverLifetime[1];
       }
       if (trails.colorOverTrail && trails.colorOverTrail[0] === spec.ValueType.GRADIENT_COLOR) {
-        trailMeshProps.colorOverTrail = (trails.colorOverTrail as spec.GradientColor)[1];
+        trailMeshProps.colorOverTrail = trails.colorOverTrail[1];
       }
     }
 
@@ -1098,10 +1096,6 @@ export class ParticleSystem extends Component {
     this.renderer.item = this.item;
     this.item.components.push(this.renderer);
     this.item.rendererComponents.push(this.renderer);
-    // 添加粒子动画 clip
-    const timeline = this.item.getComponent(TimelineComponent)!;
-
-    timeline.createTrack(Track).createClip(ParticleBehaviourPlayable);
   }
 }
 

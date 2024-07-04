@@ -4,78 +4,110 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { ItemBehaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { Region } from './plugins';
-import { HitTestType, TextComponent, TimelineComponent } from './plugins';
-import { noop } from './utils';
-import type { VFXItemContent } from './vfx-item';
-import { Item, VFXItem, createVFXItem } from './vfx-item';
+import type { ContentOptions } from './composition-source-manager';
+import type { Region, TrackAsset } from './plugins';
+import { HitTestType, ObjectBindingTrack } from './plugins';
+import type { Playable } from './plugins/cal/playable-graph';
+import { PlayableGraph } from './plugins/cal/playable-graph';
+import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
+import { generateGUID, noop } from './utils';
+import { Item, VFXItem } from './vfx-item';
+
+export interface SceneBinding {
+  key: TrackAsset,
+  value: VFXItem,
+}
+
+export interface SceneBindingData {
+  key: spec.DataPath,
+  value: spec.DataPath,
+}
 
 /**
  * @since 2.0.0
  * @internal
  */
 export class CompositionComponent extends ItemBehaviour {
-  startTime: number;
+  time = 0;
+  startTime = 0;
   refId: string;
-  items: VFXItem<VFXItemContent>[] = [];  // 场景的所有元素
-  timelineComponents: TimelineComponent[];
-  timelineComponent: TimelineComponent;
+  items: VFXItem[] = [];  // 场景的所有元素
+  data: ContentOptions;
+
+  private reusable = false;
+  private sceneBindings: SceneBinding[] = [];
+  private timelineAsset: TimelineAsset;
+  private timelinePlayable: Playable;
+  private graph: PlayableGraph = new PlayableGraph();
 
   override start (): void {
-    const item = this.item;
-    const { startTime = 0 } = item.props;
+    const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
-    this.timelineComponents = [];
-    this.timelineComponent = this.item.getComponent(TimelineComponent)!;
+    this.resolveBindings();
+    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
 
-    for (const item of this.items) {
-      // 获取所有的合成元素 Timeline 组件
-      const timeline = item.getComponent(TimelineComponent);
+    // 重播不销毁元素
+    if (this.item.endBehavior !== spec.ItemEndBehavior.destroy) {
+      this.setReusable(true);
+    }
+  }
 
-      if (timeline) {
-        this.timelineComponents.push(timeline);
-        // 重播不销毁元素
-        if (this.item.endBehavior !== spec.END_BEHAVIOR_DESTROY || this.timelineComponent.reusable) {
-          timeline.reusable = true;
+  setReusable (value: boolean) {
+    for (const track of this.timelineAsset.tracks) {
+      const binding = track.binding;
+
+      if (binding instanceof VFXItem) {
+        if (track instanceof ObjectBindingTrack) {
+          binding.reusable = value;
+        }
+        const subCompositionComponent = binding.getComponent(CompositionComponent);
+
+        if (subCompositionComponent) {
+          subCompositionComponent.setReusable(value);
         }
       }
     }
   }
 
-  override update (dt: number): void {
-    const time = this.timelineComponent.getTime();
-
-    for (const timeline of this.timelineComponents) {
-      // TODO 统一时间为 s
-      const localTime = timeline.toLocalTime(time);
-
-      timeline.setTime(localTime);
-    }
+  getReusable () {
+    return this.reusable;
   }
 
-  /**
-   * 重置元素状态属性
-   */
-  resetStatus () {
-    this.item.ended = false;
-    this.item.delaying = true;
+  override update (dt: number): void {
+    const time = this.time;
+
+    // 主合成 rootItem 没有绑定轨道，增加结束行为判断。
+    if (this.item.isEnded(this.time) && !this.item.parent) {
+      this.item.ended = true;
+    }
+    this.timelinePlayable.setTime(time);
+    this.graph.evaluate(dt);
   }
 
   createContent () {
+    const sceneBindings = [];
+
+    for (const sceneBindingData of this.data.sceneBindings) {
+      sceneBindings.push({
+        key: this.engine.assetLoader.loadGUID<TrackAsset>(sceneBindingData.key.id),
+        value: this.engine.assetLoader.loadGUID<VFXItem>(sceneBindingData.value.id),
+      });
+    }
+    this.sceneBindings = sceneBindings;
+    const timelineAsset = this.data.timelineAsset ? this.engine.assetLoader.loadGUID<TimelineAsset>(this.data.timelineAsset.id) : new TimelineAsset(this.engine);
+
+    this.timelineAsset = timelineAsset;
     const items = this.items;
 
     this.items.length = 0;
     if (this.item.composition) {
       const assetLoader = this.item.engine.assetLoader;
-      // TODO spec 定义新类型后 as 移除
-      const jsonScene = this.item.composition.compositionSourceManager.jsonScene!;
-
       const itemProps = this.item.props.items ? this.item.props.items : [];
 
       for (let i = 0; i < itemProps.length; i++) {
-        let item: VFXItem<any>;
+        let item: VFXItem;
         const itemData = itemProps[i];
 
         // 设置预合成作为元素时的时长、结束行为和渲染延时
@@ -84,69 +116,31 @@ export class CompositionComponent extends ItemBehaviour {
           const props = this.item.composition.refCompositionProps.get(refId);
 
           if (!props) {
-            throw new Error(`引用的Id: ${refId} 的预合成不存在`);
+            throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
           }
           // endBehaviour 类型需优化
           props.content = itemData.content;
-          item = new VFXItem(this.engine, {
-            ...props,
-            id: itemData.id,
-            name: itemData.name,
-            delay: itemData.delay,
-            duration: itemData.duration,
-            endBehavior: itemData.endBehavior,
-            parentId: itemData.parentId,
-            transform: itemData.transform,
-          });
-          // TODO 编辑器数据传入 composition type 后移除
-          item.type = spec.ItemType.composition;
-          item.composition = this.item.composition;
-          item.addComponent(CompositionComponent).refId = refId;
-          item.transform.parentTransform = this.transform;
-          this.item.composition.refContent.push(item);
-          if (item.endBehavior === spec.END_BEHAVIOR_RESTART) {
-            this.item.composition.autoRefTex = false;
-          }
-          item.getComponent(CompositionComponent)!.createContent();
-        } else if (
-          itemData.type === 'ECS' ||
-          itemData.type === spec.ItemType.sprite ||
-          itemData.type === spec.ItemType.text ||
-          itemData.type === spec.ItemType.particle ||
-          itemData.type === spec.ItemType.mesh ||
-          itemData.type === spec.ItemType.skybox ||
-          itemData.type === spec.ItemType.light ||
-          itemData.type === 'camera' ||
-          itemData.type === spec.ItemType.tree ||
-          itemData.type === spec.ItemType.interact ||
-          itemData.type === spec.ItemType.camera
-        ) {
-
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
+          const compositionComponent = item.addComponent(CompositionComponent);
 
-        } else {
-          // TODO: 兼容 ECS 和老代码改造完成后，老代码可以下 @云垣
-          item = new VFXItem(this.engine, itemData);
-          item.composition = this.item.composition;
-
-          // 兼容老的数据代码，json 更新后可移除
-          switch (itemData.type) {
-            case spec.ItemType.text: {
-              // 添加文本组件
-              const textItem = new TextComponent(this.engine, itemData.content as spec.TextContent);
-
-              textItem.item = item;
-              item.components.push(textItem);
-              item.rendererComponents.push(textItem);
-              item._content = textItem;
-
-              break;
-            }
-            default: {
-              item = createVFXItem(itemData, this.item.composition);
+          compositionComponent.data = props as unknown as ContentOptions;
+          compositionComponent.refId = refId;
+          item.transform.parentTransform = this.transform;
+          this.item.composition.refContent.push(item);
+          if (item.endBehavior === spec.ItemEndBehavior.loop) {
+            this.item.composition.autoRefTex = false;
+          }
+          compositionComponent.createContent();
+          for (const vfxItem of compositionComponent.items) {
+            vfxItem.setInstanceId(generateGUID());
+            for (const component of vfxItem.components) {
+              component.setInstanceId(generateGUID());
             }
           }
+        } else {
+          item = assetLoader.loadGUID(itemData.id);
+          item.composition = this.item.composition;
         }
         item.parent = this.item;
         // 相机不跟随合成移动
@@ -177,7 +171,7 @@ export class CompositionComponent extends ItemBehaviour {
     for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
       const item = this.items[i];
 
-      if (item.lifetime >= 0 && !item.ended && !VFXItem.isComposition(item) && !skip(item)) {
+      if (item.getVisible() && !item.ended && !VFXItem.isComposition(item) && !skip(item)) {
         const hitParams = item.getHitTestParams(force);
 
         if (hitParams) {
@@ -244,5 +238,25 @@ export class CompositionComponent extends ItemBehaviour {
     }
 
     return regions;
+  }
+
+  override fromData (data: unknown): void {
+  }
+
+  private resolveBindings () {
+    for (const sceneBinding of this.sceneBindings) {
+      sceneBinding.key.binding = sceneBinding.value;
+    }
+    for (const masterTrack of this.timelineAsset.tracks) {
+      this.resolveTrackBindingsWithRoot(masterTrack);
+    }
+  }
+
+  private resolveTrackBindingsWithRoot (track: TrackAsset) {
+    for (const subTrack of track.getChildTracks()) {
+      subTrack.binding = subTrack.resolveBinding(track.binding);
+
+      this.resolveTrackBindingsWithRoot(subTrack);
+    }
   }
 }

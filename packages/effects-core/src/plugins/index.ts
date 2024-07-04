@@ -18,6 +18,12 @@ export * from './particle/particle-system-renderer';
 export * from './cal/calculate-loader';
 export * from './cal/calculate-vfx-item';
 export * from './cal/calculate-item';
-export * from './text/text-item';
-export * from './text/text-loader';
-export * from './cal/track';
+export * from './timeline/track';
+export * from './timeline/tracks/transform-track';
+export * from './timeline/tracks/activation-track';
+export * from './timeline/tracks/sprite-color-track';
+export * from './timeline/tracks/sub-composition-track';
+export * from './timeline/playables/sub-composition-playable-asset';
+export * from './cal/timeline-asset';
+
+export * from './text';

@@ -1,6 +1,6 @@
-import type { spec, Mesh, Material, TextureSourceOptions, TextureConfigOptions, Engine, Renderer } from '@galacean/effects';
-import { glContext, Texture, TextureSourceType, loadImage } from '@galacean/effects';
-import type { ModelItemSkybox, ModelSkyboxOptions } from '../index';
+import type { Mesh, Material, TextureSourceOptions, Engine, Renderer } from '@galacean/effects';
+import { spec, glContext, Texture, TextureSourceType, loadImage, generateGUID } from '@galacean/effects';
+import type { ModelSkyboxComponentData, ModelSkyboxOptions } from '../index';
 import { PObjectType, PMaterialType } from './common';
 import { PEntity } from './object';
 import { PMaterialBase } from './material';
@@ -73,26 +73,40 @@ export class PSkybox extends PEntity {
   /**
    * 构造函数
    * @param name - 名称
-   * @param options - 天空盒参数
+   * @param data - 天空盒参数
    * @param owner - 所属天空盒组件元素
    */
-  constructor (name: string, options: ModelSkyboxOptions, owner?: ModelSkyboxComponent) {
+  constructor (name: string, data: ModelSkyboxComponentData, owner?: ModelSkyboxComponent) {
     super();
     this.name = name;
     this.type = PObjectType.skybox;
     this.visible = false;
     this.owner = owner;
 
-    this.renderable = options.renderable;
-    this.intensity = options.intensity;
-    this.reflectionsIntensity = options.reflectionsIntensity;
-    this.irradianceCoeffs = options.irradianceCoeffs;
-    this.diffuseImage = options.diffuseImage;
-    this.specularImage = options.specularImage;
-    this.specularImageSize = options.specularImageSize;
-    this.specularMipCount = options.specularMipCount;
+    const { irradianceCoeffs } = data;
 
-    this.priority = owner?.item?.listIndex || 0;
+    this.renderable = data.renderable;
+    this.intensity = data.intensity;
+    this.reflectionsIntensity = data.reflectionsIntensity;
+    if (irradianceCoeffs) {
+      this.irradianceCoeffs = [];
+      for (let i = 0; i < irradianceCoeffs.length; i += 3) {
+        this.irradianceCoeffs.push([
+          irradianceCoeffs[i],
+          irradianceCoeffs[i + 1],
+          irradianceCoeffs[i + 2],
+        ]);
+      }
+    } else {
+      this.irradianceCoeffs = [];
+    }
+
+    this.diffuseImage = data.diffuseImage as unknown as Texture;
+    this.specularImage = data.specularImage as unknown as Texture;
+    this.specularImageSize = data.specularImageSize;
+    this.specularMipCount = data.specularMipCount;
+
+    this.priority = owner?.item?.renderOrder || 0;
   }
 
   /**
@@ -136,8 +150,6 @@ export class PSkybox extends PEntity {
     if (this.visible && this.renderable && this.skyboxMesh !== undefined) {
       const mesh = this.skyboxMesh;
 
-      mesh.geometry.flush();
-      mesh.material.initialize();
       renderer.drawGeometry(mesh.geometry, mesh.material);
     }
   }
@@ -164,11 +176,11 @@ export class PSkybox extends PEntity {
       const sceneStates = scene.sceneStates;
       const camera = sceneStates.camera;
       const viewMatrix = sceneStates.viewMatrix;
-      const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fovy).multiply(viewMatrix).invert();
+      const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fov).multiply(viewMatrix).invert();
       const material = this.skyboxMesh.material;
 
       this.skyboxMaterial.updateUniforms(material);
-      material.setMatrix('u_InvViewProjectionMatrix', newProjViewMatrix);
+      material.setMatrix('_InvViewProjectionMatrix', newProjViewMatrix);
     }
   }
 
@@ -182,7 +194,7 @@ export class PSkybox extends PEntity {
 
     if (this.irradianceCoeffs === undefined && this.diffuseImage === undefined) { return false; }
 
-    return this.specularImage !== undefined && this.specularMipCount > 0;
+    return this.specularImage !== undefined && this.specularMipCount >= 0;
   }
 
   /**
@@ -255,7 +267,7 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
   create (skybox: PSkybox) {
     this.type = PObjectType.material;
     this.materialType = PMaterialType.skyboxFilter;
-    this.depthTestHint = false;
+    this.ZTest = false;
     //
     this.name = skybox.name;
     this.intensity = skybox.intensity;
@@ -302,23 +314,23 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
       throw new Error('Setup brdfLUT for skybox at first.');
     }
 
-    material.setVector2('u_IblIntensity', new Vector2(2.0, 2.0));
-    material.setTexture('u_brdfLUT', this.brdfLUT);
+    material.setVector2('_IblIntensity', new Vector2(2.0, 2.0));
+    material.setTexture('_brdfLUT', this.brdfLUT);
     if (this.diffuseImage !== undefined) {
-      material.setTexture('u_DiffuseEnvSampler', this.diffuseImage);
+      material.setTexture('_DiffuseEnvSampler', this.diffuseImage);
     } else {
       const coeffs = this.irradianceCoeffs;
 
-      if (coeffs === undefined || coeffs.length != 9) { throw new Error(`Invalid skybox irradiance coeffs ${coeffs}`); }
+      if (coeffs === undefined || coeffs.length != 9) { throw new Error(`Invalid skybox irradiance coeffs ${coeffs}.`); }
 
       const aliasName = ['l00', 'l1m1', 'l10', 'l11', 'l2m2', 'l2m1', 'l20', 'l21', 'l22'];
 
       aliasName.forEach((n, i) => {
-        material.setVector3(`u_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
+        material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
       });
     }
-    material.setInt('u_MipCount', this.specularMipCount);
-    material.setTexture('u_SpecularEnvSampler', this.specularImage);
+    material.setInt('_MipCount', this.specularMipCount - 1);
+    material.setTexture('_SpecularEnvSampler', this.specularImage);
   }
 
   /**
@@ -374,7 +386,7 @@ export interface PSkyboxBaseParams {
   /**
    * 辐射照度系数
    */
-  irradianceCoeffs?: number[][],
+  irradianceCoeffs?: number[],
   /**
    * 高光贴图 Mip 层数
    */
@@ -487,6 +499,7 @@ export class PSkyboxCreator {
       renderable,
       intensity,
       reflectionsIntensity,
+      // @ts-expect-error
       irradianceCoeffs,
       diffuseImage,
       specularImage,
@@ -498,18 +511,69 @@ export class PSkyboxCreator {
   }
 
   /**
+   * 创建天空盒选项
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 天空盒选项
+   */
+  static createSkyboxComponentData (params: PSkyboxParams) {
+    const specularCubeData = PSkyboxCreator.getSpecularCubeMapData(params);
+    const diffuseCubeData = PSkyboxCreator.getDiffuseCubeMapData(params);
+    const { renderable, intensity, reflectionsIntensity, irradianceCoeffs, specularImageSize, specularMipCount } = params;
+
+    let diffuseImage: spec.DataPath;
+    const imageList: spec.Image[] = [];
+    const textureOptionsList: TextureSourceOptions[] = [];
+
+    if (diffuseCubeData) {
+      imageList.push(...diffuseCubeData.images);
+      textureOptionsList.push(diffuseCubeData.textureOptions);
+      diffuseImage = {
+        id: diffuseCubeData.textureOptions.id!,
+      };
+    }
+    imageList.push(...specularCubeData.images);
+    textureOptionsList.push(specularCubeData.textureOptions);
+    const specularImage = { id: specularCubeData.textureOptions.id };
+
+    const componentData: ModelSkyboxComponentData = {
+      id: generateGUID(),
+      dataType: spec.DataType.SkyboxComponent,
+      item: {
+        id: generateGUID(),
+      },
+      renderable,
+      intensity,
+      reflectionsIntensity,
+      irradianceCoeffs,
+      // @ts-expect-error
+      diffuseImage,
+      // @ts-expect-error
+      specularImage,
+      specularImageSize,
+      specularMipCount,
+    };
+
+    return {
+      imageList,
+      textureOptionsList,
+      component: componentData,
+    };
+  }
+
+  /**
    * 创建高光 Cube Map 纹理
    * @param engine - 引擎
    * @param params - 天空盒参数
    * @returns 纹理
    */
   static async createSpecularCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture> {
-    const configOptions: TextureConfigOptions = {
-      wrapS: glContext.CLAMP_TO_EDGE,
-      wrapT: glContext.CLAMP_TO_EDGE,
-      magFilter: glContext.LINEAR,
-      minFilter: glContext.LINEAR_MIPMAP_LINEAR,
-    };
+    // const configOptions: TextureConfigOptions = {
+    //   wrapS: glContext.CLAMP_TO_EDGE,
+    //   wrapT: glContext.CLAMP_TO_EDGE,
+    //   magFilter: glContext.LINEAR,
+    //   minFilter: glContext.LINEAR_MIPMAP_LINEAR,
+    // };
 
     if (params.type === 'url') {
       return WebGLHelper.createTextureCubeMipmapFromURL(engine, params.specularImage);
@@ -518,20 +582,90 @@ export class PSkyboxCreator {
     }
   }
 
+  static getSpecularCubeMapData (params: PSkyboxParams) {
+    const imageDatas: spec.Image[] = [];
+    const mipmaps: spec.DataPath[][] = [];
+
+    params.specularImage.forEach(cubemap => {
+      const mipmap: spec.DataPath[] = [];
+
+      cubemap.forEach(image => {
+        const imageId = generateGUID();
+
+        imageDatas.push({
+          id: imageId,
+          // @ts-expect-error
+          url: image,
+        });
+        mipmap.push({ id: imageId });
+      });
+      mipmaps.push(mipmap);
+    });
+    const textureOptions: TextureSourceOptions = {
+      id: generateGUID(),
+      dataType: spec.DataType.Texture,
+      sourceType: TextureSourceType.mipmaps,
+      target: glContext.TEXTURE_CUBE_MAP,
+      // @ts-expect-error
+      mipmaps,
+      ...WebGLHelper.cubemapMipTexConfig,
+    };
+
+    return {
+      images: imageDatas,
+      textureOptions,
+    };
+  }
+
   /**
    * 创建漫反射纹理
    * @param engine - 引擎
    * @param params - 天空盒参数
    * @returns 纹理或未定义
    */
-  static async createDiffuseCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture | undefined> {
-    if (params.diffuseImage === undefined) { return; }
+  static async createDiffuseCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture | null> {
+    if (params.diffuseImage === undefined) { return null; }
 
     if (params.type === 'url') {
       return WebGLHelper.createTextureCubeFromURL(engine, params.diffuseImage);
     } else {
       return WebGLHelper.createTextureCubeFromBuffer(engine, params.diffuseImage);
     }
+  }
+
+  static getDiffuseCubeMapData (params: PSkyboxParams) {
+    if (params.diffuseImage === undefined) {
+      return;
+    }
+
+    const imageDatas: spec.Image[] = [];
+    const cubemap: spec.DataPath[] = [];
+
+    params.diffuseImage.forEach(image => {
+      const imageId = generateGUID();
+
+      imageDatas.push({
+        id: imageId,
+        // @ts-expect-error
+        url: image,
+      });
+      cubemap.push({ id: imageId });
+    });
+
+    const textureOptions: TextureSourceOptions = {
+      id: generateGUID(),
+      dataType: spec.DataType.Texture,
+      sourceType: TextureSourceType.mipmaps,
+      target: glContext.TEXTURE_CUBE_MAP,
+      // @ts-expect-error
+      mipmaps: [cubemap],
+      ...WebGLHelper.cubemapTexConfig,
+    };
+
+    return {
+      images: imageDatas,
+      textureOptions,
+    };
   }
 
   /**
@@ -550,7 +684,7 @@ export class PSkyboxCreator {
       diffuseImage: this.getDiffuseImageList(skyboxType, specularImage),
       specularImage: specularImage,
       specularImageSize: Math.pow(2, specularImage.length - 1),
-      specularMipCount: specularImage.length - 1,
+      specularMipCount: specularImage.length,
     };
 
     return params;
@@ -566,11 +700,11 @@ export class PSkyboxCreator {
       if (i > 0) {
         if (i % 6 === 0) {
           if (image.width * 2 !== lastImage.width || image.height * 2 !== lastImage.height) {
-            throw new Error(`Invalid cube map list1: index ${i}, image0 ${lastImage}, image1 ${image}`);
+            throw new Error(`Invalid cube map list1: index ${i}, image0 ${lastImage}, image1 ${image}.`);
           }
         } else {
           if (image.width !== lastImage.width || image.height !== lastImage.height) {
-            throw new Error(`Invalid cube map list2: index ${i}, image0 ${lastImage}, image1 ${image}`);
+            throw new Error(`Invalid cube map list2: index ${i}, image0 ${lastImage}, image1 ${image}.`);
           }
         }
       }
@@ -582,11 +716,13 @@ export class PSkyboxCreator {
     }
   }
 
-  private static getIrradianceCoeffs (skyboxType: number): number[][] | undefined {
+  private static getIrradianceCoeffs (skyboxType: PSkyboxType): number[] | undefined {
     let dataArray: number[] = [];
 
     switch (skyboxType) {
-      case PSkyboxType.NFT: return undefined;
+      case PSkyboxType.NFT: {
+        return undefined;
+      }
       case PSkyboxType.FARM: dataArray = [
         0.2665672302246094, 0.27008703351020813, 0.2836797833442688, -0.15421263873577118, -0.15587495267391205,
         -0.16371899843215942, 0.06483837962150574, 0.06468029320240021, 0.06616337597370148, -0.11598809063434601,
@@ -609,11 +745,7 @@ export class PSkyboxCreator {
         break;
     }
 
-    const returnArray: number[][] = [];
-
-    for (let i = 0; i < dataArray.length; i += 3) { returnArray.push([dataArray[i], dataArray[i + 1], dataArray[i + 2]]); }
-
-    return returnArray;
+    return dataArray;
   }
 
   private static getDiffuseImageList (skyboxType: PSkyboxType, images: string[][]): string[] | undefined {

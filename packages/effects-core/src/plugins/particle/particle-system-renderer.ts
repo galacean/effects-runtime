@@ -22,15 +22,17 @@ export class ParticleSystemRenderer extends RendererComponent {
 
   constructor (
     engine: Engine,
-    particleMeshProps: ParticleMeshProps,
+    particleMeshProps?: ParticleMeshProps,
     trailMeshProps?: TrailMeshProps,
   ) {
     super(engine);
 
     this.name = 'ParticleSystemRenderer';
-    this.particleMesh = new ParticleMesh(engine, particleMeshProps);
+    if (particleMeshProps) {
+      this.particleMesh = new ParticleMesh(engine, particleMeshProps);
+    }
 
-    if (trailMeshProps !== undefined) {
+    if (trailMeshProps) {
       this.trailMesh = new TrailMesh(engine, trailMeshProps);
     }
 
@@ -47,7 +49,7 @@ export class ParticleSystemRenderer extends RendererComponent {
   }
 
   override start (): void {
-    this._priority = this.item.listIndex;
+    this._priority = this.item.renderOrder;
     this.particleMesh.gravityModifier.scaleXCoord(this.item.duration);
     for (const mesh of this.meshes) {
       mesh.start();

@@ -1,7 +1,9 @@
+import type * as spec from '@galacean/effects-specification';
+import { effectsClass } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
 
-export type ShaderMarcos = [key: string, value: string | number | boolean][];
+export type ShaderMacros = [key: string, value: string | number | boolean][];
 
 export enum ShaderCompileResultStatus {
   noShader = 0,
@@ -42,7 +44,7 @@ export interface InstancedShaderWithSource {
   /**
    * shader的宏定义
    */
-  marcos?: ShaderMarcos,
+  macros?: ShaderMacros,
   /**
    * shader是否共享
    */
@@ -69,7 +71,7 @@ export interface SharedShaderWithSource {
   /**
    * shader的宏定义
    */
-  marcos?: ShaderMarcos,
+  macros?: ShaderMacros,
   /**
    * 是否共用GLProgram
    * shared为true时，
@@ -85,7 +87,8 @@ export interface SharedShaderWithSource {
 
 export type ShaderWithSource = InstancedShaderWithSource | SharedShaderWithSource;
 
-export abstract class Shader extends EffectsObject {
+export abstract class ShaderVariant extends EffectsObject {
+  shader: Shader;
   constructor (
     engine: Engine,
     public readonly source: ShaderWithSource,
@@ -94,13 +97,38 @@ export abstract class Shader extends EffectsObject {
   }
 }
 
+@effectsClass('Shader')
+export class Shader extends EffectsObject {
+  shaderData: spec.ShaderData;
+
+  createVariant (macros?: Record<string, number | boolean>) {
+    const shaderMacros: ShaderMacros = [];
+
+    if (macros) {
+      for (const key of Object.keys(macros)) {
+        shaderMacros.push([key, macros[key]]);
+      }
+    }
+    const shaderVariant = this.engine.getShaderLibrary().createShader(this.shaderData, shaderMacros);
+
+    shaderVariant.shader = this;
+
+    return shaderVariant;
+  }
+
+  override fromData (data: spec.ShaderData): void {
+    super.fromData(data);
+    this.shaderData = data;
+  }
+}
+
 // TODO: 临时用，待移除
 export interface ShaderLibrary {
   readonly shaderResults: { [cacheId: string]: ShaderCompileResult },
 
-  addShader(shader: ShaderWithSource): void,
+  addShader (shader: ShaderWithSource): void,
 
-  createShader (shaderSource: ShaderWithSource): Shader,
+  createShader (shaderSource: ShaderWithSource, macros?: ShaderMacros): ShaderVariant,
 
   /**
    * @param cacheId

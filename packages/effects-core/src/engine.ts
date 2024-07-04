@@ -1,17 +1,17 @@
 import * as spec from '@galacean/effects-specification';
-import type { Database, EffectsObjectData, SceneData } from './asset-loader';
+import type { Database, SceneData } from './asset-loader';
 import { AssetLoader } from './asset-loader';
 import type { EffectsObject } from './effects-object';
-import { glContext } from './gl';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
 import type { Scene } from './scene';
-import { Texture, TextureSourceType } from './texture';
+import type { Texture } from './texture';
+import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
 
 /**
- * Engine 基类，负责维护所有 GPU 资源的销毁
+ * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
 export class Engine implements Disposable {
   renderer: Renderer;
@@ -22,6 +22,11 @@ export class Engine implements Disposable {
   objectInstance: Record<string, EffectsObject>;
   assetLoader: AssetLoader;
   database?: Database; // TODO: 磁盘数据库，打包后 runtime 运行不需要
+
+  /**
+   * 渲染过程中错误队列
+   */
+  renderErrors: Set<Error> = new Set();
 
   protected destroyed = false;
   protected textures: Texture[] = [];
@@ -34,7 +39,8 @@ export class Engine implements Disposable {
     this.jsonSceneData = {};
     this.objectInstance = {};
     this.assetLoader = new AssetLoader(this);
-    this.createDefaultTexture();
+    this.emptyTexture = generateWhiteTexture(this);
+    this.transparentTexture = generateTransparentTexture(this);
   }
 
   /**
@@ -47,7 +53,7 @@ export class Engine implements Disposable {
     this.objectInstance = {};
   }
 
-  addEffectsObjectData (data: EffectsObjectData) {
+  addEffectsObjectData (data: spec.EffectsObjectData) {
     this.jsonSceneData[data.id] = data;
   }
 
@@ -68,68 +74,68 @@ export class Engine implements Disposable {
   }
 
   addPackageDatas (scene: Scene) {
-    const jsonScene = scene.jsonScene;
+    const { jsonScene, textureOptions = [] } = scene;
+    const {
+      items = [], materials = [], shaders = [], geometries = [], components = [],
+      animations = [], bins = [], miscs = [],
+    } = jsonScene;
 
-    //@ts-expect-error
-    if (jsonScene.items) {
-      //@ts-expect-error
-      for (const vfxItemData of jsonScene.items) {
-        this.addEffectsObjectData(vfxItemData);
-      }
+    for (const vfxItemData of items) {
+      this.addEffectsObjectData(vfxItemData);
     }
-    //@ts-expect-error
-    if (jsonScene.materials) {
-      //@ts-expect-error
-      for (const materialData of jsonScene.materials) {
-        this.addEffectsObjectData(materialData);
-      }
+    for (const materialData of materials) {
+      this.addEffectsObjectData(materialData);
     }
-    //@ts-expect-error
-    if (jsonScene.shaders) {
-      //@ts-expect-error
-      for (const shaderData of jsonScene.shaders) {
-        this.addEffectsObjectData(shaderData);
-      }
+    for (const shaderData of shaders) {
+      this.addEffectsObjectData(shaderData);
     }
-    //@ts-expect-error
-    if (jsonScene.geometries) {
-      //@ts-expect-error
-      for (const geometryData of jsonScene.geometries) {
-        this.addEffectsObjectData(geometryData);
-      }
+    for (const geometryData of geometries) {
+      this.addEffectsObjectData(geometryData);
     }
-    //@ts-expect-error
-    if (jsonScene.components) {
-      //@ts-expect-error
-      for (const componentData of jsonScene.components) {
-        this.addEffectsObjectData(componentData);
-      }
+    for (const componentData of components) {
+      this.addEffectsObjectData(componentData);
     }
-    if (scene.textureOptions) {
-      for (const textureData of scene.textureOptions) {
+    for (const animationData of animations) {
+      this.addEffectsObjectData(animationData);
+    }
+    for (const miscData of miscs) {
+      this.addEffectsObjectData(miscData);
+    }
+    for (let i = 0; i < bins.length; i++) {
+      const binaryData = bins[i];
+      const binaryBuffer = scene.bins[i];
+
+      //@ts-expect-error
+      binaryData.buffer = binaryBuffer;
+      //@ts-expect-error
+      if (binaryData.id) {
         //@ts-expect-error
-        this.addEffectsObjectData(textureData);
+        this.addEffectsObjectData(binaryData);
       }
+    }
+    for (const textureData of textureOptions) {
+      this.addEffectsObjectData(textureData as spec.EffectComponentData);
     }
   }
 
-  async createVFXItemsAsync (scene: Scene) {
-    const jsonScene = scene.jsonScene;
+  async createVFXItems (scene: Scene) {
+    const { jsonScene } = scene;
 
-    //@ts-expect-error
     for (const itemData of jsonScene.items) {
+      const itemType = itemData.type;
+
       if (!(
-        itemData.type === 'ECS' ||
-        itemData.type === spec.ItemType.sprite ||
-        itemData.type === spec.ItemType.particle ||
-        itemData.type === spec.ItemType.mesh ||
-        itemData.type === spec.ItemType.skybox ||
-        itemData.type === spec.ItemType.light ||
-        itemData.type === 'camera' ||
-        itemData.type === spec.ItemType.tree ||
-        itemData.type === spec.ItemType.interact ||
-        itemData.type === spec.ItemType.camera)
-      ) {
+        itemType === 'ECS' as spec.ItemType ||
+        itemType === 'camera' as spec.ItemType ||
+        itemType === spec.ItemType.sprite ||
+        itemType === spec.ItemType.particle ||
+        itemType === spec.ItemType.mesh ||
+        itemType === spec.ItemType.skybox ||
+        itemType === spec.ItemType.light ||
+        itemType === spec.ItemType.tree ||
+        itemType === spec.ItemType.interact ||
+        itemType === spec.ItemType.camera
+      )) {
         continue;
       }
       if (this.database) {
@@ -216,43 +222,6 @@ export class Engine implements Disposable {
     return this.renderer.getShaderLibrary() as ShaderLibrary;
   }
 
-  private createDefaultTexture () {
-    const sourceOpts = {
-      type: glContext.UNSIGNED_BYTE,
-      format: glContext.RGBA,
-      internalFormat: glContext.RGBA,
-      wrapS: glContext.MIRRORED_REPEAT,
-      wrapT: glContext.MIRRORED_REPEAT,
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
-    };
-
-    this.emptyTexture = Texture.create(
-      this,
-      {
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([255, 255, 255, 255]),
-        },
-        sourceType: TextureSourceType.data,
-        ...sourceOpts,
-      },
-    );
-    this.transparentTexture = Texture.create(
-      this,
-      {
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([0, 0, 0, 0]),
-        },
-        sourceType: TextureSourceType.data,
-        ...sourceOpts,
-      }
-    );
-  }
-
   /**
    * 销毁所有缓存的资源
    */
@@ -278,24 +247,14 @@ export class Engine implements Disposable {
     }
 
     if (info.length > 0) {
-      logger.warn(`Release GPU memory: ${info.join(', ')}`);
+      logger.warn(`Release GPU memory: ${info.join(', ')}.`);
     }
 
-    this.renderPasses.forEach(pass => {
-      pass.dispose();
-    });
-    this.meshes.forEach(mesh => {
-      mesh.dispose();
-    });
-    this.geometries.forEach(geo => {
-      geo.dispose();
-    });
-    this.materials.forEach(mat => {
-      mat.dispose();
-    });
-    this.textures.forEach(tex => {
-      tex.dispose();
-    });
+    this.renderPasses.forEach(pass => pass.dispose());
+    this.meshes.forEach(mesh => mesh.dispose());
+    this.geometries.forEach(geo => geo.dispose());
+    this.materials.forEach(mat => mat.dispose());
+    this.textures.forEach(tex => tex.dispose());
 
     this.textures = [];
     this.materials = [];

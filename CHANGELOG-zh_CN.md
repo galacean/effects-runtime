@@ -7,6 +7,144 @@
 - 主版本号：含有破坏性更新和新特性，不在发布周期内。
 
 ---
+
+## 1.6.1
+
+`2024-07-02`
+
+- Fix: 修复 fontSize 导致的文本布局问题。[#469](https://github.com/galacean/effects-runtime/pull/469) @Sruimeng
+
+## 1.6.0
+
+`2024-06-28`
+
+- Feat: 增加交互元素控制参数。[#443](https://github.com/galacean/effects-runtime/pull/443) @RGCHN
+- Feat: 增加加载时分段时长。[#442](https://github.com/galacean/effects-runtime/pull/442) @Sruimeng
+- Feat: 增加合成和 Spine 元素接口。[#432](https://github.com/galacean/effects-runtime/pull/432) @RGCHN
+- Build: 增加 alpha/beta 发布命令。[#434](https://github.com/galacean/effects-runtime/pull/434) @yiiqii
+- Fix: 修复多行文字上下对齐问题。[#455](https://github.com/galacean/effects-runtime/pull/455) [#456](https://github.com/galacean/effects-runtime/pull/456) @Sruimeng
+- Fix: transparent object sort problem. [#458](https://github.com/galacean/effects-runtime/pull/458) @liuxi150
+
+## 1.5.2
+
+`2024-06-21`
+
+- Fix: base color index problem. [#441](https://github.com/galacean/effects-runtime/pull/441) @liuxi150
+
+## 1.5.1
+
+`2024-06-05`
+
+- Fix: 增加 window 是否监听 WebGL Context Lost 事件开关。[#405](https://github.com/galacean/effects-runtime/pull/405) @liuxi150
+- Chore: 修改 resizeRule 类型。[#407](https://github.com/galacean/effects-runtime/pull/407) @RGCHN
+
+## 1.5.0
+
+`2024-06-03`
+
+- Feat: 增加支付宝小程序兼容和打包处理。[#370](https://github.com/galacean/effects-runtime/pull/370) @RGCHN
+  - Feat: 降级插件支持小程序。[#385](https://github.com/galacean/effects-runtime/pull/385) @RGCHN
+  - Build: 增加 alipay 小程序打包配置。[#388](https://github.com/galacean/effects-runtime/pull/388) @RGCHN
+- Feat: Spine 升级和缩放规则修改。[#367](https://github.com/galacean/effects-runtime/pull/367) @RGCHN
+- Fix: 移除 player 销毁时触发 webglcontextlost 事件。[#371](https://github.com/galacean/effects-runtime/pull/371) @RGCHN
+- Test: fix frame compare. [#386](https://github.com/galacean/effects-runtime/pull/386) @liuxi150
+
+## 1.4.5
+
+`2024-05-29`
+
+- Fix: 增加渲染过程中错误捕捉。[#380](https://github.com/galacean/effects-runtime/pull/380) @Sruimeng
+
+## 1.4.4
+
+`2024-05-17`
+
+- Fix: 修复 iOS11/12 fontFamily 解析错误问题。[#356](https://github.com/galacean/effects-runtime/pull/356) [#361](https://github.com/galacean/effects-runtime/pull/361) @Sruimeng @yiiqii
+- Fix: 兼容 Spine 产物没有 default 皮肤的情况。[#352](https://github.com/galacean/effects-runtime/pull/352) @RGCHN
+
+## 1.4.3
+
+`2024-05-14`
+
+- Fix: 3d editor problem. [#344](https://github.com/galacean/effects-runtime/pull/344) @liuxi150
+
+## 1.4.2
+
+`2024-05-10`
+
+- Feat: 陀螺仪以用户初始角度作变化基准。[#323](https://github.com/galacean/effects-runtime/pull/323) @RGCHN
+
+## 1.4.1
+
+`2024-05-06`
+
+- Fix: BEZIER_CURVE_PATH 计算返回都改为 Vector3。[#326](https://github.com/galacean/effects-runtime/pull/326) @RGCHN
+
+## 1.4.0
+
+`2024-04-28`
+
+- Feat: 支持贝塞尔速度和路径曲线处理。[#288](https://github.com/galacean/effects-runtime/pull/288) @RGCHN
+- Fix: 修复贝塞尔积分和部分粒子卡顿问题。[#305](https://github.com/galacean/effects-runtime/pull/305) @RGCHN
+- Test: 曲线相关单测更新。[#318](https://github.com/galacean/effects-runtime/pull/318) @RGCHN
+
+## 1.3.2
+
+`2024-04-26`
+
+- Fix: 修复多次引用同一个预合成元素的渲染顺序问题。[#312](https://github.com/galacean/effects-runtime/pull/312) @RGCHN
+- Fix: 预合成元素初始化时未创建的问题。[#309](https://github.com/galacean/effects-runtime/pull/309) @RGCHN
+- Fix: 修复预合成缩放设置不生效的问题。[#296](https://github.com/galacean/effects-runtime/pull/296) @RGCHN
+
+## 1.3.1
+
+`2024-04-19`
+
+- Fix: image template variables is images. [#282](https://github.com/galacean/effects-runtime/pull/282) @Sruimeng
+
+## 1.3.0
+
+`2024-04-16`
+
+- Feat: 陀螺仪支持元素的旋转角度变化。[#259](https://github.com/galacean/effects-runtime/pull/259) @RGCHN
+- Feat: video template。[#224](https://github.com/galacean/effects-runtime/pull/224) @Sruimeng
+
+## 1.2.6
+
+`2024-04-12`
+
+- Fix: 修复更新顺序导致的图层大小继承问题。[#256](https://github.com/galacean/effects-runtime/pull/256) @RGCHN
+
+## 1.2.5
+
+`2024-04-09`
+
+- Fix: 修复 reusable 时消息元素结束无法触发的问题。[#247](https://github.com/galacean/effects-runtime/pull/247) @RGCHN
+
+## 1.2.4
+
+`2024-04-08`
+
+- Fix: 修复 assetManager 参数未隔离的问题。[#242](https://github.com/galacean/effects-runtime/pull/242) @RGCHN
+- Fix: 修复 fonts 和 bins 文件路径问题。[#226](https://github.com/galacean/effects-runtime/pull/226) @RGCHN
+- Fix: 修复像素和世界坐标转换错误。[#233](https://github.com/galacean/effects-runtime/pull/233) @RGCHN
+- Fix: miniprogram canvas type. [#230](https://github.com/galacean/effects-runtime/pull/230) @Sruimeng
+
+## 1.2.3
+
+`2024-03-22`
+
+- Fix: 兼容数据模板文本修改方式。[#214](https://github.com/galacean/effects-runtime/pull/214) @Sruimeng
+
+## 1.2.2
+
+`2024-03-15`
+
+- Fix: 修复 `loadScene` 的类型推断问题。[#206](https://github.com/galacean/effects-runtime/pull/206) @RGCHN
+- Fix: 修复 spine 动作切换闪烁问题。[#200](https://github.com/galacean/effects-runtime/pull/200) @RGCHN
+- Fix: text line height bug with `setFontSize`. [#199](https://github.com/galacean/effects-runtime/pull/199) @Sruimeng
+- Test: fix memory cases. [#190](https://github.com/galacean/effects-runtime/pull/190) @liuxi150
+
 ## 1.2.1
 
 `2024-03-01`

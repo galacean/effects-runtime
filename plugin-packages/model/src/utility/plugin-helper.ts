@@ -30,6 +30,7 @@ import {
   DestroyOptions,
   loadImage,
   PLAYER_OPTIONS_ENV_EDITOR,
+  GLSLVersion,
 } from '@galacean/effects';
 import { deserializeGeometry, typedArrayFromBinary } from '@galacean/effects-helper';
 import type { GLTFCamera, GLTFImage, GLTFLight, GLTFTexture } from '@vvfx/resource-detection';
@@ -45,6 +46,7 @@ import type {
   ModelTextureTransform,
   ModelTreeOptions,
   ModelAnimTrackOptions,
+  ModelMeshComponent,
 } from '../index';
 import { Matrix3, Matrix4, Vector3, Vector4, DEG2RAD } from '../runtime/math';
 import type { FBOOptions } from './ri-helper';
@@ -93,7 +95,7 @@ export class WebGLHelper {
    */
   static async createTexture2D (engine: Engine, image: GLTFImage, texture: GLTFTexture, isBaseColor?: boolean, tiny3dMode?: boolean): Promise<Texture> {
     if (image.imageData === undefined) {
-      console.error(`createTexture2D: Invalid image data from ${image}`);
+      console.error(`createTexture2D: Invalid image data from ${image}.`);
 
       // 这里不应该发生的，做个兜底
       return Texture.create(engine, {
@@ -309,9 +311,9 @@ export class WebGLHelper {
    * @param textures - 纹理数组
    * @returns 纹理获取或 undefined
    */
-  static getTexture (index: number, textures: Texture[]): Texture | undefined {
+  static getTexture (index: number, textures: Texture[]): Texture | null {
     if (index < 0 || index >= textures.length) {
-      return undefined;
+      return null;
     } else {
       return textures[index];
     }
@@ -419,11 +421,11 @@ export class WebGLHelper {
 
   /**
    * 返回 Mesh 是否半透明
-   * @param mesh - gl mesh 对象
+   * @param component - ModelMeshComponent 对象
    * @return 是否半透明
    */
-  static isTransparentMesh (mesh: Mesh): boolean {
-    return mesh.material.blending === true;
+  static isTransparentMesh (component: ModelMeshComponent): boolean {
+    return component.material.blending === true;
   }
 
   /**
@@ -474,6 +476,7 @@ export class MeshHelper {
     const vertexShader = material.vertexShaderCode;
     const fragmentShader = material.fragmentShaderCode;
     const geometry = Geometry.create(engine, MeshHelper.getPlaneGeometry());
+    const isWebGL2 = engine.gpuCapability.level === 2;
     const effectsMaterial = Material.create(
       engine,
       {
@@ -481,6 +484,7 @@ export class MeshHelper {
           vertex: vertexShader,
           fragment: fragmentShader,
           shared: globalState.shaderShared,
+          glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
         },
         uniformSemantics,
       }
@@ -508,26 +512,26 @@ export class MeshHelper {
 
     return {
       attributes: {
-        a_Position: {
+        aPos: {
           type: glContext.FLOAT,
           size: 3,
           data,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: 0,
         },
-        a_UV1: {
+        aUV: {
           type: glContext.FLOAT,
           size: 2,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 3,
-          dataSource: 'a_Position',
+          dataSource: 'aPos',
         },
-        a_Normal: {
+        aNormal: {
           type: glContext.FLOAT,
           size: 3,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 5,
-          dataSource: 'a_Position',
+          dataSource: 'aPos',
         },
       },
       drawStart: 0,
@@ -613,6 +617,8 @@ export class PluginHelper {
       fov: p.yfov,
       clipMode: 0,
     };
+
+    return options;
   }
 
   /**
@@ -675,35 +681,29 @@ export class PluginHelper {
 
   /**
    * 创建 UV 变换矩阵，从 UV 变换参数中
-   * @param transform - 变换参数
+   * @param stValue - UV 的缩放和平移参数
+   * @param rotateValue - UV 的旋转参数
    * @returns 3阶变换矩阵
    */
-  static createUVTransform (transform?: spec.ModelTextureTransform): Matrix3 | undefined {
-    if (transform === undefined) {
-      // no transform
-      return;
-    }
-
-    if (transform.offset === undefined && transform.rotation === undefined && transform.scale === undefined) {
-      // no transform, again
-      return;
-    }
+  static createUVTransform (material: Material, stName: string, rotateName: string): Matrix3 {
+    const stValue = material.getVector4(stName);
+    const rotateValue = material.getFloat(rotateName);
 
     const res = Matrix3.fromIdentity();
-    const temp = new Matrix3();
 
-    if (transform.offset !== undefined) {
-      temp.setFromArray([
+    if (stValue) {
+      res.setFromArray([
         1, 0, 0,
         0, 1, 0,
-        transform.offset[0], transform.offset[1], 1,
+        stValue.z, stValue.w, 1,
       ]);
-      res.multiply(temp);
     }
 
-    if (transform.rotation !== undefined) {
-      const cosTheta = Math.cos(transform.rotation);
-      const sinTheta = Math.sin(transform.rotation);
+    const temp = new Matrix3();
+
+    if (rotateValue) {
+      const cosTheta = Math.cos(rotateValue);
+      const sinTheta = Math.sin(rotateValue);
 
       temp.setFromArray([
         cosTheta, sinTheta, 0,
@@ -713,10 +713,10 @@ export class PluginHelper {
       res.multiply(temp);
     }
 
-    if (transform.scale !== undefined) {
+    if (stValue) {
       temp.setFromArray([
-        transform.scale[0], 0, 0,
-        0, transform.scale[1], 0,
+        stValue.x, 0, 0,
+        0, stValue.y, 0,
         0, 0, 1,
       ]);
       res.multiply(temp);
@@ -793,122 +793,48 @@ export class PluginHelper {
    * @param autoAdjustScene - 是否自动调整
    * @returns 场景信息描述
    */
-  static preprocessScene (scene: Scene, runtimeEnv: string, compatibleMode: string, autoAdjustScene: boolean): EffectsSceneInfo {
+  static preprocessScene (scene: Scene, runtimeEnv: string, compatibleMode: string): EffectsSceneInfo {
     const deviceEnv = (runtimeEnv !== PLAYER_OPTIONS_ENV_EDITOR);
     const tiny3dMode = (compatibleMode === 'tiny3d');
     // 默认skybox如何处理需要讨论
     const jsonScene = scene.jsonScene;
 
-    if (jsonScene === undefined || jsonScene.compositions === undefined) {
+    if (!(jsonScene && jsonScene.textures && jsonScene.materials)) {
       // 安全检查
       return {};
     }
 
+    const dataMap: Record<string, TextureSourceOptions> = {};
+
+    scene.textureOptions.forEach(tex => {
+      const id = tex.id;
+
+      if (id) {
+        dataMap[id] = tex;
+      }
+    });
+
     let loadSkybox = false;
 
     if (deviceEnv) {
-      const textures = scene.textureOptions;
-
-      jsonScene.compositions.forEach(comp => {
-        comp.items.forEach(item => {
-          if (item.type === 'mesh') {
-            const meshItem = item as spec.ModelMeshItem<'json'>;
-            const primitives = meshItem.content.options.primitives;
-
-            primitives.forEach(prim => {
-              const mat = prim.material;
-
-              if (mat.type === spec.MaterialType.pbr) {
-                if (mat.baseColorTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.baseColorTexture, textures, true, tiny3dMode);
-                }
-                if (mat.metallicRoughnessTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.metallicRoughnessTexture, textures, false, tiny3dMode);
-                }
-                if (mat.normalTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.normalTexture, textures, false, tiny3dMode);
-                }
-                if (mat.occlusionTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.occlusionTexture, textures, false, tiny3dMode);
-                }
-                if (mat.emissiveTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.emissiveTexture, textures, false, tiny3dMode);
-                }
-              } else {
-                if (mat.baseColorTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.baseColorTexture, textures, true, tiny3dMode);
-                }
-              }
-            });
-          } else if (item.type === 'skybox') {
-            loadSkybox = true;
-            //
-            const skyboxItem = item as spec.ModelSkyboxItem<'json'>;
-            const options = skyboxItem.content.options;
-
-            this.preprocessTextureOptions(options.specularImage, textures, false, tiny3dMode);
-            if (options.diffuseImage !== undefined) {
-              this.preprocessTextureOptions(options.diffuseImage, textures, false, tiny3dMode);
-            }
-          }
-        });
+      jsonScene.materials.forEach(mat => {
+        this.preprocessTextureOptions(dataMap, mat.textures['_BaseColorSampler'], true, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_MetallicRoughnessSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_NormalSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_OcclusionSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_EmissiveSampler'], false, tiny3dMode);
       });
-    } else {
-      jsonScene.compositions.forEach(comp => {
-        comp.items.forEach(item => {
-          if (item.type === 'skybox') {
-            loadSkybox = true;
-          }
-        });
-      });
-    }
+      jsonScene.components.forEach(comp => {
+        if (comp.dataType === spec.DataType.SkyboxComponent) {
+          loadSkybox = true;
+          const skybox = comp as spec.SkyboxComponentData;
 
-    if (autoAdjustScene) {
-      jsonScene.compositions.forEach(comp => {
-        let lightCount = 0;
-
-        comp.items.forEach(item => {
-          if (item.type === 'light' || item.type === 'skybox') {
-            ++lightCount;
+          if (skybox.diffuseImage) {
+            this.preprocessTextureOptions(dataMap, skybox.diffuseImage, false, tiny3dMode);
           }
-        });
-        if (lightCount == 0) {
-          comp.items.push({
-            id: 'dir-light1',
-            duration: 100,
-            name: 'dir-light1',
-            type: spec.ItemType.light,
-            transform: {
-              rotation: [45, -45, 0],
-            },
-            pluginName: 'model',
-            endBehavior: 0,
-            content: {
-              options: {
-                lightType: 'directional',
-                color: [255, 255, 255, 255],
-                intensity: 1.5,
-              },
-            },
-          });
-          comp.items.push({
-            id: 'dir-light2',
-            duration: 100,
-            name: 'dir-light2',
-            type: spec.ItemType.light,
-            transform: {
-              rotation: [0, 90, 0],
-            },
-            pluginName: 'model',
-            endBehavior: 0,
-            content: {
-              options: {
-                lightType: 'directional',
-                color: [255, 255, 255, 255],
-                intensity: 0.2,
-              },
-            },
-          });
+          if (skybox.specularImage) {
+            this.preprocessTextureOptions(dataMap, skybox.specularImage, false, tiny3dMode);
+          }
         }
       });
     }
@@ -924,33 +850,61 @@ export class PluginHelper {
    * @param tiny3dMode - 是否 Tiny3d 模式
    * @returns
    */
-  static preprocessTextureOptions (index: number, textures: Array<TextureSourceOptions>, isBaseColor: boolean, tiny3dMode: boolean) {
-    if (index < 0 || index >= textures.length) {
+  static preprocessTextureOptions (dataMap: Record<string, TextureSourceOptions>, textureInfo: spec.MaterialTextureProperty | spec.DataPath, isBaseColor: boolean, tiny3dMode: boolean) {
+    if (!tiny3dMode || !textureInfo) {
       return;
     }
 
-    const texOptions = textures[index];
+    let texId;
 
-    if (tiny3dMode && texOptions !== undefined) {
-      if (texOptions.target === undefined || texOptions.target === glContext.TEXTURE_2D) {
-        texOptions.wrapS = glContext.REPEAT;
-        texOptions.wrapT = glContext.REPEAT;
-        texOptions.magFilter = glContext.LINEAR;
-        texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
-        (texOptions as Texture2DSourceOptionsImage).generateMipmap = true;
-        if (!isBaseColor) {
-          texOptions.premultiplyAlpha = true;
-        }
-      } else if (texOptions.target === glContext.TEXTURE_CUBE_MAP) {
-        texOptions.wrapS = glContext.CLAMP_TO_EDGE;
-        texOptions.wrapT = glContext.CLAMP_TO_EDGE;
-        if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps !== undefined) {
-          texOptions.magFilter = glContext.LINEAR;
-          texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
-        } else {
-          texOptions.magFilter = glContext.LINEAR;
+    if ('texture' in textureInfo) {
+      texId = textureInfo.texture.id;
+    } else {
+      texId = textureInfo.id;
+    }
+
+    if (!texId) {
+      return;
+    }
+
+    const texOptions = dataMap[texId];
+
+    if (!texOptions) {
+      return;
+    }
+
+    if (texOptions.target === undefined || texOptions.target === glContext.TEXTURE_2D) {
+      texOptions.wrapS = glContext.REPEAT;
+      texOptions.wrapT = glContext.REPEAT;
+      texOptions.magFilter = glContext.LINEAR;
+      texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+      if (!isBaseColor) {
+        texOptions.premultiplyAlpha = true;
+      }
+      const newOptions = texOptions as Texture2DSourceOptionsImage;
+
+      newOptions.generateMipmap = true;
+      const image = newOptions.image;
+
+      if (image && image.width && image.height) {
+        if (!WebGLHelper.isPow2(image.width) || !WebGLHelper.isPow2(image.height)) {
           texOptions.minFilter = glContext.LINEAR;
         }
+      }
+    } else if (texOptions.target === glContext.TEXTURE_CUBE_MAP) {
+      texOptions.wrapS = glContext.CLAMP_TO_EDGE;
+      texOptions.wrapT = glContext.CLAMP_TO_EDGE;
+      if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps !== undefined) {
+        if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps.length === 1) {
+          texOptions.magFilter = glContext.LINEAR;
+          texOptions.minFilter = glContext.LINEAR;
+        } else {
+          texOptions.magFilter = glContext.LINEAR;
+          texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+        }
+      } else {
+        texOptions.magFilter = glContext.LINEAR;
+        texOptions.minFilter = glContext.LINEAR;
       }
     }
   }
@@ -987,7 +941,7 @@ export class PluginHelper {
         const itemId = data.id;
         const item = composition.getEngine().jsonSceneData[itemId] as VFXItemData;
 
-        if (item.type === 'mesh') {
+        if (item.type === spec.ItemType.mesh) {
           const meshItem = item as spec.ModelMeshItem<'json'>;
           const skin = meshItem.content.options.skin;
           const primitives = meshItem.content.options.primitives;
@@ -1027,10 +981,10 @@ export class PluginHelper {
             if (inverseBindMatrices instanceof Float32Array) {
               studioSkin.inverseBindMatrices = inverseBindMatrices;
             } else {
-              console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}`);
+              console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}.`);
             }
           }
-        } else if (item.type === 'tree') {
+        } else if (item.type === spec.ItemType.tree) {
           const jsonItem = item as spec.ModelTreeItem<'json'>;
           const studioItem = item as spec.ModelTreeItem<'studio'>;
           const jsonAnimations = jsonItem.content.options.tree.animations;
@@ -1048,17 +1002,17 @@ export class PluginHelper {
                 if (inputArray instanceof Float32Array) {
                   studioTrack.input = inputArray;
                 } else {
-                  console.error(`setupItem3DOptions: Type of inputArray should be float32, ${inputArray}`);
+                  console.error(`setupItem3DOptions: Type of inputArray should be float32, ${inputArray}.`);
                 }
                 if (outputArray instanceof Float32Array) {
                   studioTrack.output = outputArray;
                 } else {
-                  console.error(`setupItem3DOptions: Type of outputArray should be float32, ${outputArray}`);
+                  console.error(`setupItem3DOptions: Type of outputArray should be float32, ${outputArray}.`);
                 }
               });
             });
           }
-        } else if (item.type === 'skybox') {
+        } else if (item.type === spec.ItemType.skybox) {
           const skybox = item as spec.ModelSkyboxItem<'json'>;
           const studioSkybox = item as spec.ModelSkyboxItem<'studio'>;
           const options = skybox.content.options;
@@ -1066,7 +1020,7 @@ export class PluginHelper {
           const specularImage = this.getTextureObj(composition.textures, options.specularImage);
 
           if (specularImage === undefined) {
-            console.error(`setupItem3DOptions: skybox specualrImage is undefined, ${CheckerHelper.stringify(options)}`);
+            console.error(`setupItem3DOptions: skybox specualrImage is undefined, ${CheckerHelper.stringify(options)}.`);
           }
           studioOptions.specularImage = specularImage;
           //
@@ -1119,7 +1073,7 @@ export class PluginHelper {
       case WebGLRenderingContext['UNSIGNED_BYTE']:
         return array as Uint8Array;
       default:
-        console.error(`Invalid index attribute type ${type}`);
+        console.error(`Invalid index attribute type ${type}.`);
     }
   }
 
@@ -1130,20 +1084,20 @@ export class PluginHelper {
    */
   static getAttributeName (name: string): string {
     switch (name) {
-      case 'POSITION': return 'a_Position';
-      case 'NORMAL': return 'a_Normal';
-      case 'TANGENT': return 'a_Tangent';
-      case 'TEXCOORD_0': return 'a_UV1';
-      case 'TEXCOORD_1': return 'a_UV2';
-      case 'JOINTS_0': return 'a_Joint1';
-      case 'WEIGHTS_0': return 'a_Weight1';
+      case 'POSITION': return 'aPos';
+      case 'NORMAL': return 'aNormal';
+      case 'TANGENT': return 'aTangent';
+      case 'TEXCOORD_0': return 'aUV';
+      case 'TEXCOORD_1': return 'aUV2';
+      case 'JOINTS_0': return 'aJoints';
+      case 'WEIGHTS_0': return 'aWeights';
     }
 
-    if (!name.startsWith('a_')) {
-      // a_Position, a_Normal, a_Tangent,
-      // a_UV1, a_UV2, a_Joint1, a_Weight1
-      // a_Target_XXX
-      console.warn(`Unknown attribute name: ${name}`);
+    if (!name.startsWith('a')) {
+      // aPos, aNormal, aTangent,
+      // aUV, aUV2, aJoints, aWeights
+      // aTargetXXX
+      console.warn(`Unknown attribute name: ${name}.`);
     }
 
     return name;
@@ -1155,13 +1109,13 @@ export class PluginHelper {
    * @param index - 索引
    * @returns
    */
-  static getTextureObj (textures: Texture[], index?: number): Texture | undefined {
+  static getTextureObj (textures: Texture[], index?: number): Texture | null {
     if (typeof index !== 'number') {
-      return index;
+      return null;
     }
 
     if (index < 0 || index >= textures.length) {
-      console.error(`Invalid index for textures: ${index}, ${textures.length}`);
+      console.error(`Invalid index for textures: ${index}, ${textures.length}.`);
     }
 
     return textures[index];
@@ -1227,7 +1181,9 @@ export class WebHelper {
       canvas,
       renderFramework: 'webgl2',
       env: PLAYER_OPTIONS_ENV_EDITOR,
-      willCaptureImage: true,
+      renderOptions: {
+        willCaptureImage: true,
+      },
       manualRender,
     });
   }
@@ -1247,7 +1203,7 @@ export class WebHelper {
    * @returns HTML 图像元素
    */
   static async loadImageFromGLTFImage (image: GLTFImage): Promise<HTMLImageElement> {
-    return loadImage(new Blob([image.imageData as Uint8Array], { type: image.mimeType }));
+    return loadImage(new Blob([image.imageData], { type: image.mimeType }));
   }
 
   /**
@@ -1270,7 +1226,7 @@ export class WebHelper {
         if (b) {
           resolve(b.arrayBuffer());
         } else {
-          reject(Error('no canvas blob'));
+          reject(new Error('No canvas blob.'));
         }
       }, 'image/png', 1);
     });
@@ -1451,13 +1407,13 @@ class AttributeArray {
     //
     this.offset = inAttrib.offset ?? 0;
     if (this.offset > 0) {
-      if (this.offset % this.typeSize !== 0) { console.error(`Invalid offset ${this.offset}, type size ${this.typeSize}`); }
+      if (this.offset % this.typeSize !== 0) { console.error(`Invalid offset ${this.offset}, type size ${this.typeSize}.`); }
       this.offset = this.offset / this.typeSize;
     }
     //
     this.stride = inAttrib.stride ?? 0;
     if (this.stride > 0) {
-      if (this.stride % this.typeSize !== 0) { console.error(`Invalid stride ${this.stride}, type size ${this.typeSize}`); }
+      if (this.stride % this.typeSize !== 0) { console.error(`Invalid stride ${this.stride}, type size ${this.typeSize}.`); }
       this.stride = this.stride / this.typeSize;
     } else {
       this.stride = this.compCount;
@@ -1546,18 +1502,18 @@ export class GeometryBoxProxy {
 
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['a_Position'];
-    const positionArray = geometry.getAttributeData('a_Position') as spec.TypedArray;
+    const positionAttrib = attributes['aPos'];
+    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
     //
-    const jointAttrib = attributes['a_Joint1'];
-    const weightAttrib = attributes['a_Weight1'];
+    const jointAttrib = attributes['aJoints'];
+    const weightAttrib = attributes['aWeights'];
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('a_Joint1') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('a_Weight1') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
+      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1702,18 +1658,18 @@ export class HitTestingProxy {
 
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['a_Position'];
-    const positionArray = geometry.getAttributeData('a_Position') as spec.TypedArray;
+    const positionAttrib = attributes['aPos'];
+    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
     //
-    const jointAttrib = attributes['a_Joint1'];
-    const weightAttrib = attributes['a_Weight1'];
+    const jointAttrib = attributes['aJoints'];
+    const weightAttrib = attributes['aWeights'];
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('a_Joint1') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('a_Weight1') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
+      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1752,7 +1708,7 @@ export class HitTestingProxy {
       const r1 = this.getPosition(i1, p1, q1);
       const r2 = this.getPosition(i2, p2, q2);
 
-      if (r0 === undefined || r1 === undefined || r2 === undefined) {
+      if (!r0 || !r1 || !r2) {
         continue;
       }
 
@@ -1777,11 +1733,11 @@ export class HitTestingProxy {
    * @param vec4 - 临时变量，用于骨骼动画时的计算
    * @returns 顶点位置
    */
-  getPosition (index: number, vec3: Vector3, vec4: Vector4): Vector3 | undefined {
+  getPosition (index: number, vec3: Vector3, vec4: Vector4): Vector3 | null {
     const posData = this.position.getData(index);
 
     if (posData === undefined) {
-      return;
+      return null;
     }
 
     if (this.hasAnimation) {
@@ -2048,7 +2004,7 @@ export class CheckerHelper {
   static checkTexture (v: Texture): boolean {
     if (v instanceof Texture) {
       if (v.isDestroyed) {
-        console.error(`Texture is destroyed, ${v.name}`);
+        console.error(`Texture is destroyed, ${v.name}.`);
       }
 
       return !v.isDestroyed;
@@ -2142,14 +2098,14 @@ export class CheckerHelper {
    */
   static assertGeometry (v: Geometry, s?: ModelSkinOptions) {
     if (!(v instanceof Geometry)) {
-      console.error(`Invalid geometry type ${this.stringify(v)}`);
+      console.error(`Invalid geometry type ${this.stringify(v)}.`);
     }
     // @ts-expect-error
     if (v.isDestroyed === true) {
-      console.error('Geometry object is destroyed');
+      console.error('Geometry object is destroyed.');
     }
     if (!this.checkNonnegative(v.getDrawStart())) {
-      console.error(`Invalid geometry draw start: ${v.getDrawStart()}, ${this.stringify(v)}`);
+      console.error(`Invalid geometry draw start: ${v.getDrawStart()}, ${this.stringify(v)}.`);
     }
     // // drawCount不再为负
     // if (!this.checkPositive(v.getDrawCount())) {
@@ -2176,23 +2132,23 @@ export class CheckerHelper {
     //     }
     //     maxLength = maxIndex + 1;
     //   }
-    //   const positionAttrib = opts.attributes['a_Position'] as Attribute;
+    //   const positionAttrib = opts.attributes['aPos'] as Attribute;
 
     //   if (positionAttrib === undefined) {
     //     throw new Error(`Position attribute is required, ${this.stringify(v)}`);
     //   }
-    //   this.assertGeometryBuffer(v, 'a_Position', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Normal', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Tangent', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_UV1', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Joint1', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Weight1', maxLength);
+    //   this.assertGeometryBuffer(v, 'aPos', maxLength);
+    //   this.assertGeometryBuffer(v, 'aNormal', maxLength);
+    //   this.assertGeometryBuffer(v, 'aTangent', maxLength);
+    //   this.assertGeometryBuffer(v, 'aUV', maxLength);
+    //   this.assertGeometryBuffer(v, 'aJoints', maxLength);
+    //   this.assertGeometryBuffer(v, 'aWeights', maxLength);
 
     //   // 索引检查
     //   if(s !== undefined){
     //     const matLen = s.inverseBindMatrices?.length ?? 0;
     //     if(matLen > 0){
-    //       const jointArray = this.createAttributeArray(v, "a_Joint1");
+    //       const jointArray = this.createAttributeArray(v, "aJoints");
     //       if(jointArray !== undefined){
     //         for(let i = 0; i < maxLength; i++){
     //           const data = jointArray.getData(i);
@@ -2218,7 +2174,7 @@ export class CheckerHelper {
 
     if (attribArray !== undefined) {
       if (attribArray.getLength() < drawCount) {
-        console.error(`${name} Length(${attribArray.getLength()}) is less than draw count(${drawCount}), ${this.stringify(v)}`);
+        console.error(`${name} Length(${attribArray.getLength()}) is less than draw count(${drawCount}), ${this.stringify(v)}.`);
       }
     }
   }
@@ -2253,14 +2209,14 @@ export class CheckerHelper {
    * @param v - 蒙皮参数
    */
   static assertModelSkinOptions (v: ModelSkinOptions) {
-    if (!this.checkStringUndef(v.name)) { console.error(`Invalid skin name ${v.name}, ${this.stringify(v)}`); }
-    if (!this.checkNumberArray(v.joints)) { console.error(`Invalid skin joints ${v.joints}, ${this.stringify(v)}`); }
-    if (!this.checkNumberUndef(v.skeleton)) { console.error(`Invalid skin skeleton ${v.skeleton}, ${this.stringify(v)}`); }
-    if (!this.checkFloat32ArrayUndef(v.inverseBindMatrices)) { console.error(`Invalid skin inverseBindMatrices ${v.inverseBindMatrices}, ${this.stringify(v)}`); }
+    if (!this.checkStringUndef(v.name)) { console.error(`Invalid skin name ${v.name}, ${this.stringify(v)}.`); }
+    if (!this.checkNumberArray(v.joints)) { console.error(`Invalid skin joints ${v.joints}, ${this.stringify(v)}.`); }
+    if (!this.checkNumberUndef(v.skeleton)) { console.error(`Invalid skin skeleton ${v.skeleton}, ${this.stringify(v)}.`); }
+    if (!this.checkFloat32ArrayUndef(v.inverseBindMatrices)) { console.error(`Invalid skin inverseBindMatrices ${v.inverseBindMatrices}, ${this.stringify(v)}.`); }
     //
     if (v.inverseBindMatrices !== undefined) {
-      if (v.inverseBindMatrices.length <= 0 || v.inverseBindMatrices.length % 16 !== 0) { console.error(`Invalid skin inverseBindMatrices length ${v.inverseBindMatrices}, ${this.stringify(v)}`); }
-      if (v.joints.length * 16 !== v.inverseBindMatrices.length) { console.error(`Mismatch: skin joints and inverseBindMatrices length, ${v.joints}, ${v.inverseBindMatrices}, ${this.stringify(v)}`); }
+      if (v.inverseBindMatrices.length <= 0 || v.inverseBindMatrices.length % 16 !== 0) { console.error(`Invalid skin inverseBindMatrices length ${v.inverseBindMatrices}, ${this.stringify(v)}.`); }
+      if (v.joints.length * 16 !== v.inverseBindMatrices.length) { console.error(`Mismatch: skin joints and inverseBindMatrices length, ${v.joints}, ${v.inverseBindMatrices}, ${this.stringify(v)}.`); }
       const mat = new Matrix4();
 
       for (let i = 0; i < v.inverseBindMatrices.length; i += 16) {
@@ -2268,11 +2224,11 @@ export class CheckerHelper {
           mat.elements[j] = v.inverseBindMatrices[i + j];
         }
         if (Math.abs(mat.determinant()) < 1e-5) {
-          console.error(`Determinant of inverseBindMatrices is too small ${mat.determinant()}, index ${i / 16}, ${this.stringify(v)}`);
+          console.error(`Determinant of inverseBindMatrices is too small ${mat.determinant()}, index ${i / 16}, ${this.stringify(v)}.`);
         }
       }
     } else {
-      if (v.joints.length <= 0) { console.error(`Invalid skin joints length ${v.joints}, ${this.stringify(v)}`); }
+      if (v.joints.length <= 0) { console.error(`Invalid skin joints length ${v.joints}, ${this.stringify(v)}.`); }
     }
   }
 
@@ -2282,61 +2238,61 @@ export class CheckerHelper {
    */
   static assertMatOptions (v: ModelMaterialOptions) {
     if (v.type === spec.MaterialType.unlit) {
-      if (!this.checkString(v.name)) { console.error(`Invalid material name ${v.name}, ${this.stringify(v)}`); }
+      if (!this.checkString(v.name)) { console.error(`Invalid material name ${v.name}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkNonnegative4(v.baseColorFactor)) { console.error(`Invalid material baseColorFactor ${v.baseColorFactor}, ${this.stringify(v)}`); }
-      if (!this.checkTextureUndef(v.baseColorTexture)) { console.error(`Invalid material baseColorTexture ${v.baseColorTexture}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.baseColorTextureTransform)) { console.error(`Invalid material baseColorTextureTransform ${v.baseColorTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.baseColorTextureCoordinate)) { console.error(`Invalid material baseColorTextureCoordinate ${v.baseColorTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkNonnegative4(v.baseColorFactor)) { console.error(`Invalid material baseColorFactor ${v.baseColorFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkTextureUndef(v.baseColorTexture)) { console.error(`Invalid material baseColorTexture ${v.baseColorTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.baseColorTextureTransform)) { console.error(`Invalid material baseColorTextureTransform ${v.baseColorTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.baseColorTextureCoordinate)) { console.error(`Invalid material baseColorTextureCoordinate ${v.baseColorTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkBooleanUndef(v.depthMask)) { console.error(`Invalid material depthMask ${v.depthMask}, ${this.stringify(v)}`); }
-      if (!this.checkMatBlending(v.blending)) { console.error(`Invalid material blending ${v.blending}, ${this.stringify(v)}`); }
-      if (!this.checkMatSide(v.side)) { console.error(`Invalid material side ${v.side}, ${this.stringify(v)}`); }
+      if (!this.checkBooleanUndef(v.depthMask)) { console.error(`Invalid material depthMask ${v.depthMask}, ${this.stringify(v)}.`); }
+      if (!this.checkMatBlending(v.blending)) { console.error(`Invalid material blending ${v.blending}, ${this.stringify(v)}.`); }
+      if (!this.checkMatSide(v.side)) { console.error(`Invalid material side ${v.side}, ${this.stringify(v)}.`); }
       if (v.blending === spec.MaterialBlending.masked) {
-        if (v.alphaCutOff === undefined) { console.error(`Material alphaCutOff is required for mask, ${this.stringify(v)}`); }
+        if (v.alphaCutOff === undefined) { console.error(`Material alphaCutOff is required for mask, ${this.stringify(v)}.`); }
       }
-      if (!this.checkNumber01Undef(v.alphaCutOff)) { console.error(`Invalid material alphaCutOff ${v.alphaCutOff}, ${this.stringify(v)}`); }
+      if (!this.checkNumber01Undef(v.alphaCutOff)) { console.error(`Invalid material alphaCutOff ${v.alphaCutOff}, ${this.stringify(v)}.`); }
     } else if (v.type === spec.MaterialType.pbr) {
-      if (!this.checkString(v.name)) { console.error(`Invalid material name ${v.name}, ${this.stringify(v)}`); }
+      if (!this.checkString(v.name)) { console.error(`Invalid material name ${v.name}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkNonnegative4(v.baseColorFactor)) { console.error(`Invalid material baseColorFactor ${v.baseColorFactor}, ${this.stringify(v)}`); }
-      if (!this.checkTextureUndef(v.baseColorTexture)) { console.error(`Invalid material baseColorTexture ${v.baseColorTexture}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.baseColorTextureTransform)) { console.error(`Invalid material baseColorTextureTransform ${v.baseColorTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.baseColorTextureCoordinate)) { console.error(`Invalid material baseColorTextureCoordinate ${v.baseColorTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkNonnegative4(v.baseColorFactor)) { console.error(`Invalid material baseColorFactor ${v.baseColorFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkTextureUndef(v.baseColorTexture)) { console.error(`Invalid material baseColorTexture ${v.baseColorTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.baseColorTextureTransform)) { console.error(`Invalid material baseColorTextureTransform ${v.baseColorTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.baseColorTextureCoordinate)) { console.error(`Invalid material baseColorTextureCoordinate ${v.baseColorTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkBooleanUndef(v.useSpecularAA)) { console.error(`Invalid material useSpecularAA ${v.useSpecularAA}, ${this.stringify(v)}`); }
-      if (!this.checkNumber01(v.metallicFactor)) { console.error(`Invalid material metallicFactor ${v.metallicFactor}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.roughnessFactor)) { console.error(`Invalid material roughnessFactor ${v.roughnessFactor}, ${this.stringify(v)}`); }
-      if (!this.checkTextureUndef(v.metallicRoughnessTexture)) { console.error(`Invalid material metallicRoughnessTexture ${v.metallicRoughnessTexture}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.metallicRoughnessTextureTransform)) { console.error(`Invalid material metallicRoughnessTextureTransform ${v.metallicRoughnessTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.metallicRoughnessTextureCoordinate)) { console.error(`Invalid material metallicRoughnessTextureCoordinate ${v.metallicRoughnessTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkBooleanUndef(v.useSpecularAA)) { console.error(`Invalid material useSpecularAA ${v.useSpecularAA}, ${this.stringify(v)}.`); }
+      if (!this.checkNumber01(v.metallicFactor)) { console.error(`Invalid material metallicFactor ${v.metallicFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.roughnessFactor)) { console.error(`Invalid material roughnessFactor ${v.roughnessFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkTextureUndef(v.metallicRoughnessTexture)) { console.error(`Invalid material metallicRoughnessTexture ${v.metallicRoughnessTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.metallicRoughnessTextureTransform)) { console.error(`Invalid material metallicRoughnessTextureTransform ${v.metallicRoughnessTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.metallicRoughnessTextureCoordinate)) { console.error(`Invalid material metallicRoughnessTextureCoordinate ${v.metallicRoughnessTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkTextureUndef(v.normalTexture)) { console.error(`Invalid material normalTexture ${v.normalTexture}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegativeUndef(v.normalTextureScale)) { console.error(`Invalid material normalTextureScale ${v.normalTextureScale}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.normalTextureTransform)) { console.error(`Invalid material normalTextureTransform ${v.normalTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.normalTextureCoordinate)) { console.error(`Invalid material normalTextureCoordinate ${v.normalTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkTextureUndef(v.normalTexture)) { console.error(`Invalid material normalTexture ${v.normalTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegativeUndef(v.normalTextureScale)) { console.error(`Invalid material normalTextureScale ${v.normalTextureScale}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.normalTextureTransform)) { console.error(`Invalid material normalTextureTransform ${v.normalTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.normalTextureCoordinate)) { console.error(`Invalid material normalTextureCoordinate ${v.normalTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkTextureUndef(v.occlusionTexture)) { console.error(`Invalid material occlusionTexture ${v.occlusionTexture}, ${this.stringify(v)}`); }
-      if (!this.checkNumber01Undef(v.occlusionTextureStrength)) { console.error(`Invalid material occlusionTextureStrength ${v.occlusionTextureStrength}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.occlusionTextureTransform)) { console.error(`Invalid material occlusionTextureTransform ${v.occlusionTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.occlusionTextureCoordinate)) { console.error(`Invalid material occlusionTextureCoordinate ${v.occlusionTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkTextureUndef(v.occlusionTexture)) { console.error(`Invalid material occlusionTexture ${v.occlusionTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkNumber01Undef(v.occlusionTextureStrength)) { console.error(`Invalid material occlusionTextureStrength ${v.occlusionTextureStrength}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.occlusionTextureTransform)) { console.error(`Invalid material occlusionTextureTransform ${v.occlusionTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.occlusionTextureCoordinate)) { console.error(`Invalid material occlusionTextureCoordinate ${v.occlusionTextureCoordinate}, ${this.stringify(v)}.`); }
       //
       //
-      if (!this.checkNonnegative4(v.emissiveFactor)) { console.error(`Invalid material emissiveFactor ${v.emissiveFactor}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.emissiveIntensity)) { console.error(`Invalid material emissiveIntensity ${v.emissiveIntensity}, ${this.stringify(v)}`); }
-      if (!this.checkTextureUndef(v.emissiveTexture)) { console.error(`Invalid material emissiveTexture ${v.emissiveTexture}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.emissiveTextureTransform)) { console.error(`Invalid material emissiveTextureTransform ${v.emissiveTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.emissiveTextureCoordinate)) { console.error(`Invalid material emissiveTextureCoordinate ${v.emissiveTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkNonnegative4(v.emissiveFactor)) { console.error(`Invalid material emissiveFactor ${v.emissiveFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.emissiveIntensity)) { console.error(`Invalid material emissiveIntensity ${v.emissiveIntensity}, ${this.stringify(v)}.`); }
+      if (!this.checkTextureUndef(v.emissiveTexture)) { console.error(`Invalid material emissiveTexture ${v.emissiveTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.emissiveTextureTransform)) { console.error(`Invalid material emissiveTextureTransform ${v.emissiveTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.emissiveTextureCoordinate)) { console.error(`Invalid material emissiveTextureCoordinate ${v.emissiveTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkBooleanUndef(v.depthMask)) { console.error(`Invalid material depthMask ${v.depthMask}, ${this.stringify(v)}`); }
-      if (!this.checkMatBlending(v.blending)) { console.error(`Invalid material blending ${v.blending}, ${this.stringify(v)}`); }
-      if (!this.checkMatSide(v.side)) { console.error(`Invalid material side ${v.side}, ${this.stringify(v)}`); }
+      if (!this.checkBooleanUndef(v.depthMask)) { console.error(`Invalid material depthMask ${v.depthMask}, ${this.stringify(v)}.`); }
+      if (!this.checkMatBlending(v.blending)) { console.error(`Invalid material blending ${v.blending}, ${this.stringify(v)}.`); }
+      if (!this.checkMatSide(v.side)) { console.error(`Invalid material side ${v.side}, ${this.stringify(v)}.`); }
       if (v.blending === spec.MaterialBlending.masked) {
-        if (v.alphaCutOff === undefined) { console.error(`Material alphaCutOff is required for mask, ${this.stringify(v)}`); }
+        if (v.alphaCutOff === undefined) { console.error(`Material alphaCutOff is required for mask, ${this.stringify(v)}.`); }
       }
-      if (!this.checkNumber01Undef(v.alphaCutOff)) { console.error(`Invalid material alphaCutOff ${v.alphaCutOff}, ${this.stringify(v)}`); }
+      if (!this.checkNumber01Undef(v.alphaCutOff)) { console.error(`Invalid material alphaCutOff ${v.alphaCutOff}, ${this.stringify(v)}.`); }
     } else {
-      console.error(`Invalid material type ${this.stringify(v)}`);
+      console.error(`Invalid material type ${this.stringify(v)}.`);
     }
   }
 
@@ -2358,7 +2314,7 @@ export class CheckerHelper {
    * @param v - Model 插件 Mesh 参数
    */
   static assertModelMeshOptions (v: ModelMeshOptions) {
-    if (!this.checkParent(v.parent)) { console.error(`Invalid mesh parent ${v.parent}, ${this.stringify(v)}`); }
+    if (!this.checkParent(v.parent)) { console.error(`Invalid mesh parent ${v.parent}, ${this.stringify(v)}.`); }
 
     if (v.skin !== undefined) { this.assertModelSkinOptions(v.skin); }
 
@@ -2368,7 +2324,7 @@ export class CheckerHelper {
       const prim = v.primitives[i];
 
       if (!this.assertPrimOptions(prim)) {
-        console.error(`Invalid primitive ${prim}, ${this.stringify(v)}`);
+        console.error(`Invalid primitive ${prim}, ${this.stringify(v)}.`);
       }
       const morph = new PMorph();
 
@@ -2381,11 +2337,11 @@ export class CheckerHelper {
       const morph1 = morphList[i];
 
       if (!morph0.equals(morph1)) {
-        console.error(`Morph states mismatch: ${this.stringify(morph0)}, ${this.stringify(morph1)}, ${this.stringify(v)}`);
+        console.error(`Morph states mismatch: ${this.stringify(morph0)}, ${this.stringify(morph1)}, ${this.stringify(v)}.`);
       }
     }
 
-    if (!this.checkBooleanUndef(v.hide)) { console.error(`Invalid mesh hide ${v.hide}, ${this.stringify(v)}`); }
+    if (!this.checkBooleanUndef(v.hide)) { console.error(`Invalid mesh hide ${v.hide}, ${this.stringify(v)}.`); }
   }
 
   /**
@@ -2393,12 +2349,12 @@ export class CheckerHelper {
    * @param v - Model 插件相机参数
    */
   static assertModelCameraOptions (v: ModelCameraOptions) {
-    if (!this.checkParent(v.parent)) { console.error(`Invalid camera parent ${v.parent}, ${this.stringify(v)}`); }
-    if (!this.checkNumberUndef(v.aspect)) { console.error(`Invalid camera aspect ${v.aspect}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.near)) { console.error(`Invalid camera near ${v.near}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.far) || v.far <= v.near) { console.error(`Invalid camera far ${v.far}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.fov)) { console.error(`Invalid camera fov ${v.fov}, ${this.stringify(v)}`); }
-    if (!this.checkNumber01(v.clipMode)) { console.error(`Invalid camera clipMode ${v.clipMode}, ${this.stringify(v)}`); }
+    if (!this.checkParent(v.parent)) { console.error(`Invalid camera parent ${v.parent}, ${this.stringify(v)}.`); }
+    if (!this.checkNumberUndef(v.aspect)) { console.error(`Invalid camera aspect ${v.aspect}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.near)) { console.error(`Invalid camera near ${v.near}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.far) || v.far <= v.near) { console.error(`Invalid camera far ${v.far}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.fov)) { console.error(`Invalid camera fov ${v.fov}, ${this.stringify(v)}.`); }
+    if (!this.checkNumber01(v.clipMode)) { console.error(`Invalid camera clipMode ${v.clipMode}, ${this.stringify(v)}.`); }
   }
 
   /**
@@ -2407,27 +2363,27 @@ export class CheckerHelper {
    */
   static assertModelLightOptions (v: ModelLightOptions) {
     if (v.lightType === 'directional') {
-      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}`); }
+      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}.`); }
     } else if (v.lightType === 'point') {
-      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.range)) { console.error(`Invalid light range ${v.range}, ${this.stringify(v)}`); }
+      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.range)) { console.error(`Invalid light range ${v.range}, ${this.stringify(v)}.`); }
     } else if (v.lightType === 'spot') {
-      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.range)) { console.error(`Invalid light range ${v.range}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.innerConeAngle)) { console.error(`Invalid light innerConeAngle ${v.innerConeAngle}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.outerConeAngle)) { console.error(`Invalid light outerConeAngle ${v.outerConeAngle}, ${this.stringify(v)}`); }
+      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.range)) { console.error(`Invalid light range ${v.range}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.innerConeAngle)) { console.error(`Invalid light innerConeAngle ${v.innerConeAngle}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.outerConeAngle)) { console.error(`Invalid light outerConeAngle ${v.outerConeAngle}, ${this.stringify(v)}.`); }
     } else if (v.lightType === 'ambient') {
-      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}`); }
+      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}.`); }
     } else {
-      console.error(`Invalid light type ${this.stringify(v)}`);
+      console.error(`Invalid light type ${this.stringify(v)}.`);
     }
   }
 
@@ -2436,27 +2392,27 @@ export class CheckerHelper {
    * @param v - Model 插件天空盒参数
    */
   static assertModelSkyboxOptions (v: ModelSkyboxOptions) {
-    if (!this.checkBoolean(v.renderable)) { console.error(`Invalid skybox renderable ${v.renderable}, ${this.stringify(v)}`); }
-    if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid skybox intensity ${v.intensity}, ${this.stringify(v)}`); }
-    if (!this.checkNonnegative(v.reflectionsIntensity)) { console.error(`Invalid skybox reflectionsIntensity ${v.reflectionsIntensity}, ${this.stringify(v)}`); }
+    if (!this.checkBoolean(v.renderable)) { console.error(`Invalid skybox renderable ${v.renderable}, ${this.stringify(v)}.`); }
+    if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid skybox intensity ${v.intensity}, ${this.stringify(v)}.`); }
+    if (!this.checkNonnegative(v.reflectionsIntensity)) { console.error(`Invalid skybox reflectionsIntensity ${v.reflectionsIntensity}, ${this.stringify(v)}.`); }
     //
     const c = v.irradianceCoeffs;
 
     if (c !== undefined) {
-      if (!Array.isArray(c) || c.length != 9) { console.error(`Invalid skybox irradianceCoeffs ${c}, ${this.stringify(v)}`); }
+      if (!Array.isArray(c) || c.length != 9) { console.error(`Invalid skybox irradianceCoeffs ${c}, ${this.stringify(v)}.`); }
       c.forEach(v => {
-        if (!this.checkVec3(v as spec.vec3)) { console.error(`Invalid skybox irradianceCoeffs ${c}, ${this.stringify(v)}`); }
+        if (!this.checkVec3(v as spec.vec3)) { console.error(`Invalid skybox irradianceCoeffs ${c}, ${this.stringify(v)}.`); }
       });
     } else if (v.diffuseImage !== undefined) {
-      if (!this.checkTexture(v.diffuseImage)) { console.error(`Invalid skybox diffuseImage ${v.diffuseImage}, ${this.stringify(v)}`); }
+      if (!this.checkTexture(v.diffuseImage)) { console.error(`Invalid skybox diffuseImage ${v.diffuseImage}, ${this.stringify(v)}.`); }
     } else {
-      console.error(`Invalid skybox, irradianceCoeffs or diffuseImage should give one, ${this.stringify(v)}`);
+      console.error(`Invalid skybox, irradianceCoeffs or diffuseImage should give one, ${this.stringify(v)}.`);
     }
-    if (!this.checkTexture(v.specularImage)) { console.error(`Invalid skybox specularImage ${v.specularImage}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.specularImageSize)) { console.error(`Invalid skybox specularImageSize ${v.specularImageSize}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.specularMipCount)) { console.error(`Invalid skybox specularMipCount ${v.specularMipCount}, ${this.stringify(v)}`); }
+    if (!this.checkTexture(v.specularImage)) { console.error(`Invalid skybox specularImage ${v.specularImage}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.specularImageSize)) { console.error(`Invalid skybox specularImageSize ${v.specularImageSize}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.specularMipCount)) { console.error(`Invalid skybox specularMipCount ${v.specularMipCount}, ${this.stringify(v)}.`); }
     if (this.pow2(v.specularMipCount) > v.specularImageSize) {
-      console.error(`Invalid skybox specularMipCount or specularImageSize, ${this.stringify(v)}`);
+      console.error(`Invalid skybox specularMipCount or specularImageSize, ${this.stringify(v)}.`);
     }
   }
 
@@ -2500,10 +2456,10 @@ export class CheckerHelper {
    * @param v - Model 插件动画参数
    */
   static assertModelAnimOptions (v: ModelAnimationOptions) {
-    if (!this.checkStringUndef(v.name)) { console.error(`Invalid animation name ${v.name}, ${this.stringify(v)}`); }
-    if (!Array.isArray(v.tracks)) { console.error(`Invalid animation tracks ${v.tracks}, ${this.stringify(v)}`); }
+    if (!this.checkStringUndef(v.name)) { console.error(`Invalid animation name ${v.name}, ${this.stringify(v)}.`); }
+    if (!Array.isArray(v.tracks)) { console.error(`Invalid animation tracks ${v.tracks}, ${this.stringify(v)}.`); }
     v.tracks.forEach(t => {
-      if (!this.checkModelAnimTrackOptions(t)) { console.error(`Invalid animation track ${t}, ${this.stringify(v)}`); }
+      if (!this.checkModelAnimTrackOptions(t)) { console.error(`Invalid animation track ${t}, ${this.stringify(v)}.`); }
     });
   }
 
@@ -2512,12 +2468,12 @@ export class CheckerHelper {
    * @param v - 场景树参数
    */
   static assertTreeOptions (v: ModelTreeOptions) {
-    if (!this.checkNumberUndef(v.animation)) { console.error(`Invalid tree animation ${v.animation}, ${this.stringify(v)}`); }
+    if (!this.checkNumberUndef(v.animation)) { console.error(`Invalid tree animation ${v.animation}, ${this.stringify(v)}.`); }
     if (v.animations !== undefined) {
-      if (!Array.isArray(v.animations)) { console.error(`Invalid tree animations ${v.animations}, ${this.stringify(v)}`); }
+      if (!Array.isArray(v.animations)) { console.error(`Invalid tree animations ${v.animations}, ${this.stringify(v)}.`); }
       v.animations.forEach(anim => { this.assertModelAnimOptions(anim); });
       if (v.animation !== undefined) {
-        if (v.animation < -1 || v.animation >= v.animations.length) { console.error(`Invalid tree animations ${v.animations}, ${this.stringify(v)}`); }
+        if (v.animation < -1 || v.animation >= v.animations.length) { console.error(`Invalid tree animations ${v.animations}, ${this.stringify(v)}.`); }
       }
     }
   }

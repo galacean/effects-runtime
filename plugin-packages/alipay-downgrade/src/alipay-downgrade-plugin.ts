@@ -1,36 +1,20 @@
-import type { Player, SceneLoadOptions, spec } from '@galacean/effects';
+import type { SceneLoadOptions, spec } from '@galacean/effects';
 import { AbstractPlugin } from '@galacean/effects';
-import { checkDowngrade, getRenderLevelByDevice } from './utils';
+import { checkDowngradeResult, getRenderLevelByDevice } from './utils';
 
 export class AlipayDowngradePlugin extends AbstractPlugin {
-  static currentBizId = '';
-  static glLostOccurred = false;
-
-  static async onPlayerCreated (player: Player) {
-    if (AlipayDowngradePlugin.glLostOccurred) {
-      console.warn('gl lost happened, new player will be destroyed.');
-
-      return player.dispose();
-    }
-    if (AlipayDowngradePlugin.currentBizId) {
-      const result = await checkDowngrade(AlipayDowngradePlugin.currentBizId);
-
-      if (result.downgrade) {
-        console.warn('automatically destroy downgraded player.');
-        player.dispose();
-      }
-    }
-  }
-
   static override async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions = {}) {
-    if (AlipayDowngradePlugin.glLostOccurred) {
-      return Promise.reject('gl lost happened');
-    }
 
-    const result = await checkDowngrade(options.pluginData?.['alipayBizId'] ?? AlipayDowngradePlugin.currentBizId);
+    const downgradeResult = options.pluginData?.['downgrade'];
 
-    if (result.downgrade) {
-      throw new Error(`downgraded, reason: ${result.reason}`);
+    if (downgradeResult) {
+      const downgradeDecision = checkDowngradeResult(downgradeResult);
+
+      if (downgradeDecision.downgrade) {
+        throw new Error(`Downgraded, reason: ${downgradeDecision.reason}.`);
+      }
+    } else {
+      console.warn('No downgrade result in pluginData of SceneLoadOptions.');
     }
 
     if (!options.renderLevel) {

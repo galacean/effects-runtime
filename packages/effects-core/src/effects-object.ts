@@ -1,4 +1,4 @@
-import type { EffectsObjectData } from './asset-loader';
+import type * as spec from '@galacean/effects-specification';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
 import { serialize } from './decorators';
@@ -8,6 +8,10 @@ import { serialize } from './decorators';
  * @internal
  */
 export abstract class EffectsObject {
+  static is (obj: unknown): obj is EffectsObject {
+    return obj instanceof EffectsObject && 'guid' in obj;
+  }
+
   @serialize()
   protected guid: string;
   /**
@@ -33,14 +37,14 @@ export abstract class EffectsObject {
     this.engine.addInstance(this);
   }
 
-  toData () {}
+  toData () { }
 
   /**
    * 反序列化函数
    *
    * @param data - 对象的序列化的数据
    */
-  fromData (data: EffectsObjectData) {
+  fromData (data: spec.EffectsObjectData) {
     if (data.id) {
       this.setInstanceId(data.id);
     }

@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects",
-  "version": "1.2.1",
+  "version": "1.6.1",
   "description": "Galacean Effects runtime player for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -19,11 +19,19 @@
       "import": "./dist/weapp.mjs",
       "require": "./dist/weapp.js",
       "types": "./dist/index.d.ts"
+    },
+    "./alipay": {
+      "import": "./dist/alipay.mjs",
+      "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "typesVersions": {
     "*": {
       "weapp": [
+        "./dist/index.d.ts"
+      ],
+      "alipay": [
         "./dist/index.d.ts"
       ]
     }
@@ -32,8 +40,8 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [

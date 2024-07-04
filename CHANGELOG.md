@@ -6,6 +6,148 @@
 - Major version release is not included in this schedule for breaking change and new features.
 
 ---
+
+## 1.6.1
+
+`2024-07-02`
+
+- Fix: Fixed the text layout issue caused by fontSize. [#469](https://github.com/galacean/effects-runtime/pull/469) @Sruimeng
+
+## 1.6.0
+
+`2024-06-28`
+
+- Feat: Add control parameters for interactive elements. [#443](https://github.com/galacean/effects-runtime/pull/443) @RGCHN
+- Feat: Add segment duration during loading. [#442](https://github.com/galacean/effects-runtime/pull/442) @Sruimeng
+- Feat: Add interfaces for Composition and Spine elements. [#432](https://github.com/galacean/effects-runtime/pull/432) @RGCHN
+- Build: Add alpha/beta release commands. [#434](https://github.com/galacean/effects-runtime/pull/434) @yiiqii
+- Fix: Fix the vertical alignment issue with multi-line text. [#455](https://github.com/galacean/effects-runtime/pull/455) [#456](https://github.com/galacean/effects-runtime/pull/456) @Sruimeng
+- Fix: transparent object sort problem. [#458](https://github.com/galacean/effects-runtime/pull/458) @liuxi150
+
+## 1.5.2
+
+`2024-06-21`
+
+- Fix: base color index problem. [#441](https://github.com/galacean/effects-runtime/pull/441) @liuxi150
+
+## 1.5.1
+
+`2024-06-05`
+
+- Fix: Added a toggle to enable or disable the listening for the WebGL Context Lost event on the window. [#405](https://github.com/galacean/effects-runtime/pull/405) @liuxi150
+- Chore: Modify the resizeRule type. [#407](https://github.com/galacean/effects-runtime/pull/407) @RGCHN
+
+## 1.5.0
+
+`2024-06-03`
+
+- Feat: Added compatibility and packaging for Alipay Mini Program. [#370](https://github.com/galacean/effects-runtime/pull/370) @RGCHN
+  - Feat: Downgraded plugin support for mini programs. [#385](https://github.com/galacean/effects-runtime/pull/385) @RGCHN
+  - Build: Added Alipay Mini Program packaging configuration. [#388](https://github.com/galacean/effects-runtime/pull/388) @RGCHN
+- Feat: Spine upgrade and modification of scaling rules. [#367](https://github.com/galacean/effects-runtime/pull/367) @RGCHN
+- Fix: Removed the triggering of webglcontextlost event upon player destruction. [#371](https://github.com/galacean/effects-runtime/pull/371) @RGCHN
+- Test: fix frame compare. [#386](https://github.com/galacean/effects-runtime/pull/386) @liuxi150
+
+## 1.4.5
+
+`2024-05-29`
+
+- Fix: Added error catching during the rendering process. [#380](https://github.com/galacean/effects-runtime/pull/380) @Sruimeng
+
+## 1.4.4
+
+`2024-05-17`
+
+- Fix: Fixed an issue with fontFamily parsing errors on iOS11/12.
+ [#356](https://github.com/galacean/effects-runtime/pull/356) [#361](https://github.com/galacean/effects-runtime/pull/361) @Sruimeng @yiiqii
+- Fix: Added compatibility for Spine products that do not have a default skin.
+ [#352](https://github.com/galacean/effects-runtime/pull/352) @RGCHN
+
+## 1.4.3
+
+`2024-05-14`
+
+- Fix: 3d editor problem. [#344](https://github.com/galacean/effects-runtime/pull/344) @liuxi150
+
+## 1.4.2
+
+`2024-05-10`
+
+- Feat: Gyroscope changes are based on the user's initial angle. [#323](https://github.com/galacean/effects-runtime/pull/323) @RGCHN
+
+
+## 1.4.1
+
+`2024-05-06`
+
+- Fix: Changed all calculations returning from BEZIER_CURVE_PATH to Vector3. [#326](https://github.com/galacean/effects-runtime/pull/326) @RGCHN
+
+## 1.4.0
+
+`2024-04-28`
+
+- Feat: Added support for Bezier velocity and path curve processing. [#288](https://github.com/galacean/effects-runtime/pull/288) @RGCHN
+- Fix: Fixed issues with Bezier integration and occasional stuttering of some particles. [#305](https://github.com/galacean/effects-runtime/pull/305) @RGCHN
+- Test: Updated unit tests related to curves. [#318](https://github.com/galacean/effects-runtime/pull/318) @RGCHN
+
+## 1.3.2
+
+`2024-04-26`
+
+- Fix: Fixed a rendering order issue when multiple references to the same pre-composition element were made. [#312](https://github.com/galacean/effects-runtime/pull/312) @RGCHN
+- Fix: Addressed the issue where pre-composition elements were not created at initialization. [#309](https://github.com/galacean/effects-runtime/pull/309) @RGCHN
+- Fix: Resolved the issue where pre-composition scaling settings were not taking effect. [#296](https://github.com/galacean/effects-runtime/pull/296) @RGCHN
+
+## 1.3.1
+
+`2024-04-19`
+
+- Fix: image template variables is images. [#282](https://github.com/galacean/effects-runtime/pull/282) @Sruimeng
+
+## 1.3.0
+
+`2024-04-16`
+
+- Feat: Added gyroscope support for changing the rotation angle of elements. [#259](https://github.com/galacean/effects-runtime/pull/259) @RGCHN
+- Feat: video template. [#224](https://github.com/galacean/effects-runtime/pull/224) @Sruimeng
+
+## 1.2.6
+
+`2024-04-12`
+
+- Fix: Resolved an issue with layer size inheritance caused by the update order. [#256](https://github.com/galacean/effects-runtime/pull/256) @RGCHN
+
+## 1.2.5
+
+`2024-04-09`
+
+- Fix: Fixed the issue where the message element did not trigger the end event when reused. [#247](https://github.com/galacean/effects-runtime/pull/247) @RGCHN
+
+## 1.2.4
+
+`2024-04-08`
+
+- Fix: Fixed the issue of unisolated assetManager parameters.[#242](https://github.com/galacean/effects-runtime/pull/242) @RGCHN
+- Fix: Fixed the file path issue with fonts and bins.
+[#226](https://github.com/galacean/effects-runtime/pull/226) @RGCHN
+- Fix: Fixed the error in pixel to world coordinate conversion. [#233](https://github.com/galacean/effects-runtime/pull/233) @RGCHN
+- Fix: miniprogram canvas type. [#230](https://github.com/galacean/effects-runtime/pull/230) @Sruimeng
+
+## 1.2.3
+
+`2024-03-22`
+
+- Fix: Compatibility with data template text modification method. [#214](https://github.com/galacean/effects-runtime/pull/214) @Sruimeng
+
+## 1.2.2
+
+`2024-03-15`
+
+- Fix: Fixed the type inference issue in `loadScene`. [#206](https://github.com/galacean/effects-runtime/pull/206) @RGCHN
+- Fix: Fixed the flickering issue when switching spine animations. [#200](https://github.com/galacean/effects-runtime/pull/200) @RGCHN
+- Fix: Text line height bug with setFontSize. [#199](https://github.com/galacean/effects-runtime/pull/199) @Sruimeng
+- Test: Fix memory cases. [#190](https://github.com/galacean/effects-runtime/pull/190) @liuxi150
+
 ## 1.2.1
 
 `2024-03-01`

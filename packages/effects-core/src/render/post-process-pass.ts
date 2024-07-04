@@ -11,6 +11,8 @@ import { RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
 import type { ShaderWithSource } from './shader';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 
 // Bloom 阈值 Pass
 export class BloomThresholdPass extends RenderPass {
@@ -54,9 +56,9 @@ export class BloomThresholdPass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
     this.sceneTextureHandle.texture = this.mainTexture;
-    renderer.setFrameBuffer(this.frameBuffer!);
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
@@ -125,8 +127,8 @@ export class HQGaussianDownSamplePass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
-    renderer.setFrameBuffer(this.frameBuffer!);
+    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
@@ -139,9 +141,8 @@ export class HQGaussianDownSamplePass extends RenderPass {
     this.screenMesh.material.setVector2('_TextureSize', getTextureSize(this.mainTexture));
     renderer.renderMeshes([this.screenMesh]);
     if (this.type === 'V') {
-      this.gaussianResult.texture = renderer.getFrameBuffer()!.getColorTextures()[0];
+      this.gaussianResult.texture = renderer.getFramebuffer()!.getColorTextures()[0];
     }
-
   }
 }
 
@@ -186,8 +187,8 @@ export class HQGaussianUpSamplePass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
-    renderer.setFrameBuffer(this.frameBuffer!);
+    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
@@ -249,11 +250,11 @@ export class ToneMappingPass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
     if (!this.sceneTextureHandle.texture) {
       this.sceneTextureHandle.texture = this.mainTexture;
     }
-    renderer.setFrameBuffer(null);
+    renderer.setFramebuffer(null);
   }
 
   override execute (renderer: Renderer): void {
@@ -262,7 +263,12 @@ export class ToneMappingPass extends RenderPass {
       depthAction: TextureStoreAction.clear,
       stencilAction: TextureStoreAction.clear,
     });
-    const { bloomIntensity, brightness, saturation, contrast, useBloom, useToneMapping } = renderer.renderingData.currentFrame.globalVolume;
+    const {
+      useBloom, bloomIntensity,
+      brightness, saturation, contrast,
+      useToneMapping,
+      vignetteIntensity, vignetteSmoothness, vignetteRoundness,
+    } = renderer.renderingData.currentFrame.globalVolume;
 
     this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
     this.screenMesh.material.setFloat('_Brightness', brightness);
@@ -273,6 +279,13 @@ export class ToneMappingPass extends RenderPass {
     if (useBloom) {
       this.screenMesh.material.setTexture('_GaussianTex', this.mainTexture);
       this.screenMesh.material.setFloat('_BloomIntensity', bloomIntensity);
+    }
+    if (vignetteIntensity > 0) {
+      this.screenMesh.material.setFloat('_VignetteIntensity', vignetteIntensity);
+      this.screenMesh.material.setFloat('_VignetteSmoothness', vignetteSmoothness);
+      this.screenMesh.material.setFloat('_VignetteRoundness', vignetteRoundness);
+      this.screenMesh.material.setVector2('_VignetteCenter', new Vector2(0.5, 0.5));
+      this.screenMesh.material.setVector3('_VignetteColor', new Vector3(0.0, 0.0, 0.0));
     }
     this.screenMesh.material.setInt('_UseToneMapping', useToneMapping);
     renderer.renderMeshes([this.screenMesh]);

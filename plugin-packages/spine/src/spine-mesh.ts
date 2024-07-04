@@ -1,13 +1,14 @@
-import type { Texture, Attribute, SharedShaderWithSource, Engine, Disposable } from '@galacean/effects';
-import {
-  PLAYER_OPTIONS_ENV_EDITOR, Mesh, Geometry, Material, setMaskMode,
-  GLSLVersion, glContext, createShaderWithMarcos, ShaderType, math,
-} from '@galacean/effects';
 import type { BlendMode } from '@esotericsoftware/spine-core';
-import { SlotGroup } from './slot-group';
-import { setBlending } from './utils';
+import type {
+  Attribute, Disposable, Engine, ShaderMacros, SharedShaderWithSource, Texture,
+} from '@galacean/effects';
+import {
+  GLSLVersion, Geometry, Material, Mesh, PLAYER_OPTIONS_ENV_EDITOR, glContext, math, setMaskMode,
+} from '@galacean/effects';
 import fs from './shader/fragment.glsl';
 import vs from './shader/vertex.glsl';
+import { SlotGroup } from './slot-group';
+import { setBlending } from './utils';
 
 export interface SpineMeshRenderInfo {
   texture: Texture,
@@ -105,7 +106,7 @@ export class SpineMesh implements Disposable {
       });
 
     material.setTexture('uTexture', this.lastTexture);
-    material.setMatrix('uModel', math.Matrix4.fromIdentity());
+    material.setMatrix('effects_ObjectToWorld', math.Matrix4.fromIdentity());
     material.blending = true;
     material.culling = false;
     material.depthTest = false;
@@ -120,7 +121,7 @@ export class SpineMesh implements Disposable {
 
   updateMesh (vertices: number[], indices: number[], verticesLength: number) {
     if (!this.vertices || !this.indices) {
-      throw new Error('Can not update SpineMesh after dispose');
+      throw new Error('Can not update SpineMesh after dispose.');
     }
     const verticesStart = this.verticesLength;
     const indexStart = this.indicesLength;
@@ -137,7 +138,7 @@ export class SpineMesh implements Disposable {
 
   endUpdate (worldMatrix: math.Matrix4) {
     if (!this.vertices || !this.indices) {
-      throw new Error('Can not update SpineMesh after dispose');
+      throw new Error('Can not update SpineMesh after dispose.');
     }
     for (let i = this.verticesLength; i < this.vertices.length; i++) {
       this.vertices[i] = 0;
@@ -148,7 +149,7 @@ export class SpineMesh implements Disposable {
     this.geometry.setAttributeData('aPosition', this.vertices);
     this.geometry.setIndexData(this.indices);
     this.geometry.setDrawCount(this.indicesLength);
-    this.material.setMatrix('uModel', worldMatrix);
+    this.material.setMatrix('effects_ObjectToWorld', worldMatrix);
   }
 
   startUpdate () {
@@ -165,16 +166,15 @@ export class SpineMesh implements Disposable {
 
 export function createShader (engine: Engine): SharedShaderWithSource {
   const env = engine.renderer.env;
-  const level = engine.gpuCapability.level;
-  const marcos: [key: string, val: boolean][] = [
+  const macros: ShaderMacros = [
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];
 
   return {
-    fragment: createShaderWithMarcos(marcos, fs, ShaderType.fragment, level),
-    vertex: createShaderWithMarcos(marcos, vs, ShaderType.vertex, level),
+    fragment: fs,
+    vertex: vs,
     glslVersion: GLSLVersion.GLSL1,
-    marcos,
+    macros,
     shared: true,
   };
 }

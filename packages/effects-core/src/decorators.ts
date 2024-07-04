@@ -1,18 +1,28 @@
-export const effectsClassStore: Record<number, any> = {};
-const decoratorInitialStore: Record<string, any> = {};
-const mergedStore: Record<string, any> = {};
+import type { Constructor } from './utils';
 
-function getDirectStore (target: any) {
-  const classKey = target.constructor.name;
+type PropertyDescriptor = { type?: Constructor, sourceName?: string };
+type SerializableMemberStoreType = Record<string, Record<string | symbol, PropertyDescriptor>>;
 
-  if (!(decoratorInitialStore)[classKey]) {
-    (decoratorInitialStore)[classKey] = {};
-  }
+const decoratorInitialStore: SerializableMemberStoreType = {};
+const mergedStore: SerializableMemberStoreType = {};
 
-  return decoratorInitialStore[classKey];
+export const effectsClassStore: Record<string, any> = {};
+
+export function effectsClass (className: string) {
+  return (target: Object, context?: unknown) => {
+    if (effectsClassStore[className]) {
+      console.warn(`Class ${className} is already registered.`);
+    }
+    // TODO: three修改json dataType, 这边重复注册直接 return
+    effectsClassStore[className] = target;
+  };
 }
 
-export function getMergedStore (target: any): any {
+export function serialize (type?: Constructor, sourceName?: string) {
+  return generateSerializableMember(type, sourceName); // value member
+}
+
+export function getMergedStore (target: Object): Record<string, any> {
   const classKey = target.constructor.name;
 
   if (mergedStore[classKey]) {
@@ -44,26 +54,23 @@ export function getMergedStore (target: any): any {
   return store;
 }
 
-export function serialize (sourceName?: string) {
-  return generateSerializableMember(0, sourceName); // value member
-}
-
-export function effectsClass (className: any) {
-  return (target: any, context?: any) => {
-    if (effectsClassStore[className]) {
-      console.warn('Class ' + className + ' 重复注册');
-    }
-    //TODO: three修改json dataType, 这边重复注册直接 return
-    effectsClassStore[className] = target;
-  };
-}
-
-function generateSerializableMember (type: number, sourceName?: string) {
-  return (target: any, propertyKey: any) => {
+function generateSerializableMember (type?: Constructor, sourceName?: string) {
+  return (target: Object, propertyKey: string | symbol) => {
     const classStore = getDirectStore(target);
 
     if (!classStore[propertyKey]) {
-      classStore[propertyKey] = { type: type, sourceName: sourceName };
+      classStore[propertyKey] = { type, sourceName };
     }
   };
 }
+
+function getDirectStore (target: Object) {
+  const classKey = target.constructor.name;
+
+  if (!decoratorInitialStore[classKey]) {
+    decoratorInitialStore[classKey] = {};
+  }
+
+  return decoratorInitialStore[classKey];
+}
+

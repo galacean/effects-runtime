@@ -1,6 +1,5 @@
+import type { GLType } from '../gl';
 import type { Immutable } from '../utils';
-
-export type GLType = 'webgl' | 'webgl2';
 
 export interface GPUCapabilityDetail {
   floatTexture: number,
@@ -24,7 +23,7 @@ export interface GPUCapabilityDetail {
   //draw elements use uint32 Array
   intIndexElementBuffer?: boolean,
   //render pass depth and stencil texture readable
-  //in webgl, if not readable,use RenderBuffer which cannot readable
+  //in webgl, if not readable,use Renderbuffer which cannot readable
   readableDepthStencilTextures?: boolean,
   writableFragDepth?: boolean,
   standardDerivatives: boolean,
@@ -124,7 +123,7 @@ export class GPUCapability {
     const ext = this.drawBufferExtension;
 
     if (this.level === 1 && !ext && index > 0) {
-      throw new Error('draw multiple color buffers not available');
+      throw new Error('Draw multiple color buffers not available.');
     }
     const attachment = ext ?
       ext[`COLOR_ATTACHMENT${index}_WEBGL` as keyof WEBGL_draw_buffers] as number :
@@ -133,7 +132,7 @@ export class GPUCapability {
     if (attachment) {
       gl.framebufferTexture2D(target, attachment, textarget, texture, 0);
     } else {
-      console.error('invalid color attachment index: ' + index);
+      console.error(`Invalid color attachment index: ${index}.`);
     }
   }
 
@@ -142,7 +141,7 @@ export class GPUCapability {
 
     if (this.level === 1 && !ext) {
       if (bufferStates.length > 1) {
-        throw Error('draw buffers not available');
+        throw new Error('Draw buffers not available.');
       } else {
         return;
       }
@@ -190,11 +189,11 @@ function checkLinearTextureFilter (gl: WebGL2RenderingContext, type: number): bo
   return ret;
 }
 
-export const COMPRESSED_TEXTURE = {
-  NONE : 0,
-  PVRTC : 1,
-  ASTC : 2,
-};
+export enum COMPRESSED_TEXTURE {
+  NONE = 0,
+  PVRTC = 1,
+  ASTC = 2,
+}
 
 function registerCompressedTexture (gl: WebGLRenderingContext | WebGL2RenderingContext): number {
   if (gl.getExtension('WEBGL_compressed_texture_astc')) {

@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { PLight, PLightType, PObjectType, WebHelper } from '@galacean/effects-plugin-model';
-import { loadGLTFScene } from '@galacean/effects-plugin-model/helper';
+import { loadGLTF } from '../../src/helper';
 import { generateComposition } from './utilities';
 
 const { expect } = chai;
@@ -12,7 +12,7 @@ describe('运行时测试', function () {
 
   it('PLight测试', async function () {
     const url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/frog_flower.glb';
-    const scene = await loadGLTFScene({ url, player });
+    const scene = await loadGLTF({ url, player });
     const comp = await generateComposition(
       player,
       scene,

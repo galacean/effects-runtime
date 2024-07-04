@@ -1,12 +1,7 @@
 import type {
-  Engine,
-  Texture2DSourceOptionsCompressed,
-  Texture2DSourceOptionsData,
-  Texture2DSourceOptionsFrameBuffer,
-  Texture2DSourceOptionsImage,
-  Texture2DSourceOptionsVideo,
-  TextureDataType,
-  TextureSourceOptions,
+  Engine, Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData,
+  Texture2DSourceOptionsFramebuffer, Texture2DSourceOptionsImage,
+  Texture2DSourceOptionsVideo, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects-core';
 import * as THREE from 'three';
@@ -103,8 +98,7 @@ export class ThreeTexture extends Texture {
    * @param options - 纹理选项
    * @returns 组装后的纹理选项
    */
-  // @ts-expect-error
-  assembleOptions (options: TextureSourceOptions) {
+  override assembleOptions (options: TextureSourceOptions): TextureSourceOptions {
     const { target = glContext.TEXTURE_2D } = options;
 
     if (!options.sourceType) {
@@ -119,6 +113,7 @@ export class ThreeTexture extends Texture {
       }
     }
 
+    // @ts-expect-error
     return {
       target,
       format: THREE.RGBAFormat,
@@ -136,6 +131,17 @@ export class ThreeTexture extends Texture {
    */
   dispose () {
     this.texture.dispose();
+  }
+
+  /**
+   * 通过图层设置创建贴图
+   * @param data - 图层设置
+   */
+  override fromData (data: any): void {
+    super.fromData(data);
+
+    this.texture = this.createTextureByType(data);
+    this.texture.needsUpdate = true;
   }
 
   private createTextureByType (options: TextureSourceOptions): THREE.Texture {
@@ -201,13 +207,13 @@ export class ThreeTexture extends Texture {
         mapping, wrapS, wrapT, magFilter, minFilter, format, type
       );
     } else if (sourceType === TextureSourceType.framebuffer) {
-      const { data } = options as Texture2DSourceOptionsFrameBuffer;
+      const { data } = options as Texture2DSourceOptionsFramebuffer;
 
       if (data) {
         const width = data.width ?? 0;
         const height = data.height ?? 0;
 
-        texture = new THREE.FramebufferTexture(width, height, format);
+        texture = new THREE.FramebufferTexture(width, height, format as THREE.PixelFormat);
         this.width = width;
         this.height = height;
       }
@@ -222,7 +228,7 @@ export class ThreeTexture extends Texture {
 
       return texture;
     }
-    throw new Error('使用未知的数据类型创建纹理');
+    throw new Error('Create a texture using an unknown data type.');
   }
 
 }

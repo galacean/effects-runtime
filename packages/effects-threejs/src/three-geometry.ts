@@ -1,4 +1,4 @@
-import type { Attribute, Engine, GeometryProps, spec } from '@galacean/effects-core';
+import type { Attribute, Engine, GeometryProps, SkinProps, spec } from '@galacean/effects-core';
 import { BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext } from '@galacean/effects-core';
 import * as THREE from 'three';
 
@@ -308,6 +308,15 @@ export class ThreeGeometry extends Geometry {
    */
   getDrawCount (): number {
     return this.drawCount;
+  }
+
+  /**
+   * 获取蒙皮数据
+   *
+   * @returns 返回蒙皮数据
+   */
+  getSkinProps (): SkinProps {
+    return {};
   }
 
   /**

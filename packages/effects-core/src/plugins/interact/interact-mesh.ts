@@ -1,14 +1,14 @@
-import type * as spec from '@galacean/effects-specification';
 import { Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import type * as spec from '@galacean/effects-specification';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
+import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
-import { createShaderWithMarcos, Material, ShaderType } from '../../material';
-import type { MeshRendererOptions } from '../../render';
-import { Geometry, GLSLVersion, Mesh } from '../../render';
-import type { Transform } from '../../transform';
-import type { Engine } from '../../engine';
+import { Material } from '../../material';
 import { createValueGetter } from '../../math';
+import type { MeshRendererOptions, ShaderMacros } from '../../render';
+import { GLSLVersion, Geometry, Mesh } from '../../render';
+import type { Transform } from '../../transform';
 
 const vertex = `
 precision highp float;
@@ -100,18 +100,17 @@ export class InteractMesh {
   }
 
   private createMaterial (rendererOptions: MeshRendererOptions): Material {
-    const marcos: [key: string, value: boolean | number][] = [
+    const macros: ShaderMacros = [
       ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const color = createValueGetter(this.color).getValue(0);
-    const { level } = this.engine.gpuCapability;
-
     const materialProps: MaterialProps = {
       shader: {
-        vertex: createShaderWithMarcos(marcos, vertex, ShaderType.vertex, level),
-        fragment: createShaderWithMarcos(marcos, fragment, ShaderType.fragment, level),
+        vertex,
+        fragment,
         glslVersion: GLSLVersion.GLSL1,
         cacheId: `${rendererOptions.cachePrefix}_effects_interact`,
+        macros,
       },
       uniformSemantics: {
         effects_MatrixVP: 'VIEWPROJECTION',

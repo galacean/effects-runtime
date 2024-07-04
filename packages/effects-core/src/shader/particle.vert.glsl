@@ -1,11 +1,11 @@
 #version 300 es
-precision highp float;
+precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 
-#import "./compatible.vert.glsl";
-#import "./value.glsl";
-#import "./integrate.glsl";
+#include "./compatible.vert.glsl";
+#include "./value.glsl";
+#include "./integrate.glsl";
 
 const float d2r = 3.141592653589793 / 180.;
 
@@ -27,8 +27,6 @@ struct UVDetail {
 UVDetail getSpriteUV(vec2 uv, float lifeTime);
 out vec4 vTexCoordBlend;
 #endif
-
-#pragma EDITOR_VERT_DEFINE
 
 #ifdef FINAL_TARGET
 uniform vec3 uFinalTarget;
@@ -96,10 +94,6 @@ uniform vec4 uSizeYByLifetimeValue;
 out float vLife;
 out vec4 vColor;
 out vec2 vTexCoord;
-
-#ifdef USE_FILTER
-#pragma FILTER_VERT
-#endif
 
 #ifdef ENV_EDITOR
 uniform vec4 uEditorTransform; //sx sy dx dy
@@ -184,10 +178,11 @@ UVDetail getSpriteUV(vec2 uv, float lifeTime) {
     #endif
 
 vec3 calculateTranslation(vec3 vel, float t0, float t1, float dur) {
-  float dt = t1 - t0;
+  float dt = t1 - t0; // 相对delay的时间
   float d = getIntegrateByTimeFromTime(0., dt, uGravityModifierValue);
   vec3 acc = uAcceleration.xyz * d;
     #ifdef SPEED_OVER_LIFETIME
+  // dt / dur 归一化
   return vel * getIntegrateFromTime0(dt / dur, uSpeedLifetimeValue) * dur + acc;
     #endif
   return vel * dt + acc;
@@ -222,7 +217,7 @@ mat3 transformFromRotation(vec3 rot, float _life, float _dur) {
 
 void main() {
   float time = uParams.x - aOffset.z;
-  float dur = aOffset.w;
+  float dur = aOffset.w; // 粒子生命周期
   if(time < 0. || time > dur) {
     gl_Position = vec4(-3., -3., -3., 1.);
   } else {
@@ -290,14 +285,9 @@ void main() {
 
     gl_PointSize = 6.0;
 
-        #ifdef USE_FILTER
-    filterMain(life);
-        #endif
-
         #ifdef ENV_EDITOR
     gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);
         #endif
 
-        #pragma EDITOR_VERT_TRANSFORM
   }
 }

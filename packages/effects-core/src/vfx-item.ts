@@ -1,28 +1,26 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { EffectComponent, RendererComponent } from './components';
-import type { Component } from './components/component';
-import { ItemBehaviour } from './components/component';
+import type { VFXItemData } from './asset-loader';
+import type { Component, RendererComponent, ItemBehaviour } from './components';
+import { EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
-import { effectsClass } from './decorators';
-import { DataType, type VFXItemData } from './asset-loader';
+import { effectsClass, serialize } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
-import { convertAnchor } from './math';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent, SpriteItemProps,
-  TransformAnimationData,
+  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
 } from './plugins';
-import { ActivationClipPlayable, AnimationClipPlayable, TimelineComponent, Track } from './plugins';
 import { Transform } from './transform';
-import { removeItem, type Disposable } from './utils';
+import type { Constructor, Disposable } from './utils';
+import { removeItem } from './utils';
 
-export type VFXItemContent = ParticleSystem | SpriteComponent | TimelineComponent | CameraController | InteractComponent | void | {};
-export type VFXItemConstructor = new (enigne: Engine, props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
+export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
+export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
 export type VFXItemProps =
   & spec.Item
   & {
@@ -37,8 +35,8 @@ export type VFXItemProps =
 /**
  * 所有元素的继承的抽象类
  */
-@effectsClass(DataType.VFXItemData)
-export class VFXItem<T extends VFXItemContent> extends EffectsObject implements Disposable {
+@effectsClass(spec.DataType.VFXItemData)
+export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素绑定的父元素，
    * 1. 当元素没有绑定任何父元素时，parent为空，transform.parentTransform 为 composition.transform
@@ -46,9 +44,9 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 3. 当元素绑定 TreeItem 的node时，parent为treeItem, transform.parentTransform 为 tree.nodes[i].transform(绑定的node节点上的transform)
    * 4. 当元素绑定 TreeItem 本身时，行为表现和绑定 nullItem 相同
    */
-  parent?: VFXItem<VFXItemContent>;
+  parent?: VFXItem;
 
-  children: VFXItem<VFXItemContent>[] = [];
+  children: VFXItem[] = [];
   /**
    * 元素的变换包含位置、旋转、缩放。
    */
@@ -61,10 +59,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 元素动画的持续时间
    */
   duration = 0;
-  /**
-   * 元素当前更新归一化时间，开始时为 0，结束时为 1
-   */
-  lifetime: number;
   /**
    * 父元素的 id
    */
@@ -82,10 +76,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    */
   ended = false;
   /**
-   * 元素在合成中的索引
-   */
-  listIndex: number;
-  /**
    * 元素名称
    */
   name: string;
@@ -93,21 +83,18 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 元素 id 唯一
    */
   id: string;
+
+  // TODO: 2.0 编辑器测试用变量，后续移除
+  oldId: string;
   /**
    * 元素创建的数据图层/粒子/模型等
    */
-  _content?: T;
-  /**
-   * 元素动画是否延迟播放
-   */
-  delaying = true;
-  /**
-   * 元素动画的速度
-   */
+  _content?: VFXItemContent;
+  reusable = false;
   type: spec.ItemType = spec.ItemType.base;
-  stopped = false;
   props: VFXItemProps;
 
+  @serialize()
   components: Component[] = [];
   itemBehaviours: ItemBehaviour[] = [];
   rendererComponents: RendererComponent[] = [];
@@ -118,38 +105,36 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    */
   protected visible = true;
   /**
-   * 是否允许渲染，元素生命周期开始后为 true，结束时为 false
-   * @protected
+   * 元素动画的速度
    */
-  protected _contentVisible = false;
-
   private speed = 1;
+  private listIndex = 0;
 
-  static isComposition (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
   }
 
-  static isSprite (item: VFXItem<VFXItemContent>): item is VFXItem<SpriteComponent> {
+  static isSprite (item: VFXItem) {
     return item.type === spec.ItemType.sprite;
   }
 
-  static isParticle (item: VFXItem<VFXItemContent>): item is VFXItem<ParticleSystem> {
+  static isParticle (item: VFXItem) {
     return item.type === spec.ItemType.particle;
   }
 
-  static isNull (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isNull (item: VFXItem) {
     return item.type === spec.ItemType.null;
   }
 
-  static isTree (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isTree (item: VFXItem) {
     return item.type === spec.ItemType.tree;
   }
 
-  static isCamera (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isCamera (item: VFXItem) {
     return item.type === spec.ItemType.camera;
   }
 
-  static isExtraCamera (item: VFXItem<VFXItemContent>): item is VFXItem<CameraController> {
+  static isExtraCamera (item: VFXItem) {
     return item.id === 'extra-camera' && item.name === 'extra-camera';
   }
 
@@ -161,9 +146,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     this.name = 'VFXItem';
     this.transform.name = this.name;
     this.transform.engine = engine;
-    this.addComponent(TimelineComponent);
     if (props) {
-      // TODO VFXItemProps 添加 components 属性
       this.fromData(props as VFXItemData);
     }
   }
@@ -171,23 +154,30 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   /**
    * 返回元素创建的数据
    */
-  get content (): T {
-    // @ts-expect-error
+  get content (): VFXItemContent {
     return this._content;
   }
 
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会 dispose
    */
-  get reusable (): boolean {
+  get compositionReusable (): boolean {
     return this.composition?.reusable ?? false;
   }
 
   /**
-   * 获取元素生命周期是否开始
+   * 元素在合成中的索引
    */
-  get lifetimeStarted () {
-    return !this.delaying;
+  get renderOrder () {
+    return this.listIndex;
+  }
+  set renderOrder (value: number) {
+    if (this.listIndex !== value) {
+      this.listIndex = value;
+      for (const rendererComponent of this.rendererComponents) {
+        rendererComponent.priority = value;
+      }
+    }
   }
 
   /**
@@ -210,12 +200,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * 添加组件
    * @param classConstructor - 要添加的组件类型
    */
-  addComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T {
+  addComponent<T extends Component> (classConstructor: Constructor<T>): T {
     const newComponent = new classConstructor(this.engine);
 
-    newComponent.item = this;
-
     this.components.push(newComponent);
+    newComponent.item = this;
     newComponent.onAttached();
 
     return newComponent;
@@ -226,7 +215,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * @param classConstructor - 要获取的组件类型
    * @returns 查询结果中符合类型的第一个组件
    */
-  getComponent<T extends Component> (classConstructor: new (engine: Engine) => T): T | undefined {
+  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
     let res;
 
     for (const com of this.components) {
@@ -237,7 +226,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       }
     }
 
-    return res;
+    return res as T;
   }
 
   /**
@@ -245,7 +234,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
    * @param classConstructor - 要获取的组件
    * @returns 一个组件列表，包含所有符合类型的组件
    */
-  getComponents<T extends Component> (classConstructor: new (engine: Engine) => T) {
+  getComponents<T extends Component> (classConstructor: Constructor<T>) {
     const res = [];
 
     for (const com of this.components) {
@@ -257,7 +246,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     return res;
   }
 
-  setParent (vfxItem: VFXItem<VFXItemContent>) {
+  setParent (vfxItem: VFXItem) {
     if (vfxItem === this) {
       return;
     }
@@ -274,13 +263,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
         this.composition = vfxItem.composition;
       }
     }
-  }
-
-  /**
-   * 停止播放元素动画
-   */
-  stop () {
-    this.stopped = true;
   }
 
   /**
@@ -386,7 +368,12 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
   }
 
   /**
-   * 设置元素的在画布上的像素位置, 坐标原点在 canvas 中心，x 正方向水平向右， y 正方向垂直向下
+   * 设置元素在画布上的像素位置
+   * Tips:
+   *  - 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
+   *  - 设置后会覆盖原有的位置信息
+   * @param x - x 坐标
+   * @param y - y 坐标
    */
   setPositionByPixel (x: number, y: number) {
     if (this.composition) {
@@ -395,7 +382,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       const width = this.composition.renderer.getWidth() / 2;
       const height = this.composition.renderer.getHeight() / 2;
 
-      this.transform.setPosition(2 * x * rx / width, -2 * y * ry / height, z);
+      this.transform.setPosition((2 * x / width - 1) * rx, (1 - 2 * y / height) * ry, z);
     }
   }
   /**
@@ -455,7 +442,7 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     return now - this.duration > 0.001;
   }
 
-  find (name: string): VFXItem<VFXItemContent> | undefined {
+  find (name: string): VFXItem | undefined {
     if (this.name === name) {
       return this;
     }
@@ -465,7 +452,11 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       }
     }
     for (const child of this.children) {
-      return child.find(name);
+      const res = child.find(name);
+
+      if (res) {
+        return res;
+      }
     }
 
     return undefined;
@@ -480,102 +471,66 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
     } = data;
 
     this.props = data;
+    //@ts-expect-error
     this.type = data.type;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.name = name;
     this.start = delay ? delay : this.start;
-    // TODO spec 数据需要区分 scale 和 size
-    if (transform && transform.scale && data.type !== 'ECS') {
-      //@ts-expect-error  TODO 数据改造后移除 expect-error
-      transform.scale.z = transform.scale.x;
-    }
 
     if (transform) {
       //@ts-expect-error TODO 数据改造后移除 expect-error
       transform.position = new Vector3().copyFrom(transform.position);
-      //@ts-expect-error
-      transform.rotation = new Euler().copyFrom(transform.rotation);
+      // FIXME: transform.rotation待删除
+      if (transform.quat) {
+        //@ts-expect-error
+        transform.quat = new Quaternion(transform.quat.x, transform.quat.y, transform.quat.z, transform.quat.w);
+      } else {
+        //@ts-expect-error
+        transform.rotation = new Euler().copyFrom(transform.eulerHint ?? transform.rotation);
+      }
       //@ts-expect-error
       transform.scale = new Vector3().copyFrom(transform.scale);
+      //@ts-expect-error
+      if (transform.size) {
+        //@ts-expect-error
+        transform.size = new Vector2().copyFrom(transform.size);
+      }
+      //@ts-expect-error
+      if (transform.anchor) {
+        //@ts-expect-error
+        transform.anchor = new Vector2().copyFrom(transform.anchor);
+      }
       this.transform.setTransform(transform);
     }
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
-
-    // TODO spec 数据需要区分 scale 和 size
-    if (data.type === spec.ItemType.sprite && transform) {
-      this.transform.setSize(this.transform.scale.x, this.transform.scale.y);
-      this.transform.setScale(1, 1, 1);
-    }
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-
-    // TODO: 放到 Spec 处理
-    if (this.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY || this.endBehavior === spec.END_BEHAVIOR_PAUSE) {
-      this.endBehavior = spec.END_BEHAVIOR_FREEZE;
-    }
-    this.lifetime = -(this.start / this.duration);
-    this.listIndex = listIndex;
+    //@ts-expect-error
+    this.oldId = data.oldId;
 
     if (!data.content) {
       data.content = { options: {} };
     }
-    const timelineComponent = this.getComponent(TimelineComponent)!;
-
-    timelineComponent.fromData(data.content as spec.NullContent);
-
-    // TODO anchor 应该放在 transform data
-    if (data.type === spec.ItemType.sprite) {
-      const content = data.content as unknown as SpriteItemProps;
-
-      if (!content.renderer) {
-        //@ts-expect-error
-        content.renderer = {};
-      }
-      const realAnchor = convertAnchor(content.renderer.anchor, content.renderer.particleOrigin);
-      const startSize = this.transform.size;
-
-      // 兼容旧JSON（anchor和particleOrigin可能同时存在）
-      if (!content.renderer.anchor && content.renderer.particleOrigin !== undefined) {
-        this.transform.position.add([-realAnchor[0] * startSize.x, -realAnchor[1] * startSize.y, 0]);
-      }
-      this.transform.setAnchor(realAnchor[0] * startSize.x, realAnchor[1] * startSize.y, 0);
-    }
-
-    // TODO 要放在上面的 if 后面添加，否则会 position 初始化错误
-    if (this.type !== spec.ItemType.particle) {
-      const track = timelineComponent.createTrack(Track, 'AnimationTrack');
-
-      track.createClip(AnimationClipPlayable, 'AnimationTimelineClip').playable.fromData(data.content as TransformAnimationData);
-    }
-    const activationTrack = timelineComponent.createTrack(Track, 'ActivationTrack');
-
-    activationTrack.createClip(ActivationClipPlayable, 'ActivationTimelineClip');
 
     if (duration <= 0) {
-      throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
+      throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    if (data.components) {
-      for (const component of data.components) {
-        const newComponent = component as unknown as Component;
-
-        this.components.push(newComponent);
-        if (newComponent instanceof RendererComponent) {
-          this.rendererComponents.push(newComponent);
-        } else if (newComponent instanceof ItemBehaviour) {
-          this.itemBehaviours.push(newComponent);
-        }
-      }
+    for (const component of this.components) {
+      component.item = this;
+      component.onAttached();
     }
+    // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
+    this.renderOrder = listIndex;
   }
 
   override toData (): void {
     this.taggedProperties.id = this.guid;
     this.taggedProperties.transform = this.transform.toData();
-    this.taggedProperties.dataType = DataType.VFXItemData;
+    this.taggedProperties.dataType = spec.DataType.VFXItemData;
     if (this.parent?.name !== 'rootItem') {
       this.taggedProperties.parentId = this.parent?.guid;
     }
@@ -594,10 +549,10 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
 
   translateByPixel (x: number, y: number) {
     if (this.composition) {
+      // @ts-expect-error
+      const { width, height } = this.composition.renderer.canvas.getBoundingClientRect();
       const { z } = this.transform.getWorldPosition();
       const { x: rx, y: ry } = this.composition.camera.getInverseVPRatio(z);
-      const width = this.composition.renderer.getWidth() / 2;
-      const height = this.composition.renderer.getHeight() / 2;
 
       this.transform.translate(2 * x * rx / width, -2 * y * ry / height, 0);
     }
@@ -618,7 +573,6 @@ export class VFXItem<T extends VFXItemContent> extends EffectsObject implements 
       this.components = [];
       this._content = undefined;
       this.composition = null;
-      this._contentVisible = false;
       this.transform.setValid(false);
     }
   }
@@ -653,10 +607,6 @@ export namespace Item {
     return item.type === type;
   }
 
-  export function isFilter (item: spec.Item): item is spec.FilterItem {
-    return item.type === spec.ItemType.filter;
-  }
-
   export function isComposition (item: spec.Item): item is spec.CompositionItem {
     return item.type === spec.ItemType.composition;
   }
@@ -675,14 +625,13 @@ export namespace Item {
  * @param props
  * @param composition
  */
-export function createVFXItem (props: VFXItemProps, composition: Composition): VFXItem<any> {
+export function createVFXItem (props: VFXItemProps, composition: Composition): VFXItem {
   const { type } = props;
   let { pluginName } = props;
 
   if (!pluginName) {
     switch (type) {
       case spec.ItemType.null:
-      case spec.ItemType.base:
         pluginName = 'cal';
 
         break;
@@ -702,10 +651,6 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
         pluginName = 'camera';
 
         break;
-      case spec.ItemType.filter:
-        pluginName = 'filter';
-
-        break;
       case spec.ItemType.text:
         pluginName = 'text';
 
@@ -715,7 +660,7 @@ export function createVFXItem (props: VFXItemProps, composition: Composition): V
 
         break;
       default:
-        throw new Error('invalid vfx item type');
+        throw new Error('Invalid vfx item type.');
     }
   }
 

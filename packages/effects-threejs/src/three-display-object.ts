@@ -1,8 +1,9 @@
 import type {
-  EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType,
-  SceneWithOptionsType, Texture,
+  EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, Texture,
 } from '@galacean/effects-core';
-import { AssetManager, CompositionSourceManager, isArray, isObject, logger } from '@galacean/effects-core';
+import {
+  AssetManager, isArray, isSceneURL, isSceneWithOptions, logger,
+} from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeRenderer } from './three-renderer';
@@ -102,12 +103,14 @@ export class ThreeDisplayObject extends THREE.Group {
     };
     let source: SceneType;
 
-    if (isSceneWithOptions(url)) {
-      source = url.scene;
-      opts = {
-        ...opts,
-        ...url.options || {},
-      };
+    if (isSceneURL(url)) {
+      source = url.url;
+      if (isSceneWithOptions(url)) {
+        opts = {
+          ...opts,
+          ...url.options || {},
+        };
+      }
     } else {
       source = url;
     }
@@ -130,17 +133,15 @@ export class ThreeDisplayObject extends THREE.Group {
       (scene.textureOptions[i] as Texture).initialize();
     }
 
-    const compositionSourceManager = new CompositionSourceManager(scene, engine);
-
     if (engine.database) {
-      await engine.createVFXItemsAsync(scene);
+      await engine.createVFXItems(scene);
     }
     const composition = new ThreeComposition({
       ...opts,
       width: this.width,
       height: this.height,
       renderer: this.renderer,
-    }, scene, compositionSourceManager);
+    }, scene);
 
     (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });
 
@@ -153,7 +154,7 @@ export class ThreeDisplayObject extends THREE.Group {
     const firstFrameTime = (performance.now() - last) + composition.statistic.loadTime;
 
     composition.statistic.firstFrameTime = firstFrameTime;
-    logger.info(`first frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms`);
+    logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
 
     this.compositions.push(composition);
 
@@ -169,9 +170,4 @@ export class ThreeDisplayObject extends THREE.Group {
       composition.update(delta);
     });
   }
-}
-
-export function isSceneWithOptions (scene: any): scene is SceneWithOptionsType {
-  // TODO: 判断不太优雅，后期试情况优化
-  return isObject(scene) && 'scene' in scene;
 }

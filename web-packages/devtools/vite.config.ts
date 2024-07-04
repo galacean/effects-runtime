@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-
+import { resolve } from 'path';
 import { componentsDir } from '@advjs/gui/node';
 import Components from 'unplugin-vue-components/vite';
 import UnoCSS from 'unocss/vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import glslInner from '../../scripts/rollup-plugin-glsl-inner';
+import { getSWCPlugin } from '../../scripts/rollup-config-helper';
 
 // https://vitejs.dev/config/
 // @ts-expect-error mode
@@ -30,9 +31,10 @@ export default defineConfig(({ mode }) => {
           componentsDir,
         ],
       }),
-
       glslInner(),
-
+      getSWCPlugin({
+        baseUrl: resolve(__dirname, '..', '..'),
+      }),
       tsconfigPaths(),
     ],
   };

@@ -149,7 +149,7 @@ describe('webgl/gl-texture', () => {
     const gpuInfo = getTextureGPUInfo(texture, {});
 
     expect(gpuInfo).to.deep.equals([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_2D, [[1, 1]]]);
-    bindFrameBuffer(gl, texture, function (gl) {
+    bindFramebuffer(gl, texture, function (gl) {
       const readPixelData = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, readPixelData);
@@ -220,7 +220,7 @@ describe('webgl/gl-texture', () => {
     });
 
     expect(getTextureMemory(texture, gpuInfo)).to.eql(128 * 128 * 4);
-    bindFrameBuffer(gl, texture, function (gl) {
+    bindFramebuffer(gl, texture, function (gl) {
       const readPixelData = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, readPixelData);
@@ -377,7 +377,7 @@ describe('webgl/gl-texture', () => {
     const spy = chai.spy(() => {
     });
 
-    bindFrameBuffer(gl, texture, function (gl) {
+    bindFramebuffer(gl, texture, function (gl) {
       const readPixelData = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, readPixelData);
@@ -425,7 +425,7 @@ describe('webgl/gl-texture', () => {
     });
 
     expect((texture.source).image).is.undefined;
-    bindFrameBuffer(gl, texture, function (gl) {
+    bindFramebuffer(gl, texture, function (gl) {
       const readPixelData = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, readPixelData);
@@ -585,7 +585,7 @@ describe('webgl/gl-texture', () => {
   });
 });
 
-function bindFrameBuffer (gl, texture, callback) {
+function bindFramebuffer (gl, texture, callback) {
   const framebuffer = gl.createFramebuffer();
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -607,7 +607,7 @@ function byteLengthForASTC (type, width, height) {
   if (type === COMPRESSED_RGBA_ASTC_6x6_KHR) {
     return Math.floor((width + 5) / 6) * Math.floor((height + 5) / 6) * 16;
   }
-  throw Error('not implement:https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_compressed_texture_astc');
+  throw new Error('not implement:https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_compressed_texture_astc');
 }
 
 describe('webgl2/gl-texture', () => {

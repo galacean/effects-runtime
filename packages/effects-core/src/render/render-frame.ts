@@ -6,9 +6,9 @@ import { glContext } from '../gl';
 import type { UniformValue } from '../material';
 import { Material } from '../material';
 import { PassTextureCache } from '../paas-texture-cache';
-import type { SemanticFunc } from '../semantic-map';
-import { SemanticMap } from '../semantic-map';
-import { Texture, TextureLoadAction, TextureSourceType } from '../texture';
+import type { SemanticFunc } from './semantic-map';
+import { SemanticMap } from './semantic-map';
+import { Texture, TextureLoadAction, TextureSourceType, generateWhiteTexture, generateTransparentTexture } from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, OrderType, removeItem } from '../utils';
 import { createCopyShader, EFFECTS_COPY_MESH_NAME } from './create-copy-shader';
@@ -75,11 +75,11 @@ export interface RenderPassInfo {
  */
 export interface RenderFrameResource {
   /**
-   * 纹理对象，用于 FrameBuffer 的颜色 Attachment
+   * 纹理对象，用于 Framebuffer 的颜色 Attachment
    */
   color_a: Texture,
   /**
-   * 纹理对象，用于 FrameBuffer 的颜色 Attachment
+   * 纹理对象，用于 Framebuffer 的颜色 Attachment
    */
   color_b: Texture,
   /**
@@ -358,40 +358,9 @@ export class RenderFrame implements Disposable {
     this.name = `RenderFrame${seed++}`;
 
     const firstRP = renderPasses[0];
-    const sourceOpts = {
-      type: glContext.UNSIGNED_BYTE,
-      format: glContext.RGBA,
-      internalFormat: glContext.RGBA,
-      wrapS: glContext.MIRRORED_REPEAT,
-      wrapT: glContext.MIRRORED_REPEAT,
-      minFilter: glContext.NEAREST,
-      magFilter: glContext.NEAREST,
-    };
 
-    this.emptyTexture = Texture.create(
-      engine,
-      {
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([255, 255, 255, 255]),
-        },
-        sourceType: TextureSourceType.data,
-        ...sourceOpts,
-      },
-    );
-    this.transparentTexture = Texture.create(
-      engine,
-      {
-        data: {
-          width: 1,
-          height: 1,
-          data: new Uint8Array([0, 0, 0, 0]),
-        },
-        sourceType: TextureSourceType.data,
-        ...sourceOpts,
-      }
-    );
+    this.emptyTexture = generateWhiteTexture(engine);
+    this.transparentTexture = generateTransparentTexture(engine);
     this.camera = camera;
     this.keepColorBuffer = keepColorBuffer;
     this.renderPassInfoMap.set(firstRP, { listStart: 0, listEnd: 0, renderPass: firstRP, intermedia: false });
@@ -704,7 +673,7 @@ export class RenderFrame implements Disposable {
   }
 
   /**
-   * 重置 RenderPass ColorAttachment，解决 FrameBuffer 即读又写的问题
+   * 重置 RenderPass ColorAttachment，解决 Framebuffer 即读又写的问题
    * @param renderPasses - RenderPass 对象数组
    * @param startIndex - 开始重置的索引
    */
@@ -935,7 +904,7 @@ export class RenderFrame implements Disposable {
   // TODO tex和size没有地方用到。
   /**
    * 创建拷贝 RenderPass 用到的 Mesh 对象
-   * @param semantics - RenderPass 渲染时 FrameBuffer 的颜色和深度纹理、大小和是否混合
+   * @param semantics - RenderPass 渲染时 Framebuffer 的颜色和深度纹理、大小和是否混合
    */
   createCopyMesh (semantics?: { tex?: string, size?: string, blend?: boolean, depthTexture?: Texture }): Mesh {
     const name = EFFECTS_COPY_MESH_NAME;
@@ -1010,8 +979,8 @@ export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: 
 class FinalCopyRP extends RenderPass {
   prePassTexture: Texture;
   override configure (renderer: Renderer): void {
-    this.prePassTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
-    renderer.setFrameBuffer(null);
+    this.prePassTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    renderer.setFramebuffer(null);
   }
 
   override execute (renderer: Renderer): void {

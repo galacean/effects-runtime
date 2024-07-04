@@ -5,12 +5,12 @@ type ErrorHandler = (status: number, responseText: string) => void;
 /**
  *
  */
-type VideoLoadOptions = {
-  /**
-   * 视频是否循环播放
-   */
-  loop?: boolean,
-};
+// type VideoLoadOptions = {
+//   /**
+//    * 视频是否循环播放
+//    */
+//   loop?: boolean,
+// };
 
 /**
  * JSON 值，它可以是字符串、数字、布尔值、对象或者 JSON 值的数组。
@@ -128,7 +128,8 @@ export async function loadWebPOptional (png: string, webp?: string) {
     const image = await loadImage(webp);
 
     return { image, url: webp };
-  } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e: any) {
     webPFailed = true;
     const image = await loadImage(png);
 
@@ -161,7 +162,7 @@ export async function loadImage (
 
   // 2. 非法类型
   if (!url) {
-    throw new Error(`Invalid url type: ${JSON.stringify(source)}`);
+    throw new Error(`Invalid url type: ${JSON.stringify(source)}.`);
   }
 
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -224,9 +225,8 @@ export async function loadBlob (url: string): Promise<Blob> {
 /**
  * 异步加载一个视频文件
  * @param url - 视频文件的 URL 或 MediaProvider 对象
- * @param options - 加载参数
  */
-export async function loadVideo (url: string | MediaProvider, options: VideoLoadOptions = {}): Promise<HTMLVideoElement> {
+export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideoElement> {
   const video = document.createElement('video');
 
   if (typeof url === 'string') {
@@ -236,9 +236,6 @@ export async function loadVideo (url: string | MediaProvider, options: VideoLoad
   }
   video.crossOrigin = 'anonymous';
   video.muted = true;
-  if (options.loop) {
-    video.addEventListener('ended', () => video.play());
-  }
   if (isAndroid()) {
     video.setAttribute('renderer', 'standard');
   }
@@ -259,4 +256,17 @@ export async function loadVideo (url: string | MediaProvider, options: VideoLoad
       reject(e);
     });
   });
+}
+
+export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<HTMLImageElement | HTMLVideoElement>) {
+  if (Array.isArray(url)) {
+    try {
+      return await loadFn(url[0]);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e: any) {
+      return await loadFn(url[1]);
+    }
+  }
+
+  return loadFn(url);
 }

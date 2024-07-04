@@ -4,6 +4,8 @@ import { DeviceOrientation } from './device-orientation';
 export type AccelerMotionData = {
   x: number,
   y: number,
+  beta: number,
+  gamma: number,
 };
 
 /**
@@ -31,9 +33,9 @@ export class OrientationAdapterAcceler {
         validRange: this.validRange,
         stableRange: 3, // 稳定区间
       });
-      this.accelerMotion.watch((x, y) => {
+      this.accelerMotion.watch((x, y, { beta, gamma }) => {
         const motion: AccelerMotionData = {
-          x, y,
+          x, y, beta, gamma,
         };
 
         this.dispatchMotion(motion);

@@ -48,7 +48,7 @@ const map: Record<string, { new(options: Record<string, any>): ShapeGenerator }>
   [spec.ShapeType.TEXTURE]: TextureShape,
 };
 
-export function createShape (shapeOptions: spec.ParticleShape): Shape {
+export function createShape (shapeOptions?: spec.ParticleShape): Shape {
   if (!shapeOptions) {
     return new ShapeNone();
   }
@@ -63,7 +63,7 @@ export function createShape (shapeOptions: spec.ParticleShape): Shape {
   const Ctrl = map[type];
 
   if (!Ctrl) {
-    throw Error('invalid shape:' + type);
+    throw new Error(`Invalid shape: ${type}.`);
   }
   const ctrl = new Ctrl(options);
 

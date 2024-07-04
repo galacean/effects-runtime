@@ -22,3 +22,7 @@ export function isAndroid (): boolean {
 export function isSimulatorCellPhone (): boolean {
   return isAndroid() || /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent);
 }
+
+export function isAlipayMiniApp (): boolean {
+  return typeof my !== 'undefined' && my?.renderTarget === 'web';
+}

@@ -1,4 +1,4 @@
-import type { Composition, CameraOptionsEx, spec, VFXItem, VFXItemContent } from '@galacean/effects';
+import type { Composition, CameraOptionsEx, spec, VFXItem } from '@galacean/effects';
 import { Transform } from '@galacean/effects';
 import type {
   CameraGestureHandler,
@@ -30,7 +30,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
   ) { }
 
   getItem () {
-    return this.composition.items?.find(item => item.id === this.getCurrentTarget());
+    return this.composition.items?.find(item => item.name === this.getCurrentTarget());
   }
 
   getCurrentTarget (): string {
@@ -52,7 +52,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn(`can't find camera item ${this.startParams.target}`);
+      console.warn(`[CameraGestureHandlerImp] Unable to locate camera item with ID: ${this.startParams.target}.`);
 
       return this.composition.camera.getOptions();
     }
@@ -254,7 +254,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
@@ -268,7 +268,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
@@ -283,7 +283,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
@@ -347,7 +347,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     this.updateCameraTransform(this.composition.camera.getOptions());
 
     if (!this.getItem()) {
-      console.warn('invalid target');
+      console.warn('[CameraGestureHandlerImp] Invalid target specified in startGesture.');
     }
 
     return this.composition.camera.getOptions();
@@ -358,7 +358,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
       const item = this.getItem();
 
       if (item === undefined) {
-        console.warn('can\'t find camera item');
+        console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
         return this.composition.camera.getOptions();
       }
@@ -420,16 +420,16 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
         item.transform.setQuaternion(newRotation.x, newRotation.y, newRotation.z, newRotation.w);
         this.setTransform(item, newPosition, item.transform.rotation);
       } else {
-        console.warn('not implement');
+        console.warn('[CameraGestureHandlerImp] Movement type not implemented.');
       }
     } else {
-      console.warn('invalid move type');
+      console.warn(`[CameraGestureHandlerImp] Invalid move type specified: ${arg.type}`);
     }
 
     return this.composition.camera.getOptions();
   }
 
-  private setTransform (item: VFXItem<VFXItemContent>, position?: Vector3, rotation?: Euler) {
+  private setTransform (item: VFXItem, position?: Vector3, rotation?: Euler) {
     const camera = item.getComponent(ModelCameraComponent);
 
     if (camera !== undefined) {
@@ -437,7 +437,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     }
   }
 
-  private setPosition (item: VFXItem<VFXItemContent>, position: spec.vec3) {
+  private setPosition (item: VFXItem, position: spec.vec3) {
     item.transform.setPosition(...position);
     const camera = item.getComponent(ModelCameraComponent);
 
@@ -446,7 +446,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     }
   }
 
-  private setQuaternion (item: VFXItem<VFXItemContent>, quat: spec.vec4) {
+  private setQuaternion (item: VFXItem, quat: spec.vec4) {
     item.transform.setQuaternion(...quat);
     const camera = item.getComponent(ModelCameraComponent);
 

@@ -1,5 +1,5 @@
-import type { Engine, GeometryData, GeometryProps, spec } from '@galacean/effects-core';
-import { assertExist, BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext } from '@galacean/effects-core';
+import type { Engine, GeometryProps, SkinProps } from '@galacean/effects-core';
+import { spec, assertExist, BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext, vertexFormatType2GLType } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
 import { GLGPUBuffer } from './gl-gpu-buffer';
@@ -18,6 +18,7 @@ const INDEX_TYPE_MAP = {
   [Uint16Array.BYTES_PER_ELEMENT]: glContext.UNSIGNED_SHORT,
   [Uint32Array.BYTES_PER_ELEMENT]: glContext.UNSIGNED_INT,
 };
+
 let seed = 1;
 
 /**
@@ -46,8 +47,9 @@ export class GLGeometry extends Geometry {
   indices?: spec.TypedArray;
   readonly vaos: Record<string, GLVertexArrayObject | undefined> = {};
 
-  protected initialized = false;
+  skin: SkinProps = {};
 
+  protected initialized = false;
   private options?: GeometryProps;
   private attributesReleasable: Record<string, boolean>;
   private indicesReleasable = false;
@@ -234,6 +236,10 @@ export class GLGeometry extends Geometry {
     return this.drawCount;
   }
 
+  getSkinProps (): SkinProps {
+    return this.skin;
+  }
+
   // 根据 attribute 的 datasource 获取 js 端 buffer
   private getAttributeBufferOption (name: string): GLGPUBufferProps | undefined {
     const attribute = this.attributes[name];
@@ -401,46 +407,87 @@ export class GLGeometry extends Geometry {
     this.initialized = false;
   }
 
-  override fromData (data: GeometryData): void {
+  override fromData (data: spec.GeometryData): void {
     super.fromData(data);
 
-    const geometryData = data;
-    const fullGeometryData = {
-      vertices: [],
-      uvs: [],
-      normals: [],
-      indices: [],
-      ...geometryData,
-    };
-    const geometryProps: GeometryProps = {
-      mode: glContext.TRIANGLES,
-      attributes: {
-        aPos: {
-          type: glContext.FLOAT,
-          size: 3,
-          data: new Float32Array(fullGeometryData.vertices),
-        },
-        aUV: {
-          type: glContext.FLOAT,
-          size: 2,
-          data: new Float32Array(fullGeometryData.uvs),
-        },
-        aNormal: {
-          type: glContext.FLOAT,
-          size: 3,
-          data: new Float32Array(fullGeometryData.normals),
-        },
-      },
-    };
+    this.subMeshes = data.subMeshes;
+    const buffer = decodeBase64ToArrays(data.buffer);
+    const vertexCount = data.vertexData.vertexCount;
 
-    if (fullGeometryData.indices.length !== 0) {
-      geometryProps.indices = { data: new Uint32Array(fullGeometryData.indices) };
-      geometryProps.drawCount = fullGeometryData.indices.length;
+    if (this.hasSemantic(data)) {
+      const geometryProps: GeometryProps = {
+        mode: glContext.TRIANGLES,
+        attributes: {},
+      };
+
+      data.vertexData.channels.forEach(channel => {
+        const attribName = vertexBufferSemanticMap[channel.semantic] ?? channel.semantic;
+        const attribBuffer = this.createVertexTypedArray(channel, buffer, vertexCount);
+
+        geometryProps.attributes[attribName] = {
+          type: vertexFormatType2GLType(channel.format),
+          size: channel.dimension,
+          data: attribBuffer,
+          normalize: channel.normalize,
+        };
+      });
+
+      if (data.indexFormat !== spec.IndexFormatType.None) {
+        const indexBuffer = this.createIndexTypedArray(data.indexFormat, buffer, data.indexOffset);
+
+        geometryProps.indices = { data: indexBuffer };
+        geometryProps.drawCount = indexBuffer.length;
+      } else {
+        geometryProps.drawCount = vertexCount;
+      }
+
+      this.processProps(geometryProps);
     } else {
-      geometryProps.drawCount = fullGeometryData.vertices.length / 3;
+      const positionChannel = data.vertexData.channels[0];
+      const uvChannel = data.vertexData.channels[1];
+      const normalChannel = data.vertexData.channels[2];
+
+      // 根据提供的长度信息创建 Float32Array
+      const positionBuffer = this.createVertexTypedArray(positionChannel, buffer, vertexCount);
+      const uvBuffer = this.createVertexTypedArray(uvChannel, buffer, vertexCount);
+      const normalBuffer = this.createVertexTypedArray(normalChannel, buffer, vertexCount);
+      // 根据提供的长度信息创建 Uint16Array，它紧随 Float32Array 数据之后
+      const indexBuffer = this.createIndexTypedArray(data.indexFormat, buffer, data.indexOffset);
+
+      const geometryProps: GeometryProps = {
+        mode: glContext.TRIANGLES,
+        attributes: {
+          aPos: {
+            type: vertexFormatType2GLType(positionChannel.format),
+            size: 3,
+            data: positionBuffer,
+            normalize: positionChannel.normalize,
+          },
+          aUV: {
+            type: vertexFormatType2GLType(uvChannel.format),
+            size: 2,
+            data: uvBuffer,
+            normalize: uvChannel.normalize,
+          },
+          aNormal: {
+            type: vertexFormatType2GLType(normalChannel.format),
+            size: 3,
+            data: normalBuffer,
+            normalize: normalChannel.normalize,
+          },
+        },
+      };
+
+      geometryProps.indices = { data: indexBuffer };
+      geometryProps.drawCount = indexBuffer.length;
+      this.processProps(geometryProps);
     }
 
-    this.processProps(geometryProps);
+    this.skin = {
+      boneNames: data.boneNames,
+      rootBoneName: data.rootBoneName,
+      inverseBindMatrices: data.inverseBindMatrices,
+    };
   }
 
   override dispose (): void {
@@ -472,4 +519,96 @@ export class GLGeometry extends Geometry {
     }
     this.destroyed = true;
   }
+
+  private createVertexTypedArray (channel: spec.VertexChannel, baseBuffer: ArrayBufferLike, vertexCount: number) {
+    switch (channel.format) {
+      case spec.VertexFormatType.Float32:
+        return new Float32Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+      case spec.VertexFormatType.Int16:
+        return new Int16Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+      case spec.VertexFormatType.Int8:
+        return new Int8Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+      case spec.VertexFormatType.UInt16:
+        return new Uint16Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+      case spec.VertexFormatType.UInt8:
+        return new Uint8Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+      default:
+        console.error(`Invalid vertex format type: ${channel.format}.`);
+
+        return new Float32Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+    }
+  }
+
+  private createIndexTypedArray (type: spec.IndexFormatType, baseBuffer: ArrayBufferLike, offset: number) {
+    switch (type) {
+      case spec.IndexFormatType.UInt16:
+        return new Uint16Array(baseBuffer, offset);
+      case spec.IndexFormatType.UInt32:
+        return new Uint32Array(baseBuffer, offset);
+      default:
+        console.error(`Invalid index format type: ${type}.`);
+
+        return new Uint32Array(baseBuffer, offset);
+    }
+  }
+
+  private hasSemantic (data: spec.GeometryData) {
+    let hasSemantic = false;
+    const { vertexData } = data;
+
+    vertexData.channels.forEach(channel => {
+      if (channel.semantic && channel.semantic.length > 0) {
+        hasSemantic = true;
+      }
+    });
+
+    return hasSemantic;
+  }
+
+}
+
+const vertexBufferSemanticMap: Record<string, string> = {
+  POSITION: 'aPos',
+  TEXCOORD0: 'aUV',
+  TEXCOORD1: 'aUV2',
+  NORMAL: 'aNormal',
+  TANGENT: 'aTangent',
+  COLOR: 'aColor',
+  JOINTS: 'aJoints',
+  WEIGHTS: 'aWeights',
+  //
+  POSITION_BS0: 'aTargetPosition0',
+  POSITION_BS1: 'aTargetPosition1',
+  POSITION_BS2: 'aTargetPosition2',
+  POSITION_BS3: 'aTargetPosition3',
+  POSITION_BS4: 'aTargetPosition4',
+  POSITION_BS5: 'aTargetPosition5',
+  POSITION_BS6: 'aTargetPosition6',
+  POSITION_BS7: 'aTargetPosition7',
+  NORMAL_BS0: 'aTargetNormal0',
+  NORMAL_BS1: 'aTargetNormal1',
+  NORMAL_BS2: 'aTargetNormal2',
+  NORMAL_BS3: 'aTargetNormal3',
+  TANGENT_BS0: 'aTargetTangent0',
+  TANGENT_BS1: 'aTargetTangent1',
+  TANGENT_BS2: 'aTargetTangent2',
+  TANGENT_BS3: 'aTargetTangent3',
+};
+
+function decodeBase64ToArrays (base64String: string) {
+  // 将 Base64 编码的字符串转换为二进制字符串
+  const binaryString = atob(base64String);
+
+  // 将二进制字符串转换为字节数组
+  const bytes = new Uint8Array(binaryString.length);
+
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+
+  // 创建 ArrayBuffer 并为其创建视图
+  const buffer = bytes.buffer;
+
+  // 返回解码后的数组
+  return buffer;
 }
