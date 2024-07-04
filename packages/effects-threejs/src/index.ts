@@ -15,6 +15,7 @@ export * from './three-engine';
 export * from './three-texture';
 export * from './three-sprite-component';
 export * from './three-text-component';
+
 setMaxSpriteMeshItemCount(8);
 /**
  * 图片的创建方法

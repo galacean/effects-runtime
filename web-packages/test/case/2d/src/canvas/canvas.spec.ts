@@ -52,7 +52,6 @@ async function checkScene (keyName, name, url) {
     let marsRet, runtimeRet;
 
     for (let i = 0; i < timeList.length; i++) {
-
       const time = timeList[i];
 
       if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
@@ -106,7 +105,6 @@ async function checkScene (keyName, name, url) {
       expect(oldImage.length).to.eql(newImage.length);
       //
       const pixelDiffValue = await imageCmp.compareImages(oldImage, newImage);
-
       const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
       if (pixelDiffValue > 0) {
