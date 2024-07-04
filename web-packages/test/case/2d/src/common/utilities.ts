@@ -15,7 +15,7 @@ const { Vector3, Matrix4 } = math;
 
 const sleepTime = 20;
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '1.4.3';  // 旧版Player版本
+const oldVersion = params.get('version') || '1.6.0';  // 旧版Player版本
 const playerOptions: PlayerConfig = {
   //env: 'editor',
   //pixelRatio: 2,

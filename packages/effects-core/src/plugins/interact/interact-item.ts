@@ -31,8 +31,9 @@ export class InteractComponent extends RendererComponent {
    * 拖拽的距离映射系数，越大越容易拖动
    */
   dragRatio: number[] = [1, 1];
+
   /** 是否响应点击和拖拽交互事件 */
-  private _interactive: boolean = true;
+  private _interactive = true;
 
   set interactive (enable: boolean) {
     this._interactive = enable;
