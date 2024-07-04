@@ -1,10 +1,11 @@
-import type { spec } from '@galacean/effects';
-import { Player, generateGUID, loadImage, math } from '@galacean/effects';
+import type { Player, spec } from '@galacean/effects';
+import { generateGUID, loadImage, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { folderIcon, jsonIcon } from '../asset/images';
 import { previewScene } from '../asset/preview-scene';
+import { AssetDatabase, createPreviewPlayer, generateAssetScene } from '../core/asset-data-base';
 import { editorWindow, menuItem } from '../core/decorators';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
@@ -123,7 +124,8 @@ export class Project extends EditorWindow {
     super();
     this.title = 'Project';
     this.open();
-    this.createPreviewPlayer();
+    this.previewPlayer = createPreviewPlayer();
+    this.previewPlayer.renderer.engine.database = new AssetDatabase(this.previewPlayer.renderer.engine);
     void this.createIconTexture(folderIcon).then(texture=>{
       if (texture) {
         this.folderIcon = texture;
@@ -241,6 +243,8 @@ export class Project extends EditorWindow {
     this.rootFileNode = new FileNode();
     this.rootFileNode.handle = folderHandle;
     await this.generateFileTree(this.rootFileNode);
+    AssetDatabase.rootDirectoryHandle = folderHandle;
+    await AssetDatabase.importAllAssets(folderHandle);
   }
 
   private async generateFileTree (item: FileNode) {
@@ -267,43 +271,45 @@ export class Project extends EditorWindow {
               const json = await this.readFile(file);
               const packageData: spec.EffectsPackageData = JSON.parse(json);
 
-              if (packageData.fileSummary.assetType === 'Geometry') {
-                const geometryData = packageData.exportObjects[0];
+              const previewScene = generateAssetScene(packageData);
 
-                const clonePreviewScene = JSON.parse(JSON.stringify(previewScene));
+              if (!previewScene) {
+                return;
+              }
+              this.previewPlayer.destroyCurrentCompositions();
+              const composition = await this.previewPlayer.loadScene(previewScene);
+              const previewItem = composition.getItemByName('3d-mesh');
 
-                geometryData.id = clonePreviewScene.geometries[0].id;
-                clonePreviewScene.geometries[0] = geometryData;
-                this.previewPlayer.destroyCurrentCompositions();
-                const composition = await this.previewPlayer.loadScene(clonePreviewScene);
-                const previewItem = composition.getItemByName('3d-mesh');
+              if (!previewItem) {
+                return;
+              }
+              const geometryproxy = new GeometryBoxProxy();
+              const boundingBox = new math.Box3();
 
-                if (previewItem) {
-                  const geometryproxy = new GeometryBoxProxy();
-                  const boundingBox = new math.Box3();
+              geometryproxy.create(previewItem.getComponent(ModelMeshComponent).content.subMeshes[0].getEffectsGeometry(), []);
+              geometryproxy.getBoundingBox(boundingBox);
+              const sphere = new Sphere();
 
-                  geometryproxy.create(previewItem.getComponent(ModelMeshComponent).content.subMeshes[0].getEffectsGeometry(), []);
-                  geometryproxy.getBoundingBox(boundingBox);
-                  const sphere = new Sphere();
+              boundingBox.getBoundingSphere(sphere);
+              const radius = sphere.radius;
+              const center = sphere.center;
 
-                  boundingBox.getBoundingSphere(sphere);
-                  const radius = sphere.radius;
-                  const center = sphere.center;
+              let scaleRatio = 4 * 1 / radius;
 
-                  const scaleRatio = 4 * 1 / radius;
+              if (packageData.fileSummary.assetType === 'Material') {
+                scaleRatio = 8 * 1 / radius;
+              }
+              previewItem.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
+              previewItem.setScale(scaleRatio, scaleRatio, scaleRatio);
+              previewItem.rotate(0, 25, 0);
 
-                  previewItem.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
-                  previewItem.setScale(scaleRatio, scaleRatio, scaleRatio);
-                  previewItem.rotate(0, 25, 0);
-                }
-                this.previewPlayer.gotoAndStop(1);
-                this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
+              this.previewPlayer.gotoAndStop(1);
+              this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
 
-                const iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
+              const iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
 
-                if (iconTexture) {
-                  child.icon = iconTexture;
-                }
+              if (iconTexture) {
+                child.icon = iconTexture;
               }
             }
           });
@@ -390,21 +396,6 @@ export class Project extends EditorWindow {
 
       return tex;
     }
-  }
-
-  private createPreviewPlayer () {
-    // 创建一个新的 div 元素
-    const newDiv = document.createElement('div');
-
-    // 设置 div 的样式
-    newDiv.style.width = '100px';
-    newDiv.style.height = '100px';
-    newDiv.style.backgroundColor = 'black';
-
-    // 将 div 添加到页面中
-    document.body.appendChild(newDiv);
-
-    this.previewPlayer = new Player({ container:newDiv });
   }
 
   private readFile (file: File): Promise<string> {

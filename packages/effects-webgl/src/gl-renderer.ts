@@ -142,6 +142,11 @@ export class GLRenderer extends Renderer implements Disposable {
     const delegate = this.renderingData.currentPass.delegate;
 
     for (const mesh of meshes) {
+      if (mesh.item) {
+        for (const material of mesh.materials) {
+          material.setMatrix('effects_ObjectToWorld', mesh.transform.getWorldMatrix());
+        }
+      }
       delegate.willRenderMesh?.(mesh, this.renderingData);
       mesh.render(this);
       delegate.didRenderMesh?.(mesh, this.renderingData);

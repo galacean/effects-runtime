@@ -1,13 +1,13 @@
-import type { spec } from '@galacean/effects';
-import { Player, math } from '@galacean/effects';
-import { editorWindow, menuItem } from '../core/decorators';
-import { EditorWindow } from './panel';
-import { ImGui, ImGui_Impl } from '../imgui';
-import { OrbitController } from '../core/orbit-controller';
-import { previewScene } from '../asset/preview-scene';
-import { Selection } from '../core/selection';
-import { FileNode } from './project';
+import type { spec, Player } from '@galacean/effects';
+import { math } from '@galacean/effects';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
+import { AssetDatabase, createPreviewPlayer, generateAssetScene } from '../core/asset-data-base';
+import { editorWindow, menuItem } from '../core/decorators';
+import { OrbitController } from '../core/orbit-controller';
+import { Selection } from '../core/selection';
+import { ImGui, ImGui_Impl } from '../imgui';
+import { EditorWindow } from './panel';
+import { FileNode } from './project';
 
 @editorWindow()
 export class Preview extends EditorWindow {
@@ -24,8 +24,9 @@ export class Preview extends EditorWindow {
   constructor () {
     super();
     this.title = 'Preview';
-    this.previewPlayer = this.createPreviewPlayer();
+    this.previewPlayer = createPreviewPlayer();
     this.previewPlayer.ticker.add(this.updateRenderTexture);
+    this.previewPlayer.renderer.engine.database = new AssetDatabase(this.previewPlayer.renderer.engine);
     this.cameraController = new OrbitController();
     this.open();
   }
@@ -42,7 +43,7 @@ export class Preview extends EditorWindow {
         if (file.name.endsWith('.json')) {
           const json = await this.readFile(file);
           const packageData: spec.EffectsPackageData = JSON.parse(json);
-          const previewScene = this.generateAssetScene(packageData);
+          const previewScene = generateAssetScene(packageData);
 
           if (previewScene) {
             this.previewPlayer.destroyCurrentCompositions();
@@ -91,28 +92,6 @@ export class Preview extends EditorWindow {
     }
   }
 
-  private generateAssetScene (packageData: spec.EffectsPackageData): spec.JSONScene | undefined {
-    const clonePreviewScene = JSON.parse(JSON.stringify(previewScene)) as spec.JSONScene;
-
-    const assetType = packageData.fileSummary.assetType;
-
-    if (assetType === 'Geometry') {
-      const geometryData = packageData.exportObjects[0];
-
-      geometryData.id = clonePreviewScene.geometries[0].id;
-      clonePreviewScene.geometries[0] = geometryData as spec.GeometryData;
-
-      return clonePreviewScene;
-    } else if (assetType === 'Material') {
-      const materialData = packageData.exportObjects[0];
-
-      materialData.id = clonePreviewScene.materials[0].id;
-      clonePreviewScene.materials[0] = materialData as spec.MaterialData;
-
-      return clonePreviewScene;
-    }
-  }
-
   private resizePlayer (width: number, height: number) {
     const player = this.previewPlayer;
 
@@ -123,21 +102,6 @@ export class Preview extends EditorWindow {
       player.container.style.height = height + 'px';
       player.resize();
     }
-  }
-
-  private createPreviewPlayer (): Player {
-    // 创建一个新的 div 元素
-    const newDiv = document.createElement('div');
-
-    // 设置 div 的样式
-    newDiv.style.width = '100px';
-    newDiv.style.height = '100px';
-    newDiv.style.backgroundColor = 'black';
-
-    // 将 div 添加到页面中
-    document.body.appendChild(newDiv);
-
-    return new Player({ container:newDiv });
   }
 
   private updateRenderTexture = () =>{
