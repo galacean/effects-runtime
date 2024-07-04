@@ -176,6 +176,8 @@ export class PMesh extends PEntity {
 
     this.subMeshes.forEach((subMesh, index) => {
 
+      // TODO Core 统一处理
+      subMesh.getEffectsMaterial().setMatrix('effects_ObjectToWorld', this.transform.getMatrix());
       renderer.drawGeometry(
         subMesh.getEffectsGeometry(),
         subMesh.getEffectsMaterial(),
