@@ -31,9 +31,6 @@ export class Editor extends EditorWindow {
     this.onSceneGUI();
   }
 
-  override onGUI () {
-  }
-
   onSceneGUI () {
     ImGui.Begin('Scene', null, ImGui.ImGuiWindowFlags.NoCollapse);
     if (!GalaceanEffects.player.getCompositions()[0]) {
