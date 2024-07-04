@@ -1,3 +1,4 @@
+import type { SceneRenderLevel } from '@galacean/effects';
 import { spec, disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger } from '@galacean/effects';
 import { DowngradePlugin } from './downgrade-plugin';
 
@@ -578,7 +579,7 @@ class DeviceProxy {
     return { downgrade: false, reason: '' };
   }
 
-  getRenderLevel (): spec.RenderLevel {
+  getRenderLevel (): SceneRenderLevel {
     if (this.level === DEVICE_LEVEL_HIGH) {
       return spec.RenderLevel.S;
     } else if (this.level === DEVICE_LEVEL_MEDIUM) {
@@ -639,7 +640,7 @@ export function checkDowngradeResult (result: DowngradeResult): DowngradeDecisio
   }
 }
 
-export function getRenderLevelByDevice (renderLevel?: spec.RenderLevel): spec.RenderLevel {
+export function getRenderLevelByDevice (renderLevel?: SceneRenderLevel): SceneRenderLevel {
   if (!renderLevel) {
     return deviceProxy.getRenderLevel();
   } else {
