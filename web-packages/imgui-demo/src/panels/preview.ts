@@ -26,6 +26,7 @@ export class Preview extends EditorWindow {
     this.title = 'Preview';
     this.createPreviewPlayer();
     this.cameraController = new OrbitController();
+    this.open();
   }
 
   protected override onGUI (): void {
