@@ -129,7 +129,6 @@ export class Preview extends EditorWindow {
 
     this.previewPlayer = new Player({ container:newDiv });
     this.previewPlayer.ticker.add(this.updateRenderTexture);
-    void this.previewPlayer.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ', { autoplay:true });
   }
 
   private updateRenderTexture = () =>{
