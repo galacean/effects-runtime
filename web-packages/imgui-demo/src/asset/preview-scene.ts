@@ -47,6 +47,17 @@ export const previewScene = {
           0,
         ],
       },
+      'globalVolume': {
+        'usePostProcessing': true,
+        'useHDR': true,
+        'useBloom': 0,
+        'threshold': 1.0,
+        'bloomIntensity': 1,
+        'brightness': 1.5,
+        'saturation': 1,
+        'contrast': 1,
+        'useToneMapping': 1,
+      },
       'sceneBindings': [
 
       ],
@@ -82,7 +93,7 @@ export const previewScene = {
         'b': 1.0,
         'a': 1.0,
       },
-      'intensity': 1,
+      'intensity': 2,
       'range': 100,
     },
     {
@@ -133,44 +144,6 @@ export const previewScene = {
   ],
   'materials': [
     {
-      'id': '1ff163c446234cd4b802db9224166d81',
-      'dataType': 'Material',
-      'shader': {
-        'id': '90ed7bbc1c364b3097b502b4a0f13d5b',
-      },
-      'floats': {
-        '_Speed': 1,
-      },
-      'vector4s': {},
-      'textures': {
-        '_MainTex': {
-          'texture': {
-            'id': 'whitetexture00000000000000000000',
-          },
-          'offset': {
-            'x': 0,
-            'y': 0,
-          },
-          'scale': {
-            'x': 1,
-            'y': 1,
-          },
-        },
-      },
-      'ints': {},
-      'blending': false,
-      'zTest': true,
-      'zWrite': true,
-      'colors': {
-        '_MainColor': {
-          'r': 1,
-          'g': 1,
-          'b': 1,
-          'a': 1,
-        },
-      },
-    },
-    {
       'id': 'd34dc6a9d6124543923042f9e304365c',
       'shader': {
         'id': 'pbr00000000000000000000000000000',
@@ -189,8 +162,8 @@ export const previewScene = {
       'floats': {
         '_SpecularAA': 1,
         '_AlphaCutoff': 0.3,
-        '_MetallicFactor': 0,
-        '_RoughnessFactor': 0.7,
+        '_MetallicFactor': 0.0,
+        '_RoughnessFactor': 0.2,
         '_NormalScale': 1,
         '_OcclusionStrength': 1,
         '_EmissiveIntensity': 0,

@@ -24,7 +24,8 @@ export class Preview extends EditorWindow {
   constructor () {
     super();
     this.title = 'Preview';
-    this.createPreviewPlayer();
+    this.previewPlayer = this.createPreviewPlayer();
+    this.previewPlayer.ticker.add(this.updateRenderTexture);
     this.cameraController = new OrbitController();
     this.open();
   }
@@ -91,13 +92,22 @@ export class Preview extends EditorWindow {
   }
 
   private generateAssetScene (packageData: spec.EffectsPackageData): spec.JSONScene | undefined {
-    if (packageData.fileSummary.assetType === 'Geometry') {
+    const clonePreviewScene = JSON.parse(JSON.stringify(previewScene)) as spec.JSONScene;
+
+    const assetType = packageData.fileSummary.assetType;
+
+    if (assetType === 'Geometry') {
       const geometryData = packageData.exportObjects[0];
 
-      const clonePreviewScene = JSON.parse(JSON.stringify(previewScene));
-
       geometryData.id = clonePreviewScene.geometries[0].id;
-      clonePreviewScene.geometries[0] = geometryData;
+      clonePreviewScene.geometries[0] = geometryData as spec.GeometryData;
+
+      return clonePreviewScene;
+    } else if (assetType === 'Material') {
+      const materialData = packageData.exportObjects[0];
+
+      materialData.id = clonePreviewScene.materials[0].id;
+      clonePreviewScene.materials[0] = materialData as spec.MaterialData;
 
       return clonePreviewScene;
     }
@@ -115,7 +125,7 @@ export class Preview extends EditorWindow {
     }
   }
 
-  private createPreviewPlayer () {
+  private createPreviewPlayer (): Player {
     // 创建一个新的 div 元素
     const newDiv = document.createElement('div');
 
@@ -127,8 +137,7 @@ export class Preview extends EditorWindow {
     // 将 div 添加到页面中
     document.body.appendChild(newDiv);
 
-    this.previewPlayer = new Player({ container:newDiv });
-    this.previewPlayer.ticker.add(this.updateRenderTexture);
+    return new Player({ container:newDiv });
   }
 
   private updateRenderTexture = () =>{
