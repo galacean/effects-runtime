@@ -335,11 +335,11 @@ export class Composition implements Disposable, LostHandler {
   }
 
   set editorScaleRatio (value: number) {
-    this.camera.fovScaleRatio = value;
+    this.camera.setFovScaleRatio(value);
   }
 
   get editorScaleRatio () {
-    return this.camera.fovScaleRatio;
+    return this.camera.getFovScaleRatio();
   }
 
   /**
