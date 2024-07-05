@@ -1,13 +1,12 @@
 import type { Component, Material } from '@galacean/effects';
-import { RendererComponent, VFXItem, getMergedStore } from '@galacean/effects';
+import { EffectsObject, RendererComponent, VFXItem, getMergedStore } from '@galacean/effects';
+import { editorWindow } from '../core/decorators';
+import type { FileNode } from '../core/file-node';
 import { OrbitController } from '../core/orbit-controller';
+import { EditorWindow } from '../core/panel';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow } from '../core/panel';
-import { editorWindow } from '../core/decorators';
-import { DragType } from '../core/drag-and-drop';
-import type { FileNode } from '../core/file-node';
 
 type char = number;
 type int = number;
@@ -125,6 +124,8 @@ export class Editor extends EditorWindow {
         transform.dispatchValueChange();
       }
 
+      const alignWidth = 150;
+
       for (const componet of activeObject.components) {
         if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
 
@@ -132,25 +133,49 @@ export class Editor extends EditorWindow {
 
           for (const peopertyName of Object.keys(componet)) {
             const key = peopertyName as keyof Component;
+            const property = componet[key];
 
-            if (typeof componet[key] === 'number') {
+            if (typeof property === 'number') {
               ImGui.Text(peopertyName);
-              ImGui.SameLine(100);
+              ImGui.SameLine(alignWidth);
               //@ts-expect-error
               ImGui.DragFloat('##DragFloat' + peopertyName, (_ = componet[key]) => componet[key] = _);
-            } else if (typeof componet[key] === 'boolean') {
+            } else if (typeof property === 'boolean') {
               ImGui.Text(peopertyName);
-              ImGui.SameLine(100);
+              ImGui.SameLine(alignWidth);
               //@ts-expect-error
               ImGui.Checkbox('##Checkbox' + peopertyName, (_ = componet[key]) => componet[key] = _);
+            } else if (property instanceof EffectsObject) {
+              ImGui.Text(peopertyName);
+              ImGui.SameLine(alignWidth);
+              ImGui.Button(property.name);
+              if (ImGui.BeginDragDropTarget()) {
+                const payload = ImGui.AcceptDragDropPayload(property.constructor.name);
+
+                if (payload) {
+                  void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
+                    if (!file) {
+                      return;
+                    }
+                    const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
+
+                    if (!effectsPackage) {
+                      return;
+                    }
+                    //@ts-expect-error
+                    componet[key] = effectsPackage.exportObjects[0] as Material;
+                  });
+                }
+                ImGui.EndDragDropTarget();
+              }
             }
           }
           if (componet instanceof RendererComponent) {
             ImGui.Text('Material');
-            ImGui.SameLine(100);
+            ImGui.SameLine(alignWidth);
             ImGui.Button(componet.material.name);
             if (ImGui.BeginDragDropTarget()) {
-              const payload = ImGui.AcceptDragDropPayload(DragType.Material);
+              const payload = ImGui.AcceptDragDropPayload(componet.material.constructor.name);
 
               if (payload) {
                 void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{

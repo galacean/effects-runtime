@@ -341,6 +341,7 @@ export class EffectsPackage extends EffectsObject {
 
 interface fileSummary {
   guid: string,
+  assetType: string,
 }
 
 export function generateAssetScene (packageData: spec.EffectsPackageData): spec.JSONScene | undefined {

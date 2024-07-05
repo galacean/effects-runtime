@@ -1,7 +1,12 @@
+import type { EffectsObject } from '@galacean/effects';
+import { GalaceanEffects } from '../ge';
+
 export class FileNode {
   handle: FileSystemDirectoryHandle | FileSystemFileHandle;
   children: FileNode[] = [];
-  icon?: WebGLTexture;
+  assetType: string = '';
+  assetObject: EffectsObject | undefined;
+  icon: WebGLTexture | undefined;
   private fileCache: File;
 
   get isFile () {
@@ -18,5 +23,26 @@ export class FileNode {
         return this.fileCache;
       }
     }
+  }
+
+  instantiateAssetObject () {
+    if (this.assetObject) {
+      return;
+    }
+    void this.getFile().then(async (file: File | undefined)=>{
+      if (!file) {
+        return;
+      }
+      try {
+        const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
+
+        if (!effectsPackage) {
+          return;
+        }
+        this.assetObject = effectsPackage.exportObjects[0];
+      } catch (error) {
+        console.error(error);
+      }
+    });
   }
 }

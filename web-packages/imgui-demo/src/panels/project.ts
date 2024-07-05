@@ -4,9 +4,8 @@ import '@galacean/effects-plugin-model';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { folderIcon, jsonIcon } from '../asset/images';
-import { AssetDatabase, createPreviewPlayer, generateAssetScene } from '../core/asset-data-base';
+import { AssetDatabase, createPreviewPlayer, generateAssetScene, readFileAsText } from '../core/asset-data-base';
 import { editorWindow, menuItem } from '../core/decorators';
-import { DragType } from '../core/drag-and-drop';
 import { EditorWindow } from '../core/panel';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
@@ -185,6 +184,7 @@ export class Project extends EditorWindow {
         } else if (child.icon) {
           icon = child.icon;
         }
+        child.instantiateAssetObject();
         if (Selection.activeObject === child || this.clickingFileNode === child) {
           ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(0.0, 100 / 255, 215 / 255, 1.0));
           ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(20 / 255, 122 / 255, 215 / 255, 1.0));
@@ -205,9 +205,10 @@ export class Project extends EditorWindow {
         ImGui.PopID();
         ImGui.PopStyleColor(3);
         if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
-          ImGui.SetDragDropPayload(DragType.Material, child);
+          if (child.assetObject) {
+            ImGui.SetDragDropPayload(child.assetObject.constructor.name, child);
+          }
           ImGui.ImageButton(icon, button_sz, uv0, uv1);
-
           ImGui.EndDragDropSource();
         }
         this.drawFileName(child.handle.name);
@@ -246,6 +247,22 @@ export class Project extends EditorWindow {
         item.children.push(childNode);
         await this.generateFileTree(childNode);
       }
+    } else {
+      const file = await handle.getFile();
+      let res: string;
+
+      try {
+        res = await readFileAsText(file);
+        const packageData = JSON.parse(res) as spec.EffectsPackageData;
+
+        if (packageData.fileSummary.assetType) {
+          item.assetType = packageData.fileSummary.assetType;
+        }
+      } catch (error) {
+        console.error('读取文件 ' + file.name + ' 出错:' + error);
+
+        return;
+      }
     }
   }
 
@@ -255,7 +272,7 @@ export class Project extends EditorWindow {
         if (child.handle.kind === 'file') {
           await child.handle.getFile().then(async (file: File)=>{
             if (file.name.endsWith('.json')) {
-              const json = await this.readFile(file);
+              const json = await readFileAsText(file);
               const packageData: spec.EffectsPackageData = JSON.parse(json);
 
               const previewScene = generateAssetScene(packageData);
@@ -412,23 +429,5 @@ export class Project extends EditorWindow {
 
       return tex;
     }
-  }
-
-  private readFile (file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-
-      reader.onload = () => {
-        if (reader.result) {
-          resolve(reader.result as string);
-        } else {
-          reject(new Error('Failed to read the file'));
-        }
-      };
-      reader.onerror = () => {
-        reject(new Error('Failed to read the file'));
-      };
-      reader.readAsText(file);
-    });
   }
 }
