@@ -115,10 +115,10 @@ export class ThreeTexture extends Texture {
 
     // @ts-expect-error
     return {
+      ...options,
       target,
       format: THREE.RGBAFormat,
       type: THREE.UnsignedByteType,
-      ...options,
       minFilter: ThreeTexture.toThreeJsTextureFilter(options.minFilter),
       magFilter: ThreeTexture.toThreeJsTextureFilter(options.magFilter),
       wrapS: ThreeTexture.toThreeJsTextureWrap(options.wrapS),

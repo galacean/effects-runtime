@@ -235,15 +235,9 @@ export class LoaderImpl implements Loader {
 
         if (texData) {
           const newId = generateGUID();
-          // @ts-expect-error
-          const newTexData: GLTFTexture = {
-            ...texData,
-          };
+          const newTexData = texData.clone();
 
-          newTexData.textureOptions = {
-            ...texData.textureOptions,
-            id: newId,
-          };
+          newTexData.textureOptions.id = newId;
           textures.push(newTexData);
           textureDataMap[newId] = newTexData.textureOptions;
           textureIdMap[baseColorId] = newId;
