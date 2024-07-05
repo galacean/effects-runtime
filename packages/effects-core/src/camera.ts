@@ -67,7 +67,7 @@ export class Camera {
   /**
    * 编辑器用于缩放画布
    */
-  fovScaleRatio: number = 1.0;
+  private fovScaleRatio: number = 1.0;
   private options: CameraOptionsEx;
   private viewMatrix = Matrix4.fromIdentity();
   private projectionMatrix = Matrix4.fromIdentity();
@@ -203,6 +203,15 @@ export class Camera {
   }
   get rotation () {
     return this.options.rotation.clone();
+  }
+
+  setFovScaleRatio (value: number) {
+    this.fovScaleRatio = value;
+    this.dirty = true;
+  }
+
+  getFovScaleRatio () {
+    return this.fovScaleRatio;
   }
 
   /**
