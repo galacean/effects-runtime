@@ -1,8 +1,25 @@
-import type { GLTFResources } from '@vvfx/resource-detection';
+import type {
+  GLTFResources,
+  GLTFMaterial,
+  GLTFPrimitive,
+  GLTFLight,
+  GLTFScene,
+  GLTFImage,
+  GLTFTexture,
+  GLTFCamera,
+  GLTFAnimation,
+  GLTFImageBasedLight,
+} from '@vvfx/resource-detection';
+import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
 import type {
   spec, TextureSourceOptions, EffectComponentData,
+  Texture, Geometry,
 } from '@galacean/effects';
 import type {
+  ModelAnimationOptions,
+  ModelMaterialOptions,
+  ModelSkyboxOptions,
+  ModelTreeOptions,
   ModelLightComponentData, ModelCameraComponentData, ModelSkyboxComponentData,
 } from '../index';
 
@@ -130,4 +147,33 @@ export interface Loader {
   processMaterialData (material: spec.MaterialData): void,
 
   processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean, image?: ModelImageLike): void,
+
+  // for old scene compatibility
+  processLight (lights: GLTFLight[], fromGLTF: boolean): void,
+
+  processCamera (cameras: GLTFCamera[], fromGLTF: boolean): void,
+
+  processMaterial (materials: GLTFMaterial[], fromGLTF: boolean): void,
+
+  createTreeOptions (scene: GLTFScene): ModelTreeOptions,
+
+  createAnimations (animations: GLTFAnimation[]): ModelAnimationOptions[],
+
+  createGeometry (primitive: GLTFPrimitive, hasSkinAnim: boolean): Geometry,
+
+  // 由于要兼容tiny开启了纹理预乘的模式，需要在外面创建和设置纹理，这里只做渲染Options对象的数据转换
+  createMaterial (material: GLTFMaterial): ModelMaterialOptions,
+
+  createTexture2D (images: GLTFImage, textures: GLTFTexture, isBaseColor: boolean): Promise<Texture>,
+
+  createTextureCube (cubeImages: CubeImage[], level0Size?: number): Promise<Texture>,
+
+  createSkybox (ibl: GLTFImageBasedLight): Promise<ModelSkyboxOptions>,
+
+  createDefaultSkybox (typeName: SkyboxType): Promise<ModelSkyboxOptions>,
+
+  // 用来转换 GLTF 和 Effects 之间颜色值范围
+  scaleColorVal (val: number, fromGLTF: boolean): number,
+
+  scaleColorVec (vec: number[], fromGLTF: boolean): number[],
 }

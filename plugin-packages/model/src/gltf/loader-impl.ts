@@ -1,31 +1,43 @@
-import { spec, generateGUID, glContext, addItem, loadImage, Transform } from '@galacean/effects';
-import type { TextureSourceOptions, TextureCubeSourceOptionsImageMipmaps, math, TransformProps } from '@galacean/effects';
+import { spec, generateGUID, glContext, addItem, loadImage, Transform, Geometry } from '@galacean/effects';
+import type { TextureSourceOptions, TextureCubeSourceOptionsImageMipmaps, math, TransformProps, Engine, Texture, Attribute } from '@galacean/effects';
 import type {
   SkyboxType, LoadSceneOptions, LoadSceneResult, Loader, ModelCamera, ModelLight, ModelSkybox, ModelImageLike,
 } from './protocol';
 import type {
-  ModelMeshComponentData, ModelSkyboxComponentData,
-  ModelTreeOptions, ModelLightComponentData, ModelCameraComponentData,
+  ModelMeshComponentData,
+  ModelSkyboxComponentData,
+  ModelLightComponentData,
+  ModelCameraComponentData,
+  ModelAnimationOptions,
+  ModelAnimTrackOptions,
+  ModelMaterialOptions,
+  ModelSkyboxOptions,
+  ModelTreeOptions,
+  ModelTextureTransform,
 } from '../index';
 import {
-  Vector3, Box3, Euler, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
+  Vector3, Box3, Matrix4, Euler, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
 } from '../runtime';
+import { LoaderHelper } from './loader-helper';
 import { WebGLHelper } from '../utility';
+import type { PImageBufferData, PSkyboxBufferParams } from '../runtime/skybox';
 import type {
   GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
-  GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight,
+  GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight, GLTFPrimitive,
+  GLTFBufferAttribute, GLTFBounds, GLTFTextureInfo,
 } from '@vvfx/resource-detection';
+import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
 
 export interface LoaderOptions {
   compatibleMode?: 'gltf' | 'tiny3d',
 }
 
-export function getDefaultEffectsGLTFLoader (options?: LoaderOptions): Loader {
+export function getDefaultEffectsGLTFLoader (engine: Engine, options?: LoaderOptions): Loader {
   if (!defaultGLTFLoader) {
     defaultGLTFLoader = new LoaderImpl();
   }
 
-  (defaultGLTFLoader as LoaderImpl).initial(options);
+  (defaultGLTFLoader as LoaderImpl).initial(engine, options);
 
   return defaultGLTFLoader;
 }
@@ -64,6 +76,8 @@ export class LoaderImpl implements Loader {
   geometries: spec.GeometryData[] = [];
   animations: spec.AnimationClipData[] = [];
   sceneAABB = new Box3();
+
+  engine: Engine;
 
   constructor (composition?: spec.CompositionData) {
     if (composition) {
@@ -486,7 +500,8 @@ export class LoaderImpl implements Loader {
     options.generateMipmap = generateMipmap;
   }
 
-  initial (options?: LoaderOptions) {
+  initial (engine: Engine, options?: LoaderOptions) {
+    this.engine = engine;
     this.loaderOptions = options ?? {};
   }
 
@@ -913,6 +928,250 @@ export class LoaderImpl implements Loader {
     }
   }
 
+  /**
+   * for old scene compatibility
+   */
+
+  processLight (lights: GLTFLight[], fromGLTF: boolean): void {
+    lights.forEach(l => {
+      if (l.color === undefined) {
+        if (fromGLTF) { l.color = [255, 255, 255, 255]; } else { l.color = [1, 1, 1, 1]; }
+      } else {
+        l.color[0] = this.scaleColorVal(l.color[0], fromGLTF);
+        l.color[1] = this.scaleColorVal(l.color[1], fromGLTF);
+        l.color[2] = this.scaleColorVal(l.color[2], fromGLTF);
+        l.color[3] = this.scaleColorVal(l.color[3], fromGLTF);
+      }
+    });
+  }
+
+  processCamera (cameras: GLTFCamera[], fromGLTF: boolean): void {
+    const scale = fromGLTF ? 180.0 / Math.PI : Math.PI / 180.0;
+
+    cameras.forEach(camera => {
+      if (camera.perspective !== undefined) {
+        camera.perspective.yfov *= scale;
+      }
+    });
+  }
+
+  processMaterial (materials: GLTFMaterial[], fromGLTF: boolean): void {
+    materials.forEach(mat => {
+      if (mat.baseColorFactor === undefined) {
+        if (fromGLTF) { mat.baseColorFactor = [255, 255, 255, 255]; } else { mat.baseColorFactor = [1, 1, 1, 1]; }
+      } else {
+        mat.baseColorFactor[0] = this.scaleColorVal(mat.baseColorFactor[0], fromGLTF);
+        mat.baseColorFactor[1] = this.scaleColorVal(mat.baseColorFactor[1], fromGLTF);
+        mat.baseColorFactor[2] = this.scaleColorVal(mat.baseColorFactor[2], fromGLTF);
+        mat.baseColorFactor[3] = this.scaleColorVal(mat.baseColorFactor[3], fromGLTF);
+      }
+
+      if (mat.emissiveFactor === undefined) {
+        if (fromGLTF) { mat.emissiveFactor = [255, 255, 255, 255]; } else { mat.emissiveFactor = [1, 1, 1, 1]; }
+      } else {
+        mat.emissiveFactor[0] = this.scaleColorVal(mat.emissiveFactor[0], fromGLTF);
+        mat.emissiveFactor[1] = this.scaleColorVal(mat.emissiveFactor[1], fromGLTF);
+        mat.emissiveFactor[2] = this.scaleColorVal(mat.emissiveFactor[2], fromGLTF);
+        mat.emissiveFactor[3] = this.scaleColorVal(mat.emissiveFactor[3], fromGLTF);
+      }
+
+      if (fromGLTF && mat.occlusionTexture !== undefined && mat.occlusionTexture.strength === undefined) {
+        mat.occlusionTexture.strength = this.isTiny3dMode() ? 0 : 1;
+      }
+    });
+  }
+
+  createTreeOptions (scene: GLTFScene): ModelTreeOptions {
+    const nodeList = scene.nodes.map((node, nodeIndex) => {
+      const children = node.children.map(child => {
+        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}`); }
+
+        return child.nodeIndex;
+      });
+      let pos: spec.vec3 | undefined;
+      let quat: spec.vec4 | undefined;
+      let scale: spec.vec3 | undefined;
+
+      if (node.matrix !== undefined) {
+        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
+        const mat = Matrix4.fromArray(node.matrix);
+        const transform = mat.getTransform();
+
+        pos = transform.translation.toArray();
+        quat = transform.rotation.toArray();
+        scale = transform.scale.toArray();
+      } else {
+        if (node.translation !== undefined) { pos = node.translation as spec.vec3; }
+        if (node.rotation !== undefined) { quat = node.rotation as spec.vec4; }
+        if (node.scale !== undefined) { scale = node.scale as spec.vec3; }
+      }
+      node.nodeIndex = nodeIndex;
+      const treeNode: spec.TreeNodeOptions = {
+        name: node.name,
+        transform: {
+          position: pos,
+          quat: quat,
+          scale: scale,
+        },
+        children: children,
+        id: `${node.nodeIndex}`,
+        // id: index, id不指定就是index，指定后就是指定的值
+      };
+
+      return treeNode;
+    });
+
+    const rootNodes = scene.rootNodes.map(root => {
+      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}`); }
+
+      return root.nodeIndex;
+    });
+
+    const treeOptions: ModelTreeOptions = {
+      nodes: nodeList,
+      children: rootNodes,
+      animation: -1,
+      animations: [],
+    };
+
+    return treeOptions;
+  }
+
+  createAnimations (animations: GLTFAnimation[]): ModelAnimationOptions[] {
+    return animations.map(anim => {
+      const tracks = anim.channels.map(channel => {
+        const track: ModelAnimTrackOptions = {
+          input: channel.input.array as Float32Array,
+          output: channel.output.array as Float32Array,
+          node: channel.target.node,
+          path: channel.target.path,
+          interpolation: channel.interpolation,
+        };
+
+        return track;
+      });
+
+      const newAnim: ModelAnimationOptions = {
+        name: anim.name,
+        tracks: tracks,
+      };
+
+      return newAnim;
+    });
+  }
+
+  createGeometry (primitive: GLTFPrimitive, hasSkinAnim: boolean): Geometry {
+    const proxy = new GeometryProxy(this.engine, primitive, hasSkinAnim);
+
+    return proxy.geometry;
+  }
+
+  createMaterial (material: GLTFMaterial): ModelMaterialOptions {
+    const proxy = new MaterialProxy(material, [], this.isTiny3dMode());
+
+    return proxy.material;
+  }
+
+  createTexture2D (image: GLTFImage, texture: GLTFTexture, isBaseColor: boolean): Promise<Texture> {
+    return WebGLHelper.createTexture2D(this.engine, image, texture, isBaseColor, this.isTiny3dMode());
+  }
+
+  createTextureCube (cubeImages: CubeImage[], level0Size?: number): Promise<Texture> {
+    if (cubeImages.length == 0) { throw new Error(`createTextureCube: Invalid cubeImages length ${cubeImages}`); }
+
+    const mipmaps: PImageBufferData[][] = [];
+
+    cubeImages.forEach(cubeImage => {
+      if (cubeImage.length != 6) { throw new Error(`createTextureCube: cubeimage count should always be 6, ${cubeImage}`); }
+      //
+      const imgList: PImageBufferData[] = [];
+
+      cubeImage.forEach(img => {
+        if (img.imageData === undefined) { throw new Error(`createTextureCube: Invalid image data from ${img}`); }
+        //
+        imgList.push({
+          type: 'buffer',
+          data: img.imageData,
+          mimeType: img.mimeType,
+        });
+      });
+
+      if (this.isTiny3dMode()) {
+        [imgList[4], imgList[5]] = [imgList[5], imgList[4]];
+      }
+
+      mipmaps.push(imgList);
+    });
+    //
+    if (mipmaps.length == 1) {
+      // no mipmaps
+      return WebGLHelper.createTextureCubeFromBuffer(this.engine, mipmaps[0]);
+    } else {
+      // has mipmaps
+      return WebGLHelper.createTextureCubeMipmapFromBuffer(this.engine, mipmaps, level0Size ?? Math.pow(2, mipmaps.length - 1));
+    }
+  }
+
+  createSkybox (ibl: GLTFImageBasedLight): Promise<ModelSkyboxOptions> {
+    const reflectionsIntensity = ibl.reflectionsIntensity ?? ibl.intensity;
+    const irradianceCoeffs = ibl.irradianceCoefficients as number[][];
+    const inSpecularImages = ibl.specularImages as CubeImage[];
+    const specularImages = inSpecularImages.map(images => {
+      const newImages = images.map(img => {
+        const outImg: PImageBufferData = {
+          type: 'buffer',
+          data: img.imageData,
+          mimeType: img.mimeType,
+        };
+
+        return outImg;
+      });
+
+      if (this.isTiny3dMode()) {
+        [newImages[4], newImages[5]] = [newImages[5], newImages[4]];
+      }
+
+      return newImages;
+    });
+    const specularMipCount = specularImages.length - 1;
+    const specularImageSize = ibl.specularImageSize ?? Math.pow(2, specularMipCount);
+
+    const newIrradianceCoeffs: number[] = [];
+
+    irradianceCoeffs.forEach(coeffs => {
+      newIrradianceCoeffs.push(...coeffs);
+    });
+
+    const params: PSkyboxBufferParams = {
+      type: 'buffer',
+      renderable: this.isSkyboxVis(),
+      intensity: ibl.intensity,
+      reflectionsIntensity: reflectionsIntensity,
+      irradianceCoeffs: newIrradianceCoeffs,
+      specularImage: specularImages,
+      specularMipCount: specularMipCount,
+      specularImageSize: specularImageSize,
+    };
+
+    return PSkyboxCreator.createSkyboxOptions(this.engine, params);
+  }
+
+  createDefaultSkybox (typeName: SkyboxType): Promise<ModelSkyboxOptions> {
+    if (typeName !== 'NFT' && typeName !== 'FARM') { throw new Error(`Invalid skybox type name ${typeName}`); }
+    //
+    const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
+    const params = PSkyboxCreator.getSkyboxParams(typ);
+
+    return PSkyboxCreator.createSkyboxOptions(this.engine, params);
+  }
+
+  scaleColorVal (val: number, fromGLTF: boolean): number {
+    return fromGLTF ? LoaderHelper.scaleTo255(val) : LoaderHelper.scaleTo1(val);
+  }
+
+  scaleColorVec (vec: number[], fromGLTF: boolean): number[] {
+    return vec.map(val => this.scaleColorVal(val, fromGLTF));
+  }
 }
 
 export function getPBRShaderProperties (): string {
@@ -1032,4 +1291,465 @@ export function getDefaultUnlitMaterialData (): spec.MaterialData {
   };
 
   return material;
+}
+
+class GeometryProxy {
+
+  constructor (
+    private engine: Engine,
+    private gltfGeometry: GLTFPrimitive,
+    private hasSkinAnimation: boolean) {
+  }
+
+  get geometry (): Geometry {
+    const attributes: Record<string, Attribute> = {};
+
+    if (this.hasPosition) {
+      const attrib = this.positionAttrib;
+
+      attributes['a_Position'] = this._getBufferAttrib(attrib);
+    } else {
+      throw new Error('Position attribute missing');
+    }
+    if (this.hasNormal) {
+      const attrib = this.normalAttrib;
+
+      if (attrib !== undefined) {
+        attributes['a_Normal'] = this._getBufferAttrib(attrib);
+      }
+    }
+    if (this.hasTangent) {
+      const attrib = this.tangentAttrib;
+
+      if (attrib !== undefined) {
+        attributes['a_Tangent'] = this._getBufferAttrib(attrib);
+      }
+    }
+    this.texCoordList.forEach(val => {
+      const attrib = this.texCoordAttrib(val);
+      const attribName = `a_UV${val + 1}`;
+
+      attributes[attribName] = this._getBufferAttrib(attrib);
+    });
+    if (this.hasSkinAnimation) {
+      const jointAttrib = this.jointAttribute;
+
+      if (jointAttrib !== undefined) {
+        attributes['a_Joint1'] = this._getBufferAttrib(jointAttrib);
+      }
+      const weightAttrib = this.weightAttribute;
+
+      if (weightAttrib !== undefined) {
+        attributes['a_Weight1'] = this._getBufferAttrib(weightAttrib);
+      }
+    }
+
+    /**
+     * 设置Morph动画需要的Attribute，主要包括Position，Normal和Tangent
+     */
+    for (let i = 0; i < 8; i++) {
+      const positionAttrib = this.getTargetPosition(i);
+
+      if (positionAttrib !== undefined) {
+        attributes[`a_Target_Position${i}`] = this._getBufferAttrib(positionAttrib);
+      }
+
+      const normalAttrib = this.getTargetNormal(i);
+
+      if (normalAttrib !== undefined) {
+        attributes[`a_Target_Normal${i}`] = this._getBufferAttrib(normalAttrib);
+      }
+
+      const tangentAttrib = this.getTargetTangent(i);
+
+      if (tangentAttrib !== undefined) {
+        attributes[`a_Target_Tangent${i}`] = this._getBufferAttrib(tangentAttrib);
+      }
+    }
+
+    const indexArray = this.indexArray;
+
+    if (indexArray !== undefined) {
+      return Geometry.create(
+        this.engine,
+        {
+          attributes: attributes,
+          indices: { data: indexArray },
+          drawStart: 0,
+          drawCount: indexArray.length,
+          mode: glContext.TRIANGLES,
+        }
+      );
+    } else {
+      return Geometry.create(
+        this.engine,
+        {
+          attributes: attributes,
+          drawStart: 0,
+          drawCount: this.positionAttrib.array.length / 3,
+          mode: glContext.TRIANGLES,
+        }
+      );
+    }
+  }
+
+  private _getBufferAttrib (inAttrib: GLTFBufferAttribute): Attribute {
+    const attrib: spec.AttributeWithData = {
+      type: inAttrib.type,
+      size: inAttrib.itemSize,
+      //stride: inAttrib.stride,
+      //offset: inAttrib.offset,
+      data: inAttrib.array,
+      normalize: inAttrib.normalized,
+    };
+
+    return attrib;
+  }
+
+  get positionAttrib () {
+    return this.gltfGeometry.getPosition();
+  }
+
+  get normalAttrib () {
+    return this.gltfGeometry.getNormal();
+  }
+
+  get tangentAttrib () {
+    return this.gltfGeometry.getTangent();
+  }
+
+  texCoordAttrib (index: number) {
+    return this.gltfGeometry.getTexCoord(index);
+  }
+
+  get jointAttribute () {
+    return this.gltfGeometry.getJoints(0);
+  }
+
+  get weightAttribute () {
+    return this.gltfGeometry.getWeights(0);
+  }
+
+  get hasPosition (): boolean {
+    return this.positionAttrib !== undefined;
+  }
+
+  get hasNormal (): boolean {
+    return this.normalAttrib !== undefined;
+  }
+
+  get hasTangent (): boolean {
+    return this.tangentAttrib !== undefined;
+  }
+
+  get hasTexCoord (): boolean {
+    return this.texCoordCount > 0;
+  }
+
+  get texCoordCount (): number {
+    for (let i = 0; i < 10; i++) {
+      if (this.texCoordAttrib(i) === undefined) { return i; }
+    }
+
+    return 0;
+  }
+
+  get hasJointAttribute (): boolean {
+    return this.jointAttribute !== undefined;
+  }
+
+  get hasWeightAttribute (): boolean {
+    return this.weightAttribute !== undefined;
+  }
+
+  get indexArray (): Uint8Array | Uint16Array | Uint32Array | undefined {
+    if (this.gltfGeometry.indices === undefined) { return undefined; }
+
+    switch (this.gltfGeometry.indices.type) {
+      case WebGLRenderingContext['UNSIGNED_INT']:
+        return this.gltfGeometry.indices.array as Uint32Array;
+      case WebGLRenderingContext['UNSIGNED_SHORT']:
+        return this.gltfGeometry.indices.array as Uint16Array;
+      case WebGLRenderingContext['UNSIGNED_BYTE']:
+        return this.gltfGeometry.indices.array as Uint8Array;
+    }
+
+    return undefined;
+  }
+
+  get indexCount (): number {
+    if (this.gltfGeometry.indices !== undefined) { return this.gltfGeometry.indices.array.length; } else { return 0; }
+  }
+
+  get texCoordList (): number[] {
+    const texCoords: number[] = [];
+
+    for (let i = 0; i < 10; i++) {
+      if (this.texCoordAttrib(i) !== undefined) {
+        texCoords.push(i);
+      } else {
+        break;
+      }
+    }
+
+    return texCoords;
+  }
+
+  getTargetPosition (index: number): GLTFBufferAttribute | undefined {
+    return this.gltfGeometry.getAttribute(`POSITION${index}`);
+  }
+
+  getTargetNormal (index: number): GLTFBufferAttribute | undefined {
+    return this.gltfGeometry.getAttribute(`NORMAL${index}`);
+  }
+
+  getTargetTangent (index: number): GLTFBufferAttribute | undefined {
+    return this.gltfGeometry.getAttribute(`TANGENT${index}`);
+  }
+
+}
+
+class MaterialProxy {
+  private gltfMaterial: GLTFMaterial;
+  private textures: Texture[];
+  private tiny3dMode: boolean;
+
+  constructor (material: GLTFMaterial, textures: Texture[], tiny3dMode: boolean) {
+    this.gltfMaterial = material;
+    this.textures = textures;
+    this.tiny3dMode = tiny3dMode;
+  }
+
+  get material (): ModelMaterialOptions {
+    const mat = this.gltfMaterial;
+    const isUnlit = GLTFHelper.isUnlitMaterial(mat);
+
+    let blending = spec.MaterialBlending.opaque;
+
+    switch (mat.alphaMode) {
+      case 'OPAQUE':
+        blending = spec.MaterialBlending.opaque;
+
+        break;
+      case 'MASK':
+        blending = spec.MaterialBlending.masked;
+
+        break;
+      case 'BLEND':
+        blending = spec.MaterialBlending.translucent;
+
+        break;
+    }
+
+    const side = mat.doubleSided ? spec.SideMode.DOUBLE : spec.SideMode.FRONT;
+
+    const enableShadow = false;
+
+    const alphaCutOff = mat.alphaCutOff ?? 0.5;
+
+    const name = mat.name;
+
+    if (isUnlit) {
+      return {
+        name: name,
+        type: spec.MaterialType.unlit,
+        baseColorTexture: this.baseColorTextureObj,
+        baseColorTextureCoordinate: this.baseColorTextureCoord,
+        baseColorTextureTransform: this.baseColorTextureTransfrom,
+        baseColorFactor: this.baseColorFactor,
+        //
+        depthMask: mat.extras?.depthMask,
+        blending: blending,
+        alphaCutOff: alphaCutOff,
+        side: side,
+      };
+    } else {
+      return {
+        name: name,
+        type: spec.MaterialType.pbr,
+        baseColorTexture: this.baseColorTextureObj,
+        baseColorTextureCoordinate: this.baseColorTextureCoord,
+        baseColorTextureTransform: this.baseColorTextureTransfrom,
+        baseColorFactor: this.baseColorFactor,
+        //
+        useSpecularAA: this.getSpecularAA(),
+        //
+        metallicRoughnessTexture: this.metallicRoughnessTextureObj,
+        metallicRoughnessTextureCoordinate: this.metallicRoughnessTextureCoord,
+        metallicRoughnessTextureTransform: this.metallicRoughnessTextureTransfrom,
+        metallicFactor: this.metalicFactor,
+        roughnessFactor: this.roughnessFactor,
+        //
+        normalTexture: this.normalTextureObj,
+        normalTextureCoordinate: this.normalTextureCoord,
+        normalTextureTransform: this.normalTextureTransfrom,
+        normalTextureScale: this.normalTextureScale,
+        //
+        occlusionTexture: this.occlusionTextureObj,
+        occlusionTextureCoordinate: this.occlusionTextureCoord,
+        occlusionTextureTransform: this.occlusionTextureTransfrom,
+        occlusionTextureStrength: this.occlusionTextureStrength,
+        //
+        emissiveTexture: this.emissiveTextureObj,
+        emissiveTextureCoordinate: this.emissiveTextureCoord,
+        emissiveTextureTransform: this.emissiveTextureTransfrom,
+        emissiveFactor: this.emissiveFactor,
+        emissiveIntensity: 1.0,
+        //
+        depthMask: mat.extras?.depthMask,
+        blending: blending,
+        alphaCutOff: alphaCutOff,
+        side: side,
+        enableShadow: enableShadow,
+      };
+    }
+  }
+
+  private getTextureObject (index: number): Texture | undefined {
+    if (index < 0 || index >= this.textures.length) { return; }
+
+    return this.textures[index];
+  }
+
+  getTextureObj (texInfo?: GLTFTextureInfo): Texture | undefined {
+    return texInfo ? this.getTextureObject(texInfo.index) : undefined;
+  }
+
+  getTextureCoord (texInfo?: GLTFTextureInfo): number | undefined {
+    return texInfo ? texInfo.texCoord : undefined;
+  }
+
+  getTextureTransform (texInfo?: GLTFTextureInfo): ModelTextureTransform | undefined {
+    const transform = texInfo?.extensions?.KHR_texture_transform;
+
+    if (transform === undefined) {
+      return;
+    }
+
+    if (transform.offset === undefined && transform.rotation === undefined && transform.scale === undefined) {
+      return;
+    }
+
+    return {
+      offset: transform.offset,
+      rotation: transform.rotation,
+      scale: transform.scale,
+    };
+  }
+
+  get baseColorTextureObj (): Texture | undefined {
+    return this.getTextureObj(this.gltfMaterial.baseColorTexture);
+  }
+
+  get baseColorTextureCoord (): number | undefined {
+    return this.getTextureCoord(this.gltfMaterial.baseColorTexture);
+  }
+
+  get baseColorTextureTransfrom (): ModelTextureTransform | undefined {
+    return this.getTextureTransform(this.gltfMaterial.baseColorTexture);
+  }
+
+  get metallicRoughnessTextureObj (): Texture | undefined {
+    return this.getTextureObj(this.gltfMaterial.metallicRoughnessTexture);
+  }
+
+  get metallicRoughnessTextureCoord (): number | undefined {
+    return this.getTextureCoord(this.gltfMaterial.metallicRoughnessTexture);
+  }
+
+  get metallicRoughnessTextureTransfrom (): ModelTextureTransform | undefined {
+    return this.getTextureTransform(this.gltfMaterial.metallicRoughnessTexture);
+  }
+
+  get normalTextureObj (): Texture | undefined {
+    return this.getTextureObj(this.gltfMaterial.normalTexture);
+  }
+
+  get normalTextureCoord (): number | undefined {
+    return this.getTextureCoord(this.gltfMaterial.normalTexture);
+  }
+
+  get normalTextureTransfrom (): ModelTextureTransform | undefined {
+    return this.getTextureTransform(this.gltfMaterial.normalTexture);
+  }
+
+  get occlusionTextureObj (): Texture | undefined {
+    return this.getTextureObj(this.gltfMaterial.occlusionTexture);
+  }
+
+  get occlusionTextureCoord (): number | undefined {
+    return this.getTextureCoord(this.gltfMaterial.occlusionTexture);
+  }
+
+  get occlusionTextureTransfrom (): ModelTextureTransform | undefined {
+    return this.getTextureTransform(this.gltfMaterial.occlusionTexture);
+  }
+
+  get emissiveTextureObj (): Texture | undefined {
+    return this.getTextureObj(this.gltfMaterial.emissiveTexture);
+  }
+
+  get emissiveTextureCoord (): number | undefined {
+    return this.getTextureCoord(this.gltfMaterial.emissiveTexture);
+  }
+
+  get emissiveTextureTransfrom (): ModelTextureTransform | undefined {
+    return this.getTextureTransform(this.gltfMaterial.emissiveTexture);
+  }
+
+  get hasEmissive (): boolean {
+    const factor = this.emissiveFactor;
+
+    return factor[0] + factor[1] + factor[2] > 0;
+  }
+
+  get baseColorFactor (): [number, number, number, number] {
+    const f = this.gltfMaterial.baseColorFactor;
+
+    if (f === undefined || f.length != 4) { return [1, 1, 1, 1]; } else { return [f[0], f[1], f[2], f[3]]; }
+  }
+
+  getSpecularAA () {
+    return this.gltfMaterial.extras?.useSpecularAA;
+  }
+
+  get metalicFactor (): number {
+    return this.gltfMaterial.metallicFactor ?? 1;
+  }
+
+  get roughnessFactor (): number {
+    return this.gltfMaterial.roughnessFactor ?? 1;
+  }
+
+  get normalTextureScale (): number {
+    return this.gltfMaterial.normalTexture?.scale ?? 1;
+  }
+
+  get occlusionTextureStrength (): number {
+    return this.gltfMaterial.occlusionTexture?.strength ?? 1;
+  }
+
+  get emissiveFactor (): [number, number, number, number] {
+    const f = this.gltfMaterial.emissiveFactor;
+
+    if (f === undefined || f.length != 4) {
+      return [0, 0, 0, 1];
+    } else {
+      return [f[0], f[1], f[2], 1.0];
+    }
+  }
+
+}
+
+class GLTFHelper {
+  static isUnlitMaterial (mat: GLTFMaterial): boolean {
+    return mat.extensions?.KHR_materials_unlit !== undefined;
+  }
+
+  static createBoxFromGLTFBound (bound: GLTFBounds): Box3 {
+    const boxMin = Vector3.fromArray(bound.box.min as number[]);
+    const boxMax = Vector3.fromArray(bound.box.max as number[]);
+
+    return new Box3(boxMin, boxMax);
+  }
 }
