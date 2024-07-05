@@ -3,7 +3,7 @@ import { CompositionComponent } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow } from './panel';
+import { EditorWindow } from '../core/panel';
 
 @editorWindow()
 export class Sequencer extends EditorWindow {

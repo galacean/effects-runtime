@@ -2,7 +2,7 @@ import inspireList from '../asset/inspire-list';
 import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow } from './panel';
+import { EditorWindow } from '../core/panel';
 
 @editorWindow()
 export class CompositionWindow extends EditorWindow {

@@ -6,7 +6,7 @@ import { editorWindow, menuItem } from '../core/decorators';
 import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
-import { EditorWindow } from './panel';
+import { EditorWindow } from '../core/panel';
 import { FileNode } from './project';
 
 @editorWindow()

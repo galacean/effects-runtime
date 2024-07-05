@@ -4,12 +4,12 @@ import '@galacean/effects-plugin-model';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { folderIcon, jsonIcon } from '../asset/images';
-import { previewScene } from '../asset/preview-scene';
 import { AssetDatabase, createPreviewPlayer, generateAssetScene } from '../core/asset-data-base';
 import { editorWindow, menuItem } from '../core/decorators';
+import { DragType } from '../core/drag-and-drop';
+import { EditorWindow } from '../core/panel';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
-import { EditorWindow } from './panel';
 
 @editorWindow()
 export class Project extends EditorWindow {
@@ -20,6 +20,7 @@ export class Project extends EditorWindow {
   private fileViewHovered = false;
   private folderIcon: WebGLTexture;
   private jsonIcon: WebGLTexture;
+  private clickingFileNode: FileNode | undefined;
 
   @menuItem('Window/Project')
   static showWindow () {
@@ -183,47 +184,32 @@ export class Project extends EditorWindow {
         } else if (child.icon) {
           icon = child.icon;
         }
-        if (Selection.activeObject === child) {
+        if (Selection.activeObject === child || this.clickingFileNode === child) {
           ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(0.0, 100 / 255, 215 / 255, 1.0));
           ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(20 / 255, 122 / 255, 215 / 255, 1.0));
         } else {
           ImGui.PushStyleColor(ImGui.Col.Button, new ImGui.Color(40 / 255, 40 / 255, 40 / 255, 1.0));
           ImGui.PushStyleColor(ImGui.Col.ButtonHovered, new ImGui.Color(70 / 255, 70 / 255, 70 / 255, 1.0));
         }
-
         ImGui.PushStyleColor(ImGui.Col.ButtonActive, new ImGui.Color(0.0, 122 / 255, 215 / 255, 1.0));
-        ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col);
-        if (ImGui.IsItemClicked()) {
+        if (ImGui.ImageButton(icon, button_sz, uv0, uv1, frame_padding, bg_col)) {
           Selection.activeObject = child;
+        }
+        if (this.clickingFileNode === child) {
+          this.clickingFileNode = undefined;
+        }
+        if (ImGui.IsItemActive()) {
+          this.clickingFileNode = child;
         }
         ImGui.PopID();
         ImGui.PopStyleColor(3);
-        // 获取按钮的尺寸
-        const buttonSize = ImGui.GetItemRectSize();
+        if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
+          ImGui.SetDragDropPayload(DragType.Material, 0);
+          ImGui.ImageButton(icon, button_sz, uv0, uv1);
 
-        // 要显示的文本
-        let text = child.handle.name;
-
-        // 计算文本所需的宽度
-        const textSize = ImGui.CalcTextSize(text);
-
-        // 如果文本的宽度超过按钮宽度，则进行截断
-        if (textSize.x > buttonSize.x) {
-          while (text.length > 0 && ImGui.CalcTextSize(text + '...').x > buttonSize.x) {
-            text = text.slice(0, -1);
-          }
-          text += '...';
+          ImGui.EndDragDropSource();
         }
-
-        let preEmptySpace = '';
-
-        while (ImGui.CalcTextSize(preEmptySpace).x < buttonSize.x - ImGui.CalcTextSize(text).x) {
-          preEmptySpace += ' ';
-          text = ' ' + text;
-        }
-
-        // 显示文本
-        ImGui.Text(text);
+        this.drawFileName(child.handle.name);
         ImGui.EndGroup();
         const last_button_x2 = ImGui.GetItemRectMax().x;
         const next_button_x2 = last_button_x2 + style.ItemSpacing.x + button_sz.x; // Expected position if next button was on same line
@@ -371,6 +357,35 @@ export class Project extends EditorWindow {
     ImGui.PushStyleVar(ImGui.StyleVar.GrabMinSize, 25);
     ImGui.SliderFloat('##RightBottomSlider', (value = this.fileViewSize) => this.fileViewSize = value, 5, 200, '');
     ImGui.PopStyleVar();
+  }
+
+  private drawFileName (name: string) {
+    // 获取按钮的尺寸
+    const buttonSize = ImGui.GetItemRectSize();
+
+    // 要显示的文本
+    let text = name;
+
+    // 计算文本所需的宽度
+    const textSize = ImGui.CalcTextSize(text);
+
+    // 如果文本的宽度超过按钮宽度，则进行截断
+    if (textSize.x > buttonSize.x) {
+      while (text.length > 0 && ImGui.CalcTextSize(text + '...').x > buttonSize.x) {
+        text = text.slice(0, -1);
+      }
+      text += '...';
+    }
+
+    let preEmptySpace = '';
+
+    while (ImGui.CalcTextSize(preEmptySpace).x < buttonSize.x - ImGui.CalcTextSize(text).x) {
+      preEmptySpace += ' ';
+      text = ' ' + text;
+    }
+
+    // 显示文本
+    ImGui.Text(text);
   }
 
   private async createIconTexture (imageURLOrCanvas: string | HTMLCanvasElement) {

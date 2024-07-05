@@ -1,12 +1,13 @@
 import type { Component } from '@galacean/effects';
-import { VFXItem, getMergedStore } from '@galacean/effects';
+import { RendererComponent, VFXItem, getMergedStore } from '@galacean/effects';
 import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow } from './panel';
+import { EditorWindow } from '../core/panel';
 import { editorWindow } from '../core/decorators';
 import { FileNode } from './project';
+import { DragType } from '../core/drag-and-drop';
 
 type char = number;
 type int = number;
@@ -142,6 +143,20 @@ export class Editor extends EditorWindow {
               ImGui.SameLine(100);
               //@ts-expect-error
               ImGui.Checkbox('##Checkbox' + peopertyName, (_ = componet[key]) => componet[key] = _);
+            }
+          }
+          if (componet instanceof RendererComponent) {
+            ImGui.Text('Material');
+            ImGui.SameLine(100);
+            ImGui.Button(componet.material.name);
+            if (ImGui.BeginDragDropTarget()) {
+              const payload = ImGui.AcceptDragDropPayload(DragType.Material);
+
+              if (payload) {
+                // const value = new Float32Array(payload);
+                // ImGui.Text(`Dropped value: ${value[0].toFixed(3)}`);
+              }
+              ImGui.EndDragDropTarget();
             }
           }
         }
