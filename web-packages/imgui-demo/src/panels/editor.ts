@@ -1,4 +1,4 @@
-import type { Component } from '@galacean/effects';
+import type { Component, Material } from '@galacean/effects';
 import { RendererComponent, VFXItem, getMergedStore } from '@galacean/effects';
 import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
@@ -6,8 +6,8 @@ import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from '../core/panel';
 import { editorWindow } from '../core/decorators';
-import { FileNode } from './project';
 import { DragType } from '../core/drag-and-drop';
+import type { FileNode } from '../core/file-node';
 
 type char = number;
 type int = number;
@@ -153,21 +153,21 @@ export class Editor extends EditorWindow {
               const payload = ImGui.AcceptDragDropPayload(DragType.Material);
 
               if (payload) {
-                // const value = new Float32Array(payload);
-                // ImGui.Text(`Dropped value: ${value[0].toFixed(3)}`);
+                void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
+                  if (!file) {
+                    return;
+                  }
+                  const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
+
+                  if (!effectsPackage) {
+                    return;
+                  }
+                  componet.material = effectsPackage.exportObjects[0] as Material;
+                });
               }
               ImGui.EndDragDropTarget();
             }
           }
-        }
-      }
-    } else if (activeObject instanceof FileNode) {
-      if (activeObject.isFile) {
-        const file = activeObject.getFile();
-
-        if (file) {
-          ImGui.Text(file.name);
-          ImGui.Text(file.size / 1000 + ' KB');
         }
       }
     }

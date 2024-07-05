@@ -10,6 +10,7 @@ import { DragType } from '../core/drag-and-drop';
 import { EditorWindow } from '../core/panel';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
+import { FileNode } from '../core/file-node';
 
 @editorWindow()
 export class Project extends EditorWindow {
@@ -204,7 +205,7 @@ export class Project extends EditorWindow {
         ImGui.PopID();
         ImGui.PopStyleColor(3);
         if (ImGui.BeginDragDropSource(ImGui.DragDropFlags.None)) {
-          ImGui.SetDragDropPayload(DragType.Material, 0);
+          ImGui.SetDragDropPayload(DragType.Material, child);
           ImGui.ImageButton(icon, button_sz, uv0, uv1);
 
           ImGui.EndDragDropSource();
@@ -429,28 +430,5 @@ export class Project extends EditorWindow {
       };
       reader.readAsText(file);
     });
-  }
-}
-
-export class FileNode {
-  handle: FileSystemDirectoryHandle | FileSystemFileHandle;
-  children: FileNode[] = [];
-  icon?: WebGLTexture;
-  private fileCache: File;
-
-  get isFile () {
-    return this.handle.kind === 'file';
-  }
-
-  getFile () {
-    if (this.fileCache) {
-      return this.fileCache;
-    } else {
-      if (this.handle.kind === 'file') {
-        void this.handle.getFile().then((file: File)=>{
-          this.fileCache = file;
-        });
-      }
-    }
   }
 }

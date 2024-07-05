@@ -7,7 +7,7 @@ import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { EditorWindow } from '../core/panel';
-import { FileNode } from './project';
+import { FileNode } from '../core/file-node';
 
 @editorWindow()
 export class Preview extends EditorWindow {
