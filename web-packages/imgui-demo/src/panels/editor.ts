@@ -148,7 +148,7 @@ export class Editor extends EditorWindow {
             } else if (property instanceof EffectsObject) {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);
-              ImGui.Button(property.name);
+              ImGui.Button(property.name, new ImGui.Vec2(200, 0));
               if (ImGui.BeginDragDropTarget()) {
                 const payload = ImGui.AcceptDragDropPayload(property.constructor.name);
 
@@ -173,7 +173,7 @@ export class Editor extends EditorWindow {
           if (componet instanceof RendererComponent) {
             ImGui.Text('Material');
             ImGui.SameLine(alignWidth);
-            ImGui.Button(componet.material.name);
+            ImGui.Button(componet.material.name, new ImGui.Vec2(200, 0));
             if (ImGui.BeginDragDropTarget()) {
               const payload = ImGui.AcceptDragDropPayload(componet.material.constructor.name);
 
