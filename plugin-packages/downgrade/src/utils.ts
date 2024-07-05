@@ -1,108 +1,244 @@
 import type { SceneRenderLevel } from '@galacean/effects';
-import { spec, disableAllPlayer, getActivePlayers, isCanvasUsedByPlayer, logger } from '@galacean/effects';
-import { DowngradePlugin } from './downgrade-plugin';
+import { spec, getActivePlayers, logger, isAlipayMiniApp } from '@galacean/effects';
 
 export interface DowngradeOptions {
-  /**
-   * 发生 gl lost 时，是否忽略
-   * @default false - 不忽略，将不再允许任何播放器创建，会全部走降级逻辑
-   */
-  ignoreGLLost?: boolean,
   /**
    * 禁用压后台的时候自动暂停播放器
    * @default false - 不自动暂停
    */
   autoPause?: boolean,
-  autoQueryDevice?: boolean,
   /**
-   * mock相关信息
+   * 在小程序环境下，是否自动通过原生API查询设备信息
+   * @default false - 不自动查询
+   */
+  queryDeviceInMiniApp?: boolean,
+  /**
+   * 设备信息，可以外部传入
+   */
+  deviceInfo?: DeviceInfo,
+  /**
+   * mock 相关信息
    */
   mock?: {
     downgrade: boolean,
-    deviceLevel?: string,
+    level: SceneRenderLevel,
   },
+  /**
+   * 自定义降级回调，可针对特定机型配置特定的降级规则
+   */
   downgradeCallback?: DowngradeCallback,
 }
 
 export interface DowngradeResult {
-  device?: {
-    downgrade?: boolean,
-    osName?: string,
-    osVersion?: string,
-    model?: string,
-    modelAlias?: string,
-    level?: string,
-    memoryMB?: number,
-  },
-  mock?: {
-    downgrade: boolean,
-    deviceLevel?: string,
-  },
-  queryResult?: any,
-  downgradeCallback?: DowngradeCallback,
+  downgrade: boolean,
+  level: SceneRenderLevel,
+  reason: string,
+  deviceInfo?: DeviceInfo,
 }
 
 export interface DeviceInfo {
-  osName?: string,
+  platform?: string,
   osVersion?: string,
   model?: string,
-  level?: string,
+  modelAlias?: string,
+  level?: DeviceLevel,
   memoryMB?: number,
-  isIOS: boolean,
+  sourceData?: any,
 }
 
-export interface DowngradeDecision {
-  downgrade: boolean,
-  reason: string,
-}
-
-export type DowngradeCallback = (device: DeviceInfo) => DowngradeDecision | undefined;
+export type DowngradeCallback = (device: DeviceInfo) => DowngradeResult | undefined;
 
 interface ProductInfo {
   name: string,
   comment?: string,
 }
 
-export class UADecoder {
-  osName?: string;
-  osVersion?: string;
-  deviceModel?: string;
+interface iPhoneInfo {
+  name: string,
+  model: string,
+  width: number,
+  height: number,
+}
 
-  constructor () {
-    this.initial(navigator.userAgent);
+interface WeChatDeviceInfo {
+  /**
+   * 设备性能等级（仅 Android 支持）。
+   * 取值为：
+   *  -2 或 0（该设备无法运行小游戏）
+   *  -1（性能未知）
+   *  >=1（设备性能值，该值越高，设备性能越好，目前最高不到50）
+   */
+  benchmarkLevel: number,
+  /**
+   * 设备品牌
+   */
+  brand: string,
+  /**
+   * 设备型号。新机型刚推出一段时间会显示unknown，微信会尽快进行适配。
+   */
+  model: string,
+  /**
+   * 操作系统及版本
+   */
+  system: string,
+  /**
+   * 客户端平台
+   */
+  platform: string,
+  /**
+   * 设备 CPU 型号（仅 Android 支持）
+   */
+  cpuType?: string,
+  /**
+   * 设备内存大小，单位为 MB
+   */
+  memorySize: number,
+}
+
+interface AlipaySystemInfo {
+  /**
+   * high: 高性能。Android 设备运行内存大于等于 4GB
+   * middle: 性能中等。Android 设备运行内存大于等于 3GB 且 CPU 核心数大于 4
+   * low: 性能较弱
+   * unknown: 无法识别
+   */
+  performance?: string,
+  /**
+   * 手机品牌
+   */
+  brand?: string,
+  /**
+   * 手机型号。具体可参考 https://opendocs.alipay.com/mini/072v9s
+   */
+  model?:	string,
+  /**
+   * 系统版本
+   */
+  system?: string,
+  /**
+   * 客户端平台：Android，iOS / iPhone OS，Harmony
+   */
+  platform?: string,
+}
+
+enum DeviceLevel {
+  High = 'high',
+  Medium = 'medium',
+  Low = 'low',
+  Unknown = 'unknown',
+}
+
+let hasRegisterEvent = false;
+
+export function getDowngradeResult (options: DowngradeOptions = {}): DowngradeResult {
+  if (!hasRegisterEvent) {
+    registerEvent(options);
+    hasRegisterEvent = true;
   }
 
-  getDowngradeResult (): DowngradeResult {
-    return {
-      device: {
-        osName: this.osName,
-        osVersion: this.osVersion,
-        model: this.deviceModel,
-      },
-    };
+  const { mock } = options;
+
+  if (mock) {
+    return { ...mock, reason: 'mock' };
+  }
+
+  const device = getDeviceInfo(options);
+  const judge = new DowngradeJudge(options, device);
+
+  return judge.getDowngradeResult();
+}
+
+function registerEvent (options: DowngradeOptions) {
+  const { autoPause } = options;
+
+  window.addEventListener('unload', () => {
+    getActivePlayers().forEach(player => player.dispose());
+  });
+
+  if (autoPause) {
+    document.addEventListener('pause', pauseAllActivePlayers);
+    document.addEventListener('resume', resumePausedPlayers);
+  }
+}
+
+function getDeviceInfo (options: DowngradeOptions) {
+  const { queryDeviceInMiniApp, deviceInfo } = options;
+
+  if (deviceInfo) {
+    return deviceInfo;
+  }
+
+  if (queryDeviceInMiniApp) {
+    if (isAlipayMiniApp()) {
+      // 支付宝小程序
+      if (my.canIUse('getSystemInfo')) {
+        // https://opendocs.alipay.com/mini/api/system-info
+        const info = my.getSystemInfo() as AlipaySystemInfo;
+        const parser = new AlipayMiniAppParser(info);
+
+        return parser.getDeviceInfo();
+      } else {
+        logger.error('Can\'t use getSystemInfo in AlipayMiniApp');
+      }
+    } else if (isWeChatMiniApp()) {
+      // 微信小程序
+      // @ts-expect-error
+      if (wx.canIUse('getDeviceInfo')) {
+        // https://developers.weixin.qq.com/miniprogram/dev/api/base/system/wx.getDeviceInfo.html
+        // @ts-expect-error
+        const info = wx.getDeviceInfo() as WeChatDeviceInfo;
+        const parser = new WeChatMiniAppParser(info);
+
+        return parser.getDeviceInfo();
+      } else {
+        logger.error('Can\'t use getDeviceInfo in WeChatMiniApp');
+      }
+    } else {
+      logger.error('Non-mini program environment and try to get device info from user agent');
+    }
+  }
+
+  const decoder = new UADecoder();
+
+  return decoder.getDeviceInfo();
+}
+
+export class UADecoder {
+  device: DeviceInfo = {};
+
+  constructor (userAgent?: string) {
+    this.parse(userAgent ?? navigator.userAgent);
+  }
+
+  getDeviceInfo () {
+    return this.device;
   }
 
   isiOS () {
-    return this.osName === 'iOS';
+    return this.device.platform === 'iOS';
   }
 
   isAndroid () {
-    return this.osName === 'Android';
+    return this.device.platform === 'Android';
+  }
+
+  isHarmony () {
+    return this.device.platform === 'Harmony';
   }
 
   isWindows () {
-    return this.osName === 'Windows';
+    return this.device.platform === 'Windows';
   }
 
   isMacintosh () {
-    return this.osName === 'Macintosh';
+    return this.device.platform === 'Macintosh';
   }
 
   isMobile () {
-    return this.osName === 'iOS' || this.osName === 'Android';
+    return this.isiOS() || this.isAndroid() || this.isHarmony();
   }
 
-  private initial (ua: string) {
+  private parse (ua: string) {
     const pattern = /(\w+\/[\w.]+)(\s+\([^)]+\))?/g;
     const productInfos: ProductInfo[] = [];
 
@@ -126,6 +262,8 @@ export class UADecoder {
         break;
       }
     }
+
+    this.device.sourceData = ua;
   }
 
   private parseData (data: string) {
@@ -137,19 +275,19 @@ export class UADecoder {
       data = data.substring(0, data.length - 1);
     }
     if (this.testiOS(data)) {
-      this.osName = 'iOS';
-      this.osVersion = this.parseiOSVersion(data);
-      this.deviceModel = this.getiPhoneModel();
+      this.device.platform = 'iOS';
+      this.device.osVersion = this.parseiOSVersion(data);
+      this.device.model = this.getiPhoneModel();
     } else if (this.testAndroid(data)) {
-      this.osName = 'Android';
-      this.osVersion = this.parseAndroidVersion(data);
-      this.deviceModel = this.parseAndroidModel(data);
+      this.device.platform = 'Android';
+      this.device.osVersion = this.parseAndroidVersion(data);
+      this.device.model = this.parseAndroidModel(data);
     } else if (this.testMacintosh(data)) {
-      this.osName = 'Mac OS';
-      this.osVersion = this.parseMacOSVersion(data);
+      this.device.platform = 'Mac OS';
+      this.device.osVersion = this.parseMacOSVersion(data);
     } else if (this.testWindows(data)) {
-      this.osName = 'Windows';
-      this.osVersion = this.parseWindowsVersion(data);
+      this.device.platform = 'Windows';
+      this.device.osVersion = this.parseWindowsVersion(data);
     } else {
       console.error(`Unkonw info: ${data}`);
     }
@@ -263,19 +401,230 @@ export class UADecoder {
   private testWindows (data: string) {
     return data.includes('Windows');
   }
+}
 
+export class WeChatMiniAppParser {
+  device: DeviceInfo = {};
+
+  constructor (info: WeChatDeviceInfo) {
+    this.parse(info);
+  }
+
+  getDeviceInfo () {
+    return this.device;
+  }
+
+  private parse (info: WeChatDeviceInfo) {
+    const osNameMatch = info.system.match(/\w+/);
+
+    if (osNameMatch) {
+      this.device.platform = osNameMatch[0].trim();
+    }
+
+    const osVersionMatch = info.system.match(/[\d.]+/);
+
+    if (osVersionMatch) {
+      this.device.osVersion = osVersionMatch[0].trim();
+    }
+
+    if (this.device.platform === 'iOS') {
+      const modelMatch = info.model.match(/^(.*?)<(.*?)>$/);
+
+      if (modelMatch) {
+        this.device.model = modelMatch[1].trim();
+        this.device.modelAlias = modelMatch[2].trim();
+      } else {
+        this.device.model = info.model;
+      }
+    } else {
+      this.device.model = info.model;
+    }
+
+    if (info.benchmarkLevel <= 0) {
+      this.device.level = DeviceLevel.Unknown;
+    } else if (info.benchmarkLevel <= 10) {
+      this.device.level = DeviceLevel.Low;
+    } else if (info.benchmarkLevel <= 20) {
+      this.device.level = DeviceLevel.Medium;
+    } else {
+      this.device.level = DeviceLevel.High;
+    }
+
+    this.device.memoryMB = info.memorySize;
+    this.device.sourceData = info;
+  }
+}
+
+export class AlipayMiniAppParser {
+  device: DeviceInfo = {};
+
+  constructor (info: AlipaySystemInfo) {
+    this.parse(info);
+  }
+
+  getDeviceInfo () {
+    return this.device;
+  }
+
+  private parse (info: AlipaySystemInfo) {
+    this.device.platform = info.platform;
+    this.device.osVersion = info.system;
+    this.device.model = info.model;
+    this.device.level = getDeviceLevel(info.performance);
+    this.device.sourceData = info;
+  }
+}
+
+export class DowngradeJudge {
+  isIOS = false;
+  level: SceneRenderLevel;
+
+  constructor (
+    public options: DowngradeOptions,
+    public device: DeviceInfo,
+  ) {
+
+  }
+
+  getDowngradeResult (): DowngradeResult {
+    const { downgradeCallback } = this.options;
+
+    if (downgradeCallback) {
+      const result = downgradeCallback(this.device);
+
+      if (result) {
+        if (!result.reason) {
+          result.reason = 'downgradeCallback';
+        }
+
+        return result;
+      }
+    }
+
+    this.isIOS = this.device.platform === 'iOS';
+    this.level = this.getRenderLevel();
+
+    const modelList = this.isIOS ? downgradeiOSModels : downgradeAndroidModels;
+    const osVersionList = this.isIOS ? downgradeiOSVersions : downgradeAndroidVersions;
+
+    const findModel = modelList.find(m => m.toLowerCase() == this.device.model?.toLowerCase());
+
+    if (findModel !== undefined) {
+      return {
+        downgrade: true,
+        level: this.level,
+        reason: 'Downgrade by model list',
+      };
+    }
+    const findOS = osVersionList.find(v => v === this.device.osVersion);
+
+    if (findOS !== undefined) {
+      return {
+        downgrade: true,
+        level: this.level,
+        reason: 'Downgrade by OS version list',
+      };
+    }
+
+    return {
+      downgrade: false,
+      level: this.level,
+      reason: '',
+    };
+  }
+
+  getRenderLevel (): SceneRenderLevel {
+    if (this.device.level) {
+      if (this.device.level === DeviceLevel.High) {
+        return spec.RenderLevel.S;
+      } else if (this.device.level === DeviceLevel.Medium) {
+        return spec.RenderLevel.A;
+      } else if (this.device.level === DeviceLevel.Low) {
+        return spec.RenderLevel.B;
+      }
+    }
+
+    if (this.device.memoryMB) {
+      if (this.device.memoryMB < 4000) {
+        return spec.RenderLevel.B;
+      } else if (this.device.memoryMB < 6000) {
+        return spec.RenderLevel.A;
+      } else {
+        return spec.RenderLevel.S;
+      }
+    }
+
+    if (this.isIOS && this.device.model) {
+      if (/iPhone(\d+),/.test(this.device.model)) {
+        const gen = +RegExp.$1;
+
+        if (gen <= 9) {
+          return spec.RenderLevel.B;
+        } else if (gen < 10) {
+          return spec.RenderLevel.A;
+        } else {
+          return spec.RenderLevel.S;
+        }
+      }
+    }
+
+    return this.isIOS ? spec.RenderLevel.S : spec.RenderLevel.B;
+  }
+}
+
+const internalPaused = Symbol('@@_inter_pause');
+
+function pauseAllActivePlayers (e: Event) {
+  if (e.target === document) {
+    logger.info('Auto pause all players with data offloaded');
+    const players = getActivePlayers();
+
+    players.forEach(player => {
+      if (!player.paused) {
+        player.pause({ offloadTexture: true });
+        // @ts-expect-error
+        player[internalPaused] = true;
+      }
+    });
+  }
+}
+
+function resumePausedPlayers (e: Event) {
+  if (e.target === document) {
+    logger.info('auto resume all players');
+    const players = getActivePlayers();
+
+    players.forEach(player => {
+      // @ts-expect-error
+      if (player[internalPaused]) {
+        void player.resume();
+        // @ts-expect-error
+        player[internalPaused] = false;
+      }
+    });
+  }
+}
+
+function isWeChatMiniApp (): boolean {
+  // @ts-expect-error
+  return typeof wx !== 'undefined' && wx?.renderTarget === 'web';
+}
+
+function getDeviceLevel (level?: string): DeviceLevel {
+  if (level === 'high') {
+    return DeviceLevel.High;
+  } else if (level === 'medium' || level === 'middle') {
+    return DeviceLevel.Medium;
+  } else if (level === 'low') {
+    return DeviceLevel.Low;
+  } else {
+    return DeviceLevel.Unknown;
+  }
 }
 
 const venderInfoList: string[] = [
   'SAMSUNG',
 ];
-
-interface iPhoneInfo {
-  name: string,
-  model: string,
-  width: number,
-  height: number,
-}
 
 const iPhoneInfoList: iPhoneInfo[] = [
   { name: 'iPhone 15 Pro Max', model: 'iPhone16,2', width: 1290, height: 2796 },
@@ -322,163 +671,6 @@ const iPhoneInfoList: iPhoneInfo[] = [
   { name: 'iPhone 1st gen', model: 'iPhone1,1', width: 320, height: 480 },
 ];
 
-interface WechatDeviceInfo {
-  /**
-   * 设备性能等级（仅 Android 支持）。
-   * 取值为：
-   *  -2 或 0（该设备无法运行小游戏）
-   *  -1（性能未知）
-   *  >=1（设备性能值，该值越高，设备性能越好，目前最高不到50）
-   */
-  benchmarkLevel: number,
-  /**
-   * 设备品牌
-   */
-  brand: string,
-  /**
-   * 设备型号。新机型刚推出一段时间会显示unknown，微信会尽快进行适配。
-   */
-  model: string,
-  /**
-   * 操作系统及版本
-   */
-  system: string,
-  /**
-   * 客户端平台
-   */
-  platform: string,
-  /**
-   * 设备 CPU 型号（仅 Android 支持）
-   */
-  cpuType?: string,
-  /**
-   * 设备内存大小，单位为 MB
-   */
-  memorySize: number,
-}
-
-export const DEVICE_LEVEL_HIGH = 'high';
-export const DEVICE_LEVEL_MEDIUM = 'medium';
-export const DEVICE_LEVEL_LOW = 'low';
-
-let hasRegisterEvent = false;
-
-export function getDowngradeResult (options: DowngradeOptions = {}): DowngradeResult {
-  if (!hasRegisterEvent) {
-    registerEvent(options);
-    hasRegisterEvent = true;
-  }
-
-  const { mock, autoQueryDevice } = options;
-
-  if (mock) {
-    return { mock };
-  }
-
-  if (autoQueryDevice) {
-    const userAgent = navigator.userAgent;
-
-    if (userAgent.match(/MicroMessenger/i)) {
-      // 微信小程序
-      // @ts-expect-error
-      if (wx.canIUse('getDeviceInfo')) {
-        // @ts-expect-error
-        const info = wx.getDeviceInfo() as WechatDeviceInfo;
-
-        return parseWechatDeviceInfo(info);
-      } else {
-        console.error('Can\'t use getDeviceInfo and fail to get device info.');
-      }
-    }
-    // FIXME: 支付宝小程序，https://opendocs.alipay.com/mini/api/system-info?pathHash=3ca534f3
-  }
-
-  const decoder = new UADecoder();
-
-  return decoder.getDowngradeResult();
-}
-
-function registerEvent (options: DowngradeOptions) {
-  const { ignoreGLLost, autoPause } = options;
-  const downgradeWhenGLLost = ignoreGLLost !== true;
-
-  window.addEventListener('unload', () => {
-    getActivePlayers().forEach(player => player.dispose());
-  });
-
-  window.addEventListener('webglcontextlost', e => {
-    if (isCanvasUsedByPlayer(e.target as HTMLCanvasElement)) {
-      DowngradePlugin.glLostOccurred = true;
-      console.error('webgl lost occur');
-      if (downgradeWhenGLLost) {
-        console.warn('webgl lost occur, all players will be downgraded from now on');
-        disableAllPlayer(true);
-        getActivePlayers().forEach(player => player.dispose());
-      }
-    }
-  }, true);
-
-  if (autoPause) {
-    document.addEventListener('pause', pauseAllActivePlayers);
-    document.addEventListener('resume', resumePausedPlayers);
-  }
-}
-
-export function parseWechatDeviceInfo (info: WechatDeviceInfo) {
-  let osName = undefined;
-  let osVersion = undefined;
-  let model = undefined;
-  let modelAlias = undefined;
-  let level = undefined;
-
-  const osNameMatch = info.system.match(/\w+/);
-
-  if (osNameMatch) {
-    osName = osNameMatch[0].trim();
-  }
-
-  const osVersionMatch = info.system.match(/[\d.]+/);
-
-  if (osVersionMatch) {
-    osVersion = osVersionMatch[0].trim();
-  }
-
-  if (osName === 'iOS') {
-    const modelMatch = info.model.match(/^(.*?)<(.*?)>$/);
-
-    if (modelMatch) {
-      model = modelMatch[1].trim();
-      modelAlias = modelMatch[2].trim();
-    } else {
-      model = info.model;
-    }
-  } else {
-    model = info.model;
-  }
-
-  if (info.benchmarkLevel >= 1 && info.benchmarkLevel <= 50) {
-    if (info.benchmarkLevel <= 10) {
-      level = DEVICE_LEVEL_LOW;
-    } else if (info.benchmarkLevel <= 20) {
-      level = DEVICE_LEVEL_MEDIUM;
-    } else {
-      level = DEVICE_LEVEL_HIGH;
-    }
-  }
-
-  return {
-    device: {
-      osName,
-      osVersion,
-      model,
-      modelAlias,
-      level,
-      memoryMB: info.memorySize,
-    },
-    queryResult: info,
-  };
-}
-
 // FIXME: 安卓机型校对
 const downgradeAndroidModels: string[] = [
   'OPPO R9s Plus',
@@ -504,7 +696,9 @@ const downgradeAndroidModels: string[] = [
   'vivo X6A',
   'vivo X6Plus A',
 ];
+
 const downgradeAndroidVersions: string[] = [];
+
 const downgradeiOSModels: string[] = [
   'iPhone 8 Plus',
   'iPhone 8',
@@ -524,6 +718,7 @@ const downgradeiOSModels: string[] = [
   'iPhone 3G',
   'iPhone 1st gen',
 ];
+
 const downgradeiOSVersions: string[] = [
   '16.7',
   '16.7.1',
@@ -533,150 +728,3 @@ const downgradeiOSVersions: string[] = [
   '16.7.5',
   '16.7.6',
 ];
-
-class DeviceProxy {
-  osName?: string;
-  osVersion?: string;
-  model?: string;
-  level?: string;
-  memoryMB?: number;
-  isIOS = false;
-
-  getDowngradeDecision (result: DowngradeResult): DowngradeDecision {
-    const { device = {}, downgradeCallback } = result;
-
-    this.osName = device.osName;
-    this.osVersion = device.osVersion;
-    this.model = device.model;
-    this.level = device.level;
-    this.memoryMB = device.memoryMB;
-    this.isIOS = this.osName === 'iOS';
-
-    if (this.level === undefined) {
-      this.level = this.getDeviceLevel();
-    }
-
-    const decision = downgradeCallback && downgradeCallback(this);
-
-    if (decision) {
-      return decision;
-    }
-
-    const modelList = this.isIOS ? downgradeiOSModels : downgradeAndroidModels;
-    const osVersionList = this.isIOS ? downgradeiOSVersions : downgradeAndroidVersions;
-
-    const findModel = modelList.find(m => m.toLowerCase() == this.model?.toLowerCase());
-
-    if (findModel !== undefined) {
-      return { downgrade: true, reason: 'Downgrade by downgrade model list' };
-    }
-    const findOS = osVersionList.find(v => v === this.osVersion);
-
-    if (findOS !== undefined) {
-      return { downgrade: true, reason: 'Downgrade by downgrade OS version list' };
-    }
-
-    return { downgrade: false, reason: '' };
-  }
-
-  getRenderLevel (): SceneRenderLevel {
-    if (this.level === DEVICE_LEVEL_HIGH) {
-      return spec.RenderLevel.S;
-    } else if (this.level === DEVICE_LEVEL_MEDIUM) {
-      return spec.RenderLevel.A;
-    } else if (this.level === DEVICE_LEVEL_LOW) {
-      return spec.RenderLevel.B;
-    } else {
-      return this.isIOS ? spec.RenderLevel.S : spec.RenderLevel.B;
-    }
-  }
-
-  private getDeviceLevel () {
-    if (this.memoryMB) {
-      if (this.memoryMB < 4000) {
-        return DEVICE_LEVEL_LOW;
-      } else if (this.memoryMB < 6000) {
-        return DEVICE_LEVEL_MEDIUM;
-      } else {
-        return DEVICE_LEVEL_HIGH;
-      }
-    } else if (this.isIOS && this.model) {
-      if (/iPhone(\d+),/.test(this.model)) {
-        const gen = +RegExp.$1;
-
-        if (gen <= 9) {
-          return DEVICE_LEVEL_LOW;
-        } else if (gen < 10) {
-          return DEVICE_LEVEL_MEDIUM;
-        } else {
-          return DEVICE_LEVEL_HIGH;
-        }
-      }
-    }
-  }
-}
-
-const deviceProxy = new DeviceProxy();
-
-export function checkDowngradeResult (result: DowngradeResult): DowngradeDecision {
-  const { mock, device } = result;
-
-  if (mock) {
-    const { downgrade, deviceLevel = DEVICE_LEVEL_HIGH } = mock;
-
-    deviceProxy.level = deviceLevel;
-
-    return { downgrade, reason: 'Mock' };
-  }
-
-  if (device) {
-    if (device.downgrade) {
-      return { downgrade: true, reason: 'Downgrade by device downgrade flag' };
-    } else {
-      return deviceProxy.getDowngradeDecision(result);
-    }
-  } else {
-    return { downgrade: false, reason: 'No device info' };
-  }
-}
-
-export function getRenderLevelByDevice (renderLevel?: SceneRenderLevel): SceneRenderLevel {
-  if (!renderLevel) {
-    return deviceProxy.getRenderLevel();
-  } else {
-    return /[ABS]/.test(renderLevel) ? renderLevel : spec.RenderLevel.S;
-  }
-}
-
-const internalPaused = Symbol('@@_inter_pause');
-
-function pauseAllActivePlayers (e: Event) {
-  if (e.target === document) {
-    logger.info('Auto pause all players with data offloaded');
-    const players = getActivePlayers();
-
-    players.forEach(player => {
-      if (!player.paused) {
-        player.pause({ offloadTexture: true });
-        // @ts-expect-error
-        player[internalPaused] = true;
-      }
-    });
-  }
-}
-
-function resumePausedPlayers (e: Event) {
-  if (e.target === document) {
-    logger.info('auto resume all players');
-    const players = getActivePlayers();
-
-    players.forEach(player => {
-      // @ts-expect-error
-      if (player[internalPaused]) {
-        void player.resume();
-        // @ts-expect-error
-        player[internalPaused] = false;
-      }
-    });
-  }
-}

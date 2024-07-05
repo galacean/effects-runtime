@@ -1,4 +1,4 @@
-import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from '@galacean/effects-plugin-downgrade';
+import { getDowngradeResult, WeChatMiniAppParser } from '@galacean/effects-plugin-downgrade';
 
 (async () => {
   // @ts-expect-error
@@ -6,7 +6,7 @@ import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from 
     return 'Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_1 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) Mobile/14E8301 MicroMessenger/6.6.0 MiniGame NetType/WIFI Language/';
   });
 
-  parseWechatDeviceInfo({
+  new WeChatMiniAppParser({
     benchmarkLevel: 34,
     brand: 'OPPO',
     memorySize: 7195,
@@ -15,7 +15,7 @@ import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from 
     system: 'Android 12',
   });
 
-  parseWechatDeviceInfo({
+  new WeChatMiniAppParser({
     benchmarkLevel: 21,
     brand: 'OPPO',
     memorySize: 5621,
@@ -24,7 +24,7 @@ import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from 
     system: 'Android 10',
   });
 
-  parseWechatDeviceInfo({
+  new WeChatMiniAppParser({
     benchmarkLevel: -1,
     brand: 'devtools',
     memorySize: 2048,
@@ -33,7 +33,7 @@ import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from 
     system: 'Android 5.0',
   });
 
-  parseWechatDeviceInfo({
+  new WeChatMiniAppParser({
     benchmarkLevel: -1,
     brand: 'devtools',
     memorySize: 2048,
@@ -42,7 +42,7 @@ import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from 
     system: 'iOS 10.0.1',
   });
 
-  parseWechatDeviceInfo({
+  new WeChatMiniAppParser({
     benchmarkLevel: -1,
     brand: 'iPhone',
     memorySize: 7675,
@@ -51,7 +51,7 @@ import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from 
     system: 'iOS 17.3.1',
   });
 
-  parseWechatDeviceInfo({
+  new WeChatMiniAppParser({
     benchmarkLevel: -1,
     brand: 'iPhone',
     memorySize: 5650,
@@ -60,7 +60,7 @@ import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from 
     system: 'iOS 17.3.1',
   });
 
-  parseWechatDeviceInfo({
+  new WeChatMiniAppParser({
     benchmarkLevel: -1,
     brand: 'iPhone',
     memorySize: 2959,
@@ -69,15 +69,9 @@ import { checkDowngradeResult, getDowngradeResult, parseWechatDeviceInfo } from 
     system: 'iOS 16.4.1',
   });
 
-  const downgradeResult = getDowngradeResult({ autoQueryDevice: true });
-  const downgradeDecision = checkDowngradeResult(downgradeResult);
+  const downgradeResult = getDowngradeResult({ queryDeviceInMiniApp: true });
   const resultLabel = document.createElement('label');
 
   resultLabel.innerText = `Result:${JSON.stringify(downgradeResult, undefined, 2)}`;
-  const decisionLabel = document.createElement('label');
-
-  decisionLabel.innerText = `Decision:${JSON.stringify(downgradeDecision, undefined, 2)}`;
   document.body.append(resultLabel);
-  document.body.append(document.createElement('br'));
-  document.body.append(decisionLabel);
 })();

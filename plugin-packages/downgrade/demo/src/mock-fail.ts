@@ -1,4 +1,4 @@
-import { Player } from '@galacean/effects';
+import { Player, spec } from '@galacean/effects';
 import { getDowngradeResult } from '@galacean/effects-plugin-downgrade';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*liH3SI2hhHUAAAAAAAAAAAAADlB4AQ';
@@ -13,7 +13,7 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
     pixelRatio: window.devicePixelRatio,
   });
 
-  const downgrade = getDowngradeResult({ mock: { downgrade: true } });
+  const downgrade = getDowngradeResult({ mock: { downgrade: true, level: spec.RenderLevel.A } });
 
   try {
     const scene = await player.loadScene(json, {
