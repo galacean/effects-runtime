@@ -147,6 +147,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
                 activeAnimation,
                 'spine': 0,
                 'startSize': 2,
+                'resizeRule': 1,
               },
             },
             'transform': {
@@ -185,6 +186,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
                 'activeAnimation': ['dance'],
                 'spine': 1,
                 'startSize': 1,
+                'resizeRule': 1,
               },
             },
             'transform': {
@@ -244,15 +246,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
       container: document.getElementById('J-container'),
       ...playerOptions,
     });
-    const comp = await player.loadScene(animation, {
-      autoplay: false,
-    });
-    // const item = comp.getItemByName('spine_item') as SpineVFXItem;
-    //
-    // item.setMixDuration('run', 'jump', 0.7);
-
-    player.play();
-    // item.deleteMixForLoop()
+    const comp = await player.loadScene(animation, {});
 
     setCamera(comp);
 
