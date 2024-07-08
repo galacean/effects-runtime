@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
 import { Texture } from '../../texture';
@@ -8,7 +9,8 @@ import { TextStyle } from './text-style';
 import { glContext } from '../../gl';
 import { effectsClass } from '../../decorators';
 import { canvasPool } from '../../canvas-pool';
-import { isValidFontFamily } from '../../utils';
+import { applyMixins, isValidFontFamily } from '../../utils';
+import type { Material } from '../../material';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -33,20 +35,20 @@ interface CharInfo {
   width: number,
 }
 
+export interface TextComponent extends TextComponentBase { }
+
 /**
  * @since 2.0.0
  * @internal
  */
 @effectsClass(spec.DataType.TextComponent)
 export class TextComponent extends SpriteComponent {
-  textStyle: TextStyle;
   isDirty = true;
-  canvas: HTMLCanvasElement;
-  context: CanvasRenderingContext2D | null;
-  textLayout: TextLayout;
-  text: string;
 
-  private char: string[];
+  /**
+   * 文本行数
+   */
+  lineCount = 0;
 
   constructor (engine: Engine, props?: spec.TextContent) {
     super(engine, props as unknown as SpriteItemProps);
@@ -54,19 +56,90 @@ export class TextComponent extends SpriteComponent {
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+
     if (!props) {
       return;
     }
+
     const { options } = props;
 
-    this.textStyle = new TextStyle(options);
-    this.textLayout = new TextLayout(options);
+    this.updateWithOptions(options);
+    this.updateTexture();
+  }
 
-    this.text = options.text;
+  override update (dt: number): void {
+    super.update(dt);
+    this.updateTexture();
+  }
 
+  override fromData (data: SpriteItemProps): void {
+    super.fromData(data);
+    const options = data.options as spec.TextContentOptions;
+
+    this.updateWithOptions(options);
     // Text
     this.updateTexture();
   }
+
+  updateWithOptions (options: spec.TextContentOptions) {
+    // OVERRIDE by mixins
+  }
+
+  updateTexture (flipY = true) {
+    // OVERRIDE by mixins
+  }
+}
+
+export class TextComponentBase {
+  textStyle: TextStyle;
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D | null;
+  textLayout: TextLayout;
+  text: string;
+
+  /***** mix 类型兼容用 *****/
+  isDirty: boolean;
+  engine: Engine;
+  material: Material;
+  lineCount: number;
+  /***** mix 类型兼容用 *****/
+
+  private char: string[];
+
+  updateWithOptions (options: spec.TextContentOptions) {
+    this.textStyle = new TextStyle(options);
+    this.textLayout = new TextLayout(options);
+    this.text = options.text;
+    this.lineCount = this.getLineCount(options.text, true);
+  }
+
+  private getLineCount (text: string, init: boolean) {
+    const context = this.context;
+    const letterSpace = this.textLayout.letterSpace;
+    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+    const width = (this.textLayout.width + this.textStyle.fontOffset);
+    let lineCount = 1;
+    let x = 0;
+
+    for (let i = 0; i < text.length; i++) {
+      const str = text[i];
+      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
+
+      // 和浏览器行为保持一致
+      x += letterSpace;
+
+      if (((x + textMetrics) > width && i > 0) || str === '\n') {
+        lineCount++;
+        x = 0;
+      }
+      if (str !== '\n') {
+        x += textMetrics;
+      }
+    }
+
+    return lineCount;
+  }
+
   /**
    * 设置字号大小
    * @param value - 字号
@@ -121,6 +194,7 @@ export class TextComponent extends SpriteComponent {
       return;
     }
     this.text = value;
+    this.lineCount = this.getLineCount(value, false);
     this.isDirty = true;
   }
 
@@ -270,16 +344,11 @@ export class TextComponent extends SpriteComponent {
     this.isDirty = true;
   }
 
-  override update (dt: number): void {
-    super.update(dt);
-    this.updateTexture();
-  }
-
   /**
    * 更新文本
    * @returns
    */
-  updateTexture () {
+  updateTexture (flipY = true) {
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
@@ -303,9 +372,13 @@ export class TextComponent extends SpriteComponent {
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
 
+    if (!flipY) {
+      context.translate(0, height);
+      context.scale(1, -1);
+    }
+
     context.fillRect(0, 0, width, this.canvas.height);
     style.fontDesc = this.getFontDesc();
-
     context.font = style.fontDesc;
 
     if (style.hasShadow) {
@@ -320,17 +393,14 @@ export class TextComponent extends SpriteComponent {
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
 
     const charsInfo: CharInfo[] = [];
-    // /3 为了和编辑器行为保持一致
-    const offsetY = (lineHeight - fontSize) / 3;
 
     let x = 0;
-    let y = layout.getOffsetY(style) + offsetY;
+    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
     let charsArray = [];
     let charOffsetX = [];
 
     for (let i = 0; i < this.char.length; i++) {
       const str = this.char[i];
-
       const textMetrics = context.measureText(str);
 
       // 和浏览器行为保持一致
@@ -355,7 +425,6 @@ export class TextComponent extends SpriteComponent {
 
         x += textMetrics.width;
       }
-
     }
     charsInfo.push({
       y,
@@ -369,15 +438,11 @@ export class TextComponent extends SpriteComponent {
 
       charInfo.chars.forEach((str, i) => {
         if (style.isOutlined) {
-
           context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
-
         }
 
         context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
-
       });
-
     });
 
     if (style.hasShadow) {
@@ -387,52 +452,42 @@ export class TextComponent extends SpriteComponent {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.material.setTexture('uSampler0', Texture.createWithData(this.engine,
-      {
-        data: new Uint8Array(imageData.data),
-        width: imageData.width,
-        height: imageData.height,
-      },
-      {
-        flipY: true,
-        magFilter: glContext.LINEAR,
-        minFilter: glContext.LINEAR,
-        wrapS: glContext.CLAMP_TO_EDGE,
-        wrapT: glContext.CLAMP_TO_EDGE,
-      }
-    ));
+    this.material.setTexture('uSampler0',
+      Texture.createWithData(
+        this.engine,
+        {
+          data: new Uint8Array(imageData.data),
+          width: imageData.width,
+          height: imageData.height,
+        },
+        {
+          flipY,
+          magFilter: glContext.LINEAR,
+          minFilter: glContext.LINEAR,
+          wrapS: glContext.CLAMP_TO_EDGE,
+          wrapT: glContext.CLAMP_TO_EDGE,
+        },
+      ),
+    );
 
     this.isDirty = false;
   }
 
-  override fromData (data: SpriteItemProps): void {
-    super.fromData(data);
-    const options = data.options as spec.TextContentOptions;
-
-    this.textStyle = new TextStyle(options);
-    this.textLayout = new TextLayout(options);
-
-    this.text = options.text;
-
-    // Text
-    this.updateTexture();
-  }
-
   private getFontDesc (): string {
-    const textStyle = this.textStyle;
-    let fontDesc = `${(textStyle.fontSize * textStyle.fontScale).toString()}px `;
+    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
+    let fontDesc = `${(fontSize * fontScale).toString()}px `;
 
-    if (!DEFAULT_FONTS.includes(textStyle.fontFamily)) {
-      fontDesc += `"${textStyle.fontFamily}"`;
+    if (!DEFAULT_FONTS.includes(fontFamily)) {
+      fontDesc += `"${fontFamily}"`;
     } else {
-      fontDesc += textStyle.fontFamily;
+      fontDesc += fontFamily;
     }
-    if (textStyle.textWeight !== spec.TextWeight.normal) {
-      fontDesc = `${textStyle.textWeight} ${fontDesc}`;
+    if (textWeight !== spec.TextWeight.normal) {
+      fontDesc = `${textWeight} ${fontDesc}`;
     }
 
-    if (textStyle.fontStyle !== spec.FontStyle.normal) {
-      fontDesc = `${textStyle.fontStyle} ${fontDesc}`;
+    if (fontStyle !== spec.FontStyle.normal) {
+      fontDesc = `${fontStyle} ${fontDesc}`;
     }
 
     return fontDesc;
@@ -440,20 +495,27 @@ export class TextComponent extends SpriteComponent {
 
   private setupOutline (): void {
     const context = this.context;
-    const style = this.textStyle;
+    const { outlineColor, outlineWidth } = this.textStyle;
+    const [r, g, b, a] = outlineColor;
 
-    context!.strokeStyle = `rgba(${style.outlineColor[0] * 255}, ${style.outlineColor[1] * 255}, ${style.outlineColor[2] * 255}, ${style.outlineColor[3]})`;
-    context!.lineWidth = style.outlineWidth * 2;
-
+    if (context) {
+      context.strokeStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
+      context.lineWidth = outlineWidth * 2;
+    }
   }
 
   private setupShadow (): void {
     const context = this.context;
-    const style = this.textStyle;
+    const { outlineColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
+    const [r, g, b, a] = outlineColor;
 
-    context!.shadowColor = `rgba(${style.shadowColor[0] * 255}, ${style.shadowColor[1] * 255}, ${style.shadowColor[2] * 255}, ${style.shadowColor[3]})`;
-    context!.shadowBlur = style.shadowBlur;
-    context!.shadowOffsetX = style.shadowOffsetX;
-    context!.shadowOffsetY = -style.shadowOffsetY;
+    if (context) {
+      context.shadowColor = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
+      context.shadowBlur = shadowBlur;
+      context.shadowOffsetX = shadowOffsetX;
+      context.shadowOffsetY = -shadowOffsetY;
+    }
   }
 }
+
+applyMixins(TextComponent, [TextComponentBase]);

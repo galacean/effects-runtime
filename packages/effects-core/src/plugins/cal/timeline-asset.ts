@@ -5,7 +5,7 @@ import type { RuntimeClip, TrackAsset } from '../timeline/track';
 import { ObjectBindingTrack } from './calculate-item';
 import type { FrameContext, PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset, PlayableTraversalMode } from './playable-graph';
-import type { Engine } from '../../engine';
+import type { Constructor } from '../../utils';
 
 export interface TimelineAssetData extends EffectsObjectData {
   tracks: DataPath[],
@@ -30,7 +30,7 @@ export class TimelineAsset extends PlayableAsset {
     return timelinePlayable;
   }
 
-  createTrack<T extends TrackAsset> (classConstructor: new (engine: Engine) => T, parent: TrackAsset, name?: string): T {
+  createTrack<T extends TrackAsset> (classConstructor: Constructor<T>, parent: TrackAsset, name?: string): T {
     const newTrack = new classConstructor(this.engine);
 
     newTrack.name = name ? name : classConstructor.name;

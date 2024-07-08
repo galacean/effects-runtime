@@ -158,7 +158,6 @@ export class BoxMesh {
    */
   get vertexShader (): string {
     return `
-      #version 100
       precision highp float;
 
       uniform mat4 _ModelMatrix;
@@ -178,7 +177,6 @@ export class BoxMesh {
    */
   get fragmentShader (): string {
     return `
-      #version 100
       precision highp float;
 
       uniform vec3 _LineColor;

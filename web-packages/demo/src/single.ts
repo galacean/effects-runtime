@@ -9,25 +9,27 @@ const container = document.getElementById('J-container');
       container,
       interactive: true,
       onItemClicked: item => {
-        console.log('onItemClicked', item);
+        console.info('onItemClicked', item);
       },
     });
 
     const composition = await player.loadScene(json);
+
     // player.once(EffectEventName.ITEM_CLICK, item => {
     //   console.log('item', item);
     // });
-    player.on(EffectEventName.ITEM_CLICK, item => {
-      console.log('first item', item);
+    player.on(EffectEventName.ITEM_CLICK, (item: any) => {
+      console.info('first item', item);
     });
 
-    composition.on(EffectEventName.COMPOSITION_END, (e) => {
-      console.log('composition end', e);
+    composition.on(EffectEventName.COMPOSITION_END, (e: any) => {
+      console.info('composition end', e);
     });
 
     const name = composition.getItemByName('interact_232');
-    name?.on(EffectEventName.ITEM_CLICK, item => {
-      console.log('name item', item);
+
+    name?.on(EffectEventName.ITEM_CLICK, (item: any) => {
+      console.info('name item', item);
     });
 
   } catch (e) {

@@ -275,11 +275,6 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       });
     }
 
-    // gizmo 的 target id 转换为新的 item guid
-    if (item.content.options.target) {
-      item.content.options.target = itemOldIdToGuidMap[item.content.options.target];
-    }
-
     // 修正老 json 的 item.pluginName
     if (item.pn !== undefined) {
       const pn = item.pn;
@@ -298,6 +293,11 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     if (item.pluginName === 'orientation-transformer') {
       //@ts-expect-error
       item.type = 'orientation-transformer';
+    }
+
+    // gizmo 的 target id 转换为新的 item guid
+    if (item.content.options.target && item.pluginName === 'editor-gizmo') {
+      item.content.options.target = itemOldIdToGuidMap[item.content.options.target];
     }
 
     // Spine 元素转为 guid 索引

@@ -1,13 +1,12 @@
-// 插件在这里强依赖resource-detection，只给demo使用，不会影响发包。发包的代码不会依赖resource-detection。
-// 所以插件其他位置使用resource-detection必须import type，否则会导致编辑器出错。
 import { GLTFTools } from '@vvfx/resource-detection';
-import type { Player, spec } from '@galacean/effects';
-import type { LoadSceneOptions, LoadSceneECSResult } from './protocol';
-import { LoaderECSImpl } from './loader-ecs';
-import { Box3, Vector3, Sphere } from '../runtime/math';
+import type { Player } from '@galacean/effects';
+import type { LoadSceneOptions, LoadSceneResult } from '@galacean/effects-plugin-model';
+import { spec } from '@galacean/effects';
+import { LoaderImpl } from '@galacean/effects-plugin-model';
+import { Box3, Vector3, Sphere } from '@galacean/effects-plugin-model';
 
-export class LoaderECSEx extends LoaderECSImpl {
-  override async loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult> {
+export class LoaderECSEx extends LoaderImpl {
+  override async loadScene (options: LoadSceneOptions): Promise<LoadSceneResult> {
     const gltfResource = options.gltf.resource;
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
@@ -30,7 +29,8 @@ export class LoaderECSEx extends LoaderECSImpl {
 export interface LoadGLTFSceneECSOptions {
   url: string,
   player: Player,
-  playAnimation?: number | string,
+  playAnimation?: number,
+  playAllAnimation?: boolean,
   camera?: {
     position?: spec.vec3,
     rotation?: spec.vec3,
@@ -50,10 +50,10 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       skyboxVis: true,
     },
     effects: {
-      renderer: options.player.renderer,
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: options.playAnimation,
+      playAllAnimation: options.playAllAnimation,
     },
   }).then(result => {
     const sceneMin = Vector3.fromArray(result.sceneAABB.min);
@@ -66,8 +66,8 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
     const cameraRotation = options.camera?.rotation ?? [0, 0, 0];
 
     loader.addCamera({
-      near: 0.001,
-      far: 5000,
+      near: 0.2,
+      far: 500,
       fov: 60,
       clipMode: 0,
       name: 'extra-camera',
@@ -77,28 +77,22 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       rotation: cameraRotation,
     });
 
-    const loadResult = loader.getLoadResult();
+    loader.addLight({
+      lightType: spec.LightType.ambient,
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      intensity: 0.1,
+      //
+      name: 'env-light',
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      duration: duration,
+      endBehavior: spec.ItemEndBehavior.loop,
+    });
 
-    // items.push({
-    //   id: 'env-light',
-    //   duration: duration,
-    //   name: 'env-light',
-    //   pn: 0,
-    //   type: 'light',
-    //   transform: {
-    //     position: [0, 0, 0],
-    //     rotation: [0, 0, 0],
-    //   },
-    //   endBehavior: 5,
-    //   content: {
-    //     options: {
-    //       lightType: 'ambient',
-    //       color: [255, 255, 255, 255],
-    //       intensity: 0.1,
-    //     },
-    //   },
-    // });
+    const loadResult = loader.getLoadResult();
 
     return loadResult.jsonScene;
   });
 }
+

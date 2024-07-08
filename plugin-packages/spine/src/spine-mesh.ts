@@ -106,7 +106,7 @@ export class SpineMesh implements Disposable {
       });
 
     material.setTexture('uTexture', this.lastTexture);
-    material.setMatrix('uModel', math.Matrix4.fromIdentity());
+    material.setMatrix('effects_ObjectToWorld', math.Matrix4.fromIdentity());
     material.blending = true;
     material.culling = false;
     material.depthTest = false;
@@ -149,7 +149,7 @@ export class SpineMesh implements Disposable {
     this.geometry.setAttributeData('aPosition', this.vertices);
     this.geometry.setIndexData(this.indices);
     this.geometry.setDrawCount(this.indicesLength);
-    this.material.setMatrix('uModel', worldMatrix);
+    this.material.setMatrix('effects_ObjectToWorld', worldMatrix);
   }
 
   startUpdate () {

@@ -250,7 +250,7 @@ export class JSONConverter {
         id: scene.textures[skyboxOptions.specularImage].id,
       },
       specularImageSize: skyboxOptions.specularImageSize,
-      specularMipCount: skyboxOptions.specularMipCount,
+      specularMipCount: skyboxOptions.specularMipCount + 1,
     };
 
     return skyboxComponent;
@@ -744,7 +744,7 @@ export class JSONConverter {
 
     if (oldMat.blending === spec.MaterialBlending.masked) {
       newMat.floats['AlphaClip'] = 1;
-      newMat.floats['_Cutoff'] = oldMat.alphaCutOff ?? 0;
+      newMat.floats['_AlphaCutoff'] = oldMat.alphaCutOff ?? 0;
     } else {
       newMat.floats['AlphaClip'] = 0;
     }
@@ -766,8 +766,8 @@ export class JSONConverter {
       newMat.floats['_SpecularAA'] = oldMat.useSpecularAA ? 1 : 0;
     }
 
-    newMat.stringTags['ZWrite'] = String(oldMat.depthMask ?? true);
-    newMat.stringTags['ZTest'] = String(true);
+    newMat.floats['ZWrite'] = oldMat.depthMask !== false ? 1 : 0;
+    newMat.floats['ZTest'] = 1;
   }
 
   private getTextureData (scene: spec.JSONScene, floats: Record<string, number>, texIndex: number, texTransform?: spec.ModelTextureTransform) {
@@ -1220,8 +1220,8 @@ function createGeometryData (props: GeometryProps, subMeshes: spec.SubMesh[]) {
     },
     subMeshes,
     mode: spec.GeometryType.TRIANGLES,
-    indexFormat: spec.IndexFormatType.UInt16,
-    indexOffset: -1,
+    indexFormat: spec.IndexFormatType.None,
+    indexOffset: 0,
     buffer: '',
   };
 
@@ -1233,6 +1233,8 @@ function createGeometryData (props: GeometryProps, subMeshes: spec.SubMesh[]) {
     geometryData.indexOffset = bufferOffset;
     if (indices instanceof Uint32Array) {
       geometryData.indexFormat = spec.IndexFormatType.UInt32;
+    } else {
+      geometryData.indexFormat = spec.IndexFormatType.UInt16;
     }
   }
 

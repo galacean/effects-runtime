@@ -8,6 +8,29 @@
 
 ---
 
+## 1.6.1
+
+`2024-07-02`
+
+- Fix: 修复 fontSize 导致的文本布局问题。[#469](https://github.com/galacean/effects-runtime/pull/469) @Sruimeng
+
+## 1.6.0
+
+`2024-06-28`
+
+- Feat: 增加交互元素控制参数。[#443](https://github.com/galacean/effects-runtime/pull/443) @RGCHN
+- Feat: 增加加载时分段时长。[#442](https://github.com/galacean/effects-runtime/pull/442) @Sruimeng
+- Feat: 增加合成和 Spine 元素接口。[#432](https://github.com/galacean/effects-runtime/pull/432) @RGCHN
+- Build: 增加 alpha/beta 发布命令。[#434](https://github.com/galacean/effects-runtime/pull/434) @yiiqii
+- Fix: 修复多行文字上下对齐问题。[#455](https://github.com/galacean/effects-runtime/pull/455) [#456](https://github.com/galacean/effects-runtime/pull/456) @Sruimeng
+- Fix: transparent object sort problem. [#458](https://github.com/galacean/effects-runtime/pull/458) @liuxi150
+
+## 1.5.2
+
+`2024-06-21`
+
+- Fix: base color index problem. [#441](https://github.com/galacean/effects-runtime/pull/441) @liuxi150
+
 ## 1.5.1
 
 `2024-06-05`

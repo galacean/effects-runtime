@@ -175,7 +175,6 @@ export class PMesh extends PEntity {
     this.updateMaterial(scene);
 
     this.subMeshes.forEach((subMesh, index) => {
-
       renderer.drawGeometry(
         subMesh.getEffectsGeometry(),
         subMesh.getEffectsMaterial(),
@@ -747,7 +746,7 @@ export class PSubMesh {
     }
 
     const proxy = new HitTestingProxy();
-    const doubleSided = this.material.isDoubleSide();
+    const doubleSided = this.material.isBothSide();
 
     proxy.create(this.geometry.geometry, doubleSided, bindMatrices);
 
@@ -902,7 +901,7 @@ export class PSubMesh {
             material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
           });
         }
-        material.setInt('_MipCount', skybox.specularMipCount ?? 1);
+        material.setInt('_MipCount', skybox.specularMipCount - 1);
         material.setTexture('_SpecularEnvSampler', skybox.specularImage);
       }
     }

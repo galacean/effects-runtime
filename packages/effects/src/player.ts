@@ -1,9 +1,9 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, math, SceneLoadType,
-  SceneType, EffectsObject } from '@galacean/effects-core';
-import { EffectEventName, EventEmitter,
-} from '@galacean/effects-core';
+  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, SceneLoadType, SceneType, EffectsObject,
+  CompItemClickedData } from '@galacean/effects-core';
+import {
+  EffectEventName, EventEmitter } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
@@ -17,12 +17,14 @@ import { isDowngradeIOS, throwError, throwErrorPromise } from './utils';
 /**
  * `onItemClicked` 点击回调函数的传入参数
  */
-export interface ItemClickedData {
-  name: string,
+export interface ItemClickedData extends CompItemClickedData {
   player: Player,
-  id: string,
-  hitPositions: math.Vector3[],
-  compositionId: number,
+  /**
+   * @deprecated since 1.6.0 - use `compositionName` instead
+   */
+  composition: string,
+  compositionName: string,
+  compositionId: string,
 }
 
 /**
@@ -159,7 +161,7 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
   private readonly handleWebGLContextRestored?: () => void;
   private readonly handleMessageItem?: (item: MessageItem) => void;
   private readonly handlePlayerPause?: (item: VFXItem) => void;
-  private readonly handleItemClicked?: (event: any) => void;
+  private readonly handleItemClicked?: (event: ItemClickedData) => void;
   private readonly handlePlayableUpdate?: (event: { playing: boolean, player: Player }) => void;
   private readonly handleRenderError?: (err: Error) => void;
   private readonly reportGPUTime?: (time: number) => void;
@@ -944,12 +946,20 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
               composition: composition.name,
               player: this,
             });
-            // TODO: 废除 handleItemClicked
-            this.handleItemClicked?.({
-              ...regions[i],
-              composition: composition.name,
-              player: this,
-            });
+            // if (composition.onItemClicked) {
+            //   composition.onItemClicked({
+            //     ...regions[i],
+            //   });
+            // } else {
+            //   this.handleItemClicked?.({
+            //     ...regions[i],
+            //     compositionId: composition.id,
+            //     compositionName: composition.name,
+            //     composition: composition.name,
+            //     player: this,
+            //   });
+            // }
+
           } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
             void this.resume();
           }
