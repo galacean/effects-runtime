@@ -1,6 +1,6 @@
 import { EffectEventName, Player } from '@galacean/effects';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*GpjhQKmxI1MAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*pqLHSLYMjWoAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -23,7 +23,7 @@ const container = document.getElementById('J-container');
 
     composition.on(EffectEventName.COMPOSITION_END, (e) => {
       console.log('composition end', e);
-    })
+    });
 
     const name = composition.getItemByName('interact_232');
     name?.on(EffectEventName.ITEM_CLICK, item => {

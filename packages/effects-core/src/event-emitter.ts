@@ -23,6 +23,9 @@ export enum EffectEventName {
    * 合成行为为销毁/冻结时只会触发一次
    */
   COMPOSITION_END = 'composition-end',
+  /**
+   * 播放器暂停事件
+   */
   PLAY_PAUSE = 'play-pause',
 }
 
