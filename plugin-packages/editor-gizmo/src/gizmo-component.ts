@@ -64,59 +64,53 @@ export class GizmoComponent extends ItemBehaviour {
     if (targetItem.type === '7' || !gizmoPlugin) {
       return;
     }
-    const gizmoVFXItemList: VFXItem[] = composition.loaderData.gizmoTarget[targetItem.id];
+    const gizmoSubType = this.subType;
 
-    if (gizmoVFXItemList && gizmoVFXItemList.length > 0) {
-      for (const gizmoVFXItem of gizmoVFXItemList) {
-        const gizmoSubType = gizmoVFXItem.getComponent(GizmoComponent).subType;
+    switch (gizmoSubType) {
+      case GizmoSubType.particleEmitter:
+        this.createParticleContent(targetItem, gizmoPlugin.meshToAdd);
 
-        switch (gizmoSubType) {
-          case GizmoSubType.particleEmitter:
-            this.createParticleContent(targetItem, gizmoPlugin.meshToAdd);
+        break;
+      case GizmoSubType.modelWireframe:
+        this.needCreateModelContent = true;
+        // gizmoVFXItem.createModelContent(targetItem, gizmoPlugin.meshToAdd);
 
-            break;
-          case GizmoSubType.modelWireframe:
-            this.needCreateModelContent = true;
-            // gizmoVFXItem.createModelContent(targetItem, gizmoPlugin.meshToAdd);
+        break;
+      case GizmoSubType.box:
+      case GizmoSubType.sphere:
+      case GizmoSubType.cylinder:
+      case GizmoSubType.cone:
+      case GizmoSubType.torus:
+      case GizmoSubType.sprite:
+      case GizmoSubType.frustum:
+      case GizmoSubType.directionLight:
+      case GizmoSubType.pointLight:
+      case GizmoSubType.spotLight:
+      case GizmoSubType.floorGrid:
+        this.createBasicContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType);
 
-            break;
-          case GizmoSubType.box:
-          case GizmoSubType.sphere:
-          case GizmoSubType.cylinder:
-          case GizmoSubType.cone:
-          case GizmoSubType.torus:
-          case GizmoSubType.sprite:
-          case GizmoSubType.frustum:
-          case GizmoSubType.directionLight:
-          case GizmoSubType.pointLight:
-          case GizmoSubType.spotLight:
-          case GizmoSubType.floorGrid:
-            this.createBasicContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType);
+        break;
+      case GizmoSubType.camera:
+      case GizmoSubType.light:
+        this.createBasicContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType, iconTextures);
 
-            break;
-          case GizmoSubType.camera:
-          case GizmoSubType.light:
-            this.createBasicContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType, iconTextures);
+        break;
+      case GizmoSubType.rotation:
+      case GizmoSubType.scale:
+      case GizmoSubType.translation:
+        this.createCombinationContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType);
 
-            break;
-          case GizmoSubType.rotation:
-          case GizmoSubType.scale:
-          case GizmoSubType.translation:
-            this.createCombinationContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType);
+        break;
+      case GizmoSubType.viewHelper:
+        this.createCombinationContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType, iconTextures);
 
-            break;
-          case GizmoSubType.viewHelper:
-            this.createCombinationContent(targetItem, gizmoPlugin.meshToAdd, gizmoSubType, iconTextures);
+        break;
+      case GizmoSubType.boundingBox:
+        this.createBoundingBoxContent(targetItem, gizmoPlugin.meshToAdd);
 
-            break;
-          case GizmoSubType.boundingBox:
-            this.createBoundingBoxContent(targetItem, gizmoPlugin.meshToAdd);
-
-            break;
-          default:
-            break;
-        }
-      }
+        break;
+      default:
+        break;
     }
     composition.loaderData.gizmoItems.push(this.item);
   }
