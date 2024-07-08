@@ -9,7 +9,13 @@ import { getDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
     console.info('Input bizId:', bizId);
   }
 
-  const downgradeResult = await getDowngradeResult(bizId);
+  try {
+    const downgradeResult = await getDowngradeResult(bizId);
 
-  document.getElementById('J-downgradeResult')!.innerHTML = `Result: <pre>${JSON.stringify(downgradeResult, undefined, 2)}</pre>`;
+    document.getElementById('J-downgradeResult')!.innerHTML = `Result: <pre>${JSON.stringify(downgradeResult, undefined, 2)}</pre>`;
+  } catch (e: any) {
+    console.error('biz', e);
+    document.getElementById('J-errorMessage')!.innerHTML = JSON.stringify(e.message, undefined, 2);
+  }
+
 })();

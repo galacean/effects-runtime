@@ -44,8 +44,8 @@ let hasRegisterEvent = false;
 
 export async function getDowngradeResult (bizId: string, options: DowngradeOptions = {}): Promise<DowngradeResult> {
   if (!hasRegisterEvent) {
-    registerEvent(options);
     hasRegisterEvent = true;
+    registerEvent(options);
   }
 
   if (bizId === mockIdFail || bizId === mockIdPass) {
@@ -57,77 +57,46 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
     });
   }
 
-  let systemInfo = options.systemInfo;
-  let downgradeResult = options.downgradeResult;
-  let systemTime, downgradeTime;
+  const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
-  if (!systemInfo || !downgradeResult) {
-    const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+  if (!ap) {
+    return {
+      bizId,
+      downgrade: false,
+      level: options.level ?? spec.RenderLevel.S,
+      reason: 'Non-Alipay environment',
+    };
+  }
 
-    if (ap) {
-      if (!systemInfo) {
-        const startTime = performance.now();
+  const systemTimeStart = performance.now();
 
-        systemInfo = await getSystemInfo();
-        systemTime = performance.now() - startTime;
-        logger.info(`SystemInfo time: ${systemTime}ms.`);
+  return getSystemInfoJSAPI(options).then(function (systemInfo) {
+    const systemTimeEnd = performance.now();
+
+    return getDowngradeResultJSAPI(bizId, options).then(function (downgradeResult: any) {
+      const downgradeTimeEnd = performance.now();
+
+      logger.info(`Downgrade time: ${downgradeTimeEnd - systemTimeStart}ms.`);
+
+      const device = new DeviceProxy();
+
+      device.setSystemInfo(systemInfo);
+      logger.info(`downgradeResult: ${downgradeResult}`);
+      const decision = device.getDowngradeDecision(downgradeResult);
+
+      if (options.level) {
+        decision.level = options.level;
       }
 
-      if (!downgradeResult) {
-        const startTime = performance.now();
-        const techPoint = ['mars'];
-        const tc = options.techPoint;
-
-        if (tc) {
-          techPoint.push(...tc);
-        }
-
-        const downgradeOptions = {
-          bizId,
-          scene: 0,
-          ext: {
-            techPoint,
-          },
-        };
-
-        const downgradeCallback = (result: any) => {
-          downgradeTime = performance.now() - startTime;
-
-          logger.info(`Downgrade time: ${downgradeTime}ms.`);
-          downgradeResult = result;
-        };
-
-        const callBridge = options.callBridge ?? ap.call;
-
-        callBridge('getDowngradeResult', downgradeOptions, downgradeCallback);
-      }
-    } else {
       return {
+        ...decision,
         bizId,
-        downgrade: false,
-        level: options.level ?? spec.RenderLevel.S,
-        reason: 'Non-Alipay environment',
+        systemInfo,
+        systemTime: systemTimeEnd - systemTimeStart,
+        downgradeResult,
+        downgradeTime: downgradeTimeEnd - systemTimeEnd,
       };
-    }
-  }
-
-  const device = new DeviceProxy();
-
-  device.setSystemInfo(systemInfo);
-
-  const decision = device.getDowngradeDecision(downgradeResult);
-
-  if (options.level) {
-    decision.level = options.level;
-  }
-
-  return Promise.resolve({
-    ...decision,
-    bizId,
-    systemInfo,
-    systemTime,
-    downgradeResult,
-    downgradeTime,
+    });
   });
 }
 
@@ -154,22 +123,61 @@ interface SystemInfo {
   error: any,
 }
 
-async function getSystemInfo (): Promise<SystemInfo> {
-  return new Promise((resolve, reject) => {
-    const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+async function getSystemInfoJSAPI (options: DowngradeOptions): Promise<SystemInfo> {
+  if (options.systemInfo) {
+    return Promise.resolve(options.systemInfo);
+  } else {
+    return new Promise((resolve, reject) => {
+      const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
-    if (ap) {
-      ap.call('getSystemInfo', (e: SystemInfo) => {
-        if (e.error) {
-          reject(e);
-        } else {
-          resolve(e);
+      if (ap) {
+        ap.call('getSystemInfo', (e: SystemInfo) => {
+          if (e.error) {
+            reject(e);
+          } else {
+            resolve(e);
+          }
+        });
+      } else {
+        reject('no ap');
+      }
+    });
+  }
+}
+
+async function getDowngradeResultJSAPI (bizId: string, options: DowngradeOptions): Promise<any> {
+  if (options.downgradeResult) {
+    return Promise.resolve(options.downgradeResult);
+  } else {
+    return new Promise((resolve, reject) => {
+      const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+
+      if (ap) {
+        const techPoint = ['mars'];
+        const tc = options.techPoint;
+
+        if (tc) {
+          techPoint.push(...tc);
         }
-      });
-    } else {
-      reject('no ap');
-    }
-  });
+
+        const downgradeOptions = {
+          bizId,
+          scene: 0,
+          ext: {
+            techPoint,
+          },
+        };
+
+        const callBridge = options.callBridge ?? ap.call;
+
+        callBridge('getDowngradeResult', downgradeOptions, (result: any) => {
+          resolve(result);
+        });
+      } else {
+        reject('no ap');
+      }
+    });
+  }
 }
 
 enum DeviceLevel {
