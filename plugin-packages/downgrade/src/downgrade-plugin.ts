@@ -1,6 +1,6 @@
-import type { SceneLoadOptions } from '@galacean/effects';
-import { isIOS, logger, spec } from '@galacean/effects';
-import { AbstractPlugin } from '@galacean/effects';
+import type { SceneLoadOptions, spec } from '@galacean/effects';
+import { AbstractPlugin, logger } from '@galacean/effects';
+import { getDefaultRenderLevel } from './utils';
 
 export class DowngradePlugin extends AbstractPlugin {
   static override async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions = {}) {
@@ -15,11 +15,7 @@ export class DowngradePlugin extends AbstractPlugin {
     }
 
     if (!options.renderLevel) {
-      if (downgradeResult) {
-        options.renderLevel = downgradeResult.renderLevel;
-      } else {
-        options.renderLevel = isIOS() ? spec.RenderLevel.S : spec.RenderLevel.B;
-      }
+      options.renderLevel = downgradeResult?.renderLevel ?? getDefaultRenderLevel();
     }
   }
 }

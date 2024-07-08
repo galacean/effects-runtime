@@ -1,4 +1,5 @@
 import type { SceneRenderLevel } from '@galacean/effects';
+import { isIOS } from '@galacean/effects';
 import { spec, getActivePlayers, logger, isAlipayMiniApp } from '@galacean/effects';
 
 export interface DowngradeOptions {
@@ -570,6 +571,10 @@ export class DowngradeJudge {
 
     return this.isIOS ? spec.RenderLevel.S : spec.RenderLevel.B;
   }
+}
+
+export function getDefaultRenderLevel () {
+  return isIOS() ? spec.RenderLevel.S : spec.RenderLevel.B;
 }
 
 const internalPaused = Symbol('@@_inter_pause');
