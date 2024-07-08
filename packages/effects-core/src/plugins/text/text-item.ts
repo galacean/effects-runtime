@@ -62,7 +62,7 @@ export class TextItem extends SpriteItem {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
 
-    this.text = options.text;
+    this.text = options.text.toString();
 
     this.lineCount = this.getLineCount(options.text, true);
     // Text
@@ -149,7 +149,7 @@ export class TextItem extends SpriteItem {
     if (this.text === value) {
       return;
     }
-    this.text = value;
+    this.text = value.toString();
     this.lineCount = this.getLineCount(value, false);
     this.isDirty = true;
   }
