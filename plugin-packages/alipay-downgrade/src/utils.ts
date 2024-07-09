@@ -59,7 +59,6 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 
   const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
-  console.info(`getDowngradeResult: ${ap}, ${JSON.stringify(ap)}`);
   if (!ap) {
     return {
       bizId,
@@ -89,7 +88,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
         decision.level = options.level;
       }
 
-      return {
+      const result: DowngradeResult = {
         ...decision,
         bizId,
         systemInfo,
@@ -97,6 +96,8 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
         downgradeResult,
         downgradeTime: downgradeEndTime - systemEndTime,
       };
+
+      return result;
     });
   });
 }
