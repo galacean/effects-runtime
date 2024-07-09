@@ -59,6 +59,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 
   const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
+  console.info(`getDowngradeResult: ${ap}, ${JSON.stringify(ap)}`);
   if (!ap) {
     return {
       bizId,
@@ -320,17 +321,23 @@ export function getDefaultRenderLevel () {
 
 function getDowngradeReason (reason: number): string {
   if (reason === -1) {
-    return `${reason}-no config`;
+    return `${reason}, unable to pull configuration`;
   } else if (reason === 0) {
-    return `${reason}-none`;
+    return `${reason}, no downgrade`;
   } else if (reason === 1) {
-    return `${reason}-downgrade by memory`;
+    return `${reason}, memory downgrade`;
   } else if (reason === 2) {
-    return `${reason}-downgrade by crash`;
+    return `${reason}, crash downgrade`;
   } else if (reason === 3) {
-    return `${reason}-downgrade by device`;
+    return `${reason}, basic dimension downgrade`;
   } else if (reason === 4) {
-    return `${reason}-downgrade by force`;
+    return `${reason}, technical point downgrade`;
+  } else if (reason === 5) {
+    return `${reason}, GPU downgrade`;
+  } else if (reason === 6) {
+    return `${reason}, self-healing downgrade`;
+  } else if (reason === 7) {
+    return `${reason}, 32-bit CPU downgrade`;
   } else {
     return `${reason}`;
   }
