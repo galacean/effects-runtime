@@ -26,7 +26,15 @@ export enum EffectEventName {
   /**
    * 播放器暂停事件
    */
-  PLAY_PAUSE = 'play-pause',
+  PLAYER_PAUSE = 'player-pause',
+  /**
+   * 播放器更新事件
+   */
+  PLAYER_UPDATE = 'player-update',
+  /**
+   * 渲染错误事件
+   */
+  RENDER_ERROR = 'render-error',
 }
 
 export class EventEmitter {

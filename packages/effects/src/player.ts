@@ -121,6 +121,7 @@ export interface PlayerConfig {
   /**
    * 渲染出错时候的回调
    * @param - err
+   * @deprecated 2.0.0
    */
   onRenderError?: (err: Error) => void,
   // createRenderNode?: (model: Object) => any,
@@ -575,6 +576,10 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
     if (!this.ticker || this.ticker?.getPaused()) {
       this.doTick(0, true);
     }
+    this.emit(EffectEventName.PLAYER_UPDATE, {
+      player: this,
+      playing: true,
+    });
     this.handlePlayableUpdate?.({
       player: this,
       playing: false,
@@ -615,6 +620,10 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
       player: this,
       playing: false,
     });
+    this.emit(EffectEventName.PLAYER_UPDATE, {
+      player: this,
+      playing: true,
+    });
     if (options && options.offloadTexture) {
       this.offloadTexture();
     }
@@ -649,9 +658,9 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
   private doTick (dt: number, forceRender: boolean) {
     const { renderErrors } = this.renderer.engine;
 
-    // TODO: 临时处理，2.0.0 做优化
     if (renderErrors.size > 0) {
       this.handleRenderError?.(renderErrors.values().next().value);
+      this.emit(EffectEventName.RENDER_ERROR, renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
     }
@@ -681,6 +690,7 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
     this.compositions = currentCompositions;
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
+      this.emit(EffectEventName.RENDER_ERROR, new Error('Play when texture offloaded.'));
       this.handleRenderError?.(new Error('Play when texture offloaded.'));
 
       return this.ticker?.pause();
@@ -715,6 +725,10 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
         .catch;
       if (this.autoPlaying) {
         this.handlePlayableUpdate?.({
+          player: this,
+          playing: true,
+        });
+        this.emit(EffectEventName.PLAYER_UPDATE, {
           player: this,
           playing: true,
         });
