@@ -9,7 +9,6 @@ import { ParticleSystem } from './particle-system';
  */
 export class ParticleBehaviourPlayable extends Playable {
   particleSystem: ParticleSystem;
-  lastTime: number = 0;
 
   start (context: FrameContext): void {
     const boundObject = context.output.getUserData();
@@ -36,16 +35,13 @@ export class ParticleBehaviourPlayable extends Playable {
       // TODO: [1.31] @十弦 验证 https://github.com/galacean/effects-runtime/commit/3e7d73d37b7d98c2a25e4544e80e928b17801ccd#diff-fae062f28caf3771cfedd3a20dc22f9749bd054c7541bf2fd50a9a5e413153d4
       // particleSystem.setParentTransform(parentItem.transform);
       particleSystem.setVisible(true);
+      const deltaTime = context.deltaTime;
 
-      let deltaTime = context.deltaTime;
-
-      // 直接用 this.lastTime - this.time 获取 deltaTime 会有精度问题
-      if (this.lastTime === this.time) {
-        deltaTime = 0;
+      if (this.time < particleSystem.item.duration && particleSystem.isFrozen()) {
+        particleSystem.reset();
       }
       particleSystem.onUpdate(deltaTime);
     }
-    this.lastTime = this.time;
   }
 }
 

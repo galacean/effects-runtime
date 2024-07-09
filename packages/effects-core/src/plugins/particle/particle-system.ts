@@ -191,6 +191,10 @@ export class ParticleSystem extends Component {
     return this.particleLink.length;
   }
 
+  isFrozen () {
+    return this.frozen;
+  }
+
   initEmitterTransform () {
     const position = this.item.transform.position.clone();
     const rotation = this.item.transform.rotation.clone();
@@ -330,6 +334,7 @@ export class ParticleSystem extends Component {
     this.particleLink = new Link((a, b) => a[0] - b[0]);
     this.emission.bursts.forEach(b => b.reset());
     this.frozen = false;
+    this.ended = false;
   }
 
   onUpdate (delta: number) {
