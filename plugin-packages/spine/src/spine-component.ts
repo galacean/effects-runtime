@@ -119,7 +119,10 @@ export class SpineComponent extends RendererComponent {
 
   override fromData (data: spec.SpineComponent) {
     super.fromData(data);
-
+    // 兼容编辑器逻辑
+    if (!this.resource) {
+      return;
+    }
     const { images: textures, skeletonType, atlas: atlasOptions, skeleton: skeletonOptions } = this.resource;
     const [start, bufferLength] = atlasOptions.source;
     const atlasBuffer = bufferLength ? new Uint8Array(atlasOptions.bins.buffer, start, bufferLength) : new Uint8Array(atlasOptions.bins.buffer, start);
@@ -140,13 +143,16 @@ export class SpineComponent extends RendererComponent {
 
   override start () {
     super.start();
+    if (!this.spineDataCache) {
+      return;
+    }
     this.initContent(this.spineDataCache.atlas, this.spineDataCache.skeletonData, this.options);
     // @ts-expect-error
     this.startSize = this.options.startSize;
     // @ts-expect-error
     this.renderer = this.options.renderer;
 
-    if (!this.state) {
+    if (!(this.state && this.skeleton)) {
       return;
     }
     this.state.apply(this.skeleton);
