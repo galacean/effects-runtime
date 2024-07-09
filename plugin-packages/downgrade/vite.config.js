@@ -23,7 +23,6 @@ export default defineConfig(({ mode }) => {
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常
     },
-    esbuild: {},
     server: {
       host: '0.0.0.0',
       port: 8081,

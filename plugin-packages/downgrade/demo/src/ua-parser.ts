@@ -1,8 +1,8 @@
-import { UAParser } from 'ua-parser-js';
 import { UADecoder } from '@galacean/effects-plugin-downgrade';
 
 (async () => {
-  const parser = new UAParser();
+  // @ts-expect-error
+  const parser = new window.UAParser();
   const result0 = parser.getResult();
   const label0 = document.createElement('label');
 
