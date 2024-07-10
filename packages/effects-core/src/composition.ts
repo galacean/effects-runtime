@@ -53,7 +53,6 @@ export interface CompositionProps {
   reusable?: boolean,
   baseRenderOrder?: number,
   renderer: Renderer,
-  onPlayerPause?: (item: VFXItem) => void,
   onItemClicked?: (item: VFXItem) => void,
   onMessageItem?: (item: MessageItem) => void,
   onEnd?: (composition: Composition) => void,
@@ -61,6 +60,7 @@ export interface CompositionProps {
   width: number,
   height: number,
   speed?: number,
+  player: any,
 }
 
 /**
@@ -105,11 +105,6 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
    * @since 1.6.0
    */
   interactive: boolean;
-  /**
-   * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
-   * @internal
-   */
-  onPlayerPause?: (item: VFXItem) => void;
   /**
    * 单个合成结束时的回调
    */
@@ -216,6 +211,8 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
 
+  private player: any;
+
   /**
    * Composition 构造函数
    * @param props - composition 的创建参数
@@ -231,8 +228,9 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
       reusable = false,
       speed = 1,
       baseRenderOrder = 0, renderer,
-      onPlayerPause, onMessageItem, onEnd,
+      onMessageItem, onEnd,
       event, width, height,
+      player,
     } = props;
 
     this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
@@ -248,6 +246,7 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
     this.renderer = renderer;
     this.refCompositionProps = refCompositionProps;
 
+    this.player = player;
     this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
     this.rootItem.name = 'rootItem';
     this.rootItem.composition = this;
@@ -279,7 +278,6 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
     this.assigned = true;
     this.globalTime = 0;
     this.interactive = true;
-    this.onPlayerPause = onPlayerPause;
     this.onMessageItem = onMessageItem;
     this.onEnd = onEnd;
     this.createRenderFrame();
@@ -847,6 +845,17 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
    */
   addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
+      this.player.emit(EffectEventName.ITEM_MESSAGE, {
+        name: item.name,
+        phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
+        id: item.id,
+        compositionId: this.id,
+      });
+      item.emit(EffectEventName.ITEM_MESSAGE, {
+        name: item.name,
+        phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
+        id: item.id,
+      });
       this.onMessageItem?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
@@ -866,6 +875,17 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
   removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM的结束行为
     if (type === spec.InteractType.MESSAGE) {
+      this.player.emit(EffectEventName.ITEM_MESSAGE, {
+        name: item.name,
+        phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
+        id: item.id,
+        compositionId: this.id,
+      });
+      item.emit(EffectEventName.ITEM_MESSAGE, {
+        name: item.name,
+        phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
+        id: item.id,
+      });
       this.onMessageItem?.({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_END,
@@ -981,7 +1001,6 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
     this.update = () => {
       logger.error(`Update disposed composition: ${this.name}.`);
     };
-    this.onPlayerPause = noop;
     this.dispose = noop;
     if (textures && this.keepResource) {
       textures.forEach(tex => tex.dispose = textureDisposes[tex.id]);

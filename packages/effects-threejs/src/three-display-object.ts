@@ -141,6 +141,7 @@ export class ThreeDisplayObject extends THREE.Group {
       width: this.width,
       height: this.height,
       renderer: this.renderer,
+      player: this,
     }, scene);
 
     (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });

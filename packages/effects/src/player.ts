@@ -112,10 +112,12 @@ export interface PlayerConfig {
   onItemClicked?: (data: ItemClickedData) => void,
   /**
    * 交互元素发送 message 的回调
+   * @deprecated 2.0.0
    */
   onMessageItem?: (data: { name: string, phrase: number }) => void,
   /**
    * 播放器更新的回调
+   * @deprecated 2.0.0
    */
   onPlayableUpdate?: (data: { playing: boolean, time?: number, player: Player }) => void,
   /**
@@ -490,8 +492,8 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
       renderer,
       width: renderer.getWidth(),
       height: renderer.getHeight(),
+      player: this,
       event: this.event,
-      onPlayerPause: this.handlePlayerPause,
       onMessageItem: this.handleMessageItem,
     }, scene);
 
