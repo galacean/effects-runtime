@@ -380,9 +380,10 @@ export class Camera {
       const { fov, aspect, near, far, clipMode, position } = this.options;
 
       this.projectionMatrix.perspective(
-        fov * DEG2RAD * this.fovScaleRatio, aspect, near, far,
+        fov * DEG2RAD, aspect, near, far,
         clipMode === spec.CameraClipMode.portrait
       );
+      this.projectionMatrix.premultiply(new Matrix4().setFromScale(this.fovScaleRatio, this.fovScaleRatio, 1));
       this.inverseViewMatrix.compose(position, this.getQuat(), tmpScale);
       this.viewMatrix.copyFrom(this.inverseViewMatrix).invert();
       this.viewProjectionMatrix.multiplyMatrices(this.projectionMatrix, this.viewMatrix);

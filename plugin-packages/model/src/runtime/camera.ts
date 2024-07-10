@@ -95,7 +95,8 @@ export class PCamera extends PEntity {
 
     const reverse = this.clipMode === spec.CameraClipMode.portrait;
 
-    this.projectionMatrix.perspective(this.fov * deg2rad * this.fovScaleRatio, this.aspect, this.nearPlane, this.farPlane, reverse);
+    this.projectionMatrix.perspective(this.fov * deg2rad, this.aspect, this.nearPlane, this.farPlane, reverse);
+    this.projectionMatrix.premultiply(new Matrix4().setFromScale(this.fovScaleRatio, this.fovScaleRatio, 1));
     this.viewMatrix = this.matrix.invert();
   }
 
@@ -107,7 +108,7 @@ export class PCamera extends PEntity {
   getNewProjectionMatrix (fov: number): Matrix4 {
     const reverse = this.clipMode === spec.CameraClipMode.portrait;
 
-    return new Matrix4().perspective(Math.min(fov * 1.25, 140) * deg2rad * this.fovScaleRatio, this.aspect, this.nearPlane, this.farPlane, reverse);
+    return new Matrix4().perspective(Math.min(fov * 1.25, 140) * deg2rad, this.aspect, this.nearPlane, this.farPlane, reverse).premultiply(new Matrix4().setFromScale(this.fovScaleRatio, this.fovScaleRatio, 1));
   }
 
   /**
