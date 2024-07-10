@@ -148,7 +148,12 @@ export class Editor extends EditorWindow {
             } else if (property instanceof EffectsObject) {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);
-              ImGui.Button(property.name, new ImGui.Vec2(200, 0));
+              let name = 'EffectsObject';
+
+              if (property.name) {
+                name = property.name;
+              }
+              ImGui.Button(name, new ImGui.Vec2(200, 0));
               if (ImGui.BeginDragDropTarget()) {
                 const payload = ImGui.AcceptDragDropPayload(property.constructor.name);
 
@@ -174,6 +179,7 @@ export class Editor extends EditorWindow {
             ImGui.Text('Material');
             ImGui.SameLine(alignWidth);
             ImGui.Button(componet.material.name, new ImGui.Vec2(200, 0));
+
             if (ImGui.BeginDragDropTarget()) {
               const payload = ImGui.AcceptDragDropPayload(componet.material.constructor.name);
 
@@ -190,6 +196,7 @@ export class Editor extends EditorWindow {
                   componet.material = effectsPackage.exportObjects[0] as Material;
                 });
               }
+
               ImGui.EndDragDropTarget();
             }
           }
