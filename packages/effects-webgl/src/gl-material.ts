@@ -45,7 +45,6 @@ export class GLMaterial extends Material {
 
   private uniformDirtyFlag = true;
   private macrosDirtyFlag = true;
-  private readonly macros: Record<string, number | boolean> = {};
   private glMaterialState = new GLMaterialState();
 
   constructor (
@@ -218,21 +217,21 @@ export class GLMaterial extends Material {
   }
 
   override enableMacro (keyword: string, value?: boolean | number): void {
-    if (!this.isMacroEnabled(keyword) || this.macros[keyword] !== value) {
-      this.macros[keyword] = value ?? true;
+    if (!this.isMacroEnabled(keyword) || this.enabledMacros[keyword] !== value) {
+      this.enabledMacros[keyword] = value ?? true;
       this.macrosDirtyFlag = true;
     }
   }
 
   override disableMacro (keyword: string): void {
     if (this.isMacroEnabled(keyword)) {
-      delete this.macros[keyword];
+      delete this.enabledMacros[keyword];
       this.macrosDirtyFlag = true;
     }
   }
 
   override isMacroEnabled (keyword: string): boolean {
-    return this.macros[keyword] !== undefined;
+    return this.enabledMacros[keyword] !== undefined;
   }
 
   // TODO 待废弃 兼容 model/spine 插件 改造后可移除
@@ -256,17 +255,17 @@ export class GLMaterial extends Material {
 
   /**shader和texture的GPU资源初始化。 */
   override initialize (): void {
+    const engine = this.engine;
+
+    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
+      this.shaderVariant = this.shader.createVariant(this.enabledMacros) as GLShaderVariant;
+      this.macrosDirtyFlag = false;
+    }
+    this.shaderVariant.initialize(engine);
     if (this.initialized) {
       return;
     }
-    const glEngine = this.engine as GLEngine;
-
-    glEngine.addMaterial(this);
-    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
-      this.shaderVariant = this.shader.createVariant(this.macros) as GLShaderVariant;
-      this.macrosDirtyFlag = false;
-    }
-    this.shaderVariant.initialize(glEngine);
+    engine.addMaterial(this);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
 
