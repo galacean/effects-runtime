@@ -167,6 +167,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
     if (subMeshes && subMeshes.length) {
       const subMesh = subMeshes[subMeshIndex];
 
+      // FIXME: 临时处理3D线框状态下隐藏模型
+      if (count < 0) {
+        return;
+      }
+
       offset = subMesh.offset;
       count = subMesh.indexCount ?? subMesh.vertexCount;
       if (indicesBuffer) {
