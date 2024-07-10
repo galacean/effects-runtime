@@ -1,5 +1,5 @@
-import type { ShaderMarcos, Geometry, GeometryDrawMode, Engine, GLEngine, spec } from '@galacean/effects';
-import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, createShaderWithMarcos, ShaderType, math } from '@galacean/effects';
+import type { ShaderMacros, Geometry, GeometryDrawMode, Engine, GLEngine, spec } from '@galacean/effects';
+import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, createShaderWithMacros, ShaderType, math } from '@galacean/effects';
 
 const { Vector4 } = math;
 
@@ -15,14 +15,14 @@ export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec
       name: 'testtest',
     });
 
-  const { vertex, fragment, marcos, name } = mesh.material.props.shader;
+  const { vertex, fragment, macros, name } = mesh.material.props.shader;
   const materialOptions = { ...mesh.material.props };
-  const newMarcos = [...(marcos || [] as ShaderMarcos), ['PREVIEW_BORDER', 1]] as ShaderMarcos;
+  const newMacros = [...(macros || [] as ShaderMacros), ['PREVIEW_BORDER', 1]] as ShaderMacros;
   const level = engine.gpuCapability.level;
 
   materialOptions.shader = {
-    vertex: createGizmoShader(newMarcos, vertex, ShaderType.vertex, level),
-    fragment: createGizmoShader(newMarcos, fragment, ShaderType.fragment, level),
+    vertex: createGizmoShader(newMacros, vertex, ShaderType.vertex, level),
+    fragment: createGizmoShader(newMacros, fragment, ShaderType.fragment, level),
     shared: true,
     name: name + '_wireframe',
     glslVersion: engine.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
@@ -114,14 +114,14 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
         data: new Uint32Array(0),
       },
     });
-  const { vertex, fragment, marcos } = mesh.material.props.shader;
+  const { vertex, fragment, macros } = mesh.material.props.shader;
   const materialOptions = { ...mesh.material.props };
 
-  const newMarcos = [...(marcos || [] as ShaderMarcos), ['PREVIEW_BORDER', 1]] as ShaderMarcos;
+  const newMacros = [...(macros || [] as ShaderMacros), ['PREVIEW_BORDER', 1]] as ShaderMacros;
 
   materialOptions.shader = {
-    vertex: createGizmoShader(newMarcos, vertex, ShaderType.vertex, level),
-    fragment: createGizmoShader(newMarcos, fragment, ShaderType.fragment, level),
+    vertex: createGizmoShader(newMacros, vertex, ShaderType.vertex, level),
+    fragment: createGizmoShader(newMacros, fragment, ShaderType.fragment, level),
     shared: true,
     name: (mesh.name ?? 'unamedmesh') + '_wireframe',
     glslVersion: engine.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
@@ -254,10 +254,15 @@ export class SharedGeometry extends GLGeometry {
   }
 }
 
-function createGizmoShader (marcos: ShaderMarcos, shader: string, shaderType: ShaderType, level: number) {
+function createGizmoShader (
+  macros: ShaderMacros,
+  shader: string,
+  shaderType: ShaderType,
+  level: number,
+) {
   const versionTag = /#version\s+\b\d{3}\b\s*(es)?/;
   const shaderMatch = shader.match(versionTag);
   const newShader = shaderMatch ? shader.substring(shaderMatch[0].length) : shader;
 
-  return createShaderWithMarcos(marcos, newShader, shaderType, level);
+  return createShaderWithMacros(macros, newShader, shaderType, level);
 }

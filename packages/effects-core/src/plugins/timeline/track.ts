@@ -1,10 +1,10 @@
 import { ItemEndBehavior } from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
-import type { Engine } from '../../engine';
 import { VFXItem } from '../../vfx-item';
 import type { PlayableGraph } from '../cal/playable-graph';
 import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
 import { ParticleSystem } from '../particle/particle-system';
+import type { Constructor } from '../../utils';
 
 /**
  * @since 2.0.0
@@ -122,7 +122,7 @@ export class TrackAsset extends PlayableAsset {
   }
 
   createClip<T extends PlayableAsset> (
-    classConstructor: new (engine: Engine) => T,
+    classConstructor: Constructor<T>,
     name?: string,
   ): TimelineClip {
     const newClip = new TimelineClip();
@@ -167,11 +167,18 @@ export class RuntimeClip {
   parentMixer: Playable;
   track: TrackAsset;
 
+  // TODO: 粒子结束行为有特殊逻辑，这里 cache 一下避免每帧查询组件导致 GC。粒子结束行为判断统一后可移除
+  particleSystem: ParticleSystem;
+
   constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: Playable, track: TrackAsset) {
     this.clip = clip;
     this.playable = clipPlayable;
     this.parentMixer = parentMixer;
     this.track = track;
+
+    if (this.track.binding instanceof VFXItem) {
+      this.particleSystem = this.track.binding.getComponent(ParticleSystem);
+    }
   }
 
   set enable (value: boolean) {
@@ -192,7 +199,7 @@ export class RuntimeClip {
     const boundItem = this.track.binding as VFXItem;
 
     if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
-      if (VFXItem.isParticle(boundItem) && !boundItem.getComponent(ParticleSystem)?.destroyed) {
+      if (VFXItem.isParticle(boundItem) && this.particleSystem && !this.particleSystem.destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;

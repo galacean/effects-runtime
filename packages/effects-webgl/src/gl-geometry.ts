@@ -432,7 +432,7 @@ export class GLGeometry extends Geometry {
         };
       });
 
-      if (data.indexOffset !== undefined && data.indexFormat !== undefined) {
+      if (data.indexFormat !== spec.IndexFormatType.None) {
         const indexBuffer = this.createIndexTypedArray(data.indexFormat, buffer, data.indexOffset);
 
         geometryProps.indices = { data: indexBuffer };
@@ -533,7 +533,7 @@ export class GLGeometry extends Geometry {
       case spec.VertexFormatType.UInt8:
         return new Uint8Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
       default:
-        console.error(`Invalid vertex format type: ${channel.format}`);
+        console.error(`Invalid vertex format type: ${channel.format}.`);
 
         return new Float32Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
     }
@@ -546,7 +546,7 @@ export class GLGeometry extends Geometry {
       case spec.IndexFormatType.UInt32:
         return new Uint32Array(baseBuffer, offset);
       default:
-        console.error(`Invalid index format type: ${type}`);
+        console.error(`Invalid index format type: ${type}.`);
 
         return new Uint32Array(baseBuffer, offset);
     }

@@ -6,7 +6,7 @@ import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
 import { Material } from '../../material';
 import { createValueGetter } from '../../math';
-import type { MeshRendererOptions } from '../../render';
+import type { MeshRendererOptions, ShaderMacros } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import type { Transform } from '../../transform';
 
@@ -100,7 +100,7 @@ export class InteractMesh {
   }
 
   private createMaterial (rendererOptions: MeshRendererOptions): Material {
-    const marcos: [key: string, value: boolean | number][] = [
+    const macros: ShaderMacros = [
       ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const color = createValueGetter(this.color).getValue(0);
@@ -110,7 +110,7 @@ export class InteractMesh {
         fragment,
         glslVersion: GLSLVersion.GLSL1,
         cacheId: `${rendererOptions.cachePrefix}_effects_interact`,
-        marcos,
+        macros,
       },
       uniformSemantics: {
         effects_MatrixVP: 'VIEWPROJECTION',

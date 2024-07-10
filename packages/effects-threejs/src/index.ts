@@ -14,6 +14,7 @@ export * from './three-display-object';
 export * from './three-engine';
 export * from './three-texture';
 export * from './three-sprite-component';
+export * from './three-text-component';
 
 setMaxSpriteMeshItemCount(8);
 /**
@@ -69,4 +70,4 @@ Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
 
 export const version = __VERSION__;
 
-logger.info('THREEJS plugin version: ' + version);
+logger.info(`THREEJS plugin version: ${version}.`);

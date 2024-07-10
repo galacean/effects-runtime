@@ -1,5 +1,6 @@
-import type { Ray } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
 import { CompositionSourceManager } from './composition-source-manager';
@@ -21,6 +22,7 @@ export interface CompositionStatistic {
   loadTime: number,
   loadStart: number,
   firstFrameTime: number,
+  precompileTime: number,
 }
 
 export interface MessageItem {
@@ -28,6 +30,13 @@ export interface MessageItem {
   name: string,
   phrase: number,
   compositionId: string,
+}
+
+export interface CompItemClickedData {
+  name: string,
+  id: string,
+  hitPositions: Vector3[],
+  position: Vector3,
 }
 
 /**
@@ -44,6 +53,7 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   renderer: Renderer,
   onPlayerPause?: (item: VFXItem) => void,
+  onItemClicked?: (item: VFXItem) => void,
   onMessageItem?: (item: MessageItem) => void,
   onEnd?: (composition: Composition) => void,
   event?: EventSystem,
@@ -90,6 +100,11 @@ export class Composition implements Disposable, LostHandler {
   // 3D 模式下创建的场景相机 需要最后更新参数, TODO: 太 hack 了, 待移除
   extraCamera: VFXItem;
   /**
+   * 合成内的元素否允许点击、拖拽交互
+   * @since 1.6.0
+   */
+  interactive: boolean;
+  /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
    * @internal
    */
@@ -102,6 +117,14 @@ export class Composition implements Disposable, LostHandler {
    * 合成中消息元素创建/销毁时触发的回调
    */
   onMessageItem?: (item: MessageItem) => void;
+  /**
+   * 合成中元素点击时触发的回调
+   * 注意：此接口随时可能下线，请务使用！
+   * @since 1.6.0
+   * @ignore
+   * @deprecated
+   */
+  onItemClicked?: (data: CompItemClickedData) => void;
   /**
    * 合成id
    */
@@ -164,8 +187,6 @@ export class Composition implements Disposable, LostHandler {
    */
   globalTime: number;
 
-  editorScaleRatio = 1.0;
-
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
   protected assigned = false;
@@ -178,6 +199,8 @@ export class Composition implements Disposable, LostHandler {
    */
   protected readonly keepColorBuffer: boolean;
   protected rootComposition: CompositionComponent;
+  protected readonly postLoaders: Plugin[] = [];
+  protected compositionSourceManager: CompositionSourceManager;
 
   /**
    * 合成暂停/播放 标识
@@ -191,8 +214,6 @@ export class Composition implements Disposable, LostHandler {
   // private readonly event: EventSystem;
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
-  private readonly postLoaders: Plugin[] = [];
-  private compositionSourceManager: CompositionSourceManager;
 
   /**
    * Composition 构造函数
@@ -241,7 +262,7 @@ export class Composition implements Disposable, LostHandler {
     this.renderer = renderer;
     this.texInfo = imageUsage ?? {};
     this.event = event;
-    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0 };
+    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
     this.reusable = reusable;
     this.speed = speed;
     this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.ItemEndBehavior.loop;
@@ -255,6 +276,7 @@ export class Composition implements Disposable, LostHandler {
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
+    this.interactive = true;
     this.onPlayerPause = onPlayerPause;
     this.onMessageItem = onMessageItem;
     this.onEnd = onEnd;
@@ -310,6 +332,14 @@ export class Composition implements Disposable, LostHandler {
    */
   get isDestroyed (): boolean {
     return this.destroyed;
+  }
+
+  set editorScaleRatio (value: number) {
+    this.camera.setFovScaleRatio(value);
+  }
+
+  get editorScaleRatio () {
+    return this.camera.getFovScaleRatio();
   }
 
   /**
@@ -506,7 +536,7 @@ export class Composition implements Disposable, LostHandler {
     this.postLoaders.forEach(loader => loader.postProcessFrame(this, frame));
   }
 
-  private gatherRendererComponent (vfxItem: VFXItem, renderFrame: RenderFrame) {
+  protected gatherRendererComponent (vfxItem: VFXItem, renderFrame: RenderFrame) {
     for (const rendererComponent of vfxItem.rendererComponents) {
       if (rendererComponent.isActiveAndEnabled) {
         renderFrame.addMeshToDefaultRenderPass(rendererComponent);
@@ -706,7 +736,7 @@ export class Composition implements Disposable, LostHandler {
           }
           parent.children.push(item);
         } else {
-          throw Error('元素引用了不存在的元素，请检查数据');
+          throw new Error('The element references a non-existent element, please check the data.');
         }
       }
     }
@@ -733,7 +763,6 @@ export class Composition implements Disposable, LostHandler {
 
     // 视频固定30帧更新
     if (now - this.lastVideoUpdateTime > 33) {
-
       (this.textures ?? []).forEach(tex => tex?.uploadCurrentVideoFrame());
       this.lastVideoUpdateTime = now;
     }
@@ -792,7 +821,7 @@ export class Composition implements Disposable, LostHandler {
    * @param options - 最大求交数和求交时的回调
    */
   hitTest (x: number, y: number, force?: boolean, options?: CompositionHitTestOptions): Region[] {
-    if (this.isDestroyed) {
+    if (this.isDestroyed || !this.interactive) {
       return [];
     }
     const regions: Region[] = [];
@@ -984,7 +1013,7 @@ export class Composition implements Disposable, LostHandler {
    */
   translateByPixel (x: number, y: number) {
     if (!this.renderer) {
-      console.warn('Can not translate position when container not assigned');
+      console.warn('Renderer not assigned. Operation aborted.');
 
       return;
     }
@@ -1001,7 +1030,7 @@ export class Composition implements Disposable, LostHandler {
    */
   setPositionByPixel (x: number, y: number) {
     if (!this.renderer) {
-      console.warn('Can not setPosition when container not assigned');
+      console.warn('Renderer not assigned. Operation aborted.');
 
       return;
     }

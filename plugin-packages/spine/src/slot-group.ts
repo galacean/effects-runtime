@@ -286,9 +286,8 @@ export class SlotGroup {
     this.meshGroups.forEach(spineMesh => {
       const mesh = spineMesh.mesh;
 
-      mesh.geometry.flush();
-      mesh.material.initialize();
-      renderer.drawGeometry(mesh.geometry, mesh.material);
+      mesh.render(renderer);
+
     });
   }
 
@@ -301,7 +300,12 @@ export class SlotGroup {
     for (let i = startIndex; i < this.meshGroups.length; i++) {
       const mesh = this.meshGroups[i];
 
-      if (mesh && mesh.blending === blendMode && mesh.texture === texture && (vertexNum + mesh.indicesNum < SlotGroup.MAX_VERTICES)) {
+      if (
+        mesh
+        && mesh.blending === blendMode
+        && mesh.texture === texture
+        && vertexNum + mesh.indicesNum < SlotGroup.MAX_VERTICES
+      ) {
         res = i;
 
         break;

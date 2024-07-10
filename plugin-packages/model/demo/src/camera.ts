@@ -1,7 +1,7 @@
 //@ts-nocheck
 import { math, spec } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
-import { LoaderECSEx } from '../../src/helper';
+import { LoaderImplEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
@@ -24,22 +24,26 @@ let rotationFocusBegin = false;
 
 let playScene;
 
-const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
 async function getCurrentScene () {
   const duration = 9999;
   const endBehavior = 5;
-  const loader = new LoaderECSEx();
+  const loader = new LoaderImplEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
+      compatibleMode: 'tiny3d',
       skyboxType: 'NFT',
+      skyboxVis: true,
     },
     effects: {
-      renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: 0,
+      //playAllAnimation: true,
     },
   });
 
@@ -49,73 +53,20 @@ async function getCurrentScene () {
   sceneAABB = new Box3(sceneMin, sceneMax);
   sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
   sceneCenter = sceneAABB.getCenter(new Vector3());
+  const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
 
   loader.addCamera({
-    near: 0.001,
-    far: 400,
+    near: 0.1,
+    far: 5000,
     fov: 60,
     clipMode: 0,
     //
     name: 'extra-camera',
     duration: duration,
     endBehavior: spec.ItemEndBehavior.loop,
-    position: [0, 0, 8],
+    position: position.toArray(),
     rotation: [0, 0, 0],
   });
-
-  loader.addLight({
-    lightType: spec.LightType.point,
-    color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 1,
-    range: 100,
-    //
-    name: 'test',
-    position: [0, 0, 10],
-    rotation: [0, 0, 0],
-    scale: [1, 1, 1],
-    duration: duration,
-    endBehavior: spec.ItemEndBehavior.loop,
-  });
-
-  // items.push({
-  //   id: '321',
-  //   duration: duration,
-  //   name: 'item_1',
-  //   type: '1',
-  //   sprite: {
-  //     options: {
-  //       duration: 100,
-  //       delay: 0,
-  //       startSize: 1,
-  //       sizeAspect: 1,
-  //       startColor: [255, 255, 255, 1],
-  //     },
-  //     renderer: {
-  //       renderMode: 1,
-  //     },
-  //   },
-  // });
-
-  // items.push({
-  //   id: 'extra-camera',
-  //   duration: 100,
-  //   name: 'extra-camera',
-  //   pn: 0,
-  //   type: 'camera',
-  //   transform: {
-  //     position: position.toArray(),
-  //     rotation: [0, 0, 0],
-  //   },
-  //   content: {
-  //     options: {
-  //       duration: 100,
-  //       near: 0.1,
-  //       far: 5000,
-  //       fov: 60,
-  //       clipMode: 0,
-  //     },
-  //   },
-  // });
 
   return loader.getLoadResult().jsonScene;
 }
@@ -137,11 +88,15 @@ export async function loadScene (inPlayer) {
   }
 
   if (!pending) {
+    const loadOptions = {
+      pluginData: {
+        enableDynamicSort: true,
+      },
+    };
+
     pending = true;
 
-    return player.loadScene(playScene).then(async comp => {
-      player.play();
-
+    return player.loadScene(playScene, loadOptions).then(async comp => {
       gestureHandler = new CameraGestureHandlerImp(comp);
 
       pending = false;
@@ -393,7 +348,7 @@ function registerMouseEvent () {
       gestureHandler.onKeyEvent({
         cameraID: 'extra-camera',
         zAxis: e.deltaY > 0 ? 1 : -1,
-        speed: sceneRadius * 0.5,
+        speed: sceneRadius * 0.1,
       });
     }
   });

@@ -126,7 +126,7 @@ export class PMesh extends PEntity {
     });
 
     if (this.subMeshes.length <= 0) {
-      console.warn(`No primitive inside mesh item ${name}`);
+      console.warn(`No primitive inside mesh item ${name}.`);
     }
 
     this.boundingBox = this.getItemBoundingBox(meshData.interaction);
@@ -175,7 +175,6 @@ export class PMesh extends PEntity {
     this.updateMaterial(scene);
 
     this.subMeshes.forEach((subMesh, index) => {
-
       renderer.drawGeometry(
         subMesh.getEffectsGeometry(),
         subMesh.getEffectsMaterial(),
@@ -237,7 +236,7 @@ export class PMesh extends PEntity {
     }
 
     if (updatedArray.length != weightsArray.length) {
-      throw new Error('weight array length mismatch');
+      throw new Error('Weight array length mismatch.');
     }
 
     for (let i = 0; i < updatedArray.length; i++) {
@@ -747,7 +746,7 @@ export class PSubMesh {
     }
 
     const proxy = new HitTestingProxy();
-    const doubleSided = this.material.isDoubleSide();
+    const doubleSided = this.material.isBothSide();
 
     proxy.create(this.geometry.geometry, doubleSided, bindMatrices);
 
@@ -902,7 +901,7 @@ export class PSubMesh {
             material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
           });
         }
-        material.setInt('_MipCount', skybox.specularMipCount ?? 1);
+        material.setInt('_MipCount', skybox.specularMipCount - 1);
         material.setTexture('_SpecularEnvSampler', skybox.specularImage);
       }
     }

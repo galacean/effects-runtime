@@ -85,4 +85,4 @@ Engine.create = (gl: WebGLRenderingContext | WebGL2RenderingContext) => {
 
 export const version = __VERSION__;
 
-logger.info('player version: ' + version);
+logger.info(`Player version: ${version}.`);

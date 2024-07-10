@@ -64,7 +64,7 @@ export class PluginSystem {
         const CTRL = pluginLoaderMap[name];
 
         if (!CTRL) {
-          throw new Error(`plugin '${name}' not found.` + getPluginUsageInfo(name));
+          throw new Error(`The plugin '${name}' not found.` + getPluginUsageInfo(name));
         }
 
         const loader = new CTRL();
@@ -92,7 +92,7 @@ export class PluginSystem {
     const CTRL = pluginCtrlMap[name];
 
     if (!CTRL) {
-      throw new Error(`plugin ${name} no registered constructor`);
+      throw new Error(`The plugin '${name}' does not have a registered constructor.`);
     }
     const engine = composition.getEngine();
     const item = new CTRL(engine, props, composition);
@@ -100,7 +100,7 @@ export class PluginSystem {
     item.composition = composition;
 
     if (!(item instanceof VFXItem)) {
-      throw new Error(`plugin ${name} invalid constructor type`);
+      throw new Error(`The plugin '${name}' invalid constructor type.`);
     }
 
     return item;

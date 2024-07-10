@@ -17,6 +17,10 @@ export type PickEnum<T, K extends T> = {
   [P in keyof K]: P extends K ? P : never;
 };
 
+export interface Constructor<T = unknown> {
+  new(...args: any[]): T,
+}
+
 export enum DestroyOptions {
   destroy = 0,
   keep = 1,
@@ -105,7 +109,7 @@ export function randomInRange (min: number, max: number) {
 }
 
 export function throwDestroyedError () {
-  throw Error('destroyed item cannot be used again');
+  throw new Error('Destroyed item cannot be used again.');
 }
 
 export function generateGUID (): string {
@@ -145,4 +149,24 @@ export function base64ToFile (
   const file = new File([blob], filename, { type: contentType });
 
   return file;
+}
+
+export function applyMixins<T extends Constructor, K extends Constructor> (
+  derivedCtrl: T,
+  baseCtrls: K[],
+) {
+  baseCtrls.forEach(baseCtrl => {
+    Object.getOwnPropertyNames(baseCtrl.prototype).forEach(name => {
+      const propertyDescriptor = Object.getOwnPropertyDescriptor(baseCtrl.prototype, name);
+
+      if (!propertyDescriptor) {
+        throw new Error(`Cannot find property descriptor of class ${baseCtrl}`);
+      }
+      Object.defineProperty(
+        derivedCtrl.prototype,
+        name,
+        propertyDescriptor,
+      );
+    });
+  });
 }

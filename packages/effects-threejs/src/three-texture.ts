@@ -115,10 +115,10 @@ export class ThreeTexture extends Texture {
 
     // @ts-expect-error
     return {
+      ...options,
       target,
       format: THREE.RGBAFormat,
       type: THREE.UnsignedByteType,
-      ...options,
       minFilter: ThreeTexture.toThreeJsTextureFilter(options.minFilter),
       magFilter: ThreeTexture.toThreeJsTextureFilter(options.magFilter),
       wrapS: ThreeTexture.toThreeJsTextureWrap(options.wrapS),
@@ -228,7 +228,7 @@ export class ThreeTexture extends Texture {
 
       return texture;
     }
-    throw new Error('使用未知的数据类型创建纹理');
+    throw new Error('Create a texture using an unknown data type.');
   }
 
 }

@@ -10,7 +10,7 @@ import type { MaterialProps } from '../../material';
 import { Material, getPreMultiAlpha, setBlendMode, setMaskMode } from '../../material';
 import { ValueGetter } from '../../math';
 import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue } from '../../math';
-import type { GPUCapability, GeometryProps, ShaderMarcos, ShaderWithSource } from '../../render';
+import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
@@ -92,7 +92,7 @@ export class TrailMesh {
     const uniformValues: any = {};
     // const lookUpTexture = getConfig(RENDER_PREFER_LOOKUP_TEXTURE) ? 1 : 0;
     const lookUpTexture = 0;
-    const marcos: ShaderMarcos = [
+    const macros: ShaderMacros = [
       ['ENABLE_VERTEX_TEXTURE', enableVertexTexture],
       ['LOOKUP_TEXTURE_CURVE', lookUpTexture],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
@@ -101,17 +101,17 @@ export class TrailMesh {
     let shaderCacheId = 0;
 
     if (colorOverLifetime) {
-      marcos.push(['COLOR_OVER_LIFETIME', true]);
+      macros.push(['COLOR_OVER_LIFETIME', true]);
       shaderCacheId |= 1;
       uniformValues.uColorOverLifetime = Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime));
     }
     if (colorOverTrail) {
-      marcos.push(['COLOR_OVER_TRAIL', true]);
+      macros.push(['COLOR_OVER_TRAIL', true]);
       shaderCacheId |= 1 << 2;
       uniformValues.uColorOverTrail = Texture.createWithData(engine, imageDataFromGradient(colorOverTrail));
     }
     if (useAttributeTrailStart) {
-      marcos.push(['ATTR_TRAIL_START', 1]);
+      macros.push(['ATTR_TRAIL_START', 1]);
       shaderCacheId |= 1 << 3;
     } else {
       uniformValues.uTrailStart = new Float32Array(maxTrailCount);
@@ -120,7 +120,7 @@ export class TrailMesh {
     uniformValues.uOpacityOverLifetimeValue = opacityOverLifetime.toUniform(keyFrameMeta);
     const uWidthOverTrail = widthOverTrail.toUniform(keyFrameMeta);
 
-    marcos.push(
+    macros.push(
       ['VERT_CURVE_VALUE_COUNT', keyFrameMeta.index],
       ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
 
@@ -138,7 +138,7 @@ export class TrailMesh {
       shader: {
         vertex,
         fragment,
-        marcos,
+        macros,
         glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
         shared: true,
         name: `trail#${name}`,
@@ -442,11 +442,17 @@ function calculateDirection (prePoint: Vector3 | undefined, point: Vector3, next
   return dir.normalize().toArray();
 }
 
-export function getTrailMeshShader (trails: spec.ParticleTrail, particleMaxCount: number, name: string, env = '', gpuCapability: GPUCapability): ShaderWithSource {
+export function getTrailMeshShader (
+  trails: spec.ParticleTrail,
+  particleMaxCount: number,
+  name: string,
+  gpuCapability: GPUCapability,
+  env = '',
+): ShaderWithSource {
   let shaderCacheId = 0;
   const lookUpTexture = getConfig(RENDER_PREFER_LOOKUP_TEXTURE) ? 1 : 0;
   const enableVertexTexture = gpuCapability.detail.maxVertexTextures > 0;
-  const marcos: ShaderMarcos = [
+  const macros: ShaderMacros = [
     ['ENABLE_VERTEX_TEXTURE', enableVertexTexture],
     ['LOOKUP_TEXTURE_CURVE', lookUpTexture],
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
@@ -454,30 +460,30 @@ export function getTrailMeshShader (trails: spec.ParticleTrail, particleMaxCount
   const keyFrameMeta = createKeyFrameMeta();
 
   if (trails.colorOverLifetime) {
-    marcos.push(['COLOR_OVER_LIFETIME', true]);
+    macros.push(['COLOR_OVER_LIFETIME', true]);
     shaderCacheId |= 1;
   }
   if (trails.colorOverTrail) {
-    marcos.push(['COLOR_OVER_TRAIL', true]);
+    macros.push(['COLOR_OVER_TRAIL', true]);
     shaderCacheId |= 1 << 2;
   }
 
   const useAttributeTrailStart = particleMaxCount > 64;
 
   if (useAttributeTrailStart) {
-    marcos.push(['ATTR_TRAIL_START', 1]);
+    macros.push(['ATTR_TRAIL_START', 1]);
     shaderCacheId |= 1 << 3;
   }
   getKeyFrameMetaByRawValue(keyFrameMeta, trails.opacityOverLifetime);
   getKeyFrameMetaByRawValue(keyFrameMeta, trails.widthOverTrail);
-  marcos.push(
+  macros.push(
     ['VERT_CURVE_VALUE_COUNT', keyFrameMeta.index],
     ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
 
   return {
     vertex: trailVert,
     fragment: particleFrag,
-    marcos,
+    macros,
     shared: true,
     name: 'trail#' + name,
     cacheId: `-t:+${shaderCacheId}+${keyFrameMeta.index}+${keyFrameMeta.max}`,

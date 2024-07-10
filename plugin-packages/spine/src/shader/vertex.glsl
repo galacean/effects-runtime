@@ -2,7 +2,7 @@ attribute vec2 aPosition;
 attribute vec4 aColor;
 attribute vec4 aColor2;
 attribute vec2 aTexCoords;
-uniform mat4 uModel;
+uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixVP;
 
 #ifdef ENV_EDITOR
@@ -17,7 +17,7 @@ void main() {
   vLight = aColor;
   vDark = aColor2;
   vTexCoords = aTexCoords;
-  gl_Position = effects_MatrixVP * uModel * vec4(aPosition, 0.0, 1.0);
+  gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPosition, 0.0, 1.0);
 
     #ifdef ENV_EDITOR
   gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);

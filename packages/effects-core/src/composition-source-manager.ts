@@ -54,7 +54,7 @@ export class CompositionSourceManager implements Disposable {
     const { compositions, imgUsage, compositionId } = jsonScene;
 
     if (!textureOptions) {
-      throw new Error('scene.textures expected');
+      throw new Error('scene.textures expected.');
     }
     const cachedTextures = textureOptions as Texture[];
 
@@ -67,7 +67,7 @@ export class CompositionSourceManager implements Disposable {
     }
 
     if (!this.composition) {
-      throw new Error('Invalid composition id: ' + compositionId);
+      throw new Error(`Invalid composition id: ${compositionId}.`);
     }
     this.jsonScene = jsonScene;
     this.renderLevel = renderLevel;
@@ -116,6 +116,8 @@ export class CompositionSourceManager implements Disposable {
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
+        itemProps.listIndex = listOrder++;
+
         if (
           itemProps.type === spec.ItemType.sprite ||
           itemProps.type === spec.ItemType.particle
@@ -125,34 +127,21 @@ export class CompositionSourceManager implements Disposable {
 
             this.preProcessItemContent(componentData);
           }
-        } else {
-          const renderContent = itemProps.content;
-
-          if (renderContent) {
-            this.preProcessItemContent(renderContent);
-          }
         }
-
-        itemProps.listIndex = listOrder++;
 
         // 处理预合成的渲染顺序
         if (itemProps.type === spec.ItemType.composition) {
           const refId = (sourceItemData.content as spec.CompositionContent).options.refId;
 
           if (!this.refCompositions.get(refId)) {
-            throw new Error('Invalid Ref Composition id: ' + refId);
+            throw new Error(`Invalid ref composition id: ${refId}.`);
           }
           const ref = this.getContent(this.refCompositions.get(refId)!);
 
           if (!this.refCompositionProps.has(refId)) {
             this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
           }
-
-          ref.items.forEach((item: Record<string, any>) => {
-            this.processMask(item.content);
-          });
           itemProps.items = ref.items;
-
         }
 
         items.push(itemProps as VFXItemProps);

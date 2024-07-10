@@ -8,11 +8,8 @@ uniform sampler2D uSampler0;
 
 vec4 blendColor(vec4 color, vec4 vc, float mode) {
   vec4 ret = color * vc;
-#ifdef PRE_MULTIPLY_ALPHA
-  float alpha = vc.a;
-#else
   float alpha = ret.a;
-#endif
+
   if(mode == 1.) {
     ret.rgb *= alpha;
   } else if(mode == 2.) {

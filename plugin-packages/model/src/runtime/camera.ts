@@ -40,6 +40,10 @@ export class PCamera extends PEntity {
    */
   fov = 45;
   /**
+   * fov 缩放大小
+   */
+  fovScaleRatio = 1;
+  /**
    * 纵横比
    */
   aspect = 1.0;
@@ -91,7 +95,7 @@ export class PCamera extends PEntity {
 
     const reverse = this.clipMode === spec.CameraClipMode.portrait;
 
-    this.projectionMatrix.perspective(this.fov * deg2rad, this.aspect, this.nearPlane, this.farPlane, reverse);
+    this.projectionMatrix.perspective(this.fov * deg2rad * this.fovScaleRatio, this.aspect, this.nearPlane, this.farPlane, reverse);
     this.viewMatrix = this.matrix.invert();
   }
 
@@ -103,7 +107,7 @@ export class PCamera extends PEntity {
   getNewProjectionMatrix (fov: number): Matrix4 {
     const reverse = this.clipMode === spec.CameraClipMode.portrait;
 
-    return new Matrix4().perspective(Math.min(fov * 1.25, 140) * deg2rad, this.aspect, this.nearPlane, this.farPlane, reverse);
+    return new Matrix4().perspective(Math.min(fov * 1.25, 140) * deg2rad * this.fovScaleRatio, this.aspect, this.nearPlane, this.farPlane, reverse);
   }
 
   /**
@@ -112,7 +116,7 @@ export class PCamera extends PEntity {
    * @returns 视角中的包围盒
    */
   computeViewAABB (box: Box3): Box3 {
-    const tanTheta = Math.tan(this.fov * deg2rad * 0.5);
+    const tanTheta = Math.tan(this.fov * deg2rad * this.fovScaleRatio * 0.5);
     const aspect = this.aspect;
     let yFarCoord = 0;
     let yNearCoord = 0;
@@ -273,7 +277,8 @@ export class PCameraManager {
 
   /**
    * 更新默认相机状态，并计算新的透视和相机矩阵
-   * @param fovy - 视角
+   * @param fov - 视角
+   * @param fovScaleRatio - 视角缩放比例
    * @param aspect - 纵横比
    * @param nearPlane - 近裁剪平面
    * @param farPlane - 远裁剪平面
@@ -282,7 +287,8 @@ export class PCameraManager {
    * @param clipMode - 剪裁模式
    */
   updateDefaultCamera (
-    fovy: number,
+    fov: number,
+    fovScaleRatio: number,
     aspect: number,
     nearPlane: number,
     farPlane: number,
@@ -290,7 +296,8 @@ export class PCameraManager {
     rotation: Quaternion,
     clipMode: number,
   ) {
-    this.defaultCamera.fov = fovy;
+    this.defaultCamera.fov = fov;
+    this.defaultCamera.fovScaleRatio = fovScaleRatio;
     this.defaultCamera.aspect = aspect;
     this.defaultCamera.nearPlane = nearPlane;
     this.defaultCamera.farPlane = farPlane;

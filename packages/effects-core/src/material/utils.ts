@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
 import { glContext } from '../gl';
-import type { ShaderMarcos } from '../render';
+import type { ShaderMacros } from '../render';
 import type { Material } from './material';
 import { ShaderType } from './types';
 
@@ -47,19 +47,19 @@ const downgradeKeywords: Record<string, Record<string, string>> = {
 
 /**
  * 生成 shader，检测到 WebGL1 上下文会降级
- * @param marcos - 宏定义数组
+ * @param macros - 宏定义数组
  * @param shader - 原始 shader 文本
  * @param shaderType - shader 类型
  * @return 去除版本号的 shader 文本
  */
-export function createShaderWithMarcos (marcos: ShaderMarcos, shader: string, shaderType: ShaderType, level: number): string {
+export function createShaderWithMacros (macros: ShaderMacros, shader: string, shaderType: ShaderType, level: number): string {
   const ret: string[] = [];
   let header = '';
 
   // shader 标志宏，没有其他含义，方便不支持完全的自定义 shader 的三方引擎接入使用
   ret.push('#define GE_RUNTIME');
-  if (marcos) {
-    marcos.forEach(([key, value]) => {
+  if (macros) {
+    macros.forEach(([key, value]) => {
       if (value === true) {
         ret.push(`#define ${key}`);
       } else if (Number.isFinite(value)) {
@@ -135,7 +135,7 @@ export function setBlendMode (material: Material, blendMode?: number) {
 
       break;
     default:
-      console.warn(`blendMode ${blendMode} not in specification, please set blend params separately`);
+      console.warn(`BlendMode ${blendMode} not in specification, please set blend params separately.`);
   }
 }
 
@@ -176,6 +176,6 @@ export function setMaskMode (material: Material, maskMode: spec.MaskMode) {
 
       break;
     default:
-      console.warn(`maskMode ${maskMode} not in specification, please set stencil params seperately`);
+      console.warn(`MaskMode ${maskMode} not in specification, please set stencil params seperately.`);
   }
 }

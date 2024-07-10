@@ -247,8 +247,8 @@ export class ModelPluginComponent extends ItemBehaviour {
             component.setTransform(newPosition);
 
             // 正式版本不会走到这个流程，只在测试时使用
-            console.info(`Scene AABB [${sceneAABB.min.toArray()}], [${sceneAABB.max.toArray()}]`);
-            console.info(`Update camera position [${newPosition.toArray()}]`);
+            console.info(`Scene AABB [${sceneAABB.min.toArray()}], [${sceneAABB.max.toArray()}].`);
+            console.info(`Update camera position [${newPosition.toArray()}].`);
           }
         }
       });
@@ -321,7 +321,7 @@ export class ModelPluginComponent extends ItemBehaviour {
    * @param sceneManager - 当前合成对象绑定的 SceneManager
    */
   private updateSceneCamera (composition: Composition) {
-    this.scene.updateDefaultCamera(composition.camera.getOptions());
+    this.scene.updateDefaultCamera(composition.camera.getOptions(), composition.camera.getFovScaleRatio());
   }
 
   private getLightItemCount (): number {

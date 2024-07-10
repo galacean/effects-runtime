@@ -154,7 +154,7 @@ export class ThreeDisplayObject extends THREE.Group {
     const firstFrameTime = (performance.now() - last) + composition.statistic.loadTime;
 
     composition.statistic.firstFrameTime = firstFrameTime;
-    logger.info(`first frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms`);
+    logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
 
     this.compositions.push(composition);
 

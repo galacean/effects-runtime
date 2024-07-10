@@ -27,7 +27,7 @@ export class TextureFactory {
       texture.updateSource(sourceOpts);
       this.reloadPending[id] = false;
     } else {
-      throw new Error('No source from');
+      throw new Error('No source from.');
     }
   }
 
@@ -157,7 +157,7 @@ export class TextureFactory {
       }
     }
 
-    throw new Error(`Invalid resource type: ${type}`);
+    throw new Error(`Invalid resource type: ${type}.`);
   }
 
   private async loadMipmapImages (pointers: vec2[], bin: ArrayBuffer) {

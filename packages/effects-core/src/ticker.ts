@@ -132,7 +132,7 @@ export class Ticker {
    */
   add (ticker: (dt: number) => void) {
     if (typeof ticker !== 'function') {
-      throw new Error('Ticker: The tick object must implement the tick method.');
+      throw new Error('The tick object must implement the tick method.');
     }
     this.tickers.push(ticker);
   }

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { GPUCapability, ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMarcos } from '@galacean/effects-core';
+import { GPUCapability, ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMacros } from '@galacean/effects-core';
 import { GLMaterial, GLRenderer } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -53,7 +53,7 @@ describe('webgl/GLShaderLibrary', () => {
     const shader = shaderLib.createShader({
       vertex: vs,
       fragment: fs,
-      marcos: [['HAS_TEXTURE', 1.0]],
+      macros: [['HAS_TEXTURE', 1.0]],
     });
 
     rendererGL2.pipelineContext.shaderLibrary.compileShader(shader);
@@ -85,7 +85,7 @@ describe('webgl/GLShaderLibrary', () => {
     const sameShader = {
       vertex: vs,
       fragment: fs,
-      marcos: [['HAS_TEXTURE', 1.0]],
+      macros: [['HAS_TEXTURE', 1.0]],
     };
     const cacheId = shaderLib.addShader(sameShader);
 
@@ -101,7 +101,7 @@ describe('webgl/GLShaderLibrary', () => {
     // const shaderId = shaderLib.addShader({
     //   vertex: vs,
     //   fragment: fs,
-    //   marcos: [['HAS_TEXTURE', 1.0]],
+    //   macros: [['HAS_TEXTURE', 1.0]],
     // });
 
     // renderer.pipelineContext.shaderLibrary.compileShader(shaderId);
@@ -147,8 +147,8 @@ describe('webgl/GLShaderLibrary', () => {
     `;
     const lib = pipelineContext.shaderLibrary;
     const shader = lib.createShader({
-      fragment: createShaderWithMarcos([], fragShader, ShaderType.fragment, 1),
-      vertex: createShaderWithMarcos([], vertexShader, ShaderType.vertex, 1),
+      fragment: createShaderWithMacros([], fragShader, ShaderType.fragment, 1),
+      vertex: createShaderWithMacros([], vertexShader, ShaderType.vertex, 1),
       glslVersion: GLSLVersion.GLSL1,
     });
     const source = shader.source;
@@ -167,7 +167,7 @@ describe('webgl/GLShaderLibrary', () => {
     const shader = shaderLib.createShader({
       vertex: vs,
       fragment: fs,
-      marcos: [['HAS_TEXTURE', 122.0]],
+      macros: [['HAS_TEXTURE', 122.0]],
     });
     const callback = chai.spy(result => {
       expect(result).to.eql(shader.compileResult);
@@ -189,7 +189,7 @@ describe('webgl/GLShaderLibrary', () => {
     const shader = shaderLib.createShader({
       vertex: vs,
       fragment: fs,
-      marcos: [['HAS_TEXTURE', 152.0]],
+      macros: [['HAS_TEXTURE', 152.0]],
     });
 
     //@ts-expect-error
@@ -214,12 +214,12 @@ describe('webgl/GLShaderLibrary', () => {
     shaderLib.addShader({
       vertex: vs,
       fragment: fs,
-      marcos: [['HAS_TEXTURE', 12.0]],
+      macros: [['HAS_TEXTURE', 12.0]],
     });
     shaderLib.addShader({
       vertex: vs,
       fragment: fs,
-      marcos: [['HAS_TEXTURE', 33.0]],
+      macros: [['HAS_TEXTURE', 33.0]],
     });
     shaderLib.compileAllShaders(function (results) {
       expect(results.length).to.eql(2);
@@ -237,12 +237,12 @@ describe('webgl/GLShaderLibrary', () => {
     shaderLib.addShader({
       vertex: vs,
       fragment: fs,
-      marcos: [['HAS_TEXTURE', 12.0]],
+      macros: [['HAS_TEXTURE', 12.0]],
     });
     shaderLib.addShader({
       vertex: vs,
       fragment: fs,
-      marcos: [['HAS_TEXTURE', 33.0]],
+      macros: [['HAS_TEXTURE', 33.0]],
     });
     //@ts-expect-error
     shaderLib._glAsyncCompileExt = null;

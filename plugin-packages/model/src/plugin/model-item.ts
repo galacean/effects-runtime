@@ -483,7 +483,7 @@ export class ModelCameraComponent extends ItemBehaviour {
    * 组件销毁
    */
   override onDestroy (): void {
-    this.content.dispose();
+    this.content?.dispose();
   }
 
   /**
@@ -619,32 +619,28 @@ class ModelAnimationClip extends AnimationClip {
     const life = Math.max(0, time) % duration;
 
     for (const curve of this.positionCurves) {
-      const maxTime = curve.keyFrames.getMaxTime();
-      const value = curve.keyFrames.getValue(life % maxTime);
+      const value = curve.keyFrames.getValue(life % this.duration);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setPosition(value.x, value.y, value.z);
     }
 
     for (const curve of this.rotationCurves) {
-      const maxTime = curve.keyFrames.getMaxTime();
-      const value = curve.keyFrames.getValue(life % maxTime);
+      const value = curve.keyFrames.getValue(life % this.duration);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
     }
 
     for (const curve of this.scaleCurves) {
-      const maxTime = curve.keyFrames.getMaxTime();
-      const value = curve.keyFrames.getValue(life % maxTime);
+      const value = curve.keyFrames.getValue(life % this.duration);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       target?.transform.setScale(value.x, value.y, value.z);
     }
 
     for (const curve of this.floatCurves) {
-      const maxTime = curve.keyFrames.getMaxTime();
-      const value = curve.keyFrames.getValue(life % maxTime);
+      const value = curve.keyFrames.getValue(life % this.duration);
       const target = this.getTargetItem(vfxItem, curve.path);
 
       if (curve.className === 'ModelMeshComponent') {
@@ -655,15 +651,16 @@ class ModelAnimationClip extends AnimationClip {
 
           setProperty(component, properties, value);
         } else {
-          console.error('Can\'t find mesh component');
+          console.error('Can\'t find mesh component.');
         }
       } else {
-        console.warn(`Ignore curve: className ${curve.className}`);
+        console.warn(`Ignore curve: className ${curve.className}.`);
       }
     }
   }
 
   setFromAnimationClip (clip: AnimationClip) {
+    this.duration = clip.duration;
     this.positionCurves = clip.positionCurves.slice();
     this.rotationCurves = clip.rotationCurves.slice();
     this.scaleCurves = clip.scaleCurves.slice();
@@ -690,7 +687,7 @@ class ModelAnimationClip extends AnimationClip {
         }
       }
       if (!findTag) {
-        throw new Error(`Can't find path in tree ${rootItem.id}, ${path}`);
+        throw new Error(`Can't find path in tree ${rootItem.id}, ${path}.`);
       }
     }
 
@@ -708,7 +705,7 @@ function setProperty<T> (obj: Object, properties: string[], value: T) {
     const propName = properties[i];
 
     if (!(propName in current) || typeof current[propName] !== 'object') {
-      console.error(`Invalid properties ${properties}`);
+      console.error(`Invalid properties ${properties}.`);
 
       return;
     }

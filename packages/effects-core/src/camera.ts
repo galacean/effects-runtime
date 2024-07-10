@@ -1,5 +1,5 @@
+import { DEG2RAD, Euler, Matrix4, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { Matrix4, Vector3, Euler, Quaternion, DEG2RAD } from '@galacean/effects-math/es/core/index';
 import { Transform } from './transform';
 
 interface CameraOptionsBase {
@@ -64,6 +64,10 @@ const tmpScale = new Vector3(1, 1, 1);
  * 合成的相机对象，采用透视投影
  */
 export class Camera {
+  /**
+   * 编辑器用于缩放画布
+   */
+  private fovScaleRatio: number = 1.0;
   private options: CameraOptionsEx;
   private viewMatrix = Matrix4.fromIdentity();
   private projectionMatrix = Matrix4.fromIdentity();
@@ -199,6 +203,15 @@ export class Camera {
   }
   get rotation () {
     return this.options.rotation.clone();
+  }
+
+  setFovScaleRatio (value: number) {
+    this.fovScaleRatio = value;
+    this.dirty = true;
+  }
+
+  getFovScaleRatio () {
+    return this.fovScaleRatio;
   }
 
   /**
@@ -367,7 +380,7 @@ export class Camera {
       const { fov, aspect, near, far, clipMode, position } = this.options;
 
       this.projectionMatrix.perspective(
-        fov * DEG2RAD, aspect, near, far,
+        fov * DEG2RAD * this.fovScaleRatio, aspect, near, far,
         clipMode === spec.CameraClipMode.portrait
       );
       this.inverseViewMatrix.compose(position, this.getQuat(), tmpScale);
