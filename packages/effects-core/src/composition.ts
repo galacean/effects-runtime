@@ -17,6 +17,7 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
+import { type Matrix4 } from '@galacean/effects-math/es/core';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -334,12 +335,12 @@ export class Composition implements Disposable, LostHandler {
     return this.destroyed;
   }
 
-  set editorScaleRatio (value: number) {
-    this.camera.setFovScaleRatio(value);
+  set viewportMatrix (matrix: Matrix4) {
+    this.camera.setViewportMatrix(matrix);
   }
 
-  get editorScaleRatio () {
-    return this.camera.getFovScaleRatio();
+  get viewportMatrix () {
+    return this.camera.getViewportMatrix();
   }
 
   /**
