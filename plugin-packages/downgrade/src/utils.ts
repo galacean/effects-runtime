@@ -49,18 +49,6 @@ export interface DeviceInfo {
 
 export type DowngradeCallback = (device: DeviceInfo) => DowngradeResult | undefined;
 
-interface ProductInfo {
-  name: string,
-  comment?: string,
-}
-
-interface iPhoneInfo {
-  name: string,
-  model: string,
-  width: number,
-  height: number,
-}
-
 interface WeChatDeviceInfo {
   /**
    * 设备性能等级（仅 Android 支持）。
@@ -202,6 +190,11 @@ function getDeviceInfo (options: DowngradeOptions) {
   const decoder = new UADecoder();
 
   return decoder.getDeviceInfo();
+}
+
+interface ProductInfo {
+  name: string,
+  comment?: string,
 }
 
 export class UADecoder {
@@ -558,18 +551,31 @@ export class DowngradeJudge {
     this.isIOS = this.device.platform === 'iOS';
     this.level = this.getRenderLevel();
 
-    const modelList = this.isIOS ? downgradeiOSModels : downgradeAndroidModels;
+    if (this.device.model) {
+      const deviceModel = this.device.model.toLowerCase();
+      const modelList = this.isIOS ? downgradeiPhoneModels : downgradeAndroidModels;
+      const findModel = modelList.find(m => {
+        const testModel = m.toLowerCase();
+
+        if (this.isIOS) {
+          return testModel === deviceModel;
+        } else {
+          return testModel.includes(deviceModel) || deviceModel.includes(testModel);
+        }
+      });
+
+      if (findModel !== undefined) {
+        return {
+          downgrade: true,
+          level: this.level,
+          reason: 'Downgrade by model list',
+          deviceInfo: this.device,
+        };
+      }
+    }
+
     const osVersionList = this.isIOS ? downgradeiOSVersions : downgradeAndroidVersions;
 
-    const findModel = modelList.find(m => m.toLowerCase() == this.device.model?.toLowerCase());
-
-    if (findModel !== undefined) {
-      return {
-        downgrade: true,
-        level: this.level,
-        reason: 'Downgrade by model list',
-      };
-    }
     const findOS = osVersionList.find(v => v === this.device.osVersion);
 
     if (findOS !== undefined) {
@@ -577,6 +583,7 @@ export class DowngradeJudge {
         downgrade: true,
         level: this.level,
         reason: 'Downgrade by OS version list',
+        deviceInfo: this.device,
       };
     }
 
@@ -584,6 +591,7 @@ export class DowngradeJudge {
       downgrade: false,
       level: this.level,
       reason: '',
+      deviceInfo: this.device,
     };
   }
 
@@ -684,6 +692,13 @@ const venderInfoList: string[] = [
   'SAMSUNG',
 ];
 
+interface iPhoneInfo {
+  name: string,
+  model: string,
+  width: number,
+  height: number,
+}
+
 const iPhoneInfoList: iPhoneInfo[] = [
   { name: 'iPhone 15 Pro Max', model: 'iPhone16,2', width: 1290, height: 2796 },
   { name: 'iPhone 15 Pro', model: 'iPhone16,1', width: 1179, height: 2556 },
@@ -757,24 +772,27 @@ const downgradeAndroidModels: string[] = [
 
 const downgradeAndroidVersions: string[] = [];
 
-const downgradeiOSModels: string[] = [
-  'iPhone 8 Plus',
-  'iPhone 8',
-  'iPhone 7 Plus',
-  'iPhone 7',
-  'iPhone SE 1st gen',
-  'iPhone 6s Plus',
-  'iPhone 6s',
-  'iPhone 6 Plus',
-  'iPhone 6',
-  'iPhone 5C',
-  'iPhone 5S',
-  'iPhone 5',
-  'iPhone 4S',
-  'iPhone 4',
-  'iPhone 3GS',
-  'iPhone 3G',
-  'iPhone 1st gen',
+const downgradeiPhoneModels: string[] = [
+  'iPhone8,4',
+  'iPhone8,2',
+  'iPhone8,1',
+  'iPhone7,2',
+  'iPhone7,1',
+  'iPhone6,2',
+  'iPhone6,1',
+  'iPhone5,4',
+  'iPhone5,3',
+  'iPhone5,2',
+  'iPhone5,1',
+  'iPhone4,3',
+  'iPhone4,2',
+  'iPhone4,1',
+  'iPhone3,3',
+  'iPhone3,2',
+  'iPhone3,1',
+  'iPhone2,1',
+  'iPhone1,2',
+  'iPhone1,1',
 ];
 
 const downgradeiOSVersions: string[] = [
