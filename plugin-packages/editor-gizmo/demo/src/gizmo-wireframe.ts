@@ -3,6 +3,7 @@ import '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-model';
 import test_scene from './json/wireframe-mode.json';
 import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
+import { JSONConverter } from '@galacean/effects-plugin-model';
 
 (async () => {
   const player = new Player({
@@ -19,6 +20,8 @@ import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
       console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
     },
   });
+  const converter = new JSONConverter(player);
+  const scene = await converter.processScene(test_scene);
 
-  await player.loadScene(test_scene);
+  await player.loadScene(scene);
 })();

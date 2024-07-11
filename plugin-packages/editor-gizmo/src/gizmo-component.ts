@@ -1,4 +1,5 @@
-import type { GeometryDrawMode, HitTestCustomParams, Mesh, Texture, VFXItem } from '@galacean/effects';
+import type { GeometryDrawMode, HitTestCustomParams, Texture, VFXItem } from '@galacean/effects';
+import { Mesh } from '@galacean/effects';
 import { HitTestType, ItemBehaviour, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, serialize, spec } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
@@ -75,7 +76,7 @@ export class GizmoComponent extends ItemBehaviour {
         break;
       case GizmoSubType.modelWireframe:
         this.needCreateModelContent = true;
-        // gizmoVFXItem.createModelContent(targetItem, gizmoPlugin.meshToAdd);
+        this.createModelContent(targetItem, gizmoPlugin.meshToAdd);
 
         break;
       case GizmoSubType.box:
@@ -142,20 +143,18 @@ export class GizmoComponent extends ItemBehaviour {
         const particle = this.targetItem.getComponent(ParticleSystemRenderer);
 
         if (particle) {
-          updateWireframeMesh(particle.particleMesh.mesh, this.wireframeMesh, WireframeGeometryType.quad);
+          updateWireframeMesh(particle.particleMesh.mesh.geometry, particle.particleMesh.mesh.material, this.wireframeMesh, WireframeGeometryType.quad);
           this.wireframeMesh.worldMatrix = particle.particleMesh.mesh.worldMatrix;
         }
       }
     } else if (gizmoSubType === GizmoSubType.modelWireframe) { // 模型线框
       if (this.wireframeMesh && this.targetItem) {
-        //@ts-expect-error
-        const meshes = this.targetItem.getComponent(RendererComponent)?.content.mriMeshs as Mesh[];
+        //@ts-expect-error TODO 和 3D 类型解耦
+        const meshes = this.targetItem.getComponent(RendererComponent)?.content.subMeshes;
         const wireframeMeshes = this.wireframeMeshes;
 
         if (meshes?.length > 0) {
-          for (let i = 0; i < meshes.length; i++) {
-            updateWireframeMesh(meshes[i], wireframeMeshes[i], WireframeGeometryType.triangle);
-          }
+          updateWireframeMesh(meshes[0].geometry.geometry, meshes[0].material.effectMaterial, wireframeMeshes[0], WireframeGeometryType.triangle);
         }
       }
     } else { // 几何体模型
@@ -354,21 +353,27 @@ export class GizmoComponent extends ItemBehaviour {
 
   createModelContent (item: VFXItem, meshesToAdd: Mesh[]) {
     const modelComponent = item.getComponent(RendererComponent);
-    //@ts-expect-error
-    const ms = modelComponent.content.mriMeshs as Mesh[];
+    //@ts-expect-error TODO 和 3D 类型解耦
+    const psubMesh = modelComponent.content.subMeshes[0];
     const engine = item.composition?.renderer.engine;
 
     assertExist(engine);
 
-    if (ms) {
+    if (psubMesh) {
       this.targetItem = item;
       this.wireframeMeshes = [];
-      ms.forEach(m => {
-        const mesh = this.wireframeMesh = createModeWireframe(engine, m, this.color);
 
-        this.wireframeMeshes.push(mesh);
-        meshesToAdd.push(mesh);
-      });
+      const originMesh = Mesh.create(
+        engine,
+        {
+          geometry:psubMesh.geometry.geometry,
+          material:psubMesh.material.effectMaterial,
+          priority: 3000,
+        });
+      const mesh = this.wireframeMesh = createModeWireframe(engine, originMesh, this.color);
+
+      this.wireframeMeshes.push(mesh);
+      meshesToAdd.push(mesh);
     }
   }
 
