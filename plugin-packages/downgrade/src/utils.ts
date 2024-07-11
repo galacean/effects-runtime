@@ -264,6 +264,7 @@ export class UADecoder {
       }
     }
 
+    this.device.level = this.estimateDeviceLevel();
     this.device.sourceData = ua;
   }
 
@@ -298,6 +299,40 @@ export class UADecoder {
     }
   }
 
+  private estimateDeviceLevel () {
+    if (this.isiOS()) {
+      if (this.device.osVersion) {
+        const osVersion = parseInt(this.device.osVersion.split('.')[0]);
+
+        if (osVersion < 12) {
+          return DeviceLevel.Low;
+        } else if (osVersion < 16) {
+          return DeviceLevel.Medium;
+        } else {
+          return DeviceLevel.High;
+        }
+      } else {
+        return DeviceLevel.Low;
+      }
+    } else if (this.isAndroid()) {
+      if (this.device.osVersion) {
+        const osVersion = parseInt(this.device.osVersion.split('.')[0]);
+
+        if (osVersion < 10) {
+          return DeviceLevel.Low;
+        } else if (osVersion < 12) {
+          return DeviceLevel.Medium;
+        } else {
+          return DeviceLevel.High;
+        }
+      } else {
+        return DeviceLevel.Low;
+      }
+    } else {
+      return DeviceLevel.High;
+    }
+  }
+
   private parseiOSVersion (data: string) {
     const pattern = /OS (\d+)(?:_(\d+))?_(\d+)/;
     const match = data.match(pattern);
@@ -315,7 +350,7 @@ export class UADecoder {
     }
   }
 
-  getiPhoneModel () {
+  private getiPhoneModel () {
     const screenWidth = window.screen.width * window.devicePixelRatio;
     const screenHeight = window.screen.height * window.devicePixelRatio;
 
