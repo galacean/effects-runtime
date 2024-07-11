@@ -60,7 +60,7 @@ export class TestPlayer {
 
     const json = await assetManager.loadScene(inData, this.player.renderer);
 
-    // TODO 兼容函数，endbehaviour 改造后移除
+    // TODO 兼容函数，endBehavior 改造后移除
     compatibleCalculateItem(json.jsonScene.compositions[0]);
 
     this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
