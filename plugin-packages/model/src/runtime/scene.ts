@@ -352,7 +352,7 @@ export class PSceneManager {
    * 更新默认相机状态，根据传入的相机参数
    * @param camera - 相机参数
    */
-  updateDefaultCamera (camera: CameraOptionsEx, fovScaleRatio: number) {
+  updateDefaultCamera (camera: CameraOptionsEx, viewportMatrix: Matrix4) {
     const effectsTransfrom = new Transform({
       ...camera,
       valid: true,
@@ -362,7 +362,7 @@ export class PSceneManager {
 
     this.cameraManager.updateDefaultCamera(
       camera.fov,
-      fovScaleRatio,
+      viewportMatrix,
       camera.aspect,
       camera.near,
       camera.far,

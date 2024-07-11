@@ -321,7 +321,7 @@ export class ModelPluginComponent extends ItemBehaviour {
    * @param sceneManager - 当前合成对象绑定的 SceneManager
    */
   private updateSceneCamera (composition: Composition) {
-    this.scene.updateDefaultCamera(composition.camera.getOptions(), composition.camera.getFovScaleRatio());
+    this.scene.updateDefaultCamera(composition.camera.getOptions(), composition.camera.getViewportMatrix());
   }
 
   private getLightItemCount (): number {

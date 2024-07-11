@@ -67,7 +67,7 @@ export class Camera {
   /**
    * 编辑器用于缩放画布
    */
-  private fovScaleRatio: number = 1.0;
+  private viewportMatrix = Matrix4.fromIdentity();
   private options: CameraOptionsEx;
   private viewMatrix = Matrix4.fromIdentity();
   private projectionMatrix = Matrix4.fromIdentity();
@@ -205,13 +205,13 @@ export class Camera {
     return this.options.rotation.clone();
   }
 
-  setFovScaleRatio (value: number) {
-    this.fovScaleRatio = value;
+  setViewportMatrix (matrix: Matrix4) {
+    this.viewportMatrix = matrix.clone();
     this.dirty = true;
   }
 
-  getFovScaleRatio () {
-    return this.fovScaleRatio;
+  getViewportMatrix () {
+    return this.viewportMatrix;
   }
 
   /**
@@ -380,9 +380,10 @@ export class Camera {
       const { fov, aspect, near, far, clipMode, position } = this.options;
 
       this.projectionMatrix.perspective(
-        fov * DEG2RAD * this.fovScaleRatio, aspect, near, far,
+        fov * DEG2RAD, aspect, near, far,
         clipMode === spec.CameraClipMode.portrait
       );
+      this.projectionMatrix.premultiply(this.viewportMatrix);
       this.inverseViewMatrix.compose(position, this.getQuat(), tmpScale);
       this.viewMatrix.copyFrom(this.inverseViewMatrix).invert();
       this.viewProjectionMatrix.multiplyMatrices(this.projectionMatrix, this.viewMatrix);

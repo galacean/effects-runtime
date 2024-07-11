@@ -1,6 +1,6 @@
 import type { GeometryDrawMode, HitTestCustomParams, Texture, VFXItem } from '@galacean/effects';
 import { Mesh } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, spec } from '@galacean/effects';
+import { HitTestType, ItemBehaviour, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, serialize, spec } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
 import { iconTextures, type EditorGizmoPlugin } from './gizmo-loader';
@@ -32,6 +32,8 @@ export class GizmoComponent extends ItemBehaviour {
   boundingMap: Map<string, GizmoItemBounding> = new Map();
   hitBounding?: { key: string, position: Vector3 };
   wireframeMesh: Mesh;
+  @serialize()
+  coordinateSpace: CoordinateSpace = CoordinateSpace.Local;
 
   color: spec.vec3;
   renderMode!: GeometryDrawMode;
@@ -164,7 +166,12 @@ export class GizmoComponent extends ItemBehaviour {
           const worldQuat = new Quaternion();
           const worldScale = new Vector3(1, 1, 1);
 
-          this.targetItem.transform.assignWorldTRS(worldPos, worldQuat);
+          // Scale Gizmo 没有世界空间
+          if (this.coordinateSpace == CoordinateSpace.Local || gizmoSubType === GizmoSubType.scale) {
+            this.targetItem.transform.assignWorldTRS(worldPos, worldQuat);
+          } else {
+            this.targetItem.transform.assignWorldTRS(worldPos);
+          }
 
           const targetTransform = new Transform({
             position: worldPos,
@@ -715,4 +722,9 @@ export class GizmoComponent extends ItemBehaviour {
       };
     }
   };
+}
+
+export enum CoordinateSpace {
+  Local,
+  World
 }
