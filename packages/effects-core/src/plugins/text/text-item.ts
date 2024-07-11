@@ -345,6 +345,20 @@ export class TextComponentBase {
   }
 
   /**
+   * 设置自动宽度开关
+   * @param value - 是否开启自动宽度
+   * @returns
+   */
+  setAutoWidth (value: boolean): void {
+    if (this.textLayout.autoWidth === value) {
+      return;
+    }
+
+    this.textLayout.autoWidth = value;
+    this.isDirty = true;
+  }
+
+  /**
    * 更新文本
    * @returns
    */
@@ -358,7 +372,8 @@ export class TextComponentBase {
     const fontScale = style.fontScale;
 
     const width = (layout.width + style.fontOffset) * fontScale;
-    const height = layout.height * fontScale;
+
+    const finalHeight = layout.lineHeight * this.lineCount;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
@@ -366,9 +381,18 @@ export class TextComponentBase {
     this.char = (this.text || '').split('');
 
     this.canvas.width = width;
-    this.canvas.height = height;
+    if (layout.autoWidth) {
+      this.canvas.height = finalHeight * fontScale;
+      // @ts-expect-error transform 存在于 SpriteComponent
+      this.transform.size.set(1, finalHeight / layout.height);
 
-    context.clearRect(0, 0, width, this.canvas.height);
+    } else {
+      this.canvas.height = layout.height * fontScale;
+    }
+
+    const height = this.canvas.height;
+
+    context.clearRect(0, 0, width, height);
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
 
@@ -377,7 +401,7 @@ export class TextComponentBase {
       context.scale(1, -1);
     }
 
-    context.fillRect(0, 0, width, this.canvas.height);
+    context.fillRect(0, 0, width, height);
     style.fontDesc = this.getFontDesc();
     context.font = style.fontDesc;
 
