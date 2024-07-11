@@ -101,7 +101,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
   // 更正Composition.endBehavior
   for (const composition of json.compositions) {
-    // composition 的 endbehaviour 兼容
+    // composition 的 endBehavior 兼容
     if (
       composition.endBehavior === CompositionEndBehavior.pause_destroy ||
       composition.endBehavior === CompositionEndBehavior.pause
@@ -462,7 +462,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
         {
           start: item.delay,
           duration: item.duration,
-          endBehaviour: item.endBehavior,
+          endBehavior: item.endBehavior,
           asset: {
             id: newActivationPlayableAsset.id,
           },
@@ -494,7 +494,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
           {
             start: item.delay,
             duration: item.duration,
-            endBehaviour: item.endBehavior,
+            endBehavior: item.endBehavior,
             asset: {
               id: newTransformPlayableAssetData.id,
             },
@@ -523,7 +523,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
           {
             start: item.delay,
             duration: item.duration,
-            endBehaviour: item.endBehavior,
+            endBehavior: item.endBehavior,
             asset: {
               id: newSpriteColorPlayableAssetData.id,
             },
@@ -550,7 +550,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
           {
             start: item.delay,
             duration: item.duration,
-            endBehaviour: item.endBehavior,
+            endBehavior: item.endBehavior,
             asset: {
               id: newSubCompositionPlayableAssetData.id,
             },

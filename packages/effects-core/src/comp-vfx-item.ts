@@ -118,7 +118,7 @@ export class CompositionComponent extends ItemBehaviour {
           if (!props) {
             throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
           }
-          // endBehaviour 类型需优化
+          // endBehavior 类型需优化
           props.content = itemData.content;
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;

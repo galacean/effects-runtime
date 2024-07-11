@@ -16,7 +16,7 @@ export class TimelineClip {
   start = 0;
   duration = 0;
   asset: PlayableAsset;
-  endBehaviour: ItemEndBehavior;
+  endBehavior: ItemEndBehavior;
 
   constructor () {
   }
@@ -26,9 +26,9 @@ export class TimelineClip {
     const duration = this.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.endBehaviour === ItemEndBehavior.loop) {
+      if (this.endBehavior === ItemEndBehavior.loop) {
         localTime = localTime % duration;
-      } else if (this.endBehaviour === ItemEndBehavior.freeze) {
+      } else if (this.endBehavior === ItemEndBehavior.freeze) {
         localTime = Math.min(duration, localTime);
       }
     }
@@ -198,7 +198,7 @@ export class RuntimeClip {
     let started = false;
     const boundItem = this.track.binding as VFXItem;
 
-    if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
+    if (localTime > clip.start + clip.duration + 0.001 && clip.endBehavior === ItemEndBehavior.destroy) {
       if (VFXItem.isParticle(boundItem) && this.particleSystem && !this.particleSystem.destroyed) {
         weight = 1.0;
       } else {
