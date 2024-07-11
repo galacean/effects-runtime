@@ -196,10 +196,10 @@ export class RuntimeClip {
     let weight = 1.0;
     let ended = false;
     let started = false;
-    const boundItem = this.track.binding as VFXItem;
+    const boundObject = this.track.binding;
 
     if (localTime > clip.start + clip.duration + 0.001 && clip.endBehaviour === ItemEndBehavior.destroy) {
-      if (VFXItem.isParticle(boundItem) && this.particleSystem && !this.particleSystem.destroyed) {
+      if (boundObject instanceof VFXItem && VFXItem.isParticle(boundObject) && this.particleSystem && !this.particleSystem.destroyed) {
         weight = 1.0;
       } else {
         weight = 0.0;
@@ -218,28 +218,22 @@ export class RuntimeClip {
     this.parentMixer.setInputWeight(this.playable, weight);
 
     // 判断动画是否结束
-    if (ended && !boundItem.ended) {
-      boundItem.ended = true;
-      boundItem.onEnd();
-    }
-    if (ended && this.playable.getPlayState() === PlayState.Playing) {
-      this.playable.pause();
-      this.onClipEnd();
+    if (ended) {
+      if (boundObject instanceof VFXItem && !boundObject.ended) {
+        boundObject.ended = true;
+        boundObject.onEnd();
+        if (!boundObject.compositionReusable && !boundObject.reusable) {
+          boundObject.dispose();
+          this.playable.dispose();
+        }
+      }
+      if (this.playable.getPlayState() === PlayState.Playing) {
+        this.playable.pause();
+      }
     }
     const clipTime = clip.toLocalTime(localTime);
 
     this.playable.setTime(clipTime);
-  }
-
-  private onClipEnd () {
-    const boundItem = this.track.binding as VFXItem;
-
-    if (!boundItem.compositionReusable && !boundItem.reusable) {
-      boundItem.dispose();
-      this.playable.dispose();
-
-      return;
-    }
   }
 }
 
