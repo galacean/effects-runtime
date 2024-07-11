@@ -275,17 +275,21 @@ export class UADecoder {
     if (data.length && data[data.length - 1] == ')') {
       data = data.substring(0, data.length - 1);
     }
-    if (this.testiOS(data)) {
+    if (this.testiPhone(data)) {
       this.device.platform = 'iOS';
       this.device.osVersion = this.parseiOSVersion(data);
       this.device.model = this.getiPhoneModel();
+    } else if (this.testiPad(data)) {
+      this.device.platform = 'iOS';
+      this.device.osVersion = this.parseiOSVersion(data);
+      this.device.model = 'iPad';
+    } else if (this.testMacintosh(data)) {
+      this.device.platform = 'Mac OS';
+      this.device.osVersion = this.parseMacOSVersion(data);
     } else if (this.testAndroid(data)) {
       this.device.platform = 'Android';
       this.device.osVersion = this.parseAndroidVersion(data);
       this.device.model = this.parseAndroidModel(data);
-    } else if (this.testMacintosh(data)) {
-      this.device.platform = 'Mac OS';
-      this.device.osVersion = this.parseMacOSVersion(data);
     } else if (this.testWindows(data)) {
       this.device.platform = 'Windows';
       this.device.osVersion = this.parseWindowsVersion(data);
@@ -317,7 +321,7 @@ export class UADecoder {
 
     const match = iPhoneInfoList.find(m => m.width === screenWidth && m.height === screenHeight);
 
-    return match?.model;
+    return match?.model ?? 'iPhone';
   }
 
   private parseAndroidVersion (data: string) {
@@ -358,6 +362,16 @@ export class UADecoder {
         }
       }
     }
+
+    if (itemList.length == 3) {
+      return itemList[itemList.length - 1].trim();
+    } else if (itemList.length === 4) {
+      const len = itemList.length;
+
+      if (itemList[len - 1].trim() === 'wv') {
+        return itemList[len - 2].trim();
+      }
+    }
   }
 
   private parseWindowsVersion (data: string) {
@@ -387,8 +401,12 @@ export class UADecoder {
 
   }
 
-  private testiOS (data: string) {
-    return data.includes('iPhone') || data.includes('iPad');
+  private testiPhone (data: string) {
+    return data.includes('iPhone');
+  }
+
+  private testiPad (data: string) {
+    return data.includes('iPad');
   }
 
   private testAndroid (data: string) {
