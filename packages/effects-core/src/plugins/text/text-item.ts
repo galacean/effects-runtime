@@ -345,8 +345,8 @@ export class TextComponentBase {
   }
 
   /**
-   * 设置自动宽度开关
-   * @param value - 是否开启自动宽度
+   * 设置自适应宽高开关
+   * @param value - 是否自适应宽高开关
    * @returns
    */
   setAutoWidth (value: boolean): void {
