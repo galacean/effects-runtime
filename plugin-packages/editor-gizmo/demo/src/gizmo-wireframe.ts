@@ -20,7 +20,7 @@ import { JSONConverter } from '@galacean/effects-plugin-model';
       console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
     },
   });
-  const converter = new JSONConverter(player);
+  const converter = new JSONConverter(player.renderer);
   const scene = await converter.processScene(test_scene);
 
   await player.loadScene(scene);

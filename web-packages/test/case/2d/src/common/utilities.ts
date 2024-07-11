@@ -1,13 +1,7 @@
 // @ts-nocheck
 import type { PlayerConfig, Composition } from '@galacean/effects';
 import {
-  Player,
-  registerPlugin,
-  AbstractPlugin,
-  VFXItem,
-  spec,
-  math,
-  AssetManager,
+  Player, registerPlugin, AbstractPlugin, VFXItem, spec, math, AssetManager,
 } from '@galacean/effects';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 
@@ -59,12 +53,12 @@ export class TestPlayer {
     let inData = url;
 
     if (!this.oldVersion && this.is3DCase) {
-      const converter = new JSONConverter(this.player);
+      const converter = new JSONConverter(this.player.renderer);
 
       inData = await converter.processScene(url);
     }
 
-    const json = await assetManager.loadScene(inData, (this.player as Player).renderer);
+    const json = await assetManager.loadScene(inData, this.player.renderer);
 
     // TODO 兼容函数，endbehaviour 改造后移除
     compatibleCalculateItem(json.jsonScene.compositions[0]);

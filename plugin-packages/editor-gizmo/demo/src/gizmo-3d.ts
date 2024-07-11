@@ -21,7 +21,7 @@ import { JSONConverter } from '@galacean/effects-plugin-model';
     },
   });
 
-  const converter = new JSONConverter(player);
+  const converter = new JSONConverter(player.renderer);
   const scene = await converter.processScene(gizmo3D);
 
   await player.loadScene(scene);
