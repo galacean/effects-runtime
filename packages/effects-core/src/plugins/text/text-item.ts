@@ -11,6 +11,7 @@ import { effectsClass } from '../../decorators';
 import { canvasPool } from '../../canvas-pool';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { Material } from '../../material';
+import type { VFXItem } from '../../vfx-item';
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -102,6 +103,7 @@ export class TextComponentBase {
   engine: Engine;
   material: Material;
   lineCount: number;
+  item: VFXItem;
   /***** mix 类型兼容用 *****/
 
   private char: string[];
@@ -372,20 +374,17 @@ export class TextComponentBase {
     const fontScale = style.fontScale;
 
     const width = (layout.width + style.fontOffset) * fontScale;
-
     const finalHeight = layout.lineHeight * this.lineCount;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
     this.char = (this.text || '').split('');
-
     this.canvas.width = width;
+
     if (layout.autoWidth) {
       this.canvas.height = finalHeight * fontScale;
-      // @ts-expect-error transform 存在于 SpriteComponent
-      this.transform.size.set(1, finalHeight / layout.height);
-
+      this.item.transform.size.set(1, finalHeight / layout.height);
     } else {
       this.canvas.height = layout.height * fontScale;
     }
