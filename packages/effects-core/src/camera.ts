@@ -291,12 +291,14 @@ export class Camera {
    * @param z - 当前的位置 z
    */
   getInverseVPRatio (z: number) {
-    const pos = new Vector3(0, 0, z);
+    const pos = new Vector3(this.position.x, this.position.y, z);
     const mat = this.getViewProjectionMatrix();
     const inverseVP = this.getInverseViewProjectionMatrix();
     const { z: nz } = mat.projectPoint(pos);
+    const { x: xMax, y: yMax } = inverseVP.projectPoint(new Vector3(1, 1, nz));
+    const { x: xMin, y: yMin } = inverseVP.projectPoint(new Vector3(-1, -1, nz));
 
-    return inverseVP.projectPoint(new Vector3(1, 1, nz));
+    return new Vector3((xMax - xMin) / 2, (yMax - yMin) / 2, 0);
   }
 
   /**

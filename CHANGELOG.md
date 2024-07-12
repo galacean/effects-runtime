@@ -7,6 +7,13 @@
 
 ---
 
+## 1.6.2
+
+`2024-07-08`
+
+- Fix: Fixed the issue where text setting fails when the variable is a number. [#480](https://github.com/galacean/effects-runtime/pull/480) @Sruimeng
+- Fix: Fixed the pixel coordinate conversion error when the camera is not at the origin. [#481](https://github.com/galacean/effects-runtime/pull/481) @RGCHN
+
 ## 1.6.1
 
 `2024-07-02`
