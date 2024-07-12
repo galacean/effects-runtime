@@ -1,10 +1,10 @@
 import type { Constructor } from './utils';
 
 type PropertyDescriptor = { type?: Constructor, sourceName?: string };
-type SerializableMemberStoreType = Record<string, Record<string | symbol, PropertyDescriptor>>;
+type SerializableMemberStoreType = Map<Function, Record<string | symbol, PropertyDescriptor>>;
 
-const decoratorInitialStore: SerializableMemberStoreType = {};
-const mergedStore: SerializableMemberStoreType = {};
+const decoratorInitialStore: SerializableMemberStoreType = new Map();
+const mergedStore: SerializableMemberStoreType = new Map();
 
 export const effectsClassStore: Record<string, any> = {};
 
@@ -22,21 +22,22 @@ export function serialize (type?: Constructor, sourceName?: string) {
   return generateSerializableMember(type, sourceName); // value member
 }
 
-export function getMergedStore (target: Object): Record<string, any> {
-  const classKey = target.constructor.name;
+export function getMergedStore (target: Object): Record<string, any> | undefined {
+  const classKey = target.constructor;
 
-  if (mergedStore[classKey]) {
-    return mergedStore[classKey];
+  if (mergedStore.get(classKey)) {
+    return mergedStore.get(classKey);
   }
 
-  mergedStore[classKey] = {};
+  const store: Record<string | symbol, PropertyDescriptor> = {};
 
-  const store = mergedStore[classKey];
+  mergedStore.set(classKey, store);
+
   let currentTarget = target;
   let currentKey = classKey;
 
   while (currentKey) {
-    const initialStore = decoratorInitialStore[currentKey];
+    const initialStore = decoratorInitialStore.get(currentKey);
 
     for (const property in initialStore) {
       store[property] = initialStore[property];
@@ -44,8 +45,8 @@ export function getMergedStore (target: Object): Record<string, any> {
 
     const parent = Object.getPrototypeOf(currentTarget);
 
-    currentKey = Object.getPrototypeOf(parent).constructor.name;
-    if (currentKey === 'Object') {
+    currentKey = Object.getPrototypeOf(parent).constructor;
+    if (currentKey === Object) {
       break;
     }
     currentTarget = parent;
@@ -58,6 +59,9 @@ function generateSerializableMember (type?: Constructor, sourceName?: string) {
   return (target: Object, propertyKey: string | symbol) => {
     const classStore = getDirectStore(target);
 
+    if (!classStore) {
+      return;
+    }
     if (!classStore[propertyKey]) {
       classStore[propertyKey] = { type, sourceName };
     }
@@ -65,12 +69,12 @@ function generateSerializableMember (type?: Constructor, sourceName?: string) {
 }
 
 function getDirectStore (target: Object) {
-  const classKey = target.constructor.name;
+  const classKey = target.constructor;
 
-  if (!decoratorInitialStore[classKey]) {
-    decoratorInitialStore[classKey] = {};
+  if (!decoratorInitialStore.get(classKey)) {
+    decoratorInitialStore.set(classKey, {});
   }
 
-  return decoratorInitialStore[classKey];
+  return decoratorInitialStore.get(classKey);
 }
 
