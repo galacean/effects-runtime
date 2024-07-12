@@ -605,6 +605,7 @@ export class Composition implements Disposable, LostHandler {
     // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
+      this.onEnd?.(this);
       this.dispose();
     } else {
       if (!skipRender) {
