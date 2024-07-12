@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.3
+
+`2024-07-12`
+
+- Fix: Spine 插件缩放兼容相机水平裁切。[#500](https://github.com/galacean/effects-runtime/pull/500) @RGCHN
+
 ## 1.6.2
 
 `2024-07-08`
