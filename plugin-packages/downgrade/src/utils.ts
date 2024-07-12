@@ -41,7 +41,7 @@ export interface DeviceInfo {
   platform?: string,
   osVersion?: string,
   model?: string,
-  modelAlias?: string,
+  originalModel?: string,
   level?: DeviceLevel,
   memoryMB?: number,
   sourceData?: any,
@@ -479,7 +479,7 @@ export class WeChatMiniAppParser {
 
       if (modelMatch) {
         this.device.model = modelMatch[1].trim();
-        this.device.modelAlias = modelMatch[2].trim();
+        this.device.originalModel = modelMatch[2].trim();
       } else {
         this.device.model = info.model;
       }
@@ -516,9 +516,27 @@ export class AlipayMiniAppParser {
   private parse (info: AlipaySystemInfo) {
     this.device.platform = info.platform;
     this.device.osVersion = info.system;
-    this.device.model = info.model;
+    this.device.originalModel = info.model;
+    this.device.model = this.getDeviceModel(info.model);
     this.device.level = getDeviceLevel(info.performance);
     this.device.sourceData = info;
+  }
+
+  private getDeviceModel (model?: string) {
+    if (model) {
+      const brandList = ['Huawei', 'Xiaomi', 'samsung', 'vivo', 'OPPO'];
+
+      for (const brand of brandList) {
+        const modelLower = model.toLowerCase();
+        const brandLower = brand.toLowerCase();
+
+        if (modelLower.startsWith(brandLower)) {
+          return model.substring(brand.length).trim();
+        }
+      }
+    }
+
+    return model;
   }
 }
 

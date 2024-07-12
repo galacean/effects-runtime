@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
           'mock-fail': resolve(__dirname, 'demo/mock-fail.html'),
           'ua-parser': resolve(__dirname, 'demo/ua-parser.html'),
           'miniprogram': resolve(__dirname, 'demo/miniprogram.html'),
+          'alipay-mini-app': resolve(__dirname, 'demo/alipay-mini-app.html'),
         }
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常
