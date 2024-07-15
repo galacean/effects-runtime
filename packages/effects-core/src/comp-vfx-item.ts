@@ -13,7 +13,7 @@ import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import { Item, VFXItem } from './vfx-item';
-import { EffectEventName } from './event-emitter';
+import { ItemEffectEventName } from './effect-events';
 
 export interface SceneBinding {
   key: TrackAsset,
@@ -230,7 +230,7 @@ export class CompositionComponent extends ItemBehaviour {
             };
 
             // 触发单个元素的点击事件
-            item.emit(EffectEventName.ITEM_CLICK, region);
+            item.emit(ItemEffectEventName.ITEM_CLICK, region);
 
             regions.push(region);
             if (stop(region)) {

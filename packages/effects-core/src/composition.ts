@@ -17,7 +17,9 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
-import { EffectEventName, EventEmitter } from './event-emitter';
+import { EventEmitter } from './event-emitter';
+import type { CompositionEffectEvent } from './effect-events';
+import { CompositionEffectEventName, ItemEffectEventName, PlayerEffectEventName } from './effect-events';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -68,7 +70,7 @@ export interface CompositionProps {
  * 合成中包含了相关的 Item 元素，支持对 Item 元素的创建、更新和销毁。
  * 也负责 Item 相关的动画播放控制，和持有渲染帧数据。
  */
-export class Composition extends EventEmitter implements Disposable, LostHandler {
+export class Composition extends EventEmitter<CompositionEffectEvent<Composition>> implements Disposable, LostHandler {
   renderer: Renderer;
   /**
    * 当前帧的渲染数据对象
@@ -287,7 +289,7 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
         this.onEnd?.(this);
-        this.emit(EffectEventName.COMPOSITION_END, { composition: this });
+        this.emit(CompositionEffectEventName.COMPOSITION_END, { composition: this });
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
@@ -606,7 +608,7 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
     // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
-      this.emit(EffectEventName.COMPOSITION_END, { composition: this });
+      this.emit(CompositionEffectEventName.COMPOSITION_END, { composition: this });
       this.dispose();
     } else {
       if (!skipRender) {
@@ -845,13 +847,13 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
    */
   addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.player.emit(EffectEventName.ITEM_MESSAGE, {
+      this.player.emit(PlayerEffectEventName.ITEM_MESSAGE, {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
         compositionId: this.id,
       });
-      item.emit(EffectEventName.ITEM_MESSAGE, {
+      item.emit(ItemEffectEventName.ITEM_MESSAGE, {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -875,13 +877,13 @@ export class Composition extends EventEmitter implements Disposable, LostHandler
   removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.player.emit(EffectEventName.ITEM_MESSAGE, {
+      this.player.emit(PlayerEffectEventName.ITEM_MESSAGE, {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
         compositionId: this.id,
       });
-      item.emit(EffectEventName.ITEM_MESSAGE, {
+      item.emit(CompositionEffectEventName.ITEM_MESSAGE, {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,

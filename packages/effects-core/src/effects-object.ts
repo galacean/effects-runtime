@@ -3,12 +3,13 @@ import type { Engine } from './engine';
 import { generateGUID } from './utils';
 import { serialize } from './decorators';
 import { EventEmitter } from './event-emitter';
+import type { ItemEffectEvent } from './effect-events';
 
 /**
  * @since 2.0.0
  * @internal
  */
-export abstract class EffectsObject extends EventEmitter {
+export abstract class EffectsObject extends EventEmitter<ItemEffectEvent> {
   static is (obj: unknown): obj is EffectsObject {
     return obj instanceof EffectsObject && 'guid' in obj;
   }
