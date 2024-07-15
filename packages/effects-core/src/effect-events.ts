@@ -2,20 +2,30 @@ import type { MessageItem } from './composition';
 import type { Region } from './plugins';
 
 export type PlayerEffectEvent<P> = {
-  [PlayerEffectEventName.ITEM_CLICK]: [clickInfo: Region & { player: P, composition: string }],
-  [PlayerEffectEventName.ITEM_MESSAGE]: [messageInfo: MessageItem],
-  [PlayerEffectEventName.WEBGL_CONTEXT_LOST]: [event: Event],
-  [PlayerEffectEventName.WEBGL_CONTEXT_RESTORED]: [],
-  [PlayerEffectEventName.COMPOSITION_END]: [],
-  [PlayerEffectEventName.PLAYER_PAUSE]: [],
-  [PlayerEffectEventName.PLAYER_UPDATE]: [updateInfo: { player: P, playing: boolean }],
-  [PlayerEffectEventName.RENDER_ERROR]: [error: Error | undefined],
+  [EffectEventName.ITEM_CLICK]: [clickInfo: Region & { player: P, composition: string }],
+  [EffectEventName.ITEM_MESSAGE]: [messageInfo: MessageItem],
+  [EffectEventName.WEBGL_CONTEXT_LOST]: [event: Event],
+  [EffectEventName.WEBGL_CONTEXT_RESTORED]: [],
+  [EffectEventName.COMPOSITION_END]: [],
+  [EffectEventName.PLAYER_PAUSE]: [],
+  [EffectEventName.PLAYER_UPDATE]: [updateInfo: { player: P, playing: boolean }],
+  [EffectEventName.RENDER_ERROR]: [error: Error | undefined],
+};
+
+export type CompositionEffectEvent<C> = {
+  [EffectEventName.ITEM_MESSAGE]: [messageInfo: MessageItem],
+  [EffectEventName.COMPOSITION_END]: [endInfo: { composition: C }],
+};
+
+export type ItemEffectEvent = {
+  [EffectEventName.ITEM_CLICK]: [region: Region],
+  [EffectEventName.ITEM_MESSAGE]: [message: Omit<MessageItem, 'compositionId'>],
 };
 
 /**
- * Player 可以绑定的事件
+ * Player、Composition、Item 可以绑定的事件
  */
-export const PlayerEffectEventName = {
+export const EffectEventName = {
   /**
  * 元素点击事件
  */
@@ -50,44 +60,4 @@ export const PlayerEffectEventName = {
    * 渲染错误事件
    */
   RENDER_ERROR: 'render-error',
-} as const;
-
-export type CompositionEffectEvent<C> = {
-  [CompositionEffectEventName.ITEM_MESSAGE]: [messageInfo: MessageItem],
-  [CompositionEffectEventName.COMPOSITION_END]: [endInfo: { composition: C }],
-};
-
-/**
- * Composition 可以绑定的事件
- */
-export const CompositionEffectEventName = {
-  /**
-   * 元素消息事件
-   */
-  ITEM_MESSAGE: 'item-message',
-  /**
-   * 合成结束事件
-   * 合成行为为循环时每次循环结束都会触发
-   * 合成行为为销毁/冻结时只会触发一次
-   */
-  COMPOSITION_END: 'composition-end',
-} as const;
-
-export type ItemEffectEvent = {
-  [ItemEffectEventName.ITEM_CLICK]: [region: Region],
-  [ItemEffectEventName.ITEM_MESSAGE]: [message: Omit<MessageItem, 'compositionId'>],
-};
-
-/**
- * Item 可以绑定的事件
- */
-export const ItemEffectEventName = {
-  /**
-   * 元素点击事件
-   */
-  ITEM_CLICK: 'item-click',
-  /**
-   * 元素消息事件
-   */
-  ITEM_MESSAGE: 'item-message',
 } as const;

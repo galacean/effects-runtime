@@ -18,8 +18,7 @@ import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import { EventEmitter } from './event-emitter';
-import type { CompositionEffectEvent } from './effect-events';
-import { CompositionEffectEventName, ItemEffectEventName, PlayerEffectEventName } from './effect-events';
+import { type CompositionEffectEvent, EffectEventName } from './effect-events';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -289,7 +288,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
         this.onEnd?.(this);
-        this.emit(CompositionEffectEventName.COMPOSITION_END, { composition: this });
+        this.emit(EffectEventName.COMPOSITION_END, { composition: this });
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
@@ -608,7 +607,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
-      this.emit(CompositionEffectEventName.COMPOSITION_END, { composition: this });
+      this.emit(EffectEventName.COMPOSITION_END, { composition: this });
       this.dispose();
     } else {
       if (!skipRender) {
@@ -847,13 +846,13 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
    */
   addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.player.emit(PlayerEffectEventName.ITEM_MESSAGE, {
+      this.player.emit(EffectEventName.ITEM_MESSAGE, {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
         compositionId: this.id,
       });
-      item.emit(ItemEffectEventName.ITEM_MESSAGE, {
+      item.emit(EffectEventName.ITEM_MESSAGE, {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -877,13 +876,13 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
   removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.player.emit(PlayerEffectEventName.ITEM_MESSAGE, {
+      this.player.emit(EffectEventName.ITEM_MESSAGE, {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
         compositionId: this.id,
       });
-      item.emit(CompositionEffectEventName.ITEM_MESSAGE, {
+      item.emit(EffectEventName.ITEM_MESSAGE, {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,

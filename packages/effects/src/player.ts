@@ -3,8 +3,7 @@ import type {
   Texture2DSourceOptionsVideo, TouchEventType, VFXItem, SceneLoadType, SceneType, EffectsObject,
   CompItemClickedData,
   PlayerEffectEvent } from '@galacean/effects-core';
-import { EventEmitter,
-  PlayerEffectEventName } from '@galacean/effects-core';
+import { EventEmitter, EffectEventName } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
@@ -579,7 +578,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     if (!this.ticker || this.ticker?.getPaused()) {
       this.doTick(0, true);
     }
-    this.emit(PlayerEffectEventName.PLAYER_UPDATE, {
+    this.emit(EffectEventName.PLAYER_UPDATE, {
       player: this,
       playing: true,
     });
@@ -623,7 +622,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
       player: this,
       playing: false,
     });
-    this.emit(PlayerEffectEventName.PLAYER_UPDATE, {
+    this.emit(EffectEventName.PLAYER_UPDATE, {
       player: this,
       playing: true,
     });
@@ -665,7 +664,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
 
     if (renderErrors.size > 0) {
       this.handleRenderError?.(renderErrors.values().next().value);
-      this.emit(PlayerEffectEventName.RENDER_ERROR, renderErrors.values().next().value);
+      this.emit(EffectEventName.RENDER_ERROR, renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
     }
@@ -695,7 +694,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     this.compositions = currentCompositions;
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
-      this.emit(PlayerEffectEventName.RENDER_ERROR, new Error('Play when texture offloaded.'));
+      this.emit(EffectEventName.RENDER_ERROR, new Error('Play when texture offloaded.'));
       this.handleRenderError?.(new Error('Play when texture offloaded.'));
 
       return this.ticker?.pause();
@@ -733,7 +732,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
           player: this,
           playing: true,
         });
-        this.emit(PlayerEffectEventName.PLAYER_UPDATE, {
+        this.emit(EffectEventName.PLAYER_UPDATE, {
           player: this,
           playing: true,
         });
@@ -835,7 +834,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     this.ticker?.pause();
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
-    this.emit(PlayerEffectEventName.WEBGL_CONTEXT_LOST, e);
+    this.emit(EffectEventName.WEBGL_CONTEXT_LOST, e);
     // TODO: 是否需要废弃
     this.handleWebGLContextLost?.(e);
     broadcastPlayerEvent(this, false);
@@ -872,7 +871,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
 
       return newComposition;
     }));
-    this.emit(PlayerEffectEventName.WEBGL_CONTEXT_RESTORED);
+    this.emit(EffectEventName.WEBGL_CONTEXT_RESTORED);
     // TODO: 是否需要废弃
     this.handleWebGLContextRestored?.();
     this.ticker?.resume();
@@ -960,7 +959,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
           const behavior = regions[i].behavior || spec.InteractBehavior.NOTIFY;
 
           if (behavior === spec.InteractBehavior.NOTIFY) {
-            this.emit(PlayerEffectEventName.ITEM_CLICK, {
+            this.emit(EffectEventName.ITEM_CLICK, {
               ...regions[i],
               composition: composition.name,
               player: this,
