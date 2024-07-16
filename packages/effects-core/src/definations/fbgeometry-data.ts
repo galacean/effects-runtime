@@ -103,18 +103,12 @@ export class FBGeometryData implements flatbuffers.IUnpackableObject<FBGeometryD
     return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
   }
 
-  rootBoneName (index: number): string;
-  rootBoneName (index: number, optionalEncoding: flatbuffers.Encoding): string | Uint8Array;
-  rootBoneName (index: number, optionalEncoding?: any): string | Uint8Array | null {
+  rootBoneName (): string | null;
+  rootBoneName (optionalEncoding: flatbuffers.Encoding): string | Uint8Array | null;
+  rootBoneName (optionalEncoding?: any): string | Uint8Array | null {
     const offset = this.bb!.__offset(this.bb_pos, 22);
 
-    return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
-  }
-
-  rootBoneNameLength (): number {
-    const offset = this.bb!.__offset(this.bb_pos, 22);
-
-    return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+    return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
   }
 
   inverseBindMatrices (index: number): number | null {
@@ -205,19 +199,6 @@ export class FBGeometryData implements flatbuffers.IUnpackableObject<FBGeometryD
     builder.addFieldOffset(9, rootBoneNameOffset, 0);
   }
 
-  static createRootBoneNameVector (builder: flatbuffers.Builder, data: flatbuffers.Offset[]): flatbuffers.Offset {
-    builder.startVector(4, data.length, 4);
-    for (let i = data.length - 1; i >= 0; i--) {
-      builder.addOffset(data[i]);
-    }
-
-    return builder.endVector();
-  }
-
-  static startRootBoneNameVector (builder: flatbuffers.Builder, numElems: number) {
-    builder.startVector(4, numElems, 4);
-  }
-
   static addInverseBindMatrices (builder: flatbuffers.Builder, inverseBindMatricesOffset: flatbuffers.Offset) {
     builder.addFieldOffset(10, inverseBindMatricesOffset, 0);
   }
@@ -257,7 +238,7 @@ export class FBGeometryData implements flatbuffers.IUnpackableObject<FBGeometryD
       this.mode(),
       this.buffer(),
       this.bb!.createScalarList<string>(this.boneNames.bind(this), this.boneNamesLength()),
-      this.bb!.createScalarList<string>(this.rootBoneName.bind(this), this.rootBoneNameLength()),
+      this.rootBoneName(),
       this.bb!.createScalarList<number>(this.inverseBindMatrices.bind(this), this.inverseBindMatricesLength())
     );
   }
@@ -272,7 +253,7 @@ export class FBGeometryData implements flatbuffers.IUnpackableObject<FBGeometryD
     _o.mode = this.mode();
     _o.buffer = this.buffer();
     _o.boneNames = this.bb!.createScalarList<string>(this.boneNames.bind(this), this.boneNamesLength());
-    _o.rootBoneName = this.bb!.createScalarList<string>(this.rootBoneName.bind(this), this.rootBoneNameLength());
+    _o.rootBoneName = this.rootBoneName();
     _o.inverseBindMatrices = this.bb!.createScalarList<number>(this.inverseBindMatrices.bind(this), this.inverseBindMatricesLength());
   }
 }
@@ -288,7 +269,7 @@ export class FBGeometryDataT implements flatbuffers.IGeneratedObject {
     public mode: number = 0,
     public buffer: string | Uint8Array | null = null,
     public boneNames: (string)[] = [],
-    public rootBoneName: (string)[] = [],
+    public rootBoneName: string | Uint8Array | null = null,
     public inverseBindMatrices: (number)[] = []
   ) {}
 
@@ -299,7 +280,7 @@ export class FBGeometryDataT implements flatbuffers.IGeneratedObject {
     const subMeshes = FBGeometryData.createSubMeshesVector(builder, builder.createObjectOffsetList(this.subMeshes));
     const buffer = (this.buffer !== null ? builder.createString(this.buffer) : 0);
     const boneNames = FBGeometryData.createBoneNamesVector(builder, builder.createObjectOffsetList(this.boneNames));
-    const rootBoneName = FBGeometryData.createRootBoneNameVector(builder, builder.createObjectOffsetList(this.rootBoneName));
+    const rootBoneName = (this.rootBoneName !== null ? builder.createString(this.rootBoneName) : 0);
     const inverseBindMatrices = FBGeometryData.createInverseBindMatricesVector(builder, this.inverseBindMatrices);
 
     FBGeometryData.startFBGeometryData(builder);

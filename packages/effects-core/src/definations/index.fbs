@@ -29,7 +29,7 @@ table FBGeometryData {
      * 所有的骨骼名称
      */
     boneNames: [string];
-    rootBoneName: [string];
+    rootBoneName: string;
     inverseBindMatrices: [float];
 }
 

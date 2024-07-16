@@ -77,6 +77,9 @@ export class EffectsPackage {
     fbGeometryData.mode = geometryData.mode;
     fbGeometryData.buffer = geometryData.buffer;
     fbGeometryData.id = geometryData.id;
+    fbGeometryData.boneNames = geometryData.boneNames ?? [];
+    fbGeometryData.rootBoneName = geometryData.rootBoneName ?? '';
+    fbGeometryData.inverseBindMatrices = geometryData.inverseBindMatrices ?? [];
     const fbVertexdata = new FBVertexDataT();
 
     fbVertexdata.vertexCount = geometryData.vertexData.vertexCount;
@@ -159,6 +162,15 @@ export class EffectsPackage {
       subMeshes.push(subMesh);
     }
 
+    const boneNames = [];
+
+    for (let i = 0;i < fbGeometryData.boneNamesLength();i++) {
+      const boneName = fbGeometryData.boneNames(i);
+
+      boneNames.push(boneName);
+    }
+    const inverseBindMatricesArray = fbGeometryData.inverseBindMatricesArray();
+
     const geometryData: GeometryData = {
       vertexData: vertexData,
       indexFormat: fbGeometryData.indexFormat(),
@@ -166,6 +178,9 @@ export class EffectsPackage {
       subMeshes: subMeshes,
       mode: fbGeometryData.mode(),
       buffer: fbGeometryData.buffer() ?? '',
+      boneNames: boneNames,
+      rootBoneName: fbGeometryData.rootBoneName() ?? '',
+      inverseBindMatrices: inverseBindMatricesArray ? Array.from(inverseBindMatricesArray) : undefined,
       id: fbGeometryData.id() ?? '',
       dataType: DataType.Geometry,
     };
