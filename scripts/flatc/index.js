@@ -1,3 +1,4 @@
+const fs = require('fs-extra');
 const path = require('path');
 const chalk = require('chalk');
 const { execFileSync } = require('child_process');
@@ -40,7 +41,7 @@ function flatc(files, options) {
   }
   // run flatc command
   try {
-    console.log(chalk.gray(`Start execute 'flatc'.`));
+    console.log(`Start execute 'flatc'.`);
     console.log(chalk.gray(`The args: ${args.join(' ')}`));
     execFileSync(FLATC_EXEC, args, { encoding: 'utf-8' });
     console.log(chalk.green(`Execute 'flatc' success.`));
@@ -59,17 +60,42 @@ function camel2Kebab(str) {
     .toLowerCase();
 }
 
+async function deleteFiles(fold, extname = '.ts') {
+  try {
+    const files = await fs.readdir(fold);
+
+    await Promise.all(files.map(async file => {
+      const filePath = path.join(fold, file);
+
+      if ((await fs.stat(filePath)).isFile() && file.endsWith(extname)) {
+        await fs.remove(filePath);
+        console.log(chalk.gray(`Deleted file: ${path.relative(process.cwd(), filePath)}`));
+      } else if ((await fs.stat(filePath)).isDirectory()) {
+        await deleteFiles(filePath, extname);
+      }
+    }));
+  } catch (err) {
+    console.error('Error occurred while deleting files', err);
+  }
+}
+
 // 获取命令行参数
 const args = minimist(process.argv.slice(2));
 const { _: files } = args;
 
-files.forEach(file => {
-  const filePath = path.resolve(process.cwd(), file);
-  const outputDir = path.dirname(filePath);
+(async () => {
+  for (const file of files) {
+    const filePath = path.resolve(process.cwd(), file);
+    const outputDir = path.dirname(filePath);
 
-  // 执行 flatc 命令
-  flatc(filePath, {
-    outputDir,
-    genObjectApi: true,
-  });
-});
+    console.log(`Start delete files in ${outputDir}`);
+    await deleteFiles(outputDir);
+    console.log(chalk.green(`Delete success.`));
+
+    // 执行 flatc 命令
+    flatc(filePath, {
+      outputDir,
+      genObjectApi: true,
+    });
+  }
+})();

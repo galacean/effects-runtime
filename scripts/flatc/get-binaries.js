@@ -24,7 +24,7 @@ if (fs.existsSync(FLATC_EXEC)) {
     // 捕捉命令执行错误并打印
     console.log(chalk.red(`execute 'flatc --version' failed: ${error.message}`));
     console.log(chalk.red(`'flatc --version' throw error: ${error.stderr.toString()}`));
-    process.exit(1);
+    process.exit(0);
   }
 }
 
@@ -38,6 +38,6 @@ download(url, BIN_DIR, { extract: true })
     console.log(chalk.red(`Failed to build flatc from ${url}: ${err.message}`));
   })
   .finally(() => {
-    process.exit(1);
+    process.exit(0);
   });
 
