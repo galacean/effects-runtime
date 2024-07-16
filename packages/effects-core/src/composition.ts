@@ -266,7 +266,7 @@ export class Composition implements Disposable, LostHandler {
     this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
     this.reusable = reusable;
     this.speed = speed;
-    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.ItemEndBehavior.loop;
+    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -556,7 +556,7 @@ export class Composition implements Disposable, LostHandler {
   private shouldRestart () {
     const { ended, endBehavior } = this.rootItem;
 
-    return ended && endBehavior === spec.ItemEndBehavior.loop;
+    return ended && endBehavior === spec.EndBehavior.restart;
   }
 
   /**
@@ -570,7 +570,7 @@ export class Composition implements Disposable, LostHandler {
     const { ended, endBehavior } = this.rootItem;
 
     // TODO: 合成结束行为
-    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.ItemEndBehavior);
+    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.EndBehavior);
   }
 
   /**
@@ -619,9 +619,9 @@ export class Composition implements Disposable, LostHandler {
     const duration = this.rootItem.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.rootItem.endBehavior === spec.ItemEndBehavior.loop) {
+      if (this.rootItem.endBehavior === spec.EndBehavior.restart) {
         localTime = localTime % duration;
-      } else if (this.rootItem.endBehavior === spec.ItemEndBehavior.freeze) {
+      } else if (this.rootItem.endBehavior === spec.EndBehavior.freeze) {
         localTime = Math.min(duration, localTime);
       }
     }
@@ -674,7 +674,7 @@ export class Composition implements Disposable, LostHandler {
       if (VFXItem.isComposition(child)) {
         if (
           child.ended &&
-          child.endBehavior === spec.ItemEndBehavior.loop
+          child.endBehavior === spec.EndBehavior.restart
         ) {
           child.ended = false;
           // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
@@ -919,7 +919,7 @@ export class Composition implements Disposable, LostHandler {
   destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
     if (item.type == spec.ItemType.composition) {
-      if (item.endBehavior !== spec.ItemEndBehavior.freeze) {
+      if (item.endBehavior !== spec.EndBehavior.freeze) {
         const contentItems = item.getComponent(CompositionComponent).items;
 
         contentItems.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));

@@ -538,8 +538,8 @@ function compatibleCalculateItem (composition: Composition) {
   // 测试用的兼容
   composition.items.forEach(item => {
     // 兼容空节点结束行为，保持和player一致，在runtime上空节点结束为销毁改为冻结的效果
-    if (VFXItem.isNull(item) && item.endBehavior === spec.ItemEndBehavior.destroy) {
-      item.endBehavior = spec.ItemEndBehavior.forward;
+    if (VFXItem.isNull(item) && item.endBehavior === spec.EndBehavior.destroy) {
+      item.endBehavior = spec.EndBehavior.forward;
     }
     // 兼容旧版 Player 粒子发射器为直线时形状错误
     if (VFXItem.isParticle(item) && item.content.shape && item.content.shape.type === spec.ShapeType.EDGE) {

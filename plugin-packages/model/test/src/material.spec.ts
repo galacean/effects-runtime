@@ -16,7 +16,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       },
       effects: {
         duration: 5.0,
-        endBehavior: spec.ItemEndBehavior.freeze,
+        endBehavior: spec.EndBehavior.freeze,
         playAnimation: 0,
       },
     });
@@ -490,7 +490,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       },
       effects: {
         duration: 5.0,
-        endBehavior: spec.ItemEndBehavior.freeze,
+        endBehavior: spec.EndBehavior.freeze,
         playAnimation: 0,
       },
     });
@@ -851,7 +851,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
       },
       effects: {
         duration: 5.0,
-        endBehavior: spec.ItemEndBehavior.freeze,
+        endBehavior: spec.EndBehavior.freeze,
         playAnimation: 0,
       },
     });
@@ -1011,7 +1011,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         },
         effects: {
           duration: 5.0,
-          endBehavior: spec.ItemEndBehavior.freeze,
+          endBehavior: spec.EndBehavior.freeze,
           playAnimation: 0,
         },
       });
@@ -1083,7 +1083,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         },
         effects: {
           duration: 5.0,
-          endBehavior: spec.ItemEndBehavior.freeze,
+          endBehavior: spec.EndBehavior.freeze,
           playAnimation: 0,
         },
       });
@@ -1198,7 +1198,7 @@ describe('验证 gltf 与 glb 几何、材质和相机是否解析正确', funct
         },
         effects: {
           duration: 5.0,
-          endBehavior: spec.ItemEndBehavior.freeze,
+          endBehavior: spec.EndBehavior.freeze,
           playAnimation: 0,
         },
       });

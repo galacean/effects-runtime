@@ -16,7 +16,7 @@ interface LoadSceneOptions {
   effects: {
     renderer?: any,
     duration?: number,
-    endBehavior?: spec.ItemEndBehavior,
+    endBehavior?: spec.EndBehavior,
     playAnimation?: number | string,
     playAllAnimation?: boolean,
   },

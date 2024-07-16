@@ -10,7 +10,7 @@ describe('Null item endBehavior', () => {
     expect(version).to.eq('3.0');
     items.forEach(item => {
       if (item.type === spec.ItemType.null) {
-        expect(item.endBehavior).to.eq(spec.ItemEndBehavior.freeze);
+        expect(item.endBehavior).to.eq(spec.EndBehavior.freeze);
       }
     });
   });

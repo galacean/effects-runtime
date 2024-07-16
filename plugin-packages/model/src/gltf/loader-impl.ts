@@ -88,7 +88,7 @@ export class LoaderImpl implements Loader {
         id: '1',
         name: 'test1',
         duration: 9999,
-        endBehavior: spec.CompositionEndBehavior.restart,
+        endBehavior: spec.EndBehavior.restart,
         camera: {
           fov: 45,
           far: 2000,
@@ -98,8 +98,8 @@ export class LoaderImpl implements Loader {
           clipMode: spec.CameraClipMode.portrait,
         },
         items: [],
-        timelineAsset:{ id: this.timelineAssetId },
-        sceneBindings:[],
+        timelineAsset: { id: this.timelineAssetId },
+        sceneBindings: [],
       };
     }
   }
@@ -196,6 +196,7 @@ export class LoaderImpl implements Loader {
       renderable: options.gltf.skyboxVis,
     });
 
+    // @ts-expect-error 待 resource-detection 升级 spec
     this.items.push(...gltfResource.scenes[0].vfxItemData);
     this.items.forEach(item => {
       if (item.type === 'root' as spec.ItemType) {
@@ -574,7 +575,7 @@ export class LoaderImpl implements Loader {
       shaders: this.shaders,
       geometries: this.geometries,
       animations: this.animations,
-      miscs:[
+      miscs: [
         {
           id: this.timelineAssetId,
           dataType: spec.DataType.TimelineAsset,
@@ -718,7 +719,7 @@ export class LoaderImpl implements Loader {
         type: spec.ItemType.skybox,
         pn: 0,
         visible: true,
-        endBehavior: spec.ItemEndBehavior.freeze,
+        endBehavior: spec.EndBehavior.freeze,
         transform: {
           position: {
             x: 0,
@@ -899,8 +900,8 @@ export class LoaderImpl implements Loader {
     return this.sceneOptions.effects.duration ?? 9999;
   }
 
-  getItemEndBehavior (): spec.ItemEndBehavior {
-    return this.sceneOptions.effects.endBehavior ?? spec.ItemEndBehavior.loop;
+  getEndBehavior (): spec.EndBehavior {
+    return this.sceneOptions.effects.endBehavior ?? spec.EndBehavior.restart;
   }
 
   getSkyboxType (): PSkyboxType | undefined {
