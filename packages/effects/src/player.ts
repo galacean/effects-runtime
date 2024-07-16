@@ -1,9 +1,9 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, VFXItem, SceneLoadType, SceneType, EffectsObject,
-  CompItemClickedData } from '@galacean/effects-core';
-import {
-  EffectEventName, EventEmitter } from '@galacean/effects-core';
+  CompItemClickedData,
+  PlayerEffectEvent } from '@galacean/effects-core';
+import { EventEmitter, EffectEventName } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
@@ -141,7 +141,7 @@ let seed = 1;
 /**
  * Galacean Effects 播放器
  */
-export class Player extends EventEmitter implements Disposable, LostHandler, RestoreHandler {
+export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements Disposable, LostHandler, RestoreHandler {
   readonly env: string;
   readonly pixelRatio: number;
   readonly canvas: HTMLCanvasElement;
@@ -659,6 +659,8 @@ export class Player extends EventEmitter implements Disposable, LostHandler, Res
   }
   private doTick (dt: number, forceRender: boolean) {
     const { renderErrors } = this.renderer.engine;
+
+    renderErrors.values().next().value;
 
     if (renderErrors.size > 0) {
       this.handleRenderError?.(renderErrors.values().next().value);

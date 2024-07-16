@@ -1,4 +1,4 @@
-import { EffectEventName, Player } from '@galacean/effects';
+import { Player, EffectEventName } from '@galacean/effects';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*iBwcRJO5U9gAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
@@ -18,17 +18,17 @@ const container = document.getElementById('J-container');
     // player.once(EffectEventName.ITEM_CLICK, item => {
     //   console.log('item', item);
     // });
-    player.on(EffectEventName.ITEM_CLICK, (item: any) => {
+    player.on(EffectEventName.ITEM_CLICK, item => {
       console.info('first item', item);
     });
 
-    composition.on(EffectEventName.COMPOSITION_END, (e: any) => {
+    composition.on(EffectEventName.COMPOSITION_END, e => {
       console.info('composition end', e);
     });
 
     const name = composition.getItemByName('interact_232');
 
-    name?.on(EffectEventName.ITEM_CLICK, (item: any) => {
+    name?.on(EffectEventName.ITEM_CLICK, item => {
       console.info('name item', item);
     });
 

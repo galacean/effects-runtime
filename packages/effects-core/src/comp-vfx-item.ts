@@ -13,7 +13,7 @@ import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import { Item, VFXItem } from './vfx-item';
-import { EffectEventName } from './event-emitter';
+import { EffectEventName } from './effect-events';
 
 export interface SceneBinding {
   key: TrackAsset,
