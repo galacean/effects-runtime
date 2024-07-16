@@ -134,7 +134,7 @@ export class PSkybox extends PEntity {
     //
     const sceneCache = scene.getSceneCache();
 
-    this.skyboxMesh = sceneCache.getFilterMesh('SkyboxFilterPlane', this.skyboxMaterial, {});
+    this.skyboxMesh = sceneCache.getFilterMesh('SkyboxFilterPlane', this.skyboxMaterial);
     this.skyboxMesh.priority = this.priority;
     this.skyboxMaterial.updateUniforms(this.skyboxMesh.material);
   }

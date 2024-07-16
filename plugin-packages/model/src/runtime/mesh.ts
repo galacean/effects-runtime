@@ -144,7 +144,7 @@ export class PMesh extends PEntity {
 
     this.isBuilt = true;
     this.subMeshes.forEach(prim => {
-      prim.build(scene.maxLightCount, {}, scene.skybox);
+      prim.build(scene.maxLightCount, scene.skybox);
     });
 
     if (PGlobalState.getInstance().visBoundingBox) {
@@ -483,30 +483,19 @@ export class PSubMesh {
 
   /**
    * 创建 GE Mesh、Geometry 和 Material 对象，用于后面的渲染
-   * 着色器部分 Uniform 数据来自 uniformSemantics
    * @param lightCount - 灯光数目
-   * @param uniformSemantics - Uniform 语义数据
    * @param skybox - 天空盒
    */
-  build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
+  build (lightCount: number, skybox?: PSkybox) {
     const globalState = PGlobalState.getInstance();
     const primitiveMacroList = this.getMacroList(lightCount, true, skybox);
     const materialMacroList = this.material.getMacroList(primitiveMacroList);
-    const newSemantics = uniformSemantics ?? {};
 
-    // FIXME: Semantics整体移除
-    newSemantics['_ViewProjectionMatrix'] = 'VIEWPROJECTION';
-    //newSemantics["uView"] = 'VIEWINVERSE';
-    newSemantics['_ModelMatrix'] = 'MODEL';
-    newSemantics['uEditorTransform'] = 'EDITOR_TRANSFORM';
     let material: Material;
     const isWebGL2 = PGlobalState.getInstance().isWebGL2;
 
     if (this.material.effectMaterial) {
       material = this.material.effectMaterial;
-      // FIXME: Semantics整体移除
-      // @ts-expect-error
-      material.uniformSemantics = newSemantics;
 
       materialMacroList.forEach(macro => {
         const { name, value } = macro;
@@ -525,7 +514,6 @@ export class PSubMesh {
             shared: globalState.shaderShared,
             glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
           },
-          uniformSemantics: newSemantics,
         }
       );
       this.material.setMaterialStates(material);
