@@ -799,7 +799,7 @@ export class PSubMesh {
   private updateUniformsByAnimation (worldMatrix: Matrix4, normalMatrix: Matrix4) {
     const material = this.getEffectsMaterial();
 
-    material.setMatrix('_ModelMatrix', worldMatrix);
+    material.setMatrix('effects_ObjectToWorld', worldMatrix);
     material.setMatrix('_NormalMatrix', normalMatrix);
     //
     const skin = this.skin;
@@ -841,7 +841,7 @@ export class PSubMesh {
   private updateUniformsByScene (sceneStates: PSceneStates) {
     const material = this.getEffectsMaterial();
 
-    material.setMatrix('_ViewProjectionMatrix', sceneStates.viewProjectionMatrix);
+    material.setMatrix('effects_MatrixVP', sceneStates.viewProjectionMatrix);
     material.setVector3('_Camera', sceneStates.cameraPosition);
     //
     if (!this.isUnlitMaterial()) {
