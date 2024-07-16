@@ -4,7 +4,7 @@ import type {
 } from '@galacean/effects-core';
 import {
   spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
-  math, throwDestroyedError,
+  math, throwDestroyedError, glContext,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
@@ -541,9 +541,32 @@ export class GLMaterial extends Material {
       ...data,
     };
 
+    // FIXME: 刷新 Material 状态，后面删除 data 中的 blending，zTest 和 zWrite 状态
+    if (data.stringTags['RenderType'] !== undefined) {
+      propertiesData.blending = data.stringTags['RenderType'] === spec.RenderType.Transparent;
+    }
+    if (data.floats['ZTest'] !== undefined) {
+      propertiesData.zTest = data.floats['ZTest'] !== 0;
+    }
+    if (data.floats['ZWrite'] !== undefined) {
+      propertiesData.zWrite = data.floats['ZWrite'] !== 0;
+    }
+
     this.blending = propertiesData.blending;
     this.depthTest = propertiesData.zTest;
     this.depthMask = propertiesData.zWrite;
+
+    const renderFace = data.stringTags['RenderFace'];
+
+    if (renderFace === spec.RenderFace.Front) {
+      this.culling = true;
+      this.cullFace = glContext.BACK;
+    } else if (renderFace === spec.RenderFace.Back) {
+      this.culling = true;
+      this.cullFace = glContext.FRONT;
+    } else {
+      this.culling = false;
+    }
 
     let name: string;
 
