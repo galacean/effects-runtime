@@ -1,13 +1,12 @@
 import * as EFFECTS from '@galacean/effects';
-import { logger, registerPlugin } from '@galacean/effects';
-import { DowngradeVFXItem } from './downgrade-vfx-item';
+import { VFXItem, logger, registerPlugin } from '@galacean/effects';
 import { DowngradePlugin } from './downgrade-plugin';
 
 export * from './utils';
 
 export const version = __VERSION__;
 
-registerPlugin('downgrade', DowngradePlugin, DowngradeVFXItem, true);
+registerPlugin('downgrade', DowngradePlugin, VFXItem, true);
 
 logger.info(`Plugin downgrade version: ${version}.`);
 

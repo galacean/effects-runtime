@@ -518,7 +518,7 @@ export class AlipayMiniAppParser {
     this.device.osVersion = info.system;
     this.device.originalModel = info.model;
     this.device.model = this.getDeviceModel(info.model);
-    this.device.level = getDeviceLevel(info.performance);
+    this.device.level = this.getDeviceLevel(info.performance);
     this.device.sourceData = info;
   }
 
@@ -537,6 +537,18 @@ export class AlipayMiniAppParser {
     }
 
     return model;
+  }
+
+  private getDeviceLevel (level?: string): DeviceLevel {
+    if (level === 'high') {
+      return DeviceLevel.High;
+    } else if (level === 'medium' || level === 'middle') {
+      return DeviceLevel.Medium;
+    } else if (level === 'low') {
+      return DeviceLevel.Low;
+    } else {
+      return DeviceLevel.Unknown;
+    }
   }
 }
 
@@ -694,18 +706,6 @@ function isWeChatMiniApp (): boolean {
   return typeof wx !== 'undefined' && wx?.renderTarget === 'web';
 }
 
-function getDeviceLevel (level?: string): DeviceLevel {
-  if (level === 'high') {
-    return DeviceLevel.High;
-  } else if (level === 'medium' || level === 'middle') {
-    return DeviceLevel.Medium;
-  } else if (level === 'low') {
-    return DeviceLevel.Low;
-  } else {
-    return DeviceLevel.Unknown;
-  }
-}
-
 const venderInfoList: string[] = [
   'SAMSUNG',
 ];
@@ -762,7 +762,6 @@ const iPhoneInfoList: iPhoneInfo[] = [
   { name: 'iPhone 1st gen', model: 'iPhone1,1', width: 320, height: 480 },
 ];
 
-// FIXME: 安卓机型校对
 const downgradeAndroidModels: string[] = [
   'OPPO R9s Plus',
   'GM1910',
