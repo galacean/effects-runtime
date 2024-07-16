@@ -411,7 +411,17 @@ export class GLGeometry extends Geometry {
     super.fromData(data);
 
     this.subMeshes = data.subMeshes;
-    const buffer = decodeBase64ToArrays(data.buffer);
+    let buffer: ArrayBuffer | undefined;
+
+    if (data.buffer) {
+      buffer = decodeBase64ToArrays(data.buffer);
+    } else if (data.binaryData) {
+      buffer = data.binaryData;
+    }
+
+    if (!buffer) {
+      return;
+    }
     const vertexCount = data.vertexData.vertexCount;
 
     if (this.hasSemantic(data)) {

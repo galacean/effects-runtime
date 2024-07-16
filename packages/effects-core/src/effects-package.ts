@@ -71,11 +71,9 @@ export class EffectsPackage {
     const fbb = new flatbuffers.Builder(1);
     const fbGeometryData = new FBGeometryDataT();
 
-    fbGeometryData.buffer = geometryData.buffer;
     fbGeometryData.indexFormat = geometryData.indexFormat;
     fbGeometryData.indexOffset = geometryData.indexOffset;
     fbGeometryData.mode = geometryData.mode;
-    fbGeometryData.buffer = geometryData.buffer;
     fbGeometryData.id = geometryData.id;
     fbGeometryData.boneNames = geometryData.boneNames ?? [];
     fbGeometryData.rootBoneName = geometryData.rootBoneName ?? '';

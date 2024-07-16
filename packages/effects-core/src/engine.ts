@@ -107,9 +107,7 @@ export class Engine implements Disposable {
 
       //@ts-expect-error
       binaryData.buffer = binaryBuffer;
-      //@ts-expect-error
       if (binaryData.id) {
-        //@ts-expect-error
         this.addEffectsObjectData(binaryData);
       }
     }

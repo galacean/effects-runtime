@@ -1,4 +1,4 @@
-import { ItemEndBehavior } from '@galacean/effects-specification';
+import { EndBehavior } from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import { VFXItem } from '../../vfx-item';
 import type { PlayableGraph } from '../cal/playable-graph';
@@ -16,7 +16,7 @@ export class TimelineClip {
   start = 0;
   duration = 0;
   asset: PlayableAsset;
-  endBehavior: ItemEndBehavior;
+  endBehavior: EndBehavior;
 
   constructor () {
   }
@@ -26,9 +26,9 @@ export class TimelineClip {
     const duration = this.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.endBehavior === ItemEndBehavior.loop) {
+      if (this.endBehavior === EndBehavior.restart) {
         localTime = localTime % duration;
-      } else if (this.endBehavior === ItemEndBehavior.freeze) {
+      } else if (this.endBehavior === EndBehavior.freeze) {
         localTime = Math.min(duration, localTime);
       }
     }
@@ -198,7 +198,7 @@ export class RuntimeClip {
     let started = false;
     const boundObject = this.track.binding;
 
-    if (localTime > clip.start + clip.duration + 0.001 && clip.endBehavior === ItemEndBehavior.destroy) {
+    if (localTime > clip.start + clip.duration + 0.001 && clip.endBehavior === EndBehavior.destroy) {
       if (boundObject instanceof VFXItem && VFXItem.isParticle(boundObject) && this.particleSystem && !this.particleSystem.destroyed) {
         weight = 1.0;
       } else {

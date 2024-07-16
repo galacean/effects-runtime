@@ -65,7 +65,7 @@ export interface LoadSceneOptions {
     /**
      * 结束行为
      */
-    endBehavior?: spec.ItemEndBehavior,
+    endBehavior?: spec.EndBehavior,
     /**
      * 播放动画索引或名称
      */
@@ -98,7 +98,7 @@ export interface ModelCamera {
   position: spec.vec3,
   rotation: spec.vec3,
   duration: number,
-  endBehavior: spec.ItemEndBehavior,
+  endBehavior: spec.EndBehavior,
 }
 
 export interface ModelLight {
@@ -114,7 +114,7 @@ export interface ModelLight {
   rotation: spec.vec3,
   scale: spec.vec3,
   duration: number,
-  endBehavior: spec.ItemEndBehavior,
+  endBehavior: spec.EndBehavior,
 }
 
 export interface ModelSkybox {

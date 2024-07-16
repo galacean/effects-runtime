@@ -45,7 +45,7 @@ export class ObjectBindingTrack extends TrackAsset {
 
       particleClip.start = boundItem.start;
       particleClip.duration = boundItem.duration;
-      particleClip.endBehavior = boundItem.endBehavior as spec.ItemEndBehavior;
+      particleClip.endBehavior = boundItem.endBehavior as spec.EndBehavior;
     }
   }
 }

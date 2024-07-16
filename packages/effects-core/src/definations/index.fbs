@@ -16,19 +16,9 @@ table FBGeometryData {
     indexFormat: int;
     indexOffset: int;
     subMeshes: [FBSubMesh];
-    /**
-     * 模型绘制模式，默认为 GeometryType.TRIANGLES（三角形）
-     * @default GeometryType.TRIANGLES
-     */
     mode: int;
-    /**
-     * 存放 position, uv, normal, indices 的打包数据
-     */
     buffer: string;
     binaryData: [ubyte];
-    /**
-     * 所有的骨骼名称
-     */
     boneNames: [string];
     rootBoneName: string;
     inverseBindMatrices: [float];

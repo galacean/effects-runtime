@@ -88,7 +88,7 @@ export class LoaderImpl implements Loader {
         id: '1',
         name: 'test1',
         duration: 9999,
-        endBehavior: spec.CompositionEndBehavior.restart,
+        endBehavior: spec.EndBehavior.restart,
         camera: {
           fov: 45,
           far: 2000,
@@ -718,7 +718,7 @@ export class LoaderImpl implements Loader {
         type: spec.ItemType.skybox,
         pn: 0,
         visible: true,
-        endBehavior: spec.ItemEndBehavior.freeze,
+        endBehavior: spec.EndBehavior.freeze,
         transform: {
           position: {
             x: 0,
@@ -899,8 +899,8 @@ export class LoaderImpl implements Loader {
     return this.sceneOptions.effects.duration ?? 9999;
   }
 
-  getItemEndBehavior (): spec.ItemEndBehavior {
-    return this.sceneOptions.effects.endBehavior ?? spec.ItemEndBehavior.loop;
+  getEndBehavior (): spec.EndBehavior {
+    return this.sceneOptions.effects.endBehavior ?? spec.EndBehavior.restart;
   }
 
   getSkyboxType (): PSkyboxType | undefined {

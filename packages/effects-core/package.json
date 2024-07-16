@@ -50,7 +50,7 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@galacean/effects-specification": "2.0.0-alpha.20",
+    "@galacean/effects-specification": "2.0.0-alpha.22",
     "@galacean/effects-math": "1.1.0",
     "flatbuffers":"24.3.25",
     "uuid": "9.0.1"
