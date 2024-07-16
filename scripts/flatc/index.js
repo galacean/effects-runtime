@@ -84,6 +84,11 @@ const args = minimist(process.argv.slice(2));
 const { _: files } = args;
 
 (async () => {
+  if (!fs.existsSync(FLATC_EXEC)) {
+    console.log(chalk.gray(`'flatc' not found, generate step is skipped.`));
+    return;
+  }
+
   for (const file of files) {
     const filePath = path.resolve(process.cwd(), file);
     const outputDir = path.dirname(filePath);

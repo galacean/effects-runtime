@@ -2,11 +2,11 @@ const fs = require('fs');
 const chalk = require('chalk');
 const download = require('download');
 const { execFileSync } = require('child_process');
-const { BIN_DIR, FLATC_EXEC, binName, flatcURI } = require('./constants');
+const { BIN_DIR, FLATC_EXEC, flatcName, flatcURI } = require('./constants');
 const { dependencies } = require('../../packages/effects-core/package.json');
 
 const version = dependencies['flatbuffers'];
-const url = `${flatcURI}/v${version}/${binName[process.platform]}`;
+const url = `${flatcURI}/v${version}/${flatcName[process.platform].zip}`;
 
 if (fs.existsSync(FLATC_EXEC)) {
   try {
@@ -24,7 +24,7 @@ if (fs.existsSync(FLATC_EXEC)) {
     // 捕捉命令执行错误并打印
     console.log(chalk.red(`execute 'flatc --version' failed: ${error.message}`));
     console.log(chalk.red(`'flatc --version' throw error: ${error.stderr.toString()}`));
-    process.exit(0);
+    process.exit(1);
   }
 }
 
@@ -35,9 +35,9 @@ download(url, BIN_DIR, { extract: true })
     console.log(chalk.green('Downloaded.'));
   })
   .catch(err => {
-    console.log(chalk.red(`Failed to build flatc from ${url}: ${err.message}`));
+    console.log(chalk.red(`Download failed: ${err.message}`));
   })
   .finally(() => {
-    process.exit(0);
+    process.exit(1);
   });
 
