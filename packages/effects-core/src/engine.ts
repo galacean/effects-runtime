@@ -9,6 +9,7 @@ import type { Texture } from './texture';
 import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
+import { EffectsPackage } from '.';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
@@ -105,14 +106,23 @@ export class Engine implements Disposable {
       const binaryData = bins[i];
       const binaryBuffer = scene.bins[i];
 
-      //@ts-expect-error
-      binaryData.buffer = binaryBuffer;
-      if (binaryData.id) {
-        this.addEffectsObjectData(binaryData);
+      if (binaryData.dataType === spec.DataType.BinaryAsset) {
+        //@ts-expect-error
+        binaryData.buffer = binaryBuffer;
+        if (binaryData.id) {
+          this.addEffectsObjectData(binaryData);
+        }
+      } else {
+        const effectsPackage = new EffectsPackage();
+
+        effectsPackage.deserializeFromBinary(new Uint8Array(binaryBuffer));
+        for (const effectsObjectData of effectsPackage.exportObjectDatas) {
+          this.addEffectsObjectData(effectsObjectData);
+        }
       }
     }
     for (const textureData of textureOptions) {
-      this.addEffectsObjectData(textureData as spec.EffectComponentData);
+      this.addEffectsObjectData(textureData as spec.EffectsObjectData);
     }
   }
 
