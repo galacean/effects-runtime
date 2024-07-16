@@ -1,4 +1,3 @@
-export * from './effects-package';
 export { default as G_QUAD } from './assets/geometries/g-quad.json';
 export { default as G_CUBE } from './assets/geometries/g-cube.json';
 export { default as M_DUCK } from './assets/materials/m-duck.json';

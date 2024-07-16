@@ -1,0 +1,55 @@
+// Example IDL file for our monster's schema.
+
+table FBEffectsPackageData {
+    exportObjects: [FBEffectsObjectData];
+}
+
+table FBEffectsObjectData{
+    dataType: string;
+    data: [uint8];
+}
+
+table FBGeometryData {
+    id: string;
+    name: string;
+    vertexData: FBVertexData;
+    indexFormat: int;
+    indexOffset: int;
+    subMeshes: [FBSubMesh];
+    /**
+     * 模型绘制模式，默认为 GeometryType.TRIANGLES（三角形）
+     * @default GeometryType.TRIANGLES
+     */
+    mode: int;
+    /**
+     * 存放 position, uv, normal, indices 的打包数据
+     */
+    buffer: string;
+    /**
+     * 所有的骨骼名称
+     */
+    boneNames: [string];
+    rootBoneName: [string];
+    inverseBindMatrices: [float];
+}
+
+table FBVertexData {
+    vertexCount: int;
+    channels: [FBVertexChannel];
+}
+
+table FBVertexChannel {
+    semantic: string;
+    offset: int;
+    format: int;
+    dimension: int;
+    normalize: bool;
+}
+
+table FBSubMesh {
+    offset: int;
+    indexCount: int;
+    vertexCount: int;
+}
+
+root_type FBEffectsPackageData;

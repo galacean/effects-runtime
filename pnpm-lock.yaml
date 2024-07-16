@@ -152,6 +152,9 @@ importers:
       '@galacean/effects-specification':
         specifier: 2.0.0-alpha.20
         version: 2.0.0-alpha.20
+      flatbuffers:
+        specifier: 24.3.25
+        version: 24.3.25
       uuid:
         specifier: 9.0.1
         version: 9.0.1
@@ -5773,6 +5776,10 @@ packages:
       flatted: 3.2.7
       rimraf: 3.0.2
     dev: true
+
+  /flatbuffers@24.3.25:
+    resolution: {integrity: sha512-3HDgPbgiwWMI9zVB7VYBHaMrbOO7Gm0v+yD2FV/sCKj+9NDeVL7BOBYUuhWAQGKWOzBo8S9WdMvV0eixO233XQ==}
+    dev: false
 
   /flatted@3.2.7:
     resolution: {integrity: sha512-5nqDSxl8nn5BSNxyR3n4I6eDmbolI6WT+QqR547RwxQapgjQBmtktdP+HTBb/a/zLsbzERTONyUB5pefh5TtjQ==}
