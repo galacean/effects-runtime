@@ -80,6 +80,7 @@ export class EffectsPackage {
     fbGeometryData.boneNames = geometryData.boneNames ?? [];
     fbGeometryData.rootBoneName = geometryData.rootBoneName ?? '';
     fbGeometryData.inverseBindMatrices = geometryData.inverseBindMatrices ?? [];
+    fbGeometryData.binaryData = geometryData.binaryData as unknown as number[] ?? [];
     const fbVertexdata = new FBVertexDataT();
 
     fbVertexdata.vertexCount = geometryData.vertexData.vertexCount;
@@ -181,6 +182,7 @@ export class EffectsPackage {
       boneNames: boneNames,
       rootBoneName: fbGeometryData.rootBoneName() ?? '',
       inverseBindMatrices: inverseBindMatricesArray ? Array.from(inverseBindMatricesArray) : undefined,
+      binaryData: fbGeometryData.binaryDataArray() ?? undefined,
       id: fbGeometryData.id() ?? '',
       dataType: DataType.Geometry,
     };
