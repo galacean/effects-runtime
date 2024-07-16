@@ -411,10 +411,10 @@ export class GLGeometry extends Geometry {
     super.fromData(data);
 
     this.subMeshes = data.subMeshes;
-    let buffer: ArrayBuffer | undefined;
+    let buffer: Uint8Array | undefined;
 
     if (data.buffer) {
-      buffer = decodeBase64ToArrays(data.buffer);
+      buffer = new Uint8Array(decodeBase64ToArrays(data.buffer));
     } else if (data.binaryData) {
       buffer = data.binaryData;
     }
@@ -530,35 +530,39 @@ export class GLGeometry extends Geometry {
     this.destroyed = true;
   }
 
-  private createVertexTypedArray (channel: spec.VertexChannel, baseBuffer: ArrayBufferLike, vertexCount: number) {
+  private createVertexTypedArray (channel: spec.VertexChannel, baseBuffer: Uint8Array, vertexCount: number) {
+    const arrayBuffer = baseBuffer.buffer;
+
     switch (channel.format) {
       case spec.VertexFormatType.Float32:
-        return new Float32Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+        return new Float32Array(arrayBuffer, baseBuffer.byteOffset + channel.offset, channel.dimension * vertexCount);
       case spec.VertexFormatType.Int16:
-        return new Int16Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+        return new Int16Array(arrayBuffer, baseBuffer.byteOffset + channel.offset, channel.dimension * vertexCount);
       case spec.VertexFormatType.Int8:
-        return new Int8Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+        return new Int8Array(arrayBuffer, baseBuffer.byteOffset + channel.offset, channel.dimension * vertexCount);
       case spec.VertexFormatType.UInt16:
-        return new Uint16Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+        return new Uint16Array(arrayBuffer, baseBuffer.byteOffset + channel.offset, channel.dimension * vertexCount);
       case spec.VertexFormatType.UInt8:
-        return new Uint8Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+        return new Uint8Array(arrayBuffer, baseBuffer.byteOffset + channel.offset, channel.dimension * vertexCount);
       default:
         console.error(`Invalid vertex format type: ${channel.format}.`);
 
-        return new Float32Array(baseBuffer, channel.offset, channel.dimension * vertexCount);
+        return new Float32Array(arrayBuffer, baseBuffer.byteOffset + channel.offset, channel.dimension * vertexCount);
     }
   }
 
-  private createIndexTypedArray (type: spec.IndexFormatType, baseBuffer: ArrayBufferLike, offset: number) {
+  private createIndexTypedArray (type: spec.IndexFormatType, baseBuffer: Uint8Array, offset: number) {
+    const arrayBuffer = baseBuffer.buffer;
+
     switch (type) {
       case spec.IndexFormatType.UInt16:
-        return new Uint16Array(baseBuffer, offset);
+        return new Uint16Array(arrayBuffer, baseBuffer.byteOffset + offset);
       case spec.IndexFormatType.UInt32:
-        return new Uint32Array(baseBuffer, offset);
+        return new Uint32Array(arrayBuffer, baseBuffer.byteOffset + offset);
       default:
         console.error(`Invalid index format type: ${type}.`);
 
-        return new Uint32Array(baseBuffer, offset);
+        return new Uint32Array(arrayBuffer, baseBuffer.byteOffset + offset);
     }
   }
 
