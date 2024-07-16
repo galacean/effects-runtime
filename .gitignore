@@ -14,4 +14,4 @@ lib
 temp
 api
 www
-**/definations/*.ts
+**/__definations__/*.ts

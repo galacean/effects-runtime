@@ -16,7 +16,7 @@ module.exports = {
     '*.js',
     '*.d.ts',
     'temp',
-    '**/definations/*.ts'
+    '**/__definations__/*.ts'
   ],
   extends: [
     "eslint:recommended",

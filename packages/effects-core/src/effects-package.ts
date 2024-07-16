@@ -5,7 +5,7 @@ import { DataType, type GeometryData } from '@galacean/effects-specification';
 import {
   FBEffectsObjectDataT, FBEffectsPackageData, FBEffectsPackageDataT, FBGeometryData,
   FBGeometryDataT, FBSubMeshT, FBVertexChannelT, FBVertexDataT,
-} from './definations';
+} from './__definations__';
 
 export class EffectsPackage {
   fileSummary: fileSummary;
