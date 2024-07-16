@@ -48,8 +48,8 @@ vsIn vec4 aColor;
 vsOut vec4 v_Color;
 #endif
 
-uniform mat4 _ViewProjectionMatrix;
-uniform mat4 _ModelMatrix;
+uniform mat4 effects_MatrixVP;
+uniform mat4 effects_ObjectToWorld;
 uniform mat4 _NormalMatrix;
 
 #ifdef EDITOR_TRANSFORM
@@ -114,14 +114,14 @@ vec4 getTangent()
 
 void main()
 {
-    vec4 pos = _ModelMatrix * getPosition();
+    vec4 pos = effects_ObjectToWorld * getPosition();
     v_Position = vec3(pos.xyz) / pos.w;
 
     #ifdef HAS_NORMALS
     #ifdef HAS_TANGENTS
     vec4 tangent = getTangent();
     vec3 normalW = normalize(vec3(_NormalMatrix * vec4(getNormal().xyz, 0.0)));
-    vec3 tangentW = normalize(vec3(_ModelMatrix * vec4(tangent.xyz, 0.0)));
+    vec3 tangentW = normalize(vec3(effects_ObjectToWorld * vec4(tangent.xyz, 0.0)));
     vec3 bitangentW = cross(normalW, tangentW) * tangent.w;
     v_TBN = mat3(tangentW, bitangentW, normalW);
     #else // !HAS_TANGENTS
@@ -149,7 +149,7 @@ void main()
     v_dPositionLightSpace = _LightViewProjectionMatrix * (pos + vec4(dpos, 0));
     #endif
 
-    gl_Position = _ViewProjectionMatrix * pos;
+    gl_Position = effects_MatrixVP * pos;
 
     #ifdef EDITOR_TRANSFORM
         gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);

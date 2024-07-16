@@ -468,10 +468,9 @@ export class MeshHelper {
    * @param engine - 引擎
    * @param name - 名称
    * @param material - 3D 材质
-   * @param uniformSemantics - 传入的 Uniform 数据
    * @returns Mesh 对象
    */
-  static createFilterMesh (engine: Engine, name: string, material: PMaterialBase, uniformSemantics: { [k: string]: any }): Mesh {
+  static createFilterMesh (engine: Engine, name: string, material: PMaterialBase): Mesh {
     const globalState = PGlobalState.getInstance();
     const vertexShader = material.vertexShaderCode;
     const fragmentShader = material.fragmentShaderCode;
@@ -486,7 +485,6 @@ export class MeshHelper {
           shared: globalState.shaderShared,
           glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
         },
-        uniformSemantics,
       }
     );
 
