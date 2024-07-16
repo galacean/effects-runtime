@@ -40,7 +40,7 @@ function flatc(files, options) {
   }
   // run flatc command
   try {
-    console.log(chalk.gray(`Start execute 'flatc'`));
+    console.log(chalk.gray(`Start execute 'flatc'.`));
     console.log(chalk.gray(`The args: ${args.join(' ')}`));
     execFileSync(FLATC_EXEC, args, { encoding: 'utf-8' });
     console.log(chalk.green(`Execute 'flatc' success.`));

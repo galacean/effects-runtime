@@ -1,5 +1,8 @@
 import type { Engine, GeometryProps, SkinProps } from '@galacean/effects-core';
-import { spec, assertExist, BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext, vertexFormatType2GLType } from '@galacean/effects-core';
+import {
+  spec, assertExist, BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext,
+  vertexFormatType2GLType,
+} from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import type { GLGPUBufferProps } from './gl-gpu-buffer';
 import { GLGPUBuffer } from './gl-gpu-buffer';

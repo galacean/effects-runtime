@@ -3,7 +3,8 @@ import type {
   SpineContent,
 } from '@galacean/effects-specification';
 import {
-  DataType, END_BEHAVIOR_FREEZE, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
+  DataType, END_BEHAVIOR_FREEZE, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY,
+  EndBehavior, ItemType,
 } from '@galacean/effects-specification';
 import type { TimelineAssetData } from '../plugins/cal/timeline-asset';
 import { generateGUID } from '../utils';

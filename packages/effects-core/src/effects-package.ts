@@ -1,8 +1,11 @@
+import * as flatbuffers from 'flatbuffers';
+import type * as spec from '@galacean/effects-specification';
 import type { SubMesh, VertexChannel, VertexData } from '@galacean/effects-specification';
 import { DataType, type GeometryData } from '@galacean/effects-specification';
-import * as flatbuffers from 'flatbuffers';
-import type { spec } from '.';
-import { FBEffectsObjectDataT, FBEffectsPackageData, FBEffectsPackageDataT, FBGeometryData, FBGeometryDataT, FBSubMeshT, FBVertexChannelT, FBVertexDataT } from './definations';
+import {
+  FBEffectsObjectDataT, FBEffectsPackageData, FBEffectsPackageDataT, FBGeometryData,
+  FBGeometryDataT, FBSubMeshT, FBVertexChannelT, FBVertexDataT,
+} from './definations';
 
 export class EffectsPackage {
   fileSummary: fileSummary;
@@ -41,7 +44,7 @@ export class EffectsPackage {
     const buf = new flatbuffers.ByteBuffer(buffer);
     const fbEffectsPackage = FBEffectsPackageData.getRootAsFBEffectsPackageData(buf);
 
-    for (let i = 0;i < fbEffectsPackage.exportObjectsLength();i++) {
+    for (let i = 0; i < fbEffectsPackage.exportObjectsLength(); i++) {
       const fbEffectsObjectData = fbEffectsPackage.exportObjects(i);
 
       if (!fbEffectsObjectData) {
@@ -128,7 +131,7 @@ export class EffectsPackage {
     if (fbVertexData) {
       vertexData.vertexCount = fbVertexData.vertexCount();
 
-      for (let i = 0;i < fbVertexData.channelsLength();i++) {
+      for (let i = 0; i < fbVertexData.channelsLength(); i++) {
         const channel = fbVertexData.channels(i);
 
         if (!channel) {
@@ -147,7 +150,7 @@ export class EffectsPackage {
 
     const subMeshes: spec.SubMesh[] = [];
 
-    for (let i = 0;i < fbGeometryData.subMeshesLength();i++) {
+    for (let i = 0; i < fbGeometryData.subMeshesLength(); i++) {
       const fbSubMesh = fbGeometryData.subMeshes(i);
 
       if (!fbSubMesh) {
@@ -163,7 +166,7 @@ export class EffectsPackage {
 
     const boneNames = [];
 
-    for (let i = 0;i < fbGeometryData.boneNamesLength();i++) {
+    for (let i = 0; i < fbGeometryData.boneNamesLength(); i++) {
       const boneName = fbGeometryData.boneNames(i);
 
       boneNames.push(boneName);
@@ -171,13 +174,13 @@ export class EffectsPackage {
     const inverseBindMatricesArray = fbGeometryData.inverseBindMatricesArray();
 
     const geometryData: GeometryData = {
-      vertexData: vertexData,
+      vertexData,
       indexFormat: fbGeometryData.indexFormat(),
       indexOffset: fbGeometryData.indexOffset(),
-      subMeshes: subMeshes,
+      subMeshes,
       mode: fbGeometryData.mode(),
       buffer: fbGeometryData.buffer() ?? '',
-      boneNames: boneNames,
+      boneNames,
       rootBoneName: fbGeometryData.rootBoneName() ?? '',
       inverseBindMatrices: inverseBindMatricesArray ? Array.from(inverseBindMatricesArray) : undefined,
       binaryData: fbGeometryData.binaryDataArray() ?? undefined,

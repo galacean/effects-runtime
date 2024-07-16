@@ -9,7 +9,7 @@ import type { Texture } from './texture';
 import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
-import { EffectsPackage } from '.';
+import { EffectsPackage } from './effects-package';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
