@@ -3,7 +3,6 @@ import type { SceneBindingData } from './comp-vfx-item';
 import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
 import type { PluginSystem } from './plugin-system';
-import type { GlobalVolume } from './render';
 import type { Scene, SceneRenderLevel } from './scene';
 import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
@@ -22,7 +21,6 @@ export interface ContentOptions {
   items: VFXItemProps[],
   camera: spec.CameraOptions,
   startTime: number,
-  globalVolume: GlobalVolume,
   timelineAsset: spec.DataPath,
   sceneBindings: SceneBindingData[],
 }
@@ -80,9 +78,7 @@ export class CompositionSourceManager implements Disposable {
   }
 
   private getContent (composition: spec.CompositionData): ContentOptions {
-    // TODO: specification 中补充 globalVolume 类型
-    // @ts-expect-error
-    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0 } = composition;
+    const { id, duration, name, endBehavior, camera, startTime = 0 } = composition;
     const items = this.assembleItems(composition);
 
     return {
@@ -95,7 +91,6 @@ export class CompositionSourceManager implements Disposable {
       items,
       camera,
       startTime,
-      globalVolume,
     };
   }
 

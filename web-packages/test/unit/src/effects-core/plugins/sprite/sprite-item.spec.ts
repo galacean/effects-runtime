@@ -73,7 +73,6 @@ describe('sprite item api', () => {
             ],
           },
           'globalVolume': {
-            'usePostProcessing': true,
             'useHDR': true,
             'useBloom': 1,
             'threshold': 0.8,
@@ -210,7 +209,6 @@ describe('sprite item api', () => {
             ],
           },
           'globalVolume': {
-            'usePostProcessing': true,
             'useHDR': true,
             'useBloom': 1,
             'threshold': 0.8,
@@ -348,7 +346,6 @@ describe('sprite item api', () => {
             ],
           },
           'globalVolume': {
-            // 'usePostProcessing': true,
             // 'useHDR': true,
             // 'useBloom': 1,
             // 'threshold': 0.8,
