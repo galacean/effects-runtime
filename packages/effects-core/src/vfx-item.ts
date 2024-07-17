@@ -70,7 +70,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素动画结束时行为（如何处理元素）
    */
-  endBehavior: spec.EndBehavior | spec.ParentItemEndBehavior;
+  endBehavior: spec.EndBehavior | spec.ParentEndBehavior;
   /**
    * 元素是否可用
    */
