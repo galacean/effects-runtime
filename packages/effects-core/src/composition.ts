@@ -214,7 +214,6 @@ export class Composition implements Disposable, LostHandler {
   // private readonly event: EventSystem;
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
-  composition: {};
 
   /**
    * Composition 构造函数
