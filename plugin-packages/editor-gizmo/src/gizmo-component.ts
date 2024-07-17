@@ -123,10 +123,6 @@ export class GizmoComponent extends ItemBehaviour {
   }
 
   override lateUpdate (dt: number): void {
-    if (this.needCreateModelContent) {
-      this.createModelContent(this.targetItem, this.gizmoPlugin.meshToAdd);
-      this.needCreateModelContent = false;
-    }
   }
 
   updateRenderData () {
@@ -510,8 +506,14 @@ export class GizmoComponent extends ItemBehaviour {
         const worldPos = new Vector3();
         const worldQuat = new Quaternion();
         const worldSca = new Vector3(1, 1, 1);
+        const gizmoSubType = this.subType;
 
-        targetItem.transform.assignWorldTRS(worldPos, worldQuat);
+        // Scale Gizmo 没有世界空间
+        if (this.coordinateSpace == CoordinateSpace.Local || gizmoSubType === GizmoSubType.scale) {
+          this.targetItem.transform.assignWorldTRS(worldPos, worldQuat);
+        } else {
+          this.targetItem.transform.assignWorldTRS(worldPos);
+        }
 
         const targetTransform = new Transform({
           position: worldPos,
@@ -519,8 +521,6 @@ export class GizmoComponent extends ItemBehaviour {
           scale: worldSca,
           valid: true,
         });
-
-        const gizmoSubType = item.getComponent(GizmoComponent)?.subType;
 
         // 移动\旋转\缩放gizmo去除近大远小
         if (
