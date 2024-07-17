@@ -12,7 +12,7 @@
 
 precision highp float;
 
-#include <webglCompatibility.glsl>
+#include <webgl-compatibility.glsl>
 #include <extensions.frag.glsl>
 
 

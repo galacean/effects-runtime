@@ -1,7 +1,7 @@
 #define FEATURES
 
-#include <shadowCommon.vert.glsl>
-#include <webglCompatibility.glsl>
+#include <shadow-common.vert.glsl>
+#include <webgl-compatibility.glsl>
 
 
 #if defined(SHADOWMAP_VSM) && !defined(WEBGL2)
@@ -32,7 +32,7 @@ vec4 CalcMomentVSM(float depth)
         dx = dFdx(depth);
         dy = dFdy(depth);
     #endif
-    
+
     float moment2 = depth * depth + 0.25 * (dx * dx + dy * dy);
     return vec4(1.0 - depth, 1.0 - moment2, 0.0, 1.0);
 }
