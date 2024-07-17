@@ -1,29 +1,69 @@
+import { isAlipayMiniApp } from '@galacean/effects';
 import { getDowngradeResult, AlipayMiniAppParser } from '@galacean/effects-plugin-downgrade';
-import alipayMiniList from './alipay-mini-list';
 
-(async () => {
-  alipayMiniList.forEach((info, index) => {
-    processInfo(index, info);
-  });
-})();
+const mockInfoList = [
+  {
+    'brand': 'HUAWEI',
+    'deviceOrientation': 'portrait',
+    'model': 'HUAWEI DCO-AL00',
+    'performance': 'high',
+    'platform': 'Android',
+    'system': '12',
+    'remark': '华为 Mate 50 Pro',
+  },
+  {
+    'brand': 'Xiaomi',
+    'deviceOrientation': 'portrait',
+    'model': 'Xiaomi 23116PN5BC',
+    'performance': 'high',
+    'platform': 'Android',
+    'system': '14',
+    'remark': '小米 14 Pro',
+  },
+  {
+    'brand': 'iPhone',
+    'deviceOrientation': 'portrait',
+    'model': 'iPhone14,5',
+    'platform': 'iOS',
+    'system': '16.6',
+    'remark': 'iPhone 13',
+  },
+];
 
-function processInfo (index: number, info: any) {
+function processInfo (label: string, info: any) {
   const titleLabel = document.createElement('h2');
 
-  titleLabel.innerText = `${index + 1}.${info.remark}`;
-  document.body.appendChild(titleLabel);
+  titleLabel.innerText = label;
+  document.body.append(titleLabel);
 
   const parser = new AlipayMiniAppParser(info);
   const deviceInfo = parser.getDeviceInfo();
   const result = getDowngradeResult({ deviceInfo });
 
-  const ul = document.createElement('ul');
-  const listItem0 = document.createElement('li');
+  const pre = document.createElement('pre');
 
-  listItem0.innerText = JSON.stringify(result, null, 2);
-  listItem0.style.listStyle = 'disc'; // 设置列表项的样式为圆点
-  listItem0.style.fontSize = '18px'; // 设置列表项文字的大小
-  ul.appendChild(listItem0);
+  pre.innerHTML = JSON.stringify(result, null, 2);
+  const div = document.createElement('div');
 
-  document.body.appendChild(ul);
+  div.appendChild(pre);
+
+  document.body.append(div);
 }
+
+(async () => {
+  if (isAlipayMiniApp()) {
+    if (my.canIUse('getSystemInfo')) {
+      const systemInfo = my.getSystemInfo();
+
+      processInfo('CurrentDevice', systemInfo);
+    } else {
+      console.error('Can\'t use getSystemInfo in AlipayMiniApp');
+    }
+  } else {
+    mockInfoList.forEach((data, index) => {
+      const label = `${index + 1}.${data.remark}`;
+
+      processInfo(label, data);
+    });
+  }
+})();

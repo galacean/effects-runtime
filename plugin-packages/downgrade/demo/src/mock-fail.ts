@@ -5,15 +5,18 @@ const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*liH3SI2hhHUAAAAAAAA
 const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7HAgrIAAAAAAAAAAAAADuJ6AQ/original';
 
 (async () => {
-  console.info('downgrade');
+  const downgrade = getDowngradeResult({
+    mock: {
+      downgrade: true,
+      level: spec.RenderLevel.A,
+    },
+  });
 
   const container = document.getElementById('J-container');
   const player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
   });
-
-  const downgrade = getDowngradeResult({ mock: { downgrade: true, level: spec.RenderLevel.A } });
 
   try {
     const scene = await player.loadScene(json, {
@@ -22,7 +25,7 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
       },
     });
   } catch (e) {
-    console.error('biz', e);
+    console.error('Exception:', e);
     // @ts-expect-error
     container.innerHTML = `<img src="${imageUrl}" />`;
   }

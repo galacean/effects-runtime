@@ -15,11 +15,10 @@ export default defineConfig(({ mode }) => {
         input: {
           'index': resolve(__dirname, 'demo/index.html'),
           'simple': resolve(__dirname, 'demo/simple.html'),
-          'status': resolve(__dirname, 'demo/status.html'),
           'mock-fail': resolve(__dirname, 'demo/mock-fail.html'),
-          'ua-parser': resolve(__dirname, 'demo/ua-parser.html'),
-          'miniprogram': resolve(__dirname, 'demo/miniprogram.html'),
           'alipay-mini-app': resolve(__dirname, 'demo/alipay-mini-app.html'),
+          'wechat-mini-app': resolve(__dirname, 'demo/wechat-mini-app.html'),
+          'user-agent': resolve(__dirname, 'demo/user-agent.html'),
         }
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常

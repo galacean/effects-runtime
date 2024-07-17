@@ -474,12 +474,24 @@ export class WeChatMiniAppParser {
       this.device.osVersion = osVersionMatch[0].trim();
     }
 
+    if (info.platform === 'devtools') {
+      const phoneName = weChatDevtoolNameMap[info.model] ?? info.model;
+
+      for (const data of iPhoneInfoList) {
+        if (data.name === phoneName) {
+          info.model = data.model;
+
+          break;
+        }
+      }
+    }
+
     if (this.device.platform === 'iOS') {
       const modelMatch = info.model.match(/^(.*?)<(.*?)>$/);
 
       if (modelMatch) {
-        this.device.model = modelMatch[1].trim();
-        this.device.originalModel = modelMatch[2].trim();
+        this.device.model = modelMatch[2].trim();
+        this.device.originalModel = info.model;
       } else {
         this.device.model = info.model;
       }
@@ -701,7 +713,7 @@ function resumePausedPlayers (e: Event) {
   }
 }
 
-function isWeChatMiniApp (): boolean {
+export function isWeChatMiniApp (): boolean {
   // @ts-expect-error
   return typeof wx !== 'undefined' && wx?.renderTarget === 'web';
 }
@@ -761,6 +773,14 @@ const iPhoneInfoList: iPhoneInfo[] = [
   { name: 'iPhone 3G', model: 'iPhone1,2', width: 320, height: 480 },
   { name: 'iPhone 1st gen', model: 'iPhone1,1', width: 320, height: 480 },
 ];
+
+const weChatDevtoolNameMap: Record<string, string> = {
+  'iPhone 6/7/8': 'iPhone 8',
+  'iPhone 6/7/8 Plus': 'iPhone 8 Plus',
+  'iPhone 12/13 mini': 'iPhone 13 mini',
+  'iPhone 12/13 (Pro)': 'iPhone 13 Pro',
+  'iPhone 12/13 Pro Max': 'iPhone 13 Pro Max',
+};
 
 const downgradeAndroidModels: string[] = [
   'OPPO R9s Plus',
