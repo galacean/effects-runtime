@@ -520,6 +520,7 @@ export class PSubMesh {
     }
   }
 
+  // TODO: 待移除？
   private getFeatureList (lightCount: number, pbrPass: boolean, skybox?: PSkybox): string[] {
     const featureList: string[] = [];
 

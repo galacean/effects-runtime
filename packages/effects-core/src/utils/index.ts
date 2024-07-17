@@ -21,6 +21,8 @@ export interface Constructor<T = unknown> {
   new(...args: any[]): T,
 }
 
+export type Nullable<T> = T | null;
+
 export enum DestroyOptions {
   destroy = 0,
   keep = 1,

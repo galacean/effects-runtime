@@ -162,7 +162,14 @@ export class CompositionComponent extends ItemBehaviour {
     }
   }
 
-  hitTest (ray: Ray, x: number, y: number, regions: Region[], force?: boolean, options?: CompositionHitTestOptions): Region[] {
+  hitTest (
+    ray: Ray,
+    x: number,
+    y: number,
+    regions: Region[],
+    force?: boolean,
+    options?: CompositionHitTestOptions,
+  ): Region[] {
     const hitPositions: Vector3[] = [];
     const stop = options?.stop || noop;
     const skip = options?.skip || noop;
@@ -171,7 +178,12 @@ export class CompositionComponent extends ItemBehaviour {
     for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
       const item = this.items[i];
 
-      if (item.getVisible() && !item.ended && !VFXItem.isComposition(item) && !skip(item)) {
+      if (
+        item.getVisible()
+        && !item.ended
+        && !VFXItem.isComposition(item)
+        && !skip(item)
+      ) {
         const hitParams = item.getHitTestParams(force);
 
         if (hitParams) {
@@ -229,6 +241,7 @@ export class CompositionComponent extends ItemBehaviour {
             };
 
             regions.push(region);
+
             if (stop(region)) {
               return regions;
             }

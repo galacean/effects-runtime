@@ -1,10 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { keyframeInfo } from './keyframe-info';
 import { decimalEqual, numberToFix } from './utils';
 import { assertExist } from '../utils';
-import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 
 export class BezierLengthData {
   constructor (
