@@ -368,11 +368,8 @@ importers:
         specifier: ^1.0.6
         version: 1.0.6
     devDependencies:
-      typescript:
-        specifier: ^5.2.2
-        version: 5.4.3
       vite:
-        specifier: ^5.2.0
+        specifier: '5'
         version: 5.2.6(sass@1.72.0)(terser@5.19.1)
 
   web-packages/test:

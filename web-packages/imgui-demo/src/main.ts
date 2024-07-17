@@ -1,12 +1,12 @@
 /* eslint-disable no-multi-spaces */
 /* eslint-disable no-console */
-import { GalaceanEffects } from './ge.js';
-import { ImGui, ImGui_Impl } from './imgui/index.js';
-import { ShowDemoWindow } from './imgui/imgui_demo.js';
-import { MemoryEditor } from './imgui/imgui_memory_editor.js';
+import { GalaceanEffects } from './ge';
+import { ImGui, ImGui_Impl } from './imgui/index';
+import { ShowDemoWindow } from './imgui/imgui_demo';
+import { MemoryEditor } from './imgui/imgui_memory_editor';
 import './panels';
-import { imGuiIni } from './imgui/imgui-config.js';
-import { uiManager } from './core/ui-manager.js';
+import { imGuiIni } from './imgui/imgui-config';
+import { uiManager } from './core/ui-manager';
 import { Project } from './panels';
 
 let font: ImGui.Font | null = null;
@@ -36,9 +36,9 @@ async function LoadArrayBuffer (url: string): Promise<ArrayBuffer> {
   return response.arrayBuffer();
 }
 
-export default async function main (): Promise<void> {
+async function main (): Promise<void> {
   await ImGui.default();
-  if (typeof(window) !== 'undefined') {
+  if (typeof (window) !== 'undefined') {
     window.requestAnimationFrame(_init);
   } else {
     // eslint-disable-next-line no-inner-declarations
@@ -114,7 +114,7 @@ async function _init (): Promise<void> {
   // Setup Platform/Renderer backends
   // ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
   // ImGui_ImplOpenGL3_Init(glsl_version);
-  if (typeof(window) !== 'undefined') {
+  if (typeof (window) !== 'undefined') {
     const output: HTMLElement = document.getElementById('output') || document.body;
     const canvas: HTMLCanvasElement = document.createElement('canvas');
 
@@ -143,7 +143,7 @@ async function _init (): Promise<void> {
   StartUpImage();
   StartUpVideo();
 
-  if (typeof(window) !== 'undefined') {
+  if (typeof (window) !== 'undefined') {
     window.requestAnimationFrame(_loop);
   }
 }
@@ -190,7 +190,7 @@ function _loop (time: number): void {
     ImGui.Text(`Application average ${(1000.0 / ImGui.GetIO().Framerate).toFixed(3)} ms/frame (${ImGui.GetIO().Framerate.toFixed(1)} FPS)`);
 
     ImGui.Checkbox('Memory Editor', (value = memory_editor.Open) => memory_editor.Open = value);
-    if (memory_editor.Open) {memory_editor.DrawWindow('Memory Editor', ImGui.bind.HEAP8.buffer);}
+    if (memory_editor.Open) { memory_editor.DrawWindow('Memory Editor', ImGui.bind.HEAP8.buffer); }
     const mi: ImGui.Bind.mallinfo = ImGui.bind.mallinfo();
 
     // ImGui.Text(`Total non-mmapped bytes (arena):       ${mi.arena}`);
@@ -216,13 +216,13 @@ function _loop (time: number): void {
       ImGui.EndTooltip();
     }
     if (ImGui.Button('Sandbox Window')) { show_sandbox_window = true; }
-    if (show_sandbox_window) {ShowSandboxWindow('Sandbox Window', (value = show_sandbox_window) => show_sandbox_window = value);}
+    if (show_sandbox_window) { ShowSandboxWindow('Sandbox Window', (value = show_sandbox_window) => show_sandbox_window = value); }
     ImGui.SameLine();
     if (ImGui.Button('Gamepad Window')) { show_gamepad_window = true; }
-    if (show_gamepad_window) {ShowGamepadWindow('Gamepad Window', (value = show_gamepad_window) => show_gamepad_window = value);}
+    if (show_gamepad_window) { ShowGamepadWindow('Gamepad Window', (value = show_gamepad_window) => show_gamepad_window = value); }
     ImGui.SameLine();
     if (ImGui.Button('Movie Window')) { show_movie_window = true; }
-    if (show_movie_window) {ShowMovieWindow('Movie Window', (value = show_movie_window) => show_movie_window = value);}
+    if (show_movie_window) { ShowMovieWindow('Movie Window', (value = show_movie_window) => show_movie_window = value); }
 
     if (font) {
       ImGui.PushFont(font);
@@ -240,7 +240,7 @@ function _loop (time: number): void {
   if (show_another_window) {
     ImGui.Begin('Another Window', (value = show_another_window) => show_another_window = value, ImGui.WindowFlags.AlwaysAutoResize);
     ImGui.Text('Hello from another window!');
-    if (ImGui.Button('Close Me')) {show_another_window = false;}
+    if (ImGui.Button('Close Me')) { show_another_window = false; }
     ImGui.End();
   }
 
@@ -271,7 +271,7 @@ function _loop (time: number): void {
 
   ImGui_Impl.RenderDrawData(ImGui.GetDrawData());
 
-  if (typeof(window) !== 'undefined') {
+  if (typeof (window) !== 'undefined') {
     window.requestAnimationFrame(done ? _done : _loop);
   }
 }
@@ -340,7 +340,7 @@ function ShowSandboxWindow (title: string, p_open: ImGui.Access<boolean> | null 
 
 function ShowGamepadWindow (title: string, p_open: ImGui.Access<boolean> | null = null): void {
   ImGui.Begin(title, p_open, ImGui.WindowFlags.AlwaysAutoResize);
-  const gamepads: (Gamepad | null)[] = (typeof(navigator) !== 'undefined' && typeof(navigator.getGamepads) === 'function') ? navigator.getGamepads() : [];
+  const gamepads: (Gamepad | null)[] = (typeof (navigator) !== 'undefined' && typeof (navigator.getGamepads) === 'function') ? navigator.getGamepads() : [];
 
   if (gamepads.length > 0) {
     for (let i = 0; i < gamepads.length; ++i) {
