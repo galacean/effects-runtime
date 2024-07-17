@@ -115,6 +115,7 @@ interface UBODirtyFlag {
   buffer?: spec.TypedArray,
 }
 
+// TODO: 待移除？
 export class UniformBlockBuffer implements Disposable {
   buffer?: GLGPUBuffer;
   dirtyFlags: Record<string, UBODirtyFlag>;

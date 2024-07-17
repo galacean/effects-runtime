@@ -22,14 +22,15 @@ export class AssetLoader {
     if (this.engine.objectInstance[guid]) {
       return this.engine.objectInstance[guid] as T;
     }
-    let effectsObject: EffectsObject | undefined;
     const effectsObjectData = this.findData(guid);
+    let effectsObject: EffectsObject | undefined;
 
     if (!effectsObjectData) {
       console.error(`Object data with uuid: ${guid} not found.`);
 
       return undefined as T;
     }
+
     switch (effectsObjectData.dataType) {
       case spec.DataType.Material:
         effectsObject = Material.create(this.engine);
@@ -51,11 +52,13 @@ export class AssetLoader {
         }
       }
     }
+
     if (!effectsObject) {
       console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }
+
     effectsObject.setInstanceId(effectsObjectData.id);
     this.engine.addInstance(effectsObject);
     SerializationHelper.deserializeTaggedProperties(effectsObjectData, effectsObject);
@@ -68,8 +71,9 @@ export class AssetLoader {
     if (this.engine.objectInstance[guid]) {
       return this.engine.objectInstance[guid] as T;
     }
-    let effectsObject: EffectsObject | undefined;
+
     const effectsObjectData = this.findData(guid);
+    let effectsObject: EffectsObject | undefined;
 
     if (!effectsObjectData) {
       if (!this.engine.database) {
@@ -79,6 +83,7 @@ export class AssetLoader {
       }
 
       effectsObject = await this.engine.database.loadGUID(guid);
+
       if (!effectsObject) {
         console.error(`Disk data with uuid: ${guid} not found.`);
 
@@ -111,11 +116,13 @@ export class AssetLoader {
         }
       }
     }
+
     if (!effectsObject) {
       console.error(`Constructor for DataType: ${effectsObjectData.dataType} not found.`);
 
       return undefined as T;
     }
+
     effectsObject.setInstanceId(effectsObjectData.id);
     this.engine.addInstance(effectsObject);
     await SerializationHelper.deserializeTaggedPropertiesAsync(effectsObjectData, effectsObject);
@@ -146,7 +153,10 @@ export interface EffectComponentData extends spec.EffectsObjectData {
   geometry: spec.DataPath,
 }
 
-export type VFXItemData = VFXItemProps & { dataType: spec.DataType, components: spec.DataPath[] };
+export type VFXItemData = VFXItemProps & {
+  dataType: spec.DataType,
+  components: spec.DataPath[],
+};
 
 export type SceneData = Record<string, spec.EffectsObjectData>;
 

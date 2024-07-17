@@ -1,4 +1,8 @@
-import { DEG2RAD, Euler, Matrix4, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Euler } from '@galacean/effects-math/es/core/euler';
+import { DEG2RAD } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import { Transform } from './transform';
 

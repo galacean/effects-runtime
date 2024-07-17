@@ -1512,6 +1512,7 @@ class GeometryProxy {
 class MaterialProxy {
   private gltfMaterial: GLTFMaterial;
   private textures: Texture[];
+  // TODO: 待移除？
   private tiny3dMode: boolean;
 
   constructor (material: GLTFMaterial, textures: Texture[], tiny3dMode: boolean) {
