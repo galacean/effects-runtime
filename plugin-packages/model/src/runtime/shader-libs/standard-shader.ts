@@ -1,6 +1,6 @@
 import { default as primitiveVert } from './standard/primitive.vert.glsl';
 import { default as metallicRoughnessFrag } from './standard/metallic-roughness.frag.glsl';
-import { default as shadowPassFrag } from './standard/shadowpass.frag.glsl';
+import { default as shadowPassFrag } from './standard/shadow-pass.frag.glsl';
 import { default as skyboxVert } from './standard/skybox.vert.glsl';
 import { default as skyboxFrag } from './standard/skybox.frag.glsl';
 import { StandardShaderSource } from './standard-shader-source';

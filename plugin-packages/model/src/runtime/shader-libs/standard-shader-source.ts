@@ -4,8 +4,8 @@ import { default as tonemappingFragGLSL } from './standard/tonemapping.frag.glsl
 import { default as texturesVertGLSL } from './standard/textures.vert.glsl';
 import { default as functionsFragGLSL } from './standard/functions.frag.glsl';
 import { default as shadowFragGLSL } from './standard/shadow.frag.glsl';
-import { default as webglCompatibilityGLSL } from './standard/webglcompatibility.glsl';
-import { default as shadowCommonVert } from './standard/shadowCommon.vert.glsl';
+import { default as webglCompatibilityGLSL } from './standard/webgl-compatibility.glsl';
+import { default as shadowCommonVert } from './standard/shadow-common.vert.glsl';
 
 const glsl: Record<string, string> = {
   'animation.vert.glsl': animationVertGLSL,
@@ -14,8 +14,8 @@ const glsl: Record<string, string> = {
   'textures.vert.glsl': texturesVertGLSL,
   'functions.frag.glsl': functionsFragGLSL,
   'shadow.frag.glsl': shadowFragGLSL,
-  'webglCompatibility.glsl': webglCompatibilityGLSL,
-  'shadowCommon.vert.glsl': shadowCommonVert,
+  'webgl-compatibility.glsl': webglCompatibilityGLSL,
+  'shadow-common.vert.glsl': shadowCommonVert,
 };
 
 /**

@@ -2,7 +2,7 @@ precision highp float;
 
 #define FEATURES
 
-#include <webglCompatibility.glsl>
+#include <webgl-compatibility.glsl>
 #include <animation.vert.glsl>
 
 vsIn vec4 aPos;

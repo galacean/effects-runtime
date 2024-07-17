@@ -2,7 +2,7 @@ precision highp float;
 
 #define FEATURES
 
-#include <webglCompatibility.glsl>
+#include <webgl-compatibility.glsl>
 
 vsIn vec3 aPos;
 vsOut vec3 v_CameraDir;
