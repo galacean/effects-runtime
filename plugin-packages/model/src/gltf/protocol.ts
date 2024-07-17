@@ -1,15 +1,26 @@
 import type {
-  GLTFMaterial, GLTFPrimitive, GLTFLight, GLTFScene, GLTFImage, GLTFTexture,
-  GLTFCamera, GLTFAnimation, GLTFImageBasedLight, GLTFResources,
+  GLTFResources,
+  GLTFMaterial,
+  GLTFPrimitive,
+  GLTFLight,
+  GLTFScene,
+  GLTFImage,
+  GLTFTexture,
+  GLTFCamera,
+  GLTFAnimation,
+  GLTFImageBasedLight,
 } from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
 import type {
-  spec, Renderer, Texture, Geometry, TextureSourceOptions, EffectComponentData,
+  spec, TextureSourceOptions, EffectComponentData,
+  Texture, Geometry,
 } from '@galacean/effects';
 import type {
-  ModelAnimationOptions, ModelMaterialOptions, ModelSkyboxOptions, ModelTreeOptions,
-  ModelBaseItem, ModelLightComponentData, ModelCameraComponentData, ModelMeshComponentData,
-  ModelSkyboxComponentData,
+  ModelAnimationOptions,
+  ModelMaterialOptions,
+  ModelSkyboxOptions,
+  ModelTreeOptions,
+  ModelLightComponentData, ModelCameraComponentData, ModelSkyboxComponentData,
 } from '../index';
 
 /**
@@ -48,17 +59,13 @@ export interface LoadSceneOptions {
   },
   effects: {
     /**
-     * Renderer
-     */
-    renderer?: Renderer,
-    /**
      * 播放时间，单位秒
      */
     duration?: number,
     /**
      * 结束行为
      */
-    endBehavior?: spec.ItemEndBehavior,
+    endBehavior?: spec.EndBehavior,
     /**
      * 播放动画索引或名称
      */
@@ -72,15 +79,6 @@ export interface LoadSceneOptions {
 
 export interface LoadSceneResult {
   source: string,
-  items: ModelBaseItem[],
-  sceneAABB: {
-    min: spec.vec3,
-    max: spec.vec3,
-  },
-}
-
-export interface LoadSceneECSResult {
-  source: string,
   jsonScene: spec.JSONScene,
   sceneAABB: {
     min: spec.vec3,
@@ -88,16 +86,69 @@ export interface LoadSceneECSResult {
   },
 }
 
-export interface LoaderOptions {
-  compatibleMode?: 'gltf' | 'tiny3d',
-}
-
 export type SkyboxType = 'NFT' | 'FARM';
 
-export interface Loader {
+export interface ModelCamera {
+  fov: number,
+  near: number,
+  far: number,
+  clipMode: spec.CameraClipMode,
+  //
+  name: string,
+  position: spec.vec3,
+  rotation: spec.vec3,
+  duration: number,
+  endBehavior: spec.EndBehavior,
+}
 
+export interface ModelLight {
+  lightType: spec.LightType,
+  color: spec.ColorData,
+  intensity: number,
+  range?: number,
+  innerConeAngle?: number,
+  outerConeAngle?: number,
+  //
+  name: string,
+  position: spec.vec3,
+  rotation: spec.vec3,
+  scale: spec.vec3,
+  duration: number,
+  endBehavior: spec.EndBehavior,
+}
+
+export interface ModelSkybox {
+  skyboxType?: string,
+  renderable?: boolean,
+  intensity?: number,
+  reflectionsIntensity?: number,
+  duration?: number,
+}
+
+export interface ModelImageLike {
+  name?: string,
+  width: number,
+  height: number,
+}
+
+export interface Loader {
   loadScene (options: LoadSceneOptions): Promise<LoadSceneResult>,
 
+  processGLTFResource (resource: GLTFResources, imageElements: ModelImageLike[]): void,
+
+  processComponentData (components: EffectComponentData[]): void,
+
+  processLightComponentData (light: ModelLightComponentData): void,
+
+  processCameraComponentData (camera: ModelCameraComponentData): void,
+
+  processSkyboxComponentData (skybox: ModelSkyboxComponentData): void,
+
+  processMaterialData (material: spec.MaterialData): void,
+
+  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean, image?: ModelImageLike): void,
+
+  // for old scene compatibility
   processLight (lights: GLTFLight[], fromGLTF: boolean): void,
 
   processCamera (cameras: GLTFCamera[], fromGLTF: boolean): void,
@@ -125,25 +176,4 @@ export interface Loader {
   scaleColorVal (val: number, fromGLTF: boolean): number,
 
   scaleColorVec (vec: number[], fromGLTF: boolean): number[],
-
-}
-
-export interface LoaderECS {
-  loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult>,
-
-  processGLTFResource (resource: GLTFResources): void,
-
-  processComponentData (components: EffectComponentData[]): void,
-
-  processLightComponentData (light: ModelLightComponentData): void,
-
-  processCameraComponentData (camera: ModelCameraComponentData): void,
-
-  processMeshComponentData (mesh: ModelMeshComponentData): void,
-
-  processSkyboxComponentData (skybox: ModelSkyboxComponentData): void,
-
-  processMaterialData (material: spec.MaterialData): void,
-
-  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean): void,
 }

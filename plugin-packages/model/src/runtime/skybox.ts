@@ -134,7 +134,7 @@ export class PSkybox extends PEntity {
     //
     const sceneCache = scene.getSceneCache();
 
-    this.skyboxMesh = sceneCache.getFilterMesh('SkyboxFilterPlane', this.skyboxMaterial, {});
+    this.skyboxMesh = sceneCache.getFilterMesh('SkyboxFilterPlane', this.skyboxMaterial);
     this.skyboxMesh.priority = this.priority;
     this.skyboxMaterial.updateUniforms(this.skyboxMesh.material);
   }
@@ -516,9 +516,9 @@ export class PSkyboxCreator {
    * @param params - 天空盒参数
    * @returns 天空盒选项
    */
-  static createSkyboxComponentData (engine: Engine, params: PSkyboxParams) {
-    const specularCubeData = this.getSpecularCubeMapData(engine, params);
-    const diffuseCubeData = this.getDiffuseCubeMapData(engine, params);
+  static createSkyboxComponentData (params: PSkyboxParams) {
+    const specularCubeData = PSkyboxCreator.getSpecularCubeMapData(params);
+    const diffuseCubeData = PSkyboxCreator.getDiffuseCubeMapData(params);
     const { renderable, intensity, reflectionsIntensity, irradianceCoeffs, specularImageSize, specularMipCount } = params;
 
     let diffuseImage: spec.DataPath;
@@ -582,7 +582,7 @@ export class PSkyboxCreator {
     }
   }
 
-  static getSpecularCubeMapData (engine: Engine, params: PSkyboxParams) {
+  static getSpecularCubeMapData (params: PSkyboxParams) {
     const imageDatas: spec.Image[] = [];
     const mipmaps: spec.DataPath[][] = [];
 
@@ -633,7 +633,7 @@ export class PSkyboxCreator {
     }
   }
 
-  static getDiffuseCubeMapData (engine: Engine, params: PSkyboxParams) {
+  static getDiffuseCubeMapData (params: PSkyboxParams) {
     if (params.diffuseImage === undefined) {
       return;
     }

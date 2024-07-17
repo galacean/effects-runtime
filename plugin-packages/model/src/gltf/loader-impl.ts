@@ -1,96 +1,936 @@
-import type { TransformProps, Texture, Attribute, Engine, math } from '@galacean/effects';
-import { Transform as EffectsTransform, spec, glContext, Geometry } from '@galacean/effects';
+import { spec, generateGUID, glContext, addItem, loadImage, Transform, Geometry } from '@galacean/effects';
+import type { TextureSourceOptions, TextureCubeSourceOptionsImageMipmaps, math, TransformProps, Engine, Texture, Attribute } from '@galacean/effects';
 import type {
-  Loader,
-  LoaderOptions,
-  SkyboxType,
-  LoadSceneOptions,
-  LoadSceneResult,
+  SkyboxType, LoadSceneOptions, LoadSceneResult, Loader, ModelCamera, ModelLight, ModelSkybox, ModelImageLike,
 } from './protocol';
 import type {
+  ModelMeshComponentData,
+  ModelSkyboxComponentData,
+  ModelLightComponentData,
+  ModelCameraComponentData,
   ModelAnimationOptions,
   ModelAnimTrackOptions,
-  ModelMeshOptions,
-  ModelCameraOptions,
   ModelMaterialOptions,
-  ModelLightOptions,
   ModelSkyboxOptions,
-  ModelItemBoundingBox,
-  ModelBaseItem,
-  ModelItemMesh,
-  ModelItemLight,
-  ModelItemCamera,
-  ModelItemSkybox,
   ModelTreeOptions,
-  ModelPrimitiveOptions,
-  ModelItemTree,
-  ModelSkinOptions,
   ModelTextureTransform,
 } from '../index';
-import { Vector3, Box3, Matrix4 } from '../runtime/math';
+import {
+  Vector3, Box3, Matrix4, Euler, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
+} from '../runtime';
 import { LoaderHelper } from './loader-helper';
-import { WebGLHelper, PluginHelper } from '../utility/plugin-helper';
-import type {
-  GLTFSkin,
-  GLTFMesh,
-  GLTFImage,
-  GLTFMaterial,
-  GLTFTexture,
-  GLTFScene,
-  GLTFPrimitive,
-  GLTFBufferAttribute,
-  GLTFTextureInfo,
-  GLTFNode,
-  GLTFLight,
-  GLTFCamera,
-  GLTFBounds,
-  GLTFAnimation,
-  GLTFImageBasedLight,
-} from '@vvfx/resource-detection';
+import { WebGLHelper } from '../utility';
 import type { PImageBufferData, PSkyboxBufferParams } from '../runtime/skybox';
-import { PSkyboxCreator, PSkyboxType } from '../runtime/skybox';
+import type {
+  GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
+  GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight, GLTFPrimitive,
+  GLTFBufferAttribute, GLTFBounds, GLTFTextureInfo,
+} from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
 
-type Box3 = math.Box3;
-
-let globalGLTFLoader: Loader;
+export interface LoaderOptions {
+  compatibleMode?: 'gltf' | 'tiny3d',
+}
 
 export function getDefaultEffectsGLTFLoader (engine: Engine, options?: LoaderOptions): Loader {
-  if (!globalGLTFLoader) {
-    globalGLTFLoader = new LoaderImpl();
+  if (!defaultGLTFLoader) {
+    defaultGLTFLoader = new LoaderImpl();
   }
 
-  (globalGLTFLoader as LoaderImpl).initial(engine, options);
+  (defaultGLTFLoader as LoaderImpl).initial(engine, options);
 
-  return globalGLTFLoader;
+  return defaultGLTFLoader;
 }
 
 export function setDefaultEffectsGLTFLoader (loader: Loader): void {
-  globalGLTFLoader = loader;
+  defaultGLTFLoader = loader;
 }
 
+let defaultGLTFLoader: Loader;
+
+type Box3 = math.Box3;
+
 export class LoaderImpl implements Loader {
-  private _sceneOptions!: LoadSceneOptions;
-  private _loaderOptions!: LoaderOptions;
-  private _gltfScene!: GLTFScene;
-  private _gltfSkins!: GLTFSkin[];
-  private _gltfMeshs!: GLTFMesh[];
-  private _gltfLights!: GLTFLight[];
-  private _gltfCameras!: GLTFCamera[];
-  private _gltfImages!: GLTFImage[];
-  private _gltfTextures!: GLTFTexture[];
-  private _gltfMaterials!: GLTFMaterial[];
-  private _gltfAnimations!: GLTFAnimation[];
-  private _gltfImageBasedLights!: GLTFImageBasedLight[];
-  private _textureManager?: TextureManager;
-  private _skyboxOptions?: ModelSkyboxOptions;
+  private sceneOptions: LoadSceneOptions;
+  private loaderOptions: LoaderOptions;
+  private gltfScene: GLTFScene;
+  private gltfSkins: GLTFSkin[] = [];
+  private gltfMeshs: GLTFMesh[] = [];
+  private gltfLights: GLTFLight[] = [];
+  private gltfCameras: GLTFCamera[] = [];
+  private gltfImages: GLTFImage[] = [];
+  private gltfTextures: GLTFTexture[] = [];
+  private gltfMaterials: GLTFMaterial[] = [];
+  private gltfAnimations: GLTFAnimation[] = [];
+  private gltfImageBasedLights: GLTFImageBasedLight[] = [];
+
+  composition: spec.CompositionData;
+  timelineAssetId: string = '';
+  images: spec.Image[] = [];
+  imageElements: ModelImageLike[] = [];
+  textures: spec.TextureDefine[] = [];
+  items: spec.VFXItemData[] = [];
+  components: spec.ComponentData[] = [];
+  materials: spec.MaterialData[] = [];
+  shaders: spec.ShaderData[] = [];
+  geometries: spec.GeometryData[] = [];
+  animations: spec.AnimationClipData[] = [];
+  sceneAABB = new Box3();
 
   engine: Engine;
 
+  constructor (composition?: spec.CompositionData) {
+    if (composition) {
+      this.composition = composition;
+    } else {
+      this.timelineAssetId = generateGUID();
+      this.composition = {
+        id: '1',
+        name: 'test1',
+        duration: 9999,
+        endBehavior: spec.EndBehavior.restart,
+        camera: {
+          fov: 45,
+          far: 2000,
+          near: 0.001,
+          position: [0, 0, 8],
+          rotation: [0, 0, 0],
+          clipMode: spec.CameraClipMode.portrait,
+        },
+        items: [],
+        timelineAsset: { id: this.timelineAssetId },
+        sceneBindings: [],
+      };
+    }
+  }
+
+  async loadScene (options: LoadSceneOptions): Promise<LoadSceneResult> {
+    this.clear();
+    this.sceneOptions = options;
+    this.loaderOptions = { compatibleMode: options.gltf.compatibleMode };
+    const gltfResource = options.gltf.resource;
+
+    if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
+      throw new Error('Please load the resource using GLTFTools first.');
+    }
+
+    this.images = gltfResource.images.map(gltfImage => {
+      const blob = new Blob([gltfImage.imageData.buffer], { type: gltfImage.mimeType ?? 'image/png' });
+
+      return {
+        id: gltfImage.id,
+        url: URL.createObjectURL(blob),
+      };
+    });
+
+    this.imageElements = await Promise.all(this.images.map(async image => {
+      return loadImage(image.url);
+    }));
+
+    this.processGLTFResource(gltfResource, this.imageElements);
+    this.gltfScene = gltfResource.scenes[0];
+    this.gltfSkins = this.gltfScene.skins;
+    this.gltfMeshs = gltfResource.meshes;
+    this.gltfLights = this.gltfScene.lights;
+    this.gltfCameras = this.gltfScene.cameras;
+    this.gltfImages = gltfResource.images;
+    this.gltfTextures = gltfResource.textures;
+    this.gltfMaterials = gltfResource.materials;
+    this.gltfAnimations = gltfResource.animations;
+    this.gltfImageBasedLights = gltfResource.imageBasedLights;
+
+    this.textures = this.gltfTextures.map(texture => {
+      const textureOptions = texture.textureOptions;
+      const source = textureOptions.source;
+
+      if (typeof source === 'number') {
+        // @ts-expect-error
+        textureOptions.source = {
+          id: this.images[source].id,
+        };
+      }
+
+      return textureOptions;
+    });
+    this.materials = this.gltfMaterials.map(material => {
+      return material.materialData;
+    });
+
+    gltfResource.meshes.forEach(mesh => {
+      this.geometries.push(mesh.geometryData);
+    });
+    const gltfScene = gltfResource.scenes[0];
+
+    gltfScene.meshesComponentData.forEach(mesh => this.checkMeshComponentData(mesh, gltfResource));
+
+    this.components.push(...gltfScene.camerasComponentData);
+    this.components.push(...gltfScene.lightsComponentData);
+    this.components.push(...gltfScene.meshesComponentData);
+    if (gltfScene.animationsComponentData.length === 1) {
+      const component = gltfScene.animationsComponentData[0];
+
+      if (!options.effects.playAllAnimation && options.effects.playAnimation !== undefined) {
+        const clips = component.animationClips;
+        const index = options.effects.playAnimation;
+
+        if (index >= 0 && index < clips.length) {
+          component.animationClips = [clips[index]];
+        } else {
+          component.animationClips = [];
+        }
+      }
+      this.components.push(component);
+    } else if (gltfScene.animationsComponentData.length > 1) {
+      throw new Error(`Find many animation component data ${gltfScene.animationsComponentData.length}`);
+    }
+
+    this.animations = [];
+    this.gltfAnimations.forEach(anim => {
+      this.animations.push(anim.animationClipData);
+    });
+
+    this.items = [];
+
+    await this.tryAddSkybox({
+      skyboxType: options.gltf.skyboxType,
+      renderable: options.gltf.skyboxVis,
+    });
+
+    this.items.push(...gltfResource.scenes[0].vfxItemData);
+    this.items.forEach(item => {
+      if (item.type === 'root' as spec.ItemType) {
+        item.type = 'ECS' as spec.ItemType;
+      }
+    });
+
+    return this.getLoadResult();
+  }
+
+  processGLTFResource (resource: GLTFResources, imageElements: ModelImageLike[]): void {
+    const textureDataMap: Record<string, TextureSourceOptions> = {};
+    const { textures, materials, scenes, imageBasedLights } = resource;
+
+    textures.forEach(tex => {
+      const texData = tex.textureOptions;
+      const texId = (texData as unknown as spec.EffectsObjectData).id;
+
+      if (texId) {
+        if (textureDataMap[texId]) {
+          console.error(`Duplicate GUID found: ${texId}, old ${textureDataMap[texId]}, new ${texData}.`);
+        }
+        textureDataMap[texId] = texData;
+      } else {
+        console.error(`No GUID in texture Data: ${texData}.`);
+      }
+    });
+
+    const baseColorIdSet: Set<string> = new Set();
+    const emissiveIdSet: Set<string> = new Set();
+
+    materials.forEach(mat => {
+      const materialData = mat.materialData;
+      const baseColorTexture = materialData.textures['_BaseColorSampler']?.texture;
+      const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
+
+      if (baseColorTexture) {
+        baseColorIdSet.add(baseColorTexture.id);
+      }
+      if (emissiveTexture) {
+        emissiveIdSet.add(emissiveTexture.id);
+      }
+    });
+
+    let addTextures = 0;
+    const textureIdMap: Record<string, string> = {};
+
+    for (const baseColorId of baseColorIdSet) {
+      if (emissiveIdSet.has(baseColorId)) {
+        const texData = textures.find(tex => tex.textureOptions.id === baseColorId);
+
+        if (texData) {
+          const newId = generateGUID();
+          const newTexData = texData.clone();
+
+          newTexData.textureOptions.id = newId;
+          textures.push(newTexData);
+          textureDataMap[newId] = newTexData.textureOptions;
+          textureIdMap[baseColorId] = newId;
+          addTextures += 1;
+        }
+      }
+    }
+
+    if (addTextures > 0) {
+      console.warn(`Add base color texture ${addTextures}`);
+    }
+
+    materials.forEach(mat => {
+      const materialData = mat.materialData;
+
+      this.processMaterialData(materialData);
+
+      if (materialData.shader?.id === UnlitShaderGUID) {
+        this.processMaterialTexture(materialData, '_BaseColorSampler', true, textureDataMap, imageElements);
+      } else if (materialData.shader?.id === PBRShaderGUID) {
+        const emissiveTexture = materialData.textures['_EmissiveSampler']?.texture;
+
+        if (emissiveTexture && textureIdMap[emissiveTexture.id]) {
+          emissiveTexture.id = textureIdMap[emissiveTexture.id];
+        }
+
+        this.processMaterialTexture(materialData, '_BaseColorSampler', true, textureDataMap, imageElements);
+        this.processMaterialTexture(materialData, '_MetallicRoughnessSampler', false, textureDataMap, imageElements);
+        this.processMaterialTexture(materialData, '_NormalSampler', false, textureDataMap, imageElements);
+        this.processMaterialTexture(materialData, '_OcclusionSampler', false, textureDataMap, imageElements);
+        this.processMaterialTexture(materialData, '_EmissiveSampler', false, textureDataMap, imageElements);
+      }
+    });
+
+    const gltfScene = scenes[0];
+
+    gltfScene.camerasComponentData.forEach(comp => this.processCameraComponentData(comp));
+    gltfScene.lightsComponentData.forEach(comp => this.processLightComponentData(comp));
+
+    const cubeTextures: TextureSourceOptions[] = [];
+
+    imageBasedLights.forEach(ibl => {
+      const data = ibl.imageBaseLightData;
+
+      if (data.reflectionsIntensity === undefined) {
+        data.reflectionsIntensity = data.intensity;
+      }
+
+      if (data.diffuseImage) {
+        const diffuseTexture = textureDataMap[data.diffuseImage.id];
+
+        addItem(cubeTextures, diffuseTexture);
+      }
+      if (data.specularImage) {
+        const specularImage = textureDataMap[data.specularImage.id];
+
+        addItem(cubeTextures, specularImage);
+      }
+    });
+
+    cubeTextures.forEach(tex => {
+      if (tex.target === glContext.TEXTURE_CUBE_MAP) {
+        const cube = tex as TextureCubeSourceOptionsImageMipmaps;
+
+        cube.mipmaps.forEach(mipmap => {
+          [mipmap[4], mipmap[5]] = [mipmap[5], mipmap[4]];
+        });
+
+        if (cube.mipmaps.length === 1) {
+          cube.minFilter = glContext.LINEAR;
+          cube.magFilter = glContext.LINEAR;
+        } else {
+          cube.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+          cube.magFilter = glContext.LINEAR;
+        }
+      }
+    });
+  }
+
+  processComponentData (components: spec.EffectComponentData[]): void {
+    components.forEach(comp => {
+      if (comp.dataType === spec.DataType.LightComponent) {
+        this.processLightComponentData(comp as unknown as ModelLightComponentData);
+      } else if (comp.dataType === spec.DataType.CameraComponent) {
+        this.processCameraComponentData(comp as unknown as ModelCameraComponentData);
+      } else if (comp.dataType === spec.DataType.SkyboxComponent) {
+        this.processSkyboxComponentData(comp as unknown as ModelSkyboxComponentData);
+      }
+    });
+  }
+
+  processLightComponentData (light: ModelLightComponentData): void {
+    if (!light.color) {
+      light.color = { r: 1, g: 1, b: 1, a: 1 };
+    }
+
+    if (!light.intensity) {
+      light.intensity = 1;
+    }
+
+    if (light.lightType === spec.LightType.point) {
+      if (!light.range) {
+        light.range = 0;
+      }
+    } else if (light.lightType === spec.LightType.spot) {
+      if (!light.range) {
+        light.range = 0;
+      }
+
+      if (!light.innerConeAngle) {
+        light.innerConeAngle = 0;
+      }
+
+      if (!light.outerConeAngle) {
+        light.outerConeAngle = Math.PI / 4;
+      }
+    }
+  }
+
+  processCameraComponentData (camera: ModelCameraComponentData): void {
+    if (camera.type === spec.CameraType.perspective) {
+      if (camera.fov) {
+        camera.fov *= Math.PI / 180;
+      }
+    }
+  }
+
+  processSkyboxComponentData (skybox: ModelSkyboxComponentData): void {
+    if (skybox.intensity === undefined) {
+      skybox.intensity = 1;
+    }
+
+    if (skybox.reflectionsIntensity === undefined) {
+      skybox.reflectionsIntensity = 1;
+    }
+  }
+
+  processMaterialData (material: spec.MaterialData): void {
+    if (material.shader?.id === UnlitShaderGUID) {
+      if (!material.colors['_BaseColorFactor']) {
+        material.colors['_BaseColorFactor'] = { r: 1, g: 1, b: 1, a: 1 };
+      }
+
+      if (material.floats['_AlphaCutoff'] === undefined) {
+        material.floats['_AlphaCutoff'] = 0;
+      }
+
+      if (material.floats['ZWrite'] === undefined) {
+        material.floats['ZWrite'] = 1;
+      }
+
+      if (material.floats['ZTest'] === undefined) {
+        material.floats['ZTest'] = 1;
+      }
+
+      if (!material.stringTags['RenderType']) {
+        material.stringTags['RenderType'] = spec.RenderType.Opaque;
+      }
+
+      if (!material.stringTags['RenderFace']) {
+        material.stringTags['RenderFace'] = spec.RenderFace.Front;
+      }
+    } else if (material.shader?.id === PBRShaderGUID) {
+      if (!material.colors['_BaseColorFactor']) {
+        material.colors['_BaseColorFactor'] = { r: 1, g: 1, b: 1, a: 1 };
+      }
+
+      if (material.floats['_SpecularAA'] === undefined) {
+        material.floats['_SpecularAA'] = 0;
+      }
+
+      if (material.floats['_MetallicFactor'] === undefined) {
+        material.floats['_MetallicFactor'] = 1;
+      }
+
+      if (material.floats['_RoughnessFactor'] === undefined) {
+        material.floats['_RoughnessFactor'] = 0;
+      }
+
+      if (material.floats['_NormalScale'] === undefined) {
+        material.floats['_NormalScale'] = 1;
+      }
+
+      if (material.floats['_OcclusionStrength'] === undefined) {
+        material.floats['_OcclusionStrength'] = this.isTiny3dMode() ? 0 : 1;
+      }
+
+      if (!material.colors['_EmissiveFactor']) {
+        material.colors['_EmissiveFactor'] = { r: 0, g: 0, b: 0, a: 1 };
+      }
+
+      if (material.floats['_EmissiveIntensity'] === undefined) {
+        material.floats['_EmissiveIntensity'] = 1;
+      }
+
+      if (material.floats['_AlphaCutoff'] === undefined) {
+        material.floats['_AlphaCutoff'] = 0;
+      }
+
+      if (material.floats['ZWrite'] === undefined) {
+        material.floats['ZWrite'] = 1;
+      }
+
+      if (material.floats['ZTest'] === undefined) {
+        material.floats['ZTest'] = 1;
+      }
+
+      if (!material.stringTags['RenderType']) {
+        material.stringTags['RenderType'] = spec.RenderType.Opaque;
+      }
+
+      if (!material.stringTags['RenderFace']) {
+        material.stringTags['RenderFace'] = spec.RenderFace.Front;
+      }
+    } else {
+      console.error(`Encountered unknown shader ID in material with ID: ${material.id}.`);
+    }
+  }
+
+  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean, image?: ModelImageLike): void {
+    let premultiplyAlpha = false;
+    let minFilter = options.minFilter ?? glContext.LINEAR_MIPMAP_LINEAR;
+
+    if (this.isTiny3dMode()) {
+      minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+      if (image) {
+        if (!WebGLHelper.isPow2(image.width) || !WebGLHelper.isPow2(image.height)) {
+          minFilter = glContext.LINEAR;
+        }
+      }
+
+      premultiplyAlpha = isBaseColor ? false : true;
+    }
+
+    const generateMipmap = minFilter == glContext.NEAREST_MIPMAP_NEAREST
+      || minFilter == glContext.LINEAR_MIPMAP_NEAREST
+      || minFilter == glContext.NEAREST_MIPMAP_LINEAR
+      || minFilter == glContext.LINEAR_MIPMAP_LINEAR;
+
+    options.wrapS = options.wrapS ?? glContext.REPEAT;
+    options.wrapT = options.wrapT ?? glContext.REPEAT;
+    options.magFilter = options.magFilter ?? glContext.LINEAR;
+    options.minFilter = minFilter;
+    options.anisotropic = 1;
+    options.premultiplyAlpha = premultiplyAlpha;
+    options.generateMipmap = generateMipmap;
+  }
+
   initial (engine: Engine, options?: LoaderOptions) {
     this.engine = engine;
-    this._loaderOptions = options ?? {};
+    this.loaderOptions = options ?? {};
   }
+
+  checkMeshComponentData (mesh: ModelMeshComponentData, resource: GLTFResources): void {
+    if (mesh.materials.length <= 0) {
+      throw new Error(`Submesh array is empty for mesh with ID: ${mesh.id}.`);
+    }
+
+    let geometryData: spec.GeometryData | undefined;
+
+    resource.meshes.forEach(meshData => {
+      if (meshData.geometryData.id === mesh.geometry.id) {
+        geometryData = meshData.geometryData;
+      }
+    });
+
+    if (geometryData === undefined) {
+      throw new Error(`Unable to find geometry data for mesh with ID: ${mesh.geometry.id}.`);
+    }
+
+    if (geometryData.subMeshes.length !== mesh.materials.length) {
+      throw new Error(`Mismatch between submeshes count (${geometryData.subMeshes.length}) and materials count (${mesh.materials.length}).`);
+    }
+  }
+
+  processMaterialTexture (material: spec.MaterialData, textureName: string, isBaseColor: boolean, textureDataMap: Record<string, TextureSourceOptions>, imageElements: ModelImageLike[]) {
+    const texture = material.textures[textureName];
+
+    if (texture) {
+      const id = texture.texture.id;
+      const texData = textureDataMap[id];
+      let imageObj: ModelImageLike | undefined;
+
+      // @ts-expect-error
+      if (typeof texData.source !== 'number') {
+        // @ts-expect-error
+        throw new Error(`Invalid texture option source data, ${texData.source}`);
+      } else {
+        // @ts-expect-error
+        imageObj = imageElements[texData.source];
+      }
+      if (texData) {
+        this.processTextureOptions(texData, isBaseColor, imageObj);
+      }
+    }
+  }
+
+  getLoadResult (): LoadSceneResult {
+    const itemIds: spec.DataPath[] = [];
+
+    this.items.forEach(item => itemIds.push({ id: item.id }));
+    this.composition.items = itemIds;
+
+    const jsonScene: spec.JSONScene = {
+      version: '3.0',
+      playerVersion: {
+        web: '2.0',
+        native: '2.0',
+      },
+      type: 'ge',
+      compositionId: this.composition.id,
+      compositions: [this.composition],
+      images: this.images,
+      shapes: [],
+      plugins: ['model'],
+      textures: this.textures,
+      items: this.items,
+      components: this.components,
+      materials: this.materials,
+      shaders: this.shaders,
+      geometries: this.geometries,
+      animations: this.animations,
+      miscs: [
+        {
+          id: this.timelineAssetId,
+          dataType: spec.DataType.TimelineAsset,
+        },
+      ],
+    };
+
+    const sceneAABB = this.computeSceneAABB();
+
+    return {
+      source: this.getRemarkString(),
+      jsonScene,
+      sceneAABB: {
+        min: sceneAABB.min.toArray(),
+        max: sceneAABB.max.toArray(),
+      },
+    };
+  }
+
+  addLight (data: ModelLight) {
+    const itemId = generateGUID();
+    const component: spec.ModelLightComponentData = {
+      id: generateGUID(),
+      item: { id: itemId },
+      dataType: spec.DataType.LightComponent,
+      //
+      lightType: data.lightType,
+      color: data.color,
+      intensity: data.intensity,
+      range: data.range,
+      innerConeAngle: data.innerConeAngle,
+      outerConeAngle: data.outerConeAngle,
+    };
+    const item: spec.VFXItemData = {
+      id: itemId,
+      name: data.name,
+      duration: data.duration,
+      type: spec.ItemType.light,
+      pn: 0,
+      visible: true,
+      endBehavior: data.endBehavior,
+      transform: {
+        position: {
+          x: data.position[0],
+          y: data.position[1],
+          z: data.position[2],
+        },
+        eulerHint: {
+          x: data.rotation[0],
+          y: data.rotation[1],
+          z: data.rotation[2],
+        },
+        scale: {
+          x: data.scale[0],
+          y: data.scale[1],
+          z: data.scale[2],
+        },
+      },
+      components: [
+        { id: component.id },
+      ],
+      content: {},
+      dataType: spec.DataType.VFXItemData,
+    };
+
+    this.items.push(item);
+    this.components.push(component);
+  }
+
+  addCamera (camera: ModelCamera) {
+    const itemId = generateGUID();
+    const component: spec.ModelCameraComponentData = {
+      id: generateGUID(),
+      item: { id: itemId },
+      dataType: spec.DataType.CameraComponent,
+      fov: camera.fov,
+      near: camera.near,
+      far: camera.far,
+      clipMode: camera.clipMode,
+    };
+    const item: spec.VFXItemData = {
+      id: itemId,
+      name: camera.name,
+      duration: camera.duration,
+      // @ts-expect-error
+      type: 'camera',
+      pn: 0,
+      visible: true,
+      endBehavior: camera.endBehavior,
+      transform: {
+        position: {
+          x: camera.position[0],
+          y: camera.position[1],
+          z: camera.position[2],
+        },
+        eulerHint: {
+          x: camera.rotation[0],
+          y: camera.rotation[1],
+          z: camera.rotation[2],
+        },
+        scale: {
+          x: 1,
+          y: 1,
+          z: 1,
+        },
+      },
+      components: [
+        { id: component.id },
+      ],
+      content: {},
+      dataType: spec.DataType.VFXItemData,
+    };
+
+    this.items.push(item);
+    this.components.push(component);
+  }
+
+  async tryAddSkybox (skybox: ModelSkybox) {
+    if (this.gltfImageBasedLights.length > 0 && !this.ignoreSkybox()) {
+      const ibl = this.gltfImageBasedLights[0];
+
+      this.components.push(ibl.imageBaseLightData);
+    } else if (skybox.skyboxType !== undefined) {
+      const itemId = generateGUID();
+      const skyboxInfo = this.createSkyboxComponentData(skybox.skyboxType as SkyboxType);
+      const { imageList, textureOptionsList, component } = skyboxInfo;
+
+      component.item.id = itemId;
+      if (skybox.intensity !== undefined) {
+        component.intensity = skybox.intensity;
+      }
+      if (skybox.reflectionsIntensity !== undefined) {
+        component.reflectionsIntensity = skybox.reflectionsIntensity;
+      }
+      component.renderable = skybox.renderable ?? false;
+
+      const item: spec.VFXItemData = {
+        id: itemId,
+        name: `Skybox-${skybox.skyboxType}`,
+        duration: skybox.duration ?? 999,
+        type: spec.ItemType.skybox,
+        pn: 0,
+        visible: true,
+        endBehavior: spec.EndBehavior.freeze,
+        transform: {
+          position: {
+            x: 0,
+            y: 0,
+            z: 0,
+          },
+          eulerHint: {
+            x: 0,
+            y: 0,
+            z: 0,
+          },
+          scale: {
+            x: 1,
+            y: 1,
+            z: 1,
+          },
+        },
+        components: [
+          { id: component.id },
+        ],
+        content: {},
+        dataType: spec.DataType.VFXItemData,
+      };
+
+      this.images.push(...imageList);
+      // @ts-expect-error
+      this.textures.push(...textureOptionsList);
+      this.items.push(item);
+      this.components.push(component);
+    }
+  }
+
+  createSkyboxComponentData (typeName: SkyboxType) {
+    if (typeName !== 'NFT' && typeName !== 'FARM') {
+      throw new Error(`Invalid skybox type specified: '${typeName}'. Valid types are: 'NFT', 'FARM'.`);
+    }
+    //
+    const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
+    const params = PSkyboxCreator.getSkyboxParams(typ);
+
+    return PSkyboxCreator.createSkyboxComponentData(params);
+  }
+
+  private clear () {
+    this.images = [];
+    this.textures = [];
+    this.items = [];
+    this.components = [];
+    this.materials = [];
+    this.shaders = [];
+    this.geometries = [];
+  }
+
+  private computeSceneAABB () {
+    const geometryDataMap: Record<string, GLTFMesh> = {};
+
+    this.gltfMeshs.forEach(mesh => {
+      const id = mesh.geometryData.id;
+
+      geometryDataMap[id] = mesh;
+    });
+    const componentDataMap: Record<string, GLTFMesh> = {};
+
+    this.components.forEach(component => {
+      if (component.dataType === spec.DataType.MeshComponent) {
+        const meshComponent = component as spec.ModelMeshComponentData;
+
+        componentDataMap[component.id] = geometryDataMap[meshComponent.geometry.id];
+      }
+    });
+
+    const sceneAABB = new Box3();
+    const parentTransformMap: Record<string, Transform> = {};
+
+    this.items.forEach(item => {
+      const parentId = item.parentId ?? '';
+      const parentTransform = parentTransformMap[parentId] ?? new Transform();
+      const props: TransformProps = {};
+
+      if (item.transform) {
+        props.position = new Vector3().copyFrom(item.transform.position);
+        props.rotation = Euler.fromVector3(item.transform.eulerHint as Vector3);
+        props.scale = new Vector3().copyFrom(item.transform.scale);
+      }
+      const transform = new Transform(props, parentTransform);
+
+      parentTransformMap[item.id] = transform;
+      item.components.forEach(component => {
+        const mesh = componentDataMap[component.id];
+
+        if (mesh && mesh.bounds) {
+          const minPos = Vector3.fromArray(mesh.bounds.box.min);
+          const maxPos = Vector3.fromArray(mesh.bounds.box.max);
+
+          sceneAABB.union(new Box3(minPos, maxPos));
+        }
+      });
+    });
+
+    return sceneAABB;
+  }
+
+  /**
+   * 按照传入的动画播放参数，计算需要播放的动画索引
+   *
+   * @param treeOptions 节点树属性，需要初始化animations列表。
+   * @returns 返回计算的动画索引，-1表示没有动画需要播放，-88888888表示播放所有动画。
+   */
+  getPlayAnimationIndex (treeOptions: ModelTreeOptions): number {
+    const animations = treeOptions.animations;
+
+    if (animations === undefined || animations.length <= 0) {
+      // 硬编码，内部指定的不播放动画的索引值
+      return -1;
+    }
+
+    if (this.isPlayAllAnimation()) {
+      // 硬编码，内部指定的播放全部动画的索引值
+      return -88888888;
+    }
+
+    const animationInfo = this.sceneOptions.effects.playAnimation;
+
+    if (animationInfo === undefined) {
+      return -1;
+    }
+
+    if (typeof animationInfo === 'number') {
+      if (animationInfo >= 0 && animationInfo < animations.length) {
+        return animationInfo;
+      } else {
+        return -1;
+      }
+    } else {
+      // typeof animationInfo === 'string'
+      let animationIndex = -1;
+
+      // 通过动画名字查找动画索引
+      animations.forEach((anim, index) => {
+        if (anim.name === animationInfo) {
+          animationIndex = index;
+        }
+      });
+
+      return animationIndex;
+    }
+  }
+
+  isPlayAnimation (): boolean {
+    return this.sceneOptions.effects.playAnimation !== undefined;
+  }
+
+  isPlayAllAnimation (): boolean {
+    return this.sceneOptions.effects.playAllAnimation === true;
+  }
+
+  getRemarkString (): string {
+    const remark = this.sceneOptions.gltf.remark;
+
+    if (remark === undefined) {
+      return 'Unknown';
+    } else if (typeof remark === 'string') {
+      return remark;
+    } else {
+      return 'BinaryBuffer';
+    }
+  }
+
+  getCompositionDuration () {
+    return this.composition.duration;
+  }
+
+  isTiny3dMode (): boolean {
+    return this.loaderOptions.compatibleMode === 'tiny3d';
+  }
+
+  getItemDuration (): number {
+    return this.sceneOptions.effects.duration ?? 9999;
+  }
+
+  getEndBehavior (): spec.EndBehavior {
+    return this.sceneOptions.effects.endBehavior ?? spec.EndBehavior.restart;
+  }
+
+  getSkyboxType (): PSkyboxType | undefined {
+    const typeName = this.sceneOptions.gltf.skyboxType;
+
+    switch (typeName) {
+      case 'NFT': return PSkyboxType.NFT;
+      case 'FARM': return PSkyboxType.FARM;
+    }
+  }
+
+  isSkyboxVis (): boolean {
+    return this.sceneOptions.gltf.skyboxVis === true;
+  }
+
+  ignoreSkybox (): boolean {
+    return this.sceneOptions.gltf.ignoreSkybox === true;
+  }
+
+  isEnvironmentTest (): boolean {
+    if (typeof this.sceneOptions.gltf.remark === 'string') {
+      return this.sceneOptions.gltf.remark.includes('EnvironmentTest');
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * for old scene compatibility
+   */
 
   processLight (lights: GLTFLight[], fromGLTF: boolean): void {
     lights.forEach(l => {
@@ -144,7 +984,7 @@ export class LoaderImpl implements Loader {
   createTreeOptions (scene: GLTFScene): ModelTreeOptions {
     const nodeList = scene.nodes.map((node, nodeIndex) => {
       const children = node.children.map(child => {
-        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}.`); }
+        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}`); }
 
         return child.nodeIndex;
       });
@@ -153,7 +993,7 @@ export class LoaderImpl implements Loader {
       let scale: spec.vec3 | undefined;
 
       if (node.matrix !== undefined) {
-        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}.`); }
+        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
         const mat = Matrix4.fromArray(node.matrix);
         const transform = mat.getTransform();
 
@@ -182,7 +1022,7 @@ export class LoaderImpl implements Loader {
     });
 
     const rootNodes = scene.rootNodes.map(root => {
-      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}.`); }
+      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}`); }
 
       return root.nodeIndex;
     });
@@ -237,17 +1077,17 @@ export class LoaderImpl implements Loader {
   }
 
   createTextureCube (cubeImages: CubeImage[], level0Size?: number): Promise<Texture> {
-    if (cubeImages.length == 0) { throw new Error(`createTextureCube: Invalid cubeImages length ${cubeImages}.`); }
+    if (cubeImages.length == 0) { throw new Error(`createTextureCube: Invalid cubeImages length ${cubeImages}`); }
 
     const mipmaps: PImageBufferData[][] = [];
 
     cubeImages.forEach(cubeImage => {
-      if (cubeImage.length != 6) { throw new Error(`createTextureCube: cubeimage count should always be 6, ${cubeImage}.`); }
+      if (cubeImage.length != 6) { throw new Error(`createTextureCube: cubeimage count should always be 6, ${cubeImage}`); }
       //
       const imgList: PImageBufferData[] = [];
 
       cubeImage.forEach(img => {
-        if (img.imageData === undefined) { throw new Error(`createTextureCube: Invalid image data from ${img}.`); }
+        if (img.imageData === undefined) { throw new Error(`createTextureCube: Invalid image data from ${img}`); }
         //
         imgList.push({
           type: 'buffer',
@@ -274,7 +1114,7 @@ export class LoaderImpl implements Loader {
 
   createSkybox (ibl: GLTFImageBasedLight): Promise<ModelSkyboxOptions> {
     const reflectionsIntensity = ibl.reflectionsIntensity ?? ibl.intensity;
-    const irradianceCoeffs = ibl.irradianceCoefficients as unknown as number[];
+    const irradianceCoeffs = ibl.irradianceCoefficients as number[][];
     const inSpecularImages = ibl.specularImages as CubeImage[];
     const specularImages = inSpecularImages.map(images => {
       const newImages = images.map(img => {
@@ -293,15 +1133,21 @@ export class LoaderImpl implements Loader {
 
       return newImages;
     });
-    const specularMipCount = specularImages.length;
-    const specularImageSize = ibl.specularImageSize ?? Math.pow(2, specularMipCount - 1);
+    const specularMipCount = specularImages.length - 1;
+    const specularImageSize = ibl.specularImageSize ?? Math.pow(2, specularMipCount);
+
+    const newIrradianceCoeffs: number[] = [];
+
+    irradianceCoeffs.forEach(coeffs => {
+      newIrradianceCoeffs.push(...coeffs);
+    });
 
     const params: PSkyboxBufferParams = {
       type: 'buffer',
       renderable: this.isSkyboxVis(),
       intensity: ibl.intensity,
       reflectionsIntensity: reflectionsIntensity,
-      irradianceCoeffs: irradianceCoeffs,
+      irradianceCoeffs: newIrradianceCoeffs,
       specularImage: specularImages,
       specularMipCount: specularMipCount,
       specularImageSize: specularImageSize,
@@ -311,9 +1157,7 @@ export class LoaderImpl implements Loader {
   }
 
   createDefaultSkybox (typeName: SkyboxType): Promise<ModelSkyboxOptions> {
-    if (typeName !== 'NFT' && typeName !== 'FARM') {
-      throw new Error(`Invalid skybox type specified: '${typeName}'. Valid types are: 'NFT', 'FARM'.`);
-    }
+    if (typeName !== 'NFT' && typeName !== 'FARM') { throw new Error(`Invalid skybox type name ${typeName}`); }
     //
     const typ = typeName === 'NFT' ? PSkyboxType.NFT : PSkyboxType.FARM;
     const params = PSkyboxCreator.getSkyboxParams(typ);
@@ -328,512 +1172,125 @@ export class LoaderImpl implements Loader {
   scaleColorVec (vec: number[], fromGLTF: boolean): number[] {
     return vec.map(val => this.scaleColorVal(val, fromGLTF));
   }
-
-  async loadScene (options: LoadSceneOptions): Promise<LoadSceneResult> {
-    this._clear();
-    this._sceneOptions = options;
-    this.engine = options.effects.renderer?.engine as Engine;
-    this._loaderOptions = { compatibleMode: options.gltf.compatibleMode };
-    const gltfResource = options.gltf.resource;
-
-    if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
-      throw new Error('Please load the resource using GLTFTools first.');
-    }
-
-    this._gltfScene = gltfResource.scenes[0];
-    this._gltfSkins = this._gltfScene.skins;
-    this._gltfMeshs = gltfResource.meshes;
-    this._gltfLights = this._gltfScene.lights;
-    this._gltfCameras = this._gltfScene.cameras;
-    this._gltfImages = gltfResource.images;
-    this._gltfTextures = gltfResource.textures;
-    this._gltfMaterials = gltfResource.materials;
-    this._gltfAnimations = gltfResource.animations;
-    this._gltfImageBasedLights = gltfResource.imageBasedLights;
-    await this._preprocess();
-    const modelItems: ModelBaseItem[] = [];
-    const treeId = 'sceneTree';
-
-    modelItems.push(this._createItemTree(treeId, this._gltfScene));
-    //
-    const itemSkybox = this._createItemSkybox();
-
-    if (itemSkybox !== undefined) { modelItems.push(itemSkybox); }
-
-    this._gltfScene.nodes.forEach(node => {
-      if (node.mesh !== undefined) {
-        const itemMesh = this._createItemMesh(node, treeId);
-
-        if (itemMesh !== undefined) { modelItems.push(itemMesh); }
-      }
-      if (node.light !== undefined) {
-        const itemLight = this._createItemLight(node, treeId);
-
-        if (itemLight !== undefined) { modelItems.push(itemLight); }
-      }
-      if (node.camera !== undefined) {
-        const itemCamera = this._createItemCamera(node, treeId);
-
-        if (itemCamera !== undefined) { modelItems.push(itemCamera); }
-      }
-    });
-
-    const sceneAABB = new Box3();
-
-    this._gltfScene.rootNodes.forEach(root => {
-      const parentTransform = new EffectsTransform({
-        valid: true,
-      });
-
-      this._computeSceneAABB(root, parentTransform, sceneAABB);
-    });
-
-    return {
-      source: this.getRemarkString(),
-      items: modelItems,
-      sceneAABB: {
-        min: sceneAABB.min.toArray(),
-        max: sceneAABB.max.toArray(),
-      },
-    };
-  }
-
-  private async _preprocess () {
-    this.getTextureManager().initial(this._gltfImages, this._gltfTextures);
-    for (let i = 0; i < this._gltfMaterials.length; i++) {
-      const mat = this._gltfMaterials[i];
-
-      await this.tryAddTexture2D(i, mat.baseColorTexture, true);
-      if (!GLTFHelper.isUnlitMaterial(mat)) {
-        await this.tryAddTexture2D(i, mat.metallicRoughnessTexture, false);
-        await this.tryAddTexture2D(i, mat.normalTexture, false);
-        await this.tryAddTexture2D(i, mat.emissiveTexture, false);
-        await this.tryAddTexture2D(i, mat.occlusionTexture, false);
-      }
-    }
-    //
-    if (this._gltfImageBasedLights.length > 0 && !this.ignoreSkybox()) {
-      const ibl = this._gltfImageBasedLights[0];
-
-      if (this.isEnvironmentTest()) {
-        const inSpecularImages = ibl.specularImages as CubeImage[];
-
-        inSpecularImages.forEach(images => {
-          if (this.isTiny3dMode()) {
-            [images[4], images[5]] = [images[5], images[4]];
-          }
-          [images[2], images[3]] = [images[3], images[2]];
-        });
-      }
-
-      this._skyboxOptions = await this.createSkybox(ibl);
-    } else {
-      const skyboxType = this.getSkyboxType();
-
-      if (skyboxType !== undefined) {
-        const typeName = skyboxType === PSkyboxType.FARM ? 'FARM' : 'NFT';
-
-        this._skyboxOptions = await this.createDefaultSkybox(typeName);
-      }
-    }
-    if (this._skyboxOptions) { this._skyboxOptions.renderable = this.isSkyboxVis(); }
-    //
-    this._gltfData2PlayerData(this._gltfScene, this._gltfMaterials);
-  }
-
-  // FIXME: texInfo 可选，isBaseColor 不可选，顺序问题
-  tryAddTexture2D (matIndex: number, texInfo: GLTFTextureInfo | undefined, isBaseColor: boolean) {
-    if (texInfo === undefined) { return; }
-
-    const cacheTex = this.getTexture2D(matIndex, texInfo, isBaseColor, true);
-
-    if (cacheTex !== undefined) { return; }
-    //
-    const texIndex = texInfo.index;
-    const tex = this._gltfTextures[texIndex];
-    const img = this._gltfImages[tex.source];
-
-    return WebGLHelper.createTexture2D(this.engine, img, tex, isBaseColor, this.isTiny3dMode()).then(tex => {
-      this.getTextureManager().addTexture(matIndex, texIndex, tex, isBaseColor);
-    });
-  }
-
-  // FIXME: 可选顺序问题
-  getTexture2D (matIndex: number, texInfo: GLTFTextureInfo | undefined, isBaseColor: boolean, noWarning?: boolean): Texture | undefined {
-    if (texInfo === undefined) { return; }
-    const texIndex = texInfo.index;
-    const tex = this.getTextureManager().getTexture(matIndex, texIndex, isBaseColor);
-
-    if (tex === undefined && noWarning !== true) {
-      console.warn(`Can't find texture for mat ${matIndex}, tex ${JSON.stringify(texInfo)}, basecolor ${isBaseColor}.`);
-    }
-
-    return tex;
-  }
-
-  private _gltfData2PlayerData (scene: GLTFScene, materials: GLTFMaterial[]) {
-    this.processCamera(scene.cameras, true);
-    this.processLight(scene.lights, true);
-    this.processMaterial(materials, true);
-  }
-
-  private _createItemTree (treeId: string, scene: GLTFScene): ModelItemTree {
-    const treeOptions = this.createTreeOptions(scene);
-    const animOptions = this.createAnimations(this._gltfAnimations);
-
-    treeOptions.animations = animOptions;
-    treeOptions.animation = this.getPlayAnimationIndex(treeOptions);
-
-    const itemTree: ModelItemTree = {
-      id: treeId,
-      name: scene.name,
-      duration: this.getItemDuration(),
-      endBehavior: this.getItemEndBehavior(),
-      type: spec.ItemType.tree,
-      content: {
-        options: {
-          tree: treeOptions,
-        },
-      },
-    };
-
-    return itemTree;
-  }
-
-  private _createItemMesh (node: GLTFNode, parentId?: string): ModelItemMesh {
-    const meshIndex = node.mesh;
-
-    if (meshIndex === undefined) {
-      throw new Error(`Invalid mesh index in node ${node}.`);
-    }
-
-    let skin: ModelSkinOptions | undefined;
-
-    if (node.skin !== undefined) {
-      const gltfSkin = this._gltfSkins[node.skin];
-
-      skin = {
-        name: gltfSkin.name,
-        joints: gltfSkin.jointIndexList,
-        skeleton: gltfSkin.skeleton,
-        inverseBindMatrices: gltfSkin.inverseBindMatrices as Float32Array,
-      };
-    }
-
-    const mesh = this._gltfMeshs[meshIndex];
-    const primitiveList = mesh.primitives.map(prim => {
-      const matIndex = prim.material;
-      const mat = this._gltfMaterials[matIndex];
-      const geometry = this.createGeometry(prim, skin !== undefined);
-      const material = this.createMaterial(mat);
-
-      material.baseColorTexture = this.getTexture2D(matIndex, mat.baseColorTexture, true);
-      if (material.type === spec.MaterialType.pbr) {
-        material.metallicRoughnessTexture = this.getTexture2D(matIndex, mat.metallicRoughnessTexture, false);
-        material.normalTexture = this.getTexture2D(matIndex, mat.normalTexture, false);
-        material.emissiveTexture = this.getTexture2D(matIndex, mat.emissiveTexture, false);
-        material.occlusionTexture = this.getTexture2D(matIndex, mat.occlusionTexture, false);
-      }
-
-      const primitiveOptions: ModelPrimitiveOptions = {
-        geometry: geometry,
-        material: material,
-      };
-
-      return primitiveOptions;
-    });
-
-    const meshOptions: ModelMeshOptions = {
-      parent: node.nodeIndex,
-      skin: skin,
-      primitives: primitiveList,
-      weights: mesh.weights,
-    };
-    const aabb = GLTFHelper.createBoxFromGLTFBound(mesh.bounds as GLTFBounds);
-    const boxSize = aabb.getSize(new Vector3());
-    const boxCenter = aabb.getCenter(new Vector3());
-    const interaction: ModelItemBoundingBox = {
-      behavior: spec.InteractBehavior.NOTIFY,
-      type: spec.ModelBoundingType.box,
-      size: [boxSize.x, boxSize.y, boxSize.z],
-      center: [boxCenter.x, boxCenter.y, boxCenter.z],
-    };
-    const itemMesh: ModelItemMesh = {
-      id: `mesh_ni${node.nodeIndex ?? 0}_mi${meshIndex}`,
-      parentId: `${parentId}^${node.nodeIndex}`,
-      name: mesh.name,
-      duration: this.getItemDuration(),
-      endBehavior: this.getItemEndBehavior(),
-      type: spec.ItemType.mesh,
-      pluginName: 'model',
-      content: {
-        options: meshOptions,
-        interaction: interaction,
-      },
-    };
-
-    return itemMesh;
-  }
-
-  private _createItemLight (node: GLTFNode, parentId?: string): ModelItemLight | undefined {
-    const lightIndex = node.light;
-
-    if (lightIndex === undefined) { return; }
-
-    const light = this._gltfLights[lightIndex];
-    const lightOptions = this.createLightOptions(light);
-    const itemLight: ModelItemLight = {
-      id: `light_ni${node.nodeIndex ?? 0}_li${lightIndex}`,
-      parentId: `${parentId}^${node.nodeIndex}`,
-      name: light.name ?? 'light',
-      duration: this.getItemDuration(),
-      endBehavior: this.getItemEndBehavior(),
-      type: spec.ItemType.light,
-      pluginName: 'model',
-      content: {
-        options: lightOptions,
-      },
-    };
-
-    return itemLight;
-  }
-
-  private _createItemCamera (node: GLTFNode, parentId?: string): ModelItemCamera | undefined {
-    const cameraIndex = node.camera;
-
-    if (cameraIndex === undefined) { return; }
-
-    const camera = this._gltfCameras[cameraIndex];
-    const cameraOptions = this.createCameraOptions(camera);
-
-    if (cameraOptions === undefined) { return; }
-
-    const itemCamera: ModelItemCamera = {
-      id: `camera_ni${node.nodeIndex ?? 0}_ci${cameraIndex}`,
-      parentId: `${parentId}^${node.nodeIndex}`,
-      name: camera.name ?? 'camera',
-      duration: this.getItemDuration(),
-      endBehavior: this.getItemEndBehavior(),
-      type: 'camera',
-      pluginName: 'model',
-      content: {
-        options: cameraOptions,
-      },
-    };
-
-    return itemCamera;
-  }
-
-  private _createItemSkybox (): ModelItemSkybox | undefined {
-    if (this._skyboxOptions === undefined) { return; }
-
-    const itemSkybox: ModelItemSkybox = {
-      id: 'skybox_0',
-      name: 'skybox',
-      duration: this.getItemDuration(),
-      endBehavior: this.getItemEndBehavior(),
-      type: spec.ItemType.skybox,
-      pluginName: 'model',
-      content: {
-        options: this._skyboxOptions,
-      },
-    };
-
-    return itemSkybox;
-  }
-
-  private _computeSceneAABB (node: GLTFNode, parentTransform: EffectsTransform, sceneAABB: Box3) {
-    const transformData: TransformProps = {};
-
-    if (node.matrix) {
-      const trans = Matrix4.fromArray(node.matrix).getTransform();
-
-      transformData.position = trans.translation.toArray();
-      transformData.quat = trans.rotation.toArray();
-      transformData.scale = trans.scale.toArray();
-    } else {
-      if (node.translation) { transformData.position = node.translation as spec.vec3; }
-      if (node.rotation) { transformData.quat = node.rotation as spec.vec4; }
-      if (node.scale) { transformData.scale = node.scale as spec.vec3; }
-    }
-    const nodeTransform = new EffectsTransform(transformData, parentTransform);
-
-    nodeTransform.setValid(true);
-
-    //
-    if (node.mesh !== undefined) {
-      const mesh = this._gltfMeshs[node.mesh];
-      const meshAABB = GLTFHelper.createBoxFromGLTFBound(mesh.bounds as GLTFBounds);
-
-      meshAABB.applyMatrix4(nodeTransform.getWorldMatrix());
-      sceneAABB.union(meshAABB);
-    }
-
-    node.children.forEach(child => {
-      this._computeSceneAABB(child, nodeTransform, sceneAABB);
-    });
-  }
-
-  createLightOptions (light: GLTFLight): ModelLightOptions {
-    return PluginHelper.createLightOptions(light);
-  }
-
-  createCameraOptions (camera: GLTFCamera): ModelCameraOptions | undefined {
-    return PluginHelper.createCameraOptions(camera);
-  }
-
-  private _clear () {
-    if (this._textureManager) {
-      this._textureManager.dispose();
-      this._textureManager = undefined;
-    }
-    this._textureManager = new TextureManager(this);
-  }
-
-  /**
-   * 按照传入的动画播放参数，计算需要播放的动画索引
-   *
-   * @param treeOptions 节点树属性，需要初始化animations列表。
-   * @returns 返回计算的动画索引，-1表示没有动画需要播放，-88888888表示播放所有动画。
-   */
-  getPlayAnimationIndex (treeOptions: ModelTreeOptions): number {
-    const animations = treeOptions.animations;
-
-    if (animations === undefined || animations.length <= 0) {
-      // 硬编码，内部指定的不播放动画的索引值
-      return -1;
-    }
-
-    if (this.isPlayAllAnimation()) {
-      // 硬编码，内部指定的播放全部动画的索引值
-      return -88888888;
-    }
-
-    const animationInfo = this._sceneOptions.effects.playAnimation;
-
-    if (animationInfo === undefined) {
-      return -1;
-    }
-
-    if (typeof animationInfo === 'number') {
-      if (animationInfo >= 0 && animationInfo < animations.length) {
-        return animationInfo;
-      } else {
-        return -1;
-      }
-    } else {
-      // typeof animationInfo === 'string'
-      let animationIndex = -1;
-
-      // 通过动画名字查找动画索引
-      animations.forEach((anim, index) => {
-        if (anim.name === animationInfo) {
-          animationIndex = index;
-        }
-      });
-
-      return animationIndex;
-    }
-  }
-
-  isPlayAnimation (): boolean {
-    return this._sceneOptions.effects.playAnimation !== undefined;
-  }
-
-  isPlayAllAnimation (): boolean {
-    return this._sceneOptions.effects.playAllAnimation === true;
-  }
-
-  getRemarkString (): string {
-    const remark = this._sceneOptions.gltf.remark;
-
-    if (remark === undefined) {
-      return 'Unknown';
-    } else if (typeof remark === 'string') {
-      return remark;
-    } else {
-      return 'BinaryBuffer';
-    }
-  }
-
-  isTiny3dMode (): boolean {
-    return this._loaderOptions.compatibleMode === 'tiny3d';
-  }
-
-  getTextureManager (): TextureManager {
-    return this._textureManager as TextureManager;
-  }
-
-  getItemDuration (): number {
-    return this._sceneOptions.effects.duration ?? 9999;
-  }
-
-  getItemEndBehavior (): spec.ItemEndBehavior {
-    return this._sceneOptions.effects.endBehavior ?? spec.ItemEndBehavior.loop;
-  }
-
-  getSkyboxType (): PSkyboxType | undefined {
-    const typeName = this._sceneOptions.gltf.skyboxType;
-
-    switch (typeName) {
-      case 'NFT': return PSkyboxType.NFT;
-      case 'FARM': return PSkyboxType.FARM;
-    }
-  }
-
-  isSkyboxVis (): boolean {
-    return this._sceneOptions.gltf.skyboxVis === true;
-  }
-
-  ignoreSkybox (): boolean {
-    return this._sceneOptions.gltf.ignoreSkybox === true;
-  }
-
-  isEnvironmentTest (): boolean {
-    if (typeof this._sceneOptions.gltf.remark === 'string') {
-      return this._sceneOptions.gltf.remark.includes('EnvironmentTest');
-    } else {
-      return false;
-    }
-  }
-
 }
 
-class TextureManager {
-  private _owner: LoaderImpl;
-  private _gltfImages: GLTFImage[];
-  private _gltfTextures: GLTFTexture[];
-  private _textureMap: Map<number, Texture>;
+export function getPBRShaderProperties (): string {
+  return `
+  _BaseColorSampler ("基础贴图", 2D) = "" {}
+  _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
+  _MetallicRoughnessSampler ("金属贴图", 2D) = "" {}
+  _MetallicFactor ("金属度", Range(0, 1)) = 1
+  _RoughnessFactor ("粗糙度", Range(0, 1)) = 1
+  [Toggle] _SpecularAA ("高光抗锯齿", Float) = 0
+  _NormalSampler ("法线贴图", 2D) = "" {}
+  _NormalScale ("法线贴图强度", Range(0, 2)) = 1
+  _OcclusionSampler ("AO贴图", 2D) = "" {}
+  _OcclusionStrength ("AO贴图强度", Range(0, 1)) = 1
+  _EmissiveSampler ("自发光贴图", 2D) = "" {}
+  _EmissiveIntensity ("自发光贴图强度", Float) = 1
+  _EmissiveFactor ("自发光颜色", Color) = (0, 0, 0, 1)
+  _AlphaCutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
+  `;
+}
 
-  constructor (owner: LoaderImpl) {
-    this._owner = owner;
-    this._gltfImages = [];
-    this._gltfTextures = [];
-    this._textureMap = new Map();
-  }
+export function getUnlitShaderProperties (): string {
+  return `
+  _BaseColorSampler ("基础贴图", 2D) = "" {}
+  _BaseColorFactor ("基础颜色", Color) = (1, 1, 1, 1)
+  _AlphaCutoff ("Alpha裁剪值", Range(0, 1)) = 0.5
+  `;
+}
 
-  initial (gltfImages: GLTFImage[], gltfTextures: GLTFTexture[]) {
-    this._gltfImages = gltfImages;
-    this._gltfTextures = gltfTextures;
-    this._textureMap.clear();
-  }
+export function getDefaultPBRMaterialData (): spec.MaterialData {
+  const material: spec.MaterialData = {
+    'id': '00000000000000000000000000000000',
+    'name': 'PBR Material',
+    'dataType': spec.DataType.Material,
+    'stringTags': {
+      'RenderType': spec.RenderType.Opaque,
+      'RenderFace': 'Front',
+    },
+    'macros': [],
+    'shader': {
+      'id': 'pbr00000000000000000000000000000',
+    },
+    'ints': {
 
-  dispose () {
-    this._textureMap.clear();
-  }
+    },
+    'floats': {
+      'ZWrite': 1,
+      'ZTest': 1,
+      '_SpecularAA': 0,
+      '_MetallicFactor': 1,
+      '_RoughnessFactor': 0.0,
+      '_NormalScale': 1,
+      '_OcclusionStrength': 1,
+      '_EmissiveIntensity': 1,
+      '_AlphaCutoff': 0.5,
+    },
+    'vector4s': {
 
-  addTexture (matIndex: number, texIndex: number, tex: Texture, isBaseColor: boolean) {
-    const index = isBaseColor ? (matIndex + 1) * 100000 + texIndex : texIndex;
+    },
+    'colors': {
+      '_BaseColorFactor': {
+        'r': 1,
+        'g': 1,
+        'b': 1,
+        'a': 1,
+      },
+      '_EmissiveFactor': {
+        'r': 0,
+        'g': 0,
+        'b': 0,
+        'a': 1,
+      },
+    },
+    'textures': {
 
-    this._textureMap.set(index, tex);
-  }
+    },
+  };
 
-  getTexture (matIndex: number, texIndex: number, isBaseColor: boolean): Texture | undefined {
-    const index = isBaseColor ? (matIndex + 1) * 100000 + texIndex : texIndex;
+  return material;
+}
 
-    return this._textureMap.get(index);
-  }
+export function getDefaultUnlitMaterialData (): spec.MaterialData {
+  const material: spec.MaterialData = {
+    'id': '00000000000000000000000000000000',
+    'name': 'Unlit Material',
+    'dataType': spec.DataType.Material,
+    'stringTags': {
+      'ZWrite': 'true',
+      'ZTest': 'true',
+      'RenderType': spec.RenderType.Opaque,
+      'Cull': 'Front',
+    },
+    'macros': [],
+    'shader': {
+      'id': 'unlit000000000000000000000000000',
+    },
+    'ints': {
 
+    },
+    'floats': {
+      '_AlphaCutoff': 0.5,
+    },
+    'vector4s': {
+
+    },
+    'colors': {
+      '_BaseColorFactor': {
+        'r': 1,
+        'g': 1,
+        'b': 1,
+        'a': 1,
+      },
+    },
+    'textures': {
+
+    },
+  };
+
+  return material;
 }
 
 class GeometryProxy {
@@ -850,27 +1307,27 @@ class GeometryProxy {
     if (this.hasPosition) {
       const attrib = this.positionAttrib;
 
-      attributes['aPos'] = this._getBufferAttrib(attrib);
+      attributes['a_Position'] = this._getBufferAttrib(attrib);
     } else {
-      throw new Error('Position attribute missing.');
+      throw new Error('Position attribute missing');
     }
     if (this.hasNormal) {
       const attrib = this.normalAttrib;
 
       if (attrib !== undefined) {
-        attributes['aNormal'] = this._getBufferAttrib(attrib);
+        attributes['a_Normal'] = this._getBufferAttrib(attrib);
       }
     }
     if (this.hasTangent) {
       const attrib = this.tangentAttrib;
 
       if (attrib !== undefined) {
-        attributes['aTangent'] = this._getBufferAttrib(attrib);
+        attributes['a_Tangent'] = this._getBufferAttrib(attrib);
       }
     }
     this.texCoordList.forEach(val => {
       const attrib = this.texCoordAttrib(val);
-      const attribName = `aUV${val + 1}`;
+      const attribName = `a_UV${val + 1}`;
 
       attributes[attribName] = this._getBufferAttrib(attrib);
     });
@@ -878,12 +1335,12 @@ class GeometryProxy {
       const jointAttrib = this.jointAttribute;
 
       if (jointAttrib !== undefined) {
-        attributes['aJoints'] = this._getBufferAttrib(jointAttrib);
+        attributes['a_Joint1'] = this._getBufferAttrib(jointAttrib);
       }
       const weightAttrib = this.weightAttribute;
 
       if (weightAttrib !== undefined) {
-        attributes['aWeights'] = this._getBufferAttrib(weightAttrib);
+        attributes['a_Weight1'] = this._getBufferAttrib(weightAttrib);
       }
     }
 
@@ -894,19 +1351,19 @@ class GeometryProxy {
       const positionAttrib = this.getTargetPosition(i);
 
       if (positionAttrib !== undefined) {
-        attributes[`aTargetPosition${i}`] = this._getBufferAttrib(positionAttrib);
+        attributes[`a_Target_Position${i}`] = this._getBufferAttrib(positionAttrib);
       }
 
       const normalAttrib = this.getTargetNormal(i);
 
       if (normalAttrib !== undefined) {
-        attributes[`aTargetNormal${i}`] = this._getBufferAttrib(normalAttrib);
+        attributes[`a_Target_Normal${i}`] = this._getBufferAttrib(normalAttrib);
       }
 
       const tangentAttrib = this.getTargetTangent(i);
 
       if (tangentAttrib !== undefined) {
-        attributes[`aTargetTangent${i}`] = this._getBufferAttrib(tangentAttrib);
+        attributes[`a_Target_Tangent${i}`] = this._getBufferAttrib(tangentAttrib);
       }
     }
 
@@ -1275,7 +1732,11 @@ class MaterialProxy {
   get emissiveFactor (): [number, number, number, number] {
     const f = this.gltfMaterial.emissiveFactor;
 
-    if (f === undefined || f.length != 4) { return [0, 0, 0, 1]; } else { return [f[0], f[1], f[2], 1.0]; }
+    if (f === undefined || f.length != 4) {
+      return [0, 0, 0, 1];
+    } else {
+      return [f[0], f[1], f[2], 1.0];
+    }
   }
 
 }
@@ -1292,4 +1753,3 @@ class GLTFHelper {
     return new Box3(boxMin, boxMax);
   }
 }
-

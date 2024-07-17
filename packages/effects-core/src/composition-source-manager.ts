@@ -18,7 +18,7 @@ export interface ContentOptions {
   id: string,
   duration: number,
   name: string,
-  endBehavior: spec.CompositionEndBehavior,
+  endBehavior: spec.EndBehavior,
   items: VFXItemProps[],
   camera: spec.CameraOptions,
   startTime: number,
@@ -90,7 +90,7 @@ export class CompositionSourceManager implements Disposable {
       id,
       duration,
       name,
-      endBehavior: isNaN(endBehavior) ? spec.END_BEHAVIOR_PAUSE : endBehavior,
+      endBehavior: isNaN(endBehavior) ? spec.EndBehavior.freeze : endBehavior,
       // looping,
       items,
       camera,
@@ -116,6 +116,8 @@ export class CompositionSourceManager implements Disposable {
       const itemProps: Record<string, any> = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
+        itemProps.listIndex = listOrder++;
+
         if (
           itemProps.type === spec.ItemType.sprite ||
           itemProps.type === spec.ItemType.particle
@@ -125,15 +127,7 @@ export class CompositionSourceManager implements Disposable {
 
             this.preProcessItemContent(componentData);
           }
-        } else {
-          const renderContent = itemProps.content;
-
-          if (renderContent) {
-            this.preProcessItemContent(renderContent);
-          }
         }
-
-        itemProps.listIndex = listOrder++;
 
         // 处理预合成的渲染顺序
         if (itemProps.type === spec.ItemType.composition) {
@@ -147,12 +141,7 @@ export class CompositionSourceManager implements Disposable {
           if (!this.refCompositionProps.has(refId)) {
             this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
           }
-
-          ref.items.forEach((item: Record<string, any>) => {
-            this.processMask(item.content);
-          });
           itemProps.items = ref.items;
-
         }
 
         items.push(itemProps as VFXItemProps);

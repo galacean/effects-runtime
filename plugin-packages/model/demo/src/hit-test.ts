@@ -1,8 +1,10 @@
 //@ts-nocheck
-import { Transform } from '@galacean/effects';
+import { Transform, spec, math } from '@galacean/effects';
 import { ToggleItemBounding, CompositionHitTest } from '@galacean/effects-plugin-model';
 import { LoaderImplEx, InputController } from '../../src/helper';
 import { createSlider } from './utility';
+
+const { Sphere, Vector3, Box3 } = math;
 
 let player;
 
@@ -14,7 +16,10 @@ let composition;
 
 let playScene;
 
-let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+let url;
+
+url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
 const compatibleMode = 'tiny3d';
 const autoAdjustScene = true;
@@ -26,71 +31,55 @@ async function getCurrentScene () {
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
-      compatibleMode: compatibleMode,
-      skyboxType: 'FARM',
+      compatibleMode: 'tiny3d',
+      skyboxType: 'NFT',
+      skyboxVis: true,
     },
     effects: {
-      renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
-      playAnimation: -1,
+      playAnimation: 0,
     },
   });
 
-  const items = loadResult.items;
+  const sceneMin = Vector3.fromArray(loadResult.sceneAABB.min);
+  const sceneMax = Vector3.fromArray(loadResult.sceneAABB.max);
 
-  items.push({
-    id: 'extra-camera',
-    duration: duration,
+  const sceneAABB = new Box3(sceneMin, sceneMax);
+  const sceneRadius = sceneAABB.getBoundingSphere(new Sphere()).radius;
+  const sceneCenter = sceneAABB.getCenter(new Vector3());
+  const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
+
+  loader.addCamera({
+    near: 0.1,
+    far: 5000,
+    fov: 60,
+    clipMode: 0,
+    //
     name: 'extra-camera',
-    pn: 0,
-    type: 'camera',
-    transform: {
-      position: [0, 0, 8],
-      rotation: [0, 0, 0],
-    },
-    endBehavior: 5,
-    content: {
-      options: {
-        duration: duration,
-        near: 0.1,
-        far: 2000,
-        fov: 60,
-        clipMode: 0,
-      },
-    },
+    duration: duration,
+    endBehavior: spec.EndBehavior.restart,
+    position: position.toArray(),
+    rotation: [0, 0, 0],
   });
 
-  return {
-    'compositionId': 1,
-    'requires': [],
-    'compositions': [{
-      'name': 'composition_1',
-      'id': 1,
-      'duration': duration,
-      'endBehavior': 5,
-      'camera': { 'fov': 30, 'far': 1000, 'near': 0.1, 'position': [0, 0, 0], 'clipMode': 1 },
-      'items': items,
-      'meta': { 'previewSize': [750, 1334] },
-    }],
-    'gltf': [],
-    'images': [],
-    'version': '0.8.9-beta.9',
-    'shapes': [],
-    'plugins': ['model'],
-    'type': 'mars',
-    '_imgs': { '1': [] },
-  };
+  return loader.getLoadResult().jsonScene;
 }
 
 export async function loadScene (inPlayer) {
   if (!player) {
     player = inPlayer;
+    registerMouseEvent();
   }
 
   if (!playScene) {
     playScene = await getCurrentScene();
-    registerMouseEvent();
+  } else {
+    playScene.compositions[0].items.forEach(item => {
+      if (item.id === 'extra-camera') {
+        item.transform = player.compositions[0].camera;
+      }
+    });
   }
 
   const opt = {
@@ -144,7 +133,7 @@ function registerMouseEvent () {
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.compositions[0].items.find(item => item.id === 'extra-camera');
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
   const position = player.compositions[0].camera.position;
   const quat = player.compositions[0].camera.getQuat();
 

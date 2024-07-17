@@ -1,5 +1,5 @@
+import { DEG2RAD, Euler, Matrix4, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { Matrix4, Vector3, Euler, Quaternion, DEG2RAD } from '@galacean/effects-math/es/core/index';
 import { Transform } from './transform';
 
 interface CameraOptionsBase {
@@ -64,6 +64,10 @@ const tmpScale = new Vector3(1, 1, 1);
  * 合成的相机对象，采用透视投影
  */
 export class Camera {
+  /**
+   * 编辑器用于缩放画布
+   */
+  private viewportMatrix = Matrix4.fromIdentity();
   private options: CameraOptionsEx;
   private viewMatrix = Matrix4.fromIdentity();
   private projectionMatrix = Matrix4.fromIdentity();
@@ -201,6 +205,15 @@ export class Camera {
     return this.options.rotation.clone();
   }
 
+  setViewportMatrix (matrix: Matrix4) {
+    this.viewportMatrix = matrix.clone();
+    this.dirty = true;
+  }
+
+  getViewportMatrix () {
+    return this.viewportMatrix;
+  }
+
   /**
    * 获取相机的视图变换矩阵
    * @return
@@ -278,12 +291,14 @@ export class Camera {
    * @param z - 当前的位置 z
    */
   getInverseVPRatio (z: number) {
-    const pos = new Vector3(0, 0, z);
+    const pos = new Vector3(this.position.x, this.position.y, z);
     const mat = this.getViewProjectionMatrix();
     const inverseVP = this.getInverseViewProjectionMatrix();
     const { z: nz } = mat.projectPoint(pos);
+    const { x: xMax, y: yMax } = inverseVP.projectPoint(new Vector3(1, 1, nz));
+    const { x: xMin, y: yMin } = inverseVP.projectPoint(new Vector3(-1, -1, nz));
 
-    return inverseVP.projectPoint(new Vector3(1, 1, nz));
+    return new Vector3((xMax - xMin) / 2, (yMax - yMin) / 2, 0);
   }
 
   /**
@@ -370,6 +385,7 @@ export class Camera {
         fov * DEG2RAD, aspect, near, far,
         clipMode === spec.CameraClipMode.portrait
       );
+      this.projectionMatrix.premultiply(this.viewportMatrix);
       this.inverseViewMatrix.compose(position, this.getQuat(), tmpScale);
       this.viewMatrix.copyFrom(this.inverseViewMatrix).invert();
       this.viewProjectionMatrix.multiplyMatrices(this.projectionMatrix, this.viewMatrix);

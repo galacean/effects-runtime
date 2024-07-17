@@ -321,8 +321,8 @@ function getBasicVS (params: Record<string, boolean> = {}): string {
   featureList.push(`
     precision highp float;
 
-    uniform mat4 _ModelMatrix;
-    uniform mat4 _ViewProjectionMatrix;
+    uniform mat4 effects_ObjectToWorld;
+    uniform mat4 effects_MatrixVP;
     attribute vec3 aPos;
     varying vec3 v_Position;
 
@@ -338,7 +338,7 @@ function getBasicVS (params: Record<string, boolean> = {}): string {
     #endif
 
     void main(){
-      vec4 pos = _ModelMatrix * vec4(aPos, 1);
+      vec4 pos = effects_ObjectToWorld * vec4(aPos, 1);
       v_Position = pos.xyz / pos.w;
 
       #ifdef HAS_UVS
@@ -346,10 +346,10 @@ function getBasicVS (params: Record<string, boolean> = {}): string {
       #endif
 
       #ifdef HAS_NORMALS
-      v_Normal = normalize(vec3(_ModelMatrix * vec4(aNormal, 0)));
+      v_Normal = normalize(vec3(effects_ObjectToWorld * vec4(aNormal, 0)));
       #endif
 
-      gl_Position = _ViewProjectionMatrix * pos;
+      gl_Position = effects_MatrixVP * pos;
     }
   `);
 

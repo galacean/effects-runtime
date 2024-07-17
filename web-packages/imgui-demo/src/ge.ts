@@ -240,7 +240,7 @@ export class GalaceanEffects {
   static playURL (url: string, use3DConverter = false) {
     GalaceanEffects.player.destroyCurrentCompositions();
     if (use3DConverter) {
-      const converter = new JSONConverter(GalaceanEffects.player);
+      const converter = new JSONConverter(GalaceanEffects.player.renderer);
 
       void converter.processScene(url).then(async (scene: any) =>{
         const composition = await GalaceanEffects.player.loadScene(scene, { autoplay:true });

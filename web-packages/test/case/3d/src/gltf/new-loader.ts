@@ -1,12 +1,12 @@
 import { GLTFTools } from '@vvfx/resource-detection';
 import type { Player } from '@galacean/effects';
-import type { LoadSceneOptions, LoadSceneECSResult } from '@galacean/effects-plugin-model';
+import type { LoadSceneOptions, LoadSceneResult } from '@galacean/effects-plugin-model';
 import { spec } from '@galacean/effects';
-import { LoaderECSImpl } from '@galacean/effects-plugin-model';
+import { LoaderImpl } from '@galacean/effects-plugin-model';
 import { Box3, Vector3, Sphere } from '@galacean/effects-plugin-model';
 
-export class LoaderECSEx extends LoaderECSImpl {
-  override async loadScene (options: LoadSceneOptions): Promise<LoadSceneECSResult> {
+export class LoaderECSEx extends LoaderImpl {
+  override async loadScene (options: LoadSceneOptions): Promise<LoadSceneResult> {
     const gltfResource = options.gltf.resource;
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
@@ -50,7 +50,6 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       skyboxVis: true,
     },
     effects: {
-      renderer: options.player.renderer,
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: options.playAnimation,
@@ -88,7 +87,7 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       duration: duration,
-      endBehavior: spec.ItemEndBehavior.loop,
+      endBehavior: spec.EndBehavior.restart,
     });
 
     const loadResult = loader.getLoadResult();

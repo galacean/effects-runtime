@@ -158,17 +158,16 @@ export class CompositionCache {
    * 获取滤波 Mesh
    * @param name - 名称
    * @param material - 材质
-   * @param uniformSemantics - Uniform 语义信息
    * @returns
    */
-  getFilterMesh (name: string, material: PMaterialBase, uniformSemantics: Record<string, any>): Mesh {
+  getFilterMesh (name: string, material: PMaterialBase): Mesh {
     const cachedMesh = this.meshCache.get(name);
 
     if (cachedMesh !== undefined) {
       return cachedMesh;
     }
 
-    const mesh = MeshHelper.createFilterMesh(this.engine, name, material, uniformSemantics);
+    const mesh = MeshHelper.createFilterMesh(this.engine, name, material);
 
     this.meshCache.set(name, mesh);
 

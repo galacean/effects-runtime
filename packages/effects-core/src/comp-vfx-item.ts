@@ -49,7 +49,7 @@ export class CompositionComponent extends ItemBehaviour {
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
 
     // 重播不销毁元素
-    if (this.item.endBehavior !== spec.ItemEndBehavior.destroy) {
+    if (this.item.endBehavior !== spec.EndBehavior.destroy) {
       this.setReusable(true);
     }
   }
@@ -118,7 +118,7 @@ export class CompositionComponent extends ItemBehaviour {
           if (!props) {
             throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
           }
-          // endBehaviour 类型需优化
+          // endBehavior 类型需优化
           props.content = itemData.content;
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
@@ -128,7 +128,7 @@ export class CompositionComponent extends ItemBehaviour {
           compositionComponent.refId = refId;
           item.transform.parentTransform = this.transform;
           this.item.composition.refContent.push(item);
-          if (item.endBehavior === spec.ItemEndBehavior.loop) {
+          if (item.endBehavior === spec.EndBehavior.restart) {
             this.item.composition.autoRefTex = false;
           }
           compositionComponent.createContent();

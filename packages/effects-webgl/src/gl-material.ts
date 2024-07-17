@@ -4,7 +4,7 @@ import type {
 } from '@galacean/effects-core';
 import {
   spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
-  math, throwDestroyedError,
+  math, throwDestroyedError, glContext,
 } from '@galacean/effects-core';
 import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
@@ -45,7 +45,6 @@ export class GLMaterial extends Material {
 
   private uniformDirtyFlag = true;
   private macrosDirtyFlag = true;
-  private readonly macros: Record<string, number | boolean> = {};
   private glMaterialState = new GLMaterialState();
 
   constructor (
@@ -218,21 +217,21 @@ export class GLMaterial extends Material {
   }
 
   override enableMacro (keyword: string, value?: boolean | number): void {
-    if (!this.isMacroEnabled(keyword) || this.macros[keyword] !== value) {
-      this.macros[keyword] = value ?? true;
+    if (!this.isMacroEnabled(keyword) || this.enabledMacros[keyword] !== value) {
+      this.enabledMacros[keyword] = value ?? true;
       this.macrosDirtyFlag = true;
     }
   }
 
   override disableMacro (keyword: string): void {
     if (this.isMacroEnabled(keyword)) {
-      delete this.macros[keyword];
+      delete this.enabledMacros[keyword];
       this.macrosDirtyFlag = true;
     }
   }
 
   override isMacroEnabled (keyword: string): boolean {
-    return this.macros[keyword] !== undefined;
+    return this.enabledMacros[keyword] !== undefined;
   }
 
   // TODO 待废弃 兼容 model/spine 插件 改造后可移除
@@ -256,17 +255,17 @@ export class GLMaterial extends Material {
 
   /**shader和texture的GPU资源初始化。 */
   override initialize (): void {
+    const engine = this.engine;
+
+    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
+      this.shaderVariant = this.shader.createVariant(this.enabledMacros) as GLShaderVariant;
+      this.macrosDirtyFlag = false;
+    }
+    this.shaderVariant.initialize(engine);
     if (this.initialized) {
       return;
     }
-    const glEngine = this.engine as GLEngine;
-
-    glEngine.addMaterial(this);
-    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
-      this.shaderVariant = this.shader.createVariant(this.macros) as GLShaderVariant;
-      this.macrosDirtyFlag = false;
-    }
-    this.shaderVariant.initialize(glEngine);
+    engine.addMaterial(this);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
 
@@ -542,9 +541,32 @@ export class GLMaterial extends Material {
       ...data,
     };
 
+    // FIXME: 刷新 Material 状态，后面删除 data 中的 blending，zTest 和 zWrite 状态
+    if (data.stringTags['RenderType'] !== undefined) {
+      propertiesData.blending = data.stringTags['RenderType'] === spec.RenderType.Transparent;
+    }
+    if (data.floats['ZTest'] !== undefined) {
+      propertiesData.zTest = data.floats['ZTest'] !== 0;
+    }
+    if (data.floats['ZWrite'] !== undefined) {
+      propertiesData.zWrite = data.floats['ZWrite'] !== 0;
+    }
+
     this.blending = propertiesData.blending;
     this.depthTest = propertiesData.zTest;
     this.depthMask = propertiesData.zWrite;
+
+    const renderFace = data.stringTags['RenderFace'];
+
+    if (renderFace === spec.RenderFace.Front) {
+      this.culling = true;
+      this.cullFace = glContext.BACK;
+    } else if (renderFace === spec.RenderFace.Back) {
+      this.culling = true;
+      this.cullFace = glContext.FRONT;
+    } else {
+      this.culling = false;
+    }
 
     let name: string;
 

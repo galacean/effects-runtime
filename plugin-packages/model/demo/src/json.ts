@@ -60,7 +60,7 @@ export async function loadScene (inPlayer) {
   }
   //
   let scene = await getCurrentScene();
-  const converter = new JSONConverter(player);
+  const converter = new JSONConverter(player.renderer);
 
   scene = await converter.processScene(scene);
   //

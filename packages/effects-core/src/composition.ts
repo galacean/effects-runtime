@@ -1,5 +1,6 @@
-import type { Ray } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
 import { CompositionSourceManager } from './composition-source-manager';
@@ -16,11 +17,13 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
+import { type Matrix4 } from '@galacean/effects-math/es/core';
 
 export interface CompositionStatistic {
   loadTime: number,
   loadStart: number,
   firstFrameTime: number,
+  precompileTime: number,
 }
 
 export interface MessageItem {
@@ -28,6 +31,13 @@ export interface MessageItem {
   name: string,
   phrase: number,
   compositionId: string,
+}
+
+export interface CompItemClickedData {
+  name: string,
+  id: string,
+  hitPositions: Vector3[],
+  position: Vector3,
 }
 
 /**
@@ -44,6 +54,7 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   renderer: Renderer,
   onPlayerPause?: (item: VFXItem) => void,
+  onItemClicked?: (item: VFXItem) => void,
   onMessageItem?: (item: MessageItem) => void,
   onEnd?: (composition: Composition) => void,
   event?: EventSystem,
@@ -90,6 +101,11 @@ export class Composition implements Disposable, LostHandler {
   // 3D 模式下创建的场景相机 需要最后更新参数, TODO: 太 hack 了, 待移除
   extraCamera: VFXItem;
   /**
+   * 合成内的元素否允许点击、拖拽交互
+   * @since 1.6.0
+   */
+  interactive: boolean;
+  /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
    * @internal
    */
@@ -102,6 +118,14 @@ export class Composition implements Disposable, LostHandler {
    * 合成中消息元素创建/销毁时触发的回调
    */
   onMessageItem?: (item: MessageItem) => void;
+  /**
+   * 合成中元素点击时触发的回调
+   * 注意：此接口随时可能下线，请务使用！
+   * @since 1.6.0
+   * @ignore
+   * @deprecated
+   */
+  onItemClicked?: (data: CompItemClickedData) => void;
   /**
    * 合成id
    */
@@ -163,8 +187,6 @@ export class Composition implements Disposable, LostHandler {
    * 合成全局时间
    */
   globalTime: number;
-
-  editorScaleRatio = 1.0;
 
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
@@ -241,10 +263,10 @@ export class Composition implements Disposable, LostHandler {
     this.renderer = renderer;
     this.texInfo = imageUsage ?? {};
     this.event = event;
-    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0 };
+    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
     this.reusable = reusable;
     this.speed = speed;
-    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.ItemEndBehavior.loop;
+    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -255,6 +277,7 @@ export class Composition implements Disposable, LostHandler {
     this.url = scene.url;
     this.assigned = true;
     this.globalTime = 0;
+    this.interactive = true;
     this.onPlayerPause = onPlayerPause;
     this.onMessageItem = onMessageItem;
     this.onEnd = onEnd;
@@ -310,6 +333,14 @@ export class Composition implements Disposable, LostHandler {
    */
   get isDestroyed (): boolean {
     return this.destroyed;
+  }
+
+  set viewportMatrix (matrix: Matrix4) {
+    this.camera.setViewportMatrix(matrix);
+  }
+
+  get viewportMatrix () {
+    return this.camera.getViewportMatrix();
   }
 
   /**
@@ -525,7 +556,7 @@ export class Composition implements Disposable, LostHandler {
   private shouldRestart () {
     const { ended, endBehavior } = this.rootItem;
 
-    return ended && endBehavior === spec.ItemEndBehavior.loop;
+    return ended && endBehavior === spec.EndBehavior.restart;
   }
 
   /**
@@ -539,7 +570,7 @@ export class Composition implements Disposable, LostHandler {
     const { ended, endBehavior } = this.rootItem;
 
     // TODO: 合成结束行为
-    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.ItemEndBehavior);
+    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.EndBehavior);
   }
 
   /**
@@ -574,6 +605,7 @@ export class Composition implements Disposable, LostHandler {
     // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
+      this.onEnd?.(this);
       this.dispose();
     } else {
       if (!skipRender) {
@@ -587,9 +619,9 @@ export class Composition implements Disposable, LostHandler {
     const duration = this.rootItem.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.rootItem.endBehavior === spec.ItemEndBehavior.loop) {
+      if (this.rootItem.endBehavior === spec.EndBehavior.restart) {
         localTime = localTime % duration;
-      } else if (this.rootItem.endBehavior === spec.ItemEndBehavior.freeze) {
+      } else if (this.rootItem.endBehavior === spec.EndBehavior.freeze) {
         localTime = Math.min(duration, localTime);
       }
     }
@@ -642,7 +674,7 @@ export class Composition implements Disposable, LostHandler {
       if (VFXItem.isComposition(child)) {
         if (
           child.ended &&
-          child.endBehavior === spec.ItemEndBehavior.loop
+          child.endBehavior === spec.EndBehavior.restart
         ) {
           child.ended = false;
           // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
@@ -791,7 +823,7 @@ export class Composition implements Disposable, LostHandler {
    * @param options - 最大求交数和求交时的回调
    */
   hitTest (x: number, y: number, force?: boolean, options?: CompositionHitTestOptions): Region[] {
-    if (this.isDestroyed) {
+    if (this.isDestroyed || !this.interactive) {
       return [];
     }
     const regions: Region[] = [];
@@ -887,7 +919,7 @@ export class Composition implements Disposable, LostHandler {
   destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
     if (item.type == spec.ItemType.composition) {
-      if (item.endBehavior !== spec.ItemEndBehavior.freeze) {
+      if (item.endBehavior !== spec.EndBehavior.freeze) {
         const contentItems = item.getComponent(CompositionComponent).items;
 
         contentItems.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));

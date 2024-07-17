@@ -125,6 +125,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
                 activeAnimation,
                 'spine': 0,
                 'startSize': 3,
+                'resizeRule': 1,
               },
             },
             'transform': {
@@ -163,6 +164,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
                 'activeAnimation': ['dance'],
                 'spine': 1,
                 'startSize': 3,
+                'resizeRule': 1,
               },
             },
             'transform': {
@@ -673,11 +675,8 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
       container: document.getElementById('J-container'),
       ...playerOptions,
     });
-    const comp = await player.loadScene(json, {
-      autoplay: false,
-    });
+    const comp = await player.loadScene(animation, {});
 
-    player.play();
     setCamera(comp);
 
     pauseEle.onclick = () => {

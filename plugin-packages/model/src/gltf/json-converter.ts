@@ -3,7 +3,7 @@ import {
   glType2VertexFormatType, isObject,
 } from '@galacean/effects';
 import type {
-  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
+  Engine, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
 } from '@galacean/effects';
 import { deserializeGeometry, typedArrayFromBinary } from '@galacean/effects-helper';
 import { PBRShaderGUID, UnlitShaderGUID, Color, Quaternion, Vector3 } from '../runtime';
@@ -13,13 +13,13 @@ export class JSONConverter {
   newScene: spec.JSONScene;
 
   engine: Engine;
-  renderer: Renderer;
   downloader: Downloader;
   treeInfo = new TreeInfo();
 
-  constructor (player: Player) {
-    this.engine = player.renderer.engine;
-    this.renderer = player.renderer;
+  constructor (
+    public renderer: Renderer,
+  ) {
+    this.engine = renderer.engine;
     this.downloader = new Downloader();
   }
 

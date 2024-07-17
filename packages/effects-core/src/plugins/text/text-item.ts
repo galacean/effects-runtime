@@ -45,6 +45,11 @@ export interface TextComponent extends TextComponentBase { }
 export class TextComponent extends SpriteComponent {
   isDirty = true;
 
+  /**
+   * 文本行数
+   */
+  lineCount = 0;
+
   constructor (engine: Engine, props?: spec.TextContent) {
     super(engine, props as unknown as SpriteItemProps);
 
@@ -96,6 +101,7 @@ export class TextComponentBase {
   isDirty: boolean;
   engine: Engine;
   material: Material;
+  lineCount: number;
   /***** mix 类型兼容用 *****/
 
   private char: string[];
@@ -103,7 +109,35 @@ export class TextComponentBase {
   updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
-    this.text = options.text;
+    this.text = options.text.toString();
+    this.lineCount = this.getLineCount(options.text, true);
+  }
+
+  private getLineCount (text: string, init: boolean) {
+    const context = this.context;
+    const letterSpace = this.textLayout.letterSpace;
+    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+    const width = (this.textLayout.width + this.textStyle.fontOffset);
+    let lineCount = 1;
+    let x = 0;
+
+    for (let i = 0; i < text.length; i++) {
+      const str = text[i];
+      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
+
+      // 和浏览器行为保持一致
+      x += letterSpace;
+
+      if (((x + textMetrics) > width && i > 0) || str === '\n') {
+        lineCount++;
+        x = 0;
+      }
+      if (str !== '\n') {
+        x += textMetrics;
+      }
+    }
+
+    return lineCount;
   }
 
   /**
@@ -159,7 +193,8 @@ export class TextComponentBase {
     if (this.text === value) {
       return;
     }
-    this.text = value;
+    this.text = value.toString();
+    this.lineCount = this.getLineCount(value, false);
     this.isDirty = true;
   }
 
@@ -358,11 +393,9 @@ export class TextComponentBase {
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
 
     const charsInfo: CharInfo[] = [];
-    // /3 是为了和编辑器行为保持一致
-    const offsetY = (lineHeight - fontSize) / 3;
 
     let x = 0;
-    let y = layout.getOffsetY(style) + offsetY;
+    let y = layout.getOffsetY(style, this.lineCount, lineHeight, fontSize);
     let charsArray = [];
     let charOffsetX = [];
 

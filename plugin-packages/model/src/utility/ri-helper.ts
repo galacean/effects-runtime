@@ -136,8 +136,8 @@ export class BoxMesh {
   update (modelMatrix: Matrix4, viewProjMatrix: Matrix4, positions: Float32Array, lineColor: Vector3) {
     const material = this.mesh.material;
 
-    material.setMatrix('_ModelMatrix', modelMatrix);
-    material.setMatrix('_ViewProjectionMatrix', viewProjMatrix);
+    material.setMatrix('effects_ObjectToWorld', modelMatrix);
+    material.setMatrix('effects_MatrixVP', viewProjMatrix);
     for (let i = 0; i < positions.length; i += 3) {
       material.setVector3(`_PositionList[${i / 3}]`, Vector3.fromArray(positions, i));
     }
@@ -158,17 +158,16 @@ export class BoxMesh {
    */
   get vertexShader (): string {
     return `
-      #version 100
       precision highp float;
 
-      uniform mat4 _ModelMatrix;
-      uniform mat4 _ViewProjectionMatrix;
+      uniform mat4 effects_ObjectToWorld;
+      uniform mat4 effects_MatrixVP;
       uniform vec3 _PositionList[8];
       attribute vec3 aPos;
       void main(){
         int index = int(aPos.x + 0.5);
-        vec4 pos = _ModelMatrix * vec4(_PositionList[index], 1);
-        gl_Position = _ViewProjectionMatrix * pos;
+        vec4 pos = effects_ObjectToWorld * vec4(_PositionList[index], 1);
+        gl_Position = effects_MatrixVP * pos;
       }
     `;
   }
@@ -178,7 +177,6 @@ export class BoxMesh {
    */
   get fragmentShader (): string {
     return `
-      #version 100
       precision highp float;
 
       uniform vec3 _LineColor;
