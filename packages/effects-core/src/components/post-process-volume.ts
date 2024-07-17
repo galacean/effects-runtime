@@ -1,5 +1,5 @@
-import { ItemBehaviour } from '.';
 import { effectsClass, serialize } from '../decorators';
+import { ItemBehaviour } from './component';
 
 // TODO spec 增加 DataType
 @effectsClass('PostProcessVolume')

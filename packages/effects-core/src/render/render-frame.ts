@@ -1,6 +1,7 @@
 import type { vec4 } from '@galacean/effects-specification';
-import type { Matrix4 } from '@galacean/effects-math/es/core/index';
-import { Vector2, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Camera } from '../camera';
 import { glContext } from '../gl';
 import type { UniformValue } from '../material';
@@ -8,16 +9,25 @@ import { Material } from '../material';
 import { PassTextureCache } from '../paas-texture-cache';
 import type { SemanticFunc } from './semantic-map';
 import { SemanticMap } from './semantic-map';
-import { Texture, TextureLoadAction, TextureSourceType, generateWhiteTexture, generateTransparentTexture } from '../texture';
+import {
+  Texture, TextureLoadAction, TextureSourceType, generateWhiteTexture, generateTransparentTexture,
+} from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, OrderType, removeItem } from '../utils';
 import { createCopyShader, EFFECTS_COPY_MESH_NAME } from './create-copy-shader';
 import { Geometry } from './geometry';
 import { Mesh } from './mesh';
-import type { RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassColorAttachmentTextureOptions, RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction } from './render-pass';
-import { RenderTargetHandle, RenderPass, RenderPassAttachmentStorageType, RenderPassPriorityNormal } from './render-pass';
+import type {
+  RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassColorAttachmentTextureOptions,
+  RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction,
+} from './render-pass';
+import {
+  RenderTargetHandle, RenderPass, RenderPassAttachmentStorageType, RenderPassPriorityNormal,
+} from './render-pass';
 import type { Renderer } from './renderer';
-import { BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass } from './post-process-pass';
+import {
+  BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass,
+} from './post-process-pass';
 import type { PostProcessVolumeData } from './global-volume';
 import { defaultGlobalVolume } from './global-volume';
 import type { RendererComponent } from '../components';
