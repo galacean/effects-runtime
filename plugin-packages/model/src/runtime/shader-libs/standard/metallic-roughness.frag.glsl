@@ -54,12 +54,12 @@
     #endif
 #endif
 
-#include <webglCompatibility.glsl>
+#include <webgl-compatibility.glsl>
 #include <extensions.frag.glsl>
 #include <tonemapping.frag.glsl>
 #include <textures.vert.glsl>
 #include <functions.frag.glsl>
-#include <shadowCommon.vert.glsl>
+#include <shadow-common.vert.glsl>
 #include <shadow.frag.glsl>
 
 // KHR_lights_punctual extension.

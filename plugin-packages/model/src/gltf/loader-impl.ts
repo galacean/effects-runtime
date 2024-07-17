@@ -196,6 +196,7 @@ export class LoaderImpl implements Loader {
       renderable: options.gltf.skyboxVis,
     });
 
+    // @ts-expect-error
     this.items.push(...gltfResource.scenes[0].vfxItemData);
     this.items.forEach(item => {
       if (item.type === 'root' as spec.ItemType) {
