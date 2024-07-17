@@ -690,6 +690,7 @@ export class PSkyboxCreator {
     return params;
   }
 
+  // TODO: 待移除？
   private async checkCubeMapImage (imageList: string[]) {
     let lastImage!: HTMLImageElement;
     const specularImageLists: HTMLImageElement[][] = [];

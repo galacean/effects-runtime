@@ -13,7 +13,7 @@ export class GLVertexArrayObject implements Disposable {
   private gl: WebGLRenderingContext | WebGL2RenderingContext;
 
   constructor (
-    private engine: GLEngine,
+    engine: GLEngine,
     name?: string,
   ) {
     this.gl = engine.getGLPipelineContext().gl;

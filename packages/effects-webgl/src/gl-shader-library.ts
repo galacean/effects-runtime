@@ -147,7 +147,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       if (program) {
         if (result.status !== ShaderCompileResultStatus.fail) {
           assignInspectorName(program, name);
-          const glProgram = new GLProgram(this.engine, program, shared, shader.id);
+          const glProgram = new GLProgram(this.engine, program, shader.id);
 
           // FIXME: 这个检测不能在这里调用，安卓上会有兼容性问题。要么开发版使用，要么移到Shader首次使用时
           gl.validateProgram(program);

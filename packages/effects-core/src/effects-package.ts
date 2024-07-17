@@ -1,14 +1,21 @@
 import * as flatbuffers from 'flatbuffers';
-import type * as spec from '@galacean/effects-specification';
-import type { SubMesh, VertexChannel, VertexData } from '@galacean/effects-specification';
-import { DataType, type GeometryData } from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import {
   FBEffectsObjectDataT, FBEffectsPackageData, FBEffectsPackageDataT, FBGeometryData,
   FBGeometryDataT, FBSubMeshT, FBVertexChannelT, FBVertexDataT,
 } from './__definations__';
 
+interface FileSummary {
+  assetType: string,
+  guid: string,
+}
+
+/**
+ * @since 2.0.0
+ * @internal
+ */
 export class EffectsPackage {
-  fileSummary: fileSummary;
+  fileSummary: FileSummary;
   exportObjectDatas: spec.EffectsObjectData[] = [];
 
   addData (effectsObjectData: spec.EffectsObjectData) {
@@ -23,8 +30,11 @@ export class EffectsPackage {
     for (const effectsObjectData of this.exportObjectDatas) {
       let fbEffectsObjectData;
 
-      if (effectsObjectData.dataType === DataType.Geometry) {
-        fbEffectsObjectData = new FBEffectsObjectDataT('Geometry', this.geometryDataToBinary(effectsObjectData as GeometryData) as unknown as number[]);
+      if (effectsObjectData.dataType === spec.DataType.Geometry) {
+        fbEffectsObjectData = new FBEffectsObjectDataT(
+          'Geometry',
+          this.geometryDataToBinary(effectsObjectData as spec.GeometryData) as unknown as number[],
+        );
       }
 
       if (!fbEffectsObjectData) {
@@ -35,9 +45,8 @@ export class EffectsPackage {
     effectsPackage.exportObjects = exportObjects;
 
     FBEffectsPackageData.finishFBEffectsPackageDataBuffer(fbb, effectsPackage.pack(fbb));
-    const buffer = fbb.asUint8Array(); // Of type `Uint8Array`.
 
-    return buffer;
+    return fbb.asUint8Array(); // Of type `Uint8Array`.
   }
 
   deserializeFromBinary (buffer: Uint8Array) {
@@ -59,7 +68,7 @@ export class EffectsPackage {
       }
       let effectsObjectData;
 
-      if (dataType === DataType.Geometry) {
+      if (dataType === spec.DataType.Geometry) {
         effectsObjectData = this.binaryToGeometryData(dataBuffer);
       }
 
@@ -70,29 +79,37 @@ export class EffectsPackage {
     }
   }
 
-  private geometryDataToBinary (geometryData: GeometryData): Uint8Array {
+  private geometryDataToBinary (geometryData: spec.GeometryData): Uint8Array {
     const fbb = new flatbuffers.Builder(1);
     const fbGeometryData = new FBGeometryDataT();
+    const {
+      indexFormat, indexOffset, mode, id, vertexData,
+      boneNames = [],
+      rootBoneName = '',
+      inverseBindMatrices = [],
+      binaryData = [],
+    } = geometryData;
 
-    fbGeometryData.indexFormat = geometryData.indexFormat;
-    fbGeometryData.indexOffset = geometryData.indexOffset;
-    fbGeometryData.mode = geometryData.mode;
-    fbGeometryData.id = geometryData.id;
-    fbGeometryData.boneNames = geometryData.boneNames ?? [];
-    fbGeometryData.rootBoneName = geometryData.rootBoneName ?? '';
-    fbGeometryData.inverseBindMatrices = geometryData.inverseBindMatrices ?? [];
-    fbGeometryData.binaryData = geometryData.binaryData as unknown as number[] ?? [];
+    fbGeometryData.indexFormat = indexFormat;
+    fbGeometryData.indexOffset = indexOffset;
+    fbGeometryData.mode = mode;
+    fbGeometryData.id = id;
+    fbGeometryData.boneNames = boneNames;
+    fbGeometryData.rootBoneName = rootBoneName;
+    fbGeometryData.inverseBindMatrices = inverseBindMatrices;
+    fbGeometryData.binaryData = binaryData as unknown as number[];
     const fbVertexdata = new FBVertexDataT();
 
-    fbVertexdata.vertexCount = geometryData.vertexData.vertexCount;
+    fbVertexdata.vertexCount = vertexData.vertexCount;
     fbVertexdata.channels = [];
-    for (const channel of geometryData.vertexData.channels) {
+    for (const channel of vertexData.channels) {
+      const { semantic, offset, format, dimension, normalize } = channel;
       const fbChannel = new FBVertexChannelT(
-        channel.semantic,
-        channel.offset,
-        channel.format,
-        channel.dimension,
-        channel.normalize
+        semantic,
+        offset,
+        format,
+        dimension,
+        normalize,
       );
 
       fbVertexdata.channels.push(fbChannel);
@@ -101,10 +118,11 @@ export class EffectsPackage {
     const fbSubMeshes = [];
 
     for (const subMesh of geometryData.subMeshes) {
+      const { offset, indexCount, vertexCount } = subMesh;
       const fbSubMesh = new FBSubMeshT(
-        subMesh.offset,
-        subMesh.indexCount,
-        subMesh.vertexCount
+        offset,
+        indexCount,
+        vertexCount,
       );
 
       fbSubMeshes.push(fbSubMesh);
@@ -113,16 +131,13 @@ export class EffectsPackage {
 
     FBEffectsPackageData.finishFBEffectsPackageDataBuffer(fbb, fbGeometryData.pack(fbb));
 
-    const buffer = fbb.asUint8Array(); // Of type `Uint8Array`.
-
-    return buffer;
+    return fbb.asUint8Array(); // Of type `Uint8Array`.
   }
 
-  private binaryToGeometryData (buffer: Uint8Array): GeometryData {
+  private binaryToGeometryData (buffer: Uint8Array): spec.GeometryData {
     const buf = new flatbuffers.ByteBuffer(buffer);
     const fbGeometryData = FBGeometryData.getRootAsFBGeometryData(buf);
-
-    const vertexData: VertexData = {
+    const vertexData: spec.VertexData = {
       vertexCount: 0,
       channels: [],
     };
@@ -137,7 +152,7 @@ export class EffectsPackage {
         if (!channel) {
           continue;
         }
-        const vertexChannel: VertexChannel = {
+        const vertexChannel: spec.VertexChannel = {
           semantic: channel.semantic() ?? '',
           offset: channel.offset(),
           format: channel.format(),
@@ -156,7 +171,7 @@ export class EffectsPackage {
       if (!fbSubMesh) {
         continue;
       }
-      const subMesh: SubMesh = {
+      const subMesh: spec.SubMesh = {
         offset: fbSubMesh.offset(),
         vertexCount: fbSubMesh.vertexCount(),
       };
@@ -171,9 +186,9 @@ export class EffectsPackage {
 
       boneNames.push(boneName);
     }
-    const inverseBindMatricesArray = fbGeometryData.inverseBindMatricesArray();
 
-    const geometryData: GeometryData = {
+    const inverseBindMatricesArray = fbGeometryData.inverseBindMatricesArray();
+    const geometryData: spec.GeometryData = {
       vertexData,
       indexFormat: fbGeometryData.indexFormat(),
       indexOffset: fbGeometryData.indexOffset(),
@@ -185,14 +200,9 @@ export class EffectsPackage {
       inverseBindMatrices: inverseBindMatricesArray ? Array.from(inverseBindMatricesArray) : undefined,
       binaryData: fbGeometryData.binaryDataArray() ?? undefined,
       id: fbGeometryData.id() ?? '',
-      dataType: DataType.Geometry,
+      dataType: spec.DataType.Geometry,
     };
 
     return geometryData;
   }
-}
-
-interface fileSummary {
-  assetType: string,
-  guid: string,
 }
