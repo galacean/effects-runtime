@@ -54,7 +54,7 @@ export class Sequencer extends EditorWindow {
 
     //@ts-expect-error
     for (const track of compositionComponent.timelineAsset.tracks) {
-      const trackAsset = track as TrackAsset;
+      const trackAsset = track;
 
       //@ts-expect-error
       if (ImGui.CollapsingHeader(trackAsset.binding.name, ImGui.ImGuiTreeNodeFlags.DefaultOpen)) {

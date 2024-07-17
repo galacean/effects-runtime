@@ -3,6 +3,7 @@ import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import { EditorWindow } from '../core/panel';
+import { Selection } from '../core/selection';
 
 @editorWindow()
 export class CompositionWindow extends EditorWindow {
@@ -47,6 +48,7 @@ export class CompositionWindow extends EditorWindow {
     ImGui.SameLine(alignedSize);
     if (ImGui.ListBox('', (value = this.currentItem) => this.currentItem = value, this.compositionNames, this.compositionNames.length, this.compositionNames.length)) {
       this.currentCompositionURL = this.compositionURLs[this.currentItem];
+      Selection.setActiveObject(null);
       void GalaceanEffects.playURL(this.currentCompositionURL);
     }
   }

@@ -139,7 +139,7 @@ export class Editor extends EditorWindow {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);
               //@ts-expect-error
-              ImGui.DragFloat('##DragFloat' + peopertyName, (_ = componet[key]) => componet[key] = _);
+              ImGui.DragFloat('##DragFloat' + peopertyName, (_ = componet[key]) => componet[key] = _, 0.03);
             } else if (typeof property === 'boolean') {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);

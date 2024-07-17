@@ -130,6 +130,7 @@ export class GalaceanEffects {
           'floats': {
             '_Speed': 1,
           },
+          'stringTags':{},
           'vector4s': {},
           'textures': {
             '_MainTex': {
@@ -257,7 +258,7 @@ export class GalaceanEffects {
           name: 'OutlinePass',
           priority: RenderPassPriorityPostprocess,
           meshOrder: OrderType.ascending,
-        }),);
+        }));
       });
     }
 
