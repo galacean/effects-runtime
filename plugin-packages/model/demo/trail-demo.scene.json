@@ -95,7 +95,6 @@
         ]
       },
       "globalVolume": {
-        "usePostProcessing": false,
         "useHDR": false,
         "useBloom": 0,
         "threshold": 0.8,

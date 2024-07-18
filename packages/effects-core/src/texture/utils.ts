@@ -14,22 +14,20 @@ export async function deserializeMipmapTexture (
 ): Promise<Texture2DSourceOptions | TextureCubeSourceOptions> {
   if (textureOptions.target === 34067) {
     const { mipmaps, target } = textureOptions as spec.SerializedTextureCube;
-    // const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => loadMipmapImage(pointer, bins))));
-    const loadedMipmaps: HTMLElement[][] = [];
-
-    for (const level of mipmaps) {
-      const newLevel = [];
-
-      for (const face of level) {
+    const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => {
+      // @ts-expect-error
+      if (pointer.id) {
         // @ts-expect-error
-        const loadedImageAsset = engine.assetLoader.loadGUID(face.id);
+        const loadedImageAsset = engine.assetLoader.loadGUID(pointer.id);
 
         // @ts-expect-error
-        newLevel.push(loadedImageAsset.data);
+        return loadedImageAsset.data;
+      } else {
+        return loadMipmapImage(pointer, bins);
       }
-      loadedMipmaps.push(newLevel);
-    }
-    // const bin = files[mipmaps[0][0][1][0]].url;
+    })));
+
+    const loadedMipmaps = await Promise.all(jobs);
 
     return {
       keepImageSource: false,
