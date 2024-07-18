@@ -52,12 +52,17 @@ export interface SpineResource {
   },
   images: Texture[],
   skeletonType: spec.skeletonFileType,
+  // 编辑器缓存资源
   cache?: SpineBaseData,
+  // 编辑器资源缓存ID
+  editorResourceID?: string,
 }
 
 export interface SpineDataCache extends SpineBaseData {
   skinList?: string[],
   animationList?: string[],
+  // 编辑器资源缓存ID
+  editorResourceID?: string,
 }
 
 /**
@@ -128,7 +133,7 @@ export class SpineComponent extends RendererComponent {
     if (!this.resource || !Object.keys(this.resource).length) {
       return;
     }
-    const { images: textures, skeletonType, atlas: atlasOptions, skeleton: skeletonOptions } = this.resource;
+    const { images: textures, skeletonType, atlas: atlasOptions, skeleton: skeletonOptions, editorResourceID } = this.resource;
 
     // 编辑器缓存解析资源，不再解析
     if (this.cache) {
@@ -147,6 +152,9 @@ export class SpineComponent extends RendererComponent {
     this.cache = {
       atlas, skeletonData,
     };
+    if (editorResourceID) {
+      this.cache.editorResourceID = editorResourceID;
+    }
   }
 
   override start () {
