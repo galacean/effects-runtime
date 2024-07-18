@@ -8,7 +8,13 @@ export interface DowngradeOptions {
    * 技术点列表
    */
   techPoint?: string[],
+  /**
+   * JSAPI getSystemInfo 返回的结果
+   */
   systemInfo?: any,
+  /**
+   * JSAPI getDowngradeResult 返回的结果
+   */
   downgradeResult?: any,
   /**
    * 禁用压后台的时候自动暂停播放器
