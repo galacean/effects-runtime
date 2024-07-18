@@ -1,11 +1,10 @@
 /**
  * 后处理配置
  */
-export interface GlobalVolume {
-  usePostProcessing: boolean,
+export interface PostProcessVolumeData {
   useHDR: boolean,
   // Bloom
-  useBloom: number,
+  useBloom: boolean,
   threshold: number,
   bloomIntensity: number,
   // ColorAdjustments
@@ -19,15 +18,14 @@ export interface GlobalVolume {
   vignetteSmoothness: number,
   vignetteRoundness: number,
   // ToneMapping
-  useToneMapping: number, // 1: true, 0: false
+  useToneMapping: boolean, // 1: true, 0: false
 }
 
-export const defaultGlobalVolume: GlobalVolume = {
+export const defaultGlobalVolume: PostProcessVolumeData = {
   useHDR: false,
-  usePostProcessing: false,
   /***** Material Uniform *****/
   // Bloom
-  useBloom: 1.0,
+  useBloom: true,
   threshold: 1.0,
   bloomIntensity: 1.0,
   // ColorAdjustments
@@ -41,5 +39,5 @@ export const defaultGlobalVolume: GlobalVolume = {
   vignetteSmoothness: 0.4,
   vignetteRoundness: 1.0,
   // ToneMapping
-  useToneMapping: 1, // 1: true, 0: false
+  useToneMapping: true, // 1: true, 0: false
 };

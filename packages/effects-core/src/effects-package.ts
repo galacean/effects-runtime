@@ -157,6 +157,7 @@ export class EffectsPackage {
           offset: channel.offset(),
           format: channel.format(),
           dimension: channel.dimension(),
+          normalize:channel.normalize(),
         };
 
         vertexData.channels.push(vertexChannel);
@@ -174,6 +175,7 @@ export class EffectsPackage {
       const subMesh: spec.SubMesh = {
         offset: fbSubMesh.offset(),
         vertexCount: fbSubMesh.vertexCount(),
+        indexCount: fbSubMesh.indexCount(),
       };
 
       subMeshes.push(subMesh);

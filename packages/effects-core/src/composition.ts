@@ -8,7 +8,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
-import type { GlobalVolume, MeshRendererOptions, Renderer } from './render';
+import type { PostProcessVolumeData, MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene, SceneType } from './scene';
 import type { Texture } from './texture';
@@ -182,11 +182,14 @@ export class Composition implements Disposable, LostHandler {
    * 合成的相机对象
    */
   readonly camera: Camera;
-
   /**
    * 合成全局时间
    */
   globalTime: number;
+  /**
+   * 后处理渲染配置
+   */
+  globalVolume: PostProcessVolumeData;
 
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
@@ -208,10 +211,6 @@ export class Composition implements Disposable, LostHandler {
    */
   private paused = false;
   private lastVideoUpdateTime = 0;
-  /**
-   * 后处理渲染配置
-   */
-  private readonly globalVolume: GlobalVolume;
   // private readonly event: EventSystem;
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
@@ -255,7 +254,6 @@ export class Composition implements Disposable, LostHandler {
 
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
-    this.globalVolume = sourceContent.globalVolume;
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;

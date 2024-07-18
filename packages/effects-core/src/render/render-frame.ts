@@ -1,6 +1,7 @@
 import type { vec4 } from '@galacean/effects-specification';
-import type { Matrix4 } from '@galacean/effects-math/es/core/index';
-import { Vector2, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { Camera } from '../camera';
 import { glContext } from '../gl';
 import type { UniformValue } from '../material';
@@ -8,17 +9,26 @@ import { Material } from '../material';
 import { PassTextureCache } from '../paas-texture-cache';
 import type { SemanticFunc } from './semantic-map';
 import { SemanticMap } from './semantic-map';
-import { Texture, TextureLoadAction, TextureSourceType, generateWhiteTexture, generateTransparentTexture } from '../texture';
+import {
+  Texture, TextureLoadAction, TextureSourceType, generateWhiteTexture, generateTransparentTexture,
+} from '../texture';
 import type { Disposable } from '../utils';
 import { DestroyOptions, OrderType, removeItem } from '../utils';
 import { createCopyShader, EFFECTS_COPY_MESH_NAME } from './create-copy-shader';
 import { Geometry } from './geometry';
 import { Mesh } from './mesh';
-import type { RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassColorAttachmentTextureOptions, RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction } from './render-pass';
-import { RenderTargetHandle, RenderPass, RenderPassAttachmentStorageType, RenderPassPriorityNormal } from './render-pass';
+import type {
+  RenderPassClearAction, RenderPassColorAttachmentOptions, RenderPassColorAttachmentTextureOptions,
+  RenderPassDepthStencilAttachment, RenderPassDestroyOptions, RenderPassStoreAction,
+} from './render-pass';
+import {
+  RenderTargetHandle, RenderPass, RenderPassAttachmentStorageType, RenderPassPriorityNormal,
+} from './render-pass';
 import type { Renderer } from './renderer';
-import { BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass } from './post-process-pass';
-import type { GlobalVolume } from './global-volume';
+import {
+  BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass,
+} from './post-process-pass';
+import type { PostProcessVolumeData } from './global-volume';
 import { defaultGlobalVolume } from './global-volume';
 import type { RendererComponent } from '../components';
 
@@ -136,7 +146,7 @@ export interface RenderFrameOptions {
   /**
    * 后处理渲染配置
    */
-  globalVolume?: Partial<GlobalVolume>,
+  globalVolume?: Partial<PostProcessVolumeData>,
   /**
    * 名称
    */
@@ -178,7 +188,7 @@ export class RenderFrame implements Disposable {
   /**
    * 存放后处理的属性设置
    */
-  globalVolume: GlobalVolume;
+  globalVolume: PostProcessVolumeData;
   renderer: Renderer;
   resource: RenderFrameResource;
   keepColorBuffer?: boolean;
@@ -262,17 +272,44 @@ export class RenderFrame implements Disposable {
     this.setRenderPasses(renderPasses);
 
     if (this.globalVolume) {
-      const useBloom = this.globalVolume.useBloom;
       const sceneTextureHandle = new RenderTargetHandle(engine);  //保存后处理前的屏幕图像
 
-      if (useBloom) {
-        const gaussianStep = 7; // 高斯模糊的迭代次数，次数越高模糊范围越大
-        const viewport: vec4 = [0, 0, this.renderer.getWidth() / 2, this.renderer.getHeight() / 2];
+      const gaussianStep = 7; // 高斯模糊的迭代次数，次数越高模糊范围越大
+      const viewport: vec4 = [0, 0, this.renderer.getWidth() / 2, this.renderer.getHeight() / 2];
 
-        const gaussianDownResults = new Array<RenderTargetHandle>(gaussianStep);  //存放多个高斯Pass的模糊结果，用于Bloom
-        const textureType = this.globalVolume.useHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
-        const bloomThresholdPass = new BloomThresholdPass(renderer, {
-          name: 'BloomThresholdPass',
+      const gaussianDownResults = new Array<RenderTargetHandle>(gaussianStep);  //存放多个高斯Pass的模糊结果，用于Bloom
+      const textureType = this.globalVolume.useHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
+      const bloomThresholdPass = new BloomThresholdPass(renderer, {
+        name: 'BloomThresholdPass',
+        attachments: [{
+          texture: {
+            format: glContext.RGBA,
+            type: textureType,
+            minFilter: glContext.LINEAR,
+            magFilter: glContext.LINEAR,
+          },
+        }],
+      });
+
+      bloomThresholdPass.sceneTextureHandle = sceneTextureHandle;
+      this.addRenderPass(bloomThresholdPass);
+      for (let i = 0; i < gaussianStep; i++) {
+        gaussianDownResults[i] = new RenderTargetHandle(engine);
+        const gaussianDownHPass = new HQGaussianDownSamplePass(renderer, 'H', {
+          name: 'GaussianDownPassH' + i,
+          viewport,
+          attachments: [{
+            texture: {
+              format: glContext.RGBA,
+              type: textureType,
+              minFilter: glContext.LINEAR,
+              magFilter: glContext.LINEAR,
+            },
+          }],
+        });
+        const gaussianDownVPass = new HQGaussianDownSamplePass(renderer, 'V', {
+          name: 'GaussianDownPassV' + i,
+          viewport,
           attachments: [{
             texture: {
               format: glContext.RGBA,
@@ -283,72 +320,35 @@ export class RenderFrame implements Disposable {
           }],
         });
 
-        bloomThresholdPass.sceneTextureHandle = sceneTextureHandle;
-        this.addRenderPass(bloomThresholdPass);
-        for (let i = 0; i < gaussianStep; i++) {
-          gaussianDownResults[i] = new RenderTargetHandle(engine);
-          const gaussianDownHPass = new HQGaussianDownSamplePass(renderer, 'H', {
-            name: 'GaussianDownPassH' + i,
-            viewport,
-            attachments: [{
-              texture: {
-                format: glContext.RGBA,
-                type: textureType,
-                minFilter: glContext.LINEAR,
-                magFilter: glContext.LINEAR,
-              },
-            }],
-          });
-          const gaussianDownVPass = new HQGaussianDownSamplePass(renderer, 'V', {
-            name: 'GaussianDownPassV' + i,
-            viewport,
-            attachments: [{
-              texture: {
-                format: glContext.RGBA,
-                type: textureType,
-                minFilter: glContext.LINEAR,
-                magFilter: glContext.LINEAR,
-              },
-            }],
-          });
-
-          gaussianDownVPass.gaussianResult = gaussianDownResults[i];
-          this.addRenderPass(gaussianDownHPass);
-          this.addRenderPass(gaussianDownVPass);
-          viewport[2] /= 2;
-          viewport[3] /= 2;
-          // TODO 限制最大迭代
-        }
-        viewport[2] *= 4;
-        viewport[3] *= 4;
-        for (let i = 0; i < gaussianStep - 1; i++) {
-          const gaussianUpPass = new HQGaussianUpSamplePass(renderer, {
-            name: 'GaussianUpPass' + i,
-            viewport,
-            attachments: [{
-              texture: {
-                format: glContext.RGBA,
-                type: textureType,
-                minFilter: glContext.LINEAR,
-                magFilter: glContext.LINEAR,
-              },
-            }],
-          });
-
-          gaussianUpPass.gaussianDownSampleResult = gaussianDownResults[gaussianStep - 2 - i];
-          this.addRenderPass(gaussianUpPass);
-          viewport[2] *= 2;
-          viewport[3] *= 2;
-        }
+        gaussianDownVPass.gaussianResult = gaussianDownResults[i];
+        this.addRenderPass(gaussianDownHPass);
+        this.addRenderPass(gaussianDownVPass);
+        viewport[2] /= 2;
+        viewport[3] /= 2;
+        // TODO 限制最大迭代
       }
+      viewport[2] *= 4;
+      viewport[3] *= 4;
+      for (let i = 0; i < gaussianStep - 1; i++) {
+        const gaussianUpPass = new HQGaussianUpSamplePass(renderer, {
+          name: 'GaussianUpPass' + i,
+          viewport,
+          attachments: [{
+            texture: {
+              format: glContext.RGBA,
+              type: textureType,
+              minFilter: glContext.LINEAR,
+              magFilter: glContext.LINEAR,
+            },
+          }],
+        });
 
-      let postProcessPass: ToneMappingPass;
-
-      if (useBloom) {
-        postProcessPass = new ToneMappingPass(renderer, sceneTextureHandle);
-      } else {
-        postProcessPass = new ToneMappingPass(renderer);
+        gaussianUpPass.gaussianDownSampleResult = gaussianDownResults[gaussianStep - 2 - i];
+        this.addRenderPass(gaussianUpPass);
+        viewport[2] *= 2;
+        viewport[3] *= 2;
       }
+      const postProcessPass = new ToneMappingPass(renderer, sceneTextureHandle);
 
       this.addRenderPass(postProcessPass);
     }
