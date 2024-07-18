@@ -19,29 +19,31 @@ export class SerializationHelper {
 
     const serializedProperties = getMergedStore(effectsObject);
 
-    for (const key of Object.keys(serializedProperties)) {
-      // TODO 待移除，序列化属性通过 effectsObject 对象直接获取
-      let value = effectsObject.taggedProperties[key];
+    if (serializedProperties) {
+      for (const key of Object.keys(serializedProperties)) {
+        // TODO 待移除，序列化属性通过 effectsObject 对象直接获取
+        let value = effectsObject.taggedProperties[key];
 
-      if (value === undefined) {
-        value = effectsObject[key as keyof EffectsObject];
-      }
-
-      if (EffectsObject.is(value)) {
-        SerializationHelper.collectSerializableObject(value, res);
-      } else if (isArray(value)) {
-        for (const arrayValue of value) {
-          if (EffectsObject.is(arrayValue)) {
-            SerializationHelper.collectSerializableObject(arrayValue, res);
-          }
+        if (value === undefined) {
+          value = effectsObject[key as keyof EffectsObject];
         }
-      } else if (isObject(value)) {
-        // 非 EffectsObject 对象只递归一层
-        for (const objectKey of Object.keys(value)) {
-          const objectValue = value[objectKey];
 
-          if (EffectsObject.is(objectValue)) {
-            SerializationHelper.collectSerializableObject(objectValue, res);
+        if (EffectsObject.is(value)) {
+          SerializationHelper.collectSerializableObject(value, res);
+        } else if (isArray(value)) {
+          for (const arrayValue of value) {
+            if (EffectsObject.is(arrayValue)) {
+              SerializationHelper.collectSerializableObject(arrayValue, res);
+            }
+          }
+        } else if (isObject(value)) {
+          // 非 EffectsObject 对象只递归一层
+          for (const objectKey of Object.keys(value)) {
+            const objectValue = value[objectKey];
+
+            if (EffectsObject.is(objectValue)) {
+              SerializationHelper.collectSerializableObject(objectValue, res);
+            }
           }
         }
       }
@@ -86,30 +88,32 @@ export class SerializationHelper {
 
     const serializedProperties = getMergedStore(effectsObject);
 
-    for (const key of Object.keys(serializedProperties)) {
-      const value = effectsObject[key as keyof EffectsObject];
+    if (serializedProperties) {
+      for (const key of Object.keys(serializedProperties)) {
+        const value = effectsObject[key as keyof EffectsObject];
 
-      if (
-        typeof value === 'number' ||
-        typeof value === 'string' ||
-        typeof value === 'boolean' ||
-        SerializationHelper.checkTypedArray(value)
-      ) {
-        // TODO json 数据避免传 typedArray
-        serializedData[key] = value;
-      } else if (isArray(value)) {
-        if (!serializedData[key]) {
-          serializedData[key] = [];
+        if (
+          typeof value === 'number' ||
+          typeof value === 'string' ||
+          typeof value === 'boolean' ||
+          SerializationHelper.checkTypedArray(value)
+        ) {
+          // TODO json 数据避免传 typedArray
+          serializedData[key] = value;
+        } else if (isArray(value)) {
+          if (!serializedData[key]) {
+            serializedData[key] = [];
+          }
+          SerializationHelper.serializeArrayProperty(value, serializedData[key], 0);
+        } else if (EffectsObject.is(value)) {
+          // TODO 处理 EffectsObject 递归序列化
+          serializedData[key] = { id: value.getInstanceId() };
+        } else if (isObject(value)) {
+          if (!serializedData[key]) {
+            serializedData[key] = {};
+          }
+          SerializationHelper.serializeObjectProperty(value, serializedData[key], 0);
         }
-        SerializationHelper.serializeArrayProperty(value, serializedData[key], 0);
-      } else if (EffectsObject.is(value)) {
-        // TODO 处理 EffectsObject 递归序列化
-        serializedData[key] = { id: value.getInstanceId() };
-      } else if (isObject(value)) {
-        if (!serializedData[key]) {
-          serializedData[key] = {};
-        }
-        SerializationHelper.serializeObjectProperty(value, serializedData[key], 0);
       }
     }
 
@@ -153,25 +157,28 @@ export class SerializationHelper {
     const engine = effectsObject.engine;
 
     for (const key of Object.keys(serializedData)) {
-      if (serializedProperties[key]) {
+      if (serializedProperties && serializedProperties[key]) {
         continue;
       }
       const value = serializedData[key as keyof spec.EffectsObjectData];
 
       taggedProperties[key] = SerializationHelper.deserializeProperty(value, engine, 0);
     }
-    for (const key of Object.keys(serializedProperties)) {
-      const value = serializedData[key as keyof spec.EffectsObjectData];
 
-      if (value === undefined) {
-        continue;
+    if (serializedProperties) {
+      for (const key of Object.keys(serializedProperties)) {
+        const value = serializedData[key as keyof spec.EffectsObjectData];
+
+        if (value === undefined) {
+          continue;
+        }
+
+        const propertyType = serializedProperties[key].type;
+
+        // FIXME: taggedProperties 为 readonly，这里存在强制赋值
+        // @ts-expect-error
+        effectsObject[key as keyof EffectsObject] = SerializationHelper.deserializeProperty(value, engine, 0, propertyType);
       }
-
-      const propertyType = serializedProperties[key].type;
-
-      // FIXME: taggedProperties 为 readonly，这里存在强制赋值
-      // @ts-expect-error
-      effectsObject[key as keyof EffectsObject] = SerializationHelper.deserializeProperty(value, engine, 0, propertyType);
     }
     effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
@@ -185,26 +192,29 @@ export class SerializationHelper {
     const engine = effectsObject.engine;
 
     for (const key of Object.keys(serializedData)) {
-      if (serializedProperties[key]) {
+      if (serializedProperties && serializedProperties[key]) {
         continue;
       }
       const value = serializedData[key as keyof spec.EffectsObjectData];
 
       taggedProperties[key] = await SerializationHelper.deserializePropertyAsync(value, engine, 0);
     }
-    for (const key of Object.keys(serializedProperties)) {
-      const value = serializedData[key as keyof spec.EffectsObjectData];
+    if (serializedProperties) {
+      for (const key of Object.keys(serializedProperties)) {
+        const value = serializedData[key as keyof spec.EffectsObjectData];
 
-      if (value === undefined) {
-        continue;
+        if (value === undefined) {
+          continue;
+        }
+
+        const propertyType = serializedProperties[key].type;
+
+        // FIXME: taggedProperties 为 readonly，这里存在强制赋值
+        // @ts-expect-error
+        effectsObject[key as keyof EffectsObject] = await SerializationHelper.deserializePropertyAsync(value, engine, 0, propertyType);
       }
-
-      const propertyType = serializedProperties[key].type;
-
-      // FIXME: taggedProperties 为 readonly，这里存在强制赋值
-      // @ts-expect-error
-      effectsObject[key as keyof EffectsObject] = await SerializationHelper.deserializePropertyAsync(value, engine, 0, propertyType);
     }
+
     effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
 

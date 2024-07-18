@@ -8,6 +8,13 @@
 
 ---
 
+## 1.6.2
+
+`2024-07-08`
+
+- Fix: 修复当 variable 为 number 时文本设置失效问题。[#480](https://github.com/galacean/effects-runtime/pull/480) @Sruimeng
+- Fix: 修复 camera 不在原点时的像素坐标转换错误。[#481](https://github.com/galacean/effects-runtime/pull/481) @RGCHN
+
 ## 1.6.1
 
 `2024-07-02`

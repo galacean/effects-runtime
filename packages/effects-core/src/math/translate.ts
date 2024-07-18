@@ -1,4 +1,6 @@
-import { Euler, Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
+import { Euler } from '@galacean/effects-math/es/core/euler';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { ItemLinearVelOverLifetime } from '../plugins';
 import type { ValueGetter } from './value-getter';
 
@@ -75,6 +77,7 @@ export function calculateTranslation (
 
     ret.addVectors(center, rot);
   }
+
   if (linearVelocityOverLifetime.enabled) {
     const asMovement = linearVelocityOverLifetime.asMovement;
 

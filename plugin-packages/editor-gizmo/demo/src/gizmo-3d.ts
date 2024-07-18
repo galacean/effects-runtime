@@ -3,6 +3,7 @@ import '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-model';
 import { gizmo3D } from './assets';
 import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
+import { JSONConverter } from '@galacean/effects-plugin-model';
 
 (async () => {
   const player = new Player({
@@ -20,5 +21,8 @@ import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
     },
   });
 
-  await player.loadScene(gizmo3D);
+  const converter = new JSONConverter(player.renderer);
+  const scene = await converter.processScene(gizmo3D);
+
+  await player.loadScene(scene);
 })();

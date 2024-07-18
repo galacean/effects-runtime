@@ -1,4 +1,4 @@
-import type { Disposable, Texture, math } from '@galacean/effects-core';
+import type { Disposable, Nullable, Texture, math } from '@galacean/effects-core';
 import { glContext } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
@@ -11,8 +11,6 @@ type Vector4 = math.Vector4;
 type Matrix3 = math.Matrix3;
 type Matrix4 = math.Matrix4;
 type Quaternion = math.Quaternion;
-
-export type Nullable<T> = T | null;
 
 export class GLPipelineContext implements Disposable {
   textureUnitDict: Record<string, WebGLTexture | null>;
