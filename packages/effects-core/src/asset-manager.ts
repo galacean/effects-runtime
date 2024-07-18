@@ -266,15 +266,6 @@ export class AssetManager implements Disposable {
   private async processJSON (json: JSONValue) {
     // TODO: 后面切换到新的数据版本，就不用掉用 getStandardJSON 做转换了
     const jsonScene = getStandardJSON(json);
-
-    // FIXME: hack globalVolume，specification 更新后需移除
-    // @ts-expect-error
-    json.compositions.forEach((composition, i) => {
-      if (composition.globalVolume) {
-        // @ts-expect-error
-        jsonScene.compositions[i].globalVolume = composition.globalVolume;
-      }
-    });
     const { plugins = [], compositions: sceneCompositions, imgUsage, images } = jsonScene;
     const pluginSystem = new PluginSystem(plugins);
 

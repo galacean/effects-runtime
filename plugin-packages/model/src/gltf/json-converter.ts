@@ -3,7 +3,7 @@ import {
   glType2VertexFormatType, isObject,
 } from '@galacean/effects';
 import type {
-  Engine, Player, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
+  Engine, Renderer, JSONValue, TextureCubeSourceOptions, GeometryProps,
 } from '@galacean/effects';
 import { deserializeGeometry, typedArrayFromBinary } from '@galacean/effects-helper';
 import { PBRShaderGUID, UnlitShaderGUID, Color, Quaternion, Vector3 } from '../runtime';
@@ -13,13 +13,14 @@ export class JSONConverter {
   newScene: spec.JSONScene;
 
   engine: Engine;
-  renderer: Renderer;
   downloader: Downloader;
   treeInfo = new TreeInfo();
 
-  constructor (player: Player) {
-    this.engine = player.renderer.engine;
-    this.renderer = player.renderer;
+  constructor (
+    public renderer: Renderer,
+    public keepIBLData = true,
+  ) {
+    this.engine = renderer.engine;
     this.downloader = new Downloader();
   }
 
@@ -34,6 +35,7 @@ export class JSONConverter {
     });
 
     const oldScene = getStandardJSON(sceneJSON);
+    const oldBinUrls = oldScene.bins ?? [];
     const binFiles: ArrayBuffer[] = [];
 
     if (oldScene.bins) {
@@ -68,6 +70,8 @@ export class JSONConverter {
     this.setItem(newScene, oldScene);
     this.setComposition(newScene, oldScene);
 
+    newScene.bins = oldBinUrls;
+
     return newScene;
   }
 
@@ -88,38 +92,42 @@ export class JSONConverter {
     if (oldScene.textures) {
       for (const tex of oldScene.textures as spec.SerializedTextureCube[]) {
         if (tex.target === 34067) {
-          const { mipmaps, target } = tex;
-          const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => this.loadMipmapImage(pointer, bins))));
-          const loadedMipmaps = await Promise.all(jobs);
+          if (this.keepIBLData) {
+            newTextures.push(tex);
+          } else {
+            const { mipmaps, target } = tex;
+            const jobs = mipmaps.map(mipmap => Promise.all(mipmap.map(pointer => this.loadMipmapImage(pointer, bins))));
+            const loadedMipmaps = await Promise.all(jobs);
 
-          const newMipmaps = loadedMipmaps.map(mipmaps => mipmaps.map(img => {
-            const id = generateGUID();
-            const sceneImage: spec.Image = {
-              url: img,
-              id,
+            const newMipmaps = loadedMipmaps.map(mipmaps => mipmaps.map(img => {
+              const id = generateGUID();
+              const sceneImage: spec.Image = {
+                url: img,
+                id,
+              };
+
+              newScene.images.push(sceneImage);
+              const dataPath: spec.DataPath = { id };
+
+              return dataPath;
+            }));
+
+            const newTex = {
+              keepImageSource: false,
+              ...tex,
+              ...{
+                mipmaps: newMipmaps,
+                sourceFrom: {
+                  target,
+                  type: TextureSourceType.mipmaps,
+                  mipmaps: mipmaps.map(mipmap => mipmap.map(pointer => [pointer[1][1], pointer[1][2]])),
+                },
+              } as TextureCubeSourceOptions,
             };
 
-            newScene.images.push(sceneImage);
-            const dataPath: spec.DataPath = { id };
-
-            return dataPath;
-          }));
-
-          const newTex = {
-            keepImageSource: false,
-            ...tex,
-            ...{
-              mipmaps: newMipmaps,
-              sourceFrom: {
-                target,
-                type: TextureSourceType.mipmaps,
-                mipmaps: mipmaps.map(mipmap => mipmap.map(pointer => [pointer[1][1], pointer[1][2]])),
-              },
-            } as TextureCubeSourceOptions,
-          };
-
-          // @ts-expect-error
-          newTextures.push(newTex);
+            // @ts-expect-error
+            newTextures.push(newTex);
+          }
         } else {
           // @ts-expect-error
           const source = tex.source as any;

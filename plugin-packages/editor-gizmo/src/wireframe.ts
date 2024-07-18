@@ -32,7 +32,7 @@ export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec
   material.depthTest = mesh.material.depthTest;
   material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
 
-  return updateWireframeMesh(mesh, Mesh.create(
+  return updateWireframeMesh(mesh.geometry, mesh.material, Mesh.create(
     engine,
     {
       geometry,
@@ -52,11 +52,15 @@ export function destroyWireframeMesh (mesh: Mesh) {
   mesh.dispose({ material: { textures: DestroyOptions.keep }, geometries: DestroyOptions.keep });
 }
 
-export function updateWireframeMesh (originMesh: Mesh, wireframe: Mesh, type: WireframeGeometryType) {
-  wireframe.material.cloneUniforms(originMesh.material);
+export function updateWireframeMesh (originGeometry: Geometry, originMaterial: Material, wireframe: Mesh, type: WireframeGeometryType) {
+  wireframe.material.cloneUniforms(originMaterial);
 
-  const geometry = originMesh.firstGeometry();
+  const geometry = originGeometry;
   const wireframeGeometry = wireframe.firstGeometry();
+
+  for (const macro of Object.keys(originMaterial.enabledMacros)) {
+    wireframe.material.enableMacro(macro, originMaterial.enabledMacros[macro]);
+  }
 
   if (type === WireframeGeometryType.triangle) {
     // 线框模式不绘制模型的时候，drawCount 为负数
@@ -114,10 +118,10 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
         data: new Uint32Array(0),
       },
     });
-  const { vertex, fragment, macros } = mesh.material.props.shader;
+  const { vertex, fragment } = mesh.material.shader.shaderData;
   const materialOptions = { ...mesh.material.props };
 
-  const newMacros = [...(macros || [] as ShaderMacros), ['PREVIEW_BORDER', 1]] as ShaderMacros;
+  const newMacros = [['PREVIEW_BORDER', 1]] as ShaderMacros;
 
   materialOptions.shader = {
     vertex: createGizmoShader(newMacros, vertex, ShaderType.vertex, level),
@@ -129,10 +133,10 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
 
   const material = Material.create(engine, materialOptions);
 
-  material.depthTest = mesh.material.depthTest;
+  material.depthTest = true;
   material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
 
-  return updateWireframeMesh(mesh, Mesh.create(
+  return updateWireframeMesh(mesh.geometry, mesh.material, Mesh.create(
     engine,
     {
       geometry,

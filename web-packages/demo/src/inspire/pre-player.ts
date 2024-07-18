@@ -44,8 +44,8 @@ window.addEventListener('message', async event => {
 
 export function compatibleCalculateItem (composition: any) {
   composition.items.forEach((item: any) => {
-    if (window.ge.VFXItem.isNull(item) && item.endBehavior === window.ge.spec.ItemEndBehavior.destroy) {
-      item.endBehavior = window.ge.spec.ItemEndBehavior.freeze;
+    if (window.ge.VFXItem.isNull(item) && item.endBehavior === window.ge.spec.EndBehavior.destroy) {
+      item.endBehavior = window.ge.spec.EndBehavior.freeze;
     }
   });
 }

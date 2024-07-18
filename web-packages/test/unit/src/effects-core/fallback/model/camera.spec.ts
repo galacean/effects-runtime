@@ -29,7 +29,7 @@ describe('camera item', () => {
     expect(neo.delay).to.eql(1, 'delay');
     expect(neo.duration).to.eql(5, 'duration');
     expect(neo.renderLevel).to.eql('B+', 'renderLevel');
-    expect(neo.endBehavior).to.eql(spec.ItemEndBehavior.destroy);
+    expect(neo.endBehavior).to.eql(spec.EndBehavior.destroy);
     expect(neo.type).to.eql(spec.ItemType.camera);
     expect(neo.transform?.position).to.eql([0, 0, 12], 'position');
     expect(neo.transform?.rotation).to.eql([10, 20, 30], 'rotation');

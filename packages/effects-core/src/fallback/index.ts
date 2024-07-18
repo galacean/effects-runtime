@@ -2,7 +2,7 @@ import type {
   BaseItem, BaseItemTransform, Composition, CompressedImage, Image, JSONScene, JSONSceneLegacy,
   ParticleItem, RenderLevel, SpriteItem, TemplateImage,
 } from '@galacean/effects-specification';
-import { CAMERA_CLIP_MODE_NORMAL, ItemEndBehavior, ItemType } from '@galacean/effects-specification';
+import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
@@ -170,7 +170,7 @@ export function getStandardItem (item: any, opt: { plugins?: string[], requires?
   let transform: BaseItemTransform;
   let originContent;
   let content;
-  let endBehavior: ItemEndBehavior = item.endBehavior;
+  let endBehavior: EndBehavior = item.endBehavior;
   let renderLevel: RenderLevel;
   let pluginName: string;
   let duration = NaN;
@@ -232,12 +232,12 @@ export function getStandardItem (item: any, opt: { plugins?: string[], requires?
 
     if (looping) {
       if (Array.isArray(looping)) {
-        endBehavior = looping[1] ? ItemEndBehavior.loop : ItemEndBehavior.destroy;
+        endBehavior = looping[1] ? EndBehavior.restart : EndBehavior.destroy;
       } else {
-        endBehavior = ItemEndBehavior.loop;
+        endBehavior = EndBehavior.restart;
       }
     } else {
-      endBehavior = endBehavior || originContent?.options?.endBehavior || ItemEndBehavior.destroy;
+      endBehavior = endBehavior || originContent?.options?.endBehavior || EndBehavior.destroy;
     }
     if (originContent.options.renderLevel) {
       renderLevel = originContent.options.renderLevel;

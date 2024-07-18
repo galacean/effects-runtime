@@ -1,6 +1,6 @@
 //@ts-nocheck
 import type { Composition } from '@galacean/effects';
-import { POST_PROCESS_SETTINGS, Player, defaultGlobalVolume, setConfig } from '@galacean/effects';
+import { POST_PROCESS_SETTINGS, Player, PostProcessVolume, defaultGlobalVolume, setConfig } from '@galacean/effects';
 import { InspireList } from './common/inspire-list';
 import { InspectorGui } from './gui/inspector-gui';
 
@@ -59,10 +59,10 @@ async function handlePlay (url) {
   try {
     const json = await (await fetch(url)).json();
 
-    hackGlobalVolume(json);
     player.destroyCurrentCompositions();
-    const comp = await player.loadScene(json);
+    const comp: Composition = await player.loadScene(json);
 
+    comp.rootItem.addComponent(PostProcessVolume);
     void player.play(comp, { speed });
     setDatGUI(comp);
 
@@ -107,15 +107,4 @@ function setDatGUI (composition: Composition) {
 
   ToneMappingFlolder.add(globalVolume, 'useToneMapping', 0, 1).step(1);
   ToneMappingFlolder.open();
-}
-
-// TODO: 临时 hack globalVolume
-function hackGlobalVolume (json) {
-  json.compositions.forEach(composition => {
-    composition.globalVolume = {
-      ...defaultGlobalVolume,
-      usePostProcessing: true,
-      useHDR: true,
-    };
-  });
 }

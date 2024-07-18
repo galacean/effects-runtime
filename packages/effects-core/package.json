@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-core",
-  "version": "1.6.1",
+  "version": "1.6.2",
   "description": "Galacean Effects runtime core for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
@@ -17,7 +17,8 @@
   },
   "scripts": {
     "prebuild": "pnpm clean",
-    "build": "pnpm build:declaration && pnpm build:module",
+    "build": "pnpm build:fbs && pnpm build:declaration && pnpm build:module",
+    "build:fbs": "node ../../scripts/flatc ./src/__definations__/index.fbs",
     "build:module": "rollup -c",
     "build:declaration": "tsc -d --emitDeclarationOnly",
     "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
@@ -50,8 +51,9 @@
     "registry": "https://registry.npmjs.org"
   },
   "dependencies": {
-    "@galacean/effects-specification": "2.0.0-alpha.20",
+    "@galacean/effects-specification": "2.0.0-alpha.22",
     "@galacean/effects-math": "1.1.0",
+    "flatbuffers": "24.3.25",
     "uuid": "9.0.1"
   }
 }

@@ -126,6 +126,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
                 activeAnimation,
                 'spine': 0,
                 'startSize': 3,
+                'resizeRule': 1,
               },
             },
             'transform': {
@@ -164,6 +165,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
                 'activeAnimation': ['dance'],
                 'spine': 1,
                 'startSize': 3,
+                'resizeRule': 1,
               },
             },
             'transform': {

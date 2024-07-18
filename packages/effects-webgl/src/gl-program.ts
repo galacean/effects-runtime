@@ -14,6 +14,7 @@ export interface ProgramAttributeInfo {
   readonly loc: number,
 }
 
+// TODO: 待移除？
 export interface ProgramUniformInfo {
   readonly loc: WebGLUniformLocation,
   readonly subInfos: ProgramUniformInfo[],
@@ -26,19 +27,13 @@ export interface ProgramUniformInfo {
 export class GLProgram implements Disposable {
   private readonly uniformBlockMap: Record<string, UniformBlockSpec> = {};
   private attribInfoMap: Record<string, ProgramAttributeInfo>;
-  // TODO: 待移除？
-  private uniformInfoMap: Record<string, ProgramUniformInfo>;
   private pipelineContext: GLPipelineContext;
 
   constructor (
     public engine: GLEngine,
     public readonly program: WebGLProgram,
-    // TODO: 待移除？
-    private readonly shared: boolean,
     private readonly id: string,
   ) {
-    // let blockUniformNames: string[] = [];
-
     this.pipelineContext = engine.getGLPipelineContext();
     const gl = this.pipelineContext.gl;
 

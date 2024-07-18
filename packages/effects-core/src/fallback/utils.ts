@@ -290,7 +290,10 @@ export function rotationZYXFromQuat (out: vec3 | number[], quat: vec4): vec3 {
 /**
  * 提取并转换 JSON 数据中的 anchor 值
  */
-export function convertAnchor (anchor?: vec2, particleOrigin?: ParticleOrigin): vec2 {
+export function convertAnchor (
+  anchor?: vec2,
+  particleOrigin?: ParticleOrigin,
+): vec2 {
   if (anchor) {
     return [anchor[0] - 0.5, 0.5 - anchor[1]];
   } else if (particleOrigin) {
