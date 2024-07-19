@@ -34,6 +34,7 @@ export class InteractComponent extends RendererComponent {
 
   /** 是否响应点击和拖拽交互事件 */
   private _interactive = true;
+  private hasBeenAddedToComposition = false;
 
   set interactive (enable: boolean) {
     this._interactive = enable;
@@ -62,8 +63,6 @@ export class InteractComponent extends RendererComponent {
         this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
       }
     }
-    composition.addInteractiveItem(this.item, options.type);
-    this.item.onEnd = () => composition.removeInteractiveItem(this.item, options.type);
     if (options.type === spec.InteractType.DRAG) {
       if (env !== PLAYER_OPTIONS_ENV_EDITOR || options.enableInEditor) {
         composition.event && this.beginDragTarget(options, composition.event);
@@ -78,6 +77,12 @@ export class InteractComponent extends RendererComponent {
 
   override update (dt: number): void {
     this.previewContent?.updateMesh();
+    if (!this.hasBeenAddedToComposition && this.item.composition) {
+      const options = this.item.props.content.options as spec.DragInteractOption;
+
+      this.item.composition.addInteractiveItem(this.item, options.type);
+      this.hasBeenAddedToComposition = true;
+    }
 
     if (!this.dragEvent || !this.bouncingArg) {
       return;
