@@ -7,13 +7,13 @@ export interface DowngradeOptions {
    */
   techPoint?: string[],
   /**
-   * JSAPI getSystemInfo 返回的结果
+   * Alipay JSAPI getSystemInfo 返回的结果
    */
   systemInfo?: SystemInfo,
   /**
-   * JSAPI getDowngradeResult 返回的结果
+   * Alipay JSAPI getDowngradeResult 返回的结果
    */
-  downgradeResult?: DowngradeResult,
+  downgradeResult?: any,
   /**
    * 禁用压后台的时候自动暂停播放器
    * @default false - 不自动暂停
