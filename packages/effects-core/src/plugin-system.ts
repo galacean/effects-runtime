@@ -3,7 +3,7 @@ import type { Composition } from './composition';
 import type { Plugin, PluginConstructor } from './plugins';
 import type { RenderFrame, Renderer } from './render';
 import type { Scene, SceneLoadOptions } from './scene';
-import { addItem, removeItem } from './utils';
+import { addItem, removeItem, logger } from './utils';
 import type { VFXItemConstructor, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 
@@ -29,6 +29,10 @@ export function registerPlugin<T> (
   itemClass: VFXItemConstructor,
   isDefault?: boolean,
 ) {
+  if (pluginCtrlMap[name]) {
+    logger.error(`Duplicate registration for plugin ${name}.`);
+  }
+
   pluginCtrlMap[name] = itemClass;
   pluginLoaderMap[name] = pluginClass;
 

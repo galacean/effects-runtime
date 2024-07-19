@@ -1,6 +1,6 @@
-import { assertExist } from '@galacean/effects';
-import { angleLimit, type AngleType } from './utils/angle-limit';
-import { isIOS, isMiniProgram } from './utils/device';
+import { assertExist, isIOSByUA, isMiniProgram } from '@galacean/effects';
+import type { AngleType } from './utils/angle-limit';
+import { angleLimit } from './utils/angle-limit';
 import { Filtering } from './utils/filtering';
 
 type JSBridgeParam = {
@@ -15,7 +15,7 @@ type WindVaneParams = {
   z: number,
 };
 
-const useJSBridge = isIOS() && typeof window.AlipayJSBridge !== 'undefined';
+const useJSBridge = isIOSByUA() && typeof window.AlipayJSBridge !== 'undefined';
 const useWindVane = typeof window.WindVane !== 'undefined';
 
 export type DeviceOrientationOptions = {
