@@ -8,6 +8,18 @@
 
 ---
 
+## 1.6.4
+
+`2024-07-19`
+
+- Fix: 修复微信小程序 spine 和 model 插件的支持。[#507](https://github.com/galacean/effects-runtime/pull/507) @Sruimeng
+
+## 1.6.3
+
+`2024-07-12`
+
+- Fix: Spine 插件缩放兼容相机水平裁切。[#500](https://github.com/galacean/effects-runtime/pull/500) @RGCHN
+
 ## 1.6.2
 
 `2024-07-08`
