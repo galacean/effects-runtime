@@ -92,7 +92,7 @@ export class UADecoder {
       this.device.platform = 'Windows';
       this.device.osVersion = this.parseWindowsVersion(data);
     } else {
-      console.error(`Unkonw info: ${data}.`);
+      console.error(`Unknown info: ${data}.`);
     }
   }
 
@@ -170,7 +170,7 @@ export class UADecoder {
     let lastItem;
 
     for (const item of itemList) {
-      const modelPattern = /(.*) Build/;
+      const modelPattern = /(.+?) Build/;
       const modelMatch = item.match(modelPattern);
 
       if (modelMatch && modelMatch.length >= 2) {

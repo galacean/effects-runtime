@@ -5,6 +5,7 @@ import { DowngradePlugin } from './downgrade-plugin';
 export * from './utils';
 export * from './parser';
 export * from './ua-decoder';
+export * from './types';
 
 export const version = __VERSION__;
 

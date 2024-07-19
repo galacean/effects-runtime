@@ -1,4 +1,5 @@
 import { isAlipayMiniApp } from '@galacean/effects';
+import type { DowngradeResult } from '@galacean/effects-plugin-downgrade';
 import { AlipayMiniprogramParser, getDowngradeResult } from '@galacean/effects-plugin-downgrade';
 
 const mockInfoList = [
@@ -30,26 +31,6 @@ const mockInfoList = [
   },
 ];
 
-function processInfo (label: string, info: any) {
-  const titleLabel = document.createElement('h2');
-
-  titleLabel.innerText = label;
-  document.body.append(titleLabel);
-
-  const parser = new AlipayMiniprogramParser(info);
-  const deviceInfo = parser.getDeviceInfo();
-  const result = getDowngradeResult({ deviceInfo });
-
-  const pre = document.createElement('pre');
-
-  pre.innerHTML = JSON.stringify(result, null, 2);
-  const div = document.createElement('div');
-
-  div.appendChild(pre);
-
-  document.body.append(div);
-}
-
 (async () => {
   if (isAlipayMiniApp()) {
     if (my.canIUse('getSystemInfo')) {
@@ -67,3 +48,30 @@ function processInfo (label: string, info: any) {
     });
   }
 })();
+
+function processInfo (label: string, info: any) {
+  createTitle(label);
+
+  const parser = new AlipayMiniprogramParser(info);
+  const deviceInfo = parser.getDeviceInfo();
+  const result = getDowngradeResult({ deviceInfo });
+
+  displayResult(result);
+}
+
+function createTitle (label: string) {
+  const titleLabel = document.createElement('h2');
+
+  titleLabel.innerText = label;
+  document.body.append(titleLabel);
+}
+
+function displayResult (result: DowngradeResult) {
+  const pre = document.createElement('pre');
+  const div = document.createElement('div');
+
+  pre.innerHTML = JSON.stringify(result, null, 2);
+  div.appendChild(pre);
+  document.body.append(div);
+}
+

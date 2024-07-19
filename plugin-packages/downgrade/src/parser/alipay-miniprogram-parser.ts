@@ -24,29 +24,24 @@ export class AlipayMiniprogramParser {
   private getDeviceModel (model?: string) {
     if (model) {
       const brandList = ['Huawei', 'Xiaomi', 'samsung', 'vivo', 'OPPO'];
+      const brand = brandList.find(b => (model ?? '').toLowerCase().startsWith(b.toLowerCase()));
 
-      for (const brand of brandList) {
-        const modelLower = model.toLowerCase();
-        const brandLower = brand.toLowerCase();
-
-        if (modelLower.startsWith(brandLower)) {
-          return model.substring(brand.length).trim();
-        }
+      if (brand) {
+        return model?.substring(brand.length).trim();
       }
     }
 
     return model;
   }
 
-  private getDeviceLevel (level?: string): DeviceLevel {
-    if (level === 'high') {
-      return DeviceLevel.High;
-    } else if (level === 'medium' || level === 'middle') {
-      return DeviceLevel.Medium;
-    } else if (level === 'low') {
-      return DeviceLevel.Low;
-    } else {
-      return DeviceLevel.Unknown;
-    }
+  private getDeviceLevel (level = ''): DeviceLevel {
+    const levelMap: Record<string, DeviceLevel> = {
+      'high': DeviceLevel.High,
+      'medium': DeviceLevel.Medium,
+      'middle': DeviceLevel.Medium,
+      'low': DeviceLevel.Low,
+    };
+
+    return levelMap[level] || DeviceLevel.Unknown;
   }
 }
