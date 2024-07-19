@@ -1,4 +1,5 @@
-import { getDowngradeResult, isWeChatMiniApp, WechatMiniprogramParser } from '@galacean/effects-plugin-downgrade';
+import { isWechatMiniApp } from '@galacean/effects';
+import { getDowngradeResult, WechatMiniprogramParser } from '@galacean/effects-plugin-downgrade';
 
 const mockInfoList = [
   {
@@ -69,7 +70,7 @@ function processInfo (label: string, info: any) {
 }
 
 (async () => {
-  if (isWeChatMiniApp()) {
+  if (isWechatMiniApp()) {
     // @ts-expect-error
     if (wx.canIUse('getDeviceInfo')) {
       // @ts-expect-error

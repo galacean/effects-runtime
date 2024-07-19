@@ -114,9 +114,3 @@ function resumePausedPlayers (e: Event) {
     });
   }
 }
-
-// TODO: 和 core 中的 isWechatMiniApp 区别？
-export function isWeChatMiniApp (): boolean {
-  // @ts-expect-error
-  return typeof wx !== 'undefined' && wx?.renderTarget === 'web';
-}
