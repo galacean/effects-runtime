@@ -1,6 +1,6 @@
 import { default as animationVertGLSL } from './standard/animation.vert.glsl';
 import { default as extensionsFragGLSL } from './standard/extensions.frag.glsl';
-import { default as tonemappingFragGLSL } from './standard/tonemapping.frag.glsl';
+import { default as toneMappingFragGLSL } from './standard/tone-mapping.frag.glsl';
 import { default as texturesVertGLSL } from './standard/textures.vert.glsl';
 import { default as functionsFragGLSL } from './standard/functions.frag.glsl';
 import { default as shadowFragGLSL } from './standard/shadow.frag.glsl';
@@ -10,7 +10,7 @@ import { default as shadowCommonVert } from './standard/shadow-common.vert.glsl'
 const glsl: Record<string, string> = {
   'animation.vert.glsl': animationVertGLSL,
   'extensions.frag.glsl': extensionsFragGLSL,
-  'tonemapping.frag.glsl': tonemappingFragGLSL,
+  'tone-mapping.frag.glsl': toneMappingFragGLSL,
   'textures.vert.glsl': texturesVertGLSL,
   'functions.frag.glsl': functionsFragGLSL,
   'shadow.frag.glsl': shadowFragGLSL,

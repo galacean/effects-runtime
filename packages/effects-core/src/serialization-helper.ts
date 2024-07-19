@@ -325,7 +325,7 @@ export class SerializationHelper {
         res = {};
       }
       for (const key of Object.keys(property)) {
-        res[key] = SerializationHelper.deserializeProperty(property[key], engine, level + 1);
+        res[key] = await SerializationHelper.deserializePropertyAsync(property[key], engine, level + 1);
       }
 
       return res;
