@@ -98,8 +98,7 @@ export class Edge implements Shape {
   _d: number;
 
   constructor (args: any) {
-    // TODO: 为通过帧对比暂时使用老计算，修复粒子发射器直线宽度问题下面一行改为: this._d = args.width || 1 ;
-    this._d = (args.width || 1) / 2;
+    this._d = (args.width || 1);
     this.arcMode = args.arcMode;
   }
 
