@@ -29,6 +29,11 @@
       "import": "./dist/weapp.mjs",
       "require": "./dist/weapp.js",
       "types": "./dist/index.d.ts"
+    },
+    "./douyin": {
+      "import": "./dist/douyin.mjs",
+      "require": "./dist/douyin.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
