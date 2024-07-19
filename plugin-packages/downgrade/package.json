@@ -34,10 +34,7 @@
   },
   "contributors": [
     {
-      "name": "燃然"
-    },
-    {
-      "name": "意绮"
+      "name": "飂兮"
     }
   ],
   "author": "Ant Group CO., Ltd.",
@@ -47,8 +44,6 @@
     "registry": "https://registry.npmjs.org"
   },
   "devDependencies": {
-    "@galacean/effects": "workspace:*",
-    "@types/ua-parser-js": "^0.7.39",
-    "ua-parser-js": "^1.0.37"
+    "@galacean/effects": "workspace:*"
   }
 }

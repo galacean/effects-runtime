@@ -16,8 +16,8 @@ export default defineConfig(({ mode }) => {
           'index': resolve(__dirname, 'demo/index.html'),
           'simple': resolve(__dirname, 'demo/simple.html'),
           'mock-fail': resolve(__dirname, 'demo/mock-fail.html'),
-          'alipay-mini-app': resolve(__dirname, 'demo/alipay-mini-app.html'),
-          'wechat-mini-app': resolve(__dirname, 'demo/wechat-mini-app.html'),
+          'mp-alipay': resolve(__dirname, 'demo/mp-alipay.html'),
+          'mp-wechat': resolve(__dirname, 'demo/mp-wechat.html'),
           'user-agent': resolve(__dirname, 'demo/user-agent.html'),
         }
       },

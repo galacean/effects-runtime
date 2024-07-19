@@ -8,10 +8,10 @@ export class DowngradePlugin extends AbstractPlugin {
 
     if (downgradeResult) {
       if (downgradeResult.downgrade) {
-        throw new Error(`downgraded, reason: ${downgradeResult.reason}`);
+        throw new Error(`Downgraded, reason: ${downgradeResult.reason}.`);
       }
     } else {
-      logger.warn('No downgrade result in pluginData of SceneLoadOptions');
+      logger.warn('No downgrade result in pluginData of SceneLoadOptions.');
     }
 
     if (!options.renderLevel) {

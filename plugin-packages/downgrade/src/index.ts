@@ -3,6 +3,8 @@ import { VFXItem, logger, registerPlugin } from '@galacean/effects';
 import { DowngradePlugin } from './downgrade-plugin';
 
 export * from './utils';
+export * from './parser';
+export * from './ua-decoder';
 
 export const version = __VERSION__;
 

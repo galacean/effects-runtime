@@ -1,5 +1,5 @@
 import { isAlipayMiniApp } from '@galacean/effects';
-import { getDowngradeResult, AlipayMiniAppParser } from '@galacean/effects-plugin-downgrade';
+import { AlipayMiniprogramParser, getDowngradeResult } from '@galacean/effects-plugin-downgrade';
 
 const mockInfoList = [
   {
@@ -36,7 +36,7 @@ function processInfo (label: string, info: any) {
   titleLabel.innerText = label;
   document.body.append(titleLabel);
 
-  const parser = new AlipayMiniAppParser(info);
+  const parser = new AlipayMiniprogramParser(info);
   const deviceInfo = parser.getDeviceInfo();
   const result = getDowngradeResult({ deviceInfo });
 

@@ -9,7 +9,7 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
     queryDeviceInMiniApp: true,
   });
 
-  showJsonData(downgrade);
+  showJSONData(downgrade);
 
   const container = document.getElementById('J-container');
   const player = new Player({
@@ -28,11 +28,11 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
     // @ts-expect-error
     container.innerHTML = `<img src="${imageUrl}" />`;
 
-    showJsonData('Exception: ' + e.message);
+    showJSONData('Exception: ' + e.message);
   }
 })();
 
-function showJsonData (json: any) {
+function showJSONData (json: any) {
   const pre = document.createElement('pre');
 
   pre.innerHTML = JSON.stringify(json, null, 2);

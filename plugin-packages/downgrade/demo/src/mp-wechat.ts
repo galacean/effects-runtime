@@ -1,4 +1,4 @@
-import { getDowngradeResult, isWeChatMiniApp, WeChatMiniAppParser } from '@galacean/effects-plugin-downgrade';
+import { getDowngradeResult, isWeChatMiniApp, WechatMiniprogramParser } from '@galacean/effects-plugin-downgrade';
 
 const mockInfoList = [
   {
@@ -54,7 +54,7 @@ function processInfo (label: string, info: any) {
   titleLabel.innerText = label;
   document.body.append(titleLabel);
 
-  const parser = new WeChatMiniAppParser(info);
+  const parser = new WechatMiniprogramParser(info);
   const deviceInfo = parser.getDeviceInfo();
   const result = getDowngradeResult({ deviceInfo });
 
@@ -74,7 +74,7 @@ function processInfo (label: string, info: any) {
     if (wx.canIUse('getDeviceInfo')) {
       // @ts-expect-error
       const info = wx.getDeviceInfo() as WeChatDeviceInfo;
-      const parser = new WeChatMiniAppParser(info);
+      const parser = new WechatMiniprogramParser(info);
 
       return parser.getDeviceInfo();
     } else {
