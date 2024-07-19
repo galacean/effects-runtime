@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Player, disableAllPlayer } from '@galacean/effects';
-import { getDowngradeResult, checkDowngradeResult } from '@galacean/effects-plugin-downgrade';
+import { getDowngradeResult } from '@galacean/effects-plugin-downgrade';
 
 const { expect } = chai;
 

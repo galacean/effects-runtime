@@ -17,5 +17,4 @@ import { getDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
     console.error('biz', e);
     document.getElementById('J-errorMessage')!.innerHTML = JSON.stringify(e.message, undefined, 2);
   }
-
 })();

@@ -30,7 +30,7 @@ export function registerPlugin<T> (
   isDefault?: boolean,
 ) {
   if (pluginCtrlMap[name]) {
-    logger.error(`Duplicate registration for plugin ${name}`);
+    logger.error(`Duplicate registration for plugin ${name}.`);
   }
 
   pluginCtrlMap[name] = itemClass;
