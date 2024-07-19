@@ -24,6 +24,11 @@
       "import": "./dist/alipay.mjs",
       "require": "./dist/alipay.js",
       "types": "./dist/index.d.ts"
+    },
+    "./weapp": {
+      "import": "./dist/weapp.mjs",
+      "require": "./dist/weapp.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
