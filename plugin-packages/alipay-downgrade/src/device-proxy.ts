@@ -29,63 +29,7 @@ export class DeviceProxy {
     let resultType = undefined;
     let resultReason = undefined;
 
-    if (!result.error) {
-      try {
-        const ret = isString(result) ? JSON.parse(result) : result;
-
-        if ('downgradeResultType' in ret) {
-          resultType = ret.downgradeResultType;
-        } else if ('resultType' in ret) {
-          resultType = ret.resultType;
-          resultReason = ret.resultReason;
-        }
-
-        if (result.context) {
-          const deviceInfo = result.context.deviceInfo;
-
-          if (deviceInfo) {
-            const { deviceLevel } = deviceInfo;
-            const newLevel = getDeviceLevel(deviceLevel);
-
-            if (newLevel !== DeviceLevel.Unknown) {
-              this.level = newLevel;
-            }
-          }
-        }
-      } catch (ex: any) {
-        logger.error(ex);
-      }
-
-      if (resultType === undefined) {
-        return {
-          downgrade: true,
-          level: this.getRenderLevel(),
-          reason: 'call downgrade fail',
-        };
-      } else {
-        if (resultType === 1) {
-          return {
-            downgrade: true,
-            level: this.getRenderLevel(),
-            reason: getDowngradeReason(resultReason),
-          };
-        } else {
-          if (isAlipayMiniApp() && this.downgradeForMiniprogram()) {
-            return {
-              downgrade: true,
-              level: this.getRenderLevel(),
-              reason: 'Force downgrade by downgrade plugin',
-            };
-          } else {
-            return {
-              downgrade: false,
-              level: this.getRenderLevel(),
-              reason: resultType,
-            };
-          }
-        }
-      }
-    } else {
+    if (result.error) {
       // 无权调用的情况下不降级
       return {
         downgrade: result.error !== 4,
@@ -93,6 +37,60 @@ export class DeviceProxy {
         reason: 'api error: ' + result.error,
       };
     }
+
+    try {
+      const ret = isString(result) ? JSON.parse(result) : result;
+
+      if ('downgradeResultType' in ret) {
+        resultType = ret.downgradeResultType;
+      } else if ('resultType' in ret) {
+        resultType = ret.resultType;
+        resultReason = ret.resultReason;
+      }
+
+      if (result.context) {
+        const deviceInfo = result.context.deviceInfo;
+
+        if (deviceInfo) {
+          const { deviceLevel } = deviceInfo;
+          const newLevel = getDeviceLevel(deviceLevel);
+
+          if (newLevel !== DeviceLevel.Unknown) {
+            this.level = newLevel;
+          }
+        }
+      }
+    } catch (ex: any) {
+      logger.error(ex);
+    }
+
+    if (resultType === undefined) {
+      return {
+        downgrade: true,
+        level: this.getRenderLevel(),
+        reason: 'call downgrade fail',
+      };
+    }
+    if (resultType === 1) {
+      return {
+        downgrade: true,
+        level: this.getRenderLevel(),
+        reason: getDowngradeReason(resultReason),
+      };
+    }
+    if (isAlipayMiniApp() && this.downgradeForMiniprogram()) {
+      return {
+        downgrade: true,
+        level: this.getRenderLevel(),
+        reason: 'Force downgrade by downgrade plugin',
+      };
+    }
+
+    return {
+      downgrade: false,
+      level: this.getRenderLevel(),
+      reason: resultType,
+    };
   }
 
   getRenderLevel (): SceneRenderLevel {

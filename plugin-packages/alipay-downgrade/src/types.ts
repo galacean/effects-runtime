@@ -9,11 +9,11 @@ export interface DowngradeOptions {
   /**
    * JSAPI getSystemInfo 返回的结果
    */
-  systemInfo?: any,
+  systemInfo?: SystemInfo,
   /**
    * JSAPI getDowngradeResult 返回的结果
    */
-  downgradeResult?: any,
+  downgradeResult?: DowngradeResult,
   /**
    * 禁用压后台的时候自动暂停播放器
    * @default false - 不自动暂停
@@ -26,7 +26,11 @@ export interface DowngradeOptions {
    * @param callback - 回调函数
    * @returns 降级结果
    */
-  callBridge?: (bizId: string, option: any, callback: (res: any) => void) => void,
+  callBridge?: (
+    bizId: string,
+    option: Record<string, any>,
+    callback: (res: Record<string, any>) => void,
+  ) => void,
 }
 
 export interface DowngradeResult {
@@ -35,7 +39,7 @@ export interface DowngradeResult {
   level: SceneRenderLevel,
   reason: string,
   //
-  systemInfo?: any,
+  systemInfo?: SystemInfo,
   systemTime?: number,
   downgradeResult?: any,
   downgradeTime?: number,
@@ -48,7 +52,7 @@ export interface SystemInfo {
   system: string,
   brand: string,
   version: string,
-  error: any,
+  error: Error,
 }
 
 export enum DeviceLevel {
