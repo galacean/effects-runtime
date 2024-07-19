@@ -1,4 +1,4 @@
-import { getObjectType } from './object-type';
+import { isArray } from '@galacean/effects';
 
 export type AngleType = {
   alpha: number,
@@ -23,7 +23,7 @@ export function angleLimit (angleObj: AngleType, validRange: RangeType) {
   let flagBeta = true;
   let flagGamma = true;
 
-  if (getObjectType(validRange.alpha) === '[object Array]' && validRange.alpha.length >= 2) {
+  if (isArray(validRange.alpha) && validRange.alpha.length >= 2) {
     let referAlphaA = angleObj.alpha + validRange.alpha[0];
     let referAlphaB = angleObj.alpha + validRange.alpha[1];
 
@@ -35,10 +35,10 @@ export function angleLimit (angleObj: AngleType, validRange: RangeType) {
       flagAlpha = angleObj.alpha > referAlphaA || angleObj.alpha < referAlphaB;
     }
   }
-  if (getObjectType(validRange.beta) === '[object Array]' && validRange.beta.length >= 2) {
+  if (isArray(validRange.beta) && validRange.beta.length >= 2) {
     flagBeta = angleObj.beta >= validRange.beta[0] && angleObj.beta <= validRange.beta[1];
   }
-  if (getObjectType(validRange.gamma) === '[object Array]' && validRange.gamma.length >= 2) {
+  if (isArray(validRange.gamma) && validRange.gamma.length >= 2) {
     flagGamma = angleObj.gamma >= validRange.gamma[0] && angleObj.gamma <= validRange.gamma[1];
   }
 

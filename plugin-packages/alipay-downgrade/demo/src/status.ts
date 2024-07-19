@@ -1,4 +1,4 @@
-import { checkDowngradeResult, getDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
+import { getDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
 
 (async () => {
   let bizId = 'test';
@@ -9,9 +9,12 @@ import { checkDowngradeResult, getDowngradeResult } from '@galacean/effects-plug
     console.info('Input bizId:', bizId);
   }
 
-  const downgradeResult = await getDowngradeResult(bizId);
-  const downgradeDecision = checkDowngradeResult(downgradeResult);
+  try {
+    const downgradeResult = await getDowngradeResult(bizId);
 
-  document.getElementById('J-downgradeResult')!.innerHTML = `Result: <pre>${JSON.stringify(downgradeResult, undefined, 2)}</pre>`;
-  document.getElementById('J-downgradeDecision')!.innerHTML = `Decision: <pre>${JSON.stringify(downgradeDecision, undefined, 2)}</pre>`;
+    document.getElementById('J-downgradeResult')!.innerHTML = `Result: <pre>${JSON.stringify(downgradeResult, undefined, 2)}</pre>`;
+  } catch (e: any) {
+    console.error('biz', e);
+    document.getElementById('J-errorMessage')!.innerHTML = JSON.stringify(e.message, undefined, 2);
+  }
 })();

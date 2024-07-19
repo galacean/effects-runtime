@@ -128,6 +128,7 @@ vec3 ApplyVignette(vec3 inputColor, vec2 uv, vec2 center, float intensity, float
 
 void main() {
   vec4 hdrColor = texture2D(_SceneTex, uv);
+  hdrColor *= hdrColor.a;
 
   hdrColor.rgb = pow(hdrColor.rgb, vec3(2.2)); // srgb转linear
 
