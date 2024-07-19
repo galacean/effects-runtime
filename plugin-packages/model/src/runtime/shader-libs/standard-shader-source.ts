@@ -10,7 +10,7 @@ import { default as shadowCommonVert } from './standard/shadow-common.vert.glsl'
 const glsl: Record<string, string> = {
   'animation.vert.glsl': animationVertGLSL,
   'extensions.frag.glsl': extensionsFragGLSL,
-  'tonemapping.frag.glsl': toneMappingFragGLSL,
+  'tone-mapping.frag.glsl': toneMappingFragGLSL,
   'textures.vert.glsl': texturesVertGLSL,
   'functions.frag.glsl': functionsFragGLSL,
   'shadow.frag.glsl': shadowFragGLSL,

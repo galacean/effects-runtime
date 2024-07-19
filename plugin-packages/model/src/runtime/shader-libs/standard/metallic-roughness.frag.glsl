@@ -56,7 +56,7 @@
 
 #include <webgl-compatibility.glsl>
 #include <extensions.frag.glsl>
-#include <tonemapping.frag.glsl>
+#include <tone-mapping.frag.glsl>
 #include <textures.vert.glsl>
 #include <functions.frag.glsl>
 #include <shadow-common.vert.glsl>
