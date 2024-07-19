@@ -1,7 +1,7 @@
 const path = require('path');
 const { execSync } = require('child_process');
 
-const flatcURI = `https://github.com/google/flatbuffers/releases/download`;
+const flatcURI = `https://mdn.alipayobjects.com/rms/uri/file/as/flatc`;
 const flatcName = {
   'win32': {
     zip: 'Windows.flatc.binary.zip',

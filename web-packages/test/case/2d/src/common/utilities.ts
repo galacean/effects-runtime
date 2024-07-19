@@ -541,9 +541,5 @@ function compatibleCalculateItem (composition: Composition) {
     if (VFXItem.isNull(item) && item.endBehavior === spec.EndBehavior.destroy) {
       item.endBehavior = spec.EndBehavior.forward;
     }
-    // 兼容旧版 Player 粒子发射器为直线时形状错误
-    if (VFXItem.isParticle(item) && item.content.shape && item.content.shape.type === spec.ShapeType.EDGE) {
-      item.content.shape.width /= 2;
-    }
   });
 }

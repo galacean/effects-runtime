@@ -1,10 +1,10 @@
 {
   "name": "@galacean/effects-threejs",
-  "version": "1.6.2",
+  "version": "1.6.4",
   "description": "Galacean Effects runtime threejs plugin for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
-  "brower": "./dist/index.min.js",
+  "browser": "./dist/index.min.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"

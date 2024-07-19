@@ -521,11 +521,15 @@ export class SpineComponent extends RendererComponent {
     let scaleFactor;
 
     if (this.resizeRule) {
+      const camera = this.item.composition.camera;
       const { z } = this.transform.getWorldPosition();
-      const { x: rx } = this.item.composition.camera.getInverseVPRatio(z);
+      const { x: rx, y: ry } = camera.getInverseVPRatio(z);
 
-      scaleFactor = rx / 1500;
-
+      if (camera.clipMode === spec.CameraClipMode.portrait) {
+        scaleFactor = rx / 1500;
+      } else {
+        scaleFactor = ry / 3248;
+      }
     } else {
       scaleFactor = 1 / width;
     }
