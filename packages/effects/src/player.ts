@@ -488,6 +488,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       onMessageItem: this.handleMessageItem,
     }, scene);
 
+    this.compositions.push(composition);
+
     // 中低端设备降帧到 30fps
     if (this.ticker) {
       if (opts.renderLevel === spec.RenderLevel.B) {
@@ -512,8 +514,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
     composition.statistic.firstFrameTime = firstFrameTime;
     logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
-
-    this.compositions.push(composition);
 
     return composition;
   }

@@ -199,6 +199,12 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects
 
+  plugin-packages/downgrade:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
   plugin-packages/editor-gizmo:
     devDependencies:
       '@galacean/effects':
