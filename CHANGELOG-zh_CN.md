@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.4
+
+`2024-07-19`
+
+- Fix: 修复微信小程序 spine 和 model 插件的支持。[#507](https://github.com/galacean/effects-runtime/pull/507) @Sruimeng
+
 ## 1.6.3
 
 `2024-07-12`

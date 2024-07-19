@@ -7,6 +7,12 @@
 
 ---
 
+## 1.6.4
+
+`2024-07-19`
+
+- Fix: Fixed support for WeChat mini-program spine and model plugins. [#507](https://github.com/galacean/effects-runtime/pull/507) @Sruimeng
+
 ## 1.6.3
 
 `2024-07-12`
