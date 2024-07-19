@@ -36,8 +36,6 @@ download(url, BIN_DIR, { extract: true })
   })
   .catch(err => {
     console.log(chalk.red(`Download failed: ${err.message}`));
-  })
-  .finally(() => {
     process.exit(1);
   });
 
