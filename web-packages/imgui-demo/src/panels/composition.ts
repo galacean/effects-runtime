@@ -1,8 +1,8 @@
 import inspireList from '../asset/inspire-list';
-import { editorWindow, menuItem } from '../core/decorators';
+import { menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow } from '../core/panel';
+import { EditorWindow, editorWindow } from '../core/editor-window';
 import { Selection } from '../core/selection';
 
 @editorWindow()

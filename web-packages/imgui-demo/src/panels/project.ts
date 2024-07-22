@@ -5,8 +5,8 @@ import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { folderIcon, jsonIcon } from '../asset/images';
 import { AssetDatabase, createPreviewPlayer, generateAssetScene, readFileAsText } from '../core/asset-data-base';
-import { editorWindow, menuItem } from '../core/decorators';
-import { EditorWindow } from '../core/panel';
+import { menuItem } from '../core/decorators';
+import { EditorWindow, editorWindow } from '../core/editor-window';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { FileNode } from '../core/file-node';

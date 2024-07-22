@@ -5,6 +5,7 @@ import { ImGui, ImGui_Impl } from './imgui/index';
 import { ShowDemoWindow } from './imgui/imgui_demo';
 import { MemoryEditor } from './imgui/imgui_memory_editor';
 import './panels';
+import './custom-editors';
 import { imGuiIni } from './imgui/imgui-config';
 import { uiManager } from './core/ui-manager';
 import { Project } from './panels';
