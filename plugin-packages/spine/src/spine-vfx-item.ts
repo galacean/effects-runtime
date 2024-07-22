@@ -504,19 +504,9 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
       return 1;
     }
     const { width } = res;
-    let scaleFactor = width;
+    const scaleFactor = this.scaleFactor;
 
-    const camera = this.composition.camera;
-    const { z } = this.transform.getWorldPosition();
-    const { x: rx, y: ry } = camera.getInverseVPRatio(z);
-
-    if (camera.clipMode === spec.CameraClipMode.portrait) {
-      scaleFactor = rx / 1500;
-    } else {
-      scaleFactor = ry / 3248;
-    }
-
-    return this.startSize * scaleFactor / width;
+    return this.startSize * scaleFactor * width;
   }
 
   override setScale (sx: number, sy: number, sz: number) {

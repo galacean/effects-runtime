@@ -153,7 +153,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
             'transform': {
               'position': [
                 0,
-                5.1,
+                4,
                 0,
               ],
               'rotation': [
@@ -185,14 +185,14 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 10, mixDuration
                 mixDuration,
                 'activeAnimation': ['dance'],
                 'spine': 1,
-                'startSize': 1,
-                'resizeRule': 1,
+                'startSize': 2,
+                'resizeRule': 0,
               },
             },
             'transform': {
               'position': [
                 0,
-                -5.1,
+                -6,
                 0,
               ],
               'rotation': [
