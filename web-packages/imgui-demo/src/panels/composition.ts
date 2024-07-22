@@ -6,7 +6,7 @@ import { EditorWindow } from '../core/panel';
 import { Selection } from '../core/selection';
 
 @editorWindow()
-export class CompositionWindow extends EditorWindow {
+export class Composition extends EditorWindow {
 
   private currentItem: number = 0;
   private compositionNames: string[] = [];
@@ -17,7 +17,7 @@ export class CompositionWindow extends EditorWindow {
 
   @menuItem('Window/Composition')
   static showWindow () {
-    EditorWindow.getWindow(CompositionWindow).open();
+    EditorWindow.getWindow(Composition).open();
   }
 
   constructor () {

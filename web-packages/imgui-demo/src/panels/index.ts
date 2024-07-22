@@ -1,4 +1,5 @@
-export * from './composition-window';
+export * from './inspector';
+export * from './composition';
 export * from './sequencer';
 export * from './project';
 export * from './editor';
