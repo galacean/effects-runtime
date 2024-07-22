@@ -1,5 +1,5 @@
 import type { Component, Material } from '@galacean/effects';
-import { EffectsObject, RendererComponent, VFXItem, getMergedStore } from '@galacean/effects';
+import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, getMergedStore } from '@galacean/effects';
 import type { FileNode } from '../core/file-node';
 import { OrbitController } from '../core/orbit-controller';
 import { EditorWindow, editorWindow } from './editor-window';
@@ -8,6 +8,7 @@ import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import type { Editor } from './editor';
 import { editorStore } from './editor';
+import type { GLMaterial } from '@galacean/effects-webgl';
 
 type char = number;
 type int = number;
@@ -219,6 +220,14 @@ export class MainEditor extends EditorWindow {
           }
         }
       }
+      if (activeObject.getComponent(RendererComponent)) {
+        const material = activeObject.getComponent(RendererComponent).material;
+
+        if (ImGui.CollapsingHeader(material.name + ' (Material)##CollapsingHeader', ImGui.TreeNodeFlags.DefaultOpen)) {
+          this.drawMaterial(material);
+        }
+
+      }
     }
     ImGui.End();
   }
@@ -247,6 +256,68 @@ export class MainEditor extends EditorWindow {
       }
       ImGui.TreePop();
     }
+  }
+
+  private drawMaterial (material: Material) {
+    const glMaterial = material as GLMaterial;
+    const serializedData = glMaterial.toData();
+    const shaderProperties = material.shader.shaderData.properties;
+
+    if (!shaderProperties) {
+      return;
+    }
+    const lines = shaderProperties.split('\n');
+
+    for (const property of lines) {
+      // 提取材质属性信息
+      // 如 “_Float1("Float2", Float) = 0”
+      // 提取出 “_Float1” “Float2” “Float” “0”
+      const regex = /\s*(.+?)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/;
+      const matchResults = property.match(regex);
+
+      if (!matchResults) {
+        continue;
+      }
+      const uniformName = matchResults[1];
+      const inspectorName = matchResults[2];
+      const type = matchResults[3];
+      const defaultValue = matchResults[4];
+
+      // 提取 Range(a, b) 的 a 和 b
+      const match = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+
+      ImGui.Text(inspectorName);
+      ImGui.SameLine(150);
+      if (match) {
+        const start = Number(match[1]);
+        const end = Number(match[2]);
+
+        if (!serializedData.floats[uniformName]) {
+          serializedData.floats[uniformName] = Number(defaultValue);
+        }
+        ImGui.SliderFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, start, end);
+      } else if (type === 'Float') {
+        if (!serializedData.floats[uniformName]) {
+          serializedData.floats[uniformName] = Number(defaultValue);
+        }
+        ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02);
+      } else if (type === 'Color') {
+        if (!serializedData.colors[uniformName]) {
+          serializedData.colors[uniformName] = { r:1.0, g:1.0, b:1.0, a:1.0 };
+        }
+        ImGui.ColorEdit4('##' + uniformName, serializedData.colors[uniformName]);
+      } else if (type === '2D') {
+        const texture = glMaterial.getTexture(uniformName);
+
+        if (texture) {
+          ImGui.Button(texture.id);
+        }
+      } else {
+        ImGui.NewLine();
+      }
+    }
+
+    SerializationHelper.deserializeTaggedProperties(serializedData, glMaterial);
   }
 }
 
