@@ -1,4 +1,4 @@
-import { editorWindowStore, type EditorWindow } from './editor-window';
+import { editorWindowStore, type EditorWindow } from '../panels/editor-window';
 import { MenuItemNode, MenuNode } from '../widgets/menu-item';
 import { ImGui } from '../imgui';
 import { menuItemStore } from './decorators';

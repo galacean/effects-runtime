@@ -2,7 +2,7 @@ import type { Component, Material } from '@galacean/effects';
 import { EffectsObject, RendererComponent, VFXItem, getMergedStore } from '@galacean/effects';
 import type { FileNode } from '../core/file-node';
 import { OrbitController } from '../core/orbit-controller';
-import { EditorWindow, editorWindow } from '../core/editor-window';
+import { EditorWindow, editorWindow } from './editor-window';
 import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';

@@ -2,7 +2,7 @@ import inspireList from '../asset/inspire-list';
 import { menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow, editorWindow } from '../core/editor-window';
+import { EditorWindow, editorWindow } from './editor-window';
 import { Selection } from '../core/selection';
 
 @editorWindow()

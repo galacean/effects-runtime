@@ -1,4 +1,4 @@
-import { UIManager } from './ui-manager';
+import { UIManager } from '../core/ui-manager';
 import { ImGui } from '../imgui';
 
 export class EditorWindow {
