@@ -89,7 +89,7 @@ export class DeviceProxy {
     return {
       downgrade: false,
       level: this.getRenderLevel(),
-      reason: resultType,
+      reason: `${resultType}`,
     };
   }
 

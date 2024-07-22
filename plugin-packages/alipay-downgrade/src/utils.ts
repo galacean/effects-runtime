@@ -24,7 +24,8 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 
   const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
-  if (!ap) {
+  // 当需要通过 ap 获取降级信息时，才进行降级环境的检查
+  if (!ap && (!options.systemInfo || !options.downgradeResult)) {
     return {
       bizId,
       downgrade: false,
