@@ -2,6 +2,7 @@ import type { AnimationStateListener, SkeletonData } from '@esotericsoftware/spi
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type { BoundingBoxTriangle, Composition, Engine, HitTestTriangleParams, VFXItemProps } from '@galacean/effects';
 import { assertExist, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, spec, VFXItem } from '@galacean/effects';
+import { cwd } from 'concurrently/dist/src/defaults';
 import { SlotGroup } from './slot-group';
 import type { SpineResource } from './spine-loader';
 import type { SpineMesh } from './spine-mesh';
@@ -494,6 +495,28 @@ export class SpineVFXItem extends VFXItem<SpineContent> {
 
     this.scaleFactor = scaleFactor;
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
+  }
+
+  convertSizeToOldRule (): number {
+    const res = this.getBounds();
+
+    if (!res || !this.composition || !this.resizeRule) {
+      return 1;
+    }
+    const { width } = res;
+    let scaleFactor = width;
+
+    const camera = this.composition.camera;
+    const { z } = this.transform.getWorldPosition();
+    const { x: rx, y: ry } = camera.getInverseVPRatio(z);
+
+    if (camera.clipMode === spec.CameraClipMode.portrait) {
+      scaleFactor = rx / 1500;
+    } else {
+      scaleFactor = ry / 3248;
+    }
+
+    return this.startSize * scaleFactor / width;
   }
 
   override setScale (sx: number, sy: number, sz: number) {
