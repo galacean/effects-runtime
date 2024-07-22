@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       __VERSION__: 0,
-      __DEBUG__: development ? true : false,
+      __DEBUG__: development,
     },
     plugins: [
       glslInner(),

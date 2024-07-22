@@ -7,6 +7,25 @@
 
 ---
 
+## 1.6.4
+
+`2024-07-19`
+
+- Fix: Fixed support for WeChat mini-program spine and model plugins. [#507](https://github.com/galacean/effects-runtime/pull/507) @Sruimeng
+
+## 1.6.3
+
+`2024-07-12`
+
+- Fix: Ensure Spine plugin scaling is compatible with camera horizontal cropping. [#500](https://github.com/galacean/effects-runtime/pull/500) @RGCHN
+
+## 1.6.2
+
+`2024-07-08`
+
+- Fix: Fixed the issue where text setting fails when the variable is a number. [#480](https://github.com/galacean/effects-runtime/pull/480) @Sruimeng
+- Fix: Fixed the pixel coordinate conversion error when the camera is not at the origin. [#481](https://github.com/galacean/effects-runtime/pull/481) @RGCHN
+
 ## 1.6.1
 
 `2024-07-02`

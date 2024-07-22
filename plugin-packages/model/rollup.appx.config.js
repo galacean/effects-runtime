@@ -2,7 +2,9 @@
  * 小程序产物编译配置
  */
 export default [
-  'alipay'
+  'alipay',
+  'weapp',
+  'douyin',
 ].map(platform => {
   const paths = { '@galacean/effects': `@galacean/effects/${platform}` };
 

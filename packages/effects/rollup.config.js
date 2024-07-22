@@ -24,7 +24,7 @@ export default () => {
     }, {
       input: 'src/index.ts',
       output: {
-        file: pkg.brower,
+        file: pkg.browser,
         format: 'umd',
         name: 'ge',
         banner,

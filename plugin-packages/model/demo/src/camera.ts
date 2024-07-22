@@ -63,7 +63,7 @@ async function getCurrentScene () {
     //
     name: 'extra-camera',
     duration: duration,
-    endBehavior: spec.ItemEndBehavior.loop,
+    endBehavior: spec.EndBehavior.restart,
     position: position.toArray(),
     rotation: [0, 0, 0],
   });

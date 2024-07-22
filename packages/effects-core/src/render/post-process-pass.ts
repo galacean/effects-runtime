@@ -275,7 +275,7 @@ export class ToneMappingPass extends RenderPass {
     this.screenMesh.material.setFloat('_Saturation', saturation);
     this.screenMesh.material.setFloat('_Contrast', contrast);
 
-    this.screenMesh.material.setInt('_UseBloom', useBloom);
+    this.screenMesh.material.setInt('_UseBloom', Number(useBloom));
     if (useBloom) {
       this.screenMesh.material.setTexture('_GaussianTex', this.mainTexture);
       this.screenMesh.material.setFloat('_BloomIntensity', bloomIntensity);
@@ -287,7 +287,7 @@ export class ToneMappingPass extends RenderPass {
       this.screenMesh.material.setVector2('_VignetteCenter', new Vector2(0.5, 0.5));
       this.screenMesh.material.setVector3('_VignetteColor', new Vector3(0.0, 0.0, 0.0));
     }
-    this.screenMesh.material.setInt('_UseToneMapping', useToneMapping);
+    this.screenMesh.material.setInt('_UseToneMapping', Number(useToneMapping));
     renderer.renderMeshes([this.screenMesh]);
   }
 }

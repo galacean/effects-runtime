@@ -1,4 +1,8 @@
-import { DEG2RAD, Euler, Matrix4, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Euler } from '@galacean/effects-math/es/core/euler';
+import { DEG2RAD } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import { Transform } from './transform';
 
@@ -67,7 +71,7 @@ export class Camera {
   /**
    * 编辑器用于缩放画布
    */
-  private fovScaleRatio: number = 1.0;
+  private viewportMatrix = Matrix4.fromIdentity();
   private options: CameraOptionsEx;
   private viewMatrix = Matrix4.fromIdentity();
   private projectionMatrix = Matrix4.fromIdentity();
@@ -205,13 +209,13 @@ export class Camera {
     return this.options.rotation.clone();
   }
 
-  setFovScaleRatio (value: number) {
-    this.fovScaleRatio = value;
+  setViewportMatrix (matrix: Matrix4) {
+    this.viewportMatrix = matrix.clone();
     this.dirty = true;
   }
 
-  getFovScaleRatio () {
-    return this.fovScaleRatio;
+  getViewportMatrix () {
+    return this.viewportMatrix;
   }
 
   /**
@@ -291,12 +295,14 @@ export class Camera {
    * @param z - 当前的位置 z
    */
   getInverseVPRatio (z: number) {
-    const pos = new Vector3(0, 0, z);
+    const pos = new Vector3(this.position.x, this.position.y, z);
     const mat = this.getViewProjectionMatrix();
     const inverseVP = this.getInverseViewProjectionMatrix();
     const { z: nz } = mat.projectPoint(pos);
+    const { x: xMax, y: yMax } = inverseVP.projectPoint(new Vector3(1, 1, nz));
+    const { x: xMin, y: yMin } = inverseVP.projectPoint(new Vector3(-1, -1, nz));
 
-    return inverseVP.projectPoint(new Vector3(1, 1, nz));
+    return new Vector3((xMax - xMin) / 2, (yMax - yMin) / 2, 0);
   }
 
   /**
@@ -380,9 +386,10 @@ export class Camera {
       const { fov, aspect, near, far, clipMode, position } = this.options;
 
       this.projectionMatrix.perspective(
-        fov * DEG2RAD * this.fovScaleRatio, aspect, near, far,
+        fov * DEG2RAD, aspect, near, far,
         clipMode === spec.CameraClipMode.portrait
       );
+      this.projectionMatrix.premultiply(this.viewportMatrix);
       this.inverseViewMatrix.compose(position, this.getQuat(), tmpScale);
       this.viewMatrix.copyFrom(this.inverseViewMatrix).invert();
       this.viewProjectionMatrix.multiplyMatrices(this.projectionMatrix, this.viewMatrix);

@@ -33,16 +33,19 @@ const commonAdapterList = [
   'WebGL2RenderingContext',
   'ImageData',
   'OffscreenCanvas',
-  'URLSearchParams'
+  'URLSearchParams',
+  'crypto',
 ];
 const adapterList = {
   weapp: [...commonAdapterList],
   alipay: [...commonAdapterList],
+  douyin: [...commonAdapterList],
 }
 
 export default [
   'weapp',
-  'alipay'
+  'alipay',
+  'douyin',
 ].map(platform => {
   const adapterVars = {};
 

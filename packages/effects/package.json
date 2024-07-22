@@ -1,10 +1,10 @@
 {
   "name": "@galacean/effects",
-  "version": "1.6.1",
+  "version": "1.6.4",
   "description": "Galacean Effects runtime player for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
-  "brower": "./dist/index.min.js",
+  "browser": "./dist/index.min.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
@@ -24,6 +24,11 @@
       "import": "./dist/alipay.mjs",
       "require": "./dist/alipay.js",
       "types": "./dist/index.d.ts"
+    },
+    "./douyin": {
+      "import": "./dist/douyin.mjs",
+      "require": "./dist/douyin.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "typesVersions": {
@@ -32,6 +37,9 @@
         "./dist/index.d.ts"
       ],
       "alipay": [
+        "./dist/index.d.ts"
+      ],
+      "douyin": [
         "./dist/index.d.ts"
       ]
     }

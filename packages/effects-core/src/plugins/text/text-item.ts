@@ -109,7 +109,7 @@ export class TextComponentBase {
   updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
-    this.text = options.text;
+    this.text = options.text.toString();
     this.lineCount = this.getLineCount(options.text, true);
   }
 
@@ -193,7 +193,7 @@ export class TextComponentBase {
     if (this.text === value) {
       return;
     }
-    this.text = value;
+    this.text = value.toString();
     this.lineCount = this.getLineCount(value, false);
     this.isDirty = true;
   }

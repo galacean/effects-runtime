@@ -191,6 +191,10 @@ export class ParticleSystem extends Component {
     return this.particleLink.length;
   }
 
+  isFrozen () {
+    return this.frozen;
+  }
+
   initEmitterTransform () {
     const position = this.item.transform.position.clone();
     const rotation = this.item.transform.rotation.clone();
@@ -330,6 +334,7 @@ export class ParticleSystem extends Component {
     this.particleLink = new Link((a, b) => a[0] - b[0]);
     this.emission.bursts.forEach(b => b.reset());
     this.frozen = false;
+    this.ended = false;
   }
 
   onUpdate (delta: number) {
@@ -425,7 +430,7 @@ export class ParticleSystem extends Component {
               }
             }
           }
-        } else if (this.item.endBehavior === spec.ItemEndBehavior.loop) {
+        } else if (this.item.endBehavior === spec.EndBehavior.restart) {
           updateTrail();
           this.loopStartTime = now - duration;
           this.lastEmitTime -= duration;
@@ -444,12 +449,12 @@ export class ParticleSystem extends Component {
           this.onEnd(this);
           const endBehavior = this.item.endBehavior;
 
-          if (endBehavior === spec.ItemEndBehavior.freeze) {
+          if (endBehavior === spec.EndBehavior.freeze) {
             this.frozen = true;
           }
         }
-      } else if (this.item.endBehavior !== spec.ItemEndBehavior.loop) {
-        if (spec.ItemEndBehavior.destroy === this.item.endBehavior) {
+      } else if (this.item.endBehavior !== spec.EndBehavior.restart) {
+        if (spec.EndBehavior.destroy === this.item.endBehavior) {
           const node = link.last;
 
           if (node && (node.content[0]) < this.lastUpdate) {
@@ -826,6 +831,13 @@ export class ParticleSystem extends Component {
     }
   };
 
+  override onAttached (): void {
+    super.onAttached();
+    this.renderer.item = this.item;
+    this.item.components.push(this.renderer);
+    this.item.rendererComponents.push(this.renderer);
+  }
+
   override fromData (data: unknown): void {
     super.fromData(data);
     const props = data as ParticleSystemProps;
@@ -1093,9 +1105,6 @@ export class ParticleSystem extends Component {
     this.item.getHitTestParams = this.getHitTestParams;
 
     this.item._content = this;
-    this.renderer.item = this.item;
-    this.item.components.push(this.renderer);
-    this.item.rendererComponents.push(this.renderer);
   }
 }
 

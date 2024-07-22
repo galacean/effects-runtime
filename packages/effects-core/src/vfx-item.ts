@@ -70,7 +70,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素动画结束时行为（如何处理元素）
    */
-  endBehavior: spec.ItemEndBehavior | spec.ParentItemEndBehavior;
+  endBehavior: spec.EndBehavior | spec.ParentItemEndBehavior;
   /**
    * 元素是否可用
    */
@@ -415,7 +415,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 获取元素用于计算光线投射的面片类型和参数
    * @override
-   * @param force 元素没有开启交互也返回参数
+   * @param force - 元素没有开启交互也返回参数
    */
   getHitTestParams (force?: boolean): void | HitTestBoxParams | HitTestTriangleParams | HitTestSphereParams | HitTestCustomParams {
     // OVERRIDE
@@ -578,7 +578,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   private resetChildrenParent () {
-
     // GE 父元素销毁子元素继承逻辑
     // 如果有父对象，销毁时子对象继承父对象。
     for (const child of this.children) {
@@ -618,51 +617,4 @@ export namespace Item {
   export function isNull (item: spec.Item): item is spec.NullItem {
     return item.type === spec.ItemType.null;
   }
-}
-
-/**
- * (待废弃) 根据元素的类型创建对应的 `VFXItem` 实例
- * @param props
- * @param composition
- */
-export function createVFXItem (props: VFXItemProps, composition: Composition): VFXItem {
-  const { type } = props;
-  let { pluginName } = props;
-
-  if (!pluginName) {
-    switch (type) {
-      case spec.ItemType.null:
-        pluginName = 'cal';
-
-        break;
-      case spec.ItemType.sprite:
-        pluginName = 'sprite';
-
-        break;
-      case spec.ItemType.particle:
-        pluginName = 'particle';
-
-        break;
-      case spec.ItemType.interact:
-        pluginName = 'interact';
-
-        break;
-      case spec.ItemType.camera:
-        pluginName = 'camera';
-
-        break;
-      case spec.ItemType.text:
-        pluginName = 'text';
-
-        break;
-      case spec.ItemType.tree:
-        pluginName = 'tree';
-
-        break;
-      default:
-        throw new Error('Invalid vfx item type.');
-    }
-  }
-
-  return composition.pluginSystem.createPluginItem(pluginName, props, composition);
 }

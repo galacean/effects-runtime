@@ -50,7 +50,7 @@ export class CompositionComponent extends ItemBehaviour {
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
 
     // 重播不销毁元素
-    if (this.item.endBehavior !== spec.ItemEndBehavior.destroy) {
+    if (this.item.endBehavior !== spec.EndBehavior.destroy) {
       this.setReusable(true);
     }
   }
@@ -119,7 +119,7 @@ export class CompositionComponent extends ItemBehaviour {
           if (!props) {
             throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
           }
-          // endBehaviour 类型需优化
+          // endBehavior 类型需优化
           props.content = itemData.content;
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
@@ -129,7 +129,7 @@ export class CompositionComponent extends ItemBehaviour {
           compositionComponent.refId = refId;
           item.transform.parentTransform = this.transform;
           this.item.composition.refContent.push(item);
-          if (item.endBehavior === spec.ItemEndBehavior.loop) {
+          if (item.endBehavior === spec.EndBehavior.restart) {
             this.item.composition.autoRefTex = false;
           }
           compositionComponent.createContent();
@@ -163,7 +163,14 @@ export class CompositionComponent extends ItemBehaviour {
     }
   }
 
-  hitTest (ray: Ray, x: number, y: number, regions: Region[], force?: boolean, options?: CompositionHitTestOptions): Region[] {
+  hitTest (
+    ray: Ray,
+    x: number,
+    y: number,
+    regions: Region[],
+    force?: boolean,
+    options?: CompositionHitTestOptions,
+  ): Region[] {
     const hitPositions: Vector3[] = [];
     const stop = options?.stop || noop;
     const skip = options?.skip || noop;
@@ -172,7 +179,12 @@ export class CompositionComponent extends ItemBehaviour {
     for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
       const item = this.items[i];
 
-      if (item.getVisible() && !item.ended && !VFXItem.isComposition(item) && !skip(item)) {
+      if (
+        item.getVisible()
+        && !item.ended
+        && !VFXItem.isComposition(item)
+        && !skip(item)
+      ) {
         const hitParams = item.getHitTestParams(force);
 
         if (hitParams) {
@@ -233,6 +245,7 @@ export class CompositionComponent extends ItemBehaviour {
             item.emit(EffectEventName.ITEM_CLICK, region);
 
             regions.push(region);
+
             if (stop(region)) {
               return regions;
             }

@@ -1,6 +1,5 @@
 import * as EFFECTS from '@galacean/effects';
-import { logger, registerPlugin } from '@galacean/effects';
-import { DowngradeVFXItem } from './downgrade-vfx-item';
+import { VFXItem, logger, registerPlugin } from '@galacean/effects';
 import { AlipayDowngradePlugin } from './alipay-downgrade-plugin';
 
 export * from './utils';
@@ -8,7 +7,7 @@ export * from './native-log';
 
 export const version = __VERSION__;
 
-registerPlugin('alipay-downgrade', AlipayDowngradePlugin, DowngradeVFXItem, true);
+registerPlugin('alipay-downgrade', AlipayDowngradePlugin, VFXItem, true);
 
 logger.info(`Plugin downgrade version: ${version}.`);
 

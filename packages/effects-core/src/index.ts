@@ -44,6 +44,7 @@ export * from './binary-asset';
 export * from './effects-object';
 export * from './event-emitter';
 export * from './effect-events';
+export * from './effects-package';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);

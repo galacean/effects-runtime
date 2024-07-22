@@ -8,7 +8,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
-import type { GlobalVolume, MeshRendererOptions, Renderer } from './render';
+import type { PostProcessVolumeData, MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene, SceneType } from './scene';
 import type { Texture } from './texture';
@@ -19,6 +19,7 @@ import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import { EventEmitter } from './event-emitter';
 import { type CompositionEffectEvent, EffectEventName } from './effect-events';
+import { type Matrix4 } from '@galacean/effects-math/es/core';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -178,11 +179,14 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
    * 合成的相机对象
    */
   readonly camera: Camera;
-
   /**
    * 合成全局时间
    */
   globalTime: number;
+  /**
+   * 后处理渲染配置
+   */
+  globalVolume: PostProcessVolumeData;
 
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
@@ -204,10 +208,6 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
    */
   private paused = false;
   private lastVideoUpdateTime = 0;
-  /**
-   * 后处理渲染配置
-   */
-  private readonly globalVolume: GlobalVolume;
   // private readonly event: EventSystem;
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
@@ -256,7 +256,6 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
 
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
-    this.globalVolume = sourceContent.globalVolume;
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
@@ -267,7 +266,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
     this.reusable = reusable;
     this.speed = speed;
-    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.ItemEndBehavior.loop;
+    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -336,12 +335,12 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     return this.destroyed;
   }
 
-  set editorScaleRatio (value: number) {
-    this.camera.setFovScaleRatio(value);
+  set viewportMatrix (matrix: Matrix4) {
+    this.camera.setViewportMatrix(matrix);
   }
 
-  get editorScaleRatio () {
-    return this.camera.getFovScaleRatio();
+  get viewportMatrix () {
+    return this.camera.getViewportMatrix();
   }
 
   /**
@@ -557,7 +556,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
   private shouldRestart () {
     const { ended, endBehavior } = this.rootItem;
 
-    return ended && endBehavior === spec.ItemEndBehavior.loop;
+    return ended && endBehavior === spec.EndBehavior.restart;
   }
 
   /**
@@ -571,7 +570,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     const { ended, endBehavior } = this.rootItem;
 
     // TODO: 合成结束行为
-    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.ItemEndBehavior);
+    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.EndBehavior);
   }
 
   /**
@@ -621,9 +620,9 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     const duration = this.rootItem.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.rootItem.endBehavior === spec.ItemEndBehavior.loop) {
+      if (this.rootItem.endBehavior === spec.EndBehavior.restart) {
         localTime = localTime % duration;
-      } else if (this.rootItem.endBehavior === spec.ItemEndBehavior.freeze) {
+      } else if (this.rootItem.endBehavior === spec.EndBehavior.freeze) {
         localTime = Math.min(duration, localTime);
       }
     }
@@ -676,7 +675,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
       if (VFXItem.isComposition(child)) {
         if (
           child.ended &&
-          child.endBehavior === spec.ItemEndBehavior.loop
+          child.endBehavior === spec.EndBehavior.restart
         ) {
           child.ended = false;
           // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
@@ -943,7 +942,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
   destroyItem (item: VFXItem) {
     // 预合成元素销毁时销毁其中的item
     if (item.type == spec.ItemType.composition) {
-      if (item.endBehavior !== spec.ItemEndBehavior.freeze) {
+      if (item.endBehavior !== spec.EndBehavior.freeze) {
         const contentItems = item.getComponent(CompositionComponent).items;
 
         contentItems.forEach(it => this.pluginSystem.plugins.forEach(loader => loader.onCompositionItemRemoved(this, it)));

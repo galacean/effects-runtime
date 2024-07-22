@@ -1,10 +1,10 @@
 {
   "name": "@galacean/effects-plugin-model",
-  "version": "1.6.1",
+  "version": "1.6.4",
   "description": "Galacean Effects player model plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
-  "brower": "./dist/index.min.js",
+  "browser": "./dist/index.min.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
@@ -23,6 +23,16 @@
     "./alipay": {
       "import": "./dist/alipay.mjs",
       "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./weapp": {
+      "import": "./dist/weapp.mjs",
+      "require": "./dist/weapp.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./douyin": {
+      "import": "./dist/douyin.mjs",
+      "require": "./dist/douyin.js",
       "types": "./dist/index.d.ts"
     }
   },

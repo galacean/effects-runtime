@@ -11,6 +11,7 @@ import { WebGLHelper, MeshHelper, PluginHelper } from '../utility/plugin-helper'
  * 合成缓存类，负责管理插件 WebGL 相关资源加载和创建
  */
 export class CompositionCache {
+  // TODO: 待移除？
   private loadSkybox = false;
   // 天空盒依赖的贴图资源
   private brdfLutTexture?: Texture;
@@ -158,17 +159,16 @@ export class CompositionCache {
    * 获取滤波 Mesh
    * @param name - 名称
    * @param material - 材质
-   * @param uniformSemantics - Uniform 语义信息
    * @returns
    */
-  getFilterMesh (name: string, material: PMaterialBase, uniformSemantics: Record<string, any>): Mesh {
+  getFilterMesh (name: string, material: PMaterialBase): Mesh {
     const cachedMesh = this.meshCache.get(name);
 
     if (cachedMesh !== undefined) {
       return cachedMesh;
     }
 
-    const mesh = MeshHelper.createFilterMesh(this.engine, name, material, uniformSemantics);
+    const mesh = MeshHelper.createFilterMesh(this.engine, name, material);
 
     this.meshCache.set(name, mesh);
 

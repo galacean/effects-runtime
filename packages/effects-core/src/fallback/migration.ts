@@ -3,7 +3,8 @@ import type {
   SpineContent,
 } from '@galacean/effects-specification';
 import {
-  CompositionEndBehavior, DataType, END_BEHAVIOR_FREEZE, ItemEndBehavior, ItemType,
+  DataType, END_BEHAVIOR_FREEZE, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY,
+  EndBehavior, ItemType,
 } from '@galacean/effects-specification';
 import type { TimelineAssetData } from '../plugins/cal/timeline-asset';
 import { generateGUID } from '../utils';
@@ -16,8 +17,8 @@ export function version21Migration (json: JSONSceneLegacy): JSONSceneLegacy {
   json.compositions.forEach(composition => {
     composition.items.forEach(item => {
       if (item.type === ItemType.null) {
-        if (item.endBehavior === ItemEndBehavior.destroy) {
-          item.endBehavior = ItemEndBehavior.freeze;
+        if (item.endBehavior === EndBehavior.destroy) {
+          item.endBehavior = EndBehavior.freeze;
         }
       }
     });
@@ -41,7 +42,7 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
   json.compositions.forEach(composition => {
     composition.items.forEach(item => {
       if (item.type === ItemType.mesh || item.type === ItemType.light) {
-        item.endBehavior = item.endBehavior as unknown === 1 ? ItemEndBehavior.destroy : item.endBehavior;
+        item.endBehavior = item.endBehavior as unknown === 1 ? EndBehavior.destroy : item.endBehavior;
       }
     });
   });
@@ -101,10 +102,14 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
   // 更正Composition.endBehavior
   for (const composition of json.compositions) {
-    // composition 的 endbehaviour 兼容
+    // composition 的 endBehavior 兼容
     if (
-      composition.endBehavior === CompositionEndBehavior.pause_destroy ||
-      composition.endBehavior === CompositionEndBehavior.pause
+      // @ts-expect-error
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+      composition.endBehavior === END_BEHAVIOR_PAUSE_AND_DESTROY ||
+      // @ts-expect-error
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+      composition.endBehavior === END_BEHAVIOR_PAUSE
     ) {
       composition.endBehavior = END_BEHAVIOR_FREEZE;
     }
@@ -462,7 +467,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
         {
           start: item.delay,
           duration: item.duration,
-          endBehaviour: item.endBehavior,
+          endBehavior: item.endBehavior,
           asset: {
             id: newActivationPlayableAsset.id,
           },
@@ -494,7 +499,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
           {
             start: item.delay,
             duration: item.duration,
-            endBehaviour: item.endBehavior,
+            endBehavior: item.endBehavior,
             asset: {
               id: newTransformPlayableAssetData.id,
             },
@@ -511,7 +516,6 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
         id: generateGUID(),
         dataType: 'SpriteColorPlayableAsset',
         colorOverLifetime: item.content.colorOverLifetime,
-        startColor: item.content.options.startColor,
       };
 
       playableAssetDatas.push(newSpriteColorPlayableAssetData);
@@ -523,7 +527,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
           {
             start: item.delay,
             duration: item.duration,
-            endBehaviour: item.endBehavior,
+            endBehavior: item.endBehavior,
             asset: {
               id: newSpriteColorPlayableAssetData.id,
             },
@@ -550,7 +554,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
           {
             start: item.delay,
             duration: item.duration,
-            endBehaviour: item.endBehavior,
+            endBehavior: item.endBehavior,
             asset: {
               id: newSubCompositionPlayableAssetData.id,
             },

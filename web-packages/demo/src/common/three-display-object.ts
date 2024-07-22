@@ -49,8 +49,8 @@ export async function renderbyThreeDisplayObject (player, json) {
   await displayObject.loadScene(json);
   // 兼容父节点的结束行为销毁时表现为冻结
   displayObject.currentComposition.items.forEach(item => {
-    if (item.type === spec.ItemType.null && item.endBehavior === spec.ItemEndBehavior.destroy) {
-      item.endBehavior = spec.ItemEndBehavior.freeze;
+    if (item.type === spec.ItemType.null && item.endBehavior === spec.EndBehavior.destroy) {
+      item.endBehavior = spec.EndBehavior.freeze;
     }
   });
   scene.add(displayObject);

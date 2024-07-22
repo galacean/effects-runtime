@@ -87,7 +87,7 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       duration: duration,
-      endBehavior: spec.ItemEndBehavior.loop,
+      endBehavior: spec.EndBehavior.restart,
     });
 
     const loadResult = loader.getLoadResult();

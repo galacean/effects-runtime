@@ -154,7 +154,7 @@ export class SpineComponent extends RendererComponent {
   }
 
   override onDestroy () {
-    if (this.item.endBehavior === spec.ItemEndBehavior.destroy && this.state) {
+    if (this.item.endBehavior === spec.EndBehavior.destroy && this.state) {
       this.state.clearListeners();
       this.state.clearTracks();
     }
@@ -278,7 +278,7 @@ export class SpineComponent extends RendererComponent {
     if (!this.animationList.length) {
       throw new Error('animationList is empty, check your spine file.');
     }
-    const loop = this.item.endBehavior === spec.ItemEndBehavior.loop;
+    const loop = this.item.endBehavior === spec.EndBehavior.restart;
     const listener = this.state.tracks[0]?.listener;
 
     if (listener) {
@@ -326,7 +326,7 @@ export class SpineComponent extends RendererComponent {
     for (const animation of animationList) {
       const trackEntry = this.state.addAnimation(0, animation, false);
 
-      if (this.item.endBehavior === spec.ItemEndBehavior.loop) {
+      if (this.item.endBehavior === spec.EndBehavior.restart) {
         const listener: AnimationStateListener = {
           end: () => {
             const trackEntry = this.state.addAnimation(0, animation, false);
@@ -488,11 +488,15 @@ export class SpineComponent extends RendererComponent {
     let scaleFactor;
 
     if (this.resizeRule) {
+      const camera = this.item.composition.camera;
       const { z } = this.transform.getWorldPosition();
-      const { x: rx } = this.item.composition.camera.getInverseVPRatio(z);
+      const { x: rx, y: ry } = camera.getInverseVPRatio(z);
 
-      scaleFactor = rx / 1500;
-
+      if (camera.clipMode === spec.CameraClipMode.portrait) {
+        scaleFactor = rx / 1500;
+      } else {
+        scaleFactor = ry / 3248;
+      }
     } else {
       scaleFactor = 1 / width;
     }

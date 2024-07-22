@@ -107,7 +107,7 @@ describe('sprite base', () => {
     const neo = getStandardItem(item);
 
     expect(neo.type).to.eql(spec.ItemType.sprite, 'type');
-    expect(neo.endBehavior).to.eql(spec.ItemEndBehavior.destroy, 'end');
+    expect(neo.endBehavior).to.eql(spec.EndBehavior.destroy, 'end');
     expect(neo.parentId).not.exist;
     const item2 = {
       'name': 'item_1',
@@ -130,7 +130,7 @@ describe('sprite base', () => {
     const neo2 = getStandardItem(item2);
 
     expect(neo2.type).to.eql(spec.ItemType.sprite, 'type 2');
-    expect(neo2.endBehavior).to.eql(spec.ItemEndBehavior.loop, 'end 2');
+    expect(neo2.endBehavior).to.eql(spec.EndBehavior.restart, 'end 2');
     const item3 = {
       'name': 'item_1',
       'delay': 0.56,
@@ -152,7 +152,7 @@ describe('sprite base', () => {
     const neo3 = getStandardItem(item3);
 
     expect(neo3.type).to.eql(spec.ItemType.sprite, 'type 3');
-    expect(neo3.endBehavior).to.eql(spec.ItemEndBehavior.freeze, 'end 3');
+    expect(neo3.endBehavior).to.eql(spec.EndBehavior.freeze, 'end 3');
   });
 
   it('sprite static transform', () => {

@@ -89,7 +89,7 @@ export async function loadGLTF (options: LoadGLTFOptions) {
       rotation: [0, 0, 0],
       scale: [1, 1, 1],
       duration: duration,
-      endBehavior: spec.ItemEndBehavior.loop,
+      endBehavior: spec.EndBehavior.restart,
     });
 
     const loadResult = loader.getLoadResult();
