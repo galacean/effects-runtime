@@ -79,6 +79,7 @@ export class Project extends EditorWindow {
       }
 
       await projectWindow.generateFileTree(projectWindow.selectedFolder);
+      await projectWindow.createFileIcons(projectWindow.selectedFolder);
     }
   }
 

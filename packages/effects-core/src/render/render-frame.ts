@@ -28,9 +28,7 @@ import type { Renderer } from './renderer';
 import {
   BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass,
 } from './post-process-pass';
-import type { PostProcessVolumeData } from './global-volume';
-import { defaultGlobalVolume } from './global-volume';
-import type { RendererComponent } from '../components';
+import type { PostProcessVolume, RendererComponent } from '../components';
 
 /**
  * 渲染数据，保存了当前渲染使用到的数据。
@@ -146,7 +144,7 @@ export interface RenderFrameOptions {
   /**
    * 后处理渲染配置
    */
-  globalVolume?: Partial<PostProcessVolumeData>,
+  globalVolume?: PostProcessVolume,
   /**
    * 名称
    */
@@ -188,7 +186,7 @@ export class RenderFrame implements Disposable {
   /**
    * 存放后处理的属性设置
    */
-  globalVolume: PostProcessVolumeData;
+  globalVolume: PostProcessVolume;
   renderer: Renderer;
   resource: RenderFrameResource;
   keepColorBuffer?: boolean;
@@ -232,10 +230,7 @@ export class RenderFrame implements Disposable {
     const engine = renderer.engine;
 
     if (globalVolume) {
-      this.globalVolume = {
-        ...defaultGlobalVolume,
-        ...globalVolume,
-      };
+      this.globalVolume = globalVolume;
     }
     this.globalUniforms = new GlobalUniforms();
     let attachments: RenderPassColorAttachmentOptions[] = [];  //渲染场景物体Pass的RT
