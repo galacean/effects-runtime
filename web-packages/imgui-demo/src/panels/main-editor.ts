@@ -8,7 +8,7 @@ import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 import type { Editor } from './editor';
 import { editorStore } from './editor';
-import type { GLMaterial } from '@galacean/effects-webgl';
+import { GLTexture, type GLMaterial } from '@galacean/effects-webgl';
 
 type char = number;
 type int = number;
@@ -272,32 +272,36 @@ export class MainEditor extends EditorWindow {
       // 提取材质属性信息
       // 如 “_Float1("Float2", Float) = 0”
       // 提取出 “_Float1” “Float2” “Float” “0”
-      const regex = /\s*(.+?)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/;
+      const regex = /\s*(\s*\[[^\]]+\]\s*)*([^\s([\]]+)\s*\(\s*"(.+?)"\s*,\s*(.+?)\s*\)\s*=\s*(.+)\s*/;
       const matchResults = property.match(regex);
 
       if (!matchResults) {
         continue;
       }
-      const uniformName = matchResults[1];
-      const inspectorName = matchResults[2];
-      const type = matchResults[3];
-      const defaultValue = matchResults[4];
+
+      const attributesMatch = property.matchAll(/\[([^\]]+)\]/g);
+      const attributes = Array.from(attributesMatch, m => m[1]);
+
+      const uniformName = matchResults[2];
+      const inspectorName = matchResults[3];
+      const type = matchResults[4];
+      const defaultValue = matchResults[5];
 
       // 提取 Range(a, b) 的 a 和 b
-      const match = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
+      const RangeMatch = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
 
       ImGui.Text(inspectorName);
       ImGui.SameLine(150);
-      if (match) {
-        const start = Number(match[1]);
-        const end = Number(match[2]);
+      if (RangeMatch) {
+        const start = Number(RangeMatch[1]);
+        const end = Number(RangeMatch[2]);
 
-        if (!serializedData.floats[uniformName]) {
+        if (serializedData.floats[uniformName] === undefined) {
           serializedData.floats[uniformName] = Number(defaultValue);
         }
         ImGui.SliderFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, start, end);
       } else if (type === 'Float') {
-        if (!serializedData.floats[uniformName]) {
+        if (serializedData.floats[uniformName] === undefined) {
           serializedData.floats[uniformName] = Number(defaultValue);
         }
         ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02);
@@ -311,9 +315,35 @@ export class MainEditor extends EditorWindow {
 
         if (texture) {
           ImGui.Button(texture.id);
+        } else {
+          ImGui.Button('  ' + '##' + uniformName);
         }
-      } else {
-        ImGui.NewLine();
+        if (ImGui.BeginDragDropTarget()) {
+          const payload = ImGui.AcceptDragDropPayload(GLTexture.name);
+
+          if (payload) {
+            void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
+              if (!file) {
+                return;
+              }
+              const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
+
+              if (!effectsPackage) {
+                return;
+              }
+              if (!serializedData.textures[uniformName]) {
+                serializedData.textures[uniformName] = {
+                  //@ts-expect-error
+                  texture:effectsPackage.exportObjects[0] as Material,
+                };
+              } else {
+                //@ts-expect-error
+                serializedData.textures[uniformName].texture = effectsPackage.exportObjects[0] as Material;
+              }
+            });
+          }
+          ImGui.EndDragDropTarget();
+        }
       }
     }
 

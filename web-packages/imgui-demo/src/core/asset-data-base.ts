@@ -74,7 +74,7 @@ export class AssetDatabase extends Database {
       return;
     }
     const packageData = JSON.parse(res) as spec.EffectsPackageData;
-    const guid = packageData.fileSummary.guid;
+    // const guid = packageData.fileSummary.guid;
 
     // TODO 纹理 image 特殊逻辑，待移除
     if (packageData.fileSummary.assetType === 'Texture') {

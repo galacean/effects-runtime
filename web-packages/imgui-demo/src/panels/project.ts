@@ -1,5 +1,5 @@
-import type { Player, spec } from '@galacean/effects';
-import { generateGUID, loadImage, math } from '@galacean/effects';
+import type { Player, Texture2DSourceOptions, TextureSourceOptions, spec } from '@galacean/effects';
+import { base64ToFile, generateGUID, loadImage, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
@@ -10,6 +10,7 @@ import { EditorWindow, editorWindow } from './editor-window';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { FileNode } from '../core/file-node';
+import { GalaceanEffects } from '../ge';
 
 @editorWindow()
 export class Project extends EditorWindow {
@@ -50,36 +51,46 @@ export class Project extends EditorWindow {
   static async handleDroppedFiles (files: FileList) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const url = URL.createObjectURL(file);
-      const modelIO = new ModelIO();
 
-      let modelType = 'glb';
+      const lastDotIndex = file.name.lastIndexOf('.');
+      const fileType = lastDotIndex !== -1 ? file.name.substring(lastDotIndex + 1) : '';
 
-      if (file.name.endsWith('.fbx')) {
-        modelType = 'FBX';
-      }
+      switch (fileType) {
+        case 'glb':
+        case 'fbx': {
+          const url = URL.createObjectURL(file);
+          const modelIO = new ModelIO();
+          let modelType = 'glb';
 
-      await modelIO.loadModelByURL([url], { modelType });
-      await modelIO.writeGLB();
-      const glb = modelIO.glb;
-      const result = await GLTFTools.loadGLTF(new Uint8Array(glb));
-      const doc = result.doc;
-      const json = result.json;
-      const editorResult = GLTFTools.processGLTFForEditorECS(doc, json);
+          if (fileType === 'fbx') {
+            modelType = 'FBX';
+          }
 
-      const projectWindow = EditorWindow.getWindow(Project);
-      const currentDirHandle = projectWindow.selectedFolder.handle;
+          await modelIO.loadModelByURL([url], { modelType });
+          await modelIO.writeGLB();
+          const glb = modelIO.glb;
+          const result = await GLTFTools.loadGLTF(new Uint8Array(glb));
+          const doc = result.doc;
+          const json = result.json;
+          const editorResult = GLTFTools.processGLTFForEditorECS(doc, json);
 
-      for (const meshData of editorResult.meshes) {
-        const geometryAsset = JSON.stringify(Project.createPackageData([meshData.geometryData], 'Geometry'), null, 2);
+          const projectWindow = EditorWindow.getWindow(Project);
+          const currentDirHandle = projectWindow.selectedFolder.handle;
 
-        if (currentDirHandle.kind === 'directory') {
-          await Project.saveFile(Project.createJsonFile(geometryAsset, meshData.geometryData.name + '.json'), currentDirHandle);
+          for (const meshData of editorResult.meshes) {
+            const geometryAsset = JSON.stringify(Project.createPackageData([meshData.geometryData], 'Geometry'), null, 2);
+
+            if (currentDirHandle.kind === 'directory') {
+              await Project.saveFile(Project.createJsonFile(geometryAsset, meshData.geometryData.name + '.json'), currentDirHandle);
+            }
+          }
+
+          await projectWindow.generateFileTree(projectWindow.selectedFolder);
+          await projectWindow.createFileIcons(projectWindow.selectedFolder);
+
+          break;
         }
       }
-
-      await projectWindow.generateFileTree(projectWindow.selectedFolder);
-      await projectWindow.createFileIcons(projectWindow.selectedFolder);
     }
   }
 
@@ -276,58 +287,72 @@ export class Project extends EditorWindow {
   }
 
   private async createFileIcons (item: FileNode) {
-    if (item.handle.kind === 'directory') {
-      for (const child of item.children) {
-        if (child.handle.kind === 'file') {
-          await child.handle.getFile().then(async (file: File)=>{
-            if (file.name.endsWith('.json')) {
-              const json = await readFileAsText(file);
-              const packageData: spec.EffectsPackageData = JSON.parse(json);
-
-              const previewScene = generateAssetScene(packageData);
-
-              if (!previewScene) {
-                return;
-              }
-              this.previewPlayer.destroyCurrentCompositions();
-              const composition = await this.previewPlayer.loadScene(previewScene);
-              const previewItem = composition.getItemByName('3d-mesh');
-
-              if (!previewItem) {
-                return;
-              }
-              const geometryproxy = new GeometryBoxProxy();
-              const boundingBox = new math.Box3();
-
-              geometryproxy.create(previewItem.getComponent(ModelMeshComponent).content.subMeshes[0].getEffectsGeometry(), []);
-              geometryproxy.getBoundingBox(boundingBox);
-              const sphere = new Sphere();
-
-              boundingBox.getBoundingSphere(sphere);
-              const radius = sphere.radius;
-              const center = sphere.center;
-
-              let scaleRatio = 4 * 1 / radius;
-
-              if (packageData.fileSummary.assetType === 'Material') {
-                scaleRatio = 8 * 1 / radius;
-              }
-              previewItem.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
-              previewItem.setScale(scaleRatio, scaleRatio, scaleRatio);
-              previewItem.rotate(0, 25, 0);
-
-              this.previewPlayer.gotoAndStop(1);
-              this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
-
-              const iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
-
-              if (iconTexture) {
-                child.icon = iconTexture;
-              }
-            }
-          });
-        }
+    if (item.handle.kind !== 'directory') {
+      return;
+    }
+    for (const child of item.children) {
+      if (child.handle.kind !== 'file') {
+        continue;
       }
+      await child.handle.getFile().then(async (file: File)=>{
+        if (!file.name.endsWith('.json')) {
+          return;
+        }
+        const json = await readFileAsText(file);
+        const packageData: spec.EffectsPackageData = JSON.parse(json);
+        let iconTexture: WebGLTexture | undefined;
+
+        switch (packageData.fileSummary.assetType) {
+          case 'Geometry':
+          case 'Material':{
+            const previewScene = generateAssetScene(packageData);
+
+            if (!previewScene) {
+              return;
+            }
+            this.previewPlayer.destroyCurrentCompositions();
+            const composition = await this.previewPlayer.loadScene(previewScene);
+            const previewItem = composition.getItemByName('3d-mesh');
+
+            if (!previewItem) {
+              return;
+            }
+            const geometryproxy = new GeometryBoxProxy();
+            const boundingBox = new math.Box3();
+
+            geometryproxy.create(previewItem.getComponent(ModelMeshComponent).content.subMeshes[0].getEffectsGeometry(), []);
+            geometryproxy.getBoundingBox(boundingBox);
+            const sphere = new Sphere();
+
+            boundingBox.getBoundingSphere(sphere);
+            const radius = sphere.radius;
+            const center = sphere.center;
+
+            let scaleRatio = 4 * 1 / radius;
+
+            if (packageData.fileSummary.assetType === 'Material') {
+              scaleRatio = 8 * 1 / radius;
+            }
+            previewItem.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
+            previewItem.setScale(scaleRatio, scaleRatio, scaleRatio);
+            previewItem.rotate(0, 25, 0);
+
+            this.previewPlayer.gotoAndStop(1);
+            this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
+            iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
+
+            break;
+          }
+          case 'Texture':{
+            await (GalaceanEffects.player.renderer.engine.database as AssetDatabase).convertImageData(packageData);
+            //@ts-expect-error
+            iconTexture = await this.createIconTexture(packageData.exportObjects[0].image);
+          }
+        }
+        if (iconTexture) {
+          child.icon = iconTexture;
+        }
+      });
     }
   }
 
@@ -415,13 +440,13 @@ export class Project extends EditorWindow {
     ImGui.Text(text);
   }
 
-  private async createIconTexture (imageURLOrCanvas: string | HTMLCanvasElement) {
+  private async createIconTexture (imageURLOrCanvas: string | HTMLCanvasElement | HTMLImageElement): Promise<WebGLTexture | undefined> {
     if (ImGui_Impl && ImGui_Impl.gl) {
       const gl = ImGui_Impl.gl;
       const tex = gl.createTexture();
       let textureSource = null;
 
-      if (imageURLOrCanvas instanceof HTMLCanvasElement) {
+      if (imageURLOrCanvas instanceof HTMLCanvasElement || imageURLOrCanvas instanceof HTMLImageElement) {
         textureSource = imageURLOrCanvas;
       } else if (typeof(imageURLOrCanvas) === 'string') {
         textureSource = await loadImage(imageURLOrCanvas);
@@ -436,7 +461,9 @@ export class Project extends EditorWindow {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureSource);
 
-      return tex;
+      if (tex) {
+        return tex;
+      }
     }
   }
 }
