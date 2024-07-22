@@ -149,6 +149,10 @@ export class Project extends EditorWindow {
     if (ImGui.Button('选择文件夹')) {
       void this.readFolder();
     }
+    ImGui.SameLine();
+    if (ImGui.Button('刷新')) {
+      void this.refresh();
+    }
 
     if (this.rootFileNode) {
       const base_flags = ImGui.TreeNodeFlags.OpenOnArrow |
@@ -231,9 +235,13 @@ export class Project extends EditorWindow {
 
     this.rootFileNode = new FileNode();
     this.rootFileNode.handle = folderHandle;
+    await this.refresh();
+  }
+
+  private async refresh () {
     await this.generateFileTree(this.rootFileNode);
-    AssetDatabase.rootDirectoryHandle = folderHandle;
-    await AssetDatabase.importAllAssets(folderHandle);
+    AssetDatabase.rootDirectoryHandle = this.rootFileNode.handle as FileSystemDirectoryHandle;
+    await AssetDatabase.importAllAssets(this.rootFileNode.handle as FileSystemDirectoryHandle);
   }
 
   private async generateFileTree (item: FileNode) {
