@@ -1,5 +1,5 @@
 import type { Component, Material } from '@galacean/effects';
-import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, getMergedStore } from '@galacean/effects';
+import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, getMergedStore, spec } from '@galacean/effects';
 import type { FileNode } from '../core/file-node';
 import { OrbitController } from '../core/orbit-controller';
 import { EditorWindow, editorWindow } from './editor-window';
@@ -266,6 +266,15 @@ export class MainEditor extends EditorWindow {
     if (!shaderProperties) {
       return;
     }
+    const RenderType: string[] = [spec.RenderType.Opaque, spec.RenderType.Transparent];
+
+    if (!serializedData.stringTags['RenderType']) {
+      serializedData.stringTags['RenderType'] = spec.RenderType.Transparent;
+    }
+    let currentRenderTypeIndex = RenderType.indexOf(serializedData.stringTags['RenderType']);
+
+    ImGui.Combo('##RenderFace', (value = currentRenderTypeIndex)=>currentRenderTypeIndex = value, RenderType);
+    serializedData.stringTags['RenderType'] = RenderType[currentRenderTypeIndex];
     const lines = shaderProperties.split('\n');
 
     for (const property of lines) {
@@ -304,7 +313,11 @@ export class MainEditor extends EditorWindow {
         if (serializedData.floats[uniformName] === undefined) {
           serializedData.floats[uniformName] = Number(defaultValue);
         }
-        ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02);
+        if (attributes.includes('Toggle')) {
+          ImGui.Checkbox('##' + uniformName, (value = Boolean(serializedData.floats[uniformName])) => (serializedData.floats[uniformName] as unknown as boolean) = value);
+        } else {
+          ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02);
+        }
       } else if (type === 'Color') {
         if (!serializedData.colors[uniformName]) {
           serializedData.colors[uniformName] = { r:1.0, g:1.0, b:1.0, a:1.0 };
