@@ -15,7 +15,7 @@ export class EventEmitter<T extends Record<string, any[]>> {
     this._listeners[eventName] = this._listeners[eventName].filter(({ listener: l }) => l !== listener);
   };
 
-  on = <E extends keyof T & string>(eventName: E, listener: EventEmitterListener<T[E]>, options?: EventEmitterOptions) => () => {
+  on = <E extends keyof T & string>(eventName: E, listener: EventEmitterListener<T[E]>, options?: EventEmitterOptions) => {
     this._listeners[eventName] = this._listeners[eventName] || [];
     this._listeners[eventName].push({ listener, options });
 

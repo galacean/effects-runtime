@@ -27,8 +27,8 @@ export type ItemEffectEvent = {
  */
 export const EffectEventName = {
   /**
- * 元素点击事件
- */
+   * 元素点击事件
+   */
   ITEM_CLICK: 'item-click',
   /**
    * 元素消息事件
@@ -36,6 +36,7 @@ export const EffectEventName = {
   ITEM_MESSAGE: 'item-message',
   /**
    * WebGL 上下文丢失事件
+   * 这个时候播放器已经自动被销毁，业务需要做兜底逻辑
    */
   WEBGL_CONTEXT_LOST: 'webgl-context-lost',
   /**

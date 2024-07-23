@@ -91,16 +91,6 @@ export interface PlayerConfig {
    */
   notifyTouch?: boolean,
   /**
-   * 当 WebGL context lost 时候发出的回调，这个时候播放器已经自动被销毁，业务需要做兜底逻辑
-   * @deprecated 2.0.0
-   */
-  onWebGLContextLost?: (event: Event) => void,
-  /**
-   * 当 WebGL context restore 时候发出的回调，这个时候播放器已经自动恢复，业务可视情况做逻辑处理
-   * @deprecated 2.0.0
-   */
-  onWebGLContextRestored?: () => void,
-  /**
    * 播放器被元素暂停的回调
    * @deprecated 2.0.0
    */
@@ -160,8 +150,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
 
   private readonly builtinObjects: EffectsObject[] = [];
   private readonly event: EventSystem;
-  private readonly handleWebGLContextLost?: (event: Event) => void;
-  private readonly handleWebGLContextRestored?: () => void;
   private readonly handleMessageItem?: (item: MessageItem) => void;
   private readonly handlePlayerPause?: (item: VFXItem) => void;
   private readonly handleItemClicked?: (event: ItemClickedData) => void;
@@ -192,7 +180,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     const {
       container, canvas, fps, name, pixelRatio, manualRender, reportGPUTime,
       onMessageItem, onPausedByItem, onItemClicked, onPlayableUpdate, onRenderError,
-      onWebGLContextLost, onWebGLContextRestored,
       renderFramework: glType, notifyTouch,
       interactive = false,
       renderOptions = {},
@@ -217,8 +204,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
       framework = glType === 'webgl' ? 'webgl' : 'webgl2';
     }
 
-    this.handleWebGLContextLost = onWebGLContextLost;
-    this.handleWebGLContextRestored = onWebGLContextRestored;
     this.reportGPUTime = reportGPUTime;
     this.handleItemClicked = onItemClicked;
     this.handleMessageItem = onMessageItem;
@@ -835,8 +820,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
     this.emit(EffectEventName.WEBGL_CONTEXT_LOST, e);
-    // TODO: 是否需要废弃
-    this.handleWebGLContextLost?.(e);
     broadcastPlayerEvent(this, false);
   };
 
@@ -872,8 +855,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
       return newComposition;
     }));
     this.emit(EffectEventName.WEBGL_CONTEXT_RESTORED);
-    // TODO: 是否需要废弃
-    this.handleWebGLContextRestored?.();
     this.ticker?.resume();
   };
 
