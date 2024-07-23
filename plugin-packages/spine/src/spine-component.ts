@@ -537,6 +537,19 @@ export class SpineComponent extends RendererComponent {
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
   }
 
+  // 转换当前大小为旧缩放规则下的大小
+  convertSizeToOldRule (): number {
+    const res = this.getBounds();
+
+    if (!res || !this.item.composition || !this.resizeRule) {
+      return 1;
+    }
+    const { width } = res;
+    const scaleFactor = this.scaleFactor;
+
+    return this.startSize * scaleFactor * width;
+  }
+
   getBounds (): BoundsData | undefined {
     if (!(this.state && this.skeleton)) {
       return;
