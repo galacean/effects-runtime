@@ -262,6 +262,7 @@ export class MainEditor extends EditorWindow {
     const glMaterial = material as GLMaterial;
     const serializedData = glMaterial.toData();
     const shaderProperties = material.shader.shaderData.properties;
+    const alignWidth = 150;
 
     if (!shaderProperties) {
       return;
@@ -273,6 +274,8 @@ export class MainEditor extends EditorWindow {
     }
     let currentRenderTypeIndex = RenderType.indexOf(serializedData.stringTags['RenderType']);
 
+    ImGui.Text('RenderType');
+    ImGui.SameLine(alignWidth);
     ImGui.Combo('##RenderFace', (value = currentRenderTypeIndex)=>currentRenderTypeIndex = value, RenderType);
     serializedData.stringTags['RenderType'] = RenderType[currentRenderTypeIndex];
     const lines = shaderProperties.split('\n');
@@ -300,7 +303,7 @@ export class MainEditor extends EditorWindow {
       const RangeMatch = type.match(/\(\s*([-\d.]+)\s*,\s*([-\d.]+)\s*\)/);
 
       ImGui.Text(inspectorName);
-      ImGui.SameLine(150);
+      ImGui.SameLine(alignWidth);
       if (RangeMatch) {
         const start = Number(RangeMatch[1]);
         const end = Number(RangeMatch[2]);
@@ -327,9 +330,9 @@ export class MainEditor extends EditorWindow {
         const texture = glMaterial.getTexture(uniformName);
 
         if (texture) {
-          ImGui.Button(texture.id);
+          ImGui.Button(texture.id, new ImGui.Vec2(200, 0));
         } else {
-          ImGui.Button('  ' + '##' + uniformName);
+          ImGui.Button('  ' + '##' + uniformName, new ImGui.Vec2(200, 0));
         }
         if (ImGui.BeginDragDropTarget()) {
           const payload = ImGui.AcceptDragDropPayload(GLTexture.name);
