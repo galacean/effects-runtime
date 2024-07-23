@@ -945,19 +945,11 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
               composition: composition.name,
               player: this,
             });
-            // if (composition.onItemClicked) {
-            //   composition.onItemClicked({
-            //     ...regions[i],
-            //   });
-            // } else {
-            //   this.handleItemClicked?.({
-            //     ...regions[i],
-            //     compositionId: composition.id,
-            //     compositionName: composition.name,
-            //     composition: composition.name,
-            //     player: this,
-            //   });
-            // }
+
+            composition.emit(EffectEventName.ITEM_CLICK, {
+              ...regions[i],
+              composition: composition.name,
+            });
 
           } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
             void this.resume();

@@ -13,6 +13,9 @@ export type PlayerEffectEvent<P> = {
 };
 
 export type CompositionEffectEvent<C> = {
+  [EffectEventName.ITEM_CLICK]: [clickInfo: Region & {
+    composition: string,
+  }],
   [EffectEventName.ITEM_MESSAGE]: [messageInfo: MessageItem],
   [EffectEventName.COMPOSITION_END]: [endInfo: { composition: C }],
 };
