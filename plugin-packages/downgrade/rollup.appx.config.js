@@ -10,11 +10,13 @@ const commonAdapterList = [
 const adapterList = {
   alipay: [...commonAdapterList],
   weapp: [...commonAdapterList],
+  douyin: [...commonAdapterList],
 }
 
 export default [
   'weapp',
   'alipay',
+  'douyin',
 ].map(platform => {
   const adapterVars = {};
   const paths = { '@galacean/effects': `@galacean/effects/${platform}`};
