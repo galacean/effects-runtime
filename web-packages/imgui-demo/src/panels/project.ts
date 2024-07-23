@@ -182,15 +182,15 @@ export class Project extends EditorWindow {
     ImGui.EndChild();
 
     ImGui.SameLine();
-    ImGui.BeginChild('FileView', new ImGui.Vec2(ImGui.GetWindowContentRegionWidth() * 0.8, ImGui.GetWindowContentRegionMax().y - ImGui.GetWindowContentRegionMin().y), true);
+    ImGui.BeginChild('FileView', new ImGui.Vec2(ImGui.GetWindowContentRegionWidth() * 0.8, ImGui.GetWindowContentRegionMax().y - ImGui.GetWindowContentRegionMin().y - 40), true);
     this.fileViewHovered = ImGui.IsWindowHovered();
     const style: ImGui.Style = ImGui.GetStyle();
-    const buttons_count = 20;
     const window_visible_x2 = ImGui.GetWindowPos().x + ImGui.GetWindowContentRegionMax().x;
     const button_sz: ImGui.Vec2 = new ImGui.Vec2(this.fileViewSize, this.fileViewSize);
 
     if (this.selectedFolder) {
       let n = 0;
+      const buttons_count = this.selectedFolder.children.length;
 
       for (const child of this.selectedFolder.children) {
         ImGui.BeginGroup();
@@ -242,9 +242,8 @@ export class Project extends EditorWindow {
         n++;
       }
     }
-    ImGui.NewLine();
-    this.drawFileSizeSlider();
     ImGui.EndChild();
+    this.drawFileSizeSlider();
   }
 
   private async readFolder () {
