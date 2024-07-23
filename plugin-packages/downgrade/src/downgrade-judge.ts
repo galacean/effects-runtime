@@ -73,6 +73,10 @@ export class DowngradeJudge {
   }
 
   getRenderLevel (): SceneRenderLevel {
+    if (this.options.level) {
+      return this.options.level;
+    }
+
     if (this.device.level) {
       if (this.device.level === DeviceLevel.High) {
         return spec.RenderLevel.S;

@@ -2,6 +2,10 @@ import type { SceneRenderLevel } from '@galacean/effects';
 
 export interface DowngradeOptions {
   /**
+   * 指定设备渲染等级
+   */
+  level?: SceneRenderLevel,
+  /**
    * 禁用压后台的时候自动暂停播放器
    * @default false - 不自动暂停
    */
@@ -16,12 +20,12 @@ export interface DowngradeOptions {
    */
   deviceInfo?: DeviceInfo,
   /**
-   * mock 相关信息
+   * 是否 mock 降级
+   * - true：mock 降级
+   * - false: mock 不降级
+   * - undefined: 不进行 mock, 用设备信息判断降级
    */
-  mock?: {
-    downgrade: boolean,
-    level: SceneRenderLevel,
-  },
+  mockDowngrade?: boolean,
   /**
    * 自定义降级回调，可针对特定机型配置特定的降级规则
    */

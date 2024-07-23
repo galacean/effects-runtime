@@ -15,7 +15,7 @@ export class DowngradePlugin extends AbstractPlugin {
     }
 
     if (!options.renderLevel) {
-      options.renderLevel = downgradeResult?.renderLevel ?? getDefaultRenderLevel();
+      options.renderLevel = downgradeResult?.level ?? getDefaultRenderLevel();
     }
   }
 }

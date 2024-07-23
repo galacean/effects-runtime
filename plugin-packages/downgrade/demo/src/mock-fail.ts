@@ -6,10 +6,8 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
 
 (async () => {
   const downgrade = getDowngradeResult({
-    mock: {
-      downgrade: true,
-      level: spec.RenderLevel.A,
-    },
+    mockDowngrade: true,
+    level: spec.RenderLevel.A,
   });
 
   const container = document.getElementById('J-container');

@@ -14,10 +14,14 @@ export function getDowngradeResult (options: DowngradeOptions = {}): DowngradeRe
     hasRegisterEvent = true;
   }
 
-  const { mock } = options;
+  const { mockDowngrade } = options;
 
-  if (mock) {
-    return { ...mock, reason: 'mock' };
+  if (mockDowngrade !== undefined) {
+    return {
+      downgrade: mockDowngrade,
+      level: options.level ?? spec.RenderLevel.S,
+      reason: 'mock',
+    };
   }
 
   const device = getDeviceInfo(options);
