@@ -1,10 +1,11 @@
-import type { Player, Texture2DSourceOptions, TextureSourceOptions, spec } from '@galacean/effects';
+import type { Player } from '@galacean/effects';
+import { Texture2DSourceOptions, TextureSourceOptions, glContext, spec } from '@galacean/effects';
 import { base64ToFile, generateGUID, loadImage, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { folderIcon, jsonIcon } from '../asset/images';
-import { AssetDatabase, createPreviewPlayer, generateAssetScene, readFileAsText } from '../core/asset-data-base';
+import { AssetDatabase, createPreviewPlayer, generateAssetScene, readFileAsAsData, readFileAsText } from '../core/asset-data-base';
 import { menuItem } from '../core/decorators';
 import { EditorWindow, editorWindow } from './editor-window';
 import { Selection } from '../core/selection';
@@ -49,9 +50,11 @@ export class Project extends EditorWindow {
   }
 
   static async handleDroppedFiles (files: FileList) {
+    const projectWindow = EditorWindow.getWindow(Project);
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-
+      const currentDirHandle = projectWindow.selectedFolder.handle as FileSystemDirectoryHandle;
       const lastDotIndex = file.name.lastIndexOf('.');
       const fileType = lastDotIndex !== -1 ? file.name.substring(lastDotIndex + 1) : '';
 
@@ -74,24 +77,27 @@ export class Project extends EditorWindow {
           const json = result.json;
           const editorResult = GLTFTools.processGLTFForEditorECS(doc, json);
 
-          const projectWindow = EditorWindow.getWindow(Project);
-          const currentDirHandle = projectWindow.selectedFolder.handle;
-
           for (const meshData of editorResult.meshes) {
             const geometryAsset = JSON.stringify(Project.createPackageData([meshData.geometryData], 'Geometry'), null, 2);
 
-            if (currentDirHandle.kind === 'directory') {
-              await Project.saveFile(Project.createJsonFile(geometryAsset, meshData.geometryData.name + '.json'), currentDirHandle);
-            }
+            await Project.saveFile(Project.createJsonFile(geometryAsset, meshData.geometryData.name + '.json'), currentDirHandle);
           }
-
-          await projectWindow.generateFileTree(projectWindow.selectedFolder);
-          await projectWindow.createFileIcons(projectWindow.selectedFolder);
 
           break;
         }
+        case 'png':
+        case 'jpg':{
+          const result = await readFileAsAsData(file);
+
+          const textureData = { id: generateGUID(), source: result, dataType: spec.DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+          const textureAsset = JSON.stringify(Project.createPackageData([textureData], 'Texture'), null, 2);
+
+          await Project.saveFile(Project.createJsonFile(textureAsset, file.name + '.json'), currentDirHandle);
+        }
       }
     }
+    await projectWindow.generateFileTree(projectWindow.selectedFolder);
+    await projectWindow.createFileIcons(projectWindow.selectedFolder);
   }
 
   static createJsonFile (json: string, fileName: string) {
