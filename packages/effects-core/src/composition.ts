@@ -8,7 +8,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
-import type { PostProcessVolumeData, MeshRendererOptions, Renderer } from './render';
+import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene, SceneType } from './scene';
 import type { Texture } from './texture';
@@ -18,6 +18,7 @@ import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import { type Matrix4 } from '@galacean/effects-math/es/core';
+import type { PostProcessVolume } from './components/post-process-volume';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -189,7 +190,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 后处理渲染配置
    */
-  globalVolume: PostProcessVolumeData;
+  globalVolume: PostProcessVolume;
 
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化

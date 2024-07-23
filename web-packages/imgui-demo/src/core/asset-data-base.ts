@@ -74,7 +74,7 @@ export class AssetDatabase extends Database {
       return;
     }
     const packageData = JSON.parse(res) as spec.EffectsPackageData;
-    const guid = packageData.fileSummary.guid;
+    // const guid = packageData.fileSummary.guid;
 
     // TODO 纹理 image 特殊逻辑，待移除
     if (packageData.fileSummary.assetType === 'Texture') {
@@ -321,6 +321,24 @@ export async function readFileAsText (file: File): Promise<string> {
     };
 
     reader.readAsText(file);
+  });
+}
+
+export function readFileAsAsData (file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read file as data URL'));
+      }
+    };
+    reader.onerror = () => {
+      reject(reader.error);
+    };
+    reader.readAsDataURL(file);
   });
 }
 

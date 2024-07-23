@@ -1,10 +1,10 @@
-import type { EditorWindow } from './panel';
+import { editorWindowStore, type EditorWindow } from '../panels/editor-window';
 import { MenuItemNode, MenuNode } from '../widgets/menu-item';
 import { ImGui } from '../imgui';
-import { editorWindowStore, menuItemStore } from './decorators';
+import { menuItemStore } from './decorators';
 
 export class UIManager {
-  private static panels: EditorWindow[] = [];
+  private static editorWindows: EditorWindow[] = [];
   // editor: Editor = new Editor();
   private menuNodes: MenuNode[] = [];
 
@@ -16,15 +16,15 @@ export class UIManager {
       this.addMenuItem(path, menuItemStore[path]);
     }
 
-    for (const key of Object.keys(editorWindowStore)) {
-      UIManager.panels.push(new editorWindowStore[key]());
+    for (const editorWindowClass of editorWindowStore) {
+      UIManager.editorWindows.push(new editorWindowClass());
     }
   }
 
   static getWindow<T extends EditorWindow> (type: new () => T): T {
     let res;
 
-    for (const panel of UIManager.panels) {
+    for (const panel of UIManager.editorWindows) {
       if (panel instanceof type) {
         res = panel;
 
@@ -36,7 +36,7 @@ export class UIManager {
   }
 
   draw () {
-    for (const panel of UIManager.panels) {
+    for (const panel of UIManager.editorWindows) {
       panel.draw();
     }
     // this.editor.draw();

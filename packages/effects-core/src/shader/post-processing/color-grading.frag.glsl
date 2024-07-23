@@ -130,13 +130,13 @@ void main() {
   vec4 hdrColor = texture2D(_SceneTex, uv);
   hdrColor *= hdrColor.a;
 
-  hdrColor.rgb = pow(hdrColor.rgb, vec3(2.2)); // srgb转linear
+  hdrColor.rgb = pow(hdrColor.rgb, vec3(2.2)); // srgb 转 linear
 
   vec3 finalColor = hdrColor.rgb;
   if(_UseBloom) {
     vec4 bloomColor = texture2D(_GaussianTex, uv);
     bloomColor.rgb *= _BloomIntensity;
-    finalColor += bloomColor.rgb; // 叠加Bloom效果后的颜色
+    finalColor += bloomColor.rgb; // 叠加 Bloom 效果后的颜色
   }
 
   if(_VignetteIntensity > 0.0) {

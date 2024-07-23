@@ -1,4 +1,4 @@
-import { UIManager } from './ui-manager';
+import { UIManager } from '../core/ui-manager';
 import { ImGui } from '../imgui';
 
 export class EditorWindow {
@@ -47,4 +47,16 @@ export class EditorWindow {
   protected onGUI () {
 
   }
+}
+
+export const editorWindowStore: (new () => EditorWindow)[] = [];
+export function editorWindow () {
+  return (target: any, context?: unknown) => {
+    for (const editorWindowClass of editorWindowStore) {
+      if (editorWindowClass === target) {
+        console.warn(`Class ${target} 重复注册`);
+      }
+    }
+    editorWindowStore.push(target);
+  };
 }
