@@ -263,6 +263,7 @@ export class MainEditor extends EditorWindow {
     const serializedData = glMaterial.toData();
     const shaderProperties = material.shader.shaderData.properties;
     const alignWidth = 150;
+    let dirtyFlag = false;
 
     if (!shaderProperties) {
       return;
@@ -276,7 +277,9 @@ export class MainEditor extends EditorWindow {
 
     ImGui.Text('RenderType');
     ImGui.SameLine(alignWidth);
-    ImGui.Combo('##RenderFace', (value = currentRenderTypeIndex)=>currentRenderTypeIndex = value, RenderType);
+    if (ImGui.Combo('##RenderFace', (value = currentRenderTypeIndex)=>currentRenderTypeIndex = value, RenderType)) {
+      dirtyFlag = true;
+    }
     serializedData.stringTags['RenderType'] = RenderType[currentRenderTypeIndex];
     const lines = shaderProperties.split('\n');
 
@@ -311,7 +314,9 @@ export class MainEditor extends EditorWindow {
         if (serializedData.floats[uniformName] === undefined) {
           serializedData.floats[uniformName] = Number(defaultValue);
         }
-        ImGui.SliderFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, start, end);
+        if (ImGui.SliderFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, start, end)) {
+          dirtyFlag = true;
+        }
       } else if (type === 'Float') {
         if (serializedData.floats[uniformName] === undefined) {
           serializedData.floats[uniformName] = Number(defaultValue);
@@ -319,7 +324,9 @@ export class MainEditor extends EditorWindow {
         if (attributes.includes('Toggle')) {
           ImGui.Checkbox('##' + uniformName, (value = Boolean(serializedData.floats[uniformName])) => (serializedData.floats[uniformName] as unknown as boolean) = value);
         } else {
-          ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02);
+          if (ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02)) {
+            dirtyFlag = true;
+          }
         }
       } else if (type === 'Color') {
         if (!serializedData.colors[uniformName]) {
@@ -364,6 +371,9 @@ export class MainEditor extends EditorWindow {
     }
 
     SerializationHelper.deserializeTaggedProperties(serializedData, glMaterial);
+    if (dirtyFlag) {
+      GalaceanEffects.assetDataBase.setDirty(glMaterial.getInstanceId());
+    }
   }
 }
 

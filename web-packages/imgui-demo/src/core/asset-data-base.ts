@@ -233,8 +233,16 @@ export class AssetDatabase extends Database {
     return res;
   }
 
-  setDirty (object: EffectsObject) {
-    const packageGuid = AssetDatabase.objectToPackageGuidMap[object.getInstanceId()];
+  setDirty (object: EffectsObject): void;
+  setDirty (guid: string): void ;
+  setDirty (object: EffectsObject | string): void {
+    let packageGuid: string = '';
+
+    if (object instanceof EffectsObject) {
+      packageGuid = AssetDatabase.objectToPackageGuidMap[object.getInstanceId()];
+    } else {
+      packageGuid = AssetDatabase.objectToPackageGuidMap[object];
+    }
 
     if (!packageGuid) {
       return;

@@ -170,6 +170,10 @@ export class Project extends EditorWindow {
     if (ImGui.Button('刷新')) {
       void this.refresh();
     }
+    ImGui.SameLine();
+    if (ImGui.Button('保存')) {
+      void GalaceanEffects.assetDataBase.saveAssets();
+    }
 
     if (this.rootFileNode) {
       const base_flags = ImGui.TreeNodeFlags.OpenOnArrow |
