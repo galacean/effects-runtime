@@ -76,7 +76,7 @@ export class PSkin extends PObject {
     //
     this.inverseBindMatrices = [];
     //
-    this.textureDataMode = this.getTextureDataMode(maxJointCount, engine);
+    this.textureDataMode = this.getTextureDataMode(this.maxJointCount, engine);
     const matList = props.inverseBindMatrices;
 
     if (matList !== undefined && matList.length > 0) {
