@@ -87,16 +87,6 @@ export class DowngradeJudge {
       }
     }
 
-    if (this.device.memoryMB) {
-      if (this.device.memoryMB < 4000) {
-        return spec.RenderLevel.B;
-      } else if (this.device.memoryMB < 6000) {
-        return spec.RenderLevel.A;
-      } else {
-        return spec.RenderLevel.S;
-      }
-    }
-
     if (this.isIOS && this.device.model) {
       if (/iPhone(\d+),/.test(this.device.model)) {
         const gen = +RegExp.$1;
@@ -108,6 +98,16 @@ export class DowngradeJudge {
         } else {
           return spec.RenderLevel.S;
         }
+      }
+    }
+
+    if (this.device.memoryMB) {
+      if (this.device.memoryMB < 4000) {
+        return spec.RenderLevel.B;
+      } else if (this.device.memoryMB < 6000) {
+        return spec.RenderLevel.A;
+      } else {
+        return spec.RenderLevel.S;
       }
     }
 
