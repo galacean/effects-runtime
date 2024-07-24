@@ -85,7 +85,7 @@ export class AssetDatabase extends Database {
       this.engine.addEffectsObjectData(objectData);
     }
 
-    const effectsPackage = new EffectsPackage(this.engine);
+    const effectsPackage = new EffectsPackage();
 
     // this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
@@ -112,13 +112,13 @@ export class AssetDatabase extends Database {
   async saveAssets () {
     for (const dirtyPackageGuid of this.dirtyPackageSet) {
       // let effectsPackage = this.effectsPackages[dirtyPackageGuid];
-      let effectsPackage;
+      let effectsPackage: EffectsPackage | undefined;
 
       if (!effectsPackage) {
         effectsPackage = (await this.loadPackage(this.GUIDToAssetPath(dirtyPackageGuid)))!;
       }
 
-      const assetData = SerializationHelper.serializeTaggedProperties(effectsPackage) as spec.EffectsPackageData;
+      const assetData = effectsPackage.toData();
       const path = this.GUIDToAssetPath(dirtyPackageGuid);
 
       console.info(assetData, path);
@@ -350,18 +350,21 @@ export function readFileAsAsData (file: File): Promise<string> {
   });
 }
 
-export class EffectsPackage extends EffectsObject {
+export class EffectsPackage {
   fileSummary: fileSummary;
   exportObjects: EffectsObject[] = [];
 
-  override toData () {
-    this.taggedProperties.fileSummary = this.fileSummary;
-    this.taggedProperties.exportObjects = [];
+  toData () {
+    const effectsPackageData: spec.EffectsPackageData = {
+      fileSummary: this.fileSummary,
+      exportObjects: [],
+    };
 
     for (const obj of this.exportObjects) {
-      obj.toData();
-      this.taggedProperties.exportObjects.push(obj.taggedProperties);
+      effectsPackageData.exportObjects.push(SerializationHelper.serializeTaggedProperties(obj) as spec.EffectsObjectData);
     }
+
+    return effectsPackageData;
   }
 }
 

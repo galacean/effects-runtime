@@ -322,7 +322,9 @@ export class MainEditor extends EditorWindow {
           serializedData.floats[uniformName] = Number(defaultValue);
         }
         if (attributes.includes('Toggle')) {
-          ImGui.Checkbox('##' + uniformName, (value = Boolean(serializedData.floats[uniformName])) => (serializedData.floats[uniformName] as unknown as boolean) = value);
+          if (ImGui.Checkbox('##' + uniformName, (value = Boolean(serializedData.floats[uniformName])) => (serializedData.floats[uniformName] as unknown as boolean) = value)) {
+            dirtyFlag = true;
+          }
         } else {
           if (ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02)) {
             dirtyFlag = true;
@@ -332,7 +334,9 @@ export class MainEditor extends EditorWindow {
         if (!serializedData.colors[uniformName]) {
           serializedData.colors[uniformName] = { r:1.0, g:1.0, b:1.0, a:1.0 };
         }
-        ImGui.ColorEdit4('##' + uniformName, serializedData.colors[uniformName]);
+        if (ImGui.ColorEdit4('##' + uniformName, serializedData.colors[uniformName])) {
+          dirtyFlag = true;
+        }
       } else if (type === '2D') {
         const texture = glMaterial.getTexture(uniformName);
 
@@ -364,6 +368,7 @@ export class MainEditor extends EditorWindow {
                 serializedData.textures[uniformName].texture = effectsPackage.exportObjects[0] as Material;
               }
             });
+            dirtyFlag = true;
           }
           ImGui.EndDragDropTarget();
         }
