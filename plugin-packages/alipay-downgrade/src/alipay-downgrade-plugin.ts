@@ -3,7 +3,7 @@ import { AbstractPlugin, logger } from '@galacean/effects';
 import { getDefaultRenderLevel } from './utils';
 
 /**
- * Alipay 降级插件类
+ * Alipay 降级插件类（内部用户使用）
  *
  * 根据 SceneLoadOptions 中传入的 downgrade 数据，判断是否降级。
  * 如果设备被降级，会在 processRawJSON 是扔出降级相关的异常和原因。

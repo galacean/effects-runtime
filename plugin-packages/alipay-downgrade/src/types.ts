@@ -1,7 +1,7 @@
 import type { SceneRenderLevel } from '@galacean/effects';
 
 /**
- * 降级接口入参选项
+ * 降级选项
  */
 export interface DowngradeOptions {
   /**

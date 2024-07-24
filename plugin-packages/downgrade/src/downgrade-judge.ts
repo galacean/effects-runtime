@@ -2,6 +2,11 @@ import { spec, type SceneRenderLevel } from '@galacean/effects';
 import { DeviceLevel, type DeviceInfo, type DowngradeOptions, type DowngradeResult } from './types';
 import { downgradeModels, downgradeVersions } from './constants';
 
+/**
+ * 降级判断类
+ *
+ * 通过设备信息和降级选项判断设备是否需要降级
+ */
 export class DowngradeJudge {
   isIOS = false;
   level: SceneRenderLevel;
@@ -11,6 +16,12 @@ export class DowngradeJudge {
     public device: DeviceInfo,
   ) { }
 
+  /**
+   * 根据输入的设备信息和降级选项，以及内置的硬件机型和系统版本列表
+   * 返回当前设备降级相关的结果
+   *
+   * @returns 降级结果
+   */
   getDowngradeResult (): DowngradeResult {
     const { downgradeCallback } = this.options;
 
@@ -72,7 +83,7 @@ export class DowngradeJudge {
     };
   }
 
-  getRenderLevel (): SceneRenderLevel {
+  private getRenderLevel (): SceneRenderLevel {
     if (this.options.level) {
       return this.options.level;
     }
