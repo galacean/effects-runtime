@@ -1,7 +1,6 @@
 // @ts-nocheck
-import { Player, spec } from '@galacean/effects';
+import { spec } from '@galacean/effects';
 import { getDowngradeResult, UADecoder } from '@galacean/effects-plugin-downgrade';
-import uaList from './device-list/ua';
 
 const { expect } = chai;
 
