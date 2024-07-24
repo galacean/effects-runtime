@@ -624,15 +624,6 @@ export class GLMaterial extends Material {
     materialData.ints = {};
     materialData.vector4s = {};
     materialData.dataType = spec.DataType.Material;
-    if (this.blending) {
-      materialData.blending = this.blending;
-    }
-    if (this.depthTest) {
-      materialData.zTest = this.depthTest;
-    }
-    if (this.depthMask) {
-      materialData.zWrite = this.depthMask;
-    }
 
     for (const name in this.floats) {
       materialData.floats[name] = this.floats[name];

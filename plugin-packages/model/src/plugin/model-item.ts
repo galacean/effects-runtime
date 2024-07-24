@@ -67,10 +67,10 @@ export class ModelMeshComponent extends RendererComponent {
    * 组件开始，需要创建内部对象，更新父元素信息和添加到场景管理器中
    */
   override start (): void {
+    this.sceneManager = getSceneManager(this);
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
     this.priority = this.item.renderOrder;
-    this.sceneManager = getSceneManager(this);
     this.sceneManager?.addItem(this.content);
     if (this.item.parentId && this.item.parent) {
       this.content.updateParentInfo(this.item.parentId, this.item.parent);

@@ -16,13 +16,14 @@ import {
   PLAYER_OPTIONS_ENV_EDITOR,
   effectsClass,
   GLSLVersion,
+  Geometry,
 } from '@galacean/effects';
 import { CompositionCache } from '../runtime/cache';
 import { PluginHelper } from '../utility/plugin-helper';
 import { PTransform, PSceneManager, PCoordinate, PBRShaderGUID, UnlitShaderGUID } from '../runtime';
 import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
 import { VFX_ITEM_TYPE_3D } from './const';
-import { ModelCameraComponent, ModelLightComponent } from './model-item';
+import { ModelCameraComponent, ModelLightComponent, ModelMeshComponent } from './model-item';
 import { fetchPBRShaderCode, fetchUnlitShaderCode } from '../utility';
 
 /**
@@ -310,6 +311,7 @@ export class ModelPluginComponent extends ItemBehaviour {
       renderMode3DUVGridSize: this.renderMode3DUVGridSize,
       renderSkybox: this.renderSkybox,
       lightItemCount: this.getLightItemCount(),
+      maxJointCount: this.getMaxJointCount(),
     });
     this.updateSceneCamera(component);
   }
@@ -335,6 +337,29 @@ export class ModelPluginComponent extends ItemBehaviour {
     });
 
     return lightItemCount;
+  }
+
+  private getMaxJointCount (): number {
+    let maxJointCount = 0;
+    const items = this.item.composition?.items ?? [];
+
+    items.forEach(item => {
+      const meshComp = item.getComponent(ModelMeshComponent);
+
+      if (meshComp && meshComp.data) {
+        const geometry = meshComp.data.geometry;
+
+        if (geometry instanceof Geometry) {
+          const skin = geometry.getSkinProps();
+
+          if (skin.boneNames) {
+            maxJointCount = Math.max(skin.boneNames.length, maxJointCount);
+          }
+        }
+      }
+    });
+
+    return maxJointCount;
   }
 }
 

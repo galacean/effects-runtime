@@ -1,12 +1,12 @@
 import inspireList from '../asset/inspire-list';
-import { editorWindow, menuItem } from '../core/decorators';
+import { menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow } from '../core/panel';
+import { EditorWindow, editorWindow } from './editor-window';
 import { Selection } from '../core/selection';
 
 @editorWindow()
-export class CompositionWindow extends EditorWindow {
+export class Composition extends EditorWindow {
 
   private currentItem: number = 0;
   private compositionNames: string[] = [];
@@ -17,7 +17,7 @@ export class CompositionWindow extends EditorWindow {
 
   @menuItem('Window/Composition')
   static showWindow () {
-    EditorWindow.getWindow(CompositionWindow).open();
+    EditorWindow.getWindow(Composition).open();
   }
 
   constructor () {

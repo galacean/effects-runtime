@@ -53,6 +53,10 @@ export class PSkin extends PObject {
    * 纹理数据模式
    */
   textureDataMode = TextureDataMode.none;
+  /**
+   * 最大骨骼数目
+   */
+  maxJointCount = 0;
 
   /**
    * 创建蒙皮对象
@@ -60,18 +64,19 @@ export class PSkin extends PObject {
    * @param engine - 引擎对象
    * @param rootBoneItem - 场景树父元素
    */
-  create (props: SkinProps, engine: Engine, rootBoneItem: VFXItem) {
+  create (props: SkinProps, engine: Engine, rootBoneItem: VFXItem, maxJointCount: number) {
     this.name = props.rootBoneName ?? 'Unnamed skin';
     this.type = PObjectType.skin;
     //
     this.rootBoneItem = rootBoneItem;
     this.skeleton = -1;
     this.jointItem = this.getJointItems(props, rootBoneItem);
+    this.maxJointCount = Math.max(maxJointCount, this.jointItem.length);
     this.animationMatrices = [];
     //
     this.inverseBindMatrices = [];
     //
-    this.textureDataMode = this.getTextureDataMode(this.getJointCount(), engine);
+    this.textureDataMode = this.getTextureDataMode(this.maxJointCount, engine);
     const matList = props.inverseBindMatrices;
 
     if (matList !== undefined && matList.length > 0) {
