@@ -2,6 +2,11 @@ import { infoList } from './constants';
 import type { DeviceInfo, ProductInfo } from './types';
 import { DeviceLevel } from './types';
 
+/**
+ * UserAgent 解析类
+ *
+ * 从 UserAgent 中解析出设备相关的信息，但是能获取的信息有限。
+ */
 export class UADecoder {
   device: DeviceInfo = {};
 

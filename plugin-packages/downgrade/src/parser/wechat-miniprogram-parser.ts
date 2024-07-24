@@ -2,6 +2,11 @@ import { infoList, devtoolNameMap } from '../constants';
 import type { DeviceInfo, WechatDeviceInfo } from '../types';
 import { DeviceLevel } from '../types';
 
+/**
+ * 微信小程序设备信息解析类
+ *
+ * 负责解析微信小程序 JSAPI 返回的设备信息
+ */
 export class WechatMiniprogramParser {
   device: DeviceInfo = {};
 
