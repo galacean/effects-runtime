@@ -6,7 +6,7 @@ import { getDefaultRenderLevel } from './utils';
  * 降级插件类
  *
  * 根据 SceneLoadOptions 中传入的 downgrade 数据，判断是否降级。
- * 如果设备被降级，会在 processRawJSON 是扔出降级相关的异常和原因。
+ * 如果设备被降级，会在 processRawJSON 时抛出降级相关的异常和原因。
  *
  * 如果 SceneLoadOptions 中 renderLevel 没有设置，那么会根据 downgrade 数据
  * 和默认的渲染等级规则设置其中的 renderLevel 。
