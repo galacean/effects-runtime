@@ -35,7 +35,7 @@ export class DeviceProxy {
 
   /**
    * 设置 JSAPI 返回的系统信息
-   * @param systemInfo JSAPI 返回的系统信息
+   * @param systemInfo - JSAPI 返回的系统信息
    */
   setSystemInfo (systemInfo: SystemInfo) {
     const {
@@ -53,7 +53,7 @@ export class DeviceProxy {
   /**
    * 根据传入的 JSAPI 降级结果，返回设备的降级决定
    *
-   * @param result JSAPI 返回的降级结果
+   * @param result - JSAPI 返回的降级结果
    * @returns 设备降级决定
    */
   getDowngradeDecision (result: any): DowngradeDecision {
