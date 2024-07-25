@@ -62,7 +62,7 @@ export interface CompositionProps {
   width: number,
   height: number,
   speed?: number,
-  player: any,
+  player: { emit: (event: string, ...args: any[]) => void },
 }
 
 /**
@@ -212,7 +212,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
 
-  private player: any;
+  private player: { emit: (event: string, ...args: any[]) => void };
 
   /**
    * Composition 构造函数

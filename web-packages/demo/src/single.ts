@@ -1,6 +1,6 @@
 import { Player, EffectEventName } from '@galacean/effects';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*iBwcRJO5U9gAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*Gv_jS7JnTrgAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -20,6 +20,10 @@ const container = document.getElementById('J-container');
     // });
     player.on(EffectEventName.ITEM_CLICK, item => {
       console.info('first item', item);
+    });
+
+    player.on(EffectEventName.ITEM_MESSAGE, message => {
+      console.info('message', message);
     });
 
     composition.on(EffectEventName.COMPOSITION_END, e => {

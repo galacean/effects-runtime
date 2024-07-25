@@ -477,7 +477,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
       renderer,
       width: renderer.getWidth(),
       height: renderer.getHeight(),
-      player: this,
+      player: this as any,
       event: this.event,
       onMessageItem: this.handleMessageItem,
     }, scene);
