@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { spec } from '@galacean/effects';
 import { getDowngradeResult, AlipayMiniprogramParser } from '@galacean/effects-plugin-downgrade';
 

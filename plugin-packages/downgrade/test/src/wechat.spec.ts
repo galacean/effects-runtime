@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { spec } from '@galacean/effects';
 import { getDowngradeResult, WechatMiniprogramParser } from '@galacean/effects-plugin-downgrade';
 
@@ -7,7 +6,7 @@ const { expect } = chai;
 describe('Wechat parser', () => {
   it('Windows', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'Windows',
@@ -26,7 +25,7 @@ describe('Wechat parser', () => {
 
   it('Nexus 5', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'Nexus 5',
@@ -45,7 +44,7 @@ describe('Wechat parser', () => {
 
   it('Nexus 6', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'Nexus 6',
@@ -64,7 +63,7 @@ describe('Wechat parser', () => {
 
   it('Mac 21-inch and above', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'Mac 21-inch and above',
@@ -83,7 +82,7 @@ describe('Wechat parser', () => {
 
   it('iPad', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPad',
@@ -102,7 +101,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 5', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 5',
@@ -121,7 +120,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 6/7/8', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 6/7/8',
@@ -140,7 +139,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 6/7/8 Plus', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 6/7/8 Plus',
@@ -159,7 +158,7 @@ describe('Wechat parser', () => {
 
   it('iPhone X', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone X',
@@ -178,7 +177,7 @@ describe('Wechat parser', () => {
 
   it('iPhone XR', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone XR',
@@ -197,7 +196,7 @@ describe('Wechat parser', () => {
 
   it('iPhone XS Max', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone XS Max',
@@ -216,7 +215,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 12/13 mini', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 12/13 mini',
@@ -235,7 +234,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 12/13 (Pro)', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 12/13 (Pro)',
@@ -254,7 +253,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 12/13 Pro Max', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 12/13 Pro Max',
@@ -273,7 +272,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 14 Pro Max', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 14 Pro Max',
@@ -292,7 +291,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 15 Pro Max', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 15 Pro Max',
@@ -311,7 +310,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 8 Plus (GSM+CDMA)<iPhone10,2>', () => {
     const data = {
-      benchmarkLevel: '28',
+      benchmarkLevel: 28,
       brand: 'iPhone',
       memorySize: 2973,
       model: 'iPhone 8 Plus (GSM+CDMA)<iPhone10,2>',
@@ -331,7 +330,7 @@ describe('Wechat parser', () => {
 
   it('iPhone SE (2nd generation)<iPhone12,8>', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'iPhone',
       memorySize: 2959,
       model: 'iPhone SE (2nd generation)<iPhone12,8>',
@@ -351,7 +350,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 14<iPhone14,7>', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'iPhone',
       memorySize: 5695,
       model: 'iPhone 14<iPhone14,7>',
@@ -371,7 +370,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 14 pro<iPhone15,2>', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'iPhone',
       memorySize: 5650,
       model: 'iPhone 14 pro<iPhone15,2>',
@@ -391,7 +390,7 @@ describe('Wechat parser', () => {
 
   it('iPhone 15 pro<iPhone16,1>', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'iPhone',
       memorySize: 7675,
       model: 'iPhone 15 pro<iPhone16,1>',
@@ -411,7 +410,7 @@ describe('Wechat parser', () => {
 
   it('华为Mate 50', () => {
     const data = {
-      benchmarkLevel: '35',
+      benchmarkLevel: 35,
       brand: 'HUAWEI',
       memorySize: 7322,
       model: 'CET-AL00',
@@ -431,7 +430,7 @@ describe('Wechat parser', () => {
 
   it('华为Mate60 Pro+', () => {
     const data = {
-      benchmarkLevel: '29',
+      benchmarkLevel: 29,
       brand: 'HUAWEI',
       memorySize: 15601,
       model: 'ALN-AL10',
@@ -451,7 +450,7 @@ describe('Wechat parser', () => {
 
   it('小米14', () => {
     const data = {
-      benchmarkLevel: '31',
+      benchmarkLevel: 31,
       brand: 'Xiaomi',
       memorySize: 7215,
       model: '23127PN0CC',
@@ -471,7 +470,7 @@ describe('Wechat parser', () => {
 
   it('红米 10A', () => {
     const data = {
-      benchmarkLevel: '6',
+      benchmarkLevel: 6,
       brand: 'Redmi',
       memorySize: 3779,
       model: '220233L2C',
@@ -491,7 +490,7 @@ describe('Wechat parser', () => {
 
   it('2201123C', () => {
     const data = {
-      benchmarkLevel: '34',
+      benchmarkLevel: 34,
       brand: 'OPPO',
       memorySize: 7195,
       model: '2201123C',
@@ -510,7 +509,7 @@ describe('Wechat parser', () => {
 
   it('PBEM00', () => {
     const data = {
-      benchmarkLevel: '21',
+      benchmarkLevel: 21,
       brand: 'OPPO',
       memorySize: 5621,
       model: 'PBEM00',
@@ -531,7 +530,7 @@ describe('Wechat parser', () => {
 describe('Wechat Downgrade', () => {
   it('Nexus 6', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'Nexus 6',
@@ -549,7 +548,7 @@ describe('Wechat Downgrade', () => {
 
   it('iPhone X', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone X',
@@ -567,7 +566,7 @@ describe('Wechat Downgrade', () => {
 
   it('iPhone 14 Pro Max', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'devtools',
       memorySize: 2048,
       model: 'iPhone 14 Pro Max',
@@ -585,7 +584,7 @@ describe('Wechat Downgrade', () => {
 
   it('iPhone 8 Plus (GSM+CDMA)<iPhone10,2>', () => {
     const data = {
-      benchmarkLevel: '28',
+      benchmarkLevel: 28,
       brand: 'iPhone',
       memorySize: 2973,
       model: 'iPhone 8 Plus (GSM+CDMA)<iPhone10,2>',
@@ -603,7 +602,7 @@ describe('Wechat Downgrade', () => {
 
   it('iPhone SE (2nd generation)', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'iPhone',
       memorySize: 2959,
       model: 'iPhone SE (2nd generation)<iPhone12,8>',
@@ -621,7 +620,7 @@ describe('Wechat Downgrade', () => {
 
   it('iPhone SE (2nd generation) 16.7', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'iPhone',
       memorySize: 2959,
       model: 'iPhone SE (2nd generation)<iPhone12,8>',
@@ -639,7 +638,7 @@ describe('Wechat Downgrade', () => {
 
   it('iPhone 14 pro<iPhone15,2>', () => {
     const data = {
-      benchmarkLevel: '-1',
+      benchmarkLevel: -1,
       brand: 'iPhone',
       memorySize: 5650,
       model: 'iPhone 14 pro<iPhone15,2>',
@@ -657,7 +656,7 @@ describe('Wechat Downgrade', () => {
 
   it('华为Mate 50', () => {
     const data = {
-      benchmarkLevel: '35',
+      benchmarkLevel: 35,
       brand: 'HUAWEI',
       memorySize: 7322,
       model: 'CET-AL00',
@@ -676,7 +675,7 @@ describe('Wechat Downgrade', () => {
 
   it('华为Mate60 Pro+', () => {
     const data = {
-      benchmarkLevel: '29',
+      benchmarkLevel: 29,
       brand: 'HUAWEI',
       memorySize: 15601,
       model: 'ALN-AL10',
@@ -695,7 +694,7 @@ describe('Wechat Downgrade', () => {
 
   it('小米14', () => {
     const data = {
-      benchmarkLevel: '31',
+      benchmarkLevel: 31,
       brand: 'Xiaomi',
       memorySize: 7215,
       model: '23127PN0CC',
@@ -714,7 +713,7 @@ describe('Wechat Downgrade', () => {
 
   it('红米 10A', () => {
     const data = {
-      benchmarkLevel: '6',
+      benchmarkLevel: 6,
       brand: 'Redmi',
       memorySize: 3779,
       model: '220233L2C',

@@ -1,5 +1,5 @@
-// @ts-nocheck
-import { Player, spec } from '@galacean/effects';
+import { spec } from '@galacean/effects';
+import type { SystemInfo } from '@galacean/effects-plugin-alipay-downgrade';
 import { getDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
 
 const { expect } = chai;
@@ -59,7 +59,7 @@ describe('Downgrade result', () => {
   });
 
   it('华为 nova 12', async () => {
-    const systemInfo = {
+    const systemInfo: SystemInfo = {
       brand: 'HUAWEI',
       model: 'HUAWEI BLK-AL00',
       performance: 'high',
@@ -276,6 +276,7 @@ describe('Downgrade result', () => {
       brand: 'iPhone',
       system: '17.4',
       platform: 'iOS',
+      performance: 'unknown',
       model: 'iPhone14,5',
     };
     const downgradeResult = {
@@ -304,6 +305,7 @@ describe('Downgrade result', () => {
       brand: 'iPhone',
       system: '16.6',
       platform: 'iOS',
+      performance: 'unknown',
       model: 'iPhone12,8',
     };
     const downgradeResult = {
@@ -332,6 +334,7 @@ describe('Downgrade result', () => {
       brand: 'iPhone',
       system: '12.5.7',
       platform: 'iOS',
+      performance: 'unknown',
       model: 'iPhone7,1',
     };
     const downgradeResult = {
@@ -360,6 +363,7 @@ describe('Downgrade result', () => {
       brand: 'iPhone',
       system: '14.4',
       platform: 'iOS',
+      performance: 'unknown',
       model: 'iPhone13,4',
     };
     const downgradeResult = {
@@ -387,6 +391,7 @@ describe('Downgrade result', () => {
     const systemInfo = {
       brand: 'iPhone',
       system: '14.6',
+      performance: 'unknown',
       platform: 'iOS',
       model: 'iPhone10,2',
     };
@@ -416,6 +421,7 @@ describe('Downgrade result', () => {
       brand: 'iPhone',
       system: '14.6',
       platform: 'iOS',
+      performance: 'unknown',
       model: 'iPhone10,2',
     };
     const downgradeResult = {

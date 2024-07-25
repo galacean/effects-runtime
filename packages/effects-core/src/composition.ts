@@ -106,6 +106,7 @@ export class Composition implements Disposable, LostHandler {
    * @since 1.6.0
    */
   interactive: boolean;
+  compositionSourceManager: CompositionSourceManager;
   /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
    * @internal
@@ -205,7 +206,6 @@ export class Composition implements Disposable, LostHandler {
   protected readonly keepColorBuffer: boolean;
   protected rootComposition: CompositionComponent;
   protected readonly postLoaders: Plugin[] = [];
-  protected compositionSourceManager: CompositionSourceManager;
 
   /**
    * 合成暂停/播放 标识

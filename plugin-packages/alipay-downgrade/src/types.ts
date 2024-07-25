@@ -27,7 +27,7 @@ export interface DowngradeOptions {
   autoPause?: boolean,
   /**
    * 降级 API
-   * @param bizId - 业务Id
+   * @param bizId - 业务 Id
    * @param option - 参数
    * @param callback - 回调函数
    * @returns 降级结果
@@ -44,7 +44,7 @@ export interface DowngradeOptions {
  */
 export interface DowngradeResult {
   /**
-   * 业务 bizid
+   * 业务 bizId
    */
   bizId: string,
   /**
@@ -104,11 +104,11 @@ export interface SystemInfo {
   /**
    * 版本信息
    */
-  version: string,
+  version?: string,
   /**
    * 错误消息
    */
-  error: Error,
+  error?: Error,
 }
 
 /**

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { Player, spec } from '@galacean/effects';
 import { getDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
 
@@ -16,8 +15,8 @@ describe('Player downgrade', () => {
   });
 
   it('mock-pass', async () => {
-    const playerFunc = chai.spy('player error');
-    const catchFunc = chai.spy('catch error');
+    const playerFunc = chai.spy(() => 'player error');
+    const catchFunc = chai.spy(() => 'catch error');
     const downgrade = await getDowngradeResult('mock-pass');
     const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1,"anchor":[0.5,0.5]}}}],"meta":{"previewSize":[750,1624]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
@@ -38,7 +37,7 @@ describe('Player downgrade', () => {
   });
 
   it('mock-fail', async () => {
-    const playerFunc = chai.spy('player error');
+    const playerFunc = chai.spy(() => 'player error');
     const downgrade = await getDowngradeResult('mock-fail');
     const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1,"anchor":[0.5,0.5]}}}],"meta":{"previewSize":[750,1624]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
@@ -49,15 +48,15 @@ describe('Player downgrade', () => {
         },
       });
       playerFunc();
-    } catch (e) {
+    } catch (e: any) {
       expect(e.message).to.equal('Load error in processJSON, Error: Downgraded, reason: mock.');
     }
     expect(playerFunc).not.to.have.been.called();
   });
 
   it('current', async () => {
-    const playerFunc = chai.spy('player error');
-    const catchFunc = chai.spy('catch error');
+    const playerFunc = chai.spy(() => 'player error');
+    const catchFunc = chai.spy(() => 'catch error');
     const downgrade = await getDowngradeResult('');
     const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1,"anchor":[0.5,0.5]}}}],"meta":{"previewSize":[750,1624]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
@@ -78,8 +77,8 @@ describe('Player downgrade', () => {
   });
 
   it('not downgrade', async () => {
-    const playerFunc = chai.spy('player error');
-    const catchFunc = chai.spy('catch error');
+    const playerFunc = chai.spy(() => 'player error');
+    const catchFunc = chai.spy(() => 'catch error');
     const downgrade = {
       downgrade: false,
       level: spec.RenderLevel.A,
@@ -104,8 +103,8 @@ describe('Player downgrade', () => {
   });
 
   it('downgrade', async () => {
-    const playerFunc = chai.spy('player error');
-    const catchFunc = chai.spy('catch error');
+    const playerFunc = chai.spy(() => 'player error');
+    const catchFunc = chai.spy(() => 'catch error');
     const downgrade = {
       downgrade: true,
       level: spec.RenderLevel.A,
@@ -114,14 +113,14 @@ describe('Player downgrade', () => {
     const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1,"anchor":[0.5,0.5]}}}],"meta":{"previewSize":[750,1624]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
     try {
-      const comp = await player.loadScene(JSON.parse(json), {
+      await player.loadScene(JSON.parse(json), {
         pluginData: {
           downgrade,
         },
       });
 
       playerFunc();
-    } catch (e) {
+    } catch (e: any) {
       catchFunc();
       expect(e.message).to.equal('Load error in processJSON, Error: Downgraded, reason: downgrade test.');
     }

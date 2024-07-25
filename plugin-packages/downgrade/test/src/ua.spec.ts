@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { spec } from '@galacean/effects';
 import { getDowngradeResult, UADecoder } from '@galacean/effects-plugin-downgrade';
 

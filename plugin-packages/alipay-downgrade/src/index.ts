@@ -4,6 +4,7 @@ import { AlipayDowngradePlugin } from './alipay-downgrade-plugin';
 
 export * from './utils';
 export * from './native-log';
+export * from './types';
 
 export const version = __VERSION__;
 
