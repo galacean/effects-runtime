@@ -1,6 +1,11 @@
 import type { AlipaySystemInfo, DeviceInfo } from '../types';
 import { DeviceLevel } from '../types';
 
+/**
+ * 支付宝小程序系统信息解析类
+ *
+ * 负责解析支付宝小程序 JSAPI 返回的系统信息
+ */
 export class AlipayMiniprogramParser {
   device: DeviceInfo = {};
 

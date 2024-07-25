@@ -7,6 +7,13 @@ const mockIdPass = 'mock-pass';
 const mockIdFail = 'mock-fail';
 let hasRegisterEvent = false;
 
+/**
+ * 获取 GE 降级结果，在有 JSAPI 环境下调用，不需要创建 Canvas 和 WebGL 环境。
+ *
+ * @param bizId - 业务 bizId
+ * @param options - 降级选项
+ * @returns 降级结果
+ */
 export async function getDowngradeResult (bizId: string, options: DowngradeOptions = {}): Promise<DowngradeResult> {
   if (!hasRegisterEvent) {
     hasRegisterEvent = true;
@@ -24,7 +31,8 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 
   const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
-  if (!ap) {
+  // 当需要通过 ap 获取降级信息时，才进行降级环境的检查
+  if (!ap && (!options.systemInfo || !options.downgradeResult)) {
     return {
       bizId,
       downgrade: false,
@@ -127,6 +135,11 @@ async function getDowngradeResultJSAPI (bizId: string, options: DowngradeOptions
   }
 }
 
+/**
+ * 获取默认渲染等级
+ *
+ * @returns 渲染等级
+ */
 export function getDefaultRenderLevel () {
   return isIOS() ? spec.RenderLevel.S : spec.RenderLevel.B;
 }

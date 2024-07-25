@@ -8,16 +8,27 @@ import { DowngradeJudge } from './downgrade-judge';
 const internalPaused = Symbol('@@_inter_pause');
 let hasRegisterEvent = false;
 
+/**
+ * 获取 GE 降级结果，不需要创建 Canvas 和 WebGL 环境。
+ * 如果是小程序环境下，要确保 JSAPI 可调用
+ *
+ * @param options - 降级选项
+ * @returns 降级结果
+ */
 export function getDowngradeResult (options: DowngradeOptions = {}): DowngradeResult {
   if (!hasRegisterEvent) {
     registerEvent(options);
     hasRegisterEvent = true;
   }
 
-  const { mock } = options;
+  const { mockDowngrade } = options;
 
-  if (mock) {
-    return { ...mock, reason: 'mock' };
+  if (mockDowngrade !== undefined) {
+    return {
+      downgrade: mockDowngrade,
+      level: options.level ?? spec.RenderLevel.S,
+      reason: 'mock',
+    };
   }
 
   const device = getDeviceInfo(options);
@@ -80,6 +91,11 @@ function getDeviceInfo (options: DowngradeOptions) {
   return new UADecoder().getDeviceInfo();
 }
 
+/**
+ * 获取默认渲染等级
+ *
+ * @returns 渲染等级
+ */
 export function getDefaultRenderLevel () {
   return isIOS() ? spec.RenderLevel.S : spec.RenderLevel.B;
 }

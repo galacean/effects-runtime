@@ -5,13 +5,38 @@ import { DeviceLevel } from './types';
 
 const deviceModelList = ['12,8', '13,1', '13,2', '13,3', '13,4'];
 
+/**
+ * 设备代理类
+ *
+ * 负责将 JSAPI 返回的 SystemInfo 和 DowngradeResult 数据
+ * 转成设备相关的数据，在后面的降级判断中使用
+ */
 export class DeviceProxy {
+  /**
+   * 是否 iOS 系统
+   */
   isIOS = false;
+  /**
+   * 硬件机型
+   */
   model = 'DESKTOP_DEBUG';
+  /**
+   * 系统版本
+   */
   system = 'Unknown';
+  /**
+   * 设备等级
+   */
   level = DeviceLevel.Unknown;
+  /**
+   * 是否降级
+   */
   isDowngrade = false;
 
+  /**
+   * 设置 JSAPI 返回的系统信息
+   * @param systemInfo - JSAPI 返回的系统信息
+   */
   setSystemInfo (systemInfo: SystemInfo) {
     const {
       performance, platform,
@@ -25,6 +50,12 @@ export class DeviceProxy {
     this.setLevel(performance);
   }
 
+  /**
+   * 根据传入的 JSAPI 降级结果，返回设备的降级决定
+   *
+   * @param result - JSAPI 返回的降级结果
+   * @returns 设备降级决定
+   */
   getDowngradeDecision (result: any): DowngradeDecision {
     let resultType = undefined;
     let resultReason = undefined;
@@ -89,10 +120,14 @@ export class DeviceProxy {
     return {
       downgrade: false,
       level: this.getRenderLevel(),
-      reason: resultType,
+      reason: `${resultType}`,
     };
   }
 
+  /**
+   * 获取设备渲染等级
+   * @returns 设备渲染等级
+   */
   getRenderLevel (): SceneRenderLevel {
     if (this.level === DeviceLevel.High) {
       return spec.RenderLevel.S;
