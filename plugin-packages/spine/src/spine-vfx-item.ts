@@ -2,7 +2,6 @@ import type { AnimationStateListener, SkeletonData } from '@esotericsoftware/spi
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type { BoundingBoxTriangle, Composition, Engine, HitTestTriangleParams, VFXItemProps } from '@galacean/effects';
 import { assertExist, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, spec, VFXItem } from '@galacean/effects';
-import { cwd } from 'concurrently/dist/src/defaults';
 import { SlotGroup } from './slot-group';
 import type { SpineResource } from './spine-loader';
 import type { SpineMesh } from './spine-mesh';
