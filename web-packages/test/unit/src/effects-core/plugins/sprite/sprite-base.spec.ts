@@ -196,7 +196,7 @@ describe('sprite item base options', () => {
     const sprite = comp.getItemByName('日历逐帧');
     const spriteItem = sprite.getComponent(SpriteComponent);
 
-    spriteItem.update();
+    spriteItem.update(0.0);
     const texOffset0 = spriteItem.material.getVector4('_TexOffset').clone().toArray();
 
     let spriteColorTrack;
@@ -208,7 +208,8 @@ describe('sprite item base options', () => {
         spriteColorTrack = subTrack;
       }
     }
-    spriteItem.update(1.0);
+
+    spriteItem.update(1000);
 
     const texOffset2 = spriteItem.material.getVector4('_TexOffset').clone().toArray();
 
@@ -216,8 +217,8 @@ describe('sprite item base options', () => {
     expect(texOffset0[1]).to.be.closeTo(0.8746, 0.001);
     expect(texOffset0[2]).to.be.closeTo(0.1249, 0.001);
     expect(texOffset0[3]).to.be.closeTo(0.1249, 0.001);
-    expect(texOffset2[0]).to.be.closeTo(0.5, 0.001);
-    expect(texOffset2[1]).to.be.closeTo(0.7497, 0.001);
+    expect(texOffset2[0]).to.be.closeTo(0.25, 0.001);
+    expect(texOffset2[1]).to.be.closeTo(0, 0.001);
     expect(texOffset2[2]).to.be.closeTo(0.1248, 0.001);
     expect(texOffset2[3]).to.be.closeTo(0.1249, 0.001);
   });
