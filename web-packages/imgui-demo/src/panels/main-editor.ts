@@ -382,8 +382,8 @@ export class MainEditor extends EditorWindow {
             } else {
               serializedData.textures[uniformName].texture = { id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' };
             }
+            dirtyFlag = true;
           }
-          dirtyFlag = true;
 
           ImGui.EndDragDropTarget();
         }
