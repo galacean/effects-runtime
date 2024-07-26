@@ -7,6 +7,12 @@
 
 ---
 
+## 1.6.5
+
+`2024-07-26`
+
+- Fix: Added a size conversion function for Spine elements under the new and old scaling rules to ensure compatibility with older versions. [#522](https://github.com/galacean/effects-runtime/pull/522) @RGCHN
+
 ## 1.6.4
 
 `2024-07-19`

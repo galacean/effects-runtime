@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.5
+
+`2024-07-26`
+
+- Fix: 增加 Spine 元素新旧缩放规则下大小转换函数，兼容老版本问题。[#522](https://github.com/galacean/effects-runtime/pull/522) @RGCHN
+
 ## 1.6.4
 
 `2024-07-19`
