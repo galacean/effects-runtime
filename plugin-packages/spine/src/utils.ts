@@ -172,12 +172,12 @@ export function readAtlasData (atlasBuffer: Uint8Array, textures: Texture[]): Te
 
   for (let i = 0; i < pageCount; i++) {
     const page = atlas.pages[i];
-    const tex = textures[i];
+    const texture = textures[i];
 
-    if (!tex) {
-      throw new Error(`Can not find page ${page.name}'s texture, check the texture name`);
+    if (!texture) {
+      throw new Error(`Can not find page ${page.name}'s texture, check the texture name.`);
     }
-    page.texture = tex as unknown as SpineTexture;
+    page.texture = texture as unknown as SpineTexture;
   }
 
   return atlas;

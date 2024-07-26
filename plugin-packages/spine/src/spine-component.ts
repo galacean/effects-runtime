@@ -30,11 +30,11 @@ export interface SpineBaseData {
 export interface SpineResource {
   atlas: {
     bins: BinaryAsset,
-    source: [start:number, length?: number],
+    source: [start: number, length?: number],
   },
   skeleton: {
     bins: BinaryAsset,
-    source: [start:number, length?: number],
+    source: [start: number, length?: number],
   },
   images: Texture[],
   skeletonType: spec.skeletonFileType,
