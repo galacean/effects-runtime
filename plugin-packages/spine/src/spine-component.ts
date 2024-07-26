@@ -3,11 +3,13 @@ import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esoteric
 import type {
   BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer, Texture,
 } from '@galacean/effects';
-import { effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, serialize,
+import {
+  effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, serialize,
   spec,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
-import { createSkeletonData, getAnimationDuration, getAnimationList, getSkeletonFromBuffer,
+import {
+  createSkeletonData, getAnimationDuration, getAnimationList, getSkeletonFromBuffer,
   getSkinList, readAtlasData,
 } from './utils';
 
