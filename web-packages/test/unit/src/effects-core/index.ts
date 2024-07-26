@@ -9,7 +9,7 @@ import './composition';
 // // plugin particle
 // import './plugins/particle';
 // // plugin sprite
-// import './plugins/sprite';
+import './plugins/sprite';
 // import './assert-manager.spec';
 // import './texture.spec';
 // import './transform.spec';
