@@ -69,6 +69,10 @@ export interface PSceneOptions {
    * 灯光元素数目
    */
   lightItemCount: number,
+  /**
+   * 最大骨骼数目
+   */
+  maxJointCount: number,
 }
 
 /**
@@ -120,6 +124,10 @@ export interface PSceneStates {
    * 最大灯光数目
    */
   maxLightCount: number,
+  /**
+   * 最大骨骼数目
+   */
+  maxJointCount: number,
   /**
    * 天空盒对象
    */
@@ -184,6 +192,10 @@ export class PSceneManager {
    */
   maxLightCount = 16;
   /**
+   * 最大骨骼数目
+   */
+  maxJointCount = 0;
+  /**
    * 场景状态
    */
   sceneStates: PSceneStates;
@@ -225,6 +237,7 @@ export class PSceneManager {
     this.enableDynamicSort = opts.enableDynamicSort === true;
     this.renderSkybox = opts.renderSkybox;
     this.maxLightCount = opts.lightItemCount;
+    this.maxJointCount = opts.maxJointCount;
     this.cameraManager.initial(this.renderer.getWidth(), this.renderer.getHeight());
     this.brdfLUT = this.sceneCache.getBrdfLutTexture();
     this.initGlobalState(opts);
@@ -397,6 +410,7 @@ export class PSceneManager {
       //
       lightList: this.lightManager.lightList,
       maxLightCount: this.maxLightCount,
+      maxJointCount: this.maxJointCount,
       skybox: this.skybox,
     };
 

@@ -1,6 +1,13 @@
 import type { SceneRenderLevel } from '@galacean/effects';
 
+/**
+ * 降级接口入参
+ */
 export interface DowngradeOptions {
+  /**
+   * 指定设备渲染等级，如果没有设置，会根据设备信息自动计算
+   */
+  level?: SceneRenderLevel,
   /**
    * 禁用压后台的时候自动暂停播放器
    * @default false - 不自动暂停
@@ -16,37 +23,82 @@ export interface DowngradeOptions {
    */
   deviceInfo?: DeviceInfo,
   /**
-   * mock 相关信息
+   * 是否 mock 降级
+   * - true：mock 降级
+   * - false: mock 不降级
+   * - undefined: 不进行 mock, 用设备信息判断降级
    */
-  mock?: {
-    downgrade: boolean,
-    level: SceneRenderLevel,
-  },
+  mockDowngrade?: boolean,
   /**
    * 自定义降级回调，可针对特定机型配置特定的降级规则
    */
   downgradeCallback?: DowngradeCallback,
 }
 
+/**
+ * 降级结果
+ */
 export interface DowngradeResult {
+  /**
+   * 是否降级
+   */
   downgrade: boolean,
+  /**
+   * 渲染等级
+   */
   level: SceneRenderLevel,
+  /**
+   * 降级原因
+   */
   reason: string,
+  /**
+   * 设备信息
+   */
   deviceInfo?: DeviceInfo,
 }
 
+/**
+ * 设备信息
+ */
 export interface DeviceInfo {
+  /**
+   * 平台信息
+   */
   platform?: string,
+  /**
+   * 系统版本
+   */
   osVersion?: string,
+  /**
+   * 硬件机型（处理过）
+   */
   model?: string,
+  /**
+   * 原始硬件机型
+   */
   originalModel?: string,
+  /**
+   * 设备等级
+   */
   level?: DeviceLevel,
+  /**
+   * 内存大小
+   */
   memoryMB?: number,
+  /**
+   * 数据来源
+   */
   sourceData?: any,
 }
 
+/**
+ * 降级回调接口，可以自定义降级结果
+ */
 export type DowngradeCallback = (device: DeviceInfo) => DowngradeResult | undefined;
 
+/**
+ * 微信设备信息，来自微信 JSAPI 返回的结果
+ */
 export interface WechatDeviceInfo {
   /**
    * 设备性能等级（仅 Android 支持）。
@@ -82,6 +134,9 @@ export interface WechatDeviceInfo {
   memorySize: number,
 }
 
+/**
+ * 支付宝系统信息，来自支付宝 JSAPI 返回的结果
+ */
 export interface AlipaySystemInfo {
   /**
    * high: 高性能。Android 设备运行内存大于等于 4GB
@@ -108,11 +163,17 @@ export interface AlipaySystemInfo {
   platform?: string,
 }
 
+/**
+ * UserAgent 的产品信息
+ */
 export interface ProductInfo {
   name: string,
   comment?: string,
 }
 
+/**
+ * iPhone 机型信息
+ */
 export interface IPhoneInfo {
   name: string,
   model: string,
@@ -120,6 +181,9 @@ export interface IPhoneInfo {
   height: number,
 }
 
+/**
+ * 设备等级
+ */
 export enum DeviceLevel {
   High = 'high',
   Medium = 'medium',

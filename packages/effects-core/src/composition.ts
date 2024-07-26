@@ -8,7 +8,7 @@ import { PLAYER_OPTIONS_ENV_EDITOR } from './constants';
 import { setRayFromCamera } from './math';
 import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
-import type { PostProcessVolumeData, MeshRendererOptions, Renderer } from './render';
+import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
 import type { Scene, SceneType } from './scene';
 import type { Texture } from './texture';
@@ -18,6 +18,7 @@ import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import { type Matrix4 } from '@galacean/effects-math/es/core';
+import type { PostProcessVolume } from './components/post-process-volume';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -105,6 +106,7 @@ export class Composition implements Disposable, LostHandler {
    * @since 1.6.0
    */
   interactive: boolean;
+  compositionSourceManager: CompositionSourceManager;
   /**
    * 合成结束行为是 spec.END_BEHAVIOR_PAUSE 或 spec.END_BEHAVIOR_PAUSE_AND_DESTROY 时执行的回调
    * @internal
@@ -189,7 +191,7 @@ export class Composition implements Disposable, LostHandler {
   /**
    * 后处理渲染配置
    */
-  globalVolume: PostProcessVolumeData;
+  globalVolume: PostProcessVolume;
 
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
@@ -204,7 +206,6 @@ export class Composition implements Disposable, LostHandler {
   protected readonly keepColorBuffer: boolean;
   protected rootComposition: CompositionComponent;
   protected readonly postLoaders: Plugin[] = [];
-  protected compositionSourceManager: CompositionSourceManager;
 
   /**
    * 合成暂停/播放 标识

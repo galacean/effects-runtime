@@ -93,12 +93,12 @@ export class PMesh extends PEntity {
     private engine: Engine,
     name: string,
     meshData: ModelMeshComponentData,
-    owner?: ModelMeshComponent,
+    owner: ModelMeshComponent,
     parentId?: string,
     parent?: VFXItem,
   ) {
     super();
-    const proxy = new EffectsMeshProxy(meshData, parent);
+    const proxy = new EffectsMeshProxy(meshData, owner, parent);
 
     this.name = name;
     this.type = PObjectType.mesh;
@@ -454,7 +454,7 @@ export class PSubMesh {
     this.geometry.setHide(parent.hide);
 
     if (this.skin !== undefined) {
-      const jointCount = this.skin.getJointCount();
+      const jointCount = this.skin.maxJointCount;
 
       this.jointMatrixList = new Float32Array(jointCount * 16);
       this.jointNormalMatList = new Float32Array(jointCount * 16);
@@ -636,7 +636,7 @@ export class PSubMesh {
 
     if (this.skin !== undefined) {
       macroList.push({ name: 'USE_SKINNING' });
-      macroList.push({ name: 'JOINT_COUNT', value: this.skin.getJointCount() });
+      macroList.push({ name: 'JOINT_COUNT', value: this.skin.maxJointCount });
       macroList.push({ name: 'HAS_JOINT_SET1' });
       macroList.push({ name: 'HAS_WEIGHT_SET1' });
       if (this.skin.textureDataMode) {
@@ -1140,6 +1140,7 @@ class EffectsMeshProxy {
 
   constructor (
     public itemData: ModelMeshComponentData,
+    public parentComponent: ModelMeshComponent,
     public parentItem?: VFXItem,
   ) {
     this.data = itemData;
@@ -1222,8 +1223,9 @@ class EffectsMeshProxy {
 
     if (skin.rootBoneName && skin.boneNames && skin.inverseBindMatrices && this.rootBoneItem) {
       const skinObj = new PSkin();
+      const maxJointCount = this.parentComponent.sceneManager?.maxJointCount ?? 0;
 
-      skinObj.create(skin, engine, this.rootBoneItem);
+      skinObj.create(skin, engine, this.rootBoneItem, maxJointCount);
 
       return skinObj;
     }
