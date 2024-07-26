@@ -22,6 +22,11 @@ export class MainEditor extends EditorWindow {
   cameraController: OrbitController = new OrbitController();
   private customEditors = new Map<Function, Editor>();
 
+  // Inspector
+  private locked: boolean;
+  private lockedObject: object;
+  private alignWidth = 150;
+
   constructor () {
     super();
     for (const key of editorStore.keys()) {
@@ -105,10 +110,26 @@ export class MainEditor extends EditorWindow {
 
       return;
     }
-    const activeObject = Selection.activeObject;
+    const alignWidth = this.alignWidth;
+    let activeObject = Selection.activeObject;
+
+    if (this.locked) {
+      activeObject = this.lockedObject;
+    }
 
     if (activeObject instanceof VFXItem) {
       ImGui.Text(activeObject.name);
+
+      // draw Lock check box
+      const rightOffset = ImGui.GetWindowWidth() - 85 - ImGui.GetStyle().ItemSpacing.x;
+
+      ImGui.SameLine(rightOffset);
+      ImGui.Text('Lock');
+      ImGui.SameLine();
+      if (ImGui.Checkbox('##Lock', (value = this.locked)=>this.locked = value)) {
+        this.lockedObject = Selection.activeObject;
+      }
+
       ImGui.Text(activeObject.getInstanceId());
       //@ts-expect-error
       ImGui.Checkbox('Visiable', (_ = activeObject.visible) => activeObject.visible = _);
@@ -117,13 +138,13 @@ export class MainEditor extends EditorWindow {
         const transform = activeObject.transform;
 
         ImGui.Text('Position');
-        ImGui.SameLine(100);
+        ImGui.SameLine(alignWidth);
         ImGui.DragFloat3('##Position', transform.position, 0.03);
         ImGui.Text('Rotation');
-        ImGui.SameLine(100);
+        ImGui.SameLine(alignWidth);
         ImGui.DragFloat3('##Rotation', transform.rotation, 0.03);
         ImGui.Text('Scale');
-        ImGui.SameLine(100);
+        ImGui.SameLine(alignWidth);
         ImGui.DragFloat3('##Scale', transform.scale, 0.03);
 
         transform.quat.setFromEuler(transform.rotation);
@@ -133,8 +154,6 @@ export class MainEditor extends EditorWindow {
         //@ts-expect-error
         transform.dispatchValueChange();
       }
-
-      const alignWidth = 150;
 
       for (const componet of activeObject.components) {
         const customEditor = this.customEditors.get(componet.constructor);

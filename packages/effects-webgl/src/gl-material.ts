@@ -623,6 +623,7 @@ export class GLMaterial extends Material {
     materialData.floats = {};
     materialData.ints = {};
     materialData.vector4s = {};
+    materialData.textures = {};
     materialData.dataType = spec.DataType.Material;
     materialData.stringTags = this.stringTags;
 
