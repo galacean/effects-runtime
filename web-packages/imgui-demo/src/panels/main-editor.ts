@@ -118,8 +118,7 @@ export class MainEditor extends EditorWindow {
     }
 
     if (activeObject instanceof VFXItem) {
-      ImGui.Text(activeObject.name);
-
+      ImGui.Text('VFXItem');
       // draw Lock check box
       const rightOffset = ImGui.GetWindowWidth() - 85 - ImGui.GetStyle().ItemSpacing.x;
 
@@ -129,10 +128,18 @@ export class MainEditor extends EditorWindow {
       if (ImGui.Checkbox('##Lock', (value = this.locked)=>this.locked = value)) {
         this.lockedObject = Selection.activeObject;
       }
+      ImGui.Separator();
 
+      ImGui.Text('Name');
+      ImGui.SameLine(alignWidth);
+      ImGui.Text(activeObject.name);
+      ImGui.Text('GUID');
+      ImGui.SameLine(alignWidth);
       ImGui.Text(activeObject.getInstanceId());
+      ImGui.Text('Visible');
+      ImGui.SameLine(alignWidth);
       //@ts-expect-error
-      ImGui.Checkbox('Visiable', (_ = activeObject.visible) => activeObject.visible = _);
+      ImGui.Checkbox('##Visible', (_ = activeObject.visible) => activeObject.visible = _);
 
       if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
         const transform = activeObject.transform;
