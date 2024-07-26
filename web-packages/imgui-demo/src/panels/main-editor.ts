@@ -22,6 +22,11 @@ export class MainEditor extends EditorWindow {
   cameraController: OrbitController = new OrbitController();
   private customEditors = new Map<Function, Editor>();
 
+  // Inspector
+  private locked: boolean;
+  private lockedObject: object;
+  private alignWidth = 150;
+
   constructor () {
     super();
     for (const key of editorStore.keys()) {
@@ -105,25 +110,48 @@ export class MainEditor extends EditorWindow {
 
       return;
     }
-    const activeObject = Selection.activeObject;
+    const alignWidth = this.alignWidth;
+    let activeObject = Selection.activeObject;
+
+    if (this.locked) {
+      activeObject = this.lockedObject;
+    }
 
     if (activeObject instanceof VFXItem) {
+      ImGui.Text('VFXItem');
+      // draw Lock check box
+      const rightOffset = ImGui.GetWindowWidth() - 85 - ImGui.GetStyle().ItemSpacing.x;
+
+      ImGui.SameLine(rightOffset);
+      ImGui.Text('Lock');
+      ImGui.SameLine();
+      if (ImGui.Checkbox('##Lock', (value = this.locked)=>this.locked = value)) {
+        this.lockedObject = Selection.activeObject;
+      }
+      ImGui.Separator();
+
+      ImGui.Text('Name');
+      ImGui.SameLine(alignWidth);
       ImGui.Text(activeObject.name);
+      ImGui.Text('GUID');
+      ImGui.SameLine(alignWidth);
       ImGui.Text(activeObject.getInstanceId());
+      ImGui.Text('Visible');
+      ImGui.SameLine(alignWidth);
       //@ts-expect-error
-      ImGui.Checkbox('Visiable', (_ = activeObject.visible) => activeObject.visible = _);
+      ImGui.Checkbox('##Visible', (_ = activeObject.visible) => activeObject.visible = _);
 
       if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
         const transform = activeObject.transform;
 
         ImGui.Text('Position');
-        ImGui.SameLine(100);
+        ImGui.SameLine(alignWidth);
         ImGui.DragFloat3('##Position', transform.position, 0.03);
         ImGui.Text('Rotation');
-        ImGui.SameLine(100);
+        ImGui.SameLine(alignWidth);
         ImGui.DragFloat3('##Rotation', transform.rotation, 0.03);
         ImGui.Text('Scale');
-        ImGui.SameLine(100);
+        ImGui.SameLine(alignWidth);
         ImGui.DragFloat3('##Scale', transform.scale, 0.03);
 
         transform.quat.setFromEuler(transform.rotation);
@@ -133,8 +161,6 @@ export class MainEditor extends EditorWindow {
         //@ts-expect-error
         transform.dispatchValueChange();
       }
-
-      const alignWidth = 150;
 
       for (const componet of activeObject.components) {
         const customEditor = this.customEditors.get(componet.constructor);
@@ -263,6 +289,7 @@ export class MainEditor extends EditorWindow {
     const serializedData = glMaterial.toData();
     const shaderProperties = material.shader.shaderData.properties;
     const alignWidth = 150;
+    let dirtyFlag = false;
 
     if (!shaderProperties) {
       return;
@@ -276,7 +303,9 @@ export class MainEditor extends EditorWindow {
 
     ImGui.Text('RenderType');
     ImGui.SameLine(alignWidth);
-    ImGui.Combo('##RenderFace', (value = currentRenderTypeIndex)=>currentRenderTypeIndex = value, RenderType);
+    if (ImGui.Combo('##RenderFace', (value = currentRenderTypeIndex)=>currentRenderTypeIndex = value, RenderType)) {
+      dirtyFlag = true;
+    }
     serializedData.stringTags['RenderType'] = RenderType[currentRenderTypeIndex];
     const lines = shaderProperties.split('\n');
 
@@ -311,21 +340,29 @@ export class MainEditor extends EditorWindow {
         if (serializedData.floats[uniformName] === undefined) {
           serializedData.floats[uniformName] = Number(defaultValue);
         }
-        ImGui.SliderFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, start, end);
+        if (ImGui.SliderFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, start, end)) {
+          dirtyFlag = true;
+        }
       } else if (type === 'Float') {
         if (serializedData.floats[uniformName] === undefined) {
           serializedData.floats[uniformName] = Number(defaultValue);
         }
         if (attributes.includes('Toggle')) {
-          ImGui.Checkbox('##' + uniformName, (value = Boolean(serializedData.floats[uniformName])) => (serializedData.floats[uniformName] as unknown as boolean) = value);
+          if (ImGui.Checkbox('##' + uniformName, (value = Boolean(serializedData.floats[uniformName])) => (serializedData.floats[uniformName] as unknown as boolean) = value)) {
+            dirtyFlag = true;
+          }
         } else {
-          ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02);
+          if (ImGui.DragFloat('##' + uniformName, (value = serializedData.floats[uniformName])=>serializedData.floats[uniformName] = value, 0.02)) {
+            dirtyFlag = true;
+          }
         }
       } else if (type === 'Color') {
         if (!serializedData.colors[uniformName]) {
           serializedData.colors[uniformName] = { r:1.0, g:1.0, b:1.0, a:1.0 };
         }
-        ImGui.ColorEdit4('##' + uniformName, serializedData.colors[uniformName]);
+        if (ImGui.ColorEdit4('##' + uniformName, serializedData.colors[uniformName])) {
+          dirtyFlag = true;
+        }
       } else if (type === '2D') {
         const texture = glMaterial.getTexture(uniformName);
 
@@ -357,6 +394,7 @@ export class MainEditor extends EditorWindow {
                 serializedData.textures[uniformName].texture = effectsPackage.exportObjects[0] as Material;
               }
             });
+            dirtyFlag = true;
           }
           ImGui.EndDragDropTarget();
         }
@@ -364,6 +402,9 @@ export class MainEditor extends EditorWindow {
     }
 
     SerializationHelper.deserializeTaggedProperties(serializedData, glMaterial);
+    if (dirtyFlag) {
+      GalaceanEffects.assetDataBase.setDirty(glMaterial.getInstanceId());
+    }
   }
 }
 

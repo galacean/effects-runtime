@@ -495,7 +495,6 @@ describe('comp-vfxItem', () => {
                 },
                 'renderer': {
                   'renderMode': 1,
-                  'texture': 0,
                 },
                 'emission': {
                   'rateOverTime': [
@@ -776,19 +775,19 @@ describe('comp-vfxItem', () => {
 
     ref.setScale(0.1, 0.5, 2);
     player.gotoAndStop(1);
-    let size = ref.content.startSize;
+    let scale = ref?.transform.scale;
 
-    expect(size.x).to.eql(0.1);
-    expect(size.y).to.eql(0.5);
-    expect(size.z).to.eql(2);
+    expect(scale.x).to.eql(0.1);
+    expect(scale.y).to.eql(0.5);
+    expect(scale.z).to.eql(2);
     ref.scale(2, 2, 0.1);
 
     player.gotoAndStop(2);
-    size = ref.content.startSize;
+    scale = ref?.transform.scale;
 
-    expect(size.x).to.eql(0.2);
-    expect(size.y).to.eql(1);
-    expect(size.z).to.eql(0.2);
+    expect(scale.x).to.eql(0.2);
+    expect(scale.y).to.eql(1);
+    expect(scale.z).to.eql(0.2);
   });
 
 });

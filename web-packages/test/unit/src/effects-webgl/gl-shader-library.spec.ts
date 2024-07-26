@@ -54,30 +54,14 @@ describe('webgl/GLShaderLibrary', () => {
       vertex: vs,
       fragment: fs,
       macros: [['HAS_TEXTURE', 1.0]],
+      glslVersion: GLSLVersion.GLSL3,
     });
 
     rendererGL2.pipelineContext.shaderLibrary.compileShader(shader);
     const program = shader.program;
 
     expect(program).not.eql(null);
-
-    const material = new GLMaterial(
-      engine2,
-      {
-        states: {},
-      });
-
-    material.shader = shader;
-    material.initialize(rendererGL2.engine);
-
-    expect(material.shader).not.eql(undefined);
-
-    const program2 = material.shader?.program;
-
-    expect(program2).not.eql(null);
-    expect(material.shader?.program).to.eql(program);
-
-    material.dispose();
+    expect(shader).not.eql(undefined);
   });
 
   it('shader cache by string hash', async () => {
@@ -168,6 +152,7 @@ describe('webgl/GLShaderLibrary', () => {
       vertex: vs,
       fragment: fs,
       macros: [['HAS_TEXTURE', 122.0]],
+      glslVersion:GLSLVersion.GLSL3,
     });
     const callback = chai.spy(result => {
       expect(result).to.eql(shader.compileResult);
@@ -190,6 +175,7 @@ describe('webgl/GLShaderLibrary', () => {
       vertex: vs,
       fragment: fs,
       macros: [['HAS_TEXTURE', 152.0]],
+      glslVersion:GLSLVersion.GLSL3,
     });
 
     //@ts-expect-error

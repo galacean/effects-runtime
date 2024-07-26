@@ -623,7 +623,9 @@ export class GLMaterial extends Material {
     materialData.floats = {};
     materialData.ints = {};
     materialData.vector4s = {};
+    materialData.textures = {};
     materialData.dataType = spec.DataType.Material;
+    materialData.stringTags = this.stringTags;
 
     for (const name in this.floats) {
       materialData.floats[name] = this.floats[name];
@@ -636,6 +638,21 @@ export class GLMaterial extends Material {
     }
     for (const name in this.colors) {
       materialData.colors[name] = this.colors[name];
+    }
+    for (const name in this.textures) {
+      if (!materialData.textures[name]) {
+        materialData.textures[name] = {
+          texture: this.textures[name],
+        };
+      }
+      const textureProperties = materialData.textures[name];
+      const scaleOffset = this.getVector4(name + '_ST');
+
+      if (scaleOffset) {
+        textureProperties.scale = { x:scaleOffset.x, y:scaleOffset.y };
+        textureProperties.offset = { x:scaleOffset.z, y:scaleOffset.w };
+        delete materialData.vector4s[name + '_ST'];
+      }
     }
 
     return materialData;

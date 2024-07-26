@@ -23,13 +23,14 @@ describe('composition api', () => {
   });
 
   // 颜色设置
-  it('composition set  visible', async () => {
+  it('composition set visible', async () => {
     const itemID = generateGUID();
     const componentID = generateGUID();
     const compositionID = generateGUID();
     const json = {
       'images': [ // Fix: Replace single quote with double quote
         {
+          'id':'b606195723d53983ab64633cddf809c1',
           'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*MeN0T6slLYEAAAAAAAAAAAAADlB4AQ/original',
           'renderLevel': 'B+',
         },
@@ -71,6 +72,7 @@ describe('composition api', () => {
               0,
             ],
           },
+          'sceneBindings':[],
           'globalVolume': {
             'useHDR': true,
             'useBloom': 1,
@@ -136,8 +138,7 @@ describe('composition api', () => {
           'magFilter': 9729,
           'id': 'c8e75e0b46a44b9ca6e9c98b9b461f37',
           'dataType': 'Texture',
-          // FIXME: use guid as source
-          'source': 0,
+          'source': { 'id':'b606195723d53983ab64633cddf809c1' },
           'flipY': true,
         },
       ],

@@ -1,7 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
-import { serialize } from './decorators';
 
 /**
  * @since 2.0.0
@@ -12,7 +11,6 @@ export abstract class EffectsObject {
     return obj instanceof EffectsObject && 'guid' in obj;
   }
 
-  @serialize()
   protected guid: string;
   /**
    * 存储需要序列化的数据
