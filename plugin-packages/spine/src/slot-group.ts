@@ -1,10 +1,6 @@
 import type { BlendMode, NumberArrayLike, Slot } from '@esotericsoftware/spine-core';
 import {
-  ClippingAttachment,
-  Color,
-  MeshAttachment,
-  RegionAttachment,
-  SkeletonClipping,
+  ClippingAttachment, Color, MeshAttachment, RegionAttachment, SkeletonClipping,
 } from '@esotericsoftware/spine-core';
 import type { Engine, Mesh, Renderer, Texture, Transform } from '@galacean/effects';
 import { math } from '@galacean/effects';
