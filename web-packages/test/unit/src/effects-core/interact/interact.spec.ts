@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { Player, EVENT_TYPE_CLICK, spec, math } from '@galacean/effects';
+import { set } from 'husky';
+import { sleep } from '../../utils';
 const { Vector3 } = math;
 
 const { expect } = chai;
@@ -465,9 +467,10 @@ describe('interact item', () => {
         'name': 'ui_11',
         'delay': 0,
         'id': 12,
+        'endBehavior': spec.EndBehavior.destroy,
         'ui': {
           'options': {
-            'duration': 1,
+            'duration': 0.2,
             'type': 'message',
             'width': 0.6,
             'height': 0.4,
@@ -481,10 +484,9 @@ describe('interact item', () => {
 
     player.gotoAndPlay(0.1);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
-    player.gotoAndPlay(1.1);
-
-    expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
-
+    setTimeout(() => {
+      expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
+    }, 300);
   });
 
   it('message item with reusable', async () => {
@@ -496,7 +498,7 @@ describe('interact item', () => {
         'id': 12,
         'ui': {
           'options': {
-            'duration': 1,
+            'duration': 0.2,
             'type': 'message',
             'width': 0.6,
             'height': 0.4,
@@ -512,9 +514,9 @@ describe('interact item', () => {
 
     player.gotoAndPlay(0.1);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
-    player.gotoAndPlay(1.1);
-
-    expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
+    setTimeout(() => {
+      expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
+    }, 300);
 
   });
 

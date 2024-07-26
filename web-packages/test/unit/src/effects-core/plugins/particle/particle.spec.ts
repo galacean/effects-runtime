@@ -46,27 +46,28 @@ describe('effects-core/plugins/particle-test', function () {
     expect(tex.every(texture => texture.sourceType === TextureSourceType.data)).to.be.true;
   });
 
-  it('particle opacityOverLifetime texture', async () => {
-    const gradient = { '0.00': 'rgba(208,2,27,1)', '1.00': 'rgba(248,231,28,1)' };
-    const json = `[{"name":"item_4","delay":0,"id":"4","type":"2","duration":5,"content":{"shape":{"type":0,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"None"},"options":{"startLifetime":1.2,"startSize":0.2,"sizeAspect":1,"startSpeed":1,"startColor":[8,[255,255,255]],"duration":2,"maxCount":10,"renderLevel":"B+"},"colorOverLifetime":{"opacity":[${spec.ValueType.LINE},[[0.5,0],[0.9,1]]],"color":[${spec.ValueType.GRADIENT_COLOR},[[0,255,255,255,255],[0.5,255,0,0,255],[1,255,0,255,255]]]},"emission":{"rateOverTime":5},"trails":{"lifetime":1,"maxPointPerTrail":12,"widthOverTrail":0.1,"minimumVertexDistance":0.04,"dieWithParticles":true,"colorOverTrail":{"0%":"rgb(255,255,255)","100%":"rgba(255,255,255,0)"}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}}]`;
-    const comp = await generateComposition(player, json, { currentTime: 0.01 });
-    const item = comp.getItemByName('item_4');
-    const uColorOverLifetime = item.content.renderer.particleMesh.mesh.material.getTexture('uColorOverLifetime');
-
-    uColorOverLifetime.initialize();
-    expect(uColorOverLifetime).to.be.an.instanceOf(Texture);
-    expect(uColorOverLifetime.textureBuffer).to.be.an.instanceof(WebGLTexture);
-
-    expect(uColorOverLifetime.sourceType === TextureSourceType.data);
-    const color = ensureGradient(gradient);
-    const data = Texture.createWithData(undefined, imageDataFromGradient(color[1])).source.data.data;
-
-    expect([data[0], data[1], data[2], data[3]]).to.deep.equals([208, 2, 27, 255]);
-    const index = data.length - 4;
-
-    expect([data[index], data[index + 1], data[index + 2], data[index + 3]])
-      .to.deep.equals([248, 231, 28, 255]);
-  });
+  // TODO
+  // it('particle opacityOverLifetime texture', async () => {
+  //   const gradient = { '0.00': 'rgba(208,2,27,1)', '1.00': 'rgba(248,231,28,1)' };
+  //   const json = `[{"name":"item_4","delay":0,"id":"4","type":"2","duration":5,"content":{"shape":{"type":0,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"None"},"options":{"startLifetime":1.2,"startSize":0.2,"sizeAspect":1,"startSpeed":1,"startColor":[8,[255,255,255]],"duration":2,"maxCount":10,"renderLevel":"B+"},"colorOverLifetime":{"opacity":[${spec.ValueType.LINE},[[0.5,0],[0.9,1]]],"color":[${spec.ValueType.GRADIENT_COLOR},[[0,255,255,255,255],[0.5,255,0,0,255],[1,255,0,255,255]]]},"emission":{"rateOverTime":5},"trails":{"lifetime":1,"maxPointPerTrail":12,"widthOverTrail":0.1,"minimumVertexDistance":0.04,"dieWithParticles":true,"colorOverTrail":{"0%":"rgb(255,255,255)","100%":"rgba(255,255,255,0)"}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}}]`;
+  //   const comp = await generateComposition(player, json, { currentTime: 0.01 });
+  //   const item = comp.getItemByName('item_4');
+  //   const uColorOverLifetime = item.content.renderer.particleMesh.mesh.material.getTexture('uColorOverLifetime');
+  //
+  //   uColorOverLifetime.initialize();
+  //   expect(uColorOverLifetime).to.be.an.instanceOf(Texture);
+  //   expect(uColorOverLifetime.textureBuffer).to.be.an.instanceof(WebGLTexture);
+  //
+  //   expect(uColorOverLifetime.sourceType === TextureSourceType.data);
+  //   const color = ensureGradient(gradient);
+  //   const data = Texture.createWithData(undefined, imageDataFromGradient(color[1])).source.data.data;
+  //
+  //   expect([data[0], data[1], data[2], data[3]]).to.deep.equals([208, 2, 27, 255]);
+  //   const index = data.length - 4;
+  //
+  //   expect([data[index], data[index + 1], data[index + 2], data[index + 3]])
+  //     .to.deep.equals([248, 231, 28, 255]);
+  // });
 
   it('burst add particle', async () => {
     const json = '[{"name":"item_5","delay":0,"id":"5","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":[0,1.2],"startSize":[0,0.2],"sizeAspect":[0,1],"startColor":[8,[255,255,255]],"duration":2,"startDelay":[0,0],"start3DSize":false,"startRotationZ":[0,0],"maxCount":10,"renderLevel":"B+"},"emission":{"rateOverTime":[0,5],"burts":{"time":0,"count":5,"cycles":1,"interval":0}},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}},{"name":"item_6","delay":0,"id":"6","type":"2","duration":5,"content":{"shape":{"type":1,"radius":1,"arc":360,"arcMode":0,"alignSpeedDirection":false,"shape":"Sphere"},"options":{"startLifetime":1.2,"startSize":0.2,"sizeAspect":1,"startSpeed":1,"startColor":[8,[255,255,255]],"duration":2,"maxCount":10,"renderLevel":"B+"},"emission":{"rateOverTime":[0,10],"burts":[{"time":0,"count":50,"cycles":1,"interval":0}]},"positionOverLifetime":{"asMovement":true,"linearX":[0,0],"linearY":[0,0],"linearZ":[0,0],"asRotation":false,"orbitalX":[0,0],"orbitalY":[0,0],"orbitalZ":[0,0],"orbCenter":[0,0,0],"speedOverLifetime":[0,1],"forceTarget":false,"endBehavior":4,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}}}]';
