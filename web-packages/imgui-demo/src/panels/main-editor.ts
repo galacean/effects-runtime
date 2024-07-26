@@ -375,27 +375,16 @@ export class MainEditor extends EditorWindow {
           const payload = ImGui.AcceptDragDropPayload(GLTexture.name);
 
           if (payload) {
-            void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
-              if (!file) {
-                return;
-              }
-              const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
-
-              if (!effectsPackage) {
-                return;
-              }
-              if (!serializedData.textures[uniformName]) {
-                serializedData.textures[uniformName] = {
-                  //@ts-expect-error
-                  texture:effectsPackage.exportObjects[0] as Material,
-                };
-              } else {
-                //@ts-expect-error
-                serializedData.textures[uniformName].texture = effectsPackage.exportObjects[0] as Material;
-              }
-            });
-            dirtyFlag = true;
+            if (!serializedData.textures[uniformName]) {
+              serializedData.textures[uniformName] = {
+                texture:{ id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' },
+              };
+            } else {
+              serializedData.textures[uniformName].texture = { id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' };
+            }
           }
+          dirtyFlag = true;
+
           ImGui.EndDragDropTarget();
         }
       }
