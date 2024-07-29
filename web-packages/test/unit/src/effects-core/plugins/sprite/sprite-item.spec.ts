@@ -28,11 +28,12 @@ describe('sprite item api', () => {
     const itemID = generateGUID();
     const componentID = generateGUID();
     const compositionID = generateGUID();
+    const imageId = generateGUID();
     const json = {
       'images': [ // Fix: Replace single quote with double quote
         {
           'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*MeN0T6slLYEAAAAAAAAAAAAADlB4AQ/original',
-          'renderLevel': 'B+',
+          'id': imageId,
         },
       ],
       'spines': [],
@@ -72,16 +73,7 @@ describe('sprite item api', () => {
               0,
             ],
           },
-          'globalVolume': {
-            'useHDR': true,
-            'useBloom': 1,
-            'threshold': 0.8,
-            'bloomIntensity': 1,
-            'brightness': 1.5,
-            'saturation': 1,
-            'contrast': 1,
-            'useToneMapping': 1,
-          },
+          sceneBindings: [],
         },
       ],
       'components': [
@@ -137,8 +129,9 @@ describe('sprite item api', () => {
           'magFilter': 9729,
           'id': 'c8e75e0b46a44b9ca6e9c98b9b461f37',
           'dataType': 'Texture',
-          // FIXME: use guid as source
-          'source': 0,
+          'source': {
+            id: imageId,
+          },
           'flipY': true,
         },
       ],
@@ -164,11 +157,13 @@ describe('sprite item api', () => {
     const itemID = generateGUID();
     const componentID = generateGUID();
     const compositionID = generateGUID();
+    const imageID = generateGUID();
     const json = {
       'images': [ // Fix: Replace single quote with double quote
         {
           'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*MeN0T6slLYEAAAAAAAAAAAAADlB4AQ/original',
           'renderLevel': 'B+',
+          'id': imageID,
         },
       ],
       'spines': [],
@@ -178,6 +173,7 @@ describe('sprite item api', () => {
       'type': 'ge',
       'compositions': [
         {
+          sceneBindings: [],
           'id': compositionID,
           'name': '图层设置',
           'duration': 5,
@@ -273,8 +269,9 @@ describe('sprite item api', () => {
           'magFilter': 9729,
           'id': 'c8e75e0b46a44b9ca6e9c98b9b461f37',
           'dataType': 'Texture',
-          // FIXME: use guid as source
-          'source': 0,
+          'source': {
+            id: imageID,
+          },
           'flipY': true,
         },
       ],
@@ -301,11 +298,13 @@ describe('sprite item api', () => {
     const itemID = generateGUID();
     const componentID = generateGUID();
     const compositionID = generateGUID();
+    const imageID = generateGUID();
     const json = {
       'images': [ // Fix: Replace single quote with double quote
         {
           'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*MeN0T6slLYEAAAAAAAAAAAAADlB4AQ/original',
           'renderLevel': 'B+',
+          'id': imageID,
         },
       ],
       'spines': [],
@@ -315,6 +314,7 @@ describe('sprite item api', () => {
       'type': 'ge',
       'compositions': [
         {
+          sceneBindings: [],
           'id': compositionID,
           'name': '图层设置',
           'duration': 5,
@@ -410,8 +410,9 @@ describe('sprite item api', () => {
           'magFilter': 9729,
           'id': 'c8e75e0b46a44b9ca6e9c98b9b461f37',
           'dataType': 'Texture',
-          // FIXME: use guid as source
-          'source': 0,
+          'source': {
+            id: imageID,
+          },
           'flipY': true,
         },
       ],
