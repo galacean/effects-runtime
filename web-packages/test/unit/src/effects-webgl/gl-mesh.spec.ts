@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { Mesh, glContext } from '@galacean/effects-core';
 import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
+import { sleep } from '../utils';
 
 const { expect } = chai;
 
@@ -15,7 +16,7 @@ describe('gl-mesh', () => {
     canvas = null;
   });
 
-  it('create GLMesh', () => {
+  it('create GLMesh', async () => {
     const result = generateGLMesh(renderer);
     const mesh = result.mesh;
     const geom = result.geom;
@@ -27,6 +28,7 @@ describe('gl-mesh', () => {
     const gpubuffer = resultGeom.getAttributeBuffer('aPosition');
     const buffer = new Float32Array(8);
 
+    await sleep(100);
     expect(material.shaderVariant.program.pipelineContext).to.eql(renderer.pipelineContext);
     expect(material.getVector2('uPos')).to.eql([1, 2]);
     expect(resultGeom).to.eql(geom);
