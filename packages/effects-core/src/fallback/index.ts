@@ -3,13 +3,13 @@ import type {
   ParticleItem, RenderLevel, SpriteItem, TemplateImage,
 } from '@galacean/effects-specification';
 import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType } from '@galacean/effects-specification';
+import { generateGUID } from '../utils';
+import { getStandardCameraContent } from './camera';
+import { getStandardInteractContent } from './interact';
+import { version21Migration, version22Migration, version24Migration, version30Migration } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
-import { getStandardInteractContent } from './interact';
 import { arrAdd, quatFromXYZRotation, rotationZYXFromQuat } from './utils';
-import { getStandardCameraContent } from './camera';
-import { version21Migration, version22Migration, version24Migration, version30Migration } from './migration';
-import { generateGUID } from '../utils';
 
 export * from './utils';
 
