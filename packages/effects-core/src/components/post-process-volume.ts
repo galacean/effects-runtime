@@ -45,41 +45,9 @@ export class PostProcessVolume extends ItemBehaviour {
     const composition = this.item.composition;
 
     if (composition) {
-      composition.globalVolume = {
-        useHDR: this.useHDR,
-        useBloom: this.useBloom,
-        threshold: this.threshold,
-        bloomIntensity: this.bloomIntensity,
-        brightness: this.brightness,
-        saturation: this.saturation,
-        contrast: this.contrast,
-        vignetteIntensity: this.vignetteIntensity,
-        vignetteSmoothness: this.vignetteSmoothness,
-        vignetteRoundness: this.vignetteRoundness,
-        useToneMapping: this.useToneMapping,
-      };
+      composition.globalVolume = this;
 
       composition.createRenderFrame();
-    }
-  }
-
-  override update (dt: number): void {
-    const composition = this.item.composition;
-
-    if (composition) {
-      const globalVolume = composition.renderFrame.globalVolume;
-
-      globalVolume.useHDR = this.useHDR;
-      globalVolume.useBloom = this.useBloom;
-      globalVolume.threshold = this.threshold;
-      globalVolume.bloomIntensity = this.bloomIntensity;
-      globalVolume.brightness = this.brightness;
-      globalVolume.saturation = this.saturation;
-      globalVolume.contrast = this.contrast;
-      globalVolume.vignetteIntensity = this.vignetteIntensity;
-      globalVolume.vignetteSmoothness = this.vignetteSmoothness;
-      globalVolume.vignetteRoundness = this.vignetteRoundness;
-      globalVolume.useToneMapping = this.useToneMapping;
     }
   }
 }

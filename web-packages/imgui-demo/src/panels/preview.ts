@@ -2,11 +2,11 @@ import type { spec, Player } from '@galacean/effects';
 import { math } from '@galacean/effects';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { AssetDatabase, createPreviewPlayer, generateAssetScene } from '../core/asset-data-base';
-import { editorWindow, menuItem } from '../core/decorators';
+import { menuItem } from '../core/decorators';
 import { OrbitController } from '../core/orbit-controller';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
-import { EditorWindow } from '../core/panel';
+import { EditorWindow, editorWindow } from './editor-window';
 import { FileNode } from '../core/file-node';
 
 @editorWindow()

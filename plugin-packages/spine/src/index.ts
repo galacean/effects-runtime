@@ -5,7 +5,7 @@ import {
   getSkeletonFromBuffer, getSkinList, getSpineVersion, getTextureOptions,
 } from './utils';
 
-export { SpineComponent } from './spine-component';
+export * from './spine-component';
 export * from '@esotericsoftware/spine-core';
 export {
   createSkeletonData,

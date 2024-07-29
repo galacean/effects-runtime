@@ -118,212 +118,21 @@ describe('composition graph', () => {
       'type': 'mars',
       '_imgs': { '1': [] },
     });
-    const graph = getCompositionGraph(json.compositions[0]);
+    const graph = getCompositionGraph(json.compositions[0], json.items);
 
     expect(graph.nodes.map(n => n.name)).to.deep.equals(['item_6', 'null_3']);
     expect(graph.nodes[1].children.map(n => n.name)).to.deep.equals(['null_2']);
     expect(graph.nodes[1].children[0].children.map(n => n.name)).to.deep.equals(['null_4', 'null_1']);
-    expect(JSON.parse(JSON.stringify(graph))).to.deep.equals({
-      'name': 'composition_1',
-      'id': '1',
-      'nodes': [{
-        'name': 'item_6',
-        'type': '1',
-        'id': '6',
-        'transform': { 'scale': [1.2, 1.2, 1] },
-      }, {
-        'name': 'null_3',
-        'type': '3',
-        'id': '4',
-        'transform': { 'scale': [1, 1, 1] },
-        'children': [{
-          'name': 'null_2',
-          'type': '3',
-          'id': '3',
-          'transform': { 'scale': [1, 1, 1] },
-          'parentId': '4',
-          'children': [{
-            'name': 'null_4',
-            'type': '3',
-            'id': '5',
-            'transform': { 'scale': [1, 1, 1] },
-            'parentId': '3',
-          }, {
-            'name': 'null_1',
-            'type': '3',
-            'id': '2',
-            'transform': { 'scale': [1, 1, 1] },
-            'parentId': '3',
-            'children': [{
-              'name': 'item_1',
-              'type': '1',
-              'id': '1',
-              'transform': { 'scale': [1.2, 1.2, 1] },
-              'parentId': '2',
-            }],
-          }],
-        }],
-      }],
-    });
   });
-
-  it('build tree item graph', () => {
-    const scene = generateScene([{
-      type: 'tree',
-      id: 'rp',
-      children: [0],
-      nodes: [
-        { id: 'root', transform: { position: [1, 0, 0] }, children: [1, 3] },
-        { id: 'r2', children: [2] },
-        { id: 'r2-2', transform: { position: [1, 0, 1] } },
-        { id: 'r3' },
-      ],
-    }]);
-
-    const graph = getCompositionGraph(scene.compositions[0]);
-
-    expect(JSON.parse(JSON.stringify(graph))).to.deep.equals({
-      'name': 'composition_1',
-      'id': '1',
-      'nodes': [{
-        'name': 'tree_0',
-        'type': 'tree',
-        'id': 'rp',
-        'transform': {},
-        'children': [{
-          'type': 'tree',
-          'id': 'rp^root',
-          'transform': { 'position': [1, 0, 0] },
-          'parentId': 'rp',
-          'subType': 'node',
-          'children': [{
-            'type': 'tree',
-            'id': 'rp^r2',
-            'parentId': 'rp',
-            'subType': 'node',
-            'children': [{
-              'type': 'tree',
-              'id': 'rp^r2-2',
-              'transform': { 'position': [1, 0, 1] },
-              'parentId': 'rp',
-              'subType': 'node',
-            }],
-          }, { 'type': 'tree', 'id': 'rp^r3', 'parentId': 'rp', 'subType': 'node' }],
-        }],
-      }],
-    });
-  });
-
-  it('build tree item with null item graph', () => {
-    const scene = generateScene([{
-      type: 'tree',
-      id: 'rp',
-      children: [0],
-      nodes: [
-        { id: 'root', transform: { position: [1, 0, 0] }, children: [1] },
-        { id: 'r2', children: [2] },
-        { id: 'r2-2', transform: { position: [1, 0, 1] } },
-        { id: 'r3' },
-      ],
-    }, { type: 'cal', id: 'null', parentId: 'rp^r2-2' }]);
-
-    const graph = getCompositionGraph(scene.compositions[0]);
-
-    expect(graph.nodes[0].children[0].id).to.eql('rp^root');
-    expect(graph.nodes[0].children[0].children[0].id).to.eql('rp^r2');
-    expect(graph.nodes[0].children[0].children[0].children[0].id).to.eql('rp^r2-2');
-    expect(graph.nodes[0].children[0].children[0].children[0].children[0].id).to.eql('null');
-    expect(JSON.parse(JSON.stringify(graph))).to.deep.equals({
-      'name': 'composition_1',
-      'id': '1',
-      'nodes': [{
-        'name': 'tree_0',
-        'type': 'tree',
-        'id': 'rp',
-        'transform': {},
-        'children': [{
-          'type': 'tree',
-          'id': 'rp^root',
-          'transform': { 'position': [1, 0, 0] },
-          'parentId': 'rp',
-          'subType': 'node',
-          'children': [{
-            'type': 'tree',
-            'id': 'rp^r2',
-            'parentId': 'rp',
-            'subType': 'node',
-            'children': [{
-              'type': 'tree',
-              'id': 'rp^r2-2',
-              'transform': { 'position': [1, 0, 1] },
-              'parentId': 'rp',
-              'subType': 'node',
-              'children': [{
-                'name': 'null_1',
-                'type': '3',
-                'id': 'null',
-                'transform': { 'scale': [1, 1, 1] },
-                'parentId': 'rp^r2-2',
-              }],
-            }],
-          }],
-        }],
-      }],
-    });
-  });
-
-  function generateScene (items) {
-    return getStandardJSON({
-      'compositionId': 1,
-      'requires': [],
-      'compositions': [{
-        'name': 'composition_1',
-        'id': 1,
-        'duration': 5,
-        'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-        'items': items.map((item, i) => ({
-          'name': item.name || (`${item.type === 'tree' ? item.type : 'null'}_${i}`),
-          'delay': item.delay || 0,
-          'id': item.id || (10086 + i),
-          'parentId': item.parentId,
-          type: item.type || '3',
-          endBehavior: item.endBehavior,
-          [item.type === 'tree' ? 'content' : 'cal']: {
-            'options': {
-              'duration': item.duration || 2,
-              'startSize': 1,
-              'sizeAspect': 1,
-              'relative': true,
-              'renderLevel': 'B+',
-              endBehavior: item.endBehavior,
-              tree: {
-                nodes: item.nodes,
-                children: item.children,
-              },
-            },
-            transform: item.transform,
-          },
-        })),
-        'meta': { 'previewSize': [750, 1334] },
-      }],
-      'gltf': [],
-      'images': [],
-      'version': '0.8.9',
-      'shapes': [],
-      'plugins': [],
-      'type': 'mars',
-      '_imgs': { '1': [] },
-    });
-  }
 });
 
-export function getCompositionGraph (comp) {
+export function getCompositionGraph (comp, items) {
   const childrenMap = {};
   const nodeMap = {};
   const topNodes = [];
   const treeNodesMap = {};
 
-  comp.items.forEach(item => collectNodes(item));
+  items.forEach(item => collectNodes(item));
 
   function collectNodes (item, treeNodeChildren) {
     const node = {

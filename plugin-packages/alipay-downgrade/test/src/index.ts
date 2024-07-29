@@ -1,1 +1,2 @@
-export * from './alipay-downgrade.spec';
+export * from './player.spec';
+export * from './downgrade-result.spec';

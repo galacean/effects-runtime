@@ -1,15 +1,17 @@
-import type { Player, spec } from '@galacean/effects';
-import { generateGUID, loadImage, math } from '@galacean/effects';
+import type { Player } from '@galacean/effects';
+import { Texture2DSourceOptions, TextureSourceOptions, glContext, spec } from '@galacean/effects';
+import { base64ToFile, generateGUID, loadImage, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { folderIcon, jsonIcon } from '../asset/images';
-import { AssetDatabase, createPreviewPlayer, generateAssetScene, readFileAsText } from '../core/asset-data-base';
-import { editorWindow, menuItem } from '../core/decorators';
-import { EditorWindow } from '../core/panel';
+import { AssetDatabase, createPreviewPlayer, generateAssetScene, readFileAsAsData, readFileAsText } from '../core/asset-data-base';
+import { menuItem } from '../core/decorators';
+import { EditorWindow, editorWindow } from './editor-window';
 import { Selection } from '../core/selection';
 import { ImGui, ImGui_Impl } from '../imgui';
 import { FileNode } from '../core/file-node';
+import { GalaceanEffects } from '../ge';
 
 @editorWindow()
 export class Project extends EditorWindow {
@@ -48,38 +50,54 @@ export class Project extends EditorWindow {
   }
 
   static async handleDroppedFiles (files: FileList) {
+    const projectWindow = EditorWindow.getWindow(Project);
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const url = URL.createObjectURL(file);
-      const modelIO = new ModelIO();
+      const currentDirHandle = projectWindow.selectedFolder.handle as FileSystemDirectoryHandle;
+      const lastDotIndex = file.name.lastIndexOf('.');
+      const fileType = lastDotIndex !== -1 ? file.name.substring(lastDotIndex + 1) : '';
 
-      let modelType = 'glb';
+      switch (fileType) {
+        case 'glb':
+        case 'fbx': {
+          const url = URL.createObjectURL(file);
+          const modelIO = new ModelIO();
+          let modelType = 'glb';
 
-      if (file.name.endsWith('.fbx')) {
-        modelType = 'FBX';
-      }
+          if (fileType === 'fbx') {
+            modelType = 'FBX';
+          }
 
-      await modelIO.loadModelByURL([url], { modelType });
-      await modelIO.writeGLB();
-      const glb = modelIO.glb;
-      const result = await GLTFTools.loadGLTF(new Uint8Array(glb));
-      const doc = result.doc;
-      const json = result.json;
-      const editorResult = GLTFTools.processGLTFForEditorECS(doc, json);
+          await modelIO.loadModelByURL([url], { modelType });
+          await modelIO.writeGLB();
+          const glb = modelIO.glb;
+          const result = await GLTFTools.loadGLTF(new Uint8Array(glb));
+          const doc = result.doc;
+          const json = result.json;
+          const editorResult = GLTFTools.processGLTFForEditorECS(doc, json);
 
-      const projectWindow = EditorWindow.getWindow(Project);
-      const currentDirHandle = projectWindow.selectedFolder.handle;
+          for (const meshData of editorResult.meshes) {
+            const geometryAsset = JSON.stringify(Project.createPackageData([meshData.geometryData], 'Geometry'), null, 2);
 
-      for (const meshData of editorResult.meshes) {
-        const geometryAsset = JSON.stringify(Project.createPackageData([meshData.geometryData], 'Geometry'), null, 2);
+            await Project.saveFile(Project.createJsonFile(geometryAsset, meshData.geometryData.name + '.json'), currentDirHandle);
+          }
 
-        if (currentDirHandle.kind === 'directory') {
-          await Project.saveFile(Project.createJsonFile(geometryAsset, meshData.geometryData.name + '.json'), currentDirHandle);
+          break;
+        }
+        case 'png':
+        case 'jpg':{
+          const result = await readFileAsAsData(file);
+
+          const textureData = { id: generateGUID(), source: result, dataType: spec.DataType.Texture, flipY: true, wrapS: glContext.REPEAT, wrapT: glContext.REPEAT };
+          const textureAsset = JSON.stringify(Project.createPackageData([textureData], 'Texture'), null, 2);
+
+          await Project.saveFile(Project.createJsonFile(textureAsset, file.name + '.json'), currentDirHandle);
         }
       }
-
-      await projectWindow.generateFileTree(projectWindow.selectedFolder);
     }
+    await projectWindow.generateFileTree(projectWindow.selectedFolder);
+    await projectWindow.createFileIcons(projectWindow.selectedFolder);
   }
 
   static createJsonFile (json: string, fileName: string) {
@@ -148,6 +166,14 @@ export class Project extends EditorWindow {
     if (ImGui.Button('选择文件夹')) {
       void this.readFolder();
     }
+    ImGui.SameLine();
+    if (ImGui.Button('刷新')) {
+      void this.refresh();
+    }
+    ImGui.SameLine();
+    if (ImGui.Button('保存')) {
+      void GalaceanEffects.assetDataBase.saveAssets();
+    }
 
     if (this.rootFileNode) {
       const base_flags = ImGui.TreeNodeFlags.OpenOnArrow |
@@ -160,15 +186,15 @@ export class Project extends EditorWindow {
     ImGui.EndChild();
 
     ImGui.SameLine();
-    ImGui.BeginChild('FileView', new ImGui.Vec2(ImGui.GetWindowContentRegionWidth() * 0.8, ImGui.GetWindowContentRegionMax().y - ImGui.GetWindowContentRegionMin().y), true);
+    ImGui.BeginChild('FileView', new ImGui.Vec2(ImGui.GetWindowContentRegionWidth() * 0.8, ImGui.GetWindowContentRegionMax().y - ImGui.GetWindowContentRegionMin().y - 40), true);
     this.fileViewHovered = ImGui.IsWindowHovered();
     const style: ImGui.Style = ImGui.GetStyle();
-    const buttons_count = 20;
     const window_visible_x2 = ImGui.GetWindowPos().x + ImGui.GetWindowContentRegionMax().x;
     const button_sz: ImGui.Vec2 = new ImGui.Vec2(this.fileViewSize, this.fileViewSize);
 
     if (this.selectedFolder) {
       let n = 0;
+      const buttons_count = this.selectedFolder.children.length;
 
       for (const child of this.selectedFolder.children) {
         ImGui.BeginGroup();
@@ -220,9 +246,8 @@ export class Project extends EditorWindow {
         n++;
       }
     }
-    ImGui.NewLine();
-    this.drawFileSizeSlider();
     ImGui.EndChild();
+    this.drawFileSizeSlider();
   }
 
   private async readFolder () {
@@ -230,9 +255,13 @@ export class Project extends EditorWindow {
 
     this.rootFileNode = new FileNode();
     this.rootFileNode.handle = folderHandle;
+    await this.refresh();
+  }
+
+  private async refresh () {
     await this.generateFileTree(this.rootFileNode);
-    AssetDatabase.rootDirectoryHandle = folderHandle;
-    await AssetDatabase.importAllAssets(folderHandle);
+    AssetDatabase.rootDirectoryHandle = this.rootFileNode.handle as FileSystemDirectoryHandle;
+    await AssetDatabase.importAllAssets(this.rootFileNode.handle as FileSystemDirectoryHandle);
   }
 
   private async generateFileTree (item: FileNode) {
@@ -267,58 +296,72 @@ export class Project extends EditorWindow {
   }
 
   private async createFileIcons (item: FileNode) {
-    if (item.handle.kind === 'directory') {
-      for (const child of item.children) {
-        if (child.handle.kind === 'file') {
-          await child.handle.getFile().then(async (file: File)=>{
-            if (file.name.endsWith('.json')) {
-              const json = await readFileAsText(file);
-              const packageData: spec.EffectsPackageData = JSON.parse(json);
-
-              const previewScene = generateAssetScene(packageData);
-
-              if (!previewScene) {
-                return;
-              }
-              this.previewPlayer.destroyCurrentCompositions();
-              const composition = await this.previewPlayer.loadScene(previewScene);
-              const previewItem = composition.getItemByName('3d-mesh');
-
-              if (!previewItem) {
-                return;
-              }
-              const geometryproxy = new GeometryBoxProxy();
-              const boundingBox = new math.Box3();
-
-              geometryproxy.create(previewItem.getComponent(ModelMeshComponent).content.subMeshes[0].getEffectsGeometry(), []);
-              geometryproxy.getBoundingBox(boundingBox);
-              const sphere = new Sphere();
-
-              boundingBox.getBoundingSphere(sphere);
-              const radius = sphere.radius;
-              const center = sphere.center;
-
-              let scaleRatio = 4 * 1 / radius;
-
-              if (packageData.fileSummary.assetType === 'Material') {
-                scaleRatio = 8 * 1 / radius;
-              }
-              previewItem.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
-              previewItem.setScale(scaleRatio, scaleRatio, scaleRatio);
-              previewItem.rotate(0, 25, 0);
-
-              this.previewPlayer.gotoAndStop(1);
-              this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
-
-              const iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
-
-              if (iconTexture) {
-                child.icon = iconTexture;
-              }
-            }
-          });
-        }
+    if (item.handle.kind !== 'directory') {
+      return;
+    }
+    for (const child of item.children) {
+      if (child.handle.kind !== 'file') {
+        continue;
       }
+      await child.handle.getFile().then(async (file: File)=>{
+        if (!file.name.endsWith('.json')) {
+          return;
+        }
+        const json = await readFileAsText(file);
+        const packageData: spec.EffectsPackageData = JSON.parse(json);
+        let iconTexture: WebGLTexture | undefined;
+
+        switch (packageData.fileSummary.assetType) {
+          case 'Geometry':
+          case 'Material':{
+            const previewScene = generateAssetScene(packageData);
+
+            if (!previewScene) {
+              return;
+            }
+            this.previewPlayer.destroyCurrentCompositions();
+            const composition = await this.previewPlayer.loadScene(previewScene);
+            const previewItem = composition.getItemByName('3d-mesh');
+
+            if (!previewItem) {
+              return;
+            }
+            const geometryproxy = new GeometryBoxProxy();
+            const boundingBox = new math.Box3();
+
+            geometryproxy.create(previewItem.getComponent(ModelMeshComponent).content.subMeshes[0].getEffectsGeometry(), []);
+            geometryproxy.getBoundingBox(boundingBox);
+            const sphere = new Sphere();
+
+            boundingBox.getBoundingSphere(sphere);
+            const radius = sphere.radius;
+            const center = sphere.center;
+
+            let scaleRatio = 4 * 1 / radius;
+
+            if (packageData.fileSummary.assetType === 'Material') {
+              scaleRatio = 8 * 1 / radius;
+            }
+            previewItem.setPosition(-center.x * scaleRatio, -center.y * scaleRatio, -center.z * scaleRatio);
+            previewItem.setScale(scaleRatio, scaleRatio, scaleRatio);
+            previewItem.rotate(0, 25, 0);
+
+            this.previewPlayer.gotoAndStop(1);
+            this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
+            iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
+
+            break;
+          }
+          case 'Texture':{
+            await (GalaceanEffects.player.renderer.engine.database as AssetDatabase).convertImageData(packageData);
+            //@ts-expect-error
+            iconTexture = await this.createIconTexture(packageData.exportObjects[0].image);
+          }
+        }
+        if (iconTexture) {
+          child.icon = iconTexture;
+        }
+      });
     }
   }
 
@@ -406,13 +449,13 @@ export class Project extends EditorWindow {
     ImGui.Text(text);
   }
 
-  private async createIconTexture (imageURLOrCanvas: string | HTMLCanvasElement) {
+  private async createIconTexture (imageURLOrCanvas: string | HTMLCanvasElement | HTMLImageElement): Promise<WebGLTexture | undefined> {
     if (ImGui_Impl && ImGui_Impl.gl) {
       const gl = ImGui_Impl.gl;
       const tex = gl.createTexture();
       let textureSource = null;
 
-      if (imageURLOrCanvas instanceof HTMLCanvasElement) {
+      if (imageURLOrCanvas instanceof HTMLCanvasElement || imageURLOrCanvas instanceof HTMLImageElement) {
         textureSource = imageURLOrCanvas;
       } else if (typeof(imageURLOrCanvas) === 'string') {
         textureSource = await loadImage(imageURLOrCanvas);
@@ -427,7 +470,9 @@ export class Project extends EditorWindow {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureSource);
 
-      return tex;
+      if (tex) {
+        return tex;
+      }
     }
   }
 }

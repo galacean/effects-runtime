@@ -1,3 +1,6 @@
+/**
+ * 部分手机厂商和 iPhone 机型列表
+ */
 export const infoList = {
   vender: [
     'SAMSUNG',
@@ -48,6 +51,9 @@ export const infoList = {
   ],
 };
 
+/**
+ * 被降级的硬件机型列表
+ */
 export const downgradeModels = {
   android: [
     'OPPO R9s Plus',
@@ -97,6 +103,9 @@ export const downgradeModels = {
   ],
 };
 
+/**
+ * 被降级的系统版本列表
+ */
 export const downgradeVersions = {
   android: [],
   iOS: [
@@ -110,6 +119,9 @@ export const downgradeVersions = {
   ],
 };
 
+/**
+ * 微信开发环境机型名称替换表
+ */
 export const devtoolNameMap: Record<string, Record<string, string>> = {
   wechat: {
     'iPhone 6/7/8': 'iPhone 8',

@@ -74,7 +74,7 @@ export class AssetDatabase extends Database {
       return;
     }
     const packageData = JSON.parse(res) as spec.EffectsPackageData;
-    const guid = packageData.fileSummary.guid;
+    // const guid = packageData.fileSummary.guid;
 
     // TODO 纹理 image 特殊逻辑，待移除
     if (packageData.fileSummary.assetType === 'Texture') {
@@ -85,7 +85,7 @@ export class AssetDatabase extends Database {
       this.engine.addEffectsObjectData(objectData);
     }
 
-    const effectsPackage = new EffectsPackage(this.engine);
+    const effectsPackage = new EffectsPackage();
 
     // this.effectsPackages[guid] = effectsPackage;
     effectsPackage.fileSummary = packageData.fileSummary;
@@ -112,13 +112,13 @@ export class AssetDatabase extends Database {
   async saveAssets () {
     for (const dirtyPackageGuid of this.dirtyPackageSet) {
       // let effectsPackage = this.effectsPackages[dirtyPackageGuid];
-      let effectsPackage;
+      let effectsPackage: EffectsPackage | undefined;
 
       if (!effectsPackage) {
         effectsPackage = (await this.loadPackage(this.GUIDToAssetPath(dirtyPackageGuid)))!;
       }
 
-      const assetData = SerializationHelper.serializeTaggedProperties(effectsPackage) as spec.EffectsPackageData;
+      const assetData = effectsPackage.toData();
       const path = this.GUIDToAssetPath(dirtyPackageGuid);
 
       console.info(assetData, path);
@@ -233,8 +233,16 @@ export class AssetDatabase extends Database {
     return res;
   }
 
-  setDirty (object: EffectsObject) {
-    const packageGuid = AssetDatabase.objectToPackageGuidMap[object.getInstanceId()];
+  setDirty (object: EffectsObject): void;
+  setDirty (guid: string): void ;
+  setDirty (object: EffectsObject | string): void {
+    let packageGuid: string = '';
+
+    if (object instanceof EffectsObject) {
+      packageGuid = AssetDatabase.objectToPackageGuidMap[object.getInstanceId()];
+    } else {
+      packageGuid = AssetDatabase.objectToPackageGuidMap[object];
+    }
 
     if (!packageGuid) {
       return;
@@ -324,18 +332,39 @@ export async function readFileAsText (file: File): Promise<string> {
   });
 }
 
-export class EffectsPackage extends EffectsObject {
+export function readFileAsAsData (file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read file as data URL'));
+      }
+    };
+    reader.onerror = () => {
+      reject(reader.error);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+export class EffectsPackage {
   fileSummary: fileSummary;
   exportObjects: EffectsObject[] = [];
 
-  override toData () {
-    this.taggedProperties.fileSummary = this.fileSummary;
-    this.taggedProperties.exportObjects = [];
+  toData () {
+    const effectsPackageData: spec.EffectsPackageData = {
+      fileSummary: this.fileSummary,
+      exportObjects: [],
+    };
 
     for (const obj of this.exportObjects) {
-      obj.toData();
-      this.taggedProperties.exportObjects.push(obj.taggedProperties);
+      effectsPackageData.exportObjects.push(SerializationHelper.serializeTaggedProperties(obj) as spec.EffectsObjectData);
     }
+
+    return effectsPackageData;
   }
 }
 

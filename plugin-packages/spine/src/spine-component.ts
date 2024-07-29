@@ -1,7 +1,7 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, BoundingBoxTriangle, HitTestTriangleParams, Renderer, Texture,
+  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer, Texture,
 } from '@galacean/effects';
 import {
   effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, serialize,
@@ -22,6 +22,11 @@ export interface BoundsData {
   height: number,
 }
 
+export interface SpineBaseData {
+  atlas: TextureAtlas,
+  skeletonData: SkeletonData,
+}
+
 export interface SpineResource {
   atlas: {
     bins: BinaryAsset,
@@ -33,17 +38,17 @@ export interface SpineResource {
   },
   images: Texture[],
   skeletonType: spec.skeletonFileType,
+  // 编辑器缓存资源
+  cache?: SpineBaseData,
+  // 编辑器资源缓存ID
+  editorResourceID?: string,
 }
 
-export interface SpineDataCache {
-  atlas: TextureAtlas,
-  skeletonData: SkeletonData,
-  /**
-   * 缓存给编辑器用
-   */
-  skeletonInstance?: Skeleton | null,
+export interface SpineDataCache extends SpineBaseData {
   skinList?: string[],
   animationList?: string[],
+  // 编辑器资源缓存ID
+  editorResourceID?: string,
 }
 
 /**
@@ -78,7 +83,6 @@ export class SpineComponent extends RendererComponent {
    * renderer 数据
    */
   renderer: {};
-  spineDataCache: SpineDataCache;
   options: spec.PluginSpineOption;
 
   private content: SlotGroup | null;
@@ -98,11 +102,29 @@ export class SpineComponent extends RendererComponent {
 
   @serialize()
   resource: SpineResource;
+  @serialize()
+  cache: SpineDataCache;
 
+  constructor (engine: Engine) {
+    super(engine);
+  }
+
+  // TODO 发包后修改
+  // override fromData (data: spec.SpineComponent<TextureAtlas, SkeletonData>)
   override fromData (data: spec.SpineComponent) {
     super.fromData(data);
+    this.options = data.options;
+    this.item.getHitTestParams = this.getHitTestParams.bind(this);
+    // 兼容编辑器逻辑
+    if (!this.resource || !Object.keys(this.resource).length) {
+      return;
+    }
+    const { images: textures, skeletonType, atlas: atlasOptions, skeleton: skeletonOptions, editorResourceID } = this.resource;
 
-    const { images: textures, skeletonType, atlas: atlasOptions, skeleton: skeletonOptions } = this.resource;
+    // 编辑器缓存解析资源，不再解析
+    if (this.cache) {
+      return;
+    }
     const [start, bufferLength] = atlasOptions.source;
     const atlasBuffer = bufferLength ? new Uint8Array(atlasOptions.bins.buffer, start, bufferLength) : new Uint8Array(atlasOptions.bins.buffer, start);
     const atlas = readAtlasData(atlasBuffer, textures);
@@ -113,22 +135,26 @@ export class SpineComponent extends RendererComponent {
     const skeletonFile = getSkeletonFromBuffer(skeletonBuffer, skeletonType);
     const skeletonData = createSkeletonData(atlas, skeletonFile, skeletonType);
 
-    this.spineDataCache = {
+    this.cache = {
       atlas, skeletonData,
     };
-    this.options = data.options;
-    this.item.getHitTestParams = this.getHitTestParams.bind(this);
+    if (editorResourceID) {
+      this.cache.editorResourceID = editorResourceID;
+    }
   }
 
   override start () {
     super.start();
-    this.initContent(this.spineDataCache.atlas, this.spineDataCache.skeletonData, this.options);
+    if (!this.cache) {
+      return;
+    }
+    this.initContent(this.cache.atlas, this.cache.skeletonData, this.options);
     // @ts-expect-error
     this.startSize = this.options.startSize;
     // @ts-expect-error
     this.renderer = this.options.renderer;
 
-    if (!this.state) {
+    if (!(this.state && this.skeleton)) {
       return;
     }
     this.state.apply(this.skeleton);
@@ -160,14 +186,8 @@ export class SpineComponent extends RendererComponent {
     }
   }
 
-  private initContent (
-    atlas: TextureAtlas,
-    skeletonData: SkeletonData,
-    spineOptions: spec.PluginSpineOption,
-  ) {
-    const activeAnimation = typeof spineOptions.activeAnimation === 'string'
-      ? [spineOptions.activeAnimation]
-      : spineOptions.activeAnimation;
+  private initContent (atlas: TextureAtlas, skeletonData: SkeletonData, spineOptions: spec.PluginSpineOption) {
+    const activeAnimation = typeof spineOptions.activeAnimation === 'string' ? [spineOptions.activeAnimation] : spineOptions.activeAnimation;
 
     this.skeleton = new Skeleton(skeletonData);
     this.skeletonData = skeletonData;
@@ -193,9 +213,8 @@ export class SpineComponent extends RendererComponent {
       this.setAnimationList(activeAnimation, spineOptions.speed);
     }
 
-    this.spineDataCache = {
-      ...this.spineDataCache,
-      skeletonInstance: this.skeleton,
+    this.cache = {
+      ...this.cache,
       skinList: this.skinList,
       animationList: this.animationList,
     };
@@ -502,6 +521,19 @@ export class SpineComponent extends RendererComponent {
     }
     this.scaleFactor = scaleFactor;
     this.transform.setScale(this.startSize * scaleFactor, this.startSize * scaleFactor, scale.z);
+  }
+
+  // 转换当前大小为旧缩放规则下的大小
+  convertSizeToOldRule (): number {
+    const res = this.getBounds();
+
+    if (!res || !this.item.composition || !this.resizeRule) {
+      return 1;
+    }
+    const { width } = res;
+    const scaleFactor = this.scaleFactor;
+
+    return this.startSize * scaleFactor * width;
   }
 
   getBounds (): BoundsData | undefined {

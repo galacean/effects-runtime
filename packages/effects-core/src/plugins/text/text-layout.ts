@@ -30,19 +30,6 @@ export class TextLayout {
     this.autoWidth = autoWidth;
     this.maxTextWidth = text.length * tempWidth;
 
-    // if (autoWidth) {
-    //   this.width = this.maxTextWidth + this.lineWidth;
-    //   this.height = fontSize + this.lineHeight;
-    // } else {
-    //   if (textWidth) {
-    //     this.maxCharCount = Math.floor((textWidth - this.lineWidth) / (tempWidth));
-    //     this.width = textWidth;
-    //   } else {
-    //     this.width = basicScale[0] * 100;
-    //   }
-    //   this.height = basicScale[1] * 100;
-    // }
-
     this.width = textWidth;
     this.height = textHeight;
 

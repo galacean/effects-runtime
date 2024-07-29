@@ -1,7 +1,6 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
-import { serialize } from './decorators';
 import { EventEmitter } from './event-emitter';
 import type { ItemEffectEvent } from './effect-events';
 
@@ -14,7 +13,6 @@ export abstract class EffectsObject extends EventEmitter<ItemEffectEvent> {
     return obj instanceof EffectsObject && 'guid' in obj;
   }
 
-  @serialize()
   protected guid: string;
   /**
    * 存储需要序列化的数据

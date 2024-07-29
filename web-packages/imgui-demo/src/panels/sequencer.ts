@@ -1,9 +1,9 @@
 import type { Composition, TrackAsset } from '@galacean/effects';
 import { CompositionComponent } from '@galacean/effects';
-import { editorWindow, menuItem } from '../core/decorators';
+import { menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow } from '../core/panel';
+import { EditorWindow, editorWindow } from './editor-window';
 
 @editorWindow()
 export class Sequencer extends EditorWindow {

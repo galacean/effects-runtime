@@ -3,6 +3,7 @@ import type { spec } from '@galacean/effects';
 import { generateGUID, Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 import type { SpineVFXItem } from '@galacean/effects-plugin-spine';
+import { SpineComponent } from '@galacean/effects-plugin-spine';
 import { direct, premultiply } from './files';
 
 const startEle = document.getElementById('J-start');
@@ -675,10 +676,9 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
       container: document.getElementById('J-container'),
       ...playerOptions,
     });
-    const comp = await player.loadScene(animation, {});
+    const comp = await player.loadScene(json);
 
     setCamera(comp);
-
     pauseEle.onclick = () => {
       player.pause();
     };

@@ -26,8 +26,8 @@ export class CameraController extends ItemBehaviour {
       camera.far = this.options.far;
       camera.fov = this.options.fov;
       camera.clipMode = this.options.clipMode;
-      camera.position = this.transform.position;
-      camera.rotation = this.transform.rotation;
+      camera.position = this.transform.getWorldPosition();
+      camera.rotation = this.transform.getWorldRotation();
     }
   }
 
