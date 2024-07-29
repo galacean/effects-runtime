@@ -7,21 +7,17 @@ const { expect, assert } = chai;
 
 describe('gl-material', () => {
   let canvas, renderer, gl, engine;
-  const vs = `#version 300 es
-  layout(location = 0) in vec2 aPosition;
+  const vs = `attribute vec2 aPosition;
   void main() {
     gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
   }`;
-  const fs = `#version 300 es
-  precision highp float;
-  out vec4 outColor;
+  const fs = `precision highp float;
   void main() {
-    outColor = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
   }`;
   const shader = {
     vertex: vs,
     fragment: fs,
-    GLSLVersion:GLSLVersion.GLSL3,
   };
 
   before(() => {
@@ -428,7 +424,6 @@ describe('gl-material', () => {
         shader: {
           vertex: vs,
           fragment: fs,
-          glslVersion:GLSLVersion.GLSL3,
         },
         states: {},
       });
