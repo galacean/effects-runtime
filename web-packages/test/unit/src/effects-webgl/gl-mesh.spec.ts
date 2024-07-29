@@ -20,7 +20,6 @@ describe('gl-mesh', () => {
     const mesh = result.mesh;
     const geom = result.geom;
     const material = result.material;
-    const glRenderer = renderer.glRenderer;
 
     mesh.material.initialize(renderer.engine);
     mesh.geometry.initialize(renderer.engine);
@@ -28,7 +27,7 @@ describe('gl-mesh', () => {
     const gpubuffer = resultGeom.getAttributeBuffer('aPosition');
     const buffer = new Float32Array(8);
 
-    expect(material.shader.program.pipelineContext).to.eql(renderer.pipelineContext);
+    expect(material.shaderVariant.program.pipelineContext).to.eql(renderer.pipelineContext);
     expect(material.getVector2('uPos')).to.eql([1, 2]);
     expect(resultGeom).to.eql(geom);
     expect(resultGeom.renderer).not.eql(null);
@@ -40,18 +39,15 @@ describe('gl-mesh', () => {
 });
 
 function generateGLMesh (renderer) {
-  const vertexShaderStr = `#version 300 es
-layout(location = 0) in vec2 aPosition;
+  const vertexShaderStr = `attribute vec2 aPosition;
 uniform vec2 uPos;
 void main() {
   gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
 }
 `;
-  const fragmentShaderStr = `#version 300 es
-precision highp float;
-out vec4 outColor;
+  const fragmentShaderStr = `precision highp float;
 void main() {
-  outColor = vec4(1.0, 0.0, 0.0, 1.0);
+  gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 `;
 

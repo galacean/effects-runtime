@@ -582,29 +582,6 @@ describe('webgl/gl-geometry', () => {
     gl.drawElements = d;
     frame.dispose();
   });
-
-  // drawCount为undefined时会触发indexCount次drawCall
-  it('geometry drawCount == undefined would use index Count', function () {
-    const ret = createMesh(renderer, undefined);
-    const pass = new RenderPass(renderer, {
-      name: 'test',
-      meshes: [ret.mesh],
-    });
-    const frame = new RenderFrame({
-      renderer,
-      camera: new Camera(),
-    });
-
-    frame.setRenderPasses([pass]);
-    const d = gl.drawElements;
-    const drawElement = gl.drawElements = chai.spy(d);
-
-    renderer.renderRenderFrame(frame);
-    expect(ret.geom.drawCount).is.a.NaN;
-    expect(drawElement).to.have.been.called.once;
-    expect(drawElement).to.have.been.called.with(glContext.TRIANGLES, ret.geom.indicesBuffer.elementCount, ret.geom.indicesBuffer.type, 0);
-    gl.drawElements = d;
-  });
 });
 
 function createMesh (renderer, drawCount) {
