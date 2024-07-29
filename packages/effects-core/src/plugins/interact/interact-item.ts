@@ -73,6 +73,15 @@ export class InteractComponent extends RendererComponent {
       this.materials = this.previewContent.mesh.materials;
     }
     this.item.getHitTestParams = this.getHitTestParams;
+    this.item.onEnd = ()=>{
+      if (this.item && this.item.composition) {
+        this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
+        this.clickable = false;
+        this.hasBeenAddedToComposition = false;
+        this.previewContent?.mesh.dispose();
+        this.endDragTarget();
+      }
+    };
   }
 
   override update (dt: number): void {
@@ -108,12 +117,6 @@ export class InteractComponent extends RendererComponent {
   }
 
   override onDestroy (): void {
-    if (this.item && this.item.composition) {
-      this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
-      this.clickable = false;
-      this.previewContent?.mesh.dispose();
-      this.endDragTarget();
-    }
   }
 
   endDragTarget () {

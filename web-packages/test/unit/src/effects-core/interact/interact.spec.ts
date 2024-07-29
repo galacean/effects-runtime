@@ -676,7 +676,7 @@ describe('interact item', () => {
       ],
     };
 
-    await player.loadScene(scene);
+    const comp = await player.loadScene(scene);
 
     player.gotoAndStop(0.1);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
