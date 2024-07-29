@@ -1,11 +1,11 @@
 // @ts-nocheck
 import { glContext, Camera, RenderFrame, RenderPass, Mesh } from '@galacean/effects-core';
-import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject } from '@galacean/effects-webgl';
+import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
 describe('webgl/gl-geometry', () => {
-  let canvas, glRenderer, gl, renderer, pipelineContext;
+  let canvas, engine, glRenderer, gl, renderer, pipelineContext;
   const option = {
     name: 'geo1',
     mode: glContext.TRIANGLES, // mode
@@ -24,7 +24,7 @@ describe('webgl/gl-geometry', () => {
       data: new Uint16Array([0, 1, 3, 1, 2, 3]),
     },
   };
-  const geometry = new GLGeometry(undefined, option);
+  let geometry: GLGeometry;
 
   before(() => {
     canvas = document.createElement('canvas');
@@ -33,6 +33,8 @@ describe('webgl/gl-geometry', () => {
     pipelineContext = renderer.pipelineContext;
 
     gl = pipelineContext.gl;
+    engine = new GLEngine(gl);
+    geometry = new GLGeometry(engine, option);
   });
 
   after(() => {
@@ -43,6 +45,7 @@ describe('webgl/gl-geometry', () => {
     gl = null;
     glRenderer = null;
     pipelineContext.dispose();
+    geometry.dispose();
   });
 
   // GLGeometry涉及三个WebGL函数
