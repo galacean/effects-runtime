@@ -463,7 +463,6 @@ describe('interact item', () => {
     });
   });
 
-  // TODO
   it('message item', async () => {
     const scene = {
       'plugins': [],
