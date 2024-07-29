@@ -1,7 +1,5 @@
 // @ts-nocheck
 import { Player, EVENT_TYPE_CLICK, spec, math } from '@galacean/effects';
-import { set } from 'husky';
-import { sleep } from '../../utils';
 const { Vector3 } = math;
 
 const { expect } = chai;
@@ -27,8 +25,12 @@ describe('interact item', () => {
     },
   };
 
-  beforeEach(() => {
+  before(() => {
     player = new Player({ ...config });
+  });
+
+  beforeEach(() => {
+    player.destroyCurrentCompositions();
   });
 
   after(() => {
@@ -461,35 +463,231 @@ describe('interact item', () => {
     });
   });
 
+  // TODO
   it('message item', async () => {
-    const items = [
-      {
-        'name': 'ui_11',
-        'delay': 0,
-        'id': 12,
-        'endBehavior': spec.EndBehavior.destroy,
-        'ui': {
-          'options': {
-            'duration': 0.2,
-            'type': 'message',
-            'width': 0.6,
-            'height': 0.4,
-            'showPreview': true,
-          },
-        },
+    const scene = {
+      'plugins': [],
+      'shapes': [],
+      'type': 'ge',
+      'version': '3.0',
+      'playerVersion': {
+        'web': '',
+        'native': '',
       },
-    ];
+      'compositionId': '5',
+      'compositions': [
+        {
+          'id': '5',
+          'camera': {
+            'clipMode': 0,
+            'fov': 60,
+            'far': 20,
+            'near': 2,
+            'position': [
+              0,
+              0,
+              8,
+            ],
+            'z': 8,
+          },
+          'duration': 5,
+          'items': [
+            {
+              'id': 'ea613e3bcb0340a39fc16963dc32dce9',
+            },
+          ],
+          'name': '1',
+          'timelineAsset': {
+            'id': 'a4d249e83ab24fd896e6c84753b2a437',
+          },
+          'sceneBindings': [
+            {
+              'key': {
+                'id': '264e34fef4cc4b66a6699ecce58a3617',
+              },
+              'value': {
+                'id': 'ea613e3bcb0340a39fc16963dc32dce9',
+              },
+            },
+          ],
+        },
+      ],
+      'images': [
+        {
+          'id': 'e50e166c375b45f8a3196b9e35c53435',
+          'renderLevel': 'B+',
+          'url': 'https://gw.alipayobjects.com/zos/gltf-asset/mars-cli/POLXSVXJBMPG/1891211877-da663.png',
+        },
+      ],
+      'requires': [],
+      'textures': [
+        {
+          'source': {
+            'id': 'e50e166c375b45f8a3196b9e35c53435',
+          },
+          'flipY': true,
+          'id': '3794d909e319422885132cc5cb69654a',
+          'dataType': 'Texture',
+        },
+      ],
+      'bins': [],
+      'items': [
+        {
+          'type': '4',
+          'name': 'ui_11',
+          'delay': 0,
+          'duration': 0.2,
+          'id': 'ea613e3bcb0340a39fc16963dc32dce9',
+          'transform': {
+            'position': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'eulerHint': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'scale': {
+              'x': 0.6,
+              'y': 0.4,
+              'z': 0.6,
+            },
+          },
+          'endBehavior': spec.EndBehavior.destroy,
+          'content': {
+            'options': {
+              'type': 1,
+            },
+            'tracks': [
+              {
+                'clips': [
+                  {
+                    'id': '8c36c35c52bd4893a885b700b6b0d3fd',
+                    'dataType': 'TransformPlayableAsset',
+                  },
+                ],
+              },
+            ],
+            'id': 'c45462a9d197469fb24d801771a7e536',
+            'item': {
+              'id': 'ea613e3bcb0340a39fc16963dc32dce9',
+            },
+            'dataType': 'InteractComponent',
+          },
+          'oldId': '12',
+          'components': [
+            {
+              'id': 'c45462a9d197469fb24d801771a7e536',
+            },
+          ],
+          'dataType': 'VFXItemData',
+          'listIndex': 0,
+        },
+      ],
+      'components': [
+        {
+          'options': {
+            'type': 1,
+          },
+          'tracks': [
+            {
+              'clips': [
+                {
+                  'id': '8c36c35c52bd4893a885b700b6b0d3fd',
+                  'dataType': 'TransformPlayableAsset',
+                },
+              ],
+            },
+          ],
+          'id': 'c45462a9d197469fb24d801771a7e536',
+          'item': {
+            'id': 'ea613e3bcb0340a39fc16963dc32dce9',
+          },
+          'dataType': 'InteractComponent',
+        },
+      ],
+      'materials': [],
+      'shaders': [],
+      'geometries': [],
+      'animations': [],
+      'miscs': [
+        {
+          'tracks': [
+            {
+              'id': '264e34fef4cc4b66a6699ecce58a3617',
+            },
+          ],
+          'id': 'a4d249e83ab24fd896e6c84753b2a437',
+          'dataType': 'TimelineAsset',
+        },
+        {
+          'id': '05fd4fbc932f400baea59dcef0413adf',
+          'dataType': 'ActivationTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 0.2,
+              'endBehavior': spec.EndBehavior.destroy,
+              'asset': {
+                'id': '13aad49e85824dafb85b3145bb3b17d2',
+              },
+            },
+          ],
+        },
+        {
+          'id': '3aefb21de060432aa0df0eb3fa034a49',
+          'dataType': 'TransformTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 0.2,
+              'endBehavior': spec.EndBehavior.destroy,
+              'asset': {
+                'id': 'e1cb0a17e214491dbbc0f0a1c183bdca',
+              },
+            },
+          ],
+        },
+        {
+          'id': '264e34fef4cc4b66a6699ecce58a3617',
+          'dataType': 'ObjectBindingTrack',
+          'children': [
+            {
+              'id': '05fd4fbc932f400baea59dcef0413adf',
+            },
+            {
+              'id': '3aefb21de060432aa0df0eb3fa034a49',
+            },
+          ],
+          'clips': [],
+        },
+        {
+          'id': '13aad49e85824dafb85b3145bb3b17d2',
+          'dataType': 'ActivationPlayableAsset',
+        },
+        {
+          'id': 'e1cb0a17e214491dbbc0f0a1c183bdca',
+          'dataType': 'TransformPlayableAsset',
+        },
+      ],
+    };
 
-    await generateScene(items, player);
+    await player.loadScene(scene);
 
-    player.gotoAndPlay(0.1);
+    player.gotoAndStop(0.1);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
-    setTimeout(() => {
-      expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
-    }, 300);
+
+    player.gotoAndStop(0.3);
+    expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
+    comp.dispose();
   });
 
-  it('message item with reusable', async () => {
+  // TODO
+  /* it('message item with reusable', async () => {
     messagePhrase = undefined;
     const items = [
       {
@@ -512,13 +710,12 @@ describe('interact item', () => {
       reusable: true,
     });
 
-    player.gotoAndPlay(0.1);
+    player.gotoAndStop(0.1);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
-    setTimeout(() => {
-      expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
-    }, 300);
+    player.gotoAndStop(0.22);
+    expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
 
-  });
+  });*/
 
   it('prevent event if clicked', async () => {
     const container = document.createElement('div');

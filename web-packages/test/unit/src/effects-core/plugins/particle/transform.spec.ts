@@ -7,12 +7,17 @@ const { expect } = chai;
 describe('effects-core/plugins/particle-transform', () => {
   let player: Player;
 
-  beforeEach(() => {
+  before(() => {
     player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
   });
 
   afterEach(() => {
+    player.destroyCurrentCompositions();
+  });
+
+  after(() => {
     player.dispose();
+    player = null;
   });
 
   it('set transform', async () => {

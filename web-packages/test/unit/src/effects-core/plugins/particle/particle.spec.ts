@@ -1,5 +1,6 @@
 // @ts-nocheck
-import { Player, spec, Texture, TextureSourceType, imageDataFromGradient, glContext, math } from '@galacean/effects';
+import { Player, spec, TextureSourceType, glContext, math } from '@galacean/effects';
+import { sleep } from '../../../utils';
 
 const { Vector2 } = math;
 const { expect } = chai;
@@ -10,8 +11,12 @@ describe('effects-core/plugins/particle-test', function () {
   let player;
   const canvas = document.createElement('canvas');
 
-  beforeEach(() => {
+  before(() => {
     player = new Player({ canvas: canvas, manualRender: true });
+  });
+
+  afterEach(() => {
+    player.destroyCurrentCompositions();
   });
 
   after(() => {
