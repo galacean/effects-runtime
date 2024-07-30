@@ -5,7 +5,7 @@ import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
-import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia } from './downloader';
+import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
 import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from './scene';
 import { isSceneJSON } from './scene';
 import type { Disposable } from './utils';
@@ -345,11 +345,13 @@ export class AssetManager implements Disposable {
     const { useCompressedTexture, variables } = this.options;
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img: spec.Image, idx: number) => {
-      const { url: png, webp } = img;
+      const { url: png, webp, avif } = img;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
       // eslint-disable-next-line compat/compat
       const webpURL = webp && new URL(webp, baseUrl).href;
+      // eslint-disable-next-line compat/compat
+      const avifURL = avif && new URL(avif, baseUrl).href;
 
       if ('template' in img) {
         // 1. 数据模板
@@ -414,7 +416,10 @@ export class AssetManager implements Disposable {
       ) {
         return img;
       }
-      const { url, image } = await loadWebPOptional(imageURL, webpURL);
+
+      const { url, image } = avifURL
+        ? await loadAVIFOptional(imageURL, avifURL)
+        : await loadWebPOptional(imageURL, webpURL);
 
       this.assets[idx] = { url, type: TextureSourceType.image };
 

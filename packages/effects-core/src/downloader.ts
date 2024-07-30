@@ -111,6 +111,7 @@ export class Downloader {
 }
 
 let webPFailed = false;
+let avifFailed = false;
 
 /**
  * 异步加载一个 WebP 图片文件，如果不支持 WebP，则加载 PNG 图片文件
@@ -131,6 +132,31 @@ export async function loadWebPOptional (png: string, webp?: string) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e: any) {
     webPFailed = true;
+    const image = await loadImage(png);
+
+    return { image, url: png };
+  }
+}
+
+/**
+ * 异步加载一个 AVIF 图片文件，如果不支持 AVIF，则加载 PNG 图片文件
+ * @param png - PNG 图片文件的 URL
+ * @param avif - AVIF 图片文件的 URL
+ */
+export async function loadAVIFOptional (png: string, avif?: string) {
+  if (avifFailed || !avif) {
+    const image = await loadImage(png);
+
+    return { image, url: png };
+  }
+
+  try {
+    const image = await loadImage(avif);
+
+    return { image, url: avif };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e: any) {
+    avifFailed = true;
     const image = await loadImage(png);
 
     return { image, url: png };
