@@ -4,7 +4,7 @@ import { isString } from './utils';
 
 export function getBackgroundImage (
   template: TemplateContent,
-  variables?: Record<string, number | string | string[]>,
+  variables?: Record<string, number | string | string[] | HTMLImageElement>,
 ) {
   let templateBackground;
   const { name, url } = template?.background ?? {};
@@ -52,12 +52,15 @@ export async function combineImageTemplate (
   // 获取动态换图的图片对象或 url 地址
   const templateBackground = getBackgroundImage(template, variables);
 
+  // 如果 templateBackground 是字符串
   if (
     templateBackground &&
     isString(templateBackground) &&
     templateBackground !== image.src
   ) {
     drawImage = isString(templateBackground) ? await loadImage(templateBackground) : templateBackground;
+  } else {
+    drawImage = templateBackground as HTMLImageElement;
   }
 
   return drawImage;
