@@ -448,7 +448,7 @@ export class SpriteComponent extends RendererComponent {
     const sx = 1, sy = 1;
 
     if (renderer.shape) {
-      const { index, aPoint } = renderer.shape;
+      const { index = [], aPoint = [] } = renderer.shape;
       const point = new Float32Array(aPoint);
       const position = [];
 
