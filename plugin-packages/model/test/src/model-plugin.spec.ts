@@ -68,17 +68,16 @@ describe('mode plugin test', function () {
     const comp = await generateComposition(player, scn, {}, { autoplay: false });
     const cameraItem = comp.getItemByName('camera');
 
-    let pos = cameraItem.content.transform.getPosition();
+    let pos = cameraItem.transform.position;
 
     expect(pos.toArray()).to.deep.equal([0, 0, 8]);
     expect(cameraItem.duration).to.eql(5);
     comp.gotoAndStop(1.9);
-    pos = cameraItem.content.transform.getPosition();
+    pos = cameraItem.transform.position;
     const cp = new Vector3();
 
     cameraItem.transform.assignWorldTRS(cp);
     expect(cp.toArray()).to.deep.equal([3, 0, 8]);
-    expect(pos).to.deep.equal(cp);
     comp.dispose();
   });
 

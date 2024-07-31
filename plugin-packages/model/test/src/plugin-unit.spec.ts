@@ -168,26 +168,25 @@ describe('渲染插件单测', function () {
     entity.type = PObjectType.camera;
     expect(entity.visible).to.eql(true);
     expect(entity.deleted).to.eql(false);
-    entity.onEntityRemoved();
+    entity.onVisibleChanged(false);
     expect(entity.visible).to.eql(false);
-    expect(entity.deleted).to.eql(true);
+    expect(entity.deleted).to.eql(false);
   });
   it('Light测试', function () {
     const light1 = new PLight(
+      'light1',
       {
         id: '1',
-        name: 'light1',
-        duration: 0,
-        endBehavior: 0,
-        type: 'light',
-        content: {
-          options: {
-            color: [253, 127, 169, 255],
-            intensity: 123,
-            lightType: 'point',
-            range: 67.9,
-          },
+        dataType: spec.DataType.LightComponent,
+        lightType: spec.LightType.point,
+        color: {
+          r: 253 / 255,
+          g: 127 / 255,
+          b: 169 / 255,
+          a: 1,
         },
+        intensity: 123,
+        range: 67.9,
       },
       {
         transform: {
@@ -197,6 +196,7 @@ describe('渲染插件单测', function () {
         },
       } as any as ModelVFXItem
     );
+
     expect(light1.type).to.eql(PObjectType.light);
     expect(light1.lightType).to.eql(PLightType.point);
     expect(light1.name).to.eql('light1');
@@ -215,22 +215,21 @@ describe('渲染插件单测', function () {
     expect(light1.range).to.eql(67.9);
     //
     const light2 = new PLight(
+      'light2',
       {
         id: '2',
-        name: 'light2',
-        duration: 0,
-        endBehavior: 0,
-        type: 'light',
-        content: {
-          options: {
-            color: [0, 255, 163, 135],
-            intensity: 997,
-            lightType: 'spot',
-            range: 1007.3,
-            innerConeAngle: 35.8,
-            outerConeAngle: 49.6,
-          },
+        dataType: spec.DataType.LightComponent,
+        lightType: spec.LightType.spot,
+        color: {
+          r: 0 / 255,
+          g: 1.0,
+          b: 163 / 255,
+          a: 135 / 255,
         },
+        intensity: 997,
+        range: 1007.3,
+        innerConeAngle: 35.8,
+        outerConeAngle: 49.6,
       },
       {
         transform: {
@@ -262,19 +261,18 @@ describe('渲染插件单测', function () {
     //
     //
     const light3 = new PLight(
+      'light3',
       {
         id: '3',
-        name: 'light3',
-        duration: 0,
-        endBehavior: 0,
-        type: 'light',
-        content: {
-          options: {
-            color: [128, 0, 177, 33],
-            intensity: 868,
-            lightType: 'directional',
-          },
+        dataType: spec.DataType.LightComponent,
+        lightType: spec.LightType.directional,
+        color: {
+          r: 128 / 255,
+          g: 0,
+          b: 177 / 255,
+          a: 33 / 255,
         },
+        intensity: 868,
       },
       {
         transform: {
