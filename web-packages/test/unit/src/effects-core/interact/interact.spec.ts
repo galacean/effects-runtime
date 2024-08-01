@@ -1,18 +1,22 @@
-// @ts-nocheck
+import type { PlayerConfig, SceneLoadOptions, TouchEventType, VFXItem } from '@galacean/effects';
 import { Player, EVENT_TYPE_CLICK, spec, math } from '@galacean/effects';
-const { Vector3 } = math;
 
 const { expect } = chai;
+const { Vector3 } = math;
 
 describe('interact item', () => {
-  let player: Player;
+  let player: Player | null;
   const canvas = document.createElement('canvas');
-  const width = 512, height = 512;
+  const width = 512;
+  const height = 512;
 
   canvas.width = width;
   canvas.height = height;
-  let clicked = false, messagePhrase = undefined, hitPositions = [];
-  const config = {
+
+  let clicked = false;
+  let messagePhrase: number;
+  let hitPositions = [];
+  const config: PlayerConfig = {
     canvas,
     pixelRatio: 1,
     interactive: true,
@@ -30,11 +34,11 @@ describe('interact item', () => {
   });
 
   beforeEach(() => {
-    player.destroyCurrentCompositions();
+    player?.destroyCurrentCompositions();
   });
 
   after(() => {
-    player.dispose();
+    player?.dispose();
     player = null;
   });
 
@@ -60,7 +64,7 @@ describe('interact item', () => {
       },
     ];
 
-    const composition = await generateComposition(items, player, {});
+    const composition = await generateComposition(items, player);
     const vp = composition.camera.getViewProjectionMatrix();
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
@@ -68,13 +72,13 @@ describe('interact item', () => {
     edgePoints.forEach(p => {
       const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
+      composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y } as TouchEventType);
       expect(clicked).to.be.true;
       clicked = false;
     });
     const outPos = vp.projectPoint(new Vector3(width / 2 + 0.2, height / 2 + 0.2), new Vector3());
 
-    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
+    composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y } as TouchEventType);
     expect(clicked).to.be.false;
   });
 
@@ -122,7 +126,7 @@ describe('interact item', () => {
         },
       },
     ];
-    const composition = await generateComposition(items, player, {});
+    const composition = await generateComposition(items, player);
     const vp = composition.camera.getViewProjectionMatrix();
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
@@ -131,9 +135,9 @@ describe('interact item', () => {
       const inPos = vp.projectPoint(new Vector3(p[1] - 1, p[0] + 1, 0), new Vector3());
       const outPos = vp.projectPoint(new Vector3(p[0] - 1, p[1] + 1, 0), new Vector3());
 
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
+      composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y } as TouchEventType);
       expect(clicked).to.be.false;
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
+      composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y } as TouchEventType);
       expect(clicked).to.be.true;
       clicked = false;
     });
@@ -161,17 +165,17 @@ describe('interact item', () => {
         },
       },
     ];
-    const composition = await generateComposition(items, player, {});
+    const composition = await generateComposition(items, player);
     const vp = composition.camera.getViewProjectionMatrix();
     const inPos = vp.projectPoint(new Vector3(1, 1, 0), new Vector3());
 
     clicked = false;
-    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
+    composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y } as TouchEventType);
     expect(clicked).to.be.true;
     clicked = false;
     const outPos = vp.projectPoint(new Vector3(0.5, 0.5, 0), new Vector3());
 
-    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
+    composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y } as TouchEventType);
     expect(clicked).to.be.false;
   });
 
@@ -214,19 +218,20 @@ describe('interact item', () => {
     // 相机位置改变 不用世界坐标作为点击点 用屏幕坐标作为点击测试点
     const composition = await generateScene(items, player);
 
-    player.gotoAndPlay(0.1);
+    player?.gotoAndPlay(0.1);
 
     clicked = false;
-    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: 0, y: 0 });
+    composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: 0, y: 0 } as TouchEventType);
     expect(clicked).to.be.true;
-    player.gotoAndPlay(2.0);
+    player?.gotoAndPlay(2.0);
     clicked = false;
-    composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: 0, y: 0 });
+    composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: 0, y: 0 } as TouchEventType);
     expect(clicked).to.be.false;
   });
 
   it('click item with editor transform', async () => {
-    const width = 1, height = 2;
+    const width = 1;
+    const height = 2;
     const items = [
       {
         'name': 'ui_10',
@@ -245,8 +250,13 @@ describe('interact item', () => {
         },
       },
     ];
-    const composition = await generateComposition(items, player, {});
-    const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
+    const composition = await generateComposition(items, player);
+    const edgePoints = [
+      [width / 2, height / 2],
+      [-width / 2, height / 2],
+      [width / 2, -height / 2],
+      [-width / 2, -height / 2],
+    ];
     const vp = composition.camera.getViewProjectionMatrix();
     const dx = 0.5, dy = 0.3, scale = 0.5;
 
@@ -255,7 +265,7 @@ describe('interact item', () => {
       clicked = false;
       const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: scale * inPos.x + dx, y: scale * inPos.y + dy });
+      composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: scale * inPos.x + dx, y: scale * inPos.y + dy } as TouchEventType);
       expect(clicked).to.be.true;
     });
   });
@@ -297,14 +307,19 @@ describe('interact item', () => {
         },
       },
     ];
-    const composition = await generateComposition(items, player, { currentTime: 1 });
+    const composition = await generateComposition(items, player, 1);
     const vp = composition.camera.getViewProjectionMatrix();
-    const edgePoints = [[0, height / 2], [width / 2, height / 2], [0, -height / 2], [width / 2, -height / 2]];
+    const edgePoints = [
+      [0, height / 2],
+      [width / 2, height / 2],
+      [0, -height / 2],
+      [width / 2, -height / 2],
+    ];
 
     edgePoints.forEach(p => {
       const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
+      composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y } as TouchEventType);
       expect(hitPositions.length).to.eql(2);
     });
   });
@@ -330,15 +345,20 @@ describe('interact item', () => {
         },
       },
     ];
-    const composition = await generateComposition(items, player, { currentTime: 1 });
+    const composition = await generateComposition(items, player, 1);
     const vp = composition.camera.getViewProjectionMatrix();
-    const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
+    const edgePoints = [
+      [width / 2, height / 2],
+      [-width / 2, height / 2],
+      [width / 2, -height / 2],
+      [-width / 2, -height / 2],
+    ];
 
     edgePoints.forEach(p => {
       clicked = false;
       const inPos = vp.projectPoint(new Vector3(p[0], p[1], 0), new Vector3());
 
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
+      composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y } as TouchEventType);
       expect(clicked).to.be.false;
     });
   });
@@ -380,8 +400,8 @@ describe('interact item', () => {
         },
       },
     ];
-    const composition = await generateComposition(items, player, {});
-    const skipFunc = item => item.name === 'ui_10';
+    const composition = await generateComposition(items, player);
+    const skipFunc = (item: VFXItem) => item.name === 'ui_10';
     const vp = composition.camera.getViewProjectionMatrix();
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
@@ -446,7 +466,7 @@ describe('interact item', () => {
         },
       },
     ];
-    const composition = await generateComposition(items, player, { currentTime });
+    const composition = await generateComposition(items, player, currentTime);
     const vp = composition.camera.getViewProjectionMatrix();
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
@@ -455,9 +475,9 @@ describe('interact item', () => {
       const inPos = vp.projectPoint(new Vector3(p[0] + 0.2 * currentTime, p[1] + currentTime * currentTime / 2 / duration, 0), new Vector3());
       const outPos = vp.projectPoint(new Vector3(p[1] + 0.2 * currentTime, p[0] + currentTime * currentTime / 2 / duration, 0), new Vector3());
 
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y });
+      composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y } as TouchEventType);
       expect(clicked).to.be.false;
-      composition.event.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y });
+      composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: inPos.x, y: inPos.y } as TouchEventType);
       expect(clicked).to.be.true;
       clicked = false;
     });
@@ -675,14 +695,14 @@ describe('interact item', () => {
       ],
     };
 
-    const comp = await player.loadScene(scene);
+    const comp = await player?.loadScene(scene);
 
-    player.gotoAndStop(0.1);
+    player?.gotoAndStop(0.1);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
 
-    player.gotoAndStop(0.3);
+    player?.gotoAndStop(0.3);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
-    comp.dispose();
+    comp?.dispose();
   });
 
   // TODO
@@ -722,9 +742,9 @@ describe('interact item', () => {
     container.style.width = '200px';
     container.style.height = '200px';
     document.body.appendChild(container);
-    const spy = chai.spy('player-clicked');
+    const spy = chai.spy();
 
-    player.dispose();
+    player?.dispose();
     player = null;
     player = new Player({
       container,
@@ -733,6 +753,7 @@ describe('interact item', () => {
         spy();
       },
     });
+    // @ts-expect-error
     await player.createComposition({ 'images': [], 'spines': [], 'version': '1.5', 'shapes': [], 'plugins': [], 'type': 'mars', 'compositions': [{ 'id': '3', 'name': '点击', 'duration': 5, 'startTime': 0, 'endBehavior': 1, 'previewSize': [750, 1624], 'items': [{ 'id': '1', 'name': 'sprite_1', 'duration': 2, 'type': '1', 'visible': true, 'endBehavior': 0, 'delay': 0, 'renderLevel': 'B+', 'content': { 'options': { 'startColor': [0.9411764705882353, 0.027450980392156862, 0.027450980392156862, 1] }, 'renderer': { 'renderMode': 1 }, 'positionOverLifetime': { 'direction': [0, 0, 0], 'startSpeed': 0, 'gravity': [0, 0, 0], 'gravityOverLifetime': [0, 1] } }, 'transform': { 'position': [0, 0, 0], 'rotation': [0, 0, 0], 'scale': [10.571346913648894, 10.571346913648894, 1] } }, { 'id': '2', 'name': 'interact_2', 'duration': 2, 'type': '4', 'visible': true, 'endBehavior': 0, 'delay': 0, 'renderLevel': 'B+', 'content': { 'options': { 'type': 0, 'showPreview': true, 'previewColor': [8, [255, 255, 255, 1]], 'behavior': 0 } }, 'transform': { 'position': [-0.03922057358071454, 0, 0], 'rotation': [0, 0, -0.23899999999999172], 'scale': [17.999999999999996, 12, 1] } }], 'camera': { 'fov': 60, 'far': 40, 'near': 0.1, 'position': [0, 0, 8], 'rotation': [0, 0, 0], 'clipMode': 1 } }], 'requires': [], 'compositionId': '3', 'bins': [], 'textures': [] });
 
     container.style.position = 'relative';
@@ -741,7 +762,7 @@ describe('interact item', () => {
 
     expect(cvsBounding.width).to.be.closeTo(200, 0.0001);
     expect(cvsBounding.height).to.be.closeTo(200, 0.0001);
-    const clickSpy = chai.spy('first-click');
+    const clickSpy = chai.spy();
 
     container.addEventListener('mouseup', clickSpy);
     const eventArg = {
@@ -769,7 +790,7 @@ describe('interact item', () => {
   });
 });
 
-function generateScene (items, player, options?) {
+function generateScene (items: any, player: Player | null, options?: SceneLoadOptions) {
   const json = {
     'compositionId': 5,
     'requires': [],
@@ -813,13 +834,14 @@ function generateScene (items, player, options?) {
     ],
   };
 
+  // @ts-expect-error
   return player.createComposition(json, options);
 }
 
-async function generateComposition (items, player, playerOptions) {
+async function generateComposition (items: any, player: Player | null, currentTime = 0) {
   const scene = await generateScene(items, player);
 
-  await player.gotoAndPlay(0.01 + (playerOptions.currentTime ?? 0));
+  player?.gotoAndPlay(0.01 + currentTime);
 
   return scene;
 }

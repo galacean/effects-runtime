@@ -73,7 +73,7 @@ export class InteractComponent extends RendererComponent {
       this.materials = this.previewContent.mesh.materials;
     }
     this.item.getHitTestParams = this.getHitTestParams;
-    this.item.onEnd = ()=>{
+    this.item.onEnd = () => {
       if (this.item && this.item.composition) {
         this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
         this.clickable = false;

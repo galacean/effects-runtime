@@ -1,12 +1,11 @@
-// @ts-nocheck
-import { Player, Transform, spec } from '@galacean/effects';
+import { Player, Transform } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
 
 describe('calculate item transform', () => {
-  let player;
   const canvas = document.createElement('canvas');
+  let player: Player;
 
   beforeEach(() => {
     player = new Player({
@@ -17,6 +16,7 @@ describe('calculate item transform', () => {
 
   afterEach(() => {
     player.dispose();
+    // @ts-expect-error
     player = null;
   });
 
@@ -321,9 +321,9 @@ describe('calculate item transform', () => {
         },
       ],
     };
-    const comp = await player.loadScene(scene);
-    const item = comp.getItemByName('x');
-    const parent = comp.getItemByName('p');
+    const comp = await player?.loadScene(scene);
+    const item = comp.getItemByName('x')!;
+    const parent = comp.getItemByName('p')!;
 
     expect(sanitizeNumbers(item.transform.getWorldPosition().toArray())).to.deep.equals([0, 1, 0], 'world 0');
     expect(sanitizeNumbers(item.transform.position.toArray())).to.deep.equals([0, 1, 0], 'local 0');
@@ -347,61 +347,5 @@ describe('calculate item transform', () => {
 
     expect(new Float32Array(sanitizeNumbers(r))).to.deep.equal(new Float32Array([0, 30, 0]));
   });
-
 });
 
-async function generateComposition (items, player, playerOptions) {
-  const json = {
-    requires: [],
-    compositionId: '17',
-    bins: [],
-    textures: [],
-    'compositions': [{
-      'name': 'composition_1',
-      'id': '17',
-      'duration': 15,
-      'endBehavior': spec.EndBehavior.destroy,
-      'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-      'items': items.map((item, i) => ({
-        'name': item.name || ('null_' + i),
-        'delay': item.delay || 0,
-        'id': item.id || (10086 + i),
-        'parentId': item.parentId,
-        'type': '3',
-        'endBehavior': spec.EndBehavior.destroy,
-        'duration': item.duration || 2,
-        'renderLevel': 'B+',
-        content: {
-          options: {
-            startColor: [
-              1,
-              1,
-              1,
-              1,
-            ],
-          },
-          positionOverLifetime: { },
-        },
-        transform: item.transform,
-      })),
-      'previewSize': [750, 1334],
-    }],
-    playerVersion: {
-      web: '2.4.5',
-      native: '1.0.0.231013104006',
-    },
-    images: [],
-    fonts: [],
-    spines: [],
-    version: '2.1',
-    shapes: [],
-    plugins: [],
-    type: 'mars',
-  };
-
-  const scene = await player.createComposition(json);
-
-  await player.gotoAndPlay(0.01);
-
-  return scene;
-}
