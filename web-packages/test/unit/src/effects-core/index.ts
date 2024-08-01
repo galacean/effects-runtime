@@ -1,4 +1,4 @@
-// import './composition';
+import './composition';
 // import './fallback';
 // import './image-template/image-template.spec';
 // import './interact/interact.spec';
