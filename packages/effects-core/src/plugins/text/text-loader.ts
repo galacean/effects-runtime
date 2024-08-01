@@ -36,9 +36,13 @@ export class TextLoader extends AbstractPlugin {
         textMesh?.mesh.setVisible(true);
       }
       item.content.updateTexture();
-      if (!item.content.ended && textMesh && !textMesh.mesh.isDestroyed) {
+      if (
+        !item.content.ended &&
+        textMesh &&
+        !textMesh.mesh.isDestroyed
+      ) {
         textMesh.updateItem(item.content);
-        textMesh?.applyChange();
+        textMesh.applyChange();
       }
     });
   }
