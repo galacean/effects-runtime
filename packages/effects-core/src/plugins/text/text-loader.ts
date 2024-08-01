@@ -26,17 +26,19 @@ export class TextLoader extends AbstractPlugin {
 
   override onCompositionUpdate (composition: Composition, dt: number): void {
     this.addItems.forEach(item => {
+      const textMesh = item.content.mesh;
+
       if (!item.contentVisible) {
-        item.content.mesh?.mesh.setVisible(false);
+        textMesh?.mesh.setVisible(false);
 
         return;
       } else {
-        item.content.mesh?.mesh.setVisible(true);
+        textMesh?.mesh.setVisible(true);
       }
       item.content.updateTexture();
-      if (!item.content.ended && item.content.mesh) {
-        item.content.mesh.updateItem(item.content);
-        item.content.mesh?.applyChange();
+      if (!item.content.ended && textMesh && !textMesh.mesh.isDestroyed) {
+        textMesh.updateItem(item.content);
+        textMesh?.applyChange();
       }
     });
   }
