@@ -1,6 +1,6 @@
 import './composition';
-// import './fallback';
-// import './image-template/image-template.spec';
+import './fallback';
+import './image-template/image-template.spec';
 // import './interact/interact.spec';
 // import './math';
 // import './plugins/cal/transform.spec';
@@ -14,4 +14,3 @@ import './plugins/sprite';
 import './texture.spec';
 import './transform.spec';
 import './utils.spec';
-import './template-image.spec';

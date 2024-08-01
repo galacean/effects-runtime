@@ -1,4 +1,4 @@
-import { Player, combineImageTemplate, loadImage, spec } from '@galacean/effects';
+import { Player, combineImageTemplate, getBackgroundImage, isString, loadImage, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -132,6 +132,80 @@ describe('Image template', async () => {
       spy();
     });
     expect(spy).to.not.have.been.called();
+  });
+
+  it('getBackgroundImage 函数 variables 输入 string 类型返回正确的结果', async () => {
+    const variables = {
+      'test': 'https://gw.alipayobjects.com/mdn/rms_7c464e/afts/img/A*L2GNRLWn9EAAAAAAAAAAAAAAARQnAQ',
+    };
+    const result = getBackgroundImage({
+      'background': {
+        'name': 'test',
+        'url': 'https://gw.alipayobjects.com/mdn/rms_7c464e/afts/img/A*rgNGR4Vb7lQAAAAAAAAAAAAAARQnAQ',
+        'type': spec.BackgroundType.image,
+      },
+      'width': 128,
+      'height': 128,
+    }, variables);
+
+    expect(isString(result)).to.be.true;
+    expect(result).to.be.equal(variables['test']);
+  });
+
+  it('getBackgroundImage 函数 variables 输入 image 对象返回正确的结果', async () => {
+    const image = await loadImage('https://gw.alipayobjects.com/mdn/rms_7c464e/afts/img/A*L2GNRLWn9EAAAAAAAAAAAAAAARQnAQ');
+    const result = getBackgroundImage({
+      'background': {
+        'name': 'test',
+        'url': 'https://gw.alipayobjects.com/mdn/rms_7c464e/afts/img/A*rgNGR4Vb7lQAAAAAAAAAAAAAARQnAQ',
+        'type': spec.BackgroundType.image,
+      },
+      'width': 128,
+      'height': 128,
+    }, {
+      'test': image,
+    });
+
+    expect(result instanceof HTMLImageElement).to.be.true;
+    expect(result).to.be.equal(image);
+  });
+
+  it('设置 string 类型返回正确的换图结果', async () => {
+    const originalURL = 'https://gw.alipayobjects.com/mdn/rms_7c464e/afts/img/A*rgNGR4Vb7lQAAAAAAAAAAAAAARQnAQ';
+    const newURL = 'https://gw.alipayobjects.com/mdn/rms_7c464e/afts/img/A*L2GNRLWn9EAAAAAAAAAAAAAAARQnAQ';
+    const result = await combineImageTemplate(originalURL, {
+      'background': {
+        'name': 'test',
+        'url': originalURL,
+        'type': spec.BackgroundType.image,
+      },
+      'width': 128,
+      'height': 128,
+    }, {
+      'test': newURL,
+    });
+
+    expect(result instanceof HTMLImageElement).to.be.true;
+    expect(result.src).to.be.equal(newURL);
+  });
+
+  it('设置 image 对象返回正确的换图结果', async () => {
+    const originalImage = await loadImage('https://mdn.alipayobjects.com/graph_jupiter/afts/img/A*_6tNSaXiUtEAAAAAAAAAAAAADsF2AQ/original');
+    const newImage = await loadImage('https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*ySrfRJvfvfQAAAAAAAAAAAAADvV6AQ/original');
+    const result = await combineImageTemplate(originalImage, {
+      'width': 641,
+      'height': 642,
+      'background': {
+        'name': 'image',
+        'url': originalImage,
+        'type': spec.BackgroundType.image,
+      },
+    }, {
+      'image': newImage,
+    });
+
+    expect(result instanceof HTMLImageElement).to.be.true;
+    expect(result).to.eql(newImage);
   });
 });
 

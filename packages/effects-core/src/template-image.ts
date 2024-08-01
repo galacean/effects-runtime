@@ -1,10 +1,10 @@
-import type { TemplateContent } from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
 import { loadImage } from './downloader';
 import { isString } from './utils';
 
 export function getBackgroundImage (
-  template: TemplateContent,
-  variables?: Record<string, number | string | string[] | HTMLImageElement>,
+  template: spec.TemplateContent,
+  variables?: spec.TemplateVariables,
 ) {
   let templateBackground;
   const { name, url } = template?.background ?? {};
@@ -29,8 +29,8 @@ export function getBackgroundImage (
  */
 export async function combineImageTemplate (
   url: string | HTMLImageElement,
-  template?: TemplateContent,
-  variables?: Record<string, number | string>,
+  template?: spec.TemplateContent,
+  variables?: spec.TemplateVariables,
 ) {
   let image;
 
@@ -48,20 +48,17 @@ export async function combineImageTemplate (
     return image;
   }
 
-  let drawImage: HTMLImageElement | number | string[] = image;
   // 获取动态换图的图片对象或 url 地址
   const templateBackground = getBackgroundImage(template, variables);
 
-  // 如果 templateBackground 是字符串
-  if (
-    templateBackground &&
-    isString(templateBackground) &&
-    templateBackground !== image.src
-  ) {
-    drawImage = isString(templateBackground) ? await loadImage(templateBackground) : templateBackground;
-  } else {
-    drawImage = templateBackground as HTMLImageElement;
+  if (templateBackground) {
+    if (isString(templateBackground) && templateBackground !== image.src) {
+      return loadImage(templateBackground);
+    }
+    if (templateBackground instanceof HTMLImageElement) {
+      return templateBackground;
+    }
   }
 
-  return drawImage;
+  return image;
 }

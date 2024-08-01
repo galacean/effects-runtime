@@ -50,7 +50,12 @@ export class GLGPUBuffer implements Disposable {
     public readonly pipelineContext: GLPipelineContext,
     props: GLGPUBufferProps,
   ) {
-    const { target = glContext.ARRAY_BUFFER, type = glContext.FLOAT, name, usage = glContext.STATIC_DRAW, data, elementCount } = props;
+    const {
+      name, data, elementCount,
+      target = glContext.ARRAY_BUFFER,
+      type = glContext.FLOAT,
+      usage = glContext.STATIC_DRAW,
+    } = props;
     const bytesPerElement = getBytesPerElementByGLType(type);
 
     this.target = target;
