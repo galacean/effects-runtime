@@ -1,15 +1,18 @@
 /* eslint-disable padding-line-between-statements */
 // @ts-nocheck
-import { Player, Texture, spec, Downloader, math } from '@galacean/effects';
-const { Matrix4, Quaternion, Vector3, RAD2DEG } = math;
+import type { GLGeometry } from '@galacean/effects';
+import { Player, Texture, spec, Downloader, math, Engine, Material, MaterialRenderType, GLEngine, SerializationHelper, VFXItem } from '@galacean/effects';
+const { Matrix4, Quaternion, Vector3, Vector4, RAD2DEG } = math;
 
 import type { ModelVFXItem } from '@galacean/effects-plugin-model';
+import { AnimationComponent, ModelMeshComponent } from '@galacean/effects-plugin-model';
 import {
   PEntity, PObject, PAnimationManager, PMorph,
   PBlendMode, PLightType, PMaterialType, PObjectType, PShadowType, PTransform,
   PCamera, PLight, PMesh, PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit,
   VFX_ITEM_TYPE_3D, RayBoxTesting, RayTriangleTesting,
 } from '@galacean/effects-plugin-model';
+import type { GLMaterial } from '@galacean/effects-webgl';
 import { LoaderImplEx } from '../../src/helper';
 import { generateComposition } from './utilities';
 
@@ -313,19 +316,13 @@ describe('渲染插件单测', function () {
   it('Camera测试', function () {
     const params1 = {
       id: '1',
-      name: 'camera1',
-      duration: 5.0,
-      endBehavior: 0,
-      type: 'camera',
-      content: {
-        options: {
-          aspect: 2,
-          near: 0.01,
-          far: 996,
-          fov: 35,
-          clipMode: 0,
-        },
-      },
+      dataType: spec.DataType.CameraComponent,
+      type: spec.CameraType.perspective,
+      aspect: 2,
+      near: 0.01,
+      far: 996,
+      fov: 35,
+      clipMode: 0,
     };
     const owner1 = {
       transform: {
@@ -333,14 +330,14 @@ describe('渲染插件单测', function () {
         rotation: [-27, 69, 35],
       },
     } as any as ModelVFXItem;
-    const camera1 = new PCamera(params1, 800, 600, owner1);
+    const camera1 = new PCamera('camera1', 800, 600, params1, owner1);
     expect(camera1.name).to.eql('camera1');
     expect(camera1.type).to.eql(PObjectType.camera);
     expect(camera1.width).to.eql(800);
     expect(camera1.height).to.eql(600);
     expect(camera1.farPlane).to.eql(996);
     expect(camera1.nearPlane).to.eql(0.01);
-    expect(camera1.fovy).to.eql(35);
+    expect(camera1.fov).to.eql(35);
     expect(camera1.clipMode).to.eql(0);
     expect(camera1.aspect).to.eql(2);
     expect(camera1.isReversed()).to.eql(false);
@@ -372,18 +369,12 @@ describe('渲染插件单测', function () {
     //=======================================================
     const params2 = {
       id: '2',
-      name: 'camera2',
-      duration: 5.0,
-      endBehavior: 0,
-      type: 'camera',
-      content: {
-        options: {
-          near: 0.03,
-          far: 1007,
-          fov: 48,
-          clipMode: 1,
-        },
-      },
+      dataType: spec.DataType.CameraComponent,
+      type: spec.CameraType.perspective,
+      near: 0.03,
+      far: 1007,
+      fov: 48,
+      clipMode: 1,
     };
     const owner2 = {
       transform: {
@@ -391,14 +382,14 @@ describe('渲染插件单测', function () {
         rotation: [0, 45, 30],
       },
     } as any as ModelVFXItem;
-    const camera2 = new PCamera(params2, 1080, 960, owner2);
+    const camera2 = new PCamera('camera2', 1080, 960, params2, owner2);
     expect(camera2.name).to.eql('camera2');
     expect(camera2.type).to.eql(PObjectType.camera);
     expect(camera2.width).to.eql(1080);
     expect(camera2.height).to.eql(960);
     expect(camera2.farPlane).to.eql(1007);
     expect(camera2.nearPlane).to.eql(0.03);
-    expect(camera2.fovy).to.eql(48);
+    expect(camera2.fov).to.eql(48);
     expect(camera2.clipMode).to.eql(1);
     expect(camera2.aspect).to.eql(1080 / 960);
     expect(camera2.isReversed()).to.eql(true);
@@ -431,22 +422,24 @@ describe('渲染插件单测', function () {
     const cameraManager = new PCameraManager();
     cameraManager.initial(1024, 768);
     cameraManager.remove(0);
-    const cam1 = cameraManager.insert(params1);
-    const cam2 = cameraManager.insert(params2);
+    const cam1 = cameraManager.insert('camera1', params1);
+    const cam2 = cameraManager.insert('camera2', params2);
     expect(cameraManager.defaultCamera).not.eql(cam1);
     expect(cameraManager.defaultCamera).not.eql(cam2);
     expect(cameraManager.defaultCamera).to.eql(cameraManager.getActiveCamera());
     expect(cameraManager.cameraList).to.eql([cam1, cam2]);
+    const viewportMatrix = Matrix4.IDENTITY.clone();
     cameraManager.updateDefaultCamera(
-      45, 0.001, 606, [30.5, 100, 77],
-      Quaternion.fromAxisAngle(new Vector3(10, -15, 33), 0.3, new Quaternion()), 1, 0
+      45, viewportMatrix, 1, 0.001, 606,
+      new Vector3(30.5, 100, 77),
+      Quaternion.fromAxisAngle(new Vector3(10, -15, 33), 0.3, new Quaternion()), 0
     );
     const acam = cameraManager.getActiveCamera();
     expect(acam.width).to.eql(1024);
     expect(acam.height).to.eql(768);
     expect(acam.farPlane).to.eql(606);
     expect(acam.nearPlane).to.eql(0.001);
-    expect(acam.fovy).to.eql(45);
+    expect(acam.fov).to.eql(45);
     expect(acam.clipMode).to.eql(0);
     expect(acam.aspect).to.eql(1);
     acam.position.toArray().forEach((v, i) => {
@@ -466,7 +459,7 @@ describe('渲染插件单测', function () {
     });
     acam.projectionMatrix.toArray().forEach((v, i) => {
       expect([
-        1.8106601238250732, 0, 0, 0,
+        2.414213562373095, 0, 0, 0,
         0, 2.4142136573791504, 0, 0,
         0, 0, -1.0000033378601074, -1,
         0, 0, -0.0020000033546239138, 0,
@@ -474,73 +467,120 @@ describe('渲染插件单测', function () {
     });
   });
   it('Material测试', function () {
-    const engine = {};
+    const engine = new Engine();
     const mat1 = new PMaterialPBR();
     const baseColorTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const baseColorTextureTransform1 = { offset: [0.23, 0.56] };
     const metallicRoughnessTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const metallicRoughnessTextureTransform1 = { offset: [0.79, -3.25], rotation: 0.986 };
     const normalTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const normalTextureTransform1 = { offset: [-9.87, 1.56], rotation: -1.11, scale: [0.5, 0.7] };
     const occlusionTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const occlusionTextureTransform1 = { rotation: -5.69, scale: [2.0, -3.3] };
     const emissiveTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const emissiveTextureTransform1 = { scale: [0, 20.3] };
-    const opts1 = {
+    const materialData1 = {
+      id: '1',
       name: 'mat1',
-      type: spec.MaterialType.pbr,
-
-      baseColorTexture: baseColorTexture1,
-      baseColorTextureTransform: baseColorTextureTransform1,
-      baseColorFactor: [233, 128, 65, 76],
-
-      metallicRoughnessTexture: metallicRoughnessTexture1,
-      metallicRoughnessTextureTransform: metallicRoughnessTextureTransform1,
-      metallicFactor: 0.78,
-      roughnessFactor: 0.35,
-
-      normalTexture: normalTexture1,
-      normalTextureTransform: normalTextureTransform1,
-      normalTextureScale: 0.63,
-
-      occlusionTexture: occlusionTexture1,
-      occlusionTextureTransform: occlusionTextureTransform1,
-      occlusionTextureStrength: 0.84,
-
-      emissiveTexture: emissiveTexture1,
-      emissiveTextureTransform: emissiveTextureTransform1,
-      emissiveFactor: [198, 120, 67, 99],
-      emissiveIntensity: 2.5,
-
-      enableShadow: true,
-
-      blending: spec.MaterialBlending.opaque,
-      alphaCutOff: 0.35,
-      side: spec.SideMode.FRONT,
+      dataType: spec.DataType.Material,
+      shader: { id: 'pbr00000000000000000000000000000' },
+      stringTags: {
+        RenderFace: spec.RenderFace.Front,
+        RenderType: spec.RenderType.Opaque,
+      },
+      floats: {
+        _MetallicFactor: 0.78,
+        _RoughnessFactor: 0.35,
+        _NormalScale: 0.63,
+        _OcclusionStrength: 0.84,
+        _EmissiveIntensity: 2.5,
+        _AlphaCutoff: 0.35,
+        _MetallicRoughnessRotation: 0.986,
+        _NormalRotation: -1.11,
+        _OcclusionRotation: -5.69,
+      },
+      colors: {
+        _BaseColorFactor: {
+          r: 233 / 255,
+          g: 128 / 255,
+          b: 65 / 255,
+          a: 76 / 255,
+        },
+        _EmissiveFactor: {
+          r: 198 / 255,
+          g: 120 / 255,
+          b: 67 / 255,
+          a: 99 / 255,
+        },
+      },
+      vector4s: {
+        _BaseColorSampler_ST: {
+          x: 1,
+          y: 1,
+          z: 0.23,
+          w: 0.56,
+        },
+        _MetallicRoughnessSampler_ST: {
+          x: 1,
+          y: 1,
+          z: 0.79,
+          w: -3.25,
+        },
+        _NormalSampler_ST: {
+          x: 0.5,
+          y: 0.7,
+          z: -9.87,
+          w: 1.56,
+        },
+        _OcclusionSampler_ST: {
+          x: 2.0,
+          y: -3.3,
+          z: 0,
+          w: 0,
+        },
+        _EmissiveSampler_ST: {
+          x: 0,
+          y: 20.3,
+          z: 0,
+          w: 0,
+        },
+      },
+      textures: {
+        _BaseColorSampler: {
+          texture: baseColorTexture1,
+        },
+        _MetallicRoughnessSampler: {
+          texture: metallicRoughnessTexture1,
+        },
+        _NormalSampler: {
+          texture: normalTexture1,
+        },
+        _OcclusionSampler: {
+          texture: occlusionTexture1,
+        },
+        _EmissiveSampler: {
+          texture: emissiveTexture1,
+        },
+      },
     };
-    expect(mat1.depthMask).to.eql(true);
-    expect(mat1.enableShadow).to.eql(false);
-    expect(mat1.blendMode).to.eql(PBlendMode.opaque);
-    expect(mat1.isTranslucent()).to.eql(false);
-    expect(mat1.alphaCutOff).to.eql(0.5);
-    expect(mat1.isFrontFace()).to.eql(true);
+    expect(mat1.ZWrite).to.eql(true);
+    expect(mat1.renderType).to.eql(spec.RenderType.Opaque);
+    expect(mat1.isTransparent()).to.eql(false);
+    expect(mat1.alphaCutoff).to.eql(0.5);
+    expect(mat1.isFrontSide()).to.eql(true);
     expect(mat1.hasBaseColorTexture()).to.eql(false);
-    expect(mat1.hasBaseColorTextureTrans()).to.eql(false);
+    expect(mat1.baseColorTextureTrans).to.eql(undefined);
     expect(mat1.hasMetallicRoughnessTexture()).to.eql(false);
-    expect(mat1.hasMetallicRoughnessTextureTrans()).to.eql(false);
+    expect(mat1.metallicRoughnessTextureTrans).to.eql(undefined);
     expect(mat1.hasNormalTexture()).to.eql(false);
-    expect(mat1.hasNormalTextureTrans()).to.eql(false);
+    expect(mat1.normalTextureTrans).to.eql(undefined);
     expect(mat1.hasOcclusionTexture()).to.eql(false);
-    expect(mat1.hasOcclusionTextureTrans()).to.eql(false);
+    expect(mat1.occlusionTextureTrans).to.eql(undefined);
     expect(mat1.hasEmissiveTexture()).to.eql(false);
-    expect(mat1.hasEmissiveTextureTrans()).to.eql(false);
-    mat1.create(opts1);
-    expect(mat1.name).to.eql('mat1');
+    expect(mat1.emissiveTextureTrans).to.eql(undefined);
+    const glMat1 = Material.create(engine);
+    glMat1.fromData(materialData1);
+    mat1.create(glMat1);
     expect(mat1.type).to.eql(PObjectType.material);
     expect(mat1.materialType).to.eql(PMaterialType.pbr);
-    expect(mat1.blendMode).to.eql(PBlendMode.opaque);
+    expect(mat1.renderType).to.eql(spec.RenderType.Opaque);
     expect(mat1.baseColorTexture).to.eql(baseColorTexture1);
-    expect(mat1.hasBaseColorTextureTrans()).to.eql(true);
+    expect(mat1.baseColorTextureTrans).not.to.eql(undefined);
     mat1.baseColorTextureTrans.toArray().forEach((v, i) => {
       expect([
         1, 0, 0.23000000417232513,
@@ -553,8 +593,9 @@ describe('渲染插件单测', function () {
     });
     expect(mat1.metallicRoughnessTexture).to.eql(metallicRoughnessTexture1);
     expect(mat1.metallicFactor).to.eql(0.78);
+
     expect(mat1.roughnessFactor).to.eql(0.35);
-    expect(mat1.hasMetallicRoughnessTextureTrans()).to.eql(true);
+    expect(mat1.metallicRoughnessTextureTrans).not.to.eql(undefined);
     mat1.metallicRoughnessTextureTrans.toArray().forEach((v, i) => {
       expect([
         0.552029550075531, -0.8338245153427124, 0.7900000214576721,
@@ -564,7 +605,7 @@ describe('渲染插件单测', function () {
     });
     expect(mat1.normalTexture).to.eql(normalTexture1);
     expect(mat1.normalTextureScale).to.eql(0.63);
-    expect(mat1.hasNormalTextureTrans()).to.eql(true);
+    expect(mat1.normalTextureTrans).not.to.eql(undefined);
     mat1.normalTextureTrans.toArray().forEach((v, i) => {
       expect([
         0.22233076393604279, 0.6269890666007996, -9.869999885559082,
@@ -574,7 +615,7 @@ describe('渲染插件单测', function () {
     });
     expect(mat1.occlusionTexture).to.eql(occlusionTexture1);
     expect(mat1.occlusionTextureStrength).to.eql(0.84);
-    expect(mat1.hasOcclusionTextureTrans()).to.eql(true);
+    expect(mat1.occlusionTextureTrans).not.to.eql(undefined);
     mat1.occlusionTextureTrans.toArray().forEach((v, i) => {
       expect([
         1.6583285331726074, 1.8447165489196777, 0,
@@ -587,7 +628,7 @@ describe('渲染插件单测', function () {
     mat1.emissiveFactor.toArray().forEach((v, i) => {
       expect([198, 120, 67, 99][i] / 255).closeTo(v, 1e-5);
     });
-    expect(mat1.hasEmissiveTextureTrans()).to.eql(true);
+    expect(mat1.emissiveTextureTrans).not.to.eql(undefined);
     mat1.emissiveTextureTrans.toArray().forEach((v, i) => {
       expect([
         0, 0, 0,
@@ -595,11 +636,12 @@ describe('渲染插件单测', function () {
         0, 0, 1,
       ][i]).closeTo(v, 1e-5);
     });
-    expect(mat1.depthMask).to.eql(true);
-    expect(mat1.alphaCutOff).to.eql(0.35);
-    expect(mat1.isFrontFace()).to.eql(true);
-    expect(mat1.enableShadow).to.eql(true);
+    expect(mat1.ZWrite).to.eql(true);
+    expect(mat1.alphaCutoff).to.eql(0.35);
+
+    expect(mat1.isFrontSide()).to.eql(true);
     expect(mat1.isOpaque()).to.eql(true);
+
     expect(mat1.hasBaseColorTexture()).to.eql(true);
     expect(mat1.hasMetallicRoughnessTexture()).to.eql(true);
     expect(mat1.hasNormalTexture()).to.eql(true);
@@ -608,76 +650,86 @@ describe('渲染插件单测', function () {
     //==============================================
     const mat2 = new PMaterialUnlit();
     const baseColorTexture2 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const opts2 = {
+    const materialData2 = {
+      id: '2',
       name: 'mat2',
-      type: spec.MaterialType.unlit,
-
-      blending: spec.MaterialBlending.masked,
-      alphaCutOff: 0.76,
-      side: spec.SideMode.DOUBLE,
-
-      baseColorTexture: baseColorTexture2,
-      baseColorFactor: [53, 246, 89, 135],
-      depthMask: false,
+      dataType: spec.DataType.Material,
+      shader: { id: 'unlit000000000000000000000000000' },
+      stringTags: {
+        RenderFace: spec.RenderFace.Both,
+        RenderType: spec.RenderType.Opaque,
+      },
+      floats: {
+        ZWrite: 0,
+        AlphaClip: 1,
+        _AlphaCutoff: 0.76,
+      },
+      colors: {
+        _BaseColorFactor: {
+          r: 53 / 255,
+          g: 246 / 255,
+          b: 89 / 255,
+          a: 135 / 255,
+        },
+      },
+      textures: {
+        _BaseColorSampler: {
+          texture: baseColorTexture2,
+        },
+      },
     };
-    expect(mat2.depthMask).to.eql(true);
-    expect(mat2.blendMode).to.eql(PBlendMode.opaque);
-    expect(mat2.isMasked()).to.eql(false);
-    expect(mat2.alphaCutOff).to.eql(0.5);
-    expect(mat2.isBothFace()).to.eql(false);
+    expect(mat2.ZWrite).to.eql(true);
+    expect(mat2.renderType).to.eql(spec.RenderType.Opaque);
+    expect(mat2.alphaClip).to.eql(false);
+    expect(mat2.alphaCutoff).to.eql(0.5);
+    expect(mat2.isBothSide()).to.eql(false);
     expect(mat2.hasBaseColorTexture()).to.eql(false);
-    mat2.create(opts2);
-    expect(mat2.name).to.eql('mat2');
+    const glMat2 = Material.create(engine);
+    glMat2.fromData(materialData2);
+    mat2.create(glMat2);
     expect(mat2.type).to.eql(PObjectType.material);
     expect(mat2.materialType).to.eql(PMaterialType.unlit);
     expect(mat2.baseColorTexture).to.eql(baseColorTexture2);
     mat2.baseColorFactor.toArray().forEach((v, i) => {
       expect([53, 246, 89, 135][i] / 255).closeTo(v, 1e-5);
     });
-    expect(mat2.depthMask).to.eql(false);
-    expect(mat2.blendMode).to.eql(PBlendMode.masked);
-    expect(mat2.isMasked()).to.eql(true);
-    expect(mat2.alphaCutOff).to.eql(0.76);
-    expect(mat2.isBothFace()).to.eql(true);
+    expect(mat2.ZWrite).to.eql(false);
+    expect(mat2.renderType).to.eql(spec.RenderType.Opaque);
+    expect(mat2.alphaClip).to.eql(true);
+    expect(mat2.alphaCutoff).to.eql(0.76);
+    expect(mat2.isBothSide()).to.eql(true);
     expect(mat2.hasBaseColorTexture()).to.eql(true);
   });
   it('Skybox测试', function () {
-    const engine = {};
+    const engine = new Engine();
     const specularTexture = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const brdfLUTTexture = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const options = {
       id: '003',
       name: 'skybox1',
-      duration: 13.5,
-      endBehavior: 0,
-      type: 'skybox',
-      pluginName: 'model',
-      pn: 0,
-      content: {
-        options: {
-          renderable: true,
-          intensity: 3.45,
-          reflectionsIntensity: 1.23,
-          irradianceCoeffs: [1, 2, 3, 4, 5],
-          specularImage: specularTexture,
-          specularImageSize: 128,
-          specularMipCount: 6,
-        },
-      },
+      dataType: spec.DataType.SkyboxComponent,
+      renderable: true,
+      intensity: 3.45,
+      reflectionsIntensity: 1.23,
+      irradianceCoeffs: [1, 2, 3, 4, 5, 6],
+      specularImage: specularTexture,
+      specularImageSize: 128,
+      specularMipCount: 6,
     };
-    const skybox = new PSkybox(options, { listIndex: 123 } as any as ModelVFXItem);
+    const skybox = new PSkybox('skybox1', options, { item: { renderOrder: 123 } } as any as ModelVFXItem);
     skybox.setup(brdfLUTTexture);
     expect(skybox.type).to.eql(PObjectType.skybox);
     expect(skybox.priority).to.eql(123);
     expect(skybox.name).to.eql('skybox1');
     expect(skybox.intensity).to.eql(3.45);
     expect(skybox.reflectionsIntensity).to.eql(1.23);
-    expect(skybox.irradianceCoeffs).to.eql([1, 2, 3, 4, 5]);
+    expect(skybox.irradianceCoeffs).to.eql([[1, 2, 3], [4, 5, 6]]);
     expect(skybox.specularImage).to.eql(specularTexture);
     expect(skybox.specularImageSize).to.eql(128);
     expect(skybox.specularMipCount).to.eql(6);
   });
   it('Mesh测试', async function () {
+    const engine = new Engine();
     const loader = new LoaderImplEx();
     const loadResult = await loader.loadScene({
       gltf: {
@@ -691,111 +743,285 @@ describe('渲染插件单测', function () {
       },
     });
     const sceneAABB = loadResult.sceneAABB;
-    [0.569136917591095, 1.5065498352050781, 0.18095403909683228].forEach((v, i) => {
+    [0.1809539943933487, 0.569136917591095, 1.5065499544143677].forEach((v, i) => {
       expect(sceneAABB.max[i]).closeTo(v, 1e-5);
     });
-    [-0.5691370964050293, -6.193791257658177e-9, -0.13100001215934753].forEach((v, i) => {
+    [-0.13100001215934753, -0.5691370964050293, 0].forEach((v, i) => {
       expect(sceneAABB.min[i]).closeTo(v, 1e-5);
     });
     //
-    const itemList = loadResult.items;
-    expect(itemList.length).to.eql(2);
-    expect(itemList[0].type).to.eql('tree');
-    const itemTree = itemList[0];
-    const animManager = new PAnimationManager(itemTree.content.options.tree, itemTree);
-    expect(animManager.type).to.eql(PObjectType.animationManager);
-    const animations = animManager.animations;
-    expect(animations.length).to.eql(1);
-    const anim = animations[0];
-    expect(anim.time).to.eql(0);
-    expect(anim.duration).to.eql(2);
-    expect(anim.type).to.eql(PObjectType.animation);
-    const tracks = anim.tracks;
-    expect(tracks.length).to.eql(57);
-    const track0 = tracks[0];
-    expect(track0.component).to.eql(3);
-    expect(track0.interp).to.eql(0);
-    expect(track0.node).to.eql(3);
-    expect(track0.path).to.eql(0);
-    expect(track0.dataArray.length).to.eql(144);
+    const jsonScene = loadResult.jsonScene;
+    const itemList = jsonScene.items;
+    expect(itemList.length).to.eql(23);
+    engine.addPackageDatas({ jsonScene });
+    const animComp = new AnimationComponent(engine);
+    SerializationHelper.deserializeTaggedProperties(jsonScene.components[1], animComp);
+    expect(animComp.clips.length).to.eql(1);
+    const animClip = animComp.clips[0];
+    expect(animClip.duration).to.eql(2);
+    const positionCurves = animClip.positionCurves;
+    expect(positionCurves.length).to.eql(19);
+    const positionCurve0 = positionCurves[0];
+    expect(positionCurve0.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1');
+    const positionKeyFrames0 = positionCurve0.keyFrames;
+    const position0_0 = positionKeyFrames0.getValue(0);
+    const position0_1 = positionKeyFrames0.getValue(0.3);
+    const position0_2 = positionKeyFrames0.getValue(0.7);
+    const position0_3 = positionKeyFrames0.getValue(0.9);
+    const position0_4 = positionKeyFrames0.getValue(1.3);
+    const position0_5 = positionKeyFrames0.getValue(1.5);
+    const position0_6 = positionKeyFrames0.getValue(1.7);
+    const position0_7 = positionKeyFrames0.getValue(2.0);
+    [1.971350016560791e-8, -0.02000010944902897, 0.6439971327781677].forEach((v, i) => {
+      expect(position0_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.7152400388908973e-8, -0.020370520651340485, 0.6932101249694824].forEach((v, i) => {
+      expect(position0_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.3019600508812346e-8, -0.025214210152626038, 0.652949869632721].forEach((v, i) => {
+      expect(position0_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [2.762979889325834e-8, -0.025000110268592834, 0.6420990824699402].forEach((v, i) => {
+      expect(position0_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [8.085935612465292e-9, -0.030000123813372696, 0.6976126806942994].forEach((v, i) => {
+      expect(position0_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [2.1110500014742684e-8, -0.030000120401382446, 0.7099999785423279].forEach((v, i) => {
+      expect(position0_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [2.436473201028034e-8, -0.030000099383949756, 0.6683129367469864].forEach((v, i) => {
+      expect(position0_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0633099734036477e-8, -0.02000010944902897, 0.6399999856948853].forEach((v, i) => {
+      expect(position0_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    const positionCurve8 = positionCurves[8];
+    expect(positionCurve8.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_R');
+    const positionKeyFrames8 = positionCurve8.keyFrames;
+    const position8_0 = positionKeyFrames8.getValue(0);
+    const position8_1 = positionKeyFrames8.getValue(0.3);
+    const position8_2 = positionKeyFrames8.getValue(0.7);
+    const position8_3 = positionKeyFrames8.getValue(0.9);
+    const position8_4 = positionKeyFrames8.getValue(1.3);
+    const position8_5 = positionKeyFrames8.getValue(1.5);
+    const position8_6 = positionKeyFrames8.getValue(1.7);
+    const position8_7 = positionKeyFrames8.getValue(2.0);
+    [-0.000039040998672135174, -0.08799996972084045, -0.00005953760046395473].forEach((v, i) => {
+      expect(position8_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003922427276847884, -0.08799999766051769, -0.0008771866378083359].forEach((v, i) => {
+      expect(position8_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003911929889000021, -0.08799997717142105, -0.00005948260150034912].forEach((v, i) => {
+      expect(position8_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003904350891126285, -0.08809837698936462, -0.0002653924639162142].forEach((v, i) => {
+      expect(position8_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003911929889000021, -0.08799993991851807, -0.000059597201470751315].forEach((v, i) => {
+      expect(position8_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003927569923689589, -0.08799988031387329, -0.00005930659972364083].forEach((v, i) => {
+      expect(position8_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.000039069403994673735, -0.08799993246793747, 0.0005114078885526396].forEach((v, i) => {
+      expect(position8_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003915140403698558, -0.08800002932548523, 0.0005113929873914458].forEach((v, i) => {
+      expect(position8_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    const rotationCurves = animClip.rotationCurves;
+    expect(rotationCurves.length).to.eql(19);
+    const rotationCurve2 = rotationCurves[2];
+    expect(rotationCurve2.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3');
+    const rotationKeyFrames2 = rotationCurve2.keyFrames;
+    const rotation2_0 = rotationKeyFrames2.getValue(0);
+    const rotation2_1 = rotationKeyFrames2.getValue(0.3);
+    const rotation2_2 = rotationKeyFrames2.getValue(0.7);
+    const rotation2_3 = rotationKeyFrames2.getValue(0.9);
+    const rotation2_4 = rotationKeyFrames2.getValue(1.3);
+    const rotation2_5 = rotationKeyFrames2.getValue(1.5);
+    const rotation2_6 = rotationKeyFrames2.getValue(1.7);
+    const rotation2_7 = rotationKeyFrames2.getValue(2.0);
+    [-0.004063833504915237, 0.6227141618728638, -0.004470687359571457, -0.7824262380599976].forEach((v, i) => {
+      expect(rotation2_0.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.03801713024091751, 0.6282665026935523, -0.00339269166207297, -0.777061420254362].forEach((v, i) => {
+      expect(rotation2_1.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.1314817816728645, 0.630556479277004, -0.011340485281774454, -0.7648415533903035].forEach((v, i) => {
+      expect(rotation2_2.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.1168547252009107, 0.6266589765632465, -0.04702295730606794, -0.7690464378584257].forEach((v, i) => {
+      expect(rotation2_3.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.03328938812202511, 0.623312701160144, -0.03191636684582656, -0.7806117210782524].forEach((v, i) => {
+      expect(rotation2_4.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.06163197010755539, 0.6243447661399841, -0.039358772337436676, -0.7777185440063477].forEach((v, i) => {
+      expect(rotation2_5.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.02172671915471322, 0.6351626229281891, -0.030278636055995175, -0.7714790252490131].forEach((v, i) => {
+      expect(rotation2_6.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.005114343483000994, 0.6225405335426331, -0.004524007439613342, -0.7825579643249512].forEach((v, i) => {
+      expect(rotation2_7.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    const rotationCurve13 = rotationCurves[13];
+    expect(rotationCurve13.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2/leg_joint_L_3');
+    const rotationKeyFrames13 = rotationCurve13.keyFrames;
+    const rotation13_0 = rotationKeyFrames13.getValue(0);
+    const rotation13_1 = rotationKeyFrames13.getValue(0.3);
+    const rotation13_2 = rotationKeyFrames13.getValue(0.7);
+    const rotation13_3 = rotationKeyFrames13.getValue(0.9);
+    const rotation13_4 = rotationKeyFrames13.getValue(1.3);
+    const rotation13_5 = rotationKeyFrames13.getValue(1.5);
+    const rotation13_6 = rotationKeyFrames13.getValue(1.7);
+    const rotation13_7 = rotationKeyFrames13.getValue(2.0);
+    [0.008959016762673855, -0.9851901531219482, 0.0153896389529109, -0.17053912580013275].forEach((v, i) => {
+      expect(rotation13_0.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.04403283196138942, -0.908319029810519, 0.031412340516569354, -0.4147665429074031].forEach((v, i) => {
+      expect(rotation13_1.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.024059126421857722, -0.8614343652900524, 0.016455635742597362, -0.5070318503158316].forEach((v, i) => {
+      expect(rotation13_2.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.01890529013440476, -0.8578361331730234, 0.009168970083039001, -0.5134937143417954].forEach((v, i) => {
+      expect(rotation13_3.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.03274404459830858, -0.882739316184192, 0.01733195126108042, -0.4684005181686966].forEach((v, i) => {
+      expect(rotation13_4.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.030687648802995682, -0.939177930355072, 0.012641440145671368, -0.3418239653110504].forEach((v, i) => {
+      expect(rotation13_5.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.019070487086092564, -0.971200043417106, 0.007921307506013366, -0.23736954058940632].forEach((v, i) => {
+      expect(rotation13_6.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.01264618057757616, -0.9879721403121948, 0.01400639396160841, -0.15347692370414734].forEach((v, i) => {
+      expect(rotation13_7.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    const scaleCurves = animClip.scaleCurves;
+    expect(scaleCurves.length).to.eql(19);
+    const scaleCurve5 = scaleCurves[5];
+    expect(scaleCurve5.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_');
+    const scaleKeyFrames5 = scaleCurve5.keyFrames;
+    const scale5_0 = scaleKeyFrames5.getValue(0);
+    const scale5_1 = scaleKeyFrames5.getValue(0.3);
+    const scale5_2 = scaleKeyFrames5.getValue(0.7);
+    const scale5_3 = scaleKeyFrames5.getValue(0.9);
+    const scale5_4 = scaleKeyFrames5.getValue(1.3);
+    const scale5_5 = scaleKeyFrames5.getValue(1.5);
+    const scale5_6 = scaleKeyFrames5.getValue(1.7);
+    const scale5_7 = scaleKeyFrames5.getValue(2.0);
+    [1.0000004768371582, 1.0000001192092896, 0.9999999403953552].forEach((v, i) => {
+      expect(scale5_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.000000239815579, 1, 1.0005707144737244].forEach((v, i) => {
+      expect(scale5_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.000000239815579, 1, 1.0005710124969482].forEach((v, i) => {
+      expect(scale5_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000001206062894, 0.9999998807907104, 1.0005708932876587].forEach((v, i) => {
+      expect(scale5_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000003590248685, 0.9999999403953552, 1.0005708932876587].forEach((v, i) => {
+      expect(scale5_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000001192092896, 0.9999998211860657, 1].forEach((v, i) => {
+      expect(scale5_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000002414453775, 0.9999998901039362, 0.9991822242736816].forEach((v, i) => {
+      expect(scale5_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000002414453775, 0.9999998901039362, 0.9991822242736816].forEach((v, i) => {
+      expect(scale5_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    const scaleCurve17 = scaleCurves[17];
+    expect(scaleCurve17.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2/leg_joint_R_3');
+    const scaleKeyFrames17 = scaleCurve17.keyFrames;
+    const scale17_0 = scaleKeyFrames17.getValue(0);
+    const scale17_1 = scaleKeyFrames17.getValue(0.3);
+    const scale17_2 = scaleKeyFrames17.getValue(0.7);
+    const scale17_3 = scaleKeyFrames17.getValue(0.9);
+    const scale17_4 = scaleKeyFrames17.getValue(1.3);
+    const scale17_5 = scaleKeyFrames17.getValue(1.5);
+    const scale17_6 = scaleKeyFrames17.getValue(1.7);
+    const scale17_7 = scaleKeyFrames17.getValue(2.0);
+    [0.9999997615814209, 0.999999463558197, 1].forEach((v, i) => {
+      expect(scale17_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999999259598553, 1.0007401052862406, 0.9993287920951843].forEach((v, i) => {
+      expect(scale17_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999995841644864, 0.9999991655349731, 1.0005706548690796].forEach((v, i) => {
+      expect(scale17_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999996423721313, 0.999999463558197, 1.000000238418579].forEach((v, i) => {
+      expect(scale17_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999996423721313, 0.9999995231628418, 0.9999997019767761].forEach((v, i) => {
+      expect(scale17_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999996423721313, 0.9999994039535522, 0.9999997019767761].forEach((v, i) => {
+      expect(scale17_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.99999981687866, 0.99990118294954, 0.99979400634765].forEach((v, i) => {
+      expect(scale17_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.99999940535055, 0.99999916553497, 1.00057071447372].forEach((v, i) => {
+      expect(scale17_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    expect(itemList[22].type).to.eql('mesh');
+    const itemMesh = new VFXItem(engine);
+    SerializationHelper.deserializeTaggedProperties(itemList[22], itemMesh);
+    const meshComp = itemMesh.getComponent(ModelMeshComponent);
+    const meshData = meshComp.data as spec.ModelMeshComponentData;
+    expect(meshData.name).to.eql('Cesium_Man');
+    const geometry = meshData.geometry as GLGeometry;
+    expect(geometry.subMeshes.length).to.eql(1);
+    expect(geometry.subMeshes[0].indexCount).to.eql(14016);
+    expect(geometry.subMeshes[0].offset).to.eql(0);
+    expect(geometry.subMeshes[0].vertexCount).to.eql(3273);
+    const skin = geometry.skin;
+    expect(skin.boneNames).to.eql([
+      'Armature/Skeleton_torso_joint_1',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_neck_joint_1',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_neck_joint_1/Skeleton_neck_joint_2',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_R',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_/Skeleton_arm_joint_L__3_',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_R/Skeleton_arm_joint_R__2_',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_/Skeleton_arm_joint_L__3_/Skeleton_arm_joint_L__2_',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_R/Skeleton_arm_joint_R__2_/Skeleton_arm_joint_R__3_',
+      'Armature/Skeleton_torso_joint_1/leg_joint_L_1',
+      'Armature/Skeleton_torso_joint_1/leg_joint_R_1',
+      'Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2',
+      'Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2',
+      'Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2/leg_joint_L_3',
+      'Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2/leg_joint_R_3',
+      'Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2/leg_joint_L_3/leg_joint_L_5',
+      'Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2/leg_joint_R_3/leg_joint_R_5',
+    ]);
+    expect(skin.inverseBindMatrices.length).eql(304);
     [
-      1.971350016560791e-8, -0.02000010944902897, 0.6439971327781677, 1.7385199058139733e-8, -0.02000010944902897, 0.6540120840072632, 2.0703099679053594e-8, -0.02000010944902897,
-      0.6670830845832825, 2.993629877323656e-8, -0.020000120624899864, 0.6802471876144409, 3.00744993353419e-8, -0.020000120624899864, 0.6905401349067688, 2.984170066611114e-8,
-      -0.020000120624899864, 0.6950002312660217, 2.55343000077346e-8, -0.020098520442843437,
-    ].forEach((val, idx) => {
-      expect(track0.dataArray[idx]).to.eql(val);
+      0.9971418380737305, -4.3711398944878965e-8, 0.07555299252271652, 0, 4.358646421565027e-8, 1, 3.3025269186026662e-9, 0, -0.07555299252271652,
+      0, 0.9971418380737305, 0, 0.05130045861005783, -0.0049998159520328045, -0.6770592331886292, 1, 0.06041746959090233, -4.3711398944878965e-8,
+      0.9981732964515686, 0, 2.64093213964145e-9, 1, 4.3631551704947924e-8, 0, -0.9981732964515686, 0, 0.06041746959090233, 0, 0.8218303918838501,
+      -0.004986404906958342, -0.0607638880610466, 1, 0.986260712146759, -4.3711398944878965e-8, 0.16519659757614136, 0, 4.3110834013759813e-8, 1,
+      7.22097448502268e-9, 0, -0.16519659757614136, 0, 0.986260712146759, 0, 0.18158070743083954, -0.004987061023712158, -1.058603048324585, 1,
+      -0.0384785495698452, -4.3711398944878965e-8, 0.9992595911026001, 0, -1.6819512449472995e-9, 1, 4.367903372326509e-8, 0, -0.9992595911026001,
+      0, -0.0384785495698452, 0,
+    ].forEach((v, i) => {
+      expect(skin.inverseBindMatrices[i]).closeTo(v, 1e-5);
     });
-    expect(track0.timeArray.length).to.eql(48);
-    [
-      0.04166661947965622, 0.08333330601453781, 0.125, 0.16666659712791443, 0.20833329856395721, 0.25, 0.29166659712791443, 0.3333333134651184,
-      0.3750000298023224, 0.41666659712791443, 0.4583333134651184, 0.5, 0.5416666865348816, 0.5833333134651184, 0.625, 0.6666666865348816,
-      0.7083333134651184, 0.75, 0.7916666865348816, 0.8333333134651184, 0.8750000596046448, 0.9166666865348816, 0.9583333134651184, 1,
-      1.0416669845581055, 1.0833330154418945, 1.125, 1.1666669845581055, 1.2083330154418945, 1.25, 1.2916669845581055, 1.3333330154418945,
-    ].forEach((val, idx) => {
-      expect(track0.timeArray[idx]).to.eql(val);
-    });
-    expect(itemList[1].type).to.eql('mesh');
-    const itemMesh = itemList[1];
-    const priority = 123;
-    const mesh = new PMesh(player.renderer.engine, itemMesh, { listIndex: priority } as any as ModelVFXItem);
-    expect(mesh.name).to.eql('Cesium_Man');
-    expect(mesh.type).to.eql(PObjectType.mesh);
-    expect(mesh.parentIndex).to.eql(2);
-    expect(mesh.skin).not.eql(undefined);
-    expect(mesh.primitives.length).to.eql(1);
-    expect(mesh.hide).to.eql(false);
-    expect(mesh.priority).to.eql(priority);
-    mesh.boundingBox.max.toArray().forEach((v, i) => {
-      expect(v).closeTo([0.1809540092945099, 0.5691368579864502, 1.5065499544143677][i], 1e-5);
-    });
-    expect(mesh.boundingBox.min.toArray()).to.eql([-0.13100001215934753, -0.5691370964050293, 0]);
-    expect(mesh.mriMeshs.length).to.eql(1);
-    const skin = mesh.skin;
-    expect(skin.name.substring(0, 8)).to.eql('Armature');
-    expect(skin.type).to.eql(PObjectType.skin);
-    expect(skin.skeleton).to.eql(3);
-    expect(skin.jointList).to.eql([
-      3, 12, 13, 20, 21, 17, 14, 18, 15, 19, 16, 8, 4, 9, 5, 10, 6, 11, 7,
-    ]);
-    expect(skin.inverseBindMatrices.length).eql(19);
-    expect(skin.inverseBindMatrices[0].toArray()).eql([
-      0.9971418380737305, -4.3711398944878965e-8, 0.07555299252271652, 0,
-      4.358646421565027e-8, 1, 3.3025269186026662e-9, 0,
-      -0.07555299252271652, 0, 0.9971418380737305, 0,
-      0.05130045861005783, -0.0049998159520328045, -0.6770592331886292, 1,
-    ]);
-    expect(skin.inverseBindMatrices[1].toArray()).eql([
-      0.06041746959090233, -4.3711398944878965e-8, 0.9981732964515686, 0,
-      2.64093213964145e-9, 1, 4.3631551704947924e-8, 0,
-      -0.9981732964515686, 0, 0.06041746959090233, 0,
-      0.8218303918838501, -0.004986404906958342, -0.0607638880610466, 1,
-    ]);
-    expect(skin.inverseBindMatrices[2].toArray()).eql([
-      0.986260712146759, -4.3711398944878965e-8, 0.16519659757614136, 0,
-      4.3110834013759813e-8, 1, 7.22097448502268e-9, 0,
-      -0.16519659757614136, 0, 0.986260712146759, 0,
-      0.18158070743083954, -0.004987061023712158, -1.058603048324585, 1,
-    ]);
-    mesh.primitives.forEach(prim => {
-      const morph = new PMorph();
-      morph.create(prim.getEffectsGeometry());
-      expect(morph.hasNormalMorph).to.eql(false);
-      expect(morph.hasPositionMorph).to.eql(false);
-      expect(morph.hasTangentMorph).to.eql(false);
-      expect(morph.morphWeightsLength).to.eql(0);
-      expect(morph.name.substring(0, 12)).to.eql('Morph target');
-      expect(morph.type).to.eql(8);
-      expect(morph.isNone()).to.eql(false);
-      expect(morph.isValid()).to.eql(true);
-      expect(morph.hasMorph()).to.eql(false);
-    });
-    const primitive = mesh.primitives[0];
-    expect(primitive.effectsPriority).to.eql(priority);
-    expect(primitive.shadowType).to.eql(PShadowType.none);
-    const geometry = primitive.getEffectsGeometry();
-    expect(geometry).to.eql(itemMesh.content.options.primitives[0].geometry);
     expect(geometry.getAttributeNames()).to.eql([
-      'aPos', 'aNormal', 'aUV', 'aJoints', 'aWeights',
+      'aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights',
     ]);
     expect(geometry.drawStart).to.eql(0);
     expect(geometry.drawCount).to.eql(14016);
@@ -848,29 +1074,19 @@ describe('渲染插件单测', function () {
         type: 5126,
       });
     }
-    expect(itemMesh.content.options.primitives[0].material.type).to.eql(spec.MaterialType.pbr);
-    const meshMaterial = primitive.material;
-    expect(meshMaterial.materialType).to.eql(PMaterialType.pbr);
-    expect(meshMaterial.name).to.eql('Cesium_Man-effect');
-    meshMaterial.baseColorFactor.toArray().forEach((v, i) => {
-      expect([1, 1, 1, 1][i]).closeTo(v, 1e-5);
-    });
-    const inMaterial = itemMesh.content.options.primitives[0].material;
-    expect(meshMaterial.baseColorTexture).to.eql(inMaterial.baseColorTexture);
-    expect(meshMaterial.emissiveIntensity).to.eql(1);
-    meshMaterial.emissiveFactor.toArray().forEach((v, i) => {
-      expect([0, 0, 0][i]).closeTo(v, 1e-5);
-    });
-    expect(meshMaterial.roughnessFactor).to.eql(1);
-    expect(meshMaterial.metallicFactor).to.eql(0);
-    expect(meshMaterial.enableShadow).to.eql(false);
-    //
-    mesh.boundingBox.min.toArray().forEach((v, i) => {
-      expect([-0.13100001215934753, -0.5691370964050293, 0][i]).closeTo(v, 1e-5);
-    });
-    mesh.boundingBox.max.toArray().forEach((v, i) => {
-      expect([0.1809540092945099, 0.5691368579864502, 1.5065499544143677][i]).closeTo(v, 1e-5);
-    });
+    const meshMaterial = meshComp.materials[0] as GLMaterial;
+    expect(meshMaterial.colors._BaseColorFactor).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+    expect(meshMaterial.colors._EmissiveFactor).to.eql({ r: 0, g: 0, b: 0, a: 1 });
+    expect(meshMaterial.floats.AlphaClip).to.eql(0);
+    expect(meshMaterial.floats.ZTest).to.eql(1);
+    expect(meshMaterial.floats.ZWrite).to.eql(1);
+    expect(meshMaterial.floats._AlphaCutoff).to.eql(0);
+    expect(meshMaterial.floats._EmissiveIntensity).to.eql(1);
+    expect(meshMaterial.floats._MetallicFactor).to.eql(0);
+    expect(meshMaterial.floats._NormalScale).to.eql(1);
+    expect(meshMaterial.floats._OcclusionStrength).to.eql(0);
+    expect(meshMaterial.floats._RoughnessFactor).to.eql(1);
+    expect(meshMaterial.floats._SpecularAA).to.eql(0);
     await loader.loadScene({
       gltf: {
         resource: 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/WaterBottle.glb',
@@ -972,7 +1188,6 @@ describe('渲染插件单测', function () {
       });
       expect(meshMaterial.roughnessFactor).to.eql(1);
       expect(meshMaterial.metallicFactor).to.eql(1);
-      expect(meshMaterial.enableShadow).to.eql(false);
       //
       mesh.boundingBox.min.toArray().forEach((v, i) => {
         expect([-0.054450009018182755, -0.13022033870220184, -0.05445002391934395][i]).closeTo(v, 1e-5);
@@ -1271,7 +1486,7 @@ describe('渲染插件单测', function () {
     const material = primitives[0].material;
     expect(material.name).to.eql('Cesium_Man-effect');
     expect(material.type).to.eql('pbr');
-    expect(material.alphaCutOff).to.eql(0.5);
+    expect(material.alphaCutoff).to.eql(0.5);
     expect(material.baseColorFactor).to.eql([255, 255, 255, 255]);
     expect(material.baseColorTexture).not.eql(undefined);
     expect(material.side).to.eql(spec.SideMode.FRONT);
