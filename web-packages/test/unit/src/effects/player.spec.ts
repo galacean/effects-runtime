@@ -154,7 +154,7 @@ describe('player case', () => {
 });
 
 describe('create by gl context', function () {
-  const timeout = 1500;
+  const timeout = 10;
   let player;
 
   this.timeout('100s');
@@ -166,14 +166,10 @@ describe('create by gl context', function () {
 
   it('set webgl1 context', async () => {
     const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl');
 
-    player = new Player({ gl });
+    player = new Player({ canvas, renderFramework:'webgl' });
     expect(player.gpuCapability.type).to.eql('webgl');
     player.dispose();
-    //
-    player = new Player({ gl, renderFramework: 'webgl2' });
-    expect(player.gpuCapability.type).to.eql('webgl');
     canvas.remove();
     await sleep(timeout);
   });
@@ -182,12 +178,9 @@ describe('create by gl context', function () {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2');
 
-    player = new Player({ gl });
+    player = new Player({ canvas, renderFramework: 'webgl2' });
     expect(player.gpuCapability.type).to.eql('webgl2');
     player.dispose();
-    //
-    player = new Player({ gl, renderFramework: 'webgl' });
-    expect(player.gpuCapability.type).to.eql('webgl2');
     canvas.remove();
     await sleep(timeout);
   });
@@ -195,10 +188,8 @@ describe('create by gl context', function () {
   it('set two webgl1 player', async () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
-    const gl1 = canvas1.getContext('webgl');
-    const gl2 = canvas2.getContext('webgl');
-    const player1 = new Player({ gl: gl1 });
-    const player2 = new Player({ gl: gl2 });
+    const player1 = new Player({ canvas: canvas1, renderFramework:'webgl' });
+    const player2 = new Player({ canvas: canvas2, renderFramework:'webgl' });
 
     expect(player1.gpuCapability.type).to.eql(player2.gpuCapability.type);
     player1.dispose();
@@ -211,10 +202,8 @@ describe('create by gl context', function () {
   it('set two webgl2 player', async () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
-    const gl1 = canvas1.getContext('webgl2');
-    const gl2 = canvas2.getContext('webgl2');
-    const player1 = new Player({ gl: gl1 });
-    const player2 = new Player({ gl: gl2 });
+    const player1 = new Player({ canvas: canvas1, renderFramework:'webgl2' });
+    const player2 = new Player({ canvas: canvas2, renderFramework:'webgl2' });
 
     expect(player1.gpuCapability.type).to.eql(player2.gpuCapability.type);
     player1.dispose();
@@ -227,12 +216,10 @@ describe('create by gl context', function () {
   it('set different webgl player', async () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
-    const gl1 = canvas1.getContext('webgl2');
-    const gl2 = canvas2.getContext('webgl');
-    const player1 = new Player({ gl: gl1 });
+    const player1 = new Player({ canvas: canvas1, renderFramework:'webgl' });
 
     try {
-      const player2 = new Player({ gl: gl2 });
+      const player2 = new Player({ canvas: canvas2, renderFramework:'webgl2' });
 
       player2.dispose();
     } catch (e) {
