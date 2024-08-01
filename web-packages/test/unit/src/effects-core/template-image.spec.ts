@@ -65,10 +65,10 @@ describe('template image', () => {
       width: 128,
       height: 128,
     };
-    const result = combineImageTemplate('', template, template.variables);
+    const result = await combineImageTemplate('https://gw.alipayobjects.com/mdn/rms_7c464e/afts/img/A*rgNGR4Vb7lQAAAAAAAAAAAAAARQnAQ', template, template.variables);
 
-    expect(typeof result === 'string').to.be.true;
-    expect(result).to.be.equal(template.variables['test']);
+    expect(result instanceof HTMLImageElement).to.be.true;
+    expect(result.src).to.be.equal(template.variables['test']);
 
     const image1 = new Image();
 
@@ -86,7 +86,7 @@ describe('template image', () => {
       width: 128,
       height: 128,
     };
-    const result2 = getBackgroundImage(template2, template2.variables) as HTMLImageElement;
+    const result2 = await combineImageTemplate('https://gw.alipayobjects.com/mdn/rms_7c464e/afts/img/A*rgNGR4Vb7lQAAAAAAAAAAAAAARQnAQ', template, template.variables);
 
     expect(result2 instanceof HTMLImageElement).to.be.true;
     //@ts-expect-error
