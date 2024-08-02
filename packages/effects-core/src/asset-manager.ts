@@ -257,7 +257,10 @@ export class AssetManager implements Disposable {
     await pluginSystem?.precompile(compositions, renderer, options);
 
     await new Promise(resolve => {
-      shaderLibrary?.compileAllShaders(() => {
+      shaderLibrary?.compileAllShaders(results => {
+        for (const result of results) {
+          console.info('compileTime: ' + result.cacheId + ' ' + result.compileTime);
+        }
         resolve(null);
       });
     });
@@ -345,6 +348,7 @@ export class AssetManager implements Disposable {
     const { useCompressedTexture, variables } = this.options;
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img: spec.Image, idx: number) => {
+      //@ts-expect-error
       const { url: png, webp, avif } = img;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;

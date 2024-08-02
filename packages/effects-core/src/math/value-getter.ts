@@ -149,6 +149,12 @@ export class RandomValue extends ValueGetter<number> {
     return randomInRange(this.min, this.max);
   }
 
+  override getIntegrateValue (t0: number, t1: number, timeScale?: number): number {
+    const seed = timeScale ?? 1.0;
+
+    return (this.min + seed * (this.max - this.min)) * (t1 - t0);
+  }
+
   override toUniform () {
     return new Float32Array([4, this.min, this.max, 0]);
   }

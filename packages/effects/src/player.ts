@@ -8,6 +8,7 @@ import {
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
   generateWhiteTexture, isSceneWithOptions, Texture,
+  Material,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -502,6 +503,14 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
         resolve(null);
       });
     });
+    // TODO Material 单独存表，并行编译
+    for (const guid of Object.keys(this.renderer.engine.objectInstance)) {
+      const effectsObject = this.renderer.engine.objectInstance[guid];
+
+      if (effectsObject instanceof Material) {
+        effectsObject.initialize();
+      }
+    }
 
     if (opts.autoplay) {
       this.autoPlaying = true;

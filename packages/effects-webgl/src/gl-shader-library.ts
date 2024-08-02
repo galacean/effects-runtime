@@ -136,6 +136,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
         console.warn(`Find duplicated shader id: ${shader.id}.`);
       }
       this.programMap[shader.id] = glProgram;
+      // console.log('compileShader ' + result.cacheId + ' ' + result.compileTime + ' ', shader.source);
     };
     const checkComplete = () => {
       const shouldLink =
