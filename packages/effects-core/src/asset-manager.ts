@@ -258,9 +258,6 @@ export class AssetManager implements Disposable {
 
     await new Promise(resolve => {
       shaderLibrary?.compileAllShaders(results => {
-        for (const result of results) {
-          console.info('compileTime: ' + result.cacheId + ' ' + result.compileTime);
-        }
         resolve(null);
       });
     });

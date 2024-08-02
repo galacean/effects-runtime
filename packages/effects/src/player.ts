@@ -498,19 +498,23 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       }
     }
 
-    await new Promise(resolve => {
-      this.renderer.getShaderLibrary()?.compileAllShaders(() => {
-        resolve(null);
-      });
-    });
-    // TODO Material 单独存表，并行编译
+    // TODO Material 单独存表, 加速查询
     for (const guid of Object.keys(this.renderer.engine.objectInstance)) {
       const effectsObject = this.renderer.engine.objectInstance[guid];
 
       if (effectsObject instanceof Material) {
-        effectsObject.initialize();
+        effectsObject.createShaderVariant();
       }
     }
+
+    const compileBeginTime = performance.now();
+
+    await new Promise(resolve => {
+      this.renderer.getShaderLibrary()?.compileAllShaders(() => {
+        console.info('CompileAllShaderTime: ' + (performance.now() - compileBeginTime));
+        resolve(null);
+      });
+    });
 
     if (opts.autoplay) {
       this.autoPlaying = true;

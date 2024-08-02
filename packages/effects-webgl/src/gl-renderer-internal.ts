@@ -9,6 +9,7 @@ import type { GLRenderbuffer } from './gl-renderbuffer';
 import { GLTexture } from './gl-texture';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
 import type { GLEngine } from './gl-engine';
+import type { GLShaderVariant } from './gl-shader';
 
 let seed = 1;
 
@@ -150,7 +151,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
     }
     const glGeometry = geometry as GLGeometry;
     const glMaterial = material as GLMaterial;
-    const program = glMaterial.shaderVariant.program;
+    const program = (glMaterial.shaderVariant as GLShaderVariant).program;
 
     if (!program) {
       return;
