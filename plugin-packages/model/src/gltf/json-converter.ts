@@ -1199,11 +1199,7 @@ function createGeometryData (props: GeometryProps, subMeshes: spec.SubMesh[]) {
 
   for (const attrib in props.attributes) {
     const attribData = props.attributes[attrib];
-    const semantic = vertexBufferSemanticMap[attrib];
-
-    if (!semantic) {
-      throw new Error(`Invalid attrib ${attrib}.`);
-    }
+    const semantic = vertexBufferSemanticMap[attrib] ?? attrib;
 
     // @ts-expect-error
     vertexCount = attribData.data.length / attribData.size;

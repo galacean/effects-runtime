@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { PLight, PLightType, PObjectType, WebHelper } from '@galacean/effects-plugin-model';
+import { ModelLightComponent, PLight, PLightType, PObjectType, WebHelper } from '@galacean/effects-plugin-model';
 import { loadGLTF } from '../../src/helper';
 import { generateComposition } from './utilities';
 
@@ -28,12 +28,12 @@ describe('运行时测试', function () {
     const items = comp.items;
     const item1 = items[1];
 
-    expect(item1.content instanceof PLight).to.eql(false);
+    expect(item1.getComponent(ModelLightComponent) instanceof ModelLightComponent).to.eql(false);
     {
-      const item = items[2];
+      const item = items[3];
 
-      expect(item.content instanceof PLight).to.eql(true);
-      const light = item.content;
+      expect(item.getComponent(ModelLightComponent) instanceof ModelLightComponent).to.eql(true);
+      const light = item.getComponent(ModelLightComponent).content;
 
       light.getWorldDirection().toArray().forEach((val, idx) => {
         expect([-0.10543716698884964, -0.1309116929769516, -0.9857713580131531][idx]).closeTo(val, 1e-5);
@@ -52,10 +52,10 @@ describe('运行时测试', function () {
       expect(light.outerConeAngle).to.eql(0);
     }
     {
-      const item = items[3];
+      const item = items[5];
 
-      expect(item.content instanceof PLight).to.eql(true);
-      const light = item.content;
+      expect(item.getComponent(ModelLightComponent) instanceof ModelLightComponent).to.eql(true);
+      const light = item.getComponent(ModelLightComponent).content;
 
       light.getWorldDirection().toArray().forEach((val, idx) => {
         expect([0.8186928033828735, 0.2049010992050171, 0.5364304780960083][idx]).closeTo(val, 1e-5);
@@ -74,10 +74,10 @@ describe('运行时测试', function () {
       expect(light.outerConeAngle).to.eql(0);
     }
     {
-      const item = items[4];
+      const item = items[6];
 
-      expect(item.content instanceof PLight).to.eql(true);
-      const light = item.content;
+      expect(item.getComponent(ModelLightComponent) instanceof ModelLightComponent).to.eql(true);
+      const light = item.getComponent(ModelLightComponent).content;
 
       light.getWorldDirection().toArray().forEach((val, idx) => {
         expect([-0.7150321006774902, 0.20736832916736603, 0.6676284074783325][idx]).closeTo(val, 1e-5);

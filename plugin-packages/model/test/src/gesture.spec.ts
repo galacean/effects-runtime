@@ -411,48 +411,21 @@ async function generateCurrentScene () {
       endBehavior: 2,
     },
   });
-  const cameraItem = {
-    id: 'extra-camera',
-    duration: 8,
+
+  gltfLoader.addCamera({
+    near: 0.1,
+    far: 5000,
+    fov: 90,
+    clipMode: 0,
+    //
     name: 'extra-camera',
+    duration: 8,
     endBehavior: 0,
-    pn: 0,
-    type: 'camera',
-    transform: {
-      position: [0, 0.3, 1.2],
-      rotation: [0, 0, 0],
-    },
-    content: {
-      options: {
-        near: 0.1,
-        far: 5000,
-        fov: 90,
-        clipMode: 0,
-      },
-    },
-  };
-  const resultItems = loadResult.items;
+    position: [0, 0.3, 1.2],
+    rotation: [0, 0, 0],
+  });
 
-  resultItems.push(cameraItem);
-
-  return {
-    'compositionId': 1,
-    'requires': [],
-    'compositions': [{
-      'name': 'composition_1',
-      'id': 1,
-      'duration': 100,
-      'endBehavior': 2,
-      'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-      'items': resultItems,
-      'meta': { 'previewSize': [750, 1334] },
-    }],
-    'gltf': [],
-    'images': [],
-    'version': '2.1',
-    'shapes': [],
-    'plugins': ['model'],
-  };
+  return gltfLoader.getLoadResult().jsonScene;
 }
 
 async function createComposition (opts: PlayOptions) {
