@@ -7,6 +7,12 @@
 
 ---
 
+## 1.6.6
+
+`2024-08-02`
+
+- Fix: Resolve the timing issue of textMesh destruction in extreme cases. [#535](https://github.com/galacean/effects-runtime/pull/535) @Sruimeng
+
 ## 1.6.5
 
 `2024-07-26`
