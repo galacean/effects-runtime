@@ -53,7 +53,7 @@ precision highp float;
 
 varying vec4 vColor;
 void main() {
-  gl_FragColor = vColor;
+  gl_FragColor = vColor*vColor.a;
 }
 `;
 
@@ -122,6 +122,7 @@ export class InteractMesh {
 
     const material = Material.create(this.engine, materialProps);
 
+    material.blending = true;
     material.depthTest = false;
     material.setVector4('uPos', new Vector4(0, 0, 0, 0));
     material.setVector2('uSize', new Vector2(1, 1));
