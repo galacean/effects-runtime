@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { Player, ParticleSystem, VFXItem, BezierCurvePath } from '@galacean/effects';
+import { Player, ParticleSystem, VFXItem, BezierCurvePath, ParticleSystemRenderer } from '@galacean/effects';
 import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
@@ -7,22 +6,30 @@ const { expect } = chai;
 describe('effects-core/plugins/particle-transform', () => {
   let player: Player;
 
-  beforeEach(() => {
+  before(() => {
     player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
   });
 
   afterEach(() => {
+    player.destroyCurrentCompositions();
+  });
+
+  after(() => {
     player.dispose();
+    // @ts-expect-error
+    player = null;
   });
 
   it('set transform', async () => {
     const comp = await generateComposition(player, [{ name: '1', type: '2', transform: { position: [0, 1, 0], rotation: [0, 90, 0] } }]);
-    const item = comp.getItemByName('1');
-
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
+    const item = comp.getItemByName('1')!;
+    const itemContent = item.content;
     const t = item.getWorldTransform();
 
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(t.getWorldPosition())).to.deep.equals([0, 1, 0]);
+    // @ts-expect-error
     expect(sanitizeNumbers(t.getWorldRotation())).to.deep.equals([0, 90, 0]);
   });
 
@@ -30,11 +37,12 @@ describe('effects-core/plugins/particle-transform', () => {
     const comp = await generateComposition(player, [
       { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '3', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
-    const item = comp.getItemByName('2');
-
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
+    const item = comp.getItemByName('2')!;
+    const itemContent = item.content;
     const t = item.getWorldTransform();
 
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(t.position)).to.deep.equals([1, 1, 0]);
     expect(sanitizeNumbers(item.transform.position)).to.deep.equals([0, 1, 0]);
   });
@@ -43,10 +51,12 @@ describe('effects-core/plugins/particle-transform', () => {
     const comp = await generateComposition(player, [
       { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '1', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
-    const item = comp.getItemByName('2');
-
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
+    const item = comp.getItemByName('2')!;
+    const itemContent = item.content;
     const t = item.getWorldTransform();
+
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
 
     expect(sanitizeNumbers(t.position)).to.deep.equals([1, 1, 0]);
     expect(sanitizeNumbers(item.transform.position)).to.deep.equals([0, 1, 0]);
@@ -56,11 +66,12 @@ describe('effects-core/plugins/particle-transform', () => {
     const comp = await generateComposition(player, [
       { parentId: '1', type: '2', id: '2', name: '2', transform: { position: [0, 1, 0], scale: [1, 1, 1], rotation: [0, 0, 0] } },
       { type: '2', id: '1', transform: { position: [1, 0, 0] }, scale: [1, 1, 1], rotation: [0, 0, 0] }]);
-    const item = comp.getItemByName('2');
-
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
+    const item = comp.getItemByName('2')!;
+    const itemContent = item.content;
     const t = item.getWorldTransform();
 
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(t.position)).to.deep.equals([1, 1, 0]);
     expect(sanitizeNumbers(item.transform.position)).to.deep.equals([0, 1, 0]);
   });
@@ -71,12 +82,12 @@ describe('effects-core/plugins/particle-transform', () => {
       { type: '3', id: '3', parentId: '1', transform: { position: [1, 0, 0] } },
       { type: '3', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
-
-    const item = comp.getItemByName('2');
-
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
+    const item = comp.getItemByName('2')!;
+    const itemContent = item.content;
     const t = item.getWorldTransform();
 
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(t.position, Number.EPSILON * 5)).to.deep.equals([0, -2, 0]);
     expect(sanitizeNumbers(item.transform.position)).to.deep.equals([1, 0, 0]);
   });
@@ -88,11 +99,12 @@ describe('effects-core/plugins/particle-transform', () => {
       { type: '1', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
 
-    const item = comp.getItemByName('2');
-
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
+    const item = comp.getItemByName('2')!;
+    const itemContent = item.content;
     const t = item.getWorldTransform();
 
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(t.position, Number.EPSILON * 5)).to.deep.equals([0, -2, 0]);
     expect(sanitizeNumbers(item.transform.position)).to.deep.equals([1, 0, 0]);
   });
@@ -103,15 +115,14 @@ describe('effects-core/plugins/particle-transform', () => {
       { type: '2', id: '3', parentId: '1', transform: { position: [1, 0, 0] } },
       { type: '2', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
-
-    const item = comp.getItemByName('2');
-
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
+    const item = comp.getItemByName('2')!;
+    const itemContent = item.content;
     const t = item.getWorldTransform();
 
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(t.position, Number.EPSILON * 5)).to.deep.equals([0, -2, 0]);
     expect(sanitizeNumbers(item.transform.position)).to.deep.equals([1, 0, 0]);
-
   });
 
   it('cascade null and sprite parent transform', async () => {
@@ -121,11 +132,12 @@ describe('effects-core/plugins/particle-transform', () => {
       { type: '3', id: '1', size: 2, transform: { rotation: [0, 0, 90] } },
     ]);
 
-    const item = comp.getItemByName('2');
-
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
+    const item = comp.getItemByName('2')!;
+    const itemContent = item.content;
     const t = item.getWorldTransform();
 
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(t.position, Number.EPSILON * 5)).to.deep.equals([0, -2, 0]);
     expect(sanitizeNumbers(item.transform.position)).to.deep.equals([1, 0, 0]);
   });
@@ -135,13 +147,14 @@ describe('effects-core/plugins/particle-transform', () => {
       { id: 2, type: '2', name: '1', transform: { position: [1, 0, 0] } },
     ]);
 
+    // @ts-expect-error
     comp.forwardTime(1);
-    const item = comp.getItemByName('1');
+    const item = comp.getItemByName('1')!;
+    const itemContent = item.content as ParticleSystem;
+    const pos = itemContent.renderer.particleMesh.getPointPosition(0);
 
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
-    const particle = item.content;
-    const pos = particle.renderer.particleMesh.getPointPosition(0);
-
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     expect(sanitizeNumbers(pos)).to.deep.equals([1, 0, 0]);
   });
 
@@ -151,13 +164,14 @@ describe('effects-core/plugins/particle-transform', () => {
       { type: '3', id: '1', transform: { position: [1, 0, 0], rotation: [0, 0, 90], scale: [1, 1, 1] } },
     ]);
 
+    // @ts-expect-error
     comp.forwardTime(1);
-    const item = comp.getItemByName('1');
+    const item = comp.getItemByName('1')!;
+    const itemContent = item.content as ParticleSystem;
+    const pos = itemContent.renderer.particleMesh.getPointPosition(0);
 
-    expect(item).to.be.an.instanceof(VFXItem<ParticleSystem>);
-    const particle = item.content;
-    const pos = particle.renderer.particleMesh.getPointPosition(0);
-
+    expect(item).to.be.an.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
     sanitizeNumbers(item.getWorldTransform().position).forEach((v, i) => {
       expect(v).closeTo([1, -1, 0][i], 1e-6);
     });
@@ -180,23 +194,25 @@ describe('effects-core/plugins/particle-transform', () => {
         speedOverLifetime: 0,
       },
     }]);
-    const item = comp.getItemByName('item');
+    const item = comp.getItemByName('item')!;
+    const itemContent = item.content as ParticleSystem;
 
-    expect(item).to.be.instanceof(VFXItem<ParticleSystem>);
-    const ps = item.content;
+    expect(item).to.be.instanceof(VFXItem);
+    expect(itemContent).to.be.an.instanceof(ParticleSystem);
 
-    expect(ps).to.be.an.instanceof(ParticleSystem);
-    const { position, rotation, path } = ps.basicTransform;
+    // @ts-expect-error
+    const { position, rotation, path } = itemContent.basicTransform;
 
+    // @ts-expect-error
     expect(sanitizeNumbers(rotation)).to.eql([0, 0, -180]);
     expect(position.toArray()).to.eql([0, 0, 0]);
     expect(path).to.be.an.instanceof(BezierCurvePath);
-    expect(ps.particleMesh.linearVelOverLifetime.asMovement).to.be.true;
-    expect(ps.particleMesh.speedOverLifetime).to.not.exist;
+    expect(item.getComponent(ParticleSystemRenderer).particleMesh.linearVelOverLifetime?.asMovement).to.be.true;
+    expect(item.getComponent(ParticleSystemRenderer).particleMesh.speedOverLifetime).to.not.exist;
   });
 });
 
-async function generateComposition (player, opts) {
+async function generateComposition (player: Player, opts: Record<string, any>[]) {
   const json = {
     'compositionId': 5,
     'requires': [],
@@ -217,7 +233,7 @@ async function generateComposition (player, opts) {
           'clipMode': 1,
           'z': 8,
         },
-        'items': opts.map((opt, i) => (
+        'items': opts.map((opt: Record<string, any>, i: number) => (
           {
             'start3DSize': true,
             'endBehavior': 0,

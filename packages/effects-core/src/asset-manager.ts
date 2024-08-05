@@ -166,7 +166,11 @@ export class AssetManager implements Disposable {
           ...rawJSON,
         };
 
-        if (this.options && this.options.variables && Object.keys(this.options.variables).length !== 0) {
+        if (
+          this.options &&
+          this.options.variables &&
+          Object.keys(this.options.variables).length !== 0
+        ) {
           const { images: rawImages } = rawJSON.jsonScene;
           const images = scene.images;
 
@@ -380,7 +384,7 @@ export class AssetManager implements Disposable {
               return await combineImageTemplate(
                 resultImage,
                 template,
-                variables as Record<string, number | string>,
+                variables,
               );
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars

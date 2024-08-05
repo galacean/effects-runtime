@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { createShaderWithMacros, RenderFrame, RenderPass, glContext, DestroyOptions, TextureLoadAction, ShaderType, Texture, Camera, Mesh, math } from '@galacean/effects-core';
+import { createShaderWithMacros, RenderFrame, RenderPass, glContext, DestroyOptions, TextureLoadAction, ShaderType, Texture, Camera, Mesh, math, GLSLVersion } from '@galacean/effects-core';
 import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
 
 const { Vector4 } = math;
@@ -7,16 +7,13 @@ const { expect, assert } = chai;
 
 describe('gl-material', () => {
   let canvas, renderer, gl, engine;
-  const vs = `#version 300 es
-  layout(location = 0) in vec2 aPosition;
+  const vs = `attribute vec2 aPosition;
   void main() {
     gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
   }`;
-  const fs = `#version 300 es
-  precision highp float;
-  out vec4 outColor;
+  const fs = `precision highp float;
   void main() {
-    outColor = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
   }`;
   const shader = {
     vertex: vs,
@@ -436,7 +433,7 @@ describe('gl-material', () => {
     expect(texture.gl).to.not.exist;
     material.setTexture('u_Tex', texture);
     material.setTexture('u_TexArr', texture2);
-    expect(material.shader).to.eql(undefined);
+    expect(material.shaderVariant).to.eql(undefined);
 
     material.initialize(renderer.engine);
     expect(texture.textureBuffer).to.be.an.instanceof(WebGLTexture);
@@ -444,8 +441,8 @@ describe('gl-material', () => {
 
     expect(texArr).to.deep.equals(texture2);
     expect(texture2.textureBuffer).to.be.an.instanceof(WebGLTexture);
-    expect(material.shader.initialized).to.be.true;
-    expect(material.shader.compileResult.status).to.eql(1);
+    expect(material.shaderVariant.initialized).to.be.true;
+    expect(material.shaderVariant.compileResult.status).to.eql(1);
 
     material.dispose();
   });
@@ -544,7 +541,7 @@ describe('gl-material', () => {
         material: new GLMaterial(
           engine,
           {
-            shader: { vertex: vs, fragment: fs },
+            shader: { vertex: vs, fragment: fs, glslVersion:GLSLVersion.GLSL3 },
             states: {},
           }),
         geometry: new GLGeometry(
@@ -602,7 +599,8 @@ describe('gl-material', () => {
     mesh.geometry.initialize(renderer.engine);
     mesh.render(renderer);
 
-    const program = mesh.material.shader.program.program;
+    const material = mesh.material as GLMaterial;
+    const program = material.shaderVariant.program.program;
     const loc = gl.getUniformLocation(program, 'u_pos');
     const valData = gl.getUniform(program, loc);
 
@@ -1572,8 +1570,7 @@ function generateMesh (engine, meshName, vs, fs, macros = [], shared = true) {
 }
 
 function generateMeshAndUBO (renderer, keeUBOData = true) {
-  const vs = `
-#version 300 es
+  const vs = `#version 300 es
 layout(location = 0) in vec2 aPosition;
 out vec4 v_pos;
 
