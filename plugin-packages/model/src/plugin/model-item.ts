@@ -1,19 +1,12 @@
 import type {
-  Engine,
-  HitTestBoxParams,
-  HitTestCustomParams,
-  HitTestSphereParams,
-  Renderer,
-  VFXItem,
+  Engine, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams, Renderer, VFXItem,
 } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, RendererComponent, effectsClass, spec, AnimationClip } from '@galacean/effects';
+import {
+  HitTestType, ItemBehaviour, RendererComponent, effectsClass, spec, AnimationClip,
+} from '@galacean/effects';
 import type {
-  ModelCameraComponentData,
-  ModelItemBounding,
-  ModelLightComponentData,
-  ModelMeshComponentData,
-  ModelSkyboxComponentData,
-  AnimationComponentData,
+  ModelCameraComponentData, ModelItemBounding, ModelLightComponentData,
+  ModelMeshComponentData, ModelSkyboxComponentData, AnimationComponentData,
 } from '../index';
 import { VFX_ITEM_TYPE_3D } from '../index';
 import type { PSceneManager } from '../runtime';
