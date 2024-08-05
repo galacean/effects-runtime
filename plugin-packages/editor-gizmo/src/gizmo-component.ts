@@ -118,8 +118,23 @@ export class GizmoComponent extends RendererComponent {
     composition.loaderData.gizmoItems.push(this.item);
   }
 
-  override render (renderer: Renderer): void {
+  override update (dt: number): void {
     this.updateRenderData();
+  }
+
+  override render (renderer: Renderer): void {
+    // The material of the 3D plugin is updated during the render phase. In order to obtain the correct value, it is kept consistent here.
+    if (this.subType === GizmoSubType.modelWireframe) { // 模型线框
+      if (this.wireframeMesh && this.targetItem) {
+        //@ts-expect-error TODO 和 3D 类型解耦
+        const meshes = this.targetItem.getComponent(RendererComponent)?.content.subMeshes;
+        const wireframeMeshes = this.wireframeMeshes;
+
+        if (meshes?.length > 0) {
+          updateWireframeMesh(meshes[0].geometry.geometry, meshes[0].material.effectMaterial, wireframeMeshes[0], WireframeGeometryType.triangle);
+        }
+      }
+    }
   }
 
   updateRenderData () {
@@ -138,16 +153,6 @@ export class GizmoComponent extends RendererComponent {
         if (particle) {
           updateWireframeMesh(particle.particleMesh.mesh.geometry, particle.particleMesh.mesh.material, this.wireframeMesh, WireframeGeometryType.quad);
           this.wireframeMesh.worldMatrix = particle.particleMesh.mesh.worldMatrix;
-        }
-      }
-    } else if (gizmoSubType === GizmoSubType.modelWireframe) { // 模型线框
-      if (this.wireframeMesh && this.targetItem) {
-        //@ts-expect-error TODO 和 3D 类型解耦
-        const meshes = this.targetItem.getComponent(RendererComponent)?.content.subMeshes;
-        const wireframeMeshes = this.wireframeMeshes;
-
-        if (meshes?.length > 0) {
-          updateWireframeMesh(meshes[0].geometry.geometry, meshes[0].material.effectMaterial, wireframeMeshes[0], WireframeGeometryType.triangle);
         }
       }
     } else { // 几何体模型
