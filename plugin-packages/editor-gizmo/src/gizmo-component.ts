@@ -1,6 +1,6 @@
-import type { GeometryDrawMode, HitTestCustomParams, Texture, VFXItem } from '@galacean/effects';
+import type { GeometryDrawMode, HitTestCustomParams, Renderer, Texture, VFXItem } from '@galacean/effects';
 import { Mesh } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, serialize, spec } from '@galacean/effects';
+import { HitTestType, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, serialize, spec } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
 import { iconTextures, type EditorGizmoPlugin } from './gizmo-loader';
@@ -21,7 +21,7 @@ const { Vector2, Vector3, Matrix4, Quaternion } = math;
 const constants = glContext;
 
 @effectsClass('GizmoComponent')
-export class GizmoComponent extends ItemBehaviour {
+export class GizmoComponent extends RendererComponent {
   gizmoPlugin: EditorGizmoPlugin;
   targetItem: VFXItem;
   needCreateModelContent: boolean;
@@ -118,11 +118,8 @@ export class GizmoComponent extends ItemBehaviour {
     composition.loaderData.gizmoItems.push(this.item);
   }
 
-  override update (dt: number): void {
+  override render (renderer: Renderer): void {
     this.updateRenderData();
-  }
-
-  override lateUpdate (dt: number): void {
   }
 
   updateRenderData () {
