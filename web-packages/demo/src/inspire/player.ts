@@ -15,7 +15,10 @@ window.addEventListener('message', async event => {
       player = new Player({
         container,
         ...playerOptions,
-        onItemClicked: item => console.info(`item ${item.name} has been clicked`, item),
+      });
+
+      player.on('item-click', item => {
+        console.info(`item ${item.name} has been clicked`, item);
       });
 
       break;

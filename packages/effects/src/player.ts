@@ -1,6 +1,6 @@
 import type {
-  Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, SceneLoadType, SceneType, EffectsObject,
+  Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions,
+  Texture2DSourceOptionsVideo, TouchEventType, SceneLoadType, SceneType, EffectsObject,
   CompItemClickedData,
   PlayerEffectEvent } from '@galacean/effects-core';
 import { EventEmitter, EffectEventName } from '@galacean/effects-core';
@@ -91,26 +91,6 @@ export interface PlayerConfig {
    */
   notifyTouch?: boolean,
   /**
-   * 播放器被元素暂停的回调
-   * @deprecated 2.0.0
-   */
-  onPausedByItem?: (data: { name: string, player: Player }) => void,
-  /**
-   * 交互元素被点击的回调
-   * @deprecated 2.0.0
-   */
-  onItemClicked?: (data: ItemClickedData) => void,
-  /**
-   * 交互元素发送 message 的回调
-   * @deprecated 2.0.0
-   */
-  onMessageItem?: (data: { name: string, phrase: number }) => void,
-  /**
-   * 播放器更新的回调
-   * @deprecated 2.0.0
-   */
-  onPlayableUpdate?: (data: { playing: boolean, time?: number, player: Player }) => void,
-  /**
    * 渲染出错时候的回调
    * @param - err
    * @deprecated 2.0.0
@@ -150,11 +130,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
 
   private readonly builtinObjects: EffectsObject[] = [];
   private readonly event: EventSystem;
-  private readonly handleMessageItem?: (item: MessageItem) => void;
-  private readonly handlePlayerPause?: (item: VFXItem) => void;
-  private readonly handleItemClicked?: (event: ItemClickedData) => void;
-  private readonly handlePlayableUpdate?: (event: { playing: boolean, player: Player }) => void;
-  private readonly handleRenderError?: (err: Error) => void;
   private readonly reportGPUTime?: (time: number) => void;
   /**
    * 当前播放的合成对象数组，请不要修改内容
@@ -179,7 +154,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     super();
     const {
       container, canvas, fps, name, pixelRatio, manualRender, reportGPUTime,
-      onMessageItem, onPausedByItem, onItemClicked, onPlayableUpdate, onRenderError,
       renderFramework: glType, notifyTouch,
       interactive = false,
       renderOptions = {},
@@ -205,17 +179,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     }
 
     this.reportGPUTime = reportGPUTime;
-    this.handleItemClicked = onItemClicked;
-    this.handleMessageItem = onMessageItem;
-    this.handlePlayableUpdate = onPlayableUpdate;
-    this.handleRenderError = onRenderError;
-    this.handlePlayerPause = (item: VFXItem) => {
-      this.pause();
-      onPausedByItem?.({
-        name: item.name,
-        player: this,
-      });
-    };
     this.pixelRatio = Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio();
     this.offscreenMode = true;
     this.env = env;
@@ -479,7 +442,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
       height: renderer.getHeight(),
       player: this as any,
       event: this.event,
-      onMessageItem: this.handleMessageItem,
     }, scene);
 
     this.compositions.push(composition);
@@ -567,10 +529,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
       player: this,
       playing: true,
     });
-    this.handlePlayableUpdate?.({
-      player: this,
-      playing: false,
-    });
   }
 
   /**
@@ -603,10 +561,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     }
 
     this.ticker?.pause();
-    this.handlePlayableUpdate?.({
-      player: this,
-      playing: false,
-    });
     this.emit(EffectEventName.PLAYER_UPDATE, {
       player: this,
       playing: true,
@@ -648,7 +602,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     renderErrors.values().next().value;
 
     if (renderErrors.size > 0) {
-      this.handleRenderError?.(renderErrors.values().next().value);
       this.emit(EffectEventName.RENDER_ERROR, renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
@@ -680,7 +633,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
       this.emit(EffectEventName.RENDER_ERROR, new Error('Play when texture offloaded.'));
-      this.handleRenderError?.(new Error('Play when texture offloaded.'));
 
       return this.ticker?.pause();
     }
@@ -713,10 +665,6 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
       if (this.autoPlaying) {
-        this.handlePlayableUpdate?.({
-          player: this,
-          playing: true,
-        });
         this.emit(EffectEventName.PLAYER_UPDATE, {
           player: this,
           playing: true,
@@ -919,10 +867,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
   }
 
   private handleResume = () => {
-    this.handlePlayableUpdate?.({
-      player: this,
-      playing: true,
-    });
+    this.emit(EffectEventName.PLAYER_UPDATE, { player: this, playing: true });
   };
 
   private offloadTexture () {

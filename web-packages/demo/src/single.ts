@@ -1,6 +1,6 @@
 import { Player, EffectEventName } from '@galacean/effects';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*Gv_jS7JnTrgAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bl40RLWLKisAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -8,9 +8,6 @@ const container = document.getElementById('J-container');
     const player = new Player({
       container,
       interactive: true,
-      onItemClicked: item => {
-        console.info('onItemClicked', item);
-      },
     });
 
     const composition = await player.loadScene(json);

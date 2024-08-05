@@ -11,14 +11,15 @@ import { JSONConverter } from '@galacean/effects-plugin-model';
     renderFramework: 'webgl2',
     interactive: true,
     env: 'editor',
-    onItemClicked: e => {
-      const { player, id } = e;
-      const composition = player.getCompositions()[0];
-      const item = composition.items.find(item => item.id === String(id))!;
+  });
 
-      console.info('itemId: ' + item.id);
-      console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
-    },
+  player.on('item-click', e => {
+    const { player, id } = e;
+    const composition = player.getCompositions()[0];
+    const item = composition.items.find(item => item.id === String(id))!;
+
+    console.info('itemId: ' + item.id);
+    console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
   });
 
   const converter = new JSONConverter(player.renderer);

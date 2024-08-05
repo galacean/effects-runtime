@@ -36,6 +36,11 @@ export class CompositionComponent extends ItemBehaviour {
   items: VFXItem[] = [];  // 场景的所有元素
   data: ContentOptions;
 
+  /**
+   * 合成是否冻结标志位
+   */
+  fezzed = false;
+
   private reusable = false;
   private sceneBindings: SceneBinding[] = [];
   private timelineAsset: TimelineAsset;

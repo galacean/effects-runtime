@@ -54,10 +54,11 @@ function createPlayer () {
   const player = new Player({
     container,
     pixelRatio: 1,
-    onPausedByItem: data => {
-      console.info('onPausedByItem', data);
-    },
     renderFramework: 'webgl',
+  });
+
+  player.on('player-pause', () => {
+    console.info('player-pause');
   });
 
   return player;

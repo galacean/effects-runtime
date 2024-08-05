@@ -555,9 +555,10 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
    * @returns 重新播放合成标志位
    */
   private shouldRestart () {
-    const { ended, endBehavior } = this.rootItem;
+    const { duration, endBehavior } = this.rootItem;
+    const { time } = this.rootComposition;
 
-    return ended && endBehavior === spec.EndBehavior.restart;
+    return endBehavior === spec.EndBehavior.restart && duration - time < 0.02;
   }
 
   /**
@@ -584,18 +585,23 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
       return;
     }
 
-    if (this.shouldRestart()) {
-      this.restart();
-      // restart then tick to avoid flicker
-    }
     const time = this.getUpdateTime(deltaTime * this.speed);
 
     this.globalTime += time;
+
     if (this.rootComposition.isActiveAndEnabled) {
       const localTime = this.toLocalTime(this.globalTime / 1000);
 
       this.rootComposition.time = localTime;
     }
+
+    if (this.shouldRestart()) {
+
+      this.emit(EffectEventName.COMPOSITION_END, { composition: this });
+      this.restart();
+      // restart then tick to avoid flicker
+    }
+
     this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
@@ -625,6 +631,12 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
         localTime = localTime % duration;
       } else if (this.rootItem.endBehavior === spec.EndBehavior.freeze) {
         localTime = Math.min(duration, localTime);
+        if (localTime === duration) {
+          if (!this.rootComposition.fezzed) {
+            this.rootComposition.fezzed = true;
+            this.emit(EffectEventName.COMPOSITION_END, { composition: this });
+          }
+        }
       }
     }
 
