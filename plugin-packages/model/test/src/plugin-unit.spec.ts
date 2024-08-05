@@ -1,31 +1,30 @@
 /* eslint-disable padding-line-between-statements */
-// @ts-nocheck
-import type { GLGeometry } from '@galacean/effects';
-import { Player, Texture, spec, Downloader, math, Engine, Material, MaterialRenderType, GLEngine, SerializationHelper, VFXItem } from '@galacean/effects';
-const { Matrix4, Quaternion, Vector3, Vector4, RAD2DEG } = math;
-
-import type { ModelVFXItem } from '@galacean/effects-plugin-model';
-import { JSONConverter } from '@galacean/effects-plugin-model';
-import { AnimationComponent, ModelMeshComponent } from '@galacean/effects-plugin-model';
+import type { GLGeometry, Scene } from '@galacean/effects';
+import { Player, Texture, spec, math, Engine, Material, SerializationHelper, VFXItem } from '@galacean/effects';
+import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
-  PEntity, PObject, PAnimationManager, PMorph,
-  PBlendMode, PLightType, PMaterialType, PObjectType, PShadowType, PTransform,
-  PCamera, PLight, PMesh, PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit,
-  VFX_ITEM_TYPE_3D, RayBoxTesting, RayTriangleTesting,
+  PEntity, PObject, PLightType, PMaterialType, PObjectType, PTransform, PCamera, PLight,
+  PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit, RayBoxTesting,
+  RayTriangleTesting, JSONConverter, AnimationComponent, ModelMeshComponent,
 } from '@galacean/effects-plugin-model';
 import type { GLMaterial } from '@galacean/effects-webgl';
 import { LoaderImplEx } from '../../src/helper';
 import { generateComposition } from './utilities';
 
+const { Matrix4, Quaternion, Vector3, Vector4, RAD2DEG } = math;
 const { expect } = chai;
+
+class CustomPObject extends PObject { }
+class CustomPEntity extends PEntity { }
 
 describe('渲染插件单测', function () {
   this.timeout(60 * 1000);
+
   const player = new Player({
     canvas: document.createElement('canvas'),
   });
 
-  it('3D变换测试', function () {
+  it('3D 变换测试', () => {
     {
       const trans = new PTransform();
       const matrix = trans.getMatrix().toArray();
@@ -79,7 +78,7 @@ describe('渲染插件单测', function () {
         ][i], 1e-5);
       });
       const trans1 = new PTransform();
-      trans1.setRotation(Quaternion.fromAxisAngle(new Vector3(3, 7, 5), Math.PI * 0.15, new Quaternion()));
+      trans1.setRotation(Quaternion.fromAxisAngle(new Vector3(3, 7, 5), Math.PI * 0.15));
       trans1.getMatrix().toArray().forEach((v, i) => {
         expect([
           0.9028250575065613, 0.2767362892627716, -0.32912591099739075, 0,
@@ -120,7 +119,7 @@ describe('渲染插件单测', function () {
       const trans0 = new PTransform();
       trans0.setPosition(new Vector3(13.5, 2.34, 5.678));
       trans0.setScale(new Vector3(3.78, 2.56, 5.12));
-      trans0.setRotation(Quaternion.fromAxisAngle(new Vector3(-8.45, 13.0, 43.2), -Math.PI * 7.43, new Quaternion()));
+      trans0.setRotation(Quaternion.fromAxisAngle(new Vector3(-8.45, 13.0, 43.2), -Math.PI * 7.43));
       const expectMatrix = [
         -0.66851407289505, 3.232001543045044, -1.8427306413650513, 0,
         -2.5140888690948486, -0.3082773983478546, 0.3713786005973816, 0,
@@ -157,15 +156,16 @@ describe('渲染插件单测', function () {
       });
     }
   });
-  it('Object和Entity测试', function () {
-    const object = new PObject();
+
+  it('Object 和 Entity 测试', () => {
+    const object = new CustomPObject();
     expect(object.isValid()).to.eql(false);
     object.type = PObjectType.light;
     expect(object.isValid()).to.eql(true);
     object.type = PObjectType.none;
     expect(object.isValid()).to.eql(false);
     //
-    const entity = new PEntity();
+    const entity = new CustomPEntity();
     expect(entity.visible).to.eql(false);
     entity.visible = true;
     expect(entity.visible).to.eql(false);
@@ -176,30 +176,28 @@ describe('渲染插件单测', function () {
     expect(entity.visible).to.eql(false);
     expect(entity.deleted).to.eql(false);
   });
-  it('Light测试', function () {
-    const light1 = new PLight(
-      'light1',
-      {
-        id: '1',
-        dataType: spec.DataType.LightComponent,
-        lightType: spec.LightType.point,
-        color: {
-          r: 253 / 255,
-          g: 127 / 255,
-          b: 169 / 255,
-          a: 1,
-        },
-        intensity: 123,
-        range: 67.9,
+
+  it('Light 测试', () => {
+    const light1 = new PLight('light1', {
+      id: '1',
+      dataType: spec.DataType.LightComponent,
+      lightType: spec.LightType.point,
+      item: { id: '1' },
+      color: {
+        r: 253 / 255,
+        g: 127 / 255,
+        b: 169 / 255,
+        a: 1,
       },
-      {
-        transform: {
-          position: [123, 456, 789],
-          rotation: [9.8, 7.654, 3.21],
-          scale: [3.4, 5.7, 6.9],
-        },
-      } as any as ModelVFXItem
-    );
+      intensity: 123,
+      range: 67.9,
+    }, {
+      transform: {
+        position: [123, 456, 789],
+        rotation: [9.8, 7.654, 3.21],
+        scale: [3.4, 5.7, 6.9],
+      },
+    } as unknown as ModelLightComponent);
 
     expect(light1.type).to.eql(PObjectType.light);
     expect(light1.lightType).to.eql(PLightType.point);
@@ -217,32 +215,28 @@ describe('渲染插件单测', function () {
     });
     expect(light1.intensity).to.eql(123);
     expect(light1.range).to.eql(67.9);
-    //
-    const light2 = new PLight(
-      'light2',
-      {
-        id: '2',
-        dataType: spec.DataType.LightComponent,
-        lightType: spec.LightType.spot,
-        color: {
-          r: 0 / 255,
-          g: 1.0,
-          b: 163 / 255,
-          a: 135 / 255,
-        },
-        intensity: 997,
-        range: 1007.3,
-        innerConeAngle: 35.8,
-        outerConeAngle: 49.6,
+    const light2 = new PLight('light2', {
+      id: '2',
+      item: { id: '1' },
+      dataType: spec.DataType.LightComponent,
+      lightType: spec.LightType.spot,
+      color: {
+        r: 0 / 255,
+        g: 1.0,
+        b: 163 / 255,
+        a: 135 / 255,
       },
-      {
-        transform: {
-          position: [222, 333, 444],
-          rotation: [0, 0, 0],
-          scale: [5.6, 8.9, 10.2],
-        },
-      } as any as ModelVFXItem
-    );
+      intensity: 997,
+      range: 1007.3,
+      innerConeAngle: 35.8,
+      outerConeAngle: 49.6,
+    }, {
+      transform: {
+        position: [222, 333, 444],
+        rotation: [0, 0, 0],
+        scale: [5.6, 8.9, 10.2],
+      },
+    } as any as ModelLightComponent);
     expect(light2.type).to.eql(PObjectType.light);
     expect(light2.lightType).to.eql(PLightType.spot);
     expect(light2.name).to.eql('light2');
@@ -262,28 +256,23 @@ describe('渲染插件单测', function () {
     light2.getWorldDirection().toArray().forEach((v, index) => {
       expect(v).closeTo([0, 0, -1][index], 1e-5);
     });
-    //
-    //
-    const light3 = new PLight(
-      'light3',
-      {
-        id: '3',
-        dataType: spec.DataType.LightComponent,
-        lightType: spec.LightType.directional,
-        color: {
-          r: 128 / 255,
-          g: 0,
-          b: 177 / 255,
-          a: 33 / 255,
-        },
-        intensity: 868,
+    const light3 = new PLight('light3', {
+      id: '3',
+      item: { id: '1' },
+      dataType: spec.DataType.LightComponent,
+      lightType: spec.LightType.directional,
+      color: {
+        r: 128 / 255,
+        g: 0,
+        b: 177 / 255,
+        a: 33 / 255,
       },
-      {
-        transform: {
-          rotation: [12.3, 45.6, 78.9],
-        },
-      } as any as ModelVFXItem
-    );
+      intensity: 868,
+    }, {
+      transform: {
+        rotation: [12.3, 45.6, 78.9],
+      },
+    } as any as ModelLightComponent);
     expect(light3.type).to.eql(PObjectType.light);
     expect(light3.lightType).to.eql(PLightType.directional);
     expect(light3.name).to.eql('light3');
@@ -314,9 +303,11 @@ describe('渲染插件单测', function () {
     manager.remove(light1);
     expect(manager.lightList).to.eql([light3]);
   });
-  it('Camera测试', function () {
+
+  it('Camera 测试', () => {
     const params1 = {
       id: '1',
+      item: { id: '1' },
       dataType: spec.DataType.CameraComponent,
       type: spec.CameraType.perspective,
       aspect: 2,
@@ -330,7 +321,7 @@ describe('渲染插件单测', function () {
         position: [3.21, 6.54, 9.87],
         rotation: [-27, 69, 35],
       },
-    } as any as ModelVFXItem;
+    } as any as ModelCameraComponent;
     const camera1 = new PCamera('camera1', 800, 600, params1, owner1);
     expect(camera1.name).to.eql('camera1');
     expect(camera1.type).to.eql(PObjectType.camera);
@@ -370,6 +361,7 @@ describe('渲染插件单测', function () {
     //=======================================================
     const params2 = {
       id: '2',
+      item: { id: '1' },
       dataType: spec.DataType.CameraComponent,
       type: spec.CameraType.perspective,
       near: 0.03,
@@ -382,7 +374,7 @@ describe('渲染插件单测', function () {
         position: [13.5, 33.6, 56.2],
         rotation: [0, 45, 30],
       },
-    } as any as ModelVFXItem;
+    } as any as ModelCameraComponent;
     const camera2 = new PCamera('camera2', 1080, 960, params2, owner2);
     expect(camera2.name).to.eql('camera2');
     expect(camera2.type).to.eql(PObjectType.camera);
@@ -425,15 +417,16 @@ describe('渲染插件单测', function () {
     cameraManager.remove(0);
     const cam1 = cameraManager.insert('camera1', params1);
     const cam2 = cameraManager.insert('camera2', params2);
-    expect(cameraManager.defaultCamera).not.eql(cam1);
-    expect(cameraManager.defaultCamera).not.eql(cam2);
-    expect(cameraManager.defaultCamera).to.eql(cameraManager.getActiveCamera());
-    expect(cameraManager.cameraList).to.eql([cam1, cam2]);
+    expect(cameraManager.getDefaultCamera()).not.eql(cam1);
+    expect(cameraManager.getDefaultCamera()).not.eql(cam2);
+    expect(cameraManager.getDefaultCamera()).to.eql(cameraManager.getActiveCamera());
+    expect(cameraManager.getCameraList()).to.eql([cam1, cam2]);
     const viewportMatrix = Matrix4.IDENTITY.clone();
     cameraManager.updateDefaultCamera(
       45, viewportMatrix, 1, 0.001, 606,
       new Vector3(30.5, 100, 77),
-      Quaternion.fromAxisAngle(new Vector3(10, -15, 33), 0.3, new Quaternion()), 0
+      Quaternion.fromAxisAngle(new Vector3(10, -15, 33), 0.3),
+      0,
     );
     const acam = cameraManager.getActiveCamera();
     expect(acam.width).to.eql(1024);
@@ -467,7 +460,8 @@ describe('渲染插件单测', function () {
       ][i]).closeTo(v, 1e-6);
     });
   });
-  it('Material测试', function () {
+
+  it('Material 测试', () => {
     const engine = new Engine();
     const mat1 = new PMaterialPBR();
     const baseColorTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
@@ -701,12 +695,14 @@ describe('渲染插件单测', function () {
     expect(mat2.isBothSide()).to.eql(true);
     expect(mat2.hasBaseColorTexture()).to.eql(true);
   });
-  it('Skybox测试', function () {
+
+  it('Skybox 测试', () => {
     const engine = new Engine();
     const specularTexture = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const brdfLUTTexture = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const options = {
       id: '003',
+      item: { id: '1' },
       name: 'skybox1',
       dataType: spec.DataType.SkyboxComponent,
       renderable: true,
@@ -717,7 +713,7 @@ describe('渲染插件单测', function () {
       specularImageSize: 128,
       specularMipCount: 6,
     };
-    const skybox = new PSkybox('skybox1', options, { item: { renderOrder: 123 } } as any as ModelVFXItem);
+    const skybox = new PSkybox('skybox1', options, { item: { renderOrder: 123 } } as unknown as ModelSkyboxComponent);
     skybox.setup(brdfLUTTexture);
     expect(skybox.type).to.eql(PObjectType.skybox);
     expect(skybox.priority).to.eql(123);
@@ -729,7 +725,8 @@ describe('渲染插件单测', function () {
     expect(skybox.specularImageSize).to.eql(128);
     expect(skybox.specularMipCount).to.eql(6);
   });
-  it('Mesh测试', async function () {
+
+  it('Mesh 测试', async () => {
     const engine = new Engine();
     const loader = new LoaderImplEx();
     const loadResult = await loader.loadScene({
@@ -738,12 +735,12 @@ describe('渲染插件单测', function () {
         compatibleMode: 'tiny3d',
       },
       effects: {
-        renderer: player.renderer,
         duration: 5,
         endBehavior: 2,
       },
     });
     const sceneAABB = loadResult.sceneAABB;
+
     [0.1809539943933487, 0.569136917591095, 1.5065499544143677].forEach((v, i) => {
       expect(sceneAABB.max[i]).closeTo(v, 1e-5);
     });
@@ -754,8 +751,10 @@ describe('渲染插件单测', function () {
     const jsonScene = loadResult.jsonScene;
     const itemList = jsonScene.items;
     expect(itemList.length).to.eql(23);
-    engine.addPackageDatas({ jsonScene });
+    engine.addPackageDatas({ jsonScene } as Scene);
+
     const animComp = new AnimationComponent(engine);
+
     SerializationHelper.deserializeTaggedProperties(jsonScene.components[1], animComp);
     expect(animComp.clips.length).to.eql(1);
     const animClip = animComp.clips[0];
@@ -982,7 +981,7 @@ describe('渲染插件单测', function () {
     const meshComp = itemMesh.getComponent(ModelMeshComponent);
     const meshData = meshComp.data as spec.ModelMeshComponentData;
     expect(meshData.name).to.eql('Cesium_Man');
-    const geometry = meshData.geometry as GLGeometry;
+    const geometry = meshData.geometry as unknown as GLGeometry;
     expect(geometry.subMeshes.length).to.eql(1);
     expect(geometry.subMeshes[0].indexCount).to.eql(14016);
     expect(geometry.subMeshes[0].offset).to.eql(0);
@@ -1009,7 +1008,7 @@ describe('渲染插件单测', function () {
       'Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2/leg_joint_L_3/leg_joint_L_5',
       'Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2/leg_joint_R_3/leg_joint_R_5',
     ]);
-    expect(skin.inverseBindMatrices.length).eql(304);
+    expect(skin.inverseBindMatrices?.length).eql(304);
     [
       0.9971418380737305, -4.3711398944878965e-8, 0.07555299252271652, 0, 4.358646421565027e-8, 1, 3.3025269186026662e-9, 0, -0.07555299252271652,
       0, 0.9971418380737305, 0, 0.05130045861005783, -0.0049998159520328045, -0.6770592331886292, 1, 0.06041746959090233, -4.3711398944878965e-8,
@@ -1019,7 +1018,7 @@ describe('渲染插件单测', function () {
       -0.0384785495698452, -4.3711398944878965e-8, 0.9992595911026001, 0, -1.6819512449472995e-9, 1, 4.367903372326509e-8, 0, -0.9992595911026001,
       0, -0.0384785495698452, 0,
     ].forEach((v, i) => {
-      expect(skin.inverseBindMatrices[i]).closeTo(v, 1e-5);
+      expect(skin.inverseBindMatrices?.[i]).closeTo(v, 1e-5);
     });
     expect(geometry.getAttributeNames()).to.eql([
       'aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights',
@@ -1027,11 +1026,11 @@ describe('渲染插件单测', function () {
     expect(geometry.drawStart).to.eql(0);
     expect(geometry.drawCount).to.eql(14016);
     expect(geometry.getIndexData()).not.to.eql(undefined);
-    expect(geometry.getAttributeData('aPos').length).to.eql(9819);
-    expect(geometry.getAttributeData('aNormal').length).to.eql(9819);
-    expect(geometry.getAttributeData('aUV').length).to.eql(6546);
-    expect(geometry.getAttributeData('aJoints').length).to.eql(13092);
-    expect(geometry.getAttributeData('aWeights').length).to.eql(13092);
+    expect(geometry.getAttributeData('aPos')?.length).to.eql(9819);
+    expect(geometry.getAttributeData('aNormal')?.length).to.eql(9819);
+    expect(geometry.getAttributeData('aUV')?.length).to.eql(6546);
+    expect(geometry.getAttributeData('aJoints')?.length).to.eql(13092);
+    expect(geometry.getAttributeData('aWeights')?.length).to.eql(13092);
     expect(geometry.attributes).not.to.eql(undefined);
     if (geometry.attributes !== undefined) {
       expect(geometry.attributes['aJoints']).to.eql({
@@ -1076,25 +1075,25 @@ describe('渲染插件单测', function () {
       });
     }
     const meshMaterial = meshComp.materials[0] as GLMaterial;
-    expect(meshMaterial.colors._BaseColorFactor).to.eql({ r: 1, g: 1, b: 1, a: 1 });
-    expect(meshMaterial.colors._EmissiveFactor).to.eql({ r: 0, g: 0, b: 0, a: 1 });
-    expect(meshMaterial.floats.AlphaClip).to.eql(0);
-    expect(meshMaterial.floats.ZTest).to.eql(1);
-    expect(meshMaterial.floats.ZWrite).to.eql(1);
-    expect(meshMaterial.floats._AlphaCutoff).to.eql(0);
-    expect(meshMaterial.floats._EmissiveIntensity).to.eql(1);
-    expect(meshMaterial.floats._MetallicFactor).to.eql(0);
-    expect(meshMaterial.floats._NormalScale).to.eql(1);
-    expect(meshMaterial.floats._OcclusionStrength).to.eql(0);
-    expect(meshMaterial.floats._RoughnessFactor).to.eql(1);
-    expect(meshMaterial.floats._SpecularAA).to.eql(0);
-    await loader.loadScene({
+    expect(meshMaterial.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+    expect(meshMaterial.getColor('_EmissiveFactor')).to.eql({ r: 0, g: 0, b: 0, a: 1 });
+    expect(meshMaterial.getFloat('AlphaClip')).to.eql(0);
+    expect(meshMaterial.getFloat('ZTest')).to.eql(1);
+    expect(meshMaterial.getFloat('ZWrite')).to.eql(1);
+    expect(meshMaterial.getFloat('_AlphaCutoff')).to.eql(0);
+    expect(meshMaterial.getFloat('_EmissiveIntensity')).to.eql(1);
+    expect(meshMaterial.getFloat('_MetallicFactor')).to.eql(0);
+    expect(meshMaterial.getFloat('_NormalScale')).to.eql(1);
+    expect(meshMaterial.getFloat('_OcclusionStrength')).to.eql(0);
+    expect(meshMaterial.getFloat('_RoughnessFactor')).to.eql(1);
+    expect(meshMaterial.getFloat('_SpecularAA')).to.eql(0);
+
+    const scene = await loader.loadScene({
       gltf: {
         resource: 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/WaterBottle.glb',
         compatibleMode: 'tiny3d',
       },
       effects: {
-        renderer: player.renderer,
         duration: 5,
         endBehavior: 2,
       },
@@ -1106,7 +1105,7 @@ describe('渲染插件单测', function () {
       const jsonScene = loadResult.jsonScene;
       const itemList = jsonScene.items;
       expect(itemList.length).to.eql(2);
-      engine.addPackageDatas({ jsonScene });
+      engine.addPackageDatas({ jsonScene } as Scene);
       //
       expect(itemList[1].type).to.eql('mesh');
       const itemMesh = new VFXItem(engine);
@@ -1114,7 +1113,7 @@ describe('渲染插件单测', function () {
       const meshComp = itemMesh.getComponent(ModelMeshComponent);
       const meshData = meshComp.data as spec.ModelMeshComponentData;
       expect(meshData.name).to.eql('WaterBottle');
-      const geometry2 = meshData.geometry as GLGeometry;
+      const geometry2 = meshData.geometry as unknown as GLGeometry;
       expect(geometry2.subMeshes.length).to.eql(1);
       expect(geometry2.subMeshes[0].indexCount).to.eql(13530);
       expect(geometry2.subMeshes[0].offset).to.eql(0);
@@ -1128,10 +1127,10 @@ describe('渲染插件单测', function () {
       expect(geometry2.drawStart).to.eql(0);
       expect(geometry2.drawCount).to.eql(13530);
       expect(geometry2.getIndexData()).not.to.eql(undefined);
-      expect(geometry2.getAttributeData('aPos').length).to.eql(7647);
-      expect(geometry2.getAttributeData('aNormal').length).to.eql(7647);
-      expect(geometry2.getAttributeData('aUV').length).to.eql(5098);
-      expect(geometry2.getAttributeData('aTangent').length).to.eql(10196);
+      expect(geometry2.getAttributeData('aPos')?.length).to.eql(7647);
+      expect(geometry2.getAttributeData('aNormal')?.length).to.eql(7647);
+      expect(geometry2.getAttributeData('aUV')?.length).to.eql(5098);
+      expect(geometry2.getAttributeData('aTangent')?.length).to.eql(10196);
       expect(geometry2.attributes).not.to.eql(undefined);
       if (geometry2.attributes !== undefined) {
         expect(geometry2.attributes['aNormal']).to.eql({
@@ -1168,23 +1167,24 @@ describe('渲染插件单测', function () {
         });
       }
       const meshMaterial2 = meshComp.materials[0] as GLMaterial;
-      expect(meshMaterial2.colors._BaseColorFactor).to.eql({ r: 1, g: 1, b: 1, a: 1 });
-      expect(meshMaterial2.colors._EmissiveFactor).to.eql({ r: 1, g: 1, b: 1, a: 1 });
-      expect(meshMaterial2.floats.AlphaClip).to.eql(0);
-      expect(meshMaterial2.floats.ZTest).to.eql(1);
-      expect(meshMaterial2.floats.ZWrite).to.eql(1);
-      expect(meshMaterial2.floats._AlphaCutoff).to.eql(0);
-      expect(meshMaterial2.floats._EmissiveIntensity).to.eql(1);
-      expect(meshMaterial2.floats._MetallicFactor).to.eql(1);
-      expect(meshMaterial2.floats._NormalScale).to.eql(1);
-      expect(meshMaterial2.floats._OcclusionStrength).to.eql(0);
-      expect(meshMaterial2.floats._RoughnessFactor).to.eql(1);
-      expect(meshMaterial2.floats._SpecularAA).to.eql(0);
+      expect(meshMaterial2.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+      expect(meshMaterial2.getColor('_EmissiveFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+      expect(meshMaterial2.getFloat('AlphaClip')).to.eql(0);
+      expect(meshMaterial2.getFloat('ZTest')).to.eql(1);
+      expect(meshMaterial2.getFloat('ZWrite')).to.eql(1);
+      expect(meshMaterial2.getFloat('_AlphaCutoff')).to.eql(0);
+      expect(meshMaterial2.getFloat('_EmissiveIntensity')).to.eql(1);
+      expect(meshMaterial2.getFloat('_MetallicFactor')).to.eql(1);
+      expect(meshMaterial2.getFloat('_NormalScale')).to.eql(1);
+      expect(meshMaterial2.getFloat('_OcclusionStrength')).to.eql(0);
+      expect(meshMaterial2.getFloat('_RoughnessFactor')).to.eql(1);
+      expect(meshMaterial2.getFloat('_SpecularAA')).to.eql(0);
       expect(meshMaterial2.stringTags.RenderFace).to.eql('Front');
       expect(meshMaterial2.stringTags.RenderType).to.eql('Opaque');
     });
   });
-  it('端上测试', async function () {
+
+  it('端上测试', async () => {
     const converter = new JSONConverter(player.renderer);
     const scn = await converter.processScene('https://gw.alipayobjects.com/os/gltf-asset/89748482160728/CesiumMan.json');
     const comp = await generateComposition(player, scn, {}, { pauseOnFirstFrame: true });
@@ -1454,7 +1454,7 @@ describe('渲染插件单测', function () {
     const modelComp = modelItem.getComponent(ModelMeshComponent);
     expect(modelComp.priority).to.eql(1);
     const meshObj = modelComp.content;
-    const skin = meshObj.skin;
+    const skin = meshObj.skin!;
     expect(skin.inverseBindMatrices.length).to.eql(19);
     [
       0.9971418380737305, -4.3711398944878965e-8, 0.07555299252271652, 0, 4.358646421565027e-8, 1, 3.3025269186026662e-9, 0, -0.07555299252271652,
@@ -1494,9 +1494,9 @@ describe('渲染插件单测', function () {
     });
     //
     expect(meshObj.subMeshes.length).to.eql(1);
-    const geometry = meshObj.subMeshes[0].getEffectsGeometry();
-    expect(geometry.attributesName.length).to.eql(5);
-    geometry.attributesName.forEach((val, idx) => {
+    const geometry = meshObj.subMeshes[0].getEffectsGeometry() as GLGeometry;
+    expect(geometry.getAttributeNames().length).to.eql(5);
+    geometry.getAttributeNames().forEach((val, idx) => {
       expect(val).to.eql(['aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights'][idx]);
     });
     const position = geometry.attributes.aPos;
@@ -1536,7 +1536,7 @@ describe('渲染插件单测', function () {
       0.10521499812602997, -0.5284020900726318, 0.8022940158843994, 0.1302040070295334, -0.5113590955734253, 0.806075930595398,
       0.13724100589752197, -0.5518780946731567, 0.7845999002456665, 0.16086100041866302, -0.550517201423645, 0.7795209288597107,
     ].forEach((v, i) => {
-      expect(positionBuffer[i]).closeTo(v, 1e-5);
+      expect(positionBuffer?.[i]).closeTo(v, 1e-5);
     });
     [
       0.9666681289672852, 0.2427504062652588, 0.08139491081237793, 0.5926201343536377, 0.8049721121788025, 0.028657428920269012,
@@ -1550,7 +1550,7 @@ describe('渲染插件单测', function () {
       -0.4683813154697418, 0.12970750033855438, -0.8739537000656128, -0.04324638098478317, 0.5547868013381958, -0.8308678865432739,
       -0.3818897008895874, 0.1392296999692917, -0.9136604070663452, 0.1048332005739212, 0.3493525981903076, -0.9311084151268005,
     ].forEach((v, i) => {
-      expect(normalBuffer[i]).closeTo(v, 1e-5);
+      expect(normalBuffer?.[i]).closeTo(v, 1e-5);
     });
     [
       0.2736569941043854, 0.8036180138587952, 0.3031649887561798, 0.799481987953186, 0.2714029848575592, 0.7648169994354248,
@@ -1564,14 +1564,14 @@ describe('渲染插件单测', function () {
       0.35148298740386963, 0.4901829957962036, 0.342864990234375, 0.4889410138130188, 0.3449459969997406, 0.3859059810638428,
       0.34152400493621826, 0.36677002906799316, 0.33701199293136597, 0.38905197381973267, 0.33330801129341125, 0.3686150312423706,
     ].forEach((v, i) => {
-      expect(uvBuffer[i]).closeTo(v, 1e-5);
+      expect(uvBuffer?.[i]).closeTo(v, 1e-5);
     });
     [
       0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 7, 9, 0, 0, 7, 9, 0, 0, 9, 0, 0, 0, 9, 0, 0, 0, 7, 9, 0, 0, 7, 9, 0, 0, 9,
       0, 0, 0, 9, 0, 0, 0, 8, 10, 0, 0, 8, 10, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0, 8, 10, 0, 0, 8, 10, 0, 0, 10, 0, 0, 0, 10, 0, 0,
       0, 10, 0, 0, 0, 10, 0, 0, 0, 13, 15, 17, 0, 13, 15, 17, 0, 13, 15, 17, 0,
     ].forEach((v, i) => {
-      expect(jointBuffer[i]).closeTo(v, 1e-5);
+      expect(jointBuffer?.[i]).closeTo(v, 1e-5);
     });
     [
       0.17160889506340027, 0.6451614499092102, 0.13225100934505463, 0.05097858980298042, 0.2263036072254181, 0.5693775415420532,
@@ -1583,23 +1583,23 @@ describe('渲染插件单测', function () {
       0.03885405883193016, 0.9611459374427795, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0.20391489565372467,
       0.4302911162376404, 0.36579400300979614, 0, 0.43764400482177734, 0.2858009934425354, 0.27655500173568726, 0, 0.21779599785804749,
     ].forEach((v, i) => {
-      expect(weightBuffer[i]).closeTo(v, 1e-5);
+      expect(weightBuffer?.[i]).closeTo(v, 1e-5);
     });
     const meshMaterial = modelComp.materials[0] as GLMaterial;
-    expect(meshMaterial.colors._BaseColorFactor).to.eql({ r: 1, g: 1, b: 1, a: 1 });
-    expect(meshMaterial.colors._EmissiveFactor).to.eql({ r: 0, g: 0, b: 0, a: 1 });
-    expect(meshMaterial.floats.AlphaClip).to.eql(0);
-    expect(meshMaterial.floats.ZTest).to.eql(1);
-    expect(meshMaterial.floats.ZWrite).to.eql(1);
-    expect(meshMaterial.floats._AlphaCutoff).to.eql(0.5);
-    expect(meshMaterial.floats._EmissiveIntensity).to.eql(1);
-    expect(meshMaterial.floats._MetallicFactor).to.eql(0);
-    expect(meshMaterial.floats._RoughnessFactor).to.eql(1);
-    expect(meshMaterial.floats._SpecularAA).to.eql(0);
+    expect(meshMaterial.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+    expect(meshMaterial.getColor('_EmissiveFactor')).to.eql({ r: 0, g: 0, b: 0, a: 1 });
+    expect(meshMaterial.getFloat('AlphaClip')).to.eql(0);
+    expect(meshMaterial.getFloat('ZTest')).to.eql(1);
+    expect(meshMaterial.getFloat('ZWrite')).to.eql(1);
+    expect(meshMaterial.getFloat('_AlphaCutoff')).to.eql(0.5);
+    expect(meshMaterial.getFloat('_EmissiveIntensity')).to.eql(1);
+    expect(meshMaterial.getFloat('_MetallicFactor')).to.eql(0);
+    expect(meshMaterial.getFloat('_RoughnessFactor')).to.eql(1);
+    expect(meshMaterial.getFloat('_SpecularAA')).to.eql(0);
     comp.dispose();
   });
-  it('Box求交测试', function () {
-    const eps = 0.0001;
+
+  it('Box 求交测试', () => {
     const boxMin = new Vector3(-1, -1, -1);
     const boxMax = new Vector3(1, 1, 1);
     //
@@ -1633,7 +1633,8 @@ describe('渲染插件单测', function () {
     const t6 = RayBoxTesting(ray6Origin, ray6Direction, boxMin, boxMax);
     expect(t6).to.eql(undefined);
   });
-  it('Triangle求交测试', function () {
+
+  it('Triangle 求交测试', () => {
     const a = new Vector3(1, 1, 0);
     const b = new Vector3(0, 1, 1);
     const c = new Vector3(1, 0, 1);

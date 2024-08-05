@@ -1,5 +1,4 @@
-// @ts-nocheck
-import { ModelLightComponent, PLight, PLightType, PObjectType, WebHelper } from '@galacean/effects-plugin-model';
+import { ModelLightComponent, PLightType, PObjectType, WebHelper } from '@galacean/effects-plugin-model';
 import { loadGLTF } from '../../src/helper';
 import { generateComposition } from './utilities';
 
@@ -10,7 +9,7 @@ const player = WebHelper.createPlayer(false);
 describe('运行时测试', function () {
   this.timeout('600s');
 
-  it('PLight测试', async function () {
+  it('PLight 测试', async () => {
     const url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/frog_flower.glb';
     const scene = await loadGLTF({ url, player });
     const comp = await generateComposition(
@@ -29,6 +28,7 @@ describe('运行时测试', function () {
     const item1 = items[1];
 
     expect(item1.getComponent(ModelLightComponent) instanceof ModelLightComponent).to.eql(false);
+
     {
       const item = items[3];
 
@@ -51,6 +51,7 @@ describe('运行时测试', function () {
       expect(light.innerConeAngle).to.eql(0);
       expect(light.outerConeAngle).to.eql(0);
     }
+
     {
       const item = items[5];
 
@@ -73,6 +74,7 @@ describe('运行时测试', function () {
       expect(light.innerConeAngle).to.eql(0);
       expect(light.outerConeAngle).to.eql(0);
     }
+
     {
       const item = items[6];
 

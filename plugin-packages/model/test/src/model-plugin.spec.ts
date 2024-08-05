@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/quotes */
-// @ts-nocheck
+import type { HitTestBoxParams, HitTestSphereParams } from '@galacean/effects';
 import { Player, HitTestType, spec, math } from '@galacean/effects';
 import { generateComposition } from './utilities';
 
 const { Vector3 } = math;
-
 const { expect } = chai;
 
 const player = new Player({
@@ -12,13 +11,13 @@ const player = new Player({
   manualRender: true,
 });
 
-describe('需要关闭WebGL Spector', function () {
-  it('遇到global leak(s) detected错误时', function () { });
+describe('需要关闭WebGL Spector', () => {
+  it('遇到global leak(s) detected错误时', () => { });
 });
 
-describe('mode plugin test', function () {
-  it('parent affects 3d item position', async function () {
-    const scn = {
+describe('mode plugin test', () => {
+  it('parent affects 3d item position', async () => {
+    const scene = {
       "compositionId": 1,
       "requires": [],
       "compositions": [{
@@ -65,15 +64,15 @@ describe('mode plugin test', function () {
       "plugins": ["model"],
       "_imgs": { "1": [] },
     };
-    const comp = await generateComposition(player, scn, {}, { autoplay: false });
-    const cameraItem = comp.getItemByName('camera');
-
+    const comp = await generateComposition(player, scene, {}, { autoplay: false });
+    const cameraItem = comp.getItemByName('camera')!;
     let pos = cameraItem.transform.position;
 
     expect(pos.toArray()).to.deep.equal([0, 0, 8]);
     expect(cameraItem.duration).to.eql(5);
     comp.gotoAndStop(1.9);
     pos = cameraItem.transform.position;
+
     const cp = new Vector3();
 
     cameraItem.transform.assignWorldTRS(cp);
@@ -81,8 +80,8 @@ describe('mode plugin test', function () {
     comp.dispose();
   });
 
-  it('3d item get sphere bounding', async function () {
-    const scn = {
+  it('3d item get sphere bounding', async () => {
+    const scene = {
       "compositionId": 1,
       "requires": [],
       "compositions": [{
@@ -135,21 +134,17 @@ describe('mode plugin test', function () {
       "plugins": ["model"],
       "_imgs": { "1": [] },
     };
-    const comp = await generateComposition(player, scn, {}, { pauseOnFirstFrame: true });
+    const comp = await generateComposition(player, scene, {}, { pauseOnFirstFrame: true });
     const cameraItem = comp.getItemByName('camera');
-
-    let p = cameraItem.getHitTestParams(true);
+    let p = cameraItem?.getHitTestParams(true);
 
     if (p !== undefined) {
       if (p.type === HitTestType.custom) {
-
         const ret = comp.hitTest(0, 0, true);
 
         expect(ret[0]).to.exist;
         expect(ret[0].name === 'camera');
-
       } else if (p.type === HitTestType.sphere) {
-
         expect(p.center.toArray()).to.deep.equal([0, 0, 0]);
         expect(p.radius).to.eql(0.2);
         const ret = comp.hitTest(0, 0, true);
@@ -158,15 +153,15 @@ describe('mode plugin test', function () {
         expect(ret[0].name === 'camera');
 
         comp.gotoAndPlay(1.9);
-        p = cameraItem.getHitTestParams(true);
+        p = cameraItem!.getHitTestParams(true) as HitTestSphereParams;
+
         expect(p.center.toArray()).to.deep.equal([3, 0, 0]);
         expect(p.radius).to.eql(0.2);
         expect(comp.hitTest(0, 0, true)).to.be.an('array').length(0);
-
       }
     }
   });
-  it('3d item get box bounding', async function () {
+  it('3d item get box bounding', async () => {
     const scn = {
       "compositionId": 1,
       "requires": [],
@@ -222,7 +217,7 @@ describe('mode plugin test', function () {
     };
     const comp = await generateComposition(player, scn, {}, { pauseOnFirstFrame: true });
     const cameraItem = comp.getItemByName('camera');
-    let p = cameraItem.getHitTestParams(true);
+    let p = cameraItem?.getHitTestParams(true);
 
     if (p !== undefined) {
       if (p.type === HitTestType.custom) {
@@ -237,8 +232,9 @@ describe('mode plugin test', function () {
 
         expect(ret[0]).to.exist;
         expect(ret[0].name === 'camera');
+        // @ts-expect-error
         comp.forwardTime(1.9);
-        p = cameraItem.getHitTestParams(true);
+        p = cameraItem?.getHitTestParams(true) as HitTestBoxParams;
         expect(p.center).to.deep.equal([3, 0, 0]);
         expect(p.size).to.eql([0.2, 0.2, 0.2]);
         expect(comp.hitTest(0, 0, true)).to.be.an('array').length(0);

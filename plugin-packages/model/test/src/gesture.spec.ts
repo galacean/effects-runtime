@@ -1,5 +1,4 @@
-// @ts-nocheck
-import type { PlayOptions } from '@galacean/effects';
+import type { PlayerConfig } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import { CameraGestureHandlerImp, CameraGestureType } from '@galacean/effects-plugin-model';
 // LoaderImplEx没有导出，这里直接从代码目录引用
@@ -314,6 +313,7 @@ describe('测试CameraGestureHandler对象接口', function () {
 
     handler.onKeyEvent({
       cameraID: 'extra-camera',
+      // @ts-expect-error
       xAxis: 5.6,
       speed: 3.0,
     });
@@ -327,6 +327,7 @@ describe('测试CameraGestureHandler对象接口', function () {
 
     handler.onKeyEvent({
       cameraID: 'extra-camera',
+      // @ts-expect-error
       yAxis: -66.3,
       speed: 5.5,
     });
@@ -340,6 +341,7 @@ describe('测试CameraGestureHandler对象接口', function () {
 
     handler.onKeyEvent({
       cameraID: 'extra-camera',
+      // @ts-expect-error
       zAxis: -36.36,
       speed: 0.589,
     });
@@ -353,7 +355,9 @@ describe('测试CameraGestureHandler对象接口', function () {
 
     handler.onKeyEvent({
       cameraID: 'extra-camera',
+      // @ts-expect-error
       xAxis: -5.6,
+      // @ts-expect-error
       yAxis: 35.2,
       speed: 8.8,
     });
@@ -367,7 +371,9 @@ describe('测试CameraGestureHandler对象接口', function () {
 
     handler.onKeyEvent({
       cameraID: 'extra-camera',
+      // @ts-expect-error
       yAxis: -66.3,
+      // @ts-expect-error
       zAxis: 89.2,
       speed: 22.5,
     });
@@ -381,8 +387,11 @@ describe('测试CameraGestureHandler对象接口', function () {
 
     handler.onKeyEvent({
       cameraID: 'extra-camera',
+      // @ts-expect-error
       xAxis: 5.6,
+      // @ts-expect-error
       yAxis: -9.65,
+      // @ts-expect-error
       zAxis: 36.36,
       speed: 12.0,
     });
@@ -400,13 +409,13 @@ describe('测试CameraGestureHandler对象接口', function () {
 async function generateCurrentScene () {
   const gltfLoader = new LoaderImplEx();
   const url = 'https://mdn.alipayobjects.com/afts/file/A*VwE_RJelo74AAAAAAAAAAAAADrd2AQ/CesiumMan.glb';
-  const loadResult = await gltfLoader.loadScene({
+
+  await gltfLoader.loadScene({
     gltf: {
       resource: url,
       compatibleMode: 'tiny3d',
     },
     effects: {
-      renderer: player.renderer,
       duration: 5,
       endBehavior: 2,
     },
@@ -428,8 +437,8 @@ async function generateCurrentScene () {
   return gltfLoader.getLoadResult().jsonScene;
 }
 
-async function createComposition (opts: PlayOptions) {
+async function createComposition (options: Record<string, any>) {
   const scene = await generateCurrentScene();
 
-  return generateComposition(player, scene, {}, opts);
+  return generateComposition(player, scene, {}, options);
 }
