@@ -87,8 +87,7 @@ export class Core {
       textures: this.textureHook.textures,
       shaders: (this.shaderHook.shaders === 0) ? 0 : this.shaderHook.shaders + 1,
       programs: this.programHook.programs,
-      // eslint-disable-next-line no-prototype-builtins
-      webglContext: window.hasOwnProperty('WebGL2RenderingContext') && this.gl instanceof WebGL2RenderingContext ? '2.0' : '1.0',
+      webglContext: this.gl instanceof WebGL2RenderingContext ? '2.0' : '1.0',
     };
 
     this.reset();
