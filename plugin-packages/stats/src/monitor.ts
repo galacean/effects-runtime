@@ -78,7 +78,6 @@ export class Monitor {
   constructor (gl: WebGLRenderingContext | WebGL2RenderingContext) {
     this.core = new Core(gl);
 
-    this.items = [];
     this.items = ['fps', 'memory', 'drawCall', 'triangles', 'textures', 'shaders', 'programs', 'webglContext'];
     this.createContainer();
     this.update = this.update.bind(this);

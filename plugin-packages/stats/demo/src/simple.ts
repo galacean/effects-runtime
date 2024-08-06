@@ -12,11 +12,9 @@ const container = document.getElementById('J-container');
 
     void new EffectsStats(player);
 
-    const com = await player.loadScene(json);
+    await player.loadScene(json);
 
     await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*PtWTT7WcpHgAAAAAAAAAAAAADlB4AQ');
-
-    await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*_21UTqw8Ue8AAAAAAAAAAAAADlB4AQ');
 
     await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*02UWQ6BvLuAAAAAAAAAAAAAADlB4AQ');
 

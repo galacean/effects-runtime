@@ -70,7 +70,7 @@ export default class DrawCallHook {
 
         break;
       default:
-        logger.error('Unknown draw mode:', mode);
+        logger.error(`Unknown draw mode: ${mode}. Count: ${count}`);
 
         break;
     }
@@ -87,8 +87,7 @@ export default class DrawCallHook {
     if (this.hooked) {
       this.gl.drawElements = this.realDrawElements;
       this.gl.drawArrays = this.realDrawArrays;
+      this.hooked = false;
     }
-
-    this.hooked = false;
   }
 }

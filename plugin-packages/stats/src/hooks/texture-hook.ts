@@ -58,8 +58,7 @@ export default class TextureHook {
     if (this.hooked) {
       this.gl.createTexture = this.realCreateTexture;
       this.gl.deleteTexture = this.realDeleteTexture;
+      this.hooked = false;
     }
-
-    this.hooked = false;
   }
 }

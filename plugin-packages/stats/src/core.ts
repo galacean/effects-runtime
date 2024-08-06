@@ -24,6 +24,9 @@ export class Core {
   private programHook: ProgramHook;
 
   constructor (gl: WebGLRenderingContext | WebGL2RenderingContext) {
+    if (!gl) {
+      throw new Error('Unsupported WebGL context');
+    }
     this.gl = gl;
     this.hook(gl);
   }
@@ -39,18 +42,18 @@ export class Core {
    * reset draw call hook
    */
   reset (): void {
-    this.drawCallHook && this.drawCallHook.reset();
-    this.programHook && this.programHook.reset();
+    this.drawCallHook?.reset();
+    this.programHook?.reset();
   }
 
   /**
    * release hook
    */
   release (): void {
-    this.drawCallHook && this.drawCallHook.release();
-    this.textureHook && this.textureHook.release();
-    this.shaderHook && this.shaderHook.release();
-    this.programHook && this.programHook.release();
+    this.drawCallHook?.release();
+    this.textureHook?.release();
+    this.shaderHook?.release();
+    this.programHook?.release();
   }
 
   /**

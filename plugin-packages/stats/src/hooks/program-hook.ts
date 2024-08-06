@@ -20,7 +20,7 @@ export default class ProgramHook {
     this.gl = gl;
 
     if (EffectsStats.options.debug) {
-      logger.info('Texture is hooked.');
+      logger.info('Program is hooked.');
     }
 
   }
@@ -30,7 +30,7 @@ export default class ProgramHook {
 
     this.programs++;
     if (EffectsStats.options.debug) {
-      logger.info(`CreateTexture: ${program}, textures: ${this.programs}.`);
+      logger.info(`UseProgram: ${program}, program: ${this.programs}.`);
 
     }
   }
@@ -42,8 +42,7 @@ export default class ProgramHook {
   release (): void {
     if (this.hooked) {
       this.gl.useProgram = this.realUseProgram;
+      this.hooked = false;
     }
-
-    this.hooked = false;
   }
 }

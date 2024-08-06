@@ -107,7 +107,7 @@ export class EffectsStats {
 
       component.addComponent(StatsComponent);
     }).catch(e => {
-      throw e;
+      throw new Error(`Failed to load scene: ${e.message}`);
     });
   }
 

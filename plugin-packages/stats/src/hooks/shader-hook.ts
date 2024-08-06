@@ -53,8 +53,7 @@ export default class ShaderHook {
     if (this.hooked) {
       this.gl.attachShader = this.realAttachShader;
       this.gl.detachShader = this.realDetachShader;
+      this.hooked = false;
     }
-
-    this.hooked = false;
   }
 }
