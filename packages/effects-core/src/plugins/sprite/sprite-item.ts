@@ -245,8 +245,12 @@ export class SpriteComponent extends RendererComponent {
 
   override update (dt: number): void {
     this.frameAnimationTime += dt / 1000;
-    const time = this.frameAnimationTime;
+    let time = this.frameAnimationTime;
     const duration = this.item.duration;
+
+    if (time > duration) {
+      time = time % duration;
+    }
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
     const ta = this.textureSheetAnimation;
 
