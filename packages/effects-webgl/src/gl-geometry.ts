@@ -587,12 +587,15 @@ export class GLGeometry extends Geometry {
 const vertexBufferSemanticMap: Record<string, string> = {
   POSITION: 'aPos',
   TEXCOORD0: 'aUV',
+  TEXCOORD_0: 'aUV',
   TEXCOORD1: 'aUV2',
   NORMAL: 'aNormal',
   TANGENT: 'aTangent',
   COLOR: 'aColor',
   JOINTS: 'aJoints',
+  JOINTS_0: 'aJoints',
   WEIGHTS: 'aWeights',
+  WEIGHTS_0: 'aWeights',
   //
   POSITION_BS0: 'aTargetPosition0',
   POSITION_BS1: 'aTargetPosition1',

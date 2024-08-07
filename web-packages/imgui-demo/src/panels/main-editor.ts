@@ -178,17 +178,18 @@ export class MainEditor extends EditorWindow {
           for (const peopertyName of Object.keys(componet)) {
             const key = peopertyName as keyof Component;
             const property = componet[key];
+            const ImGuiID = componet.getInstanceId() + peopertyName;
 
             if (typeof property === 'number') {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);
               //@ts-expect-error
-              ImGui.DragFloat('##DragFloat' + peopertyName, (_ = componet[key]) => componet[key] = _, 0.03);
+              ImGui.DragFloat('##DragFloat' + ImGuiID, (_ = componet[key]) => componet[key] = _, 0.03);
             } else if (typeof property === 'boolean') {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);
               //@ts-expect-error
-              ImGui.Checkbox('##Checkbox' + peopertyName, (_ = componet[key]) => componet[key] = _);
+              ImGui.Checkbox('##Checkbox' + ImGuiID, (_ = componet[key]) => componet[key] = _);
             } else if (property instanceof EffectsObject) {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);
@@ -375,27 +376,16 @@ export class MainEditor extends EditorWindow {
           const payload = ImGui.AcceptDragDropPayload(GLTexture.name);
 
           if (payload) {
-            void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
-              if (!file) {
-                return;
-              }
-              const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
-
-              if (!effectsPackage) {
-                return;
-              }
-              if (!serializedData.textures[uniformName]) {
-                serializedData.textures[uniformName] = {
-                  //@ts-expect-error
-                  texture:effectsPackage.exportObjects[0] as Material,
-                };
-              } else {
-                //@ts-expect-error
-                serializedData.textures[uniformName].texture = effectsPackage.exportObjects[0] as Material;
-              }
-            });
+            if (!serializedData.textures[uniformName]) {
+              serializedData.textures[uniformName] = {
+                texture:{ id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' },
+              };
+            } else {
+              serializedData.textures[uniformName].texture = { id:(payload.Data as FileNode).assetObject?.getInstanceId() + '' };
+            }
             dirtyFlag = true;
           }
+
           ImGui.EndDragDropTarget();
         }
       }

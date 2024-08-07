@@ -156,8 +156,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.0.0-alpha.22
-        version: 2.0.0-alpha.22
+        specifier: 2.0.0-alpha.23
+        version: 2.0.0-alpha.23
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -2709,8 +2709,8 @@ packages:
   /@galacean/effects-specification@2.0.0-alpha.20:
     resolution: {integrity: sha512-j7GoIu3nsl6pRhT4xzNak5gfyKlX+lfHVSjX8CwDn278cc1c1KFpV7jxOYL4J/IDd8Ech8LGNJZdJOflxZsadQ==}
 
-  /@galacean/effects-specification@2.0.0-alpha.22:
-    resolution: {integrity: sha512-U6aAwKHxFWEUtk8+ljB/XUilZV1zYSa0TYMm8zwMfxGFK5/AGalX9I2x0i/5u4EhRQSVnBrFLWCdFMUHc7UJTw==}
+  /@galacean/effects-specification@2.0.0-alpha.23:
+    resolution: {integrity: sha512-GgI6oKiAjJQ7QbZuwn7HOyA9Cv+Ua8vJGejZOQl9TEWE1CBIBOKsQNHy1sRnpjo7N+X0E2mLjHaltLSxAq7t1g==}
     dev: false
 
   /@headlessui/vue@1.7.19(vue@3.4.21):

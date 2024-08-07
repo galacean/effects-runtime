@@ -146,7 +146,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.startGesture(arg);
   }
 
-  onZMoving (x: number, y: number, speed: number): CameraOptionsEx {
+  onZMoving (x: number, y: number, speed = 0.015): CameraOptionsEx {
     if (!this.startParams.mouseEvent) {
       return this.composition.camera.getOptions();
     }
@@ -160,7 +160,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
       clientWidth: arg0.clientWidth,
       clientHeight: arg0.clientHeight,
       target: arg0.target,
-      speed: speed ?? 0.015,
+      speed,
     };
 
     return this.moveGesture(arg);

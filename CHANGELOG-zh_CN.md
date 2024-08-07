@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.6
+
+`2024-08-02`
+
+- Fix: 修复极端情况下 textMesh 销毁时序问题。[#535](https://github.com/galacean/effects-runtime/pull/535) @Sruimeng
+
 ## 1.6.5
 
 `2024-07-26`
