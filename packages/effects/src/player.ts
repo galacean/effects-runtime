@@ -223,7 +223,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     this.event = new EventSystem(this.canvas, !!notifyTouch);
     this.event.bindListeners();
     this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
-    this.interactive = interactive ?? false;
+    this.interactive = interactive;
 
     this.resize();
     setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
@@ -527,7 +527,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     }
     this.emit(EffectEventName.PLAYER_UPDATE, {
       player: this,
-      playing: true,
+      playing: false,
     });
   }
 
@@ -563,7 +563,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     this.ticker?.pause();
     this.emit(EffectEventName.PLAYER_UPDATE, {
       player: this,
-      playing: true,
+      playing: false,
     });
     if (options && options.offloadTexture) {
       this.offloadTexture();
