@@ -165,6 +165,7 @@ export class SpriteComponent extends RendererComponent {
   anchor?: vec2;
 
   textureSheetAnimation?: spec.TextureSheetAnimation;
+  frameAnimationLoop = false;
   frameAnimationTime = 0;
   splits: splitsDataType;
   emptyTexture: Texture;
@@ -184,6 +185,34 @@ export class SpriteComponent extends RendererComponent {
 
   constructor (engine: Engine, props?: SpriteItemProps) {
     super(engine);
+    this.name = 'MSprite' + seed++;
+    this.renderer = {
+      renderMode: spec.RenderMode.BILLBOARD,
+      blending: spec.BlendingMode.ALPHA,
+      texture: this.engine.emptyTexture,
+      occlusion: true,
+      transparentOcclusion:true,
+      side: spec.SideMode.DOUBLE,
+      mask: 0,
+      maskMode: spec.MaskMode.NONE,
+      order: 0,
+    };
+    this.emptyTexture = this.engine.emptyTexture;
+    this.splits = singleSplits;
+    this.cachePrefix = '-';
+    this.renderInfo = getImageItemRenderInfo(this);
+
+    const geometry = this.createGeometry(glContext.TRIANGLES);
+    const material = this.createMaterial(this.renderInfo, 2);
+
+    this.worldMatrix = Matrix4.fromIdentity();
+    this.material = material;
+    this.geometry = geometry;
+    const startColor = [1, 1, 1, 1];
+
+    this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
+    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
+    this.setItem();
 
     if (props) {
       this.fromData(props);
@@ -248,7 +277,7 @@ export class SpriteComponent extends RendererComponent {
     let time = this.frameAnimationTime;
     const duration = this.item.duration;
 
-    if (time > duration) {
+    if (time > duration && this.frameAnimationLoop) {
       time = time % duration;
     }
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
@@ -296,7 +325,7 @@ export class SpriteComponent extends RendererComponent {
       } else {
         texOffset = [0, dy];
       }
-      this.material.getVector4('_TexOffset')!.setFromArray([
+      this.material.getVector4('_TexOffset')?.setFromArray([
         texRectX + texOffset[0],
         texRectH + texRectY - texOffset[1],
         dx, dy,
@@ -310,12 +339,10 @@ export class SpriteComponent extends RendererComponent {
     }
   }
 
-  private getItemInitData (item: SpriteComponent, idx: number, pointStartIndex: number, textureIndex: number) {
-    let geoData = item.geoData;
+  private getItemInitData () {
+    this.geoData = this.getItemGeometryData();
+    const geoData = this.geoData;
 
-    if (!geoData) {
-      geoData = item.geoData = this.getItemGeometryData(item, idx);
-    }
     const index = geoData.index;
     const idxCount = index.length;
     // @ts-expect-error
@@ -323,7 +350,7 @@ export class SpriteComponent extends RendererComponent {
 
     if (!this.wireframe) {
       for (let i = 0; i < idxCount; i++) {
-        indexData[i] = pointStartIndex + index[i];
+        indexData[i] = 0 + index[i];
       }
     }
 
@@ -341,8 +368,7 @@ export class SpriteComponent extends RendererComponent {
       addItem(textures, texture);
     }
     texture = this.renderer.texture;
-    const textureIndex = texture ? textures.indexOf(texture) : -1;
-    const data = this.getItemInitData(this, 0, 0, textureIndex);
+    const data = this.getItemInitData();
 
     const renderer = this.renderer;
     const texParams = this.material.getVector4('_TexParams')!;
@@ -434,6 +460,7 @@ export class SpriteComponent extends RendererComponent {
     setMaskMode(material, states.maskMode);
     setSideMode(material, states.side);
 
+    material.shader.shaderData.properties = 'uSampler0("uSampler0",2D) = "white" {}';
     if (!material.hasUniform('_Color')) {
       material.setVector4('_Color', new Vector4(0, 0, 0, 1));
     }
@@ -447,8 +474,8 @@ export class SpriteComponent extends RendererComponent {
     return material;
   }
 
-  private getItemGeometryData (item: SpriteComponent, aIndex: number) {
-    const { splits, renderer, textureSheetAnimation } = item;
+  private getItemGeometryData () {
+    const { splits, renderer, textureSheetAnimation } = this;
     const sx = 1, sy = 1;
 
     if (renderer.shape) {
@@ -615,7 +642,6 @@ export class SpriteComponent extends RendererComponent {
     this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
     this.geometry = geometry;
-    this.name = 'MSprite' + seed++;
     const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
