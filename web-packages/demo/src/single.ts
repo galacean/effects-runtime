@@ -12,27 +12,6 @@ const container = document.getElementById('J-container');
 
     const composition = await player.loadScene(json);
 
-    // player.once(EffectEventName.ITEM_CLICK, item => {
-    //   console.log('item', item);
-    // });
-    player.on(EffectEventName.ITEM_CLICK, item => {
-      console.info('first item', item);
-    });
-
-    player.on(EffectEventName.ITEM_MESSAGE, message => {
-      console.info('message', message);
-    });
-
-    composition.on(EffectEventName.COMPOSITION_END, e => {
-      console.info('composition end', e);
-    });
-
-    const name = composition.getItemByName('interact_232');
-
-    name?.on(EffectEventName.ITEM_CLICK, item => {
-      console.info('name item', item);
-    });
-
   } catch (e) {
     console.error('biz', e);
   }
