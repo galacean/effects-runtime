@@ -1,5 +1,7 @@
 import type {
   EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, Texture,
+  EventEmitterListener,
+  EventEmitterOptions,
 } from '@galacean/effects-core';
 import {
   AssetManager, isArray, isSceneURL, isSceneWithOptions, logger,
@@ -40,6 +42,70 @@ export class ThreeDisplayObject extends THREE.Group {
   private baseCompositionIndex = 0;
   env = '';
 
+  private _listeners: Record<string, Array<{ listener: EventEmitterListener<any[]>, options?: EventEmitterOptions }> | undefined> = {};
+
+  private listeners: Record<string, Array<{ listener: EventEmitterListener<any[]>, options?: EventEmitterOptions }>> = {};
+
+  /**
+   * 移除事件监听器
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @returns
+   */
+  off = (eventName: string, listener: EventEmitterListener<any[]>): void => {
+    if (!this.listeners[eventName]) {
+      return;
+    }
+
+    this.listeners[eventName] = this.listeners[eventName].filter(({ listener: l }) => l !== listener);
+  };
+
+  /**
+   * 监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @param options - 事件监听器选项
+   * @returns
+   */
+  on = (eventName: string, listener: EventEmitterListener<any[]>, options?: EventEmitterOptions) => {
+    this.listeners[eventName] = this.listeners[eventName] || [];
+    this.listeners[eventName].push({ listener, options });
+
+    return () => this.off(eventName, listener);
+  };
+
+  /**
+   * 一次性监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   */
+  once = (eventName: string, listener: EventEmitterListener<any[]>): void => {
+    this.on(eventName, listener, { once: true });
+  };
+
+  /**
+   * 触发事件
+   * @param eventName - 事件名称
+   * @param args - 事件参数
+   */
+  emit = (eventName: string, ...args: any): void => {
+    this.listeners[eventName]?.forEach(({ listener, options }) => {
+      listener(...args);
+      if (options?.once) {
+        this.off(eventName, listener);
+      }
+    });
+  };
+
+  /**
+   * 获取事件名称对应的所有监听器
+   * @param eventName - 事件名称
+   * @returns - 返回事件名称对应的所有监听器
+   */
+  getListeners = (eventName: string): any[] => {
+    return this.listeners[eventName]?.map(({ listener }) => listener) || [];
+  };
+
   /**
    *
    * @param context
@@ -57,7 +123,6 @@ export class ThreeDisplayObject extends THREE.Group {
     this.height = height;
     this.camera = camera;
   }
-
   /**
    * 获取当前播放合成，如果是多个合成同时播放，返回第一个合成
    */
@@ -93,6 +158,19 @@ export class ThreeDisplayObject extends THREE.Group {
     }
 
     return composition;
+  }
+
+  pause () {
+    this.emit('player-pause');
+    this.compositions.forEach(composition => {
+      composition.pause();
+    });
+  }
+
+  resume () {
+    this.compositions.forEach(composition => {
+      composition.resume();
+    });
   }
 
   private async createComposition (url: SceneLoadType, options: SceneLoadOptions = {}): Promise<Composition> {
