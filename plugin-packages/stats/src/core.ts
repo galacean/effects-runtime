@@ -13,7 +13,6 @@ declare global {
  * Hook gl to calculate stats
  */
 export class Core {
-  private readonly gl: WebGLRenderingContext | WebGL2RenderingContext;
   private drawCallHook: DrawCallHook;
   private textureHook: TextureHook;
   private shaderHook: ShaderHook;
@@ -23,11 +22,12 @@ export class Core {
   private updateTime = 0;
   private programHook: ProgramHook;
 
-  constructor (gl: WebGLRenderingContext | WebGL2RenderingContext) {
+  constructor (
+    private readonly gl: WebGLRenderingContext | WebGL2RenderingContext,
+  ) {
     if (!gl) {
-      throw new Error('Unsupported WebGL context');
+      throw new Error('Unsupported WebGL context.');
     }
-    this.gl = gl;
     this.hook(gl);
   }
 
@@ -60,8 +60,9 @@ export class Core {
    * update performance data
    */
   update (dt: number): PerformanceData | undefined {
-    this.updateCounter++;
     const now = performance.now();
+
+    this.updateCounter++;
 
     if (now - this.updateTime < 1000) {
       return undefined;
@@ -77,7 +78,7 @@ export class Core {
     this.samplingIndex = 0;
 
     const data: PerformanceData = {
-      fps:  Math.round((this.updateCounter * 1000) / (now - this.updateTime)),
+      fps: Math.round((this.updateCounter * 1000) / (now - this.updateTime)),
       // eslint-disable-next-line compat/compat -- performance.memory is not standard
       memory: performance.memory && (performance.memory.usedJSHeapSize / 1048576) >> 0,
       drawCall: (this.drawCallHook.drawCall === 0) ? 0 : this.drawCallHook.drawCall - 1,

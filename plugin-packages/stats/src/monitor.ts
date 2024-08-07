@@ -60,7 +60,7 @@ export class Monitor {
   private core: Core;
   private doms: HTMLElement[];
   private container: HTMLElement;
-  private readonly items: string[];
+  private readonly items = ['fps', 'memory', 'drawCall', 'triangles', 'textures', 'shaders', 'programs', 'webglContext'];
 
   private data: PerformanceData = {
     fps: 60,
@@ -78,7 +78,6 @@ export class Monitor {
   constructor (gl: WebGLRenderingContext | WebGL2RenderingContext) {
     this.core = new Core(gl);
 
-    this.items = ['fps', 'memory', 'drawCall', 'triangles', 'textures', 'shaders', 'programs', 'webglContext'];
     this.createContainer();
     this.update = this.update.bind(this);
   }
@@ -88,9 +87,7 @@ export class Monitor {
 
     container.classList.add('gl-perf');
     container.innerHTML = tpl;
-
     container.appendChild(this.createStyle());
-
     document.body.appendChild(container);
 
     this.doms = Array.prototype.slice.apply(container.querySelectorAll('dd'));
@@ -114,6 +111,7 @@ export class Monitor {
     if (!data || data.drawCall === 0 || data.triangles === 0) {
       return;
     }
+
     for (let i = 0, l = this.items.length; i < l; i++) {
       const dom = this.doms[i];
       const item = this.items[i];

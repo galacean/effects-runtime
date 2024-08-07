@@ -1,5 +1,4 @@
-import { logger } from '@galacean/effects';
-import { EffectsStats } from '../effects-stats';
+import { Stats } from '../stats';
 
 /**
  * DrawCallHook
@@ -9,22 +8,22 @@ export default class DrawCallHook {
   triangles = 0;
   lines = 0;
   points = 0;
-  private hooked: boolean;
+
+  private hooked = true;
   private readonly realDrawElements: (mode: number, count: number, type: number, offset: number) => void;
   private readonly realDrawArrays: (mode: number, first: number, count: number) => void;
-  private readonly gl: WebGLRenderingContext | WebGL2RenderingContext;
 
-  constructor (gl: WebGLRenderingContext | WebGL2RenderingContext) {
+  constructor (
+    private readonly gl: WebGLRenderingContext | WebGL2RenderingContext,
+  ) {
     this.realDrawElements = gl.drawElements;
     this.realDrawArrays = gl.drawArrays;
 
     gl.drawElements = this.hookedDrawElements.bind(this);
     gl.drawArrays = this.hookedDrawArrays.bind(this);
 
-    this.hooked = true;
-    this.gl = gl;
-    if (EffectsStats.options.debug) {
-      logger.info('DrawCall is hooked.');
+    if (Stats.options.debug) {
+      console.debug('DrawCall is hooked.');
     }
   }
 
@@ -70,7 +69,7 @@ export default class DrawCallHook {
 
         break;
       default:
-        logger.error(`Unknown draw mode: ${mode}. Count: ${count}`);
+        console.error(`Unknown draw mode: ${mode}. Count: ${count}`);
 
         break;
     }

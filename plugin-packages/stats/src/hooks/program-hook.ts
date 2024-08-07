@@ -1,37 +1,33 @@
-import { logger } from '@galacean/effects-core';
-import { EffectsStats } from '../effects-stats';
+import { Stats } from '../stats';
 
 /**
  * ProgramHook
- * 每一帧的shader数量
+ * 每一帧的 shader 数量
  */
 export default class ProgramHook {
   programs = 0;
-  private readonly realUseProgram: (program: WebGLProgram | null) => void;
-  private readonly gl: WebGLRenderingContext | WebGL2RenderingContext;
-  private hooked: boolean;
 
-  constructor (gl: WebGLRenderingContext | WebGL2RenderingContext) {
+  private readonly realUseProgram: (program: WebGLProgram | null) => void;
+  private hooked = true;
+
+  constructor (
+    private readonly gl: WebGLRenderingContext | WebGL2RenderingContext,
+  ) {
     this.realUseProgram = gl.useProgram;
 
     gl.useProgram = this.hookedUseProgram.bind(this);
 
-    this.hooked = true;
-    this.gl = gl;
-
-    if (EffectsStats.options.debug) {
-      logger.info('Program is hooked.');
+    if (Stats.options.debug) {
+      console.debug('Program is hooked.');
     }
-
   }
 
   private hookedUseProgram (program: WebGLProgram): void {
     this.realUseProgram.call(this.gl, program);
-
     this.programs++;
-    if (EffectsStats.options.debug) {
-      logger.info(`UseProgram: ${program}, program: ${this.programs}.`);
 
+    if (Stats.options.debug) {
+      console.debug(`UseProgram: ${program}, program: ${this.programs}.`);
     }
   }
 

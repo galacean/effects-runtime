@@ -1,19 +1,16 @@
+import type { GLRenderer } from '@galacean/effects';
 import { ItemBehaviour } from '@galacean/effects';
 import { Monitor } from './monitor';
-
-interface IRenderer {
-  pipelineContext: {
-    gl: WebGLRenderingContext | WebGL2RenderingContext,
-  },
-}
 
 export class StatsComponent extends ItemBehaviour {
   /**
    * 监控对象
    */
   monitor: Monitor;
+
   override start (): void {
-    const gl = (this.item.composition?.renderer as unknown as IRenderer).pipelineContext.gl;
+    const renderer = this.engine.renderer as GLRenderer;
+    const gl = renderer.pipelineContext.gl;
 
     this.monitor = new Monitor(gl);
   }
