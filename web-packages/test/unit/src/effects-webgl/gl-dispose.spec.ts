@@ -6,6 +6,7 @@ import {
   TextureSourceType,
   Camera,
   DestroyOptions, RenderPass, RenderFrame, Mesh,
+  GLSLVersion,
 } from '@galacean/effects-core';
 import { GLMaterial, GLGeometry, GLTexture, GLRenderer } from '@galacean/effects-webgl';
 
@@ -53,7 +54,7 @@ describe('dispose gl-mesh / gl-render-frame / gl-render-pass', function () {
   // 销毁mesh时不传参，默认删除所有引用资源geometry、texture
   it('mesh dispose with default params', async () => {
     const mesh = result.mesh;
-    const material = result.material;
+    const material: GLMaterial = result.material;
     const geom = result.geom;
     const texture = result.texture;
 
@@ -76,7 +77,7 @@ describe('dispose gl-mesh / gl-render-frame / gl-render-pass', function () {
     expect(spy1).has.been.called.once;
     expect(spy2).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shader.program.pipelineContext).to.eql(null);
+    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(geom.isDestroyed).to.be.true;
     expect(geom.buffers).to.eql({});
     expect(geom.attributes).to.eql({});
@@ -145,7 +146,7 @@ describe('dispose gl-mesh / gl-render-frame / gl-render-pass', function () {
     expect(spy2).not.has.been.called;
     expect(spy1).has.been.called.once;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shader.program.pipelineContext).to.eql(null);
+    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(texture.isDestroyed).to.be.true;
     expect(geom.isDestroyed).to.be.false;
 
@@ -174,7 +175,7 @@ describe('dispose gl-mesh / gl-render-frame / gl-render-pass', function () {
 
     expect(geom.isDestroyed).to.be.false;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shader.program.pipelineContext).to.eql(null);
+    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(texture.isDestroyed).to.be.false;
   });
 
@@ -199,7 +200,7 @@ describe('dispose gl-mesh / gl-render-frame / gl-render-pass', function () {
 
     expect(geom.isDestroyed).to.be.true;
     expect(material.isDestroyed).to.be.true;
-    expect(material.shader.program.pipelineContext).to.eql(null);
+    expect(material.shaderVariant.program.pipelineContext).to.eql(null);
     expect(texture.isDestroyed).to.be.false;
   });
 
@@ -783,7 +784,7 @@ async function createMesh (engine) {
   const material = new GLMaterial(
     engine,
     {
-      shader: { vertex: vs, fragment: fs },
+      shader: { vertex: vs, fragment: fs, glslVersion:GLSLVersion.GLSL3 },
       states: {},
     });
 

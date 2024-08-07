@@ -1,6 +1,6 @@
-import type { GeometryDrawMode, HitTestCustomParams, Texture, VFXItem } from '@galacean/effects';
+import type { GeometryDrawMode, HitTestCustomParams, Renderer, Texture, VFXItem } from '@galacean/effects';
 import { Mesh } from '@galacean/effects';
-import { HitTestType, ItemBehaviour, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, serialize, spec } from '@galacean/effects';
+import { HitTestType, ParticleSystemRenderer, RendererComponent, Transform, assertExist, effectsClass, glContext, math, serialize, spec } from '@galacean/effects';
 import type { GizmoVFXItemOptions } from './define';
 import { GizmoSubType } from './define';
 import { iconTextures, type EditorGizmoPlugin } from './gizmo-loader';
@@ -21,7 +21,7 @@ const { Vector2, Vector3, Matrix4, Quaternion } = math;
 const constants = glContext;
 
 @effectsClass('GizmoComponent')
-export class GizmoComponent extends ItemBehaviour {
+export class GizmoComponent extends RendererComponent {
   gizmoPlugin: EditorGizmoPlugin;
   targetItem: VFXItem;
   needCreateModelContent: boolean;
@@ -122,7 +122,19 @@ export class GizmoComponent extends ItemBehaviour {
     this.updateRenderData();
   }
 
-  override lateUpdate (dt: number): void {
+  override render (renderer: Renderer): void {
+    // The material of the 3D plugin is updated during the render phase. In order to obtain the correct value, it is kept consistent here.
+    if (this.subType === GizmoSubType.modelWireframe) { // 模型线框
+      if (this.wireframeMesh && this.targetItem) {
+        //@ts-expect-error TODO 和 3D 类型解耦
+        const meshes = this.targetItem.getComponent(RendererComponent)?.content.subMeshes;
+        const wireframeMeshes = this.wireframeMeshes;
+
+        if (meshes?.length > 0) {
+          updateWireframeMesh(meshes[0].geometry.geometry, meshes[0].material.effectMaterial, wireframeMeshes[0], WireframeGeometryType.triangle);
+        }
+      }
+    }
   }
 
   updateRenderData () {
@@ -141,16 +153,6 @@ export class GizmoComponent extends ItemBehaviour {
         if (particle) {
           updateWireframeMesh(particle.particleMesh.mesh.geometry, particle.particleMesh.mesh.material, this.wireframeMesh, WireframeGeometryType.quad);
           this.wireframeMesh.worldMatrix = particle.particleMesh.mesh.worldMatrix;
-        }
-      }
-    } else if (gizmoSubType === GizmoSubType.modelWireframe) { // 模型线框
-      if (this.wireframeMesh && this.targetItem) {
-        //@ts-expect-error TODO 和 3D 类型解耦
-        const meshes = this.targetItem.getComponent(RendererComponent)?.content.subMeshes;
-        const wireframeMeshes = this.wireframeMeshes;
-
-        if (meshes?.length > 0) {
-          updateWireframeMesh(meshes[0].geometry.geometry, meshes[0].material.effectMaterial, wireframeMeshes[0], WireframeGeometryType.triangle);
         }
       }
     } else { // 几何体模型

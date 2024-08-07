@@ -56,6 +56,7 @@ describe('images', () => {
       expect(ret.url).to.eql('https://gw.alipayobjects.com/zos/gltf-asset/mars-cli/NCQSMUABPTXM/-272956899-b18bf.png', 'url');
       // @ts-expect-error
       expect(ret.template.content).to.match(regex);
+      // @ts-expect-error
       expect(ret.template.variables).to.eql({
         'image_main': 'https://gw.alipayobjects.com/mdn/rms_ab4795/afts/img/A*Ww4OQbMokPYAAAAAAAAAAAAAARQnAQ',
         'name': '可配置可配置可配置',
