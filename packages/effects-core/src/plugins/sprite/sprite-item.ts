@@ -160,7 +160,7 @@ export interface SpriteColorPlayableAssetData extends spec.EffectsObjectData {
 export class SpriteComponent extends RendererComponent {
   renderer: SpriteItemRenderer;
   interaction?: { behavior: spec.InteractBehavior };
-  cachePrefix: string;
+  cachePrefix = '-';
   geoData: { atlasOffset: number[] | spec.TypedArray, index: number[] | spec.TypedArray };
   anchor?: vec2;
 
@@ -185,6 +185,7 @@ export class SpriteComponent extends RendererComponent {
 
   constructor (engine: Engine, props?: SpriteItemProps) {
     super(engine);
+
     this.name = 'MSprite' + seed++;
     this.renderer = {
       renderMode: spec.RenderMode.BILLBOARD,
@@ -199,7 +200,6 @@ export class SpriteComponent extends RendererComponent {
     };
     this.emptyTexture = this.engine.emptyTexture;
     this.splits = singleSplits;
-    this.cachePrefix = '-';
     this.renderInfo = getImageItemRenderInfo(this);
 
     const geometry = this.createGeometry(glContext.TRIANGLES);
@@ -208,9 +208,7 @@ export class SpriteComponent extends RendererComponent {
     this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
     this.geometry = geometry;
-    const startColor = [1, 1, 1, 1];
-
-    this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
+    this.material.setVector4('_Color', new Vector4().setFromArray([1, 1, 1, 1]));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.setItem();
 
@@ -341,9 +339,8 @@ export class SpriteComponent extends RendererComponent {
 
   private getItemInitData () {
     this.geoData = this.getItemGeometryData();
-    const geoData = this.geoData;
 
-    const index = geoData.index;
+    const { index, atlasOffset } = this.geoData;
     const idxCount = index.length;
     // @ts-expect-error
     const indexData: number[] = this.wireframe ? new Uint8Array([0, 1, 1, 3, 2, 3, 2, 0]) : new index.constructor(idxCount);
@@ -355,7 +352,7 @@ export class SpriteComponent extends RendererComponent {
     }
 
     return {
-      atlasOffset: geoData.atlasOffset,
+      atlasOffset,
       index: indexData,
     };
   }
