@@ -24,11 +24,11 @@ describe('interact item', () => {
 
   before(() => {
     player = new Player({ ...config });
-    player.on('item-click', data => {
+    player.on('click', data => {
       clicked = true;
       hitPositions = data.hitPositions;
     });
-    player.on('item-message', data => {
+    player.on('message', data => {
       messagePhrase = data.phrase;
     });
   });
@@ -750,7 +750,7 @@ describe('interact item', () => {
       container,
       interactive: true,
     });
-    player.on('item-click', () => {
+    player.on('click', () => {
       spy();
     });
     // @ts-expect-error

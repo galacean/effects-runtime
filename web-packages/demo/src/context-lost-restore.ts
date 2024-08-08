@@ -1,4 +1,4 @@
-import { EffectEventName, Player } from '@galacean/effects';
+import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
 const json = inspireList.book.url;
@@ -17,10 +17,10 @@ let allocateTimeout: any;
     const player = createPlayer();
     const scene = await player.loadScene(json);
 
-    player.on(EffectEventName.WEBGL_CONTEXT_LOST, e => {
+    player.on('webglcontextlost', e => {
       console.info('WEBGL_CONTEXT_LOST', e);
     });
-    player.on(EffectEventName.WEBGL_CONTEXT_RESTORED, () => {
+    player.on('webglcontextrestored', () => {
       console.info('WEBGL_CONTEXT_RESTORED');
     });
     scene.onEnd = () => {
@@ -77,10 +77,10 @@ function createPlayer () {
     },
   });
 
-  player.on(EffectEventName.WEBGL_CONTEXT_LOST, e => {
+  player.on('webglcontextlost', e => {
     console.info('trigger onWebGLContextLost set by user');
   });
-  player.on(EffectEventName.WEBGL_CONTEXT_RESTORED, () => {
+  player.on('webglcontextrestored', () => {
     console.info('trigger onWebGLContextRestored set by user');
   });
 

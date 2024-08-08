@@ -17,7 +17,7 @@ window.addEventListener('message', async event => {
         ...playerOptions,
       });
 
-      player.on('item-click', item => {
+      player.on('click', item => {
         console.info(`item ${item.name} has been clicked`, item);
       });
 

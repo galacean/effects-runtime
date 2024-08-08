@@ -19,7 +19,10 @@ export class EventEmitter<T extends Record<string, any[]>> {
    * @param listener - 事件监听器
    * @returns
    */
-  off = <E extends keyof T & string>(eventName: E, listener: EventEmitterListener<T[E]>): void => {
+  off = <E extends keyof T & string> (
+    eventName: E,
+    listener: EventEmitterListener<T[E]>,
+  ): void => {
     if (!this.listeners[eventName]) {
       return;
     }
@@ -34,7 +37,11 @@ export class EventEmitter<T extends Record<string, any[]>> {
    * @param options - 事件监听器选项
    * @returns
    */
-  on = <E extends keyof T & string>(eventName: E, listener: EventEmitterListener<T[E]>, options?: EventEmitterOptions) => {
+  on = <E extends keyof T & string> (
+    eventName: E,
+    listener: EventEmitterListener<T[E]>,
+    options?: EventEmitterOptions,
+  ) => {
     this.listeners[eventName] = this.listeners[eventName] || [];
     this.listeners[eventName].push({ listener, options });
 
@@ -46,7 +53,10 @@ export class EventEmitter<T extends Record<string, any[]>> {
    * @param eventName - 事件名称
    * @param listener - 事件监听器
    */
-  once = <E extends keyof T & string> (eventName: E, listener: EventEmitterListener<T[E]>): void => {
+  once = <E extends keyof T & string> (
+    eventName: E,
+    listener: EventEmitterListener<T[E]>,
+  ): void => {
     this.on(eventName, listener, { once: true });
   };
 
@@ -55,7 +65,7 @@ export class EventEmitter<T extends Record<string, any[]>> {
    * @param eventName - 事件名称
    * @param args - 事件参数
    */
-  emit = <E extends keyof T & string>(eventName: E, ...args: T[E]): void => {
+  emit = <E extends keyof T & string> (eventName: E, ...args: T[E]): void => {
     this.listeners[eventName]?.forEach(({ listener, options }) => {
       listener(...args);
       if (options?.once) {
@@ -69,7 +79,7 @@ export class EventEmitter<T extends Record<string, any[]>> {
    * @param eventName - 事件名称
    * @returns - 返回事件名称对应的所有监听器
    */
-  getListeners = <E extends keyof T & string>(eventName: E): EventEmitterListener<T[E]>[] => {
+  getListeners = <E extends keyof T & string> (eventName: E): EventEmitterListener<T[E]>[] => {
     return this.listeners[eventName]?.map(({ listener }) => listener) || [];
   };
 }

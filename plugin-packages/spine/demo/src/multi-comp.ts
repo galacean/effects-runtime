@@ -29,7 +29,7 @@ async function start () {
     env: 'editor',
   });
 
-  player.on('player-pause', () => {
+  player.on('pause', () => {
     console.info('Player paused');
   });
   const comps: Composition[] = await player.loadScene(jsonList, {

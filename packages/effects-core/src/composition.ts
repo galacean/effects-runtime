@@ -1,6 +1,7 @@
 import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
 import { CompositionSourceManager } from './composition-source-manager';
@@ -17,9 +18,8 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
-import { EventEmitter } from './event-emitter';
-import { type CompositionEffectEvent, EffectEventName } from './effect-events';
-import { type Matrix4 } from '@galacean/effects-math/es/core';
+import type { CompositionEffectEvent } from './events';
+import { EventEmitter } from './events';
 import type { PostProcessVolume } from './components/post-process-volume';
 
 export interface CompositionStatistic {
@@ -288,7 +288,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
         this.onEnd?.(this);
-        this.emit(EffectEventName.COMPOSITION_END, { composition: this });
+        this.emit('end', { composition: this });
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
@@ -596,8 +596,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     }
 
     if (this.shouldRestart()) {
-
-      this.emit(EffectEventName.COMPOSITION_END, { composition: this });
+      this.emit('end', { composition: this });
       this.restart();
       // restart then tick to avoid flicker
     }
@@ -613,7 +612,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
-      this.emit(EffectEventName.COMPOSITION_END, { composition: this });
+      this.emit('end', { composition: this });
       this.dispose();
     } else {
       if (!skipRender) {
@@ -634,7 +633,7 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
         if (localTime === duration) {
           if (!this.rootComposition.fezzed) {
             this.rootComposition.fezzed = true;
-            this.emit(EffectEventName.COMPOSITION_END, { composition: this });
+            this.emit('end', { composition: this });
           }
         }
       }
@@ -858,13 +857,13 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
    */
   addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.player.emit(EffectEventName.ITEM_MESSAGE, {
+      this.player.emit('message', {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
         compositionId: this.id,
       });
-      item.emit(EffectEventName.ITEM_MESSAGE, {
+      item.emit('message', {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -888,13 +887,13 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
   removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
     // MESSAGE ITEM的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.player.emit(EffectEventName.ITEM_MESSAGE, {
+      this.player.emit('message', {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
         compositionId: this.id,
       });
-      item.emit(EffectEventName.ITEM_MESSAGE, {
+      item.emit('message', {
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,

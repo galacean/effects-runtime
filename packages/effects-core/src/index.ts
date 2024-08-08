@@ -1,5 +1,7 @@
 import { registerPlugin } from './plugin-system';
-import type { CameraController, InteractComponent, ParticleSystem, SpriteComponent, TextComponent } from './plugins';
+import type {
+  CameraController, InteractComponent, ParticleSystem, SpriteComponent, TextComponent,
+} from './plugins';
 import {
   CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
 } from './plugins';
@@ -22,7 +24,10 @@ export * from './decorators';
 export * from './downloader';
 export * from './effects-object';
 export * from './engine';
-export { ensureFixedNumber, getStandardComposition, getStandardImage, getStandardItem, getStandardJSON, normalizeColor } from './fallback';
+export {
+  ensureFixedNumber, getStandardComposition, getStandardImage, getStandardItem,
+  getStandardJSON, normalizeColor,
+} from './fallback';
 export * from './gl';
 export * from './material';
 export * from './math';
@@ -42,9 +47,8 @@ export * from './utils';
 export * from './vfx-item';
 export * from './binary-asset';
 export * from './effects-object';
-export * from './event-emitter';
-export * from './effect-events';
 export * from './effects-package';
+export * from './events';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);

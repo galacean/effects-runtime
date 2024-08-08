@@ -57,8 +57,8 @@ function createPlayer () {
     renderFramework: 'webgl',
   });
 
-  player.on('player-pause', () => {
-    console.info('player-pause');
+  player.on('pause', () => {
+    console.info('player paused');
   });
 
   return player;

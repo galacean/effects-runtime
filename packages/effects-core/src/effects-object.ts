@@ -1,8 +1,8 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
-import { EventEmitter } from './event-emitter';
-import type { ItemEffectEvent } from './effect-events';
+import type { ItemEffectEvent } from './events';
+import { EventEmitter } from './events';
 
 /**
  * @since 2.0.0

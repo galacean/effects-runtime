@@ -1,4 +1,4 @@
-import { Player, EffectEventName } from '@galacean/effects';
+import { Player } from '@galacean/effects';
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bl40RLWLKisAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
@@ -11,7 +11,6 @@ const container = document.getElementById('J-container');
     });
 
     const composition = await player.loadScene(json);
-
   } catch (e) {
     console.error('biz', e);
   }

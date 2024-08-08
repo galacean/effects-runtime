@@ -1,14 +1,13 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, SceneLoadType, SceneType, EffectsObject,
-  CompItemClickedData,
-  PlayerEffectEvent } from '@galacean/effects-core';
-import { EventEmitter, EffectEventName } from '@galacean/effects-core';
+  CompItemClickedData, PlayerEffectEvent,
+} from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
-  generateWhiteTexture, isSceneWithOptions, Texture,
+  generateWhiteTexture, isSceneWithOptions, Texture, EventEmitter,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -525,7 +524,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     if (!this.ticker || this.ticker?.getPaused()) {
       this.doTick(0, true);
     }
-    this.emit(EffectEventName.PLAYER_UPDATE, {
+    this.emit('update', {
       player: this,
       playing: false,
     });
@@ -561,7 +560,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     }
 
     this.ticker?.pause();
-    this.emit(EffectEventName.PLAYER_UPDATE, {
+    this.emit('update', {
       player: this,
       playing: false,
     });
@@ -602,7 +601,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     renderErrors.values().next().value;
 
     if (renderErrors.size > 0) {
-      this.emit(EffectEventName.RENDER_ERROR, renderErrors.values().next().value);
+      this.emit('rendererror', renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
     }
@@ -632,7 +631,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     this.compositions = currentCompositions;
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
-      this.emit(EffectEventName.RENDER_ERROR, new Error('Play when texture offloaded.'));
+      this.emit('rendererror', new Error('Play when texture offloaded.'));
 
       return this.ticker?.pause();
     }
@@ -665,7 +664,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
       if (this.autoPlaying) {
-        this.emit(EffectEventName.PLAYER_UPDATE, {
+        this.emit('update', {
           player: this,
           playing: true,
         });
@@ -767,7 +766,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
     this.ticker?.pause();
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
-    this.emit(EffectEventName.WEBGL_CONTEXT_LOST, e);
+    this.emit('webglcontextlost', e);
     broadcastPlayerEvent(this, false);
   };
 
@@ -802,7 +801,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
 
       return newComposition;
     }));
-    this.emit(EffectEventName.WEBGL_CONTEXT_RESTORED);
+    this.emit('webglcontextrestored');
     this.ticker?.resume();
   };
 
@@ -867,7 +866,7 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
   }
 
   private handleResume = () => {
-    this.emit(EffectEventName.PLAYER_UPDATE, { player: this, playing: true });
+    this.emit('update', { player: this, playing: true });
   };
 
   private offloadTexture () {
@@ -885,13 +884,13 @@ export class Player extends EventEmitter<PlayerEffectEvent<Player>> implements D
           const behavior = regions[i].behavior || spec.InteractBehavior.NOTIFY;
 
           if (behavior === spec.InteractBehavior.NOTIFY) {
-            this.emit(EffectEventName.ITEM_CLICK, {
+            this.emit('click', {
               ...regions[i],
               composition: composition.name,
               player: this,
             });
 
-            composition.emit(EffectEventName.ITEM_CLICK, {
+            composition.emit('click', {
               ...regions[i],
               composition: composition.name,
             });
