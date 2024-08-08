@@ -53,6 +53,7 @@ export abstract class Texture extends EffectsObject {
       sourceType: TextureSourceType.image,
       image,
       id: generateGUID(),
+      flipY: true,
     });
 
     texture.initialize();
