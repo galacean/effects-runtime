@@ -57,7 +57,6 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   renderer: Renderer,
   handleItemMessage: (message: MessageItem) => void,
-  onItemClicked?: (item: VFXItem) => void,
   onEnd?: (composition: Composition) => void,
   event?: EventSystem,
   width: number,
@@ -112,14 +111,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 单个合成结束时的回调
    */
   onEnd?: (composition: Composition) => void;
-  /**
-   * 合成中元素点击时触发的回调
-   * 注意：此接口随时可能下线，请务使用！
-   * @since 1.6.0
-   * @ignore
-   * @deprecated
-   */
-  onItemClicked?: (data: CompItemClickedData) => void;
   /**
    * 合成id
    */

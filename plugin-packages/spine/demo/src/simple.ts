@@ -28,7 +28,6 @@ const filetype = document.getElementById('J-premultiply');
 const cameraPos = [0, 0, 8];
 const playerOptions = {
   interactive: true,
-  onItemClicked: () => console.info('包围盒内被点击'),
   onEnd: () => console.info('合成播放结束'),
 };
 const files = premultiply;
