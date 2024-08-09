@@ -16,14 +16,15 @@ let orbitController: OrbitController;
     renderFramework: 'webgl2',
     interactive: true,
     env: 'editor',
-    onItemClicked: e => {
-      const { player, id } = e;
-      const composition = player.getCompositions()[0];
-      const item = composition.items.find(item => item.id === String(id))!;
+  });
 
-      console.info('itemId: ' + item.id);
-      console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
-    },
+  player.on('click', e => {
+    const { player, id } = e;
+    const composition = player.getCompositions()[0];
+    const item = composition.items.find(item => item.id === String(id))!;
+
+    console.info('itemId: ' + item.id);
+    console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
   });
   const json = JSON.parse(transformGizmoScene);
 

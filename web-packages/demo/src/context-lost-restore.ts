@@ -17,6 +17,12 @@ let allocateTimeout: any;
     const player = createPlayer();
     const scene = await player.loadScene(json);
 
+    player.on('webglcontextlost', e => {
+      console.info('WEBGL_CONTEXT_LOST', e);
+    });
+    player.on('webglcontextrestored', () => {
+      console.info('WEBGL_CONTEXT_RESTORED');
+    });
     scene.onEnd = () => {
       document.getElementById('J-gpuInfo')!.innerText = `
         frame: ${gpuFrame}
@@ -64,17 +70,18 @@ function createPlayer () {
   const player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
-    onWebGLContextLost: () => {
-      console.info('trigger onWebGLContextLost set by user');
-    },
-    onWebGLContextRestored: () => {
-      console.info('trigger onWebGLContextRestored set by user');
-    },
     reportGPUTime: (time: number) => {
       gpuTimes.push(time);
       gpuFrame++;
       max = Math.max(time, max);
     },
+  });
+
+  player.on('webglcontextlost', e => {
+    console.info('trigger onWebGLContextLost set by user');
+  });
+  player.on('webglcontextrestored', () => {
+    console.info('trigger onWebGLContextRestored set by user');
   });
 
   return player;

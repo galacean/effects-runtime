@@ -27,9 +27,10 @@ async function start () {
     pixelRatio: 2,
     interactive: true,
     env: 'editor',
-    onPausedByItem: () => {
-      console.info('Player paused by item');
-    },
+  });
+
+  player.on('pause', () => {
+    console.info('Player paused');
   });
   const comps: Composition[] = await player.loadScene(jsonList, {
     reusable: true,

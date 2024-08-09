@@ -147,8 +147,6 @@ export function createPlayer (env: string, showFPS = true) {
   const player = new Player({
     container: container,
     interactive: true,
-    onItemClicked (e) {
-    },
     renderFramework,
     env,
   });

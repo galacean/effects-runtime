@@ -14,3 +14,4 @@ import './assert-manager.spec';
 import './texture.spec';
 import './transform.spec';
 import './utils.spec';
+import './event-emitter.spec';

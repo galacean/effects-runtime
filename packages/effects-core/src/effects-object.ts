@@ -1,12 +1,14 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Engine } from './engine';
 import { generateGUID } from './utils';
+import type { ItemEvent } from './events';
+import { EventEmitter } from './events';
 
 /**
  * @since 2.0.0
  * @internal
  */
-export abstract class EffectsObject {
+export abstract class EffectsObject extends EventEmitter<ItemEvent> {
   static is (obj: unknown): obj is EffectsObject {
     return obj instanceof EffectsObject && 'guid' in obj;
   }
@@ -20,6 +22,7 @@ export abstract class EffectsObject {
   constructor (
     public engine: Engine,
   ) {
+    super();
     this.guid = generateGUID();
     this.taggedProperties = {};
     this.engine.addInstance(this);

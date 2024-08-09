@@ -46,6 +46,10 @@ export async function renderbyThreeDisplayObject (player, json) {
 
   const displayObject = new ThreeDisplayObject(renderer.getContext(), { width, height });
 
+  displayObject.addEventListener('click', player.onItemClicked);
+  displayObject.addEventListener('message', player.onItemMessage);
+  displayObject.addEventListener('pause', player.pause);
+  displayObject.addEventListener('resume', player.resume);
   await displayObject.loadScene(json);
   // 兼容父节点的结束行为销毁时表现为冻结
   displayObject.currentComposition.items.forEach(item => {

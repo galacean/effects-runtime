@@ -12,6 +12,7 @@ import {
 
 export { GLGeometry, GLEngine, GLRenderer } from '@galacean/effects-webgl';
 export * from '@galacean/effects-core';
+export * from './types';
 export * from './player';
 
 Texture.create = (engine: Engine, props?: TextureSourceOptions) => {
