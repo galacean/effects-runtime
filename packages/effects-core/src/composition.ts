@@ -18,7 +18,7 @@ import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
 import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
-import type { CompositionEffectEvent } from './events';
+import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
 import type { PostProcessVolume } from './components/post-process-volume';
 
@@ -71,7 +71,7 @@ export interface CompositionProps {
  * 合成中包含了相关的 Item 元素，支持对 Item 元素的创建、更新和销毁。
  * 也负责 Item 相关的动画播放控制，和持有渲染帧数据。
  */
-export class Composition extends EventEmitter<CompositionEffectEvent<Composition>> implements Disposable, LostHandler {
+export class Composition extends EventEmitter<CompositionEvent<Composition>> implements Disposable, LostHandler {
   renderer: Renderer;
   /**
    * 当前帧的渲染数据对象
@@ -226,13 +226,13 @@ export class Composition extends EventEmitter<CompositionEffectEvent<Composition
     scene: Scene,
   ) {
     super();
+
     const {
       reusable = false,
       speed = 1,
-      baseRenderOrder = 0, renderer,
+      baseRenderOrder = 0,
+      renderer, event, width, height, player,
       onMessageItem, onEnd,
-      event, width, height,
-      player,
     } = props;
 
     this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
