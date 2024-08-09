@@ -10,7 +10,7 @@ export type ItemEvent = {
    */
   ['click']: [region: Region],
   /**
-   * 元素消息事件
+   * 元素消息事件（元素创建/销毁时触发）
    */
   ['message']: [message: Omit<MessageItem, 'compositionId'>],
 };

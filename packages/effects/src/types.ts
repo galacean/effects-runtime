@@ -87,7 +87,7 @@ export type PlayerEvent<P> = {
     compositionName: string,
   }],
   /**
-   * 播放器消息事件
+   * 播放器消息事件（合成中元素创建/销毁时触发）
    */
   ['message']: [messageInfo: MessageItem],
   /**

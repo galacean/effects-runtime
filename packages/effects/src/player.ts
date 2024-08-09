@@ -1,6 +1,7 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, SceneLoadType, SceneType, EffectsObject,
+  MessageItem,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
@@ -349,8 +350,10 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       renderer,
       width: renderer.getWidth(),
       height: renderer.getHeight(),
-      player: this as any,
       event: this.event,
+      handleItemMessage: (message: MessageItem) => {
+        this.emit('message', message);
+      },
     }, scene);
 
     this.compositions.push(composition);

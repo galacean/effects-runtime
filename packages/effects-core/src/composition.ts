@@ -56,14 +56,13 @@ export interface CompositionProps {
   reusable?: boolean,
   baseRenderOrder?: number,
   renderer: Renderer,
+  handleItemMessage: (message: MessageItem) => void,
   onItemClicked?: (item: VFXItem) => void,
-  onMessageItem?: (item: MessageItem) => void,
   onEnd?: (composition: Composition) => void,
   event?: EventSystem,
   width: number,
   height: number,
   speed?: number,
-  player: { emit: (event: string, ...args: any[]) => void },
 }
 
 /**
@@ -113,10 +112,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 单个合成结束时的回调
    */
   onEnd?: (composition: Composition) => void;
-  /**
-   * 合成中消息元素创建/销毁时触发的回调
-   */
-  onMessageItem?: (item: MessageItem) => void;
   /**
    * 合成中元素点击时触发的回调
    * 注意：此接口随时可能下线，请务使用！
@@ -212,8 +207,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   // private readonly event: EventSystem;
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
-
-  private player: { emit: (event: string, ...args: any[]) => void };
+  /**
+   * 合成中消息元素创建/销毁时触发的回调
+   */
+  private handleItemMessage: (message: MessageItem) => void;
 
   /**
    * Composition 构造函数
@@ -231,8 +228,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       reusable = false,
       speed = 1,
       baseRenderOrder = 0,
-      renderer, event, width, height, player,
-      onMessageItem, onEnd,
+      renderer, event, width, height,
+      handleItemMessage, onEnd,
     } = props;
 
     this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
@@ -248,7 +245,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderer = renderer;
     this.refCompositionProps = refCompositionProps;
 
-    this.player = player;
     this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
     this.rootItem.name = 'rootItem';
     this.rootItem.composition = this;
@@ -279,7 +275,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.assigned = true;
     this.globalTime = 0;
     this.interactive = true;
-    this.onMessageItem = onMessageItem;
+    this.handleItemMessage = handleItemMessage;
     this.onEnd = onEnd;
     this.createRenderFrame();
     this.rendererOptions = null;
@@ -857,7 +853,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   addInteractiveItem (item: VFXItem, type: spec.InteractType) {
     if (type === spec.InteractType.MESSAGE) {
-      this.player.emit('message', {
+      this.handleItemMessage({
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
@@ -867,12 +863,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
         id: item.id,
-      });
-      this.onMessageItem?.({
-        name: item.name,
-        phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
-        id: item.id,
-        compositionId: this.id,
       });
 
       return item.id;
@@ -885,24 +875,18 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param type - 交互类型
    */
   removeInteractiveItem (item: VFXItem, type: spec.InteractType) {
-    // MESSAGE ITEM的结束行为
+    // MESSAGE ITEM 的结束行为
     if (type === spec.InteractType.MESSAGE) {
-      this.player.emit('message', {
+      this.handleItemMessage({
         name: item.name,
-        phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
+        phrase: spec.MESSAGE_ITEM_PHRASE_END,
         id: item.id,
         compositionId: this.id,
       });
       item.emit('message', {
         name: item.name,
-        phrase: spec.MESSAGE_ITEM_PHRASE_BEGIN,
-        id: item.id,
-      });
-      this.onMessageItem?.({
-        name: item.name,
         phrase: spec.MESSAGE_ITEM_PHRASE_END,
         id: item.id,
-        compositionId: this.id,
       });
     }
   }

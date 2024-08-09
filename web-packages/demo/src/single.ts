@@ -7,10 +7,9 @@ const container = document.getElementById('J-container');
   try {
     const player = new Player({
       container,
-      interactive: true,
     });
 
-    const composition = await player.loadScene(json);
+    await player.loadScene(json);
   } catch (e) {
     console.error('biz', e);
   }

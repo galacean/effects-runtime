@@ -1,11 +1,8 @@
 import type {
   EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, Texture,
-  EventEmitterListener,
-  EventEmitterOptions,
+  MessageItem,
 } from '@galacean/effects-core';
-import {
-  AssetManager, isArray, isSceneURL, isSceneWithOptions, logger,
-} from '@galacean/effects-core';
+import { AssetManager, isArray, isSceneURL, isSceneWithOptions, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeRenderer } from './three-renderer';
@@ -41,70 +38,6 @@ export class ThreeDisplayObject extends THREE.Group {
   assetManager: AssetManager;
   private baseCompositionIndex = 0;
   env = '';
-
-  private _listeners: Record<string, Array<{ listener: EventEmitterListener<any[]>, options?: EventEmitterOptions }> | undefined> = {};
-
-  private listeners: Record<string, Array<{ listener: EventEmitterListener<any[]>, options?: EventEmitterOptions }>> = {};
-
-  /**
-   * 移除事件监听器
-   * @param eventName - 事件名称
-   * @param listener - 事件监听器
-   * @returns
-   */
-  off = (eventName: string, listener: EventEmitterListener<any[]>): void => {
-    if (!this.listeners[eventName]) {
-      return;
-    }
-
-    this.listeners[eventName] = this.listeners[eventName].filter(({ listener: l }) => l !== listener);
-  };
-
-  /**
-   * 监听事件
-   * @param eventName - 事件名称
-   * @param listener - 事件监听器
-   * @param options - 事件监听器选项
-   * @returns
-   */
-  on = (eventName: string, listener: EventEmitterListener<any[]>, options?: EventEmitterOptions) => {
-    this.listeners[eventName] = this.listeners[eventName] || [];
-    this.listeners[eventName].push({ listener, options });
-
-    return () => this.off(eventName, listener);
-  };
-
-  /**
-   * 一次性监听事件
-   * @param eventName - 事件名称
-   * @param listener - 事件监听器
-   */
-  once = (eventName: string, listener: EventEmitterListener<any[]>): void => {
-    this.on(eventName, listener, { once: true });
-  };
-
-  /**
-   * 触发事件
-   * @param eventName - 事件名称
-   * @param args - 事件参数
-   */
-  emit = (eventName: string, ...args: any): void => {
-    this.listeners[eventName]?.forEach(({ listener, options }) => {
-      listener(...args);
-      if (options?.once) {
-        this.off(eventName, listener);
-      }
-    });
-  };
-
-  /**
-   * 获取事件名称对应的所有监听器
-   * @param eventName - 事件名称
-   * @returns - 返回事件名称对应的所有监听器
-   */
-  getListeners = (eventName: string): any[] => {
-    return this.listeners[eventName]?.map(({ listener }) => listener) || [];
-  };
 
   /**
    *
@@ -161,7 +94,7 @@ export class ThreeDisplayObject extends THREE.Group {
   }
 
   pause () {
-    this.emit('player-pause');
+    this.dispatchEvent({ type: 'pause' });
     this.compositions.forEach(composition => {
       composition.pause();
     });
@@ -219,7 +152,9 @@ export class ThreeDisplayObject extends THREE.Group {
       width: this.width,
       height: this.height,
       renderer: this.renderer,
-      player: this as unknown as { emit: (name: string, ...args: any[]) => void },
+      handleItemMessage: (message: MessageItem) => {
+        this.dispatchEvent({ type: 'message', message });
+      },
     }, scene);
 
     (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });
