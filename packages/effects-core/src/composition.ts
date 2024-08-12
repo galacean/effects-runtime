@@ -435,12 +435,8 @@ export class Composition implements Disposable, LostHandler {
    * @param time - 相对 startTime 的时间
    */
   gotoAndPlay (time: number) {
+    this.setTime(time);
     this.resume();
-    if (!this.rootComposition.started) {
-      this.rootComposition.start();
-      this.rootComposition.started = true;
-    }
-    this.forwardTime(time + this.startTime);
   }
 
   /**
@@ -448,7 +444,7 @@ export class Composition implements Disposable, LostHandler {
    * @param time - 相对 startTime 的时间
    */
   gotoAndStop (time: number) {
-    this.gotoAndPlay(time);
+    this.setTime(time);
     this.pause();
   }
 
@@ -480,7 +476,7 @@ export class Composition implements Disposable, LostHandler {
       this.rootComposition.start();
       this.rootComposition.started = true;
     }
-    this.forwardTime(time + this.startTime, true);
+    this.forwardTime(time + this.startTime);
 
     if (pause) {
       this.pause();
@@ -497,7 +493,7 @@ export class Composition implements Disposable, LostHandler {
    * @param time - 相对0时刻的时间
    * @param skipRender - 是否跳过渲染
    */
-  private forwardTime (time: number, skipRender = false) {
+  private forwardTime (time: number) {
     const deltaTime = time * 1000 - this.rootComposition.time * 1000;
     const reverse = deltaTime < 0;
     const step = 15;
@@ -505,9 +501,9 @@ export class Composition implements Disposable, LostHandler {
     const ss = reverse ? -step : step;
 
     for (t; t > step; t -= step) {
-      this.update(ss, skipRender);
+      this.update(ss);
     }
-    this.update(reverse ? -t : t, skipRender);
+    this.update(reverse ? -t : t);
   }
 
   /**
@@ -581,7 +577,7 @@ export class Composition implements Disposable, LostHandler {
    * @param deltaTime - 更新的时间步长
    * @param skipRender - 是否需要渲染
    */
-  update (deltaTime: number, skipRender = false) {
+  update (deltaTime: number) {
     if (!this.assigned || this.paused) {
       return;
     }
@@ -605,9 +601,7 @@ export class Composition implements Disposable, LostHandler {
       this.onEnd?.(this);
       this.dispose();
     } else {
-      if (!skipRender) {
-        this.prepareRender();
-      }
+      this.prepareRender();
     }
   }
 

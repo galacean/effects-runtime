@@ -676,7 +676,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
         continue;
       }
       if (!composition.isDestroyed && composition.renderer) {
-        composition.update(dt, false);
+        composition.update(dt);
       }
       if (!composition.isDestroyed) {
         currentCompositions.push(composition);
