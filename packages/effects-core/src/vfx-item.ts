@@ -84,8 +84,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   id: string;
 
-  // TODO: 2.0 编辑器测试用变量，后续移除
-  oldId: string;
   /**
    * 元素创建的数据图层/粒子/模型等
    */
@@ -508,8 +506,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.parentId = parentId;
     this.duration = duration;
     this.endBehavior = endBehavior;
-    //@ts-expect-error
-    this.oldId = data.oldId;
 
     if (!data.content) {
       data.content = { options: {} };
