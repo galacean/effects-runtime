@@ -178,17 +178,18 @@ export class MainEditor extends EditorWindow {
           for (const peopertyName of Object.keys(componet)) {
             const key = peopertyName as keyof Component;
             const property = componet[key];
+            const ImGuiID = componet.getInstanceId() + peopertyName;
 
             if (typeof property === 'number') {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);
               //@ts-expect-error
-              ImGui.DragFloat('##DragFloat' + peopertyName, (_ = componet[key]) => componet[key] = _, 0.03);
+              ImGui.DragFloat('##DragFloat' + ImGuiID, (_ = componet[key]) => componet[key] = _, 0.03);
             } else if (typeof property === 'boolean') {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);
               //@ts-expect-error
-              ImGui.Checkbox('##Checkbox' + peopertyName, (_ = componet[key]) => componet[key] = _);
+              ImGui.Checkbox('##Checkbox' + ImGuiID, (_ = componet[key]) => componet[key] = _);
             } else if (property instanceof EffectsObject) {
               ImGui.Text(peopertyName);
               ImGui.SameLine(alignWidth);

@@ -1,27 +1,30 @@
 /* eslint-disable padding-line-between-statements */
-// @ts-nocheck
-import { Player, Texture, spec, Downloader, math } from '@galacean/effects';
-const { Matrix4, Quaternion, Vector3, RAD2DEG } = math;
-
-import type { ModelVFXItem } from '@galacean/effects-plugin-model';
+import type { GLGeometry, Scene } from '@galacean/effects';
+import { Player, Texture, spec, math, Engine, Material, SerializationHelper, VFXItem } from '@galacean/effects';
+import type { ModelCameraComponent, ModelLightComponent, ModelSkyboxComponent } from '@galacean/effects-plugin-model';
 import {
-  PEntity, PObject, PAnimationManager, PMorph,
-  PBlendMode, PLightType, PMaterialType, PObjectType, PShadowType, PTransform,
-  PCamera, PLight, PMesh, PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit,
-  VFX_ITEM_TYPE_3D, RayBoxTesting, RayTriangleTesting,
+  PEntity, PObject, PLightType, PMaterialType, PObjectType, PTransform, PCamera, PLight,
+  PSkybox, PCameraManager, PLightManager, PMaterialPBR, PMaterialUnlit, RayBoxTesting,
+  RayTriangleTesting, JSONConverter, AnimationComponent, ModelMeshComponent,
 } from '@galacean/effects-plugin-model';
+import type { GLMaterial } from '@galacean/effects-webgl';
 import { LoaderImplEx } from '../../src/helper';
 import { generateComposition } from './utilities';
 
+const { Matrix4, Quaternion, Vector3, Vector4, RAD2DEG } = math;
 const { expect } = chai;
+
+class CustomPObject extends PObject { }
+class CustomPEntity extends PEntity { }
 
 describe('渲染插件单测', function () {
   this.timeout(60 * 1000);
+
   const player = new Player({
     canvas: document.createElement('canvas'),
   });
 
-  it('3D变换测试', function () {
+  it('3D 变换测试', () => {
     {
       const trans = new PTransform();
       const matrix = trans.getMatrix().toArray();
@@ -75,7 +78,7 @@ describe('渲染插件单测', function () {
         ][i], 1e-5);
       });
       const trans1 = new PTransform();
-      trans1.setRotation(Quaternion.fromAxisAngle(new Vector3(3, 7, 5), Math.PI * 0.15, new Quaternion()));
+      trans1.setRotation(Quaternion.fromAxisAngle(new Vector3(3, 7, 5), Math.PI * 0.15));
       trans1.getMatrix().toArray().forEach((v, i) => {
         expect([
           0.9028250575065613, 0.2767362892627716, -0.32912591099739075, 0,
@@ -116,7 +119,7 @@ describe('渲染插件单测', function () {
       const trans0 = new PTransform();
       trans0.setPosition(new Vector3(13.5, 2.34, 5.678));
       trans0.setScale(new Vector3(3.78, 2.56, 5.12));
-      trans0.setRotation(Quaternion.fromAxisAngle(new Vector3(-8.45, 13.0, 43.2), -Math.PI * 7.43, new Quaternion()));
+      trans0.setRotation(Quaternion.fromAxisAngle(new Vector3(-8.45, 13.0, 43.2), -Math.PI * 7.43));
       const expectMatrix = [
         -0.66851407289505, 3.232001543045044, -1.8427306413650513, 0,
         -2.5140888690948486, -0.3082773983478546, 0.3713786005973816, 0,
@@ -153,50 +156,49 @@ describe('渲染插件单测', function () {
       });
     }
   });
-  it('Object和Entity测试', function () {
-    const object = new PObject();
+
+  it('Object 和 Entity 测试', () => {
+    const object = new CustomPObject();
     expect(object.isValid()).to.eql(false);
     object.type = PObjectType.light;
     expect(object.isValid()).to.eql(true);
     object.type = PObjectType.none;
     expect(object.isValid()).to.eql(false);
     //
-    const entity = new PEntity();
+    const entity = new CustomPEntity();
     expect(entity.visible).to.eql(false);
     entity.visible = true;
     expect(entity.visible).to.eql(false);
     entity.type = PObjectType.camera;
     expect(entity.visible).to.eql(true);
     expect(entity.deleted).to.eql(false);
-    entity.onEntityRemoved();
+    entity.onVisibleChanged(false);
     expect(entity.visible).to.eql(false);
-    expect(entity.deleted).to.eql(true);
+    expect(entity.deleted).to.eql(false);
   });
-  it('Light测试', function () {
-    const light1 = new PLight(
-      {
-        id: '1',
-        name: 'light1',
-        duration: 0,
-        endBehavior: 0,
-        type: 'light',
-        content: {
-          options: {
-            color: [253, 127, 169, 255],
-            intensity: 123,
-            lightType: 'point',
-            range: 67.9,
-          },
-        },
+
+  it('Light 测试', () => {
+    const light1 = new PLight('light1', {
+      id: '1',
+      dataType: spec.DataType.LightComponent,
+      lightType: spec.LightType.point,
+      item: { id: '1' },
+      color: {
+        r: 253 / 255,
+        g: 127 / 255,
+        b: 169 / 255,
+        a: 1,
       },
-      {
-        transform: {
-          position: [123, 456, 789],
-          rotation: [9.8, 7.654, 3.21],
-          scale: [3.4, 5.7, 6.9],
-        },
-      } as any as ModelVFXItem
-    );
+      intensity: 123,
+      range: 67.9,
+    }, {
+      transform: {
+        position: [123, 456, 789],
+        rotation: [9.8, 7.654, 3.21],
+        scale: [3.4, 5.7, 6.9],
+      },
+    } as unknown as ModelLightComponent);
+
     expect(light1.type).to.eql(PObjectType.light);
     expect(light1.lightType).to.eql(PLightType.point);
     expect(light1.name).to.eql('light1');
@@ -213,33 +215,28 @@ describe('渲染插件单测', function () {
     });
     expect(light1.intensity).to.eql(123);
     expect(light1.range).to.eql(67.9);
-    //
-    const light2 = new PLight(
-      {
-        id: '2',
-        name: 'light2',
-        duration: 0,
-        endBehavior: 0,
-        type: 'light',
-        content: {
-          options: {
-            color: [0, 255, 163, 135],
-            intensity: 997,
-            lightType: 'spot',
-            range: 1007.3,
-            innerConeAngle: 35.8,
-            outerConeAngle: 49.6,
-          },
-        },
+    const light2 = new PLight('light2', {
+      id: '2',
+      item: { id: '1' },
+      dataType: spec.DataType.LightComponent,
+      lightType: spec.LightType.spot,
+      color: {
+        r: 0 / 255,
+        g: 1.0,
+        b: 163 / 255,
+        a: 135 / 255,
       },
-      {
-        transform: {
-          position: [222, 333, 444],
-          rotation: [0, 0, 0],
-          scale: [5.6, 8.9, 10.2],
-        },
-      } as any as ModelVFXItem
-    );
+      intensity: 997,
+      range: 1007.3,
+      innerConeAngle: 35.8,
+      outerConeAngle: 49.6,
+    }, {
+      transform: {
+        position: [222, 333, 444],
+        rotation: [0, 0, 0],
+        scale: [5.6, 8.9, 10.2],
+      },
+    } as any as ModelLightComponent);
     expect(light2.type).to.eql(PObjectType.light);
     expect(light2.lightType).to.eql(PLightType.spot);
     expect(light2.name).to.eql('light2');
@@ -259,29 +256,23 @@ describe('渲染插件单测', function () {
     light2.getWorldDirection().toArray().forEach((v, index) => {
       expect(v).closeTo([0, 0, -1][index], 1e-5);
     });
-    //
-    //
-    const light3 = new PLight(
-      {
-        id: '3',
-        name: 'light3',
-        duration: 0,
-        endBehavior: 0,
-        type: 'light',
-        content: {
-          options: {
-            color: [128, 0, 177, 33],
-            intensity: 868,
-            lightType: 'directional',
-          },
-        },
+    const light3 = new PLight('light3', {
+      id: '3',
+      item: { id: '1' },
+      dataType: spec.DataType.LightComponent,
+      lightType: spec.LightType.directional,
+      color: {
+        r: 128 / 255,
+        g: 0,
+        b: 177 / 255,
+        a: 33 / 255,
       },
-      {
-        transform: {
-          rotation: [12.3, 45.6, 78.9],
-        },
-      } as any as ModelVFXItem
-    );
+      intensity: 868,
+    }, {
+      transform: {
+        rotation: [12.3, 45.6, 78.9],
+      },
+    } as any as ModelLightComponent);
     expect(light3.type).to.eql(PObjectType.light);
     expect(light3.lightType).to.eql(PLightType.directional);
     expect(light3.name).to.eql('light3');
@@ -312,37 +303,33 @@ describe('渲染插件单测', function () {
     manager.remove(light1);
     expect(manager.lightList).to.eql([light3]);
   });
-  it('Camera测试', function () {
+
+  it('Camera 测试', () => {
     const params1 = {
       id: '1',
-      name: 'camera1',
-      duration: 5.0,
-      endBehavior: 0,
-      type: 'camera',
-      content: {
-        options: {
-          aspect: 2,
-          near: 0.01,
-          far: 996,
-          fov: 35,
-          clipMode: 0,
-        },
-      },
+      item: { id: '1' },
+      dataType: spec.DataType.CameraComponent,
+      type: spec.CameraType.perspective,
+      aspect: 2,
+      near: 0.01,
+      far: 996,
+      fov: 35,
+      clipMode: 0,
     };
     const owner1 = {
       transform: {
         position: [3.21, 6.54, 9.87],
         rotation: [-27, 69, 35],
       },
-    } as any as ModelVFXItem;
-    const camera1 = new PCamera(params1, 800, 600, owner1);
+    } as any as ModelCameraComponent;
+    const camera1 = new PCamera('camera1', 800, 600, params1, owner1);
     expect(camera1.name).to.eql('camera1');
     expect(camera1.type).to.eql(PObjectType.camera);
     expect(camera1.width).to.eql(800);
     expect(camera1.height).to.eql(600);
     expect(camera1.farPlane).to.eql(996);
     expect(camera1.nearPlane).to.eql(0.01);
-    expect(camera1.fovy).to.eql(35);
+    expect(camera1.fov).to.eql(35);
     expect(camera1.clipMode).to.eql(0);
     expect(camera1.aspect).to.eql(2);
     expect(camera1.isReversed()).to.eql(false);
@@ -374,33 +361,28 @@ describe('渲染插件单测', function () {
     //=======================================================
     const params2 = {
       id: '2',
-      name: 'camera2',
-      duration: 5.0,
-      endBehavior: 0,
-      type: 'camera',
-      content: {
-        options: {
-          near: 0.03,
-          far: 1007,
-          fov: 48,
-          clipMode: 1,
-        },
-      },
+      item: { id: '1' },
+      dataType: spec.DataType.CameraComponent,
+      type: spec.CameraType.perspective,
+      near: 0.03,
+      far: 1007,
+      fov: 48,
+      clipMode: 1,
     };
     const owner2 = {
       transform: {
         position: [13.5, 33.6, 56.2],
         rotation: [0, 45, 30],
       },
-    } as any as ModelVFXItem;
-    const camera2 = new PCamera(params2, 1080, 960, owner2);
+    } as any as ModelCameraComponent;
+    const camera2 = new PCamera('camera2', 1080, 960, params2, owner2);
     expect(camera2.name).to.eql('camera2');
     expect(camera2.type).to.eql(PObjectType.camera);
     expect(camera2.width).to.eql(1080);
     expect(camera2.height).to.eql(960);
     expect(camera2.farPlane).to.eql(1007);
     expect(camera2.nearPlane).to.eql(0.03);
-    expect(camera2.fovy).to.eql(48);
+    expect(camera2.fov).to.eql(48);
     expect(camera2.clipMode).to.eql(1);
     expect(camera2.aspect).to.eql(1080 / 960);
     expect(camera2.isReversed()).to.eql(true);
@@ -433,22 +415,25 @@ describe('渲染插件单测', function () {
     const cameraManager = new PCameraManager();
     cameraManager.initial(1024, 768);
     cameraManager.remove(0);
-    const cam1 = cameraManager.insert(params1);
-    const cam2 = cameraManager.insert(params2);
-    expect(cameraManager.defaultCamera).not.eql(cam1);
-    expect(cameraManager.defaultCamera).not.eql(cam2);
-    expect(cameraManager.defaultCamera).to.eql(cameraManager.getActiveCamera());
-    expect(cameraManager.cameraList).to.eql([cam1, cam2]);
+    const cam1 = cameraManager.insert('camera1', params1);
+    const cam2 = cameraManager.insert('camera2', params2);
+    expect(cameraManager.getDefaultCamera()).not.eql(cam1);
+    expect(cameraManager.getDefaultCamera()).not.eql(cam2);
+    expect(cameraManager.getDefaultCamera()).to.eql(cameraManager.getActiveCamera());
+    expect(cameraManager.getCameraList()).to.eql([cam1, cam2]);
+    const viewportMatrix = Matrix4.IDENTITY.clone();
     cameraManager.updateDefaultCamera(
-      45, 0.001, 606, [30.5, 100, 77],
-      Quaternion.fromAxisAngle(new Vector3(10, -15, 33), 0.3, new Quaternion()), 1, 0
+      45, viewportMatrix, 1, 0.001, 606,
+      new Vector3(30.5, 100, 77),
+      Quaternion.fromAxisAngle(new Vector3(10, -15, 33), 0.3),
+      0,
     );
     const acam = cameraManager.getActiveCamera();
     expect(acam.width).to.eql(1024);
     expect(acam.height).to.eql(768);
     expect(acam.farPlane).to.eql(606);
     expect(acam.nearPlane).to.eql(0.001);
-    expect(acam.fovy).to.eql(45);
+    expect(acam.fov).to.eql(45);
     expect(acam.clipMode).to.eql(0);
     expect(acam.aspect).to.eql(1);
     acam.position.toArray().forEach((v, i) => {
@@ -468,81 +453,129 @@ describe('渲染插件单测', function () {
     });
     acam.projectionMatrix.toArray().forEach((v, i) => {
       expect([
-        1.8106601238250732, 0, 0, 0,
+        2.414213562373095, 0, 0, 0,
         0, 2.4142136573791504, 0, 0,
         0, 0, -1.0000033378601074, -1,
         0, 0, -0.0020000033546239138, 0,
       ][i]).closeTo(v, 1e-6);
     });
   });
-  it('Material测试', function () {
-    const engine = {};
+
+  it('Material 测试', () => {
+    const engine = new Engine();
     const mat1 = new PMaterialPBR();
     const baseColorTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const baseColorTextureTransform1 = { offset: [0.23, 0.56] };
     const metallicRoughnessTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const metallicRoughnessTextureTransform1 = { offset: [0.79, -3.25], rotation: 0.986 };
     const normalTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const normalTextureTransform1 = { offset: [-9.87, 1.56], rotation: -1.11, scale: [0.5, 0.7] };
     const occlusionTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const occlusionTextureTransform1 = { rotation: -5.69, scale: [2.0, -3.3] };
     const emissiveTexture1 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const emissiveTextureTransform1 = { scale: [0, 20.3] };
-    const opts1 = {
+    const materialData1 = {
+      id: '1',
       name: 'mat1',
-      type: spec.MaterialType.pbr,
-
-      baseColorTexture: baseColorTexture1,
-      baseColorTextureTransform: baseColorTextureTransform1,
-      baseColorFactor: [233, 128, 65, 76],
-
-      metallicRoughnessTexture: metallicRoughnessTexture1,
-      metallicRoughnessTextureTransform: metallicRoughnessTextureTransform1,
-      metallicFactor: 0.78,
-      roughnessFactor: 0.35,
-
-      normalTexture: normalTexture1,
-      normalTextureTransform: normalTextureTransform1,
-      normalTextureScale: 0.63,
-
-      occlusionTexture: occlusionTexture1,
-      occlusionTextureTransform: occlusionTextureTransform1,
-      occlusionTextureStrength: 0.84,
-
-      emissiveTexture: emissiveTexture1,
-      emissiveTextureTransform: emissiveTextureTransform1,
-      emissiveFactor: [198, 120, 67, 99],
-      emissiveIntensity: 2.5,
-
-      enableShadow: true,
-
-      blending: spec.MaterialBlending.opaque,
-      alphaCutOff: 0.35,
-      side: spec.SideMode.FRONT,
+      dataType: spec.DataType.Material,
+      shader: { id: 'pbr00000000000000000000000000000' },
+      stringTags: {
+        RenderFace: spec.RenderFace.Front,
+        RenderType: spec.RenderType.Opaque,
+      },
+      floats: {
+        _MetallicFactor: 0.78,
+        _RoughnessFactor: 0.35,
+        _NormalScale: 0.63,
+        _OcclusionStrength: 0.84,
+        _EmissiveIntensity: 2.5,
+        _AlphaCutoff: 0.35,
+        _MetallicRoughnessRotation: 0.986,
+        _NormalRotation: -1.11,
+        _OcclusionRotation: -5.69,
+      },
+      colors: {
+        _BaseColorFactor: {
+          r: 233 / 255,
+          g: 128 / 255,
+          b: 65 / 255,
+          a: 76 / 255,
+        },
+        _EmissiveFactor: {
+          r: 198 / 255,
+          g: 120 / 255,
+          b: 67 / 255,
+          a: 99 / 255,
+        },
+      },
+      vector4s: {
+        _BaseColorSampler_ST: {
+          x: 1,
+          y: 1,
+          z: 0.23,
+          w: 0.56,
+        },
+        _MetallicRoughnessSampler_ST: {
+          x: 1,
+          y: 1,
+          z: 0.79,
+          w: -3.25,
+        },
+        _NormalSampler_ST: {
+          x: 0.5,
+          y: 0.7,
+          z: -9.87,
+          w: 1.56,
+        },
+        _OcclusionSampler_ST: {
+          x: 2.0,
+          y: -3.3,
+          z: 0,
+          w: 0,
+        },
+        _EmissiveSampler_ST: {
+          x: 0,
+          y: 20.3,
+          z: 0,
+          w: 0,
+        },
+      },
+      textures: {
+        _BaseColorSampler: {
+          texture: baseColorTexture1,
+        },
+        _MetallicRoughnessSampler: {
+          texture: metallicRoughnessTexture1,
+        },
+        _NormalSampler: {
+          texture: normalTexture1,
+        },
+        _OcclusionSampler: {
+          texture: occlusionTexture1,
+        },
+        _EmissiveSampler: {
+          texture: emissiveTexture1,
+        },
+      },
     };
-    expect(mat1.depthMask).to.eql(true);
-    expect(mat1.enableShadow).to.eql(false);
-    expect(mat1.blendMode).to.eql(PBlendMode.opaque);
-    expect(mat1.isTranslucent()).to.eql(false);
-    expect(mat1.alphaCutOff).to.eql(0.5);
-    expect(mat1.isFrontFace()).to.eql(true);
+    expect(mat1.ZWrite).to.eql(true);
+    expect(mat1.renderType).to.eql(spec.RenderType.Opaque);
+    expect(mat1.isTransparent()).to.eql(false);
+    expect(mat1.alphaCutoff).to.eql(0.5);
+    expect(mat1.isFrontSide()).to.eql(true);
     expect(mat1.hasBaseColorTexture()).to.eql(false);
-    expect(mat1.hasBaseColorTextureTrans()).to.eql(false);
+    expect(mat1.baseColorTextureTrans).to.eql(undefined);
     expect(mat1.hasMetallicRoughnessTexture()).to.eql(false);
-    expect(mat1.hasMetallicRoughnessTextureTrans()).to.eql(false);
+    expect(mat1.metallicRoughnessTextureTrans).to.eql(undefined);
     expect(mat1.hasNormalTexture()).to.eql(false);
-    expect(mat1.hasNormalTextureTrans()).to.eql(false);
+    expect(mat1.normalTextureTrans).to.eql(undefined);
     expect(mat1.hasOcclusionTexture()).to.eql(false);
-    expect(mat1.hasOcclusionTextureTrans()).to.eql(false);
+    expect(mat1.occlusionTextureTrans).to.eql(undefined);
     expect(mat1.hasEmissiveTexture()).to.eql(false);
-    expect(mat1.hasEmissiveTextureTrans()).to.eql(false);
-    mat1.create(opts1);
-    expect(mat1.name).to.eql('mat1');
+    expect(mat1.emissiveTextureTrans).to.eql(undefined);
+    const glMat1 = Material.create(engine);
+    glMat1.fromData(materialData1);
+    mat1.create(glMat1);
     expect(mat1.type).to.eql(PObjectType.material);
     expect(mat1.materialType).to.eql(PMaterialType.pbr);
-    expect(mat1.blendMode).to.eql(PBlendMode.opaque);
+    expect(mat1.renderType).to.eql(spec.RenderType.Opaque);
     expect(mat1.baseColorTexture).to.eql(baseColorTexture1);
-    expect(mat1.hasBaseColorTextureTrans()).to.eql(true);
+    expect(mat1.baseColorTextureTrans).not.to.eql(undefined);
     mat1.baseColorTextureTrans.toArray().forEach((v, i) => {
       expect([
         1, 0, 0.23000000417232513,
@@ -555,8 +588,9 @@ describe('渲染插件单测', function () {
     });
     expect(mat1.metallicRoughnessTexture).to.eql(metallicRoughnessTexture1);
     expect(mat1.metallicFactor).to.eql(0.78);
+
     expect(mat1.roughnessFactor).to.eql(0.35);
-    expect(mat1.hasMetallicRoughnessTextureTrans()).to.eql(true);
+    expect(mat1.metallicRoughnessTextureTrans).not.to.eql(undefined);
     mat1.metallicRoughnessTextureTrans.toArray().forEach((v, i) => {
       expect([
         0.552029550075531, -0.8338245153427124, 0.7900000214576721,
@@ -566,7 +600,7 @@ describe('渲染插件单测', function () {
     });
     expect(mat1.normalTexture).to.eql(normalTexture1);
     expect(mat1.normalTextureScale).to.eql(0.63);
-    expect(mat1.hasNormalTextureTrans()).to.eql(true);
+    expect(mat1.normalTextureTrans).not.to.eql(undefined);
     mat1.normalTextureTrans.toArray().forEach((v, i) => {
       expect([
         0.22233076393604279, 0.6269890666007996, -9.869999885559082,
@@ -576,7 +610,7 @@ describe('渲染插件单测', function () {
     });
     expect(mat1.occlusionTexture).to.eql(occlusionTexture1);
     expect(mat1.occlusionTextureStrength).to.eql(0.84);
-    expect(mat1.hasOcclusionTextureTrans()).to.eql(true);
+    expect(mat1.occlusionTextureTrans).not.to.eql(undefined);
     mat1.occlusionTextureTrans.toArray().forEach((v, i) => {
       expect([
         1.6583285331726074, 1.8447165489196777, 0,
@@ -589,7 +623,7 @@ describe('渲染插件单测', function () {
     mat1.emissiveFactor.toArray().forEach((v, i) => {
       expect([198, 120, 67, 99][i] / 255).closeTo(v, 1e-5);
     });
-    expect(mat1.hasEmissiveTextureTrans()).to.eql(true);
+    expect(mat1.emissiveTextureTrans).not.to.eql(undefined);
     mat1.emissiveTextureTrans.toArray().forEach((v, i) => {
       expect([
         0, 0, 0,
@@ -597,11 +631,12 @@ describe('渲染插件单测', function () {
         0, 0, 1,
       ][i]).closeTo(v, 1e-5);
     });
-    expect(mat1.depthMask).to.eql(true);
-    expect(mat1.alphaCutOff).to.eql(0.35);
-    expect(mat1.isFrontFace()).to.eql(true);
-    expect(mat1.enableShadow).to.eql(true);
+    expect(mat1.ZWrite).to.eql(true);
+    expect(mat1.alphaCutoff).to.eql(0.35);
+
+    expect(mat1.isFrontSide()).to.eql(true);
     expect(mat1.isOpaque()).to.eql(true);
+
     expect(mat1.hasBaseColorTexture()).to.eql(true);
     expect(mat1.hasMetallicRoughnessTexture()).to.eql(true);
     expect(mat1.hasNormalTexture()).to.eql(true);
@@ -610,76 +645,89 @@ describe('渲染插件单测', function () {
     //==============================================
     const mat2 = new PMaterialUnlit();
     const baseColorTexture2 = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
-    const opts2 = {
+    const materialData2 = {
+      id: '2',
       name: 'mat2',
-      type: spec.MaterialType.unlit,
-
-      blending: spec.MaterialBlending.masked,
-      alphaCutOff: 0.76,
-      side: spec.SideMode.DOUBLE,
-
-      baseColorTexture: baseColorTexture2,
-      baseColorFactor: [53, 246, 89, 135],
-      depthMask: false,
+      dataType: spec.DataType.Material,
+      shader: { id: 'unlit000000000000000000000000000' },
+      stringTags: {
+        RenderFace: spec.RenderFace.Both,
+        RenderType: spec.RenderType.Opaque,
+      },
+      floats: {
+        ZWrite: 0,
+        AlphaClip: 1,
+        _AlphaCutoff: 0.76,
+      },
+      colors: {
+        _BaseColorFactor: {
+          r: 53 / 255,
+          g: 246 / 255,
+          b: 89 / 255,
+          a: 135 / 255,
+        },
+      },
+      textures: {
+        _BaseColorSampler: {
+          texture: baseColorTexture2,
+        },
+      },
     };
-    expect(mat2.depthMask).to.eql(true);
-    expect(mat2.blendMode).to.eql(PBlendMode.opaque);
-    expect(mat2.isMasked()).to.eql(false);
-    expect(mat2.alphaCutOff).to.eql(0.5);
-    expect(mat2.isBothFace()).to.eql(false);
+    expect(mat2.ZWrite).to.eql(true);
+    expect(mat2.renderType).to.eql(spec.RenderType.Opaque);
+    expect(mat2.alphaClip).to.eql(false);
+    expect(mat2.alphaCutoff).to.eql(0.5);
+    expect(mat2.isBothSide()).to.eql(false);
     expect(mat2.hasBaseColorTexture()).to.eql(false);
-    mat2.create(opts2);
-    expect(mat2.name).to.eql('mat2');
+    const glMat2 = Material.create(engine);
+    glMat2.fromData(materialData2);
+    mat2.create(glMat2);
     expect(mat2.type).to.eql(PObjectType.material);
     expect(mat2.materialType).to.eql(PMaterialType.unlit);
     expect(mat2.baseColorTexture).to.eql(baseColorTexture2);
     mat2.baseColorFactor.toArray().forEach((v, i) => {
       expect([53, 246, 89, 135][i] / 255).closeTo(v, 1e-5);
     });
-    expect(mat2.depthMask).to.eql(false);
-    expect(mat2.blendMode).to.eql(PBlendMode.masked);
-    expect(mat2.isMasked()).to.eql(true);
-    expect(mat2.alphaCutOff).to.eql(0.76);
-    expect(mat2.isBothFace()).to.eql(true);
+    expect(mat2.ZWrite).to.eql(false);
+    expect(mat2.renderType).to.eql(spec.RenderType.Opaque);
+    expect(mat2.alphaClip).to.eql(true);
+    expect(mat2.alphaCutoff).to.eql(0.76);
+    expect(mat2.isBothSide()).to.eql(true);
     expect(mat2.hasBaseColorTexture()).to.eql(true);
   });
-  it('Skybox测试', function () {
-    const engine = {};
+
+  it('Skybox 测试', () => {
+    const engine = new Engine();
     const specularTexture = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const brdfLUTTexture = Texture.create(engine, { data: { data: new Uint8Array(), width: 2, height: 2 } });
     const options = {
       id: '003',
+      item: { id: '1' },
       name: 'skybox1',
-      duration: 13.5,
-      endBehavior: 0,
-      type: 'skybox',
-      pluginName: 'model',
-      pn: 0,
-      content: {
-        options: {
-          renderable: true,
-          intensity: 3.45,
-          reflectionsIntensity: 1.23,
-          irradianceCoeffs: [1, 2, 3, 4, 5],
-          specularImage: specularTexture,
-          specularImageSize: 128,
-          specularMipCount: 6,
-        },
-      },
+      dataType: spec.DataType.SkyboxComponent,
+      renderable: true,
+      intensity: 3.45,
+      reflectionsIntensity: 1.23,
+      irradianceCoeffs: [1, 2, 3, 4, 5, 6],
+      specularImage: specularTexture,
+      specularImageSize: 128,
+      specularMipCount: 6,
     };
-    const skybox = new PSkybox(options, { listIndex: 123 } as any as ModelVFXItem);
+    const skybox = new PSkybox('skybox1', options, { item: { renderOrder: 123 } } as unknown as ModelSkyboxComponent);
     skybox.setup(brdfLUTTexture);
     expect(skybox.type).to.eql(PObjectType.skybox);
     expect(skybox.priority).to.eql(123);
     expect(skybox.name).to.eql('skybox1');
     expect(skybox.intensity).to.eql(3.45);
     expect(skybox.reflectionsIntensity).to.eql(1.23);
-    expect(skybox.irradianceCoeffs).to.eql([1, 2, 3, 4, 5]);
+    expect(skybox.irradianceCoeffs).to.eql([[1, 2, 3], [4, 5, 6]]);
     expect(skybox.specularImage).to.eql(specularTexture);
     expect(skybox.specularImageSize).to.eql(128);
     expect(skybox.specularMipCount).to.eql(6);
   });
-  it('Mesh测试', async function () {
+
+  it('Mesh 测试', async () => {
+    const engine = new Engine();
     const loader = new LoaderImplEx();
     const loadResult = await loader.loadScene({
       gltf: {
@@ -687,126 +735,302 @@ describe('渲染插件单测', function () {
         compatibleMode: 'tiny3d',
       },
       effects: {
-        renderer: player.renderer,
         duration: 5,
         endBehavior: 2,
       },
     });
     const sceneAABB = loadResult.sceneAABB;
-    [0.569136917591095, 1.5065498352050781, 0.18095403909683228].forEach((v, i) => {
+
+    [0.1809539943933487, 0.569136917591095, 1.5065499544143677].forEach((v, i) => {
       expect(sceneAABB.max[i]).closeTo(v, 1e-5);
     });
-    [-0.5691370964050293, -6.193791257658177e-9, -0.13100001215934753].forEach((v, i) => {
+    [-0.13100001215934753, -0.5691370964050293, 0].forEach((v, i) => {
       expect(sceneAABB.min[i]).closeTo(v, 1e-5);
     });
     //
-    const itemList = loadResult.items;
-    expect(itemList.length).to.eql(2);
-    expect(itemList[0].type).to.eql('tree');
-    const itemTree = itemList[0];
-    const animManager = new PAnimationManager(itemTree.content.options.tree, itemTree);
-    expect(animManager.type).to.eql(PObjectType.animationManager);
-    const animations = animManager.animations;
-    expect(animations.length).to.eql(1);
-    const anim = animations[0];
-    expect(anim.time).to.eql(0);
-    expect(anim.duration).to.eql(2);
-    expect(anim.type).to.eql(PObjectType.animation);
-    const tracks = anim.tracks;
-    expect(tracks.length).to.eql(57);
-    const track0 = tracks[0];
-    expect(track0.component).to.eql(3);
-    expect(track0.interp).to.eql(0);
-    expect(track0.node).to.eql(3);
-    expect(track0.path).to.eql(0);
-    expect(track0.dataArray.length).to.eql(144);
+    const jsonScene = loadResult.jsonScene;
+    const itemList = jsonScene.items;
+    expect(itemList.length).to.eql(23);
+    engine.addPackageDatas({ jsonScene } as Scene);
+
+    const animComp = new AnimationComponent(engine);
+
+    SerializationHelper.deserializeTaggedProperties(jsonScene.components[1], animComp);
+    expect(animComp.clips.length).to.eql(1);
+    const animClip = animComp.clips[0];
+    expect(animClip.duration).to.eql(2);
+    const positionCurves = animClip.positionCurves;
+    expect(positionCurves.length).to.eql(19);
+    const positionCurve0 = positionCurves[0];
+    expect(positionCurve0.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1');
+    const positionKeyFrames0 = positionCurve0.keyFrames;
+    const position0_0 = positionKeyFrames0.getValue(0);
+    const position0_1 = positionKeyFrames0.getValue(0.3);
+    const position0_2 = positionKeyFrames0.getValue(0.7);
+    const position0_3 = positionKeyFrames0.getValue(0.9);
+    const position0_4 = positionKeyFrames0.getValue(1.3);
+    const position0_5 = positionKeyFrames0.getValue(1.5);
+    const position0_6 = positionKeyFrames0.getValue(1.7);
+    const position0_7 = positionKeyFrames0.getValue(2.0);
+    [1.971350016560791e-8, -0.02000010944902897, 0.6439971327781677].forEach((v, i) => {
+      expect(position0_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.7152400388908973e-8, -0.020370520651340485, 0.6932101249694824].forEach((v, i) => {
+      expect(position0_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.3019600508812346e-8, -0.025214210152626038, 0.652949869632721].forEach((v, i) => {
+      expect(position0_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [2.762979889325834e-8, -0.025000110268592834, 0.6420990824699402].forEach((v, i) => {
+      expect(position0_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [8.085935612465292e-9, -0.030000123813372696, 0.6976126806942994].forEach((v, i) => {
+      expect(position0_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [2.1110500014742684e-8, -0.030000120401382446, 0.7099999785423279].forEach((v, i) => {
+      expect(position0_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [2.436473201028034e-8, -0.030000099383949756, 0.6683129367469864].forEach((v, i) => {
+      expect(position0_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0633099734036477e-8, -0.02000010944902897, 0.6399999856948853].forEach((v, i) => {
+      expect(position0_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    const positionCurve8 = positionCurves[8];
+    expect(positionCurve8.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_R');
+    const positionKeyFrames8 = positionCurve8.keyFrames;
+    const position8_0 = positionKeyFrames8.getValue(0);
+    const position8_1 = positionKeyFrames8.getValue(0.3);
+    const position8_2 = positionKeyFrames8.getValue(0.7);
+    const position8_3 = positionKeyFrames8.getValue(0.9);
+    const position8_4 = positionKeyFrames8.getValue(1.3);
+    const position8_5 = positionKeyFrames8.getValue(1.5);
+    const position8_6 = positionKeyFrames8.getValue(1.7);
+    const position8_7 = positionKeyFrames8.getValue(2.0);
+    [-0.000039040998672135174, -0.08799996972084045, -0.00005953760046395473].forEach((v, i) => {
+      expect(position8_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003922427276847884, -0.08799999766051769, -0.0008771866378083359].forEach((v, i) => {
+      expect(position8_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003911929889000021, -0.08799997717142105, -0.00005948260150034912].forEach((v, i) => {
+      expect(position8_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003904350891126285, -0.08809837698936462, -0.0002653924639162142].forEach((v, i) => {
+      expect(position8_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003911929889000021, -0.08799993991851807, -0.000059597201470751315].forEach((v, i) => {
+      expect(position8_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003927569923689589, -0.08799988031387329, -0.00005930659972364083].forEach((v, i) => {
+      expect(position8_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.000039069403994673735, -0.08799993246793747, 0.0005114078885526396].forEach((v, i) => {
+      expect(position8_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00003915140403698558, -0.08800002932548523, 0.0005113929873914458].forEach((v, i) => {
+      expect(position8_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    const rotationCurves = animClip.rotationCurves;
+    expect(rotationCurves.length).to.eql(19);
+    const rotationCurve2 = rotationCurves[2];
+    expect(rotationCurve2.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3');
+    const rotationKeyFrames2 = rotationCurve2.keyFrames;
+    const rotation2_0 = rotationKeyFrames2.getValue(0);
+    const rotation2_1 = rotationKeyFrames2.getValue(0.3);
+    const rotation2_2 = rotationKeyFrames2.getValue(0.7);
+    const rotation2_3 = rotationKeyFrames2.getValue(0.9);
+    const rotation2_4 = rotationKeyFrames2.getValue(1.3);
+    const rotation2_5 = rotationKeyFrames2.getValue(1.5);
+    const rotation2_6 = rotationKeyFrames2.getValue(1.7);
+    const rotation2_7 = rotationKeyFrames2.getValue(2.0);
+    [-0.004063833504915237, 0.6227141618728638, -0.004470687359571457, -0.7824262380599976].forEach((v, i) => {
+      expect(rotation2_0.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.03801713024091751, 0.6282665026935523, -0.00339269166207297, -0.777061420254362].forEach((v, i) => {
+      expect(rotation2_1.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.1314817816728645, 0.630556479277004, -0.011340485281774454, -0.7648415533903035].forEach((v, i) => {
+      expect(rotation2_2.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.1168547252009107, 0.6266589765632465, -0.04702295730606794, -0.7690464378584257].forEach((v, i) => {
+      expect(rotation2_3.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.03328938812202511, 0.623312701160144, -0.03191636684582656, -0.7806117210782524].forEach((v, i) => {
+      expect(rotation2_4.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.06163197010755539, 0.6243447661399841, -0.039358772337436676, -0.7777185440063477].forEach((v, i) => {
+      expect(rotation2_5.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.02172671915471322, 0.6351626229281891, -0.030278636055995175, -0.7714790252490131].forEach((v, i) => {
+      expect(rotation2_6.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.005114343483000994, 0.6225405335426331, -0.004524007439613342, -0.7825579643249512].forEach((v, i) => {
+      expect(rotation2_7.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    const rotationCurve13 = rotationCurves[13];
+    expect(rotationCurve13.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2/leg_joint_L_3');
+    const rotationKeyFrames13 = rotationCurve13.keyFrames;
+    const rotation13_0 = rotationKeyFrames13.getValue(0);
+    const rotation13_1 = rotationKeyFrames13.getValue(0.3);
+    const rotation13_2 = rotationKeyFrames13.getValue(0.7);
+    const rotation13_3 = rotationKeyFrames13.getValue(0.9);
+    const rotation13_4 = rotationKeyFrames13.getValue(1.3);
+    const rotation13_5 = rotationKeyFrames13.getValue(1.5);
+    const rotation13_6 = rotationKeyFrames13.getValue(1.7);
+    const rotation13_7 = rotationKeyFrames13.getValue(2.0);
+    [0.008959016762673855, -0.9851901531219482, 0.0153896389529109, -0.17053912580013275].forEach((v, i) => {
+      expect(rotation13_0.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.04403283196138942, -0.908319029810519, 0.031412340516569354, -0.4147665429074031].forEach((v, i) => {
+      expect(rotation13_1.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.024059126421857722, -0.8614343652900524, 0.016455635742597362, -0.5070318503158316].forEach((v, i) => {
+      expect(rotation13_2.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.01890529013440476, -0.8578361331730234, 0.009168970083039001, -0.5134937143417954].forEach((v, i) => {
+      expect(rotation13_3.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.03274404459830858, -0.882739316184192, 0.01733195126108042, -0.4684005181686966].forEach((v, i) => {
+      expect(rotation13_4.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.030687648802995682, -0.939177930355072, 0.012641440145671368, -0.3418239653110504].forEach((v, i) => {
+      expect(rotation13_5.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.019070487086092564, -0.971200043417106, 0.007921307506013366, -0.23736954058940632].forEach((v, i) => {
+      expect(rotation13_6.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.01264618057757616, -0.9879721403121948, 0.01400639396160841, -0.15347692370414734].forEach((v, i) => {
+      expect(rotation13_7.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    const scaleCurves = animClip.scaleCurves;
+    expect(scaleCurves.length).to.eql(19);
+    const scaleCurve5 = scaleCurves[5];
+    expect(scaleCurve5.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_');
+    const scaleKeyFrames5 = scaleCurve5.keyFrames;
+    const scale5_0 = scaleKeyFrames5.getValue(0);
+    const scale5_1 = scaleKeyFrames5.getValue(0.3);
+    const scale5_2 = scaleKeyFrames5.getValue(0.7);
+    const scale5_3 = scaleKeyFrames5.getValue(0.9);
+    const scale5_4 = scaleKeyFrames5.getValue(1.3);
+    const scale5_5 = scaleKeyFrames5.getValue(1.5);
+    const scale5_6 = scaleKeyFrames5.getValue(1.7);
+    const scale5_7 = scaleKeyFrames5.getValue(2.0);
+    [1.0000004768371582, 1.0000001192092896, 0.9999999403953552].forEach((v, i) => {
+      expect(scale5_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.000000239815579, 1, 1.0005707144737244].forEach((v, i) => {
+      expect(scale5_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.000000239815579, 1, 1.0005710124969482].forEach((v, i) => {
+      expect(scale5_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000001206062894, 0.9999998807907104, 1.0005708932876587].forEach((v, i) => {
+      expect(scale5_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000003590248685, 0.9999999403953552, 1.0005708932876587].forEach((v, i) => {
+      expect(scale5_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000001192092896, 0.9999998211860657, 1].forEach((v, i) => {
+      expect(scale5_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000002414453775, 0.9999998901039362, 0.9991822242736816].forEach((v, i) => {
+      expect(scale5_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000002414453775, 0.9999998901039362, 0.9991822242736816].forEach((v, i) => {
+      expect(scale5_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    const scaleCurve17 = scaleCurves[17];
+    expect(scaleCurve17.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2/leg_joint_R_3');
+    const scaleKeyFrames17 = scaleCurve17.keyFrames;
+    const scale17_0 = scaleKeyFrames17.getValue(0);
+    const scale17_1 = scaleKeyFrames17.getValue(0.3);
+    const scale17_2 = scaleKeyFrames17.getValue(0.7);
+    const scale17_3 = scaleKeyFrames17.getValue(0.9);
+    const scale17_4 = scaleKeyFrames17.getValue(1.3);
+    const scale17_5 = scaleKeyFrames17.getValue(1.5);
+    const scale17_6 = scaleKeyFrames17.getValue(1.7);
+    const scale17_7 = scaleKeyFrames17.getValue(2.0);
+    [0.9999997615814209, 0.999999463558197, 1].forEach((v, i) => {
+      expect(scale17_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999999259598553, 1.0007401052862406, 0.9993287920951843].forEach((v, i) => {
+      expect(scale17_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999995841644864, 0.9999991655349731, 1.0005706548690796].forEach((v, i) => {
+      expect(scale17_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999996423721313, 0.999999463558197, 1.000000238418579].forEach((v, i) => {
+      expect(scale17_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999996423721313, 0.9999995231628418, 0.9999997019767761].forEach((v, i) => {
+      expect(scale17_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.9999996423721313, 0.9999994039535522, 0.9999997019767761].forEach((v, i) => {
+      expect(scale17_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.99999981687866, 0.99990118294954, 0.99979400634765].forEach((v, i) => {
+      expect(scale17_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.99999940535055, 0.99999916553497, 1.00057071447372].forEach((v, i) => {
+      expect(scale17_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    expect(itemList[22].type).to.eql('mesh');
+    const itemMesh = new VFXItem(engine);
+    SerializationHelper.deserializeTaggedProperties(itemList[22], itemMesh);
+    const meshComp = itemMesh.getComponent(ModelMeshComponent);
+    const meshData = meshComp.data as spec.ModelMeshComponentData;
+    expect(meshData.name).to.eql('Cesium_Man');
+    const geometry = meshData.geometry as unknown as GLGeometry;
+    expect(geometry.subMeshes.length).to.eql(1);
+    expect(geometry.subMeshes[0].indexCount).to.eql(14016);
+    expect(geometry.subMeshes[0].offset).to.eql(0);
+    expect(geometry.subMeshes[0].vertexCount).to.eql(3273);
+    const skin = geometry.skin;
+    expect(skin.boneNames).to.eql([
+      'Armature/Skeleton_torso_joint_1',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_neck_joint_1',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_neck_joint_1/Skeleton_neck_joint_2',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_R',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_/Skeleton_arm_joint_L__3_',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_R/Skeleton_arm_joint_R__2_',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_/Skeleton_arm_joint_L__3_/Skeleton_arm_joint_L__2_',
+      'Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_R/Skeleton_arm_joint_R__2_/Skeleton_arm_joint_R__3_',
+      'Armature/Skeleton_torso_joint_1/leg_joint_L_1',
+      'Armature/Skeleton_torso_joint_1/leg_joint_R_1',
+      'Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2',
+      'Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2',
+      'Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2/leg_joint_L_3',
+      'Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2/leg_joint_R_3',
+      'Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2/leg_joint_L_3/leg_joint_L_5',
+      'Armature/Skeleton_torso_joint_1/leg_joint_R_1/leg_joint_R_2/leg_joint_R_3/leg_joint_R_5',
+    ]);
+    expect(skin.inverseBindMatrices?.length).eql(304);
     [
-      1.971350016560791e-8, -0.02000010944902897, 0.6439971327781677, 1.7385199058139733e-8, -0.02000010944902897, 0.6540120840072632, 2.0703099679053594e-8, -0.02000010944902897,
-      0.6670830845832825, 2.993629877323656e-8, -0.020000120624899864, 0.6802471876144409, 3.00744993353419e-8, -0.020000120624899864, 0.6905401349067688, 2.984170066611114e-8,
-      -0.020000120624899864, 0.6950002312660217, 2.55343000077346e-8, -0.020098520442843437,
-    ].forEach((val, idx) => {
-      expect(track0.dataArray[idx]).to.eql(val);
+      0.9971418380737305, -4.3711398944878965e-8, 0.07555299252271652, 0, 4.358646421565027e-8, 1, 3.3025269186026662e-9, 0, -0.07555299252271652,
+      0, 0.9971418380737305, 0, 0.05130045861005783, -0.0049998159520328045, -0.6770592331886292, 1, 0.06041746959090233, -4.3711398944878965e-8,
+      0.9981732964515686, 0, 2.64093213964145e-9, 1, 4.3631551704947924e-8, 0, -0.9981732964515686, 0, 0.06041746959090233, 0, 0.8218303918838501,
+      -0.004986404906958342, -0.0607638880610466, 1, 0.986260712146759, -4.3711398944878965e-8, 0.16519659757614136, 0, 4.3110834013759813e-8, 1,
+      7.22097448502268e-9, 0, -0.16519659757614136, 0, 0.986260712146759, 0, 0.18158070743083954, -0.004987061023712158, -1.058603048324585, 1,
+      -0.0384785495698452, -4.3711398944878965e-8, 0.9992595911026001, 0, -1.6819512449472995e-9, 1, 4.367903372326509e-8, 0, -0.9992595911026001,
+      0, -0.0384785495698452, 0,
+    ].forEach((v, i) => {
+      expect(skin.inverseBindMatrices?.[i]).closeTo(v, 1e-5);
     });
-    expect(track0.timeArray.length).to.eql(48);
-    [
-      0.04166661947965622, 0.08333330601453781, 0.125, 0.16666659712791443, 0.20833329856395721, 0.25, 0.29166659712791443, 0.3333333134651184,
-      0.3750000298023224, 0.41666659712791443, 0.4583333134651184, 0.5, 0.5416666865348816, 0.5833333134651184, 0.625, 0.6666666865348816,
-      0.7083333134651184, 0.75, 0.7916666865348816, 0.8333333134651184, 0.8750000596046448, 0.9166666865348816, 0.9583333134651184, 1,
-      1.0416669845581055, 1.0833330154418945, 1.125, 1.1666669845581055, 1.2083330154418945, 1.25, 1.2916669845581055, 1.3333330154418945,
-    ].forEach((val, idx) => {
-      expect(track0.timeArray[idx]).to.eql(val);
-    });
-    expect(itemList[1].type).to.eql('mesh');
-    const itemMesh = itemList[1];
-    const priority = 123;
-    const mesh = new PMesh(player.renderer.engine, itemMesh, { listIndex: priority } as any as ModelVFXItem);
-    expect(mesh.name).to.eql('Cesium_Man');
-    expect(mesh.type).to.eql(PObjectType.mesh);
-    expect(mesh.parentIndex).to.eql(2);
-    expect(mesh.skin).not.eql(undefined);
-    expect(mesh.primitives.length).to.eql(1);
-    expect(mesh.hide).to.eql(false);
-    expect(mesh.priority).to.eql(priority);
-    mesh.boundingBox.max.toArray().forEach((v, i) => {
-      expect(v).closeTo([0.1809540092945099, 0.5691368579864502, 1.5065499544143677][i], 1e-5);
-    });
-    expect(mesh.boundingBox.min.toArray()).to.eql([-0.13100001215934753, -0.5691370964050293, 0]);
-    expect(mesh.mriMeshs.length).to.eql(1);
-    const skin = mesh.skin;
-    expect(skin.name.substring(0, 8)).to.eql('Armature');
-    expect(skin.type).to.eql(PObjectType.skin);
-    expect(skin.skeleton).to.eql(3);
-    expect(skin.jointList).to.eql([
-      3, 12, 13, 20, 21, 17, 14, 18, 15, 19, 16, 8, 4, 9, 5, 10, 6, 11, 7,
-    ]);
-    expect(skin.inverseBindMatrices.length).eql(19);
-    expect(skin.inverseBindMatrices[0].toArray()).eql([
-      0.9971418380737305, -4.3711398944878965e-8, 0.07555299252271652, 0,
-      4.358646421565027e-8, 1, 3.3025269186026662e-9, 0,
-      -0.07555299252271652, 0, 0.9971418380737305, 0,
-      0.05130045861005783, -0.0049998159520328045, -0.6770592331886292, 1,
-    ]);
-    expect(skin.inverseBindMatrices[1].toArray()).eql([
-      0.06041746959090233, -4.3711398944878965e-8, 0.9981732964515686, 0,
-      2.64093213964145e-9, 1, 4.3631551704947924e-8, 0,
-      -0.9981732964515686, 0, 0.06041746959090233, 0,
-      0.8218303918838501, -0.004986404906958342, -0.0607638880610466, 1,
-    ]);
-    expect(skin.inverseBindMatrices[2].toArray()).eql([
-      0.986260712146759, -4.3711398944878965e-8, 0.16519659757614136, 0,
-      4.3110834013759813e-8, 1, 7.22097448502268e-9, 0,
-      -0.16519659757614136, 0, 0.986260712146759, 0,
-      0.18158070743083954, -0.004987061023712158, -1.058603048324585, 1,
-    ]);
-    mesh.primitives.forEach(prim => {
-      const morph = new PMorph();
-      morph.create(prim.getEffectsGeometry());
-      expect(morph.hasNormalMorph).to.eql(false);
-      expect(morph.hasPositionMorph).to.eql(false);
-      expect(morph.hasTangentMorph).to.eql(false);
-      expect(morph.morphWeightsLength).to.eql(0);
-      expect(morph.name.substring(0, 12)).to.eql('Morph target');
-      expect(morph.type).to.eql(8);
-      expect(morph.isNone()).to.eql(false);
-      expect(morph.isValid()).to.eql(true);
-      expect(morph.hasMorph()).to.eql(false);
-    });
-    const primitive = mesh.primitives[0];
-    expect(primitive.effectsPriority).to.eql(priority);
-    expect(primitive.shadowType).to.eql(PShadowType.none);
-    const geometry = primitive.getEffectsGeometry();
-    expect(geometry).to.eql(itemMesh.content.options.primitives[0].geometry);
     expect(geometry.getAttributeNames()).to.eql([
-      'aPos', 'aNormal', 'aUV', 'aJoints', 'aWeights',
+      'aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights',
     ]);
     expect(geometry.drawStart).to.eql(0);
     expect(geometry.drawCount).to.eql(14016);
     expect(geometry.getIndexData()).not.to.eql(undefined);
-    expect(geometry.getAttributeData('aPos').length).to.eql(9819);
-    expect(geometry.getAttributeData('aNormal').length).to.eql(9819);
-    expect(geometry.getAttributeData('aUV').length).to.eql(6546);
-    expect(geometry.getAttributeData('aJoints').length).to.eql(13092);
-    expect(geometry.getAttributeData('aWeights').length).to.eql(13092);
+    expect(geometry.getAttributeData('aPos')?.length).to.eql(9819);
+    expect(geometry.getAttributeData('aNormal')?.length).to.eql(9819);
+    expect(geometry.getAttributeData('aUV')?.length).to.eql(6546);
+    expect(geometry.getAttributeData('aJoints')?.length).to.eql(13092);
+    expect(geometry.getAttributeData('aWeights')?.length).to.eql(13092);
     expect(geometry.attributes).not.to.eql(undefined);
     if (geometry.attributes !== undefined) {
       expect(geometry.attributes['aJoints']).to.eql({
@@ -850,36 +1074,26 @@ describe('渲染插件单测', function () {
         type: 5126,
       });
     }
-    expect(itemMesh.content.options.primitives[0].material.type).to.eql(spec.MaterialType.pbr);
-    const meshMaterial = primitive.material;
-    expect(meshMaterial.materialType).to.eql(PMaterialType.pbr);
-    expect(meshMaterial.name).to.eql('Cesium_Man-effect');
-    meshMaterial.baseColorFactor.toArray().forEach((v, i) => {
-      expect([1, 1, 1, 1][i]).closeTo(v, 1e-5);
-    });
-    const inMaterial = itemMesh.content.options.primitives[0].material;
-    expect(meshMaterial.baseColorTexture).to.eql(inMaterial.baseColorTexture);
-    expect(meshMaterial.emissiveIntensity).to.eql(1);
-    meshMaterial.emissiveFactor.toArray().forEach((v, i) => {
-      expect([0, 0, 0][i]).closeTo(v, 1e-5);
-    });
-    expect(meshMaterial.roughnessFactor).to.eql(1);
-    expect(meshMaterial.metallicFactor).to.eql(0);
-    expect(meshMaterial.enableShadow).to.eql(false);
-    //
-    mesh.boundingBox.min.toArray().forEach((v, i) => {
-      expect([-0.13100001215934753, -0.5691370964050293, 0][i]).closeTo(v, 1e-5);
-    });
-    mesh.boundingBox.max.toArray().forEach((v, i) => {
-      expect([0.1809540092945099, 0.5691368579864502, 1.5065499544143677][i]).closeTo(v, 1e-5);
-    });
-    await loader.loadScene({
+    const meshMaterial = meshComp.materials[0] as GLMaterial;
+    expect(meshMaterial.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+    expect(meshMaterial.getColor('_EmissiveFactor')).to.eql({ r: 0, g: 0, b: 0, a: 1 });
+    expect(meshMaterial.getFloat('AlphaClip')).to.eql(0);
+    expect(meshMaterial.getFloat('ZTest')).to.eql(1);
+    expect(meshMaterial.getFloat('ZWrite')).to.eql(1);
+    expect(meshMaterial.getFloat('_AlphaCutoff')).to.eql(0);
+    expect(meshMaterial.getFloat('_EmissiveIntensity')).to.eql(1);
+    expect(meshMaterial.getFloat('_MetallicFactor')).to.eql(0);
+    expect(meshMaterial.getFloat('_NormalScale')).to.eql(1);
+    expect(meshMaterial.getFloat('_OcclusionStrength')).to.eql(0);
+    expect(meshMaterial.getFloat('_RoughnessFactor')).to.eql(1);
+    expect(meshMaterial.getFloat('_SpecularAA')).to.eql(0);
+
+    const scene = await loader.loadScene({
       gltf: {
         resource: 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/WaterBottle.glb',
         compatibleMode: 'tiny3d',
       },
       effects: {
-        renderer: player.renderer,
         duration: 5,
         endBehavior: 2,
       },
@@ -888,45 +1102,38 @@ describe('渲染插件单测', function () {
       expect(sceneAABB.max).to.eql([0.054450009018182755, 0.13022033870220184, 0.05445002391934395]);
       expect(sceneAABB.min).to.eql([-0.054450009018182755, -0.13022033870220184, -0.05445002391934395]);
       //
-      const itemList = loadResult.items;
+      const jsonScene = loadResult.jsonScene;
+      const itemList = jsonScene.items;
       expect(itemList.length).to.eql(2);
-      expect(itemList[0].type).to.eql('tree');
-      const itemTree = itemList[0];
-      const animManager = new PAnimationManager(itemTree.content.options.tree, itemTree);
-      expect(animManager.type).to.eql(PObjectType.animationManager);
-      const animations = animManager.animations;
-      expect(animations.length).to.eql(0);
+      engine.addPackageDatas({ jsonScene } as Scene);
       //
       expect(itemList[1].type).to.eql('mesh');
-      const itemMesh = itemList[1];
-      const priority = 123;
-      const mesh = new PMesh(player.renderer.engine, itemMesh, { listIndex: priority });
-      //
-      expect(mesh.name).to.eql('WaterBottle');
-      expect(mesh.type).to.eql(PObjectType.mesh);
-      expect(mesh.parentIndex).to.eql(0);
-      expect(mesh.skin).to.eql(undefined);
-      expect(mesh.primitives.length).to.eql(1);
-      expect(mesh.hide).to.eql(false);
-      expect(mesh.priority).to.eql(priority);
-      expect(mesh.boundingBox.max.toArray()).to.eql([0.054450009018182755, 0.13022033870220184, 0.05445002391934395]);
-      expect(mesh.boundingBox.min.toArray()).to.eql([-0.054450009018182755, -0.13022033870220184, -0.05445002391934395]);
-      expect(mesh.mriMeshs.length).to.eql(1);
-      const geometry = mesh.primitives[0].getEffectsGeometry();
-      expect(geometry).to.eql(itemMesh.content.options.primitives[0].geometry);
-      expect(geometry.getAttributeNames()).to.eql([
-        'aPos', 'aNormal', 'aTangent', 'aUV',
+      const itemMesh = new VFXItem(engine);
+      SerializationHelper.deserializeTaggedProperties(itemList[1], itemMesh);
+      const meshComp = itemMesh.getComponent(ModelMeshComponent);
+      const meshData = meshComp.data as spec.ModelMeshComponentData;
+      expect(meshData.name).to.eql('WaterBottle');
+      const geometry2 = meshData.geometry as unknown as GLGeometry;
+      expect(geometry2.subMeshes.length).to.eql(1);
+      expect(geometry2.subMeshes[0].indexCount).to.eql(13530);
+      expect(geometry2.subMeshes[0].offset).to.eql(0);
+      expect(geometry2.subMeshes[0].vertexCount).to.eql(2549);
+      expect(geometry2.skin.boneNames).to.eql(undefined);
+      expect(geometry2.skin.inverseBindMatrices).to.eql(undefined);
+      expect(geometry2.skin.rootBoneName).to.eql(undefined);
+      expect(geometry2.getAttributeNames()).to.eql([
+        'aUV', 'aNormal', 'aTangent', 'aPos',
       ]);
-      expect(geometry.drawStart).to.eql(0);
-      expect(geometry.drawCount).to.eql(13530);
-      expect(geometry.getIndexData()).not.to.eql(undefined);
-      expect(geometry.getAttributeData('aPos').length).to.eql(7647);
-      expect(geometry.getAttributeData('aNormal').length).to.eql(7647);
-      expect(geometry.getAttributeData('aUV').length).to.eql(5098);
-      expect(geometry.getAttributeData('aTangent').length).to.eql(10196);
-      expect(geometry.attributes).not.to.eql(undefined);
-      if (geometry.attributes !== undefined) {
-        expect(geometry.attributes['aNormal']).to.eql({
+      expect(geometry2.drawStart).to.eql(0);
+      expect(geometry2.drawCount).to.eql(13530);
+      expect(geometry2.getIndexData()).not.to.eql(undefined);
+      expect(geometry2.getAttributeData('aPos')?.length).to.eql(7647);
+      expect(geometry2.getAttributeData('aNormal')?.length).to.eql(7647);
+      expect(geometry2.getAttributeData('aUV')?.length).to.eql(5098);
+      expect(geometry2.getAttributeData('aTangent')?.length).to.eql(10196);
+      expect(geometry2.attributes).not.to.eql(undefined);
+      if (geometry2.attributes !== undefined) {
+        expect(geometry2.attributes['aNormal']).to.eql({
           dataSource: 'aNormal',
           normalize: false,
           offset: undefined,
@@ -934,7 +1141,7 @@ describe('渲染插件单测', function () {
           stride: undefined,
           type: 5126,
         });
-        expect(geometry.attributes['aPos']).to.eql({
+        expect(geometry2.attributes['aPos']).to.eql({
           dataSource: 'aPos',
           normalize: false,
           offset: undefined,
@@ -942,7 +1149,7 @@ describe('渲染插件单测', function () {
           stride: undefined,
           type: 5126,
         });
-        expect(geometry.attributes['aTangent']).to.eql({
+        expect(geometry2.attributes['aTangent']).to.eql({
           dataSource: 'aTangent',
           normalize: false,
           offset: undefined,
@@ -950,7 +1157,7 @@ describe('渲染插件单测', function () {
           stride: undefined,
           type: 5126,
         });
-        expect(geometry.attributes['aUV']).to.eql({
+        expect(geometry2.attributes['aUV']).to.eql({
           dataSource: 'aUV',
           normalize: false,
           offset: undefined,
@@ -959,48 +1166,32 @@ describe('渲染插件单测', function () {
           type: 5126,
         });
       }
-      expect(itemMesh.content.options.primitives[0].material.type).to.eql(spec.MaterialType.pbr);
-      expect(mesh.primitives[0].material.materialType).to.eql(PMaterialType.pbr);
-      const inMaterial = itemMesh.content.options.primitives[0].material;
-      const meshMaterial = mesh.primitives[0].material;
-      expect(meshMaterial.name).to.eql('BottleMat');
-      meshMaterial.baseColorFactor.toArray().forEach((v, i) => {
-        expect([1, 1, 1, 1][i]).closeTo(v, 1e-5);
-      });
-      expect(meshMaterial.baseColorTexture).to.eql(inMaterial.baseColorTexture);
-      expect(meshMaterial.emissiveIntensity).to.eql(1);
-      meshMaterial.emissiveFactor.toArray().forEach((v, i) => {
-        expect([1, 1, 1][i]).closeTo(v, 1e-5);
-      });
-      expect(meshMaterial.roughnessFactor).to.eql(1);
-      expect(meshMaterial.metallicFactor).to.eql(1);
-      expect(meshMaterial.enableShadow).to.eql(false);
-      //
-      mesh.boundingBox.min.toArray().forEach((v, i) => {
-        expect([-0.054450009018182755, -0.13022033870220184, -0.05445002391934395][i]).closeTo(v, 1e-5);
-      });
-      mesh.boundingBox.max.toArray().forEach((v, i) => {
-        expect([0.054450009018182755, 0.13022033870220184, 0.05445002391934395][i]).closeTo(v, 1e-5);
-      });
+      const meshMaterial2 = meshComp.materials[0] as GLMaterial;
+      expect(meshMaterial2.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+      expect(meshMaterial2.getColor('_EmissiveFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+      expect(meshMaterial2.getFloat('AlphaClip')).to.eql(0);
+      expect(meshMaterial2.getFloat('ZTest')).to.eql(1);
+      expect(meshMaterial2.getFloat('ZWrite')).to.eql(1);
+      expect(meshMaterial2.getFloat('_AlphaCutoff')).to.eql(0);
+      expect(meshMaterial2.getFloat('_EmissiveIntensity')).to.eql(1);
+      expect(meshMaterial2.getFloat('_MetallicFactor')).to.eql(1);
+      expect(meshMaterial2.getFloat('_NormalScale')).to.eql(1);
+      expect(meshMaterial2.getFloat('_OcclusionStrength')).to.eql(0);
+      expect(meshMaterial2.getFloat('_RoughnessFactor')).to.eql(1);
+      expect(meshMaterial2.getFloat('_SpecularAA')).to.eql(0);
+      expect(meshMaterial2.stringTags.RenderFace).to.eql('Front');
+      expect(meshMaterial2.stringTags.RenderType).to.eql('Opaque');
     });
   });
-  it('端上测试', async function () {
-    const downloader = new Downloader();
-    const scn = await new Promise<JSONValue>((resolve, reject) => {
-      downloader.downloadJSON(
-        'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/CesiumMan.json',
-        resolve,
-        (status, responseText) => {
-          reject(`Couldn't load JSON ${url}: status ${status}, ${responseText}`);
-        });
-    });
+
+  it('端上测试', async () => {
+    const converter = new JSONConverter(player.renderer);
+    const scn = await converter.processScene('https://gw.alipayobjects.com/os/gltf-asset/89748482160728/CesiumMan.json');
     const comp = await generateComposition(player, scn, {}, { pauseOnFirstFrame: true });
     //
     const items = comp.items;
-    expect(items.length).to.eql(2);
+    expect(items.length).to.eql(25);
     const treeItem = items[0];
-    expect(treeItem.type).to.eql(spec.ItemType.tree);
-    expect(treeItem.id).to.eql('tree0');
     expect(treeItem.name).to.eql('tree0');
     const treeWorldMatrix = treeItem.transform.getWorldMatrix();
     treeWorldMatrix.elements.forEach((v, i) => {
@@ -1012,138 +1203,245 @@ describe('渲染插件单测', function () {
       ][i]).closeTo(v, 1e-5);
     });
 
-    const treeOptions = treeItem.options;
-    expect(treeOptions.animation).to.eql(0);
-    expect(treeOptions.animations.length).to.eql(1);
-    expect(treeOptions.children.length).to.eql(1);
-    treeOptions.children.forEach((c, i) => {
-      expect([0][i]).closeTo(c, 1e-5);
+    const animComp = treeItem.getComponent(AnimationComponent);
+    expect(animComp.animation).to.eql(0);
+    expect(animComp.clips.length).to.eql(1);
+    const animClip = animComp.clips[0];
+    expect(animClip.duration).to.eql(2);
+    const positionCurves = animClip.positionCurves;
+    expect(positionCurves.length).to.eql(19);
+    const positionCurve0 = positionCurves[0];
+    expect(positionCurve0.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1');
+    const positionKeyFrames0 = positionCurve0.keyFrames;
+    const position0_0 = positionKeyFrames0.getValue(0);
+    const position0_1 = positionKeyFrames0.getValue(0.1);
+    const position0_2 = positionKeyFrames0.getValue(0.4);
+    const position0_3 = positionKeyFrames0.getValue(0.6);
+    const position0_4 = positionKeyFrames0.getValue(0.77);
+    const position0_5 = positionKeyFrames0.getValue(0.95);
+    const position0_6 = positionKeyFrames0.getValue(1.1);
+    const position0_7 = positionKeyFrames0.getValue(1.3);
+    const position0_8 = positionKeyFrames0.getValue(1.6);
+    const position0_9 = positionKeyFrames0.getValue(2.0);
+    [1.971350016560791e-8, -0.02000010944902897, 0.6439971327781677].forEach((v, i) => {
+      expect(position0_0.getElement(i)).closeTo(v, 1e-5);
     });
-    expect(treeOptions.nodes.length).to.eql(22);
-    const tracks = treeOptions.animations[0].tracks;
-    const track0 = tracks[0];
-    expect(track0.node).to.eql(3);
-    expect(track0.interpolation).to.eql('LINEAR');
-    expect(track0.path).to.eql('translation');
-    expect(track0.input.length).to.eql(48);
-    [
-      0.04166661947965622, 0.08333330601453781, 0.125, 0.16666659712791443, 0.20833329856395721, 0.25,
-      0.29166659712791443, 0.3333333134651184, 0.3750000298023224, 0.41666659712791443, 0.4583333134651184,
-      0.5, 0.5416666865348816, 0.5833333134651184, 0.625, 0.6666666865348816, 0.7083333134651184, 0.75,
-      0.7916666865348816, 0.8333333134651184, 0.8750000596046448, 0.9166666865348816, 0.9583333134651184, 1,
-      1.0416669845581055, 1.0833330154418945, 1.125, 1.1666669845581055, 1.2083330154418945, 1.25,
-      1.2916669845581055, 1.3333330154418945, 1.3750001192092896, 1.4166669845581055, 1.4583330154418945, 1.5,
-      1.5416669845581055, 1.5833330154418945, 1.6250001192092896, 1.6666669845581055, 1.7083330154418945, 1.75,
-      1.7916669845581055, 1.8333330154418945, 1.8750001192092896, 1.9166669845581055, 1.9583330154418945,
-    ].forEach((v, i) => {
-      expect(track0.input[i]).closeTo(v, 1e-5);
+    [1.8826821358863894e-8, -0.02000010944902897, 0.6596914120149772].forEach((v, i) => {
+      expect(position0_1.getElement(i)).closeTo(v, 1e-5);
     });
-    expect(track0.output.length).to.eql(144);
-    [
-      1.971350016560791e-8, -0.02000010944902897, 0.6439971327781677, 1.7385199058139733e-8, -0.02000010944902897,
-      0.6540120840072632, 2.0703099679053594e-8, -0.02000010944902897, 0.6670830845832825, 2.993629877323656e-8,
-      -0.020000120624899864, 0.6802471876144409, 3.00744993353419e-8, -0.020000120624899864, 0.6905401349067688,
-      2.984170066611114e-8, -0.020000120624899864, 0.6950002312660217, 2.55343000077346e-8, -0.020098520442843437,
-      0.6947941184043884, 1.7152400388908973e-8, -0.020370520651340485, 0.6932101249694824, 2.541789889676238e-8,
-      -0.020781319588422775, 0.6904690861701965, 2.6116399709508187e-8, -0.021296419203281403, 0.6867902278900146,
-      1.197189991586356e-8, -0.021880919113755226, 0.6823940873146057, 3.038740103988857e-8, -0.022500120103359222,
-      0.6775001883506775, 2.8561100151591745e-8, -0.02311931923031807, 0.6723281145095825, 2.518510022753162e-8,
-      -0.023703809827566147, 0.6670992970466614, 3.636089829228695e-8, -0.02421892061829567, 0.6620311141014099,
-      2.7164100302456973e-8, -0.024629710242152214, 0.6573460102081299, 1.7501600169111953e-8, -0.02490171045064926,
-      0.6532620787620544, 1.6221099130575567e-8, -0.025000110268592834, 0.6500000953674316, 3.8805598734370506e-8,
-      -0.025000110268592834, 0.6472381949424744, 2.786259933884594e-8, -0.025000110268592834, 0.644753098487854,
-      2.4603000525758034e-8, -0.02500011958181858, 0.6429169774055481, 2.762979889325834e-8, -0.025000110268592834,
-      0.6420990824699402, 2.9026798742393112e-8, -0.025000110268592834, 0.6426699757575989, 3.321769881381442e-8,
-      -0.025000110268592834, 0.6450002193450928, 3.158789851909205e-8, -0.025370510295033455, 0.6498960852622986,
-    ].forEach((v, i) => {
-      expect(track0.output[i]).closeTo(v, 1e-5);
+    [2.593139020685366e-8, -0.02115998654375748, 0.6877646344022668].forEach((v, i) => {
+      expect(position0_2.getElement(i)).closeTo(v, 1e-5);
     });
-    const track7 = tracks[7];
-    expect(track7.node).to.eql(13);
-    expect(track7.interpolation).to.eql('LINEAR');
-    expect(track7.path).to.eql('rotation');
-    expect(track7.input.length).to.eql(48);
-    [
-      0.04166661947965622, 0.08333330601453781, 0.125, 0.16666659712791443, 0.20833329856395721, 0.25, 0.29166659712791443,
-      0.3333333134651184, 0.3750000298023224, 0.41666659712791443, 0.4583333134651184, 0.5, 0.5416666865348816,
-      0.5833333134651184, 0.625, 0.6666666865348816, 0.7083333134651184, 0.75, 0.7916666865348816, 0.8333333134651184,
-      0.8750000596046448, 0.9166666865348816, 0.9583333134651184, 1, 1.0416669845581055, 1.0833330154418945, 1.125,
-      1.1666669845581055, 1.2083330154418945, 1.25, 1.2916669845581055, 1.3333330154418945, 1.3750001192092896,
-      1.4166669845581055, 1.4583330154418945, 1.5, 1.5416669845581055, 1.5833330154418945, 1.6250001192092896,
-      1.6666669845581055, 1.7083330154418945, 1.75, 1.7916669845581055, 1.8333330154418945, 1.8750001192092896,
-      1.9166669845581055, 1.9583330154418945,
-    ].forEach((v, i) => {
-      expect(track7.input[i]).closeTo(v, 1e-5);
+    [3.2645111067026397e-8, -0.02404765391459396, 0.6637162098175395].forEach((v, i) => {
+      expect(position0_3.getElement(i)).closeTo(v, 1e-5);
     });
-    expect(track7.output.length).to.eql(192);
-    [
-      -0.004063833504915237, 0.6227141618728638, -0.004470687359571457, -0.7824262380599976, -0.0010555407498031855,
-      0.623201847076416, -0.0043305219151079655, -0.7820485234260559, 0.0036982104647904634, 0.6239433884620667,
-      -0.004133866634219885, -0.7814499139785767, 0.009987026453018188, 0.6248710751533508, -0.003911586944013834,
-      -0.7806543111801147, 0.017600642517209053, 0.6259133219718933, -0.0036944616585969925, -0.7796852588653564,
-      0.02632775343954563, 0.6269997358322144, -0.0035130134783685207, -0.7785666584968567, 0.035954687744379044,
-      0.6280642151832581, -0.0033969907090067863, -0.7773230671882629, 0.04626515507698059, 0.6290482878684998,
-      -0.003375347936525941, -0.7759810090065002, 0.057039473205804825, 0.6299037337303162, -0.003476002486422658,
-      -0.7745683193206787, 0.06805485486984253, 0.6305938959121704, -0.0037257885560393333, -0.7731146216392517,
-      0.07908577471971512, 0.6310954689979553, -0.004150485619902611, -0.7716520428657532, 0.08990399539470673,
-      0.6313987970352173, -0.004775034263730049, -0.7702144384384155, 0.10027999430894852, 0.6315075755119324,
-      -0.0056238495744764805, -0.7688372731208801, 0.10998272895812988, 0.6314378976821899, -0.006720630917698145,
-      -0.7675577998161316, 0.11878100782632828, 0.6312174201011658, -0.008089195936918259, -0.7664139866828918,
-      0.1264438033103943, 0.6308819055557251, -0.009753123857080936, -0.7654444575309753, 0.13274070620536804,
-      0.6304723620414734, -0.0117372777312994, -0.7646874785423279, 0.13744227588176727, 0.6300323009490967,
-      -0.014066480100154877, -0.7641801238059998, 0.13804565370082855, 0.6293426156044006, -0.01933957263827324,
-      -0.7645244598388672, 0.1331067830324173, 0.6283433437347412, -0.02874445728957653, -0.7659251093864441,
-      0.12399603426456451, 0.6272484064102173, -0.04019630700349808, -0.7678337693214417, 0.11208537220954895,
-      0.6262312531471252, -0.05157339945435524, -0.7698127627372742, 0.09873149544000626, 0.62547367811203,
-      -0.060693636536598206, -0.7715901732444763, 0.08526771515607834, 0.6252033710479736, -0.0653248131275177,
-      -0.7730351090431213, 0.07010213285684586, 0.6254288554191589, -0.06435619294643402, -0.7744566202163696,
-    ].forEach((v, i) => {
-      expect(track7.output[i]).closeTo(v, 1e-5);
+    [3.8805598734370506e-8, -0.025000110268592834, 0.6472381949424744].forEach((v, i) => {
+      expect(position0_4.getElement(i)).closeTo(v, 1e-5);
     });
-    const track20 = tracks[20];
-    expect(track20.node).to.eql(18);
-    expect(track20.interpolation).to.eql('LINEAR');
-    expect(track20.path).to.eql('scale');
-    expect(track20.input.length).to.eql(48);
-    [
-      0.04166661947965622, 0.08333330601453781, 0.125, 0.16666659712791443, 0.20833329856395721, 0.25,
-      0.29166659712791443, 0.3333333134651184, 0.3750000298023224, 0.41666659712791443, 0.4583333134651184,
-      0.5, 0.5416666865348816, 0.5833333134651184, 0.625, 0.6666666865348816, 0.7083333134651184, 0.75,
-      0.7916666865348816, 0.8333333134651184, 0.8750000596046448, 0.9166666865348816, 0.9583333134651184, 1,
-      1.0416669845581055, 1.0833330154418945, 1.125, 1.1666669845581055, 1.2083330154418945, 1.25, 1.2916669845581055,
-      1.3333330154418945, 1.3750001192092896, 1.4166669845581055, 1.4583330154418945, 1.5, 1.5416669845581055,
-      1.5833330154418945, 1.6250001192092896, 1.6666669845581055, 1.7083330154418945, 1.75, 1.7916669845581055,
-      1.8333330154418945, 1.8750001192092896, 1.9166669845581055, 1.9583330154418945,
-    ].forEach((v, i) => {
-      expect(track20.input[i]).closeTo(v, 1e-5);
+    [2.9026798742393112e-8, -0.025000110268592834, 0.6426699757575989].forEach((v, i) => {
+      expect(position0_5.getElement(i)).closeTo(v, 1e-5);
     });
-    expect(track20.output.length).to.eql(144);
-    [
-      0.9999997019767761, 0.9999997019767761, 0.9999997615814209, 0.9999992847442627, 0.999999463558197,
-      0.9999995231628418, 0.9999995231628418, 0.9999996423721313, 0.9999995231628418, 0.9999995231628418,
-      0.9999996423721313, 0.9999997615814209, 0.999999463558197, 0.9999994039535522, 0.9999995827674866,
-      0.9999995231628418, 0.9999995231628418, 0.9999995231628418, 0.9999994039535522, 0.9999995827674866,
-      0.9999997019767761, 0.9999995231628418, 0.9999993443489075, 0.9999995827674866, 0.9999996423721313,
-      0.999999463558197, 0.9999997019767761, 0.9999996423721313, 0.999999463558197, 0.9999994039535522,
-      0.9999998211860657, 0.9999994039535522, 0.9999994039535522, 0.9999993443489075, 0.999999463558197,
-      0.9999994039535522, 0.9999994039535522, 0.9999995231628418, 0.999999463558197, 0.9999996423721313,
-      0.9999994039535522, 0.9999995827674866, 0.9999996423721313, 0.999999463558197, 0.9999995231628418,
-      0.999999463558197, 0.9999995827674866, 0.9999994039535522, 0.9999996423721313, 0.999999463558197,
-      0.9999997019767761, 0.9999998211860657, 0.9999997019767761, 0.9999995827674866, 0.9999996423721313,
-      0.9999996423721313, 0.9999995827674866, 0.999999463558197, 0.9999995231628418, 0.9999995231628418,
-      0.999999463558197, 0.9999994039535522, 0.9999996423721313, 0.9999991059303284, 0.9999994039535522,
-    ].forEach((v, i) => {
-      expect(track20.output[i]).closeTo(v, 1e-5);
+    [1.3378702112436248e-8, -0.026999627441598617, 0.6623133848129577].forEach((v, i) => {
+      expect(position0_6.getElement(i)).closeTo(v, 1e-5);
     });
-    //
-    expect(treeOptions.animations.length).to.eql(1);
-    expect(treeOptions.children.length).to.eql(1);
+    [8.085935612465292e-9, -0.030000123813372696, 0.6976126806942994].forEach((v, i) => {
+      expect(position0_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.604971754771877e-8, -0.03000011554584352, 0.693102899676677].forEach((v, i) => {
+      expect(position0_8.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0633099734036477e-8, -0.02000010944902897, 0.6399999856948853].forEach((v, i) => {
+      expect(position0_9.getElement(i)).closeTo(v, 1e-5);
+    });
+    const positionCurve11 = positionCurves[11];
+    expect(positionCurve11.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/leg_joint_L_1');
+    const positionKeyFrames11 = positionCurve11.keyFrames;
+    const position11_0 = positionKeyFrames11.getValue(0);
+    const position11_1 = positionKeyFrames11.getValue(0.1);
+    const position11_2 = positionKeyFrames11.getValue(0.4);
+    const position11_3 = positionKeyFrames11.getValue(0.6);
+    const position11_4 = positionKeyFrames11.getValue(0.77);
+    const position11_5 = positionKeyFrames11.getValue(0.95);
+    const position11_6 = positionKeyFrames11.getValue(1.1);
+    const position11_7 = positionKeyFrames11.getValue(1.3);
+    const position11_8 = positionKeyFrames11.getValue(1.6);
+    const position11_9 = positionKeyFrames11.getValue(2.0);
+    [0.02852007932960987, 0.06762178242206573, -0.06295990943908691].forEach((v, i) => {
+      expect(position11_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.028520189225673676, 0.06762184202671051, -0.06295999884605408].forEach((v, i) => {
+      expect(position11_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.028520170599222183, 0.06762176752090454, -0.06296006590127945].forEach((v, i) => {
+      expect(position11_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.02852002903819084, 0.06762178987264633, -0.06295991688966751].forEach((v, i) => {
+      expect(position11_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.02852008235640824, 0.06762179173529148, -0.06377783417701721].forEach((v, i) => {
+      expect(position11_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.02852010913193226, 0.06762179732322693, -0.06295999884605408].forEach((v, i) => {
+      expect(position11_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.028520112158730626, 0.06762179173529148, -0.0637778639793396].forEach((v, i) => {
+      expect(position11_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.02852008072660972, 0.06762175261974335, -0.06238916516304016].forEach((v, i) => {
+      expect(position11_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.028520138934254646, 0.06762178242206573, -0.06296002864837646].forEach((v, i) => {
+      expect(position11_8.getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.028520093532279134, 0.06762176938354969, -0.06377790123224258].forEach((v, i) => {
+      expect(position11_9.getElement(i)).closeTo(v, 1e-5);
+    });
+    const rotationCurves = animClip.rotationCurves;
+    expect(rotationCurves.length).to.eql(19);
+    const rotationCurve3 = rotationCurves[3];
+    expect(rotationCurve3.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_neck_joint_1');
+    const rotationKeyFrames3 = rotationCurve3.keyFrames;
+    const rotation3_0 = rotationKeyFrames3.getValue(0);
+    const rotation3_1 = rotationKeyFrames3.getValue(0.3);
+    const rotation3_2 = rotationKeyFrames3.getValue(0.7);
+    const rotation3_3 = rotationKeyFrames3.getValue(0.9);
+    const rotation3_4 = rotationKeyFrames3.getValue(1.3);
+    const rotation3_5 = rotationKeyFrames3.getValue(1.5);
+    const rotation3_6 = rotationKeyFrames3.getValue(1.7);
+    const rotation3_7 = rotationKeyFrames3.getValue(2.0);
+    [-0.02380962483584881, -0.6327536106109619, -0.028988203033804893, -0.7734439969062805].forEach((v, i) => {
+      expect(rotation3_0.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.006549380120295049, -0.6395235234776406, 0.007056078803819767, -0.7687112183433105].forEach((v, i) => {
+      expect(rotation3_1.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.015102213395037322, -0.6499881607663583, 0.019011963429710795, -0.7595563835478958].forEach((v, i) => {
+      expect(rotation3_2.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.00259504977769829, -0.6544915562426721, -0.0020505953397712256, -0.7560620115228097].forEach((v, i) => {
+      expect(rotation3_3.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.03544669596873952, -0.6592561486512343, 0.040588971307278066, -0.7499848779727148].forEach((v, i) => {
+      expect(rotation3_4.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.010775327682495117, -0.6567466259002686, 0.011504087597131729, -0.7539464831352234].forEach((v, i) => {
+      expect(rotation3_5.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.01020961096711386, -0.644946626886109, -0.012678860196007781, -0.7640541847813767].forEach((v, i) => {
+      expect(rotation3_6.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.02474863827228546, -0.6325404644012451, -0.03008362464606762, -0.7735469341278076].forEach((v, i) => {
+      expect(rotation3_7.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    const rotationCurve15 = rotationCurves[15];
+    expect(rotationCurve15.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/leg_joint_R_1');
+    const rotationKeyFrames15 = rotationCurve15.keyFrames;
+    const rotation15_0 = rotationKeyFrames15.getValue(0);
+    const rotation15_1 = rotationKeyFrames15.getValue(0.3);
+    const rotation15_2 = rotationKeyFrames15.getValue(0.7);
+    const rotation15_3 = rotationKeyFrames15.getValue(0.9);
+    const rotation15_4 = rotationKeyFrames15.getValue(1.3);
+    const rotation15_5 = rotationKeyFrames15.getValue(1.5);
+    const rotation15_6 = rotationKeyFrames15.getValue(1.7);
+    const rotation15_7 = rotationKeyFrames15.getValue(2.0);
+    [0.007149823941290379, -0.5394002199172974, -0.004548392724245787, -0.8420069813728333].forEach((v, i) => {
+      expect(rotation15_0.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.0076125909650648855, -0.8618624597206415, 0.008997612385426805, -0.5070051393418271].forEach((v, i) => {
+      expect(rotation15_1.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.0038299378721414544, -0.9322358756058557, 0.016326187432012695, -0.3614624184747043].forEach((v, i) => {
+      expect(rotation15_2.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [-0.009565437239987883, -0.9456528352599822, 0.020589973768677626, -0.3243845595901951].forEach((v, i) => {
+      expect(rotation15_3.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.02290591993519608, -0.5257729676485207, 0.001480401975115246, -0.8503152365842087].forEach((v, i) => {
+      expect(rotation15_4.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.04037770628929138, -0.2803998589515686, 0.002606708789244294, -0.9590301513671875].forEach((v, i) => {
+      expect(rotation15_5.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.030033650750716928, -0.5098839563621551, -0.0016212830614767957, -0.8597173247271871].forEach((v, i) => {
+      expect(rotation15_6.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    [0.006564768496900797, -0.5171111822128296, -0.0036021345295011997, -0.8558855652809143].forEach((v, i) => {
+      expect(rotation15_7.toVector4(new Vector4()).getElement(i)).closeTo(v, 1e-5);
+    });
+    const scaleCurves = animClip.scaleCurves;
+    expect(scaleCurves.length).to.eql(19);
+    const scaleCurve5 = scaleCurves[5];
+    expect(scaleCurve5.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/Skeleton_torso_joint_2/torso_joint_3/Skeleton_arm_joint_L__4_');
+    const scaleKeyFrames5 = scaleCurve5.keyFrames;
+    const scale5_0 = scaleKeyFrames5.getValue(0);
+    const scale5_1 = scaleKeyFrames5.getValue(0.3);
+    const scale5_2 = scaleKeyFrames5.getValue(0.7);
+    const scale5_3 = scaleKeyFrames5.getValue(0.9);
+    const scale5_4 = scaleKeyFrames5.getValue(1.3);
+    const scale5_5 = scaleKeyFrames5.getValue(1.5);
+    const scale5_6 = scaleKeyFrames5.getValue(1.7);
+    const scale5_7 = scaleKeyFrames5.getValue(2.0);
+    [1.0000004768371582, 1.0000001192092896, 0.9999999403953552].forEach((v, i) => {
+      expect(scale5_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.000000239815579, 1, 1.0005707144737244].forEach((v, i) => {
+      expect(scale5_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.000000239815579, 1, 1.0005710124969482].forEach((v, i) => {
+      expect(scale5_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000001206062894, 0.9999998807907104, 1.0005708932876587].forEach((v, i) => {
+      expect(scale5_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000003590248685, 0.9999999403953552, 1.0005708932876587].forEach((v, i) => {
+      expect(scale5_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000001192092896, 0.9999998211860657, 1].forEach((v, i) => {
+      expect(scale5_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000002414453775, 0.9999998901039362, 0.9991822242736816].forEach((v, i) => {
+      expect(scale5_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000002414453775, 0.9999998901039362, 0.9991822242736816].forEach((v, i) => {
+      expect(scale5_7.getElement(i)).closeTo(v, 1e-5);
+    });
+    const scaleCurve14 = scaleCurves[14];
+    expect(scaleCurve14.path).to.eql('Z_UP/Armature/Skeleton_torso_joint_1/leg_joint_L_1/leg_joint_L_2/leg_joint_L_3/leg_joint_L_5');
+    const scaleKeyFrames14 = scaleCurve14.keyFrames;
+    const scale14_0 = scaleKeyFrames14.getValue(0);
+    const scale14_1 = scaleKeyFrames14.getValue(0.3);
+    const scale14_2 = scaleKeyFrames14.getValue(0.7);
+    const scale14_3 = scaleKeyFrames14.getValue(0.9);
+    const scale14_4 = scaleKeyFrames14.getValue(1.3);
+    const scale14_5 = scaleKeyFrames14.getValue(1.5);
+    const scale14_6 = scaleKeyFrames14.getValue(1.7);
+    const scale14_7 = scaleKeyFrames14.getValue(2.0);
+    [1.0000003576278687, 0.9999997019767761, 0.9999998211860657].forEach((v, i) => {
+      expect(scale14_0.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000003576278687, 1.0000001192092896, 0.9999999403953552].forEach((v, i) => {
+      expect(scale14_1.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000002414453775, 0.9999998901039362, 0.9991821050643921].forEach((v, i) => {
+      expect(scale14_2.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000004768371582, 1, 1.0000001192092896].forEach((v, i) => {
+      expect(scale14_3.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.000000238418579, 1.0000001192092896, 0.9999997615814209].forEach((v, i) => {
+      expect(scale14_4.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000008344650269, 1, 0.9999996423721313].forEach((v, i) => {
+      expect(scale14_5.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000007152557373, 0.9999999403953552, 0.9999996423721313].forEach((v, i) => {
+      expect(scale14_6.getElement(i)).closeTo(v, 1e-5);
+    });
+    [1.0000003590248685, 0.9999998807907104, 1.0005704760551453].forEach((v, i) => {
+      expect(scale14_7.getElement(i)).closeTo(v, 1e-5);
+    });
     //
     const modelItem = items[1];
-    expect(modelItem.type).to.eql(VFX_ITEM_TYPE_3D);
-    expect(modelItem.name).to.eql('Cesium_Man');
-    expect(modelItem.listIndex).to.eql(1);
-    expect(modelItem.parentId).to.eql('tree0^2');
     const worldMatrix = modelItem.transform.getWorldMatrix();
     [
       3.422854177870249e-8, -3.4228538225988814e-8, 0.9999998807907104, 0,
@@ -1153,34 +1451,52 @@ describe('渲染插件单测', function () {
     ].forEach((val, idx) => {
       expect(val).closeTo(worldMatrix.elements[idx], 1e-5);
     });
-    const skin = modelItem.options.content.options.skin;
-    expect(skin.inverseBindMatrices.length).to.eql(304);
+    const modelComp = modelItem.getComponent(ModelMeshComponent);
+    expect(modelComp.priority).to.eql(1);
+    const meshObj = modelComp.content;
+    const skin = meshObj.skin!;
+    expect(skin.inverseBindMatrices.length).to.eql(19);
     [
-      0.9971418380737305, -4.3711398944878965e-8, 0.07555299252271652, 0, 4.358646421565027e-8, 1,
-      3.3025269186026662e-9, 0, -0.07555299252271652, 0, 0.9971418380737305, 0, 0.05130045861005783,
-      -0.0049998159520328045, -0.6770592331886292, 1, 0.06041746959090233, -4.3711398944878965e-8,
-      0.9981732964515686, 0, 2.64093213964145e-9, 1, 4.3631551704947924e-8, 0, -0.9981732964515686,
-      0, 0.06041746959090233, 0, 0.8218303918838501, -0.004986404906958342, -0.0607638880610466, 1,
-      0.986260712146759, -4.3711398944878965e-8, 0.16519659757614136, 0, 4.3110834013759813e-8, 1,
-      7.22097448502268e-9, 0, -0.16519659757614136, 0, 0.986260712146759, 0, 0.18158070743083954,
-      -0.004987061023712158, -1.058603048324585, 1, -0.0384785495698452, -4.3711398944878965e-8,
-      0.9992595911026001, 0, -1.6819512449472995e-9, 1, 4.367903372326509e-8, 0, -0.9992595911026001,
-      0, -0.0384785495698452, 0, 1.1374080181121826, -0.0049894447438418865, 0.03729343041777611, 1,
-      -0.011275229975581169, -4.3711398944878965e-8, -0.9999366402626038, 0, -4.9285608927363e-10, 1,
-      -4.37086278282095e-8, 0, 0.9999366402626038, 0, -0.011275229975581169, 0, -1.189831018447876,
+      0.9971418380737305, -4.3711398944878965e-8, 0.07555299252271652, 0, 4.358646421565027e-8, 1, 3.3025269186026662e-9, 0, -0.07555299252271652,
+      0, 0.9971418380737305, 0, 0.05130045861005783, -0.0049998159520328045, -0.6770592331886292, 1,
     ].forEach((v, i) => {
-      expect(skin.inverseBindMatrices[i]).closeTo(v, 1e-5);
+      expect(skin.inverseBindMatrices[0].elements[i]).closeTo(v, 1e-5);
     });
-    expect(skin.joints.length).to.eql(19);
-    [3, 12, 13, 20, 21, 17, 14, 18, 15, 19, 16, 8, 4, 9, 5, 10, 6, 11, 7].forEach((v, i) => {
-      expect(skin.joints[i]).to.eql(v);
+    [
+      0.06041746959090233, -4.3711398944878965e-8, 0.9981732964515686, 0, 2.64093213964145e-9, 1, 4.3631551704947924e-8, 0, -0.9981732964515686,
+      0, 0.06041746959090233, 0, 0.8218303918838501, -0.004986404906958342, -0.0607638880610466, 1,
+    ].forEach((v, i) => {
+      expect(skin.inverseBindMatrices[1].elements[i]).closeTo(v, 1e-5);
+    });
+    [
+      -0.9999089241027832, -4.3711398944878965e-8, 0.013504560105502605, 0, -4.370741635284503e-8, 1, 5.903031952136928e-10, 0, -0.013504560105502605,
+      0, -0.9999089241027832, 0, 0.010247940197587013, -0.09600067138671875, 1.0739599466323853, 1,
+    ].forEach((v, i) => {
+      expect(skin.inverseBindMatrices[5].elements[i]).closeTo(v, 1e-5);
+    });
+    [
+      -0.9848927855491638, -4.3711398944878965e-8, -0.17316530644893646, 0, -4.30510418425456e-8, 1, -7.569298077214626e-9, 0, 0.17316530644893646,
+      0, -0.9848927855491638, 0, -0.08602433651685715, -0.45450031757354736, 0.8732962012290955, 1,
+    ].forEach((v, i) => {
+      expect(skin.inverseBindMatrices[9].elements[i]).closeTo(v, 1e-5);
+    });
+    [
+      -0.2782297134399414, -4.3711398944878965e-8, 0.9605147242546082, 0, -1.216181022556384e-8, 1, 4.198544090172618e-8, 0, -0.9605147242546082,
+      0, -0.2782297134399414, 0, 0.3569404184818268, -0.08209478110074997, 0.032392680644989014, 1,
+    ].forEach((v, i) => {
+      expect(skin.inverseBindMatrices[13].elements[i]).closeTo(v, 1e-5);
+    });
+    [
+      -0.9981577396392822, -4.3711398944878965e-8, -0.060672931373119354, 0, -4.3630869583921594e-8, 1, -2.6520987628231296e-9, 0,
+      0.060672931373119354, 0, -0.9981577396392822, 0, 0.025538679212331772, -0.08458267897367477, 0.022827859967947006, 1,
+    ].forEach((v, i) => {
+      expect(skin.inverseBindMatrices[17].elements[i]).closeTo(v, 1e-5);
     });
     //
-    const primitives = modelItem.options.content.options.primitives;
-    expect(primitives.length).to.eql(1);
-    const geometry = primitives[0].geometry;
-    expect(geometry.attributesName.length).to.eql(5);
-    geometry.attributesName.forEach((val, idx) => {
+    expect(meshObj.subMeshes.length).to.eql(1);
+    const geometry = meshObj.subMeshes[0].getEffectsGeometry() as GLGeometry;
+    expect(geometry.getAttributeNames().length).to.eql(5);
+    geometry.getAttributeNames().forEach((val, idx) => {
       expect(val).to.eql(['aJoints', 'aNormal', 'aPos', 'aUV', 'aWeights'][idx]);
     });
     const position = geometry.attributes.aPos;
@@ -1220,7 +1536,7 @@ describe('渲染插件单测', function () {
       0.10521499812602997, -0.5284020900726318, 0.8022940158843994, 0.1302040070295334, -0.5113590955734253, 0.806075930595398,
       0.13724100589752197, -0.5518780946731567, 0.7845999002456665, 0.16086100041866302, -0.550517201423645, 0.7795209288597107,
     ].forEach((v, i) => {
-      expect(positionBuffer[i]).closeTo(v, 1e-5);
+      expect(positionBuffer?.[i]).closeTo(v, 1e-5);
     });
     [
       0.9666681289672852, 0.2427504062652588, 0.08139491081237793, 0.5926201343536377, 0.8049721121788025, 0.028657428920269012,
@@ -1234,7 +1550,7 @@ describe('渲染插件单测', function () {
       -0.4683813154697418, 0.12970750033855438, -0.8739537000656128, -0.04324638098478317, 0.5547868013381958, -0.8308678865432739,
       -0.3818897008895874, 0.1392296999692917, -0.9136604070663452, 0.1048332005739212, 0.3493525981903076, -0.9311084151268005,
     ].forEach((v, i) => {
-      expect(normalBuffer[i]).closeTo(v, 1e-5);
+      expect(normalBuffer?.[i]).closeTo(v, 1e-5);
     });
     [
       0.2736569941043854, 0.8036180138587952, 0.3031649887561798, 0.799481987953186, 0.2714029848575592, 0.7648169994354248,
@@ -1248,14 +1564,14 @@ describe('渲染插件单测', function () {
       0.35148298740386963, 0.4901829957962036, 0.342864990234375, 0.4889410138130188, 0.3449459969997406, 0.3859059810638428,
       0.34152400493621826, 0.36677002906799316, 0.33701199293136597, 0.38905197381973267, 0.33330801129341125, 0.3686150312423706,
     ].forEach((v, i) => {
-      expect(uvBuffer[i]).closeTo(v, 1e-5);
+      expect(uvBuffer?.[i]).closeTo(v, 1e-5);
     });
     [
       0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 7, 9, 0, 0, 7, 9, 0, 0, 9, 0, 0, 0, 9, 0, 0, 0, 7, 9, 0, 0, 7, 9, 0, 0, 9,
       0, 0, 0, 9, 0, 0, 0, 8, 10, 0, 0, 8, 10, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0, 8, 10, 0, 0, 8, 10, 0, 0, 10, 0, 0, 0, 10, 0, 0,
       0, 10, 0, 0, 0, 10, 0, 0, 0, 13, 15, 17, 0, 13, 15, 17, 0, 13, 15, 17, 0,
     ].forEach((v, i) => {
-      expect(jointBuffer[i]).closeTo(v, 1e-5);
+      expect(jointBuffer?.[i]).closeTo(v, 1e-5);
     });
     [
       0.17160889506340027, 0.6451614499092102, 0.13225100934505463, 0.05097858980298042, 0.2263036072254181, 0.5693775415420532,
@@ -1267,29 +1583,23 @@ describe('渲染插件单测', function () {
       0.03885405883193016, 0.9611459374427795, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0.20391489565372467,
       0.4302911162376404, 0.36579400300979614, 0, 0.43764400482177734, 0.2858009934425354, 0.27655500173568726, 0, 0.21779599785804749,
     ].forEach((v, i) => {
-      expect(weightBuffer[i]).closeTo(v, 1e-5);
+      expect(weightBuffer?.[i]).closeTo(v, 1e-5);
     });
-
-    const material = primitives[0].material;
-    expect(material.name).to.eql('Cesium_Man-effect');
-    expect(material.type).to.eql('pbr');
-    expect(material.alphaCutOff).to.eql(0.5);
-    expect(material.baseColorFactor).to.eql([255, 255, 255, 255]);
-    expect(material.baseColorTexture).not.eql(undefined);
-    expect(material.side).to.eql(spec.SideMode.FRONT);
-    expect(material.blending).to.eql(spec.MaterialBlending.opaque);
-    expect(material.emissiveFactor).to.eql([0, 0, 0, 255]);
-    expect(material.emissiveIntensity).to.eql(1);
-    expect(material.emissiveTexture).to.eql(undefined);
-    expect(material.metallicFactor).to.eql(0);
-    expect(material.roughnessFactor).to.eql(1);
-    expect(material.metallicRoughnessTexture).to.eql(undefined);
-    expect(material.normalTexture).to.eql(undefined);
-    expect(material.occlusionTexture).to.eql(undefined);
+    const meshMaterial = modelComp.materials[0] as GLMaterial;
+    expect(meshMaterial.getColor('_BaseColorFactor')).to.eql({ r: 1, g: 1, b: 1, a: 1 });
+    expect(meshMaterial.getColor('_EmissiveFactor')).to.eql({ r: 0, g: 0, b: 0, a: 1 });
+    expect(meshMaterial.getFloat('AlphaClip')).to.eql(0);
+    expect(meshMaterial.getFloat('ZTest')).to.eql(1);
+    expect(meshMaterial.getFloat('ZWrite')).to.eql(1);
+    expect(meshMaterial.getFloat('_AlphaCutoff')).to.eql(0.5);
+    expect(meshMaterial.getFloat('_EmissiveIntensity')).to.eql(1);
+    expect(meshMaterial.getFloat('_MetallicFactor')).to.eql(0);
+    expect(meshMaterial.getFloat('_RoughnessFactor')).to.eql(1);
+    expect(meshMaterial.getFloat('_SpecularAA')).to.eql(0);
     comp.dispose();
   });
-  it('Box求交测试', function () {
-    const eps = 0.0001;
+
+  it('Box 求交测试', () => {
     const boxMin = new Vector3(-1, -1, -1);
     const boxMax = new Vector3(1, 1, 1);
     //
@@ -1323,7 +1633,8 @@ describe('渲染插件单测', function () {
     const t6 = RayBoxTesting(ray6Origin, ray6Direction, boxMin, boxMax);
     expect(t6).to.eql(undefined);
   });
-  it('Triangle求交测试', function () {
+
+  it('Triangle 求交测试', () => {
     const a = new Vector3(1, 1, 0);
     const b = new Vector3(0, 1, 1);
     const c = new Vector3(1, 0, 1);

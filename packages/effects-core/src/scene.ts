@@ -59,7 +59,7 @@ export interface SceneLoadOptions {
    * }
    * ```
    */
-  variables?: Record<string, number | string | string[]>,
+  variables?: spec.TemplateVariables,
 
   /**
    * 是否使用压缩纹理

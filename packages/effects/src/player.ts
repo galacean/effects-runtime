@@ -507,11 +507,8 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       }
     }
 
-    const compileBeginTime = performance.now();
-
     await new Promise(resolve => {
       this.renderer.getShaderLibrary()?.compileAllShaders(() => {
-        console.info('CompileAllShaderTime: ' + (performance.now() - compileBeginTime));
         resolve(null);
       });
     });

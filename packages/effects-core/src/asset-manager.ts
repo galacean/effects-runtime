@@ -166,7 +166,11 @@ export class AssetManager implements Disposable {
           ...rawJSON,
         };
 
-        if (this.options && this.options.variables && Object.keys(this.options.variables).length !== 0) {
+        if (
+          this.options &&
+          this.options.variables &&
+          Object.keys(this.options.variables).length !== 0
+        ) {
           const { images: rawImages } = rawJSON.jsonScene;
           const images = scene.images;
 
@@ -345,7 +349,6 @@ export class AssetManager implements Disposable {
     const { useCompressedTexture, variables } = this.options;
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img: spec.Image, idx: number) => {
-      //@ts-expect-error
       const { url: png, webp, avif } = img;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
@@ -381,7 +384,7 @@ export class AssetManager implements Disposable {
               return await combineImageTemplate(
                 resultImage,
                 template,
-                variables as Record<string, number | string>,
+                variables,
               );
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars

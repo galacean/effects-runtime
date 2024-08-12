@@ -105,20 +105,20 @@ export class ExtWrap implements RendererExtensions, Disposable {
         drawCount: 4,
       });
     const vertexShader = `
-        precision highp float;
-      attribute vec2 aPos;
-      varying vec2 vTex;
-      void main(){
-         gl_Position = vec4(aPos,0.,1.0);
-         vTex = (aPos + vec2(1.))/2.;
-       }
-      `;
+precision highp float;
+attribute vec2 aPos;
+varying vec2 vTex;
+void main(){
+  gl_Position = vec4(aPos,0.,1.0);
+  vTex = (aPos + vec2(1.))/2.;
+}`;
     const fragmentShader = `
-        precision highp float;
-      varying vec2 vTex;
-      uniform sampler2D uTex;
-      void main(){gl_FragColor = texture2D(uTex,vTex);}
-      `;
+precision highp float;
+varying vec2 vTex;
+uniform sampler2D uTex;
+void main(){
+  gl_FragColor = texture2D(uTex,vTex);
+}`;
     const { level } = engine.gpuCapability;
     const material = new GLMaterial(engine, {
       name,

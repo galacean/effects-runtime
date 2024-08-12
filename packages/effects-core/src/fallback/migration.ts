@@ -77,7 +77,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     textureOptions.id = generateGUID();
     textureOptions.dataType = DataType.Texture;
     // @ts-expect-error
-    textureOptions.source = { id: result.images[textureOptions.source].id };
+    textureOptions.source = { id: result.images[textureOptions.source]?.id };
   });
 
   if (result.textures.length < result.images.length) {

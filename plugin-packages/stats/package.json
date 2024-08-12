@@ -1,7 +1,7 @@
 {
-  "name": "@galacean/effects-plugin-alipay-downgrade",
-  "version": "1.6.6",
-  "description": "Galacean Effects player downgrade plugin for Alipay",
+  "name": "@galacean/effects-plugin-stats",
+  "version": "1.6.5",
+  "description": "Galacean Effects runtime stats for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
   "browser": "./dist/index.min.js",
@@ -13,11 +13,6 @@
     ".": {
       "import": "./dist/index.mjs",
       "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./alipay": {
-      "import": "./dist/alipay.mjs",
-      "require": "./dist/alipay.js",
       "types": "./dist/index.d.ts"
     }
   },
@@ -34,13 +29,7 @@
   },
   "contributors": [
     {
-      "name": "燃然"
-    },
-    {
-      "name": "意绮"
-    },
-    {
-      "name": "飂兮"
+      "name": "云垣"
     }
   ],
   "author": "Ant Group CO., Ltd.",
