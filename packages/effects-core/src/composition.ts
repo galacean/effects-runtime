@@ -566,10 +566,14 @@ export class Composition implements Disposable, LostHandler {
     if (this.reusable) {
       return false;
     }
-    const { ended, endBehavior } = this.rootItem;
+    const { endBehavior } = this.rootItem;
+
+    if (this.rootItem.isEnded(this.time)) {
+      this.rootItem.ended = true;
+    }
 
     // TODO: 合成结束行为
-    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.EndBehavior);
+    return this.rootItem.ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.EndBehavior);
   }
 
   /**
@@ -583,16 +587,11 @@ export class Composition implements Disposable, LostHandler {
     }
     if (this.shouldRestart()) {
       this.restart();
-      // restart then tick to avoid flicker
     }
     const time = this.getUpdateTime(deltaTime * this.speed);
 
     this.globalTime += time;
-    if (this.rootComposition.isActiveAndEnabled) {
-      const localTime = this.toLocalTime(this.globalTime / 1000);
-
-      this.rootComposition.time = localTime;
-    }
+    this.updateRootComposition();
     this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
@@ -601,7 +600,6 @@ export class Composition implements Disposable, LostHandler {
     this.callUpdate(this.rootItem, time);
     this.callLateUpdate(this.rootItem, time);
 
-    // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
     if (this.shouldDispose()) {
       this.onEnd?.(this);
@@ -630,7 +628,6 @@ export class Composition implements Disposable, LostHandler {
 
   private getUpdateTime (t: number) {
     const startTimeInMs = this.startTime * 1000;
-    // const content = this.rootItem;
     const now = this.rootComposition.time * 1000;
 
     if (t < 0 && (now + t) < startTimeInMs) {
@@ -773,7 +770,7 @@ export class Composition implements Disposable, LostHandler {
    * 更新相机
    * @override
    */
-  updateCamera () {
+  private updateCamera () {
     this.camera.updateMatrix();
   }
 
@@ -781,8 +778,19 @@ export class Composition implements Disposable, LostHandler {
    * 插件更新，来自 CompVFXItem 的更新调用
    * @param deltaTime - 更新的时间步长
    */
-  updatePluginLoaders (deltaTime: number) {
+  private updatePluginLoaders (deltaTime: number) {
     this.pluginSystem.plugins.forEach(loader => loader.onCompositionUpdate(this, deltaTime));
+  }
+
+  /**
+   * 更新主合成组件
+   */
+  private updateRootComposition () {
+    if (this.rootComposition.isActiveAndEnabled) {
+      const localTime = this.toLocalTime(this.globalTime / 1000);
+
+      this.rootComposition.time = localTime;
+    }
   }
 
   /**
