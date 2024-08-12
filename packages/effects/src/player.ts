@@ -7,7 +7,7 @@ import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
-  generateWhiteTexture, isSceneWithOptions, Texture, EventEmitter,
+  generateWhiteTexture, isSceneWithOptions, Texture, EventEmitter, Material,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -362,6 +362,15 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (this.ticker) {
       if (opts.renderLevel === spec.RenderLevel.B) {
         this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
+      }
+    }
+
+    // TODO Material 单独存表, 加速查询
+    for (const guid of Object.keys(this.renderer.engine.objectInstance)) {
+      const effectsObject = this.renderer.engine.objectInstance[guid];
+
+      if (effectsObject instanceof Material) {
+        effectsObject.createShaderVariant();
       }
     }
 
