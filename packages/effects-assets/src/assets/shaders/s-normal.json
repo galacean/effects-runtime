@@ -1,0 +1,15 @@
+{
+  "fileSummary": {
+    "guid": "6507a1d1d65a4c2082abde501e1496a2"
+  },
+  "exportObjects": [
+    {
+      "id": "1f5a145e5c3147c3b1cd37a3daf23180",
+      "name": "normal",
+      "dataType": "Shader",
+      "vertex": "precision highp float;\nattribute vec3 aPos;\nattribute vec2 aUV;\nattribute vec3 aNormal;\n\nvarying vec2 uv;\nvarying vec3 normal;\n\nuniform mat4 effects_ObjectToWorld;\nuniform mat4 effects_MatrixInvV;\nuniform mat4 effects_MatrixVP;\n\nvoid main() {\nuv = aUV;\nnormal =  normalize((effects_ObjectToWorld * vec4(aNormal,0.0)).rgb);\ngl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos,1.0);\n}",
+      "fragment": "precision highp float;varying vec2 uv;varying vec3 normal;uniform vec4 _MainColor;uniform sampler2D _MainTex;void main() {  vec3 texColor = texture2D(_MainTex, uv).rgb;  vec3 color = texColor * _MainColor.rgb;  gl_FragColor = vec4(max(normal/2.0+vec3(0.5,0.5,0.5),vec3(0,0,0)), 1.0);}",
+      "properties": ""
+    }
+  ]
+}
