@@ -251,6 +251,7 @@ export class Composition implements Disposable, LostHandler {
     this.rootItem.name = 'rootItem';
     this.rootItem.composition = this;
     this.rootComposition = this.rootItem.addComponent(CompositionComponent);
+    this.rootComposition.startTime = sourceContent.startTime;
     this.rootComposition.data = sourceContent;
 
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
@@ -404,9 +405,8 @@ export class Composition implements Disposable, LostHandler {
     if (this.rootItem.ended && this.reusable) {
       this.restart();
     }
-    if (!this.rootComposition.started) {
+    if (this.rootComposition.started) {
       this.gotoAndPlay(this.time - this.startTime);
-
     } else {
       this.gotoAndPlay(0);
     }
