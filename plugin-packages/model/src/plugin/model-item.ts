@@ -85,6 +85,14 @@ export class ModelMeshComponent extends RendererComponent {
   }
 
   /**
+   * 组件晚更新，晚更新内部对象状态
+   * @param dt - 更新间隔
+   */
+  override lateUpdate (dt: number): void {
+    this.content.lateUpdate();
+  }
+
+  /**
    * 组件渲染，需要检查可见性
    * @param renderer - 渲染器
    * @returns
