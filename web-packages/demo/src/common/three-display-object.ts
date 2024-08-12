@@ -24,6 +24,9 @@ export function createThreePlayer (options) {
     hasPlayable: false,
     pause: () => { },
     resume: () => { },
+    onItemMessage: ({ type, message }) => {
+      console.debug(`item [${message.name}] trigger message, type [${message.phrase}].`);
+    },
     onItemClicked: ({ name }) => {
       console.debug(`item ${name} has been clicked`);
     },

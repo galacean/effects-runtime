@@ -32,12 +32,13 @@ export class ThreeDisplayObject extends THREE.Group {
   compositions: ThreeComposition[] = [];
   camera?: THREE.Camera;
   renderer: Renderer;
+  assetManager: AssetManager;
+  env = '';
 
   readonly width: number;
   readonly height: number;
-  assetManager: AssetManager;
+
   private baseCompositionIndex = 0;
-  env = '';
 
   /**
    *
