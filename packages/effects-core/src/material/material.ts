@@ -1,5 +1,5 @@
 import type { Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4, Color } from '@galacean/effects-math/es/core/index';
-import type { GlobalUniforms, Renderer, Shader, ShaderWithSource } from '../render';
+import type { GlobalUniforms, Renderer, Shader, ShaderVariant, ShaderWithSource } from '../render';
 import type { Texture } from '../texture';
 import type { DestroyOptions, Disposable } from '../utils';
 import type { UniformSemantic, UniformValue } from './types';
@@ -68,6 +68,8 @@ let seed = 1;
  */
 export abstract class Material extends EffectsObject implements Disposable {
   shader: Shader;
+  shaderVariant: ShaderVariant;
+
   // TODO: 待移除
   shaderSource: ShaderWithSource;
   stringTags: Record<string, string> = {};
@@ -440,6 +442,10 @@ export abstract class Material extends EffectsObject implements Disposable {
    * @override
    */
   initialize (): void {
+    // OVERRIDE
+  }
+
+  createShaderVariant () {
     // OVERRIDE
   }
 

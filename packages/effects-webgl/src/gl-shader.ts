@@ -27,13 +27,13 @@ export class GLShaderVariant extends ShaderVariant {
   }
 
   // shader 的 GPU 资源初始化方法，在绘制前调用
-  initialize (engine: Engine) {
+  initialize () {
     if (this.initialized) {
       return;
     }
     // 核心初始化都在 compileShader
     // 否则会出现编译了却没有初始化的情况
-    const pipelineContext = (engine as GLEngine).getGLPipelineContext();
+    const pipelineContext = (this.engine as GLEngine).getGLPipelineContext();
 
     pipelineContext.shaderLibrary.compileShader(this);
   }

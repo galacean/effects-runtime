@@ -23,7 +23,6 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-  shaderVariant: GLShaderVariant;
 
   // material存放的uniform数据。
   private floats: Record<string, number> = {};
@@ -257,11 +256,8 @@ export class GLMaterial extends Material {
   override initialize (): void {
     const engine = this.engine;
 
-    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
-      this.shaderVariant = this.shader.createVariant(this.enabledMacros) as GLShaderVariant;
-      this.macrosDirtyFlag = false;
-    }
-    this.shaderVariant.initialize(engine);
+    this.createShaderVariant();
+    (this.shaderVariant as GLShaderVariant).initialize();
     if (this.initialized) {
       return;
     }
@@ -279,6 +275,13 @@ export class GLMaterial extends Material {
     this.initialized = true;
   }
 
+  override createShaderVariant () {
+    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
+      this.shaderVariant = this.shader.createVariant(this.enabledMacros);
+      this.macrosDirtyFlag = false;
+    }
+  }
+
   setupStates (pipelineContext: GLPipelineContext) {
     this.glMaterialState.apply(pipelineContext);
   }
@@ -286,13 +289,14 @@ export class GLMaterial extends Material {
   override use (renderer: Renderer, globalUniforms?: GlobalUniforms) {
     const engine = renderer.engine as GLEngine;
     const pipelineContext = engine.getGLPipelineContext();
+    const shaderVariant = this.shaderVariant as GLShaderVariant;
 
-    if (!this.shaderVariant.program) {
+    if (!shaderVariant.program) {
       this.engine?.renderErrors.add(new Error('Shader program is not initialized.'));
 
       return;
     }
-    this.shaderVariant.program.bind();
+    shaderVariant.program.bind();
     this.setupStates(pipelineContext);
     let name: string;
 
@@ -311,20 +315,20 @@ export class GLMaterial extends Material {
 
     // 更新 cached uniform location
     if (this.uniformDirtyFlag) {
-      this.shaderVariant.fillShaderInformation(this.uniforms, this.samplers);
+      shaderVariant.fillShaderInformation(this.uniforms, this.samplers);
       this.uniformDirtyFlag = false;
     }
 
     if (globalUniforms) {
       // 设置全局 uniform
       for (name in globalUniforms.floats) {
-        this.shaderVariant.setFloat(name, globalUniforms.floats[name]);
+        shaderVariant.setFloat(name, globalUniforms.floats[name]);
       }
       for (name in globalUniforms.ints) {
-        this.shaderVariant.setInt(name, globalUniforms.ints[name]);
+        shaderVariant.setInt(name, globalUniforms.ints[name]);
       }
       for (name in globalUniforms.matrices) {
-        this.shaderVariant.setMatrix(name, globalUniforms.matrices[name]);
+        shaderVariant.setMatrix(name, globalUniforms.matrices[name]);
       }
     }
 
@@ -335,43 +339,43 @@ export class GLMaterial extends Material {
       }
     }
     for (name in this.floats) {
-      this.shaderVariant.setFloat(name, this.floats[name]);
+      shaderVariant.setFloat(name, this.floats[name]);
     }
     for (name in this.ints) {
-      this.shaderVariant.setInt(name, this.ints[name]);
+      shaderVariant.setInt(name, this.ints[name]);
     }
     for (name in this.floatArrays) {
-      this.shaderVariant.setFloats(name, this.floatArrays[name]);
+      shaderVariant.setFloats(name, this.floatArrays[name]);
     }
     for (name in this.textures) {
-      this.shaderVariant.setTexture(name, this.textures[name]);
+      shaderVariant.setTexture(name, this.textures[name]);
     }
     for (name in this.vector2s) {
-      this.shaderVariant.setVector2(name, this.vector2s[name]);
+      shaderVariant.setVector2(name, this.vector2s[name]);
     }
     for (name in this.vector3s) {
-      this.shaderVariant.setVector3(name, this.vector3s[name]);
+      shaderVariant.setVector3(name, this.vector3s[name]);
     }
     for (name in this.vector4s) {
-      this.shaderVariant.setVector4(name, this.vector4s[name]);
+      shaderVariant.setVector4(name, this.vector4s[name]);
     }
     for (name in this.colors) {
-      this.shaderVariant.setColor(name, this.colors[name]);
+      shaderVariant.setColor(name, this.colors[name]);
     }
     for (name in this.quaternions) {
-      this.shaderVariant.setQuaternion(name, this.quaternions[name]);
+      shaderVariant.setQuaternion(name, this.quaternions[name]);
     }
     for (name in this.matrices) {
-      this.shaderVariant.setMatrix(name, this.matrices[name]);
+      shaderVariant.setMatrix(name, this.matrices[name]);
     }
     for (name in this.matrice3s) {
-      this.shaderVariant.setMatrix3(name, this.matrice3s[name]);
+      shaderVariant.setMatrix3(name, this.matrice3s[name]);
     }
     for (name in this.vector4Arrays) {
-      this.shaderVariant.setVector4Array(name, this.vector4Arrays[name]);
+      shaderVariant.setVector4Array(name, this.vector4Arrays[name]);
     }
     for (name in this.matrixArrays) {
-      this.shaderVariant.setMatrixArray(name, this.matrixArrays[name]);
+      shaderVariant.setMatrixArray(name, this.matrixArrays[name]);
     }
   }
 
