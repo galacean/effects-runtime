@@ -8,6 +8,7 @@ import {
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
   generateWhiteTexture, isSceneWithOptions, Texture, EventEmitter, Material,
+  PLAYER_OPTIONS_ENV_EDITOR,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -365,12 +366,15 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       }
     }
 
-    // TODO Material 单独存表, 加速查询
-    for (const guid of Object.keys(this.renderer.engine.objectInstance)) {
-      const effectsObject = this.renderer.engine.objectInstance[guid];
+    // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
+    if (this.env !== PLAYER_OPTIONS_ENV_EDITOR) {
+      // TODO Material 单独存表, 加速查询
+      for (const guid of Object.keys(this.renderer.engine.objectInstance)) {
+        const effectsObject = this.renderer.engine.objectInstance[guid];
 
-      if (effectsObject instanceof Material) {
-        effectsObject.createShaderVariant();
+        if (effectsObject instanceof Material) {
+          effectsObject.createShaderVariant();
+        }
       }
     }
 
