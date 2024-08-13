@@ -610,7 +610,7 @@ export class ParticleSystem extends Component {
     const point = this.particleLink.getNodeByIndex(index);
 
     if (!point) {
-      console.error('get point error');
+      console.error('Get point error.');
 
       return null;
     } else {
