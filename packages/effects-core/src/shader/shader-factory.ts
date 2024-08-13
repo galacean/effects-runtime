@@ -7,7 +7,7 @@ export interface ShaderCodeOptions {
   shaderType: ShaderType,
   shader: string,
   macros?: ShaderMacros,
-  keepVersion?: boolean,
+  removeVersion?: boolean,
 }
 
 export class ShaderFactory {
@@ -46,25 +46,22 @@ export class ShaderFactory {
    * @return 去除版本号的 shader 文本
    */
   static genFinalShaderCode (options: ShaderCodeOptions): string {
-    const { level, shaderType, shader, macros, keepVersion } = options;
+    const { level, shaderType, shader, macros, removeVersion } = options;
 
-    const macroString = ShaderFactory.genMacroString(macros);
-    const webglString = ShaderFactory.genWebGLVersion(level);
+    const macroString = ShaderFactory.genMacroString(level, macros);
+    const versionString = ShaderFactory.genShaderVersion(level);
     let source = ShaderFactory.parseIncludes(shader);
     const isVersion300 = ShaderFactory.isVersion300(source);
 
     source = ShaderFactory.removeWebGLVersion(source);
-
-    if (!isVersion300) {
-      if (level === 2) {
-        source = ShaderFactory.convertTo300(source, shaderType === ShaderType.fragment);
-      }
+    if (level === 2 && !isVersion300) {
+      source = ShaderFactory.convertTo300(source, shaderType === ShaderType.fragment);
     }
 
-    if (keepVersion) {
-      return webglString + macroString + source;
-    } else {
+    if (removeVersion) {
       return macroString + source;
+    } else {
+      return versionString + macroString + source;
     }
   }
 
@@ -76,10 +73,15 @@ export class ShaderFactory {
   private static convertTo300 (source: string, isFragment?: boolean) {
     source = source.replace(/\bvarying\b/g, isFragment ? 'in' : 'out');
     source = source.replace(/\btexture(2D|Cube)\b/g, 'texture');
+    // Remove extensions
+    const regex = /#extension.+(GL_OES_standard_derivatives|GL_EXT_shader_texture_lod|GL_EXT_frag_depth|GL_EXT_draw_buffers).+(enable|require)/g;
+
+    source = source.replace(regex, '');
 
     if (isFragment) {
       source = source.replace(/\btexture(2D|Cube)LodEXT\b/g, 'textureLod');
       source = source.replace(/\btexture(2D|Cube)GradEXT\b/g, 'textureGrad');
+      source = source.replace(/\bgl_FragDepthEXT\b/g, 'gl_FragDepth');
 
       if (!ShaderFactory.has300Output(source)) {
         const isMRT = /\bgl_FragData\[.+?\]/g.test(source);
@@ -120,8 +122,14 @@ export class ShaderFactory {
     return source;
   }
 
-  private static genMacroString (macros?: ShaderMacros, addRuntimeMacro = true) {
+  private static genMacroString (level: number, macros?: ShaderMacros, addRuntimeMacro = true) {
     const macroList = new Array<string>();
+
+    const webGLVersion = `WEBGL${level}`;
+
+    macroList.push(`#ifndef ${webGLVersion}`);
+    macroList.push(`#define ${webGLVersion}`);
+    macroList.push('#endif');
 
     if (addRuntimeMacro) {
       macroList.push('#define GE_RUNTIME');
@@ -144,14 +152,12 @@ export class ShaderFactory {
     }
   }
 
-  private static genWebGLVersion (level: number) {
-    const webGLVersion = `WEBGL${level}`;
-
-    return [
-      `#ifndef ${webGLVersion}`,
-      `#define ${webGLVersion}`,
-      '#endif',
-    ].join('\n') + '\n';
+  private static genShaderVersion (level: number) {
+    if (level === 1) {
+      return '#version 100\n';
+    } else {
+      return '#version 300 es\n';
+    }
   }
 
   private static isVersion300 (source: string) {

@@ -3,7 +3,7 @@ import type {
   Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderMacros, ShaderWithSource,
   SharedShaderWithSource,
 } from '@galacean/effects-core';
-import { ShaderCompileResultStatus, GLSLVersion, ShaderType, ShaderFactory } from '@galacean/effects-core';
+import { ShaderCompileResultStatus, ShaderType, ShaderFactory } from '@galacean/effects-core';
 import { GLProgram } from './gl-program';
 import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
@@ -94,10 +94,6 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     }
     this.shaderAllDone = false;
 
-    const header = shaderWithMacros.glslVersion === GLSLVersion.GLSL3 ? '#version 300 es\n' : '';
-    const vertex = shaderWithMacros.vertex ? header + shaderWithMacros.vertex : '';
-    const fragment = shaderWithMacros.fragment ? header + shaderWithMacros.fragment : '';
-
     let shared = false;
 
     if (shaderWithMacros.shared || (shaderWithMacros as SharedShaderWithSource).cacheId) {
@@ -105,8 +101,8 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     }
     this.cachedShaders[shaderCacheId] = new GLShaderVariant(this.engine, {
       ...shaderWithMacros,
-      vertex,
-      fragment,
+      vertex: shaderWithMacros.vertex,
+      fragment: shaderWithMacros.fragment,
       name: shaderWithMacros.name || shaderCacheId,
       shared,
     });
