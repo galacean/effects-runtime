@@ -32,11 +32,3 @@ export function sanitizeNumbers (vec: number[], zeroValue = Number.EPSILON) {
     return num;
   });
 }
-
-// export function mapSplitItemNames (split) {
-//   return split.items.map(i => i.name);
-// }
-
-// export function mapSpriteGroupItemIndices (spriteGroup) {
-//   return spriteGroup.items.map(item => item.listIndex);
-// }
