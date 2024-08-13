@@ -32,6 +32,12 @@ export class ShaderFactory {
     delete shaderLib[includeName];
   }
 
+  static unRegisterAllIncludes () {
+    Object.keys(shaderLib).forEach(key => {
+      ShaderFactory.unRegisterInclude(key);
+    });
+  }
+
   /**
    * 生成 shader，检测到 WebGL1 上下文会降级
    * @param macros - 宏定义数组
@@ -39,7 +45,7 @@ export class ShaderFactory {
    * @param shaderType - shader 类型
    * @return 去除版本号的 shader 文本
    */
-  static genShaderCode (options: ShaderCodeOptions): string {
+  static genFinalShaderCode (options: ShaderCodeOptions): string {
     const { level, shaderType, shader, macros, keepVersion } = options;
 
     const macroString = ShaderFactory.genMacroString(macros);

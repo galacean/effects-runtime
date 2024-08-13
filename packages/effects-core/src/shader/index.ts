@@ -16,4 +16,4 @@ export { default as gaussianDownHFrag } from './post-processing/gaussian-down-h.
 export { default as gaussianDownVFrag } from './post-processing/gaussian-down-v.frag.glsl';
 export { default as gaussianUpFrag } from './post-processing/gaussian-up.frag.glsl';
 export { default as thresholdFrag } from './post-processing/threshold.frag.glsl';
-
+export * from './shader-factory';

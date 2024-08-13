@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
-import { createShaderWithMacros, ShaderType } from '../../material';
 import type { Renderer, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { Item } from '../../vfx-item';
@@ -42,8 +41,6 @@ export class ParticleLoader extends AbstractPlugin {
       if (item.content.trails) {
         const shader = getTrailMeshShader(item.content.trails, item.content.options.maxCount, item.name, gpuCapability, env);
 
-        shader.vertex = createShaderWithMacros(shader.macros ?? [], shader.vertex, ShaderType.vertex, level);
-        shader.fragment = createShaderWithMacros(shader.macros ?? [], shader.fragment, ShaderType.fragment, level);
         shader.glslVersion = level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1;
         shaderLibrary.addShader(shader);
       }
@@ -55,8 +52,6 @@ export class ParticleLoader extends AbstractPlugin {
       } else {
         shader.glslVersion = GLSLVersion.GLSL1;
       }
-      shader.vertex = createShaderWithMacros(shader.macros ?? [], shader.vertex, ShaderType.vertex, level);
-      shader.fragment = createShaderWithMacros(shader.macros ?? [], shader.fragment, ShaderType.fragment, level);
       shaderLibrary.addShader(shader);
     });
     if (level === 2) {

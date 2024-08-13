@@ -1,5 +1,5 @@
 import type { ShaderMacros, Geometry, GeometryDrawMode, Engine, GLEngine, spec } from '@galacean/effects';
-import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, createShaderWithMacros, ShaderType, math } from '@galacean/effects';
+import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, math } from '@galacean/effects';
 
 const { Vector4 } = math;
 
@@ -18,11 +18,11 @@ export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec
   const { vertex, fragment, macros, name } = mesh.material.props.shader;
   const materialOptions = { ...mesh.material.props };
   const newMacros = [...(macros || [] as ShaderMacros), ['PREVIEW_BORDER', 1]] as ShaderMacros;
-  const level = engine.gpuCapability.level;
 
   materialOptions.shader = {
-    vertex: createGizmoShader(newMacros, vertex, ShaderType.vertex, level),
-    fragment: createGizmoShader(newMacros, fragment, ShaderType.fragment, level),
+    vertex,
+    fragment,
+    macros: newMacros,
     shared: true,
     name: name + '_wireframe',
     glslVersion: engine.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
@@ -108,7 +108,6 @@ function getQuadIndexData (faceCount: number, oid: Uint16Array): Uint16Array {
 }
 
 export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec3): Mesh {
-  const level = engine.gpuCapability.level;
   const geometry = new SharedGeometry(
     engine,
     {
@@ -124,8 +123,9 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
   const newMacros = [['PREVIEW_BORDER', 1]] as ShaderMacros;
 
   materialOptions.shader = {
-    vertex: createGizmoShader(newMacros, vertex, ShaderType.vertex, level),
-    fragment: createGizmoShader(newMacros, fragment, ShaderType.fragment, level),
+    vertex,
+    fragment,
+    macros: newMacros,
     shared: true,
     name: (mesh.name ?? 'unamedmesh') + '_wireframe',
     glslVersion: engine.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
@@ -256,17 +256,4 @@ export class SharedGeometry extends GLGeometry {
     // @ts-expect-error
     this.source = null;
   }
-}
-
-function createGizmoShader (
-  macros: ShaderMacros,
-  shader: string,
-  shaderType: ShaderType,
-  level: number,
-) {
-  const versionTag = /#version\s+\b\d{3}\b\s*(es)?/;
-  const shaderMatch = shader.match(versionTag);
-  const newShader = shaderMatch ? shader.substring(shaderMatch[0].length) : shader;
-
-  return createShaderWithMacros(macros, newShader, shaderType, level);
 }
