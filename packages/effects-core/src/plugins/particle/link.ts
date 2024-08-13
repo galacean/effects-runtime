@@ -163,4 +163,19 @@ export class Link<T> {
     }
   }
 
+  getNodeByIndex (index: number) {
+    let i = 0, res = this.first;
+
+    if (!res || index >= this.length) {
+      return null;
+    }
+
+    while (i < index) {
+      res = res.next!;
+      i++;
+    }
+
+    return res;
+  }
+
 }
