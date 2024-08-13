@@ -993,6 +993,7 @@ export class GlobalUniforms {
   floats: Record<string, number> = {};
   ints: Record<string, number> = {};
   // vector3s: Record<string, vec3> = {};
+  vector4s: Record<string, Vector4> = {};
   matrices: Record<string, Matrix4> = {};
   //...
 

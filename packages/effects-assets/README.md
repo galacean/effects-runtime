@@ -1,1 +1,0 @@
-# Galacean Effects Assets

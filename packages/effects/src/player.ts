@@ -540,7 +540,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         continue;
       }
       if (!composition.isDestroyed && composition.renderer) {
-        composition.update(dt, false);
+        composition.update(dt);
       }
       if (!composition.isDestroyed) {
         currentCompositions.push(composition);
