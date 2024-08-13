@@ -166,7 +166,7 @@ export class Link<T> {
   getNodeByIndex (index: number) {
     let i = 0, res = this.first;
 
-    if (!res || index >= this.length) {
+    if (!res || index >= this.length || index < 0) {
       return null;
     }
 

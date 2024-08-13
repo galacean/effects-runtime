@@ -13,7 +13,7 @@ import {
   getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode,
 } from '../../material';
 import {
-  calculateTranslation, createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
+  createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
 } from '../../math';
 import type {
   Attribute, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
@@ -412,36 +412,6 @@ export class ParticleMesh implements ParticleMeshData {
     const i = index * 32 + 4;
 
     return [data[i], data[i + 1], data[i + 2], data[i + 3]];
-  }
-
-  /**
-   * 待废弃
-   * @deprecated - 使用 `particle-system.getPointPosition` 替代
-   */
-  getPointPosition (index: number): Vector3 {
-    const geo = this.geometry;
-    const posIndex = index * 48;
-    const posData = geo.getAttributeData('aPos') as Float32Array;
-    const offsetData = geo.getAttributeData('aOffset') as Float32Array;
-    const time = this.time - offsetData[index * 16 + 2];
-    const pointDur = offsetData[index * 16 + 3];
-    const mtl = this.mesh.material;
-    const acc = mtl.getVector4('uAcceleration')!.toVector3();
-    const pos = Vector3.fromArray(posData, posIndex);
-    const vel = Vector3.fromArray(posData, posIndex + 3);
-    const ret = calculateTranslation(new Vector3(), this, acc, time, pointDur, pos, vel);
-
-    if (this.forceTarget) {
-      const target = mtl.getVector3('uFinalTarget')!;
-      const life = this.forceTarget.curve.getValue(time / pointDur);
-      const dl = 1 - life;
-
-      ret.x = ret.x * dl + target.x * life;
-      ret.y = ret.y * dl + target.y * life;
-      ret.z = ret.z * dl + target.z * life;
-    }
-
-    return ret;
   }
 
   clearPoints () {
