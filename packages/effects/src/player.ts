@@ -8,6 +8,7 @@ import {
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
   generateWhiteTexture, isSceneWithOptions, Texture, EventEmitter, Material,
+  PLAYER_OPTIONS_ENV_EDITOR,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -365,12 +366,15 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       }
     }
 
-    // TODO Material 单独存表, 加速查询
-    for (const guid of Object.keys(this.renderer.engine.objectInstance)) {
-      const effectsObject = this.renderer.engine.objectInstance[guid];
+    // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
+    if (this.env !== PLAYER_OPTIONS_ENV_EDITOR) {
+      // TODO Material 单独存表, 加速查询
+      for (const guid of Object.keys(this.renderer.engine.objectInstance)) {
+        const effectsObject = this.renderer.engine.objectInstance[guid];
 
-      if (effectsObject instanceof Material) {
-        effectsObject.createShaderVariant();
+        if (effectsObject instanceof Material) {
+          effectsObject.createShaderVariant();
+        }
       }
     }
 
@@ -458,13 +462,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   playSequence (compositions: Composition[]): void {
     for (let i = 0; i < compositions.length - 1; i++) {
-      const composition = compositions[i];
-      const preEndHandler = composition.onEnd;
-
-      composition.onEnd = () => {
-        preEndHandler?.call(composition, composition);
+      compositions[i].on('end', () => {
         compositions[i + 1].play();
-      };
+      });
     }
     compositions[0].play();
     this.ticker?.start();
@@ -544,7 +544,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         continue;
       }
       if (!composition.isDestroyed && composition.renderer) {
-        composition.update(dt, false);
+        composition.update(dt);
       }
       if (!composition.isDestroyed) {
         currentCompositions.push(composition);

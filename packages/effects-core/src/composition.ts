@@ -57,7 +57,6 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   renderer: Renderer,
   handleItemMessage: (message: MessageItem) => void,
-  onEnd?: (composition: Composition) => void,
   event?: EventSystem,
   width: number,
   height: number,
@@ -107,10 +106,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   interactive: boolean;
   compositionSourceManager: CompositionSourceManager;
-  /**
-   * 单个合成结束时的回调
-   */
-  onEnd?: (composition: Composition) => void;
   /**
    * 合成id
    */
@@ -220,7 +215,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       speed = 1,
       baseRenderOrder = 0,
       renderer, event, width, height,
-      handleItemMessage, onEnd,
+      handleItemMessage,
     } = props;
 
     this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
@@ -240,6 +235,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.name = 'rootItem';
     this.rootItem.composition = this;
     this.rootComposition = this.rootItem.addComponent(CompositionComponent);
+    this.rootComposition.startTime = sourceContent.startTime;
     this.rootComposition.data = sourceContent;
 
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
@@ -267,14 +263,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.globalTime = 0;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
-    this.onEnd = onEnd;
     this.createRenderFrame();
     this.rendererOptions = null;
     this.rootComposition.createContent();
     this.buildItemTree(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
-        this.onEnd?.(this);
         this.emit('end', { composition: this });
       }, 0);
     };
@@ -393,9 +387,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (this.rootItem.ended && this.reusable) {
       this.restart();
     }
-    if (!this.rootComposition.started) {
+    if (this.rootComposition.started) {
       this.gotoAndPlay(this.time - this.startTime);
-
     } else {
       this.gotoAndPlay(0);
     }
@@ -424,12 +417,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对 startTime 的时间
    */
   gotoAndPlay (time: number) {
+    this.setTime(time);
     this.resume();
-    if (!this.rootComposition.started) {
-      this.rootComposition.start();
-      this.rootComposition.started = true;
-    }
-    this.forwardTime(time + this.startTime);
   }
 
   /**
@@ -437,7 +426,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对 startTime 的时间
    */
   gotoAndStop (time: number) {
-    this.gotoAndPlay(time);
+    this.setTime(time);
     this.pause();
   }
 
@@ -469,7 +458,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.rootComposition.start();
       this.rootComposition.started = true;
     }
-    this.forwardTime(time + this.startTime, true);
+    this.forwardTime(time + this.startTime);
 
     if (pause) {
       this.pause();
@@ -486,7 +475,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对0时刻的时间
    * @param skipRender - 是否跳过渲染
    */
-  private forwardTime (time: number, skipRender = false) {
+  private forwardTime (time: number) {
     const deltaTime = time * 1000 - this.rootComposition.time * 1000;
     const reverse = deltaTime < 0;
     const step = 15;
@@ -494,9 +483,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const ss = reverse ? -step : step;
 
     for (t; t > step; t -= step) {
-      this.update(ss, skipRender);
+      this.update(ss);
     }
-    this.update(reverse ? -t : t, skipRender);
+    this.update(reverse ? -t : t);
   }
 
   /**
@@ -538,36 +527,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 是否合成需要重新播放
-   * @returns 重新播放合成标志位
-   */
-  private shouldRestart () {
-    const { duration, endBehavior } = this.rootItem;
-    const { time } = this.rootComposition;
-
-    return endBehavior === spec.EndBehavior.restart && duration - time < 0.02;
-  }
-
-  /**
-   * 是否合成需要销毁
-   * @returns 销毁合成标志位
-   */
-  private shouldDispose () {
-    if (this.reusable) {
-      return false;
-    }
-    const { ended, endBehavior } = this.rootItem;
-
-    // TODO: 合成结束行为
-    return ended && (!endBehavior || endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY as spec.EndBehavior);
-  }
-
-  /**
    * 合成更新，针对所有 item 的更新
    * @param deltaTime - 更新的时间步长
    * @param skipRender - 是否需要渲染
    */
-  update (deltaTime: number, skipRender = false) {
+  update (deltaTime: number) {
     if (!this.assigned || this.paused) {
       return;
     }
@@ -575,36 +539,21 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const time = this.getUpdateTime(deltaTime * this.speed);
 
     this.globalTime += time;
-
-    if (this.rootComposition.isActiveAndEnabled) {
-      const localTime = this.toLocalTime(this.globalTime / 1000);
-
-      this.rootComposition.time = localTime;
-    }
-
-    if (this.shouldRestart()) {
-      this.emit('end', { composition: this });
-      this.restart();
-      // restart then tick to avoid flicker
-    }
-
+    this.updateRootComposition();
     this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
 
+    // scene VFXItem components lifetime function.
     this.callStart(this.rootItem);
     this.callUpdate(this.rootItem, time);
     this.callLateUpdate(this.rootItem, time);
 
-    // this.extraCamera?.getComponent(TimelineComponent)?.update(deltaTime);
     this.updateCamera();
+    this.prepareRender();
+
     if (this.shouldDispose()) {
-      this.emit('end', { composition: this });
       this.dispose();
-    } else {
-      if (!skipRender) {
-        this.prepareRender();
-      }
     }
   }
 
@@ -613,15 +562,30 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const duration = this.rootItem.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.rootItem.endBehavior === spec.EndBehavior.restart) {
-        localTime = localTime % duration;
-      } else if (this.rootItem.endBehavior === spec.EndBehavior.freeze) {
-        localTime = Math.min(duration, localTime);
-        if (localTime === duration) {
-          if (!this.rootComposition.fezzed) {
-            this.rootComposition.fezzed = true;
-            this.emit('end', { composition: this });
-          }
+      if (!this.rootItem.ended) {
+        this.rootItem.ended = true;
+        this.emit('end', { composition: this });
+      }
+
+      switch (this.rootItem.endBehavior) {
+        case spec.EndBehavior.restart: {
+          localTime = localTime % duration;
+          this.restart();
+
+          break;
+        }
+        case spec.EndBehavior.freeze: {
+          localTime = Math.min(duration, localTime);
+
+          break;
+        }
+        case spec.EndBehavior.forward: {
+
+          break;
+        }
+        case spec.EndBehavior.destroy: {
+
+          break;
         }
       }
     }
@@ -629,9 +593,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     return localTime;
   }
 
+  private shouldDispose () {
+    return this.rootItem.ended && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
+  }
+
   private getUpdateTime (t: number) {
     const startTimeInMs = this.startTime * 1000;
-    // const content = this.rootItem;
     const now = this.rootComposition.time * 1000;
 
     if (t < 0 && (now + t) < startTimeInMs) {
@@ -774,7 +741,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 更新相机
    * @override
    */
-  updateCamera () {
+  private updateCamera () {
     this.camera.updateMatrix();
   }
 
@@ -782,8 +749,19 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 插件更新，来自 CompVFXItem 的更新调用
    * @param deltaTime - 更新的时间步长
    */
-  updatePluginLoaders (deltaTime: number) {
+  private updatePluginLoaders (deltaTime: number) {
     this.pluginSystem.plugins.forEach(loader => loader.onCompositionUpdate(this, deltaTime));
+  }
+
+  /**
+   * 更新主合成组件
+   */
+  private updateRootComposition () {
+    if (this.rootComposition.isActiveAndEnabled) {
+      const localTime = this.toLocalTime(this.globalTime / 1000);
+
+      this.rootComposition.time = localTime;
+    }
   }
 
   /**
@@ -986,7 +964,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rendererOptions?.emptyTexture.dispose();
     this.pluginSystem?.destroyComposition(this);
     this.update = () => {
-      logger.error(`Update disposed composition: ${this.name}.`);
+      if (!__DEBUG__) {
+        logger.error(`Update disposed composition: ${this.name}.`);
+      }
     };
     this.dispose = noop;
     if (textures && this.keepResource) {
