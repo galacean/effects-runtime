@@ -65,6 +65,12 @@ describe('interact item', () => {
     ];
 
     const composition = await generateComposition(items, player);
+    const clickSpy = chai.spy();
+    const item = composition.getItemByName('ui_10');
+
+    item?.once('click', () => {
+      clickSpy();
+    });
     const vp = composition.camera.getViewProjectionMatrix();
     const edgePoints = [[width / 2, height / 2], [-width / 2, height / 2], [width / 2, -height / 2], [-width / 2, -height / 2]];
 
@@ -80,6 +86,7 @@ describe('interact item', () => {
 
     composition.event?.dispatchEvent(EVENT_TYPE_CLICK, { x: outPos.x, y: outPos.y } as TouchEventType);
     expect(clicked).to.be.false;
+    expect(clickSpy).to.have.been.called.once;
   });
 
   it('click item transform by parent', async () => {
@@ -696,12 +703,19 @@ describe('interact item', () => {
     };
 
     const comp = await player?.loadScene(scene);
+    const item = comp?.getItemByName('ui_11');
+    const messageSpy = chai.spy();
+
+    item?.on('message', () => {
+      messageSpy();
+    });
 
     player?.gotoAndStop(0.1);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_BEGIN, 'MESSAGE_ITEM_PHRASE_BEGIN');
 
     player?.gotoAndStop(0.3);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
+    expect(messageSpy).to.have.been.called.once;
     comp?.dispose();
   });
 
