@@ -193,15 +193,18 @@ export class GLRenderer extends Renderer implements Disposable {
 
       // TODO 自定义材质测试代码
       const time = Date.now() % 100000000 * 0.001 * 1;
+      let _Time = this.getGlobalVector4('_Time');
 
       // TODO 待移除
       this.setGlobalFloat('_GlobalTime', time);
-      let _Time = this.getGlobalVector4('_Time');
-
       if (!_Time) {
         _Time = new math.Vector4(time / 20, time, time * 2, time * 3);
       }
       this.setGlobalVector4('_Time', _Time.set(time / 20, time, time * 2, time * 3));
+    }
+
+    if (renderingData.currentFrame.editorTransform) {
+      material.setVector4('uEditorTransform', renderingData.currentFrame.editorTransform);
     }
 
     // 测试后处理 Bloom 和 ToneMapping 逻辑
