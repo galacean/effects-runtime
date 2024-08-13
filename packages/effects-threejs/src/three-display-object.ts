@@ -158,6 +158,9 @@ export class ThreeDisplayObject extends THREE.Group {
       },
     }, scene);
 
+    composition.on('end', () => {
+      this.dispatchEvent({ type: 'end', composition });
+    });
     (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });
 
     if (opts.autoplay) {

@@ -56,6 +56,9 @@ jsons.push(cubeTextures);
       'https://mdn.alipayobjects.com/mars/afts/file/A*pUKbR68CeEMAAAAAAAAAAAAADlB4AQ',
     ], { autoplay: false }) as unknown as Composition[];
 
+    // compositions[0].on('end', () => {
+    //   console.log('end');
+    // });
     player.playSequence(compositions);
   } catch (e) {
     console.error('biz', e);

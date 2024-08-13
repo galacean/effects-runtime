@@ -1,7 +1,7 @@
 import { Player } from '@galacean/effects';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.book.url;
+const json = inspireList.woman.url;
 const container = document.getElementById('J-container');
 const lostButton = document.getElementById('J-lost') as HTMLButtonElement;
 const restoreButton = document.getElementById('J-restore') as HTMLButtonElement;
@@ -23,13 +23,12 @@ let allocateTimeout: any;
     player.on('webglcontextrestored', () => {
       console.info('WEBGL_CONTEXT_RESTORED');
     });
-    scene.onEnd = () => {
+    scene.on('end', () => {
       document.getElementById('J-gpuInfo')!.innerText = `
         frame: ${gpuFrame}
         gpu avg: ${(gpuTimes.reduce((x, y) => { return x + y; }, 0) / gpuFrame).toFixed(2)}ms
         gpu max: ${max.toFixed(2)}ms`;
-
-    };
+    });
 
     player.canvas.addEventListener('webglcontextlost', e => {
       isWebGLLost = true;

@@ -32,13 +32,6 @@ export interface CompositionBaseProps {
    * Shader 库
    */
   shaderLibrary?: ShaderLibrary,
-  /**
-   * end 状态监听函数
-   *
-   * @param composition - composition 对象
-   * @returns
-   */
-  onEnd?: (composition: Composition) => void,
 }
 
 export interface ThreeCompositionProps extends CompositionProps {

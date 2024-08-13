@@ -458,13 +458,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   playSequence (compositions: Composition[]): void {
     for (let i = 0; i < compositions.length - 1; i++) {
-      const composition = compositions[i];
-      const preEndHandler = composition.onEnd;
-
-      composition.onEnd = () => {
-        preEndHandler?.call(composition, composition);
+      compositions[i].on('end', () => {
         compositions[i + 1].play();
-      };
+      });
     }
     compositions[0].play();
     this.ticker?.start();

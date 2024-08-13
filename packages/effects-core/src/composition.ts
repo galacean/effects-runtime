@@ -57,7 +57,6 @@ export interface CompositionProps {
   baseRenderOrder?: number,
   renderer: Renderer,
   handleItemMessage: (message: MessageItem) => void,
-  onEnd?: (composition: Composition) => void,
   event?: EventSystem,
   width: number,
   height: number,
@@ -107,10 +106,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   interactive: boolean;
   compositionSourceManager: CompositionSourceManager;
-  /**
-   * 单个合成结束时的回调
-   */
-  onEnd?: (composition: Composition) => void;
   /**
    * 合成id
    */
@@ -220,7 +215,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       speed = 1,
       baseRenderOrder = 0,
       renderer, event, width, height,
-      handleItemMessage, onEnd,
+      handleItemMessage,
     } = props;
 
     this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
@@ -267,14 +262,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.globalTime = 0;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
-    this.onEnd = onEnd;
     this.createRenderFrame();
     this.rendererOptions = null;
     this.rootComposition.createContent();
     this.buildItemTree(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
-        this.onEnd?.(this);
         this.emit('end', { composition: this });
       }, 0);
     };
