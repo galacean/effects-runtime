@@ -982,7 +982,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rendererOptions?.emptyTexture.dispose();
     this.pluginSystem?.destroyComposition(this);
     this.update = () => {
-      logger.error(`Update disposed composition: ${this.name}.`);
+      if (!__DEBUG__) {
+        logger.error(`Update disposed composition: ${this.name}.`);
+      }
     };
     this.dispose = noop;
     if (textures && this.keepResource) {

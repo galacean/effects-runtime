@@ -5,7 +5,7 @@ import { glslInner, getSWCPlugin } from '../../scripts/rollup-config-helper';
 
 const defines = {
   __VERSION__: 0,
-  __DEBUG__: false,
+  __DEBUG__: true,
 };
 
 export default defineConfig({

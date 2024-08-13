@@ -443,10 +443,8 @@ export class ParticleSystem extends Component {
           });
 
           this.renderer.minusTimeForLoop(duration);
-          this.onIterate(this);
         } else {
           this.ended = true;
-          this.onEnd(this);
           const endBehavior = this.item.endBehavior;
 
           if (endBehavior === spec.EndBehavior.freeze) {
@@ -633,12 +631,6 @@ export class ParticleSystem extends Component {
     }
 
     return ret;
-  }
-
-  onEnd (particle: ParticleSystem) {
-  }
-
-  onIterate (particle: ParticleSystem) {
   }
 
   initPoint (data: Record<string, any>): Point {

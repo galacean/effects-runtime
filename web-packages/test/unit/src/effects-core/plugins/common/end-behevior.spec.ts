@@ -1,7 +1,6 @@
-import { Player, AbstractPlugin, registerPlugin, VFXItem, spec } from '@galacean/effects';
+import { Player, spec } from '@galacean/effects';
 
 const { expect } = chai;
-let onUpdateTriggerTimes = 0;
 
 describe('item onEnd', () => {
   let player: Player;
@@ -9,7 +8,6 @@ describe('item onEnd', () => {
 
   before(() => {
     canvas = document.createElement('canvas');
-    registerPlugin('test', TestLoader, TestVFXItem, true);
   });
 
   beforeEach(() => {
@@ -26,77 +24,38 @@ describe('item onEnd', () => {
   });
 
   it('item destroy', async () => {
-    const composition = await generateComposition(spec.END_BEHAVIOR_DESTROY, player, 2);
+    const composition = await generateComposition(spec.END_BEHAVIOR_DESTROY, player);
+    const item = composition.getItemByName('sprite_1');
 
-    onUpdateTriggerTimes = 0;
-    composition.gotoAndPlay(1);
-    expect(onUpdateTriggerTimes).to.equal(0);
+    composition.gotoAndStop(0.01 + 1);
+    expect(item?.ended).to.equal(false);
+    composition.gotoAndStop(0.01 + 2);
+    expect(item?.ended).to.equal(true);
   });
 
   it('item freeze', async () => {
-    const composition = await generateComposition(spec.END_BEHAVIOR_DESTROY, player, 2);
+    const composition = await generateComposition(spec.END_BEHAVIOR_FREEZE, player);
+    const item = composition.getItemByName('sprite_1');
 
-    onUpdateTriggerTimes = 0;
-    composition.gotoAndPlay(1);
-    expect(onUpdateTriggerTimes).to.equal(0);
+    composition.gotoAndStop(0.01 + 2);
+    expect(item?.ended).to.equal(false);
   });
 
   it('item loop', async () => {
-    const composition = await generateComposition(spec.END_BEHAVIOR_RESTART, player, 2);
+    const composition = await generateComposition(spec.END_BEHAVIOR_RESTART, player);
+    const item = composition.getItemByName('sprite_1');
 
-    onUpdateTriggerTimes = 0;
-    composition.gotoAndPlay(1);
-    expect(onUpdateTriggerTimes).to.not.equal(0);
+    composition.gotoAndStop(1);
+    expect(item?.ended).to.equal(false);
   });
 });
-
-class TestVFXItem extends VFXItem {
-  onItemUpdate (dt: number) {
-    onUpdateTriggerTimes++;
-  }
-}
-
-class TestLoader extends AbstractPlugin {
-
-}
 
 async function generateComposition (
   endBehavior: spec.EndBehavior,
   player: Player,
-  currentTime = 0,
 ) {
-  const json = {
-    'compositionId': 1,
-    'requires': [],
-    'compositions': [{
-      'name': 'composition_1',
-      'id': 1,
-      'duration': 2,
-      'endBehavior': spec.END_BEHAVIOR_FORWARD,
-      'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-      'items': [{
-        'name': 'item_1',
-        'delay': 0,
-        'id': 1,
-        'pluginName': 'test',
-        'ro': 0.1,
-        'duration': 2,
-        'endBehavior': endBehavior,
-        'content': {},
-      }],
-      'meta': { 'previewSize': [750, 1334] },
-    }],
-    'gltf': [],
-    'images': [],
-    'version': '1.0',
-    'shapes': [],
-    'plugins': ['test'],
-    'type': 'mars',
-    '_imgs': { '1': [] },
-  };
-  const scene = await player.loadScene(json);
-
-  player.gotoAndPlay(0.01 + currentTime);
+  const json = `{"playerVersion":{"web":"1.6.5","native":"0.0.1.202311221223"},"images":[],"fonts":[],"spines":[],"version":"2.4","shapes":[],"plugins":[],"type":"ge","compositions":[{"id":"7","name":"composition1","duration":2,"startTime":0,"endBehavior":${spec.END_BEHAVIOR_FORWARD},"previewSize":[750,1624],"items":[{"id":"1","name":"sprite_1","duration":2,"type":"1","visible":true,"endBehavior":${endBehavior},"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1},"positionOverLifetime":{}},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1.2,1.2,1]}}],"camera":{"fov":60,"far":40,"near":0.1,"clipMode":1,"position":[0,0,8],"rotation":[0,0,0]}}],"requires":[],"compositionId":"7","bins":[],"textures":[]}`;
+  const scene = await player.loadScene(JSON.parse(json));
 
   return scene;
 }
