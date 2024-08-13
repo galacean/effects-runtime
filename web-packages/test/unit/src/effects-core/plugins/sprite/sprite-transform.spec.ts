@@ -18,7 +18,7 @@ describe('sprite transform', () => {
   // 直接设置tranform
   it('set sprite item transform', async () => {
     const items = generateItem([{ id: '1', name: 'simple', position: [0, 1, 0], rotation: [0, 90, 0], size: 0.15 }]);
-    const comp = await loadSceneAndPlay(player, items, { currentTime: 0.01 });
+    const comp = await loadSceneAndPlay(player, items, 0.01);
 
     const item = comp.getItemByName('simple');
 
@@ -94,7 +94,7 @@ describe('sprite transform', () => {
         ],
       ];
     });
-    const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, items, 1);
     const item = comp.getItemByName('sprite_1');
     const worldTransform = item.getWorldTransform();
 
@@ -112,7 +112,7 @@ describe('sprite transform', () => {
       { id: '1', name: 'p', isNull: true, size: 2 },
       { id: '2', name: 'sp', parentId: '1', position: [0, 1, 0] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 1);
     const item = comp.getItemByName('sp');
 
     expect(item.transform.position.toArray()).to.deep.equals([0, 1, 0]);
@@ -127,7 +127,7 @@ describe('sprite transform', () => {
       { id: '1', name: 'p', isNull: false, size: 2 },
       { id: '2', name: 'sp', parentId: '1', position: [0, 1, 0] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 1);
     const item = comp.getItemByName('sp');
 
     expect(item.transform.position.toArray()).to.deep.equals([0, 1, 0]);
@@ -142,7 +142,7 @@ describe('sprite transform', () => {
       { id: '1', name: 'p', isNull: true, rotation: [0, 0, 90] },
       { id: '2', name: 'sp', parentId: '1', position: [1, 0, 0] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 1);
     const item = comp.getItemByName('sp');
 
     expect(item.transform.position.toArray()).to.deep.equals([1, 0, 0]);
@@ -157,7 +157,7 @@ describe('sprite transform', () => {
       { id: '1', name: 'p', isNull: false, rotation: [0, 0, 90] },
       { id: '2', name: 'sp', parentId: '1', position: [1, 0, 0] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 1);
     const item = comp.getItemByName('sp');
 
     expect(item.transform.position.toArray()).to.deep.equals([1, 0, 0]);
@@ -226,7 +226,7 @@ describe('sprite transform', () => {
           ],
         ],
       ];
-    const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, items, 1);
     const item = comp.getItemByName('sp');
     const worldTransform = item.getWorldTransform();
     const pos = worldTransform.position.toArray();
@@ -295,7 +295,7 @@ describe('sprite transform', () => {
         ],
       ],
     ];
-    const comp = await loadSceneAndPlay(player, items, { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, items, 1);
     const item = comp.getItemByName('sp');
     const worldTransform = item.getWorldTransform();
 
@@ -309,7 +309,7 @@ describe('sprite transform', () => {
       { id: '2', isNull: true, name: 'sp', parentId: '1', position: [1, 0, 0] },
       { id: '3', name: 'spp', parentId: '2', position: [0, 0, 1] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 1);
     const item = comp.getItemByName('sp');
 
     expect(item.transform.position.toArray()).to.deep.equals([1, 0, 0]);
@@ -330,7 +330,7 @@ describe('sprite transform', () => {
       { id: '2', isNull: false, name: 'sp', parentId: '1', position: [1, 0, 0] },
       { id: '3', name: 'spp', parentId: '2', position: [0, 0, 1] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 1 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 1);
     const item = comp.getItemByName('sp');
 
     expect(item.transform.position.toArray()).to.deep.equals([1, 0, 0]);
@@ -351,7 +351,7 @@ describe('sprite transform', () => {
       { id: '2', isNull: true, name: 'sp', parentId: '1', size: 3 },
       { id: '3', name: 'spp', parentId: '2', position: [0, 0, 1] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 0.01 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 0.01);
     const item = comp.getItemByName('sp');
     const item2 = comp.getItemByName('spp');
 
@@ -367,7 +367,7 @@ describe('sprite transform', () => {
       { id: '2', isNull: true, name: 'sp', parentId: '1', rotation: [0, 0, 60] },
       { id: '3', name: 'spp', parentId: '2', position: [1, 0, 0] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 0.01 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 0.01);
     const pt = comp.getItemByName('sp').transform;
     const sppt = comp.getItemByName('spp').transform;
 
@@ -383,7 +383,7 @@ describe('sprite transform', () => {
       { id: '2', isNull: false, name: 'sp', parentId: '1', rotation: [0, 0, 60] },
       { id: '3', name: 'spp', parentId: '2', position: [1, 0, 0] },
     ];
-    const comp = await loadSceneAndPlay(player, generateItem(opts), { currentTime: 0.01 });
+    const comp = await loadSceneAndPlay(player, generateItem(opts), 0.01);
     const pt = comp.getItemByName('sp').transform;
     const sppt = comp.getItemByName('spp').transform;
 

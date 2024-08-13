@@ -1,9 +1,8 @@
 import type {
   EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, Texture,
+  MessageItem,
 } from '@galacean/effects-core';
-import {
-  AssetManager, isArray, isSceneURL, isSceneWithOptions, logger,
-} from '@galacean/effects-core';
+import { AssetManager, isArray, isSceneURL, isSceneWithOptions, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeRenderer } from './three-renderer';
@@ -33,12 +32,13 @@ export class ThreeDisplayObject extends THREE.Group {
   compositions: ThreeComposition[] = [];
   camera?: THREE.Camera;
   renderer: Renderer;
+  assetManager: AssetManager;
+  env = '';
 
   readonly width: number;
   readonly height: number;
-  assetManager: AssetManager;
+
   private baseCompositionIndex = 0;
-  env = '';
 
   /**
    *
@@ -57,7 +57,6 @@ export class ThreeDisplayObject extends THREE.Group {
     this.height = height;
     this.camera = camera;
   }
-
   /**
    * 获取当前播放合成，如果是多个合成同时播放，返回第一个合成
    */
@@ -93,6 +92,19 @@ export class ThreeDisplayObject extends THREE.Group {
     }
 
     return composition;
+  }
+
+  pause () {
+    this.dispatchEvent({ type: 'pause' });
+    this.compositions.forEach(composition => {
+      composition.pause();
+    });
+  }
+
+  resume () {
+    this.compositions.forEach(composition => {
+      composition.resume();
+    });
   }
 
   private async createComposition (url: SceneLoadType, options: SceneLoadOptions = {}): Promise<Composition> {
@@ -141,8 +153,14 @@ export class ThreeDisplayObject extends THREE.Group {
       width: this.width,
       height: this.height,
       renderer: this.renderer,
+      handleItemMessage: (message: MessageItem) => {
+        this.dispatchEvent({ type: 'message', message });
+      },
     }, scene);
 
+    composition.on('end', () => {
+      this.dispatchEvent({ type: 'end', composition });
+    });
     (this.renderer.engine as ThreeEngine).setOptions({ threeCamera: this.camera, threeGroup: this, composition });
 
     if (opts.autoplay) {

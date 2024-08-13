@@ -20,17 +20,17 @@ describe('interact item', () => {
     canvas,
     pixelRatio: 1,
     interactive: true,
-    onItemClicked: data => {
-      clicked = true;
-      hitPositions = data.hitPositions;
-    },
-    onMessageItem: data => {
-      messagePhrase = data.phrase;
-    },
   };
 
   before(() => {
     player = new Player({ ...config });
+    player.on('click', data => {
+      clicked = true;
+      hitPositions = data.hitPositions;
+    });
+    player.on('message', data => {
+      messagePhrase = data.phrase;
+    });
   });
 
   beforeEach(() => {
@@ -749,9 +749,9 @@ describe('interact item', () => {
     player = new Player({
       container,
       interactive: true,
-      onItemClicked () {
-        spy();
-      },
+    });
+    player.on('click', () => {
+      spy();
     });
     // @ts-expect-error
     await player.createComposition({ 'images': [], 'spines': [], 'version': '1.5', 'shapes': [], 'plugins': [], 'type': 'mars', 'compositions': [{ 'id': '3', 'name': '点击', 'duration': 5, 'startTime': 0, 'endBehavior': 1, 'previewSize': [750, 1624], 'items': [{ 'id': '1', 'name': 'sprite_1', 'duration': 2, 'type': '1', 'visible': true, 'endBehavior': 0, 'delay': 0, 'renderLevel': 'B+', 'content': { 'options': { 'startColor': [0.9411764705882353, 0.027450980392156862, 0.027450980392156862, 1] }, 'renderer': { 'renderMode': 1 }, 'positionOverLifetime': { 'direction': [0, 0, 0], 'startSpeed': 0, 'gravity': [0, 0, 0], 'gravityOverLifetime': [0, 1] } }, 'transform': { 'position': [0, 0, 0], 'rotation': [0, 0, 0], 'scale': [10.571346913648894, 10.571346913648894, 1] } }, { 'id': '2', 'name': 'interact_2', 'duration': 2, 'type': '4', 'visible': true, 'endBehavior': 0, 'delay': 0, 'renderLevel': 'B+', 'content': { 'options': { 'type': 0, 'showPreview': true, 'previewColor': [8, [255, 255, 255, 1]], 'behavior': 0 } }, 'transform': { 'position': [-0.03922057358071454, 0, 0], 'rotation': [0, 0, -0.23899999999999172], 'scale': [17.999999999999996, 12, 1] } }], 'camera': { 'fov': 60, 'far': 40, 'near': 0.1, 'position': [0, 0, 8], 'rotation': [0, 0, 0], 'clipMode': 1 } }], 'requires': [], 'compositionId': '3', 'bins': [], 'textures': [] });

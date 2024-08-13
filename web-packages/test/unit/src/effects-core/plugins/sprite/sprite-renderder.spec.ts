@@ -208,9 +208,7 @@ describe('sprite renderer params', () => {
     const anchor = [0.3, 0.2];
     const currentTime = 1;
     const json = `[{"id":"1","name":"sprite_1","duration":2,"type":"1","visible":true,"endBehavior":5,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"anchor":[${anchor}],"blending":0,"side":1032,"occlusion":false,"transparentOcclusion":false,"maskMode":0},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]}},"transform":{"position":[2,0,0],"rotation":[0,0,30],"scale":[3,3,1]}}]`;
-    const comp = await loadSceneAndPlay(player, JSON.parse(json), {
-      currentTime,
-    });
+    const comp = await loadSceneAndPlay(player, JSON.parse(json), currentTime);
     const spriteItem = comp.getItemByName('sprite_1').getComponent(SpriteComponent);
 
     spriteItem.update();
