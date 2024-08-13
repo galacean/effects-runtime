@@ -1,131 +1,18 @@
 import type {
-  Disposable, GLType, GPUCapability, LostHandler, MessageItem, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, VFXItem, SceneLoadType, SceneType, EffectsObject,
-  CompItemClickedData,
+  Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions,
+  Texture2DSourceOptionsVideo, TouchEventType, SceneLoadType, SceneType, EffectsObject,
+  MessageItem,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
   Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
-  generateWhiteTexture, isSceneWithOptions, Texture,
-  Material,
+  generateWhiteTexture, isSceneWithOptions, Texture, EventEmitter, Material,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { isDowngradeIOS, throwError, throwErrorPromise } from './utils';
-
-/**
- * `onItemClicked` 点击回调函数的传入参数
- */
-export interface ItemClickedData extends CompItemClickedData {
-  player: Player,
-  /**
-   * @deprecated since 1.6.0 - use `compositionName` instead
-   */
-  composition: string,
-  compositionName: string,
-  compositionId: string,
-}
-
-/**
- * player 创建的构造参数
- */
-export interface PlayerConfig {
-  /**
-   * 播放器的容器，会在容器中创建 canvas，container 和 canvas 必传一个
-   */
-  container?: HTMLElement | null,
-  /**
-   * 指定 canvas 进行播放
-   */
-  canvas?: HTMLCanvasElement,
-  /**
-   * 画布比例，尽量使用默认值，如果不够清晰，可以写2，但是可能产生渲染卡顿
-   */
-  pixelRatio?: number | 'auto',
-  /**
-   * 播放器是否可交互
-   */
-  interactive?: boolean,
-  /**
-   * canvas 是否透明，如果不透明可以略微提升性能
-   * @default true
-   */
-  transparentBackground?: boolean,
-  /**
-   * 渲染帧数
-   * @default 60
-   */
-  fps?: number,
-  /**
-   * 是否停止计时器，否手动渲染
-   * @default false
-   */
-  manualRender?: boolean,
-  /**
-   * 播放合成的环境
-   * @default '' - 编辑器中为 'editor'
-   */
-  env?: string,
-  /**
-   * 指定 WebGL 创建的上下文类型，`debug-disable` 表示不创建
-   */
-  renderFramework?: GLType | 'debug-disable',
-  /**
-   * player 的 name
-   */
-  name?: string,
-  renderOptions?: {
-    /**
-     * 播放器是否需要截图（对应 WebGL 的 preserveDrawingBuffer 参数）
-     */
-    willCaptureImage?: boolean,
-    /**
-     * 图片预乘 Alpha
-     * @default false
-     */
-    premultipliedAlpha?: boolean,
-  },
-  /**
-   * 是否通知 container touchend / mouseup 事件, 默认不通知
-   */
-  notifyTouch?: boolean,
-  /**
-   * 当 WebGL context lost 时候发出的回调，这个时候播放器已经自动被销毁，业务需要做兜底逻辑
-   */
-  onWebGLContextLost?: (event: Event) => void,
-  /**
-   * 当 WebGL context restore 时候发出的回调，这个时候播放器已经自动恢复，业务可视情况做逻辑处理
-   */
-  onWebGLContextRestored?: () => void,
-  /**
-   * 播放器被元素暂停的回调
-   */
-  onPausedByItem?: (data: { name: string, player: Player }) => void,
-  /**
-   * 交互元素被点击的回调
-   */
-  onItemClicked?: (data: ItemClickedData) => void,
-  /**
-   * 交互元素发送 message 的回调
-   */
-  onMessageItem?: (data: { name: string, phrase: number }) => void,
-  /**
-   * 播放器更新的回调
-   */
-  onPlayableUpdate?: (data: { playing: boolean, time?: number, player: Player }) => void,
-  /**
-   * 渲染出错时候的回调
-   * @param - err
-   */
-  onRenderError?: (err: Error) => void,
-  // createRenderNode?: (model: Object) => any,
-  /**
-   * 每帧渲染调用后的回调，WebGL2 上下文生效
-   * @param time - GPU 渲染使用的时间，秒
-   */
-  reportGPUTime?: (time: number) => void,
-}
+import type { PlayerConfig, PlayerEvent } from './types';
 
 const playerMap = new Map<HTMLCanvasElement, Player>();
 let enableDebugType = false;
@@ -134,7 +21,7 @@ let seed = 1;
 /**
  * Galacean Effects 播放器
  */
-export class Player implements Disposable, LostHandler, RestoreHandler {
+export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposable, LostHandler, RestoreHandler {
   readonly env: string;
   readonly pixelRatio: number;
   readonly canvas: HTMLCanvasElement;
@@ -153,13 +40,6 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
   private readonly builtinObjects: EffectsObject[] = [];
   private readonly event: EventSystem;
-  private readonly handleWebGLContextLost?: (event: Event) => void;
-  private readonly handleWebGLContextRestored?: () => void;
-  private readonly handleMessageItem?: (item: MessageItem) => void;
-  private readonly handlePlayerPause?: (item: VFXItem) => void;
-  private readonly handleItemClicked?: (event: ItemClickedData) => void;
-  private readonly handlePlayableUpdate?: (event: { playing: boolean, player: Player }) => void;
-  private readonly handleRenderError?: (err: Error) => void;
   private readonly reportGPUTime?: (time: number) => void;
   /**
    * 当前播放的合成对象数组，请不要修改内容
@@ -181,10 +61,9 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    * @param config
    */
   constructor (config: PlayerConfig) {
+    super();
     const {
       container, canvas, fps, name, pixelRatio, manualRender, reportGPUTime,
-      onMessageItem, onPausedByItem, onItemClicked, onPlayableUpdate, onRenderError,
-      onWebGLContextLost, onWebGLContextRestored,
       renderFramework: glType, notifyTouch,
       interactive = false,
       renderOptions = {},
@@ -209,20 +88,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       framework = glType === 'webgl' ? 'webgl' : 'webgl2';
     }
 
-    this.handleWebGLContextLost = onWebGLContextLost;
-    this.handleWebGLContextRestored = onWebGLContextRestored;
     this.reportGPUTime = reportGPUTime;
-    this.handleItemClicked = onItemClicked;
-    this.handleMessageItem = onMessageItem;
-    this.handlePlayableUpdate = onPlayableUpdate;
-    this.handleRenderError = onRenderError;
-    this.handlePlayerPause = (item: VFXItem) => {
-      this.pause();
-      onPausedByItem?.({
-        name: item.name,
-        player: this,
-      });
-    };
     this.pixelRatio = Number.isFinite(pixelRatio) ? pixelRatio as number : getPixelRatio();
     this.offscreenMode = true;
     this.env = env;
@@ -485,8 +351,9 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
       width: renderer.getWidth(),
       height: renderer.getHeight(),
       event: this.event,
-      onPlayerPause: this.handlePlayerPause,
-      onMessageItem: this.handleMessageItem,
+      handleItemMessage: (message: MessageItem) => {
+        this.emit('message', message);
+      },
     }, scene);
 
     this.compositions.push(composition);
@@ -579,7 +446,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     if (!this.ticker || this.ticker?.getPaused()) {
       this.doTick(0, true);
     }
-    this.handlePlayableUpdate?.({
+    this.emit('update', {
       player: this,
       playing: false,
     });
@@ -591,13 +458,9 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
    */
   playSequence (compositions: Composition[]): void {
     for (let i = 0; i < compositions.length - 1; i++) {
-      const composition = compositions[i];
-      const preEndHandler = composition.onEnd;
-
-      composition.onEnd = () => {
-        preEndHandler?.call(composition, composition);
+      compositions[i].on('end', () => {
         compositions[i + 1].play();
-      };
+      });
     }
     compositions[0].play();
     this.ticker?.start();
@@ -615,7 +478,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     }
 
     this.ticker?.pause();
-    this.handlePlayableUpdate?.({
+    this.emit('update', {
       player: this,
       playing: false,
     });
@@ -653,9 +516,10 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   private doTick (dt: number, forceRender: boolean) {
     const { renderErrors } = this.renderer.engine;
 
-    // TODO: 临时处理，2.0.0 做优化
+    renderErrors.values().next().value;
+
     if (renderErrors.size > 0) {
-      this.handleRenderError?.(renderErrors.values().next().value);
+      this.emit('rendererror', renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
     }
@@ -685,7 +549,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.compositions = currentCompositions;
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
-      this.handleRenderError?.(new Error('Play when texture offloaded.'));
+      this.emit('rendererror', new Error('Play when texture offloaded.'));
 
       return this.ticker?.pause();
     }
@@ -718,7 +582,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
         .then(t => this.reportGPUTime?.(t ?? 0))
         .catch;
       if (this.autoPlaying) {
-        this.handlePlayableUpdate?.({
+        this.emit('update', {
           player: this,
           playing: true,
         });
@@ -820,7 +684,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
     this.ticker?.pause();
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
-    this.handleWebGLContextLost?.(e);
+    this.emit('webglcontextlost', e);
     broadcastPlayerEvent(this, false);
   };
 
@@ -855,7 +719,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
 
       return newComposition;
     }));
-    this.handleWebGLContextRestored?.();
+    this.emit('webglcontextrestored');
     this.ticker?.resume();
   };
 
@@ -920,10 +784,7 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
   }
 
   private handleResume = () => {
-    this.handlePlayableUpdate?.({
-      player: this,
-      playing: true,
-    });
+    this.emit('update', { player: this, playing: true });
   };
 
   private offloadTexture () {
@@ -941,20 +802,18 @@ export class Player implements Disposable, LostHandler, RestoreHandler {
           const behavior = regions[i].behavior || spec.InteractBehavior.NOTIFY;
 
           if (behavior === spec.InteractBehavior.NOTIFY) {
-            if (composition.onItemClicked) {
-              composition.onItemClicked({
-                ...regions[i],
-              });
-            } else {
-              this.handleItemClicked?.({
-                ...regions[i],
-                compositionId: composition.id,
-                compositionName: composition.name,
-                composition: composition.name,
-                player: this,
-              });
-            }
+            this.emit('click', {
+              ...regions[i],
+              compositionId: composition.id,
+              compositionName: composition.name,
+              player: this,
+            });
 
+            composition.emit('click', {
+              ...regions[i],
+              compositionId: composition.id,
+              compositionName: composition.name,
+            });
           } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
             void this.resume();
           }

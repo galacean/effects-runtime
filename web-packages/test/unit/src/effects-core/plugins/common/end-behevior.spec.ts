@@ -1,13 +1,13 @@
-// @ts-nocheck
 import { Player, AbstractPlugin, registerPlugin, VFXItem, spec } from '@galacean/effects';
 
 const { expect } = chai;
 let onUpdateTriggerTimes = 0;
 
 describe('item onEnd', () => {
-  let player, canvas;
+  let player: Player;
+  let canvas: HTMLCanvasElement;
 
-  before(()=>{
+  before(() => {
     canvas = document.createElement('canvas');
     registerPlugin('test', TestLoader, TestVFXItem, true);
   });
@@ -19,47 +19,39 @@ describe('item onEnd', () => {
     });
   });
 
-  afterEach(() => {
-    player.resume();
-  });
-
   after(() => {
     player.dispose();
+    // @ts-expect-error
     player = null;
   });
 
   it('item destroy', async () => {
-    const comp = await generateComposition(spec.END_BEHAVIOR_DESTROY, player, { currentTime: 2 });
+    const composition = await generateComposition(spec.END_BEHAVIOR_DESTROY, player, 2);
 
     onUpdateTriggerTimes = 0;
-    comp.forwardTime(1);
+    composition.gotoAndPlay(1);
     expect(onUpdateTriggerTimes).to.equal(0);
   });
 
   it('item freeze', async () => {
-    const comp = await generateComposition(spec.END_BEHAVIOR_DESTROY, player, { currentTime: 2 });
+    const composition = await generateComposition(spec.END_BEHAVIOR_DESTROY, player, 2);
 
     onUpdateTriggerTimes = 0;
-    comp.forwardTime(1);
+    composition.gotoAndPlay(1);
     expect(onUpdateTriggerTimes).to.equal(0);
   });
 
   it('item loop', async () => {
-    // const comp = await generateComposition(spec.END_BEHAVIOR_RESTART, player, { currentTime: 2 });
+    const composition = await generateComposition(spec.END_BEHAVIOR_RESTART, player, 2);
 
-    // onUpdateTriggerTimes = 0;
-    // comp.forwardTime(1);
-    // expect(onUpdateTriggerTimes).to.not.equal(0);
+    onUpdateTriggerTimes = 0;
+    composition.gotoAndPlay(1);
+    expect(onUpdateTriggerTimes).to.not.equal(0);
   });
 });
 
 class TestVFXItem extends VFXItem {
-  onConstructed (options) {
-    super.onConstructed(options);
-    console.debug(options);
-  }
-
-  onItemUpdate (dt, lifetime) {
+  onItemUpdate (dt: number) {
     onUpdateTriggerTimes++;
   }
 }
@@ -68,7 +60,11 @@ class TestLoader extends AbstractPlugin {
 
 }
 
-async function generateComposition (endBehavior, player, playerOptions) {
+async function generateComposition (
+  endBehavior: spec.EndBehavior,
+  player: Player,
+  currentTime = 0,
+) {
   const json = {
     'compositionId': 1,
     'requires': [],
@@ -85,7 +81,7 @@ async function generateComposition (endBehavior, player, playerOptions) {
         'pluginName': 'test',
         'ro': 0.1,
         'duration': 2,
-        endBehavior,
+        'endBehavior': endBehavior,
         'content': {},
       }],
       'meta': { 'previewSize': [750, 1334] },
@@ -98,9 +94,9 @@ async function generateComposition (endBehavior, player, playerOptions) {
     'type': 'mars',
     '_imgs': { '1': [] },
   };
-  const scene = await player.createComposition(json);
+  const scene = await player.loadScene(json);
 
-  await player.gotoAndPlay(0.01 + (playerOptions.currentTime ?? 0));
+  player.gotoAndPlay(0.01 + currentTime);
 
   return scene;
 }

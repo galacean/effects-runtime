@@ -1,6 +1,5 @@
 import type {
-  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItem,
-  MessageItem, CompositionProps,
+  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, CompositionProps,
 } from '@galacean/effects-core';
 import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
 import type THREE from 'three';
@@ -33,27 +32,6 @@ export interface CompositionBaseProps {
    * Shader 库
    */
   shaderLibrary?: ShaderLibrary,
-  /**
-   * end 状态监听函数
-   *
-   * @param composition - composition 对象
-   * @returns
-   */
-  onEnd?: (composition: Composition) => void,
-  /**
-   * 交互元素监听函数
-   *
-   * @param item
-   * @returns
-   */
-  onMessageItem?: (item: MessageItem) => void,
-  /**
-   * player 暂停监听函授
-   *
-   * @param item
-   * @returns
-   */
-  onPlayerPause?: (item: VFXItem) => void,
 }
 
 export interface ThreeCompositionProps extends CompositionProps {
