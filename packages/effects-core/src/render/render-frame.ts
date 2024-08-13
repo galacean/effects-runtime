@@ -715,8 +715,12 @@ export class RenderFrame implements Disposable {
   }
 
   protected addToRenderPass (renderPass: RenderPass, mesh: Mesh) {
-    const info = this.renderPassInfoMap.get(renderPass)!;
+    const info = this.renderPassInfoMap.get(renderPass);
     const { priority } = mesh;
+
+    if (!info) {
+      return;
+    }
 
     if (renderPass.meshes.length === 0) {
       info.listStart = info.listEnd = priority;

@@ -368,11 +368,14 @@ export class SpriteComponent extends RendererComponent {
     const data = this.getItemInitData();
 
     const renderer = this.renderer;
-    const texParams = this.material.getVector4('_TexParams')!;
+    const texParams = this.material.getVector4('_TexParams');
 
-    texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-    texParams.y = +this.preMultiAlpha;
-    texParams.z = renderer.renderMode;
+    if (texParams) {
+      texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
+      texParams.y = +this.preMultiAlpha;
+      texParams.z = renderer.renderMode;
+    }
+
     const attributes = {
       atlasOffset: new Float32Array(data.atlasOffset.length),
       index: new Uint16Array(data.index.length),

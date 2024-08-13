@@ -1090,12 +1090,11 @@ export class ParticleSystem extends Component {
     if (interaction) {
       this.interaction = {
         multiple: interaction.multiple,
-        radius: interaction.radius!,
+        radius: interaction.radius ?? 0.4,
         behavior: interaction.behavior,
       };
     }
     this.item.getHitTestParams = this.getHitTestParams;
-
     this.item._content = this;
   }
 }

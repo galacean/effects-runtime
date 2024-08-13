@@ -165,8 +165,12 @@ export class GLGeometry extends Geometry {
       } else if (!this.dirtyFlags[name].discard) {
         const dirtyFlag = this.dirtyFlags[name];
 
-        dirtyFlag.start = Math.min(dirtyFlag.start!, start);
-        dirtyFlag.end = Math.max(dirtyFlag.end!, length - 1);
+        if (dirtyFlag.start !== undefined) {
+          dirtyFlag.start = Math.min(dirtyFlag.start, start);
+        }
+        if (dirtyFlag.end !== undefined) {
+          dirtyFlag.end = Math.max(dirtyFlag.end, length - 1);
+        }
       }
       (attribute.data as spec.TypedArray).set(data, start);
       this.dirtyFlags[name].dirty = true;
@@ -204,8 +208,12 @@ export class GLGeometry extends Geometry {
       } else if (!this.dirtyFlags['index'].discard) {
         const dirtyFlag = this.dirtyFlags['index'];
 
-        dirtyFlag.start = Math.min(dirtyFlag.start!, start);
-        dirtyFlag.end = Math.max(dirtyFlag.end!, length - 1);
+        if (dirtyFlag.start !== undefined) {
+          dirtyFlag.start = Math.min(dirtyFlag.start, start);
+        }
+        if (dirtyFlag.end !== undefined) {
+          dirtyFlag.end = Math.max(dirtyFlag.end, length - 1);
+        }
       }
       this.indices?.set(data, start);
       this.dirtyFlags['index'].dirty = true;
@@ -288,12 +296,14 @@ export class GLGeometry extends Geometry {
         if (flag.discard) {
           buffer.bufferData(data);
         } else {
-          const offset = flag.start! * data.BYTES_PER_ELEMENT + data.byteOffset;
-          const length = flag.end! - flag.start! + 1;
-          // @ts-expect-error safe to use
-          const subData = new data.constructor(data.buffer, offset, length);
+          if (flag.start !== undefined && flag.end !== undefined) {
+            const offset = flag.start * data.BYTES_PER_ELEMENT + data.byteOffset;
+            const length = flag.end - flag.start + 1;
+            // @ts-expect-error safe to use
+            const subData = new data.constructor(data.buffer, offset, length);
 
-          buffer.bufferSubData(flag.start!, subData);
+            buffer.bufferSubData(flag.start, subData);
+          }
         }
         flag.start = Number.POSITIVE_INFINITY;
         flag.end = 0;

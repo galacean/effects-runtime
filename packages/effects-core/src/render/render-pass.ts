@@ -579,11 +579,13 @@ export class RenderPass implements Disposable, Sortable {
     const framebuffer = this.framebuffer;
 
     if (framebuffer) {
+      const depthTexture = framebuffer.getDepthTexture();
+      const texture = depthTexture ? this.getDepthTexture(depthTexture, framebuffer.externalStorage) : undefined;
 
       return {
         storageType: framebuffer.depthStencilStorageType,
         storage: framebuffer.depthStorage,
-        texture: framebuffer.getDepthTexture() ? this.getDepthTexture(framebuffer.getDepthTexture()!, framebuffer.externalStorage) : undefined,
+        texture,
       };
     }
   }
@@ -595,10 +597,13 @@ export class RenderPass implements Disposable, Sortable {
     const framebuffer = this.framebuffer;
 
     if (framebuffer) {
+      const stencilTexture = framebuffer.getStencilTexture();
+      const texture = stencilTexture ? this.getDepthTexture(stencilTexture, framebuffer.externalStorage) : undefined;
+
       return {
         storageType: framebuffer.depthStencilStorageType,
         storage: framebuffer.stencilStorage,
-        texture: framebuffer.getStencilTexture() ? this.getStencilTexture(framebuffer.getStencilTexture()!, framebuffer.externalStorage) : undefined,
+        texture,
       };
     }
   }

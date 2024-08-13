@@ -1,5 +1,5 @@
 import type { Disposable, UniformValue, spec } from '@galacean/effects-core';
-import { glContext } from '@galacean/effects-core';
+import { assertExist, glContext } from '@galacean/effects-core';
 import stringHash from 'string-hash';
 import { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLPipelineContext } from './gl-pipeline-context';
@@ -266,7 +266,10 @@ export function createUniformBlockDataFromProgram (
   const uniformBlocks = gl.getProgramParameter(program, gl.ACTIVE_UNIFORM_BLOCKS);
 
   for (let idx = 0; idx < uniformBlocks; ++idx) {
-    const name = gl.getActiveUniformBlockName(program, idx)!;
+    const name = gl.getActiveUniformBlockName(program, idx);
+
+    assertExist(name);
+
     const blockSpec: UniformBlockSpec = {
       index: gl.getUniformBlockIndex(program, name),
       usedByVertexShader: gl.getActiveUniformBlockParameter(program, idx, gl.UNIFORM_BLOCK_REFERENCED_BY_VERTEX_SHADER),

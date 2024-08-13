@@ -36,8 +36,12 @@ export class GLRenderbuffer extends Renderbuffer {
       return;
     }
 
+    if (!this.renderer) {
+      return;
+    }
+
     if (width !== this.size[0] || height !== this.size[1]) {
-      const { gl, pipelineContext: state } = this.renderer!;
+      const { gl, pipelineContext: state } = this.renderer;
 
       state.bindRenderbuffer(gl.RENDERBUFFER, this.buffer);
       if (width && height) {

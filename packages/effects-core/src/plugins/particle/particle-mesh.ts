@@ -22,7 +22,7 @@ import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
 import { Transform } from '../../transform';
-import { enlargeBuffer, imageDataFromGradient } from '../../utils';
+import { assertExist, enlargeBuffer, imageDataFromGradient } from '../../utils';
 import { particleUniformTypeMap } from './particle-vfx-item';
 
 export type Point = {
@@ -408,8 +408,10 @@ export class ParticleMesh implements ParticleMeshData {
   // }
 
   getPointColor (index: number) {
-    const data = this.geometry.getAttributeData('aRot')!;
+    const data = this.geometry.getAttributeData('aRot');
     const i = index * 32 + 4;
+
+    assertExist(data);
 
     return [data[i], data[i + 1], data[i + 2], data[i + 3]];
   }
@@ -432,9 +434,11 @@ export class ParticleMesh implements ParticleMeshData {
     const ret = calculateTranslation(new Vector3(), this, acc, time, pointDur, pos, vel);
 
     if (this.forceTarget) {
-      const target = mtl.getVector3('uFinalTarget')!;
+      const target = mtl.getVector3('uFinalTarget');
       const life = this.forceTarget.curve.getValue(time / pointDur);
       const dl = 1 - life;
+
+      assertExist(target);
 
       ret.x = ret.x * dl + target.x * life;
       ret.y = ret.y * dl + target.y * life;
@@ -469,7 +473,9 @@ export class ParticleMesh implements ParticleMeshData {
   }
 
   minusTime (time: number) {
-    const data = this.geometry.getAttributeData('aOffset')!;
+    const data = this.geometry.getAttributeData('aOffset');
+
+    assertExist(data);
 
     for (let i = 0; i < data.length; i += 4) {
       data[i + 2] -= time;
@@ -588,7 +594,10 @@ export class ParticleMesh implements ParticleMeshData {
         const attrSize = geometry.getAttributeStride(name) / Float32Array.BYTES_PER_ELEMENT;
 
         if (increaseBuffer) {
-          const baseData = geometry.getAttributeData(name)!;
+          const baseData = geometry.getAttributeData(name);
+
+          assertExist(baseData);
+
           const geoData = enlargeBuffer(baseData, vertexCount * attrSize, maxCount * 4 * attrSize, inc);
 
           geoData.set(data, data.length * index);

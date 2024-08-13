@@ -16,7 +16,7 @@ export class ParticleLoader extends AbstractPlugin {
     const gpuCapability = renderer.engine.gpuCapability;
     const { level } = gpuCapability;
     const { env } = options ?? {};
-    const shaderLibrary = renderer.getShaderLibrary()!;
+    const shaderLibrary = renderer.getShaderLibrary();
     const items: spec.ParticleItem[] = [];
     const shaders: SharedShaderWithSource[] = [];
     let maxFragmentCount = 0;
@@ -45,7 +45,7 @@ export class ParticleLoader extends AbstractPlugin {
         shader.vertex = createShaderWithMacros(shader.macros ?? [], shader.vertex, ShaderType.vertex, level);
         shader.fragment = createShaderWithMacros(shader.macros ?? [], shader.fragment, ShaderType.fragment, level);
         shader.glslVersion = level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1;
-        shaderLibrary.addShader(shader);
+        shaderLibrary?.addShader(shader);
       }
     });
     shaders.forEach(shader => {
@@ -57,7 +57,7 @@ export class ParticleLoader extends AbstractPlugin {
       }
       shader.vertex = createShaderWithMacros(shader.macros ?? [], shader.vertex, ShaderType.vertex, level);
       shader.fragment = createShaderWithMacros(shader.macros ?? [], shader.fragment, ShaderType.fragment, level);
-      shaderLibrary.addShader(shader);
+      shaderLibrary?.addShader(shader);
     });
     if (level === 2) {
       items.forEach(item => {

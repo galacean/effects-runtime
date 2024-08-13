@@ -14,7 +14,7 @@ import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } fro
 import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
-import { imageDataFromGradient } from '../../utils';
+import { assertExist, imageDataFromGradient } from '../../utils';
 
 export type TrailMeshProps = {
   maxTrailCount: number,
@@ -362,7 +362,9 @@ export class TrailMesh {
 
     if (index >= 0 && index < pointCountPerTrail) {
       const startIndex = (trail * pointCountPerTrail + index) * 24 + 8;
-      const data = this.geometry.getAttributeData('aColor')!;
+      const data = this.geometry.getAttributeData('aColor');
+
+      assertExist(data);
 
       out.x = data[startIndex];
       out.y = data[1 + startIndex];
@@ -373,16 +375,18 @@ export class TrailMesh {
   }
 
   clearAllTrails () {
-    const geo = this.geometry;
+    const indexData = this.geometry.getIndexData();
+
+    assertExist(indexData);
 
     this.trailCursors = new Uint16Array(this.trailCursors.length);
-    // @ts-expect-error
-    geo.setIndexData(new Uint16Array(geo.getIndexData().length));
+    this.geometry.setIndexData(new Uint16Array(indexData.length));
   }
 
   minusTime (time: number) {
-    // FIXME: 可选性
-    const data = this.geometry.getAttributeData('aTime')!;
+    const data = this.geometry.getAttributeData('aTime');
+
+    assertExist(data);
 
     for (let i = 0; i < data.length; i++) {
       data[i] -= time;
@@ -395,7 +399,9 @@ export class TrailMesh {
     if (this.trailCursors[index] !== 0) {
       const pointCountPerTrail = this.pointCountPerTrail;
       const indicesPerTrail = (pointCountPerTrail - 1) * 6;
-      const indices = this.geometry.getIndexData()!;
+      const indices = this.geometry.getIndexData();
+
+      assertExist(indices);
 
       indices.set(new Uint16Array(indicesPerTrail), index * indicesPerTrail);
       this.geometry.setIndexData(indices);
