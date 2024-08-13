@@ -541,18 +541,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 是否合成需要销毁
    * @returns 销毁合成标志位
    */
-  private shouldDispose () {
-    if (this.reusable) {
-      return false;
-    }
-    const { endBehavior } = this.rootItem;
-
+  private isEnd () {
     if (this.rootItem.isEnded(this.time)) {
       this.rootItem.ended = true;
     }
 
     // TODO: 合成结束行为
-    return this.rootItem.ended && endBehavior === spec.EndBehavior.destroy;
+    return this.rootItem.ended;
   }
 
   /**
@@ -571,7 +566,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updateRootComposition();
 
     if (this.shouldRestart()) {
-      this.emit('end', { composition: this });
       this.restart();
       // restart then tick to avoid flicker
     }
@@ -586,12 +580,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.updateCamera();
 
-    if (this.shouldDispose()) {
+    if (this.isEnd()) {
       this.emit('end', { composition: this });
-      this.dispose();
-    } else {
-      this.prepareRender();
+      if (this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable) {
+        this.dispose();
+      }
     }
+    this.prepareRender();
   }
 
   private toLocalTime (time: number) {
