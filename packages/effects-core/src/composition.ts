@@ -564,28 +564,16 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.globalTime += time;
     this.updateRootComposition();
-
-    if (this.shouldRestart()) {
-      this.restart();
-      // restart then tick to avoid flicker
-    }
-
     this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
 
+    // scene VFXItem components lifetime function.
     this.callStart(this.rootItem);
     this.callUpdate(this.rootItem, time);
     this.callLateUpdate(this.rootItem, time);
 
     this.updateCamera();
-
-    if (this.isEnd()) {
-      this.emit('end', { composition: this });
-      if (this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable) {
-        this.dispose();
-      }
-    }
     this.prepareRender();
   }
 
@@ -594,15 +582,29 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const duration = this.rootItem.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.rootItem.endBehavior === spec.EndBehavior.restart) {
-        localTime = localTime % duration;
-      } else if (this.rootItem.endBehavior === spec.EndBehavior.freeze) {
-        localTime = Math.min(duration, localTime);
-        if (localTime === duration) {
-          if (!this.rootComposition.fezzed) {
-            this.rootComposition.fezzed = true;
-            this.emit('end', { composition: this });
+      if (!this.rootItem.ended) {
+        this.rootItem.ended = true;
+        this.emit('end', { composition: this });
+      }
+
+      switch (this.rootItem.endBehavior) {
+        case spec.EndBehavior.restart:{
+          localTime = localTime % duration;
+          this.restart();
+
+          break;
+        }
+        case spec.EndBehavior.freeze:{
+          localTime = Math.min(duration, localTime);
+
+          break;
+        }
+        case spec.EndBehavior.destroy:{
+          if (!this.reusable) {
+            this.dispose();
           }
+
+          break;
         }
       }
     }
