@@ -1,6 +1,4 @@
 export { default as blend } from './blend.glsl';
-export { default as compatibleFrag } from './compatible.frag.glsl';
-export { default as compatibleVert } from './compatible.vert.glsl';
 export { default as itemFrameFrag } from './item-frame.frag.glsl';
 export { default as integrate } from './integrate.glsl';
 export { default as itemVert } from './item.vert.glsl';

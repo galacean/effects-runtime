@@ -2,8 +2,8 @@
 
 #define NONE_CONST_INDEX 1
 #ifdef SHADER_VERTEX
-in float aSeed;
-out float vSeed;
+attribute float aSeed;
+varying float vSeed;
 #endif
 
 #ifdef SHADER_VERTEX
