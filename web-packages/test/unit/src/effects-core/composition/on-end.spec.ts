@@ -33,14 +33,14 @@ describe('composition onEnd', () => {
     expect(player.paused).to.be.false;
   });
 
-  // it('composition forward', async () => {
-  //   const composition = await test(spec.END_BEHAVIOR_FORWARD, ()=>{
-  //     console.info('forward');
-  //   });
+  it('composition forward', async () => {
+    const composition = await test(spec.END_BEHAVIOR_FORWARD, ()=>{
+      console.info('forward');
+    });
 
-  //   expect(player.paused).to.be.false;
-  //   expect(composition.renderer).to.exist;
-  // });
+    expect(player.paused).to.be.false;
+    expect(composition.renderer).to.exist;
+  });
 
   it('composition restart', async () => {
     const composition = await test(spec.END_BEHAVIOR_RESTART, () => {

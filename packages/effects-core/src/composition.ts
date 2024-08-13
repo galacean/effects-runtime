@@ -501,7 +501,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   prepareRender () {
     const frame = this.renderFrame;
 
-    frame._renderPasses[0].meshes.length = 0;
+    frame._renderPasses.forEach(pass => {
+      pass.meshes.length = 0;
+    });
 
     this.postLoaders.length = 0;
     this.pluginSystem.plugins.forEach(loader => {
@@ -524,30 +526,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     for (const item of vfxItem.children) {
       this.gatherRendererComponent(item, renderFrame);
     }
-  }
-
-  /**
-   * 是否合成需要重新播放
-   * @returns 重新播放合成标志位
-   */
-  private shouldRestart () {
-    const { duration, endBehavior } = this.rootItem;
-    const { time } = this.rootComposition;
-
-    return endBehavior === spec.EndBehavior.restart && duration - time < 0.02;
-  }
-
-  /**
-   * 是否合成需要销毁
-   * @returns 销毁合成标志位
-   */
-  private isEnd () {
-    if (this.rootItem.isEnded(this.time)) {
-      this.rootItem.ended = true;
-    }
-
-    // TODO: 合成结束行为
-    return this.rootItem.ended;
   }
 
   /**
@@ -588,18 +566,18 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
 
       switch (this.rootItem.endBehavior) {
-        case spec.EndBehavior.restart:{
+        case spec.EndBehavior.restart: {
           localTime = localTime % duration;
           this.restart();
 
           break;
         }
-        case spec.EndBehavior.freeze:{
+        case spec.EndBehavior.freeze: {
           localTime = Math.min(duration, localTime);
 
           break;
         }
-        case spec.EndBehavior.destroy:{
+        case spec.EndBehavior.destroy: {
           if (!this.reusable) {
             this.dispose();
           }
