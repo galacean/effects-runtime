@@ -501,9 +501,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   prepareRender () {
     const frame = this.renderFrame;
 
-    frame._renderPasses.forEach(pass => {
-      pass.meshes.length = 0;
-    });
+    frame._renderPasses[0].meshes.length = 0;
 
     this.postLoaders.length = 0;
     this.pluginSystem.plugins.forEach(loader => {
@@ -553,6 +551,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.updateCamera();
     this.prepareRender();
+
+    if (this.shouldDispose()) {
+      this.dispose();
+    }
   }
 
   private toLocalTime (time: number) {
@@ -577,10 +579,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
           break;
         }
+        case spec.EndBehavior.forward: {
+
+          break;
+        }
         case spec.EndBehavior.destroy: {
-          if (!this.reusable) {
-            this.dispose();
-          }
 
           break;
         }
@@ -588,6 +591,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     return localTime;
+  }
+
+  private shouldDispose () {
+    return this.rootItem.ended && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
 
   private getUpdateTime (t: number) {
