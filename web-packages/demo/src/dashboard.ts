@@ -1,3 +1,4 @@
+import type { Composition } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 import cubeTextures from './assets/cube-textures';
 
@@ -28,41 +29,49 @@ const jsons = [
 jsons.push(cubeTextures);
 
 (async () => {
-  jsons.forEach(async json => {
-    try {
-      const player = createPlayer();
-      const scene = player.loadScene(json);
+  // jsons.forEach(async json => {
+  //   try {
+  //     const container = createContainer();
+  //     const player = new Player({
+  //       container,
+  //       // renderFramework: 'webgl',
+  //     });
 
-      // await sleep(50);
-      // player.pause({ offloadTexture: true });
+  //     await player.loadScene(json);
+  //   } catch (e) {
+  //     console.error('biz', e);
+  //     // do something
+  //   }
+  // });
 
-      // await sleep(2000);
-      // await player.resume();
-    } catch (e) {
-      console.error('biz', e);
-      // do something
-    }
-  });
+  try {
+    const container = createContainer();
+    const player = new Player({
+      container,
+    });
+    const compositions = await player.loadScene([
+      'https://mdn.alipayobjects.com/mars/afts/file/A*kgZpSZrwf44AAAAAAAAAAAAADlB4AQ',
+      'https://mdn.alipayobjects.com/mars/afts/file/A*L0_gRYNia70AAAAAAAAAAAAADlB4AQ',
+      'https://mdn.alipayobjects.com/mars/afts/file/A*1LmLT4UawyMAAAAAAAAAAAAADlB4AQ',
+      'https://mdn.alipayobjects.com/mars/afts/file/A*pUKbR68CeEMAAAAAAAAAAAAADlB4AQ',
+    ], { autoplay: false }) as unknown as Composition[];
+
+    compositions.forEach(composition => {
+      composition.on('end', () => {
+        console.info(`Composition ${composition.name} end.`);
+      });
+    });
+    player.playSequence(compositions);
+  } catch (e) {
+    console.error('biz', e);
+  }
 })();
 
-function createPlayer () {
+function createContainer () {
   const container = document.createElement('div');
 
   container.classList.add('cell');
   document.body.appendChild(container);
 
-  const player = new Player({
-    container,
-    pixelRatio: 1,
-    onPausedByItem: data => {
-      console.info('onPausedByItem', data);
-    },
-    renderFramework: 'webgl',
-  });
-
-  return player;
-}
-
-function sleep (ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return container;
 }

@@ -17,6 +17,7 @@ import { GLRendererInternal } from './gl-renderer-internal';
 import { GLTexture } from './gl-texture';
 
 type Matrix4 = math.Matrix4;
+type Vector4 = math.Vector4;
 
 export class GLRenderer extends Renderer implements Disposable {
   glRenderer: GLRendererInternal;
@@ -153,6 +154,15 @@ export class GLRenderer extends Renderer implements Disposable {
     this.renderingData.currentFrame.globalUniforms.floats[name] = value;
   }
 
+  override setGlobalVector4 (name: string, value: Vector4) {
+    this.checkGlobalUniform(name);
+    this.renderingData.currentFrame.globalUniforms.vector4s[name] = value;
+  }
+
+  getGlobalVector4 (name: string): Vector4 {
+    return this.renderingData.currentFrame.globalUniforms.vector4s[name];
+  }
+
   override setGlobalInt (name: string, value: number) {
     this.checkGlobalUniform(name);
     this.renderingData.currentFrame.globalUniforms.ints[name] = value;
@@ -180,15 +190,23 @@ export class GLRenderer extends Renderer implements Disposable {
         this.setGlobalMatrix('effects_MatrixVP', renderingData.currentCamera.getViewProjectionMatrix());
         this.setGlobalMatrix('_MatrixP', renderingData.currentCamera.getProjectionMatrix());
       }
+
+      // TODO 自定义材质测试代码
+      const time = Date.now() % 100000000 * 0.001 * 1;
+      let _Time = this.getGlobalVector4('_Time');
+
+      // TODO 待移除
+      this.setGlobalFloat('_GlobalTime', time);
+      if (!_Time) {
+        _Time = new math.Vector4(time / 20, time, time * 2, time * 3);
+      }
+      this.setGlobalVector4('_Time', _Time.set(time / 20, time, time * 2, time * 3));
     }
 
-    // TODO 自定义材质测试代码
-    const time = Date.now() % 100000000 * 0.001 * 1;
-
-    this.setGlobalFloat('_GlobalTime', time);
     if (renderingData.currentFrame.editorTransform) {
       material.setVector4('uEditorTransform', renderingData.currentFrame.editorTransform);
     }
+
     // 测试后处理 Bloom 和 ToneMapping 逻辑
     if (__DEBUG__) {
       if (getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)) {

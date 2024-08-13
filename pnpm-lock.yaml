@@ -144,12 +144,6 @@ importers:
         specifier: workspace:*
         version: link:../effects-webgl
 
-  packages/effects-assets:
-    devDependencies:
-      '@galacean/effects':
-        specifier: workspace:*
-        version: link:../effects
-
   packages/effects-core:
     dependencies:
       '@galacean/effects-math':
@@ -269,9 +263,6 @@ importers:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
-      '@galacean/effects-assets':
-        specifier: workspace:*
-        version: link:../../packages/effects-assets
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer
@@ -304,9 +295,6 @@ importers:
       '@galacean/effects':
         specifier: workspace:*
         version: link:../../packages/effects
-      '@galacean/effects-assets':
-        specifier: workspace:*
-        version: link:../../packages/effects-assets
       '@iconify-json/ep':
         specifier: ^1.1.14
         version: 1.1.15
