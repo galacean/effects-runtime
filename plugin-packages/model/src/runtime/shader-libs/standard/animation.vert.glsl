@@ -1,73 +1,73 @@
 #ifdef HAS_TARGET_POSITION0
-vsIn vec3 aTargetPosition0;
+attribute vec3 aTargetPosition0;
 #endif
 
 #ifdef HAS_TARGET_POSITION1
-vsIn vec3 aTargetPosition1;
+attribute vec3 aTargetPosition1;
 #endif
 
 #ifdef HAS_TARGET_POSITION2
-vsIn vec3 aTargetPosition2;
+attribute vec3 aTargetPosition2;
 #endif
 
 #ifdef HAS_TARGET_POSITION3
-vsIn vec3 aTargetPosition3;
+attribute vec3 aTargetPosition3;
 #endif
 
 #ifdef HAS_TARGET_POSITION4
-vsIn vec3 aTargetPosition4;
+attribute vec3 aTargetPosition4;
 #endif
 
 #ifdef HAS_TARGET_POSITION5
-vsIn vec3 aTargetPosition5;
+attribute vec3 aTargetPosition5;
 #endif
 
 #ifdef HAS_TARGET_POSITION6
-vsIn vec3 aTargetPosition6;
+attribute vec3 aTargetPosition6;
 #endif
 
 #ifdef HAS_TARGET_POSITION7
-vsIn vec3 aTargetPosition7;
+attribute vec3 aTargetPosition7;
 #endif
 
 #ifdef HAS_TARGET_NORMAL0
-vsIn vec3 aTargetNormal0;
+attribute vec3 aTargetNormal0;
 #endif
 
 #ifdef HAS_TARGET_NORMAL1
-vsIn vec3 aTargetNormal1;
+attribute vec3 aTargetNormal1;
 #endif
 
 #ifdef HAS_TARGET_NORMAL2
-vsIn vec3 aTargetNormal2;
+attribute vec3 aTargetNormal2;
 #endif
 
 #ifdef HAS_TARGET_NORMAL3
-vsIn vec3 aTargetNormal3;
+attribute vec3 aTargetNormal3;
 #endif
 
 #ifdef HAS_TARGET_NORMAL4
-vsIn vec3 aTargetNormal4;
+attribute vec3 aTargetNormal4;
 #endif
 
 #ifdef HAS_TARGET_TANGENT0
-vsIn vec3 aTargetTangent0;
+attribute vec3 aTargetTangent0;
 #endif
 
 #ifdef HAS_TARGET_TANGENT1
-vsIn vec3 aTargetTangent1;
+attribute vec3 aTargetTangent1;
 #endif
 
 #ifdef HAS_TARGET_TANGENT2
-vsIn vec3 aTargetTangent2;
+attribute vec3 aTargetTangent2;
 #endif
 
 #ifdef HAS_TARGET_TANGENT3
-vsIn vec3 aTargetTangent3;
+attribute vec3 aTargetTangent3;
 #endif
 
 #ifdef HAS_TARGET_TANGENT4
-vsIn vec3 aTargetTangent4;
+attribute vec3 aTargetTangent4;
 #endif
 
 #ifdef USE_MORPHING
@@ -75,19 +75,19 @@ uniform float _morphWeights[WEIGHT_COUNT];
 #endif
 
 #ifdef HAS_JOINT_SET1
-vsIn vec4 aJoints;
+attribute vec4 aJoints;
 #endif
 
 #ifdef HAS_JOINT_SET2
-vsIn vec4 aJoint2;
+attribute vec4 aJoint2;
 #endif
 
 #ifdef HAS_WEIGHT_SET1
-vsIn vec4 aWeights;
+attribute vec4 aWeights;
 #endif
 
 #ifdef HAS_WEIGHT_SET2
-vsIn vec4 aWeight2;
+attribute vec4 aWeight2;
 #endif
 
 #ifdef USE_SKINNING

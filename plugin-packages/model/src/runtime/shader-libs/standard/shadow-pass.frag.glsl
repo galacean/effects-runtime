@@ -1,10 +1,9 @@
 #define FEATURES
 
 #include <shadow-common.vert.glsl>
-#include <webgl-compatibility.glsl>
 
 
-#if defined(SHADOWMAP_VSM) && !defined(WEBGL2)
+#if defined(SHADOWMAP_VSM)
 #extension GL_OES_standard_derivatives : enable
 #endif
 
@@ -13,13 +12,6 @@
   precision highp float;
 #else
   precision mediump float;
-#endif
-
-
-#ifdef WEBGL2
-    out vec4 outFragColor;
-#else
-    #define outFragColor gl_FragColor
 #endif
 
 
@@ -47,8 +39,8 @@ vec4 CalcMomentEVSM(float depth)
 void main()
 {
     #if defined(SHADOWMAP_STANDARD) || defined(SHADOWMAP_VSM)
-        outFragColor = CalcMomentVSM(gl_FragCoord.z);
+        gl_FragColor = CalcMomentVSM(gl_FragCoord.z);
     #else // SHADOWMAP_EVSM
-        outFragColor = CalcMomentEVSM(gl_FragCoord.z);
+        gl_FragColor = CalcMomentEVSM(gl_FragCoord.z);
     #endif
 }
