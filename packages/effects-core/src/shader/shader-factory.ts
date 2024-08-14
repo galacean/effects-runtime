@@ -91,7 +91,7 @@ export class ShaderFactory {
           const result = source.match(/\bgl_FragData\[.+?\]/g);
 
           if (result) {
-            source = this.replaceMRTShader(source, result);
+            source = ShaderFactory.replaceMRTShader(source, result);
           }
         } else {
           source = source.replace(/void\s+?main\s*\(/g, 'out vec4 glFragColor;\nvoid main(');
