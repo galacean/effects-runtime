@@ -2,7 +2,7 @@ import type {
   MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
   GlobalUniforms, Renderer, ShaderMacros,
 } from '@galacean/effects-core';
-import { Material, ShaderType, maxSpriteMeshItemCount, spec, ShaderFactory } from '@galacean/effects-core';
+import { Material, Shader, ShaderType, ShaderFactory, generateGUID, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
 import {
@@ -47,6 +47,14 @@ export class ThreeMaterial extends Material {
     const shader = props?.shader;
     const { level } = engine.gpuCapability;
 
+    this.shader = new Shader(engine);
+    this.shader.shaderData = {
+      ...shader,
+      id: generateGUID(),
+      dataType: spec.DataType.Shader,
+      vertex: shader?.vertex || '',
+      fragment: shader?.fragment || '',
+    };
     for (let i = 0; i < maxSpriteMeshItemCount; i++) {
       this.uniforms[`uSampler${i}`] = new THREE.Uniform(null);
     }

@@ -443,10 +443,8 @@ export class ParticleSystem extends Component {
           });
 
           this.renderer.minusTimeForLoop(duration);
-          this.onIterate(this);
         } else {
           this.ended = true;
-          this.onEnd(this);
           const endBehavior = this.item.endBehavior;
 
           if (endBehavior === spec.EndBehavior.freeze) {
@@ -604,6 +602,25 @@ export class ParticleSystem extends Component {
     });
   }
 
+  /**
+   * 通过索引获取指定index粒子当前时刻的位置
+   * @params index - 粒子索引
+   */
+  getPointPositionByIndex (index: number): Vector3 | null {
+    const point = this.particleLink.getNodeByIndex(index);
+
+    if (!point) {
+      console.error('Get point error.');
+
+      return null;
+    } else {
+      return this.getPointPosition(point.content[3]);
+    }
+  }
+
+  /**
+   * 通过粒子参数获取当前时刻粒子的位置
+   */
   getPointPosition (point: Point): Vector3 {
     const {
       transform,
@@ -633,12 +650,6 @@ export class ParticleSystem extends Component {
     }
 
     return ret;
-  }
-
-  onEnd (particle: ParticleSystem) {
-  }
-
-  onIterate (particle: ParticleSystem) {
   }
 
   initPoint (data: Record<string, any>): Point {

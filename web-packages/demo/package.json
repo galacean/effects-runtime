@@ -9,7 +9,6 @@
   "dependencies": {
     "@galacean/effects": "workspace:*",
     "@galacean/effects-threejs": "workspace:*",
-    "@galacean/effects-assets": "workspace:*",
     "@galacean/effects-plugin-orientation-transformer": "workspace:*",
     "three": "^0.149.0"
   },

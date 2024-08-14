@@ -78,10 +78,6 @@ export class CompositionComponent extends ItemBehaviour {
   override update (dt: number): void {
     const time = this.time;
 
-    // 主合成 rootItem 没有绑定轨道，增加结束行为判断。
-    if (this.item.isEnded(this.time) && !this.item.parent) {
-      this.item.ended = true;
-    }
     this.timelinePlayable.setTime(time);
     this.graph.evaluate(dt);
   }
@@ -240,6 +236,9 @@ export class CompositionComponent extends ItemBehaviour {
               hitPositions,
               behavior: hitParams.behavior,
             };
+
+            // 触发单个元素的点击事件
+            item.emit('click', region);
 
             regions.push(region);
 

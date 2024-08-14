@@ -16,7 +16,6 @@ window.addEventListener('message', async event => {
       player = createThreePlayer({
         container,
         ...playerOptions,
-        onItemClicked: item => console.info(`item ${item.name} has been clicked`, item),
       });
 
       break;
@@ -24,6 +23,11 @@ window.addEventListener('message', async event => {
     case 'play': {
       console.debug(`effects-threejs 渲染模式：${isWebGL2(player.renderer.getContext()) ? 'webgl2' : 'webgl'}`);
       void renderbyThreeDisplayObject(player, json);
+
+      break;
+    }
+    case 'pause': {
+      player.pause();
 
       break;
     }

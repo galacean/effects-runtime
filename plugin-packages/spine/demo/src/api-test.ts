@@ -13,10 +13,6 @@ import type { FileFormat } from './files';
 import { direct, premultiply } from './files';
 import 'fpsmeter';
 
-const playerOptions = {
-  onEnd: () => console.info('合成播放结束'),
-};
-
 const filetype = document.getElementById('J-premultiply')!;
 const startEle = document.getElementById('J-start')!;
 const pauseEle = document.getElementById('J-pause')!;
@@ -59,7 +55,6 @@ const cameraPos = [0, 0, 8];
 
 const player = new Player({
   container: document.getElementById('J-container'),
-  ...playerOptions,
 });
 
 // @ts-expect-error
