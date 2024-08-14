@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { GPUCapability, ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMacros } from '@galacean/effects-core';
+import { GPUCapability, ShaderCompileResultStatus, GLSLVersion } from '@galacean/effects-core';
 import { GLMaterial, GLRenderer } from '@galacean/effects-webgl';
 
 const { expect } = chai;
@@ -131,8 +131,8 @@ describe('webgl/GLShaderLibrary', () => {
     `;
     const lib = pipelineContext.shaderLibrary;
     const shader = lib.createShader({
-      fragment: createShaderWithMacros([], fragShader, ShaderType.fragment, 1),
-      vertex: createShaderWithMacros([], vertexShader, ShaderType.vertex, 1),
+      fragment: fragShader,
+      vertex: vertexShader,
       glslVersion: GLSLVersion.GLSL1,
     });
     const source = shader.source;

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { createShaderWithMacros, RenderFrame, RenderPass, glContext, DestroyOptions, TextureLoadAction, ShaderType, Texture, Camera, Mesh, math, GLSLVersion } from '@galacean/effects-core';
+import { RenderFrame, RenderPass, glContext, DestroyOptions, TextureLoadAction, ShaderType, Texture, Camera, Mesh, math, GLSLVersion } from '@galacean/effects-core';
 import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
 
 const { Vector4 } = math;
@@ -1541,8 +1541,8 @@ function generateMesh (engine, meshName, vs, fs, macros = [], shared = true) {
         engine,
         {
           shader: {
-            vertex: createShaderWithMacros(macros, vs, ShaderType.vertex),
-            fragment: createShaderWithMacros(macros, fs, ShaderType.fragment),
+            vertex: vs,
+            fragment: fs,
             macros,
             shared,
           },
