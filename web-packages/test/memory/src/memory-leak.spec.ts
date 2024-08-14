@@ -41,7 +41,7 @@ describe('single scene', function () {
       });
       const speed = 0.5 + 4.5 * Math.random();
       const comp = await player.loadScene(url, { timeout: 100, speed });
-      const duration = (comp.content.duration + 5) * Math.random();
+      const duration = (comp.getDuration() + 5) * Math.random();
 
       await sleep(duration * 1000 / speed);
       player.pause();
