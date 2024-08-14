@@ -1,16 +1,18 @@
 export default {
-  // 粒子问题，帧对比过不去
-  // spring: {
-  //   name: '找春天',
-  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*DKH6SIWKIt4AAAAAAAAAAAAADlB4AQ',
-  // },
-  // tiger: {
-  //   name: '818理财',
-  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*JaLiQYyUqhoAAAAAAAAAAAAADlB4AQ',
-  // },
-  // skel数据，4.2的Spine-core不兼容旧数据
-  // yuebao: {
-  //   name: '余额宝十周年',
-  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*TFH8R4OoMqIAAAAAAAAAAAAADlB4AQ',
-  // },
+  tableTennis: {
+    name: '乒乓球',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*RVUzSYO8hk0AAAAAAAAAAAAADlB4AQ',
+  },
+  duck: {
+    name: '鸭子',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*GxDrT4k1p2AAAAAAAAAAAAAADlB4AQ',
+  },
+  spring: {
+    name: '春风',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*wNWFTbBk0fkAAAAAAAAAAAAADlB4AQ',
+  },
+  shengsheng: {
+    name: '313省省节',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*qGqhS7ki0jMAAAAAAAAAAAAADlB4AQ',
+  },
 };
