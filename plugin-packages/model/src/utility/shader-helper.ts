@@ -2,9 +2,9 @@ import { StandardShader } from '../runtime/shader-libs/standard-shader';
 import type { PShaderContext, PShaderResults } from '../runtime/shader';
 import { PMaterialType } from '../runtime';
 
-export function fetchPBRShaderCode (isWebGL2?: boolean): PShaderResults {
-  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.pbr, isWebGL2);
-  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.pbr, isWebGL2);
+export function fetchPBRShaderCode (): PShaderResults {
+  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.pbr);
+  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.pbr);
 
   return {
     vertexShaderCode,
@@ -12,9 +12,9 @@ export function fetchPBRShaderCode (isWebGL2?: boolean): PShaderResults {
   };
 }
 
-export function fetchUnlitShaderCode (isWebGL2?: boolean): PShaderResults {
-  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.unlit, isWebGL2);
-  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.unlit, isWebGL2);
+export function fetchUnlitShaderCode (): PShaderResults {
+  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.unlit);
+  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.unlit);
 
   return {
     vertexShaderCode,

@@ -76,8 +76,8 @@ export class ModelPlugin extends AbstractPlugin {
 
   static override precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
     const isWebGL2 = renderer.engine.gpuCapability.level === 2;
-    const pbrShaderCode = fetchPBRShaderCode(isWebGL2);
-    const unlitShaderCode = fetchUnlitShaderCode(isWebGL2);
+    const pbrShaderCode = fetchPBRShaderCode();
+    const unlitShaderCode = fetchUnlitShaderCode();
     const pbrShaderData: spec.ShaderData = {
       id: PBRShaderGUID,
       name: 'PBR Shader',
