@@ -111,7 +111,7 @@ describe('multiple scenes', function () {
       for (let j = 0; j < count; j++) {
         const comp = compList[j];
 
-        leftTime = Math.max(leftTime, comp.content.duration);
+        leftTime = Math.max(leftTime, comp.getDuration());
       }
       const speed = 0.5 + 2.0 * Math.random();
 
