@@ -268,7 +268,6 @@ export class AssetManager implements Disposable {
   }
 
   private async processJSON (json: JSONValue) {
-    // TODO: 后面切换到新的数据版本，就不用掉用 getStandardJSON 做转换了
     const jsonScene = getStandardJSON(json);
     const { plugins = [], compositions: sceneCompositions, imgUsage, images } = jsonScene;
     const pluginSystem = new PluginSystem(plugins);

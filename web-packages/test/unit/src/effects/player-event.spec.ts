@@ -3,7 +3,7 @@ import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('player event', () => {
+describe('player/event', () => {
   let player: Player;
 
   afterEach(() => {

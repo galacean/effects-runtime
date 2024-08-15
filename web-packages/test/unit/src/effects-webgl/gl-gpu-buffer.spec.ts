@@ -1,21 +1,23 @@
-// @ts-nocheck
 import { GLEngine, GLGPUBuffer, GLPipelineContext } from '@galacean/effects-webgl';
 import { getGL2 } from './gl-utils';
-import { isWebGL2 } from '@galacean/effects';
+import { Engine, isWebGL2 } from '@galacean/effects';
 
 const { assert, expect } = chai;
 
-describe('gl-gpu-buffer', () => {
-  let gl, pipelineContext, engine;
+describe('webgl/gl-gpu-buffer', () => {
+  let gl: WebGLRenderingContext;
+  let pipelineContext: GLPipelineContext;
+  let engine: GLEngine;
 
   before(() => {
-    gl = getGL2();
+    gl = getGL2() as WebGL2RenderingContext;
     engine = new GLEngine(gl);
     pipelineContext = new GLPipelineContext(engine, gl);
   });
 
   after(() => {
-    gl.canvas.remove();
+    (gl?.canvas as HTMLCanvasElement).remove();
+    // @ts-expect-error
     gl = null;
     engine.dispose();
     pipelineContext.dispose();
@@ -28,10 +30,12 @@ describe('gl-gpu-buffer', () => {
     assert.equal(buffer.elementCount, 0);
     assert.equal(buffer.target, gl.ARRAY_BUFFER);
     assert.equal(buffer.bytesPerElement, Float32Array.BYTES_PER_ELEMENT);
+    // @ts-expect-error
     assert.equal(buffer.byteLength, 0);
 
     const buffer2 = new GLGPUBuffer(pipelineContext, { type: gl.INT, elementCount: 4, target: gl.ELEMENT_ARRAY_BUFFER });
 
+    // @ts-expect-error
     assert.equal(buffer2.byteLength, 4 * Int32Array.BYTES_PER_ELEMENT);
     assert.equal(buffer2.elementCount, 4);
     assert.equal(buffer2.type, gl.INT);
@@ -43,6 +47,7 @@ describe('gl-gpu-buffer', () => {
 
     gl.getError();
     buffer.bufferSubData(5, new Float32Array([1, 2, 3]));
+    // @ts-expect-error
     expect(buffer.byteLength).to.eql(8 * Float32Array.BYTES_PER_ELEMENT);
     expect(gl.getError()).to.eql(0);
   });

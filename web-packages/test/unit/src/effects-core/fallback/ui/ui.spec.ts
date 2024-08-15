@@ -2,7 +2,7 @@ import { getStandardItem, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('ui element', () => {
+describe('core/fallback/ui/element', () => {
   const items = [
     {
       'name': 'click',

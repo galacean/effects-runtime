@@ -1,9 +1,9 @@
-// @ts-nocheck
+import type { SceneLoadOptions, Scene, Composition } from '@galacean/effects';
 import { Player, AbstractPlugin, VFXItem, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('plugin', () => {
+describe('core/composition/plugin', () => {
   let player: Player;
 
   before(() => {
@@ -17,41 +17,45 @@ describe('plugin', () => {
   });
 
   it('lifetime check', async () => {
-    const resetSpy = chai.spy('reset');
-    const constructSpy = chai.spy('constructed');
-    const updateSpy = chai.spy('update');
     let i = 0;
-
-    class TestPlugin extends AbstractPlugin {
-      static prepareResource (scene, options) {
-        scene.storage.xx = 1;
-        expect(options.player).not.exist;
-
-        return Promise.resolve(1);
-      }
-
-      onCompositionUpdate (composition, dt) {
-        updateSpy(ipp());
-      }
-
-      onCompositionReset (composition, renderFrame) {
-        expect(composition.items).to.be.an('array').with.lengthOf(1);
-        resetSpy(ipp());
-      }
-
-      onCompositionConstructed (composition, scene) {
-        expect(scene.storage.xx).to.eql(1);
-        expect(composition.items.length).to.eql(0);
-        constructSpy(ipp());
-      }
-    }
+    const resetSpy = chai.spy();
+    const constructSpy = chai.spy();
+    const updateSpy = chai.spy();
 
     function ipp () {
       return i++;
     }
 
+    class TestPlugin extends AbstractPlugin {
+      static override prepareResource (scene: Scene, options: SceneLoadOptions) {
+        scene.storage.xx = 1;
+        // @ts-expect-error
+        expect(options.player).not.exist;
+
+        return Promise.resolve();
+      }
+
+      override onCompositionUpdate () {
+        // @ts-expect-error
+        updateSpy(ipp());
+      }
+
+      override onCompositionReset (composition: Composition) {
+        expect(composition.items).to.be.an('array').with.lengthOf(1);
+        // @ts-expect-error
+        resetSpy(ipp());
+      }
+
+      override onCompositionConstructed (composition: Composition, scene: Scene) {
+        expect(scene.storage.xx).to.eql(1);
+        expect(composition.items.length).to.eql(0);
+        // @ts-expect-error
+        constructSpy(ipp());
+      }
+    }
+
     registerPlugin('test-plugin', TestPlugin, VFXItem, true);
-    const comp = await player.loadScene(generateScene({}));
+    await player.loadScene(generateScene());
 
     player.gotoAndStop(0.1);
 
@@ -60,44 +64,45 @@ describe('plugin', () => {
     expect(updateSpy).to.have.been.called.with(2);
   });
 
-  it('loaded scene will be used twice', async () => {
-    const spy = chai.spy();
+  // TODO 与老版JsonScene加载逻辑判断不同，没有考虑重复加载的情况。
+  // it('loaded scene will be used twice', async () => {
+  //   const spy = chai.spy();
 
-    registerPlugin('test-plugin-res-rewrite', class T2 extends AbstractPlugin {
-      static prepareResource (json, options) {
-        expect(json.jsonScene.compositions[0].items[0].content.renderer.renderMode).to.eql(1);
-        expect(json.jsonScene.compositions[0].items[0].content.renderer.texture).to.eql(tex);
-        json.jsonScene.compositions[0].items[0].content.renderer.renderMode = 2;
-        spy();
+  //   registerPlugin('test-plugin-res-rewrite', class T2 extends AbstractPlugin {
+  //     static override prepareResource (json: Scene) {
+  //       const tex = json.jsonScene.compositions[0].items[0];
 
-        return Promise.resolve();
-      }
-    }, VFXItem, true);
+  //       expect(json.jsonScene.compositions[0].items[0].content.renderer.renderMode).to.eql(1);
+  //       expect(json.jsonScene.compositions[0].items[0].content.renderer.texture).to.eql(tex);
+  //       json.jsonScene.compositions[0].items[0].content.renderer.renderMode = 2;
+  //       spy();
 
-    const scn = generateScene();
-    const tex = scn.compositions[0].items[0].sprite.renderer.texture = { abc: 1 };
+  //       return Promise.resolve();
+  //     }
+  //   }, VFXItem, true);
 
-    // TODO 与老版JsonScene加载逻辑判断不同，没有考虑重复加载的情况。
-    // await player.loadScene(scn);
-    // await player.loadScene(scn);
-    // expect(spy).to.has.been.called.twice;
+  //   const scn = generateScene();
 
-  });
+  //   scn.compositions[0].items[0].sprite.renderer.texture = { abc: 1 };
+
+  //   await player.loadScene(scn);
+  //   await player.loadScene(scn);
+  //   expect(spy).to.has.been.called.twice;
+  // });
+
   afterEach(() => {
     unregisterPlugin('test-plugin');
-    unregisterPlugin('test-plugin-1');
-    unregisterPlugin('test-plugin-2');
-    unregisterPlugin('test-plugin-3');
-    unregisterPlugin('test-plugin-4');
-    unregisterPlugin('test-plugin-multiple');
-    unregisterPlugin('test-plugin-6');
+    // unregisterPlugin('test-plugin-1');
+    // unregisterPlugin('test-plugin-2');
+    // unregisterPlugin('test-plugin-3');
+    // unregisterPlugin('test-plugin-4');
+    // unregisterPlugin('test-plugin-multiple');
+    // unregisterPlugin('test-plugin-6');
     unregisterPlugin('test-plugin-res-rewrite');
   });
 });
 
-function generateScene (opt) {
-  opt = opt || {};
-
+function generateScene (opt: Record<string, any> = {}) {
   return {
     'compositionId': 1,
     'requires': [],

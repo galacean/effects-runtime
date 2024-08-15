@@ -2,7 +2,7 @@ import { Player, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('composition onEnd', () => {
+describe('core/composition/on-end', () => {
   let player: Player;
 
   beforeEach(() => {

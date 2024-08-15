@@ -2,7 +2,7 @@ import { Player, combineImageTemplate, getBackgroundImage, isString, loadImage, 
 
 const { expect } = chai;
 
-describe('Image template', async () => {
+describe('core/image-template', async () => {
   const container = document.createElement('div');
 
   after(() => {

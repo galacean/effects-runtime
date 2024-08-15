@@ -4,7 +4,7 @@ import { sanitizeNumbers } from '../utils';
 const { Euler, Quaternion, Vector3 } = math;
 const { expect } = chai;
 
-describe('transform methods', () => {
+describe('core/transform', () => {
   it('transform will work after been set valid', () => {
     const r = new Transform({
       position: [-1, 2, 3],

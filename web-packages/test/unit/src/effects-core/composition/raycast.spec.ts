@@ -3,7 +3,7 @@ import { math } from '@galacean/effects';
 const { Ray, Vector3 } = math;
 const { expect } = chai;
 
-describe('raycast', () => {
+describe('core/composition/raycast', () => {
   it('intersect ray box', async () => {
     let tmp: math.Vector3 | undefined = new Vector3(0, 0, 0);
     const origin = new Vector3(0, 0, 8);

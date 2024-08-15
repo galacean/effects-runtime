@@ -3,7 +3,7 @@ import { Player, ParticleSystem, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('effects-core/plugins/particle-base', function () {
+describe('core/plugins/particle/base', () => {
   let player: Player;
   const canvas = document.createElement('canvas');
   const renderOptions = {

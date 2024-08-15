@@ -1,10 +1,11 @@
 // @ts-nocheck
+import type { Scene } from '@galacean/effects';
 import { Player, AbstractPlugin, Texture, TextureSourceType, VFXItem, getDefaultTextureFactory, glContext, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('load textures', () => {
-  let player;
+describe('core/composition/load-textures', () => {
+  let player: Player;
 
   before(() => {
     player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
@@ -12,6 +13,7 @@ describe('load textures', () => {
 
   after(() => {
     player.dispose();
+    // @ts-expect-error
     player = null;
   });
 
@@ -42,11 +44,11 @@ describe('load textures', () => {
       'compositionId': '1',
     };
 
-    const spy = chai.spy('loadPlugin');
+    const spy = chai.spy();
     let texOpt;
 
     registerPlugin('test-load-tex-0', class TestPlugin extends AbstractPlugin {
-      static prepareResource (scene, options) {
+      static override prepareResource (scene: Scene) {
         expect(scene.images).to.exist;
         expect(scene.images[0]).to.exist;
 
@@ -64,12 +66,13 @@ describe('load textures', () => {
     expect(scn.textureOptions.length).to.eql(1);
     expect(scn.textureOptions[0]).not.to.be.instanceof(Texture);
     expect(texOpt).to.eql(scn.textureOptions[0]);
-    const comp = await player.play(scn);
+    const comp = player.play(scn);
 
     expect(comp.textures.length).to.eql(1);
     expect(comp.textures[0]).to.be.instanceof(Texture);
     expect(spy).to.has.been.called.once;
   });
+
   it('load images textures config', async () => {
     const a = {
       'images': [{ 'url': 'https://gw.alipayobjects.com/zos/gltf-asset/65735550218203/image01.png' }],
@@ -126,7 +129,7 @@ describe('load textures', () => {
     expect(scn.textureOptions.length).to.eql(2);
     expect(scn.textureOptions[0]).not.to.be.instanceof(Texture);
     expect(texOpt).to.eql(scn.textureOptions[0]);
-    const comp = await player.play(scn);
+    const comp = player.play(scn);
 
     expect(comp.textures.length).to.eql(2);
     expect(comp.textures[0]).to.be.instanceof(Texture);
@@ -195,7 +198,7 @@ describe('load textures', () => {
     expect(scn.textureOptions.length).to.eql(2);
     expect(scn.textureOptions[0]).not.to.be.instanceof(Texture);
     expect(texOpt).to.eql(scn.textureOptions[0]);
-    let comp = await player.play(scn, { keepResource: true });
+    let comp = player.play(scn, { keepResource: true });
 
     expect(comp.textures.length).to.eql(2);
     expect(comp.textures[0]).to.be.instanceof(Texture);
@@ -210,7 +213,7 @@ describe('load textures', () => {
     comp.dispose();
     const texs = scn.textureOptions;
 
-    comp = await player.play(scn);
+    comp = player.play(scn);
     expect(comp.textures.length).to.eql(2);
     expect(comp.textures[0]).to.be.instanceof(Texture);
     expect(comp.textures[1]).to.be.instanceof(Texture);
@@ -333,7 +336,7 @@ describe('load textures', () => {
     }, VFXItem, true);
     const scn = await player.loadScene(a);
 
-    await player.play(scn);
+    player.play(scn);
     expect(scn.bins).to.exist;
     expect(scn.bins[0]).to.be.an.instanceof(ArrayBuffer);
     expect(spy).to.has.been.called.twice;
@@ -389,8 +392,9 @@ describe('load textures', () => {
 
     expect(scn.textureOptions[0]).to.be.an.instanceof(Texture);
     expect(scn.images[0]).not.to.be.an.instanceof(Texture);
-    await player.play(scn);
+    player.play(scn);
   });
+
   it('load 2d tex without flipY', async () => {
     const a = {
       'compositionId': 1,
@@ -433,6 +437,7 @@ describe('load textures', () => {
 
     expect(!!scn.textureOptions[0].flipY).to.be.false;
   });
+
   it('load cube textures', async () => {
     const a = {
       'compositionId': 1,

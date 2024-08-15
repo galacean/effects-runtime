@@ -3,7 +3,7 @@ import { Player, SpriteComponent } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('sprite item api', () => {
+describe('core/plugins/sprite/item', () => {
   let player: Player;
 
   before(() => {

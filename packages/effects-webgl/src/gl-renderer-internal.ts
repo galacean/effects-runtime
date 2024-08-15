@@ -202,7 +202,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   }
 
   /**创建包裹VAO对象。 */
-  createVAO (name: string): GLVertexArrayObject | undefined {
+  createVAO (name?: string): GLVertexArrayObject | undefined {
     const ret = new GLVertexArrayObject(this.engine, name);
 
     return ret;

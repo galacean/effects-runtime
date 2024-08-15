@@ -36,7 +36,7 @@ const cube2: TextureFactorySourceFrom = {
   ]],
 };
 
-describe('serialize', () => {
+describe('helper/serialize', () => {
   it('serialize geometry props', () => {
     const aPoint = new Float32Array([1, 2, 3, 4]);
     const aIndex = new Uint8Array([0, 1, 2, 2, 3, 0]);

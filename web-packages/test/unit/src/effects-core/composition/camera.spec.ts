@@ -3,7 +3,7 @@ import { Player, CameraController, spec, math } from '@galacean/effects';
 const { Vector3 } = math;
 const { expect } = chai;
 
-describe('camera item', () => {
+describe('core/composition/camera/item', () => {
   let player: Player;
 
   before(() => {

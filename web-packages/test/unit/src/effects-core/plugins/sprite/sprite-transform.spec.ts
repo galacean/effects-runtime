@@ -3,7 +3,7 @@ import { loadSceneAndPlay, sanitizeNumbers } from './utils';
 
 const { expect } = chai;
 
-describe('sprite transform', () => {
+describe('core/plugins/sprite/transform', () => {
   let player: Player;
 
   before(() => {

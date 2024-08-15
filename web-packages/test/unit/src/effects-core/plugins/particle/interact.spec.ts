@@ -4,7 +4,7 @@ import { Player, math } from '@galacean/effects';
 const { Vector3 } = math;
 const { expect } = chai;
 
-describe('effects-core/plugins/particle-interaction', () => {
+describe('core/plugins/particle/interaction', () => {
   const canvas = document.createElement('canvas');
   const width = 512, height = 512;
 
