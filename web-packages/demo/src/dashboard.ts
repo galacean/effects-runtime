@@ -29,21 +29,6 @@ const jsons = [
 jsons.push(cubeTextures);
 
 (async () => {
-  // jsons.forEach(async json => {
-  //   try {
-  //     const container = createContainer();
-  //     const player = new Player({
-  //       container,
-  //       // renderFramework: 'webgl',
-  //     });
-
-  //     await player.loadScene(json);
-  //   } catch (e) {
-  //     console.error('biz', e);
-  //     // do something
-  //   }
-  // });
-
   try {
     const container = createContainer();
     const player = new Player({
@@ -65,6 +50,21 @@ jsons.push(cubeTextures);
   } catch (e) {
     console.error('biz', e);
   }
+
+  await Promise.all(jsons.map(async json => {
+    try {
+      const container = createContainer();
+      const player = new Player({
+        container,
+        renderFramework: 'webgl2',
+      });
+
+      await player.loadScene(json);
+    } catch (e) {
+      console.error('biz', e);
+      // do something
+    }
+  }));
 })();
 
 function createContainer () {

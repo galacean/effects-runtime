@@ -16,6 +16,16 @@ const container = document.getElementById('J-container');
     player.on('message', e => {
       console.info(`item [${e.name}] trigger message, type [${e.phrase}].`);
     });
+    player.on('update', e => {
+      document.getElementById('J-playerState')!.innerText = `player is ${e.playing ? 'playing' : 'paused'}`;
+    });
+
+    document.getElementById('J-pauseBtn')?.addEventListener('click', () => {
+      player.pause();
+    });
+    document.getElementById('J-resumeBtn')?.addEventListener('click', () => {
+      void player.resume();
+    });
 
     await player.loadScene(json);
   } catch (e) {
