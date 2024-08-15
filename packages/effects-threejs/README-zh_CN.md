@@ -72,6 +72,26 @@ function render () {
 render();
 ```
 
+## 事件系统
+
+ThreeDisplayObject 的事件系统沿用自 THREE.js，事件触发形式为 `dispatch` 参考代码如下：
+
+``` ts
+import { ThreeDisplayObject } from '@galacean/effects-threejs';
+
+const displayObject = new ThreeDisplayObject(renderer.getContext(), { width, height });
+// 加载 Galacean Effects 产物
+const composition = await displayObject.loadScene('./xxx.json');
+// 将绘制对象添加到 THREE 的 scene 中
+scene.add(displayObject);
+
+// 以 end 事件为例
+displayObject.addEventListener('end', () => {
+  // 示例代码
+  console.info('composition is end')
+});
+```
+
 ## API 文档
 
 [Galacean Effects THREE.JS API 文档](https://galacean.antgroup.com/effects/#/api/modules_galacean_effects_threejs)
