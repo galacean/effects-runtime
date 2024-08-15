@@ -11,16 +11,6 @@ export interface ShaderCodeOptions {
 }
 
 export class ShaderFactory {
-  /** @internal */
-  static readonly _shaderExtension = [
-    'GL_EXT_shader_texture_lod',
-    'GL_OES_standard_derivatives',
-    'GL_EXT_draw_buffers',
-    'GL_EXT_frag_depth',
-  ]
-    .map(e => `#extension ${e} : enable\n`)
-    .join('');
-
   static registerInclude (includeName: string, includeSource: string) {
     if (shaderLib[includeName]) {
       logger.warn(`The "${includeName}" shader include already exist`);
