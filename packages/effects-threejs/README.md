@@ -74,10 +74,7 @@ render();
 
 ## Event System
 
-The event system of ThreeDisplayObject is inherited from THREE.js, and events are triggered in the form of dispatch. Refer to the code below.
-
-- [THREE.js Event Reference](https://threejs.org/docs/index.html?q=event#api/en/core/EventDispatcher)
-- [GE Other Event References](https://github.com/galacean/effects-runtime/blob/main/web-packages/demo/src/inspire/threejs.ts)
+The event system of ThreeDisplayObject is inherited from THREE.js, and events are triggered in the form of dispatch. Refer to the code below:
 
 ```ts
 import { ThreeDisplayObject } from '@galacean/effects-threejs';

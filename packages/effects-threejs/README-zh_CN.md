@@ -74,9 +74,7 @@ render();
 
 ## 事件系统
 
-ThreeDisplayObject 的事件系统沿用自 THREE.js，事件触发形式为 `dispatch` 参考代码如下。
-- [THREE.js 事件参考](https://threejs.org/docs/index.html?q=event#api/en/core/EventDispatcher)
-- [GE 其他事件参考](https://github.com/galacean/effects-runtime/blob/main/web-packages/demo/src/inspire/threejs.ts)
+ThreeDisplayObject 的事件系统沿用自 THREE.js，事件触发形式为 `dispatch` 参考代码如下：
 
 ``` ts
 import { ThreeDisplayObject } from '@galacean/effects-threejs';
@@ -88,7 +86,7 @@ const composition = await displayObject.loadScene('./xxx.json');
 scene.add(displayObject);
 
 // 以 end 事件为例
-displayObject.addEventListener('end', ()=>{
+displayObject.addEventListener('end', () => {
   // 示例代码
   console.info('composition is end')
 });
