@@ -23,7 +23,6 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-
   // material存放的uniform数据。
   private floats: Record<string, number> = {};
   private ints: Record<string, number> = {};
@@ -656,8 +655,8 @@ export class GLMaterial extends Material {
       const scaleOffset = this.getVector4(name + '_ST');
 
       if (scaleOffset) {
-        textureProperties.scale = { x:scaleOffset.x, y:scaleOffset.y };
-        textureProperties.offset = { x:scaleOffset.z, y:scaleOffset.w };
+        textureProperties.scale = { x: scaleOffset.x, y: scaleOffset.y };
+        textureProperties.offset = { x: scaleOffset.z, y: scaleOffset.w };
         delete materialData.vector4s[name + '_ST'];
       }
     }

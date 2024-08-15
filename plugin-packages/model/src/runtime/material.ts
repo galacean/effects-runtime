@@ -127,11 +127,6 @@ export abstract class PMaterialBase extends PObject {
     if (inFeatureList !== undefined) {
       finalFeatureList.push(...inFeatureList);
     }
-    const isWebGL2 = PGlobalState.getInstance().isWebGL2;
-
-    if (isWebGL2) {
-      finalFeatureList.push('WEBGL2');
-    }
 
     // 目前只有 PRB 和 Unlit 是需要 EDITOR_TRANSFORM，适配编辑器的视口 Offset
     // 阴影 Pass 的渲染是不需要，所以这里特殊处理下
@@ -151,11 +146,6 @@ export abstract class PMaterialBase extends PObject {
 
     if (inMacroList !== undefined) {
       finalMacroList.push(...inMacroList);
-    }
-    const isWebGL2 = PGlobalState.getInstance().isWebGL2;
-
-    if (isWebGL2) {
-      finalMacroList.push({ name: 'WEBGL2' });
     }
 
     // 目前只有 PRB 和 Unlit 是需要 EDITOR_TRANSFORM，适配编辑器的视口 Offset

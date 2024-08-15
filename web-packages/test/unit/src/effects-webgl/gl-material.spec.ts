@@ -1,12 +1,19 @@
-// @ts-nocheck
-import { createShaderWithMacros, RenderFrame, RenderPass, glContext, DestroyOptions, TextureLoadAction, ShaderType, Texture, Camera, Mesh, math, GLSLVersion } from '@galacean/effects-core';
+import type { Engine, ShaderWithSource } from '@galacean/effects-core';
+import {
+  RenderFrame, glContext, DestroyOptions, TextureLoadAction, Texture, Camera, Mesh, math,
+  GLSLVersion,
+} from '@galacean/effects-core';
+import type { GLTexture, GLShaderVariant } from '@galacean/effects-webgl';
 import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
 
 const { Vector4 } = math;
 const { expect, assert } = chai;
 
 describe('gl-material', () => {
-  let canvas, renderer, gl, engine;
+  let canvas: HTMLCanvasElement;
+  let renderer: GLRenderer;
+  let gl: WebGLRenderingContext | WebGL2RenderingContext;
+  let engine: Engine;
   const vs = `attribute vec2 aPosition;
   void main() {
     gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
@@ -29,9 +36,12 @@ describe('gl-material', () => {
 
   after(() => {
     renderer.dispose();
+    // @ts-expect-error
     renderer = null;
     canvas.remove();
+    // @ts-expect-error
     canvas = null;
+    // @ts-expect-error
     gl = null;
   });
 
@@ -39,8 +49,6 @@ describe('gl-material', () => {
     const sb = renderer.pipelineContext.shaderLibrary;
 
     sb.dispose();
-    sb.gl = renderer.glRenderer.gl;
-    sb.renderer = renderer.glRenderer;
   });
 
   // 使用自定义的material states
@@ -68,33 +76,32 @@ describe('gl-material', () => {
       }, renderer);
 
     material.setInt('u_Test', 1);
-    material.initialize(renderer.engine);
+    material.initialize();
     material.setupStates(renderer.pipelineContext);
-    const states = material.glMaterialState;
 
-    assert.equal(states.sampleAlphaToCoverage, false);
-    assert.equal(states.blending, true);
+    assert.equal(material.sampleAlphaToCoverage, false);
+    assert.equal(material.blending, true);
 
-    expect(states.blendEquationParameters).to.eql([glContext.FUNC_ADD, glContext.FUNC_SUBTRACT]);
-    expect(states.blending).to.be.true;
-    expect(states.blendFunctionParameters).to.eql([glContext.ZERO, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.ZERO]);
-    assert.equal(states.culling, true);
-    expect(states.blendColor).to.eql([0, 0.5, 1.0, 0]);
-    expect(states.colorMask).to.eql([true, true, true, true]);
-    assert.equal(states.depthTest, false);
-    assert.equal(states.depthMask, true);
-    assert.equal(states.depthFunc, glContext.LESS);
-    expect(states.depthRange).to.eql([0, 0.7]);
-    assert.equal(states.cullFace, glContext.FRONT);
-    assert.equal(states.frontFace, glContext.CW);
+    expect(material.blendEquation).to.eql([glContext.FUNC_ADD, glContext.FUNC_SUBTRACT]);
+    expect(material.blending).to.be.true;
+    expect(material.blendFunction).to.eql([glContext.ZERO, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE_MINUS_SRC_ALPHA, glContext.ZERO]);
+    assert.equal(material.culling, true);
+    expect(material.blendColor).to.eql([0, 0.5, 1.0, 0]);
+    expect(material.colorMask).to.eql([true, true, true, true]);
+    assert.equal(material.depthTest, false);
+    assert.equal(material.depthMask, true);
+    assert.equal(material.depthFunc, glContext.LESS);
+    expect(material.depthRange).to.eql([0, 0.7]);
+    assert.equal(material.cullFace, glContext.FRONT);
+    assert.equal(material.frontFace, glContext.CW);
 
-    assert.equal(states.stencilTest, true);
-    expect(states.stencilFunc).to.eql([glContext.ALWAYS, glContext.ALWAYS]);
-    expect(states.stencilMask).to.eql([0xff, 0xff]);
+    assert.equal(material.stencilTest, true);
+    expect(material.stencilFunc).to.eql([glContext.ALWAYS, glContext.ALWAYS]);
+    expect(material.stencilMask).to.eql([0xff, 0xff]);
 
-    // expect(states.stencilOpFail).to.eql([glContext.INCR, glContext.KEEP]);
-    // expect(states.stencilOpZFail).to.eql([glContext.INCR, glContext.KEEP]);
-    // expect(states.stencilOpZPass).to.eql([glContext.INCR, glContext.KEEP]);
+    // expect(material.stencilOpFail).to.eql([glContext.INCR, glContext.KEEP]);
+    // expect(material.stencilOpZFail).to.eql([glContext.INCR, glContext.KEEP]);
+    // expect(material.stencilOpZPass).to.eql([glContext.INCR, glContext.KEEP]);
   });
 
   // blending关闭 m
@@ -356,10 +363,9 @@ describe('gl-material', () => {
 
     material.setTexture('u_Tex', texture);
     expect(material.getTexture('u_Tex')).to.deep.equal(texture);
-    material.initialize(renderer.engine);
+    material.initialize();
     expect(material).not.eql(undefined);
     material.dispose({
-      blocks: DestroyOptions.destroy,
       textures: DestroyOptions.destroy,
     });
     expect(material.isDestroyed).to.be.true;
@@ -373,7 +379,7 @@ describe('gl-material', () => {
     const material = generateGLMaterial(engine, shader, {}, renderer);
 
     material.setTexture('u_Tex', texture);
-    material.initialize(renderer.engine);
+    material.initialize();
     expect(material.getTexture('u_Tex')).to.deep.equal(texture);
     expect(material).not.eql(undefined);
     material.dispose();
@@ -389,7 +395,7 @@ describe('gl-material', () => {
     const material = generateGLMaterial(engine, shader, {}, renderer);
 
     material.setTexture('u_Tex', texture);
-    material.initialize(renderer.engine);
+    material.initialize();
     expect(material.getTexture('u_Tex')).to.deep.equal(texture);
     expect(material).not.eql(undefined);
     material.dispose({
@@ -406,7 +412,7 @@ describe('gl-material', () => {
     const material = generateGLMaterial(engine, shader, {}, renderer);
 
     material.setTexture('u_Tex', texture);
-    material.initialize(renderer.engine);
+    material.initialize();
     expect(material).not.eql(undefined);
     material.dispose({
       textures: DestroyOptions.keep,
@@ -418,31 +424,29 @@ describe('gl-material', () => {
 
   // material创建后使用gl进行初始化
   it('material initialize with glRenderer', async () => {
-    const material = new GLMaterial(
-      engine,
-      {
-        shader: {
-          vertex: vs,
-          fragment: fs,
-        },
-        states: {},
-      });
-    const texture = generateTexture(engine);
-    const texture2 = generateTexture(engine);
+    const material = new GLMaterial(engine, {
+      shader: {
+        vertex: vs,
+        fragment: fs,
+      },
+    });
+    const texture = generateTexture(engine) as GLTexture;
+    const texture2 = generateTexture(engine) as GLTexture;
 
+    // @ts-expect-error
     expect(texture.gl).to.not.exist;
     material.setTexture('u_Tex', texture);
     material.setTexture('u_TexArr', texture2);
     expect(material.shaderVariant).to.eql(undefined);
 
-    material.initialize(renderer.engine);
+    material.initialize();
     expect(texture.textureBuffer).to.be.an.instanceof(WebGLTexture);
     const texArr = material.getTexture('u_TexArr');
 
     expect(texArr).to.deep.equals(texture2);
     expect(texture2.textureBuffer).to.be.an.instanceof(WebGLTexture);
-    expect(material.shaderVariant.initialized).to.be.true;
-    expect(material.shaderVariant.compileResult.status).to.eql(1);
+    expect((material.shaderVariant as GLShaderVariant).initialized).to.be.true;
+    expect((material.shaderVariant as GLShaderVariant).compileResult.status).to.eql(1);
 
     material.dispose();
   });
@@ -541,8 +545,7 @@ describe('gl-material', () => {
         material: new GLMaterial(
           engine,
           {
-            shader: { vertex: vs, fragment: fs, glslVersion:GLSLVersion.GLSL3 },
-            states: {},
+            shader: { vertex: vs, fragment: fs, glslVersion: GLSLVersion.GLSL3 },
           }),
         geometry: new GLGeometry(
           engine,
@@ -572,7 +575,7 @@ describe('gl-material', () => {
       });
     const renderFrame = new RenderFrame({
       renderer,
-      camera: new Camera(),
+      camera: new Camera(''),
       clearAction: {
         colorAction: TextureLoadAction.clear,
         clearColor: [0, 0, 0, 0],
@@ -595,13 +598,13 @@ describe('gl-material', () => {
 
     expect(new Float32Array(data2)).to.eqls(new Float32Array(testData));
     renderer.renderRenderFrame(renderFrame);
-    mesh.material.initialize(renderer.engine);
-    mesh.geometry.initialize(renderer.engine);
+    mesh.material.initialize();
+    mesh.geometry.initialize();
     mesh.render(renderer);
 
     const material = mesh.material as GLMaterial;
-    const program = material.shaderVariant.program.program;
-    const loc = gl.getUniformLocation(program, 'u_pos');
+    const program = (material.shaderVariant as GLShaderVariant).program.program;
+    const loc = gl.getUniformLocation(program, 'u_pos')!;
     const valData = gl.getUniform(program, loc);
 
     expect(new Float32Array(valData)).to.eqls(new Float32Array([1, 2, 3, 4]));
@@ -1532,7 +1535,14 @@ describe('gl-material', () => {
   //   });
 });
 
-function generateMesh (engine, meshName, vs, fs, macros = [], shared = true) {
+function generateMesh (
+  engine: Engine,
+  meshName: string,
+  vs: string,
+  fs: string,
+  macros = [],
+  shared = true,
+) {
   return new Mesh(
     engine,
     {
@@ -1541,12 +1551,11 @@ function generateMesh (engine, meshName, vs, fs, macros = [], shared = true) {
         engine,
         {
           shader: {
-            vertex: createShaderWithMacros(macros, vs, ShaderType.vertex),
-            fragment: createShaderWithMacros(macros, fs, ShaderType.fragment),
+            vertex: vs,
+            fragment: fs,
             macros,
             shared,
           },
-          states: {},
         }),
       geometry: new GLGeometry(
         engine,
@@ -1569,118 +1578,113 @@ function generateMesh (engine, meshName, vs, fs, macros = [], shared = true) {
     });
 }
 
-function generateMeshAndUBO (renderer, keeUBOData = true) {
-  const vs = `#version 300 es
-layout(location = 0) in vec2 aPosition;
-out vec4 v_pos;
+// function generateMeshAndUBO (
+//   renderer,
+//   keeUBOData = true,
+// ) {
+//   const vs = `#version 300 es
+// layout(location = 0) in vec2 aPosition;
+// out vec4 v_pos;
 
-void main() {
-  gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
-}
-`;
+// void main() {
+//   gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
+// }
+// `;
 
-  const fs = `
-#version 300 es
-precision highp float;
+//   const fs = `
+// #version 300 es
+// precision highp float;
 
-layout(std140) uniform Test {
-  float f;
-  float fa[2];
-  vec2 v2;
-  vec3 v3;
-  vec4 v4;
-  vec2 v2a[3];
-  mat2 m2a[3];
-  mat2x3 m23a[3];
-};
-out vec4 outColor;
-void main() {
-  outColor += v4;
-}
-`;
-  const engine = renderer.engine;
-  const material = new GLMaterial(
-    engine,
-    {
-      shader: { vertex: vs, fragment: fs },
-      states: {},
-    });
-  const mesh = new Mesh(
-    engine,
-    {
-      material: material,
-      geometry: new GLGeometry(
-        engine,
-        {
-          attributes: {
-            aPoint: {
-              size: 2,
-              data: new Float32Array([
-                -1.0, 1.0, 0, 1,
-                -1.0, -1.0, 0, 0,
-                1.0, 1.0, 1, 1,
-                1.0, -1.0, 1, 0,
-              ]),
-              stride: Float32Array.BYTES_PER_ELEMENT * 4,
-            },
-            aTexCoord: {
-              type: glContext.FLOAT,
-              size: 2,
-              stride: Float32Array.BYTES_PER_ELEMENT * 4,
-              offset: Float32Array.BYTES_PER_ELEMENT * 2,
-              dataSource: 'aPoint',
-            },
-          },
-          indices: { data: new Uint8Array([0, 1, 2, 2, 1, 3]) },
-          drawCount: 6,
-        }),
-    });
-  const renderPass = new RenderPass({
-    name: 'basic', priority: 8, meshes: [mesh], camera: { name: 'main' },
-  });
-  const renderFrame = new RenderFrame({
-    renderer,
-    renderPasses: [renderPass],
-    camera: new Camera(),
-    clearAction: {
-      colorAction: TextureLoadAction.clear,
-      clearColor: [0, 0, 0, 0],
-    },
-  });
+// layout(std140) uniform Test {
+//   float f;
+//   float fa[2];
+//   vec2 v2;
+//   vec3 v3;
+//   vec4 v4;
+//   vec2 v2a[3];
+//   mat2 m2a[3];
+//   mat2x3 m23a[3];
+// };
+// out vec4 outColor;
+// void main() {
+//   outColor += v4;
+// }
+// `;
+//   const engine = renderer.engine;
+//   const material = new GLMaterial(engine, {
+//     shader: { vertex: vs, fragment: fs },
+//   });
+//   const mesh = new Mesh(engine, {
+//     material,
+//     geometry: new GLGeometry(engine, {
+//       attributes: {
+//         aPoint: {
+//           size: 2,
+//           data: new Float32Array([
+//             -1.0, 1.0, 0, 1,
+//             -1.0, -1.0, 0, 0,
+//             1.0, 1.0, 1, 1,
+//             1.0, -1.0, 1, 0,
+//           ]),
+//           stride: Float32Array.BYTES_PER_ELEMENT * 4,
+//         },
+//         aTexCoord: {
+//           type: glContext.FLOAT,
+//           size: 2,
+//           stride: Float32Array.BYTES_PER_ELEMENT * 4,
+//           offset: Float32Array.BYTES_PER_ELEMENT * 2,
+//           dataSource: 'aPoint',
+//         },
+//       },
+//       indices: { data: new Uint8Array([0, 1, 2, 2, 1, 3]) },
+//       drawCount: 6,
+//     }),
+//   });
+//   const renderFrame = new RenderFrame({
+//     renderer,
+//     camera: new Camera(''),
+//     clearAction: {
+//       colorAction: TextureLoadAction.clear,
+//       clearColor: [0, 0, 0, 0],
+//     },
+//   });
 
-  const block = new GLMaterialDataBlock({ name: 'Test', keepUboData: keeUBOData });
+//   const block = new GLMaterialDataBlock({ name: 'Test', keepUboData: keeUBOData });
 
-  material.addDataBlock(block);
+//   material.addDataBlock(block);
 
-  block.setUniformValue('f', 1);
-  block.setUniformValue('fa', [1, 2]);
-  block.setUniformValue('v2', [3, 4]);
-  block.setUniformValue('v3', [5, 6, 7]);
-  block.setUniformValue('v4', [1, 2, 3, 1]);
-  block.setUniformValue('v2a', [1, 1, 2, 2, 3, 3]);
+//   block.setUniformValue('f', 1);
+//   block.setUniformValue('fa', [1, 2]);
+//   block.setUniformValue('v2', [3, 4]);
+//   block.setUniformValue('v3', [5, 6, 7]);
+//   block.setUniformValue('v4', [1, 2, 3, 1]);
+//   block.setUniformValue('v2a', [1, 1, 2, 2, 3, 3]);
 
-  return {
-    block,
-    material,
-    mesh,
-    renderFrame,
-  };
-}
+//   return {
+//     block,
+//     material,
+//     mesh,
+//     renderFrame,
+//   };
+// }
 
-function generateTexture (engine) {
+function generateTexture (engine: Engine) {
   const writePixelData = [255, 100, 50, 0];
   const buffer = new Uint8Array([1, 2, ...writePixelData, 3, 4]);
 
-  return Texture.createWithData(
-    engine,
-    { width: 1, height: 1, data: new Uint8Array(buffer.buffer, 2 * Uint8Array.BYTES_PER_ELEMENT, 4) },
-    {
-      format: glContext.RGBA,
-      type: glContext.UNSIGNED_BYTE,
-    }
-  );
+  return Texture.createWithData(engine, {
+    width: 1, height: 1, data: new Uint8Array(buffer.buffer, 2 * Uint8Array.BYTES_PER_ELEMENT, 4),
+  }, {
+    format: glContext.RGBA,
+    type: glContext.UNSIGNED_BYTE,
+  });
 }
-function generateGLMaterial (engine, shader, states, renderer) {
+function generateGLMaterial (
+  engine: Engine,
+  shader: ShaderWithSource,
+  states: Record<string, any>,
+  renderer: GLRenderer,
+) {
   const material = new GLMaterial(engine, { shader });
 
   material.sampleAlphaToCoverage = !!(states.sampleAlphaToCoverage);
@@ -1707,7 +1711,7 @@ function generateGLMaterial (engine, shader, states, renderer) {
   material.culling = states.cullFaceEnabled ?? true;
   material.cullFace = states.cullFace;
 
-  material.initialize(renderer.engine);
+  material.initialize();
   material.setupStates(renderer.pipelineContext);
 
   return material;
