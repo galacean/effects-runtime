@@ -51,7 +51,7 @@ jsons.push(cubeTextures);
     console.error('biz', e);
   }
 
-  jsons.forEach(async json => {
+  await Promise.all(jsons.map(async json => {
     try {
       const container = createContainer();
       const player = new Player({
@@ -64,7 +64,7 @@ jsons.push(cubeTextures);
       console.error('biz', e);
       // do something
     }
-  });
+  }));
 })();
 
 function createContainer () {
