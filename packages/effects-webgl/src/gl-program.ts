@@ -70,7 +70,7 @@ export class GLProgram implements Disposable {
     let vao: GLVertexArrayObject | undefined;
 
     if (geometry.vaos[programId]) {
-      vao = geometry.vaos[programId]!;
+      vao = geometry.vaos[programId];
     } else {
       vao = new GLVertexArrayObject(this.engine, `${geometry.name}-${programId}`);
       if (!vao) {
@@ -116,12 +116,16 @@ export class GLProgram implements Disposable {
     const num = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
 
     for (let i = 0; i < num; i++) {
-      const { name, type, size } = gl.getActiveAttrib(program, i)!;
-      const loc = gl.getAttribLocation(program, name);
+      const info = gl.getActiveAttrib(program, i);
 
-      attribMap[name] = {
-        type, name, size, loc,
-      };
+      if (info) {
+        const { name, type, size } = info;
+        const loc = gl.getAttribLocation(program, name);
+
+        attribMap[name] = {
+          type, name, size, loc,
+        };
+      }
     }
 
     return attribMap;

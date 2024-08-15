@@ -123,9 +123,8 @@ export class EffectComponent extends RendererComponent {
 }
 
 function geometryToTriangles (geometry: Geometry) {
-  const indices = geometry.getIndexData()!;
-  const vertices = geometry.getAttributeData('aPos')!;
-
+  const indices = geometry.getIndexData() ?? [];
+  const vertices = geometry.getAttributeData('aPos') ?? [];
   const res: TriangleLike[] = [];
 
   for (let i = 0; i < indices.length; i += 3) {

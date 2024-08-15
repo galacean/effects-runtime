@@ -3,7 +3,8 @@ import type { Engine } from '../../engine';
 import type { Renderer, SharedShaderWithSource } from '../../render';
 import { GLSLVersion } from '../../render';
 import { Item } from '../../vfx-item';
-import { AbstractPlugin } from '../index';
+import type { ParticleSystemOptions } from './particle-system';
+import { AbstractPlugin } from '../plugin';
 import { getParticleMeshShader, modifyMaxKeyframeShader } from './particle-mesh';
 import { getTrailMeshShader } from './trail-mesh';
 import type { PrecompileOptions } from '../../plugin-system';
@@ -15,7 +16,7 @@ export class ParticleLoader extends AbstractPlugin {
     const gpuCapability = renderer.engine.gpuCapability;
     const { level } = gpuCapability;
     const { env } = options ?? {};
-    const shaderLibrary = renderer.getShaderLibrary()!;
+    const shaderLibrary = renderer.getShaderLibrary();
     const items: spec.ParticleItem[] = [];
     const shaders: SharedShaderWithSource[] = [];
     let maxFragmentCount = 0;
@@ -42,7 +43,7 @@ export class ParticleLoader extends AbstractPlugin {
         const shader = getTrailMeshShader(item.content.trails, item.content.options.maxCount, item.name, gpuCapability, env);
 
         shader.glslVersion = level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1;
-        shaderLibrary.addShader(shader);
+        shaderLibrary?.addShader(shader);
       }
     });
     shaders.forEach(shader => {
@@ -52,45 +53,14 @@ export class ParticleLoader extends AbstractPlugin {
       } else {
         shader.glslVersion = GLSLVersion.GLSL1;
       }
-      shaderLibrary.addShader(shader);
+      shaderLibrary?.addShader(shader);
     });
     if (level === 2) {
       items.forEach(item => {
-        // @ts-expect-error
-        item.content.options.meshSlots = [maxVertexCount, maxFragmentCount];
+        (item.content.options as ParticleSystemOptions).meshSlots = [maxVertexCount, maxFragmentCount];
       });
     }
 
     return Promise.resolve();
   }
-
-  // override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<ParticleSystem>) {
-  //   // if (VFXItem.isParticle(item)) {
-  //   //   this.add(item.content);
-  //   // }
-  // }
-
-  // override onCompositionItemRemoved (composition: Composition, item: VFXItem<ParticleSystem>) {
-  //   // if (VFXItem.isParticle(item)) {
-  //   //   if (item.content) {
-  //   //     this.remove(item.content, composition.renderFrame);
-  //   //   }
-  //   // }
-  // }
-
-  // override prepareRenderFrame (composition: Composition, pipeline: RenderFrame): boolean {
-  //   // this.meshes.forEach(mesh => pipeline.addMeshToDefaultRenderPass(mesh));
-
-  //   return false;
-  // }
-
-  // private add (particle: ParticleSystem) {
-  //   // particle.meshes.forEach(mesh => addItem(this.meshes, mesh));
-  // }
-
-  // private remove (particle: ParticleSystem, frame: RenderFrame) {
-  //   // particle.meshes.forEach(mesh => {
-  //   //   removeItem(this.meshes, mesh);
-  //   // });
-  // }
 }

@@ -1,4 +1,4 @@
-import { spec } from '@galacean/effects';
+import { assertExist, spec } from '@galacean/effects';
 import type { TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps } from '@galacean/effects';
 
 export async function loadMipmaps (
@@ -74,8 +74,14 @@ export function concatBuffers (
   const ret = new Uint8Array(length);
 
   buffers.forEach(buffer => {
-    const [, offset, byteLength] = bufferInfo.get(buffer)!;
-    const source = buffer instanceof ArrayBuffer ? new Uint8Array(buffer, 0, byteLength) : new Uint8Array(buffer.buffer, buffer.byteOffset, byteLength);
+    const info = bufferInfo.get(buffer);
+
+    assertExist(info);
+
+    const [, offset, byteLength] = info;
+    const source = buffer instanceof ArrayBuffer ?
+      new Uint8Array(buffer, 0, byteLength) :
+      new Uint8Array(buffer.buffer, buffer.byteOffset, byteLength);
 
     ret.set(source, offset);
   });

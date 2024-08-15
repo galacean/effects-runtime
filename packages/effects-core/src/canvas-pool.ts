@@ -1,4 +1,4 @@
-import { addItem } from './utils';
+import { addItem, assertExist } from './utils';
 import { getConfig, TEMPLATE_USE_OFFSCREEN_CANVAS } from './config';
 
 class CanvasPool {
@@ -15,7 +15,11 @@ class CanvasPool {
 
   getCanvas (): HTMLCanvasElement {
     if (this.elements.length !== 0) {
-      return this.elements.shift()!;
+      const canvas = this.elements.shift();
+
+      assertExist(canvas);
+
+      return canvas;
     }
     if (getConfig(TEMPLATE_USE_OFFSCREEN_CANVAS)) {
       return window._createOffscreenCanvas(10, 10);

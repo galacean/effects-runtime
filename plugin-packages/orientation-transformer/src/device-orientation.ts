@@ -127,9 +127,9 @@ export class DeviceOrientation {
       if (this.stoped) {
         return;
       }
-      alpha = e.alpha!; // 垂直于屏幕的轴 0 ~ 360
-      beta = e.beta!; // 横向 X 轴 -180 ~ 180
-      gamma = e.gamma!; // 纵向 Y 轴 -90 ~ 90
+      alpha = e.alpha || 0; // 垂直于屏幕的轴 0 ~ 360
+      beta = e.beta || 0; // 横向 X 轴 -180 ~ 180
+      gamma = e.gamma || 0; // 纵向 Y 轴 -90 ~ 90
 
       isInValidDegRange = angleLimit.call(this, {
         alpha,

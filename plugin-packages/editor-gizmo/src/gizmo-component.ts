@@ -54,9 +54,9 @@ export class GizmoComponent extends RendererComponent {
 
       return;
     }
-    const composition = this.item.composition!;
+    const composition = this.item.composition;
 
-    for (const plugin of composition.pluginSystem.plugins) {
+    for (const plugin of composition?.pluginSystem.plugins ?? []) {
       if (plugin.name === 'editor-gizmo') {
         this.gizmoPlugin = plugin as EditorGizmoPlugin;
       }
@@ -115,7 +115,7 @@ export class GizmoComponent extends RendererComponent {
       default:
         break;
     }
-    composition.loaderData.gizmoItems.push(this.item);
+    composition?.loaderData.gizmoItems.push(this.item);
   }
 
   override update (dt: number): void {
@@ -364,8 +364,8 @@ export class GizmoComponent extends RendererComponent {
       const originMesh = Mesh.create(
         engine,
         {
-          geometry:psubMesh.geometry.geometry,
-          material:psubMesh.material.effectMaterial,
+          geometry: psubMesh.geometry.geometry,
+          material: psubMesh.material.effectMaterial,
           priority: 3000,
         });
       const mesh = this.wireframeMesh = createModeWireframe(engine, originMesh, this.color);
