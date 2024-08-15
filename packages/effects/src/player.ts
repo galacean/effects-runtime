@@ -322,7 +322,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const assetManager = new AssetManager(opts);
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    // 在 assetManager.1 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
+    // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
     engine.clearResources();
     this.assetManagers.push(assetManager);
     const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
@@ -687,7 +687,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   lost = (e: Event) => {
     this.ticker?.pause();
-    this.destroyBuiltinObjects();
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
     this.emit('webglcontextlost', e);
@@ -700,7 +699,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   restore = async () => {
     this.renderer.restore();
-    this.builtinObjects.push(generateWhiteTexture(this.renderer.engine));
     this.compositions = await Promise.all(this.compositions.map(async composition => {
       const { time: currentTime, url, speed, keepResource, reusable, renderOrder, transform, videoState } = composition;
       const newComposition = await this.loadScene(url);
