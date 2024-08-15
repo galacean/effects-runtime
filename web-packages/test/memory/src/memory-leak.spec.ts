@@ -41,7 +41,7 @@ describe('single scene', function () {
       });
       const speed = 0.5 + 4.5 * Math.random();
       const comp = await player.loadScene(url, { timeout: 100, speed });
-      const duration = (comp.content.duration + 5) * Math.random();
+      const duration = (comp.getDuration() + 5) * Math.random();
 
       await sleep(duration * 1000 / speed);
       player.pause();
@@ -111,7 +111,7 @@ describe('multiple scenes', function () {
       for (let j = 0; j < count; j++) {
         const comp = compList[j];
 
-        leftTime = Math.max(leftTime, comp.content.duration);
+        leftTime = Math.max(leftTime, comp.getDuration());
       }
       const speed = 0.5 + 2.0 * Math.random();
 

@@ -1,10 +1,10 @@
-// @ts-nocheck
+import type { GeometryProps, TextureFactorySourceFrom, spec } from '@galacean/effects';
 import { loadImage, getDefaultTextureFactory, TextureSourceType } from '@galacean/effects';
 import { serializeTextures, serializeGeometries, deserializeGeometry, concatArrayBuffers, typedArrayFromBinary } from '@galacean/effects-helper';
 
 const { expect } = chai;
 
-const cube1 = {
+const cube1: TextureFactorySourceFrom = {
   type: TextureSourceType.image,
   target: WebGLRenderingContext.TEXTURE_CUBE_MAP,
   map: [
@@ -16,7 +16,7 @@ const cube1 = {
     'https://gw.alipayobjects.com/zos/gltf-asset/66768539337973/specular_negz_6_4x4.jpg',
   ],
 };
-const cube2 = {
+const cube2: TextureFactorySourceFrom = {
   type: TextureSourceType.mipmaps,
   target: WebGLRenderingContext.TEXTURE_CUBE_MAP,
   maps: [[
@@ -57,7 +57,7 @@ describe('serialize', () => {
       mode: 6,
       indices: { data: aIndex, releasable: true },
     };
-    const result = serializeGeometries([geometryProps]);
+    const result = serializeGeometries([geometryProps as GeometryProps]);
 
     expect(geometryProps.indices).to.deep.equals({ data: aIndex, releasable: true });
     expect(geometryProps.attributes.aPoint).to.deep.equals({ data: aPoint, size: 4 });
@@ -92,7 +92,7 @@ describe('serialize', () => {
   it('geometry combine same data', function () {
     const aPoint = new Float32Array([1, 2, 3, 4]);
     const aIndex = new Uint8Array([0, 1, 2, 2, 3, 0]);
-    const geometryOptions = {
+    const geometryOptions: GeometryProps = {
       attributes: {
         aPoint: {
           data: aPoint,
@@ -117,9 +117,9 @@ describe('serialize', () => {
     const geo0 = deserializeGeometry(result.geometries[0], [result.data]);
     const geo1 = deserializeGeometry(result.geometries[1], [result.data]);
 
-    expect(geo0.indices.data.buffer).to.eql(geo1.indices.data.buffer);
-    expect(geo0.indices.data).to.deep.equals(geo1.indices.data);
-    expect(geo0.indices.data == geo1.indices.data).to.be.false;
+    expect(geo0.indices?.data.buffer).to.eql(geo1.indices?.data.buffer);
+    expect(geo0.indices?.data).to.deep.equals(geo1.indices?.data);
+    expect(geo0.indices?.data == geo1.indices?.data).to.be.false;
   });
 
   it('serialize 2D texture source from', async () => {
@@ -180,12 +180,12 @@ describe('serialize', () => {
     const buffer0 = new ArrayBuffer(7);
     const buffer1 = new ArrayBuffer(3);
     const buffer2 = new Uint8Array(11);
-    const p0 = [20, [0, 0, 3]];
-    const p1 = [20, [0, 3]];
-    const p2 = [20, [1]];
-    const p3 = [20, [2, 0, 2]];
-    const p4 = [20, [2, 3, 7]];
-    const p5 = [20, [2, 10]];
+    const p0: spec.BinaryPointer = [20, [0, 0, 3]];
+    const p1: spec.BinaryPointer = [20, [0, 3]];
+    const p2: spec.BinaryPointer = [20, [1]];
+    const p3: spec.BinaryPointer = [20, [2, 0, 2]];
+    const p4: spec.BinaryPointer = [20, [2, 3, 7]];
+    const p5: spec.BinaryPointer = [20, [2, 10]];
     const result = concatArrayBuffers([buffer0, buffer1, buffer2], [p0, p1, p2, p3, p4, p5]);
 
     expect(result.data.byteLength).to.eql(padding4(buffer0.byteLength) + padding4(buffer1.byteLength) + padding4(buffer2.byteLength));
@@ -201,12 +201,12 @@ describe('serialize', () => {
     const buffer0 = new ArrayBuffer(7);
     const buffer1 = new ArrayBuffer(3);
     const buffer2 = new Uint8Array(11);
-    const p0 = [20, [0, 0, 3]];
-    const p1 = [20, [0, 3]];
-    const p2 = [20, [1]];
-    const p3 = [20, [2, 0, 2]];
-    const p4 = [20, [2, 3, 7]];
-    const p5 = [20, [2, 10]];
+    const p0: spec.BinaryPointer = [20, [0, 0, 3]];
+    const p1: spec.BinaryPointer = [20, [0, 3]];
+    const p2: spec.BinaryPointer = [20, [1]];
+    const p3: spec.BinaryPointer = [20, [2, 0, 2]];
+    const p4: spec.BinaryPointer = [20, [2, 3, 7]];
+    const p5: spec.BinaryPointer = [20, [2, 10]];
     const result = concatArrayBuffers([buffer0, buffer1, buffer2], [p0, p1, p2, p3, p4, p5], true);
 
     expect(result.data.byteLength).to.eql(padding4(buffer0.byteLength) + padding4(buffer1.byteLength) + padding4(buffer2.byteLength));
@@ -240,7 +240,7 @@ describe('serialize', () => {
     });
     const result = await serializeTextures([options]);
 
-    expect(result.bins[0].byteLength).to.eql(padding4(744 + 147));
+    expect(result.bins?.[0].byteLength).to.eql(padding4(744 + 147));
     expect(result.textures[0]).to.deep.equals({
       'wrapS': 33071,
       'magFilter': 9728,
@@ -264,7 +264,7 @@ describe('serialize', () => {
     });
     const result = await serializeTextures([options]);
 
-    expect(result.bins[0].byteLength).to.eql(1484);
+    expect(result.bins?.[0].byteLength).to.eql(1484);
     expect(result.textures[0]).to.deep.equals({
       'wrapS': 10497,
       'magFilter': 9728,
@@ -295,8 +295,8 @@ describe('serialize', () => {
     });
     const result = await serializeTextures([options, Object.assign({}, options)]);
 
-    expect(result.bins[0].byteLength).to.eql(padding4((744 + 147)));
-    expect(result.bins[1].byteLength).to.eql(padding4((744 + 147)));
+    expect(result.bins?.[0].byteLength).to.eql(padding4((744 + 147)));
+    expect(result.bins?.[1].byteLength).to.eql(padding4((744 + 147)));
     expect(result.textures[0]).to.deep.equals({
       'wrapS': 33071,
       'magFilter': 9728,
@@ -338,8 +338,8 @@ describe('serialize', () => {
     });
     const result = await serializeTextures([options1, options2]);
 
-    expect(result.bins[0].byteLength).to.eql(892);
-    expect(result.bins[1].byteLength).to.eql(1484);
+    expect(result.bins?.[0].byteLength).to.eql(892);
+    expect(result.bins?.[1].byteLength).to.eql(1484);
     expect(result.textures[0]).to.deep.equals({
       'wrapS': 33071,
       'magFilter': 9728,
@@ -357,6 +357,6 @@ describe('serialize', () => {
   });
 });
 
-function padding4 (n) {
+function padding4 (n: number) {
   return Math.ceil(n / 4) * 4;
 }

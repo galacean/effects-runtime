@@ -151,7 +151,7 @@ describe('effects-core/plugins/particle-transform', () => {
     comp.forwardTime(1);
     const item = comp.getItemByName('1')!;
     const itemContent = item.content as ParticleSystem;
-    const pos = itemContent.renderer.particleMesh.getPointPosition(0);
+    const pos = itemContent.getPointPositionByIndex(0)!;
 
     expect(item).to.be.an.instanceof(VFXItem);
     expect(itemContent).to.be.an.instanceof(ParticleSystem);
@@ -168,7 +168,7 @@ describe('effects-core/plugins/particle-transform', () => {
     comp.forwardTime(1);
     const item = comp.getItemByName('1')!;
     const itemContent = item.content as ParticleSystem;
-    const pos = itemContent.renderer.particleMesh.getPointPosition(0);
+    const pos = itemContent.getPointPositionByIndex(0)!;
 
     expect(item).to.be.an.instanceof(VFXItem);
     expect(itemContent).to.be.an.instanceof(ParticleSystem);

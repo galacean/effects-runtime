@@ -1,18 +1,21 @@
-// @ts-nocheck
-import { Player, BezierCurvePath, CameraController, spec, math, BezierCurve } from '@galacean/effects';
+import { Player, CameraController, spec, math } from '@galacean/effects';
 
 const { Vector3 } = math;
 const { expect } = chai;
 
 describe('camera item', () => {
-  let player;
+  let player: Player;
 
   before(() => {
-    player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+    player = new Player({
+      canvas: document.createElement('canvas'),
+      manualRender: true,
+    });
   });
 
   after(() => {
     player.dispose();
+    /// @ts-expect-error
     player = null;
   });
 
@@ -20,7 +23,7 @@ describe('camera item', () => {
     const items = [{
       'name': 'camera',
       'delay': 0,
-      'id': 11,
+      'id': '11',
       'model': {
         'options': {
           'type': 1,
@@ -43,8 +46,8 @@ describe('camera item', () => {
     const { near, fov, far, position, rotation } = comp.camera;
     const item = comp.getItemByName('camera');
 
-    expect(item.type).to.eql(spec.ItemType.camera, 'type');
-    const cf = item.getComponent(CameraController);
+    expect(item?.type).to.eql(spec.ItemType.camera, 'type');
+    const cf = item?.getComponent(CameraController);
 
     expect(cf).to.be.an.instanceof(CameraController);
     expect(near).to.eql(0.6);
@@ -182,49 +185,32 @@ describe('camera item', () => {
   });
 });
 
-describe('camera math', () => {
-  // FIXME 相机旋转四元数的共轭逻辑去掉了 这部分单测先注释
-  // it('camera quat star', () => {
-  //   const camera = new Camera('x');
-  //
-  //   camera.rotation = [0, 30, 0];
-  //   const inverseViewMatrix = new Float32Array(camera.getInverseViewMatrix());
-  //   const expectMatrix = new Float32Array([0.8660253882408142, 0, 0.5, 0, 0, 1, 0, 0, -0.5, 0, 0.8660253882408142, 0, 0, 0, 0, 1]);
-  //
-  //   for (let i = 0; i < inverseViewMatrix.length; i++) {
-  //     expect(inverseViewMatrix[i]).to.eql(expectMatrix[i]);
-  //   }
-  // });
-});
-
-const generateScene = items => ({
+const generateScene = (items: any) => ({
   'compositionId': 1,
   'requires': [],
-  'compositions': [
-    {
-      'name': 'composition_1',
-      'id': 1,
-      'duration': 5,
-      'camera': {
-        'fov': 30,
-        'far': 20,
-        'near': 0.1,
-        'position': [
-          0,
-          0,
-          8,
-        ],
-        'clipMode': 1,
-      },
-      'items': items,
-      'meta': {
-        'previewSize': [
-          1024,
-          1024,
-        ],
-      },
+  'compositions': [{
+    'name': 'composition_1',
+    'id': 1,
+    'duration': 5,
+    'camera': {
+      'fov': 30,
+      'far': 20,
+      'near': 0.1,
+      'position': [
+        0,
+        0,
+        8,
+      ],
+      'clipMode': 1,
     },
-  ],
+    'items': items,
+    'meta': {
+      'previewSize': [
+        1024,
+        1024,
+      ],
+    },
+  }],
   'gltf': [],
   'images': [],
   'version': '0.8.10-beta.4',
@@ -234,52 +220,4 @@ const generateScene = items => ({
   '_imgs': {
     '1': [],
   },
-});
-
-const generateSceneNew = items => ({
-  'playerVersion': {
-    'web': '1.3.1',
-    'native': '0.0.1.202311221223',
-  },
-  'images': [],
-  'fonts': [],
-  'spines': [],
-  'version': '2.4',
-  'shapes': [],
-  'plugins': [],
-  'type': 'ge',
-  'compositions': [
-    {
-      'id': '1',
-      'name': '新建合成10',
-      'duration': 5,
-      'startTime': 0,
-      'endBehavior': 1,
-      'previewSize': [
-        750,
-        1624,
-      ],
-      'items': items,
-      'camera': {
-        'fov': 60,
-        'far': 40,
-        'near': 0.1,
-        'clipMode': 1,
-        'position': [
-          0,
-          0,
-          8,
-        ],
-        'rotation': [
-          0,
-          0,
-          0,
-        ],
-      },
-    },
-  ],
-  'requires': [],
-  'compositionId': '1',
-  'bins': [],
-  'textures': [],
 });

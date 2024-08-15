@@ -517,3 +517,53 @@ describe('load textures', () => {
     });
   });
 });
+
+// describe('offload texture', () => {
+//   let player;
+
+//   before(() => {
+//     // TODO manualRender: false时测试通过，但是会持续console错误，和销毁逻辑有关。
+//     player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+//   });
+
+//   afterEach(() => {
+//     player.resume();
+//   });
+
+//   after(() => {
+//     player.dispose();
+//     player = null;
+//   });
+
+//   it('offload url image', async () => {
+//     const scn = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*puemTqmp78EAAAAAAAAAAAAADlB4AQ');
+//     const comp = await player.play(scn);
+//     const tex = comp.textures[0];
+
+//     expect(tex.width).to.eql(2048);
+//     expect(tex.height).to.eql(2048);
+//     player.pause({ offloadTexture: true });
+
+//     expect(tex.width).to.eql(1);
+//     expect(tex.height).to.eql(1);
+//     await player.resume();
+//     expect(tex.width).to.eql(2048);
+//     expect(tex.height).to.eql(2048);
+//   });
+
+//   it('keepResource makes scene to be played multiple times', async () => {
+//     const scn = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*puemTqmp78EAAAAAAAAAAAAADlB4AQ');
+//     let comp = await player.play(scn, { keepResource: true, currentTime: 0.2 });
+//     const tex = comp.textures[0];
+
+//     expect(tex).to.exist;
+//     expect(tex).to.be.an.instanceof(Texture);
+//     comp.dispose();
+//     expect(tex.isDestroyed).to.be.false;
+//     comp = await player.play(scn, { currentTime: 0.2 });
+//     comp.dispose();
+
+//     // TODO 销毁逻辑
+//     //expect(tex.isDestroyed).to.be.true;
+//   });
+// });
