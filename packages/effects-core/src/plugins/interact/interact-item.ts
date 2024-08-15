@@ -57,9 +57,11 @@ export class InteractComponent extends RendererComponent {
     if (type === spec.InteractType.CLICK) {
       this.clickable = true;
       if (showPreview && env === PLAYER_OPTIONS_ENV_EDITOR) {
-        const rendererOptions = this.item.composition!.getRendererOptions();
+        const rendererOptions = composition?.getRendererOptions();
 
-        this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
+        if (rendererOptions !== undefined) {
+          this.previewContent = new InteractMesh((this.item.props as spec.InteractItem).content, rendererOptions, this.transform, this.engine);
+        }
       }
     }
     if (options.type === spec.InteractType.DRAG) {

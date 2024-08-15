@@ -1,6 +1,6 @@
 import type {
   MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
-  GlobalUniforms, Renderer, ShaderMacros,
+  GlobalUniforms, Renderer,
 } from '@galacean/effects-core';
 import { Material, Shader, ShaderType, ShaderFactory, generateGUID, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
@@ -52,8 +52,8 @@ export class ThreeMaterial extends Material {
       ...shader,
       id: generateGUID(),
       dataType: spec.DataType.Shader,
-      vertex: shader?.vertex || '',
-      fragment: shader?.fragment || '',
+      vertex: shader?.vertex ?? '',
+      fragment: shader?.fragment ?? '',
     };
 
     for (let i = 0; i < maxSpriteMeshItemCount; i++) {
@@ -70,15 +70,15 @@ export class ThreeMaterial extends Material {
       vertexShader: ShaderFactory.genFinalShaderCode({
         level: this.engine.gpuCapability.level,
         shaderType: ShaderType.vertex,
-        shader: shader!.vertex,
-        macros: shader!.macros as ShaderMacros,
+        shader: shader?.vertex ?? '',
+        macros: shader?.macros,
         removeVersion: true,
       }),
       fragmentShader: ShaderFactory.genFinalShaderCode({
         level: this.engine.gpuCapability.level,
         shaderType: ShaderType.fragment,
-        shader: shader!.fragment,
-        macros: shader!.macros as ShaderMacros,
+        shader: shader?.fragment ?? '',
+        macros: shader?.macros,
         removeVersion: true,
       }),
       alphaToCoverage: false,

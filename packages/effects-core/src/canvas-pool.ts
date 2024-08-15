@@ -45,7 +45,3 @@ class CanvasPool {
 }
 
 export const canvasPool = new CanvasPool();
-
-export function getDefaultTemplateCanvasPool () {
-  return canvasPool;
-}

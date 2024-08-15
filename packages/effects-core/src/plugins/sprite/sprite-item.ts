@@ -116,7 +116,7 @@ export class SpriteColorPlayable extends Playable {
 
     if (colorChanged) {
       vecMulCombine<vec4>(this.renderColor, colorInc, this.startColor);
-      this.spriteMaterial.getVector4('_Color')!.setFromArray(this.renderColor);
+      this.spriteMaterial.getVector4('_Color')?.setFromArray(this.renderColor);
     }
   }
 
