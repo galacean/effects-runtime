@@ -1,10 +1,10 @@
 // @ts-nocheck
-import { Player, AbstractPlugin, VFXItem, registerPlugin, spec, unregisterPlugin } from '@galacean/effects';
+import { Player, AbstractPlugin, VFXItem, registerPlugin, unregisterPlugin } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('plugin', () => {
-  let player;
+  let player: Player;
 
   before(() => {
     player = new Player({ canvas: document.createElement('canvas') });
@@ -12,6 +12,7 @@ describe('plugin', () => {
 
   after(() => {
     player.dispose();
+    // @ts-expect-error
     player = null;
   });
 
@@ -21,7 +22,7 @@ describe('plugin', () => {
     const updateSpy = chai.spy('update');
     let i = 0;
 
-    class TesPlugin extends AbstractPlugin {
+    class TestPlugin extends AbstractPlugin {
       static prepareResource (scene, options) {
         scene.storage.xx = 1;
         expect(options.player).not.exist;
@@ -49,7 +50,7 @@ describe('plugin', () => {
       return i++;
     }
 
-    registerPlugin('test-plugin', TesPlugin, VFXItem, true);
+    registerPlugin('test-plugin', TestPlugin, VFXItem, true);
     const comp = await player.loadScene(generateScene({}));
 
     player.gotoAndStop(0.1);

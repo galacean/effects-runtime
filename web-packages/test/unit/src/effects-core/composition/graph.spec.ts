@@ -1,4 +1,4 @@
-// @ts-nocheck
+import { spec } from '@galacean/effects';
 import { getStandardJSON } from '@galacean/effects';
 
 const { expect } = chai;
@@ -121,20 +121,20 @@ describe('composition graph', () => {
     const graph = getCompositionGraph(json.compositions[0], json.items);
 
     expect(graph.nodes.map(n => n.name)).to.deep.equals(['item_6', 'null_3']);
-    expect(graph.nodes[1].children.map(n => n.name)).to.deep.equals(['null_2']);
-    expect(graph.nodes[1].children[0].children.map(n => n.name)).to.deep.equals(['null_4', 'null_1']);
+    expect(graph.nodes[1].children.map((n: any) => n.name)).to.deep.equals(['null_2']);
+    expect(graph.nodes[1].children[0].children.map((n: any) => n.name)).to.deep.equals(['null_4', 'null_1']);
   });
 });
 
-export function getCompositionGraph (comp, items) {
-  const childrenMap = {};
-  const nodeMap = {};
-  const topNodes = [];
-  const treeNodesMap = {};
+export function getCompositionGraph (comp: spec.CompositionData, items: spec.VFXItemData[]) {
+  const childrenMap: Record<string, any[]> = {};
+  const nodeMap: Record<string, any> = {};
+  const topNodes: any[] = [];
+  const treeNodesMap: Record<string, any> = {};
 
   items.forEach(item => collectNodes(item));
 
-  function collectNodes (item, treeNodeChildren) {
+  function collectNodes (item: spec.VFXItemData, treeNodeChildren: number[] = []) {
     const node = {
       name: item.name,
       type: item.type,
@@ -153,15 +153,14 @@ export function getCompositionGraph (comp, items) {
       topNodes.push(node);
     }
     nodeMap[node.id] = node;
-    if (node.type === 'tree') {
-      let children;
+    if (node.type === spec.ItemType.tree) {
+      let children: number[];
       let nodes;
       const isTreeNode = node.id.includes('^');
 
       if (isTreeNode) {
         nodes = treeNodesMap[node.id.slice(0, node.id.indexOf('^'))];
         children = treeNodeChildren;
-        node.subType = 'node';
         node.parentId = replaceTreeParentId(node.parentId);
       } else {
         nodes = (item).content.options.tree.nodes;
@@ -173,11 +172,11 @@ export function getCompositionGraph (comp, items) {
 
         collectNodes({
           name: tn.name,
-          type: 'tree',
+          type: spec.ItemType.tree,
           id: `${replaceTreeParentId(item.id)}^${(tn.id || index)}`,
           transform: tn.transform,
           parentId: item.id,
-        }, tn.children);
+        } as spec.VFXItemData, tn.children);
       });
     }
   }
@@ -197,7 +196,7 @@ export function getCompositionGraph (comp, items) {
   };
 }
 
-function replaceTreeParentId (str) {
+function replaceTreeParentId (str: string = '') {
   const idx = str.indexOf('^');
 
   return idx > -1 ? str.substring(0, idx) : str;

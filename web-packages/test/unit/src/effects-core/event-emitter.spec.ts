@@ -3,13 +3,6 @@ import { EventEmitter } from '@galacean/effects';
 const { expect } = chai;
 
 describe('event emitter api', () => {
-
-  before(() => {
-  });
-
-  after(() => {
-  });
-
   it('event on', async () => {
     const event = new EventEmitter();
     const spy = chai.spy();
@@ -109,6 +102,5 @@ describe('event emitter api', () => {
 
     expect(listeners3).to.be.an.instanceOf(Array);
     expect(listeners3?.length).to.be.equal(0);
-
   });
 });

@@ -5,7 +5,6 @@ const { expect } = chai;
 
 describe('sprite item api', () => {
   let player: Player;
-  const canvas = document.createElement('canvas');
 
   before(() => {
     const canvas = document.createElement('canvas');
