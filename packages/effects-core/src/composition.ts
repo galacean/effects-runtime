@@ -527,35 +527,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 是否合成需要重新播放
-   * @returns 重新播放合成标志位
-   */
-  private shouldRestart () {
-    const { duration, endBehavior } = this.rootItem;
-    const { time } = this.rootComposition;
-
-    return endBehavior === spec.EndBehavior.restart && duration - time < 0.02;
-  }
-
-  /**
-   * 是否合成需要销毁
-   * @returns 销毁合成标志位
-   */
-  private shouldDispose () {
-    if (this.reusable) {
-      return false;
-    }
-    const { endBehavior } = this.rootItem;
-
-    if (this.rootItem.isEnded(this.time)) {
-      this.rootItem.ended = true;
-    }
-
-    // TODO: 合成结束行为
-    return this.rootItem.ended && endBehavior === spec.EndBehavior.destroy;
-  }
-
-  /**
    * 合成更新，针对所有 item 的更新
    * @param deltaTime - 更新的时间步长
    * @param skipRender - 是否需要渲染
@@ -569,28 +540,20 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     this.globalTime += time;
     this.updateRootComposition();
-
-    if (this.shouldRestart()) {
-      this.emit('end', { composition: this });
-      this.restart();
-      // restart then tick to avoid flicker
-    }
-
     this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
 
+    // scene VFXItem components lifetime function.
     this.callStart(this.rootItem);
     this.callUpdate(this.rootItem, time);
     this.callLateUpdate(this.rootItem, time);
 
     this.updateCamera();
+    this.prepareRender();
 
     if (this.shouldDispose()) {
-      this.emit('end', { composition: this });
       this.dispose();
-    } else {
-      this.prepareRender();
     }
   }
 
@@ -599,20 +562,39 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const duration = this.rootItem.duration;
 
     if (localTime - duration > 0.001) {
-      if (this.rootItem.endBehavior === spec.EndBehavior.restart) {
-        localTime = localTime % duration;
-      } else if (this.rootItem.endBehavior === spec.EndBehavior.freeze) {
-        localTime = Math.min(duration, localTime);
-        if (localTime === duration) {
-          if (!this.rootComposition.fezzed) {
-            this.rootComposition.fezzed = true;
-            this.emit('end', { composition: this });
-          }
+      if (!this.rootItem.ended) {
+        this.rootItem.ended = true;
+        this.emit('end', { composition: this });
+      }
+
+      switch (this.rootItem.endBehavior) {
+        case spec.EndBehavior.restart: {
+          localTime = localTime % duration;
+          this.restart();
+
+          break;
+        }
+        case spec.EndBehavior.freeze: {
+          localTime = Math.min(duration, localTime);
+
+          break;
+        }
+        case spec.EndBehavior.forward: {
+
+          break;
+        }
+        case spec.EndBehavior.destroy: {
+
+          break;
         }
       }
     }
 
     return localTime;
+  }
+
+  private shouldDispose () {
+    return this.rootItem.ended && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
 
   private getUpdateTime (t: number) {

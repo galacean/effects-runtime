@@ -2,10 +2,8 @@ precision highp float;
 
 #define FEATURES
 
-#include <webgl-compatibility.glsl>
-
-vsIn vec3 aPos;
-vsOut vec3 v_CameraDir;
+attribute vec3 aPos;
+varying vec3 v_CameraDir;
 
 
 uniform mat4 _InvViewProjectionMatrix;

@@ -22,7 +22,6 @@ export class StandardShader {
    * @returns
    */
   static getVertexShaderCode (context: PShaderContext): string {
-    const isWebGL2 = context.isWebGL2;
     const features = context.featureList;
     const materialType = context.material.materialType;
 
@@ -30,9 +29,9 @@ export class StandardShader {
       case PMaterialType.unlit:
       case PMaterialType.pbr:
       case PMaterialType.shadowBase:
-        return StandardShaderSource.build(primitiveVert, features, isWebGL2);
+        return StandardShaderSource.build(primitiveVert, features);
       case PMaterialType.skyboxFilter:
-        return StandardShaderSource.build(skyboxVert, features, isWebGL2);
+        return StandardShaderSource.build(skyboxVert, features);
       default:
         throw new Error(`Invalid material type ${materialType} for getVertexShaderString!`);
     }
@@ -44,31 +43,30 @@ export class StandardShader {
    * @returns
    */
   static getFragmentShaderCode (context: PShaderContext): string {
-    const isWebGL2 = context.isWebGL2;
     const features = context.featureList;
     const materialType = context.material.materialType;
 
     switch (materialType) {
       case PMaterialType.unlit:
       case PMaterialType.pbr:
-        return StandardShaderSource.build(metallicRoughnessFrag, features, isWebGL2);
+        return StandardShaderSource.build(metallicRoughnessFrag, features);
       case PMaterialType.shadowBase:
-        return StandardShaderSource.build(shadowPassFrag, features, isWebGL2);
+        return StandardShaderSource.build(shadowPassFrag, features);
       case PMaterialType.skyboxFilter:
-        return StandardShaderSource.build(skyboxFrag, features, isWebGL2);
+        return StandardShaderSource.build(skyboxFrag, features);
       default:
         throw new Error(`Invalid material type ${materialType} for getFragmentShaderString!`);
     }
   }
 
-  static genVertexShaderCode (materialType: PMaterialType, isWebGL2?: boolean): string {
+  static genVertexShaderCode (materialType: PMaterialType): string {
     switch (materialType) {
       case PMaterialType.unlit:
       case PMaterialType.pbr:
       case PMaterialType.shadowBase:
-        return StandardShaderSource.getSourceCode(primitiveVert, isWebGL2);
+        return primitiveVert;
       case PMaterialType.skyboxFilter:
-        return StandardShaderSource.getSourceCode(skyboxVert, isWebGL2);
+        return skyboxVert;
       default:
         throw new Error(`Invalid material type ${materialType} for genVertexShaderCode!`);
     }
@@ -79,15 +77,15 @@ export class StandardShader {
    * @param materialType - 材质类型
    * @returns
    */
-  static genFragmentShaderCode (materialType: PMaterialType, isWebGL2?: boolean): string {
+  static genFragmentShaderCode (materialType: PMaterialType): string {
     switch (materialType) {
       case PMaterialType.unlit:
       case PMaterialType.pbr:
-        return StandardShaderSource.getSourceCode(metallicRoughnessFrag, isWebGL2);
+        return metallicRoughnessFrag;
       case PMaterialType.shadowBase:
-        return StandardShaderSource.getSourceCode(shadowPassFrag, isWebGL2);
+        return shadowPassFrag;
       case PMaterialType.skyboxFilter:
-        return StandardShaderSource.getSourceCode(skyboxFrag, isWebGL2);
+        return skyboxFrag;
       default:
         throw new Error(`Invalid material type ${materialType} for genFragmentShaderCode!`);
     }

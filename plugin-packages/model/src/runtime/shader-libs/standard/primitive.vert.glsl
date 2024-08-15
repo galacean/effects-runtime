@@ -2,50 +2,49 @@ precision highp float;
 
 #define FEATURES
 
-#include <webgl-compatibility.glsl>
 #include <animation.vert.glsl>
 
-vsIn vec4 aPos;
-vsOut vec3 v_Position;
+attribute vec4 aPos;
+varying vec3 v_Position;
 
 #ifdef HAS_NORMALS
-vsIn vec4 aNormal;
+attribute vec4 aNormal;
 #endif
 
 #ifdef HAS_TANGENTS
-vsIn vec4 aTangent;
+attribute vec4 aTangent;
 #endif
 
 #ifdef HAS_NORMALS
 #ifdef HAS_TANGENTS
-vsOut mat3 v_TBN;
+varying mat3 v_TBN;
 #else
-vsOut vec3 v_Normal;
+varying vec3 v_Normal;
 #endif
 #endif
 
 #ifdef HAS_UV_SET1
-vsIn vec2 aUV;
+attribute vec2 aUV;
 #endif
 
 #ifdef HAS_UV_SET2
-vsIn vec2 aUV2;
+attribute vec2 aUV2;
 #endif
 
-vsOut vec2 v_UVCoord1;
+varying vec2 v_UVCoord1;
 
 #ifdef HAS_UV_SET2
-vsOut vec2 v_UVCoord2;
+varying vec2 v_UVCoord2;
 #endif
 
 #ifdef HAS_VERTEX_COLOR_VEC3
-vsIn vec3 aColor;
-vsOut vec3 v_Color;
+attribute vec3 aColor;
+varying vec3 v_Color;
 #endif
 
 #ifdef HAS_VERTEX_COLOR_VEC4
-vsIn vec4 aColor;
-vsOut vec4 v_Color;
+attribute vec4 aColor;
+varying vec4 v_Color;
 #endif
 
 uniform mat4 effects_MatrixVP;
@@ -59,8 +58,8 @@ uniform vec4 uEditorTransform;
 #ifdef USE_SHADOW_MAPPING
 uniform mat4 _LightViewProjectionMatrix;
 uniform float _DeltaSceneSize;
-vsOut vec4 v_PositionLightSpace;
-vsOut vec4 v_dPositionLightSpace;
+varying vec4 v_PositionLightSpace;
+varying vec4 v_dPositionLightSpace;
 #endif
 
 vec4 getPosition()

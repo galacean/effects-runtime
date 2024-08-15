@@ -1,11 +1,11 @@
-// @ts-nocheck
 import { math } from '@galacean/effects';
+
 const { Ray, Vector3 } = math;
 const { expect } = chai;
 
 describe('raycast', () => {
   it('intersect ray box', async () => {
-    let tmp = new Vector3(0, 0, 0);
+    let tmp: math.Vector3 | undefined = new Vector3(0, 0, 0);
     const origin = new Vector3(0, 0, 8);
     const direction = new Vector3(0, 0, -1);
     const center = new Vector3(0, 0, 0);
@@ -16,7 +16,7 @@ describe('raycast', () => {
 
     tmp = ray.intersectBox({ min: boxMin, max: boxMax }, tmp);
     expect(tmp).to.exist;
-    expect(tmp.length).to.not.eql(0);
+    expect(tmp?.length).to.not.eql(0);
   });
 
 });

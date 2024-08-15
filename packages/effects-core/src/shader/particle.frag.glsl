@@ -1,11 +1,10 @@
-#version 300 es
+#version 100
 precision mediump float;
-#include "./compatible.frag.glsl";
 #include "./blend.glsl";
 #define PATICLE_SHADER 1
-in float vLife;
-in vec2 vTexCoord;
-in vec4 vColor;
+varying float vLife;
+varying vec2 vTexCoord;
+varying vec4 vColor;
 
 uniform vec3 emissionColor;
 uniform float emissionIntensity;
@@ -18,9 +17,9 @@ uniform sampler2D uColorOverLifetime;
 #endif
 
 #ifdef USE_SPRITE
-in vec4 vTexCoordBlend;
+varying vec4 vTexCoordBlend;
 #endif
-in float vSeed;
+varying float vSeed;
 
 #ifdef PREVIEW_BORDER
 uniform vec4 uPreviewColor;
@@ -43,7 +42,7 @@ vec4 getTextureColor(sampler2D tex, vec2 texCoord) {
 
 #ifdef PREVIEW_BORDER
 void main() {
-  fragColor = uPreviewColor;
+  gl_FragColor = uPreviewColor;
 }
 #else
 void main() {
@@ -72,6 +71,6 @@ void main() {
   // 先对自发光做gamma0.45，后续统一shader着色在线性空间中可去除。
   vec3 emission = emissionColor * pow(2.0, emissionIntensity);
   color = vec4(pow(pow(color.rgb, vec3(2.2)) + emission, vec3(1.0 / 2.2)), color.a);
-  fragColor = color;
+  gl_FragColor = color;
 }
 #endif

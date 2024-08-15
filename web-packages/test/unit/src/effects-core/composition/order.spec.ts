@@ -1,17 +1,20 @@
-// @ts-nocheck
 import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('composition order', () => {
-  let player;
+  let player: Player;
 
   before(() => {
-    player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+    player = new Player({
+      canvas: document.createElement('canvas'),
+      manualRender: true,
+    });
   });
 
   after(() => {
     player.dispose();
+    // @ts-expect-error
     player = null;
   });
 
@@ -26,12 +29,12 @@ describe('composition order', () => {
     const c2 = player.getCompositionByName('c2');
     const c3 = player.getCompositionByName('c3');
 
-    expect(c1.getIndex()).to.be.equals(0);
-    expect(c2.getIndex()).to.be.equals(1);
-    expect(c3.getIndex()).to.be.equals(2);
-    c1.setIndex(3);
+    expect(c1?.getIndex()).to.be.equals(0);
+    expect(c2?.getIndex()).to.be.equals(1);
+    expect(c3?.getIndex()).to.be.equals(2);
+    c1?.setIndex(3);
     player.gotoAndStop(0);
-    expect(c1.getIndex()).to.be.equals(3);
+    expect(c1?.getIndex()).to.be.equals(3);
   });
 
   // 预合成的元素顺序设置
@@ -787,16 +790,16 @@ describe('composition order', () => {
     };
     const comp = await player.loadScene(json);
 
-    await player.play(comp);
+    player.play();
     const face = comp.getItemByName('face');
     const sprite = comp.getItemByName('sprite_1');
 
-    expect(face.listIndex).to.be.eql(2);
-    expect(sprite.listIndex).to.be.eql(4);
+    expect(face?.renderOrder).to.be.eql(2);
+    expect(sprite?.renderOrder).to.be.eql(4);
   });
 });
 
-function generateScene (name) {
+function generateScene (name: string) {
   return {
     'compositionId': 1,
     'requires': [],

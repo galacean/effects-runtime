@@ -152,14 +152,13 @@ export class TestPlayer {
 
       if (particleCount > 0) {
         const subIndex = Math.floor(Math.random() * 0.9999999 * particleCount);
-        const mesh = item.particleMesh;
 
         if (typeof itemList[index].getParticleBoxes === 'function' && subIndex < item.getParticleBoxes().length) {
           const pos = item.getParticleBoxes().reverse()[subIndex].center;
 
           viewProjection.projectPoint(pos, inPosition);
         } else {
-          const pos = mesh.getPointPosition(subIndex);
+          const pos = item.getPointPositionByIndex(subIndex);
 
           viewProjection.projectPoint(pos, inPosition);
         }

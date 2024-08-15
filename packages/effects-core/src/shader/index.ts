@@ -1,6 +1,4 @@
 export { default as blend } from './blend.glsl';
-export { default as compatibleFrag } from './compatible.frag.glsl';
-export { default as compatibleVert } from './compatible.vert.glsl';
 export { default as itemFrameFrag } from './item-frame.frag.glsl';
 export { default as integrate } from './integrate.glsl';
 export { default as itemVert } from './item.vert.glsl';
@@ -18,4 +16,4 @@ export { default as gaussianDownHFrag } from './post-processing/gaussian-down-h.
 export { default as gaussianDownVFrag } from './post-processing/gaussian-down-v.frag.glsl';
 export { default as gaussianUpFrag } from './post-processing/gaussian-up.frag.glsl';
 export { default as thresholdFrag } from './post-processing/threshold.frag.glsl';
-
+export * from './shader-factory';
