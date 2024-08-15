@@ -63,12 +63,6 @@ export interface PlayerConfig {
    * 是否通知 container touchend / mouseup 事件, 默认不通知
    */
   notifyTouch?: boolean,
-  /**
-   * 渲染出错时候的回调
-   * @param - err
-   * @deprecated 2.0.0
-   */
-  onRenderError?: (err: Error) => void,
   // createRenderNode?: (model: Object) => any,
   /**
    * 每帧渲染调用后的回调，WebGL2 上下文生效
