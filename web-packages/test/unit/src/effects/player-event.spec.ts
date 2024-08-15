@@ -1,13 +1,10 @@
-import { Player, TextComponent } from '@galacean/effects';
+import type { GLRenderer } from '@galacean/effects';
+import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('player event', () => {
   let player: Player;
-
-  before(() => {
-
-  });
 
   afterEach(() => {
     player.dispose();
@@ -45,9 +42,8 @@ describe('player event', () => {
     });
     const lost = chai.spy();
     const restored = chai.spy();
-    //@ts-expect-error
-    const gl = player.renderer.glRenderer.gl;
-    const ext = gl.getExtension('WEBGL_lose_context');
+    const { gl } = (player.renderer as GLRenderer).context;
+    const ext = gl?.getExtension('WEBGL_lose_context');
 
     player.on('webglcontextlost', event => {
       lost();
