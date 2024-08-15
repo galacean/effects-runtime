@@ -91,7 +91,9 @@ export abstract class ItemBehaviour extends Behaviour {
   /**
    * 在每次设置 enabled 为 true 时触发
    */
-  onEnable () { }
+  onEnable () {
+    // OVERRIDE
+  }
   /**
    * 生命周期函数，在第一次 update 前调用，生命周期内只调用一次
    */

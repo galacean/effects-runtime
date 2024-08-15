@@ -364,6 +364,13 @@ export class MainEditor extends EditorWindow {
         if (ImGui.ColorEdit4('##' + uniformName, serializedData.colors[uniformName])) {
           dirtyFlag = true;
         }
+      } else if (type === 'Vector') {
+        if (!serializedData.vector4s[uniformName]) {
+          serializedData.vector4s[uniformName] = { x:1.0, y:1.0, z:0.0, w:0.0 };
+        }
+        if (ImGui.DragFloat4('##' + uniformName, serializedData.vector4s[uniformName])) {
+          dirtyFlag = true;
+        }
       } else if (type === '2D') {
         const texture = glMaterial.getTexture(uniformName);
 
