@@ -10,10 +10,12 @@ export interface ShaderCodeOptions {
   removeVersion?: boolean,
 }
 
+const shaderLib: Record<string, string> = {};
+
 export class ShaderFactory {
   static registerInclude (includeName: string, includeSource: string) {
     if (shaderLib[includeName]) {
-      logger.warn(`The "${includeName}" shader include already exist`);
+      logger.warn(`The "${includeName}" shader include already exist.`);
     }
     shaderLib[includeName] = includeSource;
   }
@@ -37,22 +39,22 @@ export class ShaderFactory {
    */
   static genFinalShaderCode (options: ShaderCodeOptions): string {
     const { level, shaderType, shader, macros, removeVersion } = options;
-
     const macroString = ShaderFactory.genMacroString(level, macros);
     const versionString = ShaderFactory.genShaderVersion(level);
     let source = ShaderFactory.parseIncludes(shader);
     const isVersion300 = ShaderFactory.isVersion300(source);
 
     source = ShaderFactory.removeWebGLVersion(source);
+
     if (level === 2 && !isVersion300) {
       source = ShaderFactory.convertTo300(source, shaderType === ShaderType.fragment);
     }
 
     if (removeVersion) {
       return macroString + source;
-    } else {
-      return versionString + macroString + source;
     }
+
+    return versionString + macroString + source;
   }
 
   /**
@@ -112,9 +114,12 @@ export class ShaderFactory {
     return source;
   }
 
-  private static genMacroString (level: number, macros?: ShaderMacros, addRuntimeMacro = true) {
-    const macroList = new Array<string>();
-
+  private static genMacroString (
+    level: number,
+    macros?: ShaderMacros,
+    addRuntimeMacro = true,
+  ) {
+    const macroList: string[] = [];
     const webGLVersion = `WEBGL${level}`;
 
     macroList.push(`#ifndef ${webGLVersion}`);
@@ -137,22 +142,21 @@ export class ShaderFactory {
 
     if (macroList.length) {
       return macroList.join('\n') + '\n';
-    } else {
-      return '';
     }
+
+    return '';
   }
 
   private static genShaderVersion (level: number) {
     if (level === 1) {
       return '#version 100\n';
-    } else {
-      return '#version 300 es\n';
     }
+
+    return '#version 300 es\n';
   }
 
   private static isVersion300 (source: string) {
     const versionTag = /#version\s+\b\d{3}\b\s*(es)?/;
-
     const match = source.match(versionTag);
     const version = match ? match[0] : '';
 
@@ -161,14 +165,13 @@ export class ShaderFactory {
 
   private static removeWebGLVersion (source: string) {
     const versionTag = /#version\s+\b\d{3}\b\s*(es)?/;
-
     const match = source.match(versionTag);
 
     if (match) {
       return source.replace(match[0], '');
-    } else {
-      return source;
     }
+
+    return source;
   }
 
   private static has300Output (fragmentShader: string): boolean {
@@ -179,8 +182,8 @@ export class ShaderFactory {
   }
 
   private static replaceMRTShader (source: string, result: string[]): string {
-    let declaration = '';
     const mrtIndexSet = new Set<string>();
+    let declaration = '';
 
     for (let i = 0; i < result.length; i++) {
       const res = result[i].match(/\bgl_FragData\[(.+?)\]/);
@@ -196,12 +199,9 @@ export class ShaderFactory {
     declaration += 'void main(';
 
     source = source.replace(/\bgl_FragData\[(.+?)\]/g, 'fragOutColor$1');
-
     source = source.replace(/void\s+?main\s*\(/g, declaration);
 
     return source;
   }
 }
-
-const shaderLib: Record<string, string> = { };
 
