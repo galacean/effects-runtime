@@ -337,13 +337,6 @@ export class ParticleSystem extends Component {
     this.ended = false;
   }
 
-  override onAttached (): void {
-    super.onAttached();
-    this.renderer.item = this.item;
-    this.item.components.push(this.renderer);
-    this.item.rendererComponents.push(this.renderer);
-  }
-
   onUpdate (delta: number) {
     if (this.started && !this.frozen) {
       const now = this.lastUpdate + delta / 1000;
@@ -848,6 +841,13 @@ export class ParticleSystem extends Component {
       };
     }
   };
+
+  override onAttached (): void {
+    super.onAttached();
+    this.renderer.item = this.item;
+    this.item.components.push(this.renderer);
+    this.item.rendererComponents.push(this.renderer);
+  }
 
   override fromData (data: unknown): void {
     super.fromData(data);
