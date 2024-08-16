@@ -1,15 +1,13 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, SceneLoadType, SceneType, EffectsObject,
-  MessageItem } from '@galacean/effects-core';
-import { isIOS,
+  MessageItem,
 } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger,
-  Renderer, TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
-  isAndroid, isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL,
-  generateWhiteTexture, isSceneWithOptions, Texture, EventEmitter, Material,
-  PLAYER_OPTIONS_ENV_EDITOR,
+  AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, Material,
+  TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
+  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL, EventEmitter,
+  generateWhiteTexture, isSceneWithOptions, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -724,12 +722,14 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
       return newComposition;
     }));
+
     this.emit('webglcontextrestored');
     this.ticker?.resume();
-    if (isIOS()) {
-      this.canvas ? this.canvas.style.display = 'none' : '';
+
+    if (isIOS() && this.canvas) {
+      this.canvas.style.display = 'none';
       window.setTimeout(() => {
-        this.canvas ? this.canvas.style.display = '' : '';
+        this.canvas.style.display = '';
       }, 0);
     }
   };
