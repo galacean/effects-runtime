@@ -100,7 +100,7 @@ export class CompositionComponent extends ItemBehaviour {
     this.items.length = 0;
     if (this.item.composition) {
       const assetLoader = this.item.engine.assetLoader;
-      const itemProps = this.item.props.items ? this.item.props.items : [];
+      const itemProps = this.data.items ? this.data.items : [];
 
       for (let i = 0; i < itemProps.length; i++) {
         let item: VFXItem;
