@@ -158,7 +158,13 @@ export class TestPlayer {
 
           viewProjection.projectPoint(pos, inPosition);
         } else {
-          const pos = item.getPointPositionByIndex(subIndex);
+          let pos;
+
+          if (typeof item.getPointPositionByIndex === 'function') {
+            pos = item.getPointPositionByIndex(subIndex);
+          } else {
+            pos = item.particleMesh.getPointPosition(subIndex);
+          }
 
           viewProjection.projectPoint(pos, inPosition);
         }
