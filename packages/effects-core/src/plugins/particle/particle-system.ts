@@ -313,6 +313,11 @@ export class ParticleSystem extends Component {
   }
 
   start () {
+    // TODO ParticleSystemRenderer 没有在 json 中表示，只能在 start 时添加，待优化
+    if (!this.item.getComponent(ParticleSystemRenderer)) {
+      this.item.components.push(this.renderer);
+      this.item.rendererComponents.push(this.renderer);
+    }
     if (!this.started || this.ended) {
       this.reset();
       this.started = true;
@@ -842,13 +847,6 @@ export class ParticleSystem extends Component {
     }
   };
 
-  override onAttached (): void {
-    super.onAttached();
-    this.renderer.item = this.item;
-    this.item.components.push(this.renderer);
-    this.item.rendererComponents.push(this.renderer);
-  }
-
   override fromData (data: unknown): void {
     super.fromData(data);
     const props = data as ParticleSystemProps;
@@ -1101,6 +1099,8 @@ export class ParticleSystem extends Component {
     }
 
     this.renderer = new ParticleSystemRenderer(this.engine, particleMeshProps, trailMeshProps);
+    this.renderer.item = this.item;
+
     this.meshes = this.renderer.meshes;
     // this.item = vfxItem;
 
