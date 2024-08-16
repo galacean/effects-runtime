@@ -926,7 +926,7 @@ export class RenderFrame implements Disposable {
     const shader = createCopyShader(engine.gpuCapability.level, !!semantics?.depthTexture);
 
     // FIXME: 如果不把shader添加进shaderLibrary，这里可以移到core中，有性能上的考虑
-    this.renderer.getShaderLibrary()!.addShader(shader);
+    this.renderer.getShaderLibrary()?.addShader(shader);
     const material = Material.create(
       engine,
       {
@@ -977,8 +977,13 @@ export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: 
 
 class FinalCopyRP extends RenderPass {
   prePassTexture: Texture;
+
   override configure (renderer: Renderer): void {
-    this.prePassTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    const framebuffer = renderer.getFramebuffer();
+
+    if (framebuffer) {
+      this.prePassTexture = framebuffer.getColorTextures()[0];
+    }
     renderer.setFramebuffer(null);
   }
 

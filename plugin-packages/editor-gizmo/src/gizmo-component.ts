@@ -43,7 +43,7 @@ export class GizmoComponent extends RendererComponent {
 
   override start (): void {
     this.item.getHitTestParams = this.getHitTestParams;
-    for (const item of this.item.composition!.items) {
+    for (const item of this.item.composition?.items ?? []) {
       if (item.id === this.target) {
         this.targetItem = item;
       }

@@ -439,35 +439,34 @@ export class AssetManager implements Disposable {
     engine: Engine
   ) {
     const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
-    const jobs = textures.map(async (texOpts, idx) => {
-      if (texOpts instanceof Texture) {
-        return texOpts;
+    const jobs = textures.map(async (textureOptions, idx) => {
+      if (textureOptions instanceof Texture) {
+        return textureOptions;
       }
-      if ('mipmaps' in texOpts) {
+      if ('mipmaps' in textureOptions) {
         try {
-          return await deserializeMipmapTexture(texOpts, bins, engine, jsonScene.bins);
+          return await deserializeMipmapTexture(textureOptions, bins, engine, jsonScene.bins);
         } catch (e) {
           throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }
       }
-      const { source } = texOpts;
+      const { source } = textureOptions;
 
       let image: any;
 
       if (isObject(source)) { // source 为 images 数组 id
-        //@ts-expect-error
-        image = engine.assetLoader.loadGUID<ImageAsset>(source.id).data;
+        image = engine.assetLoader.loadGUID<ImageAsset>((source as Record<string, string>).id).data;
       } else if (typeof source === 'string') { // source 为 base64 数据
         image = await loadImage(base64ToFile(source));
       }
 
       if (image) {
-        const tex = createTextureOptionsBySource(image, this.assets[idx]);
+        const texture = createTextureOptionsBySource(image, this.assets[idx]);
 
-        tex.id = texOpts.id;
-        tex.dataType = spec.DataType.Texture;
+        texture.id = textureOptions.id;
+        texture.dataType = spec.DataType.Texture;
 
-        return tex.sourceType === TextureSourceType.compressed ? tex : { ...tex, ...texOpts };
+        return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
       throw new Error(`Invalid texture source: ${source}.`);
     });

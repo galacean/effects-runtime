@@ -47,7 +47,6 @@ export class TestPlayer {
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
     Math.seedrandom('mars-runtime');
     this.clearResource();
-    // getDefaultTemplateCanvasPool().dispose();
     const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false }) as AssetManager;
 
     let inData = url;

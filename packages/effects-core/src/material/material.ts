@@ -50,11 +50,6 @@ export interface MaterialProps {
    * uniform 数据
    */
   uniformValues?: Record<string, UniformValue>,
-  // FIXME 没有用
-  transformFeedbackOutput?: {
-    mode: WebGL2RenderingContext['INTERLEAVED_ATTRIBS'] | WebGL2RenderingContext['SEPARATE_ATTRIBS'],
-    varyings: string[],
-  },
 }
 
 /**
