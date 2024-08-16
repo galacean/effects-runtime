@@ -2,7 +2,7 @@ import { getStandardItem, getStandardJSON, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('particle base', () => {
+describe('core/fallback/particle/base', () => {
   it('particle options: duration, delay, renderLevel,type,gravity, endBehavior, startRotateCurve, startSize', () => {
     const item = {
       'name': 'item_1',
@@ -65,6 +65,7 @@ describe('particle base', () => {
     // expect(content.options.startRotationZ[1]).to.be.eql([[0, 360, 0, -3], [0.5, 0, 0, 0], [1, 360, 3, 0]], 'startRotation.value');
     expect(content.options.startRotationY[0]).to.be.eql(spec.ValueType.BEZIER_CURVE, 'startRotationY.type');
   });
+
   it('particle start3DRotation', () => {
     const item = {
       'name': 'item_1',

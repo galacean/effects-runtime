@@ -19,7 +19,7 @@ export interface GeometryMeshProps extends MeshOptionsBase {
 
 export interface MeshDestroyOptions {
   geometries?: DestroyOptions,
-  material?: MaterialDestroyOptions | DestroyOptions.keep,
+  material?: MaterialDestroyOptions | DestroyOptions,
 }
 
 let seed = 1;

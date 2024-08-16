@@ -3,7 +3,7 @@ import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('composition api', () => {
+describe('core/composition', () => {
   let player: Player;
 
   before(() => {

@@ -3,7 +3,7 @@ import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
 
-describe('calculate item transform', () => {
+describe('core/plugins/calculate/item-transform', () => {
   const canvas = document.createElement('canvas');
   let player: Player;
 

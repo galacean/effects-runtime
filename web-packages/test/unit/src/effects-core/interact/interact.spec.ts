@@ -4,7 +4,7 @@ import { Player, EVENT_TYPE_CLICK, spec, math } from '@galacean/effects';
 const { expect } = chai;
 const { Vector3 } = math;
 
-describe('interact item', () => {
+describe('core/interact/item', () => {
   let player: Player;
   const canvas = document.createElement('canvas');
   const width = 512;

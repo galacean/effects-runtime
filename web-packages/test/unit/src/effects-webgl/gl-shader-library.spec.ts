@@ -4,7 +4,7 @@ import { GLRenderer } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
-describe('webgl/GLShaderLibrary', () => {
+describe('webgl/gl-shader-library', () => {
   let rendererGL1: GLRenderer;
   let rendererGL2: GLRenderer;
   let webglCanvas: HTMLCanvasElement;

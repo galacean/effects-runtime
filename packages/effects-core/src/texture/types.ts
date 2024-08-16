@@ -88,7 +88,6 @@ export interface TextureFactorySource2DMipmapsFrom {
 export interface TextureFactorySourceFromCompressed {
   type: TextureSourceType.compressed,
   url: string,
-
   // TODO 临时添加，通过下层setTexture类型检查，考虑该类型是否需要target。
   target?: number,
 }

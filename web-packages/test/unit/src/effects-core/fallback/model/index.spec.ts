@@ -2,7 +2,7 @@ import { getStandardItem, getStandardJSON } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('model plugin items', () => {
+describe('core/fallback/model/plugin-items', () => {
   it('load camera item', () => {
     const item = getStandardItem({
       id: 'extra-camera',

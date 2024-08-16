@@ -31,6 +31,8 @@ export function getStandardJSON (json: any): JSONScene {
     return version30Migration(version21Migration(getStandardJSONFromV0(json)));
   }
 
+  reverseParticle = false;
+
   const vs = standardVersion.exec(json.version) || [];
   const mainVersion = Number(vs[1]);
   const minorVersion = Number(vs[2]);
@@ -162,7 +164,6 @@ export function getStandardComposition (composition: any, opt: { plugins?: strin
 }
 
 const tempQuat = [0, 0, 0, 1];
-
 const stdAnchor = 0.5;
 
 export function getStandardItem (item: any, opt: { plugins?: string[], requires?: string[] } = {}): SpriteItem | ParticleItem | BaseItem {

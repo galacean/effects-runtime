@@ -2,7 +2,7 @@ import { getStandardItem, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('sprite base', () => {
+describe('core/fallback/sprite/base', () => {
   it('sprite duration,delay,renderLevel,type', () => {
     const item = {
       'name': 'item_1',

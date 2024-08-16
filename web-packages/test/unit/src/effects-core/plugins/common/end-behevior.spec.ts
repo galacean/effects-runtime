@@ -2,7 +2,7 @@ import { Player, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('item onEnd', () => {
+describe('core/plugins/common/item-end', () => {
   let player: Player;
   let canvas: HTMLCanvasElement;
 

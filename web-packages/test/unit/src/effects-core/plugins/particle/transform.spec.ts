@@ -3,7 +3,7 @@ import { sanitizeNumbers } from '../../../utils';
 
 const { expect } = chai;
 
-describe('effects-core/plugins/particle-transform', () => {
+describe('core/plugins/particle/transform', () => {
   let player: Player;
 
   before(() => {

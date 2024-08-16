@@ -5,7 +5,7 @@ import { loadSceneAndPlay } from './utils';
 const { Vector3 } = math;
 const { expect } = chai;
 
-describe('sprite interaction', async () => {
+describe('core/plugins/sprite/interaction', async () => {
   const canvas = document.createElement('canvas');
   const width = 512, height = 512;
 

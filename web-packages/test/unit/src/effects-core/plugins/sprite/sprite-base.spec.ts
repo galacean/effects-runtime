@@ -7,7 +7,7 @@ const Quaternion = math.Quaternion;
 
 const { expect } = chai;
 
-describe('sprite item base options', () => {
+describe('core/plugins/sprite/item-base', () => {
   let player: Player;
 
   before(() => {

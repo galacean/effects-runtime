@@ -1,11 +1,12 @@
 import type { MaterialProps } from '@galacean/effects';
 import { Mesh, glContext, math } from '@galacean/effects';
+import type { GLShaderVariant } from '@galacean/effects-webgl';
 import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
 
 const { expect } = chai;
 
-describe('gl-mesh', () => {
+describe('webgl/gl-mesh', () => {
   let canvas = document.createElement('canvas');
   let renderer = new GLRenderer(canvas, 'webgl2');
 
@@ -21,7 +22,7 @@ describe('gl-mesh', () => {
   it('create GLMesh', async () => {
     const result = generateGLMesh(renderer);
     const mesh = result.mesh;
-    const geom = result.geom;
+    const geometry = result.geometry;
     const material = result.material;
 
     mesh.material.initialize();
@@ -32,11 +33,11 @@ describe('gl-mesh', () => {
     const position = material.getVector2('uPos');
 
     await sleep(100);
-    // @ts-expect-error
-    expect(material.shaderVariant.program.pipelineContext).to.eql(renderer.pipelineContext);
+    // @ts-expect-error private property
+    expect((material.shaderVariant as GLShaderVariant).program.pipelineContext).to.eql(renderer.pipelineContext);
     expect(position?.x).to.eql(1);
     expect(position?.y).to.eql(2);
-    expect(resultGeom).to.eql(geom);
+    expect(resultGeom).to.eql(geometry);
     expect(resultGeom.engine.renderer).not.eql(null);
     gpubuffer?.readSubData(0, buffer);
     expect(buffer).to.eql(new Float32Array([0.5, -0.5, 0.5, 0.5, -0.5, 0.5, -0.5, -0.5]));
@@ -46,28 +47,24 @@ describe('gl-mesh', () => {
 });
 
 function generateGLMesh (renderer: GLRenderer) {
-  const vertexShaderStr = `attribute vec2 aPosition;
+  const vertex = `attribute vec2 aPosition;
 uniform vec2 uPos;
 void main() {
   gl_Position = vec4(aPosition.x, aPosition.y, 0.0, 1.0);
 }
 `;
-  const fragmentShaderStr = `precision highp float;
+  const fragment = `precision highp float;
 void main() {
   gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }
 `;
-
   const shader = {
-    fragment: fragmentShaderStr,
-    vertex: vertexShaderStr,
+    fragment,
+    vertex,
     name: 'base_shader',
   };
-  const shaderID = renderer.pipelineContext.shaderLibrary.addShader(shader);
   const mtlOption = {
-    shader: {
-      cacheId: shaderID,
-    },
+    shader,
     states: {
       depthTest: true,
     },
@@ -93,12 +90,12 @@ void main() {
     mode: glContext.TRIANGLES,
   };
 
-  const geom = new GLGeometry(renderer.engine, geomOption);
+  const geometry = new GLGeometry(renderer.engine, geomOption);
   const meshOption = {
-    geometry: geom,
+    geometry,
     material,
   };
   const mesh = new Mesh(renderer.engine, meshOption);
 
-  return { mesh, material, geom };
+  return { mesh, material, geometry };
 }

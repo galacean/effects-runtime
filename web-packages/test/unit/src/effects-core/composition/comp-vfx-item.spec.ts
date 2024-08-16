@@ -2,7 +2,7 @@ import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('comp-vfxItem', () => {
+describe('core/composition/comp-vfx-item', () => {
   let player: Player;
 
   before(() => {

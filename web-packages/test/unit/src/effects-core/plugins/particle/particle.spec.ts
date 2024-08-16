@@ -5,7 +5,7 @@ import type { GLMaterial } from '@galacean/effects-webgl';
 const { Vector2 } = math;
 const { expect } = chai;
 
-describe('effects-core/plugins/particle-test', function () {
+describe('core/plugins/particle/test', function () {
   this.timeout('60s');
 
   const canvas = document.createElement('canvas');

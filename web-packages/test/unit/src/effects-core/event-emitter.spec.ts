@@ -2,7 +2,7 @@ import { EventEmitter } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('event emitter api', () => {
+describe('core/event-emitter', () => {
   it('event on', async () => {
     const event = new EventEmitter();
     const spy = chai.spy();

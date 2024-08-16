@@ -9,7 +9,7 @@ import { GLMaterial, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
 const { Vector4 } = math;
 const { expect, assert } = chai;
 
-describe('gl-material', () => {
+describe('webgl/gl-material', () => {
   let canvas: HTMLCanvasElement;
   let renderer: GLRenderer;
   let gl: WebGLRenderingContext | WebGL2RenderingContext;

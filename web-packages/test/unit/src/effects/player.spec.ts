@@ -1,11 +1,10 @@
-// @ts-nocheck
 import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('player case', () => {
-  let container;
-  let player;
+describe('player', () => {
+  let container: HTMLElement;
+  let player: Player;
   const json = '{"compositionId":1,"requires":[],"compositions":[{"name":"composition_1","id":1,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1},"items":[{"name":"item_1","delay":0,"id":1,"type":"1","ro":0.1,"sprite":{"options":{"startLifetime":2,"startSize":1.2,"sizeAspect":1,"startColor":["color",[255,255,255]],"duration":2,"gravityModifier":1,"renderLevel":"B+"},"renderer":{"renderMode":1}}}],"meta":{"previewSize":[750,1334]}}],"gltf":[],"images":[],"version":"0.9.0","shapes":[],"plugins":[],"type":"mars","_imgs":{"1":[]}}';
 
   beforeEach(() => {
@@ -18,17 +17,20 @@ describe('player case', () => {
     player.pause();
     player?.dispose();
     container.remove();
+    // @ts-expect-error
     container = null;
   });
 
   it('if webgl2 not available, use webgl', () => {
     const canvas = document.createElement('canvas');
 
+    // @ts-expect-error
     canvas.getContext = function (type) {
       if (type !== 'webgl') {
         return null;
       }
 
+      // @ts-expect-error
       return HTMLCanvasElement.prototype.getContext.apply(this, arguments);
     };
     player = new Player({
@@ -41,11 +43,13 @@ describe('player case', () => {
   it('if webgl2 not available, use webgl by default', () => {
     const canvas = document.createElement('canvas');
 
+    // @ts-expect-error
     canvas.getContext = function (type) {
       if (type !== 'webgl') {
         return null;
       }
 
+      // @ts-expect-error
       return HTMLCanvasElement.prototype.getContext.apply(this, arguments);
     };
     player = new Player({
@@ -84,10 +88,10 @@ describe('player case', () => {
     });
     const canvas = container.querySelector('canvas');
 
-    expect(canvas.width).to.eql(150);
-    expect(canvas.height).to.eql(100);
-    expect(canvas.clientWidth).to.eql(300);
-    expect(canvas.clientHeight).to.eql(200);
+    expect(canvas?.width).to.eql(150);
+    expect(canvas?.height).to.eql(100);
+    expect(canvas?.clientWidth).to.eql(300);
+    expect(canvas?.clientHeight).to.eql(200);
   });
 
   it('keep aspect when size over 2048', () => {
@@ -102,8 +106,8 @@ describe('player case', () => {
     });
     const canvas = container.querySelector('canvas');
 
-    expect(canvas.height).to.eql(2048);
-    expect(canvas.width).to.eql(Math.round(2048 / 18 * 10));
+    expect(canvas?.height).to.eql(2048);
+    expect(canvas?.width).to.eql(Math.round(2048 / 18 * 10));
   });
 
   it('when over sized it resize to 2048 no env', () => {
@@ -113,10 +117,10 @@ describe('player case', () => {
     });
     const canvas = container.querySelector('canvas');
 
-    expect(canvas.width).to.eql(2048);
-    expect(canvas.height).to.eql(Math.round(2048 / 3 * 2));
-    expect(canvas.clientWidth).to.eql(300);
-    expect(canvas.clientHeight).to.eql(200);
+    expect(canvas?.width).to.eql(2048);
+    expect(canvas?.height).to.eql(Math.round(2048 / 3 * 2));
+    expect(canvas?.clientWidth).to.eql(300);
+    expect(canvas?.clientHeight).to.eql(200);
   });
 
   it('when over sized it resize to max texture size with env', () => {
@@ -127,10 +131,10 @@ describe('player case', () => {
     });
     const canvas = container.querySelector('canvas');
 
-    expect(canvas.width).to.eql(player.gpuCapability.detail.maxTextureSize);
-    expect(canvas.height).to.eql(Math.round(player.gpuCapability.detail.maxTextureSize / 3 * 2));
-    expect(canvas.clientWidth).to.eql(300);
-    expect(canvas.clientHeight).to.eql(200);
+    expect(canvas?.width).to.eql(player.gpuCapability.detail.maxTextureSize);
+    expect(canvas?.height).to.eql(Math.round(player.gpuCapability.detail.maxTextureSize / 3 * 2));
+    expect(canvas?.clientWidth).to.eql(300);
+    expect(canvas?.clientHeight).to.eql(200);
   });
 
   it('canvas to player, reset aspect', async () => {
@@ -153,21 +157,22 @@ describe('player case', () => {
 
 });
 
-describe('create by gl context', function () {
+describe('player/create by gl context', function () {
   const timeout = 10;
-  let player;
+  let player: Player;
 
   this.timeout('100s');
 
   afterEach(() => {
     player?.dispose();
+    // @ts-expect-error
     player = null;
   });
 
   it('set webgl1 context', async () => {
     const canvas = document.createElement('canvas');
 
-    player = new Player({ canvas, renderFramework:'webgl' });
+    player = new Player({ canvas, renderFramework: 'webgl' });
     expect(player.gpuCapability.type).to.eql('webgl');
     player.dispose();
     canvas.remove();
@@ -188,8 +193,8 @@ describe('create by gl context', function () {
   it('set two webgl1 player', async () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
-    const player1 = new Player({ canvas: canvas1, renderFramework:'webgl' });
-    const player2 = new Player({ canvas: canvas2, renderFramework:'webgl' });
+    const player1 = new Player({ canvas: canvas1, renderFramework: 'webgl' });
+    const player2 = new Player({ canvas: canvas2, renderFramework: 'webgl' });
 
     expect(player1.gpuCapability.type).to.eql(player2.gpuCapability.type);
     player1.dispose();
@@ -202,8 +207,8 @@ describe('create by gl context', function () {
   it('set two webgl2 player', async () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
-    const player1 = new Player({ canvas: canvas1, renderFramework:'webgl2' });
-    const player2 = new Player({ canvas: canvas2, renderFramework:'webgl2' });
+    const player1 = new Player({ canvas: canvas1, renderFramework: 'webgl2' });
+    const player2 = new Player({ canvas: canvas2, renderFramework: 'webgl2' });
 
     expect(player1.gpuCapability.type).to.eql(player2.gpuCapability.type);
     player1.dispose();
@@ -216,13 +221,13 @@ describe('create by gl context', function () {
   it('set different webgl player', async () => {
     const canvas1 = document.createElement('canvas');
     const canvas2 = document.createElement('canvas');
-    const player1 = new Player({ canvas: canvas1, renderFramework:'webgl' });
+    const player1 = new Player({ canvas: canvas1, renderFramework: 'webgl' });
 
     try {
-      const player2 = new Player({ canvas: canvas2, renderFramework:'webgl2' });
+      const player2 = new Player({ canvas: canvas2, renderFramework: 'webgl2' });
 
       player2.dispose();
-    } catch (e) {
+    } catch (e: any) {
       expect(e.message).to.equal('Create player with different WebGL version: old=webgl2, new=webgl');
     }
     player1.dispose();

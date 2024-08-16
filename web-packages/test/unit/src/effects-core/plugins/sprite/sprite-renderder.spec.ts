@@ -5,7 +5,7 @@ import { GLMaterial } from '@galacean/effects-webgl';
 const { expect } = chai;
 
 // JSON中的sprite renderer属性设置
-describe('sprite renderer params', () => {
+describe('core/plugins/sprite/renderer', () => {
   let player: Player;
 
   before(() => {
