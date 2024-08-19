@@ -93,7 +93,7 @@ describe('webgl/gl-material', () => {
     assert.equal(material.depthFunc, glContext.LESS);
     expect(material.depthRange).to.eql([0, 0.7]);
     assert.equal(material.cullFace, glContext.FRONT);
-    assert.equal(material.frontFace, glContext.CW);
+    assert.equal(material.frontFace, glContext.CCW);
 
     assert.equal(material.stencilTest, true);
     expect(material.stencilFunc).to.eql([glContext.ALWAYS, glContext.ALWAYS]);
@@ -166,7 +166,7 @@ describe('webgl/gl-material', () => {
     material.setupStates(renderer.glRenderer.pipelineContext);
     expect(gl.isEnabled(gl.CULL_FACE)).to.eql(true);
     expect(gl.getParameter(gl.CULL_FACE_MODE)).to.eql(glContext.FRONT);
-    expect(gl.getParameter(gl.FRONT_FACE)).to.eql(glContext.CW);
+    expect(gl.getParameter(gl.FRONT_FACE)).to.eql(glContext.CCW);
   });
 
   // 开启cullface 使用自定义参数
@@ -176,7 +176,7 @@ describe('webgl/gl-material', () => {
     material.setupStates(renderer.glRenderer.pipelineContext);
     expect(gl.isEnabled(gl.CULL_FACE)).to.eql(true);
     expect(gl.getParameter(gl.CULL_FACE_MODE)).to.eql(glContext.FRONT_AND_BACK);
-    expect(gl.getParameter(gl.FRONT_FACE)).to.eql(glContext.CW);
+    expect(gl.getParameter(gl.FRONT_FACE)).to.eql(glContext.CCW);
   });
 
   // 关闭depthTest
