@@ -4,7 +4,7 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import type { Component, RendererComponent, ItemBehaviour } from './components';
+import type { Component, RendererComponent, Behaviour } from './components';
 import { EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
@@ -70,7 +70,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素动画结束时行为（如何处理元素）
    */
-  endBehavior: spec.EndBehavior | spec.ParentItemEndBehavior;
+  endBehavior: spec.EndBehavior = spec.EndBehavior.forward;
   /**
    * 元素是否可用
    */
@@ -94,7 +94,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   @serialize()
   components: Component[] = [];
-  itemBehaviours: ItemBehaviour[] = [];
+  itemBehaviours: Behaviour[] = [];
   rendererComponents: RendererComponent[] = [];
 
   /**
@@ -505,7 +505,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.transform.engine = this.engine;
     this.parentId = parentId;
     this.duration = duration;
-    this.endBehavior = endBehavior;
+    // TODO spec endbehavior 类型修正
+    this.endBehavior = endBehavior as spec.EndBehavior;
 
     if (!data.content) {
       data.content = { options: {} };

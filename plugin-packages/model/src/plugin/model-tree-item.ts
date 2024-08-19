@@ -1,5 +1,5 @@
 import type { Engine, VFXItem } from '@galacean/effects';
-import { ItemBehaviour, Transform, effectsClass, spec } from '@galacean/effects';
+import { Behaviour, Transform, effectsClass, spec } from '@galacean/effects';
 import type { ModelTreeContent, ModelTreeOptions } from '../index';
 import { PAnimationManager } from '../runtime';
 import { getSceneManager } from './model-plugin';
@@ -177,7 +177,7 @@ export class ModelTreeItem {
  * @internal
  */
 @effectsClass(spec.DataType.TreeComponent)
-export class ModelTreeComponent extends ItemBehaviour {
+export class ModelTreeComponent extends Behaviour {
   /**
    * 内部节点树元素
    */

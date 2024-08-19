@@ -59,27 +59,15 @@ export abstract class Behaviour extends Component {
   set enabled (value: boolean) {
     this._enabled = value;
     if (value) {
-      this.onBehaviourEnable();
+      this.onEnable();
+      if (!this.isStartCalled) {
+        this.start();
+        this.isStartCalled = true;
+      }
     }
   }
 
-  protected onBehaviourEnable () { }
-
-  override fromData (data: unknown): void {
-    super.fromData(data);
-  }
-
-  override toData (): void {
-    super.toData();
-  }
-}
-
-/**
- * @since 2.0.0
- * @internal
- */
-export abstract class ItemBehaviour extends Behaviour {
-  started = false;
+  isStartCalled = false;
 
   // /**
   //  * 生命周期函数，初始化后调用，生命周期内只调用一次
@@ -122,13 +110,5 @@ export abstract class ItemBehaviour extends Behaviour {
       removeItem(this.item.itemBehaviours, this);
     }
     super.dispose();
-  }
-
-  protected override onBehaviourEnable (): void {
-    this.onEnable();
-    if (!this.started) {
-      this.start();
-      this.started = true;
-    }
   }
 }

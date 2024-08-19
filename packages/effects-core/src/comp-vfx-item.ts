@@ -2,7 +2,7 @@ import type { Ray } from '@galacean/effects-math/es/core/ray';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { ItemBehaviour } from './components';
+import { Behaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { ContentOptions } from './composition-source-manager';
 import type { Region, TrackAsset } from './plugins';
@@ -28,7 +28,7 @@ export interface SceneBindingData {
  * @since 2.0.0
  * @internal
  */
-export class CompositionComponent extends ItemBehaviour {
+export class CompositionComponent extends Behaviour {
   time = 0;
   startTime = 0;
   refId: string;

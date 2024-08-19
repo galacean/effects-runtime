@@ -1,9 +1,9 @@
 import type { spec } from '@galacean/effects';
-import { ItemBehaviour, effectsClass } from '@galacean/effects';
+import { Behaviour, effectsClass } from '@galacean/effects';
 import type { CompositionTransformerAcceler } from './composition-transformer-acceler';
 
 @effectsClass('OrientationComponent')
-export class OrientationComponent extends ItemBehaviour {
+export class OrientationComponent extends Behaviour {
   private targets: spec.PluginGyroscopeTarget[];
 
   override fromData (data: any) {
