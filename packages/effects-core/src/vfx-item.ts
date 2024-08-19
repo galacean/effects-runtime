@@ -70,7 +70,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素动画结束时行为（如何处理元素）
    */
-  endBehavior: spec.EndBehavior | spec.ParentItemEndBehavior;
+  endBehavior: spec.EndBehavior = spec.EndBehavior.forward;
   /**
    * 元素是否可用
    */
@@ -505,7 +505,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.transform.engine = this.engine;
     this.parentId = parentId;
     this.duration = duration;
-    this.endBehavior = endBehavior;
+    // TODO spec endbehavior 类型修正
+    this.endBehavior = endBehavior as spec.EndBehavior;
 
     if (!data.content) {
       data.content = { options: {} };

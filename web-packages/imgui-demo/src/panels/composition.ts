@@ -1,19 +1,19 @@
 import inspireList from '../asset/inspire-list';
-import { menuItem } from '../core/decorators';
+import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow, editorWindow } from './editor-window';
+import { EditorWindow } from './editor-window';
 import { Selection } from '../core/selection';
 
 @editorWindow()
 export class Composition extends EditorWindow {
 
-  private currentItem: number = 0;
+  private currentItem = 0;
   private compositionNames: string[] = [];
   private compositionURLs: string[] = [];
-  private currentCompositionURL: string = '';
+  private currentCompositionURL = '';
 
-  private use3DConverter: boolean = false;
+  private use3DConverter = false;
 
   @menuItem('Window/Composition')
   static showWindow () {
