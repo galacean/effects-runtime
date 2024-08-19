@@ -1,17 +1,14 @@
 # Galacean Effects Core
 
 ## 基本概念
-合成（composition）是 Galacean Effects 中动画播放的单位，抽象类 `Composition` 管理着一段动画从数据解析（JSON -> VFXItem
-/ Texture -> mesh）到渲染帧（`renderFrame`）和渲染通道 (renderPass) 的创建、更新与销毁。
+合成（composition）是 Galacean Effects 中动画播放的单位，抽象类 `Composition` 管理着一段动画从数据解析（JSON -> VFXItem -> mesh）到渲染帧（`renderFrame`）和渲染通道 (renderPass) 的创建、更新与销毁。
 
-每个合成用到的动画数据来自不同类型的元素（`VFXItem`），包括相机属性、若干图层、粒子和交互元素；
-合成创建时，会完成元素 `VFXItem` 的创建、动画纹理贴图（`Texture`）的加载和创建, `renderFrame` 和 `renderPass` 的初始化；
+每个合成用到的动画数据来自不同类型的元素（`VFXItem`）和其对应的组件（`Component`），包括相机属性、若干图层、粒子和交互元素；
+合成创建时，会完成各类数据资产的加载、元素（`VFXItem`）和其对应的组件（`Component`）的创建、动画纹理贴图（`Texture`）的加载和创建, `renderFrame` 和 `renderPass` 的初始化；
 元素在生命周期开始时，对应的 mesh 会被合成添加到默认的 `renderPass` 中；
-生命周期进行时，mesh 中包含的
-`Geometry` 和 `Material` 等数据会被更新；
+生命周期进行时，mesh 中包含的`Geometry` 和 `Material` 等数据会被更新；
 当需要进行后处理时，mesh 会被拆解到合适的 `renderPass` 中；
-生命周期结束后，对应的
-mesh 会从 `renderFrame` 中移除。
+生命周期结束后，对应的 mesh 会从 `renderFrame` 中移除。
 
 要完成动画的播放，引擎需要通过 `renderFrame` 获取 mesh 并添加到场景上，在渲染循环中不断调用 `Composition` 的 `update` 函数完成数据的刷新。
 
@@ -22,23 +19,24 @@ mesh 会从 `renderFrame` 中移除。
   1. 根据渲染分级选择性下载资源；
   2. 加载图像后根据配置进行图像/文字的替换，在 Canvas 上绘制后保存成 `imageData` 对象；
   3. 启用 gl 扩展 `KHR_parallel_shader_compile`，在资源加载完成后对 shader 进行编译；
-- 纹理创建 [Texture](./src/texture/texture.ts)：`Texture` 抽象类中的 `create` 和 `createWithData` 静态方法用于根据上面返回的参数创建真正的 texture 纹理对象，目前的纹理对象可能基于的创建类型在 `TextureSourceType` 中枚举。
-
+- 资产创建 [engine](./src/engine.ts)
+通过网络加载好的场景数据，需要挂载到`engine`对象(`addPackageDatas`)上并通过`engine`对象创建实例。
+  1. 纹理创建 [Texture](./src/texture/texture.ts)：`Texture` 抽象类中的 `create` 和 `createWithData` 静态方法用于根据上面返回的参数创建真正的 texture
+  纹理对象，目前的纹理对象可能基于的创建类型在 `TextureSourceType` 中枚举。
+  2. 元素创建 [VFXItem](./src/vfx-item.ts)：调用 `engine.createVFXItems()` 创建 VFXItem 实例。
 ### 2、动画播放
-- [Composition](./src/composition.ts)：合成管理着动画播放的数据处理与渲染设置。首先需要执行 `initialize` 函数，通过 `VFXItemManager` 完成 JSON -> VFXItem 的处理。此外，引擎需要在合适通过 `composition.renderFrame` 获取 mesh ，并把获取到的 mesh 添加场景中。
-  1. 静态 `initialize` 方法：
-     - 引擎需要实现 `VFXItemManager` 的创建、`Composition` 实例的创建、纹理参数转化成引擎可用的 `Texture`
-  2. 构造函数中需要调用以下函数：
+- [Composition](./src/composition.ts)：合成管理着动画播放的数据处理与渲染设置，引擎需要通过 `composition.renderFrame` 获取 mesh ，并把获取到的 mesh 添加场景中。
+  1. 构造函数中会完成以下函数的调用，接入时无需再调用：
       - 插件系统 `pluginSystem.initializeComposition()`
-      - `composition.resetRenderFrame()`：`renderFrame` 的创建和初始化
+      - `composition.createRenderFrame()`：`renderFrame` 的创建和初始化
       - `composition.reset()`：动画数据解析、Mesh 等渲染实例的状态初始化
       - `composition.play()`：合成播放
-  3. `update` 方法：用于调用 `renderFrame` 的方法增加/修改/删除 mesh，驱动 `VFXItem` 更新并刷新顶点数据、uniform 变量值等，以下函数会被调用，需要实现：
+  2. `update` 方法：用于调用 `renderFrame` 的方法增加/修改/删除 mesh，驱动 `VFXItem` 更新并刷新顶点数据、uniform 变量值等，以下函数会被调用，需要实现：
      - `updateVideo`：更新视频帧，用于视频播放使用
      - `getRendererOptions`：返回使用数据创建的空白 `Texture`
      - `reloadTexture/offloadTexture`：纹理的 `reload` 和 `offload`
-  4. 添加到场景中的 mesh 或渲染对象通过 `renderFrame` 获取，在 `Composition` 根据引擎需要自由设计接口即可。
-  5. `dispose` 方法：在合成生命周期结束时，会根据结束行为调用该函数，执行 `VFXItem` 的合成销毁回调，同时会把 mesh、texture 等对象一并销毁。
+  3. 添加到场景中的 mesh 或渲染对象通过 `renderFrame` 获取，在 `Composition` 根据引擎需要自由设计接口即可。
+  4. `dispose` 方法：在合成生命周期结束时，会根据结束行为调用该函数，执行 `VFXItem` 的合成销毁回调，同时会把 mesh、texture 等对象一并销毁。
 - [RenderFrame](./src/render/render-frame.ts)：`RenderFrame` 可以理解为合成每帧对应的渲染数据对象，除了管理 `renderPass`，也保存了合成对应的相机属性、公共 uniform 变量表
 （semantics）等数据；各类型元素对应的 mesh 会通过 `renderFrame` 的 `addMeshToDefaultRenderPass` 和 `removeMeshFromDefaultRenderPass` 来添加和移除。
 mesh 会根据 `priority` 属性被添加到 `renderPass` 合适位置上。
@@ -56,8 +54,7 @@ mesh 会根据 `priority` 属性被添加到 `renderPass` 合适位置上。
   3. `setVisible/getVisible` 设置 mesh 的可见性
 
 > Tips
->
-> - 图层元素并非一个 `spriteVFXItem` 对应一个 mesh, 图层元素在每帧更新时会通过 diff 算法比较相邻 mesh 是否具有相同的材质属性从而对 mesh 进行拆解或者合并。
+> - 需要使用元素组件上的方法时，可以通过 `VFXItem.getComponent(XXXComponent)` 进行获取。
 > - 若要获取当前 `VFXItem` 对应的 mesh，可以调用 `VFXItem.content.mesh` 进行获取。
 
 ### 3、[Geometry](./src/render/geometry.ts)
