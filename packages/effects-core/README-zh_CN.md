@@ -24,8 +24,9 @@
   1. 纹理创建 [Texture](./src/texture/texture.ts)：`Texture` 抽象类中的 `create` 和 `createWithData` 静态方法用于根据上面返回的参数创建真正的 texture
   纹理对象，目前的纹理对象可能基于的创建类型在 `TextureSourceType` 中枚举。
   2. 元素创建 [VFXItem](./src/vfx-item.ts)：调用 `engine.createVFXItems()` 创建 VFXItem 实例。
+
 ### 2、动画播放
-- [Composition](./src/composition.ts)：合成管理着动画播放的数据处理与渲染设置，引擎需要通过 `composition.renderFrame` 获取 mesh ，并把获取到的 mesh 添加场景中。
+- [Composition](./src/composition.ts)：合成管理着动画播放的数据处理与渲染设置，引擎需要通过 `composition.renderFrame` 获取 mesh，并把获取到的 mesh 添加场景中。
   1. 构造函数中会完成以下函数的调用，接入时无需再调用：
       - 插件系统 `pluginSystem.initializeComposition()`
       - `composition.createRenderFrame()`：`renderFrame` 的创建和初始化
@@ -37,6 +38,7 @@
      - `reloadTexture/offloadTexture`：纹理的 `reload` 和 `offload`
   3. 添加到场景中的 mesh 或渲染对象通过 `renderFrame` 获取，在 `Composition` 根据引擎需要自由设计接口即可。
   4. `dispose` 方法：在合成生命周期结束时，会根据结束行为调用该函数，执行 `VFXItem` 的合成销毁回调，同时会把 mesh、texture 等对象一并销毁。
+
 - [RenderFrame](./src/render/render-frame.ts)：`RenderFrame` 可以理解为合成每帧对应的渲染数据对象，除了管理 `renderPass`，也保存了合成对应的相机属性、公共 uniform 变量表
 （semantics）等数据；各类型元素对应的 mesh 会通过 `renderFrame` 的 `addMeshToDefaultRenderPass` 和 `removeMeshFromDefaultRenderPass` 来添加和移除。
 mesh 会根据 `priority` 属性被添加到 `renderPass` 合适位置上。
@@ -45,15 +47,18 @@ mesh 会根据 `priority` 属性被添加到 `renderPass` 合适位置上。
      - 对于包含滤镜元素的合成，涉及到后处理，effects-core 会调用 `splitDefaultRenderPassByMesh` 函数利用切分参数把对 `renderPass` 进行切分。此时引擎就需要遍历 `renderFrame._renderPasses` 来获取 mesh 并添加到场景；
      - 添加 mesh 时 material 用到的公共 uniform 需要通过 `mesh.material.uniformSemantics` 获取，包括 MVP 变换涉及的矩阵、使用的 attachment 等；
   2. `setEditorTransformUniform`：用于设置元素在模型变换后的位移/缩放变换，引擎可以不理解这个概念，把值设置到 `semantics[EDITOR_TRANSFORM]` 上即可。
+
 - [RenderPass](./src/render/render-pass.ts)：添加到场景中的 mesh 可以通过 `renderPass.meshes` 获取，渲染通道 `renderPass` 包含当前通道的 mesh、渲染前后清除缓冲区的操作类型和附件，用到颜色、深度和模板附件。`delegate` 属性用于指定 `renderPass` 在渲染前后的回调，在 [filters](./src/filters) 中定义，引擎需要在真正渲染 mesh 前执行这些回调确保滤镜的正确运行。
+
 - [Mesh](./src/render/mesh.ts)：
 每个 `VFXItem` 在初始化时会调用 `Mesh.create()` 函数, 传入 geometry、material 等参数，并通过 `priority` 设置/获取当前 mesh 对应的渲染顺序。
   1. 静态 `create` 方法 用于创建一个新的引擎能够渲染的 `Mesh` 对象。引擎需要在这里把 geometry、material 等对象添加到 mesh 上。
      - 要渲染的图元类型可以通过传入的 `geometry.mode` 获取
   2. `priority` 的 `setter` 和 `getter` 函数用于设置当前 mesh 的渲染顺序，`priority` 值小的 mesh 应该比值大的先绘制。
-  3. `setVisible/getVisible` 设置 mesh 的可见性
+  3. `setVisible/getVisible` 设置 mesh 的可见性。
 
 > Tips
+>
 > - 需要使用元素组件上的方法时，可以通过 `VFXItem.getComponent(XXXComponent)` 进行获取。
 > - 若要获取当前 `VFXItem` 对应的 mesh，可以调用 `VFXItem.content.mesh` 进行获取。
 
