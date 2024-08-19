@@ -48,7 +48,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   parent?: VFXItem;
 
-  private event: EventEmitter<ItemEvent> = new EventEmitter();
+  private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
   children: VFXItem[] = [];
   /**
@@ -182,10 +182,53 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
 
-  on: EventEmitter<ItemEvent>['on'] = this.event.on.bind(this.event);
-  off: EventEmitter<ItemEvent>['off'] = this.event.off.bind(this.event);
-  once: EventEmitter<ItemEvent>['once'] = this.event.once.bind(this.event);
-  emit: EventEmitter<ItemEvent>['emit'] = this.event.emit.bind(this.event);
+  /**
+   * 元素监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @param options - 事件监听器选项
+   * @returns
+   */
+  on (eventName: string, listener: (data: any) => void, options?: { once?: boolean }) {
+    this.eventProcessor.on(eventName as 'click' | 'message', listener, options);
+  }
+
+  /**
+   * 移除事件监听器
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @returns
+   */
+  off (eventName: string, listener: (data: any) => void) {
+    this.eventProcessor.off(eventName as 'click' | 'message', listener);
+  }
+
+  /**
+   * 一次性监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   */
+  once (eventName: string, listener: (data: any) => void) {
+    this.eventProcessor.once(eventName as 'click' | 'message', listener);
+  }
+
+  /**
+   * 触发事件
+   * @param eventName - 事件名称
+   * @param args - 事件参数
+   */
+  emit (eventName: string, args: any) {
+    this.eventProcessor.emit(eventName as 'click' | 'message', args);
+  }
+
+  /**
+   * 获取事件名称对应的所有监听器
+   * @param eventName - 事件名称
+   * @returns - 返回事件名称对应的所有监听器
+   */
+  getListeners (eventName: string) {
+    return this.eventProcessor.getListeners(eventName as 'click' | 'message');
+  }
 
   /**
    * 设置元素的动画速度
