@@ -1098,8 +1098,8 @@ export class ParticleSystem extends Component {
     }
 
     this.renderer = new ParticleSystemRenderer(this.engine, particleMeshProps, trailMeshProps);
+    this.renderer.item = this.item;
     this.meshes = this.renderer.meshes;
-    // this.item = vfxItem;
 
     const interaction = props.interaction;
 

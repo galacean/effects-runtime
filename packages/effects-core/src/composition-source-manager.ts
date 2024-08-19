@@ -136,7 +136,6 @@ export class CompositionSourceManager implements Disposable {
           if (!this.refCompositionProps.has(refId)) {
             this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
           }
-          itemProps.items = ref.items;
         }
 
         items.push(itemProps as VFXItemProps);
