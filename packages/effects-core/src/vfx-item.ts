@@ -18,6 +18,8 @@ import type {
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
+import type { ItemEvent } from './events';
+import { EventEmitter } from './events';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
@@ -45,6 +47,8 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 4. 当元素绑定 TreeItem 本身时，行为表现和绑定 nullItem 相同
    */
   parent?: VFXItem;
+
+  private event: EventEmitter<ItemEvent> = new EventEmitter();
 
   children: VFXItem[] = [];
   /**
@@ -177,6 +181,11 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
     }
   }
+
+  on: EventEmitter<ItemEvent>['on'] = this.event.on.bind(this.event);
+  off: EventEmitter<ItemEvent>['off'] = this.event.off.bind(this.event);
+  once: EventEmitter<ItemEvent>['once'] = this.event.once.bind(this.event);
+  emit: EventEmitter<ItemEvent>['emit'] = this.event.emit.bind(this.event);
 
   /**
    * 设置元素的动画速度
