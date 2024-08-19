@@ -509,7 +509,7 @@ export class SpineComponent extends RendererComponent {
     if (this.resizeRule) {
       const camera = this.item.composition.camera;
       const { z } = this.transform.getWorldPosition();
-      const { x: rx, y: ry } = camera.getInverseVPVRatio(z);
+      const { x: rx, y: ry } = camera.getInverseVPRatio(z);
 
       if (camera.clipMode === spec.CameraClipMode.portrait) {
         scaleFactor = rx / 1500;

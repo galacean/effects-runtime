@@ -297,26 +297,12 @@ export class Camera {
   getInverseVPRatio (z: number) {
     const pos = new Vector3(this.position.x, this.position.y, z);
     const mat = this.getViewProjectionMatrix();
-    const inverseVP = this.getInverseViewProjectionMatrix();
+    let inverseMat = this.getInverseViewProjectionMatrix();
 
-    const { z: nz } = mat.projectPoint(pos);
-    const { x: xMax, y: yMax } = inverseVP.projectPoint(new Vector3(1, 1, nz));
-    const { x: xMin, y: yMin } = inverseVP.projectPoint(new Vector3(-1, -1, nz));
-
-    return new Vector3((xMax - xMin) / 2, (yMax - yMin) / 2, 0);
-  }
-
-  /**
-   * 获取归一化坐标和 3D 世界坐标的换算比例, 使用 ViewProjectionViewport 矩阵
-   * @param z - 当前的位置 z
-   */
-  getInverseVPVRatio (z: number) {
-    const pos = new Vector3(this.position.x, this.position.y, z);
-    const mat = this.getViewProjectionMatrix();
-    const inverseMat = this.getInverseViewMatrix();
-
-    mat.multiplyMatrices(mat, this.getViewportMatrix());
-    inverseMat.multiplyMatrices(inverseMat, this.getInverseViewProjectionMatrix());
+    if (!this.viewportMatrix.isIdentity()) {
+      mat.multiply(this.viewportMatrix.clone().invert());
+      inverseMat = this.viewportMatrix.clone().multiply(inverseMat);
+    }
 
     const { z: nz } = mat.projectPoint(pos);
     const { x: xMax, y: yMax } = inverseMat.projectPoint(new Vector3(1, 1, nz));
