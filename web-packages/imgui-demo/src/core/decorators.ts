@@ -19,8 +19,8 @@ export function editorWindow () {
   };
 }
 
-export const editorStore = new Map<Function, new () => any>();
-export function editor (ComponentType: Function) {
+export const editorStore = new Map<new () => any, new () => any>();
+export function editor (ComponentType: new(...args: any[]) => any,) {
   return (target: any, context?: unknown) => {
     if (editorStore.get(ComponentType)) {
       console.warn(`Editor Class ${target} 重复注册`);
@@ -29,8 +29,8 @@ export function editor (ComponentType: Function) {
   };
 }
 
-export const objectInspectorStore = new Map<Function, new () => any>();
-export function objectInspector (ObjectType: Function) {
+export const objectInspectorStore = new Map<new () => any, new () => any>();
+export function objectInspector (ObjectType: new(...args: any[]) => any) {
   return (target: any, context?: unknown) => {
     if (objectInspectorStore.get(ObjectType)) {
       console.warn(`ObjectInspector Class ${target} 重复注册`);
