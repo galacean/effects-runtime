@@ -9,7 +9,7 @@ import { Component } from './component';
  * @since 2.0.0
  */
 export class RendererComponent extends Component {
-  started = false;
+  isStartCalled = false;
 
   @serialize()
   materials: Material[] = [];

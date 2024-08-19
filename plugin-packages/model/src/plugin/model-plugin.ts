@@ -12,7 +12,7 @@ import {
   VFXItem,
   AbstractPlugin,
   spec,
-  ItemBehaviour,
+  Behaviour,
   PLAYER_OPTIONS_ENV_EDITOR,
   effectsClass,
   GLSLVersion,
@@ -164,7 +164,7 @@ export interface ModelPluginOptions {
  * @internal
  */
 @effectsClass(spec.DataType.ModelPluginComponent)
-export class ModelPluginComponent extends ItemBehaviour {
+export class ModelPluginComponent extends Behaviour {
   private runtimeEnv = PLAYER_OPTIONS_ENV_EDITOR;
   private compatibleMode = 'gltf';
   private renderSkybox = true;

@@ -1,5 +1,4 @@
-import { PostProcessVolume } from '@galacean/effects';
-import { Editor, editor } from '../panels';
+import { Editor } from './editor';
 
 export class PostProcessVolumeEditor extends Editor {
 

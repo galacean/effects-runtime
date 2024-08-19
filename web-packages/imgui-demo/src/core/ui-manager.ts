@@ -1,11 +1,21 @@
-import { editorWindowStore, type EditorWindow } from '../panels/editor-window';
+import { type EditorWindow } from '../panels/editor-window';
 import { MenuItemNode, MenuNode } from '../widgets/menu-item';
 import { ImGui } from '../imgui';
-import { menuItemStore } from './decorators';
+import { editorStore, editorWindowStore, menuItemStore, objectInspectorStore } from './decorators';
+import type { ObjectInspector } from '../object-inspectors/object-inspectors';
+import type { Editor } from '../custom-editors/editor';
 
 export class UIManager {
+  // Custom component inspector GUI
+  static customEditors = new Map<Function, Editor>();
+
+  // Custom object inspector GUI
+  static objectInpectors = new Map<Function, ObjectInspector>();
+
+  // Custom window GUI
   private static editorWindows: EditorWindow[] = [];
-  // editor: Editor = new Editor();
+
+  // Top menu nodes
   private menuNodes: MenuNode[] = [];
 
   constructor () {
@@ -18,6 +28,24 @@ export class UIManager {
 
     for (const editorWindowClass of editorWindowStore) {
       UIManager.editorWindows.push(new editorWindowClass());
+    }
+
+    for (const key of editorStore.keys()) {
+      const customEditorClass = editorStore.get(key);
+
+      if (!customEditorClass) {
+        continue;
+      }
+      UIManager.customEditors.set(key, new customEditorClass());
+    }
+
+    for (const key of objectInspectorStore.keys()) {
+      const objectInpectorClass = objectInspectorStore.get(key);
+
+      if (!objectInpectorClass) {
+        continue;
+      }
+      UIManager.objectInpectors.set(key, new objectInpectorClass());
     }
   }
 

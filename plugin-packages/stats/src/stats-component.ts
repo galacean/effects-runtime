@@ -1,8 +1,7 @@
-import type { GLRenderer } from '@galacean/effects';
-import { ItemBehaviour } from '@galacean/effects';
+import { Behaviour, type GLRenderer } from '@galacean/effects';
 import { Monitor } from './monitor';
 
-export class StatsComponent extends ItemBehaviour {
+export class StatsComponent extends Behaviour {
   /**
    * 监控对象
    */

@@ -387,7 +387,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (this.rootItem.ended && this.reusable) {
       this.restart();
     }
-    if (this.rootComposition.started) {
+    if (this.rootComposition.isStartCalled) {
       this.gotoAndPlay(this.time - this.startTime);
     } else {
       this.gotoAndPlay(0);
@@ -454,9 +454,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (pause) {
       this.resume();
     }
-    if (!this.rootComposition.started) {
+    if (!this.rootComposition.isStartCalled) {
       this.rootComposition.start();
-      this.rootComposition.started = true;
+      this.rootComposition.isStartCalled = true;
     }
     this.forwardTime(time + this.startTime);
 
@@ -610,15 +610,15 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   private callStart (item: VFXItem) {
     for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && !itemBehaviour.started) {
+      if (itemBehaviour.isActiveAndEnabled && !itemBehaviour.isStartCalled) {
         itemBehaviour.start();
-        itemBehaviour.started = true;
+        itemBehaviour.isStartCalled = true;
       }
     }
     for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && !rendererComponent.started) {
+      if (rendererComponent.isActiveAndEnabled && !rendererComponent.isStartCalled) {
         rendererComponent.start();
-        rendererComponent.started = true;
+        rendererComponent.isStartCalled = true;
       }
     }
     for (const child of item.children) {
@@ -628,12 +628,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   private callUpdate (item: VFXItem, dt: number) {
     for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && itemBehaviour.started) {
+      if (itemBehaviour.isActiveAndEnabled && itemBehaviour.isStartCalled) {
         itemBehaviour.update(dt);
       }
     }
     for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && rendererComponent.started) {
+      if (rendererComponent.isActiveAndEnabled && rendererComponent.isStartCalled) {
         rendererComponent.update(dt);
       }
     }
@@ -657,12 +657,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
   private callLateUpdate (item: VFXItem, dt: number) {
     for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && itemBehaviour.started) {
+      if (itemBehaviour.isActiveAndEnabled && itemBehaviour.isStartCalled) {
         itemBehaviour.lateUpdate(dt);
       }
     }
     for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && rendererComponent.started) {
+      if (rendererComponent.isActiveAndEnabled && rendererComponent.isStartCalled) {
         rendererComponent.lateUpdate(dt);
       }
     }
