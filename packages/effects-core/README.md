@@ -1,12 +1,15 @@
 # Galacean Effects Core
 
 ## Basic Concepts
-In Galacean Effects, a Composition is the unit of animation playback. It is managed by the abstract class `Composition`, which is responsible for parsing data (JSON -> VFXItem / Texture -> mesh), creating and updating render frames (`renderFrame`) and render passes (renderPass).
+The **Composition** in Galacean Effects is the unit of animation playback. The abstract class `Composition` manages the process from data parsing (JSON -> VFXItem -> mesh) to the creation, updating, and destruction of rendered frames (`renderFrame`) and render passes (`renderPass`).
 
-Each composition uses animation data for different types of elements (`VFXItems`), including camera properties, multiple layers, particles, and interactive elements. When a composition is created, it completes the creation of elements (`VFXItems`), loading and creation of animation texture maps (`Textures`), and initialization of render frames (`renderFrame`) and render passes (`renderPass`).
-At the beginning of the composition's lifecycle, the corresponding mesh is added to the default render pass (`renderPass`).
-During the lifecycle, the `Geometry` and `Material` data contained in the mesh is updated.
-When post-processing is required, the mesh is split into the appropriate `renderPass`.At the end of the lifecycle, the corresponding mesh is removed from the `renderFrame`.
+Each composition utilizes animation data from various types of elements (`VFXItem`) and their corresponding components (`Component`), including camera properties, multiple layers, particles, and interactive elements.
+
+When a composition is created, it loads various data assets, creates elements (`VFXItem`) along with their corresponding components (`Component`), and initializes animation texture maps (`Texture`), `renderFrame`, and `renderPass`.
+
+At the beginning of the lifecycle, the corresponding mesh will be added to the default `renderPass` by the composition. During the course of the lifecycle, the data within the mesh, such as `Geometry` and `Material`, will be updated.
+
+When post-processing is needed, the mesh will be broken down into the appropriate `renderPass`. After the lifecycle ends, the corresponding mesh will be removed from the `renderFrame`.
 
 To play the animation, the engine retrieves the mesh from the `renderFrame` and adds it to the scene, continuously calls the update function of the `Composition` during the rendering loop to `update` the data.
 
@@ -16,23 +19,24 @@ To play the animation, the engine retrieves the mesh from the `renderFrame` and 
   1. Selective downloading of resources based on rendering levels.
   2. After loading the image, image/text replacement is performed according to the configuration, and the modified image is saved as an `imageData` object by drawing on a Canvas.
   3. Enable the gl extension `KHR_parallel_shader_compile` to compile shaders after resource loading is completed.
-- Texture Creation [Texture](./src/texture/texture.ts): `Textures` are created based on the parameters obtained from the resource download process. The current texture object may be based on one of the creation types defined in the `TextureSourceType` enumeration.
+- Asset Creation [engine](./src/engine.ts)
+The scene data loaded from the network needs to be mounted onto the `engine` object (`addPackageDatas`) to create instances through the `engine` object.
+  1. Texture Creation [Texture](./src/texture/texture.ts): The static methods `create` and `createWithData` in the `Texture` abstract class are used to create real texture objects based on the parameters returned above. The current texture objects may be based on the creation types enumerated in `TextureSourceType`.
+  2. Element Creation [VFXItem](./src/vfx-item.ts): Call `engine.createVFXItems()` to create VFXItem instances.
 
 ### 2. Animation Playback
-- [Composition](./src/composition.ts): The composition manages the data processing and rendering setup for animation playback. The `initialize` function is called to initialize the `VFXItemManager` for JSON -> VFXItem processing. Additionally, the engine needs to retrieve the mesh when appropriate through `composition.renderFrame` and add the retrieved mesh to the scene.
-  1. Static `initialize` method:
-     - The engine needs to implement the creation of `VFXItemManager`, `Composition` instances, and converting texture parameters to `Texture` usable by the engine.
-  2. In the constructor, the following functions need to be called:
-     - Plugin system `pluginSystem.initializeComposition()`.
-     - `composition.resetRenderFrame()`: Create and initialize the `renderFrame`.
-     - `composition.reset()`: Parse the animation data and initialize the state of the render instance.
-     - `composition.play()`: Start playing the composition animation.
-  3. `update` method: Used to call the `renderFrame`'s methods to add/modify/delete meshes and drive the update and vertex data, uniform variable values, etc., of `VFXItems`. The following functions need to be implemented:
-     - `updateVideo`: Update video frames for video playback.
-     - `getRendererOptions`: Return a blank `Texture` created using the data.
-     - `reloadTexture/offloadTexture`: Reload/unload textures.
-  4. The mesh or rendering objects added to the scene can be retrieved through the `renderFrame`, and the interface can be freely designed in the `Composition` according to the engine's needs.
-  5. `dispose` method: When the composition's lifecycle comes to an end, this method is called based on the termination behavior. It executes the composition's disposal callback for `VFXItem` and also destroys associated objects such as meshes and textures.
+- [Composition](./src/composition.ts): The Composition manages the data processing and rendering settings for animation playback. The engine needs to obtain the mesh through `composition.renderFrame` and add the retrieved meshes to the scene.
+  1. The constructor will invoke the following functions, which do not need to be called manually when integrating:
+     - Plugin system `pluginSystem.initializeComposition()`
+     - `composition.createRenderFrame()`: Creation and initialization of `renderFrame`
+     - `composition.reset()`: Animation data parsing and initialization of the rendering instance state such as Mesh
+     - `composition.play()`: Start playback of the composition
+  2. `update` method: This method is used to call `renderFrame` to add/modify/delete meshes, driving the update of `VFXItem` and refreshing vertex data, uniform variable values, etc. The following functions will be called and need to be implemented:
+     - `updateVideo`: Update video frames for video playback
+     - `getRendererOptions`: Return an empty `Texture` created with the data
+     - `reloadTexture/offloadTexture`: Handle the `reload` and `offload` of textures
+  3. The meshes or rendering objects added to the scene are obtained through `renderFrame`. The interface can be freely designed in `Composition` according to the needs of the engine.
+  4. `dispose` method: At the end of the composition lifecycle, this method will be called based on the termination behavior, executing the composition destruction callback of `VFXItem`, and will also destroy objects such as meshes and textures.
 
 - [RenderFrame](./src/render/render-frame.ts): The `RenderFrame` can be understood as the rendering data object corresponding to each frame of the composition. In addition to managing the `renderPass`, it also stores the camera properties and common uniform variable table (semantics) associated with the composition. The meshes corresponding to different types of elements are added and removed using `addMeshToDefaultRenderPass` and `removeMeshFromDefaultRenderPass` methods of `renderFrame`. The mesh is added to the appropriate position in the `renderPass` based on its `priority` property.
   1. `addMeshToDefaultRenderPass/removeMeshFromDefaultRenderPass`:
@@ -49,7 +53,7 @@ To play the animation, the engine retrieves the mesh from the `renderFrame` and 
 
 > Tips
 >
-> - Each `spriteVFXItem` does not necessarily correspond to a single mesh. Layer elements are compared using a diff algorithm during frame updates to determine whether adjacent meshes have the same material properties, and then the meshes are split or merged accordingly.
+> - To access methods on the element component, you can use `VFXItem.getComponent(XXXComponent)`.
 > - To obtain the mesh corresponding to the current `VFXItem`, you can use `VFXItem.content.mesh` to retrieve it.
 
 ### 3. [Geometry](./src/render/geometry.ts)
