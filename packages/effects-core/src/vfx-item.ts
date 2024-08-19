@@ -4,7 +4,7 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import type { Component, RendererComponent, ItemBehaviour } from './components';
+import type { Component, RendererComponent, Behaviour } from './components';
 import { EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
@@ -94,7 +94,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   @serialize()
   components: Component[] = [];
-  itemBehaviours: ItemBehaviour[] = [];
+  itemBehaviours: Behaviour[] = [];
   rendererComponents: RendererComponent[] = [];
 
   /**

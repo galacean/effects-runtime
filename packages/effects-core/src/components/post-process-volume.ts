@@ -1,9 +1,9 @@
 import { effectsClass, serialize } from '../decorators';
-import { ItemBehaviour } from './component';
+import { Behaviour } from './component';
 
 // TODO spec 增加 DataType
 @effectsClass('PostProcessVolume')
-export class PostProcessVolume extends ItemBehaviour {
+export class PostProcessVolume extends Behaviour {
   @serialize()
   useHDR = true;
 

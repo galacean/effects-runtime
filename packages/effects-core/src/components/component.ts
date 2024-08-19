@@ -63,22 +63,6 @@ export abstract class Behaviour extends Component {
     }
   }
 
-  protected onBehaviourEnable () { }
-
-  override fromData (data: unknown): void {
-    super.fromData(data);
-  }
-
-  override toData (): void {
-    super.toData();
-  }
-}
-
-/**
- * @since 2.0.0
- * @internal
- */
-export abstract class ItemBehaviour extends Behaviour {
   started = false;
 
   // /**
@@ -117,18 +101,18 @@ export abstract class ItemBehaviour extends Behaviour {
     this.item.itemBehaviours.push(this);
   }
 
-  override dispose (): void {
-    if (this.item) {
-      removeItem(this.item.itemBehaviours, this);
-    }
-    super.dispose();
-  }
-
-  protected override onBehaviourEnable (): void {
+  private onBehaviourEnable (): void {
     this.onEnable();
     if (!this.started) {
       this.start();
       this.started = true;
     }
+  }
+
+  override dispose (): void {
+    if (this.item) {
+      removeItem(this.item.itemBehaviours, this);
+    }
+    super.dispose();
   }
 }
