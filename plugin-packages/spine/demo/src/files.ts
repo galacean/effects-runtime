@@ -1,3 +1,5 @@
+import * as https from 'node:https';
+
 export const premultiply: Record<string, FileFormat> = {
   coin: {
     skeleton:'https://gw.alipayobjects.com/os/gltf-asset/05493939668400/coin-pro.skel',
@@ -209,6 +211,14 @@ export const direct: Record<string, FileFormat> = {
       'https://gw.alipayobjects.com/zos/gltf-asset/16209641594273/snowglobe-pro_2.png',
     ],
     skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/16209641594273/snowglobe-pro.skel',
+    json:'',
+  },
+  light: {
+    atlas: 'https://gw.alipayobjects.com/os/gltf-asset/24059181673610/shineideng.atlas',
+    png: [
+      '    https://gw.alipayobjects.com/zos/gltf-asset/24059181673610/shineideng.png',
+    ],
+    skeleton: 'https://gw.alipayobjects.com/os/gltf-asset/24059181673610/shineideng.skel',
     json:'',
   },
 };

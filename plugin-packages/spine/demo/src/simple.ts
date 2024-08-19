@@ -663,6 +663,245 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
     ],
   };
 
+  const j = {
+    'playerVersion': {
+      'web': '2.0.0-alpha.33',
+      'native': '0.0.1.202311221223',
+    },
+    'images': [
+      {
+        'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*OQJRTKssMwEAAAAAAAAAAAAADlB4AQ/original',
+        'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*mEhERauzULIAAAAAAAAAAAAADlB4AQ/original',
+        'id': '09e162e373f04b9ea43853316e9fc41d',
+        'oriY': 1,
+      },
+    ],
+    'fonts': [],
+    'version': '3.0',
+    'shapes': [],
+    'plugins': [
+      'spine',
+    ],
+    'type': 'ge',
+    'compositions': [
+      {
+        'id': '1',
+        'name': '新建合成1',
+        'duration': 5,
+        'startTime': 0,
+        'endBehavior': 4,
+        'previewSize': [
+          750,
+          1624,
+        ],
+        'items': [
+          {
+            'id': '19c4d70c2d624dd98e4cfd99215e1041',
+          },
+        ],
+        'camera': {
+          'fov': 60,
+          'far': 40,
+          'near': 0.1,
+          'clipMode': 1,
+          'position': [
+            0,
+            0,
+            8,
+          ],
+          'rotation': [
+            0,
+            0,
+            0,
+          ],
+        },
+        'sceneBindings': [
+          {
+            'key': {
+              'id': '8c3c898b3f3f4cf785039e080e67620f',
+            },
+            'value': {
+              'id': '19c4d70c2d624dd98e4cfd99215e1041',
+            },
+          },
+        ],
+        'timelineAsset': {
+          'id': 'e685896c30db4b0283f54b1845ba0e69',
+        },
+      },
+    ],
+    'components': [
+      {
+        'options': {
+          'activeSkin': '',
+          'spine': 'res:spine/spine/spineboy-kdudey78',
+          'size': [
+            1,
+            1,
+          ],
+          'startSize': 1,
+          'activeAnimation': [
+            'aim',
+          ],
+          'mixDuration': 0,
+          'speed': 1,
+          'resizeRule': 1,
+        },
+        'resource': {
+          'atlas': {
+            'bins': {
+              'id': 'c4bab2528de54bb3b0e9d9c90a82c362',
+            },
+            'source': [
+              0,
+              1771,
+            ],
+          },
+          'skeleton': {
+            'bins': {
+              'id': 'c4bab2528de54bb3b0e9d9c90a82c362',
+            },
+            'source': [
+              1771,
+              220283,
+            ],
+          },
+          'images': [
+            {
+              'id': 'a6af261832144421b7feb33dd702e5a7',
+            },
+          ],
+          'skeletonType': 'json',
+          'editorResourceID': 'res:spine/spine/spineboy-kdudey78',
+        },
+        'id': 'd1583e586a564bff9ca95751a38c04a8',
+        'item': {
+          'id': '19c4d70c2d624dd98e4cfd99215e1041',
+        },
+        'dataType': 'SpineComponent',
+      },
+    ],
+    'geometries': [],
+    'materials': [],
+    'items': [
+      {
+        'id': '19c4d70c2d624dd98e4cfd99215e1041',
+        'name': 'spineboy',
+        'duration': 2,
+        'dataType': 'VFXItemData',
+        'type': 'spine',
+        'pluginName': 'spine',
+        'visible': true,
+        'endBehavior': 5,
+        'delay': 0,
+        'renderLevel': 'B+',
+        'transform': {
+          'position': {
+            'x': 0,
+            'y': 0,
+            'z': 0,
+          },
+          'eulerHint': {
+            'x': 0,
+            'y': 0,
+            'z': 0,
+          },
+          'anchor': {
+            'x': 0,
+            'y': 0,
+          },
+          'size': {
+            'x': 1,
+            'y': 1,
+          },
+          'scale': {
+            'x': 1,
+            'y': 1,
+            'z': 1,
+          },
+        },
+        'components': [
+          {
+            'id': 'd1583e586a564bff9ca95751a38c04a8',
+          },
+        ],
+      },
+    ],
+    'shaders': [],
+    'bins': [
+      {
+        'url': 'https://mdn.alipayobjects.com/mars/afts/file/A*w8QvQ5sryeUAAAAAAAAAAAAADlB4AQ',
+        'id': 'c4bab2528de54bb3b0e9d9c90a82c362',
+        'dataType': 'BinaryAsset',
+      },
+    ],
+    'textures': [
+      {
+        'minFilter': 9729,
+        'magFilter': 9729,
+        'wrapS': 33071,
+        'wrapT': 33071,
+        'target': 3553,
+        'format': 6408,
+        'internalFormat': 6408,
+        'type': 5121,
+        'flipY': false,
+        'images': [
+          'spineboy.png',
+        ],
+        'pma': true,
+        'name': 'spineboy.png',
+        'sourceType': 2,
+        'id': 'a6af261832144421b7feb33dd702e5a7',
+        'source': {
+          'id': '09e162e373f04b9ea43853316e9fc41d',
+        },
+      },
+    ],
+    'animations': [],
+    'miscs': [
+      {
+        'id': 'e685896c30db4b0283f54b1845ba0e69',
+        'dataType': 'TimelineAsset',
+        'tracks': [
+          {
+            'id': '8c3c898b3f3f4cf785039e080e67620f',
+          },
+        ],
+      },
+      {
+        'id': 'fcf5a738f1884a018d2a24c0b9be0791',
+        'dataType': 'ActivationPlayableAsset',
+      },
+      {
+        'id': '43b78f65cffc477196e52f35229518af',
+        'dataType': 'ActivationTrack',
+        'children': [],
+        'clips': [
+          {
+            'start': 0,
+            'duration': 2,
+            'endBehavior': 5,
+            'asset': {
+              'id': 'fcf5a738f1884a018d2a24c0b9be0791',
+            },
+          },
+        ],
+      },
+      {
+        'id': '8c3c898b3f3f4cf785039e080e67620f',
+        'dataType': 'ObjectBindingTrack',
+        'children': [
+          {
+            'id': '43b78f65cffc477196e52f35229518af',
+          },
+        ],
+        'clips': [],
+      },
+    ],
+    'compositionId': '1',
+  };
+
   try {
     await start();
   } catch (e) {
@@ -674,7 +913,7 @@ const activeAnimation = ['run', 'jump'], skin = 'default', dur = 4, mixDuration 
       container: document.getElementById('J-container'),
       ...playerOptions,
     });
-    const comp = await player.loadScene(json);
+    const comp = await player.loadScene(j);
 
     setCamera(comp);
     pauseEle.onclick = () => {
