@@ -1,5 +1,3 @@
-import * as https from 'node:https';
-
 export const premultiply: Record<string, FileFormat> = {
   coin: {
     skeleton:'https://gw.alipayobjects.com/os/gltf-asset/05493939668400/coin-pro.skel',
