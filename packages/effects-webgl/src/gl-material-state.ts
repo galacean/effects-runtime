@@ -258,7 +258,7 @@ export class GLMaterialState {
     this.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
     this.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
     this.culling = false;
-    this.frontFace = glContext.CW;
+    this.frontFace = glContext.CCW;
     this.cullFace = glContext.FRONT;
   }
 
