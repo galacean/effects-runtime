@@ -4,7 +4,9 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import type { Component, RendererComponent, Behaviour } from './components';
+import type { Component } from './components';
+import { RendererComponent } from './components';
+import { Behaviour } from './components';
 import { EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
@@ -13,7 +15,8 @@ import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
+  HitTestTriangleParams, InteractComponent, SpriteComponent } from './plugins';
+import { ParticleSystem,
 } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
@@ -516,9 +519,23 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
+    this.itemBehaviours.length = 0;
+    this.rendererComponents.length = 0;
     for (const component of this.components) {
       component.item = this;
-      component.onAttached();
+      if (component instanceof Behaviour) {
+        this.itemBehaviours.push(component);
+      }
+      if (component instanceof RendererComponent) {
+        this.rendererComponents.push(component);
+      }
+      // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
+      if (component instanceof ParticleSystem) {
+        if (!this.components.includes(component.renderer)) {
+          this.components.push(component.renderer);
+        }
+        this.rendererComponents.push(component.renderer);
+      }
     }
     // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
     this.renderOrder = listIndex;

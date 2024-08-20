@@ -106,6 +106,10 @@ export abstract class Behaviour extends Component {
 
   override onAttached (): void {
     this.item.itemBehaviours.push(this);
+    if (!this.isAwakeCalled) {
+      this.awake();
+      this.isAwakeCalled = true;
+    }
   }
 
   override dispose (): void {
