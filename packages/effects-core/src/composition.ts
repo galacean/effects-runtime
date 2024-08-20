@@ -267,6 +267,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rendererOptions = null;
     this.rootComposition.createContent();
     this.buildItemTree(this.rootItem);
+    this.callAwake(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
         this.emit('end', { composition: this });
@@ -606,6 +607,18 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     return t;
+  }
+
+  private callAwake (item: VFXItem) {
+    for (const itemBehaviour of item.itemBehaviours) {
+      if (!itemBehaviour.isAwakeCalled) {
+        itemBehaviour.awake();
+        itemBehaviour.isAwakeCalled = true;
+      }
+    }
+    for (const child of item.children) {
+      this.callAwake(child);
+    }
   }
 
   private callStart (item: VFXItem) {

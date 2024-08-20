@@ -43,6 +43,9 @@ export abstract class Component extends EffectsObject {
  * @internal
  */
 export abstract class Behaviour extends Component {
+  isAwakeCalled = false;
+  isStartCalled = false;
+
   @serialize()
   private _enabled = true;
 
@@ -59,7 +62,9 @@ export abstract class Behaviour extends Component {
   set enabled (value: boolean) {
     this._enabled = value;
     if (value) {
-      this.onEnable();
+      if (this.isActiveAndEnabled) {
+        this.onEnable();
+      }
       if (!this.isStartCalled) {
         this.start();
         this.isStartCalled = true;
@@ -67,14 +72,12 @@ export abstract class Behaviour extends Component {
     }
   }
 
-  isStartCalled = false;
-
-  // /**
-  //  * 生命周期函数，初始化后调用，生命周期内只调用一次
-  //  */
-  // awake () {
-  //   // OVERRIDE
-  // }
+  /**
+   * 生命周期函数，初始化后调用，生命周期内只调用一次
+   */
+  awake () {
+    // OVERRIDE
+  }
 
   /**
    * 在每次设置 enabled 为 true 时触发
