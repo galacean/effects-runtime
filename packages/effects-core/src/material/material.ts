@@ -50,11 +50,6 @@ export interface MaterialProps {
    * uniform 数据
    */
   uniformValues?: Record<string, UniformValue>,
-  // FIXME 没有用
-  transformFeedbackOutput?: {
-    mode: WebGL2RenderingContext['INTERLEAVED_ATTRIBS'] | WebGL2RenderingContext['SEPARATE_ATTRIBS'],
-    varyings: string[],
-  },
 }
 
 /**
@@ -430,7 +425,7 @@ export abstract class Material extends EffectsObject implements Disposable {
    * 销毁当前 Material
    * @param destroy - 包含纹理的销毁选项
    */
-  abstract override dispose (destroy?: MaterialDestroyOptions): void;
+  abstract override dispose (destroy?: MaterialDestroyOptions | DestroyOptions): void;
 
   /**
    * 创建 Material

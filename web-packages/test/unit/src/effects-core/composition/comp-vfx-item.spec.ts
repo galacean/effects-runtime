@@ -1,9 +1,8 @@
-// @ts-nocheck
 import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('comp-vfxItem', () => {
+describe('core/composition/comp-vfx-item', () => {
   let player: Player;
 
   before(() => {
@@ -17,6 +16,7 @@ describe('comp-vfxItem', () => {
 
   after(() => {
     player.dispose();
+    // @ts-expect-error
     player = null;
   });
 
@@ -741,11 +741,11 @@ describe('comp-vfxItem', () => {
     player.gotoAndStop(1);
 
     const sprite = comp.getItemByName('sprite_2');
-    const pos = sprite.transform.position;
+    const pos = sprite?.transform.position;
 
-    sprite.translateByPixel(50, 60);
-    expect(pos.toArray()[0]).to.closeTo(0, 0.1);
-    expect(pos.toArray()[1]).to.closeTo(0, 0.1);
+    sprite?.translateByPixel(50, 60);
+    expect(pos?.toArray()[0]).to.closeTo(0, 0.1);
+    expect(pos?.toArray()[1]).to.closeTo(0, 0.1);
   });
 
   it('setPosition by pixel', async () => {
@@ -757,14 +757,14 @@ describe('comp-vfxItem', () => {
     player.gotoAndStop(1);
 
     const sprite = comp.getItemByName('sprite_1');
-    const pos = sprite.transform.position;
+    const pos = sprite?.transform.position;
 
     const { width, height } = player.canvas.getBoundingClientRect();
 
     // 正中心
     sprite?.setPositionByPixel(width / 2, height / 2);
-    expect(pos.toArray()[0]).to.closeTo(0, 0.1);
-    expect(pos.toArray()[1]).to.closeTo(0, 0.1);
+    expect(pos?.toArray()[0]).to.closeTo(0, 0.1);
+    expect(pos?.toArray()[1]).to.closeTo(0, 0.1);
   });
   // 预合成设置缩放
   it('set scale in compVFXItem', async () => {
@@ -773,61 +773,20 @@ describe('comp-vfxItem', () => {
     player.gotoAndStop(0);
     const ref = comp.getItemByName('ref');
 
-    ref.setScale(0.1, 0.5, 2);
+    ref?.setScale(0.1, 0.5, 2);
     player.gotoAndStop(1);
     let scale = ref?.transform.scale;
 
-    expect(scale.x).to.eql(0.1);
-    expect(scale.y).to.eql(0.5);
-    expect(scale.z).to.eql(2);
-    ref.scale(2, 2, 0.1);
+    expect(scale?.x).to.eql(0.1);
+    expect(scale?.y).to.eql(0.5);
+    expect(scale?.z).to.eql(2);
+    ref?.scale(2, 2, 0.1);
 
     player.gotoAndStop(2);
     scale = ref?.transform.scale;
 
-    expect(scale.x).to.eql(0.2);
-    expect(scale.y).to.eql(1);
-    expect(scale.z).to.eql(0.2);
+    expect(scale?.x).to.eql(0.2);
+    expect(scale?.y).to.eql(1);
+    expect(scale?.z).to.eql(0.2);
   });
-
-});
-
-const generateScene = items => ({
-  'compositionId': 1,
-  'requires': [],
-  'compositions': [
-    {
-      'name': 'composition_1',
-      'id': 1,
-      'duration': 5,
-      'endBehavior': 0,
-      'camera': {
-        'fov': 30,
-        'far': 20,
-        'near': 0.1,
-        'position': [
-          0,
-          0,
-          8,
-        ],
-        'clipMode': 1,
-      },
-      'items': items,
-      'meta': {
-        'previewSize': [
-          1024,
-          1024,
-        ],
-      },
-    },
-  ],
-  'gltf': [],
-  'images': [],
-  'version': '2.0',
-  'shapes': [],
-  'plugins': [],
-  'type': 'mars',
-  '_imgs': {
-    '1': [],
-  },
 });

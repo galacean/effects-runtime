@@ -2,7 +2,7 @@ import { getStandardItem, spec, ensureFixedNumber } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('camera item', () => {
+describe('core/fallback/model/camera', () => {
   it('camera duration,delay,renderLevel,type, transform, options', () => {
     const item = {
       'name': '3DModel_1',

@@ -2,7 +2,7 @@ import { getStandardItem, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('particle trials', () => {
+describe('core/fallback/particle/trials', () => {
   it('trails', () => {
     const item = {
       'name': 'item_12',

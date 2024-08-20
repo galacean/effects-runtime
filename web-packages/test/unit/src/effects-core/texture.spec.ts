@@ -1,9 +1,8 @@
-import { Texture, generateGUID } from '@galacean/effects';
-import { Player } from '@galacean/effects';
+import { Texture, Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('texture api', () => {
+describe('core/texture', () => {
   let player: Player;
 
   before(() => {

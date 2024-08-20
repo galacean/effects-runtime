@@ -43,6 +43,9 @@ export abstract class Component extends EffectsObject {
  * @internal
  */
 export abstract class Behaviour extends Component {
+  isAwakeCalled = false;
+  isStartCalled = false;
+
   @serialize()
   private _enabled = true;
 
@@ -59,39 +62,29 @@ export abstract class Behaviour extends Component {
   set enabled (value: boolean) {
     this._enabled = value;
     if (value) {
-      this.onBehaviourEnable();
+      if (this.isActiveAndEnabled) {
+        this.onEnable();
+      }
+      if (!this.isStartCalled) {
+        this.start();
+        this.isStartCalled = true;
+      }
     }
   }
 
-  protected onBehaviourEnable () { }
-
-  override fromData (data: unknown): void {
-    super.fromData(data);
+  /**
+   * 生命周期函数，初始化后调用，生命周期内只调用一次
+   */
+  awake () {
+    // OVERRIDE
   }
-
-  override toData (): void {
-    super.toData();
-  }
-}
-
-/**
- * @since 2.0.0
- * @internal
- */
-export abstract class ItemBehaviour extends Behaviour {
-  started = false;
-
-  // /**
-  //  * 生命周期函数，初始化后调用，生命周期内只调用一次
-  //  */
-  // awake () {
-  //   // OVERRIDE
-  // }
 
   /**
    * 在每次设置 enabled 为 true 时触发
    */
-  onEnable () { }
+  onEnable () {
+    // OVERRIDE
+  }
   /**
    * 生命周期函数，在第一次 update 前调用，生命周期内只调用一次
    */
@@ -113,6 +106,10 @@ export abstract class ItemBehaviour extends Behaviour {
 
   override onAttached (): void {
     this.item.itemBehaviours.push(this);
+    if (!this.isAwakeCalled) {
+      this.awake();
+      this.isAwakeCalled = true;
+    }
   }
 
   override dispose (): void {
@@ -120,13 +117,5 @@ export abstract class ItemBehaviour extends Behaviour {
       removeItem(this.item.itemBehaviours, this);
     }
     super.dispose();
-  }
-
-  protected override onBehaviourEnable (): void {
-    this.onEnable();
-    if (!this.started) {
-      this.start();
-      this.started = true;
-    }
   }
 }

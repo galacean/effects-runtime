@@ -116,7 +116,7 @@ type ParticleInteraction = {
   radius: number,
 };
 
-interface ParticleSystemOptions extends spec.ParticleOptions {
+export interface ParticleSystemOptions extends spec.ParticleOptions {
   meshSlots?: number[],
 }
 
@@ -401,16 +401,13 @@ export class ParticleSystem extends Component {
               break;
             }
             const burst = bursts[j];
-            const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
+            const opts = burst.getGeneratorOptions(timePassed, lifetime);
 
             if (opts) {
               const originVec = [0, 0, 0];
               const offsets = emission.burstOffsets[j];
               const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
 
-              if (burst.once) {
-                this.removeBurst(j);
-              }
               for (let i = 0; i < opts.count && cursor < maxCount; i++) {
                 if (shouldSkipGenerate()) {
                   break;
@@ -443,10 +440,8 @@ export class ParticleSystem extends Component {
           });
 
           this.renderer.minusTimeForLoop(duration);
-          this.onIterate(this);
         } else {
           this.ended = true;
-          this.onEnd(this);
           const endBehavior = this.item.endBehavior;
 
           if (endBehavior === spec.EndBehavior.freeze) {
@@ -604,6 +599,25 @@ export class ParticleSystem extends Component {
     });
   }
 
+  /**
+   * 通过索引获取指定index粒子当前时刻的位置
+   * @params index - 粒子索引
+   */
+  getPointPositionByIndex (index: number): Vector3 | null {
+    const point = this.particleLink.getNodeByIndex(index);
+
+    if (!point) {
+      console.error('Get point error.');
+
+      return null;
+    } else {
+      return this.getPointPosition(point.content[3]);
+    }
+  }
+
+  /**
+   * 通过粒子参数获取当前时刻粒子的位置
+   */
   getPointPosition (point: Point): Vector3 {
     const {
       transform,
@@ -633,12 +647,6 @@ export class ParticleSystem extends Component {
     }
 
     return ret;
-  }
-
-  onEnd (particle: ParticleSystem) {
-  }
-
-  onIterate (particle: ParticleSystem) {
   }
 
   initPoint (data: Record<string, any>): Point {
@@ -830,13 +838,6 @@ export class ParticleSystem extends Component {
       };
     }
   };
-
-  override onAttached (): void {
-    super.onAttached();
-    this.renderer.item = this.item;
-    this.item.components.push(this.renderer);
-    this.item.rendererComponents.push(this.renderer);
-  }
 
   override fromData (data: unknown): void {
     super.fromData(data);
@@ -1090,20 +1091,19 @@ export class ParticleSystem extends Component {
     }
 
     this.renderer = new ParticleSystemRenderer(this.engine, particleMeshProps, trailMeshProps);
+    this.renderer.item = this.item;
     this.meshes = this.renderer.meshes;
-    // this.item = vfxItem;
 
     const interaction = props.interaction;
 
     if (interaction) {
       this.interaction = {
         multiple: interaction.multiple,
-        radius: interaction.radius!,
+        radius: interaction.radius ?? 0.4,
         behavior: interaction.behavior,
       };
     }
     this.item.getHitTestParams = this.getHitTestParams;
-
     this.item._content = this;
   }
 }

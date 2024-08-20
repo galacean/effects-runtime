@@ -116,7 +116,7 @@ export class SpriteColorPlayable extends Playable {
 
     if (colorChanged) {
       vecMulCombine<vec4>(this.renderColor, colorInc, this.startColor);
-      this.spriteMaterial.getVector4('_Color')!.setFromArray(this.renderColor);
+      this.spriteMaterial.getVector4('_Color')?.setFromArray(this.renderColor);
     }
   }
 
@@ -368,11 +368,14 @@ export class SpriteComponent extends RendererComponent {
     const data = this.getItemInitData();
 
     const renderer = this.renderer;
-    const texParams = this.material.getVector4('_TexParams')!;
+    const texParams = this.material.getVector4('_TexParams');
 
-    texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
-    texParams.y = +this.preMultiAlpha;
-    texParams.z = renderer.renderMode;
+    if (texParams) {
+      texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
+      texParams.y = +this.preMultiAlpha;
+      texParams.z = renderer.renderMode;
+    }
+
     const attributes = {
       atlasOffset: new Float32Array(data.atlasOffset.length),
       index: new Uint16Array(data.index.length),

@@ -715,8 +715,12 @@ export class RenderFrame implements Disposable {
   }
 
   protected addToRenderPass (renderPass: RenderPass, mesh: Mesh) {
-    const info = this.renderPassInfoMap.get(renderPass)!;
+    const info = this.renderPassInfoMap.get(renderPass);
     const { priority } = mesh;
+
+    if (!info) {
+      return;
+    }
 
     if (renderPass.meshes.length === 0) {
       info.listStart = info.listEnd = priority;
@@ -922,7 +926,7 @@ export class RenderFrame implements Disposable {
     const shader = createCopyShader(engine.gpuCapability.level, !!semantics?.depthTexture);
 
     // FIXME: 如果不把shader添加进shaderLibrary，这里可以移到core中，有性能上的考虑
-    this.renderer.getShaderLibrary()!.addShader(shader);
+    this.renderer.getShaderLibrary()?.addShader(shader);
     const material = Material.create(
       engine,
       {
@@ -973,8 +977,13 @@ export function findPreviousRenderPass (renderPasses: RenderPass[], renderPass: 
 
 class FinalCopyRP extends RenderPass {
   prePassTexture: Texture;
+
   override configure (renderer: Renderer): void {
-    this.prePassTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    const framebuffer = renderer.getFramebuffer();
+
+    if (framebuffer) {
+      this.prePassTexture = framebuffer.getColorTextures()[0];
+    }
     renderer.setFramebuffer(null);
   }
 
@@ -993,6 +1002,7 @@ export class GlobalUniforms {
   floats: Record<string, number> = {};
   ints: Record<string, number> = {};
   // vector3s: Record<string, vec3> = {};
+  vector4s: Record<string, Vector4> = {};
   matrices: Record<string, Matrix4> = {};
   //...
 

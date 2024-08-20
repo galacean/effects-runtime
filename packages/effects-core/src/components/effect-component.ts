@@ -12,18 +12,12 @@ import type { Geometry } from '../render';
 import { DestroyOptions } from '../utils';
 import { RendererComponent } from './renderer-component';
 
-let seed = 1;
-
 /**
  * @since 2.0.0
  * @internal
  */
 @effectsClass(spec.DataType.EffectComponent)
 export class EffectComponent extends RendererComponent {
-  /**
-   * Mesh 的全局唯一 id
-   */
-  readonly id: string;
   /**
    * Mesh 的世界矩阵
    */
@@ -34,32 +28,15 @@ export class EffectComponent extends RendererComponent {
   @serialize()
   geometry: Geometry;
 
-  triangles: TriangleLike[] = [];
-
-  protected destroyed = false;
-
-  private visible = false;
+  private triangles: TriangleLike[] = [];
+  private destroyed = false;
   // TODO: 抽象到射线碰撞检测组件
   private hitTestGeometry: Geometry;
 
   constructor (engine: Engine) {
     super(engine);
-
-    this.id = 'Mesh' + seed++;
-    this.name = '<unnamed>';
+    this.name = 'EffectComponent';
     this._priority = 0;
-  }
-
-  get isDestroyed (): boolean {
-    return this.destroyed;
-  }
-
-  /**
-   * 设置当前 Mesh 的可见性。
-   * @param visible - true：可见，false：不可见
-   */
-  setVisible (visible: boolean) {
-    this.visible = visible;
   }
 
   override start (): void {
@@ -71,20 +48,6 @@ export class EffectComponent extends RendererComponent {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
     renderer.drawGeometry(this.geometry, this.material);
-  }
-
-  /**
-   * 获取当前 Mesh 的可见性。
-   */
-  getVisible (): boolean {
-    return this.visible;
-  }
-
-  /**
-   * 获取当前 Mesh 的第一个 geometry。
-   */
-  firstGeometry (): Geometry {
-    return this.geometry;
   }
 
   /**
@@ -151,18 +114,8 @@ export class EffectComponent extends RendererComponent {
    */
   override dispose (options?: MeshDestroyOptions) {
     if (this.destroyed) {
-      //console.error('call mesh.destroy multiple times', this);
       return;
     }
-
-    // if (options?.geometries !== DestroyOptions.keep) {
-    //   this.geometry.dispose();
-    // }
-    // const materialDestroyOption = options?.material;
-
-    // if (materialDestroyOption !== DestroyOptions.keep) {
-    //   this.material.dispose(materialDestroyOption);
-    // }
     this.destroyed = true;
 
     super.dispose();
@@ -170,9 +123,8 @@ export class EffectComponent extends RendererComponent {
 }
 
 function geometryToTriangles (geometry: Geometry) {
-  const indices = geometry.getIndexData()!;
-  const vertices = geometry.getAttributeData('aPos')!;
-
+  const indices = geometry.getIndexData() ?? [];
+  const vertices = geometry.getAttributeData('aPos') ?? [];
   const res: TriangleLike[] = [];
 
   for (let i = 0; i < indices.length; i += 3) {

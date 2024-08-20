@@ -270,7 +270,6 @@ export class ThreeGeometry extends Geometry {
       //@ts-expect-error
       index.array.set(data, start);
       this.geometry.index!.needsUpdate = true;
-
     }
   }
 

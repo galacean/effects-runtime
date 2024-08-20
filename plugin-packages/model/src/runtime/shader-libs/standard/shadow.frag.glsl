@@ -1,7 +1,7 @@
 #ifdef USE_SHADOW_MAPPING
 uniform vec2 _ShadowMapSizeInv;
-fsIn vec4 v_PositionLightSpace;
-fsIn vec4 v_dPositionLightSpace;
+varying vec4 v_PositionLightSpace;
+varying vec4 v_dPositionLightSpace;
 #endif
 
 float linstep(float low, float high, float v)

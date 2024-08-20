@@ -1,7 +1,7 @@
-fsIn vec2 v_UVCoord1;
+varying vec2 v_UVCoord1;
 
 #ifdef HAS_UV_SET2
-fsIn vec2 v_UVCoord2;
+varying vec2 v_UVCoord2;
 #endif
 
 // General Material

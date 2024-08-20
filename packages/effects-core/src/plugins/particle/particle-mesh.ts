@@ -14,7 +14,6 @@ import {
 } from '../../material';
 import {
   createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
-  calculateTranslation,
   RandomValue,
 } from '../../math';
 import type {
@@ -24,7 +23,7 @@ import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
 import { Texture, generateHalfFloatTexture } from '../../texture';
 import { Transform } from '../../transform';
-import { enlargeBuffer, imageDataFromGradient } from '../../utils';
+import { assertExist, enlargeBuffer, imageDataFromGradient } from '../../utils';
 import { particleUniformTypeMap } from './particle-vfx-item';
 import { math } from '@galacean/effects-core';
 
@@ -415,40 +414,12 @@ export class ParticleMesh implements ParticleMeshData {
   // }
 
   getPointColor (index: number) {
-    const data = this.geometry.getAttributeData('aRot')!;
+    const data = this.geometry.getAttributeData('aRot');
     const i = index * 32 + 4;
 
+    assertExist(data);
+
     return [data[i], data[i + 1], data[i + 2], data[i + 3]];
-  }
-
-  /**
-   * 待废弃
-   * @deprecated - 使用 `particle-system.getPointPosition` 替代
-   */
-  getPointPosition (index: number): Vector3 {
-    const geo = this.geometry;
-    const posIndex = index * 48;
-    const posData = geo.getAttributeData('aPos') as Float32Array;
-    const offsetData = geo.getAttributeData('aOffset') as Float32Array;
-    const time = this.time - offsetData[index * 16 + 2];
-    const pointDur = offsetData[index * 16 + 3];
-    const mtl = this.mesh.material;
-    const acc = mtl.getVector4('uAcceleration')!.toVector3();
-    const pos = Vector3.fromArray(posData, posIndex);
-    const vel = Vector3.fromArray(posData, posIndex + 3);
-    const ret = calculateTranslation(new Vector3(), this, acc, time, pointDur, pos, vel);
-
-    if (this.forceTarget) {
-      const target = mtl.getVector3('uFinalTarget')!;
-      const life = this.forceTarget.curve.getValue(time / pointDur);
-      const dl = 1 - life;
-
-      ret.x = ret.x * dl + target.x * life;
-      ret.y = ret.y * dl + target.y * life;
-      ret.z = ret.z * dl + target.z * life;
-    }
-
-    return ret;
   }
 
   clearPoints () {
@@ -806,7 +777,10 @@ export class ParticleMesh implements ParticleMeshData {
         const attrSize = geometry.getAttributeStride(name) / Float32Array.BYTES_PER_ELEMENT;
 
         if (increaseBuffer) {
-          const baseData = geometry.getAttributeData(name)!;
+          const baseData = geometry.getAttributeData(name);
+
+          assertExist(baseData);
+
           const geoData = enlargeBuffer(baseData, vertexCount * attrSize, maxCount * 4 * attrSize, inc);
 
           geoData.set(data, data.length * index);

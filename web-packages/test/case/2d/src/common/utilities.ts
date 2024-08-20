@@ -47,7 +47,6 @@ export class TestPlayer {
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
     Math.seedrandom('mars-runtime');
     this.clearResource();
-    // getDefaultTemplateCanvasPool().dispose();
     const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false }) as AssetManager;
 
     let inData = url;
@@ -152,14 +151,19 @@ export class TestPlayer {
 
       if (particleCount > 0) {
         const subIndex = Math.floor(Math.random() * 0.9999999 * particleCount);
-        const mesh = item.particleMesh;
 
         if (typeof itemList[index].getParticleBoxes === 'function' && subIndex < item.getParticleBoxes().length) {
           const pos = item.getParticleBoxes().reverse()[subIndex].center;
 
           viewProjection.projectPoint(pos, inPosition);
         } else {
-          const pos = mesh.getPointPosition(subIndex);
+          let pos;
+
+          if (typeof item.getPointPositionByIndex === 'function') {
+            pos = item.getPointPositionByIndex(subIndex);
+          } else {
+            pos = item.particleMesh.getPointPosition(subIndex);
+          }
 
           viewProjection.projectPoint(pos, inPosition);
         }

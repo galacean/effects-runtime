@@ -1,37 +1,36 @@
-#version 300 es
+#version 100
 precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 
-#include "./compatible.vert.glsl";
 #include "./value.glsl";
 #include "./integrate.glsl";
 
 const float d2r = 3.141592653589793 / 180.;
 
-in vec3 aPos;
-in vec4 aOffset;//texcoord.xy time:start duration
-// in vec3 aVel;
-// in vec3 aRot;
-in vec4 aColor;
-in vec3 aDirX;
-in vec3 aDirY;
+attribute vec3 aPos;
+attribute vec4 aOffset;//texcoord.xy time:start duration
+// attribute vec3 aVel;
+// attribute vec3 aRot;
+attribute vec4 aColor;
+attribute vec3 aDirX;
+attribute vec3 aDirY;
 
-in vec3 aTranslation;
-in vec3 aRotation0;
-in vec3 aRotation1;
-in vec3 aRotation2;
-in vec3 aLinearMove;
+attribute vec3 aTranslation;
+attribute vec3 aRotation0;
+attribute vec3 aRotation1;
+attribute vec3 aRotation2;
+attribute vec3 aLinearMove;
 
 #ifdef USE_SPRITE
-in vec3 aSprite;//start duration cycles
+attribute vec3 aSprite;//start duration cycles
 uniform vec4 uSprite;//col row totalFrame blend
 struct UVDetail {
   vec2 uv0;
   vec3 uv1;
 };
 UVDetail getSpriteUV(vec2 uv, float lifeTime);
-out vec4 vTexCoordBlend;
+varying vec4 vTexCoordBlend;
 #endif
 
 #ifdef FINAL_TARGET
@@ -81,9 +80,9 @@ uniform vec4 uSizeByLifetimeValue;
 #ifdef SIZE_Y_BY_LIFE
 uniform vec4 uSizeYByLifetimeValue;
 #endif
-out float vLife;
-out vec4 vColor;
-out vec2 vTexCoord;
+varying float vLife;
+varying vec4 vColor;
+varying vec2 vTexCoord;
 
 #ifdef ENV_EDITOR
 uniform vec4 uEditorTransform; //sx sy dx dy

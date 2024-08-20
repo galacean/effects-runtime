@@ -1,16 +1,16 @@
 import type { Composition, TrackAsset } from '@galacean/effects';
-import { CompositionComponent } from '@galacean/effects';
-import { menuItem } from '../core/decorators';
+import { CompositionComponent, VFXItem } from '@galacean/effects';
+import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
-import { EditorWindow, editorWindow } from './editor-window';
+import { EditorWindow } from './editor-window';
 
 @editorWindow()
 export class Sequencer extends EditorWindow {
-  isDragging: boolean = false;
-  currentTime: number = 0;
-  trackUIOffset: number = 200;
-  timeCursorPositionX: number = 0;
+  isDragging = false;
+  currentTime = 0;
+  trackUIOffset = 200;
+  timeCursorPositionX = 0;
 
   currentComposition: Composition;
 
@@ -56,7 +56,10 @@ export class Sequencer extends EditorWindow {
     for (const track of compositionComponent.timelineAsset.tracks) {
       const trackAsset = track;
 
-      //@ts-expect-error
+      if (!(trackAsset.binding instanceof VFXItem)) {
+        continue;
+      }
+
       if (ImGui.CollapsingHeader(trackAsset.binding.name, ImGui.ImGuiTreeNodeFlags.DefaultOpen)) {
         this.drawTrack(trackAsset);
       }

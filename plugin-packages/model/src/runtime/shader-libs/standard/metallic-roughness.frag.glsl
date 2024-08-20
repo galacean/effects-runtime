@@ -13,11 +13,9 @@
 //     https://www.cs.virginia.edu/~jdl/bib/appearance/analytic%20models/schlick94b.pdf
 #define FEATURES
 
-#ifndef WEBGL2
 #extension GL_OES_standard_derivatives : enable
-#endif
 
-#if !defined(WEBGL2) && defined(USE_TEX_LOD)
+#if defined(USE_TEX_LOD)
 #extension GL_EXT_shader_texture_lod : enable
 #endif
 
@@ -27,34 +25,13 @@
 #extension GL_OES_texture_float_linear : enable
 #endif
 
-
-#if !defined(WEBGL2) && defined(USE_WBOIT)
-#extension GL_EXT_draw_buffers: require
-#endif
-
 #ifdef GL_FRAGMENT_PRECISION_HIGH
   precision highp float;
 #else
   precision mediump float;
 #endif
 
-#ifdef WEBGL2
-    #ifdef USE_WBOIT
-        layout(location = 0) out vec4 outFragColor0;
-        layout(location = 1) out vec4 outFragColor1;
-    #else
-        out vec4 outFragColor;
-    #endif
-#else
-    #ifdef USE_WBOIT
-        #define outFragColor0 gl_FragData[0]
-        #define outFragColor1 gl_FragData[1]
-    #else
-        #define outFragColor gl_FragColor
-    #endif
-#endif
 
-#include <webgl-compatibility.glsl>
 #include <extensions.frag.glsl>
 #include <tone-mapping.frag.glsl>
 #include <textures.vert.glsl>
@@ -357,18 +334,6 @@ float weight(float z, float a) {
     return clamp(pow(min(1.0, a * 10.0) + 0.01, 3.0) * 1e8 * pow(1.0 - z * 0.9, 3.0), 1e-2, 3e3);
 }
 
-void writeFragmentColor(vec4 fragColor)
-{
-#if !defined(ALPHAMODE_OPAQUE) && defined(USE_WBOIT)
-    float w = weight(gl_FragCoord.z, fragColor.a);
-    fragColor.rgb *= fragColor.a;
-    outFragColor0 = vec4(fragColor.rgb * w, fragColor.a);
-    outFragColor1 = vec4(fragColor.a * w);
-#else
-    outFragColor = fragColor;
-#endif
-}
-
 void main()
 {
     // Metallic and Roughness material properties are packed together
@@ -382,7 +347,7 @@ void main()
     vec3 f0 = vec3(0.04);
 
 #ifdef PREVIEW_BORDER
-    writeFragmentColor(uPreviewColor);
+    gl_FragColor = uPreviewColor;
     return;
 #endif
 
@@ -467,41 +432,41 @@ void main()
         #else
             vec4 fragColorUnlit = vec4(LINEARtoSRGB(baseColor.rgb) * baseColor.a, baseColor.a);
         #endif
-        writeFragmentColor(fragColorUnlit);
+        gl_FragColor = fragColorUnlit;
     #else
         #ifdef DEBUG_UV
-            outFragColor.rgb = vec3(getDebugUVColor(getBaseColorUV(), getNormal()));
+            gl_FragColor.rgb = vec3(getDebugUVColor(getBaseColorUV(), getNormal()));
         #endif
 
         #ifdef DEBUG_METALLIC
-            outFragColor.rgb = vec3(metallic);
+            gl_FragColor.rgb = vec3(metallic);
         #endif
 
         #ifdef DEBUG_ROUGHNESS
-            outFragColor.rgb = vec3(perceptualRoughness);
+            gl_FragColor.rgb = vec3(perceptualRoughness);
         #endif
 
         #ifdef DEBUG_NORMAL
-            outFragColor.rgb = getNormal() * 0.5 + 0.5;
+            gl_FragColor.rgb = getNormal() * 0.5 + 0.5;
         #endif
 
         #ifdef DEBUG_BASECOLOR
-            outFragColor.rgb = LINEARtoSRGB(baseColor.rgb);
+            gl_FragColor.rgb = LINEARtoSRGB(baseColor.rgb);
         #endif
 
         #ifdef DEBUG_OCCLUSION
-            outFragColor.rgb = vec3(1.0);
+            gl_FragColor.rgb = vec3(1.0);
         #endif
 
         #ifdef DEBUG_EMISSIVE
-            outFragColor.rgb = vec3(0.0);
+            gl_FragColor.rgb = vec3(0.0);
         #endif
 
         #ifdef DEBUG_ALPHA
-            outFragColor.rgb = vec3(baseColor.a);
+            gl_FragColor.rgb = vec3(baseColor.a);
         #endif
 
-        outFragColor.a = 1.0;
+        gl_FragColor.a = 1.0;
     #endif
     return;
 #endif
@@ -618,34 +583,34 @@ void main()
         #endif
         vec4 fragColorOut = vec4(color, baseColor.a);
     #endif
-    writeFragmentColor(fragColorOut);
+    gl_FragColor = fragColorOut;
 #else // debug output
 
     #ifdef DEBUG_UV
-        outFragColor.rgb = vec3(getDebugUVColor(getBaseColorUV(), normal));
+        gl_FragColor.rgb = vec3(getDebugUVColor(getBaseColorUV(), normal));
     #endif
 
     #ifdef DEBUG_METALLIC
-        outFragColor.rgb = vec3(metallic);
+        gl_FragColor.rgb = vec3(metallic);
     #endif
 
     #ifdef DEBUG_ROUGHNESS
-        outFragColor.rgb = vec3(perceptualRoughness);
+        gl_FragColor.rgb = vec3(perceptualRoughness);
     #endif
 
     #ifdef DEBUG_NORMAL
-        outFragColor.rgb = normal * 0.5 + 0.5;
+        gl_FragColor.rgb = normal * 0.5 + 0.5;
     #endif
 
     #ifdef DEBUG_BASECOLOR
-        outFragColor.rgb = LINEARtoSRGB(baseColor.rgb);
+        gl_FragColor.rgb = LINEARtoSRGB(baseColor.rgb);
     #endif
 
     #ifdef DEBUG_OCCLUSION
         #ifdef HAS_OCCLUSION_MAP
-            outFragColor.rgb = vec3(mix(1.0, ao, _OcclusionStrength));
+            gl_FragColor.rgb = vec3(mix(1.0, ao, _OcclusionStrength));
         #else
-            outFragColor.rgb = vec3(1.0);
+            gl_FragColor.rgb = vec3(1.0);
         #endif
     #endif
 
@@ -659,18 +624,18 @@ void main()
             emissive = SRGBtoLINEAR(texture2D(_EmissiveSampler, getEmissiveUV())).rgb * _EmissiveFactor.rgb * _EmissiveIntensity;
         #endif
 
-        outFragColor.rgb = LINEARtoSRGB(emissive);
+        gl_FragColor.rgb = LINEARtoSRGB(emissive);
     #endif
 
     #ifdef DEBUG_F0
-        outFragColor.rgb = vec3(f0);
+        gl_FragColor.rgb = vec3(f0);
     #endif
 
     #ifdef DEBUG_ALPHA
-        outFragColor.rgb = vec3(baseColor.a);
+        gl_FragColor.rgb = vec3(baseColor.a);
     #endif
 
-    outFragColor.a = 1.0;
+    gl_FragColor.a = 1.0;
 
 #endif // !DEBUG_OUTPUT
 }

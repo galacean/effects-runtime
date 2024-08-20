@@ -2,7 +2,7 @@ import { isValidFontFamily } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('isValidFontFamily 判断是否合法字体名称', () => {
+describe('core/utils/isValidFontFamily 判断是否合法字体名称', () => {
   it('合法的字体名称', () => {
     expect(isValidFontFamily('_BDFZ_FZZeBrach-Regular')).eq(true);
     expect(isValidFontFamily('_BDFZ_FZZeBrach88-Regular')).eq(true);

@@ -4,8 +4,8 @@ import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
-import type { Component, RendererComponent, ItemBehaviour } from './components';
-import { EffectComponent } from './components';
+import type { Component } from './components';
+import { RendererComponent, Behaviour, EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass, serialize } from './decorators';
@@ -13,11 +13,14 @@ import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams, InteractComponent, ParticleSystem, SpriteComponent,
+  HitTestTriangleParams, InteractComponent, SpriteComponent,
 } from './plugins';
+import { ParticleSystem } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
+import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
+import { EventEmitter } from './events';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
@@ -70,7 +73,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素动画结束时行为（如何处理元素）
    */
-  endBehavior: spec.EndBehavior | spec.ParentItemEndBehavior;
+  endBehavior: spec.EndBehavior = spec.EndBehavior.forward;
   /**
    * 元素是否可用
    */
@@ -84,8 +87,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   id: string;
 
-  // TODO: 2.0 编辑器测试用变量，后续移除
-  oldId: string;
   /**
    * 元素创建的数据图层/粒子/模型等
    */
@@ -96,7 +97,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   @serialize()
   components: Component[] = [];
-  itemBehaviours: ItemBehaviour[] = [];
+  itemBehaviours: Behaviour[] = [];
   rendererComponents: RendererComponent[] = [];
 
   /**
@@ -109,6 +110,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   private speed = 1;
   private listIndex = 0;
+  private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
@@ -178,6 +180,67 @@ export class VFXItem extends EffectsObject implements Disposable {
         rendererComponent.priority = value;
       }
     }
+  }
+
+  /**
+   * 元素监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @param options - 事件监听器选项
+   * @returns
+   */
+  on<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+    options?: EventEmitterOptions,
+  ) {
+    this.eventProcessor.on(eventName, listener, options);
+  }
+
+  /**
+   * 移除事件监听器
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @returns
+   */
+  off<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+  ) {
+    this.eventProcessor.off(eventName, listener);
+  }
+
+  /**
+   * 一次性监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   */
+  once<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+  ) {
+    this.eventProcessor.once(eventName, listener);
+  }
+
+  /**
+   * 触发事件
+   * @param eventName - 事件名称
+   * @param args - 事件参数
+   */
+  emit<E extends keyof ItemEvent> (
+    eventName: E,
+    ...args: ItemEvent[E]
+  ) {
+    this.eventProcessor.emit(eventName, ...args);
+  }
+
+  /**
+   * 获取事件名称对应的所有监听器
+   * @param eventName - 事件名称
+   * @returns - 返回事件名称对应的所有监听器
+   */
+  getListeners<E extends keyof ItemEvent> (eventName: E) {
+    return this.eventProcessor.getListeners(eventName);
   }
 
   /**
@@ -507,9 +570,8 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.transform.engine = this.engine;
     this.parentId = parentId;
     this.duration = duration;
-    this.endBehavior = endBehavior;
-    //@ts-expect-error
-    this.oldId = data.oldId;
+    // TODO spec endbehavior 类型修正
+    this.endBehavior = endBehavior as spec.EndBehavior;
 
     if (!data.content) {
       data.content = { options: {} };
@@ -519,9 +581,23 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
+    this.itemBehaviours.length = 0;
+    this.rendererComponents.length = 0;
     for (const component of this.components) {
       component.item = this;
-      component.onAttached();
+      if (component instanceof Behaviour) {
+        this.itemBehaviours.push(component);
+      }
+      if (component instanceof RendererComponent) {
+        this.rendererComponents.push(component);
+      }
+      // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
+      if (component instanceof ParticleSystem) {
+        if (!this.components.includes(component.renderer)) {
+          this.components.push(component.renderer);
+        }
+        this.rendererComponents.push(component.renderer);
+      }
     }
     // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
     this.renderOrder = listIndex;

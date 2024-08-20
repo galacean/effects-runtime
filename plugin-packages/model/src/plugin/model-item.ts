@@ -2,7 +2,7 @@ import type {
   Engine, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams, Renderer, VFXItem,
 } from '@galacean/effects';
 import {
-  HitTestType, ItemBehaviour, RendererComponent, effectsClass, spec, AnimationClip,
+  HitTestType, Behaviour, RendererComponent, effectsClass, spec, AnimationClip,
 } from '@galacean/effects';
 import type {
   ModelCameraComponentData, ModelItemBounding, ModelLightComponentData,
@@ -82,6 +82,14 @@ export class ModelMeshComponent extends RendererComponent {
     }
 
     this.content.update();
+  }
+
+  /**
+   * 组件晚更新，晚更新内部对象状态
+   * @param dt - 更新间隔
+   */
+  override lateUpdate (dt: number): void {
+    this.content.lateUpdate();
   }
 
   /**
@@ -338,7 +346,7 @@ export class ModelSkyboxComponent extends RendererComponent {
  * @internal
  */
 @effectsClass(spec.DataType.LightComponent)
-export class ModelLightComponent extends ItemBehaviour {
+export class ModelLightComponent extends Behaviour {
   /**
    * 内部灯光对象
    */
@@ -430,7 +438,7 @@ export class ModelLightComponent extends ItemBehaviour {
  * @internal
  */
 @effectsClass(spec.DataType.CameraComponent)
-export class ModelCameraComponent extends ItemBehaviour {
+export class ModelCameraComponent extends Behaviour {
   /**
    * 内部相机对象
    */
@@ -541,7 +549,7 @@ export class ModelCameraComponent extends ItemBehaviour {
  * @internal
  */
 @effectsClass(spec.DataType.AnimationComponent)
-export class AnimationComponent extends ItemBehaviour {
+export class AnimationComponent extends Behaviour {
   /**
    * 参数
    */

@@ -1,11 +1,10 @@
-// @ts-nocheck
 import { Transform, math } from '@galacean/effects';
 import { sanitizeNumbers } from '../utils';
 
 const { Euler, Quaternion, Vector3 } = math;
 const { expect } = chai;
 
-describe('transform methods', () => {
+describe('core/transform', () => {
   it('transform will work after been set valid', () => {
     const r = new Transform({
       position: [-1, 2, 3],
@@ -42,10 +41,10 @@ describe('transform methods', () => {
     });
 
     r.setRotation(0, 30, 0);
-    vecEquals(r.rotation.toArray(), [0, 30, 0]);
-    vecEquals(r.quat.toArray(), [-0, -0.25881904510252074, -0, 0.9659258262890683]);
+    expect(new Float32Array(r.rotation.toArray())).to.deep.equal(new Float32Array([0, 30, 0]));
+    expect(new Float32Array(r.quat.toArray())).to.deep.equal(new Float32Array([-0, -0.25881904510252074, -0, 0.9659258262890683]));
     r.setQuaternion(0, 0, 0, 1);
-    vecEquals(r.rotation.toArray(), [0, -0, 0]);
+    expect(new Float32Array(r.rotation.toArray())).to.deep.equal(new Float32Array([0, -0, 0]));
   });
 
   it('decompose negative scale', () => {
@@ -120,9 +119,4 @@ describe('transform methods', () => {
     expect(t1.getWorldPosition().toArray()).to.deep.equals([2, 1, 0]);
     expect(t2.getWorldPosition().toArray()).to.deep.equals([2, 0, 1]);
   });
-
 });
-
-function vecEquals (v0, v1, msg) {
-  expect(new Float32Array(v0)).to.deep.equal(new Float32Array(v1), msg);
-}

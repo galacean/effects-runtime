@@ -2,7 +2,7 @@ import { getStandardComposition } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('composition', () => {
+describe('core/fallback/composition', () => {
   it('composition previewSize', () => {
     const composition = {
       'name': '帧动画',

@@ -2,25 +2,15 @@
 
 #define FEATURES
 
-#if !defined(WEBGL2) && defined(USE_TEX_LOD)
+#if defined(USE_TEX_LOD)
 #extension GL_EXT_shader_texture_lod : enable
 #endif
 
-#if !defined(WEBGL2)
 #extension GL_OES_standard_derivatives : enable
-#endif
 
 precision highp float;
 
-#include <webgl-compatibility.glsl>
 #include <extensions.frag.glsl>
-
-
-#ifdef WEBGL2
-    out vec4 outFragColor;
-#else
-    #define outFragColor gl_FragColor
-#endif
 
 
 uniform sampler2D _brdfLUT;
@@ -30,7 +20,7 @@ uniform int _MipCount;
 uniform samplerCube _DiffuseEnvSampler;
 uniform samplerCube _SpecularEnvSampler;
 
-fsIn vec3 v_CameraDir;
+varying vec3 v_CameraDir;
 
 
 #ifdef IRRADIANCE_COEFFICIENTS
@@ -102,5 +92,5 @@ vec3 getIBLContribution(vec3 n, vec3 v)
 
 void main(){
     vec3 dir = normalize(v_CameraDir);
-    outFragColor = vec4(getIBLContribution(dir, dir), 1.0);
+    gl_FragColor = vec4(getIBLContribution(dir, dir), 1.0);
 }

@@ -2,7 +2,7 @@ import { Player, TextComponent } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('Scene load', () => {
+describe('player/scene-load', () => {
   let player: Player;
 
   before(() => {

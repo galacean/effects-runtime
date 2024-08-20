@@ -6,7 +6,7 @@ import { MathUtils } from './math-utils';
 
 const { expect } = chai;
 
-describe('effects-webgl/render-pass', () => {
+describe('webgl/gl-render-pass', () => {
   let gl = getGL2()!;
   let renderer = new GLRenderer(gl.canvas, 'webgl2');
   let engine = renderer.engine;

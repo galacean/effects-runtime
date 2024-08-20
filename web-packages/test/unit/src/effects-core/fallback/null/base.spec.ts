@@ -2,7 +2,7 @@ import { getStandardItem, normalizeColor, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('nullItem base', () => {
+describe('core/fallback/null/item-base', () => {
   it('duration, renderLevel, type, endBehavior, startColor', () => {
     const item = {
       'name': 'null_11',

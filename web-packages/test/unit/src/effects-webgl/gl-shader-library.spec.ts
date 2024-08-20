@@ -1,15 +1,15 @@
-// @ts-nocheck
-import { GPUCapability, ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMacros } from '@galacean/effects-core';
-import { GLMaterial, GLRenderer } from '@galacean/effects-webgl';
+import type { Engine, ShaderWithSource } from '@galacean/effects-core';
+import { ShaderCompileResultStatus, GLSLVersion } from '@galacean/effects-core';
+import { GLRenderer } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
-describe('webgl/GLShaderLibrary', () => {
-  let rendererGL1;
-  let rendererGL2;
-  let webglCanvas;
-  let webgl2Canvas;
-  let engine1, engine2;
+describe('webgl/gl-shader-library', () => {
+  let rendererGL1: GLRenderer;
+  let rendererGL2: GLRenderer;
+  let webglCanvas: HTMLCanvasElement;
+  let webgl2Canvas: HTMLCanvasElement;
+  let engine1: Engine;
 
   const vs = `#version 300 es
   layout(location = 0) in vec2 aPosition;
@@ -32,20 +32,23 @@ describe('webgl/GLShaderLibrary', () => {
     rendererGL1 = new GLRenderer(webglCanvas, 'webgl');
     rendererGL2 = new GLRenderer(webgl2Canvas, 'webgl2');
     engine1 = rendererGL1.engine;
-    engine2 = rendererGL2.engine;
   });
 
   after(() => {
     rendererGL1.dispose();
+    // @ts-expect-error
     rendererGL1 = null;
     rendererGL2.dispose();
+    // @ts-expect-error
     rendererGL2 = null;
     webglCanvas.remove();
+    // @ts-expect-error
     webglCanvas = null;
     webgl2Canvas.remove();
+    // @ts-expect-error
     webgl2Canvas = null;
+    // @ts-expect-error
     engine1 = null;
-    engine2 = null;
   });
 
   it('create material shader from shaderlib', async () => {
@@ -66,7 +69,7 @@ describe('webgl/GLShaderLibrary', () => {
 
   it('shader cache by string hash', async () => {
     const shaderLib = rendererGL2.pipelineContext.shaderLibrary;
-    const sameShader = {
+    const sameShader: ShaderWithSource = {
       vertex: vs,
       fragment: fs,
       macros: [['HAS_TEXTURE', 1.0]],
@@ -79,72 +82,40 @@ describe('webgl/GLShaderLibrary', () => {
     expect(shaderLib.addShader(sameShader)).to.eql(shaderLib.addShader(sameShader));
   });
 
-  it('compile shader after destroy program with ShaderLib::deleteShader(cacheId: number)', async () => {
-    // TODO 目前删除方式改变，待补充。
-    // const shaderLib = renderer.pipelineContext.shaderLibrary;
-    // const shaderId = shaderLib.addShader({
-    //   vertex: vs,
-    //   fragment: fs,
-    //   macros: [['HAS_TEXTURE', 1.0]],
-    // });
+  // it('compile shader after destroy program with ShaderLib::deleteShader(cacheId: number)', async () => {
+  // TODO 目前删除方式改变，待补充。
+  // const shaderLib = renderer.pipelineContext.shaderLibrary;
+  // const shaderId = shaderLib.addShader({
+  //   vertex: vs,
+  //   fragment: fs,
+  //   macros: [['HAS_TEXTURE', 1.0]],
+  // });
 
-    // renderer.pipelineContext.shaderLibrary.compileShader(shaderId);
-    // let program = (shaderLib).getProgram(shaderId);
+  // renderer.pipelineContext.shaderLibrary.compileShader(shaderId);
+  // let program = (shaderLib).getProgram(shaderId);
 
-    // expect(program).not.eql(null);
-    // let programHandle = program?.glHandle;
+  // expect(program).not.eql(null);
+  // let programHandle = program?.glHandle;
 
-    // expect(programHandle).not.eql(undefined);
-    // let isProgram = renderer.internal.gl.isProgram(programHandle);
+  // expect(programHandle).not.eql(undefined);
+  // let isProgram = renderer.internal.gl.isProgram(programHandle);
 
-    // expect(isProgram).to.eql(true);
+  // expect(isProgram).to.eql(true);
 
-    // // 删除webgl程序
-    // shaderLib.deleteShader(shaderId);
-    // programHandle = program?.glHandle;
-    // isProgram = renderer.glRenderer.gl.isProgram(programHandle);
-    // expect(isProgram).to.eql(false);
+  // // 删除webgl程序
+  // shaderLib.deleteShader(shaderId);
+  // programHandle = program?.glHandle;
+  // isProgram = renderer.glRenderer.gl.isProgram(programHandle);
+  // expect(isProgram).to.eql(false);
 
-    // // 重新编译着色器
-    // program = (shaderLib).getProgram(shaderId);
-    // expect(program).not.eql(null);
-    // programHandle = program?.glHandle;
-    // expect(programHandle).not.eql(undefined);
-    // isProgram = renderer.glRenderer.gl.isProgram(programHandle);
-    // expect(isProgram).to.eql(true);
-  });
-
-  it('auto downgrade to webgl 1 shader', () => {
-    const pipelineContext = rendererGL1.pipelineContext;
-
-    expect(engine1.gpuCapability.level).to.eql(1);
-    const vertexShader = `
-    #version 300
-    in vec2 aPos;
-    out vec2 vPos;
-    `;
-
-    const fragShader = `
-    #version 300
-    in vec2 vPos;
-    out (location=0) vec4 fragColor;
-    `;
-    const lib = pipelineContext.shaderLibrary;
-    const shader = lib.createShader({
-      fragment: createShaderWithMacros([], fragShader, ShaderType.fragment, 1),
-      vertex: createShaderWithMacros([], vertexShader, ShaderType.vertex, 1),
-      glslVersion: GLSLVersion.GLSL1,
-    });
-    const source = shader.source;
-
-    expect(/\bin\b/.test(source.fragment)).to.be.false;
-    expect(/\b(in|out)\b/.test(source.vertex)).to.be.false;
-    expect(source.vertex.includes('attribute vec2 aPos')).to.be.true;
-    expect(source.vertex.includes('varying vec2 vPos')).to.be.true;
-    expect(source.fragment.includes('varying vec2 vPos')).to.be.true;
-    expect(source.fragment).to.contains('#define WEBGL1');
-    expect(source.vertex).to.contains('#define WEBGL1');
-  });
+  // // 重新编译着色器
+  // program = (shaderLib).getProgram(shaderId);
+  // expect(program).not.eql(null);
+  // programHandle = program?.glHandle;
+  // expect(programHandle).not.eql(undefined);
+  // isProgram = renderer.glRenderer.gl.isProgram(programHandle);
+  // expect(isProgram).to.eql(true);
+  // });
 
   it('compile shader async', function (done) {
     const shaderLib = new GLRenderer(webgl2Canvas, 'webgl2').pipelineContext.shaderLibrary;
@@ -152,19 +123,17 @@ describe('webgl/GLShaderLibrary', () => {
       vertex: vs,
       fragment: fs,
       macros: [['HAS_TEXTURE', 122.0]],
-      glslVersion:GLSLVersion.GLSL3,
+      glslVersion: GLSLVersion.GLSL3,
     });
-    const callback = chai.spy(result => {
+    const time = Date.now();
+
+    shaderLib.compileShader(shader, result => {
       expect(result).to.eql(shader.compileResult);
       expect(shader.compileResult?.status).to.eql(ShaderCompileResultStatus.success);
       // 不同机器上编译时间不一样，把阈值调小
       expect(Date.now() - time).to.be.greaterThanOrEqual(1);
       done();
     });
-
-    const time = Date.now();
-
-    shaderLib.compileShader(shader, callback);
     expect(shader.compileResult.status).to.eql(ShaderCompileResultStatus.compiling);
   });
 
@@ -175,20 +144,18 @@ describe('webgl/GLShaderLibrary', () => {
       vertex: vs,
       fragment: fs,
       macros: [['HAS_TEXTURE', 152.0]],
-      glslVersion:GLSLVersion.GLSL3,
+      glslVersion: GLSLVersion.GLSL3,
     });
 
     //@ts-expect-error
     shaderLib.glAsyncCompileExt = null;
 
-    const callback = chai.spy(result => {
+    shaderLib.compileShader(shader, result => {
       expect(result).to.eql(shader.compileResult);
       expect(shader.compileResult?.status).to.eql(ShaderCompileResultStatus.success);
       pipelineContext.dispose();
       done();
     });
-
-    shaderLib.compileShader(shader, callback);
     expect(shader.compileResult.status).to.eql(ShaderCompileResultStatus.compiling);
   });
 
@@ -232,7 +199,7 @@ describe('webgl/GLShaderLibrary', () => {
     });
     //@ts-expect-error
     shaderLib._glAsyncCompileExt = null;
-    shaderLib.compileAllShaders(function (results) {
+    shaderLib.compileAllShaders(results => {
       expect(results.length).to.eql(2);
       renderer.dispose();
       canvas.remove();

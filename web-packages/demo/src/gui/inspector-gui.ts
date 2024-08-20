@@ -1,5 +1,5 @@
 import type { EffectComponentData, EffectsObject, Engine, Material, SceneData, VFXItem } from '@galacean/effects';
-import { EffectComponent, ItemBehaviour, RendererComponent, SerializationHelper, Texture, generateGUID, glContext, loadImage, spec } from '@galacean/effects';
+import { EffectComponent, Behaviour, RendererComponent, SerializationHelper, Texture, generateGUID, glContext, loadImage, spec } from '@galacean/effects';
 
 export class InspectorGui {
   gui: any;
@@ -109,7 +109,7 @@ export class InspectorGui {
           }, 'click').name('Geometry');
         }
 
-        if (component instanceof ItemBehaviour) {
+        if (component instanceof Behaviour) {
           const controller = componentFolder.add(component, '_enabled');
 
           this.guiControllers.push(controller);

@@ -291,16 +291,24 @@ export class Camera {
   }
 
   /**
-   * 获取归一化坐标和 3D 世界坐标的换算比例
+   * 获取归一化坐标和 3D 世界坐标的换算比例，使用 ViewProjection 矩阵
    * @param z - 当前的位置 z
    */
   getInverseVPRatio (z: number) {
     const pos = new Vector3(this.position.x, this.position.y, z);
     const mat = this.getViewProjectionMatrix();
-    const inverseVP = this.getInverseViewProjectionMatrix();
+    let inverseMat = this.getInverseViewProjectionMatrix();
+
+    if (!this.viewportMatrix.isIdentity()) {
+      const invertedViewportMatrix = this.viewportMatrix.clone();
+
+      mat.multiply(invertedViewportMatrix);
+      inverseMat = invertedViewportMatrix.invert().multiply(inverseMat);
+    }
+
     const { z: nz } = mat.projectPoint(pos);
-    const { x: xMax, y: yMax } = inverseVP.projectPoint(new Vector3(1, 1, nz));
-    const { x: xMin, y: yMin } = inverseVP.projectPoint(new Vector3(-1, -1, nz));
+    const { x: xMax, y: yMax } = inverseMat.projectPoint(new Vector3(1, 1, nz));
+    const { x: xMin, y: yMin } = inverseMat.projectPoint(new Vector3(-1, -1, nz));
 
     return new Vector3((xMax - xMin) / 2, (yMax - yMin) / 2, 0);
   }

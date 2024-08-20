@@ -19,35 +19,6 @@ export function vecFill<T extends vec | vec3 | vec4 | vec2> (out: T | number[], 
   return out as T;
 }
 
-export function vecAssign<T extends vec | vec3 | vec4 | vec2> (out: T | number[] | Float32Array, a: T, count: number, start = 0): T {
-  for (let i = 0; i < count; i++) {
-    out[i] = a[i + start];
-  }
-
-  return out as T;
-}
-
-export function vecNormalize<T extends vec | vec2 | vec3 | vec4> (
-  out: T | number[],
-  a?: T | number[],
-): T {
-  if (arguments.length === 1) {
-    a = out;
-    out = [];
-  }
-  const ap = a!;
-  const sum = Math.hypot(...ap);
-
-  if (sum === 0) {
-    return vecAssign(out, ap, ap.length) as T;
-  }
-  for (let i = 0; i < ap.length; i++) {
-    out[i] = ap[i] / sum;
-  }
-
-  return out as T;
-}
-
 export function vecMulCombine<T extends vec | vec3 | vec4 | vec2> (out: T | number[] | Float32Array, a?: T, b?: T): T {
   if (a && b) {
     for (let i = 0, len = a.length; i < len; i++) {
@@ -120,10 +91,4 @@ export function numberToFix (a: number, fixed = 2) {
   const base = Math.pow(10, fixed);
 
   return Math.floor(a * base) / base;
-}
-
-export function pointOnLine (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) {
-  const det1 = (x1 * y2) + (y1 * x3) + (x2 * y3) - (x3 * y2) - (y3 * x1) - (x2 * y1);
-
-  return det1 > -0.001 && det1 < 0.001;
 }

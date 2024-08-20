@@ -3,7 +3,7 @@ import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('asset manager', () => {
+describe('core/asset-manager', () => {
   let player: Player | null;
 
   before(() => {

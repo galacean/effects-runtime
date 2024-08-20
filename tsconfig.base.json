@@ -35,9 +35,6 @@
       "@galacean/effects-helper": [
         "./packages/effects-helper/src"
       ],
-      "@galacean/effects-assets": [
-        "./packages/effects-assets/src"
-      ],
       "@galacean/effects": [
         "./packages/effects/src"
       ],

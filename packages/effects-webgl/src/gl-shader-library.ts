@@ -3,7 +3,7 @@ import type {
   Disposable, RestoreHandler, ShaderCompileResult, ShaderLibrary, ShaderMacros, ShaderWithSource,
   SharedShaderWithSource,
 } from '@galacean/effects-core';
-import { ShaderCompileResultStatus, GLSLVersion, ShaderType, createShaderWithMacros } from '@galacean/effects-core';
+import { ShaderCompileResultStatus, ShaderType, ShaderFactory } from '@galacean/effects-core';
 import { GLProgram } from './gl-program';
 import { GLShaderVariant } from './gl-shader';
 import { assignInspectorName } from './gl-renderer-internal';
@@ -74,8 +74,18 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     }
     const shaderWithMacros = {
       ...shaderSource,
-      vertex: createShaderWithMacros(mergedMacros, shaderSource.vertex, ShaderType.vertex, this.engine.gpuCapability.level),
-      fragment: createShaderWithMacros(mergedMacros, shaderSource.fragment, ShaderType.fragment, this.engine.gpuCapability.level),
+      vertex: ShaderFactory.genFinalShaderCode({
+        level: this.engine.gpuCapability.level,
+        shaderType: ShaderType.vertex,
+        shader: shaderSource.vertex,
+        macros: mergedMacros,
+      }),
+      fragment: ShaderFactory.genFinalShaderCode({
+        level: this.engine.gpuCapability.level,
+        shaderType: ShaderType.fragment,
+        shader: shaderSource.fragment,
+        macros: mergedMacros,
+      }),
     };
     const shaderCacheId = this.computeShaderCacheId(shaderWithMacros);
 
@@ -84,10 +94,6 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     }
     this.shaderAllDone = false;
 
-    const header = shaderWithMacros.glslVersion === GLSLVersion.GLSL3 ? '#version 300 es\n' : '';
-    const vertex = shaderWithMacros.vertex ? header + shaderWithMacros.vertex : '';
-    const fragment = shaderWithMacros.fragment ? header + shaderWithMacros.fragment : '';
-
     let shared = false;
 
     if (shaderWithMacros.shared || (shaderWithMacros as SharedShaderWithSource).cacheId) {
@@ -95,8 +101,8 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     }
     this.cachedShaders[shaderCacheId] = new GLShaderVariant(this.engine, {
       ...shaderWithMacros,
-      vertex,
-      fragment,
+      vertex: shaderWithMacros.vertex,
+      fragment: shaderWithMacros.fragment,
       name: shaderWithMacros.name || shaderCacheId,
       shared,
     });
@@ -139,6 +145,11 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       // console.log('compileShader ' + result.cacheId + ' ' + result.compileTime + ' ', shader.source);
     };
     const checkComplete = () => {
+      if (this.engine.isDestroyed) {
+        console.warn('The player is destroyed during the loadScene process. Please check the timing of calling loadScene and dispose. A common situation is that when calling loadScene, await is not added. This will cause dispose to be called before loadScene is completed.');
+
+        return;
+      }
       const shouldLink =
         !asyncCallback ||
         !ext ||

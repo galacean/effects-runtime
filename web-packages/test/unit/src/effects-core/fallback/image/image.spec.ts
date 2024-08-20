@@ -2,7 +2,7 @@ import { getStandardImage, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('images', () => {
+describe('core/fallback/images', () => {
   it('compressed images', () => {
     const images = [
       {

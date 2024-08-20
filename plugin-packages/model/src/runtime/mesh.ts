@@ -166,12 +166,18 @@ export class PMesh extends PEntity {
   }
 
   /**
+   * 更新骨骼动画
+   */
+  lateUpdate () {
+    this.skin?.updateSkinMatrices();
+  }
+
+  /**
    * 渲染 Mesh 对象，需要将内部相关数据传给渲染器
    * @param scene - 场景
    * @param renderer - 渲染器
    */
   override render (scene: PSceneManager, renderer: Renderer) {
-    this.skin?.updateSkinMatrices();
     this.updateMaterial(scene);
 
     this.subMeshes.forEach((subMesh, index) => {

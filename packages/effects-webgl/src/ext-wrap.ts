@@ -160,10 +160,10 @@ void main(){
 }
 
 class CopyTexturePass extends RenderPass {
-  currentFramebuffer: Framebuffer;
+  currentFramebuffer: Framebuffer | null;
 
   override configure (renderer: Renderer): void {
-    this.currentFramebuffer = renderer.getFramebuffer()!;
+    this.currentFramebuffer = renderer.getFramebuffer();
     renderer.setFramebuffer(this.framebuffer);
   }
 
