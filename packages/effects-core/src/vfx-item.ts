@@ -5,9 +5,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
 import type { Component } from './components';
-import { RendererComponent } from './components';
-import { Behaviour } from './components';
-import { EffectComponent } from './components';
+import { RendererComponent, Behaviour, EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass, serialize } from './decorators';
@@ -15,9 +13,9 @@ import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
-  HitTestTriangleParams, InteractComponent, SpriteComponent } from './plugins';
-import { ParticleSystem,
+  HitTestTriangleParams, InteractComponent, SpriteComponent,
 } from './plugins';
+import { ParticleSystem } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
