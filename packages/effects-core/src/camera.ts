@@ -300,8 +300,10 @@ export class Camera {
     let inverseMat = this.getInverseViewProjectionMatrix();
 
     if (!this.viewportMatrix.isIdentity()) {
-      mat.multiply(this.viewportMatrix.clone().invert());
-      inverseMat = this.viewportMatrix.clone().multiply(inverseMat);
+      const invertedViewportMatrix = this.viewportMatrix.clone();
+
+      mat.multiply(invertedViewportMatrix);
+      inverseMat = invertedViewportMatrix.invert().multiply(inverseMat);
     }
 
     const { z: nz } = mat.projectPoint(pos);
