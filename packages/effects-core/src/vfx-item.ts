@@ -19,6 +19,8 @@ import { ParticleSystem } from './plugins';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
+import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
+import { EventEmitter } from './events';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
@@ -108,6 +110,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   private speed = 1;
   private listIndex = 0;
+  private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
@@ -177,6 +180,67 @@ export class VFXItem extends EffectsObject implements Disposable {
         rendererComponent.priority = value;
       }
     }
+  }
+
+  /**
+   * 元素监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @param options - 事件监听器选项
+   * @returns
+   */
+  on<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+    options?: EventEmitterOptions,
+  ) {
+    this.eventProcessor.on(eventName, listener, options);
+  }
+
+  /**
+   * 移除事件监听器
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @returns
+   */
+  off<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+  ) {
+    this.eventProcessor.off(eventName, listener);
+  }
+
+  /**
+   * 一次性监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   */
+  once<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+  ) {
+    this.eventProcessor.once(eventName, listener);
+  }
+
+  /**
+   * 触发事件
+   * @param eventName - 事件名称
+   * @param args - 事件参数
+   */
+  emit<E extends keyof ItemEvent> (
+    eventName: E,
+    ...args: ItemEvent[E]
+  ) {
+    this.eventProcessor.emit(eventName, ...args);
+  }
+
+  /**
+   * 获取事件名称对应的所有监听器
+   * @param eventName - 事件名称
+   * @returns - 返回事件名称对应的所有监听器
+   */
+  getListeners<E extends keyof ItemEvent> (eventName: E) {
+    return this.eventProcessor.getListeners(eventName);
   }
 
   /**
