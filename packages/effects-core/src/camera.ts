@@ -297,13 +297,13 @@ export class Camera {
   getInverseVPRatio (z: number) {
     const pos = new Vector3(this.position.x, this.position.y, z);
     const mat = this.getViewProjectionMatrix();
-    let inverseMat = this.getInverseViewProjectionMatrix();
+    const inverseMat = this.getInverseViewProjectionMatrix();
 
     if (!this.viewportMatrix.isIdentity()) {
-      const invertedViewportMatrix = this.viewportMatrix.clone();
+      const viewportMatrix = this.viewportMatrix.clone();
 
-      mat.multiply(invertedViewportMatrix);
-      inverseMat = invertedViewportMatrix.invert().multiply(inverseMat);
+      inverseMat.premultiply(viewportMatrix);
+      mat.multiply(viewportMatrix.invert());
     }
 
     const { z: nz } = mat.projectPoint(pos);
