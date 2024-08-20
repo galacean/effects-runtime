@@ -18,7 +18,7 @@ import type {
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
-import type { ItemEvent } from './events';
+import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
 import { EventEmitter } from './events';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
@@ -47,8 +47,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 4. 当元素绑定 TreeItem 本身时，行为表现和绑定 nullItem 相同
    */
   parent?: VFXItem;
-
-  private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
   children: VFXItem[] = [];
   /**
@@ -111,6 +109,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   private speed = 1;
   private listIndex = 0;
+  private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
@@ -189,8 +188,12 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param options - 事件监听器选项
    * @returns
    */
-  on (eventName: string, listener: (data: any) => void, options?: { once?: boolean }) {
-    this.eventProcessor.on(eventName as 'click' | 'message', listener, options);
+  on<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+    options?: EventEmitterOptions,
+  ) {
+    this.eventProcessor.on(eventName, listener, options);
   }
 
   /**
@@ -199,8 +202,11 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param listener - 事件监听器
    * @returns
    */
-  off (eventName: string, listener: (data: any) => void) {
-    this.eventProcessor.off(eventName as 'click' | 'message', listener);
+  off<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+  ) {
+    this.eventProcessor.off(eventName, listener);
   }
 
   /**
@@ -208,8 +214,11 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param eventName - 事件名称
    * @param listener - 事件监听器
    */
-  once (eventName: string, listener: (data: any) => void) {
-    this.eventProcessor.once(eventName as 'click' | 'message', listener);
+  once<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+  ) {
+    this.eventProcessor.once(eventName, listener);
   }
 
   /**
@@ -217,8 +226,11 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param eventName - 事件名称
    * @param args - 事件参数
    */
-  emit (eventName: string, args: any) {
-    this.eventProcessor.emit(eventName as 'click' | 'message', args);
+  emit<E extends keyof ItemEvent> (
+    eventName: E,
+    ...args: ItemEvent[E]
+  ) {
+    this.eventProcessor.emit(eventName, ...args);
   }
 
   /**
@@ -226,8 +238,8 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @param eventName - 事件名称
    * @returns - 返回事件名称对应的所有监听器
    */
-  getListeners (eventName: string) {
-    return this.eventProcessor.getListeners(eventName as 'click' | 'message');
+  getListeners<E extends keyof ItemEvent> (eventName: E) {
+    return this.eventProcessor.getListeners(eventName);
   }
 
   /**

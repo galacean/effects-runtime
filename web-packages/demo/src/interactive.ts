@@ -11,13 +11,13 @@ const container = document.getElementById('J-container');
     });
 
     player.on('click', e => {
-      console.info(`item [${e.name}] clicked.`);
+      console.info(`[player click] - item [${e.name}] clicked.`);
     });
     player.on('message', e => {
-      console.info(`item [${e.name}] trigger message, type [${e.phrase}].`);
+      console.info(`[player message] - item [${e.name}] trigger message, type [${e.phrase}].`);
     });
     player.on('update', e => {
-      document.getElementById('J-playerState')!.innerText = `player is ${e.playing ? 'playing' : 'paused'}`;
+      document.getElementById('J-playerState')!.innerText = `[player update] - player is ${e.playing ? 'playing' : 'paused'}`;
     });
 
     document.getElementById('J-pauseBtn')?.addEventListener('click', () => {
@@ -27,7 +27,12 @@ const container = document.getElementById('J-container');
       void player.resume();
     });
 
-    await player.loadScene(json);
+    const composition = await player.loadScene(json);
+    const item = composition.getItemByName('lotteryBtn');
+
+    item?.on('click', e => {
+      console.info(`[item click] - item [${e.name}] clicked.`);
+    });
   } catch (e) {
     console.error('biz', e);
   }
