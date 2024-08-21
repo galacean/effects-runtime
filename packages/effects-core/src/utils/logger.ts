@@ -8,7 +8,7 @@ let localLogger: ((type: LogType, message: string, ...args: any[]) => void) | un
 function format (message: string) {
   return [
     `%c${prefix}`,
-    'background: #AA0100; color: white',
+    'color: #AA0100',
     `${message}`,
   ];
 }

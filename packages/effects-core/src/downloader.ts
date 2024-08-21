@@ -5,12 +5,12 @@ type ErrorHandler = (status: number, responseText: string) => void;
 /**
  *
  */
-type VideoLoadOptions = {
-  /**
-   * 视频是否循环播放
-   */
-  loop?: boolean,
-};
+// type VideoLoadOptions = {
+//   /**
+//    * 视频是否循环播放
+//    */
+//   loop?: boolean,
+// };
 
 /**
  * JSON 值，它可以是字符串、数字、布尔值、对象或者 JSON 值的数组。
@@ -111,6 +111,7 @@ export class Downloader {
 }
 
 let webPFailed = false;
+let avifFailed = false;
 
 /**
  * 异步加载一个 WebP 图片文件，如果不支持 WebP，则加载 PNG 图片文件
@@ -128,8 +129,34 @@ export async function loadWebPOptional (png: string, webp?: string) {
     const image = await loadImage(webp);
 
     return { image, url: webp };
-  } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e: any) {
     webPFailed = true;
+    const image = await loadImage(png);
+
+    return { image, url: png };
+  }
+}
+
+/**
+ * 异步加载一个 AVIF 图片文件，如果不支持 AVIF，则加载 PNG 图片文件
+ * @param png - PNG 图片文件的 URL
+ * @param avif - AVIF 图片文件的 URL
+ */
+export async function loadAVIFOptional (png: string, avif?: string) {
+  if (avifFailed || !avif) {
+    const image = await loadImage(png);
+
+    return { image, url: png };
+  }
+
+  try {
+    const image = await loadImage(avif);
+
+    return { image, url: avif };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e: any) {
+    avifFailed = true;
     const image = await loadImage(png);
 
     return { image, url: png };
@@ -161,7 +188,7 @@ export async function loadImage (
 
   // 2. 非法类型
   if (!url) {
-    throw new Error(`Invalid url type: ${JSON.stringify(source)}`);
+    throw new Error(`Invalid url type: ${JSON.stringify(source)}.`);
   }
 
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -255,4 +282,17 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
       reject(e);
     });
   });
+}
+
+export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<HTMLImageElement | HTMLVideoElement>) {
+  if (Array.isArray(url)) {
+    try {
+      return await loadFn(url[0]);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (e: any) {
+      return await loadFn(url[1]);
+    }
+  }
+
+  return loadFn(url);
 }

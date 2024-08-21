@@ -1,22 +1,21 @@
 import type { Composition, Mesh, RenderFrame, Scene, Texture, VFXItem } from '@galacean/effects';
-import { AbstractPlugin, RenderPass, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, TextureLoadAction } from '@galacean/effects';
-import { GizmoVFXItem } from './gizmo-vfx-item';
-import { GizmoSubType, GizmoVFXItemType } from './define';
+import { AbstractPlugin, RenderPass, RenderPassPriorityPostprocess, RenderPassPriorityPrepare, TextureLoadAction, removeItem } from '@galacean/effects';
+import { GizmoVFXItemType } from './define';
 import { destroyWireframeMesh } from './wireframe';
 import { axisIconMap } from './constants';
 import { createImage, createTexture } from './util';
 import { GeometryType } from './geometry';
+import { GizmoComponent } from './gizmo-component';
 
 const editorRenderPassName = 'editor-gizmo';
 const frontRenderPassName = 'front-gizmo';
 const behindRenderPassName = 'behind-gizmo';
 const iconImages: Map<string, HTMLImageElement> = new Map();
-const iconTextures: Map<string, Texture> = new Map();
+
+export const iconTextures: Map<string, Texture> = new Map();
 
 export class EditorGizmoPlugin extends AbstractPlugin {
-
   meshToAdd: Mesh[] = [];
-
   meshToRemove: Mesh[] = [];
   override order = 1001;
 
@@ -37,7 +36,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
   override onCompositionConstructed (composition: Composition, scene: Scene) {
     const engine = composition.renderer.engine;
 
-    iconImages.forEach((image, name)=>{
+    iconImages.forEach((image, name) => {
       iconTextures.set(name, createTexture(engine, image));
     });
     iconImages.clear();
@@ -45,87 +44,88 @@ export class EditorGizmoPlugin extends AbstractPlugin {
 
   override onCompositionReset (composition: Composition) {
     const items = composition.items;
-    const targetMap: { [key: number]: GizmoVFXItem[] } = {};
+    const targetMap: { [key: string]: VFXItem[] } = {};
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
+      const gizmoComponent = item.getComponent(GizmoComponent);
 
-      if (item instanceof GizmoVFXItem) {
-        if (!targetMap[item.target]) {
-          targetMap[item.target] = [];
+      if (gizmoComponent) {
+        if (!targetMap[gizmoComponent.target]) {
+          targetMap[gizmoComponent.target] = [];
         }
-        targetMap[item.target].push(item);
+        targetMap[gizmoComponent.target].push(item);
       }
     }
     composition.loaderData.gizmoTarget = targetMap;
     composition.loaderData.gizmoItems = [];
   }
 
-  override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<any>) {
-    if (item.type === '7') {
-      return;
-    }
-    const gizmoVFXItemList: GizmoVFXItem[] = composition.loaderData.gizmoTarget[item.id];
+  // override onCompositionItemLifeBegin (composition: Composition, item: VFXItem<any>) {
+  //   if (item.type === '7') {
+  //     return;
+  //   }
+  //   const gizmoVFXItemList: GizmoVFXItem[] = composition.loaderData.gizmoTarget[item.id];
 
-    if (gizmoVFXItemList && gizmoVFXItemList.length > 0) {
-      for (const gizmoVFXItem of gizmoVFXItemList) {
-        switch (gizmoVFXItem.subType) {
-          case GizmoSubType.particleEmitter:
-            gizmoVFXItem.createParticleContent(item, this.meshToAdd);
+  //   if (gizmoVFXItemList && gizmoVFXItemList.length > 0) {
+  //     for (const gizmoVFXItem of gizmoVFXItemList) {
+  //       switch (gizmoVFXItem.subType) {
+  //         case GizmoSubType.particleEmitter:
+  //           gizmoVFXItem.createParticleContent(item, this.meshToAdd);
 
-            break;
-          case GizmoSubType.modelWireframe:
-            gizmoVFXItem.createModelContent(item, this.meshToAdd);
+  //           break;
+  //         case GizmoSubType.modelWireframe:
+  //           gizmoVFXItem.createModelContent(item, this.meshToAdd);
 
-            break;
-          case GizmoSubType.box:
-          case GizmoSubType.sphere:
-          case GizmoSubType.cylinder:
-          case GizmoSubType.cone:
-          case GizmoSubType.torus:
-          case GizmoSubType.sprite:
-          case GizmoSubType.frustum:
-          case GizmoSubType.directionLight:
-          case GizmoSubType.pointLight:
-          case GizmoSubType.spotLight:
-          case GizmoSubType.floorGrid:
-            gizmoVFXItem.createBasicContent(item, this.meshToAdd, gizmoVFXItem.subType);
+  //           break;
+  //         case GizmoSubType.box:
+  //         case GizmoSubType.sphere:
+  //         case GizmoSubType.cylinder:
+  //         case GizmoSubType.cone:
+  //         case GizmoSubType.torus:
+  //         case GizmoSubType.sprite:
+  //         case GizmoSubType.frustum:
+  //         case GizmoSubType.directionLight:
+  //         case GizmoSubType.pointLight:
+  //         case GizmoSubType.spotLight:
+  //         case GizmoSubType.floorGrid:
+  //           gizmoVFXItem.createBasicContent(item, this.meshToAdd, gizmoVFXItem.subType);
 
-            break;
-          case GizmoSubType.camera:
-          case GizmoSubType.light:
-            gizmoVFXItem.createBasicContent(item, this.meshToAdd, gizmoVFXItem.subType, iconTextures);
+  //           break;
+  //         case GizmoSubType.camera:
+  //         case GizmoSubType.light:
+  //           gizmoVFXItem.createBasicContent(item, this.meshToAdd, gizmoVFXItem.subType, iconTextures);
 
-            break;
-          case GizmoSubType.rotation:
-          case GizmoSubType.scale:
-          case GizmoSubType.translation:
-            gizmoVFXItem.createCombinationContent(item, this.meshToAdd, gizmoVFXItem.subType);
+  //           break;
+  //         case GizmoSubType.rotation:
+  //         case GizmoSubType.scale:
+  //         case GizmoSubType.translation:
+  //           gizmoVFXItem.createCombinationContent(item, this.meshToAdd, gizmoVFXItem.subType);
 
-            break;
-          case GizmoSubType.viewHelper:
-            gizmoVFXItem.createCombinationContent(item, this.meshToAdd, gizmoVFXItem.subType, iconTextures);
+  //           break;
+  //         case GizmoSubType.viewHelper:
+  //           gizmoVFXItem.createCombinationContent(item, this.meshToAdd, gizmoVFXItem.subType, iconTextures);
 
-            break;
-          case GizmoSubType.boundingBox:
-            gizmoVFXItem.createBoundingBoxContent(item, this.meshToAdd);
+  //           break;
+  //         case GizmoSubType.boundingBox:
+  //           gizmoVFXItem.createBoundingBoxContent(item, this.meshToAdd);
 
-            break;
-          default:
-            break;
-        }
-      }
-    }
+  //           break;
+  //         default:
+  //           break;
+  //       }
+  //     }
+  //   }
+  //   if (item.type === GizmoVFXItemType) {
+  //     composition.loaderData.gizmoItems.push(item);
+  //   }
+  // }
+
+  override onCompositionItemRemoved (composition: Composition, item: VFXItem) {
     if (item.type === GizmoVFXItemType) {
-      composition.loaderData.gizmoItems.push(item);
-    }
-  }
-
-  override onCompositionItemRemoved (composition: Composition, item: VFXItem<any>) {
-    if (item.type === GizmoVFXItemType) {
-      this.removeGizmoItem(composition, item as unknown as GizmoVFXItem);
+      this.removeGizmoItem(composition, item);
     } else {
-      const gizmoVFXItemList: GizmoVFXItem[] = composition.loaderData.gizmoTarget[item.id];
+      const gizmoVFXItemList: VFXItem[] = composition.loaderData.gizmoTarget[item.id];
 
       if (gizmoVFXItemList && gizmoVFXItemList.length > 0) {
         gizmoVFXItemList.forEach(gizmoVFXItem => {
@@ -135,18 +135,20 @@ export class EditorGizmoPlugin extends AbstractPlugin {
     }
   }
 
-  removeGizmoItem (composition: Composition, gizmoVFXItem: GizmoVFXItem) {
-    if (gizmoVFXItem.content && !gizmoVFXItem.content.isDestroyed) {
-      gizmoVFXItem.content.dispose();
+  removeGizmoItem (composition: Composition, gizmoVFXItem: VFXItem) {
+    const gizmoMesh = gizmoVFXItem.content as Mesh;
 
-      if (gizmoVFXItem.content.name === GeometryType.FloorGrid.toString() || gizmoVFXItem.content.name === 'Box') {
-        this.getFrontRenderPass(composition.renderFrame).removeMesh(gizmoVFXItem.content);
+    if (gizmoMesh && !gizmoMesh.isDestroyed) {
+      gizmoMesh.dispose();
+
+      if (gizmoMesh.name === GeometryType.FloorGrid.toString() || gizmoMesh.name === 'Box') {
+        this.getFrontRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
       } else {
-        this.getEditorRenderPass(composition.renderFrame).removeMesh(gizmoVFXItem.content);
+        this.getEditorRenderPass(composition.renderFrame).removeMesh(gizmoMesh);
       }
     }
-    if (gizmoVFXItem.contents) {
-      for (const [mesh] of gizmoVFXItem.contents) {
+    if (gizmoVFXItem.getComponent(GizmoComponent).contents) {
+      for (const [mesh] of gizmoVFXItem.getComponent(GizmoComponent).contents!) {
         if (!mesh.isDestroyed) {
           mesh.dispose();
           if (mesh.name === 'translation' || mesh.name === 'scale' || mesh.name === 'rotation') {
@@ -158,15 +160,17 @@ export class EditorGizmoPlugin extends AbstractPlugin {
       }
     }
 
-    if (gizmoVFXItem.wireframeMeshes.length > 0) {
-      gizmoVFXItem.wireframeMeshes.forEach(mesh => {
+    const gizmoComponent = gizmoVFXItem.getComponent(GizmoComponent);
+
+    if (gizmoComponent && gizmoComponent.wireframeMeshes.length > 0) {
+      gizmoComponent.wireframeMeshes.forEach(mesh => {
         if (!mesh.isDestroyed) {
           destroyWireframeMesh(mesh);
           this.getEditorRenderPass(composition.renderFrame).removeMesh(mesh);
         }
       });
     } else {
-      const wireframeMesh = gizmoVFXItem.wireframeMesh;
+      const wireframeMesh = gizmoVFXItem.getComponent(GizmoComponent).wireframeMesh;
 
       if (wireframeMesh && !wireframeMesh.isDestroyed) {
         destroyWireframeMesh(wireframeMesh);
@@ -174,7 +178,7 @@ export class EditorGizmoPlugin extends AbstractPlugin {
       }
     }
 
-    const arr: GizmoVFXItem[] = composition.loaderData.gizmoItems;
+    const arr: VFXItem[] = composition.loaderData.gizmoItems;
     const index = arr.indexOf(gizmoVFXItem);
 
     if (index > -1) {
@@ -200,9 +204,10 @@ export class EditorGizmoPlugin extends AbstractPlugin {
       } else {
         this.getEditorRenderPass(renderFrame).removeMesh(mesh);
       }
+      removeItem(this.meshToAdd, mesh);
     });
-    this.meshToAdd.length = this.meshToRemove.length = 0;
-    composition.loaderData.gizmoItems.forEach((item: GizmoVFXItem) => item.updateRenderData());
+    this.meshToRemove.length = 0;
+    // composition.loaderData.gizmoItems.forEach((item: GizmoVFXItem) => item.updateRenderData());
 
     return false;
   }

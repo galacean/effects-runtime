@@ -1,4 +1,8 @@
-import type { Texture2DSourceOptions, Texture2DSourceOptionsImage, TextureCubeSourceOptions, TextureCubeSourceOptionsImageMipmaps, TextureFactorySource2DFrom, TextureFactorySourceFrom, TextureSourceType, spec } from '@galacean/effects';
+import type {
+  Texture2DSourceOptions, Texture2DSourceOptionsImage, TextureCubeSourceOptions, TextureSourceType,
+  TextureCubeSourceOptionsImageMipmaps, TextureFactorySource2DFrom, TextureFactorySourceFrom, spec,
+} from '@galacean/effects';
+import { assertExist } from '@galacean/effects';
 import { getImageFileContent, loadMipmaps } from './utils';
 
 export interface TextureSerializationResult {
@@ -70,7 +74,9 @@ export async function serializeTextures (
       }
 
       const job = async () => {
-        const buffer = await imageBufferSet.get(url)!;
+        const buffer = await imageBufferSet.get(url);
+
+        assertExist(buffer);
 
         imageMap.set(texture, buffer);
 
@@ -79,7 +85,7 @@ export async function serializeTextures (
 
       filesPending.push(job());
     } else {
-      throw new Error(`tex ${i} image should be HTMLImage or HTMLCanvas`);
+      throw new Error(`tex ${i} image should be HTMLImage or HTMLCanvas.`);
     }
   }
 
@@ -95,7 +101,9 @@ export async function serializeTextures (
     const texture = textureOptions[i];
 
     if (texture.target === WebGLRenderingContext.TEXTURE_CUBE_MAP) {
-      const info = cubeMap.get(texture)!;
+      const info = cubeMap.get(texture);
+
+      assertExist(info);
 
       bins.push(info.data);
       tex = { ...texture, ...{ mipmaps: info.mipmaps, sourceType: 7 } } as spec.SerializedTextureCube;
@@ -103,7 +111,9 @@ export async function serializeTextures (
         delete tex.cube;
       }
     } else {
-      const buffer = imageMap.get(texture)!;
+      const buffer = imageMap.get(texture);
+
+      assertExist(buffer);
 
       tex = { ...texture, ...{ source: images.indexOf(buffer) } } as spec.SerializedTexture2D;
       if ('mipmaps' in tex) {

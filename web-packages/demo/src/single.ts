@@ -1,40 +1,16 @@
 import { Player } from '@galacean/effects';
-import '@galacean/effects-plugin-spine';
-import inspireList from './assets/inspire-list';
 
-const json = inspireList.turnplate.url;
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bl40RLWLKisAAAAAAAAAAAAADlB4AQ';
+const container = document.getElementById('J-container');
 
 (async () => {
   try {
-    const player = createPlayer();
+    const player = new Player({
+      container,
+    });
 
     await player.loadScene(json);
   } catch (e) {
     console.error('biz', e);
   }
 })();
-
-function createPlayer () {
-  const player = new Player({
-    container: document.getElementById('J-container'),
-    interactive: true,
-    onPlayableUpdate: ({ player, playing }) => {
-    },
-    // manualRender: true,
-    renderFramework: 'webgl',
-    env: 'editor',
-    notifyTouch: true,
-    onPausedByItem: data => {
-      console.info('onPausedByItem', data);
-    },
-    onItemClicked: data => {
-      console.info(`item ${data.name} has been clicked`);
-    },
-    onRenderError: e => {
-      console.error(`render error: ${e.message}`);
-    },
-    // reportGPUTime: console.debug,
-  });
-
-  return player;
-}

@@ -1,11 +1,11 @@
 // @ts-nocheck
 import { glContext, Camera, RenderFrame, RenderPass, Mesh } from '@galacean/effects-core';
-import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject } from '@galacean/effects-webgl';
+import { GLMaterial, GLGeometry, GLRenderer, GLVertexArrayObject, GLEngine } from '@galacean/effects-webgl';
 
 const { assert, expect } = chai;
 
 describe('webgl/gl-geometry', () => {
-  let canvas, glRenderer, gl, renderer, pipelineContext;
+  let canvas, engine, glRenderer, gl, renderer, pipelineContext;
   const option = {
     name: 'geo1',
     mode: glContext.TRIANGLES, // mode
@@ -24,7 +24,7 @@ describe('webgl/gl-geometry', () => {
       data: new Uint16Array([0, 1, 3, 1, 2, 3]),
     },
   };
-  const geometry = new GLGeometry(undefined, option);
+  let geometry: GLGeometry;
 
   before(() => {
     canvas = document.createElement('canvas');
@@ -33,6 +33,8 @@ describe('webgl/gl-geometry', () => {
     pipelineContext = renderer.pipelineContext;
 
     gl = pipelineContext.gl;
+    engine = new GLEngine(gl);
+    geometry = new GLGeometry(engine, option);
   });
 
   after(() => {
@@ -43,6 +45,7 @@ describe('webgl/gl-geometry', () => {
     gl = null;
     glRenderer = null;
     pipelineContext.dispose();
+    geometry.dispose();
   });
 
   // GLGeometry涉及三个WebGL函数
@@ -100,7 +103,7 @@ describe('webgl/gl-geometry', () => {
     expect(vao).to.be.an.instanceof(GLVertexArrayObject);
   });
 
-  it('test destory', () => {
+  it('test destroy', () => {
     geometry.dispose();
 
     expect(geometry.isDestroyed).to.be.true;
@@ -578,29 +581,6 @@ describe('webgl/gl-geometry', () => {
     expect(drawElement).not.has.been.called;
     gl.drawElements = d;
     frame.dispose();
-  });
-
-  // drawCount为undefined时会触发indexCount次drawCall
-  it('geometry drawCount == undefined would use index Count', function () {
-    const ret = createMesh(renderer, undefined);
-    const pass = new RenderPass(renderer, {
-      name: 'test',
-      meshes: [ret.mesh],
-    });
-    const frame = new RenderFrame({
-      renderer,
-      camera: new Camera(),
-    });
-
-    frame.setRenderPasses([pass]);
-    const d = gl.drawElements;
-    const drawElement = gl.drawElements = chai.spy(d);
-
-    renderer.renderRenderFrame(frame);
-    expect(ret.geom.drawCount).is.a.NaN;
-    expect(drawElement).to.have.been.called.once;
-    expect(drawElement).to.have.been.called.with(glContext.TRIANGLES, ret.geom.indicesBuffer.elementCount, ret.geom.indicesBuffer.type, 0);
-    gl.drawElements = d;
   });
 });
 

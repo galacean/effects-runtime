@@ -1,5 +1,8 @@
+import { Euler } from '@galacean/effects-math/es/core/euler';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type { ItemLinearVelOverLifetime } from '../plugins';
 import type { ValueGetter } from './value-getter';
-import { Euler, Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
 
 export function translatePoint (x: number, y: number): number[] {
   const origin = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];
@@ -18,7 +21,7 @@ const tempMat4 = new Matrix4();
 export interface TranslateTarget {
   speedOverLifetime?: ValueGetter<number>,
   gravityModifier?: ValueGetter<number>,
-  linearVelOverLifetime?: any,
+  linearVelOverLifetime?: ItemLinearVelOverLifetime,
   orbitalVelOverLifetime?: any,
 }
 
@@ -74,17 +77,30 @@ export function calculateTranslation (
 
     ret.addVectors(center, rot);
   }
+
   if (linearVelocityOverLifetime.enabled) {
     const asMovement = linearVelocityOverLifetime.asMovement;
 
-    for (let i = 0; i < 3; i++) {
-      const pro = linearVelocityOverLifetime[map[i]];
+    const velocityXCurve = linearVelocityOverLifetime.x;
+    const velocityYCurve = linearVelocityOverLifetime.y;
+    const velocityZCurve = linearVelocityOverLifetime.z;
 
-      if (pro) {
-        const val = asMovement ? pro.getValue(lifetime) : pro.getIntegrateValue(0, time, duration);
+    if (velocityXCurve) {
+      const curveValue = asMovement ? velocityXCurve.getValue(lifetime) : velocityXCurve.getIntegrateValue(0, time, duration);
 
-        ret.setElement(i, ret.getElement(i) + val);
-      }
+      ret.x = ret.x + curveValue;
+    }
+
+    if (velocityYCurve) {
+      const curveValue = asMovement ? velocityYCurve.getValue(lifetime) : velocityYCurve.getIntegrateValue(0, time, duration);
+
+      ret.y = ret.y + curveValue;
+    }
+
+    if (velocityZCurve) {
+      const curveValue = asMovement ? velocityZCurve.getValue(lifetime) : velocityZCurve.getIntegrateValue(0, time, duration);
+
+      ret.z = ret.z + curveValue;
     }
   }
 

@@ -1,15 +1,6 @@
-import type { Disposable, FrameBuffer, Renderer, SharedShaderWithSource } from '@galacean/effects-core';
-import {
-  createShaderWithMarcos,
-  glContext,
-  GLSLVersion,
-  RenderPass,
-  ShaderType,
-  TextureLoadAction,
-  TextureSourceType,
-  Mesh,
-} from '@galacean/effects-core';
-import type { GLFrameBuffer } from './gl-frame-buffer';
+import type { Disposable, Framebuffer, Renderer, SharedShaderWithSource } from '@galacean/effects-core';
+import { GLSLVersion, Mesh, RenderPass, TextureLoadAction, TextureSourceType, glContext } from '@galacean/effects-core';
+import type { GLFramebuffer } from './gl-framebuffer';
 import { GLGeometry } from './gl-geometry';
 import { GLMaterial } from './gl-material';
 import type { GLRenderer } from './gl-renderer';
@@ -29,7 +20,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
   private copyRenderPass?: RenderPass;
 
   constructor (
-    public readonly renderer: GLRenderer
+    public readonly renderer: GLRenderer,
   ) {
     if (renderer.engine.gpuCapability.level === 1) {
       this.copyRenderPass = this.createCopyRenderPass().initialize(renderer);
@@ -68,11 +59,11 @@ export class ExtWrap implements RendererExtensions, Disposable {
 
   copy2 (source: GLTexture, target: GLTexture) {
     // 保存当前的 fbo
-    const frameBuffer = this.renderer.getFrameBuffer();
+    const framebuffer = this.renderer.getFramebuffer();
 
-    this.renderer?.glRenderer.copy2(source, target);
+    this.renderer.glRenderer.copy2(source, target);
     // 还原 fbo
-    this.renderer.setFrameBuffer(frameBuffer);
+    this.renderer.setFramebuffer(framebuffer);
   }
 
   copy1 (source: GLTexture, target: GLTexture) {
@@ -82,7 +73,7 @@ export class ExtWrap implements RendererExtensions, Disposable {
       const renderer = this.renderer;
 
       if (renderer) {
-        const fb = rp.frameBuffer as GLFrameBuffer;
+        const fb = rp.framebuffer as GLFramebuffer;
 
         fb.viewport[2] = target.getWidth() || source.getWidth();
         fb.viewport[3] = target.getHeight() || source.getHeight();
@@ -114,33 +105,31 @@ export class ExtWrap implements RendererExtensions, Disposable {
         drawCount: 4,
       });
     const vertexShader = `
-        precision highp float;
-      attribute vec2 aPos;
-      varying vec2 vTex;
-      void main(){
-         gl_Position = vec4(aPos,0.,1.0);
-         vTex = (aPos + vec2(1.))/2.;
-       }
-      `;
+precision highp float;
+attribute vec2 aPos;
+varying vec2 vTex;
+void main(){
+  gl_Position = vec4(aPos,0.,1.0);
+  vTex = (aPos + vec2(1.))/2.;
+}`;
     const fragmentShader = `
-        precision highp float;
-      varying vec2 vTex;
-      uniform sampler2D uTex;
-      void main(){gl_FragColor = texture2D(uTex,vTex);}
-      `;
+precision highp float;
+varying vec2 vTex;
+uniform sampler2D uTex;
+void main(){
+  gl_FragColor = texture2D(uTex,vTex);
+}`;
     const { level } = engine.gpuCapability;
-    const material = new GLMaterial(
-      engine,
-      {
+    const material = new GLMaterial(engine, {
+      name,
+      shader: {
+        cacheId: copyShaderId,
         name,
-        shader: {
-          cacheId: copyShaderId,
-          name,
-          vertex: createShaderWithMarcos([], vertexShader, ShaderType.vertex, level),
-          fragment: createShaderWithMarcos([], fragmentShader, ShaderType.fragment, level),
-          glslVersion: level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
-        },
-      });
+        vertex: vertexShader,
+        fragment: fragmentShader,
+        glslVersion: level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
+      },
+    });
 
     material.blending = false;
     material.depthTest = false;
@@ -171,11 +160,11 @@ export class ExtWrap implements RendererExtensions, Disposable {
 }
 
 class CopyTexturePass extends RenderPass {
-  currentFrameBuffer: FrameBuffer;
+  currentFramebuffer: Framebuffer | null;
 
   override configure (renderer: Renderer): void {
-    this.currentFrameBuffer = renderer.getFrameBuffer()!;
-    renderer.setFrameBuffer(this.frameBuffer!);
+    this.currentFramebuffer = renderer.getFramebuffer();
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
@@ -186,6 +175,6 @@ class CopyTexturePass extends RenderPass {
     if (this.storeAction) {
       renderer.clear(this.storeAction);
     }
-    renderer.setFrameBuffer(this.currentFrameBuffer);
+    renderer.setFramebuffer(this.currentFramebuffer);
   }
 }

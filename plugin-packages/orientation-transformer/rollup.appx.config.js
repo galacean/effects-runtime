@@ -7,14 +7,14 @@ const module = '@galacean/appx-adapter';
 const commonAdapterList = [
   'window',
   'document',
-  'navigator'
+  'navigator',
 ];
 const adapterList = {
   alipay: [...commonAdapterList],
 }
 
 export default [
-  'alipay'
+  'alipay',
 ].map(platform => {
   const adapterVars = {};
   const paths = { '@galacean/effects': `@galacean/effects/${platform}` };

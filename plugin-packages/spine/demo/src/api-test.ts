@@ -13,10 +13,6 @@ import type { FileFormat } from './files';
 import { direct, premultiply } from './files';
 import 'fpsmeter';
 
-const playerOptions = {
-  onEnd: () => console.info('合成播放结束'),
-};
-
 const filetype = document.getElementById('J-premultiply')!;
 const startEle = document.getElementById('J-start')!;
 const pauseEle = document.getElementById('J-pause')!;
@@ -41,8 +37,8 @@ const skin = document.getElementById('J-skinList') as HTMLSelectElement;
 const animation = document.getElementById('J-animationList') as HTMLSelectElement;
 const format = document.getElementById('J-formatList') as HTMLSelectElement;
 
-format.onchange = handleChange;
-delay.onchange = handleChange;
+// format.onchange = handleChange;
+// delay.onchange = handleChange;
 
 const files: Record<string, FileFormat> = premultiply;
 
@@ -59,7 +55,6 @@ const cameraPos = [0, 0, 8];
 
 const player = new Player({
   container: document.getElementById('J-container'),
-  ...playerOptions,
 });
 
 // @ts-expect-error
@@ -93,11 +88,7 @@ startEle.onclick = async () => {
     player.pause();
   }
   player.destroyCurrentCompositions();
-  duration = 0.1;
-  for (const a of animationList) {
-    duration += getAnimationDuration(skeletonData, a);
-  }
-  scene = generateScene(skin.value, animationList, duration, Number(delay.value), Number(speed.value), Number(mixDuration.value)) as JSONValue;
+  handleChange();
   const comp = await player.loadScene(scene);
 
   camera = comp.camera;
@@ -125,7 +116,7 @@ function loadFile (fileName: string) {
     skeletonData = data;
     addCameraEvent();
   }).catch(e => {
-    console.error(`loadFile error: ${e}`);
+    console.error(`Load file error: ${e}.`);
   });
 }
 
@@ -197,11 +188,15 @@ function handleChange () {
     duration += getAnimationDuration(skeletonData, a);
   }
 
-  scene = generateScene(as, animationList, duration, Number(delay.value)) as JSONValue;
+  scene = generateScene(as, animationList, duration, Number(delay.value), Number(speed.value), Number(mixDuration.value)) as JSONValue;
 }
 
 function generateScene (activeSkin: string, activeAnimation: string[], duration: number, delay = 0, speed = 1, mixDuration = 0) {
   return {
+    'playerVersion': {
+      'web': '1.0.0',
+      'native': '1.0.0',
+    },
     'images': file.png.map(img => {
       return {
         'url': img,
@@ -218,12 +213,12 @@ function generateScene (activeSkin: string, activeAnimation: string[], duration:
         'images': file.png.map((item, index) => index),
       },
     ],
-    'version': '1.8',
+    'version': '2.2',
     'shapes': [],
     'plugins': [
       'spine',
     ],
-    'type': 'mars',
+    'type': 'ge',
     'compositions': [
       {
         'id': '10',
@@ -254,7 +249,7 @@ function generateScene (activeSkin: string, activeAnimation: string[], duration:
                   3,
                   3,
                 ],
-                'startSize': 2,
+                'startSize': 3,
                 activeAnimation,
                 mixDuration,
                 speed,
@@ -317,7 +312,7 @@ function setSkinList (list: string[]) {
   }
   options.push('<option value="" selected>请选择皮肤</option>');
   skin.innerHTML = options.join('');
-  skin.onchange = handleChange;
+  // skin.onchange = handleChange;
   skin.value = skin.value || list[0];
 }
 

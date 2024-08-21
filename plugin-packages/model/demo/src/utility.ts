@@ -115,7 +115,7 @@ export function createLabel (parent: HTMLElement, name: string, defaultValue: st
   return label;
 }
 
-export function createSlider (name: string, minV: number, maxV: number, stepV: number, defaultV: number, callback: (value: Number) => any, style = ''): HTMLElement {
+export function createSlider (name: string, minV: number, maxV: number, stepV: number, defaultV: number, callback: (value: number) => any, style = ''): HTMLElement {
   const label = document.createElement('label');
 
   label.innerHTML = defaultV.toString();
@@ -147,8 +147,6 @@ export function createPlayer (env: string, showFPS = true) {
   const player = new Player({
     container: container,
     interactive: true,
-    onItemClicked (e) {
-    },
     renderFramework,
     env,
   });

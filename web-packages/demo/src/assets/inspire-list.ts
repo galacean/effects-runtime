@@ -564,27 +564,6 @@ export default {
     pass: true,
   },
 
-  // 滤镜
-  bloom: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*9IytQIW9BIMAAAAAAAAAAAAADlB4AQ',
-    name: '发光  ',
-    pass: true,
-  },
-  gaussian: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*knVJTqJHrcEAAAAAAAAAAAAADlB4AQ',
-    name: '高斯模糊',
-    pass: true,
-  },
-  move: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*cToXSYDYhGUAAAAAAAAAAAAADlB4AQ',
-    name: '镜头移动',
-    pass: true,
-  },
-  delay: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*gk9bRYP5lDsAAAAAAAAAAAAADlB4AQ',
-    name: '运动延迟',
-    pass: true,
-  },
   distortion: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*rEYJT47ECfwAAAAAAAAAAAAADlB4AQ',
     name: '扭曲',
@@ -592,7 +571,6 @@ export default {
   },
 
   // 阿里妈妈
-
   superaward: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/MNEWNYFQHECL/-1474199652-725db.json',
     name: '超级开大奖',
@@ -674,9 +652,14 @@ export default {
     name: '秋促2023',
     pass: true,
   },
+  dynamicImage: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*PubBSpHUbjYAAAAAAAAAAAAADlB4AQ',
+    name: '动态换图',
+    pass: true,
+  },
   video: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/84302854399924/video.json',
-    name: '视频',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*kENFRbxlKcUAAAAAAAAAAAAADlB4AQ',
+    name: '动态视频',
     pass: true,
   },
   compressed: {
@@ -709,9 +692,18 @@ export default {
     name: '多级父节点',
     pass: true,
   },
+  message3: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Ov-iTYkwSUAAAAAAAAAAAAAADlB4AQ',
+    name: '弹窗3',
+  },
   preComp: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/97436498253707/pre.json',
     name: '预合成',
+    pass: true,
+  },
+  customFont: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*de5zRbIjhBUAAAAAAAAAAAAADlB4AQ',
+    name: '自定义字体',
     pass: true,
   },
 };

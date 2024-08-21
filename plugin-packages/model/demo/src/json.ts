@@ -2,13 +2,42 @@
 import { isObject } from '@galacean/effects';
 import { getPMeshList, getRendererGPUInfo } from '@galacean/effects-plugin-model';
 import { createButton, createPlayer, disposePlayer, createSlider, loadJsonFromURL } from './utility';
+import { JSONConverter } from '@galacean/effects-plugin-model';
 
 let player;
 let pending = false;
 let currentTime = 0;
+let pauseOnFirstFrame = false;
 
 let infoElement;
-const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
+let url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
+
+// 兔子
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*sA-6TJ695dYAAAAAAAAAAAAADlB4AQ';
+// smile
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ';
+// monster
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*NPMMTbrZrJAAAAAAAAAAAAAADlB4AQ';
+// two person
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*ZQq_SKRrEKsAAAAAAAAAAAAADlB4AQ';
+// fish
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*16M9QrFglbUAAAAAAAAAAAAADlB4AQ';
+// morph1
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ';
+// morph1
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/restart.json';
+// 618
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*MBmNSbmPOIIAAAAAAAAAAAAADlB4AQ';
+// 818
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*cnCMTo1seD0AAAAAAAAAAAAADlB4AQ';
+// morph1
+url = 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ';
+// fish
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*16M9QrFglbUAAAAAAAAAAAAADlB4AQ';
+// smile
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ';
+// char
+//url = 'https://mdn.alipayobjects.com/mars/afts/file/A*ZQq_SKRrEKsAAAAAAAAAAAAADlB4AQ';
 
 const compatibleMode = 'tiny3d';
 
@@ -18,7 +47,7 @@ async function getCurrentScene () {
   }
 
   return loadJsonFromURL(url).then(scene => {
-    if (scene.imgUsage && Object.getOwnPropertyNames(scene.imgUsage).length === 0) {scene.imgUsage = undefined;}
+    if (scene.imgUsage && Object.getOwnPropertyNames(scene.imgUsage).length === 0) { scene.imgUsage = undefined; }
 
     return scene;
   });
@@ -30,8 +59,10 @@ export async function loadScene (inPlayer) {
     addRealTimeTicker();
   }
   //
-  const scene = await getCurrentScene();
+  let scene = await getCurrentScene();
+  const converter = new JSONConverter(player.renderer, true);
 
+  scene = await converter.processScene(scene);
   //
   if (!pending) {
     pending = true;
@@ -42,14 +73,17 @@ export async function loadScene (inPlayer) {
     };
 
     return player.loadScene(scene, opt).then(res => {
-      player.gotoAndPlay(currentTime);
+      if (pauseOnFirstFrame) {
+        player.gotoAndStop(currentTime);
+      } else {
+        player.gotoAndPlay(currentTime);
+      }
 
       pending = false;
 
       return true;
     });
   }
-
 }
 
 export function createUI () {
@@ -93,7 +127,7 @@ export function createUI () {
   infoElement.innerHTML = '<h4>加载中...</h4>';
   parentElement.appendChild(infoElement);
 
-  const demoInfo = document.getElementsByClassName('demo-info')[ 0 ];
+  const demoInfo = document.getElementsByClassName('demo-info')[0];
 
   demoInfo.appendChild(parentElement);
 }
@@ -122,8 +156,8 @@ function addRealTimeTicker () {
           if (mesh.skin?.textureDataMode) {
             skinTextureMode = true;
           }
-          mesh.primitives.forEach(prim => {
-            if (prim.jointMatrixTexture?.isHalfFloat) {skinHalfFloat = true;}
+          mesh.subMeshes.forEach(subMesh => {
+            if (subMesh.jointMatrixTexture?.isHalfFloat) { skinHalfFloat = true; }
           });
         });
         infoList.push(`<p>蒙皮信息: HalfFloat ${skinHalfFloat}, 纹理模式 ${skinTextureMode}</p>`);

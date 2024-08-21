@@ -1,18 +1,19 @@
-import type { Matrix4 } from '@galacean/effects-math/es/core/index';
+import type { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { RendererComponent } from '../components/renderer-component';
+import type { Engine } from '../engine';
+import type { Material } from '../material';
 import type { LostHandler, RestoreHandler } from '../utils';
-import type { FilterMode, FrameBuffer, RenderTextureFormat } from './frame-buffer';
-import type { Mesh } from './mesh';
+import type { FilterMode, Framebuffer, RenderTextureFormat } from './framebuffer';
+import type { Geometry } from './geometry';
 import type { RenderFrame, RenderingData } from './render-frame';
 import type { RenderPassClearAction, RenderPassStoreAction } from './render-pass';
 import type { ShaderLibrary } from './shader';
-import type { Geometry } from './geometry';
-import type { Material } from '../material';
-import type { Engine } from '../engine';
+import type { GLType } from '../gl';
 
 export class Renderer implements LostHandler, RestoreHandler {
   static create: (
     canvas: HTMLCanvasElement | OffscreenCanvas,
-    framework: 'webgl' | 'webgl2',
+    framework: GLType,
     renderOptions?: WebGLContextAttributes,
   ) => Renderer;
 
@@ -36,16 +37,21 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
+  setGlobalVector4 (name: string, value: Vector4) {
+    // OVERRIDE
+  }
+
   setGlobalMatrix (name: string, value: Matrix4) {
     // OVERRIDE
   }
 
-  getFrameBuffer (): FrameBuffer | null {
+  getFramebuffer (): Framebuffer | null {
     // OVERRIDE
     return null;
   }
 
-  setFrameBuffer (frameBuffer: FrameBuffer | null) {
+  setFramebuffer (framebuffer: Framebuffer | null) {
+    // OVERRIDE
   }
 
   setViewport (x: number, y: number, width: number, height: number) {
@@ -117,15 +123,15 @@ export class Renderer implements LostHandler, RestoreHandler {
     // OVERRIDE
   }
 
-  renderMeshes (meshes: Mesh[]) {
+  renderMeshes (meshes: RendererComponent[]) {
     // OVERRIDE
   }
 
-  drawGeometry (geometry: Geometry, material: Material) {
+  drawGeometry (geometry: Geometry, material: Material, subMeshIndex = 0) {
     // OVERRIDE
   }
 
-  getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): FrameBuffer | null {
+  getTemporaryRT (name: string, width: number, height: number, depthBuffer: number, filter: FilterMode, format: RenderTextureFormat): Framebuffer | null {
     // OVERRIDE
     return null;
   }

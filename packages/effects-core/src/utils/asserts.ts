@@ -1,4 +1,4 @@
-export function assertExist <T> (item: T | void | undefined | null, msg = 'item doesn\'t exist'): asserts item is T {
+export function assertExist<T> (item?: T | void | null, msg = 'item doesn\'t exist'): asserts item is T {
   if (item === undefined || item === null) {
     throw new Error(msg);
   }

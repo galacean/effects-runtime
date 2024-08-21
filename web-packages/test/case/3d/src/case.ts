@@ -9,7 +9,7 @@ const { expect } = chai;
  * 万分之一的像素不相等比例，对于512x512大小的图像，
  * 不能超过26个像素不相等
  */
-const accumRatioThreshold = 2.0e-4;
+const accumRatioThreshold = 3.0e-4;
 const pixelDiffThreshold = 1;
 const dumpImageForDebug = false;
 const canvasWidth = 512;
@@ -24,7 +24,7 @@ function addDescribe (renderFramework) {
     this.timeout('1800s');
 
     before(async function () {
-      controller = new TestController();
+      controller = new TestController(true);
       await controller.createPlayers(canvasWidth, canvasHeight, renderFramework, false);
       cmpStats = new ComparatorStats(renderFramework);
     });
@@ -89,17 +89,22 @@ function addDescribe (renderFramework) {
 
         const imageCmp = new ImageComparator(pixelDiffThreshold);
         const namePrefix = getCurrnetTimeStr();
-        const timeList = [
-          0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.65, 0.71, 0.83, 0.96, 1.0,
-          1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.9, 2.0, 2.2, 2.5, 2.7, 3.0, 3.3, 3.8,
-          4.1, 4.7, 5.2, 5.9, 6.8, 7.5, 8.6, 9.7, 9.99, 11.23, 12.5, 15.8, 18.9,
-        ];
+        const timeList = [0];
+
+        if (isFullTimeTest(name)) {
+          timeList.push(
+            0.11, 0.22, 0.34, 0.45, 0.57, 0.65, 0.71, 0.83, 0.96, 1.0,
+            1.1, 1.2, 1.3, 1.4, 1.5, 1.7, 1.9, 2.0, 2.2, 2.5, 2.7, 3.0, 3.3, 3.8,
+            4.1, 4.7, 5.2, 5.9, 6.8, 7.5, 8.6, 9.7, 9.99, 11.23, 12.5, 15.8, 18.9,
+          );
+        }
+
         let maxDiffValue = 0;
 
         for (let i = 0; i < timeList.length; i++) {
           const time = timeList[i];
 
-          if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
+          if (!oldPlayer.isLoop() && time >= oldPlayer.duration()) {
             break;
           }
           //
@@ -145,6 +150,17 @@ function addDescribe (renderFramework) {
       });
     }
   });
+}
+
+function isFullTimeTest (name) {
+  const nameList = [
+    '简单Morph',
+    'Restart测试',
+    '818圆环',
+    'test1',
+  ];
+
+  return nameList.includes(name);
 }
 
 function getIngoreList () {

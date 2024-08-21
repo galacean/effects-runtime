@@ -1,9 +1,10 @@
-import type { Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
-import type { GlobalUniforms, Renderer, ShaderWithSource } from '../render';
+import type { Matrix3, Matrix4, Quaternion, Vector2, Vector3, Vector4, Color } from '@galacean/effects-math/es/core/index';
+import type { GlobalUniforms, Renderer, Shader, ShaderVariant, ShaderWithSource } from '../render';
 import type { Texture } from '../texture';
 import type { DestroyOptions, Disposable } from '../utils';
 import type { UniformSemantic, UniformValue } from './types';
 import type { Engine } from '../engine';
+import { EffectsObject } from '../effects-object';
 
 /**
  * 材质销毁设置
@@ -20,7 +21,7 @@ export interface MaterialDestroyOptions {
  */
 export enum MaterialRenderType {
   normal = 0,
-  transformFeedback = 1
+  transformFeedback = 1,
 }
 
 export type UndefinedAble<U> = U | undefined;
@@ -49,11 +50,6 @@ export interface MaterialProps {
    * uniform 数据
    */
   uniformValues?: Record<string, UniformValue>,
-  // FIXME 没有用
-  transformFeedbackOutput?: {
-    mode: WebGL2RenderingContext['INTERLEAVED_ATTRIBS'] | WebGL2RenderingContext['SEPARATE_ATTRIBS'],
-    varyings: string[],
-  },
 }
 
 /**
@@ -65,11 +61,19 @@ let seed = 1;
 /**
  * Material 抽象类
  */
-export abstract class Material implements Disposable {
+export abstract class Material extends EffectsObject implements Disposable {
+  shader: Shader;
+  shaderVariant: ShaderVariant;
+
+  // TODO: 待移除
   shaderSource: ShaderWithSource;
+  stringTags: Record<string, string> = {};
   readonly uniformSemantics: Record<string, UniformSemantic>;
+  readonly enabledMacros: Record<string, number | boolean> = {};
   readonly renderType: MaterialRenderType;
   readonly name: string;
+  readonly props: MaterialProps;
+
   protected destroyed = false;
   protected initialized = false;
 
@@ -78,19 +82,28 @@ export abstract class Material implements Disposable {
    * @param props - 材质属性
    */
   constructor (
-    public readonly props: MaterialProps,
+    engine: Engine,
+    props?: MaterialProps,
   ) {
-    const {
-      name = 'Material' + seed++,
-      renderType = MaterialRenderType.normal,
-      shader,
-      uniformSemantics,
-    } = props;
+    super(engine);
 
-    this.name = name;
-    this.renderType = renderType;
-    this.shaderSource = shader;
-    this.uniformSemantics = { ...uniformSemantics };
+    if (props) {
+      const {
+        name = 'Material' + seed++,
+        renderType = MaterialRenderType.normal,
+        shader,
+        uniformSemantics,
+      } = props;
+
+      this.name = name;
+      this.renderType = renderType; // TODO 没有地方用到
+      this.shaderSource = shader;
+      this.props = props;
+      this.uniformSemantics = { ...uniformSemantics }; // TODO 废弃，待移除
+    } else {
+      this.name = 'Material' + seed++;
+      this.renderType = MaterialRenderType.normal;
+    }
   }
 
   /******** effects-core 中会调用 引擎必须实现 ***********************/
@@ -302,6 +315,18 @@ export abstract class Material implements Disposable {
   abstract setVector4 (name: string, value: Vector4): void;
 
   /**
+   * 获取 Material 的 Color 类型的 uniform 数据
+   * @param name
+   */
+  abstract getColor (name: string): Color | null;
+  /**
+   * 设置 Color 类型的 uniform 的数据
+   * @param name - uniform 名称
+   * @param value - 要设置的 uniform 数据
+   */
+  abstract setColor (name: string, value: Color): void;
+
+  /**
    * 获取 Material 的 Quaternion 类型的 uniform 数据
    * @param name
    */
@@ -380,9 +405,9 @@ export abstract class Material implements Disposable {
   abstract hasUniform (name: string): boolean;
 
   /******** 预留接口，暂时不用实现 ***********************/
-  abstract enableKeyword (keyword: string): void;
-  abstract disableKeyword (keyword: string): void;
-  abstract isKeywordEnabled (keyword: string): boolean;
+  abstract enableMacro (keyword: string, value?: boolean | number): void;
+  abstract disableMacro (keyword: string): void;
+  abstract isMacroEnabled (keyword: string): boolean;
   /***************************************************/
 
   /**
@@ -400,18 +425,22 @@ export abstract class Material implements Disposable {
    * 销毁当前 Material
    * @param destroy - 包含纹理的销毁选项
    */
-  abstract dispose (destroy?: MaterialDestroyOptions): void;
+  abstract override dispose (destroy?: MaterialDestroyOptions | DestroyOptions): void;
 
   /**
    * 创建 Material
    */
-  static create: (engine: Engine, props: MaterialProps) => Material;
+  static create: (engine: Engine, props?: MaterialProps) => Material;
 
   /**
    * 初始化 GPU 资源
    * @override
    */
   initialize (): void {
+    // OVERRIDE
+  }
+
+  createShaderVariant () {
     // OVERRIDE
   }
 

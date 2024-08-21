@@ -1,7 +1,6 @@
-import type { Geometry, Engine } from '@galacean/effects';
+import type { Geometry, Engine, VFXItem, SkinProps } from '@galacean/effects';
 import { glContext, Texture, TextureSourceType } from '@galacean/effects';
 import type {
-  ModelSkinOptions,
   ModelAnimTrackOptions,
   ModelAnimationOptions,
   ModelTreeOptions,
@@ -13,42 +12,76 @@ import type { InterpolationSampler } from './anim-sampler';
 import { createAnimationSampler } from './anim-sampler';
 import { Float16ArrayWrapper } from '../utility/plugin-helper';
 import type { PSceneManager } from './scene';
-import type { ModelTreeVFXItem } from '../plugin';
+import { ModelTreeComponent } from '../plugin';
 
 const forceTextureSkinning = false;
 
+/**
+ * 纹理数据模式，包含浮点和半精度浮点
+ */
 export enum TextureDataMode {
   none = 0,
   float,
   half_float,
 }
 
+/**
+ * 蒙皮类，支持蒙皮动画
+ */
 export class PSkin extends PObject {
-  parentItem?: ModelTreeVFXItem;
+  /**
+   * 场景树父元素
+   */
+  rootBoneItem?: VFXItem;
+  /**
+   * 骨骼索引
+   */
   skeleton = 0;
-  jointList: number[] = [];
+  /**
+   * 关节索引
+   */
+  jointItem: VFXItem[] = [];
+  /**
+   * 逆绑定矩阵
+   */
   inverseBindMatrices: Matrix4[] = [];
+  /**
+   * 动画矩阵
+   */
   animationMatrices: Matrix4[] = [];
+  /**
+   * 纹理数据模式
+   */
   textureDataMode = TextureDataMode.none;
+  /**
+   * 最大骨骼数目
+   */
+  maxJointCount = 0;
 
-  create (options: ModelSkinOptions, engine: Engine, parentItem?: ModelTreeVFXItem) {
-    this.name = this.genName(options.name ?? 'Unnamed skin');
+  /**
+   * 创建蒙皮对象
+   * @param props - 蒙皮相关数据
+   * @param engine - 引擎对象
+   * @param rootBoneItem - 场景树父元素
+   */
+  create (props: SkinProps, engine: Engine, rootBoneItem: VFXItem, maxJointCount: number) {
+    this.name = props.rootBoneName ?? 'Unnamed skin';
     this.type = PObjectType.skin;
     //
-    this.parentItem = parentItem;
-    this.skeleton = options.skeleton ?? -1;
-    this.jointList = options.joints;
+    this.rootBoneItem = rootBoneItem;
+    this.skeleton = -1;
+    this.jointItem = this.getJointItems(props, rootBoneItem);
+    this.maxJointCount = Math.max(maxJointCount, this.jointItem.length);
     this.animationMatrices = [];
     //
     this.inverseBindMatrices = [];
-
     //
-    this.textureDataMode = this.getTextureDataMode(this.getJointCount(), engine);
-    const matList = options.inverseBindMatrices;
+    this.textureDataMode = this.getTextureDataMode(this.maxJointCount, engine);
+    const matList = props.inverseBindMatrices;
 
     if (matList !== undefined && matList.length > 0) {
-      if (matList.length % 16 !== 0 || matList.length !== this.jointList.length * 16) {
-        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointList.length}`);
+      if (matList.length % 16 !== 0 || matList.length !== this.jointItem.length * 16) {
+        throw new Error(`Invalid array length, invert bind matrices ${matList.length}, joint array ${this.jointItem.length}.`);
       }
 
       const matrixCount = matList.length / 16;
@@ -61,30 +94,25 @@ export class PSkin extends PObject {
     }
   }
 
+  /**
+   * 更新蒙皮矩阵
+   */
   updateSkinMatrices () {
     this.animationMatrices = [];
-    if (this.parentItem !== undefined) {
-      const parentTree = this.parentItem.content;
 
-      for (let i = 0; i < this.jointList.length; i++) {
-        const joint = this.jointList[i];
-        const node = parentTree.getNodeById(joint);
+    for (let i = 0; i < this.jointItem.length; i++) {
+      const node = this.jointItem[i];
 
-        // let parent = node?.transform.parentTransform;
-        // while(parent !== undefined){
-        //   const pos = parent.position;
-        //   parent.setPosition(pos[0], pos[1], pos[2]);
-        //   parent = parent.parentTransform;
-        // }
-        if (node === undefined) {
-          console.error(`Can't find joint ${joint} in node tree ${this.parentItem}.`);
+      // let parent = node?.transform.parentTransform;
+      // while(parent !== undefined){
+      //   const pos = parent.position;
+      //   parent.setPosition(pos[0], pos[1], pos[2]);
+      //   parent = parent.parentTransform;
+      // }
 
-          break;
-        }
-        const mat4 = node.transform.getWorldMatrix();
+      const mat4 = node.transform.getWorldMatrix();
 
-        this.animationMatrices.push(mat4.clone());
-      }
+      this.animationMatrices.push(mat4.clone());
     }
 
     if (this.animationMatrices.length === this.inverseBindMatrices.length) {
@@ -93,10 +121,16 @@ export class PSkin extends PObject {
       });
     } else {
       this.animationMatrices = this.inverseBindMatrices;
-      console.error('Some error occured, replace skin animation matrices by invert bind matrices');
+      console.error('Some error occured, replace skin animation matrices by invert bind matrices.');
     }
   }
 
+  /**
+   * 计算 Mesh 的动画矩阵
+   * @param worldMatrix - 世界矩阵
+   * @param matrixList - 矩阵列表
+   * @param normalMatList - 法线矩阵列表
+   */
   computeMeshAnimMatrices (worldMatrix: Matrix4, matrixList: Float32Array, normalMatList: Float32Array) {
     const inverseWorldMatrix = worldMatrix.clone().invert();
     const tempMatrix = new Matrix4();
@@ -112,21 +146,36 @@ export class PSkin extends PObject {
     });
   }
 
-  updateParentItem (parentItem: ModelTreeVFXItem) {
-    this.parentItem = parentItem;
+  /**
+   * 更新父元素
+   * @param parentItem - 场景树父元素
+   */
+  updateParentItem (parentItem: VFXItem) {
+    this.rootBoneItem = parentItem;
   }
 
+  /**
+   * 获取关节点数
+   * @returns
+   */
   getJointCount (): number {
-    return this.jointList.length;
+    return this.jointItem.length;
   }
 
+  /**
+   * 是否纹理数据模式
+   * @returns
+   */
   isTextureDataMode (): boolean {
     return this.textureDataMode !== TextureDataMode.none;
   }
 
+  /**
+   * 销毁
+   */
   override dispose (): void {
-    this.parentItem = undefined;
-    this.jointList = [];
+    this.rootBoneItem = undefined;
+    this.jointItem = [];
     this.inverseBindMatrices = [];
     this.animationMatrices = [];
   }
@@ -144,16 +193,54 @@ export class PSkin extends PObject {
       } else if (detail.halfFloatTexture) {
         return TextureDataMode.half_float;
       } else {
-        throw new Error(`Too many joint count ${jointCount}, half float texture not support`);
+        throw new Error(`Too many joint count ${jointCount}, half float texture not support.`);
       }
     } else {
       return TextureDataMode.none;
     }
   }
+
+  private getJointItems (props: SkinProps, rootBoneItem: VFXItem) {
+    const name2Item = this.genNodeName(rootBoneItem);
+
+    const jointItems: VFXItem[] = [];
+
+    props.boneNames?.forEach(boneName => {
+      const node = name2Item[boneName];
+
+      if (!node) {
+        throw new Error(`Can't find node of bone name ${boneName}.`);
+      }
+      jointItems.push(node);
+    });
+
+    return jointItems;
+  }
+
+  private genNodeName (node: VFXItem) {
+    const name2Item: Record<string, VFXItem> = {};
+    const nameList: string[] = [];
+
+    name2Item[''] = node;
+    for (const child of node.children) {
+      this.genNodeNameDFS(child, nameList, name2Item);
+    }
+
+    return name2Item;
+  }
+
+  private genNodeNameDFS (node: VFXItem, nameList: string[], name2Item: Record<string, VFXItem>) {
+    nameList.push(node.name);
+    name2Item[nameList.join('/')] = node;
+    for (const child of node.children) {
+      this.genNodeNameDFS(child, nameList, name2Item);
+    }
+    nameList.pop();
+  }
 }
 
 /**
- * Morph 动画状态：
+ * Morph 动画类
  * 保存了动画状态相关的数据，包括 weights 数组数据
  * 增加了状态数据的检查，保证数据的正确性
  * Morph 动画非常消耗内存，谨慎使用。
@@ -168,7 +255,7 @@ export class PMorph extends PObject {
    * weights 数组的具体数据，来自动画控制器的每帧更新
    * 数组的长度必须和 morphWeightsLength 相同，否则会出错。
    */
-  morphWeightsArray?: Float32Array;
+  morphWeightsArray: number[] = [];
   /**
    * 是否有 Position 相关的 Morph 动画，shader 中需要知道
    */
@@ -184,8 +271,8 @@ export class PMorph extends PObject {
 
   /**
    * 通过 Geometry 数据创建 Morph 动画相关状态，并进行必要的正确性检查
-   *
-   * @param geometry - Mesh 的几何对象，是否包含 Morph 动画都是可以的
+   * @param geometry - Mesh 的几何体，是否包含 Morph 动画都是可以的
+   * @returns 是否创建成功
    */
   create (geometry: Geometry): boolean {
     this.name = this.genName('Morph target');
@@ -211,7 +298,7 @@ export class PMorph extends PObject {
 
     if (this.morphWeightsLength > 0) {
       // 有Morph动画，申请weights数据，判断各个属性是否有相关动画
-      this.morphWeightsArray = new Float32Array(this.morphWeightsLength);
+      this.morphWeightsArray = Array(this.morphWeightsLength).fill(0);
       this.hasPositionMorph = positionCount == this.morphWeightsLength;
       this.hasNormalMorph = normalCount == this.morphWeightsLength;
       this.hasTangentMorph = tangentCount == this.morphWeightsLength;
@@ -224,25 +311,25 @@ export class PMorph extends PObject {
      */
 
     if (positionCount > 0 && positionCount != this.morphWeightsLength) {
-      console.error(`Position morph count mismatch: ${this.morphWeightsLength}, ${positionCount}`);
+      console.error(`Position morph count mismatch: ${this.morphWeightsLength}, ${positionCount}.`);
 
       return false;
     }
 
     if (normalCount > 0 && normalCount != this.morphWeightsLength) {
-      console.error(`Normal morph count mismatch: ${this.morphWeightsLength}, ${normalCount}`);
+      console.error(`Normal morph count mismatch: ${this.morphWeightsLength}, ${normalCount}.`);
 
       return false;
     }
 
     if (tangentCount > 0 && tangentCount != this.morphWeightsLength) {
-      console.error(`Tangent morph count mismatch: ${this.morphWeightsLength}, ${tangentCount}`);
+      console.error(`Tangent morph count mismatch: ${this.morphWeightsLength}, ${tangentCount}.`);
 
       return false;
     }
 
     if (this.morphWeightsLength > 5) {
-      console.error(`Tangent morph count should not greater than 5, current ${this.morphWeightsLength}`);
+      console.error(`Tangent morph count should not greater than 5, current ${this.morphWeightsLength}.`);
 
       return false;
     }
@@ -250,17 +337,12 @@ export class PMorph extends PObject {
     return true;
   }
 
-  override dispose (): void {
-    this.morphWeightsArray = undefined;
-  }
-
   /**
    * 初始化 Morph target 的权重数组
-   *
    * @param weights - glTF Mesh 的权重数组，长度必须严格一致
    */
   initWeights (weights: number[]) {
-    if (this.morphWeightsArray === undefined) {
+    if (this.morphWeightsArray.length === 0) {
       return;
     }
 
@@ -273,10 +355,19 @@ export class PMorph extends PObject {
     });
   }
 
+  updateWeights (weights: number[]) {
+    if (weights.length != this.morphWeightsArray.length) {
+      console.error(`Length of morph weights mismatch: input ${weights.length}, internel ${this.morphWeightsArray.length}.`);
+
+      return;
+    }
+
+    weights.forEach((value, index) => this.morphWeightsArray[index] = value);
+  }
+
   /**
    * 当前状态是否有 Morph 动画：
    * 需要判断 weights 数组长度，以及 Position、Normal 和 Tangent 是否有动画
-   *
    * @returns 返回是否有 Morph 动画
    */
   hasMorph (): boolean {
@@ -286,7 +377,6 @@ export class PMorph extends PObject {
   /**
    * 两个 Morph 动画状态是否相等：
    * 这里只比较初始状态是否一样，不考虑 weights 数组的情况，提供给 Mesh 进行 Geometry 检查使用
-   *
    * @param morph - Morph 动画状态对象
    * @returns 返回两个 Morph 动画状态是否相等
    */
@@ -297,14 +387,13 @@ export class PMorph extends PObject {
       && this.hasTangentMorph === morph.hasTangentMorph;
   }
 
-  getMorphWeightsArray (): Float32Array {
-    return this.morphWeightsArray as Float32Array;
+  getMorphWeightsArray (): number[] {
+    return this.morphWeightsArray;
   }
 
   /**
    * 统计 Geometry 中 Attribute 名称个数：
    * 主要用于统计 Morph 动画中新增的 Attribute 名称的个数，会作为最终的 weights 数组长度使用
-   *
    * @param attributeNameList - Attribute 名数组列表，只与 Morph Target 中的属性有关
    * @param geometry - Geometry 对象，是否有 Morph 动画都可以
    * @returns 存在的 Attribute 名称数目
@@ -326,51 +415,57 @@ export class PMorph extends PObject {
    * Morph 动画中 Position 相关的 Attribute 名称
    */
   private static positionNameList = [
-    'a_Target_Position0',
-    'a_Target_Position1',
-    'a_Target_Position2',
-    'a_Target_Position3',
-    'a_Target_Position4',
-    'a_Target_Position5',
-    'a_Target_Position6',
-    'a_Target_Position7',
+    'aTargetPosition0',
+    'aTargetPosition1',
+    'aTargetPosition2',
+    'aTargetPosition3',
+    'aTargetPosition4',
+    'aTargetPosition5',
+    'aTargetPosition6',
+    'aTargetPosition7',
   ];
 
   /**
    * Morph 动画中 Normal 相关的 Attribute 名称
    */
   private static normalNameList = [
-    'a_Target_Normal0',
-    'a_Target_Normal1',
-    'a_Target_Normal2',
-    'a_Target_Normal3',
-    'a_Target_Normal4',
-    'a_Target_Normal5',
-    'a_Target_Normal6',
-    'a_Target_Normal7',
+    'aTargetNormal0',
+    'aTargetNormal1',
+    'aTargetNormal2',
+    'aTargetNormal3',
+    'aTargetNormal4',
+    'aTargetNormal5',
+    'aTargetNormal6',
+    'aTargetNormal7',
   ];
 
   /**
    * Morph 动画中 Tangent 相关的 Attribute 名称
    */
   private static tangentNameList = [
-    'a_Target_Tangent0',
-    'a_Target_Tangent1',
-    'a_Target_Tangent2',
-    'a_Target_Tangent3',
-    'a_Target_Tangent4',
-    'a_Target_Tangent5',
-    'a_Target_Tangent6',
-    'a_Target_Tangent7',
+    'aTargetTangent0',
+    'aTargetTangent1',
+    'aTargetTangent2',
+    'aTargetTangent3',
+    'aTargetTangent4',
+    'aTargetTangent5',
+    'aTargetTangent6',
+    'aTargetTangent7',
   ];
 }
 
+/**
+ * 动画插值类型
+ */
 export enum PAnimInterpType {
   linear = 0,
   step,
   cubicSpline,
 }
 
+/**
+ * 动画路径类型
+ */
 export enum PAnimPathType {
   translation = 0,
   rotation,
@@ -378,16 +473,41 @@ export enum PAnimPathType {
   weights,
 }
 
+/**
+ * 动画轨道类
+ */
 export class PAnimTrack {
+  /**
+   * 节点索引
+   */
   node: number;
+  /**
+   * 时间数组
+   */
   timeArray: Float32Array;
+  /**
+   * 数据数组
+   */
   dataArray: Float32Array;
+  /**
+   * 路径类型
+   */
   path = PAnimPathType.translation;
+  /**
+   * 插值类型
+   */
   interp = PAnimInterpType.linear;
+  /**
+   * 分量
+   */
   component: number;
   //
   private sampler?: InterpolationSampler;
 
+  /**
+   * 创建动画轨道对象
+   * @param options - 动画轨道参数
+   */
   constructor (options: ModelAnimTrackOptions) {
     const { node, input, output, path, interpolation } = options;
 
@@ -409,17 +529,17 @@ export class PAnimTrack {
       this.component = this.dataArray.length / this.timeArray.length;
       // special checker for weights animation
       if (this.component <= 0) {
-        console.error(`Invalid weights component: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+        console.error(`Invalid weights component: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
       } else if (this.timeArray.length * this.component != this.dataArray.length) {
-        console.error(`Invalid weights array length: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+        console.error(`Invalid weights array length: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
       }
     } else {
       // should never happened
-      console.error(`Invalid path status: ${path}`);
+      console.error(`Invalid path status: ${path}.`);
     }
 
     if (this.timeArray.length * this.component > this.dataArray.length) {
-      throw new Error(`Data length mismatch: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}`);
+      throw new Error(`Data length mismatch: ${this.timeArray.length}, ${this.component}, ${this.dataArray.length}.`);
     }
 
     if (interpolation === 'LINEAR') {
@@ -435,6 +555,9 @@ export class PAnimTrack {
     );
   }
 
+  /**
+   * 销毁
+   */
   dispose () {
     // @ts-expect-error
     this.timeArray = undefined;
@@ -444,8 +567,15 @@ export class PAnimTrack {
     this.sampler = undefined;
   }
 
-  tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
-    const node = treeItem.content.getNodeById(this.node);
+  /**
+   * 更新节点动画数据
+   * @param time - 当前播放时间
+   * @param treeItem - 节点树元素
+   * @param sceneManager - 3D 场景管理器
+   */
+  tick (time: number, treeItem: VFXItem, sceneManager?: PSceneManager) {
+    const treeComponent = treeItem.getComponent(ModelTreeComponent);
+    const node = treeComponent?.content?.getNodeById(this.node);
 
     if (this.sampler !== undefined && node !== undefined) {
       const result = this.sampler.evaluate(time);
@@ -487,6 +617,10 @@ export class PAnimTrack {
     }
   }
 
+  /**
+   * 获取动画结束时间
+   * @returns
+   */
   getEndTime (): number {
     const index = this.timeArray.length - 1;
 
@@ -526,6 +660,9 @@ export class PAnimTrack {
   }
 }
 
+/**
+ * 动画纹理类
+ */
 export class PAnimTexture {
   private isHalfFloat = true;
   //
@@ -536,6 +673,12 @@ export class PAnimTexture {
 
   constructor (private engine: Engine) {}
 
+  /**
+   * 创建动画纹理对象
+   * @param jointCount - 骨骼数目
+   * @param isHalfFloat - 是否半浮点精度
+   * @param name - 名称
+   */
   create (jointCount: number, isHalfFloat: boolean, name: string) {
     this.width = 4;
     this.height = jointCount;
@@ -567,6 +710,10 @@ export class PAnimTexture {
       });
   }
 
+  /**
+   * 更新动画数据
+   * @param buffer - 新的动画数据
+   */
   update (buffer: Float32Array) {
     if (this.buffer !== undefined) {
       this.buffer.set(buffer, 0);
@@ -586,6 +733,9 @@ export class PAnimTexture {
 
   }
 
+  /**
+   * 销毁
+   */
   dispose () {
     // @ts-expect-error
     this.engine = null;
@@ -593,21 +743,36 @@ export class PAnimTexture {
     this.texture?.dispose();
   }
 
+  /**
+   * 获取纹理大小
+   * @returns
+   */
   getSize () {
     return this.width * this.height;
   }
 
+  /**
+   * 获取纹理对象
+   * @returns
+   */
   getTexture () {
     return this.texture as Texture;
   }
 
 }
 
+/**
+ * 动画类，负责动画数据创建、更新和销毁
+ */
 export class PAnimation extends PObject {
   private time = 0;
   private duration = 0;
   private tracks: PAnimTrack[] = [];
 
+  /**
+   * 创建动画对象
+   * @param options - 动画参数
+   */
   create (options: ModelAnimationOptions) {
     this.name = this.genName(options.name ?? 'Unnamed animation');
     this.type = PObjectType.animation;
@@ -624,7 +789,13 @@ export class PAnimation extends PObject {
     });
   }
 
-  tick (time: number, treeItem: ModelTreeVFXItem, sceneManager?: PSceneManager) {
+  /**
+   * 动画更新
+   * @param time - 当前时间
+   * @param treeItem - 场景树元素
+   * @param sceneManager - 3D 场景管理器
+   */
+  tick (time: number, treeItem: VFXItem, sceneManager?: PSceneManager) {
     this.time = time;
     // TODO: 这里时间事件定义不明确，先兼容原先实现
     const newTime = this.time % this.duration;
@@ -634,6 +805,9 @@ export class PAnimation extends PObject {
     });
   }
 
+  /**
+   * 销毁
+   */
   override dispose () {
     this.tracks.forEach(track => {
       track.dispose();
@@ -642,16 +816,24 @@ export class PAnimation extends PObject {
   }
 }
 
+/**
+ * 动画管理类，负责管理动画对象
+ */
 export class PAnimationManager extends PObject {
-  private ownerItem: ModelTreeVFXItem;
+  private ownerItem: VFXItem;
   private animation = 0;
   private speed = 0;
   private delay = 0;
   private time = 0;
   private animations: PAnimation[] = [];
-  private sceneManager: PSceneManager;
+  private sceneManager?: PSceneManager;
 
-  constructor (treeOptions: ModelTreeOptions, ownerItem: ModelTreeVFXItem) {
+  /**
+   * 创建动画管理器
+   * @param treeOptions - 场景树参数
+   * @param ownerItem - 场景树所属元素
+   */
+  constructor (treeOptions: ModelTreeOptions, ownerItem: VFXItem) {
     super();
     this.name = this.genName(ownerItem.name ?? 'Unnamed tree');
     this.type = PObjectType.animationManager;
@@ -659,7 +841,7 @@ export class PAnimationManager extends PObject {
     this.ownerItem = ownerItem;
     this.animation = treeOptions.animation ?? -1;
     this.speed = 1.0;
-    this.delay = ownerItem.delay ?? 0;
+    this.delay = ownerItem.start ?? 0;
     this.animations = [];
     if (treeOptions.animations !== undefined) {
       treeOptions.animations.forEach(animOpts => {
@@ -668,15 +850,21 @@ export class PAnimationManager extends PObject {
         this.animations.push(anim);
       });
     }
-
-    // get scene manager from composition
-    const composition = ownerItem.composition;
-
-    if (composition !== null && composition !== undefined) {
-      this.sceneManager = composition.loaderData.sceneManager;
-    }
   }
 
+  /**
+   * 设置场景管理器
+   * @param sceneManager - 场景管理器
+   */
+  setSceneManager (sceneManager: PSceneManager) {
+    this.sceneManager = sceneManager;
+  }
+
+  /**
+   * 创建动画对象
+   * @param animationOpts - 动画参数
+   * @returns 动画对象
+   */
   createAnimation (animationOpts: ModelAnimationOptions) {
     const animation = new PAnimation();
 
@@ -685,6 +873,10 @@ export class PAnimationManager extends PObject {
     return animation;
   }
 
+  /**
+   * 动画更新
+   * @param deltaSeconds - 更新间隔
+   */
   tick (deltaSeconds: number) {
     const newDeltaSeconds = deltaSeconds * this.speed * 0.001;
 
@@ -705,6 +897,9 @@ export class PAnimationManager extends PObject {
     }
   }
 
+  /**
+   * 销毁
+   */
   override dispose () {
     // @ts-expect-error
     this.ownerItem = null;
@@ -716,47 +911,11 @@ export class PAnimationManager extends PObject {
     this.sceneManager = null;
   }
 
+  /**
+   * 获取场景树元素
+   * @returns
+   */
   getTreeItem () {
     return this.ownerItem;
   }
 }
-
-export class PAnimationSystem {
-  private managers: PAnimationManager[] = [];
-
-  constructor (private engine: Engine) {}
-
-  create (treeItems: ModelTreeVFXItem[]) {
-    this.managers = [];
-    treeItems.forEach(tree => {
-      const mgr = new PAnimationManager(tree.options, tree);
-
-      this.managers.push(mgr);
-    });
-  }
-
-  insert (animationManager: PAnimationManager) {
-    this.managers.push(animationManager);
-  }
-
-  delete (animationManager: PAnimationManager) {
-    let findIndex = -1;
-
-    this.managers.forEach((mgr, index) => {
-      if (mgr === animationManager) {
-        findIndex = index;
-      }
-    });
-    if (findIndex >= 0) {
-      this.managers.splice(findIndex, 1);
-    }
-  }
-
-  dispose () {
-    this.managers.forEach(mgr => {
-      mgr.dispose();
-    });
-    this.managers = [];
-  }
-}
-

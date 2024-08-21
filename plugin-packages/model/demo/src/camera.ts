@@ -1,14 +1,13 @@
 //@ts-nocheck
-import { math } from '@galacean/effects';
+import { math, spec } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
-import { LoaderImplEx } from '@galacean/effects-plugin-model/helper';
+import { LoaderImplEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
 let player: Player;
 let pending = false;
 
-let cameraItem;
 let sceneAABB;
 let sceneCenter;
 let sceneRadius = 1;
@@ -25,7 +24,9 @@ let rotationFocusBegin = false;
 
 let playScene;
 
-const url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
+
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
 async function getCurrentScene () {
   const duration = 9999;
@@ -39,7 +40,6 @@ async function getCurrentScene () {
       skyboxVis: true,
     },
     effects: {
-      renderer: player.renderer,
       duration: duration,
       endBehavior: endBehavior,
       playAnimation: 0,
@@ -47,7 +47,6 @@ async function getCurrentScene () {
     },
   });
 
-  const items = loadResult.items;
   const sceneMin = Vector3.fromArray(loadResult.sceneAABB.min);
   const sceneMax = Vector3.fromArray(loadResult.sceneAABB.max);
 
@@ -56,51 +55,20 @@ async function getCurrentScene () {
   sceneCenter = sceneAABB.getCenter(new Vector3());
   const position = sceneCenter.add(new Vector3(0, 0, sceneRadius * 3));
 
-  console.info(`Camera position: ${position.toArray()}`);
-
-  items.push({
-    id: 'extra-camera',
-    duration: 100,
+  loader.addCamera({
+    near: 0.1,
+    far: 5000,
+    fov: 60,
+    clipMode: 0,
+    //
     name: 'extra-camera',
-    pn: 0,
-    type: 'camera',
-    transform: {
-      position: position.toArray(),
-      rotation: [0, 0, 0],
-    },
-    content: {
-      options: {
-        duration: 100,
-        near: 0.1,
-        far: 5000,
-        fov: 60,
-        clipMode: 0,
-      },
-    },
+    duration: duration,
+    endBehavior: spec.EndBehavior.restart,
+    position: position.toArray(),
+    rotation: [0, 0, 0],
   });
 
-  cameraItem = items.find(item => item.id === 'extra-camera');
-
-  return {
-    'compositionId': 1,
-    'requires': [],
-    'compositions': [{
-      'name': 'composition_1',
-      'id': 1,
-      'duration': duration,
-      'endBehavior': 2,
-      'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-      'items': items,
-      'meta': { 'previewSize': [750, 1334] },
-    }],
-    'gltf': [],
-    'images': [],
-    'version': '0.8.9-beta.9',
-    'shapes': [],
-    'plugins': ['model'],
-    'type': 'mars',
-    '_imgs': { '1': [] },
-  };
+  return loader.getLoadResult().jsonScene;
 }
 
 export async function loadScene (inPlayer) {
@@ -129,7 +97,6 @@ export async function loadScene (inPlayer) {
     pending = true;
 
     return player.loadScene(playScene, loadOptions).then(async comp => {
-
       gestureHandler = new CameraGestureHandlerImp(comp);
 
       pending = false;
@@ -208,9 +175,8 @@ function registerMouseEvent () {
 
     refreshCamera();
     if (pauseOnFirstFrame) {
-      player.renderFrame({
-        pauseOnFirstFrame: pauseOnFirstFrame,
-        currentTime: 0,
+      player.compositions.forEach(comp => {
+        comp.gotoAndStop(comp.time);
       });
     }
   });
@@ -256,9 +222,8 @@ function registerMouseEvent () {
           gestureHandler.onXYMoving(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.renderFrame({
-              pauseOnFirstFrame: pauseOnFirstFrame,
-              currentTime: 0,
+            player.compositions.forEach(comp => {
+              comp.gotoAndStop(comp.time);
             });
           }
 
@@ -277,9 +242,8 @@ function registerMouseEvent () {
           gestureHandler.onZMoving(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.renderFrame({
-              pauseOnFirstFrame: pauseOnFirstFrame,
-              currentTime: 0,
+            player.compositions.forEach(comp => {
+              comp.gotoAndStop(comp.time);
             });
           }
 
@@ -299,9 +263,8 @@ function registerMouseEvent () {
           gestureHandler.onRotating(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.renderFrame({
-              pauseOnFirstFrame: pauseOnFirstFrame,
-              currentTime: 0,
+            player.compositions.forEach(comp => {
+              comp.gotoAndStop(comp.time);
             });
           }
 
@@ -322,9 +285,8 @@ function registerMouseEvent () {
           gestureHandler.onRotatingPoint(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.renderFrame({
-              pauseOnFirstFrame: pauseOnFirstFrame,
-              currentTime: 0,
+            player.compositions.forEach(comp => {
+              comp.gotoAndStop(comp.time);
             });
           }
 
@@ -386,14 +348,14 @@ function registerMouseEvent () {
       gestureHandler.onKeyEvent({
         cameraID: 'extra-camera',
         zAxis: e.deltaY > 0 ? 1 : -1,
-        speed: sceneRadius * 0.5,
+        speed: sceneRadius * 0.1,
       });
     }
   });
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.compositions[0].items.find(item => item.id === 'extra-camera');
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
   const position = player.compositions[0].camera.position;
   const rotation = player.compositions[0].camera.rotation;
 
@@ -427,31 +389,5 @@ export function createUI () {
   // add ui to parent dom
   demo_infoDom.appendChild(uiDom);
   demo_infoDom.appendChild(select);
-}
-
-function createSlider (name, minV, maxV, stepV, defaultV, callback) {
-  const InputDom = document.createElement('input');
-
-  InputDom.type = 'range';
-  InputDom.min = minV.toString();
-  InputDom.max = maxV.toString();
-  InputDom.value = defaultV.toString();
-  InputDom.step = stepV.toString();
-  InputDom.addEventListener('input', function (event) {
-    const dom = event.target;
-
-    Label.innerHTML = dom.value;
-    callback(Number(dom.value));
-  });
-  const divDom = document.createElement('div');
-
-  divDom.innerHTML = name;
-  divDom.appendChild(InputDom);
-  const Label = document.createElement('label');
-
-  Label.innerHTML = defaultV.toString();
-  divDom.appendChild(Label);
-
-  return divDom;
 }
 

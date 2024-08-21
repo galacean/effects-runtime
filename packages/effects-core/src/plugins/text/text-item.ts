@@ -1,17 +1,24 @@
+/* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import * as spec from '@galacean/effects-specification';
-import { Texture } from '../../texture';
-import { TextMesh } from './text-mesh';
-import type { TextVFXItem } from './text-vfx-item';
-import type { SpriteItemProps } from '../sprite/sprite-item';
-import { SpriteItem } from '../sprite/sprite-item';
-import type { SpriteMesh } from '../sprite/sprite-mesh';
-import { TextStyle } from './text-style';
-import { DEFAULT_FONTS, canvasPool } from '../../template-image';
-import { TextLayout } from './text-layout';
 import type { Engine } from '../../engine';
+import { Texture } from '../../texture';
+import type { SpriteItemProps } from '../sprite/sprite-item';
+import { SpriteComponent } from '../sprite/sprite-item';
+import { TextLayout } from './text-layout';
+import { TextStyle } from './text-style';
 import { glContext } from '../../gl';
-import type { SpriteVFXItem } from '../sprite/sprite-vfx-item';
-import { isValidFontFamily } from '../../utils';
+import { effectsClass } from '../../decorators';
+import { canvasPool } from '../../canvas-pool';
+import { applyMixins, isValidFontFamily } from '../../utils';
+import type { Material } from '../../material';
+import type { VFXItem } from '../../vfx-item';
+
+export const DEFAULT_FONTS = [
+  'serif',
+  'sans-serif',
+  'monospace',
+  'courier',
+];
 
 interface CharInfo {
   /**
@@ -29,44 +36,83 @@ interface CharInfo {
   width: number,
 }
 
-export class TextItem extends SpriteItem {
-  textStyle: TextStyle;
+export interface TextComponent extends TextComponentBase { }
+
+/**
+ * @since 2.0.0
+ * @internal
+ */
+@effectsClass(spec.DataType.TextComponent)
+export class TextComponent extends SpriteComponent {
   isDirty = true;
-  canvas: HTMLCanvasElement;
-  context: CanvasRenderingContext2D | null;
-  textLayout: TextLayout;
-  text: string;
+
   /**
    * 文本行数
    */
-  private lineCount = 0;
-  private engine: Engine;
-  private char: string[];
+  lineCount = 0;
 
-  constructor (
-    props: spec.TextContent,
-    opts: {
-      emptyTexture: Texture,
-    },
-    vfxItem: TextVFXItem,
-  ) {
-    super(props as unknown as SpriteItemProps, opts, vfxItem as unknown as SpriteVFXItem);
-    const { options } = props;
+  constructor (engine: Engine, props?: spec.TextContent) {
+    super(engine, props as unknown as SpriteItemProps);
 
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
 
-    this.engine = vfxItem.composition.getEngine();
+    if (!props) {
+      return;
+    }
 
+    const { options } = props;
+
+    this.updateWithOptions(options);
+    this.updateTexture();
+  }
+
+  override update (dt: number): void {
+    super.update(dt);
+    this.updateTexture();
+  }
+
+  override fromData (data: SpriteItemProps): void {
+    super.fromData(data);
+    const options = data.options as spec.TextContentOptions;
+
+    this.updateWithOptions(options);
+    // Text
+    this.updateTexture();
+  }
+
+  updateWithOptions (options: spec.TextContentOptions) {
+    // OVERRIDE by mixins
+  }
+
+  updateTexture (flipY = true) {
+    // OVERRIDE by mixins
+  }
+}
+
+export class TextComponentBase {
+  textStyle: TextStyle;
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D | null;
+  textLayout: TextLayout;
+  text: string;
+
+  /***** mix 类型兼容用 *****/
+  isDirty: boolean;
+  engine: Engine;
+  material: Material;
+  lineCount: number;
+  item: VFXItem;
+  /***** mix 类型兼容用 *****/
+
+  private char: string[];
+
+  updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
-
     this.text = options.text.toString();
-
     this.lineCount = this.getLineCount(options.text, true);
-    // Text
-    this.mesh = new TextMesh(this.engine, this.renderInfo, vfxItem.composition) as unknown as SpriteMesh;
   }
 
   private getLineCount (text: string, init: boolean) {
@@ -301,10 +347,24 @@ export class TextItem extends SpriteItem {
   }
 
   /**
+   * 设置自适应宽高开关
+   * @param value - 是否自适应宽高开关
+   * @returns
+   */
+  setAutoWidth (value: boolean): void {
+    if (this.textLayout.autoWidth === value) {
+      return;
+    }
+
+    this.textLayout.autoWidth = value;
+    this.isDirty = true;
+  }
+
+  /**
    * 更新文本
    * @returns
    */
-  updateTexture () {
+  updateTexture (flipY = true) {
     if (!this.isDirty || !this.context || !this.canvas) {
       return;
     }
@@ -314,23 +374,34 @@ export class TextItem extends SpriteItem {
     const fontScale = style.fontScale;
 
     const width = (layout.width + style.fontOffset) * fontScale;
-    const height = layout.height * fontScale;
+    const finalHeight = layout.lineHeight * this.lineCount;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
     this.char = (this.text || '').split('');
-
     this.canvas.width = width;
-    this.canvas.height = height;
 
-    context.clearRect(0, 0, width, this.canvas.height);
+    if (layout.autoWidth) {
+      this.canvas.height = finalHeight * fontScale;
+      this.item.transform.size.set(1, finalHeight / layout.height);
+    } else {
+      this.canvas.height = layout.height * fontScale;
+    }
+
+    const height = this.canvas.height;
+
+    context.clearRect(0, 0, width, height);
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
 
-    context.fillRect(0, 0, width, this.canvas.height);
-    style.fontDesc = this.getFontDesc();
+    if (!flipY) {
+      context.translate(0, height);
+      context.scale(1, -1);
+    }
 
+    context.fillRect(0, 0, width, height);
+    style.fontDesc = this.getFontDesc();
     context.font = style.fontDesc;
 
     if (style.hasShadow) {
@@ -353,7 +424,6 @@ export class TextItem extends SpriteItem {
 
     for (let i = 0; i < this.char.length; i++) {
       const str = this.char[i];
-
       const textMetrics = context.measureText(str);
 
       // 和浏览器行为保持一致
@@ -378,7 +448,6 @@ export class TextItem extends SpriteItem {
 
         x += textMetrics.width;
       }
-
     }
     charsInfo.push({
       y,
@@ -392,15 +461,11 @@ export class TextItem extends SpriteItem {
 
       charInfo.chars.forEach((str, i) => {
         if (style.isOutlined) {
-
           context.strokeText(str, x + charInfo.charOffsetX[i], charInfo.y);
-
         }
 
         context.fillText(str, x + charInfo.charOffsetX[i], charInfo.y);
-
       });
-
     });
 
     if (style.hasShadow) {
@@ -410,39 +475,42 @@ export class TextItem extends SpriteItem {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.mesh?.mesh.material.setTexture('uSampler0', Texture.createWithData(this.engine,
-      {
-        data: new Uint8Array(imageData.data),
-        width: imageData.width,
-        height: imageData.height,
-      },
-      {
-        flipY: true,
-        magFilter: glContext.LINEAR,
-        minFilter: glContext.LINEAR,
-        wrapS: glContext.CLAMP_TO_EDGE,
-        wrapT: glContext.CLAMP_TO_EDGE,
-      }
-    ));
+    this.material.setTexture('uSampler0',
+      Texture.createWithData(
+        this.engine,
+        {
+          data: new Uint8Array(imageData.data),
+          width: imageData.width,
+          height: imageData.height,
+        },
+        {
+          flipY,
+          magFilter: glContext.LINEAR,
+          minFilter: glContext.LINEAR,
+          wrapS: glContext.CLAMP_TO_EDGE,
+          wrapT: glContext.CLAMP_TO_EDGE,
+        },
+      ),
+    );
 
     this.isDirty = false;
   }
 
   private getFontDesc (): string {
-    const textStyle = this.textStyle;
-    let fontDesc = `${(textStyle.fontSize * textStyle.fontScale).toString()}px `;
+    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
+    let fontDesc = `${(fontSize * fontScale).toString()}px `;
 
-    if (!DEFAULT_FONTS.includes(textStyle.fontFamily)) {
-      fontDesc += `"${textStyle.fontFamily}"`;
+    if (!DEFAULT_FONTS.includes(fontFamily)) {
+      fontDesc += `"${fontFamily}"`;
     } else {
-      fontDesc += textStyle.fontFamily;
+      fontDesc += fontFamily;
     }
-    if (textStyle.textWeight !== spec.TextWeight.normal) {
-      fontDesc = `${textStyle.textWeight} ${fontDesc}`;
+    if (textWeight !== spec.TextWeight.normal) {
+      fontDesc = `${textWeight} ${fontDesc}`;
     }
 
-    if (textStyle.fontStyle !== spec.FontStyle.normal) {
-      fontDesc = `${textStyle.fontStyle} ${fontDesc}`;
+    if (fontStyle !== spec.FontStyle.normal) {
+      fontDesc = `${fontStyle} ${fontDesc}`;
     }
 
     return fontDesc;
@@ -450,20 +518,27 @@ export class TextItem extends SpriteItem {
 
   private setupOutline (): void {
     const context = this.context;
-    const style = this.textStyle;
+    const { outlineColor, outlineWidth } = this.textStyle;
+    const [r, g, b, a] = outlineColor;
 
-    context!.strokeStyle = `rgba(${style.outlineColor[0] * 255}, ${style.outlineColor[1] * 255}, ${style.outlineColor[2] * 255}, ${style.outlineColor[3]})`;
-    context!.lineWidth = style.outlineWidth * 2;
-
+    if (context) {
+      context.strokeStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
+      context.lineWidth = outlineWidth * 2;
+    }
   }
 
   private setupShadow (): void {
     const context = this.context;
-    const style = this.textStyle;
+    const { outlineColor, shadowBlur, shadowOffsetX, shadowOffsetY } = this.textStyle;
+    const [r, g, b, a] = outlineColor;
 
-    context!.shadowColor = `rgba(${style.shadowColor[0] * 255}, ${style.shadowColor[1] * 255}, ${style.shadowColor[2] * 255}, ${style.shadowColor[3]})`;
-    context!.shadowBlur = style.shadowBlur;
-    context!.shadowOffsetX = style.shadowOffsetX;
-    context!.shadowOffsetY = -style.shadowOffsetY;
+    if (context) {
+      context.shadowColor = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`;
+      context.shadowBlur = shadowBlur;
+      context.shadowOffsetX = shadowOffsetX;
+      context.shadowOffsetY = -shadowOffsetY;
+    }
   }
 }
+
+applyMixins(TextComponent, [TextComponentBase]);

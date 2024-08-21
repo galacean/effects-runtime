@@ -1,0 +1,19 @@
+{
+  "name": "imgui-demo",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite --force"
+  },
+  "dependencies": {
+    "@galacean/effects": "workspace:*",
+    "@galacean/effects-plugin-model": "workspace:*",
+    "@galacean/effects-plugin-orientation-transformer": "workspace:*",
+    "@galacean/effects-plugin-spine": "workspace:*",
+    "@vvfx/resource-detection": "0.6.0",
+    "maoan-imgui-js": "^1.0.6"
+  },
+  "devDependencies": {
+    "vite": "5"
+  }
+}

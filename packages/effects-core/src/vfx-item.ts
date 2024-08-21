@@ -1,34 +1,33 @@
+import { Euler } from '@galacean/effects-math/es/core/euler';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { Euler, Quaternion, Vector3 } from '@galacean/effects-math/es/core/index';
-import { HELP_LINK } from './constants';
-import type { Disposable } from './utils';
-import { Transform } from './transform';
-import type {
-  HitTestBoxParams,
-  HitTestCustomParams,
-  HitTestSphereParams,
-  HitTestTriangleParams,
-  ParticleSystem,
-  SpriteItem,
-  CalculateItem,
-  CameraController,
-  InteractItem,
-  BoundingBoxData,
-  SpriteRenderData,
-  ParticleVFXItem,
-  FilterSpriteVFXItem,
-  SpriteVFXItem,
-  CameraVFXItem,
-} from './plugins';
+import type { VFXItemData } from './asset-loader';
+import type { Component } from './components';
+import { RendererComponent, Behaviour, EffectComponent } from './components';
 import type { Composition } from './composition';
-import type { CompVFXItem } from './comp-vfx-item';
+import { HELP_LINK } from './constants';
+import { effectsClass, serialize } from './decorators';
+import { EffectsObject } from './effects-object';
+import type { Engine } from './engine';
+import type {
+  BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
+  HitTestTriangleParams, InteractComponent, SpriteComponent,
+} from './plugins';
+import { ParticleSystem } from './plugins';
+import { Transform } from './transform';
+import type { Constructor, Disposable } from './utils';
+import { removeItem } from './utils';
+import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
+import { EventEmitter } from './events';
 
-export type VFXItemContent = ParticleSystem | SpriteItem | CalculateItem | CameraController | InteractItem | void;
-export type VFXItemConstructor = new (props: VFXItemProps, composition: Composition) => VFXItem<VFXItemContent>;
+export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
+export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
 export type VFXItemProps =
   & spec.Item
   & {
-    items: any,
+    items: VFXItemProps[],
     startTime: number,
     relative?: boolean,
     listIndex?: number,
@@ -39,7 +38,8 @@ export type VFXItemProps =
 /**
  * 所有元素的继承的抽象类
  */
-export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
+@effectsClass(spec.DataType.VFXItemData)
+export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素绑定的父元素，
    * 1. 当元素没有绑定任何父元素时，parent为空，transform.parentTransform 为 composition.transform
@@ -47,227 +47,200 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
    * 3. 当元素绑定 TreeItem 的node时，parent为treeItem, transform.parentTransform 为 tree.nodes[i].transform(绑定的node节点上的transform)
    * 4. 当元素绑定 TreeItem 本身时，行为表现和绑定 nullItem 相同
    */
-  public parent?: VFXItem<VFXItemContent>;
+  parent?: VFXItem;
+
+  children: VFXItem[] = [];
   /**
    * 元素的变换包含位置、旋转、缩放。
    */
-  public transform: Transform;
+  transform: Transform = new Transform();
   /**
    * 合成属性
    */
-  public composition: Composition | null;
+  composition: Composition | null;
   /**
    * 元素动画的持续时间
    */
-  public duration: number;
-  /**
-   * 元素当前更新归一化时间，开始时为 0，结束时为 1
-   */
-  public lifetime: number;
+  duration = 0;
   /**
    * 父元素的 id
    */
-  public parentId?: string;
+  parentId?: string;
   /**
    * 元素动画的开始时间
    */
-  public delay?: number;
+  start = 0;
   /**
    * 元素动画结束时行为（如何处理元素）
    */
-  public endBehavior: spec.ItemEndBehavior | spec.ParentItemEndBehavior;
+  endBehavior: spec.EndBehavior = spec.EndBehavior.forward;
   /**
    * 元素是否可用
    */
-  public ended: boolean;
-  /**
-   * 元素在合成中的索引
-   */
-  public readonly listIndex: number;
+  ended = false;
   /**
    * 元素名称
    */
-  public readonly name: string;
+  name: string;
   /**
    * 元素 id 唯一
    */
-  public readonly id: string;
-  /**
-   * 元素动画是否开始
-   */
-  public started: boolean;
-  /**
-   * 元素优先级
-   */
-  _v_priority = 0;
+  id: string;
+
   /**
    * 元素创建的数据图层/粒子/模型等
    */
-  protected _content?: T;
+  _content?: VFXItemContent;
+  reusable = false;
+  type: spec.ItemType = spec.ItemType.base;
+  props: VFXItemProps;
+
+  @serialize()
+  components: Component[] = [];
+  itemBehaviours: Behaviour[] = [];
+  rendererComponents: RendererComponent[] = [];
+
   /**
    * 元素可见性，该值的改变会触发 `handleVisibleChanged` 回调
    * @protected
    */
   protected visible = true;
   /**
-   * 是否允许渲染，元素生命周期开始后为 true，结束时为 false
-   * @protected
-   */
-  protected _contentVisible = false;
-  /**
-   * 合成元素当前的时间，单位毫秒
-   * @protected
-   */
-  protected timeInms = 0;
-  /**
-   * 合成元素当前的时间，单位秒，兼容旧 player 使用秒的时间更新数据
-   * @protected
-   */
-  protected time = 0;
-  /**
-   * 元素动画持续时间，单位毫秒
-   */
-  protected readonly durInms: number;
-  /**
-  * 元素动画延迟/开始播放时间，单位毫秒
-  */
-  protected readonly delayInms: number;
-
-  /**
-   * 元素动画是否延迟播放
-   */
-  protected delaying: boolean;
-  /**
-   * 元素冻结属性，冻结后停止计算/更新数据
-   */
-  private _frozen = false;
-  /**
-   * 元素动画结束回调是否被调用
-   */
-  private callEnd: boolean;
-  /**
    * 元素动画的速度
    */
-  private speed: number;
+  private speed = 1;
+  private listIndex = 0;
+  private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
-  static isComposition (item: VFXItem<VFXItemContent>): item is CompVFXItem {
+  static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
   }
 
-  static isSprite (item: VFXItem<VFXItemContent>): item is SpriteVFXItem {
+  static isSprite (item: VFXItem) {
     return item.type === spec.ItemType.sprite;
   }
 
-  static isParticle (item: VFXItem<VFXItemContent>): item is ParticleVFXItem {
+  static isParticle (item: VFXItem) {
     return item.type === spec.ItemType.particle;
   }
 
-  static isFilterSprite (item: VFXItem<VFXItemContent>): item is FilterSpriteVFXItem {
-    return item.type === spec.ItemType.filter;
-  }
-
-  static isNull (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isNull (item: VFXItem) {
     return item.type === spec.ItemType.null;
   }
 
-  static isTree (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isTree (item: VFXItem) {
     return item.type === spec.ItemType.tree;
   }
 
-  static isCamera (item: VFXItem<VFXItemContent>): item is VFXItem<void> {
+  static isCamera (item: VFXItem) {
     return item.type === spec.ItemType.camera;
   }
 
-  static isExtraCamera (item: VFXItem<VFXItemContent>): item is CameraVFXItem {
+  static isExtraCamera (item: VFXItem) {
     return item.id === 'extra-camera' && item.name === 'extra-camera';
   }
 
   constructor (
-    props: VFXItemProps,
-    composition: Composition,
+    engine: Engine,
+    props?: VFXItemProps,
   ) {
-    const {
-      id, name, delay, parentId, endBehavior, transform,
-      listIndex = 0,
-      duration = 0,
-    } = props;
-
-    this.composition = composition;
-    this.id = id;
-    this.name = name;
-    this.delay = delay;
-    this.transform = new Transform({
-      name: this.name,
-      ...transform,
-    }, composition.transform);
-    this.parentId = parentId;
-    this.duration = duration;
-    this.delayInms = (delay || 0) * 1000;
-    this.durInms = this.duration * 1000;
-    this.endBehavior = endBehavior;
-    this.lifetime = -(this.delayInms / this.durInms);
-    this.listIndex = listIndex;
-    this.speed = 1;
-    this.onConstructed(props);
-
-    if (duration <= 0) {
-      throw Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}`);
+    super(engine);
+    this.name = 'VFXItem';
+    this.transform.name = this.name;
+    this.transform.engine = engine;
+    if (props) {
+      this.fromData(props as VFXItemData);
     }
-  }
-
-  /**
-   * 元素内容可见性
-   */
-  get contentVisible (): boolean {
-    return this._contentVisible && this.visible;
   }
 
   /**
    * 返回元素创建的数据
    */
-  get content (): T {
-    // @ts-expect-error
+  get content (): VFXItemContent {
     return this._content;
-  }
-  /**
-   * 设置元素数据
-   */
-  set content (t: T) {
   }
 
   /**
    * 播放完成后是否需要再使用，是的话生命周期结束后不会 dispose
    */
-  get reusable (): boolean {
+  get compositionReusable (): boolean {
     return this.composition?.reusable ?? false;
   }
 
   /**
-   * 获取元素类型
+   * 元素在合成中的索引
    */
-  get type (): spec.ItemType | string {
-    return spec.ItemType.base;
+  get renderOrder () {
+    return this.listIndex;
+  }
+  set renderOrder (value: number) {
+    if (this.listIndex !== value) {
+      this.listIndex = value;
+      for (const rendererComponent of this.rendererComponents) {
+        rendererComponent.priority = value;
+      }
+    }
   }
 
   /**
-   * 获取元素冻结属性
+   * 元素监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @param options - 事件监听器选项
+   * @returns
    */
-  get frozen () {
-    return this._frozen;
+  on<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+    options?: EventEmitterOptions,
+  ) {
+    this.eventProcessor.on(eventName, listener, options);
   }
 
   /**
-   * 设置元素冻结属性
+   * 移除事件监听器
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
+   * @returns
    */
-  set frozen (v) {
-    this.handleFrozenChanged(this._frozen = !!v);
+  off<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+  ) {
+    this.eventProcessor.off(eventName, listener);
   }
 
   /**
-   * 获取元素生命周期是否开始
+   * 一次性监听事件
+   * @param eventName - 事件名称
+   * @param listener - 事件监听器
    */
-  get lifetimeStarted () {
-    return this.started && !this.delaying;
+  once<E extends keyof ItemEvent> (
+    eventName: E,
+    listener: EventEmitterListener<ItemEvent[E]>,
+  ) {
+    this.eventProcessor.once(eventName, listener);
+  }
+
+  /**
+   * 触发事件
+   * @param eventName - 事件名称
+   * @param args - 事件参数
+   */
+  emit<E extends keyof ItemEvent> (
+    eventName: E,
+    ...args: ItemEvent[E]
+  ) {
+    this.eventProcessor.emit(eventName, ...args);
+  }
+
+  /**
+   * 获取事件名称对应的所有监听器
+   * @param eventName - 事件名称
+   * @returns - 返回事件名称对应的所有监听器
+   */
+  getListeners<E extends keyof ItemEvent> (eventName: E) {
+    return this.eventProcessor.getListeners(eventName);
   }
 
   /**
@@ -287,181 +260,72 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
   }
 
   /**
-   * 重置元素状态属性
+   * 添加组件
+   * @param classConstructor - 要添加的组件类型
    */
-  start () {
-    if (!this.started || this.ended) {
-      this.started = true;
-      this.delaying = true;
-      this.timeInms = 0;
-      this.time = 0;
-      this.callEnd = false;
-      this.ended = false;
-    }
+  addComponent<T extends Component> (classConstructor: Constructor<T>): T {
+    const newComponent = new classConstructor(this.engine);
+
+    this.components.push(newComponent);
+    newComponent.item = this;
+    newComponent.onAttached();
+
+    return newComponent;
   }
 
   /**
-   * 停止播放元素动画
+   * 获取某一类型的组件。如果当前元素绑定了多个同类型的组件只返回第一个
+   * @param classConstructor - 要获取的组件类型
+   * @returns 查询结果中符合类型的第一个组件
    */
-  stop () {
-    this.doStop();
-    this.started = false;
-  }
-  doStop () {
-    if (this._content && (this._content as unknown as { stop: () => void }).stop) {
-      (this._content as unknown as { stop: () => void }).stop();
-    }
-  }
+  getComponent<T extends Component> (classConstructor: Constructor<T>): T {
+    let res;
 
-  /**
-   * 创建元素内容，此函数可以在任何时间被调用
-   * 第一帧渲染前会被调用
-   * @returns
-   */
-  createContent (): T {
-    if (!this._content) {
-      this._content = this.doCreateContent(this.composition);
-    }
+    for (const com of this.components) {
+      if (com instanceof classConstructor) {
+        res = com;
 
-    return this._content;
-  }
-  /**
-   * 创建元素的内容
-   * @override
-   * @param composition
-   * @returns
-   */
-  protected doCreateContent (composition: Composition | null): T {
-    return undefined as unknown as T;
-  }
-
-  /**
-   * 元素构造函数调用时将调用该函数
-   * @param options
-   * @override
-   */
-  onConstructed (options: spec.Item) {
-    // OVERRIDE
-  }
-
-  /**
-   * 内部使用的更新回调，请不要重写此方法，重写 `onItemUpdate` 方法
-   * @param deltaTime
-   */
-  public onUpdate (deltaTime: number) {
-    if (this.started && !this.frozen && this.composition) {
-      let dt = deltaTime * this.speed;
-      const time = (this.timeInms += dt);
-
-      this.time += dt / 1000;
-      const now = time - this.delayInms;
-
-      if (this.delaying && now >= 0) {
-        this.delaying = false;
-
-        this.transform.setValid(true);
-        this.createContent();
-        this._contentVisible = true;
-        this.onLifetimeBegin(this.composition, this.content);
-        this.composition.itemLifetimeEvent(this, true);
-      }
-      if (!this.delaying) {
-        let lifetime = now / this.durInms;
-        const ended = this.isEnded(now);
-        let shouldUpdate = true;
-
-        this.transform.setValid(true);
-
-        if (ended) {
-          shouldUpdate = false;
-          if (!this.callEnd) {
-            this.callEnd = true;
-            this.composition.itemLifetimeEvent(this, false);
-            this.onEnd();
-          }
-          // 注意：不要定义私有变量替换 this.endBehavior，直接使用 this 上的！！！（Chrome 下会出现 endBehavior 为 5 时，能进入以下判断）
-          if (this.endBehavior !== spec.END_BEHAVIOR_FORWARD && this.endBehavior !== spec.END_BEHAVIOR_RESTART) {
-            this.ended = true;
-            this.transform.setValid(false);
-            if (
-              this.endBehavior === spec.END_BEHAVIOR_PAUSE ||
-              this.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY
-            ) {
-              this.composition.onPlayerPause?.(this);
-            } else if (this.endBehavior === spec.END_BEHAVIOR_FREEZE) {
-              this.transform.setValid(true);
-              shouldUpdate = true;
-              lifetime = 1;
-              dt = 0;
-            }
-            if (!this.reusable) {
-              if (
-                this.endBehavior === spec.END_BEHAVIOR_DESTROY ||
-                this.endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY ||
-                this.endBehavior === spec.END_BEHAVIOR_DESTROY_CHILDREN
-              ) {
-                return this.dispose();
-              } else if (this.endBehavior === spec.END_BEHAVIOR_PAUSE) {
-                this.endBehavior = spec.END_BEHAVIOR_FORWARD;
-              }
-            } else if (this.endBehavior === spec.END_BEHAVIOR_DESTROY) {
-              this._contentVisible = false;
-              shouldUpdate = true;
-              dt = 0;
-
-              // 预合成配置 reusable 且销毁时， 需要隐藏其中的元素
-              if ((this.type as spec.ItemType) === spec.ItemType.composition) {
-                this.handleVisibleChanged(false);
-              }
-            }
-            lifetime = Math.min(lifetime, 1);
-          } else {
-            shouldUpdate = true;
-
-            if (this.endBehavior === spec.END_BEHAVIOR_RESTART) {
-              this.ended = true;
-
-            }
-          }
-        } else if (this.callEnd && this.reusable) {
-          this.setVisible(true);
-          this.callEnd = false;
-        }
-        this.lifetime = lifetime % 1;
-
-        shouldUpdate && this.onItemUpdate(dt, lifetime);
+        break;
       }
     }
+
+    return res as T;
   }
 
   /**
-   * 元素结束时的回调
-   * @override
-   * @param composition
-   * @param content
+   * 获取某一类型的所有组件
+   * @param classConstructor - 要获取的组件
+   * @returns 一个组件列表，包含所有符合类型的组件
    */
-  protected onItemRemoved (composition: Composition, content?: T) {
-    // OVERRIDE
+  getComponents<T extends Component> (classConstructor: Constructor<T>) {
+    const res = [];
+
+    for (const com of this.components) {
+      if (com instanceof classConstructor) {
+        res.push(com);
+      }
+    }
+
+    return res;
   }
 
-  /**
-   * 元素更新函数，在 Composition 对象的 tick 函数中被调用
-   * @override
-   * @param dt
-   * @param lifetime
-   */
-  onItemUpdate (dt: number, lifetime: number) {
-    // OVERRIDE
-  }
-
-  /**
-   * 元素 doCreateContent 函数调用后会立即调用该函数用于初始化数据
-   * @override
-   * @param composition
-   * @param content
-   */
-  onLifetimeBegin (composition: Composition, content: T) {
-    // OVERRIDE
+  setParent (vfxItem: VFXItem) {
+    if (vfxItem === this) {
+      return;
+    }
+    if (this.parent) {
+      removeItem(this.parent.children, this);
+    }
+    this.parent = vfxItem;
+    if (vfxItem) {
+      if (!VFXItem.isCamera(this)) {
+        this.transform.parentTransform = vfxItem.transform;
+      }
+      vfxItem.children.push(this);
+      if (!this.composition) {
+        this.composition = vfxItem.composition;
+      }
+    }
   }
 
   /**
@@ -506,26 +370,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
   setVisible (visible: boolean) {
     if (this.visible !== visible) {
       this.visible = !!visible;
-      this.handleVisibleChanged(this.visible);
     }
-  }
-
-  /**
-   * 元素显隐属性改变时调用的函数，当 visible 为 true 时，务必显示元素
-   * @param visible
-   * @override
-   */
-  protected handleVisibleChanged (visible: boolean) {
-    // OVERRIDE
-  }
-
-  /**
-   * 元素冻结属性改变时调用的函数
-   * @param frozen
-   * @override
-   */
-  protected handleFrozenChanged (frozen: boolean) {
-    // OVERRIDE
   }
 
   /**
@@ -549,6 +394,16 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
    * @returns 元素变换或内部节点变换
    */
   getNodeTransform (itemId: string): Transform {
+    for (let i = 0; i < this.components.length; i++) {
+      const comp = this.components[1];
+
+      // @ts-expect-error
+      if (comp.getNodeTransform) {
+        // @ts-expect-error
+        return comp.getNodeTransform(itemId);
+      }
+    }
+
     return this.transform;
   }
 
@@ -576,7 +431,12 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
   }
 
   /**
-   * 设置元素的在画布上的像素位置, 坐标原点在 canvas 中心，x 正方向水平向右， y 正方向垂直向下
+   * 设置元素在画布上的像素位置
+   * Tips:
+   *  - 坐标原点在 canvas 左上角，x 正方向水平向右， y 正方向垂直向下
+   *  - 设置后会覆盖原有的位置信息
+   * @param x - x 坐标
+   * @param y - y 坐标
    */
   setPositionByPixel (x: number, y: number) {
     if (this.composition) {
@@ -585,7 +445,7 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
       const width = this.composition.renderer.getWidth() / 2;
       const height = this.composition.renderer.getHeight() / 2;
 
-      this.transform.setPosition(2 * x * rx / width, -2 * y * ry / height, z);
+      this.transform.setPosition((2 * x / width - 1) * rx, (1 - 2 * y / height) * ry, z);
     }
   }
   /**
@@ -618,23 +478,10 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
   /**
    * 获取元素用于计算光线投射的面片类型和参数
    * @override
-   * @param force 元素没有开启交互也返回参数
+   * @param force - 元素没有开启交互也返回参数
    */
   getHitTestParams (force?: boolean): void | HitTestBoxParams | HitTestTriangleParams | HitTestSphereParams | HitTestCustomParams {
     // OVERRIDE
-  }
-
-  /**
-   * 获取元素的 transform、当前生命周期、可见性，当子元素需要时可继承
-   * @override
-   */
-  getRenderData (): SpriteRenderData {
-    // OVERRIDE
-    return {
-      transform: this.transform,
-      life: 0,
-      visible: this.visible,
-    };
   }
 
   /**
@@ -653,21 +500,127 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
    * @param now
    * @returns
    */
-  protected isEnded (now: number) {
+  isEnded (now: number) {
     // at least 1 ms
-    return now - this.durInms > 0.001;
+    return now - this.duration > 0.001;
   }
 
-  /**
-   * 重置元素，元素创建的内容将会被销毁
-   */
-  reset () {
-    if (this.composition) {
-      this.onItemRemoved(this.composition, this._content);
-      this._content = undefined;
-      this._contentVisible = false;
+  find (name: string): VFXItem | undefined {
+    if (this.name === name) {
+      return this;
     }
-    this.started = false;
+    for (const child of this.children) {
+      if (child.name === name) {
+        return child;
+      }
+    }
+    for (const child of this.children) {
+      const res = child.find(name);
+
+      if (res) {
+        return res;
+      }
+    }
+
+    return undefined;
+  }
+
+  override fromData (data: VFXItemData): void {
+    super.fromData(data);
+    const {
+      id, name, delay, parentId, endBehavior, transform,
+      listIndex = 0,
+      duration = 0,
+    } = data;
+
+    this.props = data;
+    //@ts-expect-error
+    this.type = data.type;
+    this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
+    this.name = name;
+    this.start = delay ? delay : this.start;
+
+    if (transform) {
+      //@ts-expect-error TODO 数据改造后移除 expect-error
+      transform.position = new Vector3().copyFrom(transform.position);
+      // FIXME: transform.rotation待删除
+      if (transform.quat) {
+        //@ts-expect-error
+        transform.quat = new Quaternion(transform.quat.x, transform.quat.y, transform.quat.z, transform.quat.w);
+      } else {
+        //@ts-expect-error
+        transform.rotation = new Euler().copyFrom(transform.eulerHint ?? transform.rotation);
+      }
+      //@ts-expect-error
+      transform.scale = new Vector3().copyFrom(transform.scale);
+      //@ts-expect-error
+      if (transform.size) {
+        //@ts-expect-error
+        transform.size = new Vector2().copyFrom(transform.size);
+      }
+      //@ts-expect-error
+      if (transform.anchor) {
+        //@ts-expect-error
+        transform.anchor = new Vector2().copyFrom(transform.anchor);
+      }
+      this.transform.setTransform(transform);
+    }
+
+    this.transform.name = this.name;
+    this.transform.engine = this.engine;
+    this.parentId = parentId;
+    this.duration = duration;
+    // TODO spec endbehavior 类型修正
+    this.endBehavior = endBehavior as spec.EndBehavior;
+
+    if (!data.content) {
+      data.content = { options: {} };
+    }
+
+    if (duration <= 0) {
+      throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
+    }
+
+    this.itemBehaviours.length = 0;
+    this.rendererComponents.length = 0;
+    for (const component of this.components) {
+      component.item = this;
+      if (component instanceof Behaviour) {
+        this.itemBehaviours.push(component);
+      }
+      if (component instanceof RendererComponent) {
+        this.rendererComponents.push(component);
+      }
+      // TODO ParticleSystemRenderer 现在是动态生成的，后面需要在 json 中单独表示为一个组件
+      if (component instanceof ParticleSystem) {
+        if (!this.components.includes(component.renderer)) {
+          this.components.push(component.renderer);
+        }
+        this.rendererComponents.push(component.renderer);
+      }
+    }
+    // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
+    this.renderOrder = listIndex;
+  }
+
+  override toData (): void {
+    this.taggedProperties.id = this.guid;
+    this.taggedProperties.transform = this.transform.toData();
+    this.taggedProperties.dataType = spec.DataType.VFXItemData;
+    if (this.parent?.name !== 'rootItem') {
+      this.taggedProperties.parentId = this.parent?.guid;
+    }
+
+    // TODO 统一 sprite 等其他组件的序列化逻辑
+    if (!this.taggedProperties.components) {
+      this.taggedProperties.components = [];
+      for (const component of this.components) {
+        if (component instanceof EffectComponent) {
+          this.taggedProperties.components.push(component);
+        }
+      }
+    }
+    this.taggedProperties.content = {};
   }
 
   translateByPixel (x: number, y: number) {
@@ -684,25 +637,49 @@ export abstract class VFXItem<T extends VFXItemContent> implements Disposable {
   /**
    * 销毁元素
    */
-  dispose (): void {
+  override dispose (): void {
+    this.resetChildrenParent();
+
     if (this.composition) {
       this.composition.destroyItem(this);
-      this.reset();
-      this.onUpdate = () => -1;
+      // component 调用 dispose() 会将自身从 this.components 数组删除，slice() 避免迭代错误
+      for (const component of this.components.slice()) {
+        component.dispose();
+      }
+      this.components = [];
+      this._content = undefined;
       this.composition = null;
-      this._contentVisible = false;
       this.transform.setValid(false);
     }
+  }
+
+  private resetChildrenParent () {
+    // GE 父元素销毁子元素继承逻辑
+    // 如果有父对象，销毁时子对象继承父对象。
+    for (const child of this.children) {
+      if (this.parent) {
+        child.setParent(this.parent);
+      }
+    }
+    if (this.parent) {
+      removeItem(this.parent?.children, this);
+    }
+    // const contentItems = compositonVFXItem.getComponent(CompositionComponent)!.items;
+
+    // contentItems.splice(contentItems.indexOf(this), 1);
+
+    // else {
+    //   // 普通元素正常销毁逻辑, 子元素不继承
+    // if (this.parent) {
+    //   removeItem(this.parent?.children, this);
+    // }
+    // }
   }
 }
 
 export namespace Item {
   export function is<T extends spec.Item> (item: spec.Item, type: spec.ItemType): item is T {
     return item.type === type;
-  }
-
-  export function isFilter (item: spec.Item): item is spec.FilterItem {
-    return item.type === spec.ItemType.filter;
   }
 
   export function isComposition (item: spec.Item): item is spec.CompositionItem {
@@ -716,56 +693,4 @@ export namespace Item {
   export function isNull (item: spec.Item): item is spec.NullItem {
     return item.type === spec.ItemType.null;
   }
-}
-
-/**
- * 根据元素的类型创建对应的 `VFXItem` 实例
- * @param props
- * @param composition
- */
-export function createVFXItem (props: VFXItemProps, composition: Composition): VFXItem<any> {
-  const { type } = props;
-  let { pluginName } = props;
-
-  if (!pluginName) {
-    switch (type) {
-      case spec.ItemType.null:
-      case spec.ItemType.base:
-        pluginName = 'cal';
-
-        break;
-      case spec.ItemType.sprite:
-        pluginName = 'sprite';
-
-        break;
-      case spec.ItemType.particle:
-        pluginName = 'particle';
-
-        break;
-      case spec.ItemType.interact:
-        pluginName = 'interact';
-
-        break;
-      case spec.ItemType.camera:
-        pluginName = 'camera';
-
-        break;
-      case spec.ItemType.filter:
-        pluginName = 'filter';
-
-        break;
-      case spec.ItemType.text:
-        pluginName = 'text';
-
-        break;
-      case spec.ItemType.tree:
-        pluginName = 'tree';
-
-        break;
-      default:
-        throw new Error('invalid vfx item type');
-    }
-  }
-
-  return composition.pluginSystem.createPluginItem(pluginName, props, composition);
 }

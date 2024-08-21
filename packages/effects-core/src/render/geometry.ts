@@ -1,7 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import { glContext } from '../gl';
-import type { Disposable } from '../utils';
 import type { Engine } from '../engine';
+import { EffectsObject } from '../effects-object';
 
 export const BYTES_TYPE_MAP: Record<string, number> = {
   [glContext.FLOAT]: Float32Array.BYTES_PER_ELEMENT,
@@ -45,27 +45,29 @@ export interface GeometryProps {
   maxVertex?: number,
 }
 
+export interface SkinProps {
+  boneNames?: string[],
+  rootBoneName?: string,
+  inverseBindMatrices?: number[],
+}
+
 /**
  * Geometry 抽象类
  */
-export abstract class Geometry implements Disposable {
+export abstract class Geometry extends EffectsObject {
   /**
    * Geometry 的名称
    */
-  readonly name: string;
+  name: string;
 
   /**
-   * Geometry 创建函数
-   * @param name - 名称
+   * 子网格数据
    */
-  constructor (name: string) {
-    this.name = name;
-  }
-
+  subMeshes: spec.SubMesh[];
   /**
    * Geometry 创建函数
    */
-  static create: (engine: Engine, opts: GeometryProps) => Geometry;
+  static create: (engine: Engine, opts?: GeometryProps) => Geometry;
 
   /**
    * 获取 Geometry 的 attribute 数据。
@@ -108,7 +110,7 @@ export abstract class Geometry implements Disposable {
    * 设置 Geometry 的 indices 数据。
    * @param data - 要设置的 indices 数据
    */
-  abstract setIndexData (data?: spec.TypedArray): void;
+  abstract setIndexData (data: spec.TypedArray): void;
 
   /**
    * 设置 indices 的部分数据，当 indices 数据只有部分更新时，可调用此函数。
@@ -140,9 +142,9 @@ export abstract class Geometry implements Disposable {
   abstract getDrawCount (): number;
 
   /**
-   * 销毁当前资源
+   * 获取当前 Geometry 关联的蒙皮数据
    */
-  abstract dispose (): void;
+  abstract getSkinProps (): SkinProps;
 
   /**
    * 初始化 GPU 资源

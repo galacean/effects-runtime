@@ -1,8 +1,9 @@
-import type { Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, VFXItemContent, VFXItem, MessageItem, CompositionProps } from '@galacean/effects-core';
-import { Composition } from '@galacean/effects-core';
-import { ThreeRenderFrame } from './three-render-frame';
-import { ThreeTexture } from './three-texture';
+import type {
+  Scene, ShaderLibrary, Transform, MeshRendererOptions, EventSystem, CompositionProps,
+} from '@galacean/effects-core';
+import { Composition, CompositionComponent, RendererComponent } from '@galacean/effects-core';
 import type THREE from 'three';
+import { ThreeTexture } from './three-texture';
 
 /**
  * 基础 composition 参数
@@ -31,38 +32,17 @@ export interface CompositionBaseProps {
    * Shader 库
    */
   shaderLibrary?: ShaderLibrary,
-  /**
-   * end 状态监听函数
-   *
-   * @param composition - composition 对象
-   * @returns
-   */
-  onEnd?: (composition: Composition) => void,
-  /**
-   * 交互元素监听函数
-   *
-   * @param item
-   * @returns
-   */
-  onMessageItem?: (item: MessageItem) => void,
-  /**
-   * player 暂停监听函授
-   *
-   * @param item
-   * @returns
-   */
-  onPlayerPause?: (item: VFXItem<VFXItemContent>) => void,
 }
 
-export interface ThreeCompositionProps extends CompositionBaseProps {
+export interface ThreeCompositionProps extends CompositionProps {
   /**
-   * 指定合成名字
+   * Three.js 中的相机对象
    */
-  compositionName?: string,
+  threeCamera?: THREE.Camera,
   /**
-   * 是否多合成
+   * Three.js 中的 Group 对象
    */
-  multipleCompositions?: boolean,
+  threeGroup?: THREE.Group,
 }
 
 /**
@@ -74,59 +54,47 @@ export class ThreeComposition extends Composition {
    */
   static shape: Record<string, number> = {};
 
-  /**
-   * 相机参数
-   */
-  threeCamera: THREE.Camera;
-
-  constructor (props: CompositionProps, scene: Scene) {
+  constructor (
+    props: ThreeCompositionProps,
+    scene: Scene,
+  ) {
     super(props, scene);
-    this.compositionSourceManager.sourceContent?.items.forEach(item => {
-      const shape = item.content.renderer.shape;
-
-      if (shape) {
-        Object.keys(shape).forEach(name => {
-          const buffer = shape[name];
-
-          if (!ThreeComposition.shape[name]) {
-            ThreeComposition.shape[name] = 0;
-          }
-          ThreeComposition.shape[name] += buffer.length;
-        });
-      }
-    });
-    this.content.start();
-  }
-
-  /**
-   * 开始
-   */
-  override createRenderFrame () {
-    this.renderFrame = new ThreeRenderFrame({
-      camera: this.camera,
-      keepColorBuffer: this.keepColorBuffer,
-      renderer: this.renderer,
-    });
   }
 
   /**
    * 更新 video texture 数据
    */
   override updateVideo () {
-    this.textures.map(tex => (tex as ThreeTexture).startVideo());
+    void this.textures.map(tex => (tex as ThreeTexture).startVideo());
   }
 
-  /**
-   * 更新相机
-   */
-  override updateCamera () {
-    const renderFrame = (this.renderFrame as ThreeRenderFrame);
+  override prepareRender (): void {
+    const render = this.renderer;
+    const frame = this.renderFrame;
 
-    // TODO: 这些后面可以挪到renderframe中去，目前composition干的事太多了
-    if (renderFrame.threeCamera) {
-      renderFrame.updateMatrix();
-    } else {
-      renderFrame.updateUniform();
+    frame._renderPasses[0].meshes.length = 0;
+
+    // 主合成元素
+    for (const vfxItem of this.rootComposition.items) {
+      const rendererComponents = vfxItem.getComponents(RendererComponent);
+
+      for (const rendererComponent of rendererComponents) {
+        if (rendererComponent.isActiveAndEnabled) {
+          rendererComponent.render(render);
+        }
+      }
+    }
+    // 预合成元素
+    for (const refContent of this.refContent) {
+      for (const vfxItem of refContent.getComponent(CompositionComponent).items) {
+        const rendererComponents = vfxItem.getComponents(RendererComponent);
+
+        for (const rendererComponent of rendererComponents) {
+          if (rendererComponent.isActiveAndEnabled) {
+            rendererComponent.render(render);
+          }
+        }
+      }
     }
   }
 

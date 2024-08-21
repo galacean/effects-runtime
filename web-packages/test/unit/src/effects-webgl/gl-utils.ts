@@ -1,7 +1,7 @@
 export function getGL () {
-  const webglCanvas = document.createElement('canvas');
+  const glCanvas = document.createElement('canvas');
 
-  return webglCanvas.getContext('webgl', {
+  return glCanvas.getContext('webgl', {
     preserveDrawingBuffer: true,
     alpha: true,
     stencil: true,
@@ -11,9 +11,9 @@ export function getGL () {
 }
 
 export function getGL2 () {
-  const webgl2Canvas = document.createElement('canvas');
+  const gl2Canvas = document.createElement('canvas');
 
-  return webgl2Canvas.getContext('webgl2', {
+  return gl2Canvas.getContext('webgl2', {
     preserveDrawingBuffer: true,
     alpha: true,
     stencil: true,

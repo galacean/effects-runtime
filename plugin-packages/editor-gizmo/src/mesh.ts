@@ -7,7 +7,6 @@ import type { GizmoItemBounding } from './gizmo-vfx-item';
 import { BoundingType } from './gizmo-vfx-item';
 import { color, renderMode } from './constants';
 
-type mat4 = spec.mat4;
 type vec3 = spec.vec3;
 type Vector3 = math.Vector3;
 type TriangleLike = math.TriangleLike;
@@ -877,7 +876,7 @@ function createBlendMaterial (engine: Engine, color?: vec3, depthTest?: boolean,
   return material;
 }
 
-function createSpriteMaterial (engine: Engine, data: vec3 | Texture | undefined, depthTest?: boolean): Material {
+function createSpriteMaterial (engine: Engine, data?: vec3 | Texture, depthTest?: boolean): Material {
   const myDepthTest = depthTest ? depthTest : false;
   const uniformValues = {
     u_model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]),

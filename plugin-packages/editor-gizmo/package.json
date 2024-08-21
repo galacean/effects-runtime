@@ -1,10 +1,10 @@
 {
   "name": "@galacean/effects-plugin-editor-gizmo",
-  "version": "1.6.1",
+  "version": "2.0.0",
   "description": "Galacean Effects player editor gizmo plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
-  "brower": "./dist/index.min.js",
+  "browser": "./dist/index.min.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
@@ -21,8 +21,8 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [

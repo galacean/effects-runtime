@@ -1,15 +1,14 @@
 import * as spec from '@galacean/effects-specification';
-import type { TextureSourceOptions } from './texture';
-import { Texture } from './texture';
+import type { SceneBindingData } from './comp-vfx-item';
+import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
+import type { PluginSystem } from './plugin-system';
+import type { Scene, SceneRenderLevel } from './scene';
 import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
+import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import { isObject } from './utils';
-import type { Scene } from './scene';
-import type { PluginSystem } from './plugin-system';
-import type { Engine } from './engine';
-import type { GlobalVolume } from './render';
 import type { VFXItemProps } from './vfx-item';
 
 let listOrder = 0;
@@ -18,46 +17,45 @@ export interface ContentOptions {
   id: string,
   duration: number,
   name: string,
-  endBehavior: spec.CompositionEndBehavior,
-  items: any[],
+  endBehavior: spec.EndBehavior,
+  items: VFXItemProps[],
   camera: spec.CameraOptions,
   startTime: number,
-  globalVolume: GlobalVolume,
+  timelineAsset: spec.DataPath,
+  sceneBindings: SceneBindingData[],
 }
 
 /**
  * 合成资源管理
  */
 export class CompositionSourceManager implements Disposable {
-  composition?: spec.Composition;
-  refCompositions: Map<string, spec.Composition> = new Map();
+  composition?: spec.CompositionData;
+  refCompositions: Map<string, spec.CompositionData> = new Map();
   sourceContent?: ContentOptions;
   refCompositionProps: Map<string, VFXItemProps> = new Map();
-  renderLevel?: spec.RenderLevel;
+  renderLevel?: SceneRenderLevel;
   pluginSystem?: PluginSystem;
   totalTime: number;
   imgUsage: Record<string, number[]>;
   textures: Texture[];
   jsonScene?: spec.JSONScene;
   mask = 0;
-  textureOptions: Record<string, any>[];
+  engine: Engine;
 
   constructor (
     scene: Scene,
     engine: Engine,
   ) {
+    this.engine = engine;
     // 资源
     const { jsonScene, renderLevel, textureOptions, pluginSystem, totalTime } = scene;
     const { compositions, imgUsage, compositionId } = jsonScene;
 
     if (!textureOptions) {
-      throw new Error('scene.textures expected');
+      throw new Error('scene.textures expected.');
     }
-    const cachedTextures = textureOptions.map(option => option && (option instanceof Texture ? option : Texture.create(engine, option as unknown as TextureSourceOptions)));
+    const cachedTextures = textureOptions as Texture[];
 
-    // 缓存创建的Texture对象
-    scene.textureOptions = cachedTextures;
-    cachedTextures?.forEach(tex => tex?.initialize());
     for (const comp of compositions) {
       if (comp.id === compositionId) {
         this.composition = comp;
@@ -67,7 +65,7 @@ export class CompositionSourceManager implements Disposable {
     }
 
     if (!this.composition) {
-      throw new Error('Invalid composition id: ' + compositionId);
+      throw new Error(`Invalid composition id: ${compositionId}.`);
     }
     this.jsonScene = jsonScene;
     this.renderLevel = renderLevel;
@@ -76,152 +74,126 @@ export class CompositionSourceManager implements Disposable {
     this.imgUsage = imgUsage ?? {};
     this.textures = cachedTextures;
     listOrder = 0;
-    this.textureOptions = textureOptions;
     this.sourceContent = this.getContent(this.composition);
   }
 
-  private getContent (composition: spec.Composition): ContentOptions {
-    // TODO: specification 中补充 globalVolume 类型
-    // @ts-expect-error
-    const { id, duration, name, endBehavior, camera, globalVolume, startTime = 0 } = composition;
+  private getContent (composition: spec.CompositionData): ContentOptions {
+    const { id, duration, name, endBehavior, camera, startTime = 0 } = composition;
     const items = this.assembleItems(composition);
 
     return {
+      ...composition,
       id,
       duration,
       name,
-      endBehavior: isNaN(endBehavior) ? spec.END_BEHAVIOR_PAUSE : endBehavior,
+      endBehavior: isNaN(endBehavior) ? spec.EndBehavior.freeze : endBehavior,
       // looping,
       items,
       camera,
       startTime,
-      globalVolume,
     };
   }
 
-  private assembleItems (composition: spec.Composition) {
+  private assembleItems (composition: spec.CompositionData) {
     const items: any[] = [];
 
-    composition.items.forEach(item => {
-      const option: Record<string, any> = {};
-      const { visible, renderLevel: itemRenderLevel, type } = item;
+    this.mask++;
+    const componentMap: Record<string, any> = {};
 
-      if (visible === false) {
-        return;
-      }
+    //@ts-expect-error
+    for (const component of this.jsonScene.components) {
+      componentMap[component.id] = component;
+    }
 
-      const content = { ...item.content };
+    for (const itemDataPath of composition.items) {
+      //@ts-expect-error
+      const sourceItemData: VFXItemProps = this.engine.jsonSceneData[itemDataPath.id];
+      const itemProps: Record<string, any> = sourceItemData;
 
-      if (content) {
-        option.content = { ...content };
+      if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
+        itemProps.listIndex = listOrder++;
 
-        if (passRenderLevel(itemRenderLevel, this.renderLevel)) {
-          const renderContent = option.content;
+        if (
+          itemProps.type === spec.ItemType.sprite ||
+          itemProps.type === spec.ItemType.particle
+        ) {
+          for (const componentPath of itemProps.components) {
+            const componentData = componentMap[componentPath.id];
 
-          option.type = type;
-
-          if (renderContent.renderer) {
-            renderContent.renderer = this.changeTex(renderContent.renderer);
-            this.processMask(renderContent.renderer);
-            const split = renderContent.splits && !renderContent.textureSheetAnimation && renderContent.splits[0];
-
-            if (Number.isInteger(renderContent.renderer.shape)) {
-              // TODO: scene.shapes 类型问题？
-              renderContent.renderer.shape = getGeometryByShape(this.jsonScene?.shapes[renderContent.renderer.shape] as unknown as ShapeData, split);
-            } else if (renderContent.renderer.shape && isObject(renderContent.renderer.shape)) {
-              renderContent.renderer.shape = getGeometryByShape(renderContent.renderer.shape, split);
-            }
-          } else {
-            option.content.renderer = { order: 0 };
+            this.preProcessItemContent(componentData);
           }
-          if (renderContent.trails) {
-            renderContent.trails = this.changeTex(renderContent.trails);
-          }
-          if (renderContent.filter) {
-            renderContent.filter = { ...renderContent.filter };
-          }
-
-          const { name, delay = 0, id, parentId, duration, endBehavior, pluginName, pn, transform } = item;
-          // FIXME: specification 下定义的 Item 不存在 refCount 类型定义
-          // @ts-expect-error
-          const { refCount } = item;
-          const { plugins = [] } = this.jsonScene as spec.JSONScene;
-
-          option.name = name;
-          option.delay = delay;
-          option.id = id;
-          if (parentId) {
-            option.parentId = parentId;
-          }
-          option.refCount = refCount;
-          option.duration = duration;
-          option.listIndex = listOrder++;
-          option.endBehavior = endBehavior;
-          if (pluginName) {
-            option.pluginName = pluginName;
-          } else if (pn !== undefined && Number.isInteger(pn)) {
-            option.pluginName = plugins[pn];
-          }
-          if (transform) {
-            option.transform = transform;
-          }
-
-          // 处理预合成的渲染顺序
-          if (option.type === spec.ItemType.composition) {
-            this.mask++;
-            const refId = (item.content as spec.CompositionContent).options.refId;
-
-            if (!this.refCompositions.get(refId)) {
-              throw new Error('Invalid Ref Composition id: ' + refId);
-            }
-            const ref = this.getContent(this.refCompositions.get(refId)!);
-
-            if (!this.refCompositionProps.has(refId)) {
-              this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
-            }
-
-            ref.items.forEach((item: Record<string, any>) => {
-              this.processMask(item.content);
-            });
-            option.items = ref.items;
-
-          }
-          items.push(option);
         }
+
+        // 处理预合成的渲染顺序
+        if (itemProps.type === spec.ItemType.composition) {
+          const refId = (sourceItemData.content as spec.CompositionContent).options.refId;
+
+          if (!this.refCompositions.get(refId)) {
+            throw new Error(`Invalid ref composition id: ${refId}.`);
+          }
+          const ref = this.getContent(this.refCompositions.get(refId)!);
+
+          if (!this.refCompositionProps.has(refId)) {
+            this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
+          }
+        }
+
+        items.push(itemProps as VFXItemProps);
       }
-    });
+    }
 
     return items;
   }
 
-  private changeTex (renderer: Record<string, number>) {
-    const texIdx = renderer.texture;
-    const ret: Record<string, any> = { ...renderer };
+  private preProcessItemContent (renderContent: any) {
+    if (renderContent.renderer) {
+      renderContent.renderer = this.changeTex(renderContent.renderer);
 
-    if (texIdx !== undefined) {
-      // ret._texture = ret.texture;
-      ret.texture = this.addTextureUsage(texIdx) || texIdx;
+      if (!renderContent.renderer.mask) {
+        this.processMask(renderContent.renderer);
+      }
+
+      const split = renderContent.splits && !renderContent.textureSheetAnimation && renderContent.splits[0];
+
+      if (Number.isInteger(renderContent.renderer.shape)) {
+        // TODO: scene.shapes 类型问题？
+        renderContent.renderer.shape = getGeometryByShape(this.jsonScene?.shapes[renderContent.renderer.shape] as unknown as ShapeData, split);
+      } else if (renderContent.renderer.shape && isObject(renderContent.renderer.shape)) {
+        renderContent.renderer.shape = getGeometryByShape(renderContent.renderer.shape, split);
+      }
     }
 
-    return ret;
+    if (renderContent.trails) {
+      renderContent.trails = this.changeTex(renderContent.trails);
+    }
   }
 
-  private addTextureUsage (texIdx: number): Texture | undefined {
-    if (Number.isInteger(texIdx)) {
-      const tex = this.textures?.[texIdx];
-      const texId = tex?.id;
-      // FIXME: imageUsage 取自 scene.imgUsage，类型为 Record<string, number[]>，这里给的 number，类型对不上
-      const imageUsage = this.imgUsage as unknown as Record<string, number> ?? {};
+  private changeTex (renderer: Record<string, number>) {
+    if (!renderer.texture) {
+      return renderer;
+    }
+    //@ts-expect-error
+    const texIdx = renderer.texture.id;
 
-      if (texId && imageUsage) {
-        // eslint-disable-next-line no-prototype-builtins
-        if (!imageUsage.hasOwnProperty(texId)) {
-          imageUsage[texId] = 0;
-        }
-        imageUsage[texId]++;
+    if (texIdx !== undefined) {
+      //@ts-expect-error
+      this.addTextureUsage(texIdx) || texIdx;
+    }
 
-        return tex;
+    return renderer;
+  }
+
+  private addTextureUsage (texIdx: number) {
+    const texId = texIdx;
+    // FIXME: imageUsage 取自 scene.imgUsage，类型为 Record<string, number[]>，这里给的 number，类型对不上
+    const imageUsage = this.imgUsage as unknown as Record<string, number> ?? {};
+
+    if (texId && imageUsage) {
+      // eslint-disable-next-line no-prototype-builtins
+      if (!imageUsage.hasOwnProperty(texId)) {
+        imageUsage[texId] = 0;
       }
+      imageUsage[texId]++;
     }
   }
 
@@ -229,22 +201,24 @@ export class CompositionSourceManager implements Disposable {
    * 处理蒙版和遮挡关系写入 stencil 的 ref 值
    */
   private processMask (renderer: Record<string, number>) {
-    if (renderer.maskMode === spec.MaskMode.NONE) {
+    const maskMode: spec.MaskMode = renderer.maskMode;
+
+    if (maskMode === spec.MaskMode.NONE) {
       return;
     }
     if (!renderer.mask) {
-      const maskMode: spec.MaskMode = renderer.maskMode;
-
       if (maskMode === spec.MaskMode.MASK) {
         renderer.mask = ++this.mask;
-      } else if (maskMode === spec.MaskMode.OBSCURED || maskMode === spec.MaskMode.REVERSE_OBSCURED) {
+      } else if (
+        maskMode === spec.MaskMode.OBSCURED ||
+        maskMode === spec.MaskMode.REVERSE_OBSCURED
+      ) {
         renderer.mask = this.mask;
       }
     }
   }
 
   dispose (): void {
-    this.textureOptions = [];
     this.textures = [];
     this.composition = undefined;
     this.jsonScene = undefined;

@@ -1,20 +1,30 @@
-import { clamp } from '@galacean/effects-math/es/core/index';
+import { clamp } from '@galacean/effects-math/es/core/utils';
 
 /**
  * 定时器类
  */
 export class Ticker {
   tickers: ((dt: number) => void)[];
+
   private paused = true;
   private lastTime = 0;
   private targetFPS: number;
   private interval: number;
   private intervalId: number;
   private resetTickers: boolean;
+  // deltaTime
+  private dt = 0;
 
   constructor (fps = 60) {
     this.setFPS(fps);
     this.tickers = [];
+  }
+
+  /**
+   * 获取定时器当前帧更新的时间
+   */
+  get deltaTime () {
+    return this.dt;
   }
 
   /**
@@ -33,7 +43,7 @@ export class Ticker {
 
   /**
    * 获取定时器暂停标志位
-   * @returns 暂停标志位
+   * @returns
    */
   getPaused () {
     return this.paused;
@@ -44,6 +54,8 @@ export class Ticker {
    */
   start () {
     this.paused = false;
+    this.dt = 0;
+
     if (!this.intervalId) {
       this.lastTime = performance.now();
       const raf = requestAnimationFrame || function (func) {
@@ -68,6 +80,7 @@ export class Ticker {
     this.intervalId = 0;
     this.lastTime = 0;
     this.paused = true;
+    this.dt = 0;
     this.tickers = [];
   }
 
@@ -76,6 +89,7 @@ export class Ticker {
    */
   pause () {
     this.paused = true;
+    this.dt = 0;
   }
 
   /**
@@ -83,6 +97,7 @@ export class Ticker {
    */
   resume () {
     this.paused = false;
+    this.dt = 0;
   }
 
   /**
@@ -93,9 +108,9 @@ export class Ticker {
       return;
     }
     const startTime = performance.now();
-    const deltaTime = startTime - this.lastTime;
 
-    if (deltaTime >= this.interval) {
+    this.dt = startTime - this.lastTime;
+    if (this.dt >= this.interval) {
       this.lastTime = startTime;
 
       if (this.resetTickers) {
@@ -106,7 +121,7 @@ export class Ticker {
       for (let i = 0, len = this.tickers.length; i < len; i++) {
         const tick = this.tickers[i];
 
-        tick(deltaTime);
+        tick(this.dt);
       }
     }
   }
@@ -117,7 +132,7 @@ export class Ticker {
    */
   add (ticker: (dt: number) => void) {
     if (typeof ticker !== 'function') {
-      throw new Error('Ticker: The tick object must implement the tick method.');
+      throw new Error('The tick object must implement the tick method.');
     }
     this.tickers.push(ticker);
   }

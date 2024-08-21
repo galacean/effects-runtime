@@ -1,7 +1,6 @@
-import type { Attribute, Engine, GeometryProps, spec } from '@galacean/effects-core';
+import type { Attribute, Engine, GeometryProps, SkinProps, spec } from '@galacean/effects-core';
 import { BYTES_TYPE_MAP, generateEmptyTypedArray, Geometry, glContext } from '@galacean/effects-core';
 import * as THREE from 'three';
-import { ThreeComposition } from './three-composition';
 
 let seed = 1;
 
@@ -42,7 +41,7 @@ export class ThreeGeometry extends Geometry {
   /**
    * geometry 绘制模式
    */
-  public readonly mode: GLenum;
+  readonly mode: GLenum;
 
   private destroyed = false;
   private attributesName: string[] = [];
@@ -51,13 +50,19 @@ export class ThreeGeometry extends Geometry {
    * 构造函数
    * @param props - geometry 创建参数
    */
-  constructor (engine: Engine, props: GeometryProps) {
+  constructor (engine: Engine, props?: GeometryProps) {
+    super(engine);
+
+    if (!props) {
+      return;
+    }
+
     const {
       drawStart = 0, drawCount, indices, mode,
       name = `effectsGeometry:${seed++}`,
     } = props;
 
-    super(name);
+    this.name = name;
     this.mode = mode ?? glContext.TRIANGLES;
     const attributesName: string[] = [];
     const attributes: Record<string, ThreeAttributeWithType> = {};
@@ -161,11 +166,20 @@ export class ThreeGeometry extends Geometry {
       return;
     }
 
-    const attributeBuffer = this.attributes[name].buffer;
+    let attributeBuffer = this.attributes[name].buffer;
 
-    attributeBuffer.updateRange.count = data.length;
-    attributeBuffer.updateRange.offset = 0;
-    attributeBuffer.set(data, 0);
+    if (data.length > attributeBuffer.array.length) {
+      const buffer = new THREE.InterleavedBuffer(data, attributeBuffer.stride);
+
+      attributeBuffer = this.attributes[name].attribute.data = buffer;
+
+      this.geometry.setAttribute(name, this.attributes[name].attribute);
+    } else {
+      attributeBuffer.set(data, 0);
+      attributeBuffer.updateRange.count = data.length;
+      attributeBuffer.updateRange.offset = 0;
+    }
+
     this.geometry.attributes[name].needsUpdate = true;
   }
 
@@ -178,6 +192,7 @@ export class ThreeGeometry extends Geometry {
    * @returns
    */
   setAttributeSubData (name: string, dataOffset: number, data: spec.TypedArray): void {
+
     if (this.attributes[name] == undefined) {
       return;
     }
@@ -255,7 +270,6 @@ export class ThreeGeometry extends Geometry {
       //@ts-expect-error
       index.array.set(data, start);
       this.geometry.index!.needsUpdate = true;
-
     }
   }
 
@@ -296,11 +310,20 @@ export class ThreeGeometry extends Geometry {
   }
 
   /**
+   * 获取蒙皮数据
+   *
+   * @returns 返回蒙皮数据
+   */
+  getSkinProps (): SkinProps {
+    return {};
+  }
+
+  /**
    * 销毁方法
    *
    * @returns
    */
-  dispose (): void {
+  override dispose (): void {
     if (this.destroyed) {
       return;
     }
@@ -315,8 +338,8 @@ export class ThreeGeometry extends Geometry {
     attributes: Record<string, ThreeAttributeWithType>,
     maxCount?: number,
   ) {
-    const { size, offset, normalize, type = glContext.FLOAT } = attr as spec.AttributeWithData;
-    let { stride, data } = attr as spec.AttributeWithData;
+    const { stride = 0, size, offset, normalize, type = glContext.FLOAT } = attr as spec.AttributeWithData;
+    let { data } = attr as spec.AttributeWithData;
 
     if (type && !data) {
       data = generateEmptyTypedArray(type);
@@ -325,21 +348,19 @@ export class ThreeGeometry extends Geometry {
     if (!data) {
       return;
     }
-    if (name === 'aSprite') {
-      stride = 12;
-    } else {
-      stride = stride ?? 0;
-    }
+
     const dataLength = data instanceof Float32Array ? Float32Array.BYTES_PER_ELEMENT : Uint16Array.BYTES_PER_ELEMENT;
     const threeStride = stride / dataLength;
 
-    if (maxCount) {
+    maxCount = (maxCount ?? 0) * threeStride;
 
-      const length = maxCount * stride + (ThreeComposition.shape[name] ?? 0);
+    const count = maxCount || size * dataLength;
+
+    if (count) {
 
       // 如果传入了data且data.length不为0 使用传入的data 否则根据length新建数组
       if (data.length === 0) {
-        data = data instanceof Float32Array ? new Float32Array(length) : new Uint16Array(length);
+        data = data instanceof Float32Array ? new Float32Array(count) : new Uint16Array(count);
       }
 
     }

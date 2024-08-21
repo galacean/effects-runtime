@@ -1,21 +1,24 @@
+import { Euler, Matrix4, Quaternion, Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
-import { Vector3, Matrix4, Quaternion, Euler } from '@galacean/effects-math/es/core/index';
 import type { Disposable } from './utils';
 import { addItem, removeItem } from './utils';
+import type { Engine } from './engine';
 
 export interface TransformProps {
   position?: spec.vec3 | Vector3,
   rotation?: spec.vec3 | Euler,
   quat?: spec.vec4 | Quaternion,
   scale?: spec.vec3 | Vector3,
+  size?: Vector2,
   name?: string,
-  anchor?: spec.vec2 | spec.vec3 | Vector3,
+  anchor?: spec.vec2 | Vector2,
   valid?: boolean,
 }
 
 const tempQuat = new Quaternion();
 let seed = 1;
 
+// TODO 继承 Component
 export class Transform implements Disposable {
   /**
    * 转换右手坐标系左手螺旋对应的四元数到对应的旋转角
@@ -31,27 +34,34 @@ export class Transform implements Disposable {
     return out.setFromQuaternion(newQuat);
   }
 
-  public name: string;
+  engine: Engine;
+  name: string;
+  taggedProperties = {} as spec.TransformData;
   /**
    * 自身位移
    */
-  public readonly position = new Vector3(0, 0, 0);
+  readonly position = new Vector3(0, 0, 0);
   /**
    * 自身旋转对应的四元数，右手坐标系，旋转正方向左手螺旋（轴向的顺时针），旋转欧拉角的顺序为 ZYX
    */
-  public readonly quat = new Quaternion(0, 0, 0, 1);
+  readonly quat = new Quaternion(0, 0, 0, 1);
   /**
    * 自身旋转角度
    */
-  public readonly rotation = new Euler(0, 0, 0);
+  readonly rotation = new Euler(0, 0, 0);
   /**
    * 自身缩放
    */
-  public readonly scale = new Vector3(1, 1, 1);
+  readonly scale = new Vector3(1, 1, 1);
   /**
    * 自身锚点
    */
-  public readonly anchor = new Vector3(0, 0, 0);
+  readonly anchor = new Vector3(0, 0, 0);
+
+  /**
+   * 元素矩形宽高
+   */
+  readonly size = new Vector2(1, 1);
   /**
    * 子变换，可以有多个
    */
@@ -75,7 +85,7 @@ export class Transform implements Disposable {
   /**
    * 变换是否需要生效，不生效返回的模型矩阵为单位矩阵，需要随元素生命周期改变
    */
-  private valid = false;
+  private valid = true;
   /**
    * 数据变化标志位
    */
@@ -231,6 +241,15 @@ export class Transform implements Disposable {
     }
   }
 
+  setSize (x: number, y: number) {
+    if (this.size.x !== x || this.size.y !== y) {
+      this.size.x = x;
+      this.size.y = y;
+      this.dirtyFlags.localData = true;
+      this.dispatchValueChange();
+    }
+  }
+
   /**
    * 在当前旋转的基础上使用四元素添加旋转
    * @param quat
@@ -260,13 +279,11 @@ export class Transform implements Disposable {
    * 设置锚点
    * @param x
    * @param y
-   * @param z
    */
-  setAnchor (x: number, y: number, z: number) {
-    if (this.anchor.x !== x || this.anchor.y !== y || this.anchor.z !== z) {
+  setAnchor (x: number, y: number) {
+    if (this.anchor.x !== x || this.anchor.y !== y) {
       this.anchor.x = x;
       this.anchor.y = y;
-      this.anchor.z = z;
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
@@ -278,7 +295,7 @@ export class Transform implements Disposable {
    * @param reverseEuler - 设置 rotation时，欧拉角是否需要取负值
    */
   setTransform (props: TransformProps, reverseEuler?: boolean) {
-    const { position, rotation, scale, quat, name, anchor } = props;
+    const { position, rotation, scale, size, quat, name, anchor } = props;
 
     if (name) {
       this.name = name;
@@ -312,14 +329,16 @@ export class Transform implements Disposable {
         this.setScale(scale[0], scale[1], scale[2]);
       }
     }
+    if (size) {
+      this.setSize(size.x, size.y);
+    }
     if (anchor) {
-      if (anchor instanceof Vector3) {
-        this.setAnchor(anchor.x, anchor.y, anchor.z);
+      if (anchor instanceof Vector2) {
+        this.setAnchor(anchor.x, anchor.y);
       } else {
-        this.setAnchor(anchor[0], anchor[1], anchor[2] ?? 0);
+        this.setAnchor(anchor[0], anchor[1]);
       }
     }
-
   }
 
   /**
@@ -456,9 +475,9 @@ export class Transform implements Disposable {
 
   /**
    * 根据世界变换矩阵计算位移、旋转、缩放向量
-   * @param  position
-   * @param  quat
-   * @param  scale
+   * @param position
+   * @param quat
+   * @param scale
    */
   assignWorldTRS (position?: Vector3, quat?: Quaternion, scale?: Vector3) {
     this.updateTRSCache();
@@ -509,6 +528,26 @@ export class Transform implements Disposable {
    */
   getValid (): boolean {
     return this.valid;
+  }
+
+  toData () {
+    const transformData = this.taggedProperties;
+
+    transformData.position = this.position.clone();
+    transformData.eulerHint = { x: this.rotation.x, y: this.rotation.y, z: this.rotation.z };
+    transformData.scale = this.scale.clone();
+
+    return transformData;
+  }
+
+  fromData (data: spec.TransformData) {
+    const transformData = {
+      position: new Vector3().copyFrom(data.position),
+      rotation: new Euler(data.eulerHint.x, data.eulerHint.y, data.eulerHint.z),
+      scale: new Vector3().copyFrom(data.scale),
+    };
+
+    this.setTransform(transformData);
   }
 
   dispose (): void { }

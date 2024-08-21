@@ -1,11 +1,10 @@
-import type * as spec from '@galacean/effects-specification';
-import { Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
-import { getConfig, POST_PROCESS_SETTINGS } from '../config';
+import { Matrix4 } from '@galacean/effects-math/es/core/index';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
 import type { Geometry, Renderer } from '../render';
 import type { Disposable } from '../utils';
 import { DestroyOptions } from '../utils';
+import { RendererComponent } from '../components/renderer-component';
 
 export interface MeshOptionsBase {
   material: Material,
@@ -20,7 +19,7 @@ export interface GeometryMeshProps extends MeshOptionsBase {
 
 export interface MeshDestroyOptions {
   geometries?: DestroyOptions,
-  material?: MaterialDestroyOptions | DestroyOptions.keep,
+  material?: MaterialDestroyOptions | DestroyOptions,
 }
 
 let seed = 1;
@@ -28,65 +27,54 @@ let seed = 1;
 /**
  * Mesh 抽象类
  */
-export class Mesh implements Disposable {
+export class Mesh extends RendererComponent implements Disposable {
   /**
    * Mesh 的全局唯一 id
    */
   readonly id: string;
   /**
-   * Mesh 名称，缺省是 \<unnamed>
-   */
-  readonly name: string;
-  /**
    * Mesh 的世界矩阵
    */
   worldMatrix: Matrix4;
-  /**
-   * Mesh 的材质
-   */
-  material: Material;
   /**
    * Mesh 的 Geometry
    */
   geometry: Geometry;
 
   protected destroyed = false;
-
-  // 各引擎独立实现 priority，重写 getter/setter
-  private _priority: number;
   private visible = true;
 
   /**
    * 创建一个新的 Mesh 对象。
    */
-  static create: (engine: Engine, props: GeometryMeshProps) => Mesh;
+  static create: (engine: Engine, props?: GeometryMeshProps) => Mesh;
 
   constructor (
-    private engine: Engine,
-    props: GeometryMeshProps,
+    engine: Engine,
+    props?: GeometryMeshProps,
   ) {
-    const {
-      material,
-      geometry,
-      name = '<unnamed>',
-      priority = 0,
-      worldMatrix = Matrix4.fromIdentity(),
-    } = props;
+    super(engine);
+    if (props) {
+      const {
+        material,
+        geometry,
+        name = '<unnamed>',
+        priority = 0,
+        worldMatrix = Matrix4.fromIdentity(),
+      } = props;
 
-    this.id = 'Mesh' + seed++;
-    this.name = name;
-    this.geometry = geometry;
-    this.material = material;
-    this.priority = priority;
-    this.worldMatrix = worldMatrix;
-  }
-
-  get priority (): number {
-    return this._priority;
-  }
-
-  set priority (value: number) {
-    this._priority = value;
+      this.id = 'Mesh' + seed++;
+      this.name = name;
+      this.geometry = geometry;
+      this.material = material;
+      this.priority = priority;
+      this.worldMatrix = worldMatrix;
+    } else {
+      this.id = 'Mesh' + seed++;
+      this.name = '<unnamed>';
+      this.worldMatrix = Matrix4.fromIdentity();
+      this._priority = 0;
+    }
   }
 
   get isDestroyed (): boolean {
@@ -100,50 +88,25 @@ export class Mesh implements Disposable {
   setVisible (visible: boolean) {
     this.visible = visible;
   }
-
-  render (renderer: Renderer) {
-    const renderingData = renderer.renderingData;
-    const material = this.material;
-
-    if (renderingData.currentFrame.globalUniforms) {
-      if (renderingData.currentCamera) {
-        renderer.setGlobalMatrix('effects_MatrixInvV', renderingData.currentCamera.getInverseViewMatrix());
-        renderer.setGlobalMatrix('effects_MatrixV', renderingData.currentCamera.getViewMatrix());
-        renderer.setGlobalMatrix('effects_MatrixVP', renderingData.currentCamera.getViewProjectionMatrix());
-        renderer.setGlobalMatrix('_MatrixP', renderingData.currentCamera.getProjectionMatrix());
-      }
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.worldMatrix);
-    }
-    if (renderingData.currentFrame.editorTransform) {
-      material.setVector4('uEditorTransform', renderingData.currentFrame.editorTransform);
-    }
-    // 测试后处理 Bloom 和 ToneMapping 逻辑
-    if (__DEBUG__) {
-      if (getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)) {
-        const emissionColor = getConfig<Record<string, number[]>>(POST_PROCESS_SETTINGS)['color'].slice() as spec.vec3;
-
-        emissionColor[0] /= 255;
-        emissionColor[1] /= 255;
-        emissionColor[2] /= 255;
-        material.setVector3('emissionColor', Vector3.fromArray(emissionColor));
-        material.setFloat('emissionIntensity', getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['intensity']);
-      }
-    }
-    material.use(renderer, renderingData.currentFrame.globalUniforms);
-
-    const geo = this.geometry;
-
-    // 执行 Geometry 的数据刷新
-    geo.flush();
-
-    renderer.drawGeometry(geo, material);
-  }
-
   /**
    * 获取当前 Mesh 的可见性。
    */
   getVisible (): boolean {
     return this.visible;
+  }
+
+  override render (renderer: Renderer) {
+    if (this.isDestroyed) {
+      // console.error(`mesh ${mesh.name} destroyed`, mesh);
+      return;
+    }
+    if (!this.getVisible()) {
+      return;
+    }
+    if (renderer.renderingData.currentFrame.globalUniforms) {
+      renderer.setGlobalMatrix('effects_ObjectToWorld', this.worldMatrix);
+    }
+    renderer.drawGeometry(this.geometry, this.material);
   }
 
   /**
@@ -166,14 +129,13 @@ export class Mesh implements Disposable {
   }
 
   restore (): void {
-
   }
 
   /**
    * 销毁当前资源
    * @param options - 可选的销毁选项
    */
-  dispose (options?: MeshDestroyOptions) {
+  override dispose (options?: MeshDestroyOptions) {
     if (this.destroyed) {
       //console.error('call mesh.destroy multiple times', this);
       return;

@@ -3,21 +3,21 @@
 const float M_PI = 3.141592653589793;
 const float c_MinReflectance = 0.04;
 
-fsIn vec3 v_Position;
+varying vec3 v_Position;
 
 #ifdef HAS_NORMALS
 #ifdef HAS_TANGENTS
-fsIn mat3 v_TBN;
+varying mat3 v_TBN;
 #else
-fsIn vec3 v_Normal;
+varying vec3 v_Normal;
 #endif
 #endif
 
 #ifdef HAS_VERTEX_COLOR_VEC3
-fsIn vec3 v_Color;
+varying vec3 v_Color;
 #endif
 #ifdef HAS_VERTEX_COLOR_VEC4
-fsIn vec4 v_Color;
+varying vec4 v_Color;
 #endif
 
 struct AngularInfo
@@ -74,8 +74,8 @@ vec3 getNormal()
 #endif
 
 #ifdef HAS_NORMAL_MAP
-    vec3 n = texture2D(u_NormalSampler, UV).rgb;
-    n = normalize(tbn * ((2.0 * n - 1.0) * vec3(u_NormalScale, u_NormalScale, 1.0)));
+    vec3 n = texture2D(_NormalSampler, UV).rgb;
+    n = normalize(tbn * ((2.0 * n - 1.0) * vec3(_NormalScale, _NormalScale, 1.0)));
 #else
     // The tbn matrix is linearly interpolated, so we need to re-normalize
     vec3 n = normalize(tbn[2].xyz);
@@ -146,12 +146,12 @@ float getAARoughnessFactor(vec3 normal)
 
 #ifdef DEBUG_UV
 
-uniform float u_DebugUVGridSize;
-//const float u_DebugUVGridSize = 1.0 / 12.0;
+uniform float _DebugUVGridSize;
+//const float _DebugUVGridSize = 1.0 / 12.0;
 
 float getDebugUVColor(vec2 uv, vec3 n) {
     float s = dot(abs(n), vec3(1,1,1)) * 0.6;
-    uv = uv / (u_DebugUVGridSize * 2.0);
+    uv = uv / (_DebugUVGridSize * 2.0);
     uv = uv - floor(uv);
     uv = uv * 2.0 - vec2(1.0);
     return s * (uv.x * uv.y >= 0.0 ? 0.2: 1.0);

@@ -1,0 +1,46 @@
+// Example IDL file for our monster's schema.
+
+table FBEffectsPackageData {
+    export_objects: [FBEffectsObjectData];
+}
+
+table FBEffectsObjectData{
+    data_type: string;
+    data: [uint8];
+}
+
+table FBGeometryData {
+    id: string;
+    name: string;
+    vertex_data: FBVertexData;
+    index_format: int;
+    index_offset: int;
+    sub_meshes: [FBSubMesh];
+    mode: int;
+    buffer: string;
+    binary_data: [ubyte];
+    bone_names: [string];
+    root_bone_name: string;
+    inverse_bind_matrices: [float];
+}
+
+table FBVertexData {
+    vertex_count: int;
+    channels: [FBVertexChannel];
+}
+
+table FBVertexChannel {
+    semantic: string;
+    offset: int;
+    format: int;
+    dimension: int;
+    normalize: bool;
+}
+
+table FBSubMesh {
+    offset: int;
+    index_count: int;
+    vertex_count: int;
+}
+
+root_type FBEffectsPackageData;

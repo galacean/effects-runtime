@@ -1,9 +1,9 @@
-import type { JSONValue } from '@galacean/effects';
 import { Player } from '@galacean/effects';
-import type { GizmoVFXItem } from '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-editor-gizmo';
 import '@galacean/effects-plugin-model';
 import test_scene from './json/wireframe-mode.json';
+import { GizmoComponent } from '@galacean/effects-plugin-editor-gizmo';
+import { JSONConverter } from '@galacean/effects-plugin-model';
 
 (async () => {
   const player = new Player({
@@ -11,15 +11,18 @@ import test_scene from './json/wireframe-mode.json';
     renderFramework: 'webgl2',
     interactive: true,
     env: 'editor',
-    onItemClicked: e => {
-      const { player, id } = e;
-      const composition = player.getCompositions()[0];
-      const item = composition.items.find(item => item.id === String(id)) as GizmoVFXItem;
-
-      console.info('itemId: ' + item.id);
-      console.info('hitBoundingKey: ' + item.hitBounding?.key);
-    },
   });
 
-  await player.loadScene(test_scene);
+  player.on('click', e => {
+    const { player, id } = e;
+    const composition = player.getCompositions()[0];
+    const item = composition.items.find(item => item.id === String(id))!;
+
+    console.info('itemId: ' + item.id);
+    console.info('hitBoundingKey: ' + item.getComponent(GizmoComponent)?.hitBounding?.key);
+  });
+  const converter = new JSONConverter(player.renderer);
+  const scene = await converter.processScene(test_scene);
+
+  await player.loadScene(scene);
 })();

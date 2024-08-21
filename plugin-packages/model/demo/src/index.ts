@@ -3,10 +3,12 @@ import '@galacean/effects-plugin-model';
 import { createPlayer } from './utility';
 import * as json from './json';
 import * as camera from './camera';
+import * as hitTest from './hit-test';
 
 const demoMap = {
   json,
   camera,
+  hitTest,
 };
 
 function getDemoIndex (idxOrModule) {

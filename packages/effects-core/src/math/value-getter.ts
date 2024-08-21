@@ -1,13 +1,15 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
-import { random, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
+import { randomInRange, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
 import type { ColorStop } from '../utils';
 import type { BezierEasing } from './bezier';
-import { BezierPath, buildEasingCurve } from './bezier';
+import { BezierPath, buildEasingCurve, BezierQuat } from './bezier';
 import { Float16ArrayWrapper } from './float16array-wrapper';
 import { numberToFix } from './utils';
+import { HELP_LINK } from '../constants';
 
 interface KeyFrameMeta {
   curves: ValueGetter<any>[],
@@ -17,6 +19,10 @@ interface KeyFrameMeta {
   curveCount: number,
 }
 
+const CURVE_PRO_TIME = 0;
+const CURVE_PRO_VALUE = 1;
+const CURVE_PRO_IN_TANGENT = 2;
+const CURVE_PRO_OUT_TANGENT = 3;
 const NOT_IMPLEMENT = 'not_implement';
 
 export class ValueGetter<T> {
@@ -38,27 +44,31 @@ export class ValueGetter<T> {
   }
 
   onCreate (props: any) {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getIntegrateValue (t0: number, t1: number, timeScale = 1): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getIntegrateByTime (t0: number, time: number): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   getValue (time?: number): T {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
+  }
+
+  getMaxTime (): number {
+    throw new Error(NOT_IMPLEMENT);
   }
 
   toUniform (meta: KeyFrameMeta): Float32Array {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   map (func: (n: T) => T) {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 
   scaleXCoord (scale: number): ValueGetter<T> {
@@ -66,7 +76,7 @@ export class ValueGetter<T> {
   }
 
   toData (): ArrayLike<number> {
-    throw Error(NOT_IMPLEMENT);
+    throw new Error(NOT_IMPLEMENT);
   }
 }
 
@@ -100,6 +110,10 @@ export class StaticValue extends ValueGetter<number> {
 
     return this;
   }
+
+  override getMaxTime (): number {
+    return 0;
+  }
 }
 
 export class RandomSetValue<T> extends ValueGetter<T> {
@@ -132,7 +146,7 @@ export class RandomValue extends ValueGetter<number> {
   }
 
   override getValue (time?: number): number {
-    return random(this.min, this.max);
+    return randomInRange(this.min, this.max);
   }
 
   override toUniform () {
@@ -539,6 +553,64 @@ export class BezierCurve extends ValueGetter<number> {
 
     return data;
   }
+
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveMap);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
+}
+
+export class PathSegments extends ValueGetter<number[]> {
+  keys: number[][];
+  values: number[][];
+
+  override onCreate (props: number[][][]) {
+    this.keys = props[0];
+    this.values = props[1];
+  }
+
+  override getValue (time: number) {
+    const keys = this.keys;
+    const values = this.values;
+
+    for (let i = 0; i < keys.length - 1; i++) {
+      const k0 = keys[i];
+      const k1 = keys[i + 1];
+
+      if (k0[0] <= time && k1[0] >= time) {
+        const dis = k1[1] - k0[1];
+        let dt;
+
+        if (dis === 0) {
+          dt = (time - k0[0]) / (k1[0] - k0[0]);
+        } else {
+          const val = curveValueEvaluate(time, k0, k1);
+
+          dt = (val - k0[1]) / dis;
+        }
+
+        return this.calculateVec(i, dt);
+      }
+    }
+    if (time <= keys[0][0]) {
+      return values[0].slice();
+    }
+
+    return values[values.length - 1].slice();
+  }
+
+  calculateVec (i: number, dt: number) {
+    const vec0 = this.values[i];
+    const vec1 = this.values[i + 1];
+    const ret = [0, 0, 0];
+
+    for (let j = 0; j < vec0.length; j++) {
+      ret[j] = vec0[j] * (1 - dt) + vec1[j] * dt;
+    }
+
+    return ret;
+  }
 }
 
 export class BezierCurvePath extends ValueGetter<Vector3> {
@@ -618,8 +690,8 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
         const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
 
         perc = this.getPercValue(keyTimeData[i], t);
-        point = bezierPath.getPointInPercent(perc);
 
+        point = bezierPath.getPointInPercent(perc);
       }
     }
 
@@ -638,6 +710,112 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     return clamp(value, 0, 1);
   }
 
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
+}
+
+export class BezierCurveQuat extends ValueGetter<Quaternion> {
+  curveSegments: Record<string, {
+    points: Vector2[],
+    // 缓动曲线
+    easingCurve: BezierEasing,
+    timeInterval: number,
+    valueInterval: number,
+    // 路径曲线
+    pathCurve: BezierQuat,
+  }>;
+
+  override onCreate (props: spec.BezierCurveQuatValue) {
+    const [keyframes, points, controlPoints] = props;
+
+    this.curveSegments = {};
+    if (!controlPoints.length) {
+      return;
+    }
+
+    for (let i = 0; i < keyframes.length - 1; i++) {
+      const leftKeyframe = keyframes[i];
+      const rightKeyframe = keyframes[i + 1];
+      const ps1 = Quaternion.fromArray(points[i]);
+      const ps2 = Quaternion.fromArray(points[i + 1]);
+
+      const cp1 = Quaternion.fromArray(controlPoints[2 * i]);
+      const cp2 = Quaternion.fromArray(controlPoints[2 * i + 1]);
+
+      const { points: ps, curve: easingCurve, timeInterval, valueInterval } = buildEasingCurve(leftKeyframe, rightKeyframe);
+      const s = ps[0];
+      const e = ps[ps.length - 1];
+
+      const pathCurve = new BezierQuat(ps1, ps2, cp1, cp2);
+
+      this.curveSegments[`${s.x}&${e.x}`] = {
+        points: ps,
+        timeInterval,
+        valueInterval,
+        easingCurve,
+        pathCurve: pathCurve,
+      };
+    }
+
+  }
+
+  override getValue (time: number): Quaternion {
+    let perc = 0;
+    const t = numberToFix(time, 5);
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+
+    if (t <= keyTimeStart) {
+      const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+      return pathCurve.getPointInPercent(0);
+
+    }
+    if (t >= keyTimeEnd) {
+      const pathCurve = this.curveSegments[keyTimeData[keyTimeData.length - 1]].pathCurve;
+
+      return pathCurve.getPointInPercent(1);
+    }
+
+    for (let i = 0; i < keyTimeData.length; i++) {
+      const [xMin, xMax] = keyTimeData[i].split('&');
+
+      if (t >= Number(xMin) && t < Number(xMax)) {
+        const pathCurve = this.curveSegments[keyTimeData[i]].pathCurve;
+
+        perc = this.getPercValue(keyTimeData[i], t);
+
+        return pathCurve.getPointInPercent(perc);
+      }
+    }
+
+    const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
+
+    return pathCurve.getPointInPercent(0);
+  }
+
+  getPercValue (curveKey: string, time: number) {
+    const curveInfo = this.curveSegments[curveKey];
+    const [p0] = curveInfo.points;
+
+    const timeInterval = curveInfo.timeInterval;
+    const normalizeTime = numberToFix((time - p0.x) / timeInterval, 4);
+    const value = curveInfo.easingCurve.getValue(normalizeTime);
+
+    // TODO 测试用 编辑器限制值域后移除clamp
+    return clamp(value, 0, 1);
+  }
+
+  override getMaxTime (): number {
+    const keyTimeData = Object.keys(this.curveSegments);
+
+    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+  }
 }
 
 const map: Record<any, any> = {
@@ -676,9 +854,9 @@ const map: Record<any, any> = {
   [spec.ValueType.GRADIENT_COLOR] (props: number[][] | Record<string, string>) {
     return new GradientValue(props);
   },
-  // [spec.ValueType.LINEAR_PATH] (pros: number[][][]) {
-  //   return new PathSegments(pros);
-  // },
+  [spec.ValueType.LINEAR_PATH] (pros: number[][][]) {
+    return new PathSegments(pros);
+  },
   [spec.ValueType.BEZIER_CURVE] (props: number[][][]) {
     if (props.length === 1) {
       return new StaticValue(props[0][1][1]);
@@ -692,6 +870,13 @@ const map: Record<any, any> = {
     }
 
     return new BezierCurvePath(props);
+  },
+  [spec.ValueType.BEZIER_CURVE_QUAT] (props: number[][][]) {
+    if (props[0].length === 1) {
+      return new StaticValue(new Quaternion(...props[1][0]));
+    }
+
+    return new BezierCurveQuat(props);
   },
 };
 
@@ -707,7 +892,7 @@ export function createValueGetter (args: any): ValueGetter<any> {
   if (isFunction(map[args[0]])) {
     return map[args[0]](args[1]);
   } else {
-    throw new Error(`ValueType: ${args[0]} is not support`);
+    throw new Error(`ValueType: ${args[0]} is not supported, see ${HELP_LINK['ValueType: 21/22 is not supported']}.`);
   }
 }
 
@@ -724,6 +909,25 @@ function lineSegIntegrateByTime (t: number, t0: number, t1: number, y0: number, 
   const t03 = t02 * t0;
 
   return (2 * t3 * (y0 - y1) + 3 * t2 * (t0 * y1 - t1 * y0) - t03 * (2 * y0 + y1) + 3 * t02 * t1 * y0) / (6 * (t0 - t1));
+}
+
+function curveValueEvaluate (time: number, keyframe0: number[], keyframe1: number[]) {
+  const dt = keyframe1[CURVE_PRO_TIME] - keyframe0[CURVE_PRO_TIME];
+
+  const m0 = keyframe0[CURVE_PRO_OUT_TANGENT] * dt;
+  const m1 = keyframe1[CURVE_PRO_IN_TANGENT] * dt;
+
+  const t = (time - keyframe0[CURVE_PRO_TIME]) / dt;
+  const t2 = t * t;
+  const t3 = t2 * t;
+
+  const a = 2 * t3 - 3 * t2 + 1;
+  const b = t3 - 2 * t2 + t;
+  const c = t3 - t2;
+  const d = -2 * t3 + 3 * t2;
+
+  //(2*v0+m0+m1-2*v1)*(t-t0)^3/k^3+(3*v1-3*v0-2*m0-m1)*(t-t0)^2/k^2+m0 *(t-t0)/k+v0
+  return a * keyframe0[CURVE_PRO_VALUE] + b * m0 + c * m1 + d * keyframe1[CURVE_PRO_VALUE];
 }
 
 export function getKeyFrameMetaByRawValue (meta: KeyFrameMeta, value?: [type: spec.ValueType, value: any]) {
@@ -782,4 +986,3 @@ export function createKeyFrameMeta () {
     curveCount: 0,
   };
 }
-

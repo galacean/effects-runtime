@@ -1,4 +1,4 @@
-import type { Composition, CameraOptionsEx, spec } from '@galacean/effects';
+import type { Composition, CameraOptionsEx, spec, VFXItem } from '@galacean/effects';
 import { Transform } from '@galacean/effects';
 import type {
   CameraGestureHandler,
@@ -6,9 +6,10 @@ import type {
   CameraGestureHandlerParams,
 } from './protocol';
 import { CameraGestureType } from './protocol';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import { PCoordinate, PTransform } from '../runtime/common';
+import type { Euler } from '../runtime/math';
 import { Quaternion, Vector3, Matrix4 } from '../runtime/math';
+import { ModelCameraComponent } from '../plugin/model-item';
 
 export class CameraGestureHandlerImp implements CameraGestureHandler {
   private cameraTransform = new PTransform();
@@ -28,8 +29,8 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     private composition: Composition,
   ) { }
 
-  getItem (): ModelVFXItem | undefined {
-    return this.composition.items?.find(item => item.id === this.getCurrentTarget()) as ModelVFXItem;
+  getItem () {
+    return this.composition.items?.find(item => item.name === this.getCurrentTarget());
   }
 
   getCurrentTarget (): string {
@@ -51,7 +52,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn(`can't find camera item ${this.startParams.target}`);
+      console.warn(`[CameraGestureHandlerImp] Unable to locate camera item with ID: ${this.startParams.target}.`);
 
       return this.composition.camera.getOptions();
     }
@@ -82,8 +83,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const pos = cameraTransform.getPosition();
 
     pos.add(dir.clone().multiply(speed));
-    item.transform.setPosition(pos.x, pos.y, pos.z);
-    item.updateTransform();
+    this.setTransform(item, pos);
 
     // update camera transform and coordinates
     if (this.startParams.type === CameraGestureType.rotate_self) {
@@ -146,7 +146,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return this.startGesture(arg);
   }
 
-  onZMoving (x: number, y: number, speed: number): CameraOptionsEx {
+  onZMoving (x: number, y: number, speed = 0.015): CameraOptionsEx {
     if (!this.startParams.mouseEvent) {
       return this.composition.camera.getOptions();
     }
@@ -160,7 +160,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
       clientWidth: arg0.clientWidth,
       clientHeight: arg0.clientHeight,
       target: arg0.target,
-      speed: speed ?? 0.015,
+      speed,
     };
 
     return this.moveGesture(arg);
@@ -254,12 +254,12 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
-    item.transform.setPosition(...position);
-    item.updateTransform();
+
+    this.setPosition(item, position);
   }
 
   rotateTo (cameraID: string, quat: spec.vec4): void {
@@ -268,12 +268,12 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
-    item.transform.setQuaternion(...quat);
-    item.updateTransform();
+
+    this.setQuaternion(item, quat);
   }
 
   onFocusPoint (cameraID: string, point: spec.vec3, distance?: number): void {
@@ -283,7 +283,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const item = this.getItem();
 
     if (item === undefined) {
-      console.warn('can\'t find camera item');
+      console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
       return;
     }
@@ -299,7 +299,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     const newPosition = targetPoint.clone().add(newOffset);
 
     //
-    item.transform.setPosition(newPosition.x, newPosition.y, newPosition.z);
+    this.setTransform(item, newPosition);
     //
     // z+方向优先
     // const cameraPos = Vector3.fromArray(item.transform.position);
@@ -330,7 +330,6 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     // item.transform.setPosition(newPosition.x, newPosition.y, newPosition.z);
     //
     //
-    item.updateTransform();
     this.startParams.target = '';
   }
 
@@ -343,20 +342,12 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     return transform;
   }
 
-  // TODO: 是否有用
-  private initKeyEvent (cameraID: string, speed?: number) {
-    this.startParams.target = cameraID;
-    this.startParams.speed = speed;
-    this.startParams.type = CameraGestureType.translate;
-    this.updateCameraTransform(this.composition.camera.getOptions());
-  }
-
   private startGesture (args: CameraGestureHandlerParams): CameraOptionsEx {
     this.startParams = args;
     this.updateCameraTransform(this.composition.camera.getOptions());
 
     if (!this.getItem()) {
-      console.warn('invalid target');
+      console.warn('[CameraGestureHandlerImp] Invalid target specified in startGesture.');
     }
 
     return this.composition.camera.getOptions();
@@ -367,7 +358,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
       const item = this.getItem();
 
       if (item === undefined) {
-        console.warn('can\'t find camera item');
+        console.warn('[CameraGestureHandlerImp] Can\'t find camera item.');
 
         return this.composition.camera.getOptions();
       }
@@ -385,14 +376,14 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
         newPos.add(xAxis.clone().multiply(-dx * speed));
         newPos.add(yAxis.clone().multiply(dy * speed));
         item.transform.setPosition(newPos.x, newPos.y, newPos.z);
-        item.setTransform(item.transform.position, item.transform.rotation);
+        this.setTransform(item, item.transform.position, item.transform.rotation);
       } else if (arg.type === CameraGestureType.scale) {
         const pos = this.cameraTransform.getPosition();
         const newPos = pos.clone();
 
         newPos.add(zAxis.clone().multiply(dy * speed));
         item.transform.setPosition(newPos.x, newPos.y, newPos.z);
-        item.setTransform(item.transform.position, item.transform.rotation);
+        this.setTransform(item, item.transform.position, item.transform.rotation);
       } else if (arg.type === CameraGestureType.rotate_self) {
         const ndx = dx / arg.clientWidth;
         const ndy = dy / arg.clientHeight;
@@ -407,7 +398,7 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
         // FIXME: MATH
         newRotation.multiply(this.cameraTransform.getRotation());
         item.transform.setQuaternion(newRotation.x, newRotation.y, newRotation.z, newRotation.w);
-        item.setTransform(item.transform.position, item.transform.rotation);
+        this.setTransform(item, item.transform.position, item.transform.rotation);
       } else if (arg.type === CameraGestureType.rotate_focus) {
         const ndx = dx / arg.clientWidth;
         const ndy = dy / arg.clientHeight;
@@ -427,15 +418,41 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
         newRotation.multiply(this.cameraTransform.getRotation());
         item.transform.setPosition(newPosition.x, newPosition.y, newPosition.z);
         item.transform.setQuaternion(newRotation.x, newRotation.y, newRotation.z, newRotation.w);
-        item.setTransform(newPosition, item.transform.rotation);
+        this.setTransform(item, newPosition, item.transform.rotation);
       } else {
-        console.warn('not implement');
+        console.warn('[CameraGestureHandlerImp] Movement type not implemented.');
       }
     } else {
-      console.warn('invalid move type');
+      console.warn(`[CameraGestureHandlerImp] Invalid move type specified: ${arg.type}`);
     }
 
     return this.composition.camera.getOptions();
+  }
+
+  private setTransform (item: VFXItem, position?: Vector3, rotation?: Euler) {
+    const camera = item.getComponent(ModelCameraComponent);
+
+    if (camera !== undefined) {
+      camera.setTransform(position, rotation);
+    }
+  }
+
+  private setPosition (item: VFXItem, position: spec.vec3) {
+    item.transform.setPosition(...position);
+    const camera = item.getComponent(ModelCameraComponent);
+
+    if (camera !== undefined) {
+      camera.updateMainCamera();
+    }
+  }
+
+  private setQuaternion (item: VFXItem, quat: spec.vec4) {
+    item.transform.setQuaternion(...quat);
+    const camera = item.getComponent(ModelCameraComponent);
+
+    if (camera !== undefined) {
+      camera.updateMainCamera();
+    }
   }
 
   private endGesture () {

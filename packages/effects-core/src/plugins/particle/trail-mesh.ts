@@ -1,25 +1,22 @@
+import type { Matrix4 } from '@galacean/effects-math/es/core/index';
+import { Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type * as spec from '@galacean/effects-specification';
-import type { vec3, vec4, GradientStop } from '@galacean/effects-specification';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
-import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
+import type { GradientStop, vec3, vec4 } from '@galacean/effects-specification';
+import { RENDER_PREFER_LOOKUP_TEXTURE, getConfig } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
+import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
 import type { MaterialProps } from '../../material';
-import {
-  createShaderWithMarcos, getPreMultiAlpha, Material, setBlendMode, setMaskMode, ShaderType,
-} from '../../material';
-import { createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue } from '../../math';
-import type { GeometryProps, ShaderMarcos, ShaderWithSource, GPUCapability } from '../../render';
-import { Geometry, GLSLVersion, Mesh } from '../../render';
+import { Material, getPreMultiAlpha, setBlendMode, setMaskMode } from '../../material';
+import { ValueGetter } from '../../math';
+import { createKeyFrameMeta, createValueGetter, getKeyFrameMetaByRawValue } from '../../math';
+import type { GPUCapability, GeometryProps, ShaderMacros, ShaderWithSource } from '../../render';
+import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, trailVert } from '../../shader';
-import { generateHalfFloatTexture, Texture } from '../../texture';
-import { imageDataFromGradient } from '../../utils';
-import type { Engine } from '../../engine';
+import { Texture, generateHalfFloatTexture } from '../../texture';
+import { assertExist, imageDataFromGradient } from '../../utils';
 
-export type TrailMeshConstructor = {
+export type TrailMeshProps = {
   maxTrailCount: number,
   pointCountPerTrail: number,
   colorOverLifetime?: Array<GradientStop>,
@@ -28,7 +25,7 @@ export type TrailMeshConstructor = {
   blending: number,
   widthOverTrail: ValueGetter<number>,
   colorOverTrail?: Array<GradientStop>,
-  order: number,
+  // order: number,
   matrix?: Matrix4,
   opacityOverLifetime: ValueGetter<number>,
   occlusion: boolean,
@@ -41,7 +38,7 @@ export type TrailMeshConstructor = {
   name: string,
 };
 
-type TrailPointOptions = {
+export type TrailPointOptions = {
   lifetime: number,
   color: number[],
   size: number,
@@ -64,10 +61,9 @@ export class TrailMesh {
   private pointStart: Vector3[] = [];
   private trailCursors: Uint16Array;
 
-  // TODO: engine 挪到第一个参数
   constructor (
-    props: TrailMeshConstructor,
-    engine: Engine
+    engine: Engine,
+    props: TrailMeshProps,
   ) {
     const {
       colorOverLifetime,
@@ -79,7 +75,7 @@ export class TrailMesh {
       occlusion,
       blending,
       maskMode,
-      order,
+      // order,
       textureMap = [0, 0, 1, 1],
       texture,
       transparentOcclusion,
@@ -96,7 +92,7 @@ export class TrailMesh {
     const uniformValues: any = {};
     // const lookUpTexture = getConfig(RENDER_PREFER_LOOKUP_TEXTURE) ? 1 : 0;
     const lookUpTexture = 0;
-    const marcos: ShaderMarcos = [
+    const macros: ShaderMacros = [
       ['ENABLE_VERTEX_TEXTURE', enableVertexTexture],
       ['LOOKUP_TEXTURE_CURVE', lookUpTexture],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
@@ -105,17 +101,17 @@ export class TrailMesh {
     let shaderCacheId = 0;
 
     if (colorOverLifetime) {
-      marcos.push(['COLOR_OVER_LIFETIME', true]);
+      macros.push(['COLOR_OVER_LIFETIME', true]);
       shaderCacheId |= 1;
       uniformValues.uColorOverLifetime = Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime));
     }
     if (colorOverTrail) {
-      marcos.push(['COLOR_OVER_TRAIL', true]);
+      macros.push(['COLOR_OVER_TRAIL', true]);
       shaderCacheId |= 1 << 2;
       uniformValues.uColorOverTrail = Texture.createWithData(engine, imageDataFromGradient(colorOverTrail));
     }
     if (useAttributeTrailStart) {
-      marcos.push(['ATTR_TRAIL_START', 1]);
+      macros.push(['ATTR_TRAIL_START', 1]);
       shaderCacheId |= 1 << 3;
     } else {
       uniformValues.uTrailStart = new Float32Array(maxTrailCount);
@@ -124,7 +120,7 @@ export class TrailMesh {
     uniformValues.uOpacityOverLifetimeValue = opacityOverLifetime.toUniform(keyFrameMeta);
     const uWidthOverTrail = widthOverTrail.toUniform(keyFrameMeta);
 
-    marcos.push(
+    macros.push(
       ['VERT_CURVE_VALUE_COUNT', keyFrameMeta.index],
       ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
 
@@ -136,13 +132,13 @@ export class TrailMesh {
       uniformValues.uVCurveValues = ValueGetter.getAllData(keyFrameMeta);
     }
 
-    const vertex = createShaderWithMarcos(marcos, trailVert, ShaderType.vertex, level);
-    const fragment = createShaderWithMarcos(marcos, particleFrag, ShaderType.fragment, level);
+    const vertex = trailVert;
+    const fragment = particleFrag;
     const mtl: MaterialProps = ({
       shader: {
         vertex,
         fragment,
-        marcos,
+        macros,
         glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
         shared: true,
         name: `trail#${name}`,
@@ -208,7 +204,7 @@ export class TrailMesh {
         name: `MTrail_${name}`,
         material,
         geometry: Geometry.create(engine, geometryOptions),
-        priority: order,
+        // priority: order,
       }
     );
     const uMaskTex = texture ?? Texture.createWithData(engine);
@@ -366,7 +362,9 @@ export class TrailMesh {
 
     if (index >= 0 && index < pointCountPerTrail) {
       const startIndex = (trail * pointCountPerTrail + index) * 24 + 8;
-      const data = this.geometry.getAttributeData('aColor')!;
+      const data = this.geometry.getAttributeData('aColor');
+
+      assertExist(data);
 
       out.x = data[startIndex];
       out.y = data[1 + startIndex];
@@ -377,16 +375,18 @@ export class TrailMesh {
   }
 
   clearAllTrails () {
-    const geo = this.geometry;
+    const indexData = this.geometry.getIndexData();
+
+    assertExist(indexData);
 
     this.trailCursors = new Uint16Array(this.trailCursors.length);
-    // @ts-expect-error
-    geo.setIndexData(new Uint16Array(geo.getIndexData().length));
+    this.geometry.setIndexData(new Uint16Array(indexData.length));
   }
 
   minusTime (time: number) {
-    // FIXME: 可选性
-    const data = this.geometry.getAttributeData('aTime')!;
+    const data = this.geometry.getAttributeData('aTime');
+
+    assertExist(data);
 
     for (let i = 0; i < data.length; i++) {
       data[i] -= time;
@@ -401,7 +401,9 @@ export class TrailMesh {
       const indicesPerTrail = (pointCountPerTrail - 1) * 6;
       const indices = this.geometry.getIndexData();
 
-      indices?.set(new Uint16Array(indicesPerTrail), index * indicesPerTrail);
+      assertExist(indices);
+
+      indices.set(new Uint16Array(indicesPerTrail), index * indicesPerTrail);
       this.geometry.setIndexData(indices);
 
       this.trailCursors[index] = 0;
@@ -425,6 +427,7 @@ const tempDir = new Vector3();
 const tempDa = new Vector3();
 const tempDb = new Vector3();
 
+// TODO: prePoint 可选，point 必选，顺序有问题
 function calculateDirection (prePoint: Vector3 | undefined, point: Vector3, nextPoint?: Vector3): vec3 {
   const dir = tempDir;
 
@@ -445,11 +448,17 @@ function calculateDirection (prePoint: Vector3 | undefined, point: Vector3, next
   return dir.normalize().toArray();
 }
 
-export function getTrailMeshShader (trails: spec.ParticleTrail, particleMaxCount: number, name: string, env = '', gpuCapability: GPUCapability): ShaderWithSource {
+export function getTrailMeshShader (
+  trails: spec.ParticleTrail,
+  particleMaxCount: number,
+  name: string,
+  gpuCapability: GPUCapability,
+  env = '',
+): ShaderWithSource {
   let shaderCacheId = 0;
   const lookUpTexture = getConfig(RENDER_PREFER_LOOKUP_TEXTURE) ? 1 : 0;
   const enableVertexTexture = gpuCapability.detail.maxVertexTextures > 0;
-  const marcos: ShaderMarcos = [
+  const macros: ShaderMacros = [
     ['ENABLE_VERTEX_TEXTURE', enableVertexTexture],
     ['LOOKUP_TEXTURE_CURVE', lookUpTexture],
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
@@ -457,30 +466,30 @@ export function getTrailMeshShader (trails: spec.ParticleTrail, particleMaxCount
   const keyFrameMeta = createKeyFrameMeta();
 
   if (trails.colorOverLifetime) {
-    marcos.push(['COLOR_OVER_LIFETIME', true]);
+    macros.push(['COLOR_OVER_LIFETIME', true]);
     shaderCacheId |= 1;
   }
   if (trails.colorOverTrail) {
-    marcos.push(['COLOR_OVER_TRAIL', true]);
+    macros.push(['COLOR_OVER_TRAIL', true]);
     shaderCacheId |= 1 << 2;
   }
 
   const useAttributeTrailStart = particleMaxCount > 64;
 
   if (useAttributeTrailStart) {
-    marcos.push(['ATTR_TRAIL_START', 1]);
+    macros.push(['ATTR_TRAIL_START', 1]);
     shaderCacheId |= 1 << 3;
   }
   getKeyFrameMetaByRawValue(keyFrameMeta, trails.opacityOverLifetime);
   getKeyFrameMetaByRawValue(keyFrameMeta, trails.widthOverTrail);
-  marcos.push(
+  macros.push(
     ['VERT_CURVE_VALUE_COUNT', keyFrameMeta.index],
     ['VERT_MAX_KEY_FRAME_COUNT', keyFrameMeta.max]);
 
   return {
     vertex: trailVert,
     fragment: particleFrag,
-    marcos,
+    macros,
     shared: true,
     name: 'trail#' + name,
     cacheId: `-t:+${shaderCacheId}+${keyFrameMeta.index}+${keyFrameMeta.max}`,

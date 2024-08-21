@@ -1,15 +1,7 @@
-import { assertExist } from '@galacean/effects';
-import { angleLimit, type AngleType } from './utils/angle-limit';
-import { deepMerge } from './utils/deep-merge';
-import { isIOS, isMiniProgram } from './utils/device';
+import { assertExist, isIOSByUA, isMiniProgram } from '@galacean/effects';
+import type { AngleType } from './utils/angle-limit';
+import { angleLimit } from './utils/angle-limit';
 import { Filtering } from './utils/filtering';
-
-declare global {
-  interface Window {
-    AlipayJSBridge: any,
-    WindVane: any,
-  }
-}
 
 type JSBridgeParam = {
   x: number,
@@ -23,7 +15,7 @@ type WindVaneParams = {
   z: number,
 };
 
-const useJSBridge = isIOS() && typeof window.AlipayJSBridge !== 'undefined';
+const useJSBridge = isIOSByUA() && typeof window.AlipayJSBridge !== 'undefined';
 const useWindVane = typeof window.WindVane !== 'undefined';
 
 export type DeviceOrientationOptions = {
@@ -98,8 +90,13 @@ export class DeviceOrientation {
   private readonly filterY: Filtering;
   private watchListener?: (e: DeviceOrientationEvent | Event) => void;
 
-  constructor (options = {}) {
-    this.options = deepMerge(defaultOptions, options);
+  constructor (options: Record<string, any> = {}) {
+    // 模拟简单的 deep merge
+    const validRange = { ...defaultOptions.validRange, ...options.validRange };
+    const mergeOptions = { ...defaultOptions, ...options };
+
+    mergeOptions.validRange = validRange;
+    this.options = mergeOptions;
 
     const { stableRange } = this.options;
 
@@ -130,9 +127,9 @@ export class DeviceOrientation {
       if (this.stoped) {
         return;
       }
-      alpha = e.alpha!; // 垂直于屏幕的轴 0 ~ 360
-      beta = e.beta!; // 横向 X 轴 -180 ~ 180
-      gamma = e.gamma!; // 纵向 Y 轴 -90 ~ 90
+      alpha = e.alpha || 0; // 垂直于屏幕的轴 0 ~ 360
+      beta = e.beta || 0; // 横向 X 轴 -180 ~ 180
+      gamma = e.gamma || 0; // 纵向 Y 轴 -90 ~ 90
 
       isInValidDegRange = angleLimit.call(this, {
         alpha,
@@ -174,10 +171,10 @@ export class DeviceOrientation {
         if (this.isValid(x, y)) {
           if (this.options.useRequestAnimationFrame) {
             window.requestAnimationFrame(() => {
-              callback(x, y, { alpha, beta: y - referBeta, gamma:x - referGamma });
+              callback(x, y, { alpha, beta: y - referBeta, gamma: x - referGamma });
             });
           } else {
-            callback(x, y, { alpha, beta: y - referBeta, gamma:x - referGamma });
+            callback(x, y, { alpha, beta: y - referBeta, gamma: x - referGamma });
           }
           this.lastX = x;
           this.lastY = y;
@@ -303,8 +300,8 @@ function switchWindVane (open: boolean, interval?: number) {
   };
 
   window.WindVane.call('WVMotion', 'listenGyro', params, (e: Event) => {
-    console.info('call WVMotion success');
+    console.info('Call WVMotion success.');
   }, (e: Event) => {
-    console.error('call WVMotion failed:' + JSON.stringify(e));
+    console.error(`Call WVMotion failed: ${JSON.stringify(e)}.`);
   });
 }

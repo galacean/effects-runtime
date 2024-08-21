@@ -1,6 +1,5 @@
-// @ts-nocheck
-import { glContext, ShaderCompileResultStatus } from '@galacean/effects-core';
-import { GLGPUBuffer, GLGeometry, GLRenderer } from '@galacean/effects-webgl';
+import { glContext, Renderer, ShaderCompileResultStatus } from '@galacean/effects-core';
+import { GLGPUBuffer, GLGeometry, GLRenderer, GLVertexArrayObject } from '@galacean/effects-webgl';
 import { getGL, getGL2 } from './gl-utils.js';
 
 const { expect } = chai;
@@ -21,26 +20,26 @@ describe('webgl/gl-vertex-array-object', () => {
       gl_FragColor =vec4(1.0,0.0,0.0,1.0);
     }
     `;
-  let renderer, glRenderer;
+  let renderer: GLRenderer;
+  let glRenderer;
 
   afterEach(() => {
-    const canvas = renderer.canvas;
-
     renderer.dispose();
-    canvas.remove();
+    (renderer.canvas as HTMLCanvasElement)?.remove();
+    // @ts-expect-error
     renderer = null;
   });
 
   it('create vao use extension when webgl', () => {
     renderer = createGLGPURenderer('webgl');
     glRenderer = renderer.glRenderer;
-    const vao = glRenderer.createVAO();
+    const vao = glRenderer.createVAO()!;
     const ext = glRenderer.gl.getExtension('OES_vertex_array_object');
 
     if (ext) {
-      vao?.bind();
+      vao.bind();
       expect(ext.isVertexArrayOES(vao.vao)).is.true;
-      vao?.dispose();
+      vao.dispose();
       expect(ext.isVertexArrayOES(vao.vao)).is.false;
     }
   });
@@ -48,8 +47,8 @@ describe('webgl/gl-vertex-array-object', () => {
   it('create vao when webgl2', () => {
     renderer = createGLGPURenderer('webgl2');
     glRenderer = renderer.glRenderer;
-    const gl = glRenderer.gl;
-    const vao = glRenderer.createVAO();
+    const gl = glRenderer.gl as WebGL2RenderingContext;
+    const vao = glRenderer.createVAO()!;
 
     vao.bind();
     expect(gl.isVertexArray(vao.vao)).is.true;
@@ -61,29 +60,27 @@ describe('webgl/gl-vertex-array-object', () => {
     renderer = createGLGPURenderer('webgl');
     glRenderer = renderer.glRenderer;
     const engine = renderer.engine;
-    const glGeometry = new GLGeometry(
-      engine,
-      {
-        name: 'vao1',
-        drawCount: 3,
-        drawStart: 0,
-        mode: 0,
-        attributes: {
-          aPoint: {
-            size: 2,
-            stride: Float32Array.BYTES_PER_ELEMENT * 4,
-            type: glContext.FLOAT,
-            data: new Float32Array(12),
-          },
-          aTexCoord: {
-            size: 2,
-            stride: Float32Array.BYTES_PER_ELEMENT * 4,
-            offset: Float32Array.BYTES_PER_ELEMENT * 2,
-            type: glContext.FLOAT,
-            data: new Float32Array(12),
-          },
+    const glGeometry = new GLGeometry(engine, {
+      name: 'vao1',
+      drawCount: 3,
+      drawStart: 0,
+      mode: 0,
+      attributes: {
+        aPoint: {
+          size: 2,
+          stride: Float32Array.BYTES_PER_ELEMENT * 4,
+          type: glContext.FLOAT,
+          data: new Float32Array(12),
         },
-      });
+        aTexCoord: {
+          size: 2,
+          stride: Float32Array.BYTES_PER_ELEMENT * 4,
+          offset: Float32Array.BYTES_PER_ELEMENT * 2,
+          type: glContext.FLOAT,
+          data: new Float32Array(12),
+        },
+      },
+    });
 
     glGeometry.initialize();
 
@@ -95,7 +92,9 @@ describe('webgl/gl-vertex-array-object', () => {
     expect(result.status).to.eql(ShaderCompileResultStatus.success);
     const glProgram = shader.program;
     const gl = glRenderer.gl;
+    // @ts-expect-error private
     const loc = glProgram.attribInfoMap['aPoint'].loc;
+    // @ts-expect-error private
     const texLoc = glProgram.attribInfoMap['aTexCoord'].loc;
 
     gl.enableVertexAttribArray(loc);
@@ -111,7 +110,8 @@ describe('webgl/gl-vertex-array-object', () => {
 
     expect(gl.getVertexAttrib(texLoc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(2);
     expect(gl.getVertexAttrib(texLoc, gl.VERTEX_ATTRIB_ARRAY_STRIDE)).to.eql(4 * Float32Array.BYTES_PER_ELEMENT);
-    const vao = glGeometry.vaos[glProgram.id];
+    // @ts-expect-error private
+    const vao = glGeometry.vaos[glProgram.id]!;
 
     vao.unbind();
     gl.enableVertexAttribArray(loc);
@@ -119,44 +119,39 @@ describe('webgl/gl-vertex-array-object', () => {
     expect(gl.getVertexAttrib(loc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(4);
     vao.bind();
     expect(gl.getVertexAttrib(loc, gl.VERTEX_ATTRIB_ARRAY_SIZE)).to.eql(2);
-    expect(gl.getExtension('OES_vertex_array_object').isVertexArrayOES(vao.vao)).is.true;
+    expect(gl.getExtension('OES_vertex_array_object')?.isVertexArrayOES(vao.vao)).is.true;
     vao.dispose();
-    expect(gl.getExtension('OES_vertex_array_object').isVertexArrayOES(vao.vao)).is.false;
+    expect(gl.getExtension('OES_vertex_array_object')?.isVertexArrayOES(vao.vao)).is.false;
   });
 
   it('use state to reduce binding call', () => {
     renderer = createGLGPURenderer('webgl2');
     glRenderer = renderer.glRenderer;
     const engine = renderer.engine;
-    const glGeometry = new GLGeometry(
-      engine,
-      {
-        name: 'vao2',
-        drawCount: 3,
-        drawStart: 0,
-        mode: 0,
-        buffers: {
-          aPoint: new GLGPUBuffer(glRenderer.pipelineContext, { data: new Float32Array(12) }),
+    const glGeometry = new GLGeometry(engine, {
+      name: 'vao2',
+      drawCount: 3,
+      drawStart: 0,
+      mode: 0,
+      attributes: {
+        aPoint: {
+          size: 2,
+          stride: Float32Array.BYTES_PER_ELEMENT * 4,
+          type: glContext.FLOAT,
+          dataSource: 'aPoint',
         },
-        attributes: {
-          aPoint: {
-            size: 2,
-            stride: Float32Array.BYTES_PER_ELEMENT * 4,
-            type: glContext.FLOAT,
-            dataSource: 'aPoint',
-          },
-          aTexCoord: {
-            size: 2,
-            stride: Float32Array.BYTES_PER_ELEMENT * 4,
-            offset: Float32Array.BYTES_PER_ELEMENT * 2,
-            type: glContext.FLOAT,
-            dataSource: 'aPoint',
-          },
+        aTexCoord: {
+          size: 2,
+          stride: Float32Array.BYTES_PER_ELEMENT * 4,
+          offset: Float32Array.BYTES_PER_ELEMENT * 2,
+          type: glContext.FLOAT,
+          dataSource: 'aPoint',
         },
-      });
+      },
+    });
 
     glGeometry.initialize();
-    const bindFunc = chai.spy(glRenderer.gl.bindVertexArray);
+    const bindFunc = chai.spy((glRenderer.gl as WebGL2RenderingContext).bindVertexArray);
 
     if ('bindVertexArray' in glRenderer.gl) {
       glRenderer.gl.bindVertexArray = bindFunc;
@@ -175,8 +170,8 @@ describe('webgl/gl-vertex-array-object', () => {
   });
 });
 
-function createGLGPURenderer (type) {
+function createGLGPURenderer (type: 'webgl' | 'webgl2') {
   const gl = type === 'webgl' ? getGL() : getGL2();
 
-  return new GLRenderer(gl.canvas, type);
+  return new GLRenderer(gl!.canvas, type);
 }

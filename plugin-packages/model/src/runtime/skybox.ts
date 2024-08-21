@@ -1,60 +1,128 @@
-import type { spec, Mesh, Material, TextureSourceOptions, TextureConfigOptions, Engine } from '@galacean/effects';
-import { glContext, Texture, TextureSourceType, loadImage } from '@galacean/effects';
-import type { ModelItemSkybox, ModelSkyboxOptions } from '../index';
+import type { Mesh, Material, TextureSourceOptions, Engine, Renderer } from '@galacean/effects';
+import { spec, glContext, Texture, TextureSourceType, loadImage, generateGUID } from '@galacean/effects';
+import type { ModelSkyboxComponentData, ModelSkyboxOptions } from '../index';
 import { PObjectType, PMaterialType } from './common';
 import { PEntity } from './object';
 import { PMaterialBase } from './material';
-import type { CompositionCache } from './cache';
-import type { PSceneStates } from './scene';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
+import type { PSceneManager } from './scene';
 import { WebGLHelper } from '../utility/plugin-helper';
 import { Vector2, Vector3 } from './math';
+import type { ModelSkyboxComponent } from '../plugin/model-item';
 
+/**
+ * 天空盒类，支持天空盒的渲染和 IBL 光照效果
+ */
 export class PSkybox extends PEntity {
+  /**
+   * 所属的天空盒组件
+   */
+  owner?: ModelSkyboxComponent;
+  /**
+   * 是否渲染
+   */
   renderable = true;
+  /**
+   * 强度
+   */
   intensity = 1.0;
+  /**
+   * 反射强度
+   */
   reflectionsIntensity = 1.0;
-  //
+  /**
+   * 辐射照度系数
+   */
   irradianceCoeffs?: number[][];
+  /**
+   * 漫反射贴图
+   */
   diffuseImage?: Texture;
-  //
+  /**
+   * 高光贴图
+   */
   specularImage!: Texture;
+  /**
+   * 高光贴图大小
+   */
   specularImageSize = 0;
+  /**
+   * 高光贴图 Mip 层数目
+   */
   specularMipCount = 0;
-  //
+  /**
+   * BRDF 查询纹理
+   */
   brdfLUT?: Texture;
-  //
+  /**
+   * 优先级
+   */
   priority = 0;
+  /**
+   * 天空盒 Mesh
+   */
   skyboxMesh?: Mesh;
+  /**
+   * 天空盒材质
+   */
   skyboxMaterial?: PMaterialSkyboxFilter;
+  /**
+   * 是否构建过
+   */
   isBuilt = false;
 
-  constructor (skybox: ModelItemSkybox, ownerItem?: ModelVFXItem) {
+  /**
+   * 构造函数
+   * @param name - 名称
+   * @param data - 天空盒参数
+   * @param owner - 所属天空盒组件元素
+   */
+  constructor (name: string, data: ModelSkyboxComponentData, owner?: ModelSkyboxComponent) {
     super();
-    this.name = skybox.name;
+    this.name = name;
     this.type = PObjectType.skybox;
     this.visible = false;
-    this.ownerItem = ownerItem;
+    this.owner = owner;
 
-    const options = skybox.content.options;
+    const { irradianceCoeffs } = data;
 
-    this.renderable = options.renderable;
-    this.intensity = options.intensity;
-    this.reflectionsIntensity = options.reflectionsIntensity;
-    this.irradianceCoeffs = options.irradianceCoeffs;
-    this.diffuseImage = options.diffuseImage;
-    this.specularImage = options.specularImage;
-    this.specularImageSize = options.specularImageSize;
-    this.specularMipCount = options.specularMipCount;
+    this.renderable = data.renderable;
+    this.intensity = data.intensity;
+    this.reflectionsIntensity = data.reflectionsIntensity;
+    if (irradianceCoeffs) {
+      this.irradianceCoeffs = [];
+      for (let i = 0; i < irradianceCoeffs.length; i += 3) {
+        this.irradianceCoeffs.push([
+          irradianceCoeffs[i],
+          irradianceCoeffs[i + 1],
+          irradianceCoeffs[i + 2],
+        ]);
+      }
+    } else {
+      this.irradianceCoeffs = [];
+    }
 
-    this.priority = ownerItem?.listIndex || 0;
+    this.diffuseImage = data.diffuseImage as unknown as Texture;
+    this.specularImage = data.specularImage as unknown as Texture;
+    this.specularImageSize = data.specularImageSize;
+    this.specularMipCount = data.specularMipCount;
+
+    this.priority = owner?.item?.renderOrder || 0;
   }
 
+  /**
+   * 设置 BRDF 查询纹理
+   * @param brdfLUT - 纹理
+   */
   setup (brdfLUT?: Texture) {
     this.brdfLUT = brdfLUT;
   }
 
-  build (sceneCache: CompositionCache) {
+  /**
+   * 构建天空盒，创建天空盒材质，从场景缓存中创建天空盒 Mesh
+   * @param sceneCache - 场景缓存
+   * @returns
+   */
+  build (scene: PSceneManager) {
     if (this.isBuilt) {
       return;
     }
@@ -64,12 +132,34 @@ export class PSkybox extends PEntity {
     this.skyboxMaterial.create(this);
     this.skyboxMaterial.build();
     //
-    this.skyboxMesh = sceneCache.getFilterMesh('SkyboxFilterPlane', this.skyboxMaterial, {});
+    const sceneCache = scene.getSceneCache();
+
+    this.skyboxMesh = sceneCache.getFilterMesh('SkyboxFilterPlane', this.skyboxMaterial);
     this.skyboxMesh.priority = this.priority;
     this.skyboxMaterial.updateUniforms(this.skyboxMesh.material);
   }
 
+  /**
+   * 渲染天空盒
+   * @param scene - 场景
+   * @param renderer - 渲染器
+   */
+  override render (scene: PSceneManager, renderer: Renderer) {
+    this.updateMaterial(scene);
+
+    if (this.visible && this.renderable && this.skyboxMesh !== undefined) {
+      const mesh = this.skyboxMesh;
+
+      renderer.drawGeometry(mesh.geometry, mesh.material);
+    }
+  }
+
+  /**
+   * 销毁
+   */
   override dispose () {
+    super.dispose();
+    this.owner = undefined;
     this.diffuseImage = undefined;
     //@ts-expect-error
     this.specularImage = undefined;
@@ -79,24 +169,24 @@ export class PSkybox extends PEntity {
     this.skyboxMaterial = undefined;
   }
 
-  override addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
-    if (this.visible && this.renderable && this.skyboxMesh !== undefined) {
-      renderObjectSet.add(this.skyboxMesh);
-    }
-  }
+  private updateMaterial (scene: PSceneManager) {
+    this.build(scene);
 
-  override updateUniformsForScene (sceneStates: PSceneStates) {
     if (this.visible && this.renderable && this.skyboxMesh !== undefined && this.skyboxMaterial !== undefined) {
+      const sceneStates = scene.sceneStates;
       const camera = sceneStates.camera;
       const viewMatrix = sceneStates.viewMatrix;
-      const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fovy).multiply(viewMatrix).invert();
+      const newProjViewMatrix = camera.getNewProjectionMatrix(camera.fov).multiply(viewMatrix).invert();
       const material = this.skyboxMesh.material;
 
       this.skyboxMaterial.updateUniforms(material);
-      material.setMatrix('u_InvViewProjectionMatrix', newProjViewMatrix);
+      material.setMatrix('_InvViewProjectionMatrix', newProjViewMatrix);
     }
   }
 
+  /**
+   * 是否可用，根据内部的强度、辐射照度系数、漫反射贴图和高光贴图状态
+   */
   get available (): boolean {
     if (!this.isValid()) { return false; }
 
@@ -104,40 +194,80 @@ export class PSkybox extends PEntity {
 
     if (this.irradianceCoeffs === undefined && this.diffuseImage === undefined) { return false; }
 
-    return this.specularImage !== undefined && this.specularMipCount > 0;
+    return this.specularImage !== undefined && this.specularMipCount >= 0;
   }
 
+  /**
+   * 当前强度，如果不可见返回 0
+   */
   get currentIntensity (): number {
     return this.visible ? this.intensity : 0;
   }
 
+  /**
+   * 当前反射强度，如果不可见返回 0
+   */
   get currentReflectionsIntensity (): number {
     return this.visible ? this.reflectionsIntensity : 0;
   }
 
+  /**
+   * 是否有漫反射贴图
+   */
   get hasDiffuseImage (): boolean {
     return this.diffuseImage !== undefined;
   }
 
+  /**
+   * 是否有辐射照度系数
+   */
   get hasIrradianceCoeffs (): boolean {
     return this.irradianceCoeffs !== undefined;
   }
 
 }
 
+/**
+ * 天空盒材质类
+ */
 export class PMaterialSkyboxFilter extends PMaterialBase {
+  /**
+   * 强度
+   */
   intensity = 1.0;
+  /**
+   * 反射强度
+   */
   reflectionsIntensity = 1.0;
+  /**
+   * BRDF 查询纹理
+   */
   brdfLUT?: Texture;
+  /**
+   * 辐射照度系数
+   */
   irradianceCoeffs?: number[][];
+  /**
+   * 漫反射贴图
+   */
   diffuseImage?: Texture;
+  /**
+   * 高光贴图
+   */
   specularImage!: Texture;
+  /**
+   * 高光贴图 Mip 数目
+   */
   specularMipCount = 0;
 
+  /**
+   * 创建天空盒材质，从天空盒对象
+   * @param skybox - 天空盒对象
+   */
   create (skybox: PSkybox) {
     this.type = PObjectType.material;
     this.materialType = PMaterialType.skyboxFilter;
-    this.depthTestHint = false;
+    this.ZTest = false;
     //
     this.name = skybox.name;
     this.intensity = skybox.intensity;
@@ -149,6 +279,9 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
     this.specularMipCount = skybox.specularMipCount;
   }
 
+  /**
+   * 销毁，需要解除资源引用
+   */
   override dispose () {
     super.dispose();
     this.brdfLUT = undefined;
@@ -158,6 +291,10 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
     this.specularImage = undefined;
   }
 
+  /**
+   * 获取着色器特性列表
+   * @returns
+   */
   override getShaderFeatures (): string[] {
     const featureList: string[] = [];
 
@@ -168,30 +305,38 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
     return featureList;
   }
 
+  /**
+   * 更新着色器 Uniform 数据
+   * @param material - 对应的 Core 层材质
+   */
   override updateUniforms (material: Material) {
     if (this.brdfLUT === undefined) {
       throw new Error('Setup brdfLUT for skybox at first.');
     }
 
-    material.setVector2('u_IblIntensity', new Vector2(2.0, 2.0));
-    material.setTexture('u_brdfLUT', this.brdfLUT);
+    material.setVector2('_IblIntensity', new Vector2(2.0, 2.0));
+    material.setTexture('_brdfLUT', this.brdfLUT);
     if (this.diffuseImage !== undefined) {
-      material.setTexture('u_DiffuseEnvSampler', this.diffuseImage);
+      material.setTexture('_DiffuseEnvSampler', this.diffuseImage);
     } else {
       const coeffs = this.irradianceCoeffs;
 
-      if (coeffs === undefined || coeffs.length != 9) { throw new Error(`Invalid skybox irradiance coeffs ${coeffs}`); }
+      if (coeffs === undefined || coeffs.length != 9) { throw new Error(`Invalid skybox irradiance coeffs ${coeffs}.`); }
 
       const aliasName = ['l00', 'l1m1', 'l10', 'l11', 'l2m2', 'l2m1', 'l20', 'l21', 'l22'];
 
       aliasName.forEach((n, i) => {
-        material.setVector3(`u_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
+        material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
       });
     }
-    material.setInt('u_MipCount', this.specularMipCount);
-    material.setTexture('u_SpecularEnvSampler', this.specularImage);
+    material.setInt('_MipCount', this.specularMipCount - 1);
+    material.setTexture('_SpecularEnvSampler', this.specularImage);
   }
 
+  /**
+   * 设置对应的材质状态
+   * @param material - 对应的 Core 层材质
+   */
   override setMaterialStates (material: Material) {
     material.depthTest = true;
     material.depthMask = false;
@@ -199,35 +344,98 @@ export class PMaterialSkyboxFilter extends PMaterialBase {
   }
 }
 
+/**
+ * 图像缓冲区数据接口
+ */
 export interface PImageBufferData {
+  /**
+   * 类型，总是 buffer
+   */
   type: 'buffer',
+  /**
+   * 数组
+   */
   data: Uint8Array,
+  /**
+   * MIME 类型
+   */
   mimeType: string,
 }
 
+/**
+ * 图像数据类型，字符串（URL）或者图像缓冲区数据
+ */
 export type PImageData = string | PImageBufferData;
 
+/**
+ * 天空盒基础参数接口
+ */
 export interface PSkyboxBaseParams {
+  /**
+   * 是否渲染
+   */
   renderable: boolean,
+  /**
+   * 强度
+   */
   intensity: number,
+  /**
+   * 反射强度
+   */
   reflectionsIntensity: number,
-  irradianceCoeffs?: number[][],
+  /**
+   * 辐射照度系数
+   */
+  irradianceCoeffs?: number[],
+  /**
+   * 高光贴图 Mip 层数
+   */
   specularMipCount: number,
+  /**
+   * 高光贴图大小
+   */
   specularImageSize: number,
 }
 
+/**
+ * 天空盒 URL 参数接口
+ */
 export interface PSkyboxURLParams extends PSkyboxBaseParams {
+  /**
+   * 类型，总是 url
+   */
   type: 'url',
+  /**
+   * 漫反射贴图 URL 列表
+   */
   diffuseImage?: string[],
+  /**
+   * 高光贴图 URL 二级列表
+   */
   specularImage: string[][],
 }
 
+/**
+ * 天空盒缓冲区参数接口
+ */
 export interface PSkyboxBufferParams extends PSkyboxBaseParams {
+  /**
+   * 类型，总是 buffer
+   */
   type: 'buffer',
+  /**
+   * 漫反射贴图列表
+   */
   diffuseImage?: PImageBufferData[],
+  /**
+   * 高光贴图二级列表
+   */
   specularImage: PImageBufferData[][],
 }
 
+/**
+ * 天空盒参数类型
+ */
 export type PSkyboxParams = PSkyboxURLParams | PSkyboxBufferParams;
 
 export enum PSkyboxType {
@@ -235,7 +443,14 @@ export enum PSkyboxType {
   FARM,
 }
 
+/**
+ * 天空盒创建类
+ */
 export class PSkyboxCreator {
+  /**
+   * 获取 BRDF 查询纹理选项
+   * @returns 纹理源选项
+   */
   static async getBrdfLutTextureOptions (): Promise<TextureSourceOptions> {
     const brdfURL = 'https://gw.alipayobjects.com/zos/gltf-asset/61420044606400/lut-ggx.png';
     //const brdfURL = 'https://gw.alipayobjects.com/zos/gltf-asset/58540818729423/a4191420-a8cd-432c-8e36-9bd02a67ec85.png';
@@ -258,6 +473,11 @@ export class PSkyboxCreator {
     return brdfLutOpts;
   }
 
+  /**
+   * 创建 BRDF 查询纹理
+   * @param engine - 引擎
+   * @returns 纹理
+   */
   static async createBrdfLutTexture (engine: Engine): Promise<Texture> {
     const brdfLutOpts = await this.getBrdfLutTextureOptions();
     const brdfLutTexture = Texture.create(engine, brdfLutOpts);
@@ -265,6 +485,12 @@ export class PSkyboxCreator {
     return brdfLutTexture;
   }
 
+  /**
+   * 创建天空盒选项
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 天空盒选项
+   */
   static async createSkyboxOptions (engine: Engine, params: PSkyboxParams): Promise<ModelSkyboxOptions> {
     const specularImage = await this.createSpecularCubeMap(engine, params);
     const diffuseImage = await this.createDiffuseCubeMap(engine, params);
@@ -273,6 +499,7 @@ export class PSkyboxCreator {
       renderable,
       intensity,
       reflectionsIntensity,
+      // @ts-expect-error
       irradianceCoeffs,
       diffuseImage,
       specularImage,
@@ -283,13 +510,70 @@ export class PSkyboxCreator {
     return skyboxOptions;
   }
 
-  static async createSpecularCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture> {
-    const configOptions: TextureConfigOptions = {
-      wrapS: glContext.CLAMP_TO_EDGE,
-      wrapT: glContext.CLAMP_TO_EDGE,
-      magFilter: glContext.LINEAR,
-      minFilter: glContext.LINEAR_MIPMAP_LINEAR,
+  /**
+   * 创建天空盒选项
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 天空盒选项
+   */
+  static createSkyboxComponentData (params: PSkyboxParams) {
+    const specularCubeData = PSkyboxCreator.getSpecularCubeMapData(params);
+    const diffuseCubeData = PSkyboxCreator.getDiffuseCubeMapData(params);
+    const { renderable, intensity, reflectionsIntensity, irradianceCoeffs, specularImageSize, specularMipCount } = params;
+
+    let diffuseImage: spec.DataPath;
+    const imageList: spec.Image[] = [];
+    const textureOptionsList: TextureSourceOptions[] = [];
+
+    if (diffuseCubeData) {
+      imageList.push(...diffuseCubeData.images);
+      textureOptionsList.push(diffuseCubeData.textureOptions);
+      diffuseImage = {
+        id: diffuseCubeData.textureOptions.id!,
+      };
+    }
+    imageList.push(...specularCubeData.images);
+    textureOptionsList.push(specularCubeData.textureOptions);
+    const specularImage = { id: specularCubeData.textureOptions.id };
+
+    const componentData: ModelSkyboxComponentData = {
+      id: generateGUID(),
+      dataType: spec.DataType.SkyboxComponent,
+      item: {
+        id: generateGUID(),
+      },
+      renderable,
+      intensity,
+      reflectionsIntensity,
+      irradianceCoeffs,
+      // @ts-expect-error
+      diffuseImage,
+      // @ts-expect-error
+      specularImage,
+      specularImageSize,
+      specularMipCount,
     };
+
+    return {
+      imageList,
+      textureOptionsList,
+      component: componentData,
+    };
+  }
+
+  /**
+   * 创建高光 Cube Map 纹理
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 纹理
+   */
+  static async createSpecularCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture> {
+    // const configOptions: TextureConfigOptions = {
+    //   wrapS: glContext.CLAMP_TO_EDGE,
+    //   wrapT: glContext.CLAMP_TO_EDGE,
+    //   magFilter: glContext.LINEAR,
+    //   minFilter: glContext.LINEAR_MIPMAP_LINEAR,
+    // };
 
     if (params.type === 'url') {
       return WebGLHelper.createTextureCubeMipmapFromURL(engine, params.specularImage);
@@ -298,8 +582,49 @@ export class PSkyboxCreator {
     }
   }
 
-  static async createDiffuseCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture | undefined> {
-    if (params.diffuseImage === undefined) { return; }
+  static getSpecularCubeMapData (params: PSkyboxParams) {
+    const imageDatas: spec.Image[] = [];
+    const mipmaps: spec.DataPath[][] = [];
+
+    params.specularImage.forEach(cubemap => {
+      const mipmap: spec.DataPath[] = [];
+
+      cubemap.forEach(image => {
+        const imageId = generateGUID();
+
+        imageDatas.push({
+          id: imageId,
+          // @ts-expect-error
+          url: image,
+        });
+        mipmap.push({ id: imageId });
+      });
+      mipmaps.push(mipmap);
+    });
+    const textureOptions: TextureSourceOptions = {
+      id: generateGUID(),
+      dataType: spec.DataType.Texture,
+      sourceType: TextureSourceType.mipmaps,
+      target: glContext.TEXTURE_CUBE_MAP,
+      // @ts-expect-error
+      mipmaps,
+      ...WebGLHelper.cubemapMipTexConfig,
+    };
+
+    return {
+      images: imageDatas,
+      textureOptions,
+    };
+  }
+
+  /**
+   * 创建漫反射纹理
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 纹理或未定义
+   */
+  static async createDiffuseCubeMap (engine: Engine, params: PSkyboxParams): Promise<Texture | null> {
+    if (params.diffuseImage === undefined) { return null; }
 
     if (params.type === 'url') {
       return WebGLHelper.createTextureCubeFromURL(engine, params.diffuseImage);
@@ -308,6 +633,46 @@ export class PSkyboxCreator {
     }
   }
 
+  static getDiffuseCubeMapData (params: PSkyboxParams) {
+    if (params.diffuseImage === undefined) {
+      return;
+    }
+
+    const imageDatas: spec.Image[] = [];
+    const cubemap: spec.DataPath[] = [];
+
+    params.diffuseImage.forEach(image => {
+      const imageId = generateGUID();
+
+      imageDatas.push({
+        id: imageId,
+        // @ts-expect-error
+        url: image,
+      });
+      cubemap.push({ id: imageId });
+    });
+
+    const textureOptions: TextureSourceOptions = {
+      id: generateGUID(),
+      dataType: spec.DataType.Texture,
+      sourceType: TextureSourceType.mipmaps,
+      target: glContext.TEXTURE_CUBE_MAP,
+      // @ts-expect-error
+      mipmaps: [cubemap],
+      ...WebGLHelper.cubemapTexConfig,
+    };
+
+    return {
+      images: imageDatas,
+      textureOptions,
+    };
+  }
+
+  /**
+   * 创建天空盒参数
+   * @param skyboxType - 天空盒类型
+   * @returns 天空盒参数
+   */
   static getSkyboxParams (skyboxType = PSkyboxType.NFT): PSkyboxURLParams {
     const specularImage = this.getSpecularImageList(skyboxType);
     const params: PSkyboxURLParams = {
@@ -319,12 +684,13 @@ export class PSkyboxCreator {
       diffuseImage: this.getDiffuseImageList(skyboxType, specularImage),
       specularImage: specularImage,
       specularImageSize: Math.pow(2, specularImage.length - 1),
-      specularMipCount: specularImage.length - 1,
+      specularMipCount: specularImage.length,
     };
 
     return params;
   }
 
+  // TODO: 待移除？
   private async checkCubeMapImage (imageList: string[]) {
     let lastImage!: HTMLImageElement;
     const specularImageLists: HTMLImageElement[][] = [];
@@ -335,11 +701,11 @@ export class PSkyboxCreator {
       if (i > 0) {
         if (i % 6 === 0) {
           if (image.width * 2 !== lastImage.width || image.height * 2 !== lastImage.height) {
-            throw new Error(`Invalid cube map list1: index ${i}, image0 ${lastImage}, image1 ${image}`);
+            throw new Error(`Invalid cube map list1: index ${i}, image0 ${lastImage}, image1 ${image}.`);
           }
         } else {
           if (image.width !== lastImage.width || image.height !== lastImage.height) {
-            throw new Error(`Invalid cube map list2: index ${i}, image0 ${lastImage}, image1 ${image}`);
+            throw new Error(`Invalid cube map list2: index ${i}, image0 ${lastImage}, image1 ${image}.`);
           }
         }
       }
@@ -351,11 +717,13 @@ export class PSkyboxCreator {
     }
   }
 
-  private static getIrradianceCoeffs (skyboxType: number): number[][] | undefined {
+  private static getIrradianceCoeffs (skyboxType: PSkyboxType): number[] | undefined {
     let dataArray: number[] = [];
 
     switch (skyboxType) {
-      case PSkyboxType.NFT: return undefined;
+      case PSkyboxType.NFT: {
+        return undefined;
+      }
       case PSkyboxType.FARM: dataArray = [
         0.2665672302246094, 0.27008703351020813, 0.2836797833442688, -0.15421263873577118, -0.15587495267391205,
         -0.16371899843215942, 0.06483837962150574, 0.06468029320240021, 0.06616337597370148, -0.11598809063434601,
@@ -378,11 +746,7 @@ export class PSkyboxCreator {
         break;
     }
 
-    const returnArray: number[][] = [];
-
-    for (let i = 0; i < dataArray.length; i += 3) { returnArray.push([dataArray[i], dataArray[i + 1], dataArray[i + 2]]); }
-
-    return returnArray;
+    return dataArray;
   }
 
   private static getDiffuseImageList (skyboxType: PSkyboxType, images: string[][]): string[] | undefined {

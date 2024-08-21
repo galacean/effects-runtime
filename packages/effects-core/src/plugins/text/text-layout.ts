@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import type { TextStyle } from './text-style';
 
 export class TextLayout {
-
   // Layout common
   textBaseline: spec.TextBaseline; // Enum
   textAlign: spec.TextAlignment; // Enum
@@ -10,7 +9,6 @@ export class TextLayout {
   overFlow: spec.TextOverflow;// Enum  // both
 
   width = 0;
-
   height = 0;
 
   /**
@@ -32,19 +30,6 @@ export class TextLayout {
     this.autoWidth = autoWidth;
     this.maxTextWidth = text.length * tempWidth;
 
-    // if (autoWidth) {
-    //   this.width = this.maxTextWidth + this.lineWidth;
-    //   this.height = fontSize + this.lineHeight;
-    // } else {
-    //   if (textWidth) {
-    //     this.maxCharCount = Math.floor((textWidth - this.lineWidth) / (tempWidth));
-    //     this.width = textWidth;
-    //   } else {
-    //     this.width = basicScale[0] * 100;
-    //   }
-    //   this.height = basicScale[1] * 100;
-    // }
-
     this.width = textWidth;
     this.height = textHeight;
 
@@ -64,16 +49,13 @@ export class TextLayout {
    * @returns - 行高偏移值
    */
   getOffsetY (style: TextStyle, lineCount: number, lineHeight: number, fontSize: number) {
-    let offsetResult = 0;
-
     const { outlineWidth, fontScale } = style;
     // /3 计算Y轴偏移量，以匹配编辑器行为
     const offsetY = (lineHeight - fontSize) / 3;
-
     // 计算基础偏移量
     const baseOffset = fontSize + outlineWidth * fontScale;
-
     const commonCalculation = lineHeight * (lineCount - 1);
+    let offsetResult = 0;
 
     switch (this.textBaseline) {
       case spec.TextBaseline.top:

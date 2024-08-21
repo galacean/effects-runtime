@@ -1,7 +1,9 @@
+import type { BlendMode, NumberArrayLike, Slot } from '@esotericsoftware/spine-core';
+import {
+  ClippingAttachment, Color, MeshAttachment, RegionAttachment, SkeletonClipping,
+} from '@esotericsoftware/spine-core';
+import type { Engine, Mesh, Renderer, Texture, Transform } from '@galacean/effects';
 import { math } from '@galacean/effects';
-import type { Transform, Texture, Mesh, Engine } from '@galacean/effects';
-import type { Slot, BlendMode, NumberArrayLike } from '@esotericsoftware/spine-core';
-import { ClippingAttachment, MeshAttachment, RegionAttachment, SkeletonClipping, Color } from '@esotericsoftware/spine-core';
 import { SpineMesh } from './spine-mesh';
 
 export interface SlotGroupProps {
@@ -265,11 +267,28 @@ export class SlotGroup {
 
     clipper.clipEnd();
     this.wm = this.transform.getWorldMatrix();
-    this.meshGroups.map(sp => sp.endUpdate(this.wm));
+
+    this.meshGroups.map((sp, index) => {
+      sp.endUpdate(this.wm);
+    });
   }
 
   /**
-   * 从 startIndex 开始，找到材质和顶点数符合限制的 SpineMesh
+   * @since 2.0.0
+   * @internal
+   * @param renderer
+   */
+  render (renderer: Renderer) {
+    this.meshGroups.forEach(spineMesh => {
+      const mesh = spineMesh.mesh;
+
+      mesh.render(renderer);
+
+    });
+  }
+
+  /**
+   * * 从 startIndex 开始，找到材质和顶点数符合限制的 SpineMesh
    */
   private findMeshIndex (startIndex: number, blendMode: BlendMode, texture: Texture, vertexNum: number): number {
     let res = -1;
@@ -277,7 +296,12 @@ export class SlotGroup {
     for (let i = startIndex; i < this.meshGroups.length; i++) {
       const mesh = this.meshGroups[i];
 
-      if (mesh && mesh.blending === blendMode && mesh.texture.name === texture.name && (vertexNum + mesh.indicesNum < SlotGroup.MAX_VERTICES)) {
+      if (
+        mesh
+        && mesh.blending === blendMode
+        && mesh.texture === texture
+        && vertexNum + mesh.indicesNum < SlotGroup.MAX_VERTICES
+      ) {
         res = i;
 
         break;

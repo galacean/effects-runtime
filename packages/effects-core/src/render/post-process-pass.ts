@@ -10,8 +10,9 @@ import { RenderTargetHandle, TextureStoreAction } from './render-pass';
 import { RenderPass } from './render-pass';
 import type { Renderer } from './renderer';
 import type { ShaderWithSource } from './shader';
-import { POST_PROCESS_SETTINGS, getConfig } from '../config';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 
 // Bloom 阈值 Pass
 export class BloomThresholdPass extends RenderPass {
@@ -55,9 +56,9 @@ export class BloomThresholdPass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
     this.sceneTextureHandle.texture = this.mainTexture;
-    renderer.setFrameBuffer(this.frameBuffer!);
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
@@ -67,11 +68,8 @@ export class BloomThresholdPass extends RenderPass {
       stencilAction: TextureStoreAction.clear,
     });
     this.screenMesh.material.setTexture('_MainTex', this.mainTexture);
-    let threshold = renderer.renderingData.currentFrame.globalVolume.threshold;
+    const threshold = renderer.renderingData.currentFrame.globalVolume.threshold;
 
-    if (__DEBUG__) {
-      threshold = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['threshold'];
-    }
     this.screenMesh.material.setFloat('_Threshold', threshold);
     renderer.renderMeshes([this.screenMesh]);
   }
@@ -129,8 +127,8 @@ export class HQGaussianDownSamplePass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
-    renderer.setFrameBuffer(this.frameBuffer!);
+    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
@@ -143,9 +141,8 @@ export class HQGaussianDownSamplePass extends RenderPass {
     this.screenMesh.material.setVector2('_TextureSize', getTextureSize(this.mainTexture));
     renderer.renderMeshes([this.screenMesh]);
     if (this.type === 'V') {
-      this.gaussianResult.texture = renderer.getFrameBuffer()!.getColorTextures()[0];
+      this.gaussianResult.texture = renderer.getFramebuffer()!.getColorTextures()[0];
     }
-
   }
 }
 
@@ -190,8 +187,8 @@ export class HQGaussianUpSamplePass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
-    renderer.setFrameBuffer(this.frameBuffer!);
+    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
+    renderer.setFramebuffer(this.framebuffer);
   }
 
   override execute (renderer: Renderer): void {
@@ -253,11 +250,11 @@ export class ToneMappingPass extends RenderPass {
   }
 
   override configure (renderer: Renderer): void {
-    this.mainTexture = renderer.getFrameBuffer()!.getColorTextures()[0];
+    this.mainTexture = renderer.getFramebuffer()!.getColorTextures()[0];
     if (!this.sceneTextureHandle.texture) {
       this.sceneTextureHandle.texture = this.mainTexture;
     }
-    renderer.setFrameBuffer(null);
+    renderer.setFramebuffer(null);
   }
 
   override execute (renderer: Renderer): void {
@@ -266,33 +263,31 @@ export class ToneMappingPass extends RenderPass {
       depthAction: TextureStoreAction.clear,
       stencilAction: TextureStoreAction.clear,
     });
-    let { bloomIntensity, brightness, saturation, contrast, useBloom, useToneMapping } = renderer.renderingData.currentFrame.globalVolume;
-
-    if (__DEBUG__) {
-      bloomIntensity = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['bloomIntensity'];
-      brightness = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['brightness'];
-      saturation = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['saturation'];
-      contrast = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['contrast'];
-      useBloom = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['useBloom'];
-      useToneMapping = getConfig<Record<string, number>>(POST_PROCESS_SETTINGS)['useToneMapping'];
-
-      // 曲线转换
-      brightness = Math.pow(2, brightness);
-      saturation = saturation * 0.01 + 1; // (-100, 100) -> (0, 2)
-      contrast = contrast * 0.01 + 1; // (-100, 100) -> (0, 2)
-    }
+    const {
+      useBloom, bloomIntensity,
+      brightness, saturation, contrast,
+      useToneMapping,
+      vignetteIntensity, vignetteSmoothness, vignetteRoundness,
+    } = renderer.renderingData.currentFrame.globalVolume;
 
     this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
     this.screenMesh.material.setFloat('_Brightness', brightness);
     this.screenMesh.material.setFloat('_Saturation', saturation);
     this.screenMesh.material.setFloat('_Contrast', contrast);
 
-    this.screenMesh.material.setInt('_UseBloom', useBloom);
+    this.screenMesh.material.setInt('_UseBloom', Number(useBloom));
     if (useBloom) {
       this.screenMesh.material.setTexture('_GaussianTex', this.mainTexture);
       this.screenMesh.material.setFloat('_BloomIntensity', bloomIntensity);
     }
-    this.screenMesh.material.setInt('_UseToneMapping', useToneMapping);
+    if (vignetteIntensity > 0) {
+      this.screenMesh.material.setFloat('_VignetteIntensity', vignetteIntensity);
+      this.screenMesh.material.setFloat('_VignetteSmoothness', vignetteSmoothness);
+      this.screenMesh.material.setFloat('_VignetteRoundness', vignetteRoundness);
+      this.screenMesh.material.setVector2('_VignetteCenter', new Vector2(0.5, 0.5));
+      this.screenMesh.material.setVector3('_VignetteColor', new Vector3(0.0, 0.0, 0.0));
+    }
+    this.screenMesh.material.setInt('_UseToneMapping', Number(useToneMapping));
     renderer.renderMeshes([this.screenMesh]);
   }
 }

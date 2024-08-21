@@ -1,3 +1,5 @@
+export type GLType = 'webgl' | 'webgl2';
+
 /**
  * Helper class to create a WebGL Context
  *
@@ -8,7 +10,7 @@
  */
 export function createGLContext (
   canvas: HTMLCanvasElement | OffscreenCanvas,
-  glType: 'webgl' | 'webgl2' = 'webgl',
+  glType: GLType = 'webgl',
   options: WebGLContextAttributes,
 ): WebGLRenderingContext | WebGL2RenderingContext {
   let context: WebGLRenderingContext | WebGL2RenderingContext | undefined;

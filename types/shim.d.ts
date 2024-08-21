@@ -1,4 +1,5 @@
 declare module 'string-hash';
+declare module 'uuid';
 
 declare module 'earcut' {
   export interface Node {

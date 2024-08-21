@@ -5,29 +5,24 @@ import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import type { Composition } from '../../composition';
+import type { Engine } from '../../engine';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
-import { FILTER_NAME_NONE, PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
-import type { FilterShaderDefine, ParticleFilterDefine } from '../../filter';
-import { createFilter, createFilterShaders } from '../../filter';
+import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
 import type { MaterialProps } from '../../material';
 import {
-  createShaderWithMarcos, getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode,
-  ShaderType,
+  getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode,
 } from '../../material';
 import {
-  createKeyFrameMeta,
-  createValueGetter,
-  ValueGetter,
-  getKeyFrameMetaByRawValue,
-  calculateTranslation,
+  createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
 } from '../../math';
-import type { Attribute, GeometryProps, ShaderMarcos, SharedShaderWithSource, GPUCapability } from '../../render';
-import { Geometry, GLSLVersion, Mesh } from '../../render';
+import type {
+  Attribute, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
+} from '../../render';
+import { GLSLVersion, Geometry, Mesh } from '../../render';
 import { particleFrag, particleVert } from '../../shader';
-import { generateHalfFloatTexture, Texture } from '../../texture';
+import { Texture, generateHalfFloatTexture } from '../../texture';
 import { Transform } from '../../transform';
-import { enlargeBuffer, imageDataFromGradient } from '../../utils';
+import { assertExist, enlargeBuffer, imageDataFromGradient } from '../../utils';
 import { particleUniformTypeMap } from './particle-vfx-item';
 
 export type Point = {
@@ -91,7 +86,6 @@ export interface ParticleMeshProps extends ParticleMeshData {
   mask: number,
   maskMode: number,
   side: number,
-  filter?: spec.FilterParams,
   transparentOcclusion?: boolean,
   matrix?: Matrix4,
   sprite?: {
@@ -110,8 +104,8 @@ export interface ParticleMeshProps extends ParticleMeshData {
     curve: ValueGetter<number>,
     target: spec.vec3,
   },
-  listIndex: number,
-  duration: number,
+  // listIndex: number,
+  // duration: number,
   maxCount: number,
   shaderCachePrefix: string,
   name: string,
@@ -131,6 +125,7 @@ export class ParticleMesh implements ParticleMeshData {
   orbitalVelOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number>, enabled?: boolean, center?: spec.vec3 };
   rotationOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number> };
   speedOverLifetime?: ValueGetter<number>;
+  time: number;
 
   readonly useSprite?: boolean;
   readonly textureOffsets: number[];
@@ -138,24 +133,23 @@ export class ParticleMesh implements ParticleMeshData {
   readonly anchor: Vector2;
 
   constructor (
+    engine: Engine,
     props: ParticleMeshProps,
-    rendererOptions: { composition: Composition },
   ) {
-    const engine = rendererOptions.composition.getEngine();
     const { env } = engine.renderer ?? {};
     const {
       speedOverLifetime, colorOverLifetime, linearVelOverLifetime, orbitalVelOverLifetime, sizeOverLifetime, rotationOverLifetime,
-      sprite, gravityModifier, maxCount, duration, textureFlip, useSprite, name,
-      filter, gravity, forceTarget, side, occlusion, anchor, blending,
-      maskMode, mask, transparentOcclusion, listIndex, meshSlots,
+      sprite, gravityModifier, maxCount, textureFlip, useSprite, name,
+      gravity, forceTarget, side, occlusion, anchor, blending,
+      maskMode, mask, transparentOcclusion, meshSlots,
       renderMode = 0,
       diffuse = Texture.createWithData(engine),
     } = props;
     const { detail } = engine.gpuCapability;
     const { halfFloatTexture, maxVertexUniforms } = detail;
-    const marcos: ShaderMarcos = [
+    const macros: ShaderMacros = [
+      // spec.RenderMode
       ['RENDER_MODE', +renderMode],
-      ['PRE_MULTIPLY_ALPHA', false],
       ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const { level } = engine.gpuCapability;
@@ -165,52 +159,25 @@ export class ParticleMesh implements ParticleMeshData {
     const uniformValues: Record<string, any> = {};
     let vertex_lookup_texture = 0;
     let shaderCacheId = 0;
-    let particleDefine: ParticleFilterDefine;
     let useOrbitalVel;
 
     this.useSprite = useSprite;
     if (enableVertexTexture) {
-      marcos.push(['ENABLE_VERTEX_TEXTURE', true]);
+      macros.push(['ENABLE_VERTEX_TEXTURE', true]);
     }
     if (speedOverLifetime) {
-      marcos.push(['SPEED_OVER_LIFETIME', true]);
+      macros.push(['SPEED_OVER_LIFETIME', true]);
       shaderCacheId |= 1 << 1;
       uniformValues.uSpeedLifetimeValue = speedOverLifetime.toUniform(vertexKeyFrameMeta);
     }
     if (sprite?.animate) {
-      marcos.push(['USE_SPRITE', true]);
+      macros.push(['USE_SPRITE', true]);
       shaderCacheId |= 1 << 2;
       uniformValues.uFSprite = uniformValues.uSprite = new Float32Array([sprite.col, sprite.row, sprite.total, sprite.blend ? 1 : 0]);
       this.useSprite = true;
     }
-    if (filter && filter.name !== FILTER_NAME_NONE) {
-      marcos.push(['USE_FILTER', true]);
-      shaderCacheId |= 1 << 3;
-      const filterDefine = createFilter(filter, rendererOptions.composition);
-
-      if (!filterDefine.particle) {
-        throw new Error(`particle filter ${filter.name} not implement`);
-      }
-      particleDefine = filterDefine.particle;
-      Object.keys(particleDefine.uniforms ?? {}).forEach(uName => {
-        const getter = particleDefine.uniforms?.[uName];
-
-        if (uniformValues[uName]) {
-          throw new Error('conflict uniform name:' + uName);
-        }
-        uniformValues[uName] = getter?.toUniform(vertexKeyFrameMeta);
-      });
-      Object.keys(particleDefine.uniformValues ?? {}).forEach(uName => {
-        const val = particleDefine.uniformValues?.[uName];
-
-        if (uniformValues[uName]) {
-          throw new Error('conflict uniform name:' + uName);
-        }
-        uniformValues[uName] = val;
-      });
-    }
     if (colorOverLifetime?.color) {
-      marcos.push(['COLOR_OVER_LIFETIME', true]);
+      macros.push(['COLOR_OVER_LIFETIME', true]);
       shaderCacheId |= 1 << 4;
       uniformValues.uColorOverLifetime = colorOverLifetime.color instanceof Texture ? colorOverLifetime.color : Texture.createWithData(engine, imageDataFromGradient(colorOverLifetime.color));
     }
@@ -230,7 +197,7 @@ export class ParticleMesh implements ParticleMeshData {
         shaderCacheId |= 1 << (7 + i);
         linearVelOverLifetime.enabled = true;
       }
-      marcos.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
+      macros.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
       if (orbitalVelOverLifetime?.[pro]) {
         uniformValues[`uOrb${pro.toUpperCase()}ByLifetimeValue`] = orbitalVelOverLifetime[pro].toUniform(vertexKeyFrameMeta);
         defO = 1;
@@ -238,16 +205,16 @@ export class ParticleMesh implements ParticleMeshData {
         useOrbitalVel = true;
         orbitalVelOverLifetime.enabled = true;
       }
-      marcos.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
+      macros.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
     });
     if (linearVelOverLifetime?.asMovement) {
-      marcos.push(['AS_LINEAR_MOVEMENT', true]);
+      macros.push(['AS_LINEAR_MOVEMENT', true]);
       shaderCacheId |= 1 << 5;
     }
 
     if (useOrbitalVel) {
       if (orbitalVelOverLifetime?.asRotation) {
-        marcos.push(['AS_ORBITAL_MOVEMENT', true]);
+        macros.push(['AS_ORBITAL_MOVEMENT', true]);
         shaderCacheId |= 1 << 6;
       }
       uniformValues.uOrbCenter = new Float32Array(orbitalVelOverLifetime?.center || [0, 0, 0]);
@@ -255,33 +222,33 @@ export class ParticleMesh implements ParticleMeshData {
 
     uniformValues.uSizeByLifetimeValue = sizeOverLifetime?.x.toUniform(vertexKeyFrameMeta);
     if (sizeOverLifetime?.separateAxes) {
-      marcos.push(['SIZE_Y_BY_LIFE', 1]);
+      macros.push(['SIZE_Y_BY_LIFE', 1]);
       shaderCacheId |= 1 << 14;
       uniformValues.uSizeYByLifetimeValue = sizeOverLifetime?.y?.toUniform(vertexKeyFrameMeta);
     }
     if (rotationOverLifetime?.z) {
       uniformValues.uRZByLifeTimeValue = rotationOverLifetime.z.toUniform(vertexKeyFrameMeta);
       shaderCacheId |= 1 << 15;
-      marcos.push(['ROT_Z_LIFETIME', 1]);
+      macros.push(['ROT_Z_LIFETIME', 1]);
     }
     if (rotationOverLifetime?.x) {
       uniformValues.uRXByLifeTimeValue = rotationOverLifetime.x.toUniform(vertexKeyFrameMeta);
       shaderCacheId |= 1 << 16;
-      marcos.push(['ROT_X_LIFETIME', 1]);
+      macros.push(['ROT_X_LIFETIME', 1]);
     }
     if (rotationOverLifetime?.y) {
       uniformValues.uRYByLifeTimeValue = rotationOverLifetime.y.toUniform(vertexKeyFrameMeta);
       shaderCacheId |= 1 << 17;
-      marcos.push(['ROT_Y_LIFETIME', 1]);
+      macros.push(['ROT_Y_LIFETIME', 1]);
     }
     if (rotationOverLifetime?.asRotation) {
-      marcos.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
+      macros.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
       shaderCacheId |= 1 << 18;
     }
     uniformValues.uGravityModifierValue = gravityModifier.toUniform(vertexKeyFrameMeta);
 
     if (forceTarget) {
-      marcos.push(['FINAL_TARGET', true]);
+      macros.push(['FINAL_TARGET', true]);
       shaderCacheId |= 1 << 19;
       uniformValues.uFinalTarget = new Float32Array(forceTarget.target || [0, 0, 0]);
       uniformValues.uForceCurve = forceTarget.curve.toUniform(vertexKeyFrameMeta);
@@ -316,31 +283,26 @@ export class ParticleMesh implements ParticleMeshData {
     }
     const shaderCache = ['-p:', renderMode, shaderCacheId, vertexKeyFrameMeta.index, vertexKeyFrameMeta.max, fragmentKeyFrameMeta.index, fragmentKeyFrameMeta.max].join('+');
 
-    marcos.push(
+    macros.push(
       ['VERT_CURVE_VALUE_COUNT', vertexKeyFrameMeta.index],
       ['FRAG_CURVE_VALUE_COUNT', fragmentKeyFrameMeta.index],
       ['VERT_MAX_KEY_FRAME_COUNT', vertexKeyFrameMeta.max],
       ['FRAG_MAX_KEY_FRAME_COUNT', fragmentKeyFrameMeta.max],
     );
 
-    const fragment = filter ? particleFrag.replace(/#pragma\s+FILTER_FRAG/, particleDefine!.fragment) : particleFrag;
+    const fragment = particleFrag;
     const originalVertex = `#define LOOKUP_TEXTURE_CURVE ${vertex_lookup_texture}\n${particleVert}`;
-    const vertex = filter ? originalVertex.replace(/#pragma\s+FILTER_VERT/, particleDefine!.vertex || 'void filterMain(float t){}\n') : originalVertex;
+    const vertex = originalVertex;
 
     const shader = {
-      fragment: createShaderWithMarcos(marcos, fragment, ShaderType.fragment, level),
-      vertex: createShaderWithMarcos(marcos, vertex, ShaderType.vertex, level),
+      fragment,
+      vertex,
       glslVersion: level === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
       shared: true,
       cacheId: shaderCache,
-      marcos,
+      macros,
       name: `particle#${name}`,
     };
-
-    if (filter) {
-      shader.cacheId += filter.name;
-    }
-
     const mtlOptions: MaterialProps = {
       shader,
       uniformSemantics: {
@@ -355,7 +317,7 @@ export class ParticleMesh implements ParticleMeshData {
     uniformValues.uTexOffset = new Float32Array(diffuse ? [1 / diffuse.getWidth(), 1 / diffuse.getHeight()] : [0, 0]);
     uniformValues.uMaskTex = diffuse;
     uniformValues.uColorParams = new Float32Array([diffuse ? 1 : 0, +preMulAlpha, 0, +(!!occlusion && !transparentOcclusion)]);
-    uniformValues.uParams = [0, duration, 0, 0];
+    uniformValues.uParams = [0, 0, 0, 0];
     uniformValues.uAcceleration = [gravity?.[0] || 0, gravity?.[1] || 0, gravity?.[2] || 0, 0];
     // mtlOptions.uniformValues = uniformValues;
 
@@ -404,7 +366,7 @@ export class ParticleMesh implements ParticleMeshData {
 
           break;
         default:
-          console.warn(`uniform ${name}'s type not in typeMap`);
+          console.warn(`Uniform ${name}'s type not in typeMap.`);
       }
     });
 
@@ -414,7 +376,7 @@ export class ParticleMesh implements ParticleMeshData {
     const geometry = Geometry.create(engine, generateGeometryProps(maxCount * 4, this.useSprite, `particle#${name}`));
     const mesh = Mesh.create(engine, {
       name: `MParticle_${name}`,
-      priority: listIndex,
+      // priority: listIndex,
       material,
       geometry,
     });
@@ -430,54 +392,28 @@ export class ParticleMesh implements ParticleMeshData {
     this.orbitalVelOverLifetime = orbitalVelOverLifetime;
     this.gravityModifier = gravityModifier;
     this.maxCount = maxCount;
-    this.duration = duration;
+    // this.duration = duration;
     this.textureOffsets = textureFlip ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
+    this.time = 0;
   }
+  // get time () {
+  //   // const value = this.mesh.material.getVector4('uParams')!;
 
-  get time () {
-    const value = this.mesh.material.getVector4('uParams')!;
-
-    return value.x;
-  }
-  set time (v: number) {
-    this.mesh.material.setVector4('uParams', new Vector4(+v, this.duration, 0, 0));
-  }
+  //   // return value.x;
+  //   return this._time;
+  // }
+  // set time (value: number) {
+  //   this._time = value;
+  //   // this.mesh.material.setVector4('uParams', new Vector4(+v, this.duration, 0, 0));
+  // }
 
   getPointColor (index: number) {
-    const data = this.geometry.getAttributeData('aRot')!;
+    const data = this.geometry.getAttributeData('aRot');
     const i = index * 32 + 4;
 
+    assertExist(data);
+
     return [data[i], data[i + 1], data[i + 2], data[i + 3]];
-  }
-
-  /**
-   * 待废弃
-   * @deprecated - 使用 `particle-system.getPointPosition` 替代
-   */
-  getPointPosition (index: number): Vector3 {
-    const geo = this.geometry;
-    const posIndex = index * 48;
-    const posData = geo.getAttributeData('aPos') as Float32Array;
-    const offsetData = geo.getAttributeData('aOffset') as Float32Array;
-    const time = this.time - offsetData[index * 16 + 2];
-    const pointDur = offsetData[index * 16 + 3];
-    const mtl = this.mesh.material;
-    const acc = mtl.getVector4('uAcceleration')!.toVector3();
-    const pos = Vector3.fromArray(posData, posIndex);
-    const vel = Vector3.fromArray(posData, posIndex + 3);
-    const ret = calculateTranslation(new Vector3(), this, acc, time, pointDur, pos, vel);
-
-    if (this.forceTarget) {
-      const target = mtl.getVector3('uFinalTarget')!;
-      const life = this.forceTarget.curve.getValue(time / pointDur);
-      const dl = 1 - life;
-
-      ret.x = ret.x * dl + target.x * life;
-      ret.y = ret.y * dl + target.y * life;
-      ret.z = ret.z * dl + target.z * life;
-    }
-
-    return ret;
   }
 
   clearPoints () {
@@ -505,7 +441,9 @@ export class ParticleMesh implements ParticleMeshData {
   }
 
   minusTime (time: number) {
-    const data = this.geometry.getAttributeData('aOffset')!;
+    const data = this.geometry.getAttributeData('aOffset');
+
+    assertExist(data);
 
     for (let i = 0; i < data.length; i += 4) {
       data[i + 2] -= time;
@@ -520,7 +458,7 @@ export class ParticleMesh implements ParticleMeshData {
     }
   }
 
-  setPoint (point: Point, index: number) {
+  setPoint (index: number, point: Point) {
     const maxCount = this.maxCount;
 
     if (index < maxCount) {
@@ -610,7 +548,7 @@ export class ParticleMesh implements ParticleMeshData {
 
       if (increaseBuffer) {
         const baseIndexData = geometry.getIndexData() as Uint16Array;
-        const idx = enlargeBuffer(baseIndexData, particleCount * 6, inc, maxCount * 6);
+        const idx = enlargeBuffer(baseIndexData, particleCount * 6, maxCount * 6, inc);
 
         idx.set(indexData, index * 6);
         geometry.setIndexData(idx);
@@ -624,8 +562,11 @@ export class ParticleMesh implements ParticleMeshData {
         const attrSize = geometry.getAttributeStride(name) / Float32Array.BYTES_PER_ELEMENT;
 
         if (increaseBuffer) {
-          const baseData = geometry.getAttributeData(name)!;
-          const geoData = enlargeBuffer(baseData, vertexCount * attrSize, inc, maxCount * 4 * attrSize);
+          const baseData = geometry.getAttributeData(name);
+
+          assertExist(baseData);
+
+          const geoData = enlargeBuffer(baseData, vertexCount * attrSize, maxCount * 4 * attrSize, inc);
 
           geoData.set(data, data.length * index);
           geometry.setAttributeData(name, geoData);
@@ -674,18 +615,21 @@ function generateGeometryProps (
   };
 
   if (useSprite) {
-    attributes['aSprite'] = { size: 3, data: new Float32Array(0) };
+    attributes['aSprite'] = { size: 3, stride: 3 * bpe, data: new Float32Array(0) };
   }
 
   return { attributes, indices: { data: new Uint16Array(0) }, name, maxVertex };
 }
 
-export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCapability: GPUCapability) {
+export function getParticleMeshShader (
+  item: spec.ParticleItem,
+  gpuCapability: GPUCapability,
+  env = '',
+) {
   const props = item.content;
   const renderMode = +(props.renderer?.renderMode || 0);
-  const marcos: [key: string, value: boolean | number][] = [
+  const macros: ShaderMacros = [
     ['RENDER_MODE', renderMode],
-    ['PRE_MULTIPLY_ALPHA', false],
     ['ENV_EDITOR', env === PLAYER_OPTIONS_ENV_EDITOR],
   ];
   const { level, detail } = gpuCapability;
@@ -697,39 +641,25 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
   let shaderCacheId = 0;
 
   if (enableVertexTexture) {
-    marcos.push(['ENABLE_VERTEX_TEXTURE', true]);
+    macros.push(['ENABLE_VERTEX_TEXTURE', true]);
   }
 
   if (speedOverLifetime) {
-    marcos.push(['SPEED_OVER_LIFETIME', true]);
+    macros.push(['SPEED_OVER_LIFETIME', true]);
     shaderCacheId |= 1 << 1;
     getKeyFrameMetaByRawValue(vertexKeyFrameMeta, speedOverLifetime);
   }
   const sprite = props.textureSheetAnimation;
 
   if (sprite && sprite.animate) {
-    marcos.push(['USE_SPRITE', true]);
+    macros.push(['USE_SPRITE', true]);
     shaderCacheId |= 1 << 2;
   }
-  let filter: FilterShaderDefine | undefined = undefined;
 
-  if (props.filter && (props.filter as any).name !== FILTER_NAME_NONE) {
-    marcos.push(['USE_FILTER', true]);
-    shaderCacheId |= 1 << 3;
-    const f = createFilterShaders(props.filter).find(f => f.isParticle);
-
-    if (!f) {
-      throw Error(`particle filter ${props.filter.name} not implement`);
-    }
-    filter = f;
-    f.uniforms?.forEach(val => getKeyFrameMetaByRawValue(vertexKeyFrameMeta, val));
-
-    // filter = processFilter(props.filter, fragmentKeyFrameMeta, vertexKeyFrameMeta, options);
-  }
   const colorOverLifetime = props.colorOverLifetime;
 
   if (colorOverLifetime && colorOverLifetime.color) {
-    marcos.push(['COLOR_OVER_LIFETIME', true]);
+    macros.push(['COLOR_OVER_LIFETIME', true]);
     shaderCacheId |= 1 << 4;
   }
 
@@ -751,7 +681,7 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
       defL = 1;
       shaderCacheId |= 1 << (7 + i);
     }
-    marcos.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
+    macros.push([`LINEAR_VEL_${pro.toUpperCase()}`, defL]);
     let defO = 0;
 
     if (positionOverLifetime?.[orbitalPro as keyof spec.ParticlePositionOverLifetime]) {
@@ -760,15 +690,15 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
       shaderCacheId |= 1 << (10 + i);
       useOrbitalVel = true;
     }
-    marcos.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
+    macros.push([`ORB_VEL_${pro.toUpperCase()}`, defO]);
   });
   if (positionOverLifetime?.asMovement) {
-    marcos.push(['AS_LINEAR_MOVEMENT', true]);
+    macros.push(['AS_LINEAR_MOVEMENT', true]);
     shaderCacheId |= 1 << 5;
   }
   if (useOrbitalVel) {
     if (positionOverLifetime?.asRotation) {
-      marcos.push(['AS_ORBITAL_MOVEMENT', true]);
+      macros.push(['AS_ORBITAL_MOVEMENT', true]);
       shaderCacheId |= 1 << 6;
     }
   }
@@ -779,7 +709,7 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
 
     if (separateAxes) {
       getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.x);
-      marcos.push(['SIZE_Y_BY_LIFE', 1]);
+      macros.push(['SIZE_Y_BY_LIFE', 1]);
       shaderCacheId |= 1 << 14;
       getKeyFrameMetaByRawValue(vertexKeyFrameMeta, sizeOverLifetime.y);
     } else {
@@ -793,22 +723,22 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     if (rot.z) {
       getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot?.z);
       shaderCacheId |= 1 << 15;
-      marcos.push(['ROT_Z_LIFETIME', 1]);
+      macros.push(['ROT_Z_LIFETIME', 1]);
     }
     if (rot.separateAxes) {
       if (rot.x) {
         getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.x);
         shaderCacheId |= 1 << 16;
-        marcos.push(['ROT_X_LIFETIME', 1]);
+        macros.push(['ROT_X_LIFETIME', 1]);
       }
       if (rot.y) {
         getKeyFrameMetaByRawValue(vertexKeyFrameMeta, rot.y);
         shaderCacheId |= 1 << 17;
-        marcos.push(['ROT_Y_LIFETIME', 1]);
+        macros.push(['ROT_Y_LIFETIME', 1]);
       }
     }
     if (rot?.asRotation) {
-      marcos.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
+      macros.push(['ROT_LIFETIME_AS_MOVEMENT', 1]);
       shaderCacheId |= 1 << 18;
     }
   }
@@ -817,7 +747,7 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
   const forceOpt = positionOverLifetime?.forceTarget;
 
   if (forceOpt) {
-    marcos.push(['FINAL_TARGET', true]);
+    macros.push(['FINAL_TARGET', true]);
     shaderCacheId |= 1 << 19;
     getKeyFrameMetaByRawValue(vertexKeyFrameMeta, positionOverLifetime.forceCurve);
   }
@@ -849,16 +779,11 @@ export function getParticleMeshShader (item: spec.ParticleItem, env = '', gpuCap
     vertex: `#define LOOKUP_TEXTURE_CURVE ${vertex_lookup_texture}\n${particleVert}`,
     shared: true,
     cacheId: shaderCache,
-    marcos,
+    macros,
     name: `particle#${item.name}`,
   };
 
-  if (filter) {
-    shader.fragment = shader.fragment.replace(/#pragma\s+FILTER_FRAG/, filter.fragment ?? '');
-    shader.vertex = shader.vertex.replace(/#pragma\s+FILTER_VERT/, filter.vertex || 'void filterMain(float t){}\n');
-    shader.cacheId += '+' + props.filter?.name;
-  }
-  marcos.push(
+  macros.push(
     ['VERT_CURVE_VALUE_COUNT', vertexKeyFrameMeta.index],
     ['FRAG_CURVE_VALUE_COUNT', fragmentKeyFrameMeta.index],
     ['VERT_MAX_KEY_FRAME_COUNT', vertexKeyFrameMeta.max],
@@ -875,12 +800,12 @@ export function modifyMaxKeyframeShader (shader: SharedShaderWithSource, maxVert
   shaderIds[5] = maxFrag;
   shader.cacheId = shaderIds.join('+');
 
-  if (!shader.marcos) {
+  if (!shader.macros) {
     return;
   }
 
-  for (let i = 0; i < shader.marcos.length; i++) {
-    const marco = shader.marcos[i];
+  for (let i = 0; i < shader.macros.length; i++) {
+    const marco = shader.macros[i];
 
     if (marco[0] === 'VERT_CURVE_VALUE_COUNT') {
       marco[1] = maxVertex;

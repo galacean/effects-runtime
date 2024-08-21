@@ -1,8 +1,15 @@
-import type { MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math } from '@galacean/effects-core';
-import { Material, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
+import type {
+  MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
+  GlobalUniforms, Renderer,
+} from '@galacean/effects-core';
+import { Material, Shader, ShaderType, ShaderFactory, generateGUID, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
-import { CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP, TEXTURE_UNIFORM_MAP } from './three-material-util';
+import {
+  CONSTANT_MAP_BLEND, CONSTANT_MAP_DEPTH, CONSTANT_MAP_STENCIL_FUNC, CONSTANT_MAP_STENCIL_OP,
+  TEXTURE_UNIFORM_MAP,
+} from './three-material-util';
+import type { ThreeEngine } from '../three-engine';
 
 type Matrix4 = math.Matrix4;
 type Vector2 = math.Vector2;
@@ -10,6 +17,7 @@ type Vector3 = math.Vector3;
 type Vector4 = math.Vector4;
 type Matrix3 = math.Matrix3;
 type Quaternion = math.Quaternion;
+type Color = math.Color;
 
 /**
  * THREE 抽象材质类
@@ -33,24 +41,46 @@ export class ThreeMaterial extends Material {
    *
    * @param props - 材质属性
    */
-  constructor (engine: Engine, props: MaterialProps) {
-    super(props);
-    const shader = props.shader;
+  constructor (engine: Engine, props?: MaterialProps) {
+    super(engine, props);
+
+    const shader = props?.shader;
     const { level } = engine.gpuCapability;
+
+    this.shader = new Shader(engine);
+    this.shader.shaderData = {
+      ...shader,
+      id: generateGUID(),
+      dataType: spec.DataType.Shader,
+      vertex: shader?.vertex ?? '',
+      fragment: shader?.fragment ?? '',
+    };
 
     for (let i = 0; i < maxSpriteMeshItemCount; i++) {
       this.uniforms[`uSampler${i}`] = new THREE.Uniform(null);
     }
+
     this.uniforms['uEditorTransform'] = new THREE.Uniform([1, 1, 0, 0]);
     this.uniforms['effects_ObjectToWorld'] = new THREE.Uniform(new THREE.Matrix4().identity());
-
     this.uniforms['effects_MatrixInvV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
     this.uniforms['effects_MatrixVP'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -8, 1]);
     this.uniforms['effects_MatrixV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
 
     this.material = new THREE.RawShaderMaterial({
-      vertexShader: shader.vertex,
-      fragmentShader: shader.fragment,
+      vertexShader: ShaderFactory.genFinalShaderCode({
+        level: this.engine.gpuCapability.level,
+        shaderType: ShaderType.vertex,
+        shader: shader?.vertex ?? '',
+        macros: shader?.macros,
+        removeVersion: true,
+      }),
+      fragmentShader: ShaderFactory.genFinalShaderCode({
+        level: this.engine.gpuCapability.level,
+        shaderType: ShaderType.fragment,
+        shader: shader?.fragment ?? '',
+        macros: shader?.macros,
+        removeVersion: true,
+      }),
       alphaToCoverage: false,
       depthFunc: THREE.LessDepth,
       polygonOffsetFactor: THREE.ZeroFactor,
@@ -65,9 +95,6 @@ export class ThreeMaterial extends Material {
     } else {
       this.material.glslVersion = THREE.GLSL3;
     }
-
-    // this.material.needsUpdate = true;
-
   }
 
   /**
@@ -90,6 +117,24 @@ export class ThreeMaterial extends Material {
     }
   }
 
+  override use (render: Renderer, globalUniforms: GlobalUniforms): void {
+    const engine = this.engine as ThreeEngine;
+    const composition = engine.composition;
+    const threeCamera = engine.threeCamera;
+
+    if (threeCamera) {
+      const threeViewProjectionMatrix = new THREE.Matrix4().multiplyMatrices(threeCamera.projectionMatrix, threeCamera.matrixWorldInverse);
+
+      this.setMatrix('effects_MatrixVP', threeViewProjectionMatrix as unknown as math.Matrix4);
+    } else {
+      const camera = composition.camera;
+
+      // this.setMatrix('effects_MatrixInvV', camera.getInverseProjectionMatrix());
+      this.setMatrix('effects_MatrixVP', camera.getViewProjectionMatrix());
+      this.setMatrix('effects_MatrixV', camera.getViewMatrix());
+    }
+  }
+
   /**
    * 移除 uniform 变量值的回调函数
    *
@@ -98,7 +143,6 @@ export class ThreeMaterial extends Material {
   onRemoveUniformValue (name: string) {
     if (this.material.uniforms[name]) {
       this.material.uniforms[name].value = null;
-
     }
   }
 
@@ -393,6 +437,13 @@ export class ThreeMaterial extends Material {
     this.setUniform(name, value);
   }
 
+  getColor (name: string): Color | null {
+    return this.uniforms[name].value;
+  }
+  setColor (name: string, value: Color): void {
+    this.setUniform(name, value);
+  }
+
   getQuaternion (name: string): Quaternion | null {
     return this.uniforms[name].value;
   }
@@ -425,20 +476,20 @@ export class ThreeMaterial extends Material {
     return !!this.uniforms[name];
   }
 
-  private setUniform (name: string, value: THREE.Texture | number | number[] | Matrix4 | Matrix3 | Quaternion | Vector2 | Vector3 | Vector4 | Vector4[]) {
+  private setUniform (name: string, value: THREE.Texture | number | number[] | Matrix4 | Matrix3 | Quaternion | Vector2 | Vector3 | Vector4 | Vector4[] | Color) {
     const uniform = new THREE.Uniform(value);
 
     this.uniforms[name] = this.material.uniforms[name] = uniform;
   }
 
   // 下列三个方法暂时不需要实现
-  enableKeyword (keyword: string): void {
+  enableMacro (keyword: string): void {
     throw new Error('Method not implemented.');
   }
-  disableKeyword (keyword: string): void {
+  disableMacro (keyword: string): void {
     throw new Error('Method not implemented.');
   }
-  isKeywordEnabled (keyword: string): boolean {
+  isMacroEnabled (keyword: string): boolean {
     throw new Error('Method not implemented.');
   }
 
@@ -448,6 +499,11 @@ export class ThreeMaterial extends Material {
   }
 
   override cloneUniforms (sourceMaterial: Material): void {
+    //FIXME: 暂时不实现
+    throw new Error('Method not implemented.');
+  }
+
+  override fromData (data: unknown): void {
     //FIXME: 暂时不实现
     throw new Error('Method not implemented.');
   }

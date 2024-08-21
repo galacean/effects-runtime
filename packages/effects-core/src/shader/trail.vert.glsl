@@ -1,19 +1,18 @@
-#version 300 es
+#version 100
 precision mediump float;
 #define SHADER_VERTEX 1
-#import "./compatible.vert.glsl";
-#import "./value.glsl";
-in vec4 aPos;
-in vec3 aDir;
-in vec3 aInfo;//lifetime section side
-in vec4 aColor;
-in float aTime;
+#include "./value.glsl";
+attribute vec4 aPos;
+attribute vec3 aDir;
+attribute vec3 aInfo;//lifetime section side
+attribute vec4 aColor;
+attribute float aTime;
 
 #ifdef ATTR_TRAIL_START
-in float aTrailStart;
+attribute float aTrailStart;
 #else
 uniform float uTrailStart[64];
-in float aTrailStartIndex;
+attribute float aTrailStartIndex;
 #endif
 
 uniform mat4 effects_MatrixInvV;
@@ -34,9 +33,9 @@ uniform sampler2D uColorOverTrail;
 #ifdef COLOR_OVER_LIFETIME
 uniform sampler2D uColorOverLifetime;
 #endif
-out float vLife;
-out vec2 vTexCoord;
-out vec4 vColor;
+varying float vLife;
+varying vec2 vTexCoord;
+varying vec4 vColor;
 
 #ifdef ENV_EDITOR
 uniform vec4 uEditorTransform;

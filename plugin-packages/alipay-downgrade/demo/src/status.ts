@@ -1,5 +1,4 @@
-import { isAlipayMiniApp } from '@galacean/effects';
-import { checkDowngrade, getSystemInfo, setAlipayDowngradeBizId, downgradeForMiniprogram } from '@galacean/effects-plugin-alipay-downgrade';
+import { getDowngradeResult } from '@galacean/effects-plugin-alipay-downgrade';
 
 (async () => {
   let bizId = 'test';
@@ -9,19 +8,13 @@ import { checkDowngrade, getSystemInfo, setAlipayDowngradeBizId, downgradeForMin
     bizId = matches[1];
     console.info('Input bizId:', bizId);
   }
-  setAlipayDowngradeBizId(bizId);
-  const downgradeResult = await checkDowngrade(bizId);
-  const systemInfoResult = await getSystemInfo();
-  const isAlipayMiniProgram = isAlipayMiniApp();
-  const downgradeMiniprogram = downgradeForMiniprogram();
-  const downgradeLabel = document.createElement('label');
-  const systemInfoLabel = document.createElement('label');
-  const miniprogramLabel = document.createElement('label');
 
-  downgradeLabel.innerHTML = `<div><pre>${JSON.stringify(downgradeResult, undefined, 2)}</pre></div>`;
-  systemInfoLabel.innerHTML = `<div><pre>${JSON.stringify(systemInfoResult, undefined, 2)}</pre></div>`;
-  miniprogramLabel.innerHTML = `<div><pre>MiniProgram: ${isAlipayMiniProgram}, downgrade: ${downgradeMiniprogram}</pre></div>`;
-  document.body.append(downgradeLabel);
-  document.body.append(systemInfoLabel);
-  document.body.append(miniprogramLabel);
+  try {
+    const downgradeResult = await getDowngradeResult(bizId);
+
+    document.getElementById('J-downgradeResult')!.innerHTML = `Result: <pre>${JSON.stringify(downgradeResult, undefined, 2)}</pre>`;
+  } catch (e: any) {
+    console.error('biz', e);
+    document.getElementById('J-errorMessage')!.innerHTML = JSON.stringify(e.message, undefined, 2);
+  }
 })();

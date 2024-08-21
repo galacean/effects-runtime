@@ -1,4 +1,4 @@
-import type { LostHandler, RestoreHandler } from '@galacean/effects-core';
+import type { GLType, LostHandler, RestoreHandler } from '@galacean/effects-core';
 import { assertExist, createGLContext } from '@galacean/effects-core';
 
 export class GLContextManager {
@@ -11,7 +11,7 @@ export class GLContextManager {
 
   constructor (
     public canvas: HTMLCanvasElement | OffscreenCanvas | null,
-    public readonly glType: 'webgl' | 'webgl2' = 'webgl',
+    public readonly glType: GLType = 'webgl',
     options: WebGLContextAttributes = {},
   ) {
     assertExist(canvas);

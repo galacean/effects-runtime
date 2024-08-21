@@ -1,5 +1,5 @@
 import { DEG2RAD, Matrix4, Vector3 } from '@galacean/effects-math/es/core/index';
-import { random } from '../utils';
+import { randomInRange } from '../utils';
 import { getArcAngle } from './cone';
 import type { Shape, ShapeGeneratorOptions, ShapeParticle } from '.';
 
@@ -17,7 +17,7 @@ export class Sphere implements Shape {
   }
 
   getHorizontalAngle () {
-    return random(-90, 90);
+    return randomInRange(-90, 90);
   }
 
   generate (opt: ShapeGeneratorOptions): ShapeParticle {
@@ -36,12 +36,8 @@ export class Sphere implements Shape {
 }
 
 export class Hemisphere extends Sphere {
-  override arc: number;
-  override radius: number;
-  override arcMode: number;
-
   override getHorizontalAngle () {
-    return random(0, 90);
+    return randomInRange(0, 90);
   }
 }
 

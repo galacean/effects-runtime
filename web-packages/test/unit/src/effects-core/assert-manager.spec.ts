@@ -1,8 +1,9 @@
+import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
 import { Player } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('asset manager', () => {
+describe('core/asset-manager', () => {
   let player: Player | null;
 
   before(() => {
@@ -14,7 +15,7 @@ describe('asset manager', () => {
     player = null;
   });
 
-  it('templateV2 video', async () => {
+  it('template video', async () => {
     player = player!;
     const assets = {
       'images': [
@@ -43,17 +44,15 @@ describe('asset manager', () => {
     };
 
     const comp = await player.loadScene(generateScene(assets));
+    const textures = comp.textures;
 
-    const textureOptions = comp.compositionSourceManager.textureOptions;
-
-    expect(textureOptions.length).to.deep.equals(1);
-    expect(textureOptions[0]).to.haveOwnProperty('video');
-    const videoElement = textureOptions[0].video;
+    expect(textures.length).to.deep.equals(1);
+    expect(textures[0].source).to.not.be.empty;
+    const videoElement = (textures[0].source as Texture2DSourceOptionsVideo).video;
 
     expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
 
     player.gotoAndStop(0.1);
-
   });
 
   it('templateV2 video variables', async () => {
@@ -91,16 +90,15 @@ describe('asset manager', () => {
       },
     });
 
-    const textureOptions = comp.compositionSourceManager.textureOptions;
+    const textures = comp.textures;
 
-    expect(textureOptions.length).to.deep.equals(1);
-    expect(textureOptions[0]).to.haveOwnProperty('video');
-    const videoElement = textureOptions[0].video;
+    expect(textures.length).to.deep.equals(1);
+    expect(textures[0].source).to.not.be.empty;
+    const videoElement = (textures[0].source as Texture2DSourceOptionsVideo).video;
 
     expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
 
     player.gotoAndStop(0.1);
-
   });
 });
 

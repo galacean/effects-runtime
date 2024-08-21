@@ -1,149 +1,212 @@
-import type { Texture, Geometry, Engine, math } from '@galacean/effects';
-import {
-  spec,
-  Mesh,
-  DestroyOptions,
-  Material,
-} from '@galacean/effects';
-import type {
-  ModelItemMesh,
-  ModelMaterialOptions,
-  ModelMeshOptions,
-  ModelItemBounding,
-  ModelPrimitiveOptions,
-} from '../index';
-import {
-  PObjectType,
-  PMaterialType,
-  PShadowType,
-  PGlobalState,
-  PFaceSideMode,
-} from './common';
+import type { Texture, Engine, math, VFXItem, Renderer, Geometry } from '@galacean/effects';
+import { spec, Material, GLSLVersion } from '@galacean/effects';
+import type { ModelMeshComponentData, ModelItemBounding } from '../index';
+import { PObjectType, PMaterialType, PGlobalState } from './common';
 import { PEntity } from './object';
 import type { PMaterial } from './material';
-import {
-  PMaterialPBR,
-  PMaterialUnlit,
-  createPluginMaterial,
-} from './material';
+import { PMaterialPBR, PMaterialUnlit, createPluginMaterial } from './material';
 import { Matrix4, Vector3, Box3, Vector2 } from './math';
 import { PSkin, PAnimTexture, PMorph, TextureDataMode } from './animation';
-import type { PSceneStates } from './scene';
+import type { PSceneManager, PSceneStates } from './scene';
 import type { PSkybox } from './skybox';
-import type { PMaterialShadowBase, PShadowRuntimeOptions } from './shadow';
-import { PMaterialShadowBaseTest } from './shadow';
 import { GeometryBoxProxy, HitTestingProxy } from '../utility/plugin-helper';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import { BoxMesh } from '../utility/ri-helper';
 import { RayBoxTesting } from '../utility/hit-test-helper';
-import type { ModelTreeVFXItem, ModelTreeNode } from '../plugin';
+import type { ModelTreeNode } from '../plugin';
+import { ModelTreeComponent } from '../plugin';
+import type { ModelMeshComponent } from '../plugin/model-item';
 
 type Box3 = math.Box3;
 
+/**
+ * Mesh 类，负责 Mesh 相关的骨骼动画和 PBR 渲染
+ */
 export class PMesh extends PEntity {
   /**
-   * 3D 元素父节点
+   * 所属的 Mesh 组件
+   */
+  owner?: ModelMeshComponent;
+  /**
+   * 父节点索引
    */
   parentIndex = -1;
   /**
-   * 元素的父节点
+   * 父元素
    */
-  parentItem?: ModelTreeVFXItem;
+  parentItem?: VFXItem;
   /**
-   * 元素的父节点 Id
+   * 父元素索引
    */
   parentItemId?: string;
+  rootBoneItem?: VFXItem;
+  /**
+   * 蒙皮
+   */
   skin?: PSkin;
   /**
    * morph 动画状态数据，主要是 weights 数组
    */
   morph?: PMorph;
-  primitives: PPrimitive[] = [];
+  /**
+   * primitive 对象数组
+   */
+  subMeshes: PSubMesh[] = [];
+  /**
+   * 是否隐藏，默认是隐藏
+   */
   hide = true;
+  /**
+   * 优先级
+   */
   priority = 0;
+  /**
+   * 包围盒
+   */
   boundingBox: Box3 = new Box3();
+  /**
+   * 是否显示包围盒
+   */
   visBoundingBox = false;
+  /**
+   * 包围盒 Mesh
+   */
   boundingBoxMesh?: BoxMesh;
+  /**
+   * 是否调用 Build
+   */
   isBuilt = false;
+  /**
+   * 是否销毁
+   */
   isDisposed = false;
 
-  constructor (private engine: Engine, itemMesh: ModelItemMesh, ownerItem?: ModelVFXItem, parentItem?: ModelTreeVFXItem) {
+  /**
+   * 构造函数，创建 Mesh 对象，并与所属组件和父元素相关联
+   * @param engine - 引擎
+   * @param name - 名称
+   * @param meshData - Mesh 参数
+   * @param owner - 所属的 Mesh 组件
+   * @param parentId - 父元素索引
+   * @param parent - 父元素
+   */
+  constructor (
+    private engine: Engine,
+    name: string,
+    meshData: ModelMeshComponentData,
+    owner: ModelMeshComponent,
+    parentId?: string,
+    parent?: VFXItem,
+  ) {
     super();
-    const proxy = new EffectsMeshProxy(itemMesh, parentItem);
+    const proxy = new EffectsMeshProxy(meshData, owner, parent);
 
-    this.name = proxy.getName();
+    this.name = name;
     this.type = PObjectType.mesh;
     this.visible = false;
-    this.ownerItem = ownerItem;
+    this.owner = owner;
     //
     this.parentIndex = proxy.getParentIndex();
     this.parentItem = proxy.parentItem;
-    this.parentItemId = proxy.getParentId();
+    this.parentItemId = parentId;
+    this.rootBoneItem = meshData.rootBone as unknown as VFXItem;
     this.skin = proxy.getSkinObj(engine);
     this.morph = proxy.getMorphObj();
     this.hide = proxy.isHide();
-    this.priority = ownerItem?.listIndex || 0;
+    this.priority = owner?.item?.renderOrder || 0;
     //
-    this.primitives = [];
-    proxy.getPrimitives().forEach(primOpts => {
-      const primObj = new PPrimitive(this.engine);
+    this.subMeshes = [];
+    const geometry = proxy.getGeometry() as unknown as Geometry;
+    const materials = owner?.materials ?? [];
 
-      primObj.create(primOpts, this);
-      this.primitives.push(primObj);
+    materials.forEach(material => {
+      const subMesh = new PSubMesh(this.engine);
+
+      subMesh.create(geometry, material, this);
+      this.subMeshes.push(subMesh);
     });
 
-    if (this.primitives.length <= 0) {
-      console.warn(`No primitive inside mesh item ${proxy.getName()}`);
+    if (this.subMeshes.length <= 0) {
+      console.warn(`No primitive inside mesh item ${name}.`);
     }
 
-    this.boundingBox = this.getItemBoundingBox(itemMesh.content.interaction);
+    this.boundingBox = this.getItemBoundingBox(meshData.interaction);
+  }
+
+  /**
+   * 创建 GE 的 Mesh、Geometry 和 Material 对象
+   * @param scene - 场景管理器
+   * @returns
+   */
+  build (scene: PSceneManager) {
+    if (this.isBuilt) {
+      return;
+    }
+
+    this.isBuilt = true;
+    this.subMeshes.forEach(prim => {
+      prim.build(scene.maxLightCount, scene.skybox);
+    });
 
     if (PGlobalState.getInstance().visBoundingBox) {
       this.boundingBoxMesh = new BoxMesh(this.engine, this.priority);
     }
   }
 
-  build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
-    if (this.isBuilt) {
-      return;
-    }
+  /**
+   * 更新变换数据和蒙皮数据
+   */
+  override update () {
+    if (this.owner !== undefined) {
+      this.transform.fromEffectsTransform(this.owner.transform);
 
-    this.isBuilt = true;
-    this.primitives.forEach(prim => {
-      prim.build(lightCount, uniformSemantics, skybox);
-    });
-  }
-
-  override tick (deltaSeconds: number) {
-    if (!this.visible) { return; }
-
-    if (this.ownerItem !== undefined) {
-      this.transform.setMatrix(this.ownerItem.transform.getWorldMatrix());
-    }
-
-    if (this.skin !== undefined) {
-      this.skin.updateSkinMatrices();
-    }
-  }
-
-  override addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
-    if (this.visible) {
-      this.primitives.forEach(prim => {
-        prim.effectsMesh.worldMatrix = this.transform.getMatrix();
-        renderObjectSet.add(prim.effectsMesh);
-      });
-
-      if (this.visBoundingBox && this.boundingBoxMesh !== undefined) {
-        renderObjectSet.add(this.boundingBoxMesh.mesh);
+      if (this.morph && this.morph.hasMorph() && this.owner.morphWeights.length > 0) {
+        this.morph.updateWeights(this.owner.morphWeights);
       }
     }
   }
 
+  /**
+   * 更新骨骼动画
+   */
+  lateUpdate () {
+    this.skin?.updateSkinMatrices();
+  }
+
+  /**
+   * 渲染 Mesh 对象，需要将内部相关数据传给渲染器
+   * @param scene - 场景
+   * @param renderer - 渲染器
+   */
+  override render (scene: PSceneManager, renderer: Renderer) {
+    this.updateMaterial(scene);
+
+    this.subMeshes.forEach((subMesh, index) => {
+      renderer.drawGeometry(
+        subMesh.getEffectsGeometry(),
+        subMesh.getEffectsMaterial(),
+        index
+      );
+    });
+
+    if (this.visBoundingBox && this.boundingBoxMesh !== undefined) {
+      const mesh = this.boundingBoxMesh.mesh;
+
+      renderer.drawGeometry(mesh.geometry, mesh.material);
+    }
+  }
+
+  /**
+   * 销毁，需要主动释放蒙皮、morph 和 Mesh 等相关的对象
+   * @returns
+   */
   override dispose () {
     if (this.isDisposed) {
       return;
     }
 
+    super.dispose();
+
+    this.owner = undefined;
     this.isDisposed = true;
     // @ts-expect-error
     this.engine = null;
@@ -152,10 +215,10 @@ export class PMesh extends PEntity {
     this.skin = undefined;
     this.morph?.dispose();
     this.morph = undefined;
-    this.primitives.forEach(prim => {
+    this.subMeshes.forEach(prim => {
       prim.dispose();
     });
-    this.primitives = [];
+    this.subMeshes = [];
     this.boundingBoxMesh?.dispose();
     this.boundingBoxMesh = undefined;
   }
@@ -179,7 +242,7 @@ export class PMesh extends PEntity {
     }
 
     if (updatedArray.length != weightsArray.length) {
-      throw new Error('weight array length mismatch');
+      throw new Error('Weight array length mismatch.');
     }
 
     for (let i = 0; i < updatedArray.length; i++) {
@@ -187,22 +250,33 @@ export class PMesh extends PEntity {
     }
   }
 
-  updateParentItem (parentItem: ModelTreeVFXItem) {
+  /**
+   * 更新父 VFX 元素
+   * @param parentId - 父元素索引
+   * @param parentItem - 父 VFX 元素
+   */
+  updateParentInfo (parentId: string, parentItem: VFXItem) {
+    this.parentItemId = parentId;
     this.parentItem = parentItem;
     if (this.skin !== undefined) {
       this.skin.updateParentItem(parentItem);
     }
   }
 
-  override updateUniformsForScene (sceneStates: PSceneStates) {
+  /**
+   * 根据当前场景状态更新内部材质数据
+   * @param scene - 场景管理器
+   */
+  updateMaterial (scene: PSceneManager) {
     const worldMatrix = this.matrix;
     const normalMatrix = worldMatrix.clone().invert().transpose();
+    const sceneStates = scene.sceneStates;
 
-    this.primitives.forEach(prim => {
-      prim.updateUniformsForScene(worldMatrix, normalMatrix, sceneStates);
+    this.subMeshes.forEach(prim => {
+      prim.updateMaterial(worldMatrix, normalMatrix, sceneStates);
     });
 
-    if (sceneStates.deltaSeconds === 0 && this.boundingBoxMesh !== undefined) {
+    if (this.boundingBoxMesh !== undefined) {
       this.computeBoundingBox(worldMatrix);
       const lineColor = new Vector3(1, 1, 1);
       const minPos = this.boundingBox.min;
@@ -223,12 +297,12 @@ export class PMesh extends PEntity {
     }
   }
 
-  updateUniformForShadow (shadowOptions: PShadowRuntimeOptions) {
-    this.primitives.forEach(prim => {
-      prim.updateUniformForShadow(shadowOptions);
-    });
-  }
-
+  /**
+   * 点击测试，对于编辑器模式会进行精准的点击测试，否则就和内部的包围盒进行测试
+   * @param rayOrigin - 射线原点
+   * @param rayDirection - 射线方向
+   * @returns 交点列表
+   */
   hitTesting (rayOrigin: Vector3, rayDirection: Vector3): Vector3[] {
     const worldMatrix = this.matrix;
     const invWorldMatrix = worldMatrix.clone().invert();
@@ -245,7 +319,7 @@ export class PMesh extends PEntity {
     let mint: number | undefined;
 
     if (PGlobalState.getInstance().isEditorEnv) {
-      this.primitives.forEach(prim => {
+      this.subMeshes.forEach(prim => {
         const primt = prim.hitTesting(newOrigin, newDirection, worldMatrix, invWorldMatrix);
 
         if (primt !== undefined) {
@@ -269,11 +343,16 @@ export class PMesh extends PEntity {
     return [newOrigin];
   }
 
+  /**
+   * 计算包围盒，根据传入的世界矩阵
+   * @param worldMatrix - 世界矩阵
+   * @returns
+   */
   computeBoundingBox (worldMatrix: Matrix4): Box3 {
     const box = this.boundingBox.makeEmpty();
     const inverseWorldMatrix = worldMatrix.clone().invert();
 
-    this.primitives.forEach(prim => {
+    this.subMeshes.forEach(prim => {
       const subbox = prim.computeBoundingBox(inverseWorldMatrix);
 
       box.union(subbox);
@@ -307,23 +386,27 @@ export class PMesh extends PEntity {
     }
   }
 
+  /**
+   * 获取父节点 id
+   * @returns
+   */
   getParentId (): string | undefined {
     return this.parentItemId;
   }
 
+  /**
+   * 是否有蒙皮
+   */
   get hasSkin (): boolean {
     return this.skin !== undefined;
   }
 
-  get mriMeshs (): Mesh[] {
-    return this.primitives.map(prim => {
-      return prim.effectsMesh;
-    });
-  }
-
 }
 
-export class PPrimitive {
+/**
+ * PSubMesh 类，负责 Sub Mesh相关的功能，支持骨骼动画和 PBR 渲染
+ */
+export class PSubMesh {
   /**
    * 宿主 Mesh，包含了当前 Primitive
    */
@@ -333,40 +416,51 @@ export class PPrimitive {
    * Morph 动画状态数据，来自 Mesh 对象，这里不创建不删除
    */
   private morph?: PMorph;
-  private geometry!: PGeometry;
-  private material!: PMaterial;
+  private geometry: PGeometry;
+  private material: PMaterial;
   //
   private jointMatrixList?: Float32Array;
   private jointNormalMatList?: Float32Array;
   private jointMatrixTexture?: PAnimTexture;
   private jointNormalMatTexture?: PAnimTexture;
-  //
+  /**
+   * 名称
+   */
   name = '';
-  effectsMesh!: Mesh;
+  /**
+   * 渲染优先级
+   */
   effectsPriority = 0;
+  /**
+   * 包围盒
+   */
   boundingBox = new Box3();
+  /**
+   * 是否压缩，模式不压缩
+   */
   isCompressed = false;
-  //
-  shadowType = PShadowType.none;
-  shadowMesh?: Mesh;
-  shadowMaterial?: PMaterialShadowBase;
 
   constructor (private engine: Engine) {
 
   }
 
-  create (options: ModelPrimitiveOptions, parent: PMesh) {
+  /**
+   * 创建 Primitive 对象
+   * @param data - Primitive 参数
+   * @param parent - 所属 Mesh 对象
+   */
+  create (geometry: Geometry, material: Material, parent: PMesh) {
     this.parent = parent;
     this.skin = parent.skin;
     this.morph = parent.morph;
-    this.setGeometry(options.geometry);
-    this.setMaterial(options.material);
+    this.setGeometry(geometry);
+    this.setMaterial(material);
     this.name = parent.name;
     this.effectsPriority = parent.priority;
     this.geometry.setHide(parent.hide);
 
     if (this.skin !== undefined) {
-      const jointCount = this.skin.getJointCount();
+      const jointCount = this.skin.maxJointCount;
 
       this.jointMatrixList = new Float32Array(jointCount * 16);
       this.jointNormalMatList = new Float32Array(jointCount * 16);
@@ -388,99 +482,51 @@ export class PPrimitive {
 
     this.isCompressed = this.geometry.isCompressed();
 
-    this.shadowType = PShadowType.none;
-    if (this.material instanceof PMaterialPBR && this.material.enableShadow) {
-      this.shadowType = PShadowType.expVariance;
-    }
-
     //if (PGlobalState.getInstance().isTiny3dMode) {
     //  if (this._material.isAdditive || this._material.isTranslucent()) { this.mriPriority += 10000; }
     //}
   }
 
-  build (lightCount: number, uniformSemantics: { [k: string]: any }, skybox?: PSkybox) {
+  /**
+   * 创建 GE Mesh、Geometry 和 Material 对象，用于后面的渲染
+   * @param lightCount - 灯光数目
+   * @param skybox - 天空盒
+   */
+  build (lightCount: number, skybox?: PSkybox) {
     const globalState = PGlobalState.getInstance();
-    const featureList = this.getFeatureList(lightCount, true, skybox);
+    const primitiveMacroList = this.getMacroList(lightCount, true, skybox);
+    const materialMacroList = this.material.getMacroList(primitiveMacroList);
 
-    this.material.build(featureList);
-    const newSemantics = this.isEnableShadow() ? uniformSemantics : {};
+    let material: Material;
+    const isWebGL2 = PGlobalState.getInstance().isWebGL2;
 
-    newSemantics['u_ViewProjectionMatrix'] = 'VIEWPROJECTION';
-    //newSemantics["uView"] = 'VIEWINVERSE';
-    newSemantics['u_ModelMatrix'] = 'MODEL';
-    newSemantics['uEditorTransform'] = 'EDITOR_TRANSFORM';
-    const material = Material.create(
-      this.engine,
-      {
-        shader: {
-          vertex: this.material.vertexShaderCode,
-          fragment: this.material.fragmentShaderCode,
-          shared: globalState.shaderShared,
-        },
-        uniformSemantics: newSemantics,
-      }
-    );
+    if (this.material.effectMaterial) {
+      material = this.material.effectMaterial;
 
-    this.material.setMaterialStates(material);
+      materialMacroList.forEach(macro => {
+        const { name, value } = macro;
 
-    const mesh = Mesh.create(
-      this.engine,
-      {
-        name: this.name,
-        material,
-        geometry: this.getEffectsGeometry(),
-        priority: this.effectsPriority,
-      }
-    );
-
-    if (this.effectsMesh !== undefined) {
-      this.effectsMesh.dispose();
-    }
-
-    this.effectsMesh = mesh;
-
-    if (this.isEnableShadow()) {
-      this.shadowMaterial = new PMaterialShadowBaseTest();
-      this.shadowMaterial.create({
-        name: this.name + '_ShadowMaterial',
-        shadowType: this.shadowType,
+        material.enableMacro(name, value);
       });
-      const shadowFeatureList = this.getFeatureList(lightCount, false, skybox);
 
-      this.shadowMaterial.build(shadowFeatureList);
-      //
-      const shadowVertexShader = this.shadowMaterial.vertexShaderCode;
-      const shaodwFragmentShader = this.shadowMaterial.fragmentShaderCode;
-      const shadowMaterial = Material.create(
+      this.material.setMaterialStates(material);
+    } else {
+      material = Material.create(
         this.engine,
         {
           shader: {
-            vertex: shadowVertexShader,
-            fragment: shaodwFragmentShader,
+            vertex: this.material.vertexShaderCode,
+            fragment: this.material.fragmentShaderCode,
             shared: globalState.shaderShared,
+            glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
           },
         }
       );
-
-      this.shadowMaterial.setMaterialStates(shadowMaterial);
-      const shadowMesh = Mesh.create(
-        this.engine,
-        {
-          name: this.name + '_shadow',
-          material: shadowMaterial,
-          geometry: this.getEffectsGeometry(),
-          priority: this.effectsPriority,
-        }
-      );
-
-      if (this.shadowMesh !== undefined) {
-        this.shadowMesh.dispose();
-      }
-
-      this.shadowMesh = shadowMesh;
+      this.material.setMaterialStates(material);
     }
   }
 
+  // TODO: 待移除？
   private getFeatureList (lightCount: number, pbrPass: boolean, skybox?: PSkybox): string[] {
     const featureList: string[] = [];
 
@@ -523,35 +569,17 @@ export class PPrimitive {
       if (this.skin.textureDataMode) { featureList.push('USE_SKINNING_TEXTURE 1'); }
     }
 
-    if (this.isEnableShadow()) {
-      if (this.shadowType === PShadowType.standard) {
-        // standard
-        featureList.push('SHADOWMAP_STANDARD 1');
-      } else if (this.shadowType === PShadowType.variance) {
-        // variance
-        featureList.push('SHADOWMAP_VSM 1');
-      } else {
-        // expVariance
-        featureList.push('SHADOWMAP_EVSM 1');
-        featureList.push('SHADOWMAP_EVSM_PCF 1');
-      }
-
-      if (pbrPass) {
-        featureList.push('USE_SHADOW_MAPPING 1');
-      }
-    }
-
     if (this.material.materialType !== PMaterialType.unlit) {
-      let hasLight = false;
+      // let hasLight = false;
 
       if (lightCount > 0 && this.geometry.hasNormals()) {
-        hasLight = true;
+        // hasLight = true;
         featureList.push('USE_PUNCTUAL 1');
         featureList.push(`LIGHT_COUNT ${lightCount}`);
       }
 
       if (skybox !== undefined && skybox.available) {
-        hasLight = true;
+        // hasLight = true;
         featureList.push('USE_IBL 1');
         featureList.push('USE_TEX_LOD 1');
         if (skybox.hasDiffuseImage) {
@@ -578,10 +606,86 @@ export class PPrimitive {
     return featureList;
   }
 
-  addToRenderObjectSet (renderObjectSet: Set<Mesh>) {
-    renderObjectSet.add(this.effectsMesh);
+  private getMacroList (lightCount: number, pbrPass: boolean, skybox?: PSkybox): MacroInfo[] {
+    const macroList: MacroInfo[] = [];
+
+    if (this.geometry.hasNormals()) {
+      macroList.push({ name: 'HAS_NORMALS' });
+    }
+    if (this.geometry.hasTangents()) {
+      macroList.push({ name: 'HAS_TANGENTS' });
+    }
+    if (this.geometry.hasUVCoords(1)) {
+      macroList.push({ name: 'HAS_UV_SET1' });
+    }
+    if (this.geometry.hasUVCoords(2)) {
+      macroList.push({ name: 'HAS_UV_SET2' });
+    }
+
+    if (this.morph !== undefined && this.morph.hasMorph()) {
+      // 存在 Morph 动画，需要配置 Morph 动画相关的 Shader 宏定义
+      // USE_MORPHING 是总开关，WEIGHT_COUNT 是 weights 数组长度（Shader）
+      macroList.push({ name: 'USE_MORPHING' });
+      macroList.push({ name: 'WEIGHT_COUNT', value: this.morph.morphWeightsLength });
+      for (let i = 0; i < this.morph.morphWeightsLength; i++) {
+        if (this.morph.hasPositionMorph) {
+          macroList.push({ name: `HAS_TARGET_POSITION${i}` });
+        }
+        if (this.morph.hasNormalMorph) {
+          macroList.push({ name: `HAS_TARGET_NORMAL${i}` });
+        }
+        if (this.morph.hasTangentMorph) {
+          macroList.push({ name: `HAS_TARGET_TANGENT${i}` });
+        }
+      }
+    }
+
+    if (this.skin !== undefined) {
+      macroList.push({ name: 'USE_SKINNING' });
+      macroList.push({ name: 'JOINT_COUNT', value: this.skin.maxJointCount });
+      macroList.push({ name: 'HAS_JOINT_SET1' });
+      macroList.push({ name: 'HAS_WEIGHT_SET1' });
+      if (this.skin.textureDataMode) {
+        macroList.push({ name: 'USE_SKINNING_TEXTURE' });
+      }
+    }
+
+    if (this.material.materialType !== PMaterialType.unlit) {
+      if (lightCount > 0 && this.geometry.hasNormals()) {
+        macroList.push({ name: 'USE_PUNCTUAL' });
+        macroList.push({ name: 'LIGHT_COUNT', value: lightCount });
+      }
+
+      if (skybox !== undefined && skybox.available) {
+        macroList.push({ name: 'USE_IBL' });
+        macroList.push({ name: 'USE_TEX_LOD' });
+        if (skybox.hasDiffuseImage) {
+          // do nothing
+        } else {
+          macroList.push({ name: 'IRRADIANCE_COEFFICIENTS' });
+        }
+      }
+
+      // if(!hasLight){
+      //   featureList.push('MATERIAL_UNLIT 1');
+      // }
+    }
+
+    // 渲染中间结果输出，用于渲染效果调试，支持 pbr 和 unlit
+    const renderMode = PGlobalState.getInstance().renderMode3D;
+    const outputDefine = this.getRenderMode3DDefine(renderMode);
+
+    if (outputDefine !== undefined) {
+      macroList.push({ name: 'DEBUG_OUTPUT' });
+      macroList.push({ name: outputDefine });
+    }
+
+    return macroList;
   }
 
+  /**
+   * 销毁，需要释放创建的 GE 对象
+   */
   dispose () {
     // @ts-expect-error
     this.engine = null;
@@ -597,38 +701,28 @@ export class PPrimitive {
     this.jointMatrixTexture = undefined;
     this.jointNormalMatTexture?.dispose();
     this.jointNormalMatTexture = undefined;
-    this.effectsMesh?.dispose({
-      geometries: DestroyOptions.keep,
-      material: DestroyOptions.keep,
-    });
-    // @ts-expect-error
-    this.effectsMesh = undefined;
-    this.shadowMesh?.dispose({
-      geometries: DestroyOptions.keep,
-      material: DestroyOptions.keep,
-    });
-    this.shadowMesh = undefined;
-    this.shadowMaterial?.dispose();
-    this.shadowMaterial = undefined;
   }
 
-  updateUniformsForScene (worldMatrix: Matrix4, nomralMatrix: Matrix4, sceneStates: PSceneStates) {
+  /**
+   * 更新内部 GE 材质着色器 Uniform 数据，根据场景状态
+   * @param worldMatrix - 世界矩阵
+   * @param nomralMatrix - 法线矩阵
+   * @param sceneStates - 场景状态
+   */
+  updateMaterial (worldMatrix: Matrix4, nomralMatrix: Matrix4, sceneStates: PSceneStates) {
     this.updateUniformsByAnimation(worldMatrix, nomralMatrix);
     this.updateUniformsByScene(sceneStates);
-    this.material.updateUniforms(this.getModelMaterial());
+    this.material.updateUniforms(this.getEffectsMaterial());
   }
 
-  updateUniformForShadow (shadowOpts: PShadowRuntimeOptions) {
-    const shadowMriMaterial = this.getShadowModelMaterial();
-
-    if (shadowMriMaterial !== undefined) {
-      shadowMriMaterial.setMatrix('u_ViewProjectionMatrix', shadowOpts.viewProjectionMatrix);
-      if (this.shadowMaterial !== undefined) {
-        this.shadowMaterial.updateUniforms(shadowMriMaterial);
-      }
-    }
-  }
-
+  /**
+   * 点击测试，先进行简单的包围合测试，然后再计算精准的点击测试，这个测试非常耗时不要在移动端上使用
+   * @param newOrigin - 射线原点
+   * @param newDirection - 射线方向
+   * @param worldMatrix - 世界矩阵
+   * @param invWorldMatrix - 逆世界矩阵
+   * @returns 射线的 t 参数
+   */
   hitTesting (newOrigin: Vector3, newDirection: Vector3, worldMatrix: Matrix4, invWorldMatrix: Matrix4) {
     const bounding = this.boundingBox;
     const boxt = RayBoxTesting(newOrigin, newDirection, bounding.min, bounding.max);
@@ -647,13 +741,18 @@ export class PPrimitive {
     }
 
     const proxy = new HitTestingProxy();
-    const doubleSided = this.material.faceSideMode === PFaceSideMode.both;
+    const doubleSided = this.material.isBothSide();
 
     proxy.create(this.geometry.geometry, doubleSided, bindMatrices);
 
     return proxy.getHitPoint(newOrigin, newDirection);
   }
 
+  /**
+   * 计算包围盒
+   * @param inverseWorldMatrix - 逆世界矩阵
+   * @returns
+   */
   computeBoundingBox (inverseWorldMatrix: Matrix4): Box3 {
     if (this.skin === undefined && !this.boundingBox.isEmpty()) {
       // 包围盒缓存了，直接返回计算的结果
@@ -679,10 +778,9 @@ export class PPrimitive {
   }
 
   /**
-   * 渲染输出模式转成 Shader 中的宏定义
-   *
+   * 渲染输出模式转成着色器中的宏定义
    * @param mode - 渲染输出模式
-   * @returns none 模式返回 undefined，其他模式返回相应宏定义
+   * @returns 返回相应的宏定义
    */
   getRenderMode3DDefine (mode: spec.RenderMode3D): string | undefined {
     switch (mode) {
@@ -706,15 +804,10 @@ export class PPrimitive {
   }
 
   private updateUniformsByAnimation (worldMatrix: Matrix4, normalMatrix: Matrix4) {
-    const material = this.getModelMaterial();
-    const shadowMaterial = this.getShadowModelMaterial();
+    const material = this.getEffectsMaterial();
 
-    material.setMatrix('u_ModelMatrix', worldMatrix);
-    material.setMatrix('u_NormalMatrix', normalMatrix);
-    if (shadowMaterial !== undefined) {
-      shadowMaterial.setMatrix('u_ModelMatrix', worldMatrix);
-      shadowMaterial.setMatrix('u_NormalMatrix', normalMatrix);
-    }
+    material.setMatrix('effects_ObjectToWorld', worldMatrix);
+    material.setMatrix('_NormalMatrix', normalMatrix);
     //
     const skin = this.skin;
 
@@ -729,20 +822,16 @@ export class PPrimitive {
 
         jointMatrixTexture.update(jointMatrixList);
         jointNormalMatTexture.update(jointNormalMatList);
-        material.setTexture('u_jointMatrixSampler', jointMatrixTexture.getTexture());
-        material.setTexture('u_jointNormalMatrixSampler', jointNormalMatTexture.getTexture());
+        material.setTexture('_jointMatrixSampler', jointMatrixTexture.getTexture());
+        material.setTexture('_jointNormalMatrixSampler', jointNormalMatTexture.getTexture());
       } else {
         const jointMatrixNumbers: number[] = [];
         const jointNormalMatNumbers: number[] = [];
 
         jointMatrixList.forEach(val => jointMatrixNumbers.push(val));
         jointNormalMatList.forEach(val => jointNormalMatNumbers.push(val));
-        material.setMatrixNumberArray('u_jointMatrix', jointMatrixNumbers);
-        material.setMatrixNumberArray('u_jointNormalMatrix', jointNormalMatNumbers);
-        if (shadowMaterial !== undefined) {
-          shadowMaterial.setMatrixNumberArray('u_jointMatrix', jointMatrixNumbers);
-          shadowMaterial.setMatrixNumberArray('u_jointNormalMatrix', jointNormalMatNumbers);
-        }
+        material.setMatrixNumberArray('_jointMatrix', jointMatrixNumbers);
+        material.setMatrixNumberArray('_jointNormalMatrix', jointNormalMatNumbers);
       }
     }
 
@@ -750,35 +839,17 @@ export class PPrimitive {
     const morph = this.morph;
 
     if (morph !== undefined && morph.hasMorph()) {
-      const morphWeights = morph.morphWeightsArray as Float32Array;
-      const morphWeightNumbers: number[] = [];
+      const morphWeights = morph.morphWeightsArray.slice();
 
-      morphWeights.forEach(val => morphWeightNumbers.push(val));
-      material.setFloats('u_morphWeights', morphWeightNumbers);
-      if (shadowMaterial !== undefined) {
-        shadowMaterial.setFloats('u_morphWeights', morphWeightNumbers);
-      }
+      material.setFloats('_morphWeights', morphWeights);
     }
   }
 
   private updateUniformsByScene (sceneStates: PSceneStates) {
-    const material = this.getModelMaterial();
+    const material = this.getEffectsMaterial();
 
-    material.setMatrix('u_ViewProjectionMatrix', sceneStates.viewProjectionMatrix);
-    material.setVector3('u_Camera', sceneStates.cameraPosition);
-    if (this.isEnableShadow()) {
-      // shadow map 先不支持
-      // const matrix = sceneStates.lightViewProjectionMatrix?.data ?? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-      // const viewMat = sceneStates.lightViewMatrix?.data ?? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-      // const projMat = sceneStates.lightProjectionMatrix?.data ?? [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-      // const shadowMapSizeInv = sceneStates.shadowMapSizeInv ?? new Vector2(1 / 512, 1 / 512);
-
-      // material.setMatrix('u_LightViewProjectionMatrix', matrix);
-      // //material.setUniformValue('u_LightViewMatrix', viewMat);
-      // //material.setUniformValue('u_LightProjectionMatrix', projMat);
-      // material.setUniformValue('u_DeltaSceneSize', sceneStates.sceneRadius * 0.001);
-      // material.setUniformValue('u_ShadowMapSizeInv', shadowMapSizeInv.toArray());
-    }
+    material.setMatrix('effects_MatrixVP', sceneStates.viewProjectionMatrix);
+    material.setVector3('_Camera', sceneStates.cameraPosition);
     //
     if (!this.isUnlitMaterial()) {
       const { maxLightCount, lightList } = sceneStates;
@@ -788,57 +859,69 @@ export class PPrimitive {
           const light = lightList[i];
           const intensity = light.visible ? light.intensity : 0;
 
-          material.setVector3(`u_Lights[${i}].direction`, light.getWorldDirection());
-          material.setFloat(`u_Lights[${i}].range`, light.range);
-          material.setVector3(`u_Lights[${i}].color`, light.color);
-          material.setFloat(`u_Lights[${i}].intensity`, intensity);
-          material.setVector3(`u_Lights[${i}].position`, light.getWorldPosition());
-          material.setFloat(`u_Lights[${i}].innerConeCos`, Math.cos(light.innerConeAngle));
-          material.setFloat(`u_Lights[${i}].outerConeCos`, Math.cos(light.outerConeAngle));
-          material.setInt(`u_Lights[${i}].type`, light.lightType);
-          material.setVector2(`u_Lights[${i}].padding`, light.padding);
+          material.setVector3(`_Lights[${i}].direction`, light.getWorldDirection());
+          material.setFloat(`_Lights[${i}].range`, light.range);
+          material.setVector3(`_Lights[${i}].color`, light.color);
+          material.setFloat(`_Lights[${i}].intensity`, intensity);
+          material.setVector3(`_Lights[${i}].position`, light.getWorldPosition());
+          material.setFloat(`_Lights[${i}].innerConeCos`, Math.cos(light.innerConeAngle));
+          material.setFloat(`_Lights[${i}].outerConeCos`, Math.cos(light.outerConeAngle));
+          material.setInt(`_Lights[${i}].type`, light.lightType);
+          material.setVector2(`_Lights[${i}].padding`, light.padding);
         } else {
-          material.setVector3(`u_Lights[${i}].direction`, Vector3.ZERO);
-          material.setFloat(`u_Lights[${i}].range`, 0);
-          material.setVector3(`u_Lights[${i}].color`, Vector3.ZERO);
-          material.setFloat(`u_Lights[${i}].intensity`, 0);
-          material.setVector3(`u_Lights[${i}].position`, Vector3.ZERO);
-          material.setFloat(`u_Lights[${i}].innerConeCos`, 0);
-          material.setFloat(`u_Lights[${i}].outerConeCos`, 0);
-          material.setInt(`u_Lights[${i}].type`, 99999);
-          material.setVector2(`u_Lights[${i}].padding`, Vector2.ZERO);
+          material.setVector3(`_Lights[${i}].direction`, Vector3.ZERO);
+          material.setFloat(`_Lights[${i}].range`, 0);
+          material.setVector3(`_Lights[${i}].color`, Vector3.ZERO);
+          material.setFloat(`_Lights[${i}].intensity`, 0);
+          material.setVector3(`_Lights[${i}].position`, Vector3.ZERO);
+          material.setFloat(`_Lights[${i}].innerConeCos`, 0);
+          material.setFloat(`_Lights[${i}].outerConeCos`, 0);
+          material.setInt(`_Lights[${i}].type`, 99999);
+          material.setVector2(`_Lights[${i}].padding`, Vector2.ZERO);
         }
       }
 
       const skybox = sceneStates.skybox;
 
       if (skybox !== undefined && skybox.available) {
-        material.setVector2('u_IblIntensity', new Vector2(skybox.currentIntensity, skybox.currentReflectionsIntensity));
-        material.setTexture('u_brdfLUT', skybox.brdfLUT as Texture);
+        material.setVector2('_IblIntensity', new Vector2(skybox.currentIntensity, skybox.currentReflectionsIntensity));
+        material.setTexture('_brdfLUT', skybox.brdfLUT as Texture);
         if (skybox.diffuseImage !== undefined) {
-          material.setTexture('u_DiffuseEnvSampler', skybox.diffuseImage);
+          material.setTexture('_DiffuseEnvSampler', skybox.diffuseImage);
         } else {
           const coeffs = skybox.irradianceCoeffs as number[][];
           const aliasName = ['l00', 'l1m1', 'l10', 'l11', 'l2m2', 'l2m1', 'l20', 'l21', 'l22'];
 
           aliasName.forEach((n, i) => {
-            material.setVector3(`u_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
+            material.setVector3(`_shCoefficients.${n}`, Vector3.fromArray(coeffs[i] as spec.vec3));
           });
         }
-        material.setInt('u_MipCount', skybox.specularMipCount ?? 1);
-        material.setTexture('u_SpecularEnvSampler', skybox.specularImage);
+        material.setInt('_MipCount', skybox.specularMipCount - 1);
+        material.setTexture('_SpecularEnvSampler', skybox.specularImage);
       }
     }
   }
 
+  /**
+   * 是否有蒙皮
+   * @returns
+   */
   hasSkin (): boolean {
     return this.skin !== undefined;
   }
 
+  /**
+   * 获取 GE 几何体
+   * @returns
+   */
   getEffectsGeometry (): Geometry {
     return this.geometry.geometry;
   }
 
+  /**
+   * 设置几何体
+   * @param val - 插件或 GE 几何体
+   */
   setGeometry (val: PGeometry | Geometry) {
     if (val instanceof PGeometry) {
       this.geometry = val;
@@ -847,7 +930,11 @@ export class PPrimitive {
     }
   }
 
-  setMaterial (val: PMaterial | ModelMaterialOptions) {
+  /**
+   * 设置材质
+   * @param val - 插件材质对象或材质参数
+   */
+  setMaterial (val: PMaterial | Material) {
     if (val instanceof PMaterialUnlit) {
       this.material = val;
     } else if (val instanceof PMaterialPBR) {
@@ -857,18 +944,18 @@ export class PPrimitive {
     }
   }
 
-  getModelMaterial (): Material {
-    return this.effectsMesh.material;
+  /**
+   * 获取 GE 材质
+   * @returns
+   */
+  getEffectsMaterial (): Material {
+    return this.material.effectMaterial;
   }
 
-  getShadowModelMaterial (): Material | undefined {
-    return this.shadowMesh?.material;
-  }
-
-  isEnableShadow (): boolean {
-    return this.shadowType !== PShadowType.none && this.material.materialType !== PMaterialType.unlit;
-  }
-
+  /**
+   * 是否无光照材质
+   * @returns
+   */
   isUnlitMaterial (): boolean {
     return this.material.materialType === PMaterialType.unlit;
   }
@@ -876,7 +963,6 @@ export class PPrimitive {
   /**
    * 是否有 Morph 动画：
    * 需要注意 Morph 对象存在，但还是没有 Morph 动画的情况
-   *
    * @returns 返回是否有 Morph 动画
    */
   hasMorph (): boolean {
@@ -887,6 +973,10 @@ export class PPrimitive {
     return this.morph.hasMorph();
   }
 
+  /**
+   * 获取世界坐标下的包围盒
+   * @returns
+   */
   getWorldBoundingBox (): Box3 {
     if (this.parent === undefined) {
       if (this.boundingBox.isEmpty()) {
@@ -906,19 +996,37 @@ export class PPrimitive {
   }
 }
 
+/**
+ * 3D 几何类
+ */
 export class PGeometry {
+  /**
+   * 属性名称数组
+   */
   attributeNames: string[];
 
+  /**
+   * 创建 3D 几何体，根据 GE 几何体
+   * @param geometry - GE 几何体
+   */
   constructor (public geometry: Geometry) {
     this.attributeNames = geometry.getAttributeNames();
   }
 
+  /**
+   * 销毁
+   */
   dispose () {
     // @ts-expect-error
     this.geometry = undefined;
     this.attributeNames = [];
   }
 
+  /**
+   * 是否有某个属性
+   * @param name - 属性名
+   * @returns
+   */
   hasAttribute (name: string): boolean {
     const index = this.attributeNames.findIndex(item => {
       return item === name;
@@ -927,6 +1035,10 @@ export class PGeometry {
     return index !== -1;
   }
 
+  /**
+   * 设置隐藏，通过修改几何体中的渲染数目
+   * @param hide - 隐藏值
+   */
   setHide (hide: boolean) {
     const geomExt = this.geometry as GeometryExt;
 
@@ -948,8 +1060,12 @@ export class PGeometry {
     }
   }
 
+  /**
+   * 是否压缩格式
+   * @returns
+   */
   isCompressed (): boolean {
-    const positionAttrib = this.geometry.getAttributeData('a_Position');
+    const positionAttrib = this.geometry.getAttributeData('aPos');
 
     if (positionAttrib === undefined) {
       return false;
@@ -960,80 +1076,93 @@ export class PGeometry {
     return false;
   }
 
+  /**
+   * 是否有位置属性
+   * @returns
+   */
   hasPositions (): boolean {
-    return this.hasAttribute('a_Position');
+    return this.hasAttribute('aPos');
   }
 
+  /**
+   * 是否有法线属性
+   * @returns
+   */
   hasNormals (): boolean {
-    return this.hasAttribute('a_Normal');
+    return this.hasAttribute('aNormal');
   }
 
+  /**
+   * 是否有切线属性
+   * @returns
+   */
   hasTangents (): boolean {
-    return this.hasAttribute('a_Tangent');
+    return this.hasAttribute('aTangent');
   }
 
+  /**
+   * 是否有纹理坐标属性
+   * @param index - 纹理坐标索引
+   * @returns
+   */
   hasUVCoords (index: number): boolean {
-    return this.hasAttribute(`a_UV${index}`);
+    if (index === 1) {
+      return this.hasAttribute('aUV');
+    } else {
+      return this.hasAttribute(`aUV${index}`);
+    }
   }
 
+  /**
+   * 是否有颜色属性
+   * @returns
+   */
   hasColors (): boolean {
-    return this.hasAttribute('a_Color');
+    return this.hasAttribute('aColor');
   }
 
+  /**
+   * 是否有关节点属性
+   * @returns
+   */
   hasJoints (): boolean {
-    return this.hasAttribute('a_Joint1');
+    return this.hasAttribute('aJoints');
   }
 
+  /**
+   * 是否有权重属性
+   * @returns
+   */
   hasWeights (): boolean {
-    return this.hasAttribute('a_Weight1');
+    return this.hasAttribute('aWeights');
   }
 }
 
 class EffectsMeshProxy {
-  options: ModelMeshOptions;
+  data: ModelMeshComponentData;
+  geometry: Geometry;
+  rootBoneItem: VFXItem;
   morphObj: PMorph;
 
   constructor (
-    public item: ModelItemMesh,
-    public parentItem?: ModelTreeVFXItem,
+    public itemData: ModelMeshComponentData,
+    public parentComponent: ModelMeshComponent,
+    public parentItem?: VFXItem,
   ) {
-    this.options = item.content.options;
+    this.data = itemData;
+    this.geometry = itemData.geometry as unknown as Geometry;
+    this.rootBoneItem = itemData.rootBone as unknown as VFXItem;
 
-    // Morph 对象创建，需要为每个 Primitive 中 Geometry 对象创建 Morph
-    // 并且要求创建的 Morph 对象状态是相同的，否则就报错
-    let isSuccess = true;
     const morphObj = new PMorph();
-    const meshOptions = item.content.options;
-    const primitives = meshOptions.primitives;
 
-    primitives.forEach((prim, idx) => {
-      if (idx === 0) {
-        morphObj.create(prim.geometry);
-      } else {
-        const tempMorph = new PMorph();
-
-        if (!tempMorph.create(prim.geometry)) {
-          isSuccess = false;
-        } else {
-          if (!morphObj.equals(tempMorph)) {
-            isSuccess = false;
-            console.error(`Morpth target mismatch between primtives: ${JSON.stringify(morphObj)}, ${JSON.stringify(tempMorph)}`);
-          }
-        }
-      }
-    });
-
-    if (isSuccess) {
+    if (morphObj.create(this.geometry)) {
       // 设置初始权重数组
-      if (meshOptions.weights !== undefined) {
-        morphObj.initWeights(meshOptions.weights);
+      if (itemData.morph?.weights) {
+        morphObj.initWeights(itemData.morph?.weights);
       }
 
       this.morphObj = morphObj;
-    } else {
-      this.morphObj = new PMorph();
     }
-
   }
 
   hasMorphTarget (): boolean {
@@ -1054,61 +1183,66 @@ class EffectsMeshProxy {
     return this.morphObj;
   }
 
-  getParentId (): string | undefined {
-    return this.item.parentId;
-  }
-
-  getName (): string {
-    return this.item.name;
-  }
-
   isHide (): boolean {
-    return this.options.hide === true;
+    return this.data.hide === true;
   }
 
   getParentNode (): ModelTreeNode | undefined {
     const nodeIndex = this.getParentIndex();
+    const parentTree = this.parentItem?.getComponent(ModelTreeComponent);
 
-    if (this.parentItem !== undefined && nodeIndex >= 0) {
-      return this.parentItem.content.getNodeById(nodeIndex);
+    if (parentTree !== undefined && nodeIndex >= 0) {
+      return parentTree.content.getNodeById(nodeIndex);
     }
 
     return undefined;
   }
 
   getParentIndex (): number {
-    return this.options.parent ?? -1;
+    return -1;
   }
 
-  getPrimitives () {
-    return this.options.primitives;
+  getGeometry () {
+    return this.data.geometry;
   }
 
-  getPrimitiveCount (): number {
-    return this.options.primitives.length;
+  getMaterials () {
+    return this.data.materials;
+  }
+
+  getMaterialCount () {
+    return this.data.materials.length;
   }
 
   hasSkin (): boolean {
-    return this.options.skin !== undefined;
+    const skin = this.geometry.getSkinProps();
+
+    return !!(skin.rootBoneName && skin.boneNames && skin.inverseBindMatrices && this.rootBoneItem);
   }
 
   getSkinOpts () {
-    return this.options.skin;
+    return this.geometry.getSkinProps();
   }
 
   getSkinObj (engine: Engine): PSkin | undefined {
     const skin = this.getSkinOpts();
 
-    if (skin !== undefined) {
+    if (skin.rootBoneName && skin.boneNames && skin.inverseBindMatrices && this.rootBoneItem) {
       const skinObj = new PSkin();
+      const maxJointCount = this.parentComponent.sceneManager?.maxJointCount ?? 0;
 
-      skinObj.create(skin, engine, this.parentItem);
+      skinObj.create(skin, engine, this.rootBoneItem, maxJointCount);
 
       return skinObj;
     }
 
     return undefined;
   }
+}
+
+export interface MacroInfo {
+  name: string,
+  value?: boolean | number,
 }
 
 interface GeometryExt extends Geometry {

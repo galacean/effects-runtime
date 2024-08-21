@@ -1,13 +1,17 @@
 import type { Player } from '@galacean/effects';
-import type { ModelVFXItem } from '../plugin/model-vfx-item';
 import type { PMesh } from '../runtime/mesh';
 import { VFX_ITEM_TYPE_3D } from '../plugin/const';
 import { PObjectType } from '../runtime/common';
+import { ModelMeshComponent } from '../plugin/model-item';
 
 type WebGLContext = WebGL2RenderingContext | WebGLRenderingContext;
 const HookSuffix = '_Native';
 const number2GLName = new Map();
 
+/**
+ * Hook WebGL 相关的 API 调用
+ * @param ctx - WebGL 上下文
+ */
 export function HookOGLFunc (ctx: WebGLContext) {
   console.info('HookOGLFunc ' + Object.getPrototypeOf(ctx));
   let hookCount = 0;
@@ -86,12 +90,22 @@ function GetNum2GLName (ctx: WebGLContext) {
   }
 }
 
+/**
+ * 获取播放器关联的 GPU 信息
+ * @param player - 播放器
+ * @returns
+ */
 export function getRendererGPUInfo (player: Player) {
   const instance = player.gpuCapability;
 
   return JSON.stringify(instance, undefined, 2);
 }
 
+/**
+ * 获取播放器中 PMesh 对象列表
+ * @param player - 播放器
+ * @returns
+ */
 export function getPMeshList (player: Player) {
   const meshList: PMesh[] = [];
 
@@ -99,10 +113,10 @@ export function getPMeshList (player: Player) {
 
   composition?.items.forEach(item => {
     if (item.type === VFX_ITEM_TYPE_3D) {
-      const item3D = item as ModelVFXItem;
+      const meshComponent = item.getComponent(ModelMeshComponent);
 
-      if (item3D.content && item3D.content.type === PObjectType.mesh) {
-        meshList.push(item3D.content as PMesh);
+      if (meshComponent?.content.type === PObjectType.mesh) {
+        meshList.push(meshComponent.content);
       }
     }
   });
