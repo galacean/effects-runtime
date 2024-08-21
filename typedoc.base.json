@@ -5,5 +5,5 @@
   "excludeInternal": true,
   "excludeReferences": true,
   "excludeNotDocumented": true,
-  "excludeExternals": true,
+  "excludeExternals": true
 }

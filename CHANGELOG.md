@@ -140,7 +140,7 @@
 `2024-04-16`
 
 - Feat: Added gyroscope support for changing the rotation angle of elements. [#259](https://github.com/galacean/effects-runtime/pull/259) @RGCHN
-- Feat: video template。[#224](https://github.com/galacean/effects-runtime/pull/224) @Sruimeng
+- Feat: video template. [#224](https://github.com/galacean/effects-runtime/pull/224) @Sruimeng
 
 ## 1.2.6
 

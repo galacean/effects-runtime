@@ -3,10 +3,8 @@ class LinkNode<T> {
   pre: LinkNode<T> | null;
 
   constructor (
-    public content: T
-  ) {
-  }
-
+    public content: T,
+  ) { }
 }
 
 export class Link<T> {
@@ -15,7 +13,7 @@ export class Link<T> {
   length = 0;
 
   constructor (
-    private readonly sort: (a: T, b: T) => number
+    private readonly sort: (a: T, b: T) => number,
   ) { }
 
   findNodeByContent (filter: (d: T) => boolean) {
@@ -163,6 +161,21 @@ export class Link<T> {
         // eslint-disable-next-line no-cond-assign
       } while (node = node.pre);
     }
+  }
+
+  getNodeByIndex (index: number) {
+    let i = 0, res = this.first;
+
+    if (!res || index >= this.length || index < 0) {
+      return null;
+    }
+
+    while (i < index) {
+      res = res.next!;
+      i++;
+    }
+
+    return res;
   }
 
 }

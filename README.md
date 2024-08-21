@@ -63,9 +63,9 @@ player.loadScene('./demo.json');
 
 ## Documentation
 
-- [Development Documentation](https://galacean.antgroup.com/effects/#/user/dgmswcgk63yfngku)
-- [Integration Guide](https://galacean.antgroup.com/effects/#/user/ti4f2yx1rot4hs1n)
-- [API Documentation](https://galacean.antgroup.com/effects/#/api)
+- [Development Documentation](https://galacean.antgroup.com/effects/user/dgmswcgk63yfngku)
+- [Integration Guide](https://galacean.antgroup.com/effects/user/ti4f2yx1rot4hs1n)
+- [API Documentation](https://galacean.antgroup.com/effects/api)
 - Useful Links:
   - [Developing](docs/developing.md)
 

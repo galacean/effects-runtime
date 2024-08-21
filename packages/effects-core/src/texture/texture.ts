@@ -2,13 +2,16 @@ import { TextureSourceType } from './types';
 import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType } from './types';
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
+import { EffectsObject } from '../effects-object';
+import { loadImage } from '../downloader';
+import { generateGUID } from '../utils';
 
 let seed = 1;
 
 /**
  * Texture 抽象类
  */
-export abstract class Texture {
+export abstract class Texture extends EffectsObject {
   /**
    * Texture 名称
    */
@@ -16,7 +19,6 @@ export abstract class Texture {
   sourceFrom?: TextureFactorySourceFrom;
   sourceType?: TextureSourceType;
   source: TextureSourceOptions;
-  engine: Engine;
 
   /**
    * Texture 高度
@@ -37,8 +39,27 @@ export abstract class Texture {
   /**
    * 创建一个新的 Texture 对象。
    */
-  static create: (engine: Engine, options: TextureSourceOptions) => Texture;
+  static create: (engine: Engine, options?: TextureSourceOptions) => Texture;
 
+  /**
+   * 通过 URL 创建 Texture 对象。
+   * @param url - 要创建的 Texture URL
+   * @since 2.0.0
+   */
+  static async fromImage (url: string, engine: Engine): Promise<Texture> {
+    const image = await loadImage(url);
+
+    const texture = Texture.create(engine, {
+      sourceType: TextureSourceType.image,
+      image,
+      id: generateGUID(),
+      flipY: true,
+    });
+
+    texture.initialize();
+
+    return texture;
+  }
   /**
    * 通过数据创建 Texture 对象。
    * @param data - 要创建的 Texture 数据
@@ -50,7 +71,8 @@ export abstract class Texture {
     options?: Record<string, any>,
   ) => Texture;
 
-  constructor () {
+  constructor (engine: Engine) {
+    super(engine);
     this.id = 'Tex' + seed++;
   }
 
@@ -102,7 +124,7 @@ export abstract class Texture {
   /**
    * 销毁当前资源。
    */
-  abstract dispose (): void;
+  abstract override dispose (): void;
 
   /**
    * 初始化 GPU 资源
@@ -168,4 +190,46 @@ export function generateHalfFloatTexture (engine: Engine, data: Uint16Array, wid
       wrapS: glContext.CLAMP_TO_EDGE,
       wrapT: glContext.CLAMP_TO_EDGE,
     });
+}
+
+const sourceOptions = {
+  type: glContext.UNSIGNED_BYTE,
+  format: glContext.RGBA,
+  internalFormat: glContext.RGBA,
+  wrapS: glContext.MIRRORED_REPEAT,
+  wrapT: glContext.MIRRORED_REPEAT,
+  minFilter: glContext.NEAREST,
+  magFilter: glContext.NEAREST,
+};
+
+export function generateWhiteTexture (engine: Engine) {
+  return Texture.create(
+    engine,
+    {
+      id: 'whitetexture00000000000000000000',
+      data: {
+        width: 1,
+        height: 1,
+        data: new Uint8Array([255, 255, 255, 255]),
+      },
+      sourceType: TextureSourceType.data,
+      ...sourceOptions,
+    },
+  );
+}
+
+export function generateTransparentTexture (engine: Engine) {
+  return Texture.create(
+    engine,
+    {
+      id: 'transparenttexture00000000000000000000',
+      data: {
+        width: 1,
+        height: 1,
+        data: new Uint8Array([0, 0, 0, 0]),
+      },
+      sourceType: TextureSourceType.data,
+      ...sourceOptions,
+    },
+  );
 }

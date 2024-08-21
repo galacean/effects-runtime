@@ -1,9 +1,10 @@
-import type { Disposable, Texture, math } from '@galacean/effects-core';
+import type { Disposable, Nullable, Texture, math } from '@galacean/effects-core';
 import { glContext } from '@galacean/effects-core';
 import { GLShaderLibrary } from './gl-shader-library';
 import type { GLTexture } from './gl-texture';
 import type { GLEngine } from './gl-engine';
 
+type Color = math.Color;
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
 type Vector4 = math.Vector4;
@@ -11,17 +12,15 @@ type Matrix3 = math.Matrix3;
 type Matrix4 = math.Matrix4;
 type Quaternion = math.Quaternion;
 
-export type Nullable<T> = T | null;
-
 export class GLPipelineContext implements Disposable {
   textureUnitDict: Record<string, WebGLTexture | null>;
+  shaderLibrary: GLShaderLibrary;
 
-  public shaderLibrary: GLShaderLibrary;
   private readonly maxTextureCount: number;
   private glCapabilityCache: Record<string, any>;
   private currentFramebuffer: Record<number, WebGLFramebuffer | null>;
   private currentTextureBinding: WebGLTexture | null;
-  private currentRenderBuffer: Record<number, WebGLRenderbuffer | null>;
+  private currentRenderbuffer: Record<number, WebGLRenderbuffer | null>;
   private activeTextureIndex: number;
   private pixelStorei: Record<string, GLenum>;
 
@@ -46,7 +45,7 @@ export class GLPipelineContext implements Disposable {
     this.textureUnitDict = {};
     this.currentFramebuffer = {};
     this.pixelStorei = {};
-    this.currentRenderBuffer = {};
+    this.currentRenderbuffer = {};
   }
 
   toggle (capability: GLenum, enable?: boolean) {
@@ -102,10 +101,10 @@ export class GLPipelineContext implements Disposable {
     }
   }
 
-  bindRenderBuffer (target: GLenum, renderBuffer: WebGLRenderbuffer | null) {
-    if (this.currentRenderBuffer[target] !== renderBuffer) {
-      this.currentRenderBuffer[target] = renderBuffer;
-      this.gl.bindRenderbuffer(target, renderBuffer);
+  bindRenderbuffer (target: GLenum, renderbuffer: WebGLRenderbuffer | null) {
+    if (this.currentRenderbuffer[target] !== renderbuffer) {
+      this.currentRenderbuffer[target] = renderbuffer;
+      this.gl.bindRenderbuffer(target, renderbuffer);
     }
   }
 
@@ -157,7 +156,7 @@ export class GLPipelineContext implements Disposable {
    * gl.enable(gl.DEPTH_TEST);
    * gl.depthFunc(gl.NEVER);
    */
-  public depthFunc (func: GLenum) {
+  depthFunc (func: GLenum) {
     this.set1('depthFunc', func);
   }
 
@@ -381,7 +380,7 @@ export class GLPipelineContext implements Disposable {
    * gl.blendEquation(gl.FUNC_SUBTRACT);
    * gl.blendEquation(gl.FUNC_REVERSE_SUBTRACT);
    */
-  public blendEquation (mode: GLenum) {
+  blendEquation (mode: GLenum) {
     this.set1('blendEquation', mode);
   }
 
@@ -517,58 +516,62 @@ export class GLPipelineContext implements Disposable {
     return this.glCapabilityCache[name];
   }
 
-  public setFloat (uniform: Nullable<WebGLUniformLocation>, value: number) {
+  setFloat (uniform: Nullable<WebGLUniformLocation>, value: number) {
     if (!uniform) { return; }
     this.gl.uniform1f(uniform, value);
   }
 
-  public setInt (uniform: Nullable<WebGLUniformLocation>, value: number) {
+  setInt (uniform: Nullable<WebGLUniformLocation>, value: number) {
     if (!uniform) { return; }
     this.gl.uniform1i(uniform, value);
   }
 
-  public setFloats (uniform: Nullable<WebGLUniformLocation>, value: number[]) {
+  setFloats (uniform: Nullable<WebGLUniformLocation>, value: number[]) {
     if (!uniform) { return; }
     this.gl.uniform1fv(uniform, value);
   }
 
-  public setVector2 (uniform: Nullable<WebGLUniformLocation>, value: Vector2) {
+  setVector2 (uniform: Nullable<WebGLUniformLocation>, value: Vector2) {
     this.setFloat2(uniform, value.x, value.y);
   }
 
-  public setVector3 (uniform: Nullable<WebGLUniformLocation>, value: Vector3) {
+  setVector3 (uniform: Nullable<WebGLUniformLocation>, value: Vector3) {
     this.setFloat3(uniform, value.x, value.y, value.z);
   }
 
-  public setVector4 (uniform: Nullable<WebGLUniformLocation>, value: Vector4) {
+  setVector4 (uniform: Nullable<WebGLUniformLocation>, value: Vector4) {
     this.setFloat4(uniform, value.x, value.y, value.z, value.w);
   }
 
-  public setQuaternion (uniform: Nullable<WebGLUniformLocation>, value: Quaternion) {
+  setColor (uniform: Nullable<WebGLUniformLocation>, value: Color) {
+    this.setFloat4(uniform, value.r, value.g, value.b, value.a);
+  }
+
+  setQuaternion (uniform: Nullable<WebGLUniformLocation>, value: Quaternion) {
     this.setFloat4(uniform, value.x, value.y, value.z, value.w);
   }
 
-  public setVector4Array (uniform: Nullable<WebGLUniformLocation>, array: number[]) {
+  setVector4Array (uniform: Nullable<WebGLUniformLocation>, array: number[]) {
     if (!uniform || array.length % 4 !== 0) { return; }
     this.gl.uniform4fv(uniform, array);
   }
 
-  public setMatrix (uniform: Nullable<WebGLUniformLocation>, value: Matrix4) {
+  setMatrix (uniform: Nullable<WebGLUniformLocation>, value: Matrix4) {
     if (!uniform) { return; }
     this.gl.uniformMatrix4fv(uniform, false, value.elements);
   }
 
-  public setMatrix3 (uniform: Nullable<WebGLUniformLocation>, value: Matrix3) {
+  setMatrix3 (uniform: Nullable<WebGLUniformLocation>, value: Matrix3) {
     if (!uniform) { return; }
     this.gl.uniformMatrix3fv(uniform, false, value.elements);
   }
 
-  public setMatrixArray (uniform: Nullable<WebGLUniformLocation>, array: number[]) {
+  setMatrixArray (uniform: Nullable<WebGLUniformLocation>, array: number[]) {
     if (!uniform || array.length % 16 !== 0) { return; }
     this.gl.uniformMatrix4fv(uniform, false, array);
   }
 
-  public setTexture (uniform: Nullable<WebGLUniformLocation>, channel: number, texture: Texture) {
+  setTexture (uniform: Nullable<WebGLUniformLocation>, channel: number, texture: Texture) {
     if (!uniform) { return; }
     this.gl.activeTexture(this.gl.TEXTURE0 + channel);
     const target = (texture as GLTexture).target;
@@ -583,7 +586,7 @@ export class GLPipelineContext implements Disposable {
    * @param uniformsNames 查询的uniform名称列表
    * @returns
    */
-  public getUniforms (program: WebGLProgram, uniformsNames: string[]): Nullable<WebGLUniformLocation>[] {
+  getUniforms (program: WebGLProgram, uniformsNames: string[]): Nullable<WebGLUniformLocation>[] {
     const results: Nullable<WebGLUniformLocation>[] = [];
 
     for (let index = 0; index < uniformsNames.length; index++) {

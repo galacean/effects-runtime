@@ -1,13 +1,12 @@
-#version 300 es
+#version 100
 precision highp float;
-#pragma "./compatible.frag.glsl";
-#import "./blend.glsl";
+#include "./blend.glsl";
 
-in vec4 vColor;
-in vec4 vTexCoord;//x y transparentOcclusion
-in highp vec2 vParams;//texIndex mulAplha
+varying vec4 vColor;
+varying vec4 vTexCoord;//x y transparentOcclusion
+varying highp vec2 vParams;//texIndex mulAplha
 uniform vec3 uFrameColor;
 
 void main() {
-  fragColor = vec4(uFrameColor.xyz, 1.0);
+  gl_FragColor = vec4(uFrameColor.xyz, 1.0);
 }

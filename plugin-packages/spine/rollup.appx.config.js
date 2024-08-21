@@ -3,7 +3,8 @@
  */
 export default [
   'alipay',
-  'weapp'
+  'weapp',
+  'douyin',
 ].map(platform => {
   const paths = { '@galacean/effects': `@galacean/effects/${platform}` };
 

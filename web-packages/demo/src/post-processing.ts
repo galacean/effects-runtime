@@ -1,13 +1,23 @@
-// @ts-nocheck
-import { Player, POST_PROCESS_SETTINGS, setConfig, defaultGlobalVolume } from '@galacean/effects';
+//@ts-nocheck
+import type { Composition } from '@galacean/effects';
+import { POST_PROCESS_SETTINGS, Player, PostProcessVolume, defaultGlobalVolume, setConfig } from '@galacean/effects';
 import { InspireList } from './common/inspire-list';
+import { InspectorGui } from './gui/inspector-gui';
 
 const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*YIKpS69QTaoAAAAAAAAAAAAADlB4AQ';
 //const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*6j_ZQan_MhMAAAAAAAAAAAAADlB4AQ'; // BloomTest
 const container = document.getElementById('J-container');
-let player;
 const speed = 0.5;
 const inspireList = new InspireList();
+
+const inspectorGui = new InspectorGui();
+
+setInterval(()=>{
+  inspectorGui.update();
+}, 100);
+
+let gui = new GUI();
+let player;
 
 // DATUI 参数面板
 const postProcessSettings = {
@@ -28,7 +38,6 @@ const postProcessSettings = {
 
 (async () => {
   setConfig(POST_PROCESS_SETTINGS, postProcessSettings);
-  setDatGUI();
   player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
@@ -50,10 +59,13 @@ async function handlePlay (url) {
   try {
     const json = await (await fetch(url)).json();
 
-    hackGlobalVolume(json);
-    const scene = await player.loadScene(json);
+    player.destroyCurrentCompositions();
+    const comp: Composition = await player.loadScene(json);
 
-    void player.play(scene, { speed });
+    comp.rootItem.addComponent(PostProcessVolume);
+    void player.play(comp, { speed });
+    setDatGUI(comp);
+
   } catch (e) {
     console.error('biz', e);
   }
@@ -64,38 +76,35 @@ function handlePause () {
 }
 
 // dat gui 参数及修改
-function setDatGUI () {
-  const gui = new dat.GUI();
+function setDatGUI (composition: Composition) {
+  gui.destroy();
+  gui = new GUI();
   const ParticleFolder = gui.addFolder('Particle');
   const BloomFolder = gui.addFolder('Bloom');
   const ToneMappingFlolder = gui.addFolder('ToneMapping');
+  const VignetteFolder = gui.addFolder('Vignette');
   const ColorAdjustmentsFolder = gui.addFolder('ColorAdjustments');
+
+  const globalVolume = composition.renderFrame.globalVolume;
 
   ParticleFolder.addColor(postProcessSettings, 'color');
   ParticleFolder.add(postProcessSettings, 'intensity', -10, 10).step(0.1);
   ParticleFolder.open();
 
-  BloomFolder.add(postProcessSettings, 'useBloom', 0, 1).step(1);
-  BloomFolder.add(postProcessSettings, 'threshold', 0, 40).step(0.1);
-  BloomFolder.add(postProcessSettings, 'bloomIntensity', 0, 10);
+  BloomFolder.add(globalVolume, 'useBloom', 0, 1).step(1);
+  BloomFolder.add(globalVolume, 'threshold', 0, 40).step(0.1);
+  BloomFolder.add(globalVolume, 'bloomIntensity', 0, 10);
   BloomFolder.open();
 
-  ColorAdjustmentsFolder.add(postProcessSettings, 'brightness', -5, 5).step(0.1);
-  ColorAdjustmentsFolder.add(postProcessSettings, 'saturation', -100, 100);
-  ColorAdjustmentsFolder.add(postProcessSettings, 'contrast', -100, 100);
+  VignetteFolder.add(globalVolume, 'vignetteIntensity', 0, 2);
+  VignetteFolder.add(globalVolume, 'vignetteSmoothness', 0, 2);
+  VignetteFolder.add(globalVolume, 'vignetteRoundness', 0, 1.5);
+
+  ColorAdjustmentsFolder.add(globalVolume, 'brightness', -5, 5).step(0.1);
+  ColorAdjustmentsFolder.add(globalVolume, 'saturation', 0, 2);
+  ColorAdjustmentsFolder.add(globalVolume, 'contrast', 0, 2);
   ColorAdjustmentsFolder.open();
 
-  ToneMappingFlolder.add(postProcessSettings, 'useToneMapping', 0, 1).step(1);
+  ToneMappingFlolder.add(globalVolume, 'useToneMapping', 0, 1).step(1);
   ToneMappingFlolder.open();
-}
-
-// TODO: 临时 hack globalVolume
-function hackGlobalVolume (json) {
-  json.compositions.forEach(composition => {
-    composition.globalVolume = {
-      ...defaultGlobalVolume,
-      usePostProcessing: true,
-      useHDR: true,
-    };
-  });
 }

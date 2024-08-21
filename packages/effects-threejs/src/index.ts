@@ -1,22 +1,20 @@
 import type {
-  GeometryMeshProps,
-  GeometryProps,
-  MaterialProps,
-  TextureDataType,
-  TextureSourceOptions,
-  Engine,
+  Engine, GeometryMeshProps, GeometryProps, MaterialProps, TextureDataType, TextureSourceOptions,
 } from '@galacean/effects-core';
-import { Texture, Geometry, Material, Mesh, setMaxSpriteMeshItemCount, logger } from '@galacean/effects-core';
+import { Geometry, Material, Mesh, Texture, logger, setMaxSpriteMeshItemCount } from '@galacean/effects-core';
+import { ThreeMaterial } from './material';
 import { ThreeGeometry } from './three-geometry';
 import { ThreeMesh } from './three-mesh';
 import { ThreeTexture } from './three-texture';
-import { ThreeMaterial } from './material';
 
 export * from '@galacean/effects-core';
-export * from './three-display-object';
-export * from './three-texture';
 export * from './material';
 export * from './three-composition';
+export * from './three-display-object';
+export * from './three-engine';
+export * from './three-texture';
+export * from './three-sprite-component';
+export * from './three-text-component';
 
 setMaxSpriteMeshItemCount(8);
 /**
@@ -25,8 +23,8 @@ setMaxSpriteMeshItemCount(8);
  * @param options - 图片创建参数
  * @returns THREE 中的抽象图片对象
  */
-Texture.create = (engine: Engine, options: TextureSourceOptions) => {
-  return new ThreeTexture(undefined, options) as Texture;
+Texture.create = (engine: Engine, options?: TextureSourceOptions) => {
+  return new ThreeTexture(engine, undefined, options) as Texture;
 };
 
 /**
@@ -36,8 +34,8 @@ Texture.create = (engine: Engine, options: TextureSourceOptions) => {
  * @param options - 图片创建参数
  * @returns THREE 中的抽象图片对象
  */
-Texture.createWithData = (engine?: Engine, data?: TextureDataType, options?: Record<string, any>) => {
-  return new ThreeTexture(data, options as TextureSourceOptions) as Texture;
+Texture.createWithData = (engine: Engine, data?: TextureDataType, options?: Record<string, any>) => {
+  return new ThreeTexture(engine, data, options as TextureSourceOptions) as Texture;
 };
 
 /**
@@ -46,7 +44,7 @@ Texture.createWithData = (engine?: Engine, data?: TextureDataType, options?: Rec
  * @param props - 材质球创建参数
  * @returns THREE 中的抽象材质球对象
  */
-Material.create = (engine: Engine, props: MaterialProps) => {
+Material.create = (engine: Engine, props?: MaterialProps) => {
   return new ThreeMaterial(engine, props);
 };
 
@@ -56,7 +54,7 @@ Material.create = (engine: Engine, props: MaterialProps) => {
  * @param options - geometry 创建参数
  * @returns THREE 中的抽象 geometry 对象
  */
-Geometry.create = (engine: Engine, options: GeometryProps) => {
+Geometry.create = (engine: Engine, options?: GeometryProps) => {
   return new ThreeGeometry(engine, options);
 };
 
@@ -66,10 +64,10 @@ Geometry.create = (engine: Engine, options: GeometryProps) => {
  * @param props - mesh 创建参数
  * @returns THREE 中的抽象 mesh 对象
  */
-Mesh.create = (engine: Engine, props: GeometryMeshProps) => {
+Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
   return new ThreeMesh(engine, props);
 };
 
 export const version = __VERSION__;
 
-logger.info('THREEJS plugin version: ' + version);
+logger.info(`THREEJS plugin version: ${version}.`);

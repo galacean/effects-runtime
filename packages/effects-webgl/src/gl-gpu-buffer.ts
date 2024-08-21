@@ -11,7 +11,8 @@ type GPUBufferTarget =
   | WebGL2RenderingContext['TRANSFORM_FEEDBACK_BUFFER']
   | WebGL2RenderingContext['UNIFORM_BUFFER']
   | WebGL2RenderingContext['PIXEL_PACK_BUFFER']
-  | WebGL2RenderingContext['PIXEL_UNPACK_BUFFER'];
+  | WebGL2RenderingContext['PIXEL_UNPACK_BUFFER']
+  ;
 
 type GPUBufferType =
   | WebGLRenderingContext['UNSIGNED_INT']
@@ -20,7 +21,8 @@ type GPUBufferType =
   | WebGLRenderingContext['FLOAT']
   | WebGLRenderingContext['INT']
   | WebGLRenderingContext['SHORT']
-  | WebGLRenderingContext['BYTE'];
+  | WebGLRenderingContext['BYTE']
+  ;
 
 export interface GLGPUBufferProps {
   name?: string,
@@ -48,7 +50,12 @@ export class GLGPUBuffer implements Disposable {
     public readonly pipelineContext: GLPipelineContext,
     props: GLGPUBufferProps,
   ) {
-    const { target = glContext.ARRAY_BUFFER, type = glContext.FLOAT, name, usage = glContext.STATIC_DRAW, data, elementCount } = props;
+    const {
+      name, data, elementCount,
+      target = glContext.ARRAY_BUFFER,
+      type = glContext.FLOAT,
+      usage = glContext.STATIC_DRAW,
+    } = props;
     const bytesPerElement = getBytesPerElementByGLType(type);
 
     this.target = target;
@@ -75,9 +82,7 @@ export class GLGPUBuffer implements Disposable {
   private createGLBuffer (name?: string): WebGLBuffer | null {
     const buffer = this.pipelineContext.gl.createBuffer();
 
-    if (buffer) {
-      assignInspectorName(buffer, name);
-    }
+    assignInspectorName(buffer, name);
 
     return buffer;
   }

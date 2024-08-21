@@ -1,18 +1,21 @@
-// @ts-nocheck
-import { Player, BezierCurvePath, CameraController, spec, math, BezierCurve } from '@galacean/effects';
+import { Player, CameraController, spec, math } from '@galacean/effects';
 
 const { Vector3 } = math;
 const { expect } = chai;
 
-describe('camera item', () => {
-  let player;
+describe('core/composition/camera/item', () => {
+  let player: Player;
 
   before(() => {
-    player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
+    player = new Player({
+      canvas: document.createElement('canvas'),
+      manualRender: true,
+    });
   });
 
   after(() => {
     player.dispose();
+    /// @ts-expect-error
     player = null;
   });
 
@@ -20,7 +23,7 @@ describe('camera item', () => {
     const items = [{
       'name': 'camera',
       'delay': 0,
-      'id': 11,
+      'id': '11',
       'model': {
         'options': {
           'type': 1,
@@ -43,8 +46,8 @@ describe('camera item', () => {
     const { near, fov, far, position, rotation } = comp.camera;
     const item = comp.getItemByName('camera');
 
-    expect(item.type).to.eql(spec.ItemType.camera, 'type');
-    const cf = item.content;
+    expect(item?.type).to.eql(spec.ItemType.camera, 'type');
+    const cf = item?.getComponent(CameraController);
 
     expect(cf).to.be.an.instanceof(CameraController);
     expect(near).to.eql(0.6);
@@ -52,265 +55,6 @@ describe('camera item', () => {
     expect(far).to.eql(25);
     expect([+(position.x.toFixed(0)), +(position.y.toFixed(0)), +(position.z.toFixed(0))]).to.eql([10, 2, 12]);
     expect([+(rotation.x.toFixed(0)), +(rotation.y.toFixed(0)), +(rotation.z.toFixed(0))]).to.eql([10, 60, 30]);
-  });
-
-  it('camera positionOverLifetime', async () => {
-    const items = [
-      {
-        'name': '3DModel_10',
-        'delay': 0,
-        'id': 11,
-        'model': {
-          'options': {
-            'type': 1,
-            'duration': 5,
-            'near': 0.2,
-            'far': 25,
-            'fov': 60,
-            'renderLevel': 'B+',
-            'looping': true,
-          },
-          'transform': {
-            'position': [0, 0, 0],
-            'rotation': [0, 0, 0],
-          },
-          'velocityOverLifetime': {
-            'translateX': 2,
-            'translateY': ['lines', [[0, 0], [1, 1]]],
-            'translateZ': ['curve', [[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]],
-          },
-        },
-      },
-    ];
-    const comp = await player.loadScene(generateScene(items));
-
-    player.gotoAndStop(2.5);
-    const pos = comp.camera.position;
-
-    expect(pos).to.deep.equals(new Vector3(2, 0.5, 0));
-    const z = new BezierCurve([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
-
-    expect(pos.z).to.eql(z.getValue(0.5));
-  });
-
-  it('camera rotationOverLifetime', async () => {
-    const items = [{
-      'name': 'camera',
-      'delay': 0,
-      'id': 11,
-      'model': {
-        'options': {
-          'type': 1,
-          'duration': 5,
-          'near': 0.6,
-          'far': 25,
-          'fov': 60,
-          'renderLevel': 'B+',
-          'looping': true,
-        },
-        'transform': {
-          'position': [0, 0, 8],
-          'rotation': [0, 0, 0],
-        },
-        'rotationOverLifetime': {
-          'rotation': 10,
-        },
-      },
-    }];
-    const comp = await player.loadScene(generateScene(items));
-
-    player.gotoAndStop(2.5);
-    const ro = comp.camera.rotation;
-
-    expect(new Float32Array(ro.toArray())).to.deep.equals(new Float32Array([10, 10, 10]));
-    const separate = [{
-      'name': 'separate',
-      'delay': 0,
-      'id': 11,
-      'model': {
-        'options': {
-          'type': 1,
-          'duration': 5,
-          'near': 0.6,
-          'far': 25,
-          'fov': 60,
-          'renderLevel': 'B+',
-          'looping': true,
-        },
-        'transform': {
-          'position': [0, 0, 8],
-          'rotation': [0, 0, 0],
-        },
-        'rotationOverLifetime': {
-          'rotation': 10,
-          'separateAxes': true,
-          'rotateX': 2,
-          'rotateY': ['lines', [[0, 1], [0.5, 0], [1, 1]]],
-          'rotateZ': ['curve', [[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]],
-        },
-      },
-    }];
-    const comp2 = await player.loadScene(generateScene(separate));
-
-    player.gotoAndStop(2.5);
-    const ro2 = comp2.camera.rotation;
-
-    expect(ro2.x).to.closeTo(2, 0.0001);
-    expect(ro2.y).to.closeTo(0, 0.0001);
-    const z = new BezierCurve([[0, 1, 0, -3], [0.5, 0, 0, 0], [1, 1, 3, 0]]);
-
-    expect(ro2.z).to.closeTo(z.getValue(0.5), 0.00001);
-  });
-
-  it('camera position with path', async () => {
-    const items = [
-      {
-        'id': '6',
-        'name': 'constant',
-        'duration': 2,
-        'type': '6',
-        'visible': true,
-        'endBehavior': 0,
-        'delay': 0,
-        'renderLevel': 'B+',
-        'content': {
-          'options': {
-            'fov': 60,
-            'far': 40,
-            'near': 0.1,
-            'clipMode': 1,
-          },
-          'positionOverLifetime': {
-            'path': [
-              2,
-              [
-                1,
-                1,
-                1,
-              ],
-            ],
-          },
-        },
-        'transform': {
-          'position': [
-            0,
-            0,
-            0,
-          ],
-          'rotation': [
-            0,
-            0,
-            0,
-          ],
-          'scale': [
-            1,
-            1,
-            1,
-          ],
-        },
-      },
-    ];
-    const comp = await player.loadScene(generateSceneNew(items));
-
-    player.gotoAndStop(2.5);
-    const pos = comp.camera.position;
-
-    expect(pos.x).to.eql(1, 'constant path');
-    expect(pos.y).to.eql(1, 'constant path');
-    expect(pos.z).to.eql(1, 'constant path');
-
-    const lineatPath = [
-      [
-        [
-          4,
-          [
-            0,
-            0,
-          ],
-        ],
-        [
-          4,
-          [
-            1,
-            1,
-          ],
-        ],
-      ],
-      [
-        [
-          0,
-          0,
-          0,
-        ],
-        [
-          3,
-          3,
-          3,
-        ],
-      ],
-      [
-        [
-          1,
-          1,
-          1,
-        ],
-        [
-          2,
-          2,
-          2,
-        ],
-      ],
-    ];
-    const linear = [
-      {
-        'id': '4',
-        'name': 'camera_4',
-        'duration': 5,
-        'type': '6',
-        'visible': true,
-        'endBehavior': 0,
-        'delay': 0,
-        'renderLevel': 'B+',
-        'content': {
-          'options': {
-            'fov': 60,
-            'far': 40,
-            'near': 0.1,
-            'clipMode': 1,
-          },
-          'positionOverLifetime': {
-            'path': [22, lineatPath],
-          },
-        },
-        'transform': {
-          'position': [
-            0,
-            0,
-            0,
-          ],
-          'rotation': [
-            0,
-            0,
-            0,
-          ],
-          'scale': [
-            1,
-            1,
-            1,
-          ],
-        },
-      },
-    ];
-
-    const comp1 = await player.loadScene(generateSceneNew(linear));
-
-    player.gotoAndStop(2.5);
-    const pos1 = comp1.camera.position;
-    const val = new BezierCurvePath(lineatPath).getValue(0.5);
-
-    expect(pos1.x).to.eql(val.x, 'curve path');
-    expect(pos1.y).to.eql(val.y, 'curve path');
-    expect(pos1.z).to.eql(val.z, 'curve path');
   });
 
   it('camera 2D item affected by parent', async () => {
@@ -441,49 +185,32 @@ describe('camera item', () => {
   });
 });
 
-describe('camera math', () => {
-  // FIXME 相机旋转四元数的共轭逻辑去掉了 这部分单测先注释
-  // it('camera quat star', () => {
-  //   const camera = new Camera('x');
-  //
-  //   camera.rotation = [0, 30, 0];
-  //   const inverseViewMatrix = new Float32Array(camera.getInverseViewMatrix());
-  //   const expectMatrix = new Float32Array([0.8660253882408142, 0, 0.5, 0, 0, 1, 0, 0, -0.5, 0, 0.8660253882408142, 0, 0, 0, 0, 1]);
-  //
-  //   for (let i = 0; i < inverseViewMatrix.length; i++) {
-  //     expect(inverseViewMatrix[i]).to.eql(expectMatrix[i]);
-  //   }
-  // });
-});
-
-const generateScene = items => ({
+const generateScene = (items: any) => ({
   'compositionId': 1,
   'requires': [],
-  'compositions': [
-    {
-      'name': 'composition_1',
-      'id': 1,
-      'duration': 5,
-      'camera': {
-        'fov': 30,
-        'far': 20,
-        'near': 0.1,
-        'position': [
-          0,
-          0,
-          8,
-        ],
-        'clipMode': 1,
-      },
-      'items': items,
-      'meta': {
-        'previewSize': [
-          1024,
-          1024,
-        ],
-      },
+  'compositions': [{
+    'name': 'composition_1',
+    'id': 1,
+    'duration': 5,
+    'camera': {
+      'fov': 30,
+      'far': 20,
+      'near': 0.1,
+      'position': [
+        0,
+        0,
+        8,
+      ],
+      'clipMode': 1,
     },
-  ],
+    'items': items,
+    'meta': {
+      'previewSize': [
+        1024,
+        1024,
+      ],
+    },
+  }],
   'gltf': [],
   'images': [],
   'version': '0.8.10-beta.4',
@@ -493,52 +220,4 @@ const generateScene = items => ({
   '_imgs': {
     '1': [],
   },
-});
-
-const generateSceneNew = items => ({
-  'playerVersion': {
-    'web': '1.3.1',
-    'native': '0.0.1.202311221223',
-  },
-  'images': [],
-  'fonts': [],
-  'spines': [],
-  'version': '2.4',
-  'shapes': [],
-  'plugins': [],
-  'type': 'ge',
-  'compositions': [
-    {
-      'id': '1',
-      'name': '新建合成10',
-      'duration': 5,
-      'startTime': 0,
-      'endBehavior': 1,
-      'previewSize': [
-        750,
-        1624,
-      ],
-      'items': items,
-      'camera': {
-        'fov': 60,
-        'far': 40,
-        'near': 0.1,
-        'clipMode': 1,
-        'position': [
-          0,
-          0,
-          8,
-        ],
-        'rotation': [
-          0,
-          0,
-          0,
-        ],
-      },
-    },
-  ],
-  'requires': [],
-  'compositionId': '1',
-  'bins': [],
-  'textures': [],
 });

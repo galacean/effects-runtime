@@ -11,7 +11,8 @@ export type UniformSemantic =
   | 'VIEWPROJECTION'
   | 'VIEWINVERSE'
   | 'EDITOR_TRANSFORM'
-  | 'MODELVIEWPROJECTION';
+  | 'MODELVIEWPROJECTION'
+  ;
 
 export interface MaterialBlendingStates {
   blending?: boolean,
@@ -45,12 +46,6 @@ export interface MaterialStates extends MaterialBlendingStates, MaterialStencilS
   depthRange?: [zNear: number, zFar: number],
   polygonOffset?: [factor: number, units: number],
   polygonOffsetFill?: boolean,
-}
-
-export interface FilterMaterialStates extends MaterialStates {
-  blendMode?: spec.BlendingMode,
-  side?: spec.SideMode,
-  maskMode?: spec.MaskMode,
 }
 
 export interface MaterialDataBlockDestroyOptions {

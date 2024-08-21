@@ -1,20 +1,21 @@
 import type {
-  GeometryMeshProps, GeometryProps, FrameBufferProps, MaterialProps, RenderBufferProps,
-  TextureDataType, TextureSourceOptions,
+  GeometryMeshProps, GeometryProps, FramebufferProps, MaterialProps, RenderbufferProps,
+  TextureDataType, TextureSourceOptions, GLType,
 } from '@galacean/effects-core';
 import {
-  FrameBuffer, Geometry, glContext, imageDataFromColor, Material, Mesh, RenderBuffer,
+  Framebuffer, Geometry, glContext, imageDataFromColor, Material, Mesh, Renderbuffer,
   Renderer, Texture, TextureSourceType, Engine, logger,
 } from '@galacean/effects-core';
 import {
-  GLFrameBuffer, GLGeometry, GLMaterial, GLRenderBuffer, GLRenderer, GLTexture, GLEngine,
+  GLFramebuffer, GLGeometry, GLMaterial, GLRenderbuffer, GLRenderer, GLTexture, GLEngine,
 } from '@galacean/effects-webgl';
 
 export { GLGeometry, GLEngine, GLRenderer } from '@galacean/effects-webgl';
 export * from '@galacean/effects-core';
+export * from './types';
 export * from './player';
 
-Texture.create = (engine: Engine, props: TextureSourceOptions) => {
+Texture.create = (engine: Engine, props?: TextureSourceOptions) => {
   return new GLTexture(engine, props);
 };
 
@@ -51,29 +52,31 @@ Texture.createWithData = (
   return tex;
 };
 
-Material.create = (engine: Engine, props: MaterialProps) => {
+Material.create = (engine: Engine, props?: MaterialProps) => {
   return new GLMaterial(engine, props);
 };
 
-Geometry.create = (engine: Engine, props: GeometryProps) => {
+Geometry.create = (engine: Engine, props?: GeometryProps) => {
   return new GLGeometry(engine, props);
 };
 
-Mesh.create = (engine: Engine, props: GeometryMeshProps) => {
+Mesh.create = (engine: Engine, props?: GeometryMeshProps) => {
   return new Mesh(engine, props);
 };
 
-RenderBuffer.create = (props: RenderBufferProps) => {
-  return new GLRenderBuffer(props);
+Renderbuffer.create = (props: RenderbufferProps) => {
+  return new GLRenderbuffer(props);
 };
 
-FrameBuffer.create = (props: FrameBufferProps, renderer: Renderer) => {
-  return new GLFrameBuffer(props, renderer);
+Framebuffer.create = (props: FramebufferProps, renderer: Renderer) => {
+  return new GLFramebuffer(props, renderer);
 };
 
-Renderer.create = (canvas: HTMLCanvasElement | OffscreenCanvas,
-  framework: 'webgl' | 'webgl2',
-  renderOptions?: WebGLContextAttributes) => {
+Renderer.create = (
+  canvas: HTMLCanvasElement | OffscreenCanvas,
+  framework: GLType,
+  renderOptions?: WebGLContextAttributes,
+) => {
   return new GLRenderer(canvas, framework, renderOptions);
 };
 
@@ -83,4 +86,4 @@ Engine.create = (gl: WebGLRenderingContext | WebGL2RenderingContext) => {
 
 export const version = __VERSION__;
 
-logger.info('player version: ' + version);
+logger.info(`Player version: ${version}.`);

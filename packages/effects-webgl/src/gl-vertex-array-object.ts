@@ -13,7 +13,7 @@ export class GLVertexArrayObject implements Disposable {
   private gl: WebGLRenderingContext | WebGL2RenderingContext;
 
   constructor (
-    private engine: GLEngine,
+    engine: GLEngine,
     name?: string,
   ) {
     this.gl = engine.getGLPipelineContext().gl;
@@ -38,9 +38,7 @@ export class GLVertexArrayObject implements Disposable {
     if (!vao && this.vaoExt) {
       vao = this.vaoExt.createVertexArrayOES();
     }
-    if (vao) {
-      assignInspectorName(vao, name);
-    }
+    assignInspectorName(vao, name);
 
     return vao;
   }

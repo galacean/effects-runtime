@@ -1,10 +1,9 @@
 import type * as spec from '@galacean/effects-specification';
-import type { SceneLoadOptions } from './asset-manager';
 import type { Composition } from './composition';
 import type { Plugin, PluginConstructor } from './plugins';
 import type { RenderFrame, Renderer } from './render';
-import type { Scene } from './scene';
-import { addItem, removeItem } from './utils';
+import type { Scene, SceneLoadOptions } from './scene';
+import { addItem, removeItem, logger } from './utils';
 import type { VFXItemConstructor, VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 
@@ -23,12 +22,17 @@ const pluginCtrlMap: Record<string, VFXItemConstructor> = {};
  * @param itemClass class of item
  * @param isDefault load
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function registerPlugin<T> (
   name: string,
   pluginClass: PluginConstructor,
   itemClass: VFXItemConstructor,
   isDefault?: boolean,
 ) {
+  if (pluginCtrlMap[name]) {
+    logger.error(`Duplicate registration for plugin ${name}.`);
+  }
+
   pluginCtrlMap[name] = itemClass;
   pluginLoaderMap[name] = pluginClass;
 
@@ -64,7 +68,7 @@ export class PluginSystem {
         const CTRL = pluginLoaderMap[name];
 
         if (!CTRL) {
-          throw new Error(`plugin '${name}' not found.` + getPluginUsageInfo(name));
+          throw new Error(`The plugin '${name}' not found.` + getPluginUsageInfo(name));
         }
 
         const loader = new CTRL();
@@ -88,16 +92,19 @@ export class PluginSystem {
     this.plugins.forEach(loader => loader.onCompositionReset(comp, renderFrame));
   }
 
-  createPluginItem (name: string, props: VFXItemProps, composition: Composition): VFXItem<any> {
+  createPluginItem (name: string, props: VFXItemProps, composition: Composition): VFXItem {
     const CTRL = pluginCtrlMap[name];
 
     if (!CTRL) {
-      throw new Error(`plugin ${name} no registered constructor`);
+      throw new Error(`The plugin '${name}' does not have a registered constructor.`);
     }
-    const item = new CTRL(props, composition);
+    const engine = composition.getEngine();
+    const item = new CTRL(engine, props, composition);
+
+    item.composition = composition;
 
     if (!(item instanceof VFXItem)) {
-      throw new Error(`plugin ${name} invalid constructor type`);
+      throw new Error(`The plugin '${name}' invalid constructor type.`);
     }
 
     return item;
@@ -116,14 +123,18 @@ export class PluginSystem {
       const ctrl = pluginLoaderMap[plugin.name];
 
       if (name in ctrl) {
-        pendings.push(Promise.resolve(ctrl[name](...args)));
+        pendings.push(Promise.resolve(ctrl[name]?.(...args)));
       }
     }
 
     return Promise.all(pendings);
   }
 
-  async precompile (compositions: spec.Composition[], renderer: Renderer, options?: PrecompileOptions) {
+  async precompile (
+    compositions: spec.CompositionData[],
+    renderer: Renderer,
+    options?: PrecompileOptions,
+  ) {
     return this.callStatic('precompile', compositions, renderer, options);
   }
 
@@ -145,7 +156,10 @@ function getPluginUsageInfo (name: string) {
   const info = pluginInfoMap[name];
 
   if (info) {
-    return `\nInstall Plugin: npm i ${info}@latest --save\nImport Plugin: import '${info}'`;
+    return `
+请按如下命令进行操作（Please follow the commands below to proceed）：
+1、使用 npm 安装插件（Install Plugin）：npm i ${info}@latest --save
+2、导入插件（Import Plugin）：import '${info}'`;
   } else {
     return '';
   }

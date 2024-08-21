@@ -4,7 +4,6 @@ import type { GLRenderer } from './gl-renderer';
 import type { GLPipelineContext } from './gl-pipeline-context';
 
 export class GLEngine extends Engine {
-
   constructor (gl: WebGLRenderingContext | WebGL2RenderingContext) {
     super();
     this.gpuCapability = new GPUCapability(gl);

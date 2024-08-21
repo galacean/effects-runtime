@@ -1,40 +1,30 @@
-import type { Player, SceneLoadOptions, spec } from '@galacean/effects';
-import { AbstractPlugin } from '@galacean/effects';
-import { checkDowngrade, getRenderLevelByDevice } from './utils';
+import type { SceneLoadOptions, spec } from '@galacean/effects';
+import { AbstractPlugin, logger } from '@galacean/effects';
+import { getDefaultRenderLevel } from './utils';
 
+/**
+ * Alipay 降级插件类
+ *
+ * 根据 SceneLoadOptions 中传入的 downgrade 数据，判断是否降级。
+ * 如果设备被降级，会在 processRawJSON 时抛出降级相关的异常和原因。
+ *
+ * 如果 SceneLoadOptions 中 renderLevel 没有设置，那么会根据 downgrade 数据
+ * 和默认的渲染等级规则设置其中的 renderLevel。
+ */
 export class AlipayDowngradePlugin extends AbstractPlugin {
-  static currentBizId = '';
-  static glLostOccurred = false;
-
-  static async onPlayerCreated (player: Player) {
-    if (AlipayDowngradePlugin.glLostOccurred) {
-      console.warn('gl lost happened, new player will be destroyed.');
-
-      return player.dispose();
-    }
-    if (AlipayDowngradePlugin.currentBizId) {
-      const result = await checkDowngrade(AlipayDowngradePlugin.currentBizId);
-
-      if (result.downgrade) {
-        console.warn('automatically destroy downgraded player.');
-        player.dispose();
-      }
-    }
-  }
-
   static override async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions = {}) {
-    if (AlipayDowngradePlugin.glLostOccurred) {
-      return Promise.reject('gl lost happened');
-    }
+    const downgradeResult = options.pluginData?.['downgrade'];
 
-    const result = await checkDowngrade(options.pluginData?.['alipayBizId'] ?? AlipayDowngradePlugin.currentBizId);
-
-    if (result.downgrade) {
-      throw new Error(`downgraded, reason: ${result.reason}`);
+    if (downgradeResult) {
+      if (downgradeResult.downgrade) {
+        throw new Error(`Downgraded, reason: ${downgradeResult.reason}`);
+      }
+    } else {
+      logger.warn('No downgrade result in pluginData of SceneLoadOptions.');
     }
 
     if (!options.renderLevel) {
-      options.renderLevel = getRenderLevelByDevice(options.renderLevel);
+      options.renderLevel = downgradeResult?.level ?? getDefaultRenderLevel();
     }
   }
 }

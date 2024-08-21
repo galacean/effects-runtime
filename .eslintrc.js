@@ -16,6 +16,7 @@ module.exports = {
     '*.js',
     '*.d.ts',
     'temp',
+    '**/__definations__/*.ts'
   ],
   extends: [
     "eslint:recommended",
@@ -46,6 +47,8 @@ module.exports = {
       "method": "neither"
     }],
     "new-parens": "error",
+    // TODO:: will be opened
+    "spaced-comment": "off",
     "no-multi-spaces": [
       "error",
       {
@@ -65,21 +68,25 @@ module.exports = {
       { "blankLine": "any", "prev": ["const", "let", "var"], "next": ["const", "let", "var"] }
     ],
     "promise/always-return": "off",
-    // TODO:: will be opened
-    "promise/catch-or-return": "off",
+    "promise/catch-or-return": "error",
     "prefer-rest-params": "off",
     "semi": ["error", "always"],
     "space-in-parens": ["error", "never"],
     "@typescript-eslint/comma-spacing": "error",
     "@typescript-eslint/no-namespace": "off",
-    // TODO:: will be ["error", "never"]
-    "import/prefer-default-export": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      { "vars": "all", "varsIgnorePattern": "^_", "args": "none", "caughtErrors": "all", "caughtErrorsIgnorePattern": "^ignore" }
+    ],
     "@typescript-eslint/ban-ts-comment": "off",
-    // TODO:: will be opened
-    "@typescript-eslint/ban-types": "off",
-    "@typescript-eslint/indent": ["error", 2],
+    "@typescript-eslint/ban-types": ["error", { "types": { "{}": false, "Function": false, "Object": false } }],
+    "@typescript-eslint/indent": ["error", 2, {
+      "SwitchCase": 1,
+      "ignoredNodes": [
+        `ClassBody.body > PropertyDefinition[decorators.length > 0] > .key`,
+      ],
+    }],
     "@typescript-eslint/keyword-spacing": "error",
     // TODO:: will be opened
     "@typescript-eslint/no-var-requires": "off",
@@ -92,6 +99,7 @@ module.exports = {
     "@typescript-eslint/no-unnecessary-type-arguments": "error",
     "@typescript-eslint/no-unnecessary-type-assertion": "error",
     "@typescript-eslint/no-unnecessary-type-constraint": "error",
+    "@typescript-eslint/no-redundant-type-constituents": "warn",
     // TODO:: will be opened
     "@typescript-eslint/no-unsafe-return": "off",
     // TODO:: will be opened
@@ -149,9 +157,10 @@ module.exports = {
   },
   overrides: [
     {
-      "files": ["**/test/**/*.ts", "**/demo/**/*.ts", '**/polyfill/*.ts'],
+      "files": ["**/test/**/*.ts", "**/demo/**/*.ts", "**/web-packages/**/*.ts"],
       "rules": {
-        "compat/compat": "off"
+        "compat/compat": "off",
+        "@typescript-eslint/no-unused-vars": "off"
       }
     }
   ]

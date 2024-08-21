@@ -1,9 +1,7 @@
-import type { spec, math } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 import { Transform as EffectsTransform } from '@galacean/effects';
 import type { BaseTransform as Transform } from '../index';
 import { Vector3, Matrix4, Quaternion, Euler, EulerOrder } from '../runtime/math';
-
-type Euler = math.Euler;
 
 export class LoaderHelper {
   static getTransformFromMat4 (mat: Matrix4): Transform {

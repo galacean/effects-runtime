@@ -12,10 +12,11 @@ import '@galacean/effects-plugin-spine';
 ### 获取 spine 资源列表
 
 ``` ts
-import type { SpineResource } from '@galacean/effects-plugin-spine';
+import type { SpineDataCache, SpineComponent } from '@galacean/effects-plugin-spine';
 
 const comp = await player.play(scene);
-const spineData: SpineResource[] = comp.loaderData.spineDatas;
+const item = comp.getItemByName('itemName');
+const spineData: SpineDataCache = item.getComponent(SpineComponent).cache;
 ```
 
 ### 获取动画列表/皮肤列表
@@ -24,17 +25,18 @@ const spineData: SpineResource[] = comp.loaderData.spineDatas;
 
 ``` ts
 const comp = await new Player().loadScene(scene);
-const item = comp.getItemByName(name)
-const { skeletonData } = item.spineDataCache;
+const item = comp.getItemByName('itemName')
+const { skeletonData } = item.getComponent(SpineComponent).cache;
 const animationList = getAnimationList(skeletonData);
 const skinList = getSkinList(skeletonData);
 ```
 
-2. 在 `spineDatas` 数组中获取
+2. 开始后可以在 `spineDataCache` 中获取
 
 ``` ts
 const comp = await new Player().loadScene(scene);
-const { skinList, animationList } = comp.loaderData.spineDatas[index];
+const item = comp.getItemByName('itemName')
+const { skinList, animationList } = item.getComponent(SpineComponent).cache;
 ```
 
 3. 从 atals 和 skeleton 二进制数据中获取
@@ -67,7 +69,7 @@ const { magFilter, minFilter, wrapS, wrapT, pma } = getTextureOptions(atlasBuffe
 const comp = await new Player().loadScene(scene);
 const item = comp.getItemByName(name);
 
-item.setDefaultMixDuration(mix);
+item.getComponent(SpineComponent).setDefaultMixDuration(mix);
 ```
 
 2. 设置指定动作的 mix 时间 （需要在 `player.play`` 前调用）
@@ -76,7 +78,7 @@ item.setDefaultMixDuration(mix);
 const comp = await new Player().loadScene(scene);
 const item = comp.getItemByName(name);
 
-item.setMixDuration(animationOut, animationIn, mix);
+item.getComponent(SpineComponent).setMixDuration(animationOut, animationIn, mix);
 ```
 ### 设置播放速度
 
@@ -84,7 +86,7 @@ item.setMixDuration(animationOut, animationIn, mix);
 const comp = await new Player().loadScene(scene);
 const item = comp.getItemByName(name);
 
-item.setSpeed(speed);
+item.getComponent(SpineComponent).setSpeed(speed);
 ```
 
 ### 设置动画
@@ -94,7 +96,7 @@ item.setSpeed(speed);
 const comp = await new Player().loadScene(scene);
 const item = comp.getItemByName(name);
 
-item.setAnimation(animationName, speed);
+item.getComponent(SpineComponent).setAnimation(animationName, speed);
 ```
 
 2. 设置一组动画
@@ -104,7 +106,7 @@ const comp = await new Player().loadScene(scene);
 const item = comp.getItemByName(name);
 const animationList = [animationName1, animationName2, animationName3];
 
-item.setAnimation(animationList, speed);
+item.getComponent(SpineComponent).setAnimation(animationList, speed);
 ```
 
 ## 本地开发

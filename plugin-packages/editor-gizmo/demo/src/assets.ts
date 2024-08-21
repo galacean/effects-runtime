@@ -119,18 +119,6 @@ export const simpleJSON = `
         }
       },
       {
-        "name": "filter_1",
-        "delay": 0,
-        "id": "filter",
-        "type": "8",
-        "content": {
-          "options": { "duration": 5, "startSize": 6, "sizeAspect": 1, "renderLevel": "B+", "looping": true },
-          "renderer": { "renderMode": 0 },
-          "filter": { "name": "gaussian", "radius": 20, "blend": 1 }
-        },
-        "duration": 5
-      },
-      {
         "name": "gizmo",
         "delay": 0,
         "id": "filter-gizmo",
@@ -179,6 +167,47 @@ export const primaryJSON = `
   "gltf": [],
   "images": [],
   "version": "0.8.9-beta.9",
+  "shapes": [],
+  "plugins": ["editor-gizmo"],
+  "type": "mars",
+  "_imgs": { "1": [] }
+}
+`;
+
+export const transformGizmoScene = `
+{
+  "compositionId": 1,
+  "requires": [],
+  "compositions": [{
+    "name": "composition_1",
+    "id": 1,
+    "duration": 10,
+    "camera": {
+      "fov": 30,
+      "far": 400,
+      "near": 0.1,
+      "position": [0, 0, 20],
+      "rotation": [0, 0, 0],
+      "clipMode": 1
+    },
+    "items": [],
+    "meta": { "previewSize": [750, 1624] }
+  }],
+  "gltf": [],
+  "images": [
+    {
+    "url": "https://mdn.alipayobjects.com/mars/afts/img/A*rex7QbsF9McAAAAAAAAAAAAADlB4AQ/original",
+    "webp": "https://mdn.alipayobjects.com/mars/afts/img/A*qWRBSrtbH1IAAAAAAAAAAAAADlB4AQ/original",
+    "renderLevel": "B+"
+    }
+    ],
+  "textures": [
+    {
+    "source": 0,
+    "flipY": true
+    }
+    ],
+  "version": "2.1",
   "shapes": [],
   "plugins": ["editor-gizmo"],
   "type": "mars",
@@ -426,6 +455,7 @@ export const gizmoJSON = `
     "delay": 0,
     "id": 19,
     "duration": 10,
+    "pluginName":"editor-gizmo",
     "content": {
       "options": {
         "type": "editor-gizmo",
@@ -442,7 +472,7 @@ export const gizmoJSON = `
           0
         ],
         "rotation": [
-          5, 140, 0
+          0, 140, 0
         ]
       }
     }
@@ -451,6 +481,7 @@ export const gizmoJSON = `
     "delay": 0,
     "id": 9,
     "duration": 10,
+    "pluginName":"editor-gizmo",
     "content": {
       "options": {
         "type": "editor-gizmo",
@@ -467,7 +498,7 @@ export const gizmoJSON = `
           0
         ],
         "rotation": [
-          5, 140, 0
+          0, 140, 0
         ]
       }
     }
@@ -476,6 +507,7 @@ export const gizmoJSON = `
     "delay": 0,
     "id": 10,
     "duration": 10,
+    "pluginName":"editor-gizmo",
     "content": {
       "options": {
         "type": "editor-gizmo",
@@ -497,6 +529,7 @@ export const gizmoJSON = `
     "delay": 0,
     "id": 11,
     "duration": 10,
+    "pluginName":"editor-gizmo",
     "content": {
       "options": {
         "type": "editor-gizmo",
@@ -514,7 +547,73 @@ export const gizmoJSON = `
         ]
       }
     }
-  }
+  },{
+    "id": "2",
+    "name": "sprite_2",
+    "duration": 10,
+    "type": "1",
+    "visible": true,
+    "endBehavior": 0,
+    "delay": 0,
+    "renderLevel": "B+",
+    "content": {
+    "options": {
+    "startColor": [
+    1,
+    1,
+    1,
+    1
+    ]
+    },
+    "renderer": {
+    "renderMode": 1,
+    "texture": 0
+    },
+    "positionOverLifetime": {
+    "direction": [
+    0,
+    0,
+    0
+    ],
+    "startSpeed": 0,
+    "gravity": [
+    0,
+    0,
+    0
+    ],
+    "gravityOverLifetime": [
+    0,
+    1
+    ]
+    },
+    "splits": [
+    [
+    0,
+    0,
+    0.6337890625,
+    0.625,
+    0
+    ]
+    ]
+    },
+    "transform": {
+    "position": [
+    0,
+    -2.5,
+    0
+    ],
+    "rotation": [
+    90,
+    0,
+    0
+    ],
+    "scale": [
+    12.460965002731042,
+    12.288162714557577,
+    1
+    ]
+    }
+    }
 ]
 `;
 

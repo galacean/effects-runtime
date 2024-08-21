@@ -1,80 +1,42 @@
-// @ts-nocheck
+import type { ShaderWithSource } from '@galacean/effects-core';
 import { Camera, TextureLoadAction, RenderFrame, Mesh } from '@galacean/effects-core';
 import { GLGeometry, GLMaterial, GLRenderer } from '@galacean/effects-webgl';
 
 const { expect } = chai;
 
-describe('gl-render-frame', () => {
-  let canvas, renderer;
-  const vs = `#version 300 es
-  in vec2 aPoint;
-
-  uniform mat4 uViewMatrix;
-
-  void main() {
-    gl_Position = uViewMatrix * vec4(aPoint.x, aPoint.y, 0.0, 1.0);
-  }
-  `;
-
-  const fs = `#version 300 es
-  precision mediump float;
-
-  uniform vec4 uColor;
-
-  uniform float uScale;
-
-  uniform float[3] uKernels;
-
-  out vec4 oColor;
-
-  void main() {
-    oColor = uColor * uScale * uKernels[0] * uKernels[1] * uKernels[2];
-  }
-  `;
-
-  const fs2 = `#version 300 es
-  precision mediump float;
-
-  uniform vec4 uColor2;
-
-  uniform float uScale2;
-
-  uniform float[3] uKernels2;
-
-  out vec4 oColor;
-
-  void main() {
-    oColor = uColor2 * uScale2 * uKernels2[0] * uKernels2[1] * uKernels2[2];
-  }
-  `;
+describe('webgl/gl-render-frame', () => {
+  let canvas: HTMLCanvasElement;
+  let renderer: GLRenderer;
 
   before(() => {
     canvas = document.createElement('canvas');
-    renderer = new GLRenderer(canvas);
+    renderer = new GLRenderer(canvas, 'webgl');
   });
 
   after(() => {
     renderer.dispose();
+    // @ts-expect-error
     renderer = null;
     canvas.remove();
+    // @ts-expect-error
     canvas = null;
   });
 
-  it('create copy mesh', () => {
-    // const frame = new RenderFrame({ renderer, camera: new Camera() });
-    // const mesh = frame.createCopyMesh();
+  // it('create copy mesh', () => {
+  //   const frame = new RenderFrame({ renderer, camera: new Camera() });
+  //   const mesh = frame.createCopyMesh();
 
-    // mesh.initialize(renderer.glRenderer);
-    // expect(mesh.material.uniformSemantics['uFilterSource']).to.eql(SEMANTIC_MAIN_PRE_COLOR_ATTACHMENT_0);
-    // expect(mesh.material.uniformSemantics['uFilterSourceSize']).to.eql(SEMANTIC_MAIN_PRE_COLOR_ATTACHMENT_SIZE_0);
+  //   // mesh.initialize(renderer.glRenderer);
+  //   expect(mesh.material.uniformSemantics['uFilterSource']).to.eql(SEMANTIC_MAIN_PRE_COLOR_ATTACHMENT_0);
+  //   expect(mesh.material.uniformSemantics['uFilterSourceSize']).to.eql(SEMANTIC_MAIN_PRE_COLOR_ATTACHMENT_SIZE_0);
 
-    // TODO: 补充
-    // frame.renderer.pipelineContext.shaderLibrary.compileShader(m.material.shaderCacheId);
-    // expect(frame.renderer.pipelineContext.shaderLibrary.shaderResults[m.material.shaderCacheId].status).to.eql(1);//success
-  });
+  //   // TODO: 补充
+  //   frame.renderer.pipelineContext.shaderLibrary.compileShader(m.material.shaderCacheId);
+  //   expect(frame.renderer.pipelineContext.shaderLibrary.shaderResults[m.material.shaderCacheId].status).to.eql(1);//success
+  // });
 
   it('add default render Pass with info', () => {
-    const frame = new RenderFrame({ renderer, camera: new Camera() });
+    const frame = new RenderFrame({ renderer, camera: new Camera('') });
     const meshes = generateMeshes(renderer, 3);
 
     frame.addMeshToDefaultRenderPass(meshes[0]);
@@ -98,7 +60,7 @@ describe('gl-render-frame', () => {
 
   it('clear success', () => {
     const frame = new RenderFrame({
-      renderer, camera: new Camera(),
+      renderer, camera: new Camera(''),
       clearAction: {
         clearColor: [0, 0, 0, 0],
         clearDepth: 1,
@@ -126,16 +88,15 @@ describe('gl-render-frame', () => {
   });
 });
 
-function generateMeshes (renderer, num, opts) {
+function generateMeshes (renderer: GLRenderer, num: number, priority = 0) {
   const meshs = [];
-  const priorityBase = opts?.priority || 0;
   const engine = renderer.engine;
 
   for (let i = 0; i < num; i++) {
     meshs.push(new Mesh(engine, {
       name: 'm' + i,
-      priority: i + 1 + priorityBase,
-      material: new GLMaterial(engine, { states: {}, shader: { cacheId: 'xxx' } }),
+      priority: i + 1 + priority,
+      material: new GLMaterial(engine, { shader: { cacheId: 'xxx' } as ShaderWithSource }),
       geometry: new GLGeometry(engine, { attributes: {} }),
     }));
   }

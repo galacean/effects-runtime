@@ -1,34 +1,31 @@
-#version 300 es
+#version 100
 precision mediump float;
 #define SHADER_VERTEX 1
 #define PATICLE_SHADER 1
 
-#import "./compatible.vert.glsl";
-#import "./value.glsl";
-#import "./integrate.glsl";
+#include "./value.glsl";
+#include "./integrate.glsl";
 
 const float d2r = 3.141592653589793 / 180.;
 
-in vec3 aPos;
-in vec4 aOffset;//texcoord.xy time:start duration
-in vec3 aVel;
-in vec3 aRot;
-in vec4 aColor;
-in vec3 aDirX;
-in vec3 aDirY;
+attribute vec3 aPos;
+attribute vec4 aOffset;//texcoord.xy time:start duration
+attribute vec3 aVel;
+attribute vec3 aRot;
+attribute vec4 aColor;
+attribute vec3 aDirX;
+attribute vec3 aDirY;
 
 #ifdef USE_SPRITE
-in vec3 aSprite;//start duration cycles
+attribute vec3 aSprite;//start duration cycles
 uniform vec4 uSprite;//col row totalFrame blend
 struct UVDetail {
   vec2 uv0;
   vec3 uv1;
 };
 UVDetail getSpriteUV(vec2 uv, float lifeTime);
-out vec4 vTexCoordBlend;
+varying vec4 vTexCoordBlend;
 #endif
-
-//#pragma EDITOR_VERT_DEFINE
 
 #ifdef FINAL_TARGET
 uniform vec3 uFinalTarget;
@@ -93,13 +90,9 @@ uniform vec4 uSizeByLifetimeValue;
 #ifdef SIZE_Y_BY_LIFE
 uniform vec4 uSizeYByLifetimeValue;
 #endif
-out float vLife;
-out vec4 vColor;
-out vec2 vTexCoord;
-
-#ifdef USE_FILTER
-#pragma FILTER_VERT
-#endif
+varying float vLife;
+varying vec4 vColor;
+varying vec2 vTexCoord;
 
 #ifdef ENV_EDITOR
 uniform vec4 uEditorTransform; //sx sy dx dy
@@ -290,10 +283,6 @@ void main() {
     vSeed = aSeed;
 
     gl_PointSize = 6.0;
-
-        #ifdef USE_FILTER
-    filterMain(life);
-        #endif
 
         #ifdef ENV_EDITOR
     gl_Position = vec4(gl_Position.xy * uEditorTransform.xy + uEditorTransform.zw * gl_Position.w, gl_Position.zw);

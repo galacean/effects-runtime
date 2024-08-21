@@ -3,34 +3,34 @@ import type { GLPipelineContext } from './gl-pipeline-context';
 
 export class GLMaterialState {
   // Blend相关设置
-  public blending: boolean;
-  public blendFunctionParameters: [blendSrc: GLenum, blendDst: GLenum, blendSrcAlpha: GLenum, blendDstAlpha: GLenum];
-  public blendEquationParameters: [blendEquationRGB: GLenum, blendEquationAlpha: GLenum];
-  public blendColor: [r: number, g: number, b: number, a: number];
+  blending: boolean;
+  blendFunctionParameters: [blendSrc: GLenum, blendDst: GLenum, blendSrcAlpha: GLenum, blendDstAlpha: GLenum];
+  blendEquationParameters: [blendEquationRGB: GLenum, blendEquationAlpha: GLenum];
+  blendColor: [r: number, g: number, b: number, a: number];
 
   // depth相关设置
-  public depthTest: boolean;
-  public depthMask: boolean;
-  public depthRange: [zNear: GLenum, zFar: GLenum];
-  public depthFunc: GLenum;
-  public polygonOffset: [factor: GLenum, units: GLenum];
-  public polygonOffsetFill: boolean;
-  public sampleAlphaToCoverage: boolean;
-  public colorMask: [r: boolean, g: boolean, b: boolean, a: boolean];
+  depthTest: boolean;
+  depthMask: boolean;
+  depthRange: [zNear: GLenum, zFar: GLenum];
+  depthFunc: GLenum;
+  polygonOffset: [factor: GLenum, units: GLenum];
+  polygonOffsetFill: boolean;
+  sampleAlphaToCoverage: boolean;
+  colorMask: [r: boolean, g: boolean, b: boolean, a: boolean];
 
   // stencil相关
-  public stencilTest: boolean;
-  public stencilMask: [front: GLenum, back: GLenum];
-  public stencilRef: [front: GLenum, back: GLenum];
-  public stencilFunc: [front: GLenum, back: GLenum];
-  public stencilOpFail: [front: GLenum, back: GLenum];
-  public stencilOpZFail: [front: GLenum, back: GLenum];
-  public stencilOpZPass: [front: GLenum, back: GLenum];
+  stencilTest: boolean;
+  stencilMask: [front: GLenum, back: GLenum];
+  stencilRef: [front: GLenum, back: GLenum];
+  stencilFunc: [front: GLenum, back: GLenum];
+  stencilOpFail: [front: GLenum, back: GLenum];
+  stencilOpZFail: [front: GLenum, back: GLenum];
+  stencilOpZPass: [front: GLenum, back: GLenum];
 
   // culling相关
-  public culling: boolean;
-  public frontFace: GLenum;
-  public cullFace: GLenum;
+  culling: boolean;
+  frontFace: GLenum;
+  cullFace: GLenum;
 
   constructor () {
     this.reset();
@@ -156,7 +156,7 @@ export class GLMaterialState {
 
   setStencilTest (value: boolean) {
     if (this.stencilTest === value) {
-      return ;
+      return;
     }
 
     this.stencilTest = value;
@@ -258,7 +258,7 @@ export class GLMaterialState {
     this.stencilOpZFail = [glContext.KEEP, glContext.KEEP];
     this.stencilOpZPass = [glContext.KEEP, glContext.KEEP];
     this.culling = false;
-    this.frontFace = glContext.CW;
+    this.frontFace = glContext.CCW;
     this.cullFace = glContext.FRONT;
   }
 

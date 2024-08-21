@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import legacy from '@vitejs/plugin-legacy';
 import ip from 'ip';
-import glslInner from '../../scripts/rollup-plugin-glsl-inner';
+import { glslInner, getSWCPlugin } from '../../scripts/rollup-config-helper';
 
 export default defineConfig(({ mode }) => {
   const development = mode === 'development';
@@ -19,7 +19,6 @@ export default defineConfig(({ mode }) => {
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常
     },
-    esbuild: {},
     server: {
       host: '0.0.0.0',
       port: 8081,
@@ -30,7 +29,7 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       __VERSION__: 0,
-      __DEBUG__: development ? true : false,
+      __DEBUG__: development,
     },
     plugins: [
       legacy({
@@ -38,6 +37,12 @@ export default defineConfig(({ mode }) => {
         modernPolyfills: ['es/global-this'],
       }),
       glslInner(),
+      getSWCPlugin({
+        baseUrl: resolve(__dirname, '..', '..'),
+        transform: {
+          legacyDecorator: true,
+        },
+      }),
       tsconfigPaths(),
       configureServerPlugin(),
     ],

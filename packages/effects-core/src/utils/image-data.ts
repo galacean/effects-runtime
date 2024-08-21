@@ -1,4 +1,3 @@
-
 import { isString } from './index';
 import type { ColorStop } from './color';
 import { colorStopsFromGradient, colorToArr, interpolateColor } from './color';

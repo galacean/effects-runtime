@@ -1,7 +1,7 @@
 import type { GeometryDrawMode, spec } from '@galacean/effects';
 
 export interface GizmoVFXItemOptions {
-  target: number,
+  target: string,
   subType: GizmoSubType,
   renderMode?: GeometryDrawMode,
   type: 'editor-gizmo',

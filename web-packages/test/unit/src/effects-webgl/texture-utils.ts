@@ -415,7 +415,7 @@ export function readPixels (gl, texture, data) {
 }
 
 export function getTextureGPUInfo (texture, texOptions) {
-  const gpuInfo = [0, 0, 0, []];
+  const gpuInfo: [number, number, number, number[][]] = [0, 0, 0, []];
 
   gpuInfo[0] = texture.source.internalFormat;
   gpuInfo[1] = texture.source.type;
@@ -426,10 +426,8 @@ export function getTextureGPUInfo (texture, texOptions) {
     mipmaps.forEach(tex => {
       if (tex.length) {
         gpuInfo[3].push([tex[0].width, tex[0].height]);
-
       } else {
         gpuInfo[3].push([tex.width, tex.height]);
-
       }
     });
   } else {

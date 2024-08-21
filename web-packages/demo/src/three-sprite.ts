@@ -1,9 +1,9 @@
 // @ts-nocheck
-import { AssetManager, ThreeTexture, setConfig, PLAYER_OPTIONS_ENV_EDITOR } from '@galacean/effects-threejs';
+import { AssetManager, ThreeTexture, setConfig, PLAYER_OPTIONS_ENV_EDITOR, ThreeEngine } from '@galacean/effects-threejs';
 import { createThreePlayer, renderbyThreeDisplayObject } from './common/three-display-object';
 import inspireList from './assets/inspire-list';
 
-const json = inspireList.camera.url;
+const json = inspireList.WuFu1.url;
 
 (async () => {
   // 检查交互元素用
@@ -35,9 +35,11 @@ async function renderThreeSprite () {
   const assetManager = new AssetManager({
     pendingCompile: true,
   });
+  const engine = new ThreeEngine(renderer.getContext());
   const res = await assetManager.loadScene(json);
+
   const options = res.textureOptions[0];
-  const texture = new ThreeTexture(null, options);
+  const texture = new ThreeTexture(engine, options);
 
   scene.add(getDataTextureMesh());
   scene.add(await getNormalTextureMesh(texture));

@@ -1,188 +1,100 @@
-import { isAlipayMiniApp, isString, spec } from '@galacean/effects';
+import { spec, getActivePlayers, logger, isAlipayMiniApp, isIOS } from '@galacean/effects';
+import type { DowngradeOptions, DowngradeResult, SystemInfo } from './types';
+import { DeviceProxy } from './device-proxy';
 
-declare global {
-  interface Window {
-    AlipayJSBridge: any,
-  }
-}
-
-const DEVICE_PERFORMANCE_LOW = 'low';
-const DEVICE_PERFORMANCE_MIDDLE = 'middle';
-const DEVICE_PERFORMANCE_HIGH = 'high';
-
-let devicePending: Promise<string | void> | undefined;
-let devicePerformance: string;
-let deviceName = 'DESKTOP_DEBUG';
-let deviceSystem = 'Unknown';
-let isIOS = false;
-
-export async function getDeviceName () {
-  if (!devicePending) {
-    devicePending = getSystemInfo().then(info => {
-      const { performance, platform, model = 'UNKNOWN_DEVICE', system = 'Unknown' } = info;
-
-      if (!devicePerformance) {
-        devicePerformance = performance;
-      }
-      isIOS = platform === 'iOS';
-      deviceName = model;
-      deviceSystem = system;
-      if (/iPhone(\d+),/.test(deviceName) && !devicePerformance) {
-        const gen = +RegExp.$1;
-
-        // https://gist.github.com/adamawolf/3048717 device code
-        if (gen <= 9) { // iphone 7,iphone 7p
-          devicePerformance = DEVICE_PERFORMANCE_LOW;
-        } else if (gen < 10) {
-          devicePerformance = DEVICE_PERFORMANCE_MIDDLE;
-        } else {
-          devicePerformance = DEVICE_PERFORMANCE_HIGH;
-        }
-      }
-      if (deviceName.indexOf(info.brand) === 0) {
-        deviceName = deviceName.replace(info.brand, '').trim();
-      }
-
-      return deviceName;
-    }, (e: any) => {
-    });
-  }
-
-  return devicePending.then(() => deviceName, () => deviceName);
-}
-
-export function getRenderLevelByDevice (renderLevel?: spec.RenderLevel | 'auto'): spec.RenderLevel {
-  if (renderLevel === 'auto' || !renderLevel) {
-    if (devicePerformance === DEVICE_PERFORMANCE_HIGH) {
-      return spec.RenderLevel.S;
-    } else if (devicePerformance === DEVICE_PERFORMANCE_MIDDLE) {
-      return spec.RenderLevel.A;
-    } else if (devicePerformance === DEVICE_PERFORMANCE_LOW) {
-      return spec.RenderLevel.B;
-    }
-
-    return isIOS ? spec.RenderLevel.S : spec.RenderLevel.B;
-  }
-
-  return /[ABS]/.test(renderLevel) ? renderLevel : spec.RenderLevel.S;
-}
-
-export function resetDevicePending () {
-  devicePending = undefined;
-}
-
-interface DowngradeResult {
-  downgrade: boolean,
-  reason: string,
-}
-
+const internalPaused = Symbol('@@_inter_pause');
 const mockIdPass = 'mock-pass';
 const mockIdFail = 'mock-fail';
+let hasRegisterEvent = false;
 
 /**
+ * 获取 GE 降级结果，在有 JSAPI 环境下调用，不需要创建 Canvas 和 WebGL 环境。
  *
- * @param bizId
- * @param options
- * @returns
+ * @param bizId - 业务 bizId
+ * @param options - 降级选项
+ * @returns 降级结果
  */
-export async function checkDowngrade (
-  bizId?: string,
-  options: { techPoint?: string[], callBridge?: (a: string, option: any, cb: (res: any) => void) => void } = {},
-): Promise<DowngradeResult> {
-  if (bizId === mockIdFail || bizId === mockIdPass) {
-    return Promise.resolve({ downgrade: bizId === mockIdFail, reason: 'mock' });
+export async function getDowngradeResult (bizId: string, options: DowngradeOptions = {}): Promise<DowngradeResult> {
+  if (!hasRegisterEvent) {
+    hasRegisterEvent = true;
+    registerEvent(options);
   }
 
-  //@ts-expect-error
-  const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
-
-  if (ap) {
-    const now = performance.now();
-
-    return getDeviceName().then(function () {
-      return new Promise(function (resolve) {
-        const techPoint = ['mars'];
-        const tc = options.techPoint;
-
-        if (tc) {
-          techPoint.push(...tc);
-        }
-        const callBridge = options.callBridge ?? ap.call;
-
-        callBridge('getDowngradeResult', {
-          bizId,
-          scene: 0,
-          ext: {
-            techPoint,
-          },
-        }, function (result: any) {
-          let reason = undefined;
-
-          console.info(`downgrade time: ${performance.now() - now}ms`);
-          if (!result.error) {
-            try {
-              const ret = isString(result) ? JSON.parse(result) : result;
-
-              if ('downgradeResultType' in ret) {
-                reason = ret.downgradeResultType;
-              } else if ('resultType' in ret) {
-                reason = ret.resultType;
-              }
-              if (result.context) {
-                const deviceInfo = result.context.deviceInfo;
-
-                if (deviceInfo) {
-                  const level = deviceInfo.deviceLevel;
-
-                  if (level === DEVICE_PERFORMANCE_HIGH || level === DEVICE_PERFORMANCE_LOW) {
-                    devicePerformance = level;
-                  } else if (level === 'medium') {
-                    devicePerformance = DEVICE_PERFORMANCE_MIDDLE;
-                  }
-                }
-              }
-            } catch (ex) {
-              console.error(ex);
-            }
-          } else {
-            // 无权调用的情况下不降级
-            resolve({ downgrade: result.error !== 4, reason: 'api error:' + result.error });
-          }
-          if (reason === undefined) {
-            resolve({ downgrade: true, reason: 'call downgrade fail' });
-          } else {
-            if (isAlipayMiniApp() && downgradeForMiniprogram()) {
-              resolve({ downgrade: true, reason: 'Force downgrade by downgrade plugin' });
-            } else {
-              resolve({ downgrade: reason === 1, reason });
-            }
-          }
-        },
-        );
-      });
+  if (bizId === mockIdFail || bizId === mockIdPass) {
+    return Promise.resolve({
+      bizId,
+      downgrade: bizId === mockIdFail,
+      level: options.level ?? spec.RenderLevel.S,
+      reason: 'mock',
     });
   }
 
-  return Promise.resolve({ downgrade: false, reason: 'no AP env' });
+  const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+
+  // 当需要通过 ap 获取降级信息时，才进行降级环境的检查
+  if (!ap && (!options.systemInfo || !options.downgradeResult)) {
+    return {
+      bizId,
+      downgrade: false,
+      level: options.level ?? spec.RenderLevel.S,
+      reason: 'Non-Alipay environment',
+    };
+  }
+
+  const systemStartTime = performance.now();
+
+  return getSystemInfoJSAPI(options, ap)
+    .then((systemInfo: SystemInfo) => {
+      const systemEndTime = performance.now();
+
+      return getDowngradeResultJSAPI(bizId, options, ap)
+        .then((downgradeResult: any) => {
+          const downgradeEndTime = performance.now();
+
+          logger.info(`Downgrade time: ${downgradeEndTime - systemStartTime}ms.`);
+
+          const device = new DeviceProxy();
+
+          device.setSystemInfo(systemInfo);
+
+          const decision = device.getDowngradeDecision(downgradeResult);
+
+          if (options.level) {
+            decision.level = options.level;
+          }
+
+          const result: DowngradeResult = {
+            ...decision,
+            bizId,
+            systemInfo,
+            systemTime: systemEndTime - systemStartTime,
+            downgradeResult,
+            downgradeTime: downgradeEndTime - systemEndTime,
+          };
+
+          return result;
+        });
+    });
 }
 
-type SystemInfo = {
-  performance: string,
-  platform: string,
-  model: string,
-  system: string,
-  brand: string,
-  version: string,
-  error: any,
-};
+function registerEvent (options: DowngradeOptions) {
+  const { autoPause } = options;
 
-export async function getSystemInfo (): Promise<SystemInfo> {
-  return new Promise((resolve, reject) => {
+  window.addEventListener('unload', () => {
+    getActivePlayers().forEach(player => player.dispose());
+  });
 
-    //@ts-expect-error
-    const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+  if (autoPause) {
+    document.addEventListener('pause', pauseAllActivePlayers);
+    document.addEventListener('resume', resumePausedPlayers);
+  }
+}
 
-    if (ap) {
+async function getSystemInfoJSAPI (options: DowngradeOptions, ap: any): Promise<SystemInfo> {
+  if (options.systemInfo) {
+    return Promise.resolve(options.systemInfo);
+  } else {
+    return new Promise((resolve, reject) => {
       ap.call('getSystemInfo', (e: SystemInfo) => {
         if (e.error) {
           reject(e);
@@ -190,28 +102,75 @@ export async function getSystemInfo (): Promise<SystemInfo> {
           resolve(e);
         }
       });
-    } else {
-      reject('no ap');
-    }
-  });
+    });
+  }
 }
 
-const deviceNameList = ['12,8', '13,1', '13,2', '13,3', '13,4'];
+async function getDowngradeResultJSAPI (bizId: string, options: DowngradeOptions, ap: any): Promise<any> {
+  if (options.downgradeResult) {
+    return Promise.resolve(options.downgradeResult);
+  } else {
+    return new Promise((resolve, reject) => {
+      const techPoint = ['mars'];
+      const tc = options.techPoint;
+
+      if (tc) {
+        techPoint.push(...tc);
+      }
+
+      const downgradeOptions = {
+        bizId,
+        scene: 0,
+        ext: {
+          techPoint,
+        },
+      };
+
+      const callBridge = options.callBridge ?? ap.call;
+
+      callBridge('getDowngradeResult', downgradeOptions, (result: any) => {
+        resolve(result);
+      });
+    });
+  }
+}
 
 /**
- * iPhone SE2 和 12 全系列机型，如果是 iOS16 系统，在小程序中强制降级
- * @returns
+ * 获取默认渲染等级
+ *
+ * @returns 渲染等级
  */
-export function downgradeForMiniprogram () {
-  if (isIOS) {
-    if (deviceNameList.find(v => v === deviceName)) {
-      const versionList = deviceSystem.split('.');
+export function getDefaultRenderLevel () {
+  return isIOS() ? spec.RenderLevel.S : spec.RenderLevel.B;
+}
 
-      if (versionList.length > 0 && versionList[0] === '16') {
-        return true;
+function pauseAllActivePlayers (e: Event) {
+  if (e.target === document) {
+    logger.info('Auto pause all players with data offloaded.');
+    const players = getActivePlayers();
+
+    players.forEach(player => {
+      if (!player.paused) {
+        player.pause({ offloadTexture: true });
+        // @ts-expect-error
+        player[internalPaused] = true;
       }
-    }
+    });
   }
+}
 
-  return false;
+function resumePausedPlayers (e: Event) {
+  if (e.target === document) {
+    logger.info('Auto resume all players.');
+    const players = getActivePlayers();
+
+    players.forEach(player => {
+      // @ts-expect-error
+      if (player[internalPaused]) {
+        void player.resume();
+        // @ts-expect-error
+        player[internalPaused] = false;
+      }
+    });
+  }
 }

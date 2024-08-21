@@ -4,7 +4,7 @@
   "description": "Galacean Effects player spine plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
-  "brower": "./dist/index.min.js",
+  "browser": "./dist/index.min.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
@@ -24,6 +24,11 @@
       "import": "./dist/weapp.mjs",
       "require": "./dist/weapp.js",
       "types": "./dist/index.d.ts"
+    },
+    "./douyin": {
+      "import": "./dist/douyin.mjs",
+      "require": "./dist/douyin.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "scripts": {
@@ -32,9 +37,9 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
     "build:demo": "rimraf dist && vite build",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [

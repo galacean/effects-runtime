@@ -1,141 +1,58 @@
-import * as spec from '@galacean/effects-specification';
-import type { Ray } from '@galacean/effects-math/es/core/ray';
-import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { Composition } from '../../composition';
-import { assertExist, DestroyOptions } from '../../utils';
 import { VFXItem } from '../../vfx-item';
-import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
-import { HitTestType } from '../interact/click-handler';
-import type { ParticleSystemProps } from './particle-system';
+import type { FrameContext, PlayableGraph } from '../cal/playable-graph';
+import { Playable, PlayableAsset } from '../cal/playable-graph';
 import { ParticleSystem } from './particle-system';
 
-export class ParticleVFXItem extends VFXItem<ParticleSystem> {
-  override name: string;
-  particle: ParticleSystemProps;
+/**
+ * @since 2.0.0
+ * @internal
+ */
+export class ParticleBehaviourPlayable extends Playable {
+  lastTime = 0;
+  particleSystem: ParticleSystem;
 
-  private destroyed = false;
+  start (context: FrameContext): void {
+    const boundObject = context.output.getUserData();
 
-  override get type () {
-    return spec.ItemType.particle;
-  }
-
-  override onConstructed (props: spec.ParticleItem) {
-    this.particle = props.content as unknown as ParticleSystemProps;
-
-    if (this.composition) {
-      this._content = new ParticleSystem(this.particle, this.composition.getRendererOptions(), this);
-    }
-
-  }
-
-  override onLifetimeBegin (composition: Composition, particleSystem: ParticleSystem) {
-    if (particleSystem) {
-      particleSystem.name = this.name;
-      particleSystem.start();
-      particleSystem.onDestroy = () => {
-        this.destroyed = true;
-      };
-    }
-
-    return particleSystem;
-  }
-
-  override onItemUpdate (dt: number, lifetime: number) {
-    if (this.content) {
-      let hide = !this.visible;
-      const parentItem = this.parentId && this.composition?.getItemByID(this.parentId);
-
-      if (!hide && parentItem) {
-        const parentData = parentItem.getRenderData();
-
-        if (parentData) {
-          if (!parentData.visible) {
-            hide = false;
-          }
-        }
-      }
-      if (hide) {
-        this.content.setVisible(false);
-      } else {
-        this.content.setVisible(true);
-        this.content.onUpdate(dt);
-      }
-
-    }
-  }
-
-  override onItemRemoved (composition: Composition, content: ParticleSystem) {
-    if (content) {
-      composition.destroyTextures(content.getTextures());
-      content.meshes.forEach(mesh => mesh.dispose({ material: { textures: DestroyOptions.keep } }));
-    }
-  }
-
-  /**
-   * @internal
-   */
-  override setColor (r: number, g: number, b: number, a: number) {
-    this.content.setColor(r, g, b, a);
-  }
-
-  override setOpacity (opacity: number) {
-    this.content.setOpacity(opacity);
-  }
-
-  stopParticleEmission () {
-    if (this.content) {
-      this.content.emissionStopped = true;
-    }
-  }
-
-  resumeParticleEmission () {
-    if (this.content) {
-      this.content.emissionStopped = false;
-    }
-  }
-
-  protected override doCreateContent (composition: Composition) {
-    if (!this.content) {
-      return new ParticleSystem(this.particle, composition.getRendererOptions(), this);
-    } else {
-      return this.content;
-    }
-  }
-
-  override isEnded (now: number): boolean {
-    return super.isEnded(now) && this.destroyed;
-  }
-
-  override getBoundingBox (): void | BoundingBoxSphere {
-    const pt = this.content;
-
-    if (!pt) {
+    if (this.particleSystem || !(boundObject instanceof VFXItem)) {
       return;
-    } else {
-      const area = pt.getParticleBoxes();
+    }
+    this.particleSystem = boundObject.getComponent(ParticleSystem);
 
-      return {
-        type: HitTestType.sphere,
-        area,
-      };
+    if (this.particleSystem) {
+      this.particleSystem.name = boundObject.name;
+      this.particleSystem.start();
+      this.particleSystem.initEmitterTransform();
     }
   }
 
-  override getHitTestParams (force?: boolean): void | HitTestCustomParams {
-    const interactParams = this.content?.interaction;
-
-    if (force || interactParams) {
-      return {
-        type: HitTestType.custom,
-        collect: (ray: Ray): Vector3[] | void =>
-          this.content?.raycast({
-            radius: interactParams?.radius || 0.4,
-            multiple: !!interactParams?.multiple,
-            removeParticle: interactParams?.behavior === spec.ParticleInteractionBehavior.removeParticle,
-            ray,
-          }),
-      };
+  override processFrame (context: FrameContext): void {
+    if (this.time >= 0) {
+      this.start(context);
     }
+    const particleSystem = this.particleSystem;
+
+    if (particleSystem) {
+      // TODO: [1.31] @十弦 验证 https://github.com/galacean/effects-runtime/commit/3e7d73d37b7d98c2a25e4544e80e928b17801ccd#diff-fae062f28caf3771cfedd3a20dc22f9749bd054c7541bf2fd50a9a5e413153d4
+      // particleSystem.setParentTransform(parentItem.transform);
+      particleSystem.setVisible(true);
+      let deltaTime = context.deltaTime;
+
+      if (this.time < particleSystem.item.duration && particleSystem.isFrozen()) {
+        particleSystem.reset();
+      }
+      if (Math.abs(this.time - this.lastTime) < 0.001) {
+        deltaTime = 0;
+      }
+      particleSystem.onUpdate(deltaTime);
+    }
+    this.lastTime = this.time;
+  }
+}
+
+export class ParticleBehaviourPlayableAsset extends PlayableAsset {
+  override createPlayable (graph: PlayableGraph): Playable {
+    return new ParticleBehaviourPlayable(graph);
   }
 }
 

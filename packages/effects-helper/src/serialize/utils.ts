@@ -1,4 +1,4 @@
-import { spec } from '@galacean/effects';
+import { assertExist, spec } from '@galacean/effects';
 import type { TextureCubeSourceOptionsImage, TextureCubeSourceOptionsImageMipmaps } from '@galacean/effects';
 
 export async function loadMipmaps (
@@ -14,7 +14,7 @@ export async function loadMipmaps (
         return getImageFileContent(imageLike);
       }
 
-      return Promise.reject('invalid image format');
+      return Promise.reject(new Error('Invalid image format.'));
     })
   ));
   const newMipmaps = await Promise.all(jobs);
@@ -57,7 +57,7 @@ export async function getImageFileContent (image: HTMLImageElement | ImageBitmap
         if (blob) {
           resolve(blob.arrayBuffer());
         } else {
-          reject(Error('no canvas blob'));
+          reject(new Error('Failed to create a blob from the canvas. This may occur if the canvas is empty or not properly configured.'));
         }
       },
       'image/png',
@@ -74,8 +74,14 @@ export function concatBuffers (
   const ret = new Uint8Array(length);
 
   buffers.forEach(buffer => {
-    const [, offset, byteLength] = bufferInfo.get(buffer)!;
-    const source = buffer instanceof ArrayBuffer ? new Uint8Array(buffer, 0, byteLength) : new Uint8Array(buffer.buffer, buffer.byteOffset, byteLength);
+    const info = bufferInfo.get(buffer);
+
+    assertExist(info);
+
+    const [, offset, byteLength] = info;
+    const source = buffer instanceof ArrayBuffer ?
+      new Uint8Array(buffer, 0, byteLength) :
+      new Uint8Array(buffer.buffer, buffer.byteOffset, byteLength);
 
     ret.set(source, offset);
   });
@@ -145,7 +151,7 @@ export function concatArrayBuffers (
     const buffer = buffers[content[0]];
 
     if (!buffer) {
-      throw new Error(`buffer index ${content[0]} not found`);
+      throw new Error(`Buffer index ${content[0]} not found.`);
     }
     const originStart = content[1] || 0;
     const byteLength = content[2] || (buffer.byteLength - originStart);

@@ -16,9 +16,10 @@
     "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
     "moduleResolution": "node",
     "module": "ESNext",
-    "target": "ES6",
+    "target": "ESNext",
     "lib": [
       "DOM",
       "ES2015",
@@ -42,10 +43,7 @@
       ],
       "@galacean/effects-plugin-*": [
         "./plugin-packages/*/src"
-      ],
-      "@galacean/effects-plugin-model/*": [
-        "./plugin-packages/model/src/*"
-      ],
+      ]
     }
   }
 }

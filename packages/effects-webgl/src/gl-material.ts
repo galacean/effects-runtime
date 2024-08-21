@@ -1,28 +1,18 @@
 import type {
-  MaterialDestroyOptions,
-  MaterialProps,
-  MaterialStates,
-  UndefinedAble,
-  Texture,
-  Engine,
-  GlobalUniforms,
+  Engine, GlobalUniforms, MaterialDestroyOptions, MaterialProps, MaterialStates,
+  Renderer, Texture, UndefinedAble,
 } from '@galacean/effects-core';
 import {
-  DestroyOptions,
-  Material,
-  assertExist,
-  throwDestroyedError,
-  math,
-  isFunction,
-  logger,
+  spec, DestroyOptions, Material, Shader, assertExist, generateGUID, isFunction, logger,
+  math, throwDestroyedError, glContext,
 } from '@galacean/effects-core';
+import type { GLEngine } from './gl-engine';
 import { GLMaterialState } from './gl-material-state';
 import type { GLPipelineContext } from './gl-pipeline-context';
-import type { GLShader } from './gl-shader';
+import type { GLShaderVariant } from './gl-shader';
 import type { GLTexture } from './gl-texture';
-import type { GLEngine } from './gl-engine';
-import type { GLRenderer } from './gl-renderer';
 
+type Color = math.Color;
 type Vector2 = math.Vector2;
 type Vector3 = math.Vector3;
 type Vector4 = math.Vector4;
@@ -33,34 +23,41 @@ type Quaternion = math.Quaternion;
 const { Vector4, Matrix4 } = math;
 
 export class GLMaterial extends Material {
-  shader: GLShader;
-
   // material存放的uniform数据。
-  floats: Record<string, number> = {};
-  ints: Record<string, number> = {};
-  vector2s: Record<string, Vector2> = {};
-  vector3s: Record<string, Vector3> = {};
-  vector4s: Record<string, Vector4> = {};
-  quaternions: Record<string, Quaternion> = {};
-  matrices: Record<string, Matrix4> = {};
-  matrice3s: Record<string, Matrix3> = {};
-  textures: Record<string, Texture> = {};
-  floatArrays: Record<string, number[]> = {};
-  vector4Arrays: Record<string, number[]> = {};
-  matrixArrays: Record<string, number[]> = {};
+  private floats: Record<string, number> = {};
+  private ints: Record<string, number> = {};
+  private vector2s: Record<string, Vector2> = {};
+  private vector3s: Record<string, Vector3> = {};
+  private vector4s: Record<string, Vector4> = {};
+  private colors: Record<string, Color> = {};
+  private quaternions: Record<string, Quaternion> = {};
+  private matrices: Record<string, Matrix4> = {};
+  private matrice3s: Record<string, Matrix3> = {};
+  private textures: Record<string, Texture> = {};
+  private floatArrays: Record<string, number[]> = {};
+  private vector4Arrays: Record<string, number[]> = {};
+  private matrixArrays: Record<string, number[]> = {};
 
-  samplers: string[] = [];  // material存放的sampler名称。
-  uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
+  private samplers: string[] = [];  // material存放的sampler名称。
+  private uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
 
-  uniformDirtyFlag = true;
-  glMaterialState = new GLMaterialState();
+  private uniformDirtyFlag = true;
+  private macrosDirtyFlag = true;
+  private glMaterialState = new GLMaterialState();
 
-  private engine?: Engine;
-
-  constructor (engine: Engine, props: MaterialProps) {
-    super(props);
-
-    this.engine = engine;
+  constructor (
+    engine: Engine,
+    props?: MaterialProps,
+  ) {
+    super(engine, props);
+    if (props) {
+      this.shader = new Shader(engine);
+      this.shader.shaderData = {
+        ...props.shader,
+        id: generateGUID(),
+        dataType: spec.DataType.Shader,
+      };
+    }
   }
 
   override get blending () {
@@ -217,14 +214,22 @@ export class GLMaterial extends Material {
     value !== undefined && this.glMaterialState.setCullFace(value);
   }
 
-  enableKeyword (keyword: string): void {
-    throw new Error('Method not implemented.');
+  override enableMacro (keyword: string, value?: boolean | number): void {
+    if (!this.isMacroEnabled(keyword) || this.enabledMacros[keyword] !== value) {
+      this.enabledMacros[keyword] = value ?? true;
+      this.macrosDirtyFlag = true;
+    }
   }
-  disableKeyword (keyword: string): void {
-    throw new Error('Method not implemented.');
+
+  override disableMacro (keyword: string): void {
+    if (this.isMacroEnabled(keyword)) {
+      delete this.enabledMacros[keyword];
+      this.macrosDirtyFlag = true;
+    }
   }
-  isKeywordEnabled (keyword: string): boolean {
-    throw new Error('Method not implemented.');
+
+  override isMacroEnabled (keyword: string): boolean {
+    return this.enabledMacros[keyword] !== undefined;
   }
 
   // TODO 待废弃 兼容 model/spine 插件 改造后可移除
@@ -248,23 +253,19 @@ export class GLMaterial extends Material {
 
   /**shader和texture的GPU资源初始化。 */
   override initialize (): void {
+    const engine = this.engine;
+
+    this.createShaderVariant();
+    (this.shaderVariant as GLShaderVariant).initialize();
     if (this.initialized) {
       return;
     }
-    const glEngine = this.engine as GLEngine;
-
-    glEngine.addMaterial(this);
-    if (!this.shader) {
-      const pipelineContext = glEngine.getGLPipelineContext();
-
-      this.shader = pipelineContext.shaderLibrary.createShader(this.shaderSource);
-    }
-    this.shader.initialize(glEngine);
+    engine.addMaterial(this);
     Object.keys(this.textures).forEach(key => {
       const texture = this.textures[key];
 
       if (!isFunction(texture.initialize)) {
-        logger.error(`${JSON.stringify(texture)} is not valid Texture to initialize`);
+        logger.error(`Failed to initialize texture: ${JSON.stringify(texture)}. Ensure the texture conforms to the expected format.`);
 
         return;
       }
@@ -273,20 +274,28 @@ export class GLMaterial extends Material {
     this.initialized = true;
   }
 
+  override createShaderVariant () {
+    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
+      this.shaderVariant = this.shader.createVariant(this.enabledMacros);
+      this.macrosDirtyFlag = false;
+    }
+  }
+
   setupStates (pipelineContext: GLPipelineContext) {
     this.glMaterialState.apply(pipelineContext);
   }
 
-  public override use (renderer: GLRenderer, globalUniforms?: GlobalUniforms) {
+  override use (renderer: Renderer, globalUniforms?: GlobalUniforms) {
     const engine = renderer.engine as GLEngine;
     const pipelineContext = engine.getGLPipelineContext();
+    const shaderVariant = this.shaderVariant as GLShaderVariant;
 
-    if (!this.shader.program) {
-      this.engine?.renderErrors.add(new Error('Shader program is not initialized'));
+    if (!shaderVariant.program) {
+      this.engine?.renderErrors.add(new Error('Shader program is not initialized.'));
 
       return;
     }
-    this.shader.program.bind();
+    shaderVariant.program.bind();
     this.setupStates(pipelineContext);
     let name: string;
 
@@ -305,20 +314,23 @@ export class GLMaterial extends Material {
 
     // 更新 cached uniform location
     if (this.uniformDirtyFlag) {
-      this.shader.fillShaderInformation(this.uniforms, this.samplers);
+      shaderVariant.fillShaderInformation(this.uniforms, this.samplers);
       this.uniformDirtyFlag = false;
     }
 
     if (globalUniforms) {
       // 设置全局 uniform
       for (name in globalUniforms.floats) {
-        this.shader.setFloat(name, globalUniforms.floats[name]);
+        shaderVariant.setFloat(name, globalUniforms.floats[name]);
       }
       for (name in globalUniforms.ints) {
-        this.shader.setInt(name, globalUniforms.ints[name]);
+        shaderVariant.setInt(name, globalUniforms.ints[name]);
+      }
+      for (name in globalUniforms.vector4s) {
+        shaderVariant.setVector4(name, globalUniforms.vector4s[name]);
       }
       for (name in globalUniforms.matrices) {
-        this.shader.setMatrix(name, globalUniforms.matrices[name]);
+        shaderVariant.setMatrix(name, globalUniforms.matrices[name]);
       }
     }
 
@@ -329,115 +341,127 @@ export class GLMaterial extends Material {
       }
     }
     for (name in this.floats) {
-      this.shader.setFloat(name, this.floats[name]);
+      shaderVariant.setFloat(name, this.floats[name]);
     }
     for (name in this.ints) {
-      this.shader.setInt(name, this.ints[name]);
+      shaderVariant.setInt(name, this.ints[name]);
     }
     for (name in this.floatArrays) {
-      this.shader.setFloats(name, this.floatArrays[name]);
+      shaderVariant.setFloats(name, this.floatArrays[name]);
     }
     for (name in this.textures) {
-      this.shader.setTexture(name, this.textures[name]);
+      shaderVariant.setTexture(name, this.textures[name]);
     }
     for (name in this.vector2s) {
-      this.shader.setVector2(name, this.vector2s[name]);
+      shaderVariant.setVector2(name, this.vector2s[name]);
     }
     for (name in this.vector3s) {
-      this.shader.setVector3(name, this.vector3s[name]);
+      shaderVariant.setVector3(name, this.vector3s[name]);
     }
     for (name in this.vector4s) {
-      this.shader.setVector4(name, this.vector4s[name]);
+      shaderVariant.setVector4(name, this.vector4s[name]);
+    }
+    for (name in this.colors) {
+      shaderVariant.setColor(name, this.colors[name]);
     }
     for (name in this.quaternions) {
-      this.shader.setQuaternion(name, this.quaternions[name]);
+      shaderVariant.setQuaternion(name, this.quaternions[name]);
     }
     for (name in this.matrices) {
-      this.shader.setMatrix(name, this.matrices[name]);
+      shaderVariant.setMatrix(name, this.matrices[name]);
     }
     for (name in this.matrice3s) {
-      this.shader.setMatrix3(name, this.matrice3s[name]);
+      shaderVariant.setMatrix3(name, this.matrice3s[name]);
     }
     for (name in this.vector4Arrays) {
-      this.shader.setVector4Array(name, this.vector4Arrays[name]);
+      shaderVariant.setVector4Array(name, this.vector4Arrays[name]);
     }
     for (name in this.matrixArrays) {
-      this.shader.setMatrixArray(name, this.matrixArrays[name]);
+      shaderVariant.setMatrixArray(name, this.matrixArrays[name]);
     }
   }
 
-  public getFloat (name: string): number | null {
+  getFloat (name: string): number | null {
     return this.floats[name];
   }
-  public setFloat (name: string, value: number) {
+  setFloat (name: string, value: number) {
     this.checkUniform(name);
     this.floats[name] = value;
   }
 
-  public getInt (name: string): number | null {
+  getInt (name: string): number | null {
     return this.ints[name];
   }
-  public setInt (name: string, value: number) {
+  setInt (name: string, value: number) {
     this.checkUniform(name);
     this.ints[name] = value;
   }
 
-  public getFloats (name: string): number[] | null {
+  getFloats (name: string): number[] | null {
     return this.floatArrays[name];
   }
-  public setFloats (name: string, value: number[]) {
+  setFloats (name: string, value: number[]) {
     this.checkUniform(name);
     this.floatArrays[name] = value;
   }
 
-  public getVector2 (name: string): Vector2 | null {
+  getVector2 (name: string): Vector2 | null {
     return this.vector2s[name];
   }
-  public setVector2 (name: string, value: Vector2): void {
+  setVector2 (name: string, value: Vector2): void {
     this.checkUniform(name);
     this.vector2s[name] = value;
   }
 
-  public getVector3 (name: string): Vector3 | null {
+  getVector3 (name: string): Vector3 | null {
     return this.vector3s[name];
   }
-  public setVector3 (name: string, value: Vector3): void {
+  setVector3 (name: string, value: Vector3): void {
     this.checkUniform(name);
     this.vector3s[name] = value;
   }
 
-  public getVector4 (name: string): Vector4 | null {
+  getVector4 (name: string): Vector4 | null {
     return this.vector4s[name];
   }
-  public setVector4 (name: string, value: Vector4): void {
+  setVector4 (name: string, value: Vector4): void {
     this.checkUniform(name);
     this.vector4s[name] = value;
   }
 
-  public getQuaternion (name: string): Quaternion | null {
+  getColor (name: string): Color | null {
+    return this.colors[name];
+  }
+
+  setColor (name: string, value: Color): void {
+    this.checkUniform(name);
+    this.colors[name] = value;
+  }
+
+  getQuaternion (name: string): Quaternion | null {
     return this.quaternions[name];
   }
-  public setQuaternion (name: string, value: Quaternion): void {
+  setQuaternion (name: string, value: Quaternion): void {
     this.checkUniform(name);
     this.quaternions[name] = value;
   }
 
-  public getMatrix (name: string): Matrix4 | null {
+  getMatrix (name: string): Matrix4 | null {
     return this.matrices[name];
   }
-  public setMatrix (name: string, value: Matrix4): void {
+  setMatrix (name: string, value: Matrix4): void {
     this.checkUniform(name);
     this.matrices[name] = value;
   }
-  public setMatrix3 (name: string, value: Matrix3): void {
+  setMatrix3 (name: string, value: Matrix3): void {
     this.checkUniform(name);
     this.matrice3s[name] = value;
   }
 
-  public getVector4Array (name: string): number[] {
+  getVector4Array (name: string): number[] {
     return this.vector4Arrays[name];
   }
-  public setVector4Array (name: string, array: Vector4[]): void {
+  setVector4Array (name: string, array: Vector4[]): void {
     this.checkUniform(name);
     this.vector4Arrays[name] = [];
     for (const v of array) {
@@ -445,10 +469,10 @@ export class GLMaterial extends Material {
     }
   }
 
-  public getMatrixArray (name: string): number[] | null {
+  getMatrixArray (name: string): number[] | null {
     return this.matrixArrays[name];
   }
-  public setMatrixArray (name: string, array: Matrix4[]): void {
+  setMatrixArray (name: string, array: Matrix4[]): void {
     this.checkUniform(name);
     this.matrixArrays[name] = [];
     for (const m of array) {
@@ -457,15 +481,15 @@ export class GLMaterial extends Material {
       }
     }
   }
-  public setMatrixNumberArray (name: string, array: number[]): void {
+  setMatrixNumberArray (name: string, array: number[]): void {
     this.checkUniform(name);
     this.matrixArrays[name] = array;
   }
 
-  public getTexture (name: string): Texture | null {
+  getTexture (name: string): Texture | null {
     return this.textures[name];
   }
-  public setTexture (name: string, texture: Texture) {
+  setTexture (name: string, texture: Texture) {
     if (!this.samplers.includes(name)) {
       this.samplers.push(name);
       this.uniformDirtyFlag = true;
@@ -473,11 +497,11 @@ export class GLMaterial extends Material {
     this.textures[name] = texture;
   }
 
-  public hasUniform (name: string): boolean {
+  hasUniform (name: string): boolean {
     return this.uniforms.includes(name) || this.samplers.includes(name);
   }
 
-  public clone (props?: MaterialProps): Material {
+  clone (props?: MaterialProps): Material {
     const newProps = props ? props : this.props;
     const engine = this.engine;
 
@@ -491,6 +515,7 @@ export class GLMaterial extends Material {
     clonedMaterial.vector2s = this.vector2s;
     clonedMaterial.vector3s = this.vector3s;
     clonedMaterial.vector4s = this.vector4s;
+    clonedMaterial.colors = this.colors;
     clonedMaterial.quaternions = this.quaternions;
     clonedMaterial.matrices = this.matrices;
     clonedMaterial.textures = this.textures;
@@ -502,6 +527,141 @@ export class GLMaterial extends Material {
     clonedMaterial.uniformDirtyFlag = true;
 
     return clonedMaterial;
+  }
+
+  override fromData (data: spec.MaterialData): void {
+    super.fromData(data);
+
+    this.uniforms = [];
+    this.samplers = [];
+    this.textures = {};
+    this.floats = {};
+    this.ints = {};
+    this.floatArrays = {};
+    this.vector4s = {};
+
+    const propertiesData = {
+      blending: false,
+      zTest: false,
+      zWrite: false,
+      ...data,
+    };
+
+    // FIXME: 刷新 Material 状态，后面删除 data 中的 blending，zTest 和 zWrite 状态
+    if (data.stringTags['RenderType'] !== undefined) {
+      propertiesData.blending = data.stringTags['RenderType'] === spec.RenderType.Transparent;
+    }
+    if (data.floats['ZTest'] !== undefined) {
+      propertiesData.zTest = data.floats['ZTest'] !== 0;
+    }
+    if (data.floats['ZWrite'] !== undefined) {
+      propertiesData.zWrite = data.floats['ZWrite'] !== 0;
+    }
+
+    this.blending = propertiesData.blending;
+    this.depthTest = propertiesData.zTest;
+    this.depthMask = propertiesData.zWrite;
+
+    const renderFace = data.stringTags['RenderFace'];
+
+    if (renderFace === spec.RenderFace.Front) {
+      this.culling = true;
+      this.cullFace = glContext.BACK;
+    } else if (renderFace === spec.RenderFace.Back) {
+      this.culling = true;
+      this.cullFace = glContext.FRONT;
+    } else {
+      this.culling = false;
+    }
+
+    let name: string;
+
+    for (name in propertiesData.floats) {
+      this.setFloat(name, propertiesData.floats[name]);
+    }
+    for (name in propertiesData.ints) {
+      this.setInt(name, propertiesData.ints[name]);
+    }
+    for (name in propertiesData.vector4s) {
+      const vector4Value = propertiesData.vector4s[name];
+
+      this.setVector4(name, new math.Vector4(vector4Value.x, vector4Value.y, vector4Value.z, vector4Value.w));
+    }
+    for (name in propertiesData.colors) {
+      const colorValue = propertiesData.colors[name];
+
+      this.setColor(name, new math.Color(colorValue.r, colorValue.g, colorValue.b, colorValue.a));
+    }
+    for (name in propertiesData.textures) {
+      const textureProperties = propertiesData.textures[name];
+
+      // TODO 纹理通过 id 加入场景数据
+      this.setTexture(name, textureProperties.texture as Texture);
+      const offset = textureProperties.offset;
+      const scale = textureProperties.scale;
+
+      if (offset && scale) {
+        this.setVector4(name + '_ST', new Vector4(scale.x, scale.y, offset.x, offset.y));
+      }
+    }
+
+    if (data.shader) {
+      this.shader = data.shader as unknown as Shader;
+      this.shaderSource = this.shader.shaderData;
+    }
+    this.stringTags = data.stringTags ?? {};
+    this.initialized = false;
+  }
+
+  /**
+   * @since 2.0.0
+   * @param sceneData
+   * @returns
+   */
+  override toData (): spec.MaterialData {
+    // @ts-expect-error
+    const materialData: spec.MaterialData = this.taggedProperties;
+
+    if (this.shader) {
+      // @ts-expect-error
+      materialData.shader = this.shader;
+    }
+    materialData.floats = {};
+    materialData.ints = {};
+    materialData.vector4s = {};
+    materialData.textures = {};
+    materialData.dataType = spec.DataType.Material;
+    materialData.stringTags = this.stringTags;
+
+    for (const name in this.floats) {
+      materialData.floats[name] = this.floats[name];
+    }
+    for (const name in this.ints) {
+      materialData.ints[name] = this.ints[name];
+    }
+    for (const name in this.vector4s) {
+      materialData.vector4s[name] = this.vector4s[name];
+    }
+    for (const name in this.colors) {
+      materialData.colors[name] = this.colors[name];
+    }
+    for (const name in this.textures) {
+      if (!materialData.textures[name]) {
+        materialData.textures[name] = {
+          texture: this.textures[name],
+        };
+      }
+      const textureProperties = materialData.textures[name];
+      const scaleOffset = this.getVector4(name + '_ST');
+
+      if (scaleOffset) {
+        textureProperties.scale = { x: scaleOffset.x, y: scaleOffset.y };
+        textureProperties.offset = { x: scaleOffset.z, y: scaleOffset.w };
+        delete materialData.vector4s[name + '_ST'];
+      }
+    }
+
+    return materialData;
   }
 
   override cloneUniforms (sourceMaterial: Material): void {
@@ -528,6 +688,9 @@ export class GLMaterial extends Material {
     }
     for (name in material.vector4s) {
       this.setVector4(name, material.vector4s[name]);
+    }
+    for (name in material.colors) {
+      this.setColor(name, material.colors[name]);
     }
     for (name in material.quaternions) {
       this.setQuaternion(name, material.quaternions[name]);
@@ -574,10 +737,15 @@ export class GLMaterial extends Material {
     if (this.destroyed) {
       return;
     }
-    this.shader?.dispose();
+    this.shaderVariant?.dispose();
     if (options?.textures !== DestroyOptions.keep) {
       Object.keys(this.textures).forEach(key => {
-        this.textures[key].dispose();
+        const texture = this.textures[key];
+
+        // TODO 纹理释放需要引用计数
+        if (texture !== this.engine.emptyTexture) {
+          texture.dispose();
+        }
       });
     }
 
@@ -604,7 +772,6 @@ export class GLMaterial extends Material {
 
     if (this.engine !== undefined) {
       this.engine.removeMaterial(this);
-      this.engine = undefined;
     }
   }
 }

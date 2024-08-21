@@ -1,389 +1,171 @@
-import { Vector2, Vector3 } from '@galacean/effects-math/es/core/index';
-import type { Ray } from '@galacean/effects-math/es';
+import type { Ray } from '@galacean/effects-math/es/core/ray';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { CalculateItem, HitTestType } from './plugins';
-import type { Region, CameraVFXItem } from './plugins';
+import { Behaviour } from './components';
+import type { CompositionHitTestOptions } from './composition';
+import type { ContentOptions } from './composition-source-manager';
+import type { Region, TrackAsset } from './plugins';
+import { HitTestType, ObjectBindingTrack } from './plugins';
+import type { Playable } from './plugins/cal/playable-graph';
+import { PlayableGraph } from './plugins/cal/playable-graph';
+import { TimelineAsset } from './plugins/cal/timeline-asset';
 import { Transform } from './transform';
-import { addItem, noop } from './utils';
-import type { VFXItemContent, VFXItemProps } from './vfx-item';
-import { createVFXItem, Item, VFXItem } from './vfx-item';
-import type { Composition, CompositionHitTestOptions } from './composition';
+import { generateGUID, noop } from './utils';
+import { Item, VFXItem } from './vfx-item';
 
-export interface ItemNode {
-  id: string, // item 的 id
-  item: VFXItem<VFXItemContent>, // 对应的 vfxItem
-  children: ItemNode[], // 子元素数组
-  parentId?: string, // 当前时刻作用在 vfxItem 的 transform 上的 parentTransform 对应元素的 id，会随父元素的销毁等生命周期变换，与 vfxItem.parenId 可能不同
+export interface SceneBinding {
+  key: TrackAsset,
+  value: VFXItem,
 }
 
-export class CompVFXItem extends VFXItem<void | CalculateItem> {
-  /**
-   * 创建好的元素数组
-   */
-  items: VFXItem<VFXItemContent>[] = [];
-  /**
-   * 根据父子关系构建的元素树
-   */
-  itemTree: ItemNode[] = [];
-  startTime: number;
-  // k帧数据
-  contentProps: any;
-  override timeInms: number;
-  /**
-   * id和元素的映射关系Map，方便查找
-   */
-  public readonly itemCacheMap: Map<string, ItemNode> = new Map();
+export interface SceneBindingData {
+  key: spec.DataPath,
+  value: spec.DataPath,
+}
 
-  private itemProps: VFXItemProps[];
-  private freezeOnEnd: boolean;
-  private startTimeInms: number;
-  private itemsToRemove: VFXItem<VFXItemContent>[] = [];
-  private tempQueue: VFXItem<VFXItemContent>[] = [];
-  // 3D 模式下创建的场景相机 需要最后更新参数
-  private extraCamera: CameraVFXItem;
-  // 预合成的原始合成id
-  private refId: string | undefined;
+/**
+ * @since 2.0.0
+ * @internal
+ */
+export class CompositionComponent extends Behaviour {
+  time = 0;
+  startTime = 0;
+  refId: string;
+  items: VFXItem[] = [];  // 场景的所有元素
+  data: ContentOptions;
 
-  override get type (): spec.ItemType {
-    return spec.ItemType.composition;
-  }
+  private reusable = false;
+  private sceneBindings: SceneBinding[] = [];
+  private timelineAsset: TimelineAsset;
+  private timelinePlayable: Playable;
+  private graph: PlayableGraph = new PlayableGraph();
 
-  override onConstructed (props: VFXItemProps) {
-    const { items = [], startTime = 0, content, refId } = props;
-
-    this.refId = refId;
-    this.itemProps = items;
-    this.contentProps = content;
-    const endBehavior = this.endBehavior;
-
-    if (
-      endBehavior === spec.END_BEHAVIOR_RESTART ||
-      endBehavior === spec.END_BEHAVIOR_PAUSE ||
-      endBehavior === spec.END_BEHAVIOR_PAUSE_AND_DESTROY
-    ) {
-      this.freezeOnEnd = true;
-    }
+  override start (): void {
+    const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
-    this.startTimeInms = Math.round((this.startTime) * 1000);
+    this.resolveBindings();
+    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
+
+    // 重播不销毁元素
+    if (this.item.endBehavior !== spec.EndBehavior.destroy) {
+      this.setReusable(true);
+    }
   }
 
-  override createContent () {
-    /**
-     * 创建前需要判断下是否存在，createContent会执行两次
-     */
-    if (!this.items.length && this.composition) {
-      for (let i = 0; i < this.itemProps.length; i++) {
-        let item: VFXItem<VFXItemContent>;
-        const itemProps = this.itemProps[i];
+  setReusable (value: boolean) {
+    for (const track of this.timelineAsset.tracks) {
+      const binding = track.binding;
+
+      if (binding instanceof VFXItem) {
+        if (track instanceof ObjectBindingTrack) {
+          binding.reusable = value;
+        }
+        const subCompositionComponent = binding.getComponent(CompositionComponent);
+
+        if (subCompositionComponent) {
+          subCompositionComponent.setReusable(value);
+        }
+      }
+    }
+  }
+
+  getReusable () {
+    return this.reusable;
+  }
+
+  override update (dt: number): void {
+    const time = this.time;
+
+    this.timelinePlayable.setTime(time);
+    this.graph.evaluate(dt);
+  }
+
+  createContent () {
+    const sceneBindings = [];
+
+    for (const sceneBindingData of this.data.sceneBindings) {
+      sceneBindings.push({
+        key: this.engine.assetLoader.loadGUID<TrackAsset>(sceneBindingData.key.id),
+        value: this.engine.assetLoader.loadGUID<VFXItem>(sceneBindingData.value.id),
+      });
+    }
+    this.sceneBindings = sceneBindings;
+    const timelineAsset = this.data.timelineAsset ? this.engine.assetLoader.loadGUID<TimelineAsset>(this.data.timelineAsset.id) : new TimelineAsset(this.engine);
+
+    this.timelineAsset = timelineAsset;
+    const items = this.items;
+
+    this.items.length = 0;
+    if (this.item.composition) {
+      const assetLoader = this.item.engine.assetLoader;
+      const itemProps = this.data.items ? this.data.items : [];
+
+      for (let i = 0; i < itemProps.length; i++) {
+        let item: VFXItem;
+        const itemData = itemProps[i];
 
         // 设置预合成作为元素时的时长、结束行为和渲染延时
-        if (Item.isComposition(itemProps)) {
-          const refId = itemProps.content.options.refId;
+        if (Item.isComposition(itemData)) {
+          const refId = itemData.content.options.refId;
+          const props = this.item.composition.refCompositionProps.get(refId);
 
-          item = new CompVFXItem({
-            refId,
-            ...itemProps,
-          }, this.composition);
-          (item as CompVFXItem).contentProps = itemProps.content;
+          if (!props) {
+            throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
+          }
+          // endBehavior 类型需优化
+          props.content = itemData.content;
+          item = assetLoader.loadGUID(itemData.id);
+          item.composition = this.item.composition;
+          const compositionComponent = item.addComponent(CompositionComponent);
+
+          compositionComponent.data = props as unknown as ContentOptions;
+          compositionComponent.refId = refId;
           item.transform.parentTransform = this.transform;
-          this.composition.refContent.push(item as CompVFXItem);
-          if (item.endBehavior === spec.END_BEHAVIOR_RESTART) {
-            this.composition.autoRefTex = false;
+          this.item.composition.refContent.push(item);
+          if (item.endBehavior === spec.EndBehavior.restart) {
+            this.item.composition.autoRefTex = false;
           }
-          item.createContent();
+          compositionComponent.createContent();
+          for (const vfxItem of compositionComponent.items) {
+            vfxItem.setInstanceId(generateGUID());
+            for (const component of vfxItem.components) {
+              component.setInstanceId(generateGUID());
+            }
+          }
         } else {
-          item = createVFXItem(this.itemProps[i], this.composition);
-          // 相机不跟随合成移动
-          item.transform.parentTransform = VFXItem.isCamera(item) ? new Transform() : this.transform;
+          item = assetLoader.loadGUID(itemData.id);
+          item.composition = this.item.composition;
         }
-
+        item.parent = this.item;
+        // 相机不跟随合成移动
+        item.transform.parentTransform = itemData.type === spec.ItemType.camera ? new Transform() : this.transform;
         if (VFXItem.isExtraCamera(item)) {
-          this.extraCamera = item;
+          this.item.composition.extraCamera = item;
         }
-        this.items.push(item);
-        this.tempQueue.push(item);
-      }
-    }
-    // TODO: 处理k帧数据, ECS后改成 TimelineComponent
-    if (!this.content && this.contentProps) {
-      this._content = this.doCreateContent();
-    }
-  }
-
-  protected override doCreateContent (): CalculateItem {
-    const content: CalculateItem = new CalculateItem(this.contentProps, this);
-
-    content.renderData = content.getRenderData(0, true);
-
-    return content;
-  }
-
-  override onLifetimeBegin () {
-    this.items?.forEach(item => {
-      item.start();
-      item.createContent();
-    });
-    this.buildItemTree();
-  }
-
-  override doStop () {
-    if (this.items) {
-      this.items.forEach(item => item.stop());
-    }
-  }
-
-  override onItemUpdate (dt: number, lifetime: number) {
-    if (this.content) {
-      this.content.updateTime(this.time);
-      this.content.getRenderData(this.content.time);
-    }
-    if (!this.items) {
-      return;
-    }
-    // 更新 model-tree-plugin
-    this.composition?.updatePluginLoaders(dt);
-    const queue: ItemNode[] = [];
-
-    /**
-     * 元素销毁时，重新设置其子元素的父元素
-     */
-    if (this.itemsToRemove.length) {
-      this.itemsToRemove.forEach(item => {
-        const itemNode = this.itemCacheMap.get(item.id) as ItemNode;
-
-        if (!itemNode) {
-          return;
-        }
-        const children = itemNode.children;
-
-        // 如果有父元素，设置当前元素的子元素的父元素为父元素，以便继承变换
-        if (itemNode.parentId) {
-          const parentNode = this.itemCacheMap.get(itemNode.parentId);
-
-          if (parentNode) {
-            parentNode.children.splice(parentNode.children.indexOf(itemNode), 1);
-            children.forEach(child => this.setItemParent(child.item, parentNode.item));
-          } else {
-            children.forEach(child => this.setItemParent(child.item, undefined));
-            this.itemTree.push(...children);
-          }
-          // 否则直接设置当前元素的子元素的父元素为合成
-        } else {
-          this.itemTree.splice(this.itemTree.indexOf(itemNode), 1, ...children);
-          children.forEach(child => this.setItemParent(child.item, undefined));
-        }
-
-        this.itemCacheMap.delete(item.id);
-        this.items.splice(this.items.indexOf(item), 1);
-      });
-      this.itemsToRemove.length = 0;
-    }
-
-    /**
-     * 避免 slice 操作，先遍历第一层
-     */
-    for (let i = 0; i < this.itemTree.length; i++) {
-      const itemNode = this.itemTree[i];
-
-      if (itemNode && itemNode.item) {
-        const item = itemNode.item;
-
-        if (
-          VFXItem.isComposition(item) &&
-          item.ended &&
-          item.endBehavior === spec.END_BEHAVIOR_RESTART
-        ) {
-          item.restart();
-        } else {
-          item.onUpdate(dt);
-        }
-        queue.push(...itemNode.children);
-      }
-    }
-    while (queue.length) {
-      const itemNode = queue.shift();
-
-      if (itemNode && itemNode.item) {
-        const item = itemNode.item;
-
-        item.onUpdate(dt);
-        queue.push(...itemNode.children);
-        if (!item.composition) {
-          addItem(this.itemsToRemove, item);
-        }
-      }
-    }
-
-    this.extraCamera?.onUpdate(dt);
-  }
-
-  override onItemRemoved (composition: Composition) {
-    if (this.items) {
-      this.items.forEach(item => item.dispose());
-      this.items.length = 0;
-      this.itemTree.length = 0;
-      this.itemCacheMap.clear();
-    }
-  }
-  override reset () {
-    super.reset();
-    this.itemTree = [];
-    this.itemCacheMap.clear();
-    this.tempQueue.length = 0;
-    this.itemsToRemove.length = 0;
-  }
-
-  override handleVisibleChanged (visible: boolean) {
-    this.items.forEach(item => item.setVisible(visible));
-  }
-
-  override setScale (x: number, y: number, z: number) {
-    if (this.content) {
-      this.content.startSize = new Vector3(x, y, z);
-    }
-
-  }
-
-  override scale (x: number, y: number, z: number) {
-    if (this.content) {
-      const startSize = this.content.startSize.clone();
-
-      this.content.startSize = new Vector3(x * startSize.x, y * startSize.y, z * startSize.z);
-
-    }
-  }
-
-  getUpdateTime (t: number) {
-    const startTime = this.startTimeInms;
-    const now = this.timeInms;
-
-    if (t < 0 && (now + t) < startTime) {
-      return startTime - now;
-    }
-    if (this.freezeOnEnd) {
-      const remain = this.durInms - now;
-
-      if (remain < t) {
-        return remain;
-      }
-    }
-
-    return t;
-  }
-
-  removeItem (item: VFXItem<VFXItemContent>) {
-    const itemIndex = this.items.indexOf(item);
-
-    if (itemIndex > -1) {
-      addItem(this.itemsToRemove, item);
-      if (VFXItem.isTree(item) || VFXItem.isNull(item)) {
-        const willRemove = item.endBehavior === spec.END_BEHAVIOR_DESTROY_CHILDREN;
-        const keepParent = VFXItem.isNull(item) && !!this.itemCacheMap.get(item.id);
-        const children = this.itemCacheMap.get(item.id)?.children || [];
-
-        children.forEach(cit => {
-          if (!keepParent) {
-            this.setItemParent(cit.item, undefined);
-          }
-          willRemove && this.removeItem(cit.item);
-        });
-      }
-
-      return true;
-    }
-
-    this.items.forEach(it => {
-      if (VFXItem.isComposition(it)) {
-        const itemIndex = it.items.indexOf(item);
-
-        if (itemIndex > -1) {
-          it.removeItem(item);
-
-          return true;
-        }
-      }
-    });
-
-    return false;
-  }
-
-  /**
-   * 设置指定元素的父元素
-   * @param item
-   * @param parentItem - 为 undefined 时表示设置父变换为合成的变换
-   */
-  setItemParent (item: VFXItem<VFXItemContent>, parentItem?: VFXItem<VFXItemContent>) {
-
-    const itemNode = this.itemCacheMap.get(item.id);
-
-    if (!itemNode) {
-      console.error('item has been remove, please set item\'s parent in valid lifetime');
-
-      return;
-    } else {
-      if (!parentItem) {
-        itemNode.parentId = undefined;
-        item.parent = undefined;
-
-        item.transform.parentTransform = VFXItem.isExtraCamera(item) ? new Transform() : this.transform;
-      } else {
-        const parentNode = this.itemCacheMap.get(parentItem.id) as ItemNode;
-
-        if (itemNode.parentId) {
-          const originalParent = this.itemCacheMap.get(itemNode.parentId) as ItemNode;
-
-          originalParent.children.splice(originalParent.children.indexOf(itemNode), 1);
-        }
-        item.parent = parentItem;
-        itemNode.parentId = parentItem.id;
-        parentNode.children.push(itemNode);
-        item.transform.parentTransform = parentItem.transform;
+        items.push(item);
       }
     }
   }
 
-  /**
-   * 获取指定元素当前时刻真正起作用的父元素, 需要在元素生命周期内获取
-   * @internal
-   * @param item - 指定元素
-   * @return 当父元素生命周期结束时，返回空
-   */
-  getItemCurrentParent (item: VFXItem<VFXItemContent>): VFXItem<VFXItemContent> | void {
-    const id = item.id;
-    const itemNode = this.itemCacheMap.get(id);
-
-    if (!itemNode) {
-      return;
-    }
-    const parentId = itemNode.parentId;
-
-    if (!parentId) {
-      return;
-    }
-    const parentNode = this.itemCacheMap.get(parentId);
-
-    if (parentId && parentNode) {
-      return parentNode.item;
-    }
-
-  }
-
-  getItemByName (name: string) {
-    const res: VFXItem<VFXItemContent>[] = [];
-
-    for (const item of this.items) {
-      if (item.name === name) {
-        res.push(item);
-      } else if (VFXItem.isComposition(item)) {
-        res.push(...item.getItemByName(name));
+  override onDestroy (): void {
+    if (this.item.composition) {
+      if (this.items) {
+        this.items.forEach(item => item.dispose());
+        this.items.length = 0;
       }
     }
-
-    return res;
   }
 
-  hitTest (ray: Ray, x: number, y: number, regions: Region[], force?: boolean, options?: CompositionHitTestOptions): Region[] {
+  hitTest (
+    ray: Ray,
+    x: number,
+    y: number,
+    regions: Region[],
+    force?: boolean,
+    options?: CompositionHitTestOptions,
+  ): Region[] {
     const hitPositions: Vector3[] = [];
     const stop = options?.stop || noop;
     const skip = options?.skip || noop;
@@ -392,7 +174,13 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
     for (let i = 0; i < this.items.length && regions.length < maxCount; i++) {
       const item = this.items[i];
 
-      if (item.lifetime >= 0 && item.lifetime <= 1 && !VFXItem.isComposition(item) && !skip(item)) {
+      if (
+        item.getVisible()
+        && item.transform.getValid()
+        && !item.ended
+        && !VFXItem.isComposition(item)
+        && !skip(item)
+      ) {
         const hitParams = item.getHitTestParams(force);
 
         if (hitParams) {
@@ -440,7 +228,7 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
           }
           if (success) {
             const region = {
-              compContent: this,
+              compContent: this.item,
               id: item.id,
               name: item.name,
               position: hitPositions[hitPositions.length - 1],
@@ -449,7 +237,11 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
               behavior: hitParams.behavior,
             };
 
+            // 触发单个元素的点击事件
+            item.emit('click', region);
+
             regions.push(region);
+
             if (stop(region)) {
               return regions;
             }
@@ -461,68 +253,23 @@ export class CompVFXItem extends VFXItem<void | CalculateItem> {
     return regions;
   }
 
-  protected override isEnded (now: number) {
-    return now >= this.durInms;
+  override fromData (data: unknown): void {
   }
 
-  /**
-   * 构建父子树，同时保存到 itemCacheMap 中便于查找
-   */
-  private buildItemTree () {
-    if (!this.itemTree.length && this.composition) {
-      this.itemTree = [];
-      const itemMap = this.itemCacheMap;
-      const queue = this.tempQueue;
-
-      while (queue.length) {
-        const item = queue.shift() as VFXItem<VFXItemContent>;
-
-        if (item.parentId === undefined) {
-          const itemNode = {
-            id: item.id,
-            item,
-            children: [],
-          };
-
-          this.itemTree.push(itemNode);
-          itemMap.set(item.id, itemNode);
-        } else {
-          // 兼容 treeItem 子元素的 parentId 带 '^'
-          const parentId = this.getParentIdWithoutSuffix(item.parentId);
-          const parent = itemMap.get(parentId);
-
-          if (parent) {
-            const itemNode = {
-              id: item.id,
-              parentId,
-              item,
-              children: [],
-            };
-
-            item.parent = parent.item;
-            item.transform.parentTransform = parent.item.getNodeTransform(item.parentId);
-
-            parent.children.push(itemNode);
-            itemMap.set(item.id, itemNode);
-          } else {
-            if (this.items.findIndex(item => item.id === parentId) === -1) {
-              throw Error('元素引用了不存在的元素，请检查数据');
-            }
-            queue.push(item);
-          }
-        }
-      }
+  private resolveBindings () {
+    for (const sceneBinding of this.sceneBindings) {
+      sceneBinding.key.binding = sceneBinding.value;
+    }
+    for (const masterTrack of this.timelineAsset.tracks) {
+      this.resolveTrackBindingsWithRoot(masterTrack);
     }
   }
-  private getParentIdWithoutSuffix (id: string) {
-    const idx = id.lastIndexOf('^');
 
-    return idx > -1 ? id.substring(0, idx) : id;
-  }
+  private resolveTrackBindingsWithRoot (track: TrackAsset) {
+    for (const subTrack of track.getChildTracks()) {
+      subTrack.binding = subTrack.resolveBinding(track.binding);
 
-  private restart () {
-    this.reset();
-    this.createContent();
-    this.start();
+      this.resolveTrackBindingsWithRoot(subTrack);
+    }
   }
 }

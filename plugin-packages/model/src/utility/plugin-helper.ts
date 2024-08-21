@@ -10,6 +10,7 @@ import type {
   TextureCubeSourceOptionsImageMipmaps,
   Engine,
   math,
+  VFXItemData,
 } from '@galacean/effects';
 import {
   Player,
@@ -29,6 +30,7 @@ import {
   DestroyOptions,
   loadImage,
   PLAYER_OPTIONS_ENV_EDITOR,
+  GLSLVersion,
 } from '@galacean/effects';
 import { deserializeGeometry, typedArrayFromBinary } from '@galacean/effects-helper';
 import type { GLTFCamera, GLTFImage, GLTFLight, GLTFTexture } from '@vvfx/resource-detection';
@@ -44,6 +46,7 @@ import type {
   ModelTextureTransform,
   ModelTreeOptions,
   ModelAnimTrackOptions,
+  ModelMeshComponent,
 } from '../index';
 import { Matrix3, Matrix4, Vector3, Vector4, DEG2RAD } from '../runtime/math';
 import type { FBOOptions } from './ri-helper';
@@ -57,7 +60,13 @@ import type { CompositionCache } from '../runtime/cache';
 type Box3 = math.Box3;
 type VertexArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array;
 
+/**
+ * WebGL 辅助类，负责 WebGL 相关对象的创建
+ */
 export class WebGLHelper {
+  /**
+   * 立方体纹理参数
+   */
   static cubemapTexConfig: TextureConfigOptions = {
     name: 'cubemap texture',
     wrapS: glContext.CLAMP_TO_EDGE,
@@ -65,7 +74,9 @@ export class WebGLHelper {
     magFilter: glContext.LINEAR,
     minFilter: glContext.LINEAR,
   };
-
+  /**
+   * 立方体纹理参数，带 Mipmap 滤波
+   */
   static cubemapMipTexConfig: TextureConfigOptions = {
     wrapS: glContext.CLAMP_TO_EDGE,
     wrapT: glContext.CLAMP_TO_EDGE,
@@ -73,9 +84,18 @@ export class WebGLHelper {
     minFilter: glContext.LINEAR_MIPMAP_LINEAR,
   };
 
+  /**
+   * 创建二维纹理对象
+   * @param engine - 引擎
+   * @param image - glTF 图像参数
+   * @param texture - glTF 纹理参数
+   * @param isBaseColor - 是否基础颜色
+   * @param tiny3dMode - 是否 Tiny3d 模式
+   * @returns 二维纹理对象
+   */
   static async createTexture2D (engine: Engine, image: GLTFImage, texture: GLTFTexture, isBaseColor?: boolean, tiny3dMode?: boolean): Promise<Texture> {
     if (image.imageData === undefined) {
-      console.error(`createTexture2D: Invalid image data from ${image}`);
+      console.error(`createTexture2D: Invalid image data from ${image}.`);
 
       // 这里不应该发生的，做个兜底
       return Texture.create(engine, {
@@ -142,6 +162,13 @@ export class WebGLHelper {
     });
   }
 
+  /**
+   * 创建纹理对象列表
+   * @param engine - 引擎
+   * @param images - glTF 图像列表
+   * @param textures - glTF 纹理参数列表
+   * @returns 纹理对象列表
+   */
   static async createTextureList (engine: Engine, images: GLTFImage[], textures: GLTFTexture[]): Promise<Texture[]> {
     const outTextures = await Promise.all(
       textures.map(tex => {
@@ -152,6 +179,11 @@ export class WebGLHelper {
     return outTextures;
   }
 
+  /**
+   * 获取立方体纹理数据
+   * @param images - 图像数据列表
+   * @returns
+   */
   static async getTextureCubeData (images: PImageBufferData[]): Promise<TextureSourceCubeData> {
     const cubeData: TextureSourceCubeData = [
       await WebHelper.loadImageFromImageData(images[0]),
@@ -165,6 +197,11 @@ export class WebGLHelper {
     return cubeData;
   }
 
+  /**
+   * 获取立方体纹理 Mipmap 数据
+   * @param images - 图像数据二维列表
+   * @returns 立方体纹理数据
+   */
   static async getTextureCubeMipmapData (images: PImageBufferData[][]): Promise<TextureSourceCubeData[]> {
     const mipmaps: TextureSourceCubeData[] = [];
 
@@ -175,6 +212,12 @@ export class WebGLHelper {
     return mipmaps;
   }
 
+  /**
+   * 从 URL 创建立方体纹理
+   * @param engine - 引擎
+   * @param cubeImage - 立方体图像 URL
+   * @returns 纹理对象
+   */
   static async createTextureCubeFromURL (engine: Engine, cubeImage: string[]): Promise<Texture> {
     const textureOptions = await getDefaultTextureFactory().loadSource(
       {
@@ -188,6 +231,12 @@ export class WebGLHelper {
     return Texture.create(engine, textureOptions);
   }
 
+  /**
+   * 从 URL 创建带 Mipmap 立方体纹理
+   * @param engine - 引擎
+   * @param cubeImages - 立方体 Mipmap 图像 URL
+   * @returns 纹理对象
+   */
   static async createTextureCubeMipmapFromURL (engine: Engine, cubeImages: string[][]): Promise<Texture> {
     const textureOptions = await getDefaultTextureFactory().loadSource(
       {
@@ -201,6 +250,12 @@ export class WebGLHelper {
     return Texture.create(engine, textureOptions);
   }
 
+  /**
+   * 从缓冲区创建立方体纹理
+   * @param engine - 引擎
+   * @param cubeImages - 图像缓冲区数据列表
+   * @returns 纹理对象
+   */
   static async createTextureCubeFromBuffer (engine: Engine, cubeImages: PImageBufferData[]): Promise<Texture> {
     const cubemap = await WebGLHelper.getTextureCubeData(cubeImages);
 
@@ -215,6 +270,13 @@ export class WebGLHelper {
       });
   }
 
+  /**
+   * 从缓冲区创建带 Mipmap 立方体纹理
+   * @param engine - 引擎
+   * @param cubeImages - 图像缓冲区数据二维列表
+   * @param level0Size - 第 0 层 Mip 的图像大小
+   * @returns 纹理对象
+   */
   static async createTextureCubeMipmapFromBuffer (engine: Engine, cubeImages: PImageBufferData[][], level0Size: number): Promise<Texture> {
     const mipmaps = await WebGLHelper.getTextureCubeMipmapData(cubeImages);
     //
@@ -243,14 +305,26 @@ export class WebGLHelper {
       });
   }
 
-  static getTexture (index: number, textures: Texture[]): Texture | undefined {
+  /**
+   * 获取纹理对象
+   * @param index - 索引
+   * @param textures - 纹理数组
+   * @returns 纹理获取或 undefined
+   */
+  static getTexture (index: number, textures: Texture[]): Texture | null {
     if (index < 0 || index >= textures.length) {
-      return undefined;
+      return null;
     } else {
       return textures[index];
     }
   }
 
+  /**
+   * 从图像创建纹理
+   * @param engine - 引擎
+   * @param image - HTML 图像元素
+   * @returns
+   */
   static createTextureFromImage (engine: Engine, image: HTMLImageElement | HTMLCanvasElement): Texture {
     const options: TextureSourceOptions = {
       name: 'createTextureFromImage',
@@ -266,6 +340,15 @@ export class WebGLHelper {
     return Texture.create(engine, options);
   }
 
+  /**
+   * 创建渲染 Pass
+   * @param renderer - 渲染器
+   * @param name - 名称
+   * @param priority - 优先级
+   * @param meshData - Mesh 数据或数据列表
+   * @param fboOpts - FBO 参数
+   * @returns
+   */
   static createRenderPass (renderer: Renderer, name: string, priority: number, meshData: Mesh | Mesh[], fboOpts: FBOOptions): RenderPass {
     const meshList = meshData instanceof Mesh ? [meshData] : meshData;
 
@@ -289,10 +372,18 @@ export class WebGLHelper {
     });
   }
 
+  /**
+   * 删除纹理
+   * @param texture - 纹理对象
+   */
   static deleteTexture (texture: Texture) {
     texture.dispose();
   }
 
+  /**
+   * 删除 Mesh
+   * @param mesh - Mesh 对象
+   */
   static deleteMesh (mesh: Mesh) {
     mesh.dispose({
       geometries: DestroyOptions.destroy,
@@ -302,10 +393,18 @@ export class WebGLHelper {
     });
   }
 
+  /**
+   * 删除几何
+   * @param geometry - 几何体
+   */
   static deleteGeometry (geometry: Geometry) {
     geometry.dispose();
   }
 
+  /**
+   * 删除渲染 Pass
+   * @param pass - 渲染 Pass
+   */
   static deleteRenderPass (pass: RenderPass) {
     pass.dispose({
       meshes: {
@@ -322,16 +421,16 @@ export class WebGLHelper {
 
   /**
    * 返回 Mesh 是否半透明
-   *
-   * @param mesh - gl mesh 对象
+   * @param component - ModelMeshComponent 对象
    * @return 是否半透明
    */
-  static isTransparentMesh (mesh: Mesh): boolean {
-    return mesh.material.blending === true;
+  static isTransparentMesh (component: ModelMeshComponent): boolean {
+    return component.material.blending === true;
   }
 
   /**
    * renderer 是否支持 Float 纹理
+   * @param engine - 引擎对象
    * @returns
    */
   static isSupportFloatTexture (engine: Engine): boolean {
@@ -350,17 +449,33 @@ export class WebGLHelper {
     return capability.detail.halfFloatTexture !== 0;
   }
 
+  /**
+   * 是否 2 的幂次
+   * @param v - 数值
+   * @returns
+   */
   static isPow2 (v: number): boolean {
     return !(v & (v - 1)) && (!!v);
   }
 }
 
+/**
+ * Mesh 辅助类，负责 Mesh 相关的基础对象创建
+ */
 export class MeshHelper {
-  static createFilterMesh (engine: Engine, name: string, material: PMaterialBase, uniformSemantics: { [k: string]: any }): Mesh {
+  /**
+   * 创建滤波 Mesh
+   * @param engine - 引擎
+   * @param name - 名称
+   * @param material - 3D 材质
+   * @returns Mesh 对象
+   */
+  static createFilterMesh (engine: Engine, name: string, material: PMaterialBase): Mesh {
     const globalState = PGlobalState.getInstance();
     const vertexShader = material.vertexShaderCode;
     const fragmentShader = material.fragmentShaderCode;
     const geometry = Geometry.create(engine, MeshHelper.getPlaneGeometry());
+    const isWebGL2 = engine.gpuCapability.level === 2;
     const effectsMaterial = Material.create(
       engine,
       {
@@ -368,8 +483,8 @@ export class MeshHelper {
           vertex: vertexShader,
           fragment: fragmentShader,
           shared: globalState.shaderShared,
+          glslVersion: isWebGL2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
         },
-        uniformSemantics,
       }
     );
 
@@ -386,31 +501,35 @@ export class MeshHelper {
     );
   }
 
+  /**
+   * 获取平面的几何参数
+   * @returns 几何参数
+   */
   static getPlaneGeometry (): GeometryProps {
     const data = MeshHelper.getPlaneVertexArray();
 
     return {
       attributes: {
-        a_Position: {
+        aPos: {
           type: glContext.FLOAT,
           size: 3,
           data,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: 0,
         },
-        a_UV1: {
+        aUV: {
           type: glContext.FLOAT,
           size: 2,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 3,
-          dataSource: 'a_Position',
+          dataSource: 'aPos',
         },
-        a_Normal: {
+        aNormal: {
           type: glContext.FLOAT,
           size: 3,
           stride: Float32Array.BYTES_PER_ELEMENT * 8,
           offset: Float32Array.BYTES_PER_ELEMENT * 5,
-          dataSource: 'a_Position',
+          dataSource: 'aPos',
         },
       },
       drawStart: 0,
@@ -418,6 +537,10 @@ export class MeshHelper {
     };
   }
 
+  /**
+   * 获取平面顶点数组
+   * @returns 浮点数组
+   */
   static getPlaneVertexArray (): Float32Array {
     const halfSize = 1;
 
@@ -437,7 +560,15 @@ export interface EffectsSceneInfo {
   loadSkybox?: boolean,
 }
 
+/**
+ * 3D 插件辅助类，为插件提供基础的函数
+ */
 export class PluginHelper {
+  /**
+   * 创建 3D 灯光参数，从 glTF 灯光参数
+   * @param light - glTF 灯光参数
+   * @returns 3D 灯光参数
+   */
   static createLightOptions (light: GLTFLight): ModelLightOptions {
     const color = light.color ?? [255, 255, 255, 255];
 
@@ -469,6 +600,11 @@ export class PluginHelper {
     }
   }
 
+  /**
+   * 创建 3D 相机参数，从 glTF 相机参数
+   * @param camera - glTF 相机参数
+   * @returns 3D 相机参数
+   */
   static createCameraOptions (camera: GLTFCamera): ModelCameraOptions | undefined {
     if (camera.perspective === undefined) { return; }
 
@@ -479,8 +615,15 @@ export class PluginHelper {
       fov: p.yfov,
       clipMode: 0,
     };
+
+    return options;
   }
 
+  /**
+   * 转成播放器中 [0, 255] 区间的颜色值
+   * @param color - RGB 颜色值
+   * @returns RGB 颜色值
+   */
   static toPlayerColor3 (color: spec.vec3): spec.vec3 {
     // [0, 1] => [0, 255]
     return [
@@ -490,6 +633,11 @@ export class PluginHelper {
     ];
   }
 
+  /**
+   * 转成播放器中 [0, 255] 区间的颜色值
+   * @param color - RGBA 颜色值
+   * @returns RGBA 颜色值
+   */
   static toPlayerColor4 (color: spec.vec4): spec.vec4 {
     // [0, 1] => [0, 255]
     return [
@@ -500,6 +648,11 @@ export class PluginHelper {
     ];
   }
 
+  /**
+   * 转成插件中 [0, 1] 区间的颜色值
+   * @param color - RGB 颜色值
+   * @returns RGB 颜色值
+   */
   static toPluginColor3 (color: spec.vec3): spec.vec3 {
     // [0, 255] => [0, 1]
     return [
@@ -509,6 +662,11 @@ export class PluginHelper {
     ];
   }
 
+  /**
+   * 转成插件中 [0, 1] 区间的颜色值
+   * @param color - RGBA 颜色值
+   * @returns RGBA 颜色值
+   */
   static toPluginColor4 (color: spec.vec4): spec.vec4 {
     // [0, 255] => [0, 1]
     return [
@@ -519,32 +677,31 @@ export class PluginHelper {
     ];
   }
 
-  static createUVTransform (transform?: spec.ModelTextureTransform): Matrix3 | undefined {
-    if (transform === undefined) {
-      // no transform
-      return;
-    }
-
-    if (transform.offset === undefined && transform.rotation === undefined && transform.scale === undefined) {
-      // no transform, again
-      return;
-    }
+  /**
+   * 创建 UV 变换矩阵，从 UV 变换参数中
+   * @param stValue - UV 的缩放和平移参数
+   * @param rotateValue - UV 的旋转参数
+   * @returns 3阶变换矩阵
+   */
+  static createUVTransform (material: Material, stName: string, rotateName: string): Matrix3 {
+    const stValue = material.getVector4(stName);
+    const rotateValue = material.getFloat(rotateName);
 
     const res = Matrix3.fromIdentity();
-    const temp = new Matrix3();
 
-    if (transform.offset !== undefined) {
-      temp.setFromArray([
+    if (stValue) {
+      res.setFromArray([
         1, 0, 0,
         0, 1, 0,
-        transform.offset[0], transform.offset[1], 1,
+        stValue.z, stValue.w, 1,
       ]);
-      res.multiply(temp);
     }
 
-    if (transform.rotation !== undefined) {
-      const cosTheta = Math.cos(transform.rotation);
-      const sinTheta = Math.sin(transform.rotation);
+    const temp = new Matrix3();
+
+    if (rotateValue) {
+      const cosTheta = Math.cos(rotateValue);
+      const sinTheta = Math.sin(rotateValue);
 
       temp.setFromArray([
         cosTheta, sinTheta, 0,
@@ -554,10 +711,10 @@ export class PluginHelper {
       res.multiply(temp);
     }
 
-    if (transform.scale !== undefined) {
+    if (stValue) {
       temp.setFromArray([
-        transform.scale[0], 0, 0,
-        0, transform.scale[1], 0,
+        stValue.x, 0, 0,
+        0, stValue.y, 0,
         0, 0, 1,
       ]);
       res.multiply(temp);
@@ -568,22 +725,47 @@ export class PluginHelper {
     return res;
   }
 
+  /**
+   * 获取截断后的数值
+   * @param val - 数值
+   * @param minv - 最小值
+   * @param maxv - 最大值
+   * @returns
+   */
   static clamp (val: number, minv: number, maxv: number): number {
     return Math.max(Math.min(val, maxv), minv);
   }
 
+  /**
+   * 转换成 [0, 255] 区间数值
+   * @param val - [0, 1] 区间数值
+   * @returns
+   */
   static scaleTo255 (val: number): number {
     const intVal = Math.round(val * 255);
 
     return Math.max(0, Math.min(intVal, 255));
   }
 
+  /**
+   * 转换成 [0, 1] 区间数值
+   * @param val - [0, 255] 区间数值
+   * @returns
+   */
   static scaleTo1 (val: number): number {
     const floatVal = val / 255.0;
 
     return Math.max(0.0, Math.min(floatVal, 1.0));
   }
 
+  /**
+   * 根据相机的位置、Y 轴旋转角度和目标点位置来计算相机变换，
+   * 使得相机能够专注于目标点上
+   * @param cameraPosition - 相机位置
+   * @param YRotationAngle - Y 轴旋转角度
+   * @param targetPoint - 目标点
+   * @returns 相机变换
+   */
   static focusOnPoint (cameraPosition: spec.vec3, YRotationAngle: number, targetPoint: spec.vec3) {
     const camPos = Vector3.fromArray(cameraPosition);
     const targetPos = Vector3.fromArray(targetPoint);
@@ -601,122 +783,56 @@ export class PluginHelper {
     return effectsTransform;
   }
 
-  static preprocessEffectsScene (scene: Scene, runtimeEnv: string, compatibleMode: string, autoAdjustScene: boolean): EffectsSceneInfo {
+  /**
+   * 场景预处理，在移动端 3D 插件会对场景进行预处理，调整纹理参数
+   * @param scene - 场景
+   * @param runtimeEnv - 运行时环境
+   * @param compatibleMode - 兼容模式
+   * @param autoAdjustScene - 是否自动调整
+   * @returns 场景信息描述
+   */
+  static preprocessScene (scene: Scene, runtimeEnv: string, compatibleMode: string): EffectsSceneInfo {
     const deviceEnv = (runtimeEnv !== PLAYER_OPTIONS_ENV_EDITOR);
     const tiny3dMode = (compatibleMode === 'tiny3d');
     // 默认skybox如何处理需要讨论
     const jsonScene = scene.jsonScene;
 
-    if (jsonScene === undefined || jsonScene.compositions === undefined) {
+    if (!(jsonScene && jsonScene.textures && jsonScene.materials)) {
       // 安全检查
       return {};
     }
 
+    const dataMap: Record<string, TextureSourceOptions> = {};
+
+    scene.textureOptions.forEach(tex => {
+      const id = tex.id;
+
+      if (id) {
+        dataMap[id] = tex;
+      }
+    });
+
     let loadSkybox = false;
 
     if (deviceEnv) {
-      const textures = scene.textureOptions;
-
-      jsonScene.compositions.forEach(comp => {
-        comp.items.forEach(item => {
-          if (item.type === 'mesh') {
-            const meshItem = item as spec.ModelMeshItem<'json'>;
-            const primitives = meshItem.content.options.primitives;
-
-            primitives.forEach(prim => {
-              const mat = prim.material;
-
-              if (mat.type === spec.MaterialType.pbr) {
-                if (mat.baseColorTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.baseColorTexture, textures, true, tiny3dMode);
-                }
-                if (mat.metallicRoughnessTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.metallicRoughnessTexture, textures, false, tiny3dMode);
-                }
-                if (mat.normalTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.normalTexture, textures, false, tiny3dMode);
-                }
-                if (mat.occlusionTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.occlusionTexture, textures, false, tiny3dMode);
-                }
-                if (mat.emissiveTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.emissiveTexture, textures, false, tiny3dMode);
-                }
-              } else {
-                if (mat.baseColorTexture !== undefined) {
-                  this.preprocessTextureOptions(mat.baseColorTexture, textures, true, tiny3dMode);
-                }
-              }
-            });
-          } else if (item.type === 'skybox') {
-            loadSkybox = true;
-            //
-            const skyboxItem = item as spec.ModelSkyboxItem<'json'>;
-            const options = skyboxItem.content.options;
-
-            this.preprocessTextureOptions(options.specularImage, textures, false, tiny3dMode);
-            if (options.diffuseImage !== undefined) {
-              this.preprocessTextureOptions(options.diffuseImage, textures, false, tiny3dMode);
-            }
-          }
-        });
+      jsonScene.materials.forEach(mat => {
+        this.preprocessTextureOptions(dataMap, mat.textures['_BaseColorSampler'], true, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_MetallicRoughnessSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_NormalSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_OcclusionSampler'], false, tiny3dMode);
+        this.preprocessTextureOptions(dataMap, mat.textures['_EmissiveSampler'], false, tiny3dMode);
       });
-    } else {
-      jsonScene.compositions.forEach(comp => {
-        comp.items.forEach(item => {
-          if (item.type === 'skybox') {
-            loadSkybox = true;
-          }
-        });
-      });
-    }
+      jsonScene.components.forEach(comp => {
+        if (comp.dataType === spec.DataType.SkyboxComponent) {
+          loadSkybox = true;
+          const skybox = comp as spec.SkyboxComponentData;
 
-    if (autoAdjustScene) {
-      jsonScene.compositions.forEach(comp => {
-        let lightCount = 0;
-
-        comp.items.forEach(item => {
-          if (item.type === 'light' || item.type === 'skybox') {
-            ++lightCount;
+          if (skybox.diffuseImage) {
+            this.preprocessTextureOptions(dataMap, skybox.diffuseImage, false, tiny3dMode);
           }
-        });
-        if (lightCount == 0) {
-          comp.items.push({
-            id: 'dir-light1',
-            duration: 100,
-            name: 'dir-light1',
-            type: spec.ItemType.light,
-            transform: {
-              rotation: [45, -45, 0],
-            },
-            pluginName: 'model',
-            endBehavior: 0,
-            content: {
-              options: {
-                lightType: 'directional',
-                color: [255, 255, 255, 255],
-                intensity: 1.5,
-              },
-            },
-          });
-          comp.items.push({
-            id: 'dir-light2',
-            duration: 100,
-            name: 'dir-light2',
-            type: spec.ItemType.light,
-            transform: {
-              rotation: [0, 90, 0],
-            },
-            pluginName: 'model',
-            endBehavior: 0,
-            content: {
-              options: {
-                lightType: 'directional',
-                color: [255, 255, 255, 255],
-                intensity: 0.2,
-              },
-            },
-          });
+          if (skybox.specularImage) {
+            this.preprocessTextureOptions(dataMap, skybox.specularImage, false, tiny3dMode);
+          }
         }
       });
     }
@@ -724,37 +840,80 @@ export class PluginHelper {
     return { loadSkybox };
   }
 
-  static preprocessTextureOptions (index: number, textures: Array<TextureSourceOptions>, isBaseColor: boolean, tiny3dMode: boolean) {
-    if (index < 0 || index >= textures.length) {
+  /**
+   * 纹理参数预处理，设置环绕模式和滤波器
+   * @param index - 纹理索引
+   * @param textures - 纹理数组
+   * @param isBaseColor - 是否基础颜色
+   * @param tiny3dMode - 是否 Tiny3d 模式
+   * @returns
+   */
+  static preprocessTextureOptions (dataMap: Record<string, TextureSourceOptions>, textureInfo: spec.MaterialTextureProperty | spec.DataPath, isBaseColor: boolean, tiny3dMode: boolean) {
+    if (!tiny3dMode || !textureInfo) {
       return;
     }
 
-    const texOptions = textures[index];
+    let texId;
 
-    if (tiny3dMode && texOptions !== undefined) {
-      if (texOptions.target === undefined || texOptions.target === glContext.TEXTURE_2D) {
-        texOptions.wrapS = glContext.REPEAT;
-        texOptions.wrapT = glContext.REPEAT;
-        texOptions.magFilter = glContext.LINEAR;
-        texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
-        (texOptions as Texture2DSourceOptionsImage).generateMipmap = true;
-        if (!isBaseColor) {
-          texOptions.premultiplyAlpha = true;
-        }
-      } else if (texOptions.target === glContext.TEXTURE_CUBE_MAP) {
-        texOptions.wrapS = glContext.CLAMP_TO_EDGE;
-        texOptions.wrapT = glContext.CLAMP_TO_EDGE;
-        if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps !== undefined) {
-          texOptions.magFilter = glContext.LINEAR;
-          texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
-        } else {
-          texOptions.magFilter = glContext.LINEAR;
+    if ('texture' in textureInfo) {
+      texId = textureInfo.texture.id;
+    } else {
+      texId = textureInfo.id;
+    }
+
+    if (!texId) {
+      return;
+    }
+
+    const texOptions = dataMap[texId];
+
+    if (!texOptions) {
+      return;
+    }
+
+    if (texOptions.target === undefined || texOptions.target === glContext.TEXTURE_2D) {
+      texOptions.wrapS = glContext.REPEAT;
+      texOptions.wrapT = glContext.REPEAT;
+      texOptions.magFilter = glContext.LINEAR;
+      texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+      if (!isBaseColor) {
+        texOptions.premultiplyAlpha = true;
+      }
+      const newOptions = texOptions as Texture2DSourceOptionsImage;
+
+      newOptions.generateMipmap = true;
+      const image = newOptions.image;
+
+      if (image && image.width && image.height) {
+        if (!WebGLHelper.isPow2(image.width) || !WebGLHelper.isPow2(image.height)) {
           texOptions.minFilter = glContext.LINEAR;
         }
+      }
+    } else if (texOptions.target === glContext.TEXTURE_CUBE_MAP) {
+      texOptions.wrapS = glContext.CLAMP_TO_EDGE;
+      texOptions.wrapT = glContext.CLAMP_TO_EDGE;
+      if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps !== undefined) {
+        if ((texOptions as TextureCubeSourceOptionsImageMipmaps).mipmaps.length === 1) {
+          texOptions.magFilter = glContext.LINEAR;
+          texOptions.minFilter = glContext.LINEAR;
+        } else {
+          texOptions.magFilter = glContext.LINEAR;
+          texOptions.minFilter = glContext.LINEAR_MIPMAP_LINEAR;
+        }
+      } else {
+        texOptions.magFilter = glContext.LINEAR;
+        texOptions.minFilter = glContext.LINEAR;
       }
     }
   }
 
+  /**
+   * 设置 3D 元素参数，在播放器创建 3D 元素前
+   * @param scene - 场景
+   * @param cache - 缓存
+   * @param composition - 合成
+   * @returns
+   */
   static setupItem3DOptions (scene: Scene, cache: CompositionCache, composition: Composition) {
     if (scene === undefined || scene.bins.length <= 0) {
       return;
@@ -776,8 +935,11 @@ export class PluginHelper {
     compIndexSet.forEach(compIndex => {
       const sceneComp = jsonScene.compositions[compIndex];
 
-      sceneComp.items.forEach((item, itemId) => {
-        if (item.type === 'mesh') {
+      sceneComp.items.forEach(data => {
+        const itemId = data.id;
+        const item = composition.getEngine().jsonSceneData[itemId] as VFXItemData;
+
+        if (item.type === spec.ItemType.mesh) {
           const meshItem = item as spec.ModelMeshItem<'json'>;
           const skin = meshItem.content.options.skin;
           const primitives = meshItem.content.options.primitives;
@@ -817,10 +979,10 @@ export class PluginHelper {
             if (inverseBindMatrices instanceof Float32Array) {
               studioSkin.inverseBindMatrices = inverseBindMatrices;
             } else {
-              console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}`);
+              console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}.`);
             }
           }
-        } else if (item.type === 'tree') {
+        } else if (item.type === spec.ItemType.tree) {
           const jsonItem = item as spec.ModelTreeItem<'json'>;
           const studioItem = item as spec.ModelTreeItem<'studio'>;
           const jsonAnimations = jsonItem.content.options.tree.animations;
@@ -838,17 +1000,17 @@ export class PluginHelper {
                 if (inputArray instanceof Float32Array) {
                   studioTrack.input = inputArray;
                 } else {
-                  console.error(`setupItem3DOptions: Type of inputArray should be float32, ${inputArray}`);
+                  console.error(`setupItem3DOptions: Type of inputArray should be float32, ${inputArray}.`);
                 }
                 if (outputArray instanceof Float32Array) {
                   studioTrack.output = outputArray;
                 } else {
-                  console.error(`setupItem3DOptions: Type of outputArray should be float32, ${outputArray}`);
+                  console.error(`setupItem3DOptions: Type of outputArray should be float32, ${outputArray}.`);
                 }
               });
             });
           }
-        } else if (item.type === 'skybox') {
+        } else if (item.type === spec.ItemType.skybox) {
           const skybox = item as spec.ModelSkyboxItem<'json'>;
           const studioSkybox = item as spec.ModelSkyboxItem<'studio'>;
           const options = skybox.content.options;
@@ -856,7 +1018,7 @@ export class PluginHelper {
           const specularImage = this.getTextureObj(composition.textures, options.specularImage);
 
           if (specularImage === undefined) {
-            console.error(`setupItem3DOptions: skybox specualrImage is undefined, ${CheckerHelper.stringify(options)}`);
+            console.error(`setupItem3DOptions: skybox specualrImage is undefined, ${CheckerHelper.stringify(options)}.`);
           }
           studioOptions.specularImage = specularImage;
           //
@@ -871,6 +1033,13 @@ export class PluginHelper {
 
   }
 
+  /**
+   * 创建几何体，根据几何参数描述 JSON 和数据数组
+   * @param engine - 引擎
+   * @param geomJson - 几何参数描述 JSON
+   * @param bins - 数据数组
+   * @returns 几何体
+   */
   static createGeometry (engine: Engine, geomJson: spec.GeometryOptionsJSON, bins: ArrayBuffer[]): Geometry {
     const geomOptions = deserializeGeometry(geomJson, bins);
     const attributes: Record<string, Attribute> = {};
@@ -887,6 +1056,12 @@ export class PluginHelper {
     return Geometry.create(engine, geomOptions);
   }
 
+  /**
+   * 索引数组类型转换
+   * @param type - 类型
+   * @param array - 索引数组
+   * @returns 索引数组
+   */
   static getIndexArray (type: number, array: spec.TypedArray) {
     switch (type) {
       case WebGLRenderingContext['UNSIGNED_INT']:
@@ -896,45 +1071,65 @@ export class PluginHelper {
       case WebGLRenderingContext['UNSIGNED_BYTE']:
         return array as Uint8Array;
       default:
-        console.error(`Invalid index attribute type ${type}`);
+        console.error(`Invalid index attribute type ${type}.`);
     }
   }
 
+  /**
+   * 属性名称转换
+   * @param name - 旧名称
+   * @returns 新名称
+   */
   static getAttributeName (name: string): string {
     switch (name) {
-      case 'POSITION': return 'a_Position';
-      case 'NORMAL': return 'a_Normal';
-      case 'TANGENT': return 'a_Tangent';
-      case 'TEXCOORD_0': return 'a_UV1';
-      case 'TEXCOORD_1': return 'a_UV2';
-      case 'JOINTS_0': return 'a_Joint1';
-      case 'WEIGHTS_0': return 'a_Weight1';
+      case 'POSITION': return 'aPos';
+      case 'NORMAL': return 'aNormal';
+      case 'TANGENT': return 'aTangent';
+      case 'TEXCOORD_0': return 'aUV';
+      case 'TEXCOORD_1': return 'aUV2';
+      case 'JOINTS_0': return 'aJoints';
+      case 'WEIGHTS_0': return 'aWeights';
     }
 
-    if (!name.startsWith('a_')) {
-      // a_Position, a_Normal, a_Tangent,
-      // a_UV1, a_UV2, a_Joint1, a_Weight1
-      // a_Target_XXX
-      console.warn(`Unknown attribute name: ${name}`);
+    if (!name.startsWith('a')) {
+      // aPos, aNormal, aTangent,
+      // aUV, aUV2, aJoints, aWeights
+      // aTargetXXX
+      console.warn(`Unknown attribute name: ${name}.`);
     }
 
     return name;
   }
 
-  static getTextureObj (textures: Texture[], index?: number): Texture | undefined {
+  /**
+   * 获取纹理对象
+   * @param textures - 纹理数组
+   * @param index - 索引
+   * @returns
+   */
+  static getTextureObj (textures: Texture[], index?: number): Texture | null {
     if (typeof index !== 'number') {
-      return index;
+      return null;
     }
 
     if (index < 0 || index >= textures.length) {
-      console.error(`Invalid index for textures: ${index}, ${textures.length}`);
+      console.error(`Invalid index for textures: ${index}, ${textures.length}.`);
     }
 
     return textures[index];
   }
 }
 
+/**
+ * Web 辅助类，负责 Web 相关的基础功能
+ */
 export class WebHelper {
+  /**
+   * 获取图像文件名，从 URL 链接中
+   * @param url - 链接
+   * @param ext - 扩展名
+   * @returns
+   */
   static getImageFileName (url: string, ext?: string): string {
     const begin = url.lastIndexOf('/');
     const end = url.lastIndexOf('.');
@@ -943,6 +1138,10 @@ export class WebHelper {
     return ext ? substr + ext : substr;
   }
 
+  /**
+   * 获取当前时间字符串
+   * @returns
+   */
   static getCurrnetTimeStr (): string {
     const date = new Date(Date.now());
     const timeStr = date.toLocaleString('zh-CN');
@@ -951,6 +1150,11 @@ export class WebHelper {
     return timeStr.split(/[ /:]+/).join('') + ms.padStart(3, '0');
   }
 
+  /**
+   * 将 URL 链接保存成文件
+   * @param url - 链接
+   * @param filename - 文件名
+   */
   static saveFileForURL (url: string, filename: string) {
     const a = document.createElement('a');
 
@@ -960,6 +1164,11 @@ export class WebHelper {
     a.click();
   }
 
+  /**
+   * 创建播放器
+   * @param manualRender - 是否手动渲染
+   * @returns
+   */
   static createPlayer (manualRender = true) {
     const canvas = document.createElement('canvas');
 
@@ -970,35 +1179,62 @@ export class WebHelper {
       canvas,
       renderFramework: 'webgl2',
       env: PLAYER_OPTIONS_ENV_EDITOR,
-      willCaptureImage: true,
+      renderOptions: {
+        willCaptureImage: true,
+      },
       manualRender,
     });
   }
 
+  /**
+   * 休眠
+   * @param ms - 时间，单位是毫秒
+   * @returns
+   */
   static async sleep (ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  /**
+   * 从 glTF 图像加载 HTML 图像元素
+   * @param image - glTF 图像
+   * @returns HTML 图像元素
+   */
   static async loadImageFromGLTFImage (image: GLTFImage): Promise<HTMLImageElement> {
-    return loadImage(new Blob([image.imageData as Uint8Array], { type: image.mimeType }));
+    return loadImage(new Blob([image.imageData], { type: image.mimeType }));
   }
 
+  /**
+   * 从图像缓存区数据加载 HTML 图像元素
+   * @param image - 图像缓冲区数据
+   * @returns
+   */
   static async loadImageFromImageData (image: PImageBufferData): Promise<HTMLImageElement> {
     return loadImage(new Blob([image.data], { type: image.mimeType }));
   }
 
+  /**
+   * 获取画布渲染的内容，转成 PNG 图片数据
+   * @param canvas - HTML 画布元素
+   * @returns PNG 图片数据
+   */
   static async getCanvasArrayBuffer (canvas: HTMLCanvasElement): Promise<ArrayBuffer> {
     return new Promise<ArrayBuffer>(function (resolve, reject) {
       canvas.toBlob(function (b) {
         if (b) {
           resolve(b.arrayBuffer());
         } else {
-          reject(Error('no canvas blob'));
+          reject(new Error('No canvas blob.'));
         }
       }, 'image/png', 1);
     });
   }
 
+  /**
+   * 从 HTML 图像、视频或位图图像对象获取图像数据
+   * @param image - HTML 图像、视频或位图图像
+   * @returns PNG 图片数据
+   */
   static async getImageArrayBuffer (image: HTMLImageElement | ImageBitmap | HTMLVideoElement): Promise<ArrayBuffer> {
     const cvs = document.createElement('canvas');
 
@@ -1009,12 +1245,22 @@ export class WebHelper {
     return this.getCanvasArrayBuffer(cvs);
   }
 
+  /**
+   * 获取画布元素渲染结果
+   * @param canvas - 画布元素
+   * @returns
+   */
   static getCanvasImageData (canvas: HTMLCanvasElement): ImageData {
     const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
 
     return ctx.getImageData(0, 0, canvas.width, canvas.height);
   }
 
+  /**
+   * 翻转图像
+   * @param imageData - 图像数据
+   * @returns 翻转后的图像
+   */
   static flipImageData (imageData: ImageData): ImageData {
     const flipped = document.createElement('canvas');
     const ctx = flipped.getContext('2d') as CanvasRenderingContext2D;
@@ -1035,6 +1281,11 @@ export class WebHelper {
     return ctx.getImageData(0, 0, flipped.width, flipped.height);
   }
 
+  /**
+   * 从 HTML 图像、视频或位图图像对象获取翻转后的图像数据
+   * @param image - HTML 图像、视频或位图图像
+   * @returns PNG 图片数据
+   */
   static getImageData (image: HTMLImageElement | ImageBitmap | HTMLVideoElement): ImageData {
     const cvs = document.createElement('canvas');
 
@@ -1047,6 +1298,11 @@ export class WebHelper {
     return this.flipImageData(ctx.getImageData(0, 0, cvs.width, cvs.height));
   }
 
+  /**
+   * 获取位图数据，从 HTML 画布元素
+   * @param canvas - HTML 画布元素
+   * @returns uint8 数组
+   */
   static getWebGLCanvasImageBuffer (canvas: HTMLCanvasElement): Uint8Array {
     const ctx = canvas.getContext('webgl2') as WebGL2RenderingContext;
     const pixels = new Uint8Array(canvas.width * canvas.height * 4);
@@ -1057,14 +1313,40 @@ export class WebHelper {
   }
 }
 
+/**
+ * 顶点属性缓冲区
+ */
 export class VertexAttribBuffer {
+  /**
+   * 顶点数组
+   */
   data!: VertexArray;
+  /**
+   * 分量数
+   */
   component = 0;
+  /**
+   * 长度
+   */
   length = 0;
+  /**
+   * 偏移
+   */
   offset = 0;
+  /**
+   * 步长
+   */
   stride = 0;
+  /**
+   * 类型大小
+   */
   typeSize = 0;
 
+  /**
+   * 获取包围盒，根据顶点数据
+   * @param box - 包围盒，会被修改
+   * @returns 包围盒
+   */
   getBoundingBox (box: Box3) {
     let index = this.offset;
     const point = new Vector3();
@@ -1123,13 +1405,13 @@ class AttributeArray {
     //
     this.offset = inAttrib.offset ?? 0;
     if (this.offset > 0) {
-      if (this.offset % this.typeSize !== 0) { console.error(`Invalid offset ${this.offset}, type size ${this.typeSize}`); }
+      if (this.offset % this.typeSize !== 0) { console.error(`Invalid offset ${this.offset}, type size ${this.typeSize}.`); }
       this.offset = this.offset / this.typeSize;
     }
     //
     this.stride = inAttrib.stride ?? 0;
     if (this.stride > 0) {
-      if (this.stride % this.typeSize !== 0) { console.error(`Invalid stride ${this.stride}, type size ${this.typeSize}`); }
+      if (this.stride % this.typeSize !== 0) { console.error(`Invalid stride ${this.stride}, type size ${this.typeSize}.`); }
       this.stride = this.stride / this.typeSize;
     } else {
       this.stride = this.compCount;
@@ -1171,15 +1453,44 @@ class AttributeArray {
   }
 }
 
+/**
+ * 几何包围盒代理类
+ */
 export class GeometryBoxProxy {
+  /**
+   * 渲染开始索引
+   */
   drawStart = 0;
+  /**
+   * 渲染索引数目
+   */
   drawCount = 0;
+  /**
+   * 索引数组
+   */
   index?: spec.TypedArray;
+  /**
+   * 位置数组
+   */
   position!: AttributeArray;
+  /**
+   * 关节点数组
+   */
   joint?: AttributeArray;
+  /**
+   * 权重数组
+   */
   weight?: AttributeArray;
+  /**
+   * 绑定矩阵数组
+   */
   bindMatrices: Matrix4[] = [];
 
+  /**
+   * 创建函数，根据几何体和绑定矩阵数组
+   * @param geometry - 几何体
+   * @param bindMatrices - 绑定矩阵数组
+   */
   create (geometry: Geometry, bindMatrices: Matrix4[]) {
     this.drawStart = 0;
     this.drawCount = Math.abs(geometry.getDrawCount());
@@ -1189,18 +1500,18 @@ export class GeometryBoxProxy {
 
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['a_Position'];
-    const positionArray = geometry.getAttributeData('a_Position') as spec.TypedArray;
+    const positionAttrib = attributes['aPos'];
+    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
     //
-    const jointAttrib = attributes['a_Joint1'];
-    const weightAttrib = attributes['a_Weight1'];
+    const jointAttrib = attributes['aJoints'];
+    const weightAttrib = attributes['aWeights'];
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('a_Joint1') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('a_Weight1') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
+      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1210,6 +1521,11 @@ export class GeometryBoxProxy {
     this.bindMatrices = bindMatrices;
   }
 
+  /**
+   * 获取包围盒，如果有骨骼动画，需要先更新位置
+   * @param box - 包围盒，会被修改
+   * @returns 包围盒
+   */
   getBoundingBox (box: Box3) {
     box.makeEmpty();
     const skinMat = new Matrix4();
@@ -1280,19 +1596,57 @@ export class GeometryBoxProxy {
   }
 }
 
+/**
+ * 点击测试代理类，
+ */
 export class HitTestingProxy {
+  /**
+   * 渲染开始索引
+   */
   drawStart = 0;
+  /**
+   * 渲染索引数目
+   */
   drawCount = 0;
+  /**
+   * 索引数组
+   */
   index?: spec.TypedArray;
+  /**
+   * 位置数组
+   */
   position!: AttributeArray;
+  /**
+   * 关节点数组
+   */
   joint?: AttributeArray;
+  /**
+   * 权重数组
+   */
   weight?: AttributeArray;
+  /**
+   * 是否双面
+   */
   doubleSided = false;
+  /**
+   * 绑定矩阵数组
+   */
   bindMatrices: Matrix4[] = [];
-  //
+  /**
+   * 是否有动画
+   */
   hasAnimation = false;
+  /**
+   * 蒙皮矩阵
+   */
   skinMatrix = new Matrix4();
 
+  /**
+   * 创建对象，传入几何体、是否双面和绑定矩阵列表
+   * @param geometry - 几何体
+   * @param doubleSided - 是否双面
+   * @param bindMatrices - 绑定矩阵列表
+   */
   create (geometry: Geometry, doubleSided: boolean, bindMatrices: Matrix4[]) {
     this.drawStart = 0;
     this.drawCount = Math.abs(geometry.getDrawCount());
@@ -1302,18 +1656,18 @@ export class HitTestingProxy {
 
     //
     this.index = geometry.getIndexData();
-    const positionAttrib = attributes['a_Position'];
-    const positionArray = geometry.getAttributeData('a_Position') as spec.TypedArray;
+    const positionAttrib = attributes['aPos'];
+    const positionArray = geometry.getAttributeData('aPos') as spec.TypedArray;
 
     this.position = new AttributeArray();
     this.position.create(positionAttrib, positionArray);
     //
-    const jointAttrib = attributes['a_Joint1'];
-    const weightAttrib = attributes['a_Weight1'];
+    const jointAttrib = attributes['aJoints'];
+    const weightAttrib = attributes['aWeights'];
 
     if (jointAttrib !== undefined && weightAttrib !== undefined) {
-      const jointArray = geometry.getAttributeData('a_Joint1') as spec.TypedArray;
-      const weightArray = geometry.getAttributeData('a_Weight1') as spec.TypedArray;
+      const jointArray = geometry.getAttributeData('aJoints') as spec.TypedArray;
+      const weightArray = geometry.getAttributeData('aWeights') as spec.TypedArray;
 
       this.joint = new AttributeArray();
       this.joint.create(jointAttrib, jointArray);
@@ -1325,6 +1679,12 @@ export class HitTestingProxy {
     this.hasAnimation = this.joint !== undefined && this.weight !== undefined && this.bindMatrices.length > 0;
   }
 
+  /**
+   * 点击测试，返回射线参数值
+   * @param rayOrigin - 射线原点
+   * @param rayDirection - 射线方向
+   * @returns 射线参数值或 undefined
+   */
   getHitPoint (rayOrigin: Vector3, rayDirection: Vector3): number | undefined {
     let mint: number | undefined;
     const p0 = new Vector3(), p1 = new Vector3(), p2 = new Vector3();
@@ -1346,7 +1706,7 @@ export class HitTestingProxy {
       const r1 = this.getPosition(i1, p1, q1);
       const r2 = this.getPosition(i2, p2, q2);
 
-      if (r0 === undefined || r1 === undefined || r2 === undefined) {
+      if (!r0 || !r1 || !r2) {
         continue;
       }
 
@@ -1364,11 +1724,18 @@ export class HitTestingProxy {
     return mint;
   }
 
-  getPosition (index: number, vec3: Vector3, vec4: Vector4): Vector3 | undefined {
+  /**
+   * 获取顶点位置
+   * @param index - 顶点索引
+   * @param vec3 - 顶点位置，会被修改和返回
+   * @param vec4 - 临时变量，用于骨骼动画时的计算
+   * @returns 顶点位置
+   */
+  getPosition (index: number, vec3: Vector3, vec4: Vector4): Vector3 | null {
     const posData = this.position.getData(index);
 
     if (posData === undefined) {
-      return;
+      return null;
     }
 
     if (this.hasAnimation) {
@@ -1402,73 +1769,156 @@ export class HitTestingProxy {
 
 }
 
+/**
+ * 检查辅助类，负责 3D 插件元素数据格式检查和报错
+ */
 export class CheckerHelper {
+  /**
+   * 检查数值
+   * @param v - 数值
+   * @returns
+   */
   static checkNumber (v: number): boolean {
     return typeof v === 'number';
   }
 
-  static checkNumberUndef (v: number | undefined): boolean {
+  /**
+   * 检查数值或未定义
+   * @param v - 数值或未定义
+   * @returns
+   */
+  static checkNumberUndef (v?: number): boolean {
     return v === undefined ? true : this.checkNumber(v);
   }
 
+  /**
+   * 检查 0 和 1 之间数值
+   * @param v - 数值
+   * @returns
+   */
   static checkNumber01 (v: number): boolean {
     return this.checkNumber(v) && v >= 0 && v <= 1;
   }
 
-  static checkNumber01Undef (v: number | undefined): boolean {
+  /**
+   * 检查 0 和 1 之间数值或未定义
+   * @param v - 数值或未定义
+   * @returns
+   */
+  static checkNumber01Undef (v?: number): boolean {
     return v === undefined ? true : this.checkNumber01(v);
   }
 
+  /**
+   * 检查正数
+   * @param v - 数值
+   * @returns
+   */
   static checkPositive (v: number): boolean {
     return this.checkNumber(v) && v > 0;
   }
 
+  /**
+   * 检查非负数
+   * @param v - 数值
+   * @returns
+   */
   static checkNonnegative (v: number): boolean {
     return this.checkNumber(v) && v >= 0;
   }
 
-  static checkNonnegativeUndef (v: number | undefined): boolean {
+  /**
+   * 检查非负数或未定义
+   * @param v - 数值
+   * @returns
+   */
+  static checkNonnegativeUndef (v?: number): boolean {
     return v === undefined ? true : this.checkNonnegative(v);
   }
 
+  /**
+   * 检查布尔类型
+   * @param v - 布尔值
+   * @returns
+   */
   static checkBoolean (v: boolean): boolean {
     return typeof v === 'boolean';
   }
 
-  static checkBooleanUndef (v: boolean | undefined): boolean {
+  /**
+   * 检查布尔类型或未定义
+   * @param v - 布尔值或未定义
+   * @returns
+   */
+  static checkBooleanUndef (v?: boolean): boolean {
     return v === undefined ? true : this.checkBoolean(v);
   }
 
+  /**
+   * 检查字符串类型
+   * @param v - 字符串
+   * @returns
+   */
   static checkString (v: string): boolean {
     return typeof v === 'string';
   }
 
-  static checkStringUndef (v: string | undefined): boolean {
+  /**
+   * 检查字符串类型或未定义
+   * @param v - 字符串或未定义
+   * @returns
+   */
+  static checkStringUndef (v?: string): boolean {
     return v === undefined ? true : this.checkString(v);
   }
 
+  /**
+   * 检查浮点数组
+   * @param v - 浮点数组
+   * @returns
+   */
   static checkFloat32Array (v: Float32Array): boolean {
     return v instanceof Float32Array;
   }
 
-  static checkFloat32ArrayUndef (v: Float32Array | undefined): boolean {
+  /**
+   * 检查浮点数组或未定义
+   * @param v - 浮点数组或未定义
+   * @returns
+   */
+  static checkFloat32ArrayUndef (v?: Float32Array): boolean {
     return v === undefined ? true : this.checkFloat32Array(v);
   }
 
-  static checkParent (v: number | undefined): boolean {
+  /**
+   * 检查父节点索引
+   * @param v - 数值或未定义
+   * @returns
+   */
+  static checkParent (v?: number): boolean {
     if (v === undefined) { return true; }
     if (!this.checkNumber(v)) { return false; }
 
     return v >= 0;
   }
 
-  static checkTexCoord (v: number | undefined): boolean {
+  /**
+   * 检查纹理坐标
+   * @param v - 纹理坐标或未定义
+   * @returns
+   */
+  static checkTexCoord (v?: number): boolean {
     if (v === undefined) { return true; }
     if (!this.checkNumber(v)) { return false; }
 
     return v >= 0 && v <= 1;
   }
 
+  /**
+   * 检查二维向量
+   * @param v - 二维向量
+   * @returns
+   */
   static checkVec2 (v: spec.vec2): boolean {
     if (!Array.isArray(v)) { return false; }
     if (v.length != 2) { return false; }
@@ -1476,10 +1926,20 @@ export class CheckerHelper {
     return v.every(v => this.checkNumber(v));
   }
 
+  /**
+   * 检查二维向量或未定义
+   * @param v - 二维向量或未定义
+   * @returns
+   */
   static checkVec2Undef (v?: spec.vec2): boolean {
     return v === undefined ? true : this.checkVec2(v);
   }
 
+  /**
+   * 检查三维向量
+   * @param v - 三维向量
+   * @returns
+   */
   static checkVec3 (v: spec.vec3): boolean {
     if (!Array.isArray(v)) { return false; }
     if (v.length != 3) { return false; }
@@ -1487,6 +1947,11 @@ export class CheckerHelper {
     return v.every(v => this.checkNumber(v));
   }
 
+  /**
+   * 检查三维非负向量
+   * @param v - 三维向量
+   * @returns
+   */
   static checkNonnegative3 (v: spec.vec3): boolean {
     if (!Array.isArray(v)) { return false; }
     if (v.length != 3) { return false; }
@@ -1494,6 +1959,11 @@ export class CheckerHelper {
     return v.every(v => this.checkNonnegative(v));
   }
 
+  /**
+   * 检查四维向量
+   * @param v - 四维向量
+   * @returns
+   */
   static checkVec4 (v: spec.vec4): boolean {
     if (!Array.isArray(v)) { return false; }
     if (v.length != 4) { return false; }
@@ -1501,6 +1971,11 @@ export class CheckerHelper {
     return v.every(v => this.checkNumber(v));
   }
 
+  /**
+   * 检查四维向量或未定义
+   * @param v - 四维向量或未定义
+   * @returns
+   */
   static checkNonnegative4 (v: spec.vec4): boolean {
     if (!Array.isArray(v)) { return false; }
     if (v.length != 4) { return false; }
@@ -1508,16 +1983,26 @@ export class CheckerHelper {
     return v.every(v => this.checkNonnegative(v));
   }
 
+  /**
+   * 检查数值数组
+   * @param v - 数值数组
+   * @returns
+   */
   static checkNumberArray (v: number[]): boolean {
     if (!Array.isArray(v)) { return false; }
 
     return v.every(v => this.checkNumber(v));
   }
 
+  /**
+   * 检查纹理对象
+   * @param v - 纹理对象
+   * @returns
+   */
   static checkTexture (v: Texture): boolean {
     if (v instanceof Texture) {
       if (v.isDestroyed) {
-        console.error(`Texture is destroyed, ${v.name}`);
+        console.error(`Texture is destroyed, ${v.name}.`);
       }
 
       return !v.isDestroyed;
@@ -1526,10 +2011,20 @@ export class CheckerHelper {
     }
   }
 
-  static checkTextureUndef (v: Texture | undefined): boolean {
+  /**
+   * 检查纹理对象或未定义
+   * @param v - 纹理对象或未定义
+   * @returns
+   */
+  static checkTextureUndef (v?: Texture): boolean {
     return v === undefined ? true : this.checkTexture(v);
   }
 
+  /**
+   * 检查纹理变换参数
+   * @param v - 纹理变换参数
+   * @returns
+   */
   static checkTexTransform (v: ModelTextureTransform): boolean {
     if (!this.checkVec2Undef(v.offset)) { return false; }
     if (!this.checkNumberUndef(v.rotation)) { return false; }
@@ -1545,11 +2040,21 @@ export class CheckerHelper {
     return true;
   }
 
-  static checkTexTransformUndef (v: ModelTextureTransform | undefined): boolean {
+  /**
+   * 检查纹理变换参数或未定义
+   * @param v - 纹理变换参数或未定义
+   * @returns
+   */
+  static checkTexTransformUndef (v?: ModelTextureTransform): boolean {
     return v === undefined ? true : this.checkTexTransform(v);
   }
 
-  static checkMatBlending (v: spec.MaterialBlending | undefined): boolean {
+  /**
+   * 检查材质混合参数或未定义
+   * @param v - 材质混合参数或未定义
+   * @returns
+   */
+  static checkMatBlending (v?: spec.MaterialBlending): boolean {
     return v === undefined
       || v === spec.MaterialBlending.opaque
       || v === spec.MaterialBlending.masked
@@ -1557,28 +2062,48 @@ export class CheckerHelper {
       || v === spec.MaterialBlending.additive;
   }
 
-  static checkMatSide (v: spec.SideMode | undefined): boolean {
+  /**
+   * 检查材质单双面模式或未定义
+   * @param v - 材质单双面模式或未定义
+   * @returns
+   */
+  static checkMatSide (v?: spec.SideMode): boolean {
     return v === undefined || v === spec.SideMode.BACK || v === spec.SideMode.DOUBLE || v === spec.SideMode.FRONT;
   }
 
+  /**
+   * 检查动画路径模式
+   * @param v - 动画路径模式
+   * @returns
+   */
   static checkAnimPath (v: string): boolean {
     return v === 'translation' || v === 'rotation' || v === 'scale' || v === 'weights';
   }
 
+  /**
+   * 检查动画插值模式
+   * @param v - 动画插值模式
+   * @returns
+   */
   static checkAnimInterp (v: string): boolean {
     return v === 'LINEAR' || v === 'STEP' || v === 'CUBICSPLINE';
   }
 
+  /**
+   * 检查几何体
+   * @param v - 几何体
+   * @param s - 蒙皮参数
+   */
   static assertGeometry (v: Geometry, s?: ModelSkinOptions) {
     if (!(v instanceof Geometry)) {
-      console.error(`Invalid geometry type ${this.stringify(v)}`);
+      console.error(`Invalid geometry type ${this.stringify(v)}.`);
     }
     // @ts-expect-error
     if (v.isDestroyed === true) {
-      console.error('Geometry object is destroyed');
+      console.error('Geometry object is destroyed.');
     }
     if (!this.checkNonnegative(v.getDrawStart())) {
-      console.error(`Invalid geometry draw start: ${v.getDrawStart()}, ${this.stringify(v)}`);
+      console.error(`Invalid geometry draw start: ${v.getDrawStart()}, ${this.stringify(v)}.`);
     }
     // // drawCount不再为负
     // if (!this.checkPositive(v.getDrawCount())) {
@@ -1605,23 +2130,23 @@ export class CheckerHelper {
     //     }
     //     maxLength = maxIndex + 1;
     //   }
-    //   const positionAttrib = opts.attributes['a_Position'] as Attribute;
+    //   const positionAttrib = opts.attributes['aPos'] as Attribute;
 
     //   if (positionAttrib === undefined) {
     //     throw new Error(`Position attribute is required, ${this.stringify(v)}`);
     //   }
-    //   this.assertGeometryBuffer(v, 'a_Position', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Normal', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Tangent', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_UV1', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Joint1', maxLength);
-    //   this.assertGeometryBuffer(v, 'a_Weight1', maxLength);
+    //   this.assertGeometryBuffer(v, 'aPos', maxLength);
+    //   this.assertGeometryBuffer(v, 'aNormal', maxLength);
+    //   this.assertGeometryBuffer(v, 'aTangent', maxLength);
+    //   this.assertGeometryBuffer(v, 'aUV', maxLength);
+    //   this.assertGeometryBuffer(v, 'aJoints', maxLength);
+    //   this.assertGeometryBuffer(v, 'aWeights', maxLength);
 
     //   // 索引检查
     //   if(s !== undefined){
     //     const matLen = s.inverseBindMatrices?.length ?? 0;
     //     if(matLen > 0){
-    //       const jointArray = this.createAttributeArray(v, "a_Joint1");
+    //       const jointArray = this.createAttributeArray(v, "aJoints");
     //       if(jointArray !== undefined){
     //         for(let i = 0; i < maxLength; i++){
     //           const data = jointArray.getData(i);
@@ -1636,16 +2161,28 @@ export class CheckerHelper {
     // }
   }
 
+  /**
+   * 检查几何体缓冲区
+   * @param v - 几何体
+   * @param name - 名称
+   * @param drawCount - 渲染数目
+   */
   static assertGeometryBuffer (v: Geometry, name: string, drawCount: number) {
     const attribArray = this.createAttributeArray(v, name);
 
     if (attribArray !== undefined) {
       if (attribArray.getLength() < drawCount) {
-        console.error(`${name} Length(${attribArray.getLength()}) is less than draw count(${drawCount}), ${this.stringify(v)}`);
+        console.error(`${name} Length(${attribArray.getLength()}) is less than draw count(${drawCount}), ${this.stringify(v)}.`);
       }
     }
   }
 
+  /**
+   * 创建属性数组
+   * @param v - 几何体
+   * @param name - 名称
+   * @returns
+   */
   static createAttributeArray (v: Geometry, name: string): AttributeArray | undefined {
     // @ts-expect-error
     const attributes = v.attributes;
@@ -1665,15 +2202,19 @@ export class CheckerHelper {
     return attribArray;
   }
 
+  /**
+   * 检查蒙皮参数
+   * @param v - 蒙皮参数
+   */
   static assertModelSkinOptions (v: ModelSkinOptions) {
-    if (!this.checkStringUndef(v.name)) { console.error(`Invalid skin name ${v.name}, ${this.stringify(v)}`); }
-    if (!this.checkNumberArray(v.joints)) { console.error(`Invalid skin joints ${v.joints}, ${this.stringify(v)}`); }
-    if (!this.checkNumberUndef(v.skeleton)) { console.error(`Invalid skin skeleton ${v.skeleton}, ${this.stringify(v)}`); }
-    if (!this.checkFloat32ArrayUndef(v.inverseBindMatrices)) { console.error(`Invalid skin inverseBindMatrices ${v.inverseBindMatrices}, ${this.stringify(v)}`); }
+    if (!this.checkStringUndef(v.name)) { console.error(`Invalid skin name ${v.name}, ${this.stringify(v)}.`); }
+    if (!this.checkNumberArray(v.joints)) { console.error(`Invalid skin joints ${v.joints}, ${this.stringify(v)}.`); }
+    if (!this.checkNumberUndef(v.skeleton)) { console.error(`Invalid skin skeleton ${v.skeleton}, ${this.stringify(v)}.`); }
+    if (!this.checkFloat32ArrayUndef(v.inverseBindMatrices)) { console.error(`Invalid skin inverseBindMatrices ${v.inverseBindMatrices}, ${this.stringify(v)}.`); }
     //
     if (v.inverseBindMatrices !== undefined) {
-      if (v.inverseBindMatrices.length <= 0 || v.inverseBindMatrices.length % 16 !== 0) { console.error(`Invalid skin inverseBindMatrices length ${v.inverseBindMatrices}, ${this.stringify(v)}`); }
-      if (v.joints.length * 16 !== v.inverseBindMatrices.length) { console.error(`Mismatch: skin joints and inverseBindMatrices length, ${v.joints}, ${v.inverseBindMatrices}, ${this.stringify(v)}`); }
+      if (v.inverseBindMatrices.length <= 0 || v.inverseBindMatrices.length % 16 !== 0) { console.error(`Invalid skin inverseBindMatrices length ${v.inverseBindMatrices}, ${this.stringify(v)}.`); }
+      if (v.joints.length * 16 !== v.inverseBindMatrices.length) { console.error(`Mismatch: skin joints and inverseBindMatrices length, ${v.joints}, ${v.inverseBindMatrices}, ${this.stringify(v)}.`); }
       const mat = new Matrix4();
 
       for (let i = 0; i < v.inverseBindMatrices.length; i += 16) {
@@ -1681,74 +2222,84 @@ export class CheckerHelper {
           mat.elements[j] = v.inverseBindMatrices[i + j];
         }
         if (Math.abs(mat.determinant()) < 1e-5) {
-          console.error(`Determinant of inverseBindMatrices is too small ${mat.determinant()}, index ${i / 16}, ${this.stringify(v)}`);
+          console.error(`Determinant of inverseBindMatrices is too small ${mat.determinant()}, index ${i / 16}, ${this.stringify(v)}.`);
         }
       }
     } else {
-      if (v.joints.length <= 0) { console.error(`Invalid skin joints length ${v.joints}, ${this.stringify(v)}`); }
+      if (v.joints.length <= 0) { console.error(`Invalid skin joints length ${v.joints}, ${this.stringify(v)}.`); }
     }
   }
 
+  /**
+   * 检查材质参数
+   * @param v - 材质参数
+   */
   static assertMatOptions (v: ModelMaterialOptions) {
     if (v.type === spec.MaterialType.unlit) {
-      if (!this.checkString(v.name)) { console.error(`Invalid material name ${v.name}, ${this.stringify(v)}`); }
+      if (!this.checkString(v.name)) { console.error(`Invalid material name ${v.name}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkNonnegative4(v.baseColorFactor)) { console.error(`Invalid material baseColorFactor ${v.baseColorFactor}, ${this.stringify(v)}`); }
-      if (!this.checkTextureUndef(v.baseColorTexture)) { console.error(`Invalid material baseColorTexture ${v.baseColorTexture}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.baseColorTextureTransform)) { console.error(`Invalid material baseColorTextureTransform ${v.baseColorTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.baseColorTextureCoordinate)) { console.error(`Invalid material baseColorTextureCoordinate ${v.baseColorTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkNonnegative4(v.baseColorFactor)) { console.error(`Invalid material baseColorFactor ${v.baseColorFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkTextureUndef(v.baseColorTexture)) { console.error(`Invalid material baseColorTexture ${v.baseColorTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.baseColorTextureTransform)) { console.error(`Invalid material baseColorTextureTransform ${v.baseColorTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.baseColorTextureCoordinate)) { console.error(`Invalid material baseColorTextureCoordinate ${v.baseColorTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkBooleanUndef(v.depthMask)) { console.error(`Invalid material depthMask ${v.depthMask}, ${this.stringify(v)}`); }
-      if (!this.checkMatBlending(v.blending)) { console.error(`Invalid material blending ${v.blending}, ${this.stringify(v)}`); }
-      if (!this.checkMatSide(v.side)) { console.error(`Invalid material side ${v.side}, ${this.stringify(v)}`); }
+      if (!this.checkBooleanUndef(v.depthMask)) { console.error(`Invalid material depthMask ${v.depthMask}, ${this.stringify(v)}.`); }
+      if (!this.checkMatBlending(v.blending)) { console.error(`Invalid material blending ${v.blending}, ${this.stringify(v)}.`); }
+      if (!this.checkMatSide(v.side)) { console.error(`Invalid material side ${v.side}, ${this.stringify(v)}.`); }
       if (v.blending === spec.MaterialBlending.masked) {
-        if (v.alphaCutOff === undefined) { console.error(`Material alphaCutOff is required for mask, ${this.stringify(v)}`); }
+        if (v.alphaCutOff === undefined) { console.error(`Material alphaCutOff is required for mask, ${this.stringify(v)}.`); }
       }
-      if (!this.checkNumber01Undef(v.alphaCutOff)) { console.error(`Invalid material alphaCutOff ${v.alphaCutOff}, ${this.stringify(v)}`); }
+      if (!this.checkNumber01Undef(v.alphaCutOff)) { console.error(`Invalid material alphaCutOff ${v.alphaCutOff}, ${this.stringify(v)}.`); }
     } else if (v.type === spec.MaterialType.pbr) {
-      if (!this.checkString(v.name)) { console.error(`Invalid material name ${v.name}, ${this.stringify(v)}`); }
+      if (!this.checkString(v.name)) { console.error(`Invalid material name ${v.name}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkNonnegative4(v.baseColorFactor)) { console.error(`Invalid material baseColorFactor ${v.baseColorFactor}, ${this.stringify(v)}`); }
-      if (!this.checkTextureUndef(v.baseColorTexture)) { console.error(`Invalid material baseColorTexture ${v.baseColorTexture}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.baseColorTextureTransform)) { console.error(`Invalid material baseColorTextureTransform ${v.baseColorTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.baseColorTextureCoordinate)) { console.error(`Invalid material baseColorTextureCoordinate ${v.baseColorTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkNonnegative4(v.baseColorFactor)) { console.error(`Invalid material baseColorFactor ${v.baseColorFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkTextureUndef(v.baseColorTexture)) { console.error(`Invalid material baseColorTexture ${v.baseColorTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.baseColorTextureTransform)) { console.error(`Invalid material baseColorTextureTransform ${v.baseColorTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.baseColorTextureCoordinate)) { console.error(`Invalid material baseColorTextureCoordinate ${v.baseColorTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkBooleanUndef(v.useSpecularAA)) { console.error(`Invalid material useSpecularAA ${v.useSpecularAA}, ${this.stringify(v)}`); }
-      if (!this.checkNumber01(v.metallicFactor)) { console.error(`Invalid material metallicFactor ${v.metallicFactor}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.roughnessFactor)) { console.error(`Invalid material roughnessFactor ${v.roughnessFactor}, ${this.stringify(v)}`); }
-      if (!this.checkTextureUndef(v.metallicRoughnessTexture)) { console.error(`Invalid material metallicRoughnessTexture ${v.metallicRoughnessTexture}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.metallicRoughnessTextureTransform)) { console.error(`Invalid material metallicRoughnessTextureTransform ${v.metallicRoughnessTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.metallicRoughnessTextureCoordinate)) { console.error(`Invalid material metallicRoughnessTextureCoordinate ${v.metallicRoughnessTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkBooleanUndef(v.useSpecularAA)) { console.error(`Invalid material useSpecularAA ${v.useSpecularAA}, ${this.stringify(v)}.`); }
+      if (!this.checkNumber01(v.metallicFactor)) { console.error(`Invalid material metallicFactor ${v.metallicFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.roughnessFactor)) { console.error(`Invalid material roughnessFactor ${v.roughnessFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkTextureUndef(v.metallicRoughnessTexture)) { console.error(`Invalid material metallicRoughnessTexture ${v.metallicRoughnessTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.metallicRoughnessTextureTransform)) { console.error(`Invalid material metallicRoughnessTextureTransform ${v.metallicRoughnessTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.metallicRoughnessTextureCoordinate)) { console.error(`Invalid material metallicRoughnessTextureCoordinate ${v.metallicRoughnessTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkTextureUndef(v.normalTexture)) { console.error(`Invalid material normalTexture ${v.normalTexture}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegativeUndef(v.normalTextureScale)) { console.error(`Invalid material normalTextureScale ${v.normalTextureScale}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.normalTextureTransform)) { console.error(`Invalid material normalTextureTransform ${v.normalTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.normalTextureCoordinate)) { console.error(`Invalid material normalTextureCoordinate ${v.normalTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkTextureUndef(v.normalTexture)) { console.error(`Invalid material normalTexture ${v.normalTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegativeUndef(v.normalTextureScale)) { console.error(`Invalid material normalTextureScale ${v.normalTextureScale}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.normalTextureTransform)) { console.error(`Invalid material normalTextureTransform ${v.normalTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.normalTextureCoordinate)) { console.error(`Invalid material normalTextureCoordinate ${v.normalTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkTextureUndef(v.occlusionTexture)) { console.error(`Invalid material occlusionTexture ${v.occlusionTexture}, ${this.stringify(v)}`); }
-      if (!this.checkNumber01Undef(v.occlusionTextureStrength)) { console.error(`Invalid material occlusionTextureStrength ${v.occlusionTextureStrength}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.occlusionTextureTransform)) { console.error(`Invalid material occlusionTextureTransform ${v.occlusionTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.occlusionTextureCoordinate)) { console.error(`Invalid material occlusionTextureCoordinate ${v.occlusionTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkTextureUndef(v.occlusionTexture)) { console.error(`Invalid material occlusionTexture ${v.occlusionTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkNumber01Undef(v.occlusionTextureStrength)) { console.error(`Invalid material occlusionTextureStrength ${v.occlusionTextureStrength}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.occlusionTextureTransform)) { console.error(`Invalid material occlusionTextureTransform ${v.occlusionTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.occlusionTextureCoordinate)) { console.error(`Invalid material occlusionTextureCoordinate ${v.occlusionTextureCoordinate}, ${this.stringify(v)}.`); }
       //
       //
-      if (!this.checkNonnegative4(v.emissiveFactor)) { console.error(`Invalid material emissiveFactor ${v.emissiveFactor}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.emissiveIntensity)) { console.error(`Invalid material emissiveIntensity ${v.emissiveIntensity}, ${this.stringify(v)}`); }
-      if (!this.checkTextureUndef(v.emissiveTexture)) { console.error(`Invalid material emissiveTexture ${v.emissiveTexture}, ${this.stringify(v)}`); }
-      if (!this.checkTexTransformUndef(v.emissiveTextureTransform)) { console.error(`Invalid material emissiveTextureTransform ${v.emissiveTextureTransform}, ${this.stringify(v)}`); }
-      if (!this.checkTexCoord(v.emissiveTextureCoordinate)) { console.error(`Invalid material emissiveTextureCoordinate ${v.emissiveTextureCoordinate}, ${this.stringify(v)}`); }
+      if (!this.checkNonnegative4(v.emissiveFactor)) { console.error(`Invalid material emissiveFactor ${v.emissiveFactor}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.emissiveIntensity)) { console.error(`Invalid material emissiveIntensity ${v.emissiveIntensity}, ${this.stringify(v)}.`); }
+      if (!this.checkTextureUndef(v.emissiveTexture)) { console.error(`Invalid material emissiveTexture ${v.emissiveTexture}, ${this.stringify(v)}.`); }
+      if (!this.checkTexTransformUndef(v.emissiveTextureTransform)) { console.error(`Invalid material emissiveTextureTransform ${v.emissiveTextureTransform}, ${this.stringify(v)}.`); }
+      if (!this.checkTexCoord(v.emissiveTextureCoordinate)) { console.error(`Invalid material emissiveTextureCoordinate ${v.emissiveTextureCoordinate}, ${this.stringify(v)}.`); }
       //
-      if (!this.checkBooleanUndef(v.depthMask)) { console.error(`Invalid material depthMask ${v.depthMask}, ${this.stringify(v)}`); }
-      if (!this.checkMatBlending(v.blending)) { console.error(`Invalid material blending ${v.blending}, ${this.stringify(v)}`); }
-      if (!this.checkMatSide(v.side)) { console.error(`Invalid material side ${v.side}, ${this.stringify(v)}`); }
+      if (!this.checkBooleanUndef(v.depthMask)) { console.error(`Invalid material depthMask ${v.depthMask}, ${this.stringify(v)}.`); }
+      if (!this.checkMatBlending(v.blending)) { console.error(`Invalid material blending ${v.blending}, ${this.stringify(v)}.`); }
+      if (!this.checkMatSide(v.side)) { console.error(`Invalid material side ${v.side}, ${this.stringify(v)}.`); }
       if (v.blending === spec.MaterialBlending.masked) {
-        if (v.alphaCutOff === undefined) { console.error(`Material alphaCutOff is required for mask, ${this.stringify(v)}`); }
+        if (v.alphaCutOff === undefined) { console.error(`Material alphaCutOff is required for mask, ${this.stringify(v)}.`); }
       }
-      if (!this.checkNumber01Undef(v.alphaCutOff)) { console.error(`Invalid material alphaCutOff ${v.alphaCutOff}, ${this.stringify(v)}`); }
+      if (!this.checkNumber01Undef(v.alphaCutOff)) { console.error(`Invalid material alphaCutOff ${v.alphaCutOff}, ${this.stringify(v)}.`); }
     } else {
-      console.error(`Invalid material type ${this.stringify(v)}`);
+      console.error(`Invalid material type ${this.stringify(v)}.`);
     }
   }
 
+  /**
+   * 检查 Primitive 参数
+   * @param v - Primitive 参数
+   * @param s - 蒙皮参数
+   * @returns
+   */
   static assertPrimOptions (v: ModelPrimitiveOptions, s?: ModelSkinOptions) {
     this.assertGeometry(v.geometry, s);
     this.assertMatOptions(v.material);
@@ -1756,8 +2307,12 @@ export class CheckerHelper {
     return true;
   }
 
+  /**
+   * 检查 Model 插件 Mesh 参数
+   * @param v - Model 插件 Mesh 参数
+   */
   static assertModelMeshOptions (v: ModelMeshOptions) {
-    if (!this.checkParent(v.parent)) { console.error(`Invalid mesh parent ${v.parent}, ${this.stringify(v)}`); }
+    if (!this.checkParent(v.parent)) { console.error(`Invalid mesh parent ${v.parent}, ${this.stringify(v)}.`); }
 
     if (v.skin !== undefined) { this.assertModelSkinOptions(v.skin); }
 
@@ -1767,7 +2322,7 @@ export class CheckerHelper {
       const prim = v.primitives[i];
 
       if (!this.assertPrimOptions(prim)) {
-        console.error(`Invalid primitive ${prim}, ${this.stringify(v)}`);
+        console.error(`Invalid primitive ${prim}, ${this.stringify(v)}.`);
       }
       const morph = new PMorph();
 
@@ -1780,73 +2335,90 @@ export class CheckerHelper {
       const morph1 = morphList[i];
 
       if (!morph0.equals(morph1)) {
-        console.error(`Morph states mismatch: ${this.stringify(morph0)}, ${this.stringify(morph1)}, ${this.stringify(v)}`);
+        console.error(`Morph states mismatch: ${this.stringify(morph0)}, ${this.stringify(morph1)}, ${this.stringify(v)}.`);
       }
     }
 
-    if (!this.checkBooleanUndef(v.hide)) { console.error(`Invalid mesh hide ${v.hide}, ${this.stringify(v)}`); }
+    if (!this.checkBooleanUndef(v.hide)) { console.error(`Invalid mesh hide ${v.hide}, ${this.stringify(v)}.`); }
   }
 
+  /**
+   * 检查 Model 插件相机参数
+   * @param v - Model 插件相机参数
+   */
   static assertModelCameraOptions (v: ModelCameraOptions) {
-    if (!this.checkParent(v.parent)) { console.error(`Invalid camera parent ${v.parent}, ${this.stringify(v)}`); }
-    if (!this.checkNumberUndef(v.aspect)) { console.error(`Invalid camera aspect ${v.aspect}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.near)) { console.error(`Invalid camera near ${v.near}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.far) || v.far <= v.near) { console.error(`Invalid camera far ${v.far}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.fov)) { console.error(`Invalid camera fov ${v.fov}, ${this.stringify(v)}`); }
-    if (!this.checkNumber01(v.clipMode)) { console.error(`Invalid camera clipMode ${v.clipMode}, ${this.stringify(v)}`); }
+    if (!this.checkParent(v.parent)) { console.error(`Invalid camera parent ${v.parent}, ${this.stringify(v)}.`); }
+    if (!this.checkNumberUndef(v.aspect)) { console.error(`Invalid camera aspect ${v.aspect}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.near)) { console.error(`Invalid camera near ${v.near}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.far) || v.far <= v.near) { console.error(`Invalid camera far ${v.far}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.fov)) { console.error(`Invalid camera fov ${v.fov}, ${this.stringify(v)}.`); }
+    if (!this.checkNumber01(v.clipMode)) { console.error(`Invalid camera clipMode ${v.clipMode}, ${this.stringify(v)}.`); }
   }
 
+  /**
+   * 检查 Model 插件灯光参数
+   * @param v - Model 插件灯光参数
+   */
   static assertModelLightOptions (v: ModelLightOptions) {
     if (v.lightType === 'directional') {
-      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}`); }
+      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}.`); }
     } else if (v.lightType === 'point') {
-      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.range)) { console.error(`Invalid light range ${v.range}, ${this.stringify(v)}`); }
+      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.range)) { console.error(`Invalid light range ${v.range}, ${this.stringify(v)}.`); }
     } else if (v.lightType === 'spot') {
-      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.range)) { console.error(`Invalid light range ${v.range}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.innerConeAngle)) { console.error(`Invalid light innerConeAngle ${v.innerConeAngle}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.outerConeAngle)) { console.error(`Invalid light outerConeAngle ${v.outerConeAngle}, ${this.stringify(v)}`); }
+      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.range)) { console.error(`Invalid light range ${v.range}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.innerConeAngle)) { console.error(`Invalid light innerConeAngle ${v.innerConeAngle}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.outerConeAngle)) { console.error(`Invalid light outerConeAngle ${v.outerConeAngle}, ${this.stringify(v)}.`); }
     } else if (v.lightType === 'ambient') {
-      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}`); }
-      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}`); }
+      if (!this.checkParent(v.parent)) { console.error(`Invalid light parent ${v.parent}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative4(v.color)) { console.error(`Invalid light color ${v.color}, ${this.stringify(v)}.`); }
+      if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid light intensity ${v.intensity}, ${this.stringify(v)}.`); }
     } else {
-      console.error(`Invalid light type ${this.stringify(v)}`);
+      console.error(`Invalid light type ${this.stringify(v)}.`);
     }
   }
 
+  /**
+   * 检查 Model 插件天空盒参数
+   * @param v - Model 插件天空盒参数
+   */
   static assertModelSkyboxOptions (v: ModelSkyboxOptions) {
-    if (!this.checkBoolean(v.renderable)) { console.error(`Invalid skybox renderable ${v.renderable}, ${this.stringify(v)}`); }
-    if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid skybox intensity ${v.intensity}, ${this.stringify(v)}`); }
-    if (!this.checkNonnegative(v.reflectionsIntensity)) { console.error(`Invalid skybox reflectionsIntensity ${v.reflectionsIntensity}, ${this.stringify(v)}`); }
+    if (!this.checkBoolean(v.renderable)) { console.error(`Invalid skybox renderable ${v.renderable}, ${this.stringify(v)}.`); }
+    if (!this.checkNonnegative(v.intensity)) { console.error(`Invalid skybox intensity ${v.intensity}, ${this.stringify(v)}.`); }
+    if (!this.checkNonnegative(v.reflectionsIntensity)) { console.error(`Invalid skybox reflectionsIntensity ${v.reflectionsIntensity}, ${this.stringify(v)}.`); }
     //
     const c = v.irradianceCoeffs;
 
     if (c !== undefined) {
-      if (!Array.isArray(c) || c.length != 9) { console.error(`Invalid skybox irradianceCoeffs ${c}, ${this.stringify(v)}`); }
+      if (!Array.isArray(c) || c.length != 9) { console.error(`Invalid skybox irradianceCoeffs ${c}, ${this.stringify(v)}.`); }
       c.forEach(v => {
-        if (!this.checkVec3(v as spec.vec3)) { console.error(`Invalid skybox irradianceCoeffs ${c}, ${this.stringify(v)}`); }
+        if (!this.checkVec3(v as spec.vec3)) { console.error(`Invalid skybox irradianceCoeffs ${c}, ${this.stringify(v)}.`); }
       });
     } else if (v.diffuseImage !== undefined) {
-      if (!this.checkTexture(v.diffuseImage)) { console.error(`Invalid skybox diffuseImage ${v.diffuseImage}, ${this.stringify(v)}`); }
+      if (!this.checkTexture(v.diffuseImage)) { console.error(`Invalid skybox diffuseImage ${v.diffuseImage}, ${this.stringify(v)}.`); }
     } else {
-      console.error(`Invalid skybox, irradianceCoeffs or diffuseImage should give one, ${this.stringify(v)}`);
+      console.error(`Invalid skybox, irradianceCoeffs or diffuseImage should give one, ${this.stringify(v)}.`);
     }
-    if (!this.checkTexture(v.specularImage)) { console.error(`Invalid skybox specularImage ${v.specularImage}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.specularImageSize)) { console.error(`Invalid skybox specularImageSize ${v.specularImageSize}, ${this.stringify(v)}`); }
-    if (!this.checkPositive(v.specularMipCount)) { console.error(`Invalid skybox specularMipCount ${v.specularMipCount}, ${this.stringify(v)}`); }
+    if (!this.checkTexture(v.specularImage)) { console.error(`Invalid skybox specularImage ${v.specularImage}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.specularImageSize)) { console.error(`Invalid skybox specularImageSize ${v.specularImageSize}, ${this.stringify(v)}.`); }
+    if (!this.checkPositive(v.specularMipCount)) { console.error(`Invalid skybox specularMipCount ${v.specularMipCount}, ${this.stringify(v)}.`); }
     if (this.pow2(v.specularMipCount) > v.specularImageSize) {
-      console.error(`Invalid skybox specularMipCount or specularImageSize, ${this.stringify(v)}`);
+      console.error(`Invalid skybox specularMipCount or specularImageSize, ${this.stringify(v)}.`);
     }
   }
 
+  /**
+   * 检查 Model 插件动画轨道参数
+   * @param v - Model 插件动画轨道参数
+   * @returns
+   */
   static checkModelAnimTrackOptions (v: ModelAnimTrackOptions) {
     if (!this.checkNonnegative(v.node)) {
       console.error(`Invalid track node ${v.node}, ${this.stringify(v)}`);
@@ -1877,25 +2449,38 @@ export class CheckerHelper {
     return true;
   }
 
+  /**
+   * 检查 Model 插件动画参数
+   * @param v - Model 插件动画参数
+   */
   static assertModelAnimOptions (v: ModelAnimationOptions) {
-    if (!this.checkStringUndef(v.name)) { console.error(`Invalid animation name ${v.name}, ${this.stringify(v)}`); }
-    if (!Array.isArray(v.tracks)) { console.error(`Invalid animation tracks ${v.tracks}, ${this.stringify(v)}`); }
+    if (!this.checkStringUndef(v.name)) { console.error(`Invalid animation name ${v.name}, ${this.stringify(v)}.`); }
+    if (!Array.isArray(v.tracks)) { console.error(`Invalid animation tracks ${v.tracks}, ${this.stringify(v)}.`); }
     v.tracks.forEach(t => {
-      if (!this.checkModelAnimTrackOptions(t)) { console.error(`Invalid animation track ${t}, ${this.stringify(v)}`); }
+      if (!this.checkModelAnimTrackOptions(t)) { console.error(`Invalid animation track ${t}, ${this.stringify(v)}.`); }
     });
   }
 
+  /**
+   * 检查场景树参数
+   * @param v - 场景树参数
+   */
   static assertTreeOptions (v: ModelTreeOptions) {
-    if (!this.checkNumberUndef(v.animation)) { console.error(`Invalid tree animation ${v.animation}, ${this.stringify(v)}`); }
+    if (!this.checkNumberUndef(v.animation)) { console.error(`Invalid tree animation ${v.animation}, ${this.stringify(v)}.`); }
     if (v.animations !== undefined) {
-      if (!Array.isArray(v.animations)) { console.error(`Invalid tree animations ${v.animations}, ${this.stringify(v)}`); }
+      if (!Array.isArray(v.animations)) { console.error(`Invalid tree animations ${v.animations}, ${this.stringify(v)}.`); }
       v.animations.forEach(anim => { this.assertModelAnimOptions(anim); });
       if (v.animation !== undefined) {
-        if (v.animation < -1 || v.animation >= v.animations.length) { console.error(`Invalid tree animations ${v.animations}, ${this.stringify(v)}`); }
+        if (v.animation < -1 || v.animation >= v.animations.length) { console.error(`Invalid tree animations ${v.animations}, ${this.stringify(v)}.`); }
       }
     }
   }
 
+  /**
+   * 将对象转成 JSON 字符串，需要忽略函数和渲染相关的对象
+   * @param object - 目标对象
+   * @returns
+   */
   static stringify (object: any) {
     const simpleObject: { [k: string]: any } = {};
 
@@ -1927,6 +2512,11 @@ export class CheckerHelper {
     return JSON.stringify(simpleObject);
   }
 
+  /**
+   * 获取 2 的 index 指数结果
+   * @param index - 指数
+   * @returns
+   */
   static pow2 (index: number): number {
     let res = 1;
 
@@ -1936,8 +2526,17 @@ export class CheckerHelper {
   }
 }
 
+/**
+ * 半精度浮点数组类
+ */
 export class Float16ArrayWrapper {
+  /**
+   * 大小
+   */
   size: number;
+  /**
+   * 数组
+   */
   data: Uint16Array;
 
   constructor (size: number) {
@@ -1945,12 +2544,20 @@ export class Float16ArrayWrapper {
     this.data = new Uint16Array(size);
   }
 
+  /**
+   * 将类数值数组转成半进度浮点，并从起始索引开始添加
+   * @param number - 类数值数组
+   * @param startIndex - 起始索引
+   */
   set (number: ArrayLike<number>, startIndex: number) {
     for (let i = 0; i < number.length; i++) {
       this.data[i + startIndex] = toHalf(number[i]);
     }
   }
 
+  /**
+   * 获取数组字节数
+   */
   get bytes () {
     return this.size * 2;
   }

@@ -1,20 +1,15 @@
 // @ts-nocheck
 import type { PlayerConfig, Composition } from '@galacean/effects';
 import {
-  Player,
-  registerPlugin,
-  AbstractPlugin,
-  VFXItem,
-  spec,
-  math,
-  AssetManager,
+  Player, registerPlugin, AbstractPlugin, VFXItem, spec, math, AssetManager,
 } from '@galacean/effects';
+import { JSONConverter } from '@galacean/effects-plugin-model';
 
 const { Vector3, Matrix4 } = math;
 
 const sleepTime = 20;
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '1.4.3';  // 旧版Player版本
+const oldVersion = params.get('version') || '1.6.1';  // 旧版Player版本
 const playerOptions: PlayerConfig = {
   //env: 'editor',
   //pixelRatio: 2,
@@ -22,11 +17,10 @@ const playerOptions: PlayerConfig = {
     willCaptureImage: true,
   },
   manualRender: true,
-  willCaptureImage: true,
 };
 
 export class TestPlayer {
-  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, assetManager, oldVersion) {
+  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, assetManager, oldVersion, is3DCase) {
     this.width = width;
     this.height = height;
     //
@@ -42,6 +36,7 @@ export class TestPlayer {
     });
     this.assetManager = assetManager;
     this.oldVersion = oldVersion;
+    this.is3DCase = is3DCase;
     this.scene = undefined;
     this.composition = undefined;
     this.lastTime = 0;
@@ -51,9 +46,21 @@ export class TestPlayer {
 
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
     Math.seedrandom('mars-runtime');
-    this.player.destroyCurrentCompositions();
-    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false });
-    const json = await assetManager.loadScene(url);
+    this.clearResource();
+    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false }) as AssetManager;
+
+    let inData = url;
+
+    if (!this.oldVersion && this.is3DCase) {
+      const converter = new JSONConverter(this.player.renderer);
+
+      inData = await converter.processScene(url);
+    }
+
+    const json = await assetManager.loadScene(inData, this.player.renderer);
+
+    // TODO 兼容函数，endBehavior 改造后移除
+    compatibleCalculateItem(json.jsonScene.compositions[0]);
 
     this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
     Math.seedrandom('mars-runtime');
@@ -61,9 +68,7 @@ export class TestPlayer {
   }
 
   gotoTime (newtime) {
-
     const time = newtime;
-
     const deltaTime = time - this.lastTime;
 
     this.lastTime = newtime;
@@ -146,14 +151,19 @@ export class TestPlayer {
 
       if (particleCount > 0) {
         const subIndex = Math.floor(Math.random() * 0.9999999 * particleCount);
-        const mesh = item.particleMesh;
 
         if (typeof itemList[index].getParticleBoxes === 'function' && subIndex < item.getParticleBoxes().length) {
           const pos = item.getParticleBoxes().reverse()[subIndex].center;
 
           viewProjection.projectPoint(pos, inPosition);
         } else {
-          const pos = mesh.getPointPosition(subIndex);
+          let pos;
+
+          if (typeof item.getPointPositionByIndex === 'function') {
+            pos = item.getPointPositionByIndex(subIndex);
+          } else {
+            pos = item.particleMesh.getPointPosition(subIndex);
+          }
 
           viewProjection.projectPoint(pos, inPosition);
         }
@@ -177,6 +187,10 @@ export class TestPlayer {
     a.click();
   }
 
+  clearResource () {
+    this.player.destroyCurrentCompositions();
+  }
+
   disposeScene () {
     if (this.composition && this.composition.dispose) {
       this.composition.dispose();
@@ -198,7 +212,8 @@ export class TestPlayer {
 }
 
 export class TestController {
-  constructor () {
+  constructor (is3DCase = false) {
+    this.is3DCase = is3DCase;
     this.renderFramework = 'webgl';
     this.oldPlayer = undefined;
     this.newPlayer = undefined;
@@ -216,11 +231,11 @@ export class TestController {
       this.oldPlayer = new TestPlayer(
         width, height, window.ge.Player, playerOptions, renderFramework,
         window.ge.registerPlugin, window.ge.AbstractPlugin, window.ge.VFXItem,
-        window.ge.AssetManager, true
+        window.ge.AssetManager, true, this.is3DCase
       );
       this.newPlayer = new TestPlayer(
         width, height, Player, playerOptions, renderFramework,
-        registerPlugin, AbstractPlugin, VFXItem, AssetManager, false
+        registerPlugin, AbstractPlugin, VFXItem, AssetManager, false, this.is3DCase
       );
       console.info('Create all players');
     } else {
@@ -527,12 +542,8 @@ function compatibleCalculateItem (composition: Composition) {
   // 测试用的兼容
   composition.items.forEach(item => {
     // 兼容空节点结束行为，保持和player一致，在runtime上空节点结束为销毁改为冻结的效果
-    if (VFXItem.isNull(item) && item.endBehavior === spec.ItemEndBehavior.destroy) {
-      item.endBehavior = spec.ItemEndBehavior.forward;
-    }
-    // 兼容旧版 Player 粒子发射器为直线时形状错误
-    if (VFXItem.isParticle(item) && item.content.shape && item.content.shape.type === spec.ShapeType.EDGE) {
-      item.content.shape.width /= 2;
+    if (VFXItem.isNull(item) && item.endBehavior === spec.EndBehavior.destroy) {
+      item.endBehavior = spec.EndBehavior.forward;
     }
   });
 }

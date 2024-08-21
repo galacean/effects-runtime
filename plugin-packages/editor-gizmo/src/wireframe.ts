@@ -1,5 +1,5 @@
-import type { ShaderMarcos, Geometry, GeometryDrawMode, Engine, GLEngine, spec } from '@galacean/effects';
-import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, createShaderWithMarcos, ShaderType, math } from '@galacean/effects';
+import type { ShaderMacros, Geometry, GeometryDrawMode, Engine, GLEngine, spec } from '@galacean/effects';
+import { GLSLVersion, glContext, GLGeometry, DestroyOptions, Material, Mesh, math } from '@galacean/effects';
 
 const { Vector4 } = math;
 
@@ -15,14 +15,14 @@ export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec
       name: 'testtest',
     });
 
-  const { vertex, fragment, marcos, name } = mesh.material.props.shader;
+  const { vertex, fragment, macros, name } = mesh.material.props.shader;
   const materialOptions = { ...mesh.material.props };
-  const newMarcos = [...(marcos || [] as ShaderMarcos), ['PREVIEW_BORDER', 1]] as ShaderMarcos;
-  const level = engine.gpuCapability.level;
+  const newMacros = [...(macros || [] as ShaderMacros), ['PREVIEW_BORDER', 1]] as ShaderMacros;
 
   materialOptions.shader = {
-    vertex: createGizmoShader(newMarcos, vertex, ShaderType.vertex, level),
-    fragment: createGizmoShader(newMarcos, fragment, ShaderType.fragment, level),
+    vertex,
+    fragment,
+    macros: newMacros,
     shared: true,
     name: name + '_wireframe',
     glslVersion: engine.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
@@ -32,7 +32,7 @@ export function createParticleWireframe (engine: Engine, mesh: Mesh, color: spec
   material.depthTest = mesh.material.depthTest;
   material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
 
-  return updateWireframeMesh(mesh, Mesh.create(
+  return updateWireframeMesh(mesh.geometry, mesh.material, Mesh.create(
     engine,
     {
       geometry,
@@ -52,11 +52,15 @@ export function destroyWireframeMesh (mesh: Mesh) {
   mesh.dispose({ material: { textures: DestroyOptions.keep }, geometries: DestroyOptions.keep });
 }
 
-export function updateWireframeMesh (originMesh: Mesh, wireframe: Mesh, type: WireframeGeometryType) {
-  wireframe.material.cloneUniforms(originMesh.material);
+export function updateWireframeMesh (originGeometry: Geometry, originMaterial: Material, wireframe: Mesh, type: WireframeGeometryType) {
+  wireframe.material.cloneUniforms(originMaterial);
 
-  const geometry = originMesh.firstGeometry();
+  const geometry = originGeometry;
   const wireframeGeometry = wireframe.firstGeometry();
+
+  for (const macro of Object.keys(originMaterial.enabledMacros)) {
+    wireframe.material.enableMacro(macro, originMaterial.enabledMacros[macro]);
+  }
 
   if (type === WireframeGeometryType.triangle) {
     // 线框模式不绘制模型的时候，drawCount 为负数
@@ -104,7 +108,6 @@ function getQuadIndexData (faceCount: number, oid: Uint16Array): Uint16Array {
 }
 
 export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec3): Mesh {
-  const level = engine.gpuCapability.level;
   const geometry = new SharedGeometry(
     engine,
     {
@@ -114,14 +117,15 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
         data: new Uint32Array(0),
       },
     });
-  const { vertex, fragment, marcos } = mesh.material.props.shader;
+  const { vertex, fragment } = mesh.material.shader.shaderData;
   const materialOptions = { ...mesh.material.props };
 
-  const newMarcos = [...(marcos || [] as ShaderMarcos), ['PREVIEW_BORDER', 1]] as ShaderMarcos;
+  const newMacros = [['PREVIEW_BORDER', 1]] as ShaderMacros;
 
   materialOptions.shader = {
-    vertex: createGizmoShader(newMarcos, vertex, ShaderType.vertex, level),
-    fragment: createGizmoShader(newMarcos, fragment, ShaderType.fragment, level),
+    vertex,
+    fragment,
+    macros: newMacros,
     shared: true,
     name: (mesh.name ?? 'unamedmesh') + '_wireframe',
     glslVersion: engine.gpuCapability.level === 2 ? GLSLVersion.GLSL3 : GLSLVersion.GLSL1,
@@ -129,10 +133,10 @@ export function createModeWireframe (engine: Engine, mesh: Mesh, color: spec.vec
 
   const material = Material.create(engine, materialOptions);
 
-  material.depthTest = mesh.material.depthTest;
+  material.depthTest = true;
   material.setVector4('uPreviewColor', new Vector4(color[0], color[1], color[2], 1));
 
-  return updateWireframeMesh(mesh, Mesh.create(
+  return updateWireframeMesh(mesh.geometry, mesh.material, Mesh.create(
     engine,
     {
       geometry,
@@ -252,12 +256,4 @@ export class SharedGeometry extends GLGeometry {
     // @ts-expect-error
     this.source = null;
   }
-}
-
-function createGizmoShader (marcos: ShaderMarcos, shader: string, shaderType: ShaderType, level: number) {
-  const versionTag = /#version\s+\b\d{3}\b\s*(es)?/;
-  const shaderMatch = shader.match(versionTag);
-  const newShader = shaderMatch ? shader.substring(shaderMatch[0].length) : shader;
-
-  return createShaderWithMarcos(marcos, newShader, shaderType, level);
 }

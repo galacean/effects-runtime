@@ -1,22 +1,24 @@
-//@ts-nocheck
+import type { Renderer } from '@galacean/effects-core';
 import { TextureSourceType, RenderPass, Camera, TextureLoadAction, RenderFrame } from '@galacean/effects-core';
 import { GLRenderer, GLTexture } from '@galacean/effects-webgl';
 import { readPixels } from './texture-utils.js';
 
 const { expect } = chai;
 
-describe('renderer', () => {
-  let webglCanvas = document.createElement('canvas');
-  let webgl2Canvas = document.createElement('canvas');
+describe('webgl/renderer', () => {
+  let glCanvas = document.createElement('canvas');
+  let gl2Canvas = document.createElement('canvas');
 
   after(() => {
-    webglCanvas.remove();
-    webglCanvas = null;
-    webgl2Canvas.remove();
-    webgl2Canvas = null;
+    glCanvas.remove();
+    // @ts-expect-error
+    glCanvas = null;
+    gl2Canvas.remove();
+    // @ts-expect-error
+    gl2Canvas = null;
   });
 
-  function copy (renderer) {
+  function copy (renderer: GLRenderer) {
     setupRenderFrame(renderer);
     const pipelineContext = renderer.pipelineContext;
     const engine = renderer.engine;
@@ -30,7 +32,7 @@ describe('renderer', () => {
       },
     });
 
-    target.initialize(renderer.engine);
+    target.initialize();
     const source = new GLTexture(engine, {
       sourceType: TextureSourceType.data,
       data: {
@@ -40,7 +42,7 @@ describe('renderer', () => {
       },
     });
 
-    source.initialize(renderer.engine);
+    source.initialize();
     const data = {
       width: 1,
       height: 1,
@@ -61,7 +63,7 @@ describe('renderer', () => {
   }
 
   it('copy texture in webgl1', () => {
-    const renderer = new GLRenderer(webglCanvas, 'webgl');
+    const renderer = new GLRenderer(glCanvas, 'webgl');
 
     setupRenderFrame(renderer);
     const ex = renderer.extension;
@@ -72,8 +74,9 @@ describe('renderer', () => {
     expect(spy).has.been.called.once;
     renderer.dispose();
   });
+
   it('copy texture in webgl2', () => {
-    const renderer = new GLRenderer(webgl2Canvas, 'webgl2');
+    const renderer = new GLRenderer(gl2Canvas, 'webgl2');
     const ex = renderer.extension;
     const func = ex.copy2;
     const spy = ex.copy2 = chai.spy(func);
@@ -84,7 +87,7 @@ describe('renderer', () => {
   });
 
   it('copy texture in webgl1 will not change texture size', () => {
-    const renderer = new GLRenderer(webglCanvas, 'webgl');
+    const renderer = new GLRenderer(glCanvas, 'webgl');
     const source = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.data,
       data: {
@@ -109,7 +112,7 @@ describe('renderer', () => {
   });
 
   it('copy texture in webgl2 will not change texture size', () => {
-    const renderer = new GLRenderer(webgl2Canvas, 'webgl2');
+    const renderer = new GLRenderer(gl2Canvas, 'webgl2');
     const source = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.data,
       data: {
@@ -133,11 +136,11 @@ describe('renderer', () => {
   });
 
   it('reset fbo attachments', () => {
-    const renderer = new GLRenderer(webglCanvas, 'webgl');
+    const renderer = new GLRenderer(glCanvas, 'webgl');
     const gl = renderer.context.gl;
     const rp = new RenderPass(renderer, {
       viewport: [0, 0, 515, 512],
-      attachments: [{ texture: { format: gl.RGBA } }],
+      attachments: [{ texture: { format: gl?.RGBA } }],
     });
 
     rp.initialize(renderer);
@@ -145,19 +148,19 @@ describe('renderer', () => {
     const texture = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.framebuffer,
     });
-    const originTex = (rp.attachments[0].texture);
-    let tex = gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
+    const originTex = rp.attachments[0].texture as GLTexture;
+    let tex = gl?.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
 
     expect(tex).to.eql(originTex.textureBuffer);
     renderer.extension.resetColorAttachments(rp, [texture]);
-    tex = gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
+    tex = gl?.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
     expect(tex).to.eql((texture).textureBuffer);
     expect(originTex.isDestroyed).to.be.true;
     renderer.dispose();
   });
 
   it('safe to call destroy', async () => {
-    const renderer = new GLRenderer(webglCanvas, 'webgl');
+    const renderer = new GLRenderer(glCanvas, 'webgl');
     const gl = renderer.pipelineContext.gl;
     const texture = new GLTexture(renderer.engine, {
       sourceType: TextureSourceType.framebuffer, data: {
@@ -167,23 +170,24 @@ describe('renderer', () => {
     });
 
     texture.initialize();
-    gl.getExtension('WEBGL_lose_context').loseContext();
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
 
     window.setTimeout(() => {
       expect(renderer.glRenderer.isDestroyed).to.be.true;
       texture.dispose();
+      // @ts-expect-error protected
       expect(texture.destroyed).to.be.true;
     }, 60);
     renderer.dispose();
   });
 
   it('reset render pass color attachments', () => {
-    const renderer = new GLRenderer(webgl2Canvas, 'webgl2');
-    const gl = renderer.context.gl;
+    const renderer = new GLRenderer(gl2Canvas, 'webgl2');
+    const gl = renderer.context.gl as WebGLRenderingContext;
     const renderPass = new RenderPass(renderer, {
       attachments: [{ texture: { format: gl.RGBA } }],
     });
-    const ori = gl.checkFramebufferStatus;
+    const ori = gl?.checkFramebufferStatus;
     const spy = chai.spy(gl.checkFramebufferStatus);
 
     gl.checkFramebufferStatus = spy;
@@ -215,11 +219,10 @@ describe('renderer', () => {
   });
 });
 
-function setupRenderFrame (renderer) {
+function setupRenderFrame (renderer: Renderer) {
   renderer.renderingData.currentFrame = new RenderFrame({
     renderer,
-    camera: new Camera(),
-    renderPasses: [],
+    camera: new Camera(''),
     clearAction: {
       colorAction: TextureLoadAction.clear,
       clearColor: [0, 0, 0, 0],

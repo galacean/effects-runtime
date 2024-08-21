@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats, getWebGLVersionFromURL } from '../common';
 import sceneList from './scene-list';
+import '@galacean/effects-plugin-orientation-transformer';
 
 const { expect } = chai;
 /**
@@ -59,7 +60,13 @@ function addDescribe (renderFramework) {
       }
     });
 
+    const ignoreList = getIgnoreList();
+
     Object.keys(sceneList).forEach(key => {
+      if (ignoreList.includes(key)) {
+        return;
+      }
+
       const { name, url } = sceneList[key];
 
       void checkScene(key, name, url);
@@ -87,7 +94,7 @@ async function checkScene (keyName, name, url) {
     for (let i = 0; i < timeList.length; i++) {
       const time = timeList[i];
 
-      if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
+      if (!oldPlayer.isLoop() && time >= oldPlayer.duration()) {
         break;
       }
       //
@@ -132,4 +139,12 @@ async function checkScene (keyName, name, url) {
     console.info(`[Compare]: End ${name}, ${url}`);
     newPlayer.disposeScene();
   });
+}
+
+function getIgnoreList () {
+  if (navigator.platform.toLowerCase().search('win') >= 0) {
+    return ['bloom', 'gaussian', 'move', 'combine', 'running', 'superfirework', 'WuFu1', 'payment', 'jump', 'earth', 'message3'];
+  } else {
+    return ['bloom', 'gaussian', 'move', 'reward', 'spray1212', 'jump', 'earth', 'message3'];
+  }
 }

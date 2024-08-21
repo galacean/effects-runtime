@@ -7,8 +7,11 @@ import type { PSkyboxParams } from './skybox';
 import { PSkyboxCreator } from './skybox';
 import { WebGLHelper, MeshHelper, PluginHelper } from '../utility/plugin-helper';
 
-// 负责管理插件的WebGL相关资源加载和创建
+/**
+ * 合成缓存类，负责管理插件 WebGL 相关资源加载和创建
+ */
 export class CompositionCache {
+  // TODO: 待移除？
   private loadSkybox = false;
   // 天空盒依赖的贴图资源
   private brdfLutTexture?: Texture;
@@ -21,6 +24,10 @@ export class CompositionCache {
   private static brdfLutTexOptions?: TextureSourceOptions;
   private static skyboxOptions?: ModelSkyboxOptions;
 
+  /**
+   * 加载静态的纹理数据
+   * @returns
+   */
   static async loadStaticResources () {
     if (this.brdfLutTexOptions !== undefined) {
       // 避免重复创建
@@ -30,6 +37,12 @@ export class CompositionCache {
     this.brdfLutTexOptions = await PSkyboxCreator.getBrdfLutTextureOptions();
   }
 
+  /**
+   * 创建天空盒数据，如果传入的 params 为空，会使用内置的天空盒参数
+   * @param engine - 引擎
+   * @param params - 天空盒参数
+   * @returns 天空盒数据
+   */
   static async genSkyboxOptions (engine: Engine, params?: PSkyboxParams): Promise<ModelSkyboxOptions> {
     let newParams = params;
 
@@ -49,12 +62,16 @@ export class CompositionCache {
     this.renderPassCache = new Map();
   }
 
+  /**
+   * 记录是否加载天空盒，缓存天空盒相关的查询纹理
+   * @param loadSkybox - 是否加载天空盒
+   */
   setup (loadSkybox: boolean) {
     this.loadSkybox = loadSkybox;
 
     if (this.brdfLutTexture === undefined || this.brdfLutTexture.isDestroyed) {
       if (CompositionCache.brdfLutTexOptions === undefined) {
-        throw new Error('Please load brdfLutTexOptions at first');
+        throw new Error('Please load brdfLutTexOptions at first.');
       }
       //
       const brdfLutTextureName = 'brdfLutTexture';
@@ -65,14 +82,30 @@ export class CompositionCache {
     }
   }
 
+  /**
+   * 获取缓存的纹理对象
+   * @param name - 名称
+   * @returns 纹理对象
+   */
   getTexture (name: string): Texture | undefined {
     return this.textureCache.get(name);
   }
 
+  /**
+   * 设置纹理对象缓存
+   * @param name - 名称
+   * @param tex - 纹理对象
+   */
   setTexture (name: string, tex: Texture) {
     this.textureCache.set(name, tex);
   }
 
+  /**
+   * 获取或者创建纹理对象
+   * @param name - 名称
+   * @param options - 纹理参数
+   * @returns 纹理对象
+   */
   getOrCreateTexture (name: string, options: TextureSourceOptions): Texture {
     const tex = this.textureCache.get(name);
 
@@ -86,6 +119,11 @@ export class CompositionCache {
     return newTex;
   }
 
+  /**
+   * 根据名称删除纹理对象
+   * @param name - 名称
+   * @returns 是否删除成功
+   */
   deleteTexture (name: string): boolean {
     const tex = this.textureCache.get(name);
 
@@ -96,6 +134,13 @@ export class CompositionCache {
     return this.textureCache.delete(name);
   }
 
+  /**
+   * 获取或者创建几何体
+   * @param name - 名称
+   * @param geomJson - 几何体参数
+   * @param bins - 几何体数据
+   * @returns 几何体
+   */
   getOrCreateGeometry (name: string, geomJson: spec.GeometryOptionsJSON, bins: ArrayBuffer[]): Geometry {
     const cachedGeom = this.geometryCache.get(name);
 
@@ -110,14 +155,20 @@ export class CompositionCache {
     return geom;
   }
 
-  getFilterMesh (name: string, material: PMaterialBase, uniformSemantics: Record<string, any>): Mesh {
+  /**
+   * 获取滤波 Mesh
+   * @param name - 名称
+   * @param material - 材质
+   * @returns
+   */
+  getFilterMesh (name: string, material: PMaterialBase): Mesh {
     const cachedMesh = this.meshCache.get(name);
 
     if (cachedMesh !== undefined) {
       return cachedMesh;
     }
 
-    const mesh = MeshHelper.createFilterMesh(this.engine, name, material, uniformSemantics);
+    const mesh = MeshHelper.createFilterMesh(this.engine, name, material);
 
     this.meshCache.set(name, mesh);
 
@@ -132,6 +183,14 @@ export class CompositionCache {
     return this.getRenderPass(name, priority, meshList, fboOptions);
   }
 
+  /**
+   * 获取渲染 Pass
+   * @param name - 名称
+   * @param priority - 优先级
+   * @param meshList - Mesh 列表
+   * @param fboOptions - FBO 参数
+   * @returns
+   */
   getRenderPass (name: string, priority: number, meshList: Mesh[], fboOptions: FBOOptions): RenderPass {
     const cachedPass = this.renderPassCache.get(name);
 
@@ -150,6 +209,9 @@ export class CompositionCache {
     }
   }
 
+  /**
+   * 销毁缓存，释放所有缓存的对象
+   */
   dispose () {
     // @ts-expect-error
     this.engine = null;
@@ -175,6 +237,10 @@ export class CompositionCache {
     this.renderPassCache.clear();
   }
 
+  /**
+   * 获取所有的渲染 Pass
+   * @returns
+   */
   getRenderPasses (): RenderPass[] {
     const resList: RenderPass[] = [];
 
@@ -185,10 +251,18 @@ export class CompositionCache {
     return resList;
   }
 
+  /**
+   * 获取纹理对象，用户 IBL 渲染
+   * @returns
+   */
   getBrdfLutTexture (): Texture | undefined {
     return this.brdfLutTexture;
   }
 
+  /**
+   * 获取天空盒参数
+   * @returns
+   */
   getSkyboxOptions (): ModelSkyboxOptions | undefined {
     return CompositionCache.skyboxOptions;
   }

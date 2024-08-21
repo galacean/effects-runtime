@@ -4,7 +4,7 @@
   "description": "Galacean Effects runtime threejs plugin for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
-  "brower": "./dist/index.min.js",
+  "browser": "./dist/index.min.js",
   "types": "./dist/index.d.ts",
   "files": [
     "dist"
@@ -20,8 +20,8 @@
     "prebuild": "pnpm clean",
     "build": "pnpm build:declaration && pnpm build:module",
     "build:module": "rollup -c",
-    "build:declaration": "tsc -d --declarationDir dist --emitDeclarationOnly",
-    "clean": "rimraf dist && rimraf '*+(.tsbuildinfo)'",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
     "prepublishOnly": "pnpm build"
   },
   "contributors": [

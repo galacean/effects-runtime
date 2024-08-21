@@ -72,4 +72,24 @@ function render () {
 render();
 ```
 
+## Event System
+
+The event system of ThreeDisplayObject is inherited from THREE.js, and events are triggered in the form of dispatch. Refer to the code below:
+
+```ts
+import { ThreeDisplayObject } from '@galacean/effects-threejs';
+
+const displayObject = new ThreeDisplayObject(renderer.getContext(), { width, height });
+// Load Galacean Effects product
+const composition = await displayObject.loadScene('./xxx.json');
+// Add the drawing object to the THREE scene
+scene.add(displayObject);
+
+// Using the end event as an example, refer to the above links for other events
+displayObject.addEventListener('end', () => {
+  // Example code
+  console.info('composition is end');
+});
+```
+
 ## [API Documentation](https://galacean.antgroup.com/effects/#/api/modules_galacean_effects_threejs)

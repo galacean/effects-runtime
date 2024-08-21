@@ -1,6 +1,7 @@
 import type * as spec from '@galacean/effects-specification';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { keyframeInfo } from './keyframe-info';
 import { decimalEqual, numberToFix } from './utils';
 import { assertExist } from '../utils';
@@ -225,6 +226,35 @@ export class BezierPath {
   }
 
 }
+
+export class BezierQuat {
+  private temp = new Quaternion();
+  public readonly totalLength: number;
+
+  constructor (public p1: Quaternion, public p2: Quaternion, public p3: Quaternion, public p4: Quaternion) {
+    this.totalLength = 0;
+  }
+
+  /**
+   * 获取路径在指定比例长度上点的坐标
+   * @param percent 路径长度的比例
+   */
+  getPointInPercent (percent: number) {
+    if (percent === 0) {
+      return this.temp.copyFrom(this.p1);
+    }
+
+    if (decimalEqual(1 - percent, 0)) {
+      return this.temp.copyFrom(this.p2);
+    }
+
+    QuaternionInner.slerpFlat(this.temp, this.p1, this.p2, percent);
+
+    return this.temp;
+  }
+
+}
+
 export class BezierEasing {
   private precomputed = false;
   private mSampleValues: number[];
@@ -316,19 +346,19 @@ export function buildEasingCurve (leftKeyframe: spec.BezierKeyframeValue, rightK
   }
 
   if (x1 < 0) {
-    console.error('invalid bezier points, x1 < 0', p0, p1, p2, p3);
+    console.error('Invalid bezier points, x1 < 0', p0, p1, p2, p3);
     x1 = 0;
   }
   if (x2 < 0) {
-    console.error('invalid bezier points, x2 < 0', p0, p1, p2, p3);
+    console.error('Invalid bezier points, x2 < 0', p0, p1, p2, p3);
     x2 = 0;
   }
   if (x1 > 1) {
-    console.error('invalid bezier points, x1 >= 1', p0, p1, p2, p3);
+    console.error('Invalid bezier points, x1 >= 1', p0, p1, p2, p3);
     x1 = 1;
   }
   if (x2 > 1) {
-    console.error('invalid bezier points, x2 >= 1', p0, p1, p2, p3);
+    console.error('Invalid bezier points, x2 >= 1', p0, p1, p2, p3);
     x2 = 1;
   }
 
@@ -417,5 +447,77 @@ export function getControlPoints (
     return { type: 'ease', p0, p1: p2, p2: p3, p3: p1, isHold: leftHoldLine || rightHoldLine, leftHoldLine, rightHoldLine };
   } else {
     return { type: 'line', p0, p1, isHold: leftHoldLine || rightHoldLine, leftHoldLine, rightHoldLine };
+  }
+}
+
+class QuaternionInner {
+
+  static slerpFlat (dst: Quaternion, src0: Quaternion, src1: Quaternion, t: number) {
+    // fuzz-free, array-based Quaternion SLERP operation
+    let x0 = src0.x;
+    let y0 = src0.y;
+    let z0 = src0.z;
+    let w0 = src0.w;
+
+    const x1 = src1.x;
+    const y1 = src1.y;
+    const z1 = src1.z;
+    const w1 = src1.w;
+
+    if (t === 0) {
+      dst.x = x0;
+      dst.y = y0;
+      dst.z = z0;
+      dst.w = w0;
+
+      return;
+    }
+
+    if (t === 1) {
+      dst.x = x1;
+      dst.y = y1;
+      dst.z = z1;
+      dst.w = w1;
+
+      return;
+    }
+
+    if (w0 !== w1 || x0 !== x1 || y0 !== y1 || z0 !== z1) {
+      let s = 1 - t;
+      const cos = x0 * x1 + y0 * y1 + z0 * z1 + w0 * w1;
+      const dir = (cos >= 0 ? 1 : - 1);
+      const sqrSin = 1 - cos * cos;
+
+      // Skip the Slerp for tiny steps to avoid numeric problems:
+      if (sqrSin > Number.EPSILON) {
+        const sin = Math.sqrt(sqrSin);
+        const len = Math.atan2(sin, cos * dir);
+
+        s = Math.sin(s * len) / sin;
+        t = Math.sin(t * len) / sin;
+      }
+
+      const tDir = t * dir;
+
+      x0 = x0 * s + x1 * tDir;
+      y0 = y0 * s + y1 * tDir;
+      z0 = z0 * s + z1 * tDir;
+      w0 = w0 * s + w1 * tDir;
+
+      // Normalize in case we just did a lerp:
+      if (s === 1 - t) {
+        const f = 1 / Math.sqrt(x0 * x0 + y0 * y0 + z0 * z0 + w0 * w0);
+
+        x0 *= f;
+        y0 *= f;
+        z0 *= f;
+        w0 *= f;
+      }
+    }
+
+    dst.x = x0;
+    dst.y = y0;
+    dst.z = z0;
+    dst.w = w0;
   }
 }

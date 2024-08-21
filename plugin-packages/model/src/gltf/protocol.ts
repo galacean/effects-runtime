@@ -1,4 +1,5 @@
 import type {
+  GLTFResources,
   GLTFMaterial,
   GLTFPrimitive,
   GLTFLight,
@@ -10,14 +11,16 @@ import type {
   GLTFImageBasedLight,
 } from '@vvfx/resource-detection';
 import type { CubeImage } from '@vvfx/resource-detection/dist/src/gltf-tools/gltf-image-based-light';
-import type { GLTFResources } from '@vvfx/resource-detection/dist/src/gltf-tools';
-import type { spec, Renderer, Texture, Geometry } from '@galacean/effects';
+import type {
+  spec, TextureSourceOptions, EffectComponentData,
+  Texture, Geometry,
+} from '@galacean/effects';
 import type {
   ModelAnimationOptions,
   ModelMaterialOptions,
   ModelSkyboxOptions,
   ModelTreeOptions,
-  ModelBaseItem,
+  ModelLightComponentData, ModelCameraComponentData, ModelSkyboxComponentData,
 } from '../index';
 
 /**
@@ -34,9 +37,9 @@ export interface LoadSceneOptions {
      */
     resource: string | Uint8Array | GLTFResources,
     /**
-     * 兼容模式，目前只支持tiny3d
+     * 兼容模式，目前支持 gltf 和 tiny3d
      */
-    compatibleMode?: 'gltf' | 'tiny3d' | 'oasis',
+    compatibleMode?: 'gltf' | 'tiny3d',
     /**
      * 检查ResourceDetection序列化和反序列逻辑
      */
@@ -56,21 +59,17 @@ export interface LoadSceneOptions {
   },
   effects: {
     /**
-     * Renderer
-     */
-    renderer?: Renderer,
-    /**
      * 播放时间，单位秒
      */
     duration?: number,
     /**
      * 结束行为
      */
-    endBehavior?: spec.ItemEndBehavior,
+    endBehavior?: spec.EndBehavior,
     /**
      * 播放动画索引或名称
      */
-    playAnimation?: number | string,
+    playAnimation?: number,
     /**
      * 是否播放全部动画
      */
@@ -80,23 +79,76 @@ export interface LoadSceneOptions {
 
 export interface LoadSceneResult {
   source: string,
-  items: ModelBaseItem[],
+  jsonScene: spec.JSONScene,
   sceneAABB: {
     min: spec.vec3,
     max: spec.vec3,
   },
 }
 
-export interface LoaderOptions {
-  compatibleMode?: 'gltf' | 'tiny3d' | 'oasis',
-}
-
 export type SkyboxType = 'NFT' | 'FARM';
 
-export interface Loader {
+export interface ModelCamera {
+  fov: number,
+  near: number,
+  far: number,
+  clipMode: spec.CameraClipMode,
+  //
+  name: string,
+  position: spec.vec3,
+  rotation: spec.vec3,
+  duration: number,
+  endBehavior: spec.EndBehavior,
+}
 
+export interface ModelLight {
+  lightType: spec.LightType,
+  color: spec.ColorData,
+  intensity: number,
+  range?: number,
+  innerConeAngle?: number,
+  outerConeAngle?: number,
+  //
+  name: string,
+  position: spec.vec3,
+  rotation: spec.vec3,
+  scale: spec.vec3,
+  duration: number,
+  endBehavior: spec.EndBehavior,
+}
+
+export interface ModelSkybox {
+  skyboxType?: string,
+  renderable?: boolean,
+  intensity?: number,
+  reflectionsIntensity?: number,
+  duration?: number,
+}
+
+export interface ModelImageLike {
+  name?: string,
+  width: number,
+  height: number,
+}
+
+export interface Loader {
   loadScene (options: LoadSceneOptions): Promise<LoadSceneResult>,
 
+  processGLTFResource (resource: GLTFResources, imageElements: ModelImageLike[]): void,
+
+  processComponentData (components: EffectComponentData[]): void,
+
+  processLightComponentData (light: ModelLightComponentData): void,
+
+  processCameraComponentData (camera: ModelCameraComponentData): void,
+
+  processSkyboxComponentData (skybox: ModelSkyboxComponentData): void,
+
+  processMaterialData (material: spec.MaterialData): void,
+
+  processTextureOptions (options: TextureSourceOptions, isBaseColor: boolean, image?: ModelImageLike): void,
+
+  // for old scene compatibility
   processLight (lights: GLTFLight[], fromGLTF: boolean): void,
 
   processCamera (cameras: GLTFCamera[], fromGLTF: boolean): void,
@@ -124,5 +176,4 @@ export interface Loader {
   scaleColorVal (val: number, fromGLTF: boolean): number,
 
   scaleColorVec (vec: number[], fromGLTF: boolean): number[],
-
 }

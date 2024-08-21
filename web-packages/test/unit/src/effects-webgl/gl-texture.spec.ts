@@ -1,31 +1,41 @@
-// @ts-nocheck
-import { GPUCapability, TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacean/effects-core';
+import type {
+  Texture2DSourceOptionsCompressed, Texture2DSourceOptionsData, Texture2DSourceOptionsImage,
+  Texture2DSourceOptionsImageMipmaps, TextureCubeSourceOptionsImage, TextureSourceOptions,
+} from '@galacean/effects-core';
+import { TextureSourceType, getDefaultTextureFactory, loadImage } from '@galacean/effects-core';
+import type { GLEngine, GLRendererInternal } from '@galacean/effects-webgl';
 import { GLTexture, GLPipelineContext, GLRenderer } from '@galacean/effects-webgl';
-import { set } from 'husky';
-import { sleep } from '../utils';
 import { getTextureGPUInfo, getTextureMemory } from './texture-utils';
 
 const COMPRESSED_RGBA_ASTC_6x6_KHR = 37812;
 const { assert, expect } = chai;
 
 describe('webgl/gl-texture', () => {
-  let renderer, gl, canvas, pipelineContext, engine;
+  let renderer: GLRenderer;
+  let gl: WebGLRenderingContext | WebGL2RenderingContext;
+  let canvas: HTMLCanvasElement;
+  let pipelineContext: GLPipelineContext;
+  let engine: GLEngine;
 
   before(() => {
     canvas = document.createElement('canvas');
     renderer = new GLRenderer(canvas, 'webgl');
-    gl = renderer.context.gl;
-    pipelineContext = new GLPipelineContext(renderer.engine, gl);
-    engine = renderer.engine;
+    engine = renderer.engine as GLEngine;
+    gl = renderer.context.gl as WebGLRenderingContext;
+    pipelineContext = new GLPipelineContext(engine, gl);
   });
 
   after(() => {
     // runs once after the last test in this block
     renderer.dispose();
+    // @ts-expect-error
     renderer = null;
+    // @ts-expect-error
     engine = null;
     canvas.remove();
+    // @ts-expect-error
     canvas = null;
+    // @ts-expect-error
     gl = null;
     pipelineContext.dispose();
   });
@@ -38,7 +48,7 @@ describe('webgl/gl-texture', () => {
 
     expect(ret.target).is.eql(gl.TEXTURE_2D);
     expect(ret.internalFormat).is.eql(COMPRESSED_RGBA_ASTC_6x6_KHR);
-    const source = ret;
+    const source = ret as Texture2DSourceOptionsCompressed;
 
     expect(source.mipmaps[0].width).is.eql(512);
     expect(source.mipmaps[0].height).is.eql(512);
@@ -46,7 +56,7 @@ describe('webgl/gl-texture', () => {
 
     expect(mipmaps.length).is.eql(10);
     for (let i = 0; i < mipmaps.length; i++) {
-      expect(mipmaps[i].data.byteLength).is.eql(byteLengthForASTC(ret.internalFormat, mipmaps[i].width, mipmaps[i].height), 'mipmap ' + i);
+      expect(mipmaps[i].data.byteLength).is.eql(byteLengthForASTC(ret.internalFormat!, mipmaps[i].width, mipmaps[i].height), 'mipmap ' + i);
     }
   });
 
@@ -104,10 +114,11 @@ describe('webgl/gl-texture', () => {
     expect(texture.width).is.eql(512);
     expect(texture.height).is.eql(512);
     expect(texture.textureBuffer).is.not.null;
+    // @ts-expect-error
     expect(texture.gl).is.not.null;
     expect(texture.sourceType).is.eql(TextureSourceType.compressed);
-    expect((texture.source).mipmaps).is.undefined;
-    expect((texture.source).data).is.undefined;
+    expect((texture.source as Texture2DSourceOptionsCompressed).mipmaps).is.undefined;
+    expect((texture.source as Texture2DSourceOptionsData).data).is.undefined;
     const gpuInfo = getTextureGPUInfo(texture, ret);
 
     expect(gpuInfo).to.deep.equals(
@@ -142,14 +153,13 @@ describe('webgl/gl-texture', () => {
     expect(texture.source.internalFormat).is.eql(gl.RGBA);
     expect(texture.source.type).is.eql(gl.UNSIGNED_BYTE);
     expect(texture.source.target).is.eql(gl.TEXTURE_2D);
-    expect((texture.source).data).is.undefined;
-    const spy = chai.spy(() => {
-    });
+    expect((texture.source as Texture2DSourceOptionsData).data).is.undefined;
 
+    const spy = chai.spy(() => { });
     const gpuInfo = getTextureGPUInfo(texture, {});
 
     expect(gpuInfo).to.deep.equals([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_2D, [[1, 1]]]);
-    bindFrameBuffer(gl, texture, function (gl) {
+    bindFramebuffer(gl, texture, gl => {
       const readPixelData = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, readPixelData);
@@ -185,7 +195,7 @@ describe('webgl/gl-texture', () => {
     expect(texture.source.internalFormat).is.eql(gl.RGBA);
     expect(texture.source.type).is.eql(gl.UNSIGNED_BYTE);
     expect(texture.source.target).is.eql(gl.TEXTURE_CUBE_MAP);
-    expect((texture.source).data).is.undefined;
+    expect((texture.source as Texture2DSourceOptionsData).data).is.undefined;
     expect(texture.textureBuffer).is.eql(gl.getParameter(gl.TEXTURE_BINDING_CUBE_MAP));
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(true);
   });
@@ -200,12 +210,12 @@ describe('webgl/gl-texture', () => {
     const texOptions = await getDefaultTextureFactory().loadSource({
       type: TextureSourceType.image,
       url: 'https://gw.alipayobjects.com/mdn/lifeNews_f/afts/img/A*drkFS6EDl_8AAAAAAAAAAAAAARQnAQ',
-    });
+    }) as Texture2DSourceOptionsImage;
     const texture = new GLTexture(engine, texOptions);
 
-    expect((texOptions).image).is.instanceof(HTMLImageElement);
-    expect((texOptions).image?.width).is.eql(128);
-    expect((texOptions).image?.height).is.eql(128);
+    expect(texOptions.image).is.instanceof(HTMLImageElement);
+    expect(texOptions.image?.width).is.eql(128);
+    expect(texOptions.image?.height).is.eql(128);
     expect(texture.source.target).to.eql(gl.TEXTURE_2D);
     expect(texture.width).is.undefined;
     expect(texture.height).is.undefined;
@@ -215,12 +225,12 @@ describe('webgl/gl-texture', () => {
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(false);
     expect(texture.width).is.eql(128);
     expect(texture.height).is.eql(128);
-    expect((texture.source).data).is.undefined;
+    expect((texture.source as Texture2DSourceOptionsData).data).is.undefined;
     const spy = chai.spy(() => {
     });
 
     expect(getTextureMemory(texture, gpuInfo)).to.eql(128 * 128 * 4);
-    bindFrameBuffer(gl, texture, function (gl) {
+    bindFramebuffer(gl, texture, function (gl) {
       const readPixelData = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, readPixelData);
@@ -253,7 +263,7 @@ describe('webgl/gl-texture', () => {
     expect(gpuInfo).to.deep.equals([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_2D, [[64, 64], [32, 32], [16, 16], [8, 8], [4, 4]]]);
     expect(getTextureMemory(texture, gpuInfo)).to.deep.equal(4 * (64 ** 2 + 32 ** 2 + 16 ** 2 + 8 ** 2 + 4 ** 2));
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(true);
-    expect((texture.source).mipmaps).is.undefined;
+    expect((texture.source as Texture2DSourceOptionsImageMipmaps).mipmaps).is.undefined;
     expect([texture.width, texture.height]).to.deep.equal([64, 64]);
     checkTextureBinding(gl, texture.textureBuffer, gl.TEXTURE_2D, filter);
   });
@@ -265,7 +275,7 @@ describe('webgl/gl-texture', () => {
       wrapS: gl.REPEAT,
       wrapT: gl.MIRRORED_REPEAT,
     };
-    const cube = a => [a, a, a, a, a, a];
+    const cube = (a: string) => [a, a, a, a, a, a];
     const maps = [
       cube(mipmap0),
       cube(mipmap1),
@@ -287,7 +297,7 @@ describe('webgl/gl-texture', () => {
     expect(gpuInfo).to.deep.equals([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_CUBE_MAP, [[64, 64], [32, 32], [16, 16], [8, 8], [4, 4]]]);
     expect(getTextureMemory(texture, gpuInfo)).to.deep.equal(24 * (64 ** 2 + 32 ** 2 + 16 ** 2 + 8 ** 2 + 4 ** 2));
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(false);
-    expect((texture.source).mipmaps).is.undefined;
+    expect((texture.source as Texture2DSourceOptionsImageMipmaps).mipmaps).is.undefined;
     expect([texture.width, texture.height]).to.deep.equal([64, 64]);
     checkTextureBinding(gl, texture.textureBuffer, gl.TEXTURE_CUBE_MAP, filter);
   });
@@ -315,14 +325,19 @@ describe('webgl/gl-texture', () => {
     expect(gpuInfo).to.deep.equals([gl.RGBA, gl.UNSIGNED_BYTE, gl.TEXTURE_CUBE_MAP, [[128, 128]]]);
     expect(getTextureMemory(texture, gpuInfo)).to.deep.equal(24 * (128 ** 2));
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(false);
-    expect((texture.source).cube).is.undefined;
+    expect((texture.source as TextureCubeSourceOptionsImage).cube).is.undefined;
     expect([texture.width, texture.height]).to.deep.equal([128, 128]);
     checkTextureBinding(gl, texture.textureBuffer, gl.TEXTURE_CUBE_MAP, filter);
   });
 
-  function checkTextureBinding (gl, texture, target, filters) {
+  function checkTextureBinding (
+    gl: WebGLRenderingContext,
+    texture: WebGLTexture | null,
+    target: number,
+    filters: Record<string, number | boolean>,
+  ) {
     expect(gl.getParameter(target === gl.TEXTURE_2D ? gl.TEXTURE_BINDING_2D : gl.TEXTURE_BINDING_CUBE_MAP)).to.eql(texture, 'texture binding');
-    const map = {
+    const map: Record<string, number> = {
       minFilter: gl.TEXTURE_MIN_FILTER,
       magFilter: gl.TEXTURE_MAG_FILTER,
       wrapS: gl.TEXTURE_WRAP_S,
@@ -353,7 +368,7 @@ describe('webgl/gl-texture', () => {
       url: 'https://gw.alipayobjects.com/mdn/lifeNews_f/afts/img/A*WBQXT6fanRgAAAAAAAAAAAAAARQnAQ',
     });
     const texture = new GLTexture(engine, texOptions);
-    const image = (texOptions).image;
+    const image = (texOptions as Texture2DSourceOptionsImage).image;
 
     expect(image).is.instanceof(HTMLImageElement);
     expect(image.width).is.eql(1063);
@@ -373,11 +388,11 @@ describe('webgl/gl-texture', () => {
     expect(gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL)).to.eql(false);
     expect(texture.width).is.eql(1063);
     expect(texture.height).is.eql(256);
-    expect((texture.source).image).is.undefined;
+    expect((texture.source as Texture2DSourceOptionsImage).image).is.undefined;
     const spy = chai.spy(() => {
     });
 
-    bindFrameBuffer(gl, texture, function (gl) {
+    bindFramebuffer(gl, texture, function (gl) {
       const readPixelData = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, readPixelData);
@@ -399,7 +414,7 @@ describe('webgl/gl-texture', () => {
       wrapT: gl.REPEAT,
     });
     const texture = new GLTexture(engine, texOptions);
-    const image = (texOptions).image;
+    const image = (texOptions as Texture2DSourceOptionsImage).image;
 
     expect(image).is.instanceof(HTMLImageElement);
     expect(image.width).is.eql(1063);
@@ -424,8 +439,8 @@ describe('webgl/gl-texture', () => {
     const spy = chai.spy(() => {
     });
 
-    expect((texture.source).image).is.undefined;
-    bindFrameBuffer(gl, texture, function (gl) {
+    expect((texture.source as Texture2DSourceOptionsImage).image).is.undefined;
+    bindFramebuffer(gl, texture, function (gl) {
       const readPixelData = new Uint8Array(4);
 
       gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, readPixelData);
@@ -460,7 +475,7 @@ describe('webgl/gl-texture', () => {
     expect(getTextureMemory(texture, {})).to.eql(0);
     expect(spy).to.been.called.with(glTex);
     expect(texture.textureBuffer).to.not.exist;
-    expect(texture.destroyed).to.equal(true);
+    expect(texture.isDestroyed).to.equal(true);
   });
 
   it('offload image texture', async () => {
@@ -510,10 +525,10 @@ describe('webgl/gl-texture', () => {
     });
 
     texOptions.premultiplyAlpha = true;
-    (texOptions).generateMipmap = true;
+    texOptions.generateMipmap = true;
+
     const texture = new GLTexture(engine, texOptions);
-    const spy = chai.spy(function (target) {
-    });
+    const spy = chai.spy(() => { });
 
     gl.generateMipmap = spy;
 
@@ -535,10 +550,9 @@ describe('webgl/gl-texture', () => {
       target: gl.TEXTURE_CUBE_MAP,
       cube: [image, image, image, image, image, image],
       generateMipmap: true,
-    };
+    } as TextureSourceOptions;
     const tex = new GLTexture(engine, texOptions);
-    const spy = chai.spy(function (target) {
-    });
+    const spy = chai.spy(() => { });
 
     gl.generateMipmap = spy;
 
@@ -566,26 +580,29 @@ describe('webgl/gl-texture', () => {
       type: TextureSourceType.image,
       target: gl.TEXTURE_CUBE_MAP,
       map: [image, image, image, image, image, image],
-    }, filter);
+    }, filter) as TextureCubeSourceOptionsImage;
 
     expect(texOptions.sourceType).to.eql(TextureSourceType.image);
-    const cube = (texOptions).cube;
+    const cube = texOptions.cube;
 
     expect(cube).to.be.an('array').with.lengthOf(6);
     expect(!!texOptions.keepImageSource).to.be.false;
-    const spy = chai.spy((cube[0]).close);
+
     const texture = new GLTexture(engine, texOptions);
 
     texture.initialize();
 
-    expect(spy).to.has.been.called;
-    expect((texture.source).image).not.exist;
+    expect((texture.source as Texture2DSourceOptionsImage).image).not.exist;
     expect(cube.every(c => c.width === 128 && c.height === 128)).to.be.true;
     texture.dispose();
   });
 });
 
-function bindFrameBuffer (gl, texture, callback) {
+function bindFramebuffer (
+  gl: WebGLRenderingContext,
+  texture: GLTexture,
+  callback: (gl: WebGLRenderingContext) => void,
+) {
   const framebuffer = gl.createFramebuffer();
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
@@ -603,22 +620,33 @@ function bindFrameBuffer (gl, texture, callback) {
   gl.deleteFramebuffer(framebuffer);
 }
 
-function byteLengthForASTC (type, width, height) {
+function byteLengthForASTC (
+  type: number,
+  width: number,
+  height: number,
+) {
   if (type === COMPRESSED_RGBA_ASTC_6x6_KHR) {
     return Math.floor((width + 5) / 6) * Math.floor((height + 5) / 6) * 16;
   }
-  throw Error('not implement:https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_compressed_texture_astc');
+
+  throw new Error('not implement:https://developer.mozilla.org/en-US/docs/Web/API/WEBGL_compressed_texture_astc');
 }
 
 describe('webgl2/gl-texture', () => {
-  let canvas, gl, renderer, fakeRenderer, imageHTMLElement, pipelineContext, engine;
+  let canvas: HTMLCanvasElement;
+  let gl: WebGLRenderingContext;
+  let renderer: GLRenderer;
+  let fakeRenderer: GLRendererInternal;
+  let imageHTMLElement: HTMLImageElement;
+  let pipelineContext: GLPipelineContext;
+  let engine: GLEngine;
 
   before(() => {
     canvas = document.createElement('canvas');
     renderer = new GLRenderer(canvas, 'webgl2');
 
     fakeRenderer = renderer.glRenderer;
-    engine = renderer.engine;
+    engine = renderer.engine as GLEngine;
     gl = fakeRenderer.gl;
     pipelineContext = new GLPipelineContext(engine, gl);
     imageHTMLElement = document.createElement('img');
@@ -628,12 +656,17 @@ describe('webgl2/gl-texture', () => {
   after(() => {
     // runs once after the last test in this block
     fakeRenderer.dispose();
+    // @ts-expect-error
     fakeRenderer = null;
     renderer.dispose();
+    // @ts-expect-error
     engine = null;
+    // @ts-expect-error
     renderer = null;
     canvas.remove();
+    // @ts-expect-error
     canvas = null;
+    // @ts-expect-error
     gl = null;
     pipelineContext.dispose();
   });

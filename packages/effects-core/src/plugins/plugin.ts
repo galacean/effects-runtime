@@ -1,6 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import type { SceneLoadOptions } from '../asset-manager';
-import type { Scene } from '../scene';
+import type { Scene, SceneLoadOptions } from '../scene';
 import type { VFXItem } from '../vfx-item';
 import type { RenderFrame, Renderer } from '../render';
 import type { Composition } from '../composition';
@@ -25,7 +24,7 @@ export interface Plugin {
    * @param composition
    * @param item
    */
-  onCompositionItemLifeBegin: (composition: Composition, item: VFXItem<any>) => void,
+  onCompositionItemLifeBegin: (composition: Composition, item: VFXItem) => void,
 
   /**
    * 合成生命周期结束时触发（无论结束行为）
@@ -33,7 +32,7 @@ export interface Plugin {
    * @param composition
    * @param item
    */
-  onCompositionItemLifeEnd: (composition: Composition, item: VFXItem<any>) => void,
+  onCompositionItemLifeEnd: (composition: Composition, item: VFXItem) => void,
 
   /**
    * 合成销毁时触发（当合成的结束行为是冻结、循环或合成配置了 reusable 时不触发）
@@ -41,7 +40,7 @@ export interface Plugin {
    * @param composition
    * @param item
    */
-  onCompositionItemRemoved: (composition: Composition, item: VFXItem<any>) => void,
+  onCompositionItemRemoved: (composition: Composition, item: VFXItem) => void,
 
   /**
    * 合成重播时的回调
@@ -134,11 +133,11 @@ export abstract class AbstractPlugin implements Plugin {
 
   onCompositionConstructed (composition: Composition, scene: Scene): void { }
 
-  onCompositionItemLifeBegin (composition: Composition, item: VFXItem<any>): void { }
+  onCompositionItemLifeBegin (composition: Composition, item: VFXItem): void { }
 
-  onCompositionItemLifeEnd (composition: Composition, item: VFXItem<any>): void { }
+  onCompositionItemLifeEnd (composition: Composition, item: VFXItem): void { }
 
-  onCompositionItemRemoved (composition: Composition, item: VFXItem<any>): void { }
+  onCompositionItemRemoved (composition: Composition, item: VFXItem): void { }
 
   onCompositionReset (composition: Composition, frame: RenderFrame): void { }
 

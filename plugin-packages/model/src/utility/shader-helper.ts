@@ -1,6 +1,32 @@
 import { StandardShader } from '../runtime/shader-libs/standard-shader';
 import type { PShaderContext, PShaderResults } from '../runtime/shader';
+import { PMaterialType } from '../runtime';
 
+export function fetchPBRShaderCode (): PShaderResults {
+  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.pbr);
+  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.pbr);
+
+  return {
+    vertexShaderCode,
+    fragmentShaderCode,
+  };
+}
+
+export function fetchUnlitShaderCode (): PShaderResults {
+  const vertexShaderCode = StandardShader.genVertexShaderCode(PMaterialType.unlit);
+  const fragmentShaderCode = StandardShader.genFragmentShaderCode(PMaterialType.unlit);
+
+  return {
+    vertexShaderCode,
+    fragmentShaderCode,
+  };
+}
+
+/**
+ * 获取 PBR 材质着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getPBRPassShaderCode (context: PShaderContext): PShaderResults {
   const vertexShaderCode = StandardShader.getVertexShaderCode(context);
   const fragmentShaderCode = StandardShader.getFragmentShaderCode(context);
@@ -21,6 +47,11 @@ export function getShadowPassShaderCode (context: PShaderContext): PShaderResult
   };
 }
 
+/**
+ * 获取天空盒着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getSkyBoxShaderCode (context: PShaderContext): PShaderResults {
   const vertexShaderCode = StandardShader.getVertexShaderCode(context);
   const fragmentShaderCode = StandardShader.getFragmentShaderCode(context);
@@ -31,15 +62,20 @@ export function getSkyBoxShaderCode (context: PShaderContext): PShaderResults {
   };
 }
 
+/**
+ * 获取四边形滤波着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getQuadFilterShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
     precision highp float;
-    uniform sampler2D u_ColorSampler;
+    uniform sampler2D _ColorSampler;
 
     varying vec2 v_UVCoord1;
     void main(){
-      gl_FragColor = texture2D(u_ColorSampler, v_UVCoord1);
+      gl_FragColor = texture2D(_ColorSampler, v_UVCoord1);
     }
   `;
 
@@ -49,6 +85,11 @@ export function getQuadFilterShaderCode (context: PShaderContext): PShaderResult
   };
 }
 
+/**
+ * 获取法线可视化着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getNormalVisShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -65,6 +106,11 @@ export function getNormalVisShaderCode (context: PShaderContext): PShaderResults
   };
 }
 
+/**
+ * 获取仅漫反射着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getDiffuseOnlyShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
@@ -82,21 +128,26 @@ export function getDiffuseOnlyShaderCode (context: PShaderContext): PShaderResul
   };
 }
 
+/**
+ * 获取 Kawase 模糊着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getKawaseBlurShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
     precision highp float;
-    uniform float u_Offset;
-    uniform vec2 u_TextureSizeInv;
-    uniform sampler2D u_TexturSampler;
+    uniform float _Offset;
+    uniform vec2 _TextureSizeInv;
+    uniform sampler2D _TexturSampler;
 
     varying vec2 v_UVCoord1;
     void main() {
       vec4 color = vec4(0.0);
-      color += texture2D(u_TexturSampler, v_UVCoord1 + vec2(-u_Offset-0.5,-u_Offset-0.5) * u_TextureSizeInv);
-      color += texture2D(u_TexturSampler, v_UVCoord1 + vec2(-u_Offset-0.5, u_Offset+0.5) * u_TextureSizeInv);
-      color += texture2D(u_TexturSampler, v_UVCoord1 + vec2( u_Offset+0.5,-u_Offset-0.5) * u_TextureSizeInv);
-      color += texture2D(u_TexturSampler, v_UVCoord1 + vec2( u_Offset+0.5, u_Offset+0.5) * u_TextureSizeInv);
+      color += texture2D(_TexturSampler, v_UVCoord1 + vec2(-_Offset-0.5,-_Offset-0.5) * _TextureSizeInv);
+      color += texture2D(_TexturSampler, v_UVCoord1 + vec2(-_Offset-0.5, _Offset+0.5) * _TextureSizeInv);
+      color += texture2D(_TexturSampler, v_UVCoord1 + vec2( _Offset+0.5,-_Offset-0.5) * _TextureSizeInv);
+      color += texture2D(_TexturSampler, v_UVCoord1 + vec2( _Offset+0.5, _Offset+0.5) * _TextureSizeInv);
       gl_FragColor = color * 0.25;
     }
   `;
@@ -107,15 +158,20 @@ export function getKawaseBlurShaderCode (context: PShaderContext): PShaderResult
   };
 }
 
+/**
+ * 获取简单滤波着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getSimpleFilterShaderCode (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
     precision highp float;
-    uniform sampler2D u_FilterSampler;
+    uniform sampler2D _FilterSampler;
 
     varying vec2 v_UVCoord1;
     void main() {
-      gl_FragColor = texture2D(u_FilterSampler, v_UVCoord1) * vec4(0.5);
+      gl_FragColor = texture2D(_FilterSampler, v_UVCoord1) * vec4(0.5);
     }
   `;
 
@@ -125,20 +181,25 @@ export function getSimpleFilterShaderCode (context: PShaderContext): PShaderResu
   };
 }
 
+/**
+ * 获取高斯模糊着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getGaussianBlurShaderCodeV2 (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
     precision highp float;
-    uniform vec2 u_BlurScale;
-    uniform sampler2D u_FilterSampler;
+    uniform vec2 _BlurScale;
+    uniform sampler2D _FilterSampler;
 
     varying vec2 v_UVCoord1;
     void main() {
       vec4 color = vec4(0);
-      vec2 offset0 = vec2(0.53805) * u_BlurScale.xy;
-      vec2 offset1 = vec2(2.06278) * u_BlurScale.xy;
-      color += (texture2D(u_FilterSampler, v_UVCoord1 + offset0) + texture2D(u_FilterSampler, v_UVCoord1 - offset0)) * 0.44908;
-      color += (texture2D(u_FilterSampler, v_UVCoord1 + offset1) + texture2D(u_FilterSampler, v_UVCoord1 - offset1)) * 0.05092;
+      vec2 offset0 = vec2(0.53805) * _BlurScale.xy;
+      vec2 offset1 = vec2(2.06278) * _BlurScale.xy;
+      color += (texture2D(_FilterSampler, v_UVCoord1 + offset0) + texture2D(_FilterSampler, v_UVCoord1 - offset0)) * 0.44908;
+      color += (texture2D(_FilterSampler, v_UVCoord1 + offset1) + texture2D(_FilterSampler, v_UVCoord1 - offset1)) * 0.05092;
       gl_FragColor = color;
     }
   `;
@@ -149,23 +210,28 @@ export function getGaussianBlurShaderCodeV2 (context: PShaderContext): PShaderRe
   };
 }
 
+/**
+ * 获取高斯模糊着色器代码
+ * @param context - 着色器上下文
+ * @returns
+ */
 export function getGaussianBlurShaderCodeV1 (context: PShaderContext): PShaderResults {
   const fragmentShaderCode = `
     #version 100
     precision highp float;
-    uniform vec2 u_BlurScale;
-    uniform sampler2D u_FilterSampler;
+    uniform vec2 _BlurScale;
+    uniform sampler2D _FilterSampler;
 
     varying vec2 v_UVCoord1;
     void main() {
       vec4 color = vec4(0.0);
-      color += texture2D(u_FilterSampler, v_UVCoord1 + (vec2(-3.0) * u_BlurScale.xy)) * (1.0/64.0);
-      color += texture2D(u_FilterSampler, v_UVCoord1 + (vec2(-2.0) * u_BlurScale.xy)) * (6.0/64.0);
-      color += texture2D(u_FilterSampler, v_UVCoord1 + (vec2(-1.0) * u_BlurScale.xy)) * (15.0/64.0);
-      color += texture2D(u_FilterSampler, v_UVCoord1 + (vec2(+0.0) * u_BlurScale.xy)) * (20.0/64.0);
-      color += texture2D(u_FilterSampler, v_UVCoord1 + (vec2(+1.0) * u_BlurScale.xy)) * (15.0/64.0);
-      color += texture2D(u_FilterSampler, v_UVCoord1 + (vec2(+2.0) * u_BlurScale.xy)) * (6.0/64.0);
-      color += texture2D(u_FilterSampler, v_UVCoord1 + (vec2(+3.0) * u_BlurScale.xy)) * (1.0/64.0);
+      color += texture2D(_FilterSampler, v_UVCoord1 + (vec2(-3.0) * _BlurScale.xy)) * (1.0/64.0);
+      color += texture2D(_FilterSampler, v_UVCoord1 + (vec2(-2.0) * _BlurScale.xy)) * (6.0/64.0);
+      color += texture2D(_FilterSampler, v_UVCoord1 + (vec2(-1.0) * _BlurScale.xy)) * (15.0/64.0);
+      color += texture2D(_FilterSampler, v_UVCoord1 + (vec2(+0.0) * _BlurScale.xy)) * (20.0/64.0);
+      color += texture2D(_FilterSampler, v_UVCoord1 + (vec2(+1.0) * _BlurScale.xy)) * (15.0/64.0);
+      color += texture2D(_FilterSampler, v_UVCoord1 + (vec2(+2.0) * _BlurScale.xy)) * (6.0/64.0);
+      color += texture2D(_FilterSampler, v_UVCoord1 + (vec2(+3.0) * _BlurScale.xy)) * (1.0/64.0);
       gl_FragColor = color;
     }
   `;
@@ -176,6 +242,11 @@ export function getGaussianBlurShaderCodeV1 (context: PShaderContext): PShaderRe
   };
 }
 
+/**
+ * 获取透明效果着色器代码
+ * @param isVertexShader - 是否顶点着色器
+ * @returns
+ */
 export function getTransparecyBaseShader (isVertexShader: boolean): string {
   if (isVertexShader) {
     return getBasicVS({ hasNormals: true });
@@ -185,10 +256,10 @@ export function getTransparecyBaseShader (isVertexShader: boolean): string {
     #extension GL_EXT_draw_buffers: require
 
     precision highp float;
-    uniform vec4 u_BaseColorFactor;
+    uniform vec4 _BaseColorFactor;
 
     #ifdef HAS_UVS
-    uniform sampler2D u_BaseColorSampler;
+    uniform sampler2D _BaseColorSampler;
     varying vec2 v_UVCoord1;
     #endif
 
@@ -199,10 +270,10 @@ export function getTransparecyBaseShader (isVertexShader: boolean): string {
     }
 
     void main() {
-      vec4 color = u_BaseColorFactor;
+      vec4 color = _BaseColorFactor;
 
       #ifdef HAS_UVS
-      color *= texture2D(u_BaseColorSampler, v_UVCoord1);
+      color *= texture2D(_BaseColorSampler, v_UVCoord1);
       #endif
 
       color.rgb *= color.a * dot(normalize(v_Normal), normalize(vec3(0, 1, 3))) * 5.0;
@@ -214,6 +285,11 @@ export function getTransparecyBaseShader (isVertexShader: boolean): string {
   }
 }
 
+/**
+ * 获取透明效果滤波着色器代码
+ * @param isVertexShader - 是否顶点着色器
+ * @returns
+ */
 export function getTransparecyFilterShader (isVertexShader: boolean): string {
   if (isVertexShader) {
     return getQuadFilterVS();
@@ -221,13 +297,13 @@ export function getTransparecyFilterShader (isVertexShader: boolean): string {
     return `
     #version 100
     precision highp float;
-    uniform sampler2D u_AccumColorSampler;
-    uniform sampler2D u_AccumAlphaSampler;
+    uniform sampler2D _AccumColorSampler;
+    uniform sampler2D _AccumAlphaSampler;
 
     varying vec2 v_UVCoord1;
     void main() {
-      vec4 accumColor = texture2D(u_AccumColorSampler, v_UVCoord1);
-      vec4 accumAlpha = texture2D(u_AccumAlphaSampler, v_UVCoord1);
+      vec4 accumColor = texture2D(_AccumColorSampler, v_UVCoord1);
+      vec4 accumAlpha = texture2D(_AccumAlphaSampler, v_UVCoord1);
       float finalAlpha = 1.0 - accumColor.a;
       vec3 finalColor = accumColor.rgb / clamp(accumAlpha.r, 0.001, 50000.0);
       gl_FragColor = vec4(finalColor, finalAlpha);
@@ -245,35 +321,35 @@ function getBasicVS (params: Record<string, boolean> = {}): string {
   featureList.push(`
     precision highp float;
 
-    uniform mat4 u_ModelMatrix;
-    uniform mat4 u_ViewProjectionMatrix;
-    attribute vec3 a_Position;
+    uniform mat4 effects_ObjectToWorld;
+    uniform mat4 effects_MatrixVP;
+    attribute vec3 aPos;
     varying vec3 v_Position;
 
     #ifdef HAS_UVS
-    attribute vec2 a_UV1;
+    attribute vec2 aUV;
     varying vec2 v_UVCoord1;
     #endif
 
     #ifdef HAS_NORMALS
-    uniform mat4 u_NormalMatrix;
-    attribute vec3 a_Normal;
+    uniform mat4 _NormalMatrix;
+    attribute vec3 aNormal;
     varying vec3 v_Normal;
     #endif
 
     void main(){
-      vec4 pos = u_ModelMatrix * vec4(a_Position, 1);
+      vec4 pos = effects_ObjectToWorld * vec4(aPos, 1);
       v_Position = pos.xyz / pos.w;
 
       #ifdef HAS_UVS
-      v_UVCoord1 = a_UV1;
+      v_UVCoord1 = aUV;
       #endif
 
       #ifdef HAS_NORMALS
-      v_Normal = normalize(vec3(u_ModelMatrix * vec4(a_Normal, 0)));
+      v_Normal = normalize(vec3(effects_ObjectToWorld * vec4(aNormal, 0)));
       #endif
 
-      gl_Position = u_ViewProjectionMatrix * pos;
+      gl_Position = effects_MatrixVP * pos;
     }
   `);
 
@@ -284,13 +360,13 @@ function getQuadFilterVS (): string {
   return `
     #version 100
     precision highp float;
-    attribute vec3 a_Position;
-    attribute vec2 a_UV1;
+    attribute vec3 aPos;
+    attribute vec2 aUV;
 
     varying vec2 v_UVCoord1;
     void main(){
-      v_UVCoord1 = a_UV1;
-      gl_Position = vec4(a_Position.xy, 0.0, 1.0);
+      v_UVCoord1 = aUV;
+      gl_Position = vec4(aPos.xy, 0.0, 1.0);
     }
   `;
 }

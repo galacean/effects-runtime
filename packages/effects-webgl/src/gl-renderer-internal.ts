@@ -1,14 +1,15 @@
-import type { Disposable, Geometry, LostHandler, Material } from '@galacean/effects-core';
-import { addItem, logger, removeItem, TextureSourceType } from '@galacean/effects-core';
-import type { GLEngine } from './gl-engine';
-import type { GLFrameBuffer } from './gl-frame-buffer';
+import type { Disposable, LostHandler, Material, Geometry } from '@galacean/effects-core';
+import { TextureSourceType, addItem, logger, removeItem } from '@galacean/effects-core';
+import type { GLFramebuffer } from './gl-framebuffer';
 import type { GLGeometry } from './gl-geometry';
 import type { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLMaterial } from './gl-material';
 import type { GLPipelineContext } from './gl-pipeline-context';
-import type { GLRenderBuffer } from './gl-render-buffer';
+import type { GLRenderbuffer } from './gl-renderbuffer';
 import { GLTexture } from './gl-texture';
 import { GLVertexArrayObject } from './gl-vertex-array-object';
+import type { GLEngine } from './gl-engine';
+import type { GLShaderVariant } from './gl-shader';
 
 let seed = 1;
 
@@ -21,13 +22,15 @@ export class GLRendererInternal implements Disposable, LostHandler {
   readonly name: string;
   readonly textures: GLTexture[] = [];
 
-  private readonly renderBuffers: GLRenderBuffer[] = [];
-  private readonly frameBuffers: GLFrameBuffer[] = [];
+  private readonly renderbuffers: GLRenderbuffer[] = [];
+  private readonly framebuffers: GLFramebuffer[] = [];
   private sourceFbo: WebGLFramebuffer | null;
   private targetFbo: WebGLFramebuffer | null;
   private destroyed = false;
 
-  constructor (public engine: GLEngine) {
+  constructor (
+    public engine: GLEngine,
+  ) {
     const d = { width: 1, height: 1, data: new Uint8Array([255]) };
     const pipelineContext = engine.getGLPipelineContext();
     const gl = pipelineContext.gl;
@@ -81,41 +84,43 @@ export class GLRendererInternal implements Disposable, LostHandler {
   copy2 (source: GLTexture, target: GLTexture) {
     const gl = this.gl as WebGL2RenderingContext;
 
-    if (gl) {
-      if (!this.sourceFbo) {
-        this.sourceFbo = gl.createFramebuffer();
-      }
-      if (!this.targetFbo) {
-        this.targetFbo = gl.createFramebuffer();
-      }
-      const state = this.pipelineContext;
-      const COLOR_ATTACHMENT0 = gl.COLOR_ATTACHMENT0;
-
-      state.bindFramebuffer(gl.FRAMEBUFFER, this.sourceFbo);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, COLOR_ATTACHMENT0, gl.TEXTURE_2D, source.textureBuffer, 0);
-      state.bindFramebuffer(gl.FRAMEBUFFER, this.targetFbo);
-      gl.framebufferTexture2D(gl.FRAMEBUFFER, COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.textureBuffer, 0);
-      state.bindFramebuffer(gl.READ_FRAMEBUFFER, this.sourceFbo);
-      state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.targetFbo);
-      const filter = source.getWidth() === source.getHeight() && target.getWidth() == target.getHeight() ? gl.NEAREST : gl.LINEAR;
-
-      gl.blitFramebuffer(0, 0, source.getWidth(), source.getHeight(), 0, 0, target.getWidth(), target.getHeight(), gl.COLOR_BUFFER_BIT, filter);
-      state.bindFramebuffer(gl.FRAMEBUFFER, null);
-      state.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-      state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    if (!gl) {
+      return;
     }
+
+    if (!this.sourceFbo) {
+      this.sourceFbo = gl.createFramebuffer();
+    }
+    if (!this.targetFbo) {
+      this.targetFbo = gl.createFramebuffer();
+    }
+    const state = this.pipelineContext;
+
+    state.bindFramebuffer(gl.FRAMEBUFFER, this.sourceFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, source.textureBuffer, 0);
+    state.bindFramebuffer(gl.FRAMEBUFFER, this.targetFbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.textureBuffer, 0);
+    state.bindFramebuffer(gl.READ_FRAMEBUFFER, this.sourceFbo);
+    state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, this.targetFbo);
+
+    const filter = source.getWidth() === source.getHeight() && target.getWidth() == target.getHeight() ? gl.NEAREST : gl.LINEAR;
+
+    gl.blitFramebuffer(0, 0, source.getWidth(), source.getHeight(), 0, 0, target.getWidth(), target.getHeight(), gl.COLOR_BUFFER_BIT, filter);
+    state.bindFramebuffer(gl.FRAMEBUFFER, null);
+    state.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
+    state.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
   }
 
-  resetColorAttachments (rp: GLFrameBuffer, colors: GLTexture[]) {
+  resetColorAttachments (rp: GLFramebuffer, colors: GLTexture[]) {
     rp.bind();
     rp.resetColorTextures(colors);
   }
 
-  createGLRenderBuffer (renderbuffer: GLRenderBuffer): WebGLRenderbuffer | null {
+  createGLRenderbuffer (renderbuffer: GLRenderbuffer): WebGLRenderbuffer | null {
     const rb = this.gl.createRenderbuffer();
 
     if (rb) {
-      addItem(this.renderBuffers, renderbuffer);
+      addItem(this.renderbuffers, renderbuffer);
     }
 
     return rb;
@@ -128,58 +133,68 @@ export class GLRendererInternal implements Disposable, LostHandler {
       gl.canvas.width = width;
       gl.canvas.height = height;
       gl.viewport(0, 0, width, height);
-      this.frameBuffers.forEach(frameBuffer => {
-        const viewport = frameBuffer.viewport;
+      this.framebuffers.forEach(framebuffer => {
+        const viewport = framebuffer.viewport;
 
-        if (!frameBuffer.isCustomViewport) {
-          frameBuffer.resize(viewport[0], viewport[1], width * frameBuffer.viewportScale, height * frameBuffer.viewportScale);
+        if (!framebuffer.isCustomViewport) {
+          framebuffer.resize(viewport[0], viewport[1], width * framebuffer.viewportScale, height * framebuffer.viewportScale);
         }
       });
     }
   }
 
-  drawGeometry (geometry: Geometry, material: Material): void {
+  drawGeometry (geometry: Geometry, material: Material, subMeshIndex: number): void {
     if (!this.gl) {
-      console.warn('GLGPURenderer没有绑定gl对象, 无法绘制geometry');
+      console.warn('GLGPURenderer has not bound a gl object, unable to render geometry.');
 
       return;
     }
     const glGeometry = geometry as GLGeometry;
     const glMaterial = material as GLMaterial;
-    const program = glMaterial.shader.program;
+    const program = (glMaterial.shaderVariant as GLShaderVariant).program;
 
     if (!program) {
-
       return;
     }
 
     const vao = program.setupAttributes(glGeometry);
-
     const gl = this.gl;
     const indicesBuffer = glGeometry.indicesBuffer;
-    const offset = glGeometry.drawStart;
-    const mode = glGeometry.mode;
+    let offset = glGeometry.drawStart;
     let count = glGeometry.drawCount;
+    const mode = glGeometry.mode;
+    const subMeshes = glGeometry.subMeshes;
 
-    if (indicesBuffer) {
-      const { type, elementCount } = indicesBuffer;
+    if (subMeshes && subMeshes.length) {
+      const subMesh = subMeshes[subMeshIndex];
 
-      count = isNaN(count) ? elementCount : count;
-      if (count > 0) {
-        gl.drawElements(mode, count, type, offset ?? 0);
+      // FIXME: 临时处理3D线框状态下隐藏模型
+      if (count < 0) {
+        return;
       }
-    } else if (count > 0) {
-      gl.drawArrays(mode, offset, count);
-    }
 
+      offset = subMesh.offset;
+      count = subMesh.indexCount ?? subMesh.vertexCount;
+      if (indicesBuffer) {
+        gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+      } else {
+        gl.drawArrays(mode, offset, count);
+      }
+    } else {
+      if (indicesBuffer) {
+        gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+      } else {
+        gl.drawArrays(mode, offset, count);
+      }
+    }
     vao?.unbind();
   }
 
-  createGLFrameBuffer (frameBuffer: GLFrameBuffer, name?: string): WebGLFramebuffer | null {
+  createGLFramebuffer (framebuffer: GLFramebuffer, name?: string): WebGLFramebuffer | null {
     const fbo = this.gl.createFramebuffer();
 
     if (fbo) {
-      addItem(this.frameBuffers, frameBuffer);
+      addItem(this.framebuffers, framebuffer);
       assignInspectorName(fbo, name, name);
     }
 
@@ -187,7 +202,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
   }
 
   /**创建包裹VAO对象。 */
-  createVAO (name: string): GLVertexArrayObject | undefined {
+  createVAO (name?: string): GLVertexArrayObject | undefined {
     const ret = new GLVertexArrayObject(this.engine, name);
 
     return ret;
@@ -210,18 +225,18 @@ export class GLRendererInternal implements Disposable, LostHandler {
     }
   }
 
-  deleteGLFrameBuffer (frameBuffer: GLFrameBuffer) {
-    if (frameBuffer && !this.destroyed) {
-      this.gl.deleteFramebuffer(frameBuffer.fbo as WebGLFramebuffer);
-      removeItem(this.frameBuffers, frameBuffer);
-      delete frameBuffer.fbo;
+  deleteGLFramebuffer (framebuffer: GLFramebuffer) {
+    if (framebuffer && !this.destroyed) {
+      this.gl.deleteFramebuffer(framebuffer.fbo as WebGLFramebuffer);
+      removeItem(this.framebuffers, framebuffer);
+      delete framebuffer.fbo;
     }
   }
 
-  deleteGLRenderBuffer (renderbuffer: GLRenderBuffer) {
+  deleteGLRenderbuffer (renderbuffer: GLRenderbuffer) {
     if (renderbuffer && !this.destroyed) {
       this.gl.deleteRenderbuffer(renderbuffer.buffer);
-      removeItem(this.renderBuffers, renderbuffer);
+      removeItem(this.renderbuffers, renderbuffer);
       // @ts-expect-error
       delete renderbuffer.buffer;
     }
@@ -235,17 +250,17 @@ export class GLRendererInternal implements Disposable, LostHandler {
       gl.deleteFramebuffer(this.targetFbo);
       this.emptyTexture2D.dispose();
       this.emptyTextureCube.dispose();
-      this.frameBuffers.forEach(fb => this.deleteGLFrameBuffer(fb));
-      this.frameBuffers.length = 0;
-      this.renderBuffers.forEach(rb => this.deleteGLRenderBuffer(rb));
-      this.renderBuffers.length = 0;
+      this.framebuffers.forEach(fb => this.deleteGLFramebuffer(fb));
+      this.framebuffers.length = 0;
+      this.renderbuffers.forEach(rb => this.deleteGLRenderbuffer(rb));
+      this.renderbuffers.length = 0;
       this.textures.forEach(tex => this.deleteGLTexture(tex));
       this.textures.length = 0;
     }
   }
 
   lost (e: Event) {
-    logger.error('gl lost, destroy glRenderer by default', e.target);
+    logger.error(`WebGL context lost, destroying glRenderer by default to prevent memory leaks. Event target: ${e.target}.`);
     this.deleteResource();
   }
 
@@ -258,11 +273,11 @@ export class GLRendererInternal implements Disposable, LostHandler {
 }
 
 export function assignInspectorName (
-  obj: Record<string, any>,
+  obj: Record<string, any> | null,
   name?: string,
   id?: string,
 ) {
-  if (name === undefined) {
+  if (name === undefined || obj === null) {
     return;
   }
 

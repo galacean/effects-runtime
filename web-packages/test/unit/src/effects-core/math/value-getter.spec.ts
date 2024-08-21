@@ -2,7 +2,7 @@ import { createValueGetter, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
-describe('value getter', () => {
+describe('core/math/value-getter', () => {
   it('line integrate value', () => {
     const v = createValueGetter([spec.ValueType.LINE, [[0, 180], [0.5, 0], [1, 180]]]);
 

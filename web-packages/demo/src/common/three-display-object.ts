@@ -1,8 +1,8 @@
 // @ts-nocheck
-import { EventSystem, EVENT_TYPE_CLICK, InteractBehavior, ThreeDisplayObject, spec } from '@galacean/effects-threejs';
+import { EventSystem, EVENT_TYPE_CLICK, ThreeDisplayObject, spec } from '@galacean/effects-threejs';
 
 export function createThreePlayer (options) {
-  const { container, renderFramework = 'webgl2' } = options;
+  const { container, renderFramework = 'webgl' } = options;
   const renderOptions = {
     alpha: true,
     stencil: true,
@@ -24,8 +24,14 @@ export function createThreePlayer (options) {
     hasPlayable: false,
     pause: () => { },
     resume: () => { },
+    onItemMessage: ({ type, message }) => {
+      console.debug(`item [${message.name}] trigger message, type [${message.phrase}].`);
+    },
     onItemClicked: ({ name }) => {
       console.debug(`item ${name} has been clicked`);
+    },
+    onEnd: ({ composition }) => {
+      console.debug('end', composition);
     },
   };
 }
@@ -46,14 +52,21 @@ export async function renderbyThreeDisplayObject (player, json) {
 
   const displayObject = new ThreeDisplayObject(renderer.getContext(), { width, height });
 
+  displayObject.addEventListener('click', player.onItemClicked);
+  displayObject.addEventListener('message', player.onItemMessage);
+  displayObject.addEventListener('end', player.onEnd);
+  displayObject.addEventListener('pause', player.pause);
+  displayObject.addEventListener('resume', player.resume);
+
   await displayObject.loadScene(json);
   // 兼容父节点的结束行为销毁时表现为冻结
   displayObject.currentComposition.items.forEach(item => {
-    if (item.type === spec.ItemType.null && item.endBehavior === spec.ItemEndBehavior.destroy) {
-      item.endBehavior = spec.ItemEndBehavior.freeze;
+    if (item.type === spec.ItemType.null && item.endBehavior === spec.EndBehavior.destroy) {
+      item.endBehavior = spec.EndBehavior.freeze;
     }
   });
   scene.add(displayObject);
+
   const { currentComposition } = displayObject;
 
   renderer.render(scene, camera);
@@ -75,13 +88,13 @@ export async function renderbyThreeDisplayObject (player, json) {
 
     if (regions.length) {
       for (let i = 0; i < regions.length; i++) {
-        const { name, id, hitPositions, behavior = InteractBehavior.NOTIFY } = regions[i];
+        const { name, id, hitPositions, behavior = spec.InteractBehavior.NOTIFY } = regions[i];
 
-        if (behavior === InteractBehavior.NOTIFY) {
+        if (behavior === spec.InteractBehavior.NOTIFY) {
           // 或者自定义notify的回调参数
           console.info(`item ${name} has been clicked`);
 
-        } else if (behavior === InteractBehavior.RESUME_PLAYER) {
+        } else if (behavior === spec.InteractBehavior.RESUME_PLAYER) {
           player.resume();
         }
       }

@@ -1,11 +1,14 @@
 import { createValueGetter, ValueGetter } from '../../math';
 
-export class Burst {
-  // FIXME: 待确认其价值，只有 test 中使用
-  once: boolean;
-  // FIXME: 永无赋值
-  disabled: boolean;
+interface BurstOptions {
+  time: number,
+  interval: number,
+  count: number | ValueGetter<number>,
+  cycles: number,
+  probability: number,
+}
 
+export class Burst {
   private now: number;
   private index: number;
   private internalCycles: number;
@@ -16,8 +19,8 @@ export class Burst {
   private readonly cycles: number;
   private readonly probability: number;
 
-  constructor (opts: any) {
-    const { time, interval, count, cycles, probability } = opts;
+  constructor (options: BurstOptions) {
+    const { time, interval, count, cycles, probability } = options;
 
     this.time = +time || 0;
     this.interval = +interval || 1;
@@ -50,6 +53,14 @@ export class Burst {
   }
 
   clone (): Burst {
-    return new Burst(this);
+    const options = {
+      time: this.time,
+      interval: this.interval,
+      count: this.count,
+      cycles: this.cycles,
+      probability: this.probability,
+    };
+
+    return new Burst(options);
   }
 }

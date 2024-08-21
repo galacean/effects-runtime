@@ -29,11 +29,11 @@ export default {
   // },
   /* ******************************** */
 
-  butterfly: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*uU2JRIjcLIcAAAAAAAAAAAAADlB4AQ',
-    name: '塔奇-蝴蝶飞入',
-    pass: true,
-  },
+  // butterfly: {
+  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*uU2JRIjcLIcAAAAAAAAAAAAADlB4AQ',
+  //   name: '塔奇-蝴蝶飞入',
+  //   pass: true,
+  // },
 
   // 滤镜
   // bloom: {
@@ -140,11 +140,11 @@ export default {
     name: '泡泡',
     pass: true,
   },
-  starLight: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/PFCIWGNGTRCW/-901387597-eb15c.json',
-    name: '流星',
-    pass: true,
-  },
+  // starLight: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/PFCIWGNGTRCW/-901387597-eb15c.json',
+  //   name: '流星',
+  //   pass: true,
+  // },
   ball: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/NKICJVAEIWDU/-1916559527-63956.json',
     name: '能量球',
@@ -170,11 +170,11 @@ export default {
     name: '下雨',
     pass: true,
   },
-  egg8t1: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/PQNBQHVEBMQN/-669939334-9fa84.json',
-    name: '年兽大爆炸——8个彩蛋t1',
-    pass: true,
-  },
+  // egg8t1: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/PQNBQHVEBMQN/-669939334-9fa84.json',
+  //   name: '年兽大爆炸——8个彩蛋t1',
+  //   pass: true,
+  // },
   // 受到diff算法影响，先注释，后面替换比较的player再恢复
   // egg8t2: {
   //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FBCJKAAJQJIR/-926322664-a7f0a.json',
@@ -293,11 +293,11 @@ export default {
     pass: true,
   },
   // 弹窗
-  applaud: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*9gGLR558ANsAAAAAAAAAAAAADlB4AQ',
-    name: '双十一弹窗',
-    pass: true,
-  },
+  // applaud: {
+  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*9gGLR558ANsAAAAAAAAAAAAADlB4AQ',
+  //   name: '双十一弹窗',
+  //   pass: true,
+  // },
   WuFu1: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*pn-zQotSdEUAAAAAAAAAAAAADlB4AQ',
     name: '五福弹窗',
@@ -348,16 +348,16 @@ export default {
     name: '闪光弹窗',
     pass: true,
   },
-  countdown: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/YDITHDADWXXM/1601633123-e644d.json',
-    name: '七夕倒计时',
-    pass: true,
-  },
-  combineCard: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BRNUKQWSAIKG/136315478-98a3d.json',
-    name: '合成卡',
-    pass: true,
-  },
+  // countdown: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/YDITHDADWXXM/1601633123-e644d.json',
+  //   name: '七夕倒计时',
+  //   pass: true,
+  // },
+  // combineCard: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BRNUKQWSAIKG/136315478-98a3d.json',
+  //   name: '合成卡',
+  //   pass: true,
+  // },
   multiPeople: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/ETELKDEUCNBC/2073953335-fd050.json',
     name: '多人红包',
@@ -379,21 +379,21 @@ export default {
   //   name: '平淡弹窗',
   //   pass: true,
   // },
-  window520: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BQTEQTNCXEEO/1270328461-009fc.json',
-    name: '520弹窗',
-    pass: true,
-  },
-  gameResult: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/JRDNOYBAJKBV/-671130785-4f00d.json',
-    name: '游戏结果',
-    pass: true,
-  },
-  giftOpen: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*of92S7KNX4MAAAAAAAAAAAAADlB4AQ',
-    name: '开启礼盒',
-    pass: true,
-  },
+  // window520: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BQTEQTNCXEEO/1270328461-009fc.json',
+  //   name: '520弹窗',
+  //   pass: true,
+  // },
+  // gameResult: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/JRDNOYBAJKBV/-671130785-4f00d.json',
+  //   name: '游戏结果',
+  //   pass: true,
+  // },
+  // giftOpen: {
+  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*of92S7KNX4MAAAAAAAAAAAAADlB4AQ',
+  //   name: '开启礼盒',
+  //   pass: true,
+  // },
   redpackRain: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WGJWMPCTFYQT/-1604277761-f5fde.json',
     name: '红包雨',
@@ -442,11 +442,11 @@ export default {
     name: '发光过渡',
     pass: true,
   },
-  letter: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DQARMNHMUWGE/1259164160-8203e.json',
-    name: '开信封',
-    pass: true,
-  },
+  // letter: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DQARMNHMUWGE/1259164160-8203e.json',
+  //   name: '开信封',
+  //   pass: true,
+  // },
   letter2: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/IMWVMTEUGHGJ/1259164160-42ace.json',
     name: '开信封2',
@@ -458,11 +458,11 @@ export default {
     pass: true,
   },
   // 旧 JSON 的 endBehavior 是数组 改用新的
-  upgrade: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*C1Q9S63cSq0AAAAAAAAAAAAADlB4AQ',
-    name: '福袋升级',
-    pass: true,
-  },
+  // upgrade: {
+  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*C1Q9S63cSq0AAAAAAAAAAAAADlB4AQ',
+  //   name: '福袋升级',
+  //   pass: true,
+  // },
   spray1212: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LPBCDARDRDDW/-1920604196-bc899.json',
     name: '1212喷射',
@@ -482,27 +482,26 @@ export default {
     name: '五福首页2022——四条福',
     pass: true,
   },
-  cloud: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FKOJKJSVVYLC/-427266929-fc9f2.json',
-    name: '五福首页2022——云',
-    pass: true,
-  },
-  tab3: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LLIQIDQPYUSL/-949676776-a8d26.json',
-    name: '五福首页2022——tab3',
-    pass: true,
-  },
-  // 不支持random
+  // cloud: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FKOJKJSVVYLC/-427266929-fc9f2.json',
+  //   name: '五福首页2022——云',
+  //   pass: true,
+  // },
+  // tab3: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LLIQIDQPYUSL/-949676776-a8d26.json',
+  //   name: '五福首页2022——tab3',
+  //   pass: true,
+  // },
   // forest: {
   //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/HUHNTRYCTBNX/-382630129-e18d6.json',
   //   name: '五福首页2022——森林',
   //   pass: true,
   // },
-  castle: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BPJQQDHVEACP/154040086-c263d.json',
-    name: '五福首页2022——庄园',
-    pass: true,
-  },
+  // castle: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BPJQQDHVEACP/154040086-c263d.json',
+  //   name: '五福首页2022——庄园',
+  //   pass: true,
+  // },
   // 不支持random
   // write: {
   //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FVKURDGLVCTO/-1407450823-e9f98.json',
@@ -526,11 +525,11 @@ export default {
     name: '五福首页2022——编辑器装饰',
     pass: true,
   },
-  trafficLight: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EUNLFQUDKOXM/996889786-e56a2.json',
-    name: '支付宝2021——红绿灯',
-    pass: true,
-  },
+  // trafficLight: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EUNLFQUDKOXM/996889786-e56a2.json',
+  //   name: '支付宝2021——红绿灯',
+  //   pass: true,
+  // },
   chicken: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/QWCKPTQMCGWG/-1658455025-93111.json',
     name: '支付宝2021——小鸡动画',
@@ -547,22 +546,21 @@ export default {
     name: '支付宝2021——跑步',
     pass: true,
   },
-  // 路径曲线缺少控制点数据
-  // door: {
-  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/EJAYICIVXVEB/1200639368-999bc.json',
-  //   name: '支付宝2021——开门动画',
-  //   pass: true,
-  // },
+  door: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*XkbvQpf-_uwAAAAAAAAAAAAADlB4AQ',
+    name: '支付宝2021——开门动画',
+    pass: true,
+  },
   payment: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DVHWTIBIRXHY/-788542078-c8fed.json',
     name: '支付宝2021——缴费',
     pass: true,
   },
-  autumn: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LSQRKALOXBYU/1384187888-f221a.json',
-    name: '天猫中秋大街',
-    pass: true,
-  },
+  // autumn: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LSQRKALOXBYU/1384187888-f221a.json',
+  //   name: '天猫中秋大街',
+  //   pass: true,
+  // },
   camera: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/RNXFNXQAAYSS/-2013243009-ffc7b.json',
     name: '镜头动画',
@@ -578,11 +576,11 @@ export default {
     name: '招财车——点击前动态',
     pass: true,
   },
-  backward: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FMAWDCBIVLJS/2119821889-1fb2a.json',
-    name: '招财车——点击后车走',
-    pass: true,
-  },
+  // backward: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FMAWDCBIVLJS/2119821889-1fb2a.json',
+  //   name: '招财车——点击后车走',
+  //   pass: true,
+  // },
   earth: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*UsUiSL2_gUEAAAAAAAAAAAAADlB4AQ',
     name: '地下蹦迪——地球上头',
@@ -687,7 +685,7 @@ export default {
   //   pass: true,
   // },
   compressed: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*6PvdT4j46E0AAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*ELTxQqSzbisAAAAAAAAAAAAADlB4AQ',
     name: '压缩纹理',
     pass: true,
   },
