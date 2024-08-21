@@ -1,5 +1,4 @@
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
-import type * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { ValueGetter } from '../../math';
 import type { VFXItem } from '../../vfx-item';
@@ -45,7 +44,7 @@ export class ObjectBindingTrack extends TrackAsset {
 
       particleClip.start = boundItem.start;
       particleClip.duration = boundItem.duration;
-      particleClip.endBehavior = boundItem.endBehavior as spec.EndBehavior;
+      particleClip.endBehavior = boundItem.endBehavior;
     }
   }
 }
