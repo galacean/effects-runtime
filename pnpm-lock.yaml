@@ -150,8 +150,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.0.0-beta.0
-        version: 2.0.0-beta.0
+        specifier: 2.0.0
+        version: 2.0.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -224,8 +224,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: 0.6.0-alpha.11
-        version: 0.6.0-alpha.11
+        specifier: 0.6.0
+        version: 0.6.0
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -292,8 +292,8 @@ importers:
         specifier: workspace:*
         version: link:../../plugin-packages/spine
       '@vvfx/resource-detection':
-        specifier: 0.6.0-alpha.9
-        version: 0.6.0-alpha.9
+        specifier: 0.6.0
+        version: 0.6.0
       maoan-imgui-js:
         specifier: ^1.0.6
         version: 1.0.6
@@ -317,8 +317,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects-webgl
       '@vvfx/resource-detection':
-        specifier: 0.6.0-alpha.11
-        version: 0.6.0-alpha.11
+        specifier: 0.6.0
+        version: 0.6.0
 
 packages:
 
@@ -2190,16 +2190,8 @@ packages:
     resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
     engines: {node: '>=10.0.0'}
 
-  /@galacean/effects-specification@2.0.0-alpha.15:
-    resolution: {integrity: sha512-t5h8sJ+XyNNt/ctySO1ehu4qoy/bPV7LD5JO+W3Ve9+viIQE0ioJBiSHZ82B3k9wLi39zyzvnBOAfTfrxqQSWw==}
-    dev: false
-
-  /@galacean/effects-specification@2.0.0-alpha.20:
-    resolution: {integrity: sha512-j7GoIu3nsl6pRhT4xzNak5gfyKlX+lfHVSjX8CwDn278cc1c1KFpV7jxOYL4J/IDd8Ech8LGNJZdJOflxZsadQ==}
-
-  /@galacean/effects-specification@2.0.0-beta.0:
-    resolution: {integrity: sha512-1qR/iF7SM5JNuorkoPgP3c2nroqOMUUX4crbMTVE5RAVZi1U142mKpTvFOuAkcDNaswGwYgOeY8zj7BZ4P1xcA==}
-    dev: false
+  /@galacean/effects-specification@2.0.0:
+    resolution: {integrity: sha512-7ieZALZYn5fwKLIGAskmYSKGX82ZkLRdDUInG21KsOJ2eQ5+HcI6mJU5tmN8vjZxQUc+RVuUcssExGbiaj2+5w==}
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -2973,12 +2965,12 @@ packages:
       - supports-color
     dev: true
 
-  /@vvfx/resource-detection@0.6.0-alpha.11:
-    resolution: {integrity: sha512-475jLzlpJlVthQ6qQxPWy0/IuXemI20l+WBi3nrSqRwjBqdnwxlvnVbKkn43LXaAd7M4hX1H18xSc3l9UqD31Q==}
+  /@vvfx/resource-detection@0.6.0:
+    resolution: {integrity: sha512-zkyVUrRLu3dv9EgLGPetPc9oamY601ppPX9xSEWkaPSyttX9dLp/6wkS+pFke5N48lAkZtR/Vifv7byFwKa6bw==}
     engines: {node: '>=10.0.0'}
     dependencies:
       '@galacean/effects-math': 1.1.0
-      '@galacean/effects-specification': 2.0.0-alpha.20
+      '@galacean/effects-specification': 2.0.0
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1
@@ -2991,26 +2983,6 @@ packages:
       ndarray-lanczos: 0.1.2
       ndarray-pixels: 1.0.0
       node-fetch: 3.3.2
-
-  /@vvfx/resource-detection@0.6.0-alpha.9:
-    resolution: {integrity: sha512-LTWU/TV5iOA164Nmf0RiDTAH30Z41fO7/qgxFpMje25vBBjQvdFkDdinkrkJP1GNkWnhH19PeWPoHRF3ofiRaQ==}
-    engines: {node: '>=10.0.0'}
-    dependencies:
-      '@galacean/effects-math': 1.1.0
-      '@galacean/effects-specification': 2.0.0-alpha.15
-      '@types/draco3dgltf': 1.4.3
-      '@types/ndarray': 1.0.11
-      '@types/sharp': 0.31.1
-      fflate: 0.7.4
-      gl-matrix: 3.4.3
-      ktx-parse: 0.4.5
-      maxrects-packer: 2.7.3
-      meshoptimizer: 0.18.1
-      ndarray: 1.0.19
-      ndarray-lanczos: 0.1.2
-      ndarray-pixels: 1.0.0
-      node-fetch: 3.3.2
-    dev: false
 
   /JSONStream@1.3.5:
     resolution: {integrity: sha1-MgjB8I06TZkmGrZPkjArwV4RHKA=, tarball: https://registry.npmmirror.com/JSONStream/download/JSONStream-1.3.5.tgz}
