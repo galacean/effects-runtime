@@ -273,7 +273,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rendererOptions = null;
     this.rootComposition.createContent();
     this.buildItemTree(this.rootItem);
-    this.callAwake(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
         this.emit('end', { composition: this });
@@ -562,14 +561,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updatePluginLoaders(deltaTime);
 
     // scene VFXItem components lifetime function.
-    // this.callStart(this.rootItem);
     if (!this.rootItem.isDuringPlay) {
+      this.callAwake(this.rootItem);
       this.rootItem.beginPlay();
     }
     this.sceneTicking.update.tick(time);
     this.sceneTicking.lateUpdate.tick(time);
-    // this.callUpdate(this.rootItem, time);
-    // this.callLateUpdate(this.rootItem, time);
 
     this.updateCamera();
     this.prepareRender();
