@@ -158,13 +158,9 @@ export abstract class Behaviour extends Component {
 
   override setVFXItem (item: VFXItem): void {
     super.setVFXItem(item);
-    this.item.itemBehaviours.push(this);
   }
 
   override dispose (): void {
-    if (this.item) {
-      removeItem(this.item.itemBehaviours, this);
-    }
     super.dispose();
   }
 }

@@ -5,7 +5,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
 import type { Component } from './components';
-import { RendererComponent, Behaviour, EffectComponent } from './components';
+import { RendererComponent, EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass, serialize } from './decorators';
@@ -98,7 +98,6 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   @serialize()
   components: Component[] = [];
-  itemBehaviours: Behaviour[] = [];
   rendererComponents: RendererComponent[] = [];
 
   /**
@@ -658,13 +657,9 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    this.itemBehaviours.length = 0;
     this.rendererComponents.length = 0;
     for (const component of this.components) {
       component.item = this;
-      if (component instanceof Behaviour) {
-        this.itemBehaviours.push(component);
-      }
       if (component instanceof RendererComponent) {
         this.rendererComponents.push(component);
       }

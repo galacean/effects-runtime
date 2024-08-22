@@ -1,24 +1,24 @@
-import { Behaviour } from '../components/component';
+import { Component } from '../components/component';
 
 export class SceneTicking {
   update: UpdateTickData = new UpdateTickData();
   lateUpdate: LateUpdateTickData = new LateUpdateTickData();
 
-  addBehaviour (obj: Behaviour): void {
-    if (obj.onUpdate !== Behaviour.prototype.onUpdate) {
-      this.update.addBehaviour(obj);
+  addComponent (obj: Component): void {
+    if (obj.onUpdate !== Component.prototype.onUpdate) {
+      this.update.addComponent(obj);
     }
-    if (obj.onLateUpdate !== Behaviour.prototype.onLateUpdate) {
-      this.lateUpdate.addBehaviour(obj);
+    if (obj.onLateUpdate !== Component.prototype.onLateUpdate) {
+      this.lateUpdate.addComponent(obj);
     }
   }
 
-  removeBehaviour (obj: Behaviour): void {
-    if (obj.onUpdate !== Behaviour.prototype.onUpdate) {
-      this.update.removeBehaviour(obj);
+  removeComponent (obj: Component): void {
+    if (obj.onUpdate !== Component.prototype.onUpdate) {
+      this.update.removeComponent(obj);
     }
-    if (obj.onLateUpdate !== Behaviour.prototype.onLateUpdate) {
-      this.lateUpdate.removeBehaviour(obj);
+    if (obj.onLateUpdate !== Component.prototype.onLateUpdate) {
+      this.lateUpdate.removeComponent(obj);
     }
   }
 
@@ -29,35 +29,35 @@ export class SceneTicking {
 }
 
 class TickData {
-  behaviours: Behaviour[] = [];
+  components: Component[] = [];
   ticks: ((dt: number) => void)[] = [];
 
   constructor () {
   }
 
   tick (dt: number) {
-    this.tickBehaviours(this.behaviours, dt);
+    this.tickComponents(this.components, dt);
 
     for (let i = 0;i < this.ticks.length;i++) {
       this.ticks[i](dt);
     }
   }
 
-  tickBehaviours (behaviours: Behaviour[], dt: number): void {
+  tickComponents (components: Component[], dt: number): void {
     // To be implemented in derived classes
   }
 
-  addBehaviour (behaviour: Behaviour): void {
-    if (!this.behaviours.includes(behaviour)) {
-      this.behaviours.push(behaviour);
+  addComponent (component: Component): void {
+    if (!this.components.includes(component)) {
+      this.components.push(component);
     }
   }
 
-  removeBehaviour (behaviour: Behaviour): void {
-    const index = this.behaviours.indexOf(behaviour);
+  removeComponent (component: Component): void {
+    const index = this.components.indexOf(component);
 
     if (index > -1) {
-      this.behaviours.splice(index, 1);
+      this.components.splice(index, 1);
     }
   }
 
@@ -70,13 +70,13 @@ class TickData {
   }
 
   clear (): void {
-    this.behaviours = [];
+    this.components = [];
   }
 }
 
 class UpdateTickData extends TickData {
-  override tickBehaviours (behaviours: Behaviour[], dt: number): void {
-    for (const behavior of behaviours) {
+  override tickComponents (components: Component[], dt: number): void {
+    for (const behavior of components) {
       if (!behavior.isActiveAndEnabled) {
         continue;
       }
@@ -86,8 +86,8 @@ class UpdateTickData extends TickData {
 }
 
 class LateUpdateTickData extends TickData {
-  override tickBehaviours (behaviours: Behaviour[], dt: number): void {
-    for (const behavior of behaviours) {
+  override tickComponents (components: Component[], dt: number): void {
+    for (const behavior of components) {
       if (!behavior.isActiveAndEnabled) {
         continue;
       }
@@ -96,7 +96,7 @@ class LateUpdateTickData extends TickData {
   }
 }
 
-// function compareBehaviours (a: Behaviour, b: Behaviour): number {
+// function compareComponents (a: Component, b: Component): number {
 //   const itemA = a.item;
 //   const itemB = b.item;
 

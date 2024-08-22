@@ -123,7 +123,6 @@ export class CompositionComponent extends Behaviour {
 
           compositionComponent.item = item;
           item.components.push(compositionComponent);
-          item.itemBehaviours.push(compositionComponent);
           compositionComponent.data = props as unknown as ContentOptions;
           compositionComponent.refId = refId;
           item.transform.parentTransform = this.transform;

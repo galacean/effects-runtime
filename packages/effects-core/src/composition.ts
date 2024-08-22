@@ -243,7 +243,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.data = sourceContent;
     this.rootComposition.item = this.rootItem;
     this.rootItem.components.push(this.rootComposition);
-    this.rootItem.itemBehaviours.push(this.rootComposition);
 
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
@@ -285,14 +284,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   initializeSceneTicking (item: VFXItem) {
-    for (const behaviour of item.itemBehaviours) {
-      this.sceneTicking.addBehaviour(behaviour);
+    for (const component of item.components) {
+      this.sceneTicking.addComponent(component);
     }
-    for (const rendererComponent of item.rendererComponents) {
-      this.sceneTicking.update.addTick(rendererComponent.onUpdate, rendererComponent);
-      this.sceneTicking.lateUpdate.addTick(rendererComponent.onLateUpdate, rendererComponent);
-    }
-
     for (const child of item.children) {
       this.initializeSceneTicking(child);
     }
@@ -637,10 +631,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   private callAwake (item: VFXItem) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (!itemBehaviour.isAwakeCalled) {
-        itemBehaviour.onAwake();
-        itemBehaviour.isAwakeCalled = true;
+    for (const component of item.components) {
+      if (!component.isAwakeCalled) {
+        component.onAwake();
+        component.isAwakeCalled = true;
       }
     }
     for (const child of item.children) {
