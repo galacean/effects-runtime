@@ -86,6 +86,9 @@ export class InteractComponent extends RendererComponent {
   }
 
   override update (dt: number): void {
+    if (!this.isActiveAndEnabled) {
+      return;
+    }
     this.previewContent?.updateMesh();
     if (!this.hasBeenAddedToComposition && this.item.composition) {
       const options = this.item.props.content.options as spec.DragInteractOption;

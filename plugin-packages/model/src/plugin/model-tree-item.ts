@@ -212,7 +212,7 @@ export class ModelTreeComponent extends Behaviour {
   /**
    * 组件开始，查询合成中场景管理器并设置到动画管理器中
    */
-  override start () {
+  override onStart () {
     this.item.type = spec.ItemType.tree;
     this.content.baseTransform.setValid(true);
     const sceneManager = getSceneManager(this);
@@ -226,7 +226,7 @@ export class ModelTreeComponent extends Behaviour {
    * 组件更新，内部对象更新
    * @param dt
    */
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
     // this.timeline?.getRenderData(time, true);
     // TODO: 需要使用lifetime
     this.content?.tick(dt);

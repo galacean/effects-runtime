@@ -45,6 +45,7 @@ export abstract class Component extends EffectsObject {
 export abstract class Behaviour extends Component {
   isAwakeCalled = false;
   isStartCalled = false;
+  isEnableCalled = false;
 
   @serialize()
   private _enabled = true;
@@ -60,14 +61,20 @@ export abstract class Behaviour extends Component {
     return this._enabled;
   }
   set enabled (value: boolean) {
-    this._enabled = value;
-    if (value) {
-      if (this.isActiveAndEnabled) {
-        this.onEnable();
-      }
-      if (!this.isStartCalled) {
-        this.start();
-        this.isStartCalled = true;
+    if (this.enabled !== value) {
+      this._enabled = value;
+      if (value) {
+        if (this.isActiveAndEnabled) {
+          this.enable();
+          if (!this.isStartCalled) {
+            this.onStart();
+            this.isStartCalled = true;
+          }
+        }
+      } else {
+        if (this.isEnableCalled) {
+          this.disable();
+        }
       }
     }
   }
@@ -75,7 +82,7 @@ export abstract class Behaviour extends Component {
   /**
    * 生命周期函数，初始化后调用，生命周期内只调用一次
    */
-  awake () {
+  onAwake () {
     // OVERRIDE
   }
 
@@ -85,29 +92,48 @@ export abstract class Behaviour extends Component {
   onEnable () {
     // OVERRIDE
   }
+
   /**
    * 生命周期函数，在第一次 update 前调用，生命周期内只调用一次
    */
-  start () {
+  onStart () {
     // OVERRIDE
   }
+
   /**
    * 生命周期函数，每帧调用一次
    */
-  update (dt: number) {
+  onUpdate (dt: number) {
     // OVERRIDE
   }
+
   /**
    * 生命周期函数，每帧调用一次，在 update 之后调用
    */
-  lateUpdate (dt: number) {
+  onLateUpdate (dt: number) {
     // OVERRIDE
+  }
+
+  /**
+   * @internal
+   */
+  enable () {
+    this.isEnableCalled = true;
+
+    this.onEnable();
+  }
+
+  /**
+   * @internal
+   */
+  disable () {
+    this.isEnableCalled = false;
   }
 
   override onAttached (): void {
     this.item.itemBehaviours.push(this);
     if (!this.isAwakeCalled) {
-      this.awake();
+      this.onAwake();
       this.isAwakeCalled = true;
     }
   }

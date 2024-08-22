@@ -371,7 +371,7 @@ export class ModelLightComponent extends Behaviour {
   /**
    * 组件开始，需要创建内部对象和添加到场景管理器中
    */
-  override start (): void {
+  override onStart (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
     const scene = getSceneManager(this);
@@ -384,7 +384,7 @@ export class ModelLightComponent extends Behaviour {
    * 组件更新，更新内部对象状态
    * @param dt - 更新间隔
    */
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
     this.content.update();
   }
 
@@ -462,7 +462,7 @@ export class ModelCameraComponent extends Behaviour {
   /**
    * 组件开始，需要创建内部对象和添加到场景管理器中
    */
-  override start (): void {
+  override onStart (): void {
     this.createContent();
     this.item.type = VFX_ITEM_TYPE_3D;
     const scene = getSceneManager(this);
@@ -475,7 +475,7 @@ export class ModelCameraComponent extends Behaviour {
    * 组件更新，更新内部对象状态
    * @param dt - 更新间隔
    */
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
     this.content.update();
     this.updateMainCamera();
   }
@@ -569,7 +569,7 @@ export class AnimationComponent extends Behaviour {
   /**
    * 组件开始，需要创建内部对象和添加到场景管理器中
    */
-  override start (): void {
+  override onStart (): void {
     this.elapsedTime = 0;
     this.item.type = VFX_ITEM_TYPE_3D;
   }
@@ -578,7 +578,7 @@ export class AnimationComponent extends Behaviour {
    * 组件更新，更新内部对象状态
    * @param dt - 更新间隔
    */
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
     this.elapsedTime += dt * 0.001;
     if (this.animation >= 0 && this.animation < this.clips.length) {
       this.clips[this.animation].sampleAnimation(this.item, this.elapsedTime);

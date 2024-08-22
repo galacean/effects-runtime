@@ -110,6 +110,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   private speed = 1;
   private listIndex = 0;
+  private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
   static isComposition (item: VFXItem) {
@@ -138,6 +139,22 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   static isExtraCamera (item: VFXItem) {
     return item.id === 'extra-camera' && item.name === 'extra-camera';
+  }
+
+  static isAncestor (
+    ancestorCandidate: VFXItem,
+    descendantCandidate: VFXItem,
+  ) {
+    let current = descendantCandidate.parent;
+
+    while (current) {
+      if (current === ancestorCandidate) {
+        return true;
+      }
+      current = current.parent;
+    }
+
+    return false;
   }
 
   constructor (
@@ -370,6 +387,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   setVisible (visible: boolean) {
     if (this.visible !== visible) {
       this.visible = !!visible;
+      this.onActiveChanged();
     }
   }
 
@@ -523,6 +541,46 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
 
     return undefined;
+  }
+
+  /**
+   * @internal
+   */
+  onActiveChanged () {
+    if (!this.isEnabled) {
+      this.onEnable();
+    } else {
+      this.onDisable();
+    }
+  }
+
+  /**
+   * @internal
+   */
+  onEnable () {
+    this.isEnabled = true;
+    for (const behavior of this.itemBehaviours) {
+      if (behavior.enabled && !behavior.isStartCalled) {
+        behavior.onStart();
+      }
+    }
+    for (const behavior of this.itemBehaviours) {
+      if (behavior.enabled && !behavior.isEnableCalled) {
+        behavior.enable();
+      }
+    }
+  }
+
+  /**
+   * @internal
+   */
+  onDisable () {
+    this.isEnabled = true;
+    for (const behavior of this.itemBehaviours) {
+      if (behavior.enabled && behavior.isEnableCalled) {
+        behavior.disable();
+      }
+    }
   }
 
   override fromData (data: VFXItemData): void {
