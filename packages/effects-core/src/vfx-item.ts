@@ -575,7 +575,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    * @internal
    */
   onDisable () {
-    this.isEnabled = true;
+    this.isEnabled = false;
     for (const behavior of this.itemBehaviours) {
       if (behavior.enabled && behavior.isEnableCalled) {
         behavior.disable();
