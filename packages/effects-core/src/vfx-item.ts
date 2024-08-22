@@ -94,6 +94,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   reusable = false;
   type: spec.ItemType = spec.ItemType.base;
   props: VFXItemProps;
+  isDuringPlay = false;
 
   @serialize()
   components: Component[] = [];
@@ -284,8 +285,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     const newComponent = new classConstructor(this.engine);
 
     this.components.push(newComponent);
-    newComponent.item = this;
-    newComponent.onAttached();
+    newComponent.setVFXItem(this);
 
     return newComponent;
   }
@@ -327,21 +327,22 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   setParent (vfxItem: VFXItem) {
-    if (vfxItem === this) {
+    if (vfxItem === this && !vfxItem) {
       return;
     }
     if (this.parent) {
       removeItem(this.parent.children, this);
     }
     this.parent = vfxItem;
-    if (vfxItem) {
-      if (!VFXItem.isCamera(this)) {
-        this.transform.parentTransform = vfxItem.transform;
-      }
-      vfxItem.children.push(this);
-      if (!this.composition) {
-        this.composition = vfxItem.composition;
-      }
+    if (!VFXItem.isCamera(this)) {
+      this.transform.parentTransform = vfxItem.transform;
+    }
+    vfxItem.children.push(this);
+    if (!this.composition) {
+      this.composition = vfxItem.composition;
+    }
+    if (!this.isDuringPlay && vfxItem.isDuringPlay) {
+      this.beginPlay();
     }
   }
 
@@ -546,6 +547,24 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * @internal
    */
+  beginPlay () {
+    this.isDuringPlay = true;
+
+    if (this.composition && this.visible && !this.isEnabled) {
+      this.onEnable();
+    }
+
+    for (const child of this.children) {
+      if (!child.isDuringPlay) {
+        child.beginPlay();
+      }
+    }
+
+  }
+
+  /**
+   * @internal
+   */
   onActiveChanged () {
     if (!this.isEnabled) {
       this.onEnable();
@@ -559,14 +578,14 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   onEnable () {
     this.isEnabled = true;
-    for (const behavior of this.itemBehaviours) {
-      if (behavior.enabled && !behavior.isStartCalled) {
-        behavior.onStart();
+    for (const component of this.components) {
+      if (component.enabled && !component.isStartCalled) {
+        component.onStart();
       }
     }
-    for (const behavior of this.itemBehaviours) {
-      if (behavior.enabled && !behavior.isEnableCalled) {
-        behavior.enable();
+    for (const component of this.components) {
+      if (component.enabled && !component.isEnableCalled) {
+        component.enable();
       }
     }
   }
@@ -576,9 +595,9 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   onDisable () {
     this.isEnabled = false;
-    for (const behavior of this.itemBehaviours) {
-      if (behavior.enabled && behavior.isEnableCalled) {
-        behavior.disable();
+    for (const component of this.components) {
+      if (component.enabled && component.isEnableCalled) {
+        component.disable();
       }
     }
   }

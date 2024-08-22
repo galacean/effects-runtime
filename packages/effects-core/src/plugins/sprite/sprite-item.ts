@@ -266,11 +266,11 @@ export class SpriteComponent extends RendererComponent {
     renderer.drawGeometry(geo, material);
   }
 
-  override start (): void {
+  override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
   }
 
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
     this.frameAnimationTime += dt / 1000;
     let time = this.frameAnimationTime;
     const duration = this.item.duration;

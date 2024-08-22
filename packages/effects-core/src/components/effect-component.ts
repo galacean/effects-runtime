@@ -39,7 +39,7 @@ export class EffectComponent extends RendererComponent {
     this._priority = 0;
   }
 
-  override start (): void {
+  override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
   }
 

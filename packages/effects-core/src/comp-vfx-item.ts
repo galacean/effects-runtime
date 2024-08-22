@@ -118,8 +118,12 @@ export class CompositionComponent extends Behaviour {
           props.content = itemData.content;
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
-          const compositionComponent = item.addComponent(CompositionComponent);
 
+          const compositionComponent = new CompositionComponent(this.engine);
+
+          compositionComponent.item = item;
+          item.components.push(compositionComponent);
+          item.itemBehaviours.push(compositionComponent);
           compositionComponent.data = props as unknown as ContentOptions;
           compositionComponent.refId = refId;
           item.transform.parentTransform = this.transform;

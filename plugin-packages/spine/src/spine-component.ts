@@ -143,8 +143,8 @@ export class SpineComponent extends RendererComponent {
     }
   }
 
-  override start () {
-    super.start();
+  override onStart () {
+    super.onStart();
     if (!this.cache) {
       return;
     }
@@ -158,11 +158,11 @@ export class SpineComponent extends RendererComponent {
       return;
     }
     this.state.apply(this.skeleton);
-    this.update(0);
+    this.onUpdate(0);
     this.resize();
   }
 
-  override update (dt: number) {
+  override onUpdate (dt: number) {
     if (!(this.state && this.skeleton)) {
       return;
     }

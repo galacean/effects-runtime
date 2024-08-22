@@ -41,7 +41,7 @@ export class GizmoComponent extends RendererComponent {
   mat = Matrix4.fromIdentity();
   wireframeMeshes: Mesh[] = [];
 
-  override start (): void {
+  override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
     for (const item of this.item.composition?.items ?? []) {
       if (item.id === this.target) {
@@ -118,7 +118,7 @@ export class GizmoComponent extends RendererComponent {
     composition?.loaderData.gizmoItems.push(this.item);
   }
 
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
     this.updateRenderData();
   }
 

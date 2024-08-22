@@ -236,9 +236,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
     this.rootItem.name = 'rootItem';
     this.rootItem.composition = this;
-    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
+
+    // Spawn rootCompositionComponent
+    this.rootComposition = new CompositionComponent(this.getEngine());
     this.rootComposition.startTime = sourceContent.startTime;
     this.rootComposition.data = sourceContent;
+    this.rootComposition.item = this.rootItem;
+    this.rootItem.components.push(this.rootComposition);
+    this.rootItem.itemBehaviours.push(this.rootComposition);
 
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
@@ -284,8 +289,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.sceneTicking.addBehaviour(behaviour);
     }
     for (const rendererComponent of item.rendererComponents) {
-      this.sceneTicking.update.addTick(rendererComponent.update, rendererComponent);
-      this.sceneTicking.lateUpdate.addTick(rendererComponent.lateUpdate, rendererComponent);
+      this.sceneTicking.update.addTick(rendererComponent.onUpdate, rendererComponent);
+      this.sceneTicking.lateUpdate.addTick(rendererComponent.onLateUpdate, rendererComponent);
     }
 
     for (const child of item.children) {
@@ -563,7 +568,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updatePluginLoaders(deltaTime);
 
     // scene VFXItem components lifetime function.
-    this.callStart(this.rootItem);
+    // this.callStart(this.rootItem);
+    if (!this.rootItem.isDuringPlay) {
+      this.rootItem.beginPlay();
+    }
     this.sceneTicking.update.tick(time);
     this.sceneTicking.lateUpdate.tick(time);
     // this.callUpdate(this.rootItem, time);
@@ -637,24 +645,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     for (const child of item.children) {
       this.callAwake(child);
-    }
-  }
-
-  private callStart (item: VFXItem) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && !itemBehaviour.isStartCalled) {
-        itemBehaviour.onStart();
-        itemBehaviour.isStartCalled = true;
-      }
-    }
-    for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && !rendererComponent.isStartCalled) {
-        rendererComponent.start();
-        rendererComponent.isStartCalled = true;
-      }
-    }
-    for (const child of item.children) {
-      this.callStart(child);
     }
   }
 

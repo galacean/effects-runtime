@@ -189,7 +189,7 @@ describe('core/plugins/sprite/item-base', () => {
     const sprite = comp.getItemByName('日历逐帧');
     const spriteItem = sprite?.getComponent(SpriteComponent);
 
-    spriteItem?.update(0.0);
+    spriteItem?.onUpdate(0.0);
     const texOffset0 = spriteItem?.material.getVector4('_TexOffset')?.clone().toArray();
 
     let spriteColorTrack;
@@ -202,7 +202,7 @@ describe('core/plugins/sprite/item-base', () => {
       }
     }
 
-    spriteItem?.update(1000);
+    spriteItem?.onUpdate(1000);
 
     const texOffset2 = spriteItem?.material.getVector4('_TexOffset')?.clone().toArray();
 

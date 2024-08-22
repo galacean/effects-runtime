@@ -13,42 +13,19 @@ export abstract class Component extends EffectsObject {
    * 附加到的 VFXItem 对象
    */
   item: VFXItem;
-  /**
-   * 附加到的 VFXItem 对象 Transform 组件
-   */
-  get transform () {
-    return this.item.transform;
-  }
-
-  onAttached () { }
-  onDestroy () { }
-
-  override fromData (data: any): void {
-    super.fromData(data);
-    if (data.item) {
-      this.item = data.item;
-    }
-  }
-
-  override dispose (): void {
-    this.onDestroy();
-    if (this.item) {
-      removeItem(this.item.components, this);
-    }
-  }
-}
-
-/**
- * @since 2.0.0
- * @internal
- */
-export abstract class Behaviour extends Component {
   isAwakeCalled = false;
   isStartCalled = false;
   isEnableCalled = false;
 
   @serialize()
   private _enabled = true;
+
+  /**
+   * 附加到的 VFXItem 对象 Transform 组件
+   */
+  get transform () {
+    return this.item.transform;
+  }
 
   /**
    * 组件是否可以更新，true 更新，false 不更新
@@ -60,6 +37,7 @@ export abstract class Behaviour extends Component {
   get enabled () {
     return this._enabled;
   }
+
   set enabled (value: boolean) {
     if (this.enabled !== value) {
       this._enabled = value;
@@ -115,6 +93,13 @@ export abstract class Behaviour extends Component {
   }
 
   /**
+   * 生命周期函数，在组件销毁时调用
+   */
+  onDestroy () {
+    // OVERRIDE
+  }
+
+  /**
    * @internal
    */
   enable () {
@@ -130,12 +115,50 @@ export abstract class Behaviour extends Component {
     this.isEnableCalled = false;
   }
 
-  override onAttached (): void {
-    this.item.itemBehaviours.push(this);
+  setVFXItem (item: VFXItem) {
+    this.item = item;
     if (!this.isAwakeCalled) {
       this.onAwake();
       this.isAwakeCalled = true;
     }
+    if (item.getVisible() && this.enabled) {
+      this.start();
+      this.enable();
+    }
+  }
+
+  override fromData (data: any): void {
+    super.fromData(data);
+    if (data.item) {
+      this.item = data.item;
+    }
+  }
+
+  override dispose (): void {
+    this.onDestroy();
+    if (this.item) {
+      removeItem(this.item.components, this);
+    }
+  }
+
+  private start () {
+    if (this.isStartCalled) {
+      return;
+    }
+    this.isStartCalled = true;
+    this.onStart();
+  }
+}
+
+/**
+ * @since 2.0.0
+ * @internal
+ */
+export abstract class Behaviour extends Component {
+
+  override setVFXItem (item: VFXItem): void {
+    super.setVFXItem(item);
+    this.item.itemBehaviours.push(this);
   }
 
   override dispose (): void {
