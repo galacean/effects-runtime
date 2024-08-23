@@ -230,5 +230,260 @@ describe('core/plugins/sprite/renderer', () => {
     expect(aPos?.[0]).to.closeTo(-0.9414 / 2, 0.0001);
     expect(aPos?.[1]).to.closeTo(-0.0167 / 2, 0.0001);
   });
+
+  //帧动画循环
+  it('sprite frame animation loop', async () => {
+    const json = {
+      'playerVersion': {
+        'web': '2.0.0',
+        'native': '0.0.1.202311221223',
+      },
+      'images': [
+        {
+          'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*JaGdQrwrHRIAAAAAAAAAAAAADlB4AQ/original',
+          'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*UINtRLYgPl8AAAAAAAAAAAAADlB4AQ/original',
+          'id': 'f501468d9e124f04a83302a91e44fc99',
+          'renderLevel': 'B+',
+        },
+      ],
+      'fonts': [],
+      'version': '3.0',
+      'shapes': [],
+      'plugins': [],
+      'type': 'ge',
+      'compositions': [
+        {
+          'id': '1',
+          'name': '新建合成1',
+          'duration': 5,
+          'startTime': 0,
+          'endBehavior': 4,
+          'previewSize': [
+            750,
+            1624,
+          ],
+          'items': [
+            {
+              'id': '1404b5a43900443f98a317a0525c8148',
+            },
+          ],
+          'camera': {
+            'fov': 60,
+            'far': 40,
+            'near': 0.1,
+            'clipMode': 1,
+            'position': [
+              0,
+              0,
+              8,
+            ],
+            'rotation': [
+              0,
+              0,
+              0,
+            ],
+          },
+          'sceneBindings': [
+            {
+              'key': {
+                'id': '0fce32fa418a42c6bde13c231fcf5f44',
+              },
+              'value': {
+                'id': '1404b5a43900443f98a317a0525c8148',
+              },
+            },
+          ],
+          'timelineAsset': {
+            'id': '90bd089b7b64457fa00f2ada1aa77f37',
+          },
+        },
+      ],
+      'components': [
+        {
+          'id': '8c86488688ad458a98c8eed578acd093',
+          'item': {
+            'id': '1404b5a43900443f98a317a0525c8148',
+          },
+          'dataType': 'SpriteComponent',
+          'options': {
+            'startColor': [
+              1,
+              1,
+              1,
+              1,
+            ],
+          },
+          'renderer': {
+            'renderMode': 1,
+            'texture': {
+              'id': '780ace75d5cc4226ad1a0b3174311b9e',
+            },
+          },
+          'textureSheetAnimation': {
+            'col': 4,
+            'row': 4,
+            'total': 9,
+            'animate': true,
+          },
+        },
+      ],
+      'geometries': [],
+      'materials': [],
+      'items': [
+        {
+          'id': '1404b5a43900443f98a317a0525c8148',
+          'name': 'sprite_2',
+          'duration': 0.57,
+          'type': '1',
+          'visible': true,
+          'endBehavior': 5,
+          'delay': 0,
+          'renderLevel': 'B+',
+          'components': [
+            {
+              'id': '8c86488688ad458a98c8eed578acd093',
+            },
+          ],
+          'transform': {
+            'position': {
+              'x': 0,
+              'y': 0.9988,
+              'z': 0,
+            },
+            'eulerHint': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'anchor': {
+              'x': 0,
+              'y': 0,
+            },
+            'size': {
+              'x': 1.5754,
+              'y': 1.5754,
+            },
+            'scale': {
+              'x': 1,
+              'y': 1,
+              'z': 1,
+            },
+          },
+          'dataType': 'VFXItemData',
+        },
+      ],
+      'shaders': [],
+      'bins': [],
+      'textures': [
+        {
+          'id': '780ace75d5cc4226ad1a0b3174311b9e',
+          'source': {
+            'id': 'f501468d9e124f04a83302a91e44fc99',
+          },
+          'flipY': true,
+        },
+      ],
+      'animations': [],
+      'miscs': [
+        {
+          'id': '90bd089b7b64457fa00f2ada1aa77f37',
+          'dataType': 'TimelineAsset',
+          'tracks': [
+            {
+              'id': '0fce32fa418a42c6bde13c231fcf5f44',
+            },
+          ],
+        },
+        {
+          'id': '43386f7f20e7455090648655f5121d7b',
+          'dataType': 'ActivationPlayableAsset',
+        },
+        {
+          'id': 'a0f3b1dc0562477a9b3bd26ac0af652c',
+          'dataType': 'TransformPlayableAsset',
+          'positionOverLifetime': {},
+        },
+        {
+          'id': '8057197c9c7b4563afdf417b78574437',
+          'dataType': 'SpriteColorPlayableAsset',
+          'startColor': [
+            1,
+            1,
+            1,
+            1,
+          ],
+        },
+        {
+          'id': '6935fa52af7b4754a217228250ec859d',
+          'dataType': 'ActivationTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 0.57,
+              'endBehavior': 5,
+              'asset': {
+                'id': '43386f7f20e7455090648655f5121d7b',
+              },
+            },
+          ],
+        },
+        {
+          'id': 'f1893a453d1f4b4e8685c954075bab26',
+          'dataType': 'TransformTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 0.57,
+              'endBehavior': 5,
+              'asset': {
+                'id': 'a0f3b1dc0562477a9b3bd26ac0af652c',
+              },
+            },
+          ],
+        },
+        {
+          'id': '4a0610a40b77400cbaac79487028bd30',
+          'dataType': 'SpriteColorTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 0.57,
+              'endBehavior': 5,
+              'asset': {
+                'id': '8057197c9c7b4563afdf417b78574437',
+              },
+            },
+          ],
+        },
+        {
+          'id': '0fce32fa418a42c6bde13c231fcf5f44',
+          'dataType': 'ObjectBindingTrack',
+          'children': [
+            {
+              'id': '6935fa52af7b4754a217228250ec859d',
+            },
+            {
+              'id': 'f1893a453d1f4b4e8685c954075bab26',
+            },
+            {
+              'id': '4a0610a40b77400cbaac79487028bd30',
+            },
+          ],
+          'clips': [],
+        },
+      ],
+      'compositionId': '1',
+    };
+    const currentTime = 0.5;
+    const comp = await player.loadScene(json);
+
+    player.gotoAndPlay(currentTime);
+    const spriteComponent = comp.getItemByName('sprite_2')?.getComponent(SpriteComponent);
+
+    expect(spriteComponent?.frameAnimationLoop).to.be.true;
+  });
 });
 
