@@ -249,37 +249,6 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       item.content.positionOverLifetime.asMovement = true;
     }
 
-    // 动画数据转化 TODO: 动画数据移到 TimelineComponentData
-    item.content.tracks = [];
-    const tracks = item.content.tracks;
-
-    if (item.type !== ItemType.particle) {
-      tracks.push({
-        clips: [
-          {
-            id: generateGUID(),
-            dataType: 'TransformPlayableAsset',
-            sizeOverLifetime: item.content.sizeOverLifetime,
-            rotationOverLifetime: item.content.rotationOverLifetime,
-            positionOverLifetime: item.content.positionOverLifetime,
-          },
-        ],
-      });
-    }
-
-    if (item.type === ItemType.sprite) {
-      tracks.push({
-        clips: [
-          {
-            id: generateGUID(),
-            dataType: 'SpriteColorPlayableAsset',
-            colorOverLifetime: item.content.colorOverLifetime,
-            startColor: item.content.options.startColor,
-          },
-        ],
-      });
-    }
-
     // 修正老 json 的 item.pluginName
     if (item.pn !== undefined) {
       const pn = item.pn;
@@ -511,7 +480,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
       trackDatas.push(newTrackData);
     }
 
-    if (item.type === ItemType.sprite) {
+    if (item.type === ItemType.sprite || item.type === ItemType.text) {
       const newSpriteColorPlayableAssetData = {
         id: generateGUID(),
         dataType: 'SpriteColorPlayableAsset',
