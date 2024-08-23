@@ -11,13 +11,13 @@
 
 `2024-08-23`
 
-- Fix: migration of text item animation track. [#584](https://github.com/galacean/effects-runtime/pull/584) @wumaolinmaoan
+- Fix: Migration of text item animation track. [#584](https://github.com/galacean/effects-runtime/pull/584) @wumaolinmaoan
 
 ## 2.0.1
 
 `2024-08-23`
 
-- Fix: frame animation loop。[#580](https://github.com/galacean/effects-runtime/pull/580) @wumaolinmaoan
+- Fix: Frame animation loop. [#580](https://github.com/galacean/effects-runtime/pull/580) @wumaolinmaoan
 
 ## 2.0.0
 
@@ -64,8 +64,6 @@
 - Feat: add postprocess volume. [#510](https://github.com/galacean/effects-runtime/pull/510) @wumaolinmaoan
   - Perf: opt post process. [#524](https://github.com/galacean/effects-runtime/pull/524) @wumaolinmaoan
 - Feat: add new downgrade plugin and refactor Alipay downgrade plugin. [#513](https://github.com/galacean/effects-runtime/pull/513) @liuxi150
-Here’s the translation:
-
 - Feat: Support loading of images in avif format. [#534](https://github.com/galacean/effects-runtime/pull/534) @yiiqii
 - Feat: Added performance monitoring plugin. [#544](https://github.com/galacean/effects-runtime/pull/544) @Sruimeng
 - Feat: Removed the getPointPosition method from the particle mesh and added the getPointPositionByIndex method to the particleSystem. [#554](https://github.com/galacean/effects-runtime/pull/554) @RGCHN
