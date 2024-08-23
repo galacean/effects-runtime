@@ -8,6 +8,12 @@
 
 ---
 
+## 2.0.2
+
+`2024-08-23`
+
+- Fix: migration of text item animation track. [#584](https://github.com/galacean/effects-runtime/pull/584) @wumaolinmaoan
+
 ## 2.0.1
 
 `2024-08-23`
