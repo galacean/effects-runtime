@@ -223,9 +223,9 @@ export class Transform implements Disposable {
    */
   setScale (x: number, y: number, z: number) {
     if (this.scale.x !== x || this.scale.y !== y || this.scale.z !== z) {
-      this.scale.x = x;
-      this.scale.y = y;
-      this.scale.z = z;
+      this.scale.x = x ? x : 1e-5 ;
+      this.scale.y = y ? y : 1e-5;
+      this.scale.z = z ? z : 1e-5;
       this.dirtyFlags.localData = true;
       this.dispatchValueChange();
     }
