@@ -65,9 +65,16 @@ export abstract class Component extends EffectsObject {
   }
 
   /**
-   * 在每次设置 enabled 为 true 时触发
+   * 在 enabled 变为 true 时触发
    */
   onEnable () {
+    // OVERRIDE
+  }
+
+  /**
+   * 在 enabled 变为 false 时触发
+   */
+  onDisable () {
     // OVERRIDE
   }
 
@@ -103,8 +110,10 @@ export abstract class Component extends EffectsObject {
    * @internal
    */
   enable () {
-    this.isEnableCalled = true;
-
+    if (this.item.composition) {
+      this.item.composition.sceneTicking.addComponent(this);
+      this.isEnableCalled = true;
+    }
     this.onEnable();
   }
 
@@ -112,7 +121,11 @@ export abstract class Component extends EffectsObject {
    * @internal
    */
   disable () {
-    this.isEnableCalled = false;
+    this.onDisable();
+    if (this.item.composition) {
+      this.isEnableCalled = false;
+      this.item.composition.sceneTicking.removeComponent(this);
+    }
   }
 
   setVFXItem (item: VFXItem) {

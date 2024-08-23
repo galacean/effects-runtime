@@ -76,22 +76,16 @@ class TickData {
 
 class UpdateTickData extends TickData {
   override tickComponents (components: Component[], dt: number): void {
-    for (const behavior of components) {
-      if (!behavior.isActiveAndEnabled) {
-        continue;
-      }
-      behavior.onUpdate(dt);
+    for (const component of components) {
+      component.onUpdate(dt);
     }
   }
 }
 
 class LateUpdateTickData extends TickData {
   override tickComponents (components: Component[], dt: number): void {
-    for (const behavior of components) {
-      if (!behavior.isActiveAndEnabled) {
-        continue;
-      }
-      behavior.onLateUpdate(dt);
+    for (const component of components) {
+      component.onLateUpdate(dt);
     }
   }
 }

@@ -71,6 +71,7 @@ export interface CompositionProps {
  */
 export class Composition extends EventEmitter<CompositionEvent<Composition>> implements Disposable, LostHandler {
   renderer: Renderer;
+  sceneTicking = new SceneTicking();
   /**
    * 当前帧的渲染数据对象
    */
@@ -194,7 +195,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   // private readonly event: EventSystem;
   // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
-  private sceneTicking = new SceneTicking();
   /**
    * 合成中消息元素创建/销毁时触发的回调
    */
@@ -279,7 +279,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
-    this.initializeSceneTicking(this.rootItem);
+    // this.initializeSceneTicking(this.rootItem);
   }
 
   initializeSceneTicking (item: VFXItem) {
