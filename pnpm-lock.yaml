@@ -224,8 +224,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: 0.6.0
-        version: 0.6.0
+        specifier: ^0.6.2
+        version: 0.6.2
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -292,8 +292,8 @@ importers:
         specifier: workspace:*
         version: link:../../plugin-packages/spine
       '@vvfx/resource-detection':
-        specifier: 0.6.0
-        version: 0.6.0
+        specifier: ^0.6.2
+        version: 0.6.2
       maoan-imgui-js:
         specifier: ^1.0.6
         version: 1.0.6
@@ -317,8 +317,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects-webgl
       '@vvfx/resource-detection':
-        specifier: 0.6.0
-        version: 0.6.0
+        specifier: ^0.6.2
+        version: 0.6.2
 
 packages:
 
@@ -2965,8 +2965,8 @@ packages:
       - supports-color
     dev: true
 
-  /@vvfx/resource-detection@0.6.0:
-    resolution: {integrity: sha512-zkyVUrRLu3dv9EgLGPetPc9oamY601ppPX9xSEWkaPSyttX9dLp/6wkS+pFke5N48lAkZtR/Vifv7byFwKa6bw==}
+  /@vvfx/resource-detection@0.6.2:
+    resolution: {integrity: sha512-hMXcDFLSVNMEkscx0N8Q1FtFM0muHrDCfR4SY1hfrLNWeOGaveQSoZhU6Sfm49uBXwPfkroTDIjt4kHCvI6UXg==}
     engines: {node: '>=10.0.0'}
     dependencies:
       '@galacean/effects-math': 1.1.0
