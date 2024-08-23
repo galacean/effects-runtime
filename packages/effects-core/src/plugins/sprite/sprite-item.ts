@@ -268,6 +268,9 @@ export class SpriteComponent extends RendererComponent {
 
   override start (): void {
     this.item.getHitTestParams = this.getHitTestParams;
+    if (this.item.endBehavior === spec.EndBehavior.restart) {
+      this.frameAnimationLoop = true;
+    }
   }
 
   override update (dt: number): void {
