@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.7
+
+`2024-08-23`
+
+- Fix: 修复 Chrome 128 版本 unfirom 值含 NaN 报错。[#582](https://github.com/galacean/effects-runtime/pull/582) @RGCH
+
 ## 1.6.6
 
 `2024-08-02`

@@ -19,7 +19,7 @@ async function main() {
       .slice(0, 50),
   });
   const fromVersion = await prompt.run();
-  const logs = await git.log({ from: fromVersion, to: 'main' });
+  const logs = await git.log({ from: fromVersion, to: '1.x' });
   let prList = [];
 
   for (let i = 0; i < logs.all.length; i += 1) {

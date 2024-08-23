@@ -7,6 +7,12 @@
 
 ---
 
+## 1.6.7
+
+`2024-08-23`
+
+- Fix: Resolve error where 'unfirom' value contains NaN in Chrome version 128. [#582](https://github.com/galacean/effects-runtime/pull/582) @RGCH
+
 ## 1.6.6
 
 `2024-08-02`
