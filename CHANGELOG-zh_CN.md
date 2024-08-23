@@ -8,6 +8,12 @@
 
 ---
 
+## 2.0.1
+
+`2024-08-23`
+
+- Fix: frame animation loop。[#580](https://github.com/galacean/effects-runtime/pull/580) @wumaolinmaoan
+
 ## 2.0.0
 
 `2024-08-22`
