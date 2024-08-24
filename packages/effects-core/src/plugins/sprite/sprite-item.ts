@@ -257,6 +257,9 @@ export class SpriteComponent extends RendererComponent {
     this.material.setTexture('uSampler0', texture);
   }
 
+  /**
+   * @internal
+   */
   setAnimationTime (time: number) {
     this.frameAnimationTime = time;
     this.isManualTimeSet = true;
