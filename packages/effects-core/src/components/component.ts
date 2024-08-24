@@ -130,13 +130,15 @@ export abstract class Component extends EffectsObject {
 
   setVFXItem (item: VFXItem) {
     this.item = item;
-    if (!this.isAwakeCalled) {
-      this.onAwake();
-      this.isAwakeCalled = true;
-    }
-    if (item.getVisible() && this.enabled) {
-      this.start();
-      this.enable();
+    if (item.isDuringPlay) {
+      if (!this.isAwakeCalled) {
+        this.onAwake();
+        this.isAwakeCalled = true;
+      }
+      if (item.getVisible() && this.enabled) {
+        this.start();
+        this.enable();
+      }
     }
   }
 
