@@ -8,6 +8,12 @@
 
 ---
 
+## 2.0.3
+
+`2024-08-26`
+
+- Fix: frame animation loop on composition restart。[#588](https://github.com/galacean/effects-runtime/pull/588) @wumaolinmaoan
+
 ## 2.0.2
 
 `2024-08-23`
