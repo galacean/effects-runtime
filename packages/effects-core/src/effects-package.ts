@@ -12,7 +12,6 @@ interface FileSummary {
 
 /**
  * @since 2.0.0
- * @internal
  */
 export class EffectsPackage {
   fileSummary: FileSummary;

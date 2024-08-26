@@ -14,7 +14,6 @@ import { effectsClass } from '../../decorators';
 
 /**
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.InteractComponent)
 export class InteractComponent extends RendererComponent {

@@ -81,6 +81,7 @@ export class SpriteColorPlayable extends Playable {
   startColor: spec.RGBAColorValue;
   renderColor: vec4 = [1, 1, 1, 1];
   spriteMaterial: Material;
+  spriteComponent: SpriteComponent;
 
   override processFrame (context: FrameContext): void {
     const boundObject = context.output.getUserData();
@@ -88,9 +89,11 @@ export class SpriteColorPlayable extends Playable {
     if (!(boundObject instanceof VFXItem)) {
       return;
     }
-
+    if (!this.spriteComponent) {
+      this.spriteComponent = boundObject.getComponent(SpriteComponent);
+    }
     if (!this.spriteMaterial) {
-      this.spriteMaterial = boundObject.getComponent(SpriteComponent).material;
+      this.spriteMaterial = this.spriteComponent.material;
       const startColor = this.spriteMaterial.getVector4('_Color');
 
       if (startColor) {
@@ -98,6 +101,7 @@ export class SpriteColorPlayable extends Playable {
       }
     }
 
+    this.spriteComponent.setAnimationTime(this.time);
     let colorInc = vecFill(tempColor, 1);
     let colorChanged;
     const life = this.time / boundObject.duration;
@@ -166,7 +170,6 @@ export class SpriteComponent extends RendererComponent {
 
   textureSheetAnimation?: spec.TextureSheetAnimation;
   frameAnimationLoop = false;
-  frameAnimationTime = 0;
   splits: splitsDataType;
   emptyTexture: Texture;
   color: vec4 = [1, 1, 1, 1];
@@ -182,6 +185,8 @@ export class SpriteComponent extends RendererComponent {
   private readonly wireframe?: boolean;
   private preMultiAlpha: number;
   private visible = true;
+  private isManualTimeSet = false;
+  private frameAnimationTime = 0;
 
   constructor (engine: Engine, props?: SpriteItemProps) {
     super(engine);
@@ -252,6 +257,14 @@ export class SpriteComponent extends RendererComponent {
     this.material.setTexture('uSampler0', texture);
   }
 
+  /**
+   * @internal
+   */
+  setAnimationTime (time: number) {
+    this.frameAnimationTime = time;
+    this.isManualTimeSet = true;
+  }
+
   override render (renderer: Renderer) {
     if (!this.getVisible()) {
       return;
@@ -268,13 +281,13 @@ export class SpriteComponent extends RendererComponent {
 
   override start (): void {
     this.item.getHitTestParams = this.getHitTestParams;
-    if (this.item.endBehavior === spec.EndBehavior.restart) {
-      this.frameAnimationLoop = true;
-    }
   }
 
   override update (dt: number): void {
-    this.frameAnimationTime += dt / 1000;
+    if (!this.isManualTimeSet) {
+      this.frameAnimationTime += dt / 1000;
+      this.isManualTimeSet = false;
+    }
     let time = this.frameAnimationTime;
     const duration = this.item.duration;
 
