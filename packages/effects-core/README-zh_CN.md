@@ -161,4 +161,4 @@ mesh 会根据 `priority` 属性被添加到 `renderPass` 合适位置上。
 
 ## API 文档
 
-[Galacean Effects Core API 文档](https://galacean.antgroup.com/effects/#/api/modules_galacean_effects_core)
+[Galacean Effects Core API 文档](https://galacean.antgroup.com/effects/api/effects-core)
