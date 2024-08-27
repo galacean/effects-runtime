@@ -23,7 +23,7 @@ uniform sampler2D uDepth;
 void main(){
     #ifdef DEPTH_TEXTURE
     gl_FragDepthEXT = texture2D(uDepth,vTex).r;
-    #endifc
+    #endif
 }
 `;
 
