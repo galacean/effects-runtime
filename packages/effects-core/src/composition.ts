@@ -418,7 +418,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对 startTime 的时间
    */
   gotoAndPlay (time: number) {
+    const speed = this.speed;
+
+    this.setSpeed(1);
     this.setTime(time);
+    this.setSpeed(speed);
     this.resume();
   }
 
@@ -427,7 +431,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对 startTime 的时间
    */
   gotoAndStop (time: number) {
+    const speed = this.speed;
+
+    this.setSpeed(1);
     this.setTime(time);
+    this.setSpeed(speed);
     this.pause();
   }
 
@@ -474,7 +482,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 前进合成到指定时间
    * @param time - 相对0时刻的时间
-   * @param skipRender - 是否跳过渲染
    */
   private forwardTime (time: number) {
     const deltaTime = time * 1000 - this.rootComposition.time * 1000;
@@ -486,7 +493,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     for (t; t > step; t -= step) {
       this.update(ss);
     }
-    this.update(reverse ? -t : t);
+    this.update (reverse ? -t : t);
   }
 
   /**
@@ -530,7 +537,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成更新，针对所有 item 的更新
    * @param deltaTime - 更新的时间步长
-   * @param skipRender - 是否需要渲染
    */
   update (deltaTime: number) {
     if (!this.assigned || this.paused) {
