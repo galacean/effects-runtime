@@ -827,7 +827,6 @@ export class ParticleSystem {
             if (options.removeParticle) {
               mesh.removePoint(pointIndex);
               this.clearPointTrail(pointIndex);
-              node.content[0] = 0;
             }
             hitPositions.push(pos);
             if (!options.multiple) {
