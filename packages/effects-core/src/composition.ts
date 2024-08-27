@@ -21,6 +21,7 @@ import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
 import type { PostProcessVolume } from './components/post-process-volume';
+import { SceneTicking } from './composition/scene-ticking';
 
 export interface CompositionStatistic {
   loadTime: number,
@@ -70,6 +71,7 @@ export interface CompositionProps {
  */
 export class Composition extends EventEmitter<CompositionEvent<Composition>> implements Disposable, LostHandler {
   renderer: Renderer;
+  sceneTicking = new SceneTicking();
   /**
    * 当前帧的渲染数据对象
    */
@@ -234,9 +236,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
     this.rootItem.name = 'rootItem';
     this.rootItem.composition = this;
-    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
+
+    // Spawn rootCompositionComponent
+    this.rootComposition = new CompositionComponent(this.getEngine());
     this.rootComposition.startTime = sourceContent.startTime;
     this.rootComposition.data = sourceContent;
+    this.rootComposition.item = this.rootItem;
+    this.rootItem.components.push(this.rootComposition);
 
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
@@ -267,13 +273,22 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rendererOptions = null;
     this.rootComposition.createContent();
     this.buildItemTree(this.rootItem);
-    this.callAwake(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
         this.emit('end', { composition: this });
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
+    // this.initializeSceneTicking(this.rootItem);
+  }
+
+  initializeSceneTicking (item: VFXItem) {
+    for (const component of item.components) {
+      this.sceneTicking.addComponent(component);
+    }
+    for (const child of item.children) {
+      this.initializeSceneTicking(child);
+    }
   }
 
   /**
@@ -456,7 +471,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.resume();
     }
     if (!this.rootComposition.isStartCalled) {
-      this.rootComposition.start();
+      this.rootComposition.onStart();
       this.rootComposition.isStartCalled = true;
     }
     this.forwardTime(time + this.startTime);
@@ -546,9 +561,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updatePluginLoaders(deltaTime);
 
     // scene VFXItem components lifetime function.
-    this.callStart(this.rootItem);
-    this.callUpdate(this.rootItem, time);
-    this.callLateUpdate(this.rootItem, time);
+    if (!this.rootItem.isDuringPlay) {
+      this.callAwake(this.rootItem);
+      this.rootItem.beginPlay();
+    }
+    this.sceneTicking.update.tick(time);
+    this.sceneTicking.lateUpdate.tick(time);
 
     this.updateCamera();
     this.prepareRender();
@@ -610,77 +628,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   private callAwake (item: VFXItem) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (!itemBehaviour.isAwakeCalled) {
-        itemBehaviour.awake();
-        itemBehaviour.isAwakeCalled = true;
+    for (const component of item.components) {
+      if (!component.isAwakeCalled) {
+        component.onAwake();
+        component.isAwakeCalled = true;
       }
     }
     for (const child of item.children) {
       this.callAwake(child);
-    }
-  }
-
-  private callStart (item: VFXItem) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && !itemBehaviour.isStartCalled) {
-        itemBehaviour.start();
-        itemBehaviour.isStartCalled = true;
-      }
-    }
-    for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && !rendererComponent.isStartCalled) {
-        rendererComponent.start();
-        rendererComponent.isStartCalled = true;
-      }
-    }
-    for (const child of item.children) {
-      this.callStart(child);
-    }
-  }
-
-  private callUpdate (item: VFXItem, dt: number) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && itemBehaviour.isStartCalled) {
-        itemBehaviour.update(dt);
-      }
-    }
-    for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && rendererComponent.isStartCalled) {
-        rendererComponent.update(dt);
-      }
-    }
-    for (const child of item.children) {
-      if (VFXItem.isComposition(child)) {
-        if (
-          child.ended &&
-          child.endBehavior === spec.EndBehavior.restart
-        ) {
-          child.ended = false;
-          // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
-          this.callUpdate(child, 0);
-        } else {
-          this.callUpdate(child, dt);
-        }
-      } else {
-        this.callUpdate(child, dt);
-      }
-    }
-  }
-
-  private callLateUpdate (item: VFXItem, dt: number) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && itemBehaviour.isStartCalled) {
-        itemBehaviour.lateUpdate(dt);
-      }
-    }
-    for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && rendererComponent.isStartCalled) {
-        rendererComponent.lateUpdate(dt);
-      }
-    }
-    for (const child of item.children) {
-      this.callLateUpdate(child, dt);
     }
   }
 

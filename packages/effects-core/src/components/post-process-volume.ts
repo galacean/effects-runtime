@@ -41,7 +41,7 @@ export class PostProcessVolume extends Behaviour {
   @serialize()
   useToneMapping: boolean = true; // 1: true, 0: false
 
-  override start (): void {
+  override onStart (): void {
     const composition = this.item.composition;
 
     if (composition) {

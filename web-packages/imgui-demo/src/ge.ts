@@ -17,8 +17,8 @@ export class GalaceanEffects {
     // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ'; // 春促
     const json = {
       'playerVersion': {
-        'web': '2.0.0-alpha.20',
-        'native': '2.0.0-alpha.20',
+        'web': '2.0.0',
+        'native': '2.0.0',
       },
       'images': [],
       'fonts': [],
@@ -298,14 +298,14 @@ export class OutlinePass extends RenderPass {
   private vert = `precision highp float;
 
   attribute vec3 aPos;//x y
-  
+
   varying vec4 vColor;
-  
+
   uniform vec4 _Color;
   uniform mat4 effects_MatrixVP;
   uniform mat4 effects_MatrixInvV;
   uniform mat4 effects_ObjectToWorld;
-  
+
   void main() {
     vColor = _Color;
     vec4 pos = vec4(aPos.xyz, 1.0);
@@ -316,7 +316,7 @@ export class OutlinePass extends RenderPass {
   private frag = `precision highp float;
 
   varying vec4 vColor;
-    
+
   void main() {
     vec4 color = vec4(1.0,1.0,1.0,1.0);
     gl_FragColor = color;

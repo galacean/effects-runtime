@@ -14,7 +14,6 @@ import { RendererComponent } from './renderer-component';
 
 /**
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.EffectComponent)
 export class EffectComponent extends RendererComponent {
@@ -39,7 +38,7 @@ export class EffectComponent extends RendererComponent {
     this._priority = 0;
   }
 
-  override start (): void {
+  override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
   }
 

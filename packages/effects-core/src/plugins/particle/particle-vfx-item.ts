@@ -21,7 +21,7 @@ export class ParticleBehaviourPlayable extends Playable {
 
     if (this.particleSystem) {
       this.particleSystem.name = boundObject.name;
-      this.particleSystem.start();
+      this.particleSystem.startEmit();
       this.particleSystem.initEmitterTransform();
     }
   }
@@ -44,7 +44,7 @@ export class ParticleBehaviourPlayable extends Playable {
       if (Math.abs(this.time - this.lastTime) < 0.001) {
         deltaTime = 0;
       }
-      particleSystem.onUpdate(deltaTime);
+      particleSystem.update(deltaTime);
     }
     this.lastTime = this.time;
   }

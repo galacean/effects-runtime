@@ -7,6 +7,94 @@
 
 ---
 
+## 2.0.3
+
+`2024-08-26`
+
+- Fix: frame animation loop on composition restart。[#588](https://github.com/galacean/effects-runtime/pull/588) @wumaolinmaoan
+
+## 2.0.2
+
+`2024-08-23`
+
+- Fix: Migration of text item animation track. [#584](https://github.com/galacean/effects-runtime/pull/584) @wumaolinmaoan
+
+## 2.0.1
+
+`2024-08-23`
+
+- Fix: Frame animation loop. [#580](https://github.com/galacean/effects-runtime/pull/580) @wumaolinmaoan
+
+## 2.0.0
+
+`2024-08-22`
+
+- Refactor: componentization transformation. [#47](https://github.com/galacean/effects-runtime/pull/47) [#62](https://github.com/galacean/effects-runtime/pull/62) [#71](https://github.com/galacean/effects-runtime/pull/71) [#72](https://github.com/galacean/effects-runtime/pull/72) [#73](https://github.com/galacean/effects-runtime/pull/73) [#81](https://github.com/galacean/effects-runtime/pull/81) [#94](https://github.com/galacean/effects-runtime/pull/94) [#161](https://github.com/galacean/effects-runtime/pull/161) [#163](https://github.com/galacean/effects-runtime/pull/163) [#177](https://github.com/galacean/effects-runtime/pull/177) [#191](https://github.com/galacean/effects-runtime/pull/191) [#192](https://github.com/galacean/effects-runtime/pull/192) [#194](https://github.com/galacean/effects-runtime/pull/194) [#196](https://github.com/galacean/effects-runtime/pull/196) [#197](https://github.com/galacean/effects-runtime/pull/197) [#204](https://github.com/galacean/effects-runtime/pull/204) [#205](https://github.com/galacean/effects-runtime/pull/205) [#213](https://github.com/galacean/effects-runtime/pull/213) [#225](https://github.com/galacean/effects-runtime/pull/225) [#228](https://github.com/galacean/effects-runtime/pull/228) [#229](https://github.com/galacean/effects-runtime/pull/229) [#232](https://github.com/galacean/effects-runtime/pull/232) [#234](https://github.com/galacean/effects-runtime/pull/234) [#237](https://github.com/galacean/effects-runtime/pull/237) [#238](https://github.com/galacean/effects-runtime/pull/238) [#239](https://github.com/galacean/effects-runtime/pull/239) [#241](https://github.com/galacean/effects-runtime/pull/241) [#250](https://github.com/galacean/effects-runtime/pull/250) [#253](https://github.com/galacean/effects-runtime/pull/253) [#254](https://github.com/galacean/effects-runtime/pull/254) [#255](https://github.com/galacean/effects-runtime/pull/255) [#266](https://github.com/galacean/effects-runtime/pull/266) [#265](https://github.com/galacean/effects-runtime/pull/265) [#267](https://github.com/galacean/effects-runtime/pull/267) [#269](https://github.com/galacean/effects-runtime/pull/269) [#273](https://github.com/galacean/effects-runtime/pull/273) [#279](https://github.com/galacean/effects-runtime/pull/279) [#281](https://github.com/galacean/effects-runtime/pull/281) [#271](https://github.com/galacean/effects-runtime/pull/271) [#283](https://github.com/galacean/effects-runtime/pull/283) [#285](https://github.com/galacean/effects-runtime/pull/285) [#286](https://github.com/galacean/effects-runtime/pull/286) [#287](https://github.com/galacean/effects-runtime/pull/287) [#295](https://github.com/galacean/effects-runtime/pull/295) [#302](https://github.com/galacean/effects-runtime/pull/302) [#307](https://github.com/galacean/effects-runtime/pull/307) [#304](https://github.com/galacean/effects-runtime/pull/304) [#308](https://github.com/galacean/effects-runtime/pull/308) [#311](https://github.com/galacean/effects-runtime/pull/311) [#330](https://github.com/galacean/effects-runtime/pull/330) [#334](https://github.com/galacean/effects-runtime/pull/334) [#335](https://github.com/galacean/effects-runtime/pull/335) [#338](https://github.com/galacean/effects-runtime/pull/338) [#351](https://github.com/galacean/effects-runtime/pull/351) [#353](https://github.com/galacean/effects-runtime/pull/353) [#354](https://github.com/galacean/effects-runtime/pull/354) [#349](https://github.com/galacean/effects-runtime/pull/349) [#355](https://github.com/galacean/effects-runtime/pull/355) [#358](https://github.com/galacean/effects-runtime/pull/358) [#359](https://github.com/galacean/effects-runtime/pull/359) [#365](https://github.com/galacean/effects-runtime/pull/365) [#366](https://github.com/galacean/effects-runtime/pull/366) [#368](https://github.com/galacean/effects-runtime/pull/368) [#369](https://github.com/galacean/effects-runtime/pull/369) [#372](https://github.com/galacean/effects-runtime/pull/372) [#375](https://github.com/galacean/effects-runtime/pull/375) [#377](https://github.com/galacean/effects-runtime/pull/377) [#378](https://github.com/galacean/effects-runtime/pull/378) [#379](https://github.com/galacean/effects-runtime/pull/379) [#387](https://github.com/galacean/effects-runtime/pull/387) [#390](https://github.com/galacean/effects-runtime/pull/390) [#395](https://github.com/galacean/effects-runtime/pull/395) [#401](https://github.com/galacean/effects-runtime/pull/401) [#402](https://github.com/galacean/effects-runtime/pull/402) [#403](https://github.com/galacean/effects-runtime/pull/403) [#410](https://github.com/galacean/effects-runtime/pull/410) [#412](https://github.com/galacean/effects-runtime/pull/412) [#413](https://github.com/galacean/effects-runtime/pull/413) [#414](https://github.com/galacean/effects-runtime/pull/414) [#415](https://github.com/galacean/effects-runtime/pull/415) [#416](https://github.com/galacean/effects-runtime/pull/416) [#417](https://github.com/galacean/effects-runtime/pull/417) [#420](https://github.com/galacean/effects-runtime/pull/420) [#421](https://github.com/galacean/effects-runtime/pull/421) [#423](https://github.com/galacean/effects-runtime/pull/423) [#426](https://github.com/galacean/effects-runtime/pull/426) [#428](https://github.com/galacean/effects-runtime/pull/428) [#439](https://github.com/galacean/effects-runtime/pull/439) [#445](https://github.com/galacean/effects-runtime/pull/445) [#453](https://github.com/galacean/effects-runtime/pull/453) [#457](https://github.com/galacean/effects-runtime/pull/457) [#464](https://github.com/galacean/effects-runtime/pull/464) [#459](https://github.com/galacean/effects-runtime/pull/459) [#465](https://github.com/galacean/effects-runtime/pull/465) [#468](https://github.com/galacean/effects-runtime/pull/468) [#474](https://github.com/galacean/effects-runtime/pull/474) [#477](https://github.com/galacean/effects-runtime/pull/477) [#478](https://github.com/galacean/effects-runtime/pull/478) [#479](https://github.com/galacean/effects-runtime/pull/479) [#485](https://github.com/galacean/effects-runtime/pull/485) [#487](https://github.com/galacean/effects-runtime/pull/487) [#486](https://github.com/galacean/effects-runtime/pull/486) [#490](https://github.com/galacean/effects-runtime/pull/490) [#492](https://github.com/galacean/effects-runtime/pull/492) [#493](https://github.com/galacean/effects-runtime/pull/493) [#494](https://github.com/galacean/effects-runtime/pull/494) [#496](https://github.com/galacean/effects-runtime/pull/496) [#497](https://github.com/galacean/effects-runtime/pull/497) [#498](https://github.com/galacean/effects-runtime/pull/498) [#501](https://github.com/galacean/effects-runtime/pull/501) [#506](https://github.com/galacean/effects-runtime/pull/506) [#508](https://github.com/galacean/effects-runtime/pull/508) [#509](https://github.com/galacean/effects-runtime/pull/509) [#511](https://github.com/galacean/effects-runtime/pull/511) [#512](https://github.com/galacean/effects-runtime/pull/512) [#519](https://github.com/galacean/effects-runtime/pull/519) [#517](https://github.com/galacean/effects-runtime/pull/517) [#437](https://github.com/galacean/effects-runtime/pull/437) [#495](https://github.com/galacean/effects-runtime/pull/495) [#525](https://github.com/galacean/effects-runtime/pull/525) [#526](https://github.com/galacean/effects-runtime/pull/526) [#528](https://github.com/galacean/effects-runtime/pull/528) [#531](https://github.com/galacean/effects-runtime/pull/531) [#532](https://github.com/galacean/effects-runtime/pull/532) [#536](https://github.com/galacean/effects-runtime/pull/536) [#538](https://github.com/galacean/effects-runtime/pull/538) [#542](https://github.com/galacean/effects-runtime/pull/542) [#543](https://github.com/galacean/effects-runtime/pull/543) [#545](https://github.com/galacean/effects-runtime/pull/545) [#546](https://github.com/galacean/effects-runtime/pull/546) [#547](https://github.com/galacean/effects-runtime/pull/547) [#549](https://github.com/galacean/effects-runtime/pull/549) [#548](https://github.com/galacean/effects-runtime/pull/548) [#551](https://github.com/galacean/effects-runtime/pull/551) [#552](https://github.com/galacean/effects-runtime/pull/552) [#558](https://github.com/galacean/effects-runtime/pull/558) [#559](https://github.com/galacean/effects-runtime/pull/559) [#556](https://github.com/galacean/effects-runtime/pull/556) [#560](https://github.com/galacean/effects-runtime/pull/560) [#553](https://github.com/galacean/effects-runtime/pull/553) [#565](https://github.com/galacean/effects-runtime/pull/565) [#562](https://github.com/galacean/effects-runtime/pull/562) [#564](https://github.com/galacean/effects-runtime/pull/564) [#566](https://github.com/galacean/effects-runtime/pull/566) [#567](https://github.com/galacean/effects-runtime/pull/567) [#571](https://github.com/galacean/effects-runtime/pull/571) [#573](https://github.com/galacean/effects-runtime/pull/573) @yiiqii @RGCHN @wumaolinmaoan @Sruimeng @liuxi150
+  - Feat: add EffectComponent hit test. [#165](https://github.com/galacean/effects-runtime/pull/165) @wumaolinmaoan
+  - Feat: add effectsClass decorator. [#193](https://github.com/galacean/effects-runtime/pull/193) @wumaolinmaoan
+  - Feat: support builtin object. [#300](https://github.com/galacean/effects-runtime/pull/300) @wumaolinmaoan
+  - Feat: material texture property. [#294](https://github.com/galacean/effects-runtime/pull/294) @wumaolinmaoan
+  - Feat: sprite component api and composition api. [#306](https://github.com/galacean/effects-runtime/pull/306) @Sruimeng
+  - Feat: add image asset. [#331](https://github.com/galacean/effects-runtime/pull/331) @wumaolinmaoan
+  - Feat: add subMesh and animationClip. [#347](https://github.com/galacean/effects-runtime/pull/347) @wumaolinmaoan
+  - Feat: add sub composition track. [#411](https://github.com/galacean/effects-runtime/pull/411) @wumaolinmaoan
+  - Feat: add render order. [#418](https://github.com/galacean/effects-runtime/pull/418) @wumaolinmaoan
+  - Feat: add miscs. [#427](https://github.com/galacean/effects-runtime/pull/427) @wumaolinmaoan
+  - Feat: Modified the Spine data structure and loading parsing process. [#429](https://github.com/galacean/effects-runtime/pull/429) @RGCHN
+  - Feat: Added camera FOV ratio. [#475](https://github.com/galacean/effects-runtime/pull/475) @wumaolinmaoan
+  - Feat: Added frame comparison tests related to Canvas2D rendering. [#476](https://github.com/galacean/effects-runtime/pull/476) @Sruimeng
+  - Feat: Added gizmo coordinate space. [#491](https://github.com/galacean/effects-runtime/pull/491) @wumaolinmaoan
+  - Feat: Added geometry binary serialization. [#505](https://github.com/galacean/effects-runtime/pull/505) @wumaolinmaoan
+  - Feat: Revamped ECS for Spine resources and maintained compatibility with old data. [#520](https://github.com/galacean/effects-runtime/pull/520) @RGCHN
+  - Feat: Opened awake lifetime function. [#572](https://github.com/galacean/effects-runtime/pull/572) @wumaolinmaoan
+- Refactor: update alipay downgrade plugin. [#202](https://github.com/galacean/effects-runtime/pull/202) @liuxi150
+- Refactor: Removed filter-related code. [#297](https://github.com/galacean/effects-runtime/pull/297) @yiiqii
+- Refactor: Removed dynamic text code and replaced it with text elements. [#301](https://github.com/galacean/effects-runtime/pull/301) @yiiqii
+  - Chore: Removed checks for template v2 and improved related unit tests for data templates. [#303](https://github.com/galacean/effects-runtime/pull/303) @yiiqii
+- Refactor: Migrated fallback code and improved related types. [#332](https://github.com/galacean/effects-runtime/pull/332) @yiiqii
+- Refactor: Extracted TextComponentBase for use by engine-effects. [#454](https://github.com/galacean/effects-runtime/pull/454) @yiiqii
+- Refactor: Event system. [#488](https://github.com/galacean/effects-runtime/pull/488) @Sruimeng
+  - Test: Added player-related event tests. [#555](https://github.com/galacean/effects-runtime/pull/555) @Sruimeng
+  - Chore: Added player update demo. [#563](https://github.com/galacean/effects-runtime/pull/563) @yiiqii
+  - Refactor: Narrowed the application scope of events. [#569](https://github.com/galacean/effects-runtime/pull/569) @Sruimeng
+- Feat: add trail scene for custom material testing. [#64](https://github.com/galacean/effects-runtime/pull/64) @wumaolinmaoan
+- Feat: demo add custom material selection menu. [#83](https://github.com/galacean/effects-runtime/pull/83) @wumaolinmaoan
+- Feat: add geometry normals support. [#201](https://github.com/galacean/effects-runtime/pull/201) @wumaolinmaoan
+- Feat: material asset texture property add offset and scale. [#231](https://github.com/galacean/effects-runtime/pull/231) @wumaolinmaoan
+- Feat: add vignette effect. [#284](https://github.com/galacean/effects-runtime/pull/284) @wumaolinmaoan
+- Feat: add Composition/VFXItem setPositionByPixel API. [#357](https://github.com/galacean/effects-runtime/pull/357) @Sruimeng
+- Feat: Removed the Player initialization parameter gl, which is no longer supported. [#376](https://github.com/galacean/effects-runtime/pull/376) @yiiqii
+  - chore: Unified the default Texture creation method.
+- Feat: Added export for textLayout and textStyle. [#424](https://github.com/galacean/effects-runtime/pull/424) @Sruimeng
+- Feat: Updated the pre-player version for the inspire example. [#425](https://github.com/galacean/effects-runtime/pull/425) @yiiqii
+- Feat: add postprocess volume. [#510](https://github.com/galacean/effects-runtime/pull/510) @wumaolinmaoan
+  - Perf: opt post process. [#524](https://github.com/galacean/effects-runtime/pull/524) @wumaolinmaoan
+- Feat: add new downgrade plugin and refactor Alipay downgrade plugin. [#513](https://github.com/galacean/effects-runtime/pull/513) @liuxi150
+- Feat: Support loading of images in avif format. [#534](https://github.com/galacean/effects-runtime/pull/534) @yiiqii
+- Feat: Added performance monitoring plugin. [#544](https://github.com/galacean/effects-runtime/pull/544) @Sruimeng
+- Feat: Removed the getPointPosition method from the particle mesh and added the getPointPositionByIndex method to the particleSystem. [#554](https://github.com/galacean/effects-runtime/pull/554) @RGCHN
+- Feat: Add shader factory for shader code preprocessing. [#557](https://github.com/galacean/effects-runtime/pull/557) @liuxi150
+- Build: Use swc plugin for generation. [#240](https://github.com/galacean/effects-runtime/pull/240) @yiiqii
+  - Compilation speed increased, overall improvement of 6 times (170s => 27s)
+  - helper/assets will no longer be packaged
+  - Fix(build): Fixed swc local link error. [#268](https://github.com/galacean/effects-runtime/pull/268) @yiiqii
+  - Build: Core output uses es5, with some code optimization. [#444](https://github.com/galacean/effects-runtime/pull/444) @yiiqii
+- Build: Fixed Windows command line problem. [#350](https://github.com/galacean/effects-runtime/pull/350) @liuxi150
+- Build: Standardized GLSL import method to include and optimized some GLSL. [#430](https://github.com/galacean/effects-runtime/pull/430) @yiiqii
+- Build: Support for Douyin mini-programs. [#521](https://github.com/galacean/effects-runtime/pull/521) @yiiqii
+- Chore: Code consolidation and normalization. [#341](https://github.com/galacean/effects-runtime/pull/341) @yiiqii
+  - chore: Organize player file code
+  - style: Standardize spelling of framebuffer and renderbuffer
+  - refactor: Deprecated the handleEnd callback and replaced it with onEnd
+  - chore: Removed the deprecated forEach method
+- Chore: Unified GLType types. [#389](https://github.com/galacean/effects-runtime/pull/389) @yiiqii
+- Chore: Added error messages for inconsistent plugin versions. [#404](https://github.com/galacean/effects-runtime/pull/404) @yiiqii
+- Chore: Added rendering level examples and removed renderLevel from composition. [#419](https://github.com/galacean/effects-runtime/pull/419) @yiiqii
+- Chore: Optimized player version retrieval logic for plugin version comparison. [#433](https://github.com/galacean/effects-runtime/pull/433) @yiiqii
+- Chore: Exposed certain properties and methods of composition. [#436](https://github.com/galacean/effects-runtime/pull/436) @yiiqii
+- Chore: Standardized and optimized error messages. [#438](https://github.com/galacean/effects-runtime/pull/438) @yiiqii
+
+
 ## 1.6.6
 
 `2024-08-02`

@@ -17,6 +17,7 @@
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
+    "stripInternal": true,
     "moduleResolution": "node",
     "module": "ESNext",
     "target": "ESNext",

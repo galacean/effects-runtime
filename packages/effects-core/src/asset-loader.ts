@@ -11,7 +11,6 @@ import type { Constructor } from './utils';
 
 /**
  * @since 2.0.0
- * @internal
  */
 export class AssetLoader {
   constructor (

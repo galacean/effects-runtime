@@ -181,39 +181,34 @@ describe('core/plugins/sprite/item-base', () => {
 
   // 帧动画测试
   it('sprite sheet animation', async () => {
-    // TODO: @maoan
-    const json = '{"images":[{"url":"https://mdn.alipayobjects.com/mars/afts/img/A*pMoUS5aQU8UAAAAAAAAAAAAADlB4AQ/original","webp":"https://mdn.alipayobjects.com/mars/afts/img/A*31h5T7SiZrIAAAAAAAAAAAAADlB4AQ/original","renderLevel":"B+"}],"spines":[],"version":"1.5","shapes":[],"plugins":[],"type":"mars","compositions":[{"id":"14","name":"帧动画","duration":5,"startTime":0,"endBehavior":1,"previewSize":[750,1624],"items":[{"id":"42","name":"日历逐帧","duration":1,"type":"1","visible":true,"endBehavior":4,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"texture":0,"occlusion":false},"positionOverLifetime":{"startSpeed":0},"textureSheetAnimation":{"col":8,"row":8,"animate":true,"cycles":0,"blend":false,"animationDuration":2,"animationDelay":0,"total":59}},"transform":{"position":[-0.6295,-0.0166,0],"rotation":[0,0,0],"scale":[2.4177,2.4177,1]}}],"camera":{"fov":60,"far":20,"near":0.1,"position":[0,0,8],"rotation":[0,0,0],"clipMode":0}}],"requires":[],"compositionId":"14","bins":[],"textures":[{"source":0,"flipY":true}]}';
+    const json = '{"images":[{"url":"https://mdn.alipayobjects.com/mars/afts/img/A*pMoUS5aQU8UAAAAAAAAAAAAADlB4AQ/original","webp":"https://mdn.alipayobjects.com/mars/afts/img/A*31h5T7SiZrIAAAAAAAAAAAAADlB4AQ/original","renderLevel":"B+"}],"spines":[],"version":"1.5","shapes":[],"plugins":[],"type":"mars","compositions":[{"id":"14","name":"帧动画","duration":1,"startTime":0,"endBehavior":5,"previewSize":[750,1624],"items":[{"id":"42","name":"日历逐帧","duration":1,"type":"1","visible":true,"endBehavior":4,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"texture":0,"occlusion":false},"positionOverLifetime":{"startSpeed":0},"textureSheetAnimation":{"col":8,"row":8,"animate":true,"cycles":0,"blend":false,"animationDuration":2,"animationDelay":0,"total":59}},"transform":{"position":[-0.6295,-0.0166,0],"rotation":[0,0,0],"scale":[2.4177,2.4177,1]}}],"camera":{"fov":60,"far":20,"near":0.1,"position":[0,0,8],"rotation":[0,0,0],"clipMode":0}}],"requires":[],"compositionId":"14","bins":[],"textures":[{"source":0,"flipY":true}]}';
     const comp = await player.loadScene(JSON.parse(json));
+    const spriteVFXItem = comp.getItemByName('日历逐帧');
+    const spriteComponent = spriteVFXItem?.getComponent(SpriteComponent);
 
     player.gotoAndStop(0);
-    const sprite = comp.getItemByName('日历逐帧');
-    const spriteItem = sprite?.getComponent(SpriteComponent);
+    const texOffset0 = spriteComponent?.material.getVector4('_TexOffset')?.clone().toArray();
 
-    spriteItem?.update(0.0);
-    const texOffset0 = spriteItem?.material.getVector4('_TexOffset')?.clone().toArray();
+    player.gotoAndStop(1);
+    const texOffset2 = spriteComponent?.material.getVector4('_TexOffset')?.clone().toArray();
 
-    let spriteColorTrack;
-    // @ts-expect-error
-    const spriteBindingTrack = comp.rootItem.getComponent(CompositionComponent).timelineAsset.tracks.find(track => track.binding === sprite);
-
-    for (const subTrack of spriteBindingTrack?.getChildTracks() ?? []) {
-      if (subTrack instanceof SpriteColorTrack) {
-        spriteColorTrack = subTrack;
-      }
-    }
-
-    spriteItem?.update(1000);
-
-    const texOffset2 = spriteItem?.material.getVector4('_TexOffset')?.clone().toArray();
+    player.gotoAndStop(1.5);
+    const texOffset3 = spriteComponent?.material.getVector4('_TexOffset')?.clone().toArray();
 
     expect(texOffset0?.[0]).to.be.closeTo(0.0004, 0.001);
     expect(texOffset0?.[1]).to.be.closeTo(0.8746, 0.001);
     expect(texOffset0?.[2]).to.be.closeTo(0.1249, 0.001);
     expect(texOffset0?.[3]).to.be.closeTo(0.1249, 0.001);
+
     expect(texOffset2?.[0]).to.be.closeTo(0.25, 0.001);
     expect(texOffset2?.[1]).to.be.closeTo(0, 0.001);
     expect(texOffset2?.[2]).to.be.closeTo(0.1248, 0.001);
     expect(texOffset2?.[3]).to.be.closeTo(0.1249, 0.001);
+
+    expect(texOffset3?.[0]).to.be.closeTo(0.5, 0.001);
+    expect(texOffset3?.[1]).to.be.closeTo(0.5, 0.001);
+    expect(texOffset3?.[2]).to.be.closeTo(0.125, 0.001);
+    expect(texOffset3?.[3]).to.be.closeTo(0.125, 0.001);
   });
 
   // 位置、大小受父节点影响

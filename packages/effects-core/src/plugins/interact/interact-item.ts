@@ -14,7 +14,6 @@ import { effectsClass } from '../../decorators';
 
 /**
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.InteractComponent)
 export class InteractComponent extends RendererComponent {
@@ -48,7 +47,7 @@ export class InteractComponent extends RendererComponent {
     return this._interactive;
   }
 
-  override start (): void {
+  override onStart (): void {
     const options = this.item.props.content.options as spec.DragInteractOption;
     const { env } = this.item.engine.renderer;
     const composition = this.item.composition;
@@ -85,7 +84,10 @@ export class InteractComponent extends RendererComponent {
     };
   }
 
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
+    if (!this.isActiveAndEnabled) {
+      return;
+    }
     this.previewContent?.updateMesh();
     if (!this.hasBeenAddedToComposition && this.item.composition) {
       const options = this.item.props.content.options as spec.DragInteractOption;

@@ -32,8 +32,8 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
     this.updateTexture(false);
   }
 
-  override update (dt: number): void {
-    super.update(dt);
+  override onUpdate (dt: number): void {
+    super.onUpdate(dt);
     this.updateTexture(false);
   }
 
