@@ -5,7 +5,6 @@ import { ParticleSystem } from './particle-system';
 
 /**
  * @since 2.0.0
- * @internal
  */
 export class ParticleBehaviourPlayable extends Playable {
   lastTime = 0;
