@@ -40,7 +40,6 @@ export interface TextComponent extends TextComponentBase { }
 
 /**
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.TextComponent)
 export class TextComponent extends SpriteComponent {

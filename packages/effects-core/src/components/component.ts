@@ -5,7 +5,6 @@ import type { VFXItem } from '../vfx-item';
 
 /**
  * @since 2.0.0
- * @internal
  */
 export abstract class Component extends EffectsObject {
   name: string;
@@ -167,7 +166,6 @@ export abstract class Component extends EffectsObject {
 
 /**
  * @since 2.0.0
- * @internal
  */
 export abstract class Behaviour extends Component {
 
