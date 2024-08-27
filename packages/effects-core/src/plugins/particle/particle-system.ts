@@ -312,7 +312,7 @@ export class ParticleSystem extends Component {
     return this.renderer.getTextures();
   }
 
-  start () {
+  startEmit () {
     if (!this.started || this.ended) {
       this.reset();
       this.started = true;
@@ -337,7 +337,7 @@ export class ParticleSystem extends Component {
     this.ended = false;
   }
 
-  onUpdate (delta: number) {
+  update (delta: number) {
     if (this.started && !this.frozen) {
       const now = this.lastUpdate + delta / 1000;
       const options = this.options;

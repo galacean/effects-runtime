@@ -110,8 +110,8 @@ export class ThreeMesh extends Mesh implements Sortable {
     this.mesh.material = (mtl as ThreeMaterial).material;
   }
 
-  override start (): void {
-    super.start();
+  override onStart (): void {
+    super.onStart();
     (this.engine as ThreeEngine).threeGroup.add(this.mesh);
   }
 

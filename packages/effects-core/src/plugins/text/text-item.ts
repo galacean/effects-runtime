@@ -67,8 +67,8 @@ export class TextComponent extends SpriteComponent {
     this.updateTexture();
   }
 
-  override update (dt: number): void {
-    super.update(dt);
+  override onUpdate (dt: number): void {
+    super.onUpdate(dt);
     this.updateTexture();
   }
 

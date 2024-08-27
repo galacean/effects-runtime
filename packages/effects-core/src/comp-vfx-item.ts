@@ -40,7 +40,7 @@ export class CompositionComponent extends Behaviour {
   private timelinePlayable: Playable;
   private graph: PlayableGraph = new PlayableGraph();
 
-  override start (): void {
+  override onStart (): void {
     const { startTime = 0 } = this.item.props;
 
     this.startTime = startTime;
@@ -74,7 +74,7 @@ export class CompositionComponent extends Behaviour {
     return this.reusable;
   }
 
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
     const time = this.time;
 
     this.timelinePlayable.setTime(time);
@@ -117,8 +117,11 @@ export class CompositionComponent extends Behaviour {
           props.content = itemData.content;
           item = assetLoader.loadGUID(itemData.id);
           item.composition = this.item.composition;
-          const compositionComponent = item.addComponent(CompositionComponent);
 
+          const compositionComponent = new CompositionComponent(this.engine);
+
+          compositionComponent.item = item;
+          item.components.push(compositionComponent);
           compositionComponent.data = props as unknown as ContentOptions;
           compositionComponent.refId = refId;
           item.transform.parentTransform = this.transform;

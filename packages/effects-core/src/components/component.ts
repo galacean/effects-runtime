@@ -12,6 +12,13 @@ export abstract class Component extends EffectsObject {
    * 附加到的 VFXItem 对象
    */
   item: VFXItem;
+  isAwakeCalled = false;
+  isStartCalled = false;
+  isEnableCalled = false;
+
+  @serialize()
+  private _enabled = true;
+
   /**
    * 附加到的 VFXItem 对象 Transform 组件
    */
@@ -19,8 +26,120 @@ export abstract class Component extends EffectsObject {
     return this.item.transform;
   }
 
-  onAttached () { }
-  onDestroy () { }
+  /**
+   * 组件是否可以更新，true 更新，false 不更新
+   */
+  get isActiveAndEnabled () {
+    return this.item.getVisible() && this.enabled;
+  }
+
+  get enabled () {
+    return this._enabled;
+  }
+
+  set enabled (value: boolean) {
+    if (this.enabled !== value) {
+      this._enabled = value;
+      if (value) {
+        if (this.isActiveAndEnabled) {
+          this.enable();
+          if (!this.isStartCalled) {
+            this.onStart();
+            this.isStartCalled = true;
+          }
+        }
+      } else {
+        if (this.isEnableCalled) {
+          this.disable();
+        }
+      }
+    }
+  }
+
+  /**
+   * 生命周期函数，初始化后调用，生命周期内只调用一次
+   */
+  onAwake () {
+    // OVERRIDE
+  }
+
+  /**
+   * 在 enabled 变为 true 时触发
+   */
+  onEnable () {
+    // OVERRIDE
+  }
+
+  /**
+   * 在 enabled 变为 false 时触发
+   */
+  onDisable () {
+    // OVERRIDE
+  }
+
+  /**
+   * 生命周期函数，在第一次 update 前调用，生命周期内只调用一次
+   */
+  onStart () {
+    // OVERRIDE
+  }
+
+  /**
+   * 生命周期函数，每帧调用一次
+   */
+  onUpdate (dt: number) {
+    // OVERRIDE
+  }
+
+  /**
+   * 生命周期函数，每帧调用一次，在 update 之后调用
+   */
+  onLateUpdate (dt: number) {
+    // OVERRIDE
+  }
+
+  /**
+   * 生命周期函数，在组件销毁时调用
+   */
+  onDestroy () {
+    // OVERRIDE
+  }
+
+  /**
+   * @internal
+   */
+  enable () {
+    if (this.item.composition) {
+      this.item.composition.sceneTicking.addComponent(this);
+      this.isEnableCalled = true;
+    }
+    this.onEnable();
+  }
+
+  /**
+   * @internal
+   */
+  disable () {
+    this.onDisable();
+    if (this.item.composition) {
+      this.isEnableCalled = false;
+      this.item.composition.sceneTicking.removeComponent(this);
+    }
+  }
+
+  setVFXItem (item: VFXItem) {
+    this.item = item;
+    if (item.isDuringPlay) {
+      if (!this.isAwakeCalled) {
+        this.onAwake();
+        this.isAwakeCalled = true;
+      }
+      if (item.getVisible() && this.enabled) {
+        this.start();
+        this.enable();
+      }
+    }
+  }
 
   override fromData (data: any): void {
     super.fromData(data);
@@ -35,85 +154,26 @@ export abstract class Component extends EffectsObject {
       removeItem(this.item.components, this);
     }
   }
+
+  private start () {
+    if (this.isStartCalled) {
+      return;
+    }
+    this.isStartCalled = true;
+    this.onStart();
+  }
 }
 
 /**
  * @since 2.0.0
  */
 export abstract class Behaviour extends Component {
-  isAwakeCalled = false;
-  isStartCalled = false;
 
-  @serialize()
-  private _enabled = true;
-
-  /**
-   * 组件是否可以更新，true 更新，false 不更新
-   */
-  get isActiveAndEnabled () {
-    return this.item.getVisible() && this.enabled;
-  }
-
-  get enabled () {
-    return this._enabled;
-  }
-  set enabled (value: boolean) {
-    this._enabled = value;
-    if (value) {
-      if (this.isActiveAndEnabled) {
-        this.onEnable();
-      }
-      if (!this.isStartCalled) {
-        this.start();
-        this.isStartCalled = true;
-      }
-    }
-  }
-
-  /**
-   * 生命周期函数，初始化后调用，生命周期内只调用一次
-   */
-  awake () {
-    // OVERRIDE
-  }
-
-  /**
-   * 在每次设置 enabled 为 true 时触发
-   */
-  onEnable () {
-    // OVERRIDE
-  }
-  /**
-   * 生命周期函数，在第一次 update 前调用，生命周期内只调用一次
-   */
-  start () {
-    // OVERRIDE
-  }
-  /**
-   * 生命周期函数，每帧调用一次
-   */
-  update (dt: number) {
-    // OVERRIDE
-  }
-  /**
-   * 生命周期函数，每帧调用一次，在 update 之后调用
-   */
-  lateUpdate (dt: number) {
-    // OVERRIDE
-  }
-
-  override onAttached (): void {
-    this.item.itemBehaviours.push(this);
-    if (!this.isAwakeCalled) {
-      this.awake();
-      this.isAwakeCalled = true;
-    }
+  override setVFXItem (item: VFXItem): void {
+    super.setVFXItem(item);
   }
 
   override dispose (): void {
-    if (this.item) {
-      removeItem(this.item.itemBehaviours, this);
-    }
     super.dispose();
   }
 }
