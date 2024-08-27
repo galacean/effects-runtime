@@ -9,7 +9,7 @@ const { Vector3, Matrix4 } = math;
 
 const sleepTime = 20;
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '1.6.1';  // 旧版Player版本
+const oldVersion = params.get('version') || '2.0.3';  // 旧版Player版本
 const playerOptions: PlayerConfig = {
   //env: 'editor',
   //pixelRatio: 2,
@@ -109,7 +109,7 @@ export class TestPlayer {
   }
 
   duration () {
-    return this.composition.content.duration;
+    return this.composition.duration;
   }
 
   isLoop () {
@@ -231,7 +231,7 @@ export class TestController {
       this.oldPlayer = new TestPlayer(
         width, height, window.ge.Player, playerOptions, renderFramework,
         window.ge.registerPlugin, window.ge.AbstractPlugin, window.ge.VFXItem,
-        window.ge.AssetManager, true, this.is3DCase
+        window.ge.AssetManager, false, this.is3DCase
       );
       this.newPlayer = new TestPlayer(
         width, height, Player, playerOptions, renderFramework,

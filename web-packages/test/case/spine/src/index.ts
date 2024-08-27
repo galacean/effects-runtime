@@ -57,7 +57,7 @@ async function checkScene (keyName, name, url) {
     await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
-    const duration = oldPlayer.composition.content.duration;
+    const duration = oldPlayer.composition.duration;
     const timeList = [
       0, 0.045, 0.11, 0.13, 0.17, 0.22, 0.28, 0.3, 0.34, 0.38,
       0.41, 0.45, 0.51, 0.57, 0.63, 0.65, 0.69, 0.74, 0.77,
