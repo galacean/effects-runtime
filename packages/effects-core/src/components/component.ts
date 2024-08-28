@@ -150,6 +150,7 @@ export abstract class Component extends EffectsObject {
 
   override dispose (): void {
     this.onDestroy();
+    this.disable();
     if (this.item) {
       removeItem(this.item.components, this);
     }
