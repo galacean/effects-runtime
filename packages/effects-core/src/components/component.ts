@@ -149,8 +149,13 @@ export abstract class Component extends EffectsObject {
   }
 
   override dispose (): void {
-    this.onDestroy();
-    this.disable();
+    if (this.isEnableCalled) {
+      this.disable();
+    }
+    if (this.isAwakeCalled) {
+      this.isAwakeCalled = false;
+      this.onDestroy();
+    }
     if (this.item) {
       removeItem(this.item.components, this);
     }
