@@ -40,8 +40,6 @@ export class TestPlayer {
     this.scene = undefined;
     this.composition = undefined;
     this.lastTime = 0;
-
-    registerFunc('orientation-transformer', Plugin, VFXItem, true);
   }
 
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
@@ -227,6 +225,7 @@ export class TestController {
     await this.loadOldPlayer();
     await this.loadOldModelPlugin();
     await this.loadOldSpinePlugin();
+    await this.loadOldOrientationTransformerPlugin();
 
     playerOptions.env = isEditor ? 'editor' : '';
 
@@ -269,6 +268,12 @@ export class TestController {
 
   async loadOldSpinePlugin () {
     const spineAddress = `https://unpkg.com/@galacean/effects-plugin-spine@${oldVersion}/dist/index.min.js`;
+
+    return this.loadScript(spineAddress);
+  }
+
+  async loadOldOrientationTransformerPlugin () {
+    const spineAddress = `https://unpkg.com/@galacean/effects-plugin-orientation-transformer@${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(spineAddress);
   }
