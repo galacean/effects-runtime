@@ -17,4 +17,9 @@ export class StatsComponent extends Behaviour {
   override update (dt: number): void {
     this.monitor.update(dt);
   }
+
+  override dispose (): void {
+    super.dispose();
+    this.monitor.dispose();
+  }
 }
