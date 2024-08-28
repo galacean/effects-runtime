@@ -57,12 +57,12 @@ async function checkScene (keyName, name, url) {
     await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
-    const duration = oldPlayer.composition.duration;
+
     const timeList = [
-      0, 0.045, 0.11, 0.13, 0.17, 0.22, 0.28, 0.3, 0.34, 0.38,
-      0.41, 0.45, 0.51, 0.57, 0.63, 0.65, 0.69, 0.74, 0.77,
-      0.83, 0.87, 0.92, 0.96,
-    ].map(t => t * duration);
+      0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.71, 0.83, 0.96,
+      1.1, 1.2, 1.4, 1.7, 1.9, 2.2, 2.5, 2.7, 3.3, 3.8,
+      4.7, 5.2, 6.8, 7.5, 8.6, 9.7, 9.99, 12.5, 18.9,
+    ];
     let maxDiffValue = 0;
 
     for (let i = 0; i < timeList.length; i++) {

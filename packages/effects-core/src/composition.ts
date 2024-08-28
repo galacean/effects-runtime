@@ -493,7 +493,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     for (t; t > step; t -= step) {
       this.update(ss);
     }
-    this.update (reverse ? -t : t);
+    this.update(reverse ? -t : t);
   }
 
   /**

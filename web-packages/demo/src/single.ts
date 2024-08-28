@@ -1,6 +1,6 @@
 import { Player } from '@galacean/effects';
-import '@galacean/effects-plugin-orientation-transformer';
-const json = 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/GRPXATAUECLT/49510158-65ef1.json';
+import '@galacean/effects-plugin-spine';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*RVUzSYO8hk0AAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
