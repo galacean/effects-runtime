@@ -51,7 +51,7 @@ export class TestPlayer {
 
     let inData = url;
 
-    if (!this.oldVersion && this.is3DCase) {
+    if (this.is3DCase) {
       const converter = new JSONConverter(this.player.renderer);
 
       inData = await converter.processScene(url);
