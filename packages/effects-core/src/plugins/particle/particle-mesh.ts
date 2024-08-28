@@ -519,9 +519,10 @@ export class ParticleMesh implements ParticleMeshData {
     for (let i = 0;i < particleCount;i++) {
       const time = localTime - aOffsetArray[i * 4 + 2];
       const duration = aOffsetArray[i * 4 + 3];
-      const life = math.clamp(time / duration, 0.0, 1.0);
+      // const life = math.clamp(time / duration, 0.0, 1.0);
+      const aSeed = aSeedArray[i * 8 + 3];
 
-      const linearMove = this.calLinearMov(life, duration);
+      const linearMove = this.calLinearMov(time, duration, aSeed);
       const aLinearMoveOffset = i * 3;
 
       aLinearMoveArray[aLinearMoveOffset] = linearMove.x;
@@ -575,40 +576,48 @@ export class ParticleMesh implements ParticleMeshData {
     if (this.rotationOverLifetime.asRotation) {
       // Adjust rotation based on the specified lifetime components
       if (this.rotationOverLifetime.x) {
-        rotation.x += this.rotationOverLifetime.x.getValue(life);
+        if (this.rotationOverLifetime.x instanceof RandomValue) {
+          rotation.x += this.rotationOverLifetime.x.getValue(life, aSeed);
+        } else {
+          rotation.x += this.rotationOverLifetime.x.getValue(life);
+        }
       }
       if (this.rotationOverLifetime.y) {
-        rotation.y += this.rotationOverLifetime.y.getValue(life);
+        if (this.rotationOverLifetime.y instanceof RandomValue) {
+          rotation.y += this.rotationOverLifetime.y.getValue(life, aSeed);
+        } else {
+          rotation.y += this.rotationOverLifetime.y.getValue(life);
+        }
       }
       if (this.rotationOverLifetime.z) {
-        rotation.z += this.rotationOverLifetime.z.getValue(life);
+        if (this.rotationOverLifetime.z instanceof RandomValue) {
+          rotation.z += this.rotationOverLifetime.z.getValue(life, aSeed);
+        } else {
+          rotation.z += this.rotationOverLifetime.z.getValue(life);
+        }
       }
     } else {
-
       // Adjust rotation based on the specified lifetime components
       if (this.rotationOverLifetime.x) {
-        let timeScale = dur;
-
         if (this.rotationOverLifetime.x instanceof RandomValue) {
-          timeScale = aSeed;
+          rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, aSeed) * dur;
+        } else {
+          rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, dur) * dur;
         }
-        rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, timeScale) * dur;
       }
       if (this.rotationOverLifetime.y) {
-        let timeScale = dur;
-
         if (this.rotationOverLifetime.y instanceof RandomValue) {
-          timeScale = aSeed;
+          rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, aSeed) * dur;
+        } else {
+          rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, dur) * dur;
         }
-        rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, timeScale) * dur;
       }
       if (this.rotationOverLifetime.z) {
-        let timeScale = dur;
-
         if (this.rotationOverLifetime.z instanceof RandomValue) {
-          timeScale = aSeed;
+          rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, aSeed) * dur;
+        } else {
+          rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, dur) * dur;
         }
-        rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, timeScale) * dur;
       }
     }
 
@@ -642,31 +651,57 @@ export class ParticleMesh implements ParticleMeshData {
     return result;
   }
 
-  calLinearMov (life: number, duration: number): Vector3 {
+  calLinearMov (time: number, duration: number, aSeed: number): Vector3 {
     const mov = new Vector3();
+    const lifetime = time / duration;
 
-    if (!this.linearVelOverLifetime) {
+    if (!this.linearVelOverLifetime || !this.linearVelOverLifetime.enabled) {
       return new Vector3();
     }
     if (this.linearVelOverLifetime.asMovement) {
       if (this.linearVelOverLifetime.x) {
-        mov.x = this.linearVelOverLifetime.x.getValue(life);
+        if (this.linearVelOverLifetime.x instanceof RandomValue) {
+          mov.x = this.linearVelOverLifetime.x.getValue(lifetime, aSeed);
+        } else {
+          mov.x = this.linearVelOverLifetime.x.getValue(lifetime);
+        }
       }
       if (this.linearVelOverLifetime.y) {
-        mov.y = this.linearVelOverLifetime.y.getValue(life);
+        if (this.linearVelOverLifetime.y instanceof RandomValue) {
+          mov.y = this.linearVelOverLifetime.y.getValue(lifetime, aSeed);
+        } else {
+          mov.y = this.linearVelOverLifetime.y.getValue(lifetime);
+        }
       }
       if (this.linearVelOverLifetime.z) {
-        mov.z = this.linearVelOverLifetime.z.getValue(life);
+        if (this.linearVelOverLifetime.z instanceof RandomValue) {
+          mov.z = this.linearVelOverLifetime.z.getValue(lifetime, aSeed);
+        } else {
+          mov.z = this.linearVelOverLifetime.z.getValue(lifetime);
+        }
       }
     } else {
+      // Adjust rotation based on the specified lifetime components
       if (this.linearVelOverLifetime.x) {
-        mov.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, life) * duration;
+        if (this.linearVelOverLifetime.x instanceof RandomValue) {
+          mov.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, time, aSeed);
+        } else {
+          mov.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, time, duration);
+        }
       }
       if (this.linearVelOverLifetime.y) {
-        mov.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, life) * duration;
+        if (this.linearVelOverLifetime.y instanceof RandomValue) {
+          mov.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, time, aSeed);
+        } else {
+          mov.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, time, duration);
+        }
       }
       if (this.linearVelOverLifetime.z) {
-        mov.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, life) * duration;
+        if (this.linearVelOverLifetime.z instanceof RandomValue) {
+          mov.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, time, aSeed);
+        } else {
+          mov.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, time, duration);
+        }
       }
     }
 
