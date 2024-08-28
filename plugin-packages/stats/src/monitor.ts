@@ -1,3 +1,4 @@
+import type { Disposable } from '@galacean/effects';
 import type { PerformanceData } from './core';
 import { Core } from './core';
 
@@ -56,7 +57,7 @@ const css = `
   }
 `;
 
-export class Monitor {
+export class Monitor implements Disposable {
   private core: Core;
   private doms: HTMLElement[];
   private container: HTMLElement;
@@ -105,7 +106,7 @@ export class Monitor {
   /**
    * Update per frame
    */
-  public update (dt: number): void {
+  update (dt: number): void {
     const data = this.core.update(dt);
 
     if (!data || data.drawCall === 0 || data.triangles === 0) {
@@ -127,7 +128,7 @@ export class Monitor {
   /**
    * reset all hooks
    */
-  public reset (): void {
+  reset (): void {
     this.core.reset();
 
     for (let i = 0, l = this.items.length; i < l; i++) {
@@ -145,14 +146,14 @@ export class Monitor {
   /**
    * release all hooks
    */
-  public release (): void {
+  release (): void {
     this.core.release();
   }
 
   /**
-   * destroy the instance
+   * dispose the instance
    */
-  public destroy (): void {
+  dispose (): void {
     this.release();
     document.body.removeChild(this.container);
   }
