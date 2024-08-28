@@ -109,7 +109,11 @@ export class TestPlayer {
   }
 
   duration () {
-    return this.composition.duration;
+    if (this.composition.content) {
+      return this.composition.content.duration;
+    } else {
+      return this.composition.duration;
+    }
   }
 
   isLoop () {
@@ -231,7 +235,7 @@ export class TestController {
       this.oldPlayer = new TestPlayer(
         width, height, window.ge.Player, playerOptions, renderFramework,
         window.ge.registerPlugin, window.ge.AbstractPlugin, window.ge.VFXItem,
-        window.ge.AssetManager, false, this.is3DCase
+        window.ge.AssetManager, true, this.is3DCase
       );
       this.newPlayer = new TestPlayer(
         width, height, Player, playerOptions, renderFramework,

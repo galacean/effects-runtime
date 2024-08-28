@@ -58,8 +58,9 @@ export class OldLoaderImplEx {
       const gltfJson = gltfResult.json;
 
       options.gltf.remark = gltfResource;
-      options.gltf.resource = GLTFTools.processGLTFForEditor(gltfDoc, gltfJson);
+      options.gltf.resource = GLTFTools.processGLTFForEditorECS(gltfDoc, gltfJson);
     }
+
     this.loaderImpl = new (window as any).ge.modelPlugin.LoaderImpl();
 
     return this.loaderImpl.loadScene(options);
@@ -96,67 +97,33 @@ export async function oldLoadGLTFScene (options: LoadGLTFSceneOptions) {
     const cameraPosition = options.camera?.position ?? position.toArray();
     const cameraRotation = options.camera?.rotation ?? [0, 0, 0];
 
-    items.push({
-      id: 'extra-camera',
-      duration: duration,
+    loader.loaderImpl.addCamera({
+      near: 0.2,
+      far: 500,
+      fov: 60,
+      clipMode: 0,
       name: 'extra-camera',
-      pn: 0,
-      type: 'camera',
-      transform: {
-        position: cameraPosition,
-        rotation: cameraRotation,
-      },
       endBehavior: 5,
-      content: {
-        options: {
-          duration: duration,
-          near: 0.2,
-          far: 500,
-          fov: 60,
-          clipMode: 0,
-        },
-      },
-    });
-
-    items.push({
-      id: 'env-light',
       duration: duration,
-      name: 'env-light',
-      pn: 0,
-      type: 'light',
-      transform: {
-        position: [0, 0, 0],
-        rotation: [0, 0, 0],
-      },
-      endBehavior: 5,
-      content: {
-        options: {
-          lightType: 'ambient',
-          color: [255, 255, 255, 255],
-          intensity: 0.1,
-        },
-      },
+      position: cameraPosition,
+      rotation: cameraRotation,
     });
 
-    return {
-      'compositionId': 1,
-      'requires': [],
-      'compositions': [{
-        'name': 'composition_1',
-        'id': 1,
-        'duration': duration,
-        'endBehavior': 2,
-        'camera': { 'fov': 30, 'far': 20, 'near': 0.1, 'position': [0, 0, 8], 'clipMode': 1 },
-        'items': items,
-        'meta': { 'previewSize': [750, 1334] },
-      }],
-      'gltf': [],
-      'images': [],
-      'version': '0.8.9-beta.9',
-      'shapes': [],
-      'plugins': ['model'],
-      'type': 'mars',
-      '_imgs': { '1': [] },
-    };
+    loader.loaderImpl.addLight({
+      lightType: 'ambient',
+      color: { r: 1, g: 1, b: 1, a: 1 },
+      intensity: 0.1,
+      //
+      name: 'env-light',
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      duration: duration,
+      endBehavior: 5,
+    });
+
+    const loadResult = loader.loaderImpl.getLoadResult();
+
+    return loadResult.jsonScene;
   });
 }
