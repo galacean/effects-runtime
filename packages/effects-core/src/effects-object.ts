@@ -4,7 +4,6 @@ import { generateGUID } from './utils';
 
 /**
  * @since 2.0.0
- * @internal
  */
 export abstract class EffectsObject {
   static is (obj: unknown): obj is EffectsObject {

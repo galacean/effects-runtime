@@ -92,4 +92,4 @@ displayObject.addEventListener('end', () => {
 });
 ```
 
-## [API Documentation](https://galacean.antgroup.com/effects/#/api/modules_galacean_effects_threejs)
+## [API Documentation](https://galacean.antgroup.com/effects/api/effects-threejs)

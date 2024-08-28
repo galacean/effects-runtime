@@ -26,7 +26,6 @@ export interface SceneBindingData {
 
 /**
  * @since 2.0.0
- * @internal
  */
 export class CompositionComponent extends Behaviour {
   time = 0;

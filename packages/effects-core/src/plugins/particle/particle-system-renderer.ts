@@ -12,7 +12,6 @@ import { RendererComponent } from '../../components';
 
 /**
  * @since 2.0.0
- * @internal
  */
 export class ParticleSystemRenderer extends RendererComponent {
   meshes: Mesh[];
