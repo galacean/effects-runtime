@@ -1,5 +1,7 @@
 import { clamp } from '@galacean/effects-math/es/core/utils';
 
+export const DEFAULT_FPS = 60;
+
 /**
  * 定时器类
  */
@@ -15,7 +17,7 @@ export class Ticker {
   // deltaTime
   private dt = 0;
 
-  constructor (fps = 60) {
+  constructor (fps = DEFAULT_FPS) {
     this.setFPS(fps);
     this.tickers = [];
   }

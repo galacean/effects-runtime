@@ -8,6 +8,7 @@ import {
   TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
   isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL, EventEmitter,
   generateWhiteTexture, isSceneWithOptions, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS,
+  DEFAULT_FPS,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -358,10 +359,12 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     this.compositions.push(composition);
 
-    // 中低端设备降帧到 30fps
     if (this.ticker) {
+      // 中低端设备降帧到 30fps
       if (opts.renderLevel === spec.RenderLevel.B) {
         this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
+      } else {
+        this.ticker.setFPS(DEFAULT_FPS);
       }
     }
 
