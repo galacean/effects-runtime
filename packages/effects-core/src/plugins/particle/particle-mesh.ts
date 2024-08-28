@@ -459,8 +459,7 @@ export class ParticleMesh implements ParticleMeshData {
     // }
 
     const localTime = new Float32Array([this.time])[0];
-
-    const particleCount = aPosArray.length / 12;
+    const particleCount = Math.ceil(aPosArray.length / 12);
 
     // calculate particle translation
     let aTranslationArray = this.geometry.getAttributeData('aTranslation') as Float32Array;
