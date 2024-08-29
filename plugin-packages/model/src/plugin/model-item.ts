@@ -19,7 +19,6 @@ import { getSceneManager } from './model-plugin';
 /**
  * 插件 Mesh 组件类，支持 3D Mesh 渲染能力
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.MeshComponent)
 export class ModelMeshComponent extends RendererComponent {
@@ -241,7 +240,6 @@ export class ModelMeshComponent extends RendererComponent {
 /**
  * 插件天空盒组件类，支持 3D 天空盒渲染能力
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.SkyboxComponent)
 export class ModelSkyboxComponent extends RendererComponent {
@@ -343,7 +341,6 @@ export class ModelSkyboxComponent extends RendererComponent {
 /**
  * 插件灯光组件类，支持 3D 灯光能力
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.LightComponent)
 export class ModelLightComponent extends Behaviour {
@@ -435,7 +432,6 @@ export class ModelLightComponent extends Behaviour {
 /**
  * 插件相机组件类，支持 3D 相机能力
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.CameraComponent)
 export class ModelCameraComponent extends Behaviour {
@@ -546,7 +542,6 @@ export class ModelCameraComponent extends Behaviour {
 /**
  * 插件动画组件类，支持 3D 动画能力
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.AnimationComponent)
 export class AnimationComponent extends Behaviour {
