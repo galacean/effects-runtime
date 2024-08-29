@@ -544,7 +544,6 @@ export class GLMaterial extends Material {
       ...data,
     };
 
-    // FIXME: 刷新 Material 状态，后面删除 data 中的 blending，zTest 和 zWrite 状态
     if (data.stringTags['RenderType'] !== undefined) {
       this.blending = data.stringTags['RenderType'] === spec.RenderType.Transparent;
     }
