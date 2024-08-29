@@ -242,8 +242,8 @@ export class GLMaterialState {
     this.blendColor = [0, 0, 0, 0];
     this.blendFunctionParameters = [glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA, glContext.ONE, glContext.ONE_MINUS_SRC_ALPHA];
     this.blendEquationParameters = [glContext.FUNC_ADD, glContext.FUNC_ADD];
-    this.depthTest = false;
-    this.depthMask = false;
+    this.depthTest = true;
+    this.depthMask = true;
     this.depthRange = [0, 1];
     this.depthFunc = glContext.LESS;
     this.polygonOffset = [0, 0];
