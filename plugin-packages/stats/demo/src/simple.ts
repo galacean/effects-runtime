@@ -11,8 +11,11 @@ const container = document.getElementById('J-container');
     });
 
     new Stats(player);
-
-    await player.loadScene(json);
+    await player.loadScene(json, {
+      variables: {
+        video: 'https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*7gPzSo3RxlQAAAAAAAAAAAAADtN3AQ',
+      },
+    });
     await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*PtWTT7WcpHgAAAAAAAAAAAAADlB4AQ');
     await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*02UWQ6BvLuAAAAAAAAAAAAAADlB4AQ');
     await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*aCeuQ5RQZj4AAAAAAAAAAAAADlB4AQ');

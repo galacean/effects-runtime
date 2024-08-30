@@ -151,6 +151,18 @@ export class CompositionComponent extends Behaviour {
     }
   }
 
+  showItems () {
+    for (const item of this.items) {
+      item.setVisible(true);
+    }
+  }
+
+  hideItems () {
+    for (const item of this.items) {
+      item.setVisible(false);
+    }
+  }
+
   override onDestroy (): void {
     if (this.item.composition) {
       if (this.items) {

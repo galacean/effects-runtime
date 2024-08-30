@@ -174,8 +174,8 @@ function copySceneCamera (fromScene: spec.JSONScene, toScene: spec.JSONScene) {
 
   let fromCameraItem;
 
-  fromScene.compositions[0].items.forEach(item => {
-    if (item.id === 'extra-camera') {
+  fromScene.items.forEach(item => {
+    if (item.type === 'camera') {
       fromCameraItem = item;
     }
   });
@@ -186,15 +186,21 @@ function copySceneCamera (fromScene: spec.JSONScene, toScene: spec.JSONScene) {
       toCameraItem = item;
     }
   });
+
   toCameraItem.transform.position = {
-    x: fromCameraItem.transform.position[0],
-    y: fromCameraItem.transform.position[1],
-    z: fromCameraItem.transform.position[2],
+    x: fromCameraItem.transform.position.x,
+    y: fromCameraItem.transform.position.y,
+    z: fromCameraItem.transform.position.z,
+  };
+  toCameraItem.transform.scale = {
+    x: fromCameraItem.transform.scale.x,
+    y: fromCameraItem.transform.scale.y,
+    z: fromCameraItem.transform.scale.z,
   };
   toCameraItem.transform.eulerHint = {
-    x: fromCameraItem.transform.rotation[0],
-    y: fromCameraItem.transform.rotation[1],
-    z: fromCameraItem.transform.rotation[2],
+    x: fromCameraItem.transform.eulerHint.x,
+    y: fromCameraItem.transform.eulerHint.y,
+    z: fromCameraItem.transform.eulerHint.z,
   };
 }
 
