@@ -167,6 +167,17 @@ describe('player/scene-load', () => {
     expect(spy).to.has.been.called.once;
   });
 
+  it('load scene with varible text', async () => {
+    const compostion = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*_QkURKxu0TEAAAAAAAAAAAAADlB4AQ', {
+      variables: {
+        text_908: 'ttt',
+      },
+    });
+    const textComponent = compostion.getItemByName('text_908')?.getComponent(TextComponent);
+
+    expect(textComponent?.text).to.eql('ttt');
+  });
+
   // TODO 未通过 先注释
   // it('load cube texture demo2', async () => {
   //   const json = {

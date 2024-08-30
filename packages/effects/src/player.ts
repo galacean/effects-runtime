@@ -1,7 +1,7 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions,
   Texture2DSourceOptionsVideo, TouchEventType, SceneLoadType, SceneType, EffectsObject,
-  MessageItem,
+  MessageItem, Scene,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, Material,
@@ -332,6 +332,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     for (const effectsObject of this.builtinObjects) {
       engine.addInstance(effectsObject);
     }
+
+    this.updateTextVariables(scene, opts.variables);
+
     for (let i = 0; i < scene.textureOptions.length; i++) {
       scene.textureOptions[i] = scene.textureOptions[i] instanceof Texture ? scene.textureOptions[i]
         : engine.assetLoader.loadGUID(scene.textureOptions[i].id);
@@ -399,6 +402,34 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
 
     return composition;
+  }
+
+  /**
+   * 根据用户参数修改原始数据
+   * @param scene
+   * @param options
+   */
+  private updateTextVariables (scene: Scene, variables: spec.TemplateVariables = {}) {
+    const renderer = this.renderer;
+    const engine = renderer.engine;
+
+    scene.jsonScene.items.forEach(item => {
+      if (item.type === spec.ItemType.text) {
+        const textVariable = variables[item.name] as string;
+
+        if (!textVariable) {
+          return;
+        }
+
+        item.components.forEach(({ id }) => {
+          const componentData = engine.findEffectsObjectData(id) as spec.TextComponentData;
+
+          if (componentData?.dataType === spec.DataType.TextComponent) {
+            componentData.options.text = textVariable;
+          }
+        });
+      }
+    });
   }
 
   /**
