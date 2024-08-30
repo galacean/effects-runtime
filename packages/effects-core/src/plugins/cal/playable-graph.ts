@@ -4,7 +4,6 @@ import type { Disposable } from '../../utils';
 /**
  * 动画图，负责更新所有的动画节点
  * @since 2.0.0
- * @internal
  */
 export class PlayableGraph {
   private playableOutputs: PlayableOutput[] = [];
@@ -67,7 +66,6 @@ export class PlayableGraph {
 /**
  * 动画图可播放节点对象
  * @since 2.0.0
- * @internal
  */
 export class Playable implements Disposable {
   onPlayablePlayFlag = true;
@@ -331,7 +329,6 @@ export class Playable implements Disposable {
 /**
  * 动画图输出节点对象，将动画数据采样到绑定的元素属性上
  * @since 2.0.0
- * @internal
  */
 export class PlayableOutput {
   /**

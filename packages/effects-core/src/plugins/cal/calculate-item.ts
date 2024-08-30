@@ -27,7 +27,6 @@ export type ItemLinearVelOverLifetime = {
 
 /**
  * @since 2.0.0
- * @internal
  */
 @effectsClass('ObjectBindingTrack')
 export class ObjectBindingTrack extends TrackAsset {

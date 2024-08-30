@@ -266,6 +266,12 @@ importers:
       '@galacean/effects-plugin-orientation-transformer':
         specifier: workspace:*
         version: link:../../plugin-packages/orientation-transformer
+      '@galacean/effects-plugin-spine':
+        specifier: workspace:*
+        version: link:../../plugin-packages/spine
+      '@galacean/effects-plugin-stats':
+        specifier: workspace:*
+        version: link:../../plugin-packages/stats
       '@galacean/effects-threejs':
         specifier: workspace:*
         version: link:../../packages/effects-threejs
