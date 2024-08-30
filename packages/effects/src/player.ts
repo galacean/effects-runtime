@@ -333,7 +333,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
 
     // 根据用户参数修改原始数据
-    const variables = options.variables || {};
+    const variables = opts.variables || {};
 
     scene.jsonScene.items.forEach(item => {
       if (item.type === spec.ItemType.text) {
