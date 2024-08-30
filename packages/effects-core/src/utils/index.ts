@@ -14,6 +14,10 @@ export type Immutable<O> = O extends Record<any, any>
   ? { readonly [key in keyof O]: Immutable<O[key]> }
   : O extends Array<infer X> ? ReadonlyArray<X> : O;
 
+export type PickEnum<T, K extends T> = {
+  [P in keyof K]: P extends K ? P : never;
+};
+
 export enum DestroyOptions {
   destroy = 0,
   keep = 1,
