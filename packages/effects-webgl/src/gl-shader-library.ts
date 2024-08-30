@@ -146,14 +146,11 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     const checkComplete = () => {
       if (this.engine.isDestroyed) {
         console.warn('The player is destroyed during the loadScene process. Please check the timing of calling loadScene and dispose. A common situation is that when calling loadScene, await is not added. This will cause dispose to be called before loadScene is completed.');
-        asyncCallback?.(result);
 
-        return;
+        return asyncCallback?.(result);
       }
       if (shader.initialized) {
-        asyncCallback?.(result);
-
-        return;
+        return asyncCallback?.(result);
       }
       const shouldLink =
         !asyncCallback ||
@@ -193,9 +190,7 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
             setupProgram(glProgram);
           }
         }
-        if (asyncCallback) {
-          asyncCallback(result);
-        }
+        asyncCallback?.(result);
       } else if (asyncCallback) {
         requestAnimationFrame(checkComplete);
       }
