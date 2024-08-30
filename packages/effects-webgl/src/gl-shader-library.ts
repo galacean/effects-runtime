@@ -132,9 +132,6 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     const ext = this.glAsyncCompileExt;
     const startTime = performance.now();
     const setupProgram = (glProgram: GLProgram) => {
-      if (shader.initialized) {
-        return;
-      }
       result.status = ShaderCompileResultStatus.success;
       result.compileTime = performance.now() - startTime;
       shader.program = glProgram;
