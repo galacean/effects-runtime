@@ -12,6 +12,7 @@ const container = document.getElementById('J-container');
     const composition = await player.loadScene(json, {
       variables: {
         video: 'https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*7gPzSo3RxlQAAAAAAAAAAAAADtN3AQ',
+        text_3: 'Dynamic Video',
       },
     });
 

@@ -1,6 +1,7 @@
 import { Player } from '@galacean/effects';
+import '@galacean/effects-plugin-spine';
 
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bl40RLWLKisAAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*CquWQrVCGyUAAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {

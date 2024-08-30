@@ -195,6 +195,10 @@ export class ParticleSystem extends Component {
     return this.frozen;
   }
 
+  isEnded () {
+    return this.ended;
+  }
+
   initEmitterTransform () {
     const position = this.item.transform.position.clone();
     const rotation = this.item.transform.rotation.clone();

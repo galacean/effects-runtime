@@ -414,14 +414,6 @@ export default {
     pass: true,
   },
 
-  // 故事
-
-  fiveinone: {
-    // 透明度存在random值 不兼容 无法重新发布，用下方单独 JSON 测试
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WATVNRNSNIMG/-225780559-f11a1.json',
-    name: '五福首页2022——五合一',
-    pass: false,
-  },
   four: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/GRPXATAUECLT/49510158-65ef1.json',
     name: '五福首页2022——四条福',
@@ -564,12 +556,6 @@ export default {
     pass: true,
   },
 
-  distortion: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*rEYJT47ECfwAAAAAAAAAAAAADlB4AQ',
-    name: '扭曲',
-    pass: true,
-  },
-
   // 阿里妈妈
   superaward: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/MNEWNYFQHECL/-1474199652-725db.json',
@@ -695,6 +681,7 @@ export default {
   message3: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Ov-iTYkwSUAAAAAAAAAAAAAADlB4AQ',
     name: '弹窗3',
+    pass: true,
   },
   preComp: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/97436498253707/pre.json',

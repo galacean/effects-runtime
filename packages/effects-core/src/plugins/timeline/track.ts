@@ -8,7 +8,6 @@ import type { Constructor } from '../../utils';
 
 /**
  * @since 2.0.0
- * @internal
  */
 export class TimelineClip {
   id: string;
@@ -39,7 +38,6 @@ export class TimelineClip {
 
 /**
  * @since 2.0.0
- * @internal
  */
 @effectsClass('TrackAsset')
 export class TrackAsset extends PlayableAsset {
@@ -239,7 +237,6 @@ export class RuntimeClip {
 
 /**
  * @since 2.0.0
- * @internal
  */
 export interface TimelineClipData {
   asset: PlayableAsset,

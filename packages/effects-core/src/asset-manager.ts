@@ -73,27 +73,6 @@ export class AssetManager implements Disposable {
   }
 
   /**
-   * 根据用户传入的参数修改场景数据
-   */
-  private updateSceneData (items: spec.VFXItemData[]): void {
-    const variables = this.options.variables;
-
-    if (!variables || Object.keys(variables).length === 0) {
-      return;
-    }
-
-    items.forEach(item => {
-      if (item.type === spec.ItemType.text) {
-        const textVariable = variables[item.name] as string;
-
-        if (textVariable) {
-          item.content.options.text = textVariable;
-        }
-      }
-    });
-  }
-
-  /**
    * 场景创建，通过 json 创建出场景对象，并进行提前编译等工作
    * @param url - json 的 URL 链接或者 json 对象
    * @param renderer - renderer 对象，用于获取管理、编译 shader 及 GPU 上下文的参数
@@ -185,8 +164,6 @@ export class AssetManager implements Disposable {
           for (let i = 0; i < scene.images.length; i++) {
             scene.textureOptions[i].image = scene.images[i];
           }
-
-          this.updateSceneData(scene.jsonScene.items);
         }
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
@@ -211,8 +188,6 @@ export class AssetManager implements Disposable {
 
         await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene, renderer!.engine));
-
-        this.updateSceneData(jsonScene.items);
 
         scene = {
           timeInfos,
@@ -388,7 +363,7 @@ export class AssetManager implements Disposable {
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
-            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message}.`);
+            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message || e}.`);
           }
         }
       } else if ('compressed' in img && useCompressedTexture && compressedTexture) {

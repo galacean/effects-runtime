@@ -174,7 +174,6 @@ export class ModelTreeItem {
 /**
  * 插件场景树组件类，实现 3D 场景树功能
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.TreeComponent)
 export class ModelTreeComponent extends Behaviour {
