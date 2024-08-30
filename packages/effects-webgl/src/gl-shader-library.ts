@@ -132,6 +132,9 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
     const ext = this.glAsyncCompileExt;
     const startTime = performance.now();
     const setupProgram = (glProgram: GLProgram) => {
+      if (shader.initialized) {
+        return;
+      }
       result.status = ShaderCompileResultStatus.success;
       result.compileTime = performance.now() - startTime;
       shader.program = glProgram;
@@ -147,6 +150,9 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       if (this.engine.isDestroyed) {
         console.warn('The player is destroyed during the loadScene process. Please check the timing of calling loadScene and dispose. A common situation is that when calling loadScene, await is not added. This will cause dispose to be called before loadScene is completed.');
 
+        return;
+      }
+      if (shader.initialized) {
         return;
       }
       const shouldLink =
