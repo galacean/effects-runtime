@@ -6,12 +6,12 @@ const container = document.getElementById('J-container');
 (async () => {
   try {
     const player = new Player({ container });
+    const composition = await player.loadScene('./assets/find-flower/flower.json');
 
-    const comp = await player.loadScene('./assets/find-flower/flower.json');
-
-    comp.gotoAndPlay(4);
-
-    comp.setSpeed(-1);
+    setTimeout(() => {
+      composition.setSpeed(-1);
+      composition.gotoAndPlay(3);
+    }, 5000);
   } catch (e) {
     console.error('biz', e);
   }
