@@ -331,6 +331,30 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     for (const effectsObject of this.builtinObjects) {
       engine.addInstance(effectsObject);
     }
+
+    // 根据用户参数修改原始数据
+    const variables = options.variables || {};
+
+    scene.jsonScene.items.forEach(item => {
+      if (item.type === spec.ItemType.text) {
+        const textVariable = variables[item.name] as string;
+
+        if (!textVariable) {
+          return;
+        }
+
+        item.components.forEach(component => {
+          const componentData = engine.findEffectsObjectData(component.id);
+
+          if (componentData && componentData.dataType === spec.DataType.TextComponent) {
+            // @ts-expect-error 没有相应类型
+            engine.jsonSceneData[component.id].options.text = textVariable;
+          }
+        });
+
+      }
+    });
+
     for (let i = 0; i < scene.textureOptions.length; i++) {
       scene.textureOptions[i] = scene.textureOptions[i] instanceof Texture ? scene.textureOptions[i]
         : engine.assetLoader.loadGUID(scene.textureOptions[i].id);
