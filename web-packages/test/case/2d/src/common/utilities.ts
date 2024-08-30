@@ -9,7 +9,7 @@ const { Vector3, Matrix4 } = math;
 
 const sleepTime = 20;
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '1.6.1';  // 旧版Player版本
+const oldVersion = params.get('version') || '2.0.0';  // 旧版Player版本
 const playerOptions: PlayerConfig = {
   //env: 'editor',
   //pixelRatio: 2,
@@ -40,8 +40,6 @@ export class TestPlayer {
     this.scene = undefined;
     this.composition = undefined;
     this.lastTime = 0;
-
-    registerFunc('orientation-transformer', Plugin, VFXItem, true);
   }
 
   async initialize (url, loadOptions = undefined, playerOptions = undefined) {
@@ -51,7 +49,7 @@ export class TestPlayer {
 
     let inData = url;
 
-    if (!this.oldVersion && this.is3DCase) {
+    if (this.is3DCase) {
       const converter = new JSONConverter(this.player.renderer);
 
       inData = await converter.processScene(url);
@@ -109,7 +107,11 @@ export class TestPlayer {
   }
 
   duration () {
-    return this.composition.content.duration;
+    if (this.composition.content) {
+      return this.composition.content.duration;
+    } else {
+      return this.composition.duration;
+    }
   }
 
   isLoop () {
@@ -223,6 +225,7 @@ export class TestController {
     await this.loadOldPlayer();
     await this.loadOldModelPlugin();
     await this.loadOldSpinePlugin();
+    await this.loadOldOrientationTransformerPlugin();
 
     playerOptions.env = isEditor ? 'editor' : '';
 
@@ -265,6 +268,12 @@ export class TestController {
 
   async loadOldSpinePlugin () {
     const spineAddress = `https://unpkg.com/@galacean/effects-plugin-spine@${oldVersion}/dist/index.min.js`;
+
+    return this.loadScript(spineAddress);
+  }
+
+  async loadOldOrientationTransformerPlugin () {
+    const spineAddress = `https://unpkg.com/@galacean/effects-plugin-orientation-transformer@${oldVersion}/dist/index.min.js`;
 
     return this.loadScript(spineAddress);
   }
