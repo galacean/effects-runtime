@@ -418,11 +418,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对 startTime 的时间
    */
   gotoAndPlay (time: number) {
-    const speed = this.speed;
-
-    this.setSpeed(1);
     this.setTime(time);
-    this.setSpeed(speed);
     this.resume();
   }
 
@@ -431,11 +427,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对 startTime 的时间
    */
   gotoAndStop (time: number) {
-    const speed = this.speed;
-
-    this.setSpeed(1);
     this.setTime(time);
-    this.setSpeed(speed);
     this.pause();
   }
 
@@ -458,6 +450,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param time - 相对 startTime 的时间
    */
   setTime (time: number) {
+    const speed = this.speed;
     const pause = this.paused;
 
     if (pause) {
@@ -467,8 +460,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.rootComposition.start();
       this.rootComposition.isStartCalled = true;
     }
+    this.setSpeed(1);
     this.forwardTime(time + this.startTime);
-
+    this.setSpeed(speed);
     if (pause) {
       this.pause();
     }

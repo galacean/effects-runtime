@@ -7,7 +7,11 @@ const container = document.getElementById('J-container');
   try {
     const player = new Player({ container });
 
-    await player.loadScene('./assets/find-flower/flower.json');
+    const comp = await player.loadScene('./assets/find-flower/flower.json');
+
+    comp.gotoAndPlay(4);
+
+    comp.setSpeed(-1);
   } catch (e) {
     console.error('biz', e);
   }
