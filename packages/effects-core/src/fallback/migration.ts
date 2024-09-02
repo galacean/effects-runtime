@@ -1,6 +1,6 @@
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
-  SpineContent,
+  SpineContent, TimelineAssetData,
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_FREEZE, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY,
@@ -8,7 +8,6 @@ import {
 } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
-import type { spec } from '@galacean/effects-core';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -411,7 +410,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
   const sceneBindings = [];
   const trackDatas = [];
   const playableAssetDatas = [];
-  const timelineAssetData: spec.TimelineAssetData = {
+  const timelineAssetData: TimelineAssetData = {
     tracks: [],
     id: generateGUID(),
     //@ts-expect-error

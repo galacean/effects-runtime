@@ -1,3 +1,4 @@
+import type * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from '../timeline/track';
@@ -5,7 +6,6 @@ import { ObjectBindingTrack } from './calculate-item';
 import type { FrameContext, PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset, PlayableTraversalMode } from './playable-graph';
 import type { Constructor } from '../../utils';
-import type { spec } from '@galacean/effects-core';
 
 @effectsClass('TimelineAsset')
 export class TimelineAsset extends PlayableAsset {
