@@ -279,7 +279,7 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
       }, true);
     }
     video.addEventListener('error', e => {
-      reject(e);
+      reject('Load video fail.');
     });
   });
 }

@@ -18,7 +18,6 @@ const tempPos = new Vector3();
 
 /**
  * @since 2.0.0
- * @internal
  */
 export class TransformAnimationPlayable extends AnimationPlayable {
   originalTransform: ItemBasicTransform;
@@ -238,7 +237,6 @@ export interface TransformPlayableAssetData extends spec.EffectsObjectData {
 
 /**
  * @since 2.0.0
- * @internal
  */
 export class ActivationPlayable extends Playable {
 

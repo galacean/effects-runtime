@@ -7,7 +7,6 @@ export interface ThreeTextComponent extends TextComponentBase { }
 
 /**
  * @since 2.0.0
- * @internal
  */
 @effectsClass(spec.DataType.TextComponent)
 export class ThreeTextComponent extends ThreeSpriteComponent {

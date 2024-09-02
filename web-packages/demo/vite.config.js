@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
           'local-file': resolve(__dirname, 'html/local-file.html'),
           'post-processing': resolve(__dirname, 'html/post-processing.html'),
           'single': resolve(__dirname, 'html/single.html'),
+          'text': resolve(__dirname, 'html/text.html'),
           'three-particle': resolve(__dirname, 'html/three-particle.html'),
           'three-sprite': resolve(__dirname, 'html/three-sprite.html'),
           'threejs-large-scene': resolve(__dirname, 'html/threejs-large-scene.html'),
