@@ -3,7 +3,7 @@ import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
-import { randomInRange, colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
+import { colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
 import type { ColorStop } from '../utils';
 import type { BezierEasing } from './bezier';
 import { BezierPath, buildEasingCurve, BezierQuat } from './bezier';
@@ -145,8 +145,16 @@ export class RandomValue extends ValueGetter<number> {
     this.max = props[1];
   }
 
-  override getValue (time?: number): number {
-    return randomInRange(this.min, this.max);
+  override getValue (time?: number, seed?: number): number {
+    const randomSeed = seed ?? Math.random();
+
+    return this.min + randomSeed * (this.max - this.min);
+  }
+
+  override getIntegrateValue (t0: number, t1: number, timeScale?: number): number {
+    const seed = timeScale ?? 1.0;
+
+    return (this.min + seed * (this.max - this.min)) * (t1 - t0);
   }
 
   override toUniform () {

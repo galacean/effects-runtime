@@ -59,6 +59,7 @@ export class ParticleSystemRenderer extends RendererComponent {
     const time = this.particleMesh.time;
 
     this.particleMesh.mesh.material.setVector4('uParams', new Vector4(time, this.item.duration, 0, 0));
+    this.particleMesh.onUpdate(dt);
   }
 
   override render (renderer: Renderer): void {
@@ -74,6 +75,7 @@ export class ParticleSystemRenderer extends RendererComponent {
 
   updateTime (now: number, delta: number) {
     this.particleMesh.time = now;
+    // this.particleMesh.onUpdate(delta);
     if (this.trailMesh) {
       this.trailMesh.time = now;
       this.trailMesh.onUpdate(delta);

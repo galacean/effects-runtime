@@ -5,6 +5,8 @@ import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Engine } from '../../engine';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
@@ -14,6 +16,7 @@ import {
 } from '../../material';
 import {
   createKeyFrameMeta, createValueGetter, ValueGetter, getKeyFrameMetaByRawValue,
+  RandomValue,
 } from '../../math';
 import type {
   Attribute, GPUCapability, GeometryProps, ShaderMacros, SharedShaderWithSource,
@@ -131,6 +134,8 @@ export class ParticleMesh implements ParticleMeshData {
   readonly textureOffsets: number[];
   readonly maxCount: number;
   readonly anchor: Vector2;
+
+  VERT_MAX_KEY_FRAME_COUNT = 0;
 
   constructor (
     engine: Engine,
@@ -289,6 +294,7 @@ export class ParticleMesh implements ParticleMeshData {
       ['VERT_MAX_KEY_FRAME_COUNT', vertexKeyFrameMeta.max],
       ['FRAG_MAX_KEY_FRAME_COUNT', fragmentKeyFrameMeta.max],
     );
+    this.VERT_MAX_KEY_FRAME_COUNT = vertexKeyFrameMeta.max;
 
     const fragment = particleFrag;
     const originalVertex = `#define LOOKUP_TEXTURE_CURVE ${vertex_lookup_texture}\n${particleVert}`;
@@ -391,6 +397,7 @@ export class ParticleMesh implements ParticleMeshData {
     this.orbitalVelOverLifetime = orbitalVelOverLifetime;
     this.orbitalVelOverLifetime = orbitalVelOverLifetime;
     this.gravityModifier = gravityModifier;
+    this.rotationOverLifetime = rotationOverLifetime;
     this.maxCount = maxCount;
     // this.duration = duration;
     this.textureOffsets = textureFlip ? [0, 0, 1, 0, 0, 1, 1, 1] : [0, 1, 0, 0, 1, 1, 1, 0];
@@ -440,16 +447,265 @@ export class ParticleMesh implements ParticleMeshData {
     geometry.setIndexData(new index.constructor(0));
   }
 
-  minusTime (time: number) {
-    const data = this.geometry.getAttributeData('aOffset');
+  onUpdate (dt: number) {
+    const aPosArray = this.geometry.getAttributeData('aPos') as Float32Array; // vector3
+    const aVelArray = this.geometry.getAttributeData('aVel') as Float32Array; // vector3
+    const aOffsetArray = this.geometry.getAttributeData('aOffset') as Float32Array;
+    const aRotArray = this.geometry.getAttributeData('aRot') as Float32Array; // vector3
+    const aSeedArray = this.geometry.getAttributeData('aSeed') as Float32Array; // float
+    // const uParams = this.mesh.material.getVector4('uParams');
 
-    assertExist(data);
+    // if (!uParams) {
+    //   return;
+    // }
 
-    for (let i = 0; i < data.length; i += 4) {
-      data[i + 2] -= time;
+    const localTime = new Float32Array([this.time])[0];
+    const particleCount = Math.ceil(aPosArray.length / 12);
+
+    // calculate particle translation
+    let aTranslationArray = this.geometry.getAttributeData('aTranslation') as Float32Array;
+
+    if (aTranslationArray.length < particleCount * 3) {
+      aTranslationArray = new Float32Array(particleCount * 3);
     }
-    this.geometry.setAttributeData('aOffset', data);
+    const velocity = new Vector3(0, 0, 0);
+
+    for (let i = 0; i < particleCount; i++) {
+      const velOffset = i * 12 + 3;
+
+      velocity.set(aVelArray[velOffset], aVelArray[velOffset + 1], aVelArray[velOffset + 2]);
+
+      const trans = this.calculateTranslation(velocity, aOffsetArray[i * 4 + 2], localTime, aOffsetArray[i * 4 + 3]);
+      const aTranslationOffset = i * 3;
+
+      aTranslationArray[aTranslationOffset] = trans.x;
+      aTranslationArray[aTranslationOffset + 1] = trans.y;
+      aTranslationArray[aTranslationOffset + 2] = trans.z;
+    }
+    this.geometry.setAttributeData('aTranslation', aTranslationArray);
+
+    // calculate particle rotation
+    let aRotationArray = this.geometry.getAttributeData('aRotation0') as Float32Array;
+
+    if (aRotationArray.length < particleCount * 9) {
+      aRotationArray = new Float32Array(particleCount * 9);
+    }
+
+    for (let i = 0; i < particleCount; i++) {
+      const time = localTime - aOffsetArray[i * 4 + 2];
+      const duration = aOffsetArray[i * 4 + 3];
+      const life = clamp(time / duration, 0.0, 1.0);
+      const aRotOffset = i * 8;
+      const aRot = new Vector3(aRotArray[aRotOffset], aRotArray[aRotOffset + 1], aRotArray[aRotOffset + 2]);
+      const aSeed = aSeedArray[i * 8 + 3];
+
+      const aRotation = this.transformFromRotation(aRot, life, duration, aSeed);
+      const aRotationOffset = i * 9;
+
+      const matrixArray = aRotation.toArray();
+
+      aRotationArray.set(matrixArray, aRotationOffset);
+    }
+
+    this.geometry.setAttributeData('aRotation0', aRotationArray);
+
+    // calculate linear movement
+    let aLinearMoveArray = this.geometry.getAttributeData('aLinearMove') as Float32Array;
+
+    if (aLinearMoveArray.length < particleCount * 3) {
+      aLinearMoveArray = new Float32Array(particleCount * 3);
+    }
+
+    for (let i = 0; i < particleCount; i++) {
+      const time = localTime - aOffsetArray[i * 4 + 2];
+      const duration = aOffsetArray[i * 4 + 3];
+      // const life = math.clamp(time / duration, 0.0, 1.0);
+      const aSeed = aSeedArray[i * 8 + 3];
+
+      const linearMove = this.calLinearMov(time, duration, aSeed);
+      const aLinearMoveOffset = i * 3;
+
+      aLinearMoveArray[aLinearMoveOffset] = linearMove.x;
+      aLinearMoveArray[aLinearMoveOffset + 1] = linearMove.y;
+      aLinearMoveArray[aLinearMoveOffset + 2] = linearMove.z;
+    }
+    this.geometry.setAttributeData('aLinearMove', aLinearMoveArray);
+  }
+
+  minusTime (time: number) {
+    const aOffset = this.geometry.getAttributeData('aOffset') as Float32Array;
+
+    for (let i = 0; i < aOffset.length; i += 4) {
+      aOffset[i + 2] -= time;
+    }
+    this.geometry.setAttributeData('aOffset', aOffset);
     this.time -= time;
+  }
+
+  calculateTranslation (velocity: Vector3, t0: number, t1: number, duration: number): Vector3 {
+    const uAcceleration = this.mesh.material.getVector4('uAcceleration');
+    const uGravityModifierValue = this.mesh.material.getVector4('uGravityModifierValue');
+
+    if (!uAcceleration || !uGravityModifierValue) {
+      return new Vector3();
+    }
+    const dt = t1 - t0; // 相对delay的时间
+    const d = this.gravityModifier.getIntegrateByTime(0, dt);
+    const acc: spec.vec3 = [uAcceleration.x * d, uAcceleration.y * d, uAcceleration.z * d];
+
+    // ret.addScaledVector(velData, speedIntegrate);
+    // ret.addScaledVector(acc, d);
+    // speedIntegrate = speedOverLifetime.getIntegrateValue(0, time, duration);
+    if (this.speedOverLifetime) {
+      // dt / dur 归一化
+      const speed = this.speedOverLifetime.getIntegrateValue(0, dt, duration);
+
+      return velocity.clone().multiply(speed).add(acc);
+    }
+
+    return velocity.clone().multiply(dt).add(acc);
+  }
+
+  transformFromRotation (rot: Vector3, life: number, dur: number, aSeed: number): Matrix3 {
+    const rotation = rot.clone();
+
+    if (!this.rotationOverLifetime) {
+      return new Matrix3();
+    }
+
+    if (this.rotationOverLifetime.asRotation) {
+      // Adjust rotation based on the specified lifetime components
+      if (this.rotationOverLifetime.x) {
+        if (this.rotationOverLifetime.x instanceof RandomValue) {
+          rotation.x += this.rotationOverLifetime.x.getValue(life, aSeed);
+        } else {
+          rotation.x += this.rotationOverLifetime.x.getValue(life);
+        }
+      }
+      if (this.rotationOverLifetime.y) {
+        if (this.rotationOverLifetime.y instanceof RandomValue) {
+          rotation.y += this.rotationOverLifetime.y.getValue(life, aSeed);
+        } else {
+          rotation.y += this.rotationOverLifetime.y.getValue(life);
+        }
+      }
+      if (this.rotationOverLifetime.z) {
+        if (this.rotationOverLifetime.z instanceof RandomValue) {
+          rotation.z += this.rotationOverLifetime.z.getValue(life, aSeed);
+        } else {
+          rotation.z += this.rotationOverLifetime.z.getValue(life);
+        }
+      }
+    } else {
+      // Adjust rotation based on the specified lifetime components
+      if (this.rotationOverLifetime.x) {
+        if (this.rotationOverLifetime.x instanceof RandomValue) {
+          rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, aSeed) * dur;
+        } else {
+          rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, dur) * dur;
+        }
+      }
+      if (this.rotationOverLifetime.y) {
+        if (this.rotationOverLifetime.y instanceof RandomValue) {
+          rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, aSeed) * dur;
+        } else {
+          rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, dur) * dur;
+        }
+      }
+      if (this.rotationOverLifetime.z) {
+        if (this.rotationOverLifetime.z instanceof RandomValue) {
+          rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, aSeed) * dur;
+        } else {
+          rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, dur) * dur;
+        }
+      }
+    }
+
+    // If the rotation vector is zero, return the identity matrix
+    if (rotation.dot(rotation) === 0.0) {
+      return new Matrix3().identity();
+    }
+
+    // Return the rotation matrix derived from the rotation vector
+    return this.mat3FromRotation(rotation);
+  }
+
+  mat3FromRotation (rotation: Vector3): Matrix3 {
+    const d2r = Math.PI / 180;
+    const sinR = rotation.clone().multiply(d2r);
+
+    sinR.x = Math.sin(sinR.x);
+    sinR.y = Math.sin(sinR.y);
+    sinR.z = Math.sin(sinR.z);
+    const cosR = rotation.clone().multiply(d2r);
+
+    cosR.x = Math.cos(cosR.x);
+    cosR.y = Math.cos(cosR.y);
+    cosR.z = Math.cos(cosR.z);
+
+    const rotZ = new Matrix3(cosR.z, -sinR.z, 0., sinR.z, cosR.z, 0., 0., 0., 1.);
+    const rotY = new Matrix3(cosR.y, 0., sinR.y, 0., 1., 0., -sinR.y, 0, cosR.y);
+    const rotX = new Matrix3(1., 0., 0., 0, cosR.x, -sinR.x, 0., sinR.x, cosR.x);
+    const result = rotZ.multiply(rotY).multiply(rotX);
+
+    return result;
+  }
+
+  calLinearMov (time: number, duration: number, aSeed: number): Vector3 {
+    const mov = new Vector3();
+    const lifetime = time / duration;
+
+    if (!this.linearVelOverLifetime || !this.linearVelOverLifetime.enabled) {
+      return new Vector3();
+    }
+    if (this.linearVelOverLifetime.asMovement) {
+      if (this.linearVelOverLifetime.x) {
+        if (this.linearVelOverLifetime.x instanceof RandomValue) {
+          mov.x = this.linearVelOverLifetime.x.getValue(lifetime, aSeed);
+        } else {
+          mov.x = this.linearVelOverLifetime.x.getValue(lifetime);
+        }
+      }
+      if (this.linearVelOverLifetime.y) {
+        if (this.linearVelOverLifetime.y instanceof RandomValue) {
+          mov.y = this.linearVelOverLifetime.y.getValue(lifetime, aSeed);
+        } else {
+          mov.y = this.linearVelOverLifetime.y.getValue(lifetime);
+        }
+      }
+      if (this.linearVelOverLifetime.z) {
+        if (this.linearVelOverLifetime.z instanceof RandomValue) {
+          mov.z = this.linearVelOverLifetime.z.getValue(lifetime, aSeed);
+        } else {
+          mov.z = this.linearVelOverLifetime.z.getValue(lifetime);
+        }
+      }
+    } else {
+      // Adjust rotation based on the specified lifetime components
+      if (this.linearVelOverLifetime.x) {
+        if (this.linearVelOverLifetime.x instanceof RandomValue) {
+          mov.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, time, aSeed);
+        } else {
+          mov.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, time, duration);
+        }
+      }
+      if (this.linearVelOverLifetime.y) {
+        if (this.linearVelOverLifetime.y instanceof RandomValue) {
+          mov.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, time, aSeed);
+        } else {
+          mov.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, time, duration);
+        }
+      }
+      if (this.linearVelOverLifetime.z) {
+        if (this.linearVelOverLifetime.z instanceof RandomValue) {
+          mov.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, time, aSeed);
+        } else {
+          mov.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, time, duration);
+        }
+      }
+    }
+
+    return mov;
   }
 
   removePoint (index: number) {
@@ -612,6 +868,11 @@ function generateGeometryProps (
     aColor: { size: 4, offset: 4 * bpe, stride: 8 * bpe, dataSource: 'aRot' },
     //
     aOffset: { size: 4, stride: 4 * bpe, data: new Float32Array(0) },
+    aTranslation: { size: 3, data: new Float32Array(0) },
+    aLinearMove: { size: 3, data: new Float32Array(0) },
+    aRotation0: { size: 3, offset: 0, stride: 9 * bpe, data: new Float32Array(0) },
+    aRotation1: { size: 3, offset: 3 * bpe, stride: 9 * bpe, dataSource: 'aRotation0' },
+    aRotation2: { size: 3, offset: 6 * bpe, stride: 9 * bpe, dataSource: 'aRotation0' },
   };
 
   if (useSprite) {
