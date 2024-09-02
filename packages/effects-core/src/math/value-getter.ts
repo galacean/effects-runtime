@@ -146,11 +146,7 @@ export class RandomValue extends ValueGetter<number> {
   }
 
   override getValue (time?: number, seed?: number): number {
-    let randomSeed = Math.random();
-
-    if (seed) {
-      randomSeed = seed;
-    }
+    const randomSeed = seed ?? Math.random();
 
     return this.min + randomSeed * (this.max - this.min);
   }

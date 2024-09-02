@@ -153,9 +153,6 @@ export class GLShaderLibrary implements ShaderLibrary, Disposable, RestoreHandle
       if (shader.initialized) {
         return asyncCallback?.(result);
       }
-      if (shader.initialized) {
-        return;
-      }
       const shouldLink =
         !asyncCallback ||
         !ext ||
