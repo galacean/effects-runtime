@@ -6,9 +6,9 @@ import {
   DataType, END_BEHAVIOR_FREEZE, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY,
   EndBehavior, ItemType,
 } from '@galacean/effects-specification';
-import type { TimelineAssetData } from '../plugins/cal/timeline-asset';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
+import type { spec } from '@galacean/effects-core';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -411,7 +411,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
   const sceneBindings = [];
   const trackDatas = [];
   const playableAssetDatas = [];
-  const timelineAssetData: TimelineAssetData = {
+  const timelineAssetData: spec.TimelineAssetData = {
     tracks: [],
     id: generateGUID(),
     //@ts-expect-error
