@@ -484,11 +484,13 @@ export class ParticleMesh implements ParticleMeshData {
       // aVelArray[velOffset + 1] = velocity.y;
       // aVelArray[velOffset + 2] = velocity.z;
 
-      const translation = velocity.multiply(dt / 1000);
+      if (aOffsetArray[i * 4 + 2] < localTime) {
+        const translation = velocity.multiply(dt / 1000);
 
-      aTranslationArray[aTranslationOffset] += translation.x;
-      aTranslationArray[aTranslationOffset + 1] += translation.y;
-      aTranslationArray[aTranslationOffset + 2] += translation.z;
+        aTranslationArray[aTranslationOffset] += translation.x;
+        aTranslationArray[aTranslationOffset + 1] += translation.y;
+        aTranslationArray[aTranslationOffset + 2] += translation.z;
+      }
     }
     this.geometry.setAttributeData('aTranslation', aTranslationArray);
 
@@ -496,7 +498,7 @@ export class ParticleMesh implements ParticleMeshData {
     let aRotationArray = this.geometry.getAttributeData('aRotation0') as Float32Array;
 
     if (aRotationArray.length < particleCount * 9) {
-      aRotationArray = new Float32Array(particleCount * 9);
+      aRotationArray = this.expandArray(aRotationArray, particleCount * 9);
     }
 
     // const aRotationTemp = new math.Matrix3().identity();
@@ -524,7 +526,7 @@ export class ParticleMesh implements ParticleMeshData {
     let aLinearMoveArray = this.geometry.getAttributeData('aLinearMove') as Float32Array;
 
     if (aLinearMoveArray.length < particleCount * 3) {
-      aLinearMoveArray = new Float32Array(particleCount * 3);
+      aLinearMoveArray = this.expandArray(aLinearMoveArray, particleCount * 3);
     }
 
     const linearMove = new Vector3();
@@ -543,14 +545,6 @@ export class ParticleMesh implements ParticleMeshData {
       aLinearMoveArray[aLinearMoveOffset + 2] = linearMove.z;
     }
     this.geometry.setAttributeData('aLinearMove', aLinearMoveArray);
-  }
-
-  expandArray (array: Float32Array, newSize: number): Float32Array {
-    const newArr = new Float32Array(newSize);
-
-    newArr.set(array);
-
-    return newArr;
   }
 
   minusTime (time: number) {
@@ -855,6 +849,14 @@ export class ParticleMesh implements ParticleMeshData {
       this.particleCount = Math.max(particleCount, this.particleCount);
       geometry.setDrawCount(this.particleCount * 6);
     }
+  }
+
+  private expandArray (array: Float32Array, newSize: number): Float32Array {
+    const newArr = new Float32Array(newSize);
+
+    newArr.set(array);
+
+    return newArr;
   }
 }
 
