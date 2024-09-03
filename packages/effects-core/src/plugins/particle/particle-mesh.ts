@@ -5,6 +5,8 @@ import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
+import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Engine } from '../../engine';
 import { getConfig, RENDER_PREFER_LOOKUP_TEXTURE } from '../../config';
 import { PLAYER_OPTIONS_ENV_EDITOR } from '../../constants';
@@ -25,9 +27,6 @@ import { Texture, generateHalfFloatTexture } from '../../texture';
 import { Transform } from '../../transform';
 import { assertExist, enlargeBuffer, imageDataFromGradient } from '../../utils';
 import { particleUniformTypeMap } from './particle-vfx-item';
-import { math } from '@galacean/effects-core';
-
-type Matrix3 = math.Matrix3;
 
 export type Point = {
   vel: Vector3,
@@ -503,10 +502,10 @@ export class ParticleMesh implements ParticleMeshData {
 
     // const aRotationTemp = new math.Matrix3().identity();
 
-    for (let i = 0;i < particleCount;i++) {
+    for (let i = 0; i < particleCount; i++) {
       const time = localTime - aOffsetArray[i * 4 + 2];
       const duration = aOffsetArray[i * 4 + 3];
-      const life = math.clamp(time / duration, 0.0, 1.0);
+      const life = clamp(time / duration, 0.0, 1.0);
       const aRotOffset = i * 8;
       const aRot = new Vector3(aRotArray[aRotOffset], aRotArray[aRotOffset + 1], aRotArray[aRotOffset + 2]);
       const aSeed = aSeedArray[i * 8 + 3];
@@ -531,7 +530,7 @@ export class ParticleMesh implements ParticleMeshData {
 
     const linearMove = new Vector3();
 
-    for (let i = 0;i < particleCount;i++) {
+    for (let i = 0; i < particleCount; i++) {
       const time = localTime - aOffsetArray[i * 4 + 2];
       const duration = aOffsetArray[i * 4 + 3];
       // const life = math.clamp(time / duration, 0.0, 1.0);
@@ -572,7 +571,7 @@ export class ParticleMesh implements ParticleMeshData {
     // ret.addScaledVector(acc, d);
     // speedIntegrate = speedOverLifetime.getIntegrateValue(0, time, duration);
     if (this.speedOverLifetime) {
-    // dt / dur 归一化
+      // dt / dur 归一化
       const speed = this.speedOverLifetime.getValue(dt / duration);
 
       return velocity.multiply(speed).add(acc);
@@ -585,7 +584,7 @@ export class ParticleMesh implements ParticleMeshData {
     const rotation = rot.clone();
 
     if (!this.rotationOverLifetime) {
-      return new math.Matrix3();
+      return new Matrix3();
     }
 
     if (this.rotationOverLifetime.asRotation) {
@@ -638,7 +637,7 @@ export class ParticleMesh implements ParticleMeshData {
 
     // If the rotation vector is zero, return the identity matrix
     if (rotation.dot(rotation) === 0.0) {
-      return new math.Matrix3().identity();
+      return new Matrix3().identity();
     }
 
     // Return the rotation matrix derived from the rotation vector
@@ -658,9 +657,9 @@ export class ParticleMesh implements ParticleMeshData {
     cosR.y = Math.cos(cosR.y);
     cosR.z = Math.cos(cosR.z);
 
-    const rotZ = new math.Matrix3(cosR.z, -sinR.z, 0., sinR.z, cosR.z, 0., 0., 0., 1.);
-    const rotY = new math.Matrix3(cosR.y, 0., sinR.y, 0., 1., 0., -sinR.y, 0, cosR.y);
-    const rotX = new math.Matrix3(1., 0., 0., 0, cosR.x, -sinR.x, 0., sinR.x, cosR.x);
+    const rotZ = new Matrix3(cosR.z, -sinR.z, 0., sinR.z, cosR.z, 0., 0., 0., 1.);
+    const rotY = new Matrix3(cosR.y, 0., sinR.y, 0., 1., 0., -sinR.y, 0, cosR.y);
+    const rotX = new Matrix3(1., 0., 0., 0, cosR.x, -sinR.x, 0., sinR.x, cosR.x);
     const result = rotZ.multiply(rotY).multiply(rotX);
 
     return result;
@@ -750,7 +749,7 @@ export class ParticleMesh implements ParticleMeshData {
         aPos: new Float32Array(48),
         aRot: new Float32Array(32),
         aOffset: new Float32Array(16),
-        aTranslation:new Float32Array(12),
+        aTranslation: new Float32Array(12),
       };
       const useSprite = this.useSprite;
 
