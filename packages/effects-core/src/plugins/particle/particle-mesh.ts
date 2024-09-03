@@ -579,7 +579,7 @@ export class ParticleMesh implements ParticleMeshData {
     // speedIntegrate = speedOverLifetime.getIntegrateValue(0, time, duration);
     if (this.speedOverLifetime) {
     // dt / dur 归一化
-      const speed = this.speedOverLifetime.getValue(dt);
+      const speed = this.speedOverLifetime.getValue(dt / duration);
 
       return velocity.multiply(speed).add(acc);
     }
