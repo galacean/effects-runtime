@@ -414,6 +414,8 @@ export class BezierCurve extends ValueGetter<number> {
     timeInterval: number,
     valueInterval: number,
     curve: BezierEasing,
+    timeStart: number,
+    timeEnd: number,
   }>;
   keys: number[][];
 
@@ -438,14 +440,20 @@ export class BezierCurve extends ValueGetter<number> {
         timeInterval,
         valueInterval,
         curve,
+        timeStart:Number(s.x),
+        timeEnd:Number(e.x),
       };
     }
   }
   override getValue (time: number) {
     let result = 0;
     const keyTimeData = Object.keys(this.curveMap);
-    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
-    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+
+    const keyTimeStart = this.curveMap[keyTimeData[0]].timeStart;
+    const keyTimeEnd = this.curveMap[keyTimeData[keyTimeData.length - 1]].timeEnd;
+
+    // const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    // const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
 
     if (time <= keyTimeStart) {
       return this.getCurveValue(keyTimeData[0], keyTimeStart);
@@ -455,7 +463,10 @@ export class BezierCurve extends ValueGetter<number> {
     }
 
     for (let i = 0; i < keyTimeData.length; i++) {
-      const [xMin, xMax] = keyTimeData[i].split('&');
+      const xMin = this.curveMap[keyTimeData[i]].timeStart;
+      const xMax = this.curveMap[keyTimeData[i]].timeEnd;
+
+      // const [xMin, xMax] = keyTimeData[i].split('&');
 
       if (time >= Number(xMin) && time < Number(xMax)) {
         result = this.getCurveValue(keyTimeData[i], time);
@@ -472,13 +483,14 @@ export class BezierCurve extends ValueGetter<number> {
 
     let result = 0;
     const keyTimeData = Object.keys(this.curveMap);
-    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
+    const keyTimeStart = this.curveMap[keyTimeData[0]].timeStart;
 
     if (time <= keyTimeStart) {
       return 0;
     }
     for (let i = 0; i < keyTimeData.length; i++) {
-      const [xMin, xMax] = keyTimeData[i].split('&');
+      const xMin = this.curveMap[keyTimeData[i]].timeStart;
+      const xMax = this.curveMap[keyTimeData[i]].timeEnd;
 
       if (time >= Number(xMax)) {
         result += ts * this.getCurveIntegrateValue(keyTimeData[i], Number(xMax));
