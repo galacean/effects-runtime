@@ -135,6 +135,13 @@ export class ParticleMesh implements ParticleMeshData {
   readonly maxCount: number;
   readonly anchor: Vector2;
 
+  private cachedVelocity = new Vector3();
+  private cachedRotationVector3 = new Vector3();
+  private cachedRotationMatrix = new Matrix3();
+  private cachedlinearMove = new Vector3();
+  private tempMatrix3 = new Matrix3();
+  private tempVector3 = new Vector3();
+
   VERT_MAX_KEY_FRAME_COUNT = 0;
 
   constructor (
@@ -447,8 +454,6 @@ export class ParticleMesh implements ParticleMeshData {
     geometry.setIndexData(new index.constructor(0));
   }
 
-  cachedVelocity = new Vector3();
-
   onUpdate (dt: number) {
     const aPosArray = this.geometry.getAttributeData('aPos') as Float32Array; // vector3
     const aVelArray = this.geometry.getAttributeData('aVel') as Float32Array; // vector3
@@ -479,10 +484,6 @@ export class ParticleMesh implements ParticleMeshData {
       this.calculateTranslation(velocity, aOffsetArray[i * 4 + 2], localTime, aOffsetArray[i * 4 + 3]);
       const aTranslationOffset = i * 3;
 
-      // aVelArray[velOffset] = velocity.x;
-      // aVelArray[velOffset + 1] = velocity.y;
-      // aVelArray[velOffset + 2] = velocity.z;
-
       if (aOffsetArray[i * 4 + 2] < localTime) {
         const translation = velocity.multiply(dt / 1000);
 
@@ -500,18 +501,15 @@ export class ParticleMesh implements ParticleMeshData {
       aRotationArray = this.expandArray(aRotationArray, particleCount * 9);
     }
 
-    // const aRotationTemp = new math.Matrix3().identity();
-
     for (let i = 0; i < particleCount; i++) {
       const time = localTime - aOffsetArray[i * 4 + 2];
       const duration = aOffsetArray[i * 4 + 3];
       const life = clamp(time / duration, 0.0, 1.0);
       const aRotOffset = i * 8;
-      const aRot = new Vector3(aRotArray[aRotOffset], aRotArray[aRotOffset + 1], aRotArray[aRotOffset + 2]);
+      const aRot = this.cachedRotationVector3.set(aRotArray[aRotOffset], aRotArray[aRotOffset + 1], aRotArray[aRotOffset + 2]);
       const aSeed = aSeedArray[i * 8 + 3];
 
-      const aRotation = this.transformFromRotation(aRot, life, duration, aSeed);
-      // const aRotation = aRotationTemp;
+      const aRotation = this.transformFromRotation(aRot, life, duration, aSeed, this.cachedRotationMatrix);
       const aRotationOffset = i * 9;
 
       const matrixArray = aRotation.toArray();
@@ -528,7 +526,7 @@ export class ParticleMesh implements ParticleMeshData {
       aLinearMoveArray = this.expandArray(aLinearMoveArray, particleCount * 3);
     }
 
-    const linearMove = new Vector3();
+    const linearMove = this.cachedlinearMove;
 
     for (let i = 0; i < particleCount; i++) {
       const time = localTime - aOffsetArray[i * 4 + 2];
@@ -536,6 +534,7 @@ export class ParticleMesh implements ParticleMeshData {
       // const life = math.clamp(time / duration, 0.0, 1.0);
       const aSeed = aSeedArray[i * 8 + 3];
 
+      linearMove.setZero();
       this.calLinearMov(time, duration, aSeed, linearMove);
       const aLinearMoveOffset = i * 3;
 
@@ -565,10 +564,8 @@ export class ParticleMesh implements ParticleMeshData {
     }
     const dt = t1 - t0; // 相对delay的时间
     const d = this.gravityModifier.getIntegrateValue(0, dt, duration);
-    const acc: spec.vec3 = [uAcceleration.x * d, uAcceleration.y * d, uAcceleration.z * d];
+    const acc = this.tempVector3.set(uAcceleration.x * d, uAcceleration.y * d, uAcceleration.z * d);
 
-    // ret.addScaledVector(velData, speedIntegrate);
-    // ret.addScaledVector(acc, d);
     // speedIntegrate = speedOverLifetime.getIntegrateValue(0, time, duration);
     if (this.speedOverLifetime) {
       // dt / dur 归一化
@@ -580,11 +577,11 @@ export class ParticleMesh implements ParticleMeshData {
     return velocity.add(acc);
   }
 
-  transformFromRotation (rot: Vector3, life: number, dur: number, aSeed: number): Matrix3 {
-    const rotation = rot.clone();
+  transformFromRotation (rot: Vector3, life: number, dur: number, aSeed: number, res: Matrix3): Matrix3 {
+    const rotation = rot;
 
     if (!this.rotationOverLifetime) {
-      return new Matrix3();
+      return res.setZero();
     }
 
     if (this.rotationOverLifetime.asRotation) {
@@ -637,32 +634,33 @@ export class ParticleMesh implements ParticleMeshData {
 
     // If the rotation vector is zero, return the identity matrix
     if (rotation.dot(rotation) === 0.0) {
-      return new Matrix3().identity();
+      return res.identity();
     }
 
     // Return the rotation matrix derived from the rotation vector
-    return this.mat3FromRotation(rotation);
+    return this.mat3FromRotation(rotation, res);
   }
 
-  mat3FromRotation (rotation: Vector3): Matrix3 {
+  mat3FromRotation (rotation: Vector3, res: Matrix3): Matrix3 {
     const d2r = Math.PI / 180;
-    const sinR = rotation.clone().multiply(d2r);
+    const rotationXD2r = rotation.x * d2r;
+    const rotationYD2r = rotation.y * d2r;
+    const rotationZD2r = rotation.z * d2r;
 
-    sinR.x = Math.sin(sinR.x);
-    sinR.y = Math.sin(sinR.y);
-    sinR.z = Math.sin(sinR.z);
-    const cosR = rotation.clone().multiply(d2r);
+    const sinRX = Math.sin(rotationXD2r);
+    const sinRY = Math.sin(rotationYD2r);
+    const sinRZ = Math.sin(rotationZD2r);
 
-    cosR.x = Math.cos(cosR.x);
-    cosR.y = Math.cos(cosR.y);
-    cosR.z = Math.cos(cosR.z);
+    const cosRX = Math.cos(rotationXD2r);
+    const cosRY = Math.cos(rotationYD2r);
+    const cosRZ = Math.cos(rotationZD2r);
 
-    const rotZ = new Matrix3(cosR.z, -sinR.z, 0., sinR.z, cosR.z, 0., 0., 0., 1.);
-    const rotY = new Matrix3(cosR.y, 0., sinR.y, 0., 1., 0., -sinR.y, 0, cosR.y);
-    const rotX = new Matrix3(1., 0., 0., 0, cosR.x, -sinR.x, 0., sinR.x, cosR.x);
-    const result = rotZ.multiply(rotY).multiply(rotX);
+    // rotZ * rotY * rotX
+    res.set(cosRZ, -sinRZ, 0., sinRZ, cosRZ, 0., 0., 0., 1.); //rotZ
+    res.multiply(this.tempMatrix3.set(cosRY, 0., sinRY, 0., 1., 0., -sinRY, 0, cosRY)); //rotY
+    res.multiply(this.tempMatrix3.set(1., 0., 0., 0, cosRX, -sinRX, 0., sinRX, cosRX)); //rotX
 
-    return result;
+    return res;
   }
 
   calLinearMov (time: number, duration: number, aSeed: number, res: Vector3): Vector3 {
