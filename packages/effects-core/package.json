@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-core",
-  "version": "1.6.7",
+  "version": "1.6.8",
   "description": "Galacean Effects runtime core for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",

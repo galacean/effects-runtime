@@ -7,6 +7,12 @@
 
 ---
 
+## 1.6.8
+
+`2024-09-04`
+
+- Fix: Addresses the issue where clicks were not registering properly after particle removal. [#629](https://github.com/galacean/effects-runtime/pull/629) @yiiqii
+
 ## 1.6.7
 
 `2024-08-23`
