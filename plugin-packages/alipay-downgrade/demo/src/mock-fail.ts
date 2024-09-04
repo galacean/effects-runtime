@@ -5,15 +5,13 @@ const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*liH3SI2hhHUAAAAAAAA
 const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7HAgrIAAAAAAAAAAAAADuJ6AQ/original';
 
 (async () => {
-  console.info('alipay-downgrade');
-
   const container = document.getElementById('J-container');
   const player = new Player({
     container,
     pixelRatio: window.devicePixelRatio,
   });
 
-  const downgrade = await getDowngradeResult('test');
+  const downgrade = await getDowngradeResult('mock-fail');
 
   document.getElementById('J-downgradeResult')!.innerHTML = JSON.stringify(downgrade, undefined, 2);
 
@@ -23,10 +21,8 @@ const imageUrl = 'https://mdn.alipayobjects.com/huamei_n0ji1n/afts/img/A*cN99R7H
         downgrade,
       },
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error('biz', e);
-    document.getElementById('J-errorMessage')!.innerHTML = JSON.stringify(e.message, undefined, 2);
-    // @ts-expect-error
-    container.innerHTML = `<img src="${imageUrl}" />`;
+    container!.innerHTML = `<img src="${imageUrl}" />`;
   }
 })();

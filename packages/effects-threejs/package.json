@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-threejs",
-  "version": "1.6.7",
+  "version": "0.0.0-experimental-downgrade624-20240904",
   "description": "Galacean Effects runtime threejs plugin for the web",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
