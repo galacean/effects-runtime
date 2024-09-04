@@ -172,20 +172,17 @@ export class GLRendererInternal implements Disposable, LostHandler {
       if (count < 0) {
         return;
       }
-
       offset = subMesh.offset;
-      count = subMesh.indexCount ?? subMesh.vertexCount;
       if (indicesBuffer) {
-        gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
+        count = subMesh.indexCount ?? 0;
       } else {
-        gl.drawArrays(mode, offset, count);
+        count = subMesh.vertexCount;
       }
+    }
+    if (indicesBuffer) {
+      gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
     } else {
-      if (indicesBuffer) {
-        gl.drawElements(mode, count, indicesBuffer.type, offset ?? 0);
-      } else {
-        gl.drawArrays(mode, offset, count);
-      }
+      gl.drawArrays(mode, offset, count);
     }
     vao?.unbind();
   }
