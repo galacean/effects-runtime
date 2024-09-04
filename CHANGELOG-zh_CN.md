@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.8
+
+`2024-09-04`
+
+- Fix: 修复粒子移除后点击问题。[#629](https://github.com/galacean/effects-runtime/pull/629) @yiiqii
+
 ## 1.6.7
 
 `2024-08-23`
