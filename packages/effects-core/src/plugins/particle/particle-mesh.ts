@@ -138,7 +138,7 @@ export class ParticleMesh implements ParticleMeshData {
   private cachedVelocity = new Vector3();
   private cachedRotationVector3 = new Vector3();
   private cachedRotationMatrix = new Matrix3();
-  private cachedlinearMove = new Vector3();
+  private cachedLinearMove = new Vector3();
   private tempMatrix3 = new Matrix3();
   private tempVector3 = new Vector3();
 
@@ -526,7 +526,7 @@ export class ParticleMesh implements ParticleMeshData {
       aLinearMoveArray = this.expandArray(aLinearMoveArray, particleCount * 3);
     }
 
-    const linearMove = this.cachedlinearMove;
+    const linearMove = this.cachedLinearMove;
 
     for (let i = 0; i < particleCount; i++) {
       const time = localTime - aOffsetArray[i * 4 + 2];
@@ -577,11 +577,11 @@ export class ParticleMesh implements ParticleMeshData {
     return velocity.add(acc);
   }
 
-  transformFromRotation (rot: Vector3, life: number, dur: number, aSeed: number, res: Matrix3): Matrix3 {
+  transformFromRotation (rot: Vector3, life: number, dur: number, aSeed: number, result: Matrix3): Matrix3 {
     const rotation = rot;
 
     if (!this.rotationOverLifetime) {
-      return res.setZero();
+      return result.setZero();
     }
 
     if (this.rotationOverLifetime.asRotation) {
@@ -634,14 +634,14 @@ export class ParticleMesh implements ParticleMeshData {
 
     // If the rotation vector is zero, return the identity matrix
     if (rotation.dot(rotation) === 0.0) {
-      return res.identity();
+      return result.identity();
     }
 
     // Return the rotation matrix derived from the rotation vector
-    return this.mat3FromRotation(rotation, res);
+    return this.mat3FromRotation(rotation, result);
   }
 
-  mat3FromRotation (rotation: Vector3, res: Matrix3): Matrix3 {
+  mat3FromRotation (rotation: Vector3, result: Matrix3): Matrix3 {
     const d2r = Math.PI / 180;
     const rotationXD2r = rotation.x * d2r;
     const rotationYD2r = rotation.y * d2r;
@@ -656,15 +656,15 @@ export class ParticleMesh implements ParticleMeshData {
     const cosRZ = Math.cos(rotationZD2r);
 
     // rotZ * rotY * rotX
-    res.set(cosRZ, -sinRZ, 0., sinRZ, cosRZ, 0., 0., 0., 1.); //rotZ
-    res.multiply(this.tempMatrix3.set(cosRY, 0., sinRY, 0., 1., 0., -sinRY, 0, cosRY)); //rotY
-    res.multiply(this.tempMatrix3.set(1., 0., 0., 0, cosRX, -sinRX, 0., sinRX, cosRX)); //rotX
+    result.set(cosRZ, -sinRZ, 0., sinRZ, cosRZ, 0., 0., 0., 1.); //rotZ
+    result.multiply(this.tempMatrix3.set(cosRY, 0., sinRY, 0., 1., 0., -sinRY, 0, cosRY)); //rotY
+    result.multiply(this.tempMatrix3.set(1., 0., 0., 0, cosRX, -sinRX, 0., sinRX, cosRX)); //rotX
 
-    return res;
+    return result;
   }
 
-  calLinearMov (time: number, duration: number, aSeed: number, res: Vector3): Vector3 {
-    const mov = res;
+  calLinearMov (time: number, duration: number, aSeed: number, result: Vector3): Vector3 {
+    const mov = result;
     const lifetime = time / duration;
 
     if (!this.linearVelOverLifetime || !this.linearVelOverLifetime.enabled) {
