@@ -1,0 +1,59 @@
+{
+  "name": "@galacean/effects-plugin-media",
+  "version": "2.0.4",
+  "description": "Galacean Effects player media plugin",
+  "module": "./dist/index.mjs",
+  "main": "./dist/index.js",
+  "browser": "./dist/index.min.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./alipay": {
+      "import": "./dist/alipay.mjs",
+      "require": "./dist/alipay.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./weapp": {
+      "import": "./dist/weapp.mjs",
+      "require": "./dist/weapp.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./douyin": {
+      "import": "./dist/douyin.mjs",
+      "require": "./dist/douyin.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "dev": "vite",
+    "preview": "concurrently -k \"vite build -w\" \"sleep 6 && vite preview\"",
+    "prebuild": "pnpm clean",
+    "build": "pnpm build:declaration && pnpm build:module",
+    "build:module": "rollup -c",
+    "build:declaration": "tsc -d --emitDeclarationOnly",
+    "build:demo": "rimraf dist && vite build",
+    "clean": "rimraf dist && rimraf \"*+(.tsbuildinfo)\"",
+    "prepublishOnly": "pnpm build"
+  },
+  "contributors": [
+    {
+      "name": "云垣"
+    }
+  ],
+  "author": "Ant Group CO., Ltd.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "devDependencies": {
+    "@galacean/effects": "workspace:*"
+  }
+}
