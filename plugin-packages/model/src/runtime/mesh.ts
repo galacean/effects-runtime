@@ -800,6 +800,8 @@ export class PSubMesh {
         return 'DEBUG_OCCLUSION';
       case spec.RenderMode3D.emissive:
         return 'DEBUG_EMISSIVE';
+      case spec.RenderMode3D.diffuse:
+        return 'DEBUG_DIFFUSE';
     }
   }
 
@@ -852,18 +854,26 @@ export class PSubMesh {
     material.setVector3('_Camera', sceneStates.cameraPosition);
     //
     if (!this.isUnlitMaterial()) {
-      const { maxLightCount, lightList } = sceneStates;
+      const { maxLightCount, lightList, inverseViewMatrix } = sceneStates;
 
       for (let i = 0; i < maxLightCount; i++) {
         if (i < lightList.length) {
           const light = lightList[i];
           const intensity = light.visible ? light.intensity : 0;
 
-          material.setVector3(`_Lights[${i}].direction`, light.getWorldDirection());
+          if (light.followCamera) {
+            const newDirection = inverseViewMatrix.transformNormal(light.getWorldDirection(), new Vector3());
+            const newPosition = inverseViewMatrix.transformPoint(light.getWorldPosition(), new Vector3());
+
+            material.setVector3(`_Lights[${i}].direction`, newDirection);
+            material.setVector3(`_Lights[${i}].position`, newPosition);
+          } else {
+            material.setVector3(`_Lights[${i}].direction`, light.getWorldDirection());
+            material.setVector3(`_Lights[${i}].position`, light.getWorldPosition());
+          }
           material.setFloat(`_Lights[${i}].range`, light.range);
           material.setVector3(`_Lights[${i}].color`, light.color);
           material.setFloat(`_Lights[${i}].intensity`, intensity);
-          material.setVector3(`_Lights[${i}].position`, light.getWorldPosition());
           material.setFloat(`_Lights[${i}].innerConeCos`, Math.cos(light.innerConeAngle));
           material.setFloat(`_Lights[${i}].outerConeCos`, Math.cos(light.outerConeAngle));
           material.setInt(`_Lights[${i}].type`, light.lightType);

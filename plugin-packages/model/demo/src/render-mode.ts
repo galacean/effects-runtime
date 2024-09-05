@@ -30,7 +30,7 @@ url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.g
 const compatibleMode = 'gltf';
 const autoAdjustScene = true;
 const enableDynamicSort = false;
-let renderMode3D = spec.RenderMode3D.none;
+let renderMode3D = spec.RenderMode3D.diffuse;
 
 async function getCurrentScene () {
   const duration = 9999;
@@ -75,7 +75,7 @@ async function getCurrentScene () {
   loader.addLight({
     lightType: spec.LightType.ambient,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 0.1,
+    intensity: 0.8,
     //
     name: 'ambient-light',
     position: [0, 0, 0],
@@ -88,37 +88,12 @@ async function getCurrentScene () {
   loader.addLight({
     lightType: spec.LightType.directional,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 1.0,
+    intensity: 2.0,
+    followCamera: true,
     //
     name: 'main-light',
     position: [0, 0, 0],
     rotation: [30, 325, 0],
-    scale: [1, 1, 1],
-    duration: duration,
-    endBehavior: spec.EndBehavior.restart,
-  });
-
-  loader.addLight({
-    lightType: spec.LightType.directional,
-    color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 1.0,
-    //
-    name: 'back-light',
-    position: [0, 0, 0],
-    rotation: [0, 170, 0],
-    scale: [1, 1, 1],
-    duration: duration,
-    endBehavior: spec.EndBehavior.restart,
-  });
-
-  loader.addLight({
-    lightType: spec.LightType.directional,
-    color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 1.0,
-    //
-    name: 'fill-light',
-    position: [0, 0, 0],
-    rotation: [265, 45, 287],
     scale: [1, 1, 1],
     duration: duration,
     endBehavior: spec.EndBehavior.restart,
@@ -428,7 +403,7 @@ function refreshCamera () {
 }
 
 export function createUI () {
-  document.getElementsByClassName('container')[0].style.background = 'rgba(30,32,32)';
+  document.getElementsByClassName('container')[0].style.background = 'rgba(182,217,241)';
 
   const uiDom = document.createElement('div');
 
@@ -438,6 +413,7 @@ export function createUI () {
 
   select.innerHTML = `
     <option value="none">none</option>
+    <option value="diffuse">diffuse</option>
     <option value="uv">uv</option>
     <option value="normal">normal</option>
     <option value="basecolor">basecolor</option>
@@ -460,6 +436,8 @@ export function createUI () {
   select.onchange = async function (e) {
     if (e.target.value === 'none') {
       renderMode3D = spec.RenderMode3D.none;
+    } else if (e.target.value === 'diffuse') {
+      renderMode3D = spec.RenderMode3D.diffuse;
     } else if (e.target.value === 'uv') {
       renderMode3D = spec.RenderMode3D.uv;
     } else if (e.target.value === 'normal') {

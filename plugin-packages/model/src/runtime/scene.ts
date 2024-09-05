@@ -96,6 +96,10 @@ export interface PSceneStates {
    */
   viewMatrix: Matrix4,
   /**
+   * 逆相机矩阵
+   */
+  inverseViewMatrix: Matrix4,
+  /**
    * 投影矩阵
    */
   projectionMatrix: Matrix4,
@@ -403,6 +407,7 @@ export class PSceneManager {
       camera: camera,
       cameraPosition: camera.getEye(),
       viewMatrix: viewMatrix,
+      inverseViewMatrix: viewMatrix.clone().invert(),
       projectionMatrix: projectionMatrix,
       viewProjectionMatrix: viewProjectionMatrix,
       winSize: camera.getSize(),

@@ -42,6 +42,10 @@ export class PLight extends PEntity {
    */
   lightType = PLightType.ambient;
   padding: Vector2 = new Vector2(0, 0);
+  /**
+   * 是否跟随相机
+   */
+  followCamera = false;
 
   /**
    * 创建灯光对象
@@ -68,6 +72,7 @@ export class PLight extends PEntity {
       color.b,
     );
     this.intensity = data.intensity;
+    this.followCamera = data.followCamera ?? false;
     if (data.lightType === spec.LightType.point) {
       this.lightType = PLightType.point;
       this.range = data.range ?? -1;

@@ -108,6 +108,7 @@ export interface ModelLight {
   range?: number,
   innerConeAngle?: number,
   outerConeAngle?: number,
+  followCamera?: boolean,
   //
   name: string,
   position: spec.vec3,

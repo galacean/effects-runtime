@@ -607,6 +607,7 @@ export class LoaderImpl implements Loader {
       range: data.range,
       innerConeAngle: data.innerConeAngle,
       outerConeAngle: data.outerConeAngle,
+      followCamera: data.followCamera,
     };
     const item: spec.VFXItemData = {
       id: itemId,

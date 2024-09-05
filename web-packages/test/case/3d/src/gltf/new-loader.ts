@@ -1,7 +1,7 @@
 import { GLTFTools } from '@vvfx/resource-detection';
 import type { Player } from '@galacean/effects';
 import type { LoadSceneOptions, LoadSceneResult } from '@galacean/effects-plugin-model';
-import { spec } from '@galacean/effects';
+import type { spec } from '@galacean/effects';
 import { LoaderImpl } from '@galacean/effects-plugin-model';
 import { Box3, Vector3, Sphere } from '@galacean/effects-plugin-model';
 
@@ -75,19 +75,6 @@ export async function loadGLTFSceneECS (options: LoadGLTFSceneECSOptions) {
       duration: duration,
       position: cameraPosition,
       rotation: cameraRotation,
-    });
-
-    loader.addLight({
-      lightType: spec.LightType.ambient,
-      color: { r: 1, g: 1, b: 1, a: 1 },
-      intensity: 0.1,
-      //
-      name: 'env-light',
-      position: [0, 0, 0],
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      duration: duration,
-      endBehavior: spec.EndBehavior.restart,
     });
 
     const loadResult = loader.getLoadResult();
