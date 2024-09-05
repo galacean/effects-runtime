@@ -4,11 +4,13 @@ import { createPlayer } from './utility';
 import * as json from './json';
 import * as camera from './camera';
 import * as hitTest from './hit-test';
+import * as renderMode from './render-mode';
 
 const demoMap = {
   json,
   camera,
   hitTest,
+  renderMode,
 };
 
 function getDemoIndex (idxOrModule) {
