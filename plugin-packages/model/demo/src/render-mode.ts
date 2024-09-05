@@ -23,12 +23,14 @@ let rotationFocusBegin = false;
 
 let playScene;
 
-const url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.glb';
+let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.glb';
+
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
 const compatibleMode = 'gltf';
 const autoAdjustScene = true;
 const enableDynamicSort = false;
-let renderMode3D = spec.RenderMode3D.uv as string;
+let renderMode3D = spec.RenderMode3D.none;
 
 async function getCurrentScene () {
   const duration = 9999;
@@ -38,7 +40,6 @@ async function getCurrentScene () {
     gltf: {
       resource: url,
       compatibleMode: compatibleMode,
-      skyboxType: 'NFT',
       skyboxVis: true,
       ignoreSkybox: true,
     },
@@ -69,6 +70,58 @@ async function getCurrentScene () {
     endBehavior: spec.EndBehavior.restart,
     position: position.toArray(),
     rotation: [0, 0, 0],
+  });
+
+  loader.addLight({
+    lightType: spec.LightType.ambient,
+    color: { r: 1, g: 1, b: 1, a: 1 },
+    intensity: 0.1,
+    //
+    name: 'ambient-light',
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    scale: [1, 1, 1],
+    duration: duration,
+    endBehavior: spec.EndBehavior.restart,
+  });
+
+  loader.addLight({
+    lightType: spec.LightType.directional,
+    color: { r: 1, g: 1, b: 1, a: 1 },
+    intensity: 1.0,
+    //
+    name: 'main-light',
+    position: [0, 0, 0],
+    rotation: [30, 325, 0],
+    scale: [1, 1, 1],
+    duration: duration,
+    endBehavior: spec.EndBehavior.restart,
+  });
+
+  loader.addLight({
+    lightType: spec.LightType.directional,
+    color: { r: 1, g: 1, b: 1, a: 1 },
+    intensity: 1.0,
+    //
+    name: 'back-light',
+    position: [0, 0, 0],
+    rotation: [0, 170, 0],
+    scale: [1, 1, 1],
+    duration: duration,
+    endBehavior: spec.EndBehavior.restart,
+  });
+
+  loader.addLight({
+    lightType: spec.LightType.directional,
+    color: { r: 1, g: 1, b: 1, a: 1 },
+    intensity: 1.0,
+    //
+    name: 'fill-light',
+    position: [0, 0, 0],
+    rotation: [265, 45, 287],
+    scale: [1, 1, 1],
+    duration: duration,
+    endBehavior: spec.EndBehavior.restart,
   });
 
   return loader.getLoadResult().jsonScene;
