@@ -1,25 +1,22 @@
 //@ts-nocheck
 import { math, spec } from '@galacean/effects';
-import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
+import { CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
 import { LoaderImplEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
 let player;
-let pending = false;
 
 let sceneAABB;
 let sceneCenter;
 let sceneRadius = 1;
-let mouseDown = false;
+let lastCameraPosition;
+let lastCameraRotation;
 
-const pauseOnFirstFrame = false;
 let gestureHandler;
-let gestureType = CameraGestureType.rotate_focus;
-let moveBegin = false;
+let mouseDown = false;
 let scaleBegin = false;
 let rotationBegin = false;
-let rotationFocusBegin = false;
 
 let playScene;
 
@@ -109,219 +106,79 @@ export async function loadScene (inPlayer) {
   if (!playScene) {
     playScene = await getCurrentScene();
   } else {
-    playScene.compositions[0].items.forEach(item => {
-      if (item.id === 'extra-camera') {
-        item.transform = player.compositions[0].camera;
+    playScene.items.forEach(item => {
+      if (item.name === 'extra-camera') {
+        const camera = player.compositions[0].camera;
+
+        item.transform = {
+          position: camera.position.clone(),
+          eulerHint: camera.rotation.clone(),
+          scale: { x: 1, y: 1, z: 1 },
+        };
       }
     });
   }
 
-  if (!pending) {
-    pending = true;
-    const loadOptions = {
-      pluginData: {
-        autoAdjustScene: true,
-        renderMode3D: renderMode3D,
-        renderMode3DUVGridSize: 1 / 12,
-      },
-    };
+  player.destroyCurrentCompositions();
+  const loadOptions = {
+    pluginData: {
+      renderMode3D: renderMode3D,
+      renderMode3DUVGridSize: 1 / 12,
+    },
+  };
 
-    return player.loadScene(playScene, loadOptions).then(async comp => {
-      gestureHandler = new CameraGestureHandlerImp(comp);
+  return player.loadScene(playScene, loadOptions).then(async comp => {
+    gestureHandler = new CameraGestureHandlerImp(comp);
 
-      pending = false;
-
-      return true;
-    });
-  }
-
+    return true;
+  });
 }
 
 function registerMouseEvent () {
-  window.addEventListener('keydown', function (e) {
-    switch (e.key) {
-      case '1':
-        gestureType = CameraGestureType.translate;
-
-        break;
-      case '2':
-        gestureType = CameraGestureType.scale;
-
-        break;
-      case '3':
-        gestureType = CameraGestureType.rotate_self;
-
-        break;
-      case '4':
-        gestureType = CameraGestureType.rotate_focus;
-
-        break;
-      case 'w':
-        gestureHandler.onKeyEvent({
-          cameraID: 'extra-camera',
-          zAxis: -1, speed: 0.2,
-        });
-
-        break;
-      case 's':
-        gestureHandler.onKeyEvent({
-          cameraID: 'extra-camera',
-          zAxis: 1, speed: 0.2,
-        });
-
-        break;
-      case 'a':
-        gestureHandler.onKeyEvent({
-          cameraID: 'extra-camera',
-          xAxis: -1, speed: 0.2,
-        });
-
-        break;
-      case 'd':
-        gestureHandler.onKeyEvent({
-          cameraID: 'extra-camera',
-          xAxis: 1, speed: 0.2,
-        });
-
-        break;
-      case 'q':
-        gestureHandler.onKeyEvent({
-          cameraID: 'extra-camera',
-          yAxis: 1, speed: 0.2,
-        });
-
-        break;
-      case 'e':
-        gestureHandler.onKeyEvent({
-          cameraID: 'extra-camera',
-          yAxis: -1, speed: 0.2,
-        });
-
-        break;
-      case 'f':
-        gestureHandler.onFocusPoint('extra-camera', sceneCenter.toArray(), sceneRadius * 3);
-
-        break;
-    }
-
-    refreshCamera();
-    if (pauseOnFirstFrame) {
-      player.compositions.forEach(comp => {
-        comp.gotoAndStop(comp.time);
-      });
-    }
-  });
-
   player.canvas.addEventListener('mousedown', function (e) {
+    if (!gestureHandler) {
+      return;
+    }
+
     mouseDown = true;
-    if (gestureHandler) {
-      switch (gestureType) {
-        case CameraGestureType.translate:
-          moveBegin = true;
-
-          break;
-        case CameraGestureType.scale:
-          scaleBegin = true;
-
-          break;
-        case CameraGestureType.rotate_self:
-          rotationBegin = true;
-
-          break;
-        case CameraGestureType.rotate_focus:
-          rotationFocusBegin = true;
-
-          break;
-      }
+    if (e.buttons === 1) {
+      rotationBegin = true;
+    } else if (e.buttons === 4) {
+      scaleBegin = true;
     }
   });
 
   player.canvas.addEventListener('mousemove', async function (e) {
     if (gestureHandler && mouseDown) {
-      switch (gestureType) {
-        case CameraGestureType.translate:
-          if (moveBegin) {
-            gestureHandler.onXYMoveBegin(
-              e.clientX,
-              e.clientY,
-              player.canvas.width / 2,
-              player.canvas.height / 2,
-              'extra-camera'
-            );
-            moveBegin = false;
-          }
-          gestureHandler.onXYMoving(e.clientX, e.clientY);
-          refreshCamera();
-          if (pauseOnFirstFrame) {
-            player.compositions.forEach(comp => {
-              comp.gotoAndStop(comp.time);
-            });
-          }
+      if (e.buttons === 1) {
+        if (rotationBegin) {
+          gestureHandler.onRotatePointBegin(
+            e.clientX,
+            e.clientY,
+            player.canvas.width / 2,
+            player.canvas.height / 2,
+            [0, 0, 0],
+            'extra-camera'
+          );
+          rotationBegin = false;
+        }
 
-          break;
-        case CameraGestureType.scale:
-          if (scaleBegin) {
-            gestureHandler.onZMoveBegin(
-              e.clientX,
-              e.clientY,
-              player.canvas.width / 2,
-              player.canvas.height / 2,
-              'extra-camera'
-            );
-            scaleBegin = false;
-          }
-          gestureHandler.onZMoving(e.clientX, e.clientY);
-          refreshCamera();
-          if (pauseOnFirstFrame) {
-            player.compositions.forEach(comp => {
-              comp.gotoAndStop(comp.time);
-            });
-          }
+        gestureHandler.onRotatingPoint(e.clientX, e.clientY);
+        refreshCamera();
+      } else if (e.buttons === 4) {
+        if (scaleBegin) {
+          gestureHandler.onZMoveBegin(
+            e.clientX,
+            e.clientY,
+            player.canvas.width / 2,
+            player.canvas.height / 2,
+            'extra-camera'
+          );
+          scaleBegin = false;
+        }
 
-          break;
-        case CameraGestureType.rotate_self:
-          if (rotationBegin) {
-            gestureHandler.onRotateBegin(
-              e.clientX,
-              e.clientY,
-              player.canvas.width / 2,
-              player.canvas.height / 2,
-              'extra-camera'
-            );
-            rotationBegin = false;
-          }
-
-          gestureHandler.onRotating(e.clientX, e.clientY);
-          refreshCamera();
-          if (pauseOnFirstFrame) {
-            player.compositions.forEach(comp => {
-              comp.gotoAndStop(comp.time);
-            });
-          }
-
-          break;
-        case CameraGestureType.rotate_focus:
-          if (rotationFocusBegin) {
-            gestureHandler.onRotatePointBegin(
-              e.clientX,
-              e.clientY,
-              player.canvas.width / 2,
-              player.canvas.height / 2,
-              [0, 0, 0],
-              'extra-camera'
-            );
-            rotationFocusBegin = false;
-          }
-
-          gestureHandler.onRotatingPoint(e.clientX, e.clientY);
-          refreshCamera();
-          if (pauseOnFirstFrame) {
-            player.compositions.forEach(comp => {
-              comp.gotoAndStop(comp.time);
-            });
-          }
-
-          break;
+        gestureHandler.onZMoving(e.clientX, e.clientY);
+        refreshCamera();
       }
     }
   });
@@ -329,23 +186,10 @@ function registerMouseEvent () {
   player.canvas.addEventListener('mouseup', async function (e) {
     mouseDown = false;
     if (gestureHandler) {
-      switch (gestureType) {
-        case CameraGestureType.translate:
-          gestureHandler.onXYMoveEnd();
-
-          break;
-        case CameraGestureType.scale:
-          gestureHandler.onZMoveEnd();
-
-          break;
-        case CameraGestureType.rotate_self:
-          gestureHandler.onRotateEnd();
-
-          break;
-        case CameraGestureType.rotate_focus:
-          gestureHandler.onRotatePointEnd();
-
-          break;
+      if (e.buttons === 1) {
+        gestureHandler.onRotatePointEnd();
+      } else if (e.buttons === 4) {
+        gestureHandler.onZMoveEnd();
       }
     }
   });
@@ -353,23 +197,10 @@ function registerMouseEvent () {
   player.canvas.addEventListener('mouseleave', async function (e) {
     mouseDown = false;
     if (gestureHandler) {
-      switch (gestureType) {
-        case CameraGestureType.translate:
-          gestureHandler.onXYMoveEnd();
-
-          break;
-        case CameraGestureType.scale:
-          gestureHandler.onZMoveEnd();
-
-          break;
-        case CameraGestureType.rotate_self:
-          gestureHandler.onRotateEnd();
-
-          break;
-        case CameraGestureType.rotate_focus:
-          gestureHandler.onRotatePointEnd();
-
-          break;
+      if (e.buttons === 1) {
+        gestureHandler.onRotatePointEnd();
+      } else if (e.buttons === 4) {
+        gestureHandler.onZMoveEnd();
       }
     }
   });
@@ -379,7 +210,7 @@ function registerMouseEvent () {
       gestureHandler.onKeyEvent({
         cameraID: 'extra-camera',
         zAxis: e.deltaY > 0 ? 1 : -1,
-        speed: sceneRadius * 0.1,
+        speed: sceneRadius * 0.15,
       });
     }
   });
@@ -451,7 +282,16 @@ export function createUI () {
     } else if (e.target.value === 'emissive') {
       renderMode3D = spec.RenderMode3D.emissive;
     }
-    pending = false;
+
+    const composition = player.getCompositions()[0];
+
+    composition.items.forEach(item => {
+      if (item.name === 'extra-camera') {
+        lastCameraPosition = item.transform.position.toArray();
+        lastCameraRotation = item.transform.rotation.toArray();
+      }
+    });
+
     await loadScene(player);
   };
   uiDom.appendChild(select);
