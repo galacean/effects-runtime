@@ -22,7 +22,7 @@ import { LoaderHelper } from './loader-helper';
 import { WebGLHelper } from '../utility';
 import type { PImageBufferData, PSkyboxBufferParams } from '../runtime/skybox';
 import type {
-  GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
+  GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
   GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight, GLTFPrimitive,
   GLTFBufferAttribute, GLTFBounds, GLTFTextureInfo,
 } from '@vvfx/resource-detection';
@@ -53,12 +53,7 @@ type Box3 = math.Box3;
 export class LoaderImpl implements Loader {
   private sceneOptions: LoadSceneOptions;
   private loaderOptions: LoaderOptions;
-  private gltfScene: GLTFScene;
-  private gltfSkins: GLTFSkin[] = [];
   private gltfMeshs: GLTFMesh[] = [];
-  private gltfLights: GLTFLight[] = [];
-  private gltfCameras: GLTFCamera[] = [];
-  private gltfImages: GLTFImage[] = [];
   private gltfTextures: GLTFTexture[] = [];
   private gltfMaterials: GLTFMaterial[] = [];
   private gltfAnimations: GLTFAnimation[] = [];
@@ -87,7 +82,7 @@ export class LoaderImpl implements Loader {
       this.composition = {
         id: '1',
         name: 'test1',
-        duration: 9999,
+        duration: 99999,
         endBehavior: spec.EndBehavior.restart,
         camera: {
           fov: 45,
@@ -128,12 +123,7 @@ export class LoaderImpl implements Loader {
     }));
 
     this.processGLTFResource(gltfResource, this.imageElements);
-    this.gltfScene = gltfResource.scenes[0];
-    this.gltfSkins = this.gltfScene.skins;
     this.gltfMeshs = gltfResource.meshes;
-    this.gltfLights = this.gltfScene.lights;
-    this.gltfCameras = this.gltfScene.cameras;
-    this.gltfImages = gltfResource.images;
     this.gltfTextures = gltfResource.textures;
     this.gltfMaterials = gltfResource.materials;
     this.gltfAnimations = gltfResource.animations;
@@ -763,14 +753,28 @@ export class LoaderImpl implements Loader {
     return PSkyboxCreator.createSkyboxComponentData(params);
   }
 
-  private clear () {
+  dispose () {
+    this.clear();
+    // @ts-expect-error
+    this.engine = null;
+  }
+
+  clear () {
+    this.gltfMeshs = [];
+    this.gltfTextures = [];
+    this.gltfMaterials = [];
+    this.gltfAnimations = [];
+    this.gltfImageBasedLights = [];
+
     this.images = [];
+    this.imageElements = [];
     this.textures = [];
     this.items = [];
     this.components = [];
     this.materials = [];
     this.shaders = [];
     this.geometries = [];
+    this.animations = [];
   }
 
   private computeSceneAABB () {

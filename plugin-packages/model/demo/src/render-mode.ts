@@ -25,29 +25,26 @@ let playScene;
 
 let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.glb';
 
-url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
+//url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
+
+url = './cute_bunny_doll_draft.glb';
 
 const compatibleMode = 'gltf';
 const autoAdjustScene = true;
-const enableDynamicSort = false;
 let renderMode3D = spec.RenderMode3D.diffuse;
 
 async function getCurrentScene () {
-  const duration = 9999;
-  const endBehavior = 5;
+  const duration = 99999;
   const loader = new LoaderImplEx();
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
       compatibleMode: compatibleMode,
-      skyboxVis: true,
-      ignoreSkybox: true,
     },
     effects: {
       duration: duration,
-      endBehavior: endBehavior,
+      endBehavior: spec.EndBehavior.restart,
       playAnimation: 0,
-      //playAllAnimation: true,
     },
   });
 
@@ -99,7 +96,11 @@ async function getCurrentScene () {
     endBehavior: spec.EndBehavior.restart,
   });
 
-  return loader.getLoadResult().jsonScene;
+  const { jsonScene } = loader.getLoadResult();
+
+  loader.dispose();
+
+  return jsonScene;
 }
 
 export async function loadScene (inPlayer) {
@@ -124,7 +125,6 @@ export async function loadScene (inPlayer) {
       pluginData: {
         compatibleMode: compatibleMode,
         autoAdjustScene: autoAdjustScene,
-        enableDynamicSort: enableDynamicSort,
         renderMode3D: renderMode3D,
         renderMode3DUVGridSize: 1 / 12,
       },
