@@ -29,8 +29,6 @@ let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.g
 
 url = './cute_bunny_doll_draft.glb';
 
-const compatibleMode = 'gltf';
-const autoAdjustScene = true;
 let renderMode3D = spec.RenderMode3D.diffuse;
 
 async function getCurrentScene () {
@@ -39,7 +37,6 @@ async function getCurrentScene () {
   const loadResult = await loader.loadScene({
     gltf: {
       resource: url,
-      compatibleMode: compatibleMode,
     },
     effects: {
       duration: duration,
@@ -72,7 +69,7 @@ async function getCurrentScene () {
   loader.addLight({
     lightType: spec.LightType.ambient,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 0.8,
+    intensity: 0.4,
     //
     name: 'ambient-light',
     position: [0, 0, 0],
@@ -85,7 +82,7 @@ async function getCurrentScene () {
   loader.addLight({
     lightType: spec.LightType.directional,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 2.0,
+    intensity: 1.0,
     followCamera: true,
     //
     name: 'main-light',
@@ -123,8 +120,7 @@ export async function loadScene (inPlayer) {
     pending = true;
     const loadOptions = {
       pluginData: {
-        compatibleMode: compatibleMode,
-        autoAdjustScene: autoAdjustScene,
+        autoAdjustScene: true,
         renderMode3D: renderMode3D,
         renderMode3DUVGridSize: 1 / 12,
       },
