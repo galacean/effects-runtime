@@ -21,7 +21,7 @@ let playScene;
 
 let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.glb';
 
-//url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
 url = './cute_bunny_doll_draft.glb';
 
@@ -29,6 +29,7 @@ enum EditorMode {
   standard,
   diffuse,
   wireframe,
+  wireframe2,
 }
 
 let editorMode = EditorMode.standard;
@@ -131,7 +132,10 @@ export async function loadScene (inPlayer) {
 
   if (editorMode === EditorMode.wireframe) {
     currentScene = addWireframeItems(playScene);
+  } else if (editorMode === EditorMode.wireframe2) {
+    currentScene = addWireframeItems(playScene, false);
   }
+
   if (editorMode === EditorMode.diffuse) {
     renderMode3D = spec.RenderMode3D.diffuse;
   }
@@ -325,6 +329,7 @@ export function createUI () {
     <option value="standard">正常</option>
     <option value="diffuse">白膜</option>
     <option value="wireframe">线框</option>
+    <option value="wireframe2">线框2</option>
   `;
   for (let i = 0; i < select.options.length; i++) {
     const option = select.options[i];
@@ -343,6 +348,8 @@ export function createUI () {
       editorMode = EditorMode.diffuse;
     } else if (e.target.value === 'wireframe') {
       editorMode = EditorMode.wireframe;
+    } else if (e.target.value === 'wireframe2') {
+      editorMode = EditorMode.wireframe2;
     }
 
     await loadScene(player);
