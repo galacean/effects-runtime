@@ -8,6 +8,17 @@
 
 ---
 
+## 2.0.5
+
+`2024-09-10`
+
+- Fix: sprite unit test. [#636](https://github.com/galacean/effects-runtime/pull/636) @wumaolinmaoan
+- Fix: draw count value error. [#625](https://github.com/galacean/effects-runtime/pull/625) @wumaolinmaoan
+- Fix: timeline clip end judgment. [#626](https://github.com/galacean/effects-runtime/pull/626) @wumaolinmaoan
+- Fix: 调整 Player disposed 判断，避免 Texture initialize 报错。[#616](https://github.com/galacean/effects-runtime/pull/616) @yiiqii
+- Fix: revert busrt once and disabled property. [#615](https://github.com/galacean/effects-runtime/pull/615) @yiiqii
+- Fix: materal uniform dirty flag setting when shader changed. [#614](https://github.com/galacean/effects-runtime/pull/614) @wumaolinmaoan
+
 ## 2.0.4
 
 `2024-08-30`
