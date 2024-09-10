@@ -284,6 +284,36 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   });
 }
 
+/**
+ * 异步加载一个音频文件
+ * @param url - 音频文件的 URL 或 MediaProvider 对象
+ */
+export async function loadAudio (url: string | MediaProvider): Promise<HTMLAudioElement> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+
+    // 设置音频源
+    if (typeof url === 'string') {
+      audio.src = url;
+    } else {
+      audio.srcObject = url;
+    }
+
+    // 监听加载事件
+    audio.addEventListener('canplaythrough', () => {
+      resolve(audio);
+    });
+
+    // 监听错误事件
+    audio.addEventListener('error', () => {
+      reject(new Error(`Failed to load audio from ${audio.src}`));
+    });
+
+    // 开始加载音频
+    audio.load();
+  });
+}
+
 export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<HTMLImageElement | HTMLVideoElement>) {
   if (Array.isArray(url)) {
     try {

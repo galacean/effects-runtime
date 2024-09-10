@@ -12,6 +12,13 @@ const json = {
     },
   ],
   fonts: [],
+  video: [
+    {
+      url: 'https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*7gPzSo3RxlQAAAAAAAAAAAAADtN3AQ',
+      id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      renderLevel: 'B+',
+    },
+  ],
   version: '3.0',
   shapes: [],
   plugins: [],
@@ -68,6 +75,7 @@ const json = {
   shaders: [],
   bins: [],
   textures: [
+    // { id: '8049d2c31aa44b138488490e4e8a38e3', source: { id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' }, flipY: true },
     { id: '8049d2c31aa44b138488490e4e8a38e3', source: { id: '727dc33084f14406bbd7ee034eea9644' }, flipY: true },
   ],
   animations: [],

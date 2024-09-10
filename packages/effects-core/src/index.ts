@@ -10,8 +10,7 @@ import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';
 export * as spec from '@galacean/effects-specification';
-export * from './asset-loader';
-export * from './asset-manager';
+export * from './asset';
 export * from './camera';
 export * from './canvas-pool';
 export * from './comp-vfx-item';
@@ -45,7 +44,6 @@ export * from './ticker';
 export * from './transform';
 export * from './utils';
 export * from './vfx-item';
-export * from './binary-asset';
 export * from './effects-object';
 export * from './effects-package';
 export * from './events';

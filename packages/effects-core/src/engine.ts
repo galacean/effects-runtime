@@ -1,6 +1,6 @@
 import * as spec from '@galacean/effects-specification';
-import type { Database, SceneData } from './asset-loader';
-import { AssetLoader } from './asset-loader';
+import type { Database, SceneData } from './asset';
+import { AssetLoader } from './asset';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';

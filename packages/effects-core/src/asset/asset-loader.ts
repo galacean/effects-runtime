@@ -1,13 +1,13 @@
 import * as spec from '@galacean/effects-specification';
-import { effectsClassStore } from './decorators';
-import type { EffectsObject } from './effects-object';
-import type { Engine } from './engine';
-import { Material } from './material';
-import { Geometry } from './render';
-import { SerializationHelper } from './serialization-helper';
-import { Texture } from './texture';
-import type { VFXItemProps } from './vfx-item';
-import type { Constructor } from './utils';
+import { effectsClassStore } from '../decorators';
+import type { EffectsObject } from '../effects-object';
+import type { Engine } from '../engine';
+import { Material } from '../material';
+import { Geometry } from '../render';
+import { SerializationHelper } from '../serialization-helper';
+import { Texture } from '../texture';
+import type { Constructor } from '../utils';
+import type { VFXItemProps } from '../vfx-item';
 
 /**
  * @since 2.0.0

@@ -1,24 +1,30 @@
 import * as spec from '@galacean/effects-specification';
-import { getStandardJSON } from './fallback';
-import { glContext } from './gl';
-import { passRenderLevel } from './pass-render-level';
-import type { PrecompileOptions } from './plugin-system';
-import { PluginSystem } from './plugin-system';
-import type { JSONValue } from './downloader';
-import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
-import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from './scene';
-import { isSceneJSON } from './scene';
-import type { Disposable } from './utils';
-import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
-import type { TextureSourceOptions } from './texture';
-import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
-import type { Renderer } from './render';
-import { COMPRESSED_TEXTURE } from './render';
-import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { ImageAsset } from './image-asset';
-import type { Engine } from './engine';
+import { getStandardJSON } from '../fallback';
+import { glContext } from '../gl';
+import { passRenderLevel } from '../pass-render-level';
+import type { PrecompileOptions } from '../plugin-system';
+import { PluginSystem } from '../plugin-system';
+import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from '../scene';
+import { isSceneJSON } from '../scene';
+import type { Disposable } from '../utils';
+import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from '../utils';
+import type { TextureSourceOptions } from '../texture';
+import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from '../texture';
+import type { Renderer } from '../render';
+import { COMPRESSED_TEXTURE } from '../render';
+import { combineImageTemplate, getBackgroundImage } from '../template-image';
+import { ImageAsset } from './assets/image-asset';
+import type { Engine } from '../engine';
+import { AudioAssets, VideoAssets } from './assets';
+import type { JSONValue } from '../downloader';
+import { Downloader, loadAudio, loadAVIFOptional, loadImage, loadMedia, loadVideo, loadWebPOptional } from '../downloader';
 
 let seed = 1;
+
+enum mediaType {
+  'video',
+  'audio'
+}
 
 /**
  * 资源管理器
@@ -168,12 +174,18 @@ export class AssetManager implements Disposable {
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
-        const { bins = [], images, compositions, fonts } = jsonScene;
+        const { bins = [], images, compositions, fonts, videos = [], audios = [] } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
+
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
           hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'}Compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
+        ]);
+
+        const [loadedVideos, loadedAudios] = await Promise.all([
+          hookTimeInfo('processVideos', () => this.processMedia(videos, mediaType.video)),
+          hookTimeInfo('processAudios', () => this.processMedia(videos, mediaType.audio)),
         ]);
 
         if (renderer) {
@@ -183,6 +195,22 @@ export class AssetManager implements Disposable {
             imageAsset.data = loadedImages[i];
             imageAsset.setInstanceId(images[i].id);
             renderer.engine.addInstance(imageAsset);
+          }
+
+          for (let i = 0; i < loadedVideos.length; i++) {
+            const videoAsset = new VideoAssets(renderer.engine);
+
+            videoAsset.data = loadedVideos[i] as HTMLVideoElement;
+            videoAsset.setInstanceId(videos[i].id);
+            renderer.engine.addInstance(videoAsset);
+          }
+
+          for (let i = 0; i < loadedAudios.length; i++) {
+            const audioAsset = new AudioAssets(renderer.engine);
+
+            audioAsset.data = loadedAudios[i];
+            audioAsset.setInstanceId(audios[i].id);
+            renderer.engine.addInstance(audioAsset);
           }
         }
 
@@ -280,6 +308,25 @@ export class AssetManager implements Disposable {
       }
 
       throw new Error(`Invalid bins source: ${JSON.stringify(bins)}.`);
+    });
+
+    return Promise.all(jobs);
+  }
+
+  private async processMedia (media: spec.AssetBaseOptions[], type: mediaType): Promise<HTMLAudioElement[] | HTMLVideoElement[]> {
+    const { renderLevel } = this.options;
+    const baseUrl = this.baseUrl;
+
+    const jobs = media.map(medium => {
+      if (passRenderLevel(medium.renderLevel, renderLevel)) {
+        if (type === mediaType.video) {
+          return loadVideo((new URL(medium.url, baseUrl).href));
+        } else {
+          return loadAudio((new URL(medium.url, baseUrl).href));
+        }
+      }
+
+      throw new Error(`Invalid ${type} source: ${JSON.stringify(media)}.`);
     });
 
     return Promise.all(jobs);
@@ -414,6 +461,7 @@ export class AssetManager implements Disposable {
     engine: Engine
   ) {
     const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
+
     const jobs = textures.map(async (textureOptions, idx) => {
       if (textureOptions instanceof Texture) {
         return textureOptions;

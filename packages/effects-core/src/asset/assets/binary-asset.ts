@@ -1,6 +1,6 @@
 import type { EffectsObjectData } from '@galacean/effects-specification';
-import { EffectsObject } from './effects-object';
-import { effectsClass, serialize } from './decorators';
+import { EffectsObject } from '../../effects-object';
+import { effectsClass, serialize } from '../../decorators';
 
 @effectsClass('BinaryAsset')
 export class BinaryAsset extends EffectsObject {
