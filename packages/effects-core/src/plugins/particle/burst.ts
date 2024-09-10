@@ -9,6 +9,9 @@ interface BurstOptions {
 }
 
 export class Burst {
+  once: boolean;
+  disabled: boolean;
+
   private now: number;
   private index: number;
   private internalCycles: number;

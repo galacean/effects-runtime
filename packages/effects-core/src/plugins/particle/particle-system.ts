@@ -405,12 +405,16 @@ export class ParticleSystem extends Component {
               break;
             }
             const burst = bursts[j];
-            const opts = burst.getGeneratorOptions(timePassed, lifetime);
+            const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
 
             if (opts) {
               const originVec = [0, 0, 0];
               const offsets = emission.burstOffsets[j];
               const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
+
+              if (burst.once) {
+                this.removeBurst(j);
+              }
 
               for (let i = 0; i < opts.count && cursor < maxCount; i++) {
                 if (shouldSkipGenerate()) {
