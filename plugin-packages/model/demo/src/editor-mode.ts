@@ -11,8 +11,6 @@ let player;
 let sceneAABB;
 let sceneCenter;
 let sceneRadius = 1;
-let lastCameraPosition;
-let lastCameraRotation;
 
 let gestureHandler;
 let mouseDown = false;
@@ -27,7 +25,13 @@ let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.g
 
 url = './cute_bunny_doll_draft.glb';
 
-let renderMode3D = spec.RenderMode3D.diffuse;
+enum EditorMode {
+  standard,
+  diffuse,
+  wireframe,
+}
+
+let editorMode = EditorMode.standard;
 
 async function getCurrentScene () {
   const duration = 99999;
@@ -122,7 +126,15 @@ export async function loadScene (inPlayer) {
     });
   }
 
-  playScene = addWireframeItems(playScene);
+  let currentScene = playScene;
+  let renderMode3D = spec.RenderMode3D.none;
+
+  if (editorMode === EditorMode.wireframe) {
+    currentScene = addWireframeItems(playScene);
+  }
+  if (editorMode === EditorMode.diffuse) {
+    renderMode3D = spec.RenderMode3D.diffuse;
+  }
 
   player.destroyCurrentCompositions();
   const loadOptions = {
@@ -132,7 +144,7 @@ export async function loadScene (inPlayer) {
     },
   };
 
-  return player.loadScene(playScene, loadOptions).then(async comp => {
+  return player.loadScene(currentScene, loadOptions).then(async comp => {
     gestureHandler = new CameraGestureHandlerImp(comp);
 
     return true;
@@ -310,21 +322,14 @@ export function createUI () {
   const select = document.createElement('select');
 
   select.innerHTML = `
-    <option value="none">none</option>
-    <option value="diffuse">diffuse</option>
-    <option value="uv">uv</option>
-    <option value="normal">normal</option>
-    <option value="basecolor">basecolor</option>
-    <option value="alpha">alpha</option>
-    <option value="metallic">metallic</option>
-    <option value="roughness">roughness</option>
-    <option value="ao">ao</option>
-    <option value="emissive">emissive</option>
+    <option value="standard">正常</option>
+    <option value="diffuse">白膜</option>
+    <option value="wireframe">线框</option>
   `;
   for (let i = 0; i < select.options.length; i++) {
     const option = select.options[i];
 
-    if (option.value === renderMode3D) {
+    if (option.value === editorMode) {
       select.selectedIndex = i;
 
       break;
@@ -332,36 +337,13 @@ export function createUI () {
   }
 
   select.onchange = async function (e) {
-    if (e.target.value === 'none') {
-      renderMode3D = spec.RenderMode3D.none;
+    if (e.target.value === 'standard') {
+      editorMode = EditorMode.standard;
     } else if (e.target.value === 'diffuse') {
-      renderMode3D = spec.RenderMode3D.diffuse;
-    } else if (e.target.value === 'uv') {
-      renderMode3D = spec.RenderMode3D.uv;
-    } else if (e.target.value === 'normal') {
-      renderMode3D = spec.RenderMode3D.normal;
-    } else if (e.target.value === 'basecolor') {
-      renderMode3D = spec.RenderMode3D.basecolor;
-    } else if (e.target.value === 'alpha') {
-      renderMode3D = spec.RenderMode3D.alpha;
-    } else if (e.target.value === 'metallic') {
-      renderMode3D = spec.RenderMode3D.metallic;
-    } else if (e.target.value === 'roughness') {
-      renderMode3D = spec.RenderMode3D.roughness;
-    } else if (e.target.value === 'ao') {
-      renderMode3D = spec.RenderMode3D.ao;
-    } else if (e.target.value === 'emissive') {
-      renderMode3D = spec.RenderMode3D.emissive;
+      editorMode = EditorMode.diffuse;
+    } else if (e.target.value === 'wireframe') {
+      editorMode = EditorMode.wireframe;
     }
-
-    const composition = player.getCompositions()[0];
-
-    composition.items.forEach(item => {
-      if (item.name === 'extra-camera') {
-        lastCameraPosition = item.transform.position.toArray();
-        lastCameraRotation = item.transform.rotation.toArray();
-      }
-    });
 
     await loadScene(player);
   };
