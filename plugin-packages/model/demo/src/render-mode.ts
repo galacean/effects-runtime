@@ -1,7 +1,8 @@
 //@ts-nocheck
-import { math, spec } from '@galacean/effects';
+import { math, spec, generateGUID } from '@galacean/effects';
 import { CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
 import { LoaderImplEx } from '../../src/helper';
+import { GizmoSubType } from '@galacean/effects-plugin-editor-gizmo';
 
 const { Sphere, Vector3, Box3 } = math;
 
@@ -66,7 +67,7 @@ async function getCurrentScene () {
   loader.addLight({
     lightType: spec.LightType.ambient,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 0.4,
+    intensity: 0.2,
     //
     name: 'ambient-light',
     position: [0, 0, 0],
@@ -79,7 +80,7 @@ async function getCurrentScene () {
   loader.addLight({
     lightType: spec.LightType.directional,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 1.0,
+    intensity: 0.9,
     followCamera: true,
     //
     name: 'main-light',
@@ -93,6 +94,8 @@ async function getCurrentScene () {
   const { jsonScene } = loader.getLoadResult();
 
   loader.dispose();
+
+  jsonScene.plugins.push('editor-gizmo');
 
   return jsonScene;
 }
@@ -119,6 +122,8 @@ export async function loadScene (inPlayer) {
     });
   }
 
+  playScene = addWireframeItems(playScene);
+
   player.destroyCurrentCompositions();
   const loadOptions = {
     pluginData: {
@@ -132,6 +137,72 @@ export async function loadScene (inPlayer) {
 
     return true;
   });
+}
+
+function addWireframeItems (scene: spec.JSONScene, hide3DModel = true) {
+
+  const newComponents = [];
+
+  scene.components.forEach(comp => {
+    const newComponent = { ...comp };
+
+    if (newComponent.dataType === spec.DataType.MeshComponent) {
+      newComponent.hide = hide3DModel;
+    }
+    newComponents.push(newComponent);
+  });
+  const newItems = [
+    ...scene.items,
+  ];
+
+  scene.items.forEach(item => {
+    if (item.type === 'mesh') {
+      const { name, duration, endBehavior } = item;
+      const newItem = {
+        name: name + '_shadedWireframe',
+        id: generateGUID(),
+        pn: 1,
+        type: 'editor-gizmo',
+        visible: true,
+        duration: duration ?? 999,
+        dataType: spec.DataType.VFXItemData,
+        endBehavior,
+        transform: {
+          scale: { x: 1, y: 1, z: 1 },
+          position: { x: 0, y: 0, z: 0 },
+          eulerHint: { x: 0, y: 0, z: 0 },
+        },
+      };
+      const newComponent = {
+        dataType: 'GizmoComponent',
+        id: generateGUID(),
+        item: { id: newItem.id },
+        options: {
+          target: item.id,
+          subType: GizmoSubType.modelWireframe,
+          color: [0, 255, 255],
+        },
+      };
+
+      newItem.components = [
+        { id: newComponent.id },
+      ];
+      newComponents.push(newComponent);
+      newItems.push(newItem);
+    }
+  });
+  const newComposition = {
+    ...scene.compositions[0],
+    items: newItems.filter(item => item.id),
+  };
+  const newScene: spec.JSONScene = {
+    ...scene,
+    components: newComponents,
+    items: newItems,
+    compositions: [newComposition],
+  };
+
+  return newScene;
 }
 
 function registerMouseEvent () {
