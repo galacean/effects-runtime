@@ -834,7 +834,7 @@ describe('core/plugins/sprite/item-base', () => {
 
     const comp = await player.loadScene(json);
 
-    player.gotoAndPlay(5);
+    player.gotoAndPlay(4);
     const item2 = comp.getItemByName('sprite_2'); // item4的父元素
     const scale = item2?.transform.getWorldScale().toArray();
 
