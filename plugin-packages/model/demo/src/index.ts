@@ -5,12 +5,14 @@ import * as json from './json';
 import * as camera from './camera';
 import * as hitTest from './hit-test';
 import * as renderMode from './render-mode';
+import * as editorMode from './editor-mode';
 
 const demoMap = {
   json,
   camera,
   hitTest,
   renderMode,
+  editorMode,
 };
 
 function getDemoIndex (idxOrModule) {
