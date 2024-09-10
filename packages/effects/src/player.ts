@@ -335,6 +335,11 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     this.updateTextVariables(scene, opts.variables);
 
+    // 加载期间 player 销毁
+    if (this.disposed) {
+      throw new Error('Disposed player can not used to create Composition.');
+    }
+
     for (let i = 0; i < scene.textureOptions.length; i++) {
       scene.textureOptions[i] = scene.textureOptions[i] instanceof Texture ? scene.textureOptions[i]
         : engine.assetLoader.loadGUID(scene.textureOptions[i].id);
@@ -345,10 +350,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       await engine.createVFXItems(scene);
     }
 
-    // 加载期间 player 销毁
-    if (this.disposed) {
-      throw new Error('Disposed player can not used to create Composition.');
-    }
     const composition = new Composition({
       ...opts,
       renderer,

@@ -278,6 +278,7 @@ export class GLMaterial extends Material {
     if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
       this.shaderVariant = this.shader.createVariant(this.enabledMacros);
       this.macrosDirtyFlag = false;
+      this.uniformDirtyFlag = true;
     }
   }
 
