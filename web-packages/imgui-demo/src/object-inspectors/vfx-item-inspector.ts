@@ -250,7 +250,7 @@ export class VFXItemInspector extends ObjectInspector {
         if (!serializedData.vector4s[uniformName]) {
           serializedData.vector4s[uniformName] = { x:1.0, y:1.0, z:0.0, w:0.0 };
         }
-        if (ImGui.DragFloat4('##' + uniformName, serializedData.vector4s[uniformName])) {
+        if (ImGui.DragFloat4('##' + uniformName, serializedData.vector4s[uniformName], 0.02)) {
           dirtyFlag = true;
         }
       } else if (type === '2D') {
