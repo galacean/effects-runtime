@@ -241,6 +241,13 @@ export interface TransformPlayableAssetData extends spec.EffectsObjectData {
 export class ActivationPlayable extends Playable {
 
   override processFrame (context: FrameContext): void {
+    const vfxItem = context.output.getUserData();
+
+    if (!(vfxItem instanceof VFXItem)) {
+      return;
+    }
+
+    vfxItem.time = this.time;
   }
 }
 
