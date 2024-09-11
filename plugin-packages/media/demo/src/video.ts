@@ -45,7 +45,7 @@ const json = {
       item: { id: '14b3d069cbad4cbd81d0a8731cc4aba7' },
       dataType: 'VideoComponent',
 
-      options: { startColor: [0, 1, 1, 1] },
+      options: { startColor: [0, 1, 1, 1], video: { id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' } },
       renderer: { renderMode: 1, texture: { id: '8049d2c31aa44b138488490e4e8a38e3' } },
       splits: [[0, 0, 1, 1, 0]],
     },

@@ -1,20 +1,22 @@
-import type { Texture, Engine, SpriteItemProps } from '@galacean/effects-core';
+import type { Texture, Engine, VideoAssets } from '@galacean/effects-core';
 import { spec, math, BaseRenderComponent, effectsClass, glContext } from '@galacean/effects-core';
 /**
- * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
+ * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
  */
-export interface TextItemProps extends Omit<spec.TextContent, 'renderer'> {
+export interface VideoItemProps extends Omit<spec.VideoContent, 'renderer'> {
   listIndex?: number,
   renderer: {
     mask: number,
     texture: Texture,
-  } & Omit<spec.RendererOptions, 'texture'>,
+  } & Omit<spec.VideoRendererOptions, 'texture'>,
 }
 
 let seed = 0;
 
 @effectsClass(spec.DataType.VideoComponent)
 export class VideoComponent extends BaseRenderComponent {
+
+  video?: HTMLVideoElement;
 
   constructor (engine: Engine) {
     super(engine);
@@ -23,15 +25,24 @@ export class VideoComponent extends BaseRenderComponent {
     this.setItem();
   }
 
-  override fromData (data: SpriteItemProps): void {
+  override fromData (data: VideoItemProps): void {
     super.fromData(data);
 
     const { interaction, options, listIndex = 0 } = data;
+    const { video, startColor = [1, 1, 1, 1] } = options;
     let renderer = data.renderer;
 
     if (!renderer) {
       //@ts-expect-error
       renderer = {};
+    }
+
+    this.video = (video as VideoAssets).data;
+    const endbehavior = this.item.endBehavior;
+
+    // 如果元素设置为 destroy
+    if (endbehavior === spec.EndBehavior.destroy) {
+      this.video.loop = false;
     }
 
     this.interaction = interaction;
@@ -51,8 +62,35 @@ export class VideoComponent extends BaseRenderComponent {
     this.interaction = interaction;
 
     this.setItem();
-    const startColor = options.startColor || [1, 1, 1, 1];
 
     this.material.setVector4('_Color', new math.Vector4().setFromArray(startColor));
+  }
+
+  getDuration (): number {
+    return this.video ? this.video.duration : 0;
+  }
+
+  setLoop (loop: boolean) {
+    if (this.video) {
+      this.video.loop = loop;
+    }
+  }
+
+  setMuted (muted: boolean) {
+    if (this.video) {
+      this.video.muted = muted;
+    }
+  }
+
+  setVolume (volume: number) {
+    if (this.video) {
+      this.video.volume = volume;
+    }
+  }
+
+  setPlaybackRate (rate: number) {
+    if (this.video) {
+      this.video.playbackRate = rate;
+    }
   }
 }
