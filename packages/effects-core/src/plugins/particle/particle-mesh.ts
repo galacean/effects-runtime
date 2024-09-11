@@ -778,70 +778,68 @@ export class ParticleMesh implements ParticleMeshData {
 
     const linearMove = this.cachedLinearMove;
 
-    for (let i = 0; i < particleCount; i++) {
-      const time = localTime - aOffsetArray[i * 4 + 2];
-      const duration = aOffsetArray[i * 4 + 3];
-      // const life = math.clamp(time / duration, 0.0, 1.0);
-      const aSeed = aSeedArray[i * 8 + 3];
+    if (this.linearVelOverLifetime && this.linearVelOverLifetime.enabled) {
+      for (let i = 0; i < particleCount; i++) {
+        const time = localTime - aOffsetArray[i * 4 + 2];
+        const duration = aOffsetArray[i * 4 + 3];
+        // const life = math.clamp(time / duration, 0.0, 1.0);
+        const lifetime = time / duration;
+        const aSeed = aSeedArray[i * 8 + 3];
 
-      linearMove.setZero();
+        linearMove.setZero();
 
-      const lifetime = time / duration;
+        if (this.linearVelOverLifetime.asMovement) {
+          if (this.linearVelOverLifetime.x) {
+            if (this.linearVelOverLifetime.x instanceof RandomValue) {
+              linearMove.x = this.linearVelOverLifetime.x.getValue(lifetime, aSeed);
+            } else {
+              linearMove.x = this.linearVelOverLifetime.x.getValue(lifetime);
+            }
+          }
+          if (this.linearVelOverLifetime.y) {
+            if (this.linearVelOverLifetime.y instanceof RandomValue) {
+              linearMove.y = this.linearVelOverLifetime.y.getValue(lifetime, aSeed);
+            } else {
+              linearMove.y = this.linearVelOverLifetime.y.getValue(lifetime);
+            }
+          }
+          if (this.linearVelOverLifetime.z) {
+            if (this.linearVelOverLifetime.z instanceof RandomValue) {
+              linearMove.z = this.linearVelOverLifetime.z.getValue(lifetime, aSeed);
+            } else {
+              linearMove.z = this.linearVelOverLifetime.z.getValue(lifetime);
+            }
+          }
+        } else {
+        // Adjust rotation based on the specified lifetime components
+          if (this.linearVelOverLifetime.x) {
+            if (this.linearVelOverLifetime.x instanceof RandomValue) {
+              linearMove.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, time, aSeed);
+            } else {
+              linearMove.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, time, duration);
+            }
+          }
+          if (this.linearVelOverLifetime.y) {
+            if (this.linearVelOverLifetime.y instanceof RandomValue) {
+              linearMove.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, time, aSeed);
+            } else {
+              linearMove.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, time, duration);
+            }
+          }
+          if (this.linearVelOverLifetime.z) {
+            if (this.linearVelOverLifetime.z instanceof RandomValue) {
+              linearMove.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, time, aSeed);
+            } else {
+              linearMove.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, time, duration);
+            }
+          }
+        }
+        const aLinearMoveOffset = i * 3;
 
-      if (!this.linearVelOverLifetime || !this.linearVelOverLifetime.enabled) {
-        return linearMove;
+        aLinearMoveArray[aLinearMoveOffset] = linearMove.x;
+        aLinearMoveArray[aLinearMoveOffset + 1] = linearMove.y;
+        aLinearMoveArray[aLinearMoveOffset + 2] = linearMove.z;
       }
-      if (this.linearVelOverLifetime.asMovement) {
-        if (this.linearVelOverLifetime.x) {
-          if (this.linearVelOverLifetime.x instanceof RandomValue) {
-            linearMove.x = this.linearVelOverLifetime.x.getValue(lifetime, aSeed);
-          } else {
-            linearMove.x = this.linearVelOverLifetime.x.getValue(lifetime);
-          }
-        }
-        if (this.linearVelOverLifetime.y) {
-          if (this.linearVelOverLifetime.y instanceof RandomValue) {
-            linearMove.y = this.linearVelOverLifetime.y.getValue(lifetime, aSeed);
-          } else {
-            linearMove.y = this.linearVelOverLifetime.y.getValue(lifetime);
-          }
-        }
-        if (this.linearVelOverLifetime.z) {
-          if (this.linearVelOverLifetime.z instanceof RandomValue) {
-            linearMove.z = this.linearVelOverLifetime.z.getValue(lifetime, aSeed);
-          } else {
-            linearMove.z = this.linearVelOverLifetime.z.getValue(lifetime);
-          }
-        }
-      } else {
-      // Adjust rotation based on the specified lifetime components
-        if (this.linearVelOverLifetime.x) {
-          if (this.linearVelOverLifetime.x instanceof RandomValue) {
-            linearMove.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, time, aSeed);
-          } else {
-            linearMove.x = this.linearVelOverLifetime.x.getIntegrateValue(0.0, time, duration);
-          }
-        }
-        if (this.linearVelOverLifetime.y) {
-          if (this.linearVelOverLifetime.y instanceof RandomValue) {
-            linearMove.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, time, aSeed);
-          } else {
-            linearMove.y = this.linearVelOverLifetime.y.getIntegrateValue(0.0, time, duration);
-          }
-        }
-        if (this.linearVelOverLifetime.z) {
-          if (this.linearVelOverLifetime.z instanceof RandomValue) {
-            linearMove.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, time, aSeed);
-          } else {
-            linearMove.z = this.linearVelOverLifetime.z.getIntegrateValue(0.0, time, duration);
-          }
-        }
-      }
-      const aLinearMoveOffset = i * 3;
-
-      aLinearMoveArray[aLinearMoveOffset] = linearMove.x;
-      aLinearMoveArray[aLinearMoveOffset + 1] = linearMove.y;
-      aLinearMoveArray[aLinearMoveOffset + 2] = linearMove.z;
     }
     this.geometry.setAttributeData('aLinearMove', aLinearMoveArray);
   }
