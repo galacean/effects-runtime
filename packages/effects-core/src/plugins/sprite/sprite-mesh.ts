@@ -5,7 +5,8 @@ import type { GPUCapabilityDetail, ShaderMacros, SharedShaderWithSource } from '
 import { GLSLVersion } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
 import type { Transform } from '../../transform';
-import type { SpriteComponent, SpriteItemRenderInfo } from './sprite-item';
+import type { SpriteComponent } from './sprite-item';
+import type { ItemRenderInfo } from '../../components/base-render-component';
 
 export type SpriteRenderData = {
   life: number,
@@ -35,7 +36,7 @@ export function setSpriteMeshMaxItemCountByGPU (gpuCapability: GPUCapabilityDeta
   }
 }
 
-export function getImageItemRenderInfo (item: SpriteComponent): SpriteItemRenderInfo {
+export function getImageItemRenderInfo (item: SpriteComponent): ItemRenderInfo {
   const { renderer } = item;
   const { blending, side, occlusion, mask, maskMode, order } = renderer;
   const blendingCache = +blending;
@@ -72,11 +73,11 @@ export function spriteMeshShaderFromFilter (
   };
 }
 
-export function spriteMeshShaderIdFromRenderInfo (renderInfo: SpriteItemRenderInfo, count: number): string {
+export function spriteMeshShaderIdFromRenderInfo (renderInfo: ItemRenderInfo, count: number): string {
   return `${renderInfo.cachePrefix}_effects_sprite_${count}`;
 }
 
-export function spriteMeshShaderFromRenderInfo (renderInfo: SpriteItemRenderInfo, count: number, level: number, env?: string): SharedShaderWithSource {
+export function spriteMeshShaderFromRenderInfo (renderInfo: ItemRenderInfo, count: number, level: number, env?: string): SharedShaderWithSource {
   const { wireframe } = renderInfo;
   const shader = spriteMeshShaderFromFilter(level, {
     wireframe,

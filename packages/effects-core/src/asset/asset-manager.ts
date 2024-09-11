@@ -185,7 +185,7 @@ export class AssetManager implements Disposable {
 
         const [loadedVideos, loadedAudios] = await Promise.all([
           hookTimeInfo('processVideos', () => this.processMedia(videos, mediaType.video)),
-          hookTimeInfo('processAudios', () => this.processMedia(videos, mediaType.audio)),
+          hookTimeInfo('processAudios', () => this.processMedia(audios, mediaType.audio)),
         ]);
 
         if (renderer) {
