@@ -134,9 +134,7 @@ export async function loadScene (inPlayer) {
     currentScene = addWireframeItems(playScene);
   } else if (editorMode === EditorMode.wireframe2) {
     currentScene = addWireframeItems(playScene, false);
-  }
-
-  if (editorMode === EditorMode.diffuse) {
+  } else if (editorMode === EditorMode.diffuse) {
     renderMode3D = spec.RenderMode3D.diffuse;
   }
 
