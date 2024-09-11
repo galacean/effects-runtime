@@ -5,7 +5,6 @@ import type { GPUCapabilityDetail, ShaderMacros, SharedShaderWithSource } from '
 import { GLSLVersion } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
 import type { Transform } from '../../transform';
-import type { SpriteComponent } from './sprite-item';
 import type { ItemRenderInfo } from '../../components/base-render-component';
 
 export type SpriteRenderData = {
@@ -34,23 +33,6 @@ export function setSpriteMeshMaxItemCountByGPU (gpuCapability: GPUCapabilityDeta
   } else if (gpuCapability.maxVertexUniforms >= 128) {
     return maxSpriteMeshItemCount = 16;
   }
-}
-
-export function getImageItemRenderInfo (item: SpriteComponent): ItemRenderInfo {
-  const { renderer } = item;
-  const { blending, side, occlusion, mask, maskMode, order } = renderer;
-  const blendingCache = +blending;
-  const cachePrefix = item.cachePrefix || '-';
-
-  return {
-    side,
-    occlusion,
-    blending,
-    mask,
-    maskMode,
-    cachePrefix,
-    cacheId: `${cachePrefix}.${+side}+${+occlusion}+${blendingCache}+${order}+${maskMode}.${mask}`,
-  };
 }
 
 export function spriteMeshShaderFromFilter (

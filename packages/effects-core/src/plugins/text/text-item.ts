@@ -11,10 +11,6 @@ import { applyMixins, isValidFontFamily } from '../../utils';
 import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
 import { BaseRenderComponent } from '../../components/base-render-component';
-import type { ColorPlayableAssetData } from '../../animation';
-import { ColorPlayable } from '../../animation';
-import type { Playable, PlayableGraph } from '../cal/playable-graph';
-import { PlayableAsset } from '../cal/playable-graph';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -129,23 +125,6 @@ export class TextComponent extends BaseRenderComponent {
 
   updateTexture (flipY = true) {
     // OVERRIDE by mixins
-  }
-}
-
-@effectsClass('TextColorPlayableAsset')
-export class TextColorPlayableAsset extends PlayableAsset {
-  data: ColorPlayableAssetData;
-
-  override createPlayable (graph: PlayableGraph): Playable {
-    const textColorPlayable = new ColorPlayable(graph);
-
-    textColorPlayable.create(this.data);
-
-    return textColorPlayable;
-  }
-
-  override fromData (data: ColorPlayableAssetData): void {
-    this.data = data;
   }
 }
 

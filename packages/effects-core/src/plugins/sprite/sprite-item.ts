@@ -9,11 +9,10 @@ import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
 import type { PlayableGraph, Playable } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
-import { getImageItemRenderInfo } from './sprite-mesh';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
 import type { ItemRenderer } from '../../components/base-render-component';
-import { BaseRenderComponent } from '../../components/base-render-component';
+import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/base-render-component';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent

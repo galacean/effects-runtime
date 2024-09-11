@@ -150,8 +150,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.0.0
-        version: 2.0.0
+        specifier: link://Applications/projects/galacean-effets/effects-specification
+        version: link:../../../effects-specification
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -207,6 +207,12 @@ importers:
       '@galacean/effects-plugin-model':
         specifier: workspace:*
         version: link:../model
+
+  plugin-packages/media:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
 
   plugin-packages/model:
     dependencies:

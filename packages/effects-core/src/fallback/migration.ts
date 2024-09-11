@@ -480,7 +480,7 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
       trackDatas.push(newTrackData);
     }
 
-    if (item.type === ItemType.sprite) {
+    if (item.type === ItemType.sprite || item.type === ItemType.text) {
       const newSpriteColorPlayableAssetData = {
         id: generateGUID(),
         dataType: 'SpriteColorPlayableAsset',
@@ -491,34 +491,6 @@ function convertTimelineAsset (composition: CompositionData, guidToItemMap: Reco
       const newTrackData = {
         id: generateGUID(),
         dataType: 'SpriteColorTrack',
-        children: [],
-        clips: [
-          {
-            start: item.delay,
-            duration: item.duration,
-            endBehavior: item.endBehavior,
-            asset: {
-              id: newSpriteColorPlayableAssetData.id,
-            },
-          },
-        ],
-      };
-
-      subTrackDatas.push({ id: newTrackData.id });
-      trackDatas.push(newTrackData);
-    }
-
-    if (item.type === ItemType.text) {
-      const newSpriteColorPlayableAssetData = {
-        id: generateGUID(),
-        dataType: 'TextColorPlayableAsset',
-        colorOverLifetime: item.content.colorOverLifetime,
-      };
-
-      playableAssetDatas.push(newSpriteColorPlayableAssetData);
-      const newTrackData = {
-        id: generateGUID(),
-        dataType: 'TextColorTrack',
         children: [],
         clips: [
           {

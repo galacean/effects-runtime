@@ -9,7 +9,7 @@ const { Vector3, Matrix4 } = math;
 
 const sleepTime = 20;
 const params = new URLSearchParams(location.search);
-const oldVersion = params.get('version') || '2.0.0';  // 旧版Player版本
+const oldVersion = params.get('version') || '2.1.0-alpha.2';
 const playerOptions: PlayerConfig = {
   //env: 'editor',
   //pixelRatio: 2,
