@@ -29,6 +29,10 @@ export class CameraGestureHandlerImp implements CameraGestureHandler {
     private composition: Composition,
   ) { }
 
+  updateComposition (composition: Composition) {
+    this.composition = composition;
+  }
+
   getItem () {
     return this.composition.items?.find(item => item.name === this.getCurrentTarget());
   }

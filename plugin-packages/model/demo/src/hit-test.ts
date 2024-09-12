@@ -1,4 +1,4 @@
-//@ts-nocheck
+import type { Composition, Player } from '@galacean/effects';
 import { Transform, spec, math } from '@galacean/effects';
 import { ToggleItemBounding, CompositionHitTest } from '@galacean/effects-plugin-model';
 import { LoaderImplEx, InputController } from '../../src/helper';
@@ -6,17 +6,12 @@ import { createSlider } from './utility';
 
 const { Sphere, Vector3, Box3 } = math;
 
-let player;
-
-let inputController;
-
+let player: Player;
+let inputController: InputController;
 let currentTime = 0.1;
-
-let composition;
-
-let playScene;
-
-let url;
+let composition: Composition;
+let playScene: spec.JSONScene;
+let url: string;
 
 url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
 url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
@@ -66,7 +61,7 @@ async function getCurrentScene () {
   return loader.getLoadResult().jsonScene;
 }
 
-export async function loadScene (inPlayer) {
+export async function loadScene (inPlayer: Player) {
   if (!player) {
     player = inPlayer;
     registerMouseEvent();
@@ -75,9 +70,10 @@ export async function loadScene (inPlayer) {
   if (!playScene) {
     playScene = await getCurrentScene();
   } else {
-    playScene.compositions[0].items.forEach(item => {
+    playScene.items.forEach(item => {
       if (item.id === 'extra-camera') {
-        item.transform = player.compositions[0].camera;
+        // @ts-expect-error
+        item.transform = player.getCompositions()[0].camera;
       }
     });
   }
@@ -133,11 +129,11 @@ function registerMouseEvent () {
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
-  const position = player.compositions[0].camera.position;
-  const quat = player.compositions[0].camera.getQuat();
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera') as spec.VFXItemData;
+  const position = player.getCompositions()[0].camera.position;
+  const quat = player.getCompositions()[0].camera.getQuat();
 
-  if (quat[0] === null) {
+  if (quat.x === null) {
     return;
   }
   const transfrom = new Transform({
@@ -145,12 +141,14 @@ function refreshCamera () {
     quat: quat,
   });
 
-  freeCamera.transform.position = transfrom.position;
-  freeCamera.transform.rotation = transfrom.rotation;
+  freeCamera.transform!.position = transfrom.position;
+  // @ts-expect-error
+  freeCamera.transform!.rotation = transfrom.rotation;
 }
 
-function getHitTestCoord (e) {
-  const bounding = e.target.getBoundingClientRect();
+function getHitTestCoord (e: MouseEvent) {
+  const canvas = e.target as HTMLCanvasElement;
+  const bounding = canvas.getBoundingClientRect();
   const x = ((e.clientX - bounding.left) / bounding.width) * 2 - 1;
   const y = 1 - ((e.clientY - bounding.top) / bounding.height) * 2;
 
@@ -158,14 +156,12 @@ function getHitTestCoord (e) {
 }
 
 export function createUI () {
-  document.getElementsByClassName('container')[0].style.background = 'rgba(30,32,32)';
-  //
+  const container = document.getElementsByClassName('container')[0] as HTMLElement;
   const uiDom = document.createElement('div');
-
-  uiDom.className = 'my_ui';
-
   const Label = document.createElement('label');
 
+  container.style.background = 'rgba(30,32,32)';
+  uiDom.className = 'my_ui';
   Label.innerHTML = '<h1>通过鼠标中键进行点击测试</h1>';
   uiDom.appendChild(Label);
 
@@ -177,32 +173,5 @@ export function createUI () {
   const demoInfo = document.getElementsByClassName('demo-info')[0];
 
   demoInfo.appendChild(uiDom);
-}
-
-function createSlider (name, minV, maxV, stepV, defaultV, callback, style) {
-  const InputDom = document.createElement('input');
-
-  InputDom.type = 'range';
-  InputDom.min = minV.toString();
-  InputDom.max = maxV.toString();
-  InputDom.value = defaultV.toString();
-  InputDom.step = stepV.toString();
-  InputDom.style = style;
-  InputDom.addEventListener('input', function (event) {
-    const dom = event.target;
-
-    Label.innerHTML = dom.value;
-    callback(Number(dom.value));
-  });
-  const divDom = document.createElement('div');
-
-  divDom.innerHTML = name;
-  divDom.appendChild(InputDom);
-  const Label = document.createElement('label');
-
-  Label.innerHTML = defaultV.toString();
-  divDom.appendChild(Label);
-
-  return divDom;
 }
 

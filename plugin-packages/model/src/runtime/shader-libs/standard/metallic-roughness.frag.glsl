@@ -635,6 +635,42 @@ void main()
         gl_FragColor.rgb = vec3(baseColor.a);
     #endif
 
+    #ifdef DEBUG_DIFFUSE
+        vec3 debugDiffuse = vec3(0.0);
+        #ifdef USE_PUNCTUAL
+            vec3 newBaseColor = vec3(dot(_BaseColorFactor.xyz, vec3(0.3)));
+            MaterialInfo diffuseMaterialInfo = MaterialInfo(
+                1.0,
+                vec3(0.0),
+                1.0,
+                newBaseColor,
+                vec3(0.0),
+                vec3(0.0)
+            );
+            for (int i = 0; i < LIGHT_COUNT; ++i)
+            {
+                Light light = _Lights[i];
+                if (light.type == LightType_Directional)
+                {
+                    debugDiffuse += applyDirectionalLight(light, diffuseMaterialInfo, normal, view, shadow);
+                }
+                else if (light.type == LightType_Point)
+                {
+                    debugDiffuse += applyPointLight(light, diffuseMaterialInfo, normal, view);
+                }
+                else if (light.type == LightType_Spot)
+                {
+                    debugDiffuse += applySpotLight(light, diffuseMaterialInfo, normal, view, shadow);
+                }
+                else if (light.type == LightType_Ambient)
+                {
+                    debugDiffuse += applyAmbientLight(light, diffuseMaterialInfo);
+                }
+            }
+        #endif
+        gl_FragColor.rgb = toneMap(debugDiffuse);
+    #endif
+
     gl_FragColor.a = 1.0;
 
 #endif // !DEBUG_OUTPUT
