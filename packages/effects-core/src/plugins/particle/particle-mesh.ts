@@ -454,11 +454,11 @@ export class ParticleMesh implements ParticleMeshData {
 
   onUpdate (dt: number) {
     const aPosArray = this.geometry.getAttributeData('aPos') as Float32Array; // vector3
-    const particleCount = Math.ceil(aPosArray.length / 12);
+    const vertexCount = Math.ceil(aPosArray.length / 12);
 
-    this.applyTranslation(particleCount, dt);
-    this.applyRotation(particleCount, dt);
-    this.applyLinearMove(particleCount, dt);
+    this.applyTranslation(vertexCount, dt);
+    this.applyRotation(vertexCount, dt);
+    this.applyLinearMove(vertexCount, dt);
   }
 
   minusTime (time: number) {
@@ -599,14 +599,14 @@ export class ParticleMesh implements ParticleMeshData {
     }
   }
 
-  private applyTranslation (particleCount: number, deltaTime: number) {
+  private applyTranslation (vertexCount: number, deltaTime: number) {
     const localTime = this.time;
     let aTranslationArray = this.geometry.getAttributeData('aTranslation') as Float32Array;
     const aVelArray = this.geometry.getAttributeData('aVel') as Float32Array; // vector3
     const aOffsetArray = this.geometry.getAttributeData('aOffset') as Float32Array;
 
-    if (aTranslationArray.length < particleCount * 3) {
-      aTranslationArray = this.expandArray(aTranslationArray, particleCount * 3);
+    if (aTranslationArray.length < vertexCount * 3) {
+      aTranslationArray = this.expandArray(aTranslationArray, vertexCount * 3);
     }
     // const velocity = this.cachedVelocity;
     let velocityX = 0;
@@ -615,7 +615,7 @@ export class ParticleMesh implements ParticleMeshData {
     const uAcceleration = this.mesh.material.getVector4('uAcceleration');
     const uGravityModifierValue = this.mesh.material.getVector4('uGravityModifierValue');
 
-    for (let i = 0; i < particleCount; i++) {
+    for (let i = 0; i < vertexCount; i += 4) {
       const velOffset = i * 12 + 3;
 
       velocityX = aVelArray[velOffset];
@@ -653,16 +653,31 @@ export class ParticleMesh implements ParticleMeshData {
 
       if (aOffsetArray[i * 4 + 2] < localTime) {
         // const translation = velocity.multiply(deltaTime / 1000);
+        const aTranslationX = velocityX * (deltaTime / 1000);
+        const aTranslationY = velocityY * (deltaTime / 1000);
+        const aTranslationZ = velocityZ * (deltaTime / 1000);
 
-        aTranslationArray[aTranslationOffset] += velocityX * (deltaTime / 1000);
-        aTranslationArray[aTranslationOffset + 1] += velocityY * (deltaTime / 1000);
-        aTranslationArray[aTranslationOffset + 2] += velocityZ * (deltaTime / 1000);
+        aTranslationArray[aTranslationOffset] += aTranslationX;
+        aTranslationArray[aTranslationOffset + 1] += aTranslationY;
+        aTranslationArray[aTranslationOffset + 2] += aTranslationZ;
+
+        aTranslationArray[aTranslationOffset + 3] += aTranslationX;
+        aTranslationArray[aTranslationOffset + 4] += aTranslationY;
+        aTranslationArray[aTranslationOffset + 5] += aTranslationZ;
+
+        aTranslationArray[aTranslationOffset + 6] += aTranslationX;
+        aTranslationArray[aTranslationOffset + 7] += aTranslationY;
+        aTranslationArray[aTranslationOffset + 8] += aTranslationZ;
+
+        aTranslationArray[aTranslationOffset + 9] += aTranslationX;
+        aTranslationArray[aTranslationOffset + 10] += aTranslationY;
+        aTranslationArray[aTranslationOffset + 11] += aTranslationZ;
       }
     }
     this.geometry.setAttributeData('aTranslation', aTranslationArray);
   }
 
-  private applyRotation (particleCount: number, deltaTime: number) {
+  private applyRotation (vertexCount: number, deltaTime: number) {
     let aRotationArray = this.geometry.getAttributeData('aRotation0') as Float32Array;
     const aOffsetArray = this.geometry.getAttributeData('aOffset') as Float32Array;
     const aRotArray = this.geometry.getAttributeData('aRot') as Float32Array; // vector3
@@ -670,11 +685,11 @@ export class ParticleMesh implements ParticleMeshData {
     const localTime = this.time;
     const aRotationMatrix = this.cachedRotationMatrix;
 
-    if (aRotationArray.length < particleCount * 9) {
-      aRotationArray = this.expandArray(aRotationArray, particleCount * 9);
+    if (aRotationArray.length < vertexCount * 9) {
+      aRotationArray = this.expandArray(aRotationArray, vertexCount * 9);
     }
 
-    for (let i = 0; i < particleCount; i++) {
+    for (let i = 0; i < vertexCount; i += 4) {
       const time = localTime - aOffsetArray[i * 4 + 2];
       const duration = aOffsetArray[i * 4 + 3];
       const life = clamp(time / duration, 0.0, 1.0);
@@ -761,25 +776,30 @@ export class ParticleMesh implements ParticleMeshData {
       const matrixArray = aRotationMatrix.elements;
 
       aRotationArray.set(matrixArray, aRotationOffset);
+      if (i + 4 <= vertexCount) {
+        aRotationArray.set(matrixArray, aRotationOffset + 9);
+        aRotationArray.set(matrixArray, aRotationOffset + 18);
+        aRotationArray.set(matrixArray, aRotationOffset + 27);
+      }
     }
 
     this.geometry.setAttributeData('aRotation0', aRotationArray);
   }
 
-  private applyLinearMove (particleCount: number, deltaTime: number) {
+  private applyLinearMove (vertexCount: number, deltaTime: number) {
     let aLinearMoveArray = this.geometry.getAttributeData('aLinearMove') as Float32Array;
     const aOffsetArray = this.geometry.getAttributeData('aOffset') as Float32Array;
     const aSeedArray = this.geometry.getAttributeData('aSeed') as Float32Array; // float
     const localTime = this.time;
 
-    if (aLinearMoveArray.length < particleCount * 3) {
-      aLinearMoveArray = this.expandArray(aLinearMoveArray, particleCount * 3);
+    if (aLinearMoveArray.length < vertexCount * 3) {
+      aLinearMoveArray = this.expandArray(aLinearMoveArray, vertexCount * 3);
     }
 
     const linearMove = this.cachedLinearMove;
 
     if (this.linearVelOverLifetime && this.linearVelOverLifetime.enabled) {
-      for (let i = 0; i < particleCount; i++) {
+      for (let i = 0; i < vertexCount; i += 4) {
         const time = localTime - aOffsetArray[i * 4 + 2];
         const duration = aOffsetArray[i * 4 + 3];
         // const life = math.clamp(time / duration, 0.0, 1.0);
@@ -839,6 +859,18 @@ export class ParticleMesh implements ParticleMeshData {
         aLinearMoveArray[aLinearMoveOffset] = linearMove.x;
         aLinearMoveArray[aLinearMoveOffset + 1] = linearMove.y;
         aLinearMoveArray[aLinearMoveOffset + 2] = linearMove.z;
+
+        aLinearMoveArray[aLinearMoveOffset + 3] = linearMove.x;
+        aLinearMoveArray[aLinearMoveOffset + 4] = linearMove.y;
+        aLinearMoveArray[aLinearMoveOffset + 5] = linearMove.z;
+
+        aLinearMoveArray[aLinearMoveOffset + 6] = linearMove.x;
+        aLinearMoveArray[aLinearMoveOffset + 7] = linearMove.y;
+        aLinearMoveArray[aLinearMoveOffset + 8] = linearMove.z;
+
+        aLinearMoveArray[aLinearMoveOffset + 9] = linearMove.x;
+        aLinearMoveArray[aLinearMoveOffset + 10] = linearMove.y;
+        aLinearMoveArray[aLinearMoveOffset + 11] = linearMove.z;
       }
     }
     this.geometry.setAttributeData('aLinearMove', aLinearMoveArray);
