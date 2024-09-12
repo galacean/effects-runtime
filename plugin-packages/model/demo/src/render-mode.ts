@@ -20,9 +20,7 @@ let playScene;
 
 let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.glb';
 
-//url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
-
-url = './cute_bunny_doll_draft.glb';
+url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
 let renderMode3D = spec.RenderMode3D.diffuse;
 
