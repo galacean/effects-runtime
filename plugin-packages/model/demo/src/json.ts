@@ -1,15 +1,15 @@
-//@ts-nocheck
+import type { Player } from '@galacean/effects';
 import { isObject } from '@galacean/effects';
 import { getPMeshList, getRendererGPUInfo } from '@galacean/effects-plugin-model';
 import { createButton, createPlayer, disposePlayer, createSlider, loadJsonFromURL } from './utility';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 
-let player;
+let player: Player;
 let pending = false;
 let currentTime = 0;
 let pauseOnFirstFrame = false;
 
-let infoElement;
+let infoElement: HTMLLabelElement;
 let url = 'https://mdn.alipayobjects.com/mars/afts/file/A*SERYRaes5S0AAAAAAAAAAAAADlB4AQ';
 
 // 兔子
@@ -53,7 +53,7 @@ async function getCurrentScene () {
   });
 }
 
-export async function loadScene (inPlayer) {
+export async function loadScene (inPlayer: Player) {
   if (!player) {
     player = inPlayer;
     addRealTimeTicker();
@@ -87,10 +87,10 @@ export async function loadScene (inPlayer) {
 }
 
 export function createUI () {
-  document.getElementsByClassName('container')[0].style.background = 'rgba(30,32,32)';
-
+  const container = document.getElementsByClassName('container')[0] as HTMLElement;
   const parentElement = document.createElement('div');
 
+  container.style.background = 'rgba(30,32,32)';
   parentElement.className = 'my_ui';
 
   createButton(parentElement, '重播', async function (ev) {
@@ -107,6 +107,7 @@ export function createUI () {
     if (player !== undefined) {
       disposePlayer(player);
     }
+    // @ts-expect-error
     player = undefined;
   });
 
@@ -157,7 +158,10 @@ function addRealTimeTicker () {
             skinTextureMode = true;
           }
           mesh.subMeshes.forEach(subMesh => {
-            if (subMesh.jointMatrixTexture?.isHalfFloat) { skinHalfFloat = true; }
+            // @ts-expect-error
+            if (subMesh.jointMatrixTexture?.isHalfFloat) {
+              skinHalfFloat = true;
+            }
           });
         });
         infoList.push(`<p>蒙皮信息: HalfFloat ${skinHalfFloat}, 纹理模式 ${skinTextureMode}</p>`);

@@ -1,22 +1,22 @@
-//@ts-nocheck
+import type { Player } from '@galacean/effects';
 import { math, spec } from '@galacean/effects';
 import { CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
 import { LoaderImplEx } from '../../src/helper';
 
 const { Sphere, Vector3, Box3 } = math;
 
-let player;
+let player: Player;
 
 let sceneAABB;
 let sceneCenter;
 let sceneRadius = 1;
 
-let gestureHandler;
+let gestureHandler: CameraGestureHandlerImp;
 let mouseDown = false;
 let scaleBegin = false;
 let rotationBegin = false;
 
-let playScene;
+let playScene: spec.JSONScene;
 
 let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.glb';
 
@@ -93,7 +93,7 @@ async function getCurrentScene () {
   return jsonScene;
 }
 
-export async function loadScene (inPlayer) {
+export async function loadScene (inPlayer: Player) {
   if (!player) {
     player = inPlayer;
     registerMouseEvent();
@@ -104,7 +104,7 @@ export async function loadScene (inPlayer) {
   } else {
     playScene.items.forEach(item => {
       if (item.name === 'extra-camera') {
-        const camera = player.compositions[0].camera;
+        const camera = player.getCompositions()[0].camera;
 
         item.transform = {
           position: camera.position.clone(),
@@ -213,27 +213,26 @@ function registerMouseEvent () {
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
-  const position = player.compositions[0].camera.position;
-  const rotation = player.compositions[0].camera.rotation;
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera') as spec.VFXItemData;
+  const position = player.getCompositions()[0].camera.position;
+  const rotation = player.getCompositions()[0].camera.rotation;
 
-  if (rotation[0] === null) {
+  if (rotation.x === null) {
     return;
   }
 
-  freeCamera.transform.position = position;
-  freeCamera.transform.rotation = rotation;
+  freeCamera.transform!.position = position;
+  // @ts-expect-error
+  freeCamera.transform!.rotation = rotation;
 }
 
 export function createUI () {
-  document.getElementsByClassName('container')[0].style.background = 'rgba(182,217,241)';
-
+  const container = document.getElementsByClassName('container')[0] as HTMLElement;
   const uiDom = document.createElement('div');
-
-  uiDom.className = 'my_ui';
-
   const select = document.createElement('select');
 
+  container.style.background = 'rgba(182,217,241)';
+  uiDom.className = 'my_ui';
   select.innerHTML = `
     <option value="none">none</option>
     <option value="diffuse">diffuse</option>
@@ -257,25 +256,27 @@ export function createUI () {
   }
 
   select.onchange = async function (e) {
-    if (e.target.value === 'none') {
+    const element = e.target as HTMLSelectElement;
+
+    if (element.value === 'none') {
       renderMode3D = spec.RenderMode3D.none;
-    } else if (e.target.value === 'diffuse') {
+    } else if (element.value === 'diffuse') {
       renderMode3D = spec.RenderMode3D.diffuse;
-    } else if (e.target.value === 'uv') {
+    } else if (element.value === 'uv') {
       renderMode3D = spec.RenderMode3D.uv;
-    } else if (e.target.value === 'normal') {
+    } else if (element.value === 'normal') {
       renderMode3D = spec.RenderMode3D.normal;
-    } else if (e.target.value === 'basecolor') {
+    } else if (element.value === 'basecolor') {
       renderMode3D = spec.RenderMode3D.basecolor;
-    } else if (e.target.value === 'alpha') {
+    } else if (element.value === 'alpha') {
       renderMode3D = spec.RenderMode3D.alpha;
-    } else if (e.target.value === 'metallic') {
+    } else if (element.value === 'metallic') {
       renderMode3D = spec.RenderMode3D.metallic;
-    } else if (e.target.value === 'roughness') {
+    } else if (element.value === 'roughness') {
       renderMode3D = spec.RenderMode3D.roughness;
-    } else if (e.target.value === 'ao') {
+    } else if (element.value === 'ao') {
       renderMode3D = spec.RenderMode3D.ao;
-    } else if (e.target.value === 'emissive') {
+    } else if (element.value === 'emissive') {
       renderMode3D = spec.RenderMode3D.emissive;
     }
 

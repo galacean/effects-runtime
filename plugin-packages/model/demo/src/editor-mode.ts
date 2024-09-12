@@ -1,4 +1,4 @@
-//@ts-nocheck
+import type { Player } from '@galacean/effects';
 import { math, spec, generateGUID } from '@galacean/effects';
 import { CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
 import { LoaderImplEx } from '../../src/helper';
@@ -6,18 +6,17 @@ import { GizmoSubType } from '@galacean/effects-plugin-editor-gizmo';
 
 const { Sphere, Vector3, Box3 } = math;
 
-let player;
-
+let player: Player;
 let sceneAABB;
 let sceneCenter;
 let sceneRadius = 1;
 
-let gestureHandler;
+let gestureHandler: CameraGestureHandlerImp;
 let mouseDown = false;
 let scaleBegin = false;
 let rotationBegin = false;
 
-let playScene;
+let playScene: spec.JSONScene;
 
 let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.glb';
 
@@ -103,7 +102,7 @@ async function getCurrentScene () {
   return jsonScene;
 }
 
-export async function loadScene (inPlayer) {
+export async function loadScene (inPlayer: Player) {
   if (!player) {
     player = inPlayer;
     registerMouseEvent();
@@ -114,7 +113,7 @@ export async function loadScene (inPlayer) {
   } else {
     playScene.items.forEach(item => {
       if (item.name === 'extra-camera') {
-        const camera = player.compositions[0].camera;
+        const camera = player.getCompositions()[0].camera;
 
         item.transform = {
           position: camera.position.clone(),
@@ -152,25 +151,24 @@ export async function loadScene (inPlayer) {
 }
 
 function addWireframeItems (scene: spec.JSONScene, hide3DModel = true) {
-
-  const newComponents = [];
+  const newComponents: any = [];
 
   scene.components.forEach(comp => {
-    const newComponent = { ...comp };
+    const newComponent: any = { ...comp };
 
     if (newComponent.dataType === spec.DataType.MeshComponent) {
       newComponent.hide = hide3DModel;
     }
     newComponents.push(newComponent);
   });
-  const newItems = [
+  const newItems: any = [
     ...scene.items,
   ];
 
   scene.items.forEach(item => {
     if (item.type === 'mesh') {
       const { name, duration, endBehavior } = item;
-      const newItem = {
+      const newItem: any = {
         name: name + '_shadedWireframe',
         id: generateGUID(),
         pn: 1,
@@ -205,7 +203,7 @@ function addWireframeItems (scene: spec.JSONScene, hide3DModel = true) {
   });
   const newComposition = {
     ...scene.compositions[0],
-    items: newItems.filter(item => item.id),
+    items: newItems.filter((item: any) => item.id),
   };
   const newScene: spec.JSONScene = {
     ...scene,
@@ -300,27 +298,26 @@ function registerMouseEvent () {
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
-  const position = player.compositions[0].camera.position;
-  const rotation = player.compositions[0].camera.rotation;
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera') as spec.VFXItemData;
+  const position = player.getCompositions()[0].camera.position;
+  const rotation = player.getCompositions()[0].camera.rotation;
 
-  if (rotation[0] === null) {
+  if (rotation.x === null) {
     return;
   }
 
-  freeCamera.transform.position = position;
-  freeCamera.transform.rotation = rotation;
+  freeCamera.transform!.position = position;
+  // @ts-expect-error
+  freeCamera.transform!.rotation = rotation;
 }
 
 export function createUI () {
-  document.getElementsByClassName('container')[0].style.background = 'rgba(182,217,241)';
-
+  const container = document.getElementsByClassName('container')[0] as HTMLElement;
   const uiDom = document.createElement('div');
-
-  uiDom.className = 'my_ui';
-
   const select = document.createElement('select');
 
+  container.style.background = 'rgba(182,217,241)';
+  uiDom.className = 'my_ui';
   select.innerHTML = `
     <option value="standard">正常</option>
     <option value="diffuse">白膜</option>
@@ -330,7 +327,7 @@ export function createUI () {
   for (let i = 0; i < select.options.length; i++) {
     const option = select.options[i];
 
-    if (option.value === editorMode) {
+    if (option.value === editorMode.toString()) {
       select.selectedIndex = i;
 
       break;
@@ -338,13 +335,15 @@ export function createUI () {
   }
 
   select.onchange = async function (e) {
-    if (e.target.value === 'standard') {
+    const element = e.target as HTMLSelectElement;
+
+    if (element.value === 'standard') {
       editorMode = EditorMode.standard;
-    } else if (e.target.value === 'diffuse') {
+    } else if (element.value === 'diffuse') {
       editorMode = EditorMode.diffuse;
-    } else if (e.target.value === 'wireframe') {
+    } else if (element.value === 'wireframe') {
       editorMode = EditorMode.wireframe;
-    } else if (e.target.value === 'wireframe2') {
+    } else if (element.value === 'wireframe2') {
       editorMode = EditorMode.wireframe2;
     }
 
