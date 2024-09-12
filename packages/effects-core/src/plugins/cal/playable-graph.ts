@@ -10,11 +10,6 @@ export class PlayableGraph {
   private playables: Playable[] = [];
 
   evaluate (dt: number) {
-    // 初始化节点状态
-    for (const playable of this.playables) {
-      this.updatePlayableTime(playable, dt);
-    }
-
     // 初始化输出节点状态
     for (const playableOutput of this.playableOutputs) {
       playableOutput.context.deltaTime = dt;
@@ -26,6 +21,11 @@ export class PlayableGraph {
     }
     for (const playableOutput of this.playableOutputs) {
       this.processFrameWithRoot(playableOutput);
+    }
+
+    // 更新节点时间
+    for (const playable of this.playables) {
+      this.updatePlayableTime(playable, dt);
     }
   }
 
@@ -55,11 +55,7 @@ export class PlayableGraph {
     if (playable.getPlayState() !== PlayState.Playing) {
       return;
     }
-    if (playable.overrideTimeNextEvaluation) {
-      playable.overrideTimeNextEvaluation = false;
-    } else {
-      playable.setTime(playable.getTime() + deltaTime);
-    }
+    playable.setTime(playable.getTime() + deltaTime);
   }
 }
 
@@ -70,7 +66,6 @@ export class PlayableGraph {
 export class Playable implements Disposable {
   onPlayablePlayFlag = true;
   onPlayablePauseFlag = false;
-  overrideTimeNextEvaluation = false;
 
   private destroyed = false;
   private inputs: Playable[] = [];
@@ -184,7 +179,6 @@ export class Playable implements Disposable {
 
   setTime (time: number) {
     this.time = time;
-    this.overrideTimeNextEvaluation = true;
   }
 
   getTime () {

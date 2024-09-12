@@ -24,7 +24,7 @@ export class TimelineClip {
     let localTime = time - this.start;
     const duration = this.duration;
 
-    if (localTime - duration > 0.001) {
+    if (localTime - duration > 0) {
       if (this.endBehavior === EndBehavior.restart) {
         localTime = localTime % duration;
       } else if (this.endBehavior === EndBehavior.freeze) {
@@ -196,7 +196,7 @@ export class RuntimeClip {
     let started = false;
     const boundObject = this.track.binding;
 
-    if (localTime > clip.start + clip.duration + 0.001 && clip.endBehavior === EndBehavior.destroy) {
+    if (localTime >= clip.start + clip.duration && clip.endBehavior === EndBehavior.destroy) {
       if (boundObject instanceof VFXItem && VFXItem.isParticle(boundObject) && this.particleSystem && !this.particleSystem.destroyed) {
         weight = 1.0;
       } else {

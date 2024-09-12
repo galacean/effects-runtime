@@ -8,7 +8,7 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
-import type { ShapeGenerator, ShapeGeneratorOptions } from '../../shape';
+import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
 import { Transform } from '../../transform';
@@ -405,12 +405,16 @@ export class ParticleSystem extends Component {
               break;
             }
             const burst = bursts[j];
-            const opts = burst.getGeneratorOptions(timePassed, lifetime);
+            const opts = !burst.disabled && burst.getGeneratorOptions(timePassed, lifetime);
 
             if (opts) {
               const originVec = [0, 0, 0];
               const offsets = emission.burstOffsets[j];
               const burstOffset = (offsets && offsets[opts.cycleIndex]) || originVec;
+
+              if (burst.once) {
+                this.removeBurst(j);
+              }
 
               for (let i = 0; i < opts.count && cursor < maxCount; i++) {
                 if (shouldSkipGenerate()) {
@@ -653,7 +657,7 @@ export class ParticleSystem extends Component {
     return ret;
   }
 
-  initPoint (data: Record<string, any>): Point {
+  initPoint (data: ShapeParticle): Point {
     const options = this.options;
     const lifetime = this.lifetime;
     const shape = this.shape;

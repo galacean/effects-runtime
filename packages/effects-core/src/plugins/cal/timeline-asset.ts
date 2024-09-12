@@ -1,4 +1,4 @@
-import type { DataPath, EffectsObjectData } from '@galacean/effects-specification';
+import type * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../../decorators';
 import { VFXItem } from '../../vfx-item';
 import type { RuntimeClip, TrackAsset } from '../timeline/track';
@@ -6,10 +6,6 @@ import { ObjectBindingTrack } from './calculate-item';
 import type { FrameContext, PlayableGraph } from './playable-graph';
 import { Playable, PlayableAsset, PlayableTraversalMode } from './playable-graph';
 import type { Constructor } from '../../utils';
-
-export interface TimelineAssetData extends EffectsObjectData {
-  tracks: DataPath[],
-}
 
 @effectsClass('TimelineAsset')
 export class TimelineAsset extends PlayableAsset {
@@ -39,7 +35,7 @@ export class TimelineAsset extends PlayableAsset {
     return newTrack;
   }
 
-  override fromData (data: TimelineAssetData): void {
+  override fromData (data: spec.TimelineAssetData): void {
   }
 }
 

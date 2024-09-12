@@ -11,6 +11,7 @@ import type { MeshDestroyOptions, Renderer } from '../render';
 import type { Geometry } from '../render';
 import { DestroyOptions } from '../utils';
 import { RendererComponent } from './renderer-component';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 
 /**
  * @since 2.0.0
@@ -40,6 +41,13 @@ export class EffectComponent extends RendererComponent {
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
+  }
+
+  override onUpdate (dt: number): void {
+    const time = this.item.time;
+    const _Time = this.material.getVector4('_Time') ?? new Vector4();
+
+    this.material.setVector4('_Time', _Time.set(time / 20, time, time * 2, time * 3));
   }
 
   override render (renderer: Renderer) {
