@@ -361,8 +361,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       },
     }, scene);
 
-    this.compositions.push(composition);
-
     if (this.ticker) {
       // 中低端设备降帧到 30fps
       if (opts.renderLevel === spec.RenderLevel.B) {
@@ -401,6 +399,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     composition.statistic.firstFrameTime = firstFrameTime;
     logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
+    this.compositions.push(composition);
 
     return composition;
   }

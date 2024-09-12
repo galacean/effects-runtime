@@ -8,7 +8,7 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
-import type { ShapeGenerator, ShapeGeneratorOptions } from '../../shape';
+import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
 import { Transform } from '../../transform';
@@ -316,7 +316,7 @@ export class ParticleSystem extends Component {
     return this.renderer.getTextures();
   }
 
-  start () {
+  startEmit () {
     if (!this.started || this.ended) {
       this.reset();
       this.started = true;
@@ -341,7 +341,7 @@ export class ParticleSystem extends Component {
     this.ended = false;
   }
 
-  onUpdate (delta: number) {
+  update (delta: number) {
     if (this.started && !this.frozen) {
       const now = this.lastUpdate + delta / 1000;
       const options = this.options;
@@ -657,7 +657,7 @@ export class ParticleSystem extends Component {
     return ret;
   }
 
-  initPoint (data: Record<string, any>): Point {
+  initPoint (data: ShapeParticle): Point {
     const options = this.options;
     const lifetime = this.lifetime;
     const shape = this.shape;

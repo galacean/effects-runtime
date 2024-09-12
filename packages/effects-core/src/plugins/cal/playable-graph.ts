@@ -78,7 +78,7 @@ export class Playable implements Disposable {
   /**
    * 当前本地播放的时间
    */
-  protected time: number;
+  protected time: number = 0;
 
   constructor (graph: PlayableGraph, inputCount = 0) {
     graph.addPlayable(this);

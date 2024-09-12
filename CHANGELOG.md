@@ -7,11 +7,38 @@
 
 ---
 
+## 2.0.5
+
+`2024-09-10`
+
+- Fix: sprite unit test. [#636](https://github.com/galacean/effects-runtime/pull/636) @wumaolinmaoan
+- Fix: draw count value error. [#625](https://github.com/galacean/effects-runtime/pull/625) @wumaolinmaoan
+- Fix: timeline clip end judgment. [#626](https://github.com/galacean/effects-runtime/pull/626) @wumaolinmaoan
+- Fix: Adjusted the judgment for Player disposal to prevent errors during Texture initialization. [#616](https://github.com/galacean/effects-runtime/pull/616) @yiiqii
+- Fix: revert busrt once and disabled property. [#615](https://github.com/galacean/effects-runtime/pull/615) @yiiqii
+- Fix: materal uniform dirty flag setting when shader changed. [#614](https://github.com/galacean/effects-runtime/pull/614) @wumaolinmaoan
+
+## 2.0.4
+
+`2024-08-30`
+
+- Fix: shader compile check on return will block code execute. [#609](https://github.com/galacean/effects-runtime/pull/609) @yiiqii
+- Fix: shader program set twice on async compile. [#608](https://github.com/galacean/effects-runtime/pull/608) @wumaolinmaoan
+- Fix: particle render on composition restart. [#607](https://github.com/galacean/effects-runtime/pull/607) @wumaolinmaoan
+- Fix: Resolve issue with variable text not applying correctly. [#606](https://github.com/galacean/effects-runtime/pull/606) @Sruimeng
+- Fix: Correct reverse playback and frame comparison issues. [#598](https://github.com/galacean/effects-runtime/pull/598) @RGCHN
+- Fix: subcomposition end behavior not rendering as expected. [#605](https://github.com/galacean/effects-runtime/pull/605) @wumaolinmaoan
+- Fix: effect material depthTest and depthMask default value. [#602](https://github.com/galacean/effects-runtime/pull/602) @wumaolinmaoan
+- Fix: reset fps when renderLevel update. [#600](https://github.com/galacean/effects-runtime/pull/600) @yiiqii
+- Fix: runtime 2.0 component export. [#597](https://github.com/galacean/effects-runtime/pull/597) @wumaolinmaoan
+- Fix: stats should dispose when player is dispose. [#599](https://github.com/galacean/effects-runtime/pull/599) @yiiqii
+- Chore: Improve error messaging for failed video loading. [#577](https://github.com/galacean/effects-runtime/pull/577) @Sruimeng
+
 ## 2.0.3
 
 `2024-08-26`
 
-- Fix: frame animation loop on composition restart。[#588](https://github.com/galacean/effects-runtime/pull/588) @wumaolinmaoan
+- Fix: frame animation loop on composition restart. [#588](https://github.com/galacean/effects-runtime/pull/588) @wumaolinmaoan
 
 ## 2.0.2
 

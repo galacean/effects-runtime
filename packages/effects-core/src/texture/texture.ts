@@ -1,5 +1,5 @@
 import { TextureSourceType } from './types';
-import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType } from './types';
+import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, TextureOptionsBase } from './types';
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
 import { EffectsObject } from '../effects-object';
@@ -46,14 +46,16 @@ export abstract class Texture extends EffectsObject {
    * @param url - 要创建的 Texture URL
    * @since 2.0.0
    */
-  static async fromImage (url: string, engine: Engine): Promise<Texture> {
+  static async fromImage (url: string, engine: Engine, options?: TextureOptionsBase): Promise<Texture> {
     const image = await loadImage(url);
 
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.image,
       image,
+      target: glContext.TEXTURE_2D,
       id: generateGUID(),
       flipY: true,
+      ...options,
     });
 
     texture.initialize();

@@ -111,22 +111,6 @@ export class TrackSortWrapper {
   }
 }
 
-function isAncestor (
-  ancestorCandidate: VFXItem,
-  descendantCandidate: VFXItem,
-) {
-  let current = descendantCandidate.parent;
-
-  while (current) {
-    if (current === ancestorCandidate) {
-      return true;
-    }
-    current = current.parent;
-  }
-
-  return false;
-}
-
 function compareTracks (a: TrackSortWrapper, b: TrackSortWrapper): number {
   const bindingA = a.track.binding;
   const bindingB = b.track.binding;
@@ -135,9 +119,9 @@ function compareTracks (a: TrackSortWrapper, b: TrackSortWrapper): number {
     return a.originalIndex - b.originalIndex;
   }
 
-  if (isAncestor(bindingA, bindingB)) {
+  if (VFXItem.isAncestor(bindingA, bindingB)) {
     return -1;
-  } else if (isAncestor(bindingB, bindingA)) {
+  } else if (VFXItem.isAncestor(bindingB, bindingA)) {
     return 1;
   } else {
     return a.originalIndex - b.originalIndex; // 非父子关系的元素保持原始顺序

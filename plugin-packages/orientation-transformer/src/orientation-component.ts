@@ -27,7 +27,7 @@ export class OrientationComponent extends Behaviour {
 
   }
 
-  override start () {
+  override onStart () {
     const transformer = this.item.composition?.loaderData.deviceTransformer as CompositionTransformerAcceler;
 
     if (transformer) {
@@ -36,7 +36,7 @@ export class OrientationComponent extends Behaviour {
     }
   }
 
-  override update (dt: number) {
+  override onUpdate (dt: number) {
     const transformer = this.item.composition?.loaderData.deviceTransformer as CompositionTransformerAcceler;
 
     if (transformer) {

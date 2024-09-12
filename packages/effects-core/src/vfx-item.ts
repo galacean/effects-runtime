@@ -5,7 +5,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
 import type { Component } from './components';
-import { RendererComponent, Behaviour, EffectComponent } from './components';
+import { RendererComponent, EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass, serialize } from './decorators';
@@ -59,6 +59,10 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   composition: Composition | null;
   /**
+   * 元素动画的当前时间
+   */
+  time = 0;
+  /**
    * 元素动画的持续时间
    */
   duration = 0;
@@ -94,10 +98,10 @@ export class VFXItem extends EffectsObject implements Disposable {
   reusable = false;
   type: spec.ItemType = spec.ItemType.base;
   props: VFXItemProps;
+  isDuringPlay = false;
 
   @serialize()
   components: Component[] = [];
-  itemBehaviours: Behaviour[] = [];
   rendererComponents: RendererComponent[] = [];
 
   /**
@@ -110,6 +114,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   private speed = 1;
   private listIndex = 0;
+  private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
   static isComposition (item: VFXItem) {
@@ -138,6 +143,22 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   static isExtraCamera (item: VFXItem) {
     return item.id === 'extra-camera' && item.name === 'extra-camera';
+  }
+
+  static isAncestor (
+    ancestorCandidate: VFXItem,
+    descendantCandidate: VFXItem,
+  ) {
+    let current = descendantCandidate.parent;
+
+    while (current) {
+      if (current === ancestorCandidate) {
+        return true;
+      }
+      current = current.parent;
+    }
+
+    return false;
   }
 
   constructor (
@@ -267,8 +288,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     const newComponent = new classConstructor(this.engine);
 
     this.components.push(newComponent);
-    newComponent.item = this;
-    newComponent.onAttached();
+    newComponent.setVFXItem(this);
 
     return newComponent;
   }
@@ -310,21 +330,22 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   setParent (vfxItem: VFXItem) {
-    if (vfxItem === this) {
+    if (vfxItem === this && !vfxItem) {
       return;
     }
     if (this.parent) {
       removeItem(this.parent.children, this);
     }
     this.parent = vfxItem;
-    if (vfxItem) {
-      if (!VFXItem.isCamera(this)) {
-        this.transform.parentTransform = vfxItem.transform;
-      }
-      vfxItem.children.push(this);
-      if (!this.composition) {
-        this.composition = vfxItem.composition;
-      }
+    if (!VFXItem.isCamera(this)) {
+      this.transform.parentTransform = vfxItem.transform;
+    }
+    vfxItem.children.push(this);
+    if (!this.composition) {
+      this.composition = vfxItem.composition;
+    }
+    if (!this.isDuringPlay && vfxItem.isDuringPlay) {
+      this.beginPlay();
     }
   }
 
@@ -370,6 +391,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   setVisible (visible: boolean) {
     if (this.visible !== visible) {
       this.visible = !!visible;
+      this.onActiveChanged();
     }
   }
 
@@ -525,6 +547,64 @@ export class VFXItem extends EffectsObject implements Disposable {
     return undefined;
   }
 
+  /**
+   * @internal
+   */
+  beginPlay () {
+    this.isDuringPlay = true;
+
+    if (this.composition && this.visible && !this.isEnabled) {
+      this.onEnable();
+    }
+
+    for (const child of this.children) {
+      if (!child.isDuringPlay) {
+        child.beginPlay();
+      }
+    }
+
+  }
+
+  /**
+   * @internal
+   */
+  onActiveChanged () {
+    if (!this.isEnabled) {
+      this.onEnable();
+    } else {
+      this.onDisable();
+    }
+  }
+
+  /**
+   * @internal
+   */
+  onEnable () {
+    this.isEnabled = true;
+    for (const component of this.components) {
+      if (component.enabled && !component.isStartCalled) {
+        component.onStart();
+      }
+    }
+    for (const component of this.components) {
+      if (component.enabled && !component.isEnableCalled) {
+        component.enable();
+      }
+    }
+  }
+
+  /**
+   * @internal
+   */
+  onDisable () {
+    this.isEnabled = false;
+    for (const component of this.components) {
+      if (component.enabled && component.isEnableCalled) {
+        component.disable();
+      }
+    }
+  }
+
   override fromData (data: VFXItemData): void {
     super.fromData(data);
     const {
@@ -581,13 +661,9 @@ export class VFXItem extends EffectsObject implements Disposable {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    this.itemBehaviours.length = 0;
     this.rendererComponents.length = 0;
     for (const component of this.components) {
       component.item = this;
-      if (component instanceof Behaviour) {
-        this.itemBehaviours.push(component);
-      }
       if (component instanceof RendererComponent) {
         this.rendererComponents.push(component);
       }
