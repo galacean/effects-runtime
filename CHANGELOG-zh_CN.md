@@ -8,6 +8,12 @@
 
 ---
 
+## 2.0.6
+
+`2024-09-13`
+
+- Fix: 补充 TextDecoder 的适配。[#642](https://github.com/galacean/effects-runtime/pull/642) @yiiqii
+
 ## 2.0.5
 
 `2024-09-10`
