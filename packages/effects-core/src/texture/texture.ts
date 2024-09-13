@@ -3,7 +3,7 @@ import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, T
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
 import { EffectsObject } from '../effects-object';
-import { loadImage } from '../downloader';
+import { loadImage, loadVideo } from '../downloader';
 import { generateGUID } from '../utils';
 
 let seed = 1;
@@ -62,6 +62,31 @@ export abstract class Texture extends EffectsObject {
 
     return texture;
   }
+
+  /**
+   * 通过视频 URL 创建 Texture 对象。
+   * @param url - 要创建的 Texture URL
+   * @param engine - 引擎对象
+   * @param options - 可选的 Texture 选项
+   * @since 2.1.0
+   * @returns
+   */
+  static async fromVideo (url: string, engine: Engine, options?: TextureOptionsBase): Promise<Texture> {
+    const video = await loadVideo(url);
+
+    const texture = Texture.create(engine, {
+      sourceType: TextureSourceType.video,
+      video: video,
+      id: generateGUID(),
+      flipY: true,
+      ...options,
+    });
+
+    texture.initialize();
+
+    return texture;
+  }
+
   /**
    * 通过数据创建 Texture 对象。
    * @param data - 要创建的 Texture 数据

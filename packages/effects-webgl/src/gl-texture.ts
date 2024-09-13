@@ -454,11 +454,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       this.source.video &&
       this.initialized
     ) {
-      const video = this.source.video;
 
-      if (video.paused) {
-        await video.play();
-      }
       this.update({ video: this.source.video });
 
       return true;

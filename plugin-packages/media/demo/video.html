@@ -16,76 +16,28 @@
 <body>
 <div class="am-flexbox" style="align-items: start;">
   <div class="container" id="J-container"></div>
-  <!-- <div class="am-wingblank" id="J-op" style="width: 460px;">
+  <div class="am-wingblank" id="J-op" style="width: 460px;">
     <div class="am-list">
       <div class="am-list-body">
         <div class="am-list-item">
           <div class="am-list-item-actions">
-            <button id="J-start" class="am-button tiny">开始</button>
-            <button id="J-pause" class="am-button tiny">暂停</button>
-            <button id="J-skin" class="am-button tiny">换一个皮肤</button>
-            <button id="J-animation" class="am-button tiny">换一个动作</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="am-list" >
-      <div class="am-list-header">相机位置</div>
-      <div class="am-list-body">
-          <div class="am-list-item">
-            <div class="am-list-label" id="J-DX">X: 0</div>
-            <div class="am-list-control">
-              <input type="range" value="0" min="-100" max="100" step="1" name="distanceX">
+            <div class="am-list-item">
+              <div class="am-list-item-actions">
+                <input type="text" id="J-input" class="am-input" value="https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*7gPzSo3RxlQAAAAAAAAAAAAADtN3AQ" placeholder="视频链接">
+              </div>
             </div>
-          </div>
-          <div class="am-list-item">
-            <div class="am-list-label" id="J-DY">Y: 0</div>
-            <div class="am-list-control">
-              <input type="range" value="0" min="-100" max="100" step="1" name="distanceY">
-            </div>
-          </div>
-          <div class="am-list-item">
-            <div class="am-list-label" id="J-DZ">Z: 8</div>
-            <div class="am-list-control">
-              <input type="range" value="8" min="-30" max="30" step="0.5" name="distanceZ">
-            </div>
-          </div>
-      </div>
-    </div>
-    <div class="am-list">
-      <div class="am-list-header">相机旋转</div>
-      <div class="am-list-body">
-        <div class="am-list-item">
-          <div class="am-list-label" id="J-RX">RotationX</div>
-          <div class="am-list-control">
-            <input type="range" value="0" min="-180" max="180" step="1" name="rotationX">
-          </div>
-        </div>
-        <div class="am-list-item">
-          <div class="am-list-label" id="J-RY">RotationY</div>
-          <div class="am-list-control">
-            <input type="range" value="0" min="-180" max="180" step="1" name="rotationY">
-          </div>
-        </div>
-        <div class="am-list-item">
-          <div class="am-list-label" id="J-RZ">RotationZ</div>
-          <div class="am-list-control">
-            <input type="range" value="0" min="-180" max="180" step="1" name="rotationZ">
+            <button id="J-add" class="am-button tiny">添加 VideoComponent</button>
+            <button id="J-update" class="am-button tiny">更新 Video 资源</button>
           </div>
         </div>
       </div>
     </div>
     <div class="am-list">
       <div class="am-list-body">
-        <div class="am-list-item">
-          <div class="am-list-content">
-            <div class="am-list-brief" id="J-premultiply"></div>
-          </div>
-        </div>
     </div>
     </div>
   </div>
-  <div class="am-flexbox-item"></div> -->
+  <div class="am-flexbox-item"></div>
 </div>
 <script type="module" src="./src/video.ts"></script>
 </body>

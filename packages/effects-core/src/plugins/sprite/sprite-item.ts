@@ -3,7 +3,7 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
-import type { GeometryDrawMode, Renderer } from '../../render';
+import type { GeometryDrawMode } from '../../render';
 import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
 import type { Texture } from '../../texture';
@@ -84,24 +84,6 @@ export class SpriteComponent extends BaseRenderComponent {
     if (props) {
       this.fromData(props);
     }
-  }
-
-  override render (renderer: Renderer) {
-    if (!this.getVisible()) {
-      return;
-    }
-    const material = this.material;
-    const geo = this.geometry;
-
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    }
-    this.material.setVector2('_Size', this.transform.size);
-    renderer.drawGeometry(geo, material);
-  }
-
-  override onStart (): void {
-    this.item.getHitTestParams = this.getHitTestParams;
   }
 
   override onUpdate (dt: number): void {
