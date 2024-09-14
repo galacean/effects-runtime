@@ -165,10 +165,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly camera: Camera;
   /**
-   * 合成全局时间
-   */
-  globalTime: number;
-  /**
    * 后处理渲染配置
    */
   globalVolume: PostProcessVolume;
@@ -266,7 +262,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     });
     this.url = scene.url;
     this.assigned = true;
-    this.globalTime = 0;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
@@ -510,7 +505,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   protected reset () {
     this.rendererOptions = null;
-    this.globalTime = 0;
     this.rootItem.ended = false;
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
@@ -552,10 +546,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       return;
     }
 
-    const time = this.getUpdateTime(deltaTime * this.speed);
+    const dt = this.getUpdateTime(deltaTime * this.speed);
 
-    this.globalTime += time;
-    this.updateRootComposition();
+    this.updateRootComposition(dt / 1000);
     this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
@@ -565,8 +558,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       this.callAwake(this.rootItem);
       this.rootItem.beginPlay();
     }
-    this.sceneTicking.update.tick(time);
-    this.sceneTicking.lateUpdate.tick(time);
+    this.sceneTicking.update.tick(dt);
+    this.sceneTicking.lateUpdate.tick(dt);
 
     this.updateCamera();
     this.prepareRender();
@@ -724,9 +717,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 更新主合成组件
    */
-  private updateRootComposition () {
+  private updateRootComposition (deltaTime: number) {
     if (this.rootComposition.isActiveAndEnabled) {
-      const localTime = this.toLocalTime(this.globalTime / 1000);
+      const localTime = this.toLocalTime(this.time + deltaTime);
 
       this.rootComposition.time = localTime;
     }
