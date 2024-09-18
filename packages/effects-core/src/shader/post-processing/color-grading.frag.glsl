@@ -161,5 +161,6 @@ void main() {
   if(_UseToneMapping) {
     finalColor = max(vec3(0.0), ACESToneMapping(finalColor));
   }
-  gl_FragColor = vec4(clamp(GammaCorrection(finalColor), 0.0, 1.0), 1.0);
+  float alpha = min(hdrColor.a, 1.0);
+  gl_FragColor = vec4(clamp(GammaCorrection(finalColor), 0.0, 1.0), alpha);
 }
