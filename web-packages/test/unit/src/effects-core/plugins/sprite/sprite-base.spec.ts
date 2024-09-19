@@ -205,7 +205,7 @@ describe('core/plugins/sprite/item-base', () => {
     expect(texOffset2?.[2]).to.be.closeTo(0.1248, 0.001);
     expect(texOffset2?.[3]).to.be.closeTo(0.1249, 0.001);
 
-    expect(texOffset3?.[0]).to.be.closeTo(0.5, 0.001);
+    expect(texOffset3?.[0]).to.be.closeTo(0.625, 0.001);
     expect(texOffset3?.[1]).to.be.closeTo(0.5, 0.001);
     expect(texOffset3?.[2]).to.be.closeTo(0.125, 0.001);
     expect(texOffset3?.[3]).to.be.closeTo(0.125, 0.001);
