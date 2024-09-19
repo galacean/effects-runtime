@@ -499,6 +499,8 @@ export class ParticleMesh implements ParticleMeshData {
         aRot: new Float32Array(32),
         aOffset: new Float32Array(16),
         aTranslation: new Float32Array(12),
+        aLinearMove:new Float32Array(12),
+        aRotation0: new Float32Array(36),
       };
       const useSprite = this.useSprite;
 
