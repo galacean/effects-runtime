@@ -45,6 +45,16 @@ export class MainEditor extends EditorWindow {
     sceneImageSize.y -= 40;
     const player = GalaceanEffects.player;
 
+    const pos = ImGui.GetWindowPos();
+    const windowSize = ImGui.GetWindowSize();
+    const divElement = player.container;
+
+    if (divElement) {
+      divElement.style.position = 'absolute';
+      divElement.style.left = (pos.x + windowSize.x / 2) + 'px';
+      divElement.style.top = (pos.y + windowSize.y * 0.9) + 'px';
+    }
+
     if (player.container && (player.container.style.width !== sceneImageSize.x + 'px' ||
       player.container.style.height !== sceneImageSize.y + 'px')
     ) {
@@ -52,7 +62,7 @@ export class MainEditor extends EditorWindow {
       player.container.style.height = sceneImageSize.y + 'px';
       player.resize();
     }
-    if (GalaceanEffects.sceneRendederTexture) {
+    if (GalaceanEffects.sceneRendederTexture && player.container && player.container.style.zIndex !== '999') {
       const frame_padding: int = 0;                             // -1 === uses default padding (style.FramePadding)
       const uv0: ImGui.Vec2 = new ImGui.Vec2(0.0, 0.0);                        // UV coordinates for lower-left
       const uv1: ImGui.Vec2 = new ImGui.Vec2(1.0, 1.0);// UV coordinates for (32,32) in our texture
