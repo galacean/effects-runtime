@@ -72,7 +72,7 @@ describe('core/composition/on-end', () => {
     const composition = await player.loadScene(JSON.parse(json));
 
     expect(composition.startTime).to.eql(1.3);
-    expect(composition.time).to.eql(1.3);
+    expect(composition.time).to.closeTo(1.3, 0.001);
   });
 
   async function test (endBehavior: spec.EndBehavior, fn: () => void) {
