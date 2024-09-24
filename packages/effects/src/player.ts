@@ -384,6 +384,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       }
     }
 
+    const compileStart = performance.now();
+
     await new Promise(resolve => {
       this.renderer.getShaderLibrary()?.compileAllShaders(() => {
         resolve(null);
@@ -398,9 +400,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
 
     const firstFrameTime = performance.now() - last + composition.statistic.loadTime;
+    const compileTime = performance.now() - compileStart;
 
     composition.statistic.firstFrameTime = firstFrameTime;
+    composition.statistic.compileTime = compileTime;
     logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
+    logger.info(`Shader compile: [${composition.name}]${compileTime.toFixed(4)}ms.`);
+    this.compositions.push(composition);
 
     return composition;
   }

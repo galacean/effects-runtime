@@ -23,10 +23,16 @@ import { EventEmitter } from './events';
 import type { PostProcessVolume } from './components/post-process-volume';
 
 export interface CompositionStatistic {
-  loadTime: number,
   loadStart: number,
+  loadTime: number,
+  /**
+   * Shader 编译耗时
+   */
+  compileTime: number,
+  /**
+   * 从加载到渲染第一帧的时间（含 Shader 编译）
+   */
   firstFrameTime: number,
-  precompileTime: number,
 }
 
 export interface MessageItem {
@@ -247,7 +253,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderer = renderer;
     this.texInfo = imageUsage ?? {};
     this.event = event;
-    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
+    this.statistic = {
+      loadStart: scene.startTime ?? 0,
+      loadTime: totalTime ?? 0,
+      compileTime: 0,
+      firstFrameTime: 0,
+    };
     this.reusable = reusable;
     this.speed = speed;
     this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.EndBehavior.restart;
