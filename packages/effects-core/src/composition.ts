@@ -506,6 +506,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   protected reset () {
     this.rendererOptions = null;
     this.rootItem.ended = false;
+    this.rootComposition.time = 0;
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
