@@ -406,7 +406,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     composition.statistic.compileTime = compileTime;
     logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
     logger.info(`Shader compile: [${composition.name}]${compileTime.toFixed(4)}ms.`);
-    this.compositions.push(composition);
 
     return composition;
   }
