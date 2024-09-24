@@ -399,7 +399,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       composition.pause();
     }
 
-    const firstFrameTime = performance.now() - last + composition.statistic.loadTime;
+    const firstFrameTime = performance.now() - last;
     const compileTime = performance.now() - compileStart;
 
     composition.statistic.firstFrameTime = firstFrameTime;
