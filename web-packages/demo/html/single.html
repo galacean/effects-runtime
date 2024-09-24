@@ -7,34 +7,13 @@
   <style>
     html, body, div, canvas { margin: 0; padding: 0; }
     .container {
-      visibility: hidden;
-      opacity: 0;
-      width: 188px;
-      height: 334px;
-      position: fixed;
-      bottom: 0%;
-      left: 50%;
-      transform: translate(-50%, 0) scale(0);
-      transition: transform 0.5s ease-in-out;
+      width: 375px;
+      height: 812px;
       background-color: rgba(0,0,0,255);
-    }
-    .container.active {
-      visibility: visible;
-      z-index: -1;
-      opacity: 1;
-      transform: translate(-50%, 0) scale(1);
-    }
-    ul {
-      background-color: rgba(255,255,255,0.5);
     }
   </style>
 </head>
 <body>
-<h3>main</h3>
-<ul id="J-statistic"></ul>
-<div>
-  <button id="J-button" style="height: 32px; width: 100px;">播放</button>
-</div>
 <div class="container" id="J-container"></div>
 
 <script type="module" src="../src/single.ts"></script>
