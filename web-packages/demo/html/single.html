@@ -9,8 +9,8 @@
     .container {
       visibility: hidden;
       opacity: 0;
-      width: 100px;
-      height: 200px;
+      width: 188px;
+      height: 334px;
       position: fixed;
       bottom: 0%;
       left: 50%;
@@ -20,12 +20,17 @@
     }
     .container.active {
       visibility: visible;
+      z-index: -1;
       opacity: 1;
       transform: translate(-50%, 0) scale(1);
+    }
+    ul {
+      background-color: rgba(255,255,255,0.5);
     }
   </style>
 </head>
 <body>
+<h3>feat/2.1</h3>
 <ul id="J-statistic"></ul>
 <div>
   <button id="J-button" style="height: 32px; width: 100px;">播放</button>

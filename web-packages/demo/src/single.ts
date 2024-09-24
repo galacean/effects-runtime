@@ -1,9 +1,22 @@
+import type { Composition } from '@galacean/effects';
 import { Player } from '@galacean/effects';
+import '@galacean/effects-plugin-spine';
 
 // 大量粒子
 // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*aCeuQ5RQZj4AAAAAAAAAAAAADlB4AQ';
+// 新年烟花
+const json = [
+  'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/ILDKKFUFMVJA/1705406034-80896.json',
+  'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*qTquTKYbk6EAAAAAAAAAAAAADsF2AQ',
+];
+// 混合测试
+// const json = [
+//   'https://mdn.alipayobjects.com/mars/afts/file/A*QyX8Rp-4fmUAAAAAAAAAAAAADlB4AQ',
+//   'https://mdn.alipayobjects.com/mars/afts/file/A*bi3HRobVsk8AAAAAAAAAAAAADlB4AQ',
+//   'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*sEdkT5cdXGEAAAAAAAAAAAAADsF2AQ',
+// ];
 // 塔奇
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*uU2JRIjcLIcAAAAAAAAAAAAADlB4AQ';
+// const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*uU2JRIjcLIcAAAAAAAAAAAAADlB4AQ';
 // const json = 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/TAJIINQOUUKP/-799304223-0ee5d.json';
 const container = document.getElementById('J-container');
 
@@ -16,15 +29,22 @@ document.getElementById('J-button')!.addEventListener('click', () => {
         container,
         // renderFramework: 'webgl2',
       });
-      const composition = await player.loadScene(json);
+      const compositions = await player.loadScene(Array.isArray(json) ? json : [json]) as unknown as Composition[];
 
-      for (const key in composition.statistic) {
-        const p = document.createElement('li');
+      compositions.forEach(composition => {
+        const div = document.createElement('div');
 
-        // @ts-expect-error
-        p.innerHTML = `${key}: ${composition.statistic[key]}`;
-        document.getElementById('J-statistic')?.appendChild(p);
-      }
+        div.innerHTML = `>>>>> composition: ${composition.name}`;
+        document.getElementById('J-statistic')?.appendChild(div);
+
+        for (const key in composition.statistic) {
+          const p = document.createElement('li');
+
+          // @ts-expect-error
+          p.innerHTML = `${key}: ${composition.statistic[key]}`;
+          document.getElementById('J-statistic')?.appendChild(p);
+        }
+      });
     } catch (e) {
       console.error('biz', e);
     }
