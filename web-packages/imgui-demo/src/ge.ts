@@ -1,5 +1,5 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { GLSLVersion, Geometry, Material, OrderType, Player, PostProcessVolume, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
+import { GLSLVersion, Geometry, Material, OrderType, Player, PostProcessVolume, RenderPass, RenderPassPriorityPostprocess, RendererComponent, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -79,7 +79,7 @@ export class GalaceanEffects {
           'item': {
             'id': '3f40a594b3f34d10b963ad4fc736e505',
           },
-          'dataType': 'EffectComponent',
+          'dataType': 'GraphicsComponent',
           'geometry': {
             'id': '78cc7d2350bb417bb5dc93afab243411',
           },
@@ -255,6 +255,7 @@ export class GalaceanEffects {
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay:true }).then(composition=>{
         composition.rootItem.addComponent(PostProcessVolume);
+
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
           priority: RenderPassPriorityPostprocess,
