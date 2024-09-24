@@ -89,7 +89,6 @@ export class AssetManager implements Disposable {
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
-    const asyncShaderCompile = gpuInstance?.detail?.asyncShaderCompile ?? false;
     const compressedTexture = gpuInstance?.detail.compressedTexture ?? COMPRESSED_TEXTURE.NONE;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;
@@ -173,7 +172,8 @@ export class AssetManager implements Disposable {
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'}Compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
+          hookTimeInfo('precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
+          hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
 
         if (renderer) {
@@ -186,7 +186,6 @@ export class AssetManager implements Disposable {
           }
         }
 
-        await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene, renderer!.engine));
 
         scene = {
@@ -231,15 +230,7 @@ export class AssetManager implements Disposable {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }
-    const shaderLibrary = renderer?.getShaderLibrary();
-
     await pluginSystem?.precompile(compositions, renderer, options);
-
-    await new Promise(resolve => {
-      shaderLibrary?.compileAllShaders(() => {
-        resolve(null);
-      });
-    });
   }
 
   private async processJSON (json: JSONValue) {
