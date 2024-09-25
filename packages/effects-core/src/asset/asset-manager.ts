@@ -313,16 +313,24 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
-  private async processMedia (media: spec.AssetBaseOptions[], type: mediaType): Promise<HTMLAudioElement[] | HTMLVideoElement[]> {
+  private async processMedia (media: spec.AssetBaseOptions[], type: mediaType): Promise<HTMLVideoElement[] | (HTMLAudioElement | AudioBuffer)[]> {
     const { renderLevel } = this.options;
     const baseUrl = this.baseUrl;
+    let audioCtx: AudioContext, isSupportAudioContext: boolean;
+
+    if (type === mediaType.audio) {
+    // eslint-disable-next-line compat/compat
+      audioCtx = new AudioContext();
+      // eslint-disable-next-line compat/compat
+      isSupportAudioContext = !!window.AudioContext;
+    }
 
     const jobs = media.map(medium => {
       if (passRenderLevel(medium.renderLevel, renderLevel)) {
         if (type === mediaType.video) {
           return loadVideo((new URL(medium.url, baseUrl).href));
         } else {
-          return loadAudio((new URL(medium.url, baseUrl).href));
+          return loadAudio((new URL(medium.url, baseUrl).href), audioCtx, isSupportAudioContext);
         }
       }
 

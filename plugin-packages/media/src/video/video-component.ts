@@ -18,6 +18,8 @@ export class VideoComponent extends BaseRenderComponent {
 
   video?: HTMLVideoElement;
 
+  private threshold = 0.025;
+
   constructor (engine: Engine) {
     super(engine);
     this.name = 'MVideo' + seed++;
@@ -48,24 +50,23 @@ export class VideoComponent extends BaseRenderComponent {
 
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
-
     const { interaction, options, listIndex = 0 } = data;
-    const { video, startColor = [1, 1, 1, 1], playbackRate = 1, volume = 1 } = options;
+    const { video, startColor = [1, 1, 1, 1], playbackRate = 1, volume = 1, muted = false } = options;
     let renderer = data.renderer;
 
     if (!renderer) {
       //@ts-expect-error
       renderer = {};
     }
-
     this.video = (video as unknown as VideoAssets).data;
     this.setPlaybackRate(playbackRate);
     this.setVolume(volume);
+    this.setMuted(muted);
     const endBehavior = this.item.endBehavior;
 
     // 如果元素设置为 destroy
     if (endBehavior === spec.EndBehavior.destroy) {
-      this.video.loop = false;
+      this.setLoop(false);
     }
 
     this.renderer = {
@@ -101,12 +102,9 @@ export class VideoComponent extends BaseRenderComponent {
       this.pauseVideo();
       this.setCurrentTime(0);
     }
-
-    if (Math.abs(time - duration) <= 0.01) {
-
+    if (Math.abs(time - duration) < this.threshold) {
       if (endBehavior === spec.EndBehavior.freeze) {
-
-        this.setPlaybackRate(0);
+        this.pauseVideo();
       } else if (endBehavior === spec.EndBehavior.restart) {
         this.setVisible(false);
         // 重播
@@ -124,13 +122,13 @@ export class VideoComponent extends BaseRenderComponent {
     return this.video ? this.video.currentTime : 0;
   }
 
+  setThreshold (threshold: number) {
+    this.threshold = threshold;
+  }
+
   setCurrentTime (time: number) {
     if (this.video) {
-      this.pauseVideo();
       this.video.currentTime = time;
-      setTimeout(() => {
-        this.playVideo();
-      }, 100);
     }
   }
 

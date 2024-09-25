@@ -21,8 +21,8 @@ const json = {
   'plugins': [],
   videos: [
     {
-      // url: 'https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*7gPzSo3RxlQAAAAAAAAAAAAADtN3AQ',
       url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+      // url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/9u_BRo0t6bsAAAAAAAAAABAADnV5AQBr',
       id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
       renderLevel: 'B+',
     },
@@ -410,7 +410,7 @@ addButton?.addEventListener('click', async () => {
   const input = (document.getElementById('J-input') as HTMLInputElement).value;
 
   if (input) {
-    const item = player.getCompositionByName('comp1')?.getItemByName('sprite_1');
+    const item = player.getCompositionByName('comp1')?.getItemByName('video');
     const texture = await Texture.fromVideo(input, player.renderer.engine);
 
     if (!item) {return;}
@@ -439,7 +439,7 @@ updateButton?.addEventListener('click', async () => {
   const input = (document.getElementById('J-input') as HTMLInputElement).value;
 
   if (input) {
-    const videoComponent = player.getCompositionByName('comp1')?.getItemByName('sprite_1')?.getComponent(VideoComponent);
+    const videoComponent = player.getCompositionByName('comp1')?.getItemByName('video')?.getComponent(VideoComponent);
 
     if (videoComponent) {
       const texture = await Texture.fromVideo(input, player.renderer.engine);
@@ -454,6 +454,7 @@ updateButton?.addEventListener('click', async () => {
   try {
     player = new Player({
       container,
+      fps:130,
     });
 
     await player.loadScene(json);
