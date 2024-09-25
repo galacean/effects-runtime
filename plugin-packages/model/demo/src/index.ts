@@ -1,17 +1,20 @@
-//@ts-nocheck
 import '@galacean/effects-plugin-model';
 import { createPlayer } from './utility';
 import * as json from './json';
 import * as camera from './camera';
 import * as hitTest from './hit-test';
+import * as renderMode from './render-mode';
+import * as editorMode from './editor-mode';
 
 const demoMap = {
   json,
   camera,
   hitTest,
+  renderMode,
+  editorMode,
 };
 
-function getDemoIndex (idxOrModule) {
+function getDemoIndex (idxOrModule: any) {
   for (let i = 0; i < demoArray.length; i++) {
     if (demoArray[i][1] === idxOrModule) {
       return i;
@@ -25,8 +28,7 @@ function getDemoIndex (idxOrModule) {
 }
 
 // 1. 获取 dom 对象
-const menuEle = document.getElementById('J-menu');
-const demoInfoEle = document.getElementById('J-demoInfo');
+const menuEle = document.getElementById('J-menu') as HTMLElement;
 const demoArray = Object.entries(demoMap);
 const storageKey = 'galacean-effects-plugin-model:demo-data';
 let html = '';
@@ -48,16 +50,16 @@ const menuListEle = menuEle.querySelectorAll('.am-list-item');
 
 menuListEle.forEach((item, i) => {
   item.addEventListener('click', () => {
-    localStorage.setItem(storageKey, i);
+    localStorage.setItem(storageKey, i.toString());
     location.replace(location.href);
   });
 });
 
 // 4. 执行渲染逻辑
 (async function doRender () {
-  const idx = getDemoIndex(localStorage.getItem(storageKey));
+  const idx = getDemoIndex(localStorage.getItem(storageKey) ?? '');
   const [name, demoInstance] = demoArray[idx];
-  const env = demoInstance.getEnv ? demoInstance.getEnv() : 'editor';
+  const env = 'getEnv' in demoInstance ? demoInstance.getEnv() : 'editor';
 
   // 添加选中样式
   menuListEle.forEach((ele, i) => {

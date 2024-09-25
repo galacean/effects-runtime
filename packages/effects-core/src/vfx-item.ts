@@ -584,6 +584,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     for (const component of this.components) {
       if (component.enabled && !component.isStartCalled) {
         component.onStart();
+        component.isStartCalled = true;
       }
     }
     for (const component of this.components) {

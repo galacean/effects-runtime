@@ -339,6 +339,7 @@ export class ParticleSystem extends Component {
     this.emission.bursts.forEach(b => b.reset());
     this.frozen = false;
     this.ended = false;
+    this.destroyed = false;
   }
 
   update (delta: number) {

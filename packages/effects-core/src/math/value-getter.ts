@@ -418,6 +418,7 @@ export class BezierCurve extends ValueGetter<number> {
     timeEnd: number,
   }>;
   keys: number[][];
+  keyTimeData: string[];
 
   override onCreate (props: spec.BezierKeyframeValue[]) {
     const keyframes = props;
@@ -444,10 +445,11 @@ export class BezierCurve extends ValueGetter<number> {
         timeEnd:Number(e.x),
       };
     }
+    this.keyTimeData = Object.keys(this.curveMap);
   }
   override getValue (time: number) {
     let result = 0;
-    const keyTimeData = Object.keys(this.curveMap);
+    const keyTimeData = this.keyTimeData;
 
     const keyTimeStart = this.curveMap[keyTimeData[0]].timeStart;
     const keyTimeEnd = this.curveMap[keyTimeData[keyTimeData.length - 1]].timeEnd;

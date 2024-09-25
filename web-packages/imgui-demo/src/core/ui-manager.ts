@@ -18,6 +18,8 @@ export class UIManager {
   // Top menu nodes
   private menuNodes: MenuNode[] = [];
 
+  private showCanvas = false;
+
   constructor () {
   }
 
@@ -67,7 +69,16 @@ export class UIManager {
     for (const panel of UIManager.editorWindows) {
       panel.draw();
     }
-    // this.editor.draw();
+
+    const geContainer = document.getElementById('J-container');
+
+    if (geContainer) {
+      if (this.showCanvas) {
+        geContainer.style.zIndex = '999';
+      } else {
+        geContainer.style.zIndex = '0';
+      }
+    }
 
     if (ImGui.BeginMainMenuBar()) {
       if (ImGui.BeginMenu('File')) {
@@ -75,7 +86,7 @@ export class UIManager {
         ImGui.EndMenu();
       }
       if (ImGui.BeginMenu('Edit')) {
-        if (ImGui.BeginMenu('Test')) {
+        if (ImGui.MenuItem('Show Canvas', '', (_ = this.showCanvas)=>this.showCanvas = _)) {
           // ShowExampleMenuFile();
           ImGui.EndMenu();
         }
