@@ -1,4 +1,4 @@
-import type { Engine } from '@galacean/effects';
+import type { AudioAssets, Engine } from '@galacean/effects';
 import { Component, effectsClass, spec } from '@galacean/effects';
 import { AudioPlayer } from './audio-player';
 
@@ -6,6 +6,7 @@ import { AudioPlayer } from './audio-player';
 export class AudioComponent extends Component {
   audioPlayer: AudioPlayer;
   private isVideoPlay = false;
+  private threshold = 0.03;
 
   constructor (engine: Engine) {
     super(engine);
@@ -13,36 +14,41 @@ export class AudioComponent extends Component {
 
   override onStart (): void {
     super.onStart();
+    const { duration, endBehavior } = this.item;
+
+    this.audioPlayer.setOptions({
+      duration,
+      endBehavior,
+    });
   }
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    const { time } = this.item;
+    const { time, duration, endBehavior } = this.item;
 
     if (time >= 0 && !this.isVideoPlay) {
       this.audioPlayer.play();
       this.isVideoPlay = true;
     }
+
+    if (Math.abs(time - duration) < this.threshold) {
+      if (endBehavior === spec.EndBehavior.destroy) {
+        this.audioPlayer.pause();
+      }
+    }
   }
 
-  override fromData (data: any): void {
+  override fromData (data: spec.AudioComponentData): void {
     super.fromData(data);
-    const { endBehavior, duration, start } = this.item;
     const { options } = data;
+    const { playbackRate = 1, muted = false, volume = 1 } = options;
 
-    this.audioPlayer = new AudioPlayer({ audio: options.audio.data, endBehavior, duration, start }, this.engine);
+    this.audioPlayer = new AudioPlayer((options.audio as unknown as AudioAssets).data, this.engine);
     this.audioPlayer.pause();
+    this.setPlaybackRate(playbackRate);
+    this.setMuted(muted);
+    this.setVolume(volume);
 
-  }
-
-  override onEnable (): void {
-    super.onEnable();
-    // this.audioPlayer.play();
-  }
-
-  override onDestroy (): void {
-    super.onDestroy();
-    //this.audioPlayer.destroy();
   }
 
   /**

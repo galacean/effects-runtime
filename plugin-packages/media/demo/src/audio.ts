@@ -4,8 +4,8 @@ import '@galacean/effects-plugin-media';
 import { VideoComponent } from '@galacean/effects-plugin-media';
 
 const duration = 5.0;
-const endBehavior = spec.EndBehavior.restart;
-const delay = 3.0;
+const endBehavior = spec.EndBehavior.destroy;
+const delay = 3;
 const json1 = {
   playerVersion: { web: '2.0.4', native: '0.0.1.202311221223' },
   images: [

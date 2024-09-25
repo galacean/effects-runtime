@@ -8,10 +8,8 @@ interface AudioSourceInfo {
 }
 
 export interface AudioPlayerOptions {
-  audio: AudioBuffer | HTMLAudioElement,
   endBehavior: spec.EndBehavior,
   duration: number,
-  start: number,
 }
 export class AudioPlayer {
   audio?: HTMLAudioElement;
@@ -19,9 +17,15 @@ export class AudioPlayer {
 
   // eslint-disable-next-line compat/compat
   private isSupportAudioContext = !!window.AudioContext;
+  private options: AudioPlayerOptions = {
+    endBehavior: spec.EndBehavior.destroy,
+    duration: 0,
+  };
 
-  constructor (private options: AudioPlayerOptions, private engine: Engine) {
-    const { audio, endBehavior } = options;
+  static fromAudio (audio: string, engine: Engine): void {
+  }
+
+  constructor (audio: AudioBuffer | HTMLAudioElement, private engine: Engine) {
 
     if (audio instanceof AudioBuffer) {
       const audioCtx = new AudioContext();
@@ -47,9 +51,6 @@ export class AudioPlayer {
       };
     } else {
       this.audio = audio;
-    }
-    if (endBehavior === spec.EndBehavior.restart) {
-      this.setLoop(true);
     }
   }
 
@@ -77,9 +78,10 @@ export class AudioPlayer {
 
             break;
           case spec.EndBehavior.restart:
+            source.loop = true;
             source.loopStart = 0;
             source.loopEnd = this.options.duration;
-            source.start();
+            source.start(0);
 
             break;
           default:
@@ -146,6 +148,10 @@ export class AudioPlayer {
         this.audio.loop = loop;
       }
     }
+  }
+
+  setOptions (options: AudioPlayerOptions): void {
+    this.options = options;
   }
 
   setMuted (muted: boolean): void {

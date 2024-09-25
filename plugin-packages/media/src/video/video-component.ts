@@ -18,7 +18,7 @@ export class VideoComponent extends BaseRenderComponent {
 
   video?: HTMLVideoElement;
 
-  private threshold = 0.025;
+  private threshold = 0.03;
 
   constructor (engine: Engine) {
     super(engine);
@@ -114,30 +114,54 @@ export class VideoComponent extends BaseRenderComponent {
     }
   }
 
+  /**
+   * 获取当前视频时长
+   * @returns 视频时长
+   */
   getDuration (): number {
     return this.video ? this.video.duration : 0;
   }
 
+  /**
+   * 获取当前视频播放时刻
+   * @returns 当前视频播放时刻
+   */
   getCurrentTime (): number {
     return this.video ? this.video.currentTime : 0;
   }
 
+  /**
+   * 设置阈值（由于视频是单独的 update， 有时并不能完全对其 GE 的 update）
+   * @param threshold 阈值
+   */
   setThreshold (threshold: number) {
     this.threshold = threshold;
   }
 
+  /**
+   * 设置当前视频播放时刻
+   * @param time 视频播放时刻
+   */
   setCurrentTime (time: number) {
     if (this.video) {
       this.video.currentTime = time;
     }
   }
 
+  /**
+   * 设置视频是否循环播放
+   * @param loop 是否循环播放
+   */
   setLoop (loop: boolean) {
     if (this.video) {
       this.video.loop = loop;
     }
   }
 
+  /**
+   * 设置视频是否静音
+   * @param muted 是否静音
+   */
   setMuted (muted: boolean) {
     const { video } = this;
 
@@ -147,6 +171,10 @@ export class VideoComponent extends BaseRenderComponent {
     }
   }
 
+  /**
+   * 设置视频音量
+   * @param volume 视频音量
+   */
   setVolume (volume: number) {
     const { video } = this;
 
@@ -155,6 +183,10 @@ export class VideoComponent extends BaseRenderComponent {
     }
   }
 
+  /**
+   * 设置视频播放速率
+   * @param rate 视频播放速率
+   */
   setPlaybackRate (rate: number) {
     const { video } = this;
 
@@ -184,6 +216,7 @@ export class VideoComponent extends BaseRenderComponent {
     this.setCurrentTime(0);
     this.video?.pause();
   }
+
   override onEnable (): void {
     super.onEnable();
 
