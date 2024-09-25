@@ -1,114 +1,88 @@
 import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
-import { Player } from '@galacean/effects';
+import { Player, spec } from '@galacean/effects';
 
 const { expect } = chai;
 
 describe('core/asset-manager', () => {
-  let player: Player | null;
+  let player: Player;
 
   before(() => {
     player = new Player({ canvas: document.createElement('canvas'), manualRender: true });
   });
 
   after(() => {
-    player!.dispose();
+    player.dispose();
+    // @ts-expect-error
     player = null;
   });
 
   it('template video', async () => {
-    player = player!;
-    const assets = {
-      'images': [
-        {
-          'template': {
-            'v': 2,
-            'variables': {
-              'test': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
-            },
-            'width': 126,
-            'height': 130,
-            'background': {
-              'type': 'video',
-              'name': 'test',
-              'url': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
-            },
-          },
-          'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*oKwARKdkWhEAAAAAAAAAAAAADlB4AQ/original',
-          'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*eOLVQpT57FcAAAAAAAAAAAAADlB4AQ/original',
-          'renderLevel': 'B+',
+    const videoUrl = 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ';
+    const images = [{
+      'id': 'test',
+      'template': {
+        'width': 126,
+        'height': 130,
+        'background': {
+          'type': spec.BackgroundType.video,
+          'name': 'test',
+          'url': videoUrl,
         },
-      ],
-      'fonts': [],
-      'spines': [],
-      'shapes': [],
-    };
+      },
+      'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*oKwARKdkWhEAAAAAAAAAAAAADlB4AQ/original',
+      'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*eOLVQpT57FcAAAAAAAAAAAAADlB4AQ/original',
+      'renderLevel': spec.RenderLevel.BPlus,
+    }];
 
-    const comp = await player.loadScene(generateScene(assets));
-    const textures = comp.textures;
+    const composition = await player.loadScene(generateScene(images));
+    const textures = composition.textures;
+    const videoElement = (textures[0].source as Texture2DSourceOptionsVideo).video;
 
     expect(textures.length).to.deep.equals(1);
     expect(textures[0].source).to.not.be.empty;
-    const videoElement = (textures[0].source as Texture2DSourceOptionsVideo).video;
-
     expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
-
-    player.gotoAndStop(0.1);
+    expect(videoElement.src).to.be.equals(videoUrl);
   });
 
   it('templateV2 video variables', async () => {
-    player = player!;
-    const assets = {
-      'images': [
-        {
-          'template': {
-            'v': 2,
-            'variables': {
-              'test': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
-            },
-            'width': 126,
-            'height': 130,
-            'background': {
-              'type': 'video',
-              'name': 'test',
-              'url': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
-            },
-          },
-          'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*oKwARKdkWhEAAAAAAAAAAAAADlB4AQ/original',
-          'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*eOLVQpT57FcAAAAAAAAAAAAADlB4AQ/original',
-          'renderLevel': 'B+',
+    const videoUrl = 'https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*dftzSq2szUsAAAAAAAAAAAAADtN3AQ';
+    const images = [{
+      'id': 'test',
+      'template': {
+        'width': 126,
+        'height': 130,
+        'background': {
+          'type': spec.BackgroundType.video,
+          'name': 'test',
+          'url': 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
         },
-      ],
-      'fonts': [],
-      'spines': [],
-      'shapes': [],
-    };
+      },
+      'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*oKwARKdkWhEAAAAAAAAAAAAADlB4AQ/original',
+      'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*eOLVQpT57FcAAAAAAAAAAAAADlB4AQ/original',
+      'renderLevel': spec.RenderLevel.BPlus,
+    }];
 
-    const comp = await player.loadScene(generateScene(assets), {
+    const composition = await player.loadScene(generateScene(images), {
       variables: {
         // 视频地址
-        test: 'https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*dftzSq2szUsAAAAAAAAAAAAADtN3AQ',
+        test: videoUrl,
       },
     });
-
-    const textures = comp.textures;
-
-    expect(textures.length).to.deep.equals(1);
-    expect(textures[0].source).to.not.be.empty;
+    const textures = composition.textures;
     const videoElement = (textures[0].source as Texture2DSourceOptionsVideo).video;
 
     expect(videoElement).to.be.an.instanceOf(HTMLVideoElement);
-
-    player.gotoAndStop(0.1);
+    expect(videoElement.src).to.be.equals(videoUrl);
   });
 });
 
-//@ts-expect-error
-const generateScene = assets => {
-  const res = {
+const generateScene = (images: spec.TemplateImage[]) => {
+  return {
     'playerVersion': {
       'web': '1.2.1',
       'native': '0.0.1.202311221223',
     },
+    'images': images,
     'version': '2.2',
     'type': 'ge',
     'compositions': [
@@ -204,6 +178,4 @@ const generateScene = assets => {
       },
     ],
   };
-
-  return { ...res, ...assets };
 };

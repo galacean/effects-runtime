@@ -9,7 +9,7 @@ import './plugins/common/end-behevior.spec';
 import './plugins/particle';
 // plugin sprite
 import './plugins/sprite';
-import './assert-manager.spec';
+import './asset-manager.spec';
 import './texture.spec';
 import './transform.spec';
 import './utils.spec';
