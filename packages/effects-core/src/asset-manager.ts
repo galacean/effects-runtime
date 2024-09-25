@@ -175,9 +175,12 @@ export class AssetManager implements Disposable {
           hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'}Compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
 
+        for (let i = 0; i < images.length; i++) {
+          this.assets[images[i].id] = loadedImages[i];
+        }
+
         if (renderer) {
           for (let i = 0; i < images.length; i++) {
-            this.assets[images[i].id] = loadedImages[i];
             const imageAsset = new ImageAsset(renderer.engine);
 
             imageAsset.data = loadedImages[i];
