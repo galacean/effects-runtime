@@ -1,5 +1,5 @@
 import type { MaterialProps, Renderer } from '@galacean/effects';
-import { GLSLVersion, Geometry, Material, OrderType, Player, PostProcessVolume, RenderPass, RenderPassPriorityPostprocess, VFXItem, glContext, math } from '@galacean/effects';
+import { GLSLVersion, Geometry, Material, OrderType, Player, PostProcessVolume, RenderPass, RenderPassPriorityPostprocess, RendererComponent, VFXItem, glContext, math } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -79,7 +79,7 @@ export class GalaceanEffects {
           'item': {
             'id': '3f40a594b3f34d10b963ad4fc736e505',
           },
-          'dataType': 'EffectComponent',
+          'dataType': 'ShapeComponent',
           'geometry': {
             'id': '78cc7d2350bb417bb5dc93afab243411',
           },
@@ -235,7 +235,267 @@ export class GalaceanEffects {
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
     //@ts-expect-error
-    GalaceanEffects.playURL(json);
+    GalaceanEffects.playURL({
+      'playerVersion': {
+        'web': '2.0.4',
+        'native': '0.0.1.202311221223',
+      },
+      'images': [],
+      'fonts': [],
+      'version': '3.0',
+      'shapes': [],
+      'plugins': [],
+      'type': 'ge',
+      'compositions': [
+        {
+          'id': '1',
+          'name': '新建合成1',
+          'duration': 6,
+          'startTime': 0,
+          'endBehavior': 4,
+          'previewSize': [
+            750,
+            1624,
+          ],
+          'items': [
+            {
+              'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
+            },
+          ],
+          'camera': {
+            'fov': 60,
+            'far': 40,
+            'near': 0.1,
+            'clipMode': 1,
+            'position': [
+              0,
+              0,
+              8,
+            ],
+            'rotation': [
+              0,
+              0,
+              0,
+            ],
+          },
+          'sceneBindings': [
+            {
+              'key': {
+                'id': 'f8a6089ed7794f479907ed0bcac17220',
+              },
+              'value': {
+                'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
+              },
+            },
+          ],
+          'timelineAsset': {
+            'id': 'dd50ad0de3f044a5819576175acf05f7',
+          },
+        },
+      ],
+      'components': [
+        {
+          'id': 'b7890caa354a4c279ff9678c5530cd83',
+          'item': {
+            'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
+          },
+          'dataType': 'ShapeComponent',
+          'type': 0,
+          'param': {
+            'points': [
+              {
+                'x': -1,
+                'y': -1,
+                'z': 0,
+              },
+              {
+                'x': 1,
+                'y': -1,
+                'z': 0,
+              },
+              {
+                'x': 0,
+                'y': 1,
+                'z': 0,
+              },
+            ],
+            'easingIn': [
+              {
+                'x': -1,
+                'y': -0.5,
+                'z': 0,
+              },
+              {
+                'x': 0.5,
+                'y': -1.5,
+                'z': 0,
+              },
+              {
+                'x': 0.5,
+                'y': 1,
+                'z': 0,
+              },
+            ],
+            'easingOut': [
+              {
+                'x': -0.5,
+                'y': -1.5,
+                'z': 0,
+              },
+              {
+                'x': 1,
+                'y': -0.5,
+                'z': 0,
+              },
+              {
+                'x': -0.5,
+                'y': 1,
+                'z': 0,
+              },
+            ],
+            'shapes': [
+              {
+                'verticalToPlane': 'z',
+                'indexes': [
+                  {
+                    'point': 0,
+                    'easingIn': 0,
+                    'easingOut': 0,
+                  },
+                  {
+                    'point': 1,
+                    'easingIn': 1,
+                    'easingOut': 1,
+                  },
+                  {
+                    'point': 2,
+                    'easingIn': 2,
+                    'easingOut': 2,
+                  },
+                ],
+                'close': true,
+                'fill': {
+                  'color': [8, [255, 0, 0, 255]],
+                },
+              },
+            ],
+          },
+          'renderer': {
+            'renderMode': 1,
+          },
+        },
+      ],
+      'geometries': [],
+      'materials': [],
+      'items': [
+        {
+          'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
+          'name': 'sprite_1',
+          'duration': 5,
+          'type': '1',
+          'visible': true,
+          'endBehavior': 0,
+          'delay': 0,
+          'renderLevel': 'B+',
+          'components': [
+            {
+              'id': 'b7890caa354a4c279ff9678c5530cd83',
+            },
+          ],
+          'transform': {
+            'position': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'eulerHint': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'anchor': {
+              'x': 0,
+              'y': 0,
+            },
+            'size': {
+              'x': 1.2,
+              'y': 1.2,
+            },
+            'scale': {
+              'x': 1,
+              'y': 1,
+              'z': 1,
+            },
+          },
+          'dataType': 'VFXItemData',
+        },
+      ],
+      'shaders': [],
+      'bins': [],
+      'textures': [],
+      'animations': [],
+      'miscs': [
+        {
+          'id': 'dd50ad0de3f044a5819576175acf05f7',
+          'dataType': 'TimelineAsset',
+          'tracks': [
+          ],
+        },
+        {
+          'id': '51ed062462544526998daf514c320854',
+          'dataType': 'ActivationPlayableAsset',
+        },
+        {
+          'id': '9fd3412cf92c4dc19a2deabb942dadb2',
+          'dataType': 'TransformPlayableAsset',
+          'positionOverLifetime': {},
+        },
+        {
+          'id': 'a59a15a3f3b4414abb81217733561926',
+          'dataType': 'ActivationTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 5,
+              'endBehavior': 0,
+              'asset': {
+                'id': '51ed062462544526998daf514c320854',
+              },
+            },
+          ],
+        },
+        {
+          'id': '9436a285d586414ab72622f64b11f54d',
+          'dataType': 'TransformTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 5,
+              'endBehavior': 0,
+              'asset': {
+                'id': '9fd3412cf92c4dc19a2deabb942dadb2',
+              },
+            },
+          ],
+        },
+        {
+          'id': 'f8a6089ed7794f479907ed0bcac17220',
+          'dataType': 'ObjectBindingTrack',
+          'children': [
+            {
+              'id': 'a59a15a3f3b4414abb81217733561926',
+            },
+            {
+              'id': '9436a285d586414ab72622f64b11f54d',
+            },
+          ],
+          'clips': [],
+        },
+      ],
+      'compositionId': '1',
+    });
   }
 
   static playURL (url: string, use3DConverter = false) {
@@ -255,6 +515,7 @@ export class GalaceanEffects {
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay:true }).then(composition=>{
         composition.rootItem.addComponent(PostProcessVolume);
+
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
           priority: RenderPassPriorityPostprocess,
