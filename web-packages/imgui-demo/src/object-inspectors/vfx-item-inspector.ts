@@ -1,8 +1,8 @@
 import type { Component, Material } from '@galacean/effects';
-import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, getMergedStore, spec } from '@galacean/effects';
+import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, generateGUID, getMergedStore, spec } from '@galacean/effects';
 import { objectInspector } from '../core/decorators';
 import { ObjectInspector } from './object-inspectors';
-import type { GLMaterial } from '@galacean/effects-webgl';
+import { GLMaterial } from '@galacean/effects-webgl';
 import { GLTexture } from '@galacean/effects-webgl';
 import type { FileNode } from '../core/file-node';
 import { UIManager } from '../core/ui-manager';
@@ -126,7 +126,7 @@ export class VFXItemInspector extends ObjectInspector {
           ImGui.Button(componet.material?.name ?? '', new ImGui.Vec2(200, 0));
 
           if (ImGui.BeginDragDropTarget()) {
-            const payload = ImGui.AcceptDragDropPayload('Material');
+            const payload = ImGui.AcceptDragDropPayload(GLMaterial.name);
 
             if (payload) {
               void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{

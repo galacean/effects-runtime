@@ -102,6 +102,8 @@ export class ShapeComponent extends RendererComponent {
       }
 
       this.buildGeometryFromPath(this.path.shapePath);
+
+      this.dirty = false;
     }
   }
 
@@ -143,6 +145,8 @@ export class ShapeComponent extends RendererComponent {
   }
 
   override fromData (data: ShapeCustomComponent): void {
+    super.fromData(data);
+
     const points = data.param.points;
     const easingIns = data.param.easingIn;
     const easingOuts = data.param.easingOut;
