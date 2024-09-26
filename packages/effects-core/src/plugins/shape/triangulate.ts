@@ -14,8 +14,7 @@ const tessy = (function initTesselator () {
     }
   }
   function errorcallback (errno) {
-    console.info('error callback');
-    console.info('error number: ' + errno);
+    console.error('error callback, error number: ' + errno);
   }
   // callback for when segments intersect and must be split
   function combinecallback (coords, data, weight) {
@@ -62,13 +61,8 @@ export function triangulate (contours) {
     tessy.gluTessEndContour();
   }
 
-  // finish polygon (and time triangulation process)
-  // const startTime = window.nowish();
-
+  // finish polygon
   tessy.gluTessEndPolygon();
-  // const endTime = window.nowish();
-
-  // console.log('tesselation time: ' + (endTime - startTime).toFixed(2) + 'ms');
 
   return triangleVerts;
 }

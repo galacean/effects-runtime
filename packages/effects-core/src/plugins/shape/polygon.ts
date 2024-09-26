@@ -10,10 +10,10 @@ import type { PointData } from './point-data';
  */
 export class Polygon {
   /** An array of the points of this polygon. */
-  public points: number[] = [];
+  points: number[] = [];
 
   /** `false` after moveTo, `true` after `closePath`. In all other cases it is `true`. */
-  public closePath: boolean = false;
+  closePath: boolean = false;
 
   constructor (points: PointData[] | number[]);
   constructor (...points: PointData[] | number[]);
@@ -47,7 +47,7 @@ export class Polygon {
      * Creates a clone of this polygon.
      * @returns - A copy of the polygon.
      */
-  public clone (): Polygon {
+  clone (): Polygon {
     const points = this.points.slice();
     const polygon = new Polygon(points);
 
@@ -62,7 +62,7 @@ export class Polygon {
      * @param y - The Y coordinate of the point to test.
      * @returns - Whether the x/y coordinates are within this polygon.
      */
-  public contains (x: number, y: number): boolean {
+  contains (x: number, y: number): boolean {
     let inside = false;
 
     // use some raycasting to test hits
@@ -89,7 +89,7 @@ export class Polygon {
      * @param polygon - The polygon to copy from.
      * @returns Returns itself.
      */
-  public copyFrom (polygon: Polygon): this {
+  copyFrom (polygon: Polygon): this {
     this.points = polygon.points.slice();
     this.closePath = polygon.closePath;
 
@@ -101,7 +101,7 @@ export class Polygon {
      * @param polygon - The polygon to copy to.
      * @returns Returns given parameter.
      */
-  public copyTo (polygon: Polygon): Polygon {
+  copyTo (polygon: Polygon): Polygon {
     polygon.copyFrom(this);
 
     return polygon;

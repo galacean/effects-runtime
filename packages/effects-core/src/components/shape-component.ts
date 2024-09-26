@@ -1,6 +1,6 @@
-import { RendererComponent } from '.';
-import type { spec } from '..';
-import { effectsClass, math } from '..';
+import { Color } from '@galacean/effects-math/es/core/color';
+import type * as spec from '@galacean/effects-specification';
+import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { MaterialProps } from '../material';
@@ -10,6 +10,7 @@ import type { ShapePath } from '../plugins/shape/shape-path';
 import { triangulate } from '../plugins/shape/triangulate';
 import type { Renderer } from '../render';
 import { Geometry, GLSLVersion } from '../render';
+import { RendererComponent } from './renderer-component';
 
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends RendererComponent {
@@ -80,7 +81,7 @@ export class ShapeComponent extends RendererComponent {
       };
 
       this.material = Material.create(engine, materialProps);
-      this.material.setColor('_Color', new math.Color(1, 1, 1, 1));
+      this.material.setColor('_Color', new Color(1, 1, 1, 1));
       this.material.depthMask = true;
       this.material.depthTest = true;
       this.material.blending = true;
