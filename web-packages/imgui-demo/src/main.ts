@@ -85,10 +85,11 @@ async function _init (): Promise<void> {
   io.ConfigDockingAlwaysTabBar = true;
 
   // Setup Dear ImGui style
-  ImGui.StyleColorsDark();
-  //ImGui.StyleColorsClassic();
+  // ImGui.StyleColorsDark();
+  // ImGui.StyleColorsClassic();
   // embraceTheDarkness();
-  SoDark(0.548);
+  // SoDark(0.548);
+  styleBlack();
 
   // Load Fonts
   // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
@@ -171,7 +172,7 @@ function _loop (time: number): void {
 
   // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
   {
-    // static float f = 0.0f;
+    // static float f = 0.0;
     // static int counter = 0;
 
     ImGui.Begin('Hello, world!');                          // Create a window called "Hello, world!" and append into it.
@@ -755,6 +756,73 @@ function SoDark (hue: number) {
   ApplyHue(style, hue);
 
   return style;
+}
+
+function styleBlack () {
+  const style = ImGui.GetStyle();
+  const colors = style.Colors;
+
+  colors[ImGui.ImGuiCol.Text] = new ImGui.ImVec4(1.000, 1.000, 1.000, 1.000);
+  colors[ImGui.ImGuiCol.TextDisabled] = new ImGui.ImVec4(0.500, 0.500, 0.500, 1.000);
+  colors[ImGui.ImGuiCol.WindowBg] = new ImGui.ImVec4(0.180, 0.180, 0.180, 1.000);
+  colors[ImGui.ImGuiCol.ChildBg] = new ImGui.ImVec4(0.280, 0.280, 0.280, 0.000);
+  colors[ImGui.ImGuiCol.PopupBg] = new ImGui.ImVec4(0.313, 0.313, 0.313, 1.000);
+  colors[ImGui.ImGuiCol.Border] = new ImGui.ImVec4(0.266, 0.266, 0.266, 1.000);
+  colors[ImGui.ImGuiCol.BorderShadow] = new ImGui.ImVec4(0.000, 0.000, 0.000, 0.000);
+  colors[ImGui.ImGuiCol.FrameBg] = new ImGui.ImVec4(0.160, 0.160, 0.160, 1.000);
+  colors[ImGui.ImGuiCol.FrameBgHovered] = new ImGui.ImVec4(0.200, 0.200, 0.200, 1.000);
+  colors[ImGui.ImGuiCol.FrameBgActive] = new ImGui.ImVec4(0.280, 0.280, 0.280, 1.000);
+  colors[ImGui.ImGuiCol.TitleBg] = new ImGui.ImVec4(0.148, 0.148, 0.148, 1.000);
+  colors[ImGui.ImGuiCol.TitleBgActive] = new ImGui.ImVec4(0.148, 0.148, 0.148, 1.000);
+  colors[ImGui.ImGuiCol.TitleBgCollapsed] = new ImGui.ImVec4(0.148, 0.148, 0.148, 1.000);
+  colors[ImGui.ImGuiCol.MenuBarBg] = new ImGui.ImVec4(0.195, 0.195, 0.195, 1.000);
+  colors[ImGui.ImGuiCol.ScrollbarBg] = new ImGui.ImVec4(0.160, 0.160, 0.160, 1.000);
+  colors[ImGui.ImGuiCol.ScrollbarGrab] = new ImGui.ImVec4(0.277, 0.277, 0.277, 1.000);
+  colors[ImGui.ImGuiCol.ScrollbarGrabHovered] = new ImGui.ImVec4(0.300, 0.300, 0.300, 1.000);
+  colors[ImGui.ImGuiCol.ScrollbarGrabActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.CheckMark] = new ImGui.ImVec4(1.000, 1.000, 1.000, 1.000);
+  colors[ImGui.ImGuiCol.SliderGrab] = new ImGui.ImVec4(0.391, 0.391, 0.391, 1.000);
+  colors[ImGui.ImGuiCol.SliderGrabActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.Button] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.000);
+  colors[ImGui.ImGuiCol.ButtonHovered] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.156);
+  colors[ImGui.ImGuiCol.ButtonActive] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.391);
+  colors[ImGui.ImGuiCol.Header] = new ImGui.ImVec4(0.313, 0.313, 0.313, 1.000);
+  colors[ImGui.ImGuiCol.HeaderHovered] = new ImGui.ImVec4(0.469, 0.469, 0.469, 1.000);
+  colors[ImGui.ImGuiCol.HeaderActive] = new ImGui.ImVec4(0.469, 0.469, 0.469, 1.000);
+  colors[ImGui.ImGuiCol.Separator] = colors[ImGui.ImGuiCol.Border];
+  colors[ImGui.ImGuiCol.SeparatorHovered] = new ImGui.ImVec4(0.391, 0.391, 0.391, 1.000);
+  colors[ImGui.ImGuiCol.SeparatorActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.ResizeGrip] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.250);
+  colors[ImGui.ImGuiCol.ResizeGripHovered] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.670);
+  colors[ImGui.ImGuiCol.ResizeGripActive] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.Tab] = new ImGui.ImVec4(0.098, 0.098, 0.098, 1.000);
+  colors[ImGui.ImGuiCol.TabHovered] = new ImGui.ImVec4(0.352, 0.352, 0.352, 1.000);
+  colors[ImGui.ImGuiCol.TabActive] = new ImGui.ImVec4(0.195, 0.195, 0.195, 1.000);
+  colors[ImGui.ImGuiCol.TabUnfocused] = new ImGui.ImVec4(0.098, 0.098, 0.098, 1.000);
+  colors[ImGui.ImGuiCol.TabUnfocusedActive] = new ImGui.ImVec4(0.195, 0.195, 0.195, 1.000);
+  colors[ImGui.ImGuiCol.PlotLines] = new ImGui.ImVec4(1.000, 0.391, 0.000, 0.781); //DockingPreview
+  colors[ImGui.ImGuiCol.PlotLinesHovered] = new ImGui.ImVec4(0.180, 0.180, 0.180, 1.000); //DockingEmptyBg
+  colors[ImGui.ImGuiCol.PlotLines + 2] = new ImGui.ImVec4(0.469, 0.469, 0.469, 1.000);
+  colors[ImGui.ImGuiCol.PlotLinesHovered + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.PlotHistogram + 2] = new ImGui.ImVec4(0.586, 0.586, 0.586, 1.000);
+  colors[ImGui.ImGuiCol.PlotHistogramHovered + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.TextSelectedBg + 2] = new ImGui.ImVec4(1.000, 1.000, 1.000, 0.156);
+  colors[ImGui.ImGuiCol.DragDropTarget + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.NavHighlight + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.NavWindowingHighlight + 2] = new ImGui.ImVec4(1.000, 0.391, 0.000, 1.000);
+  colors[ImGui.ImGuiCol.NavWindowingDimBg + 2] = new ImGui.ImVec4(0.000, 0.000, 0.000, 0.586);
+  colors[ImGui.ImGuiCol.ModalWindowDimBg + 2] = new ImGui.ImVec4(0.000, 0.000, 0.000, 0.586);
+
+  style.ChildRounding = 4.0;
+  style.FrameBorderSize = 1.0;
+  style.FrameRounding = 2.0;
+  style.GrabMinSize = 7.0;
+  style.PopupRounding = 2.0;
+  style.ScrollbarRounding = 12.0;
+  style.ScrollbarSize = 13.0;
+  style.TabBorderSize = 1.0;
+  style.TabRounding = 0.0;
+  style.WindowRounding = 0.0;
 }
 
 function ApplyHue (style: ImGui.ImGuiStyle, hue: number) {
