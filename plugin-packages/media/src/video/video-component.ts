@@ -44,10 +44,6 @@ export class VideoComponent extends BaseRenderComponent {
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;
   }
 
-  override onStart (): void {
-    super.onStart();
-  }
-
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
     const { interaction, options, listIndex = 0 } = data;

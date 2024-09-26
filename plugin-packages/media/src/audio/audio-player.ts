@@ -21,6 +21,8 @@ export class AudioPlayer {
     endBehavior: spec.EndBehavior.destroy,
     duration: 0,
   };
+  private destroyed = false;
+  private started = false;
 
   static fromAudio (audio: string, engine: Engine): void {
   }
@@ -88,6 +90,7 @@ export class AudioPlayer {
             break;
         }
       }
+      this.started = true;
     } else {
       this.audio?.play().catch(e => {
         this.engine.renderErrors.add(e);
@@ -102,7 +105,7 @@ export class AudioPlayer {
       if (!audioContext) {
         return;
       }
-      if (audioContext.currentTime > 0) {
+      if (audioContext.currentTime > 0 && this.started) {
         source?.stop();
       }
     } else {
@@ -114,7 +117,9 @@ export class AudioPlayer {
     if (this.isSupportAudioContext) {
       const { gainNode } = this.audioSourceInfo;
 
-      gainNode?.gain.setValueAtTime(volume, 0);
+      if (gainNode) {
+        gainNode.gain.value = volume;
+      }
     } else {
       if (this.audio) {
         this.audio.volume = volume;
@@ -126,7 +131,9 @@ export class AudioPlayer {
     if (this.isSupportAudioContext) {
       const { source } = this.audioSourceInfo;
 
-      source?.playbackRate.setValueAtTime(rate, 0);
+      if (source) {
+        source.playbackRate.value = rate;
+      }
     } else {
       if (this.audio) {
         this.audio.playbackRate = rate;
@@ -157,12 +164,32 @@ export class AudioPlayer {
   setMuted (muted: boolean): void {
     if (this.isSupportAudioContext) {
       const { gainNode } = this.audioSourceInfo;
+      const value = muted ? 0 : 1;
 
-      gainNode?.gain.setValueAtTime(muted ? 0 : 1, 0);
+      if (gainNode) {
+        gainNode.gain.value = value;
+      }
     } else {
       if (this.audio) {
         this.audio.muted = muted;
       }
     }
+  }
+
+  dispose (): void {
+    if (this.destroyed) {
+      return;
+    }
+    if (this.isSupportAudioContext) {
+      const { audioContext, source } = this.audioSourceInfo;
+
+      source?.stop();
+      audioContext?.close().catch(e => {
+        this.engine.renderErrors.add(e);
+      });
+    } else {
+      this.audio?.pause();
+    }
+    this.destroyed = true;
   }
 }

@@ -1,9 +1,9 @@
 import type { AudioAssets, Engine } from '@galacean/effects';
-import { Component, effectsClass, spec } from '@galacean/effects';
+import { effectsClass, RendererComponent, spec } from '@galacean/effects';
 import { AudioPlayer } from './audio-player';
 
 @effectsClass(spec.DataType.AudioComponent)
-export class AudioComponent extends Component {
+export class AudioComponent extends RendererComponent {
   audioPlayer: AudioPlayer;
   private isVideoPlay = false;
   private threshold = 0.03;
@@ -88,5 +88,16 @@ export class AudioComponent extends Component {
    */
   setPlaybackRate (rate: number): void {
     this.audioPlayer.setPlaybackRate(rate);
+  }
+
+  override onDisable (): void {
+    super.onDisable();
+
+    this.audioPlayer.pause();
+  }
+
+  override dispose (): void {
+    super.dispose();
+    this.audioPlayer.dispose();
   }
 }
