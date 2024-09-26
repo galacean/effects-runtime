@@ -209,8 +209,8 @@ const container = document.getElementById('J-container');
       container,
     });
 
-    const compostion = await player.loadScene(json);
-    const item = compostion.getItemByName('Shape');
+    const composition = await player.loadScene(json);
+    const item = composition.getItemByName('Shape');
     const shapeComponent = item?.getComponent(ShapeComponent);
 
   } catch (e) {
