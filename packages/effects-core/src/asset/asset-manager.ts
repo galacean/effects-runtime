@@ -13,16 +13,15 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from '../render';
 import { COMPRESSED_TEXTURE } from '../render';
 import { combineImageTemplate, getBackgroundImage } from '../template-image';
-import { ImageAsset } from './assets/image-asset';
-import { AudioAssets, VideoAssets } from './assets';
 import type { JSONValue } from '../downloader';
 import { Downloader, loadAudio, loadAVIFOptional, loadImage, loadMedia, loadVideo, loadWebPOptional } from '../downloader';
+import { Asset } from './asset';
 
 let seed = 1;
 
-enum mediaType {
-  'video',
-  'audio'
+enum MediaType {
+  video = 'video',
+  audio = 'audio'
 }
 
 /**
@@ -183,8 +182,8 @@ export class AssetManager implements Disposable {
         ]);
 
         const [loadedVideos, loadedAudios] = await Promise.all([
-          hookTimeInfo('processVideos', () => this.processMedia(videos, mediaType.video)),
-          hookTimeInfo('processAudios', () => this.processMedia(audios, mediaType.audio)),
+          hookTimeInfo('processVideos', () => this.processMedia(videos, MediaType.video)),
+          hookTimeInfo('processAudios', () => this.processMedia(audios, MediaType.audio)),
         ]);
 
         for (let i = 0; i < images.length; i++) {
@@ -193,7 +192,7 @@ export class AssetManager implements Disposable {
 
         if (renderer) {
           for (let i = 0; i < images.length; i++) {
-            const imageAsset = new ImageAsset(renderer.engine);
+            const imageAsset = new Asset<ImageSource>(renderer.engine);
 
             imageAsset.data = loadedImages[i];
             imageAsset.setInstanceId(images[i].id);
@@ -201,7 +200,7 @@ export class AssetManager implements Disposable {
           }
 
           for (let i = 0; i < loadedVideos.length; i++) {
-            const videoAsset = new VideoAssets(renderer.engine);
+            const videoAsset = new Asset<HTMLVideoElement>(renderer.engine);
 
             videoAsset.data = loadedVideos[i] as HTMLVideoElement;
             videoAsset.setInstanceId(videos[i].id);
@@ -209,7 +208,7 @@ export class AssetManager implements Disposable {
           }
 
           for (let i = 0; i < loadedAudios.length; i++) {
-            const audioAsset = new AudioAssets(renderer.engine);
+            const audioAsset = new Asset<HTMLAudioElement | AudioBuffer>(renderer.engine);
 
             audioAsset.data = loadedAudios[i];
             audioAsset.setInstanceId(audios[i].id);
@@ -316,12 +315,12 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
-  private async processMedia (media: spec.AssetBaseOptions[], type: mediaType): Promise<HTMLVideoElement[] | (HTMLAudioElement | AudioBuffer)[]> {
+  private async processMedia (media: spec.AssetBaseOptions[], type: MediaType): Promise<HTMLVideoElement[] | (HTMLAudioElement | AudioBuffer)[]> {
     const { renderLevel } = this.options;
     const baseUrl = this.baseUrl;
     let audioCtx: AudioContext, isSupportAudioContext: boolean;
 
-    if (type === mediaType.audio) {
+    if (type === MediaType.audio) {
     // eslint-disable-next-line compat/compat
       audioCtx = new AudioContext();
       // eslint-disable-next-line compat/compat
@@ -330,7 +329,7 @@ export class AssetManager implements Disposable {
 
     const jobs = media.map(medium => {
       if (passRenderLevel(medium.renderLevel, renderLevel)) {
-        if (type === mediaType.video) {
+        if (type === MediaType.video) {
           return loadVideo((new URL(medium.url, baseUrl).href));
         } else {
           return loadAudio((new URL(medium.url, baseUrl).href), audioCtx, isSupportAudioContext);
