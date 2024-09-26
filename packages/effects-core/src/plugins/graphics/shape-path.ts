@@ -1,20 +1,43 @@
 import { Polygon } from './polygon';
 import { buildAdaptiveBezier } from './build-adaptive-bezier';
+import type { GraphicsPath } from './graphics-path';
+import type { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 
 export class ShapePath {
   currentPoly: Polygon | null = null;
 
-  controlPoint1X = 0;
-  controlPoint1Y = -0.65;
+  shapePrimitives: { shape: Polygon, transform?: Matrix3 }[] = [];
 
-  controlPoint2X = 1;
-  controlPoint2Y = -0.05;
+  private graphicsPath: GraphicsPath;
+
+  constructor (graphicsPath: GraphicsPath) {
+    this.graphicsPath = graphicsPath;
+  }
 
   /** Builds the path. */
   buildPath () {
     this.currentPoly = null;
-    this.bezierCurveTo(this.controlPoint1X, this.controlPoint1Y, this.controlPoint2X, this.controlPoint2Y, 1, 1, 1);
-    this.bezierCurveTo(1, 1.61, 1.41, 2, 2, 2, 1);
+    this.shapePrimitives.length = 0;
+    const path = this.graphicsPath;
+
+    for (const instruction of path.instructions) {
+      const action = instruction.action;
+      const data = instruction.data;
+
+      switch (action) {
+        case 'bezierCurveTo':{
+          this.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
+
+          break;
+        }
+        case 'moveTo':{
+          this.moveTo(data[0], data[1]);
+
+          break;
+        }
+      }
+    }
+    this.endPoly();
   }
 
   /**
@@ -34,7 +57,7 @@ export class ShapePath {
     cp1x: number, cp1y: number, cp2x: number, cp2y: number,
     x: number, y: number,
     smoothness?: number
-  ): this {
+  ): ShapePath {
     this.ensurePoly();
     const currentPoly = this.currentPoly as Polygon;
 
@@ -44,6 +67,57 @@ export class ShapePath {
       cp1x, cp1y, cp2x, cp2y, x, y,
       smoothness,
     );
+
+    return this;
+  }
+
+  moveTo (x: number, y: number): ShapePath {
+    this.startPoly(x, y);
+
+    return this;
+  }
+
+  /**
+     * Starts a new polygon path from the specified starting point.
+     * This method initializes a new polygon or ends the current one if it exists.
+     * @param x - The x-coordinate of the starting point of the new polygon.
+     * @param y - The y-coordinate of the starting point of the new polygon.
+     * @returns The instance of the current object for chaining.
+     */
+  private startPoly (x: number, y: number): this {
+    let currentPoly = this.currentPoly;
+
+    if (currentPoly) {
+      this.endPoly();
+    }
+
+    currentPoly = new Polygon();
+
+    currentPoly.points.push(x, y);
+
+    this.currentPoly = currentPoly;
+
+    return this;
+  }
+
+  /**
+     * Ends the current polygon path. If `closePath` is set to true,
+     * the path is closed by connecting the last point to the first one.
+     * This method finalizes the current polygon and prepares it for drawing or adding to the shape primitives.
+     * @param closePath - A boolean indicating whether to close the polygon by connecting the last point
+     *  back to the starting point. False by default.
+     * @returns The instance of the current object for chaining.
+     */
+  private endPoly (closePath = false): this {
+    const shape = this.currentPoly;
+
+    if (shape && shape.points.length > 2) {
+      shape.closePath = closePath;
+
+      this.shapePrimitives.push({ shape });
+    }
+
+    this.currentPoly = null;
 
     return this;
   }
