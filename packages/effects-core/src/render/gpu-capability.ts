@@ -19,7 +19,7 @@ export interface GPUCapabilityDetail {
   shaderTextureLod: boolean,
   instanceDraw?: boolean,
   drawBuffers?: boolean,
-  asyncShaderCompile?: boolean,
+  asyncShaderCompile: boolean,
   //draw elements use uint32 Array
   intIndexElementBuffer?: boolean,
   //render pass depth and stencil texture readable
@@ -100,7 +100,7 @@ export class GPUCapability {
       shaderTextureLod: level2 || !!gl.getExtension('EXT_shader_texture_lod'),
       instanceDraw: level2 || !!gl.getExtension('ANGLE_instanced_arrays'),
       drawBuffers: level2 || !!this.drawBufferExtension,
-      asyncShaderCompile: !!gl.getExtension('KHR_parallel_shader_compile'),
+      asyncShaderCompile: !!this.glAsyncCompileExt,
       intIndexElementBuffer: !!gl.getExtension('OES_element_index_uint'),
       standardDerivatives: level2 || !!gl.getExtension('OES_standard_derivatives'),
       readableDepthStencilTextures: level2 || !!depthTextureExtension,

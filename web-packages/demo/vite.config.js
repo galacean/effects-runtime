@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
           'local-file': resolve(__dirname, 'html/local-file.html'),
           'post-processing': resolve(__dirname, 'html/post-processing.html'),
           'render-level': resolve(__dirname, 'html/render-level.html'),
+          'shader-compile': resolve(__dirname, 'html/shader-compile.html'),
           'shape': resolve(__dirname, 'html/shape.html'),
           'single': resolve(__dirname, 'html/single.html'),
           'text': resolve(__dirname, 'html/text.html'),
