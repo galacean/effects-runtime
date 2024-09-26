@@ -12,46 +12,57 @@ import type { Renderer } from '../render';
 import { Geometry, GLSLVersion } from '../render';
 import { RendererComponent } from './renderer-component';
 
+interface CurveData {
+  point: spec.Vector3Data,
+  controlPoint1: spec.Vector3Data,
+  controlPoint2: spec.Vector3Data,
+}
+
+/**
+ * 图形组件
+ * @since 2.1.0
+ */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends RendererComponent {
-
   path = new GraphicsPath();
 
   private curveValues: CurveData[] = [];
   private geometry: Geometry;
-
   private dirty = false;
 
-  private vert = `precision highp float;
-  
-    attribute vec3 aPos;//x y
-  
-    varying vec4 vColor;
-  
-    uniform vec4 _Color;
-    uniform mat4 effects_MatrixVP;
-    uniform mat4 effects_MatrixInvV;
-    uniform mat4 effects_ObjectToWorld;
-  
-    void main() {
-      vColor = _Color;
-      vec4 pos = vec4(aPos.xyz, 1.0);
-      gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
-    }
-    `;
+  private vert = `
+precision highp float;
 
-  private frag = `precision highp float;
-  
-    varying vec4 vColor;
-  
-    void main() {
-      vec4 color = vec4(1.0,1.0,1.0,1.0);
-      gl_FragColor = color;
-    }
-    `;
+attribute vec3 aPos;//x y
+
+varying vec4 vColor;
+
+uniform vec4 _Color;
+uniform mat4 effects_MatrixVP;
+uniform mat4 effects_MatrixInvV;
+uniform mat4 effects_ObjectToWorld;
+
+void main() {
+  vColor = _Color;
+  vec4 pos = vec4(aPos.xyz, 1.0);
+  gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
+}
+`;
+
+  private frag = `
+precision highp float;
+
+varying vec4 vColor;
+
+void main() {
+  vec4 color = vec4(1.0,1.0,1.0,1.0);
+  gl_FragColor = color;
+}
+`;
 
   constructor (engine: Engine) {
     super(engine);
+
     if (!this.geometry) {
       this.geometry = Geometry.create(engine, {
         attributes: {
@@ -96,7 +107,6 @@ export class ShapeComponent extends RendererComponent {
   override onUpdate (dt: number): void {
     if (this.dirty) {
       this.path.clear();
-
       this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
 
       for (const curveValue of this.curveValues) {
@@ -108,7 +118,6 @@ export class ShapeComponent extends RendererComponent {
       }
 
       this.buildGeometryFromPath(this.path.shapePath);
-
       this.dirty = false;
     }
   }
@@ -172,7 +181,7 @@ export class ShapeComponent extends RendererComponent {
     for (const shape of data.param.shapes) {
       const indices = shape.indexes;
 
-      for (let i = 1;i < indices.length;i++) {
+      for (let i = 1; i < indices.length; i++) {
         const pointIndex = indices[i];
         const lastPointIndex = indices[i - 1];
 
@@ -195,162 +204,156 @@ export class ShapeComponent extends RendererComponent {
   }
 }
 
-interface CurveData {
-  point: spec.Vector3Data,
-  controlPoint1: spec.Vector3Data,
-  controlPoint2: spec.Vector3Data,
-}
-
 /************************** Test Interface **********************************/
 
 /**
- * @description 矢量图形组件
+ * 矢量图形组件
  */
 export interface ShapeComponentData extends spec.ComponentData {
   /**
-   * @description 矢量类型
+   * 矢量类型
    */
   type: ComponentShapeType,
 }
 
 /**
- * @description 矢量图形类型
+ * 矢量图形类型
  */
 export enum ComponentShapeType {
   /**
-   * @description 自定义形状矢量
+   * 自定义图形
    */
   CUSTOM,
   /**
-   * @description 矩形矢量
+   * 矩形
    */
   RECTANGLE,
   /**
-   * @description 椭圆矢量
+   * 椭圆
    */
   ELLIPSE,
   /**
-   * @description 多边形矢量
+   * 多边形
    */
   POLYGON,
   /**
-   * @description 星形矢量
+   * 星形
    */
   STAR,
 }
 
 /**
- * @description 形状矢量组件
+ * 自定义图形组件
  */
 export interface ShapeCustomComponent extends ShapeComponentData {
   /**
-   * @description 矢量类型 - 形状
+   * 矢量类型 - 形状
    */
   type: ComponentShapeType.CUSTOM,
   /**
-   * @description 矢量参数 - 形状
+   * 矢量参数 - 形状
    */
   param: ShapeCustomParam,
 }
 
 /**
- * @description 路径矢量参数
+ * 矢量路径参数
  */
 export interface ShapeCustomParam {
   /**
-   * @description 路径点
+   * 路径点
    */
   points: spec.Vector3Data[],
   /**
-   * @description 入射控制点
+   * 入射控制点
    */
   easingIn: spec.Vector3Data[],
   /**
-   * @description 入射控制点
+   * 入射控制点
    */
   easingOut: spec.Vector3Data[],
   /**
-   * @description 自定义形状
+   * 自定义形状
    */
   shapes: CustomShape[],
 }
 
 /**
- * @description 自定义形状参数
+ * 自定义形状参数
  */
 export interface CustomShape {
   /**
-   * @description 是否垂直与平面 - 用于减少Runtime实时运算
+   * 是否垂直与平面 - 用于减少实时运算
    */
   verticalToPlane: 'x' | 'y' | 'z' | 'none',
   /**
-   * @description 点索引 - 用于构成闭合图形
+   * 点索引 - 用于构成闭合图形
    */
   indexes: CustomShapePoint[],
   /**
-   * @description 是否为闭合图形 - 用于Stroke
+   * 是否为闭合图形 - 用于Stroke
    */
   close: boolean,
   /**
-   * @description 填充属性
+   * 填充属性
    */
   fill?: ShapeFillParam,
   /**
-   * @description 描边属性
+   * 描边属性
    */
   stroke?: ShapeStrokeParam,
   /**
-   * @description 空间变换
+   * 空间变换
    */
   transform?: spec.TransformData,
 }
 
 /**
- * @description 自定形状点
+ * 自定义形状点
  */
 export interface CustomShapePoint {
   /**
-   * @description 顶点索引
+   * 顶点索引
    */
   point: number,
   /**
-   * @description 入射点索引
+   * 入射点索引
    */
   easingIn: number,
   /**
-   * @description 出射点索引
+   * 出射点索引
    */
   easingOut: number,
 }
 
 /**
- * @description 矢量填充参数
+ * 矢量填充参数
  */
 export interface ShapeFillParam {
   /**
-   * @description 填充颜色
+   * 填充颜色
    */
   color: spec.ColorExpression,
 }
 
 /**
- * @description 矢量描边参数
+ * 矢量描边参数
  */
 export interface ShapeStrokeParam {
   /**
-   * @description 线宽
+   * 线宽
    */
   width: number,
   /**
-   * @description 线颜色
+   * 线颜色
    */
   color: spec.ColorExpression,
   /**
-   * @description 连接类型
+   * 连接类型
    */
   connectType: ShapeConnectType,
   /**
-   * @description 点类型
+   * 点类型
    */
   pointType: ShapePointType,
 }
