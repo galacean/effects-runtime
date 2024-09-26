@@ -1,4 +1,4 @@
-import { Player, ShapeComponent, TextComponent } from '@galacean/effects';
+import { Player, ShapeComponent } from '@galacean/effects';
 
 const json = {
   'playerVersion': {
@@ -212,7 +212,6 @@ const container = document.getElementById('J-container');
     const composition = await player.loadScene(json);
     const item = composition.getItemByName('Shape');
     const shapeComponent = item?.getComponent(ShapeComponent);
-
   } catch (e) {
     console.error('biz', e);
   }

@@ -1,27 +1,32 @@
-//@ts-nocheck
 import * as libtess from 'libtess';
 
 const tessy = (function initTesselator () {
   // function called for each vertex of tesselator output
-  function vertexCallback (data, polyVertArray) {
-    // console.log(data[0], data[1]);
+  function vertexCallback (
+    data: [x: number, y: number, z: number],
+    polyVertArray: number[],
+  ) {
     polyVertArray[polyVertArray.length] = data[0];
     polyVertArray[polyVertArray.length] = data[1];
   }
-  function begincallback (type) {
+  function begincallback (type: number) {
     if (type !== libtess.primitiveType.GL_TRIANGLES) {
       console.info('expected TRIANGLES but got type: ' + type);
     }
   }
-  function errorcallback (errno) {
+  function errorcallback (errno: number) {
     console.error('error callback, error number: ' + errno);
   }
   // callback for when segments intersect and must be split
-  function combinecallback (coords, data, weight) {
+  function combinecallback (
+    coords: [number, number, number],
+    data: number[][],
+    weight: number[],
+  ) {
     // console.log('combine callback');
     return [coords[0], coords[1], coords[2]];
   }
-  function edgeCallback (flag) {
+  function edgeCallback (flag: boolean) {
     // don't really care about the flag, but need no-strip/no-fan behavior
     // console.log('edge flag: ' + flag);
   }
@@ -38,14 +43,14 @@ const tessy = (function initTesselator () {
   return tessy;
 })();
 
-export function triangulate (contours) {
+export function triangulate (contours: number[][]) {
   // libtess will take 3d verts and flatten to a plane for tesselation
   // since only doing 2d tesselation here, provide z=1 normal to skip
   // iterating over verts only to get the same answer.
   // comment out to test normal-generation code
   tessy.gluTessNormal(0, 0, 1);
 
-  const triangleVerts = [];
+  const triangleVerts: number[] = [];
 
   tessy.gluTessBeginPolygon(triangleVerts);
 

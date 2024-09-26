@@ -1,5 +1,4 @@
-export interface PointData
-{
+export interface PointData {
   /** X coord */
   x: number,
 

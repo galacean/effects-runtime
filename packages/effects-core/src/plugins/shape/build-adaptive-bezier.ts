@@ -33,8 +33,8 @@ export function buildAdaptiveBezier (
   return points;
 }
 
-// //// Based on:
-// //// https://github.com/pelson/antigrain/blob/master/agg-2.4/src/agg_curves.cpp
+//// Based on:
+//// https://github.com/pelson/antigrain/blob/master/agg-2.4/src/agg_curves.cpp
 
 function begin (
   sX: number, sY: number,
@@ -42,7 +42,7 @@ function begin (
   cp2x: number, cp2y: number,
   eX: number, eY: number,
   points: number[],
-  distanceTolerance: number
+  distanceTolerance: number,
 ) {
   // dont need to actually ad this!
   // points.push(sX, sY);
@@ -58,7 +58,8 @@ function recursive (
   x4: number, y4: number,
   points: number[],
   distanceTolerance: number,
-  level: number) {
+  level: number,
+) {
   if (level > RECURSION_LIMIT) { return; }
 
   const pi = Math.PI;
@@ -108,8 +109,9 @@ function recursive (
 
         da1 = Math.abs(a23 - Math.atan2(y2 - y1, x2 - x1));
         da2 = Math.abs(Math.atan2(y4 - y3, x4 - x3) - a23);
-        if (da1 >= pi) {da1 = (2 * pi) - da1;}
-        if (da2 >= pi) {da2 = (2 * pi) - da2;}
+
+        if (da1 >= pi) { da1 = (2 * pi) - da1; }
+        if (da2 >= pi) { da2 = (2 * pi) - da2; }
 
         if (da1 + da2 < mAngleTolerance) {
           // Finally we can stop the recursion
@@ -146,7 +148,7 @@ function recursive (
         // Angle Condition
         // ----------------------
         da1 = Math.abs(Math.atan2(y3 - y2, x3 - x2) - Math.atan2(y2 - y1, x2 - x1));
-        if (da1 >= pi) {da1 = (2 * pi) - da1;}
+        if (da1 >= pi) { da1 = (2 * pi) - da1; }
 
         if (da1 < mAngleTolerance) {
           points.push(x2, y2);
@@ -176,7 +178,7 @@ function recursive (
         // Angle Condition
         // ----------------------
         da1 = Math.abs(Math.atan2(y4 - y3, x4 - x3) - Math.atan2(y3 - y2, x3 - x2));
-        if (da1 >= pi) {da1 = (2 * pi) - da1;}
+        if (da1 >= pi) { da1 = (2 * pi) - da1; }
 
         if (da1 < mAngleTolerance) {
           points.push(x2, y2);

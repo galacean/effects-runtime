@@ -3,20 +3,18 @@
  * https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/ShapePath.ts
  */
 
+import type { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Polygon } from './polygon';
 import { buildAdaptiveBezier } from './build-adaptive-bezier';
 import type { GraphicsPath } from './graphics-path';
-import type { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 
 export class ShapePath {
   currentPoly: Polygon | null = null;
-
   shapePrimitives: { shape: Polygon, transform?: Matrix3 }[] = [];
 
-  private graphicsPath: GraphicsPath;
-
-  constructor (graphicsPath: GraphicsPath) {
-    this.graphicsPath = graphicsPath;
+  constructor (
+    private graphicsPath: GraphicsPath,
+  ) {
   }
 
   /** Builds the path. */
@@ -30,12 +28,12 @@ export class ShapePath {
       const data = instruction.data;
 
       switch (action) {
-        case 'bezierCurveTo':{
+        case 'bezierCurveTo': {
           this.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
 
           break;
         }
-        case 'moveTo':{
+        case 'moveTo': {
           this.moveTo(data[0], data[1]);
 
           break;
@@ -61,7 +59,7 @@ export class ShapePath {
   bezierCurveTo (
     cp1x: number, cp1y: number, cp2x: number, cp2y: number,
     x: number, y: number,
-    smoothness?: number
+    smoothness?: number,
   ): ShapePath {
     this.ensurePoly();
     const currentPoly = this.currentPoly as Polygon;
@@ -83,12 +81,12 @@ export class ShapePath {
   }
 
   /**
-     * Starts a new polygon path from the specified starting point.
-     * This method initializes a new polygon or ends the current one if it exists.
-     * @param x - The x-coordinate of the starting point of the new polygon.
-     * @param y - The y-coordinate of the starting point of the new polygon.
-     * @returns The instance of the current object for chaining.
-     */
+   * Starts a new polygon path from the specified starting point.
+   * This method initializes a new polygon or ends the current one if it exists.
+   * @param x - The x-coordinate of the starting point of the new polygon.
+   * @param y - The y-coordinate of the starting point of the new polygon.
+   * @returns The instance of the current object for chaining.
+   */
   private startPoly (x: number, y: number): this {
     let currentPoly = this.currentPoly;
 
@@ -106,13 +104,13 @@ export class ShapePath {
   }
 
   /**
-     * Ends the current polygon path. If `closePath` is set to true,
-     * the path is closed by connecting the last point to the first one.
-     * This method finalizes the current polygon and prepares it for drawing or adding to the shape primitives.
-     * @param closePath - A boolean indicating whether to close the polygon by connecting the last point
-     *  back to the starting point. False by default.
-     * @returns The instance of the current object for chaining.
-     */
+   * Ends the current polygon path. If `closePath` is set to true,
+   * the path is closed by connecting the last point to the first one.
+   * This method finalizes the current polygon and prepares it for drawing or adding to the shape primitives.
+   * @param closePath - A boolean indicating whether to close the polygon by connecting the last point
+   *  back to the starting point. False by default.
+   * @returns The instance of the current object for chaining.
+   */
   private endPoly (closePath = false): this {
     const shape = this.currentPoly;
 
@@ -128,10 +126,9 @@ export class ShapePath {
   }
 
   private ensurePoly (start = true): void {
-    if (this.currentPoly) {return;}
+    if (this.currentPoly) { return; }
 
     this.currentPoly = new Polygon();
     this.currentPoly.points.push(0, 0);
-
   }
 }
