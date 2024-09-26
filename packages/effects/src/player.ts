@@ -299,6 +299,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   ): Promise<Composition> {
     const renderer = this.renderer;
     const engine = renderer.engine;
+    const asyncShaderCompile = engine.gpuCapability?.detail?.asyncShaderCompile;
     const last = performance.now();
     let opts = {
       autoplay: true,
@@ -397,13 +398,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       composition.pause();
     }
 
-    const firstFrameTime = performance.now() - last;
     const compileTime = performance.now() - compileStart;
+    const firstFrameTime = performance.now() - last;
 
-    composition.statistic.firstFrameTime = firstFrameTime;
     composition.statistic.compileTime = compileTime;
-    logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
-    logger.info(`Shader compile: [${composition.name}]${compileTime.toFixed(4)}ms.`);
+    composition.statistic.firstFrameTime = firstFrameTime;
+    logger.info(`Shader ${asyncShaderCompile ? 'async' : 'sync'} compile [${composition.name}]: ${compileTime.toFixed(4)}ms.`);
+    logger.info(`First frame [${composition.name}]: ${firstFrameTime.toFixed(4)}ms.`);
 
     this.compositions.push(composition);
 
