@@ -2,14 +2,13 @@ import type * as spec from '@galacean/effects-specification';
 import type { Texture2DSourceOptions, TextureCubeSourceOptions } from './types';
 import { TextureSourceType } from './types';
 import { loadImage } from '../downloader';
-import type { Engine } from '../engine';
 
 type TextureJSONOptions = spec.SerializedTextureSource & spec.TextureConfigOptionsBase & spec.TextureFormatOptions;
 
 export async function deserializeMipmapTexture (
   textureOptions: TextureJSONOptions,
   bins: ArrayBuffer[],
-  engine: Engine,
+  assets: Record<string, any>,
   files: spec.BinaryFile[] = [],
 ): Promise<Texture2DSourceOptions | TextureCubeSourceOptions> {
   if (textureOptions.target === 34067) {
@@ -18,10 +17,9 @@ export async function deserializeMipmapTexture (
       // @ts-expect-error
       if (pointer.id) {
         // @ts-expect-error
-        const loadedImageAsset = engine.assetLoader.loadGUID(pointer.id);
+        const loadedImage = assets[pointer.id];
 
-        // @ts-expect-error
-        return loadedImageAsset.data;
+        return loadedImage;
       } else {
         return loadMipmapImage(pointer, bins);
       }
