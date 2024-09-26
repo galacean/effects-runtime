@@ -471,7 +471,6 @@ export class AssetManager implements Disposable {
     jsonScene: spec.JSONScene,
   ) {
     const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
-
     const jobs = textures.map(async (textureOptions, idx) => {
       if (textureOptions instanceof Texture) {
         return textureOptions;
