@@ -16,7 +16,6 @@ import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { ImageAsset } from './image-asset';
-import type { Engine } from './engine';
 
 let seed = 1;
 
@@ -176,6 +175,10 @@ export class AssetManager implements Disposable {
           hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'}Compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
 
+        for (let i = 0; i < images.length; i++) {
+          this.assets[images[i].id] = loadedImages[i];
+        }
+
         if (renderer) {
           for (let i = 0; i < images.length; i++) {
             const imageAsset = new ImageAsset(renderer.engine);
@@ -187,7 +190,7 @@ export class AssetManager implements Disposable {
         }
 
         await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene, renderer!.engine));
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
         scene = {
           timeInfos,
@@ -411,7 +414,6 @@ export class AssetManager implements Disposable {
     images: any,
     bins: ArrayBuffer[],
     jsonScene: spec.JSONScene,
-    engine: Engine
   ) {
     const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
     const jobs = textures.map(async (textureOptions, idx) => {
@@ -420,7 +422,7 @@ export class AssetManager implements Disposable {
       }
       if ('mipmaps' in textureOptions) {
         try {
-          return await deserializeMipmapTexture(textureOptions, bins, engine, jsonScene.bins);
+          return await deserializeMipmapTexture(textureOptions, bins, this.assets, jsonScene.bins);
         } catch (e) {
           throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }
@@ -430,7 +432,7 @@ export class AssetManager implements Disposable {
       let image: any;
 
       if (isObject(source)) { // source 为 images 数组 id
-        image = engine.assetLoader.loadGUID<ImageAsset>((source as Record<string, string>).id).data;
+        image = this.assets[source.id as string];
       } else if (typeof source === 'string') { // source 为 base64 数据
         image = await loadImage(base64ToFile(source));
       }
