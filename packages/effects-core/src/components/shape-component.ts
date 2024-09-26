@@ -65,6 +65,11 @@ export class ShapeComponent extends RendererComponent {
               0.5, -0.5, 0, //右下
             ]),
           },
+          aUV:{
+            type: glContext.FLOAT,
+            size: 2,
+            data: new Float32Array(),
+          },
         },
         mode: glContext.TRIANGLES,
         drawCount: 4,
@@ -119,30 +124,42 @@ export class ShapeComponent extends RendererComponent {
     const shapePrimitives = shapePath.shapePrimitives;
     const vertices: number[] = [];
 
+    // triangulate shapePrimitive
     for (const shapePrimitive of shapePrimitives) {
       const shape = shapePrimitive.shape;
 
       vertices.push(...triangulate([shape.points]));
     }
 
-    const positionCount = vertices.length / 2;
-    let positionArray = this.geometry.getAttributeData('aPos');
+    // build vertices and uvs
+    const vertexCount = vertices.length / 2;
 
-    if (!positionArray || positionArray.length < positionCount * 3) {
-      positionArray = new Float32Array(positionCount * 3);
+    let positionArray = this.geometry.getAttributeData('aPos');
+    let uvArray = this.geometry.getAttributeData('aUV');
+
+    if (!positionArray || positionArray.length < vertexCount * 3) {
+      positionArray = new Float32Array(vertexCount * 3);
+    }
+    if (!uvArray || uvArray.length < vertexCount * 2) {
+      uvArray = new Float32Array(vertexCount * 2);
     }
 
-    for (let i = 0; i < positionCount; i++) {
+    for (let i = 0; i < vertexCount; i++) {
       const pointsOffset = i * 3;
       const positionArrayOffset = i * 2;
+      const uvOffset = i * 2;
 
-      positionArray[pointsOffset] = vertices[positionArrayOffset] * 1;
-      positionArray[pointsOffset + 1] = vertices[positionArrayOffset + 1] * 1;
+      positionArray[pointsOffset] = vertices[positionArrayOffset];
+      positionArray[pointsOffset + 1] = vertices[positionArrayOffset + 1];
       positionArray[pointsOffset + 2] = 0;
+
+      uvArray[uvOffset] = positionArray[pointsOffset];
+      uvArray[uvOffset + 1] = positionArray[pointsOffset + 1];
     }
 
     this.geometry.setAttributeData('aPos', positionArray);
-    this.geometry.setDrawCount(positionArray.length / 3);
+    this.geometry.setAttributeData('aUV', uvArray);
+    this.geometry.setDrawCount(vertexCount);
   }
 
   override fromData (data: ShapeCustomComponent): void {
