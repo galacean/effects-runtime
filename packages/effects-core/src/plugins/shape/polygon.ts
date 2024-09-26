@@ -1,3 +1,8 @@
+/**
+ * Based on:
+ * https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Polygon.ts
+ */
+
 import type { PointData } from './point-data';
 
 /**

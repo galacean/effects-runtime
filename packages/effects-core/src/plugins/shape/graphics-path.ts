@@ -1,3 +1,8 @@
+/**
+ * Based on:
+ * https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/GraphicsPath.ts
+ */
+
 import { ShapePath } from './shape-path';
 
 export class GraphicsPath {

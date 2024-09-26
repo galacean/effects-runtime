@@ -5,9 +5,9 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { MaterialProps } from '../material';
 import { Material } from '../material';
-import { GraphicsPath } from '../plugins/graphics/graphics-path';
-import type { ShapePath } from '../plugins/graphics/shape-path';
-import { triangulate } from '../plugins/graphics/triangulate';
+import { GraphicsPath } from '../plugins/shape/graphics-path';
+import type { ShapePath } from '../plugins/shape/shape-path';
+import { triangulate } from '../plugins/shape/triangulate';
 import type { Renderer } from '../render';
 import { Geometry, GLSLVersion } from '../render';
 

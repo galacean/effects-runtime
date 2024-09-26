@@ -1,3 +1,8 @@
+/**
+ * Based on:
+ * https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/ShapePath.ts
+ */
+
 import { Polygon } from './polygon';
 import { buildAdaptiveBezier } from './build-adaptive-bezier';
 import type { GraphicsPath } from './graphics-path';
