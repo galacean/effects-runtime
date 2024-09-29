@@ -22,6 +22,7 @@ import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
 import type { PostProcessVolume } from './components/post-process-volume';
 import { SceneTicking } from './composition/scene-ticking';
+import { SerializationHelper } from './serialization-helper';
 
 export interface CompositionStatistic {
   loadStart: number,
@@ -165,7 +166,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 预合成的合成属性，在 content 中会被其元素属性覆盖
    */
-  refCompositionProps: Map<string, VFXItemProps> = new Map();
+  refCompositionProps: Map<string, spec.CompositionData> = new Map();
   /**
    * 合成的相机对象
    */
@@ -241,8 +242,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     // Spawn rootCompositionComponent
     this.rootComposition = new CompositionComponent(this.getEngine());
-    this.rootComposition.startTime = sourceContent.startTime;
-    this.rootComposition.data = sourceContent;
+    this.rootComposition.startTime = sourceContent.startTime ?? 0;
     this.rootComposition.item = this.rootItem;
     this.rootItem.components.push(this.rootComposition);
 
@@ -277,7 +277,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
     this.rendererOptions = null;
+    SerializationHelper.deserializeTaggedProperties(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
     this.rootComposition.createContent();
+
     this.buildItemTree(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
@@ -285,7 +287,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
-    // this.initializeSceneTicking(this.rootItem);
   }
 
   initializeSceneTicking (item: VFXItem) {

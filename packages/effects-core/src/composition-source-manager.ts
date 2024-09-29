@@ -18,7 +18,7 @@ export interface ContentOptions {
   duration: number,
   name: string,
   endBehavior: spec.EndBehavior,
-  items: VFXItemProps[],
+  items: spec.DataPath[],
   camera: spec.CameraOptions,
   startTime: number,
   timelineAsset: spec.DataPath,
@@ -30,9 +30,8 @@ export interface ContentOptions {
  */
 export class CompositionSourceManager implements Disposable {
   composition?: spec.CompositionData;
-  refCompositions: Map<string, spec.CompositionData> = new Map();
-  sourceContent?: ContentOptions;
-  refCompositionProps: Map<string, VFXItemProps> = new Map();
+  sourceContent?: spec.CompositionData;
+  refCompositionProps: Map<string, spec.CompositionData> = new Map();
   renderLevel?: SceneRenderLevel;
   pluginSystem?: PluginSystem;
   totalTime: number;
@@ -41,6 +40,8 @@ export class CompositionSourceManager implements Disposable {
   jsonScene?: spec.JSONScene;
   mask = 0;
   engine: Engine;
+
+  private refCompositions: Map<string, spec.CompositionData> = new Map();
 
   constructor (
     scene: Scene,
@@ -77,26 +78,25 @@ export class CompositionSourceManager implements Disposable {
     this.sourceContent = this.getContent(this.composition);
   }
 
-  private getContent (composition: spec.CompositionData): ContentOptions {
-    const { id, duration, name, endBehavior, camera, startTime = 0 } = composition;
-    const items = this.assembleItems(composition);
+  private getContent (composition: spec.CompositionData): spec.CompositionData {
+    this.assembleItems(composition);
 
-    return {
+    const compositionData: spec.CompositionData = {
       ...composition,
-      id,
-      duration,
-      name,
-      endBehavior: isNaN(endBehavior) ? spec.EndBehavior.freeze : endBehavior,
-      // looping,
-      items,
-      camera,
-      startTime,
     };
+
+    if (isNaN(compositionData.endBehavior)) {
+      compositionData.endBehavior = spec.EndBehavior.freeze;
+    }
+
+    if (!compositionData.startTime) {
+      compositionData.startTime = 0;
+    }
+
+    return compositionData;
   }
 
   private assembleItems (composition: spec.CompositionData) {
-    const items: any[] = [];
-
     this.mask++;
     const componentMap: Record<string, any> = {};
 
@@ -127,22 +127,19 @@ export class CompositionSourceManager implements Disposable {
         // 处理预合成的渲染顺序
         if (itemProps.type === spec.ItemType.composition) {
           const refId = (sourceItemData.content as spec.CompositionContent).options.refId;
+          const composition = this.refCompositions.get(refId);
 
-          if (!this.refCompositions.get(refId)) {
+          if (!composition) {
             throw new Error(`Invalid ref composition id: ${refId}.`);
           }
-          const ref = this.getContent(this.refCompositions.get(refId)!);
+          const ref = this.getContent(composition);
 
           if (!this.refCompositionProps.has(refId)) {
-            this.refCompositionProps.set(refId, ref as unknown as VFXItemProps);
+            this.refCompositionProps.set(refId, ref);
           }
         }
-
-        items.push(itemProps as VFXItemProps);
       }
     }
-
-    return items;
   }
 
   private preProcessItemContent (renderContent: any) {
