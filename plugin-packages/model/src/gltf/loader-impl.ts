@@ -1271,7 +1271,7 @@ export function getDefaultUnlitMaterialData (): spec.MaterialData {
     },
     'macros': [],
     'shader': {
-      'id': 'unlit000000000000000000000000000',
+      'id': spec.BuiltinObjectGUID.UnlitShader,
     },
     'ints': {
 

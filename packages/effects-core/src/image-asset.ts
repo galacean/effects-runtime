@@ -1,6 +1,6 @@
 import { EffectsObject } from './effects-object';
-import type { ImageSource } from './scene';
+import type { ImageLike } from './scene';
 
 export class ImageAsset extends EffectsObject {
-  data: ImageSource;
+  data: ImageLike;
 }

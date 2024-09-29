@@ -11,7 +11,7 @@ import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
 import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene, SceneType } from './scene';
+import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
 import type { Disposable, LostHandler } from './utils';
@@ -153,7 +153,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成对应的 url 或者 JSON
    */
-  readonly url: SceneType;
+  readonly url: Scene.LoadType;
   /**
    * 合成根元素
    */
