@@ -37,8 +37,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   readonly ticker: Ticker;
 
-  assetManagers: AssetManager[] = [];
-
   private readonly builtinObjects: EffectsObject[] = [];
   private readonly event: EventSystem;
   private readonly reportGPUTime?: (time: number) => void;
@@ -53,6 +51,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private resumePending = false;
   private offscreenMode: boolean;
   private disposed = false;
+  private assetManagers: AssetManager[] = [];
   private speed = 1;
   private baseCompositionIndex = 0;
 
@@ -176,6 +175,21 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   getCompositions () {
     return this.compositions;
+  }
+
+  /**
+   * Gets the array of asset managers.
+   * @returns
+   */
+  getAssetManager (): ReadonlyArray<AssetManager> {
+    return this.assetManagers;
+  }
+
+  /**
+   * 获取当前播放的合成数量
+   */
+  get compositionCount () {
+    return this.compositions.length;
   }
 
   /**

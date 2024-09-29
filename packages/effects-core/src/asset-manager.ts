@@ -132,7 +132,7 @@ export class AssetManager implements Disposable {
         const link = new URL(url, location.href).href;
 
         this.baseUrl = link;
-        rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(url) as unknown as Promise<spec.JSONScene>);
+        rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
       } else {
         // url 为 spec.JSONScene 或 Scene 对象
         rawJSON = url;
