@@ -535,10 +535,10 @@ export class VFXItem extends EffectsObject implements Disposable {
     const queue: VFXItem[] = [];
 
     queue.push(...this.children);
-    while (queue.length > 0) {
-      const item = queue[0];
-
-      queue.shift();
+    let index = 0;
+    while (index < queue.length) {
+      const item = queue[index];
+      index++;
       if (item.name === name) {
         return item;
       }
