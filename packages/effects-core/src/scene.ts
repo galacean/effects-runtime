@@ -34,7 +34,6 @@ export interface Scene {
    */
   timeInfos: Record<string, number>,
   url: Scene.LoadType,
-  usedImages: Record<number, boolean>,
 }
 
 export namespace Scene {
