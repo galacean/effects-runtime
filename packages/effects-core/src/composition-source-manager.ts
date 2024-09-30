@@ -9,7 +9,6 @@ import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import { isObject } from './utils';
-import type { VFXItemProps } from './vfx-item';
 
 let listOrder = 0;
 
@@ -79,11 +78,11 @@ export class CompositionSourceManager implements Disposable {
   }
 
   private getContent (composition: spec.CompositionData): spec.CompositionData {
-    this.assembleItems(composition);
-
     const compositionData: spec.CompositionData = {
       ...composition,
     };
+
+    this.assembleItems(compositionData);
 
     if (isNaN(compositionData.endBehavior)) {
       compositionData.endBehavior = spec.EndBehavior.freeze;
@@ -98,20 +97,23 @@ export class CompositionSourceManager implements Disposable {
 
   private assembleItems (composition: spec.CompositionData) {
     this.mask++;
-    const componentMap: Record<string, any> = {};
+    const componentMap: Record<string, spec.ComponentData> = {};
     const items = [];
 
-    //@ts-expect-error
+    if (!this.jsonScene) {
+      return;
+    }
+
     for (const component of this.jsonScene.components) {
       componentMap[component.id] = component;
     }
 
     for (const itemDataPath of composition.items) {
-      //@ts-expect-error
-      const sourceItemData: VFXItemProps = this.engine.jsonSceneData[itemDataPath.id];
-      const itemProps: Record<string, any> = sourceItemData;
+      const sourceItemData = this.engine.jsonSceneData[itemDataPath.id] as spec.VFXItemData;
+      const itemProps = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
+        //@ts-expect-error
         itemProps.listIndex = listOrder++;
 
         if (
