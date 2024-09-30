@@ -107,8 +107,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 是否播放完成后销毁 texture 对象
    */
   keepResource: boolean;
-  // 3D 模式下创建的场景相机 需要最后更新参数, TODO: 太 hack 了, 待移除
-  extraCamera: VFXItem;
   /**
    * 合成内的元素否允许点击、拖拽交互
    * @since 1.6.0

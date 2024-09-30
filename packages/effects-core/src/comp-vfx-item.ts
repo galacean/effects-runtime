@@ -38,6 +38,9 @@ export class CompositionComponent extends Behaviour {
   private graph: PlayableGraph = new PlayableGraph();
 
   override onStart (): void {
+    if (!this.timelineAsset) {
+      this.timelineAsset = new TimelineAsset(this.engine);
+    }
     this.resolveBindings();
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
 
@@ -76,10 +79,6 @@ export class CompositionComponent extends Behaviour {
   }
 
   createContent () {
-    if (!this.timelineAsset) {
-      this.timelineAsset = new TimelineAsset(this.engine);
-    }
-
     if (this.item.composition) {
       for (const item of this.items) {
         item.composition = this.item.composition;
@@ -104,9 +103,6 @@ export class CompositionComponent extends Behaviour {
               component.setInstanceId(generateGUID());
             }
           }
-        }
-        if (VFXItem.isExtraCamera(item)) {
-          this.item.composition.extraCamera = item;
         }
       }
     }
