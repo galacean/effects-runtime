@@ -99,6 +99,7 @@ export class CompositionSourceManager implements Disposable {
   private assembleItems (composition: spec.CompositionData) {
     this.mask++;
     const componentMap: Record<string, any> = {};
+    const items = [];
 
     //@ts-expect-error
     for (const component of this.jsonScene.components) {
@@ -138,8 +139,10 @@ export class CompositionSourceManager implements Disposable {
             this.refCompositionProps.set(refId, ref);
           }
         }
+        items.push(itemDataPath);
       }
     }
+    composition.items = items;
   }
 
   private preProcessItemContent (renderContent: any) {
