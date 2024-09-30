@@ -361,7 +361,7 @@ export class EffectsPackage {
     };
 
     for (const obj of this.exportObjects) {
-      effectsPackageData.exportObjects.push(SerializationHelper.serializeTaggedProperties(obj) as spec.EffectsObjectData);
+      effectsPackageData.exportObjects.push(SerializationHelper.serialize(obj) as spec.EffectsObjectData);
     }
 
     return effectsPackageData;

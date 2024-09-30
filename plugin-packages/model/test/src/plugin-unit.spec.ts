@@ -755,7 +755,7 @@ describe('渲染插件单测', function () {
 
     const animComp = new AnimationComponent(engine);
 
-    SerializationHelper.deserializeTaggedProperties(jsonScene.components[1], animComp);
+    SerializationHelper.deserialize(jsonScene.components[1], animComp);
     expect(animComp.clips.length).to.eql(1);
     const animClip = animComp.clips[0];
     expect(animClip.duration).to.eql(2);
@@ -977,7 +977,7 @@ describe('渲染插件单测', function () {
     });
     expect(itemList[22].type).to.eql('mesh');
     const itemMesh = new VFXItem(engine);
-    SerializationHelper.deserializeTaggedProperties(itemList[22], itemMesh);
+    SerializationHelper.deserialize(itemList[22], itemMesh);
     const meshComp = itemMesh.getComponent(ModelMeshComponent);
     const meshData = meshComp.data as spec.ModelMeshComponentData;
     expect(meshData.name).to.eql('Cesium_Man');
@@ -1109,7 +1109,7 @@ describe('渲染插件单测', function () {
       //
       expect(itemList[1].type).to.eql('mesh');
       const itemMesh = new VFXItem(engine);
-      SerializationHelper.deserializeTaggedProperties(itemList[1], itemMesh);
+      SerializationHelper.deserialize(itemList[1], itemMesh);
       const meshComp = itemMesh.getComponent(ModelMeshComponent);
       const meshData = meshComp.data as spec.ModelMeshComponentData;
       expect(meshData.name).to.eql('WaterBottle');

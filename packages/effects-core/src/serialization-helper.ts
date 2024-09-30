@@ -70,13 +70,13 @@ export class SerializationHelper {
       if (!serializedDatas[serializeObject.getInstanceId()]) {
         serializedDatas[serializeObject.getInstanceId()] = {};
       }
-      SerializationHelper.serializeTaggedProperties(serializeObject, serializedDatas[serializeObject.getInstanceId()]);
+      SerializationHelper.serialize(serializeObject, serializedDatas[serializeObject.getInstanceId()]);
     }
 
     return serializedDatas;
   }
 
-  static serializeTaggedProperties (
+  static serialize (
     effectsObject: EffectsObject,
     serializedData?: Record<string, any>,
   ) {
@@ -148,7 +148,7 @@ export class SerializationHelper {
     return serializedData;
   }
 
-  static deserializeTaggedProperties (
+  static deserialize (
     serializedData: spec.EffectsObjectData,
     effectsObject: EffectsObject,
   ) {
@@ -183,7 +183,7 @@ export class SerializationHelper {
     effectsObject.fromData(taggedProperties as spec.EffectsObjectData);
   }
 
-  static async deserializeTaggedPropertiesAsync (
+  static async deserializeAsync (
     serializedData: spec.EffectsObjectData,
     effectsObject: EffectsObject,
   ) {

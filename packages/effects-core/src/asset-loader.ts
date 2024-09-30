@@ -60,7 +60,7 @@ export class AssetLoader {
 
     effectsObject.setInstanceId(effectsObjectData.id);
     this.engine.addInstance(effectsObject);
-    SerializationHelper.deserializeTaggedProperties(effectsObjectData, effectsObject);
+    SerializationHelper.deserialize(effectsObjectData, effectsObject);
 
     return effectsObject as T;
   }
@@ -124,7 +124,7 @@ export class AssetLoader {
 
     effectsObject.setInstanceId(effectsObjectData.id);
     this.engine.addInstance(effectsObject);
-    await SerializationHelper.deserializeTaggedPropertiesAsync(effectsObjectData, effectsObject);
+    await SerializationHelper.deserializeAsync(effectsObjectData, effectsObject);
 
     return effectsObject as T;
   }
