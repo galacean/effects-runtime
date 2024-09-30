@@ -9,7 +9,6 @@ import { HitTestType, ObjectBindingTrack } from './plugins';
 import type { Playable } from './plugins/cal/playable-graph';
 import { PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/cal/timeline-asset';
-import { Transform } from './transform';
 import { generateGUID, noop } from './utils';
 import { Item, VFXItem } from './vfx-item';
 import { SerializationHelper } from './serialization-helper';
@@ -39,9 +38,6 @@ export class CompositionComponent extends Behaviour {
   private graph: PlayableGraph = new PlayableGraph();
 
   override onStart (): void {
-    const { startTime = 0 } = this.item.props;
-
-    this.startTime = startTime;
     this.resolveBindings();
     this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
 
@@ -91,6 +87,7 @@ export class CompositionComponent extends Behaviour {
 
         // 设置预合成作为元素时的时长、结束行为和渲染延时
         if (Item.isComposition(itemData)) {
+          this.item.composition.refContent.push(item);
           const refId = itemData.content.options.refId;
           const props = this.item.composition.refCompositionProps.get(refId);
 
@@ -99,12 +96,7 @@ export class CompositionComponent extends Behaviour {
           }
           const compositionComponent = item.addComponent(CompositionComponent);
 
-          this.item.composition.refContent.push(item);
-          if (item.endBehavior === spec.EndBehavior.restart) {
-            this.item.composition.autoRefTex = false;
-          }
-          //@ts-expect-error
-          SerializationHelper.deserialize(props, compositionComponent);
+          SerializationHelper.deserialize(props as unknown as spec.EffectsObjectData, compositionComponent);
           compositionComponent.createContent();
           for (const vfxItem of compositionComponent.items) {
             vfxItem.setInstanceId(generateGUID());
@@ -113,9 +105,6 @@ export class CompositionComponent extends Behaviour {
             }
           }
         }
-        item.parent = this.item;
-        // 相机不跟随合成移动
-        item.transform.parentTransform = itemData.type === spec.ItemType.camera ? new Transform() : this.transform;
         if (VFXItem.isExtraCamera(item)) {
           this.item.composition.extraCamera = item;
         }
@@ -242,9 +231,10 @@ export class CompositionComponent extends Behaviour {
   override fromData (data: any): void {
     super.fromData(data);
 
+    this.items = data.items;
+    this.startTime = data.startTime ?? 0;
     this.sceneBindings = data.sceneBindings;
     this.timelineAsset = data.timelineAsset;
-    this.items = data.items;
   }
 
   private resolveBindings () {

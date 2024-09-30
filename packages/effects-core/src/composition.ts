@@ -241,10 +241,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.composition = this;
 
     // Spawn rootCompositionComponent
-    this.rootComposition = new CompositionComponent(this.getEngine());
-    this.rootComposition.startTime = sourceContent.startTime ?? 0;
-    this.rootComposition.item = this.rootItem;
-    this.rootItem.components.push(this.rootComposition);
+    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
 
     const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
 
@@ -323,7 +320,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成开始渲染的时间
    */
   get startTime () {
-    return this.rootComposition.startTime ?? 0;
+    return this.rootComposition.startTime;
   }
 
   /**
