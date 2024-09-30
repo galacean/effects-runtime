@@ -104,7 +104,7 @@ export class CompositionComponent extends Behaviour {
             this.item.composition.autoRefTex = false;
           }
           //@ts-expect-error
-          SerializationHelper.deserializeTaggedProperties(props, compositionComponent);
+          SerializationHelper.deserialize(props, compositionComponent);
           compositionComponent.createContent();
           for (const vfxItem of compositionComponent.items) {
             vfxItem.setInstanceId(generateGUID());

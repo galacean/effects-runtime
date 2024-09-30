@@ -277,7 +277,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
     this.rendererOptions = null;
-    SerializationHelper.deserializeTaggedProperties(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
+    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
     this.rootComposition.createContent();
 
     this.buildItemTree(this.rootItem);

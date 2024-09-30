@@ -82,7 +82,7 @@ export class InspectorGui {
                     const guid = effectComponent.getInstanceId();
 
                     (this.item.engine.jsonSceneData[guid] as EffectComponentData).materials[0] = { id: effectsObjectData.id };
-                    SerializationHelper.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent);
+                    SerializationHelper.deserialize(this.item.engine.jsonSceneData[guid], effectComponent);
                   }
                 }
                 this.itemDirtyFlag = true;
@@ -101,7 +101,7 @@ export class InspectorGui {
                     const guid = effectComponent.getInstanceId();
 
                     (this.item.engine.jsonSceneData[guid] as EffectComponentData).geometry = { id: effectsObjectData.id };
-                    SerializationHelper.deserializeTaggedProperties(this.item.engine.jsonSceneData[guid], effectComponent);
+                    SerializationHelper.deserialize(this.item.engine.jsonSceneData[guid], effectComponent);
                   }
                 }
               });
@@ -302,10 +302,10 @@ export class SerializedObject {
   }
 
   update () {
-    SerializationHelper.serializeTaggedProperties(this.target, this.serializedData);
+    SerializationHelper.serialize(this.target, this.serializedData);
   }
 
   applyModifiedProperties () {
-    SerializationHelper.deserializeTaggedProperties(this.serializedData as spec.EffectsObjectData, this.target);
+    SerializationHelper.deserialize(this.serializedData as spec.EffectsObjectData, this.target);
   }
 }
