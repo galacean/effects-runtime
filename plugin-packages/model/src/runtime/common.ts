@@ -83,8 +83,8 @@ export enum PShadowType {
   expVariance,
 }
 
-export const PBRShaderGUID = 'pbr00000000000000000000000000000';
-export const UnlitShaderGUID = 'unlit000000000000000000000000000';
+export const PBRShaderGUID = spec.BuiltinObjectGUID.PBRShader;
+export const UnlitShaderGUID = spec.BuiltinObjectGUID.UnlitShader;
 
 /**
  * 插件变换类
