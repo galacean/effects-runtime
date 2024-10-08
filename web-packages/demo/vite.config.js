@@ -24,6 +24,7 @@ export default defineConfig(({ mode }) => {
           'dynamic-image': resolve(__dirname, 'html/dynamic-image.html'),
           'dynamic-video': resolve(__dirname, 'html/dynamic-video.html'),
           'render-level': resolve(__dirname, 'html/render-level.html'),
+          'shader-compile': resolve(__dirname, 'html/shader-compile.html'),
           'local-file': resolve(__dirname, 'html/local-file.html'),
           'post-processing': resolve(__dirname, 'html/post-processing.html'),
           'single': resolve(__dirname, 'html/single.html'),
