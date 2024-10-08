@@ -1,7 +1,7 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  Asset,
+  BinaryAsset,
   BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer, Texture,
 } from '@galacean/effects';
 import {
@@ -30,11 +30,11 @@ export interface SpineBaseData {
 
 export interface SpineResource {
   atlas: {
-    bins: Asset<ArrayBuffer>,
+    bins: BinaryAsset,
     source: [start: number, length?: number],
   },
   skeleton: {
-    bins: Asset<ArrayBuffer>,
+    bins: BinaryAsset,
     source: [start: number, length?: number],
   },
   images: Texture[],
@@ -127,10 +127,10 @@ export class SpineComponent extends RendererComponent {
       return;
     }
     const [start, bufferLength] = atlasOptions.source;
-    const atlasBuffer = bufferLength ? new Uint8Array(atlasOptions.bins.data, start, bufferLength) : new Uint8Array(atlasOptions.bins.data, start);
+    const atlasBuffer = bufferLength ? new Uint8Array(atlasOptions.bins.buffer, start, bufferLength) : new Uint8Array(atlasOptions.bins.buffer, start);
     const atlas = readAtlasData(atlasBuffer, textures);
 
-    const skBuffer = skeletonOptions.bins.data;
+    const skBuffer = skeletonOptions.bins.buffer;
     const [skelStart, skelBufferLength] = skeletonOptions.source;
     const skeletonBuffer = skelBufferLength ? skBuffer.slice(skelStart, skelStart + skelBufferLength) : skBuffer.slice(skelStart);
     const skeletonFile = getSkeletonFromBuffer(skeletonBuffer, skeletonType);
