@@ -1,5 +1,5 @@
-import type { Texture, Engine, VideoAssets, Texture2DSourceOptionsVideo } from '@galacean/effects-core';
-import { spec, math, BaseRenderComponent, effectsClass, glContext } from '@galacean/effects-core';
+import type { Texture, Engine, Texture2DSourceOptionsVideo, Asset } from '@galacean/effects';
+import { spec, math, BaseRenderComponent, effectsClass, glContext } from '@galacean/effects';
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
  */
@@ -54,7 +54,7 @@ export class VideoComponent extends BaseRenderComponent {
       //@ts-expect-error
       renderer = {};
     }
-    this.video = (video as unknown as VideoAssets).data;
+    this.video = (video as unknown as Asset<HTMLVideoElement>).data;
     this.setPlaybackRate(playbackRate);
     this.setVolume(volume);
     this.setMuted(muted);

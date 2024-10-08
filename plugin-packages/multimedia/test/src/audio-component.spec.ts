@@ -1,6 +1,6 @@
 import { spec } from '@galacean/effects';
 import { generateGUID, Player } from '@galacean/effects';
-import { AudioComponent } from '@galacean/effects-plugin-media';
+import { AudioComponent } from '@galacean/effects-plugin-multimedia';
 
 export interface AudioCompositionOptions {
   duration: number,

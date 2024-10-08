@@ -1,5 +1,5 @@
 import { generateGUID, Player, spec } from '@galacean/effects';
-import { VideoComponent } from '@galacean/effects-plugin-media';
+import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 export interface VideoCompositionOptions {
   duration: number,

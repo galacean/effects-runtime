@@ -1,4 +1,4 @@
-# Galacean Effects Media Plugin
+# Galacean Effects multimedia Plugin
 
 ## Usage
 
@@ -6,7 +6,7 @@
 
 ``` ts
 import { Player } from '@galacean/effects';
-import '@galacean/effects-plugin-media';
+import '@galacean/effects-plugin-multimedia';
 ```
 
 ## Development
@@ -15,7 +15,7 @@ import '@galacean/effects-plugin-media';
 
 ``` bash
 # demo
-pnpm --filter @galacean/effects-plugin-media dev
+pnpm --filter @galacean/effects-plugin-multimedia dev
 ```
 
 > Open in browser: http://localhost:8081/demo/

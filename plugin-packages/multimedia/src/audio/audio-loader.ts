@@ -2,7 +2,7 @@ import type { SceneLoadOptions, spec } from '@galacean/effects';
 import { AbstractPlugin, Asset, AssetManager, MediaType } from '@galacean/effects';
 
 export class AudioLoader extends AbstractPlugin {
-  static override async processRawJSON(json: spec.JSONScene, options: SceneLoadOptions): Promise<void> {
+  static override async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): Promise<void> {
     const { audios = [] } = json;
     const { hookTimeInfo, renderer, assetManager } = options.pluginData as Record<string, any>;
 

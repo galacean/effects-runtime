@@ -1,7 +1,7 @@
 import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
 import { Player, spec, Texture } from '@galacean/effects';
 import '@galacean/effects-plugin-media';
-import { VideoComponent } from '@galacean/effects-plugin-media';
+import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 const duration = 5.0;
 const endBehavior = spec.EndBehavior.destroy;

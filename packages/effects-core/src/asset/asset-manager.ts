@@ -171,6 +171,7 @@ export class AssetManager implements Disposable {
         }
       } else {
         this.options.pluginData = {
+          ...this.options.pluginData,
           hookTimeInfo,
           assetManager: this,
           renderer,

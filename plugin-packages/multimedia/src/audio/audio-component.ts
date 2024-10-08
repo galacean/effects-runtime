@@ -1,4 +1,4 @@
-import type { AudioAssets, Engine } from '@galacean/effects';
+import type { Asset, Engine } from '@galacean/effects';
 import { effectsClass, RendererComponent, spec } from '@galacean/effects';
 import { AudioPlayer } from './audio-player';
 
@@ -43,7 +43,7 @@ export class AudioComponent extends RendererComponent {
     const { options } = data;
     const { playbackRate = 1, muted = false, volume = 1 } = options;
 
-    this.audioPlayer = new AudioPlayer((options.audio as unknown as AudioAssets).data, this.engine);
+    this.audioPlayer = new AudioPlayer((options.audio as unknown as Asset<HTMLAudioElement | AudioBuffer>).data, this.engine);
     this.audioPlayer.pause();
     this.setPlaybackRate(playbackRate);
     this.setMuted(muted);

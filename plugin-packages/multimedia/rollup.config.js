@@ -31,7 +31,7 @@ export default () => {
       output: {
         file: pkg.browser,
         format: 'umd',
-        name: 'ge.spinePlugin',
+        name: 'ge.multimediaPlugin',
         banner,
         globals,
         sourcemap: true,

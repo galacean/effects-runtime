@@ -1,7 +1,7 @@
 import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
 import { Player, Texture } from '@galacean/effects';
 import '@galacean/effects-plugin-media';
-import { VideoComponent } from '@galacean/effects-plugin-media';
+import { VideoComponent } from '@galacean/effects-plugin-multimedia';
 const json = {
   'playerVersion': {
     'web': '2.0.4',

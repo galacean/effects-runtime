@@ -1,4 +1,4 @@
-import { registerPlugin, VFXItem } from '@galacean/effects-core';
+import { registerPlugin, VFXItem } from '@galacean/effects';
 import { VideoLoader } from './video/video-loader';
 import { AudioLoader } from './audio/audio-loader';
 
