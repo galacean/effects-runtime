@@ -19,7 +19,7 @@ import { Asset } from './asset';
 
 let seed = 1;
 
-enum MediaType {
+export enum MediaType {
   video = 'video',
   audio = 'audio'
 }
@@ -170,20 +170,20 @@ export class AssetManager implements Disposable {
           }
         }
       } else {
+        this.options.pluginData = {
+          hookTimeInfo,
+          assetManager: this,
+          renderer,
+        };
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
-        const { bins = [], images, compositions, fonts, videos = [], audios = [] } = jsonScene;
+        const { bins = [], images, compositions, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
 
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
           hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'}Compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
-        ]);
-
-        const [loadedVideos, loadedAudios] = await Promise.all([
-          hookTimeInfo('processVideos', () => this.processMedia(videos, MediaType.video)),
-          hookTimeInfo('processAudios', () => this.processMedia(audios, MediaType.audio)),
         ]);
 
         for (let i = 0; i < images.length; i++) {
@@ -197,22 +197,6 @@ export class AssetManager implements Disposable {
             imageAsset.data = loadedImages[i];
             imageAsset.setInstanceId(images[i].id);
             renderer.engine.addInstance(imageAsset);
-          }
-
-          for (let i = 0; i < loadedVideos.length; i++) {
-            const videoAsset = new Asset<HTMLVideoElement>(renderer.engine);
-
-            videoAsset.data = loadedVideos[i] as HTMLVideoElement;
-            videoAsset.setInstanceId(videos[i].id);
-            renderer.engine.addInstance(videoAsset);
-          }
-
-          for (let i = 0; i < loadedAudios.length; i++) {
-            const audioAsset = new Asset<HTMLAudioElement | AudioBuffer>(renderer.engine);
-
-            audioAsset.data = loadedAudios[i];
-            audioAsset.setInstanceId(audios[i].id);
-            renderer.engine.addInstance(audioAsset);
           }
         }
 
@@ -315,9 +299,9 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
-  private async processMedia (media: spec.AssetBaseOptions[], type: MediaType): Promise<HTMLVideoElement[] | (HTMLAudioElement | AudioBuffer)[]> {
-    const { renderLevel } = this.options;
-    const baseUrl = this.baseUrl;
+  static async processMedia (media: spec.AssetBaseOptions[], type: MediaType, options: SceneLoadOptions): Promise<HTMLVideoElement[] | (HTMLAudioElement | AudioBuffer)[]> {
+    const { renderLevel, assetManager } = options.pluginData as Record<string, any>;
+    const { baseUrl } = assetManager;
     let audioCtx: AudioContext, isSupportAudioContext: boolean;
 
     if (type === MediaType.audio) {

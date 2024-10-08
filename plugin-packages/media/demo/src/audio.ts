@@ -19,7 +19,7 @@ const json1 = {
   fonts: [],
   version: '3.0',
   shapes: [],
-  plugins: [],
+  plugins: ['video', 'audio'],
   type: 'ge',
   compositions: [
     {

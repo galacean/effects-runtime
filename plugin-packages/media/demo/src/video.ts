@@ -18,7 +18,7 @@ const json = {
   'fonts': [],
   'version': '3.0',
   'shapes': [],
-  'plugins': [],
+  'plugins': ['video'],
   videos: [
     {
       url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
