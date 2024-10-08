@@ -1,14 +1,19 @@
 import type { SceneLoadOptions, spec } from '@galacean/effects';
 import { AbstractPlugin, Asset, AssetManager, MediaType } from '@galacean/effects';
+import type { PluginData } from '../type';
 
 export class AudioLoader extends AbstractPlugin {
   static override async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): Promise<void> {
     const { audios = [] } = json;
-    const { hookTimeInfo, renderer, assetManager } = options.pluginData as Record<string, any>;
+    const { hookTimeInfo, renderer, assetManager } = options.pluginData as PluginData;
 
     const [loadedAudios] = await Promise.all([
-      hookTimeInfo('processVideos', () => AssetManager.processMedia(audios, MediaType.audio, options)),
+      hookTimeInfo('processAudios', () => AssetManager.processMedia(audios, MediaType.audio, options)),
     ]);
+
+    for (let i = 0; i < audios.length; i++) {
+      assetManager.assets[audios[i].id] = loadedAudios[i];
+    }
 
     if (renderer) {
       for (let i = 0; i < loadedAudios.length; i++) {
@@ -17,10 +22,6 @@ export class AudioLoader extends AbstractPlugin {
         audioAsset.data = loadedAudios[i] as HTMLAudioElement | AudioBuffer;
         audioAsset.setInstanceId(audios[i].id);
         renderer.engine.addInstance(audioAsset);
-      }
-
-      for (let i = 0; i < audios.length; i++) {
-        assetManager.assets[audios[i].id] = loadedAudios[i];
       }
     }
 

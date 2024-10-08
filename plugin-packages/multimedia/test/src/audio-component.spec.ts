@@ -2,7 +2,7 @@ import { spec } from '@galacean/effects';
 import { generateGUID, Player } from '@galacean/effects';
 import { AudioComponent } from '@galacean/effects-plugin-multimedia';
 
-export interface AudioCompositionOptions {
+interface AudioCompositionOptions {
   duration: number,
   endBehavior: spec.EndBehavior,
   audios: spec.AssetBaseOptions[],

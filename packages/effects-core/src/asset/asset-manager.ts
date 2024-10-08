@@ -36,7 +36,7 @@ export class AssetManager implements Disposable {
   /**
    * 图像资源，用于创建和释放GPU纹理资源
    */
-  private assets: Record<string, any> = {};
+  readonly assets: Record<string, any> = {};
 
   /**
    * 自定义文本缓存，随页面销毁而销毁

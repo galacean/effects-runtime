@@ -328,7 +328,7 @@ export class BaseRenderComponent extends RendererComponent {
     };
   }
 
-  getHitTestParams = (force?: boolean): HitTestTriangleParams | void => {
+  getHitTestParams = (force?: boolean): HitTestTriangleParams | undefined => {
     const ui = this.interaction;
 
     if ((force || ui)) {

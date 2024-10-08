@@ -156,27 +156,6 @@ export class SpriteComponent extends BaseRenderComponent {
     }
   }
 
-  override getItemInitData () {
-    this.geoData = this.getItemGeometryData();
-
-    const { index, atlasOffset } = this.geoData;
-
-    const idxCount = index.length;
-    // @ts-expect-error
-    const indexData: number[] = this.wireframe ? new Uint8Array([0, 1, 1, 3, 2, 3, 2, 0]) : new index.constructor(idxCount);
-
-    if (!this.wireframe) {
-      for (let i = 0; i < idxCount; i++) {
-        indexData[i] = 0 + index[i];
-      }
-    }
-
-    return {
-      atlasOffset,
-      index: indexData,
-    };
-  }
-
   override createGeometry (mode: GeometryDrawMode) {
     const maxVertex = 12 * this.splits.length;
 

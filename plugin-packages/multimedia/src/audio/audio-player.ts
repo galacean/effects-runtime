@@ -23,21 +23,15 @@ export class AudioPlayer {
   };
   private destroyed = false;
   private started = false;
-
-  static fromAudio (audio: string, engine: Engine): void {
-  }
+  private currentVolume = 1;
 
   constructor (audio: AudioBuffer | HTMLAudioElement, private engine: Engine) {
 
     if (audio instanceof AudioBuffer) {
       const audioCtx = new AudioContext();
-      const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
 
-      oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
 
       const source = audioCtx.createBufferSource();
 
@@ -119,10 +113,12 @@ export class AudioPlayer {
 
       if (gainNode) {
         gainNode.gain.value = volume;
+        this.currentVolume = volume;
       }
     } else {
       if (this.audio) {
         this.audio.volume = volume;
+        this.currentVolume = volume;
       }
     }
   }
@@ -164,7 +160,7 @@ export class AudioPlayer {
   setMuted (muted: boolean): void {
     if (this.isSupportAudioContext) {
       const { gainNode } = this.audioSourceInfo;
-      const value = muted ? 0 : 1;
+      const value = muted ? 0 : this.currentVolume;
 
       if (gainNode) {
         gainNode.gain.value = value;

@@ -1,4 +1,4 @@
-import type { Asset, Engine } from '@galacean/effects';
+import type { Asset } from '@galacean/effects';
 import { effectsClass, RendererComponent, spec } from '@galacean/effects';
 import { AudioPlayer } from './audio-player';
 
@@ -7,10 +7,6 @@ export class AudioComponent extends RendererComponent {
   audioPlayer: AudioPlayer;
   private isVideoPlay = false;
   private threshold = 0.03;
-
-  constructor (engine: Engine) {
-    super(engine);
-  }
 
   override onStart (): void {
     super.onStart();
