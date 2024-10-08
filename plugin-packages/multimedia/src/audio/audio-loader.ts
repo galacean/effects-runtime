@@ -7,7 +7,7 @@ export class AudioLoader extends AbstractPlugin {
     const { audios = [] } = json;
     const { hookTimeInfo, renderer, assetManager } = options.pluginData as PluginData;
 
-    const [loadedAudios] = await Promise.all([
+    const loadedAudios = await Promise.all([
       hookTimeInfo('processAudios', () => AssetManager.processMedia(audios, MediaType.audio, options)),
     ]);
 
