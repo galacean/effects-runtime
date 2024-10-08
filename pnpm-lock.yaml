@@ -208,7 +208,7 @@ importers:
         specifier: workspace:*
         version: link:../model
 
-  plugin-packages/media:
+  plugin-packages/multiMedia:
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
