@@ -18,8 +18,8 @@ import '@galacean/effects-plugin-multimedia';
 pnpm --filter @galacean/effects-plugin-multimedia dev
 ```
 
-> Open in browser: http://localhost:8081/demo/
+> [Open in browser](http://localhost:8081/demo/)
 
 ## Frame Comparison Testing
 
-> Open in browser: http://localhost:8081/test/
+> [Open in browser](http://localhost:8081/test/)

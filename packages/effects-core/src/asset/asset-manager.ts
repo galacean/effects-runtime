@@ -30,13 +30,14 @@ export enum MediaType {
  */
 export class AssetManager implements Disposable {
   /**
+   * 图像资源，用于创建和释放GPU纹理资源
+   */
+  assets: Record<string, any> = {};
+
+  /**
    * 相对url的基本路径
    */
   private baseUrl: string;
-  /**
-   * 图像资源，用于创建和释放GPU纹理资源
-   */
-  readonly assets: Record<string, any> = {};
 
   /**
    * 自定义文本缓存，随页面销毁而销毁

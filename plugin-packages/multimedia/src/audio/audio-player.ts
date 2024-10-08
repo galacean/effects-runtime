@@ -38,8 +38,6 @@ export class AudioPlayer {
       source.buffer = audio;
       source.connect(gainNode);
 
-      source.connect(audioCtx.destination);
-
       this.audioSourceInfo = {
         source,
         audioContext: audioCtx,
