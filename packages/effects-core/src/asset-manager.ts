@@ -1,21 +1,21 @@
 import * as spec from '@galacean/effects-specification';
-import { getStandardJSON } from '../fallback';
-import { glContext } from '../gl';
-import { passRenderLevel } from '../pass-render-level';
-import type { PrecompileOptions } from '../plugin-system';
-import { PluginSystem } from '../plugin-system';
-import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from '../scene';
-import { isSceneJSON } from '../scene';
-import type { Disposable } from '../utils';
-import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from '../utils';
-import type { TextureSourceOptions } from '../texture';
-import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from '../texture';
-import type { Renderer } from '../render';
-import { COMPRESSED_TEXTURE } from '../render';
-import { combineImageTemplate, getBackgroundImage } from '../template-image';
-import type { JSONValue } from '../downloader';
-import { Downloader, loadAudio, loadAVIFOptional, loadImage, loadMedia, loadVideo, loadWebPOptional } from '../downloader';
-import { Asset } from './asset';
+import { getStandardJSON } from './fallback';
+import { glContext } from './gl';
+import { passRenderLevel } from './pass-render-level';
+import type { PrecompileOptions } from './plugin-system';
+import { PluginSystem } from './plugin-system';
+import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from './scene';
+import { isSceneJSON } from './scene';
+import type { Disposable } from './utils';
+import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
+import type { TextureSourceOptions } from './texture';
+import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
+import type { Renderer } from './render';
+import { COMPRESSED_TEXTURE } from './render';
+import { combineImageTemplate, getBackgroundImage } from './template-image';
+import type { JSONValue } from './downloader';
+import { Downloader, loadAudio, loadAVIFOptional, loadImage, loadMedia, loadVideo, loadWebPOptional } from './downloader';
+import { Asset } from './asset/asset';
 
 let seed = 1;
 

@@ -1,6 +1,4 @@
 import * as spec from '@galacean/effects-specification';
-import type { Database, SceneData } from './asset';
-import { AssetLoader } from './asset';
 import type { EffectsObject } from './effects-object';
 import type { Material } from './material';
 import type { GPUCapability, Geometry, Mesh, RenderPass, Renderer, ShaderLibrary } from './render';
@@ -10,6 +8,8 @@ import { generateTransparentTexture, generateWhiteTexture } from './texture';
 import type { Disposable } from './utils';
 import { addItem, logger, removeItem } from './utils';
 import { EffectsPackage } from './effects-package';
+import type { Database, SceneData } from './asset-loader';
+import { AssetLoader } from './asset-loader';
 
 /**
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
