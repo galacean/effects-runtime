@@ -6,8 +6,8 @@ import { Material } from './material';
 import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
-import type { Constructor } from './utils';
 import type { VFXItemProps } from './vfx-item';
+import type { Constructor } from './utils';
 
 /**
  * @since 2.0.0
