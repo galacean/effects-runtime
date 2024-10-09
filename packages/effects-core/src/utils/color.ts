@@ -1,14 +1,12 @@
 import { isString } from './index';
 
-export type color = [r: number, g: number, b: number, a: number];
-
 export interface ColorStop {
   stop: number,
-  color: color | number[],
+  color: number[],
 }
 
-export function colorToArr (hex: string | number[], normalized?: boolean): color {
-  let ret: color = [0, 0, 0, 0];
+export function colorToArr (hex: string | number[], normalized?: boolean): number[] {
+  let ret: number[] = [0, 0, 0, 0];
 
   if (isString(hex)) {
     hex = hex.replace(/[\s\t\r\n]/g, '');
@@ -37,9 +35,9 @@ export function colorToArr (hex: string | number[], normalized?: boolean): color
   return ret;
 }
 
-export function getColorFromGradientStops (stops: ColorStop[], key: number, normalize?: boolean): color | number[] {
+export function getColorFromGradientStops (stops: ColorStop[], key: number, normalize?: boolean): number[] {
   if (stops.length) {
-    let color: number[] | color | undefined;
+    let color: number[] | undefined;
 
     for (let j = 1; j <= stops.length - 1; j++) {
       const s0 = stops[j - 1];
@@ -101,8 +99,8 @@ export function colorStopsFromGradient (gradient: number[][] | Record<string, st
   return stops;
 }
 
-export function interpolateColor (a: color | number[], b: color | number[], s: number, origin?: boolean): color {
-  const ret = [] as unknown as color;
+export function interpolateColor (a: number[], b: number[], s: number, origin?: boolean): number[] {
+  const ret = [];
   const ms = 1 - s;
 
   if (origin) {

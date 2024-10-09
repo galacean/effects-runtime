@@ -4,18 +4,19 @@ import type { FrameContext } from '../plugins/cal/playable-graph';
 import { Playable } from '../plugins/cal/playable-graph';
 import { VFXItem } from '../vfx-item';
 import type { Material } from '../material';
+import type { ColorStop } from '../utils';
 import { colorStopsFromGradient, getColorFromGradientStops } from '../utils';
-import { BaseRenderComponent } from '../components/base-render-component';
+import { BaseRenderComponent } from '../components';
 
 export interface ColorPlayableAssetData extends spec.EffectsObjectData {
   colorOverLifetime?: spec.ColorOverLifetime,
 }
-const tempColor: spec.vec4 = [1, 1, 1, 1];
+
+const tempColor: spec.RGBAColorValue = [1, 1, 1, 1];
 
 export class ColorPlayable extends Playable {
-
   clipData: { colorOverLifetime?: spec.ColorOverLifetime, startColor?: spec.RGBAColorValue };
-  colorOverLifetime: { stop: number, color: any }[];
+  colorOverLifetime: ColorStop[];
   opacityOverLifetime: ValueGetter<number>;
   startColor: spec.RGBAColorValue;
   renderColor: spec.vec4 = [1, 1, 1, 1];
