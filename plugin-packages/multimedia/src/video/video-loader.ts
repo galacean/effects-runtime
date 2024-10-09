@@ -7,9 +7,7 @@ export class VideoLoader extends AbstractPlugin {
     const { videos = [] } = json;
     const { hookTimeInfo, renderer, assetManager } = options.pluginData as PluginData;
 
-    const loadedVideos = await Promise.all([
-      hookTimeInfo('processVideos', () => AssetManager.processMedia(videos, MediaType.video, options)),
-    ]);
+    const loadedVideos = await hookTimeInfo('processVideos', () => AssetManager.processMedia(videos, MediaType.video, options));
 
     for (let i = 0; i < videos.length; i++) {
       assetManager.assets[videos[i].id] = loadedVideos[i];
