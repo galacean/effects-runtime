@@ -6,7 +6,7 @@ const container = document.getElementById('J-container');
 (async () => {
   try {
     const player = new Player({ container });
-    const composition = await player.loadScene('./assets/find-flower/flower.json');
+    const composition = await player.loadScene('/assets/find-flower/flower.json');
 
     setTimeout(() => {
       composition.setSpeed(-1);

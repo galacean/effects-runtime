@@ -194,8 +194,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private paused = false;
   private lastVideoUpdateTime = 0;
-  // private readonly event: EventSystem;
-  // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   /**
    * 合成中消息元素创建/销毁时触发的回调
@@ -223,7 +221,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     } = props;
 
     this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
-    scene.jsonScene.imgUsage = undefined;
+
     if (reusable) {
       this.keepResource = true;
       scene.textures = undefined;
@@ -246,14 +244,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.item = this.rootItem;
     this.rootItem.components.push(this.rootComposition);
 
-    const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
-
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent.id;
     this.renderer = renderer;
-    this.texInfo = imageUsage ?? {};
+    this.texInfo = !reusable ? imgUsage : {};
     this.event = event;
     this.statistic = {
       loadStart: scene.startTime ?? 0,
@@ -263,7 +259,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.reusable = reusable;
     this.speed = speed;
-    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.EndBehavior.restart;
+    this.autoRefTex = !this.keepResource && this.texInfo && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
