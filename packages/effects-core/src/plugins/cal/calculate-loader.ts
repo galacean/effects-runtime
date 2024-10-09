@@ -1,3 +1,3 @@
-import { AbstractPlugin } from '../index';
+import { AbstractPlugin } from '../plugin';
 
 export class CalculateLoader extends AbstractPlugin {}

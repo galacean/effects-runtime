@@ -234,7 +234,7 @@ export class GLMaterial extends Material {
 
   // TODO 待废弃 兼容 model/spine 插件 改造后可移除
   createMaterialStates (states: MaterialStates): void {
-    this.sampleAlphaToCoverage = !!(states.sampleAlphaToCoverage);
+    this.sampleAlphaToCoverage = !!states.sampleAlphaToCoverage;
     this.depthTest = states.depthTest;
     this.depthMask = states.depthMask;
     this.depthRange = states.depthRange;

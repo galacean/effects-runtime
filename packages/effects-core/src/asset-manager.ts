@@ -15,7 +15,7 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { ImageAsset } from './image-asset';
+import { Asset } from './asset';
 
 type AssetsType = ImageLike | { url: string, type: TextureSourceType };
 
@@ -27,14 +27,13 @@ let seed = 1;
  */
 export class AssetManager implements Disposable {
   /**
+   * 图像资源，用于创建和释放 GPU 纹理资源
+   */
+  assets: Record<string, AssetsType> = {};
+  /**
    * 相对 url 的基本路径
    */
   private baseUrl: string;
-  /**
-   * 图像资源，用于创建和释放 GPU 纹理资源
-   */
-  private assets: Record<string, AssetsType> = {};
-
   /**
    * 自定义文本缓存，随页面销毁而销毁
    */
@@ -145,6 +144,12 @@ export class AssetManager implements Disposable {
           ...rawJSON,
         };
       } else {
+        this.options.pluginData = {
+          ...this.options.pluginData,
+          hookTimeInfo,
+          assets: this.assets,
+          engine: renderer?.engine,
+        };
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
@@ -162,7 +167,7 @@ export class AssetManager implements Disposable {
 
         if (renderer) {
           for (let i = 0; i < images.length; i++) {
-            const imageAsset = new ImageAsset(renderer.engine);
+            const imageAsset = new Asset<ImageLike>(renderer.engine);
 
             imageAsset.data = loadedImages[i];
             imageAsset.setInstanceId(images[i].id);

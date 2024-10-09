@@ -204,7 +204,7 @@ export class ThreeMaterial extends Material {
     return this.material.depthTest;
   }
   override set depthTest (value: UndefinedAble<boolean>) {
-    this.material.depthTest = !!(value);
+    this.material.depthTest = !!value;
   }
 
   /**
@@ -214,7 +214,7 @@ export class ThreeMaterial extends Material {
     return this.material.depthWrite;
   }
   override set depthMask (value: UndefinedAble<boolean>) {
-    this.material.depthWrite = !!(value);
+    this.material.depthWrite = !!value;
   }
 
   /**
@@ -236,7 +236,7 @@ export class ThreeMaterial extends Material {
     return this.material.polygonOffset;
   }
   override set polygonOffsetFill (value: UndefinedAble<boolean>) {
-    this.material.polygonOffset = !!(value);
+    this.material.polygonOffset = !!value;
   }
 
   /**
@@ -261,7 +261,7 @@ export class ThreeMaterial extends Material {
     return this.material.alphaToCoverage;
   }
   override set sampleAlphaToCoverage (value: UndefinedAble<boolean>) {
-    this.material.alphaToCoverage = !!(value);
+    this.material.alphaToCoverage = !!value;
   }
 
   /**
@@ -271,7 +271,7 @@ export class ThreeMaterial extends Material {
     return this.material.stencilWrite;
   }
   override set stencilTest (value: UndefinedAble<boolean>) {
-    this.material.stencilWrite = !!(value);
+    this.material.stencilWrite = !!value;
   }
 
   /**

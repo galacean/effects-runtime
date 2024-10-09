@@ -336,7 +336,7 @@ export class ParticleMesh implements ParticleMeshData {
 
     material.blending = true;
     material.depthTest = true;
-    material.depthMask = !!(occlusion);
+    material.depthMask = !!occlusion;
     material.stencilRef = mask ? [mask, mask] : undefined;
     setMaskMode(material, maskMode);
     setBlendMode(material, blending);

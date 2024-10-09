@@ -10,6 +10,8 @@ import { VFXItem } from './vfx-item';
 
 export * as math from '@galacean/effects-math/es/core/index';
 export * as spec from '@galacean/effects-specification';
+export * from './asset';
+export * from './binary-asset';
 export * from './asset-loader';
 export * from './asset-manager';
 export * from './camera';
@@ -45,10 +47,10 @@ export * from './ticker';
 export * from './transform';
 export * from './utils';
 export * from './vfx-item';
-export * from './binary-asset';
 export * from './effects-object';
 export * from './effects-package';
 export * from './events';
+export * from './pass-render-level';
 
 registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
 registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);

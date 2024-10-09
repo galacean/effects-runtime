@@ -211,6 +211,12 @@ importers:
         specifier: workspace:*
         version: link:../model
 
+  plugin-packages/multiMedia:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
   plugin-packages/model:
     dependencies:
       '@galacean/effects-helper':

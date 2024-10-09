@@ -1,4 +1,4 @@
-import { Component } from '../components/component';
+import { Component } from '../components';
 
 export class SceneTicking {
   update: UpdateTickData = new UpdateTickData();

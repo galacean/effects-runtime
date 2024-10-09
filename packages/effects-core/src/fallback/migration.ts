@@ -361,7 +361,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
         break;
       case ItemType.spine:
-        item.content.dataType = 'SpineComponent';
+        item.content.dataType = DataType.SpineComponent;
 
         break;
     }
