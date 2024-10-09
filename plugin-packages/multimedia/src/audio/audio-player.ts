@@ -16,8 +16,7 @@ export class AudioPlayer {
   audio?: HTMLAudioElement;
   audioSourceInfo: AudioSourceInfo = {};
 
-  // eslint-disable-next-line compat/compat
-  private isSupportAudioContext = !!window.AudioContext;
+  private isSupportAudioContext = !!window['AudioContext'];
   private options: AudioPlayerOptions = {
     endBehavior: spec.EndBehavior.destroy,
     duration: 0,

@@ -7,14 +7,6 @@ export async function processMultimedia (
   options: SceneLoadOptions,
 ): Promise<(HTMLVideoElement)[] | (HTMLAudioElement | AudioBuffer)[]> {
   const { renderLevel } = options;
-  let audioContext: AudioContext;
-  let isSupportAudioContext = false;
-
-  if (type === spec.MultimediaType.audio) {
-    audioContext = new AudioContext();
-    isSupportAudioContext = !!window.AudioContext;
-  }
-
   const jobs = media.map(medium => {
     if (passRenderLevel(medium.renderLevel, renderLevel)) {
       const url = new URL(medium.url, location.href).href;
@@ -22,7 +14,7 @@ export async function processMultimedia (
       if (type === spec.MultimediaType.video) {
         return loadVideo(url);
       } else if (type === spec.MultimediaType.audio) {
-        return loadAudio(url, audioContext, isSupportAudioContext);
+        return loadAudio(url);
       }
     }
 
@@ -36,13 +28,12 @@ export async function processMultimedia (
  * 异步加载一个音频文件
  * @param url - 音频文件的 URL 或 MediaProvider 对象
  */
-export async function loadAudio (
-  url: string,
-  audioContext: AudioContext,
-  isSupportAudioContext: boolean,
-): Promise<HTMLAudioElement | AudioBuffer> {
+export async function loadAudio (url: string): Promise<HTMLAudioElement | AudioBuffer> {
+  const isSupportAudioContext = !!window['AudioContext'];
+
   if (isSupportAudioContext) {
     try {
+      const audioContext = new AudioContext();
       const buffer = await loadBinary(url);
       const decodedData = await audioContext.decodeAudioData(buffer);
 
