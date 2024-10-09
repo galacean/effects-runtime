@@ -10,7 +10,7 @@ import { canvasPool } from '../../canvas-pool';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
-import { BaseRenderComponent } from '../../components/base-render-component';
+import { BaseRenderComponent } from '../../components';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -105,8 +105,8 @@ export class TextComponent extends BaseRenderComponent {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!(renderer.occlusion),
-      transparentOcclusion: !!(renderer.transparentOcclusion) || (renderer.maskMode === spec.MaskMode.MASK),
+      occlusion: !!renderer.occlusion,
+      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: renderer.mask ?? 0,
       maskMode: renderer.maskMode ?? spec.MaskMode.NONE,

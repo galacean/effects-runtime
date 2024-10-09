@@ -3,10 +3,12 @@ import { AbstractPlugin, Asset, AssetManager, MediaType } from '@galacean/effect
 import type { PluginData } from '../type';
 
 export class VideoLoader extends AbstractPlugin {
-  static override async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): Promise<void> {
+  static override async processRawJSON (
+    json: spec.JSONScene,
+    options: SceneLoadOptions,
+  ): Promise<void> {
     const { videos = [] } = json;
     const { hookTimeInfo, renderer, assetManager } = options.pluginData as PluginData;
-
     const loadedVideos = await hookTimeInfo('processVideos', () => AssetManager.processMedia(videos, MediaType.video, options));
 
     for (let i = 0; i < videos.length; i++) {

@@ -5,7 +5,7 @@ import type { GPUCapabilityDetail, ShaderMacros, SharedShaderWithSource } from '
 import { GLSLVersion } from '../../render';
 import { itemFrag, itemFrameFrag, itemVert } from '../../shader';
 import type { Transform } from '../../transform';
-import type { ItemRenderInfo } from '../../components/base-render-component';
+import type { ItemRenderInfo } from '../../components';
 
 export type SpriteRenderData = {
   life: number,

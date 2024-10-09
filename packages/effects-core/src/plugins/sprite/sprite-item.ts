@@ -11,7 +11,7 @@ import type { PlayableGraph, Playable } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import type { ItemRenderer } from '../../components/base-render-component';
+import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/base-render-component';
 
 /**
@@ -66,7 +66,6 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
 
 @effectsClass(spec.DataType.SpriteComponent)
 export class SpriteComponent extends BaseRenderComponent {
-
   textureSheetAnimation?: spec.TextureSheetAnimation;
   splits: splitsDataType = singleSplits;
   frameAnimationLoop = false;
@@ -265,7 +264,6 @@ export class SpriteComponent extends BaseRenderComponent {
     return { index, atlasOffset };
   }
 
-  // TODO: [1.31] @十弦 https://github.com/galacean/effects-runtime/commit/fe8736540b9a461d8e96658f4d755ff8089a263b#diff-a3618f4527c5fe6e842f20d67d5c82984568502c6bf6fdfcbd24f69e2894ca90
   override fromData (data: SpriteItemProps): void {
     super.fromData(data);
 
@@ -273,8 +271,7 @@ export class SpriteComponent extends BaseRenderComponent {
     let renderer = data.renderer;
 
     if (!renderer) {
-      //@ts-expect-error
-      renderer = {};
+      renderer = {} as SpriteItemProps['renderer'];
     }
 
     this.interaction = interaction;
@@ -282,8 +279,8 @@ export class SpriteComponent extends BaseRenderComponent {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!(renderer.occlusion),
-      transparentOcclusion: !!(renderer.transparentOcclusion) || (renderer.maskMode === spec.MaskMode.MASK),
+      occlusion: !!renderer.occlusion,
+      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       shape: renderer.shape,
       mask: renderer.mask ?? 0,
@@ -308,9 +305,5 @@ export class SpriteComponent extends BaseRenderComponent {
     this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.setItem();
-  }
-
-  override toData (): void {
-    super.toData();
   }
 }

@@ -1,5 +1,5 @@
 import type { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
-import type { RendererComponent } from '../components/renderer-component';
+import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
 import type { Material } from '../material';
 import type { LostHandler, RestoreHandler } from '../utils';

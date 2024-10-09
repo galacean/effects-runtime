@@ -1,6 +1,7 @@
 import * as spec from '@galacean/effects-specification';
-import { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
-
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { RendererComponent } from './renderer-component';
 import type { Texture } from '../texture';
 import type { GeometryDrawMode, Renderer } from '../render';
@@ -217,14 +218,12 @@ export class BaseRenderComponent extends RendererComponent {
   }
 
   protected getItemGeometryData () {
-
     this.geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
 
     return { index: [0, 1, 2, 2, 1, 3], atlasOffset: [0, 1, 0, 0, 1, 1, 1, 0] };
   }
 
   protected createGeometry (mode: GeometryDrawMode) {
-
     return Geometry.create(this.engine, {
       attributes: {
         aPos: {
@@ -249,7 +248,6 @@ export class BaseRenderComponent extends RendererComponent {
       mode,
       maxVertex: 4,
     });
-
   }
 
   protected createMaterial (renderInfo: ItemRenderInfo, count: number): Material {
@@ -261,7 +259,6 @@ export class BaseRenderComponent extends RendererComponent {
     this.preMultiAlpha = getPreMultiAlpha(blending);
 
     const material = Material.create(this.engine, materialProps);
-
     const states = {
       side,
       blending: true,
@@ -344,10 +341,6 @@ export class BaseRenderComponent extends RendererComponent {
       }
     }
   };
-
-  override toData (): void {
-    super.toData();
-  }
 }
 
 export function getImageItemRenderInfo (item: BaseRenderComponent): ItemRenderInfo {

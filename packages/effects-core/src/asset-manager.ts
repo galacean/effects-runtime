@@ -15,7 +15,7 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { Asset } from './asset/asset';
+import { Asset } from './asset';
 
 type AssetsType = ImageLike | { url: string, type: TextureSourceType };
 
