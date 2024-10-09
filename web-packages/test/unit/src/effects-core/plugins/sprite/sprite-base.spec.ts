@@ -167,7 +167,7 @@ describe('core/plugins/sprite/item-base', () => {
           ],
         },
       },
-    ] as spec.Item[];
+    ] as unknown as spec.Item[];
     const comp = await player.loadScene(generateSceneJSON(items));
 
     player.gotoAndPlay(0.01);

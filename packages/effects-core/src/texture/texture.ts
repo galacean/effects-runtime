@@ -1,3 +1,4 @@
+import * as spec from '@galacean/effects-specification';
 import { TextureSourceType } from './types';
 import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, TextureOptionsBase } from './types';
 import { glContext } from '../gl';
@@ -233,7 +234,7 @@ export function generateWhiteTexture (engine: Engine) {
   return Texture.create(
     engine,
     {
-      id: 'whitetexture00000000000000000000',
+      id: spec.BuiltinObjectGUID.WhiteTexture,
       data: {
         width: 1,
         height: 1,
@@ -249,7 +250,7 @@ export function generateTransparentTexture (engine: Engine) {
   return Texture.create(
     engine,
     {
-      id: 'transparenttexture00000000000000000000',
+      id: spec.BuiltinObjectGUID.TransparentTexture,
       data: {
         width: 1,
         height: 1,

@@ -4,7 +4,7 @@ interface VideoCompositionOptions {
   duration: number,
   endBehavior: spec.EndBehavior,
   id: string,
-  videos: spec.AssetBaseOptions[],
+  videos: spec.AssetBase[],
   start: number,
   options: spec.VideoContentOptions,
 }

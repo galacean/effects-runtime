@@ -4,8 +4,10 @@ import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
-import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from './scene';
-import { isSceneJSON } from './scene';
+import type { ImageLike, SceneLoadOptions, SceneRenderLevel } from './scene';
+import { Scene } from './scene';
+import type { JSONValue } from './downloader';
+import { Downloader, loadAudio, loadAVIFOptional, loadImage, loadMedia, loadVideo, loadWebPOptional } from './downloader';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions } from './texture';
@@ -13,9 +15,9 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import type { JSONValue } from './downloader';
-import { Downloader, loadAudio, loadAVIFOptional, loadImage, loadMedia, loadVideo, loadWebPOptional } from './downloader';
 import { Asset } from './asset/asset';
+
+type AssetsType = ImageLike | { url: string, type: TextureSourceType };
 
 let seed = 1;
 
@@ -33,12 +35,10 @@ export class AssetManager implements Disposable {
    * 图像资源，用于创建和释放GPU纹理资源
    */
   assets: Record<string, any> = {};
-
   /**
    * 相对url的基本路径
    */
   private baseUrl: string;
-
   /**
    * 自定义文本缓存，随页面销毁而销毁
    */
@@ -61,7 +61,7 @@ export class AssetManager implements Disposable {
    * @param downloader - 资源下载对象
    */
   constructor (
-    private options: SceneLoadOptions = {},
+    public options: Omit<SceneLoadOptions, 'speed' | 'autoplay' | 'reusable'> = {},
     private readonly downloader = new Downloader(),
   ) {
     this.updateOptions(options);
@@ -85,16 +85,15 @@ export class AssetManager implements Disposable {
    * @returns
    */
   async loadScene (
-    url: SceneType,
+    url: Scene.LoadType,
     renderer?: Renderer,
     options?: { env: string },
   ): Promise<Scene> {
-    let rawJSON: SceneType | JSONValue;
+    let rawJSON: Scene.LoadType;
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
-    const asyncShaderCompile = gpuInstance?.detail?.asyncShaderCompile ?? false;
     const compressedTexture = gpuInstance?.detail.compressedTexture ?? COMPRESSED_TEXTURE.NONE;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;
@@ -132,19 +131,19 @@ export class AssetManager implements Disposable {
     const loadResourcePromise = async () => {
       let scene: Scene;
 
-      // url 为 JSONValue 或 Scene 对象
-      if (isObject(url)) {
-        // TODO: 原 JSONLoader contructor 判断是否兼容
+      if (isString(url)) {
+        // 兼容相对路径
+        const link = new URL(url, location.href).href;
+
+        this.baseUrl = link;
+        rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
+      } else {
+        // url 为 spec.JSONScene 或 Scene 对象
         rawJSON = url;
         this.baseUrl = location.href;
-      } else {
-        // 兼容相对路径
-        url = new URL(url as string, location.href).href;
-        this.baseUrl = url;
-        rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(url as string));
       }
 
-      if (isSceneJSON(rawJSON)) {
+      if (Scene.isJSONObject(rawJSON)) {
         // 已经加载过的 可能需要更新数据模板
         scene = {
           ...rawJSON,
@@ -157,14 +156,15 @@ export class AssetManager implements Disposable {
         ) {
           const { images: rawImages } = rawJSON.jsonScene;
           const images = scene.images;
+          const newImages: spec.ImageSource[] = [];
 
           for (let i = 0; i < rawImages.length; i++) {
             // 仅重新加载数据模板对应的图片
             if (images[i] instanceof HTMLCanvasElement) {
-              images[i] = rawImages[i];
+              newImages[i] = rawImages[i];
             }
           }
-          scene.images = await hookTimeInfo('processImages', () => this.processImages(images, compressedTexture));
+          scene.images = await hookTimeInfo('processImages', () => this.processImages(newImages, compressedTexture));
           // 更新 TextureOptions 中的 image 指向
           for (let i = 0; i < scene.images.length; i++) {
             scene.textureOptions[i].image = scene.images[i];
@@ -185,7 +185,8 @@ export class AssetManager implements Disposable {
 
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'}Compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
+          hookTimeInfo('precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
+          hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
 
         for (let i = 0; i < images.length; i++) {
@@ -194,7 +195,7 @@ export class AssetManager implements Disposable {
 
         if (renderer) {
           for (let i = 0; i < images.length; i++) {
-            const imageAsset = new Asset<ImageSource>(renderer.engine);
+            const imageAsset = new Asset<ImageLike>(renderer.engine);
 
             imageAsset.data = loadedImages[i];
             imageAsset.setInstanceId(images[i].id);
@@ -202,12 +203,11 @@ export class AssetManager implements Disposable {
           }
         }
 
-        await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
         scene = {
           timeInfos,
-          url: url,
+          url,
           renderLevel: this.options.renderLevel,
           storage: {},
           pluginSystem,
@@ -247,15 +247,7 @@ export class AssetManager implements Disposable {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }
-    const shaderLibrary = renderer?.getShaderLibrary();
-
     await pluginSystem?.precompile(compositions, renderer, options);
-
-    await new Promise(resolve => {
-      shaderLibrary?.compileAllShaders(() => {
-        resolve(null);
-      });
-    });
   }
 
   private async processJSON (json: JSONValue) {
@@ -301,7 +293,7 @@ export class AssetManager implements Disposable {
     return Promise.all(jobs);
   }
 
-  static async processMedia (media: spec.AssetBaseOptions[], type: MediaType, options: SceneLoadOptions): Promise<HTMLVideoElement[] | (HTMLAudioElement | AudioBuffer)[]> {
+  static async processMedia (media: spec.AssetBase[], type: MediaType, options: SceneLoadOptions): Promise<HTMLVideoElement[] | (HTMLAudioElement | AudioBuffer)[]> {
     const { renderLevel, assetManager } = options.pluginData as Record<string, any>;
     const { baseUrl } = assetManager;
     let audioCtx: AudioContext, isSupportAudioContext: boolean;
@@ -360,12 +352,12 @@ export class AssetManager implements Disposable {
   }
 
   private async processImages (
-    images: any,
+    images: spec.ImageSource[],
     compressedTexture: COMPRESSED_TEXTURE = 0,
-  ): Promise<ImageSource[]> {
+  ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables } = this.options;
     const baseUrl = this.baseUrl;
-    const jobs = images.map(async (img: spec.Image, idx: number) => {
+    const jobs = images.map(async (img, idx: number) => {
       const { url: png, webp, avif } = img;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
@@ -376,7 +368,7 @@ export class AssetManager implements Disposable {
 
       if ('template' in img) {
         // 1. 数据模板
-        const template = img.template as spec.TemplateContent;
+        const template = img.template;
         // 获取数据模板 background 参数
         const background = template.background;
 
@@ -391,12 +383,16 @@ export class AssetManager implements Disposable {
             const resultImage = await loadMedia(url as string | string[], loadFn);
 
             if (resultImage instanceof HTMLVideoElement) {
+              this.assets[idx] = { url: resultImage.src, type: TextureSourceType.video };
+
               return resultImage;
             } else {
               // 如果是加载图片且是数组，设置变量，视频情况下不需要
               if (background && Array.isArray(url) && variables) {
                 variables[background.name] = resultImage.src;
               }
+
+              this.assets[idx] = { url: resultImage.src, type: TextureSourceType.image };
 
               return await combineImageTemplate(
                 resultImage,
@@ -411,7 +407,7 @@ export class AssetManager implements Disposable {
         }
       } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
         // 2. 压缩纹理
-        const { compressed } = img as spec.CompressedImage;
+        const { compressed } = img;
         let src;
 
         if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
@@ -426,9 +422,6 @@ export class AssetManager implements Disposable {
 
           return this.loadBins(bufferURL);
         }
-      } else if ('sourceType' in img) {
-        // TODO: 确定是否有用
-        return img;
       } else if (
         img instanceof HTMLImageElement ||
         img instanceof HTMLCanvasElement ||
@@ -451,11 +444,11 @@ export class AssetManager implements Disposable {
   }
 
   private async processTextures (
-    images: any,
+    images: ImageLike[],
     bins: ArrayBuffer[],
     jsonScene: spec.JSONScene,
   ) {
-    const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
+    const textures = jsonScene.textures ?? images.map((img, source: number) => ({ source })) as spec.SerializedTextureSource[];
     const jobs = textures.map(async (textureOptions, idx) => {
       if (textureOptions instanceof Texture) {
         return textureOptions;
@@ -467,9 +460,8 @@ export class AssetManager implements Disposable {
           throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }
       }
-      const { source } = textureOptions;
-
-      let image: any;
+      const { source, id } = textureOptions;
+      let image: AssetsType | undefined;
 
       if (isObject(source)) { // source 为 images 数组 id
         image = this.assets[source.id as string];
@@ -478,10 +470,7 @@ export class AssetManager implements Disposable {
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.assets[idx]);
-
-        texture.id = textureOptions.id;
-        texture.dataType = spec.DataType.Texture;
+        const texture = createTextureOptionsBySource(image, this.assets[idx], id);
 
         return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
@@ -527,11 +516,6 @@ export class AssetManager implements Disposable {
     if (this.timers.length) {
       this.timers.map(id => window.clearTimeout(id));
     }
-    for (const key in this.assets) {
-      const asset = this.assets[key];
-
-      asset?.dispose?.();
-    }
     this.assets = {};
     this.timers = [];
   }
@@ -561,12 +545,24 @@ function fixOldImageUsage (
   }
 }
 
-function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOptions): Record<string, any> {
+function createTextureOptionsBySource (
+  image: TextureSourceOptions | ImageLike,
+  sourceFrom: AssetsType,
+  id?: string,
+) {
+  const options = {
+    id,
+    dataType: spec.DataType.Texture,
+  };
+
   if (image instanceof Texture) {
-    return image.source;
+    return {
+      ...image.source,
+      ...options,
+    };
   } else if (
     image instanceof HTMLImageElement ||
-    isCanvas(image)
+    isCanvas(image as HTMLCanvasElement)
   ) {
     return {
       image,
@@ -575,6 +571,7 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
       keepImageSource: true,
       minFilter: glContext.LINEAR,
       magFilter: glContext.LINEAR,
+      ...options,
     };
   } else if (image instanceof HTMLVideoElement) {
     // 视频
@@ -583,12 +580,14 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
       video: image,
       minFilter: glContext.LINEAR,
       magFilter: glContext.LINEAR,
+      ...options,
     };
   } else if (image instanceof ArrayBuffer) {
     // 压缩纹理
     return {
       ...getKTXTextureOptions(image),
       sourceFrom,
+      ...options,
     };
   } else if (
     'width' in image &&
@@ -602,6 +601,7 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
       wrapT: glContext.CLAMP_TO_EDGE,
       minFilter: glContext.NEAREST,
       magFilter: glContext.NEAREST,
+      ...options,
     };
   }
 

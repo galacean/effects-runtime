@@ -1,14 +1,12 @@
 import type {
   Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, SceneLoadType, SceneType, EffectsObject,
-  MessageItem, Scene,
+  Texture2DSourceOptionsVideo, TouchEventType, EffectsObject, MessageItem,
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, Material,
   TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, isSceneURL, EventEmitter,
-  generateWhiteTexture, isSceneWithOptions, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS,
-  DEFAULT_FPS,
+  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, EventEmitter,
+  generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, DEFAULT_FPS, Scene,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -180,6 +178,21 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   }
 
   /**
+   * Gets the array of asset managers.
+   * @returns
+   */
+  getAssetManager (): ReadonlyArray<AssetManager> {
+    return this.assetManagers;
+  }
+
+  /**
+   * 获取当前播放的合成数量
+   */
+  get compositionCount () {
+    return this.compositions.length;
+  }
+
+  /**
    * 是否有合成在播放
    */
   get hasPlayable () {
@@ -267,9 +280,12 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * @param options - 加载可选参数
    * @returns
    */
-  async loadScene (scene: SceneLoadType, options?: SceneLoadOptions): Promise<Composition>;
-  async loadScene (scene: SceneLoadType[], options?: SceneLoadOptions): Promise<Composition[]>;
-  async loadScene (scene: SceneLoadType | SceneLoadType[], options?: SceneLoadOptions): Promise<Composition | Composition[]> {
+  async loadScene (scene: Scene.LoadType, options?: SceneLoadOptions): Promise<Composition>;
+  async loadScene (scene: Scene.LoadType[], options?: SceneLoadOptions): Promise<Composition[]>;
+  async loadScene<T extends Composition | Composition[]> (
+    scene: Scene.LoadType | Scene.LoadType[],
+    options?: SceneLoadOptions,
+  ): Promise<T> {
     let composition: Composition | Composition[];
     const baseOrder = this.baseCompositionIndex;
 
@@ -290,32 +306,34 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     this.ticker?.start();
 
-    return composition;
+    return composition as T;
   }
 
   private async createComposition (
-    url: SceneLoadType,
+    url: Scene.LoadType,
     options: SceneLoadOptions = {},
   ): Promise<Composition> {
     const renderer = this.renderer;
     const engine = renderer.engine;
+    const asyncShaderCompile = engine.gpuCapability?.detail?.asyncShaderCompile;
     const last = performance.now();
     let opts = {
       autoplay: true,
       ...options,
     };
-    let source: SceneType;
+    let source: Scene.LoadType = url;
 
-    if (isSceneURL(url)) {
-      source = url.url;
-      if (isSceneWithOptions(url)) {
+    // 加载多个合成链接并各自设置可选参数
+    if (Scene.isURL(url)) {
+      if (!Scene.isJSONObject(url)) {
+        source = url.url;
+      }
+      if (Scene.isWithOptions(url)) {
         opts = {
           ...opts,
           ...url.options,
         };
       }
-    } else {
-      source = url;
     }
 
     const assetManager = new AssetManager(opts);
@@ -382,6 +400,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       }
     }
 
+    const compileStart = performance.now();
+
     await new Promise(resolve => {
       this.renderer.getShaderLibrary()?.compileAllShaders(() => {
         resolve(null);
@@ -395,10 +415,14 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       composition.pause();
     }
 
-    const firstFrameTime = performance.now() - last + composition.statistic.loadTime;
+    const compileTime = performance.now() - compileStart;
+    const firstFrameTime = performance.now() - last;
 
+    composition.statistic.compileTime = compileTime;
     composition.statistic.firstFrameTime = firstFrameTime;
-    logger.info(`First frame: [${composition.name}]${firstFrameTime.toFixed(4)}ms.`);
+    logger.info(`Shader ${asyncShaderCompile ? 'async' : 'sync'} compile [${composition.name}]: ${compileTime.toFixed(4)}ms.`);
+    logger.info(`First frame [${composition.name}]: ${firstFrameTime.toFixed(4)}ms.`);
+
     this.compositions.push(composition);
 
     return composition;

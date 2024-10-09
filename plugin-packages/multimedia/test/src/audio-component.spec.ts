@@ -5,7 +5,7 @@ import { AudioComponent } from '@galacean/effects-plugin-multimedia';
 interface AudioCompositionOptions {
   duration: number,
   endBehavior: spec.EndBehavior,
-  audios: spec.AssetBaseOptions[],
+  audios: spec.AssetBase[],
   start: number,
   options: spec.AudioContentOptions,
 }

@@ -1,8 +1,8 @@
 import type { Component, Material } from '@galacean/effects';
-import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, getMergedStore, spec } from '@galacean/effects';
+import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, generateGUID, getMergedStore, spec } from '@galacean/effects';
 import { objectInspector } from '../core/decorators';
 import { ObjectInspector } from './object-inspectors';
-import type { GLMaterial } from '@galacean/effects-webgl';
+import { GLMaterial } from '@galacean/effects-webgl';
 import { GLTexture } from '@galacean/effects-webgl';
 import type { FileNode } from '../core/file-node';
 import { UIManager } from '../core/ui-manager';
@@ -31,8 +31,15 @@ export class VFXItemInspector extends ObjectInspector {
     ImGui.Text(activeObject.getInstanceId());
     ImGui.Text('Visible');
     ImGui.SameLine(alignWidth);
-    //@ts-expect-error
-    ImGui.Checkbox('##Visible', (_ = activeObject.visible) => activeObject.visible = _);
+    ImGui.Checkbox('##Visible', (_ = activeObject.getVisible()) => {
+      activeObject.setVisible(_);
+
+      return activeObject.getVisible();
+    });
+
+    ImGui.Text('End Behavior');
+    ImGui.SameLine(alignWidth);
+    ImGui.Text(this.endBehaviorToString(activeObject.endBehavior));
 
     if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
       const transform = activeObject.transform;
@@ -116,10 +123,10 @@ export class VFXItemInspector extends ObjectInspector {
         if (componet instanceof RendererComponent) {
           ImGui.Text('Material');
           ImGui.SameLine(alignWidth);
-          ImGui.Button(componet.material.name, new ImGui.Vec2(200, 0));
+          ImGui.Button(componet.material?.name ?? '', new ImGui.Vec2(200, 0));
 
           if (ImGui.BeginDragDropTarget()) {
-            const payload = ImGui.AcceptDragDropPayload(componet.material.constructor.name);
+            const payload = ImGui.AcceptDragDropPayload(GLMaterial.name);
 
             if (payload) {
               void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
@@ -143,14 +150,16 @@ export class VFXItemInspector extends ObjectInspector {
     if (activeObject.getComponent(RendererComponent)) {
       const material = activeObject.getComponent(RendererComponent).material;
 
-      if (ImGui.CollapsingHeader(material.name + ' (Material)##CollapsingHeader', ImGui.TreeNodeFlags.DefaultOpen)) {
+      if (material && ImGui.CollapsingHeader(material.name + ' (Material)##CollapsingHeader', ImGui.TreeNodeFlags.DefaultOpen)) {
         this.drawMaterial(material);
       }
-
     }
   }
 
   private drawMaterial (material: Material) {
+    if (!material) {
+      return;
+    }
     const glMaterial = material as GLMaterial;
     const serializedData = glMaterial.toData();
     const shaderProperties = material.shader.shaderData.properties;
@@ -284,5 +293,30 @@ export class VFXItemInspector extends ObjectInspector {
     if (dirtyFlag) {
       GalaceanEffects.assetDataBase.setDirty(glMaterial.getInstanceId());
     }
+  }
+
+  private endBehaviorToString (endBehavior: spec.EndBehavior) {
+    let result = '';
+
+    switch (endBehavior) {
+      case spec.EndBehavior.destroy:
+        result = 'Destroy';
+
+        break;
+      case spec.EndBehavior.forward:
+        result = 'Forward';
+
+        break;
+      case spec.EndBehavior.freeze:
+        result = 'Freeze';
+
+        break;
+      case spec.EndBehavior.restart:
+        result = 'Restart';
+
+        break;
+    }
+
+    return result;
   }
 }
