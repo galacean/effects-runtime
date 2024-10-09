@@ -129,8 +129,7 @@ export async function loadWebPOptional (png: string, webp?: string) {
     const image = await loadImage(webp);
 
     return { image, url: webp };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (e: any) {
+  } catch (_) {
     webPFailed = true;
     const image = await loadImage(png);
 
@@ -154,8 +153,7 @@ export async function loadAVIFOptional (png: string, avif?: string) {
     const image = await loadImage(avif);
 
     return { image, url: avif };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (e: any) {
+  } catch (_) {
     avifFailed = true;
     const image = await loadImage(png);
 
@@ -288,8 +286,7 @@ export async function loadMedia (url: string | string[], loadFn: (url: string) =
   if (Array.isArray(url)) {
     try {
       return await loadFn(url[0]);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (e: any) {
+    } catch (_) {
       return await loadFn(url[1]);
     }
   }
