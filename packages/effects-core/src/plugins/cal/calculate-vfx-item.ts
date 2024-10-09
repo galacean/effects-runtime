@@ -203,7 +203,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   }
 }
 
-@effectsClass('TransformPlayableAsset')
+@effectsClass(spec.DataType.TransformPlayableAsset)
 export class TransformPlayableAsset extends PlayableAsset {
   transformAnimationData: TransformPlayableAssetData;
 
@@ -251,7 +251,7 @@ export class ActivationPlayable extends Playable {
   }
 }
 
-@effectsClass('ActivationPlayableAsset')
+@effectsClass(spec.DataType.ActivationPlayableAsset)
 export class ActivationPlayableAsset extends PlayableAsset {
   override createPlayable (graph: PlayableGraph): Playable {
     return new ActivationPlayable(graph);

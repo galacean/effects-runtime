@@ -1,3 +1,4 @@
+import * as spec from '@galacean/effects-specification';
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import { effectsClass } from '../../decorators';
 import type { ValueGetter } from '../../math';
@@ -28,7 +29,7 @@ export type ItemLinearVelOverLifetime = {
 /**
  * @since 2.0.0
  */
-@effectsClass('ObjectBindingTrack')
+@effectsClass(spec.DataType.ObjectBindingTrack)
 export class ObjectBindingTrack extends TrackAsset {
 
   create (timelineAsset: TimelineAsset): void {
