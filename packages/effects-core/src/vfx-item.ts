@@ -3,6 +3,7 @@ import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
+import type { VFXItemData } from './asset-loader';
 import type { Component } from './components';
 import { RendererComponent, EffectComponent } from './components';
 import type { Composition } from './composition';
@@ -20,7 +21,6 @@ import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
 import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
 import { EventEmitter } from './events';
-import type { VFXItemData } from './asset-loader';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;

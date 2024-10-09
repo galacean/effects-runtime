@@ -5,11 +5,13 @@ import { AudioPlayer } from './audio-player';
 @effectsClass(spec.DataType.AudioComponent)
 export class AudioComponent extends RendererComponent {
   audioPlayer: AudioPlayer;
+
   private isVideoPlay = false;
   private threshold = 0.03;
 
   override onStart (): void {
     super.onStart();
+
     const { duration, endBehavior } = this.item;
 
     this.audioPlayer.setOptions({
@@ -20,6 +22,7 @@ export class AudioComponent extends RendererComponent {
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
+
     const { time, duration, endBehavior } = this.item;
 
     if (time >= 0 && !this.isVideoPlay) {
@@ -36,6 +39,7 @@ export class AudioComponent extends RendererComponent {
 
   override fromData (data: spec.AudioComponentData): void {
     super.fromData(data);
+
     const { options } = data;
     const { playbackRate = 1, muted = false, volume = 1 } = options;
 
@@ -44,7 +48,6 @@ export class AudioComponent extends RendererComponent {
     this.setPlaybackRate(playbackRate);
     this.setMuted(muted);
     this.setVolume(volume);
-
   }
 
   /**
@@ -94,6 +97,7 @@ export class AudioComponent extends RendererComponent {
 
   override dispose (): void {
     super.dispose();
+
     this.audioPlayer.dispose();
   }
 }

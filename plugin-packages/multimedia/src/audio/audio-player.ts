@@ -11,6 +11,7 @@ export interface AudioPlayerOptions {
   endBehavior: spec.EndBehavior,
   duration: number,
 }
+
 export class AudioPlayer {
   audio?: HTMLAudioElement;
   audioSourceInfo: AudioSourceInfo = {};
@@ -25,22 +26,24 @@ export class AudioPlayer {
   private started = false;
   private currentVolume = 1;
 
-  constructor (audio: AudioBuffer | HTMLAudioElement, private engine: Engine) {
-
+  constructor (
+    audio: AudioBuffer | HTMLAudioElement,
+    private engine: Engine,
+  ) {
     if (audio instanceof AudioBuffer) {
-      const audioCtx = new AudioContext();
-      const gainNode = audioCtx.createGain();
+      const audioContext = new AudioContext();
+      const gainNode = audioContext.createGain();
 
-      gainNode.connect(audioCtx.destination);
+      gainNode.connect(audioContext.destination);
 
-      const source = audioCtx.createBufferSource();
+      const source = audioContext.createBufferSource();
 
       source.buffer = audio;
       source.connect(gainNode);
 
       this.audioSourceInfo = {
         source,
-        audioContext: audioCtx,
+        audioContext,
         gainNode,
       };
     } else {
@@ -59,9 +62,7 @@ export class AudioPlayer {
   }
 
   play (): void {
-
     if (this.isSupportAudioContext) {
-
       const { audioContext, source } = this.audioSourceInfo;
 
       if (source && audioContext) {

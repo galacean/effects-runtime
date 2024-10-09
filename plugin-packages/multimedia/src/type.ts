@@ -1,7 +1,7 @@
-import type { AssetManager, Renderer } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
 
 export interface PluginData {
-  hookTimeInfo: (label: string, fn: () => Promise<any>) => Promise<any>,
-  renderer?: Renderer,
-  assetManager: AssetManager,
+  hookTimeInfo: <T>(label: string, fn: () => Promise<T>) => Promise<T>,
+  engine?: Engine,
+  assets: Record<string, any>,
 }

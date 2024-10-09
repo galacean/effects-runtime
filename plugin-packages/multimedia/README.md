@@ -1,4 +1,4 @@
-# Galacean Effects multimedia Plugin
+# Galacean Effects Multimedia Plugin
 
 ## Usage
 

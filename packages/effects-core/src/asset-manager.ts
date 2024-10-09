@@ -4,10 +4,10 @@ import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
+import type { JSONValue } from './downloader';
+import { Downloader, loadAVIFOptional, loadImage, loadMedia, loadVideo, loadWebPOptional } from './downloader';
 import type { ImageLike, SceneLoadOptions, SceneRenderLevel } from './scene';
 import { Scene } from './scene';
-import type { JSONValue } from './downloader';
-import { Downloader, loadAudio, loadAVIFOptional, loadImage, loadMedia, loadVideo, loadWebPOptional } from './downloader';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions } from './texture';
@@ -21,22 +21,17 @@ type AssetsType = ImageLike | { url: string, type: TextureSourceType };
 
 let seed = 1;
 
-export enum MediaType {
-  video = 'video',
-  audio = 'audio'
-}
-
 /**
  * 资源管理器
  * 用于加载和动效中所有的资源文件，包括图片、插件、图层粒子数据等
  */
 export class AssetManager implements Disposable {
   /**
-   * 图像资源，用于创建和释放GPU纹理资源
+   * 图像资源，用于创建和释放 GPU 纹理资源
    */
-  assets: Record<string, any> = {};
+  assets: Record<string, AssetsType> = {};
   /**
-   * 相对url的基本路径
+   * 相对 url 的基本路径
    */
   private baseUrl: string;
   /**
@@ -174,15 +169,14 @@ export class AssetManager implements Disposable {
         this.options.pluginData = {
           ...this.options.pluginData,
           hookTimeInfo,
-          assetManager: this,
-          renderer,
+          assets: this.assets,
+          engine: renderer?.engine,
         };
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
-
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
           hookTimeInfo('precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
@@ -288,33 +282,6 @@ export class AssetManager implements Disposable {
       }
 
       throw new Error(`Invalid bins source: ${JSON.stringify(bins)}.`);
-    });
-
-    return Promise.all(jobs);
-  }
-
-  static async processMedia (media: spec.AssetBase[], type: MediaType, options: SceneLoadOptions): Promise<HTMLVideoElement[] | (HTMLAudioElement | AudioBuffer)[]> {
-    const { renderLevel, assetManager } = options.pluginData as Record<string, any>;
-    const { baseUrl } = assetManager;
-    let audioCtx: AudioContext, isSupportAudioContext: boolean;
-
-    if (type === MediaType.audio) {
-    // eslint-disable-next-line compat/compat
-      audioCtx = new AudioContext();
-      // eslint-disable-next-line compat/compat
-      isSupportAudioContext = !!window.AudioContext;
-    }
-
-    const jobs = media.map(medium => {
-      if (passRenderLevel(medium.renderLevel, renderLevel)) {
-        if (type === MediaType.video) {
-          return loadVideo((new URL(medium.url, baseUrl).href));
-        } else {
-          return loadAudio((new URL(medium.url, baseUrl).href), audioCtx, isSupportAudioContext);
-        }
-      }
-
-      throw new Error(`Invalid ${type} source: ${JSON.stringify(media)}.`);
     });
 
     return Promise.all(jobs);

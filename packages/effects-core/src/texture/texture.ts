@@ -47,7 +47,11 @@ export abstract class Texture extends EffectsObject {
    * @param url - 要创建的 Texture URL
    * @since 2.0.0
    */
-  static async fromImage (url: string, engine: Engine, options?: TextureOptionsBase): Promise<Texture> {
+  static async fromImage (
+    url: string,
+    engine: Engine,
+    options?: TextureOptionsBase,
+  ): Promise<Texture> {
     const image = await loadImage(url);
 
     const texture = Texture.create(engine, {
@@ -72,12 +76,15 @@ export abstract class Texture extends EffectsObject {
    * @since 2.1.0
    * @returns
    */
-  static async fromVideo (url: string, engine: Engine, options?: TextureOptionsBase): Promise<Texture> {
+  static async fromVideo (
+    url: string,
+    engine: Engine,
+    options?: TextureOptionsBase,
+  ): Promise<Texture> {
     const video = await loadVideo(url);
-
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.video,
-      video: video,
+      video,
       id: generateGUID(),
       flipY: true,
       ...options,

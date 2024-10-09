@@ -2,15 +2,6 @@ import { isAndroid } from './utils';
 
 type SuccessHandler<T> = (data: T) => void;
 type ErrorHandler = (status: number, responseText: string) => void;
-/**
- *
- */
-// type VideoLoadOptions = {
-//   /**
-//    * 视频是否循环播放
-//    */
-//   loop?: boolean,
-// };
 
 /**
  * JSON 值，它可以是字符串、数字、布尔值、对象或者 JSON 值的数组。
@@ -282,54 +273,6 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
       reject('Load video fail.');
     });
   });
-}
-
-/**
- * 异步加载一个音频文件
- * @param url - 音频文件的 URL 或 MediaProvider 对象
- */
-export async function loadAudio (url: string, audioContext: AudioContext, isSupportAudioContext: boolean): Promise<HTMLAudioElement | AudioBuffer> {
-
-  if (!isSupportAudioContext) {
-    return new Promise((resolve, reject) => {
-      const audio = new Audio();
-
-      // 设置音频源
-      if (typeof url === 'string') {
-        audio.src = url;
-      } else {
-        audio.srcObject = url;
-      }
-
-      audio.muted = false;
-
-      // 监听加载事件
-      audio.addEventListener('canplaythrough', () => {
-        resolve(audio);
-      });
-
-      // 监听错误事件
-      audio.addEventListener('error', () => {
-        reject(new Error(`Failed to load audio from ${audio.src}`));
-      });
-
-      // 开始加载音频
-      audio.load();
-    });
-  } else {
-    return new Promise((resolve, reject) => {
-      loadBinary(url).then(buffer => {
-        audioContext.decodeAudioData(buffer).then(decodedData => {
-          resolve(decodedData);
-        }).catch(e => {
-          reject(new Error(`Failed to load audio from ${url}`));
-        });
-      }).catch(e => {
-        reject(new Error(`Failed to load audio from ${url}`));
-      });
-    });
-  }
-
 }
 
 export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<HTMLImageElement | HTMLVideoElement>) {

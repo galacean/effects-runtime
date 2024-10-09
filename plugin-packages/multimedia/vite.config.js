@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
         input: {
           'index': resolve(__dirname, 'demo/index.html'),
           'video': resolve(__dirname, 'demo/video.html'),
+          'audio': resolve(__dirname, 'demo/audio.html'),
         }
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常

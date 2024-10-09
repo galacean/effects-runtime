@@ -1,7 +1,8 @@
 import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
-import { Player, Texture } from '@galacean/effects';
+import { Player, Texture, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
+
 const json = {
   'playerVersion': {
     'web': '2.0.4',
@@ -413,7 +414,7 @@ addButton?.addEventListener('click', async () => {
     const item = player.getCompositionByName('comp1')?.getItemByName('video');
     const texture = await Texture.fromVideo(input, player.renderer.engine);
 
-    if (!item) {return;}
+    if (!item) { return; }
     const videoComponent = item.addComponent(VideoComponent);
 
     item.composition?.textures.push(texture);
@@ -454,11 +455,10 @@ updateButton?.addEventListener('click', async () => {
   try {
     player = new Player({
       container,
-      fps:130,
+      fps: 130,
     });
 
-    await player.loadScene(json);
-
+    await player.loadScene(json, { renderLevel: spec.RenderLevel.B });
   } catch (e) {
     console.error('biz', e);
   }

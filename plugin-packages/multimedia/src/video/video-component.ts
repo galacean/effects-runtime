@@ -1,5 +1,8 @@
-import type { Texture, Engine, Texture2DSourceOptionsVideo, Asset } from '@galacean/effects';
+import type {
+  Texture, Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps,
+} from '@galacean/effects';
 import { spec, math, BaseRenderComponent, effectsClass, glContext } from '@galacean/effects';
+
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
  */
@@ -15,29 +18,29 @@ let seed = 0;
 
 @effectsClass(spec.DataType.VideoComponent)
 export class VideoComponent extends BaseRenderComponent {
-
   video?: HTMLVideoElement;
 
   private threshold = 0.03;
 
   constructor (engine: Engine) {
     super(engine);
+
     this.name = 'MVideo' + seed++;
     this.geometry = this.createGeometry(glContext.TRIANGLES);
   }
 
   override setTexture (texture: Texture): void {
     const oldTexture = this.renderer.texture;
-
     const composition = this.item.composition;
 
     if (!composition) { return; }
 
     composition.textures.forEach((cachedTexture, index) => {
       if (cachedTexture === oldTexture) {
-        this.item.composition!.textures[index] = texture;
+        composition.textures[index] = texture;
       }
     });
+
     this.engine.removeTexture(oldTexture);
     this.renderer.texture = texture;
     this.material.setTexture('uSampler0', texture);
@@ -46,13 +49,19 @@ export class VideoComponent extends BaseRenderComponent {
 
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
+
     const { interaction, options, listIndex = 0 } = data;
-    const { video, startColor = [1, 1, 1, 1], playbackRate = 1, volume = 1, muted = false } = options;
+    const {
+      video,
+      startColor = [1, 1, 1, 1],
+      playbackRate = 1,
+      volume = 1,
+      muted = false,
+    } = options;
     let renderer = data.renderer;
 
     if (!renderer) {
-      //@ts-expect-error
-      renderer = {};
+      renderer = {} as SpriteItemProps['renderer'];
     }
     this.video = (video as unknown as Asset<HTMLVideoElement>).data;
     this.setPlaybackRate(playbackRate);
@@ -69,8 +78,8 @@ export class VideoComponent extends BaseRenderComponent {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
-      occlusion: !!(renderer.occlusion),
-      transparentOcclusion: !!(renderer.transparentOcclusion) || (renderer.maskMode === spec.MaskMode.MASK),
+      occlusion: !!renderer.occlusion,
+      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: renderer.mask ?? 0,
       maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
@@ -87,6 +96,7 @@ export class VideoComponent extends BaseRenderComponent {
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
+
     const { time, duration, endBehavior } = this.item;
 
     if (time > 0) {
@@ -127,7 +137,7 @@ export class VideoComponent extends BaseRenderComponent {
   }
 
   /**
-   * 设置阈值（由于视频是单独的 update， 有时并不能完全对其 GE 的 update）
+   * 设置阈值（由于视频是单独的 update，有时并不能完全对其 GE 的 update）
    * @param threshold 阈值
    */
   setThreshold (threshold: number) {
@@ -159,11 +169,8 @@ export class VideoComponent extends BaseRenderComponent {
    * @param muted 是否静音
    */
   setMuted (muted: boolean) {
-    const { video } = this;
-
-    if (video && video.muted !== muted) {
-
-      video.muted = muted;
+    if (this.video && this.video.muted !== muted) {
+      this.video.muted = muted;
     }
   }
 
@@ -172,10 +179,8 @@ export class VideoComponent extends BaseRenderComponent {
    * @param volume 视频音量
    */
   setVolume (volume: number) {
-    const { video } = this;
-
-    if (video && video.volume !== volume) {
-      video.volume = volume;
+    if (this.video && this.video.volume !== volume) {
+      this.video.volume = volume;
     }
   }
 
@@ -184,12 +189,10 @@ export class VideoComponent extends BaseRenderComponent {
    * @param rate 视频播放速率
    */
   setPlaybackRate (rate: number) {
-    const { video } = this;
-
-    if (!video || video.playbackRate === rate) {
+    if (!this.video || this.video.playbackRate === rate) {
       return;
     }
-    video.playbackRate = rate;
+    this.video.playbackRate = rate;
   }
 
   private playVideo (): void {

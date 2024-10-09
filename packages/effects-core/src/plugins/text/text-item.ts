@@ -32,7 +32,7 @@ export const DEFAULT_FONTS = [
 
 interface CharInfo {
   /**
-   * 段落y值
+   * 段落 y 值
    */
   y: number,
   /**
@@ -47,6 +47,7 @@ interface CharInfo {
 }
 
 export interface TextComponent extends TextComponentBase { }
+
 let seed = 0;
 
 /**
@@ -63,8 +64,10 @@ export class TextComponent extends BaseRenderComponent {
 
   constructor (engine: Engine, props?: TextItemProps) {
     super(engine);
+
     this.name = 'MText' + seed++;
     this.geometry = this.createGeometry(glContext.TRIANGLES);
+
     if (props) {
       this.fromData(props);
     }
@@ -95,8 +98,7 @@ export class TextComponent extends BaseRenderComponent {
     let renderer = data.renderer;
 
     if (!renderer) {
-      //@ts-expect-error
-      renderer = {};
+      renderer = {} as TextItemProps['renderer'];
     }
 
     this.interaction = interaction;
