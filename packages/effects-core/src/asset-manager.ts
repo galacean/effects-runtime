@@ -6,7 +6,7 @@ import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
-import type { ImageLike, SceneLoadOptions, SceneRenderLevel } from './scene';
+import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
@@ -168,7 +168,7 @@ export class AssetManager implements Disposable {
         }
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
-        const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
+        const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
@@ -201,7 +201,6 @@ export class AssetManager implements Disposable {
           storage: {},
           pluginSystem,
           jsonScene,
-          usedImages,
           images: loadedImages,
           textureOptions: loadedTextures,
           bins: loadedBins,
@@ -241,25 +240,12 @@ export class AssetManager implements Disposable {
 
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
-    const { plugins = [], compositions: sceneCompositions, imgUsage, images } = jsonScene;
+    const { plugins = [] } = jsonScene;
     const pluginSystem = new PluginSystem(plugins);
 
     await pluginSystem.processRawJSON(jsonScene, this.options);
 
-    const { renderLevel } = this.options;
-    const usedImages: Record<number, boolean> = {};
-
-    if (imgUsage) {
-      // TODO: 考虑放到独立的 fix 文件
-      fixOldImageUsage(usedImages, sceneCompositions, imgUsage, images, renderLevel);
-    } else {
-      images?.forEach((_, i) => {
-        usedImages[i] = true;
-      });
-    }
-
     return {
-      usedImages,
       jsonScene,
       pluginSystem,
     };
@@ -480,30 +466,6 @@ export class AssetManager implements Disposable {
     }
     this.assets = {};
     this.timers = [];
-  }
-}
-
-function fixOldImageUsage (
-  usedImages: Record<number, boolean>,
-  compositions: spec.CompositionData[],
-  imgUsage: Record<string, number[]>,
-  images: any,
-  renderLevel?: SceneRenderLevel,
-) {
-  for (let i = 0; i < compositions.length; i++) {
-    const id = compositions[i].id;
-    const ids = imgUsage[id];
-
-    if (ids) {
-      for (let j = 0; j < ids.length; j++) {
-        const id = ids[j];
-        const tag = images[id].renderLevel;
-
-        if (passRenderLevel(tag, renderLevel)) {
-          usedImages[id] = true;
-        }
-      }
-    }
   }
 }
 
