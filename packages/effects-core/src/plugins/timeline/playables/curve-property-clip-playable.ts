@@ -1,4 +1,4 @@
-import type { ValueGetter } from 'packages/effects-core/src/math';
+import type { ValueGetter } from '../../../math';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 import type { Vector3 } from '@galacean/effects-math/es/core/vector3';

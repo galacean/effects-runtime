@@ -1,4 +1,4 @@
-import { effectsClass, serialize } from 'packages/effects-core/src/decorators';
+import { effectsClass, serialize } from '../../../decorators';
 import type { PlayableGraph, Playable } from '../../cal/playable-graph';
 import { CurvePropertyMixerPlayable } from '../playables/curve-property-mixer-playable';
 import { TrackAsset } from '../track';

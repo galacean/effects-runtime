@@ -55,14 +55,14 @@ export class Sequencer extends EditorWindow {
     //@ts-expect-error
     for (const track of compositionComponent.timelineAsset.tracks) {
       const trackAsset = track;
-      const binding = trackAsset.boundObject;
+      const boundObject = trackAsset.boundObject;
 
       let trackName = '';
 
-      if (binding instanceof VFXItem) {
-        trackName = binding.name;
-      } else if (binding instanceof Component) {
-        trackName = binding.constructor.name;
+      if (boundObject instanceof VFXItem) {
+        trackName = boundObject.name;
+      } else if (boundObject instanceof Component) {
+        trackName = boundObject.constructor.name;
       }
 
       if (ImGui.CollapsingHeader(trackName, ImGui.ImGuiTreeNodeFlags.DefaultOpen)) {

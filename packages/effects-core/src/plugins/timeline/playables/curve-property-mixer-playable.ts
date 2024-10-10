@@ -60,14 +60,13 @@ export class CurvePropertyMixerPlayable extends Playable {
           case PropertyType.Vector3:{
             const curveValue = propertyClipPlayable.value as Vector3;
 
-            (value as Vector3).add(curveValue).multiply(weight);
-          }
+            (value as Vector3).add(curveValue.clone().multiply(weight));
 
+            break;
+          }
         }
 
         hasInput = true;
-
-        break;
       }
     }
 

@@ -158,6 +158,7 @@ export class TrackAsset extends PlayableAsset {
   }
 
   override fromData (data: spec.EffectsObjectData): void {
+    super.fromData(data);
     for (const child of this.children) {
       child.parent = this;
     }

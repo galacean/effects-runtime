@@ -55,13 +55,13 @@ export class CompositionComponent extends Behaviour {
 
   setReusable (value: boolean) {
     for (const track of this.timelineAsset.tracks) {
-      const binding = track.boundObject;
+      const boundObject = track.boundObject;
 
-      if (binding instanceof VFXItem) {
+      if (boundObject instanceof VFXItem) {
         if (track instanceof ObjectBindingTrack) {
-          binding.reusable = value;
+          boundObject.reusable = value;
         }
-        const subCompositionComponent = binding.getComponent(CompositionComponent);
+        const subCompositionComponent = boundObject.getComponent(CompositionComponent);
 
         if (subCompositionComponent) {
           subCompositionComponent.setReusable(value);

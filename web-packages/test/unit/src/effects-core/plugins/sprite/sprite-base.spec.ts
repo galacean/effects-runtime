@@ -41,7 +41,7 @@ describe('core/plugins/sprite/item-base', () => {
     let spriteColorTrack;
 
     // @ts-expect-error
-    const spriteBindingTrack = comp.rootItem.getComponent(CompositionComponent).timelineAsset.tracks.find(track => track.binding === sprite1);
+    const spriteBindingTrack = comp.rootItem.getComponent(CompositionComponent).timelineAsset.tracks.find(track => track.boundObject === sprite1);
 
     for (const subTrack of spriteBindingTrack?.getChildTracks() ?? []) {
       if (subTrack instanceof SpriteColorTrack) {
