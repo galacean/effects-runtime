@@ -1,11 +1,11 @@
 import * as spec from '@galacean/effects-specification';
-import { effectsClass, serialize } from '../../decorators';
-import { VFXItem } from '../../vfx-item';
-import type { RuntimeClip, TrackAsset } from '../timeline/track';
-import { ObjectBindingTrack } from './calculate-item';
-import type { FrameContext, PlayableGraph } from './playable-graph';
-import { Playable, PlayableAsset, PlayableTraversalMode } from './playable-graph';
-import type { Constructor } from '../../utils';
+import { effectsClass, serialize } from '../../../decorators';
+import { VFXItem } from '../../../vfx-item';
+import type { RuntimeClip, TrackAsset } from '../track';
+import { ObjectBindingTrack } from '../../cal/calculate-item';
+import type { FrameContext, PlayableGraph } from '../../cal/playable-graph';
+import { Playable, PlayableAsset, PlayableTraversalMode } from '../../cal/playable-graph';
+import type { Constructor } from '../../../utils';
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends PlayableAsset {
@@ -71,7 +71,7 @@ export class TimelinePlayable extends Playable {
       this.addInput(trackMixPlayable, 0);
       const trackOutput = track.createOutput();
 
-      trackOutput.setUserData(track.binding);
+      trackOutput.setUserData(track.boundObject);
 
       graph.addOutput(trackOutput);
       trackOutput.setSourcePlayeble(this, this.getInputCount() - 1);
@@ -112,8 +112,8 @@ export class TrackSortWrapper {
 }
 
 function compareTracks (a: TrackSortWrapper, b: TrackSortWrapper): number {
-  const bindingA = a.track.binding;
-  const bindingB = b.track.binding;
+  const bindingA = a.track.boundObject;
+  const bindingB = b.track.boundObject;
 
   if (!(bindingA instanceof VFXItem) || !(bindingB instanceof VFXItem)) {
     return a.originalIndex - b.originalIndex;

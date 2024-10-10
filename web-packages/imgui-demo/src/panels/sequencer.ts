@@ -1,5 +1,5 @@
 import type { Composition, TrackAsset } from '@galacean/effects';
-import { CompositionComponent, VFXItem } from '@galacean/effects';
+import { Component, CompositionComponent, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../core/decorators';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
@@ -55,12 +55,17 @@ export class Sequencer extends EditorWindow {
     //@ts-expect-error
     for (const track of compositionComponent.timelineAsset.tracks) {
       const trackAsset = track;
+      const boundObject = trackAsset.boundObject;
 
-      if (!(trackAsset.binding instanceof VFXItem)) {
-        continue;
+      let trackName = '';
+
+      if (boundObject instanceof VFXItem) {
+        trackName = boundObject.name;
+      } else if (boundObject instanceof Component) {
+        trackName = boundObject.constructor.name;
       }
 
-      if (ImGui.CollapsingHeader(trackAsset.binding.name, ImGui.ImGuiTreeNodeFlags.DefaultOpen)) {
+      if (ImGui.CollapsingHeader(trackName, ImGui.ImGuiTreeNodeFlags.DefaultOpen)) {
         this.drawTrack(trackAsset);
       }
     }

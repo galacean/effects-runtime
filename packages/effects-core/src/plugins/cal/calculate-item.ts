@@ -2,11 +2,11 @@ import * as spec from '@galacean/effects-specification';
 import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
 import { effectsClass } from '../../decorators';
 import type { ValueGetter } from '../../math';
-import type { VFXItem } from '../../vfx-item';
+import { VFXItem } from '../../vfx-item';
 import { ParticleSystem } from '../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
 import { TrackAsset } from '../timeline/track';
-import type { TimelineAsset } from './timeline-asset';
+import type { TimelineAsset } from '../timeline/playable-assets/timeline-asset';
 
 /**
  * 基础位移属性数据
@@ -33,13 +33,17 @@ export type ItemLinearVelOverLifetime = {
 export class ObjectBindingTrack extends TrackAsset {
 
   create (timelineAsset: TimelineAsset): void {
-    const boundItem = this.binding as VFXItem;
+    if (!(this.boundObject instanceof VFXItem)) {
+      return;
+    }
 
-    // 添加粒子动画 clip
+    const boundItem = this.boundObject;
+
+    // 添加粒子动画 clip // TODO 待移除
     if (boundItem.getComponent(ParticleSystem)) {
       const particleTrack = timelineAsset.createTrack(TrackAsset, this, 'ParticleTrack');
 
-      particleTrack.binding = this.binding;
+      particleTrack.boundObject = this.boundObject;
       const particleClip = particleTrack.createClip(ParticleBehaviourPlayableAsset);
 
       particleClip.start = boundItem.start;
