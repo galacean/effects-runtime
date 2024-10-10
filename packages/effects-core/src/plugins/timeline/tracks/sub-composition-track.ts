@@ -9,12 +9,11 @@ import { SubCompositionMixerPlayable } from '../playables/sub-composition-mixer-
 @effectsClass(spec.DataType.SubCompositionTrack)
 export class SubCompositionTrack extends TrackAsset {
 
-  override resolveBinding (parentBinding: object): object {
-    if (!(parentBinding instanceof VFXItem)) {
+  override resolveBinding () {
+    if (!this.parent || !(this.parent.boundObject instanceof VFXItem)) {
       throw new Error('SubCompositionTrack needs to be set under the VFXItem track.');
     }
-
-    return parentBinding.getComponent(CompositionComponent);
+    this.boundObject = this.parent.boundObject.getComponent(CompositionComponent);
   }
 
   override createTrackMixer (graph: PlayableGraph): Playable {

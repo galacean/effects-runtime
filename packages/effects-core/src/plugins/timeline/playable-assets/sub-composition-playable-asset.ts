@@ -2,7 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
 import type { Playable, PlayableGraph } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
-import { SubCompositionClipPlayable } from './sub-composition-clip-playable';
+import { SubCompositionClipPlayable } from '../playables/sub-composition-clip-playable';
 
 @effectsClass(spec.DataType.SubCompositionPlayableAsset)
 export class SubCompositionPlayableAsset extends PlayableAsset {
