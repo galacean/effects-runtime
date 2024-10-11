@@ -3,6 +3,7 @@
  * https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/GraphicsPath.ts
  */
 
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { ShapePath } from './shape-path';
 
 export class GraphicsPath {
@@ -55,6 +56,14 @@ export class GraphicsPath {
 
   moveTo (x: number, y: number): GraphicsPath {
     this.instructions.push({ action: 'moveTo', data: [x, y] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  ellipse (x: number, y: number, radiusX: number, radiusY: number, matrix?: Matrix4) {
+    this.instructions.push({ action: 'ellipse', data: [x, y, radiusX, radiusY, matrix] });
 
     this.dirty = true;
 

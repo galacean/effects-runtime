@@ -3,14 +3,16 @@
  * https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/ShapePath.ts
  */
 
-import type { Matrix3 } from '@galacean/effects-math/es/core/matrix3';
 import { Polygon } from './polygon';
 import { buildAdaptiveBezier } from './build-adaptive-bezier';
 import type { GraphicsPath } from './graphics-path';
+import type { ShapePrimitive } from './shape-primitive';
+import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Ellipse } from './ellipse';
 
 export class ShapePath {
   currentPoly: Polygon | null = null;
-  shapePrimitives: { shape: Polygon, transform?: Matrix3 }[] = [];
+  shapePrimitives: { shape: ShapePrimitive, transform?: Matrix4 }[] = [];
 
   constructor (
     private graphicsPath: GraphicsPath,
@@ -35,6 +37,11 @@ export class ShapePath {
         }
         case 'moveTo': {
           this.moveTo(data[0], data[1]);
+
+          break;
+        }
+        case 'ellipse':{
+          this.ellipse(data[0], data[1], data[2], data[3], data[4]);
 
           break;
         }
@@ -76,6 +83,41 @@ export class ShapePath {
 
   moveTo (x: number, y: number): ShapePath {
     this.startPoly(x, y);
+
+    return this;
+  }
+
+  /**
+     * Draws an ellipse at the specified location and with the given x and y radii.
+     * An optional transformation can be applied, allowing for rotation, scaling, and translation.
+     * @param x - The x-coordinate of the center of the ellipse.
+     * @param y - The y-coordinate of the center of the ellipse.
+     * @param radiusX - The horizontal radius of the ellipse.
+     * @param radiusY - The vertical radius of the ellipse.
+     * @param transform - An optional `Matrix` object to apply a transformation to the ellipse. This can include rotations.
+     * @returns The instance of the current object for chaining.
+     */
+  ellipse (x: number, y: number, radiusX: number, radiusY: number, transform?: Matrix4): this {
+    // TODO apply rotation to transform...
+
+    this.drawShape(new Ellipse(x, y, radiusX, radiusY), transform);
+
+    return this;
+  }
+
+  /**
+     * Draws a given shape on the canvas.
+     * This is a generic method that can draw any type of shape specified by the `ShapePrimitive` parameter.
+     * An optional transformation matrix can be applied to the shape, allowing for complex transformations.
+     * @param shape - The shape to draw, defined as a `ShapePrimitive` object.
+     * @param matrix - An optional `Matrix` for transforming the shape. This can include rotations,
+     * scaling, and translations.
+     * @returns The instance of the current object for chaining.
+     */
+  drawShape (shape: ShapePrimitive, matrix?: Matrix4): this {
+    this.endPoly();
+
+    this.shapePrimitives.push({ shape, transform: matrix });
 
     return this;
   }

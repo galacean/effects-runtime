@@ -3,12 +3,14 @@
  * https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Polygon.ts
  */
 
+import { ShapePrimitive } from './shape-primitive';
 import type { PointData } from './point-data';
+import { triangulate } from './triangulate';
 
 /**
  * A class to define a shape via user defined coordinates.
  */
-export class Polygon {
+export class Polygon extends ShapePrimitive {
   /** An array of the points of this polygon. */
   points: number[] = [];
 
@@ -25,6 +27,7 @@ export class Polygon {
    *  x,y values e.g. `new Polygon(x,y, x,y, x,y, ...)` where `x` and `y` are Numbers.
    */
   constructor (...points: (PointData[] | number[])[] | PointData[] | number[]) {
+    super();
     let flat = Array.isArray(points[0]) ? points[0] : points;
 
     // if this is an array of points, convert it to a flat array of numbers
@@ -126,15 +129,35 @@ export class Polygon {
    * Get the first X coordinate of the polygon
    * @readonly
    */
-  get x (): number {
+  override getX (): number {
     return this.points[this.points.length - 2];
   }
   /**
    * Get the first Y coordinate of the polygon
    * @readonly
    */
-  get y (): number {
+  override getY (): number {
     return this.points[this.points.length - 1];
+  }
+
+  override build (points: number[]): void {
+    for (let i = 0; i < this.points.length; i++) {
+      points[i] = this.points[i];
+    }
+  }
+
+  override triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void {
+    const triangles = triangulate([points]);
+
+    for (let i = 0; i < triangles.length; i++) {
+      vertices[verticesOffset + i] = triangles[i];
+    }
+
+    const vertexCount = triangles.length / 2;
+
+    for (let i = 0;i < vertexCount;i++) {
+      indices[indicesOffset + i] = i;
+    }
   }
 }
 
