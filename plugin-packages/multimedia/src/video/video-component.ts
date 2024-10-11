@@ -63,15 +63,17 @@ export class VideoComponent extends BaseRenderComponent {
     if (!renderer) {
       renderer = {} as SpriteItemProps['renderer'];
     }
-    this.video = (video as unknown as Asset<HTMLVideoElement>).data;
-    this.setPlaybackRate(playbackRate);
-    this.setVolume(volume);
-    this.setMuted(muted);
-    const endBehavior = this.item.endBehavior;
+    if (video) {
+      this.video = (video as unknown as Asset<HTMLVideoElement>).data;
+      this.setPlaybackRate(playbackRate);
+      this.setVolume(volume);
+      this.setMuted(muted);
+      const endBehavior = this.item.endBehavior;
 
-    // 如果元素设置为 destroy
-    if (endBehavior === spec.EndBehavior.destroy) {
-      this.setLoop(false);
+      // 如果元素设置为 destroy
+      if (endBehavior === spec.EndBehavior.destroy) {
+        this.setLoop(false);
+      }
     }
 
     this.renderer = {

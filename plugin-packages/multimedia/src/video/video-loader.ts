@@ -1,13 +1,14 @@
 import type { SceneLoadOptions } from '@galacean/effects';
 import { spec, AbstractPlugin, Asset } from '@galacean/effects';
 import type { PluginData } from '../type';
-import { processMultimedia } from '../utils';
+import { checkAutoplayPermission, processMultimedia } from '../utils';
 
 export class VideoLoader extends AbstractPlugin {
   static override async processRawJSON (
     json: spec.JSONScene,
     options: SceneLoadOptions,
   ): Promise<void> {
+    await checkAutoplayPermission();
     const { videos = [] } = json;
     const { hookTimeInfo, engine, assets } = options.pluginData as PluginData;
     const loadedVideos = (await hookTimeInfo('processVideos', () => processMultimedia(videos, spec.MultimediaType.video, options))).filter(item => item !== undefined);
