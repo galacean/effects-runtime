@@ -289,7 +289,7 @@ export class VFXItemInspector extends ObjectInspector {
       }
     }
 
-    SerializationHelper.deserializeTaggedProperties(serializedData, glMaterial);
+    SerializationHelper.deserialize(serializedData, glMaterial);
     if (dirtyFlag) {
       GalaceanEffects.assetDataBase.setDirty(glMaterial.getInstanceId());
     }
