@@ -1,11 +1,11 @@
 import type { SceneLoadOptions } from '@galacean/effects';
 import { loadBinary, loadVideo, spec, passRenderLevel } from '@galacean/effects';
 
-export async function processMultimedia (
+export async function processMultimedia<T> (
   media: spec.AssetBase[],
   type: spec.MultimediaType,
   options: SceneLoadOptions,
-): Promise<(HTMLVideoElement)[] | (HTMLAudioElement | AudioBuffer)[]> {
+): Promise<T[]> {
   const { renderLevel } = options;
   const jobs = media.map(medium => {
     if (passRenderLevel(medium.renderLevel, renderLevel)) {
@@ -21,7 +21,7 @@ export async function processMultimedia (
     throw new Error(`Invalid ${type} source: ${JSON.stringify(media)}.`);
   });
 
-  return Promise.all(jobs);
+  return Promise.all(jobs) as Promise<T[]>;
 }
 
 /**
