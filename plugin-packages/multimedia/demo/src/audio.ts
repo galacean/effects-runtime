@@ -1,7 +1,6 @@
 import { Asset, Player, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
-import { AudioComponent } from '@galacean/effects-plugin-multimedia';
-import { checkAutoplayPermission, loadAudio } from '../../src/utils';
+import { AudioComponent, checkAutoplayPermission, loadAudio } from '@galacean/effects-plugin-multimedia';
 
 const duration = 5.0;
 const endBehavior = spec.EndBehavior.destroy;
