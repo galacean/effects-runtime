@@ -111,6 +111,8 @@ export abstract class AbstractPlugin implements Plugin {
    */
   static processRawJSON: (json: spec.JSONScene, options: SceneLoadOptions) => Promise<void>;
 
+  static prepareAssets: (json: spec.JSONScene, options?: SceneLoadOptions) => Promise<{ assets: spec.AssetBase[], loadedAssets: unknown[] }>;
+
   /**
    * player.loadScene 函数调用的时候会触发此函数，
    * 此阶段时，json 中的图片和二进制已经被加载完成，可以对加载好的资源做进一步处理，
