@@ -1,7 +1,7 @@
 import type { SceneLoadOptions } from '@galacean/effects';
 import { loadBinary, loadVideo, spec, passRenderLevel } from '@galacean/effects';
 
-export class MutilMediaError extends Error {
+export class MultiMediaError extends Error {
   /**
    * 报错代码
    */
@@ -12,15 +12,15 @@ export class MutilMediaError extends Error {
     this.code = code;
     this.name = this.constructor.name;
     if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, MutilMediaError);
+      Error.captureStackTrace(this, MultiMediaError);
     }
   }
 }
 
-export const mutilMediaErrorMessageMap: Record<number, string> = {
+export const multiMediaErrorMessageMap: Record<number, string> = {
   2000: 'Autoplay permission for audio and video is not enabled',
 };
-export const mutilMediaErrorDisplayMessageMap = {
+export const multiMediaErrorDisplayMessageMap = {
   2000: '音视频自动播放权限未开启',
 };
 
@@ -61,7 +61,7 @@ export async function checkAutoplayPermission () {
   try {
     await audio.play();
   } catch (_) {
-    throw new MutilMediaError(2000, mutilMediaErrorMessageMap[2000]);
+    throw new MultiMediaError(2000, multiMediaErrorMessageMap[2000]);
   }
 }
 
