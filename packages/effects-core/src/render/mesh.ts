@@ -4,7 +4,7 @@ import type { Material, MaterialDestroyOptions } from '../material';
 import type { Geometry, Renderer } from '../render';
 import type { Disposable } from '../utils';
 import { DestroyOptions } from '../utils';
-import { RendererComponent } from '../components/renderer-component';
+import { RendererComponent } from '../components';
 
 export interface MeshOptionsBase {
   material: Material,

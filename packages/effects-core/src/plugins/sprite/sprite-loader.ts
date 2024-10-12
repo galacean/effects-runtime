@@ -2,7 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { PrecompileOptions } from '../../plugin-system';
 import type { Renderer } from '../../render';
 import { createCopyShader } from '../../render';
-import { AbstractPlugin } from '../index';
+import { AbstractPlugin } from '../plugin';
 import { maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo, spriteMeshShaderIdFromRenderInfo } from './sprite-mesh';
 
 const defRenderInfo = {

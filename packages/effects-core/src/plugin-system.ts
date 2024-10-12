@@ -4,8 +4,7 @@ import type { Plugin, PluginConstructor } from './plugins';
 import type { RenderFrame, Renderer } from './render';
 import type { Scene, SceneLoadOptions } from './scene';
 import { addItem, removeItem, logger } from './utils';
-import type { VFXItemConstructor, VFXItemProps } from './vfx-item';
-import { VFXItem } from './vfx-item';
+import type { VFXItemConstructor } from './vfx-item';
 
 export const pluginLoaderMap: Record<string, PluginConstructor> = {};
 export const defaultPlugins: string[] = [];
@@ -92,42 +91,12 @@ export class PluginSystem {
     this.plugins.forEach(loader => loader.onCompositionReset(comp, renderFrame));
   }
 
-  createPluginItem (name: string, props: VFXItemProps, composition: Composition): VFXItem {
-    const CTRL = pluginCtrlMap[name];
-
-    if (!CTRL) {
-      throw new Error(`The plugin '${name}' does not have a registered constructor.`);
-    }
-    const engine = composition.getEngine();
-    const item = new CTRL(engine, props, composition);
-
-    item.composition = composition;
-
-    if (!(item instanceof VFXItem)) {
-      throw new Error(`The plugin '${name}' invalid constructor type.`);
-    }
-
-    return item;
-  }
-
   async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions): Promise<void[]> {
     return this.callStatic('processRawJSON', json, options);
   }
 
-  private async callStatic (name: string, ...args: any[]): Promise<void[]> {
-    const pendings = [];
-    const plugins = this.plugins;
-
-    for (let i = 0; i < plugins.length; i++) {
-      const plugin = plugins[i];
-      const ctrl = pluginLoaderMap[plugin.name];
-
-      if (name in ctrl) {
-        pendings.push(Promise.resolve(ctrl[name]?.(...args)));
-      }
-    }
-
-    return Promise.all(pendings);
+  async prepareAssets (json: spec.JSONScene, options?: SceneLoadOptions) {
+    return this.callStatic<{ assets: spec.AssetBase[], loadedAssets: unknown[] }>('prepareAssets', json, options);
   }
 
   async precompile (
@@ -140,6 +109,22 @@ export class PluginSystem {
 
   async loadResources (scene: Scene, options: SceneLoadOptions) {
     return this.callStatic('prepareResource', scene, options);
+  }
+
+  private async callStatic<T> (name: string, ...args: any[]): Promise<T[]> {
+    const pendings = [];
+    const plugins = this.plugins;
+
+    for (let i = 0; i < plugins.length; i++) {
+      const plugin = plugins[i];
+      const ctrl = pluginLoaderMap[plugin.name];
+
+      if (name in ctrl) {
+        pendings.push(Promise.resolve<T>(ctrl[name]?.(...args)));
+      }
+    }
+
+    return Promise.all(pendings);
   }
 }
 

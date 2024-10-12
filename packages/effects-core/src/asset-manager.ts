@@ -15,7 +15,8 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { ImageAsset } from './image-asset';
+import { Asset } from './asset';
+import type { Engine } from './engine';
 
 type AssetsType = ImageLike | { url: string, type: TextureSourceType };
 
@@ -27,14 +28,13 @@ let seed = 1;
  */
 export class AssetManager implements Disposable {
   /**
+   * 图像资源，用于创建和释放 GPU 纹理资源
+   */
+  assets: Record<string, AssetsType> = {};
+  /**
    * 相对 url 的基本路径
    */
   private baseUrl: string;
-  /**
-   * 图像资源，用于创建和释放 GPU 纹理资源
-   */
-  private assets: Record<string, AssetsType> = {};
-
   /**
    * 自定义文本缓存，随页面销毁而销毁
    */
@@ -144,32 +144,29 @@ export class AssetManager implements Disposable {
         scene = {
           ...rawJSON,
         };
+
+        const { jsonScene, pluginSystem, images: loadedImages } = scene;
+        const { compositions, images } = jsonScene;
+        const [pluginResult] = await Promise.all([
+          hookTimeInfo('plugin:prepareAssets', () => pluginSystem.prepareAssets(jsonScene, options)),
+          hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
+        ]);
+
+        await this.prepareAssets(images, loadedImages, pluginResult);
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
 
-        const [loadedBins, loadedImages] = await Promise.all([
+        const [loadedBins, loadedImages, pluginResult] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo('precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
+          hookTimeInfo('plugin:prepareAssets', () => pluginSystem.prepareAssets(jsonScene, options)),
+          hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
 
-        for (let i = 0; i < images.length; i++) {
-          this.assets[images[i].id] = loadedImages[i];
-        }
-
-        if (renderer) {
-          for (let i = 0; i < images.length; i++) {
-            const imageAsset = new ImageAsset(renderer.engine);
-
-            imageAsset.data = loadedImages[i];
-            imageAsset.setInstanceId(images[i].id);
-            renderer.engine.addInstance(imageAsset);
-          }
-        }
-
+        await this.prepareAssets(images, loadedImages, pluginResult);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
         scene = {
@@ -185,8 +182,10 @@ export class AssetManager implements Disposable {
         };
 
         // 触发插件系统 pluginSystem 的回调 prepareResource
-        await hookTimeInfo('processPlugins', () => pluginSystem.loadResources(scene, this.options));
+        await hookTimeInfo('plugin:prepareResource', () => pluginSystem.loadResources(scene, this.options));
       }
+
+      await hookTimeInfo('processAssets', () => this.processAssets(renderer?.engine));
 
       const totalTime = performance.now() - startTime;
 
@@ -364,6 +363,44 @@ export class AssetManager implements Disposable {
     });
 
     return Promise.all(jobs);
+  }
+
+  private async prepareAssets (
+    images: spec.ImageSource[],
+    loadedImages: ImageLike[],
+    pluginResult: {
+      assets: spec.AssetBase[],
+      loadedAssets: unknown[],
+    }[],
+  ) {
+    const { assets, loadedAssets } = pluginResult.reduce((acc, cur) => {
+      acc.assets = acc.assets.concat(cur.assets);
+      acc.loadedAssets = acc.loadedAssets.concat(cur.loadedAssets);
+
+      return acc;
+    }, { assets: [], loadedAssets: [] });
+
+    for (let i = 0; i < images.length; i++) {
+      this.assets[images[i].id] = loadedImages[i];
+    }
+    for (let i = 0; i < assets.length; i++) {
+      this.assets[assets[i].id] = loadedAssets[i] as AssetsType;
+    }
+  }
+
+  private async processAssets (engine?: Engine) {
+    if (!engine) {
+      return;
+    }
+
+    for (const assetId of Object.keys(this.assets)) {
+      const asset = this.assets[assetId];
+      const engineAsset = new Asset(engine);
+
+      engineAsset.data = asset;
+      engineAsset.setInstanceId(assetId);
+      engine.addInstance(engineAsset);
+    }
   }
 
   private async processTextures (

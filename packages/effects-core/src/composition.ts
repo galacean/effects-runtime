@@ -20,7 +20,7 @@ import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { PostProcessVolume } from './components/post-process-volume';
+import type { PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
 
 export interface CompositionStatistic {
