@@ -21,7 +21,7 @@ describe('audioComponent ', function () {
     const options: AudioCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      audios: [{ id, url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr' }],
+      audios: [{ id, url: 'https://mdn.alipayobjects.com/huamei_s9rwo4/afts/file/A*zERYT5qS-7kAAAAAAAAAAAAADiqKAQ' }],
       start: 0,
       options: { audio: { id } },
     };
@@ -44,7 +44,7 @@ describe('audioComponent ', function () {
     const options: AudioCompositionOptions = {
       duration: 3,
       endBehavior: spec.EndBehavior.destroy,
-      audios: [{ id, url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr' }],
+      audios: [{ id, url: 'https://mdn.alipayobjects.com/huamei_s9rwo4/afts/file/A*zERYT5qS-7kAAAAAAAAAAAAADiqKAQ' }],
       start: 0,
       options: { audio: { id } },
     };
@@ -68,7 +68,7 @@ describe('audioComponent ', function () {
     const options: AudioCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      audios: [{ id, url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr' }],
+      audios: [{ id, url: 'https://mdn.alipayobjects.com/huamei_s9rwo4/afts/file/A*zERYT5qS-7kAAAAAAAAAAAAADiqKAQ' }],
       start: 0,
       options: { audio: { id } },
     };
@@ -93,7 +93,7 @@ describe('audioComponent ', function () {
     const options: AudioCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      audios: [{ id, url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr' }],
+      audios: [{ id, url: 'https://mdn.alipayobjects.com/huamei_s9rwo4/afts/file/A*zERYT5qS-7kAAAAAAAAAAAAADiqKAQ' }],
       start: 0,
       options: { audio: { id } },
     };
@@ -118,7 +118,7 @@ describe('audioComponent ', function () {
     const options: AudioCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      audios: [{ id, url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr' }],
+      audios: [{ id, url: 'https://mdn.alipayobjects.com/huamei_s9rwo4/afts/file/A*zERYT5qS-7kAAAAAAAAAAAAADiqKAQ' }],
       start: 0,
       options: { audio: { id } },
     };
@@ -143,7 +143,7 @@ describe('audioComponent ', function () {
     const options: AudioCompositionOptions = {
       duration: 10,
       endBehavior: spec.EndBehavior.destroy,
-      audios: [{ id, url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr' }],
+      audios: [{ id, url: 'https://mdn.alipayobjects.com/huamei_s9rwo4/afts/file/A*zERYT5qS-7kAAAAAAAAAAAAADiqKAQ' }],
       start: 0,
       options: { audio: { id } },
     };

@@ -38,6 +38,9 @@ export class AudioPlayer {
    * @param audio - 音频资源
    */
   setAudioSource (audio: AudioBuffer | HTMLAudioElement) {
+    if (this.audio || this.audioSourceInfo.source) {
+      this.dispose();
+    }
     if (audio instanceof AudioBuffer) {
       const audioContext = new AudioContext();
       const gainNode = audioContext.createGain();
@@ -57,7 +60,9 @@ export class AudioPlayer {
     } else {
       this.audio = audio;
     }
-    this.started = false;
+    if (this.started) {
+      this.play();
+    }
   }
 
   getCurrentTime (): number {
@@ -191,7 +196,9 @@ export class AudioPlayer {
     if (this.isSupportAudioContext) {
       const { audioContext, source } = this.audioSourceInfo;
 
-      source?.stop();
+      if (this.started) {
+        source?.stop();
+      }
       audioContext?.close().catch(e => {
         this.engine.renderErrors.add(e);
       });

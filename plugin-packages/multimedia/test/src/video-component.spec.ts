@@ -24,7 +24,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
         },
       ],
       start: 0,
@@ -53,7 +53,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
         },
       ],
       start: 0,
@@ -86,7 +86,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
         },
       ],
       start: 0,
@@ -121,7 +121,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
         },
       ],
       start: 0,
@@ -155,7 +155,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
         },
       ],
       start: 0,
@@ -189,7 +189,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
         },
       ],
       start: 0,
@@ -223,7 +223,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
         },
       ],
       start: 0,
@@ -257,7 +257,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
+          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
         },
       ],
       start: 0,
