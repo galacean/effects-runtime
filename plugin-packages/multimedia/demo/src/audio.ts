@@ -742,16 +742,16 @@ addButton?.addEventListener('click', async () => {
 });
 
 updateButton?.addEventListener('click', async () => {
-  const input = (document.getElementById('J-input') as HTMLInputElement).value;
+  const value = inputEle.value;
 
-  if (input) {
+  if (value) {
     const videoComponent = player
       .getCompositionByName('comp1')
       ?.getItemByName('sprite_1')
       ?.getComponent(VideoComponent);
 
     if (videoComponent) {
-      const texture = await Texture.fromVideo(input, player.renderer.engine);
+      const texture = await Texture.fromVideo(value, player.renderer.engine);
 
       videoComponent.setTexture(texture);
     }

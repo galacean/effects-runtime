@@ -422,11 +422,11 @@ const inputEle = document.getElementById('J-input') as HTMLInputElement;
 })();
 
 addButton?.addEventListener('click', async () => {
-  const input = (document.getElementById('J-input') as HTMLInputElement).value;
+  const value = inputEle.value;
 
-  if (input) {
+  if (value) {
     const item = player.getCompositionByName('comp1')?.getItemByName('video');
-    const texture = await Texture.fromVideo(input, player.renderer.engine);
+    const texture = await Texture.fromVideo(value, player.renderer.engine);
 
     if (!item) { return; }
 
