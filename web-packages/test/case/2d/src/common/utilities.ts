@@ -110,7 +110,7 @@ export class TestPlayer {
     if (this.composition.content) {
       return this.composition.content.duration;
     } else {
-      return this.composition.duration;
+      return this.composition.getDuration();
     }
   }
 
