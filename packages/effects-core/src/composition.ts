@@ -660,18 +660,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       if (item.parentId === undefined) {
         item.setParent(compVFXItem);
       } else {
-        // 兼容 treeItem 子元素的 parentId 带 '^'
-        const parentId = this.getParentIdWithoutSuffix(item.parentId);
-        const parent = itemMap.get(parentId);
+        const parent = itemMap.get(item.parentId);
 
         if (parent) {
-          if (VFXItem.isTree(parent) && item.parentId.includes('^')) {
-            item.parent = parent;
-            item.transform.parentTransform = parent.getNodeTransform(item.parentId);
-          } else {
-            item.parent = parent;
-            item.transform.parentTransform = parent.transform;
-          }
+          item.parent = parent;
+          item.transform.parentTransform = parent.transform;
           parent.children.push(item);
         } else {
           throw new Error('The element references a non-existent element, please check the data.');
@@ -684,12 +677,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         this.buildItemTree(item);
       }
     }
-  }
-
-  private getParentIdWithoutSuffix (id: string) {
-    const idx = id.lastIndexOf('^');
-
-    return idx > -1 ? id.substring(0, idx) : id;
   }
 
   /**
