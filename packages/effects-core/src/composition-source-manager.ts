@@ -7,6 +7,7 @@ import type { Scene, SceneRenderLevel } from './scene';
 import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
 import type { Disposable } from './utils';
+import type { VFXItemData } from './asset-loader';
 
 let listOrder = 0;
 
@@ -110,11 +111,10 @@ export class CompositionSourceManager implements Disposable {
     }
 
     for (const itemDataPath of composition.items) {
-      const sourceItemData = this.engine.jsonSceneData[itemDataPath.id] as spec.VFXItemData;
+      const sourceItemData = this.engine.jsonSceneData[itemDataPath.id] as VFXItemData;
       const itemProps = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
-        //@ts-expect-error
         itemProps.listIndex = listOrder++;
 
         if (
