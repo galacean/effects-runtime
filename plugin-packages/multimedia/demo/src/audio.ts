@@ -696,15 +696,28 @@ const json = {
 };
 let player: Player;
 const container = document.getElementById('J-container');
-
 const addButton = document.getElementById('J-add');
+const updateButton = document.getElementById('J-update');
+const inputEle = document.getElementById('J-input') as HTMLInputElement;
+
+(async () => {
+  try {
+    player = new Player({
+      container,
+    });
+
+    await player.loadScene(json1);
+  } catch (e) {
+    console.error('biz', e);
+  }
+})();
 
 addButton?.addEventListener('click', async () => {
-  const input = (document.getElementById('J-input') as HTMLInputElement).value;
+  const value = inputEle.value;
 
-  if (input) {
+  if (value) {
     const item = player.getCompositionByName('comp1')?.getItemByName('sprite_1');
-    const texture = await Texture.fromVideo(input, player.renderer.engine);
+    const texture = await Texture.fromVideo(value, player.renderer.engine);
 
     if (!item) {
       return;
@@ -728,8 +741,6 @@ addButton?.addEventListener('click', async () => {
   }
 });
 
-const updateButton = document.getElementById('J-update');
-
 updateButton?.addEventListener('click', async () => {
   const input = (document.getElementById('J-input') as HTMLInputElement).value;
 
@@ -746,15 +757,3 @@ updateButton?.addEventListener('click', async () => {
     }
   }
 });
-
-(async () => {
-  try {
-    player = new Player({
-      container,
-    });
-
-    await player.loadScene(json1);
-  } catch (e) {
-    console.error('biz', e);
-  }
-})();
