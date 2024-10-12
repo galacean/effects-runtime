@@ -1,28 +1,6 @@
 import type { SceneLoadOptions } from '@galacean/effects';
-import { loadBinary, loadVideo, spec, passRenderLevel } from '@galacean/effects';
-
-export class MultiMediaError extends Error {
-  /**
-   * 报错代码
-   */
-  code: number;
-
-  constructor (code: number, message: string) {
-    super(message);
-    this.code = code;
-    this.name = this.constructor.name;
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, MultiMediaError);
-    }
-  }
-}
-
-export const multiMediaErrorMessageMap: Record<number, string> = {
-  2000: 'Autoplay permission for audio and video is not enabled',
-};
-export const multiMediaErrorDisplayMessageMap = {
-  2000: '音视频自动播放权限未开启',
-};
+import { loadBinary, loadVideo, spec, passRenderLevel, isFunction } from '@galacean/effects';
+import { multimediaErrorMessageMap } from './constants';
 
 export async function processMultimedia<T> (
   media: spec.AssetBase[],
@@ -61,7 +39,7 @@ export async function checkAutoplayPermission () {
   try {
     await audio.play();
   } catch (_) {
-    throw new MultiMediaError(2000, multiMediaErrorMessageMap[2000]);
+    throw new MultimediaError(2000, multimediaErrorMessageMap[2000]);
   }
 }
 
@@ -109,4 +87,21 @@ export async function loadAudio (url: string): Promise<HTMLAudioElement | AudioB
     // 开始加载音频
     audio.load();
   });
+}
+
+export class MultimediaError extends Error {
+  /**
+   * 报错代码
+   */
+  code: number;
+
+  constructor (code: number, message: string) {
+    super(message);
+    this.code = code;
+    this.name = this.constructor.name;
+
+    if ('captureStackTrace' in Error && isFunction(Error.captureStackTrace)) {
+      Error.captureStackTrace(this, MultimediaError);
+    }
+  }
 }
