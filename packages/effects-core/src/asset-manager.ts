@@ -6,7 +6,7 @@ import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
-import type { ImageLike, SceneLoadOptions, SceneRenderLevel } from './scene';
+import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
@@ -144,31 +144,9 @@ export class AssetManager implements Disposable {
         scene = {
           ...rawJSON,
         };
-
-        if (
-          this.options &&
-          this.options.variables &&
-          Object.keys(this.options.variables).length !== 0
-        ) {
-          const { images: rawImages } = rawJSON.jsonScene;
-          const images = scene.images;
-          const newImages: spec.ImageSource[] = [];
-
-          for (let i = 0; i < rawImages.length; i++) {
-            // 仅重新加载数据模板对应的图片
-            if (images[i] instanceof HTMLCanvasElement) {
-              newImages[i] = rawImages[i];
-            }
-          }
-          scene.images = await hookTimeInfo('processImages', () => this.processImages(newImages, compressedTexture));
-          // 更新 TextureOptions 中的 image 指向
-          for (let i = 0; i < scene.images.length; i++) {
-            scene.textureOptions[i].image = scene.images[i];
-          }
-        }
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
-        const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
+        const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
@@ -201,7 +179,6 @@ export class AssetManager implements Disposable {
           storage: {},
           pluginSystem,
           jsonScene,
-          usedImages,
           images: loadedImages,
           textureOptions: loadedTextures,
           bins: loadedBins,
@@ -241,25 +218,12 @@ export class AssetManager implements Disposable {
 
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
-    const { plugins = [], compositions: sceneCompositions, imgUsage, images } = jsonScene;
+    const { plugins = [] } = jsonScene;
     const pluginSystem = new PluginSystem(plugins);
 
     await pluginSystem.processRawJSON(jsonScene, this.options);
 
-    const { renderLevel } = this.options;
-    const usedImages: Record<number, boolean> = {};
-
-    if (imgUsage) {
-      // TODO: 考虑放到独立的 fix 文件
-      fixOldImageUsage(usedImages, sceneCompositions, imgUsage, images, renderLevel);
-    } else {
-      images?.forEach((_, i) => {
-        usedImages[i] = true;
-      });
-    }
-
     return {
-      usedImages,
       jsonScene,
       pluginSystem,
     };
@@ -300,11 +264,9 @@ export class AssetManager implements Disposable {
           const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
 
           await fontFace.load();
-          //@ts-expect-error
           document.fonts.add(fontFace);
           AssetManager.fonts.add(font.fontFamily);
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e) {
+        } catch (_) {
           logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}.`);
         }
       }
@@ -362,9 +324,8 @@ export class AssetManager implements Disposable {
                 variables,
               );
             }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
-            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message || e}.`);
+            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as Error).message || e}.`);
           }
         }
       } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
@@ -480,30 +441,6 @@ export class AssetManager implements Disposable {
     }
     this.assets = {};
     this.timers = [];
-  }
-}
-
-function fixOldImageUsage (
-  usedImages: Record<number, boolean>,
-  compositions: spec.CompositionData[],
-  imgUsage: Record<string, number[]>,
-  images: any,
-  renderLevel?: SceneRenderLevel,
-) {
-  for (let i = 0; i < compositions.length; i++) {
-    const id = compositions[i].id;
-    const ids = imgUsage[id];
-
-    if (ids) {
-      for (let j = 0; j < ids.length; j++) {
-        const id = ids[j];
-        const tag = images[id].renderLevel;
-
-        if (passRenderLevel(tag, renderLevel)) {
-          usedImages[id] = true;
-        }
-      }
-    }
   }
 }
 
