@@ -5,6 +5,8 @@ import { AudioLoader } from './audio/audio-loader';
 export * from './video/video-component';
 export * from './audio/audio-component';
 export * from './audio/audio-player';
+export * from './constants';
+export * from './utils';
 
 registerPlugin('video', VideoLoader, VFXItem, true);
 registerPlugin('audio', AudioLoader, VFXItem, true);

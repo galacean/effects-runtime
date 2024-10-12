@@ -1,7 +1,7 @@
 import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
 import { Player, Texture, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
-import { VideoComponent } from '@galacean/effects-plugin-multimedia';
+import { checkAutoplayPermission, VideoComponent } from '@galacean/effects-plugin-multimedia';
 
 const json = {
   'playerVersion': {
@@ -413,6 +413,8 @@ const inputEle = document.getElementById('J-input') as HTMLInputElement;
       container,
       fps: 130,
     });
+
+    await checkAutoplayPermission();
 
     await player.loadScene(json, { renderLevel: spec.RenderLevel.B });
   } catch (e) {

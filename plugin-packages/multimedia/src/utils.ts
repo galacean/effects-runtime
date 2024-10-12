@@ -1,5 +1,6 @@
 import type { SceneLoadOptions } from '@galacean/effects';
-import { loadBinary, loadVideo, spec, passRenderLevel } from '@galacean/effects';
+import { loadBinary, loadVideo, spec, passRenderLevel, isFunction } from '@galacean/effects';
+import { multimediaErrorMessageMap } from './constants';
 
 export async function processMultimedia<T> (
   media: spec.AssetBase[],
@@ -22,6 +23,24 @@ export async function processMultimedia<T> (
   });
 
   return Promise.all(jobs) as Promise<T[]>;
+}
+
+/**
+ * 判断音视频浏览器是否允许播放
+ */
+export async function checkAutoplayPermission () {
+  const audio = document.createElement('audio');
+
+  // src 为长度为 0.1s 的音频片段
+  audio.src = 'data:audio/mpeg;base64,//uQxAACFCEW8uewc8Nfu50FhJuQAGAFJCAhaIHoMhfEnBzixrwNsCGGGmyeCECGGRKWwnB0MkzGh6Hn7JLEstwCADQsJwBAAAOOhOAGAcd0gJgTBuW7HBgJBgfvEgCAEBEiOyeTDxyiyjZLEsRDyEzMz+921nJyWJZn6w8P1769e/AYCQI6tIJAkGHL16zpxhY5VeYGCdd3/93d9w4tygIO/4IHBOD8Hz/4f+IDkEHU4n8PqBMMBCQ0iXWYFnCIGqooaZHfRqOrgxuOtjmpCJCaYjmQqDz3NJUBTFWK4soYEoCumIJzIBldNhLUmAaDzhggZmSAkr9SqAIjGJFGEMCQlIPKDMuo24qZIrKDONHWGqlZbOymMy2yhCoBQywFQAgBEsETW0hCoIkqQWBINPWa3rCoEg1MiBIEiZMUiklyMfKVqoUOxIkSMtVTMzOMSBiKJQMAiWyROrf/5mq//8mkknNBQlFjiJFHKqqr//1VV6qq3vNVVbJpFHXkijM+pIoy1VX7zPOJEkmJAJaYgpqKBgASEAAIAAAAAAAAAAAA//uSxAAD1p0iZiw9OIgAADSAAAAEYAwFApgokRqIFjigukAADJhFjIUGoGFlRAycQGC5QsJJRWdRZRVWZVNYBStcjsRuaiMSgmOQOvVAKBSBY4ygsJGDCEoUEWrE3NBfUyJSSTTiPMpDUUvrhTsC7XR/G6bx2nse52G+cjBDhQW5tan7IZREJY6ULlDpCIhCIhkPDYgFaN2//3JZVZVY6UXQO2NXV1u//P/KSqyqSai7GFdu0DEqoheCVpA1v///6qqaaaYRKqIGKpiCmooGABIQAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+  audio.muted = true;
+  audio.crossOrigin = 'anonymous';
+
+  try {
+    await audio.play();
+  } catch (_) {
+    throw new MultimediaError(2000, multimediaErrorMessageMap[2000]);
+  }
 }
 
 /**
@@ -68,4 +87,21 @@ export async function loadAudio (url: string): Promise<HTMLAudioElement | AudioB
     // 开始加载音频
     audio.load();
   });
+}
+
+export class MultimediaError extends Error {
+  /**
+   * 报错代码
+   */
+  code: number;
+
+  constructor (code: number, message: string) {
+    super(message);
+    this.code = code;
+    this.name = this.constructor.name;
+
+    if ('captureStackTrace' in Error && isFunction(Error.captureStackTrace)) {
+      Error.captureStackTrace(this, MultimediaError);
+    }
+  }
 }

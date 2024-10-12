@@ -1,7 +1,7 @@
 import { Asset, Player, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-multimedia';
 import { AudioComponent } from '@galacean/effects-plugin-multimedia';
-import { loadAudio } from '../../src/utils';
+import { checkAutoplayPermission, loadAudio } from '../../src/utils';
 
 const duration = 5.0;
 const endBehavior = spec.EndBehavior.destroy;
@@ -302,6 +302,8 @@ const inputEle = document.getElementById('J-input') as HTMLInputElement;
     player = new Player({
       container,
     });
+
+    await checkAutoplayPermission();
 
     await player.loadScene(json);
   } catch (e) {
