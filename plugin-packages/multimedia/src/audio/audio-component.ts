@@ -9,21 +9,15 @@ export class AudioComponent extends RendererComponent {
   private isVideoPlay = false;
   private threshold = 0.03;
 
-  override onStart (): void {
-    super.onStart();
+  override onUpdate (dt: number): void {
+    super.onUpdate(dt);
 
-    const { duration, endBehavior } = this.item;
+    const { time, duration, endBehavior } = this.item;
 
     this.audioPlayer.setOptions({
       duration,
       endBehavior,
     });
-  }
-
-  override onUpdate (dt: number): void {
-    super.onUpdate(dt);
-
-    const { time, duration, endBehavior } = this.item;
 
     if (time >= 0 && !this.isVideoPlay) {
       this.audioPlayer.play();
@@ -48,6 +42,14 @@ export class AudioComponent extends RendererComponent {
     this.setPlaybackRate(playbackRate);
     this.setMuted(muted);
     this.setVolume(volume);
+  }
+
+  /**
+   * 设置音频资源
+   * @param audio - 音频资源
+   */
+  setAudioSource (audio: HTMLAudioElement | AudioBuffer): void {
+    this.audioPlayer.setAudioSource(audio);
   }
 
   /**

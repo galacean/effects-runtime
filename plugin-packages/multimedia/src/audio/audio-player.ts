@@ -23,12 +23,21 @@ export class AudioPlayer {
   };
   private destroyed = false;
   private started = false;
+  private initialized = false;
   private currentVolume = 1;
 
   constructor (
     audio: AudioBuffer | HTMLAudioElement,
     private engine: Engine,
   ) {
+    this.setAudioSource(audio);
+  }
+
+  /**
+   * 设置音频资源
+   * @param audio - 音频资源
+   */
+  setAudioSource (audio: AudioBuffer | HTMLAudioElement) {
     if (audio instanceof AudioBuffer) {
       const audioContext = new AudioContext();
       const gainNode = audioContext.createGain();
@@ -48,6 +57,7 @@ export class AudioPlayer {
     } else {
       this.audio = audio;
     }
+    this.started = false;
   }
 
   getCurrentTime (): number {
@@ -152,7 +162,11 @@ export class AudioPlayer {
   }
 
   setOptions (options: AudioPlayerOptions): void {
+    if (this.initialized) {
+      return;
+    }
     this.options = options;
+    this.initialized = true;
   }
 
   setMuted (muted: boolean): void {

@@ -22,8 +22,7 @@ const json = {
   'plugins': ['video'],
   videos: [
     {
-      url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/y8bSQJSAwAYAAAAAAAAAABAADnV5AQBr',
-      // url: 'https://mass-office.alipay.com/huamei_koqzbu/afts/file/9u_BRo0t6bsAAAAAAAAAABAADnV5AQBr',
+      url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
       id: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
       renderLevel: 'B+',
     },
