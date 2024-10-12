@@ -473,7 +473,7 @@ describe('渲染插件单测', function () {
       id: '1',
       name: 'mat1',
       dataType: spec.DataType.Material,
-      shader: { id: 'pbr00000000000000000000000000000' },
+      shader: { id: spec.BuiltinObjectGUID.PBRShader },
       stringTags: {
         RenderFace: spec.RenderFace.Front,
         RenderType: spec.RenderType.Opaque,

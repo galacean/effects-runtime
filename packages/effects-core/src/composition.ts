@@ -11,7 +11,7 @@ import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
 import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene, SceneType } from './scene';
+import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
 import type { Disposable, LostHandler } from './utils';
@@ -20,7 +20,7 @@ import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { PostProcessVolume } from './components/post-process-volume';
+import type { PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
 import { SerializationHelper } from './serialization-helper';
 
@@ -152,7 +152,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成对应的 url 或者 JSON
    */
-  readonly url: SceneType;
+  readonly url: Scene.LoadType;
   /**
    * 合成根元素
    */
@@ -193,8 +193,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private paused = false;
   private lastVideoUpdateTime = 0;
-  // private readonly event: EventSystem;
-  // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
   private readonly texInfo: Record<string, number>;
   /**
    * 合成中消息元素创建/销毁时触发的回调
@@ -222,7 +220,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     } = props;
 
     this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
-    scene.jsonScene.imgUsage = undefined;
+
     if (reusable) {
       this.keepResource = true;
       scene.textures = undefined;
@@ -241,14 +239,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // Spawn rootCompositionComponent
     this.rootComposition = this.rootItem.addComponent(CompositionComponent);
 
-    const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
-
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent.id;
     this.renderer = renderer;
-    this.texInfo = imageUsage ?? {};
+    this.texInfo = !reusable ? imgUsage : {};
     this.event = event;
     this.statistic = {
       loadStart: scene.startTime ?? 0,
@@ -258,7 +254,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     };
     this.reusable = reusable;
     this.speed = speed;
-    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.EndBehavior.restart;
+    this.autoRefTex = !this.keepResource && this.texInfo && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -660,18 +656,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       if (item.parentId === undefined) {
         item.setParent(compVFXItem);
       } else {
-        // 兼容 treeItem 子元素的 parentId 带 '^'
-        const parentId = this.getParentIdWithoutSuffix(item.parentId);
-        const parent = itemMap.get(parentId);
+        const parent = itemMap.get(item.parentId);
 
         if (parent) {
-          if (VFXItem.isTree(parent) && item.parentId.includes('^')) {
-            item.parent = parent;
-            item.transform.parentTransform = parent.getNodeTransform(item.parentId);
-          } else {
-            item.parent = parent;
-            item.transform.parentTransform = parent.transform;
-          }
+          item.parent = parent;
+          item.transform.parentTransform = parent.transform;
           parent.children.push(item);
         } else {
           throw new Error('The element references a non-existent element, please check the data.');
@@ -684,12 +673,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         this.buildItemTree(item);
       }
     }
-  }
-
-  private getParentIdWithoutSuffix (id: string) {
-    const idx = id.lastIndexOf('^');
-
-    return idx > -1 ? id.substring(0, idx) : id;
   }
 
   /**

@@ -54,7 +54,7 @@ export interface SpineDataCache extends SpineBaseData {
 /**
  * @since 2.0.0
  */
-@effectsClass('SpineComponent')
+@effectsClass(spec.DataType.SpineComponent)
 export class SpineComponent extends RendererComponent {
   startSize: number;
   /**

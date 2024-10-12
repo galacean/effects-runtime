@@ -1687,7 +1687,7 @@ function generateGLMaterial (
 ) {
   const material = new GLMaterial(engine, { shader });
 
-  material.sampleAlphaToCoverage = !!(states.sampleAlphaToCoverage);
+  material.sampleAlphaToCoverage = !!states.sampleAlphaToCoverage;
   material.depthTest = states.depthTest;
   material.depthMask = states.depthMask;
   material.depthRange = states.depthRange;

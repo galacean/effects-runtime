@@ -8,10 +8,9 @@ const container = document.getElementById('J-container');
     const player = new Player({
       container,
     });
-
     const composition = await player.loadScene(json, {
       variables: {
-        video: 'https://gw.alipayobjects.com/v/huamei_p0cigc/afts/video/A*7gPzSo3RxlQAAAAAAAAAAAAADtN3AQ',
+        video: 'https://mdn.alipayobjects.com/huamei_p0cigc/afts/file/A*ZOgXRbmVlsIAAAAAAAAAAAAADoB5AQ',
         text_3: 'Dynamic Video',
       },
     });

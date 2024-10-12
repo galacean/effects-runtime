@@ -1,13 +1,13 @@
-import type { EffectsObjectData } from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { EffectsObject } from './effects-object';
 import { effectsClass, serialize } from './decorators';
 
-@effectsClass('BinaryAsset')
+@effectsClass(spec.DataType.BinaryAsset)
 export class BinaryAsset extends EffectsObject {
   @serialize()
   buffer: ArrayBuffer;
 
-  override fromData (data: EffectsObjectData): void {
+  override fromData (data: spec.EffectsObjectData): void {
 
   }
 }

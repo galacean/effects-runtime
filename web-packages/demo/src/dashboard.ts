@@ -1,6 +1,5 @@
 import type { Composition } from '@galacean/effects';
 import { Player } from '@galacean/effects';
-import cubeTextures from './assets/cube-textures';
 
 const jsons = [
   // 方块
@@ -24,9 +23,6 @@ const jsons = [
   // // 2022 集五福
   'https://mdn.alipayobjects.com/mars/afts/file/A*dnU-SprU5pAAAAAAAAAAAAAADlB4AQ',
 ];
-
-// @ts-expect-error
-jsons.push(cubeTextures);
 
 (async () => {
   try {

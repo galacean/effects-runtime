@@ -4,13 +4,15 @@ import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
 import type { PluginSystem } from './plugin-system';
 import type { Scene, SceneRenderLevel } from './scene';
-import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
 import type { Disposable } from './utils';
-import { isObject } from './utils';
 
 let listOrder = 0;
+
+interface RendererOptionsWithMask extends spec.RendererOptions {
+  mask?: number,
+}
 
 export interface ContentOptions {
   id: string,
@@ -34,7 +36,7 @@ export class CompositionSourceManager implements Disposable {
   renderLevel?: SceneRenderLevel;
   pluginSystem?: PluginSystem;
   totalTime: number;
-  imgUsage: Record<string, number[]>;
+  imgUsage: Record<string, number> = {};
   textures: Texture[];
   jsonScene?: spec.JSONScene;
   mask = 0;
@@ -49,7 +51,7 @@ export class CompositionSourceManager implements Disposable {
     this.engine = engine;
     // 资源
     const { jsonScene, renderLevel, textureOptions, pluginSystem, totalTime } = scene;
-    const { compositions, imgUsage, compositionId } = jsonScene;
+    const { compositions, compositionId } = jsonScene;
 
     if (!textureOptions) {
       throw new Error('scene.textures expected.');
@@ -71,7 +73,6 @@ export class CompositionSourceManager implements Disposable {
     this.renderLevel = renderLevel;
     this.pluginSystem = pluginSystem;
     this.totalTime = totalTime ?? 0;
-    this.imgUsage = imgUsage ?? {};
     this.textures = cachedTextures;
     listOrder = 0;
     this.sourceContent = this.getContent(this.composition);
@@ -98,7 +99,7 @@ export class CompositionSourceManager implements Disposable {
   private assembleItems (composition: spec.CompositionData) {
     this.mask++;
     const componentMap: Record<string, spec.ComponentData> = {};
-    const items = [];
+    const items: spec.DataPath[] = [];
 
     if (!this.jsonScene) {
       return;
@@ -121,7 +122,7 @@ export class CompositionSourceManager implements Disposable {
           itemProps.type === spec.ItemType.particle
         ) {
           for (const componentPath of itemProps.components) {
-            const componentData = componentMap[componentPath.id];
+            const componentData = componentMap[componentPath.id] as spec.SpriteComponentData | spec.ParticleSystemData;
 
             this.preProcessItemContent(componentData);
           }
@@ -147,52 +148,55 @@ export class CompositionSourceManager implements Disposable {
     composition.items = items;
   }
 
-  private preProcessItemContent (renderContent: any) {
+  private preProcessItemContent (
+    renderContent: spec.SpriteComponentData | spec.ParticleSystemData | spec.ParticleContent,
+  ) {
     if (renderContent.renderer) {
       renderContent.renderer = this.changeTex(renderContent.renderer);
 
-      if (!renderContent.renderer.mask) {
+      if (!('mask' in renderContent.renderer)) {
         this.processMask(renderContent.renderer);
       }
 
-      const split = renderContent.splits && !renderContent.textureSheetAnimation && renderContent.splits[0];
+      const split = renderContent.splits && !renderContent.textureSheetAnimation ? renderContent.splits[0] : undefined;
+      const shape = renderContent.renderer.shape;
+      let shapeData;
 
-      if (Number.isInteger(renderContent.renderer.shape)) {
-        // TODO: scene.shapes 类型问题？
-        renderContent.renderer.shape = getGeometryByShape(this.jsonScene?.shapes[renderContent.renderer.shape] as unknown as ShapeData, split);
-      } else if (renderContent.renderer.shape && isObject(renderContent.renderer.shape)) {
-        renderContent.renderer.shape = getGeometryByShape(renderContent.renderer.shape, split);
+      if (Number.isInteger(shape)) {
+        shapeData = this.jsonScene?.shapes[shape as number];
+      } else {
+        shapeData = shape as spec.ShapeGeometry;
+      }
+
+      if (shapeData !== undefined) {
+        // @ts-expect-error 类型转换问题
+        renderContent.renderer.shape = getGeometryByShape(shapeData, split);
       }
     }
 
-    if (renderContent.trails) {
+    if ('trails' in renderContent && renderContent.trails !== undefined) {
       renderContent.trails = this.changeTex(renderContent.trails);
     }
   }
 
-  private changeTex (renderer: Record<string, number>) {
+  private changeTex<T extends spec.RendererOptions | spec.ParticleTrail> (renderer: T) {
     if (!renderer.texture) {
       return renderer;
     }
-    //@ts-expect-error
     const texIdx = renderer.texture.id;
 
     if (texIdx !== undefined) {
-      //@ts-expect-error
-      this.addTextureUsage(texIdx) || texIdx;
+      this.addTextureUsage(texIdx);
     }
 
     return renderer;
   }
 
-  private addTextureUsage (texIdx: number) {
-    const texId = texIdx;
-    // FIXME: imageUsage 取自 scene.imgUsage，类型为 Record<string, number[]>，这里给的 number，类型对不上
-    const imageUsage = this.imgUsage as unknown as Record<string, number> ?? {};
+  private addTextureUsage (texId: string) {
+    const imageUsage = this.imgUsage ?? {};
 
     if (texId && imageUsage) {
-      // eslint-disable-next-line no-prototype-builtins
-      if (!imageUsage.hasOwnProperty(texId)) {
+      if (!Object.prototype.hasOwnProperty.call(imageUsage, texId)) {
         imageUsage[texId] = 0;
       }
       imageUsage[texId]++;
@@ -202,8 +206,8 @@ export class CompositionSourceManager implements Disposable {
   /**
    * 处理蒙版和遮挡关系写入 stencil 的 ref 值
    */
-  private processMask (renderer: Record<string, number>) {
-    const maskMode: spec.MaskMode = renderer.maskMode;
+  private processMask (renderer: RendererOptionsWithMask) {
+    const maskMode = renderer.maskMode;
 
     if (maskMode === spec.MaskMode.NONE) {
       return;

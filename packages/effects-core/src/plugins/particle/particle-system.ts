@@ -12,7 +12,7 @@ import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../..
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
 import { Transform } from '../../transform';
-import { DestroyOptions, type color } from '../../utils';
+import { DestroyOptions } from '../../utils';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { Burst } from './burst';
@@ -32,7 +32,7 @@ type ParticleOptions = {
   startSpeed: ValueGetter<number>,
   startLifetime: ValueGetter<number>,
   startDelay: ValueGetter<number>,
-  startColor: ValueGetter<color>,
+  startColor: ValueGetter<spec.RGBAColorValue>,
   start3DRotation?: boolean,
   startRotationX?: ValueGetter<number>,
   startRotationY?: ValueGetter<number>,
