@@ -23,12 +23,24 @@ export class AudioPlayer {
   };
   private destroyed = false;
   private started = false;
+  private initialized = false;
   private currentVolume = 1;
 
   constructor (
     audio: AudioBuffer | HTMLAudioElement,
     private engine: Engine,
   ) {
+    this.setAudioSource(audio);
+  }
+
+  /**
+   * 设置音频资源
+   * @param audio - 音频资源
+   */
+  setAudioSource (audio: AudioBuffer | HTMLAudioElement) {
+    if (this.audio || this.audioSourceInfo.source) {
+      this.dispose();
+    }
     if (audio instanceof AudioBuffer) {
       const audioContext = new AudioContext();
       const gainNode = audioContext.createGain();
@@ -47,6 +59,9 @@ export class AudioPlayer {
       };
     } else {
       this.audio = audio;
+    }
+    if (this.started) {
+      this.play();
     }
   }
 
@@ -152,7 +167,11 @@ export class AudioPlayer {
   }
 
   setOptions (options: AudioPlayerOptions): void {
+    if (this.initialized) {
+      return;
+    }
     this.options = options;
+    this.initialized = true;
   }
 
   setMuted (muted: boolean): void {
@@ -177,7 +196,9 @@ export class AudioPlayer {
     if (this.isSupportAudioContext) {
       const { audioContext, source } = this.audioSourceInfo;
 
-      source?.stop();
+      if (this.started) {
+        source?.stop();
+      }
       audioContext?.close().catch(e => {
         this.engine.renderErrors.add(e);
       });

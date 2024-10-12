@@ -380,8 +380,11 @@ export class AssetManager implements Disposable {
       return acc;
     }, { assets: [], loadedAssets: [] });
 
-    for (let i = 0; i < assets.concat(images).length; i++) {
-      this.assets[assets.concat(images)[i].id] = (loadedAssets as AssetsType[]).concat(loadedImages)[i];
+    for (let i = 0; i < images.length; i++) {
+      this.assets[images[i].id] = loadedImages[i];
+    }
+    for (let i = 0; i < assets.length; i++) {
+      this.assets[assets[i].id] = loadedAssets[i] as AssetsType;
     }
   }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>audio 使用 - Media 插件 - demo</title>
+  <title>audio 使用 - Multimedia 插件 - demo</title>
   <link rel="stylesheet" href="https://gw.alipayobjects.com/as/g/antui/antui/10.1.32/dpl/antui.css"/>
   <style>
     .container {
@@ -16,28 +16,16 @@
 <body>
 <div class="am-flexbox" style="align-items: start;">
   <div class="container" id="J-container"></div>
-  <div class="am-wingblank" id="J-op" style="width: 460px;">
-    <div class="am-list">
-      <div class="am-list-body">
-        <div class="am-list-item">
-          <div class="am-list-item-actions">
-            <div class="am-list-item">
-              <div class="am-list-item-actions">
-                <input type="text" id="J-input" class="am-input" value="https://mass-office.alipay.com/huamei_koqzbu/afts/file/H9slSL9LcesAAAAAAAAAABAADnV5AQBr" placeholder="音频链接">
-              </div>
-            </div>
-            <button id="J-add" class="am-button tiny">添加 AudioComponent</button>
-            <button id="J-update" class="am-button tiny">更新 Audio 资源</button>
-          </div>
-        </div>
-      </div>
+
+  <div class="am-flexbox-item">
+    <div>
+      <input type="text" id="J-input" style="width: 98%" value="https://mdn.alipayobjects.com/huamei_s9rwo4/afts/file/A*zERYT5qS-7kAAAAAAAAAAAAADiqKAQ" placeholder="音频链接" />
     </div>
-    <div class="am-list">
-      <div class="am-list-body">
-    </div>
+    <div>
+      <button id="J-add" class="am-button tiny">添加 AudioComponent</button>
+      <button id="J-update" class="am-button tiny">更新 Audio 资源</button>
     </div>
   </div>
-  <div class="am-flexbox-item"></div>
 </div>
 <script type="module" src="./src/audio.ts"></script>
 </body>
