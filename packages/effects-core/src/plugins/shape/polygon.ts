@@ -11,10 +11,14 @@ import { triangulate } from './triangulate';
  * A class to define a shape via user defined coordinates.
  */
 export class Polygon extends ShapePrimitive {
-  /** An array of the points of this polygon. */
+  /**
+   * An array of the points of this polygon.
+   */
   points: number[] = [];
 
-  /** `false` after moveTo, `true` after `closePath`. In all other cases it is `true`. */
+  /**
+   * `false` after moveTo, `true` after `closePath`. In all other cases it is `true`.
+   */
   closePath: boolean = false;
 
   constructor (points: PointData[] | number[]);
@@ -155,7 +159,7 @@ export class Polygon extends ShapePrimitive {
 
     const vertexCount = triangles.length / 2;
 
-    for (let i = 0;i < vertexCount;i++) {
+    for (let i = 0; i < vertexCount; i++) {
       indices[indicesOffset + i] = i;
     }
   }

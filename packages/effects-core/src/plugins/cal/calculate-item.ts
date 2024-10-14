@@ -1,12 +1,13 @@
 import * as spec from '@galacean/effects-specification';
-import type { Euler, Vector3 } from '@galacean/effects-math/es/core/index';
+import type { Euler } from '@galacean/effects-math/es/core/euler';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { effectsClass } from '../../decorators';
 import type { ValueGetter } from '../../math';
 import { VFXItem } from '../../vfx-item';
 import { ParticleSystem } from '../particle/particle-system';
 import { ParticleBehaviourPlayableAsset } from '../particle/particle-vfx-item';
-import { TrackAsset } from '../timeline/track';
-import type { TimelineAsset } from '../timeline/playable-assets/timeline-asset';
+import { TrackAsset } from '../timeline';
+import type { TimelineAsset } from '../timeline';
 
 /**
  * 基础位移属性数据

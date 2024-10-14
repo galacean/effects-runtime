@@ -8,7 +8,7 @@ import type { Region, TrackAsset } from './plugins';
 import { HitTestType, ObjectBindingTrack } from './plugins';
 import type { Playable } from './plugins/cal/playable-graph';
 import { PlayableGraph } from './plugins/cal/playable-graph';
-import { TimelineAsset } from './plugins/timeline/playable-assets/timeline-asset';
+import { TimelineAsset } from './plugins/timeline';
 import { generateGUID, noop } from './utils';
 import { Item, VFXItem } from './vfx-item';
 import { SerializationHelper } from './serialization-helper';

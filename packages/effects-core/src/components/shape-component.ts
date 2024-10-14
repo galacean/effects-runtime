@@ -76,7 +76,7 @@ void main() {
               0.5, -0.5, 0, //右下
             ]),
           },
-          aUV:{
+          aUV: {
             type: glContext.FLOAT,
             size: 2,
             data: new Float32Array(),
@@ -180,7 +180,7 @@ void main() {
   private buildPath (data: ShapeComponentData) {
     this.path.clear();
     switch (data.type) {
-      case ComponentShapeType.CUSTOM : {
+      case ComponentShapeType.CUSTOM: {
         const customData = data as ShapeCustomComponent;
         const points = customData.param.points;
         const easingIns = customData.param.easingIn;
@@ -222,7 +222,7 @@ void main() {
 
         break;
       }
-      case ComponentShapeType.ELLIPSE:{
+      case ComponentShapeType.ELLIPSE: {
         const ellipseData = data as ShapeEllipseComponent;
         const ellipseParam = ellipseData.param;
 

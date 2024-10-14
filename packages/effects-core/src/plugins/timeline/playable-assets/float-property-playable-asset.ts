@@ -1,9 +1,9 @@
+import type { FixedNumberExpression } from '@galacean/effects-specification';
 import { createValueGetter } from '../../../math/value-getter';
 import { effectsClass, serialize } from '../../../decorators';
 import type { Playable, PlayableGraph } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
-import { FloatPropertyClipPlayable } from '../playables/float-property-clip-playable';
-import type { FixedNumberExpression } from '@galacean/effects-specification';
+import { FloatPropertyClipPlayable } from '../playables';
 
 @effectsClass('FloatPropertyPlayableAsset')
 export class FloatPropertyPlayableAsset extends PlayableAsset {

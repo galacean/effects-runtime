@@ -4,7 +4,7 @@ import { CompositionComponent } from '../../../comp-vfx-item';
 import { TrackAsset } from '../track';
 import { effectsClass } from '../../../decorators';
 import type { PlayableGraph, Playable } from '../../cal/playable-graph';
-import { SubCompositionMixerPlayable } from '../playables/sub-composition-mixer-playable';
+import { SubCompositionMixerPlayable } from '../playables';
 
 @effectsClass(spec.DataType.SubCompositionTrack)
 export class SubCompositionTrack extends TrackAsset {

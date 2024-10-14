@@ -1,4 +1,3 @@
-
 import { ShapePrimitive } from './shape-primitive';
 
 /**
@@ -6,41 +5,41 @@ import { ShapePrimitive } from './shape-primitive';
  */
 export class Ellipse extends ShapePrimitive {
   /**
-     * The X coordinate of the center of this ellipse
-     * @default 0
-     */
+   * The X coordinate of the center of this ellipse
+   * @default 0
+   */
   x: number;
 
   /**
-     * The Y coordinate of the center of this ellipse
-     * @default 0
-     */
+   * The Y coordinate of the center of this ellipse
+   * @default 0
+   */
   y: number;
 
   /**
-     * The half width of this ellipse
-     * @default 0
-     */
+   * The half width of this ellipse
+   * @default 0
+   */
   halfWidth: number;
 
   /**
-     * The half height of this ellipse
-     * @default 0
-     */
+   * The half height of this ellipse
+   * @default 0
+   */
   halfHeight: number;
 
   /**
-     * The type of the object, mainly used to avoid `instanceof` checks
-     * @default 'ellipse'
-     */
+   * The type of the object, mainly used to avoid `instanceof` checks
+   * @default 'ellipse'
+   */
   readonly type = 'ellipse';
 
   /**
-     * @param x - The X coordinate of the center of this ellipse
-     * @param y - The Y coordinate of the center of this ellipse
-     * @param halfWidth - The half width of this ellipse
-     * @param halfHeight - The half height of this ellipse
-     */
+   * @param x - The X coordinate of the center of this ellipse
+   * @param y - The Y coordinate of the center of this ellipse
+   * @param halfWidth - The half width of this ellipse
+   * @param halfHeight - The half height of this ellipse
+   */
   constructor (x = 0, y = 0, halfWidth = 0, halfHeight = 0) {
     super();
     this.x = x;
@@ -50,19 +49,19 @@ export class Ellipse extends ShapePrimitive {
   }
 
   /**
-     * Creates a clone of this Ellipse instance
-     * @returns {Ellipse} A copy of the ellipse
-     */
+   * Creates a clone of this Ellipse instance
+   * @returns {Ellipse} A copy of the ellipse
+   */
   clone (): Ellipse {
     return new Ellipse(this.x, this.y, this.halfWidth, this.halfHeight);
   }
 
   /**
-     * Checks whether the x and y coordinates given are contained within this ellipse
-     * @param x - The X coordinate of the point to test
-     * @param y - The Y coordinate of the point to test
-     * @returns Whether the x/y coords are within this ellipse
-     */
+   * Checks whether the x and y coordinates given are contained within this ellipse
+   * @param x - The X coordinate of the point to test
+   * @param y - The Y coordinate of the point to test
+   * @returns Whether the x/y coords are within this ellipse
+   */
   contains (x: number, y: number): boolean {
     if (this.halfWidth <= 0 || this.halfHeight <= 0) {
       return false;
@@ -79,12 +78,12 @@ export class Ellipse extends ShapePrimitive {
   }
 
   /**
-     * Checks whether the x and y coordinates given are contained within this ellipse including stroke
-     * @param x - The X coordinate of the point to test
-     * @param y - The Y coordinate of the point to test
-     * @param width
-     * @returns Whether the x/y coords are within this ellipse
-     */
+   * Checks whether the x and y coordinates given are contained within this ellipse including stroke
+   * @param x - The X coordinate of the point to test
+   * @param y - The Y coordinate of the point to test
+   * @param width
+   * @returns Whether the x/y coords are within this ellipse
+   */
   strokeContains (x: number, y: number, width: number): boolean {
     const { halfWidth, halfHeight } = this;
 
@@ -102,18 +101,18 @@ export class Ellipse extends ShapePrimitive {
     const normalizedY = y - this.y;
 
     const innerEllipse = ((normalizedX * normalizedX) / (innerA * innerA))
-                           + ((normalizedY * normalizedY) / (innerB * innerB));
+      + ((normalizedY * normalizedY) / (innerB * innerB));
     const outerEllipse = ((normalizedX * normalizedX) / (outerA * outerA))
-                           + ((normalizedY * normalizedY) / (outerB * outerB));
+      + ((normalizedY * normalizedY) / (outerB * outerB));
 
     return innerEllipse > 1 && outerEllipse <= 1;
   }
 
   /**
-     * Returns the framing rectangle of the ellipse as a Rectangle object
-     * @param out
-     * @returns The framing rectangle
-     */
+   * Returns the framing rectangle of the ellipse as a Rectangle object
+   * @param out
+   * @returns The framing rectangle
+   */
   //   getBounds (out?: Rectangle): Rectangle {
   //     out = out || new Rectangle();
 
@@ -126,10 +125,10 @@ export class Ellipse extends ShapePrimitive {
   //   }
 
   /**
-     * Copies another ellipse to this one.
-     * @param ellipse - The ellipse to copy from.
-     * @returns Returns itself.
-     */
+   * Copies another ellipse to this one.
+   * @param ellipse - The ellipse to copy from.
+   * @returns Returns itself.
+   */
   copyFrom (ellipse: Ellipse): this {
     this.x = ellipse.x;
     this.y = ellipse.y;
@@ -140,10 +139,10 @@ export class Ellipse extends ShapePrimitive {
   }
 
   /**
-     * Copies this ellipse to another one.
-     * @param ellipse - The ellipse to copy to.
-     * @returns Returns given parameter.
-     */
+   * Copies this ellipse to another one.
+   * @param ellipse - The ellipse to copy to.
+   * @returns Returns given parameter.
+   */
   copyTo (ellipse: Ellipse): Ellipse {
     ellipse.copyFrom(this);
 
