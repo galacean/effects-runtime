@@ -26,14 +26,13 @@ let seed = 1;
  */
 export class AssetManager implements Disposable {
   /**
-   * 图像资源，用于创建和释放 GPU 纹理资源
-   */
-  assets: Record<string, ImageLike> = {};
-
-  /**
    * 相对 url 的基本路径
    */
   private baseUrl: string;
+  /**
+   * 图像资源，用于创建和释放 GPU 纹理资源
+   */
+  private assets: Record<string, ImageLike> = {};
   /**
    * TextureSource 来源
    */
