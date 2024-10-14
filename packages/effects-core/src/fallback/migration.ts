@@ -103,10 +103,8 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
   for (const composition of json.compositions) {
     // composition 的 endBehavior 兼容
     if (
-      // @ts-expect-error
       // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       composition.endBehavior === END_BEHAVIOR_PAUSE_AND_DESTROY ||
-      // @ts-expect-error
       // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       composition.endBehavior === END_BEHAVIOR_PAUSE
     ) {
@@ -361,7 +359,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
         break;
       case ItemType.spine:
-        item.content.dataType = 'SpineComponent';
+        item.content.dataType = DataType.SpineComponent;
 
         break;
     }

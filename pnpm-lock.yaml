@@ -150,8 +150,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.0.1
-        version: 2.0.1
+        specifier: 2.1.0-alpha.0
+        version: 2.1.0-alpha.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -235,6 +235,12 @@ importers:
       hammerjs:
         specifier: ^2.0.8
         version: 2.0.8
+
+  plugin-packages/multimedia:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
 
   plugin-packages/orientation-transformer:
     devDependencies:
@@ -2202,8 +2208,8 @@ packages:
   /@galacean/effects-specification@2.0.0:
     resolution: {integrity: sha512-7ieZALZYn5fwKLIGAskmYSKGX82ZkLRdDUInG21KsOJ2eQ5+HcI6mJU5tmN8vjZxQUc+RVuUcssExGbiaj2+5w==}
 
-  /@galacean/effects-specification@2.0.1:
-    resolution: {integrity: sha512-5Nj668cYvHXAbTW7W4bxG2gcIL/gWHPmWljVQWcbc/xCT7zA/FtB3ZUbjxfGRfGcXdgMbC8We4Ch3r6fYJF1iQ==}
+  /@galacean/effects-specification@2.1.0-alpha.0:
+    resolution: {integrity: sha512-b6yVdfzFcuzLjuNCn2wyknDBLM+l0arXwsBKP8IOhEz+av5XPaNSrOa2yUEROr0D1l9qydwfaMSL3ft6IT6FOw==}
     dev: false
 
   /@humanwhocodes/config-array@0.11.14:

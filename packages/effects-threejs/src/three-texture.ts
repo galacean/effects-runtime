@@ -224,7 +224,7 @@ export class ThreeTexture extends Texture {
       this.width = this.height = 1;
     }
     if (texture) {
-      texture.flipY = !!(flipY);
+      texture.flipY = !!flipY;
 
       return texture;
     }

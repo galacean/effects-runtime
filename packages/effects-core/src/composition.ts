@@ -20,8 +20,9 @@ import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { PostProcessVolume } from './components/post-process-volume';
+import type { PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
+import { SerializationHelper } from './serialization-helper';
 
 export interface CompositionStatistic {
   loadStart: number,
@@ -106,8 +107,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 是否播放完成后销毁 texture 对象
    */
   keepResource: boolean;
-  // 3D 模式下创建的场景相机 需要最后更新参数, TODO: 太 hack 了, 待移除
-  extraCamera: VFXItem;
   /**
    * 合成内的元素否允许点击、拖拽交互
    * @since 1.6.0
@@ -165,7 +164,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 预合成的合成属性，在 content 中会被其元素属性覆盖
    */
-  refCompositionProps: Map<string, VFXItemProps> = new Map();
+  refCompositionProps: Map<string, spec.CompositionData> = new Map();
   /**
    * 合成的相机对象
    */
@@ -238,11 +237,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem.composition = this;
 
     // Spawn rootCompositionComponent
-    this.rootComposition = new CompositionComponent(this.getEngine());
-    this.rootComposition.startTime = sourceContent.startTime;
-    this.rootComposition.data = sourceContent;
-    this.rootComposition.item = this.rootItem;
-    this.rootItem.components.push(this.rootComposition);
+    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
 
     this.width = width;
     this.height = height;
@@ -273,7 +268,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
     this.rendererOptions = null;
+    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
     this.rootComposition.createContent();
+
     this.buildItemTree(this.rootItem);
     this.rootItem.onEnd = () => {
       window.setTimeout(() => {
@@ -281,7 +278,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }, 0);
     };
     this.pluginSystem.resetComposition(this, this.renderFrame);
-    // this.initializeSceneTicking(this.rootItem);
   }
 
   initializeSceneTicking (item: VFXItem) {
@@ -318,7 +314,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成开始渲染的时间
    */
   get startTime () {
-    return this.rootComposition.startTime ?? 0;
+    return this.rootComposition.startTime;
   }
 
   /**
@@ -660,18 +656,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       if (item.parentId === undefined) {
         item.setParent(compVFXItem);
       } else {
-        // 兼容 treeItem 子元素的 parentId 带 '^'
-        const parentId = this.getParentIdWithoutSuffix(item.parentId);
-        const parent = itemMap.get(parentId);
+        const parent = itemMap.get(item.parentId);
 
         if (parent) {
-          if (VFXItem.isTree(parent) && item.parentId.includes('^')) {
-            item.parent = parent;
-            item.transform.parentTransform = parent.getNodeTransform(item.parentId);
-          } else {
-            item.parent = parent;
-            item.transform.parentTransform = parent.transform;
-          }
+          item.parent = parent;
+          item.transform.parentTransform = parent.transform;
           parent.children.push(item);
         } else {
           throw new Error('The element references a non-existent element, please check the data.');
@@ -684,12 +673,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         this.buildItemTree(item);
       }
     }
-  }
-
-  private getParentIdWithoutSuffix (id: string) {
-    const idx = id.lastIndexOf('^');
-
-    return idx > -1 ? id.substring(0, idx) : id;
   }
 
   /**

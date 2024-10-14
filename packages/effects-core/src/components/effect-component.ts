@@ -2,6 +2,7 @@ import * as spec from '@galacean/effects-specification';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { effectsClass, serialize } from '../decorators';
 import type { Engine } from '../engine';
 import type { Material, MaterialDestroyOptions } from '../material';
@@ -11,7 +12,6 @@ import type { MeshDestroyOptions, Renderer } from '../render';
 import type { Geometry } from '../render';
 import { DestroyOptions } from '../utils';
 import { RendererComponent } from './renderer-component';
-import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 
 /**
  * @since 2.0.0

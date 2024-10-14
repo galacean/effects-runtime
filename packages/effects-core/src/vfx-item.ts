@@ -141,10 +141,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     return item.type === spec.ItemType.camera;
   }
 
-  static isExtraCamera (item: VFXItem) {
-    return item.id === 'extra-camera' && item.name === 'extra-camera';
-  }
-
   static isAncestor (
     ancestorCandidate: VFXItem,
     descendantCandidate: VFXItem,
