@@ -25,6 +25,6 @@ export * from './timeline/tracks/float-property-track';
 export * from './timeline/tracks/sprite-color-track';
 export * from './timeline/tracks/sub-composition-track';
 export * from './timeline/playable-assets/sub-composition-playable-asset';
-export * from './timeline/playable-assets/curve-property-playable-asset';
+export * from './timeline/playable-assets/float-property-playable-asset';
 export * from './timeline/playable-assets/timeline-asset';
 export * from './text';

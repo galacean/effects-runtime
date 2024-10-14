@@ -1,17 +1,7 @@
 import { effectsClass, serialize } from '../../../decorators';
 import type { PlayableGraph, Playable } from '../../cal/playable-graph';
-import { CurvePropertyMixerPlayable } from '../playables/curve-property-mixer-playable';
+import { FloatPropertyMixerPlayable } from '../playables/float-property-mixer-playable';
 import { TrackAsset } from '../track';
-
-export enum PropertyType {
-  Unknown,
-  Float,
-  Vector2,
-  Vector3,
-  Vector4,
-  Quaternion,
-  Color,
-}
 
 @effectsClass('FloatPropertyTrack')
 export class FloatPropertyTrack extends TrackAsset {
@@ -21,10 +11,9 @@ export class FloatPropertyTrack extends TrackAsset {
   propertyName = '';
 
   override createTrackMixer (graph: PlayableGraph): Playable {
-    const mixer = new CurvePropertyMixerPlayable(graph);
+    const mixer = new FloatPropertyMixerPlayable(graph);
 
     mixer.propertyName = this.propertyName;
-    mixer.propertyType = PropertyType.Float;
 
     return mixer;
   }
