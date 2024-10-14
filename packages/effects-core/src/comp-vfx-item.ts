@@ -8,7 +8,7 @@ import type { Region, TrackAsset } from './plugins';
 import { HitTestType, ObjectBindingTrack } from './plugins';
 import type { Playable } from './plugins/cal/playable-graph';
 import { PlayableGraph } from './plugins/cal/playable-graph';
-import { TimelineAsset } from './plugins/cal/timeline-asset';
+import { TimelineAsset } from './plugins/timeline';
 import { generateGUID, noop } from './utils';
 import { Item, VFXItem } from './vfx-item';
 import { SerializationHelper } from './serialization-helper';
@@ -52,13 +52,13 @@ export class CompositionComponent extends Behaviour {
 
   setReusable (value: boolean) {
     for (const track of this.timelineAsset.tracks) {
-      const binding = track.binding;
+      const boundObject = track.boundObject;
 
-      if (binding instanceof VFXItem) {
+      if (boundObject instanceof VFXItem) {
         if (track instanceof ObjectBindingTrack) {
-          binding.reusable = value;
+          boundObject.reusable = value;
         }
-        const subCompositionComponent = binding.getComponent(CompositionComponent);
+        const subCompositionComponent = boundObject.getComponent(CompositionComponent);
 
         if (subCompositionComponent) {
           subCompositionComponent.setReusable(value);
@@ -235,7 +235,7 @@ export class CompositionComponent extends Behaviour {
 
   private resolveBindings () {
     for (const sceneBinding of this.sceneBindings) {
-      sceneBinding.key.binding = sceneBinding.value;
+      sceneBinding.key.boundObject = sceneBinding.value;
     }
     for (const masterTrack of this.timelineAsset.tracks) {
       this.resolveTrackBindingsWithRoot(masterTrack);
@@ -244,7 +244,7 @@ export class CompositionComponent extends Behaviour {
 
   private resolveTrackBindingsWithRoot (track: TrackAsset) {
     for (const subTrack of track.getChildTracks()) {
-      subTrack.binding = subTrack.resolveBinding(track.binding);
+      subTrack.resolveBinding();
 
       this.resolveTrackBindingsWithRoot(subTrack);
     }

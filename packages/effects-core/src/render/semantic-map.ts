@@ -29,7 +29,7 @@ export class SemanticMap implements Disposable {
     const ret = this.semantics[name];
 
     if (isFunction(ret)) {
-      return (ret as SemanticFunc)(state);
+      return ret(state);
     }
 
     return ret;

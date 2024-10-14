@@ -7,7 +7,6 @@ import type { MaterialProps } from '../material';
 import { Material } from '../material';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
 import type { ShapePath } from '../plugins/shape/shape-path';
-import { triangulate } from '../plugins/shape/triangulate';
 import type { Renderer } from '../render';
 import { Geometry, GLSLVersion } from '../render';
 import { RendererComponent } from './renderer-component';
@@ -24,10 +23,11 @@ interface CurveData {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends RendererComponent {
-  path = new GraphicsPath();
 
+  private path = new GraphicsPath();
   private curveValues: CurveData[] = [];
   private geometry: Geometry;
+  private data: ShapeComponentData;
   private dirty = false;
 
   private vert = `
@@ -76,7 +76,7 @@ void main() {
               0.5, -0.5, 0, //右下
             ]),
           },
-          aUV:{
+          aUV: {
             type: glContext.FLOAT,
             size: 2,
             data: new Float32Array(),
@@ -106,19 +106,9 @@ void main() {
 
   override onUpdate (dt: number): void {
     if (this.dirty) {
-      this.path.clear();
-      this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
-
-      for (const curveValue of this.curveValues) {
-        const point = curveValue.point;
-        const control1 = curveValue.controlPoint1;
-        const control2 = curveValue.controlPoint2;
-
-        this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
-      }
-
+      this.buildPath(this.data);
       this.buildGeometryFromPath(this.path.shapePath);
-      this.dirty = false;
+      // this.dirty = false;
     }
   }
 
@@ -129,22 +119,29 @@ void main() {
     renderer.drawGeometry(this.geometry, this.material);
   }
 
-  buildGeometryFromPath (shapePath: ShapePath) {
+  private buildGeometryFromPath (shapePath: ShapePath) {
     const shapePrimitives = shapePath.shapePrimitives;
     const vertices: number[] = [];
+    const indices: number[] = [];
 
     // triangulate shapePrimitive
     for (const shapePrimitive of shapePrimitives) {
       const shape = shapePrimitive.shape;
+      const points: number[] = [];
+      const indexOffset = indices.length;
+      const vertOffset = vertices.length / 2;
 
-      vertices.push(...triangulate([shape.points]));
+      shape.build(points);
+
+      shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
     }
 
-    // build vertices and uvs
     const vertexCount = vertices.length / 2;
 
+    // get the current attribute and index arrays from the geometry, avoiding re-creation
     let positionArray = this.geometry.getAttributeData('aPos');
     let uvArray = this.geometry.getAttributeData('aUV');
+    let indexArray = this.geometry.getIndexData();
 
     if (!positionArray || positionArray.length < vertexCount * 3) {
       positionArray = new Float32Array(vertexCount * 3);
@@ -152,7 +149,11 @@ void main() {
     if (!uvArray || uvArray.length < vertexCount * 2) {
       uvArray = new Float32Array(vertexCount * 2);
     }
+    if (!indexArray) {
+      indexArray = new Uint16Array(indices.length);
+    }
 
+    // set position and uv attribute array
     for (let i = 0; i < vertexCount; i++) {
       const pointsOffset = i * 3;
       const positionArrayOffset = i * 2;
@@ -166,39 +167,75 @@ void main() {
       uvArray[uvOffset + 1] = positionArray[pointsOffset + 1];
     }
 
+    // set index array
+    indexArray.set(indices);
+
+    // rewrite to geometry
     this.geometry.setAttributeData('aPos', positionArray);
     this.geometry.setAttributeData('aUV', uvArray);
-    this.geometry.setDrawCount(vertexCount);
+    this.geometry.setIndexData(indexArray);
+    this.geometry.setDrawCount(indices.length);
   }
 
-  override fromData (data: ShapeCustomComponent): void {
-    super.fromData(data);
+  private buildPath (data: ShapeComponentData) {
+    this.path.clear();
+    switch (data.type) {
+      case ComponentShapeType.CUSTOM: {
+        const customData = data as ShapeCustomComponent;
+        const points = customData.param.points;
+        const easingIns = customData.param.easingIn;
+        const easingOuts = customData.param.easingOut;
 
-    const points = data.param.points;
-    const easingIns = data.param.easingIn;
-    const easingOuts = data.param.easingOut;
+        this.curveValues = [];
 
-    for (const shape of data.param.shapes) {
-      const indices = shape.indexes;
+        for (const shape of customData.param.shapes) {
+          const indices = shape.indexes;
 
-      for (let i = 1; i < indices.length; i++) {
-        const pointIndex = indices[i];
-        const lastPointIndex = indices[i - 1];
+          for (let i = 1; i < indices.length; i++) {
+            const pointIndex = indices[i];
+            const lastPointIndex = indices[i - 1];
 
-        this.curveValues.push({
-          point: points[pointIndex.point],
-          controlPoint1: easingOuts[lastPointIndex.easingOut],
-          controlPoint2: easingIns[pointIndex.easingIn],
-        });
+            this.curveValues.push({
+              point: points[pointIndex.point],
+              controlPoint1: easingOuts[lastPointIndex.easingOut],
+              controlPoint2: easingIns[pointIndex.easingIn],
+            });
+          }
+
+          // Push the last curve
+          this.curveValues.push({
+            point: points[indices[0].point],
+            controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
+            controlPoint2: easingIns[indices[0].easingIn],
+          });
+        }
+
+        this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
+
+        for (const curveValue of this.curveValues) {
+          const point = curveValue.point;
+          const control1 = curveValue.controlPoint1;
+          const control2 = curveValue.controlPoint2;
+
+          this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
+        }
+
+        break;
       }
+      case ComponentShapeType.ELLIPSE: {
+        const ellipseData = data as ShapeEllipseComponent;
+        const ellipseParam = ellipseData.param;
 
-      // Push the last curve
-      this.curveValues.push({
-        point: points[indices[0].point],
-        controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
-        controlPoint2: easingIns[indices[0].easingIn],
-      });
+        this.path.ellipse(0, 0, ellipseParam.xRadius, ellipseParam.yRadius);
+
+        break;
+      }
     }
+  }
+
+  override fromData (data: ShapeComponentData): void {
+    super.fromData(data);
+    this.data = data;
 
     this.dirty = true;
   }
@@ -365,4 +402,40 @@ export enum ShapeConnectType {
 
 // @待补充
 export enum ShapePointType {
+}
+
+/**
+ * @description 椭圆组件参数
+ */
+export interface ShapeEllipseComponent extends ShapeComponentData {
+  type: ComponentShapeType.ELLIPSE,
+  param: ShapeEllipseParam,
+}
+
+/**
+ * @description 椭圆参数
+ */
+export interface ShapeEllipseParam {
+  /**
+   * @description x轴半径
+   * -- TODO 后续完善类型
+   * -- TODO 可以看一下用xRadius/yRadius 还是 width/height
+   */
+  xRadius: number,
+  /**
+   * @description y轴半径
+   */
+  yRadius: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
 }

@@ -4,17 +4,16 @@ import { CompositionComponent } from '../../../comp-vfx-item';
 import { TrackAsset } from '../track';
 import { effectsClass } from '../../../decorators';
 import type { PlayableGraph, Playable } from '../../cal/playable-graph';
-import { SubCompositionMixerPlayable } from '../playables/sub-composition-mixer-playable';
+import { SubCompositionMixerPlayable } from '../playables';
 
 @effectsClass(spec.DataType.SubCompositionTrack)
 export class SubCompositionTrack extends TrackAsset {
 
-  override resolveBinding (parentBinding: object): object {
-    if (!(parentBinding instanceof VFXItem)) {
+  override resolveBinding () {
+    if (!this.parent || !(this.parent.boundObject instanceof VFXItem)) {
       throw new Error('SubCompositionTrack needs to be set under the VFXItem track.');
     }
-
-    return parentBinding.getComponent(CompositionComponent);
+    this.boundObject = this.parent.boundObject.getComponent(CompositionComponent);
   }
 
   override createTrackMixer (graph: PlayableGraph): Playable {

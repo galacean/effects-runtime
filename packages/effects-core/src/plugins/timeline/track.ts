@@ -42,9 +42,10 @@ export class TimelineClip {
 @effectsClass(spec.DataType.TrackAsset)
 export class TrackAsset extends PlayableAsset {
   name: string;
-  binding: object;
-
+  boundObject: object;
+  parent: TrackAsset;
   trackType = TrackType.MasterTrack;
+
   private clipSeed = 0;
 
   @serialize(TimelineClip)
@@ -56,8 +57,10 @@ export class TrackAsset extends PlayableAsset {
   /**
    * 重写该方法以获取自定义对象绑定
    */
-  resolveBinding (parentBinding: object): object {
-    return parentBinding;
+  resolveBinding () {
+    if (this.parent) {
+      this.boundObject = this.parent.boundObject;
+    }
   }
 
   /**
@@ -117,6 +120,7 @@ export class TrackAsset extends PlayableAsset {
 
   addChild (child: TrackAsset) {
     this.children.push(child);
+    child.parent = this;
   }
 
   createClip<T extends PlayableAsset> (
@@ -152,6 +156,13 @@ export class TrackAsset extends PlayableAsset {
   private createClipPlayable (graph: PlayableGraph, clip: TimelineClip) {
     return clip.asset.createPlayable(graph);
   }
+
+  override fromData (data: spec.EffectsObjectData): void {
+    super.fromData(data);
+    for (const child of this.children) {
+      child.parent = this;
+    }
+  }
 }
 
 export enum TrackType {
@@ -174,8 +185,8 @@ export class RuntimeClip {
     this.parentMixer = parentMixer;
     this.track = track;
 
-    if (this.track.binding instanceof VFXItem) {
-      this.particleSystem = this.track.binding.getComponent(ParticleSystem);
+    if (this.track.boundObject instanceof VFXItem) {
+      this.particleSystem = this.track.boundObject.getComponent(ParticleSystem);
     }
   }
 
@@ -194,7 +205,7 @@ export class RuntimeClip {
     let weight = 1.0;
     let ended = false;
     let started = false;
-    const boundObject = this.track.binding;
+    const boundObject = this.track.boundObject;
 
     if (localTime >= clip.start + clip.duration && clip.endBehavior === spec.EndBehavior.destroy) {
       if (boundObject instanceof VFXItem && VFXItem.isParticle(boundObject) && this.particleSystem && !this.particleSystem.destroyed) {
