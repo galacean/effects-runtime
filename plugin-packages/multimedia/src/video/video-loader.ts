@@ -3,7 +3,7 @@ import { spec, AbstractPlugin } from '@galacean/effects';
 import { processMultimedia } from '../utils';
 
 export class VideoLoader extends AbstractPlugin {
-  static override async prepareAssets (
+  static override async processAssets (
     json: spec.JSONScene,
     options: SceneLoadOptions = {},
   ) {

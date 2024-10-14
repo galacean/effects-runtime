@@ -95,8 +95,8 @@ export class PluginSystem {
     return this.callStatic('processRawJSON', json, options);
   }
 
-  async prepareAssets (json: spec.JSONScene, options?: SceneLoadOptions) {
-    return this.callStatic<{ assets: spec.AssetBase[], loadedAssets: unknown[] }>('prepareAssets', json, options);
+  async processAssets (json: spec.JSONScene, options?: SceneLoadOptions) {
+    return this.callStatic<{ assets: spec.AssetBase[], loadedAssets: unknown[] }>('processAssets', json, options);
   }
 
   async precompile (
