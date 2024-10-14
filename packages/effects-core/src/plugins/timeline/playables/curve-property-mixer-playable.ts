@@ -2,7 +2,7 @@ import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 import { CurvePropertyClipPlayable } from './curve-property-clip-playable';
-import { PropertyType } from '../tracks/curve-property-track';
+import { PropertyType } from '../tracks/float-property-track';
 
 export class CurvePropertyMixerPlayable extends Playable {
   propertyName = '';
@@ -20,7 +20,7 @@ export class CurvePropertyMixerPlayable extends Playable {
     let value: number | Vector3 | null = null;
 
     switch (this.propertyType) {
-      case PropertyType.Number:{
+      case PropertyType.Float:{
         value = 0;
 
         break;
@@ -50,7 +50,7 @@ export class CurvePropertyMixerPlayable extends Playable {
         }
 
         switch (this.propertyType) {
-          case PropertyType.Number:{
+          case PropertyType.Float:{
             const curveValue = propertyClipPlayable.value as number;
 
             (value as number) += curveValue * weight;

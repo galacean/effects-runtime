@@ -21,7 +21,7 @@ export * from './cal/calculate-item';
 export * from './timeline/track';
 export * from './timeline/tracks/transform-track';
 export * from './timeline/tracks/activation-track';
-export * from './timeline/tracks/curve-property-track';
+export * from './timeline/tracks/float-property-track';
 export * from './timeline/tracks/sprite-color-track';
 export * from './timeline/tracks/sub-composition-track';
 export * from './timeline/playable-assets/sub-composition-playable-asset';

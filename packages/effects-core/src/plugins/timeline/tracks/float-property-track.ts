@@ -5,7 +5,7 @@ import { TrackAsset } from '../track';
 
 export enum PropertyType {
   Unknown,
-  Number,
+  Float,
   Vector2,
   Vector3,
   Vector4,
@@ -13,20 +13,18 @@ export enum PropertyType {
   Color,
 }
 
-@effectsClass('CurvePropertyTrack')
-export class CurvePropertyTrack extends TrackAsset {
+@effectsClass('FloatPropertyTrack')
+export class FloatPropertyTrack extends TrackAsset {
   @serialize()
   path = '';
 
-  @serialize()
-  propertyType = PropertyType.Unknown;
   propertyName = '';
 
   override createTrackMixer (graph: PlayableGraph): Playable {
     const mixer = new CurvePropertyMixerPlayable(graph);
 
     mixer.propertyName = this.propertyName;
-    mixer.propertyType = this.propertyType;
+    mixer.propertyType = PropertyType.Float;
 
     return mixer;
   }
