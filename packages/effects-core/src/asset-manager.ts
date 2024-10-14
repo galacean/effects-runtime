@@ -150,11 +150,9 @@ export class AssetManager implements Disposable {
         const { jsonScene, pluginSystem, images: loadedImages } = scene;
         const { compositions, images } = jsonScene;
 
-        for (let i = 0; i < images.length; i++) {
-          this.assets[images[i].id] = loadedImages[i];
-        }
+        this.assignImagesToAssets(images, loadedImages);
         await Promise.all([
-          hookTimeInfo('plugin:processAssets', () => this.processAssets(jsonScene, pluginSystem, options)),
+          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
       } else {
@@ -165,7 +163,7 @@ export class AssetManager implements Disposable {
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo('plugin:processAssets', () => this.processAssets(jsonScene, pluginSystem, options)),
+          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
@@ -365,14 +363,12 @@ export class AssetManager implements Disposable {
     });
     const loadedImages = await Promise.all(jobs);
 
-    for (let i = 0; i < images.length; i++) {
-      this.assets[images[i].id] = loadedImages[i];
-    }
+    this.assignImagesToAssets(images, loadedImages);
 
     return loadedImages;
   }
 
-  private async processAssets (
+  private async processPluginAssets (
     jsonScene: spec.JSONScene,
     pluginSystem: PluginSystem,
     options?: SceneLoadOptions,
@@ -463,6 +459,12 @@ export class AssetManager implements Disposable {
           reject(`Couldn't load bins ${JSON.stringify(url)}: status ${status}, ${responseText}`);
         });
     });
+  }
+
+  private assignImagesToAssets (images: spec.ImageSource[], loadedImages: ImageLike[]) {
+    for (let i = 0; i < images.length; i++) {
+      this.assets[images[i].id] = loadedImages[i];
+    }
   }
 
   private removeTimer (id: number) {
