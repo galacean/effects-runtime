@@ -18,8 +18,6 @@ import { combineImageTemplate, getBackgroundImage } from './template-image';
 import { Asset } from './asset';
 import type { Engine } from './engine';
 
-type AssetsType = ImageLike | { url: string, type: TextureSourceType };
-
 let seed = 1;
 
 /**
@@ -28,17 +26,21 @@ let seed = 1;
  */
 export class AssetManager implements Disposable {
   /**
-   * 图像资源，用于创建和释放 GPU 纹理资源
-   */
-  assets: Record<string, AssetsType> = {};
-  /**
    * 相对 url 的基本路径
    */
   private baseUrl: string;
   /**
+   * 图像资源，用于创建和释放 GPU 纹理资源
+   */
+  private assets: Record<string, ImageLike> = {};
+  /**
+   * TextureSource 来源
+   */
+  private sourceFrom: Record<string, { url: string, type: TextureSourceType }> = {};
+  /**
    * 自定义文本缓存，随页面销毁而销毁
    */
-  static fonts: Set<string> = new Set();
+  private static fontCache: Set<string> = new Set();
 
   private id = seed++;
   /**
@@ -147,26 +149,24 @@ export class AssetManager implements Disposable {
 
         const { jsonScene, pluginSystem, images: loadedImages } = scene;
         const { compositions, images } = jsonScene;
-        const [pluginResult] = await Promise.all([
-          hookTimeInfo('plugin:prepareAssets', () => pluginSystem.prepareAssets(jsonScene, options)),
+
+        this.assignImagesToAssets(images, loadedImages);
+        await Promise.all([
+          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
-
-        await this.prepareAssets(images, loadedImages, pluginResult);
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
 
-        const [loadedBins, loadedImages, pluginResult] = await Promise.all([
+        const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo('plugin:prepareAssets', () => pluginSystem.prepareAssets(jsonScene, options)),
+          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
           hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
-
-        await this.prepareAssets(images, loadedImages, pluginResult);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
         scene = {
@@ -176,16 +176,16 @@ export class AssetManager implements Disposable {
           storage: {},
           pluginSystem,
           jsonScene,
+          bins: loadedBins,
           images: loadedImages,
           textureOptions: loadedTextures,
-          bins: loadedBins,
         };
 
         // 触发插件系统 pluginSystem 的回调 prepareResource
         await hookTimeInfo('plugin:prepareResource', () => pluginSystem.loadResources(scene, this.options));
       }
 
-      await hookTimeInfo('processAssets', () => this.processAssets(renderer?.engine));
+      await hookTimeInfo('prepareAssets', () => this.prepareAssets(renderer?.engine));
 
       const totalTime = performance.now() - startTime;
 
@@ -205,14 +205,14 @@ export class AssetManager implements Disposable {
 
   private async precompile (
     compositions: spec.CompositionData[],
-    pluginSystem?: PluginSystem,
+    pluginSystem: PluginSystem,
     renderer?: Renderer,
     options?: PrecompileOptions,
   ) {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }
-    await pluginSystem?.precompile(compositions, renderer, options);
+    await pluginSystem.precompile(compositions, renderer, options);
   }
 
   private async processJSON (json: JSONValue) {
@@ -253,7 +253,7 @@ export class AssetManager implements Disposable {
 
     const jobs = fonts.map(async font => {
       // 数据模版兼容判断
-      if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
+      if (font.fontURL && !AssetManager.fontCache.has(font.fontFamily)) {
         if (!isValidFontFamily(font.fontFamily)) {
           // 在所有设备上提醒开发者
           console.warn(`Risky font family: ${font.fontFamily}.`);
@@ -264,7 +264,7 @@ export class AssetManager implements Disposable {
 
           await fontFace.load();
           document.fonts.add(fontFace);
-          AssetManager.fonts.add(font.fontFamily);
+          AssetManager.fontCache.add(font.fontFamily);
         } catch (_) {
           logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}.`);
         }
@@ -306,7 +306,7 @@ export class AssetManager implements Disposable {
             const resultImage = await loadMedia(url as string | string[], loadFn);
 
             if (resultImage instanceof HTMLVideoElement) {
-              this.assets[idx] = { url: resultImage.src, type: TextureSourceType.video };
+              this.sourceFrom[idx] = { url: resultImage.src, type: TextureSourceType.video };
 
               return resultImage;
             } else {
@@ -315,7 +315,7 @@ export class AssetManager implements Disposable {
                 variables[background.name] = resultImage.src;
               }
 
-              this.assets[idx] = { url: resultImage.src, type: TextureSourceType.image };
+              this.sourceFrom[idx] = { url: resultImage.src, type: TextureSourceType.image };
 
               return await combineImageTemplate(
                 resultImage,
@@ -340,7 +340,7 @@ export class AssetManager implements Disposable {
         if (src) {
           const bufferURL = new URL(src, baseUrl).href;
 
-          this.assets[idx] = { url: bufferURL, type: TextureSourceType.compressed };
+          this.sourceFrom[idx] = { url: bufferURL, type: TextureSourceType.compressed };
 
           return this.loadBins(bufferURL);
         }
@@ -357,22 +357,23 @@ export class AssetManager implements Disposable {
         ? await loadAVIFOptional(imageURL, avifURL)
         : await loadWebPOptional(imageURL, webpURL);
 
-      this.assets[idx] = { url, type: TextureSourceType.image };
+      this.sourceFrom[idx] = { url, type: TextureSourceType.image };
 
       return image;
     });
+    const loadedImages = await Promise.all(jobs);
 
-    return Promise.all(jobs);
+    this.assignImagesToAssets(images, loadedImages);
+
+    return loadedImages;
   }
 
-  private async prepareAssets (
-    images: spec.ImageSource[],
-    loadedImages: ImageLike[],
-    pluginResult: {
-      assets: spec.AssetBase[],
-      loadedAssets: unknown[],
-    }[],
+  private async processPluginAssets (
+    jsonScene: spec.JSONScene,
+    pluginSystem: PluginSystem,
+    options?: SceneLoadOptions,
   ) {
+    const pluginResult = await pluginSystem.processAssets(jsonScene, options);
     const { assets, loadedAssets } = pluginResult.reduce((acc, cur) => {
       acc.assets = acc.assets.concat(cur.assets);
       acc.loadedAssets = acc.loadedAssets.concat(cur.loadedAssets);
@@ -380,15 +381,12 @@ export class AssetManager implements Disposable {
       return acc;
     }, { assets: [], loadedAssets: [] });
 
-    for (let i = 0; i < images.length; i++) {
-      this.assets[images[i].id] = loadedImages[i];
-    }
     for (let i = 0; i < assets.length; i++) {
-      this.assets[assets[i].id] = loadedAssets[i] as AssetsType;
+      this.assets[assets[i].id] = loadedAssets[i] as ImageLike;
     }
   }
 
-  private async processAssets (engine?: Engine) {
+  private async prepareAssets (engine?: Engine) {
     if (!engine) {
       return;
     }
@@ -420,8 +418,9 @@ export class AssetManager implements Disposable {
           throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }
       }
+
       const { source, id } = textureOptions;
-      let image: AssetsType | undefined;
+      let image: ImageLike | undefined;
 
       if (isObject(source)) { // source 为 images 数组 id
         image = this.assets[source.id as string];
@@ -430,7 +429,7 @@ export class AssetManager implements Disposable {
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.assets[idx], id);
+        const texture = createTextureOptionsBySource(image, this.sourceFrom[idx], id);
 
         return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
@@ -462,6 +461,12 @@ export class AssetManager implements Disposable {
     });
   }
 
+  private assignImagesToAssets (images: spec.ImageSource[], loadedImages: ImageLike[]) {
+    for (let i = 0; i < images.length; i++) {
+      this.assets[images[i].id] = loadedImages[i];
+    }
+  }
+
   private removeTimer (id: number) {
     const index = this.timers.indexOf(id);
 
@@ -477,13 +482,14 @@ export class AssetManager implements Disposable {
       this.timers.map(id => window.clearTimeout(id));
     }
     this.assets = {};
+    this.sourceFrom = {};
     this.timers = [];
   }
 }
 
 function createTextureOptionsBySource (
   image: TextureSourceOptions | ImageLike,
-  sourceFrom: AssetsType,
+  sourceFrom: { url: string, type: TextureSourceType },
   id?: string,
 ) {
   const options = {
