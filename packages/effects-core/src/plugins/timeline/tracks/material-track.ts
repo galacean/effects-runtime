@@ -1,4 +1,4 @@
-import { RendererComponent } from '../../../components/renderer-component';
+import { RendererComponent } from '../../../components';
 import { effectsClass, serialize } from '../../../decorators';
 import { TrackAsset } from '../track';
 

@@ -208,7 +208,7 @@ function addWireframeItems (scene: spec.JSONScene, hide3DModel = true) {
 
   for (const item of newItems) {
     items.push({
-      id:item.id,
+      id: item.id,
     });
   }
   newComposition.items = items;

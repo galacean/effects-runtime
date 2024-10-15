@@ -645,7 +645,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     const itemMap = new Map<string, VFXItem>();
-
     const contentItems = compVFXItem.getComponent(CompositionComponent).items;
 
     for (const item of contentItems) {
