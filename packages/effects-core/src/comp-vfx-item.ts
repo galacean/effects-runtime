@@ -10,7 +10,7 @@ import type { Playable } from './plugins/cal/playable-graph';
 import { PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { generateGUID, noop } from './utils';
-import { Item, VFXItem } from './vfx-item';
+import { VFXItem } from './vfx-item';
 import { SerializationHelper } from './serialization-helper';
 
 export interface SceneBinding {
@@ -82,12 +82,12 @@ export class CompositionComponent extends Behaviour {
     if (this.item.composition) {
       for (const item of this.items) {
         item.composition = this.item.composition;
-        const itemData = item.props;
 
         // 设置预合成作为元素时的时长、结束行为和渲染延时
-        if (Item.isComposition(itemData)) {
+        if (VFXItem.isComposition(item)) {
           this.item.composition.refContent.push(item);
-          const refId = itemData.content.options.refId;
+          const compositionContent = item.props.content as unknown as spec.CompositionContent;
+          const refId = compositionContent.options.refId;
           const props = this.item.composition.refCompositionProps.get(refId);
 
           if (!props) {
