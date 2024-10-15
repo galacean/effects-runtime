@@ -6,7 +6,7 @@ import { glContext } from '../../gl';
 import type { GeometryDrawMode } from '../../render';
 import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
-import type { Texture } from '../../texture';
+import type { Texture, Texture2DSourceOptionsVideo } from '../../texture';
 import type { PlayableGraph, Playable } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
 import type { ColorPlayableAssetData } from '../../animation';
@@ -146,6 +146,11 @@ export class SpriteComponent extends BaseRenderComponent {
         texRectH + texRectY - texOffset[1],
         dx, dy,
       ]);
+    }
+    const { video } = this.renderer.texture.source as Texture2DSourceOptionsVideo;
+
+    if (video?.paused) {
+      video.play().catch(e => { this.engine.renderErrors.add(e); });
     }
   }
 

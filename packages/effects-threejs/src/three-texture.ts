@@ -66,6 +66,7 @@ export class ThreeTexture extends Texture {
       this.texture = this.createTextureByType(options);
     }
     this.texture.needsUpdate = true;
+    this.source = {};
   }
 
   /**

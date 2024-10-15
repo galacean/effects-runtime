@@ -172,7 +172,7 @@ export class ThreeGeometry extends Geometry {
       const buffer = new THREE.InterleavedBuffer(data, attributeBuffer.stride);
 
       attributeBuffer = this.attributes[name].attribute.data = buffer;
-
+      this.attributes[name].buffer = buffer;
       this.geometry.setAttribute(name, this.attributes[name].attribute);
     } else {
       attributeBuffer.set(data, 0);
