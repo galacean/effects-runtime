@@ -28,22 +28,18 @@ export class ShapeComponent extends RendererComponent {
   private curveValues: CurveData[] = [];
   private geometry: Geometry;
   private data: ShapeComponentData;
-  private dirty = false;
+  private animated = false;
 
   private vert = `
 precision highp float;
 
 attribute vec3 aPos;//x y
 
-varying vec4 vColor;
-
-uniform vec4 _Color;
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_ObjectToWorld;
 
 void main() {
-  vColor = _Color;
   vec4 pos = vec4(aPos.xyz, 1.0);
   gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
 }
@@ -52,10 +48,10 @@ void main() {
   private frag = `
 precision highp float;
 
-varying vec4 vColor;
+uniform vec4 _Color;
 
 void main() {
-  vec4 color = vec4(1.0,1.0,1.0,1.0);
+  vec4 color = _Color;
   gl_FragColor = color;
 }
 `;
@@ -105,10 +101,9 @@ void main() {
   }
 
   override onUpdate (dt: number): void {
-    if (this.dirty) {
+    if (this.animated) {
       this.buildPath(this.data);
       this.buildGeometryFromPath(this.path.shapePath);
-      // this.dirty = false;
     }
   }
 
@@ -237,7 +232,7 @@ void main() {
     super.fromData(data);
     this.data = data;
 
-    this.dirty = true;
+    this.animated = true;
   }
 }
 
