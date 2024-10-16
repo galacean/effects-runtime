@@ -12,17 +12,16 @@ import type {
   ModelAnimTrackOptions,
   ModelMaterialOptions,
   ModelSkyboxOptions,
-  ModelTreeOptions,
   ModelTextureTransform,
 } from '../index';
 import {
-  Vector3, Box3, Matrix4, Euler, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
+  Vector3, Box3, Euler, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
 } from '../runtime';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper } from '../utility';
 import type { PImageBufferData, PSkyboxBufferParams } from '../runtime/skybox';
 import type {
-  GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
+  GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFLight,
   GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight, GLTFPrimitive,
   GLTFBufferAttribute, GLTFBounds, GLTFTextureInfo,
 } from '@vvfx/resource-detection';
@@ -826,52 +825,6 @@ export class LoaderImpl implements Loader {
     return sceneAABB;
   }
 
-  /**
-   * 按照传入的动画播放参数，计算需要播放的动画索引
-   *
-   * @param treeOptions 节点树属性，需要初始化animations列表。
-   * @returns 返回计算的动画索引，-1表示没有动画需要播放，-88888888表示播放所有动画。
-   */
-  getPlayAnimationIndex (treeOptions: ModelTreeOptions): number {
-    const animations = treeOptions.animations;
-
-    if (animations === undefined || animations.length <= 0) {
-      // 硬编码，内部指定的不播放动画的索引值
-      return -1;
-    }
-
-    if (this.isPlayAllAnimation()) {
-      // 硬编码，内部指定的播放全部动画的索引值
-      return -88888888;
-    }
-
-    const animationInfo = this.sceneOptions.effects.playAnimation;
-
-    if (animationInfo === undefined) {
-      return -1;
-    }
-
-    if (typeof animationInfo === 'number') {
-      if (animationInfo >= 0 && animationInfo < animations.length) {
-        return animationInfo;
-      } else {
-        return -1;
-      }
-    } else {
-      // typeof animationInfo === 'string'
-      let animationIndex = -1;
-
-      // 通过动画名字查找动画索引
-      animations.forEach((anim, index) => {
-        if (anim.name === animationInfo) {
-          animationIndex = index;
-        }
-      });
-
-      return animationIndex;
-    }
-  }
-
   isPlayAnimation (): boolean {
     return this.sceneOptions.effects.playAnimation !== undefined;
   }
@@ -984,62 +937,6 @@ export class LoaderImpl implements Loader {
         mat.occlusionTexture.strength = this.isTiny3dMode() ? 0 : 1;
       }
     });
-  }
-
-  createTreeOptions (scene: GLTFScene): ModelTreeOptions {
-    const nodeList = scene.nodes.map((node, nodeIndex) => {
-      const children = node.children.map(child => {
-        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}`); }
-
-        return child.nodeIndex;
-      });
-      let pos: spec.vec3 | undefined;
-      let quat: spec.vec4 | undefined;
-      let scale: spec.vec3 | undefined;
-
-      if (node.matrix !== undefined) {
-        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
-        const mat = Matrix4.fromArray(node.matrix);
-        const transform = mat.getTransform();
-
-        pos = transform.translation.toArray();
-        quat = transform.rotation.toArray();
-        scale = transform.scale.toArray();
-      } else {
-        if (node.translation !== undefined) { pos = node.translation as spec.vec3; }
-        if (node.rotation !== undefined) { quat = node.rotation as spec.vec4; }
-        if (node.scale !== undefined) { scale = node.scale as spec.vec3; }
-      }
-      node.nodeIndex = nodeIndex;
-      const treeNode: spec.TreeNodeOptions = {
-        name: node.name,
-        transform: {
-          position: pos,
-          quat: quat,
-          scale: scale,
-        },
-        children: children,
-        id: `${node.nodeIndex}`,
-        // id: index, id不指定就是index，指定后就是指定的值
-      };
-
-      return treeNode;
-    });
-
-    const rootNodes = scene.rootNodes.map(root => {
-      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}`); }
-
-      return root.nodeIndex;
-    });
-
-    const treeOptions: ModelTreeOptions = {
-      nodes: nodeList,
-      children: rootNodes,
-      animation: -1,
-      animations: [],
-    };
-
-    return treeOptions;
   }
 
   createAnimations (animations: GLTFAnimation[]): ModelAnimationOptions[] {
