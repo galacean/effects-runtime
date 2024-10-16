@@ -166,7 +166,6 @@ export class JSONConverter {
         this.createItemsFromTreeComponent(comp, newScene, oldScene);
         treeComp.options.tree.animation = undefined;
         treeComp.options.tree.animations = undefined;
-        newComponents.push(comp);
       } else if (comp.dataType !== spec.DataType.MeshComponent) {
         newComponents.push(comp);
       }
@@ -622,7 +621,7 @@ export class JSONConverter {
         animationComponent.animationClips.push({ id: clipData.id });
       });
     }
-
+    treeItem.components = [];
     treeItem.components.push({ id: animationComponent.id });
     newScene.components.push(animationComponent);
   }
