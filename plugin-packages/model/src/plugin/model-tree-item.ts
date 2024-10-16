@@ -108,17 +108,6 @@ export class ModelTreeItem {
   }
 
   /**
-   * 根据节点 id 查询节点变换，如果查询不到节点就直接返回基础变换
-   * @param nodeId - 节点 id
-   * @returns
-   */
-  getNodeTransform (nodeId: string): Transform {
-    const node = this.getNodeById(nodeId);
-
-    return node ? node.transform : this.baseTransform;
-  }
-
-  /**
    * 销毁场景树对象
    */
   dispose () {
@@ -246,27 +235,6 @@ export class ModelTreeComponent extends Behaviour {
       const treeOptions = this.options.options.tree;
 
       this.content = new ModelTreeItem(treeOptions, this.item);
-    }
-  }
-
-  /**
-   * 获取元素的变换
-   * @param itemId - 元素索引
-   * @returns
-   */
-  getNodeTransform (itemId: string): Transform {
-    if (this.content === undefined) {
-      return this.transform;
-    }
-
-    const idWithSubfix = this.item.id + '^';
-
-    if (itemId.indexOf(idWithSubfix) === 0) {
-      const nodeId = itemId.substring(idWithSubfix.length);
-
-      return this.content.getNodeTransform(nodeId);
-    } else {
-      return this.transform;
     }
   }
 }

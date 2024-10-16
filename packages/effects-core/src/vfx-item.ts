@@ -407,25 +407,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * 获取元素内部节点的变换，目前只有场景树元素在使用
-   * @param itemId 元素id信息，如果带^就返回内部节点变换，否则返回自己的变换
-   * @returns 元素变换或内部节点变换
-   */
-  getNodeTransform (itemId: string): Transform {
-    for (let i = 0; i < this.components.length; i++) {
-      const comp = this.components[1];
-
-      // @ts-expect-error
-      if (comp.getNodeTransform) {
-        // @ts-expect-error
-        return comp.getNodeTransform(itemId);
-      }
-    }
-
-    return this.transform;
-  }
-
-  /**
    * 设置元素在 3D 坐标轴上相对移动
    */
   translate (x: number, y: number, z: number) {
