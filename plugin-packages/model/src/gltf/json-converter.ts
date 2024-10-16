@@ -43,6 +43,11 @@ export class JSONConverter {
     const oldBinUrls = oldScene.bins ?? [];
     const binFiles: ArrayBuffer[] = [];
 
+    //@ts-expect-error
+    if (sceneJSON.version >= '3.0') {
+      return oldScene;
+    }
+
     if (oldScene.bins) {
       for (const bin of oldScene.bins) {
         binFiles.push(await this.loadBins(bin.url));
