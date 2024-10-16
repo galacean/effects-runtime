@@ -24,16 +24,6 @@ const postProcessSettings = {
   // Particle
   color: [0, 0, 0],
   intensity: 1.0,
-  // Bloom
-  useBloom: 1.0,
-  threshold: 1.0,
-  bloomIntensity: 1.0,
-  // ColorAdjustments
-  brightness: 0,
-  saturation: 0,
-  contrast: 0,
-  // ToneMapping
-  useToneMapping: 1, // 1: true, 0: false
 };
 
 (async () => {
@@ -60,6 +50,9 @@ async function handlePlay (url) {
     const json = await (await fetch(url)).json();
 
     player.destroyCurrentCompositions();
+    json.renderSettings = {
+      postProcessingEnabled: true,
+    };
     const comp: Composition = await player.loadScene(json);
 
     comp.rootItem.addComponent(PostProcessVolume);
@@ -87,11 +80,15 @@ function setDatGUI (composition: Composition) {
 
   const globalVolume = composition.renderFrame.globalVolume;
 
+  if (!globalVolume) {
+    return;
+  }
+
   ParticleFolder.addColor(postProcessSettings, 'color');
   ParticleFolder.add(postProcessSettings, 'intensity', -10, 10).step(0.1);
   ParticleFolder.open();
 
-  BloomFolder.add(globalVolume, 'useBloom', 0, 1).step(1);
+  BloomFolder.add(globalVolume, 'enableBloom', 0, 1).step(1);
   BloomFolder.add(globalVolume, 'threshold', 0, 40).step(0.1);
   BloomFolder.add(globalVolume, 'bloomIntensity', 0, 10);
   BloomFolder.open();
@@ -105,6 +102,6 @@ function setDatGUI (composition: Composition) {
   ColorAdjustmentsFolder.add(globalVolume, 'contrast', 0, 2);
   ColorAdjustmentsFolder.open();
 
-  ToneMappingFlolder.add(globalVolume, 'useToneMapping', 0, 1).step(1);
+  ToneMappingFlolder.add(globalVolume, 'enableToneMapping', 0, 1).step(1);
   ToneMappingFlolder.open();
 }
