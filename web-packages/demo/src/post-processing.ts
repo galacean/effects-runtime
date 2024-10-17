@@ -29,7 +29,7 @@ setConfig(POST_PROCESS_SETTINGS, postProcessSettings);
   }
 })();
 
-resumeBtn?.addEventListener('click', () => { player.gotoAndPlay(0); });
+resumeBtn?.addEventListener('click', () => handleLoadScene(url));
 
 async function handleLoadScene (url: string) {
   const json = await (await fetch(url)).json();
