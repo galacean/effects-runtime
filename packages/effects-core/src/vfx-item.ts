@@ -44,8 +44,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素绑定的父元素，
    * 1. 当元素没有绑定任何父元素时，parent为空，transform.parentTransform 为 composition.transform
    * 2. 当元素绑定 nullItem 时，parent 为 nullItem, transform.parentTransform 为 nullItem.transform
-   * 3. 当元素绑定 TreeItem 的node时，parent为treeItem, transform.parentTransform 为 tree.nodes[i].transform(绑定的node节点上的transform)
-   * 4. 当元素绑定 TreeItem 本身时，行为表现和绑定 nullItem 相同
    */
   parent?: VFXItem;
 
@@ -404,25 +402,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     tf.cloneFromMatrix(this.transform.getWorldMatrix());
 
     return tf;
-  }
-
-  /**
-   * 获取元素内部节点的变换，目前只有场景树元素在使用
-   * @param itemId 元素id信息，如果带^就返回内部节点变换，否则返回自己的变换
-   * @returns 元素变换或内部节点变换
-   */
-  getNodeTransform (itemId: string): Transform {
-    for (let i = 0; i < this.components.length; i++) {
-      const comp = this.components[1];
-
-      // @ts-expect-error
-      if (comp.getNodeTransform) {
-        // @ts-expect-error
-        return comp.getNodeTransform(itemId);
-      }
-    }
-
-    return this.transform;
   }
 
   /**
