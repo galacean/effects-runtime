@@ -8,7 +8,7 @@ export class MaterialTrack extends TrackAsset {
   @serialize()
   index: number;
 
-  override resolveBinding () {
+  override updateAnimatedObject () {
     if (!(this.parent.boundObject instanceof RendererComponent)) {
       return;
     }
