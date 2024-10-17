@@ -514,6 +514,8 @@ export class GalaceanEffects {
       });
     } else {
       void GalaceanEffects.player.loadScene(url, { autoplay:true }).then(composition=>{
+        composition.postProcessingEnabled = true;
+        composition.createRenderFrame();
         composition.rootItem.addComponent(PostProcessVolume);
 
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {

@@ -1,12 +1,10 @@
-// @ts-nocheck
-
 import inspireList from '../assets/inspire-list';
 
 export class InspireList {
   currentInspire = inspireList['ribbons'].url;
 
-  private readonly startEle = document.getElementById('J-start');
-  private readonly pauseEle = document.getElementById('J-pause');
+  private readonly startEle = document.getElementById('J-start') as HTMLElement;
+  private readonly pauseEle = document.getElementById('J-pause') as HTMLElement;
   private readonly loopCheckboxEle = document.getElementById('J-loop');
   private readonly frameworkEle = document.getElementById('J-framework') as HTMLSelectElement;
 
@@ -52,7 +50,7 @@ export class InspireList {
     });
     selectEle.innerHTML = options.join('');
     selectEle.onchange = () => {
-      const selected = selectEle.value;
+      const selected = selectEle.value as keyof typeof inspireList;
 
       this.currentInspire = inspireList[selected].url;
     };

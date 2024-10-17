@@ -172,7 +172,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 后处理渲染配置
    */
-  globalVolume: PostProcessVolume;
+  globalVolume?: PostProcessVolume;
+  /**
+   * 是否开启后处理
+   */
+  postProcessingEnabled = false;
 
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
@@ -227,6 +231,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       scene.consumed = true;
     }
     const { sourceContent, pluginSystem, imgUsage, totalTime, refCompositionProps } = this.compositionSourceManager;
+
+    //@ts-expect-error // TODO 更新 Spec
+    this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
 
     assertExist(sourceContent);
     this.renderer = renderer;
@@ -453,6 +460,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       renderer: this.renderer,
       keepColorBuffer: this.keepColorBuffer,
       globalVolume: this.globalVolume,
+      postProcessingEnabled: this.postProcessingEnabled,
     });
     // TODO 考虑放到构造函数
     this.renderFrame.cachedTextures = this.textures;

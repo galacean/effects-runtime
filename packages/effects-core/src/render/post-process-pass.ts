@@ -68,7 +68,7 @@ export class BloomThresholdPass extends RenderPass {
       stencilAction: TextureStoreAction.clear,
     });
     this.screenMesh.material.setTexture('_MainTex', this.mainTexture);
-    const threshold = renderer.renderingData.currentFrame.globalVolume.threshold;
+    const threshold = renderer.renderingData.currentFrame.globalVolume?.threshold ?? 1.0;
 
     this.screenMesh.material.setFloat('_Threshold', threshold);
     renderer.renderMeshes([this.screenMesh]);
@@ -264,19 +264,24 @@ export class ToneMappingPass extends RenderPass {
       stencilAction: TextureStoreAction.clear,
     });
     const {
-      useBloom, bloomIntensity,
-      brightness, saturation, contrast,
-      useToneMapping,
-      vignetteIntensity, vignetteSmoothness, vignetteRoundness,
-    } = renderer.renderingData.currentFrame.globalVolume;
+      bloomEnabled = false,
+      bloomIntensity = 1.0,
+      brightness = 1.0,
+      saturation = 1.0,
+      contrast = 1.0,
+      toneMappingEnabled = true,
+      vignetteIntensity = 0.2,
+      vignetteSmoothness = 0.4,
+      vignetteRoundness = 1.0,
+    } = renderer.renderingData.currentFrame.globalVolume ?? {};
 
     this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
     this.screenMesh.material.setFloat('_Brightness', brightness);
     this.screenMesh.material.setFloat('_Saturation', saturation);
     this.screenMesh.material.setFloat('_Contrast', contrast);
 
-    this.screenMesh.material.setInt('_UseBloom', Number(useBloom));
-    if (useBloom) {
+    this.screenMesh.material.setInt('_UseBloom', Number(bloomEnabled));
+    if (bloomEnabled) {
       this.screenMesh.material.setTexture('_GaussianTex', this.mainTexture);
       this.screenMesh.material.setFloat('_BloomIntensity', bloomIntensity);
     }
@@ -287,7 +292,7 @@ export class ToneMappingPass extends RenderPass {
       this.screenMesh.material.setVector2('_VignetteCenter', new Vector2(0.5, 0.5));
       this.screenMesh.material.setVector3('_VignetteColor', new Vector3(0.0, 0.0, 0.0));
     }
-    this.screenMesh.material.setInt('_UseToneMapping', Number(useToneMapping));
+    this.screenMesh.material.setInt('_UseToneMapping', Number(toneMappingEnabled));
     renderer.renderMeshes([this.screenMesh]);
   }
 }
