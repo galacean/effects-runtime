@@ -1,77 +1,69 @@
-//@ts-nocheck
 import type { Composition } from '@galacean/effects';
-import { POST_PROCESS_SETTINGS, Player, PostProcessVolume, defaultGlobalVolume, setConfig } from '@galacean/effects';
-import { InspireList } from './common/inspire-list';
-import { InspectorGui } from './gui/inspector-gui';
-
-const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*YIKpS69QTaoAAAAAAAAAAAAADlB4AQ';
-//const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*6j_ZQan_MhMAAAAAAAAAAAAADlB4AQ'; // BloomTest
-const container = document.getElementById('J-container');
-const speed = 0.5;
-const inspireList = new InspireList();
-
-const inspectorGui = new InspectorGui();
-
-setInterval(()=>{
-  inspectorGui.update();
-}, 100);
-
-let gui = new GUI();
-let player;
+import { POST_PROCESS_SETTINGS, Player, PostProcessVolume, setConfig } from '@galacean/effects';
+import postProcessingList from './assets/post-processing-list';
 
 // DATUI 参数面板
 const postProcessSettings = {
   // Particle
-  color: [0, 0, 0],
+  color: [1, 0.5, 0],
   intensity: 1.0,
 };
+const container = document.getElementById('J-container');
+const resumeBtn = document.getElementById('J-resume');
+// const url = postProcessingList['robin'].url;
+const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*PubBSpHUbjYAAAAAAAAAAAAADlB4AQ';
+let player: Player;
+
+initSelectList();
+setConfig(POST_PROCESS_SETTINGS, postProcessSettings);
 
 (async () => {
-  setConfig(POST_PROCESS_SETTINGS, postProcessSettings);
-  player = new Player({
-    container,
-    pixelRatio: window.devicePixelRatio,
-  });
-  await handlePlay(url);
-})();
-
-bindEventListeners();
-
-function bindEventListeners () {
-  inspireList.handleStart = () => {
-    handlePause();
-    void handlePlay(inspireList.currentInspire);
-  };
-  inspireList.handlePause = handlePause;
-}
-
-async function handlePlay (url) {
   try {
-    const json = await (await fetch(url)).json();
+    player = new Player({
+      container,
+    });
 
-    player.destroyCurrentCompositions();
-    json.renderSettings = {
-      postProcessingEnabled: true,
-    };
-    const comp: Composition = await player.loadScene(json);
-
-    comp.rootItem.addComponent(PostProcessVolume);
-    void player.play(comp, { speed });
-    setDatGUI(comp);
-
+    await handleLoadScene(url);
   } catch (e) {
     console.error('biz', e);
   }
+})();
+
+resumeBtn?.addEventListener('click', () => { player.gotoAndPlay(0); });
+
+async function handleLoadScene (url: string) {
+  const json = await (await fetch(url)).json();
+
+  json.renderSettings = {
+    postProcessingEnabled: true,
+  };
+  player.destroyCurrentCompositions();
+
+  const composition = await player.loadScene(json);
+
+  composition.rootItem.addComponent(PostProcessVolume);
+  setDatGUI(composition);
 }
 
-function handlePause () {
-  player.pause();
+function initSelectList () {
+  const selectEle = document.getElementById('J-select') as HTMLSelectElement;
+  const options: string[] = [];
+
+  Object.entries(postProcessingList).map(([key, object]) => {
+    options.push(`<option value="${key}" ${object.name === 'ribbons' ? 'selected' : ''}>${object.name}</option>`);
+  });
+  selectEle.innerHTML = options.join('');
+  selectEle.onchange = () => {
+    const name = selectEle.value as keyof typeof postProcessingList;
+
+    void handleLoadScene(postProcessingList[name].url);
+  };
 }
 
 // dat gui 参数及修改
 function setDatGUI (composition: Composition) {
-  gui.destroy();
-  gui = new GUI();
+  // @ts-expect-error
+  const gui = new window.GUI();
   const ParticleFolder = gui.addFolder('Particle');
   const BloomFolder = gui.addFolder('Bloom');
   const ToneMappingFlolder = gui.addFolder('ToneMapping');
