@@ -88,7 +88,7 @@ function setDatGUI (composition: Composition) {
   ParticleFolder.add(postProcessSettings, 'intensity', -10, 10).step(0.1);
   ParticleFolder.open();
 
-  BloomFolder.add(globalVolume, 'enableBloom', 0, 1).step(1);
+  BloomFolder.add(globalVolume, 'bloomEnabled', 0, 1).step(1);
   BloomFolder.add(globalVolume, 'threshold', 0, 40).step(0.1);
   BloomFolder.add(globalVolume, 'bloomIntensity', 0, 10);
   BloomFolder.open();
@@ -102,6 +102,6 @@ function setDatGUI (composition: Composition) {
   ColorAdjustmentsFolder.add(globalVolume, 'contrast', 0, 2);
   ColorAdjustmentsFolder.open();
 
-  ToneMappingFlolder.add(globalVolume, 'enableToneMapping', 0, 1).step(1);
+  ToneMappingFlolder.add(globalVolume, 'toneMappingEnabled', 0, 1).step(1);
   ToneMappingFlolder.open();
 }
