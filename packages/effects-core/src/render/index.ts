@@ -9,5 +9,4 @@ export * from './types';
 export * from './geometry';
 export * from './framebuffer';
 export * from './renderer';
-export * from './global-volume';
 export * from './semantic-map';
