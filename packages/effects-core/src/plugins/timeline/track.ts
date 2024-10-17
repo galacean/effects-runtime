@@ -57,7 +57,7 @@ export class TrackAsset extends PlayableAsset {
   /**
    * 重写该方法以获取自定义对象绑定
    */
-  resolveBinding () {
+  updateAnimatedObject () {
     if (this.parent) {
       this.boundObject = this.parent.boundObject;
     }

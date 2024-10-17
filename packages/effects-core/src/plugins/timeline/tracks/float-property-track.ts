@@ -8,18 +8,26 @@ export class FloatPropertyTrack extends TrackAsset {
   @serialize()
   path = '';
 
-  propertyName = '';
+  propertyNames: string[] = [];
 
   override createTrackMixer (graph: PlayableGraph): Playable {
     const mixer = new FloatPropertyMixerPlayable(graph);
 
-    mixer.propertyName = this.propertyName;
+    const propertyNames = this.path.split('.');
+
+    this.propertyNames = propertyNames;
+
+    if (propertyNames.length > 0) {
+      const propertyName = propertyNames[propertyNames.length - 1];
+
+      mixer.propertyName = propertyName;
+    }
 
     return mixer;
   }
 
-  override resolveBinding () {
-    const propertyNames = this.path.split('.');
+  override updateAnimatedObject () {
+    const propertyNames = this.propertyNames;
     let target: Record<string, any> = this.parent.boundObject;
 
     for (let i = 0; i < propertyNames.length - 1; i++) {
@@ -29,10 +37,6 @@ export class FloatPropertyTrack extends TrackAsset {
         console.error('The ' + propertyNames[i] + ' property of ' + target + ' was not found');
       }
       target = property;
-    }
-
-    if (propertyNames.length > 0) {
-      this.propertyName = propertyNames[propertyNames.length - 1];
     }
 
     this.boundObject = target;

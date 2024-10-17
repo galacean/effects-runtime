@@ -237,16 +237,20 @@ export class CompositionComponent extends Behaviour {
     for (const sceneBinding of this.sceneBindings) {
       sceneBinding.key.boundObject = sceneBinding.value;
     }
+
+    // 未了通过帧对比，需要保证和原有的 update 时机一致。
+    // 因此这边更新一次对象绑定，后续 timeline playable 中 sort tracks 的排序才能和原先的版本对上。
+    // 如果不需要严格保证和之前的 updata 时机一致，这边的更新和 timeline playable 中的 sortTracks 都能去掉。
     for (const masterTrack of this.timelineAsset.tracks) {
-      this.resolveTrackBindingsWithRoot(masterTrack);
+      this.updateTrackAnimatedObject(masterTrack);
     }
   }
 
-  private resolveTrackBindingsWithRoot (track: TrackAsset) {
+  private updateTrackAnimatedObject (track: TrackAsset) {
     for (const subTrack of track.getChildTracks()) {
-      subTrack.resolveBinding();
+      subTrack.updateAnimatedObject();
 
-      this.resolveTrackBindingsWithRoot(subTrack);
+      this.updateTrackAnimatedObject(subTrack);
     }
   }
 }
