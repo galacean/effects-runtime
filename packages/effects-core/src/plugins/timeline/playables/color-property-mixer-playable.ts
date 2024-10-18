@@ -1,4 +1,4 @@
-import { Color } from '@galacean/effects-math/es/core';
+import { Color } from '@galacean/effects-math/es/core/color';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from './property-clip-playable';
