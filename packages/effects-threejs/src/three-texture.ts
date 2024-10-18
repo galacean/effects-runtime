@@ -81,14 +81,6 @@ export class ThreeTexture extends Texture {
   }
 
   /**
-   * 开始更新视频数据
-   *
-   */
-  async startVideo () {
-
-  }
-
-  /**
    * 组装纹理选项
    * @param options - 纹理选项
    * @returns 组装后的纹理选项
