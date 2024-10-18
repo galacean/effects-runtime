@@ -1,4 +1,4 @@
-import { Vector4 } from '@galacean/effects-math/es/core';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from './property-clip-playable';
