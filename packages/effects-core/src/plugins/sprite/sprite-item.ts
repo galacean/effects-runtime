@@ -149,8 +149,12 @@ export class SpriteComponent extends BaseRenderComponent {
     }
     const { video } = this.renderer.texture.source as Texture2DSourceOptionsVideo;
 
-    if (video?.paused) {
-      video.play().catch(e => { this.engine.renderErrors.add(e); });
+    if (video) {
+      if (time === 0 || (time === this.item.duration)) {
+        video.pause();
+      } else {
+        video.play().catch(e => { this.engine.renderErrors.add(e); });
+      }
     }
   }
 

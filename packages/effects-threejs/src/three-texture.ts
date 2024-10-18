@@ -85,13 +85,7 @@ export class ThreeTexture extends Texture {
    *
    */
   async startVideo () {
-    if (this.sourceType === TextureSourceType.video) {
-      const video = (this.texture).source.data;
 
-      if (video.paused) {
-        await video.play();
-      }
-    }
   }
 
   /**
@@ -224,6 +218,7 @@ export class ThreeTexture extends Texture {
       texture.wrapT = THREE.MirroredRepeatWrapping;
       this.width = this.height = 1;
     }
+    this.source = options;
     if (texture) {
       texture.flipY = !!flipY;
 
