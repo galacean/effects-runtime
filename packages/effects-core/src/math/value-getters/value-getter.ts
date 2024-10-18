@@ -3,13 +3,13 @@ import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
-import { colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../utils';
-import type { ColorStop } from '../utils';
-import type { BezierEasing } from './bezier';
-import { BezierPath, buildEasingCurve, BezierQuat } from './bezier';
-import { Float16ArrayWrapper } from './float16array-wrapper';
-import { numberToFix } from './utils';
-import { HELP_LINK } from '../constants';
+import { colorToArr, colorStopsFromGradient, interpolateColor, isFunction } from '../../utils';
+import type { ColorStop } from '../../utils';
+import type { BezierEasing } from '../bezier';
+import { BezierPath, buildEasingCurve, BezierQuat } from '../bezier';
+import { Float16ArrayWrapper } from '../float16array-wrapper';
+import { numberToFix } from '../utils';
+import { HELP_LINK } from '../../constants';
 
 interface KeyFrameMeta {
   curves: ValueGetter<any>[],

@@ -1,26 +1,33 @@
+import { Color } from '@galacean/effects-math/es/core';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from './property-clip-playable';
 
-export class FloatPropertyMixerPlayable extends Playable {
+export class ColorPropertyMixerPlayable extends Playable {
   propertyName = '';
 
   override processFrame (context: FrameContext): void {
-    const boundObject = context.output.getUserData();
+    const boundObject = context.output.getUserData() as Record<string, any>;
 
     if (!boundObject) {
       return;
     }
 
     let hasInput = false;
-    let value = 0;
+    const value = boundObject[this.propertyName];
+
+    if (!(value instanceof Color)) {
+      return;
+    }
+
+    value.setZero();
 
     // evaluate the curve
     for (let i = 0; i < this.getInputCount(); i++) {
       const weight = this.getInputWeight(i);
 
       if (weight > 0) {
-        const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<number>;
+        const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<Color>;
 
         if (!(propertyClipPlayable instanceof PropertyClipPlayable)) {
           console.error('FloatPropertyTrack added non-FloatPropertyPlayableAsset');
@@ -29,7 +36,10 @@ export class FloatPropertyMixerPlayable extends Playable {
 
         const curveValue = propertyClipPlayable.value;
 
-        value += curveValue * weight;
+        value.r += curveValue.r * weight;
+        value.g += curveValue.g * weight;
+        value.b += curveValue.b * weight;
+        value.a += curveValue.a * weight;
 
         hasInput = true;
       }
@@ -37,7 +47,7 @@ export class FloatPropertyMixerPlayable extends Playable {
 
     // set value
     if (hasInput) {
-      (boundObject as Record<string, any>)[this.propertyName] = value;
+      boundObject[this.propertyName] = value;
     }
   }
 }
