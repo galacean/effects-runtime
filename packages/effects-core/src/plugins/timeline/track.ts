@@ -226,6 +226,10 @@ export class RuntimeClip {
     }
     this.parentMixer.setInputWeight(this.playable, weight);
 
+    const clipTime = clip.toLocalTime(localTime);
+
+    this.playable.setTime(clipTime);
+
     // 判断动画是否结束
     if (ended) {
       if (boundObject instanceof VFXItem && !boundObject.ended) {
@@ -240,9 +244,6 @@ export class RuntimeClip {
         this.playable.pause();
       }
     }
-    const clipTime = clip.toLocalTime(localTime);
-
-    this.playable.setTime(clipTime);
   }
 }
 
