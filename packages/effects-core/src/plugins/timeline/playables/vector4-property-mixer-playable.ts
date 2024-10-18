@@ -1,9 +1,9 @@
-import { Color } from '@galacean/effects-math/es/core/color';
+import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from './property-clip-playable';
 
-export class ColorPropertyMixerPlayable extends Playable {
+export class Vector4PropertyMixerPlayable extends Playable {
   propertyName = '';
 
   override processFrame (context: FrameContext): void {
@@ -16,7 +16,7 @@ export class ColorPropertyMixerPlayable extends Playable {
     let hasInput = false;
     const value = boundObject[this.propertyName];
 
-    if (!(value instanceof Color)) {
+    if (!(value instanceof Vector4)) {
       return;
     }
 
@@ -27,19 +27,19 @@ export class ColorPropertyMixerPlayable extends Playable {
       const weight = this.getInputWeight(i);
 
       if (weight > 0) {
-        const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<Color>;
+        const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<Vector4>;
 
         if (!(propertyClipPlayable instanceof PropertyClipPlayable)) {
-          console.error('ColorPropertyMixerPlayable received incompatible input');
+          console.error('Vector4PropertyTrack added non-Vector4PropertyPlayableAsset');
           continue;
         }
 
         const curveValue = propertyClipPlayable.value;
 
-        value.r += curveValue.r * weight;
-        value.g += curveValue.g * weight;
-        value.b += curveValue.b * weight;
-        value.a += curveValue.a * weight;
+        value.x += curveValue.x * weight;
+        value.y += curveValue.y * weight;
+        value.z += curveValue.z * weight;
+        value.w += curveValue.w * weight;
 
         hasInput = true;
       }
