@@ -1,9 +1,8 @@
 import * as EFFECTS from '@galacean/effects';
 import type { spec } from '@galacean/effects';
 import { VFXItem, logger, registerPlugin } from '@galacean/effects';
-import { ModelPlugin, ModelTreePlugin } from './plugin';
+import { ModelPlugin } from './plugin';
 
-registerPlugin<void>('tree', ModelTreePlugin, VFXItem, true);
 registerPlugin<void>('model', ModelPlugin, VFXItem);
 
 export const version = __VERSION__;
@@ -28,7 +27,6 @@ export type ModelLightOptions = spec.ModelLightOptions;
 
 export type ModelItemMesh = spec.ModelMeshItem<'studio'>;
 export type ModelItemSkybox = spec.ModelSkyboxItem<'studio'>;
-export type ModelItemTree = spec.ModelTreeItem<'studio'>;
 export type ModelMeshContent = spec.ModelMeshItemContent<'studio'>;
 export type ModelSkyboxContent = spec.SkyboxContent<'studio'>;
 export type ModelMeshOptions = spec.ModelMeshOptions<'studio'>;
