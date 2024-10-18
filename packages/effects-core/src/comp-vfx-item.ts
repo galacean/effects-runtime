@@ -148,7 +148,6 @@ export class CompositionComponent extends Behaviour {
       if (
         item.getVisible()
         && item.transform.getValid()
-        && !item.ended
         && !VFXItem.isComposition(item)
         && !skip(item)
       ) {

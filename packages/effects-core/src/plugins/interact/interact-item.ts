@@ -116,6 +116,12 @@ export class InteractComponent extends RendererComponent {
     }
     this.previewContent?.updateMesh();
     if (!this.hasBeenAddedToComposition && this.item.composition) {
+
+      const { type } = this.interactData.options as spec.ClickInteractOption;
+
+      if (type === spec.InteractType.CLICK) {
+        this.clickable = true;
+      }
       const options = this.item.props.content.options as spec.DragInteractOption;
 
       this.item.composition.addInteractiveItem(this.item, options.type);

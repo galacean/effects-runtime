@@ -279,21 +279,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.createContent();
 
     this.buildItemTree(this.rootItem);
-    this.rootItem.onEnd = () => {
-      window.setTimeout(() => {
-        this.emit('end', { composition: this });
-      }, 0);
-    };
     this.pluginSystem.resetComposition(this, this.renderFrame);
-  }
-
-  initializeSceneTicking (item: VFXItem) {
-    for (const component of item.components) {
-      this.sceneTicking.addComponent(component);
-    }
-    for (const child of item.children) {
-      this.initializeSceneTicking(child);
-    }
   }
 
   /**
@@ -581,42 +567,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
   }
 
-  private toLocalTime (time: number) {
-    let localTime = time - this.rootItem.start;
-    const duration = this.rootItem.duration;
-
-    if (localTime - duration > 0.001) {
-      if (!this.rootItem.ended) {
-        this.rootItem.ended = true;
-        this.emit('end', { composition: this });
-      }
-
-      switch (this.rootItem.endBehavior) {
-        case spec.EndBehavior.restart: {
-          localTime = localTime % duration;
-          this.restart();
-
-          break;
-        }
-        case spec.EndBehavior.freeze: {
-          localTime = Math.min(duration, localTime);
-
-          break;
-        }
-        case spec.EndBehavior.forward: {
-
-          break;
-        }
-        case spec.EndBehavior.destroy: {
-
-          break;
-        }
-      }
-    }
-
-    return localTime;
-  }
-
   private shouldDispose () {
     return this.rootItem.ended && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
@@ -717,9 +667,46 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private updateRootComposition (deltaTime: number) {
     if (this.rootComposition.isActiveAndEnabled) {
-      const localTime = this.toLocalTime(this.time + deltaTime);
+
+      let localTime = this.time + deltaTime - this.rootItem.start;
+      let ended = false;
+
+      const duration = this.rootItem.duration;
+      const endBehavior = this.rootItem.endBehavior;
+
+      if (localTime - duration > 0.001) {
+
+        ended = true;
+
+        switch (endBehavior) {
+          case spec.EndBehavior.restart: {
+            localTime = localTime % duration;
+            this.restart();
+
+            break;
+          }
+          case spec.EndBehavior.freeze: {
+            localTime = Math.min(duration, localTime);
+
+            break;
+          }
+          case spec.EndBehavior.forward: {
+
+            break;
+          }
+          case spec.EndBehavior.destroy: {
+
+            break;
+          }
+        }
+      }
 
       this.rootComposition.time = localTime;
+
+      if (ended && !this.rootItem.ended) {
+        this.rootItem.ended = true;
+        this.emit('end', { composition: this });
+      }
     }
   }
 
