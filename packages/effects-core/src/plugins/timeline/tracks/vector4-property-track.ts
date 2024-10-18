@@ -1,6 +1,6 @@
 import { effectsClass } from '../../../decorators';
 import type { PlayableGraph, Playable } from '../../cal/playable-graph';
-import { Vector4PropertyMixerPlayable } from '../playables/vector4-property-mixer-playable';
+import { Vector4PropertyMixerPlayable } from '../playables';
 import { PropertyTrack } from './property-track';
 
 @effectsClass('Vector4PropertyTrack')
