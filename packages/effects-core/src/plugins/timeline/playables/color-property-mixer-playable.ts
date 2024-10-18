@@ -30,7 +30,7 @@ export class ColorPropertyMixerPlayable extends Playable {
         const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<Color>;
 
         if (!(propertyClipPlayable instanceof PropertyClipPlayable)) {
-          console.error('FloatPropertyTrack added non-FloatPropertyPlayableAsset');
+          console.error('ColorPropertyMixerPlayable received incompatible input');
           continue;
         }
 
