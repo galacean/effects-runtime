@@ -84,7 +84,7 @@ export class TimelinePlayable extends Playable {
       trackOutput.setUserData(track.boundObject);
 
       graph.addOutput(trackOutput);
-      trackOutput.setSourcePlayeble(this, this.getInputCount() - 1);
+      trackOutput.setSourcePlayable(this, this.getInputCount() - 1);
 
       // create track instance
       const trackInstance = new TrackInstance(track, trackMixPlayable, trackOutput);
