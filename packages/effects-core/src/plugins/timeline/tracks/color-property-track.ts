@@ -3,9 +3,8 @@ import type { PlayableGraph, Playable } from '../../cal/playable-graph';
 import { FloatPropertyMixerPlayable } from '../playables';
 import { PropertyTrack } from './property-track';
 
-@effectsClass('FloatPropertyTrack')
-export class FloatPropertyTrack extends PropertyTrack {
-
+@effectsClass('ColorPropertyTrack')
+export class ColorPropertyTrack extends PropertyTrack {
   override createTrackMixer (graph: PlayableGraph): Playable {
     const mixer = new FloatPropertyMixerPlayable(graph);
 
@@ -18,21 +17,5 @@ export class FloatPropertyTrack extends PropertyTrack {
     }
 
     return mixer;
-  }
-
-  override updateAnimatedObject () {
-    const propertyNames = this.propertyNames;
-    let target: Record<string, any> = this.parent.boundObject;
-
-    for (let i = 0; i < propertyNames.length - 1; i++) {
-      const property = target[propertyNames[i]];
-
-      if (property === undefined) {
-        console.error('The ' + propertyNames[i] + ' property of ' + target + ' was not found');
-      }
-      target = property;
-    }
-
-    this.boundObject = target;
   }
 }

@@ -347,7 +347,7 @@ export class PlayableOutput {
     };
   }
 
-  setSourcePlayeble (playable: Playable, port = 0) {
+  setSourcePlayable (playable: Playable, port = 0) {
     this.sourcePlayable = playable;
     this.sourceOutputPort = port;
   }
