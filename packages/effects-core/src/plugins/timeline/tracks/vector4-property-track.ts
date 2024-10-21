@@ -1,4 +1,4 @@
-import { spec } from '@galacean/effects-core';
+import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../../decorators';
 import type { PlayableGraph, Playable } from '../../cal/playable-graph';
 import { Vector4PropertyMixerPlayable } from '../playables';

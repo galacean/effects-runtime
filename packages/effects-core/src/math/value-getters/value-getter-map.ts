@@ -1,4 +1,4 @@
-import { spec } from '@galacean/effects-core';
+import * as spec from '@galacean/effects-specification';
 import { colorToArr, isFunction } from '../../utils';
 import { BezierCurve, BezierCurvePath, BezierCurveQuat, GradientValue, LinearValue, LineSegments, PathSegments, RandomSetValue, RandomValue, RandomVectorValue, StaticValue } from './value-getter';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';

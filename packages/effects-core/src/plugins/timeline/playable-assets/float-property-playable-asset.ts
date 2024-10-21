@@ -4,7 +4,7 @@ import type { Playable, PlayableGraph } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
-import { spec } from '@galacean/effects-core';
+import * as spec from '@galacean/effects-specification';
 
 @effectsClass(spec.DataType.FloatPropertyPlayableAsset)
 export class FloatPropertyPlayableAsset extends PlayableAsset {

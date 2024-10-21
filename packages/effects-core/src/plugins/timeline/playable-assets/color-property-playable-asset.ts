@@ -4,7 +4,7 @@ import { PlayableAsset } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
 import type { Color } from '@galacean/effects-math/es/core';
-import { spec } from '@galacean/effects-core';
+import * as spec from '@galacean/effects-specification';
 
 @effectsClass(spec.DataType.ColorPropertyPlayableAsset)
 export class ColorPropertyPlayableAsset extends PlayableAsset {
