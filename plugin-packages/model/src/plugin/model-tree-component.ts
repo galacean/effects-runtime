@@ -6,7 +6,7 @@ import type { ModelTreeContent } from '../index';
  * 插件场景树组件类，实现 3D 场景树功能
  *
  * FIXME: 有些发布的新JSON包含TreeComponent，这里做兼容处理，否则会报错
- * @since 2.0.0
+ * @since 2.1.0
  */
 @effectsClass(spec.DataType.TreeComponent)
 export class ModelTreeComponent extends Behaviour {
