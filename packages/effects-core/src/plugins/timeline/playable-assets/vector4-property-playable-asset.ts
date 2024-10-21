@@ -4,7 +4,7 @@ import { PlayableAsset } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
 import type { Vector4 } from '@galacean/effects-math/es/core';
-import type { spec } from '@galacean/effects-core';
+import type * as spec from '@galacean/effects-specification';
 
 @effectsClass('Vector4PropertyPlayableAsset')
 export class Vector4PropertyPlayableAsset extends PlayableAsset {

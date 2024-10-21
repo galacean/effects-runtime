@@ -1,7 +1,7 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import type { BezierCurve } from './value-getter';
 import { ValueGetter } from './value-getter';
-import type { spec } from '@galacean/effects-core';
+import type * as spec from '@galacean/effects-specification';
 import { createValueGetter } from './value-getter-map';
 
 export class ColorCurve extends ValueGetter<Color> {
