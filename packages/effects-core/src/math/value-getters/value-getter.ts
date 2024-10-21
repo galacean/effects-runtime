@@ -10,6 +10,8 @@ import { BezierPath, buildEasingCurve, BezierQuat } from '../bezier';
 import { Float16ArrayWrapper } from '../float16array-wrapper';
 import { numberToFix } from '../utils';
 import { HELP_LINK } from '../../constants';
+import { ColorCurve } from './color-curve';
+import { Vector4Curve } from './vector4-curve';
 
 interface KeyFrameMeta {
   curves: ValueGetter<any>[],
@@ -899,6 +901,12 @@ const map: Record<any, any> = {
     }
 
     return new BezierCurveQuat(props);
+  },
+  [spec.ValueType.COLOR_CURVE] (props: spec.ColorCurveData) {
+    return new ColorCurve(props);
+  },
+  [spec.ValueType.VECTOR4_CURVE] (props: spec.Vector4CurveData) {
+    return new Vector4Curve(props);
   },
 };
 

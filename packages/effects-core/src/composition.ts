@@ -232,7 +232,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
     const { sourceContent, pluginSystem, imgUsage, totalTime, refCompositionProps } = this.compositionSourceManager;
 
-    //@ts-expect-error // TODO 更新 Spec
     this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
 
     assertExist(sourceContent);

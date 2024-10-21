@@ -1,7 +1,7 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import type { BezierCurve } from './value-getter';
 import { ValueGetter, createValueGetter } from './value-getter';
-import type { BezierValue } from '@galacean/effects-specification';
+import type { spec } from '@galacean/effects-core';
 
 export class ColorCurve extends ValueGetter<Color> {
   private value = new Color();
@@ -11,7 +11,7 @@ export class ColorCurve extends ValueGetter<Color> {
   private bCurve: BezierCurve;
   private aCurve: BezierCurve;
 
-  override onCreate (arg: ColorCurveData) {
+  override onCreate (arg: spec.ColorCurveData) {
     this.rCurve = createValueGetter(arg.r) as BezierCurve;
     this.gCurve = createValueGetter(arg.g) as BezierCurve;
     this.bCurve = createValueGetter(arg.b) as BezierCurve;
@@ -28,12 +28,4 @@ export class ColorCurve extends ValueGetter<Color> {
 
     return this.value;
   }
-}
-
-// TODO replace with spec def
-export interface ColorCurveData {
-  r: BezierValue,
-  g: BezierValue,
-  b: BezierValue,
-  a: BezierValue,
 }

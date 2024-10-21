@@ -2,14 +2,14 @@ import { effectsClass, serialize } from '../../../decorators';
 import type { Playable, PlayableGraph } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from '../playables';
-import type { ColorCurveData } from '../../../math';
 import { createValueGetter } from '../../../math';
 import type { Color } from '@galacean/effects-math/es/core';
+import { spec } from '@galacean/effects-core';
 
-@effectsClass('ColorPropertyPlayableAsset')
+@effectsClass(spec.DataType.ColorPropertyPlayableAsset)
 export class ColorPropertyPlayableAsset extends PlayableAsset {
   @serialize()
-  curveData: ColorCurveData;
+  curveData: spec.ColorCurveData;
 
   override createPlayable (graph: PlayableGraph): Playable {
     const clipPlayable = new PropertyClipPlayable<Color>(graph);

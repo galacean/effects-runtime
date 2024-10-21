@@ -1,9 +1,10 @@
+import { spec } from '@galacean/effects-core';
 import { effectsClass } from '../../../decorators';
 import type { PlayableGraph, Playable } from '../../cal/playable-graph';
 import { FloatPropertyMixerPlayable } from '../playables';
 import { PropertyTrack } from './property-track';
 
-@effectsClass('FloatPropertyTrack')
+@effectsClass(spec.DataType.FloatPropertyTrack)
 export class FloatPropertyTrack extends PropertyTrack {
 
   override createTrackMixer (graph: PlayableGraph): Playable {
