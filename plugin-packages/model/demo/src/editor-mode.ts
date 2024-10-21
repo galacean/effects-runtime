@@ -22,9 +22,11 @@ let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.g
 
 url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
-//url = './fashi2.glb'
+//url = './Ignore/fashi2.glb'
 
-//url = './1729503665851.glb'
+//url = './Ignore/1729503665851.glb'
+//url = './Ignore/1729503649957.glb'
+//url = './Ignore/1729503615854.glb'
 
 enum EditorMode {
   standard,
