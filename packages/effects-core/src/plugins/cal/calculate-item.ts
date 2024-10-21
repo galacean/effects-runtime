@@ -33,6 +33,9 @@ export type ItemLinearVelOverLifetime = {
 @effectsClass(spec.DataType.ObjectBindingTrack)
 export class ObjectBindingTrack extends TrackAsset {
 
+  override updateAnimatedObject (): void {
+  }
+
   create (timelineAsset: TimelineAsset): void {
     if (!(this.boundObject instanceof VFXItem)) {
       return;

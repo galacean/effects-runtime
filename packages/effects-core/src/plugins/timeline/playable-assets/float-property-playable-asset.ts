@@ -4,8 +4,9 @@ import type { Playable, PlayableGraph } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
+import * as spec from '@galacean/effects-specification';
 
-@effectsClass('FloatPropertyPlayableAsset')
+@effectsClass(spec.DataType.FloatPropertyPlayableAsset)
 export class FloatPropertyPlayableAsset extends PlayableAsset {
   @serialize()
   curveData: FixedNumberExpression;

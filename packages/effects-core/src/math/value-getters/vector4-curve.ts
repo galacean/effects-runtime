@@ -1,7 +1,8 @@
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { BezierCurve } from './value-getter';
-import { ValueGetter, createValueGetter } from './value-getter';
-import type { BezierValue } from '@galacean/effects-specification';
+import { ValueGetter } from './value-getter';
+import type * as spec from '@galacean/effects-specification';
+import { createValueGetter } from './value-getter-map';
 
 export class Vector4Curve extends ValueGetter<Vector4> {
   private value = new Vector4();
@@ -11,7 +12,7 @@ export class Vector4Curve extends ValueGetter<Vector4> {
   private zCurve: BezierCurve;
   private wCurve: BezierCurve;
 
-  override onCreate (arg: Vector4CurveData) {
+  override onCreate (arg: spec.Vector4CurveData) {
     this.xCurve = createValueGetter(arg.x) as BezierCurve;
     this.yCurve = createValueGetter(arg.y) as BezierCurve;
     this.zCurve = createValueGetter(arg.z) as BezierCurve;
@@ -28,12 +29,4 @@ export class Vector4Curve extends ValueGetter<Vector4> {
 
     return this.value;
   }
-}
-
-// TODO replace with spec def
-export interface Vector4CurveData {
-  x: BezierValue,
-  y: BezierValue,
-  z: BezierValue,
-  w: BezierValue,
 }
