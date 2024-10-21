@@ -44,7 +44,9 @@ export class JSONConverter {
     const binFiles: ArrayBuffer[] = [];
 
     //@ts-expect-error
-    if (sceneJSON.version >= '3.0') {
+    const v = sceneJSON.version.split('.');
+
+    if (Number(v[0]) >= 3) {
       return oldScene;
     }
 
