@@ -20,7 +20,7 @@ import {
 } from '../runtime';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper } from '../utility';
-import type { PImageBufferData, PSkyboxBufferParams } from '../runtime/skybox';
+import type { PImageBufferData, PSkyboxBufferParams, PSkyboxURLParams } from '../runtime/skybox';
 import type {
   GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
   GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight, GLTFPrimitive,
@@ -683,7 +683,60 @@ export class LoaderImpl implements Loader {
     this.components.push(component);
   }
 
-  async tryAddSkybox (skybox: ModelSkybox) {
+  addSkybox (skybox: PSkyboxURLParams) {
+    const itemId = generateGUID();
+    const skyboxInfo = PSkyboxCreator.createSkyboxComponentData(skybox);
+    const { imageList, textureOptionsList, component } = skyboxInfo;
+
+    component.item.id = itemId;
+    if (skybox.intensity !== undefined) {
+      component.intensity = skybox.intensity;
+    }
+    if (skybox.reflectionsIntensity !== undefined) {
+      component.reflectionsIntensity = skybox.reflectionsIntensity;
+    }
+    component.renderable = skybox.renderable ?? false;
+
+    const item: spec.VFXItemData = {
+      id: itemId,
+      name: 'Skybox-Customize',
+      duration: 999,
+      type: spec.ItemType.skybox,
+      pn: 0,
+      visible: true,
+      endBehavior: spec.EndBehavior.freeze,
+      transform: {
+        position: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        eulerHint: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        scale: {
+          x: 1,
+          y: 1,
+          z: 1,
+        },
+      },
+      components: [
+        { id: component.id },
+      ],
+      content: {},
+      dataType: spec.DataType.VFXItemData,
+    };
+
+    this.images.push(...imageList);
+    // @ts-expect-error
+    this.textures.push(...textureOptionsList);
+    this.items.push(item);
+    this.components.push(component);
+  }
+
+  private async tryAddSkybox (skybox: ModelSkybox) {
     if (this.gltfImageBasedLights.length > 0 && !this.ignoreSkybox()) {
       const ibl = this.gltfImageBasedLights[0];
 

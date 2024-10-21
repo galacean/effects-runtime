@@ -22,6 +22,10 @@ let url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/fish_test.g
 
 url = 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/DamagedHelmet.glb';
 
+//url = './fashi2.glb'
+
+//url = './1729503665851.glb'
+
 enum EditorMode {
   standard,
   diffuse,
@@ -56,7 +60,7 @@ async function getCurrentScene () {
   loader.addCamera({
     near: 0.1,
     far: 5000,
-    fov: 60,
+    fov: 18,
     clipMode: 0,
     //
     name: 'extra-camera',
@@ -67,30 +71,30 @@ async function getCurrentScene () {
   });
 
   loader.addLight({
-    lightType: spec.LightType.ambient,
+    lightType: spec.LightType.directional,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 0.2,
+    intensity: 1,
     //
-    name: 'ambient-light',
+    name: 'main-light',
     position: [0, 0, 0],
-    rotation: [0, 0, 0],
+    rotation: [45, 45, 0],
     scale: [1, 1, 1],
     duration: duration,
     endBehavior: spec.EndBehavior.restart,
   });
 
-  loader.addLight({
-    lightType: spec.LightType.directional,
-    color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 0.9,
-    followCamera: true,
-    //
-    name: 'main-light',
-    position: [0, 0, 0],
-    rotation: [30, 325, 0],
-    scale: [1, 1, 1],
-    duration: duration,
-    endBehavior: spec.EndBehavior.restart,
+  const specularImageList = getSpecularImageList();
+  const diffuseImageList = specularImageList[specularImageList.length - 1];
+
+  loader.addSkybox({
+    type: 'url',
+    renderable: false,
+    intensity: 1,
+    reflectionsIntensity: 1,
+    diffuseImage: diffuseImageList,
+    specularImage: specularImageList,
+    specularImageSize: Math.pow(2, specularImageList.length - 1),
+    specularMipCount: specularImageList.length,
   });
 
   const { jsonScene } = loader.getLoadResult();
@@ -323,7 +327,7 @@ export function createUI () {
   const uiDom = document.createElement('div');
   const select = document.createElement('select');
 
-  container.style.background = 'rgba(182,217,241)';
+  container.style.background = 'rgba(0,0,0)';
   uiDom.className = 'my_ui';
   select.innerHTML = `
     <option value="standard">正常</option>
@@ -361,4 +365,81 @@ export function createUI () {
   const demoInfo = document.getElementsByClassName('demo-info')[0];
 
   demoInfo.appendChild(uiDom);
+}
+
+function getSpecularImageList () {
+  return [
+    [
+      './Ignore/20241021_150133/Cubemap_256_px.png',
+      './Ignore/20241021_150133/Cubemap_256_nx.png',
+      './Ignore/20241021_150133/Cubemap_256_py.png',
+      './Ignore/20241021_150133/Cubemap_256_ny.png',
+      './Ignore/20241021_150133/Cubemap_256_pz.png',
+      './Ignore/20241021_150133/Cubemap_256_nz.png',
+    ],
+    [
+      './Ignore/20241021_150133/Cubemap_128_px.png',
+      './Ignore/20241021_150133/Cubemap_128_nx.png',
+      './Ignore/20241021_150133/Cubemap_128_py.png',
+      './Ignore/20241021_150133/Cubemap_128_ny.png',
+      './Ignore/20241021_150133/Cubemap_128_pz.png',
+      './Ignore/20241021_150133/Cubemap_128_nz.png',
+    ],
+    [
+      './Ignore/20241021_150133/Cubemap_64_px.png',
+      './Ignore/20241021_150133/Cubemap_64_nx.png',
+      './Ignore/20241021_150133/Cubemap_64_py.png',
+      './Ignore/20241021_150133/Cubemap_64_ny.png',
+      './Ignore/20241021_150133/Cubemap_64_pz.png',
+      './Ignore/20241021_150133/Cubemap_64_nz.png',
+    ],
+    [
+      './Ignore/20241021_150133/Cubemap_32_px.png',
+      './Ignore/20241021_150133/Cubemap_32_nx.png',
+      './Ignore/20241021_150133/Cubemap_32_py.png',
+      './Ignore/20241021_150133/Cubemap_32_ny.png',
+      './Ignore/20241021_150133/Cubemap_32_pz.png',
+      './Ignore/20241021_150133/Cubemap_32_nz.png',
+    ],
+    [
+      './Ignore/20241021_150133/Cubemap_16_px.png',
+      './Ignore/20241021_150133/Cubemap_16_nx.png',
+      './Ignore/20241021_150133/Cubemap_16_py.png',
+      './Ignore/20241021_150133/Cubemap_16_ny.png',
+      './Ignore/20241021_150133/Cubemap_16_pz.png',
+      './Ignore/20241021_150133/Cubemap_16_nz.png',
+    ],
+    [
+      './Ignore/20241021_150133/Cubemap_8_px.png',
+      './Ignore/20241021_150133/Cubemap_8_nx.png',
+      './Ignore/20241021_150133/Cubemap_8_py.png',
+      './Ignore/20241021_150133/Cubemap_8_ny.png',
+      './Ignore/20241021_150133/Cubemap_8_pz.png',
+      './Ignore/20241021_150133/Cubemap_8_nz.png',
+    ],
+    [
+      './Ignore/20241021_150133/Cubemap_4_px.png',
+      './Ignore/20241021_150133/Cubemap_4_nx.png',
+      './Ignore/20241021_150133/Cubemap_4_py.png',
+      './Ignore/20241021_150133/Cubemap_4_ny.png',
+      './Ignore/20241021_150133/Cubemap_4_pz.png',
+      './Ignore/20241021_150133/Cubemap_4_nz.png',
+    ],
+    [
+      './Ignore/20241021_150133/Cubemap_2_px.png',
+      './Ignore/20241021_150133/Cubemap_2_nx.png',
+      './Ignore/20241021_150133/Cubemap_2_py.png',
+      './Ignore/20241021_150133/Cubemap_2_ny.png',
+      './Ignore/20241021_150133/Cubemap_2_pz.png',
+      './Ignore/20241021_150133/Cubemap_2_nz.png',
+    ],
+    [
+      './Ignore/20241021_150133/Cubemap_1_px.png',
+      './Ignore/20241021_150133/Cubemap_1_nx.png',
+      './Ignore/20241021_150133/Cubemap_1_py.png',
+      './Ignore/20241021_150133/Cubemap_1_ny.png',
+      './Ignore/20241021_150133/Cubemap_1_pz.png',
+      './Ignore/20241021_150133/Cubemap_1_nz.png',
+    ],
+  ];
 }
