@@ -43,6 +43,13 @@ export class JSONConverter {
     const oldBinUrls = oldScene.bins ?? [];
     const binFiles: ArrayBuffer[] = [];
 
+    //@ts-expect-error
+    const v = sceneJSON.version.split('.');
+
+    if (Number(v[0]) >= 3) {
+      return oldScene;
+    }
+
     if (oldScene.bins) {
       for (const bin of oldScene.bins) {
         binFiles.push(await this.loadBins(bin.url));
@@ -166,7 +173,6 @@ export class JSONConverter {
         this.createItemsFromTreeComponent(comp, newScene, oldScene);
         treeComp.options.tree.animation = undefined;
         treeComp.options.tree.animations = undefined;
-        newComponents.push(comp);
       } else if (comp.dataType !== spec.DataType.MeshComponent) {
         newComponents.push(comp);
       }
@@ -622,7 +628,7 @@ export class JSONConverter {
         animationComponent.animationClips.push({ id: clipData.id });
       });
     }
-
+    treeItem.components = [];
     treeItem.components.push({ id: animationComponent.id });
     newScene.components.push(animationComponent);
   }
