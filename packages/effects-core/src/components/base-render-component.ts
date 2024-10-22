@@ -14,6 +14,7 @@ import { HitTestType, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } f
 import type { MaterialProps } from '../material';
 import { getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
 import { trianglesFromRect } from '../math';
+import type { GeometryFromShape } from '../shape';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -22,6 +23,7 @@ export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'textu
   order: number,
   mask: number,
   texture: Texture,
+  shape?: GeometryFromShape,
   anchor?: spec.vec2,
   particleOrigin?: spec.ParticleOrigin,
 }
@@ -218,9 +220,30 @@ export class BaseRenderComponent extends RendererComponent {
   }
 
   protected getItemGeometryData () {
-    this.geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
+    const renderer = this.renderer;
 
-    return { index: [0, 1, 2, 2, 1, 3], atlasOffset: [0, 1, 0, 0, 1, 1, 1, 0] };
+    if (renderer.shape) {
+      const { index = [], aPoint = [] } = renderer.shape;
+      const point = new Float32Array(aPoint);
+      const position = [];
+
+      const atlasOffset = [];
+
+      for (let i = 0; i < point.length; i += 6) {
+        atlasOffset.push(aPoint[i + 2], aPoint[i + 3]);
+        position.push(point[i], point[i + 1], 0.0);
+      }
+      this.geometry.setAttributeData('aPos', new Float32Array(position));
+
+      return {
+        index: index as number[],
+        atlasOffset,
+      };
+    } else {
+      this.geometry.setAttributeData('aPos', new Float32Array([-0.5, 0.5, 0, -0.5, -0.5, 0, 0.5, 0.5, 0, 0.5, -0.5, 0]));
+
+      return { index: [0, 1, 2, 2, 1, 3], atlasOffset: [0, 1, 0, 0, 1, 1, 1, 0] };
+    }
   }
 
   protected createGeometry (mode: GeometryDrawMode) {
