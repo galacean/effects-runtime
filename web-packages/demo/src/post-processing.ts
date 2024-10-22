@@ -5,14 +5,14 @@ import postProcessingList from './assets/post-processing-list';
 // DATUI 参数面板
 const postProcessSettings = {
   // Particle
-  color: [1, 0.5, 0],
+  color: [0, 0, 0],
   intensity: 1.0,
 };
 const container = document.getElementById('J-container');
 const resumeBtn = document.getElementById('J-resume');
-// const url = postProcessingList['robin'].url;
-const url = 'https://mdn.alipayobjects.com/mars/afts/file/A*PubBSpHUbjYAAAAAAAAAAAAADlB4AQ';
+const url = postProcessingList['bloomTest'].url;
 let player: Player;
+let gui: any;
 
 initSelectList();
 setConfig(POST_PROCESS_SETTINGS, postProcessSettings);
@@ -62,8 +62,11 @@ function initSelectList () {
 
 // dat gui 参数及修改
 function setDatGUI (composition: Composition) {
+  if (gui) {
+    gui.destroy();
+  }
   // @ts-expect-error
-  const gui = new window.GUI();
+  gui = new window.GUI();
   const ParticleFolder = gui.addFolder('Particle');
   const BloomFolder = gui.addFolder('Bloom');
   const ToneMappingFlolder = gui.addFolder('ToneMapping');
