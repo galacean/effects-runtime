@@ -31,7 +31,6 @@ export default defineConfig(({ mode }) => {
           'shape': resolve(__dirname, 'html/shape.html'),
           'single': resolve(__dirname, 'html/single.html'),
           'text': resolve(__dirname, 'html/text.html'),
-          'rich-text': resolve(__dirname, 'html/rich-text.html'),
           'three-particle': resolve(__dirname, 'html/three-particle.html'),
           'three-sprite': resolve(__dirname, 'html/three-sprite.html'),
           'threejs-large-scene': resolve(__dirname, 'html/threejs-large-scene.html'),
