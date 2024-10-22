@@ -47,7 +47,7 @@ const singleSplits: splitsDataType = [[0, 0, 1, 1, undefined]];
 
 let seed = 0;
 
-@effectsClass('SpriteColorPlayableAsset')
+@effectsClass(spec.DataType.SpriteColorPlayableAsset)
 export class SpriteColorPlayableAsset extends PlayableAsset {
   data: ColorPlayableAssetData;
 

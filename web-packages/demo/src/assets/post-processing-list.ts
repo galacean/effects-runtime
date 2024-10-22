@@ -12,7 +12,7 @@ export default {
     name: 'Robin',
   },
   bloomTest: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*6j_ZQan_MhMAAAAAAAAAAAAADlB4AQ',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*y3eeR41N5dgAAAAAAAAAAAAADlB4AQ',
     name: 'BloomTest',
   },
 };
