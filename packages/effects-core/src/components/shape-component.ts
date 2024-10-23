@@ -7,9 +7,8 @@ import type { MaterialProps } from '../material';
 import { Material } from '../material';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
 import type { ShapePath } from '../plugins/shape/shape-path';
-import type { Renderer } from '../render';
 import { Geometry, GLSLVersion } from '../render';
-import { RendererComponent } from './renderer-component';
+import { MeshComponent } from './mesh-component';
 
 interface CurveData {
   point: spec.Vector3Data,
@@ -22,13 +21,12 @@ interface CurveData {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends RendererComponent {
+export class ShapeComponent extends MeshComponent {
 
   private path = new GraphicsPath();
   private curveValues: CurveData[] = [];
-  private geometry: Geometry;
   private data: ShapeComponentData;
-  private animated = false;
+  private animated = true;
 
   private vert = `
 precision highp float;
@@ -100,18 +98,15 @@ void main() {
     }
   }
 
+  override onStart (): void {
+    this.item.getHitTestParams = this.getHitTestParams;
+  }
+
   override onUpdate (dt: number): void {
     if (this.animated) {
       this.buildPath(this.data);
       this.buildGeometryFromPath(this.path.shapePath);
     }
-  }
-
-  override render (renderer: Renderer): void {
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
-    }
-    renderer.drawGeometry(this.geometry, this.material);
   }
 
   private buildGeometryFromPath (shapePath: ShapePath) {
@@ -231,8 +226,6 @@ void main() {
   override fromData (data: ShapeComponentData): void {
     super.fromData(data);
     this.data = data;
-
-    this.animated = true;
   }
 }
 
