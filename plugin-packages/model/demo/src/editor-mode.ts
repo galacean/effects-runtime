@@ -1,6 +1,6 @@
 import type { Player } from '@galacean/effects';
 import { math, spec, generateGUID } from '@galacean/effects';
-import { CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
+import { CameraGestureHandlerImp, PSkyboxCreator, PSkyboxType } from '@galacean/effects-plugin-model';
 import { LoaderImplEx } from '../../src/helper';
 import { GizmoSubType } from '@galacean/effects-plugin-editor-gizmo';
 
@@ -56,7 +56,7 @@ async function getCurrentScene () {
   loader.addCamera({
     near: 0.1,
     far: 5000,
-    fov: 60,
+    fov: 18,
     clipMode: 0,
     //
     name: 'extra-camera',
@@ -67,30 +67,32 @@ async function getCurrentScene () {
   });
 
   loader.addLight({
-    lightType: spec.LightType.ambient,
+    lightType: spec.LightType.directional,
     color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 0.2,
+    intensity: 1,
     //
-    name: 'ambient-light',
+    name: 'main-light',
     position: [0, 0, 0],
-    rotation: [0, 0, 0],
+    rotation: [45, 45, 0],
     scale: [1, 1, 1],
     duration: duration,
     endBehavior: spec.EndBehavior.restart,
   });
 
-  loader.addLight({
-    lightType: spec.LightType.directional,
-    color: { r: 1, g: 1, b: 1, a: 1 },
-    intensity: 0.9,
-    followCamera: true,
-    //
-    name: 'main-light',
-    position: [0, 0, 0],
-    rotation: [30, 325, 0],
-    scale: [1, 1, 1],
-    duration: duration,
-    endBehavior: spec.EndBehavior.restart,
+  const skyboxParams = PSkyboxCreator.getSkyboxParams(PSkyboxType.NFT);
+
+  const specularImageList = skyboxParams.specularImage;
+  const diffuseImageList = specularImageList[specularImageList.length - 1];
+
+  loader.addSkybox({
+    type: 'url',
+    renderable: false,
+    intensity: 1,
+    reflectionsIntensity: 1,
+    diffuseImage: diffuseImageList,
+    specularImage: specularImageList,
+    specularImageSize: Math.pow(2, specularImageList.length - 1),
+    specularMipCount: specularImageList.length,
   });
 
   const { jsonScene } = loader.getLoadResult();
@@ -323,7 +325,7 @@ export function createUI () {
   const uiDom = document.createElement('div');
   const select = document.createElement('select');
 
-  container.style.background = 'rgba(182,217,241)';
+  container.style.background = 'rgba(0,0,0)';
   uiDom.className = 'my_ui';
   select.innerHTML = `
     <option value="standard">正常</option>

@@ -638,14 +638,13 @@ void main()
     #ifdef DEBUG_DIFFUSE
         vec3 debugDiffuse = vec3(0.0);
         #ifdef USE_PUNCTUAL
-            vec3 newBaseColor = vec3(dot(_BaseColorFactor.xyz, vec3(0.3)));
             MaterialInfo diffuseMaterialInfo = MaterialInfo(
                 1.0,
-                vec3(0.0),
+                f0,
                 1.0,
-                newBaseColor,
-                vec3(0.0),
-                vec3(0.0)
+                vec3(0.35),
+                f0,
+                f0
             );
             for (int i = 0; i < LIGHT_COUNT; ++i)
             {
@@ -667,6 +666,9 @@ void main()
                     debugDiffuse += applyAmbientLight(light, diffuseMaterialInfo);
                 }
             }
+            #ifdef USE_IBL
+                debugDiffuse += getIBLContribution(diffuseMaterialInfo, normal, view);
+            #endif
         #endif
         gl_FragColor.rgb = toneMap(debugDiffuse);
     #endif
