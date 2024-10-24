@@ -20,6 +20,9 @@ export {
 
 registerPlugin<void>('spine', class SpineLoader extends AbstractPlugin { }, VFXItem);
 
+/**
+ * 插件版本号
+ */
 export const version = __VERSION__;
 
 logger.info(`Plugin spine version: ${version}.`);

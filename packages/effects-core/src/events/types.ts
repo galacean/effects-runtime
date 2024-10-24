@@ -16,7 +16,7 @@ export type ItemEvent = {
 };
 
 /**
- * Compositio 可以绑定的事件
+ * Composition 可以绑定的事件
  */
 export type CompositionEvent<C> = {
   /**

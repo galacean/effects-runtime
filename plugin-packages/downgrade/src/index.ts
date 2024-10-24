@@ -7,6 +7,9 @@ export * from './parser';
 export * from './ua-decoder';
 export * from './types';
 
+/**
+ * 插件版本号
+ */
 export const version = __VERSION__;
 
 registerPlugin('downgrade', DowngradePlugin, VFXItem, true);

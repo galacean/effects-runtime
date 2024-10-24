@@ -5,6 +5,9 @@ import { HitTestType } from './click-handler';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 
+/**
+ *
+ */
 export class MeshCollider {
   private boundingBoxData: BoundingBoxTriangle;
   private geometry: Geometry;

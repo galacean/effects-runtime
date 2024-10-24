@@ -15,9 +15,15 @@ import { EffectsPackage } from './effects-package';
  * Engine 基类，负责维护所有 GPU 资源的管理及销毁
  */
 export class Engine implements Disposable {
+  /**
+   * 渲染器
+   */
   renderer: Renderer;
   emptyTexture: Texture;
   transparentTexture: Texture;
+  /**
+   * GPU 能力
+   */
   gpuCapability: GPUCapability;
   jsonSceneData: SceneData;
   objectInstance: Record<string, EffectsObject>;
@@ -36,6 +42,9 @@ export class Engine implements Disposable {
   protected meshes: Mesh[] = [];
   protected renderPasses: RenderPass[] = [];
 
+  /**
+   *
+   */
   constructor () {
     this.jsonSceneData = {};
     this.objectInstance = {};

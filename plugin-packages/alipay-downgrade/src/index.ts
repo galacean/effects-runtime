@@ -6,6 +6,9 @@ export * from './utils';
 export * from './native-log';
 export * from './types';
 
+/**
+ * 插件版本号
+ */
 export const version = __VERSION__;
 
 registerPlugin('alipay-downgrade', AlipayDowngradePlugin, VFXItem, true);

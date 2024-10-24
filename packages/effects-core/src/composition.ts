@@ -1,6 +1,5 @@
 import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
-import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
@@ -24,6 +23,9 @@ import type { PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
 import { SerializationHelper } from './serialization-helper';
 
+/**
+ * 合成统计信息
+ */
 export interface CompositionStatistic {
   loadStart: number,
   loadTime: number,
@@ -37,18 +39,14 @@ export interface CompositionStatistic {
   firstFrameTime: number,
 }
 
+/**
+ * 合成消息对象
+ */
 export interface MessageItem {
   id: string,
   name: string,
   phrase: number,
   compositionId: string,
-}
-
-export interface CompItemClickedData {
-  name: string,
-  id: string,
-  hitPositions: Vector3[],
-  position: Vector3,
 }
 
 /**
@@ -60,6 +58,9 @@ export interface CompositionHitTestOptions {
   skip?: (item: VFXItem) => boolean,
 }
 
+/**
+ *
+ */
 export interface CompositionProps {
   reusable?: boolean,
   baseRenderOrder?: number,
@@ -78,6 +79,9 @@ export interface CompositionProps {
  */
 export class Composition extends EventEmitter<CompositionEvent<Composition>> implements Disposable, LostHandler {
   renderer: Renderer;
+  /**
+   *
+   */
   sceneTicking = new SceneTicking();
   /**
    * 当前帧的渲染数据对象
@@ -136,7 +140,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 是否在合成结束时自动销毁引用的纹理，合成重播时不销毁
    */
-  autoRefTex: boolean;
+  readonly autoRefTex: boolean;
   /**
    * 当前合成名称
    */
@@ -164,7 +168,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 预合成的合成属性，在 content 中会被其元素属性覆盖
    */
-  refCompositionProps: Map<string, spec.CompositionData> = new Map();
+  readonly refCompositionProps: Map<string, spec.CompositionData> = new Map();
   /**
    * 合成的相机对象
    */
@@ -326,7 +330,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   set viewportMatrix (matrix: Matrix4) {
     this.camera.setViewportMatrix(matrix);
   }
-
   get viewportMatrix () {
     return this.camera.getViewportMatrix();
   }

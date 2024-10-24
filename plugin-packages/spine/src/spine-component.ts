@@ -52,6 +52,7 @@ export interface SpineDataCache extends SpineBaseData {
 }
 
 /**
+ * Spine 组件
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.SpineComponent)

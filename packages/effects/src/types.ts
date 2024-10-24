@@ -48,6 +48,9 @@ export interface PlayerConfig {
    * player 的 name
    */
   name?: string,
+  /**
+   * 渲染选项，传递给 WebGLRenderingContext 实例化的 WebGLContextAttributes 参数
+   */
   renderOptions?: {
     /**
      * 播放器是否需要截图（对应 WebGL 的 preserveDrawingBuffer 参数）
@@ -71,6 +74,9 @@ export interface PlayerConfig {
   reportGPUTime?: (time: number) => void,
 }
 
+/**
+ * 播放器事件
+ */
 export type PlayerEvent<P> = {
   /**
    * 播放器点击事件

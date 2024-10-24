@@ -1,9 +1,16 @@
 import { Component } from '../components';
 
+/**
+ *
+ */
 export class SceneTicking {
   update: UpdateTickData = new UpdateTickData();
   lateUpdate: LateUpdateTickData = new LateUpdateTickData();
 
+  /**
+   *
+   * @param obj
+   */
   addComponent (obj: Component): void {
     if (obj.onUpdate !== Component.prototype.onUpdate) {
       this.update.addComponent(obj);
@@ -13,6 +20,10 @@ export class SceneTicking {
     }
   }
 
+  /**
+   *
+   * @param obj
+   */
   removeComponent (obj: Component): void {
     if (obj.onUpdate !== Component.prototype.onUpdate) {
       this.update.removeComponent(obj);
@@ -22,6 +33,9 @@ export class SceneTicking {
     }
   }
 
+  /**
+   *
+   */
   clear (): void {
     this.update.clear();
     this.lateUpdate.clear();

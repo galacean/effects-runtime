@@ -40,6 +40,9 @@ export interface ItemRenderInfo {
   wireframe?: boolean,
 }
 
+/**
+ * @since 2.1.0
+ */
 export class BaseRenderComponent extends RendererComponent {
   interaction?: { behavior: spec.InteractBehavior };
   cachePrefix = '-';
@@ -60,6 +63,10 @@ export class BaseRenderComponent extends RendererComponent {
   protected isManualTimeSet = false;
   protected frameAnimationTime = 0;
 
+  /**
+   *
+   * @param engine
+   */
   constructor (engine: Engine) {
     super(engine);
 
