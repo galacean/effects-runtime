@@ -1,5 +1,6 @@
 import type {
   Texture, Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps,
+  GeometryFromShape,
 } from '@galacean/effects';
 import { spec, math, BaseRenderComponent, effectsClass, glContext } from '@galacean/effects';
 
@@ -10,6 +11,7 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
   listIndex?: number,
   renderer: {
     mask: number,
+    shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
 }
@@ -86,6 +88,7 @@ export class VideoComponent extends BaseRenderComponent {
       mask: renderer.mask ?? 0,
       maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
       order: listIndex,
+      shape: renderer.shape,
     };
 
     this.interaction = interaction;
