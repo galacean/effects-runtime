@@ -6,7 +6,7 @@
 
 ``` ts
 import { Player } from '@galacean/effects';
-import '@galacean/effects-plugin-richtext';
+import '@galacean/effects-plugin-rich-text';
 ```
 
 ## Development
@@ -15,7 +15,7 @@ import '@galacean/effects-plugin-richtext';
 
 ``` bash
 # demo
-pnpm --filter @galacean/effects-plugin-richtext dev
+pnpm --filter @galacean/effects-plugin-rich-text dev
 ```
 
 > [Open in browser](http://localhost:8081/demo/)
