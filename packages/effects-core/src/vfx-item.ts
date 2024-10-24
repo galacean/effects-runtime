@@ -115,30 +115,66 @@ export class VFXItem extends EffectsObject implements Disposable {
   private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isSprite (item: VFXItem) {
     return item.type === spec.ItemType.sprite;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isParticle (item: VFXItem) {
     return item.type === spec.ItemType.particle;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isNull (item: VFXItem) {
     return item.type === spec.ItemType.null;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isTree (item: VFXItem) {
     return item.type === spec.ItemType.tree;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isCamera (item: VFXItem) {
     return item.type === spec.ItemType.camera;
   }
 
+  /**
+   *
+   * @param ancestorCandidate
+   * @param descendantCandidate
+   * @returns
+   */
   static isAncestor (
     ancestorCandidate: VFXItem,
     descendantCandidate: VFXItem,
@@ -155,6 +191,11 @@ export class VFXItem extends EffectsObject implements Disposable {
     return false;
   }
 
+  /**
+   *
+   * @param engine
+   * @param props
+   */
   constructor (
     engine: Engine,
     props?: VFXItemProps,

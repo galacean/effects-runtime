@@ -2,6 +2,9 @@ import { effectsClass, serialize } from '../decorators';
 import { Behaviour } from './component';
 
 // TODO spec 增加 DataType
+/**
+ * @since 2.1.0
+ */
 @effectsClass('PostProcessVolume')
 export class PostProcessVolume extends Behaviour {
   // Bloom

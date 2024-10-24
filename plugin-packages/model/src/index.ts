@@ -5,6 +5,9 @@ import { ModelPlugin } from './plugin';
 
 registerPlugin<void>('model', ModelPlugin, VFXItem);
 
+/**
+ * 插件版本号
+ */
 export const version = __VERSION__;
 
 export type BaseTransform = spec.BaseItemTransform;
