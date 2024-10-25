@@ -14,6 +14,9 @@ export {
 };
 export * from './gizmo-component';
 
+/**
+ * 插件版本号
+ */
 export const version = __VERSION__;
 
 logger.info(`Plugin editor gizmo version: ${version}.`);

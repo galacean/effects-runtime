@@ -5,6 +5,9 @@ import type { Geometry } from '../render/geometry';
 import type { Renderer } from '../render/renderer';
 import { RendererComponent } from './renderer-component';
 
+/**
+ * Mesh 组件
+ */
 export class MeshComponent extends RendererComponent {
   /**
    * 渲染的 Geometry

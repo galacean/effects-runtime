@@ -13,6 +13,7 @@ import type { Renderer } from '../../render';
 import { effectsClass } from '../../decorators';
 
 /**
+ * 交互组件
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.InteractComponent)

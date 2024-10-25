@@ -539,6 +539,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
 
     this.ticker?.pause();
+    this.emit('pause');
     this.emit('update', {
       player: this,
       playing: false,

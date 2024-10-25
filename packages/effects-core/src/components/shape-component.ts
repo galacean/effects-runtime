@@ -54,6 +54,10 @@ void main() {
 }
 `;
 
+  /**
+   *
+   * @param engine
+   */
   constructor (engine: Engine) {
     super(engine);
 
@@ -393,7 +397,7 @@ export enum ShapePointType {
 }
 
 /**
- * @description 椭圆组件参数
+ * 椭圆组件参数
  */
 export interface ShapeEllipseComponent extends ShapeComponentData {
   type: ComponentShapeType.ELLIPSE,
@@ -401,17 +405,17 @@ export interface ShapeEllipseComponent extends ShapeComponentData {
 }
 
 /**
- * @description 椭圆参数
+ * 椭圆参数
  */
 export interface ShapeEllipseParam {
   /**
-   * @description x轴半径
+   * x 轴半径
    * -- TODO 后续完善类型
    * -- TODO 可以看一下用xRadius/yRadius 还是 width/height
    */
   xRadius: number,
   /**
-   * @description y轴半径
+   * y 轴半径
    */
   yRadius: number,
   /**

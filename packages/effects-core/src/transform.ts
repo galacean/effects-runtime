@@ -19,6 +19,9 @@ const tempQuat = new Quaternion();
 let seed = 1;
 
 // TODO 继承 Component
+/**
+ *
+ */
 export class Transform implements Disposable {
   /**
    * 转换右手坐标系左手螺旋对应的四元数到对应的旋转角
@@ -104,6 +107,11 @@ export class Transform implements Disposable {
    */
   private readonly worldTRSCache = { position: new Vector3(0, 0, 0), quat: new Quaternion(0, 0, 0, 1), scale: new Vector3(1, 1, 1) };
 
+  /**
+   *
+   * @param props
+   * @param parent
+   */
   constructor (props: TransformProps = {}, parent?: Transform) {
     this.name = `transform_${seed++}`;
     if (props) {
