@@ -1,18 +1,24 @@
-import type { spec } from '@galacean/effects';
-// import { TextLayout, TextStyle } from '@galacean/effects';
-import type { RichTextComponent } from './rich-text-component';
+import type { spec, TextStyle } from '@galacean/effects';
 
 export class RichTextOptions {
-  text: string;
-  fontSize: number;
   fontFamily: string;
   fontWeight: spec.TextWeight;
   fontStyle: spec.FontStyle;
   fontColor: spec.vec4;
-  constructor (richTextComponent: RichTextComponent) {
-    // const {layout, style} = richTextComponent;
-    // const { text, fontSize, fontFamily, fontWeight, fontStyle, fontColor } = ;
+  textStyle: TextStyle;
+  isNewLine: boolean = false;
+  constructor (public text: string, public fontSize: number = 40) {
+  }
 
+  clone (): RichTextOptions {
+    const newOptions = new RichTextOptions(this.text, this.fontSize);
+
+    newOptions.fontFamily = this.fontFamily;
+    newOptions.fontWeight = this.fontWeight;
+    newOptions.fontStyle = this.fontStyle;
+    newOptions.fontColor = this.fontColor;
+
+    return newOptions;
   }
 
 }

@@ -496,7 +496,7 @@ export class TextComponentBase {
     });
 
     charsInfo.forEach(charInfo => {
-      const x = layout.getOffsetX(style, charInfo.width);
+      const x = layout.getOffsetX(style, charInfo.width * fontScale);
 
       charInfo.chars.forEach((str, i) => {
         if (style.isOutlined) {

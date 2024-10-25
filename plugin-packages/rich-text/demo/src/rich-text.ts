@@ -33,7 +33,7 @@ const json = {
       options: {
         text: '  We are <b>absolutely <i>definitely</i> not</b> \nWe are <color=green>green</color> with envy \nWe are <b>DDDD</b> amused. \nWe are <b>not</b> amused. \nWe are <i>usually</i> not amused. \nWe are <size=50>largely</size> unaffected. \nWe are <color=#ff0000ff>colorfully</color> amused \n88<size=10>$</size>',
         fontFamily: 'sans-serif',
-        fontSize: 40,
+        fontSize: 79,
         textColor: [255, 10, 10, 1],
         fontWeight: 'bold',
         letterSpace: 0,
