@@ -17,6 +17,36 @@ export class MeshCollider {
     return this.boundingBoxData;
   }
 
+  getBoundingBox (): BoundingBoxTriangle {
+    let maxX = 0;
+    let maxY = 0;
+
+    let minX = 0;
+    let minY = 0;
+
+    for (const triangle of this.boundingBoxData.area) {
+      maxX = Math.max(triangle.p0.x, triangle.p1.x, triangle.p2.x, maxX);
+      maxY = Math.max(triangle.p0.y, triangle.p1.y, triangle.p2.y, maxY);
+      minX = Math.min(triangle.p0.x, triangle.p1.x, triangle.p2.x, minX);
+      minY = Math.min(triangle.p0.y, triangle.p1.y, triangle.p2.y, minY);
+    }
+
+    const area = [];
+
+    const point0 = new Vector3(minX, maxY, 0);
+    const point1 = new Vector3(maxX, maxY, 0);
+    const point2 = new Vector3(maxX, minY, 0);
+    const point3 = new Vector3(minX, minY, 0);
+
+    area.push({ p0: point0, p1: point1, p2: point2 });
+    area.push({ p0: point0, p1: point2, p2: point3 });
+
+    return {
+      type: HitTestType.triangle,
+      area,
+    };
+  }
+
   setGeometry (geometry: Geometry, worldMatrix?: Matrix4) {
     if (this.geometry !== geometry) {
       this.triangles = this.geometryToTriangles(geometry);
