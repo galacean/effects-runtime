@@ -433,45 +433,45 @@ export interface EllipseData extends ShapeData {
    */
   xRadius: number,
   /**
-    * y 轴半径
-    */
+   * y 轴半径
+   */
   yRadius: number,
   /**
-    * 填充属性
-    */
+   * 填充属性
+   */
   fill?: ShapeFillParam,
   /**
-    * 描边属性
-    */
+   * 描边属性
+   */
   stroke?: ShapeStrokeParam,
   /**
-    * 空间变换
-    */
+   * 空间变换
+   */
   transform?: spec.TransformData,
 }
 
 /**
- * @description 星形参数
+ * 星形参数
  */
 export interface StarData extends ShapeData {
   /**
-   * @description 顶点数 - 内外顶点同数
+   * 顶点数 - 内外顶点同数
    */
   pointCount: number,
   /**
-   * @description 内径
+   * 内径
    */
   innerRadius: number,
   /**
-   * @description 外径
+   * 外径
    */
   outerRadius: number,
   /**
-   * @description 内径点圆度
+   * 内径点圆度
    */
   innerRoundness: number,
   /**
-   * @description 外径点圆度
+   * 外径点圆度
    */
   outerRoundness: number,
   /**
@@ -489,19 +489,19 @@ export interface StarData extends ShapeData {
 }
 
 /**
- * @description 多边形参数
+ * 多边形参数
  */
 export interface PolygonData extends ShapeData {
   /**
-   * @description 顶点数
+   * 顶点数
    */
   pointCount: number,
   /**
-   * @description 外切圆半径
+   * 外切圆半径
    */
   radius: number,
   /**
-   * @description 角点圆度
+   * 角点圆度
    */
   roundness: number,
   /**
@@ -519,19 +519,19 @@ export interface PolygonData extends ShapeData {
 }
 
 /**
- * @description 矩形参数
+ * 矩形参数
  */
 export interface RectangleData extends ShapeData {
   /**
-   * @description 宽度
+   * 宽度
    */
   width: number,
   /**
-   * @description 高度
+   * 高度
    */
   height: number,
   /**
-   * @description 角点元素
+   * 角点元素
    */
   roundness: number,
   /**

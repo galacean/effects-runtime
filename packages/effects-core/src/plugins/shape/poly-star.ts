@@ -4,34 +4,10 @@ import { triangulate } from './triangulate';
 
 export enum StarType {
   Star,
-  Polygon
+  Polygon,
 }
 
 export class PolyStar extends ShapePrimitive {
-  /**
-   * 多边形顶点数量
-   */
-  pointCount = 0;
-  /**
-   * 外半径大小
-   */
-  outerRadius = 0;
-  /**
-   * 内半径大小
-   */
-  innerRadius = 0;
-  /**
-   * 外顶点圆滑度百分比
-   */
-  outerRoundness = 0;
-  /**
-   * 内顶点圆滑度百分比
-   */
-  innerRoundness = 0;
-  /**
-   * PolyStar 类型
-   */
-  starType = StarType.Polygon;
   /**
    * bezier 顶点
    */
@@ -45,14 +21,24 @@ export class PolyStar extends ShapePrimitive {
    */
   private out: number[] = [];
 
-  constructor (pointCount = 0, outerRadius = 0, innerRadius = 0, outerRoundness = 0, innerRoundness = 0, starType = StarType.Star) {
+  /**
+   *
+   * @param pointCount - 多边形顶点数量
+   * @param outerRadius - 外半径大小
+   * @param innerRadius - 内半径大小
+   * @param outerRoundness - 外顶点圆滑度百分比
+   * @param innerRoundness - 内顶点圆滑度百分比
+   * @param starType - PolyStar 类型
+   */
+  constructor (
+    public pointCount = 0,
+    public outerRadius = 0,
+    public innerRadius = 0,
+    public outerRoundness = 0,
+    public innerRoundness = 0,
+    public starType = StarType.Star,
+  ) {
     super();
-    this.pointCount = pointCount;
-    this.outerRadius = outerRadius;
-    this.innerRadius = innerRadius;
-    this.outerRoundness = outerRoundness;
-    this.innerRoundness = innerRoundness;
-    this.starType = starType;
   }
 
   override clone (): ShapePrimitive {
@@ -82,14 +68,13 @@ export class PolyStar extends ShapePrimitive {
   }
 
   override build (points: number[]): void {
-
     switch (this.starType) {
-      case StarType.Star:{
+      case StarType.Star: {
         this.buildStarPath();
 
         break;
       }
-      case StarType.Polygon:{
+      case StarType.Polygon: {
         this.buildPolygonPath();
 
         break;
@@ -98,7 +83,7 @@ export class PolyStar extends ShapePrimitive {
 
     const smoothness = 1;
 
-    for (let i = 0;i < this.v.length - 2;i += 2) {
+    for (let i = 0; i < this.v.length - 2; i += 2) {
       buildAdaptiveBezier(
         points,
         this.v[i], this.v[i + 1],
@@ -118,6 +103,7 @@ export class PolyStar extends ShapePrimitive {
     );
 
   }
+
   override triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void {
     const triangles = triangulate([points]);
 
@@ -154,7 +140,7 @@ export class PolyStar extends ShapePrimitive {
 
     const dir = 1;
 
-    for (i = 0; i < numPts; i ++) {
+    for (i = 0; i < numPts; i++) {
       rad = longFlag ? longRad : shortRad;
       roundness = longFlag ? longRound : shortRound;
       perimSegment = longFlag ? longPerimSegment : shortPerimSegment;
@@ -189,7 +175,7 @@ export class PolyStar extends ShapePrimitive {
     let currentAng = -Math.PI * 0.5;
     const dir = 1;
 
-    for (i = 0; i < numPts; i ++) {
+    for (i = 0; i < numPts; i++) {
       const x = rad * Math.cos(currentAng);
       const y = rad * Math.sin(currentAng);
       const ox = x === 0 && y === 0 ? 0 : y / Math.sqrt(x * x + y * y);
