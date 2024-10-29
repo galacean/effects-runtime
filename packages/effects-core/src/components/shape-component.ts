@@ -174,76 +174,79 @@ void main() {
 
   private buildPath (data: ShapeComponentData) {
     this.path.clear();
-    switch (data.type) {
-      case ShapeType.Custom: {
-        const customData = data as CustomShapeData;
-        const points = customData.points;
-        const easingIns = customData.easingIns;
-        const easingOuts = customData.easingOuts;
 
-        this.curveValues = [];
+    for (const shapeData of data.shapeDatas) {
+      switch (shapeData.type) {
+        case ShapeType.Custom: {
+          const customData = shapeData as CustomShapeData;
+          const points = customData.points;
+          const easingIns = customData.easingIns;
+          const easingOuts = customData.easingOuts;
 
-        for (const shape of customData.shapes) {
-          const indices = shape.indexes;
+          this.curveValues = [];
 
-          for (let i = 1; i < indices.length; i++) {
-            const pointIndex = indices[i];
-            const lastPointIndex = indices[i - 1];
+          for (const shape of customData.shapes) {
+            const indices = shape.indexes;
 
+            for (let i = 1; i < indices.length; i++) {
+              const pointIndex = indices[i];
+              const lastPointIndex = indices[i - 1];
+
+              this.curveValues.push({
+                point: points[pointIndex.point],
+                controlPoint1: easingOuts[lastPointIndex.easingOut],
+                controlPoint2: easingIns[pointIndex.easingIn],
+              });
+            }
+
+            // Push the last curve
             this.curveValues.push({
-              point: points[pointIndex.point],
-              controlPoint1: easingOuts[lastPointIndex.easingOut],
-              controlPoint2: easingIns[pointIndex.easingIn],
+              point: points[indices[0].point],
+              controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
+              controlPoint2: easingIns[indices[0].easingIn],
             });
           }
 
-          // Push the last curve
-          this.curveValues.push({
-            point: points[indices[0].point],
-            controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
-            controlPoint2: easingIns[indices[0].easingIn],
-          });
+          this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
+
+          for (const curveValue of this.curveValues) {
+            const point = curveValue.point;
+            const control1 = curveValue.controlPoint1;
+            const control2 = curveValue.controlPoint2;
+
+            this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
+          }
+
+          break;
         }
+        case ShapeType.Ellipse: {
+          const ellipseData = shapeData as EllipseData;
 
-        this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
+          this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
-        for (const curveValue of this.curveValues) {
-          const point = curveValue.point;
-          const control1 = curveValue.controlPoint1;
-          const control2 = curveValue.controlPoint2;
-
-          this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
+          break;
         }
+        case ShapeType.Rectangle: {
+          const rectangleData = shapeData as RectangleData;
 
-        break;
-      }
-      case ShapeType.Ellipse: {
-        const ellipseData = data as EllipseData;
+          this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
 
-        this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
+          break;
+        }
+        case ShapeType.Star: {
+          const starData = shapeData as StarData;
 
-        break;
-      }
-      case ShapeType.Rectangle: {
-        const rectangleData = data as RectangleData;
+          this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
 
-        this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
+          break;
+        }
+        case ShapeType.Polygon: {
+          const polygonData = shapeData as PolygonData;
 
-        break;
-      }
-      case ShapeType.Star: {
-        const starData = data as StarData;
+          this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
 
-        this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
-
-        break;
-      }
-      case ShapeType.Polygon: {
-        const polygonData = data as PolygonData;
-
-        this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
-
-        break;
+          break;
+        }
       }
     }
   }
@@ -267,10 +270,7 @@ void main() {
  * 矢量图形组件
  */
 export interface ShapeComponentData extends spec.ComponentData {
-  /**
-   * 矢量类型
-   */
-  type: ShapeType,
+  shapeDatas: ShapeData[],
 }
 
 /**
@@ -299,10 +299,17 @@ export enum ShapeType {
   Star,
 }
 
+export class ShapeData {
+  /**
+   * 矢量类型
+   */
+  type: ShapeType;
+}
+
 /**
  * 自定义图形组件
  */
-export interface CustomShapeData extends ShapeComponentData {
+export interface CustomShapeData extends ShapeData {
   /**
    * 矢量类型 - 形状
    */
@@ -417,7 +424,7 @@ export enum ShapePointType {
 /**
  * 椭圆组件参数
  */
-export interface EllipseData extends ShapeComponentData {
+export interface EllipseData extends ShapeData {
   type: ShapeType.Ellipse,
   /**
    * x 轴半径
@@ -446,7 +453,7 @@ export interface EllipseData extends ShapeComponentData {
 /**
  * @description 星形参数
  */
-export interface StarData extends ShapeComponentData {
+export interface StarData extends ShapeData {
   /**
    * @description 顶点数 - 内外顶点同数
    */
@@ -484,7 +491,7 @@ export interface StarData extends ShapeComponentData {
 /**
  * @description 多边形参数
  */
-export interface PolygonData extends ShapeComponentData {
+export interface PolygonData extends ShapeData {
   /**
    * @description 顶点数
    */
@@ -514,7 +521,7 @@ export interface PolygonData extends ShapeComponentData {
 /**
  * @description 矩形参数
  */
-export interface RectangleData extends ShapeComponentData {
+export interface RectangleData extends ShapeData {
   /**
    * @description 宽度
    */
