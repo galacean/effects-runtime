@@ -178,8 +178,8 @@ void main() {
       case ComponentShapeType.CUSTOM: {
         const customData = data as ShapeCustomComponent;
         const points = customData.param.points;
-        const easingIns = customData.param.easingIn;
-        const easingOuts = customData.param.easingOut;
+        const easingIns = customData.param.easingIns;
+        const easingOuts = customData.param.easingOuts;
 
         this.curveValues = [];
 
@@ -328,11 +328,11 @@ export interface ShapeCustomParam {
   /**
    * 入射控制点
    */
-  easingIn: spec.Vector3Data[],
+  easingIns: spec.Vector3Data[],
   /**
    * 入射控制点
    */
-  easingOut: spec.Vector3Data[],
+  easingOuts: spec.Vector3Data[],
   /**
    * 自定义形状
    */
