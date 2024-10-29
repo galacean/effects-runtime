@@ -28,7 +28,10 @@ export class MeshComponent extends RendererComponent {
 
   // TODO 点击测试后续抽象一个 Collider 组件
   getHitTestParams = (force?: boolean): HitTestTriangleParams | void => {
-    const area = this.getBoundingBox();
+    const worldMatrix = this.transform.getWorldMatrix();
+
+    this.meshCollider.setGeometry(this.geometry, worldMatrix);
+    const area = this.meshCollider.getBoundingBoxData();
 
     if (area) {
       return {
@@ -42,8 +45,8 @@ export class MeshComponent extends RendererComponent {
     const worldMatrix = this.transform.getWorldMatrix();
 
     this.meshCollider.setGeometry(this.geometry, worldMatrix);
-    const boundingBoxData = this.meshCollider.getBoundingBoxData();
+    const boundingBox = this.meshCollider.getBoundingBox();
 
-    return boundingBoxData;
+    return boundingBox;
   }
 }
