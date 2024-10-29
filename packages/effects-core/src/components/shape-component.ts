@@ -175,15 +175,15 @@ void main() {
   private buildPath (data: ShapeComponentData) {
     this.path.clear();
     switch (data.type) {
-      case ComponentShapeType.CUSTOM: {
-        const customData = data as ShapeCustomComponent;
-        const points = customData.param.points;
-        const easingIns = customData.param.easingIns;
-        const easingOuts = customData.param.easingOuts;
+      case ShapeType.Custom: {
+        const customData = data as CustomShapeData;
+        const points = customData.points;
+        const easingIns = customData.easingIns;
+        const easingOuts = customData.easingOuts;
 
         this.curveValues = [];
 
-        for (const shape of customData.param.shapes) {
+        for (const shape of customData.shapes) {
           const indices = shape.indexes;
 
           for (let i = 1; i < indices.length; i++) {
@@ -217,35 +217,31 @@ void main() {
 
         break;
       }
-      case ComponentShapeType.ELLIPSE: {
-        const ellipseData = data as ShapeEllipseComponent;
-        const ellipseParam = ellipseData.param;
+      case ShapeType.Ellipse: {
+        const ellipseData = data as EllipseData;
 
-        this.path.ellipse(0, 0, ellipseParam.xRadius, ellipseParam.yRadius);
-
-        break;
-      }
-      case ComponentShapeType.RECTANGLE: {
-        const rectangleData = data as any;
-        const rectangleParam = rectangleData.param as ShapeRectangleParam;
-
-        this.path.rect(-rectangleParam.width / 2, rectangleParam.height / 2, rectangleParam.width, rectangleParam.height);
+        this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
         break;
       }
-      case ComponentShapeType.STAR: {
-        const starData = data as any;
-        const starParam = starData.param as ShapeStarParam;
+      case ShapeType.Rectangle: {
+        const rectangleData = data as RectangleData;
 
-        this.path.polyStar(starParam.pointCount, starParam.outerRadius, starParam.innerRadius, starParam.outerRoundness, starParam.innerRoundness, StarType.Star);
+        this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
 
         break;
       }
-      case ComponentShapeType.POLYGON: {
-        const polygonData = data as any;
-        const starParam = polygonData.param as ShapePolygonParam;
+      case ShapeType.Star: {
+        const starData = data as StarData;
 
-        this.path.polyStar(starParam.pointCount, starParam.radius, starParam.radius, starParam.roundness, starParam.roundness, StarType.Polygon);
+        this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
+
+        break;
+      }
+      case ShapeType.Polygon: {
+        const polygonData = data as PolygonData;
+
+        this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
 
         break;
       }
@@ -274,53 +270,43 @@ export interface ShapeComponentData extends spec.ComponentData {
   /**
    * 矢量类型
    */
-  type: ComponentShapeType,
+  type: ShapeType,
 }
 
 /**
  * 矢量图形类型
  */
-export enum ComponentShapeType {
+export enum ShapeType {
   /**
    * 自定义图形
    */
-  CUSTOM,
+  Custom,
   /**
    * 矩形
    */
-  RECTANGLE,
+  Rectangle,
   /**
    * 椭圆
    */
-  ELLIPSE,
+  Ellipse,
   /**
    * 多边形
    */
-  POLYGON,
+  Polygon,
   /**
    * 星形
    */
-  STAR,
+  Star,
 }
 
 /**
  * 自定义图形组件
  */
-export interface ShapeCustomComponent extends ShapeComponentData {
+export interface CustomShapeData extends ShapeComponentData {
   /**
    * 矢量类型 - 形状
    */
-  type: ComponentShapeType.CUSTOM,
-  /**
-   * 矢量参数 - 形状
-   */
-  param: ShapeCustomParam,
-}
-
-/**
- * 矢量路径参数
- */
-export interface ShapeCustomParam {
+  type: ShapeType.Custom,
   /**
    * 路径点
    */
@@ -431,15 +417,8 @@ export enum ShapePointType {
 /**
  * 椭圆组件参数
  */
-export interface ShapeEllipseComponent extends ShapeComponentData {
-  type: ComponentShapeType.ELLIPSE,
-  param: ShapeEllipseParam,
-}
-
-/**
- * 椭圆参数
- */
-export interface ShapeEllipseParam {
+export interface EllipseData extends ShapeComponentData {
+  type: ShapeType.Ellipse,
   /**
    * x 轴半径
    * -- TODO 后续完善类型
@@ -447,27 +426,27 @@ export interface ShapeEllipseParam {
    */
   xRadius: number,
   /**
-   * y 轴半径
-   */
+    * y 轴半径
+    */
   yRadius: number,
   /**
-   * 填充属性
-   */
+    * 填充属性
+    */
   fill?: ShapeFillParam,
   /**
-   * 描边属性
-   */
+    * 描边属性
+    */
   stroke?: ShapeStrokeParam,
   /**
-   * 空间变换
-   */
+    * 空间变换
+    */
   transform?: spec.TransformData,
 }
 
 /**
  * @description 星形参数
  */
-export interface ShapeStarParam {
+export interface StarData extends ShapeComponentData {
   /**
    * @description 顶点数 - 内外顶点同数
    */
@@ -505,7 +484,7 @@ export interface ShapeStarParam {
 /**
  * @description 多边形参数
  */
-export interface ShapePolygonParam {
+export interface PolygonData extends ShapeComponentData {
   /**
    * @description 顶点数
    */
@@ -535,7 +514,7 @@ export interface ShapePolygonParam {
 /**
  * @description 矩形参数
  */
-export interface ShapeRectangleParam {
+export interface RectangleData extends ShapeComponentData {
   /**
    * @description 宽度
    */
