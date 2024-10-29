@@ -11,7 +11,6 @@ import type { PlayableGraph, Playable } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
-import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/base-render-component';
 
 /**
@@ -33,13 +32,6 @@ export type SpriteItemOptions = {
   startColor: spec.vec4,
   renderLevel?: spec.RenderLevel,
 };
-
-/**
- * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
- */
-export interface SpriteItemRenderer extends ItemRenderer {
-  shape?: GeometryFromShape,
-}
 
 export type splitsDataType = [r: number, x: number, y: number, w: number, h: number | undefined][];
 
@@ -197,7 +189,7 @@ export class SpriteComponent extends BaseRenderComponent {
   override getItemGeometryData () {
     const { splits, textureSheetAnimation } = this;
     const sx = 1, sy = 1;
-    const renderer = this.renderer as SpriteItemRenderer;
+    const renderer = this.renderer;
 
     if (renderer.shape) {
       const { index = [], aPoint = [] } = renderer.shape;
@@ -295,7 +287,7 @@ export class SpriteComponent extends BaseRenderComponent {
       mask: renderer.mask ?? 0,
       maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
       order: listIndex,
-    } as SpriteItemRenderer;
+    };
 
     this.emptyTexture = this.engine.emptyTexture;
     this.splits = data.splits || singleSplits;
