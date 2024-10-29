@@ -4,11 +4,12 @@ import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { MaterialProps } from '../material';
-import { Material } from '../material';
+import { Material, setMaskMode } from '../material';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
 import type { ShapePath } from '../plugins/shape/shape-path';
 import { Geometry, GLSLVersion } from '../render';
 import { MeshComponent } from './mesh-component';
+import { StarType } from '../plugins/shape/poly-star';
 
 interface CurveData {
   point: spec.Vector3Data,
@@ -96,7 +97,7 @@ void main() {
 
       this.material = Material.create(engine, materialProps);
       this.material.setColor('_Color', new Color(1, 1, 1, 1));
-      this.material.depthMask = true;
+      this.material.depthMask = false;
       this.material.depthTest = true;
       this.material.blending = true;
     }
@@ -224,12 +225,43 @@ void main() {
 
         break;
       }
+      case ComponentShapeType.RECTANGLE: {
+        const rectangleData = data as any;
+        const rectangleParam = rectangleData.param as ShapeRectangleParam;
+
+        this.path.rect(-rectangleParam.width / 2, rectangleParam.height / 2, rectangleParam.width, rectangleParam.height);
+
+        break;
+      }
+      case ComponentShapeType.STAR: {
+        const starData = data as any;
+        const starParam = starData.param as ShapeStarParam;
+
+        this.path.polyStar(starParam.pointCount, starParam.outerRadius, starParam.innerRadius, starParam.outerRoundness, starParam.innerRoundness, StarType.Star);
+
+        break;
+      }
+      case ComponentShapeType.POLYGON: {
+        const polygonData = data as any;
+        const starParam = polygonData.param as ShapePolygonParam;
+
+        this.path.polyStar(starParam.pointCount, starParam.radius, starParam.radius, starParam.roundness, starParam.roundness, StarType.Polygon);
+
+        break;
+      }
     }
   }
 
   override fromData (data: ShapeComponentData): void {
     super.fromData(data);
     this.data = data;
+
+    const material = this.material;
+
+    //@ts-expect-error // TODO 新版蒙版上线后重构
+    material.stencilRef = data.renderer.mask !== undefined ? [data.renderer.mask, data.renderer.mask] : undefined;
+    //@ts-expect-error // TODO 新版蒙版上线后重构
+    setMaskMode(material, data.renderer.maskMode);
   }
 }
 
@@ -418,6 +450,104 @@ export interface ShapeEllipseParam {
    * y 轴半径
    */
   yRadius: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * @description 星形参数
+ */
+export interface ShapeStarParam {
+  /**
+   * @description 顶点数 - 内外顶点同数
+   */
+  pointCount: number,
+  /**
+   * @description 内径
+   */
+  innerRadius: number,
+  /**
+   * @description 外径
+   */
+  outerRadius: number,
+  /**
+   * @description 内径点圆度
+   */
+  innerRoundness: number,
+  /**
+   * @description 外径点圆度
+   */
+  outerRoundness: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * @description 多边形参数
+ */
+export interface ShapePolygonParam {
+  /**
+   * @description 顶点数
+   */
+  pointCount: number,
+  /**
+   * @description 外切圆半径
+   */
+  radius: number,
+  /**
+   * @description 角点圆度
+   */
+  roundness: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * @description 矩形参数
+ */
+export interface ShapeRectangleParam {
+  /**
+   * @description 宽度
+   */
+  width: number,
+  /**
+   * @description 高度
+   */
+  height: number,
+  /**
+   * @description 角点元素
+   */
+  roundness: number,
   /**
    * 填充属性
    */

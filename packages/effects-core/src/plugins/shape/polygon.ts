@@ -133,14 +133,14 @@ export class Polygon extends ShapePrimitive {
    * Get the first X coordinate of the polygon
    * @readonly
    */
-  override getX (): number {
+  getX (): number {
     return this.points[this.points.length - 2];
   }
   /**
    * Get the first Y coordinate of the polygon
    * @readonly
    */
-  override getY (): number {
+  getY (): number {
     return this.points[this.points.length - 1];
   }
 
