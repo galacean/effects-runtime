@@ -120,8 +120,8 @@ export class CompositionSourceManager implements Disposable {
         if (
           itemProps.type === spec.ItemType.sprite ||
           itemProps.type === spec.ItemType.particle ||
-          // TODO 更新 spec
-          itemProps.type === 'shape' as spec.ItemType
+          //@ts-expect-error
+          itemProps.type === spec.ItemType.shape
         ) {
           for (const componentPath of itemProps.components) {
             const componentData = componentMap[componentPath.id] as spec.SpriteComponentData | spec.ParticleSystemData;
