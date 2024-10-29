@@ -115,7 +115,8 @@ export class CompositionSourceManager implements Disposable {
 
         if (
           itemProps.type === spec.ItemType.sprite ||
-          itemProps.type === spec.ItemType.particle
+          itemProps.type === spec.ItemType.particle ||
+          itemProps.type === spec.ItemType.spine
         ) {
           for (const componentPath of itemProps.components) {
             const componentData = componentMap[componentPath.id];
