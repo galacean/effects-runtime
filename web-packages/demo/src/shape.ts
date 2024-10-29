@@ -58,85 +58,83 @@ const json = {
       },
       'dataType': 'ShapeComponent',
       'type': 0,
-      'param': {
-        'points': [
-          {
-            'x': -1,
-            'y': -1,
-            'z': 0,
-          },
-          {
-            'x': 1,
-            'y': -1,
-            'z': 0,
-          },
-          {
-            'x': 0,
-            'y': 1,
-            'z': 0,
-          },
-        ],
-        'easingIn': [
-          {
-            'x': -1,
-            'y': -0.5,
-            'z': 0,
-          },
-          {
-            'x': 0.5,
-            'y': -1.5,
-            'z': 0,
-          },
-          {
-            'x': 0.5,
-            'y': 1,
-            'z': 0,
-          },
-        ],
-        'easingOut': [
-          {
-            'x': -0.5,
-            'y': -1.5,
-            'z': 0,
-          },
-          {
-            'x': 1,
-            'y': -0.5,
-            'z': 0,
-          },
-          {
-            'x': -0.5,
-            'y': 1,
-            'z': 0,
-          },
-        ],
-        'shapes': [
-          {
-            'verticalToPlane': 'z',
-            'indexes': [
-              {
-                'point': 0,
-                'easingIn': 0,
-                'easingOut': 0,
-              },
-              {
-                'point': 1,
-                'easingIn': 1,
-                'easingOut': 1,
-              },
-              {
-                'point': 2,
-                'easingIn': 2,
-                'easingOut': 2,
-              },
-            ],
-            'close': true,
-            'fill': {
-              'color': [8, [255, 0, 0, 255]],
+      'points': [
+        {
+          'x': -1,
+          'y': -1,
+          'z': 0,
+        },
+        {
+          'x': 1,
+          'y': -1,
+          'z': 0,
+        },
+        {
+          'x': 0,
+          'y': 1,
+          'z': 0,
+        },
+      ],
+      'easingIns': [
+        {
+          'x': -1,
+          'y': -0.5,
+          'z': 0,
+        },
+        {
+          'x': 0.5,
+          'y': -1.5,
+          'z': 0,
+        },
+        {
+          'x': 0.5,
+          'y': 1,
+          'z': 0,
+        },
+      ],
+      'easingOuts': [
+        {
+          'x': -0.5,
+          'y': -1.5,
+          'z': 0,
+        },
+        {
+          'x': 1,
+          'y': -0.5,
+          'z': 0,
+        },
+        {
+          'x': -0.5,
+          'y': 1,
+          'z': 0,
+        },
+      ],
+      'shapes': [
+        {
+          'verticalToPlane': 'z',
+          'indexes': [
+            {
+              'point': 0,
+              'easingIn': 0,
+              'easingOut': 0,
             },
+            {
+              'point': 1,
+              'easingIn': 1,
+              'easingOut': 1,
+            },
+            {
+              'point': 2,
+              'easingIn': 2,
+              'easingOut': 2,
+            },
+          ],
+          'close': true,
+          'fill': {
+            'color': [8, [255, 0, 0, 255]],
           },
-        ],
-      },
+        },
+      ],
       'renderer': {
         'renderMode': 1,
       },

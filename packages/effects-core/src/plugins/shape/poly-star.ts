@@ -78,12 +78,7 @@ export class PolyStar extends ShapePrimitive {
   }
 
   override copyTo (destination: PolyStar): void {
-    destination.pointCount = this.pointCount;
-    destination.outerRadius = this.outerRadius;
-    destination.innerRadius = this.innerRadius;
-    destination.outerRoundness = this.outerRoundness;
-    destination.innerRoundness = this.innerRoundness;
-    destination.starType = this.starType;
+    destination.copyFrom(this);
   }
 
   override build (points: number[]): void {
