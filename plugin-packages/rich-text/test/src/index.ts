@@ -1,3 +1,2 @@
-import '@galacean/effects-plugin-multimedia';
-import './audio-component.spec';
-import './video-component.spec';
+import '@galacean/effects-plugin-rich-text';
+import './rich-text-parser.spec';
