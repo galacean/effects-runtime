@@ -201,6 +201,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private paused = false;
   private lastVideoUpdateTime = 0;
+  private isEndCalled = false;
   private readonly texInfo: Record<string, number>;
   /**
    * 合成中消息元素创建/销毁时触发的回调
@@ -505,6 +506,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   protected reset () {
     this.rendererOptions = null;
     this.rootItem.ended = false;
+    this.isEndCalled = false;
     this.rootComposition.time = 0;
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
@@ -564,6 +566,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updateCamera();
     this.prepareRender();
 
+    if (this.rootItem.ended && !this.isEndCalled) {
+      this.isEndCalled = true;
+      this.emit('end', { composition: this });
+    }
     if (this.shouldDispose()) {
       this.dispose();
     }
@@ -671,14 +677,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (this.rootComposition.isActiveAndEnabled) {
 
       let localTime = this.time + deltaTime - this.rootItem.start;
-      let ended = false;
+      let isEnded = false;
 
       const duration = this.rootItem.duration;
       const endBehavior = this.rootItem.endBehavior;
 
       if (localTime - duration > 0.001) {
 
-        ended = true;
+        isEnded = true;
 
         switch (endBehavior) {
           case spec.EndBehavior.restart: {
@@ -705,9 +711,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
       this.rootComposition.time = localTime;
 
-      if (ended && !this.rootItem.ended) {
-        this.rootItem.ended = true;
-        this.emit('end', { composition: this });
+      // end state changed, handle onEnd flags
+      if (this.rootItem.ended !== isEnded) {
+        if (isEnded) {
+          this.rootItem.ended = true;
+        } else {
+          this.rootItem.ended = false;
+          this.isEndCalled = false;
+        }
       }
     }
   }
