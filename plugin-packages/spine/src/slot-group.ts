@@ -23,7 +23,7 @@ export interface SlotGroupProps {
   /**
    * mask 相关参数
    */
-  renderer: {},
+  renderOptions: {},
   engine: Engine,
 }
 export class SlotGroup {
@@ -56,7 +56,7 @@ export class SlotGroup {
   /**
    * mask 相关参数
    */
-  renderer: {};
+  renderOptions: {};
   /**
    * 包含父节点的世界变换
    */
@@ -98,7 +98,7 @@ export class SlotGroup {
     this.transform = props.transform;
     this.listIndex = props.listIndex;
     this.pma = props.pma;
-    this.renderer = props.renderer;
+    this.renderOptions = props.renderOptions;
     this.engine = props.engine;
   }
 
@@ -249,7 +249,7 @@ export class SlotGroup {
             name: this.meshName,
             priority: this.listIndex += 0.01,
             pma,
-            renderer: this.renderer,
+            renderOptions: this.renderOptions,
             engine: this.engine,
           });
 

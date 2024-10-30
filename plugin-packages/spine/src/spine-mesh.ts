@@ -16,7 +16,7 @@ export interface SpineMeshRenderInfo {
   blendMode: BlendMode,
   name?: string,
   pma: boolean,
-  renderer: {
+  renderOptions: {
     maskMode?: number,
     mask?: number,
   },
@@ -40,8 +40,8 @@ export class SpineMesh implements Disposable {
   priority: number;
 
   constructor (renderInfo: SpineMeshRenderInfo) {
-    const { blendMode, texture, priority, renderer = {}, pma, name = 'MSpine', engine } = renderInfo;
-    const { mask = 0, maskMode = 0 } = renderer;
+    const { blendMode, texture, priority, renderOptions = {}, pma, name = 'MSpine', engine } = renderInfo;
+    const { mask = 0, maskMode = 0 } = renderOptions;
 
     this.blendMode = blendMode;
     this.lastTexture = texture;
