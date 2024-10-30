@@ -5,7 +5,7 @@ import * as spec from '@galacean/effects-specification';
 import { Behaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region, TrackAsset } from './plugins';
-import { HitTestType, ObjectBindingTrack } from './plugins';
+import { HitTestType } from './plugins';
 import type { Playable } from './plugins/cal/playable-graph';
 import { PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
@@ -55,9 +55,6 @@ export class CompositionComponent extends Behaviour {
       const boundObject = track.boundObject;
 
       if (boundObject instanceof VFXItem) {
-        if (track instanceof ObjectBindingTrack) {
-          boundObject.reusable = value;
-        }
         const subCompositionComponent = boundObject.getComponent(CompositionComponent);
 
         if (subCompositionComponent) {

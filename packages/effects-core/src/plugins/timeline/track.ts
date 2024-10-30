@@ -232,14 +232,6 @@ export class RuntimeClip {
 
     // 判断动画是否结束
     if (ended) {
-      if (boundObject instanceof VFXItem && !boundObject.ended) {
-        boundObject.ended = true;
-        boundObject.onEnd();
-        if (!boundObject.compositionReusable && !boundObject.reusable) {
-          boundObject.dispose();
-          this.playable.dispose();
-        }
-      }
       if (this.playable.getPlayState() === PlayState.Playing) {
         this.playable.pause();
       }

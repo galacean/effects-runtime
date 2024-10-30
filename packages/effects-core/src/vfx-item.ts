@@ -77,10 +77,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   endBehavior: spec.EndBehavior = spec.EndBehavior.forward;
   /**
-   * 元素是否可用
-   */
-  ended = false;
-  /**
    * 元素名称
    */
   name: string;
@@ -93,7 +89,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素创建的数据图层/粒子/模型等
    */
   _content?: VFXItemContent;
-  reusable = false;
   type: spec.ItemType = spec.ItemType.base;
   props: VFXItemProps;
   isDuringPlay = false;
@@ -385,14 +380,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * 元素动画结束播放时回调函数
-   * @override
-   */
-  onEnd () {
-    // OVERRIDE
-  }
-
-  /**
    * 通过指定 r、g、b、a 值设置元素的颜色
    * @param {number} r
    * @param {number} g
@@ -531,16 +518,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.transform.assignWorldTRS(pos);
 
     return pos;
-  }
-
-  /**
-   * 是否到达元素的结束时间
-   * @param now
-   * @returns
-   */
-  isEnded (now: number) {
-    // at least 1 ms
-    return now - this.duration > 0.001;
   }
 
   find (name: string): VFXItem | undefined {

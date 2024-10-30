@@ -776,7 +776,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
           await video.play();
         }
       }
-      newComposition.rootItem.ended = false;
+      newComposition.isEnded = false;
       newComposition.gotoAndPlay(currentTime);
 
       return newComposition;

@@ -28,9 +28,9 @@ describe('core/plugins/common/item-end', () => {
     const item = composition.getItemByName('sprite_1');
 
     composition.gotoAndStop(0.01 + 1);
-    expect(item?.ended).to.equal(false);
+    expect(item?.transform.getValid()).to.equal(true);
     composition.gotoAndStop(0.01 + 2);
-    expect(item?.ended).to.equal(true);
+    expect(item?.transform.getValid()).to.equal(false);
   });
 
   it('item freeze', async () => {
@@ -38,7 +38,7 @@ describe('core/plugins/common/item-end', () => {
     const item = composition.getItemByName('sprite_1');
 
     composition.gotoAndStop(0.01 + 2);
-    expect(item?.ended).to.equal(false);
+    expect(item?.transform.getValid()).to.equal(true);
   });
 
   it('item loop', async () => {
@@ -46,7 +46,7 @@ describe('core/plugins/common/item-end', () => {
     const item = composition.getItemByName('sprite_1');
 
     composition.gotoAndStop(1);
-    expect(item?.ended).to.equal(false);
+    expect(item?.transform.getValid()).to.equal(true);
   });
 });
 
