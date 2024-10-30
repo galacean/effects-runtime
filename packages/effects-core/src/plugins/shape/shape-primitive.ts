@@ -1,7 +1,7 @@
 export abstract class ShapePrimitive {
 
   /** Checks whether the x and y coordinates passed to this function are contained within this ShapePrimitive. */
-  abstract contains (x: number, y: number): boolean;
+  // abstract contains (x: number, y: number): boolean;
   /** Checks whether the x and y coordinates passed to this function are contained within the stroke of this shape */
   //   abstract strokeContains (x: number, y: number, strokeWidth: number): boolean;
   /** Creates a clone of this ShapePrimitive instance. */
@@ -14,9 +14,9 @@ export abstract class ShapePrimitive {
   //   getBounds(out?: Rectangle): Rectangle,
 
   /** The X coordinate of the shape */
-  abstract getX (): number;
+  // abstract getX (): number;
   /** The Y coordinate of the shape */
-  abstract getY (): number;
+  // abstract getY (): number;
 
   abstract build (points: number[]): void;
 

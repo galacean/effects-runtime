@@ -9,6 +9,8 @@ import { buildAdaptiveBezier } from './build-adaptive-bezier';
 import type { GraphicsPath } from './graphics-path';
 import type { ShapePrimitive } from './shape-primitive';
 import { Ellipse } from './ellipse';
+import type { StarType } from './poly-star';
+import { PolyStar } from './poly-star';
 
 export class ShapePath {
   currentPoly: Polygon | null = null;
@@ -41,6 +43,11 @@ export class ShapePath {
         }
         case 'ellipse': {
           this.ellipse(data[0], data[1], data[2], data[3], data[4]);
+
+          break;
+        }
+        case 'polyStar': {
+          this.polyStar(data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
 
           break;
         }
@@ -100,6 +107,12 @@ export class ShapePath {
     // TODO apply rotation to transform...
 
     this.drawShape(new Ellipse(x, y, radiusX, radiusY), transform);
+
+    return this;
+  }
+
+  polyStar (pointCount: number, outerRadius: number, innerRadius: number, outerRoundness: number, innerRoundness: number, starType: StarType, transform?: Matrix4) {
+    this.drawShape(new PolyStar(pointCount, outerRadius, innerRadius, outerRoundness, innerRoundness, starType), transform);
 
     return this;
   }

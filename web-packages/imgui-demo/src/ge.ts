@@ -300,8 +300,8 @@ export class GalaceanEffects {
             'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
           },
           'dataType': 'ShapeComponent',
-          'type': 0,
-          'param': {
+          'shapeDatas':[{
+            'type': 0,
             'points': [
               {
                 'x': -1,
@@ -319,7 +319,7 @@ export class GalaceanEffects {
                 'z': 0,
               },
             ],
-            'easingIn': [
+            'easingIns': [
               {
                 'x': -1,
                 'y': -0.5,
@@ -336,7 +336,7 @@ export class GalaceanEffects {
                 'z': 0,
               },
             ],
-            'easingOut': [
+            'easingOuts': [
               {
                 'x': -0.5,
                 'y': -1.5,
@@ -380,6 +380,7 @@ export class GalaceanEffects {
               },
             ],
           },
+          ],
           'renderer': {
             'renderMode': 1,
           },

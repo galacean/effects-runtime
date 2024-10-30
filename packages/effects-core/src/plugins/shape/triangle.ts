@@ -160,11 +160,11 @@ export class Triangle extends ShapePrimitive {
     return out;
   }
 
-  override getX (): number {
+  getX (): number {
     return this.x;
   }
 
-  override getY (): number {
+  getY (): number {
     return this.y;
   }
 

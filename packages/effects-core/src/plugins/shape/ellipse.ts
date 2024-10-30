@@ -149,11 +149,11 @@ export class Ellipse extends ShapePrimitive {
     return ellipse;
   }
 
-  override getX (): number {
+  getX (): number {
     return this.x;
   }
 
-  override getY (): number {
+  getY (): number {
     return this.y;
   }
 

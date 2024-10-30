@@ -5,6 +5,7 @@
 
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { ShapePath } from './shape-path';
+import type { StarType } from './poly-star';
 
 export class GraphicsPath {
   instructions: PathInstruction[] = [];
@@ -103,6 +104,14 @@ export class GraphicsPath {
     return this;
   }
 
+  polyStar (pointCount: number, outerRadius: number, innerRadius: number, outerRoundness: number, innerRoundness: number, starType: StarType, transform?: Matrix4) {
+    this.instructions.push({ action: 'polyStar', data: [pointCount, outerRadius, innerRadius, outerRoundness, innerRoundness, starType, transform] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
   clear (): GraphicsPath {
     this.instructions.length = 0;
     this.dirty = true;
@@ -132,6 +141,7 @@ export interface PathInstruction {
   | 'roundShape'
   | 'filletRect'
   | 'chamferRect'
+  | 'polyStar'
   ,
   data: any[],
 }

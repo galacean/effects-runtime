@@ -4,11 +4,12 @@ import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { MaterialProps } from '../material';
-import { Material } from '../material';
+import { Material, setMaskMode } from '../material';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
 import type { ShapePath } from '../plugins/shape/shape-path';
 import { Geometry, GLSLVersion } from '../render';
 import { MeshComponent } from './mesh-component';
+import { StarType } from '../plugins/shape/poly-star';
 
 interface CurveData {
   point: spec.Vector3Data,
@@ -96,7 +97,7 @@ void main() {
 
       this.material = Material.create(engine, materialProps);
       this.material.setColor('_Color', new Color(1, 1, 1, 1));
-      this.material.depthMask = true;
+      this.material.depthMask = false;
       this.material.depthTest = true;
       this.material.blending = true;
     }
@@ -173,56 +174,79 @@ void main() {
 
   private buildPath (data: ShapeComponentData) {
     this.path.clear();
-    switch (data.type) {
-      case ComponentShapeType.CUSTOM: {
-        const customData = data as ShapeCustomComponent;
-        const points = customData.param.points;
-        const easingIns = customData.param.easingIn;
-        const easingOuts = customData.param.easingOut;
 
-        this.curveValues = [];
+    for (const shapeData of data.shapeDatas) {
+      switch (shapeData.type) {
+        case ShapeType.Custom: {
+          const customData = shapeData as CustomShapeData;
+          const points = customData.points;
+          const easingIns = customData.easingIns;
+          const easingOuts = customData.easingOuts;
 
-        for (const shape of customData.param.shapes) {
-          const indices = shape.indexes;
+          this.curveValues = [];
 
-          for (let i = 1; i < indices.length; i++) {
-            const pointIndex = indices[i];
-            const lastPointIndex = indices[i - 1];
+          for (const shape of customData.shapes) {
+            const indices = shape.indexes;
 
+            for (let i = 1; i < indices.length; i++) {
+              const pointIndex = indices[i];
+              const lastPointIndex = indices[i - 1];
+
+              this.curveValues.push({
+                point: points[pointIndex.point],
+                controlPoint1: easingOuts[lastPointIndex.easingOut],
+                controlPoint2: easingIns[pointIndex.easingIn],
+              });
+            }
+
+            // Push the last curve
             this.curveValues.push({
-              point: points[pointIndex.point],
-              controlPoint1: easingOuts[lastPointIndex.easingOut],
-              controlPoint2: easingIns[pointIndex.easingIn],
+              point: points[indices[0].point],
+              controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
+              controlPoint2: easingIns[indices[0].easingIn],
             });
           }
 
-          // Push the last curve
-          this.curveValues.push({
-            point: points[indices[0].point],
-            controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
-            controlPoint2: easingIns[indices[0].easingIn],
-          });
+          this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
+
+          for (const curveValue of this.curveValues) {
+            const point = curveValue.point;
+            const control1 = curveValue.controlPoint1;
+            const control2 = curveValue.controlPoint2;
+
+            this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
+          }
+
+          break;
         }
+        case ShapeType.Ellipse: {
+          const ellipseData = shapeData as EllipseData;
 
-        this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
+          this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
-        for (const curveValue of this.curveValues) {
-          const point = curveValue.point;
-          const control1 = curveValue.controlPoint1;
-          const control2 = curveValue.controlPoint2;
-
-          this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
+          break;
         }
+        case ShapeType.Rectangle: {
+          const rectangleData = shapeData as RectangleData;
 
-        break;
-      }
-      case ComponentShapeType.ELLIPSE: {
-        const ellipseData = data as ShapeEllipseComponent;
-        const ellipseParam = ellipseData.param;
+          this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
 
-        this.path.ellipse(0, 0, ellipseParam.xRadius, ellipseParam.yRadius);
+          break;
+        }
+        case ShapeType.Star: {
+          const starData = shapeData as StarData;
 
-        break;
+          this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
+
+          break;
+        }
+        case ShapeType.Polygon: {
+          const polygonData = shapeData as PolygonData;
+
+          this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
+
+          break;
+        }
       }
     }
   }
@@ -230,6 +254,13 @@ void main() {
   override fromData (data: ShapeComponentData): void {
     super.fromData(data);
     this.data = data;
+
+    const material = this.material;
+
+    //@ts-expect-error // TODO 新版蒙版上线后重构
+    material.stencilRef = data.renderer.mask !== undefined ? [data.renderer.mask, data.renderer.mask] : undefined;
+    //@ts-expect-error // TODO 新版蒙版上线后重构
+    setMaskMode(material, data.renderer.maskMode);
   }
 }
 
@@ -239,56 +270,50 @@ void main() {
  * 矢量图形组件
  */
 export interface ShapeComponentData extends spec.ComponentData {
-  /**
-   * 矢量类型
-   */
-  type: ComponentShapeType,
+  shapeDatas: ShapeData[],
 }
 
 /**
  * 矢量图形类型
  */
-export enum ComponentShapeType {
+export enum ShapeType {
   /**
    * 自定义图形
    */
-  CUSTOM,
+  Custom,
   /**
    * 矩形
    */
-  RECTANGLE,
+  Rectangle,
   /**
    * 椭圆
    */
-  ELLIPSE,
+  Ellipse,
   /**
    * 多边形
    */
-  POLYGON,
+  Polygon,
   /**
    * 星形
    */
-  STAR,
+  Star,
+}
+
+export class ShapeData {
+  /**
+   * 矢量类型
+   */
+  type: ShapeType;
 }
 
 /**
  * 自定义图形组件
  */
-export interface ShapeCustomComponent extends ShapeComponentData {
+export interface CustomShapeData extends ShapeData {
   /**
    * 矢量类型 - 形状
    */
-  type: ComponentShapeType.CUSTOM,
-  /**
-   * 矢量参数 - 形状
-   */
-  param: ShapeCustomParam,
-}
-
-/**
- * 矢量路径参数
- */
-export interface ShapeCustomParam {
+  type: ShapeType.Custom,
   /**
    * 路径点
    */
@@ -296,11 +321,11 @@ export interface ShapeCustomParam {
   /**
    * 入射控制点
    */
-  easingIn: spec.Vector3Data[],
+  easingIns: spec.Vector3Data[],
   /**
    * 入射控制点
    */
-  easingOut: spec.Vector3Data[],
+  easingOuts: spec.Vector3Data[],
   /**
    * 自定义形状
    */
@@ -399,15 +424,8 @@ export enum ShapePointType {
 /**
  * 椭圆组件参数
  */
-export interface ShapeEllipseComponent extends ShapeComponentData {
-  type: ComponentShapeType.ELLIPSE,
-  param: ShapeEllipseParam,
-}
-
-/**
- * 椭圆参数
- */
-export interface ShapeEllipseParam {
+export interface EllipseData extends ShapeData {
+  type: ShapeType.Ellipse,
   /**
    * x 轴半径
    * -- TODO 后续完善类型
@@ -418,6 +436,104 @@ export interface ShapeEllipseParam {
    * y 轴半径
    */
   yRadius: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * 星形参数
+ */
+export interface StarData extends ShapeData {
+  /**
+   * 顶点数 - 内外顶点同数
+   */
+  pointCount: number,
+  /**
+   * 内径
+   */
+  innerRadius: number,
+  /**
+   * 外径
+   */
+  outerRadius: number,
+  /**
+   * 内径点圆度
+   */
+  innerRoundness: number,
+  /**
+   * 外径点圆度
+   */
+  outerRoundness: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * 多边形参数
+ */
+export interface PolygonData extends ShapeData {
+  /**
+   * 顶点数
+   */
+  pointCount: number,
+  /**
+   * 外切圆半径
+   */
+  radius: number,
+  /**
+   * 角点圆度
+   */
+  roundness: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * 矩形参数
+ */
+export interface RectangleData extends ShapeData {
+  /**
+   * 宽度
+   */
+  width: number,
+  /**
+   * 高度
+   */
+  height: number,
+  /**
+   * 角点元素
+   */
+  roundness: number,
   /**
    * 填充属性
    */
