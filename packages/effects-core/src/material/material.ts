@@ -62,7 +62,6 @@ let seed = 1;
  * Material 抽象类
  */
 export abstract class Material extends EffectsObject implements Disposable {
-  shader: Shader;
   shaderVariant: ShaderVariant;
 
   // TODO: 待移除
@@ -76,6 +75,9 @@ export abstract class Material extends EffectsObject implements Disposable {
 
   protected destroyed = false;
   protected initialized = false;
+  protected shaderDirty = true;
+
+  private _shader: Shader;
 
   /**
    *
@@ -104,6 +106,15 @@ export abstract class Material extends EffectsObject implements Disposable {
       this.name = 'Material' + seed++;
       this.renderType = MaterialRenderType.normal;
     }
+  }
+
+  get shader () {
+    return this._shader;
+  }
+
+  set shader (value: Shader) {
+    this._shader = value;
+    this.shaderDirty = true;
   }
 
   /******** effects-core 中会调用 引擎必须实现 ***********************/
