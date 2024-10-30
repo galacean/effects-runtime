@@ -554,8 +554,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private doTick (dt: number, forceRender: boolean) {
     const { renderErrors } = this.renderer.engine;
 
-    renderErrors.values().next().value;
-
     if (renderErrors.size > 0) {
       this.emit('rendererror', renderErrors.values().next().value);
       // 有渲染错误时暂停播放
