@@ -1,5 +1,5 @@
 import { registerPlugin, VFXItem } from '@galacean/effects';
-import { RichTextLoader } from './video-loader';
+import { RichTextLoader } from './rich-text-loader';
 
 export * from './rich-text-parser';
 export * from './rich-text-component';

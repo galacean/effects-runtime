@@ -134,7 +134,7 @@ export class RichTextComponent extends TextComponent {
       }
       charInfo.offsetX.push(charInfo.width);
 
-      charInfo.width += textWidth * options.fontSize / 10 * this.textStyle.fontScale;
+      charInfo.width += textWidth * options.fontSize * this.SCALE_FACTOR * this.textStyle.fontScale;
       charInfo.richOptions.push(options);
     });
     charsInfo.push(charInfo);
@@ -142,14 +142,14 @@ export class RichTextComponent extends TextComponent {
     height += charInfo.lineHeight;
     const scale = width / height;
 
-    this.item.transform.size.set(textStyle.fontSize / 10, textStyle.fontSize / 10 * scale);
+    this.item.transform.size.set(textStyle.fontSize * this.SCALE_FACTOR, textStyle.fontSize * this.SCALE_FACTOR * scale);
     this.textLayout.width = width;
     this.textLayout.height = height;
     this.canvas.width = width ;
     this.canvas.height = height;
     context.clearRect(0, 0, width, height);
     // fix bug 1/255
-    context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
+    context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
     if (!flipY) {
       context.translate(0, height);
       context.scale(1, -1);
@@ -200,7 +200,7 @@ export class RichTextComponent extends TextComponent {
   override updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
-    this.text = options.text.toString();
+    this.text = options.text ? options.text.toString() : '';
   }
 
 }

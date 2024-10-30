@@ -61,6 +61,8 @@ export class TextComponent extends BaseRenderComponent {
    * 文本行数
    */
   lineCount = 0;
+  protected readonly SCALE_FACTOR = 0.1;
+  protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
   constructor (engine: Engine, props?: TextItemProps) {
     super(engine);

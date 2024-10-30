@@ -66,8 +66,9 @@ export const richTextParser = (input: string): RichTextAST[] => {
   const ast: RichTextAST[] = [];
 
   function Grammar (attributes: Attribute[] = [], expectedEndAttributeName = '') {
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    const parsing = true;
+
+    while (parsing) {
       const maybeText = Text();
 
       if (maybeText) {
