@@ -113,6 +113,9 @@ export abstract class Material extends EffectsObject implements Disposable {
   }
 
   set shader (value: Shader) {
+    if (this._shader === value) {
+      return;
+    }
     this._shader = value;
     this.shaderDirty = true;
   }
