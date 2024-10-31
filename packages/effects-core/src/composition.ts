@@ -116,6 +116,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @since 1.6.0
    */
   interactive: boolean;
+
+  /**
+   * 合成是否结束
+   */
+  isEnded = false;
+
   compositionSourceManager: CompositionSourceManager;
   /**
    * 合成id
@@ -201,6 +207,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private paused = false;
   private lastVideoUpdateTime = 0;
+  private isEndCalled = false;
+
   private readonly texInfo: Record<string, number>;
   /**
    * 合成中消息元素创建/销毁时触发的回调
@@ -393,7 +401,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   play () {
-    if (this.rootItem.ended && this.reusable) {
+    if (this.isEnded && this.reusable) {
       this.restart();
     }
     if (this.rootComposition.isStartCalled) {
@@ -504,7 +512,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   protected reset () {
     this.rendererOptions = null;
-    this.rootItem.ended = false;
+    this.isEnded = false;
+    this.isEndCalled = false;
     this.rootComposition.time = 0;
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
@@ -564,13 +573,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.updateCamera();
     this.prepareRender();
 
+    if (this.isEnded && !this.isEndCalled) {
+      this.isEndCalled = true;
+      this.emit('end', { composition: this });
+    }
     if (this.shouldDispose()) {
       this.dispose();
     }
   }
 
   private shouldDispose () {
-    return this.rootItem.ended && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
+    return this.isEnded && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
 
   private getUpdateTime (t: number) {
@@ -671,14 +684,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (this.rootComposition.isActiveAndEnabled) {
 
       let localTime = this.time + deltaTime - this.rootItem.start;
-      let ended = false;
+      let isEnded = false;
 
       const duration = this.rootItem.duration;
       const endBehavior = this.rootItem.endBehavior;
 
       if (localTime - duration > 0.001) {
 
-        ended = true;
+        isEnded = true;
 
         switch (endBehavior) {
           case spec.EndBehavior.restart: {
@@ -705,9 +718,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
       this.rootComposition.time = localTime;
 
-      if (ended && !this.rootItem.ended) {
-        this.rootItem.ended = true;
-        this.emit('end', { composition: this });
+      // end state changed, handle onEnd flags
+      if (this.isEnded !== isEnded) {
+        if (isEnded) {
+          this.isEnded = true;
+        } else {
+          this.isEnded = false;
+          this.isEndCalled = false;
+        }
       }
     }
   }

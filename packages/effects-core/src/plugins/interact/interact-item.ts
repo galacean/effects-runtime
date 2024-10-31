@@ -44,7 +44,6 @@ export class InteractComponent extends RendererComponent {
 
   /** 是否响应点击和拖拽交互事件 */
   private _interactive = true;
-  private hasBeenAddedToComposition = false;
 
   set interactive (enable: boolean) {
     this._interactive = enable;
@@ -100,15 +99,28 @@ export class InteractComponent extends RendererComponent {
       this.materials = this.previewContent.mesh.materials;
     }
     this.item.getHitTestParams = this.getHitTestParams;
-    this.item.onEnd = () => {
-      if (this.item && this.item.composition) {
-        this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
-        this.clickable = false;
-        this.hasBeenAddedToComposition = false;
-        this.previewContent?.mesh.dispose();
-        this.endDragTarget();
-      }
-    };
+  }
+
+  override onDisable (): void {
+    if (this.item && this.item.composition) {
+      this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
+      this.clickable = false;
+      this.previewContent?.mesh.dispose();
+      this.endDragTarget();
+    }
+  }
+
+  override onEnable (): void {
+    const { type } = this.interactData.options as spec.ClickInteractOption;
+
+    if (type === spec.InteractType.CLICK) {
+      this.clickable = true;
+    }
+    const options = this.item.props.content.options as spec.DragInteractOption;
+
+    if (this.item.composition) {
+      this.item.composition.addInteractiveItem(this.item, options.type);
+    }
   }
 
   override onUpdate (dt: number): void {
@@ -116,18 +128,6 @@ export class InteractComponent extends RendererComponent {
       return;
     }
     this.previewContent?.updateMesh();
-    if (!this.hasBeenAddedToComposition && this.item.composition) {
-
-      const { type } = this.interactData.options as spec.ClickInteractOption;
-
-      if (type === spec.InteractType.CLICK) {
-        this.clickable = true;
-      }
-      const options = this.item.props.content.options as spec.DragInteractOption;
-
-      this.item.composition.addInteractiveItem(this.item, options.type);
-      this.hasBeenAddedToComposition = true;
-    }
 
     if (!this.dragEvent || !this.bouncingArg) {
       return;
