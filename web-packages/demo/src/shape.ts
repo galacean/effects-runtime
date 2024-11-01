@@ -131,7 +131,7 @@ const json = {
           ],
           'close': true,
           'fill': {
-            'color': [8, [255, 0, 0, 255]],
+            'color': { r:1, g:0.7, b:0.5, a:1 },
           },
         },
       ],

@@ -187,6 +187,12 @@ void main() {
         this.curveValues = [];
 
         for (const shape of customData.shapes) {
+          if (shape.fill) {
+            const color = shape.fill.color;
+
+            this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
+          }
+
           const indices = shape.indexes;
 
           for (let i = 1; i < indices.length; i++) {
@@ -225,12 +231,24 @@ void main() {
 
         this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
+        if (ellipseData.fill) {
+          const color = ellipseData.fill.color;
+
+          this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
+        }
+
         break;
       }
       case ShapePrimitiveType.Rectangle: {
         const rectangleData = shapeData as RectangleData;
 
         this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
+
+        if (rectangleData.fill) {
+          const color = rectangleData.fill.color;
+
+          this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
+        }
 
         break;
       }
@@ -239,12 +257,24 @@ void main() {
 
         this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
 
+        if (starData.fill) {
+          const color = starData.fill.color;
+
+          this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
+        }
+
         break;
       }
       case ShapePrimitiveType.Polygon: {
         const polygonData = shapeData as PolygonData;
 
         this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
+
+        if (polygonData.fill) {
+          const color = polygonData.fill.color;
+
+          this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
+        }
 
         break;
       }
@@ -383,7 +413,7 @@ export interface ShapeFillParam {
   /**
    * 填充颜色
    */
-  color: spec.ColorExpression,
+  color: spec.ColorData,
 }
 
 /**
