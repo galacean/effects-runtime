@@ -99,6 +99,8 @@ export class TrackAsset extends PlayableAsset {
     for (const timelineClip of timelineClips) {
       const clipPlayable = this.createClipPlayable(graph, timelineClip);
 
+      clipPlayable.setDuration(timelineClip.duration);
+
       const clip = new RuntimeClip(timelineClip, clipPlayable, mixer, this);
 
       runtimeClips.push(clip);

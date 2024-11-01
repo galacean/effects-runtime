@@ -67,6 +67,7 @@ export class Playable implements Disposable {
   onPlayablePlayFlag = true;
   onPlayablePauseFlag = false;
 
+  private duration = 0;
   private destroyed = false;
   private inputs: Playable[] = [];
   private inputOuputPorts: number[] = [];
@@ -183,6 +184,14 @@ export class Playable implements Disposable {
 
   getTime () {
     return this.time;
+  }
+
+  setDuration (duration: number) {
+    this.duration = duration;
+  }
+
+  getDuration () {
+    return this.duration;
   }
 
   getPlayState () {
