@@ -130,7 +130,7 @@ export class GalaceanEffects {
           'floats': {
             '_Speed': 1,
           },
-          'stringTags':{},
+          'stringTags': {},
           'vector4s': {},
           'textures': {
             '_MainTex': {
@@ -374,7 +374,7 @@ export class GalaceanEffects {
               ],
               'close': true,
               'fill': {
-                'color': { r:1, g:0.7, b:0.5, a:1 },
+                'color': { 'r': 1, 'g': 0.7, 'b': 0.5, 'a': 1 },
               },
             },
           ],
@@ -501,8 +501,8 @@ export class GalaceanEffects {
     if (use3DConverter) {
       const converter = new JSONConverter(GalaceanEffects.player.renderer);
 
-      void converter.processScene(url).then(async (scene: any) =>{
-        const composition = await GalaceanEffects.player.loadScene(scene, { autoplay:true });
+      void converter.processScene(url).then(async (scene: any) => {
+        const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
 
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
@@ -511,7 +511,7 @@ export class GalaceanEffects {
         }),);
       });
     } else {
-      void GalaceanEffects.player.loadScene(url, { autoplay:true }).then(composition=>{
+      void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
         composition.postProcessingEnabled = true;
         composition.createRenderFrame();
         composition.rootItem.addComponent(PostProcessVolume);
@@ -601,16 +601,16 @@ export class OutlinePass extends RenderPass {
             ]),
           },
         },
-        mode:glContext.LINE_LOOP,
-        drawCount:6,
+        mode: glContext.LINE_LOOP,
+        drawCount: 6,
       });
     }
 
     if (!this.material) {
       const materialProps: MaterialProps = {
         shader: {
-          vertex:this.vert,
-          fragment:this.frag,
+          vertex: this.vert,
+          fragment: this.frag,
           glslVersion: GLSLVersion.GLSL1,
         },
       };

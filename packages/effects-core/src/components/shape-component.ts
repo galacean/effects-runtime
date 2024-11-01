@@ -415,7 +415,7 @@ export interface ShapeStrokeParam {
   /**
    * 线颜色
    */
-  color: spec.ColorExpression,
+  color: spec.ColorData,
   /**
    * 连接类型
    */
