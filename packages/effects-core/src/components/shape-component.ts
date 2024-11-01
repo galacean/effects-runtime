@@ -187,11 +187,7 @@ void main() {
         this.curveValues = [];
 
         for (const shape of customData.shapes) {
-          if (shape.fill) {
-            const color = shape.fill.color;
-
-            this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
-          }
+          this.setFillColor(shape.fill);
 
           const indices = shape.indexes;
 
@@ -231,11 +227,7 @@ void main() {
 
         this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
-        if (ellipseData.fill) {
-          const color = ellipseData.fill.color;
-
-          this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
-        }
+        this.setFillColor(ellipseData.fill);
 
         break;
       }
@@ -244,11 +236,7 @@ void main() {
 
         this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
 
-        if (rectangleData.fill) {
-          const color = rectangleData.fill.color;
-
-          this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
-        }
+        this.setFillColor(rectangleData.fill);
 
         break;
       }
@@ -257,11 +245,7 @@ void main() {
 
         this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
 
-        if (starData.fill) {
-          const color = starData.fill.color;
-
-          this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
-        }
+        this.setFillColor(starData.fill);
 
         break;
       }
@@ -270,14 +254,18 @@ void main() {
 
         this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
 
-        if (polygonData.fill) {
-          const color = polygonData.fill.color;
-
-          this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
-        }
+        this.setFillColor(polygonData.fill);
 
         break;
       }
+    }
+  }
+
+  private setFillColor (fill?: ShapeFillParam) {
+    if (fill) {
+      const color = fill.color;
+
+      this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
     }
   }
 
