@@ -9,11 +9,11 @@ export class AudioLoader extends AbstractPlugin {
 
   static override precompile (compositions: spec.Composition[], renderer: Renderer, options?: PrecompileOptions): Promise<any> {
     const engine = renderer.engine;
-    const { env } = options ?? {};
+    const { env } = options ?? { env: '' };
 
     if (env === 'editor') {
-      checkAutoplayPermission().catch(e => {
-        engine.renderErrors.add(e);
+      return checkAutoplayPermission().catch(error => {
+        engine.renderErrors.add(error);
       });
     }
 
