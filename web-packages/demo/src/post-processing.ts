@@ -42,6 +42,7 @@ async function handleLoadScene (url: string) {
   const composition = await player.loadScene(json);
 
   composition.rootItem.addComponent(PostProcessVolume);
+
   setDatGUI(composition);
 }
 
@@ -83,20 +84,20 @@ function setDatGUI (composition: Composition) {
   ParticleFolder.add(postProcessSettings, 'intensity', -10, 10).step(0.1);
   ParticleFolder.open();
 
-  BloomFolder.add(globalVolume, 'bloomEnabled', 0, 1).step(1);
-  BloomFolder.add(globalVolume, 'threshold', 0, 40).step(0.1);
-  BloomFolder.add(globalVolume, 'bloomIntensity', 0, 10);
+  BloomFolder.add(globalVolume.bloom, 'active', 0, 1).step(1);
+  BloomFolder.add(globalVolume.bloom, 'threshold', 0, 40).step(0.1);
+  BloomFolder.add(globalVolume.bloom, 'intensity', 0, 10);
   BloomFolder.open();
 
-  VignetteFolder.add(globalVolume, 'vignetteIntensity', 0, 2);
-  VignetteFolder.add(globalVolume, 'vignetteSmoothness', 0, 2);
-  VignetteFolder.add(globalVolume, 'vignetteRoundness', 0, 1.5);
+  VignetteFolder.add(globalVolume.vignette, 'intensity', 0, 2);
+  VignetteFolder.add(globalVolume.vignette, 'smoothness', 0, 2);
+  VignetteFolder.add(globalVolume.vignette, 'roundness', 0, 1.5);
 
-  ColorAdjustmentsFolder.add(globalVolume, 'brightness', -5, 5).step(0.1);
-  ColorAdjustmentsFolder.add(globalVolume, 'saturation', 0, 2);
-  ColorAdjustmentsFolder.add(globalVolume, 'contrast', 0, 2);
+  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'brightness', -5, 5).step(0.1);
+  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'saturation', 0, 2);
+  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'contrast', 0, 2);
   ColorAdjustmentsFolder.open();
 
-  ToneMappingFlolder.add(globalVolume, 'toneMappingEnabled', 0, 1).step(1);
+  ToneMappingFlolder.add(globalVolume.tonemapping, 'active', 0, 1).step(1);
   ToneMappingFlolder.open();
 }
