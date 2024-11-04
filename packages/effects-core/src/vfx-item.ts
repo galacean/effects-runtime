@@ -102,6 +102,10 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   private active = true;
   /**
+   * 元素组件是否显示，用于批量开关元素组件
+   */
+  private visible = true;
+  /**
    * 元素动画的速度
    */
   private speed = 1;
@@ -400,13 +404,6 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * 元素是否激活
-   */
-  isActive () {
-    return this.active;
-  }
-
-  /**
    * 激活或停用 VFXItem
    */
   setActive (value: boolean) {
@@ -417,12 +414,27 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * 设置元素的显隐
+   * 当前 VFXItem 是否激活
+   */
+  isActive () {
+    return this.active;
+  }
+
+  /**
+   * 设置元素的显隐，该设置会批量开关元素组件
    */
   setVisible (visible: boolean) {
     for (const component of this.components) {
       component.enabled = visible;
     }
+    this.visible = visible;
+  }
+
+  /**
+   * 元素组件显隐状态
+   */
+  isVisible () {
+    return this.visible;
   }
 
   /**
