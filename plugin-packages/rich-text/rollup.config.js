@@ -1,4 +1,5 @@
 import { getBanner, getPlugins } from '../../scripts/rollup-config-helper';
+import appxConfig from './rollup.appx.config';
 
 const pkg = require('./package.json');
 const globals = {
@@ -9,32 +10,35 @@ const banner = getBanner(pkg);
 const plugins = getPlugins(pkg, { external });
 
 export default () => {
-  return [{
-    input: 'src/index.ts',
-    output: [{
-      file: pkg.module,
-      format: 'es',
-      banner,
-      sourcemap: true,
+  return [
+    {
+      input: 'src/index.ts',
+      output: [{
+        file: pkg.module,
+        format: 'es',
+        banner,
+        sourcemap: true,
+      }, {
+        file: pkg.main,
+        format: 'cjs',
+        banner,
+        sourcemap: true,
+      }],
+      external,
+      plugins,
     }, {
-      file: pkg.main,
-      format: 'cjs',
-      banner,
-      sourcemap: true,
-    }],
-    external,
-    plugins,
-  }, {
-    input: 'src/index.ts',
-    output: {
-      file: pkg.browser,
-      format: 'umd',
-      name: 'ge.richTextPlugin',
-      banner,
-      globals,
-      sourcemap: true,
+      input: 'src/index.ts',
+      output: {
+        file: pkg.browser,
+        format: 'umd',
+        name: 'ge.richTextPlugin',
+        banner,
+        globals,
+        sourcemap: true,
+      },
+      external,
+      plugins: getPlugins(pkg, { min: true, external }),
     },
-    external,
-    plugins: getPlugins(pkg, { min: true, external }),
-  }];
+    ...appxConfig.map(config => ({ ...config, plugins: config.plugins.concat(plugins) }))
+  ];
 };

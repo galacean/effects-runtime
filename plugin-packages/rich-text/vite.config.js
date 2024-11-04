@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           'index': resolve(__dirname, 'demo/index.html'),
-          'rich-text': resolve(__dirname, 'demo/rich-text.html'),
+          'simple': resolve(__dirname, 'demo/simple.html'),
         }
       },
       minify: false, // iOS 9 等低版本加载压缩代码报脚本异常

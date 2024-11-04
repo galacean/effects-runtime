@@ -1,17 +1,11 @@
 import type { Engine } from '@galacean/effects';
-import {
-  effectsClass,
-  glContext,
-  spec,
-  TextComponent,
-  Texture } from '@galacean/effects';
-import {
-  TextLayout,
-  TextStyle,
-} from '@galacean/effects';
+import { effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
 import { generateProgram } from './rich-text-parser';
-import { ColorUtils } from './color-utils';
+import { toRGBA } from './color-utils';
 
+/**
+ *
+ */
 export interface RichTextOptions {
   text: string,
   fontSize: number,
@@ -48,9 +42,12 @@ let seed = 0;
 @effectsClass(spec.DataType.RichTextComponent)
 export class RichTextComponent extends TextComponent {
   processedTextOptions: RichTextOptions[] = [];
+
   private singleLineHeight: number = 1.571;
+
   constructor (engine: Engine) {
     super(engine);
+
     this.name = 'MRichText' + seed++;
   }
 
@@ -81,7 +78,7 @@ export class RichTextComponent extends TextComponent {
         }
 
         if ('color' in context && context.color) {
-          options.fontColor = ColorUtils.toRGBA(context.color);
+          options.fontColor = toRGBA(context.color);
         }
         this.processedTextOptions.push(options);
       });
@@ -145,7 +142,7 @@ export class RichTextComponent extends TextComponent {
     this.item.transform.size.set(textStyle.fontSize * this.SCALE_FACTOR, textStyle.fontSize * this.SCALE_FACTOR * scale);
     this.textLayout.width = width;
     this.textLayout.height = height;
-    this.canvas.width = width ;
+    this.canvas.width = width;
     this.canvas.height = height;
     context.clearRect(0, 0, width, height);
     // fix bug 1/255

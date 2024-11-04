@@ -1,6 +1,6 @@
-import type { Texture2DSourceOptionsVideo } from '@galacean/effects';
-import { Player, Texture, spec } from '@galacean/effects';
+import { Player, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-rich-text';
+
 const json = {
   playerVersion: { web: '2.0.6', native: '0.0.1.202311221223' },
   images: [],
@@ -107,19 +107,15 @@ const json = {
   ],
   compositionId: '9',
 };
-let player: Player;
 const container = document.getElementById('J-container');
-const addButton = document.getElementById('J-add');
-const updateButton = document.getElementById('J-update');
-const inputEle = document.getElementById('J-input') as HTMLInputElement;
 
 (async () => {
   try {
-    player = new Player({
+    const player = new Player({
       container,
-      fps: 130,
     });
-    await player.loadScene(json, { renderLevel: spec.RenderLevel.B });
+
+    await player.loadScene(json);
   } catch (e) {
     console.error('biz', e);
   }

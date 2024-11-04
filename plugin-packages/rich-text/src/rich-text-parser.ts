@@ -184,7 +184,6 @@ export function generateProgram (textHandler: (text: string, context: Record<str
 
 export function isRichText (text: string): boolean {
   const lexed = lexer(text);
-
   const contextTokens = lexed.filter(({ tokenType }) => tokenType === TokenType.ContextStart || tokenType === TokenType.ContextEnd);
 
   const contextStartTokens = contextTokens.filter(({ tokenType }) => tokenType === TokenType.ContextStart);
