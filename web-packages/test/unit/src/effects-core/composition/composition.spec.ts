@@ -149,6 +149,6 @@ describe('core/composition', () => {
 
     comp.setVisible(false);
 
-    expect(comp.items[0].isActive()).to.eql(false, 'composition visible');
+    expect(comp.items[0].isActive).to.eql(false, 'composition visible');
   });
 });

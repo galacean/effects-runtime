@@ -416,7 +416,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 当前 VFXItem 是否激活
    */
-  isActive () {
+  get isActive () {
     return this.active;
   }
 
@@ -433,7 +433,15 @@ export class VFXItem extends EffectsObject implements Disposable {
   /**
    * 元素组件显隐状态
    */
-  isVisible () {
+  get isVisible () {
+    return this.visible;
+  }
+
+  /**
+   * 元素组件显隐状态
+   * @deprecated use isVisible instead
+   */
+  getVisible () {
     return this.visible;
   }
 

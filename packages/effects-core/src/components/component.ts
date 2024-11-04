@@ -30,7 +30,7 @@ export abstract class Component extends EffectsObject {
    * 组件是否可以更新，true 更新，false 不更新
    */
   get isActiveAndEnabled () {
-    return this.item.isActive() && this.enabled;
+    return this.item.isActive && this.enabled;
   }
 
   get enabled () {
@@ -134,7 +134,7 @@ export abstract class Component extends EffectsObject {
         this.onAwake();
         this.isAwakeCalled = true;
       }
-      if (item.isActive() && this.enabled) {
+      if (item.isActive && this.enabled) {
         this.start();
         this.enable();
       }

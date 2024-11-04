@@ -143,7 +143,7 @@ export class CompositionComponent extends Behaviour {
       const item = this.items[i];
 
       if (
-        item.isActive()
+        item.isActive
         && item.transform.getValid()
         && !VFXItem.isComposition(item)
         && !skip(item)
