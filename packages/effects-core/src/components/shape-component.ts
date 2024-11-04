@@ -12,9 +12,9 @@ import { MeshComponent } from './mesh-component';
 import { StarType } from '../plugins/shape/poly-star';
 
 interface CurveData {
-  point: spec.Vector3Data,
-  controlPoint1: spec.Vector3Data,
-  controlPoint2: spec.Vector3Data,
+  point: spec.Vector2Data,
+  controlPoint1: spec.Vector2Data,
+  controlPoint2: spec.Vector2Data,
 }
 
 /**
@@ -331,15 +331,15 @@ export interface CustomShapeData extends ShapeComponentData {
   /**
    * 路径点
    */
-  points: spec.Vector3Data[],
+  points: spec.Vector2Data[],
   /**
    * 入射控制点
    */
-  easingIns: spec.Vector3Data[],
+  easingIns: spec.Vector2Data[],
   /**
    * 入射控制点
    */
-  easingOuts: spec.Vector3Data[],
+  easingOuts: spec.Vector2Data[],
   /**
    * 自定义形状
    */
@@ -350,10 +350,6 @@ export interface CustomShapeData extends ShapeComponentData {
  * 自定义形状参数
  */
 export interface CustomShape {
-  /**
-   * 是否垂直与平面 - 用于减少实时运算
-   */
-  verticalToPlane: 'x' | 'y' | 'z' | 'none',
   /**
    * 点索引 - 用于构成闭合图形
    */
