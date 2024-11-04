@@ -93,9 +93,9 @@ function setDatGUI (composition: Composition) {
   VignetteFolder.add(globalVolume.vignette, 'smoothness', 0, 2);
   VignetteFolder.add(globalVolume.vignette, 'roundness', 0, 1.5);
 
-  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'brightness', -5, 5).step(0.1);
-  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'saturation', 0, 2);
-  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'contrast', 0, 2);
+  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'brightness').step(0.1);
+  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'saturation', -100, 100);
+  ColorAdjustmentsFolder.add(globalVolume.colorAdjustments, 'contrast', -100, 100);
   ColorAdjustmentsFolder.open();
 
   ToneMappingFlolder.add(globalVolume.tonemapping, 'active', 0, 1).step(1);

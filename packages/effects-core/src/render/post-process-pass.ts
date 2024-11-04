@@ -296,7 +296,7 @@ export class ToneMappingPass extends RenderPass {
 
     this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
 
-    this.screenMesh.material.setFloat('_Brightness', (colorAdjustments.brightness * 0.01) + 1);
+    this.screenMesh.material.setFloat('_Brightness', colorAdjustments.brightness + 1);
     this.screenMesh.material.setFloat('_Saturation', (colorAdjustments.saturation * 0.01) + 1);
     this.screenMesh.material.setFloat('_Contrast', (colorAdjustments.contrast * 0.01) + 1);
 
