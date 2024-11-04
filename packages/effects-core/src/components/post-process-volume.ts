@@ -1,7 +1,7 @@
-import type { Engine } from '..';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../decorators';
 import { Behaviour } from './component';
+import type { Engine } from '../engine';
 
 // TODO spec 增加 DataType
 /**
