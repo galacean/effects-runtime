@@ -32,7 +32,7 @@ export class VFXItemInspector extends ObjectInspector {
     ImGui.Text('Visible');
     ImGui.SameLine(alignWidth);
     ImGui.Checkbox('##Visible', (_ = activeObject.isActive()) => {
-      activeObject.setVisible(_);
+      activeObject.setActive(_);
 
       return activeObject.isActive();
     });

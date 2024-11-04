@@ -420,14 +420,8 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 设置元素的显隐
    */
   setVisible (visible: boolean) {
-    if (visible) {
-      for (const component of this.components) {
-        component.enable();
-      }
-    } else {
-      for (const component of this.components) {
-        component.disable();
-      }
+    for (const component of this.components) {
+      component.enabled = visible;
     }
   }
 
