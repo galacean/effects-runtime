@@ -1,5 +1,5 @@
 import type { PrecompileOptions, Renderer, SceneLoadOptions } from '@galacean/effects';
-import { spec, AbstractPlugin } from '@galacean/effects';
+import { spec, AbstractPlugin, PLAYER_OPTIONS_ENV_EDITOR } from '@galacean/effects';
 import { checkAutoplayPermission, processMultimedia } from '../utils';
 
 /**
@@ -11,7 +11,7 @@ export class VideoLoader extends AbstractPlugin {
     const engine = renderer.engine;
     const { env } = options ?? { env: '' };
 
-    if (env === 'editor') {
+    if (env === PLAYER_OPTIONS_ENV_EDITOR) {
       return checkAutoplayPermission().catch(error => {
         engine.renderErrors.add(error);
       });
