@@ -1,5 +1,5 @@
 import type { Engine } from '..';
-import { spec } from '..';
+import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../decorators';
 import { Behaviour } from './component';
 

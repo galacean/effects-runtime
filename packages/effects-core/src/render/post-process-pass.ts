@@ -13,7 +13,7 @@ import type { ShaderWithSource } from './shader';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { spec } from '..';
+import type * as spec from '@galacean/effects-specification';
 
 // Bloom 阈值 Pass
 export class BloomThresholdPass extends RenderPass {
