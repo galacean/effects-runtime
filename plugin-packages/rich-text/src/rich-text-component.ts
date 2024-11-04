@@ -177,10 +177,6 @@ export class RichTextComponent extends TextComponent {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    const img = document.createElement('img');
-
-    img.src = this.canvas.toDataURL();
-    document.body.appendChild(img);
     this.material.setTexture('uSampler0',
       Texture.createWithData(
         this.engine,
