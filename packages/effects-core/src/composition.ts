@@ -388,7 +388,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   setVisible (visible: boolean) {
     this.items.forEach(item => {
-      item.setVisible(visible);
+      item.setActive(visible);
     });
   }
 
