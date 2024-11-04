@@ -7,15 +7,27 @@ export class ColorUtils {
    * @returns RGBA 颜色字符串
    */
   static colorNameToRGBA (colorName: string): string {
+    if (typeof colorName !== 'string' || !colorName) {
+      throw new Error('Invalid color name provided');
+    }
+    if (typeof document === 'undefined') {
+      throw new Error('This method requires a browser environment');
+    }
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
 
     if (context) {
-      context.fillStyle = colorName;
+      try {
+        context.fillStyle = colorName;
+        const result = context.fillStyle;
 
-      return context.fillStyle;
+        return result;
+      } finally {
+        // Clean up DOM element
+        canvas.remove();
+      }
     }
-    throw new Error('can not get 2d context!');
+    throw new Error('Failed to get 2D context for color conversion!');
   }
 
   /**
@@ -27,10 +39,17 @@ export class ColorUtils {
   static hexToRGBA (hex: string, alpha: number = 1): spec.vec4 {
     hex = hex.replace(/^#/, '');
 
-    if (hex.length === 3) {
+    if (hex.length === 3 || hex.length === 4) {
       hex = hex.split('').map(char => char + char).join('');
     }
 
+    // Handle alpha channel in hex
+    if (hex.length === 8) {
+      const a = parseInt(hex.slice(6, 8), 16) / 255;
+
+      hex = hex.slice(0, 6);
+      alpha = a;
+    }
     const bigint = parseInt(hex, 16);
     const r = (bigint >> 16) & 255;
     const g = (bigint >> 8) & 255;
@@ -46,10 +65,13 @@ export class ColorUtils {
    * @returns - RGBA 颜色
    */
   static toRGBA (color: string, alpha: number = 1): spec.vec4 {
+    if (typeof color !== 'string' || !color) {
+      throw new Error('Invalid color string');
+    }
     if (color.startsWith('#')) {
-      return this.hexToRGBA(color, alpha);
+      return ColorUtils.hexToRGBA(color, alpha);
     } else {
-      return this.hexToRGBA(this.colorNameToRGBA(color));
+      return ColorUtils.hexToRGBA(ColorUtils.colorNameToRGBA(color));
     }
   }
 }

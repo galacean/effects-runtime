@@ -29,7 +29,7 @@ export default () => {
     output: {
       file: pkg.browser,
       format: 'umd',
-      name: 'ge.multimediaPlugin',
+      name: 'ge.richTextPlugin',
       banner,
       globals,
       sourcemap: true,
