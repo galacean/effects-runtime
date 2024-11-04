@@ -130,7 +130,7 @@ export class GalaceanEffects {
           'floats': {
             '_Speed': 1,
           },
-          'stringTags':{},
+          'stringTags': {},
           'vector4s': {},
           'textures': {
             '_MainTex': {
@@ -300,86 +300,83 @@ export class GalaceanEffects {
             'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
           },
           'dataType': 'ShapeComponent',
-          'shapeDatas':[{
-            'type': 0,
-            'points': [
-              {
-                'x': -1,
-                'y': -1,
-                'z': 0,
-              },
-              {
-                'x': 1,
-                'y': -1,
-                'z': 0,
-              },
-              {
-                'x': 0,
-                'y': 1,
-                'z': 0,
-              },
-            ],
-            'easingIns': [
-              {
-                'x': -1,
-                'y': -0.5,
-                'z': 0,
-              },
-              {
-                'x': 0.5,
-                'y': -1.5,
-                'z': 0,
-              },
-              {
-                'x': 0.5,
-                'y': 1,
-                'z': 0,
-              },
-            ],
-            'easingOuts': [
-              {
-                'x': -0.5,
-                'y': -1.5,
-                'z': 0,
-              },
-              {
-                'x': 1,
-                'y': -0.5,
-                'z': 0,
-              },
-              {
-                'x': -0.5,
-                'y': 1,
-                'z': 0,
-              },
-            ],
-            'shapes': [
-              {
-                'verticalToPlane': 'z',
-                'indexes': [
-                  {
-                    'point': 0,
-                    'easingIn': 0,
-                    'easingOut': 0,
-                  },
-                  {
-                    'point': 1,
-                    'easingIn': 1,
-                    'easingOut': 1,
-                  },
-                  {
-                    'point': 2,
-                    'easingIn': 2,
-                    'easingOut': 2,
-                  },
-                ],
-                'close': true,
-                'fill': {
-                  'color': [8, [255, 0, 0, 255]],
+          'type': 0,
+          'points': [
+            {
+              'x': -1,
+              'y': -1,
+              'z': 0,
+            },
+            {
+              'x': 1,
+              'y': -1,
+              'z': 0,
+            },
+            {
+              'x': 0,
+              'y': 1,
+              'z': 0,
+            },
+          ],
+          'easingIns': [
+            {
+              'x': -1,
+              'y': -0.5,
+              'z': 0,
+            },
+            {
+              'x': 0.5,
+              'y': -1.5,
+              'z': 0,
+            },
+            {
+              'x': 0.5,
+              'y': 1,
+              'z': 0,
+            },
+          ],
+          'easingOuts': [
+            {
+              'x': -0.5,
+              'y': -1.5,
+              'z': 0,
+            },
+            {
+              'x': 1,
+              'y': -0.5,
+              'z': 0,
+            },
+            {
+              'x': -0.5,
+              'y': 1,
+              'z': 0,
+            },
+          ],
+          'shapes': [
+            {
+              'verticalToPlane': 'z',
+              'indexes': [
+                {
+                  'point': 0,
+                  'easingIn': 0,
+                  'easingOut': 0,
                 },
+                {
+                  'point': 1,
+                  'easingIn': 1,
+                  'easingOut': 1,
+                },
+                {
+                  'point': 2,
+                  'easingIn': 2,
+                  'easingOut': 2,
+                },
+              ],
+              'close': true,
+              'fill': {
+                'color': { 'r': 1, 'g': 0.7, 'b': 0.5, 'a': 1 },
               },
-            ],
-          },
+            },
           ],
           'renderer': {
             'renderMode': 1,
@@ -504,8 +501,8 @@ export class GalaceanEffects {
     if (use3DConverter) {
       const converter = new JSONConverter(GalaceanEffects.player.renderer);
 
-      void converter.processScene(url).then(async (scene: any) =>{
-        const composition = await GalaceanEffects.player.loadScene(scene, { autoplay:true });
+      void converter.processScene(url).then(async (scene: any) => {
+        const composition = await GalaceanEffects.player.loadScene(scene, { autoplay: true });
 
         composition.renderFrame.addRenderPass(new OutlinePass(composition.renderer, {
           name: 'OutlinePass',
@@ -514,7 +511,7 @@ export class GalaceanEffects {
         }),);
       });
     } else {
-      void GalaceanEffects.player.loadScene(url, { autoplay:true }).then(composition=>{
+      void GalaceanEffects.player.loadScene(url, { autoplay: true }).then(composition => {
         composition.postProcessingEnabled = true;
         composition.createRenderFrame();
         composition.rootItem.addComponent(PostProcessVolume);
@@ -604,16 +601,16 @@ export class OutlinePass extends RenderPass {
             ]),
           },
         },
-        mode:glContext.LINE_LOOP,
-        drawCount:6,
+        mode: glContext.LINE_LOOP,
+        drawCount: 6,
       });
     }
 
     if (!this.material) {
       const materialProps: MaterialProps = {
         shader: {
-          vertex:this.vert,
-          fragment:this.frag,
+          vertex: this.vert,
+          fragment: this.frag,
           glslVersion: GLSLVersion.GLSL1,
         },
       };

@@ -175,79 +175,97 @@ void main() {
   private buildPath (data: ShapeComponentData) {
     this.path.clear();
 
-    for (const shapeData of data.shapeDatas) {
-      switch (shapeData.type) {
-        case ShapeType.Custom: {
-          const customData = shapeData as CustomShapeData;
-          const points = customData.points;
-          const easingIns = customData.easingIns;
-          const easingOuts = customData.easingOuts;
+    const shapeData = data;
 
-          this.curveValues = [];
+    switch (shapeData.type) {
+      case ShapePrimitiveType.Custom: {
+        const customData = shapeData as CustomShapeData;
+        const points = customData.points;
+        const easingIns = customData.easingIns;
+        const easingOuts = customData.easingOuts;
 
-          for (const shape of customData.shapes) {
-            const indices = shape.indexes;
+        this.curveValues = [];
 
-            for (let i = 1; i < indices.length; i++) {
-              const pointIndex = indices[i];
-              const lastPointIndex = indices[i - 1];
+        for (const shape of customData.shapes) {
+          this.setFillColor(shape.fill);
 
-              this.curveValues.push({
-                point: points[pointIndex.point],
-                controlPoint1: easingOuts[lastPointIndex.easingOut],
-                controlPoint2: easingIns[pointIndex.easingIn],
-              });
-            }
+          const indices = shape.indexes;
 
-            // Push the last curve
+          for (let i = 1; i < indices.length; i++) {
+            const pointIndex = indices[i];
+            const lastPointIndex = indices[i - 1];
+
             this.curveValues.push({
-              point: points[indices[0].point],
-              controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
-              controlPoint2: easingIns[indices[0].easingIn],
+              point: points[pointIndex.point],
+              controlPoint1: easingOuts[lastPointIndex.easingOut],
+              controlPoint2: easingIns[pointIndex.easingIn],
             });
           }
 
-          this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
-
-          for (const curveValue of this.curveValues) {
-            const point = curveValue.point;
-            const control1 = curveValue.controlPoint1;
-            const control2 = curveValue.controlPoint2;
-
-            this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
-          }
-
-          break;
+          // Push the last curve
+          this.curveValues.push({
+            point: points[indices[0].point],
+            controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
+            controlPoint2: easingIns[indices[0].easingIn],
+          });
         }
-        case ShapeType.Ellipse: {
-          const ellipseData = shapeData as EllipseData;
 
-          this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
+        this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
 
-          break;
+        for (const curveValue of this.curveValues) {
+          const point = curveValue.point;
+          const control1 = curveValue.controlPoint1;
+          const control2 = curveValue.controlPoint2;
+
+          this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
         }
-        case ShapeType.Rectangle: {
-          const rectangleData = shapeData as RectangleData;
 
-          this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
-
-          break;
-        }
-        case ShapeType.Star: {
-          const starData = shapeData as StarData;
-
-          this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
-
-          break;
-        }
-        case ShapeType.Polygon: {
-          const polygonData = shapeData as PolygonData;
-
-          this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
-
-          break;
-        }
+        break;
       }
+      case ShapePrimitiveType.Ellipse: {
+        const ellipseData = shapeData as EllipseData;
+
+        this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
+
+        this.setFillColor(ellipseData.fill);
+
+        break;
+      }
+      case ShapePrimitiveType.Rectangle: {
+        const rectangleData = shapeData as RectangleData;
+
+        this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
+
+        this.setFillColor(rectangleData.fill);
+
+        break;
+      }
+      case ShapePrimitiveType.Star: {
+        const starData = shapeData as StarData;
+
+        this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
+
+        this.setFillColor(starData.fill);
+
+        break;
+      }
+      case ShapePrimitiveType.Polygon: {
+        const polygonData = shapeData as PolygonData;
+
+        this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
+
+        this.setFillColor(polygonData.fill);
+
+        break;
+      }
+    }
+  }
+
+  private setFillColor (fill?: ShapeFillParam) {
+    if (fill) {
+      const color = fill.color;
+
+      this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
     }
   }
 
@@ -270,13 +288,16 @@ void main() {
  * 矢量图形组件
  */
 export interface ShapeComponentData extends spec.ComponentData {
-  shapeDatas: ShapeData[],
+  /**
+   * 矢量类型
+   */
+  type: ShapePrimitiveType,
 }
 
 /**
  * 矢量图形类型
  */
-export enum ShapeType {
+export enum ShapePrimitiveType {
   /**
    * 自定义图形
    */
@@ -299,21 +320,14 @@ export enum ShapeType {
   Star,
 }
 
-export class ShapeData {
-  /**
-   * 矢量类型
-   */
-  type: ShapeType;
-}
-
 /**
  * 自定义图形组件
  */
-export interface CustomShapeData extends ShapeData {
+export interface CustomShapeData extends ShapeComponentData {
   /**
    * 矢量类型 - 形状
    */
-  type: ShapeType.Custom,
+  type: ShapePrimitiveType.Custom,
   /**
    * 路径点
    */
@@ -387,7 +401,7 @@ export interface ShapeFillParam {
   /**
    * 填充颜色
    */
-  color: spec.ColorExpression,
+  color: spec.ColorData,
 }
 
 /**
@@ -401,7 +415,7 @@ export interface ShapeStrokeParam {
   /**
    * 线颜色
    */
-  color: spec.ColorExpression,
+  color: spec.ColorData,
   /**
    * 连接类型
    */
@@ -424,8 +438,8 @@ export enum ShapePointType {
 /**
  * 椭圆组件参数
  */
-export interface EllipseData extends ShapeData {
-  type: ShapeType.Ellipse,
+export interface EllipseData extends ShapeComponentData {
+  type: ShapePrimitiveType.Ellipse,
   /**
    * x 轴半径
    * -- TODO 后续完善类型
@@ -453,7 +467,7 @@ export interface EllipseData extends ShapeData {
 /**
  * 星形参数
  */
-export interface StarData extends ShapeData {
+export interface StarData extends ShapeComponentData {
   /**
    * 顶点数 - 内外顶点同数
    */
@@ -491,7 +505,7 @@ export interface StarData extends ShapeData {
 /**
  * 多边形参数
  */
-export interface PolygonData extends ShapeData {
+export interface PolygonData extends ShapeComponentData {
   /**
    * 顶点数
    */
@@ -521,7 +535,7 @@ export interface PolygonData extends ShapeData {
 /**
  * 矩形参数
  */
-export interface RectangleData extends ShapeData {
+export interface RectangleData extends ShapeComponentData {
   /**
    * 宽度
    */
