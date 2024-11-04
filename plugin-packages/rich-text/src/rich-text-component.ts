@@ -111,7 +111,7 @@ export class RichTextComponent extends TextComponent {
     };
 
     this.processedTextOptions.forEach((options, index) => {
-      const { text, isNewLine } = options;
+      const { text, isNewLine, fontSize } = options;
 
       if (isNewLine) {
         charsInfo.push(charInfo);
@@ -126,21 +126,21 @@ export class RichTextComponent extends TextComponent {
         height += charInfo.lineHeight;
       }
       const textWidth = context.measureText(text).width;
-      const textHeight = options.fontSize * this.singleLineHeight * this.textStyle.fontScale;
+      const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale;
 
       if (textHeight > charInfo.lineHeight) {
         charInfo.lineHeight = textHeight;
-        charInfo.fontHeight = options.fontSize * this.textStyle.fontScale;
+        charInfo.fontHeight = fontSize * this.textStyle.fontScale;
       }
       charInfo.offsetX.push(charInfo.width);
 
-      charInfo.width += textWidth * options.fontSize * this.SCALE_FACTOR * this.textStyle.fontScale;
+      charInfo.width += textWidth * fontSize * this.SCALE_FACTOR * this.textStyle.fontScale;
       charInfo.richOptions.push(options);
     });
     charsInfo.push(charInfo);
     width = Math.max(width, charInfo.width);
-    height += charInfo.lineHeight;
-    const scale = width / height;
+    // height += charInfo.lineHeight;
+    const scale = width / (height + charInfo.lineHeight);
 
     this.item.transform.size.set(textStyle.fontSize * this.SCALE_FACTOR, textStyle.fontSize * this.SCALE_FACTOR * scale);
     this.textLayout.width = width;
@@ -160,13 +160,14 @@ export class RichTextComponent extends TextComponent {
       const { richOptions, offsetX } = charInfo;
       const x = textLayout.getOffsetX(textStyle, charInfo.width);
 
-      charsLineHeight += charInfo.lineHeight / 2 + (charInfo.lineHeight - charInfo.fontHeight) / 2;
+      charsLineHeight += charInfo.lineHeight - (charInfo.lineHeight - charInfo.fontHeight) / 2;
 
       richOptions.forEach((options, index) => {
         const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
         const { text, fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
 
         context.font = `${fontStyle} ${fontWeight} ${fontSize * fontScale}px ${fontFamily}`;
+
         context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
 
         context.fillText(text, offsetX[index] + x, charsLineHeight);
@@ -176,6 +177,10 @@ export class RichTextComponent extends TextComponent {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
+    const img = document.createElement('img');
+
+    img.src = this.canvas.toDataURL();
+    document.body.appendChild(img);
     this.material.setTexture('uSampler0',
       Texture.createWithData(
         this.engine,
