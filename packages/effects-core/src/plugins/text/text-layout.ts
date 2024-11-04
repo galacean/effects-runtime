@@ -82,16 +82,16 @@ export class TextLayout {
 
     switch (this.textAlign) {
       case spec.TextAlignment.left:
-        offsetX = style.outlineWidth;
+        offsetX = style.outlineWidth * style.fontScale;
 
         break;
       case spec.TextAlignment.middle:
-        offsetX = (this.width - maxWidth) / 2;
+        offsetX = (this.width * style.fontScale - maxWidth) / 2;
 
         break;
       case spec.TextAlignment.right:
 
-        offsetX = (this.width - maxWidth);
+        offsetX = (this.width * style.fontScale - maxWidth);
 
         break;
       default:

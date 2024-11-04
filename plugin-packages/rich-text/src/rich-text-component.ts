@@ -32,9 +32,9 @@ interface RichCharInfo {
    */
   lineHeight: number,
   /**
-   * 字体高度
+   * 字体偏移高度
    */
-  fontHeight: number,
+  offsetY: number,
 }
 
 let seed = 0;
@@ -104,7 +104,7 @@ export class RichTextComponent extends TextComponent {
       offsetX: [],
       width: 0,
       lineHeight: fontHeight * this.singleLineHeight,
-      fontHeight,
+      offsetY: fontHeight * (this.singleLineHeight - 1) / 2,
     };
 
     this.processedTextOptions.forEach((options, index) => {
@@ -118,7 +118,7 @@ export class RichTextComponent extends TextComponent {
           offsetX: [],
           width: 0,
           lineHeight: fontHeight * this.singleLineHeight,
-          fontHeight: fontHeight,
+          offsetY: fontHeight * (this.singleLineHeight - 1) / 2,
         };
         height += charInfo.lineHeight;
       }
@@ -126,8 +126,10 @@ export class RichTextComponent extends TextComponent {
       const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale;
 
       if (textHeight > charInfo.lineHeight) {
+        height += textHeight - charInfo.lineHeight;
+
         charInfo.lineHeight = textHeight;
-        charInfo.fontHeight = fontSize * this.textStyle.fontScale;
+        charInfo.offsetY = fontSize * this.textStyle.fontScale * (this.singleLineHeight - 1) / 2;
       }
       charInfo.offsetX.push(charInfo.width);
 
@@ -136,12 +138,12 @@ export class RichTextComponent extends TextComponent {
     });
     charsInfo.push(charInfo);
     width = Math.max(width, charInfo.width);
-    // height += charInfo.lineHeight;
-    const scale = width / (height + charInfo.lineHeight);
+    height += charInfo.lineHeight;
+    const scale = width / height;
 
     this.item.transform.size.set(textStyle.fontSize * this.SCALE_FACTOR, textStyle.fontSize * this.SCALE_FACTOR * scale);
-    this.textLayout.width = width;
-    this.textLayout.height = height;
+    this.textLayout.width = width / textStyle.fontScale;
+    this.textLayout.height = height / textStyle.fontScale;
     this.canvas.width = width;
     this.canvas.height = height;
     context.clearRect(0, 0, width, height);
@@ -151,14 +153,15 @@ export class RichTextComponent extends TextComponent {
       context.translate(0, height);
       context.scale(1, -1);
     }
-    let charsLineHeight = 0;
+    let charsLineHeight = charsInfo[0].lineHeight - charsInfo[0].offsetY;
 
     charsInfo.forEach((charInfo, index) => {
       const { richOptions, offsetX } = charInfo;
       const x = textLayout.getOffsetX(textStyle, charInfo.width);
 
-      charsLineHeight += charInfo.lineHeight - (charInfo.lineHeight - charInfo.fontHeight) / 2;
-
+      if (index > 0) {
+        charsLineHeight += charInfo.lineHeight - charInfo.offsetY + charsInfo[index - 1].offsetY;
+      }
       richOptions.forEach((options, index) => {
         const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
         const { text, fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
