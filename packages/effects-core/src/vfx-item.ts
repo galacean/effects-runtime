@@ -98,10 +98,9 @@ export class VFXItem extends EffectsObject implements Disposable {
   rendererComponents: RendererComponent[] = [];
 
   /**
-   * 元素可见性，该值的改变会触发 `handleVisibleChanged` 回调
-   * @protected
+   * 元素是否激活
    */
-  protected visible = true;
+  private active = true;
   /**
    * 元素动画的速度
    */
@@ -401,19 +400,34 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * 获取元素显隐属性
+   * 元素是否激活
    */
-  getVisible () {
-    return this.visible;
+  isActive () {
+    return this.active;
   }
 
   /**
-   * 设置元素显隐属性 会触发 `handleVisibleChanged` 回调
+   * 激活或停用 VFXItem
+   */
+  setActive (value: boolean) {
+    if (this.active !== value) {
+      this.active = !!value;
+      this.onActiveChanged();
+    }
+  }
+
+  /**
+   * 设置元素的显隐
    */
   setVisible (visible: boolean) {
-    if (this.visible !== visible) {
-      this.visible = !!visible;
-      this.onActiveChanged();
+    if (visible) {
+      for (const component of this.components) {
+        component.enable();
+      }
+    } else {
+      for (const component of this.components) {
+        component.disable();
+      }
     }
   }
 
@@ -549,7 +563,7 @@ export class VFXItem extends EffectsObject implements Disposable {
   beginPlay () {
     this.isDuringPlay = true;
 
-    if (this.composition && this.visible && !this.isEnabled) {
+    if (this.composition && this.active && !this.isEnabled) {
       this.onEnable();
     }
 

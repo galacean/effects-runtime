@@ -105,15 +105,15 @@ export class CompositionComponent extends Behaviour {
     }
   }
 
-  showItems () {
+  override onEnable () {
     for (const item of this.items) {
-      item.setVisible(true);
+      item.setActive(true);
     }
   }
 
-  hideItems () {
+  override onDisable () {
     for (const item of this.items) {
-      item.setVisible(false);
+      item.setActive(false);
     }
   }
 
@@ -143,7 +143,7 @@ export class CompositionComponent extends Behaviour {
       const item = this.items[i];
 
       if (
-        item.getVisible()
+        item.isActive()
         && item.transform.getValid()
         && !VFXItem.isComposition(item)
         && !skip(item)
