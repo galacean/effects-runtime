@@ -13,6 +13,7 @@ import type { ShaderWithSource } from './shader';
 import { colorGradingFrag, gaussianDownHFrag, gaussianDownVFrag, gaussianUpFrag, screenMeshVert, thresholdFrag } from '../shader';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
+import type * as spec from '@galacean/effects-specification';
 
 // Bloom 阈值 Pass
 export class BloomThresholdPass extends RenderPass {
@@ -68,7 +69,7 @@ export class BloomThresholdPass extends RenderPass {
       stencilAction: TextureStoreAction.clear,
     });
     this.screenMesh.material.setTexture('_MainTex', this.mainTexture);
-    const threshold = renderer.renderingData.currentFrame.globalVolume.threshold;
+    const threshold = renderer.renderingData.currentFrame.globalVolume?.bloom?.threshold ?? 1.0;
 
     this.screenMesh.material.setFloat('_Threshold', threshold);
     renderer.renderMeshes([this.screenMesh]);
@@ -263,31 +264,55 @@ export class ToneMappingPass extends RenderPass {
       depthAction: TextureStoreAction.clear,
       stencilAction: TextureStoreAction.clear,
     });
-    const {
-      useBloom, bloomIntensity,
-      brightness, saturation, contrast,
-      useToneMapping,
-      vignetteIntensity, vignetteSmoothness, vignetteRoundness,
-    } = renderer.renderingData.currentFrame.globalVolume;
+    const globalVolume = renderer.renderingData.currentFrame.globalVolume;
+
+    const bloom: spec.Bloom = {
+      threshold: 0,
+      intensity: 0,
+      active: false,
+      ...globalVolume?.bloom,
+    };
+
+    const vignette: spec.Vignette = {
+      intensity: 0,
+      smoothness: 0,
+      roundness: 0,
+      active: false,
+      ...globalVolume?.vignette,
+    };
+
+    const colorAdjustments: spec.ColorAdjustments = {
+      brightness: 0,
+      saturation: 0,
+      contrast: 0,
+      active: false,
+      ...globalVolume?.colorAdjustments,
+    };
+
+    const tonemapping: spec.Tonemapping = {
+      active: false,
+      ...globalVolume?.tonemapping,
+    };
 
     this.screenMesh.material.setTexture('_SceneTex', this.sceneTextureHandle.texture);
-    this.screenMesh.material.setFloat('_Brightness', brightness);
-    this.screenMesh.material.setFloat('_Saturation', saturation);
-    this.screenMesh.material.setFloat('_Contrast', contrast);
 
-    this.screenMesh.material.setInt('_UseBloom', Number(useBloom));
-    if (useBloom) {
+    this.screenMesh.material.setFloat('_Brightness', Math.pow(2, colorAdjustments.brightness));
+    this.screenMesh.material.setFloat('_Saturation', (colorAdjustments.saturation * 0.01) + 1);
+    this.screenMesh.material.setFloat('_Contrast', (colorAdjustments.contrast * 0.01) + 1);
+
+    this.screenMesh.material.setInt('_UseBloom', Number(bloom.active));
+    if (bloom.active) {
       this.screenMesh.material.setTexture('_GaussianTex', this.mainTexture);
-      this.screenMesh.material.setFloat('_BloomIntensity', bloomIntensity);
+      this.screenMesh.material.setFloat('_BloomIntensity', bloom.intensity);
     }
-    if (vignetteIntensity > 0) {
-      this.screenMesh.material.setFloat('_VignetteIntensity', vignetteIntensity);
-      this.screenMesh.material.setFloat('_VignetteSmoothness', vignetteSmoothness);
-      this.screenMesh.material.setFloat('_VignetteRoundness', vignetteRoundness);
+    if (vignette.intensity > 0) {
+      this.screenMesh.material.setFloat('_VignetteIntensity', vignette.intensity);
+      this.screenMesh.material.setFloat('_VignetteSmoothness', vignette.smoothness);
+      this.screenMesh.material.setFloat('_VignetteRoundness', vignette.roundness);
       this.screenMesh.material.setVector2('_VignetteCenter', new Vector2(0.5, 0.5));
       this.screenMesh.material.setVector3('_VignetteColor', new Vector3(0.0, 0.0, 0.0));
     }
-    this.screenMesh.material.setInt('_UseToneMapping', Number(useToneMapping));
+    this.screenMesh.material.setInt('_UseToneMapping', Number(tonemapping.active));
     renderer.renderMeshes([this.screenMesh]);
   }
 }

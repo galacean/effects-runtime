@@ -41,8 +41,8 @@ export class GLMaterial extends Material {
   private samplers: string[] = [];  // material存放的sampler名称。
   private uniforms: string[] = [];  // material存放的uniform名称（不包括sampler）。
 
-  private uniformDirtyFlag = true;
-  private macrosDirtyFlag = true;
+  private uniformDirty = true;
+  private macrosDirty = true;
   private glMaterialState = new GLMaterialState();
 
   constructor (
@@ -217,14 +217,14 @@ export class GLMaterial extends Material {
   override enableMacro (keyword: string, value?: boolean | number): void {
     if (!this.isMacroEnabled(keyword) || this.enabledMacros[keyword] !== value) {
       this.enabledMacros[keyword] = value ?? true;
-      this.macrosDirtyFlag = true;
+      this.macrosDirty = true;
     }
   }
 
   override disableMacro (keyword: string): void {
     if (this.isMacroEnabled(keyword)) {
       delete this.enabledMacros[keyword];
-      this.macrosDirtyFlag = true;
+      this.macrosDirty = true;
     }
   }
 
@@ -275,10 +275,11 @@ export class GLMaterial extends Material {
   }
 
   override createShaderVariant () {
-    if (!this.shaderVariant || this.shaderVariant.shader !== this.shader || this.macrosDirtyFlag) {
+    if (this.shaderDirty || this.macrosDirty) {
       this.shaderVariant = this.shader.createVariant(this.enabledMacros);
-      this.macrosDirtyFlag = false;
-      this.uniformDirtyFlag = true;
+      this.macrosDirty = false;
+      this.shaderDirty = false;
+      this.uniformDirty = true;
     }
   }
 
@@ -308,15 +309,15 @@ export class GLMaterial extends Material {
       for (name of globalUniforms.samplers) {
         if (!this.samplers.includes(name)) {
           this.samplers.push(name);
-          this.uniformDirtyFlag = true;
+          this.uniformDirty = true;
         }
       }
     }
 
     // 更新 cached uniform location
-    if (this.uniformDirtyFlag) {
+    if (this.uniformDirty) {
       shaderVariant.fillShaderInformation(this.uniforms, this.samplers);
-      this.uniformDirtyFlag = false;
+      this.uniformDirty = false;
     }
 
     if (globalUniforms) {
@@ -493,7 +494,7 @@ export class GLMaterial extends Material {
   setTexture (name: string, texture: Texture) {
     if (!this.samplers.includes(name)) {
       this.samplers.push(name);
-      this.uniformDirtyFlag = true;
+      this.uniformDirty = true;
     }
     this.textures[name] = texture;
   }
@@ -525,7 +526,7 @@ export class GLMaterial extends Material {
     clonedMaterial.matrixArrays = this.matrixArrays;
     clonedMaterial.samplers = this.samplers;
     clonedMaterial.uniforms = this.uniforms;
-    clonedMaterial.uniformDirtyFlag = true;
+    clonedMaterial.uniformDirty = true;
 
     return clonedMaterial;
   }
@@ -723,7 +724,7 @@ export class GLMaterial extends Material {
   private checkUniform (uniformName: string): void {
     if (!this.uniforms.includes(uniformName)) {
       this.uniforms.push(uniformName);
-      this.uniformDirtyFlag = true;
+      this.uniformDirty = true;
     }
   }
 

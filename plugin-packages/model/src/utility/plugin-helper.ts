@@ -982,34 +982,6 @@ export class PluginHelper {
               console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}.`);
             }
           }
-        } else if (item.type === spec.ItemType.tree) {
-          const jsonItem = item as spec.ModelTreeItem<'json'>;
-          const studioItem = item as spec.ModelTreeItem<'studio'>;
-          const jsonAnimations = jsonItem.content.options.tree.animations;
-          const studioAnimations = studioItem.content.options.tree.animations;
-
-          if (jsonAnimations !== undefined && studioAnimations !== undefined) {
-            jsonAnimations.forEach((jsonAnim, i) => {
-              const studioAnim = studioAnimations[i];
-
-              jsonAnim.tracks.forEach((jsonTrack, j) => {
-                const inputArray = typedArrayFromBinary(scene.bins, jsonTrack.input);
-                const outputArray = typedArrayFromBinary(scene.bins, jsonTrack.output);
-                const studioTrack = studioAnim.tracks[j];
-
-                if (inputArray instanceof Float32Array) {
-                  studioTrack.input = inputArray;
-                } else {
-                  console.error(`setupItem3DOptions: Type of inputArray should be float32, ${inputArray}.`);
-                }
-                if (outputArray instanceof Float32Array) {
-                  studioTrack.output = outputArray;
-                } else {
-                  console.error(`setupItem3DOptions: Type of outputArray should be float32, ${outputArray}.`);
-                }
-              });
-            });
-          }
         } else if (item.type === spec.ItemType.skybox) {
           const skybox = item as spec.ModelSkyboxItem<'json'>;
           const studioSkybox = item as spec.ModelSkyboxItem<'studio'>;

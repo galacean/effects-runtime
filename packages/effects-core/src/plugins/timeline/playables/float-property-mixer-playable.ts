@@ -1,6 +1,6 @@
 import type { FrameContext } from '../../cal/playable-graph';
 import { Playable } from '../../cal/playable-graph';
-import { FloatPropertyClipPlayable } from './float-property-clip-playable';
+import { PropertyClipPlayable } from './property-clip-playable';
 
 export class FloatPropertyMixerPlayable extends Playable {
   propertyName = '';
@@ -20,9 +20,9 @@ export class FloatPropertyMixerPlayable extends Playable {
       const weight = this.getInputWeight(i);
 
       if (weight > 0) {
-        const propertyClipPlayable = this.getInput(i);
+        const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<number>;
 
-        if (!(propertyClipPlayable instanceof FloatPropertyClipPlayable)) {
+        if (!(propertyClipPlayable instanceof PropertyClipPlayable)) {
           console.error('FloatPropertyTrack added non-FloatPropertyPlayableAsset');
           continue;
         }

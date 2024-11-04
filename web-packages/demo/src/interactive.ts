@@ -19,6 +19,9 @@ const container = document.getElementById('J-container');
     player.on('update', e => {
       document.getElementById('J-playerState')!.innerText = `[player update] - player is ${e.playing ? 'playing' : 'paused'}`;
     });
+    player.on('pause', () => {
+      console.info('[player pause] - player is paused.');
+    });
 
     document.getElementById('J-pauseBtn')?.addEventListener('click', () => {
       player.pause();

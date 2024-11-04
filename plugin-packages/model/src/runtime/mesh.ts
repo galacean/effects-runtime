@@ -12,8 +12,6 @@ import type { PSkybox } from './skybox';
 import { GeometryBoxProxy, HitTestingProxy } from '../utility/plugin-helper';
 import { BoxMesh } from '../utility/ri-helper';
 import { RayBoxTesting } from '../utility/hit-test-helper';
-import type { ModelTreeNode } from '../plugin';
-import { ModelTreeComponent } from '../plugin';
 import type { ModelMeshComponent } from '../plugin/model-item';
 
 type Box3 = math.Box3;
@@ -1195,17 +1193,6 @@ class EffectsMeshProxy {
 
   isHide (): boolean {
     return this.data.hide === true;
-  }
-
-  getParentNode (): ModelTreeNode | undefined {
-    const nodeIndex = this.getParentIndex();
-    const parentTree = this.parentItem?.getComponent(ModelTreeComponent);
-
-    if (parentTree !== undefined && nodeIndex >= 0) {
-      return parentTree.content.getNodeById(nodeIndex);
-    }
-
-    return undefined;
   }
 
   getParentIndex (): number {

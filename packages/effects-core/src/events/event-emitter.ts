@@ -1,3 +1,6 @@
+/**
+ *
+ */
 export type EventEmitterListener<P extends any[]> = (...callbackArgs: P) => void;
 
 /**
@@ -10,6 +13,9 @@ export type EventEmitterOptions = {
   once?: boolean,
 };
 
+/**
+ * 事件监听器
+ */
 export class EventEmitter<T extends Record<string, any[]>> {
   private listeners: Record<string, Array<{ listener: EventEmitterListener<any[]>, options?: EventEmitterOptions }>> = {};
 

@@ -5,6 +5,7 @@
 
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { ShapePath } from './shape-path';
+import type { StarType } from './poly-star';
 
 export class GraphicsPath {
   instructions: PathInstruction[] = [];
@@ -54,6 +55,12 @@ export class GraphicsPath {
     return this;
   }
 
+  /**
+   * Sets the starting point for a new sub-path. Any subsequent drawing commands are considered part of this path.
+   * @param x - The x-coordinate for the starting point.
+   * @param y - The y-coordinate for the starting point.
+   * @returns The instance of the current object for chaining.
+   */
   moveTo (x: number, y: number): GraphicsPath {
     this.instructions.push({ action: 'moveTo', data: [x, y] });
 
@@ -62,8 +69,43 @@ export class GraphicsPath {
     return this;
   }
 
-  ellipse (x: number, y: number, radiusX: number, radiusY: number, matrix?: Matrix4) {
-    this.instructions.push({ action: 'ellipse', data: [x, y, radiusX, radiusY, matrix] });
+  /**
+   * Draws an ellipse at the specified location and with the given x and y radii.
+   * An optional transformation can be applied, allowing for rotation, scaling, and translation.
+   * @param x - The x-coordinate of the center of the ellipse.
+   * @param y - The y-coordinate of the center of the ellipse.
+   * @param radiusX - The horizontal radius of the ellipse.
+   * @param radiusY - The vertical radius of the ellipse.
+   * @param transform - An optional `Matrix` object to apply a transformation to the ellipse. This can include rotations.
+   * @returns The instance of the current object for chaining.
+   */
+  ellipse (x: number, y: number, radiusX: number, radiusY: number, transform?: Matrix4) {
+    this.instructions.push({ action: 'ellipse', data: [x, y, radiusX, radiusY, transform] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  /**
+   * Draws a rectangle shape. This method adds a new rectangle path to the current drawing.
+   * @param x - The x-coordinate of the top-left corner of the rectangle.
+   * @param y - The y-coordinate of the top-left corner of the rectangle.
+   * @param w - The width of the rectangle.
+   * @param h - The height of the rectangle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the rectangle.
+   * @returns The instance of the current object for chaining.
+   */
+  rect (x: number, y: number, w: number, h: number, transform?: Matrix4): this {
+    this.instructions.push({ action: 'rect', data: [x, y, w, h, transform] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  polyStar (pointCount: number, outerRadius: number, innerRadius: number, outerRoundness: number, innerRoundness: number, starType: StarType, transform?: Matrix4) {
+    this.instructions.push({ action: 'polyStar', data: [pointCount, outerRadius, innerRadius, outerRoundness, innerRoundness, starType, transform] });
 
     this.dirty = true;
 
@@ -99,6 +141,7 @@ export interface PathInstruction {
   | 'roundShape'
   | 'filletRect'
   | 'chamferRect'
+  | 'polyStar'
   ,
   data: any[],
 }

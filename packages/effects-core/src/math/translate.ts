@@ -2,7 +2,7 @@ import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { ItemLinearVelOverLifetime } from '../plugins';
-import type { ValueGetter } from './value-getter';
+import type { ValueGetter } from './value-getters';
 
 export function translatePoint (x: number, y: number): number[] {
   const origin = [-.5, .5, -.5, -.5, .5, .5, .5, -.5];

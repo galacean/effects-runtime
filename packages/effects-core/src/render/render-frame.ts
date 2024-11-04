@@ -146,6 +146,10 @@ export interface RenderFrameOptions {
    */
   globalVolume?: PostProcessVolume,
   /**
+   * 后处理是否开启
+   */
+  postProcessingEnabled?: boolean,
+  /**
    * 名称
    */
   name?: string,
@@ -186,7 +190,7 @@ export class RenderFrame implements Disposable {
   /**
    * 存放后处理的属性设置
    */
-  globalVolume: PostProcessVolume;
+  globalVolume?: PostProcessVolume;
   renderer: Renderer;
   resource: RenderFrameResource;
   keepColorBuffer?: boolean;
@@ -221,6 +225,7 @@ export class RenderFrame implements Disposable {
       camera, keepColorBuffer, renderer,
       editorTransform = [1, 1, 0, 0],
       globalVolume,
+      postProcessingEnabled = false,
       clearAction = {
         colorAction: TextureLoadAction.whatever,
         stencilAction: TextureLoadAction.clear,
@@ -238,10 +243,10 @@ export class RenderFrame implements Disposable {
     let drawObjectPassClearAction = {};
 
     this.renderer = renderer;
-    if (this.globalVolume) {
-      const { useHDR } = this.globalVolume;
+    if (postProcessingEnabled) {
+      const enableHDR = true;
       // 使用HDR浮点纹理，FLOAT在IOS上报错，使用HALF_FLOAT
-      const textureType = useHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
+      const textureType = enableHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
 
       attachments = [{ texture: { format: glContext.RGBA, type: textureType, magFilter: glContext.LINEAR, minFilter: glContext.LINEAR } }];
       depthStencilAttachment = { storageType: RenderPassAttachmentStorageType.depth_stencil_opaque };
@@ -266,14 +271,15 @@ export class RenderFrame implements Disposable {
 
     this.setRenderPasses(renderPasses);
 
-    if (this.globalVolume) {
+    if (postProcessingEnabled) {
       const sceneTextureHandle = new RenderTargetHandle(engine);  //保存后处理前的屏幕图像
 
       const gaussianStep = 7; // 高斯模糊的迭代次数，次数越高模糊范围越大
       const viewport: vec4 = [0, 0, this.renderer.getWidth() / 2, this.renderer.getHeight() / 2];
 
       const gaussianDownResults = new Array<RenderTargetHandle>(gaussianStep);  //存放多个高斯Pass的模糊结果，用于Bloom
-      const textureType = this.globalVolume.useHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
+      const enableHDR = true;
+      const textureType = enableHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
       const bloomThresholdPass = new BloomThresholdPass(renderer, {
         name: 'BloomThresholdPass',
         attachments: [{

@@ -7,6 +7,7 @@ export * from './interact/interact-loader';
 export * from './interact/interact-mesh';
 export * from './interact/interact-vfx-item';
 export * from './interact/interact-item';
+export * from './interact/mesh-collider';
 export * from './sprite/sprite-loader';
 export * from './sprite/sprite-item';
 export * from './sprite/sprite-mesh';

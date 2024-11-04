@@ -1,53 +1,60 @@
+import * as spec from '@galacean/effects-specification';
 import { effectsClass, serialize } from '../decorators';
 import { Behaviour } from './component';
+import type { Engine } from '../engine';
 
 // TODO spec 增加 DataType
-@effectsClass('PostProcessVolume')
+/**
+ * @since 2.1.0
+ */
+@effectsClass(spec.DataType.PostProcessVolume)
 export class PostProcessVolume extends Behaviour {
-  @serialize()
-  useHDR = true;
-
-  // Bloom
-  @serialize()
-  useBloom = true;
 
   @serialize()
-  threshold = 1.0;
+  bloom: spec.Bloom;
 
   @serialize()
-  bloomIntensity = 1.0;
-
-  // ColorAdjustments
-  @serialize()
-  brightness = 1.0;
+  vignette: spec.Vignette;
 
   @serialize()
-  saturation = 1.0;
+  tonemapping: spec.Tonemapping;
 
   @serialize()
-  contrast = 1.0;
+  colorAdjustments: spec.ColorAdjustments;
 
-  // Vignette
-  @serialize()
-  vignetteIntensity = 0.2;
+  constructor (engine: Engine) {
+    super(engine);
 
-  @serialize()
-  vignetteSmoothness = 0.4;
+    this.bloom = {
+      threshold: 0,
+      intensity: 0,
+      active: false,
+    };
 
-  @serialize()
-  vignetteRoundness = 1.0;
+    this.vignette = {
+      intensity: 0,
+      smoothness: 0,
+      roundness: 0,
+      active: false,
+    };
 
-  // ToneMapping
-  @serialize()
-  useToneMapping: boolean = true; // 1: true, 0: false
+    this.tonemapping = {
+      active: false,
+    };
+
+    this.colorAdjustments = {
+      brightness: 0,
+      saturation: 0,
+      contrast: 0,
+      active: false,
+    };
+  }
 
   override onStart (): void {
     const composition = this.item.composition;
 
     if (composition) {
-      composition.globalVolume = this;
-
-      composition.createRenderFrame();
+      composition.renderFrame.globalVolume = this;
     }
   }
 }

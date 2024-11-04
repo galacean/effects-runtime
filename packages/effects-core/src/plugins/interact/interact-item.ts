@@ -13,6 +13,7 @@ import type { Renderer } from '../../render';
 import { effectsClass } from '../../decorators';
 
 /**
+ * 交互组件
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.InteractComponent)
@@ -30,10 +31,19 @@ export class InteractComponent extends RendererComponent {
    * 拖拽的距离映射系数，越大越容易拖动
    */
   dragRatio: number[] = [1, 1];
+  /**
+   * 拖拽X范围
+   */
+  dragRange: {
+    dxRange: [min: number, max: number],
+    dyRange: [min: number, max: number],
+  } = {
+      dxRange: [0, 0],
+      dyRange: [0, 0],
+    };
 
   /** 是否响应点击和拖拽交互事件 */
   private _interactive = true;
-  private hasBeenAddedToComposition = false;
 
   set interactive (enable: boolean) {
     this._interactive = enable;
@@ -45,6 +55,22 @@ export class InteractComponent extends RendererComponent {
 
   get interactive () {
     return this._interactive;
+  }
+
+  getDragRangeX (): [min:number, max: number] {
+    return this.dragRange.dxRange;
+  }
+
+  setDragRangeX (min: number, max: number) {
+    this.dragRange.dxRange = [min, max];
+  }
+
+  getDragRangeY (): [min:number, max: number] {
+    return this.dragRange.dyRange;
+  }
+
+  setDragRangeY (min: number, max: number) {
+    this.dragRange.dyRange = [min, max];
   }
 
   override onStart (): void {
@@ -73,15 +99,28 @@ export class InteractComponent extends RendererComponent {
       this.materials = this.previewContent.mesh.materials;
     }
     this.item.getHitTestParams = this.getHitTestParams;
-    this.item.onEnd = () => {
-      if (this.item && this.item.composition) {
-        this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
-        this.clickable = false;
-        this.hasBeenAddedToComposition = false;
-        this.previewContent?.mesh.dispose();
-        this.endDragTarget();
-      }
-    };
+  }
+
+  override onDisable (): void {
+    if (this.item && this.item.composition) {
+      this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
+      this.clickable = false;
+      this.previewContent?.mesh.dispose();
+      this.endDragTarget();
+    }
+  }
+
+  override onEnable (): void {
+    const { type } = this.interactData.options as spec.ClickInteractOption;
+
+    if (type === spec.InteractType.CLICK) {
+      this.clickable = true;
+    }
+    const options = this.item.props.content.options as spec.DragInteractOption;
+
+    if (this.item.composition) {
+      this.item.composition.addInteractiveItem(this.item, options.type);
+    }
   }
 
   override onUpdate (dt: number): void {
@@ -89,12 +128,6 @@ export class InteractComponent extends RendererComponent {
       return;
     }
     this.previewContent?.updateMesh();
-    if (!this.hasBeenAddedToComposition && this.item.composition) {
-      const options = this.item.props.content.options as spec.DragInteractOption;
-
-      this.item.composition.addInteractiveItem(this.item, options.type);
-      this.hasBeenAddedToComposition = true;
-    }
 
     if (!this.dragEvent || !this.bouncingArg) {
       return;
@@ -131,7 +164,6 @@ export class InteractComponent extends RendererComponent {
       return;
     }
 
-    const options = (this.item.props as spec.InteractItem).content.options as spec.DragInteractOption;
     const { position, fov } = evt.cameraParam;
     const dy = event.dy;
     const dx = event.dx * event.width / event.height;
@@ -139,24 +171,20 @@ export class InteractComponent extends RendererComponent {
     const sp = Math.tan(fov * Math.PI / 180 / 2) * Math.abs(depth);
     const height = dy * sp;
     const width = dx * sp;
+    const { dxRange, dyRange } = this.dragRange;
     let nx = position[0] - this.dragRatio[0] * width;
     let ny = position[1] - this.dragRatio[1] * height;
 
-    if (options.dxRange) {
-      const [min, max] = options.dxRange;
+    const [xMin, xMax] = dxRange;
+    const [yMin, yMax] = dyRange;
 
-      nx = clamp(nx, min, max);
-      if (nx !== min && nx !== max && min !== max) {
-        event.origin?.preventDefault();
-      }
+    nx = clamp(nx, xMin, xMax);
+    ny = clamp(ny, yMin, yMax);
+    if (nx !== xMin && nx !== xMax && xMin !== xMax) {
+      event.origin?.preventDefault();
     }
-    if (options.dyRange) {
-      const [min, max] = options.dyRange;
-
-      ny = clamp(ny, min, max);
-      if (ny !== min && ny !== max && min !== max) {
-        event.origin?.preventDefault();
-      }
+    if (ny !== yMin && ny !== yMax && yMin !== yMax) {
+      event.origin?.preventDefault();
     }
     this.item.composition.camera.position = new Vector3(nx, ny, depth);
   }
@@ -165,7 +193,6 @@ export class InteractComponent extends RendererComponent {
     if (options.target !== 'camera') {
       return;
     }
-
     let dragEvent: Partial<DragEventType> | null;
     const handlerMap: Record<string, (event: TouchEventType) => void> = {
       touchstart: (event: TouchEventType) => {
@@ -253,6 +280,16 @@ export class InteractComponent extends RendererComponent {
   override fromData (data: spec.InteractContent): void {
     super.fromData(data);
     this.interactData = data;
+    if (data.options.type === spec.InteractType.DRAG) {
+      const options = data.options as spec.DragInteractOption;
+
+      if (options.dxRange) {
+        this.dragRange.dxRange = options.dxRange;
+      }
+      if (options.dyRange) {
+        this.dragRange.dyRange = options.dyRange;
+      }
+    }
   }
 
   canInteract (): boolean {

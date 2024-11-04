@@ -2,18 +2,15 @@ import * as EFFECTS from '@galacean/effects';
 import { VFXItem, logger, registerPlugin } from '@galacean/effects';
 import { OrientationPluginLoader } from './orientation-plugin-loader';
 
-declare global {
-  interface Window {
-    ge: any,
-  }
-}
-
 registerPlugin('orientation-transformer', OrientationPluginLoader, VFXItem);
 
 export { getAdapter, closeDeviceMotion, openDeviceMotion, OrientationPluginLoader } from './orientation-plugin-loader';
 export { OrientationAdapterAcceler } from './orientation-adapter-acceler';
 export * from './orientation-component';
 
+/**
+ * 插件版本号
+ */
 export const version = __VERSION__;
 
 logger.info(`Plugin orientation transformer version: ${version}.`);

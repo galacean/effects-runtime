@@ -6,6 +6,7 @@ import { ObjectBindingTrack } from '../../cal/calculate-item';
 import type { FrameContext, PlayableGraph } from '../../cal/playable-graph';
 import { Playable, PlayableAsset, PlayableTraversalMode } from '../../cal/playable-graph';
 import type { Constructor } from '../../../utils';
+import { TrackInstance } from '../track-instance';
 
 @effectsClass(spec.DataType.TimelineAsset)
 export class TimelineAsset extends PlayableAsset {
@@ -26,7 +27,7 @@ export class TimelineAsset extends PlayableAsset {
     return timelinePlayable;
   }
 
-  createTrack<T extends TrackAsset> (classConstructor: Constructor<T>, parent: TrackAsset, name?: string): T {
+  createTrack<T extends TrackAsset>(classConstructor: Constructor<T>, parent: TrackAsset, name?: string): T {
     const newTrack = new classConstructor(this.engine);
 
     newTrack.name = name ? name : classConstructor.name;
@@ -41,6 +42,7 @@ export class TimelineAsset extends PlayableAsset {
 
 export class TimelinePlayable extends Playable {
   clips: RuntimeClip[] = [];
+  masterTrackInstances: TrackInstance[] = [];
 
   override prepareFrame (context: FrameContext): void {
     this.evaluate();
@@ -48,6 +50,9 @@ export class TimelinePlayable extends Playable {
 
   evaluate () {
     const time = this.getTime();
+
+    // update all tracks binding
+    this.updateTrackAnimatedObject(this.masterTrackInstances);
 
     // TODO search active clips
 
@@ -60,12 +65,17 @@ export class TimelinePlayable extends Playable {
     this.sortTracks(tracks);
     const outputTrack: TrackAsset[] = [];
 
+    // flatten track tree
     for (const masterTrack of tracks) {
       outputTrack.push(masterTrack);
       this.addSubTracksRecursive(masterTrack, outputTrack);
     }
 
+    // map for searching track instance with track asset guid
+    const trackInstanceMap: Record<string, TrackInstance> = {};
+
     for (const track of outputTrack) {
+      // create track mixer and track output
       const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
 
       this.addInput(trackMixPlayable, 0);
@@ -74,7 +84,40 @@ export class TimelinePlayable extends Playable {
       trackOutput.setUserData(track.boundObject);
 
       graph.addOutput(trackOutput);
-      trackOutput.setSourcePlayeble(this, this.getInputCount() - 1);
+      trackOutput.setSourcePlayable(this, this.getInputCount() - 1);
+
+      // create track instance
+      const trackInstance = new TrackInstance(track, trackMixPlayable, trackOutput);
+
+      trackInstanceMap[track.getInstanceId()] = trackInstance;
+
+      if (!track.parent) {
+        this.masterTrackInstances.push(trackInstance);
+      }
+    }
+
+    // build trackInstance tree
+    for (const track of outputTrack) {
+      const trackInstance = trackInstanceMap[track.getInstanceId()];
+
+      for (const child of track.getChildTracks()) {
+        const childTrackInstance = trackInstanceMap[child.getInstanceId()];
+
+        trackInstance.addChild(childTrackInstance);
+      }
+    }
+  }
+
+  private updateTrackAnimatedObject (trackInstances: TrackInstance[]) {
+    for (const trackInstance of trackInstances) {
+      const trackAsset = trackInstance.trackAsset;
+
+      // update track binding use custom method
+      trackAsset.updateAnimatedObject();
+      trackInstance.output.setUserData(trackAsset.boundObject);
+
+      // update children tracks
+      this.updateTrackAnimatedObject(trackInstance.children);
     }
   }
 

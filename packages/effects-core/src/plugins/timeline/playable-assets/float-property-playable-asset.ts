@@ -1,17 +1,18 @@
 import type { FixedNumberExpression } from '@galacean/effects-specification';
-import { createValueGetter } from '../../../math/value-getter';
 import { effectsClass, serialize } from '../../../decorators';
 import type { Playable, PlayableGraph } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
-import { FloatPropertyClipPlayable } from '../playables';
+import { PropertyClipPlayable } from '../playables';
+import { createValueGetter } from '../../../math';
+import * as spec from '@galacean/effects-specification';
 
-@effectsClass('FloatPropertyPlayableAsset')
+@effectsClass(spec.DataType.FloatPropertyPlayableAsset)
 export class FloatPropertyPlayableAsset extends PlayableAsset {
   @serialize()
   curveData: FixedNumberExpression;
 
   override createPlayable (graph: PlayableGraph): Playable {
-    const clipPlayable = new FloatPropertyClipPlayable(graph);
+    const clipPlayable = new PropertyClipPlayable(graph);
 
     clipPlayable.curve = createValueGetter(this.curveData);
     clipPlayable.value = clipPlayable.curve.getValue(0);

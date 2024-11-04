@@ -9,7 +9,7 @@ import { SubCompositionMixerPlayable } from '../playables';
 @effectsClass(spec.DataType.SubCompositionTrack)
 export class SubCompositionTrack extends TrackAsset {
 
-  override resolveBinding () {
+  override updateAnimatedObject () {
     if (!this.parent || !(this.parent.boundObject instanceof VFXItem)) {
       throw new Error('SubCompositionTrack needs to be set under the VFXItem track.');
     }

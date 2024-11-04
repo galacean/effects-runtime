@@ -4,17 +4,17 @@ import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { MaterialProps } from '../material';
-import { Material } from '../material';
+import { Material, setMaskMode } from '../material';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
 import type { ShapePath } from '../plugins/shape/shape-path';
-import type { Renderer } from '../render';
 import { Geometry, GLSLVersion } from '../render';
-import { RendererComponent } from './renderer-component';
+import { MeshComponent } from './mesh-component';
+import { StarType } from '../plugins/shape/poly-star';
 
 interface CurveData {
-  point: spec.Vector3Data,
-  controlPoint1: spec.Vector3Data,
-  controlPoint2: spec.Vector3Data,
+  point: spec.Vector2Data,
+  controlPoint1: spec.Vector2Data,
+  controlPoint2: spec.Vector2Data,
 }
 
 /**
@@ -22,28 +22,23 @@ interface CurveData {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends RendererComponent {
+export class ShapeComponent extends MeshComponent {
 
   private path = new GraphicsPath();
   private curveValues: CurveData[] = [];
-  private geometry: Geometry;
   private data: ShapeComponentData;
-  private dirty = false;
+  private animated = true;
 
   private vert = `
 precision highp float;
 
 attribute vec3 aPos;//x y
 
-varying vec4 vColor;
-
-uniform vec4 _Color;
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_ObjectToWorld;
 
 void main() {
-  vColor = _Color;
   vec4 pos = vec4(aPos.xyz, 1.0);
   gl_Position = effects_MatrixVP * effects_ObjectToWorld * pos;
 }
@@ -52,14 +47,18 @@ void main() {
   private frag = `
 precision highp float;
 
-varying vec4 vColor;
+uniform vec4 _Color;
 
 void main() {
-  vec4 color = vec4(1.0,1.0,1.0,1.0);
+  vec4 color = _Color;
   gl_FragColor = color;
 }
 `;
 
+  /**
+   *
+   * @param engine
+   */
   constructor (engine: Engine) {
     super(engine);
 
@@ -98,25 +97,21 @@ void main() {
 
       this.material = Material.create(engine, materialProps);
       this.material.setColor('_Color', new Color(1, 1, 1, 1));
-      this.material.depthMask = true;
+      this.material.depthMask = false;
       this.material.depthTest = true;
       this.material.blending = true;
     }
   }
 
-  override onUpdate (dt: number): void {
-    if (this.dirty) {
-      this.buildPath(this.data);
-      this.buildGeometryFromPath(this.path.shapePath);
-      // this.dirty = false;
-    }
+  override onStart (): void {
+    this.item.getHitTestParams = this.getHitTestParams;
   }
 
-  override render (renderer: Renderer): void {
-    if (renderer.renderingData.currentFrame.globalUniforms) {
-      renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
+  override onUpdate (dt: number): void {
+    if (this.animated) {
+      this.buildPath(this.data);
+      this.buildGeometryFromPath(this.path.shapePath);
     }
-    renderer.drawGeometry(this.geometry, this.material);
   }
 
   private buildGeometryFromPath (shapePath: ShapePath) {
@@ -179,16 +174,21 @@ void main() {
 
   private buildPath (data: ShapeComponentData) {
     this.path.clear();
-    switch (data.type) {
-      case ComponentShapeType.CUSTOM: {
-        const customData = data as ShapeCustomComponent;
-        const points = customData.param.points;
-        const easingIns = customData.param.easingIn;
-        const easingOuts = customData.param.easingOut;
+
+    const shapeData = data;
+
+    switch (shapeData.type) {
+      case ShapePrimitiveType.Custom: {
+        const customData = shapeData as CustomShapeData;
+        const points = customData.points;
+        const easingIns = customData.easingIns;
+        const easingOuts = customData.easingOuts;
 
         this.curveValues = [];
 
-        for (const shape of customData.param.shapes) {
+        for (const shape of customData.shapes) {
+          this.setFillColor(shape.fill);
+
           const indices = shape.indexes;
 
           for (let i = 1; i < indices.length; i++) {
@@ -222,14 +222,50 @@ void main() {
 
         break;
       }
-      case ComponentShapeType.ELLIPSE: {
-        const ellipseData = data as ShapeEllipseComponent;
-        const ellipseParam = ellipseData.param;
+      case ShapePrimitiveType.Ellipse: {
+        const ellipseData = shapeData as EllipseData;
 
-        this.path.ellipse(0, 0, ellipseParam.xRadius, ellipseParam.yRadius);
+        this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
+
+        this.setFillColor(ellipseData.fill);
 
         break;
       }
+      case ShapePrimitiveType.Rectangle: {
+        const rectangleData = shapeData as RectangleData;
+
+        this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
+
+        this.setFillColor(rectangleData.fill);
+
+        break;
+      }
+      case ShapePrimitiveType.Star: {
+        const starData = shapeData as StarData;
+
+        this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
+
+        this.setFillColor(starData.fill);
+
+        break;
+      }
+      case ShapePrimitiveType.Polygon: {
+        const polygonData = shapeData as PolygonData;
+
+        this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
+
+        this.setFillColor(polygonData.fill);
+
+        break;
+      }
+    }
+  }
+
+  private setFillColor (fill?: ShapeFillParam) {
+    if (fill) {
+      const color = fill.color;
+
+      this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
     }
   }
 
@@ -237,7 +273,12 @@ void main() {
     super.fromData(data);
     this.data = data;
 
-    this.dirty = true;
+    const material = this.material;
+
+    //@ts-expect-error // TODO 新版蒙版上线后重构
+    material.stencilRef = data.renderer.mask !== undefined ? [data.renderer.mask, data.renderer.mask] : undefined;
+    //@ts-expect-error // TODO 新版蒙版上线后重构
+    setMaskMode(material, data.renderer.maskMode);
   }
 }
 
@@ -250,65 +291,55 @@ export interface ShapeComponentData extends spec.ComponentData {
   /**
    * 矢量类型
    */
-  type: ComponentShapeType,
+  type: ShapePrimitiveType,
 }
 
 /**
  * 矢量图形类型
  */
-export enum ComponentShapeType {
+export enum ShapePrimitiveType {
   /**
    * 自定义图形
    */
-  CUSTOM,
+  Custom,
   /**
    * 矩形
    */
-  RECTANGLE,
+  Rectangle,
   /**
    * 椭圆
    */
-  ELLIPSE,
+  Ellipse,
   /**
    * 多边形
    */
-  POLYGON,
+  Polygon,
   /**
    * 星形
    */
-  STAR,
+  Star,
 }
 
 /**
  * 自定义图形组件
  */
-export interface ShapeCustomComponent extends ShapeComponentData {
+export interface CustomShapeData extends ShapeComponentData {
   /**
    * 矢量类型 - 形状
    */
-  type: ComponentShapeType.CUSTOM,
-  /**
-   * 矢量参数 - 形状
-   */
-  param: ShapeCustomParam,
-}
-
-/**
- * 矢量路径参数
- */
-export interface ShapeCustomParam {
+  type: ShapePrimitiveType.Custom,
   /**
    * 路径点
    */
-  points: spec.Vector3Data[],
+  points: spec.Vector2Data[],
   /**
    * 入射控制点
    */
-  easingIn: spec.Vector3Data[],
+  easingIns: spec.Vector2Data[],
   /**
    * 入射控制点
    */
-  easingOut: spec.Vector3Data[],
+  easingOuts: spec.Vector2Data[],
   /**
    * 自定义形状
    */
@@ -319,10 +350,6 @@ export interface ShapeCustomParam {
  * 自定义形状参数
  */
 export interface CustomShape {
-  /**
-   * 是否垂直与平面 - 用于减少实时运算
-   */
-  verticalToPlane: 'x' | 'y' | 'z' | 'none',
   /**
    * 点索引 - 用于构成闭合图形
    */
@@ -370,7 +397,7 @@ export interface ShapeFillParam {
   /**
    * 填充颜色
    */
-  color: spec.ColorExpression,
+  color: spec.ColorData,
 }
 
 /**
@@ -384,7 +411,7 @@ export interface ShapeStrokeParam {
   /**
    * 线颜色
    */
-  color: spec.ColorExpression,
+  color: spec.ColorData,
   /**
    * 连接类型
    */
@@ -405,27 +432,118 @@ export enum ShapePointType {
 }
 
 /**
- * @description 椭圆组件参数
+ * 椭圆组件参数
  */
-export interface ShapeEllipseComponent extends ShapeComponentData {
-  type: ComponentShapeType.ELLIPSE,
-  param: ShapeEllipseParam,
-}
-
-/**
- * @description 椭圆参数
- */
-export interface ShapeEllipseParam {
+export interface EllipseData extends ShapeComponentData {
+  type: ShapePrimitiveType.Ellipse,
   /**
-   * @description x轴半径
+   * x 轴半径
    * -- TODO 后续完善类型
    * -- TODO 可以看一下用xRadius/yRadius 还是 width/height
    */
   xRadius: number,
   /**
-   * @description y轴半径
+   * y 轴半径
    */
   yRadius: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * 星形参数
+ */
+export interface StarData extends ShapeComponentData {
+  /**
+   * 顶点数 - 内外顶点同数
+   */
+  pointCount: number,
+  /**
+   * 内径
+   */
+  innerRadius: number,
+  /**
+   * 外径
+   */
+  outerRadius: number,
+  /**
+   * 内径点圆度
+   */
+  innerRoundness: number,
+  /**
+   * 外径点圆度
+   */
+  outerRoundness: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * 多边形参数
+ */
+export interface PolygonData extends ShapeComponentData {
+  /**
+   * 顶点数
+   */
+  pointCount: number,
+  /**
+   * 外切圆半径
+   */
+  radius: number,
+  /**
+   * 角点圆度
+   */
+  roundness: number,
+  /**
+   * 填充属性
+   */
+  fill?: ShapeFillParam,
+  /**
+   * 描边属性
+   */
+  stroke?: ShapeStrokeParam,
+  /**
+   * 空间变换
+   */
+  transform?: spec.TransformData,
+}
+
+/**
+ * 矩形参数
+ */
+export interface RectangleData extends ShapeComponentData {
+  /**
+   * 宽度
+   */
+  width: number,
+  /**
+   * 高度
+   */
+  height: number,
+  /**
+   * 角点元素
+   */
+  roundness: number,
   /**
    * 填充属性
    */

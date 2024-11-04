@@ -6,6 +6,11 @@ import { generateGUID } from './utils';
  * @since 2.0.0
  */
 export abstract class EffectsObject {
+  /**
+   *
+   * @param obj
+   * @returns
+   */
   static is (obj: unknown): obj is EffectsObject {
     return obj instanceof EffectsObject && 'guid' in obj;
   }
@@ -16,6 +21,10 @@ export abstract class EffectsObject {
    */
   readonly taggedProperties: Record<string, any>;
 
+  /**
+   *
+   * @param engine
+   */
   constructor (
     public engine: Engine,
   ) {
@@ -24,16 +33,27 @@ export abstract class EffectsObject {
     this.engine.addInstance(this);
   }
 
+  /**
+   *
+   * @returns
+   */
   getInstanceId () {
     return this.guid;
   }
 
+  /**
+   *
+   * @param guid
+   */
   setInstanceId (guid: string) {
     this.engine.removeInstance(this.guid);
     this.guid = guid;
     this.engine.addInstance(this);
   }
 
+  /**
+   *
+   */
   toData () { }
 
   /**
@@ -47,5 +67,8 @@ export abstract class EffectsObject {
     }
   }
 
+  /**
+   *
+   */
   dispose () { }
 }

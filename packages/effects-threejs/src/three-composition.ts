@@ -61,13 +61,6 @@ export class ThreeComposition extends Composition {
     super(props, scene);
   }
 
-  /**
-   * 更新 video texture 数据
-   */
-  override updateVideo () {
-    void this.textures.map(tex => (tex as ThreeTexture).startVideo());
-  }
-
   override prepareRender (): void {
     const render = this.renderer;
     const frame = this.renderFrame;

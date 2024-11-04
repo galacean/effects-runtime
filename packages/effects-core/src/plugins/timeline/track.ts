@@ -57,7 +57,7 @@ export class TrackAsset extends PlayableAsset {
   /**
    * 重写该方法以获取自定义对象绑定
    */
-  resolveBinding () {
+  updateAnimatedObject () {
     if (this.parent) {
       this.boundObject = this.parent.boundObject;
     }
@@ -98,6 +98,8 @@ export class TrackAsset extends PlayableAsset {
 
     for (const timelineClip of timelineClips) {
       const clipPlayable = this.createClipPlayable(graph, timelineClip);
+
+      clipPlayable.setDuration(timelineClip.duration);
 
       const clip = new RuntimeClip(timelineClip, clipPlayable, mixer, this);
 
@@ -226,23 +228,16 @@ export class RuntimeClip {
     }
     this.parentMixer.setInputWeight(this.playable, weight);
 
+    const clipTime = clip.toLocalTime(localTime);
+
+    this.playable.setTime(clipTime);
+
     // 判断动画是否结束
     if (ended) {
-      if (boundObject instanceof VFXItem && !boundObject.ended) {
-        boundObject.ended = true;
-        boundObject.onEnd();
-        if (!boundObject.compositionReusable && !boundObject.reusable) {
-          boundObject.dispose();
-          this.playable.dispose();
-        }
-      }
       if (this.playable.getPlayState() === PlayState.Playing) {
         this.playable.pause();
       }
     }
-    const clipTime = clip.toLocalTime(localTime);
-
-    this.playable.setTime(clipTime);
   }
 }
 

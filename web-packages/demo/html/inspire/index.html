@@ -45,22 +45,18 @@
   </div>
   <div class="am-flexbox-item">
     <div class="am-flexbox">
-      <div class="am-flexbox-item">
-        <button type="button" class="am-button" id="J-start">开始</button>
-      </div>
-      <div class="am-flexbox-item">
-        <button type="button" class="am-button white" id="J-pause">暂停</button>
-      </div>
+      <button type="button" class="am-button" id="J-start">开始</button>
+      <button type="button" class="am-button white" id="J-pause">暂停</button>
+    </div>
+    <div class="am-flexbox">
+      <select id="J-framework">
+        <option value="webgl">WebGL1</option>
+        <option value="webgl2">WebGL2</option>
+      </select>
       <div class="am-checkbox agreement">
-        <input id="loop" type="checkbox">
+        <input id="loop" type="checkbox" />
         <span class="icon-check" aria-hidden="true"></span>
         <label for="loop">循环播放</label>
-      </div>
-      <div class="am-flexbox-item">
-        <select id="J-framework">
-          <option value="webgl">WebGL1</option>
-          <option value="webgl2">WebGL2</option>
-        </select>
       </div>
     </div>
   </div>

@@ -5,12 +5,12 @@ import * as spec from '@galacean/effects-specification';
 import { Behaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region, TrackAsset } from './plugins';
-import { HitTestType, ObjectBindingTrack } from './plugins';
+import { HitTestType } from './plugins';
 import type { Playable } from './plugins/cal/playable-graph';
 import { PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { generateGUID, noop } from './utils';
-import { Item, VFXItem } from './vfx-item';
+import { VFXItem } from './vfx-item';
 import { SerializationHelper } from './serialization-helper';
 
 export interface SceneBinding {
@@ -55,9 +55,6 @@ export class CompositionComponent extends Behaviour {
       const boundObject = track.boundObject;
 
       if (boundObject instanceof VFXItem) {
-        if (track instanceof ObjectBindingTrack) {
-          boundObject.reusable = value;
-        }
         const subCompositionComponent = boundObject.getComponent(CompositionComponent);
 
         if (subCompositionComponent) {
@@ -82,12 +79,12 @@ export class CompositionComponent extends Behaviour {
     if (this.item.composition) {
       for (const item of this.items) {
         item.composition = this.item.composition;
-        const itemData = item.props;
 
         // 设置预合成作为元素时的时长、结束行为和渲染延时
-        if (Item.isComposition(itemData)) {
+        if (VFXItem.isComposition(item)) {
           this.item.composition.refContent.push(item);
-          const refId = itemData.content.options.refId;
+          const compositionContent = item.props.content as unknown as spec.CompositionContent;
+          const refId = compositionContent.options.refId;
           const props = this.item.composition.refCompositionProps.get(refId);
 
           if (!props) {
@@ -108,15 +105,15 @@ export class CompositionComponent extends Behaviour {
     }
   }
 
-  showItems () {
+  override onEnable () {
     for (const item of this.items) {
-      item.setVisible(true);
+      item.setActive(true);
     }
   }
 
-  hideItems () {
+  override onDisable () {
     for (const item of this.items) {
-      item.setVisible(false);
+      item.setActive(false);
     }
   }
 
@@ -146,9 +143,8 @@ export class CompositionComponent extends Behaviour {
       const item = this.items[i];
 
       if (
-        item.getVisible()
+        item.isActive
         && item.transform.getValid()
-        && !item.ended
         && !VFXItem.isComposition(item)
         && !skip(item)
       ) {
@@ -237,16 +233,20 @@ export class CompositionComponent extends Behaviour {
     for (const sceneBinding of this.sceneBindings) {
       sceneBinding.key.boundObject = sceneBinding.value;
     }
+
+    // 未了通过帧对比，需要保证和原有的 update 时机一致。
+    // 因此这边更新一次对象绑定，后续 timeline playable 中 sort tracks 的排序才能和原先的版本对上。
+    // 如果不需要严格保证和之前的 updata 时机一致，这边的更新和 timeline playable 中的 sortTracks 都能去掉。
     for (const masterTrack of this.timelineAsset.tracks) {
-      this.resolveTrackBindingsWithRoot(masterTrack);
+      this.updateTrackAnimatedObject(masterTrack);
     }
   }
 
-  private resolveTrackBindingsWithRoot (track: TrackAsset) {
+  private updateTrackAnimatedObject (track: TrackAsset) {
     for (const subTrack of track.getChildTracks()) {
-      subTrack.resolveBinding();
+      subTrack.updateAnimatedObject();
 
-      this.resolveTrackBindingsWithRoot(subTrack);
+      this.updateTrackAnimatedObject(subTrack);
     }
   }
 }
