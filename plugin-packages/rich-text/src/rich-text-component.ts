@@ -155,6 +155,9 @@ export class RichTextComponent extends TextComponent {
     }
     let charsLineHeight = charsInfo[0].lineHeight - charsInfo[0].offsetY;
 
+    if (charsInfo.length === 0) {
+      return;
+    }
     charsInfo.forEach((charInfo, index) => {
       const { richOptions, offsetX } = charInfo;
       const x = textLayout.getOffsetX(textStyle, charInfo.width);
