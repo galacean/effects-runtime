@@ -3,7 +3,6 @@ import { effectsClass, serialize } from '../decorators';
 import { Behaviour } from './component';
 import type { Engine } from '../engine';
 
-// TODO spec 增加 DataType
 /**
  * @since 2.1.0
  */
