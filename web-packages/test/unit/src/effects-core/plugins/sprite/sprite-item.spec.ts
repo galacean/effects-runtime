@@ -287,7 +287,7 @@ describe('core/plugins/sprite/item', () => {
 
     spriteItem?.setTexture(testTexture);
     const material = spriteItem?.material;
-    const texture = material?.getTexture('uSampler0');
+    const texture = material?.getTexture('_MainTex');
 
     expect(texture?.id).to.eql(testTexture.id, 'texture id');
   });

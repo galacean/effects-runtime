@@ -120,6 +120,28 @@ export abstract class Material extends EffectsObject implements Disposable {
     this.shaderDirty = true;
   }
 
+  /**
+   * 材质的主纹理
+   */
+  get mainTexture () {
+    return this.getTexture('_MainTex') as Texture;
+  }
+
+  set mainTexture (value: Texture) {
+    this.setTexture('_MainTex', value);
+  }
+
+  /**
+   * 材质的主颜色
+   */
+  get color () {
+    return this.getColor('_Color') as Color;
+  }
+
+  set color (value: Color) {
+    this.setColor('_Color', value);
+  }
+
   /******** effects-core 中会调用 引擎必须实现 ***********************/
   /**
    * 设置 Material 的颜色融合开关
