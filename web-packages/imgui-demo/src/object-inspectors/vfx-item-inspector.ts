@@ -29,9 +29,9 @@ export class VFXItemInspector extends ObjectInspector {
     ImGui.Text('GUID');
     ImGui.SameLine(alignWidth);
     ImGui.Text(activeObject.getInstanceId());
-    ImGui.Text('Visible');
+    ImGui.Text('Is Active');
     ImGui.SameLine(alignWidth);
-    ImGui.Checkbox('##Visible', (_ = activeObject.isActive) => {
+    ImGui.Checkbox('##IsActive', (_ = activeObject.isActive) => {
       activeObject.setActive(_);
 
       return activeObject.isActive;
@@ -65,33 +65,40 @@ export class VFXItemInspector extends ObjectInspector {
     for (const componet of activeObject.components) {
       const customEditor = UIManager.customEditors.get(componet.constructor);
 
-      if (customEditor) {
-        if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
-          customEditor.onInspectorGUI();
-        }
-        continue;
-      }
       if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
+        ImGui.Text('Enabled');
+        ImGui.SameLine(alignWidth);
+        ImGui.Checkbox('##Enabled', (_ = componet.enabled) => {
+          componet.enabled = _;
+
+          return componet.enabled;
+        });
+
+        if (customEditor) {
+          customEditor.onInspectorGUI();
+          continue;
+
+        }
 
         const propertyDecoratorStore = getMergedStore(componet);
 
-        for (const peopertyName of Object.keys(componet)) {
-          const key = peopertyName as keyof Component;
+        for (const propertyName of Object.keys(componet)) {
+          const key = propertyName as keyof Component;
           const property = componet[key];
-          const ImGuiID = componet.getInstanceId() + peopertyName;
+          const ImGuiID = componet.getInstanceId() + propertyName;
 
           if (typeof property === 'number') {
-            ImGui.Text(peopertyName);
+            ImGui.Text(propertyName);
             ImGui.SameLine(alignWidth);
             //@ts-expect-error
             ImGui.DragFloat('##DragFloat' + ImGuiID, (_ = componet[key]) => componet[key] = _, 0.03);
           } else if (typeof property === 'boolean') {
-            ImGui.Text(peopertyName);
+            ImGui.Text(propertyName);
             ImGui.SameLine(alignWidth);
             //@ts-expect-error
             ImGui.Checkbox('##Checkbox' + ImGuiID, (_ = componet[key]) => componet[key] = _);
           } else if (property instanceof EffectsObject) {
-            ImGui.Text(peopertyName);
+            ImGui.Text(propertyName);
             ImGui.SameLine(alignWidth);
             let name = 'EffectsObject';
 
