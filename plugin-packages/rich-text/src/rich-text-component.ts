@@ -97,6 +97,8 @@ export class RichTextComponent extends TextComponent {
     const { textLayout, textStyle } = this;
 
     const context = this.context;
+
+    context.save();
     const charsInfo: RichCharInfo[] = [];
     const fontHeight = textStyle.fontSize * this.textStyle.fontScale;
     let charInfo: RichCharInfo = {
@@ -199,6 +201,7 @@ export class RichTextComponent extends TextComponent {
     );
 
     this.isDirty = false;
+    context.restore();
   }
 
   override updateWithOptions (options: spec.TextContentOptions) {
