@@ -11,6 +11,7 @@ import type { ShapePrimitive } from './shape-primitive';
 import { Ellipse } from './ellipse';
 import type { StarType } from './poly-star';
 import { PolyStar } from './poly-star';
+import { Rectangle } from './rectangle';
 
 export class ShapePath {
   currentPoly: Polygon | null = null;
@@ -48,6 +49,11 @@ export class ShapePath {
         }
         case 'polyStar': {
           this.polyStar(data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
+
+          break;
+        }
+        case 'rect': {
+          this.rect(data[0], data[1], data[2], data[3], data[4]);
 
           break;
         }
@@ -113,6 +119,21 @@ export class ShapePath {
 
   polyStar (pointCount: number, outerRadius: number, innerRadius: number, outerRoundness: number, innerRoundness: number, starType: StarType, transform?: Matrix4) {
     this.drawShape(new PolyStar(pointCount, outerRadius, innerRadius, outerRoundness, innerRoundness, starType), transform);
+
+    return this;
+  }
+
+  /**
+   * Draws a rectangle shape. This method adds a new rectangle path to the current drawing.
+   * @param x - The x-coordinate of the top-left corner of the rectangle.
+   * @param y - The y-coordinate of the top-left corner of the rectangle.
+   * @param w - The width of the rectangle.
+   * @param h - The height of the rectangle.
+   * @param transform - An optional `Matrix` object to apply a transformation to the rectangle.
+   * @returns The instance of the current object for chaining.
+   */
+  rect (x: number, y: number, w: number, h: number, transform?: Matrix4): this {
+    this.drawShape(new Rectangle(x, y, w, h), transform);
 
     return this;
   }
