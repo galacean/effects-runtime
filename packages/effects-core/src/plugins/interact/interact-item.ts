@@ -42,6 +42,8 @@ export class InteractComponent extends RendererComponent {
       dyRange: [0, 0],
     };
 
+  private duringPlay = false;
+
   /** 是否响应点击和拖拽交互事件 */
   private _interactive = true;
 
@@ -57,7 +59,7 @@ export class InteractComponent extends RendererComponent {
     return this._interactive;
   }
 
-  getDragRangeX (): [min:number, max: number] {
+  getDragRangeX (): [min: number, max: number] {
     return this.dragRange.dxRange;
   }
 
@@ -65,7 +67,7 @@ export class InteractComponent extends RendererComponent {
     this.dragRange.dxRange = [min, max];
   }
 
-  getDragRangeY (): [min:number, max: number] {
+  getDragRangeY (): [min: number, max: number] {
     return this.dragRange.dyRange;
   }
 
@@ -103,7 +105,10 @@ export class InteractComponent extends RendererComponent {
 
   override onDisable (): void {
     if (this.item && this.item.composition) {
-      this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
+      if (this.duringPlay) {
+        this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
+        this.duringPlay = false;
+      }
       this.clickable = false;
       this.previewContent?.mesh.dispose();
       this.endDragTarget();
@@ -116,17 +121,18 @@ export class InteractComponent extends RendererComponent {
     if (type === spec.InteractType.CLICK) {
       this.clickable = true;
     }
-    const options = this.item.props.content.options as spec.DragInteractOption;
-
-    if (this.item.composition) {
-      this.item.composition.addInteractiveItem(this.item, options.type);
-    }
   }
 
   override onUpdate (dt: number): void {
-    if (!this.isActiveAndEnabled) {
-      return;
+    this.duringPlay = true;
+
+    // trigger messageBegin when item enter
+    if (this.item.time > 0 && this.item.time - dt / 1000 <= 0) {
+      const options = this.item.props.content.options as spec.DragInteractOption;
+
+      this.item.composition?.addInteractiveItem(this.item, options.type);
     }
+
     this.previewContent?.updateMesh();
 
     if (!this.dragEvent || !this.bouncingArg) {
