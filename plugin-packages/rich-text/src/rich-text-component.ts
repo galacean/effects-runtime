@@ -51,7 +51,8 @@ export class RichTextComponent extends TextComponent {
     this.name = 'MRichText' + seed++;
   }
 
-  private generateTextProgram (text: string) {
+  private generateTextProgram(text: string) {
+    this.processedTextOptions = [];
     const program = generateProgram((text, context) => {
       const textArr = text.split('\n');
 
