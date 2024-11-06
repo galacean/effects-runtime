@@ -245,6 +245,11 @@ export class RenderFrame implements Disposable {
     this.renderer = renderer;
     if (postProcessingEnabled) {
       const enableHDR = true;
+
+      if (!this.renderer.engine.gpuCapability.detail.halfFloatTexture) {
+        throw new Error('Half float texture is not supported.');
+      }
+
       // 使用HDR浮点纹理，FLOAT在IOS上报错，使用HALF_FLOAT
       const textureType = enableHDR ? glContext.HALF_FLOAT : glContext.UNSIGNED_BYTE;
 
