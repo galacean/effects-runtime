@@ -21,12 +21,37 @@ const playerOptions: PlayerConfig = {
 
 export class TestPlayer {
   constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, assetManager, oldVersion, is3DCase) {
+
+    width /= 2;
+    height /= 2;
+
     this.width = width;
     this.height = height;
-    //
+
+    this.div = document.createElement('div');
+
+    this.div.style.position = 'absolute';
+    this.div.style.width = width + 'px';
+    this.div.style.height = height + 'px';
+    this.div.style.backgroundColor = 'black';
+
+    const left = 1800;
+    const top = 800;
+
+    if (oldVersion) {
+      this.div.style.left = left + 'px';
+      this.div.style.top = top + 'px';
+    } else {
+      this.div.style.left = (left + width) + 'px';
+      this.div.style.top = top + 'px';
+    }
+
     this.canvas = document.createElement('canvas');
-    this.canvas.width = width;
-    this.canvas.height = height;
+
+    const body = document.getElementsByTagName('body')[0];
+
+    body.appendChild(this.div);
+    this.div.appendChild(this.canvas);
     this.renderFramework = renderFramework;
     //
     this.player = new playerClass({
@@ -210,6 +235,8 @@ export class TestPlayer {
     this.player = null;
     this.canvas.remove();
     this.canvas = null;
+    this.div.remove();
+    this.div = null;
   }
 }
 
