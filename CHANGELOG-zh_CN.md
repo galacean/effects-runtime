@@ -8,6 +8,19 @@
 
 ---
 
+## 2.0.7
+
+`2024-10-30`
+
+- Fix: 修复 Spine 元素遮罩问题。[#706](https://github.com/galacean/effects-runtime/pull/706) @RGCHN
+- Fix: 移除 Player 类中关于渲染错误队列的无用代码。[#664](https://github.com/galacean/effects-runtime/pull/664) @Sruimeng
+
+## 2.0.6
+
+`2024-09-13`
+
+- Fix: 补充 TextDecoder 的适配。[#642](https://github.com/galacean/effects-runtime/pull/642) @yiiqii
+
 ## 2.0.5
 
 `2024-09-10`

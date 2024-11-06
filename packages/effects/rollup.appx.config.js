@@ -35,6 +35,7 @@ const commonAdapterList = [
   'OffscreenCanvas',
   'URLSearchParams',
   'crypto',
+  'TextDecoder',
 ];
 const adapterList = {
   weapp: [...commonAdapterList],
