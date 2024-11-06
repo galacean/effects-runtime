@@ -10,6 +10,7 @@
     "plugin-packages/model",
     "plugin-packages/multimedia",
     "plugin-packages/orientation-transformer",
+    "plugin-packages/rich-text",
     "plugin-packages/spine",
     "plugin-packages/stats"
   ],
