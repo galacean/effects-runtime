@@ -14,6 +14,8 @@ updates:
     directory: "/packages/effects-core"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "@galacean/effects-specification"
 
   - package-ecosystem: "npm"
     directory: "/packages/effects-helper"
@@ -24,6 +26,9 @@ updates:
     directory: "/packages/effects-threejs"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "three"
+      - dependency-name: "@types/three"
 
   - package-ecosystem: "npm"
     directory: "/packages/effects-webgl"

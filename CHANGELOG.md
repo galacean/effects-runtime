@@ -7,6 +7,19 @@
 
 ---
 
+## 2.0.7
+
+`2024-10-30`
+
+- Fix: Resolve the Spine element masking issue. [#706](https://github.com/galacean/effects-runtime/pull/706) @RGCHN
+- Fix: Remove unused code related to the render error queue in the Player class. [#664](https://github.com/galacean/effects-runtime/pull/664) @Sruimeng
+
+## 2.0.6
+
+`2024-09-13`
+
+- Fix: Extend support for TextDecoder compatibility. [#642](https://github.com/galacean/effects-runtime/pull/642) @yiiqii
+
 ## 2.0.5
 
 `2024-09-10`

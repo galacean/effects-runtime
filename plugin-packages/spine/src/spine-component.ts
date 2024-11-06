@@ -51,6 +51,11 @@ export interface SpineDataCache extends SpineBaseData {
   editorResourceID?: string,
 }
 
+export interface SpineMaskOptions {
+  mask?: number,
+  maskMode?: number,
+}
+
 /**
  * Spine 组件
  * @since 2.0.0
@@ -83,7 +88,7 @@ export class SpineComponent extends RendererComponent {
   /**
    * renderer 数据
    */
-  renderer: {};
+  rendererOptions: SpineMaskOptions;
   options: spec.PluginSpineOption;
 
   private content: SlotGroup | null;
@@ -110,11 +115,10 @@ export class SpineComponent extends RendererComponent {
     super(engine);
   }
 
-  // TODO 发包后修改
-  // override fromData (data: spec.SpineComponent<TextureAtlas, SkeletonData>)
   override fromData (data: spec.SpineComponent) {
     super.fromData(data);
     this.options = data.options;
+    this.rendererOptions = data.renderer || {};
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
@@ -152,8 +156,6 @@ export class SpineComponent extends RendererComponent {
     this.initContent(this.cache.atlas, this.cache.skeletonData, this.options);
     // @ts-expect-error
     this.startSize = this.options.startSize;
-    // @ts-expect-error
-    this.renderer = this.options.renderer;
 
     if (!(this.state && this.skeleton)) {
       return;
@@ -226,7 +228,7 @@ export class SpineComponent extends RendererComponent {
       meshName: this.name,
       transform: this.transform,
       pma: this.pma,
-      renderer: this.renderer,
+      renderOptions: this.rendererOptions,
       engine: this.engine,
     });
   }
