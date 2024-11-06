@@ -18,11 +18,11 @@ export class MeshCollider {
   }
 
   getBoundingBox (): BoundingBoxTriangle {
-    let maxX = 0;
-    let maxY = 0;
+    let maxX = -Number.MAX_VALUE;
+    let maxY = -Number.MAX_VALUE;
 
-    let minX = 0;
-    let minY = 0;
+    let minX = Number.MAX_VALUE;
+    let minY = Number.MAX_VALUE;
 
     for (const triangle of this.boundingBoxData.area) {
       maxX = Math.max(triangle.p0.x, triangle.p1.x, triangle.p2.x, maxX);

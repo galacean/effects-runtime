@@ -105,7 +105,7 @@ export class InteractComponent extends RendererComponent {
 
   override onDisable (): void {
     if (this.item && this.item.composition) {
-      if (this.duringPlay) {
+      if (this.duringPlay && !this.item.transform.getValid()) {
         this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
         this.duringPlay = false;
       }
