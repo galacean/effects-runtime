@@ -514,7 +514,7 @@ export class TextComponentBase {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.material.setTexture('uSampler0',
+    this.material.setTexture('_MainTex',
       Texture.createWithData(
         this.engine,
         {

@@ -45,7 +45,7 @@ export class VideoComponent extends BaseRenderComponent {
 
     this.engine.removeTexture(oldTexture);
     this.renderer.texture = texture;
-    this.material.setTexture('uSampler0', texture);
+    this.material.setTexture('_MainTex', texture);
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;
   }
 

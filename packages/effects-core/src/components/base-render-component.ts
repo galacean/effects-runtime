@@ -10,7 +10,7 @@ import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import { addItem } from '../utils';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
-import { HitTestType, maxSpriteMeshItemCount, spriteMeshShaderFromRenderInfo } from '../plugins';
+import { HitTestType, spriteMeshShaderFromRenderInfo } from '../plugins';
 import type { MaterialProps } from '../material';
 import { getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
 import { trianglesFromRect } from '../math';
@@ -126,7 +126,7 @@ export class BaseRenderComponent extends RendererComponent {
    */
   setTexture (texture: Texture) {
     this.renderer.texture = texture;
-    this.material.setTexture('uSampler0', texture);
+    this.material.setTexture('_MainTex', texture);
   }
 
   /**
@@ -213,17 +213,8 @@ export class BaseRenderComponent extends RendererComponent {
     geometry.setIndexData(indexData);
     geometry.setAttributeData('atlasOffset', attributes.atlasOffset);
     geometry.setDrawCount(data.index.length);
-    for (let i = 0; i < textures.length; i++) {
-      const texture = textures[i];
 
-      material.setTexture('uSampler' + i, texture);
-    }
-    // FIXME: 内存泄漏的临时方案，后面再调整
-    const emptyTexture = this.emptyTexture;
-
-    for (let k = textures.length; k < maxSpriteMeshItemCount; k++) {
-      material.setTexture('uSampler' + k, emptyTexture);
-    }
+    material.setTexture('_MainTex', texture);
   }
 
   protected getItemGeometryData () {
@@ -307,7 +298,7 @@ export class BaseRenderComponent extends RendererComponent {
     setMaskMode(material, states.maskMode);
     setSideMode(material, states.side);
 
-    material.shader.shaderData.properties = 'uSampler0("uSampler0",2D) = "white" {}';
+    material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
     if (!material.hasUniform('_Color')) {
       material.setVector4('_Color', new Vector4(0, 0, 0, 1));
     }
