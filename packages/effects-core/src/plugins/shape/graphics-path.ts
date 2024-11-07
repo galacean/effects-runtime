@@ -89,8 +89,8 @@ export class GraphicsPath {
 
   /**
    * Draws a rectangle shape. This method adds a new rectangle path to the current drawing.
-   * @param x - The x-coordinate of the top-left corner of the rectangle.
-   * @param y - The y-coordinate of the top-left corner of the rectangle.
+   * @param x - The x-coordinate of the upper-left corner of the rectangle.
+   * @param y - The y-coordinate of the upper-left corner of the rectangle.
    * @param w - The width of the rectangle.
    * @param h - The height of the rectangle.
    * @param transform - An optional `Matrix` object to apply a transformation to the rectangle.
