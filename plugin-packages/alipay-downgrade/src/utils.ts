@@ -80,7 +80,8 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 function registerEvent (options: DowngradeOptions) {
   const { autoPause } = options;
 
-  window.addEventListener('unload', () => {
+  // SSR时window对象不存在 需要判断
+  window && window.addEventListener('unload', () => {
     getActivePlayers().forEach(player => player.dispose());
   });
 
