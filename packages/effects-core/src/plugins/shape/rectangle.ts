@@ -3,7 +3,7 @@ import { ShapePrimitive } from './shape-primitive';
 // const tempPoints = [new Point(), new Point(), new Point(), new Point()];
 
 /**
- * The `Rectangle` object is an area defined by its position, as indicated by its top-left corner
+ * The `Rectangle` object is an area defined by its position, as indicated by its upper-left corner
  * point (`x`, `y`) and by its `width` and its `height`.
  */
 export class Rectangle extends ShapePrimitive {

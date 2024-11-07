@@ -234,7 +234,7 @@ void main() {
       case ShapePrimitiveType.Rectangle: {
         const rectangleData = shapeData as RectangleData;
 
-        this.path.rect(-rectangleData.width / 2, rectangleData.height / 2, rectangleData.width, rectangleData.height);
+        this.path.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height);
 
         this.setFillColor(rectangleData.fill);
 
