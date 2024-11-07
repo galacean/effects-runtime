@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-downgrade",
-  "version": "2.0.3",
+  "version": "2.0.7",
   "description": "Galacean Effects player downgrade plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
