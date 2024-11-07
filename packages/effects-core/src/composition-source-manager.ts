@@ -170,8 +170,10 @@ export class CompositionSourceManager implements Disposable {
       }
 
       if (shapeData !== undefined) {
-        // @ts-expect-error 类型转换问题
-        renderContent.renderer.shape = getGeometryByShape(shapeData, split);
+        if (!('aPoint' in shapeData && 'index' in shapeData)) {
+          // @ts-expect-error 类型转换问题
+          renderContent.renderer.shape = getGeometryByShape(shapeData, split);
+        }
       }
     }
 

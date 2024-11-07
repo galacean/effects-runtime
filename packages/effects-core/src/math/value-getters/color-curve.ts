@@ -13,10 +13,10 @@ export class ColorCurve extends ValueGetter<Color> {
   private aCurve: BezierCurve;
 
   override onCreate (arg: spec.ColorCurveData) {
-    this.rCurve = createValueGetter(arg.r) as BezierCurve;
-    this.gCurve = createValueGetter(arg.g) as BezierCurve;
-    this.bCurve = createValueGetter(arg.b) as BezierCurve;
-    this.aCurve = createValueGetter(arg.a) as BezierCurve;
+    this.rCurve = createValueGetter(arg[0]) as BezierCurve;
+    this.gCurve = createValueGetter(arg[1]) as BezierCurve;
+    this.bCurve = createValueGetter(arg[2]) as BezierCurve;
+    this.aCurve = createValueGetter(arg[3]) as BezierCurve;
   }
 
   override getValue (t: number): Color {

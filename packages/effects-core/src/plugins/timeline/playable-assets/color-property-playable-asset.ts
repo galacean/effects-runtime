@@ -9,7 +9,7 @@ import * as spec from '@galacean/effects-specification';
 @effectsClass(spec.DataType.ColorPropertyPlayableAsset)
 export class ColorPropertyPlayableAsset extends PlayableAsset {
   @serialize()
-  curveData: spec.ColorCurveData;
+  curveData: spec.ColorCurveValue;
 
   override createPlayable (graph: PlayableGraph): Playable {
     const clipPlayable = new PropertyClipPlayable<Color>(graph);
