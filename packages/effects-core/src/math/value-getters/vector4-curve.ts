@@ -13,10 +13,10 @@ export class Vector4Curve extends ValueGetter<Vector4> {
   private wCurve: BezierCurve;
 
   override onCreate (arg: spec.Vector4CurveData) {
-    this.xCurve = createValueGetter(arg.x) as BezierCurve;
-    this.yCurve = createValueGetter(arg.y) as BezierCurve;
-    this.zCurve = createValueGetter(arg.z) as BezierCurve;
-    this.wCurve = createValueGetter(arg.w) as BezierCurve;
+    this.xCurve = createValueGetter(arg[0]) as BezierCurve;
+    this.yCurve = createValueGetter(arg[1]) as BezierCurve;
+    this.zCurve = createValueGetter(arg[2]) as BezierCurve;
+    this.wCurve = createValueGetter(arg[3]) as BezierCurve;
   }
 
   override getValue (t: number): Vector4 {

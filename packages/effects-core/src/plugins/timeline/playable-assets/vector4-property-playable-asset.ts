@@ -9,7 +9,7 @@ import type * as spec from '@galacean/effects-specification';
 @effectsClass('Vector4PropertyPlayableAsset')
 export class Vector4PropertyPlayableAsset extends PlayableAsset {
   @serialize()
-  curveData: spec.Vector4CurveData;
+  curveData: spec.Vector4CurveValue;
 
   override createPlayable (graph: PlayableGraph): Playable {
     const clipPlayable = new PropertyClipPlayable<Vector4>(graph);

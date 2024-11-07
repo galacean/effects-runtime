@@ -150,8 +150,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.1.0-alpha.3
-        version: 2.1.0-alpha.3
+        specifier: 2.1.0-alpha.4
+        version: 2.1.0-alpha.4
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -243,6 +243,12 @@ importers:
         version: link:../../packages/effects
 
   plugin-packages/orientation-transformer:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
+  plugin-packages/rich-text:
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
@@ -2208,8 +2214,8 @@ packages:
   /@galacean/effects-specification@2.0.0:
     resolution: {integrity: sha512-7ieZALZYn5fwKLIGAskmYSKGX82ZkLRdDUInG21KsOJ2eQ5+HcI6mJU5tmN8vjZxQUc+RVuUcssExGbiaj2+5w==}
 
-  /@galacean/effects-specification@2.1.0-alpha.3:
-    resolution: {integrity: sha512-s11qcar30DqUGGXF3w7ioirYmt700TJWyGhAxARC3RmkRZOelYiDWczvjGRTHLSqBIB+B1oQ1jq380UHwn/iGg==}
+  /@galacean/effects-specification@2.1.0-alpha.4:
+    resolution: {integrity: sha512-negj3uKHT7u251MTFQL32K5sHzjHfJpouKNBnhjz2HBfVnlK7fackc4MyAyTJzRmmjZOdPwgZnu0iWgeXjeqOg==}
     dev: false
 
   /@humanwhocodes/config-array@0.11.14:
