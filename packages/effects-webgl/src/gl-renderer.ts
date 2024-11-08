@@ -117,13 +117,11 @@ export class GLRenderer extends Renderer implements Disposable {
     this.renderingData.currentFrame = frame;
     this.renderingData.currentCamera = currentCamera;
 
-    if (currentCamera) {
-      this.setGlobalMatrix('effects_MatrixInvV', currentCamera.getInverseViewMatrix());
-      this.setGlobalMatrix('effects_MatrixV', currentCamera.getViewMatrix());
-      this.setGlobalMatrix('effects_MatrixVP', currentCamera.getViewProjectionMatrix());
-      this.setGlobalMatrix('_MatrixP', currentCamera.getProjectionMatrix());
-      this.setGlobalVector3('effects_WorldSpaceCameraPos', currentCamera.position);
-    }
+    this.setGlobalMatrix('effects_MatrixInvV', currentCamera.getInverseViewMatrix());
+    this.setGlobalMatrix('effects_MatrixV', currentCamera.getViewMatrix());
+    this.setGlobalMatrix('effects_MatrixVP', currentCamera.getViewProjectionMatrix());
+    this.setGlobalMatrix('_MatrixP', currentCamera.getProjectionMatrix());
+    this.setGlobalVector3('effects_WorldSpaceCameraPos', currentCamera.position);
 
     // 根据 priority 排序 pass
     sortByOrder(passes);
