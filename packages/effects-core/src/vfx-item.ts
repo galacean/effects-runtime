@@ -682,7 +682,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       data.content = { options: {} };
     }
 
-    if (duration <= 0) {
+    if (duration < 0) {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
