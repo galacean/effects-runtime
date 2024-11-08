@@ -90,7 +90,16 @@ export class SpriteComponent extends BaseRenderComponent {
     }
     const life = Math.min(Math.max(time / duration, 0.0), 1.0);
     const ta = this.textureSheetAnimation;
+    const { video } = this.renderer.texture.source as Texture2DSourceOptionsVideo;
 
+    if (video) {
+
+      if (time === 0) {
+        video.pause();
+      } else {
+        video.play().catch(e => { this.engine.renderErrors.add(e); });
+      }
+    }
     if (ta) {
       const total = ta.total || (ta.row * ta.col);
       let texRectX = 0;
@@ -139,15 +148,7 @@ export class SpriteComponent extends BaseRenderComponent {
         dx, dy,
       ]);
     }
-    const { video } = this.renderer.texture.source as Texture2DSourceOptionsVideo;
 
-    if (video) {
-      if (time === 0 || (time === this.item.duration)) {
-        video.pause();
-      } else {
-        video.play().catch(e => { this.engine.renderErrors.add(e); });
-      }
-    }
   }
 
   override onDestroy (): void {
