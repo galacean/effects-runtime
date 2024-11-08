@@ -7,6 +7,12 @@
 
 ---
 
+## 1.6.9
+
+`2024-11-08`
+
+- Fix: Add downgrade plugin with SSR environment `window` check. [#733](https://github.com/galacean/effects-runtime/pull/733) @RGCHN
+
 ## 1.6.8
 
 `2024-09-04`
