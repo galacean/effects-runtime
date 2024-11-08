@@ -2,7 +2,7 @@ import type {
   Texture, Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps,
   GeometryFromShape,
 } from '@galacean/effects';
-import { spec, math, BaseRenderComponent, effectsClass, glContext } from '@galacean/effects';
+import { spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
@@ -93,10 +93,20 @@ export class VideoComponent extends BaseRenderComponent {
 
     this.interaction = interaction;
     this.pauseVideo();
+    this.renderInfo = getImageItemRenderInfo(this);
+
+    const geometry = this.createGeometry(glContext.TRIANGLES);
+    const material = this.createMaterial(this.renderInfo, 2);
+
+    this.worldMatrix = math.Matrix4.fromIdentity();
+    this.material = material;
+    this.geometry = geometry;
+
+    this.material.setVector4('_Color', new math.Vector4().setFromArray(startColor));
+    this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
 
     this.setItem();
 
-    this.material.setVector4('_Color', new math.Vector4().setFromArray(startColor));
   }
 
   override onUpdate (dt: number): void {
