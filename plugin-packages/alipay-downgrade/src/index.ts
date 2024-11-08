@@ -46,12 +46,12 @@ export function setAlipayDowngradeBizId (bizId: string, options: AlipayDowngrade
 
   registerPlugin('alipay-downgrade', AlipayDowngradePlugin, DowngradeVFXItem, true);
 
-  window.addEventListener('unload', () => {
+  window && window.addEventListener('unload', () => {
     getActivePlayers().forEach(player => player.dispose());
   });
 
   if (!disableGLLostEvent) {
-    window.addEventListener('webglcontextlost', e => {
+    window && window.addEventListener('webglcontextlost', e => {
       if (isCanvasUsedByPlayer(e.target as HTMLCanvasElement)) {
         AlipayDowngradePlugin.glLostOccurred = true;
         console.error('webgl lost occur');
