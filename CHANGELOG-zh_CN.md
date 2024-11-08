@@ -8,6 +8,12 @@
 
 ---
 
+## 1.6.9
+
+`2024-11-08`
+
+- Fix: 增加降级插件 ssr 环境 `window` 判断。[#733](https://github.com/galacean/effects-runtime/pull/733) @RGCHN
+
 ## 1.6.8
 
 `2024-09-04`
