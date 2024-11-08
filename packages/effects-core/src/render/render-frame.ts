@@ -29,6 +29,7 @@ import {
   BloomThresholdPass, HQGaussianDownSamplePass, HQGaussianUpSamplePass, ToneMappingPass,
 } from './post-process-pass';
 import type { PostProcessVolume, RendererComponent } from '../components';
+import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 
 /**
  * 渲染数据，保存了当前渲染使用到的数据。
@@ -1012,7 +1013,7 @@ class FinalCopyRP extends RenderPass {
 export class GlobalUniforms {
   floats: Record<string, number> = {};
   ints: Record<string, number> = {};
-  // vector3s: Record<string, vec3> = {};
+  vector3s: Record<string, Vector3> = {};
   vector4s: Record<string, Vector4> = {};
   matrices: Record<string, Matrix4> = {};
   //...

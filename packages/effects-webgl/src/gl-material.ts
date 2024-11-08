@@ -331,6 +331,9 @@ export class GLMaterial extends Material {
       for (name in globalUniforms.vector4s) {
         shaderVariant.setVector4(name, globalUniforms.vector4s[name]);
       }
+      for (name in globalUniforms.vector3s) {
+        shaderVariant.setVector3(name, globalUniforms.vector3s[name]);
+      }
       for (name in globalUniforms.matrices) {
         shaderVariant.setMatrix(name, globalUniforms.matrices[name]);
       }
