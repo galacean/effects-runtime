@@ -51,7 +51,7 @@ export class RichTextComponent extends TextComponent {
     this.name = 'MRichText' + seed++;
   }
 
-  private generateTextProgram(text: string) {
+  private generateTextProgram (text: string) {
     this.processedTextOptions = [];
     const program = generateProgram((text, context) => {
       const textArr = text.split('\n');
@@ -142,9 +142,9 @@ export class RichTextComponent extends TextComponent {
     charsInfo.push(charInfo);
     width = Math.max(width, charInfo.width);
     height += charInfo.lineHeight;
-    const scale = width / height;
+    const size = this.item.transform.size;
 
-    this.item.transform.size.set(textStyle.fontSize * this.SCALE_FACTOR, textStyle.fontSize * this.SCALE_FACTOR * scale);
+    this.item.transform.size.set(size.x * width * this.SCALE_FACTOR * this.SCALE_FACTOR, size.y * height * this.SCALE_FACTOR * this.SCALE_FACTOR);
     this.textLayout.width = width / textStyle.fontScale;
     this.textLayout.height = height / textStyle.fontScale;
     this.canvas.width = width;
@@ -183,7 +183,7 @@ export class RichTextComponent extends TextComponent {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.material.setTexture('uSampler0',
+    this.material.setTexture('_MainTex',
       Texture.createWithData(
         this.engine,
         {
@@ -208,7 +208,7 @@ export class RichTextComponent extends TextComponent {
   override updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
-    this.text = options.text ? options.text.toString() : '';
+    this.text = options.text ? options.text.toString() : ' ';
   }
 
 }

@@ -57,7 +57,7 @@ const json = {
       transform: {
         position: { x: 0.2202, y: 2.5601, z: 0 },
         eulerHint: { x: 0, y: 0, z: 0 },
-        scale: { x: 2.2803, y: 1.5492, z: 1 },
+        scale: { x: 1, y: 1, z: 1 },
       },
       components: [{ id: 'a7f9b9e3127e4ffa9682f7692ce90e09' }],
       dataType: 'VFXItemData',
