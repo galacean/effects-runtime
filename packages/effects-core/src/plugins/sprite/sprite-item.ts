@@ -163,7 +163,7 @@ export class SpriteComponent extends BaseRenderComponent {
 
       if (
         source.sourceType === TextureSourceType.video &&
-        source.video
+        source?.video
       ) {
         source.video.pause();
         source.video.src = '';
