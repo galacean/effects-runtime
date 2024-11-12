@@ -473,10 +473,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (pause) {
       this.resume();
     }
-    if (!this.rootComposition.isStartCalled) {
-      this.rootComposition.onStart();
-      this.rootComposition.isStartCalled = true;
-    }
     this.setSpeed(1);
     this.forwardTime(time + this.startTime);
     this.setSpeed(speed);
