@@ -481,15 +481,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     if (this.pipelineContext && this.textureBuffer) {
       this.pipelineContext.gl.deleteTexture(this.textureBuffer);
     }
-    if (
-      this.source.sourceType === TextureSourceType.video &&
-      this.source.video &&
-      this.initialized
-    ) {
-      this.source.video.pause();
-      this.source.video.src = '';
-      this.source.video.load();
-    }
     this.width = 0;
     this.height = 0;
     this.textureBuffer = null;

@@ -6,7 +6,7 @@ import { glContext } from '../../gl';
 import type { GeometryDrawMode } from '../../render';
 import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
-import type { Texture, Texture2DSourceOptionsVideo } from '../../texture';
+import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
 import type { PlayableGraph, Playable } from '../cal/playable-graph';
 import { PlayableAsset } from '../cal/playable-graph';
 import type { ColorPlayableAssetData } from '../../animation';
@@ -152,9 +152,24 @@ export class SpriteComponent extends BaseRenderComponent {
   }
 
   override onDestroy (): void {
+    const textures = this.getTextures();
+
     if (this.item && this.item.composition) {
-      this.item.composition.destroyTextures(this.getTextures());
+      this.item.composition.destroyTextures(textures);
     }
+
+    textures.forEach(texture => {
+      const source = texture.source;
+
+      if (
+        source.sourceType === TextureSourceType.video &&
+        source.video
+      ) {
+        source.video.pause();
+        source.video.src = '';
+        source.video.load();
+      }
+    });
   }
 
   override createGeometry (mode: GeometryDrawMode) {
