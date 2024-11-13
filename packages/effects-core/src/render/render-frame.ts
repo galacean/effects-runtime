@@ -221,6 +221,8 @@ export class RenderFrame implements Disposable {
   protected destroyed = false;
   protected renderPassInfoMap: WeakMap<RenderPass, RenderPassInfo> = new WeakMap();
 
+  private drawObjectPass: RenderPass;
+
   constructor (options: RenderFrameOptions) {
     const {
       camera, keepColorBuffer, renderer,
@@ -263,17 +265,16 @@ export class RenderFrame implements Disposable {
       };
     }
 
-    // 创建 drawObjectPass
-    const renderPasses = [
-      new RenderPass(renderer, {
-        name: RENDER_PASS_NAME_PREFIX,
-        priority: RenderPassPriorityNormal,
-        meshOrder: OrderType.ascending,
-        depthStencilAttachment,
-        attachments,
-        clearAction: drawObjectPassClearAction,
-      }),
-    ];
+    this.drawObjectPass = new RenderPass(renderer, {
+      name: RENDER_PASS_NAME_PREFIX,
+      priority: RenderPassPriorityNormal,
+      meshOrder: OrderType.ascending,
+      depthStencilAttachment,
+      attachments,
+      clearAction: drawObjectPassClearAction,
+    });
+
+    const renderPasses = [this.drawObjectPass];
 
     this.setRenderPasses(renderPasses);
 
@@ -399,12 +400,8 @@ export class RenderFrame implements Disposable {
    * 根据 Mesh 优先级添加到 RenderPass
    * @param mesh - 要添加的 Mesh 对象
    */
-  addMeshToDefaultRenderPass (mesh?: RendererComponent) {
-    if (!mesh) {
-      return;
-    }
-
-    this.renderPasses[0].addMesh(mesh);
+  addMeshToDefaultRenderPass (mesh: RendererComponent) {
+    this.drawObjectPass.addMesh(mesh);
   }
 
   /**
@@ -413,7 +410,7 @@ export class RenderFrame implements Disposable {
    * @param mesh - 要删除的 Mesh 对象
    */
   removeMeshFromDefaultRenderPass (mesh: RendererComponent) {
-    this.renderPasses[0].removeMesh(mesh);
+    this.drawObjectPass.removeMesh(mesh);
   }
 
   /**
