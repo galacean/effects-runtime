@@ -479,6 +479,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (pause) {
       this.pause();
     }
+    this.emit('goto', { time });
   }
 
   addItem (item: VFXItem) {

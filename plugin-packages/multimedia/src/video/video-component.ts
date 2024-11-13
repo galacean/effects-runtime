@@ -109,6 +109,15 @@ export class VideoComponent extends BaseRenderComponent {
 
   }
 
+  override onStart (): void {
+    super.onStart();
+    this.item.composition?.on('goto', (option: { time: number }) => {
+      if (option.time > 0) {
+        this.setCurrentTime(option.time);
+      }
+    });
+  }
+
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
 
@@ -221,6 +230,16 @@ export class VideoComponent extends BaseRenderComponent {
   private pauseVideo (): void {
     if (this.video && !this.video.paused) {
       this.video.pause();
+    }
+  }
+
+  override onDestroy (): void {
+    super.onDestroy();
+
+    if (this.video) {
+      this.video.pause();
+      this.video.src = '';
+      this.video.load();
     }
   }
 
