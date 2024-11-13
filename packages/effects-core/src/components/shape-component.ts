@@ -1,5 +1,5 @@
 import { Color } from '@galacean/effects-math/es/core/color';
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
@@ -26,7 +26,7 @@ export class ShapeComponent extends MeshComponent {
 
   private path = new GraphicsPath();
   private curveValues: CurveData[] = [];
-  private data: ShapeComponentData;
+  private data: spec.ShapeComponentData;
   private animated = true;
 
   private vert = `
@@ -172,14 +172,14 @@ void main() {
     this.geometry.setDrawCount(indices.length);
   }
 
-  private buildPath (data: ShapeComponentData) {
+  private buildPath (data: spec.ShapeComponentData) {
     this.path.clear();
 
     const shapeData = data;
 
     switch (shapeData.type) {
-      case ShapePrimitiveType.Custom: {
-        const customData = shapeData as CustomShapeData;
+      case spec.ShapePrimitiveType.Custom: {
+        const customData = shapeData as spec.CustomShapeData;
         const points = customData.points;
         const easingIns = customData.easingIns;
         const easingOuts = customData.easingOuts;
@@ -222,8 +222,8 @@ void main() {
 
         break;
       }
-      case ShapePrimitiveType.Ellipse: {
-        const ellipseData = shapeData as EllipseData;
+      case spec.ShapePrimitiveType.Ellipse: {
+        const ellipseData = shapeData as spec.EllipseData;
 
         this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
@@ -231,8 +231,8 @@ void main() {
 
         break;
       }
-      case ShapePrimitiveType.Rectangle: {
-        const rectangleData = shapeData as RectangleData;
+      case spec.ShapePrimitiveType.Rectangle: {
+        const rectangleData = shapeData as spec.RectangleData;
 
         this.path.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height);
 
@@ -240,8 +240,8 @@ void main() {
 
         break;
       }
-      case ShapePrimitiveType.Star: {
-        const starData = shapeData as StarData;
+      case spec.ShapePrimitiveType.Star: {
+        const starData = shapeData as spec.StarData;
 
         this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
 
@@ -249,8 +249,8 @@ void main() {
 
         break;
       }
-      case ShapePrimitiveType.Polygon: {
-        const polygonData = shapeData as PolygonData;
+      case spec.ShapePrimitiveType.Polygon: {
+        const polygonData = shapeData as spec.PolygonData;
 
         this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
 
@@ -261,7 +261,7 @@ void main() {
     }
   }
 
-  private setFillColor (fill?: ShapeFillParam) {
+  private setFillColor (fill?: spec.ShapeFillParam) {
     if (fill) {
       const color = fill.color;
 
@@ -269,7 +269,7 @@ void main() {
     }
   }
 
-  override fromData (data: ShapeComponentData): void {
+  override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.data = data;
 
@@ -280,280 +280,4 @@ void main() {
     //@ts-expect-error // TODO 新版蒙版上线后重构
     setMaskMode(material, data.renderer.maskMode);
   }
-}
-
-/************************** Test Interface **********************************/
-
-/**
- * 矢量图形组件
- */
-export interface ShapeComponentData extends spec.ComponentData {
-  /**
-   * 矢量类型
-   */
-  type: ShapePrimitiveType,
-}
-
-/**
- * 矢量图形类型
- */
-export enum ShapePrimitiveType {
-  /**
-   * 自定义图形
-   */
-  Custom,
-  /**
-   * 矩形
-   */
-  Rectangle,
-  /**
-   * 椭圆
-   */
-  Ellipse,
-  /**
-   * 多边形
-   */
-  Polygon,
-  /**
-   * 星形
-   */
-  Star,
-}
-
-/**
- * 自定义图形组件
- */
-export interface CustomShapeData extends ShapeComponentData {
-  /**
-   * 矢量类型 - 形状
-   */
-  type: ShapePrimitiveType.Custom,
-  /**
-   * 路径点
-   */
-  points: spec.Vector2Data[],
-  /**
-   * 入射控制点
-   */
-  easingIns: spec.Vector2Data[],
-  /**
-   * 入射控制点
-   */
-  easingOuts: spec.Vector2Data[],
-  /**
-   * 自定义形状
-   */
-  shapes: CustomShape[],
-}
-
-/**
- * 自定义形状参数
- */
-export interface CustomShape {
-  /**
-   * 点索引 - 用于构成闭合图形
-   */
-  indexes: CustomShapePoint[],
-  /**
-   * 是否为闭合图形 - 用于Stroke
-   */
-  close: boolean,
-  /**
-   * 填充属性
-   */
-  fill?: ShapeFillParam,
-  /**
-   * 描边属性
-   */
-  stroke?: ShapeStrokeParam,
-  /**
-   * 空间变换
-   */
-  transform?: spec.TransformData,
-}
-
-/**
- * 自定义形状点
- */
-export interface CustomShapePoint {
-  /**
-   * 顶点索引
-   */
-  point: number,
-  /**
-   * 入射点索引
-   */
-  easingIn: number,
-  /**
-   * 出射点索引
-   */
-  easingOut: number,
-}
-
-/**
- * 矢量填充参数
- */
-export interface ShapeFillParam {
-  /**
-   * 填充颜色
-   */
-  color: spec.ColorData,
-}
-
-/**
- * 矢量描边参数
- */
-export interface ShapeStrokeParam {
-  /**
-   * 线宽
-   */
-  width: number,
-  /**
-   * 线颜色
-   */
-  color: spec.ColorData,
-  /**
-   * 连接类型
-   */
-  connectType: ShapeConnectType,
-  /**
-   * 点类型
-   */
-  pointType: ShapePointType,
-}
-
-// 本期无该功能 待补充
-export enum ShapeConnectType {
-
-}
-
-// @待补充
-export enum ShapePointType {
-}
-
-/**
- * 椭圆组件参数
- */
-export interface EllipseData extends ShapeComponentData {
-  type: ShapePrimitiveType.Ellipse,
-  /**
-   * x 轴半径
-   * -- TODO 后续完善类型
-   * -- TODO 可以看一下用xRadius/yRadius 还是 width/height
-   */
-  xRadius: number,
-  /**
-   * y 轴半径
-   */
-  yRadius: number,
-  /**
-   * 填充属性
-   */
-  fill?: ShapeFillParam,
-  /**
-   * 描边属性
-   */
-  stroke?: ShapeStrokeParam,
-  /**
-   * 空间变换
-   */
-  transform?: spec.TransformData,
-}
-
-/**
- * 星形参数
- */
-export interface StarData extends ShapeComponentData {
-  /**
-   * 顶点数 - 内外顶点同数
-   */
-  pointCount: number,
-  /**
-   * 内径
-   */
-  innerRadius: number,
-  /**
-   * 外径
-   */
-  outerRadius: number,
-  /**
-   * 内径点圆度
-   */
-  innerRoundness: number,
-  /**
-   * 外径点圆度
-   */
-  outerRoundness: number,
-  /**
-   * 填充属性
-   */
-  fill?: ShapeFillParam,
-  /**
-   * 描边属性
-   */
-  stroke?: ShapeStrokeParam,
-  /**
-   * 空间变换
-   */
-  transform?: spec.TransformData,
-}
-
-/**
- * 多边形参数
- */
-export interface PolygonData extends ShapeComponentData {
-  /**
-   * 顶点数
-   */
-  pointCount: number,
-  /**
-   * 外切圆半径
-   */
-  radius: number,
-  /**
-   * 角点圆度
-   */
-  roundness: number,
-  /**
-   * 填充属性
-   */
-  fill?: ShapeFillParam,
-  /**
-   * 描边属性
-   */
-  stroke?: ShapeStrokeParam,
-  /**
-   * 空间变换
-   */
-  transform?: spec.TransformData,
-}
-
-/**
- * 矩形参数
- */
-export interface RectangleData extends ShapeComponentData {
-  /**
-   * 宽度
-   */
-  width: number,
-  /**
-   * 高度
-   */
-  height: number,
-  /**
-   * 角点元素
-   */
-  roundness: number,
-  /**
-   * 填充属性
-   */
-  fill?: ShapeFillParam,
-  /**
-   * 描边属性
-   */
-  stroke?: ShapeStrokeParam,
-  /**
-   * 空间变换
-   */
-  transform?: spec.TransformData,
 }
