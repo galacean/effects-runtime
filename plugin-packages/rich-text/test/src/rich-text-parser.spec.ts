@@ -261,7 +261,7 @@ describe('test unparsable text', () => {
       { tokenType: 'Text', value: ' amused\n' },
     ]);
 
-    expect(() => parser(unparsableRichText1)).to.throw('Expected end of font style with tag "i" at position 41 but found tag "b"');
+    expect(() => parser(unparsableRichText1)).to.throw('Expect an end tag marker "i" at position 41 but found tag "b"');
   });
 
   it('case 2', () => {
@@ -273,7 +273,7 @@ describe('test unparsable text', () => {
       { tokenType: 'Text', value: 'absolutely\n' },
     ]);
 
-    expect(() => parser(unparsableRichText2)).to.throw('Expected end of font style with tag "color" at position 34 but not found any tag!');
+    expect(() => parser(unparsableRichText2)).to.throw('Expect an end tag marker "color" at position 34 but found no tag!');
   });
 });
 

@@ -92,11 +92,11 @@ export const richTextParser = (input: string): RichTextAST[] => {
         const { attributeName: endAttributeName } = ContextEnd();
 
         if (!endAttributeName) {
-          throw new Error('Expected end of font style with tag "' + expectedEndAttributeName + '" at position ' + cursor + ' but not found any tag!');
+          throw new Error('Expect an end tag marker "' + expectedEndAttributeName + '" at position ' + cursor + ' but found no tag!');
         }
 
         if (endAttributeName !== expectedEndAttributeName) {
-          throw new Error('Expected end of font style with tag "' + expectedEndAttributeName + '" at position ' + cursor + ' but found tag "' + endAttributeName + '"');
+          throw new Error('Expect an end tag marker "' + expectedEndAttributeName + '" at position ' + cursor + ' but found tag "' + endAttributeName + '"');
         }
 
         return;
@@ -133,7 +133,7 @@ export const richTextParser = (input: string): RichTextAST[] => {
         return { attributeName, attributeParam };
       }
 
-      throw new Error('Expected a font style start tag at position ' + cursor);
+      throw new Error('Expected a start tag marker at position ' + cursor);
     }
 
     return {};
@@ -153,11 +153,12 @@ export const richTextParser = (input: string): RichTextAST[] => {
         return { attributeName };
       }
 
-      throw new Error('Expected a font style end tag at position ' + cursor);
+      throw new Error('Expect an end tag marker at position ' + cursor);
     }
 
     return {};
   }
+
   Grammar();
 
   return ast;
@@ -184,6 +185,7 @@ export function generateProgram (textHandler: (text: string, context: Record<str
 
 export function isRichText (text: string): boolean {
   const lexed = lexer(text);
+
   const contextTokens = lexed.filter(({ tokenType }) => tokenType === TokenType.ContextStart || tokenType === TokenType.ContextEnd);
 
   const contextStartTokens = contextTokens.filter(({ tokenType }) => tokenType === TokenType.ContextStart);
