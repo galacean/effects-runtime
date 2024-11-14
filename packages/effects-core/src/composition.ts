@@ -518,8 +518,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   prepareRender () {
     const frame = this.renderFrame;
 
-    frame._renderPasses[0].meshes.length = 0;
-
     this.postLoaders.length = 0;
     this.pluginSystem.plugins.forEach(loader => {
       if (loader.prepareRenderFrame(this, frame)) {
@@ -527,20 +525,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
     });
 
-    this.gatherRendererComponent(this.rootItem, frame);
     this.postLoaders.forEach(loader => loader.postProcessFrame(this, frame));
-  }
-
-  protected gatherRendererComponent (vfxItem: VFXItem, renderFrame: RenderFrame) {
-    for (const rendererComponent of vfxItem.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled) {
-        renderFrame.addMeshToDefaultRenderPass(rendererComponent);
-      }
-    }
-
-    for (const item of vfxItem.children) {
-      this.gatherRendererComponent(item, renderFrame);
-    }
   }
 
   /**

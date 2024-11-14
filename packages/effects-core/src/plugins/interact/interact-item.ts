@@ -104,6 +104,7 @@ export class InteractComponent extends RendererComponent {
   }
 
   override onDisable (): void {
+    super.onDisable();
     if (this.item && this.item.composition) {
       if (this.duringPlay && !this.item.transform.getValid()) {
         this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
@@ -116,6 +117,7 @@ export class InteractComponent extends RendererComponent {
   }
 
   override onEnable (): void {
+    super.onEnable();
     const { type } = this.interactData.options as spec.ClickInteractOption;
 
     if (type === spec.InteractType.CLICK) {
