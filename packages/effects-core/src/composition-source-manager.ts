@@ -4,11 +4,9 @@ import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
 import type { PluginSystem } from './plugin-system';
 import type { Scene, SceneRenderLevel } from './scene';
-import type { ShapeData } from './shape';
 import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
 import type { Disposable } from './utils';
-import { isObject } from './utils';
 import type { VFXItemProps } from './vfx-item';
 
 let listOrder = 0;
@@ -154,13 +152,21 @@ export class CompositionSourceManager implements Disposable {
         this.processMask(renderContent.renderer);
       }
 
-      const split = renderContent.splits && !renderContent.textureSheetAnimation && renderContent.splits[0];
+      const split = renderContent.splits && !renderContent.textureSheetAnimation ? renderContent.splits[0] : undefined;
+      const shape = renderContent.renderer.shape;
+      let shapeData;
 
-      if (Number.isInteger(renderContent.renderer.shape)) {
-        // TODO: scene.shapes 类型问题？
-        renderContent.renderer.shape = getGeometryByShape(this.jsonScene?.shapes[renderContent.renderer.shape] as unknown as ShapeData, split);
-      } else if (renderContent.renderer.shape && isObject(renderContent.renderer.shape)) {
-        renderContent.renderer.shape = getGeometryByShape(renderContent.renderer.shape, split);
+      if (Number.isInteger(shape)) {
+        shapeData = this.jsonScene?.shapes[shape as number];
+      } else {
+        shapeData = shape as spec.ShapeGeometry;
+      }
+
+      if (shapeData !== undefined) {
+        if (!('aPoint' in shapeData && 'index' in shapeData)) {
+          // @ts-expect-error 类型转换问题
+          renderContent.renderer.shape = getGeometryByShape(shapeData, split);
+        }
       }
     }
 
