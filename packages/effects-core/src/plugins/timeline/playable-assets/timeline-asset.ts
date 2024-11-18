@@ -13,16 +13,34 @@ export class TimelineAsset extends PlayableAsset {
   @serialize()
   tracks: TrackAsset[] = [];
 
+  private cacheFlattenedTracks: TrackAsset[] | null = null;
+
+  get flattenedTracks () {
+    if (!this.cacheFlattenedTracks) {
+      this.cacheFlattenedTracks = [];
+      // flatten track tree
+      for (const masterTrack of this.tracks) {
+        this.cacheFlattenedTracks.push(masterTrack);
+        this.addSubTracksRecursive(masterTrack, this.cacheFlattenedTracks);
+      }
+    }
+
+    return this.cacheFlattenedTracks;
+  }
+
   override createPlayable (graph: PlayableGraph): Playable {
     const timelinePlayable = new TimelinePlayable(graph);
 
     timelinePlayable.setTraversalMode(PlayableTraversalMode.Passthrough);
+
     for (const track of this.tracks) {
       if (track instanceof ObjectBindingTrack) {
         track.create(this);
       }
     }
-    timelinePlayable.compileTracks(graph, this.tracks);
+
+    this.sortTracks(this.tracks);
+    timelinePlayable.compileTracks(graph, this.flattenedTracks);
 
     return timelinePlayable;
   }
@@ -33,7 +51,38 @@ export class TimelineAsset extends PlayableAsset {
     newTrack.name = name ? name : classConstructor.name;
     parent.addChild(newTrack);
 
+    this.invalidate();
+
     return newTrack;
+  }
+
+  /**
+   * Invalidates the asset, called when tracks data changed
+   */
+  private invalidate () {
+    this.cacheFlattenedTracks = null;
+  }
+
+  private addSubTracksRecursive (track: TrackAsset, allTracks: TrackAsset[]) {
+    for (const subTrack of track.getChildTracks()) {
+      allTracks.push(subTrack);
+    }
+    for (const subTrack of track.getChildTracks()) {
+      this.addSubTracksRecursive(subTrack, allTracks);
+    }
+  }
+
+  private sortTracks (tracks: TrackAsset[]) {
+    const sortedTracks = [];
+
+    for (let i = 0; i < tracks.length; i++) {
+      sortedTracks.push(new TrackSortWrapper(tracks[i], i));
+    }
+    sortedTracks.sort(compareTracks);
+    tracks.length = 0;
+    for (const trackWrapper of sortedTracks) {
+      tracks.push(trackWrapper.track);
+    }
   }
 
   override fromData (data: spec.TimelineAssetData): void {
@@ -62,14 +111,7 @@ export class TimelinePlayable extends Playable {
   }
 
   compileTracks (graph: PlayableGraph, tracks: TrackAsset[]) {
-    this.sortTracks(tracks);
-    const outputTrack: TrackAsset[] = [];
-
-    // flatten track tree
-    for (const masterTrack of tracks) {
-      outputTrack.push(masterTrack);
-      this.addSubTracksRecursive(masterTrack, outputTrack);
-    }
+    const outputTrack: TrackAsset[] = tracks;
 
     // map for searching track instance with track asset guid
     const trackInstanceMap: Record<string, TrackInstance> = {};
@@ -118,28 +160,6 @@ export class TimelinePlayable extends Playable {
 
       // update children tracks
       this.updateTrackAnimatedObject(trackInstance.children);
-    }
-  }
-
-  private sortTracks (tracks: TrackAsset[]) {
-    const sortedTracks = [];
-
-    for (let i = 0; i < tracks.length; i++) {
-      sortedTracks.push(new TrackSortWrapper(tracks[i], i));
-    }
-    sortedTracks.sort(compareTracks);
-    tracks.length = 0;
-    for (const trackWrapper of sortedTracks) {
-      tracks.push(trackWrapper.track);
-    }
-  }
-
-  private addSubTracksRecursive (track: TrackAsset, allTracks: TrackAsset[]) {
-    for (const subTrack of track.getChildTracks()) {
-      allTracks.push(subTrack);
-    }
-    for (const subTrack of track.getChildTracks()) {
-      this.addSubTracksRecursive(subTrack, allTracks);
     }
   }
 }
