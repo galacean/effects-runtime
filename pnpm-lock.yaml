@@ -227,8 +227,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: ^0.6.2
-        version: 0.6.2
+        specifier: ^0.7.0
+        version: 0.7.0
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -338,8 +338,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects-webgl
       '@vvfx/resource-detection':
-        specifier: ^0.6.2
-        version: 0.6.2
+        specifier: ^0.7.0
+        version: 0.7.0
 
 packages:
 
@@ -2213,10 +2213,10 @@ packages:
 
   /@galacean/effects-specification@2.0.0:
     resolution: {integrity: sha512-7ieZALZYn5fwKLIGAskmYSKGX82ZkLRdDUInG21KsOJ2eQ5+HcI6mJU5tmN8vjZxQUc+RVuUcssExGbiaj2+5w==}
+    dev: false
 
   /@galacean/effects-specification@2.1.0:
     resolution: {integrity: sha512-gad/CBHvTlL182QExrPGqzafzfMjSEfVWRA4+mufHMvxlsDF0kEIvZ2EEcyG9IgvRkX81F1PU1vk+or6G1j2nw==}
-    dev: false
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -3006,6 +3006,26 @@ packages:
     dependencies:
       '@galacean/effects-math': 1.1.0
       '@galacean/effects-specification': 2.0.0
+      '@types/draco3dgltf': 1.4.3
+      '@types/ndarray': 1.0.11
+      '@types/sharp': 0.31.1
+      fflate: 0.7.4
+      gl-matrix: 3.4.3
+      ktx-parse: 0.4.5
+      maxrects-packer: 2.7.3
+      meshoptimizer: 0.18.1
+      ndarray: 1.0.19
+      ndarray-lanczos: 0.1.2
+      ndarray-pixels: 1.0.0
+      node-fetch: 3.3.2
+    dev: false
+
+  /@vvfx/resource-detection@0.7.0:
+    resolution: {integrity: sha512-fV34OZRbRIjP1OMDjPfuLsZszpGg56DhSf1NeLUu4g6RJszwNFJ/Uazh7PVCrV8NyZhrWWyGQub3BA2CbE1SxQ==}
+    engines: {node: '>=10.0.0'}
+    dependencies:
+      '@galacean/effects-math': 1.1.0
+      '@galacean/effects-specification': 2.1.0
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1
