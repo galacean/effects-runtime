@@ -54,6 +54,10 @@ export class RichTextComponent extends TextComponent {
   private generateTextProgram (text: string) {
     this.processedTextOptions = [];
     const program = generateProgram((text, context) => {
+      // 如果富文本仅包含换行符，则在每个换行符后添加一个空格
+      if (/^\n+$/.test(text)) {
+        text = text.replace(/\n/g, '\n ');
+      }
       const textArr = text.split('\n');
 
       textArr.forEach((text, index) => {
@@ -142,6 +146,11 @@ export class RichTextComponent extends TextComponent {
     charsInfo.push(charInfo);
     width = Math.max(width, charInfo.width);
     height += charInfo.lineHeight;
+    if (width === 0 || height === 0) {
+      this.isDirty = false;
+
+      return;
+    }
     const size = this.item.transform.size;
 
     this.item.transform.size.set(size.x * width * this.SCALE_FACTOR * this.SCALE_FACTOR, size.y * height * this.SCALE_FACTOR * this.SCALE_FACTOR);
