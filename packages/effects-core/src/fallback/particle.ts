@@ -1,5 +1,5 @@
 import type { ParticleContent, ParticleShape, ParticleShapeSphere, ColorOverLifetime } from '@galacean/effects-specification';
-import { ShapeType } from '@galacean/effects-specification';
+import { ParticleEmitterShapeType } from '@galacean/effects-specification';
 import {
   deleteEmptyValue, ensureColorExpression, ensureFixedNumber, ensureFixedNumberWithRandom,
   ensureFixedVec3, ensureNumberExpression, getGradientColor, objectValueToNumber,
@@ -9,7 +9,7 @@ export function getStandardParticleContent (particle: any): ParticleContent {
   const options = particle.options;
   const transform = particle.transform;
   let shape: ParticleShape = {
-    type: ShapeType.NONE,
+    type: ParticleEmitterShapeType.NONE,
   };
 
   if (particle.shape) {
@@ -17,7 +17,7 @@ export function getStandardParticleContent (particle: any): ParticleContent {
 
     shape = {
       ...particle.shape,
-      type: ShapeType[shapeType as keyof typeof ShapeType],
+      type: ParticleEmitterShapeType[shapeType as keyof typeof ParticleEmitterShapeType],
     };
     if (particle.shape.upDirection) {
       const [x, y, z] = particle.shape.upDirection;

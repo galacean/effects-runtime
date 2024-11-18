@@ -14,7 +14,7 @@ import { JSONConverter } from '@galacean/effects-plugin-model';
 // 3D
 // const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*sA-6TJ695dYAAAAAAAAAAAAADlB4AQ';
 // 特效元素
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*bi3HRobVsk8AAAAAAAAAAAAADlB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*GmmoRYoutZ4AAAAAAAAAAAAADlB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
