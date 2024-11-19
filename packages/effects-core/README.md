@@ -153,4 +153,4 @@ Uniforms involved and their types:
 30. uWaveParams: vec4
 ```
 
-## [API Documentation](https://galacean.antgroup.com/effects/api/effects-core)
+## [API Documentation](https://www.galacean.com/effects/api/effects-core)

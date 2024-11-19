@@ -8,6 +8,108 @@
 
 ---
 
+## 2.1.0
+
+`2024-11-20`
+
+- Feat: cpu particle system. [#613](https://github.com/galacean/effects-runtime/pull/613) @wumaolinmaoan
+  - Feat: 增加编译耗时的统计。[#660](https://github.com/galacean/effects-runtime/pull/660) @yiiqii
+  - Refactor: expand particle calculation function. [#632](https://github.com/galacean/effects-runtime/pull/632) @wumaolinmaoan
+  - Perf: opt CPU particle computing performance. [#623](https://github.com/galacean/effects-runtime/pull/623) @wumaolinmaoan
+  - Perf: reduce object gc during particle update. [#627](https://github.com/galacean/effects-runtime/pull/627) @wumaolinmaoan
+  - Perf: opt particle calculation performance. [#644](https://github.com/galacean/effects-runtime/pull/644) @wumaolinmaoan
+  - Fix: particle linear move calculate. [#641](https://github.com/galacean/effects-runtime/pull/641) @wumaolinmaoan
+  - Fix: unit test and particle draw count warning. [#654](https://github.com/galacean/effects-runtime/pull/654) @wumaolinmaoan
+  - Fix: composition time reset. [#658](https://github.com/galacean/effects-runtime/pull/658) @wumaolinmaoan
+  - Fix: particle reset. [#659](https://github.com/galacean/effects-runtime/pull/659) @wumaolinmaoan
+- Feat: effect component uses track time. [#640](https://github.com/galacean/effects-runtime/pull/640) @wumaolinmaoan
+- Feat: support diffuse render mode and add demo for editor mode. [#643](https://github.com/galacean/effects-runtime/pull/643) @liuxi150
+- Feat: bloom support transparency. [#651](https://github.com/galacean/effects-runtime/pull/651) @wumaolinmaoan
+- Feat: add shape component. [#665](https://github.com/galacean/effects-runtime/pull/665) @wumaolinmaoan
+  - Feat: add curve property track. [#679](https://github.com/galacean/effects-runtime/pull/679) @wumaolinmaoan
+  - Feat: add rect shape. [#685](https://github.com/galacean/effects-runtime/pull/685) @wumaolinmaoan
+  - Feat: add shape component hit test. [#698](https://github.com/galacean/effects-runtime/pull/698) @wumaolinmaoan
+  - Feat: add support for shape property in item renderer. [#696](https://github.com/galacean/effects-runtime/pull/696) @Sruimeng
+  - Feat: add poly star shape. [#705](https://github.com/galacean/effects-runtime/pull/705) @wumaolinmaoan
+  - Feat: shape component support fill color. [#715](https://github.com/galacean/effects-runtime/pull/715) @wumaolinmaoan
+  - Feat: shape component support alpha blend. [#754](https://github.com/galacean/effects-runtime/pull/754) @wumaolinmaoan
+  - Fix: shape bounding box. [#703](https://github.com/galacean/effects-runtime/pull/703) @wumaolinmaoan
+  - Fix: rect shape drawing and bounding box. [#723](https://github.com/galacean/effects-runtime/pull/723) @wumaolinmaoan
+  - Fix: shape mask. [#729](https://github.com/galacean/effects-runtime/pull/729) @wumaolinmaoan
+- Feat: 增加音视频插件。[#666](https://github.com/galacean/effects-runtime/pull/666) @Sruimeng
+  - Feat(mutilmedia): 增加音视频加载器检查自动播放权限的逻辑。[#680](https://github.com/galacean/effects-runtime/pull/680) @Sruimeng
+  - Feat: add autoplay permission check in audio and video loaders. [#713](https://github.com/galacean/effects-runtime/pull/713) @Sruimeng
+  - Refactor: 优化插件 assets 调用逻辑。[#682](https://github.com/galacean/effects-runtime/pull/682) @yiiqii
+  - Fix(video): 修复视频渲染与元素结束行为不符问题。[#690](https://github.com/galacean/effects-runtime/pull/690) @Sruimeng
+  - Fix: 修复 video component 对蒙版的支持。[#731](https://github.com/galacean/effects-runtime/pull/731) @Sruimeng
+  - Fix: 修复视频和音频加载插件，简化预编译逻辑并增强视频播放控制。[#736](https://github.com/galacean/effects-runtime/pull/736) @Sruimeng
+- Feat: add material track. [#683](https://github.com/galacean/effects-runtime/pull/683) @wumaolinmaoan
+- Feat: improve the track binding update. [#688](https://github.com/galacean/effects-runtime/pull/688) @wumaolinmaoan
+- Feat: add color and vector4 track. [#691](https://github.com/galacean/effects-runtime/pull/691) @wumaolinmaoan
+- Feat: 增加交互元素拖拽范围修改接口。[#689](https://github.com/galacean/effects-runtime/pull/689) @RGCHN
+- Feat: add vector4 property mixer. [#692](https://github.com/galacean/effects-runtime/pull/692) @wumaolinmaoan
+- Feat: editor mode support external skybox. [#697](https://github.com/galacean/effects-runtime/pull/697) @liuxi150
+- Feat: fake 3d component. [#701](https://github.com/galacean/effects-runtime/pull/701) @wumaolinmaoan
+- Feat: property clip use normalized time. [#714](https://github.com/galacean/effects-runtime/pull/714) @wumaolinmaoan
+- Feat: item active setting. [#716](https://github.com/galacean/effects-runtime/pull/716) @wumaolinmaoan
+  - fix: ref compostion `setVisible()` invalid
+- Feat: material add color and mainTexture interface. [#722](https://github.com/galacean/effects-runtime/pull/722) @wumaolinmaoan
+- Feat: 增加富文本插件。[#704](https://github.com/galacean/effects-runtime/pull/704) @Sruimeng
+  - Fix: update default text value and adjust scaling in rich text component. [#739](https://github.com/galacean/effects-runtime/pull/739) @Sruimeng
+  - Fix: the reporting words for unexpected parse result. [#745](https://github.com/galacean/effects-runtime/pull/745) @zheeeng
+  - Fix: 在富文本仅包含换行符时添加空格，并优化无内容时的脏标志处理。[#749](https://github.com/galacean/effects-runtime/pull/749) @Sruimeng
+- Feat: add goto event for composition and improve texture cleanup on destroy. [#743](https://github.com/galacean/effects-runtime/pull/743) @Sruimeng
+- Feat: timeline asset add flattened tracks property. [#748](https://github.com/galacean/effects-runtime/pull/748) @wumaolinmaoan
+- Refactor: remove processTextures dependency on engine. [#662](https://github.com/galacean/effects-runtime/pull/662) @wumaolinmaoan
+- Refactor: vfx item find use BFS. [#667](https://github.com/galacean/effects-runtime/pull/667) @wumaolinmaoan
+- Refactor: 移除无用的 `imgUsage` 和 `usedImages` 逻辑。[#672](https://github.com/galacean/effects-runtime/pull/672) @yiiqii
+  - fix(demo): 本地 demo 资源统一到 public 目录下
+  - style(type): 规范 shape 类型
+- Refactor: unify item parent setup. [#681](https://github.com/galacean/effects-runtime/pull/681) @liuxi150
+- Refactor: composition component create. [#669](https://github.com/galacean/effects-runtime/pull/669) @wumaolinmaoan
+- Refactor: post processing setting. [#686](https://github.com/galacean/effects-runtime/pull/686) @wumaolinmaoan
+  - Refactor: shape and post process volume data. [#717](https://github.com/galacean/effects-runtime/pull/717) @wumaolinmaoan
+  - Fix(demo): post processing gui create issue. [#695](https://github.com/galacean/effects-runtime/pull/695) @yiiqii
+- Refactor: clean model tree item. [#687](https://github.com/galacean/effects-runtime/pull/687) @liuxi150
+- Refactor: opt shader variant create logic. [#712](https://github.com/galacean/effects-runtime/pull/712) @wumaolinmaoan
+  - optimize judgment logic to avoid repeated creation of shader variants
+- Refactor: color and vector4 curve value. [#730](https://github.com/galacean/effects-runtime/pull/730) @wumaolinmaoan
+- Refactor: opt global uniforms setting perfromance. [#735](https://github.com/galacean/effects-runtime/pull/735) @wumaolinmaoan
+  - add `effects_WorldSpaceCameraPos` shader built-in property
+- Refactor: opt render frame add render component logic. [#747](https://github.com/galacean/effects-runtime/pull/747) @wumaolinmaoan
+- Perf: opt lifetime function performance. [#596](https://github.com/galacean/effects-runtime/pull/596) @wumaolinmaoan
+- Fix: player adds composition timing. [#635](https://github.com/galacean/effects-runtime/pull/635) @wumaolinmaoan
+- Fix: 补充 `TextDecoder` 的适配。[#642](https://github.com/galacean/effects-runtime/pull/642) @yiiqii
+- Fix: `onStart` is called twice. [#645](https://github.com/galacean/effects-runtime/pull/645) @wumaolinmaoan
+- Fix: composition reverse delay. [#648](https://github.com/galacean/effects-runtime/pull/648) @wumaolinmaoan
+- Fix: remove unnecessary alpha multiplication in color grading. [#653](https://github.com/galacean/effects-runtime/pull/653) @wumaolinmaoan
+- Fix: image asset load error. [#663](https://github.com/galacean/effects-runtime/pull/663) @wumaolinmaoan
+- Fix: 修复 `AssetManager` 加载 JSON 对象的问题。[#668](https://github.com/galacean/effects-runtime/pull/668) @yiiqii
+  - style(type): 规范 `Image` 和 `Assets` 数据类型，并完善 `AssetManager` 相关类型
+  - test: 补充 `AssetManager` 及 `loadScene` 单测
+  - style: 统一 buildin object 使用 spec 中的定义
+- Fix: 修复 threejs 粒子渲染问题 & video 无法重播问题。[#684](https://github.com/galacean/effects-runtime/pull/684) @Sruimeng
+- Fix: interact item click invalid when composition restart. [#693](https://github.com/galacean/effects-runtime/pull/693) @wumaolinmaoan
+- Fix: 增加 player `pause` 事件。[#700](https://github.com/galacean/effects-runtime/pull/700) @yiiqii
+  - docs: 补充相关 tsdoc
+- Fix: 修复 Spine 元素遮罩问题。[#706](https://github.com/galacean/effects-runtime/pull/706) @RGCHN
+- Fix: on end called too early. [#711](https://github.com/galacean/effects-runtime/pull/711) @wumaolinmaoan
+- Fix: message interact item. [#721](https://github.com/galacean/effects-runtime/pull/721) @wumaolinmaoan
+- Fix: 增加降级插件 `window` 使用前的判断。[#728](https://github.com/galacean/effects-runtime/pull/728) @RGCHN
+- Fix: playable asset export. [#737](https://github.com/galacean/effects-runtime/pull/737) @wumaolinmaoan
+- Fix: color property track create wrong mixer. [#738](https://github.com/galacean/effects-runtime/pull/738) @wumaolinmaoan
+- Chore: imgui add show canvas menu button. [#652](https://github.com/galacean/effects-runtime/pull/652) @wumaolinmaoan
+- Chore: 移除 `loadScene` 为 scene object 时的动态数据逻辑。[#678](https://github.com/galacean/effects-runtime/pull/678) @yiiqii
+- Chore: update specification. [#694](https://github.com/galacean/effects-runtime/pull/694) @wumaolinmaoan
+- Chore: unit test add canvas display. [#724](https://github.com/galacean/effects-runtime/pull/724) @wumaolinmaoan
+- Chore: add half float texture support check. [#725](https://github.com/galacean/effects-runtime/pull/725) @wumaolinmaoan
+- Chore: remove item duration zero error check. [#732](https://github.com/galacean/effects-runtime/pull/732) @wumaolinmaoan
+- Chore: opt composition start logic. [#742](https://github.com/galacean/effects-runtime/pull/742) @wumaolinmaoan
+- Chore: remove test shape interface. [#744](https://github.com/galacean/effects-runtime/pull/744) @wumaolinmaoan
+- Chore: update resource-detection and fix type issue. [#752](https://github.com/galacean/effects-runtime/pull/752) @yiiqii
+- Test: 完善 `AssetManager` 动态视频单测。[#661](https://github.com/galacean/effects-runtime/pull/661) @yiiqii
+- Style: 统一 `effectsClass` 枚举入参类型。[#677](https://github.com/galacean/effects-runtime/pull/677) @yiiqii
+
 ## 2.0.7
 
 `2024-10-30`

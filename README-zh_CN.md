@@ -59,13 +59,13 @@ const player = new Player({
 player.loadScene('./demo.json');
 ```
 
-> 通过 [Galacean Effects](https://galacean.antgroup.com/effects/) 编辑器获取 `demo.json` 产物
+> 通过 [Galacean Effects](https://www.galacean.com/effects/) 编辑器获取 `demo.json` 产物
 
 ## 相关文档
 
-- [开发文档](https://galacean.antgroup.com/effects/user/dgmswcgk63yfngku)
-- [接入指南](https://galacean.antgroup.com/effects/user/ti4f2yx1rot4hs1n)
-- [API 文档](https://galacean.antgroup.com/effects/api)
+- [开发文档](https://www.galacean.com/effects/user/dgmswcgk63yfngku)
+- [接入指南](https://www.galacean.com/effects/user/ti4f2yx1rot4hs1n)
+- [API 文档](https://www.galacean.com/effects/api)
 - 其他链接:
   - [本地开发](docs/developing.md)
 

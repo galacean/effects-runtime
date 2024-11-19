@@ -95,7 +95,7 @@ describe('player/scene-load', () => {
     const spy = chai.spy();
 
     try {
-      await player.loadScene('https://galacean.antgroup.com/effects/', { timeout: 5 });
+      await player.loadScene('https://www.galacean.com/effects/', { timeout: 5 });
     } catch (e: any) {
       expect(e.message).to.include('Load error in processJSON');
       spy();
