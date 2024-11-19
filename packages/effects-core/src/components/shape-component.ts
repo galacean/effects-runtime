@@ -51,6 +51,7 @@ uniform vec4 _Color;
 
 void main() {
   vec4 color = _Color;
+  color.rgb *= color.a;
   gl_FragColor = color;
 }
 `;
