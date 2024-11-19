@@ -25,26 +25,10 @@ export class ActivationMixerPlayable extends Playable {
 
     if (hasInput) {
       boundItem.transform.setValid(true);
-      this.showRendererComponents(boundItem);
+      boundItem.setActive(true);
     } else {
       boundItem.transform.setValid(false);
-      this.hideRendererComponents(boundItem);
-    }
-  }
-
-  private hideRendererComponents (item: VFXItem) {
-    for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.enabled) {
-        rendererComponent.enabled = false;
-      }
-    }
-  }
-
-  private showRendererComponents (item: VFXItem) {
-    for (const rendererComponent of item.rendererComponents) {
-      if (!rendererComponent.enabled) {
-        rendererComponent.enabled = true;
-      }
+      boundItem.setActive(false);
     }
   }
 }

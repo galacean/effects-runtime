@@ -23,6 +23,7 @@
     "target": "ESNext",
     "lib": [
       "DOM",
+      "DOM.Iterable",
       "ES2015",
       "ESNext"
     ],

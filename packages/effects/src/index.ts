@@ -84,6 +84,9 @@ Engine.create = (gl: WebGLRenderingContext | WebGL2RenderingContext) => {
   return new GLEngine(gl);
 };
 
+/**
+ * Player 版本号
+ */
 export const version = __VERSION__;
 
 logger.info(`Player version: ${version}.`);

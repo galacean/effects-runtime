@@ -79,7 +79,7 @@ export const isArray = (Array.isArray || function (obj) {
  * @param obj - 要判断的对象
  * @return
  */
-export function isFunction (obj: unknown) {
+export function isFunction (obj: unknown): obj is Function {
   return Object.prototype.toString.call(obj) === '[object Function]';
 }
 

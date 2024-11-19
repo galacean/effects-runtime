@@ -18,6 +18,7 @@ import { GLTexture } from './gl-texture';
 
 type Matrix4 = math.Matrix4;
 type Vector4 = math.Vector4;
+type Vector3 = math.Vector3;
 
 export class GLRenderer extends Renderer implements Disposable {
   glRenderer: GLRendererInternal;
@@ -111,8 +112,16 @@ export class GLRenderer extends Renderer implements Disposable {
     this.setFramebuffer(null);
     this.clear(frame.clearAction);
 
+    const currentCamera = frame.camera;
+
     this.renderingData.currentFrame = frame;
-    this.renderingData.currentCamera = frame.camera;
+    this.renderingData.currentCamera = currentCamera;
+
+    this.setGlobalMatrix('effects_MatrixInvV', currentCamera.getInverseViewMatrix());
+    this.setGlobalMatrix('effects_MatrixV', currentCamera.getViewMatrix());
+    this.setGlobalMatrix('effects_MatrixVP', currentCamera.getViewProjectionMatrix());
+    this.setGlobalMatrix('_MatrixP', currentCamera.getProjectionMatrix());
+    this.setGlobalVector3('effects_WorldSpaceCameraPos', currentCamera.position);
 
     // 根据 priority 排序 pass
     sortByOrder(passes);
@@ -173,6 +182,11 @@ export class GLRenderer extends Renderer implements Disposable {
     this.renderingData.currentFrame.globalUniforms.matrices[name] = value;
   }
 
+  override setGlobalVector3 (name: string, value: Vector3) {
+    this.checkGlobalUniform(name);
+    this.renderingData.currentFrame.globalUniforms.vector3s[name] = value;
+  }
+
   override drawGeometry (geometry: Geometry, material: Material, subMeshIndex = 0): void {
     if (!geometry || !material) {
       return;
@@ -181,27 +195,6 @@ export class GLRenderer extends Renderer implements Disposable {
     geometry.initialize();
     geometry.flush();
     const renderingData = this.renderingData;
-
-    // TODO 后面移到管线相机渲染开始位置
-    if (renderingData.currentFrame.globalUniforms) {
-      if (renderingData.currentCamera) {
-        this.setGlobalMatrix('effects_MatrixInvV', renderingData.currentCamera.getInverseViewMatrix());
-        this.setGlobalMatrix('effects_MatrixV', renderingData.currentCamera.getViewMatrix());
-        this.setGlobalMatrix('effects_MatrixVP', renderingData.currentCamera.getViewProjectionMatrix());
-        this.setGlobalMatrix('_MatrixP', renderingData.currentCamera.getProjectionMatrix());
-      }
-
-      // TODO 自定义材质测试代码
-      const time = Date.now() % 100000000 * 0.001 * 1;
-      let _Time = this.getGlobalVector4('_Time');
-
-      // TODO 待移除
-      this.setGlobalFloat('_GlobalTime', time);
-      if (!_Time) {
-        _Time = new math.Vector4(time / 20, time, time * 2, time * 3);
-      }
-      this.setGlobalVector4('_Time', _Time.set(time / 20, time, time * 2, time * 3));
-    }
 
     if (renderingData.currentFrame.editorTransform) {
       material.setVector4('uEditorTransform', renderingData.currentFrame.editorTransform);

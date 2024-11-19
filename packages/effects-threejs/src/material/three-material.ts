@@ -2,7 +2,7 @@ import type {
   MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
   GlobalUniforms, Renderer,
 } from '@galacean/effects-core';
-import { Material, Shader, ShaderType, ShaderFactory, generateGUID, maxSpriteMeshItemCount, spec } from '@galacean/effects-core';
+import { Material, Shader, ShaderType, ShaderFactory, generateGUID, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
 import {
@@ -56,10 +56,7 @@ export class ThreeMaterial extends Material {
       fragment: shader?.fragment ?? '',
     };
 
-    for (let i = 0; i < maxSpriteMeshItemCount; i++) {
-      this.uniforms[`uSampler${i}`] = new THREE.Uniform(null);
-    }
-
+    this.uniforms['_MainTex'] = new THREE.Uniform(null);
     this.uniforms['uEditorTransform'] = new THREE.Uniform([1, 1, 0, 0]);
     this.uniforms['effects_ObjectToWorld'] = new THREE.Uniform(new THREE.Matrix4().identity());
     this.uniforms['effects_MatrixInvV'] = new THREE.Uniform([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 8, 1]);
@@ -204,7 +201,7 @@ export class ThreeMaterial extends Material {
     return this.material.depthTest;
   }
   override set depthTest (value: UndefinedAble<boolean>) {
-    this.material.depthTest = !!(value);
+    this.material.depthTest = !!value;
   }
 
   /**
@@ -214,7 +211,7 @@ export class ThreeMaterial extends Material {
     return this.material.depthWrite;
   }
   override set depthMask (value: UndefinedAble<boolean>) {
-    this.material.depthWrite = !!(value);
+    this.material.depthWrite = !!value;
   }
 
   /**
@@ -236,7 +233,7 @@ export class ThreeMaterial extends Material {
     return this.material.polygonOffset;
   }
   override set polygonOffsetFill (value: UndefinedAble<boolean>) {
-    this.material.polygonOffset = !!(value);
+    this.material.polygonOffset = !!value;
   }
 
   /**
@@ -261,7 +258,7 @@ export class ThreeMaterial extends Material {
     return this.material.alphaToCoverage;
   }
   override set sampleAlphaToCoverage (value: UndefinedAble<boolean>) {
-    this.material.alphaToCoverage = !!(value);
+    this.material.alphaToCoverage = !!value;
   }
 
   /**
@@ -271,7 +268,7 @@ export class ThreeMaterial extends Material {
     return this.material.stencilWrite;
   }
   override set stencilTest (value: UndefinedAble<boolean>) {
-    this.material.stencilWrite = !!(value);
+    this.material.stencilWrite = !!value;
   }
 
   /**

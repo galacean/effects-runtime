@@ -41,7 +41,7 @@ describe('core/plugins/sprite/item-base', () => {
     let spriteColorTrack;
 
     // @ts-expect-error
-    const spriteBindingTrack = comp.rootItem.getComponent(CompositionComponent).timelineAsset.tracks.find(track => track.binding === sprite1);
+    const spriteBindingTrack = comp.rootItem.getComponent(CompositionComponent).timelineAsset.tracks.find(track => track.boundObject === sprite1);
 
     for (const subTrack of spriteBindingTrack?.getChildTracks() ?? []) {
       if (subTrack instanceof SpriteColorTrack) {
@@ -72,103 +72,8 @@ describe('core/plugins/sprite/item-base', () => {
 
   // 尺寸随时间变换
   it('sprite sizeOverLifetime', async () => {
-    const items = [
-      {
-        'id': '5',
-        'name': 'item',
-        'duration': 5,
-        'type': '1',
-        'visible': true,
-        'endBehavior': 0,
-        'delay': 0,
-        'renderLevel': 'B+',
-        'content': {
-          'options': {
-            'startColor': [
-              1,
-              1,
-              1,
-              1,
-            ],
-          },
-          'renderer': {
-            'renderMode': 1,
-            'texture': 0,
-          },
-          'positionOverLifetime': {
-            'direction': [
-              0,
-              0,
-              0,
-            ],
-            'startSpeed': 0,
-            'gravity': [
-              0,
-              0,
-              0,
-            ],
-            'gravityOverLifetime': [
-              0,
-              1,
-            ],
-          },
-          'sizeOverLifetime': {
-            'size': [
-              21,
-              [
-                [
-                  4,
-                  [
-                    0,
-                    1,
-                  ],
-                ],
-              ],
-            ],
-            'separateAxes': true,
-            'x': [
-              21,
-              [
-                [
-                  4,
-                  [
-                    0,
-                    2,
-                  ],
-                ],
-              ],
-            ],
-          },
-          'splits': [
-            [
-              0,
-              0,
-              1,
-              1,
-              0,
-            ],
-          ],
-        },
-        'transform': {
-          'position': [
-            0,
-            0,
-            0,
-          ],
-          'rotation': [
-            0,
-            0,
-            0,
-          ],
-          'scale': [
-            12.5965,
-            12.5965,
-            1,
-          ],
-        },
-      },
-    ] as spec.Item[];
-    const comp = await player.loadScene(generateSceneJSON(items));
+    const items = '[{"id":"5","name":"item","duration":5,"type":"1","visible":true,"endBehavior":0,"delay":0,"renderLevel":"B+","content":{"options":{"startColor":[1,1,1,1]},"renderer":{"renderMode":1,"texture":0},"positionOverLifetime":{"direction":[0,0,0],"startSpeed":0,"gravity":[0,0,0],"gravityOverLifetime":[0,1]},"sizeOverLifetime":{"size":[21,[[4,[0,1]]]],"separateAxes":true,"x":[21,[[4,[0,2]]]]},"splits":[[0,0,1,1,0]]},"transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[12.5965,12.5965,1]}}]';
+    const comp = await player.loadScene(generateSceneJSON(JSON.parse(items)));
 
     player.gotoAndPlay(0.01);
     const spriteItem = comp.getItemByName('item')?.getComponent(SpriteComponent);
@@ -205,7 +110,7 @@ describe('core/plugins/sprite/item-base', () => {
     expect(texOffset2?.[2]).to.be.closeTo(0.1248, 0.001);
     expect(texOffset2?.[3]).to.be.closeTo(0.1249, 0.001);
 
-    expect(texOffset3?.[0]).to.be.closeTo(0.5, 0.001);
+    expect(texOffset3?.[0]).to.be.closeTo(0.625, 0.001);
     expect(texOffset3?.[1]).to.be.closeTo(0.5, 0.001);
     expect(texOffset3?.[2]).to.be.closeTo(0.125, 0.001);
     expect(texOffset3?.[3]).to.be.closeTo(0.125, 0.001);

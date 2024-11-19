@@ -1,4 +1,4 @@
-import type { GradientValue, RandomSetValue, VFXItem, color } from '@galacean/effects';
+import type { GradientValue, RandomSetValue, VFXItem } from '@galacean/effects';
 import { Player, ParticleSystem, spec } from '@galacean/effects';
 
 const { expect } = chai;
@@ -70,7 +70,7 @@ describe('core/plugins/particle/base', () => {
     const colors = comp.getItemByName('colors') as VFXItem;
     const gradient = comp.getItemByName('gradient') as VFXItem;
     const pureStartColor = pure.getComponent(ParticleSystem).options.startColor;
-    const colorsStartColor = colors.getComponent(ParticleSystem).options.startColor as RandomSetValue<color>;
+    const colorsStartColor = colors.getComponent(ParticleSystem).options.startColor as RandomSetValue<spec.RGBAColorValue>;
     const gradientStartColor = gradient.getComponent(ParticleSystem).options.startColor as unknown as GradientValue;
 
     expect(pureStartColor.getValue()).to.eql([255, 255, 255], 'pure color');

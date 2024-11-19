@@ -1,4 +1,4 @@
-//@ts-nocheck
+import type { Player } from '@galacean/effects';
 import { math, spec } from '@galacean/effects';
 import { CameraGestureType, CameraGestureHandlerImp } from '@galacean/effects-plugin-model';
 import { LoaderImplEx } from '../../src/helper';
@@ -9,20 +9,20 @@ let player: Player;
 let pending = false;
 
 let sceneAABB;
-let sceneCenter;
+let sceneCenter: math.Vector3;
 let sceneRadius = 1;
 let mouseDown = false;
 
 const pauseOnFirstFrame = false;
 
 let gestureType = CameraGestureType.rotate_focus;
-let gestureHandler;
+let gestureHandler: CameraGestureHandlerImp;
 let moveBegin = false;
 let scaleBegin = false;
 let rotationBegin = false;
 let rotationFocusBegin = false;
 
-let playScene;
+let playScene: spec.JSONScene;
 
 let url = 'https://gw.alipayobjects.com/os/bmw-prod/2b867bc4-0e13-44b8-8d92-eb2db3dfeb03.glb';
 
@@ -71,7 +71,7 @@ async function getCurrentScene () {
   return loader.getLoadResult().jsonScene;
 }
 
-export async function loadScene (inPlayer) {
+export async function loadScene (inPlayer: Player) {
   if (!player) {
     player = inPlayer;
     registerMouseEvent();
@@ -80,9 +80,10 @@ export async function loadScene (inPlayer) {
   if (!playScene) {
     playScene = await getCurrentScene();
   } else {
-    playScene.compositions[0].items.forEach(item => {
+    playScene.items.forEach(item => {
       if (item.id === 'extra-camera') {
-        item.transform = player.compositions[0].camera;
+        // @ts-expect-error
+        item.transform = player.getCompositions()[0].camera;
       }
     });
   }
@@ -175,7 +176,7 @@ function registerMouseEvent () {
 
     refreshCamera();
     if (pauseOnFirstFrame) {
-      player.compositions.forEach(comp => {
+      player.getCompositions().forEach(comp => {
         comp.gotoAndStop(comp.time);
       });
     }
@@ -222,7 +223,7 @@ function registerMouseEvent () {
           gestureHandler.onXYMoving(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.compositions.forEach(comp => {
+            player.getCompositions().forEach(comp => {
               comp.gotoAndStop(comp.time);
             });
           }
@@ -242,7 +243,7 @@ function registerMouseEvent () {
           gestureHandler.onZMoving(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.compositions.forEach(comp => {
+            player.getCompositions().forEach(comp => {
               comp.gotoAndStop(comp.time);
             });
           }
@@ -263,7 +264,7 @@ function registerMouseEvent () {
           gestureHandler.onRotating(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.compositions.forEach(comp => {
+            player.getCompositions().forEach(comp => {
               comp.gotoAndStop(comp.time);
             });
           }
@@ -285,7 +286,7 @@ function registerMouseEvent () {
           gestureHandler.onRotatingPoint(e.clientX, e.clientY);
           refreshCamera();
           if (pauseOnFirstFrame) {
-            player.compositions.forEach(comp => {
+            player.getCompositions().forEach(comp => {
               comp.gotoAndStop(comp.time);
             });
           }
@@ -355,16 +356,17 @@ function registerMouseEvent () {
 }
 
 function refreshCamera () {
-  const freeCamera = playScene.items.find(item => item.name === 'extra-camera');
-  const position = player.compositions[0].camera.position;
-  const rotation = player.compositions[0].camera.rotation;
+  const freeCamera = playScene.items.find(item => item.name === 'extra-camera') as spec.VFXItemData;
+  const position = player.getCompositions()[0].camera.position;
+  const rotation = player.getCompositions()[0].camera.rotation;
 
-  if (rotation[0] === null) {
+  if (rotation.x === null) {
     return;
   }
 
-  freeCamera.transform.position = position;
-  freeCamera.transform.rotation = rotation;
+  freeCamera.transform!.position = position;
+  // @ts-expect-error
+  freeCamera.transform!.rotation = rotation;
 }
 
 const demo_infoDom = document.getElementsByClassName('demo-info')[0];
@@ -383,9 +385,9 @@ export function createUI () {
   <option value="${CameraGestureType.scale}">scale</option>
   `;
   select.onchange = e => {
-    gestureType = +e.target.value;
+    gestureType = +(e.target as HTMLSelectElement).value;
   };
-  select.value = gestureType;
+  select.value = gestureType.toString();
   // add ui to parent dom
   demo_infoDom.appendChild(uiDom);
   demo_infoDom.appendChild(select);

@@ -3,8 +3,7 @@ import type {
   SpineContent, TimelineAssetData,
 } from '@galacean/effects-specification';
 import {
-  DataType, END_BEHAVIOR_FREEZE, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY,
-  EndBehavior, ItemType,
+  DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
 } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
@@ -110,7 +109,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
       composition.endBehavior === END_BEHAVIOR_PAUSE
     ) {
-      composition.endBehavior = END_BEHAVIOR_FREEZE;
+      composition.endBehavior = EndBehavior.freeze;
     }
 
     // 过滤掉滤镜元素
@@ -361,7 +360,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
 
         break;
       case ItemType.spine:
-        item.content.dataType = 'SpineComponent';
+        item.content.dataType = DataType.SpineComponent;
 
         break;
     }

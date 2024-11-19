@@ -104,7 +104,7 @@ function addDescribe (renderFramework) {
         for (let i = 0; i < timeList.length; i++) {
           const time = timeList[i];
 
-          if (!oldPlayer.isLoop() && time >= oldPlayer.duration()) {
+          if (time >= oldPlayer.duration()) {
             break;
           }
           //

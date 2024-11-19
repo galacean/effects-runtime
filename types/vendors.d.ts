@@ -11,6 +11,7 @@ interface Window {
   _createOffscreenCanvas: (width: number, height: number) => HTMLCanvasElement;
   AlipayJSBridge: any;
   WindVane: any;
+  ge: any,
   __wxjs_environment: any;
 }
 

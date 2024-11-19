@@ -8,11 +8,11 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
-import type { ShapeGenerator, ShapeGeneratorOptions } from '../../shape';
+import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
 import { Transform } from '../../transform';
-import { DestroyOptions, type color } from '../../utils';
+import { DestroyOptions } from '../../utils';
 import type { BoundingBoxSphere, HitTestCustomParams } from '../interact/click-handler';
 import { HitTestType } from '../interact/click-handler';
 import { Burst } from './burst';
@@ -32,7 +32,7 @@ type ParticleOptions = {
   startSpeed: ValueGetter<number>,
   startLifetime: ValueGetter<number>,
   startDelay: ValueGetter<number>,
-  startColor: ValueGetter<color>,
+  startColor: ValueGetter<spec.RGBAColorValue>,
   start3DRotation?: boolean,
   startRotationX?: ValueGetter<number>,
   startRotationY?: ValueGetter<number>,
@@ -316,7 +316,7 @@ export class ParticleSystem extends Component {
     return this.renderer.getTextures();
   }
 
-  start () {
+  startEmit () {
     if (!this.started || this.ended) {
       this.reset();
       this.started = true;
@@ -339,9 +339,10 @@ export class ParticleSystem extends Component {
     this.emission.bursts.forEach(b => b.reset());
     this.frozen = false;
     this.ended = false;
+    this.destroyed = false;
   }
 
-  onUpdate (delta: number) {
+  update (delta: number) {
     if (this.started && !this.frozen) {
       const now = this.lastUpdate + delta / 1000;
       const options = this.options;
@@ -657,7 +658,7 @@ export class ParticleSystem extends Component {
     return ret;
   }
 
-  initPoint (data: Record<string, any>): Point {
+  initPoint (data: ShapeParticle): Point {
     const options = this.options;
     const lifetime = this.lifetime;
     const shape = this.shape;

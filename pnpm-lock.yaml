@@ -150,11 +150,14 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.0.2
-        version: 2.0.2
+        specifier: 2.1.0
+        version: 2.1.0
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
+      libtess:
+        specifier: 1.2.2
+        version: 1.2.2
       uuid:
         specifier: 9.0.1
         version: 9.0.1
@@ -224,8 +227,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: ^0.6.2
-        version: 0.6.2
+        specifier: ^0.7.0
+        version: 0.7.0
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -233,7 +236,19 @@ importers:
         specifier: ^2.0.8
         version: 2.0.8
 
+  plugin-packages/multimedia:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
   plugin-packages/orientation-transformer:
+    devDependencies:
+      '@galacean/effects':
+        specifier: workspace:*
+        version: link:../../packages/effects
+
+  plugin-packages/rich-text:
     devDependencies:
       '@galacean/effects':
         specifier: workspace:*
@@ -323,8 +338,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects-webgl
       '@vvfx/resource-detection':
-        specifier: ^0.6.2
-        version: 0.6.2
+        specifier: ^0.7.0
+        version: 0.7.0
 
 packages:
 
@@ -2198,10 +2213,10 @@ packages:
 
   /@galacean/effects-specification@2.0.0:
     resolution: {integrity: sha512-7ieZALZYn5fwKLIGAskmYSKGX82ZkLRdDUInG21KsOJ2eQ5+HcI6mJU5tmN8vjZxQUc+RVuUcssExGbiaj2+5w==}
-
-  /@galacean/effects-specification@2.0.2:
-    resolution: {integrity: sha512-9X7MJ79Y2LQ1W7PEl+wJqlYwBLNe3kffDL2mIV5C9U3wwYbUW9giBFHTKhgsSSHMXKbGR1v3JBUyYH0zckdGTQ==}
     dev: false
+
+  /@galacean/effects-specification@2.1.0:
+    resolution: {integrity: sha512-gad/CBHvTlL182QExrPGqzafzfMjSEfVWRA4+mufHMvxlsDF0kEIvZ2EEcyG9IgvRkX81F1PU1vk+or6G1j2nw==}
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}
@@ -2513,6 +2528,7 @@ packages:
     resolution: {integrity: sha512-bur4JOxvYxfrAmocRJIW0SADs3QdEYK6TQ7dTNz6Z4/lySeu3Z1H/+tl0a4qDYv0bCdBpUYM0sYa/X+9ZqgfSQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2521,6 +2537,7 @@ packages:
     resolution: {integrity: sha512-ssp77SjcDIUSoUyj7DU7/5iwM4ZEluY+N8umtCT9nBRs3u045t0KkW02LTyHouHDomnMXaXSZcCSr2bdMK63kA==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -2529,6 +2546,7 @@ packages:
     resolution: {integrity: sha512-Jv1DkIvwEPAb+v25/Unrnnq9BO3F5cbFPT821n3S5litkz+O5NuXuNhqtPx5KtcwOTtaqkTsO+IVzJOsxd11aQ==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2537,6 +2555,7 @@ packages:
     resolution: {integrity: sha512-U564BrhEfaNChdATQaEODtquCC7Ez+8Hxz1h5MAdMYj0AqD0GA9rHCpElajb/sQcaFL6NXmHc5O+7FXpWMa73Q==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2545,6 +2564,7 @@ packages:
     resolution: {integrity: sha512-zGRDulLTeDemR8DFYyFIQ8kMP02xpUsX4IBikc7lwL9PrwR3gWmX2NopqiGlI2ZVWMl15qZeUjumTwpv18N7sQ==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2553,6 +2573,7 @@ packages:
     resolution: {integrity: sha512-VTk/MveyPdMFkYJJPCkYBw07KcTkGU2hLEyqYMsU4NjiOfzoaDTW9PWGRsNwiOA3qI0k/JQPjkl/4FCK1smskQ==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -2618,6 +2639,7 @@ packages:
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2627,6 +2649,7 @@ packages:
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -2636,6 +2659,7 @@ packages:
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
     requiresBuild: true
     dev: true
     optional: true
@@ -2645,6 +2669,7 @@ packages:
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
     requiresBuild: true
     dev: true
     optional: true
@@ -2981,6 +3006,26 @@ packages:
     dependencies:
       '@galacean/effects-math': 1.1.0
       '@galacean/effects-specification': 2.0.0
+      '@types/draco3dgltf': 1.4.3
+      '@types/ndarray': 1.0.11
+      '@types/sharp': 0.31.1
+      fflate: 0.7.4
+      gl-matrix: 3.4.3
+      ktx-parse: 0.4.5
+      maxrects-packer: 2.7.3
+      meshoptimizer: 0.18.1
+      ndarray: 1.0.19
+      ndarray-lanczos: 0.1.2
+      ndarray-pixels: 1.0.0
+      node-fetch: 3.3.2
+    dev: false
+
+  /@vvfx/resource-detection@0.7.0:
+    resolution: {integrity: sha512-fV34OZRbRIjP1OMDjPfuLsZszpGg56DhSf1NeLUu4g6RJszwNFJ/Uazh7PVCrV8NyZhrWWyGQub3BA2CbE1SxQ==}
+    engines: {node: '>=10.0.0'}
+    dependencies:
+      '@galacean/effects-math': 1.1.0
+      '@galacean/effects-specification': 2.1.0
       '@types/draco3dgltf': 1.4.3
       '@types/ndarray': 1.0.11
       '@types/sharp': 0.31.1
@@ -4916,6 +4961,10 @@ packages:
       prelude-ls: 1.2.1
       type-check: 0.4.0
     dev: true
+
+  /libtess@1.2.2:
+    resolution: {integrity: sha512-Nps8HPeVVcsmJxUvFLKVJcCgcz+1ajPTXDVAVPs6+giOQP4AHV31uZFFkh+CKow/bkB7GbZWKmwmit7myaqDSw==}
+    dev: false
 
   /lines-and-columns@1.2.4:
     resolution: {integrity: sha1-7KKE910pZQeTCdwK2SVauy68FjI=, tarball: https://registry.npmmirror.com/lines-and-columns/download/lines-and-columns-1.2.4.tgz}

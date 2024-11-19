@@ -18,7 +18,7 @@ export class CameraController extends Behaviour {
     }
   }
 
-  override update () {
+  override onUpdate () {
     if (this.item.composition && this.item.transform.getValid()) {
       const camera = this.item.composition.camera;
 

@@ -36,16 +36,16 @@ class ShapeNone implements Shape {
 }
 
 const map: Record<string, { new(options: Record<string, any>): ShapeGenerator }> = {
-  [spec.ShapeType.NONE]: ShapeNone,
-  [spec.ShapeType.CONE]: Cone,
-  [spec.ShapeType.SPHERE]: Sphere,
-  [spec.ShapeType.HEMISPHERE]: Hemisphere,
-  [spec.ShapeType.CIRCLE]: Circle,
-  [spec.ShapeType.DONUT]: Donut,
-  [spec.ShapeType.RECTANGLE]: Rectangle,
-  [spec.ShapeType.EDGE]: Edge,
-  [spec.ShapeType.RECTANGLE_EDGE]: RectangleEdge,
-  [spec.ShapeType.TEXTURE]: TextureShape,
+  [spec.ParticleEmitterShapeType.NONE]: ShapeNone,
+  [spec.ParticleEmitterShapeType.CONE]: Cone,
+  [spec.ParticleEmitterShapeType.SPHERE]: Sphere,
+  [spec.ParticleEmitterShapeType.HEMISPHERE]: Hemisphere,
+  [spec.ParticleEmitterShapeType.CIRCLE]: Circle,
+  [spec.ParticleEmitterShapeType.DONUT]: Donut,
+  [spec.ParticleEmitterShapeType.RECTANGLE]: Rectangle,
+  [spec.ParticleEmitterShapeType.EDGE]: Edge,
+  [spec.ParticleEmitterShapeType.RECTANGLE_EDGE]: RectangleEdge,
+  [spec.ParticleEmitterShapeType.TEXTURE]: TextureShape,
 };
 
 export function createShape (shapeOptions?: spec.ParticleShape): Shape {
@@ -67,7 +67,7 @@ export function createShape (shapeOptions?: spec.ParticleShape): Shape {
   }
   const ctrl = new Ctrl(options);
 
-  if (type !== spec.ShapeType.NONE) {
+  if (type !== spec.ParticleEmitterShapeType.NONE) {
     const { alignSpeedDirection, upDirection = [0, 0, 1] } = shapeOptions as spec.ParticleShapeBase;
 
     ctrl.alignSpeedDirection = alignSpeedDirection;
