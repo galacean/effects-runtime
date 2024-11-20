@@ -94,4 +94,4 @@ displayObject.addEventListener('end', () => {
 
 ## API 文档
 
-[Galacean Effects THREE.JS API 文档](https://galacean.antgroup.com/effects/api/effects-threejs)
+[Galacean Effects THREE.JS API 文档](https://www.galacean.com/effects/api/effects-threejs)

@@ -59,13 +59,13 @@ const player = new Player({
 player.loadScene('./demo.json');
 ```
 
-> Get the `demo.json` by using the [Galacean Effects](https://galacean.antgroup.com/effects/) editor.
+> Get the `demo.json` by using the [Galacean Effects](https://www.galacean.com/effects/) editor.
 
 ## Documentation
 
-- [Development Documentation](https://galacean.antgroup.com/effects/user/dgmswcgk63yfngku)
-- [Integration Guide](https://galacean.antgroup.com/effects/user/ti4f2yx1rot4hs1n)
-- [API Documentation](https://galacean.antgroup.com/effects/api)
+- [Development Documentation](https://www.galacean.com/effects/user/dgmswcgk63yfngku)
+- [Integration Guide](https://www.galacean.com/effects/user/ti4f2yx1rot4hs1n)
+- [API Documentation](https://www.galacean.com/effects/api)
 - Useful Links:
   - [Developing](docs/developing.md)
 
