@@ -25,7 +25,7 @@ export class PlayableGraph {
 
     // 更新节点时间
     for (const playable of this.playables) {
-      this.updatePlayableTime(playable, dt);
+      this.updatePlayableTime(playable, dt / 1000);
     }
   }
 

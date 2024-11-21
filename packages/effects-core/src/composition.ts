@@ -665,7 +665,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   private updateRootComposition (deltaTime: number) {
     if (this.rootComposition.isActiveAndEnabled) {
 
-      let localTime = this.time + deltaTime - this.rootItem.start;
+      let localTime = parseFloat((this.time + deltaTime - this.rootItem.start).toFixed(3));
       let isEnded = false;
 
       const duration = this.rootItem.duration;
