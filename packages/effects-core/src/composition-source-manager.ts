@@ -167,15 +167,13 @@ export class CompositionSourceManager implements Disposable {
 
       if (Number.isInteger(shape)) {
         shapeData = this.jsonScene?.shapes[shape as number];
-      } else {
+      } else if (shape) {
         shapeData = shape as spec.ShapeGeometry;
       }
 
-      if (shapeData !== undefined) {
-        if (!('aPoint' in shapeData && 'index' in shapeData)) {
-          // @ts-expect-error 类型转换问题
-          renderContent.renderer.shape = getGeometryByShape(shapeData, split);
-        }
+      if (shapeData !== undefined && !('aPoint' in shapeData && 'index' in shapeData)) {
+        // @ts-expect-error 类型转换问题
+        renderContent.renderer.shape = getGeometryByShape(shapeData, split);
       }
     }
 
