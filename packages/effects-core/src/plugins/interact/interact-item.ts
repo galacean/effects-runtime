@@ -111,7 +111,6 @@ export class InteractComponent extends RendererComponent {
         this.duringPlay = false;
       }
       this.clickable = false;
-      this.previewContent?.mesh.dispose();
       this.endDragTarget();
     }
   }
@@ -156,11 +155,13 @@ export class InteractComponent extends RendererComponent {
 
   override render (renderer: Renderer): void {
     if (this.previewContent) {
+      this.previewContent.mesh.worldMatrix = this.transform.getWorldMatrix();
       this.previewContent.mesh.render(renderer);
     }
   }
 
   override onDestroy (): void {
+    this.previewContent?.mesh.dispose();
   }
 
   endDragTarget () {

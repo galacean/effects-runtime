@@ -412,7 +412,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.autoPlaying = true;
       composition.play();
     } else {
-      composition.pause();
+      composition.gotoAndStop(0);
     }
 
     const compileTime = performance.now() - compileStart;

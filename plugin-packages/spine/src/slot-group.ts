@@ -279,9 +279,12 @@ export class SlotGroup {
    * @param renderer
    */
   render (renderer: Renderer) {
+    const worldMatrix = this.transform.getWorldMatrix();
+
     this.meshGroups.forEach(spineMesh => {
       const mesh = spineMesh.mesh;
 
+      mesh.worldMatrix = worldMatrix;
       mesh.render(renderer);
 
     });
