@@ -895,20 +895,33 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const displayAspect = this.displayAspect;
     let targetWidth;
     let targetHeight;
+    let finalWidth = 0, finalHeight = 0;
+
+    // eslint-disable-next-line no-unsafe-optional-chaining
+    const { width, height } = window?.getComputedStyle(parentEle);
+
+    if (width === undefined && height === undefined) {
+      finalWidth = parentEle.clientWidth;
+      finalHeight = parentEle.clientHeight;
+    } else {
+      finalWidth = parseInt(width, 10);
+      finalHeight = parseInt(height, 10);
+    }
 
     if (displayAspect) {
-      const parentAspect = parentEle.clientWidth / parentEle.clientHeight;
+
+      const parentAspect = finalWidth / finalHeight;
 
       if (parentAspect > displayAspect) {
-        targetHeight = parentEle.clientHeight * this.displayScale;
+        targetHeight = finalHeight * this.displayScale;
         targetWidth = targetHeight * displayAspect;
       } else {
-        targetWidth = parentEle.clientWidth * this.displayScale;
+        targetWidth = finalWidth * this.displayScale;
         targetHeight = targetWidth / displayAspect;
       }
     } else {
-      targetWidth = parentEle.clientWidth;
-      targetHeight = parentEle.clientHeight;
+      targetWidth = finalWidth;
+      targetHeight = finalHeight;
     }
     const ratio = this.pixelRatio;
     let containerWidth = targetWidth;
