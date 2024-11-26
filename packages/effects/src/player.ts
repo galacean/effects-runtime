@@ -893,22 +893,22 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private getTargetSize (parentEle: HTMLElement) {
     assertContainer(parentEle);
     const displayAspect = this.displayAspect;
+    // 小程序环境没有 getComputedStyle
+    const computedStyle = window.getComputedStyle?.(parentEle);
     let targetWidth;
     let targetHeight;
-    let finalWidth = 0, finalHeight = 0;
+    let finalWidth = 0;
+    let finalHeight = 0;
 
-    const { width, height } = window.getComputedStyle(parentEle) ? window.getComputedStyle(parentEle) : { width: undefined, height: undefined };
-
-    if (width === undefined && height === undefined) {
+    if (computedStyle) {
+      finalWidth = parseInt(computedStyle.width, 10);
+      finalHeight = parseInt(computedStyle.height, 10);
+    } else {
       finalWidth = parentEle.clientWidth;
       finalHeight = parentEle.clientHeight;
-    } else {
-      finalWidth = parseInt(width, 10);
-      finalHeight = parseInt(height, 10);
     }
 
     if (displayAspect) {
-
       const parentAspect = finalWidth / finalHeight;
 
       if (parentAspect > displayAspect) {
