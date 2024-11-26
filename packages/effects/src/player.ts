@@ -897,8 +897,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     let targetHeight;
     let finalWidth = 0, finalHeight = 0;
 
-    // eslint-disable-next-line no-unsafe-optional-chaining
-    const { width, height } = window?.getComputedStyle(parentEle);
+    const { width, height } = window.getComputedStyle(parentEle) ? window.getComputedStyle(parentEle) : { width: undefined, height: undefined };
 
     if (width === undefined && height === undefined) {
       finalWidth = parentEle.clientWidth;
