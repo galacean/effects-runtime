@@ -7,6 +7,17 @@
 
 ---
 
+## 2.1.1
+
+`2024-11-26`
+
+- Fix: spine transform update. [#758](https://github.com/galacean/effects-runtime/pull/758) @wumaolinmaoan
+  - fix: interact mesh render error
+  - fix: shape data null check
+  - fix: composition not rendered when auto play false
+  - Fix: player auto play false rendering. [#759](https://github.com/galacean/effects-runtime/pull/759) @wumaolinmaoan
+- Fix: time precision issues caused by floating point errors. [#757](https://github.com/galacean/effects-runtime/pull/757) @wumaolinmaoan
+
 ## 2.1.0
 
 `2024-11-20`
