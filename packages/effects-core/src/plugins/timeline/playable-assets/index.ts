@@ -1,0 +1,5 @@
+export * from './color-property-playable-asset';
+export * from './float-property-playable-asset';
+export * from './sub-composition-playable-asset';
+export * from './timeline-asset';
+export * from './vector4-property-playable-asset';

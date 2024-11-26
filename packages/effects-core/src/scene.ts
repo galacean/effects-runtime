@@ -4,7 +4,7 @@ import type { PluginSystem } from './plugin-system';
 import type { PickEnum } from './utils';
 import { isObject } from './utils';
 
-export type ImageSource = spec.TemplateImage | spec.Image | spec.CompressedImage;
+export type ImageLike = spec.HTMLImageLike | ArrayBuffer | Texture;
 export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | spec.RenderLevel.B | spec.RenderLevel.S>;
 
 /**
@@ -18,7 +18,7 @@ export interface Scene {
   readonly storage: Record<string, any>,
 
   textureOptions: Record<string, any>[],
-  images: ImageSource[],
+  images: ImageLike[],
   consumed?: boolean,
   textures?: Texture[],
   /**
@@ -33,8 +33,29 @@ export interface Scene {
    * 加载分段时长
    */
   timeInfos: Record<string, number>,
-  url: SceneType,
-  usedImages: Record<number, boolean>,
+  url: Scene.LoadType,
+}
+
+export namespace Scene {
+  type URLType = { url: string, options?: SceneLoadOptions };
+
+  /**
+   * 接受用于加载的数据类型
+   */
+  export type LoadType = string | Scene | URLType | spec.JSONScene | Record<string, unknown>;
+
+  // JSON 对象
+  export function isJSONObject (scene: any): scene is Scene {
+    return isObject(scene) && 'jsonScene' in scene;
+  }
+
+  export function isURL (scene: any): scene is URLType {
+    return isObject(scene) && 'url' in scene;
+  }
+
+  export function isWithOptions (scene: any): scene is URLType {
+    return isObject(scene) && 'options' in scene;
+  }
 }
 
 /**
@@ -106,24 +127,4 @@ export interface SceneLoadOptions {
    * 播放速度，当速度为负数时，合成倒播
    */
   speed?: number,
-}
-
-/**
- * 接受用于加载的数据类型
- */
-export type SceneURLType = { url: string };
-export type SceneType = string | Scene | SceneURLType | Record<string, any>;
-export type SceneWithOptionsType = { options: SceneLoadOptions };
-export type SceneLoadType = SceneType | SceneWithOptionsType;
-
-export function isSceneJSON (scene: any): scene is Scene {
-  return isObject(scene) && 'jsonScene' in scene;
-}
-
-export function isSceneURL (scene: any): scene is Scene {
-  return isObject(scene) && 'url' in scene;
-}
-
-export function isSceneWithOptions (scene: any): scene is SceneWithOptionsType {
-  return isObject(scene) && 'options' in scene;
 }

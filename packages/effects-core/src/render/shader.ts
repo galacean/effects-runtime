@@ -1,4 +1,4 @@
-import type * as spec from '@galacean/effects-specification';
+import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import { EffectsObject } from '../effects-object';
 import type { Engine } from '../engine';
@@ -97,7 +97,7 @@ export abstract class ShaderVariant extends EffectsObject {
   }
 }
 
-@effectsClass('Shader')
+@effectsClass(spec.DataType.Shader)
 export class Shader extends EffectsObject {
   shaderData: spec.ShaderData;
 

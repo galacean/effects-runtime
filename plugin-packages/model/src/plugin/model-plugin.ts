@@ -210,7 +210,7 @@ export class ModelPluginComponent extends Behaviour {
    * 组件后更新，合成相机和场景管理器更新
    * @param dt - 更新间隔
    */
-  override lateUpdate (dt: number): void {
+  override onLateUpdate (dt: number): void {
     const composition = this.item.composition as Composition;
 
     if (this.autoAdjustScene && this.scene.tickCount == 1) {

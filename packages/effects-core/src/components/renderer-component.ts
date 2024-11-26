@@ -2,6 +2,7 @@ import { serialize } from '../decorators';
 import type { Material } from '../material';
 import type { Renderer } from '../render';
 import { removeItem } from '../utils';
+import type { VFXItem } from '../vfx-item';
 import { Component } from './component';
 
 /**
@@ -9,7 +10,6 @@ import { Component } from './component';
  * @since 2.0.0
  */
 export class RendererComponent extends Component {
-  isStartCalled = false;
 
   @serialize()
   materials: Material[] = [];
@@ -17,31 +17,11 @@ export class RendererComponent extends Component {
   @serialize()
   protected _priority = 0;
 
-  @serialize()
-  protected _enabled = true;
-
   get priority (): number {
     return this._priority;
   }
   set priority (value: number) {
     this._priority = value;
-  }
-
-  get enabled () {
-    return this._enabled;
-  }
-  set enabled (value: boolean) {
-    this._enabled = value;
-    if (value) {
-      this.onEnable();
-    }
-  }
-
-  /**
-   * 组件是否可以更新，true 更新，false 不更新
-   */
-  get isActiveAndEnabled () {
-    return this.item.getVisible() && this.enabled;
   }
 
   get material (): Material {
@@ -55,18 +35,19 @@ export class RendererComponent extends Component {
     }
   }
 
-  onEnable () { }
-
-  start () { }
-
-  update (dt: number) { }
-
-  lateUpdate (dt: number) { }
-
   render (renderer: Renderer): void { }
 
-  override onAttached (): void {
+  override setVFXItem (item: VFXItem): void {
+    super.setVFXItem(item);
     this.item.rendererComponents.push(this);
+  }
+
+  override onEnable (): void {
+    this.item.composition?.renderFrame.addMeshToDefaultRenderPass(this);
+  }
+
+  override onDisable (): void {
+    this.item.composition?.renderFrame.removeMeshFromDefaultRenderPass(this);
   }
 
   override fromData (data: unknown): void {

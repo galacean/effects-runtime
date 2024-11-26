@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-editor-gizmo",
-  "version": "2.0.7",
+  "version": "2.1.1",
   "description": "Galacean Effects player editor gizmo plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",

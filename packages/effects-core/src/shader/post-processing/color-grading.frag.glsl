@@ -128,7 +128,6 @@ vec3 ApplyVignette(vec3 inputColor, vec2 uv, vec2 center, float intensity, float
 
 void main() {
   vec4 hdrColor = texture2D(_SceneTex, uv);
-  hdrColor *= hdrColor.a;
 
   hdrColor.rgb = pow(hdrColor.rgb, vec3(2.2)); // srgb 转 linear
 
@@ -161,5 +160,6 @@ void main() {
   if(_UseToneMapping) {
     finalColor = max(vec3(0.0), ACESToneMapping(finalColor));
   }
-  gl_FragColor = vec4(clamp(GammaCorrection(finalColor), 0.0, 1.0), 1.0);
+  float alpha = min(hdrColor.a, 1.0);
+  gl_FragColor = vec4(clamp(GammaCorrection(finalColor), 0.0, 1.0), alpha);
 }

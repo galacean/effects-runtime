@@ -5,7 +5,7 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import type { VFXItemData } from './asset-loader';
 import type { Component } from './components';
-import { RendererComponent, Behaviour, EffectComponent } from './components';
+import { RendererComponent, EffectComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass, serialize } from './decorators';
@@ -44,8 +44,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素绑定的父元素，
    * 1. 当元素没有绑定任何父元素时，parent为空，transform.parentTransform 为 composition.transform
    * 2. 当元素绑定 nullItem 时，parent 为 nullItem, transform.parentTransform 为 nullItem.transform
-   * 3. 当元素绑定 TreeItem 的node时，parent为treeItem, transform.parentTransform 为 tree.nodes[i].transform(绑定的node节点上的transform)
-   * 4. 当元素绑定 TreeItem 本身时，行为表现和绑定 nullItem 相同
    */
   parent?: VFXItem;
 
@@ -58,6 +56,10 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 合成属性
    */
   composition: Composition | null;
+  /**
+   * 元素动画的当前时间
+   */
+  time = 0;
   /**
    * 元素动画的持续时间
    */
@@ -75,10 +77,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   endBehavior: spec.EndBehavior = spec.EndBehavior.forward;
   /**
-   * 元素是否可用
-   */
-  ended = false;
-  /**
    * 元素名称
    */
   name: string;
@@ -91,55 +89,111 @@ export class VFXItem extends EffectsObject implements Disposable {
    * 元素创建的数据图层/粒子/模型等
    */
   _content?: VFXItemContent;
-  reusable = false;
   type: spec.ItemType = spec.ItemType.base;
   props: VFXItemProps;
+  isDuringPlay = false;
 
   @serialize()
   components: Component[] = [];
-  itemBehaviours: Behaviour[] = [];
   rendererComponents: RendererComponent[] = [];
 
   /**
-   * 元素可见性，该值的改变会触发 `handleVisibleChanged` 回调
-   * @protected
+   * 元素是否激活
    */
-  protected visible = true;
+  private active = true;
+  /**
+   * 元素组件是否显示，用于批量开关元素组件
+   */
+  private visible = true;
   /**
    * 元素动画的速度
    */
   private speed = 1;
   private listIndex = 0;
+  private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isComposition (item: VFXItem) {
     return item.type === spec.ItemType.composition;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isSprite (item: VFXItem) {
     return item.type === spec.ItemType.sprite;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isParticle (item: VFXItem) {
     return item.type === spec.ItemType.particle;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isNull (item: VFXItem) {
     return item.type === spec.ItemType.null;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isTree (item: VFXItem) {
     return item.type === spec.ItemType.tree;
   }
 
+  /**
+   *
+   * @param item
+   * @returns
+   */
   static isCamera (item: VFXItem) {
     return item.type === spec.ItemType.camera;
   }
 
-  static isExtraCamera (item: VFXItem) {
-    return item.id === 'extra-camera' && item.name === 'extra-camera';
+  /**
+   *
+   * @param ancestorCandidate
+   * @param descendantCandidate
+   * @returns
+   */
+  static isAncestor (
+    ancestorCandidate: VFXItem,
+    descendantCandidate: VFXItem,
+  ) {
+    let current = descendantCandidate.parent;
+
+    while (current) {
+      if (current === ancestorCandidate) {
+        return true;
+      }
+      current = current.parent;
+    }
+
+    return false;
   }
 
+  /**
+   *
+   * @param engine
+   * @param props
+   */
   constructor (
     engine: Engine,
     props?: VFXItemProps,
@@ -267,8 +321,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     const newComponent = new classConstructor(this.engine);
 
     this.components.push(newComponent);
-    newComponent.item = this;
-    newComponent.onAttached();
+    newComponent.setVFXItem(this);
 
     return newComponent;
   }
@@ -310,30 +363,23 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   setParent (vfxItem: VFXItem) {
-    if (vfxItem === this) {
+    if (vfxItem === this && !vfxItem) {
       return;
     }
     if (this.parent) {
       removeItem(this.parent.children, this);
     }
     this.parent = vfxItem;
-    if (vfxItem) {
-      if (!VFXItem.isCamera(this)) {
-        this.transform.parentTransform = vfxItem.transform;
-      }
-      vfxItem.children.push(this);
-      if (!this.composition) {
-        this.composition = vfxItem.composition;
-      }
+    if (!VFXItem.isCamera(this)) {
+      this.transform.parentTransform = vfxItem.transform;
     }
-  }
-
-  /**
-   * 元素动画结束播放时回调函数
-   * @override
-   */
-  onEnd () {
-    // OVERRIDE
+    vfxItem.children.push(this);
+    if (!this.composition) {
+      this.composition = vfxItem.composition;
+    }
+    if (!this.isDuringPlay && vfxItem.isDuringPlay) {
+      this.beginPlay();
+    }
   }
 
   /**
@@ -358,19 +404,45 @@ export class VFXItem extends EffectsObject implements Disposable {
   }
 
   /**
-   * 获取元素显隐属性
+   * 激活或停用 VFXItem
    */
-  getVisible () {
+  setActive (value: boolean) {
+    if (this.active !== value) {
+      this.active = !!value;
+      this.onActiveChanged();
+    }
+  }
+
+  /**
+   * 当前 VFXItem 是否激活
+   */
+  get isActive () {
+    return this.active;
+  }
+
+  /**
+   * 设置元素的显隐，该设置会批量开关元素组件
+   */
+  setVisible (visible: boolean) {
+    for (const component of this.components) {
+      component.enabled = visible;
+    }
+    this.visible = visible;
+  }
+
+  /**
+   * 元素组件显隐状态
+   */
+  get isVisible () {
     return this.visible;
   }
 
   /**
-   * 设置元素显隐属性 会触发 `handleVisibleChanged` 回调
+   * 元素组件显隐状态
+   * @deprecated use isVisible instead
    */
-  setVisible (visible: boolean) {
-    if (this.visible !== visible) {
-      this.visible = !!visible;
-    }
+  getVisible () {
+    return this.visible;
   }
 
   /**
@@ -386,25 +458,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     tf.cloneFromMatrix(this.transform.getWorldMatrix());
 
     return tf;
-  }
-
-  /**
-   * 获取元素内部节点的变换，目前只有场景树元素在使用
-   * @param itemId 元素id信息，如果带^就返回内部节点变换，否则返回自己的变换
-   * @returns 元素变换或内部节点变换
-   */
-  getNodeTransform (itemId: string): Transform {
-    for (let i = 0; i < this.components.length; i++) {
-      const comp = this.components[1];
-
-      // @ts-expect-error
-      if (comp.getNodeTransform) {
-        // @ts-expect-error
-        return comp.getNodeTransform(itemId);
-      }
-    }
-
-    return this.transform;
   }
 
   /**
@@ -495,34 +548,86 @@ export class VFXItem extends EffectsObject implements Disposable {
     return pos;
   }
 
-  /**
-   * 是否到达元素的结束时间
-   * @param now
-   * @returns
-   */
-  isEnded (now: number) {
-    // at least 1 ms
-    return now - this.duration > 0.001;
-  }
-
   find (name: string): VFXItem | undefined {
     if (this.name === name) {
       return this;
     }
-    for (const child of this.children) {
-      if (child.name === name) {
-        return child;
-      }
-    }
-    for (const child of this.children) {
-      const res = child.find(name);
 
-      if (res) {
-        return res;
+    const queue: VFXItem[] = [];
+
+    queue.push(...this.children);
+    let index = 0;
+
+    while (index < queue.length) {
+      const item = queue[index];
+
+      index++;
+      if (item.name === name) {
+        return item;
       }
+      queue.push(...item.children);
     }
 
     return undefined;
+  }
+
+  /**
+   * @internal
+   */
+  beginPlay () {
+    this.isDuringPlay = true;
+
+    if (this.composition && this.active && !this.isEnabled) {
+      this.onEnable();
+    }
+
+    for (const child of this.children) {
+      if (!child.isDuringPlay) {
+        child.beginPlay();
+      }
+    }
+
+  }
+
+  /**
+   * @internal
+   */
+  onActiveChanged () {
+    if (!this.isEnabled) {
+      this.onEnable();
+    } else {
+      this.onDisable();
+    }
+  }
+
+  /**
+   * @internal
+   */
+  onEnable () {
+    this.isEnabled = true;
+    for (const component of this.components) {
+      if (component.enabled && !component.isStartCalled) {
+        component.onStart();
+        component.isStartCalled = true;
+      }
+    }
+    for (const component of this.components) {
+      if (component.enabled && !component.isEnableCalled) {
+        component.enable();
+      }
+    }
+  }
+
+  /**
+   * @internal
+   */
+  onDisable () {
+    this.isEnabled = false;
+    for (const component of this.components) {
+      if (component.enabled && component.isEnableCalled) {
+        component.disable();
+      }
+    }
   }
 
   override fromData (data: VFXItemData): void {
@@ -577,17 +682,13 @@ export class VFXItem extends EffectsObject implements Disposable {
       data.content = { options: {} };
     }
 
-    if (duration <= 0) {
+    if (duration < 0) {
       throw new Error(`Item duration can't be less than 0, see ${HELP_LINK['Item duration can\'t be less than 0']}.`);
     }
 
-    this.itemBehaviours.length = 0;
     this.rendererComponents.length = 0;
     for (const component of this.components) {
       component.item = this;
-      if (component instanceof Behaviour) {
-        this.itemBehaviours.push(component);
-      }
       if (component instanceof RendererComponent) {
         this.rendererComponents.push(component);
       }

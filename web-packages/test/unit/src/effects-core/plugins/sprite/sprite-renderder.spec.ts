@@ -202,7 +202,7 @@ describe('core/plugins/sprite/renderer', () => {
     const comp = await loadSceneAndPlay(player, JSON.parse(json), currentTime);
     const spriteItem = comp.getItemByName('sprite_1')?.getComponent(SpriteComponent);
 
-    spriteItem?.update(0.1);
+    spriteItem?.onUpdate(0.1);
     const transform = spriteItem?.item.transform;
     const startSize = transform?.size;
     const a = transform?.anchor.toArray();

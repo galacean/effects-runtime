@@ -4,9 +4,9 @@ Galacean Effects Player is used to play the animations created with Galacean Eff
 
 ## Documentation
 
-By reading the [Galacean Effects Developer Documentation](https://galacean.antgroup.com/effects/user/dev-doc), you will learn more about how to develop interactive projects using Galacean Effects Player.
+By reading the [Galacean Effects Developer Documentation](https://www.galacean.com/effects/user/dev-doc), you will learn more about how to develop interactive projects using Galacean Effects Player.
 
 ## API Documentation
 
-[Galacean Effects API Documentation](https://galacean.antgroup.com/effects/api/)
+[Galacean Effects API Documentation](https://www.galacean.com/effects/api/)
 

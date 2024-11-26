@@ -3,7 +3,6 @@ import type {
   GLTFMaterial,
   GLTFPrimitive,
   GLTFLight,
-  GLTFScene,
   GLTFImage,
   GLTFTexture,
   GLTFCamera,
@@ -19,7 +18,6 @@ import type {
   ModelAnimationOptions,
   ModelMaterialOptions,
   ModelSkyboxOptions,
-  ModelTreeOptions,
   ModelLightComponentData, ModelCameraComponentData, ModelSkyboxComponentData,
 } from '../index';
 
@@ -108,6 +106,7 @@ export interface ModelLight {
   range?: number,
   innerConeAngle?: number,
   outerConeAngle?: number,
+  followCamera?: boolean,
   //
   name: string,
   position: spec.vec3,
@@ -154,8 +153,6 @@ export interface Loader {
   processCamera (cameras: GLTFCamera[], fromGLTF: boolean): void,
 
   processMaterial (materials: GLTFMaterial[], fromGLTF: boolean): void,
-
-  createTreeOptions (scene: GLTFScene): ModelTreeOptions,
 
   createAnimations (animations: GLTFAnimation[]): ModelAnimationOptions[],
 

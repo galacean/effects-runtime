@@ -16,7 +16,7 @@ export type ItemEvent = {
 };
 
 /**
- * Compositio 可以绑定的事件
+ * Composition 可以绑定的事件
  */
 export type CompositionEvent<C> = {
   /**
@@ -33,4 +33,9 @@ export type CompositionEvent<C> = {
    * 合成行为为销毁/冻结时只会触发一次
    */
   ['end']: [endInfo: { composition: C }],
+  /**
+   * 时间跳转事件
+   * 用于在合成中跳转到指定时间
+   */
+  ['goto']: [gotoInfo: { time: number }],
 };

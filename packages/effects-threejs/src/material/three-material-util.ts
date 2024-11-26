@@ -82,22 +82,7 @@ export function setUniformValue (uniforms: Record<string, any>, name: string, va
  */
 export const TEXTURE_UNIFORM_MAP = [
   'uMaskTex',
-  'uSampler0',
-  'uSampler1',
-  'uSampler2',
-  'uSampler3',
-  'uSampler4',
-  'uSampler5',
-  'uSampler6',
-  'uSampler7',
-  'uSampler8',
-  'uSampler9',
-  'uSampler10',
-  'uSampler11',
-  'uSampler12',
-  'uSampler13',
-  'uSampler14',
-  'uSampler15',
+  '_MainTex',
   'uColorOverLifetime',
   'uColorOverTrail',
 ];

@@ -50,10 +50,10 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   startSpeed: number;
   data: TransformPlayableAssetData;
   private velocity: Vector3;
-  private binding: VFXItem;
+  private boundObject: VFXItem;
 
   start (): void {
-    const boundItem = this.binding;
+    const boundItem = this.boundObject;
     const scale = boundItem.transform.scale;
 
     this.originalTransform = {
@@ -133,15 +133,15 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   }
 
   override processFrame (context: FrameContext): void {
-    if (!this.binding) {
+    if (!this.boundObject) {
       const boundObject = context.output.getUserData();
 
       if (boundObject instanceof VFXItem) {
-        this.binding = boundObject;
+        this.boundObject = boundObject;
         this.start();
       }
     }
-    if (this.binding && this.binding.composition) {
+    if (this.boundObject && this.boundObject.composition) {
       this.sampleAnimation();
     }
   }
@@ -150,7 +150,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
    * 应用时间轴K帧数据到对象
    */
   private sampleAnimation () {
-    const boundItem = this.binding;
+    const boundItem = this.boundObject;
     const duration = boundItem.duration;
     let life = this.time / duration;
 
@@ -203,7 +203,7 @@ export class TransformAnimationPlayable extends AnimationPlayable {
   }
 }
 
-@effectsClass('TransformPlayableAsset')
+@effectsClass(spec.DataType.TransformPlayableAsset)
 export class TransformPlayableAsset extends PlayableAsset {
   transformAnimationData: TransformPlayableAssetData;
 
@@ -241,10 +241,17 @@ export interface TransformPlayableAssetData extends spec.EffectsObjectData {
 export class ActivationPlayable extends Playable {
 
   override processFrame (context: FrameContext): void {
+    const vfxItem = context.output.getUserData();
+
+    if (!(vfxItem instanceof VFXItem)) {
+      return;
+    }
+
+    vfxItem.time = this.time;
   }
 }
 
-@effectsClass('ActivationPlayableAsset')
+@effectsClass(spec.DataType.ActivationPlayableAsset)
 export class ActivationPlayableAsset extends PlayableAsset {
   override createPlayable (graph: PlayableGraph): Playable {
     return new ActivationPlayable(graph);

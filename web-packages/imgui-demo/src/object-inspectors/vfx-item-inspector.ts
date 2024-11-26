@@ -1,8 +1,8 @@
 import type { Component, Material } from '@galacean/effects';
-import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, getMergedStore, spec } from '@galacean/effects';
+import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, generateGUID, getMergedStore, spec } from '@galacean/effects';
 import { objectInspector } from '../core/decorators';
 import { ObjectInspector } from './object-inspectors';
-import type { GLMaterial } from '@galacean/effects-webgl';
+import { GLMaterial } from '@galacean/effects-webgl';
 import { GLTexture } from '@galacean/effects-webgl';
 import type { FileNode } from '../core/file-node';
 import { UIManager } from '../core/ui-manager';
@@ -29,10 +29,17 @@ export class VFXItemInspector extends ObjectInspector {
     ImGui.Text('GUID');
     ImGui.SameLine(alignWidth);
     ImGui.Text(activeObject.getInstanceId());
-    ImGui.Text('Visible');
+    ImGui.Text('Is Active');
     ImGui.SameLine(alignWidth);
-    //@ts-expect-error
-    ImGui.Checkbox('##Visible', (_ = activeObject.visible) => activeObject.visible = _);
+    ImGui.Checkbox('##IsActive', (_ = activeObject.isActive) => {
+      activeObject.setActive(_);
+
+      return activeObject.isActive;
+    });
+
+    ImGui.Text('End Behavior');
+    ImGui.SameLine(alignWidth);
+    ImGui.Text(this.endBehaviorToString(activeObject.endBehavior));
 
     if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
       const transform = activeObject.transform;
@@ -58,33 +65,40 @@ export class VFXItemInspector extends ObjectInspector {
     for (const componet of activeObject.components) {
       const customEditor = UIManager.customEditors.get(componet.constructor);
 
-      if (customEditor) {
-        if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
-          customEditor.onInspectorGUI();
-        }
-        continue;
-      }
       if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
+        ImGui.Text('Enabled');
+        ImGui.SameLine(alignWidth);
+        ImGui.Checkbox('##Enabled', (_ = componet.enabled) => {
+          componet.enabled = _;
+
+          return componet.enabled;
+        });
+
+        if (customEditor) {
+          customEditor.onInspectorGUI();
+          continue;
+
+        }
 
         const propertyDecoratorStore = getMergedStore(componet);
 
-        for (const peopertyName of Object.keys(componet)) {
-          const key = peopertyName as keyof Component;
+        for (const propertyName of Object.keys(componet)) {
+          const key = propertyName as keyof Component;
           const property = componet[key];
-          const ImGuiID = componet.getInstanceId() + peopertyName;
+          const ImGuiID = componet.getInstanceId() + propertyName;
 
           if (typeof property === 'number') {
-            ImGui.Text(peopertyName);
+            ImGui.Text(propertyName);
             ImGui.SameLine(alignWidth);
             //@ts-expect-error
             ImGui.DragFloat('##DragFloat' + ImGuiID, (_ = componet[key]) => componet[key] = _, 0.03);
           } else if (typeof property === 'boolean') {
-            ImGui.Text(peopertyName);
+            ImGui.Text(propertyName);
             ImGui.SameLine(alignWidth);
             //@ts-expect-error
             ImGui.Checkbox('##Checkbox' + ImGuiID, (_ = componet[key]) => componet[key] = _);
           } else if (property instanceof EffectsObject) {
-            ImGui.Text(peopertyName);
+            ImGui.Text(propertyName);
             ImGui.SameLine(alignWidth);
             let name = 'EffectsObject';
 
@@ -116,10 +130,10 @@ export class VFXItemInspector extends ObjectInspector {
         if (componet instanceof RendererComponent) {
           ImGui.Text('Material');
           ImGui.SameLine(alignWidth);
-          ImGui.Button(componet.material.name, new ImGui.Vec2(200, 0));
+          ImGui.Button(componet.material?.name ?? '', new ImGui.Vec2(200, 0));
 
           if (ImGui.BeginDragDropTarget()) {
-            const payload = ImGui.AcceptDragDropPayload(componet.material.constructor.name);
+            const payload = ImGui.AcceptDragDropPayload(GLMaterial.name);
 
             if (payload) {
               void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
@@ -143,14 +157,16 @@ export class VFXItemInspector extends ObjectInspector {
     if (activeObject.getComponent(RendererComponent)) {
       const material = activeObject.getComponent(RendererComponent).material;
 
-      if (ImGui.CollapsingHeader(material.name + ' (Material)##CollapsingHeader', ImGui.TreeNodeFlags.DefaultOpen)) {
+      if (material && ImGui.CollapsingHeader(material.name + ' (Material)##CollapsingHeader', ImGui.TreeNodeFlags.DefaultOpen)) {
         this.drawMaterial(material);
       }
-
     }
   }
 
   private drawMaterial (material: Material) {
+    if (!material) {
+      return;
+    }
     const glMaterial = material as GLMaterial;
     const serializedData = glMaterial.toData();
     const shaderProperties = material.shader.shaderData.properties;
@@ -250,7 +266,7 @@ export class VFXItemInspector extends ObjectInspector {
         if (!serializedData.vector4s[uniformName]) {
           serializedData.vector4s[uniformName] = { x:1.0, y:1.0, z:0.0, w:0.0 };
         }
-        if (ImGui.DragFloat4('##' + uniformName, serializedData.vector4s[uniformName])) {
+        if (ImGui.DragFloat4('##' + uniformName, serializedData.vector4s[uniformName], 0.02)) {
           dirtyFlag = true;
         }
       } else if (type === '2D') {
@@ -280,9 +296,34 @@ export class VFXItemInspector extends ObjectInspector {
       }
     }
 
-    SerializationHelper.deserializeTaggedProperties(serializedData, glMaterial);
+    SerializationHelper.deserialize(serializedData, glMaterial);
     if (dirtyFlag) {
       GalaceanEffects.assetDataBase.setDirty(glMaterial.getInstanceId());
     }
+  }
+
+  private endBehaviorToString (endBehavior: spec.EndBehavior) {
+    let result = '';
+
+    switch (endBehavior) {
+      case spec.EndBehavior.destroy:
+        result = 'Destroy';
+
+        break;
+      case spec.EndBehavior.forward:
+        result = 'Forward';
+
+        break;
+      case spec.EndBehavior.freeze:
+        result = 'Freeze';
+
+        break;
+      case spec.EndBehavior.restart:
+        result = 'Restart';
+
+        break;
+    }
+
+    return result;
   }
 }

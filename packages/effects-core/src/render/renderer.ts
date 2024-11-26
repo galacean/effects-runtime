@@ -1,5 +1,5 @@
-import type { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
-import type { RendererComponent } from '../components/renderer-component';
+import type { Matrix4, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
+import type { RendererComponent } from '../components';
 import type { Engine } from '../engine';
 import type { Material } from '../material';
 import type { LostHandler, RestoreHandler } from '../utils';
@@ -38,6 +38,10 @@ export class Renderer implements LostHandler, RestoreHandler {
   }
 
   setGlobalVector4 (name: string, value: Vector4) {
+    // OVERRIDE
+  }
+
+  setGlobalVector3 (name: string, value: Vector3) {
     // OVERRIDE
   }
 

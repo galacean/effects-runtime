@@ -25,7 +25,7 @@ export class PlayableGraph {
 
     // 更新节点时间
     for (const playable of this.playables) {
-      this.updatePlayableTime(playable, dt);
+      this.updatePlayableTime(playable, dt / 1000);
     }
   }
 
@@ -67,6 +67,7 @@ export class Playable implements Disposable {
   onPlayablePlayFlag = true;
   onPlayablePauseFlag = false;
 
+  private duration = 0;
   private destroyed = false;
   private inputs: Playable[] = [];
   private inputOuputPorts: number[] = [];
@@ -78,7 +79,7 @@ export class Playable implements Disposable {
   /**
    * 当前本地播放的时间
    */
-  protected time: number;
+  protected time: number = 0;
 
   constructor (graph: PlayableGraph, inputCount = 0) {
     graph.addPlayable(this);
@@ -183,6 +184,14 @@ export class Playable implements Disposable {
 
   getTime () {
     return this.time;
+  }
+
+  setDuration (duration: number) {
+    this.duration = duration;
+  }
+
+  getDuration () {
+    return this.duration;
   }
 
   getPlayState () {
@@ -347,7 +356,7 @@ export class PlayableOutput {
     };
   }
 
-  setSourcePlayeble (playable: Playable, port = 0) {
+  setSourcePlayable (playable: Playable, port = 0) {
     this.sourcePlayable = playable;
     this.sourceOutputPort = port;
   }

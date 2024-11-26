@@ -12,17 +12,16 @@ import type {
   ModelAnimTrackOptions,
   ModelMaterialOptions,
   ModelSkyboxOptions,
-  ModelTreeOptions,
   ModelTextureTransform,
 } from '../index';
 import {
-  Vector3, Box3, Matrix4, Euler, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
+  Vector3, Box3, Euler, PSkyboxCreator, PSkyboxType, UnlitShaderGUID, PBRShaderGUID,
 } from '../runtime';
 import { LoaderHelper } from './loader-helper';
 import { WebGLHelper } from '../utility';
-import type { PImageBufferData, PSkyboxBufferParams } from '../runtime/skybox';
+import type { PImageBufferData, PSkyboxBufferParams, PSkyboxURLParams } from '../runtime/skybox';
 import type {
-  GLTFSkin, GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFScene, GLTFLight,
+  GLTFMesh, GLTFImage, GLTFMaterial, GLTFTexture, GLTFLight,
   GLTFCamera, GLTFAnimation, GLTFResources, GLTFImageBasedLight, GLTFPrimitive,
   GLTFBufferAttribute, GLTFBounds, GLTFTextureInfo,
 } from '@vvfx/resource-detection';
@@ -53,12 +52,7 @@ type Box3 = math.Box3;
 export class LoaderImpl implements Loader {
   private sceneOptions: LoadSceneOptions;
   private loaderOptions: LoaderOptions;
-  private gltfScene: GLTFScene;
-  private gltfSkins: GLTFSkin[] = [];
   private gltfMeshs: GLTFMesh[] = [];
-  private gltfLights: GLTFLight[] = [];
-  private gltfCameras: GLTFCamera[] = [];
-  private gltfImages: GLTFImage[] = [];
   private gltfTextures: GLTFTexture[] = [];
   private gltfMaterials: GLTFMaterial[] = [];
   private gltfAnimations: GLTFAnimation[] = [];
@@ -87,7 +81,7 @@ export class LoaderImpl implements Loader {
       this.composition = {
         id: '1',
         name: 'test1',
-        duration: 9999,
+        duration: 99999,
         endBehavior: spec.EndBehavior.restart,
         camera: {
           fov: 45,
@@ -128,12 +122,7 @@ export class LoaderImpl implements Loader {
     }));
 
     this.processGLTFResource(gltfResource, this.imageElements);
-    this.gltfScene = gltfResource.scenes[0];
-    this.gltfSkins = this.gltfScene.skins;
     this.gltfMeshs = gltfResource.meshes;
-    this.gltfLights = this.gltfScene.lights;
-    this.gltfCameras = this.gltfScene.cameras;
-    this.gltfImages = gltfResource.images;
     this.gltfTextures = gltfResource.textures;
     this.gltfMaterials = gltfResource.materials;
     this.gltfAnimations = gltfResource.animations;
@@ -607,6 +596,7 @@ export class LoaderImpl implements Loader {
       range: data.range,
       innerConeAngle: data.innerConeAngle,
       outerConeAngle: data.outerConeAngle,
+      followCamera: data.followCamera,
     };
     const item: spec.VFXItemData = {
       id: itemId,
@@ -692,7 +682,60 @@ export class LoaderImpl implements Loader {
     this.components.push(component);
   }
 
-  async tryAddSkybox (skybox: ModelSkybox) {
+  addSkybox (skybox: PSkyboxURLParams) {
+    const itemId = generateGUID();
+    const skyboxInfo = PSkyboxCreator.createSkyboxComponentData(skybox);
+    const { imageList, textureOptionsList, component } = skyboxInfo;
+
+    component.item.id = itemId;
+    if (skybox.intensity !== undefined) {
+      component.intensity = skybox.intensity;
+    }
+    if (skybox.reflectionsIntensity !== undefined) {
+      component.reflectionsIntensity = skybox.reflectionsIntensity;
+    }
+    component.renderable = skybox.renderable ?? false;
+
+    const item: spec.VFXItemData = {
+      id: itemId,
+      name: 'Skybox-Customize',
+      duration: 999,
+      type: spec.ItemType.skybox,
+      pn: 0,
+      visible: true,
+      endBehavior: spec.EndBehavior.freeze,
+      transform: {
+        position: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        eulerHint: {
+          x: 0,
+          y: 0,
+          z: 0,
+        },
+        scale: {
+          x: 1,
+          y: 1,
+          z: 1,
+        },
+      },
+      components: [
+        { id: component.id },
+      ],
+      content: {},
+      dataType: spec.DataType.VFXItemData,
+    };
+
+    this.images.push(...imageList);
+    // @ts-expect-error
+    this.textures.push(...textureOptionsList);
+    this.items.push(item);
+    this.components.push(component);
+  }
+
+  private async tryAddSkybox (skybox: ModelSkybox) {
     if (this.gltfImageBasedLights.length > 0 && !this.ignoreSkybox()) {
       const ibl = this.gltfImageBasedLights[0];
 
@@ -762,14 +805,28 @@ export class LoaderImpl implements Loader {
     return PSkyboxCreator.createSkyboxComponentData(params);
   }
 
-  private clear () {
+  dispose () {
+    this.clear();
+    // @ts-expect-error
+    this.engine = null;
+  }
+
+  clear () {
+    this.gltfMeshs = [];
+    this.gltfTextures = [];
+    this.gltfMaterials = [];
+    this.gltfAnimations = [];
+    this.gltfImageBasedLights = [];
+
     this.images = [];
+    this.imageElements = [];
     this.textures = [];
     this.items = [];
     this.components = [];
     this.materials = [];
     this.shaders = [];
     this.geometries = [];
+    this.animations = [];
   }
 
   private computeSceneAABB () {
@@ -819,52 +876,6 @@ export class LoaderImpl implements Loader {
     });
 
     return sceneAABB;
-  }
-
-  /**
-   * 按照传入的动画播放参数，计算需要播放的动画索引
-   *
-   * @param treeOptions 节点树属性，需要初始化animations列表。
-   * @returns 返回计算的动画索引，-1表示没有动画需要播放，-88888888表示播放所有动画。
-   */
-  getPlayAnimationIndex (treeOptions: ModelTreeOptions): number {
-    const animations = treeOptions.animations;
-
-    if (animations === undefined || animations.length <= 0) {
-      // 硬编码，内部指定的不播放动画的索引值
-      return -1;
-    }
-
-    if (this.isPlayAllAnimation()) {
-      // 硬编码，内部指定的播放全部动画的索引值
-      return -88888888;
-    }
-
-    const animationInfo = this.sceneOptions.effects.playAnimation;
-
-    if (animationInfo === undefined) {
-      return -1;
-    }
-
-    if (typeof animationInfo === 'number') {
-      if (animationInfo >= 0 && animationInfo < animations.length) {
-        return animationInfo;
-      } else {
-        return -1;
-      }
-    } else {
-      // typeof animationInfo === 'string'
-      let animationIndex = -1;
-
-      // 通过动画名字查找动画索引
-      animations.forEach((anim, index) => {
-        if (anim.name === animationInfo) {
-          animationIndex = index;
-        }
-      });
-
-      return animationIndex;
-    }
   }
 
   isPlayAnimation (): boolean {
@@ -979,62 +990,6 @@ export class LoaderImpl implements Loader {
         mat.occlusionTexture.strength = this.isTiny3dMode() ? 0 : 1;
       }
     });
-  }
-
-  createTreeOptions (scene: GLTFScene): ModelTreeOptions {
-    const nodeList = scene.nodes.map((node, nodeIndex) => {
-      const children = node.children.map(child => {
-        if (child.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for child ${child}`); }
-
-        return child.nodeIndex;
-      });
-      let pos: spec.vec3 | undefined;
-      let quat: spec.vec4 | undefined;
-      let scale: spec.vec3 | undefined;
-
-      if (node.matrix !== undefined) {
-        if (node.matrix.length !== 16) { throw new Error(`Invalid matrix length ${node.matrix.length} for node ${node}`); }
-        const mat = Matrix4.fromArray(node.matrix);
-        const transform = mat.getTransform();
-
-        pos = transform.translation.toArray();
-        quat = transform.rotation.toArray();
-        scale = transform.scale.toArray();
-      } else {
-        if (node.translation !== undefined) { pos = node.translation as spec.vec3; }
-        if (node.rotation !== undefined) { quat = node.rotation as spec.vec4; }
-        if (node.scale !== undefined) { scale = node.scale as spec.vec3; }
-      }
-      node.nodeIndex = nodeIndex;
-      const treeNode: spec.TreeNodeOptions = {
-        name: node.name,
-        transform: {
-          position: pos,
-          quat: quat,
-          scale: scale,
-        },
-        children: children,
-        id: `${node.nodeIndex}`,
-        // id: index, id不指定就是index，指定后就是指定的值
-      };
-
-      return treeNode;
-    });
-
-    const rootNodes = scene.rootNodes.map(root => {
-      if (root.nodeIndex === undefined) { throw new Error(`Undefined nodeIndex for root ${root}`); }
-
-      return root.nodeIndex;
-    });
-
-    const treeOptions: ModelTreeOptions = {
-      nodes: nodeList,
-      children: rootNodes,
-      animation: -1,
-      animations: [],
-    };
-
-    return treeOptions;
   }
 
   createAnimations (animations: GLTFAnimation[]): ModelAnimationOptions[] {
@@ -1266,7 +1221,7 @@ export function getDefaultUnlitMaterialData (): spec.MaterialData {
     },
     'macros': [],
     'shader': {
-      'id': 'unlit000000000000000000000000000',
+      'id': spec.BuiltinObjectGUID.UnlitShader,
     },
     'ints': {
 

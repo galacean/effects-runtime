@@ -13,6 +13,7 @@ import type { Renderer } from '../../render';
 import { effectsClass } from '../../decorators';
 
 /**
+ * 交互组件
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.InteractComponent)
@@ -30,10 +31,21 @@ export class InteractComponent extends RendererComponent {
    * 拖拽的距离映射系数，越大越容易拖动
    */
   dragRatio: number[] = [1, 1];
+  /**
+   * 拖拽X范围
+   */
+  dragRange: {
+    dxRange: [min: number, max: number],
+    dyRange: [min: number, max: number],
+  } = {
+      dxRange: [0, 0],
+      dyRange: [0, 0],
+    };
+
+  private duringPlay = false;
 
   /** 是否响应点击和拖拽交互事件 */
   private _interactive = true;
-  private hasBeenAddedToComposition = false;
 
   set interactive (enable: boolean) {
     this._interactive = enable;
@@ -47,7 +59,23 @@ export class InteractComponent extends RendererComponent {
     return this._interactive;
   }
 
-  override start (): void {
+  getDragRangeX (): [min: number, max: number] {
+    return this.dragRange.dxRange;
+  }
+
+  setDragRangeX (min: number, max: number) {
+    this.dragRange.dxRange = [min, max];
+  }
+
+  getDragRangeY (): [min: number, max: number] {
+    return this.dragRange.dyRange;
+  }
+
+  setDragRangeY (min: number, max: number) {
+    this.dragRange.dyRange = [min, max];
+  }
+
+  override onStart (): void {
     const options = this.item.props.content.options as spec.DragInteractOption;
     const { env } = this.item.engine.renderer;
     const composition = this.item.composition;
@@ -73,25 +101,40 @@ export class InteractComponent extends RendererComponent {
       this.materials = this.previewContent.mesh.materials;
     }
     this.item.getHitTestParams = this.getHitTestParams;
-    this.item.onEnd = () => {
-      if (this.item && this.item.composition) {
-        this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
-        this.clickable = false;
-        this.hasBeenAddedToComposition = false;
-        this.previewContent?.mesh.dispose();
-        this.endDragTarget();
-      }
-    };
   }
 
-  override update (dt: number): void {
-    this.previewContent?.updateMesh();
-    if (!this.hasBeenAddedToComposition && this.item.composition) {
+  override onDisable (): void {
+    super.onDisable();
+    if (this.item && this.item.composition) {
+      if (this.duringPlay && !this.item.transform.getValid()) {
+        this.item.composition.removeInteractiveItem(this.item, (this.item.props as spec.InteractItem).content.options.type);
+        this.duringPlay = false;
+      }
+      this.clickable = false;
+      this.endDragTarget();
+    }
+  }
+
+  override onEnable (): void {
+    super.onEnable();
+    const { type } = this.interactData.options as spec.ClickInteractOption;
+
+    if (type === spec.InteractType.CLICK) {
+      this.clickable = true;
+    }
+  }
+
+  override onUpdate (dt: number): void {
+    this.duringPlay = true;
+
+    // trigger messageBegin when item enter
+    if (this.item.time > 0 && this.item.time - dt / 1000 <= 0) {
       const options = this.item.props.content.options as spec.DragInteractOption;
 
-      this.item.composition.addInteractiveItem(this.item, options.type);
-      this.hasBeenAddedToComposition = true;
+      this.item.composition?.addInteractiveItem(this.item, options.type);
     }
+
+    this.previewContent?.updateMesh();
 
     if (!this.dragEvent || !this.bouncingArg) {
       return;
@@ -112,11 +155,13 @@ export class InteractComponent extends RendererComponent {
 
   override render (renderer: Renderer): void {
     if (this.previewContent) {
+      this.previewContent.mesh.worldMatrix = this.transform.getWorldMatrix();
       this.previewContent.mesh.render(renderer);
     }
   }
 
   override onDestroy (): void {
+    this.previewContent?.mesh.dispose();
   }
 
   endDragTarget () {
@@ -128,7 +173,6 @@ export class InteractComponent extends RendererComponent {
       return;
     }
 
-    const options = (this.item.props as spec.InteractItem).content.options as spec.DragInteractOption;
     const { position, fov } = evt.cameraParam;
     const dy = event.dy;
     const dx = event.dx * event.width / event.height;
@@ -136,24 +180,20 @@ export class InteractComponent extends RendererComponent {
     const sp = Math.tan(fov * Math.PI / 180 / 2) * Math.abs(depth);
     const height = dy * sp;
     const width = dx * sp;
+    const { dxRange, dyRange } = this.dragRange;
     let nx = position[0] - this.dragRatio[0] * width;
     let ny = position[1] - this.dragRatio[1] * height;
 
-    if (options.dxRange) {
-      const [min, max] = options.dxRange;
+    const [xMin, xMax] = dxRange;
+    const [yMin, yMax] = dyRange;
 
-      nx = clamp(nx, min, max);
-      if (nx !== min && nx !== max && min !== max) {
-        event.origin?.preventDefault();
-      }
+    nx = clamp(nx, xMin, xMax);
+    ny = clamp(ny, yMin, yMax);
+    if (nx !== xMin && nx !== xMax && xMin !== xMax) {
+      event.origin?.preventDefault();
     }
-    if (options.dyRange) {
-      const [min, max] = options.dyRange;
-
-      ny = clamp(ny, min, max);
-      if (ny !== min && ny !== max && min !== max) {
-        event.origin?.preventDefault();
-      }
+    if (ny !== yMin && ny !== yMax && yMin !== yMax) {
+      event.origin?.preventDefault();
     }
     this.item.composition.camera.position = new Vector3(nx, ny, depth);
   }
@@ -162,7 +202,6 @@ export class InteractComponent extends RendererComponent {
     if (options.target !== 'camera') {
       return;
     }
-
     let dragEvent: Partial<DragEventType> | null;
     const handlerMap: Record<string, (event: TouchEventType) => void> = {
       touchstart: (event: TouchEventType) => {
@@ -250,6 +289,16 @@ export class InteractComponent extends RendererComponent {
   override fromData (data: spec.InteractContent): void {
     super.fromData(data);
     this.interactData = data;
+    if (data.options.type === spec.InteractType.DRAG) {
+      const options = data.options as spec.DragInteractOption;
+
+      if (options.dxRange) {
+        this.dragRange.dxRange = options.dxRange;
+      }
+      if (options.dyRange) {
+        this.dragRange.dyRange = options.dyRange;
+      }
+    }
   }
 
   canInteract (): boolean {

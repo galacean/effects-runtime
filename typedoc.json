@@ -5,17 +5,21 @@
     "packages/effects",
     "packages/effects-helper",
     "packages/effects-threejs",
+    "plugin-packages/downgrade",
     "plugin-packages/editor-gizmo",
     "plugin-packages/model",
+    "plugin-packages/multimedia",
     "plugin-packages/orientation-transformer",
-    "plugin-packages/spine"
+    "plugin-packages/rich-text",
+    "plugin-packages/spine",
+    "plugin-packages/stats"
   ],
   "entryPointStrategy": "packages",
   "out": "api",
   "includeVersion": true,
   "readme": "./packages/effects/README.md",
   "navigationLinks": {
-    "Galacean Effects": "https://galacean.antgroup.com/effects/",
+    "Galacean Effects": "https://www.galacean.com/effects/",
     "Source code": "https://github.com/galacean/effects-runtime"
   }
 }

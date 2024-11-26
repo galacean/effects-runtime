@@ -23,9 +23,9 @@ export class SubCompositionMixerPlayable extends Playable {
     }
 
     if (hasInput) {
-      compositionComponent.showItems();
+      compositionComponent.item.setActive(true);
     } else {
-      compositionComponent.hideItems();
+      compositionComponent.item.setActive(false);
     }
   }
 }

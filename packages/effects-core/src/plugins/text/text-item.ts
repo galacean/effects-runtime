@@ -2,8 +2,6 @@
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../../engine';
 import { Texture } from '../../texture';
-import type { SpriteItemProps } from '../sprite/sprite-item';
-import { SpriteComponent } from '../sprite/sprite-item';
 import { TextLayout } from './text-layout';
 import { TextStyle } from './text-style';
 import { glContext } from '../../gl';
@@ -12,6 +10,18 @@ import { canvasPool } from '../../canvas-pool';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
+import { BaseRenderComponent } from '../../components';
+
+/**
+ * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
+ */
+export interface TextItemProps extends Omit<spec.TextContent, 'renderer'> {
+  listIndex?: number,
+  renderer: {
+    mask: number,
+    texture: Texture,
+  } & Omit<spec.RendererOptions, 'texture'>,
+}
 
 export const DEFAULT_FONTS = [
   'serif',
@@ -22,7 +32,7 @@ export const DEFAULT_FONTS = [
 
 interface CharInfo {
   /**
-   * 段落y值
+   * 段落 y 值
    */
   y: number,
   /**
@@ -38,24 +48,36 @@ interface CharInfo {
 
 export interface TextComponent extends TextComponentBase { }
 
+let seed = 0;
+
 /**
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends SpriteComponent {
+export class TextComponent extends BaseRenderComponent {
   isDirty = true;
 
   /**
    * 文本行数
    */
   lineCount = 0;
+  protected readonly SCALE_FACTOR = 0.1;
+  protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
-  constructor (engine: Engine, props?: spec.TextContent) {
-    super(engine, props as unknown as SpriteItemProps);
+  constructor (engine: Engine, props?: TextItemProps) {
+    super(engine);
+
+    this.name = 'MText' + seed++;
+    this.geometry = this.createGeometry(glContext.TRIANGLES);
+
+    if (props) {
+      this.fromData(props);
+    }
 
     this.canvas = canvasPool.getCanvas();
     canvasPool.saveCanvas(this.canvas);
     this.context = this.canvas.getContext('2d', { willReadFrequently: true });
+    this.setItem();
 
     if (!props) {
       return;
@@ -67,15 +89,35 @@ export class TextComponent extends SpriteComponent {
     this.updateTexture();
   }
 
-  override update (dt: number): void {
-    super.update(dt);
+  override onUpdate (dt: number): void {
+    super.onUpdate(dt);
     this.updateTexture();
   }
 
-  override fromData (data: SpriteItemProps): void {
+  override fromData (data: TextItemProps): void {
     super.fromData(data);
-    const options = data.options as spec.TextContentOptions;
+    const { interaction, options, listIndex = 0 } = data;
+    let renderer = data.renderer;
 
+    if (!renderer) {
+      renderer = {} as TextItemProps['renderer'];
+    }
+
+    this.interaction = interaction;
+
+    this.renderer = {
+      renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
+      blending: renderer.blending ?? spec.BlendingMode.ALPHA,
+      texture: renderer.texture ?? this.engine.emptyTexture,
+      occlusion: !!renderer.occlusion,
+      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
+      side: renderer.side ?? spec.SideMode.DOUBLE,
+      mask: renderer.mask ?? 0,
+      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      order: listIndex,
+    };
+
+    this.interaction = interaction;
     this.updateWithOptions(options);
     // Text
     this.updateTexture();
@@ -474,7 +516,7 @@ export class TextComponentBase {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.material.setTexture('uSampler0',
+    this.material.setTexture('_MainTex',
       Texture.createWithData(
         this.engine,
         {

@@ -47,18 +47,19 @@ export class ParticleSystemRenderer extends RendererComponent {
     this.meshes = meshes;
   }
 
-  override start (): void {
+  override onStart (): void {
     this._priority = this.item.renderOrder;
     this.particleMesh.gravityModifier.scaleXCoord(this.item.duration);
     for (const mesh of this.meshes) {
-      mesh.start();
+      mesh.onStart();
     }
   }
 
-  override update (dt: number): void {
+  override onUpdate (dt: number): void {
     const time = this.particleMesh.time;
+    const uParams = this.particleMesh.mesh.material.getVector4('uParams') ?? new Vector4();
 
-    this.particleMesh.mesh.material.setVector4('uParams', new Vector4(time, this.item.duration, 0, 0));
+    this.particleMesh.mesh.material.setVector4('uParams', uParams.set(time, this.item.duration, 0, 0));
   }
 
   override render (renderer: Renderer): void {
@@ -74,6 +75,7 @@ export class ParticleSystemRenderer extends RendererComponent {
 
   updateTime (now: number, delta: number) {
     this.particleMesh.time = now;
+    this.particleMesh.onUpdate(delta);
     if (this.trailMesh) {
       this.trailMesh.time = now;
       this.trailMesh.onUpdate(delta);

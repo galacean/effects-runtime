@@ -6,8 +6,8 @@ import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
-import type { ImageSource, Scene, SceneLoadOptions, SceneRenderLevel, SceneType } from './scene';
-import { isSceneJSON } from './scene';
+import type { ImageLike, SceneLoadOptions } from './scene';
+import { Scene } from './scene';
 import type { Disposable } from './utils';
 import { isObject, isString, logger, isValidFontFamily, isCanvas, base64ToFile } from './utils';
 import type { TextureSourceOptions } from './texture';
@@ -15,7 +15,7 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { ImageAsset } from './image-asset';
+import { Asset } from './asset';
 import type { Engine } from './engine';
 
 let seed = 1;
@@ -26,18 +26,21 @@ let seed = 1;
  */
 export class AssetManager implements Disposable {
   /**
-   * 相对url的基本路径
+   * 相对 url 的基本路径
    */
   private baseUrl: string;
   /**
-   * 图像资源，用于创建和释放GPU纹理资源
+   * 图像资源，用于创建和释放 GPU 纹理资源
    */
-  private assets: Record<string, any> = {};
-
+  private assets: Record<string, ImageLike> = {};
+  /**
+   * TextureSource 来源
+   */
+  private sourceFrom: Record<string, { url: string, type: TextureSourceType }> = {};
   /**
    * 自定义文本缓存，随页面销毁而销毁
    */
-  static fonts: Set<string> = new Set();
+  private static fontCache: Set<string> = new Set();
 
   private id = seed++;
   /**
@@ -56,7 +59,7 @@ export class AssetManager implements Disposable {
    * @param downloader - 资源下载对象
    */
   constructor (
-    private options: SceneLoadOptions = {},
+    public options: Omit<SceneLoadOptions, 'speed' | 'autoplay' | 'reusable'> = {},
     private readonly downloader = new Downloader(),
   ) {
     this.updateOptions(options);
@@ -80,16 +83,15 @@ export class AssetManager implements Disposable {
    * @returns
    */
   async loadScene (
-    url: SceneType,
+    url: Scene.LoadType,
     renderer?: Renderer,
     options?: { env: string },
   ): Promise<Scene> {
-    let rawJSON: SceneType | JSONValue;
+    let rawJSON: Scene.LoadType;
     const assetUrl = isString(url) ? url : this.id;
     const startTime = performance.now();
     const timeInfoMessages: string[] = [];
     const gpuInstance = renderer?.engine.gpuCapability;
-    const asyncShaderCompile = gpuInstance?.detail?.asyncShaderCompile ?? false;
     const compressedTexture = gpuInstance?.detail.compressedTexture ?? COMPRESSED_TEXTURE.NONE;
     const timeInfos: Record<string, number> = {};
     let loadTimer: number;
@@ -127,84 +129,63 @@ export class AssetManager implements Disposable {
     const loadResourcePromise = async () => {
       let scene: Scene;
 
-      // url 为 JSONValue 或 Scene 对象
-      if (isObject(url)) {
-        // TODO: 原 JSONLoader contructor 判断是否兼容
+      if (isString(url)) {
+        // 兼容相对路径
+        const link = new URL(url, location.href).href;
+
+        this.baseUrl = link;
+        rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(link) as unknown as Promise<spec.JSONScene>);
+      } else {
+        // url 为 spec.JSONScene 或 Scene 对象
         rawJSON = url;
         this.baseUrl = location.href;
-      } else {
-        // 兼容相对路径
-        url = new URL(url as string, location.href).href;
-        this.baseUrl = url;
-        rawJSON = await hookTimeInfo('loadJSON', () => this.loadJSON(url as string));
       }
 
-      if (isSceneJSON(rawJSON)) {
+      if (Scene.isJSONObject(rawJSON)) {
         // 已经加载过的 可能需要更新数据模板
         scene = {
           ...rawJSON,
         };
 
-        if (
-          this.options &&
-          this.options.variables &&
-          Object.keys(this.options.variables).length !== 0
-        ) {
-          const { images: rawImages } = rawJSON.jsonScene;
-          const images = scene.images;
+        const { jsonScene, pluginSystem, images: loadedImages } = scene;
+        const { compositions, images } = jsonScene;
 
-          for (let i = 0; i < rawImages.length; i++) {
-            // 仅重新加载数据模板对应的图片
-            if (images[i] instanceof HTMLCanvasElement) {
-              images[i] = rawImages[i];
-            }
-          }
-          scene.images = await hookTimeInfo('processImages', () => this.processImages(images, compressedTexture));
-          // 更新 TextureOptions 中的 image 指向
-          for (let i = 0; i < scene.images.length; i++) {
-            scene.textureOptions[i].image = scene.images[i];
-          }
-        }
+        this.assignImagesToAssets(images, loadedImages);
+        await Promise.all([
+          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
+          hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
+        ]);
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
-        const { usedImages, jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
+        const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
         const { bins = [], images, compositions, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
-          hookTimeInfo(`${asyncShaderCompile ? 'async' : 'sync'}Compile`, () => this.precompile(compositions, pluginSystem, renderer, options)),
+          hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
+          hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
+          hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
-
-        if (renderer) {
-          for (let i = 0; i < images.length; i++) {
-            const imageAsset = new ImageAsset(renderer.engine);
-
-            imageAsset.data = loadedImages[i];
-            imageAsset.setInstanceId(images[i].id);
-            renderer.engine.addInstance(imageAsset);
-          }
-        }
-
-        await hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[]));
-        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene, renderer!.engine));
+        const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
 
         scene = {
           timeInfos,
-          url: url,
+          url,
           renderLevel: this.options.renderLevel,
           storage: {},
           pluginSystem,
           jsonScene,
-          usedImages,
+          bins: loadedBins,
           images: loadedImages,
           textureOptions: loadedTextures,
-          bins: loadedBins,
         };
 
         // 触发插件系统 pluginSystem 的回调 prepareResource
-        await hookTimeInfo('processPlugins', () => pluginSystem.loadResources(scene, this.options));
+        await hookTimeInfo('plugin:prepareResource', () => pluginSystem.loadResources(scene, this.options));
       }
+
+      await hookTimeInfo('prepareAssets', () => this.prepareAssets(renderer?.engine));
 
       const totalTime = performance.now() - startTime;
 
@@ -224,45 +205,24 @@ export class AssetManager implements Disposable {
 
   private async precompile (
     compositions: spec.CompositionData[],
-    pluginSystem?: PluginSystem,
+    pluginSystem: PluginSystem,
     renderer?: Renderer,
     options?: PrecompileOptions,
   ) {
     if (!renderer || !renderer.getShaderLibrary()) {
       return;
     }
-    const shaderLibrary = renderer?.getShaderLibrary();
-
-    await pluginSystem?.precompile(compositions, renderer, options);
-
-    await new Promise(resolve => {
-      shaderLibrary?.compileAllShaders(() => {
-        resolve(null);
-      });
-    });
+    await pluginSystem.precompile(compositions, renderer, options);
   }
 
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
-    const { plugins = [], compositions: sceneCompositions, imgUsage, images } = jsonScene;
+    const { plugins = [] } = jsonScene;
     const pluginSystem = new PluginSystem(plugins);
 
     await pluginSystem.processRawJSON(jsonScene, this.options);
 
-    const { renderLevel } = this.options;
-    const usedImages: Record<number, boolean> = {};
-
-    if (imgUsage) {
-      // TODO: 考虑放到独立的 fix 文件
-      fixOldImageUsage(usedImages, sceneCompositions, imgUsage, images, renderLevel);
-    } else {
-      images?.forEach((_, i) => {
-        usedImages[i] = true;
-      });
-    }
-
     return {
-      usedImages,
       jsonScene,
       pluginSystem,
     };
@@ -293,7 +253,7 @@ export class AssetManager implements Disposable {
 
     const jobs = fonts.map(async font => {
       // 数据模版兼容判断
-      if (font.fontURL && !AssetManager.fonts.has(font.fontFamily)) {
+      if (font.fontURL && !AssetManager.fontCache.has(font.fontFamily)) {
         if (!isValidFontFamily(font.fontFamily)) {
           // 在所有设备上提醒开发者
           console.warn(`Risky font family: ${font.fontFamily}.`);
@@ -303,11 +263,9 @@ export class AssetManager implements Disposable {
           const fontFace = new FontFace(font.fontFamily ?? '', 'url(' + url + ')');
 
           await fontFace.load();
-          //@ts-expect-error
           document.fonts.add(fontFace);
-          AssetManager.fonts.add(font.fontFamily);
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e) {
+          AssetManager.fontCache.add(font.fontFamily);
+        } catch (_) {
           logger.warn(`Invalid font family or font source: ${JSON.stringify(font.fontURL)}.`);
         }
       }
@@ -317,12 +275,12 @@ export class AssetManager implements Disposable {
   }
 
   private async processImages (
-    images: any,
+    images: spec.ImageSource[],
     compressedTexture: COMPRESSED_TEXTURE = 0,
-  ): Promise<ImageSource[]> {
+  ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables } = this.options;
     const baseUrl = this.baseUrl;
-    const jobs = images.map(async (img: spec.Image, idx: number) => {
+    const jobs = images.map(async (img, idx: number) => {
       const { url: png, webp, avif } = img;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
@@ -333,7 +291,7 @@ export class AssetManager implements Disposable {
 
       if ('template' in img) {
         // 1. 数据模板
-        const template = img.template as spec.TemplateContent;
+        const template = img.template;
         // 获取数据模板 background 参数
         const background = template.background;
 
@@ -348,6 +306,8 @@ export class AssetManager implements Disposable {
             const resultImage = await loadMedia(url as string | string[], loadFn);
 
             if (resultImage instanceof HTMLVideoElement) {
+              this.sourceFrom[idx] = { url: resultImage.src, type: TextureSourceType.video };
+
               return resultImage;
             } else {
               // 如果是加载图片且是数组，设置变量，视频情况下不需要
@@ -355,20 +315,21 @@ export class AssetManager implements Disposable {
                 variables[background.name] = resultImage.src;
               }
 
+              this.sourceFrom[idx] = { url: resultImage.src, type: TextureSourceType.image };
+
               return await combineImageTemplate(
                 resultImage,
                 template,
                 variables,
               );
             }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
-            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as any).message || e}.`);
+            throw new Error(`Failed to load. Check the template or if the URL is ${isVideo ? 'video' : 'image'} type, URL: ${url}, Error: ${(e as Error).message || e}.`);
           }
         }
       } else if ('compressed' in img && useCompressedTexture && compressedTexture) {
         // 2. 压缩纹理
-        const { compressed } = img as spec.CompressedImage;
+        const { compressed } = img;
         let src;
 
         if (compressedTexture === COMPRESSED_TEXTURE.ASTC) {
@@ -379,13 +340,10 @@ export class AssetManager implements Disposable {
         if (src) {
           const bufferURL = new URL(src, baseUrl).href;
 
-          this.assets[idx] = { url: bufferURL, type: TextureSourceType.compressed };
+          this.sourceFrom[idx] = { url: bufferURL, type: TextureSourceType.compressed };
 
           return this.loadBins(bufferURL);
         }
-      } else if ('sourceType' in img) {
-        // TODO: 确定是否有用
-        return img;
       } else if (
         img instanceof HTMLImageElement ||
         img instanceof HTMLCanvasElement ||
@@ -399,47 +357,79 @@ export class AssetManager implements Disposable {
         ? await loadAVIFOptional(imageURL, avifURL)
         : await loadWebPOptional(imageURL, webpURL);
 
-      this.assets[idx] = { url, type: TextureSourceType.image };
+      this.sourceFrom[idx] = { url, type: TextureSourceType.image };
 
       return image;
     });
+    const loadedImages = await Promise.all(jobs);
 
-    return Promise.all(jobs);
+    this.assignImagesToAssets(images, loadedImages);
+
+    return loadedImages;
+  }
+
+  private async processPluginAssets (
+    jsonScene: spec.JSONScene,
+    pluginSystem: PluginSystem,
+    options?: SceneLoadOptions,
+  ) {
+    const pluginResult = await pluginSystem.processAssets(jsonScene, options);
+    const { assets, loadedAssets } = pluginResult.reduce((acc, cur) => {
+      acc.assets = acc.assets.concat(cur.assets);
+      acc.loadedAssets = acc.loadedAssets.concat(cur.loadedAssets);
+
+      return acc;
+    }, { assets: [], loadedAssets: [] });
+
+    for (let i = 0; i < assets.length; i++) {
+      this.assets[assets[i].id] = loadedAssets[i] as ImageLike;
+    }
+  }
+
+  private async prepareAssets (engine?: Engine) {
+    if (!engine) {
+      return;
+    }
+
+    for (const assetId of Object.keys(this.assets)) {
+      const asset = this.assets[assetId];
+      const engineAsset = new Asset(engine);
+
+      engineAsset.data = asset;
+      engineAsset.setInstanceId(assetId);
+      engine.addInstance(engineAsset);
+    }
   }
 
   private async processTextures (
-    images: any,
+    images: ImageLike[],
     bins: ArrayBuffer[],
     jsonScene: spec.JSONScene,
-    engine: Engine
   ) {
-    const textures = jsonScene.textures ?? images.map((img: never, source: number) => ({ source })) as spec.SerializedTextureSource[];
+    const textures = jsonScene.textures ?? images.map((img, source: number) => ({ source })) as spec.SerializedTextureSource[];
     const jobs = textures.map(async (textureOptions, idx) => {
       if (textureOptions instanceof Texture) {
         return textureOptions;
       }
       if ('mipmaps' in textureOptions) {
         try {
-          return await deserializeMipmapTexture(textureOptions, bins, engine, jsonScene.bins);
+          return await deserializeMipmapTexture(textureOptions, bins, this.assets, jsonScene.bins);
         } catch (e) {
           throw new Error(`Load texture ${idx} fails, error message: ${e}.`);
         }
       }
-      const { source } = textureOptions;
 
-      let image: any;
+      const { source, id } = textureOptions;
+      let image: ImageLike | undefined;
 
       if (isObject(source)) { // source 为 images 数组 id
-        image = engine.assetLoader.loadGUID<ImageAsset>((source as Record<string, string>).id).data;
+        image = this.assets[source.id as string];
       } else if (typeof source === 'string') { // source 为 base64 数据
         image = await loadImage(base64ToFile(source));
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.assets[idx]);
-
-        texture.id = textureOptions.id;
-        texture.dataType = spec.DataType.Texture;
+        const texture = createTextureOptionsBySource(image, this.sourceFrom[idx], id);
 
         return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }
@@ -471,6 +461,12 @@ export class AssetManager implements Disposable {
     });
   }
 
+  private assignImagesToAssets (images: spec.ImageSource[], loadedImages: ImageLike[]) {
+    for (let i = 0; i < images.length; i++) {
+      this.assets[images[i].id] = loadedImages[i];
+    }
+  }
+
   private removeTimer (id: number) {
     const index = this.timers.indexOf(id);
 
@@ -485,46 +481,30 @@ export class AssetManager implements Disposable {
     if (this.timers.length) {
       this.timers.map(id => window.clearTimeout(id));
     }
-    for (const key in this.assets) {
-      const asset = this.assets[key];
-
-      asset?.dispose?.();
-    }
     this.assets = {};
+    this.sourceFrom = {};
     this.timers = [];
   }
 }
 
-function fixOldImageUsage (
-  usedImages: Record<number, boolean>,
-  compositions: spec.CompositionData[],
-  imgUsage: Record<string, number[]>,
-  images: any,
-  renderLevel?: SceneRenderLevel,
+function createTextureOptionsBySource (
+  image: TextureSourceOptions | ImageLike,
+  sourceFrom: { url: string, type: TextureSourceType },
+  id?: string,
 ) {
-  for (let i = 0; i < compositions.length; i++) {
-    const id = compositions[i].id;
-    const ids = imgUsage[id];
+  const options = {
+    id,
+    dataType: spec.DataType.Texture,
+  };
 
-    if (ids) {
-      for (let j = 0; j < ids.length; j++) {
-        const id = ids[j];
-        const tag = images[id].renderLevel;
-
-        if (passRenderLevel(tag, renderLevel)) {
-          usedImages[id] = true;
-        }
-      }
-    }
-  }
-}
-
-function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOptions): Record<string, any> {
   if (image instanceof Texture) {
-    return image.source;
+    return {
+      ...image.source,
+      ...options,
+    };
   } else if (
     image instanceof HTMLImageElement ||
-    isCanvas(image)
+    isCanvas(image as HTMLCanvasElement)
   ) {
     return {
       image,
@@ -533,6 +513,7 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
       keepImageSource: true,
       minFilter: glContext.LINEAR,
       magFilter: glContext.LINEAR,
+      ...options,
     };
   } else if (image instanceof HTMLVideoElement) {
     // 视频
@@ -541,12 +522,14 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
       video: image,
       minFilter: glContext.LINEAR,
       magFilter: glContext.LINEAR,
+      ...options,
     };
   } else if (image instanceof ArrayBuffer) {
     // 压缩纹理
     return {
       ...getKTXTextureOptions(image),
       sourceFrom,
+      ...options,
     };
   } else if (
     'width' in image &&
@@ -560,6 +543,7 @@ function createTextureOptionsBySource (image: any, sourceFrom: TextureSourceOpti
       wrapT: glContext.CLAMP_TO_EDGE,
       minFilter: glContext.NEAREST,
       magFilter: glContext.NEAREST,
+      ...options,
     };
   }
 

@@ -12,8 +12,6 @@ import type { GLPipelineContext } from './gl-pipeline-context';
 import { assignInspectorName } from './gl-renderer-internal';
 import type { GLEngine } from './gl-engine';
 
-type HTMLImageLike = HTMLImageElement | HTMLCanvasElement | HTMLVideoElement;
-
 const FORMAT_HALF_FLOAT: Record<string, number> = {
   [glContext.RGBA]: 34842, //RGBA16F
   [glContext.RGB]: 34843, //RGB16F
@@ -336,7 +334,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     internalformat: GLenum,
     format: GLenum,
     type: GLenum,
-    image: HTMLImageLike,
+    image: spec.HTMLImageLike,
   ): spec.vec2 {
     const { sourceType, minFilter, magFilter, wrapS, wrapT } = this.source;
     const maxSize = this.engine.gpuCapability.detail.maxTextureSize ?? 2048;
@@ -390,7 +388,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     return [width, height];
   }
 
-  private resizeImage (image: HTMLImageLike, targetWidth?: number, targetHeight?: number): HTMLCanvasElement | HTMLImageElement {
+  private resizeImage (image: spec.HTMLImageLike, targetWidth?: number, targetHeight?: number): HTMLCanvasElement | HTMLImageElement {
     const { detail } = this.engine.gpuCapability;
     const maxSize = detail.maxTextureSize ?? 2048;
 
@@ -454,11 +452,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
       this.source.video &&
       this.initialized
     ) {
-      const video = this.source.video;
 
-      if (video.paused) {
-        await video.play();
-      }
       this.update({ video: this.source.video });
 
       return true;
@@ -487,15 +481,6 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
     if (this.pipelineContext && this.textureBuffer) {
       this.pipelineContext.gl.deleteTexture(this.textureBuffer);
     }
-    if (
-      this.source.sourceType === TextureSourceType.video &&
-      this.source.video &&
-      this.initialized
-    ) {
-      this.source.video.pause();
-      this.source.video.src = '';
-      this.source.video.load();
-    }
     this.width = 0;
     this.height = 0;
     this.textureBuffer = null;
@@ -512,7 +497,7 @@ export class GLTexture extends Texture implements Disposable, RestoreHandler {
 }
 
 function resizeImageByCanvas (
-  image: HTMLImageLike,
+  image: spec.HTMLImageLike,
   maxSize: number,
   targetWidth?: number,
   targetHeight?: number,

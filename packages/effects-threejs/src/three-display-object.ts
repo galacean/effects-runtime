@@ -1,8 +1,8 @@
 import type {
-  EventSystem, SceneLoadOptions, Renderer, Composition, SceneLoadType, SceneType, Texture,
-  MessageItem,
+  EventSystem, SceneLoadOptions, Renderer, Composition, Texture, MessageItem,
 } from '@galacean/effects-core';
-import { AssetManager, isArray, isSceneURL, isSceneWithOptions, logger } from '@galacean/effects-core';
+import { Scene } from '@galacean/effects-core';
+import { AssetManager, isArray, logger } from '@galacean/effects-core';
 import * as THREE from 'three';
 import { ThreeComposition } from './three-composition';
 import { ThreeRenderer } from './three-renderer';
@@ -70,9 +70,12 @@ export class ThreeDisplayObject extends THREE.Group {
    * @param options - 加载可选参数
    * @returns
    */
-  async loadScene (scene: SceneLoadType, options?: SceneLoadOptions): Promise<Composition>;
-  async loadScene (scene: SceneLoadType[], options?: SceneLoadOptions): Promise<Composition[]>;
-  async loadScene (scene: SceneLoadType | SceneLoadType[], options?: SceneLoadOptions): Promise<Composition | Composition[]> {
+  async loadScene (scene: Scene.LoadType, options?: SceneLoadOptions): Promise<Composition>;
+  async loadScene (scene: Scene.LoadType[], options?: SceneLoadOptions): Promise<Composition[]>;
+  async loadScene<T extends Composition | Composition[]> (
+    scene: Scene.LoadType | Scene.LoadType[],
+    options?: SceneLoadOptions,
+  ): Promise<T> {
     let composition: Composition | Composition[];
     const baseOrder = this.baseCompositionIndex;
 
@@ -91,7 +94,7 @@ export class ThreeDisplayObject extends THREE.Group {
       composition.setIndex(baseOrder);
     }
 
-    return composition;
+    return composition as T;
   }
 
   pause () {
@@ -107,24 +110,24 @@ export class ThreeDisplayObject extends THREE.Group {
     });
   }
 
-  private async createComposition (url: SceneLoadType, options: SceneLoadOptions = {}): Promise<Composition> {
+  private async createComposition (url: Scene.LoadType, options: SceneLoadOptions = {}): Promise<Composition> {
     const last = performance.now();
     let opts = {
       autoplay: true,
       ...options,
     };
-    let source: SceneType;
+    let source: Scene.LoadType = url;
 
-    if (isSceneURL(url)) {
-      source = url.url;
-      if (isSceneWithOptions(url)) {
+    if (Scene.isURL(url)) {
+      if (!Scene.isJSONObject(url)) {
+        source = url.url;
+      }
+      if (Scene.isWithOptions(url)) {
         opts = {
           ...opts,
           ...url.options || {},
         };
       }
-    } else {
-      source = url;
     }
 
     if (this.assetManager) {

@@ -1,9 +1,10 @@
+import * as spec from '@galacean/effects-specification';
 import { TextureSourceType } from './types';
-import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType } from './types';
+import type { TextureFactorySourceFrom, TextureSourceOptions, TextureDataType, TextureOptionsBase } from './types';
 import { glContext } from '../gl';
 import type { Engine } from '../engine';
 import { EffectsObject } from '../effects-object';
-import { loadImage } from '../downloader';
+import { loadImage, loadVideo } from '../downloader';
 import { generateGUID } from '../utils';
 
 let seed = 1;
@@ -46,20 +47,54 @@ export abstract class Texture extends EffectsObject {
    * @param url - 要创建的 Texture URL
    * @since 2.0.0
    */
-  static async fromImage (url: string, engine: Engine): Promise<Texture> {
+  static async fromImage (
+    url: string,
+    engine: Engine,
+    options?: TextureOptionsBase,
+  ): Promise<Texture> {
     const image = await loadImage(url);
 
     const texture = Texture.create(engine, {
       sourceType: TextureSourceType.image,
       image,
+      target: glContext.TEXTURE_2D,
       id: generateGUID(),
       flipY: true,
+      ...options,
     });
 
     texture.initialize();
 
     return texture;
   }
+
+  /**
+   * 通过视频 URL 创建 Texture 对象。
+   * @param url - 要创建的 Texture URL
+   * @param engine - 引擎对象
+   * @param options - 可选的 Texture 选项
+   * @since 2.1.0
+   * @returns
+   */
+  static async fromVideo (
+    url: string,
+    engine: Engine,
+    options?: TextureOptionsBase,
+  ): Promise<Texture> {
+    const video = await loadVideo(url);
+    const texture = Texture.create(engine, {
+      sourceType: TextureSourceType.video,
+      video,
+      id: generateGUID(),
+      flipY: true,
+      ...options,
+    });
+
+    texture.initialize();
+
+    return texture;
+  }
+
   /**
    * 通过数据创建 Texture 对象。
    * @param data - 要创建的 Texture 数据
@@ -206,7 +241,7 @@ export function generateWhiteTexture (engine: Engine) {
   return Texture.create(
     engine,
     {
-      id: 'whitetexture00000000000000000000',
+      id: spec.BuiltinObjectGUID.WhiteTexture,
       data: {
         width: 1,
         height: 1,
@@ -222,7 +257,7 @@ export function generateTransparentTexture (engine: Engine) {
   return Texture.create(
     engine,
     {
-      id: 'transparenttexture00000000000000000000',
+      id: spec.BuiltinObjectGUID.TransparentTexture,
       data: {
         width: 1,
         height: 1,

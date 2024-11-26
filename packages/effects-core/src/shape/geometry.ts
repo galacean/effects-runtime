@@ -23,7 +23,7 @@ export type GeometryFromShape = {
 };
 type ShapeGeometryPre = { p: spec.ShapePoints[1], s: spec.ShapeSplits[1] };
 // FIXME: 考虑合并 Shape2D
-export type ShapeData = { gs: ShapeGeometryPre[] } & { g: ShapeGeometryPre } & spec.ShapeGeometry;
+export type ShapeGeometryData = { gs: ShapeGeometryPre[] } | { g: ShapeGeometryPre } | spec.ShapeGeometry;
 
 const POINT_INDEX = 2;
 
@@ -95,18 +95,18 @@ export function getGeometryTriangles (geometry: spec.ShapeGeometry, options: { i
  * 根据新老版形状数据获取形状几何数据
  * @param shape 新老版形状数据
  */
-function getGeometriesByShapeData (shape: ShapeData) {
+function getGeometriesByShapeData (shape: ShapeGeometryData) {
   const geometries: spec.ShapeGeometry[] = [];
 
   // 该版本的单个形状数据可以包含多个形状，可以加个埋点，五福之后没有就可以下掉
-  if (shape.gs) {
+  if ('gs' in shape) {
     shape.gs.forEach(gs => {
       geometries.push({
         p: [spec.ValueType.SHAPE_POINTS, gs.p],
         s: [spec.ValueType.SHAPE_SPLITS, gs.s],
       });
     });
-  } else if (shape.g) {
+  } else if ('g' in shape) {
     geometries.push({
       p: [spec.ValueType.SHAPE_POINTS, shape.g.p],
       s: [spec.ValueType.SHAPE_SPLITS, shape.g.s],
@@ -118,7 +118,7 @@ function getGeometriesByShapeData (shape: ShapeData) {
   return geometries;
 }
 
-export function getGeometryByShape (shape: ShapeData, uvTransform: number[]): GeometryFromShape {
+export function getGeometryByShape (shape: ShapeGeometryData, uvTransform?: number[]): GeometryFromShape {
   const datas = [];
   // 老数据兼容处理
   const geometries = getGeometriesByShapeData(shape);

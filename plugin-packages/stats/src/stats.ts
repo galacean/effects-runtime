@@ -79,9 +79,17 @@ const json = {
   'compositionId': '2',
 };
 
+/**
+ *
+ */
 export class Stats {
   static options: StatsOptions;
 
+  /**
+   *
+   * @param player
+   * @param options
+   */
   constructor (
     public readonly player: Player,
     options: StatsOptions = { debug: false },

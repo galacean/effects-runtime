@@ -195,7 +195,7 @@ describe('core/fallback/particle/base', () => {
     const neo = getStandardItem(item);
     const shape = neo.content.shape;
 
-    expect(shape.type).to.be.eql(spec.ShapeType.RECTANGLE_EDGE);
+    expect(shape.type).to.be.eql(spec.ParticleEmitterShapeType.RECTANGLE_EDGE);
     expect(shape.radius).to.be.eql(1);
   });
 

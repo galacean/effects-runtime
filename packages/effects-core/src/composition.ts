@@ -1,6 +1,5 @@
 import * as spec from '@galacean/effects-specification';
 import type { Ray } from '@galacean/effects-math/es/core/ray';
-import type { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Camera } from './camera';
 import { CompositionComponent } from './comp-vfx-item';
@@ -11,7 +10,7 @@ import type { PluginSystem } from './plugin-system';
 import type { EventSystem, Plugin, Region } from './plugins';
 import type { MeshRendererOptions, Renderer } from './render';
 import { RenderFrame } from './render';
-import type { Scene, SceneType } from './scene';
+import type { Scene } from './scene';
 import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
 import type { Disposable, LostHandler } from './utils';
@@ -20,27 +19,34 @@ import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
-import type { PostProcessVolume } from './components/post-process-volume';
+import type { PostProcessVolume } from './components';
+import { SceneTicking } from './composition/scene-ticking';
+import { SerializationHelper } from './serialization-helper';
 
+/**
+ * 合成统计信息
+ */
 export interface CompositionStatistic {
-  loadTime: number,
   loadStart: number,
+  loadTime: number,
+  /**
+   * Shader 编译耗时
+   */
+  compileTime: number,
+  /**
+   * 从加载到渲染第一帧的时间（含 Shader 编译）
+   */
   firstFrameTime: number,
-  precompileTime: number,
 }
 
+/**
+ * 合成消息对象
+ */
 export interface MessageItem {
   id: string,
   name: string,
   phrase: number,
   compositionId: string,
-}
-
-export interface CompItemClickedData {
-  name: string,
-  id: string,
-  hitPositions: Vector3[],
-  position: Vector3,
 }
 
 /**
@@ -52,6 +58,9 @@ export interface CompositionHitTestOptions {
   skip?: (item: VFXItem) => boolean,
 }
 
+/**
+ *
+ */
 export interface CompositionProps {
   reusable?: boolean,
   baseRenderOrder?: number,
@@ -70,6 +79,10 @@ export interface CompositionProps {
  */
 export class Composition extends EventEmitter<CompositionEvent<Composition>> implements Disposable, LostHandler {
   renderer: Renderer;
+  /**
+   *
+   */
+  sceneTicking = new SceneTicking();
   /**
    * 当前帧的渲染数据对象
    */
@@ -98,13 +111,17 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 是否播放完成后销毁 texture 对象
    */
   keepResource: boolean;
-  // 3D 模式下创建的场景相机 需要最后更新参数, TODO: 太 hack 了, 待移除
-  extraCamera: VFXItem;
   /**
    * 合成内的元素否允许点击、拖拽交互
    * @since 1.6.0
    */
   interactive: boolean;
+
+  /**
+   * 合成是否结束
+   */
+  isEnded = false;
+
   compositionSourceManager: CompositionSourceManager;
   /**
    * 合成id
@@ -129,7 +146,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 是否在合成结束时自动销毁引用的纹理，合成重播时不销毁
    */
-  autoRefTex: boolean;
+  readonly autoRefTex: boolean;
   /**
    * 当前合成名称
    */
@@ -145,7 +162,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 合成对应的 url 或者 JSON
    */
-  readonly url: SceneType;
+  readonly url: Scene.LoadType;
   /**
    * 合成根元素
    */
@@ -157,19 +174,19 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 预合成的合成属性，在 content 中会被其元素属性覆盖
    */
-  refCompositionProps: Map<string, VFXItemProps> = new Map();
+  readonly refCompositionProps: Map<string, spec.CompositionData> = new Map();
   /**
    * 合成的相机对象
    */
   readonly camera: Camera;
   /**
-   * 合成全局时间
-   */
-  globalTime: number;
-  /**
    * 后处理渲染配置
    */
-  globalVolume: PostProcessVolume;
+  globalVolume?: PostProcessVolume;
+  /**
+   * 是否开启后处理
+   */
+  postProcessingEnabled = false;
 
   protected rendererOptions: MeshRendererOptions | null;
   // TODO: 待优化
@@ -190,8 +207,8 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   private paused = false;
   private lastVideoUpdateTime = 0;
-  // private readonly event: EventSystem;
-  // texInfo的类型有点不明确，改成<string, number>不会提前删除texture
+  private isEndCalled = false;
+
   private readonly texInfo: Record<string, number>;
   /**
    * 合成中消息元素创建/销毁时触发的回调
@@ -219,13 +236,15 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     } = props;
 
     this.compositionSourceManager = new CompositionSourceManager(scene, renderer.engine);
-    scene.jsonScene.imgUsage = undefined;
+
     if (reusable) {
       this.keepResource = true;
       scene.textures = undefined;
       scene.consumed = true;
     }
     const { sourceContent, pluginSystem, imgUsage, totalTime, refCompositionProps } = this.compositionSourceManager;
+
+    this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
 
     assertExist(sourceContent);
     this.renderer = renderer;
@@ -234,23 +253,26 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
     this.rootItem.name = 'rootItem';
     this.rootItem.composition = this;
-    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
-    this.rootComposition.startTime = sourceContent.startTime;
-    this.rootComposition.data = sourceContent;
 
-    const imageUsage = (!reusable && imgUsage) as unknown as Record<string, number>;
+    // Spawn rootCompositionComponent
+    this.rootComposition = this.rootItem.addComponent(CompositionComponent);
 
     this.width = width;
     this.height = height;
     this.renderOrder = baseRenderOrder;
     this.id = sourceContent.id;
     this.renderer = renderer;
-    this.texInfo = imageUsage ?? {};
+    this.texInfo = !reusable ? imgUsage : {};
     this.event = event;
-    this.statistic = { loadTime: totalTime ?? 0, loadStart: scene.startTime ?? 0, firstFrameTime: 0, precompileTime: scene.timeInfos['asyncCompile'] ?? scene.timeInfos['syncCompile'] };
+    this.statistic = {
+      loadStart: scene.startTime ?? 0,
+      loadTime: totalTime ?? 0,
+      compileTime: 0,
+      firstFrameTime: 0,
+    };
     this.reusable = reusable;
     this.speed = speed;
-    this.autoRefTex = !this.keepResource && imageUsage && this.rootItem.endBehavior !== spec.EndBehavior.restart;
+    this.autoRefTex = !this.keepResource && this.texInfo && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
     this.pluginSystem = pluginSystem as PluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
@@ -260,19 +282,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     });
     this.url = scene.url;
     this.assigned = true;
-    this.globalTime = 0;
     this.interactive = true;
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
     this.rendererOptions = null;
+    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
     this.rootComposition.createContent();
+
     this.buildItemTree(this.rootItem);
-    this.callAwake(this.rootItem);
-    this.rootItem.onEnd = () => {
-      window.setTimeout(() => {
-        this.emit('end', { composition: this });
-      }, 0);
-    };
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
@@ -301,7 +318,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 获取合成开始渲染的时间
    */
   get startTime () {
-    return this.rootComposition.startTime ?? 0;
+    return this.rootComposition.startTime;
   }
 
   /**
@@ -321,7 +338,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   set viewportMatrix (matrix: Matrix4) {
     this.camera.setViewportMatrix(matrix);
   }
-
   get viewportMatrix () {
     return this.camera.getViewportMatrix();
   }
@@ -372,7 +388,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   setVisible (visible: boolean) {
     this.items.forEach(item => {
-      item.setVisible(visible);
+      item.setActive(visible);
     });
   }
 
@@ -385,7 +401,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   play () {
-    if (this.rootItem.ended && this.reusable) {
+    if (this.isEnded && this.reusable) {
       this.restart();
     }
     if (this.rootComposition.isStartCalled) {
@@ -440,6 +456,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       renderer: this.renderer,
       keepColorBuffer: this.keepColorBuffer,
       globalVolume: this.globalVolume,
+      postProcessingEnabled: this.postProcessingEnabled,
     });
     // TODO 考虑放到构造函数
     this.renderFrame.cachedTextures = this.textures;
@@ -456,16 +473,13 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     if (pause) {
       this.resume();
     }
-    if (!this.rootComposition.isStartCalled) {
-      this.rootComposition.start();
-      this.rootComposition.isStartCalled = true;
-    }
     this.setSpeed(1);
     this.forwardTime(time + this.startTime);
     this.setSpeed(speed);
     if (pause) {
       this.pause();
     }
+    this.emit('goto', { time });
   }
 
   addItem (item: VFXItem) {
@@ -495,15 +509,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   protected reset () {
     this.rendererOptions = null;
-    this.globalTime = 0;
-    this.rootItem.ended = false;
+    this.isEnded = false;
+    this.isEndCalled = false;
+    this.rootComposition.time = 0;
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
   prepareRender () {
     const frame = this.renderFrame;
-
-    frame._renderPasses[0].meshes.length = 0;
 
     this.postLoaders.length = 0;
     this.pluginSystem.plugins.forEach(loader => {
@@ -512,20 +525,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       }
     });
 
-    this.gatherRendererComponent(this.rootItem, frame);
     this.postLoaders.forEach(loader => loader.postProcessFrame(this, frame));
-  }
-
-  protected gatherRendererComponent (vfxItem: VFXItem, renderFrame: RenderFrame) {
-    for (const rendererComponent of vfxItem.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled) {
-        renderFrame.addMeshToDefaultRenderPass(rendererComponent);
-      }
-    }
-
-    for (const item of vfxItem.children) {
-      this.gatherRendererComponent(item, renderFrame);
-    }
   }
 
   /**
@@ -537,65 +537,35 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       return;
     }
 
-    const time = this.getUpdateTime(deltaTime * this.speed);
+    const dt = this.getUpdateTime(deltaTime * this.speed);
 
-    this.globalTime += time;
-    this.updateRootComposition();
+    this.updateRootComposition(dt / 1000);
     this.updateVideo();
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
 
     // scene VFXItem components lifetime function.
-    this.callStart(this.rootItem);
-    this.callUpdate(this.rootItem, time);
-    this.callLateUpdate(this.rootItem, time);
+    if (!this.rootItem.isDuringPlay) {
+      this.callAwake(this.rootItem);
+      this.rootItem.beginPlay();
+    }
+    this.sceneTicking.update.tick(dt);
+    this.sceneTicking.lateUpdate.tick(dt);
 
     this.updateCamera();
     this.prepareRender();
 
+    if (this.isEnded && !this.isEndCalled) {
+      this.isEndCalled = true;
+      this.emit('end', { composition: this });
+    }
     if (this.shouldDispose()) {
       this.dispose();
     }
   }
 
-  private toLocalTime (time: number) {
-    let localTime = time - this.rootItem.start;
-    const duration = this.rootItem.duration;
-
-    if (localTime - duration > 0.001) {
-      if (!this.rootItem.ended) {
-        this.rootItem.ended = true;
-        this.emit('end', { composition: this });
-      }
-
-      switch (this.rootItem.endBehavior) {
-        case spec.EndBehavior.restart: {
-          localTime = localTime % duration;
-          this.restart();
-
-          break;
-        }
-        case spec.EndBehavior.freeze: {
-          localTime = Math.min(duration, localTime);
-
-          break;
-        }
-        case spec.EndBehavior.forward: {
-
-          break;
-        }
-        case spec.EndBehavior.destroy: {
-
-          break;
-        }
-      }
-    }
-
-    return localTime;
-  }
-
   private shouldDispose () {
-    return this.rootItem.ended && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
+    return this.isEnded && this.rootItem.endBehavior === spec.EndBehavior.destroy && !this.reusable;
   }
 
   private getUpdateTime (t: number) {
@@ -610,77 +580,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   private callAwake (item: VFXItem) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (!itemBehaviour.isAwakeCalled) {
-        itemBehaviour.awake();
-        itemBehaviour.isAwakeCalled = true;
+    for (const component of item.components) {
+      if (!component.isAwakeCalled) {
+        component.onAwake();
+        component.isAwakeCalled = true;
       }
     }
     for (const child of item.children) {
       this.callAwake(child);
-    }
-  }
-
-  private callStart (item: VFXItem) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && !itemBehaviour.isStartCalled) {
-        itemBehaviour.start();
-        itemBehaviour.isStartCalled = true;
-      }
-    }
-    for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && !rendererComponent.isStartCalled) {
-        rendererComponent.start();
-        rendererComponent.isStartCalled = true;
-      }
-    }
-    for (const child of item.children) {
-      this.callStart(child);
-    }
-  }
-
-  private callUpdate (item: VFXItem, dt: number) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && itemBehaviour.isStartCalled) {
-        itemBehaviour.update(dt);
-      }
-    }
-    for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && rendererComponent.isStartCalled) {
-        rendererComponent.update(dt);
-      }
-    }
-    for (const child of item.children) {
-      if (VFXItem.isComposition(child)) {
-        if (
-          child.ended &&
-          child.endBehavior === spec.EndBehavior.restart
-        ) {
-          child.ended = false;
-          // TODO K帧动画在元素重建后需要 tick ，否则会导致元素位置和 k 帧第一帧位置不一致
-          this.callUpdate(child, 0);
-        } else {
-          this.callUpdate(child, dt);
-        }
-      } else {
-        this.callUpdate(child, dt);
-      }
-    }
-  }
-
-  private callLateUpdate (item: VFXItem, dt: number) {
-    for (const itemBehaviour of item.itemBehaviours) {
-      if (itemBehaviour.isActiveAndEnabled && itemBehaviour.isStartCalled) {
-        itemBehaviour.lateUpdate(dt);
-      }
-    }
-    for (const rendererComponent of item.rendererComponents) {
-      if (rendererComponent.isActiveAndEnabled && rendererComponent.isStartCalled) {
-        rendererComponent.lateUpdate(dt);
-      }
-    }
-    for (const child of item.children) {
-      this.callLateUpdate(child, dt);
     }
   }
 
@@ -693,7 +600,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     }
 
     const itemMap = new Map<string, VFXItem>();
-
     const contentItems = compVFXItem.getComponent(CompositionComponent).items;
 
     for (const item of contentItems) {
@@ -704,18 +610,11 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       if (item.parentId === undefined) {
         item.setParent(compVFXItem);
       } else {
-        // 兼容 treeItem 子元素的 parentId 带 '^'
-        const parentId = this.getParentIdWithoutSuffix(item.parentId);
-        const parent = itemMap.get(parentId);
+        const parent = itemMap.get(item.parentId);
 
         if (parent) {
-          if (VFXItem.isTree(parent) && item.parentId.includes('^')) {
-            item.parent = parent;
-            item.transform.parentTransform = parent.getNodeTransform(item.parentId);
-          } else {
-            item.parent = parent;
-            item.transform.parentTransform = parent.transform;
-          }
+          item.parent = parent;
+          item.transform.parentTransform = parent.transform;
           parent.children.push(item);
         } else {
           throw new Error('The element references a non-existent element, please check the data.');
@@ -728,12 +627,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         this.buildItemTree(item);
       }
     }
-  }
-
-  private getParentIdWithoutSuffix (id: string) {
-    const idx = id.lastIndexOf('^');
-
-    return idx > -1 ? id.substring(0, idx) : id;
   }
 
   /**
@@ -769,11 +662,53 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   /**
    * 更新主合成组件
    */
-  private updateRootComposition () {
+  private updateRootComposition (deltaTime: number) {
     if (this.rootComposition.isActiveAndEnabled) {
-      const localTime = this.toLocalTime(this.globalTime / 1000);
+
+      let localTime = parseFloat((this.time + deltaTime - this.rootItem.start).toFixed(3));
+      let isEnded = false;
+
+      const duration = this.rootItem.duration;
+      const endBehavior = this.rootItem.endBehavior;
+
+      if (localTime - duration > 0.001) {
+
+        isEnded = true;
+
+        switch (endBehavior) {
+          case spec.EndBehavior.restart: {
+            localTime = localTime % duration;
+            this.restart();
+
+            break;
+          }
+          case spec.EndBehavior.freeze: {
+            localTime = Math.min(duration, localTime);
+
+            break;
+          }
+          case spec.EndBehavior.forward: {
+
+            break;
+          }
+          case spec.EndBehavior.destroy: {
+
+            break;
+          }
+        }
+      }
 
       this.rootComposition.time = localTime;
+
+      // end state changed, handle onEnd flags
+      if (this.isEnded !== isEnded) {
+        if (isEnded) {
+          this.isEnded = true;
+        } else {
+          this.isEnded = false;
+          this.isEndCalled = false;
+        }
+      }
     }
   }
 

@@ -503,7 +503,7 @@ describe('core/interact/item', () => {
 
     player?.gotoAndStop(0.3);
     expect(messagePhrase).to.eql(spec.MESSAGE_ITEM_PHRASE_END, 'MESSAGE_ITEM_PHRASE_END');
-    expect(messageSpy).to.have.been.called.once;
+    expect(messageSpy).to.have.been.called.twice;
     comp?.dispose();
   });
 

@@ -1,8 +1,8 @@
-import type { Player, SceneLoadOptions, SceneLoadType } from '@galacean/effects';
+import type { Player, SceneLoadOptions, Scene } from '@galacean/effects';
 
 export async function generateComposition (
   player: Player,
-  scene: SceneLoadType,
+  scene: Scene.LoadType,
   loadOptions?: SceneLoadOptions,
   options: Record<string, any> = {},
 ) {
