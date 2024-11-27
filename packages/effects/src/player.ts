@@ -359,9 +359,15 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
 
     for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textureOptions[i] = scene.textureOptions[i] instanceof Texture ? scene.textureOptions[i]
-        : engine.assetLoader.loadGUID(scene.textureOptions[i].id);
-      scene.textureOptions[i].initialize();
+      let textureOptions = scene.textureOptions[i];
+
+      if (textureOptions instanceof Texture) {
+        engine.addInstance(textureOptions);
+      } else {
+        textureOptions = engine.assetLoader.loadGUID<Texture>(scene.textureOptions[i].id);
+        scene.textureOptions[i] = textureOptions;
+      }
+      textureOptions.initialize();
     }
 
     if (engine.database) {
