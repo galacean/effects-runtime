@@ -387,7 +387,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param visible - 是否可见
    */
   setVisible (visible: boolean) {
-    this.rootItem.setActive(false);
+    this.rootItem.setVisible(visible);
   }
 
   /**
