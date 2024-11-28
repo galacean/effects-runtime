@@ -16,14 +16,19 @@ export function isIOS (): boolean {
 }
 
 export function isAndroid (): boolean {
-  return /\b[Aa]ndroid\b/.test(navigator.userAgent);
+  return window && /\b[Aa]ndroid\b/.test(navigator.userAgent);
 }
 
 export function isSimulatorCellPhone (): boolean {
-  return isAndroid() || /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent);
+  return isAndroid() || (window && /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent));
 }
 
 export function isAlipayMiniApp (): boolean {
   //@ts-expect-error
   return typeof my !== 'undefined' && my?.renderTarget === 'web';
+}
+
+export function isWechatMiniApp () {
+  //@ts-expect-error
+  return window?.__wxjs_environment === 'miniprogram';
 }
