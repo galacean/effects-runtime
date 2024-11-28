@@ -13,7 +13,7 @@
 import { isAlipayMiniApp, isAndroid, logger } from '@galacean/effects';
 
 const prefix = '[Galacean Effects]';
-const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+const ap = isAlipayMiniApp() ? my : window?.AlipayJSBridge;
 
 logger.register(nativeLogger);
 

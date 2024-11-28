@@ -23,11 +23,11 @@ export function isIOSByUA () {
 }
 
 export function isAndroid (): boolean {
-  return /\b[Aa]ndroid\b/.test(navigator.userAgent);
+  return window && /\b[Aa]ndroid\b/.test(navigator.userAgent);
 }
 
 export function isSimulatorCellPhone (): boolean {
-  return isAndroid() || /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent);
+  return isAndroid() || (window && /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent));
 }
 
 export function isMiniProgram () {
@@ -39,5 +39,5 @@ export function isAlipayMiniApp (): boolean {
 }
 
 export function isWechatMiniApp () {
-  return window.__wxjs_environment === 'miniprogram';
+  return window?.__wxjs_environment === 'miniprogram';
 }
