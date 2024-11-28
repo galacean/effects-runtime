@@ -92,9 +92,8 @@ export async function checkDowngrade (
   if (bizId === mockIdFail || bizId === mockIdPass) {
     return Promise.resolve({ downgrade: bizId === mockIdFail, reason: 'mock' });
   }
-
-  //@ts-expect-error
-  const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+  // @ts-expect-error
+  const ap = isAlipayMiniApp() ? my : window?.AlipayJSBridge;
 
   if (ap) {
     const now = performance.now();
