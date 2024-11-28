@@ -1,18 +1,22 @@
-import type { Component, Material } from '@galacean/effects';
-import { EffectsObject, RendererComponent, SerializationHelper, VFXItem, generateGUID, getMergedStore, spec } from '@galacean/effects';
-import { objectInspector } from '../core/decorators';
-import { ObjectInspector } from './object-inspectors';
-import { GLMaterial } from '@galacean/effects-webgl';
+import type { Material } from '@galacean/effects';
+import { RendererComponent, SerializationHelper, VFXItem, spec } from '@galacean/effects';
+import type { GLMaterial } from '@galacean/effects-webgl';
 import { GLTexture } from '@galacean/effects-webgl';
+import { objectInspector } from '../core/decorators';
 import type { FileNode } from '../core/file-node';
 import { UIManager } from '../core/ui-manager';
+import { Editor } from '../custom-editors/editor';
 import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
+import { EditorGUILayout } from '../widgets/editor-gui-layout';
+import { ObjectInspector } from './object-inspectors';
 
 @objectInspector(VFXItem)
 export class VFXItemInspector extends ObjectInspector {
 
   private alignWidth = 150;
+
+  private defaultComponentEditor = new Editor();
 
   constructor () {
     super();
@@ -23,36 +27,24 @@ export class VFXItemInspector extends ObjectInspector {
     const activeObject = this.activeObject as VFXItem;
     const alignWidth = this.alignWidth;
 
-    ImGui.Text('Name');
-    ImGui.SameLine(alignWidth);
-    ImGui.Text(activeObject.name);
-    ImGui.Text('GUID');
-    ImGui.SameLine(alignWidth);
-    ImGui.Text(activeObject.getInstanceId());
-    ImGui.Text('Is Active');
-    ImGui.SameLine(alignWidth);
+    EditorGUILayout.TextField('Name', activeObject, 'name');
+    EditorGUILayout.TextField('GUID', activeObject, 'guid');
+
+    EditorGUILayout.Label('Is Active');
     ImGui.Checkbox('##IsActive', (_ = activeObject.isActive) => {
       activeObject.setActive(_);
 
       return activeObject.isActive;
     });
 
-    ImGui.Text('End Behavior');
-    ImGui.SameLine(alignWidth);
-    ImGui.Text(this.endBehaviorToString(activeObject.endBehavior));
+    EditorGUILayout.Text('End Behavior', this.endBehaviorToString(activeObject.endBehavior));
 
     if (ImGui.CollapsingHeader(('Transform'), ImGui.TreeNodeFlags.DefaultOpen)) {
       const transform = activeObject.transform;
 
-      ImGui.Text('Position');
-      ImGui.SameLine(alignWidth);
-      ImGui.DragFloat3('##Position', transform.position, 0.03);
-      ImGui.Text('Rotation');
-      ImGui.SameLine(alignWidth);
-      ImGui.DragFloat3('##Rotation', transform.rotation, 0.03);
-      ImGui.Text('Scale');
-      ImGui.SameLine(alignWidth);
-      ImGui.DragFloat3('##Scale', transform.scale, 0.03);
+      EditorGUILayout.Vector3Field('Position', transform.position);
+      EditorGUILayout.Vector3Field('Rotation', transform.rotation);
+      EditorGUILayout.Vector3Field('Scale', transform.scale);
 
       transform.quat.setFromEuler(transform.rotation);
       transform.quat.conjugate();
@@ -66,92 +58,16 @@ export class VFXItemInspector extends ObjectInspector {
       const customEditor = UIManager.customEditors.get(componet.constructor);
 
       if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
-        ImGui.Text('Enabled');
-        ImGui.SameLine(alignWidth);
-        ImGui.Checkbox('##Enabled', (_ = componet.enabled) => {
-          componet.enabled = _;
+        EditorGUILayout.Checkbox('Enabled', componet, 'enabled');
 
-          return componet.enabled;
-        });
+        let editor = this.defaultComponentEditor;
 
         if (customEditor) {
-          customEditor.onInspectorGUI();
-          continue;
-
+          editor = customEditor;
         }
 
-        const propertyDecoratorStore = getMergedStore(componet);
-
-        for (const propertyName of Object.keys(componet)) {
-          const key = propertyName as keyof Component;
-          const property = componet[key];
-          const ImGuiID = componet.getInstanceId() + propertyName;
-
-          if (typeof property === 'number') {
-            ImGui.Text(propertyName);
-            ImGui.SameLine(alignWidth);
-            //@ts-expect-error
-            ImGui.DragFloat('##DragFloat' + ImGuiID, (_ = componet[key]) => componet[key] = _, 0.03);
-          } else if (typeof property === 'boolean') {
-            ImGui.Text(propertyName);
-            ImGui.SameLine(alignWidth);
-            //@ts-expect-error
-            ImGui.Checkbox('##Checkbox' + ImGuiID, (_ = componet[key]) => componet[key] = _);
-          } else if (property instanceof EffectsObject) {
-            ImGui.Text(propertyName);
-            ImGui.SameLine(alignWidth);
-            let name = 'EffectsObject';
-
-            if (property.name) {
-              name = property.name;
-            }
-            ImGui.Button(name, new ImGui.Vec2(200, 0));
-            if (ImGui.BeginDragDropTarget()) {
-              const payload = ImGui.AcceptDragDropPayload(property.constructor.name);
-
-              if (payload) {
-                void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
-                  if (!file) {
-                    return;
-                  }
-                  const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
-
-                  if (!effectsPackage) {
-                    return;
-                  }
-                  //@ts-expect-error
-                  componet[key] = effectsPackage.exportObjects[0] as Material;
-                });
-              }
-              ImGui.EndDragDropTarget();
-            }
-          }
-        }
-        if (componet instanceof RendererComponent) {
-          ImGui.Text('Material');
-          ImGui.SameLine(alignWidth);
-          ImGui.Button(componet.material?.name ?? '', new ImGui.Vec2(200, 0));
-
-          if (ImGui.BeginDragDropTarget()) {
-            const payload = ImGui.AcceptDragDropPayload(GLMaterial.name);
-
-            if (payload) {
-              void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
-                if (!file) {
-                  return;
-                }
-                const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
-
-                if (!effectsPackage) {
-                  return;
-                }
-                componet.material = effectsPackage.exportObjects[0] as Material;
-              });
-            }
-
-            ImGui.EndDragDropTarget();
-          }
-        }
+        editor.target = componet;
+        editor.onInspectorGUI();
       }
     }
     if (activeObject.getComponent(RendererComponent)) {
