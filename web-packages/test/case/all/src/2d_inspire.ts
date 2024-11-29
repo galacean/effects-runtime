@@ -1,1 +1,0 @@
-import '../../2d/src/inspire/inspire.spec';

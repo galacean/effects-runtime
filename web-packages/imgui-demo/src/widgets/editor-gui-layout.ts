@@ -14,6 +14,7 @@ export class EditorGUILayout {
   static Label (label: string) {
     ImGui.Text(label);
     ImGui.SameLine(EditorGUILayout.alignWidth);
+    ImGui.SetNextItemWidth(-1);
   }
 
   static TextField (label: string, object: object, property: string, guiID?: string) {
