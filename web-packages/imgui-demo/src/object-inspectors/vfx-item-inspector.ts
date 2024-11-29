@@ -58,6 +58,8 @@ export class VFXItemInspector extends ObjectInspector {
       const customEditor = UIManager.customEditors.get(componet.constructor);
 
       if (ImGui.CollapsingHeader(componet.constructor.name, ImGui.TreeNodeFlags.DefaultOpen)) {
+        ImGui.PushID(componet.getInstanceId());
+
         EditorGUILayout.Checkbox('Enabled', componet, 'enabled');
 
         let editor = this.defaultComponentEditor;
@@ -68,6 +70,8 @@ export class VFXItemInspector extends ObjectInspector {
 
         editor.target = componet;
         editor.onInspectorGUI();
+
+        ImGui.PopID();
       }
     }
     if (activeObject.getComponent(RendererComponent)) {

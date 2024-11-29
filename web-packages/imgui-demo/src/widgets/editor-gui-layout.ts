@@ -1,3 +1,5 @@
+import type { FileNode } from '../core/file-node';
+import { GalaceanEffects } from '../ge';
 import { ImGui } from '../imgui';
 
 function access (object: any, property: string) {
@@ -50,5 +52,33 @@ export class EditorGUILayout {
     EditorGUILayout.Label(label);
 
     return ImGui.ColorEdit4('##' + label + guiID, color, ImGui.ImGuiColorEditFlags.Float | ImGui.ImGuiColorEditFlags.HDR);
+  }
+
+  static ObjectField (label: string, object: object, property: string) {
+    EditorGUILayout.Label(label);
+
+    const targetObject = (object as Record<string, any>)[property];
+
+    ImGui.Button(targetObject.name ?? 'EffectsObject', new ImGui.Vec2(200, 0));
+
+    if (ImGui.BeginDragDropTarget()) {
+      const payload = ImGui.AcceptDragDropPayload(targetObject.constructor.name);
+
+      if (payload) {
+        void (payload.Data as FileNode).getFile().then(async (file: File | undefined)=>{
+          if (!file) {
+            return;
+          }
+          const effectsPackage = await GalaceanEffects.assetDataBase.loadPackageFile(file);
+
+          if (!effectsPackage) {
+            return;
+          }
+          (object as Record<string, any>)[property] = effectsPackage.exportObjects[0];
+        });
+      }
+
+      ImGui.EndDragDropTarget();
+    }
   }
 }
