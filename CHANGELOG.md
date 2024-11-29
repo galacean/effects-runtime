@@ -7,6 +7,18 @@
 
 ---
 
+## 2.1.2
+
+`2024-11-29`
+
+- Fix: Optimized the calculation logic for the player's dimensions to ensure accurate width and height retrieval across various environments. [#762](https://github.com/galacean/effects-runtime/pull/762) @Sruimeng
+- Fix: composition setVisible and texture load error. [#764](https://github.com/galacean/effects-runtime/pull/764) @wumaolinmaoan
+- Fix: interact mesh rendering has offset. [#768](https://github.com/galacean/effects-runtime/pull/768) @wumaolinmaoan
+- Chore: update frame test old player versio. [#770](https://github.com/galacean/effects-runtime/pull/770) @wumaolinmaoan
+- Chore: imgui add object field. [#771](https://github.com/galacean/effects-runtime/pull/771) @wumaolinmaoan
+  - opt imgui assets loading logic
+- Chore: add imgui widgets. [#765](https://github.com/galacean/effects-runtime/pull/765) @wumaolinmaoan
+
 ## 2.1.1
 
 `2024-11-26`
