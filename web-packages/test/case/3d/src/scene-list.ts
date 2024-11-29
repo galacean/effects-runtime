@@ -34,7 +34,6 @@ export default {
   ring818: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*cnCMTo1seD0AAAAAAAAAAAAADlB4AQ',
     name: '818圆环',
-    pass: true,
   },
   test1: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ',

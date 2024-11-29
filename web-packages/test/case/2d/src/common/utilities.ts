@@ -1,8 +1,6 @@
 // @ts-nocheck
-import type { PlayerConfig, Composition } from '@galacean/effects';
-import {
-  Player, registerPlugin, AbstractPlugin, VFXItem, spec, math, AssetManager,
-} from '@galacean/effects';
+import type { PlayerConfig, Composition, SceneLoadOptions, GLType } from '@galacean/effects';
+import { Player, spec, math, AssetManager } from '@galacean/effects';
 import { JSONConverter } from '@galacean/effects-plugin-model';
 
 const { Vector3, Matrix4 } = math;
@@ -20,8 +18,23 @@ const playerOptions: PlayerConfig = {
 };
 
 export class TestPlayer {
-  constructor (width, height, playerClass, playerOptions, renderFramework, registerFunc, Plugin, VFXItem, assetManager, oldVersion, is3DCase) {
+  player: Player;
+  div: HTMLDivElement;
+  canvas: HTMLCanvasElement;
+  scene: Composition;
+  composition: Composition;
+  lastTime = 0;
 
+  constructor (
+    public width: number,
+    public height: number,
+    playerClass: typeof Player,
+    playerOptions: PlayerConfig,
+    public renderFramework: GLType,
+    public assetManager: typeof AssetManager,
+    public oldVersion: boolean,
+    public is3DCase: boolean,
+  ) {
     width /= 2;
     height /= 2;
 
@@ -29,7 +42,6 @@ export class TestPlayer {
     this.height = height;
 
     this.div = document.createElement('div');
-
     this.div.style.position = 'absolute';
     this.div.style.width = width + 'px';
     this.div.style.height = height + 'px';
@@ -48,31 +60,23 @@ export class TestPlayer {
 
     this.canvas = document.createElement('canvas');
 
-    const body = document.getElementsByTagName('body')[0];
-
-    body.appendChild(this.div);
+    document.body.appendChild(this.div);
     this.div.appendChild(this.canvas);
-    this.renderFramework = renderFramework;
-    //
+
     this.player = new playerClass({
       canvas: this.canvas,
       ...playerOptions,
       renderFramework,
     });
     this.assetManager = assetManager;
-    this.oldVersion = oldVersion;
-    this.is3DCase = is3DCase;
-    this.scene = undefined;
-    this.composition = undefined;
-    this.lastTime = 0;
   }
 
-  async initialize (url, loadOptions = undefined, playerOptions = undefined) {
+  async initialize (url: string, loadOptions: SceneLoadOptions = {}) {
+    // @ts-expect-error
     Math.seedrandom('mars-runtime');
     this.clearResource();
-    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100, autoplay: false }) as AssetManager;
-
-    let inData = url;
+    const assetManager = new this.assetManager({ ...loadOptions, timeout: 100 });
+    let inData: spec.JSONScene | string = url;
 
     if (this.is3DCase) {
       const converter = new JSONConverter(this.player.renderer);
@@ -82,19 +86,18 @@ export class TestPlayer {
 
     const json = await assetManager.loadScene(inData, this.player.renderer);
 
-    // TODO 兼容函数，endBehavior 改造后移除
-    compatibleCalculateItem(json.jsonScene.compositions[0]);
-
     this.composition = this.scene = await this.player.loadScene(json, { ...loadOptions, timeout: 100, autoplay: false });
+    // @ts-expect-error
     Math.seedrandom('mars-runtime');
     this.player.gotoAndStop(0);
   }
 
-  gotoTime (newtime) {
+  gotoTime (newtime: number) {
     const time = newtime;
     const deltaTime = time - this.lastTime;
 
     this.lastTime = newtime;
+    // @ts-expect-error
     Math.seedrandom(`mars-runtime${time}`);
     if (this.player.gotoAndStop) {
       this.player.gotoAndStop(time);
@@ -106,7 +109,7 @@ export class TestPlayer {
 
   async readImageBuffer () {
     await sleep(sleepTime);
-    const ctx = this.canvas.getContext(this.renderFramework);
+    const ctx = this.canvas.getContext(this.renderFramework) as WebGL2RenderingContext;
     const pixels = new Uint8Array(this.width * this.height * 4);
 
     ctx.flush();
@@ -123,7 +126,7 @@ export class TestPlayer {
     return this.composition.statistic.firstFrameTime;
   }
 
-  hitTest (x, y) {
+  hitTest (x: number, y: number) {
     const ret = this.composition.hitTest(x, y);
 
     this.player.tick(0);
@@ -132,7 +135,9 @@ export class TestPlayer {
   }
 
   duration () {
+    // @ts-expect-error
     if (this.composition.content) {
+      // @ts-expect-error
       return this.composition.content.duration;
     } else {
       return this.composition.getDuration();
@@ -241,14 +246,20 @@ export class TestPlayer {
 }
 
 export class TestController {
-  constructor (is3DCase = false) {
-    this.is3DCase = is3DCase;
-    this.renderFramework = 'webgl';
-    this.oldPlayer = undefined;
-    this.newPlayer = undefined;
-  }
+  renderFramework = 'webgl';
+  oldPlayer: TestPlayer;
+  newPlayer: TestPlayer;
 
-  async createPlayers (width, height, renderFramework, isEditor = true) {
+  constructor (
+    public is3DCase = false,
+  ) { }
+
+  async createPlayers (
+    width: number,
+    height: number,
+    renderFramework: GLType,
+    isEditor = true,
+  ) {
     await this.loadOldPlayer();
     await this.loadOldModelPlugin();
     await this.loadOldSpinePlugin();
@@ -260,12 +271,11 @@ export class TestController {
     if (window.ge.Player) {
       this.oldPlayer = new TestPlayer(
         width, height, window.ge.Player, playerOptions, renderFramework,
-        window.ge.registerPlugin, window.ge.AbstractPlugin, window.ge.VFXItem,
         window.ge.AssetManager, true, this.is3DCase
       );
       this.newPlayer = new TestPlayer(
         width, height, Player, playerOptions, renderFramework,
-        registerPlugin, AbstractPlugin, VFXItem, AssetManager, false, this.is3DCase
+        AssetManager, false, this.is3DCase
       );
       console.info('Create all players');
     } else {
@@ -570,16 +580,3 @@ export function getWebGLVersionFromURL (): string | null {
   return urlParams.get('webgl');
 }
 
-/**
- * 兼容旧 player 中空节点结束行为是销毁和冻结表现一样的动画
- * TODO 不需要和 player 做效果对比时可以移除
- */
-function compatibleCalculateItem (composition: Composition) {
-  // 测试用的兼容
-  composition.items.forEach(item => {
-    // 兼容空节点结束行为，保持和player一致，在runtime上空节点结束为销毁改为冻结的效果
-    if (VFXItem.isNull(item) && item.endBehavior === spec.EndBehavior.destroy) {
-      item.endBehavior = spec.EndBehavior.forward;
-    }
-  });
-}

@@ -1,4 +1,4 @@
-// @ts-nocheck
+import type { GLType } from '@galacean/effects';
 import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats, getWebGLVersionFromURL } from '../common';
 import sceneList from './scene-list';
 import '@galacean/effects-plugin-orientation-transformer';
@@ -13,7 +13,8 @@ const pixelDiffThreshold = 1;
 const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
-let controller, cmpStats;
+let controller: TestController;
+let cmpStats: ComparatorStats;
 
 const webglVersion = getWebGLVersionFromURL();
 
@@ -26,25 +27,23 @@ if (webglVersion === '1') {
   addDescribe('webgl2');
 }
 
-function addDescribe (renderFramework) {
+function addDescribe (renderFramework: GLType) {
   describe(`灵感中心@${renderFramework}`, function () {
     this.timeout('1800s');
 
-    before(async function () {
+    before(async () => {
       controller = new TestController();
       await controller.createPlayers(canvasWidth, canvasHeight, renderFramework);
       cmpStats = new ComparatorStats(renderFramework);
     });
 
-    after(function () {
+    after(() => {
       controller.disposePlayers();
       const message = cmpStats.getStatsInfo();
       const label = document.createElement('h2');
-
-      label.innerHTML = `${message}`;
-      //
       const suites = document.getElementsByClassName('suite');
 
+      label.innerHTML = `${message}`;
       suites[suites.length - 1].appendChild(label);
     });
 
@@ -67,19 +66,20 @@ function addDescribe (renderFramework) {
         return;
       }
 
-      const { name, url } = sceneList[key];
+      const { name, url } = sceneList[key as keyof typeof sceneList];
 
       void checkScene(key, name, url);
     });
   });
 }
 
-async function checkScene (keyName, name, url) {
+async function checkScene (keyName: string, name: string, url: string) {
   it(`${name}`, async () => {
     console.info(`[Compare]: Begin ${name}, ${url}`);
     const { oldPlayer, newPlayer, renderFramework } = controller;
 
-    newPlayer.player.compositions.length = 0;
+    newPlayer.player.destroyCurrentCompositions();
+
     await oldPlayer.initialize(url);
     await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
@@ -143,8 +143,8 @@ async function checkScene (keyName, name, url) {
 
 function getIgnoreList () {
   if (navigator.platform.toLowerCase().search('win') >= 0) {
-    return ['bloom', 'gaussian', 'move', 'combine', 'running', 'superfirework', 'WuFu1', 'payment', 'jump', 'earth', 'message3'];
+    return ['combine', 'running', 'superfirework', 'WuFu1', 'payment', 'jump', 'earth', 'message3'];
   } else {
-    return ['bloom', 'gaussian', 'move', 'reward', 'spray1212', 'jump', 'earth', 'message3'];
+    return ['reward', 'spray1212', 'jump', 'earth', 'message3'];
   }
 }
