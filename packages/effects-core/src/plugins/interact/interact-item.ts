@@ -155,7 +155,6 @@ export class InteractComponent extends RendererComponent {
 
   override render (renderer: Renderer): void {
     if (this.previewContent) {
-      this.previewContent.mesh.worldMatrix = this.transform.getWorldMatrix();
       this.previewContent.mesh.render(renderer);
     }
   }
