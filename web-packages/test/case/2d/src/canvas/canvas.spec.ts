@@ -1,4 +1,4 @@
-// @ts-nocheck
+import type { GLType } from '@galacean/effects';
 import { TestController, ImageComparator, getCurrnetTimeStr } from '../common';
 import sceneList from './scene-list';
 
@@ -9,39 +9,40 @@ const pixelDiffThreshold = 10;
 const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
-let controller;
+let controller: TestController;
 
 addDescribe('webgl');
 addDescribe('webgl2');
 
-function addDescribe (renderFramework) {
+function addDescribe (renderFramework: GLType) {
   describe(`文本/动态换图测试@${renderFramework}`, function () {
     this.timeout('300s');
 
-    before(async function () {
+    before(async () => {
       controller = new TestController();
       await controller.createPlayers(canvasWidth, canvasHeight, renderFramework);
     });
 
-    after(function () {
+    after(() => {
       controller.disposePlayers();
     });
 
     Object.keys(sceneList).forEach(key => {
-      const { name, url } = sceneList[key];
+      const { name, url } = sceneList[key as keyof typeof sceneList];
 
       void checkScene(key, name, url);
     });
   });
 }
 
-async function checkScene (keyName, name, url) {
+async function checkScene (keyName: string, name: string, url: string) {
   it(`${name}`, async () => {
     console.info(`[Compare]: Begin ${name}, ${url}`);
     const { oldPlayer, newPlayer, renderFramework } = controller;
 
     await oldPlayer.initialize(url);
     await newPlayer.initialize(url);
+
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
     const timeList = [
@@ -57,14 +58,11 @@ async function checkScene (keyName, name, url) {
       if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
         break;
       }
-      //
+
       oldPlayer.gotoTime(time);
       newPlayer.gotoTime(time);
-      //
+      // @ts-expect-error
       Math.seedrandom(`hit-test${i}`);
-
-      // console.log(oldPlayer.compositions[0]);
-      // console.log(newPlayer.currentComposition);
 
       if (Math.random() < 0.75) {
         const count = Math.round(Math.random() * 8);
@@ -77,9 +75,9 @@ async function checkScene (keyName, name, url) {
           runtimeRet = newPlayer.hitTest(x, y);
 
           expect(marsRet.length).to.eql(runtimeRet.length);
-          for (let k = 0; k < marsRet.length; k++) {
-            // expect(marsRet[k].id).to.eql(runtimeRet[k].id);
-          }
+          // for (let k = 0; k < marsRet.length; k++) {
+          //   expect(marsRet[k].id).to.eql(runtimeRet[k].id);
+          // }
         }
       } else {
         let hitPos;
@@ -94,9 +92,9 @@ async function checkScene (keyName, name, url) {
         runtimeRet = newPlayer.hitTest(hitPos[0], hitPos[1]);
 
         expect(marsRet.length).to.eql(runtimeRet.length);
-        for (let j = 0; j < marsRet.length; j++) {
-          // expect(marsRet[j].id).to.eql(runtimeRet[j].id);
-        }
+        // for (let j = 0; j < marsRet.length; j++) {
+        //   expect(marsRet[j].id).to.eql(runtimeRet[j].id);
+        // }
       }
 
       const oldImage = await oldPlayer.readImageBuffer();

@@ -1,6 +1,6 @@
-// @ts-nocheck
-import '@galacean/effects-plugin-model';
+import type { GLType } from '@galacean/effects';
 import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../2d/src/common';
+import '@galacean/effects-plugin-model';
 import sceneList from './scene-list';
 
 const { expect } = chai;
@@ -14,22 +14,23 @@ const pixelDiffThreshold = 1;
 const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
-let controller, cmpStats;
+let controller: TestController;
+let cmpStats: ComparatorStats;
 
 addDescribe('webgl');
 addDescribe('webgl2');
 
-function addDescribe (renderFramework) {
+function addDescribe (renderFramework: GLType) {
   describe(`3d帧对比@${renderFramework}`, function () {
     this.timeout('1800s');
 
-    before(async function () {
+    before(async () => {
       controller = new TestController(true);
       await controller.createPlayers(canvasWidth, canvasHeight, renderFramework, false);
       cmpStats = new ComparatorStats(renderFramework);
     });
 
-    after(function () {
+    after(() => {
       controller.disposePlayers();
       const message = cmpStats.getStatsInfo();
       const label = document.createElement('h2');
@@ -60,12 +61,12 @@ function addDescribe (renderFramework) {
         return;
       }
 
-      const scene = sceneList[key];
+      const scene = sceneList[key as keyof typeof sceneList];
 
       void checkScene(key, scene);
     });
 
-    async function checkScene (keyName, sceneData) {
+    async function checkScene (keyName: string, sceneData: { name: string, url: string, autoAdjustScene?: boolean, enableDynamicSort?: boolean }) {
       const { name, url } = sceneData;
       const autoAdjustScene = sceneData.autoAdjustScene ?? false;
       const enableDynamicSort = sceneData.enableDynamicSort ?? false;
@@ -82,10 +83,9 @@ function addDescribe (renderFramework) {
             enableDynamicSort: enableDynamicSort,
           },
         };
-        const playerOptions = { pauseOnFirstFrame: true };
 
-        await oldPlayer.initialize(url, loadOptions, playerOptions);
-        await newPlayer.initialize(url, loadOptions, playerOptions);
+        await oldPlayer.initialize(url, loadOptions);
+        await newPlayer.initialize(url, loadOptions);
 
         const imageCmp = new ImageComparator(pixelDiffThreshold);
         const namePrefix = getCurrnetTimeStr();
@@ -152,7 +152,7 @@ function addDescribe (renderFramework) {
   });
 }
 
-function isFullTimeTest (name) {
+function isFullTimeTest (name: string) {
   const nameList = [
     '简单Morph',
     'Restart测试',

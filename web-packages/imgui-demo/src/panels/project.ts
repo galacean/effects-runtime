@@ -13,16 +13,52 @@ import { ImGui, ImGui_Impl } from '../imgui';
 import { FileNode } from '../core/file-node';
 import { GalaceanEffects } from '../ge';
 
+/**
+ * Used to sync play preview scene when generating asset icon.
+ */
+class AssetLock {
+  private isLocked: boolean = false; // 当前锁的状态
+  private waitingResolvers: Array<() => void> = []; // 等待锁释放的 Promise 解析函数
+
+  // 尝试获取锁，如果锁被占用则返回一个会等待锁释放的 Promise
+  async acquire (): Promise<void> {
+    if (this.isLocked) {
+      await new Promise<void>(resolve => this.waitingResolvers.push(resolve));
+    }
+    this.isLocked = true;
+  }
+
+  // 释放锁，并通知下一个等待者（如果有的话）
+  release (): void {
+    if (!this.isLocked) {
+      throw new Error('Lock is not acquired yet.');
+    }
+
+    this.isLocked = false;
+
+    const resolve = this.waitingResolvers.shift();
+
+    if (resolve) {
+      resolve();
+    }
+  }
+}
+
 @editorWindow()
 export class Project extends EditorWindow {
-  private previewPlayer: Player;
-  private rootFileNode: FileNode;
-  private selectedFolder: FileNode;
   private fileViewSize = 100;
   private fileViewHovered = false;
+
+  private previewPlayer: Player;
+
+  private selectedFolder: FileNode;
+  private rootFileNode: FileNode;
+  private clickingFileNode: FileNode | undefined;
+
   private folderIcon: WebGLTexture;
   private jsonIcon: WebGLTexture;
-  private clickingFileNode: FileNode | undefined;
+
+  private assetLock = new AssetLock();
 
   @menuItem('Window/Project')
   static showWindow () {
@@ -303,7 +339,7 @@ export class Project extends EditorWindow {
       if (child.handle.kind !== 'file') {
         continue;
       }
-      await child.handle.getFile().then(async (file: File)=>{
+      void child.handle.getFile().then(async (file: File)=>{
         if (!file.name.endsWith('.json')) {
           return;
         }
@@ -319,11 +355,15 @@ export class Project extends EditorWindow {
             if (!previewScene) {
               return;
             }
+
+            await this.assetLock.acquire();
             this.previewPlayer.destroyCurrentCompositions();
             const composition = await this.previewPlayer.loadScene(previewScene);
             const previewItem = composition.getItemByName('3d-mesh');
 
             if (!previewItem) {
+              this.assetLock.release();
+
               return;
             }
             const geometryproxy = new GeometryBoxProxy();
@@ -349,6 +389,7 @@ export class Project extends EditorWindow {
             this.previewPlayer.gotoAndStop(1);
             this.previewPlayer.renderer.renderRenderFrame(composition.renderFrame);
             iconTexture = await this.createIconTexture(this.previewPlayer.canvas);
+            this.assetLock.release();
 
             break;
           }

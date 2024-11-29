@@ -359,9 +359,15 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
 
     for (let i = 0; i < scene.textureOptions.length; i++) {
-      scene.textureOptions[i] = scene.textureOptions[i] instanceof Texture ? scene.textureOptions[i]
-        : engine.assetLoader.loadGUID(scene.textureOptions[i].id);
-      scene.textureOptions[i].initialize();
+      let textureOptions = scene.textureOptions[i];
+
+      if (textureOptions instanceof Texture) {
+        engine.addInstance(textureOptions);
+      } else {
+        textureOptions = engine.assetLoader.loadGUID<Texture>(scene.textureOptions[i].id);
+        scene.textureOptions[i] = textureOptions;
+      }
+      textureOptions.initialize();
     }
 
     if (engine.database) {
@@ -893,22 +899,34 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private getTargetSize (parentEle: HTMLElement) {
     assertContainer(parentEle);
     const displayAspect = this.displayAspect;
+    // 小程序环境没有 getComputedStyle
+    const computedStyle = window.getComputedStyle?.(parentEle);
     let targetWidth;
     let targetHeight;
+    let finalWidth = 0;
+    let finalHeight = 0;
+
+    if (computedStyle) {
+      finalWidth = parseInt(computedStyle.width, 10);
+      finalHeight = parseInt(computedStyle.height, 10);
+    } else {
+      finalWidth = parentEle.clientWidth;
+      finalHeight = parentEle.clientHeight;
+    }
 
     if (displayAspect) {
-      const parentAspect = parentEle.clientWidth / parentEle.clientHeight;
+      const parentAspect = finalWidth / finalHeight;
 
       if (parentAspect > displayAspect) {
-        targetHeight = parentEle.clientHeight * this.displayScale;
+        targetHeight = finalHeight * this.displayScale;
         targetWidth = targetHeight * displayAspect;
       } else {
-        targetWidth = parentEle.clientWidth * this.displayScale;
+        targetWidth = finalWidth * this.displayScale;
         targetHeight = targetWidth / displayAspect;
       }
     } else {
-      targetWidth = parentEle.clientWidth;
-      targetHeight = parentEle.clientHeight;
+      targetWidth = finalWidth;
+      targetHeight = finalHeight;
     }
     const ratio = this.pixelRatio;
     let containerWidth = targetWidth;

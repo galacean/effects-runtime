@@ -1,6 +1,6 @@
-// @ts-nocheck
-import '@galacean/effects-plugin-spine';
+import type { GLType } from '@galacean/effects';
 import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../2d/src/common';
+import '@galacean/effects-plugin-spine';
 import sceneList from './scene-list';
 
 const { expect } = chai;
@@ -13,22 +13,23 @@ const pixelDiffThreshold = 1;
 const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
-let controller, cmpStats;
+let controller: TestController;
+let cmpStats: ComparatorStats;
 
 addDescribe('webgl');
 addDescribe('webgl2');
 
-function addDescribe (renderFramework) {
+function addDescribe (renderFramework: GLType) {
   describe(`Spine测试@${renderFramework}`, function () {
     this.timeout('1800s');
 
-    before(async function () {
+    before(async () => {
       controller = new TestController();
       await controller.createPlayers(canvasWidth, canvasHeight, renderFramework, false);
       cmpStats = new ComparatorStats(renderFramework);
     });
 
-    after(function () {
+    after(() => {
       controller.disposePlayers();
       const message = cmpStats.getStatsInfo();
       const label = document.createElement('h2');
@@ -41,14 +42,14 @@ function addDescribe (renderFramework) {
     });
 
     Object.keys(sceneList).forEach(key => {
-      const { name, url } = sceneList[key];
+      const { name, url } = sceneList[key as keyof typeof sceneList];
 
       void checkScene(key, name, url);
     });
   });
 }
 
-async function checkScene (keyName, name, url) {
+async function checkScene (keyName: string, name: string, url: string) {
   it(`${name}`, async () => {
     console.info(`[Compare]: Begin ${name}, ${url}`);
     const { oldPlayer, newPlayer, renderFramework } = controller;
