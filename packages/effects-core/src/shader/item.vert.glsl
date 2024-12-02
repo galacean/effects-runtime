@@ -13,7 +13,6 @@ uniform vec4 _Color;
 uniform vec4 _TexParams;//transparentOcclusion blending renderMode
 uniform vec4 _TexOffset;// x y sx sy
 uniform mat4 effects_MatrixVP;
-uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_ObjectToWorld;
 uniform mat4 effects_MatrixV;
 
