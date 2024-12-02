@@ -106,7 +106,7 @@ export class TextComponent extends BaseRenderComponent {
     this.interaction = interaction;
 
     this.renderer = {
-      renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
+      renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
