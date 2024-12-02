@@ -72,6 +72,9 @@ export class CompositionComponent extends Behaviour {
     const time = this.time;
 
     this.timelinePlayable.setTime(time);
+
+    // The properties of the object may change dynamically,
+    // so reset the track binding to avoid invalidation of the previously obtained binding object.
     this.resolveBindings();
     this.graph.evaluate(dt);
   }
