@@ -100,9 +100,6 @@ export class TimelinePlayable extends Playable {
   evaluate () {
     const time = this.getTime();
 
-    // update all tracks binding
-    this.updateTrackAnimatedObject(this.masterTrackInstances);
-
     // TODO search active clips
 
     for (const clip of this.clips) {
@@ -147,19 +144,6 @@ export class TimelinePlayable extends Playable {
 
         trackInstance.addChild(childTrackInstance);
       }
-    }
-  }
-
-  private updateTrackAnimatedObject (trackInstances: TrackInstance[]) {
-    for (const trackInstance of trackInstances) {
-      const trackAsset = trackInstance.trackAsset;
-
-      // update track binding use custom method
-      trackAsset.updateAnimatedObject();
-      trackInstance.output.setUserData(trackAsset.boundObject);
-
-      // update children tracks
-      this.updateTrackAnimatedObject(trackInstance.children);
     }
   }
 }

@@ -72,6 +72,7 @@ export class CompositionComponent extends Behaviour {
     const time = this.time;
 
     this.timelinePlayable.setTime(time);
+    this.resolveBindings();
     this.graph.evaluate(dt);
   }
 
