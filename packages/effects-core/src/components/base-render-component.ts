@@ -73,7 +73,7 @@ export class BaseRenderComponent extends RendererComponent {
     super(engine);
 
     this.renderer = {
-      renderMode: spec.RenderMode.BILLBOARD,
+      renderMode: spec.RenderMode.MESH,
       blending: spec.BlendingMode.ALPHA,
       texture: this.engine.emptyTexture,
       occlusion: false,
@@ -148,6 +148,14 @@ export class BaseRenderComponent extends RendererComponent {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
     this.material.setVector2('_Size', this.transform.size);
+
+    if (this.renderer.renderMode === spec.RenderMode.BILLBOARD ||
+      this.renderer.renderMode === spec.RenderMode.VERTICAL_BILLBOARD ||
+      this.renderer.renderMode === spec.RenderMode.HORIZONTAL_BILLBOARD
+    ) {
+      this.material.setVector3('_Scale', this.transform.scale);
+    }
+
     renderer.drawGeometry(geo, material);
   }
 
