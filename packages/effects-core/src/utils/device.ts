@@ -23,11 +23,11 @@ export function isIOSByUA () {
 }
 
 export function isAndroid (): boolean {
-  return window && /\b[Aa]ndroid\b/.test(navigator.userAgent);
+  return /\b[Aa]ndroid\b/.test(navigator.userAgent);
 }
 
 export function isSimulatorCellPhone (): boolean {
-  return isAndroid() || (window && /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent));
+  return isAndroid() || /\b(iPad|iPhone|iPod)\b/.test(navigator.userAgent);
 }
 
 export function isMiniProgram () {

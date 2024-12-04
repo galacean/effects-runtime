@@ -7,6 +7,8 @@ const mockIdPass = 'mock-pass';
 const mockIdFail = 'mock-fail';
 let hasRegisterEvent = false;
 
+export const canUseBOM = typeof window !== 'undefined';
+
 /**
  * 获取 GE 降级结果，在有 JSAPI 环境下调用，不需要创建 Canvas 和 WebGL 环境。
  *
@@ -18,6 +20,14 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
   if (!hasRegisterEvent) {
     hasRegisterEvent = true;
     registerEvent(options);
+  }
+  if (!canUseBOM) {
+    return Promise.resolve({
+      bizId,
+      downgrade: true,
+      level: options.level ?? spec.RenderLevel.S,
+      reason: '无法访问window',
+    });
   }
 
   if (bizId === mockIdFail || bizId === mockIdPass) {
@@ -81,7 +91,7 @@ function registerEvent (options: DowngradeOptions) {
   const { autoPause } = options;
 
   // SSR时window对象不存在 需要判断
-  window && window.addEventListener('unload', () => {
+  canUseBOM && window.addEventListener('unload', () => {
     getActivePlayers().forEach(player => player.dispose());
   });
 
