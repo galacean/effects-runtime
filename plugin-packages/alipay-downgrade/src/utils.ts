@@ -7,6 +7,7 @@ const mockIdPass = 'mock-pass';
 const mockIdFail = 'mock-fail';
 let hasRegisterEvent = false;
 
+// window对象不存在时需要判断
 export const canUseBOM = typeof window !== 'undefined';
 
 /**
@@ -17,10 +18,6 @@ export const canUseBOM = typeof window !== 'undefined';
  * @returns 降级结果
  */
 export async function getDowngradeResult (bizId: string, options: DowngradeOptions = {}): Promise<DowngradeResult> {
-  if (!hasRegisterEvent) {
-    hasRegisterEvent = true;
-    registerEvent(options);
-  }
   if (!canUseBOM) {
     return Promise.resolve({
       bizId,
@@ -30,6 +27,10 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
     });
   }
 
+  if (!hasRegisterEvent) {
+    hasRegisterEvent = true;
+    registerEvent(options);
+  }
   if (bizId === mockIdFail || bizId === mockIdPass) {
     return Promise.resolve({
       bizId,
@@ -90,8 +91,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 function registerEvent (options: DowngradeOptions) {
   const { autoPause } = options;
 
-  // SSR时window对象不存在 需要判断
-  canUseBOM && window.addEventListener('unload', () => {
+  window.addEventListener('unload', () => {
     getActivePlayers().forEach(player => player.dispose());
   });
 
