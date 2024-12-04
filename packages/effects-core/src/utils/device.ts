@@ -39,5 +39,5 @@ export function isAlipayMiniApp (): boolean {
 }
 
 export function isWechatMiniApp () {
-  return window?.__wxjs_environment === 'miniprogram';
+  return window.__wxjs_environment === 'miniprogram';
 }
