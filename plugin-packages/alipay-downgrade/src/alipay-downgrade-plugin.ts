@@ -11,7 +11,6 @@ import { getDefaultRenderLevel } from './utils';
  * 如果 SceneLoadOptions 中 renderLevel 没有设置，那么会根据 downgrade 数据
  * 和默认的渲染等级规则设置其中的 renderLevel。
  */
-
 export class AlipayDowngradePlugin extends AbstractPlugin {
   static override async processRawJSON (json: spec.JSONScene, options: SceneLoadOptions = {}) {
     const downgradeResult = options.pluginData?.['downgrade'];

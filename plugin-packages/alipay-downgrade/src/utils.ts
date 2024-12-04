@@ -7,7 +7,7 @@ const mockIdPass = 'mock-pass';
 const mockIdFail = 'mock-fail';
 let hasRegisterEvent = false;
 
-// window对象不存在时需要判断
+// window 对象不存在时需要判断
 export const canUseBOM = typeof window !== 'undefined';
 
 /**
@@ -23,7 +23,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
       bizId,
       downgrade: true,
       level: options.level ?? spec.RenderLevel.S,
-      reason: '无法访问window',
+      reason: '当前环境无法访问 window',
     });
   }
 
