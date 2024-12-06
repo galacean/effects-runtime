@@ -10,12 +10,12 @@ const container = document.getElementById('J-container');
     const player = new Player({
       container,
     });
-    const compostion = await player.loadScene(json, {
+    const composition = await player.loadScene(json, {
       variables: {
         'richText_1': '<color=#ef951aff>Galacean\nEffects\n\n富文本</color>',
       },
     });
-    const text = compostion.getItemByName('richText_1')?.getComponent(RichTextComponent);
+    const text = composition.getItemByName('richText_1')?.getComponent(RichTextComponent);
 
     setTimeout(() => {
       text?.setText('<color=#ef951aff>Galacean</color> <b>Effects</b>\n<color=#00ff00ff><i>富文本</i></color>');

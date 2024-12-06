@@ -130,9 +130,13 @@ export class PluginSystem {
 
 const pluginInfoMap: Record<string, string> = {
   'alipay-downgrade': '@galacean/effects-plugin-alipay-downgrade',
+  'downgrade': '@galacean/effects-plugin-downgrade',
   'editor-gizmo': '@galacean/effects-plugin-editor-gizmo',
   'model': '@galacean/effects-plugin-model',
+  'video': '@galacean/effects-plugin-multimedia',
+  'audio': '@galacean/effects-plugin-multimedia',
   'orientation-transformer': '@galacean/effects-plugin-orientation-transformer',
+  'richtext': '@galacean/effects-plugin-rich-text',
   'spine': '@galacean/effects-plugin-spine',
 };
 
