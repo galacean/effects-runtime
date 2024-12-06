@@ -23,12 +23,17 @@ export class NodeGraph extends EditorWindow {
     this.title = 'NodeGraph';
     this.open();
 
-    const node = this.imNode.addNode(TestNode, new ImVec2(200, 100));
-    const node2 = this.imNode.addNode(TestNode, new ImVec2(500, 150));
+    const node = this.imNode.addNode(TestNode, new ImVec2(500, 100));
+    const node2 = this.imNode.addNode(TestNode, new ImVec2(200, 150));
+    const node3 = this.imNode.addNode(TestNode, new ImVec2(500, 250));
+
+    node.setTitle('TestNode');
 
     // node.addOUT('Test');
-    const pinIn = node.addIN('In', '', ()=>true);
-    const pinOut = node2.addOUT('Out');
+    const pinIn = node.addIN('Test In', '', ()=>true);
+    const pinOut = node2.addOUT('Test Out');
+
+    node3.addIN('Test In', '', ()=>true).createLink(pinOut);
 
     pinIn.createLink(pinOut);
   }
@@ -412,15 +417,26 @@ abstract class Pin {
      */
   update (): void {
 
+    // if (m_renderer)
+    //     {
+    //         ImGui::BeginGroup();
+    //         m_renderer(this);
+    //         ImGui::EndGroup();
+    //         m_size = ImGui::GetItemRectSize();
+    //         if (ImGui::IsItemHovered())
+    //             (*m_inf)->hovering(this);
+    //         return;
+    //     }
+
     ImGui.SetCursorPos(this.m_pos);
     ImGui.Text(this.m_name);
-    // m_size = ImGui::GetItemRectSize();
+    this.m_size = ImGui.GetItemRectSize();
 
     this.drawDecoration();
     this.drawSocket();
 
-    if (this.m_renderer) {
-      this.m_renderer(this);
+    if (ImGui.IsItemHovered()) {
+      this.m_inf?.hovering(this);
     }
   }
 
@@ -824,7 +840,7 @@ class OutPin<T> extends Pin {
      */
   pinPoint (): ImGui.ImVec2 {
     return new ImGui.ImVec2(
-      this.m_pos.x + this.calcWidth() + this.m_style.extra.socket_padding,
+      this.m_pos.x + this.m_size.x + this.m_style.extra.socket_padding,
       this.m_pos.y + this.m_size.y / 2
     );
   }
