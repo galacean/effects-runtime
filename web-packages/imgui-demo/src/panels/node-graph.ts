@@ -24,8 +24,13 @@ export class NodeGraph extends EditorWindow {
     this.open();
 
     const node = this.imNode.addNode(TestNode, new ImVec2(200, 100));
+    const node2 = this.imNode.addNode(TestNode, new ImVec2(500, 150));
 
-    node.addOUT('Test');
+    // node.addOUT('Test');
+    const pinIn = node.addIN('In', '', ()=>true);
+    const pinOut = node2.addOUT('Out');
+
+    pinIn.createLink(pinOut);
   }
 
   protected override onGUI (): void {
@@ -378,7 +383,7 @@ abstract class Pin {
   protected m_uid: PinUID;
   protected m_name: string;
   protected m_pos: ImGui.ImVec2 = new ImGui.ImVec2(0.0, 0.0);
-  protected m_size: ImGui.ImVec2 = new ImGui.ImVec2(0.0, 0.0);
+  protected m_size: ImGui.ImVec2 = new ImGui.ImVec2(0.0, 20.0);
   protected m_type: PinType;
   protected m_parent: BaseNode | null = null;
   protected m_inf: ImNodeFlow | null = null;
@@ -406,6 +411,11 @@ abstract class Pin {
      * Updates position, hovering and dragging status, and renders the pin. Must be called each frame.
      */
   update (): void {
+
+    ImGui.SetCursorPos(this.m_pos);
+    ImGui.Text(this.m_name);
+    // m_size = ImGui::GetItemRectSize();
+
     this.drawDecoration();
     this.drawSocket();
 
@@ -421,7 +431,7 @@ abstract class Pin {
     // 使用ImGui绘制Socket
     const color = this.m_style.color;
 
-    this.drawCircle(this.m_pos, this.m_style.socket_radius, color);
+    this.drawCircle(this.pinPoint(), this.m_style.socket_radius, color);
   }
 
   /**
@@ -429,8 +439,13 @@ abstract class Pin {
      */
   protected drawCircle (pos: ImGui.ImVec2, radius: number, color: number): void {
     const drawList = ImGui.GetWindowDrawList();
+    const windowPos = ImGui.GetWindowPos();
 
+    pos.x += windowPos.x;
+    pos.y += windowPos.y;
     drawList.AddCircleFilled(pos, radius, color, this.m_style.socket_shape);
+    pos.x -= windowPos.x;
+    pos.y -= windowPos.y;
   }
 
   /**
@@ -438,6 +453,11 @@ abstract class Pin {
      */
   drawDecoration (): void {
     const draw_list = ImGui.GetWindowDrawList();
+
+    const windowPos = ImGui.GetWindowPos();
+
+    this.m_pos.x += windowPos.x;
+    this.m_pos.y += windowPos.y;
 
     if (ImGui.IsItemHovered()) {
       draw_list.AddRectFilled(
@@ -463,6 +483,9 @@ abstract class Pin {
       0,
       this.m_style.extra.border_thickness
     );
+
+    this.m_pos.x -= windowPos.x;
+    this.m_pos.y -= windowPos.y;
   }
 
   /**
@@ -604,7 +627,7 @@ class InPin<T> extends Pin {
     throw new Error('Method not implemented.');
   }
   override setLink (link: Link): void {
-    throw new Error('Method not implemented.');
+    this.m_link = link;
   }
   private m_link: Link | null = null;
   private m_emptyVal: T;
@@ -801,7 +824,7 @@ class OutPin<T> extends Pin {
      */
   pinPoint (): ImGui.ImVec2 {
     return new ImGui.ImVec2(
-      this.m_pos.x + this.m_style.extra.socket_padding,
+      this.m_pos.x + this.calcWidth() + this.m_style.extra.socket_padding,
       this.m_pos.y + this.m_size.y / 2
     );
   }
@@ -882,6 +905,13 @@ class Link {
   update (): void {
     const start: ImGui.ImVec2 = this.m_left.pinPoint();
     const end: ImGui.ImVec2 = this.m_right.pinPoint();
+    const windowPos = ImGui.GetWindowPos();
+
+    start.x += windowPos.x;
+    start.y += windowPos.y;
+    end.x += windowPos.x;
+    end.y += windowPos.y;
+
     let thickness: number = this.m_left.getStyle().extra.link_thickness;
     const mouseClickState: boolean = this.m_inf.getSingleUseClick();
 
@@ -1049,13 +1079,13 @@ abstract class BaseNode {
 
     ImGui.PushID(this.getUID());
     const mouseClickState: boolean = this.m_inf?.getSingleUseClick() ?? false;
-    const offset: ImGui.ImVec2 = this.m_inf?.grid2screen(windowPos) ?? windowPos;
+    const offset: ImGui.ImVec2 = this.m_inf?.grid2screen(new ImVec2()) ?? new ImVec2();
     const paddingTL: ImGui.ImVec2 = this.m_style ? new ImGui.ImVec2(this.m_style.padding.x, this.m_style.padding.y) : new ImGui.ImVec2(3.0, 1.0);
     const paddingBR: ImGui.ImVec2 = this.m_style ? new ImGui.ImVec2(this.m_style.padding.z, this.m_style.padding.w) : new ImGui.ImVec2(3.0, 1.0);
 
     // Foreground
     draw_list.ChannelsSetCurrent(1);
-    ImGui.SetCursorScreenPos(new ImGui.ImVec2(offset.x + this.m_pos.x, offset.y + this.m_pos.y));
+    ImGui.SetCursorPos(new ImGui.ImVec2(offset.x + this.m_pos.x, offset.y + this.m_pos.y));
 
     ImGui.BeginGroup();
 
@@ -1107,15 +1137,15 @@ abstract class BaseNode {
     for (const p of this.m_outs) {
       // FIXME: This looks horrible
       if ((this.m_pos.x + titleW + (this.m_inf?.getGrid().scroll().x ?? 0)) <
-                (ImGui.GetCursorPos().x + ImGui.GetWindowPos().x + maxW)) {
+                (ImGui.GetCursorPos().x + maxW)) {
         p.setPos(new ImGui.ImVec2(
-          ImGui.GetCursorPos().x + ImGui.GetWindowPos().x + (maxW - p.calcWidth()),
-          ImGui.GetCursorPos().y + ImGui.GetWindowPos().y
+          ImGui.GetCursorPos().x + (maxW - p.calcWidth()),
+          ImGui.GetCursorPos().y
         ));
       } else {
         p.setPos(new ImGui.ImVec2(
           this.m_pos.x + (titleW - p.calcWidth()) + (this.m_inf?.getGrid().scroll().x ?? 0),
-          ImGui.GetCursorPos().y + ImGui.GetWindowPos().y
+          ImGui.GetCursorPos().y
         ));
       }
       p.update();
@@ -1145,20 +1175,24 @@ abstract class BaseNode {
     const headerSize: ImGui.ImVec2 = new ImGui.ImVec2(this.m_size.x + (paddingBR.x ?? 0.0), headerH);
 
     // Background
+    this.m_pos.x += windowPos.x;
+    this.m_pos.y += windowPos.y;
     draw_list.ChannelsSetCurrent(0);
     draw_list.AddRectFilled(
-      new ImGui.ImVec2(this.m_pos.x - paddingTL.x + windowPos.x, this.m_pos.y - paddingTL.y + windowPos.y),
-      new ImGui.ImVec2(this.m_pos.x + this.m_size.x + paddingBR.x + windowPos.x, this.m_pos.y + this.m_size.y + paddingBR.y + windowPos.y),
+      new ImGui.ImVec2(this.m_pos.x - paddingTL.x, this.m_pos.y - paddingTL.y),
+      new ImGui.ImVec2(this.m_pos.x + this.m_size.x + paddingBR.x, this.m_pos.y + this.m_size.y + paddingBR.y),
       this.m_style?.bg ?? ImGui.IM_COL32(0, 0, 0, 0),
       this.m_style?.radius ?? 0.0
     );
     draw_list.AddRectFilled(
-      new ImGui.ImVec2(this.m_pos.x - paddingTL.x + windowPos.x, this.m_pos.y - paddingTL.y + windowPos.y),
-      new ImGui.ImVec2(this.m_pos.x + headerSize.x + windowPos.x, this.m_pos.y + headerSize.y + windowPos.y),
+      new ImGui.ImVec2(this.m_pos.x - paddingTL.x, this.m_pos.y - paddingTL.y),
+      new ImGui.ImVec2(this.m_pos.x + headerSize.x, this.m_pos.y + headerSize.y),
       this.m_style?.header_bg ?? ImGui.IM_COL32(0, 0, 0, 0),
       this.m_style?.radius ?? 0.0,
       ImGui.DrawCornerFlags.Top
     );
+    this.m_pos.x -= windowPos.x;
+    this.m_pos.y -= windowPos.y;
 
     let col: number = this.m_style?.border_color ?? ImGui.IM_COL32(0, 0, 0, 0);
     let thickness: number = this.m_style?.border_thickness ?? 1.0;
@@ -1176,6 +1210,9 @@ abstract class BaseNode {
       pbr.y -= thickness / 2;
       thickness *= -1.0;
     }
+
+    this.m_pos.x += windowPos.x;
+    this.m_pos.y += windowPos.y;
     draw_list.AddRect(
       new ImGui.ImVec2(this.m_pos.x - ptl.x, this.m_pos.y - ptl.y),
       new ImGui.ImVec2(this.m_pos.x + this.m_size.x + pbr.x, this.m_pos.y + this.m_size.y + pbr.y),
@@ -1184,6 +1221,8 @@ abstract class BaseNode {
       0,
       thickness
     );
+    this.m_pos.x -= windowPos.x;
+    this.m_pos.y -= windowPos.y;
 
     const leftCtrlKeyCode = 17;
 
