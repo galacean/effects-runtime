@@ -444,7 +444,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const engine = renderer.engine;
 
     scene.jsonScene.items.forEach(item => {
-      if (item.type === spec.ItemType.text) {
+      if (item.type === spec.ItemType.text || item.type === spec.ItemType.richtext) {
+
         const textVariable = variables[item.name] as string;
 
         if (!textVariable) {
@@ -454,7 +455,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         item.components.forEach(({ id }) => {
           const componentData = engine.findEffectsObjectData(id) as spec.TextComponentData;
 
-          if (componentData?.dataType === spec.DataType.TextComponent) {
+          if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
             componentData.options.text = textVariable;
           }
         });
