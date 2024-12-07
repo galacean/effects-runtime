@@ -888,10 +888,11 @@ export class ParticleSystem extends Component {
     };
     this.textureSheetAnimation = textureSheetAnimation;
     const renderer = props.renderer || {};
-    const rotationOverLifetime: ParticleMeshProps['rotationOverLifetime'] = {};
+    let rotationOverLifetime: ParticleMeshProps['rotationOverLifetime'];
     const rotOverLt = props.rotationOverLifetime;
 
     if (rotOverLt) {
+      rotationOverLifetime = {};
       rotationOverLifetime.asRotation = !!rotOverLt.asRotation;
       rotationOverLifetime.z = rotOverLt.z ? createValueGetter(rotOverLt.z) : createValueGetter(0);
       if (rotOverLt.separateAxes) {
