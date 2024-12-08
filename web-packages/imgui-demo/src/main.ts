@@ -83,6 +83,7 @@ async function _init (): Promise<void> {
   //io.ConfigFlags |= ImGui.ConfigFlags.NavEnableGamepad;      // Enable Gamepad Controls
   io.ConfigFlags |= ImGui.ConfigFlags.DockingEnable;  // Enable Docking
   io.ConfigDockingAlwaysTabBar = true;
+  io.ConfigWindowsMoveFromTitleBarOnly = true;
 
   // Setup Dear ImGui style
   // ImGui.StyleColorsDark();

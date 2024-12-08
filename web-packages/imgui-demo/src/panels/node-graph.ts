@@ -35,7 +35,7 @@ export class NodeGraph extends EditorWindow {
 
     node3.addIN('Test In', '', ()=>true).createLink(pinOut);
 
-    pinIn.createLink(pinOut);
+    // pinIn.createLink(pinOut);
   }
 
   protected override onGUI (): void {
@@ -201,7 +201,7 @@ class PinStyle {
       link_thickness: 2.6,
       link_dragged_thickness: 2.2,
       link_hovered_thickness: 3.5,
-      link_selected_outline_thickness: 0.5,
+      link_selected_outline_thickness: 4.0,
       outline_color: ImGui.IM_COL32(80, 20, 255, 200),
 
       socket_padding: 6.6,
@@ -678,18 +678,13 @@ class InPin<T> extends Pin {
     this.setLink(link);
     other.setLink(link);
     this.m_inf?.addLink(link);
-
-    // Update connection status
-    this.m_link = link;
-    if (other instanceof OutPin) {
-      this.m_inf!.addLink(link);
-    }
   }
 
   /**
      * Delete the link connected to the pin
      */
   deleteLink (): void {
+    this.m_link?.destroy();
     this.m_link = null;
   }
 
@@ -766,7 +761,7 @@ class InPin<T> extends Pin {
  * Derived from the generic class Pin. The output pin handles the logic.
  */
 class OutPin<T> extends Pin {
-  private m_links: Set<Link> = new Set();
+  private m_links: Link[] = [];
   private m_behaviour: (() => T) | null = null;
   private m_val: T | null = null;
 
@@ -789,7 +784,7 @@ class OutPin<T> extends Pin {
 
       otherPin.deleteLink();
     });
-    this.m_links.clear();
+    this.m_links.length = 0;
   }
 
   /**
@@ -802,7 +797,7 @@ class OutPin<T> extends Pin {
 
     this.setLink(link);
     other.setLink(link);
-    this.m_links.add(link);
+    this.m_links.push(link);
     this.m_inf?.addLink(link);
   }
 
@@ -811,7 +806,7 @@ class OutPin<T> extends Pin {
      * @param link Link to add
      */
   setLink (link: Link): void {
-    this.m_links.add(link);
+    this.m_links.push(link);
   }
 
   override getLink (): Link | null {
@@ -822,8 +817,7 @@ class OutPin<T> extends Pin {
      * Delete any expired weak pointers to a (now deleted) link
      */
   deleteLink (): void {
-    // 在TypeScript中，links是强引用，不需要处理weak pointers
-    // 如果需要，可以手动移除特定的link
+    this.m_links = this.m_links.filter(link => !link.isDestroyed());
   }
 
   /**
@@ -831,7 +825,7 @@ class OutPin<T> extends Pin {
      * @returns TRUE if pin is connected to one or more links
      */
   isConnected (): boolean {
-    return this.m_links.size > 0;
+    return this.m_links.length > 0;
   }
 
   /**
@@ -899,6 +893,7 @@ class Link {
   private m_inf: ImNodeFlow;
   private m_hovered: boolean = false;
   private m_selected: boolean = false;
+  private m_isDestroyed: boolean = false;
 
   constructor (left: Pin, right: Pin, inf: ImNodeFlow) {
     this.m_left = left;
@@ -912,8 +907,12 @@ class Link {
      */
   destroy (): void {
     this.m_left.deleteLink();
+    this.m_isDestroyed = true;
   }
 
+  isDestroyed () {
+    return this.m_isDestroyed;
+  }
   /**
      * Main update function
      * Draws the Link and updates Hovering and Selected status.
@@ -958,7 +957,9 @@ class Link {
     }
     smart_bezier(start, end, this.m_left.getStyle().color, thickness);
 
-    if (this.m_selected && ImGui.IsKeyPressed(ImGui.ImGuiKey.Delete, false)) {
+    const deleteKeyCode = 8;
+
+    if (this.m_selected && ImGui.IsKeyPressed(deleteKeyCode, false)) {
       this.m_right.deleteLink();
     }
   }
@@ -1270,14 +1271,17 @@ abstract class BaseNode {
     }
 
     const onHeader: boolean = ImGui.IsMouseHoveringRect(
-      new ImGui.ImVec2(this.m_pos.x - paddingTL.x, this.m_pos.y - paddingTL.y),
-      new ImGui.ImVec2(this.m_pos.x + headerSize.x, this.m_pos.y + headerSize.y)
+      new ImGui.ImVec2(this.m_pos.x - paddingTL.x + windowPos.x, this.m_pos.y - paddingTL.y + windowPos.y),
+      new ImGui.ImVec2(this.m_pos.x + headerSize.x + windowPos.x, this.m_pos.y + headerSize.y + windowPos.y)
     );
 
     if (onHeader && mouseClickState) {
       this.m_inf?.consumeSingleUseClick();
       this.m_dragged = true;
       this.m_inf?.draggingNode(true);
+
+      // TODO test logic, remove
+      this.m_style!.header_bg = ImGui.IM_COL32(255, 38, 41, 140);
     }
 
     if (this.m_dragged || (this.m_selected && this.m_inf?.isNodeDragged())) {
@@ -1291,9 +1295,12 @@ abstract class BaseNode {
       this.m_pos.y = Math.round(this.m_posTarget.y / step) * step;
 
       if (ImGui.IsMouseReleased(ImGui.ImGuiMouseButton.Left)) {
+        // TODO test logic, remove
+        this.m_style!.header_bg = ImGui.IM_COL32(71, 142, 173, 255);
         this.m_dragged = false;
         this.m_inf?.draggingNode(false);
-        this.m_posTarget = this.m_pos;
+        this.m_posTarget.x = this.m_pos.x;
+        this.m_posTarget.y = this.m_pos.y;
       }
     }
 
@@ -1690,8 +1697,11 @@ abstract class BaseNode {
      * @param pos Position in grid coordinates
      */
   setPos (pos: ImGui.ImVec2): this {
-    this.m_pos = pos;
-    this.m_posTarget = pos;
+    this.m_pos.x = pos.x;
+    this.m_pos.y = pos.y;
+
+    this.m_posTarget.x = pos.x;
+    this.m_posTarget.y = pos.y;
 
     return this;
   }
@@ -1877,9 +1887,14 @@ class ImNodeFlow {
     }
 
     if (this.m_dragOut) {
+      const dragOutPinPoint = this.m_dragOut.pinPoint();
+
+      dragOutPinPoint.x += windowPos.x;
+      dragOutPinPoint.y += windowPos.y;
+
       if (this.m_dragOut.getType() === PinType.Output) {
         smart_bezier(
-          this.m_dragOut.pinPoint(),
+          dragOutPinPoint,
           new ImGui.ImVec2(ImGui.GetIO().MousePos.x, ImGui.GetIO().MousePos.y),
           this.m_dragOut.getStyle().color,
           this.m_dragOut.getStyle().extra.link_dragged_thickness
@@ -1887,7 +1902,7 @@ class ImNodeFlow {
       } else {
         smart_bezier(
           new ImGui.ImVec2(ImGui.GetIO().MousePos.x, ImGui.GetIO().MousePos.y),
-          this.m_dragOut.pinPoint(),
+          dragOutPinPoint,
           this.m_dragOut.getStyle().color,
           this.m_dragOut.getStyle().extra.link_dragged_thickness
         );
@@ -1920,7 +1935,7 @@ class ImNodeFlow {
     }
 
     // Removing dead links
-    // this.m_links = this.m_links.filter(link => !link.isDestroyed());
+    this.m_links = this.m_links.filter(link => !link.isDestroyed());
 
     // Clearing recursion blacklist
     this.m_pinRecursionBlacklist = [];
