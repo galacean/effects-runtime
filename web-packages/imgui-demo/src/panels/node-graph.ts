@@ -1101,12 +1101,12 @@ abstract class BaseNode {
   private m_outs: Pin[] = [];
   private m_dynamicOuts: [number, Pin][] = [];
 
-  constructor (m_inf: ImNodeFlow) {
+  constructor (inf: ImNodeFlow) {
     this.m_title = 'BaseNode';
     this.m_pos = new ImGui.ImVec2(0.0, 0.0);
     this.m_posTarget = new ImGui.ImVec2(0.0, 0.0);
     this.m_size = new ImGui.ImVec2(100.0, 100.0);
-    this.m_inf = m_inf;
+    this.m_inf = inf;
   }
 
   /**
@@ -2252,18 +2252,21 @@ class TestNode extends BaseNode {
 
   valB = 0;
 
-  constructor (m_inf: ImNodeFlow) {
-    super(m_inf);
+  constructor (inf: ImNodeFlow) {
+    super(inf);
     this.setTitle('TestNode');
     this.pinIn = this.addIN('Test In', 0, ()=>true);
-    this.pinOut = this.addOUT('Test Out');
+    this.addOUT('Test Out').behaviour(()=>{
+      return this.valB;
+    });
   }
 
   override draw (): void {
     ImGui.SetNextItemWidth(100);
+    if (this.pinIn.isConnected()) {
+      this.valB = this.pinIn.val();
+    }
     ImGui.DragFloat('##ValB', (_ = this.valB) => this.valB = _);
-    ImGui.SetNextItemWidth(100);
-    ImGui.DragFloat('##ValA', (_ = this.valB) => this.valB = _);
   }
 }
 
