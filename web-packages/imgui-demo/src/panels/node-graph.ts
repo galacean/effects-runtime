@@ -1842,7 +1842,7 @@ class ImNodeFlow {
 
     // Begin ImGui context
     // this.m_context.begin();
-    ImGui.GetIO().IniFilename = '';
+    // ImGui.GetIO().IniFilename = '';
 
     const drawList = ImGui.GetWindowDrawList();
 
