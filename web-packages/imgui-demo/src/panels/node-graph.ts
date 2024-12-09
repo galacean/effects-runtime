@@ -27,13 +27,13 @@ export class NodeGraph extends EditorWindow {
     const node2 = this.imNode.addNode(TestNode, new ImVec2(200, 150));
     const node3 = this.imNode.addNode(TestNode, new ImVec2(500, 250));
 
-    node.setTitle('TestNode');
+    // node.setTitle('TestNode');
 
     // node.addOUT('Test');
-    const pinIn = node.addIN('Test In', '', ()=>true);
-    const pinOut = node2.addOUT('Test Out');
+    // const pinIn = node.addIN('Test In', '', ()=>true);
+    // const pinOut = node2.addOUT('Test Out');
 
-    node3.addIN('Test In', '', ()=>true).createLink(pinOut);
+    // node3.addIN('Test In', '', ()=>true).createLink(pinOut);
 
     // pinIn.createLink(pinOut);
   }
@@ -1101,11 +1101,12 @@ abstract class BaseNode {
   private m_outs: Pin[] = [];
   private m_dynamicOuts: [number, Pin][] = [];
 
-  constructor () {
+  constructor (m_inf: ImNodeFlow) {
     this.m_title = 'BaseNode';
     this.m_pos = new ImGui.ImVec2(0.0, 0.0);
     this.m_posTarget = new ImGui.ImVec2(0.0, 0.0);
     this.m_size = new ImGui.ImVec2(100.0, 100.0);
+    this.m_inf = m_inf;
   }
 
   /**
@@ -1974,8 +1975,8 @@ class ImNodeFlow {
      * @param args Optional arguments to be forwarded to derived class ctor
      * @returns Instance of the newly added node
      */
-  addNode<T extends BaseNode>(type: { new(...args: any[]): T }, pos: ImGui.ImVec2, ...args: any[]): T {
-    const node: T = new type(...args);
+  addNode<T extends BaseNode>(type: { new(m_inf: ImNodeFlow, ...args: any[]): T }, pos: ImGui.ImVec2, ...args: any[]): T {
+    const node: T = new type(this, ...args);
 
     node.setPos(pos);
     node.setHandler(this);
@@ -2245,13 +2246,25 @@ class ImNodeFlow {
 }
 
 class TestNode extends BaseNode {
+
+  pinIn: InPin<number>;
+  pinOut: OutPin<number>;
+
   valB = 0;
+
+  constructor (m_inf: ImNodeFlow) {
+    super(m_inf);
+    this.setTitle('TestNode');
+    this.pinIn = this.addIN('Test In', 0, ()=>true);
+    this.pinOut = this.addOUT('Test Out');
+  }
+
   override draw (): void {
     ImGui.SetNextItemWidth(100);
     ImGui.DragFloat('##ValB', (_ = this.valB) => this.valB = _);
-    // throw new Error('Method not implemented.');
+    ImGui.SetNextItemWidth(100);
+    ImGui.DragFloat('##ValA', (_ = this.valB) => this.valB = _);
   }
-
 }
 
 export interface ImProjectResult {
