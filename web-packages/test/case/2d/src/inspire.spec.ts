@@ -15,8 +15,8 @@ const canvasHeight = 512;
 let controller: TestController;
 let cmpStats: ComparatorStats;
 
-addDescribe('webgl', 0);
-addDescribe('webgl2', 1);
+addDescribe('webgl', 4);
+addDescribe('webgl2', 5);
 
 function addDescribe (renderFramework: GLType, i: number) {
   describe(`灵感中心@${renderFramework}`, function () {
