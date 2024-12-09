@@ -1,33 +1,24 @@
 import type { GLType } from '@galacean/effects';
-import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats, getWebGLVersionFromURL } from '../common';
-import sceneList from './scene-list';
+import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from './common';
+import sceneList from './assets/inspire';
 import '@galacean/effects-plugin-orientation-transformer';
 
 const { expect } = chai;
 /**
- * 万分之一的像素不相等比例，对于512x512大小的图像，
- * 不能超过26个像素不相等
+ * 万分之一的像素不相等比例，对于 512x512 大小的图像，
+ * 不能超过 26 个像素不相等
  */
 const accumRatioThreshold = 3e-4;
 const pixelDiffThreshold = 1;
-const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
 let controller: TestController;
 let cmpStats: ComparatorStats;
 
-const webglVersion = getWebGLVersionFromURL();
+addDescribe('webgl', 0);
+addDescribe('webgl2', 1);
 
-if (webglVersion === '1') {
-  addDescribe('webgl');
-} else if (webglVersion === '2') {
-  addDescribe('webgl2');
-} else {
-  addDescribe('webgl');
-  addDescribe('webgl2');
-}
-
-function addDescribe (renderFramework: GLType) {
+function addDescribe (renderFramework: GLType, i: number) {
   describe(`灵感中心@${renderFramework}`, function () {
     this.timeout('1800s');
 
@@ -47,7 +38,7 @@ function addDescribe (renderFramework: GLType) {
       suites[suites.length - 1].appendChild(label);
     });
 
-    it(`${renderFramework}检查`, () => {
+    it(`${renderFramework} 检查`, () => {
       const { oldPlayer, newPlayer } = controller;
 
       if (renderFramework === 'webgl') {
@@ -59,23 +50,17 @@ function addDescribe (renderFramework: GLType) {
       }
     });
 
-    const ignoreList = getIgnoreList();
-
-    Object.keys(sceneList).forEach(key => {
-      if (ignoreList.includes(key)) {
-        return;
-      }
-
+    Object.keys(sceneList).forEach((key, j) => {
       const { name, url } = sceneList[key as keyof typeof sceneList];
 
-      void checkScene(key, name, url);
+      void checkScene(key, name, url, [i, j]);
     });
   });
 }
 
-async function checkScene (keyName: string, name: string, url: string) {
+async function checkScene (keyName: string, name: string, url: string, idx: [number, number]) {
   it(`${name}`, async () => {
-    console.info(`[Compare]: Begin ${name}, ${url}`);
+    console.info(`[Test] Compare begin: ${name}, ${url}`);
     const { oldPlayer, newPlayer, renderFramework } = controller;
 
     newPlayer.player.destroyCurrentCompositions();
@@ -89,12 +74,11 @@ async function checkScene (keyName: string, name: string, url: string) {
       1.1, 1.2, 1.4, 1.7, 1.9, 2.2, 2.5, 2.7, 3.3, 3.8,
       4.7, 5.2, 6.8, 7.5, 8.6, 9.7, 9.99, 12.5, 18.9,
     ];
-    let maxDiffValue = 0;
 
     for (let i = 0; i < timeList.length; i++) {
       const time = timeList[i];
 
-      if (!oldPlayer.isLoop() && time >= oldPlayer.duration()) {
+      if (time >= oldPlayer.duration()) {
         break;
       }
       //
@@ -109,18 +93,15 @@ async function checkScene (keyName: string, name: string, url: string) {
       const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
       if (pixelDiffValue > 0) {
-        maxDiffValue = Math.max(maxDiffValue, pixelDiffValue);
-        console.info('DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
+        console.info('[Test] DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
       }
       if (diffCountRatio > accumRatioThreshold) {
-        console.error('FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
-        if (dumpImageForDebug) {
-          const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
-          const newFileName = `${namePrefix}_${name}_${time}_new.png`;
+        console.error('[Test] FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
+        const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
+        const newFileName = `${namePrefix}_${name}_${time}_new.png`;
 
-          await oldPlayer.saveCanvasToFile(oldFileName);
-          await newPlayer.saveCanvasToFile(newFileName);
-        }
+        await oldPlayer.saveCanvasToImage(oldFileName, idx);
+        await newPlayer.saveCanvasToImage(newFileName, idx, true);
       }
 
       expect(diffCountRatio).to.lte(accumRatioThreshold);
@@ -133,18 +114,11 @@ async function checkScene (keyName: string, name: string, url: string) {
 
     cmpStats.addSceneInfo(
       `${keyName}@${name}`, oldLoadCost, oldFirstCost - oldLoadCost,
-      newLoadCost, newFirstCost - newLoadCost, maxDiffValue
+      newLoadCost, newFirstCost - newLoadCost
     );
 
-    console.info(`[Compare]: End ${name}, ${url}`);
+    console.info(`[Test] Compare end: ${name}, ${url}`);
     newPlayer.disposeScene();
   });
 }
 
-function getIgnoreList () {
-  if (navigator.platform.toLowerCase().search('win') >= 0) {
-    return ['combine', 'running', 'superfirework', 'WuFu1', 'payment', 'jump', 'earth', 'message3'];
-  } else {
-    return ['reward', 'spray1212', 'jump', 'earth', 'message3'];
-  }
-}

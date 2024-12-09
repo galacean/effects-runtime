@@ -1,9 +1,8 @@
 import { GLTFTools } from '@vvfx/resource-detection';
 import type { Player } from '@galacean/effects';
-import type { LoadSceneOptions, LoadSceneResult } from '@galacean/effects-plugin-model';
 import { spec } from '@galacean/effects';
-import { LoaderImpl } from '@galacean/effects-plugin-model';
-import { Box3, Vector3, Sphere } from '@galacean/effects-plugin-model';
+import type { LoadSceneOptions, LoadSceneResult } from '@galacean/effects-plugin-model';
+import { LoaderImpl, Box3, Vector3, Sphere } from '@galacean/effects-plugin-model';
 
 export class LoaderECSEx extends LoaderImpl {
   override async loadScene (options: LoadSceneOptions): Promise<LoadSceneResult> {
@@ -11,7 +10,7 @@ export class LoaderECSEx extends LoaderImpl {
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
       if (typeof gltfResource === 'string') {
-        console.info(`Load url: ${gltfResource}.`);
+        console.info(`[Test] Load url: ${gltfResource}.`);
       }
 
       const gltfResult = await GLTFTools.loadGLTF(gltfResource);

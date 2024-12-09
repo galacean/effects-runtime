@@ -368,18 +368,18 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/AUEEDPBSBGLP/-505765340-6d3e4.json',
     name: '支付宝2021——开场',
   },
-  // running: {
-  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/AIPUQVVFLCPA/1548889573-0d943.json',
-  //   name: '支付宝2021——跑步',
-  // },
+  running: {
+    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/AIPUQVVFLCPA/1548889573-0d943.json',
+    name: '支付宝2021——跑步',
+  },
   door: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*XkbvQpf-_uwAAAAAAAAAAAAADlB4AQ',
     name: '支付宝2021——开门动画',
   },
-  // payment: {
-  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DVHWTIBIRXHY/-788542078-c8fed.json',
-  //   name: '支付宝2021——缴费',
-  // },
+  payment: {
+    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DVHWTIBIRXHY/-788542078-c8fed.json',
+    name: '支付宝2021——缴费',
+  },
   autumn: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LSQRKALOXBYU/1384187888-f221a.json',
     name: '天猫中秋大街',
@@ -486,10 +486,10 @@ export default {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Ov-iTYkwSUAAAAAAAAAAAAAADlB4AQ',
     name: '弹窗3',
   },
-  // try: {
-  //   url: 'https://mdn.alipayobjects.com/mars/afts/file/A*fkEYR6woEj8AAAAAAAAAAAAADlB4AQ',
-  //   name: '尝一口',
-  // },
+  try: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*fkEYR6woEj8AAAAAAAAAAAAADlB4AQ',
+    name: '尝一口',
+  },
   redpack11: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*qkvkSbQYeWcAAAAAAAAAAAAADlB4AQ',
     name: '双11红包',
