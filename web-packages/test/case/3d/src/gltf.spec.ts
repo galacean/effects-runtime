@@ -1,49 +1,47 @@
-// @ts-nocheck
+import type { GLType, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
-import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../../2d/src/common';
-import gltfList from './gltf-list';
-import { oldLoadGLTFScene } from './old-loader';
-import { loadGLTFSceneECS } from './new-loader';
+import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../2d/src/common';
+import gltfList from './assets/gltf-list';
+import { oldLoadGLTFScene } from './gltf/old-loader';
+import { loadGLTFSceneECS } from './gltf/new-loader';
 
 const { expect } = chai;
 
 /**
- * 万分之一的像素不相等比例，对于512x512大小的图像，
- * 不能超过26个像素不相等
+ * 万分之一的像素不相等比例，对于 512x512 大小的图像，
+ * 不能超过 26 个像素不相等
  */
 const accumRatioThreshold = 2.0e-4;
 const pixelDiffThreshold = 1;
-const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
-let controller, cmpStats;
+let controller: TestController;
+let cmpStats: ComparatorStats;
 
-addDescribe('webgl');
-addDescribe('webgl2');
+addDescribe('webgl', 0);
+addDescribe('webgl2', 1);
 
-function addDescribe (renderFramework) {
-  describe(`glTF帧对比@${renderFramework}`, function () {
+function addDescribe (renderFramework: GLType, i: number) {
+  describe(`glTF 帧对比@${renderFramework}`, function () {
     this.timeout('1800s');
 
-    before(async function () {
+    before(async () => {
       controller = new TestController();
-      await controller.createPlayers(canvasWidth, canvasHeight, renderFramework, false);
+      await controller.createPlayers(canvasWidth, canvasHeight, renderFramework);
       cmpStats = new ComparatorStats(renderFramework);
     });
 
-    after(function () {
+    after(() => {
       controller.disposePlayers();
       const message = cmpStats.getStatsInfo();
       const label = document.createElement('h2');
-
-      label.innerHTML = `${message}`;
-      //
       const suites = document.getElementsByClassName('suite');
 
+      label.innerHTML = `${message}`;
       suites[suites.length - 1].appendChild(label);
     });
 
-    it(`${renderFramework}检查`, () => {
+    it(`${renderFramework} 检查`, () => {
       const { oldPlayer, newPlayer } = controller;
 
       if (renderFramework === 'webgl') {
@@ -55,7 +53,7 @@ function addDescribe (renderFramework) {
       }
     });
 
-    gltfList.forEach(url => {
+    gltfList.forEach((url, j) => {
       const tokens = url.split('/');
       const key = tokens[tokens.length - 1];
       const sceneData = {
@@ -67,35 +65,37 @@ function addDescribe (renderFramework) {
         sceneData.name = key.substring(0, 24);
       }
 
-      void checkScene(key, sceneData);
+      void checkScene(key, sceneData, [i, j]);
     });
 
-    async function checkScene (keyName, sceneData) {
+    async function checkScene (
+      keyName: string,
+      sceneData: { name: string, url: string, autoAdjustScene?: boolean },
+      idx: [number, number],
+    ) {
       const { name, url } = sceneData;
       const autoAdjustScene = sceneData.autoAdjustScene ?? false;
       const enableDynamicSort = true;
       const compatibleMode = 'tiny3d';
 
       it(`${name}`, async () => {
-        console.info(`[Compare]: Begin ${name}, ${url}`);
+        console.info(`[Test] Compare begin: ${name}, ${url}`);
         const { oldPlayer, newPlayer, renderFramework } = controller;
-
         const loadOptions = {
           pluginData: {
-            compatibleMode: compatibleMode,
-            autoAdjustScene: autoAdjustScene,
-            enableDynamicSort: enableDynamicSort,
+            compatibleMode,
+            autoAdjustScene,
+            enableDynamicSort,
           },
         };
-        const playerOptions = { pauseOnFirstFrame: true };
         const loadGLTFOptions = getLoadGLTFOptions(name);
         const oldScene = await oldLoadGLTFScene({ url, player: oldPlayer.player, ...loadGLTFOptions });
         const newScene = await loadGLTFSceneECS({ url, player: newPlayer.player, ...loadGLTFOptions });
 
         copySceneCamera(oldScene, newScene);
 
-        await oldPlayer.initialize(oldScene, loadOptions, playerOptions);
-        await newPlayer.initialize(newScene, loadOptions, playerOptions);
+        await oldPlayer.initialize(oldScene, loadOptions);
+        await newPlayer.initialize(newScene, loadOptions);
 
         const imageCmp = new ImageComparator(pixelDiffThreshold);
         const namePrefix = getCurrnetTimeStr();
@@ -108,12 +108,10 @@ function addDescribe (renderFramework) {
           );
         }
 
-        let maxDiffValue = 0;
-
         for (let i = 0; i < timeList.length; i++) {
           const time = timeList[i];
 
-          if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
+          if (time > oldPlayer.duration()) {
             break;
           }
           //
@@ -128,18 +126,15 @@ function addDescribe (renderFramework) {
           const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
           if (pixelDiffValue > 0) {
-            maxDiffValue = Math.max(maxDiffValue, pixelDiffValue);
-            console.info('DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
+            console.info('[Test] DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
           }
           if (diffCountRatio > accumRatioThreshold) {
-            console.error('FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
-            if (dumpImageForDebug) {
-              const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
-              const newFileName = `${namePrefix}_${name}_${time}_new.png`;
+            console.error('[Test] FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
+            const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
+            const newFileName = `${namePrefix}_${name}_${time}_new.png`;
 
-              await oldPlayer.saveCanvasToFile(oldFileName);
-              await newPlayer.saveCanvasToFile(newFileName);
-            }
+            await oldPlayer.saveCanvasToImage(oldFileName, idx);
+            await newPlayer.saveCanvasToImage(newFileName, idx, true);
           }
 
           expect(diffCountRatio).to.lte(accumRatioThreshold);
@@ -152,10 +147,10 @@ function addDescribe (renderFramework) {
 
         cmpStats.addSceneInfo(
           `${keyName}@${name}`, oldLoadCost, oldFirstCost - oldLoadCost,
-          newLoadCost, newFirstCost - newLoadCost, maxDiffValue
+          newLoadCost, newFirstCost - newLoadCost
         );
 
-        console.info(`[Compare]: End ${name}, ${url}`);
+        console.info(`[Test] Compare end: ${name}, ${url}`);
       });
     }
   });
@@ -164,28 +159,40 @@ function addDescribe (renderFramework) {
 function copySceneCamera (fromScene: spec.JSONScene, toScene: spec.JSONScene) {
   const fromCamera = fromScene.compositions[0].camera;
   const toCamera = toScene.compositions[0].camera;
+  let fromCameraItem: spec.VFXItemData | undefined;
+  let toCameraItem: spec.VFXItemData | undefined;
 
   toCamera.fov = fromCamera.fov;
   toCamera.far = fromCamera.far;
   toCamera.near = fromCamera.near;
-  toCamera.position = fromCamera.position.slice();
+  // @ts-expect-error
+  toCamera.position = fromCamera.position?.slice();
+  // @ts-expect-error
   toCamera.rotation = fromCamera.rotation?.slice() ?? [0, 0, 0];
   toCamera.clipMode = fromCamera.clipMode;
 
-  let fromCameraItem;
-
   fromScene.items.forEach(item => {
+    // @ts-expect-error
     if (item.type === 'camera') {
       fromCameraItem = item;
     }
   });
-  let toCameraItem;
 
   toScene.items.forEach(item => {
+    // @ts-expect-error
     if (item.type === 'camera') {
       toCameraItem = item;
     }
   });
+
+  if (
+    toCameraItem === undefined ||
+    fromCameraItem === undefined ||
+    toCameraItem.transform === undefined ||
+    fromCameraItem.transform === undefined
+  ) {
+    return;
+  }
 
   toCameraItem.transform.position = {
     x: fromCameraItem.transform.position.x,
@@ -206,7 +213,7 @@ function copySceneCamera (fromScene: spec.JSONScene, toScene: spec.JSONScene) {
 
 function getLoadGLTFOptions (sceneName: string) {
   if ('ebec344a9fa02bec3b9987d475e04191'.includes(sceneName)
-  || '5eb610471972b998b9d570987d72d784'.includes(sceneName)) {
+    || '5eb610471972b998b9d570987d72d784'.includes(sceneName)) {
     return { playAnimation: 0 };
   } else {
     return { playAllAnimation: true };
@@ -215,8 +222,8 @@ function getLoadGLTFOptions (sceneName: string) {
 
 function isAllTimeTest (sceneName: string) {
   if ('ebec344a9fa02bec3b9987d475e04191'.includes(sceneName)
-  || '5eb610471972b998b9d570987d72d784'.includes(sceneName)
-  || 'CesiumMan.glb'.includes(sceneName)) {
+    || '5eb610471972b998b9d570987d72d784'.includes(sceneName)
+    || 'CesiumMan.glb'.includes(sceneName)) {
     return false;
   } else {
     return true;

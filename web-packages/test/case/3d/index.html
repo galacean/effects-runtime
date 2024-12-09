@@ -5,16 +5,23 @@
   <title>Case - 3D Test</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/mocha@10.2.0/mocha.css">
-  <!-- 主文件 -->
-  <link rel="stylesheet" href="https://gw.alipayobjects.com/as/g/antui/antui/10.1.32/dpl/antui.css"/>
-  <!-- 组件 -->
-  <link rel="stylesheet" href="https://gw.alipayobjects.com/as/g/antui/antui/10.1.32/??dpl/widget/message.css,dpl/icon/message.css,dpl/widget/search.css"/>
   <style>
-    .container {
-      width: 512px;
-      height: 512px;
-      background: #999;
-      margin-top: 11px;
+    li.idx {
+      height: 120px;
+      width: 100%;
+      overflow-x: auto;
+    }
+    li.idx .image-cell {
+      max-height: 120px;
+      display: flex;
+      flex-wrap: nowrap;
+    }
+    li.idx .image-cell img {
+      width: 120px;
+    }
+    li.idx .image-cell span {
+      border-left: 1px dashed yellowgreen;
+      margin: 0 2px;
     }
   </style>
 </head>

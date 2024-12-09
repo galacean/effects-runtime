@@ -26,7 +26,7 @@ describe('single scene', function () {
     canvas = null;
   });
 
-  Math.seedrandom('mars-runtime');
+  Math.seedrandom('runtime');
   const keyList = Object.keys(sceneList);
 
   shuffleArray(keyList, 10, 50);
@@ -72,7 +72,7 @@ describe('multiple scenes', function () {
     canvas = null;
   });
 
-  Math.seedrandom('mars-runtime');
+  Math.seedrandom('runtime');
 
   const maxSceneCount = 3;
   const keyList = Object.keys(sceneList);

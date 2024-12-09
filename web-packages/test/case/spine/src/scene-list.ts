@@ -12,7 +12,7 @@ export default {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*wNWFTbBk0fkAAAAAAAAAAAAADlB4AQ',
   },
   shengsheng: {
-    name: '313省省节',
+    name: '313 省省节',
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*qGqhS7ki0jMAAAAAAAAAAAAADlB4AQ',
   },
 };
