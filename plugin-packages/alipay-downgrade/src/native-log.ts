@@ -11,6 +11,10 @@
  * ```
  */
 import { isAlipayMiniApp, isAndroid, logger } from '@galacean/effects';
+import { canUseBOM } from './utils';
+
+// 非 Web 环境不执行后续逻辑，避免 window 及 navigator 访问报错
+if (!canUseBOM) return;
 
 const prefix = '[Galacean Effects]';
 const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
