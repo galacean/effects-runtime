@@ -57,7 +57,7 @@ export class ContainedContext {
       default_zoom: 1.0,
       reset_zoom_key: 82, // 需要映射到实际的ImGuiKey.R
       // scroll_button: ImGui.MouseButton.Middle,
-      scroll_button: ImGui.MouseButton.Left, // 需要映射到实际的ImGuiMouseButton
+      scroll_button: ImGui.MouseButton.Middle, // 需要映射到实际的ImGuiMouseButton
       ...config,
     };
 
@@ -133,8 +133,7 @@ export class ContainedContext {
       this.m_anyWindowHovered = false;
     }
 
-    this.m_anyItemActive = false;
-    // this.m_anyItemActive = ImGui.IsAnyItemActive();
+    this.m_anyItemActive = ImGui.IsAnyItemActive();
 
     // if (this.m_config.extra_window_wrapper) {
     //   ImGui.End();

@@ -52,8 +52,9 @@ export class NodeGraph extends EditorWindow {
       return;
     }
 
+    const compositionComponent = currentCompsition.rootItem.getComponent(CompositionComponent);
     //@ts-expect-error
-    const currentGraph = currentCompsition.rootItem.getComponent(CompositionComponent).graph;
+    const currentGraph = compositionComponent.graph;
 
     if (this.graph !== currentGraph) {
       this.graph = currentGraph;
@@ -62,10 +63,10 @@ export class NodeGraph extends EditorWindow {
 
       const windowSize = ImGui.GetWindowSize();
       const rootNodePosition = new ImVec2(windowSize.x - 50, windowSize.y / 2);
-      const rootNode = this.imNodeFlow.addNode(PlayableNode, rootNodePosition);
 
       //@ts-expect-error
-      const timelinePlayable = currentCompsition.rootItem.getComponent(CompositionComponent).timelinePlayable;
+      const timelinePlayable = compositionComponent.timelinePlayable;
+      const rootNode = this.imNodeFlow.addNode(PlayableNode, rootNodePosition, timelinePlayable);
 
       rootNode.playable = timelinePlayable;
 
@@ -78,13 +79,14 @@ export class NodeGraph extends EditorWindow {
   generateGraphNode (node: PlayableNode) {
     const childNodePos = new ImVec2(node.getPos().x - 300, node.getPos().y - 100 * node.playable.getInputCount() / 2);
 
-    for (const playable of node.playable.getInputs()) {
-      const childNode = this.imNodeFlow.addNode(PlayableNode, childNodePos);
+    for (let i = 0;i < node.playable.getInputCount();i++) {
+      const playable = node.playable.getInput(i);
+      const childNode = this.imNodeFlow.addNode(PlayableNode, childNodePos, playable);
 
       childNode.playable = playable;
       childNodePos.y += 100;
 
-      node.pinIn.createLink(childNode.pinOut);
+      node.pinIns[i].createLink(childNode.pinOut);
 
       this.generateGraphNode(childNode);
     }
@@ -93,17 +95,19 @@ export class NodeGraph extends EditorWindow {
 
 class PlayableNode extends BaseNode {
 
-  pinIn: InPin<number>;
+  pinIns: InPin<number>[] = [];
   pinOut: OutPin<number>;
 
   valB = 0;
 
   playable: any;
 
-  constructor (inf: ImNodeFlow) {
+  constructor (inf: ImNodeFlow, playable: any) {
     super(inf);
     this.setTitle('Playable');
-    this.pinIn = this.addIN('In', 0, ()=>true);
+    for (let i = 0;i < playable.getInputCount();i++) {
+      this.pinIns.push(this.addIN('In' + i, 0, ()=>true));
+    }
     this.pinOut = this.addOUT('Out');
     this.pinOut.behaviour(()=>{
       return this.valB;
@@ -113,15 +117,16 @@ class PlayableNode extends BaseNode {
   override draw (): void {
     this.setTitle(this.playable.constructor.name);
     ImGui.SetNextItemWidth(80);
-    if (this.pinIn.isConnected()) {
-      this.valB = this.pinIn.val();
-    }
+    // if (this.pinIns[0].isConnected()) {
+    //   this.valB = this.pinIns[0].val();
+    // }
 
     ImGui.InputFloat('', (_ = this.playable.getTime())=>{
       this.playable.setTime(_);
 
       return this.playable.getTime();
     });
+    ImGui.SetNextItemWidth(80);
     // ImGui.InputInt('##ValB', (_ = this.pinOut.m_links.length) => this.pinOut.m_links.length);
   }
 }
