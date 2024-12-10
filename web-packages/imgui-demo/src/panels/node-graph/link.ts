@@ -25,8 +25,8 @@ export class Link {
        * Deletes references of this links from connected pins
        */
   destroy (): void {
-    this.m_left.deleteLink();
     this.m_isDestroyed = true;
+    this.m_left.deleteLink();
   }
 
   isDestroyed () {

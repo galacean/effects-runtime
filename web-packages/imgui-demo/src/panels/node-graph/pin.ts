@@ -468,14 +468,17 @@ export class InPin<T> extends Pin {
        */
   createLink (other: Pin): void {
     if (other.getType() !== PinType.Output) {return;}
-    if (!this.m_filter(other, this)) {return;}
     if (!this.m_allowSelfConnection && this.m_parent === other.getParent()) {return;}
+    if (this.m_link && this.m_link.getLeft() === other) {
 
-    const link = new Link(other, this, this.m_inf);
+      return;
+    }
+    if (!this.m_filter(other, this)) {return;}
 
-    this.setLink(link);
-    other.setLink(link);
-    this.m_inf?.addLink(link);
+    this.m_link = new Link(other, this, this.m_inf);
+
+    other.setLink(this.m_link);
+    this.m_inf.addLink(this.m_link);
   }
 
   /**
@@ -591,12 +594,8 @@ export class OutPin<T> extends Pin {
        */
   createLink (other: Pin): void {
     if (other.getType() !== PinType.Input) {return;}
-    const link = new Link(this, other, this.m_inf);
 
-    this.setLink(link);
-    other.setLink(link);
-    this.m_links.push(link);
-    this.m_inf?.addLink(link);
+    other.createLink(this);
   }
 
   /**

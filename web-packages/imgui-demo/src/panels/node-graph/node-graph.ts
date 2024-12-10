@@ -58,7 +58,11 @@ class TestNode extends BaseNode {
     super(inf);
     this.setTitle('TestNode');
     this.pinIn = this.addIN('Test In', 0, ()=>true);
-    this.addOUT('Test Out').behaviour(()=>{
+    // this.addOUT('Test Out').behaviour(()=>{
+    //   return this.valB;
+    // });
+    this.pinOut = this.addOUT('Test Out');
+    this.pinOut.behaviour(()=>{
       return this.valB;
     });
   }
@@ -68,6 +72,7 @@ class TestNode extends BaseNode {
     if (this.pinIn.isConnected()) {
       this.valB = this.pinIn.val();
     }
-    ImGui.DragFloat('##ValB', (_ = this.valB) => this.valB = _);
+    //@ts-expect-error
+    ImGui.InputInt('##ValB', (_ = this.pinOut.m_links.length) => this.pinOut.m_links.length);
   }
 }
