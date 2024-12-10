@@ -11,8 +11,8 @@ const player = new Player({
   manualRender: true,
 });
 
-describe('需要关闭WebGL Spector', () => {
-  it('遇到global leak(s) detected错误时', () => { });
+describe('需要关闭 WebGL Spector', () => {
+  it('遇到 global leak(s) detected 错误时', () => { });
 });
 
 describe('mode plugin test', () => {
@@ -161,6 +161,7 @@ describe('mode plugin test', () => {
       }
     }
   });
+
   it('3d item get box bounding', async () => {
     const scn = {
       "compositionId": 1,

@@ -1,2 +1,2 @@
-export * from './gltf';
-export * from './case';
+export * from './gltf.spec';
+export * from './case.spec';

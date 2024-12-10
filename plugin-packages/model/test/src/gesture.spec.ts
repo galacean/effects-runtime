@@ -10,7 +10,7 @@ const player = new Player({
   canvas: document.createElement('canvas'),
 });
 
-describe('测试CameraGestureHandler对象接口', function () {
+describe('测试 CameraGestureHandler 对象接口', function () {
   this.timeout(30000);
 
   it('测试自由相机功能', async function () {
