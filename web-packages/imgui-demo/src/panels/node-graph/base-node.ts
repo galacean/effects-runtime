@@ -214,14 +214,14 @@ export abstract class BaseNode {
     this.m_pos.y += windowPos.y;
     draw_list.ChannelsSetCurrent(0);
     draw_list.AddRectFilled(
-      new ImGui.ImVec2(this.m_pos.x - paddingTL.x, this.m_pos.y - paddingTL.y),
-      new ImGui.ImVec2(this.m_pos.x + this.m_size.x + paddingBR.x, this.m_pos.y + this.m_size.y + paddingBR.y),
+      new ImGui.ImVec2(offset.x + this.m_pos.x - paddingTL.x, offset.y + this.m_pos.y - paddingTL.y),
+      new ImGui.ImVec2(offset.x + this.m_pos.x + this.m_size.x + paddingBR.x, offset.y + this.m_pos.y + this.m_size.y + paddingBR.y),
       this.m_style?.bg ?? ImGui.IM_COL32(0, 0, 0, 0),
       this.m_style?.radius ?? 0.0
     );
     draw_list.AddRectFilled(
-      new ImGui.ImVec2(this.m_pos.x - paddingTL.x, this.m_pos.y - paddingTL.y),
-      new ImGui.ImVec2(this.m_pos.x + headerSize.x, this.m_pos.y + headerSize.y),
+      new ImGui.ImVec2(offset.x + this.m_pos.x - paddingTL.x, offset.y + this.m_pos.y - paddingTL.y),
+      new ImGui.ImVec2(offset.x + this.m_pos.x + headerSize.x, offset.y + this.m_pos.y + headerSize.y),
       this.m_style?.header_bg ?? ImGui.IM_COL32(0, 0, 0, 0),
       this.m_style?.radius ?? 0.0,
       ImGui.DrawCornerFlags.Top
@@ -249,8 +249,8 @@ export abstract class BaseNode {
     this.m_pos.x += windowPos.x;
     this.m_pos.y += windowPos.y;
     draw_list.AddRect(
-      new ImGui.ImVec2(this.m_pos.x - ptl.x, this.m_pos.y - ptl.y),
-      new ImGui.ImVec2(this.m_pos.x + this.m_size.x + pbr.x, this.m_pos.y + this.m_size.y + pbr.y),
+      new ImGui.ImVec2(offset.x + this.m_pos.x - ptl.x, offset.y + this.m_pos.y - ptl.y),
+      new ImGui.ImVec2(offset.x + this.m_pos.x + this.m_size.x + pbr.x, offset.y + this.m_pos.y + this.m_size.y + pbr.y),
       col,
       this.m_style?.radius ?? 0.0,
       0,
@@ -289,8 +289,8 @@ export abstract class BaseNode {
     }
 
     const onHeader: boolean = ImGui.IsMouseHoveringRect(
-      new ImGui.ImVec2(this.m_pos.x - paddingTL.x + windowPos.x, this.m_pos.y - paddingTL.y + windowPos.y),
-      new ImGui.ImVec2(this.m_pos.x + headerSize.x + windowPos.x, this.m_pos.y + headerSize.y + windowPos.y)
+      new ImGui.ImVec2(offset.x + this.m_pos.x - paddingTL.x + windowPos.x, offset.y + this.m_pos.y - paddingTL.y + windowPos.y),
+      new ImGui.ImVec2(offset.x + this.m_pos.x + headerSize.x + windowPos.x, offset.y + this.m_pos.y + headerSize.y + windowPos.y)
     );
 
     if (onHeader && mouseClickState) {

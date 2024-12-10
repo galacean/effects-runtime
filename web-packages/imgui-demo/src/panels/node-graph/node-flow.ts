@@ -1,57 +1,244 @@
 import { ImGui } from '../../imgui';
 import { type NodeUID, type BaseNode, NodeStyle } from './base-node';
-import { smart_bezier } from './bezier-math';
+import { add, multiplyScalar, smart_bezier } from './bezier-math';
 import type { Link } from './link';
 import { PinType, type Pin } from './pin';
 
-/**
- * Interface for Config within ContainedContext
- */
-interface Config {
+type ImVec2 = ImGui.ImVec2;
+type ImColor = ImGui.ImColor;
+const ImVec2 = ImGui.ImVec2;
+const ImColor = ImGui.ImColor;
+
+export interface ContainedContextConfig {
   extra_window_wrapper: boolean,
-  color: number,
-  size?: ImGui.ImVec2,
+  size: ImVec2,
+  color: number, // ImU32 equivalent, assuming it's a packed color value
+  zoom_enabled: boolean,
+  zoom_min: number,
+  zoom_max: number,
+  zoom_divisions: number,
+  zoom_smoothness: number,
+  default_zoom: number,
+  reset_zoom_key: number, // ImGuiKey represented as string
+  scroll_button: number, // ImGuiMouseButton represented as string
 }
 
 /**
-   * Class to wrap ImGui context and manage grid state
+ * ContainedContext 类用于管理一个封闭的ImGui上下文，支持缩放和滚动功能
+ */
+export class ContainedContext {
+  private m_config: ContainedContextConfig;
+  private m_origin: ImVec2;
+  private m_pos: ImVec2;
+  private m_size: ImVec2;
+  private m_ctx: ImGui.ImGuiContext | null = null;
+  private m_original_ctx: ImGui.ImGuiContext | null = null;
+
+  private m_anyWindowHovered: boolean = false;
+  private m_anyItemActive: boolean = false;
+  private m_hovered: boolean = false;
+
+  private m_scale: number;
+  private m_scaleTarget: number;
+  private m_scroll: ImVec2;
+  private m_scrollTarget: ImVec2;
+
+  constructor (config: Partial<ContainedContextConfig> = {}) {
+    // 设置默认配置
+    this.m_config = {
+      extra_window_wrapper: false,
+      size: new ImVec2(0, 0),
+      color: 0x00FFFFFF, // 白色
+      zoom_enabled: true,
+      zoom_min: 0.3,
+      zoom_max: 2.0,
+      zoom_divisions: 10.0,
+      zoom_smoothness: 5.0,
+      default_zoom: 1.0,
+      reset_zoom_key: 82, // 需要映射到实际的ImGuiKey.R
+      // scroll_button: ImGui.MouseButton.Middle,
+      scroll_button: ImGui.MouseButton.Left, // 需要映射到实际的ImGuiMouseButton
+      ...config,
+    };
+
+    // 初始化其他属性
+    this.m_origin = new ImVec2();
+    this.m_pos = new ImVec2();
+    this.m_size = new ImVec2();
+    this.m_scale = this.m_config.default_zoom;
+    this.m_scaleTarget = this.m_config.default_zoom;
+    this.m_scroll = new ImVec2(0, 0);
+    this.m_scrollTarget = new ImVec2(0, 0);
+  }
+
+  /**
+   * 析构函数，用于清理ImGui上下文
    */
-class ContainedContext {
-  private configData: Config = {
-    extra_window_wrapper: false,
-    color: ImGui.IM_COL32(0, 0, 0, 255),
-  };
+  destroy (): void {
+    if (this.m_ctx) {
+      ImGui.DestroyContext(this.m_ctx);
+      this.m_ctx = null;
+    }
+  }
 
+  /**
+   * 开始渲染一个封闭的ImGui窗口
+   */
   begin (): void {
-    // Implement context beginning logic
-    // Placeholder: Begin ImGui window or child
-    ImGui.Begin(this.configData.extra_window_wrapper ? 'ExtraWindow' : 'MainWindow');
+    // ImGui.PushID(this.getid); // 使用对象引用作为ID
+    ImGui.PushStyleColor(ImGui.Col.ChildBg, this.m_config.color);
+    // ImGui.BeginChild('view_port', this.m_config.size.clone(), false, ImGuiWindowFlags.NoMove);
+    ImGui.PopStyleColor();
+
+    this.m_pos = ImGui.GetWindowPos();
+    this.m_size = ImGui.GetContentRegionAvail();
+    this.m_origin = ImGui.GetCursorScreenPos();
+
+    this.m_original_ctx = ImGui.GetCurrentContext();
+    const orig_style = ImGui.GetStyle();
+
+    // if (!this.m_ctx) {
+    //   this.m_ctx = ImGui.CreateContext();
+    // }
+
+    // ImGui.SetCurrentContext(this.m_ctx);
+    const new_style = ImGui.GetStyle();
+
+    // new_style.cloneFrom(orig_style); // 复制原始样式
+
+    // 复制输入事件
+    // CopyIOEvents(this.m_original_ctx, this.m_ctx, this.m_origin, this.m_scale);
+
+    // 设置显示大小和其他配置
+    // ImGui.GetIO().DisplaySize = new ImVec2(this.m_size.x / this.m_scale, this.m_size.y / this.m_scale);
+    // ImGui.GetIO().ConfigInputTrickleEventQueue = false;
+    // ImGui.NewFrame();
+
+    // if (this.m_config.extra_window_wrapper) {
+    //   ImGui.SetNextWindowPos(new ImVec2(0, 0), ImGuiCond.Once);
+    //   ImGui.SetNextWindowSize(ImGui.GetMainViewport()?.WorkSize.clone() || new ImVec2(800, 600));
+    //   ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(0, 0));
+    //   ImGui.Begin('viewport_container', null, ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoMove
+    //                                               | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+    //   ImGui.PopStyleVar();
+    // }
   }
 
+  /**
+   * 结束渲染封闭的ImGui窗口
+   */
   end (): void {
-    // Implement context ending logic
-    // Placeholder: End ImGui window or child
-    ImGui.End();
+    this.m_anyWindowHovered = ImGui.IsWindowHovered(ImGui.HoveredFlags.AnyWindow);
+    if (this.m_config.extra_window_wrapper && ImGui.IsWindowHovered()) {
+      this.m_anyWindowHovered = false;
+    }
+
+    this.m_anyItemActive = false;
+    // this.m_anyItemActive = ImGui.IsAnyItemActive();
+
+    // if (this.m_config.extra_window_wrapper) {
+    //   ImGui.End();
+    // }
+
+    // ImGui.Render();
+
+    const draw_data = ImGui.GetDrawData();
+
+    // ImGui.SetCurrentContext(this.m_original_ctx);
+    // this.m_original_ctx = null;
+
+    // 将绘制数据附加到当前窗口的绘制列表
+    // for (let i = 0; i < draw_data.CmdListsCount; i++) {
+    //   AppendDrawData(draw_data.CmdLists[i], this.m_origin, this.m_scale);
+    // }
+
+    // 检测悬停状态
+    this.m_hovered = ImGui.IsWindowHovered(ImGui.HoveredFlags.ChildWindows) && !this.m_anyWindowHovered;
+
+    // 处理缩放
+    if (this.m_config.zoom_enabled && this.m_hovered && ImGui.GetIO().MouseWheel !== 0) {
+      this.m_scaleTarget += ImGui.GetIO().MouseWheel / this.m_config.zoom_divisions;
+      this.m_scaleTarget = Math.max(this.m_config.zoom_min, Math.min(this.m_scaleTarget, this.m_config.zoom_max));
+
+      if (this.m_config.zoom_smoothness === 0) {
+        this.m_scroll = add(this.m_scroll, new ImVec2(
+          (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scaleTarget - (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scale,
+          (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scaleTarget - (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scale
+        ));
+        this.m_scale = this.m_scaleTarget;
+      }
+    }
+
+    // 平滑缩放
+    if (Math.abs(this.m_scaleTarget - this.m_scale) >= 0.015 / this.m_config.zoom_smoothness) {
+      const cs = (this.m_scaleTarget - this.m_scale) / this.m_config.zoom_smoothness;
+
+      this.m_scroll = add(this.m_scroll, new ImVec2(
+        (ImGui.GetIO().MousePos.x - this.m_pos.x) / (this.m_scale + cs) - (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scale,
+        (ImGui.GetIO().MousePos.y - this.m_pos.y) / (this.m_scale + cs) - (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scale
+      ));
+      this.m_scale += (this.m_scaleTarget - this.m_scale) / this.m_config.zoom_smoothness;
+
+      if (Math.abs(this.m_scaleTarget - this.m_scale) < 0.015 / this.m_config.zoom_smoothness) {
+        this.m_scroll = add(this.m_scroll, new ImVec2(
+          (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scaleTarget - (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scale,
+          (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scaleTarget - (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scale
+        ));
+        this.m_scale = this.m_scaleTarget;
+      }
+    }
+
+    // 重置缩放
+    if (ImGui.IsKeyPressed(this.m_config.reset_zoom_key, false)) {
+      this.m_scaleTarget = this.m_config.default_zoom;
+    }
+
+    // console.log(this.m_hovered, !this.m_anyItemActive, ImGui.IsMouseDragging(this.m_config.scroll_button, 0));
+
+    // 处理滚动
+    if (this.m_hovered && !this.m_anyItemActive && ImGui.IsMouseDragging(this.m_config.scroll_button, 0)) {
+      this.m_scroll = add(this.m_scroll, multiplyScalar(ImGui.GetIO().MouseDelta, 1 / this.m_scale));
+      this.m_scrollTarget = new ImVec2(this.m_scroll.x, this.m_scroll.y);
+    }
+
+    // ImGui.EndChild();
+    // ImGui.PopID();
   }
 
-  config (): Config {
-    return this.configData;
+  getRawContext () {
+    return this.m_original_ctx;
   }
 
-  origin (): ImGui.ImVec2 {
-    return new ImGui.ImVec2(0, 0); // Placeholder: Return origin based on actual implementation
+  /**
+   * 获取配置
+   */
+  config (): ContainedContextConfig {
+    return this.m_config;
   }
 
-  scroll (): ImGui.ImVec2 {
-    return new ImGui.ImVec2(0, 0); // Placeholder: Return scroll offset based on actual implementation
-  }
-
+  /**
+   * 获取当前缩放比例
+   */
   scale (): number {
-    return 1.0; // Placeholder: Return scale based on actual implementation
+    return this.m_scale;
   }
 
-  getRawContext (): any {
-    return null; // Placeholder: Return raw ImGui context if required
+  /**
+   * 获取当前滚动偏移
+   */
+  scroll (): ImVec2 {
+    return this.m_scroll;
+  }
+
+  /**
+   * 获取绘制区域大小
+   */
+  size (): ImVec2 {
+    return this.m_size;
+  }
+
+  origin (): ImVec2 {
+    return this.m_origin;
   }
 }
 
@@ -127,7 +314,7 @@ export class ImNodeFlow {
     this.m_singleUseClick = ImGui.IsMouseClicked(ImGui.ImGuiMouseButton.Left);
 
     // Begin ImGui context
-    // this.m_context.begin();
+    this.m_context.begin();
     // ImGui.GetIO().IniFilename = '';
 
     const drawList = ImGui.GetWindowDrawList();
@@ -251,7 +438,7 @@ export class ImNodeFlow {
     this.m_pinRecursionBlacklist = [];
 
     // End ImGui context
-    // this.m_context.end();
+    this.m_context.end();
   }
 
   /**
