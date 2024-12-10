@@ -105,6 +105,8 @@ export class RichTextComponent extends TextComponent {
     const context = this.context;
 
     context.save();
+    //恢复默认设置
+    context.font = '10px sans-serif';
     const charsInfo: RichCharInfo[] = [];
     const fontHeight = textStyle.fontSize * this.textStyle.fontScale;
     let charInfo: RichCharInfo = {
@@ -193,9 +195,6 @@ export class RichTextComponent extends TextComponent {
         context.fillText(text, offsetX[index] + x, charsLineHeight);
       });
     });
-    //恢复默认设置
-    context.font = '10px sans-serif';
-
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
