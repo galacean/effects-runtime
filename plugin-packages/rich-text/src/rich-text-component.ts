@@ -105,8 +105,7 @@ export class RichTextComponent extends TextComponent {
     const context = this.context;
 
     context.save();
-    //恢复默认设置
-    context.font = '10px sans-serif';
+
     const charsInfo: RichCharInfo[] = [];
     const fontHeight = textStyle.fontSize * this.textStyle.fontScale;
     let charInfo: RichCharInfo = {
@@ -132,6 +131,8 @@ export class RichTextComponent extends TextComponent {
         };
         height += charInfo.lineHeight;
       }
+      //恢复默认设置
+      context.font = `10px ${options.fontFamily || textStyle.fontFamily}`;
       const textWidth = context.measureText(text).width;
       const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale;
 
