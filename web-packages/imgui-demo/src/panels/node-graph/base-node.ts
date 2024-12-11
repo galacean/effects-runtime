@@ -179,10 +179,11 @@ export abstract class BaseNode {
 
       if (w > maxW) {maxW = w;}
     }
+
     ImGui.BeginGroup();
     for (const p of this.m_outs) {
       // FIXME: This looks horrible
-      if ((this.m_pos.x + titleW + (this.m_inf?.getGrid().scroll().x ?? 0)) <
+      if ((this.m_pos.x + offset.x + titleW) <
                   (ImGui.GetCursorPos().x + maxW)) {
         p.setPos(new ImGui.ImVec2(
           ImGui.GetCursorPos().x + (maxW - p.calcWidth()),
@@ -190,7 +191,7 @@ export abstract class BaseNode {
         ));
       } else {
         p.setPos(new ImGui.ImVec2(
-          this.m_pos.x + (titleW - p.calcWidth()) + (this.m_inf?.getGrid().scroll().x ?? 0),
+          this.m_pos.x + offset.x + (titleW - p.calcWidth()),
           ImGui.GetCursorPos().y
         ));
       }
@@ -198,7 +199,7 @@ export abstract class BaseNode {
     }
     for (const p of this.m_dynamicOuts) {
       // FIXME: This looks horrible
-      if ((this.m_pos.x + titleW + (this.m_inf?.getGrid().scroll().x ?? 0)) <
+      if ((this.m_pos.x + offset.x + titleW) <
                   (ImGui.GetCursorPos().x + ImGui.GetWindowPos().x + maxW)) {
         p[1].setPos(new ImGui.ImVec2(
           ImGui.GetCursorPos().x + ImGui.GetWindowPos().x + (maxW - p[1].calcWidth()),
@@ -206,7 +207,7 @@ export abstract class BaseNode {
         ));
       } else {
         p[1].setPos(new ImGui.ImVec2(
-          this.m_pos.x + (titleW - p[1].calcWidth()) + (this.m_inf?.getGrid().scroll().x ?? 0),
+          this.m_pos.x + offset.x + (titleW - p[1].calcWidth()),
           ImGui.GetCursorPos().y + ImGui.GetWindowPos().y
         ));
       }
