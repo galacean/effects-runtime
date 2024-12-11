@@ -324,24 +324,25 @@ export class ImNodeFlow {
 
     // 显示网格
     const windowSize = ImGui.GetWindowSize();
-    const subGridStep = this.m_style.grid_size / this.m_style.grid_subdivisions;
+    const gridSize = this.m_style.grid_size * this.m_context.scale();
+    const subGridStep = gridSize / this.m_style.grid_subdivisions;
 
     // 绘制主网格线
-    for (let x = this.mod(this.m_context.scroll().x, this.m_style.grid_size); x < windowSize.x; x += this.m_style.grid_size) {
+    for (let x = this.mod(windowSize.x / 2, gridSize); x < windowSize.x; x += gridSize) {
       drawList.AddLine(new ImGui.ImVec2(x + windowPos.x, windowPos.y), new ImGui.ImVec2(x + windowPos.x, windowPos.y + windowSize.y), this.m_style.grid);
     }
 
-    for (let y = this.mod(this.m_context.scroll().y, this.m_style.grid_size); y < windowSize.y; y += this.m_style.grid_size) {
+    for (let y = this.mod(windowSize.y / 2, gridSize); y < windowSize.y; y += gridSize) {
       drawList.AddLine(new ImGui.ImVec2(windowPos.x, y + windowPos.y), new ImGui.ImVec2(windowPos.x + windowSize.x, y + windowPos.y), this.m_style.grid);
     }
 
     // 绘制子网格线
     if (this.m_context.scale() > 0.7) {
-      for (let x = this.mod(this.m_context.scroll().x, subGridStep); x < windowSize.x; x += subGridStep) {
+      for (let x = this.mod(windowSize.x / 2, subGridStep); x < windowSize.x; x += subGridStep) {
         drawList.AddLine(new ImGui.ImVec2(x + windowPos.x, windowPos.y), new ImGui.ImVec2(x + windowPos.x, windowPos.y + windowSize.y), this.m_style.subGrid);
       }
 
-      for (let y = this.mod(this.m_context.scroll().y, subGridStep); y < windowSize.y; y += subGridStep) {
+      for (let y = this.mod(windowSize.y / 2, subGridStep); y < windowSize.y; y += subGridStep) {
         drawList.AddLine(new ImGui.ImVec2(windowPos.x, y + windowPos.y), new ImGui.ImVec2(windowPos.x + windowSize.x, y + windowPos.y), this.m_style.subGrid);
       }
     }
