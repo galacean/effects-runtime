@@ -324,25 +324,28 @@ export class ImNodeFlow {
 
     // 显示网格
     const windowSize = ImGui.GetWindowSize();
-    const gridSize = this.m_style.grid_size * this.m_context.scale();
-    const subGridStep = gridSize / this.m_style.grid_subdivisions;
+    const gradSize = this.m_style.grid_size * this.m_context.scale();
+    const subGridStep = gradSize / this.m_style.grid_subdivisions;
+
+    const gridStartX = (this.m_context.scroll().x - windowSize.x / 2) * this.m_context.scale() + windowSize.x / 2;
+    const gridStartY = (this.m_context.scroll().y - windowSize.y / 2) * this.m_context.scale() + windowSize.y / 2;
 
     // 绘制主网格线
-    for (let x = this.mod(windowSize.x / 2, gridSize); x < windowSize.x; x += gridSize) {
+    for (let x = this.mod(gridStartX, gradSize); x < windowSize.x; x += gradSize) {
       drawList.AddLine(new ImGui.ImVec2(x + windowPos.x, windowPos.y), new ImGui.ImVec2(x + windowPos.x, windowPos.y + windowSize.y), this.m_style.grid);
     }
 
-    for (let y = this.mod(windowSize.y / 2, gridSize); y < windowSize.y; y += gridSize) {
+    for (let y = this.mod(gridStartY, gradSize); y < windowSize.y; y += gradSize) {
       drawList.AddLine(new ImGui.ImVec2(windowPos.x, y + windowPos.y), new ImGui.ImVec2(windowPos.x + windowSize.x, y + windowPos.y), this.m_style.grid);
     }
 
     // 绘制子网格线
     if (this.m_context.scale() > 0.7) {
-      for (let x = this.mod(windowSize.x / 2, subGridStep); x < windowSize.x; x += subGridStep) {
+      for (let x = this.mod(gridStartX, subGridStep); x < windowSize.x; x += subGridStep) {
         drawList.AddLine(new ImGui.ImVec2(x + windowPos.x, windowPos.y), new ImGui.ImVec2(x + windowPos.x, windowPos.y + windowSize.y), this.m_style.subGrid);
       }
 
-      for (let y = this.mod(windowSize.y / 2, subGridStep); y < windowSize.y; y += subGridStep) {
+      for (let y = this.mod(gridStartY, subGridStep); y < windowSize.y; y += subGridStep) {
         drawList.AddLine(new ImGui.ImVec2(windowPos.x, y + windowPos.y), new ImGui.ImVec2(windowPos.x + windowSize.x, y + windowPos.y), this.m_style.subGrid);
       }
     }
