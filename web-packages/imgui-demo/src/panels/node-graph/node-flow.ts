@@ -174,17 +174,17 @@ export class ContainedContext {
     if (Math.abs(this.m_scaleTarget - this.m_scale) >= 0.015 / this.m_config.zoom_smoothness) {
       const cs = (this.m_scaleTarget - this.m_scale) / this.m_config.zoom_smoothness;
 
-      this.m_scroll = add(this.m_scroll, new ImVec2(
-        (ImGui.GetIO().MousePos.x - this.m_pos.x) / (this.m_scale + cs) - (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scale,
-        (ImGui.GetIO().MousePos.y - this.m_pos.y) / (this.m_scale + cs) - (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scale
-      ));
+      //   this.m_scroll = add(this.m_scroll, new ImVec2(
+      //     (ImGui.GetIO().MousePos.x - this.m_pos.x) / (this.m_scale + cs) - (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scale,
+      //     (ImGui.GetIO().MousePos.y - this.m_pos.y) / (this.m_scale + cs) - (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scale
+      //   ));
       this.m_scale += (this.m_scaleTarget - this.m_scale) / this.m_config.zoom_smoothness;
 
       if (Math.abs(this.m_scaleTarget - this.m_scale) < 0.015 / this.m_config.zoom_smoothness) {
-        this.m_scroll = add(this.m_scroll, new ImVec2(
-          (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scaleTarget - (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scale,
-          (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scaleTarget - (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scale
-        ));
+        // this.m_scroll = add(this.m_scroll, new ImVec2(
+        //   (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scaleTarget - (ImGui.GetIO().MousePos.x - this.m_pos.x) / this.m_scale,
+        //   (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scaleTarget - (ImGui.GetIO().MousePos.y - this.m_pos.y) / this.m_scale
+        // ));
         this.m_scale = this.m_scaleTarget;
       }
     }

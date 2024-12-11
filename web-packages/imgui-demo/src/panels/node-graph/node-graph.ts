@@ -26,20 +26,7 @@ export class NodeGraph extends EditorWindow {
     super();
     this.title = 'NodeGraph';
     this.open();
-
-    // const node = this.imNodeFlow.addNode(PlayableNode, new ImVec2(500, 100));
-    // const node2 = this.imNodeFlow.addNode(PlayableNode, new ImVec2(200, 150));
-    // const node3 = this.imNodeFlow.addNode(PlayableNode, new ImVec2(500, 250));
-
-    // node.setTitle('TestNode');
-
-    // node.addOUT('Test');
-    // const pinIn = node.addIN('Test In', '', ()=>true);
-    // const pinOut = node2.addOUT('Test Out');
-
-    // node3.addIN('Test In', '', ()=>true).createLink(pinOut);
-
-    // pinIn.createLink(pinOut);
+    this.setWindowFlags(ImGui.WindowFlags.NoScrollWithMouse | ImGui.WindowFlags.NoScrollbar);
   }
 
   graph: any;

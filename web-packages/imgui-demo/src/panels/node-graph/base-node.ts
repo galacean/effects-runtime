@@ -1,4 +1,5 @@
 import { ImGui } from '../../imgui';
+import { add, multiplyScalar, subtract } from './bezier-math';
 import type { ImNodeFlow } from './node-flow';
 import type { PinUID } from './pin';
 import { InPin, OutPin, PinStyle, type Pin } from './pin';
@@ -114,9 +115,19 @@ export abstract class BaseNode {
 
     ImGui.PushID(this.getUID());
     const mouseClickState: boolean = this.m_inf?.getSingleUseClick() ?? false;
-    const offset: ImGui.ImVec2 = this.m_inf?.grid2screen(new ImVec2()) ?? new ImVec2();
+    let offset: ImGui.ImVec2 = this.m_inf?.grid2screen(new ImVec2()) ?? new ImVec2();
     const paddingTL: ImGui.ImVec2 = this.m_style ? new ImGui.ImVec2(this.m_style.padding.x, this.m_style.padding.y) : new ImGui.ImVec2(3.0, 1.0);
     const paddingBR: ImGui.ImVec2 = this.m_style ? new ImGui.ImVec2(this.m_style.padding.z, this.m_style.padding.w) : new ImGui.ImVec2(3.0, 1.0);
+
+    // TODO opt this *********************
+    const windowSpacePos = add(offset, this.m_pos);
+    const windowCenter = multiplyScalar(ImGui.GetWindowSize(), 0.5);
+    const centerSpacePos = subtract(windowSpacePos, windowCenter);
+    let scaledPos = multiplyScalar(centerSpacePos, this.m_inf.getGrid().scale());
+
+    scaledPos = add(scaledPos, windowCenter);
+    offset = subtract(scaledPos, this.m_pos);
+    // *********************
 
     // Foreground
     draw_list.ChannelsSetCurrent(1);
