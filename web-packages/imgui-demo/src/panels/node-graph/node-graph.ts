@@ -1,11 +1,11 @@
-import { CompositionComponent, type Composition } from '@galacean/effects';
+import { CompositionComponent, VFXItem, type Composition } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { ImGui } from '../../imgui';
 import { EditorWindow } from '../editor-window';
 import { BaseNode } from './base-node';
 import { ImNodeFlow } from './node-flow';
 import type { InPin, OutPin } from './pin';
-import { GalaceanEffects } from '../../ge';
+import { Selection } from '../../core/selection';
 
 type ImVec2 = ImGui.ImVec2;
 type ImColor = ImGui.ImColor;
@@ -32,14 +32,15 @@ export class NodeGraph extends EditorWindow {
   graph: any;
 
   protected override onGUI (): void {
-
-    const currentCompsition = GalaceanEffects.player.getCompositions()[0];
-
-    if (!currentCompsition) {
+    if (!(Selection.activeObject instanceof VFXItem)) {
       return;
     }
 
-    const compositionComponent = currentCompsition.rootItem.getComponent(CompositionComponent);
+    const compositionComponent = Selection.activeObject.getComponent(CompositionComponent);
+
+    if (!compositionComponent) {
+      return;
+    }
     //@ts-expect-error
     const currentGraph = compositionComponent.graph;
 
