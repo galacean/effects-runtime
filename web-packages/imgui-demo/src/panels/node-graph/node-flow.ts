@@ -114,6 +114,8 @@ export class ContainedContext {
     // ImGui.GetIO().ConfigInputTrickleEventQueue = false;
     // ImGui.NewFrame();
 
+    ImGui.SetWindowFontScale(this.m_scale);
+
     // if (this.m_config.extra_window_wrapper) {
     //   ImGui.SetNextWindowPos(new ImVec2(0, 0), ImGuiCond.Once);
     //   ImGui.SetNextWindowSize(ImGui.GetMainViewport()?.WorkSize.clone() || new ImVec2(800, 600));
