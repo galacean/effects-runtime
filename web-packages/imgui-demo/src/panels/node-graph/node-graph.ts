@@ -103,17 +103,17 @@ class PlayableNode extends BaseNode {
 
   override draw (): void {
     this.setTitle(this.playable.constructor.name);
-    ImGui.SetNextItemWidth(80);
+    ImGui.SetNextItemWidth(100 * this.getHandler()!.getGrid().scale());
     // if (this.pinIns[0].isConnected()) {
     //   this.valB = this.pinIns[0].val();
     // }
+    ImGui.ProgressBar(this.playable.getTime() / this.playable.getDuration(), new ImGui.Vec2(0.0, 0.0));
+    // ImGui.InputFloat('', (_ = this.playable.getTime())=>{
+    //   this.playable.setTime(_);
 
-    ImGui.InputFloat('', (_ = this.playable.getTime())=>{
-      this.playable.setTime(_);
-
-      return this.playable.getTime();
-    });
-    ImGui.SetNextItemWidth(80);
+    //   return this.playable.getTime();
+    // });
+    // ImGui.SetNextItemWidth(80);
     // ImGui.InputInt('##ValB', (_ = this.pinOut.m_links.length) => this.pinOut.m_links.length);
   }
 }
