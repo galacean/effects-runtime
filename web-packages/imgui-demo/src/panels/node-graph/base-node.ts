@@ -317,8 +317,8 @@ export abstract class BaseNode {
     if (this.m_dragged || (this.m_selected && this.m_inf?.isNodeDragged())) {
       const step: number = (this.m_inf?.getStyle().grid_size ?? 50) / (this.m_inf?.getStyle().grid_subdivisions ?? 5);
 
-      this.m_posTarget.x += ImGui.GetIO().MouseDelta.x;
-      this.m_posTarget.y += ImGui.GetIO().MouseDelta.y;
+      this.m_posTarget.x += ImGui.GetIO().MouseDelta.x / this.m_inf.getGrid().scale();
+      this.m_posTarget.y += ImGui.GetIO().MouseDelta.y / this.m_inf.getGrid().scale();
 
       // "Slam" The position
       this.m_pos.x = Math.round(this.m_posTarget.x / step) * step;
