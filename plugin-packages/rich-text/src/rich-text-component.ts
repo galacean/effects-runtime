@@ -1,4 +1,4 @@
-import type { Engine } from '@galacean/effects';
+import type { Engine, math } from '@galacean/effects';
 import { effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
@@ -44,6 +44,7 @@ export class RichTextComponent extends TextComponent {
   processedTextOptions: RichTextOptions[] = [];
 
   private singleLineHeight: number = 1.571;
+  private size: math.Vector2 | null = null;
 
   constructor (engine: Engine) {
     super(engine);
@@ -104,6 +105,7 @@ export class RichTextComponent extends TextComponent {
     const context = this.context;
 
     context.save();
+
     const charsInfo: RichCharInfo[] = [];
     const fontHeight = textStyle.fontSize * this.textStyle.fontScale;
     let charInfo: RichCharInfo = {
@@ -129,6 +131,8 @@ export class RichTextComponent extends TextComponent {
         };
         height += charInfo.lineHeight;
       }
+      //恢复默认设置
+      context.font = `10px ${options.fontFamily || textStyle.fontFamily}`;
       const textWidth = context.measureText(text).width;
       const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale;
 
@@ -151,9 +155,13 @@ export class RichTextComponent extends TextComponent {
 
       return;
     }
-    const size = this.item.transform.size;
 
-    this.item.transform.size.set(size.x * width * this.SCALE_FACTOR * this.SCALE_FACTOR, size.y * height * this.SCALE_FACTOR * this.SCALE_FACTOR);
+    if (this.size === undefined || this.size === null) {
+      this.size = this.item.transform.size.clone();
+    }
+    const { x = 1, y = 1 } = this.size;
+
+    this.item.transform.size.set(x * width * this.SCALE_FACTOR * this.SCALE_FACTOR, y * height * this.SCALE_FACTOR * this.SCALE_FACTOR);
     this.textLayout.width = width / textStyle.fontScale;
     this.textLayout.height = height / textStyle.fontScale;
     this.canvas.width = width;
@@ -188,7 +196,6 @@ export class RichTextComponent extends TextComponent {
         context.fillText(text, offsetX[index] + x, charsLineHeight);
       });
     });
-
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 

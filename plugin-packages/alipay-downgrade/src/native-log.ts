@@ -11,28 +11,32 @@
  * ```
  */
 import { isAlipayMiniApp, isAndroid, logger } from '@galacean/effects';
+import { canUseBOM } from './utils';
 
 const prefix = '[Galacean Effects]';
-const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
 
-logger.register(nativeLogger);
+// 非 Web 环境不执行后续逻辑，避免 window 及 navigator 访问报错
+if (canUseBOM) {
+  const ap = isAlipayMiniApp() ? my : window.AlipayJSBridge;
+  const nativeLogger = (type: string, msg: string, ...args: string[]) => {
+    const content: {
+      message: string,
+      level: string,
+      'anr_info'?: string,
+    } = {
+      'message': `${prefix} ${msg} ${args.join('')}`,
+      'level': type,
+    };
 
-function nativeLogger (type: string, msg: string, ...args: string[]) {
-  const content: {
-    message: string,
-    level: string,
-    'anr_info'?: string,
-  } = {
-    'message': `${prefix} ${msg} ${args.join('')}`,
-    'level': type,
+    if (isAndroid()) {
+      content['anr_info'] = 'mars';
+    }
+    try {
+      ap?.call('localLog', content);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  if (isAndroid()) {
-    content['anr_info'] = 'mars';
-  }
-  try {
-    ap?.call('localLog', content);
-  } catch (e) {
-    console.error(e);
-  }
+  logger.register(nativeLogger);
 }
