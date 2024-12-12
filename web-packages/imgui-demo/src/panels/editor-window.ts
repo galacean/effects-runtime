@@ -7,6 +7,7 @@ export class EditorWindow {
   private opened = false;
   private hovered = false;
   private firstFrame = true;
+  private windowFlags = ImGui.WindowFlags.None;
 
   static getWindow<T extends EditorWindow> (type: new () => T): T {
     return UIManager.getWindow(type);
@@ -21,7 +22,7 @@ export class EditorWindow {
       this.firstFrame = false;
     }
 
-    ImGui.Begin(this.title, (value = this.opened) => this.opened = value);
+    ImGui.Begin(this.title, (value = this.opened) => this.opened = value, this.windowFlags);
     this.hovered = ImGui.IsWindowHovered();
 
     this.onGUI();
@@ -42,6 +43,10 @@ export class EditorWindow {
 
   isHovered () {
     return this.hovered;
+  }
+
+  setWindowFlags (flags: ImGui.WindowFlags) {
+    this.windowFlags = flags;
   }
 
   protected onGUI () {
