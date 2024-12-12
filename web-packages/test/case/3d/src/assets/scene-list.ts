@@ -25,30 +25,14 @@ export default {
   },
   morph: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ',
-    name: '简单Morph',
+    name: '简单 Morph',
   },
   restart: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/89748482160728/restart.json',
-    name: 'Restart测试',
+    name: 'Restart 测试',
   },
   ring818: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*cnCMTo1seD0AAAAAAAAAAAAADlB4AQ',
-    name: '818圆环',
-  },
-  test1: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Lqa0SL35KhcAAAAAAAAAAAAADlB4AQ',
-    name: 'test1',
-  },
-  test2: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*16M9QrFglbUAAAAAAAAAAAAADlB4AQ',
-    name: 'test2',
-  },
-  test3: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*9iL-RaFeQ80AAAAAAAAAAAAADlB4AQ',
-    name: 'test3',
-  },
-  test4: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*ZQq_SKRrEKsAAAAAAAAAAAAADlB4AQ',
-    name: 'test4',
+    name: '818 圆环',
   },
 };

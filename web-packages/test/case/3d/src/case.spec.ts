@@ -1,32 +1,31 @@
 import type { GLType } from '@galacean/effects';
 import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../2d/src/common';
 import '@galacean/effects-plugin-model';
-import sceneList from './scene-list';
+import sceneList from './assets/scene-list';
 
 const { expect } = chai;
 
 /**
- * 万分之一的像素不相等比例，对于512x512大小的图像，
- * 不能超过26个像素不相等
+ * 万分之一的像素不相等比例，对于 512x512 大小的图像，
+ * 不能超过 26 个像素不相等
  */
 const accumRatioThreshold = 3.0e-4;
 const pixelDiffThreshold = 1;
-const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
 let controller: TestController;
 let cmpStats: ComparatorStats;
 
-addDescribe('webgl');
-addDescribe('webgl2');
+addDescribe('webgl', 2);
+addDescribe('webgl2', 3);
 
-function addDescribe (renderFramework: GLType) {
-  describe(`3d帧对比@${renderFramework}`, function () {
+function addDescribe (renderFramework: GLType, i: number) {
+  describe(`3D 帧对比@${renderFramework}`, function () {
     this.timeout('1800s');
 
     before(async () => {
       controller = new TestController(true);
-      await controller.createPlayers(canvasWidth, canvasHeight, renderFramework, false);
+      await controller.createPlayers(canvasWidth, canvasHeight, renderFramework);
       cmpStats = new ComparatorStats(renderFramework);
     });
 
@@ -34,15 +33,13 @@ function addDescribe (renderFramework: GLType) {
       controller.disposePlayers();
       const message = cmpStats.getStatsInfo();
       const label = document.createElement('h2');
-
-      label.innerHTML = `${message}`;
-      //
       const suites = document.getElementsByClassName('suite');
 
+      label.innerHTML = `${message}`;
       suites[suites.length - 1].appendChild(label);
     });
 
-    it(`${renderFramework}检查`, () => {
+    it(`${renderFramework} 检查`, () => {
       const { oldPlayer, newPlayer } = controller;
 
       if (renderFramework === 'webgl') {
@@ -54,26 +51,24 @@ function addDescribe (renderFramework: GLType) {
       }
     });
 
-    const ignoreList = getIngoreList();
-
-    Object.keys(sceneList).forEach(key => {
-      if (ignoreList.includes(key)) {
-        return;
-      }
-
+    Object.keys(sceneList).forEach((key, j) => {
       const scene = sceneList[key as keyof typeof sceneList];
 
-      void checkScene(key, scene);
+      void checkScene(key, scene, [i, j]);
     });
 
-    async function checkScene (keyName: string, sceneData: { name: string, url: string, autoAdjustScene?: boolean, enableDynamicSort?: boolean }) {
+    async function checkScene (
+      keyName: string,
+      sceneData: { name: string, url: string, autoAdjustScene?: boolean, enableDynamicSort?: boolean },
+      idx: [number, number],
+    ) {
       const { name, url } = sceneData;
       const autoAdjustScene = sceneData.autoAdjustScene ?? false;
       const enableDynamicSort = sceneData.enableDynamicSort ?? false;
       const compatibleMode = 'tiny3d';
 
       it(`${name}`, async () => {
-        console.info(`[Compare]: Begin ${name}, ${url}`);
+        console.info(`[Test] Compare begin: ${name}, ${url}`);
         const { oldPlayer, newPlayer, renderFramework } = controller;
 
         const loadOptions = {
@@ -99,8 +94,6 @@ function addDescribe (renderFramework: GLType) {
           );
         }
 
-        let maxDiffValue = 0;
-
         for (let i = 0; i < timeList.length; i++) {
           const time = timeList[i];
 
@@ -119,18 +112,15 @@ function addDescribe (renderFramework: GLType) {
           const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
           if (pixelDiffValue > 0) {
-            maxDiffValue = Math.max(maxDiffValue, pixelDiffValue);
-            console.info('DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
+            console.info('[Test] DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
           }
           if (diffCountRatio > accumRatioThreshold) {
-            console.error('FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
-            if (dumpImageForDebug) {
-              const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
-              const newFileName = `${namePrefix}_${name}_${time}_new.png`;
+            console.error('[Test] FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
+            const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
+            const newFileName = `${namePrefix}_${name}_${time}_new.png`;
 
-              await oldPlayer.saveCanvasToFile(oldFileName);
-              await newPlayer.saveCanvasToFile(newFileName);
-            }
+            await oldPlayer.saveCanvasToImage(oldFileName, idx);
+            await newPlayer.saveCanvasToImage(newFileName, idx, true);
           }
 
           expect(diffCountRatio).to.lte(accumRatioThreshold);
@@ -143,10 +133,10 @@ function addDescribe (renderFramework: GLType) {
 
         cmpStats.addSceneInfo(
           `${keyName}@${name}`, oldLoadCost, oldFirstCost - oldLoadCost,
-          newLoadCost, newFirstCost - newLoadCost, maxDiffValue
+          newLoadCost, newFirstCost - newLoadCost
         );
 
-        console.info(`[Compare]: End ${name}, ${url}`);
+        console.info(`[Test] Compare end: ${name}, ${url}`);
       });
     }
   });
@@ -154,19 +144,10 @@ function addDescribe (renderFramework: GLType) {
 
 function isFullTimeTest (name: string) {
   const nameList = [
-    '简单Morph',
-    'Restart测试',
-    '818圆环',
-    'test1',
+    '简单 Morph',
+    'Restart 测试',
+    '818 圆环',
   ];
 
   return nameList.includes(name);
-}
-
-function getIngoreList () {
-  if (navigator.platform.toLowerCase().search('win') >= 0) {
-    return [];
-  } else {
-    return ['monster', 'ring618'];
-  }
 }
