@@ -703,7 +703,7 @@ export class ParticleMesh implements ParticleMeshData {
 
       if (!this.rotationOverLifetime) {
         aRotationMatrix.setZero();
-      } else if (this.rotationOverLifetime.asRotation) {
+      } else {
       // Adjust rotation based on the specified lifetime components
         if (this.rotationOverLifetime.x) {
           if (this.rotationOverLifetime.x instanceof RandomValue) {
@@ -726,30 +726,31 @@ export class ParticleMesh implements ParticleMeshData {
             rotation.z += this.rotationOverLifetime.z.getValue(life);
           }
         }
-      } else {
-      // Adjust rotation based on the specified lifetime components
-        if (this.rotationOverLifetime.x) {
-          if (this.rotationOverLifetime.x instanceof RandomValue) {
-            rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, aSeed) * duration;
-          } else {
-            rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, duration) * duration;
-          }
-        }
-        if (this.rotationOverLifetime.y) {
-          if (this.rotationOverLifetime.y instanceof RandomValue) {
-            rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, aSeed) * duration;
-          } else {
-            rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, duration) * duration;
-          }
-        }
-        if (this.rotationOverLifetime.z) {
-          if (this.rotationOverLifetime.z instanceof RandomValue) {
-            rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, aSeed) * duration;
-          } else {
-            rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, duration) * duration;
-          }
-        }
       }
+      // else {
+      // // Adjust rotation based on the specified lifetime components
+      //   if (this.rotationOverLifetime.x) {
+      //     if (this.rotationOverLifetime.x instanceof RandomValue) {
+      //       rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, aSeed) * duration;
+      //     } else {
+      //       rotation.x += this.rotationOverLifetime.x.getIntegrateValue(0.0, life, duration) * duration;
+      //     }
+      //   }
+      //   if (this.rotationOverLifetime.y) {
+      //     if (this.rotationOverLifetime.y instanceof RandomValue) {
+      //       rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, aSeed) * duration;
+      //     } else {
+      //       rotation.y += this.rotationOverLifetime.y.getIntegrateValue(0.0, life, duration) * duration;
+      //     }
+      //   }
+      //   if (this.rotationOverLifetime.z) {
+      //     if (this.rotationOverLifetime.z instanceof RandomValue) {
+      //       rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, aSeed) * duration;
+      //     } else {
+      //       rotation.z += this.rotationOverLifetime.z.getIntegrateValue(0.0, life, duration) * duration;
+      //     }
+      //   }
+      // }
 
       // If the rotation vector is zero, return the identity matrix
       if (rotation.dot(rotation) === 0.0) {
