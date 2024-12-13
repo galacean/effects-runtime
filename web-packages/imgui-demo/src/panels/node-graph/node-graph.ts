@@ -54,7 +54,7 @@ export class NodeGraph extends EditorWindow {
 
       for (const output of (this.graph).playableOutputs) {
         const playable = output.sourcePlayable;
-        const rootNode = this.imNodeFlow.addNode(PlayableNode, rootNodePosition, playable);
+        const rootNode = this.imNodeFlow.addNode(PlayableNode, rootNodePosition, playable, playable.clipPlayables.length);
 
         rootNode.playable = playable;
 
@@ -67,18 +67,22 @@ export class NodeGraph extends EditorWindow {
   }
 
   generateGraphNode (node: PlayableNode) {
-    const childNodePos = new ImVec2(node.getPos().x - 300, node.getPos().y - 100 * node.playable.getInputCount() / 2);
+    const playable = node.playable;
 
-    for (let i = 0;i < node.playable.getInputCount();i++) {
-      const playable = node.playable.getInput(i);
-      const childNode = this.imNodeFlow.addNode(PlayableNode, childNodePos, playable);
+    if (playable.clipPlayables) {
+      const childNodePos = new ImVec2(node.getPos().x - 300, node.getPos().y - 100 * playable.clipPlayables.length / 2);
 
-      childNode.playable = playable;
-      childNodePos.y += 100;
+      for (let i = 0;i < playable.clipPlayables.length;i++) {
+        const clipPlayable = playable.getClipPlayable(i);
+        const childNode = this.imNodeFlow.addNode(PlayableNode, childNodePos, clipPlayable);
 
-      node.pinIns[i].createLink(childNode.pinOut);
+        childNode.playable = clipPlayable;
+        childNodePos.y += 100;
 
-      this.generateGraphNode(childNode);
+        node.pinIns[i].createLink(childNode.pinOut);
+
+        this.generateGraphNode(childNode);
+      }
     }
   }
 }
@@ -92,10 +96,10 @@ class PlayableNode extends BaseNode {
 
   playable: any;
 
-  constructor (inf: ImNodeFlow, playable: any) {
+  constructor (inf: ImNodeFlow, playable: any, inputCount: number) {
     super(inf);
     this.setTitle('Playable');
-    for (let i = 0;i < playable.getInputCount();i++) {
+    for (let i = 0;i < inputCount;i++) {
       this.pinIns.push(this.addIN('In' + i, 0, ()=>true));
     }
     this.pinOut = this.addOUT('Out');
