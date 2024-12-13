@@ -1,12 +1,12 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from './property-clip-playable';
+import { TrackMixerPlayable } from './track-mixer-playable';
 
-export class ColorPropertyMixerPlayable extends Playable {
+export class ColorPropertyMixerPlayable extends TrackMixerPlayable {
   propertyName = '';
 
-  override processFrame (context: FrameContext): void {
+  override evaluate (context: FrameContext): void {
     const boundObject = context.output.getUserData() as Record<string, any>;
 
     if (!boundObject) {
@@ -23,11 +23,11 @@ export class ColorPropertyMixerPlayable extends Playable {
     value.setZero();
 
     // evaluate the curve
-    for (let i = 0; i < this.getInputCount(); i++) {
-      const weight = this.getInputWeight(i);
+    for (let i = 0; i < this.clipPlayables.length; i++) {
+      const weight = this.getClipWeight(i);
 
       if (weight > 0) {
-        const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<Color>;
+        const propertyClipPlayable = this.getClipPlayable(i) as PropertyClipPlayable<Color>;
 
         if (!(propertyClipPlayable instanceof PropertyClipPlayable)) {
           console.error('ColorPropertyMixerPlayable received incompatible input');

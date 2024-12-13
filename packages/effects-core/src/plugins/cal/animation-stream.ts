@@ -1,4 +1,4 @@
-import { AnimationPlayable } from './animation-playable';
+import type { AnimationPlayable } from './animation-playable';
 
 export class AnimationStream {
   private playable: AnimationPlayable;
@@ -22,13 +22,13 @@ export class AnimationStream {
     return this.curveValues[componentType + propertyName];
   }
 
-  getInputStream (index: number): AnimationStream | undefined {
-    const inputPlayable = this.playable.getInput(index);
+  // getInputStream (index: number): AnimationStream | undefined {
+  //   const inputPlayable = this.playable.getInput(index);
 
-    if (inputPlayable instanceof AnimationPlayable) {
-      return inputPlayable.animationStream;
-    }
-  }
+  //   if (inputPlayable instanceof AnimationPlayable) {
+  //     return inputPlayable.animationStream;
+  //   }
+  // }
 }
 
 export interface AnimationCurveValue {

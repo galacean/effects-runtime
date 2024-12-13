@@ -50,15 +50,17 @@ export class NodeGraph extends EditorWindow {
       this.imNodeFlow.getLinks().length = 0;
 
       const windowSize = ImGui.GetWindowSize();
-      const rootNodePosition = new ImVec2(windowSize.x - 50, windowSize.y / 2);
+      const rootNodePosition = new ImVec2(windowSize.x - 400, 200);
 
-      //@ts-expect-error
-      const timelinePlayable = compositionComponent.timelinePlayable;
-      const rootNode = this.imNodeFlow.addNode(PlayableNode, rootNodePosition, timelinePlayable);
+      for (const output of (this.graph).playableOutputs) {
+        const playable = output.sourcePlayable;
+        const rootNode = this.imNodeFlow.addNode(PlayableNode, rootNodePosition, playable);
 
-      rootNode.playable = timelinePlayable;
+        rootNode.playable = playable;
 
-      this.generateGraphNode(rootNode);
+        this.generateGraphNode(rootNode);
+        rootNodePosition.y += 100;
+      }
     }
 
     this.imNodeFlow.update();

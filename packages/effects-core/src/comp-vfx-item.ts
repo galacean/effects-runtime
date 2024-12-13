@@ -4,9 +4,8 @@ import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
 import { Behaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
-import type { Region, TrackAsset } from './plugins';
+import type { Region, TimelinePlayable, TrackAsset } from './plugins';
 import { HitTestType } from './plugins';
-import type { Playable } from './plugins/cal/playable-graph';
 import { PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { generateGUID, noop } from './utils';
@@ -34,7 +33,7 @@ export class CompositionComponent extends Behaviour {
   private reusable = false;
   private sceneBindings: SceneBinding[] = [];
   private timelineAsset: TimelineAsset;
-  private timelinePlayable: Playable;
+  private timelinePlayable: TimelinePlayable;
   private graph: PlayableGraph = new PlayableGraph();
 
   override onStart (): void {
@@ -42,7 +41,7 @@ export class CompositionComponent extends Behaviour {
       this.timelineAsset = new TimelineAsset(this.engine);
     }
     this.resolveBindings();
-    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph);
+    this.timelinePlayable = this.timelineAsset.createPlayable(this.graph) as TimelinePlayable;
 
     // 重播不销毁元素
     if (this.item.endBehavior !== spec.EndBehavior.destroy) {
@@ -76,6 +75,7 @@ export class CompositionComponent extends Behaviour {
     // The properties of the object may change dynamically,
     // so reset the track binding to avoid invalidation of the previously obtained binding object.
     this.resolveBindings();
+    this.timelinePlayable.evaluate();
     this.graph.evaluate(dt);
   }
 

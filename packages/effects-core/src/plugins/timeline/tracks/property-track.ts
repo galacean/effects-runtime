@@ -2,7 +2,7 @@ import type { EffectsObjectData } from '@galacean/effects-specification';
 import { serialize } from '../../../decorators';
 import { TrackAsset } from '../track';
 
-export class PropertyTrack extends TrackAsset {
+export abstract class PropertyTrack extends TrackAsset {
 
   protected propertyNames: string[] = [];
 

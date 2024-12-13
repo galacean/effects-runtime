@@ -1,12 +1,12 @@
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from './property-clip-playable';
+import { TrackMixerPlayable } from './track-mixer-playable';
 
-export class Vector4PropertyMixerPlayable extends Playable {
+export class Vector4PropertyMixerPlayable extends TrackMixerPlayable {
   propertyName = '';
 
-  override processFrame (context: FrameContext): void {
+  override evaluate (context: FrameContext): void {
     const boundObject = context.output.getUserData() as Record<string, any>;
 
     if (!boundObject) {
@@ -23,11 +23,11 @@ export class Vector4PropertyMixerPlayable extends Playable {
     value.setZero();
 
     // evaluate the curve
-    for (let i = 0; i < this.getInputCount(); i++) {
-      const weight = this.getInputWeight(i);
+    for (let i = 0; i < this.clipPlayables.length; i++) {
+      const weight = this.getClipWeight(i);
 
       if (weight > 0) {
-        const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<Vector4>;
+        const propertyClipPlayable = this.getClipPlayable(i) as PropertyClipPlayable<Vector4>;
 
         if (!(propertyClipPlayable instanceof PropertyClipPlayable)) {
           console.error('Vector4PropertyTrack added non-Vector4PropertyPlayableAsset');
