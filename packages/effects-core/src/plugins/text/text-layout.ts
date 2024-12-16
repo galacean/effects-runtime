@@ -6,7 +6,7 @@ export class TextLayout {
   textBaseline: spec.TextBaseline; // Enum
   textAlign: spec.TextAlignment; // Enum
   letterSpace: number;
-  overFlow: spec.TextOverflow;// Enum  // both
+  overflow: spec.TextOverflow;// Enum  // both
 
   width = 0;
   height = 0;
@@ -34,7 +34,7 @@ export class TextLayout {
     this.height = textHeight;
 
     this.letterSpace = letterSpace;
-    this.overFlow = textOverflow;
+    this.overflow = textOverflow;
     this.textBaseline = textBaseline;
     this.textAlign = textAlign;
     this.lineHeight = lineHeight;
