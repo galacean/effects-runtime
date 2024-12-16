@@ -8,6 +8,25 @@
 
 ---
 
+## 2.1.3
+
+`2024-12-16`
+
+- Perf: opt particle rotation calculate performance. [#787](https://github.com/galacean/effects-runtime/pull/787) @wumaolinmaoan
+- Fix: 修复富文本自定义字体问题。[#784](https://github.com/galacean/effects-runtime/pull/784) @Sruimeng
+- Fix: restore default font settings in richtext component rendering. [#781](https://github.com/galacean/effects-runtime/pull/781) @Sruimeng
+- Fix: particle system rotation over lifetime always exist. [#779](https://github.com/galacean/effects-runtime/pull/779) @wumaolinmaoan
+- Fix: 补充新增插件的使用时未 install 提示。[#778](https://github.com/galacean/effects-runtime/pull/778) @yiiqii
+- Fix: support rich text type in player and enhance rich text component. [#777](https://github.com/galacean/effects-runtime/pull/777) @Sruimeng
+- Fix: 兼容 SSR 环境 BOM 对象使用前的判断。[#767](https://github.com/galacean/effects-runtime/pull/767) @RGCHN
+  - Refactor: avoid BOM access when server-side rendering. [#782](https://github.com/galacean/effects-runtime/pull/782) @PeachScript
+  - Fix: return can only be used within a function body. [#783](https://github.com/galacean/effects-runtime/pull/783) @yiiqii
+- Fix: texture source from cache error. [#775](https://github.com/galacean/effects-runtime/pull/775) @wumaolinmaoan
+- Fix: sprite billboard. [#774](https://github.com/galacean/effects-runtime/pull/774) @wumaolinmaoan
+- Fix: track bindings are set incorrectly when there are reused precompositions. [#773](https://github.com/galacean/effects-runtime/pull/773) @wumaolinmaoan
+- Test: 整理并优化帧对比测试代码。[#780](https://github.com/galacean/effects-runtime/pull/780) @yiiqii
+- Chore: imgui add node graph. [#786](https://github.com/galacean/effects-runtime/pull/786) @wumaolinmaoan
+
 ## 2.1.2
 
 `2024-11-29`
