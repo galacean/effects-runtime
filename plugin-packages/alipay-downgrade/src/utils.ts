@@ -7,6 +7,9 @@ const mockIdPass = 'mock-pass';
 const mockIdFail = 'mock-fail';
 let hasRegisterEvent = false;
 
+// window 对象不存在时需要判断
+export const canUseBOM = typeof window !== 'undefined';
+
 /**
  * 获取 GE 降级结果，在有 JSAPI 环境下调用，不需要创建 Canvas 和 WebGL 环境。
  *
@@ -15,11 +18,19 @@ let hasRegisterEvent = false;
  * @returns 降级结果
  */
 export async function getDowngradeResult (bizId: string, options: DowngradeOptions = {}): Promise<DowngradeResult> {
+  if (!canUseBOM) {
+    return Promise.resolve({
+      bizId,
+      downgrade: true,
+      level: options.level ?? spec.RenderLevel.S,
+      reason: '当前环境无法访问 window',
+    });
+  }
+
   if (!hasRegisterEvent) {
     hasRegisterEvent = true;
     registerEvent(options);
   }
-
   if (bizId === mockIdFail || bizId === mockIdPass) {
     return Promise.resolve({
       bizId,
@@ -80,8 +91,7 @@ export async function getDowngradeResult (bizId: string, options: DowngradeOptio
 function registerEvent (options: DowngradeOptions) {
   const { autoPause } = options;
 
-  // SSR时window对象不存在 需要判断
-  window && window.addEventListener('unload', () => {
+  window.addEventListener('unload', () => {
     getActivePlayers().forEach(player => player.dispose());
   });
 

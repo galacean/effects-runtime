@@ -10,22 +10,21 @@ const { expect } = chai;
  */
 const accumRatioThreshold = 1e-4;
 const pixelDiffThreshold = 1;
-const dumpImageForDebug = false;
 const canvasWidth = 512;
 const canvasHeight = 512;
 let controller: TestController;
 let cmpStats: ComparatorStats;
 
-addDescribe('webgl');
-addDescribe('webgl2');
+addDescribe('webgl', 0);
+addDescribe('webgl2', 1);
 
-function addDescribe (renderFramework: GLType) {
+function addDescribe (renderFramework: GLType, i: number) {
   describe(`Spine测试@${renderFramework}`, function () {
     this.timeout('1800s');
 
     before(async () => {
       controller = new TestController();
-      await controller.createPlayers(canvasWidth, canvasHeight, renderFramework, false);
+      await controller.createPlayers(canvasWidth, canvasHeight, renderFramework);
       cmpStats = new ComparatorStats(renderFramework);
     });
 
@@ -33,43 +32,39 @@ function addDescribe (renderFramework: GLType) {
       controller.disposePlayers();
       const message = cmpStats.getStatsInfo();
       const label = document.createElement('h2');
-
-      label.innerHTML = `${message}`;
-      //
       const suites = document.getElementsByClassName('suite');
 
+      label.innerHTML = `${message}`;
       suites[suites.length - 1].appendChild(label);
     });
 
-    Object.keys(sceneList).forEach(key => {
+    Object.keys(sceneList).forEach((key, j) => {
       const { name, url } = sceneList[key as keyof typeof sceneList];
 
-      void checkScene(key, name, url);
+      void checkScene(key, name, url, [i, j]);
     });
   });
 }
 
-async function checkScene (keyName: string, name: string, url: string) {
+async function checkScene (keyName: string, name: string, url: string, idx: [number, number]) {
   it(`${name}`, async () => {
-    console.info(`[Compare]: Begin ${name}, ${url}`);
+    console.info(`[Test] Compare begin: ${name}, ${url}`);
     const { oldPlayer, newPlayer, renderFramework } = controller;
 
     await oldPlayer.initialize(url);
     await newPlayer.initialize(url);
     const imageCmp = new ImageComparator(pixelDiffThreshold);
     const namePrefix = getCurrnetTimeStr();
-
     const timeList = [
       0, 0.11, 0.22, 0.34, 0.45, 0.57, 0.71, 0.83, 0.96,
       1.1, 1.2, 1.4, 1.7, 1.9, 2.2, 2.5, 2.7, 3.3, 3.8,
       4.7, 5.2, 6.8, 7.5, 8.6, 9.7, 9.99, 12.5, 18.9,
     ];
-    let maxDiffValue = 0;
 
     for (let i = 0; i < timeList.length; i++) {
       const time = timeList[i];
 
-      if (!oldPlayer.isLoop() && time > oldPlayer.duration()) {
+      if (time > oldPlayer.duration()) {
         break;
       }
       //
@@ -84,18 +79,15 @@ async function checkScene (keyName: string, name: string, url: string) {
       const diffCountRatio = pixelDiffValue / (canvasWidth * canvasHeight);
 
       if (pixelDiffValue > 0) {
-        maxDiffValue = Math.max(maxDiffValue, pixelDiffValue);
-        console.info('DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
+        console.info('[Test] DiffInfo:', renderFramework, name, keyName, time, pixelDiffValue, diffCountRatio);
       }
       if (diffCountRatio > accumRatioThreshold) {
-        console.error('FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
-        if (dumpImageForDebug) {
-          const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
-          const newFileName = `${namePrefix}_${name}_${time}_new.png`;
+        console.error('[Test] FindDiff:', renderFramework, name, keyName, time, pixelDiffValue, url);
+        const oldFileName = `${namePrefix}_${name}_${time}_old.png`;
+        const newFileName = `${namePrefix}_${name}_${time}_new.png`;
 
-          await oldPlayer.saveCanvasToFile(oldFileName);
-          await newPlayer.saveCanvasToFile(newFileName);
-        }
+        await oldPlayer.saveCanvasToImage(oldFileName, idx);
+        await newPlayer.saveCanvasToImage(newFileName, idx, true);
       }
 
       expect(diffCountRatio).to.lte(accumRatioThreshold);
@@ -108,9 +100,9 @@ async function checkScene (keyName: string, name: string, url: string) {
 
     cmpStats.addSceneInfo(
       `${keyName}@${name}`, oldLoadCost, oldFirstCost - oldLoadCost,
-      newLoadCost, newFirstCost - newLoadCost, maxDiffValue
+      newLoadCost, newFirstCost - newLoadCost
     );
 
-    console.info(`[Compare]: End ${name}, ${url}`);
+    console.info(`[Test] Compare end: ${name}, ${url}`);
   });
 }

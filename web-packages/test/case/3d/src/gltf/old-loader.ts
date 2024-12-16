@@ -49,7 +49,7 @@ export class OldLoaderImplEx {
 
     if (typeof gltfResource === 'string' || gltfResource instanceof Uint8Array) {
       if (typeof gltfResource === 'string') {
-        console.info(`Load url: ${gltfResource}`);
+        console.info(`[Test] Load url: ${gltfResource}`);
       }
 
       clearPreviousUUIDSet();

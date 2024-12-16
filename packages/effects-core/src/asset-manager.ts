@@ -289,6 +289,8 @@ export class AssetManager implements Disposable {
       // eslint-disable-next-line compat/compat
       const avifURL = avif && new URL(avif, baseUrl).href;
 
+      const id = img.id;
+
       if ('template' in img) {
         // 1. 数据模板
         const template = img.template;
@@ -306,7 +308,7 @@ export class AssetManager implements Disposable {
             const resultImage = await loadMedia(url as string | string[], loadFn);
 
             if (resultImage instanceof HTMLVideoElement) {
-              this.sourceFrom[idx] = { url: resultImage.src, type: TextureSourceType.video };
+              this.sourceFrom[id] = { url: resultImage.src, type: TextureSourceType.video };
 
               return resultImage;
             } else {
@@ -315,7 +317,7 @@ export class AssetManager implements Disposable {
                 variables[background.name] = resultImage.src;
               }
 
-              this.sourceFrom[idx] = { url: resultImage.src, type: TextureSourceType.image };
+              this.sourceFrom[id] = { url: resultImage.src, type: TextureSourceType.image };
 
               return await combineImageTemplate(
                 resultImage,
@@ -340,7 +342,7 @@ export class AssetManager implements Disposable {
         if (src) {
           const bufferURL = new URL(src, baseUrl).href;
 
-          this.sourceFrom[idx] = { url: bufferURL, type: TextureSourceType.compressed };
+          this.sourceFrom[id] = { url: bufferURL, type: TextureSourceType.compressed };
 
           return this.loadBins(bufferURL);
         }
@@ -357,7 +359,7 @@ export class AssetManager implements Disposable {
         ? await loadAVIFOptional(imageURL, avifURL)
         : await loadWebPOptional(imageURL, webpURL);
 
-      this.sourceFrom[idx] = { url, type: TextureSourceType.image };
+      this.sourceFrom[id] = { url, type: TextureSourceType.image };
 
       return image;
     });
@@ -421,15 +423,17 @@ export class AssetManager implements Disposable {
 
       const { source, id } = textureOptions;
       let image: ImageLike | undefined;
+      let imageId = '';
 
       if (isObject(source)) { // source 为 images 数组 id
         image = this.assets[source.id as string];
+        imageId = source.id as string;
       } else if (typeof source === 'string') { // source 为 base64 数据
         image = await loadImage(base64ToFile(source));
       }
 
       if (image) {
-        const texture = createTextureOptionsBySource(image, this.sourceFrom[idx], id);
+        const texture = createTextureOptionsBySource(image, this.sourceFrom[imageId], id);
 
         return texture.sourceType === TextureSourceType.compressed ? texture : { ...texture, ...textureOptions };
       }

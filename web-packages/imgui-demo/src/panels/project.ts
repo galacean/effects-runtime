@@ -1,17 +1,16 @@
 import type { Player } from '@galacean/effects';
-import { Texture2DSourceOptions, TextureSourceOptions, glContext, spec } from '@galacean/effects';
-import { base64ToFile, generateGUID, loadImage, math } from '@galacean/effects';
+import { generateGUID, glContext, loadImage, math, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
 import { GeometryBoxProxy, ModelMeshComponent, Sphere } from '@galacean/effects-plugin-model';
 import { GLTFTools, ModelIO } from '@vvfx/resource-detection';
 import { folderIcon, jsonIcon } from '../asset/images';
 import { AssetDatabase, createPreviewPlayer, generateAssetScene, readFileAsAsData, readFileAsText } from '../core/asset-data-base';
 import { editorWindow, menuItem } from '../core/decorators';
-import { EditorWindow } from './editor-window';
-import { Selection } from '../core/selection';
-import { ImGui, ImGui_Impl } from '../imgui';
 import { FileNode } from '../core/file-node';
+import { Selection } from '../core/selection';
 import { GalaceanEffects } from '../ge';
+import { ImGui, ImGui_Impl } from '../imgui';
+import { EditorWindow } from './editor-window';
 
 /**
  * Used to sync play preview scene when generating asset icon.
@@ -282,6 +281,7 @@ export class Project extends EditorWindow {
         n++;
       }
     }
+
     ImGui.EndChild();
     this.drawFileSizeSlider();
   }
@@ -517,3 +517,4 @@ export class Project extends EditorWindow {
     }
   }
 }
+
