@@ -110,7 +110,7 @@ export class RichTextComponent extends TextComponent {
     this.generateTextProgram(this.text);
     let width = 0, height = 0;
     const { textLayout, textStyle } = this;
-    const { overFlow } = textLayout;
+    const { overflow } = textLayout;
     const context = this.context;
 
     context.save();
@@ -201,9 +201,8 @@ export class RichTextComponent extends TextComponent {
 
       let charWidth = width;
 
-      if (overFlow === spec.TextOverflow.display) {
+      if (overflow === spec.TextOverflow.display) {
         if (width > canvasWidth) {
-          // textSize /= width / canvasWidth;
           charWidth = canvasWidth;
         }
 
@@ -219,7 +218,7 @@ export class RichTextComponent extends TextComponent {
         const { text, fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
         let textSize = fontSize;
 
-        if (overFlow === spec.TextOverflow.display) {
+        if (overflow === spec.TextOverflow.display) {
           if (width > canvasWidth) {
             textSize /= width / canvasWidth;
           }
