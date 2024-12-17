@@ -124,9 +124,9 @@ function addDescribe (renderFramework: GLType, i: number) {
             await newPlayer.saveCanvasToImage(newFileName, idx, true);
             diffRatioList.push(diffCountRatio);
           }
-
-          expect(diffRatioList).to.be.eqls([], `diffs: ${JSON.stringify(diffRatioList)}`);
         }
+
+        expect(diffRatioList).to.be.eqls([], `diffs: ${JSON.stringify(diffRatioList)}`);
 
         const oldLoadCost = oldPlayer.loadSceneTime();
         const oldFirstCost = oldPlayer.firstFrameTime();
