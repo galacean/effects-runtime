@@ -1,7 +1,7 @@
 const urlList = [
-  '/case/2d/index.html',
-  '/case/3d/index.html',
-  '/case/spine/index.html',
+  '/case/2d.html',
+  '/case/3d.html',
+  '/case/spine.html',
 ];
 
 (async () => {

@@ -1,17 +1,15 @@
-// @ts-nocheck
-import { Player, registerPlugin, AbstractPlugin, VFXItem } from '@galacean/effects';
+import { Player } from '@galacean/effects';
+import '@galacean/effects-plugin-orientation-transformer';
 import sceneList from './scene-list';
 import { sleep, GPUMemoryTool, shuffleArray } from './common';
 
 const { expect } = chai;
 
-registerPlugin('orientation-transformer', AbstractPlugin, VFXItem, true);
-
-describe('single scene', function () {
+describe('Single scene', function () {
   this.timeout(15 * 60 * 1000);
 
-  let memoryTool;
-  let canvas;
+  let memoryTool: GPUMemoryTool;
+  let canvas: HTMLCanvasElement;
 
   before(() => {
     canvas = document.createElement('canvas');
@@ -21,20 +19,25 @@ describe('single scene', function () {
 
   after(() => {
     memoryTool.uninject();
+    // @ts-expect-error
     memoryTool = null;
     canvas.remove();
+    // @ts-expect-error
     canvas = null;
   });
 
+  // @ts-expect-error
   Math.seedrandom('runtime');
   const keyList = Object.keys(sceneList);
 
   shuffleArray(keyList, 10, 50);
+
   for (let i = 0; i < 50; i++) {
-    const { url, name } = sceneList[keyList[i]];
+    const { url, name } = sceneList[keyList[i] as keyof typeof sceneList];
 
     it(name, async () => {
       memoryTool?.clear();
+
       const player = new Player({
         canvas,
         renderFramework: 'webgl2',
@@ -44,6 +47,7 @@ describe('single scene', function () {
       const duration = (comp.getDuration() + 5) * Math.random();
 
       await sleep(duration * 1000 / speed);
+
       player.pause();
       player.dispose(true);
       const stats = memoryTool.checkWebGLLeak();
@@ -53,11 +57,11 @@ describe('single scene', function () {
   }
 });
 
-describe('multiple scenes', function () {
+describe('Multiple scenes', function () {
   this.timeout(15 * 60 * 1000);
 
-  let memoryTool;
-  let canvas;
+  let memoryTool: GPUMemoryTool;
+  let canvas: HTMLCanvasElement;
 
   before(() => {
     canvas = document.createElement('canvas');
@@ -67,11 +71,14 @@ describe('multiple scenes', function () {
 
   after(() => {
     memoryTool.uninject();
+    // @ts-expect-error
     memoryTool = null;
     canvas.remove();
+    // @ts-expect-error
     canvas = null;
   });
 
+  // @ts-expect-error
   Math.seedrandom('runtime');
 
   const maxSceneCount = 3;
@@ -86,7 +93,7 @@ describe('multiple scenes', function () {
       const index = Math.min(Math.floor(Math.random() * keyList.length), keyList.length - 1);
 
       indexList.push(index);
-      nameList.push(sceneList[keyList[index]].name);
+      nameList.push(sceneList[keyList[index] as keyof typeof sceneList].name);
     }
     it(nameList.join('####'), async () => {
       memoryTool?.clear();
@@ -99,7 +106,7 @@ describe('multiple scenes', function () {
 
       for (let j = 0; j < count; j++) {
         const index = indexList[j];
-        const { url } = sceneList[keyList[index]];
+        const { url } = sceneList[keyList[index] as keyof typeof sceneList];
 
         urlList.push(url);
       }
@@ -116,6 +123,7 @@ describe('multiple scenes', function () {
       const speed = 0.5 + 2.0 * Math.random();
 
       await sleep((leftTime + 8) * Math.random() * 1000 / speed);
+
       player.pause();
       player.dispose(true);
       const stats = memoryTool.checkWebGLLeak();
