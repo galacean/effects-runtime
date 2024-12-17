@@ -5,6 +5,7 @@ import type { PlayableGraph } from '../cal/playable-graph';
 import { PlayState, Playable, PlayableAsset, PlayableOutput } from '../cal/playable-graph';
 import { ParticleSystem } from '../particle/particle-system';
 import type { Constructor } from '../../utils';
+import { TrackMixerPlayable } from './playables';
 
 /**
  * @since 2.0.0
@@ -66,8 +67,8 @@ export class TrackAsset extends PlayableAsset {
   /**
    * 重写该方法以创建自定义混合器
    */
-  createTrackMixer (graph: PlayableGraph): Playable {
-    return new Playable(graph);
+  createTrackMixer (graph: PlayableGraph): TrackMixerPlayable {
+    return new TrackMixerPlayable(graph);
   }
 
   createOutput (): PlayableOutput {
@@ -105,8 +106,8 @@ export class TrackAsset extends PlayableAsset {
 
       runtimeClips.push(clip);
 
-      mixer.addInput(clipPlayable, 0);
-      mixer.setInputWeight(clipPlayable, 0.0);
+      mixer.clipPlayables.push(clipPlayable);
+      mixer.setClipWeight(clipPlayable, 0.0);
     }
 
     return mixer;
@@ -175,13 +176,13 @@ export enum TrackType {
 export class RuntimeClip {
   clip: TimelineClip;
   playable: Playable;
-  parentMixer: Playable;
+  parentMixer: TrackMixerPlayable;
   track: TrackAsset;
 
   // TODO: 粒子结束行为有特殊逻辑，这里 cache 一下避免每帧查询组件导致 GC。粒子结束行为判断统一后可移除
   particleSystem: ParticleSystem;
 
-  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: Playable, track: TrackAsset) {
+  constructor (clip: TimelineClip, clipPlayable: Playable, parentMixer: TrackMixerPlayable, track: TrackAsset) {
     this.clip = clip;
     this.playable = clipPlayable;
     this.parentMixer = parentMixer;
@@ -196,7 +197,7 @@ export class RuntimeClip {
     if (value) {
       this.playable.play();
     } else {
-      this.parentMixer.setInputWeight(this.playable, 0);
+      this.parentMixer.setClipWeight(this.playable, 0);
       this.playable.pause();
     }
   }
@@ -226,7 +227,7 @@ export class RuntimeClip {
     if (started && this.playable.getPlayState() !== PlayState.Playing) {
       this.playable.play();
     }
-    this.parentMixer.setInputWeight(this.playable, weight);
+    this.parentMixer.setClipWeight(this.playable, weight);
 
     const clipTime = clip.toLocalTime(localTime);
 

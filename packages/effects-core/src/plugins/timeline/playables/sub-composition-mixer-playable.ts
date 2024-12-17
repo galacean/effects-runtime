@@ -1,9 +1,9 @@
 import { CompositionComponent } from '../../../comp-vfx-item';
 import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
+import { TrackMixerPlayable } from './track-mixer-playable';
 
-export class SubCompositionMixerPlayable extends Playable {
-  override processFrame (context: FrameContext): void {
+export class SubCompositionMixerPlayable extends TrackMixerPlayable {
+  override evaluate (context: FrameContext): void {
     const boundObject = context.output.getUserData();
 
     if (!(boundObject instanceof CompositionComponent)) {
@@ -14,8 +14,8 @@ export class SubCompositionMixerPlayable extends Playable {
 
     let hasInput = false;
 
-    for (let i = 0; i < this.getInputCount(); i++) {
-      if (this.getInputWeight(i) > 0) {
+    for (let i = 0; i < this.clipPlayables.length; i++) {
+      if (this.getClipWeight(i) > 0) {
         hasInput = true;
 
         break;

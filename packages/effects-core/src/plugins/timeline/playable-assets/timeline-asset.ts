@@ -4,7 +4,7 @@ import { VFXItem } from '../../../vfx-item';
 import type { RuntimeClip, TrackAsset } from '../track';
 import { ObjectBindingTrack } from '../../cal/calculate-item';
 import type { FrameContext, PlayableGraph } from '../../cal/playable-graph';
-import { Playable, PlayableAsset, PlayableTraversalMode } from '../../cal/playable-graph';
+import { Playable, PlayableAsset } from '../../cal/playable-graph';
 import type { Constructor } from '../../../utils';
 import { TrackInstance } from '../track-instance';
 
@@ -30,8 +30,6 @@ export class TimelineAsset extends PlayableAsset {
 
   override createPlayable (graph: PlayableGraph): Playable {
     const timelinePlayable = new TimelinePlayable(graph);
-
-    timelinePlayable.setTraversalMode(PlayableTraversalMode.Passthrough);
 
     for (const track of this.tracks) {
       if (track instanceof ObjectBindingTrack) {
@@ -94,7 +92,6 @@ export class TimelinePlayable extends Playable {
   masterTrackInstances: TrackInstance[] = [];
 
   override prepareFrame (context: FrameContext): void {
-    this.evaluate();
   }
 
   evaluate () {
@@ -117,13 +114,12 @@ export class TimelinePlayable extends Playable {
       // create track mixer and track output
       const trackMixPlayable = track.createPlayableGraph(graph, this.clips);
 
-      this.addInput(trackMixPlayable, 0);
       const trackOutput = track.createOutput();
 
       trackOutput.setUserData(track.boundObject);
 
       graph.addOutput(trackOutput);
-      trackOutput.setSourcePlayable(this, this.getInputCount() - 1);
+      trackOutput.setSourcePlayable(trackMixPlayable);
 
       // create track instance
       const trackInstance = new TrackInstance(track, trackMixPlayable, trackOutput);
