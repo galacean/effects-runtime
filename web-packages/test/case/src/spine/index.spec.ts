@@ -1,5 +1,5 @@
 import type { GLType } from '@galacean/effects';
-import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../2d/src/common';
+import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../common';
 import '@galacean/effects-plugin-spine';
 import sceneList from './scene-list';
 
@@ -60,6 +60,7 @@ async function checkScene (keyName: string, name: string, url: string, idx: [num
       1.1, 1.2, 1.4, 1.7, 1.9, 2.2, 2.5, 2.7, 3.3, 3.8,
       4.7, 5.2, 6.8, 7.5, 8.6, 9.7, 9.99, 12.5, 18.9,
     ];
+    const diffRatioList = [];
 
     for (let i = 0; i < timeList.length; i++) {
       const time = timeList[i];
@@ -88,9 +89,10 @@ async function checkScene (keyName: string, name: string, url: string, idx: [num
 
         await oldPlayer.saveCanvasToImage(oldFileName, idx);
         await newPlayer.saveCanvasToImage(newFileName, idx, true);
+        diffRatioList.push(diffCountRatio);
       }
 
-      expect(diffCountRatio).to.lte(accumRatioThreshold);
+      expect(diffRatioList).to.be.eqls([], `diffs: ${JSON.stringify(diffRatioList)}`);
     }
 
     const oldLoadCost = oldPlayer.loadSceneTime();
