@@ -206,6 +206,12 @@ export class BaseRenderComponent extends RendererComponent {
       texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
       texParams.y = +this.preMultiAlpha;
       texParams.z = renderer.renderMode;
+
+      if (texParams.x === 0) {
+        this.material.enableMacro('ALPHA_CLIP');
+      } else {
+        this.material.disableMacro('ALPHA_CLIP');
+      }
     }
 
     const attributes = {

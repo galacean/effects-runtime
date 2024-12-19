@@ -67,9 +67,9 @@ export function spriteMeshShaderFromRenderInfo (renderInfo: ItemRenderInfo, coun
   });
 
   shader.shared = true;
-  if (!wireframe) {
-    shader.cacheId = spriteMeshShaderIdFromRenderInfo(renderInfo, count);
-  }
+  // if (!wireframe) {
+  //   shader.cacheId = spriteMeshShaderIdFromRenderInfo(renderInfo, count);
+  // }
 
   return shader;
 }
