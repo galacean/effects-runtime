@@ -1,6 +1,6 @@
 import type { GLType, spec } from '@galacean/effects';
 import '@galacean/effects-plugin-model';
-import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../../2d/src/common';
+import { TestController, ImageComparator, getCurrnetTimeStr, ComparatorStats } from '../common';
 import gltfList from './assets/gltf-list';
 import { oldLoadGLTFScene } from './gltf/old-loader';
 import { loadGLTFSceneECS } from './gltf/new-loader';
@@ -100,6 +100,7 @@ function addDescribe (renderFramework: GLType, i: number) {
         const imageCmp = new ImageComparator(pixelDiffThreshold);
         const namePrefix = getCurrnetTimeStr();
         const timeList = [0];
+        const diffRatioList = [];
 
         if (isAllTimeTest(name)) {
           timeList.push(
@@ -135,10 +136,11 @@ function addDescribe (renderFramework: GLType, i: number) {
 
             await oldPlayer.saveCanvasToImage(oldFileName, idx);
             await newPlayer.saveCanvasToImage(newFileName, idx, true);
+            diffRatioList.push(diffCountRatio);
           }
-
-          expect(diffCountRatio).to.lte(accumRatioThreshold);
         }
+
+        expect(diffRatioList).to.be.eqls([], `diffs: ${JSON.stringify(diffRatioList)}`);
 
         const oldLoadCost = oldPlayer.loadSceneTime();
         const oldFirstCost = oldPlayer.firstFrameTime();

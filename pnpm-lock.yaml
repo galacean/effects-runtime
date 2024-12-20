@@ -331,6 +331,15 @@ importers:
       '@galacean/effects-helper':
         specifier: workspace:*
         version: link:../../packages/effects-helper
+      '@galacean/effects-plugin-model':
+        specifier: workspace:*
+        version: link:../../plugin-packages/model
+      '@galacean/effects-plugin-orientation-transformer':
+        specifier: workspace:*
+        version: link:../../plugin-packages/orientation-transformer
+      '@galacean/effects-plugin-spine':
+        specifier: workspace:*
+        version: link:../../plugin-packages/spine
       '@galacean/effects-threejs':
         specifier: workspace:*
         version: link:../../packages/effects-threejs
