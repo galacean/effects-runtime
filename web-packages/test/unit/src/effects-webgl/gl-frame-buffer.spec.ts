@@ -1,4 +1,4 @@
-// @ts-nocheck
+import type { Engine, GLType, GPUCapability, TextureSourceOptions } from '@galacean/effects-core';
 import { glContext, RenderPassAttachmentStorageType, TextureSourceType, TextureStoreAction } from '@galacean/effects-core';
 import { GLFramebuffer, GLRenderbuffer, GLRenderer, GLTexture } from '@galacean/effects-webgl';
 import { sleep } from '../utils';
@@ -8,15 +8,19 @@ const { expect } = chai;
 describe('webgl/gl-frame-buffer', mainTest(document.createElement('canvas'), 'webgl'));
 describe('webgl2/gl-frame-buffer', mainTest(document.createElement('canvas'), 'webgl2'));
 
-function mainTest (canvas, framework) {
-  return function () {
-    let gpu, fakeRenderer, gl, engine;
+function mainTest (canvas: HTMLCanvasElement, framework: GLType) {
+  return function (this: Mocha.Suite) {
     const colorTexOptions = {
       sourceType: TextureSourceType.framebuffer,
       format: glContext.RGBA,
       internalFormat: glContext.RGBA,
       type: glContext.UNSIGNED_BYTE,
     };
+
+    let gpu: GPUCapability;
+    let fakeRenderer: GLRenderer;
+    let gl: WebGL2RenderingContext | WebGLRenderingContext;
+    let engine: Engine;
 
     this.timeout('10s');
 
@@ -30,10 +34,15 @@ function mainTest (canvas, framework) {
 
     after(() => {
       fakeRenderer.dispose();
+      // @ts-expect-error
       fakeRenderer = null;
+      // @ts-expect-error
       engine = null;
+      // @ts-expect-error
       gpu = null;
+      // @ts-expect-error
       gl.canvas.remove();
+      // @ts-expect-error
       gl = null;
     });
 
@@ -43,10 +52,12 @@ function mainTest (canvas, framework) {
         storeAction: {
           colorAction: TextureStoreAction.clear,
         },
-        attachments: [new GLTexture(engine, {
-          ...colorTexOptions,
-          data: { width: 256, height: 256 },
-        })],
+        attachments: [
+          new GLTexture(engine, {
+            ...colorTexOptions,
+            data: { width: 256, height: 256 },
+          } as TextureSourceOptions),
+        ],
         isCustomViewport: false,
         depthStencilAttachment: { storageType: RenderPassAttachmentStorageType.none },
         viewport: [0, 0, 256, 256],
@@ -66,10 +77,12 @@ function mainTest (canvas, framework) {
     it('fbo with depth & stencil renderbuffer', () => {
       const storageType = RenderPassAttachmentStorageType.depth_stencil_opaque;
       const framebuffer = new GLFramebuffer({
-        attachments: [new GLTexture(engine, {
-          ...colorTexOptions,
-          data: { width: 256, height: 256 },
-        })],
+        attachments: [
+          new GLTexture(engine, {
+            ...colorTexOptions,
+            data: { width: 256, height: 256 },
+          } as TextureSourceOptions),
+        ],
         depthStencilAttachment: {
           storageType,
         },
@@ -92,9 +105,9 @@ function mainTest (canvas, framework) {
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;
 
-      expect(stencilStorage.storageType).is.eql(storageType);
-      expect(stencilStorage.size).to.deep.equal([256, 256]);
-      expect(stencilStorage.format).is.equal(gl.DEPTH_STENCIL);
+      expect(stencilStorage?.storageType).is.eql(storageType);
+      expect(stencilStorage?.size).to.deep.equal([256, 256]);
+      expect(stencilStorage?.format).is.equal(gl.DEPTH_STENCIL);
       expect(stencilStorage).is.equal(framebuffer.depthStorage);
       checkColorAttachment(framebuffer);
     });
@@ -102,10 +115,12 @@ function mainTest (canvas, framework) {
     it('fbo only with depth uint16 renderbuffer', () => {
       const storageType = RenderPassAttachmentStorageType.depth_16_opaque;
       const framebuffer = new GLFramebuffer({
-        attachments: [new GLTexture(engine, {
-          ...colorTexOptions,
-          data: { width: 256, height: 256 },
-        })],
+        attachments: [
+          new GLTexture(engine, {
+            ...colorTexOptions,
+            data: { width: 256, height: 256 },
+          } as TextureSourceOptions),
+        ],
         storeAction: {
           depthAction: TextureStoreAction.clear,
         },
@@ -123,9 +138,9 @@ function mainTest (canvas, framework) {
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const depthStorage = framebuffer.depthStorage;
 
-      expect(depthStorage.storageType).is.eql(storageType, 'depthStorage.storageType');
-      expect(depthStorage.size).to.deep.equal([256, 256]);
-      expect(depthStorage.format).is.equal(gl.DEPTH_COMPONENT16);
+      expect(depthStorage?.storageType).is.eql(storageType, 'depthStorage.storageType');
+      expect(depthStorage?.size).to.deep.equal([256, 256]);
+      expect(depthStorage?.format).is.equal(gl.DEPTH_COMPONENT16);
       expect(framebuffer.stencilStorage).is.undefined;
       checkColorAttachment(framebuffer);
     });
@@ -133,10 +148,12 @@ function mainTest (canvas, framework) {
     it('fbo only with stencil uint8 renderbuffer', () => {
       const storageType = RenderPassAttachmentStorageType.stencil_8_opaque;
       const framebuffer = new GLFramebuffer({
-        attachments: [new GLTexture(engine, {
-          ...colorTexOptions,
-          data: { width: 256, height: 256 },
-        })],
+        attachments: [
+          new GLTexture(engine, {
+            ...colorTexOptions,
+            data: { width: 256, height: 256 },
+          } as TextureSourceOptions),
+        ],
         storeAction: {
           colorAction: TextureStoreAction.clear,
           stencilAction: TextureStoreAction.clear,
@@ -155,9 +172,9 @@ function mainTest (canvas, framework) {
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;
 
-      expect(stencilStorage.storageType).is.eql(storageType);
-      expect(stencilStorage.size).to.deep.equal([256, 256]);
-      expect(stencilStorage.format).is.equal(gl.STENCIL_INDEX8);
+      expect(stencilStorage?.storageType).is.eql(storageType);
+      expect(stencilStorage?.size).to.deep.equal([256, 256]);
+      expect(stencilStorage?.format).is.equal(gl.STENCIL_INDEX8);
       expect(framebuffer.depthStorage).is.undefined;
       checkColorAttachment(framebuffer);
     });
@@ -166,10 +183,12 @@ function mainTest (canvas, framework) {
       const storageType = RenderPassAttachmentStorageType.depth_stencil_opaque;
       const framebuffer0 = new GLFramebuffer({
         storeAction: {},
-        attachments: [new GLTexture(engine, {
-          ...colorTexOptions,
-          data: { width: 256, height: 256 },
-        })],
+        attachments: [
+          new GLTexture(engine, {
+            ...colorTexOptions,
+            data: { width: 256, height: 256 },
+          } as TextureSourceOptions),
+        ],
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
@@ -178,10 +197,12 @@ function mainTest (canvas, framework) {
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const framebuffer = new GLFramebuffer({
         storeAction: {},
-        attachments: [new GLTexture(engine, {
-          ...colorTexOptions,
-          data: { width: 256, height: 256 },
-        })],
+        attachments: [
+          new GLTexture(engine, {
+            ...colorTexOptions,
+            data: { width: 256, height: 256 },
+          } as TextureSourceOptions),
+        ],
         depthStencilAttachment: {
           storageType,
           storage: framebuffer0.depthStorage,
@@ -195,9 +216,9 @@ function mainTest (canvas, framework) {
       expect(gl.checkFramebufferStatus(gl.FRAMEBUFFER)).is.eql(gl.FRAMEBUFFER_COMPLETE);
       const stencilStorage = framebuffer.stencilStorage;
 
-      expect(stencilStorage.storageType).is.eql(storageType);
-      expect(stencilStorage.size).to.deep.equal([256, 256]);
-      expect(stencilStorage.format).is.equal(gl.DEPTH_STENCIL);
+      expect(stencilStorage?.storageType).is.eql(storageType);
+      expect(stencilStorage?.size).to.deep.equal([256, 256]);
+      expect(stencilStorage?.format).is.equal(gl.DEPTH_STENCIL);
       expect(stencilStorage).is.equal(framebuffer.depthStorage);
       checkColorAttachment(framebuffer);
     });
@@ -205,15 +226,18 @@ function mainTest (canvas, framework) {
     it('fbo [ext] depth 16 texture', () => {
       const storageType = RenderPassAttachmentStorageType.depth_16_texture;
 
-      if (!gpu.readableDepthStencilTextures) {
+      if (!gpu.detail.readableDepthStencilTextures) {
         return;
       }
+
       const framebuffer = new GLFramebuffer({
         storeAction: {},
-        attachments: [new GLTexture(engine, {
-          ...colorTexOptions,
-          data: { width: 256, height: 256 },
-        })],
+        attachments: [
+          new GLTexture(engine, {
+            ...colorTexOptions,
+            data: { width: 256, height: 256 },
+          } as TextureSourceOptions),
+        ],
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
@@ -223,26 +247,29 @@ function mainTest (canvas, framework) {
       const texture = framebuffer.depthTexture;
 
       expect(texture).is.instanceof(GLTexture);
-      expect(texture.width).is.equal(256);
-      expect(texture.height).is.eql(256);
-      expect(texture.source.format).is.eql(gl.DEPTH_COMPONENT);
-      expect(texture.source.internalFormat).is.eql(gpu.internalFormatDepth16);
-      expect(texture.source.type).is.eql(gl.UNSIGNED_SHORT);
+      expect(texture?.width).is.equal(256);
+      expect(texture?.height).is.eql(256);
+      expect(texture?.source.format).is.eql(gl.DEPTH_COMPONENT);
+      expect(texture?.source.internalFormat).is.eql(gpu.internalFormatDepth16);
+      expect(texture?.source.type).is.eql(gl.UNSIGNED_SHORT);
       checkColorAttachment(framebuffer);
     });
 
     it('fbo not support depth 16 texture', () => {
       const storageType = RenderPassAttachmentStorageType.depth_16_texture;
 
-      if (gpu.readableDepthStencilTextures) {
-        //@ts-expect-error
+      if (gpu.detail.readableDepthStencilTextures) {
+        // @ts-expect-error
         gpu.readableDepthStencilTextures = false;
+
         expect(() => new GLFramebuffer({
           storeAction: {},
-          attachments: [new GLTexture(engine, {
-            ...colorTexOptions,
-            data: { width: 256, height: 256 },
-          })],
+          attachments: [
+            new GLTexture(engine, {
+              ...colorTexOptions,
+              data: { width: 256, height: 256 },
+            } as TextureSourceOptions),
+          ],
           depthStencilAttachment: { storageType },
           viewport: [0, 0, 256, 256],
         }, fakeRenderer)).to.throw;
@@ -255,10 +282,12 @@ function mainTest (canvas, framework) {
       const storageType = RenderPassAttachmentStorageType.depth_24_stencil_8_texture;
       const framebuffer = new GLFramebuffer({
         storeAction: {},
-        attachments: [new GLTexture(engine, {
-          ...colorTexOptions,
-          data: { width: 256, height: 256 },
-        })],
+        attachments: [
+          new GLTexture(engine, {
+            ...colorTexOptions,
+            data: { width: 256, height: 256 },
+          } as TextureSourceOptions),
+        ],
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 256, 256],
       }, fakeRenderer);
@@ -269,11 +298,11 @@ function mainTest (canvas, framework) {
 
       expect(texture).is.not.undefined;
       expect(texture).is.instanceof(GLTexture);
-      expect(texture.width).is.equal(256);
-      expect(texture.height).is.eql(256);
-      expect(texture.source.format).is.eql(gl.DEPTH_STENCIL, 'format');
-      expect(texture.source.internalFormat).is.eql(gpu.internalFormatDepth24_stencil8, 'internalFormat');
-      expect(texture.source.type).is.eql(gpu.UNSIGNED_INT_24_8, 'type');
+      expect(texture?.width).is.equal(256);
+      expect(texture?.height).is.eql(256);
+      expect(texture?.source.format).is.eql(gl.DEPTH_STENCIL, 'format');
+      expect(texture?.source.internalFormat).is.eql(gpu.internalFormatDepth24_stencil8, 'internalFormat');
+      expect(texture?.source.type).is.eql(gpu.UNSIGNED_INT_24_8, 'type');
       expect(texture).is.eql(framebuffer.stencilTexture);
       checkColorAttachment(framebuffer);
     });
@@ -282,7 +311,7 @@ function mainTest (canvas, framework) {
       const storageType = RenderPassAttachmentStorageType.depth_stencil_opaque;
       const framebuffer = new GLFramebuffer({
         storeAction: {},
-        attachments: [new GLTexture(engine, colorTexOptions)],
+        attachments: [new GLTexture(engine, colorTexOptions as TextureSourceOptions)],
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 100, 100],
       }, fakeRenderer);
@@ -301,17 +330,17 @@ function mainTest (canvas, framework) {
 
       const storage = framebuffer.depthStorage;
 
-      expect(storage.size).is.deep.equal([100, 100]);
-      expect(storage.storageType).is.eql(storageType);
-      expect(storage.format).is.eql(gl.DEPTH_STENCIL);
-      expect(storage.attachment).is.eql(gl.DEPTH_STENCIL_ATTACHMENT);
+      expect(storage?.size).is.deep.equal([100, 100]);
+      expect(storage?.storageType).is.eql(storageType);
+      expect(storage?.format).is.eql(gl.DEPTH_STENCIL);
+      expect(storage?.attachment).is.eql(gl.DEPTH_STENCIL_ATTACHMENT);
     });
 
     it('fbo [ext] auto set depth stencil attachment size', () => {
       const storageType = RenderPassAttachmentStorageType.depth_24_stencil_8_texture;
       const framebuffer = new GLFramebuffer({
         storeAction: {},
-        attachments: [new GLTexture(engine, colorTexOptions)],
+        attachments: [new GLTexture(engine, colorTexOptions as TextureSourceOptions)],
         depthStencilAttachment: { storageType },
         viewport: [0, 0, 100, 100],
       }, fakeRenderer);
@@ -330,11 +359,11 @@ function mainTest (canvas, framework) {
       const depth = framebuffer.depthTexture;
 
       expect(depth).is.instanceof(GLTexture);
-      expect(depth.width).is.equal(100);
-      expect(depth.height).is.eql(100);
-      expect(depth.source.format).is.eql(gl.DEPTH_STENCIL, 'format');
-      expect(depth.source.internalFormat).is.eql(gpu.internalFormatDepth24_stencil8, 'internalFormat');
-      expect(depth.source.type).is.eql(gpu.UNSIGNED_INT_24_8, 'type');
+      expect(depth?.width).is.equal(100);
+      expect(depth?.height).is.eql(100);
+      expect(depth?.source.format).is.eql(gl.DEPTH_STENCIL, 'format');
+      expect(depth?.source.internalFormat).is.eql(gpu.internalFormatDepth24_stencil8, 'internalFormat');
+      expect(depth?.source.type).is.eql(gpu.UNSIGNED_INT_24_8, 'type');
     });
 
     it('fbo bind multiple color attachments', () => {
@@ -348,14 +377,12 @@ function mainTest (canvas, framework) {
         format: gl.RGBA,
         internalFormat: gl.RGBA,
         type: gl.UNSIGNED_BYTE,
-      },
-      {
+      }, {
         sourceType: TextureSourceType.framebuffer,
         format: gl.RGBA,
         internalFormat: gl.RGBA,
         type: gl.UNSIGNED_BYTE,
-      },
-      ];
+      }] as TextureSourceOptions[];
       const framebuffer = new GLFramebuffer({
         attachments: [
           new GLTexture(engine, colorOptions[0]),
@@ -371,7 +398,9 @@ function mainTest (canvas, framework) {
       framebuffer.bind();
       expect(framebuffer.colorTextures.length).is.eql(3);
       if (gpu.level === 2) {
-        expect(framebuffer.storeInvalidAttachments).to.deep.equals([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2]);
+        const { COLOR_ATTACHMENT0, COLOR_ATTACHMENT1, COLOR_ATTACHMENT2 } = gl as WebGL2RenderingContext;
+
+        expect(framebuffer.storeInvalidAttachments).to.deep.equals([COLOR_ATTACHMENT0, COLOR_ATTACHMENT1, COLOR_ATTACHMENT2]);
       }
       framebuffer.colorTextures.forEach((tex, i) => {
         expect(tex.width).is.equal(200, `texture_${i}_width`);
@@ -395,7 +424,7 @@ function mainTest (canvas, framework) {
       const framebuffer = new GLFramebuffer({
         storeAction: {},
         attachments: [
-          new GLTexture(engine, colorOptions),
+          new GLTexture(engine, colorOptions as TextureSourceOptions),
         ],
         isCustomViewport: false,
         viewport: [0, 0, 256, 256],
@@ -422,7 +451,7 @@ function mainTest (canvas, framework) {
       const framebuffer = new GLFramebuffer({
         storeAction: {},
         attachments: [
-          new GLTexture(engine, colorOptions),
+          new GLTexture(engine, colorOptions as TextureSourceOptions),
         ],
         isCustomViewport: false,
         viewportScale: 1,
@@ -438,7 +467,7 @@ function mainTest (canvas, framework) {
       expect(tex.source.type).is.eql(glContext.FLOAT);
     });
 
-    function checkColorAttachment (fb) {
+    function checkColorAttachment (fb: GLFramebuffer) {
       const tex = fb.colorTextures[0];
 
       expect(fb.colorTextures.length).is.eql(1);
