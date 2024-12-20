@@ -7,6 +7,13 @@
 
 ---
 
+## 2.1.4
+
+`2024-12-20`
+
+- Perf: opt sprite shader alpha clip performance. [#794](https://github.com/galacean/effects-runtime/pull/794) @wumaolinmaoan
+Test: Enhance certain unit test types and optimize the messaging for frame comparison failures. [#792](https://github.com/galacean/effects-runtime/pull/792) @yiiqii
+
 ## 2.1.3
 
 `2024-12-16`
