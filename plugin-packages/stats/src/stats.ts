@@ -103,7 +103,8 @@ const json = {
  *
  */
 export class Stats implements Disposable {
-  private component: StatsComponent;
+  private component?: StatsComponent;
+  private disposed = false;
 
   /**
    *
@@ -140,6 +141,11 @@ export class Stats implements Disposable {
   }
 
   dispose () {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
     this.component?.dispose();
+    this.component = undefined;
   }
 }
