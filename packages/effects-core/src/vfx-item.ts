@@ -315,10 +315,15 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   /**
    * 添加组件
-   * @param classConstructor - 要添加的组件类型
+   * @param classConstructor - 要添加的组件
+   * @param options - 挂在组件上的可选参数，即会在组件初始化时传入
+   * @returns
    */
-  addComponent<T extends Component> (classConstructor: Constructor<T>): T {
-    const newComponent = new classConstructor(this.engine);
+  addComponent<T extends Component> (
+    classConstructor: Constructor<T>,
+    options: Record<string, any> = {},
+  ): T {
+    const newComponent = new classConstructor(this.engine, options);
 
     this.components.push(newComponent);
     newComponent.setVFXItem(this);

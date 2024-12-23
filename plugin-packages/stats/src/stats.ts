@@ -1,9 +1,29 @@
-import type { Player } from '@galacean/effects';
+import type { Player, Disposable } from '@galacean/effects';
 import { StatsComponent } from './stats-component';
 
+/**
+ *
+ */
 export interface StatsOptions {
+  /**
+   * @default false
+   */
   debug?: boolean,
+  /**
+   * @default true
+   */
+  visible?: boolean,
+  /**
+   * @default document.body
+   */
+  container?: HTMLElement,
 }
+
+const defaultStatsOptions: StatsOptions = {
+  debug: false,
+  visible: true,
+  container: document.body,
+};
 
 const json = {
   'images': [],
@@ -82,8 +102,8 @@ const json = {
 /**
  *
  */
-export class Stats {
-  static options: StatsOptions;
+export class Stats implements Disposable {
+  private component: StatsComponent;
 
   /**
    *
@@ -92,21 +112,34 @@ export class Stats {
    */
   constructor (
     public readonly player: Player,
-    options: StatsOptions = { debug: false },
+    private readonly options?: StatsOptions,
   ) {
-    Stats.options = options;
-
     void this.init();
   }
 
   async init () {
     try {
       const composition = await this.player.loadScene(json);
-      const component = composition.getItemByName('component');
+      const item = composition.getItemByName('component');
 
-      component?.addComponent(StatsComponent);
+      if (item) {
+        item.addComponent(StatsComponent, { ...defaultStatsOptions, ...this.options });
+        this.component = item.getComponent(StatsComponent);
+      }
     } catch (e: any) {
       throw new Error(`Failed to load stats scene: ${e.message}.`);
     }
+  }
+
+  hide () {
+    this.component?.monitor.hide();
+  }
+
+  show () {
+    this.component?.monitor.show();
+  }
+
+  dispose () {
+    this.component?.dispose();
   }
 }

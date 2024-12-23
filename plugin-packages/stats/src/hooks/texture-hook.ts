@@ -1,5 +1,3 @@
-import { Stats } from '../stats';
-
 /**
  * TextureHook
  */
@@ -12,6 +10,7 @@ export default class TextureHook {
 
   constructor (
     private readonly gl: WebGLRenderingContext | WebGL2RenderingContext,
+    private readonly debug: boolean,
   ) {
     this.realCreateTexture = gl.createTexture;
     this.realDeleteTexture = gl.deleteTexture;
@@ -19,7 +18,7 @@ export default class TextureHook {
     gl.createTexture = this.hookedCreateTexture.bind(this);
     gl.deleteTexture = this.hookedDeleteTexture.bind(this);
 
-    if (Stats.options.debug) {
+    if (debug) {
       console.debug('Texture is hooked.');
     }
   }
@@ -29,7 +28,7 @@ export default class TextureHook {
 
     this.textures++;
 
-    if (Stats.options.debug) {
+    if (this.debug) {
       console.debug(`CreateTexture: ${texture}, textures: ${this.textures}.`);
     }
 
@@ -40,7 +39,7 @@ export default class TextureHook {
     this.realDeleteTexture.call(this.gl, texture);
     this.textures--;
 
-    if (Stats.options.debug) {
+    if (this.debug) {
       console.debug(`DeleteTexture, textures: ${this.textures}.`);
     }
   }
