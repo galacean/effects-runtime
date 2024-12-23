@@ -19,7 +19,7 @@ export interface StatsOptions {
   container?: HTMLElement,
 }
 
-const defaultStatsOptions: StatsOptions = {
+const defaultStatsOptions: Required<StatsOptions> = {
   debug: false,
   visible: true,
   container: document.body,
@@ -123,7 +123,7 @@ export class Stats implements Disposable {
       const item = composition.getItemByName('component');
 
       if (item) {
-        item.addComponent(StatsComponent, { ...defaultStatsOptions, ...this.options });
+        item.addComponent(StatsComponent).init({ ...defaultStatsOptions, ...this.options });
         this.component = item.getComponent(StatsComponent);
       }
     } catch (e: any) {
