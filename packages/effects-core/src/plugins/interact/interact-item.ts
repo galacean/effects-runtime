@@ -130,8 +130,9 @@ export class InteractComponent extends RendererComponent {
       const options = this.item.props.content.options as spec.DragInteractOption;
 
       this.item.composition?.addInteractiveItem(this.item, options.type);
+      this.duringPlay = true;
+
     }
-    this.duringPlay = true;
 
     this.previewContent?.updateMesh();
 
