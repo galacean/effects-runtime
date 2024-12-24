@@ -125,14 +125,13 @@ export class InteractComponent extends RendererComponent {
   }
 
   override onUpdate (dt: number): void {
-    this.duringPlay = true;
-
     // trigger messageBegin when item enter
-    if (this.item.time > 0 && this.item.time - dt / 1000 <= 0) {
+    if (this.item.time > 0 && !this.duringPlay) {
       const options = this.item.props.content.options as spec.DragInteractOption;
 
       this.item.composition?.addInteractiveItem(this.item, options.type);
     }
+    this.duringPlay = true;
 
     this.previewContent?.updateMesh();
 
