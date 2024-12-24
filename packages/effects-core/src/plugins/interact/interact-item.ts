@@ -81,6 +81,12 @@ export class InteractComponent extends RendererComponent {
     const composition = this.item.composition;
     const { type, showPreview } = this.interactData.options as spec.ClickInteractOption;
 
+    this.item.composition?.on('goto', () => {
+      if (this.item.time > 0) {
+        this.duringPlay = true;
+
+      }
+    });
     if (type === spec.InteractType.CLICK) {
       this.clickable = true;
       if (showPreview && env === PLAYER_OPTIONS_ENV_EDITOR) {
