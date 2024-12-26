@@ -6,7 +6,7 @@ import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, Material,
   TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
   isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, EventEmitter,
-  generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, DEFAULT_FPS, Scene,
+  generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, Scene,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -385,13 +385,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       },
     }, scene);
 
-    if (this.ticker) {
-      // 中低端设备降帧到 30fps
-      if (opts.renderLevel === spec.RenderLevel.B) {
-        this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
-      } else {
-        this.ticker.setFPS(DEFAULT_FPS);
-      }
+    // 中低端设备降帧到 30fps·
+    if (this.ticker && opts.renderLevel === spec.RenderLevel.B) {
+      this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
     }
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
