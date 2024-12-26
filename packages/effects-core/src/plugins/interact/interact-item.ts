@@ -81,6 +81,12 @@ export class InteractComponent extends RendererComponent {
     const composition = this.item.composition;
     const { type, showPreview } = this.interactData.options as spec.ClickInteractOption;
 
+    this.item.composition?.on('goto', () => {
+      if (this.item.time > 0) {
+        this.duringPlay = true;
+
+      }
+    });
     if (type === spec.InteractType.CLICK) {
       this.clickable = true;
       if (showPreview && env === PLAYER_OPTIONS_ENV_EDITOR) {
@@ -125,13 +131,13 @@ export class InteractComponent extends RendererComponent {
   }
 
   override onUpdate (dt: number): void {
-    this.duringPlay = true;
-
     // trigger messageBegin when item enter
-    if (this.item.time > 0 && this.item.time - dt / 1000 <= 0) {
+    if (this.item.time > 0 && !this.duringPlay) {
       const options = this.item.props.content.options as spec.DragInteractOption;
 
       this.item.composition?.addInteractiveItem(this.item, options.type);
+      this.duringPlay = true;
+
     }
 
     this.previewContent?.updateMesh();
