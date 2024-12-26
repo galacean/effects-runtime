@@ -278,16 +278,17 @@ export class AssetManager implements Disposable {
     images: spec.ImageSource[],
     compressedTexture: COMPRESSED_TEXTURE = 0,
   ): Promise<ImageLike[]> {
-    const { useCompressedTexture, variables } = this.options;
+    const { useCompressedTexture, variables, useWebp, useAvif } = this.options;
     const baseUrl = this.baseUrl;
     const jobs = images.map(async (img, idx: number) => {
       const { url: png, webp, avif } = img;
       // eslint-disable-next-line compat/compat
       const imageURL = new URL(png, baseUrl).href;
+
       // eslint-disable-next-line compat/compat
-      const webpURL = webp && new URL(webp, baseUrl).href;
+      const webpURL = (useWebp && webp) ? new URL(webp, baseUrl).href : undefined;
       // eslint-disable-next-line compat/compat
-      const avifURL = avif && new URL(avif, baseUrl).href;
+      const avifURL = (useAvif && avif) ? new URL(avif, baseUrl).href : undefined;
 
       const id = img.id;
 
@@ -354,7 +355,6 @@ export class AssetManager implements Disposable {
       ) {
         return img;
       }
-
       const { url, image } = avifURL
         ? await loadAVIFOptional(imageURL, avifURL)
         : await loadWebPOptional(imageURL, webpURL);
