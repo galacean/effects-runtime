@@ -20,6 +20,11 @@ import type { Engine } from './engine';
 
 let seed = 1;
 
+export interface ImageBitmapOption {
+  flipY?: boolean,
+  premultiplyAlpha?: boolean,
+}
+
 /**
  * 资源管理器
  * 用于加载和动效中所有的资源文件，包括图片、插件、图层粒子数据等
@@ -37,6 +42,10 @@ export class AssetManager implements Disposable {
    * TextureSource 来源
    */
   private sourceFrom: Record<string, { url: string, type: TextureSourceType }> = {};
+  /**
+   * Texture 选项，用于创建 ImageBitmap
+   */
+  private imageBitmapOptions: Record<string, ImageBitmapOption> = {};
   /**
    * 自定义文本缓存，随页面销毁而销毁
    */
@@ -108,7 +117,7 @@ export class AssetManager implements Disposable {
       this.timers.push(loadTimer);
     });
 
-    const hookTimeInfo = async<T> (label: string, func: () => Promise<T>) => {
+    const hookTimeInfo = async<T>(label: string, func: () => Promise<T>) => {
       if (!cancelLoading) {
         const st = performance.now();
 
@@ -158,7 +167,22 @@ export class AssetManager implements Disposable {
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
-        const { bins = [], images, compositions, fonts } = jsonScene;
+        const { bins = [], images, compositions, fonts, textures = [] } = jsonScene;
+
+        // TODO 增加 imageBitmap 兼容性判断
+        for (const texture of textures) {
+          if (texture instanceof Texture) {
+            continue;
+          }
+          if ('mipmaps' in texture) {
+            continue;
+          }
+          // @ts-expect-error TODO 优化类型
+          this.imageBitmapOptions[texture.source.id] = {
+            flipY: texture.flipY,
+            premultiplyAlpha: texture.premultiplyAlpha,
+          };
+        }
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
@@ -311,7 +335,7 @@ export class AssetManager implements Disposable {
               this.sourceFrom[id] = { url: resultImage.src, type: TextureSourceType.video };
 
               return resultImage;
-            } else {
+            } else if (resultImage instanceof HTMLImageElement) {
               // 如果是加载图片且是数组，设置变量，视频情况下不需要
               if (background && Array.isArray(url) && variables) {
                 variables[background.name] = resultImage.src;
@@ -355,8 +379,10 @@ export class AssetManager implements Disposable {
         return img;
       }
 
+      const imageBitmapOption = this.imageBitmapOptions[id];
+
       const { url, image } = avifURL
-        ? await loadAVIFOptional(imageURL, avifURL)
+        ? await loadAVIFOptional(imageURL, avifURL, imageBitmapOption)
         : await loadWebPOptional(imageURL, webpURL);
 
       this.sourceFrom[id] = { url, type: TextureSourceType.image };
@@ -508,6 +534,7 @@ function createTextureOptionsBySource (
     };
   } else if (
     image instanceof HTMLImageElement ||
+    image instanceof ImageBitmap ||
     isCanvas(image as HTMLCanvasElement)
   ) {
     return {

@@ -32,7 +32,7 @@ export async function combineImageTemplate (
   template?: spec.TemplateContent,
   variables?: spec.TemplateVariables,
 ) {
-  let image;
+  let image: HTMLImageElement;
 
   if (typeof url === 'string') {
     image = await loadImage(url);

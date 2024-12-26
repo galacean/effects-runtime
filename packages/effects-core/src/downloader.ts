@@ -1,3 +1,4 @@
+import type { ImageBitmapOption } from './asset-manager';
 import { isAndroid } from './utils';
 
 type SuccessHandler<T> = (data: T) => void;
@@ -109,20 +110,20 @@ let avifFailed = false;
  * @param png - PNG 图片文件的 URL
  * @param webp - WebP 图片文件的 URL
  */
-export async function loadWebPOptional (png: string, webp?: string) {
+export async function loadWebPOptional (png: string, webp?: string, imageBitmapOption?: ImageBitmapOption) {
   if (webPFailed || !webp) {
-    const image = await loadImage(png);
+    const image = imageBitmapOption ? await loadImageBitmap(png, imageBitmapOption) : await loadImage(png);
 
     return { image, url: png };
   }
 
   try {
-    const image = await loadImage(webp);
+    const image = imageBitmapOption ? await loadImageBitmap(webp, imageBitmapOption) : await loadImage(webp);
 
     return { image, url: webp };
   } catch (_) {
     webPFailed = true;
-    const image = await loadImage(png);
+    const image = imageBitmapOption ? await loadImageBitmap(png, imageBitmapOption) : await loadImage(png);
 
     return { image, url: png };
   }
@@ -133,20 +134,20 @@ export async function loadWebPOptional (png: string, webp?: string) {
  * @param png - PNG 图片文件的 URL
  * @param avif - AVIF 图片文件的 URL
  */
-export async function loadAVIFOptional (png: string, avif?: string) {
+export async function loadAVIFOptional (png: string, avif?: string, imageBitmapOption?: ImageBitmapOption) {
   if (avifFailed || !avif) {
-    const image = await loadImage(png);
+    const image = imageBitmapOption ? await loadImageBitmap(png, imageBitmapOption) : await loadImage(png);
 
     return { image, url: png };
   }
 
   try {
-    const image = await loadImage(avif);
+    const image = imageBitmapOption ? await loadImageBitmap(avif, imageBitmapOption) : await loadImage(avif);
 
     return { image, url: avif };
   } catch (_) {
     avifFailed = true;
-    const image = await loadImage(png);
+    const image = imageBitmapOption ? await loadImageBitmap(png, imageBitmapOption) : await loadImage(png);
 
     return { image, url: png };
   }
@@ -205,6 +206,56 @@ export async function loadImage (
     img.src = url;
   });
 
+}
+
+export async function loadImageBitmap (source: string | Blob | HTMLImageElement, imageBitmapOption: ImageBitmapOption) {
+  let url = '';
+
+  // 1. string | Blob | HTMLImageElement 处理逻辑
+  if (source instanceof HTMLImageElement) {
+    if (source.complete) {
+      return source;
+    }
+    url = source.src;
+  } else if (source instanceof Blob) {
+    url = URL.createObjectURL(source);
+  } else if (typeof source === 'string') {
+    url = source;
+  }
+
+  // 2. 非法类型
+  if (!url) {
+    throw new Error(`Invalid url type: ${JSON.stringify(source)}.`);
+  }
+  const fullOption: Required<ImageBitmapOption> = {
+    flipY: false,
+    premultiplyAlpha: false,
+    ...imageBitmapOption,
+  };
+
+  // 1. 发送 fetch 请求以获取视频文件
+  // eslint-disable-next-line compat/compat
+  const response = await fetch(url);
+
+  // 2. 检查响应状态
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
+  }
+
+  // 3. 将响应转换为 ArrayBuffer
+  const arrayBuffer = await response.arrayBuffer();
+
+  // 4. 创建 Blob 对象
+  const blob = new Blob([arrayBuffer]);
+
+  // eslint-disable-next-line compat/compat
+  const imageBitmap = await createImageBitmap(blob, {
+    imageOrientation: fullOption.flipY ? 'flipY' : 'none',
+    premultiplyAlpha:fullOption.premultiplyAlpha ? 'premultiply' : 'none',
+  });
+
+  // 5. 创建 Object URL
+  return imageBitmap;
 }
 
 /**
@@ -273,7 +324,7 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   });
 }
 
-export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<HTMLImageElement | HTMLVideoElement>) {
+export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<HTMLImageElement | HTMLVideoElement | ImageBitmap>) {
   if (Array.isArray(url)) {
     try {
       return await loadFn(url[0]);
