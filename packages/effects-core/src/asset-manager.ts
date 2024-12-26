@@ -383,7 +383,7 @@ export class AssetManager implements Disposable {
 
       const { url, image } = avifURL
         ? await loadAVIFOptional(imageURL, avifURL, imageBitmapOption)
-        : await loadWebPOptional(imageURL, webpURL);
+        : await loadWebPOptional(imageURL, webpURL, imageBitmapOption);
 
       this.sourceFrom[id] = { url, type: TextureSourceType.image };
 
