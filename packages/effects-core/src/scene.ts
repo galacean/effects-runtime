@@ -127,4 +127,12 @@ export interface SceneLoadOptions {
    * 播放速度，当速度为负数时，合成倒播
    */
   speed?: number,
+  /**
+   * 是否禁用avif图片
+   */
+  disableAvif?: boolean,
+  /**
+   * 是否禁用webp图片
+   */
+  disableWebp?: boolean,
 }
