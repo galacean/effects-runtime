@@ -228,7 +228,7 @@ export class RuntimeClip {
     }
     this.parentMixer.setInputWeight(this.playable, weight);
 
-    const clipTime = clip.toLocalTime(localTime);
+    const clipTime = parseFloat(clip.toLocalTime(localTime).toFixed(3));
 
     this.playable.setTime(clipTime);
 
