@@ -576,9 +576,9 @@ export class BezierCurve extends ValueGetter<number> {
   }
 
   override getMaxTime (): number {
-    const keyTimeData = Object.keys(this.curveMap);
+    const keyTimeData = this.keyTimeData;
 
-    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+    return this.curveMap[keyTimeData[keyTimeData.length - 1]].timeEnd;
   }
 }
 
@@ -643,7 +643,12 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     valueInterval: number,
     // 路径曲线
     pathCurve: BezierPath,
+    timeStart: number,
+    timeEnd: number,
   }>;
+
+  keys: number[][];
+  keyTimeData: string[];
 
   override onCreate (props: spec.BezierCurvePathValue) {
     const [keyframes, points, controlPoints] = props;
@@ -672,21 +677,23 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
         valueInterval,
         easingCurve,
         pathCurve: pathCurve,
+        timeStart:Number(s.x),
+        timeEnd:Number(e.x),
       };
     }
-
+    this.keyTimeData = Object.keys(this.curveSegments);
   }
 
   override getValue (time: number): Vector3 {
     const t = numberToFix(time, 5);
     let perc = 0, point = new Vector3();
-    const keyTimeData = Object.keys(this.curveSegments);
+    const keyTimeData = this.keyTimeData;
 
     if (!keyTimeData.length) {
       return point;
     }
-    const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
-    const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+    const keyTimeStart = this.curveSegments[keyTimeData[0]].timeStart;
+    const keyTimeEnd = this.curveSegments[keyTimeData[keyTimeData.length - 1]].timeEnd;
 
     if (t <= keyTimeStart) {
       const pathCurve = this.curveSegments[keyTimeData[0]].pathCurve;
@@ -705,7 +712,8 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
     }
 
     for (let i = 0; i < keyTimeData.length; i++) {
-      const [xMin, xMax] = keyTimeData[i].split('&');
+      const xMin = this.curveSegments[keyTimeData[i]].timeStart;
+      const xMax = this.curveSegments[keyTimeData[i]].timeEnd;
 
       if (t >= Number(xMin) && t < Number(xMax)) {
         const bezierPath = this.curveSegments[keyTimeData[i]].pathCurve;
@@ -732,9 +740,9 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
   }
 
   override getMaxTime (): number {
-    const keyTimeData = Object.keys(this.curveSegments);
+    const keyTimeData = this.keyTimeData;
 
-    return Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
+    return this.curveSegments[keyTimeData[keyTimeData.length - 1]].timeEnd;
   }
 }
 

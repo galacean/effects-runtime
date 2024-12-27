@@ -112,6 +112,7 @@ void main() {
     if (this.animated) {
       this.buildPath(this.data);
       this.buildGeometryFromPath(this.path.shapePath);
+      this.animated = false;
     }
   }
 
