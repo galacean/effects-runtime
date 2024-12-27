@@ -5,6 +5,8 @@ export const RENDER_PREFER_LOOKUP_TEXTURE = 'lookup_texture';
 export const TEMPLATE_USE_OFFSCREEN_CANVAS = 'offscreen_canvas';
 // 后处理配置相关
 export const POST_PROCESS_SETTINGS = 'post_process_settings';
+// 加载图片时是否使用 ImageBitmap
+export const LOAD_PREFER_IMAGE_BITMAP = 'load_image_bitmap';
 
 const config: Record<string, number | boolean | string | Record<string, any>> = {};
 
