@@ -535,7 +535,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       return;
     }
 
-    const dt = this.getUpdateTime(deltaTime * this.speed);
+    const dt = parseFloat(this.getUpdateTime(deltaTime * this.speed).toFixed(0));
 
     this.updateRootComposition(dt / 1000);
     this.updateVideo();
