@@ -7,6 +7,14 @@
 
 ---
 
+## 2.1.5
+
+`2024-12-27`
+
+- Fix: Resolve the issue with message element triggering. [#801](https://github.com/galacean/effects-runtime/pull/801) @Sruimeng
+  - Fix: message item triggering issue caused by time accuracy. [#804](https://github.com/galacean/effects-runtime/pull/804) @wumaolinmaoan
+- Fix: player fps setting. [#802](https://github.com/galacean/effects-runtime/pull/802) @wumaolinmaoan
+
 ## 2.1.4
 
 `2024-12-20`
