@@ -84,6 +84,7 @@ export interface SceneLoadOptions {
 
   /**
    * 是否使用压缩纹理
+   * @default undefined
    */
   useCompressedTexture?: boolean,
 
@@ -125,14 +126,17 @@ export interface SceneLoadOptions {
   reusable?: boolean,
   /**
    * 播放速度，当速度为负数时，合成倒播
+   * @default 1
    */
   speed?: number,
   /**
-   * 是否禁用avif图片
+   * 是否禁用 AVIF 图片
+   * @default undefined
    */
-  disableAvif?: boolean,
+  disableAVIF?: boolean,
   /**
-   * 是否禁用webp图片
+   * 是否禁用 WebP 图片
+   * @default undefined
    */
-  disableWebp?: boolean,
+  disableWebP?: boolean,
 }
