@@ -1,3 +1,4 @@
+import { LOAD_PREFER_IMAGE_BITMAP, getConfig } from './config';
 import { isAndroid } from './utils';
 
 type SuccessHandler<T> = (data: T) => void;
@@ -109,20 +110,20 @@ let avifFailed = false;
  * @param png - PNG 图片文件的 URL
  * @param webp - WebP 图片文件的 URL
  */
-export async function loadWebPOptional (png: string, webp?: string) {
+export async function loadWebPOptional (png: string, webp?: string, options?: ImageBitmapOptions) {
   if (webPFailed || !webp) {
-    const image = await loadImage(png);
+    const image = await loadImageBitmap(png, options);
 
     return { image, url: png };
   }
 
   try {
-    const image = await loadImage(webp);
+    const image = await loadImageBitmap(webp, options);
 
     return { image, url: webp };
   } catch (_) {
     webPFailed = true;
-    const image = await loadImage(png);
+    const image = await loadImageBitmap(png, options);
 
     return { image, url: png };
   }
@@ -133,20 +134,20 @@ export async function loadWebPOptional (png: string, webp?: string) {
  * @param png - PNG 图片文件的 URL
  * @param avif - AVIF 图片文件的 URL
  */
-export async function loadAVIFOptional (png: string, avif?: string) {
+export async function loadAVIFOptional (png: string, avif?: string, options?: ImageBitmapOptions) {
   if (avifFailed || !avif) {
-    const image = await loadImage(png);
+    const image = await loadImageBitmap(png, options);
 
     return { image, url: png };
   }
 
   try {
-    const image = await loadImage(avif);
+    const image = await loadImageBitmap(avif, options);
 
     return { image, url: avif };
   } catch (_) {
     avifFailed = true;
-    const image = await loadImage(png);
+    const image = await loadImageBitmap(png, options);
 
     return { image, url: png };
   }
@@ -283,4 +284,47 @@ export async function loadMedia (url: string | string[], loadFn: (url: string) =
   }
 
   return loadFn(url);
+}
+
+const imageBitMapAvailable = typeof createImageBitmap === 'function';
+
+/**
+ * 异步加载一个图片文件，如果支持 ImageBitmap 则返回 ImageBitmap 对象
+ * @param source
+ * @param options
+ * @returns
+ */
+export async function loadImageBitmap (
+  source: string | Blob | HTMLImageElement,
+  options?: ImageBitmapOptions,
+): Promise<ImageBitmap | HTMLImageElement> {
+  if (imageBitMapAvailable && getConfig(LOAD_PREFER_IMAGE_BITMAP)) {
+    let blob: Blob | HTMLImageElement;
+
+    if (typeof source === 'string') {
+      blob = await loadBlob(source);
+    } else if (source instanceof Blob) {
+      blob = source;
+    } else {
+      return loadImage(source);
+    }
+
+    return createImageBitmap(blob, options);
+  } else {
+    return loadImage(source);
+  }
+}
+
+/**
+ * 关闭 ImageBitMap，释放内存
+ * @param imgs
+ */
+export function closeImageBitMap (imgs: any) {
+  if (imageBitMapAvailable) {
+    if (imgs instanceof ImageBitmap) {
+      imgs.close();
+    } else if (imgs instanceof Array) {
+      imgs.forEach(closeImageBitMap);
+    }
+  }
 }
