@@ -440,8 +440,8 @@ export class BezierCurve extends ValueGetter<number> {
         timeInterval,
         valueInterval,
         curve,
-        timeStart:Number(s.x),
-        timeEnd:Number(e.x),
+        timeStart: Number(s.x),
+        timeEnd: Number(e.x),
       };
     }
     this.keyTimeData = Object.keys(this.curveMap);
@@ -677,8 +677,8 @@ export class BezierCurvePath extends ValueGetter<Vector3> {
         valueInterval,
         easingCurve,
         pathCurve: pathCurve,
-        timeStart:Number(s.x),
-        timeEnd:Number(e.x),
+        timeStart: Number(s.x),
+        timeEnd: Number(e.x),
       };
     }
     this.keyTimeData = Object.keys(this.curveSegments);
