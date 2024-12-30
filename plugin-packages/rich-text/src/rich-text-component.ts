@@ -260,6 +260,13 @@ export class RichTextComponent extends TextComponent {
     context.restore();
   }
 
+  /**
+   * 设置文本溢出模式
+   * clip: 当文本内容超出边界框时，多余的会被截断。
+   * display: display 模式下，会显示所有文本，存在文本字号变小的情况。
+   * （当存在多行时，部分行内文本可能存在文本字号变小的情况， 其他行为正常情况）
+   * @param overflow - 文本溢出模式
+   */
   setOverflow (overflow: spec.TextOverflow) {
     this.textLayout.overflow = overflow;
     this.isDirty = true;
