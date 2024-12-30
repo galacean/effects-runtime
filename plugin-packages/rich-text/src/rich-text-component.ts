@@ -200,10 +200,14 @@ export class RichTextComponent extends TextComponent {
       const { richOptions, offsetX, width } = charInfo;
 
       let charWidth = width;
+      let offset = offsetX;
 
       if (overflow === spec.TextOverflow.display) {
         if (width > canvasWidth) {
-          charWidth = canvasWidth;
+          const scale = canvasWidth / width;
+
+          charWidth *= scale;
+          offset = offsetX.map(x => x * scale);
         }
 
       }
@@ -228,7 +232,7 @@ export class RichTextComponent extends TextComponent {
 
         context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
 
-        context.fillText(text, offsetX[index] + x, charsLineHeight);
+        context.fillText(text, offset[index] + x, charsLineHeight);
       });
     });
     //与 toDataURL() 两种方式都需要像素读取操作
@@ -254,6 +258,11 @@ export class RichTextComponent extends TextComponent {
 
     this.isDirty = false;
     context.restore();
+  }
+
+  setOverflow (overflow: spec.TextOverflow) {
+    this.textLayout.overflow = overflow;
+    this.isDirty = true;
   }
 
   override updateWithOptions (options: spec.TextContentOptions) {
