@@ -5,7 +5,7 @@ import { passRenderLevel } from './pass-render-level';
 import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
-import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional, closeImageBitMap } from './downloader';
+import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
 import type { ImageLike, SceneLoadOptions } from './scene';
 import { Scene } from './scene';
 import type { Disposable } from './utils';
@@ -37,10 +37,6 @@ export class AssetManager implements Disposable {
    * TextureSource 来源
    */
   private sourceFrom: Record<string, { url: string, type: TextureSourceType }> = {};
-  /**
-   * Texture 选项，用于创建 ImageBitmap
-   */
-  private imageBitmapOptions: Record<string, ImageBitmapOptions> = {};
   /**
    * 自定义文本缓存，随页面销毁而销毁
    */
@@ -221,12 +217,10 @@ export class AssetManager implements Disposable {
 
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
-    const { plugins = [], textures } = jsonScene;
+    const { plugins = [] } = jsonScene;
     const pluginSystem = new PluginSystem(plugins);
 
     await pluginSystem.processRawJSON(jsonScene, this.options);
-
-    this.assignImageBitmapOptions(textures);
 
     return {
       jsonScene,
@@ -362,8 +356,8 @@ export class AssetManager implements Disposable {
       }
 
       const { url, image } = avifURL
-        ? await loadAVIFOptional(imageURL, avifURL, this.imageBitmapOptions[id])
-        : await loadWebPOptional(imageURL, webpURL, this.imageBitmapOptions[id]);
+        ? await loadAVIFOptional(imageURL, avifURL)
+        : await loadWebPOptional(imageURL, webpURL);
 
       this.sourceFrom[id] = { url, type: TextureSourceType.image };
 
@@ -477,21 +471,6 @@ export class AssetManager implements Disposable {
     }
   }
 
-  private assignImageBitmapOptions (textures: spec.SerializedTextureSource[] = []) {
-    textures.forEach(texture => {
-      if (!(texture instanceof Texture || 'mipmaps' in texture)) {
-        const { source } = texture;
-
-        if (isObject(source)) {
-          this.imageBitmapOptions[source.id as string] = {
-            imageOrientation: texture.flipY ? 'flipY' : 'none',
-            premultiplyAlpha: texture.premultiplyAlpha ? 'premultiply' : 'none',
-          };
-        }
-      }
-    });
-  }
-
   private removeTimer (id: number) {
     const index = this.timers.indexOf(id);
 
@@ -506,8 +485,6 @@ export class AssetManager implements Disposable {
     if (this.timers.length) {
       this.timers.map(id => window.clearTimeout(id));
     }
-
-    closeImageBitMap(Object.keys(this.assets).map(key => this.assets[key]));
     this.assets = {};
     this.sourceFrom = {};
     this.timers = [];
@@ -531,7 +508,6 @@ function createTextureOptionsBySource (
     };
   } else if (
     image instanceof HTMLImageElement ||
-    image instanceof ImageBitmap ||
     isCanvas(image as HTMLCanvasElement)
   ) {
     return {

@@ -4,7 +4,7 @@ import type { PluginSystem } from './plugin-system';
 import type { PickEnum } from './utils';
 import { isObject } from './utils';
 
-export type ImageLike = spec.HTMLImageLike | ArrayBuffer | Texture | ImageBitmap;
+export type ImageLike = spec.HTMLImageLike | ArrayBuffer | Texture;
 export type SceneRenderLevel = PickEnum<spec.RenderLevel, spec.RenderLevel.A | spec.RenderLevel.B | spec.RenderLevel.S>;
 
 /**
