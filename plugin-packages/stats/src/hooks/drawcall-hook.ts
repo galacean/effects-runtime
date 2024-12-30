@@ -1,5 +1,3 @@
-import { Stats } from '../stats';
-
 /**
  * DrawCallHook
  */
@@ -15,6 +13,7 @@ export default class DrawCallHook {
 
   constructor (
     private readonly gl: WebGLRenderingContext | WebGL2RenderingContext,
+    private readonly debug: boolean,
   ) {
     this.realDrawElements = gl.drawElements;
     this.realDrawArrays = gl.drawArrays;
@@ -22,7 +21,7 @@ export default class DrawCallHook {
     gl.drawElements = this.hookedDrawElements.bind(this);
     gl.drawArrays = this.hookedDrawArrays.bind(this);
 
-    if (Stats.options.debug) {
+    if (debug) {
       console.debug('DrawCall is hooked.');
     }
   }

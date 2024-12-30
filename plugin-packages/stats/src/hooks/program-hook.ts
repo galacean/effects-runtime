@@ -1,5 +1,3 @@
-import { Stats } from '../stats';
-
 /**
  * ProgramHook
  * 每一帧的 shader 数量
@@ -12,12 +10,13 @@ export default class ProgramHook {
 
   constructor (
     private readonly gl: WebGLRenderingContext | WebGL2RenderingContext,
+    private readonly debug: boolean,
   ) {
     this.realUseProgram = gl.useProgram;
 
     gl.useProgram = this.hookedUseProgram.bind(this);
 
-    if (Stats.options.debug) {
+    if (debug) {
       console.debug('Program is hooked.');
     }
   }
@@ -26,7 +25,7 @@ export default class ProgramHook {
     this.realUseProgram.call(this.gl, program);
     this.programs++;
 
-    if (Stats.options.debug) {
+    if (this.debug) {
       console.debug(`UseProgram: ${program}, program: ${this.programs}.`);
     }
   }

@@ -1,6 +1,7 @@
 import type { Disposable } from '@galacean/effects';
 import type { PerformanceData } from './core';
 import { Core } from './core';
+import type { StatsOptions } from './stats';
 
 const tpl = `
   <dl>
@@ -26,7 +27,7 @@ const css = `
   .gl-perf {
     pointer-events: none;
     user-select: none;
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     padding: ${10 / 7.5}vh ${10 / 7.5}vh 0 ${10 / 7.5}vh;
@@ -76,8 +77,11 @@ export class Monitor implements Disposable {
     webglContext: '2.0',
   };
 
-  constructor (gl: WebGLRenderingContext | WebGL2RenderingContext) {
-    this.core = new Core(gl);
+  constructor (
+    gl: WebGLRenderingContext | WebGL2RenderingContext,
+    private readonly options: Required<StatsOptions>,
+  ) {
+    this.core = new Core(gl, options.debug);
 
     this.createContainer();
     this.update = this.update.bind(this);
@@ -86,13 +90,16 @@ export class Monitor implements Disposable {
   private createContainer (): void {
     const container = document.createElement('div');
 
+    this.container = container;
+    if (!this.options.visible) {
+      this.hide();
+    }
     container.classList.add('gl-perf');
     container.innerHTML = tpl;
     container.appendChild(this.createStyle());
-    document.body.appendChild(container);
+    this.options.container.appendChild(container);
 
     this.doms = Array.prototype.slice.apply(container.querySelectorAll('dd'));
-    this.container = container;
   }
 
   private createStyle (): HTMLStyleElement {
@@ -109,7 +116,7 @@ export class Monitor implements Disposable {
   update (dt: number): void {
     const data = this.core.update(dt);
 
-    if (!data || data.drawCall === 0 || data.triangles === 0) {
+    if (!data || data.triangles === 0) {
       return;
     }
 
@@ -123,6 +130,14 @@ export class Monitor implements Disposable {
         dom.innerText = String(value);
       });
     }
+  }
+
+  hide (): void {
+    this.container.style.display = 'none';
+  }
+
+  show (): void {
+    this.container.style.display = 'block';
   }
 
   /**
@@ -155,6 +170,6 @@ export class Monitor implements Disposable {
    */
   dispose (): void {
     this.release();
-    document.body.removeChild(this.container);
+    this.container.remove();
   }
 }

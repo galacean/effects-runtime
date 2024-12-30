@@ -315,7 +315,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   /**
    * 添加组件
-   * @param classConstructor - 要添加的组件类型
+   * @param classConstructor - 要添加的组件
    */
   addComponent<T extends Component> (classConstructor: Constructor<T>): T {
     const newComponent = new classConstructor(this.engine);
