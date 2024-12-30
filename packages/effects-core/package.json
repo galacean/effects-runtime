@@ -53,7 +53,7 @@
   "dependencies": {
     "@galacean/effects-specification": "2.1.0",
     "@galacean/effects-math": "1.1.0",
-    "flatbuffers": "24.3.25",
+    "flatbuffers": "24.12.23",
     "uuid": "9.0.1",
     "libtess": "1.2.2"
   }
