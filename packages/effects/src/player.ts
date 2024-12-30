@@ -818,10 +818,14 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.assetManagers.forEach(assetManager => assetManager.dispose());
     this.compositions.forEach(comp => comp.dispose());
     this.compositions.length = 0;
-    (this.renderer as GLRenderer).context.removeLostHandler({ lost: this.lost });
-    (this.renderer as GLRenderer).context.removeRestoreHandler({ restore: this.restore });
-    this.event.dispose();
-    this.renderer.dispose(!keepCanvas);
+    if (this.renderer) {
+      (this.renderer as GLRenderer).context.removeLostHandler({ lost: this.lost });
+      (this.renderer as GLRenderer).context.removeRestoreHandler({ restore: this.restore });
+      this.renderer.dispose(!keepCanvas);
+    }
+    if (this.event) {
+      this.event.dispose();
+    }
     this.destroyBuiltinObjects();
     broadcastPlayerEvent(this, false);
     if (
