@@ -15,11 +15,7 @@ export class MeshCollider {
   private worldMatrix = new Matrix4();
 
   getBoundingBoxData (): BoundingBoxTriangle {
-    this.boundingBoxData.area.forEach(triangle => {
-      triangle.p0 = this.worldMatrix.transformPoint(triangle.p0 as Vector3, new Vector3());
-      triangle.p1 = this.worldMatrix.transformPoint(triangle.p1 as Vector3, new Vector3());
-      triangle.p2 = this.worldMatrix.transformPoint(triangle.p2 as Vector3, new Vector3());
-    });
+    this.applyWorldMatrix(this.boundingBoxData.area);
 
     return this.boundingBoxData;
   }
@@ -48,11 +44,7 @@ export class MeshCollider {
     area.push({ p0: point0, p1: point1, p2: point2 });
     area.push({ p0: point0, p1: point2, p2: point3 });
 
-    area.forEach(triangle => {
-      triangle.p0 = this.worldMatrix.transformPoint(triangle.p0, new Vector3());
-      triangle.p1 = this.worldMatrix.transformPoint(triangle.p1, new Vector3());
-      triangle.p2 = this.worldMatrix.transformPoint(triangle.p2, new Vector3());
-    });
+    this.applyWorldMatrix(area);
 
     return {
       type: HitTestType.triangle,
@@ -97,5 +89,15 @@ export class MeshCollider {
     }
 
     return res;
+  }
+
+  private applyWorldMatrix (area: TriangleLike[]) {
+    area.forEach(triangle => {
+      triangle.p0 = this.worldMatrix.transformPoint(triangle.p0 as Vector3, new Vector3());
+      triangle.p1 = this.worldMatrix.transformPoint(triangle.p1 as Vector3, new Vector3());
+      triangle.p2 = this.worldMatrix.transformPoint(triangle.p2 as Vector3, new Vector3());
+    });
+
+    return area;
   }
 }
