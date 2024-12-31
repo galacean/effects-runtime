@@ -224,6 +224,24 @@ export class CompositionComponent extends Behaviour {
     return regions;
   }
 
+  /**
+   * 设置当前合成子元素的渲染顺序
+   * @internal
+   */
+  setChildrenRenderOrder (startOrder: number): number {
+    for (const item of this.items) {
+      item.renderOrder = startOrder++;
+
+      const subCompositionComponent = item.getComponent(CompositionComponent);
+
+      if (subCompositionComponent) {
+        startOrder = subCompositionComponent.setChildrenRenderOrder(startOrder);
+      }
+    }
+
+    return startOrder;
+  }
+
   override fromData (data: any): void {
     super.fromData(data);
 
