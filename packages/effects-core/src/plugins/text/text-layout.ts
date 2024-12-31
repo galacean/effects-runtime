@@ -6,7 +6,7 @@ export class TextLayout {
   textBaseline: spec.TextBaseline; // Enum
   textAlign: spec.TextAlignment; // Enum
   letterSpace: number;
-  overFlow: spec.TextOverflow;// Enum  // both
+  overflow: spec.TextOverflow;// Enum  // both
 
   width = 0;
   height = 0;
@@ -23,7 +23,7 @@ export class TextLayout {
   lineHeight: number;
 
   constructor (options: spec.TextContentOptions) {
-    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.display, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, autoWidth = false, fontSize, lineHeight = fontSize } = options;
+    const { textHeight = 100, textWidth = 100, textOverflow = spec.TextOverflow.clip, textBaseline = spec.TextBaseline.top, textAlign = spec.TextAlignment.left, text = ' ', letterSpace = 0, autoWidth = false, fontSize, lineHeight = fontSize } = options;
 
     const tempWidth = fontSize + letterSpace;
 
@@ -34,7 +34,7 @@ export class TextLayout {
     this.height = textHeight;
 
     this.letterSpace = letterSpace;
-    this.overFlow = textOverflow;
+    this.overflow = textOverflow;
     this.textBaseline = textBaseline;
     this.textAlign = textAlign;
     this.lineHeight = lineHeight;

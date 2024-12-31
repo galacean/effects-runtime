@@ -4,6 +4,7 @@ export * from './sprite-color-track';
 export * from './sub-composition-track';
 export * from './transform-track';
 export * from './material-track';
+export * from './particle-track';
 export * from './property-track';
 export * from './vector4-property-track';
 export * from './color-property-track';

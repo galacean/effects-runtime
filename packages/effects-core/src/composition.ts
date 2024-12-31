@@ -290,6 +290,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.createContent();
 
     this.buildItemTree(this.rootItem);
+    this.rootComposition.setChildrenRenderOrder(0);
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 

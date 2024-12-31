@@ -24,13 +24,9 @@ export class PlayableGraph {
     }
 
     // 更新节点时间
-    for (const playable of this.playables) {
-      this.updatePlayableTime(playable, dt / 1000);
-    }
-  }
-
-  connect (source: Playable, sourceOutputPort: number, destination: Playable, destinationInputPort: number) {
-    destination.connectInput(destinationInputPort, source, sourceOutputPort);
+    // for (const playable of this.playables) {
+    //   this.updatePlayableTime(playable, dt / 1000);
+    // }
   }
 
   addOutput (output: PlayableOutput) {
@@ -42,13 +38,13 @@ export class PlayableGraph {
   }
 
   private processFrameWithRoot (output: PlayableOutput) {
-    output.sourcePlayable.processFrameRecursive(output.context, output.getSourceOutputPort());
+    output.sourcePlayable.processFrame(output.context);
     output.processFrame();
   }
 
   private prepareFrameWithRoot (output: PlayableOutput) {
-    output.sourcePlayable.prepareFrameRecursive(output.context, output.getSourceOutputPort());
     output.prepareFrame();
+    output.sourcePlayable.prepareFrame(output.context);
   }
 
   private updatePlayableTime (playable: Playable, deltaTime: number) {
@@ -69,12 +65,7 @@ export class Playable implements Disposable {
 
   private duration = 0;
   private destroyed = false;
-  private inputs: Playable[] = [];
-  private inputOuputPorts: number[] = [];
-  private inputWeight: number[] = [];
-  private outputs: Playable[] = [];
   private playState: PlayState = PlayState.Playing;
-  private traversalMode: PlayableTraversalMode = PlayableTraversalMode.Mix;
 
   /**
    * 当前本地播放的时间
@@ -83,9 +74,6 @@ export class Playable implements Disposable {
 
   constructor (graph: PlayableGraph, inputCount = 0) {
     graph.addPlayable(this);
-    this.inputs = new Array(inputCount);
-    this.inputOuputPorts = new Array(inputCount);
-    this.inputWeight = new Array(inputCount);
   }
 
   play () {
@@ -114,70 +102,6 @@ export class Playable implements Disposable {
     }
   }
 
-  connectInput (inputPort: number, sourcePlayable: Playable, sourceOutputPort: number, weight = 1.0) {
-    this.setInput(sourcePlayable, inputPort);
-    this.setInputWeight(inputPort, weight);
-    sourcePlayable.setOutput(this, sourceOutputPort);
-
-    if (this.inputOuputPorts.length < inputPort + 1) {
-      this.inputOuputPorts.length = inputPort + 1;
-    }
-    this.inputOuputPorts[inputPort] = sourceOutputPort;
-  }
-
-  addInput (sourcePlayable: Playable, sourceOutputPort: number, weight = 1.0) {
-    this.connectInput(this.getInputCount(), sourcePlayable, sourceOutputPort, weight);
-  }
-
-  getInputCount () {
-    return this.inputs.length;
-  }
-
-  getInputs (): Playable[] {
-    return this.inputs;
-  }
-
-  getInput (index: number): Playable {
-    return this.inputs[index];
-  }
-
-  getOutputCount () {
-    return this.outputs.length;
-  }
-
-  getOutputs (): Playable[] {
-    return this.outputs;
-  }
-
-  getOutput (index: number): Playable {
-    return this.outputs[index];
-  }
-
-  getInputWeight (inputIndex: number): number {
-    return this.inputWeight[inputIndex];
-  }
-
-  setInputWeight (playable: Playable, weight: number): void;
-
-  setInputWeight (inputIndex: number, weight: number): void;
-
-  setInputWeight (playableOrIndex: Playable | number, weight: number): void {
-    if (playableOrIndex instanceof Playable) {
-      for (let i = 0; i < this.inputs.length; i++) {
-        if (this.inputs[i] === playableOrIndex) {
-          this.inputWeight[i] = weight;
-
-          return;
-        }
-      }
-    } else {
-      if (this.inputWeight.length < playableOrIndex + 1) {
-        this.inputWeight.length = playableOrIndex + 1;
-      }
-      this.inputWeight[playableOrIndex] = weight;
-    }
-  }
-
   setTime (time: number) {
     this.time = time;
   }
@@ -198,14 +122,6 @@ export class Playable implements Disposable {
     return this.playState;
   }
 
-  setTraversalMode (mode: PlayableTraversalMode) {
-    this.traversalMode = mode;
-  }
-
-  getTraversalMode () {
-    return this.traversalMode;
-  }
-
   // onGraphStart () {
 
   // }
@@ -214,13 +130,13 @@ export class Playable implements Disposable {
 
   // }
 
-  onPlayablePlay (context: FrameContext) {
+  // onPlayablePlay (context: FrameContext) {
 
-  }
+  // }
 
-  onPlayablePause (context: FrameContext) {
+  // onPlayablePause (context: FrameContext) {
 
-  }
+  // }
 
   prepareFrame (context: FrameContext) {
 
@@ -242,91 +158,6 @@ export class Playable implements Disposable {
     // TODO 将节点从动画图中移除
     this.destroyed = true;
   }
-
-  /**
-   * @internal
-   */
-  prepareFrameRecursive (context: FrameContext, passthroughPort: number) {
-    if (this.destroyed || this.playState !== PlayState.Playing) {
-      return;
-    }
-    if (this.onPlayablePlayFlag) {
-      this.onPlayablePlay(context);
-      this.onPlayablePlayFlag = false;
-    }
-    if (this.onPlayablePauseFlag) {
-      this.onPlayablePause(context);
-      this.onPlayablePauseFlag = false;
-    }
-    if (passthroughPort === 0) {
-      this.prepareFrame(context);
-    }
-    // 前序遍历，用于设置节点的初始状态，weight etc.
-    switch (this.getTraversalMode()) {
-      case PlayableTraversalMode.Mix:
-        for (let i = 0; i < this.getInputCount(); i++) {
-          const input = this.getInput(i);
-
-          input.prepareFrameRecursive(context, this.inputOuputPorts[i]);
-        }
-
-        break;
-      case PlayableTraversalMode.Passthrough: {
-        const input = this.getInput(passthroughPort);
-
-        input.prepareFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
-
-        break;
-      }
-      default:
-      // do nothing
-    }
-  }
-
-  /**
-   * @internal
-   */
-  processFrameRecursive (context: FrameContext, passthroughPort: number) {
-    if (this.destroyed || this.playState !== PlayState.Playing) {
-      return;
-    }
-    // 后序遍历，保证 playable 拿到的 input 节点的估计数据是最新的
-    switch (this.getTraversalMode()) {
-      case PlayableTraversalMode.Mix: {
-        for (let i = 0; i < this.getInputCount(); i++) {
-          const input = this.getInput(i);
-
-          input.processFrameRecursive(context, this.inputOuputPorts[i]);
-        }
-
-        break;
-      }
-      case PlayableTraversalMode.Passthrough: {
-        const input = this.getInput(passthroughPort);
-
-        input.processFrameRecursive(context, this.inputOuputPorts[passthroughPort]);
-
-        break;
-      }
-      default:
-      // do nothing
-    }
-    this.processFrame(context);
-  }
-
-  private setOutput (outputPlayable: Playable, outputPort: number) {
-    if (this.outputs.length < outputPort + 1) {
-      this.outputs.length = outputPort + 1;
-    }
-    this.outputs[outputPort] = outputPlayable;
-  }
-
-  private setInput (inputPlayable: Playable, inputPort: number) {
-    if (this.inputs.length < inputPort + 1) {
-      this.inputs.length = inputPort + 1;
-    }
-    this.inputs[inputPort] = inputPlayable;
-  }
 }
 
 /**
@@ -347,7 +178,6 @@ export class PlayableOutput {
    * 当前本地播放的时间
    */
   protected time: number;
-  private sourceOutputPort = 0;
 
   constructor () {
     this.context = {
@@ -356,13 +186,8 @@ export class PlayableOutput {
     };
   }
 
-  setSourcePlayable (playable: Playable, port = 0) {
+  setSourcePlayable (playable: Playable) {
     this.sourcePlayable = playable;
-    this.sourceOutputPort = port;
-  }
-
-  getSourceOutputPort () {
-    return this.sourceOutputPort;
   }
 
   setUserData (value: object) {
@@ -398,9 +223,4 @@ export interface FrameContext {
 export enum PlayState {
   Playing,
   Paused,
-}
-
-export enum PlayableTraversalMode {
-  Mix,
-  Passthrough,
 }

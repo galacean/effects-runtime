@@ -4,6 +4,7 @@ import { RichTextLoader } from './rich-text-loader';
 
 export * from './rich-text-parser';
 export * from './rich-text-component';
+export * from './rich-text-loader';
 
 /**
  * 插件版本号
