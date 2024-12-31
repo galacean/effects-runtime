@@ -1,11 +1,11 @@
 import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from './property-clip-playable';
+import { TrackMixerPlayable } from './track-mixer-playable';
 
-export class FloatPropertyMixerPlayable extends Playable {
+export class FloatPropertyMixerPlayable extends TrackMixerPlayable {
   propertyName = '';
 
-  override processFrame (context: FrameContext): void {
+  override evaluate (context: FrameContext): void {
     const boundObject = context.output.getUserData();
 
     if (!boundObject) {
@@ -16,11 +16,11 @@ export class FloatPropertyMixerPlayable extends Playable {
     let value = 0;
 
     // evaluate the curve
-    for (let i = 0; i < this.getInputCount(); i++) {
-      const weight = this.getInputWeight(i);
+    for (let i = 0; i < this.clipPlayables.length; i++) {
+      const weight = this.getClipWeight(i);
 
       if (weight > 0) {
-        const propertyClipPlayable = this.getInput(i) as PropertyClipPlayable<number>;
+        const propertyClipPlayable = this.getClipPlayable(i) as PropertyClipPlayable<number>;
 
         if (!(propertyClipPlayable instanceof PropertyClipPlayable)) {
           console.error('FloatPropertyTrack added non-FloatPropertyPlayableAsset');

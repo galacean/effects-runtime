@@ -24,18 +24,19 @@ export class Core {
 
   constructor (
     private readonly gl: WebGLRenderingContext | WebGL2RenderingContext,
+    debug = false,
   ) {
     if (!gl) {
       throw new Error('Unsupported WebGL context.');
     }
-    this.hook(gl);
+    this.hook(gl, debug);
   }
 
-  private hook (gl: WebGLRenderingContext | WebGL2RenderingContext): void {
-    this.drawCallHook = new DrawCallHook(gl);
-    this.textureHook = new TextureHook(gl);
-    this.shaderHook = new ShaderHook(gl);
-    this.programHook = new ProgramHook(gl);
+  private hook (gl: WebGLRenderingContext | WebGL2RenderingContext, debug: boolean): void {
+    this.drawCallHook = new DrawCallHook(gl, debug);
+    this.textureHook = new TextureHook(gl, debug);
+    this.shaderHook = new ShaderHook(gl, debug);
+    this.programHook = new ProgramHook(gl, debug);
   }
 
   /**
@@ -81,12 +82,12 @@ export class Core {
       fps: Math.round((this.updateCounter * 1000) / (now - this.updateTime)),
       // eslint-disable-next-line compat/compat -- performance.memory is not standard
       memory: performance.memory && (performance.memory.usedJSHeapSize / 1048576) >> 0,
-      drawCall: (this.drawCallHook.drawCall === 0) ? 0 : this.drawCallHook.drawCall - 1,
-      triangles: (this.drawCallHook.triangles === 0) ? 0 : this.drawCallHook.triangles - 2,
+      drawCall: (this.drawCallHook.drawCall === 0) ? 0 : this.drawCallHook.drawCall,
+      triangles: (this.drawCallHook.triangles === 0) ? 0 : this.drawCallHook.triangles,
       lines: this.drawCallHook.lines,
       points: this.drawCallHook.points,
       textures: this.textureHook.textures,
-      shaders: (this.shaderHook.shaders === 0) ? 0 : this.shaderHook.shaders + 1,
+      shaders: (this.shaderHook.shaders === 0) ? 0 : this.shaderHook.shaders,
       programs: this.programHook.programs,
       webglContext: this.gl instanceof WebGL2RenderingContext ? '2.0' : '1.0',
     };

@@ -1,4 +1,5 @@
-import type { Engine, math } from '@galacean/effects';
+import type { Engine } from '@galacean/effects';
+import { assertExist, math } from '@galacean/effects';
 import { effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
@@ -45,6 +46,14 @@ export class RichTextComponent extends TextComponent {
 
   private singleLineHeight: number = 1.571;
   private size: math.Vector2 | null = null;
+  /**
+   * 获取第一次渲染的 size
+   */
+  private initialized: boolean = false;
+  /**
+   * canvas 大小
+   */
+  private canvasSize: math.Vector2 | null = null;
 
   constructor (engine: Engine) {
     super(engine);
@@ -101,7 +110,7 @@ export class RichTextComponent extends TextComponent {
     this.generateTextProgram(this.text);
     let width = 0, height = 0;
     const { textLayout, textStyle } = this;
-
+    const { overflow } = textLayout;
     const context = this.context;
 
     context.save();
@@ -116,7 +125,7 @@ export class RichTextComponent extends TextComponent {
       offsetY: fontHeight * (this.singleLineHeight - 1) / 2,
     };
 
-    this.processedTextOptions.forEach((options, index) => {
+    this.processedTextOptions.forEach(options => {
       const { text, isNewLine, fontSize } = options;
 
       if (isNewLine) {
@@ -161,39 +170,69 @@ export class RichTextComponent extends TextComponent {
     }
     const { x = 1, y = 1 } = this.size;
 
-    this.item.transform.size.set(x * width * this.SCALE_FACTOR * this.SCALE_FACTOR, y * height * this.SCALE_FACTOR * this.SCALE_FACTOR);
-    this.textLayout.width = width / textStyle.fontScale;
-    this.textLayout.height = height / textStyle.fontScale;
-    this.canvas.width = width;
-    this.canvas.height = height;
-    context.clearRect(0, 0, width, height);
+    if (!this.initialized) {
+      this.canvasSize = new math.Vector2(width, height);
+      this.item.transform.size.set(x * width * this.SCALE_FACTOR * this.SCALE_FACTOR, y * height * this.SCALE_FACTOR * this.SCALE_FACTOR);
+      this.size = this.item.transform.size.clone();
+      this.initialized = true;
+    }
+    assertExist(this.canvasSize);
+    const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
+
+    this.textLayout.width = canvasWidth / textStyle.fontScale;
+    this.textLayout.height = canvasHeight / textStyle.fontScale;
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
+    context.clearRect(0, 0, canvasWidth, canvasHeight);
     // fix bug 1/255
     context.fillStyle = `rgba(255, 255, 255, ${this.ALPHA_FIX_VALUE})`;
     if (!flipY) {
-      context.translate(0, height);
+      context.translate(0, canvasHeight);
       context.scale(1, -1);
     }
-    let charsLineHeight = charsInfo[0].lineHeight - charsInfo[0].offsetY;
 
     if (charsInfo.length === 0) {
       return;
     }
+    let charsLineHeight = textLayout.getOffsetY(textStyle, charsInfo.length, fontHeight * this.singleLineHeight, textStyle.fontSize);
+
     charsInfo.forEach((charInfo, index) => {
-      const { richOptions, offsetX } = charInfo;
-      const x = textLayout.getOffsetX(textStyle, charInfo.width);
+      const { richOptions, offsetX, width } = charInfo;
+
+      let charWidth = width;
+      let offset = offsetX;
+
+      if (overflow === spec.TextOverflow.display) {
+        if (width > canvasWidth) {
+          const scale = canvasWidth / width;
+
+          charWidth *= scale;
+          offset = offsetX.map(x => x * scale);
+        }
+
+      }
+
+      const x = this.textLayout.getOffsetX(textStyle, charWidth);
 
       if (index > 0) {
-        charsLineHeight += charInfo.lineHeight - charInfo.offsetY + charsInfo[index - 1].offsetY;
+        charsLineHeight += charInfo.lineHeight - charInfo.offsetY;
       }
       richOptions.forEach((options, index) => {
         const { fontScale, textColor, fontFamily: textFamily, textWeight, fontStyle: richStyle } = textStyle;
         const { text, fontSize, fontColor = textColor, fontFamily = textFamily, fontWeight = textWeight, fontStyle = richStyle } = options;
+        let textSize = fontSize;
 
-        context.font = `${fontStyle} ${fontWeight} ${fontSize * fontScale}px ${fontFamily}`;
+        if (overflow === spec.TextOverflow.display) {
+          if (width > canvasWidth) {
+            textSize /= width / canvasWidth;
+          }
+        }
+
+        context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
 
         context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
 
-        context.fillText(text, offsetX[index] + x, charsLineHeight);
+        context.fillText(text, offset[index] + x, charsLineHeight);
       });
     });
     //与 toDataURL() 两种方式都需要像素读取操作
@@ -221,9 +260,24 @@ export class RichTextComponent extends TextComponent {
     context.restore();
   }
 
+  /**
+   * 设置文本溢出模式
+   *
+   * - clip: 当文本内容超出边界框时，多余的会被截断。
+   * - display: 该模式下会显示所有文本，会自动调整文本字号以保证显示完整。
+   * > 当存在多行时，部分行内文本可能存在文本字号变小的情况，其他行为正常情况
+   *
+   * @param overflow - 文本溢出模式
+   */
+  setOverflow (overflow: spec.TextOverflow) {
+    this.textLayout.overflow = overflow;
+    this.isDirty = true;
+  }
+
   override updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
+    this.textLayout.textBaseline = options.textBaseline || spec.TextBaseline.middle;
     this.text = options.text ? options.text.toString() : ' ';
   }
 

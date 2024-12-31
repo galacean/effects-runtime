@@ -7,6 +7,68 @@
 
 ---
 
+## 2.2.0
+
+`2024-12-31`
+
+- Feat: Enhanced rich text size handling, with support for vertical text alignment. [#789](https://github.com/galacean/effects-runtime/pull/789) @Sruimeng
+- Feat: Added `overflow` interface for rich text. [#813](https://github.com/galacean/effects-runtime/pull/813) @Sruimeng
+- Feat: Introduced parameters to disable `avif/webp` formats. [#805](https://github.com/galacean/effects-runtime/pull/805) @RGCHN
+- Feat: Exported the rich-text-loader module. [#814](https://github.com/galacean/effects-runtime/pull/814) @yiiqii
+- Refactor: Refactored the initialization parameters for the Stats plugin to support custom containers and visibility options. [#798](https://github.com/galacean/effects-runtime/pull/798) @yiiqii
+- Refactor: timeline playables structure. [#788](https://github.com/galacean/effects-runtime/pull/788) @wumaolinmaoan
+- Perf: opt timeline evaluate performance. [#809](https://github.com/galacean/effects-runtime/pull/809) @wumaolinmaoan
+- Fix: item render order. [#816](https://github.com/galacean/effects-runtime/pull/816) @wumaolinmaoan
+- Fix: Fixed an issue where WebGL creation failure caused errors during player destruction. [#817](https://github.com/galacean/effects-runtime/pull/817) @Sruimeng
+- Fix: Resolved errors related to threejs rendering. [#818](https://github.com/galacean/effects-runtime/pull/818) @Sruimeng
+- Chore: upgrade devDependencies. [#793](https://github.com/galacean/effects-runtime/pull/793) @yiiqii
+
+## 2.1.5
+
+`2024-12-27`
+
+- Fix: Resolve the issue with message element triggering. [#801](https://github.com/galacean/effects-runtime/pull/801) @Sruimeng
+  - Fix: message item triggering issue caused by time accuracy. [#804](https://github.com/galacean/effects-runtime/pull/804) @wumaolinmaoan
+- Fix: player fps setting. [#802](https://github.com/galacean/effects-runtime/pull/802) @wumaolinmaoan
+
+## 2.1.4
+
+`2024-12-20`
+
+- Perf: opt sprite shader alpha clip performance. [#794](https://github.com/galacean/effects-runtime/pull/794) @wumaolinmaoan
+- Test: Enhance certain unit test types and optimize the messaging for frame comparison failures. [#792](https://github.com/galacean/effects-runtime/pull/792) @yiiqii
+
+## 2.1.3
+
+`2024-12-16`
+
+- Perf: opt particle rotation calculate performance. [#787](https://github.com/galacean/effects-runtime/pull/787) @wumaolinmaoan
+- Fix: Resolved the issue with custom fonts in rich text. [#784](https://github.com/galacean/effects-runtime/pull/784) @Sruimeng
+- Fix: restore default font settings in richtext component rendering. [#781](https://github.com/galacean/effects-runtime/pull/781) @Sruimeng
+- Fix: particle system rotation over lifetime always exist. [#779](https://github.com/galacean/effects-runtime/pull/779) @wumaolinmaoan
+- Fix: Added a notification to install when using newly added plugins. [#778](https://github.com/galacean/effects-runtime/pull/778) @yiiqii
+- Fix: support rich text type in player and enhance rich text component. [#777](https://github.com/galacean/effects-runtime/pull/777) @Sruimeng
+- Fix: Implemented a check for the BOM object in SSR environments before usage. [#767](https://github.com/galacean/effects-runtime/pull/767) @RGCHN
+  - Refactor: avoid BOM access when server-side rendering. [#782](https://github.com/galacean/effects-runtime/pull/782) @PeachScript
+  - Fix: return can only be used within a function body. [#783](https://github.com/galacean/effects-runtime/pull/783) @yiiqii
+- Fix: texture source from cache error. [#775](https://github.com/galacean/effects-runtime/pull/775) @wumaolinmaoan
+- Fix: sprite billboard. [#774](https://github.com/galacean/effects-runtime/pull/774) @wumaolinmaoan
+- Fix: track bindings are set incorrectly when there are reused precompositions. [#773](https://github.com/galacean/effects-runtime/pull/773) @wumaolinmaoan
+- Test: Reorganized and refined the code for frame comparison tests. [#780](https://github.com/galacean/effects-runtime/pull/780) @yiiqii
+- Chore: imgui add node graph. [#786](https://github.com/galacean/effects-runtime/pull/786) @wumaolinmaoan
+
+## 2.1.2
+
+`2024-11-29`
+
+- Fix: Optimized the calculation logic for the player's dimensions to ensure accurate width and height retrieval across various environments. [#762](https://github.com/galacean/effects-runtime/pull/762) @Sruimeng
+- Fix: composition setVisible and texture load error. [#764](https://github.com/galacean/effects-runtime/pull/764) @wumaolinmaoan
+- Fix: interact mesh rendering has offset. [#768](https://github.com/galacean/effects-runtime/pull/768) @wumaolinmaoan
+- Chore: update frame test old player versio. [#770](https://github.com/galacean/effects-runtime/pull/770) @wumaolinmaoan
+- Chore: imgui add object field. [#771](https://github.com/galacean/effects-runtime/pull/771) @wumaolinmaoan
+  - opt imgui assets loading logic
+- Chore: add imgui widgets. [#765](https://github.com/galacean/effects-runtime/pull/765) @wumaolinmaoan
+
 ## 2.1.1
 
 `2024-11-26`

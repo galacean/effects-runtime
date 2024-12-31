@@ -30,7 +30,6 @@ export type VFXItemProps =
     items: VFXItemProps[],
     startTime: number,
     relative?: boolean,
-    listIndex?: number,
     refId?: string,
   }
   ;
@@ -315,7 +314,7 @@ export class VFXItem extends EffectsObject implements Disposable {
 
   /**
    * 添加组件
-   * @param classConstructor - 要添加的组件类型
+   * @param classConstructor - 要添加的组件
    */
   addComponent<T extends Component> (classConstructor: Constructor<T>): T {
     const newComponent = new classConstructor(this.engine);
@@ -634,7 +633,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     super.fromData(data);
     const {
       id, name, delay, parentId, endBehavior, transform,
-      listIndex = 0,
       duration = 0,
     } = data;
 
@@ -700,8 +698,6 @@ export class VFXItem extends EffectsObject implements Disposable {
         this.rendererComponents.push(component.renderer);
       }
     }
-    // renderOrder 在 component 初始化后设置。确保能拿到 rendererComponent。
-    this.renderOrder = listIndex;
   }
 
   override toData (): void {

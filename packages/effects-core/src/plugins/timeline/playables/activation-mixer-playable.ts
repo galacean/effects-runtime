@@ -1,10 +1,10 @@
 import { VFXItem } from '../../../vfx-item';
 import type { FrameContext } from '../../cal/playable-graph';
-import { Playable } from '../../cal/playable-graph';
+import { TrackMixerPlayable } from './track-mixer-playable';
 
-export class ActivationMixerPlayable extends Playable {
+export class ActivationMixerPlayable extends TrackMixerPlayable {
 
-  override processFrame (context: FrameContext): void {
+  override evaluate (context: FrameContext): void {
     const boundObject = context.output.getUserData();
 
     if (!(boundObject instanceof VFXItem)) {
@@ -15,8 +15,8 @@ export class ActivationMixerPlayable extends Playable {
 
     let hasInput = false;
 
-    for (let i = 0; i < this.getInputCount(); i++) {
-      if (this.getInputWeight(i) > 0) {
+    for (let i = 0; i < this.clipPlayables.length; i++) {
+      if (this.getClipWeight(i) > 0) {
         hasInput = true;
 
         break;

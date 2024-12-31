@@ -8,6 +8,68 @@
 
 ---
 
+## 2.2.0
+
+`2024-12-31`
+
+- Feat: 优化富文本大小处理，文本支持垂直对齐。[#789](https://github.com/galacean/effects-runtime/pull/789) @Sruimeng
+- Feat: 增加富文本 `overflow` 接口。[#813](https://github.com/galacean/effects-runtime/pull/813) @Sruimeng
+- Feat: 增加是否禁用 `avif/webp` 参数。[#805](https://github.com/galacean/effects-runtime/pull/805) @RGCHN
+- Feat: 导出 rich-text-loader。[#814](https://github.com/galacean/effects-runtime/pull/814) @yiiqii
+- Refactor: 重构 Stats 插件初始化入参，支持自定义容器和是否可见。[#798](https://github.com/galacean/effects-runtime/pull/798) @yiiqii
+- Refactor: timeline playables structure. [#788](https://github.com/galacean/effects-runtime/pull/788) @wumaolinmaoan
+- Perf: opt timeline evaluate performance. [#809](https://github.com/galacean/effects-runtime/pull/809) @wumaolinmaoan
+- Fix: item render order. [#816](https://github.com/galacean/effects-runtime/pull/816) @wumaolinmaoan
+- Fix: 修复 WebGL 创建失败， player 销毁报错问题。[#817](https://github.com/galacean/effects-runtime/pull/817) @Sruimeng
+- Fix: 修复 threejs 渲染报错。[#818](https://github.com/galacean/effects-runtime/pull/818) @Sruimeng
+- Chore: upgrade devDependencies. [#793](https://github.com/galacean/effects-runtime/pull/793) @yiiqii
+
+## 2.1.5
+
+`2024-12-27`
+
+- Fix: 修复消息元素触发问题。[#801](https://github.com/galacean/effects-runtime/pull/801) @Sruimeng
+  - Fix: message item triggering issue caused by time accuracy. [#804](https://github.com/galacean/effects-runtime/pull/804) @wumaolinmaoan
+- Fix: player fps setting. [#802](https://github.com/galacean/effects-runtime/pull/802) @wumaolinmaoan
+
+## 2.1.4
+
+`2024-12-20`
+
+- Perf: opt sprite shader alpha clip performance. [#794](https://github.com/galacean/effects-runtime/pull/794) @wumaolinmaoan
+- Test: 完善部分单测类型，优化帧对比失败提示。[#792](https://github.com/galacean/effects-runtime/pull/792) @yiiqii
+
+## 2.1.3
+
+`2024-12-16`
+
+- Perf: opt particle rotation calculate performance. [#787](https://github.com/galacean/effects-runtime/pull/787) @wumaolinmaoan
+- Fix: 修复富文本自定义字体问题。[#784](https://github.com/galacean/effects-runtime/pull/784) @Sruimeng
+- Fix: restore default font settings in richtext component rendering. [#781](https://github.com/galacean/effects-runtime/pull/781) @Sruimeng
+- Fix: particle system rotation over lifetime always exist. [#779](https://github.com/galacean/effects-runtime/pull/779) @wumaolinmaoan
+- Fix: 补充新增插件的使用时未 install 提示。[#778](https://github.com/galacean/effects-runtime/pull/778) @yiiqii
+- Fix: support rich text type in player and enhance rich text component. [#777](https://github.com/galacean/effects-runtime/pull/777) @Sruimeng
+- Fix: 兼容 SSR 环境 BOM 对象使用前的判断。[#767](https://github.com/galacean/effects-runtime/pull/767) @RGCHN
+  - Refactor: avoid BOM access when server-side rendering. [#782](https://github.com/galacean/effects-runtime/pull/782) @PeachScript
+  - Fix: return can only be used within a function body. [#783](https://github.com/galacean/effects-runtime/pull/783) @yiiqii
+- Fix: texture source from cache error. [#775](https://github.com/galacean/effects-runtime/pull/775) @wumaolinmaoan
+- Fix: sprite billboard. [#774](https://github.com/galacean/effects-runtime/pull/774) @wumaolinmaoan
+- Fix: track bindings are set incorrectly when there are reused precompositions. [#773](https://github.com/galacean/effects-runtime/pull/773) @wumaolinmaoan
+- Test: 整理并优化帧对比测试代码。[#780](https://github.com/galacean/effects-runtime/pull/780) @yiiqii
+- Chore: imgui add node graph. [#786](https://github.com/galacean/effects-runtime/pull/786) @wumaolinmaoan
+
+## 2.1.2
+
+`2024-11-29`
+
+- Fix: 修复播放器尺寸计算逻辑，确保在不同环境下正确获取宽高。[#762](https://github.com/galacean/effects-runtime/pull/762) @Sruimeng
+- Fix: composition setVisible and texture load error. [#764](https://github.com/galacean/effects-runtime/pull/764) @wumaolinmaoan
+- Fix: interact mesh rendering has offset. [#768](https://github.com/galacean/effects-runtime/pull/768) @wumaolinmaoan
+- Chore: update frame test old player versio. [#770](https://github.com/galacean/effects-runtime/pull/770) @wumaolinmaoan
+- Chore: imgui add object field. [#771](https://github.com/galacean/effects-runtime/pull/771) @wumaolinmaoan
+  - opt imgui assets loading logic
+- Chore: add imgui widgets. [#765](https://github.com/galacean/effects-runtime/pull/765) @wumaolinmaoan
+
 ## 2.1.1
 
 `2024-11-26`

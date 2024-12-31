@@ -1,5 +1,7 @@
-import { Behaviour, type GLRenderer } from '@galacean/effects';
+import type { GLRenderer } from '@galacean/effects';
+import { Behaviour } from '@galacean/effects';
 import { Monitor } from './monitor';
+import type { StatsOptions } from './stats';
 
 export class StatsComponent extends Behaviour {
   /**
@@ -7,11 +9,11 @@ export class StatsComponent extends Behaviour {
    */
   monitor: Monitor;
 
-  override onStart (): void {
+  init (options: Required<StatsOptions>): void {
     const renderer = this.engine.renderer as GLRenderer;
     const gl = renderer.pipelineContext.gl;
 
-    this.monitor = new Monitor(gl);
+    this.monitor = new Monitor(gl, options);
   }
 
   override onUpdate (dt: number): void {
