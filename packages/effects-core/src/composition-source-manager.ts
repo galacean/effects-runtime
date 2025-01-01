@@ -9,8 +9,6 @@ import type { Texture } from './texture';
 import type { Disposable } from './utils';
 import type { VFXItemData } from './asset-loader';
 
-let listOrder = 0;
-
 interface RendererOptionsWithMask extends spec.RendererOptions {
   mask?: number,
 }
@@ -75,7 +73,6 @@ export class CompositionSourceManager implements Disposable {
     this.pluginSystem = pluginSystem;
     this.totalTime = totalTime ?? 0;
     this.textures = cachedTextures;
-    listOrder = 0;
     this.sourceContent = this.getContent(this.composition);
   }
 
@@ -115,8 +112,6 @@ export class CompositionSourceManager implements Disposable {
       const itemProps = sourceItemData;
 
       if (passRenderLevel(sourceItemData.renderLevel, this.renderLevel)) {
-        itemProps.listIndex = listOrder++;
-
         if (
           itemProps.type === spec.ItemType.sprite ||
           itemProps.type === spec.ItemType.particle ||

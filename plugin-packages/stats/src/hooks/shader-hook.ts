@@ -1,5 +1,3 @@
-import { Stats } from '../stats';
-
 /**
  * ShaderHook
  */
@@ -12,6 +10,7 @@ export default class ShaderHook {
 
   constructor (
     private readonly gl: WebGLRenderingContext | WebGL2RenderingContext,
+    private readonly debug: boolean,
   ) {
     this.realAttachShader = gl.attachShader;
     this.realDetachShader = gl.detachShader;
@@ -19,7 +18,7 @@ export default class ShaderHook {
     gl.attachShader = this.hookedAttachShader.bind(this);
     gl.detachShader = this.hookedDetachShader.bind(this);
 
-    if (Stats.options.debug) {
+    if (debug) {
       console.debug('Shader is hooked.');
     }
   }
@@ -28,7 +27,7 @@ export default class ShaderHook {
     this.realAttachShader.call(this.gl, program, shader);
     this.shaders++;
 
-    if (Stats.options.debug) {
+    if (this.debug) {
       console.debug(`AttachShader: ${shader}. shaders: ${this.shaders}`);
     }
   }
@@ -37,7 +36,7 @@ export default class ShaderHook {
     this.realDetachShader.call(this.gl, program, shader);
     this.shaders--;
 
-    if (Stats.options.debug) {
+    if (this.debug) {
       console.debug(`DetachShader. shaders: ${this.shaders}`);
     }
   }

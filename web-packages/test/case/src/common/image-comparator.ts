@@ -1,5 +1,4 @@
 export class ImageComparator {
-
   constructor (
     private pixelThreshold: number,
   ) { }

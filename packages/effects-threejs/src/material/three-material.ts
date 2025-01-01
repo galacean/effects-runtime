@@ -35,6 +35,7 @@ export class ThreeMaterial extends Material {
    * 储存 uniform 变量名及对应的 THREE uniform 对象
    */
   uniforms: Record<string, THREE.Uniform> = {};
+  macrosDirty: boolean = true;
 
   /**
    * 构造函数
@@ -479,15 +480,22 @@ export class ThreeMaterial extends Material {
     this.uniforms[name] = this.material.uniforms[name] = uniform;
   }
 
-  // 下列三个方法暂时不需要实现
-  enableMacro (keyword: string): void {
-    throw new Error('Method not implemented.');
+  override enableMacro (keyword: string, value?: boolean | number): void {
+    if (!this.isMacroEnabled(keyword) || this.enabledMacros[keyword] !== value) {
+      this.enabledMacros[keyword] = value ?? true;
+      this.macrosDirty = true;
+    }
   }
-  disableMacro (keyword: string): void {
-    throw new Error('Method not implemented.');
+
+  override disableMacro (keyword: string): void {
+    if (this.isMacroEnabled(keyword)) {
+      delete this.enabledMacros[keyword];
+      this.macrosDirty = true;
+    }
   }
-  isMacroEnabled (keyword: string): boolean {
-    throw new Error('Method not implemented.');
+
+  override isMacroEnabled (keyword: string): boolean {
+    return this.enabledMacros[keyword] !== undefined;
   }
 
   clone (props?: MaterialProps): Material {

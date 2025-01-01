@@ -7,6 +7,37 @@
 
 ---
 
+## 2.2.0
+
+`2024-12-31`
+
+- Feat: Enhanced rich text size handling, with support for vertical text alignment. [#789](https://github.com/galacean/effects-runtime/pull/789) @Sruimeng
+- Feat: Added `overflow` interface for rich text. [#813](https://github.com/galacean/effects-runtime/pull/813) @Sruimeng
+- Feat: Introduced parameters to disable `avif/webp` formats. [#805](https://github.com/galacean/effects-runtime/pull/805) @RGCHN
+- Feat: Exported the rich-text-loader module. [#814](https://github.com/galacean/effects-runtime/pull/814) @yiiqii
+- Refactor: Refactored the initialization parameters for the Stats plugin to support custom containers and visibility options. [#798](https://github.com/galacean/effects-runtime/pull/798) @yiiqii
+- Refactor: timeline playables structure. [#788](https://github.com/galacean/effects-runtime/pull/788) @wumaolinmaoan
+- Perf: opt timeline evaluate performance. [#809](https://github.com/galacean/effects-runtime/pull/809) @wumaolinmaoan
+- Fix: item render order. [#816](https://github.com/galacean/effects-runtime/pull/816) @wumaolinmaoan
+- Fix: Fixed an issue where WebGL creation failure caused errors during player destruction. [#817](https://github.com/galacean/effects-runtime/pull/817) @Sruimeng
+- Fix: Resolved errors related to threejs rendering. [#818](https://github.com/galacean/effects-runtime/pull/818) @Sruimeng
+- Chore: upgrade devDependencies. [#793](https://github.com/galacean/effects-runtime/pull/793) @yiiqii
+
+## 2.1.5
+
+`2024-12-27`
+
+- Fix: Resolve the issue with message element triggering. [#801](https://github.com/galacean/effects-runtime/pull/801) @Sruimeng
+  - Fix: message item triggering issue caused by time accuracy. [#804](https://github.com/galacean/effects-runtime/pull/804) @wumaolinmaoan
+- Fix: player fps setting. [#802](https://github.com/galacean/effects-runtime/pull/802) @wumaolinmaoan
+
+## 2.1.4
+
+`2024-12-20`
+
+- Perf: opt sprite shader alpha clip performance. [#794](https://github.com/galacean/effects-runtime/pull/794) @wumaolinmaoan
+- Test: Enhance certain unit test types and optimize the messaging for frame comparison failures. [#792](https://github.com/galacean/effects-runtime/pull/792) @yiiqii
+
 ## 2.1.3
 
 `2024-12-16`

@@ -86,7 +86,6 @@ export class TestPlayer {
 
   gotoTime (newtime: number) {
     const time = newtime;
-    const deltaTime = time - this.lastTime;
 
     this.lastTime = newtime;
     // @ts-expect-error

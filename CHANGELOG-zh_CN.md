@@ -8,6 +8,37 @@
 
 ---
 
+## 2.2.0
+
+`2024-12-31`
+
+- Feat: 优化富文本大小处理，文本支持垂直对齐。[#789](https://github.com/galacean/effects-runtime/pull/789) @Sruimeng
+- Feat: 增加富文本 `overflow` 接口。[#813](https://github.com/galacean/effects-runtime/pull/813) @Sruimeng
+- Feat: 增加是否禁用 `avif/webp` 参数。[#805](https://github.com/galacean/effects-runtime/pull/805) @RGCHN
+- Feat: 导出 rich-text-loader。[#814](https://github.com/galacean/effects-runtime/pull/814) @yiiqii
+- Refactor: 重构 Stats 插件初始化入参，支持自定义容器和是否可见。[#798](https://github.com/galacean/effects-runtime/pull/798) @yiiqii
+- Refactor: timeline playables structure. [#788](https://github.com/galacean/effects-runtime/pull/788) @wumaolinmaoan
+- Perf: opt timeline evaluate performance. [#809](https://github.com/galacean/effects-runtime/pull/809) @wumaolinmaoan
+- Fix: item render order. [#816](https://github.com/galacean/effects-runtime/pull/816) @wumaolinmaoan
+- Fix: 修复 WebGL 创建失败， player 销毁报错问题。[#817](https://github.com/galacean/effects-runtime/pull/817) @Sruimeng
+- Fix: 修复 threejs 渲染报错。[#818](https://github.com/galacean/effects-runtime/pull/818) @Sruimeng
+- Chore: upgrade devDependencies. [#793](https://github.com/galacean/effects-runtime/pull/793) @yiiqii
+
+## 2.1.5
+
+`2024-12-27`
+
+- Fix: 修复消息元素触发问题。[#801](https://github.com/galacean/effects-runtime/pull/801) @Sruimeng
+  - Fix: message item triggering issue caused by time accuracy. [#804](https://github.com/galacean/effects-runtime/pull/804) @wumaolinmaoan
+- Fix: player fps setting. [#802](https://github.com/galacean/effects-runtime/pull/802) @wumaolinmaoan
+
+## 2.1.4
+
+`2024-12-20`
+
+- Perf: opt sprite shader alpha clip performance. [#794](https://github.com/galacean/effects-runtime/pull/794) @wumaolinmaoan
+- Test: 完善部分单测类型，优化帧对比失败提示。[#792](https://github.com/galacean/effects-runtime/pull/792) @yiiqii
+
 ## 2.1.3
 
 `2024-12-16`

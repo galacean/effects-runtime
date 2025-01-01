@@ -290,6 +290,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.rootComposition.createContent();
 
     this.buildItemTree(this.rootItem);
+    this.rootComposition.setChildrenRenderOrder(0);
     this.pluginSystem.resetComposition(this, this.renderFrame);
   }
 
@@ -535,7 +536,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       return;
     }
 
-    const dt = this.getUpdateTime(deltaTime * this.speed);
+    const dt = parseFloat(this.getUpdateTime(deltaTime * this.speed).toFixed(0));
 
     this.updateRootComposition(dt / 1000);
     this.updateVideo();

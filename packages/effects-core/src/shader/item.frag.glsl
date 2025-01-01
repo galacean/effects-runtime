@@ -26,9 +26,12 @@ void main() {
   vec4 color = vec4(0.);
   vec4 texColor = texture2D(_MainTex, vTexCoord.xy);
   color = blendColor(texColor, vColor, floor(0.5 + vParams.y));
+
+  #ifdef ALPHA_CLIP
   if(vParams.z == 0. && color.a < 0.04) { // 1/256 = 0.04
     discard;
   }
+  #endif
   //color.rgb = pow(color.rgb, vec3(2.2));
   color.a = clamp(color.a, 0.0, 1.0);
   gl_FragColor = color;
