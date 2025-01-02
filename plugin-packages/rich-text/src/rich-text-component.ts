@@ -141,7 +141,7 @@ export class RichTextComponent extends TextComponent {
         height += charInfo.lineHeight;
       }
       //恢复默认设置
-      context.font = `10px ${options.fontFamily || textStyle.fontFamily}`;
+      context.font = `${options.fontWeight || textStyle.textWeight} 10px ${options.fontFamily || textStyle.fontFamily}`;
       const textWidth = context.measureText(text).width;
       const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale;
 
