@@ -11,6 +11,7 @@ import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
+import type { Pose } from '../animation-graph.ts/pose';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);
@@ -373,6 +374,30 @@ export class AnimationClip extends EffectsObject {
       this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
 
       this.floatCurves.push(curve);
+    }
+  }
+
+  getPose (time: number, outPose: Pose) {
+    let life = time / this.duration;
+
+    life = life < 0 ? 0 : (life > 1 ? 1 : life);
+
+    for (const curve of this.positionCurves) {
+      const value = curve.keyFrames.getValue(life);
+
+      outPose.setPosition(curve.path, value);
+    }
+
+    for (const curve of this.rotationCurves) {
+      const value = curve.keyFrames.getValue(life);
+
+      outPose.setRotation(curve.path, value);
+    }
+
+    for (const curve of this.scaleCurves) {
+      const value = curve.keyFrames.getValue(life);
+
+      outPose.setScale(curve.path, value);
     }
   }
 

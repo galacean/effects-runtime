@@ -21,3 +21,4 @@ export * from './cal/calculate-vfx-item';
 export * from './cal/calculate-item';
 export * from './timeline';
 export * from './text';
+export * from './animation-graph.ts';
