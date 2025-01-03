@@ -8,6 +8,13 @@
 
 ---
 
+## 2.2.1
+
+`2025-01-03`
+
+- Fix: 修复安卓机富文本字重问题。[#824](https://github.com/galacean/effects-runtime/pull/824) @Sruimeng
+- Fix: bounding box offset. [#822](https://github.com/galacean/effects-runtime/pull/822) @wumaolinmaoan
+
 ## 2.2.0
 
 `2024-12-31`

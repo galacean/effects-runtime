@@ -7,6 +7,13 @@
 
 ---
 
+## 2.2.1
+
+`2025-01-03`
+
+- Fix: Resolved the issue of bold font in rich text on Android devices. [#824](https://github.com/galacean/effects-runtime/pull/824) @Sruimeng
+- Fix: bounding box offset. [#822](https://github.com/galacean/effects-runtime/pull/822) @wumaolinmaoan
+
 ## 2.2.0
 
 `2024-12-31`
