@@ -1,6 +1,6 @@
 {
   "name": "@galacean/effects-plugin-rich-text",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Galacean Effects player richtext plugin",
   "module": "./dist/index.mjs",
   "main": "./dist/index.js",
