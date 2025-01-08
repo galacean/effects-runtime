@@ -210,8 +210,8 @@ describe('core/image-template', async () => {
     expect(result).to.eql(newImage);
   });
 
-  it('动态换图设置同名变量报错', async () => {
-    const consoleFunc = chai.spy(() => 'console error');
+  it('不同合成中动态换图设置同名变量不警告', async () => {
+    const consoleFunc = chai.spy(() => 'console warn');
     const assetManager = new AssetManager({
       variables: {
         'image_name': 'https://gw.alipayobjects.com/zos/gltf-asset/69720573582093/test.jpg',
@@ -219,9 +219,8 @@ describe('core/image-template', async () => {
     });
 
     logger.register((type, message) => {
-      if (type === 'error') {
+      if (type === 'warn' && message.includes('The same variable names')) {
         consoleFunc();
-        expect(message).to.include('The same variable names: [image_name]');
       }
     });
 
@@ -230,13 +229,38 @@ describe('core/image-template', async () => {
       'https://mdn.alipayobjects.com/mars/afts/file/A*vrTVRaB2lB4AAAAAAAAAAAAADlB4AQ',
     ].map(async url => assetManager.loadScene(url)));
 
+    expect(consoleFunc).to.have.not.been.called.once;
+    assetManager.dispose();
+    logger.unregister();
+  });
+
+  it('同合成中动态换图设置同名变量警告', async () => {
+    const consoleFunc = chai.spy(() => 'console warn');
+    const assetManager = new AssetManager({
+      variables: {
+        'image_name': 'https://gw.alipayobjects.com/zos/gltf-asset/69720573582093/test.jpg',
+      },
+    });
+
+    logger.register((type, message) => {
+      if (type === 'warn' && message.includes('The same variable names')) {
+        consoleFunc();
+        expect(message).to.include('[image_name]');
+      }
+    });
+
+    await Promise.all([
+      'https://mdn.alipayobjects.com/mars/afts/file/A*-MqgRolWUc4AAAAAAAAAAAAADlB4AQ',
+      'https://mdn.alipayobjects.com/mars/afts/file/A*l0VTQL0IrlMAAAAAAAAAAAAADlB4AQ',
+    ].map(async url => assetManager.loadScene(url)));
+
     expect(consoleFunc).to.have.been.called.once;
     assetManager.dispose();
     logger.unregister();
   });
 
-  it('替换文本发现同名变量报错', async () => {
-    const consoleFunc = chai.spy(() => 'console error');
+  it('不同合成中替换文本发现同名变量时不警告', async () => {
+    const consoleFunc = chai.spy(() => 'console warn');
     const assetManager = new AssetManager();
     const scenes = await Promise.all([
       'https://mdn.alipayobjects.com/mars/afts/file/A*-MqgRolWUc4AAAAAAAAAAAAADlB4AQ',
@@ -244,9 +268,8 @@ describe('core/image-template', async () => {
     ].map(async url => assetManager.loadScene(url)));
 
     logger.register((type, message) => {
-      if (type === 'error') {
+      if (type === 'warn') {
         consoleFunc();
-        expect(message).to.include('The same variable names: [text_desc]');
       }
     });
     const player = new Player({ container });
@@ -254,6 +277,33 @@ describe('core/image-template', async () => {
     await player.loadScene(scenes, {
       variables: {
         'text_desc': 'GE',
+      },
+    });
+
+    expect(consoleFunc).to.have.not.been.called.once;
+    player?.dispose();
+    logger.unregister();
+  });
+
+  it('同合成中替换文本发现同名变量时警告', async () => {
+    const consoleFunc = chai.spy(() => 'console warn');
+    const assetManager = new AssetManager();
+    const scenes = await Promise.all([
+      'https://mdn.alipayobjects.com/mars/afts/file/A*dcqeT5Vb34QAAAAAAAAAAAAADlB4AQ',
+      'https://mdn.alipayobjects.com/mars/afts/file/A*vrTVRaB2lB4AAAAAAAAAAAAADlB4AQ',
+    ].map(async url => assetManager.loadScene(url)));
+
+    logger.register((type, message) => {
+      if (type === 'warn' && message.includes('The same variable names')) {
+        consoleFunc();
+        expect(message).to.include('[text_title]');
+      }
+    });
+    const player = new Player({ container });
+
+    await player.loadScene(scenes, {
+      variables: {
+        'text_title': 'GE',
       },
     });
 

@@ -438,6 +438,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private updateTextVariables (scene: Scene, variables: spec.TemplateVariables = {}) {
     const renderer = this.renderer;
     const engine = renderer.engine;
+    const variableCache: string[] = [];
 
     scene.jsonScene.items.forEach(item => {
       if (item.type === spec.ItemType.text || item.type === spec.ItemType.richtext) {
@@ -447,8 +448,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
           return;
         }
 
-        // 检查变量合法性（如：是否重名）
-        checkTextVariables(item.name);
+        // 检查同合成下变量是否重名
+        checkTextVariables(variableCache, item.name);
 
         item.components.forEach(({ id }) => {
           const componentData = engine.findEffectsObjectData(id) as spec.TextComponentData;

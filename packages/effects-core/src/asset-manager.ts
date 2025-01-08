@@ -280,6 +280,7 @@ export class AssetManager implements Disposable {
   ): Promise<ImageLike[]> {
     const { useCompressedTexture, variables, disableWebP, disableAVIF } = this.options;
     const baseUrl = this.baseUrl;
+    const variableCache: string[] = [];
     const jobs = images.map(async (img, idx: number) => {
       const { url: png, webp, avif } = img;
       // eslint-disable-next-line compat/compat
@@ -298,8 +299,8 @@ export class AssetManager implements Disposable {
         const background = template.background;
 
         if (background) {
-          // 检查变量合法性（如：是否重名）
-          checkTemplateVariables(background, variables);
+          // 检查同合成下变量是否重名
+          checkTemplateVariables(variableCache, background?.name, variables);
           const url = getBackgroundImage(template, variables);
           const isVideo = background.type === spec.BackgroundType.video;
           // 根据背景类型确定加载函数

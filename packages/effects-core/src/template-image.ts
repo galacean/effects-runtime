@@ -3,9 +3,6 @@ import { loadImage } from './downloader';
 import { isString, logger } from './utils';
 import { HELP_LINK } from './constants';
 
-const sameTextVariableCache: string[] = [];
-const sameTemplateVariableCache: string[] = [];
-
 export function getBackgroundImage (
   template: spec.TemplateContent,
   variables?: spec.TemplateVariables,
@@ -67,24 +64,24 @@ export async function combineImageTemplate (
   return image;
 }
 
-export function checkTextVariables (name: string) {
-  if (sameTextVariableCache.includes(name)) {
-    logger.error(`The same variable names: [${name}], see ${HELP_LINK['Same variable names']}.`);
+export function checkTextVariables (variableCache: string[], name: string) {
+  if (variableCache.includes(name)) {
+    logger.warn(`The same variable names: [${name}], see ${HELP_LINK['Same variable names']}.`);
   }
 
-  sameTextVariableCache.push(name);
+  variableCache.push(name);
 }
 
 export function checkTemplateVariables (
-  background: spec.TemplateContent['background'],
+  variableCache: string[],
+  name?: string,
   variables?: spec.TemplateVariables,
 ) {
-  const name = background?.name;
-
   if (name && variables?.[name]) {
-    if (sameTemplateVariableCache.includes(name)) {
-      logger.error(`The same variable names: [${name}], see ${HELP_LINK['Same variable names']}.`);
+    if (variableCache.includes(name)) {
+      logger.warn(`The same variable names: [${name}], see ${HELP_LINK['Same variable names']}.`);
     }
-    sameTemplateVariableCache.push(name);
+
+    variableCache.push(name);
   }
 }
