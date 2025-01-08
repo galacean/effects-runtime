@@ -1,4 +1,6 @@
-import { Player, combineImageTemplate, getBackgroundImage, isString, loadImage, spec } from '@galacean/effects';
+import {
+  Player, combineImageTemplate, AssetManager, getBackgroundImage, isString, loadImage, spec, logger,
+} from '@galacean/effects';
 
 const { expect } = chai;
 
@@ -206,6 +208,58 @@ describe('core/image-template', async () => {
 
     expect(result instanceof HTMLImageElement).to.be.true;
     expect(result).to.eql(newImage);
+  });
+
+  it('动态换图设置同名变量报错', async () => {
+    const consoleFunc = chai.spy(() => 'console error');
+    const assetManager = new AssetManager({
+      variables: {
+        'image_name': 'https://gw.alipayobjects.com/zos/gltf-asset/69720573582093/test.jpg',
+      },
+    });
+
+    logger.register((type, message) => {
+      if (type === 'error') {
+        consoleFunc();
+        expect(message).to.include('The same variable names: [image_name]');
+      }
+    });
+
+    await Promise.all([
+      'https://mdn.alipayobjects.com/mars/afts/file/A*-MqgRolWUc4AAAAAAAAAAAAADlB4AQ',
+      'https://mdn.alipayobjects.com/mars/afts/file/A*vrTVRaB2lB4AAAAAAAAAAAAADlB4AQ',
+    ].map(async url => assetManager.loadScene(url)));
+
+    expect(consoleFunc).to.have.been.called.once;
+    assetManager.dispose();
+    logger.unregister();
+  });
+
+  it('替换文本发现同名变量报错', async () => {
+    const consoleFunc = chai.spy(() => 'console error');
+    const assetManager = new AssetManager();
+    const scenes = await Promise.all([
+      'https://mdn.alipayobjects.com/mars/afts/file/A*-MqgRolWUc4AAAAAAAAAAAAADlB4AQ',
+      'https://mdn.alipayobjects.com/mars/afts/file/A*vrTVRaB2lB4AAAAAAAAAAAAADlB4AQ',
+    ].map(async url => assetManager.loadScene(url)));
+
+    logger.register((type, message) => {
+      if (type === 'error') {
+        consoleFunc();
+        expect(message).to.include('The same variable names: [text_desc]');
+      }
+    });
+    const player = new Player({ container });
+
+    await player.loadScene(scenes, {
+      variables: {
+        'text_desc': 'GE',
+      },
+    });
+
+    expect(consoleFunc).to.have.been.called.once;
+    player?.dispose();
+    logger.unregister();
   });
 });
 

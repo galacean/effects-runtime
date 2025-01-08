@@ -44,9 +44,17 @@ function register (fn: (type: LogType, message: string, ...args: any[]) => void)
   }
 }
 
+/**
+ * 取消自定义埋点函数
+ */
+function unregister () {
+  localLogger = undefined;
+}
+
 export const logger = {
   error,
   info,
   warn,
   register,
+  unregister,
 };

@@ -5,8 +5,8 @@ import type {
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, Material,
   TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
-  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, EventEmitter,
-  generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, Scene,
+  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, EventEmitter, Scene,
+  generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, checkTextVariables,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
@@ -441,17 +441,22 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     scene.jsonScene.items.forEach(item => {
       if (item.type === spec.ItemType.text || item.type === spec.ItemType.richtext) {
-
         const textVariable = variables[item.name] as string;
 
         if (!textVariable) {
           return;
         }
 
+        // 检查变量合法性（如：是否重名）
+        checkTextVariables(item.name);
+
         item.components.forEach(({ id }) => {
           const componentData = engine.findEffectsObjectData(id) as spec.TextComponentData;
 
-          if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
+          if (
+            componentData?.dataType === spec.DataType.TextComponent ||
+            componentData?.dataType === spec.DataType.RichTextComponent
+          ) {
             componentData.options.text = textVariable;
           }
         });

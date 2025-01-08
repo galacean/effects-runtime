@@ -14,7 +14,7 @@ import type { TextureSourceOptions } from './texture';
 import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Texture } from './texture';
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
-import { combineImageTemplate, getBackgroundImage } from './template-image';
+import { checkTemplateVariables, combineImageTemplate, getBackgroundImage } from './template-image';
 import { Asset } from './asset';
 import type { Engine } from './engine';
 
@@ -298,6 +298,8 @@ export class AssetManager implements Disposable {
         const background = template.background;
 
         if (background) {
+          // 检查变量合法性（如：是否重名）
+          checkTemplateVariables(background, variables);
           const url = getBackgroundImage(template, variables);
           const isVideo = background.type === spec.BackgroundType.video;
           // 根据背景类型确定加载函数

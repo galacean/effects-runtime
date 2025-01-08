@@ -1,6 +1,10 @@
 import type * as spec from '@galacean/effects-specification';
 import { loadImage } from './downloader';
-import { isString } from './utils';
+import { isString, logger } from './utils';
+import { HELP_LINK } from './constants';
+
+const sameTextVariableCache: string[] = [];
+const sameTemplateVariableCache: string[] = [];
 
 export function getBackgroundImage (
   template: spec.TemplateContent,
@@ -61,4 +65,26 @@ export async function combineImageTemplate (
   }
 
   return image;
+}
+
+export function checkTextVariables (name: string) {
+  if (sameTextVariableCache.includes(name)) {
+    logger.error(`The same variable names: [${name}], see ${HELP_LINK['Same variable names']}.`);
+  }
+
+  sameTextVariableCache.push(name);
+}
+
+export function checkTemplateVariables (
+  background: spec.TemplateContent['background'],
+  variables?: spec.TemplateVariables,
+) {
+  const name = background?.name;
+
+  if (name && variables?.[name]) {
+    if (sameTemplateVariableCache.includes(name)) {
+      logger.error(`The same variable names: [${name}], see ${HELP_LINK['Same variable names']}.`);
+    }
+    sameTemplateVariableCache.push(name);
+  }
 }
