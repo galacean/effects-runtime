@@ -29,4 +29,13 @@ export class Vector4Curve extends ValueGetter<Vector4> {
 
     return this.value;
   }
+
+  override getMaxTime (): number {
+    return Math.max(
+      this.xCurve.getMaxTime(),
+      this.yCurve.getMaxTime(),
+      this.zCurve.getMaxTime(),
+      this.wCurve.getMaxTime(),
+    );
+  }
 }

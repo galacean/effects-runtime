@@ -266,7 +266,7 @@ export interface PositionCurve {
 
 export interface EulerCurve {
   path: string,
-  keyFrames: ValueGetter<Vector3>,
+  keyFrames: ValueGetter<Euler>,
 }
 
 export interface RotationCurve {
@@ -291,6 +291,7 @@ export class AnimationClip extends EffectsObject {
   duration = 0;
   positionCurves: PositionCurve[] = [];
   rotationCurves: RotationCurve[] = [];
+  eulerCurves: EulerCurve[] = [];
   scaleCurves: ScaleCurve[] = [];
   floatCurves: FloatCurve[] = [];
 
@@ -314,6 +315,14 @@ export class AnimationClip extends EffectsObject {
       const target = this.findTarget(vfxItem, curve.path);
 
       target?.transform.setQuaternion(value.x, value.y, value.z, value.w);
+    }
+
+    for (const curve of this.eulerCurves) {
+      const value = curve.keyFrames.getValue(life);
+      // @ts-expect-error
+      const target = this.findTarget(vfxItem, curve.path);
+
+      target?.transform.setRotation(value.x, value.y, value.z);
     }
 
     for (const curve of this.scaleCurves) {
@@ -353,6 +362,20 @@ export class AnimationClip extends EffectsObject {
       this.rotationCurves.push(curve);
     }
 
+    //@ts-expect-error TODO 更新 spec
+    if (data.eulerCurves) {
+      //@ts-expect-error
+      for (const eulerCurvesData of data.eulerCurves) {
+        const curve: EulerCurve = {
+          path: eulerCurvesData.path,
+          keyFrames: createValueGetter(eulerCurvesData.keyFrames),
+        };
+
+        this.duration = Math.max(this.duration, curve.keyFrames.getMaxTime());
+
+        this.eulerCurves.push(curve);
+      }
+    }
     for (const scaleCurvesData of data.scaleCurves) {
       const curve: ScaleCurve = {
         path: scaleCurvesData.path,
@@ -392,6 +415,12 @@ export class AnimationClip extends EffectsObject {
       const value = curve.keyFrames.getValue(life);
 
       outPose.setRotation(curve.path, value);
+    }
+
+    for (const curve of this.eulerCurves) {
+      const value = curve.keyFrames.getValue(life);
+
+      outPose.setEuler(curve.path, value);
     }
 
     for (const curve of this.scaleCurves) {

@@ -29,4 +29,13 @@ export class ColorCurve extends ValueGetter<Color> {
 
     return this.value;
   }
+
+  override getMaxTime (): number {
+    return Math.max(
+      this.rCurve.getMaxTime(),
+      this.gCurve.getMaxTime(),
+      this.bCurve.getMaxTime(),
+      this.aCurve.getMaxTime(),
+    );
+  }
 }

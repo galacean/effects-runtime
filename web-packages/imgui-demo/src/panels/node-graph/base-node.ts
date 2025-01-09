@@ -1,3 +1,4 @@
+import type { spec } from '@galacean/effects';
 import { ImGui } from '../../imgui';
 import { add, multiplyScalar, subtract } from './bezier-math';
 import type { ImNodeFlow } from './node-flow';
@@ -11,6 +12,12 @@ type ImColor = ImGui.ImColor;
 const ImColor = ImGui.ImColor;
 
 export type NodeUID = number; // Equivalent to uintptr_t
+
+export interface BaseNodeData {
+  id: number,
+  type: string,
+  position: spec.Vector2Data,
+}
 
 /**
  * Defines the visual appearance of a node
@@ -360,7 +367,7 @@ export abstract class BaseNode {
     filter: (out: Pin, input: Pin) => boolean,
     style: PinStyle | null = null
   ): InPin<T> {
-    const uid: PinUID = BigInt(BaseNode.uidCounter++);
+    const uid: PinUID = BaseNode.uidCounter++;
     const pin = new InPin<T>(uid, name, defReturn, filter, style ?? PinStyle.cyan(), this, this.m_inf);
 
     this.m_ins.push(pin);
@@ -378,7 +385,7 @@ export abstract class BaseNode {
     filter: (out: Pin, input: Pin) => boolean,
     style: PinStyle | null = null
   ): InPin<T> {
-    const pinUid: PinUID = BigInt(uid as any); // Assume U can be converted to bigint
+    const pinUid: PinUID = uid as any; // Assume U can be converted to bigint
     const pin = new InPin<T>(pinUid, name, defReturn, filter, style ?? PinStyle.cyan(), this, this.m_inf);
 
     this.m_ins.push(pin);
@@ -390,9 +397,9 @@ export abstract class BaseNode {
        * Remove input pin by UID
        */
   dropIN<U>(uid: U): void {
-    const pinUid: PinUID = BigInt(uid as any);
+    const pinUid: PinUID = uid as any;
 
-    this.m_ins = this.m_ins.filter(pin => pin.getUid() !== pinUid);
+    this.m_ins = this.m_ins.filter(pin => pin.getUID() !== pinUid);
   }
 
   /**
@@ -435,8 +442,8 @@ export abstract class BaseNode {
     filter: (out: Pin, input: Pin) => boolean,
     style: PinStyle | null = null
   ): T {
-    const pinUid: PinUID = BigInt(uid as any);
-    const existingPin = this.m_ins.find(p => p.getUid() === pinUid);
+    const pinUid: PinUID = uid as any;
+    const existingPin = this.m_ins.find(p => p.getUID() === pinUid);
 
     if (existingPin && existingPin instanceof InPin) {
       return existingPin.val();
@@ -460,7 +467,7 @@ export abstract class BaseNode {
     name: string,
     style: PinStyle | null = null
   ): OutPin<T> {
-    const uid: PinUID = BigInt(BaseNode.uidCounter++);
+    const uid: PinUID = BaseNode.uidCounter++;
     const pin = new OutPin<T>(uid, name, style ?? PinStyle.cyan(), this, this.m_inf);
 
     this.m_outs.push(pin);
@@ -476,7 +483,7 @@ export abstract class BaseNode {
     name: string,
     style: PinStyle | null = null
   ): OutPin<T> {
-    const pinUid: PinUID = BigInt(uid as any);
+    const pinUid: PinUID = uid as any;
     const pin = new OutPin<T>(pinUid, name, style ?? PinStyle.cyan(), this, this.m_inf);
 
     this.m_outs.push(pin);
@@ -488,9 +495,9 @@ export abstract class BaseNode {
        * Remove output pin by UID
        */
   dropOUT<U>(uid: U): void {
-    const pinUid: PinUID = BigInt(uid as any);
+    const pinUid: PinUID = uid as any;
 
-    this.m_outs = this.m_outs.filter(pin => pin.getUid() !== pinUid);
+    this.m_outs = this.m_outs.filter(pin => pin.getUID() !== pinUid);
   }
 
   /**
@@ -531,8 +538,8 @@ export abstract class BaseNode {
     behaviour: () => T,
     style: PinStyle | null = null
   ): void {
-    const pinUid: PinUID = BigInt(uid as any);
-    const existingPin = this.m_outs.find(p => p.getUid() === pinUid);
+    const pinUid: PinUID = uid as any;
+    const existingPin = this.m_outs.find(p => p.getUID() === pinUid);
 
     if (!existingPin || !(existingPin instanceof OutPin)) {
       const newPin = this.addOUT_uid<T, U>(uid, name, style);
@@ -553,8 +560,8 @@ export abstract class BaseNode {
        * Get Input value from an InPin
        */
   getInVal<T, U>(uid: U): T {
-    const pinUid: PinUID = BigInt(uid as any);
-    const pin = this.m_ins.find(p => p.getUid() === pinUid);
+    const pinUid: PinUID = uid as any;
+    const pin = this.m_ins.find(p => p.getUID() === pinUid);
 
     if (pin && pin instanceof InPin) {
       return pin.val();
@@ -566,8 +573,8 @@ export abstract class BaseNode {
        * Get Input value from an InPin by name
        */
   getInValByString<T>(uid: string): T {
-    const pinUid: PinUID = BigInt(this.hashString(uid));
-    const pin = this.m_ins.find(p => p.getUid() === pinUid);
+    const pinUid: PinUID = this.hashString(uid);
+    const pin = this.m_ins.find(p => p.getUID() === pinUid);
 
     if (pin && pin instanceof InPin) {
       return pin.val();
@@ -579,36 +586,36 @@ export abstract class BaseNode {
        * Get generic reference to input pin
        */
   inPin<U>(uid: U): Pin | null {
-    const pinUid: PinUID = BigInt(uid as any);
+    const pinUid: PinUID = uid as any;
 
-    return this.m_ins.find(p => p.getUid() === pinUid) || null;
+    return this.m_ins.find(p => p.getUID() === pinUid) || null;
   }
 
   /**
        * Get generic reference to input pin by name
        */
   inPinByString (uid: string): Pin | null {
-    const pinUid: PinUID = BigInt(this.hashString(uid));
+    const pinUid: PinUID = this.hashString(uid);
 
-    return this.m_ins.find(p => p.getUid() === pinUid) || null;
+    return this.m_ins.find(p => p.getUID() === pinUid) || null;
   }
 
   /**
        * Get generic reference to output pin
        */
   outPin<U>(uid: U): Pin | null {
-    const pinUid: PinUID = BigInt(uid as any);
+    const pinUid: PinUID = uid as any;
 
-    return this.m_outs.find(p => p.getUid() === pinUid) || null;
+    return this.m_outs.find(p => p.getUID() === pinUid) || null;
   }
 
   /**
        * Get generic reference to output pin by name
        */
   outPinByString (uid: string): Pin | null {
-    const pinUid: PinUID = BigInt(this.hashString(uid));
+    const pinUid: PinUID = this.hashString(uid);
 
-    return this.m_outs.find(p => p.getUid() === pinUid) || null;
+    return this.m_outs.find(p => p.getUID() === pinUid) || null;
   }
 
   /**
@@ -771,6 +778,23 @@ export abstract class BaseNode {
        */
   updatePublicStatus (): void {
     this.m_selected = this.m_selectedNext;
+  }
+
+  getClassName () {
+    return 'BaseNode';
+  }
+
+  toData (data: BaseNodeData) {
+    data.id = this.getUID();
+    data.type = this.getClassName();
+    data.position = this.getPos();
+
+    return data;
+  }
+
+  fromData (data: BaseNodeData) {
+    this.setUID(data.id);
+    this.setPos(new ImVec2(data.position.x, data.position.y));
   }
 
   /**

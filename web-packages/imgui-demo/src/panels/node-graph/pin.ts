@@ -17,7 +17,7 @@ export enum PinType {
 /**
  * Unique identifier types
  */
-export type PinUID = bigint; // Equivalent to unsigned long long int in C++
+export type PinUID = number; // Equivalent to unsigned long long int in C++
 
 // ----------------------------------------------------
 // INTERFACES AND STRUCTS
@@ -347,11 +347,15 @@ export abstract class Pin {
   abstract getLink (): Link | null;
 
   /**
-       * Get pin's UID
-       * @returns Unique identifier of the pin
-       */
-  getUid (): PinUID {
+   * Get pin's UID
+   * @returns Unique identifier of the pin
+   */
+  getUID (): PinUID {
     return this.m_uid;
+  }
+
+  setUid (uid: PinUID) {
+    return this.m_uid = uid;
   }
 
   /**
