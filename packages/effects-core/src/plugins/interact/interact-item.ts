@@ -84,7 +84,6 @@ export class InteractComponent extends RendererComponent {
     this.item.composition?.on('goto', () => {
       if (this.item.time > 0) {
         this.duringPlay = true;
-
       }
     });
     if (type === spec.InteractType.CLICK) {
@@ -137,7 +136,6 @@ export class InteractComponent extends RendererComponent {
 
       this.item.composition?.addInteractiveItem(this.item, options.type);
       this.duringPlay = true;
-
     }
 
     this.previewContent?.updateMesh();
