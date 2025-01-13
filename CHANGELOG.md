@@ -7,6 +7,12 @@
 
 ---
 
+## 2.2.2
+
+`2025-01-13`
+
+- Chore: add framebuffer creation failed error. [#836](https://github.com/galacean/effects-runtime/pull/836) @wumaolinmaoan
+
 ## 2.2.1
 
 `2025-01-03`
