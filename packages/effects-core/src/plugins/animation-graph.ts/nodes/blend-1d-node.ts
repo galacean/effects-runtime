@@ -45,8 +45,8 @@ export class Blend1DNode extends PoseNode {
   source1Result: PoseResult;
 
   protected override initializeInternal (context: GraphContext): void {
-    this.source0Result = new PoseResult(context.rootBone);
-    this.source1Result = new PoseResult(context.rootBone);
+    this.source0Result = new PoseResult(context.skeleton);
+    this.source1Result = new PoseResult(context.skeleton);
 
     this.source0?.initialize(context);
     this.source1?.initialize(context);
@@ -73,14 +73,33 @@ export class Blend1DNode extends PoseNode {
   }
 
   private localBlend (sourcePose: Pose, targetPose: Pose, blendWeight: number, resultPose: Pose) {
-    for (let i = 0;i < sourcePose.parentSpaceTransforms.length;i++) {
-      const sourceTransform = sourcePose.parentSpaceTransforms[i];
-      const targetTransform = targetPose.parentSpaceTransforms[i];
-      const resultTransform = resultPose.parentSpaceTransforms[i];
+    for (let i = 0;i < sourcePose.parentSpaceReferencePosition.length;i++) {
+      const sourcePosition = sourcePose.parentSpaceReferencePosition[i];
+      const targetPosition = targetPose.parentSpaceReferencePosition[i];
+      const resultPosition = resultPose.parentSpaceReferencePosition[i];
 
-      this.lerpVector3(sourceTransform.position, targetTransform.position, blendWeight, resultTransform.position);
-      this.lerpVector3(sourceTransform.scale, targetTransform.scale, blendWeight, resultTransform.scale);
-      this.lerpEuler(sourceTransform.euler, targetTransform.euler, blendWeight, resultTransform.euler);
+      this.lerpVector3(sourcePosition, targetPosition, blendWeight, resultPosition);
+    }
+    for (let i = 0;i < sourcePose.parentSpaceReferenceRotation.length;i++) {
+      const sourceRotation = sourcePose.parentSpaceReferenceRotation[i];
+      const targetRotation = targetPose.parentSpaceReferenceRotation[i];
+      const resultRotation = resultPose.parentSpaceReferenceRotation[i];
+
+      resultRotation.copyFrom(sourceRotation).slerp(targetRotation, blendWeight);
+    }
+    for (let i = 0;i < sourcePose.parentSpaceReferenceScale.length;i++) {
+      const sourceScale = sourcePose.parentSpaceReferenceScale[i];
+      const targetScale = targetPose.parentSpaceReferenceScale[i];
+      const resultScale = resultPose.parentSpaceReferenceScale[i];
+
+      this.lerpVector3(sourceScale, targetScale, blendWeight, resultScale);
+    }
+    for (let i = 0;i < sourcePose.parentSpaceReferenceEuler.length;i++) {
+      const sourceEuler = sourcePose.parentSpaceReferenceEuler[i];
+      const targetEuler = targetPose.parentSpaceReferenceEuler[i];
+      const resultEuler = resultPose.parentSpaceReferenceEuler[i];
+
+      this.lerpEuler(sourceEuler, targetEuler, blendWeight, resultEuler);
     }
   }
 

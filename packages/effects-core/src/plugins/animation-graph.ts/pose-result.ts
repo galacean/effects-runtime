@@ -1,10 +1,10 @@
-import type { VFXItem } from '../../vfx-item';
 import { Pose } from './pose';
+import type { Skeleton } from './skeleton';
 
 export class PoseResult {
   pose: Pose;
 
-  constructor (rootBone: VFXItem) {
-    this.pose = new Pose(rootBone);
+  constructor (skeleton: Skeleton) {
+    this.pose = new Pose(skeleton);
   }
 }

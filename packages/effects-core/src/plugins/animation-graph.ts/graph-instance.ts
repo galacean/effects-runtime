@@ -5,17 +5,49 @@ import { GraphContext, InstantiationContext } from './graph-context';
 import { GraphDataSet } from './graph-data-set';
 import type { AnimationRootNode } from './nodes/animation-root-node';
 import { PoseResult } from './pose-result';
+import type { SkeletonRecordProperties } from './skeleton';
+import { Skeleton } from './skeleton';
 
 export class GraphInstance {
   rootNode: AnimationRootNode;
   nodes: GraphNode[] = [];
+  skeleton: Skeleton;
 
+  private graphAsset: AnimationGraphAsset;
   private context = new GraphContext();
   private result: PoseResult;
 
   constructor (graphAsset: AnimationGraphAsset, rootBone: VFXItem) {
-    this.result = new PoseResult(rootBone);
-    this.context.rootBone = rootBone;
+    this.graphAsset = graphAsset;
+
+    // initialize skeleton
+    const recordProperties: SkeletonRecordProperties = {
+      position: [],
+      scale: [],
+      rotation: [],
+      euler: [],
+      floats: [],
+    };
+
+    for (const animationClip of graphAsset.graphDataSet.resources) {
+      for (const positionCurve of animationClip.positionCurves) {
+        recordProperties.position.push(positionCurve.path);
+      }
+      for (const rotationCurve of animationClip.rotationCurves) {
+        recordProperties.rotation.push(rotationCurve.path);
+      }
+      for (const scaleCurve of animationClip.scaleCurves) {
+        recordProperties.scale.push(scaleCurve.path);
+      }
+      for (const eulerCurve of animationClip.eulerCurves) {
+        recordProperties.euler.push(eulerCurve.path);
+      }
+    }
+    this.skeleton = new Skeleton(rootBone, recordProperties);
+
+    // create PoseResult
+    this.result = new PoseResult(this.skeleton);
+    this.context.skeleton = this.skeleton;
 
     // instantiate graph nodes
     const instantiationContext = new InstantiationContext();

@@ -1,10 +1,9 @@
 import { Euler } from '@galacean/effects-math/es/core/euler';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import type { Transform } from '../../transform';
-import type { VFXItem } from '../../vfx-item';
+import type { Skeleton } from './skeleton';
 
-export class PoseTransform {
+export class NodeTransform {
   position = new Vector3();
   rotation = new Quaternion();
   scale = new Vector3();
@@ -12,87 +11,59 @@ export class PoseTransform {
 }
 
 export class Pose {
-  parentSpaceTransforms: PoseTransform[] = [];
-  pathToBoneIndex = new Map<string, number>();
+  skeleton: Skeleton;
 
-  constructor (rootBone: VFXItem) {
-    this.buildParentSpaceTransformsWithRoot(rootBone);
+  parentSpaceReferencePosition: Vector3[] = [];
+  parentSpaceReferenceScale: Vector3[] = [];
+  parentSpaceReferenceRotation: Quaternion[] = [];
+  parentSpaceReferenceEuler: Euler[] = [];
+
+  constructor (skeleton: Skeleton) {
+    this.skeleton = skeleton;
+
+    for (const position of skeleton.parentSpaceReferencePosition) {
+      this.parentSpaceReferencePosition.push(position.clone());
+    }
+    for (const rotation of skeleton.parentSpaceReferenceRotation) {
+      this.parentSpaceReferenceRotation.push(rotation.clone());
+    }
+    for (const scale of skeleton.parentSpaceReferenceScale) {
+      this.parentSpaceReferenceScale.push(scale.clone());
+    }
+    for (const euler of skeleton.parentSpaceReferenceEuler) {
+      this.parentSpaceReferenceEuler.push(euler.clone());
+    }
   }
 
   setPosition (path: string, position: Vector3) {
-    const boneIndex = this.pathToBoneIndex.get(path);
+    const boneIndex = this.skeleton.pathToPositionIndex.get(path);
 
     if (boneIndex) {
-      this.parentSpaceTransforms[boneIndex].position.copyFrom(position);
+      this.parentSpaceReferencePosition[boneIndex].copyFrom(position);
     }
   }
 
   setRotation (path: string, rotation: Quaternion) {
-    const boneIndex = this.pathToBoneIndex.get(path);
+    const boneIndex = this.skeleton.pathToRotationIndex.get(path);
 
     if (boneIndex) {
-      this.parentSpaceTransforms[boneIndex].rotation.copyFrom(rotation);
+      this.parentSpaceReferenceRotation[boneIndex].copyFrom(rotation);
     }
   }
 
   setEuler (path: string, euler: Euler) {
-    const boneIndex = this.pathToBoneIndex.get(path);
+    const boneIndex = this.skeleton.pathToEulerIndex.get(path);
 
     if (boneIndex) {
-      this.parentSpaceTransforms[boneIndex].euler.copyFrom(euler);
+      this.parentSpaceReferenceEuler[boneIndex].copyFrom(euler);
     }
   }
 
   setScale (path: string, scale: Vector3) {
-    const boneIndex = this.pathToBoneIndex.get(path);
+    const boneIndex = this.skeleton.pathToScaleIndex.get(path);
 
     if (boneIndex) {
-      this.parentSpaceTransforms[boneIndex].scale.copyFrom(scale);
-    }
-  }
-
-  getTransform (path: string): PoseTransform | null {
-    const boneIndex = this.pathToBoneIndex.get(path);
-
-    if (boneIndex) {
-      return this.parentSpaceTransforms[boneIndex];
-    }
-
-    return null;
-  }
-
-  private copyReferenceTranform (sourceTransform: Transform, targetPoseTransform: PoseTransform) {
-    targetPoseTransform.position.copyFrom(sourceTransform.position);
-    targetPoseTransform.euler.copyFrom(sourceTransform.rotation);
-    targetPoseTransform.rotation.copyFrom(sourceTransform.quat);
-    targetPoseTransform.scale.copyFrom(sourceTransform.scale);
-  }
-
-  private addBoneTransform (path: string, sourceTransform: Transform) {
-    const poseTransform = new PoseTransform();
-
-    this.copyReferenceTranform(sourceTransform, poseTransform);
-    this.parentSpaceTransforms.push(poseTransform);
-    this.pathToBoneIndex.set(path, this.parentSpaceTransforms.length - 1);
-  }
-
-  private buildParentSpaceTransformsWithRoot (rootBone: VFXItem) {
-    const path = '';
-
-    this.addBoneTransform(path, rootBone.transform);
-
-    for (const child of rootBone.children) {
-      this.buildParentSpaceTransforms(child, path);
-    }
-  }
-
-  private buildParentSpaceTransforms (bone: VFXItem, path: string) {
-    path = path + bone.name;
-
-    this.addBoneTransform(path, bone.transform);
-
-    for (const child of bone.children) {
-      this.buildParentSpaceTransforms(child, path + '/');
+      this.parentSpaceReferenceScale[boneIndex].copyFrom(scale);
     }
   }
 }

@@ -1,4 +1,5 @@
 import type { GraphInstance } from '../plugins/animation-graph.ts';
+import type { Transform } from '../transform.js';
 import { Component } from './component.js';
 
 export class AnimationGraphComponent extends Component {
@@ -14,40 +15,36 @@ export class AnimationGraphComponent extends Component {
 
     const result = this.graph.evaluateGraph(dt / 1000);
 
-    for (const boneName of result.pose.pathToBoneIndex) {
-      const position = result.pose.parentSpaceTransforms[boneName[1]].position;
-      const rotation = result.pose.parentSpaceTransforms[boneName[1]].euler;
-      const scale = result.pose.parentSpaceTransforms[boneName[1]].scale;
+    let animatedTransforms: Transform[];
 
-      // TODO cache boneIndex to improve searching performance
-      const targetItem = this.findTarget(boneName[0]);
+    animatedTransforms = this.graph.skeleton.positionTransformBindings;
+    for (let i = 0;i < animatedTransforms.length;i++) {
+      const position = result.pose.parentSpaceReferencePosition[i];
 
-      if (targetItem) {
-        targetItem.transform.setPosition(position.x, position.y, position.z);
-        targetItem.transform.setRotation(rotation.x, rotation.y, rotation.z);
-        targetItem.transform.setScale(scale.x, scale.y, scale.z);
-      }
-    }
-  }
-
-  findTarget (boneName: string) {
-    if (boneName === '') {
-      return this.item;
+      animatedTransforms[i].setPosition(position.x, position.y, position.z);
     }
 
-    const itemNames = boneName.split('/');
-    let currentItem = this.item;
+    animatedTransforms = this.graph.skeleton.rotationTransformBindings;
+    for (let i = 0;i < animatedTransforms.length;i++) {
+      const rotation = result.pose.parentSpaceReferenceRotation[i];
 
-    for (const itemName of itemNames) {
-      const target = currentItem.find(itemName);
-
-      if (!target) {
-        return null;
-      }
-
-      currentItem = target;
+      animatedTransforms[i].setQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
     }
 
-    return currentItem;
+    animatedTransforms = this.graph.skeleton.scaleTransformBindings;
+    for (let i = 0;i < animatedTransforms.length;i++) {
+      const scale = result.pose.parentSpaceReferenceScale[i];
+
+      animatedTransforms[i].setScale(scale.x, scale.y, scale.z);
+    }
+
+    animatedTransforms = this.graph.skeleton.eulerTransformBindings;
+    for (let i = 0;i < animatedTransforms.length;i++) {
+      const euler = result.pose.parentSpaceReferenceEuler[i];
+
+      animatedTransforms[i].setRotation(euler.x, euler.y, euler.z);
+    }
+
+    // TODO float curves
   }
 }

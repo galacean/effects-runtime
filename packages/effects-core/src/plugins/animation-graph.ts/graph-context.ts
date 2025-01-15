@@ -1,10 +1,10 @@
 import type { GraphNode, GraphNodeAsset } from '..';
-import type { VFXItem } from '../../vfx-item';
 import type { GraphDataSet } from './graph-data-set';
+import type { Skeleton } from './skeleton';
 
 export class GraphContext {
   deltaTime = 0;
-  rootBone: VFXItem;
+  skeleton: Skeleton;
 }
 
 export class InstantiationContext {
