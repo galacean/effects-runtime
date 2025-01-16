@@ -298,7 +298,7 @@ export class GLFramebuffer extends Framebuffer implements Disposable {
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
 
     if (status !== gl.FRAMEBUFFER_COMPLETE) {
-      throw new Error(`Framebuffer failed, status: ${status}, error: ${gl.getError()}.`);
+      throw new Error(`Framebuffer failed. gl status=${status}, gl error=${gl.getError()}, gl isContextLost=${gl.isContextLost()}.`);
     }
     this.ready = true;
   }
