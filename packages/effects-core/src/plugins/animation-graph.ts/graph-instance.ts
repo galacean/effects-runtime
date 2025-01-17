@@ -1,5 +1,5 @@
-import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, VFXItem } from '@galacean/effects-core';
-import { AnimationClip, AnimationClipNodeAsset, AnimationRootNodeAsset, blend1DNodeAsset, ConstFloatNodeAsset, effectsClass, EffectsObject, NodeAssetType } from '@galacean/effects-core';
+import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, VFXItem, AnimationClip } from '@galacean/effects-core';
+import { AnimationClipNodeAsset, AnimationRootNodeAsset, blend1DNodeAsset, ConstFloatNodeAsset, effectsClass, EffectsObject, NodeAssetType } from '@galacean/effects-core';
 import type * as spec from '@galacean/effects-specification';
 import { GraphContext, InstantiationContext } from './graph-context';
 import { GraphDataSet } from './graph-data-set';
@@ -30,6 +30,9 @@ export class GraphInstance {
     };
 
     for (const animationClip of graphAsset.graphDataSet.resources) {
+      if (!animationClip) {
+        continue;
+      }
       for (const positionCurve of animationClip.positionCurves) {
         recordProperties.position.push(positionCurve.path);
       }
@@ -81,7 +84,7 @@ export class GraphInstance {
 }
 
 export interface GraphDataSetData {
-  resources: spec.AnimationClipData[],
+  resources: spec.DataPath[],
 }
 
 export interface AnimationGraphAssetData extends spec.EffectsObjectData {
@@ -123,9 +126,8 @@ export class AnimationGraphAsset extends EffectsObject {
     this.graphDataSet = new GraphDataSet();
     this.graphDataSet.resources = [];
     for (const animationClipData of graphAssetData.graphDataSet.resources) {
-      const animationClip = new AnimationClip(this.engine);
+      const animationClip = this.engine.assetLoader.loadGUID<AnimationClip>(animationClipData.id);
 
-      animationClip.fromData(animationClipData);
       this.graphDataSet.resources.push(animationClip);
     }
   }

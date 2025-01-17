@@ -1,6 +1,7 @@
 import { ImGui } from '../../imgui';
-import { type NodeUID, type BaseNode, NodeStyle } from './base-node';
-import { add, multiplyScalar, smart_bezier } from './bezier-math';
+import { AnimationClipGraphNode, Blend1DGraphNode, ConstFloatGraphNode } from './animation-graph-nodes.ts/animation-graph-node';
+import { NodeStyle, type BaseNode, type NodeUID } from './base-node';
+import { add, multiplyScalar, smart_bezier, subtract } from './bezier-math';
 import type { Link } from './link';
 import { PinType, type Pin } from './pin';
 
@@ -424,6 +425,27 @@ export class ImNodeFlow {
     if (ImGui.BeginPopup('RightClickPopUp')) {
       if (this.m_hoveredNodeAux) {
         this.m_rightClickPopUp!(this.m_hoveredNodeAux);
+      }
+
+      const mousePos = ImGui.GetMousePos();
+
+      mousePos.x -= windowPos.x;
+      mousePos.y -= windowPos.y;
+      const windowCenter = multiplyScalar(ImGui.GetWindowSize(), 0.5);
+
+      let nodePos = subtract(mousePos, windowCenter);
+
+      nodePos = add(nodePos, windowCenter);
+      nodePos = this.screen2grid(nodePos);
+
+      if (ImGui.Selectable('AnimationClipNode')) {
+        this.addNode(AnimationClipGraphNode, nodePos);
+      }
+      if (ImGui.Selectable('Blend1DNode')) {
+        this.addNode(Blend1DGraphNode, nodePos);
+      }
+      if (ImGui.Selectable('ConstFloatNode')) {
+        this.addNode(ConstFloatGraphNode, nodePos);
       }
       ImGui.EndPopup();
     }

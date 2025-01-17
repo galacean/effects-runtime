@@ -97,6 +97,7 @@ interface AnimationRootGraphNodeData extends BaseNodeData {
 }
 
 export class AnimationClipGraphNode extends AnimationGraphNode {
+  resourceID = '';
   poseOut: OutPin<Pose>;
 
   constructor (inf: ImNodeFlow, node: AnimationClipNode) {
@@ -118,6 +119,7 @@ export class AnimationClipGraphNode extends AnimationGraphNode {
     super.toData(data);
     data.type = this.getClassName();
     data.poseOut = this.poseOut.getUID();
+    data.resourceID = this.resourceID;
 
     return data;
   }
@@ -126,6 +128,7 @@ export class AnimationClipGraphNode extends AnimationGraphNode {
     super.fromData(data);
 
     this.poseOut.setUid(data.poseOut);
+    this.resourceID = data.resourceID;
   }
 
   override compile (context: GraphCompilationContext) {
@@ -143,6 +146,7 @@ export class AnimationClipGraphNode extends AnimationGraphNode {
 
 interface AnimationClipGraphNodeData extends BaseNodeData {
   poseOut: number,
+  resourceID: string,
 }
 
 export class Blend1DGraphNode extends AnimationGraphNode {

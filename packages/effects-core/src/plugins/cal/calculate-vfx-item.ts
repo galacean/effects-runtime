@@ -401,9 +401,9 @@ export class AnimationClip extends EffectsObject {
   }
 
   getPose (time: number, outPose: Pose) {
-    let life = time / this.duration;
+    const life = time % this.duration;
 
-    life = life < 0 ? 0 : (life > 1 ? 1 : life);
+    // life = life < 0 ? 0 : (life > 1 ? 1 : life);
 
     for (const curve of this.positionCurves) {
       const value = curve.keyFrames.getValue(life);

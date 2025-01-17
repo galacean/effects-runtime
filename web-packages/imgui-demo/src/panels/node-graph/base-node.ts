@@ -4,6 +4,7 @@ import { add, multiplyScalar, subtract } from './bezier-math';
 import type { ImNodeFlow } from './node-flow';
 import type { PinUID } from './pin';
 import { InPin, OutPin, PinStyle, type Pin } from './pin';
+import { Selection } from '../../core/selection';
 
 type ImVec2 = ImGui.ImVec2;
 const ImVec2 = ImGui.ImVec2;
@@ -316,6 +317,8 @@ export abstract class BaseNode {
       this.m_inf?.consumeSingleUseClick();
       this.m_dragged = true;
       this.m_inf?.draggingNode(true);
+
+      Selection.setActiveObject(this);
 
       // TODO test logic, remove
       this.m_style!.header_bg = ImGui.IM_COL32(255, 38, 41, 140);
