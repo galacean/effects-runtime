@@ -1,5 +1,5 @@
-import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, VFXItem, AnimationClip } from '@galacean/effects-core';
-import { AnimationClipNodeAsset, AnimationRootNodeAsset, blend1DNodeAsset, ConstFloatNodeAsset, effectsClass, EffectsObject, NodeAssetType } from '@galacean/effects-core';
+import type { AnimationClip, GraphNode, GraphNodeAsset, GraphNodeAssetData, VFXItem, NodeAssetType } from '@galacean/effects-core';
+import { EffectsObject, effectsClass, getNodeAssetClass } from '@galacean/effects-core';
 import type * as spec from '@galacean/effects-specification';
 import { GraphContext, InstantiationContext } from './graph-context';
 import { GraphDataSet } from './graph-data-set';
@@ -98,17 +98,12 @@ export class AnimationGraphAsset extends EffectsObject {
   graphDataSet = new GraphDataSet();
 
   static createNodeAsset (type: NodeAssetType) {
-    switch (type) {
-      case NodeAssetType.AnimationRootNodeAsset:
-        return new AnimationRootNodeAsset();
-      case NodeAssetType.Blend1DNodeAsset:
-        return new blend1DNodeAsset();
-      case NodeAssetType.ConstFloatNodeAsset:
-        return new ConstFloatNodeAsset();
-      case NodeAssetType.AnimationClipNodeAsset:
-        return new AnimationClipNodeAsset();
-      default:
-        throw new Error('Unknown node type:' + type);
+    const classConstructor = getNodeAssetClass(type);
+
+    if (classConstructor) {
+      return new classConstructor();
+    } else {
+      throw new Error('Unknown node type:' + type);
     }
   }
 

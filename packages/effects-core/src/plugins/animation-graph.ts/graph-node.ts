@@ -40,7 +40,7 @@ export class GraphNodeAsset {
     this.index = data.index;
   }
 
-  createNode<T extends GraphNode> (nodeType: new () => T, context: InstantiationContext) {
+  protected createNode<T extends GraphNode> (nodeType: new () => T, context: InstantiationContext) {
     const node = new nodeType();
 
     context.nodes[this.index] = node;
@@ -63,5 +63,9 @@ export abstract class ValueNode extends GraphNode {
 }
 
 export abstract class FloatValueNode extends ValueNode {
+
+}
+
+export abstract class BoolValueNode extends ValueNode {
 
 }

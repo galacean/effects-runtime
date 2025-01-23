@@ -23,12 +23,4 @@ export class InstantiationContext {
 
     return this.nodes[index] as T;
   }
-
-  createNode<T extends GraphNode> (nodeType: new () => T, nodeAsset: GraphNodeAsset) {
-    const node = new nodeType();
-
-    this.nodes[nodeAsset.index] = node;
-
-    return node;
-  }
 }

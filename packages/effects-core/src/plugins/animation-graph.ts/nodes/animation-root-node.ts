@@ -1,4 +1,4 @@
-import type { NodeAssetType } from '../..';
+import { NodeAssetType, nodeAssetClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { GraphNodeAssetData } from '../graph-node';
 import { GraphNodeAsset, PoseNode } from '../graph-node';
@@ -9,6 +9,7 @@ export interface AnimationRootNodeAssetData extends GraphNodeAssetData {
   poseNode: number,
 }
 
+@nodeAssetClass(NodeAssetType.AnimationRootNodeAsset)
 export class AnimationRootNodeAsset extends GraphNodeAsset {
   poseNode: number;
 

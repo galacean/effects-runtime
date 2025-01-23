@@ -1,4 +1,4 @@
-import type { NodeAssetType } from '../..';
+import { NodeAssetType, nodeAssetClass } from '../..';
 import type { InstantiationContext } from '../graph-context';
 import type { GraphNodeAssetData } from '../graph-node';
 import { FloatValueNode, GraphNodeAsset } from '../graph-node';
@@ -8,11 +8,12 @@ export interface ConstFloatNodeAssetData extends GraphNodeAssetData {
   value: number,
 }
 
+@nodeAssetClass(NodeAssetType.ConstFloatNodeAsset)
 export class ConstFloatNodeAsset extends GraphNodeAsset {
   value = 0;
 
   override instantiate (context: InstantiationContext) {
-    const node = context.createNode(ConstFloatNode, this);
+    const node = this.createNode(ConstFloatNode, context);
 
     node.value = this.value;
   }
