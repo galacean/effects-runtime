@@ -3,36 +3,28 @@ import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import type { VFXItemData } from './asset-loader';
 import type { Component } from './components';
-import { RendererComponent, EffectComponent } from './components';
+import { EffectComponent, RendererComponent } from './components';
 import type { Composition } from './composition';
 import { HELP_LINK } from './constants';
 import { effectsClass, serialize } from './decorators';
 import { EffectsObject } from './effects-object';
 import type { Engine } from './engine';
+import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
+import { EventEmitter } from './events';
 import type {
   BoundingBoxData, CameraController, HitTestBoxParams, HitTestCustomParams, HitTestSphereParams,
   HitTestTriangleParams, InteractComponent, SpriteComponent,
 } from './plugins';
 import { ParticleSystem } from './plugins';
+import type { TransformProps } from './transform';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
-import type { EventEmitterListener, EventEmitterOptions, ItemEvent } from './events';
-import { EventEmitter } from './events';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
-export type VFXItemProps =
-  & spec.Item
-  & {
-    items: VFXItemProps[],
-    startTime: number,
-    relative?: boolean,
-    refId?: string,
-  }
-  ;
+export type VFXItemProps = spec.Item;
 
 /**
  * 所有元素的继承的抽象类
@@ -89,7 +81,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   _content?: VFXItemContent;
   type: spec.ItemType = spec.ItemType.base;
-  props: VFXItemProps;
+  props: spec.VFXItemData;
   isDuringPlay = false;
 
   @serialize()
@@ -202,7 +194,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     this.transform.name = this.name;
     this.transform.engine = engine;
     if (props) {
-      this.fromData(props as VFXItemData);
+      this.fromData(props as spec.VFXItemData);
     }
   }
 
@@ -629,7 +621,7 @@ export class VFXItem extends EffectsObject implements Disposable {
     }
   }
 
-  override fromData (data: VFXItemData): void {
+  override fromData (data: spec.VFXItemData): void {
     super.fromData(data);
     const {
       id, name, delay, parentId, endBehavior, transform,
@@ -637,44 +629,39 @@ export class VFXItem extends EffectsObject implements Disposable {
     } = data;
 
     this.props = data;
-    //@ts-expect-error
     this.type = data.type;
     this.id = id.toString(); // TODO 老数据 id 是 number，需要转换
     this.name = name;
     this.start = delay ? delay : this.start;
 
+    const transformProps: TransformProps = {};
+
     if (transform) {
-      //@ts-expect-error TODO 数据改造后移除 expect-error
-      transform.position = new Vector3().copyFrom(transform.position);
+      transformProps.position = new Vector3().copyFrom(transform.position);
       // FIXME: transform.rotation待删除
+      //@ts-expect-error
       if (transform.quat) {
         //@ts-expect-error
-        transform.quat = new Quaternion(transform.quat.x, transform.quat.y, transform.quat.z, transform.quat.w);
+        transformProps.quat = new Quaternion(transform.quat.x, transform.quat.y, transform.quat.z, transform.quat.w);
       } else {
         //@ts-expect-error
-        transform.rotation = new Euler().copyFrom(transform.eulerHint ?? transform.rotation);
+        transformProps.rotation = new Euler().copyFrom(transform.eulerHint ?? transform.rotation);
       }
-      //@ts-expect-error
-      transform.scale = new Vector3().copyFrom(transform.scale);
-      //@ts-expect-error
+      transformProps.scale = new Vector3().copyFrom(transform.scale);
       if (transform.size) {
-        //@ts-expect-error
-        transform.size = new Vector2().copyFrom(transform.size);
+        transformProps.size = new Vector2().copyFrom(transform.size);
       }
-      //@ts-expect-error
       if (transform.anchor) {
-        //@ts-expect-error
-        transform.anchor = new Vector2().copyFrom(transform.anchor);
+        transformProps.anchor = new Vector2().copyFrom(transform.anchor);
       }
-      this.transform.setTransform(transform);
+      this.transform.setTransform(transformProps);
     }
 
     this.transform.name = this.name;
     this.transform.engine = this.engine;
     this.parentId = parentId;
     this.duration = duration;
-    // TODO spec endbehavior 类型修正
-    this.endBehavior = endBehavior as spec.EndBehavior;
+    this.endBehavior = endBehavior;
 
     if (!data.content) {
       data.content = { options: {} };
