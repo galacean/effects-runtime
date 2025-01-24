@@ -25,6 +25,10 @@ export function multiplyScalar (p: ImVec2, scalar: number): ImVec2 {
   return new ImVec2(p.x * scalar, p.y * scalar);
 }
 
+export function div (p: ImVec2, scalar: number): ImVec2 {
+  return new ImVec2(p.x / scalar, p.y / scalar);
+}
+
 export function dot (p1: ImVec2, p2: ImVec2): number {
   return p1.x * p2.x + p1.y * p2.y;
 }
@@ -36,6 +40,14 @@ export function lengthSqr (p: ImVec2): number {
 export function length (p: ImVec2): number {
   return Math.sqrt(lengthSqr(p));
 }
+
+export function colorMultiplyScalar (p: ImColor, scalar: number): ImColor {
+  const value = p.Value;
+
+  return new ImColor(value.x * scalar, value.y * scalar, value.z * scalar, value.w);
+}
+
+export function fmodf (a: number, b: number): number { return a - (Math.floor(a / b) * b); }
 
 /**
  * Draw a sensible bezier between two points

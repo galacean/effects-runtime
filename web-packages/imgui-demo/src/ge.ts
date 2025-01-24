@@ -234,7 +234,7 @@ export class GalaceanEffects {
     GalaceanEffects.player.ticker.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*QsEaSZ9hNsgAAAAAAAAAAAAADlB4AQ');
+    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ');
   }
 
   static playURL (url: string, use3DConverter = false) {

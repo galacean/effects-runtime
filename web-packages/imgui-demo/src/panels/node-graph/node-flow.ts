@@ -44,6 +44,8 @@ export class ContainedContext {
   private m_scroll: ImVec2;
   private m_scrollTarget: ImVec2;
 
+  private unscaledStyle = new ImGui.Style();
+
   constructor (config: Partial<ContainedContextConfig> = {}) {
     // 设置默认配置
     this.m_config = {
@@ -103,7 +105,7 @@ export class ContainedContext {
     // }
 
     // ImGui.SetCurrentContext(this.m_ctx);
-    const new_style = ImGui.GetStyle();
+    this.unscaledStyle.Copy(ImGui.GetStyle());
 
     // new_style.cloneFrom(orig_style); // 复制原始样式
 
@@ -116,6 +118,7 @@ export class ContainedContext {
     // ImGui.NewFrame();
 
     ImGui.SetWindowFontScale(this.m_scale);
+    ImGui.GetStyle().ScaleAllSizes(this.m_scale);
 
     // if (this.m_config.extra_window_wrapper) {
     //   ImGui.SetNextWindowPos(new ImVec2(0, 0), ImGuiCond.Once);
@@ -203,6 +206,7 @@ export class ContainedContext {
       this.m_scrollTarget = new ImVec2(this.m_scroll.x, this.m_scroll.y);
     }
 
+    ImGui.GetStyle().Copy(this.unscaledStyle);
     // ImGui.EndChild();
     // ImGui.PopID();
   }

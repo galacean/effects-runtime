@@ -2,17 +2,29 @@ import type { AnimationGraphAssetData, GraphNodeAssetData, spec } from '@galacea
 import { AnimationGraphAsset, AnimationGraphComponent, GraphInstance, NodeAssetType, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
+import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
 import { EditorWindow } from '../editor-window';
 import type { AnimationGraphNode } from './animation-graph-nodes.ts/animation-graph-node';
 import { AnimationClipGraphNode, AnimationRootGraphNode, Blend1DGraphNode, ConstFloatGraphNode } from './animation-graph-nodes.ts/animation-graph-node';
 import type { BaseNode, BaseNodeData } from './base-node';
 import { ImNodeFlow } from './node-flow';
+import { GraphView } from './visual-graph.ts/node-graph-view';
+import type { TransitionConduitNode } from './visual-graph.ts/state-machine-graph';
+import { StateMachineGraph, StateNode } from './visual-graph.ts/state-machine-graph';
+import { UserContext } from './visual-graph.ts/user-context';
 
 type ImVec2 = ImGui.ImVec2;
 type ImColor = ImGui.ImColor;
 const ImVec2 = ImGui.ImVec2;
 const ImColor = ImGui.ImColor;
+
+class StateMachineGraphImpl extends StateMachineGraph {
+  override CreateTransitionConduit (pStartState: StateNode, pEndState: StateNode): TransitionConduitNode {
+    throw new Error('Method not implemented.');
+  }
+
+}
 
 @editorWindow()
 export class NodeGraph extends EditorWindow {
@@ -22,6 +34,9 @@ export class NodeGraph extends EditorWindow {
   graph: GraphInstance;
 
   compilationContext = new GraphCompilationContext();
+
+  graphView = new GraphView(new UserContext());
+  stateMachineGraph = new StateMachineGraphImpl();
 
   @menuItem('Window/NodeGraph')
   static showWindow () {
@@ -36,6 +51,9 @@ export class NodeGraph extends EditorWindow {
     this.imNodeFlow.rightClickPopUpContent(()=>{});
 
     this.fromData(data);
+
+    this.stateMachineGraph.m_nodes.push(new StateNode());
+    this.graphView.SetGraphToView(this.stateMachineGraph);
   }
 
   rebuildGraph (item: VFXItem) {
@@ -59,13 +77,20 @@ export class NodeGraph extends EditorWindow {
       this.currentVFXItem = Selection.activeObject;
     }
 
+    if (GalaceanEffects.player.getCompositions()[0]?.rootItem) {
+      this.currentVFXItem = GalaceanEffects.player.getCompositions()[0].rootItem;
+      if (!this.currentVFXItem.getComponent(AnimationGraphComponent)) {
+        this.currentVFXItem.addComponent(AnimationGraphComponent);
+      }
+    }
+
     if (!this.currentVFXItem) {
       return;
     }
 
-    if (ImGui.Button('Save') || !this.graph) {
-      this.rebuildGraph(this.currentVFXItem);
-    }
+    // if (ImGui.Button('Save') || !this.graph) {
+    //   this.rebuildGraph(this.currentVFXItem);
+    // }
 
     this.currentAnimationComponent = this.currentVFXItem.getComponent(AnimationGraphComponent);
     const animationGraphComponent = this.currentAnimationComponent;
@@ -74,7 +99,9 @@ export class NodeGraph extends EditorWindow {
       return;
     }
     animationGraphComponent.graph = this.graph;
-    this.imNodeFlow.update();
+    // this.imNodeFlow.update();
+
+    this.graphView.UpdateAndDraw();
   }
 
   toData (): ImNodeFlowData {
