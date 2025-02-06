@@ -141,6 +141,13 @@ export class CompositionSourceManager implements Disposable {
           }
         }
         items.push(itemDataPath);
+      } else {
+        // 非预合成元素未达到渲染等级的转化为空节点。
+        // 预合成元素有根据 item type 的子元素加载判断，没法保留空节点，这边先整体过滤掉。
+        if (itemProps.type !== spec.ItemType.composition) {
+          itemProps.components = [];
+          items.push(itemDataPath);
+        }
       }
     }
     composition.items = items;

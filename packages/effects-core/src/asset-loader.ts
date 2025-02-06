@@ -6,7 +6,6 @@ import { Material } from './material';
 import { Geometry } from './render';
 import { SerializationHelper } from './serialization-helper';
 import { Texture } from './texture';
-import type { VFXItemProps } from './vfx-item';
 import type { Constructor } from './utils';
 
 /**
@@ -152,7 +151,7 @@ export interface EffectComponentData extends spec.EffectsObjectData {
   geometry: spec.DataPath,
 }
 
-export type VFXItemData = VFXItemProps & {
+export type VFXItemData = spec.Item & {
   dataType: spec.DataType,
   components: spec.DataPath[],
 };
