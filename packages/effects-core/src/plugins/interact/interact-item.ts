@@ -118,9 +118,17 @@ export class InteractComponent extends RendererComponent {
   override onEnable (): void {
     super.onEnable();
     const { type } = this.interactData.options as spec.ClickInteractOption;
+    const { env } = this.item.engine.renderer;
 
     if (type === spec.InteractType.CLICK) {
       this.clickable = true;
+    } else if (type === spec.InteractType.DRAG) {
+      const options = this.interactData.options as spec.DragInteractOption;
+      const enableInEditor = options.enableInEditor;
+
+      if (env !== PLAYER_OPTIONS_ENV_EDITOR || enableInEditor) {
+        this.item.composition?.event && this.beginDragTarget(options, this.item.composition.event);
+      }
     }
   }
 
