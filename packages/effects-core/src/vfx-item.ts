@@ -23,8 +23,7 @@ import type { Constructor, Disposable } from './utils';
 import { removeItem } from './utils';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
-export type VFXItemConstructor = new (engine: Engine, props: VFXItemProps, composition: Composition) => VFXItem;
-export type VFXItemProps = spec.Item;
+export type VFXItemConstructor = new (engine: Engine, props: spec.Item, composition: Composition) => VFXItem;
 
 /**
  * 所有元素的继承的抽象类
@@ -187,7 +186,7 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   constructor (
     engine: Engine,
-    props?: VFXItemProps,
+    props?: spec.Item,
   ) {
     super(engine);
     this.name = 'VFXItem';
