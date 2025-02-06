@@ -116,6 +116,8 @@ export class CompositionSourceManager implements Disposable {
           itemProps.type === spec.ItemType.sprite ||
           itemProps.type === spec.ItemType.particle ||
           itemProps.type === spec.ItemType.spine ||
+          itemProps.type === spec.ItemType.text ||
+          itemProps.type === spec.ItemType.video ||
           //@ts-expect-error
           itemProps.type === spec.ItemType.shape
         ) {
