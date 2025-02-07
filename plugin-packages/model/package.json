@@ -65,7 +65,7 @@
     "@galacean/effects": "workspace:*",
     "@galacean/effects-plugin-editor-gizmo": "workspace:*",
     "@vvfx/resource-detection": "^0.7.0",
-    "@types/hammerjs": "^2.0.45",
+    "@types/hammerjs": "^2.0.46",
     "fpsmeter": "^0.3.1",
     "hammerjs": "^2.0.8"
   }
