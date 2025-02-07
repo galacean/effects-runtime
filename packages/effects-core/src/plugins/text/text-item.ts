@@ -10,7 +10,9 @@ import { canvasPool } from '../../canvas-pool';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
-import { BaseRenderComponent } from '../../components';
+import type { ItemRenderer } from '../../components';
+import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
+import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -116,11 +118,24 @@ export class TextComponent extends BaseRenderComponent {
       maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
       order: listIndex,
     };
-
     this.interaction = interaction;
+    this.cachePrefix = '-';
+    this.renderInfo = getImageItemRenderInfo(this);
+
+    const material = this.createMaterial(this.renderInfo, 2);
+
+    this.worldMatrix = Matrix4.fromIdentity();
+    this.material = material;
+
+    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
+    // TextComponentBase
     this.updateWithOptions(options);
-    // Text
     this.updateTexture();
+
+    this.setItem();
+    // 恢复默认颜色
+    this.material.setVector4('_Color', new Vector4(1, 1, 1, 1));
+
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
@@ -145,6 +160,7 @@ export class TextComponentBase {
   material: Material;
   lineCount: number;
   item: VFXItem;
+  renderer: ItemRenderer;
   /***** mix 类型兼容用 *****/
 
   private char: string[];
@@ -515,24 +531,23 @@ export class TextComponentBase {
 
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-
-    this.material.setTexture('_MainTex',
-      Texture.createWithData(
-        this.engine,
-        {
-          data: new Uint8Array(imageData.data),
-          width: imageData.width,
-          height: imageData.height,
-        },
-        {
-          flipY,
-          magFilter: glContext.LINEAR,
-          minFilter: glContext.LINEAR,
-          wrapS: glContext.CLAMP_TO_EDGE,
-          wrapT: glContext.CLAMP_TO_EDGE,
-        },
-      ),
+    const texture = Texture.createWithData(
+      this.engine,
+      {
+        data: new Uint8Array(imageData.data),
+        width: imageData.width,
+        height: imageData.height,
+      },
+      {
+        flipY,
+        magFilter: glContext.LINEAR,
+        minFilter: glContext.LINEAR,
+        wrapS: glContext.CLAMP_TO_EDGE,
+        wrapT: glContext.CLAMP_TO_EDGE,
+      },
     );
+
+    this.renderer.texture = texture;
 
     this.isDirty = false;
   }

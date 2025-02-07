@@ -194,7 +194,7 @@ export class GLRendererInternal implements Disposable, LostHandler {
       addItem(this.framebuffers, framebuffer);
       assignInspectorName(fbo, name, name);
     } else {
-      throw new Error('Failed to create WebGL framebuffer');
+      throw new Error(`Failed to create WebGL framebuffer. gl isContextLost=${this.gl.isContextLost()}`);
     }
 
     return fbo;

@@ -15,7 +15,6 @@ import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
 import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
-import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
@@ -250,11 +249,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderer = renderer;
     this.refCompositionProps = refCompositionProps;
 
-    this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
+    // Instantiate composition rootItem
+    this.rootItem = new VFXItem(this.getEngine());
     this.rootItem.name = 'rootItem';
+    this.rootItem.duration = sourceContent.duration;
+    this.rootItem.endBehavior = sourceContent.endBehavior;
     this.rootItem.composition = this;
 
-    // Spawn rootCompositionComponent
+    // Create rootCompositionComponent
     this.rootComposition = this.rootItem.addComponent(CompositionComponent);
 
     this.width = width;
