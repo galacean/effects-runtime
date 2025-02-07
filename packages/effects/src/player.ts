@@ -22,10 +22,22 @@ let seed = 1;
  */
 export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposable, LostHandler, RestoreHandler {
   readonly env: string;
+  /**
+   * 播放器的像素比
+   */
   readonly pixelRatio: number;
+  /**
+   * 播放器的 canvas 对象
+   */
   readonly canvas: HTMLCanvasElement;
+  /**
+   * 播放器的唯一标识
+   */
   readonly name: string;
   readonly gpuCapability: GPUCapability;
+  /**
+   * 播放器的容器元素
+   */
   readonly container: HTMLElement | null;
   /**
    * 播放器的渲染对象
