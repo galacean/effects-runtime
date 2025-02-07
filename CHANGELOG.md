@@ -7,6 +7,15 @@
 
 ---
 
+## 2.2.3
+
+`2025-02-07`
+
+- Fix: interact item drag invalid when delayed. [#849](https://github.com/galacean/effects-runtime/pull/849) @wumaolinmaoan
+- Fix: Resolve the issue with text masking. [#848](https://github.com/galacean/effects-runtime/pull/848) @Sruimeng
+- Fix: opt render level filter logic. [#844](https://github.com/galacean/effects-runtime/pull/844) @wumaolinmaoan
+- Chore: add gl lost check when framebuffer failed. [#841](https://github.com/galacean/effects-runtime/pull/841) @wumaolinmaoan
+
 ## 2.2.2
 
 `2025-01-13`
