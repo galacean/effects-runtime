@@ -340,10 +340,6 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/GRPXATAUECLT/49510158-65ef1.json',
     name: '五福首页2022——四条福',
   },
-  cloud: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/FKOJKJSVVYLC/-427266929-fc9f2.json',
-    name: '五福首页2022——云',
-  },
   tab3: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LLIQIDQPYUSL/-949676776-a8d26.json',
     name: '五福首页2022——tab3',
@@ -370,7 +366,7 @@ export default {
   },
   running: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/AIPUQVVFLCPA/1548889573-0d943.json',
-    name: '【2.1.2 未通过】支付宝2021——跑步',
+    name: '支付宝2021——跑步',
   },
   door: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*XkbvQpf-_uwAAAAAAAAAAAAADlB4AQ',
@@ -378,7 +374,7 @@ export default {
   },
   payment: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DVHWTIBIRXHY/-788542078-c8fed.json',
-    name: '【2.1.2 未通过】支付宝2021——缴费',
+    name: '支付宝2021——缴费',
   },
   autumn: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LSQRKALOXBYU/1384187888-f221a.json',
@@ -462,10 +458,6 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/VKYICIAHDXQJ/-1570241290-2edef.json',
     name: '数据大屏——右侧男孩',
   },
-  camera2: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*4p4DQblt4PUAAAAAAAAAAAAADlB4AQ',
-    name: '交互元素测试',
-  },
   blackCard: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Uw1PTbYunfkAAAAAAAAAAAAADlB4AQ',
     name: '618黑卡',
@@ -488,7 +480,7 @@ export default {
   },
   try: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*fkEYR6woEj8AAAAAAAAAAAAADlB4AQ',
-    name: '【2.1.2 未通过】尝一口',
+    name: '尝一口',
   },
   redpack11: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*qkvkSbQYeWcAAAAAAAAAAAAADlB4AQ',
