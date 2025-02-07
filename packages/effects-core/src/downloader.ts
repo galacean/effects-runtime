@@ -1,6 +1,15 @@
 import { isAndroid } from './utils';
 
+/**
+ * 成功处理程序
+ * @template T
+ */
 type SuccessHandler<T> = (data: T) => void;
+/**
+ * 错误处理程序
+ * @param status - HTTP 状态码
+ * @param responseText - 响应文本
+ */
 type ErrorHandler = (status: number, responseText: string) => void;
 
 /**
@@ -273,6 +282,12 @@ export async function loadVideo (url: string | MediaProvider): Promise<HTMLVideo
   });
 }
 
+/**
+ * 异步加载一个媒体文件
+ * @param url
+ * @param loadFn
+ * @returns
+ */
 export async function loadMedia (url: string | string[], loadFn: (url: string) => Promise<HTMLImageElement | HTMLVideoElement>) {
   if (Array.isArray(url)) {
     try {
