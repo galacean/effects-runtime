@@ -12,7 +12,7 @@
 
 `2025-02-07`
 
-- Fix: update texture and material in TextComponentBase。[#855](https://github.com/galacean/effects-runtime/pull/855) @Sruimen
+- Fix: update texture and material in TextComponentBase. [#855](https://github.com/galacean/effects-runtime/pull/855) @Sruimen
 
 ## 2.2.3
 
