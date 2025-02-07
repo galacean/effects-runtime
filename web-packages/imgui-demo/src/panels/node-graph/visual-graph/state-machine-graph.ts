@@ -1,5 +1,5 @@
 import { ImGui } from '../../../imgui/index';
-import { BaseGraph, BaseNode } from './base-graph';
+import { BaseGraph, BaseNode, NodeVisualState } from './base-graph';
 import { CommentNode } from './comment-node';
 import type { DrawContext } from './drawing-context';
 import type { ImVec2 } from './im-rect';
@@ -8,12 +8,6 @@ import type { UserContext } from './user-context';
 
 type Color = ImGui.Color;
 const Color = ImGui.Color;
-
-export enum NodeVisualState {
-  Active,
-  Hovered,
-  Selected
-}
 
 export type UUID = string;
 
@@ -24,10 +18,11 @@ export class StateMachineNode extends BaseNode {
   protected DrawContextMenuOptions (ctx: DrawContext, pUserContext: UserContext, mouseCanvasPos: ImVec2): void {}
 }
 
-export class StateNode extends StateMachineNode {}
+export class StateNode extends StateMachineNode {
+}
 
 export class TransitionConduitNode extends StateMachineNode {
-  protected m_transitionProgress: number = 0;
+  m_transitionProgress: number = 0;
   m_startStateID: UUID;
   m_endStateID: UUID;
 
@@ -155,9 +150,7 @@ export abstract class StateMachineGraph extends BaseGraph {
   //   }
 
   override CanCreateNode<T extends BaseNode>(classConstructor: new (...args: any[]) => T): boolean {
-    const node = new classConstructor();
-
-    return node instanceof CommentNode || node instanceof StateMachineNode;
+    return this.isSubclassOf(classConstructor, CommentNode) || this.isSubclassOf(classConstructor, StateMachineNode);
   }
 
   protected override PreDestroyNode (pNodeAboutToBeDestroyed: BaseNode): void {

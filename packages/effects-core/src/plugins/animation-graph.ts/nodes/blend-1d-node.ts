@@ -46,6 +46,7 @@ export class Blend1DNode extends PoseNode {
   source1Result: PoseResult;
 
   protected override initializeInternal (context: GraphContext): void {
+    super.initializeInternal(context);
     this.source0Result = new PoseResult(context.skeleton);
     this.source1Result = new PoseResult(context.skeleton);
 
@@ -59,7 +60,9 @@ export class Blend1DNode extends PoseNode {
       return result;
     }
 
-    const blendWeight = this.inputParameterValueNode.getValue<number>();
+    this.markNodeActive(context);
+
+    const blendWeight = this.inputParameterValueNode.getValue<number>(context);
 
     if (this.source0 && !this.source1) {
       this.source0.evaluate(context, this.source0Result);

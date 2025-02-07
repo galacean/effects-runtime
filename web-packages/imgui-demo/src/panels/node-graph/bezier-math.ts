@@ -41,6 +41,18 @@ export function length (p: ImVec2): number {
   return Math.sqrt(lengthSqr(p));
 }
 
+export function normalize (p: ImVec2): ImVec2 {
+  return div(p, length(p));
+}
+
+export function lerp (from: ImVec2, to: ImVec2, t: number): ImVec2 {
+  if (t < 0.0 || t > 1.0) {
+    throw new Error('t must be between 0 and 1');
+  }
+
+  return new ImVec2(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+}
+
 export function colorMultiplyScalar (p: ImColor, scalar: number): ImColor {
   const value = p.Value;
 

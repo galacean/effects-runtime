@@ -1,5 +1,5 @@
 import { NodeAssetType, nodeAssetClass } from '../..';
-import type { InstantiationContext } from '../graph-context';
+import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { GraphNodeAssetData } from '../graph-node';
 import { FloatValueNode, GraphNodeAsset } from '../graph-node';
 
@@ -27,7 +27,11 @@ export class ConstFloatNodeAsset extends GraphNodeAsset {
 export class ConstFloatNode extends FloatValueNode {
   value = 0;
 
-  override getValue<T>(): T {
+  override getValue<T>(context: GraphContext): T {
+    if (!this.isUpdated(context)) {
+      this.markNodeActive(context);
+    }
+
     return this.value as T;
   }
 }

@@ -1,4 +1,4 @@
-import type { AnimationClip, GraphNode, GraphNodeAsset, GraphNodeAssetData, VFXItem, NodeAssetType } from '@galacean/effects-core';
+import type { AnimationClip, GraphNode, GraphNodeAsset, GraphNodeAssetData, NodeAssetType, PoseNode, VFXItem } from '@galacean/effects-core';
 import { EffectsObject, effectsClass, getNodeAssetClass } from '@galacean/effects-core';
 import type * as spec from '@galacean/effects-specification';
 import { GraphContext, InstantiationContext } from './graph-context';
@@ -9,7 +9,7 @@ import type { SkeletonRecordProperties } from './skeleton';
 import { Skeleton } from './skeleton';
 
 export class GraphInstance {
-  rootNode: AnimationRootNode;
+  rootNode: PoseNode;
   nodes: GraphNode[] = [];
   skeleton: Skeleton;
 
@@ -73,13 +73,17 @@ export class GraphInstance {
   }
 
   evaluateGraph (deltaTime: number) {
-    this.context.deltaTime = deltaTime;
+    this.context.update(deltaTime);
 
     if (this.rootNode) {
       this.result = this.rootNode.evaluate(this.context, this.result);
     }
 
     return this.result;
+  }
+
+  isInitialized () {
+    return this.rootNode && this.rootNode.isInitialized();
   }
 }
 

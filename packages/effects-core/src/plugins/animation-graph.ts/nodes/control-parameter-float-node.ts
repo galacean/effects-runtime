@@ -1,7 +1,7 @@
 import type { GraphNodeAssetData } from '../..';
 import { NodeAssetType } from '../..';
 import { FloatValueNode, GraphNodeAsset, nodeAssetClass } from '../..';
-import type { InstantiationContext } from '../graph-context';
+import type { GraphContext, InstantiationContext } from '../graph-context';
 
 export interface ControlParameterFloatNodeAssetData extends GraphNodeAssetData {
   type: NodeAssetType.ControlParameterFloatNodeAsset,
@@ -27,7 +27,11 @@ export class ControlParameterFloatNodeAsset extends GraphNodeAsset {
 export class ControlParameterFloatNode extends FloatValueNode {
   value = 0;
 
-  override getValue<T>(): T {
+  override getValue<T>(context: GraphContext): T {
+    if (!this.isUpdated(context)) {
+      this.markNodeActive(context);
+    }
+
     return this.value as T;
   }
 }

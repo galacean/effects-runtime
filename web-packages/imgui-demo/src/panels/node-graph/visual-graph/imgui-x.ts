@@ -1,6 +1,6 @@
 import { generateGUID } from '@galacean/effects';
 import { ImGui } from '../../../imgui/index';
-import { subtract, add, multiplyScalar, lengthSqr } from '../bezier-math';
+import { subtract, add, multiplyScalar, lengthSqr, normalize } from '../bezier-math';
 import { ImRect } from './im-rect';
 import type { UUID } from './state-machine-graph';
 
@@ -644,19 +644,19 @@ export function InputTextWithClearButton (inputTextID: string, helpText: string,
 //   return result;
 // }
 
-// // Drawing functions
-// export function DrawArrow (drawList: ImGui.ImDrawList, arrowStart: ImGui.ImVec2, arrowEnd: ImGui.ImVec2, color: Color, arrowWidth: number, arrowHeadWidth: number = 5.0): void {
-//   const direction = Vector.Normalize(ImGui.ImVec2.Subtract(arrowEnd, arrowStart));
-//   const orthogonalDirection = new ImGui.ImVec2(-direction.y, direction.x);
+// Drawing functions
+export function DrawArrow (drawList: ImGui.ImDrawList, arrowStart: ImGui.ImVec2, arrowEnd: ImGui.ImVec2, color: Color, arrowWidth: number, arrowHeadWidth: number = 5.0): void {
+  const direction = normalize(subtract(arrowEnd, arrowStart));
+  const orthogonalDirection = new ImGui.ImVec2(-direction.y, direction.x);
 
-//   const triangleSideOffset = ImGui.ImVec2.Multiply(orthogonalDirection, arrowHeadWidth);
-//   const triBase = ImGui.ImVec2.Subtract(arrowEnd, ImGui.ImVec2.Multiply(direction, arrowHeadWidth));
-//   const tri1 = ImGui.ImVec2.Subtract(triBase, triangleSideOffset);
-//   const tri2 = ImGui.ImVec2.Add(triBase, triangleSideOffset);
+  const triangleSideOffset = multiplyScalar(orthogonalDirection, arrowHeadWidth);
+  const triBase = subtract(arrowEnd, multiplyScalar(direction, arrowHeadWidth));
+  const tri1 = subtract(triBase, triangleSideOffset);
+  const tri2 = add(triBase, triangleSideOffset);
 
-//   drawList.AddLine(arrowStart, triBase, color.toImU32(), arrowWidth);
-//   drawList.AddTriangleFilled(arrowEnd, tri1, tri2, color.toImU32());
-// }
+  drawList.AddLine(arrowStart, triBase, color.toImU32(), arrowWidth);
+  drawList.AddTriangleFilled(arrowEnd, tri1, tri2, color.toImU32());
+}
 
 // export function DrawSpinner (buttonLabel: string, color: Color = new Color(ImGui.GetStyle().Colors[ImGui.ImGuiCol.Text]), size: number = 0, thickness: number = 3.0, padding: number = ImGui.GetStyle().FramePadding.y): boolean {
 //   const numSegments = 30.0;

@@ -1,18 +1,20 @@
 import { ImRect, ImVec2 } from './im-rect';
 import { DrawChannel, DrawContext } from './drawing-context';
-import { add, colorMultiplyScalar, div, fmodf, length, multiplyScalar, subtract } from '../bezier-math';
+import { add, colorMultiplyScalar, div, fmodf, length, lengthSqr, lerp, multiplyScalar, normalize, subtract } from '../bezier-math';
 import type { UUID } from './state-machine-graph';
-import { NodeVisualState, StateMachineGraph, StateMachineNode, StateNode, TransitionConduitNode } from './state-machine-graph';
+import { StateMachineGraph, StateMachineNode, StateNode, TransitionConduitNode } from './state-machine-graph';
 import { ImGui } from '../../../imgui';
 import * as ImGuiX from './imgui-x';
-import { BaseNode } from './base-graph';
+import { BaseNode, NodeVisualState, ScopedGraphModification } from './base-graph';
 import { BaseGraph } from './base-graph';
 import type { UserContext } from './user-context';
 import { SelectedNode } from './user-context';
 import { generateGUID } from '@galacean/effects';
 import { CommentNode } from './comment-node';
 import type { Pin } from './flow-graph';
+import { PinDirection } from './flow-graph';
 import { FlowGraph, FlowNode } from './flow-graph';
+import { Colors } from '../tools-graph/colors';
 
 type Color = ImGui.Color;
 const Color = ImGui.Color;
@@ -115,6 +117,10 @@ function GetNodeBackgroundAndBorderColors (titleBarColor: Color, baseColor: Colo
   }
 
   return [outTitleBarColor, outBackgroundColor, outBorderColor];
+}
+
+function clamp (value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
 enum DragMode {
@@ -658,66 +664,68 @@ export class GraphView {
   }
 
   private DrawStateMachineTransitionConduit (ctx: DrawContext, pTransitionConduit: TransitionConduitNode): void {
-    // if (!pTransitionConduit.m_startStateID.IsValid() || !pTransitionConduit.m_endStateID.IsValid()) {
-    //   return;
-    // }
+    if (pTransitionConduit.m_startStateID === '' || pTransitionConduit.m_endStateID === '') {
+      return;
+    }
 
-    // const pStartState = this.m_pGraph.FindNode(pTransitionConduit.m_startStateID) as StateNode;
-    // const pEndState = this.m_pGraph.FindNode(pTransitionConduit.m_endStateID) as StateNode;
+    const pStartState = this.m_pGraph!.FindNode(pTransitionConduit.m_startStateID) as StateNode;
+    const pEndState = this.m_pGraph!.FindNode(pTransitionConduit.m_endStateID) as StateNode;
 
-    // const startNodeRect = pStartState.GetRect();
-    // const scaledEndNodeRect = pEndState.GetRect();
+    const startNodeRect = pStartState.GetRect();
+    const scaledEndNodeRect = pEndState.GetRect();
 
-    // let [startPoint, endPoint] = GetConnectionPointsBetweenStateMachineNodes(startNodeRect, scaledEndNodeRect);
+    let [startPoint, endPoint] = GetConnectionPointsBetweenStateMachineNodes(startNodeRect, scaledEndNodeRect);
 
-    // const arrowDir = new Vector(endPoint.sub(startPoint)).GetNormalized2();
-    // const orthogonalDir = arrowDir.Orthogonal2D();
-    // const offset = orthogonalDir.mul(g_transitionArrowOffset).ToImVec2();
+    const arrowDir = normalize(subtract(endPoint, startPoint));
+    const orthogonalDir = new ImGui.ImVec2(-arrowDir.y, arrowDir.x);
+    const offset = multiplyScalar(orthogonalDir, g_transitionArrowOffset);
 
-    // startPoint = startPoint.add(offset);
-    // endPoint = endPoint.add(offset);
+    startPoint = add(startPoint, offset);
+    endPoint = add(endPoint, offset);
 
-    // const scaledSelectionExtraRadius = ctx.WindowToCanvas(g_connectionSelectionExtraRadius);
-    // const closestPointOnTransitionToMouse = ImGuiX.LineClosestPoint(startPoint, endPoint, ctx.m_mouseCanvasPos);
+    const scaledSelectionExtraRadius = ctx.WindowToCanvas(g_connectionSelectionExtraRadius);
+    const closestPointOnTransitionToMouse = ImGuiX.ImLineClosestPoint(startPoint, endPoint, ctx.m_mouseCanvasPos);
 
-    // if (this.m_isViewHovered && closestPointOnTransitionToMouse.sub(ctx.m_mouseCanvasPos).LengthSqr() < Math.pow(scaledSelectionExtraRadius, 2)) {
-    //   pTransitionConduit.m_isHovered = true;
-    // } else {
-    //   pTransitionConduit.m_isHovered = false;
-    // }
+    if (this.m_isViewHovered && lengthSqr(subtract(closestPointOnTransitionToMouse, ctx.m_mouseCanvasPos)) < Math.pow(scaledSelectionExtraRadius, 2)) {
+      pTransitionConduit.m_isHovered = true;
+    } else {
+      pTransitionConduit.m_isHovered = false;
+    }
 
-    // const visualState = new TBitFlags<NodeVisualState>();
+    const visualState = new Map<NodeVisualState, boolean>();
 
-    // visualState.SetFlag(NodeVisualState.Active, pTransitionConduit.IsActive(this.m_pUserContext));
-    // visualState.SetFlag(NodeVisualState.Selected, this.IsNodeSelected(pTransitionConduit));
-    // visualState.SetFlag(NodeVisualState.Hovered, pTransitionConduit.m_isHovered);
+    visualState.set(NodeVisualState.Active, pTransitionConduit.IsActive(this.m_pUserContext));
+    visualState.set(NodeVisualState.Selected, this.IsNodeSelected(pTransitionConduit));
+    visualState.set(NodeVisualState.Hovered, pTransitionConduit.m_isHovered);
 
-    // pTransitionConduit.DrawExtraControls(ctx, this.m_pUserContext, startPoint, endPoint);
+    pTransitionConduit.DrawExtraControls(ctx, this.m_pUserContext, startPoint, endPoint);
 
-    // const scaledArrowHeadWidth = ctx.CanvasToWindow(5.0);
-    // const scaledArrowWidth = ctx.CanvasToWindow(g_transitionArrowWidth);
+    const scaledArrowHeadWidth = ctx.CanvasToWindow(5.0);
+    const scaledArrowWidth = ctx.CanvasToWindow(g_transitionArrowWidth);
+    // Source code:
     // const transitionProgress = pTransitionConduit.m_transitionProgress.GetNormalizedTime();
-    // const hasTransitionProgress = transitionProgress > 0.0;
-    // const transitionColor = pTransitionConduit.GetConduitColor(ctx, this.m_pUserContext, visualState);
+    const transitionProgress = pTransitionConduit.m_transitionProgress;
+    const hasTransitionProgress = transitionProgress > 0.0;
+    const transitionColor = pTransitionConduit.GetConduitColor(ctx, this.m_pUserContext, visualState);
 
-    // if (hasTransitionProgress) {
-    //   ImGuiX.DrawArrow(ctx.m_pDrawList, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), Colors.DimGray, scaledArrowWidth, scaledArrowHeadWidth);
-    //   const progressEndPoint = Math.Lerp(startPoint, endPoint, transitionProgress);
+    if (hasTransitionProgress) {
+      ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), new Color(Colors.DimGray), scaledArrowWidth, scaledArrowHeadWidth);
+      const progressEndPoint = lerp(startPoint, endPoint, transitionProgress);
 
-    //   ImGuiX.DrawArrow(ctx.m_pDrawList, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(progressEndPoint), transitionColor, scaledArrowWidth, scaledArrowHeadWidth);
-    // } else {
-    //   if (visualState.IsFlagSet(NodeVisualState.Selected)) {
-    //     ImGuiX.DrawArrow(ctx.m_pDrawList, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), transitionColor, scaledArrowWidth * 1.5, scaledArrowHeadWidth * 1.5);
-    //   } else {
-    //     ImGuiX.DrawArrow(ctx.m_pDrawList, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), transitionColor, scaledArrowWidth, scaledArrowHeadWidth);
-    //   }
-    // }
+      ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(progressEndPoint), transitionColor, scaledArrowWidth, scaledArrowHeadWidth);
+    } else {
+      if (visualState.get(NodeVisualState.Selected)) {
+        ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), transitionColor, scaledArrowWidth * 1.5, scaledArrowHeadWidth * 1.5);
+      } else {
+        ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(startPoint), ctx.CanvasToScreenPosition(endPoint), transitionColor, scaledArrowWidth, scaledArrowHeadWidth);
+      }
+    }
 
-    // const min = new ImVec2(Math.min(startPoint.x, endPoint.x), Math.min(startPoint.y, endPoint.y));
-    // const max = new ImVec2(Math.max(startPoint.x, endPoint.x), Math.max(startPoint.y, endPoint.y));
+    const min = new ImVec2(Math.min(startPoint.x, endPoint.x), Math.min(startPoint.y, endPoint.y));
+    const max = new ImVec2(Math.max(startPoint.x, endPoint.x), Math.max(startPoint.y, endPoint.y));
 
-    // pTransitionConduit.m_canvasPosition = min;
-    // pTransitionConduit.m_size = max.sub(min);
+    pTransitionConduit.m_canvasPosition = min;
+    pTransitionConduit.m_size = subtract(max, min);
   }
 
   private DrawFlowNode (ctx: DrawContext, pNode: FlowNode): void {
@@ -1162,7 +1170,7 @@ export class GraphView {
 
     this.EndDrawCanvas(drawingContext);
 
-    // this.HandleInput(drawingContext);
+    this.HandleInput(drawingContext);
     // this.HandleContextMenu(drawingContext);
     // this.DrawDialogs();
 
@@ -1308,314 +1316,314 @@ export class GraphView {
     this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
   }
 
-  //   private AddToSelection (pNodeToAdd: BaseNode): void {
-  //     if (pNodeToAdd === null) {
-  //       throw new Error('Node to add is null');
-  //     }
-  //     if (this.IsNodeSelected(pNodeToAdd)) {
-  //       throw new Error('Node is already selected');
-  //     }
+  private AddToSelection (pNodeToAdd: BaseNode): void {
+    if (pNodeToAdd === null) {
+      throw new Error('Node to add is null');
+    }
+    if (this.IsNodeSelected(pNodeToAdd)) {
+      throw new Error('Node is already selected');
+    }
 
-  //     const oldSelection = [...this.m_selectedNodes];
+    const oldSelection = [...this.m_selectedNodes];
 
-  //     this.m_selectedNodes.push(new SelectedNode(pNodeToAdd));
-  //     this.m_selectionChanged = true;
-  //     this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
+    this.m_selectedNodes.push(new SelectedNode(pNodeToAdd));
+    this.m_selectionChanged = true;
+    this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
+  }
+
+  private RemoveFromSelection (pNodeToRemove: BaseNode): void {
+    if (pNodeToRemove === null) {
+      throw new Error('Node to remove is null');
+    }
+    if (!this.IsNodeSelected(pNodeToRemove)) {
+      throw new Error('Node is not selected');
+    }
+
+    const oldSelection = [...this.m_selectedNodes];
+
+    this.m_selectedNodes = this.m_selectedNodes.filter(node => node.m_pNode !== pNodeToRemove);
+    this.m_selectionChanged = true;
+    this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
+  }
+
+  // DestroySelectedNodes (): void {
+  //   const pGraph = this.GetViewedGraph();
+
+  //   if (this.m_isReadOnly) {
+  //     throw new Error('Graph is read-only');
   //   }
 
-  //   private RemoveFromSelection (pNodeToRemove: BaseNode): void {
-  //     if (pNodeToRemove === null) {
-  //       throw new Error('Node to remove is null');
-  //     }
-  //     if (!this.IsNodeSelected(pNodeToRemove)) {
-  //       throw new Error('Node is not selected');
-  //     }
+  //   const sgm = new ScopedGraphModification(pGraph);
 
-  //     const oldSelection = [...this.m_selectedNodes];
-
-  //     this.m_selectedNodes = this.m_selectedNodes.filter(node => node.m_pNode !== pNodeToRemove);
-  //     this.m_selectionChanged = true;
-  //     this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
+  //   // Exclude any state machine transitions, as we will end up double deleting them since they are removed if the state is removed
+  //   if (this.IsViewingStateMachineGraph()) {
+  //     this.m_selectedNodes = this.m_selectedNodes.filter(node => !(node.m_pNode instanceof TransitionConduitNode));
   //   }
 
-  //   DestroySelectedNodes (): void {
-  //     const pGraph = this.GetViewedGraph();
-
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
+  //   // Delete selected nodes
+  //   for (const selectedNode of this.m_selectedNodes) {
+  //     if (pGraph.CanDestroyNode(selectedNode.m_pNode) && selectedNode.m_pNode.IsDestroyable()) {
+  //       pGraph.DestroyNode(selectedNode.m_nodeID);
   //     }
-
-  //     const sgm = new ScopedGraphModification(pGraph);
-
-  //     // Exclude any state machine transitions, as we will end up double deleting them since they are removed if the state is removed
-  //     if (this.IsViewingStateMachineGraph()) {
-  //       this.m_selectedNodes = this.m_selectedNodes.filter(node => !(node.m_pNode instanceof TransitionConduitNode));
-  //     }
-
-  //     // Delete selected nodes
-  //     for (const selectedNode of this.m_selectedNodes) {
-  //       if (pGraph.CanDestroyNode(selectedNode.m_pNode) && selectedNode.m_pNode.IsDestroyable()) {
-  //         pGraph.DestroyNode(selectedNode.m_nodeID);
-  //       }
-  //     }
-
-  //     this.ClearSelection();
   //   }
 
-  //   CreateCommentAroundSelectedNodes (): void {
-  //     if (this.m_selectedNodes.length === 0) {
-  //       return;
-  //     }
+  //   this.ClearSelection();
+  // }
 
-  //     // Calculate comment size
-  //     const numNodes = this.m_selectedNodes.length;
-  //     const selectedNodesRect = new ImRect(
-  //       this.m_selectedNodes[0].m_pNode.GetPosition(),
-  //       this.m_selectedNodes[0].m_pNode.GetPosition().add(this.m_selectedNodes[0].m_pNode.GetSize())
-  //     );
-
-  //     for (let i = 1; i < numNodes; i++) {
-  //       const pNode = this.m_selectedNodes[i].m_pNode;
-
-  //       if (pNode.IsVisible()) {
-  //         const nodeRect = new ImRect(pNode.GetPosition(), pNode.GetPosition().add(pNode.GetSize()));
-
-  //         selectedNodesRect.Add(nodeRect);
-  //       }
-  //     }
-
-  //     const commentPadding = new ImVec2(60, 60);
-  //     const canvasPos = selectedNodesRect.Min.sub(commentPadding);
-  //     const canvasBoxSize = selectedNodesRect.GetSize().add(commentPadding.mul(2));
-
-  //     // Create comment
-  //     const sgm = new ScopedGraphModification(this.m_pGraph);
-  //     const pCommentNode = this.m_pGraph.CreateNode<CommentNode>();
-
-  //     pCommentNode.m_name = 'Comment';
-  //     pCommentNode.m_canvasPosition = canvasPos;
-  //     pCommentNode.m_commentBoxSize = canvasBoxSize;
+  // CreateCommentAroundSelectedNodes (): void {
+  //   if (this.m_selectedNodes.length === 0) {
+  //     return;
   //   }
 
-  //   CopySelectedNodes (typeRegistry: TypeRegistry): void {
-  //     if (this.m_selectedNodes.length === 0) {
-  //       return;
+  //   // Calculate comment size
+  //   const numNodes = this.m_selectedNodes.length;
+  //   const selectedNodesRect = new ImRect(
+  //     this.m_selectedNodes[0].m_pNode.GetPosition(),
+  //     this.m_selectedNodes[0].m_pNode.GetPosition().add(this.m_selectedNodes[0].m_pNode.GetSize())
+  //   );
+
+  //   for (let i = 1; i < numNodes; i++) {
+  //     const pNode = this.m_selectedNodes[i].m_pNode;
+
+  //     if (pNode.IsVisible()) {
+  //       const nodeRect = new ImRect(pNode.GetPosition(), pNode.GetPosition().add(pNode.GetSize()));
+
+  //       selectedNodesRect.Add(nodeRect);
+  //     }
+  //   }
+
+  //   const commentPadding = new ImVec2(60, 60);
+  //   const canvasPos = selectedNodesRect.Min.sub(commentPadding);
+  //   const canvasBoxSize = selectedNodesRect.GetSize().add(commentPadding.mul(2));
+
+  //   // Create comment
+  //   const sgm = new ScopedGraphModification(this.m_pGraph);
+  //   const pCommentNode = this.m_pGraph.CreateNode<CommentNode>();
+
+  //   pCommentNode.m_name = 'Comment';
+  //   pCommentNode.m_canvasPosition = canvasPos;
+  //   pCommentNode.m_commentBoxSize = canvasBoxSize;
+  // }
+
+  // CopySelectedNodes (typeRegistry: TypeRegistry): void {
+  //   if (this.m_selectedNodes.length === 0) {
+  //     return;
+  //   }
+
+  //   // Prepare list of nodes to copy
+  //   const nodesToCopy: BaseNode[] = [];
+
+  //   for (const selectedNode of this.m_selectedNodes) {
+  //     // Do not copy any selected conduits, as conduits are automatically copied!!!
+  //     if (selectedNode.m_pNode instanceof TransitionConduitNode) {
+  //       continue;
   //     }
 
-  //     // Prepare list of nodes to copy
-  //     const nodesToCopy: BaseNode[] = [];
-
-  //     for (const selectedNode of this.m_selectedNodes) {
-  //       // Do not copy any selected conduits, as conduits are automatically copied!!!
-  //       if (selectedNode.m_pNode instanceof TransitionConduitNode) {
-  //         continue;
-  //       }
-
-  //       if (selectedNode.m_pNode.IsUserCreatable()) {
-  //         nodesToCopy.push(selectedNode.m_pNode);
-  //       }
+  //     if (selectedNode.m_pNode.IsUserCreatable()) {
+  //       nodesToCopy.push(selectedNode.m_pNode);
   //     }
+  //   }
 
-  //     // Ensure that all transitions between copied states are also copied
-  //     if (this.IsViewingStateMachineGraph()) {
-  //       for (const nodeInstance of this.m_pGraph.m_nodes) {
-  //         if (nodeInstance instanceof TransitionConduitNode) {
-  //           // If the conduit is already copied, then do nothing
-  //           if (nodesToCopy.includes(nodeInstance)) {
-  //             continue;
-  //           }
+  //   // Ensure that all transitions between copied states are also copied
+  //   if (this.IsViewingStateMachineGraph()) {
+  //     for (const nodeInstance of this.m_pGraph.m_nodes) {
+  //       if (nodeInstance instanceof TransitionConduitNode) {
+  //         // If the conduit is already copied, then do nothing
+  //         if (nodesToCopy.includes(nodeInstance)) {
+  //           continue;
+  //         }
 
-  //           // If there exists a conduit between two copied states, then serialize it
-  //           const wasStartStateCopied = nodesToCopy.some(node => node.GetID().equals(nodeInstance.GetStartStateID()));
-  //           const wasEndStateCopied = nodesToCopy.some(node => node.GetID().equals(nodeInstance.GetEndStateID()));
+  //         // If there exists a conduit between two copied states, then serialize it
+  //         const wasStartStateCopied = nodesToCopy.some(node => node.GetID().equals(nodeInstance.GetStartStateID()));
+  //         const wasEndStateCopied = nodesToCopy.some(node => node.GetID().equals(nodeInstance.GetEndStateID()));
 
-  //           if (wasStartStateCopied && wasEndStateCopied) {
-  //             nodesToCopy.push(nodeInstance);
-  //           }
+  //         if (wasStartStateCopied && wasEndStateCopied) {
+  //           nodesToCopy.push(nodeInstance);
   //         }
   //       }
   //     }
-
-  //     // Serialize nodes and connections
-  //     const copiedData = new xml_document();
-  //     const dataNode = copiedData.append_child(GraphView.s_graphCopiedDataNodeName);
-
-  //     // Serialize nodes
-  //     {
-  //       const copiedNodesNode = dataNode.append_child(GraphView.s_copiedNodesNodeName);
-
-  //       for (const pNode of nodesToCopy) {
-  //         pNode.PreCopy();
-  //         Serialization.WriteType(typeRegistry, pNode, copiedNodesNode);
-  //       }
-  //     }
-
-  //     // Serialize node connections
-  //     if (this.IsViewingFlowGraph()) {
-  //       const pFlowGraph = this.GetFlowGraph();
-  //       const copiedConnectionsNode = dataNode.append_child(GraphView.s_copiedConnectionsNodeName);
-
-  //       for (const connection of pFlowGraph.m_connections) {
-  //         const wasFromNodeCopied = nodesToCopy.some(node => node.GetID().equals(connection.m_fromNodeID));
-  //         const wasToNodeCopied = nodesToCopy.some(node => node.GetID().equals(connection.m_toNodeID));
-
-  //         if (wasFromNodeCopied && wasToNodeCopied) {
-  //           Serialization.WriteType(typeRegistry, connection, copiedConnectionsNode);
-  //         }
-  //       }
-  //     }
-
-  //     const xmlStr = Serialization.WriteXmlToString(copiedData);
-
-  //     ImGui.SetClipboardText(xmlStr);
   //   }
 
-  //   PasteNodes (typeRegistry: TypeRegistry, canvasPastePosition: ImVec2): void {
-  //     if (this.m_pGraph === null) {
-  //       throw new Error('Graph is null');
+  //   // Serialize nodes and connections
+  //   const copiedData = new xml_document();
+  //   const dataNode = copiedData.append_child(GraphView.s_graphCopiedDataNodeName);
+
+  //   // Serialize nodes
+  //   {
+  //     const copiedNodesNode = dataNode.append_child(GraphView.s_copiedNodesNodeName);
+
+  //     for (const pNode of nodesToCopy) {
+  //       pNode.PreCopy();
+  //       Serialization.WriteType(typeRegistry, pNode, copiedNodesNode);
   //     }
+  //   }
 
-  //     if (this.m_isReadOnly) {
-  //       return;
-  //     }
+  //   // Serialize node connections
+  //   if (this.IsViewingFlowGraph()) {
+  //     const pFlowGraph = this.GetFlowGraph();
+  //     const copiedConnectionsNode = dataNode.append_child(GraphView.s_copiedConnectionsNodeName);
 
-  //     // Get pasted data
-  //     const pClipboardText = ImGui.GetClipboardText();
+  //     for (const connection of pFlowGraph.m_connections) {
+  //       const wasFromNodeCopied = nodesToCopy.some(node => node.GetID().equals(connection.m_fromNodeID));
+  //       const wasToNodeCopied = nodesToCopy.some(node => node.GetID().equals(connection.m_toNodeID));
 
-  //     if (pClipboardText === null) {
-  //       return;
-  //     }
-
-  //     const document = new xml_document();
-
-  //     if (!Serialization.ReadXmlFromString(pClipboardText, document)) {
-  //       return;
-  //     }
-
-  //     const copiedDataNode = document.child(GraphView.s_graphCopiedDataNodeName);
-
-  //     if (copiedDataNode.empty()) {
-  //       return;
-  //     }
-
-  //     // Deserialize pasted nodes and regenerated IDs
-  //     const copiedNodesNode = copiedDataNode.child(GraphView.s_copiedNodesNodeName);
-  //     const graphNodeNodes: xml_node[] = [];
-
-  //     Serialization.GetAllChildNodes(copiedNodesNode, Serialization.g_typeNodeName, graphNodeNodes);
-
-  //     if (graphNodeNodes.length === 0) {
-  //       return;
-  //     }
-
-  //     const IDMapping = new Map<UUID, UUID>();
-  //     const pastedNodes: BaseNode[] = [];
-
-  //     for (const graphNodeNode of copiedNodesNode.children()) {
-  //       const pPastedNode = Serialization.TryCreateAndReadType(typeRegistry, graphNodeNode) as BaseNode;
-
-  //       if (this.m_pGraph.CanCreateNode(pPastedNode.GetTypeInfo())) {
-  //         // Set parent graph ptr
-  //         pPastedNode.m_pParentGraph = this.m_pGraph;
-
-  //         // Set child graph parent ptrs
-  //         if (pPastedNode.HasChildGraph()) {
-  //           pPastedNode.GetChildGraph().m_pParentNode = pPastedNode;
-  //         }
-
-  //         // Set secondary graph parent ptrs
-  //         if (pPastedNode.HasSecondaryGraph()) {
-  //           pPastedNode.GetSecondaryGraph().m_pParentNode = pPastedNode;
-  //         }
-
-  //         pPastedNode.RegenerateIDs(IDMapping);
-  //         pPastedNode.PostPaste();
-  //         pastedNodes.push(pPastedNode);
-  //       } else {
-  //         pPastedNode.m_pParentGraph = null;
-  //         pPastedNode.m_ID.Clear();
-  //         // In TypeScript, we don't need to explicitly delete objects
+  //       if (wasFromNodeCopied && wasToNodeCopied) {
+  //         Serialization.WriteType(typeRegistry, connection, copiedConnectionsNode);
   //       }
   //     }
+  //   }
 
-  //     if (pastedNodes.length === 0) {
-  //       return;
+  //   const xmlStr = Serialization.WriteXmlToString(copiedData);
+
+  //   ImGui.SetClipboardText(xmlStr);
+  // }
+
+  // PasteNodes (typeRegistry: TypeRegistry, canvasPastePosition: ImVec2): void {
+  //   if (this.m_pGraph === null) {
+  //     throw new Error('Graph is null');
+  //   }
+
+  //   if (this.m_isReadOnly) {
+  //     return;
+  //   }
+
+  //   // Get pasted data
+  //   const pClipboardText = ImGui.GetClipboardText();
+
+  //   if (pClipboardText === null) {
+  //     return;
+  //   }
+
+  //   const document = new xml_document();
+
+  //   if (!Serialization.ReadXmlFromString(pClipboardText, document)) {
+  //     return;
+  //   }
+
+  //   const copiedDataNode = document.child(GraphView.s_graphCopiedDataNodeName);
+
+  //   if (copiedDataNode.empty()) {
+  //     return;
+  //   }
+
+  //   // Deserialize pasted nodes and regenerated IDs
+  //   const copiedNodesNode = copiedDataNode.child(GraphView.s_copiedNodesNodeName);
+  //   const graphNodeNodes: xml_node[] = [];
+
+  //   Serialization.GetAllChildNodes(copiedNodesNode, Serialization.g_typeNodeName, graphNodeNodes);
+
+  //   if (graphNodeNodes.length === 0) {
+  //     return;
+  //   }
+
+  //   const IDMapping = new Map<UUID, UUID>();
+  //   const pastedNodes: BaseNode[] = [];
+
+  //   for (const graphNodeNode of copiedNodesNode.children()) {
+  //     const pPastedNode = Serialization.TryCreateAndReadType(typeRegistry, graphNodeNode) as BaseNode;
+
+  //     if (this.m_pGraph.CanCreateNode(pPastedNode.GetTypeInfo())) {
+  //       // Set parent graph ptr
+  //       pPastedNode.m_pParentGraph = this.m_pGraph;
+
+  //       // Set child graph parent ptrs
+  //       if (pPastedNode.HasChildGraph()) {
+  //         pPastedNode.GetChildGraph().m_pParentNode = pPastedNode;
+  //       }
+
+  //       // Set secondary graph parent ptrs
+  //       if (pPastedNode.HasSecondaryGraph()) {
+  //         pPastedNode.GetSecondaryGraph().m_pParentNode = pPastedNode;
+  //       }
+
+  //       pPastedNode.RegenerateIDs(IDMapping);
+  //       pPastedNode.PostPaste();
+  //       pastedNodes.push(pPastedNode);
+  //     } else {
+  //       pPastedNode.m_pParentGraph = null;
+  //       pPastedNode.m_ID.Clear();
+  //       // In TypeScript, we don't need to explicitly delete objects
   //     }
+  //   }
 
-  //     // Add nodes to the graph
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
+  //   if (pastedNodes.length === 0) {
+  //     return;
+  //   }
+
+  //   // Add nodes to the graph
+  //   if (this.m_isReadOnly) {
+  //     throw new Error('Graph is read-only');
+  //   }
+  //   this.m_pGraph.BeginModification();
+
+  //   for (const pPastedNode of pastedNodes) {
+  //     if (pPastedNode.m_pParentGraph !== this.m_pGraph) {
+  //       throw new Error('Pasted node\'s parent graph is incorrect');
   //     }
-  //     this.m_pGraph.BeginModification();
+  //     if (pPastedNode.IsRenameable()) {
+  //       pPastedNode.Rename(pPastedNode.GetName()); // Ensures a unique name if needed
+  //     }
+  //     this.m_pGraph.m_nodes.push(pPastedNode);
+  //     this.m_pGraph.OnNodeAdded(pPastedNode);
+  //   }
 
+  //   // Serialize and fix connections
+  //   if (this.IsViewingFlowGraph()) {
+  //     const pFlowGraph = this.GetFlowGraph();
+  //     const copiedConnectionsNode = copiedDataNode.child(GraphView.s_copiedConnectionsNodeName);
+  //     const connectionNodes: xml_node[] = [];
+
+  //     Serialization.GetAllChildNodes(copiedConnectionsNode, Serialization.g_typeNodeName, connectionNodes);
+
+  //     for (const connectionNode of connectionNodes) {
+  //       const pPastedConnection = Serialization.TryCreateAndReadType(typeRegistry, connectionNode) as FlowGraph.Connection;
+
+  //       pPastedConnection.m_fromNodeID = IDMapping.get(pPastedConnection.m_fromNodeID) ?? pPastedConnection.m_fromNodeID;
+  //       pPastedConnection.m_outputPinID = IDMapping.get(pPastedConnection.m_outputPinID) ?? pPastedConnection.m_outputPinID;
+  //       pPastedConnection.m_toNodeID = IDMapping.get(pPastedConnection.m_toNodeID) ?? pPastedConnection.m_toNodeID;
+  //       pPastedConnection.m_inputPinID = IDMapping.get(pPastedConnection.m_inputPinID) ?? pPastedConnection.m_inputPinID;
+
+  //       if (pFlowGraph.IsValidConnection(pPastedConnection.m_fromNodeID, pPastedConnection.m_outputPinID, pPastedConnection.m_toNodeID, pPastedConnection.m_inputPinID)) {
+  //         pFlowGraph.m_connections.push(pPastedConnection);
+  //       }
+
+  //       // In TypeScript, we don't need to explicitly delete objects
+  //     }
+  //   } else { // State Machine
   //     for (const pPastedNode of pastedNodes) {
-  //       if (pPastedNode.m_pParentGraph !== this.m_pGraph) {
-  //         throw new Error('Pasted node\'s parent graph is incorrect');
-  //       }
-  //       if (pPastedNode.IsRenameable()) {
-  //         pPastedNode.Rename(pPastedNode.GetName()); // Ensures a unique name if needed
-  //       }
-  //       this.m_pGraph.m_nodes.push(pPastedNode);
-  //       this.m_pGraph.OnNodeAdded(pPastedNode);
-  //     }
-
-  //     // Serialize and fix connections
-  //     if (this.IsViewingFlowGraph()) {
-  //       const pFlowGraph = this.GetFlowGraph();
-  //       const copiedConnectionsNode = copiedDataNode.child(GraphView.s_copiedConnectionsNodeName);
-  //       const connectionNodes: xml_node[] = [];
-
-  //       Serialization.GetAllChildNodes(copiedConnectionsNode, Serialization.g_typeNodeName, connectionNodes);
-
-  //       for (const connectionNode of connectionNodes) {
-  //         const pPastedConnection = Serialization.TryCreateAndReadType(typeRegistry, connectionNode) as FlowGraph.Connection;
-
-  //         pPastedConnection.m_fromNodeID = IDMapping.get(pPastedConnection.m_fromNodeID) ?? pPastedConnection.m_fromNodeID;
-  //         pPastedConnection.m_outputPinID = IDMapping.get(pPastedConnection.m_outputPinID) ?? pPastedConnection.m_outputPinID;
-  //         pPastedConnection.m_toNodeID = IDMapping.get(pPastedConnection.m_toNodeID) ?? pPastedConnection.m_toNodeID;
-  //         pPastedConnection.m_inputPinID = IDMapping.get(pPastedConnection.m_inputPinID) ?? pPastedConnection.m_inputPinID;
-
-  //         if (pFlowGraph.IsValidConnection(pPastedConnection.m_fromNodeID, pPastedConnection.m_outputPinID, pPastedConnection.m_toNodeID, pPastedConnection.m_inputPinID)) {
-  //           pFlowGraph.m_connections.push(pPastedConnection);
-  //         }
-
-  //         // In TypeScript, we don't need to explicitly delete objects
-  //       }
-  //     } else { // State Machine
-  //       for (const pPastedNode of pastedNodes) {
-  //         if (pPastedNode instanceof TransitionConduitNode) {
-  //           pPastedNode.m_startStateID = IDMapping.get(pPastedNode.m_startStateID) ?? pPastedNode.m_startStateID;
-  //           pPastedNode.m_endStateID = IDMapping.get(pPastedNode.m_endStateID) ?? pPastedNode.m_endStateID;
-  //         }
+  //       if (pPastedNode instanceof TransitionConduitNode) {
+  //         pPastedNode.m_startStateID = IDMapping.get(pPastedNode.m_startStateID) ?? pPastedNode.m_startStateID;
+  //         pPastedNode.m_endStateID = IDMapping.get(pPastedNode.m_endStateID) ?? pPastedNode.m_endStateID;
   //       }
   //     }
-
-  //     // Updated pasted node positions
-  //     let leftMostNodePosition = new ImVec2(Number.MAX_VALUE, Number.MAX_VALUE);
-
-  //     for (const pPastedNode of pastedNodes) {
-  //       if (pPastedNode.GetPosition().x < leftMostNodePosition.x) {
-  //         leftMostNodePosition = pPastedNode.GetPosition();
-  //       }
-  //     }
-
-  //     for (const pPastedNode of pastedNodes) {
-  //       pPastedNode.SetPosition(pPastedNode.GetPosition().sub(leftMostNodePosition).add(new ImVec2(canvasPastePosition.x, canvasPastePosition.y)));
-  //     }
-
-  //     // Notify graph that nodes were pasted
-  //     this.m_pGraph.PostPasteNodes(pastedNodes);
-  //     this.m_pUserContext.NotifyNodesPasted(pastedNodes);
-  //     this.m_pGraph.EndModification();
   //   }
 
-  //   private BeginRenameNode (pNode: BaseNode): void {
-  //     if (pNode === null || !pNode.IsRenameable()) {
-  //       throw new Error('Node is null or not renameable');
+  //   // Updated pasted node positions
+  //   let leftMostNodePosition = new ImVec2(Number.MAX_VALUE, Number.MAX_VALUE);
+
+  //   for (const pPastedNode of pastedNodes) {
+  //     if (pPastedNode.GetPosition().x < leftMostNodePosition.x) {
+  //       leftMostNodePosition = pPastedNode.GetPosition();
   //     }
-  //     this.m_textBuffer = pNode.GetName();
-  //     this.m_pNodeBeingOperatedOn = pNode;
   //   }
+
+  //   for (const pPastedNode of pastedNodes) {
+  //     pPastedNode.SetPosition(pPastedNode.GetPosition().sub(leftMostNodePosition).add(new ImVec2(canvasPastePosition.x, canvasPastePosition.y)));
+  //   }
+
+  //   // Notify graph that nodes were pasted
+  //   this.m_pGraph.PostPasteNodes(pastedNodes);
+  //   this.m_pUserContext.NotifyNodesPasted(pastedNodes);
+  //   this.m_pGraph.EndModification();
+  // }
+
+  private BeginRenameNode (pNode: BaseNode): void {
+    if (pNode === null || !pNode.IsRenameable()) {
+      throw new Error('Node is null or not renameable');
+    }
+    this.m_textBuffer = pNode.GetName();
+    this.m_pNodeBeingOperatedOn = pNode;
+  }
 
   //   private EndRenameNode (shouldUpdateNode: boolean): void {
   //     if (this.m_pNodeBeingOperatedOn === null || !this.m_pNodeBeingOperatedOn.IsRenameable()) {
@@ -1643,706 +1651,708 @@ export class GraphView {
   //     this.m_pNodeBeingOperatedOn = null;
   //   }
 
-  //   private StartDraggingView (ctx: DrawContext): void {
-  //     if (this.m_dragState.m_mode !== DragMode.None) {
-  //       throw new Error('Drag state is not None');
-  //     }
-  //     this.m_dragState.m_mode = DragMode.View;
-  //     this.m_dragState.m_startValue = this.m_pViewOffset.clone();
-  //   }
-
-  //   private OnDragView (ctx: DrawContext): void {
-  //     if (this.m_dragState.m_mode !== DragMode.View) {
-  //       throw new Error('Drag state is not View');
-  //     }
-
-  //     let mouseDragDelta = new ImVec2(0, 0);
-
-  //     if (ImGui.IsMouseDown(ImGuiMouseButton.Right)) {
-  //       mouseDragDelta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Right);
-  //     } else if (ImGui.IsMouseDown(ImGuiMouseButton.Middle)) {
-  //       mouseDragDelta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Middle);
-  //     } else {
-  //       this.StopDraggingView(ctx);
-
-  //       return;
-  //     }
-
-  //     this.m_dragState.m_lastFrameDragDelta = mouseDragDelta;
-
-  //     this.m_pViewOffset = this.m_dragState.m_startValue.sub(ctx.WindowToCanvas(mouseDragDelta));
-  //   }
-
-  //   private StopDraggingView (ctx: DrawContext): void {
-  //     this.m_dragState.Reset();
-  //   }
-
-  //   private StartDraggingSelection (ctx: DrawContext): void {
-  //     if (this.m_pGraph === null) {
-  //       throw new Error('Graph is null');
-  //     }
-  //     if (this.m_dragState.m_mode !== DragMode.None) {
-  //       throw new Error('Drag state is not None');
-  //     }
-  //     this.m_dragState.m_mode = DragMode.Selection;
-  //     this.m_dragState.m_startValue = ImGui.GetMousePos();
-  //   }
-
-  //   private OnDragSelection (ctx: DrawContext): void {
-  //     if (this.m_pGraph === null) {
-  //       throw new Error('Graph is null');
-  //     }
-
-  //     if (!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
-  //       this.StopDraggingSelection(ctx);
-
-  //       return;
-  //     }
-
-  //     ctx.m_pDrawList.AddRectFilled(this.m_dragState.m_startValue, ImGui.GetMousePos(), g_selectionBoxFillColor);
-  //     ctx.m_pDrawList.AddRect(this.m_dragState.m_startValue, ImGui.GetMousePos(), g_selectionBoxOutlineColor);
-  //   }
-
-  //   private StopDraggingSelection (ctx: DrawContext): void {
-  //     if (this.m_pGraph === null) {
-  //       throw new Error('Graph is null');
-  //     }
-
-  //     const mousePos = ImGui.GetMousePos();
-  //     const min = new ImVec2(Math.min(this.m_dragState.m_startValue.x, mousePos.x), Math.min(this.m_dragState.m_startValue.y, mousePos.y));
-  //     const max = new ImVec2(Math.max(this.m_dragState.m_startValue.x, mousePos.x), Math.max(this.m_dragState.m_startValue.y, mousePos.y));
-  //     const selectionWindowRect = new ImRect(min.sub(ctx.m_windowRect.Min), max.sub(ctx.m_windowRect.Min));
-
-  //     const newSelection: SelectedNode[] = [];
-
-  //     for (const nodeInstance of this.GetViewedGraph().m_nodes) {
-  //       const nodeWindowRect = ctx.CanvasToWindow(nodeInstance.GetRect());
-
-  //       if (!nodeWindowRect.Contains(selectionWindowRect)) {
-  //         if (selectionWindowRect.Overlaps(nodeWindowRect)) {
-  //           newSelection.push(new SelectedNode(nodeInstance));
-  //         }
-  //       }
-  //     }
-
-  //     this.UpdateSelection(newSelection);
-  //     this.m_dragState.Reset();
-  //   }
-
-  //   private StartDraggingNode (ctx: DrawContext): void {
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
-  //     }
-  //     if (this.m_dragState.m_mode !== DragMode.None) {
-  //       throw new Error('Drag state is not None');
-  //     }
-  //     if (this.m_dragState.m_pNode === null) {
-  //       throw new Error('Drag state node is null');
-  //     }
-
-  //     this.m_dragState.m_mode = DragMode.Node;
-  //     this.m_dragState.m_startValue = this.m_dragState.m_pNode.GetPosition();
-
-  //     const ProcessCommentNode = (pCommentNode: CommentNode) => {
-  //       const unscaledCommentRect = pCommentNode.GetRect();
-
-  //       for (const nodeInstance of this.m_pGraph.m_nodes) {
-  //         if (unscaledCommentRect.Contains(nodeInstance.GetRect())) {
-  //           if (!this.m_dragState.m_draggedNodes.includes(nodeInstance)) {
-  //             this.m_dragState.m_draggedNodes.push(nodeInstance);
-  //           }
-  //         }
-  //       }
-  //     };
-
-  //     // Create the dragged set of nodes
-  //     for (const selectedNode of this.m_selectedNodes) {
-  //       if (!this.m_dragState.m_draggedNodes.includes(selectedNode.m_pNode)) {
-  //         this.m_dragState.m_draggedNodes.push(selectedNode.m_pNode);
-  //       }
-
-  //       // Add all enclosed nodes to the dragged set
-  //       if (selectedNode.m_pNode instanceof CommentNode) {
-  //         ProcessCommentNode(selectedNode.m_pNode);
-  //       }
-  //     }
-
-  //     // Add any child comments nodes as well
-  //     for (let i = 0; i < this.m_dragState.m_draggedNodes.length; i++) {
-  //       if (this.m_dragState.m_draggedNodes[i] instanceof CommentNode) {
-  //         ProcessCommentNode(this.m_dragState.m_draggedNodes[i] as CommentNode);
-  //       }
-  //     }
-
-  //     this.GetViewedGraph().BeginModification();
-  //   }
-
-  //   private OnDragNode (ctx: DrawContext): void {
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
-  //     }
-  //     if (this.m_dragState.m_mode !== DragMode.Node) {
-  //       throw new Error('Drag state is not Node');
-  //     }
-
-  //     if (!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
-  //       this.StopDraggingNode(ctx);
-
-  //       return;
-  //     }
-
-  //     const mouseDragDelta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Left);
-
-  //     if (ctx.m_viewScaleFactor === 0) {
-  //       throw new Error('View scale factor is zero');
-  //     }
-  //     const canvasFrameDragDelta = ctx.WindowToCanvas(mouseDragDelta.sub(this.m_dragState.m_lastFrameDragDelta));
-
-  //     this.m_dragState.m_lastFrameDragDelta = mouseDragDelta;
-
-  //     for (const pDraggedNode of this.m_dragState.m_draggedNodes) {
-  //       pDraggedNode.SetPosition(pDraggedNode.GetPosition().add(canvasFrameDragDelta));
-  //     }
-  //   }
-
-  //   private StopDraggingNode (ctx: DrawContext): void {
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
-  //     }
-  //     this.m_dragState.Reset();
-  //     this.GetViewedGraph().EndModification();
-  //   }
-
-  //   private TryGetAutoConnectionNodeAndPin (ctx: DrawContext): [FlowNode | null, Pin | null] {
-  //     const pFlowGraph = this.GetFlowGraph();
-  //     const pDraggedFlowNode = this.m_dragState.GetAsFlowNode();
-  //     const autoConnectThreshold = ctx.m_viewScaleFactor * g_autoConnectMaxDistanceThreshold;
-
-  //     let pOutNode: FlowNode | null = null;
-  //     let pOutPin: Pin | null = null;
-
-  //     // Find nodes within detection distance
-  //     const options: FlowNode[] = [];
-
-  //     for (const pNode of pFlowGraph.m_nodes) {
-  //       if (this.m_dragState.m_pNode === pNode) {
-  //         continue;
-  //       }
-
-  //       const closestPointToRect = ImGuiX.GetClosestPointOnRectBorder(pNode.GetRect(), ctx.m_mouseCanvasPos);
-  //       const distanceToNodeRect = new Vector(closestPointToRect).Distance2(ctx.m_mouseCanvasPos).ToFloat();
-
-  //       if (distanceToNodeRect < autoConnectThreshold) {
-  //         options.push(pNode as FlowNode);
-  //       }
-  //     }
-
-  //     // Find closest pin on across all options
-  //     if (options.length > 0) {
-  //       let closestValidPinDistance = Number.MAX_VALUE;
-
-  //       const EvaluatePinOption = (pNode: FlowNode, pin: Pin) => {
-  //         const distanceToPin = new Vector(pin.m_position).Distance2(ctx.m_mouseScreenPos).ToFloat();
-
-  //         if (distanceToPin < autoConnectThreshold && distanceToPin < closestValidPinDistance) {
-  //           closestValidPinDistance = distanceToPin;
-  //           pOutNode = pNode;
-  //           pOutPin = pin;
-  //         }
-  //       };
-
-  //       for (const pOptionNode of options) {
-  //         const draggedPinDirection = (this.m_dragState.m_pNode as FlowNode).GetPinDirection(this.m_dragState.m_pPin);
-
-  //         if (draggedPinDirection === Pin.Direction.Output) {
-  //           for (const pin of pOptionNode.GetInputPins()) {
-  //             if (pFlowGraph.IsValidConnection(pDraggedFlowNode, this.m_dragState.m_pPin, pOptionNode, pin)) {
-  //               EvaluatePinOption(pOptionNode, pin);
-  //             }
-  //           }
-  //         } else { // Dragging an input pin
-  //           for (const pin of pOptionNode.GetOutputPins()) {
-  //             if (pFlowGraph.IsValidConnection(pOptionNode, pin, pDraggedFlowNode, this.m_dragState.m_pPin)) {
-  //               EvaluatePinOption(pOptionNode, pin);
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-
-  //     return [pOutNode, pOutPin];
-  //   }
-
-  //   private StartDraggingConnection (ctx: DrawContext): void {
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
-  //     }
-  //     if (this.m_dragState.m_mode !== DragMode.None) {
-  //       throw new Error('Drag state is not None');
-  //     }
-  //     if (this.m_dragState.m_pNode === null) {
-  //       throw new Error('Drag state node is null');
-  //     }
-
-  //     this.m_dragState.m_mode = DragMode.Connection;
-
-  //     if (this.IsViewingStateMachineGraph()) {
-  //       this.m_dragState.m_startValue = ctx.CanvasToScreenPosition(this.m_dragState.m_pNode.GetPosition());
-  //     } else {
-  //       this.m_dragState.m_startValue = this.m_dragState.m_pPin.m_position;
-  //     }
-  //   }
-
-  //   private OnDragConnection (ctx: DrawContext): void {
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
-  //     }
-  //     if (this.m_dragState.m_mode !== DragMode.Connection) {
-  //       throw new Error('Drag state is not Connection');
-  //     }
-
-  //     const IO = ImGui.GetIO();
-
-  //     if (!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
-  //       this.StopDraggingConnection(ctx);
-
-  //       return;
-  //     }
-
-  //     if (this.IsViewingStateMachineGraph()) {
-  //       const pStateMachineGraph = this.GetStateMachineGraph();
-  //       const pEndState = this.m_pHoveredNode instanceof StateNode ? this.m_pHoveredNode : null;
-
-  //       const isValidConnection = pEndState !== null && pStateMachineGraph.CanCreateTransitionConduit(this.m_dragState.m_pNode as StateNode, pEndState);
-  //       const connectionColor = isValidConnection ? Style.s_connectionColorValid : Style.s_connectionColorInvalid;
-
-  //       ImGuiX.DrawArrow(ctx.m_pDrawList, ctx.CanvasToScreenPosition(this.m_dragState.m_pNode.GetRect().GetCenter()), ctx.m_mouseScreenPos, connectionColor, g_transitionArrowWidth);
-  //     } else {
-  //       const pFlowGraph = this.GetFlowGraph();
-  //       const pDraggedFlowNode = this.m_dragState.GetAsFlowNode();
-  //       let connectionColor = pDraggedFlowNode.GetPinColor(this.m_dragState.m_pPin);
-
-  //       // Auto connection
-  //       if (IO.KeyAlt) {
-  //         const [pAutoConnectNode, pAutoConnectPin] = this.TryGetAutoConnectionNodeAndPin(ctx);
-
-  //         if (pAutoConnectPin !== null) {
-  //           ctx.m_pDrawList.AddLine(ctx.m_mouseScreenPos, pAutoConnectPin.m_position, Colors.GreenYellow.GetAlphaVersion(0.85), 4.0 * ctx.m_viewScaleFactor);
-  //         }
-  //       }
-
-  //       // Validity check for hovered pin
-  //       if (this.m_pHoveredPin !== null) {
-  //         const pHoveredFlowNode = this.m_pHoveredNode as FlowNode;
-  //         const hoveredPinDirection = pHoveredFlowNode.GetPinDirection(this.m_pHoveredPin);
-  //         const draggedPinDirection = (this.m_dragState.m_pNode as FlowNode).GetPinDirection(this.m_dragState.m_pPin);
-
-  //         // Trying to make an invalid connection to a pin with the same direction or the same node
-  //         if (hoveredPinDirection === draggedPinDirection || this.m_pHoveredNode === this.m_dragState.m_pNode) {
-  //           connectionColor = Style.s_connectionColorInvalid;
-  //         } else { // Check connection validity
-  //           if (draggedPinDirection === Pin.Direction.Output) {
-  //             if (!pFlowGraph.IsValidConnection(pDraggedFlowNode, this.m_dragState.m_pPin, pHoveredFlowNode, this.m_pHoveredPin)) {
-  //               connectionColor = Style.s_connectionColorInvalid;
-  //             }
-  //           } else { // The hovered pin is the output pin
-  //             if (!pFlowGraph.IsValidConnection(pHoveredFlowNode, this.m_pHoveredPin, pDraggedFlowNode, this.m_dragState.m_pPin)) {
-  //               connectionColor = Style.s_connectionColorInvalid;
-  //             }
-  //           }
-  //         }
-  //       }
-
-  //       const invertOrder = this.m_dragState.m_pPin.m_position.x > ctx.m_mouseScreenPos.x;
-  //       const p1 = invertOrder ? ctx.m_mouseScreenPos : this.m_dragState.m_pPin.m_position;
-  //       const p2 = invertOrder ? this.m_dragState.m_pPin.m_position : ctx.m_mouseScreenPos;
-
-  //       ctx.m_pDrawList.AddBezierCubic(p1, p1.add(new ImVec2(50, 0)), p2.add(new ImVec2(-50, 0)), p2, connectionColor, 3.0 * ctx.m_viewScaleFactor);
-  //     }
-  //   }
-
-  //   private StopDraggingConnection (ctx: DrawContext): void {
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
-  //     }
-
-  //     if (this.IsViewingStateMachineGraph()) {
-  //       const pStateMachineGraph = this.GetStateMachineGraph();
-  //       const pStartState = this.m_dragState.m_pNode as StateNode;
-  //       const pEndState = this.m_pHoveredNode instanceof StateNode ? this.m_pHoveredNode : null;
-
-  //       if (pEndState !== null && pStateMachineGraph.CanCreateTransitionConduit(pStartState, pEndState)) {
-  //         const sgm = new ScopedGraphModification(pStateMachineGraph);
-
-  //         pStateMachineGraph.CreateTransitionConduit(pStartState, pEndState);
-  //       }
-  //     } else {
-  //       const pFlowGraph = this.GetFlowGraph();
-
-  //       if (this.m_pHoveredPin !== null) {
-  //         const pHoveredFlowNode = this.m_pHoveredNode as FlowNode;
-  //         const hoveredPinDirection = pHoveredFlowNode.GetPinDirection(this.m_pHoveredPin);
-  //         const draggedPinDirection = (this.m_dragState.m_pNode as FlowNode).GetPinDirection(this.m_dragState.m_pPin);
-
-  //         if (hoveredPinDirection !== draggedPinDirection) {
-  //           if (draggedPinDirection === Pin.Direction.Output) {
-  //             pFlowGraph.TryMakeConnection(this.m_dragState.GetAsFlowNode(), this.m_dragState.m_pPin, pHoveredFlowNode, this.m_pHoveredPin);
-  //           } else { // The hovered pin is the output pin
-  //             pFlowGraph.TryMakeConnection(pHoveredFlowNode, this.m_pHoveredPin, this.m_dragState.GetAsFlowNode(), this.m_dragState.m_pPin);
-  //           }
-  //         }
-  //       } else {
-  //         // Auto connection
-  //         let showNodeCreationMenu = true;
-  //         const IO = ImGui.GetIO();
-
-  //         if (IO.KeyAlt) {
-  //           const [pAutoConnectNode, pAutoConnectPin] = this.TryGetAutoConnectionNodeAndPin(ctx);
-
-  //           if (pAutoConnectPin !== null) {
-  //             const draggedPinDirection = (this.m_dragState.m_pNode as FlowNode).GetPinDirection(this.m_dragState.m_pPin);
-
-  //             if (draggedPinDirection === Pin.Direction.Output) {
-  //               pFlowGraph.TryMakeConnection(this.m_dragState.GetAsFlowNode(), this.m_dragState.m_pPin, pAutoConnectNode, pAutoConnectPin);
-  //             } else { // The auto-connect pin is the output pin
-  //               pFlowGraph.TryMakeConnection(pAutoConnectNode, pAutoConnectPin, this.m_dragState.GetAsFlowNode(), this.m_dragState.m_pPin);
-  //             }
-
-  //             showNodeCreationMenu = false;
-  //           }
-  //         }
-
-  //         // Node Creation
-  //         if (showNodeCreationMenu && pFlowGraph.SupportsNodeCreationFromConnection()) {
-  //           this.m_contextMenuState.m_pNode = this.m_dragState.m_pNode;
-  //           this.m_contextMenuState.m_pPin = this.m_dragState.m_pPin;
-  //           this.m_contextMenuState.m_requestOpenMenu = true;
-  //           this.m_contextMenuState.m_isAutoConnectMenu = true;
-  //         }
-  //       }
-  //     }
-
-  //     this.m_dragState.Reset();
-  //   }
-
-  //   private StartResizingCommentBox (ctx: DrawContext): void {
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
-  //     }
-  //     if (this.m_dragState.m_mode !== DragMode.None) {
-  //       throw new Error('Drag state is not None');
-  //     }
-  //     if (this.m_dragState.m_pNode === null) {
-  //       throw new Error('Drag state node is null');
-  //     }
-  //     this.m_dragState.m_mode = DragMode.ResizeComment;
-
-  //     this.GetViewedGraph().BeginModification();
-  //   }
-
-  //   private OnResizeCommentBox (ctx: DrawContext): void {
-  //     if (!ImGui.IsMouseDown(ImGuiMouseButton.Left)) {
-  //       this.StopResizingCommentBox(ctx);
-
-  //       return;
-  //     }
-
-  //     if (this.m_dragState.m_mode !== DragMode.ResizeComment) {
-  //       throw new Error('Drag state is not ResizeComment');
-  //     }
-  //     if (this.m_dragState.m_pNode === null) {
-  //       throw new Error('Drag state node is null');
-  //     }
-  //     if (this.m_dragState.m_resizeHandle === ResizeHandle.None) {
-  //       throw new Error('Resize handle is None');
-  //     }
-
-  //     const pCommentNode = this.m_dragState.m_pNode as CommentNode;
-
-  //     pCommentNode.AdjustSizeBasedOnMousePosition(ctx, this.m_dragState.m_resizeHandle);
-  //   }
-
-  //   private StopResizingCommentBox (ctx: DrawContext): void {
-  //     if (this.m_isReadOnly) {
-  //       throw new Error('Graph is read-only');
-  //     }
-  //     this.m_dragState.Reset();
-  //     this.GetViewedGraph().EndModification();
-  //   }
-
-  //   private HandleInput (ctx: DrawContext): void {
-  //     const IO = ImGui.GetIO();
-
-  //     if (this.m_pGraph === null) {
-  //       return;
-  //     }
-
-  //     // Zoom
-  //     if (this.m_isViewHovered && IO.MouseWheel !== 0) {
-  //       const desiredViewScale = Math.clamp(this.m_pGraph.m_viewScaleFactor + IO.MouseWheel * 0.05, 0.2, 1.4);
-
-  //       this.ChangeViewScale(ctx, desiredViewScale);
-  //     }
-
-  //     // Allow selection without focus
-  //     if (this.m_isViewHovered) {
-  //       if (ImGui.IsMouseClicked(ImGuiMouseButton.Left)) {
-  //         if (IO.KeyCtrl || IO.KeyShift) {
-  //           if (this.m_pHoveredNode !== null) {
-  //             if (this.IsNodeSelected(this.m_pHoveredNode)) {
-  //               this.RemoveFromSelection(this.m_pHoveredNode);
-  //             } else {
-  //               this.AddToSelection(this.m_pHoveredNode);
-  //             }
-  //           }
-  //         } else if (IO.KeyAlt) {
-  //           if (!this.m_isReadOnly) {
-  //             if (this.IsViewingFlowGraph()) {
-  //               const pFlowGraph = this.GetFlowGraph();
-
-  //               if (this.m_hoveredConnectionID.IsValid()) {
-  //                 pFlowGraph.BreakConnection(this.m_hoveredConnectionID);
-  //               } else if (this.m_pHoveredPin !== null) {
-  //                 pFlowGraph.BreakAnyConnectionsForPin(this.m_pHoveredPin.m_ID);
-  //               }
-  //             } else { // State Machine
-  //               if (this.m_pHoveredNode !== null && this.m_pHoveredNode instanceof TransitionConduitNode) {
-  //                 this.ClearSelection();
-  //                 this.m_pGraph.DestroyNode(this.m_pHoveredNode.GetID());
-  //                 this.m_pHoveredNode = null;
-  //               }
-  //             }
-  //           }
-  //         } else { // No modifier
-  //           if (this.m_pHoveredNode !== null) {
-  //             if (!this.IsNodeSelected(this.m_pHoveredNode)) {
-  //               this.UpdateSelection(this.m_pHoveredNode);
-  //             }
-  //           } else if (this.m_isViewHovered) {
-  //             this.ClearSelection();
-  //           }
-  //         }
-
-  //         this.m_requestFocus = true;
-  //       }
-  //     }
-
-  //     // Double Clicks
-  //     if (this.m_isViewHovered) {
-  //       if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left)) {
-  //         if (this.m_pHoveredNode !== null) {
-  //           if (this.m_pHoveredNode instanceof CommentNode) {
-  //             this.BeginRenameNode(this.m_pHoveredNode);
-  //           } else {
-  //             const pNavChildGraph = this.m_pHoveredNode.GetNavigationTarget();
-
-  //             if (pNavChildGraph !== null) {
-  //               this.m_pUserContext.NavigateTo(pNavChildGraph);
-  //             } else {
-  //               this.m_pUserContext.DoubleClick(this.m_pHoveredNode);
-  //             }
-  //           }
-  //         } else {
-  //           if (this.m_pGraph !== null) {
-  //             const pNavParentGraph = this.m_pGraph.GetNavigationTarget();
-
-  //             if (pNavParentGraph !== null) {
-  //               this.m_pUserContext.NavigateTo(pNavParentGraph);
-  //             } else {
-  //               this.m_pUserContext.DoubleClick(this.m_pGraph);
-  //             }
-  //           }
-  //         }
-
-  //         this.m_requestFocus = true;
-  //       }
-  //     }
-
-  //     // Dragging
-  //     switch (this.m_dragState.m_mode) {
-  //       case DragMode.None:
-  //         if (this.m_isViewHovered) {
-  //           // Update drag state resize handle
-  //           if (!this.m_dragState.m_dragReadyToStart) {
-  //             const pCommentNode = this.m_pHoveredNode instanceof CommentNode ? this.m_pHoveredNode : null;
-
-  //             if (pCommentNode !== null) {
-  //               this.m_dragState.m_resizeHandle = pCommentNode.GetHoveredResizeHandle(ctx);
-  //             } else {
-  //               this.m_dragState.m_resizeHandle = ResizeHandle.None;
-  //             }
-  //           }
-
-  //           // Prepare drag state - this needs to be done in advance since we only start the drag operation once we detect a mouse drag and at that point we might not be hovered over the node anymore
-  //           if (this.m_dragState.m_dragReadyToStart) {
-  //             if (!(ImGui.IsMouseDown(ImGuiMouseButton.Left) || ImGui.IsMouseDown(ImGuiMouseButton.Right) || ImGui.IsMouseDown(ImGuiMouseButton.Middle))) {
-  //               this.m_dragState.m_pNode = null;
-  //               this.m_dragState.m_pPin = null;
-  //               this.m_dragState.m_dragReadyToStart = false;
-  //             }
-  //           } else {
-  //             if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) || ImGui.IsMouseClicked(ImGuiMouseButton.Right) || ImGui.IsMouseClicked(ImGuiMouseButton.Middle)) {
-  //               this.m_dragState.m_pNode = this.m_pHoveredNode;
-  //               this.m_dragState.m_pPin = this.m_pHoveredPin;
-  //               this.m_dragState.m_dragReadyToStart = true;
-  //               this.m_requestFocus = true;
-  //             }
-  //           }
-
-  //           // Check for drag inputs
-  //           if (this.m_dragState.m_dragReadyToStart) {
-  //             const nodeDragInput = ImGui.IsMouseDragging(ImGuiMouseButton.Left, 3);
-  //             const viewDragInput = ImGui.IsMouseDragging(ImGuiMouseButton.Right, 3) || ImGui.IsMouseDragging(ImGuiMouseButton.Middle, 3);
-
-  //             if (nodeDragInput) {
-  //               if (!this.IsReadOnly()) {
-  //                 const pCommentNode = this.m_dragState.m_pNode instanceof CommentNode ? this.m_dragState.m_pNode : null;
-
-  //                 if (pCommentNode !== null) {
-  //                   if (this.m_dragState.m_resizeHandle === ResizeHandle.None) {
-  //                     this.StartDraggingNode(ctx);
-  //                   } else {
-  //                     this.StartResizingCommentBox(ctx);
-  //                   }
-  //                 } else if (this.IsViewingFlowGraph()) {
-  //                   if (this.m_dragState.m_pNode !== null) {
-  //                     if (this.m_dragState.m_pPin !== null) {
-  //                       this.StartDraggingConnection(ctx);
-  //                     } else {
-  //                       this.StartDraggingNode(ctx);
-  //                     }
-  //                   } else {
-  //                     if (this.m_pGraph !== null) {
-  //                       this.StartDraggingSelection(ctx);
-  //                     }
-  //                   }
-  //                 } else { // State Machine
-  //                   if (this.m_dragState.m_pNode !== null) {
-  //                     if (IO.KeyAlt && this.m_dragState.m_pNode instanceof StateNode) {
-  //                       this.StartDraggingConnection(ctx);
-  //                     } else if (!(this.m_dragState.m_pNode instanceof TransitionConduitNode)) {
-  //                       this.StartDraggingNode(ctx);
-  //                     }
-  //                   } else {
-  //                     if (this.m_pGraph !== null) {
-  //                       this.StartDraggingSelection(ctx);
-  //                     }
-  //                   }
-  //                 }
-  //               }
-  //             } else if (viewDragInput) {
-  //               this.StartDraggingView(ctx);
-  //             } else if (ImGui.IsMouseReleased(ImGuiMouseButton.Right)) {
-  //               this.m_contextMenuState.m_requestOpenMenu = true;
-  //             }
-
-  //             this.m_requestFocus = true;
-  //           } else if (ImGui.IsMouseReleased(ImGuiMouseButton.Right)) {
-  //             this.m_contextMenuState.m_requestOpenMenu = true;
-  //           }
-  //         }
-
-  //         break; case DragMode.Node:
-  //         this.OnDragNode(ctx);
-
-  //         break; case DragMode.Connection:
-  //         this.OnDragConnection(ctx);
-
-  //         break; case DragMode.Selection:
-  //         this.OnDragSelection(ctx);
-
-  //         break; case DragMode.View:
-  //         this.OnDragView(ctx);
-
-  //         break; case DragMode.ResizeComment:
-  //         this.OnResizeCommentBox(ctx);
-
-  //         break;
-  //     }
-
-  //     // Mouse Cursor
-  //     if (this.IsDraggingView()) {
-  //       ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
-  //     } else { // Change cursor to match current resize state
-  //       switch (this.m_dragState.m_resizeHandle) {
-  //         case ResizeHandle.N:
-  //           ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
-
-  //           break;
-  //         case ResizeHandle.NW:
-  //           ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
-
-  //           break;
-  //         case ResizeHandle.W:
-  //           ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
-
-  //           break;
-  //         case ResizeHandle.SW:
-  //           ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
-
-  //           break;
-  //         case ResizeHandle.S:
-  //           ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS);
-
-  //           break;
-  //         case ResizeHandle.SE:
-  //           ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE);
-
-  //           break;
-  //         case ResizeHandle.E:
-  //           ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
-
-  //           break;
-  //         case ResizeHandle.NE:
-  //           ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNESW);
-
-  //           break;
-  //         default:
-  //           break;
-  //       }
-  //     }
-
-  //     // Keyboard
-  //     // These operations require the graph view to be focused!
-  //     if (this.m_hasFocus) {
-  //       // General operations
-  //       if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.C)) {
-  //         this.CopySelectedNodes(typeRegistry);
-  //       }
-
-  //       // Operations that modify the graph
-  //       if (!this.m_isReadOnly) {
-  //         if (ImGui.IsKeyPressed(ImGuiKey.F2)) {
-  //           if (this.m_selectedNodes.length === 1 && this.m_selectedNodes[0].m_pNode.IsRenameable()) {
-  //             this.BeginRenameNode(this.m_selectedNodes[0].m_pNode);
-  //           }
-  //         } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.X)) {
-  //           this.CopySelectedNodes(typeRegistry);
-  //           this.DestroySelectedNodes();
-  //         } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.V)) {
-  //           let pasteLocation = new ImVec2(0.0, 0.0);
-
-  //           if (this.m_isViewHovered) {
-  //             pasteLocation = ctx.m_mouseCanvasPos;
-  //           } else {
-  //             pasteLocation = ctx.m_canvasVisibleRect.GetCenter();
-  //           }
-
-  //           this.PasteNodes(typeRegistry, pasteLocation);
-  //         }
-
-  //         if (this.m_selectedNodes.length > 0) {
-  //           if (!ImGui.IsAnyItemActive() && ImGui.IsKeyPressed(ImGuiKey.Delete)) {
-  //             this.DestroySelectedNodes();
-  //           }
-
-  //           if (IO.KeyShift && ImGui.IsKeyPressed(ImGuiKey.C)) {
-  //             this.CreateCommentAroundSelectedNodes();
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
+  private StartDraggingView (ctx: DrawContext): void {
+    if (this.m_dragState.m_mode !== DragMode.None) {
+      throw new Error('Drag state is not None');
+    }
+    this.m_dragState.m_mode = DragMode.View;
+    this.m_dragState.m_startValue = new ImVec2().Copy(this.m_pViewOffset);
+  }
+
+  private OnDragView (ctx: DrawContext): void {
+    if (this.m_dragState.m_mode !== DragMode.View) {
+      throw new Error('Drag state is not View');
+    }
+
+    let mouseDragDelta = new ImVec2(0, 0);
+
+    if (ImGui.IsMouseDown(ImGui.MouseButton.Right)) {
+      mouseDragDelta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Right);
+    } else if (ImGui.IsMouseDown(ImGui.MouseButton.Middle)) {
+      mouseDragDelta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Middle);
+    } else {
+      this.StopDraggingView(ctx);
+
+      return;
+    }
+
+    this.m_dragState.m_lastFrameDragDelta = mouseDragDelta;
+
+    this.m_pViewOffset = subtract(this.m_dragState.m_startValue, ctx.WindowToCanvas(mouseDragDelta));
+  }
+
+  private StopDraggingView (ctx: DrawContext): void {
+    this.m_dragState.Reset();
+  }
+
+  private StartDraggingSelection (ctx: DrawContext): void {
+    if (this.m_pGraph === null) {
+      throw new Error('Graph is null');
+    }
+    if (this.m_dragState.m_mode !== DragMode.None) {
+      throw new Error('Drag state is not None');
+    }
+    this.m_dragState.m_mode = DragMode.Selection;
+    this.m_dragState.m_startValue = ImGui.GetMousePos();
+  }
+
+  private OnDragSelection (ctx: DrawContext): void {
+    if (this.m_pGraph === null) {
+      throw new Error('Graph is null');
+    }
+
+    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
+      this.StopDraggingSelection(ctx);
+
+      return;
+    }
+
+    ctx.m_pDrawList!.AddRectFilled(this.m_dragState.m_startValue, ImGui.GetMousePos(), g_selectionBoxFillColor.toImU32());
+    ctx.m_pDrawList!.AddRect(this.m_dragState.m_startValue, ImGui.GetMousePos(), g_selectionBoxOutlineColor.toImU32());
+  }
+
+  private StopDraggingSelection (ctx: DrawContext): void {
+    if (this.m_pGraph === null) {
+      throw new Error('Graph is null');
+    }
+
+    const mousePos = ImGui.GetMousePos();
+    const min = new ImVec2(Math.min(this.m_dragState.m_startValue.x, mousePos.x), Math.min(this.m_dragState.m_startValue.y, mousePos.y));
+    const max = new ImVec2(Math.max(this.m_dragState.m_startValue.x, mousePos.x), Math.max(this.m_dragState.m_startValue.y, mousePos.y));
+    const selectionWindowRect = new ImRect(subtract(min, ctx.m_windowRect.Min), subtract(max, ctx.m_windowRect.Min));
+
+    const newSelection: SelectedNode[] = [];
+
+    for (const nodeInstance of this.GetViewedGraph()!.m_nodes) {
+      const nodeWindowRect = ctx.CanvasToWindowRect(nodeInstance.GetRect());
+
+      if (!nodeWindowRect.Contains(selectionWindowRect)) {
+        if (selectionWindowRect.Overlaps(nodeWindowRect)) {
+          newSelection.push(new SelectedNode(nodeInstance));
+        }
+      }
+    }
+
+    this.UpdateSelection(newSelection);
+    this.m_dragState.Reset();
+  }
+
+  private StartDraggingNode (ctx: DrawContext): void {
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
+    if (this.m_dragState.m_mode !== DragMode.None) {
+      throw new Error('Drag state is not None');
+    }
+    if (this.m_dragState.m_pNode === null) {
+      throw new Error('Drag state node is null');
+    }
+
+    this.m_dragState.m_mode = DragMode.Node;
+    this.m_dragState.m_startValue = this.m_dragState.m_pNode.GetPosition();
+
+    const ProcessCommentNode = (pCommentNode: CommentNode) => {
+      const unscaledCommentRect = pCommentNode.GetRect();
+
+      for (const nodeInstance of this.m_pGraph!.m_nodes) {
+        if (unscaledCommentRect.Contains(nodeInstance.GetRect())) {
+          if (!this.m_dragState.m_draggedNodes.includes(nodeInstance)) {
+            this.m_dragState.m_draggedNodes.push(nodeInstance);
+          }
+        }
+      }
+    };
+
+    // Create the dragged set of nodes
+    for (const selectedNode of this.m_selectedNodes) {
+      if (!this.m_dragState.m_draggedNodes.includes(selectedNode.m_pNode!)) {
+        this.m_dragState.m_draggedNodes.push(selectedNode.m_pNode!);
+      }
+
+      // Add all enclosed nodes to the dragged set
+      if (selectedNode.m_pNode instanceof CommentNode) {
+        ProcessCommentNode(selectedNode.m_pNode);
+      }
+    }
+
+    // Add any child comments nodes as well
+    for (let i = 0; i < this.m_dragState.m_draggedNodes.length; i++) {
+      if (this.m_dragState.m_draggedNodes[i] instanceof CommentNode) {
+        ProcessCommentNode(this.m_dragState.m_draggedNodes[i] as CommentNode);
+      }
+    }
+
+    this.GetViewedGraph()!.BeginModification();
+  }
+
+  private OnDragNode (ctx: DrawContext): void {
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
+    if (this.m_dragState.m_mode !== DragMode.Node) {
+      throw new Error('Drag state is not Node');
+    }
+
+    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
+      this.StopDraggingNode(ctx);
+
+      return;
+    }
+
+    const mouseDragDelta = ImGui.GetMouseDragDelta(ImGui.MouseButton.Left);
+
+    if (ctx.m_viewScaleFactor === 0) {
+      throw new Error('View scale factor is zero');
+    }
+    const canvasFrameDragDelta = ctx.WindowToCanvas(subtract(mouseDragDelta, this.m_dragState.m_lastFrameDragDelta));
+
+    this.m_dragState.m_lastFrameDragDelta = mouseDragDelta;
+
+    for (const pDraggedNode of this.m_dragState.m_draggedNodes) {
+      pDraggedNode.SetPosition(add(pDraggedNode.GetPosition(), canvasFrameDragDelta));
+    }
+  }
+
+  private StopDraggingNode (ctx: DrawContext): void {
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
+    this.m_dragState.Reset();
+    this.GetViewedGraph()!.EndModification();
+  }
+
+  private TryGetAutoConnectionNodeAndPin (ctx: DrawContext): [FlowNode | null, Pin | null] {
+    const pFlowGraph = this.GetFlowGraph()!;
+    const pDraggedFlowNode = this.m_dragState.GetAsFlowNode();
+    const autoConnectThreshold = ctx.m_viewScaleFactor * g_autoConnectMaxDistanceThreshold;
+
+    let pOutNode: FlowNode | null = null;
+    let pOutPin: Pin | null = null;
+
+    // Find nodes within detection distance
+    const options: FlowNode[] = [];
+
+    for (const pNode of pFlowGraph.m_nodes) {
+      if (this.m_dragState.m_pNode === pNode) {
+        continue;
+      }
+
+      const closestPointToRect = ImGuiX.GetClosestPointOnRectBorder(pNode.GetRect(), ctx.m_mouseCanvasPos);
+      const distanceToNodeRect = length(subtract(new ImVec2().Copy(closestPointToRect), ctx.m_mouseCanvasPos));
+
+      if (distanceToNodeRect < autoConnectThreshold) {
+        options.push(pNode as FlowNode);
+      }
+    }
+
+    // Find closest pin on across all options
+    if (options.length > 0) {
+      let closestValidPinDistance = Number.MAX_VALUE;
+
+      const EvaluatePinOption = (pNode: FlowNode, pin: Pin) => {
+        const distanceToPin = length(subtract(pin.m_position, ctx.m_mouseScreenPos));
+
+        if (distanceToPin < autoConnectThreshold && distanceToPin < closestValidPinDistance) {
+          closestValidPinDistance = distanceToPin;
+          pOutNode = pNode;
+          pOutPin = pin;
+        }
+      };
+
+      for (const pOptionNode of options) {
+        const draggedPinDirection = (this.m_dragState.m_pNode as FlowNode).GetPinDirection(this.m_dragState.m_pPin!);
+
+        if (draggedPinDirection === PinDirection.Output) {
+          for (const pin of pOptionNode.GetInputPins()) {
+            if (pFlowGraph.IsValidConnection(pDraggedFlowNode!, this.m_dragState.m_pPin!, pOptionNode, pin)) {
+              EvaluatePinOption(pOptionNode, pin);
+            }
+          }
+        } else { // Dragging an input pin
+          for (const pin of pOptionNode.GetOutputPins()) {
+            if (pFlowGraph.IsValidConnection(pOptionNode, pin, pDraggedFlowNode!, this.m_dragState.m_pPin!)) {
+              EvaluatePinOption(pOptionNode, pin);
+            }
+          }
+        }
+      }
+    }
+
+    return [pOutNode, pOutPin];
+  }
+
+  private StartDraggingConnection (ctx: DrawContext): void {
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
+    if (this.m_dragState.m_mode !== DragMode.None) {
+      throw new Error('Drag state is not None');
+    }
+    if (this.m_dragState.m_pNode === null) {
+      throw new Error('Drag state node is null');
+    }
+
+    this.m_dragState.m_mode = DragMode.Connection;
+
+    if (this.IsViewingStateMachineGraph()) {
+      this.m_dragState.m_startValue = ctx.CanvasToScreenPosition(this.m_dragState.m_pNode.GetPosition());
+    } else {
+      this.m_dragState.m_startValue = this.m_dragState.m_pPin!.m_position;
+    }
+  }
+
+  private OnDragConnection (ctx: DrawContext): void {
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
+    if (this.m_dragState.m_mode !== DragMode.Connection) {
+      throw new Error('Drag state is not Connection');
+    }
+
+    const IO = ImGui.GetIO();
+
+    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
+      this.StopDraggingConnection(ctx);
+
+      return;
+    }
+
+    if (this.IsViewingStateMachineGraph()) {
+      const pStateMachineGraph = this.GetStateMachineGraph();
+      const pEndState = this.m_pHoveredNode instanceof StateNode ? this.m_pHoveredNode : null;
+
+      const isValidConnection = pEndState !== null && pStateMachineGraph!.CanCreateTransitionConduit(this.m_dragState.m_pNode as StateNode, pEndState);
+      const connectionColor = isValidConnection ? Style.s_connectionColorValid : Style.s_connectionColorInvalid;
+
+      ImGuiX.DrawArrow(ctx.m_pDrawList!, ctx.CanvasToScreenPosition(this.m_dragState.m_pNode!.GetRect().GetCenter()), ctx.m_mouseScreenPos, connectionColor, g_transitionArrowWidth);
+    } else {
+      const pFlowGraph = this.GetFlowGraph();
+      const pDraggedFlowNode = this.m_dragState.GetAsFlowNode();
+      let connectionColor = pDraggedFlowNode!.GetPinColor(this.m_dragState.m_pPin!);
+
+      // Auto connection
+      if (IO.KeyAlt) {
+        const [pAutoConnectNode, pAutoConnectPin] = this.TryGetAutoConnectionNodeAndPin(ctx);
+
+        if (pAutoConnectPin !== null) {
+          ctx.m_pDrawList!.AddLine(ctx.m_mouseScreenPos, pAutoConnectPin.m_position, new Color(0.678, 1.000, 0.184, 0.85).toImU32(), 4.0 * ctx.m_viewScaleFactor);
+        }
+      }
+
+      // Validity check for hovered pin
+      if (this.m_pHoveredPin !== null) {
+        const pHoveredFlowNode = this.m_pHoveredNode as FlowNode;
+        const hoveredPinDirection = pHoveredFlowNode.GetPinDirection(this.m_pHoveredPin);
+        const draggedPinDirection = (this.m_dragState.m_pNode as FlowNode).GetPinDirection(this.m_dragState.m_pPin!);
+
+        // Trying to make an invalid connection to a pin with the same direction or the same node
+        if (hoveredPinDirection === draggedPinDirection || this.m_pHoveredNode === this.m_dragState.m_pNode) {
+          connectionColor = Style.s_connectionColorInvalid;
+        } else { // Check connection validity
+          if (draggedPinDirection === PinDirection.Output) {
+            if (!pFlowGraph!.IsValidConnection(pDraggedFlowNode!, this.m_dragState.m_pPin!, pHoveredFlowNode, this.m_pHoveredPin)) {
+              connectionColor = Style.s_connectionColorInvalid;
+            }
+          } else { // The hovered pin is the output pin
+            if (!pFlowGraph!.IsValidConnection(pHoveredFlowNode, this.m_pHoveredPin, pDraggedFlowNode!, this.m_dragState.m_pPin!)) {
+              connectionColor = Style.s_connectionColorInvalid;
+            }
+          }
+        }
+      }
+
+      const invertOrder = this.m_dragState.m_pPin!.m_position.x > ctx.m_mouseScreenPos.x;
+      const p1 = invertOrder ? ctx.m_mouseScreenPos : this.m_dragState.m_pPin!.m_position;
+      const p2 = invertOrder ? this.m_dragState.m_pPin!.m_position : ctx.m_mouseScreenPos;
+
+      ctx.m_pDrawList!.AddBezierCubic(p1, add(p1, new ImVec2(50, 0)), add(p2, new ImVec2(-50, 0)), p2, connectionColor.toImU32(), 3.0 * ctx.m_viewScaleFactor);
+    }
+  }
+
+  private StopDraggingConnection (ctx: DrawContext): void {
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
+
+    if (this.IsViewingStateMachineGraph()) {
+      const pStateMachineGraph = this.GetStateMachineGraph();
+      const pStartState = this.m_dragState.m_pNode as StateNode;
+      const pEndState = this.m_pHoveredNode instanceof StateNode ? this.m_pHoveredNode : null;
+
+      if (pEndState !== null && pStateMachineGraph!.CanCreateTransitionConduit(pStartState, pEndState)) {
+        const sgm = new ScopedGraphModification(pStateMachineGraph!);
+
+        pStateMachineGraph!.CreateTransitionConduit(pStartState, pEndState);
+
+        sgm.End();
+      }
+    } else {
+      const pFlowGraph = this.GetFlowGraph()!;
+
+      if (this.m_pHoveredPin !== null) {
+        const pHoveredFlowNode = this.m_pHoveredNode as FlowNode;
+        const hoveredPinDirection = pHoveredFlowNode.GetPinDirection(this.m_pHoveredPin);
+        const draggedPinDirection = (this.m_dragState.m_pNode as FlowNode).GetPinDirection(this.m_dragState.m_pPin!);
+
+        if (hoveredPinDirection !== draggedPinDirection) {
+          if (draggedPinDirection === PinDirection.Output) {
+            pFlowGraph.TryMakeConnection(this.m_dragState.GetAsFlowNode()!, this.m_dragState.m_pPin!, pHoveredFlowNode, this.m_pHoveredPin);
+          } else { // The hovered pin is the output pin
+            pFlowGraph.TryMakeConnection(pHoveredFlowNode, this.m_pHoveredPin, this.m_dragState.GetAsFlowNode()!, this.m_dragState.m_pPin!);
+          }
+        }
+      } else {
+        // Auto connection
+        let showNodeCreationMenu = true;
+        const IO = ImGui.GetIO();
+
+        if (IO.KeyAlt) {
+          const [pAutoConnectNode, pAutoConnectPin] = this.TryGetAutoConnectionNodeAndPin(ctx);
+
+          if (pAutoConnectPin !== null) {
+            const draggedPinDirection = (this.m_dragState.m_pNode as FlowNode).GetPinDirection(this.m_dragState.m_pPin!);
+
+            if (draggedPinDirection === PinDirection.Output) {
+              pFlowGraph.TryMakeConnection(this.m_dragState.GetAsFlowNode()!, this.m_dragState.m_pPin!, pAutoConnectNode!, pAutoConnectPin);
+            } else { // The auto-connect pin is the output pin
+              pFlowGraph.TryMakeConnection(pAutoConnectNode!, pAutoConnectPin, this.m_dragState.GetAsFlowNode()!, this.m_dragState.m_pPin!);
+            }
+
+            showNodeCreationMenu = false;
+          }
+        }
+
+        // Node Creation
+        if (showNodeCreationMenu && pFlowGraph.SupportsNodeCreationFromConnection()) {
+          this.m_contextMenuState.m_pNode = this.m_dragState.m_pNode;
+          this.m_contextMenuState.m_pPin = this.m_dragState.m_pPin;
+          this.m_contextMenuState.m_requestOpenMenu = true;
+          this.m_contextMenuState.m_isAutoConnectMenu = true;
+        }
+      }
+    }
+
+    this.m_dragState.Reset();
+  }
+
+  private StartResizingCommentBox (ctx: DrawContext): void {
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
+    if (this.m_dragState.m_mode !== DragMode.None) {
+      throw new Error('Drag state is not None');
+    }
+    if (this.m_dragState.m_pNode === null) {
+      throw new Error('Drag state node is null');
+    }
+    this.m_dragState.m_mode = DragMode.ResizeComment;
+
+    this.GetViewedGraph()!.BeginModification();
+  }
+
+  private OnResizeCommentBox (ctx: DrawContext): void {
+    if (!ImGui.IsMouseDown(ImGui.MouseButton.Left)) {
+      this.StopResizingCommentBox(ctx);
+
+      return;
+    }
+
+    if (this.m_dragState.m_mode !== DragMode.ResizeComment) {
+      throw new Error('Drag state is not ResizeComment');
+    }
+    if (this.m_dragState.m_pNode === null) {
+      throw new Error('Drag state node is null');
+    }
+    if (this.m_dragState.m_resizeHandle === ResizeHandle.None) {
+      throw new Error('Resize handle is None');
+    }
+
+    const pCommentNode = this.m_dragState.m_pNode as CommentNode;
+
+    pCommentNode.AdjustSizeBasedOnMousePosition(ctx, this.m_dragState.m_resizeHandle);
+  }
+
+  private StopResizingCommentBox (ctx: DrawContext): void {
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
+    this.m_dragState.Reset();
+    this.GetViewedGraph()!.EndModification();
+  }
+
+  private HandleInput (ctx: DrawContext): void {
+    const IO = ImGui.GetIO();
+
+    if (this.m_pGraph === null) {
+      return;
+    }
+
+    // Zoom
+    if (this.m_isViewHovered && IO.MouseWheel !== 0) {
+      const desiredViewScale = clamp(this.m_pGraph.m_viewScaleFactor + IO.MouseWheel * 0.05, 0.2, 1.4);
+
+      this.ChangeViewScale(ctx, desiredViewScale);
+    }
+
+    // Allow selection without focus
+    if (this.m_isViewHovered) {
+      if (ImGui.IsMouseClicked(ImGui.MouseButton.Left)) {
+        if (IO.KeyCtrl || IO.KeyShift) {
+          if (this.m_pHoveredNode !== null) {
+            if (this.IsNodeSelected(this.m_pHoveredNode)) {
+              this.RemoveFromSelection(this.m_pHoveredNode);
+            } else {
+              this.AddToSelection(this.m_pHoveredNode);
+            }
+          }
+        } else if (IO.KeyAlt) {
+          if (!this.m_isReadOnly) {
+            if (this.IsViewingFlowGraph()) {
+              const pFlowGraph = this.GetFlowGraph()!;
+
+              if (this.m_hoveredConnectionID !== '') {
+                pFlowGraph.BreakConnection(this.m_hoveredConnectionID);
+              } else if (this.m_pHoveredPin !== null) {
+                pFlowGraph.BreakAnyConnectionsForPin(this.m_pHoveredPin.m_ID);
+              }
+            } else { // State Machine
+              if (this.m_pHoveredNode !== null && this.m_pHoveredNode instanceof TransitionConduitNode) {
+                this.ClearSelection();
+                this.m_pGraph.DestroyNode(this.m_pHoveredNode.GetID());
+                this.m_pHoveredNode = null;
+              }
+            }
+          }
+        } else { // No modifier
+          if (this.m_pHoveredNode !== null) {
+            if (!this.IsNodeSelected(this.m_pHoveredNode)) {
+              this.UpdateSelection(this.m_pHoveredNode);
+            }
+          } else if (this.m_isViewHovered) {
+            this.ClearSelection();
+          }
+        }
+
+        this.m_requestFocus = true;
+      }
+    }
+
+    // Double Clicks
+    if (this.m_isViewHovered) {
+      if (ImGui.IsMouseDoubleClicked(ImGui.MouseButton.Left)) {
+        if (this.m_pHoveredNode !== null) {
+          if (this.m_pHoveredNode instanceof CommentNode) {
+            this.BeginRenameNode(this.m_pHoveredNode);
+          } else {
+            const pNavChildGraph = this.m_pHoveredNode.GetNavigationTarget();
+
+            if (pNavChildGraph !== null) {
+              this.m_pUserContext.NavigateTo(pNavChildGraph);
+            } else {
+              this.m_pUserContext.DoubleClick(this.m_pHoveredNode);
+            }
+          }
+        } else {
+          if (this.m_pGraph !== null) {
+            const pNavParentGraph = this.m_pGraph.GetNavigationTarget();
+
+            if (pNavParentGraph !== null) {
+              this.m_pUserContext.NavigateTo(pNavParentGraph);
+            } else {
+              this.m_pUserContext.DoubleClick(this.m_pGraph);
+            }
+          }
+        }
+
+        this.m_requestFocus = true;
+      }
+    }
+
+    // Dragging
+    switch (this.m_dragState.m_mode) {
+      case DragMode.None:
+        if (this.m_isViewHovered) {
+          // Update drag state resize handle
+          if (!this.m_dragState.m_dragReadyToStart) {
+            const pCommentNode = this.m_pHoveredNode instanceof CommentNode ? this.m_pHoveredNode : null;
+
+            if (pCommentNode !== null) {
+              this.m_dragState.m_resizeHandle = pCommentNode.GetHoveredResizeHandle(ctx);
+            } else {
+              this.m_dragState.m_resizeHandle = ResizeHandle.None;
+            }
+          }
+
+          // Prepare drag state - this needs to be done in advance since we only start the drag operation once we detect a mouse drag and at that point we might not be hovered over the node anymore
+          if (this.m_dragState.m_dragReadyToStart) {
+            if (!(ImGui.IsMouseDown(ImGui.MouseButton.Left) || ImGui.IsMouseDown(ImGui.MouseButton.Right) || ImGui.IsMouseDown(ImGui.MouseButton.Middle))) {
+              this.m_dragState.m_pNode = null;
+              this.m_dragState.m_pPin = null;
+              this.m_dragState.m_dragReadyToStart = false;
+            }
+          } else {
+            if (ImGui.IsMouseClicked(ImGui.MouseButton.Left) || ImGui.IsMouseClicked(ImGui.MouseButton.Right) || ImGui.IsMouseClicked(ImGui.MouseButton.Middle)) {
+              this.m_dragState.m_pNode = this.m_pHoveredNode;
+              this.m_dragState.m_pPin = this.m_pHoveredPin;
+              this.m_dragState.m_dragReadyToStart = true;
+              this.m_requestFocus = true;
+            }
+          }
+
+          // Check for drag inputs
+          if (this.m_dragState.m_dragReadyToStart) {
+            const nodeDragInput = ImGui.IsMouseDragging(ImGui.MouseButton.Left, 3);
+            const viewDragInput = ImGui.IsMouseDragging(ImGui.MouseButton.Right, 3) || ImGui.IsMouseDragging(ImGui.MouseButton.Middle, 3);
+
+            if (nodeDragInput) {
+              if (!this.IsReadOnly()) {
+                const pCommentNode = this.m_dragState.m_pNode instanceof CommentNode ? this.m_dragState.m_pNode : null;
+
+                if (pCommentNode !== null) {
+                  if (this.m_dragState.m_resizeHandle === ResizeHandle.None) {
+                    this.StartDraggingNode(ctx);
+                  } else {
+                    this.StartResizingCommentBox(ctx);
+                  }
+                } else if (this.IsViewingFlowGraph()) {
+                  if (this.m_dragState.m_pNode !== null) {
+                    if (this.m_dragState.m_pPin !== null) {
+                      this.StartDraggingConnection(ctx);
+                    } else {
+                      this.StartDraggingNode(ctx);
+                    }
+                  } else {
+                    if (this.m_pGraph !== null) {
+                      this.StartDraggingSelection(ctx);
+                    }
+                  }
+                } else { // State Machine
+                  if (this.m_dragState.m_pNode !== null) {
+                    if (IO.KeyAlt && this.m_dragState.m_pNode instanceof StateNode) {
+                      this.StartDraggingConnection(ctx);
+                    } else if (!(this.m_dragState.m_pNode instanceof TransitionConduitNode)) {
+                      this.StartDraggingNode(ctx);
+                    }
+                  } else {
+                    if (this.m_pGraph !== null) {
+                      this.StartDraggingSelection(ctx);
+                    }
+                  }
+                }
+              }
+            } else if (viewDragInput) {
+              this.StartDraggingView(ctx);
+            } else if (ImGui.IsMouseReleased(ImGui.MouseButton.Right)) {
+              this.m_contextMenuState.m_requestOpenMenu = true;
+            }
+
+            this.m_requestFocus = true;
+          } else if (ImGui.IsMouseReleased(ImGui.MouseButton.Right)) {
+            this.m_contextMenuState.m_requestOpenMenu = true;
+          }
+        }
+
+        break; case DragMode.Node:
+        this.OnDragNode(ctx);
+
+        break; case DragMode.Connection:
+        this.OnDragConnection(ctx);
+
+        break; case DragMode.Selection:
+        this.OnDragSelection(ctx);
+
+        break; case DragMode.View:
+        this.OnDragView(ctx);
+
+        break; case DragMode.ResizeComment:
+        this.OnResizeCommentBox(ctx);
+
+        break;
+    }
+
+    // Mouse Cursor
+    if (this.IsDraggingView()) {
+      ImGui.SetMouseCursor(ImGui.MouseCursor.Hand);
+    } else { // Change cursor to match current resize state
+      switch (this.m_dragState.m_resizeHandle) {
+        case ResizeHandle.N:
+          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNS);
+
+          break;
+        case ResizeHandle.NW:
+          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNWSE);
+
+          break;
+        case ResizeHandle.W:
+          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
+
+          break;
+        case ResizeHandle.SW:
+          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNESW);
+
+          break;
+        case ResizeHandle.S:
+          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNS);
+
+          break;
+        case ResizeHandle.SE:
+          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNWSE);
+
+          break;
+        case ResizeHandle.E:
+          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeEW);
+
+          break;
+        case ResizeHandle.NE:
+          ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNESW);
+
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Keyboard
+    // These operations require the graph view to be focused!
+    // if (this.m_hasFocus) {
+    //   // General operations
+    //   if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.C)) {
+    //     this.CopySelectedNodes(typeRegistry);
+    //   }
+
+    //   // Operations that modify the graph
+    //   if (!this.m_isReadOnly) {
+    //     if (ImGui.IsKeyPressed(ImGui.Key.F2)) {
+    //       if (this.m_selectedNodes.length === 1 && this.m_selectedNodes[0].m_pNode.IsRenameable()) {
+    //         this.BeginRenameNode(this.m_selectedNodes[0].m_pNode);
+    //       }
+    //     } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.X)) {
+    //       this.CopySelectedNodes(typeRegistry);
+    //       this.DestroySelectedNodes();
+    //     } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.V)) {
+    //       let pasteLocation = new ImVec2(0.0, 0.0);
+
+    //       if (this.m_isViewHovered) {
+    //         pasteLocation = ctx.m_mouseCanvasPos;
+    //       } else {
+    //         pasteLocation = ctx.m_canvasVisibleRect.GetCenter();
+    //       }
+
+    //       this.PasteNodes(typeRegistry, pasteLocation);
+    //     }
+
+    //     if (this.m_selectedNodes.length > 0) {
+    //       if (!ImGui.IsAnyItemActive() && ImGui.IsKeyPressed(ImGui.Key.Delete)) {
+    //         this.DestroySelectedNodes();
+    //       }
+
+    //       if (IO.KeyShift && ImGui.IsKeyPressed(ImGui.Key.C)) {
+    //         this.CreateCommentAroundSelectedNodes();
+    //       }
+    //     }
+    //   }
+    // }
+  }
 
   //   private HandleContextMenu (ctx: DrawContext): void {
   //     if (this.m_pGraph === null) {

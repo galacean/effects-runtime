@@ -341,8 +341,8 @@ export class FlowGraph extends BaseGraph {
 
   m_connections: Connection[] = [];
 
-  override CanCreateNode (nodeTypeInfo: any): boolean {
-    return nodeTypeInfo.IsDerivedFrom(CommentNode) || nodeTypeInfo.IsDerivedFrom(FlowNode);
+  override CanCreateNode<T extends BaseNode>(classConstructor: new (...args: any[]) => T): boolean {
+    return this.isSubclassOf(classConstructor, CommentNode) || this.isSubclassOf(classConstructor, FlowNode);
   }
 
   override PreDestroyNode (node: BaseNode): void {

@@ -10,6 +10,7 @@ export const ImVec2 = ImGui.ImVec2;
 type Color = ImGui.Color;
 const Color = ImGui.Color;
 
+// TODO test class
 export class CommentNode extends BaseNode {
   static readonly s_resizeSelectionRadius: number = 10.0;
   static readonly s_minBoxDimensions: number = (CommentNode.s_resizeSelectionRadius * 2) + 20.0;
@@ -38,7 +39,7 @@ export class CommentNode extends BaseNode {
     return false;
   }
 
-  getHoveredResizeHandle (ctx: DrawContext): ResizeHandle {
+  GetHoveredResizeHandle (ctx: DrawContext): ResizeHandle {
     // 这个方法的实现会在后面提供
     return ResizeHandle.None;
   }
@@ -47,7 +48,7 @@ export class CommentNode extends BaseNode {
     return this.m_commentBoxSize;
   }
 
-  private adjustSizeBasedOnMousePosition (ctx: DrawContext, handle: ResizeHandle): void {
+  AdjustSizeBasedOnMousePosition (ctx: DrawContext, handle: ResizeHandle): void {
     // 这个方法的实现会在后面提供
   }
 }

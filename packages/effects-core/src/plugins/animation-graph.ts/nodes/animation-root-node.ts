@@ -29,6 +29,7 @@ export class AnimationRootNode extends PoseNode {
   poseNode: PoseNode | null = null;
 
   protected override initializeInternal (context: GraphContext): void {
+    super.initializeInternal(context);
     this.poseNode?.initialize(context);
   }
 
@@ -36,6 +37,8 @@ export class AnimationRootNode extends PoseNode {
     if (!this.poseNode) {
       return result;
     }
+
+    this.markNodeActive(context);
 
     this.poseNode.evaluate(context, result);
 

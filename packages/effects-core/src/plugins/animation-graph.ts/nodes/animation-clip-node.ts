@@ -39,9 +39,16 @@ export class AnimationClipNode extends PoseNode {
       return result;
     }
 
+    this.markNodeActive(context);
+
     this.time = this.loop ? this.time % this.animation.duration : this.time;
     this.animation.getPose(this.time, result.pose);
 
     return result;
+  }
+
+  protected override initializeInternal (context: GraphContext): void {
+    super.initializeInternal(context);
+    this.time = 0;
   }
 }

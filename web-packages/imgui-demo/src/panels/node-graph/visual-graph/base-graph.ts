@@ -23,7 +23,7 @@ export enum NodeVisualState {
 export abstract class BaseNode {
   m_ID: UUID;
   protected m_name: string;
-  protected m_canvasPosition: ImVec2;
+  m_canvasPosition: ImVec2;
   m_size: ImVec2;
   m_titleRectSize: ImVec2;
   protected m_childGraph: BaseGraph | null;
@@ -379,7 +379,7 @@ export abstract class BaseNode {
 
   OnShowNode (): void {}
 
-  protected GetNavigationTarget (): BaseGraph | null {
+  GetNavigationTarget (): BaseGraph | null {
     return this.GetChildGraph();
   }
 
@@ -555,19 +555,44 @@ export class BaseGraph {
 
   //   abstract CanCreateNode (pNodeTypeInfo: TypeInfo): boolean;
 
-  CanCreateNode<T extends BaseNode>(classConstructor: new (...args: any[]) => T): boolean {
-    return true;
-
-    // return this.CanCreateNode(T.GetTypeInfo());
+  isSubclassOf (derivedCtor: Function, baseCtor: Function): boolean {
+    // eslint-disable-next-line no-prototype-builtins
+    return derivedCtor === baseCtor || baseCtor.prototype.isPrototypeOf(derivedCtor.prototype);
   }
 
-  CreateNode<T extends BaseNode>(constructor: new (...args: any[]) => T, position: ImVec2 = ImVec2.ZERO, ...params: any[]): T {
+  CanCreateNode<T extends BaseNode>(classConstructor: new (...args: any[]) => T): boolean {
+    return this.isSubclassOf(classConstructor, BaseNode);
+  }
+
+  CreateNode<T extends BaseNode>(constructor: new () => T): T;
+
+  CreateNode<T extends BaseNode>(constructor: new (...args: any) => T, ...params: any): T;
+
+  CreateNode<T extends BaseNode>(constructor: new (...args: any) => T, position: ImVec2, ...params: any): T;
+
+  CreateNode<T extends BaseNode>(
+    constructor: new (...args: any[]) => T,
+    ...rest: any[]
+  ): T {
     if (!this.CanCreateNode(constructor)) {
       throw new Error('Cannot create node of this type');
     }
-    const node = new constructor(...params);
 
-    this.CreateNodeInternal(node, position);
+    // 检查第一个rest参数是否是 ImVec2
+    if (rest.length > 0 && rest[0] instanceof ImVec2) {
+      const position = rest[0];
+      const params = rest.slice(1);
+      const node = new constructor(...params);
+
+      this.CreateNodeInternal(node, position);
+
+      return node;
+    }
+
+    // 直接使用参数创建节点
+    const node = new constructor(...rest);
+
+    this.CreateNodeInternal(node, ImVec2.ZERO);
 
     return node;
   }
@@ -628,7 +653,7 @@ export class BaseGraph {
     return null;
   }
 
-  FindAllNodesOfType<T extends BaseNode> (classConstructor: new (...args: any[]) => T, results: BaseNode[], mode: SearchMode = SearchMode.Localized, typeMatch: SearchTypeMatch = SearchTypeMatch.Exact): void {
+  FindAllNodesOfType<T extends BaseNode> (classConstructor: new (...args: any[]) => T, results: BaseNode[] = [], mode: SearchMode = SearchMode.Localized, typeMatch: SearchTypeMatch = SearchTypeMatch.Exact) {
     for (const node of this.m_nodes) {
       if (node instanceof classConstructor) {
         results.push(node);
@@ -644,6 +669,8 @@ export class BaseGraph {
         }
       }
     }
+
+    return results;
   }
 
   FindAllNodesOfTypeAdvanced<T extends BaseNode> (classConstructor: new (...args: any[]) => T, matchFunction: (node: BaseNode) => boolean, results: BaseNode[], mode: SearchMode = SearchMode.Localized, typeMatch: SearchTypeMatch = SearchTypeMatch.Exact): void {
@@ -686,13 +713,13 @@ export class BaseGraph {
     }
   }
 
-  protected GetNavigationTarget (): BaseGraph | null {
+  GetNavigationTarget (): BaseGraph | null {
     return this.m_pParentNode ? this.m_pParentNode.GetParentGraph() : null;
   }
 
   protected OnNodeAdded (pAddedNode: BaseNode): void {}
 
-  protected OnNodeModified (pModifiedNode: BaseNode): void {}
+  OnNodeModified (pModifiedNode: BaseNode): void {}
 
   DrawExtraInformation (ctx: DrawContext, pUserContext: UserContext): void {}
 
@@ -724,5 +751,42 @@ export class BaseGraph {
 
     this.OnNodeAdded(pCreatedNode);
     this.EndModification();
+  }
+}
+
+export class ScopedNodeModification {
+  private m_pNode: BaseNode;
+
+  constructor (pNode: BaseNode) {
+    if (pNode === null) {
+      throw new Error('Node cannot be null');
+    }
+    this.m_pNode = pNode;
+    this.m_pNode.BeginModification();
+  }
+
+  End (): void {
+    const pParentGraph = this.m_pNode.GetParentGraph();
+
+    if (pParentGraph !== null) {
+      pParentGraph.OnNodeModified(this.m_pNode);
+    }
+    this.m_pNode.EndModification();
+  }
+}
+
+export class ScopedGraphModification {
+  private m_pGraph: BaseGraph;
+
+  constructor (pGraph: BaseGraph) {
+    if (pGraph === null) {
+      throw new Error('Graph cannot be null');
+    }
+    this.m_pGraph = pGraph;
+    this.m_pGraph.BeginModification();
+  }
+
+  End (): void {
+    this.m_pGraph.EndModification();
   }
 }
