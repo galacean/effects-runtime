@@ -238,23 +238,24 @@ export class RichTextComponent extends TextComponent {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.material.setTexture('_MainTex',
-      Texture.createWithData(
-        this.engine,
-        {
-          data: new Uint8Array(imageData.data),
-          width: imageData.width,
-          height: imageData.height,
-        },
-        {
-          flipY,
-          magFilter: glContext.LINEAR,
-          minFilter: glContext.LINEAR,
-          wrapS: glContext.CLAMP_TO_EDGE,
-          wrapT: glContext.CLAMP_TO_EDGE,
-        },
-      ),
+    const texture = Texture.createWithData(
+      this.engine,
+      {
+        data: new Uint8Array(imageData.data),
+        width: imageData.width,
+        height: imageData.height,
+      },
+      {
+        flipY,
+        magFilter: glContext.LINEAR,
+        minFilter: glContext.LINEAR,
+        wrapS: glContext.CLAMP_TO_EDGE,
+        wrapT: glContext.CLAMP_TO_EDGE,
+      },
     );
+
+    this.renderer.texture = texture;
+    this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
     context.restore();
