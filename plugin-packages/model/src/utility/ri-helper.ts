@@ -137,7 +137,6 @@ export class BoxMesh {
     const material = this.mesh.material;
 
     material.setMatrix('effects_ObjectToWorld', modelMatrix);
-    material.setMatrix('effects_MatrixVP', viewProjMatrix);
     for (let i = 0; i < positions.length; i += 3) {
       material.setVector3(`_PositionList[${i / 3}]`, Vector3.fromArray(positions, i));
     }
