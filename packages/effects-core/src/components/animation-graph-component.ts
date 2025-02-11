@@ -1,4 +1,4 @@
-import type { GraphInstance } from '../plugins/animation-graph.ts';
+import type { GraphInstance } from '../plugins/animation-graph';
 import type { Transform } from '../transform.js';
 import { Component } from './component.js';
 

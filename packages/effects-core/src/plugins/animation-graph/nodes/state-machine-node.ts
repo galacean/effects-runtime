@@ -1,11 +1,9 @@
 import type { BoolValueNode, GraphNodeAssetData, StateNode } from '../..';
 import type { TransitionNode } from '../..';
-import { NodeAssetType } from '../..';
+import { InvalidIndex, NodeAssetType } from '../..';
 import { GraphNodeAsset, PoseNode, nodeAssetClass } from '../..';
 import { BranchState, type GraphContext, type InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
-
-const InvalidIndex = -1;
 
 export interface TransitionData {
   targetStateIndex: number,
@@ -111,7 +109,7 @@ export class StateMachineNode extends PoseNode {
     }
 
     // Check for transitions
-    if (context.branchState === BranchState.Active && !this.activeTransition) {
+    if (context.branchState === BranchState.Active) {
       this.evaluateTransitions(context, result);
     }
 

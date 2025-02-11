@@ -1,5 +1,5 @@
 import { ImGui } from '../../imgui';
-import { AnimationClipGraphNode, Blend1DGraphNode, ConstFloatGraphNode } from './animation-graph-nodes.ts/animation-graph-node';
+import { AnimationClipGraphNode, Blend1DGraphNode, ConstFloatGraphNode } from './animation-graph-nodes/animation-graph-node';
 import { NodeStyle, type BaseNode, type NodeUID } from './base-node';
 import { add, multiplyScalar, smart_bezier, subtract } from './bezier-math';
 import type { Link } from './link';

@@ -11,7 +11,7 @@ import { Playable, PlayableAsset } from './playable-graph';
 import { EffectsObject } from '../../effects-object';
 import { VFXItem } from '../../vfx-item';
 import { effectsClass } from '../../decorators';
-import type { Pose } from '../animation-graph.ts/pose';
+import type { Pose } from '../animation-graph/pose';
 
 const tempRot = new Euler();
 const tempSize = new Vector3(1, 1, 1);

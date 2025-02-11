@@ -1,11 +1,22 @@
 import type { GraphContext, InstantiationContext } from './graph-context';
 import type { PoseResult } from './pose-result';
 
+export const InvalidIndex = -1;
+
 export class GraphNode {
+  /**
+   * @internal
+   */
+  asset: GraphNodeAsset;
+
   private initializationCount = 0;
   private lastUpdateID = -1;
 
   constructor () {
+  }
+
+  getAsset<T extends GraphNodeAsset> (): T {
+    return this.asset as T;
   }
 
   isValid () {

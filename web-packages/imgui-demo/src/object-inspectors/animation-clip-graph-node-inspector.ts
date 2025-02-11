@@ -1,6 +1,5 @@
 import { objectInspector } from '../core/decorators';
-import type { AnimationGraphNode } from '../panels/node-graph/animation-graph-nodes.ts/animation-graph-node';
-import { AnimationClipGraphNode } from '../panels/node-graph/animation-graph-nodes.ts/animation-graph-node';
+import { AnimationClipGraphNode } from '../panels/node-graph/animation-graph-nodes/animation-graph-node';
 import { EditorGUILayout } from '../widgets/editor-gui-layout';
 import { ObjectInspector } from './object-inspectors';
 

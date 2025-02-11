@@ -1,5 +1,6 @@
-import { PoseNode } from '../..';
-import type { GraphContext } from '../graph-context';
+import type { GraphNodeAssetData } from '../..';
+import { GraphNodeAsset, InvalidIndex, NodeAssetType, PoseNode, nodeAssetClass } from '../..';
+import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { PoseResult } from '../pose-result';
 
 export enum TransitionState {
@@ -8,9 +9,32 @@ export enum TransitionState {
   TransitioningOut,
 }
 
+export interface StateNodeNodeAssetData extends GraphNodeAssetData {
+  type: NodeAssetType.StateNodeAsset,
+  childNodeIndex: number,
+}
+
+@nodeAssetClass(NodeAssetType.StateNodeAsset)
+export class StateNodeNodeAsset extends GraphNodeAsset {
+  childNodeIndex = InvalidIndex;
+
+  override instantiate (context: InstantiationContext): void {
+    const node = this.createNode(StateNode, context);
+
+    node.childNode = context.getNode<PoseNode>(this.childNodeIndex);
+  }
+
+  override load (data: StateNodeNodeAssetData): void {
+    super.load(data);
+
+    this.childNodeIndex = data.childNodeIndex;
+  }
+}
+
 export class StateNode extends PoseNode {
+  childNode: PoseNode | null = null;
+
   private transitionState = TransitionState.None;
-  private childNode: PoseNode | null = null;
   private elapsedTimeInState = 0;
   private isFirstStateUpdate = false;
 

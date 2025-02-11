@@ -55,6 +55,13 @@ export class Blend1DNode extends PoseNode {
     this.inputParameterValueNode?.initialize(context);
   }
 
+  protected override shutdownInternal (context: GraphContext): void {
+    this.source0?.shutdown(context);
+    this.source1?.shutdown(context);
+    this.inputParameterValueNode?.shutdown(context);
+    super.shutdown(context);
+  }
+
   override evaluate (context: GraphContext, result: PoseResult): PoseResult {
     if (!this.inputParameterValueNode) {
       return result;

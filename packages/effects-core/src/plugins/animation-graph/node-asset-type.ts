@@ -7,7 +7,9 @@ export enum NodeAssetType {
   Blend1DNodeAsset = 'Blend1DNodeAsset',
   ConstFloatNodeAsset = 'ConstFloatNodeAsset',
   ControlParameterFloatNodeAsset = 'ControlParameterFloatNodeAsset',
-  StateMachineNodeAsset = 'StateMachineNodeAsset'
+  StateMachineNodeAsset = 'StateMachineNodeAsset',
+  TransitionNodeAsset = 'TransitionNodeAsset',
+  StateNodeAsset = 'StateNodeAsset'
 }
 
 const nodeAssetClassStore: Record<string, any> = {};

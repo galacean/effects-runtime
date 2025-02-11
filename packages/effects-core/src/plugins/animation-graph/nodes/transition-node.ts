@@ -1,10 +1,11 @@
 import { clamp, lerp } from '@galacean/effects-math/es/core/utils';
-import type { StateNode } from '../..';
-import { PoseNode, TransitionState } from '../..';
+import type { GraphNodeAssetData, StateNode } from '../..';
+import { GraphNodeAsset, InvalidIndex, NodeAssetType, PoseNode, TransitionState, nodeAssetClass } from '../..';
+import { Blender } from '../blender';
+import type { InstantiationContext } from '../graph-context';
 import { BranchState, type GraphContext } from '../graph-context';
 import { PoseResult } from '../pose-result';
-import { Blender } from '../blender';
-import { assertExist } from 'packages/effects-core/src/utils';
+import { assertExist } from '../../../utils/asserts';
 
 export enum SourceType {
   State,
@@ -12,7 +13,34 @@ export enum SourceType {
   CachedPose
 }
 
+export interface TransitionNodeAssetData extends GraphNodeAssetData {
+  type: NodeAssetType.TransitionNodeAsset,
+  duration: number,
+  targetStateNodeIndex: number,
+}
+
+@nodeAssetClass(NodeAssetType.TransitionNodeAsset)
+export class TransitionNodeAsset extends GraphNodeAsset {
+  targetStateNodeIndex = InvalidIndex;
+  duration = 0;
+
+  override instantiate (context: InstantiationContext): void {
+    const node = this.createNode(TransitionNode, context);
+
+    node.targetNode = context.getNode(this.targetStateNodeIndex);
+  }
+
+  override load (data: TransitionNodeAssetData): void {
+    super.load(data);
+
+    this.duration = data.duration;
+    this.targetStateNodeIndex = data.targetStateNodeIndex;
+  }
+}
+
 export class TransitionNode extends PoseNode {
+  targetNode: StateNode;
+
   private transitionLength = 0;
   private transitionProgress = 0;
   private blendWeight = 0;
@@ -20,7 +48,6 @@ export class TransitionNode extends PoseNode {
   private sourceNode: PoseNode | null = null;
   private sourceNodeResult: PoseResult;
   private sourceType = SourceType.State;
-  private targetNode: StateNode;
   private targetNodeResult: PoseResult;
   private blendedDuration = 0;
 
@@ -28,6 +55,11 @@ export class TransitionNode extends PoseNode {
     assertExist(this.sourceNode);
 
     this.markNodeActive(context);
+
+    // Handle source transition completion
+    if (this.isSourceATransition() && this.getSourceTransitionNode().isComplete(context)) {
+      this.endSourceTransition(context);
+    }
 
     this.transitionProgress = this.transitionProgress + context.deltaTime / this.transitionLength;
     this.transitionProgress = clamp(this.transitionProgress, 0.0, 1.0);
@@ -134,15 +166,37 @@ export class TransitionNode extends PoseNode {
   }
 
   notifyNewTransitionStarting (context: GraphContext, targetStateNode: StateNode) {
-    // if (this.isSourceAState()) {
-    //   if
-    // }
+    if (this.isSourceATransition()) {
+      const sourceTransitionNode = this.getSourceTransitionNode();
+      const sourceTransitionTargetState = sourceTransitionNode.targetNode;
+
+      if (sourceTransitionTargetState === targetStateNode) {
+        this.sourceType = SourceType.CachedPose;
+
+        sourceTransitionTargetState.shutdown(context);
+        this.sourceNode = null;
+      }
+    } else if (this.isSourceAState()) {
+      if (this.sourceNode === targetStateNode) {
+        this.sourceType = SourceType.CachedPose;
+        this.sourceNode.shutdown(context);
+        this.sourceNode = null;
+      }
+    }
+
+    if (this.isSourceATransition()) {
+      const sourceTransitionNode = this.getSourceTransitionNode();
+
+      sourceTransitionNode.notifyNewTransitionStarting(context, targetStateNode);
+    }
   }
 
   protected override initializeInternal (context: GraphContext): void {
     super.initializeInternal(context);
     this.sourceNodeResult = new PoseResult(context.skeleton);
     this.targetNodeResult = new PoseResult(context.skeleton);
+
+    this.transitionLength = this.getAsset<TransitionNodeAsset>().duration;
 
     this.transitionProgress = 0;
     this.blendWeight = 0;
@@ -153,10 +207,24 @@ export class TransitionNode extends PoseNode {
     this.currentTime = 1.0;
 
     if (this.sourceNode) {
+      if (this.isSourceATransition()) {
+        this.endSourceTransition(context);
+      }
       this.sourceNode.shutdown(context);
       this.sourceNode = null;
     }
     super.shutdownInternal(context);
+  }
+
+  private endSourceTransition (context: GraphContext) {
+    const sourceTransitionNode = this.getSourceTransitionNode();
+    const sourceTransitionTargetState = sourceTransitionNode.targetNode;
+
+    this.sourceNode?.shutdown(context);
+    this.sourceNode = sourceTransitionTargetState;
+    this.sourceType = SourceType.State;
+
+    this.getSourceStateNode().setTransitioningState(TransitionState.TransitioningOut);
   }
 
   private initializeTargetStateAndUpdateTransition (

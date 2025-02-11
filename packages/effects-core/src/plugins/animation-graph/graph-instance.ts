@@ -1,9 +1,8 @@
 import type { AnimationClip, GraphNode, GraphNodeAsset, GraphNodeAssetData, NodeAssetType, PoseNode, VFXItem } from '@galacean/effects-core';
-import { EffectsObject, effectsClass, getNodeAssetClass } from '@galacean/effects-core';
+import { EffectsObject, InvalidIndex, effectsClass, getNodeAssetClass } from '@galacean/effects-core';
 import type * as spec from '@galacean/effects-specification';
 import { GraphContext, InstantiationContext } from './graph-context';
 import { GraphDataSet } from './graph-data-set';
-import type { AnimationRootNode } from './nodes/animation-root-node';
 import { PoseResult } from './pose-result';
 import type { SkeletonRecordProperties } from './skeleton';
 import { Skeleton } from './skeleton';
@@ -64,16 +63,15 @@ export class GraphInstance {
         graphAsset.nodeAssets[i].instantiate(instantiationContext);
       }
     }
-    this.rootNode = this.nodes[0] as AnimationRootNode;
-
-    // initialize graph nodes
-    for (const node of this.nodes) {
-      node.initialize(this.context);
-    }
+    this.rootNode = this.nodes[graphAsset.rootNodeIndex] as PoseNode;
   }
 
   evaluateGraph (deltaTime: number) {
     this.context.update(deltaTime);
+
+    if (!this.rootNode.isInitialized()) {
+      this.resetGraphState();
+    }
 
     if (this.rootNode) {
       this.result = this.rootNode.evaluate(this.context, this.result);
@@ -85,6 +83,15 @@ export class GraphInstance {
   isInitialized () {
     return this.rootNode && this.rootNode.isInitialized();
   }
+
+  resetGraphState () {
+    if (this.rootNode.isInitialized()) {
+      this.rootNode.shutdown(this.context);
+    }
+
+    this.context.updateID++; // Bump the update ID to ensure that any initialization code that relies on it is dirtied.
+    this.rootNode.initialize(this.context);
+  }
 }
 
 export interface GraphDataSetData {
@@ -94,12 +101,14 @@ export interface GraphDataSetData {
 export interface AnimationGraphAssetData extends spec.EffectsObjectData {
   nodeAssetDatas: GraphNodeAssetData[],
   graphDataSet: GraphDataSetData,
+  rootNodeIndex: number,
 }
 
 @effectsClass('AnimationGraphAsset')
 export class AnimationGraphAsset extends EffectsObject {
   nodeAssets: GraphNodeAsset[] = [];
   graphDataSet = new GraphDataSet();
+  rootNodeIndex = InvalidIndex;
 
   static createNodeAsset (type: NodeAssetType) {
     const classConstructor = getNodeAssetClass(type);
@@ -112,9 +121,10 @@ export class AnimationGraphAsset extends EffectsObject {
   }
 
   override fromData (data: AnimationGraphAssetData) {
-    const graphAssetData = data as unknown as AnimationGraphAssetData;
+    const graphAssetData = data;
     const nodeAssetDatas = graphAssetData.nodeAssetDatas;
 
+    this.rootNodeIndex = graphAssetData.rootNodeIndex;
     this.nodeAssets = [];
 
     for (let i = 0;i < nodeAssetDatas.length;i++) {

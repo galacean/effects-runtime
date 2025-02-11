@@ -1,5 +1,7 @@
+//@ts-nocheck
 import type { AnimationGraphAssetData, GraphNodeAssetData, spec } from '@galacean/effects';
-import { AnimationGraphAsset, AnimationGraphComponent, GraphInstance, NodeAssetType, VFXItem } from '@galacean/effects';
+import { StateMachineNode } from '@galacean/effects';
+import { AnimationClipNode, AnimationGraphAsset, AnimationGraphComponent, ConstFloatNode, GraphInstance, NodeAssetType, StateNode, TransitionNode, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
 import { GalaceanEffects } from '../../ge';
@@ -9,22 +11,15 @@ import type { AnimationGraphNode } from './animation-graph-nodes.ts/animation-gr
 import { AnimationClipGraphNode, AnimationRootGraphNode, Blend1DGraphNode, ConstFloatGraphNode } from './animation-graph-nodes.ts/animation-graph-node';
 import type { BaseNode, BaseNodeData } from './base-node';
 import { ImNodeFlow } from './node-flow';
-import { GraphView } from './visual-graph.ts/node-graph-view';
-import type { TransitionConduitNode } from './visual-graph.ts/state-machine-graph';
-import { StateMachineGraph, StateNode } from './visual-graph.ts/state-machine-graph';
-import { UserContext } from './visual-graph.ts/user-context';
+import { GraphView } from './visual-graph/node-graph-view';
+import { StateMachineGraph } from './tools-graph/graphs/state-machine-graph';
+import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
+import { ToolsGraphUserContext } from './tools-graph/tools-graph-user-context';
 
 type ImVec2 = ImGui.ImVec2;
 type ImColor = ImGui.ImColor;
 const ImVec2 = ImGui.ImVec2;
 const ImColor = ImGui.ImColor;
-
-class StateMachineGraphImpl extends StateMachineGraph {
-  override CreateTransitionConduit (pStartState: StateNode, pEndState: StateNode): TransitionConduitNode {
-    throw new Error('Method not implemented.');
-  }
-
-}
 
 @editorWindow()
 export class NodeGraph extends EditorWindow {
@@ -35,8 +30,8 @@ export class NodeGraph extends EditorWindow {
 
   compilationContext = new GraphCompilationContext();
 
-  graphView = new GraphView(new UserContext());
-  stateMachineGraph = new StateMachineGraphImpl();
+  graphView = new GraphView(new ToolsGraphUserContext());
+  stateMachineGraph = new StateMachineGraph();
 
   @menuItem('Window/NodeGraph')
   static showWindow () {
@@ -52,7 +47,16 @@ export class NodeGraph extends EditorWindow {
 
     this.fromData(data);
 
-    this.stateMachineGraph.m_nodes.push(new StateNode());
+    const stateNode1 = new StateToolsNode();
+    const stateNode2 = new StateToolsNode();
+
+    stateNode1.SetPosition(new ImVec2(500, 300));
+    stateNode1.Rename('State1');
+    stateNode2.SetPosition(new ImVec2(300, 300));
+    stateNode2.Rename('State2');
+
+    this.stateMachineGraph.m_nodes.push(stateNode1);
+    this.stateMachineGraph.m_nodes.push(stateNode2);
     this.graphView.SetGraphToView(this.stateMachineGraph);
   }
 
@@ -62,6 +66,88 @@ export class NodeGraph extends EditorWindow {
 
     animationGraphAsset.fromData(animationGraphAssetData);
     this.graph = new GraphInstance(animationGraphAsset, item);
+
+    this.graph.rootNode = new StateMachineNode();
+    const stateMachineNode = this.graph.rootNode as StateMachineNode;
+
+    stateMachineNode.states = [];
+
+    // state0
+    const state0 = new StateNode();
+    const animationClipNode0 = new AnimationClipNode();
+
+    animationClipNode0.animation = item.engine.assetLoader.loadGUID('25ea2eda5e0e41a1a59a45294bcb5b2d');
+
+    state0.childNode = animationClipNode0;
+
+    // state1
+    const state1 = new StateNode();
+    const animationClipNode1 = new AnimationClipNode();
+
+    animationClipNode1.animation = item.engine.assetLoader.loadGUID('83864e16075b490b8b487e58844d1191');
+
+    state1.childNode = animationClipNode1;
+
+    // state2
+    const state2 = new StateNode();
+    const animationClipNode2 = new AnimationClipNode();
+
+    animationClipNode2.animation = item.engine.assetLoader.loadGUID('e366a3769aa14592ab0e37f2a8763834');
+
+    state2.childNode = animationClipNode2;
+
+    const transitionNode01 = new TransitionNode();
+
+    //@ts-expect-error
+    transitionNode01.targetNode = state1;
+    //@ts-expect-error
+    transitionNode01.transitionLength = 2;
+
+    const transitionNode12 = new TransitionNode();
+
+    //@ts-expect-error
+    transitionNode12.targetNode = state2;
+    //@ts-expect-error
+    transitionNode12.transitionLength = 2;
+
+    const transitionNode20 = new TransitionNode();
+
+    //@ts-expect-error
+    transitionNode20.targetNode = state0;
+    //@ts-expect-error
+    transitionNode20.transitionLength = 2;
+
+    const conditionNode = new ConstFloatNode();
+
+    conditionNode.value = 1;
+
+    stateMachineNode.states.push({
+      stateNode: state0,
+      transitions: [{
+        transitionNode: transitionNode01,
+        conditionNode: conditionNode,
+        targetStateIndex: 1,
+      }],
+    });
+    stateMachineNode.states.push({
+      stateNode: state1,
+      transitions: [{
+        transitionNode: transitionNode12,
+        conditionNode: conditionNode,
+        targetStateIndex: 2,
+      }],
+    });
+    stateMachineNode.states.push({
+      stateNode: state2,
+      transitions: [{
+        transitionNode: transitionNode20,
+        conditionNode: conditionNode,
+        targetStateIndex: 0,
+      }],
+    });
+
+    stateMachineNode.defaultStateIndex = 0;
+    stateMachineNode.initialize(this.graph.context);
 
     const runtimeNodes = this.graph.nodes;
 
@@ -88,9 +174,9 @@ export class NodeGraph extends EditorWindow {
       return;
     }
 
-    // if (ImGui.Button('Save') || !this.graph) {
-    //   this.rebuildGraph(this.currentVFXItem);
-    // }
+    if (ImGui.Button('Save') || !this.graph) {
+      this.rebuildGraph(this.currentVFXItem);
+    }
 
     this.currentAnimationComponent = this.currentVFXItem.getComponent(AnimationGraphComponent);
     const animationGraphComponent = this.currentAnimationComponent;
