@@ -370,7 +370,7 @@ function loadText (url: string): Promise<string> {
     request.overrideMimeType('text/html');
     request.open('GET', url, true);
     request.onload = () => {
-      if (request.status == 200 || request.status == 0) {
+      if (request.status == 200) {
         resolve(request.responseText);
       }
     };
