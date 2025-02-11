@@ -1,6 +1,7 @@
-import type {
-  Texture, Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps,
-  GeometryFromShape,
+import type { Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps,
+  GeometryFromShape } from '@galacean/effects';
+import {
+  Texture,
 } from '@galacean/effects';
 import { spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo } from '@galacean/effects';
 
@@ -31,22 +32,34 @@ export class VideoComponent extends BaseRenderComponent {
     this.geometry = this.createGeometry(glContext.TRIANGLES);
   }
 
-  override setTexture (texture: Texture): void {
+  override async setTexture (texture: Texture | string): Promise<void> {
+
     const oldTexture = this.renderer.texture;
     const composition = this.item.composition;
+
+    let finalTexture: Texture;
+
+    if (typeof texture === 'string') {
+      const engine = this.item.engine;
+      const newTexture = await Texture.fromImage(texture, engine);
+
+      finalTexture = newTexture;
+    } else {
+      finalTexture = texture;
+    }
 
     if (!composition) { return; }
 
     composition.textures.forEach((cachedTexture, index) => {
       if (cachedTexture === oldTexture) {
-        composition.textures[index] = texture;
+        composition.textures[index] = finalTexture;
       }
     });
 
     this.engine.removeTexture(oldTexture);
-    this.renderer.texture = texture;
-    this.material.setTexture('_MainTex', texture);
-    this.video = (texture.source as Texture2DSourceOptionsVideo).video;
+    this.renderer.texture = finalTexture;
+    this.material.setTexture('_MainTex', finalTexture);
+    this.video = (finalTexture.source as Texture2DSourceOptionsVideo).video;
   }
 
   override fromData (data: VideoItemProps): void {

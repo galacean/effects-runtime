@@ -1,3 +1,5 @@
+
+import './components';
 import './composition';
 import './fallback';
 import './image-template/image-template.spec';
