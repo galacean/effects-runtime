@@ -848,7 +848,6 @@ export class PSubMesh {
   private updateUniformsByScene (sceneStates: PSceneStates) {
     const material = this.getEffectsMaterial();
 
-    material.setMatrix('effects_MatrixVP', sceneStates.viewProjectionMatrix);
     material.setVector3('_Camera', sceneStates.cameraPosition);
     //
     if (!this.isUnlitMaterial()) {

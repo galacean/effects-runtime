@@ -298,7 +298,7 @@ export class ModelPluginComponent extends Behaviour {
       renderMode3DUVGridSize: this.renderMode3DUVGridSize,
       renderSkybox: this.renderSkybox,
       lightItemCount: this.getLightItemCount(),
-      maxJointCount: this.getMaxJointCount(),
+      maxJointCount: this.getMaxJointCount(this.item.composition?.items ?? []),
     });
     this.updateSceneCamera(component);
   }
@@ -326,9 +326,8 @@ export class ModelPluginComponent extends Behaviour {
     return lightItemCount;
   }
 
-  private getMaxJointCount (): number {
+  private getMaxJointCount (items: VFXItem[]): number {
     let maxJointCount = 0;
-    const items = this.item.composition?.items ?? [];
 
     items.forEach(item => {
       const meshComp = item.getComponent(ModelMeshComponent);
@@ -343,6 +342,9 @@ export class ModelPluginComponent extends Behaviour {
             maxJointCount = Math.max(skin.boneNames.length, maxJointCount);
           }
         }
+      }
+      if (item.children.length !== 0) {
+        maxJointCount = Math.max(this.getMaxJointCount(item.children), maxJointCount);
       }
     });
 
