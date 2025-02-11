@@ -150,11 +150,11 @@ export class StateMachineNode extends PoseNode {
     // Start new transition if found
     if (transitionIdx !== InvalidIndex) {
       const transition = currentlyActiveStateInfo.transitions[transitionIdx];
-      const targetStateInfo = this.states[transition.targetStateIndex];
+      // const targetStateInfo = this.states[transition.targetStateIndex];
 
-      if (this.activeTransition) {
-        this.activeTransition.notifyNewTransitionStarting(context, targetStateInfo.stateNode);
-      }
+      // if (this.activeTransition) {
+      //   this.activeTransition.notifyNewTransitionStarting(context, targetStateInfo.stateNode);
+      // }
 
       // Start the new transition
       // Initialize target state based on transition settings

@@ -1,11 +1,7 @@
+import type { GraphNode, PoseNodeDebugInfo } from '@galacean/effects';
 import { generateGUID, type GraphInstance } from '@galacean/effects';
 import { UserContext } from '../visual-graph/user-context';
 import type { UUID } from '../visual-graph/state-machine-graph';
-
-// 定义 PoseNodeDebugInfo 接口（假设它在 C++ 中是一个结构体）
-export interface PoseNodeDebugInfo {
-  // 在此添加 PoseNodeDebugInfo 的属性
-}
 
 // ToolsGraphUserContext 类
 export class ToolsGraphUserContext extends UserContext {
@@ -55,37 +51,29 @@ export class ToolsGraphUserContext extends UserContext {
     return foundUUID !== undefined ? foundUUID : generateGUID();
   }
 
-  //   GetActiveNodes (): ReadonlyArray<number> {
-  //     if (this.m_pGraphInstance === null) {
-  //       throw new Error('m_pGraphInstance is null');
-  //     }
+  IsNodeActive (nodeIdx: number): boolean {
+    if (this.m_pGraphInstance === null) {
+      throw new Error('m_pGraphInstance is null');
+    }
 
-  //     return this.m_pGraphInstance.GetActiveNodes();
-  //   }
+    return this.m_pGraphInstance.isNodeActive(nodeIdx);
+  }
 
-  //   IsNodeActive (nodeIdx: number): boolean {
-  //     if (this.m_pGraphInstance === null) {
-  //       throw new Error('m_pGraphInstance is null');
-  //     }
+  GetPoseNodeDebugInfo (runtimeNodeIdx: number): PoseNodeDebugInfo {
+    if (this.m_pGraphInstance === null) {
+      throw new Error('m_pGraphInstance is null');
+    }
 
-  //     return this.m_pGraphInstance.IsNodeActive(nodeIdx);
-  //   }
+    return this.m_pGraphInstance.getPoseNodeDebugInfo(runtimeNodeIdx);
+  }
 
-  //   GetPoseNodeDebugInfo (runtimeNodeIdx: number): PoseNodeDebugInfo {
-  //     if (this.m_pGraphInstance === null) {
-  //       throw new Error('m_pGraphInstance is null');
-  //     }
+  GetNodeDebugInstance (runtimeNodeIdx: number): GraphNode {
+    if (this.m_pGraphInstance === null) {
+      throw new Error('m_pGraphInstance is null');
+    }
 
-  //     return this.m_pGraphInstance.GetPoseNodeDebugInfo(runtimeNodeIdx);
-  //   }
-
-  //   GetNodeDebugInstance (runtimeNodeIdx: number): GraphNode {
-  //     if (this.m_pGraphInstance === null) {
-  //       throw new Error('m_pGraphInstance is null');
-  //     }
-
-  //     return this.m_pGraphInstance.GetNodeDebugInstance(runtimeNodeIdx);
-  //   }
+    return this.m_pGraphInstance.getNodeDebugInstance(runtimeNodeIdx);
+  }
 
   //   GetNodeValue<T>(runtimeNodeIdx: number): T {
   //     if (this.m_pGraphInstance === null) {
@@ -95,27 +83,3 @@ export class ToolsGraphUserContext extends UserContext {
 //     return this.m_pGraphInstance.GetRuntimeNodeDebugValue<T>(runtimeNodeIdx);
 //   }
 }
-
-// export function IsNodeActive (this: ToolsGraphUserContext, nodeIdx: number): boolean {
-//   if (this.m_pGraphInstance === null) {
-//     throw new Error('m_pGraphInstance is null');
-//   }
-
-//   return this.m_pGraphInstance.IsNodeActive(nodeIdx);
-// }
-
-// export function GetActiveNodes (this: ToolsGraphUserContext): ReadonlyArray<number> {
-//   if (this.m_pGraphInstance === null) {
-//     throw new Error('m_pGraphInstance is null');
-//   }
-
-//   return this.m_pGraphInstance.GetActiveNodes();
-// }
-
-// export function GetPoseNodeDebugInfo (this: ToolsGraphUserContext, runtimeNodeIdx: number): PoseNodeDebugInfo {
-//   if (this.m_pGraphInstance === null) {
-//     throw new Error('m_pGraphInstance is null');
-//   }
-
-//   return this.m_pGraphInstance.GetPoseNodeDebugInfo(runtimeNodeIdx);
-// }

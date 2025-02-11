@@ -106,6 +106,12 @@ export class GraphNodeAsset {
   }
 }
 
+export interface PoseNodeDebugInfo {
+  duration: number,
+  currentTime: number,    // Clamped percentage over the duration
+  previousTime: number,   // Clamped percentage over the duration
+}
+
 export abstract class PoseNode extends GraphNode {
   protected duration: number = 0;
   protected previousTime: number = 0;
@@ -121,6 +127,16 @@ export abstract class PoseNode extends GraphNode {
 
   getDuration (): number {
     return this.duration;
+  }
+
+  getDebugInfo (): PoseNodeDebugInfo {
+    const info: PoseNodeDebugInfo = {
+      duration: this.duration,
+      currentTime:  this.currentTime,
+      previousTime: this.previousTime,
+    };
+
+    return info;
   }
 
   abstract evaluate (context: GraphContext, result: PoseResult): PoseResult;

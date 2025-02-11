@@ -653,7 +653,7 @@ export class BaseGraph {
     return null;
   }
 
-  FindAllNodesOfType<T extends BaseNode> (classConstructor: new (...args: any[]) => T, results: BaseNode[] = [], mode: SearchMode = SearchMode.Localized, typeMatch: SearchTypeMatch = SearchTypeMatch.Exact) {
+  FindAllNodesOfType<T extends BaseNode> (classConstructor: new (...args: any[]) => T, results: BaseNode[] = [], mode: SearchMode = SearchMode.Localized, typeMatch: SearchTypeMatch = SearchTypeMatch.Exact): T[] {
     for (const node of this.m_nodes) {
       if (node instanceof classConstructor) {
         results.push(node);
@@ -670,7 +670,7 @@ export class BaseGraph {
       }
     }
 
-    return results;
+    return results as T[];
   }
 
   FindAllNodesOfTypeAdvanced<T extends BaseNode> (classConstructor: new (...args: any[]) => T, matchFunction: (node: BaseNode) => boolean, results: BaseNode[], mode: SearchMode = SearchMode.Localized, typeMatch: SearchTypeMatch = SearchTypeMatch.Exact): void {

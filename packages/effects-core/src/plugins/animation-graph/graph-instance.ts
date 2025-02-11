@@ -1,11 +1,17 @@
-import type { AnimationClip, GraphNode, GraphNodeAsset, GraphNodeAssetData, NodeAssetType, PoseNode, VFXItem } from '@galacean/effects-core';
-import { EffectsObject, InvalidIndex, effectsClass, getNodeAssetClass } from '@galacean/effects-core';
 import type * as spec from '@galacean/effects-specification';
 import { GraphContext, InstantiationContext } from './graph-context';
 import { GraphDataSet } from './graph-data-set';
 import { PoseResult } from './pose-result';
 import type { SkeletonRecordProperties } from './skeleton';
 import { Skeleton } from './skeleton';
+import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, PoseNode, PoseNodeDebugInfo } from './graph-node';
+import { InvalidIndex } from './graph-node';
+import type { VFXItem } from '../../vfx-item';
+import { EffectsObject } from '../../effects-object';
+import type { NodeAssetType } from '..';
+import { getNodeAssetClass } from '..';
+import { effectsClass } from '../../decorators';
+import type { AnimationClip } from '../cal/calculate-vfx-item';
 
 export class GraphInstance {
   rootNode: PoseNode;
@@ -84,6 +90,25 @@ export class GraphInstance {
     return this.rootNode && this.rootNode.isInitialized();
   }
 
+  isNodeActive (nodeIdx: number): boolean {
+    return this.isControlParameter(nodeIdx) || this.nodes[nodeIdx].isNodeActive(this.context.updateID);
+  }
+
+  // Control Parameters
+  //-------------------------------------------------------------------------
+
+  getNumControlParameters () {
+    // TODO implement this
+    return 0;
+    // return m_pGraphVariation->m_pGraphDefinition->m_controlParameterIDs.size();
+  }
+
+  getPoseNodeDebugInfo (nodeIdx: number): PoseNodeDebugInfo {
+    const node = this.nodes[nodeIdx] as PoseNode;
+
+    return node.getDebugInfo();
+  }
+
   resetGraphState () {
     if (this.rootNode.isInitialized()) {
       this.rootNode.shutdown(this.context);
@@ -91,6 +116,14 @@ export class GraphInstance {
 
     this.context.updateID++; // Bump the update ID to ensure that any initialization code that relies on it is dirtied.
     this.rootNode.initialize(this.context);
+  }
+
+  getNodeDebugInstance (nodeIdx: number): GraphNode {
+    return this.nodes[nodeIdx];
+  }
+
+  private isControlParameter (nodeIdx: number) {
+    return nodeIdx < this.getNumControlParameters();
   }
 }
 

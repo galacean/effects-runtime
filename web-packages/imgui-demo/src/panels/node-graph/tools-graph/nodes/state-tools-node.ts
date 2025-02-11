@@ -1,16 +1,14 @@
-// @ts-nocheck
 import type { BaseGraph } from '../../visual-graph/base-graph';
 import { SearchMode, SearchTypeMatch } from '../../visual-graph/base-graph';
 import type { DrawContext } from '../../visual-graph/drawing-context';
-import { FlowGraph } from '../../visual-graph/flow-graph';
 import * as NodeGraph from '../../visual-graph';
 import type { UserContext } from '../../visual-graph/user-context';
 import { ImGui } from '../../../../imgui/index';
-import * as ImGuiX from '../../visual-graph/imgui-x';
 import { Colors } from '../colors';
 import type { ToolsGraphUserContext } from '../tools-graph-user-context';
 import { StateMachineToolsNode } from './state-machine-tools-node';
-import { GraphType } from './flow-tools-node';
+import { DrawPoseNodeDebugInfo } from './flow-tools-node';
+import { ResultToolsNode } from './result-tools-node';
 
 type ImVec2 = ImGui.ImVec2;
 const ImVec2 = ImGui.ImVec2;
@@ -308,7 +306,7 @@ export class StateToolsNode extends NodeGraph.StateNode {
       if (runtimeNodeIdx !== InvalidIndex && pGraphNodeContext.IsNodeActive(runtimeNodeIdx)) {
         const debugInfo = pGraphNodeContext.GetPoseNodeDebugInfo(runtimeNodeIdx);
 
-        // this.DrawPoseNodeDebugInfo(ctx, this.GetWidth(), debugInfo);
+        DrawPoseNodeDebugInfo(ctx, this.GetWidth(), debugInfo);
         shouldDrawEmptyDebugInfoBlock = false;
       }
 
@@ -318,7 +316,7 @@ export class StateToolsNode extends NodeGraph.StateNode {
     }
 
     if (shouldDrawEmptyDebugInfoBlock) {
-      // this.DrawPoseNodeDebugInfo(ctx, this.GetWidth(), null);
+      DrawPoseNodeDebugInfo(ctx, this.GetWidth(), null);
     }
 
     ImGui.SetCursorPosY(ImGui.GetCursorPosY() + scaledVerticalGap);
@@ -342,7 +340,7 @@ export class StateToolsNode extends NodeGraph.StateNode {
     super.OnShowNode();
 
     if (this.m_type === StateType.StateMachineState) {
-      const childSMs = this.GetChildGraph()!.FindAllNodesOfType<StateMachineToolsNode>(SearchMode.Localized, SearchTypeMatch.Derived);
+      const childSMs = this.GetChildGraph()!.FindAllNodesOfType<StateMachineToolsNode>(StateMachineToolsNode, [], SearchMode.Localized, SearchTypeMatch.Derived);
 
       if (childSMs.length !== 1) {
         throw new Error('Expected exactly one state machine node');
@@ -373,7 +371,7 @@ export class StateToolsNode extends NodeGraph.StateNode {
       return false;
     }
 
-    const resultNodes = this.GetChildGraph()!.FindAllNodesOfType<ResultToolsNode>(SearchMode.Localized, SearchTypeMatch.Derived);
+    const resultNodes = this.GetChildGraph()!.FindAllNodesOfType<ResultToolsNode>(ResultToolsNode, [], SearchMode.Localized, SearchTypeMatch.Derived);
 
     if (resultNodes.length !== 1) {
       return false;

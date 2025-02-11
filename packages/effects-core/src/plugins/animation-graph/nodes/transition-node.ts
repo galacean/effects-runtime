@@ -114,12 +114,19 @@ export class TransitionNode extends PoseNode {
     return finalResult;
   }
 
+  // Transition Info
+  //-------------------------------------------------------------------------
+
   isComplete (context: GraphContext): boolean {
     if (this.transitionLength <= 0) {
       return true;
     }
 
     return (this.transitionProgress + (context.deltaTime / this.transitionLength)) >= 1.0;
+  }
+
+  getProgressPercentage (): number {
+    return this.transitionProgress;
   }
 
   getSourceType (): SourceType {
@@ -133,6 +140,9 @@ export class TransitionNode extends PoseNode {
   isSourceAState (): boolean {
     return this.sourceType === SourceType.State;
   }
+
+  // Secondary initialization
+  //-------------------------------------------------------------------------
 
   startTransitionFromState (
     context: GraphContext,
@@ -157,6 +167,9 @@ export class TransitionNode extends PoseNode {
     return this.initializeTargetStateAndUpdateTransition(context, sourceNodeResult, outResult);
   }
 
+  // Source Node
+  //-------------------------------------------------------------------------
+
   getSourceStateNode () {
     return this.sourceNode as StateNode;
   }
@@ -164,6 +177,9 @@ export class TransitionNode extends PoseNode {
   getSourceTransitionNode () {
     return this.sourceNode as TransitionNode;
   }
+
+  // Forceable transitions
+  //-------------------------------------------------------------------------
 
   notifyNewTransitionStarting (context: GraphContext, targetStateNode: StateNode) {
     if (this.isSourceATransition()) {

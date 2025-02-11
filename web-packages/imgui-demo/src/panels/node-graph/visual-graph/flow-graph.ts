@@ -162,10 +162,14 @@ export class FlowNode extends BaseNode {
     return this.OutputPins.findIndex(pin => pin.m_ID === pinID);
   }
 
-  // Connection methods
-  GetConnectedInputNode (inputPinIdx: number): FlowNode | null {
-    // Implementation depends on FlowGraph
-    return null;
+  // Connections
+  //-------------------------------------------------------------------------
+
+  GetConnectedInputNode<T extends FlowNode>(inputPinIdx: number): T | null {
+    const pParentGraph = this.GetParentGraph() as FlowGraph;
+    const node = pParentGraph.GetConnectedNodeForInputPin(this.InputPins[inputPinIdx].m_ID);
+
+    return node as T;
   }
 
   IsValidConnection (inputPinID: UUID, fromNode: FlowNode, outputPinID: UUID): boolean {

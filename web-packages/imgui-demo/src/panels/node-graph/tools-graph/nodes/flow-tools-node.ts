@@ -1,10 +1,12 @@
-// @ts-nocheck
 import * as NodeGraph from '../../visual-graph';
 import { ImGui } from '../../../../imgui/index';
 import type { GraphCompilationContext } from '../../node-graph';
 import type { DrawContext } from '../../visual-graph/drawing-context';
 import type { UserContext } from '../../visual-graph/user-context';
 import type { ToolsGraphUserContext } from '../tools-graph-user-context';
+import { Colors } from '../colors';
+import { add, subtract } from '../../bezier-math';
+import type { PoseNodeDebugInfo } from '@galacean/effects';
 
 type ImVec2 = ImGui.ImVec2;
 const ImVec2 = ImGui.ImVec2;
@@ -12,7 +14,7 @@ const ImVec2 = ImGui.ImVec2;
 type Color = ImGui.Color;
 const Color = ImGui.Color;
 
-const InvalidIndex = -1;
+export const InvalidIndex = -1;
 
 export enum GraphType {
   BlendTree,
@@ -32,6 +34,157 @@ export enum GraphValueType {
   Special
 }
 
+export function GetIDForValueType (type: GraphValueType): string {
+  const IDs = [
+    'Unknown',
+    'Bool',
+    'ID',
+    'Float',
+    'Vector',
+    'Target',
+    'BoneMask',
+    'Pose',
+    'Special',
+  ];
+
+  return IDs[type];
+}
+
+export function GetValueTypeForID (ID: string): GraphValueType {
+  for (let i = 0; i <= GraphValueType.Special; i++) {
+    const gvt = i as GraphValueType;
+
+    if (GetIDForValueType(gvt) === ID) {
+      return gvt;
+    }
+  }
+
+  return GraphValueType.Unknown;
+}
+
+const colors: Color[] = [
+  new Color(Colors.GhostWhite),      // unknown
+  new Color(Colors.LightPink),       // bool
+  new Color(Colors.MediumPurple),    // ID
+  new Color(Colors.LightSteelBlue),  // float
+  new Color(Colors.SkyBlue),         // vector
+  new Color(Colors.CornflowerBlue),  // target
+  new Color(Colors.Thistle),         // bone mask
+  new Color(Colors.MediumSeaGreen),  // pose
+  new Color(Colors.White),           // special
+];
+
+export function GetColorForValueType (type: GraphValueType): Color {
+  return colors[type as number];
+}
+
+export function GetNameForValueType (type: GraphValueType): string {
+  const names: string[] = [
+    'Unknown',
+    'Bool',
+    'ID',
+    'Float',
+    'Vector',
+    'Target',
+    'Bone Mask',
+    'Pose',
+    'Special',
+  ];
+
+  return names[type as number];
+}
+
+// Constants
+const g_playbackBarMinimumWidth: number = 120;
+const g_playbackBarHeight: number = 12;
+const g_playbackBarMarkerSize: number = 4;
+const g_playbackBarRegionHeight: number = g_playbackBarHeight + g_playbackBarMarkerSize;
+
+//-------------------------------------------------------------------------
+
+export function DrawPoseNodeDebugInfo (ctx: NodeGraph.DrawContext, canvasWidth: number, pDebugInfo: PoseNodeDebugInfo | null): void {
+  const availableCanvasWidth = Math.max(canvasWidth, g_playbackBarMinimumWidth);
+  const playbackBarSize = ctx.CanvasToWindow(new ImVec2(availableCanvasWidth, g_playbackBarHeight));
+  const playbackBarTopLeft = ImGui.GetCursorScreenPos();
+  const playbackBarBottomRight = add(playbackBarTopLeft, playbackBarSize);
+
+  // Draw spacer
+  //-------------------------------------------------------------------------
+  ImGui.Dummy(playbackBarSize);
+
+  // Draw Info
+  //-------------------------------------------------------------------------
+  if (pDebugInfo !== null) {
+    const percentageThroughTrack = pDebugInfo.currentTime;
+    const pixelOffsetForPercentageThrough = Math.floor(playbackBarSize.x * percentageThroughTrack);
+
+    // Draw events
+    // const GetIntervalColor = (intervalIdx: number): Color => {
+    //   return Math.IsEven(intervalIdx) ? Colors.White : Colors.DarkGray;
+    // };
+
+    // const events = pDebugInfo.m_pSyncTrack.GetEvents();
+    // const numEvents = events.length;
+
+    // for (let i = 0; i < numEvents; i++) {
+    //   const eventTopLeft = new ImVec2(
+    //     Math.round(playbackBarTopLeft.x + playbackBarSize.x * events[i].m_startTime),
+    //     playbackBarTopLeft.y
+    //   );
+    //   const eventBottomRight = new ImVec2(
+    //     Math.min(playbackBarBottomRight.x, eventTopLeft.x + Math.round(playbackBarSize.x * events[i].m_duration)),
+    //     playbackBarBottomRight.y
+    //   );
+
+    //   // Draw start line (and overflow event)
+    //   if (i === 0 && events[i].m_startTime !== 0.0) {
+    //     const eventBottomLeft = new ImVec2(eventTopLeft.x, eventBottomRight.y);
+
+    //     ctx.m_pDrawList!.AddRectFilled(playbackBarTopLeft, eventBottomLeft, GetIntervalColor(numEvents - 1));
+    //     ctx.m_pDrawList!.AddLine(eventTopLeft, eventBottomLeft, Colors.HotPink, 2.0 * ctx.m_viewScaleFactor);
+    //   }
+
+    //   // Draw interval
+    //   ctx.m_pDrawList!.AddRectFilled(eventTopLeft, eventBottomRight, GetIntervalColor(i));
+    // }
+
+    // Draw progress bar
+    const progressBarTopLeft = playbackBarTopLeft;
+    const progressBarBottomRight = add(playbackBarTopLeft, new ImVec2(pixelOffsetForPercentageThrough, playbackBarSize.y));
+
+    const progressBarColor = new Color(Colors.LimeGreen);
+
+    progressBarColor.Value.z *= 0.65;
+    ctx.m_pDrawList!.AddRectFilled(progressBarTopLeft, progressBarBottomRight, progressBarColor.toImU32());
+
+    // Draw Marker
+    const scaledMarkerSize = ctx.CanvasToWindow(g_playbackBarMarkerSize);
+    const t0 = new ImVec2(progressBarTopLeft.x + pixelOffsetForPercentageThrough, playbackBarBottomRight.y);
+    const t1 = new ImVec2(t0.x - scaledMarkerSize, playbackBarBottomRight.y + scaledMarkerSize);
+    const t2 = new ImVec2(t0.x + scaledMarkerSize, playbackBarBottomRight.y + scaledMarkerSize);
+
+    ctx.m_pDrawList!.AddLine(t0, subtract(t0, new ImVec2(0, playbackBarSize.y)), Colors.LimeGreen);
+    ctx.m_pDrawList!.AddTriangleFilled(t0, t1, t2, Colors.LimeGreen);
+
+    // Draw text info
+    ImGui.Text(`Time: ${(pDebugInfo.currentTime * pDebugInfo.duration).toFixed(2)}/${pDebugInfo.duration.toFixed(2)}s`);
+    ImGui.Text(`Percent: ${(pDebugInfo.currentTime * 100).toFixed(1)}%`);
+    // ImGui.Text(`Event: ${pDebugInfo.m_currentSyncTime.m_eventIdx}, ${(pDebugInfo.m_currentSyncTime.m_percentageThrough.ToFloat() * 100).toFixed(1)}%`);
+    // const eventID = pDebugInfo.m_pSyncTrack.GetEventID(pDebugInfo.m_currentSyncTime.m_eventIdx);
+
+    // ImGui.Text(`Event ID: ${eventID.IsValid() ? eventID : 'No ID'}`);
+  } else {
+    // Draw empty playback visualization bar
+    ctx.m_pDrawList!.AddRectFilled(playbackBarTopLeft, add(playbackBarTopLeft, playbackBarSize), Colors.DarkGray);
+
+    // Draw text placeholders
+    ImGui.Text('Time: N/A');
+    ImGui.Text('Percent: N/A');
+    // ImGui.Text('Event: N/A');
+    // ImGui.Text('Event ID: N/A');
+  }
+}
+
 export abstract class FlowToolsNode extends NodeGraph.FlowNode {
   static GetPinTypeForValueType (valueType: GraphValueType): string {
     return GetIDForValueType(valueType);
@@ -46,14 +199,14 @@ export abstract class FlowToolsNode extends NodeGraph.FlowNode {
   }
 
   override GetTitleBarColor (): Color {
-    return this.GetColorForValueType(this.GetOutputValueType());
+    return GetColorForValueType(this.GetOutputValueType());
   }
 
   override GetPinColor (pin: NodeGraph.Pin): Color {
-    return this.GetColorForValueType(FlowToolsNode.GetValueTypeForPinType(pin.m_type));
+    return GetColorForValueType(FlowToolsNode.GetValueTypeForPinType(pin.m_type));
   }
 
-  abstract GetAllowedParentGraphTypes (): TBitFlags<GraphType>;
+  abstract GetAllowedParentGraphTypes (): Map<GraphType, boolean>;
 
   IsPersistentNode (): boolean {
     return false;
@@ -133,9 +286,9 @@ export abstract class FlowToolsNode extends NodeGraph.FlowNode {
     const nodeValueType = this.GetOutputValueType();
 
     // Runtime Index Info
-    if (pGraphNodeContext.m_showRuntimeIndices && isPreviewingAndValidRuntimeNodeIdx) {
-      DrawRuntimeNodeIndex(ctx, pGraphNodeContext, this, runtimeNodeIdx);
-    }
+    // if (pGraphNodeContext.m_showRuntimeIndices && isPreviewingAndValidRuntimeNodeIdx) {
+    //   DrawRuntimeNodeIndex(ctx, pGraphNodeContext, this, runtimeNodeIdx);
+    // }
 
     // Draw Pose Node
     if (nodeValueType === GraphValueType.Pose) {
@@ -153,24 +306,24 @@ export abstract class FlowToolsNode extends NodeGraph.FlowNode {
     }
     // Draw Value Node
     else {
-      this.DrawInfoText(ctx);
+      // this.DrawInfoText(ctx);
 
-      if (nodeValueType !== GraphValueType.Unknown &&
-                nodeValueType !== GraphValueType.BoneMask &&
-                nodeValueType !== GraphValueType.Special) {
-        this.DrawInternalSeparator(ctx);
-        this.BeginDrawInternalRegion(ctx);
+      // if (nodeValueType !== GraphValueType.Unknown &&
+      //           nodeValueType !== GraphValueType.BoneMask &&
+      //           nodeValueType !== GraphValueType.Special) {
+      //   this.DrawInternalSeparator(ctx);
+      //   this.BeginDrawInternalRegion(ctx);
 
-        if (isPreviewingAndValidRuntimeNodeIdx &&
-                    pGraphNodeContext.IsNodeActive(runtimeNodeIdx) &&
-                    this.HasOutputPin()) {
-          DrawValueDisplayText(ctx, pGraphNodeContext, runtimeNodeIdx, nodeValueType);
-        } else {
-          ImGui.NewLine();
-        }
+      //   if (isPreviewingAndValidRuntimeNodeIdx &&
+      //               pGraphNodeContext.IsNodeActive(runtimeNodeIdx) &&
+      //               this.HasOutputPin()) {
+      //     DrawValueDisplayText(ctx, pGraphNodeContext, runtimeNodeIdx, nodeValueType);
+      //   } else {
+      //     ImGui.NewLine();
+      //   }
 
-        this.EndDrawInternalRegion(ctx);
-      }
+      //   this.EndDrawInternalRegion(ctx);
+      // }
     }
   }
 
