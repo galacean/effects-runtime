@@ -548,7 +548,6 @@ export class ParticleSystem extends Component {
             if (options.removeParticle) {
               renderer.removeParticlePoint(pointIndex);
               this.clearPointTrail(pointIndex);
-              // link.removeNode(node); // TODO: 会多移除一个粒子，为了通过帧对比先保留，等 2.0 合到主分支后移除。
               node.content = [0] as unknown as ParticleContent;
             }
             hitPositions.push(pos);
