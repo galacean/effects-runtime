@@ -9,13 +9,13 @@ export enum TransitionState {
   TransitioningOut,
 }
 
-export interface StateNodeNodeAssetData extends GraphNodeAssetData {
+export interface StateNodeAssetData extends GraphNodeAssetData {
   type: NodeAssetType.StateNodeAsset,
   childNodeIndex: number,
 }
 
 @nodeAssetClass(NodeAssetType.StateNodeAsset)
-export class StateNodeNodeAsset extends GraphNodeAsset {
+export class StateNodeAsset extends GraphNodeAsset {
   childNodeIndex = InvalidIndex;
 
   override instantiate (context: InstantiationContext): void {
@@ -24,7 +24,7 @@ export class StateNodeNodeAsset extends GraphNodeAsset {
     node.childNode = context.getNode<PoseNode>(this.childNodeIndex);
   }
 
-  override load (data: StateNodeNodeAssetData): void {
+  override load (data: StateNodeAssetData): void {
     super.load(data);
 
     this.childNodeIndex = data.childNodeIndex;

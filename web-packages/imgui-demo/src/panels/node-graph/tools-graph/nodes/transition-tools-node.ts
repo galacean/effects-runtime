@@ -1,7 +1,6 @@
 import type { TransitionNode } from '@galacean/effects';
 import { InvalidIndex } from '@galacean/effects';
 import { Color } from 'maoan-imgui-js';
-import type { GraphCompilationContext } from '../../node-graph';
 import { FlowGraph } from '../../visual-graph';
 import { Colors } from '../colors';
 import { ImGui } from '../../../../imgui/index';
@@ -9,6 +8,7 @@ import type { ToolsGraphUserContext } from '../tools-graph-user-context';
 import { GraphValueType, GraphType } from './flow-tools-node';
 import { ResultToolsNode } from './result-tools-node';
 import * as NodeGraph from '../../visual-graph';
+import type { GraphCompilationContext } from '../../compilation';
 
 // 时间匹配模式枚举
 export enum TimeMatchMode {

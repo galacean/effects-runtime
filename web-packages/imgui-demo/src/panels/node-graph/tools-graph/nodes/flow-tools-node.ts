@@ -1,12 +1,12 @@
 import * as NodeGraph from '../../visual-graph';
 import { ImGui } from '../../../../imgui/index';
-import type { GraphCompilationContext } from '../../node-graph';
 import type { DrawContext } from '../../visual-graph/drawing-context';
 import type { UserContext } from '../../visual-graph/user-context';
 import type { ToolsGraphUserContext } from '../tools-graph-user-context';
 import { Colors } from '../colors';
 import { add, subtract } from '../../bezier-math';
 import type { PoseNodeDebugInfo } from '@galacean/effects';
+import type { GraphCompilationContext } from '../../compilation';
 
 type ImVec2 = ImGui.ImVec2;
 const ImVec2 = ImGui.ImVec2;

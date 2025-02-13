@@ -11,9 +11,32 @@ type ImVec2 = ImGui.ImVec2;
 const ImVec2 = ImGui.ImVec2;
 
 // TODO test class
-export class EntryStateOverrideConduitToolsNode extends NodeGraph.BaseNode {
+export class EntryStateOverrideConduitToolsNode extends NodeGraph.StateMachineNode {
+  //     ),
+  //     Colors.LimeGreen,
+  //     //   Icons.ARROW_DOWN_CIRCLE
+  //     '\xf3\xb0\xb3\x9b'
+  //   );
+  //   iconOffset.x -= iconSize.x + scaledIconOffset;
+  // }
+  // // Draw global transition marker
+  // const globalTransitionConduit = this.GetGlobalTransitionConduit();
+  // if (globalTransitionConduit.HasGlobalTransitionForState(stateNode.GetID())) {
+  //   ctx.m_pDrawList!.AddText(
+  //     new ImVec2(
+  //       nodeRect.Min.x + ctx.m_windowRect.Min.x - iconOffset.x,
+  //       nodeRect.Min.y + ctx.m_windowRect.Min.y - iconOffset.y
+  //     ),
+  //     Colors.OrangeRed,
+  //     //   Icons.LIGHTNING_BOLT_CIRCLE
+  //     '\xf3\xb0\xa0\xa0'
+  //   );
+  // }
+  // GetEntryConditionNodeForState (arg0: string) {
+  //   throw new Error('Method not implemented.');
+  // }
   override GetTypeName (): string {
-    throw new Error('Method not implemented.');
+    return 'Entry Overrides';
   }
   private stateOverrides: Map<UUID, boolean> = new Map();
 
@@ -38,9 +61,9 @@ export class EntryStateOverrideConduitToolsNode extends NodeGraph.BaseNode {
 }
 
 // TODO test class
-export class GlobalTransitionConduitToolsNode extends NodeGraph.BaseNode {
+export class GlobalTransitionConduitToolsNode extends NodeGraph.StateMachineNode {
   override GetTypeName (): string {
-    throw new Error('Method not implemented.');
+    return 'Global Transitions';
   }
   private globalTransitions: Map<UUID, boolean> = new Map();
 
@@ -157,7 +180,7 @@ export class StateMachineGraph extends NodeGraph.StateMachineGraph {
           ),
           Colors.Gold,
           //Icons.STAR
-          '\xf3\xb0\x93\x8e'
+          '*'
         );
         iconOffset.x -= iconSize.x + scaledIconOffset;
       }

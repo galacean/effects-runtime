@@ -7,8 +7,9 @@ import { ImGui } from '../../../../imgui/index';
 import { Colors } from '../colors';
 import type { ToolsGraphUserContext } from '../tools-graph-user-context';
 import { StateMachineToolsNode } from './state-machine-tools-node';
-import { DrawPoseNodeDebugInfo } from './flow-tools-node';
-import { ResultToolsNode } from './result-tools-node';
+import { DrawPoseNodeDebugInfo, GraphType } from './flow-tools-node';
+import { PoseResultToolsNode, ResultToolsNode } from './result-tools-node';
+import { FlowGraph } from '../graphs/flow-graph';
 
 type ImVec2 = ImGui.ImVec2;
 const ImVec2 = ImGui.ImVec2;
@@ -394,25 +395,25 @@ export class StateToolsNode extends NodeGraph.StateNode {
   }
 
   private SharedConstructor (): void {
-    // const pBlendTree = this.CreateChildGraph(FlowGraph, GraphType.BlendTree);
+    const pBlendTree = this.CreateChildGraph(FlowGraph, GraphType.BlendTree);
 
-    // pBlendTree.CreateNode<PoseResultToolsNode>(PoseResultToolsNode);
+    pBlendTree.CreateNode<PoseResultToolsNode>(PoseResultToolsNode);
 
-    // const pValueTree = this.CreateSecondaryGraph(FlowGraph, GraphType.ValueTree);
+    // const pValueTree = this.CreateSecondaryGraph(NodeGraph.FlowGraph, GraphType.ValueTree);
 
     // pValueTree.CreateNode<StateLayerDataToolsNode>(StateLayerDataToolsNode);
 
-    // if (this.m_type === StateType.StateMachineState) {
-    //   const pStateMachineNode = pBlendTree.CreateNode<StateMachineToolsNode>(StateMachineToolsNode);
+    if (this.m_type === StateType.StateMachineState) {
+      const pStateMachineNode = pBlendTree.CreateNode<StateMachineToolsNode>(StateMachineToolsNode);
 
-    //   const resultNodes = this.GetChildGraph()!.FindAllNodesOfType<ResultToolsNode>(SearchMode.Localized, SearchTypeMatch.Derived);
+      const resultNodes = this.GetChildGraph()!.FindAllNodesOfType<ResultToolsNode>(ResultToolsNode, [], SearchMode.Localized, SearchTypeMatch.Derived);
 
-    //   if (resultNodes.length !== 1) {
-    //     throw new Error('Expected exactly one result node');
-    //   }
-    //   const pBlendTreeResultNode = resultNodes[0];
+      if (resultNodes.length !== 1) {
+        throw new Error('Expected exactly one result node');
+      }
+      const pBlendTreeResultNode = resultNodes[0];
 
-    //   pBlendTree.TryMakeConnection(pStateMachineNode, pStateMachineNode.GetOutputPin(0), pBlendTreeResultNode, pBlendTreeResultNode.GetInputPin(0));
-    // }
+      pBlendTree.TryMakeConnection(pStateMachineNode, pStateMachineNode.GetOutputPin(0)!, pBlendTreeResultNode, pBlendTreeResultNode.GetInputPin(0)!);
+    }
   }
 }

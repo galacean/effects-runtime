@@ -1,4 +1,4 @@
-import type { GraphCompilationContext } from '../../node-graph';
+import type { GraphCompilationContext } from '../../compilation';
 import { FlowToolsNode, GraphType, GraphValueType, InvalidIndex } from './flow-tools-node';
 
 export class ResultToolsNode extends FlowToolsNode {

@@ -537,7 +537,7 @@ export class GraphView {
 
     const deltaScale = newViewScale - this.m_pGraph.m_viewScaleFactor;
 
-    if (Math.abs(deltaScale) < Number.EPSILON) {
+    if (!(Math.abs(deltaScale) < Number.EPSILON)) {
       this.m_pGraph.m_viewOffset = add(this.m_pGraph.m_viewOffset,
         multiplyScalar(subtract(ctx.m_mouseCanvasPos, this.m_pGraph.m_viewOffset), deltaScale * 1 / newViewScale)
       );
@@ -729,223 +729,223 @@ export class GraphView {
   }
 
   private DrawFlowNode (ctx: DrawContext, pNode: FlowNode): void {
-    // if (!pNode.IsVisible()) {
-    //   return;
-    // }
+    if (!pNode.IsVisible()) {
+      return;
+    }
 
-    // ImGui.PushID(pNode);
-    // ctx.SplitDrawChannels();
+    ImGui.PushID(pNode.GetID());
+    ctx.SplitDrawChannels();
 
-    // ctx.SetDrawChannel(DrawChannel.Foreground);
+    ctx.SetDrawChannel(DrawChannel.Foreground);
 
-    // const newNodeWindowSize = new ImVec2(0, 0);
-    // const windowPosition = ctx.CanvasToWindowPosition(pNode.GetPosition());
-    // const scaledNodeMargin = ctx.CanvasToWindow(pNode.GetNodeMargin());
-    // const scaledColorItemSpacing = new ImVec2((g_titleBarColorItemWidth * ctx.m_viewScaleFactor) - scaledNodeMargin.x, 0);
+    const newNodeWindowSize = new ImVec2(0, 0);
+    const windowPosition = ctx.CanvasToWindowPosition(pNode.GetPosition());
+    const scaledNodeMargin = ctx.CanvasToWindow(pNode.GetNodeMargin());
+    const scaledColorItemSpacing = new ImVec2((g_titleBarColorItemWidth * ctx.m_viewScaleFactor) - scaledNodeMargin.x, 0);
 
-    // ImGui.SetCursorPos(windowPosition);
-    // ImGui.BeginGroup();
-    // {
-    //   {
-    //     ImGuiX.ScopedFont(ImGuiX.Font.MediumBold, Colors.White);
-    //     ImGui.BeginGroup();
-    //     ImGui.Dummy(scaledColorItemSpacing);
-    //     ImGui.SameLine();
-    //     if (pNode.GetIcon() !== null) {
-    //       ImGui.Text(pNode.GetIcon());
-    //       ImGui.SameLine();
-    //     }
-    //     ImGui.Text(pNode.GetName());
-    //     ImGui.EndGroup();
+    ImGui.SetCursorPos(windowPosition);
+    ImGui.BeginGroup();
+    {
+      {
+        // ImGuiX.ScopedFont(ImGuiX.Font.MediumBold, Colors.White);
+        ImGui.BeginGroup();
+        ImGui.Dummy(scaledColorItemSpacing);
+        ImGui.SameLine();
+        // if (pNode.GetIcon() !== null) {
+        //   ImGui.Text(pNode.GetIcon());
+        //   ImGui.SameLine();
+        // }
+        ImGui.Text(pNode.GetName());
+        ImGui.EndGroup();
 
-    //     newNodeWindowSize.Set(ImGui.GetItemRectSize());
-    //     pNode.m_titleRectSize = ctx.WindowToCanvas(newNodeWindowSize);
+        newNodeWindowSize.Copy(ImGui.GetItemRectSize());
+        pNode.m_titleRectSize = ctx.WindowToCanvas(newNodeWindowSize);
 
-    //     const scaledSpacing = ctx.CanvasToWindow(g_spacingBetweenTitleAndNodeContents);
+        const scaledSpacing = ctx.CanvasToWindow(g_spacingBetweenTitleAndNodeContents);
 
-    //     ImGui.SetCursorPosY(ImGui.GetCursorPos().y + scaledSpacing);
-    //     newNodeWindowSize.y += scaledSpacing;
-    //   }
+        ImGui.SetCursorPosY(ImGui.GetCursorPos().y + scaledSpacing);
+        newNodeWindowSize.y += scaledSpacing;
+      }
 
-    //   let hasPinControlsOnLastRow = false;
+      let hasPinControlsOnLastRow = false;
 
-    //   {
-    //     ImGuiX.ScopedFont(ImGuiX.Font.Tiny);
-    //     ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new ImVec2(0, 2 * ctx.m_viewScaleFactor));
+      {
+        // ImGuiX.ScopedFont(ImGuiX.Font.Tiny);
+        ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImVec2(0, 2 * ctx.m_viewScaleFactor));
 
-    //     pNode.m_pHoveredPin = null;
+        pNode.m_pHoveredPin = null;
 
-    //     const pinRectSize = new ImVec2(0, 0);
-    //     const numPinRows = Math.max(pNode.GetNumInputPins(), pNode.GetNumOutputPins());
+        const pinRectSize = new ImVec2(0, 0);
+        const numPinRows = Math.max(pNode.GetNumInputPins(), pNode.GetNumOutputPins());
 
-    //     for (let i = 0; i < numPinRows; i++) {
-    //       const pinWindowSize = new ImVec2(0, 0);
-    //       const hasInputPin = i < pNode.m_inputPins.length;
-    //       const hasOutputPin = i < pNode.m_outputPins.length;
-    //       let estimatedSpacingBetweenPins = 0;
+        for (let i = 0; i < numPinRows; i++) {
+          const pinWindowSize = new ImVec2(0, 0);
+          const hasInputPin = i < pNode.m_inputPins.length;
+          const hasOutputPin = i < pNode.m_outputPins.length;
+          let estimatedSpacingBetweenPins = 0;
 
-    //       const DrawPin = (pin: Pin, isInputPin: boolean) => {
-    //         ImGui.BeginGroup();
-    //         ImGui.AlignTextToFramePadding();
+          const DrawPin = (pin: Pin, isInputPin: boolean) => {
+            ImGui.BeginGroup();
+            ImGui.AlignTextToFramePadding();
 
-    //         if (isInputPin) {
-    //           ImGui.Text(pin.m_name);
-    //         }
+            if (isInputPin) {
+              ImGui.Text(pin.m_name);
+            }
 
-    //         if (pNode.DrawPinControls(ctx, this.m_pUserContext, pin)) {
-    //           hasPinControlsOnLastRow = (i === (numPinRows - 1));
-    //         }
+            if (pNode.DrawPinControls(ctx, this.m_pUserContext, pin)) {
+              hasPinControlsOnLastRow = (i === (numPinRows - 1));
+            }
 
-    //         if (!isInputPin) {
-    //           ImGui.Text(pin.m_name);
-    //         }
-    //         ImGui.EndGroup();
+            if (!isInputPin) {
+              ImGui.Text(pin.m_name);
+            }
+            ImGui.EndGroup();
 
-    //         const pinRect = new ImRect(ImGui.GetItemRectMin(), ImGui.GetItemRectMax());
+            const pinRect = new ImRect(ImGui.GetItemRectMin(), ImGui.GetItemRectMax());
 
-    //         pin.m_size = ImGui.GetItemRectSize();
+            pin.m_size = ImGui.GetItemRectSize();
 
-    //         const pinOffsetY = ImGui.GetFrameHeightWithSpacing() / 2;
+            const pinOffsetY = ImGui.GetFrameHeightWithSpacing() / 2;
 
-    //         if (isInputPin) {
-    //           pin.m_position = new ImVec2(pinRect.Min.x - scaledNodeMargin.x, pinRect.Min.y + pinOffsetY);
-    //         } else {
-    //           pin.m_position = new ImVec2(pinRect.Max.x + scaledNodeMargin.x, pinRect.Min.y + pinOffsetY);
-    //         }
+            if (isInputPin) {
+              pin.m_position = new ImVec2(pinRect.Min.x - scaledNodeMargin.x, pinRect.Min.y + pinOffsetY);
+            } else {
+              pin.m_position = new ImVec2(pinRect.Max.x + scaledNodeMargin.x, pinRect.Min.y + pinOffsetY);
+            }
 
-    //         let pinColor = pNode.GetPinColor(pin);
-    //         const isPinHovered = new Vector(pin.m_position).GetDistance2(ImGui.GetMousePos()) < ctx.CanvasToWindow(g_pinRadius + FlowNode.s_pinSelectionExtraRadius);
+            let pinColor = pNode.GetPinColor(pin);
+            const isPinHovered = length(subtract(new ImVec2().Copy(pin.m_position), ImGui.GetMousePos())) < ctx.CanvasToWindow(g_pinRadius + FlowNode.S_PinSelectionExtraRadius);
 
-    //         if (isPinHovered) {
-    //           pNode.m_pHoveredPin = pin;
-    //           pinColor = pinColor.ScaleColor(1.55);
-    //         }
+            if (isPinHovered) {
+              pNode.m_pHoveredPin = pin;
+              pinColor = colorMultiplyScalar(pinColor, 1.55);
+            }
 
-    //         const scaledPinRadius = ctx.CanvasToWindow(g_pinRadius);
+            const scaledPinRadius = ctx.CanvasToWindow(g_pinRadius);
 
-    //         ctx.m_pDrawList.AddCircleFilled(pin.m_position, scaledPinRadius, pinColor);
-    //       };
+            ctx.m_pDrawList!.AddCircleFilled(pin.m_position, scaledPinRadius, pinColor.toImU32());
+          };
 
-    //       const pinRowCursorStartY = ImGui.GetCursorPosY();
+          const pinRowCursorStartY = ImGui.GetCursorPosY();
 
-    //       if (hasInputPin) {
-    //         DrawPin(pNode.m_inputPins[i], true);
-    //       }
+          if (hasInputPin) {
+            DrawPin(pNode.m_inputPins[i], true);
+          }
 
-    //       if (hasOutputPin) {
-    //         if (!hasInputPin) {
-    //           ImGui.NewLine();
-    //         }
+          if (hasOutputPin) {
+            if (!hasInputPin) {
+              ImGui.NewLine();
+            }
 
-    //         const inputPinWidth = hasInputPin ? pNode.m_inputPins[i].GetWidth() : 0;
-    //         const scaledSpacingBetweenPins = ctx.CanvasToWindow(g_spacingBetweenInputOutputPins);
+            const inputPinWidth = hasInputPin ? pNode.m_inputPins[i].GetWidth() : 0;
+            const scaledSpacingBetweenPins = ctx.CanvasToWindow(g_spacingBetweenInputOutputPins);
 
-    //         estimatedSpacingBetweenPins = ctx.CanvasToWindow(pNode.GetWidth()) - inputPinWidth - pNode.m_outputPins[i].GetWidth();
-    //         estimatedSpacingBetweenPins = Math.max(estimatedSpacingBetweenPins, scaledSpacingBetweenPins);
-    //         ImGui.SameLine(0, estimatedSpacingBetweenPins);
-    //       }
+            estimatedSpacingBetweenPins = ctx.CanvasToWindow(pNode.GetWidth()) - inputPinWidth - pNode.m_outputPins[i].GetWidth();
+            estimatedSpacingBetweenPins = Math.max(estimatedSpacingBetweenPins, scaledSpacingBetweenPins);
+            ImGui.SameLine(0, estimatedSpacingBetweenPins);
+          }
 
-    //       if (hasOutputPin) {
-    //         ImGui.SetCursorPosY(pinRowCursorStartY);
-    //         DrawPin(pNode.m_outputPins[i], false);
-    //       }
+          if (hasOutputPin) {
+            ImGui.SetCursorPosY(pinRowCursorStartY);
+            DrawPin(pNode.m_outputPins[i], false);
+          }
 
-    //       const pinRowRectSize = new ImVec2(0, 0);
+          const pinRowRectSize = new ImVec2(0, 0);
 
-    //       if (hasInputPin) {
-    //         pinRowRectSize.x += pNode.m_inputPins[i].m_size.x;
-    //         pinRowRectSize.y = pNode.m_inputPins[i].m_size.y;
-    //       }
+          if (hasInputPin) {
+            pinRowRectSize.x += pNode.m_inputPins[i].m_size.x;
+            pinRowRectSize.y = pNode.m_inputPins[i].m_size.y;
+          }
 
-    //       if (hasOutputPin) {
-    //         pinRowRectSize.x += pNode.m_outputPins[i].m_size.x;
-    //         pinRowRectSize.y = Math.max(pinRowRectSize.y, pNode.m_outputPins[i].m_size.y);
-    //       }
+          if (hasOutputPin) {
+            pinRowRectSize.x += pNode.m_outputPins[i].m_size.x;
+            pinRowRectSize.y = Math.max(pinRowRectSize.y, pNode.m_outputPins[i].m_size.y);
+          }
 
-    //       pinRowRectSize.x += estimatedSpacingBetweenPins;
-    //       pinRectSize.x = Math.max(pinRectSize.x, pinRowRectSize.x);
-    //       pinRectSize.y += pinRowRectSize.y + ImGui.GetStyle().ItemSpacing.y;
-    //     }
+          pinRowRectSize.x += estimatedSpacingBetweenPins;
+          pinRectSize.x = Math.max(pinRectSize.x, pinRowRectSize.x);
+          pinRectSize.y += pinRowRectSize.y + ImGui.GetStyle().ItemSpacing.y;
+        }
 
-    //     newNodeWindowSize.x = Math.max(newNodeWindowSize.x, pinRectSize.x);
-    //     newNodeWindowSize.y += pinRectSize.y;
+        newNodeWindowSize.x = Math.max(newNodeWindowSize.x, pinRectSize.x);
+        newNodeWindowSize.y += pinRectSize.y;
 
-    //     ImGui.PopStyleVar();
-    //   }
+        ImGui.PopStyleVar();
+      }
 
-    //   {
-    //     ImGuiX.ScopedFont(ImGuiX.Font.Tiny);
+      {
+        // ImGuiX.ScopedFont(ImGuiX.Font.Tiny);
 
-    //     const offsetY = (hasPinControlsOnLastRow ? ImGui.GetStyle().ItemSpacing.y : 0);
+        const offsetY = (hasPinControlsOnLastRow ? ImGui.GetStyle().ItemSpacing.y : 0);
 
-    //     const cursorStartPos = ImGui.GetCursorPos();
+        const cursorStartPos = ImGui.GetCursorPos();
 
-    //     ImGui.BeginGroup();
-    //     ImGui.SetCursorPos(cursorStartPos.add(new ImVec2(0, offsetY)));
+        ImGui.BeginGroup();
+        ImGui.SetCursorPos(add(cursorStartPos, new ImVec2(0, offsetY)));
 
-    //     pNode.DrawExtraControls(ctx, this.m_pUserContext);
+        pNode.DrawExtraControls(ctx, this.m_pUserContext);
 
-    //     const cursorEndPos = ImGui.GetCursorPos();
+        const cursorEndPos = ImGui.GetCursorPos();
 
-    //     ImGui.SetCursorPos(cursorStartPos);
-    //     ImGui.Dummy(cursorEndPos.sub(cursorStartPos));
-    //     ImGui.EndGroup();
-    //   }
+        ImGui.SetCursorPos(cursorStartPos);
+        ImGui.Dummy(subtract(cursorEndPos, cursorStartPos));
+        ImGui.EndGroup();
+      }
 
-    //   const extraControlsRectSize = ImGui.GetItemRectSize();
+      const extraControlsRectSize = ImGui.GetItemRectSize();
 
-    //   newNodeWindowSize.x = Math.max(newNodeWindowSize.x, extraControlsRectSize.x);
-    //   newNodeWindowSize.y += extraControlsRectSize.y;
-    // }
-    // ImGui.EndGroup();
+      newNodeWindowSize.x = Math.max(newNodeWindowSize.x, extraControlsRectSize.x);
+      newNodeWindowSize.y += extraControlsRectSize.y;
+    }
+    ImGui.EndGroup();
 
-    // pNode.m_size = ctx.WindowToCanvas(newNodeWindowSize);
+    pNode.m_size = ctx.WindowToCanvas(newNodeWindowSize);
 
-    // const visualState = new TBitFlags<NodeVisualState>();
+    const visualState = new Map<NodeVisualState, boolean>();
 
-    // visualState.SetFlag(NodeVisualState.Active, pNode.IsActive(this.m_pUserContext));
-    // visualState.SetFlag(NodeVisualState.Selected, this.IsNodeSelected(pNode));
-    // visualState.SetFlag(NodeVisualState.Hovered, pNode.m_isHovered && pNode.m_pHoveredPin === null);
+    visualState.set(NodeVisualState.Active, pNode.IsActive(this.m_pUserContext));
+    visualState.set(NodeVisualState.Selected, this.IsNodeSelected(pNode));
+    visualState.set(NodeVisualState.Hovered, pNode.m_isHovered && pNode.m_pHoveredPin === null);
 
-    // const [nodeTitleBarColor, nodeBackgroundColor, nodeBorderColor] = GetNodeBackgroundAndBorderColors(
-    //   Style.s_defaultTitleColor,
-    //   Style.s_nodeBackgroundColor,
-    //   visualState
-    // );
+    const [nodeTitleBarColor, nodeBackgroundColor, nodeBorderColor] = GetNodeBackgroundAndBorderColors(
+      Style.s_defaultTitleColor,
+      Style.s_nodeBackgroundColor,
+      visualState
+    );
 
-    // const backgroundRectMin = ctx.WindowToScreenPosition(windowPosition.sub(scaledNodeMargin));
-    // const backgroundRectMax = ctx.WindowToScreenPosition(windowPosition.add(newNodeWindowSize).add(scaledNodeMargin));
-    // const rectTitleBarMax = ctx.WindowToScreenPosition(windowPosition.add(new ImVec2(newNodeWindowSize.x, ctx.CanvasToWindow(pNode.m_titleRectSize.y))).add(scaledNodeMargin));
-    // const rectTitleBarColorItemMax = new ImVec2(backgroundRectMin.x + (ctx.m_viewScaleFactor * g_titleBarColorItemWidth), rectTitleBarMax.y);
-    // const scaledCornerRounding = 8 * ctx.m_viewScaleFactor;
-    // const scaledBorderThickness = g_nodeSelectionBorderThickness * ctx.m_viewScaleFactor;
+    const backgroundRectMin = ctx.WindowToScreenPosition(subtract(windowPosition, scaledNodeMargin));
+    const backgroundRectMax = ctx.WindowToScreenPosition(add(add(windowPosition, newNodeWindowSize), scaledNodeMargin));
+    const rectTitleBarMax = ctx.WindowToScreenPosition(add(add(windowPosition, new ImVec2(newNodeWindowSize.x, ctx.CanvasToWindow(pNode.m_titleRectSize.y))), scaledNodeMargin));
+    const rectTitleBarColorItemMax = new ImVec2(backgroundRectMin.x + (ctx.m_viewScaleFactor * g_titleBarColorItemWidth), rectTitleBarMax.y);
+    const scaledCornerRounding = 8 * ctx.m_viewScaleFactor;
+    const scaledBorderThickness = g_nodeSelectionBorderThickness * ctx.m_viewScaleFactor;
 
-    // ctx.SetDrawChannel(DrawChannel.Background);
+    ctx.SetDrawChannel(DrawChannel.Background);
 
-    // if (visualState.IsFlagSet(NodeVisualState.Active)) {
-    //   const activeBorderPadding = new ImVec2(Style.s_activeBorderIndicatorPadding, Style.s_activeBorderIndicatorPadding);
+    if (visualState.get(NodeVisualState.Active)) {
+      const activeBorderPadding = new ImVec2(Style.s_activeBorderIndicatorPadding, Style.s_activeBorderIndicatorPadding);
 
-    //   ctx.m_pDrawList.AddRect(
-    //     backgroundRectMin.sub(activeBorderPadding),
-    //     backgroundRectMax.add(activeBorderPadding),
-    //     Style.s_activeIndicatorBorderColor,
-    //     scaledCornerRounding,
-    //     ImDrawFlags.RoundCornersAll,
-    //     Style.s_activeBorderIndicatorThickness
-    //   );
-    // }
+      ctx.m_pDrawList!.AddRect(
+        subtract(backgroundRectMin, activeBorderPadding),
+        add(backgroundRectMax, activeBorderPadding),
+        Style.s_activeIndicatorBorderColor.toImU32(),
+        scaledCornerRounding,
+        ImGui.ImDrawCornerFlags.All,
+        Style.s_activeBorderIndicatorThickness
+      );
+    }
 
-    // ctx.m_pDrawList.AddRectFilled(backgroundRectMin, backgroundRectMax, nodeBackgroundColor, scaledCornerRounding, ImDrawFlags.RoundCornersAll);
-    // ctx.m_pDrawList.AddRectFilled(backgroundRectMin, rectTitleBarMax, nodeTitleBarColor, scaledCornerRounding, ImDrawFlags.RoundCornersTop);
-    // ctx.m_pDrawList.AddRectFilled(backgroundRectMin, rectTitleBarColorItemMax, pNode.GetTitleBarColor(), scaledCornerRounding, ImDrawFlags.RoundCornersTopLeft);
-    // ctx.m_pDrawList.AddRect(backgroundRectMin, backgroundRectMax, nodeBorderColor, scaledCornerRounding, ImDrawFlags.RoundCornersAll, scaledBorderThickness);
+    ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, backgroundRectMax, nodeBackgroundColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.All);
+    ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, rectTitleBarMax, nodeTitleBarColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.Top);
+    ctx.m_pDrawList!.AddRectFilled(backgroundRectMin, rectTitleBarColorItemMax, pNode.GetTitleBarColor().toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.TopLeft);
+    ctx.m_pDrawList!.AddRect(backgroundRectMin, backgroundRectMax, nodeBorderColor.toImU32(), scaledCornerRounding, ImGui.ImDrawCornerFlags.All, scaledBorderThickness);
 
-    // ctx.MergeDrawChannels();
-    // ImGui.PopID();
+    ctx.MergeDrawChannels();
+    ImGui.PopID();
 
-    // const nodeRect = pNode.GetRect();
+    const nodeRect = pNode.GetRect();
 
-    // pNode.m_isHovered = this.m_isViewHovered && nodeRect.Contains(ctx.m_mouseCanvasPos) || pNode.m_pHoveredPin !== null;
+    pNode.m_isHovered = this.m_isViewHovered && nodeRect.Contains(ctx.m_mouseCanvasPos) || pNode.m_pHoveredPin !== null;
   }
 
   private DrawCommentNode (ctx: DrawContext, pNode: CommentNode): void {
@@ -1263,23 +1263,23 @@ export class GraphView {
     }
   }
 
-  //   SelectNode (pNode: BaseNode): void {
-  //     if (this.GetViewedGraph().FindNode(pNode.GetID()) === null) {
-  //       throw new Error('Node not found in graph');
-  //     }
-  //     this.ClearSelection();
-  //     this.AddToSelection(pNode);
-  //   }
+  SelectNode (pNode: BaseNode): void {
+    if (this.GetViewedGraph()!.FindNode(pNode.GetID()) === null) {
+      throw new Error('Node not found in graph');
+    }
+    this.ClearSelection();
+    this.AddToSelection(pNode);
+  }
 
-  //   SelectNodes (pNodes: BaseNode[]): void {
-  //     this.ClearSelection();
-  //     for (const pNode of pNodes) {
-  //       if (this.GetViewedGraph().FindNode(pNode.GetID()) === null) {
-  //         throw new Error('Node not found in graph');
-  //       }
-  //       this.AddToSelection(pNode);
-  //     }
-  //   }
+  SelectNodes (pNodes: BaseNode[]): void {
+    this.ClearSelection();
+    for (const pNode of pNodes) {
+      if (this.GetViewedGraph()!.FindNode(pNode.GetID()) === null) {
+        throw new Error('Node not found in graph');
+      }
+      this.AddToSelection(pNode);
+    }
+  }
 
   ClearSelection (): void {
     const oldSelection = [...this.m_selectedNodes];

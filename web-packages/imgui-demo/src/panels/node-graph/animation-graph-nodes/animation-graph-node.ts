@@ -4,8 +4,8 @@ import { ImGui } from '../../../imgui';
 import type { BaseNodeData } from '../base-node';
 import { BaseNode } from '../base-node';
 import type { ImNodeFlow } from '../node-flow';
-import { type GraphCompilationContext } from '../node-graph';
 import type { InPin, OutPin } from '../pin';
+
 export class AnimationGraphNode extends BaseNode {
   node: GraphNode;
 
@@ -22,11 +22,11 @@ export class AnimationGraphNode extends BaseNode {
     ImGui.SetNextItemWidth(100 * this.getHandler()!.getGrid().scale());
   }
 
-  compile (context: GraphCompilationContext): number {
-    const data = context.getNodeAssetData(this);
+  // compile (context: GraphCompilationContext): number {
+  //   const data = context.getNodeAssetData(this);
 
-    return data.index;
-  }
+  //   return data.index;
+  // }
 
   override toData (data: BaseNodeData): BaseNodeData {
     super.toData(data);
@@ -76,20 +76,20 @@ export class AnimationRootGraphNode extends AnimationGraphNode {
     this.source.setUid(data.source);
   }
 
-  override compile (context: GraphCompilationContext) {
-    const data = context.getNodeAssetData(this) as AnimationRootNodeAssetData;
+  // override compile (context: GraphCompilationContext) {
+  //   const data = context.getNodeAssetData(this) as AnimationRootNodeAssetData;
 
-    if (context.checkNodeCompilationState(data)) {
-      return data.index;
-    }
+  //   if (context.checkNodeCompilationState(data)) {
+  //     return data.index;
+  //   }
 
-    const poseNode = this.source.getLink()?.getLeft().getParent() as AnimationGraphNode;
-    const poseNodeRuntimeIndex = poseNode?.compile(context) ?? -1;
+  //   const poseNode = this.source.getLink()?.getLeft().getParent() as AnimationGraphNode;
+  //   const poseNodeRuntimeIndex = poseNode?.compile(context) ?? -1;
 
-    data.poseNode = poseNodeRuntimeIndex;
+  //   data.poseNode = poseNodeRuntimeIndex;
 
-    return data.index;
-  }
+  //   return data.index;
+  // }
 }
 
 interface AnimationRootGraphNodeData extends BaseNodeData {
@@ -131,17 +131,17 @@ export class AnimationClipGraphNode extends AnimationGraphNode {
     this.resourceID = data.resourceID;
   }
 
-  override compile (context: GraphCompilationContext) {
-    const data = context.getNodeAssetData(this) as AnimationClipNodeAssetData;
+  // override compile (context: GraphCompilationContext) {
+  //   const data = context.getNodeAssetData(this) as AnimationClipNodeAssetData;
 
-    if (context.checkNodeCompilationState(data)) {
-      return data.index;
-    }
+  //   if (context.checkNodeCompilationState(data)) {
+  //     return data.index;
+  //   }
 
-    data.dataSlotIndex = context.registerDataSlotNode(this.getUID());
+  //   data.dataSlotIndex = context.registerDataSlotNode(this.getUID());
 
-    return data.index;
-  }
+  //   return data.index;
+  // }
 }
 
 interface AnimationClipGraphNodeData extends BaseNodeData {
@@ -196,27 +196,27 @@ export class Blend1DGraphNode extends AnimationGraphNode {
     this.poseOut.setUid(data.poseOut);
   }
 
-  override compile (context: GraphCompilationContext) {
-    const data = context.getNodeAssetData(this) as Blend1DNodeAssetData;
+  // override compile (context: GraphCompilationContext) {
+  //   const data = context.getNodeAssetData(this) as Blend1DNodeAssetData;
 
-    if (context.checkNodeCompilationState(data)) {
-      return data.index;
-    }
+  //   if (context.checkNodeCompilationState(data)) {
+  //     return data.index;
+  //   }
 
-    const source0 = this.source0.getLink()?.getLeft().getParent() as AnimationGraphNode;
-    const source1 = this.source1.getLink()?.getLeft().getParent() as AnimationGraphNode;
-    const inputParameterValueNode = this.parameter.getLink()?.getLeft().getParent() as AnimationGraphNode;
+  //   const source0 = this.source0.getLink()?.getLeft().getParent() as AnimationGraphNode;
+  //   const source1 = this.source1.getLink()?.getLeft().getParent() as AnimationGraphNode;
+  //   const inputParameterValueNode = this.parameter.getLink()?.getLeft().getParent() as AnimationGraphNode;
 
-    const source0RuntimeIndex = source0?.compile(context) ?? -1;
-    const source1RuntimeIndex = source1?.compile(context) ?? -1;
-    const inputParameterValueNodeRuntimeIndex = inputParameterValueNode?.compile(context) ?? -1;
+  //   const source0RuntimeIndex = source0?.compile(context) ?? -1;
+  //   const source1RuntimeIndex = source1?.compile(context) ?? -1;
+  //   const inputParameterValueNodeRuntimeIndex = inputParameterValueNode?.compile(context) ?? -1;
 
-    data.source0 = source0RuntimeIndex;
-    data.source1 = source1RuntimeIndex;
-    data.inputParameterValueNode = inputParameterValueNodeRuntimeIndex;
+  //   data.source0 = source0RuntimeIndex;
+  //   data.source1 = source1RuntimeIndex;
+  //   data.inputParameterValueNode = inputParameterValueNodeRuntimeIndex;
 
-    return data.index;
-  }
+  //   return data.index;
+  // }
 }
 
 interface Blend1DGraphNodeData extends BaseNodeData {
@@ -271,17 +271,17 @@ export class ConstFloatGraphNode extends AnimationGraphNode {
     this.valueOut.setUid(data.valueOut);
   }
 
-  override compile (context: GraphCompilationContext) {
-    const data = context.getNodeAssetData(this) as ConstFloatNodeAssetData;
+  // override compile (context: GraphCompilationContext) {
+  //   const data = context.getNodeAssetData(this) as ConstFloatNodeAssetData;
 
-    if (context.checkNodeCompilationState(data)) {
-      return data.index;
-    }
+  //   if (context.checkNodeCompilationState(data)) {
+  //     return data.index;
+  //   }
 
-    data.value = (this.node as ConstFloatNode)?.value ?? 0;
+  //   data.value = (this.node as ConstFloatNode)?.value ?? 0;
 
-    return data.index;
-  }
+  //   return data.index;
+  // }
 }
 
 interface ConstFloatGraphNodeData extends BaseNodeData {

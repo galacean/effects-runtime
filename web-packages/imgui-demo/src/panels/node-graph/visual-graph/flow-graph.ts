@@ -59,8 +59,8 @@ export class FlowNode extends BaseNode {
   static readonly S_PinSelectionExtraRadius: number = 10.0;
   static readonly S_DefaultPinColor: number = 0xFF585858; // IM_COL32(88, 88, 88, 255)
 
-  protected InputPins: Pin[] = [];
-  protected OutputPins: Pin[] = [];
+  m_inputPins: Pin[] = [];
+  m_outputPins: Pin[] = [];
   m_pHoveredPin: Pin | null = null;
 
   // Pin methods
@@ -101,11 +101,11 @@ export class FlowNode extends BaseNode {
   }
 
   GetNumInputPins (): number {
-    return this.InputPins.length;
+    return this.m_inputPins.length;
   }
 
   GetInputPins (): readonly Pin[] {
-    return this.InputPins;
+    return this.m_inputPins;
   }
 
   HasInputPin (pinID: UUID): boolean {
@@ -116,30 +116,30 @@ export class FlowNode extends BaseNode {
   GetInputPin (pinID: UUID): Pin | null;
   GetInputPin (pinIdxOrID: number | UUID): Pin | null {
     if (typeof pinIdxOrID === 'number') {
-      return this.InputPins[pinIdxOrID] || null;
+      return this.m_inputPins[pinIdxOrID] || null;
     } else {
-      return this.InputPins.find(pin => pin.m_ID === pinIdxOrID) || null;
+      return this.m_inputPins.find(pin => pin.m_ID === pinIdxOrID) || null;
     }
   }
 
   GetInputPinIndex (pinID: UUID): number {
-    return this.InputPins.findIndex(pin => pin.m_ID === pinID);
+    return this.m_inputPins.findIndex(pin => pin.m_ID === pinID);
   }
 
   // Output pin methods
   GetNumOutputPins (): number {
-    return this.OutputPins.length;
+    return this.m_outputPins.length;
   }
 
   GetOutputPins (): readonly Pin[] {
-    return this.OutputPins;
+    return this.m_outputPins;
   }
 
   HasOutputPin (): boolean;
   HasOutputPin (pinID: UUID): boolean;
   HasOutputPin (pinID?: UUID): boolean {
     if (pinID === undefined) {
-      return this.OutputPins.length > 0;
+      return this.m_outputPins.length > 0;
     } else {
       return this.GetOutputPin(pinID) !== null;
     }
@@ -150,16 +150,16 @@ export class FlowNode extends BaseNode {
   GetOutputPin (pinID: UUID): Pin | null;
   GetOutputPin (pinIdxOrID?: number | UUID): Pin | null {
     if (pinIdxOrID === undefined) {
-      return this.OutputPins[0] || null;
+      return this.m_outputPins[0] || null;
     } else if (typeof pinIdxOrID === 'number') {
-      return this.OutputPins[pinIdxOrID] || null;
+      return this.m_outputPins[pinIdxOrID] || null;
     } else {
-      return this.OutputPins.find(pin => pin.m_ID === pinIdxOrID) || null;
+      return this.m_outputPins.find(pin => pin.m_ID === pinIdxOrID) || null;
     }
   }
 
   GetOutputPinIndex (pinID: UUID): number {
-    return this.OutputPins.findIndex(pin => pin.m_ID === pinID);
+    return this.m_outputPins.findIndex(pin => pin.m_ID === pinID);
   }
 
   // Connections
@@ -167,7 +167,7 @@ export class FlowNode extends BaseNode {
 
   GetConnectedInputNode<T extends FlowNode>(inputPinIdx: number): T | null {
     const pParentGraph = this.GetParentGraph() as FlowGraph;
-    const node = pParentGraph.GetConnectedNodeForInputPin(this.InputPins[inputPinIdx].m_ID);
+    const node = pParentGraph.GetConnectedNodeForInputPin(this.m_inputPins[inputPinIdx].m_ID);
 
     return node as T;
   }
@@ -186,7 +186,7 @@ export class FlowNode extends BaseNode {
 
   override ResetCalculatedNodeSizes (): void {
     super.ResetCalculatedNodeSizes();
-    for (const pin of this.InputPins.concat(this.OutputPins)) {
+    for (const pin of this.m_inputPins.concat(this.m_outputPins)) {
       pin.ResetCalculatedSizes();
     }
   }
@@ -194,7 +194,7 @@ export class FlowNode extends BaseNode {
   override RegenerateIDs (idMapping: Map<UUID, UUID>): UUID {
     const originalID = super.RegenerateIDs(idMapping);
 
-    for (const pin of this.InputPins.concat(this.OutputPins)) {
+    for (const pin of this.m_inputPins.concat(this.m_outputPins)) {
       const originalPinID = pin.m_ID;
 
       pin.m_ID = generateGUID();
@@ -211,7 +211,7 @@ export class FlowNode extends BaseNode {
     super.EndModification();
   }
 
-  protected DrawPinControls (ctx: DrawContext, userContext: UserContext, pin: Pin): boolean {
+  DrawPinControls (ctx: DrawContext, userContext: UserContext, pin: Pin): boolean {
     return false;
   }
 
@@ -225,7 +225,7 @@ export class FlowNode extends BaseNode {
     newPin.m_name = pinName || this.GetNewDynamicInputPinName();
     newPin.m_type = pinType || this.GetDynamicInputPinValueType();
     newPin.m_isDynamic = true;
-    this.InputPins.push(newPin);
+    this.m_inputPins.push(newPin);
     this.OnDynamicPinCreation(newPin.m_ID);
     this.RefreshDynamicPins();
   }
@@ -235,7 +235,7 @@ export class FlowNode extends BaseNode {
 
     if (pinIndex !== -1) {
       this.PreDynamicPinDestruction(pinID);
-      this.InputPins.splice(pinIndex, 1);
+      this.m_inputPins.splice(pinIndex, 1);
       this.PostDynamicPinDestruction();
       this.RefreshDynamicPins();
     }
@@ -251,7 +251,7 @@ export class FlowNode extends BaseNode {
 
     newPin.m_name = pinName;
     newPin.m_type = pinType;
-    this.InputPins.push(newPin);
+    this.m_inputPins.push(newPin);
   }
 
   protected CreateOutputPin (pinName: string, pinType: string, allowMultipleOutputConnections: boolean = false): void {
@@ -260,20 +260,20 @@ export class FlowNode extends BaseNode {
     newPin.m_name = pinName;
     newPin.m_type = pinType;
     newPin.m_allowMultipleOutConnections = allowMultipleOutputConnections;
-    this.OutputPins.push(newPin);
+    this.m_outputPins.push(newPin);
   }
 
   protected DestroyInputPin (pinIdx: number): void {
-    if (pinIdx >= 0 && pinIdx < this.InputPins.length) {
-      (this.GetParentGraph() as FlowGraph).BreakAnyConnectionsForPin(this.InputPins[pinIdx].m_ID);
-      this.InputPins.splice(pinIdx, 1);
+    if (pinIdx >= 0 && pinIdx < this.m_inputPins.length) {
+      (this.GetParentGraph() as FlowGraph).BreakAnyConnectionsForPin(this.m_inputPins[pinIdx].m_ID);
+      this.m_inputPins.splice(pinIdx, 1);
     }
   }
 
   protected DestroyOutputPin (pinIdx: number): void {
-    if (pinIdx >= 0 && pinIdx < this.OutputPins.length) {
-      (this.GetParentGraph() as FlowGraph).BreakAnyConnectionsForPin(this.OutputPins[pinIdx].m_ID);
-      this.OutputPins.splice(pinIdx, 1);
+    if (pinIdx >= 0 && pinIdx < this.m_outputPins.length) {
+      (this.GetParentGraph() as FlowGraph).BreakAnyConnectionsForPin(this.m_outputPins[pinIdx].m_ID);
+      this.m_outputPins.splice(pinIdx, 1);
     }
   }
 
@@ -297,11 +297,11 @@ export class FlowNode extends BaseNode {
   }
 
   ReorderInputPins (newOrder: UUID[]): void {
-    this.ReorderPinArray(newOrder, this.InputPins);
+    this.ReorderPinArray(newOrder, this.m_inputPins);
   }
 
   ReorderOutputPins (newOrder: UUID[]): void {
-    this.ReorderPinArray(newOrder, this.OutputPins);
+    this.ReorderPinArray(newOrder, this.m_outputPins);
   }
 
   private ReorderPinArray (newOrder: UUID[], pins: Pin[]): void {

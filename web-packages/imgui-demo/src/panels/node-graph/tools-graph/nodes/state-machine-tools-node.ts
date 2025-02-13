@@ -1,11 +1,17 @@
 /* eslint-disable no-console */
-// @ts-nocheck
 import { EntryStateOverrideConduitToolsNode, GlobalTransitionConduitToolsNode, StateMachineGraph } from '../graphs/state-machine-graph';
-import { FlowToolsNode, GraphValueType } from './flow-tools-node';
+import { FlowToolsNode, GraphType, GraphValueType } from './flow-tools-node';
 import { StateToolsNode } from './state-tools-node';
 import { ImGui } from '../../../../imgui/index';
 import { Colors } from '../colors';
 import * as NodeGraph from '../../visual-graph';
+import type { StateNodeAssetData, TransitionData, TransitionNodeAssetData } from '@galacean/effects';
+import { InvalidIndex, type StateMachineNodeAssetData } from '@galacean/effects';
+import { TransitionToolsNode } from './transition-tools-node';
+import { TransitionConduitToolsNode } from './transition-tools-node';
+import type { UUID } from '../../visual-graph';
+import type { GraphCompilationContext } from '../../compilation';
+import { ResultToolsNode } from './result-tools-node';
 
 type ImVec2 = ImGui.ImVec2;
 const ImVec2 = ImGui.ImVec2;
@@ -58,8 +64,8 @@ export class StateMachineToolsNode extends FlowToolsNode {
     return new Color(Colors.DarkOrange);
   }
 
-  GetAllowedParentGraphTypes (): TBitFlags<GraphType> {
-    return new TBitFlags<GraphType>(GraphType.BlendTree);
+  GetAllowedParentGraphTypes (): Map<GraphType, boolean> {
+    return new Map<GraphType, boolean>([[GraphType.BlendTree, true]]);
   }
 
   override OnShowNode (): void {
@@ -71,6 +77,8 @@ export class StateMachineToolsNode extends FlowToolsNode {
   private GetEntryStateOverrideConduit (): EntryStateOverrideConduitToolsNode {
     const pStateMachineGraph = this.GetChildGraph() as StateMachineGraph;
     const foundNodes = pStateMachineGraph.FindAllNodesOfType<EntryStateOverrideConduitToolsNode>(
+      EntryStateOverrideConduitToolsNode,
+      [],
       NodeGraph.SearchMode.Localized,
       NodeGraph.SearchTypeMatch.Exact
     );
@@ -83,6 +91,8 @@ export class StateMachineToolsNode extends FlowToolsNode {
   private GetGlobalTransitionConduit (): GlobalTransitionConduitToolsNode {
     const pStateMachineGraph = this.GetChildGraph() as StateMachineGraph;
     const foundNodes = pStateMachineGraph.FindAllNodesOfType<GlobalTransitionConduitToolsNode>(
+      GlobalTransitionConduitToolsNode,
+      [],
       NodeGraph.SearchMode.Localized,
       NodeGraph.SearchTypeMatch.Exact
     );
@@ -93,18 +103,26 @@ export class StateMachineToolsNode extends FlowToolsNode {
   }
 
   override Compile (context: GraphCompilationContext): number {
-    const pDefinition: StateMachineNode.Definition | null = null;
-    const state = context.GetDefinition<StateMachineNode>(this, pDefinition);
+    // const pDefinition: StateMachineNodeAssetData | null = null;
+    const pDefinition = context.getGraphNodeAssetData<StateMachineNodeAssetData>(this);
 
-    if (state !== NodeCompilationState.NeedCompilation) {
-      return pDefinition!.m_nodeIdx;
+    // if (state !== NodeCompilationState.NeedCompilation) {
+    //   return pDefinition!.m_nodeIdx;
+    // }
+    if (context.checkNodeCompilationState(pDefinition)) {
+      return pDefinition.index;
     }
+
+    pDefinition.stateDatas = [];
+    pDefinition.defaultStateIndex = InvalidIndex;
 
     // Get all necessary nodes for compilation
     //-------------------------------------------------------------------------
 
     const pStateMachineGraph = this.GetChildGraph() as StateMachineGraph;
     const stateNodes = pStateMachineGraph.FindAllNodesOfType<StateToolsNode>(
+      StateToolsNode,
+      [],
       NodeGraph.SearchMode.Localized,
       NodeGraph.SearchTypeMatch.Derived
     );
@@ -112,42 +130,47 @@ export class StateMachineToolsNode extends FlowToolsNode {
 
     console.assert(numStateNodes >= 1);
 
-    const conduitNodes = pStateMachineGraph.FindAllNodesOfType<TransitionConduitToolsNode>();
+    const conduitNodes = pStateMachineGraph.FindAllNodesOfType<TransitionConduitToolsNode>(TransitionConduitToolsNode);
     const numConduitNodes = conduitNodes.length;
 
-    const globalTransitionNodes = this.GetGlobalTransitionConduit().GetSecondaryGraph().FindAllNodesOfType<GlobalTransitionToolsNode>();
+    // const globalTransitionNodes = this.GetGlobalTransitionConduit().GetSecondaryGraph()!.FindAllNodesOfType<GlobalTransitionToolsNode>(GlobalTransitionToolsNode);
 
     // Compile all states
     //-------------------------------------------------------------------------
 
     const pEntryConditionsConduit = this.GetEntryStateOverrideConduit();
 
-    const IDToStateIdxMap = new Map<UUID, StateMachineNode.StateIndex>();
+    const IDToStateIdxMap = new Map<UUID, number>();
     const IDToCompiledNodeIdxMap = new Map<UUID, number>();
 
     for (let i = 0; i < numStateNodes; i++) {
       const pStateNode = stateNodes[i];
 
       // Compile state node
-      const stateDefinition = pDefinition!.m_stateDefinition.emplace_back();
+      const stateDefinition = {
+        stateNodeIndex: InvalidIndex,
+        transitionDatas: [],
+      };
 
-      stateDefinition.m_stateNodeIdx = this.CompileState(context, pStateNode);
-      if (stateDefinition.m_stateNodeIdx === InvalidIndex) {
+      pDefinition.stateDatas.push(stateDefinition);
+
+      stateDefinition.stateNodeIndex = this.CompileState(context, pStateNode);
+      if (stateDefinition.stateNodeIndex === InvalidIndex) {
         return InvalidIndex;
       }
 
       // Compile entry condition if it exists
-      const pEntryConditionNode = pEntryConditionsConduit.GetEntryConditionNodeForState(pStateNode.GetID());
+      // const pEntryConditionNode = pEntryConditionsConduit.GetEntryConditionNodeForState(pStateNode.GetID());
 
-      if (pEntryConditionNode !== null) {
-        stateDefinition.m_entryConditionNodeIdx = pEntryConditionNode.Compile(context);
-        if (stateDefinition.m_entryConditionNodeIdx === InvalidIndex) {
-          return InvalidIndex;
-        }
-      }
+      // if (pEntryConditionNode !== null) {
+      //   stateDefinition.m_entryConditionNodeIdx = pEntryConditionNode.Compile(context);
+      //   if (stateDefinition.m_entryConditionNodeIdx === InvalidIndex) {
+      //     return InvalidIndex;
+      //   }
+      // }
 
-      IDToStateIdxMap.set(pStateNode.GetID(), i as StateMachineNode.StateIndex);
-      IDToCompiledNodeIdxMap.set(pStateNode.GetID(), stateDefinition.m_stateNodeIdx);
+      IDToStateIdxMap.set(pStateNode.GetID(), i);
+      IDToCompiledNodeIdxMap.set(pStateNode.GetID(), stateDefinition.stateNodeIndex);
     }
 
     // Compile all transitions
@@ -160,51 +183,57 @@ export class StateMachineToolsNode extends FlowToolsNode {
       //-------------------------------------------------------------------------
 
       // We need to ignore any global transitions that we have an explicit conduit for
-      const globalTransitionNodesCopy = [...globalTransitionNodes];
-      const RemoveFromGlobalTransitions = (endStateID: UUID) => {
-        const index = globalTransitionNodesCopy.findIndex(node => node.GetEndStateID() === endStateID);
+      // const globalTransitionNodesCopy = [...globalTransitionNodes];
+      // const RemoveFromGlobalTransitions = (endStateID: UUID) => {
+      //   const index = globalTransitionNodesCopy.findIndex(node => node.GetEndStateID() === endStateID);
 
-        if (index !== -1) {
-          globalTransitionNodesCopy.splice(index, 1);
-        }
-      };
+      //   if (index !== -1) {
+      //     globalTransitionNodesCopy.splice(index, 1);
+      //   }
+      // };
 
       const TryCompileTransition = (pTransitionNode: TransitionToolsNode, endStateID: UUID): boolean => {
         // Transitions are only enabled if a condition is connected to them
         const pConditionNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(0);
 
         if (pConditionNode !== null) {
-          const transitionDefinition = pDefinition!.m_stateDefinition[i].m_transitionDefinition.emplace_back();
+          const transitionDefinition: TransitionData = {
+            targetStateIndex: InvalidIndex,
+            conditionNodeIndex: InvalidIndex,
+            transitionNodeIndex: InvalidIndex,
+          };
 
-          transitionDefinition.m_targetStateIdx = IDToStateIdxMap.get(endStateID)!;
+          pDefinition.stateDatas[i].transitionDatas.push(transitionDefinition);
+
+          transitionDefinition.targetStateIndex = IDToStateIdxMap.get(endStateID)!;
 
           // Compile transition node
           //-------------------------------------------------------------------------
 
-          transitionDefinition.m_transitionNodeIdx = this.CompileTransition(
+          transitionDefinition.transitionNodeIndex = this.CompileTransition(
             context,
             pTransitionNode,
             IDToCompiledNodeIdxMap.get(endStateID)!
           );
-          transitionDefinition.m_canBeForced = pTransitionNode.m_canBeForced;
-          if (transitionDefinition.m_transitionNodeIdx === InvalidIndex) {
+          // transitionDefinition.m_canBeForced = pTransitionNode.m_canBeForced;
+          if (transitionDefinition.transitionNodeIndex === InvalidIndex) {
             return false;
           }
 
           // Compile condition tree
           //-------------------------------------------------------------------------
 
-          const pCompiledTransitionDefinition: TransitionNode.Definition | null = null;
-          const state = context.GetDefinition<TransitionNode>(pTransitionNode, pCompiledTransitionDefinition);
+          const pCompiledTransitionDefinition = context.getGraphNodeAssetData<TransitionNodeAssetData>(pTransitionNode);
 
-          console.assert(state === NodeCompilationState.AlreadyCompiled);
+          console.assert(context.checkNodeCompilationState(pCompiledTransitionDefinition));
 
           context.BeginTransitionConditionsCompilation(
-            pCompiledTransitionDefinition!.m_duration,
-            pCompiledTransitionDefinition!.m_durationOverrideNodeIdx
+            pCompiledTransitionDefinition.duration,
+            // pCompiledTransitionDefinition.m_durationOverrideNodeIdx
+            InvalidIndex
           );
-          transitionDefinition.m_conditionNodeIdx = pConditionNode.Compile(context);
-          if (transitionDefinition.m_conditionNodeIdx === InvalidIndex) {
+          transitionDefinition.conditionNodeIndex = pConditionNode.Compile(context);
+          if (transitionDefinition.conditionNodeIndex === InvalidIndex) {
             return false;
           }
           context.EndTransitionConditionsCompilation();
@@ -214,7 +243,7 @@ export class StateMachineToolsNode extends FlowToolsNode {
       };
 
       // Remove ourselves state from the global transitions copy
-      RemoveFromGlobalTransitions(pStartStateNode.GetID());
+      // RemoveFromGlobalTransitions(pStartStateNode.GetID());
 
       // Compile conduits
       for (let c = 0; c < numConduitNodes; c++) {
@@ -224,7 +253,7 @@ export class StateMachineToolsNode extends FlowToolsNode {
           continue;
         }
 
-        RemoveFromGlobalTransitions(pConduit.GetEndStateID());
+        // RemoveFromGlobalTransitions(pConduit.GetEndStateID());
 
         const foundSourceStateIter = IDToCompiledNodeIdxMap.get(pConduit.GetStartStateID());
 
@@ -232,7 +261,7 @@ export class StateMachineToolsNode extends FlowToolsNode {
         context.BeginConduitCompilation(foundSourceStateIter!);
 
         // Compile transitions in conduit
-        const transitionNodes = pConduit.GetSecondaryGraph().FindAllNodesOfType<TransitionToolsNode>();
+        const transitionNodes = pConduit.GetSecondaryGraph()!.FindAllNodesOfType<TransitionToolsNode>(TransitionToolsNode);
 
         for (const pTransitionNode of transitionNodes) {
           if (!TryCompileTransition(pTransitionNode, pConduit.GetEndStateID())) {
@@ -247,65 +276,68 @@ export class StateMachineToolsNode extends FlowToolsNode {
       //-------------------------------------------------------------------------
       // Compile all global transitions from this state to others
 
-      for (const pGlobalTransition of globalTransitionNodesCopy) {
-        const foundSourceStateIter = IDToCompiledNodeIdxMap.get(pStartStateNode.GetID());
+      // for (const pGlobalTransition of globalTransitionNodesCopy) {
+      //   const foundSourceStateIter = IDToCompiledNodeIdxMap.get(pStartStateNode.GetID());
 
-        console.assert(foundSourceStateIter !== undefined);
+      //   console.assert(foundSourceStateIter !== undefined);
 
-        if (!TryCompileTransition(pGlobalTransition, pGlobalTransition.GetEndStateID())) {
-          return InvalidIndex;
-        }
-      }
+      //   if (!TryCompileTransition(pGlobalTransition, pGlobalTransition.GetEndStateID())) {
+      //     return InvalidIndex;
+      //   }
+      // }
     }
 
     //-------------------------------------------------------------------------
 
-    pDefinition!.m_defaultStateIndex = IDToStateIdxMap.get(pStateMachineGraph.GetDefaultEntryStateID())!;
+    pDefinition.defaultStateIndex = IDToStateIdxMap.get(pStateMachineGraph.GetDefaultEntryStateID())!;
 
-    return pDefinition!.m_nodeIdx;
+    return pDefinition.index;
   }
 
   private CompileState (context: GraphCompilationContext, pStateNode: StateToolsNode): number {
     console.assert(pStateNode !== null);
 
-    const pDefinition: StateNode.Definition | null = null;
-    const state = context.GetDefinition<StateNode>(pStateNode, pDefinition);
+    const pDefinition = context.getGraphNodeAssetData<StateNodeAssetData>(pStateNode);
 
-    console.assert(state === NodeCompilationState.NeedCompilation);
+    console.assert(!context.checkNodeCompilationState(pDefinition));
+
+    pDefinition.childNodeIndex = InvalidIndex;
 
     //-------------------------------------------------------------------------
 
-    const ReflectStateEvents = (IDs: StringID[], outEvents: StringID[]) => {
-      for (const ID of IDs) {
-        if (ID.IsValid()) {
-          if (!outEvents.includes(ID)) {
-            outEvents.push(ID);
-          }
-        } else {
-          context.LogWarning(this, 'Invalid state event detected and ignored!');
-        }
-      }
-    };
+    // const ReflectStateEvents = (IDs: StringID[], outEvents: StringID[]) => {
+    //   for (const ID of IDs) {
+    //     if (ID.IsValid()) {
+    //       if (!outEvents.includes(ID)) {
+    //         outEvents.push(ID);
+    //       }
+    //     } else {
+    //       context.LogWarning(this, 'Invalid state event detected and ignored!');
+    //     }
+    //   }
+    // };
 
-    ReflectStateEvents(pStateNode.m_events, pDefinition!.m_entryEvents);
-    ReflectStateEvents(pStateNode.m_entryEvents, pDefinition!.m_entryEvents);
+    // ReflectStateEvents(pStateNode.m_events, pDefinition!.m_entryEvents);
+    // ReflectStateEvents(pStateNode.m_entryEvents, pDefinition!.m_entryEvents);
 
-    ReflectStateEvents(pStateNode.m_events, pDefinition!.m_executeEvents);
-    ReflectStateEvents(pStateNode.m_executeEvents, pDefinition!.m_executeEvents);
+    // ReflectStateEvents(pStateNode.m_events, pDefinition!.m_executeEvents);
+    // ReflectStateEvents(pStateNode.m_executeEvents, pDefinition!.m_executeEvents);
 
-    ReflectStateEvents(pStateNode.m_events, pDefinition!.m_exitEvents);
-    ReflectStateEvents(pStateNode.m_exitEvents, pDefinition!.m_exitEvents);
+    // ReflectStateEvents(pStateNode.m_events, pDefinition!.m_exitEvents);
+    // ReflectStateEvents(pStateNode.m_exitEvents, pDefinition!.m_exitEvents);
 
     //-------------------------------------------------------------------------
 
     if (pStateNode.IsOffState()) {
-      pDefinition!.m_childNodeIdx = InvalidIndex;
-      pDefinition!.m_isOffState = true;
+      pDefinition.childNodeIndex = InvalidIndex;
+      // pDefinition.m_isOffState = true;
     } else {
       // Compile Blend Tree
       //-------------------------------------------------------------------------
 
-      const resultNodes = pStateNode.GetChildGraph().FindAllNodesOfType<ResultToolsNode>(
+      const resultNodes = pStateNode.GetChildGraph()!.FindAllNodesOfType<ResultToolsNode>(
+        ResultToolsNode,
+        [],
         NodeGraph.SearchMode.Localized,
         NodeGraph.SearchTypeMatch.Derived
       );
@@ -318,8 +350,8 @@ export class StateMachineToolsNode extends FlowToolsNode {
       const pBlendTreeNode = pBlendTreeRoot.GetConnectedInputNode<FlowToolsNode>(0);
 
       if (pBlendTreeNode !== null) {
-        pDefinition!.m_childNodeIdx = pBlendTreeNode.Compile(context);
-        if (pDefinition!.m_childNodeIdx === InvalidIndex) {
+        pDefinition.childNodeIndex = pBlendTreeNode.Compile(context);
+        if (pDefinition.childNodeIndex === InvalidIndex) {
           return InvalidIndex;
         }
       }
@@ -327,64 +359,64 @@ export class StateMachineToolsNode extends FlowToolsNode {
       // Compile Layer Data
       //-------------------------------------------------------------------------
 
-      const dataNodes = pStateNode.GetSecondaryGraph()
-        .FindAllNodesOfType<StateLayerDataToolsNode>();
+      // const dataNodes = pStateNode.GetSecondaryGraph()
+      //   .FindAllNodesOfType<StateLayerDataToolsNode>();
 
-      console.assert(dataNodes.length === 1);
-      const pLayerData = dataNodes[0];
+      // console.assert(dataNodes.length === 1);
+      // const pLayerData = dataNodes[0];
 
-      console.assert(pLayerData !== null);
+      // console.assert(pLayerData !== null);
 
-      const pLayerWeightNode = pLayerData.GetConnectedInputNode<FlowToolsNode>(0);
+      // const pLayerWeightNode = pLayerData.GetConnectedInputNode<FlowToolsNode>(0);
 
-      if (pLayerWeightNode !== null) {
-        pDefinition!.m_layerWeightNodeIdx = pLayerWeightNode.Compile(context);
-        if (pDefinition!.m_layerWeightNodeIdx === InvalidIndex) {
-          return InvalidIndex;
-        }
-      }
+      // if (pLayerWeightNode !== null) {
+      //   pDefinition.m_layerWeightNodeIdx = pLayerWeightNode.Compile(context);
+      //   if (pDefinition.m_layerWeightNodeIdx === InvalidIndex) {
+      //     return InvalidIndex;
+      //   }
+      // }
 
-      const pLayerRootMotionWeightNode = pLayerData.GetConnectedInputNode<FlowToolsNode>(1);
+      // const pLayerRootMotionWeightNode = pLayerData.GetConnectedInputNode<FlowToolsNode>(1);
 
-      if (pLayerRootMotionWeightNode !== null) {
-        pDefinition!.m_layerRootMotionWeightNodeIdx = pLayerRootMotionWeightNode.Compile(context);
-        if (pDefinition!.m_layerRootMotionWeightNodeIdx === InvalidIndex) {
-          return InvalidIndex;
-        }
-      }
+      // if (pLayerRootMotionWeightNode !== null) {
+      //   pDefinition.m_layerRootMotionWeightNodeIdx = pLayerRootMotionWeightNode.Compile(context);
+      //   if (pDefinition.m_layerRootMotionWeightNodeIdx === InvalidIndex) {
+      //     return InvalidIndex;
+      //   }
+      // }
 
-      const pLayerMaskNode = pLayerData.GetConnectedInputNode<FlowToolsNode>(2);
+      // const pLayerMaskNode = pLayerData.GetConnectedInputNode<FlowToolsNode>(2);
 
-      if (pLayerMaskNode !== null) {
-        pDefinition!.m_layerBoneMaskNodeIdx = pLayerMaskNode.Compile(context);
-        if (pDefinition!.m_layerBoneMaskNodeIdx === InvalidIndex) {
-          return InvalidIndex;
-        }
-      }
+      // if (pLayerMaskNode !== null) {
+      //   pDefinition.m_layerBoneMaskNodeIdx = pLayerMaskNode.Compile(context);
+      //   if (pDefinition.m_layerBoneMaskNodeIdx === InvalidIndex) {
+      //     return InvalidIndex;
+      //   }
+      // }
 
       // Transfer additional state events
       //-------------------------------------------------------------------------
 
-      const ReflectTimedStateEvents = (
-        timedEvents: StateToolsNode.TimedStateEvent[],
-        outEvents: StateNode.TimedEvent[]
-      ) => {
-        for (const evt of timedEvents) {
-          if (evt.m_ID.IsValid()) {
-            outEvents.push(new StateNode.TimedEvent(evt.m_ID, evt.m_timeValue));
-          } else {
-            context.LogWarning(this, 'Invalid state event detected and ignored!');
-          }
-        }
-      };
+      // const ReflectTimedStateEvents = (
+      //   timedEvents: StateToolsNode.TimedStateEvent[],
+      //   outEvents: StateNode.TimedEvent[]
+      // ) => {
+      //   for (const evt of timedEvents) {
+      //     if (evt.m_ID.IsValid()) {
+      //       outEvents.push(new StateNode.TimedEvent(evt.m_ID, evt.m_timeValue));
+      //     } else {
+      //       context.LogWarning(this, 'Invalid state event detected and ignored!');
+      //     }
+      //   }
+      // };
 
-      ReflectTimedStateEvents(pStateNode.m_timeRemainingEvents, pDefinition!.m_timedRemainingEvents);
-      ReflectTimedStateEvents(pStateNode.m_timeElapsedEvents, pDefinition!.m_timedElapsedEvents);
+      // ReflectTimedStateEvents(pStateNode.m_timeRemainingEvents, pDefinition.m_timedRemainingEvents);
+      // ReflectTimedStateEvents(pStateNode.m_timeElapsedEvents, pDefinition.m_timedElapsedEvents);
     }
 
     //-------------------------------------------------------------------------
 
-    return pDefinition!.m_nodeIdx;
+    return pDefinition.index;
   }
 
   private CompileTransition (
@@ -393,185 +425,184 @@ export class StateMachineToolsNode extends FlowToolsNode {
     targetStateNodeIdx: number
   ): number {
     console.assert(pTransitionNode !== null);
-    const pDefinition: TransitionNode.Definition | null = null;
-    const state = context.GetDefinition<TransitionNode>(pTransitionNode, pDefinition);
+    const pDefinition = context.getGraphNodeAssetData<TransitionNodeAssetData>(pTransitionNode);
 
-    if (state === NodeCompilationState.AlreadyCompiled) {
-      return pDefinition!.m_nodeIdx;
+    if (context.checkNodeCompilationState(pDefinition)) {
+      return pDefinition.index;
     }
 
     //-------------------------------------------------------------------------
 
-    const pDurationOverrideNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(1);
+    // const pDurationOverrideNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(1);
 
-    if (pDurationOverrideNode !== null) {
-      pDefinition!.m_durationOverrideNodeIdx = pDurationOverrideNode.Compile(context);
-      if (pDefinition!.m_durationOverrideNodeIdx === InvalidIndex) {
-        return InvalidIndex;
-      }
-    }
+    // if (pDurationOverrideNode !== null) {
+    //   pDefinition.m_durationOverrideNodeIdx = pDurationOverrideNode.Compile(context);
+    //   if (pDefinition.m_durationOverrideNodeIdx === InvalidIndex) {
+    //     return InvalidIndex;
+    //   }
+    // }
 
-    const pSyncEventOffsetOverrideNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(2);
+    // const pSyncEventOffsetOverrideNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(2);
 
-    if (pSyncEventOffsetOverrideNode !== null) {
-      pDefinition!.m_syncEventOffsetOverrideNodeIdx = pSyncEventOffsetOverrideNode.Compile(context);
-      if (pDefinition!.m_syncEventOffsetOverrideNodeIdx === InvalidIndex) {
-        return InvalidIndex;
-      }
-    }
+    // if (pSyncEventOffsetOverrideNode !== null) {
+    //   pDefinition.m_syncEventOffsetOverrideNodeIdx = pSyncEventOffsetOverrideNode.Compile(context);
+    //   if (pDefinition.m_syncEventOffsetOverrideNodeIdx === InvalidIndex) {
+    //     return InvalidIndex;
+    //   }
+    // }
 
-    const pStartBoneMaskNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(3);
+    // const pStartBoneMaskNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(3);
 
-    if (pStartBoneMaskNode !== null) {
-      pDefinition!.m_startBoneMaskNodeIdx = pStartBoneMaskNode.Compile(context);
-      if (pDefinition!.m_startBoneMaskNodeIdx === InvalidIndex) {
-        return InvalidIndex;
-      }
+    // if (pStartBoneMaskNode !== null) {
+    //   pDefinition.m_startBoneMaskNodeIdx = pStartBoneMaskNode.Compile(context);
+    //   if (pDefinition.m_startBoneMaskNodeIdx === InvalidIndex) {
+    //     return InvalidIndex;
+    //   }
 
-      if (pTransitionNode.m_boneMaskBlendInTimePercentage <= 0.0) {
-        context.LogError('Bone mask blend time needs to be greater than zero!');
+    //   if (pTransitionNode.m_boneMaskBlendInTimePercentage <= 0.0) {
+    //     context.LogError('Bone mask blend time needs to be greater than zero!');
 
-        return InvalidIndex;
-      }
-    }
+    //     return InvalidIndex;
+    //   }
+    // }
 
-    const pTargetSyncIDNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(4);
+    // const pTargetSyncIDNode = pTransitionNode.GetConnectedInputNode<FlowToolsNode>(4);
 
-    if (pTargetSyncIDNode !== null) {
-      if (pTransitionNode.m_timeMatchMode >= TimeMatchMode.MatchSyncEventID &&
-                pTransitionNode.m_timeMatchMode <= TimeMatchMode.MatchClosestSyncEventIDAndPercentage) {
-        pDefinition!.m_targetSyncIDNodeIdx = pTargetSyncIDNode.Compile(context);
-        if (pDefinition!.m_targetSyncIDNodeIdx === InvalidIndex) {
-          return InvalidIndex;
-        }
-      } else {
-        context.LogWarning(
-          'Target Sync Event ID set but we are not in a sync event ID time match mode - The supplied ID will be ignored!'
-        );
-      }
-    }
-
-    //-------------------------------------------------------------------------
-
-    pDefinition!.m_targetStateNodeIdx = targetStateNodeIdx;
-    pDefinition!.m_blendWeightEasingOp = pTransitionNode.m_blendWeightEasing;
-    pDefinition!.m_rootMotionBlend = pTransitionNode.m_rootMotionBlend;
-    pDefinition!.m_duration = Math.max(pTransitionNode.m_duration.ToFloat(), 0.0);
-    pDefinition!.m_syncEventOffset = pTransitionNode.m_syncEventOffset;
-    pDefinition!.m_boneMaskBlendInTimePercentage = pTransitionNode.m_boneMaskBlendInTimePercentage.GetClamped(false);
+    // if (pTargetSyncIDNode !== null) {
+    //   if (pTransitionNode.m_timeMatchMode >= TimeMatchMode.MatchSyncEventID &&
+    //             pTransitionNode.m_timeMatchMode <= TimeMatchMode.MatchClosestSyncEventIDAndPercentage) {
+    //     pDefinition.m_targetSyncIDNodeIdx = pTargetSyncIDNode.Compile(context);
+    //     if (pDefinition.m_targetSyncIDNodeIdx === InvalidIndex) {
+    //       return InvalidIndex;
+    //     }
+    //   } else {
+    //     context.LogWarning(
+    //       'Target Sync Event ID set but we are not in a sync event ID time match mode - The supplied ID will be ignored!'
+    //     );
+    //   }
+    // }
 
     //-------------------------------------------------------------------------
 
-    pDefinition!.m_transitionOptions.ClearAllFlags();
-    pDefinition!.m_transitionOptions.SetFlag(
-      TransitionNode.TransitionOptions.ClampDuration,
-      pTransitionNode.m_clampDurationToSource
-    );
-
-    switch (pTransitionNode.m_timeMatchMode) {
-      case TimeMatchMode.None:
-        break; case TimeMatchMode.Synchronized:
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.Synchronized,
-          true
-        );
-
-        break; case TimeMatchMode.MatchSourceSyncEventIndex:
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSourceTime,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventIndex,
-          true
-        );
-
-        break; case TimeMatchMode.MatchSourceSyncEventPercentage:
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSourceTime,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventPercentage,
-          true
-        );
-
-        break; case TimeMatchMode.MatchSourceSyncEventIndexAndPercentage:
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSourceTime,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventIndex,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventPercentage,
-          true
-        );
-
-        break; case TimeMatchMode.MatchSyncEventID:
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSourceTime,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventID,
-          true
-        );
-
-        break; case TimeMatchMode.MatchSyncEventIDAndPercentage:
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSourceTime,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventID,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventPercentage,
-          true
-        );
-
-        break; case TimeMatchMode.MatchClosestSyncEventID:
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSourceTime,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventID,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.PreferClosestSyncEventID,
-          true
-        );
-
-        break; case TimeMatchMode.MatchClosestSyncEventIDAndPercentage:
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSourceTime,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventID,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.MatchSyncEventPercentage,
-          true
-        );
-        pDefinition!.m_transitionOptions.SetFlag(
-          TransitionNode.TransitionOptions.PreferClosestSyncEventID,
-          true
-        );
-
-        break;
-    }
+    pDefinition.targetStateNodeIndex = targetStateNodeIdx;
+    // pDefinition.m_blendWeightEasingOp = pTransitionNode.m_blendWeightEasing;
+    // pDefinition.m_rootMotionBlend = pTransitionNode.m_rootMotionBlend;
+    pDefinition.duration = Math.max(pTransitionNode.m_duration, 0.0);
+    // pDefinition.m_syncEventOffset = pTransitionNode.m_syncEventOffset;
+    // pDefinition.m_boneMaskBlendInTimePercentage = pTransitionNode.m_boneMaskBlendInTimePercentage.GetClamped(false);
 
     //-------------------------------------------------------------------------
 
-    return pDefinition!.m_nodeIdx;
+    // pDefinition.m_transitionOptions.ClearAllFlags();
+    // pDefinition.m_transitionOptions.SetFlag(
+    //   TransitionNode.TransitionOptions.ClampDuration,
+    //   pTransitionNode.m_clampDurationToSource
+    // );
+
+    // switch (pTransitionNode.m_timeMatchMode) {
+    //   case TimeMatchMode.None:
+    //     break; case TimeMatchMode.Synchronized:
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.Synchronized,
+    //       true
+    //     );
+
+    //     break; case TimeMatchMode.MatchSourceSyncEventIndex:
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSourceTime,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventIndex,
+    //       true
+    //     );
+
+    //     break; case TimeMatchMode.MatchSourceSyncEventPercentage:
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSourceTime,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventPercentage,
+    //       true
+    //     );
+
+    //     break; case TimeMatchMode.MatchSourceSyncEventIndexAndPercentage:
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSourceTime,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventIndex,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventPercentage,
+    //       true
+    //     );
+
+    //     break; case TimeMatchMode.MatchSyncEventID:
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSourceTime,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventID,
+    //       true
+    //     );
+
+    //     break; case TimeMatchMode.MatchSyncEventIDAndPercentage:
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSourceTime,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventID,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventPercentage,
+    //       true
+    //     );
+
+    //     break; case TimeMatchMode.MatchClosestSyncEventID:
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSourceTime,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventID,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.PreferClosestSyncEventID,
+    //       true
+    //     );
+
+    //     break; case TimeMatchMode.MatchClosestSyncEventIDAndPercentage:
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSourceTime,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventID,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.MatchSyncEventPercentage,
+    //       true
+    //     );
+    //     pDefinition.m_transitionOptions.SetFlag(
+    //       TransitionNode.TransitionOptions.PreferClosestSyncEventID,
+    //       true
+    //     );
+
+    //     break;
+    // }
+
+    //-------------------------------------------------------------------------
+
+    return pDefinition.index;
   }
 
   protected override PostDeserialize (): void {

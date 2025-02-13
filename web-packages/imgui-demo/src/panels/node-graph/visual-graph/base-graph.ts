@@ -434,7 +434,11 @@ export class BaseGraph {
   }
 
   BeginModification (): void {
-    const rootGraph = this.GetRootGraph()!;
+    const rootGraph = this.GetRootGraph();
+
+    if (rootGraph === null) {
+      return;
+    }
 
     if (rootGraph.m_beginModificationCallCount === 0) {
       BaseGraph.s_onBeginRootGraphModification.forEach(callback => callback(rootGraph));
@@ -443,7 +447,11 @@ export class BaseGraph {
   }
 
   EndModification (): void {
-    const rootGraph = this.GetRootGraph()!;
+    const rootGraph = this.GetRootGraph();
+
+    if (rootGraph === null) {
+      return;
+    }
 
     rootGraph.m_beginModificationCallCount--;
     if (rootGraph.m_beginModificationCallCount === 0) {
@@ -695,13 +703,49 @@ export class BaseGraph {
     return !this.m_nodes.some(node => node.IsRenameable() && node.GetName() === name);
   }
 
-  GetUniqueNameForRenameableNode (desiredName: string, nodeToIgnore: BaseNode | null = null): string {
-    let uniqueName = desiredName;
-    let counter = 1;
+  GetUniqueNameForRenameableNode (desiredName: string, m_pNodeToIgnore: BaseNode | null): string {
+    const GeneratePotentiallyUniqueName = (baseName: string, counterValue: number): string => {
+      let suffixLength = 0;
 
-    while (!this.IsUniqueNodeName(uniqueName) || (nodeToIgnore && nodeToIgnore.GetName() === uniqueName)) {
-      uniqueName = `${desiredName}${counter}`;
-      counter++;
+      while (this.isDigit(baseName[baseName.length - 1 - suffixLength])) {
+        suffixLength++;
+      }
+
+      const finalName = baseName.substring(0, baseName.length - suffixLength);
+
+      return `${finalName}${counterValue}`;
+    };
+
+    let uniqueName = desiredName;
+    let isNameUnique = false;
+    let suffixCounter = 0;
+
+    while (!isNameUnique) {
+      isNameUnique = true;
+
+      // Check control parameters
+      for (const nodeInstance of this.m_nodes) {
+        // Ignore specified node
+        if (nodeInstance === m_pNodeToIgnore) {
+          continue;
+        }
+
+        // Only check other renameable nodes
+        if (!nodeInstance.IsRenameable()) {
+          continue;
+        }
+
+        if (nodeInstance.GetName() === uniqueName) {
+          isNameUnique = false;
+
+          break;
+        }
+      }
+
+      if (!isNameUnique) {
+        uniqueName = GeneratePotentiallyUniqueName(desiredName, suffixCounter);
+        suffixCounter++;
+      }
     }
 
     return uniqueName;
@@ -751,6 +795,11 @@ export class BaseGraph {
 
     this.OnNodeAdded(pCreatedNode);
     this.EndModification();
+  }
+
+  // Helper function to check if character is digit
+  private isDigit (char: string): boolean {
+    return /^\d$/.test(char);
   }
 }
 
