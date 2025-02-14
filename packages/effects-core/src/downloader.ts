@@ -64,7 +64,7 @@ export class Downloader {
       this.finish(url, xhr.status, xhr.response);
     };
     const handleLoad = () => {
-      if (xhr.status == 200 || xhr.status == 0) {
+      if (xhr.status == 200) {
         this.finish(url, 200, xhr.response);
       } else {
         handleError();
@@ -93,7 +93,7 @@ export class Downloader {
     const callbacks = this.callbacks[url];
 
     delete this.callbacks[url];
-    const args = status == 200 || status == 0 ? [data] : [status, data];
+    const args = status == 200 ? [data] : [status, data];
 
     for (let i = args.length - 1, n = callbacks.length; i < n; i += 2) {
       callbacks[i].apply(null, args);
