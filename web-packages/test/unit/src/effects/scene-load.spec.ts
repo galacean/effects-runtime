@@ -97,7 +97,7 @@ describe('player/scene-load', () => {
     try {
       await player.loadScene('https://www.galacean.com/effects/', { timeout: 5 });
     } catch (e: any) {
-      expect(e.message).to.include('Load error in processJSON');
+      expect(e.message).to.include('Load error in loadJSON');
       spy();
     }
     expect(spy).to.has.been.called.once;
