@@ -8,6 +8,21 @@
 
 ---
 
+## 2.2.5
+
+`2025-02-14`
+
+- Fix: 修复富文本渲染白屏问题。[#857](https://github.com/galacean/effects-runtime/pull/857) @Sruimeng
+- Fix: 移除粒子点击后会多移除一个的逻辑。[#863](https://github.com/galacean/effects-runtime/pull/863) @RGCHN
+- Fix: 移除 http 请求 response 代码 0 表示成功的逻辑。[#860](https://github.com/galacean/effects-runtime/pull/860) @RGCHN
+- Fix: 3d mesh max joint and camera rotation error. [#858](https://github.com/galacean/effects-runtime/pull/858) @wumaolinmaoan
+
+## 2.2.4
+
+`2025-02-07`
+
+- Fix: update texture and material in TextComponentBase. [#855](https://github.com/galacean/effects-runtime/pull/855) @Sruimen
+
 ## 2.2.3
 
 `2025-02-07`

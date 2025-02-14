@@ -7,6 +7,21 @@
 
 ---
 
+## 2.2.5
+
+`2025-02-14`
+
+- Fix: Resolved the issue where rich text rendering resulted in a blank screen. [#857](https://github.com/galacean/effects-runtime/pull/857) @Sruimeng
+- Fix: Eliminated the logic where an additional particle was removed upon clicking. [#863](https://github.com/galacean/effects-runtime/pull/863) @RGCHN
+- Fix: Removed the logic where an HTTP request response code of 0 indicated success. [#860](https://github.com/galacean/effects-runtime/pull/860) @RGCHN
+- Fix: 3d mesh max joint and camera rotation error. [#858](https://github.com/galacean/effects-runtime/pull/858) @wumaolinmaoan
+
+## 2.2.4
+
+`2025-02-07`
+
+- Fix: update texture and material in TextComponentBase. [#855](https://github.com/galacean/effects-runtime/pull/855) @Sruimen
+
 ## 2.2.3
 
 `2025-02-07`
