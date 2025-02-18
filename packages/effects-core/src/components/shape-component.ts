@@ -10,6 +10,8 @@ import type { ShapePath } from '../plugins/shape/shape-path';
 import { Geometry, GLSLVersion } from '../render';
 import { MeshComponent } from './mesh-component';
 import { StarType } from '../plugins/shape/poly-star';
+import type { StrokeAttributes } from '../plugins/shape/build-line';
+import { buildLine } from '../plugins/shape/build-line';
 
 interface CurveData {
   point: spec.Vector2Data,
@@ -23,11 +25,13 @@ interface CurveData {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends MeshComponent {
+  isStroke = false;
 
-  private path = new GraphicsPath();
+  private graphicsPath = new GraphicsPath();
   private curveValues: CurveData[] = [];
   private data: spec.ShapeComponentData;
-  private animated = true;
+  private shapeDirty = true;
+  private strokeAttributes: StrokeAttributes;
 
   private vert = `
 precision highp float;
@@ -55,6 +59,12 @@ void main() {
   gl_FragColor = color;
 }
 `;
+
+  get path () {
+    this.shapeDirty = true;
+
+    return this.data as spec.CustomShapeData;
+  }
 
   /**
    *
@@ -102,6 +112,14 @@ void main() {
       this.material.depthTest = true;
       this.material.blending = true;
     }
+
+    this.strokeAttributes = {
+      width: 1,
+      alignment: 0.5,
+      cap: 'butt',
+      join: 'miter',
+      miterLimit: 10,
+    };
   }
 
   override onStart (): void {
@@ -109,10 +127,10 @@ void main() {
   }
 
   override onUpdate (dt: number): void {
-    if (this.animated) {
+    if (this.shapeDirty) {
       this.buildPath(this.data);
-      this.buildGeometryFromPath(this.path.shapePath);
-      this.animated = false;
+      this.buildGeometryFromPath(this.graphicsPath.shapePath);
+      this.shapeDirty = false;
     }
   }
 
@@ -130,7 +148,14 @@ void main() {
 
       shape.build(points);
 
-      shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
+      if (!this.isStroke) {
+        shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
+      } else {
+        const close = true;
+        const lineStyle = this.strokeAttributes;
+
+        buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
+      }
     }
 
     const vertexCount = vertices.length / 2;
@@ -146,7 +171,7 @@ void main() {
     if (!uvArray || uvArray.length < vertexCount * 2) {
       uvArray = new Float32Array(vertexCount * 2);
     }
-    if (!indexArray) {
+    if (!indexArray || indexArray.length < indices.length) {
       indexArray = new Uint16Array(indices.length);
     }
 
@@ -175,7 +200,7 @@ void main() {
   }
 
   private buildPath (data: spec.ShapeComponentData) {
-    this.path.clear();
+    this.graphicsPath.clear();
 
     const shapeData = data;
 
@@ -186,9 +211,9 @@ void main() {
         const easingIns = customData.easingIns;
         const easingOuts = customData.easingOuts;
 
-        this.curveValues = [];
-
         for (const shape of customData.shapes) {
+          this.curveValues = [];
+
           this.setFillColor(shape.fill);
 
           const indices = shape.indexes;
@@ -210,16 +235,16 @@ void main() {
             controlPoint1: easingOuts[indices[indices.length - 1].easingOut],
             controlPoint2: easingIns[indices[0].easingIn],
           });
-        }
 
-        this.path.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
+          this.graphicsPath.moveTo(this.curveValues[this.curveValues.length - 1].point.x, this.curveValues[this.curveValues.length - 1].point.y);
 
-        for (const curveValue of this.curveValues) {
-          const point = curveValue.point;
-          const control1 = curveValue.controlPoint1;
-          const control2 = curveValue.controlPoint2;
+          for (const curveValue of this.curveValues) {
+            const point = curveValue.point;
+            const control1 = curveValue.controlPoint1;
+            const control2 = curveValue.controlPoint2;
 
-          this.path.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
+            this.graphicsPath.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
+          }
         }
 
         break;
@@ -227,7 +252,7 @@ void main() {
       case spec.ShapePrimitiveType.Ellipse: {
         const ellipseData = shapeData as spec.EllipseData;
 
-        this.path.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
+        this.graphicsPath.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
         this.setFillColor(ellipseData.fill);
 
@@ -236,7 +261,7 @@ void main() {
       case spec.ShapePrimitiveType.Rectangle: {
         const rectangleData = shapeData as spec.RectangleData;
 
-        this.path.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height);
+        this.graphicsPath.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height);
 
         this.setFillColor(rectangleData.fill);
 
@@ -245,7 +270,7 @@ void main() {
       case spec.ShapePrimitiveType.Star: {
         const starData = shapeData as spec.StarData;
 
-        this.path.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
+        this.graphicsPath.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
 
         this.setFillColor(starData.fill);
 
@@ -254,7 +279,7 @@ void main() {
       case spec.ShapePrimitiveType.Polygon: {
         const polygonData = shapeData as spec.PolygonData;
 
-        this.path.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
+        this.graphicsPath.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
 
         this.setFillColor(polygonData.fill);
 
@@ -274,6 +299,13 @@ void main() {
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.data = data;
+    this.shapeDirty = true;
+    const strokeParam = (data as spec.PolygonData).stroke;
+
+    if (strokeParam) {
+      this.isStroke = true;
+      this.strokeAttributes.width = strokeParam.width;
+    }
 
     const material = this.material;
 

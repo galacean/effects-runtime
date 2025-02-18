@@ -152,15 +152,16 @@ export class Polygon extends ShapePrimitive {
 
   override triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void {
     const triangles = triangulate([points]);
+    const indexStart = vertices.length / 2;
 
     for (let i = 0; i < triangles.length; i++) {
-      vertices[verticesOffset + i] = triangles[i];
+      vertices[verticesOffset * 2 + i] = triangles[i];
     }
 
     const vertexCount = triangles.length / 2;
 
     for (let i = 0; i < vertexCount; i++) {
-      indices[indicesOffset + i] = i;
+      indices[indicesOffset + i] = indexStart + i;
     }
   }
 }
