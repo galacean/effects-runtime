@@ -247,10 +247,9 @@ export class VideoComponent extends BaseRenderComponent {
 
   /**
    * 播放视频
-   * @returns
+   * @since 2.3.0
    */
   playVideo (): void {
-
     if (this.played) {
       return;
     }
@@ -264,6 +263,7 @@ export class VideoComponent extends BaseRenderComponent {
 
   /**
    * 暂停视频
+   * @since 2.3.0
    */
   pauseVideo (): void {
     if (this.played) {
