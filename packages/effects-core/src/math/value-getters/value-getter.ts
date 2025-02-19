@@ -3,7 +3,6 @@ import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import * as spec from '@galacean/effects-specification';
-import { BezierKeyframeType } from '@galacean/effects-specification';
 import type { ColorStop } from '../../utils';
 import { colorStopsFromGradient, interpolateColor } from '../../utils';
 import type { BezierEasing } from '../bezier';
@@ -462,7 +461,7 @@ export class BezierCurve extends ValueGetter<number> {
     const keyTimeEnd = this.curveMap[keyTimeData[keyTimeData.length - 1]].timeEnd;
 
     if (time <= keyTimeStart) {
-      if (this.startKeyframe[0] === BezierKeyframeType.LINE || this.startKeyframe[0] === BezierKeyframeType.HOLD) {
+      if (this.startKeyframe[0] === spec.BezierKeyframeType.LINE || this.startKeyframe[0] === spec.BezierKeyframeType.HOLD) {
         const { yIndex } = keyframeInfo.getPointIndexInCurve(this.startKeyframe);
 
         return this.endKeyframe[1][yIndex];
@@ -471,7 +470,7 @@ export class BezierCurve extends ValueGetter<number> {
       return this.getCurveValue(keyTimeData[0], keyTimeStart);
     }
     if (time >= keyTimeEnd) {
-      if (this.endKeyframe[0] === BezierKeyframeType.LINE || this.endKeyframe[0] === BezierKeyframeType.HOLD) {
+      if (this.endKeyframe[0] === spec.BezierKeyframeType.LINE || this.endKeyframe[0] === spec.BezierKeyframeType.HOLD) {
         const { yIndex } = keyframeInfo.getPointIndexInCurve(this.endKeyframe);
 
         return this.endKeyframe[1][yIndex];
