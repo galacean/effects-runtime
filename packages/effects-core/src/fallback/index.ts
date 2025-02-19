@@ -6,7 +6,7 @@ import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType } from '@galacean/effect
 import { generateGUID } from '../utils';
 import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
-import { version21Migration, version22Migration, version24Migration, version30Migration } from './migration';
+import { version21Migration, version22Migration, version24Migration, version30Migration, version31Migration } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
 import { arrAdd, quatFromXYZRotation, rotationZYXFromQuat } from './utils';
@@ -24,6 +24,8 @@ export function getStandardJSON (json: any): JSONScene {
 
   // 修正老版本数据中，meshItem 以及 lightItem 结束行为错误问题
   version22Migration(json);
+  // 修正老版本数据中，富文本插件名称的问题
+  version31Migration(json);
 
   if (v0.test(json.version)) {
     reverseParticle = (/^(\d+)/).exec(json.version)?.[0] === '0';
