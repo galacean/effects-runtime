@@ -8,6 +8,43 @@
 
 ---
 
+## 2.2.5
+
+`2025-02-14`
+
+- Fix: 修复富文本渲染白屏问题。[#857](https://github.com/galacean/effects-runtime/pull/857) @Sruimeng
+- Fix: 移除粒子点击后会多移除一个的逻辑。[#863](https://github.com/galacean/effects-runtime/pull/863) @RGCHN
+- Fix: 移除 http 请求 response 代码 0 表示成功的逻辑。[#860](https://github.com/galacean/effects-runtime/pull/860) @RGCHN
+- Fix: 3d mesh max joint and camera rotation error. [#858](https://github.com/galacean/effects-runtime/pull/858) @wumaolinmaoan
+
+## 2.2.4
+
+`2025-02-07`
+
+- Fix: update texture and material in TextComponentBase. [#855](https://github.com/galacean/effects-runtime/pull/855) @Sruimen
+
+## 2.2.3
+
+`2025-02-07`
+
+- Fix: interact item drag invalid when delayed. [#849](https://github.com/galacean/effects-runtime/pull/849) @wumaolinmaoan
+- Fix: 修复文本遮罩问题。[#848](https://github.com/galacean/effects-runtime/pull/848) @Sruimeng
+- Fix: opt render level filter logic. [#844](https://github.com/galacean/effects-runtime/pull/844) @wumaolinmaoan
+- Chore: add gl lost check when framebuffer failed. [#841](https://github.com/galacean/effects-runtime/pull/841) @wumaolinmaoan
+
+## 2.2.2
+
+`2025-01-13`
+
+- Chore: add framebuffer creation failed error. [#836](https://github.com/galacean/effects-runtime/pull/836) @wumaolinmaoan
+
+## 2.2.1
+
+`2025-01-03`
+
+- Fix: 修复安卓机富文本字重问题。[#824](https://github.com/galacean/effects-runtime/pull/824) @Sruimeng
+- Fix: bounding box offset. [#822](https://github.com/galacean/effects-runtime/pull/822) @wumaolinmaoan
+
 ## 2.2.0
 
 `2024-12-31`
