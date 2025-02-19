@@ -1,3 +1,6 @@
+// Based on:
+// https://github.com/airbnb/lottie-web/blob/master/player/js/utils/shapes/ShapeProperty.js
+
 import { buildAdaptiveBezier } from './build-adaptive-bezier';
 import { ShapePrimitive } from './shape-primitive';
 import { triangulate } from './triangulate';

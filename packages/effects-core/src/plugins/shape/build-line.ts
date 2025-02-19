@@ -1,3 +1,6 @@
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/buildCommands/buildLine.ts
+
 import { Point } from './point';
 
 export type LineCap = 'butt' | 'round' | 'square';

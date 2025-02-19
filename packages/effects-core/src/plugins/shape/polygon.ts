@@ -1,7 +1,5 @@
-/**
- * Based on:
- * https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Polygon.ts
- */
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Polygon.ts
 
 import { ShapePrimitive } from './shape-primitive';
 import type { PointData } from './point-data';

@@ -1,3 +1,6 @@
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/ShapePrimitive.ts
+
 export abstract class ShapePrimitive {
 
   /** Checks whether the x and y coordinates passed to this function are contained within this ShapePrimitive. */
