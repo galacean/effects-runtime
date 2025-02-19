@@ -3,7 +3,7 @@ import type {
 } from '@galacean/effects';
 import {
   spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
-  Texture,
+  assertExist, Texture,
 } from '@galacean/effects';
 
 /**
@@ -28,6 +28,15 @@ export class VideoComponent extends BaseRenderComponent {
   video?: HTMLVideoElement;
 
   private threshold = 0.03;
+  /**
+   * 播放标志位
+   */
+  private played = false;
+
+  /**
+   * 视频元素是否激活
+   */
+  isVideoActive = false;
 
   constructor (engine: Engine) {
     super(engine);
@@ -63,6 +72,25 @@ export class VideoComponent extends BaseRenderComponent {
     this.video = (texture.source as Texture2DSourceOptionsVideo).video;
   }
 
+  override onAwake (): void {
+    super.onAwake();
+    this.item.composition?.on('goto', (option: { time: number }) => {
+      if (option.time > 0) {
+        const { endBehavior, start, duration } = this.item;
+
+        if (endBehavior === spec.EndBehavior.freeze || endBehavior === spec.EndBehavior.restart) {
+          this.setCurrentTime((option.time - start) % duration);
+        } else {
+          if (option.time >= duration) {
+            this.onDisable();
+          } else {
+            this.setCurrentTime(option.time - start);
+          }
+        }
+      }
+    });
+  }
+
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
 
@@ -84,7 +112,7 @@ export class VideoComponent extends BaseRenderComponent {
       this.setPlaybackRate(playbackRate);
       this.setVolume(volume);
       this.setMuted(muted);
-      const endBehavior = this.item.endBehavior;
+      const endBehavior = this.item.taggedProperties.endBehavior;
 
       // 如果元素设置为 destroy
       if (endBehavior === spec.EndBehavior.destroy) {
@@ -120,31 +148,29 @@ export class VideoComponent extends BaseRenderComponent {
     this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
 
     this.setItem();
-
-  }
-
-  override onStart (): void {
-    super.onStart();
-    this.item.composition?.on('goto', (option: { time: number }) => {
-      if (option.time > 0) {
-        this.setCurrentTime(option.time);
-      }
-    });
   }
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
+    const { time, duration, endBehavior, composition, start } = this.item;
 
-    const { time, duration, endBehavior } = this.item;
+    assertExist(composition);
+    const { endBehavior: rootEndBehavior, duration: rootDuration } = composition.rootItem;
 
     if (time > 0) {
       this.setVisible(true);
       this.playVideo();
     }
 
-    if (time === 0 && this.item.composition?.rootItem.endBehavior === spec.EndBehavior.freeze) {
-      this.pauseVideo();
-      this.setCurrentTime(0);
+    if ((time === 0 || time === (rootDuration - start))) {
+      if (rootEndBehavior === spec.EndBehavior.freeze) {
+        if (!this.video?.paused) {
+          this.pauseVideo();
+          this.setCurrentTime(time);
+        }
+      } else {
+        this.setCurrentTime(time);
+      }
     }
     if (Math.abs(time - duration) < this.threshold) {
       if (endBehavior === spec.EndBehavior.freeze) {
@@ -233,15 +259,30 @@ export class VideoComponent extends BaseRenderComponent {
     this.video.playbackRate = rate;
   }
 
-  private playVideo (): void {
+  /**
+   * 播放视频
+   * @since 2.3.0
+   */
+  playVideo (): void {
+    if (this.played) {
+      return;
+    }
     if (this.video) {
+      this.played = true;
       this.video.play().catch(error => {
         this.engine.renderErrors.add(error);
       });
     }
   }
 
-  private pauseVideo (): void {
+  /**
+   * 暂停视频
+   * @since 2.3.0
+   */
+  pauseVideo (): void {
+    if (this.played) {
+      this.played = false;
+    }
     if (this.video && !this.video.paused) {
       this.video.pause();
     }
@@ -259,14 +300,14 @@ export class VideoComponent extends BaseRenderComponent {
 
   override onDisable (): void {
     super.onDisable();
-
     this.setCurrentTime(0);
-    this.video?.pause();
+    this.isVideoActive = false;
+    this.pauseVideo();
   }
 
   override onEnable (): void {
     super.onEnable();
-
+    this.isVideoActive = true;
     this.playVideo();
   }
 }
