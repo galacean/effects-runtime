@@ -1,5 +1,6 @@
 import { generateGUID, Player, spec } from '@galacean/effects';
 import { VideoComponent } from '@galacean/effects-plugin-multimedia';
+
 interface VideoCompositionOptions {
   duration: number,
   endBehavior: spec.EndBehavior,

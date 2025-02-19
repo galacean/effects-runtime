@@ -548,6 +548,7 @@ export class TextComponentBase {
     );
 
     this.renderer.texture = texture;
+    this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
   }

@@ -4,7 +4,7 @@ import type {
 } from '@galacean/effects-core';
 import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, Material,
-  TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isAndroid,
+  TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, EventEmitter,
   generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, Scene,
 } from '@galacean/effects-core';
@@ -22,10 +22,22 @@ let seed = 1;
  */
 export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposable, LostHandler, RestoreHandler {
   readonly env: string;
+  /**
+   * 播放器的像素比
+   */
   readonly pixelRatio: number;
+  /**
+   * 播放器的 canvas 对象
+   */
   readonly canvas: HTMLCanvasElement;
+  /**
+   * 播放器的唯一标识
+   */
   readonly name: string;
   readonly gpuCapability: GPUCapability;
+  /**
+   * 播放器的容器元素
+   */
   readonly container: HTMLElement | null;
   /**
    * 播放器的渲染对象
@@ -79,8 +91,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       return;
     }
 
-    // 注意：安卓设备和 iOS 13/iOS 16.5 在 WebGL2 下有渲染或卡顿问题，故默认使用 WebGL1
-    let framework: GLType = (isAndroid() || isDowngradeIOS()) ? 'webgl' : 'webgl2';
+    // 注意: iOS 13/iOS 16.5 在 WebGL2 下有渲染或卡顿问题，故默认使用 WebGL1
+    let framework: GLType = isDowngradeIOS() ? 'webgl' : 'webgl2';
 
     // 用户可以通过传入 renderFramework，手动强制使用 WebGL 1/2 来渲染
     if (glType) {

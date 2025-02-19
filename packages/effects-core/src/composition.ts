@@ -27,6 +27,9 @@ import { SerializationHelper } from './serialization-helper';
  */
 export interface CompositionStatistic {
   loadStart: number,
+  /**
+   * 加载耗时
+   */
   loadTime: number,
   /**
    * Shader 编译耗时
@@ -42,9 +45,21 @@ export interface CompositionStatistic {
  * 合成消息对象
  */
 export interface MessageItem {
+  /**
+   * 元素 ID
+   */
   id: string,
+  /**
+   * 元素名称
+   */
   name: string,
-  phrase: number,
+  /**
+   * 消息阶段（2：开始，1：结束）
+   */
+  phrase: typeof spec.MESSAGE_ITEM_PHRASE_BEGIN | typeof spec.MESSAGE_ITEM_PHRASE_END,
+  /**
+   * 合成 ID
+   */
   compositionId: string,
 }
 
@@ -52,8 +67,21 @@ export interface MessageItem {
  *
  */
 export interface CompositionHitTestOptions {
+  /**
+   *
+   */
   maxCount?: number,
+  /**
+   *
+   * @param region
+   * @returns
+   */
   stop?: (region: Region) => boolean,
+  /**
+   *
+   * @param item
+   * @returns
+   */
   skip?: (item: VFXItem) => boolean,
 }
 
@@ -61,13 +89,39 @@ export interface CompositionHitTestOptions {
  *
  */
 export interface CompositionProps {
+  /**
+   *
+   */
   reusable?: boolean,
+  /**
+   *
+   */
   baseRenderOrder?: number,
+  /**
+   *
+   */
   renderer: Renderer,
+  /**
+   *
+   * @param message
+   * @returns
+   */
   handleItemMessage: (message: MessageItem) => void,
+  /**
+   *
+   */
   event?: EventSystem,
+  /**
+   *
+   */
   width: number,
+  /**
+   *
+   */
   height: number,
+  /**
+   *
+   */
   speed?: number,
 }
 
@@ -218,7 +272,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * Composition 构造函数
    * @param props - composition 的创建参数
    * @param scene
-   * @param compositionSourceManager
    */
   constructor (
     props: CompositionProps,
@@ -401,6 +454,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     return this.speed;
   }
 
+  /**
+   *
+   */
   play () {
     if (this.isEnded && this.reusable) {
       this.restart();
@@ -419,6 +475,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.paused = true;
   }
 
+  /**
+   *
+   * @returns
+   */
   getPaused () {
     return this.paused;
   }

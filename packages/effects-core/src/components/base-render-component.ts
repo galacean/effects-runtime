@@ -3,7 +3,7 @@ import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { RendererComponent } from './renderer-component';
-import type { Texture } from '../texture';
+import { Texture } from '../texture';
 import type { GeometryDrawMode, Renderer } from '../render';
 import { Geometry } from '../render';
 import type { Engine } from '../engine';
@@ -120,11 +120,26 @@ export class BaseRenderComponent extends RendererComponent {
   }
 
   /**
-   * 设置当前 Mesh 的纹理
+   * 使用纹理对象设置当前 Mesh 的纹理
    * @since 2.0.0
-   * @param texture - 纹理对象
+   * @param input - 纹理对象
    */
-  setTexture (texture: Texture) {
+  setTexture (input: Texture): void;
+  /**
+   * 使用资源链接异步设置当前 Mesh 的纹理
+   * @param input - 资料链接
+   * @since 2.3.0
+   */
+  async setTexture (input: string): Promise<void>;
+  async setTexture (input: Texture | string): Promise<void> {
+    let texture: Texture;
+
+    if (typeof input === 'string') {
+      texture = await Texture.fromImage(input, this.item.engine);
+    } else {
+      texture = input;
+    }
+
     this.renderer.texture = texture;
     this.material.setTexture('_MainTex', texture);
   }
