@@ -6,7 +6,7 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
   propertyName = '';
   propertyValue: T;
 
-  abstract resetAnimatedPropery (): void;
+  abstract resetPropertyValue (): void;
   abstract addWeightedValue (curveValue: T, weight: number): void;
 
   override evaluate (context: FrameContext): void {
@@ -24,7 +24,7 @@ export abstract class PropertyMixerPlayable<T> extends TrackMixerPlayable {
       return;
     }
 
-    this.resetAnimatedPropery();
+    this.resetPropertyValue();
 
     // evaluate the curve
     for (let i = 0; i < this.clipPlayables.length; i++) {

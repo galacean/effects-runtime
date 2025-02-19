@@ -3,7 +3,7 @@ import type { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import { PropertyMixerPlayable } from './property-mixer-playable';
 
 export class Vector4PropertyMixerPlayable extends PropertyMixerPlayable<Vector4> {
-  override resetAnimatedPropery (): void {
+  override resetPropertyValue (): void {
     this.propertyValue.setZero();
   }
 
@@ -18,7 +18,7 @@ export class Vector4PropertyMixerPlayable extends PropertyMixerPlayable<Vector4>
 }
 
 export class Vector2PropertyMixerPlayable extends PropertyMixerPlayable<Vector2> {
-  override resetAnimatedPropery (): void {
+  override resetPropertyValue (): void {
     this.propertyValue.setZero();
   }
 

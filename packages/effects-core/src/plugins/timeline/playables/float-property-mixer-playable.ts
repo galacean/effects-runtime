@@ -1,7 +1,7 @@
 import { PropertyMixerPlayable } from './property-mixer-playable';
 
 export class FloatPropertyMixerPlayable extends PropertyMixerPlayable<number> {
-  override resetAnimatedPropery (): void {
+  override resetPropertyValue (): void {
     this.propertyValue = 0;
   }
 

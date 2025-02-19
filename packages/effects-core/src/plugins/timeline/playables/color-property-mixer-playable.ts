@@ -2,7 +2,7 @@ import type { Color } from '@galacean/effects-math/es/core/color';
 import { PropertyMixerPlayable } from './property-mixer-playable';
 
 export class ColorPropertyMixerPlayable extends PropertyMixerPlayable<Color> {
-  override resetAnimatedPropery (): void {
+  override resetPropertyValue (): void {
     this.propertyValue.setZero();
   }
 
