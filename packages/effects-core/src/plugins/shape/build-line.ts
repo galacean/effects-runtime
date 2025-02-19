@@ -9,18 +9,17 @@ export const curveEps = 0.0001;
 /**
  * Buffers vertices to draw a square cap.
  *
- * Ignored from docs since it is not directly exposed.
- * @ignore
+ * @internal
  * @private
- * @param {number} x - X-coord of end point
- * @param {number} y - Y-coord of end point
- * @param {number} nx - X-coord of line normal pointing inside
- * @param {number} ny - Y-coord of line normal pointing inside
- * @param {number} innerWeight - Weight of inner points
- * @param {number} outerWeight - Weight of outer points
- * @param {boolean} clockwise - Whether the cap is drawn clockwise
- * @param {Array<number>} verts - vertex buffer
- * @returns {number} - no. of vertices pushed
+ * @param x - X-coord of end point
+ * @param y - Y-coord of end point
+ * @param nx - X-coord of line normal pointing inside
+ * @param ny - Y-coord of line normal pointing inside
+ * @param innerWeight - Weight of inner points
+ * @param outerWeight - Weight of outer points
+ * @param clockwise - Whether the cap is drawn clockwise
+ * @param verts - vertex buffer
+ * @returns - no. of vertices pushed
  */
 function square (
   x: number,
@@ -38,8 +37,8 @@ function square (
   const oy = y + (ny * outerWeight);
 
   /* Rotate nx,ny for extension vector */
-  let exx; let
-    eyy;
+  let exx;
+  let eyy;
 
   if (clockwise) {
     exx = ny;
@@ -65,18 +64,17 @@ function square (
 /**
  * Buffers vertices to draw an arc at the line joint or cap.
  *
- * Ignored from docs since it is not directly exposed.
- * @ignore
+ * @internal
  * @private
- * @param {number} cx - X-coord of center
- * @param {number} cy - Y-coord of center
- * @param {number} sx - X-coord of arc start
- * @param {number} sy - Y-coord of arc start
- * @param {number} ex - X-coord of arc end
- * @param {number} ey - Y-coord of arc end
- * @param {Array[]} verts - buffer of vertices
- * @param {boolean} clockwise - orientation of vertices
- * @returns {number} - no. of vertices pushed
+ * @param cx - X-coord of center
+ * @param cy - Y-coord of center
+ * @param sx - X-coord of arc start
+ * @param sy - Y-coord of arc start
+ * @param ex - X-coord of arc end
+ * @param ey - Y-coord of arc end
+ * @param verts - buffer of vertices
+ * @param clockwise - orientation of vertices
+ * @returns - no. of vertices pushed
  */
 function round (
   cx: number,
@@ -167,10 +165,8 @@ function getOrientationOfPoints (points: number[]): number {
 
 /**
  * A stroke attribute object, used to define properties for a stroke.
- * @memberof scene
  */
-export interface StrokeAttributes
-{
+export interface StrokeAttributes {
   /** The width of the stroke. */
   width: number,
   /** The alignment of the stroke. */
@@ -208,10 +204,9 @@ export function buildLine (
 
   indices: number[],
   _indicesOffset: number,
-
 ): void {
   // const shape = graphicsData.shape as Polygon;
-  //   let points = graphicsData.points || shape.points.slice();
+  // let points = graphicsData.points || shape.points.slice();
   const eps = closePointEps;
 
   if (points.length === 0) {
@@ -236,7 +231,7 @@ export function buildLine (
   const lastPoint = new Point(points[points.length - 2], points[points.length - 1]);
   const closedShape = closed;
   const closedPath = Math.abs(firstPoint.x - lastPoint.x) < eps
-        && Math.abs(firstPoint.y - lastPoint.y) < eps;
+    && Math.abs(firstPoint.y - lastPoint.y) < eps;
 
   // if the first point is the last point - gonna have issues :)
   if (closedShape) {
