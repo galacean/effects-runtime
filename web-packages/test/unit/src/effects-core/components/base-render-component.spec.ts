@@ -1,5 +1,4 @@
-import { generateGUID, SpriteComponent, Texture } from '@galacean/effects';
-import { Player } from '@galacean/effects';
+import { SpriteComponent, Texture, Player } from '@galacean/effects';
 
 const { expect } = chai;
 
