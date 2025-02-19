@@ -19,6 +19,10 @@ export default {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*uU2JRIjcLIcAAAAAAAAAAAAADlB4AQ',
     name: '塔奇-蝴蝶飞入',
   },
+  effect:{
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*XYMYQ64qpQMAAAAAAAAAAAAAelB4AQ',
+    name: '特效元素',
+  },
   // 氛围
   ribbons: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/MNJVBYCSYDWN/1425978492-8d707.json',

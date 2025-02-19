@@ -8,4 +8,4 @@ export * from './sub-composition-clip-playable';
 export * from './sub-composition-mixer-playable';
 export * from './track-mixer-playable';
 export * from './transform-mixer-playable';
-export * from './vector4-property-mixer-playable';
+export * from './vector-property-mixer-playable';

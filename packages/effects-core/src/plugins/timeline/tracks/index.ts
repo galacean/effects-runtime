@@ -6,5 +6,5 @@ export * from './transform-track';
 export * from './material-track';
 export * from './particle-track';
 export * from './property-track';
-export * from './vector4-property-track';
+export * from './vector-property-track';
 export * from './color-property-track';

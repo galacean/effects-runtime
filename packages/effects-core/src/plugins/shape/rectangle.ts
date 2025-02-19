@@ -1,3 +1,6 @@
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/Rectangle.ts
+
 import { ShapePrimitive } from './shape-primitive';
 
 // const tempPoints = [new Point(), new Point(), new Point(), new Point()];

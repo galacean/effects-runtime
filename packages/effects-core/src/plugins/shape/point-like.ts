@@ -1,3 +1,6 @@
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/maths/point/PointLike.ts
+
 import type { PointData } from './point-data';
 
 /**

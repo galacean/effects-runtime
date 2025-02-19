@@ -1,7 +1,5 @@
-/**
- * Based on:
- * https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/ShapePath.ts
- */
+// Based on:
+// https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/path/ShapePath.ts
 
 import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Polygon } from './polygon';
