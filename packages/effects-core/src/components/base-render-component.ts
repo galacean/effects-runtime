@@ -120,28 +120,28 @@ export class BaseRenderComponent extends RendererComponent {
   }
 
   /**
-   * 设置当前 Mesh 的纹理
-   * @param url - 图片地址
+   * 使用纹理对象设置当前 Mesh 的纹理
+   * @since 2.0.0
+   * @param input - 纹理对象
+   */
+  setTexture (input: Texture): void;
+  /**
+   * 使用资源链接异步设置当前 Mesh 的纹理
+   * @param input - 资料链接
    * @since 2.3.0
    */
-  async setTexture (url: string): Promise<void>;
-  /**
-   * 设置当前 Mesh 的纹理
-   * @since 2.0.0
-   * @param texture - 纹理对象
-   */
-  setTexture (texture: Texture): void;
-  async setTexture (textureOrUrl: Texture | string): Promise<void> {
-    if (typeof textureOrUrl === 'string') {
-      const engine = this.item.engine;
-      const texture = await Texture.fromImage(textureOrUrl, engine);
+  async setTexture (input: string): Promise<void>;
+  async setTexture (input: Texture | string): Promise<void> {
+    let texture: Texture;
 
-      this.renderer.texture = texture;
-      this.material.setTexture('_MainTex', texture);
+    if (typeof input === 'string') {
+      texture = await Texture.fromImage(input, this.item.engine);
     } else {
-      this.renderer.texture = textureOrUrl;
-      this.material.setTexture('_MainTex', textureOrUrl);
+      texture = input;
     }
+
+    this.renderer.texture = texture;
+    this.material.setTexture('_MainTex', texture);
   }
 
   /**

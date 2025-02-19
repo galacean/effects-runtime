@@ -1,9 +1,10 @@
-import type { Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps,
-  GeometryFromShape } from '@galacean/effects';
+import type {
+  Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
+} from '@galacean/effects';
 import {
+  spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
   Texture,
 } from '@galacean/effects';
-import { spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo } from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
@@ -19,6 +20,9 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
 
 let seed = 0;
 
+/**
+ *
+ */
 @effectsClass(spec.DataType.VideoComponent)
 export class VideoComponent extends BaseRenderComponent {
   video?: HTMLVideoElement;
@@ -32,34 +36,31 @@ export class VideoComponent extends BaseRenderComponent {
     this.geometry = this.createGeometry(glContext.TRIANGLES);
   }
 
-  override async setTexture (texture: Texture | string): Promise<void> {
-
+  override setTexture (input: Texture): void;
+  override async setTexture (input: string): Promise<void>;
+  override async setTexture (input: Texture | string): Promise<void> {
     const oldTexture = this.renderer.texture;
     const composition = this.item.composition;
+    let texture: Texture;
 
-    let finalTexture: Texture;
-
-    if (typeof texture === 'string') {
-      const engine = this.item.engine;
-      const newTexture = await Texture.fromImage(texture, engine);
-
-      finalTexture = newTexture;
+    if (typeof input === 'string') {
+      texture = await Texture.fromVideo(input, this.item.engine);
     } else {
-      finalTexture = texture;
+      texture = input;
     }
 
     if (!composition) { return; }
 
     composition.textures.forEach((cachedTexture, index) => {
       if (cachedTexture === oldTexture) {
-        composition.textures[index] = finalTexture;
+        composition.textures[index] = texture;
       }
     });
 
     this.engine.removeTexture(oldTexture);
-    this.renderer.texture = finalTexture;
-    this.material.setTexture('_MainTex', finalTexture);
-    this.video = (finalTexture.source as Texture2DSourceOptionsVideo).video;
+    this.renderer.texture = texture;
+    this.material.setTexture('_MainTex', texture);
+    this.video = (texture.source as Texture2DSourceOptionsVideo).video;
   }
 
   override fromData (data: VideoItemProps): void {
