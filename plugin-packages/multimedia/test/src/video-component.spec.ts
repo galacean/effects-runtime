@@ -7,6 +7,8 @@ interface VideoCompositionOptions {
   videos: spec.AssetBase[],
   start: number,
   options: spec.VideoContentOptions,
+  composisitonDuration?: number,
+  composisitonEndBehavior?: spec.EndBehavior,
 }
 
 const { expect } = chai;
@@ -24,7 +26,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
         },
       ],
       start: 0,
@@ -53,7 +55,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
         },
       ],
       start: 0,
@@ -72,7 +74,7 @@ describe('videoComponent ', function () {
     const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
-    expect(videoComponent.enabled).to.be.false;
+    expect(videoComponent.isVideoActive).to.be.false;
 
     composition.dispose();
   });
@@ -86,7 +88,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
         },
       ],
       start: 0,
@@ -121,7 +123,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
         },
       ],
       start: 0,
@@ -155,7 +157,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
         },
       ],
       start: 0,
@@ -189,7 +191,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
         },
       ],
       start: 0,
@@ -223,7 +225,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
         },
       ],
       start: 0,
@@ -257,7 +259,7 @@ describe('videoComponent ', function () {
       videos: [
         {
           id,
-          url: 'https://gw.alipayobjects.com/v/huamei_s9rwo4/afts/video/A*pud9Q7-6P7QAAAAAAAAAAAAADiqKAQ',
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
         },
       ],
       start: 0,
@@ -281,6 +283,179 @@ describe('videoComponent ', function () {
     expect(videoAsset.playbackRate).to.equal(0.5);
     composition.dispose();
   });
+
+  it('videoComponent:component destroy & composition forward', async function () {
+    const id = generateGUID();
+    const options: VideoCompositionOptions = {
+      duration: 10,
+      endBehavior: spec.EndBehavior.destroy,
+      composisitonDuration: 20,
+      id,
+      videos: [
+        {
+          id,
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
+        },
+      ],
+      start: 0,
+      options: { video: { id } },
+    };
+    const videoJson = getVideoJson(options);
+    const composition = await player.loadScene(videoJson);
+    const video = composition.getItemByName('video');
+
+    player.gotoAndPlay(11);
+
+    if (!video) { throw new Error('video is null'); }
+    expect(video.endBehavior).to.equal(options.endBehavior);
+    expect(video.duration).to.equal(options.duration);
+    expect(video.start).to.equal(options.start);
+    const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
+
+    expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.isVideoActive).to.be.false;
+
+    composition.dispose();
+  });
+
+  it('videoComponent:component destroy & composition destroy', async function () {
+    const id = generateGUID();
+    const options: VideoCompositionOptions = {
+      duration: 10,
+      endBehavior: spec.EndBehavior.destroy,
+      composisitonEndBehavior: spec.EndBehavior.destroy,
+      composisitonDuration: 20,
+      id,
+      videos: [
+        {
+          id,
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
+        },
+      ],
+      start: 0,
+      options: { video: { id } },
+    };
+    const videoJson = getVideoJson(options);
+    const composition = await player.loadScene(videoJson);
+    const video = composition.getItemByName('video');
+
+    player.gotoAndPlay(11);
+
+    if (!video) { throw new Error('video is null'); }
+    expect(video.endBehavior).to.equal(options.endBehavior);
+    expect(video.duration).to.equal(options.duration);
+    expect(video.start).to.equal(options.start);
+    const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
+
+    expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.isVideoActive).to.be.false;
+
+    composition.dispose();
+  });
+
+  it('videoComponent:component destroy & composition freeze', async function () {
+    const id = generateGUID();
+    const options: VideoCompositionOptions = {
+      duration: 10,
+      endBehavior: spec.EndBehavior.destroy,
+      composisitonEndBehavior: spec.EndBehavior.freeze,
+      composisitonDuration: 20,
+      id,
+      videos: [
+        {
+          id,
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
+        },
+      ],
+      start: 0,
+      options: { video: { id } },
+    };
+    const videoJson = getVideoJson(options);
+    const composition = await player.loadScene(videoJson);
+    const video = composition.getItemByName('video');
+
+    player.gotoAndPlay(11);
+
+    if (!video) { throw new Error('video is null'); }
+    expect(video.endBehavior).to.equal(options.endBehavior);
+    expect(video.duration).to.equal(options.duration);
+    expect(video.start).to.equal(options.start);
+    const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
+
+    expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.isVideoActive).to.be.false;
+
+    composition.dispose();
+  });
+
+  it('videoComponent:component freeze', async function () {
+    const id = generateGUID();
+    const options: VideoCompositionOptions = {
+      duration: 10,
+      endBehavior: spec.EndBehavior.freeze,
+      composisitonDuration: 20,
+      id,
+      videos: [
+        {
+          id,
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
+        },
+      ],
+      start: 0,
+      options: { video: { id } },
+    };
+    const videoJson = getVideoJson(options);
+    const composition = await player.loadScene(videoJson);
+    const video = composition.getItemByName('video');
+
+    player.gotoAndPlay(11);
+
+    if (!video) { throw new Error('video is null'); }
+    expect(video.endBehavior).to.equal(options.endBehavior);
+    expect(video.duration).to.equal(options.duration);
+    expect(video.start).to.equal(options.start);
+    const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
+
+    expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.isVideoActive).to.be.true;
+    expect(videoComponent.getCurrentTime()).to.be.within(1, 1.1);
+    expect(videoComponent.video?.paused).to.be.true;
+    composition.dispose();
+  });
+
+  it('videoComponent:component restart', async function () {
+    const id = generateGUID();
+    const options: VideoCompositionOptions = {
+      duration: 10,
+      endBehavior: spec.EndBehavior.restart,
+      id,
+      videos: [
+        {
+          id,
+          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
+        },
+      ],
+      start: 0,
+      options: { video: { id } },
+    };
+    const videoJson = getVideoJson(options);
+    const composition = await player.loadScene(videoJson);
+    const video = composition.getItemByName('video');
+
+    player.gotoAndPlay(12);
+
+    if (!video) { throw new Error('video is null'); }
+    expect(video.endBehavior).to.equal(options.endBehavior);
+    expect(video.duration).to.equal(options.duration);
+    expect(video.start).to.equal(options.start);
+    const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
+
+    expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.isVideoActive).to.be.true;
+    expect(videoComponent.video?.paused).to.be.false;
+    expect(videoComponent.getCurrentTime()).to.be.within(2, 2.1);
+    composition.dispose();
+  });
 });
 
 function getVideoJson (options: VideoCompositionOptions) {
@@ -297,9 +472,9 @@ function getVideoJson (options: VideoCompositionOptions) {
       {
         id: '5',
         name: 'videoTest',
-        duration: 10,
+        duration: options.composisitonDuration || 10,
         startTime: 0,
-        endBehavior: 2,
+        endBehavior: options.composisitonEndBehavior || spec.EndBehavior.forward,
         previewSize: [750, 1624],
         items: [{ id: '147e873c89b34c6f96108ccc4d6e6f83' }],
         camera: { fov: 60, far: 40, near: 0.1, clipMode: 1, position: [0, 0, 8], rotation: [0, 0, 0] },
