@@ -1,8 +1,10 @@
 import type {
-  Texture, Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps,
-  GeometryFromShape,
+  Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
 } from '@galacean/effects';
-import { spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo } from '@galacean/effects';
+import {
+  spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
+  Texture,
+} from '@galacean/effects';
 
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
@@ -18,6 +20,9 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
 
 let seed = 0;
 
+/**
+ *
+ */
 @effectsClass(spec.DataType.VideoComponent)
 export class VideoComponent extends BaseRenderComponent {
   video?: HTMLVideoElement;
@@ -31,9 +36,18 @@ export class VideoComponent extends BaseRenderComponent {
     this.geometry = this.createGeometry(glContext.TRIANGLES);
   }
 
-  override setTexture (texture: Texture): void {
+  override setTexture (input: Texture): void;
+  override async setTexture (input: string): Promise<void>;
+  override async setTexture (input: Texture | string): Promise<void> {
     const oldTexture = this.renderer.texture;
     const composition = this.item.composition;
+    let texture: Texture;
+
+    if (typeof input === 'string') {
+      texture = await Texture.fromVideo(input, this.item.engine);
+    } else {
+      texture = input;
+    }
 
     if (!composition) { return; }
 
