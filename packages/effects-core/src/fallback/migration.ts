@@ -1,6 +1,7 @@
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
   SpineContent, TimelineAssetData,
+  JSONSceneVersion,
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
@@ -52,6 +53,7 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
  * 3.0 以下版本数据适配（runtime 2.0及以上版本支持）
  */
 export function version30Migration (json: JSONSceneLegacy): JSONScene {
+  //@ts-expect-error
   const result: JSONScene = {
     ...json,
     items: [],
@@ -366,7 +368,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
   }
 
-  result.version = '3.0';
+  result.version = '3.0' as JSONSceneVersion;
 
   return result;
 }

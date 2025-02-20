@@ -60,7 +60,7 @@ export class JSONConverter {
 
     const newScene: spec.JSONScene = {
       ...oldScene,
-      version: '3.0',
+      version: '3.0' as spec.JSONSceneVersion,
       playerVersion: {
         web: '3.0',
         native: '3.0',
