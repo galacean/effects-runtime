@@ -462,18 +462,18 @@ export class BezierCurve extends ValueGetter<number> {
 
     if (time <= keyTimeStart) {
       if (this.startKeyframe[0] === spec.BezierKeyframeType.LINE || this.startKeyframe[0] === spec.BezierKeyframeType.HOLD) {
-        const { yIndex } = keyframeInfo.getPointIndexInCurve(this.startKeyframe);
+        keyframeInfo.getPointIndexInCurve(this.startKeyframe, keyframeInfo.pointIndexCache);
 
-        return this.endKeyframe[1][yIndex];
+        return this.endKeyframe[1][keyframeInfo.pointIndexCache.yIndex];
       }
 
       return this.getCurveValue(keyTimeData[0], keyTimeStart);
     }
     if (time >= keyTimeEnd) {
       if (this.endKeyframe[0] === spec.BezierKeyframeType.LINE || this.endKeyframe[0] === spec.BezierKeyframeType.HOLD) {
-        const { yIndex } = keyframeInfo.getPointIndexInCurve(this.endKeyframe);
+        keyframeInfo.getPointIndexInCurve(this.endKeyframe, keyframeInfo.pointIndexCache);
 
-        return this.endKeyframe[1][yIndex];
+        return this.endKeyframe[1][keyframeInfo.pointIndexCache.yIndex];
       }
 
       return this.getCurveValue(keyTimeData[keyTimeData.length - 1], keyTimeEnd);
