@@ -186,9 +186,6 @@ importers:
       '@galacean/effects-core':
         specifier: workspace:*
         version: link:../effects-core
-      string-hash:
-        specifier: ^1.1.3
-        version: 1.1.3
 
   plugin-packages/alipay-downgrade:
     devDependencies:
@@ -6186,10 +6183,6 @@ packages:
     resolution: {integrity: sha1-leL77AQnrhkYSTX4FtdKqkxcGdo=, tarball: https://registry.npmmirror.com/string-argv/download/string-argv-0.3.1.tgz}
     engines: {node: '>=0.6.19'}
     dev: true
-
-  /string-hash@1.1.3:
-    resolution: {integrity: sha512-kJUvRUFK49aub+a7T1nNE66EJbZBMnBgoC1UbCZ5n6bsZKBRga4KgBRTMn/pFkeCZSYtNeSyMxPDM0AXWELk2A==}
-    dev: false
 
   /string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}

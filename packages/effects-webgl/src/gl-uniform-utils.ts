@@ -1,6 +1,5 @@
 import type { Disposable, UniformValue, spec } from '@galacean/effects-core';
 import { assertExist, glContext } from '@galacean/effects-core';
-import stringHash from 'string-hash';
 import { GLGPUBuffer } from './gl-gpu-buffer';
 import type { GLPipelineContext } from './gl-pipeline-context';
 
@@ -322,6 +321,20 @@ export function createUniformBlockDataFromProgram (
   }
 
   return { blockSpecs, blockUniformNames };
+}
+
+export function stringHash (...strings: string[]): number {
+  let h = 0;
+
+  for (let j = 0; j < arguments.length; j++) {
+    const s = strings[j];
+
+    for (let i = 0; i < s.length; i++) {
+      h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+    }
+  }
+
+  return h;
 }
 
 function getUboHash (spec: UniformBlockSpec) {
