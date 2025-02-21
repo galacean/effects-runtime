@@ -53,7 +53,7 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
  * - 富文本插件名称的适配
  */
 export function version31Migration (json: JSONSceneLegacy): JSONSceneLegacy {
-  json.plugins.forEach((plugin, index) => {
+  json.plugins?.forEach((plugin, index) => {
     if (plugin === 'richtext') {
       json.plugins[index] = 'rich-text';
     }

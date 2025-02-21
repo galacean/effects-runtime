@@ -8,6 +8,15 @@
 
 ---
 
+## 2.2.6
+
+`2025-02-21`
+
+- Fix: 修复富文本插件名称。[#873](https://github.com/galacean/effects-runtime/pull/873) @Sruimeng
+- Fix: 修复定格关键帧结尾的错误。[#876](https://github.com/galacean/effects-runtime/pull/876) @RGCHN
+- Fix: 修复 player 销毁后，事件系统报错。[#872](https://github.com/galacean/effects-runtime/pull/872) @Sruimeng
+- Chore(deps): bump @vvfx/resource-detection to 0.7.1. [#875](https://github.com/galacean/effects-runtime/pull/875) @yiiqii
+
 ## 2.2.5
 
 `2025-02-14`
