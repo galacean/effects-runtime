@@ -4,7 +4,7 @@ import { BezierCurve, BezierCurvePath, BezierCurveQuat, GradientValue, LinearVal
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { ColorCurve } from './color-curve';
-import { Vector4Curve } from './vector4-curve';
+import { Vector2Curve, Vector4Curve } from './vector-curves';
 import { ValueGetter } from './value-getter';
 import { HELP_LINK } from '../../constants';
 
@@ -73,6 +73,9 @@ const map: Record<any, any> = {
   },
   [spec.ValueType.VECTOR4_CURVE] (props: spec.Vector4CurveData) {
     return new Vector4Curve(props);
+  },
+  [spec.ValueType.VECTOR2_CURVE] (props: spec.Vector2CurveData) {
+    return new Vector2Curve(props);
   },
 };
 

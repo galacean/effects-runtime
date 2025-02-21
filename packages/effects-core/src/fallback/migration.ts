@@ -4,6 +4,7 @@ import type {
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
+  JSONSceneVersion,
 } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
@@ -22,7 +23,7 @@ export function version21Migration (json: JSONSceneLegacy): JSONSceneLegacy {
     });
   });
 
-  json.version = '2.1';
+  json.version = JSONSceneVersion['2_1'];
 
   return json;
 }
@@ -380,7 +381,7 @@ export function version30Migration (json: JSONSceneLegacy): JSONScene {
     }
   }
 
-  result.version = '3.0';
+  result.version = JSONSceneVersion['3_0'];
 
   return result;
 }

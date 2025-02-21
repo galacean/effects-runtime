@@ -150,8 +150,8 @@ importers:
         specifier: 1.1.0
         version: 1.1.0
       '@galacean/effects-specification':
-        specifier: 2.1.0
-        version: 2.1.0
+        specifier: 2.2.0-alpha.2
+        version: 2.2.0-alpha.2
       flatbuffers:
         specifier: 24.3.25
         version: 24.3.25
@@ -2219,6 +2219,10 @@ packages:
 
   /@galacean/effects-specification@2.1.0:
     resolution: {integrity: sha512-gad/CBHvTlL182QExrPGqzafzfMjSEfVWRA4+mufHMvxlsDF0kEIvZ2EEcyG9IgvRkX81F1PU1vk+or6G1j2nw==}
+
+  /@galacean/effects-specification@2.2.0-alpha.2:
+    resolution: {integrity: sha512-V/RQ+NG1KwAGCF8yAmOeZMLAAT8csMOVthqxRS/40U7+su+VAqZezKc2+TK1UVI+TTMhdF/r5Vlnrlb5UmEuuQ==}
+    dev: false
 
   /@humanwhocodes/config-array@0.11.14:
     resolution: {integrity: sha512-3T8LkOmg45BV5FICb15QQMsyUSWrQ8AygVfC7ZG32zOalnqrilm018ZVCw0eapXux8FtA33q8PSRSstjee3jSg==}

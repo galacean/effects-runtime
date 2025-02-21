@@ -2,7 +2,7 @@ import type {
   BaseItem, BaseItemTransform, Composition, CompressedImage, Image, JSONScene, JSONSceneLegacy,
   ParticleItem, RenderLevel, SpriteItem, TemplateImage,
 } from '@galacean/effects-specification';
-import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType } from '@galacean/effects-specification';
+import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType, JSONSceneVersion } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
@@ -53,14 +53,14 @@ export function getStandardJSON (json: any): JSONScene {
   throw new Error(`Invalid JSON version: ${json.version}.`);
 }
 
-let currentVersion: '1.0' | '1.1' | '1.3' = '1.0';
+let currentVersion: JSONSceneVersion = JSONSceneVersion['1_0'];
 
 function getStandardJSONFromV0 (json: any): JSONSceneLegacy {
-  currentVersion = '1.0';
+  currentVersion = JSONSceneVersion['1_0'];
   const plugins = json.plugins || [];
 
   if (json.bins?.length) {
-    currentVersion = '1.3';
+    currentVersion = JSONSceneVersion['1_3'];
   }
   const requires: string[] = (json.requires || []).slice();
   const images = json.images.map((img: any, index: number) => getStandardImage(img, index, json.imageTags || []));
