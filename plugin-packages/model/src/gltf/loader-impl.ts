@@ -545,7 +545,7 @@ export class LoaderImpl implements Loader {
     this.composition.items = itemIds;
 
     const jsonScene: spec.JSONScene = {
-      version: '3.0' as spec.JSONSceneVersion,
+      version: spec.JSONSceneVersion['3_0'],
       playerVersion: {
         web: '2.0',
         native: '2.0',

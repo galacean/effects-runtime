@@ -1,10 +1,10 @@
+import * as spec from '@galacean/effects-specification';
+import type { Vector2, Vector4 } from '@galacean/effects-math/es/core';
 import { effectsClass, serialize } from '../../../decorators';
 import type { Playable, PlayableGraph } from '../../cal/playable-graph';
 import { PlayableAsset } from '../../cal/playable-graph';
 import { PropertyClipPlayable } from '../playables';
 import { createValueGetter } from '../../../math';
-import type { Vector2, Vector4 } from '@galacean/effects-math/es/core';
-import * as spec from '@galacean/effects-specification';
 
 @effectsClass(spec.DataType.Vector4PropertyPlayableAsset)
 export class Vector4PropertyPlayableAsset extends PlayableAsset {
