@@ -7,6 +7,15 @@
 
 ---
 
+## 2.2.6
+
+`2025-02-21`
+
+- Fix: Corrected the name of the rich text plugin. [#873](https://github.com/galacean/effects-runtime/pull/873) @Sruimeng
+- Fix: Fixed the error at the end of the freeze frame keyframe. [#876](https://github.com/galacean/effects-runtime/pull/876) @RGCHN
+- Fix: Resolved an error in the event system after the player is destroyed. [#872](https://github.com/galacean/effects-runtime/pull/872) @Sruimeng
+- Chore(deps): bump @vvfx/resource-detection to 0.7.1. [#875](https://github.com/galacean/effects-runtime/pull/875) @yiiqii
+
 ## 2.2.5
 
 `2025-02-14`
