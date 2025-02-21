@@ -49,6 +49,20 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
 }
 
 /**
+ * 3.1 版本数据适配
+ * - 富文本插件名称的适配
+ */
+export function version31Migration (json: JSONSceneLegacy): JSONSceneLegacy {
+  json.plugins?.forEach((plugin, index) => {
+    if (plugin === 'richtext') {
+      json.plugins[index] = 'rich-text';
+    }
+  });
+
+  return json;
+}
+
+/**
  * 3.0 以下版本数据适配（runtime 2.0及以上版本支持）
  */
 export function version30Migration (json: JSONSceneLegacy): JSONScene {

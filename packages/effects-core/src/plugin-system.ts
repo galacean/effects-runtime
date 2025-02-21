@@ -136,7 +136,7 @@ const pluginInfoMap: Record<string, string> = {
   'video': '@galacean/effects-plugin-multimedia',
   'audio': '@galacean/effects-plugin-multimedia',
   'orientation-transformer': '@galacean/effects-plugin-orientation-transformer',
-  'richtext': '@galacean/effects-plugin-rich-text',
+  'rich-text': '@galacean/effects-plugin-rich-text',
   'spine': '@galacean/effects-plugin-spine',
 };
 

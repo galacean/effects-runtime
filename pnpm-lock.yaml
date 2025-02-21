@@ -224,8 +224,8 @@ importers:
         specifier: ^2.0.45
         version: 2.0.45
       '@vvfx/resource-detection':
-        specifier: ^0.7.0
-        version: 0.7.0
+        specifier: ^0.7.1
+        version: 0.7.1
       fpsmeter:
         specifier: ^0.3.1
         version: 0.3.1
@@ -310,8 +310,8 @@ importers:
         specifier: workspace:*
         version: link:../../plugin-packages/spine
       '@vvfx/resource-detection':
-        specifier: ^0.6.2
-        version: 0.6.2
+        specifier: ^0.7.1
+        version: 0.7.1
       maoan-imgui-js:
         specifier: ^1.0.6
         version: 1.0.6
@@ -344,8 +344,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/effects-webgl
       '@vvfx/resource-detection':
-        specifier: ^0.7.0
-        version: 0.7.0
+        specifier: ^0.7.1
+        version: 0.7.1
 
 packages:
 
@@ -2217,10 +2217,6 @@ packages:
     resolution: {integrity: sha512-6b1v0jq7sYYizRXWmXGTOiboeOjwVzu0BQ6HigC0GVn50oW4wVWX8lFfOd3HIYhddGareI5IZvjaJZwj69qAcA==}
     engines: {node: '>=10.0.0'}
 
-  /@galacean/effects-specification@2.0.0:
-    resolution: {integrity: sha512-7ieZALZYn5fwKLIGAskmYSKGX82ZkLRdDUInG21KsOJ2eQ5+HcI6mJU5tmN8vjZxQUc+RVuUcssExGbiaj2+5w==}
-    dev: false
-
   /@galacean/effects-specification@2.1.0:
     resolution: {integrity: sha512-gad/CBHvTlL182QExrPGqzafzfMjSEfVWRA4+mufHMvxlsDF0kEIvZ2EEcyG9IgvRkX81F1PU1vk+or6G1j2nw==}
 
@@ -3006,28 +3002,8 @@ packages:
       - supports-color
     dev: true
 
-  /@vvfx/resource-detection@0.6.2:
-    resolution: {integrity: sha512-hMXcDFLSVNMEkscx0N8Q1FtFM0muHrDCfR4SY1hfrLNWeOGaveQSoZhU6Sfm49uBXwPfkroTDIjt4kHCvI6UXg==}
-    engines: {node: '>=10.0.0'}
-    dependencies:
-      '@galacean/effects-math': 1.1.0
-      '@galacean/effects-specification': 2.0.0
-      '@types/draco3dgltf': 1.4.3
-      '@types/ndarray': 1.0.11
-      '@types/sharp': 0.31.1
-      fflate: 0.7.4
-      gl-matrix: 3.4.3
-      ktx-parse: 0.4.5
-      maxrects-packer: 2.7.3
-      meshoptimizer: 0.18.1
-      ndarray: 1.0.19
-      ndarray-lanczos: 0.1.2
-      ndarray-pixels: 1.0.0
-      node-fetch: 3.3.2
-    dev: false
-
-  /@vvfx/resource-detection@0.7.0:
-    resolution: {integrity: sha512-fV34OZRbRIjP1OMDjPfuLsZszpGg56DhSf1NeLUu4g6RJszwNFJ/Uazh7PVCrV8NyZhrWWyGQub3BA2CbE1SxQ==}
+  /@vvfx/resource-detection@0.7.1:
+    resolution: {integrity: sha512-2yetmpvjNRmn1ENWpIGT2d9C2l9yB0HOiK+oPIdqc3QGsGahvyw73vBYFL6yrlaxQsBbpfiQ7A+aNqp1Ii1rWA==}
     engines: {node: '>=10.0.0'}
     dependencies:
       '@galacean/effects-math': 1.1.0
