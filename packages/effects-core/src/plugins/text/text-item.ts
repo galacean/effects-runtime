@@ -7,7 +7,7 @@ import { TextStyle } from './text-style';
 import { glContext } from '../../gl';
 import { effectsClass } from '../../decorators';
 import { canvasPool } from '../../canvas-pool';
-import { applyMixins, isValidFontFamily } from '../../utils';
+import { applyMixins, assertExist, isValidFontFamily } from '../../utils';
 import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
 import type { ItemRenderer } from '../../components';
@@ -180,9 +180,13 @@ export class TextComponentBase {
     let lineCount = 1;
     let x = 0;
 
+    assertExist(context);
+    context.font = `10px ${this.textStyle.fontFamily}`;
+    // console.log(context.font, 'width', width);
+
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
+      const textMetrics = (context.measureText(str)?.width ?? 0) * fontScale;
 
       // 和浏览器行为保持一致
       x += letterSpace;
