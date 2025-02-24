@@ -4,7 +4,10 @@ import { PropertyMixerPlayable } from './property-mixer-playable';
 
 export class Vector4PropertyMixerPlayable extends PropertyMixerPlayable<Vector4> {
   override resetPropertyValue (): void {
-    this.propertyValue.setZero();
+    this.propertyValue.x = 0;
+    this.propertyValue.y = 0;
+    this.propertyValue.z = 0;
+    this.propertyValue.w = 0;
   }
 
   override addWeightedValue (curveValue: Vector4, weight: number): void {
@@ -19,7 +22,8 @@ export class Vector4PropertyMixerPlayable extends PropertyMixerPlayable<Vector4>
 
 export class Vector2PropertyMixerPlayable extends PropertyMixerPlayable<Vector2> {
   override resetPropertyValue (): void {
-    this.propertyValue.setZero();
+    this.propertyValue.x = 0;
+    this.propertyValue.y = 0;
   }
 
   override addWeightedValue (curveValue: Vector2, weight: number): void {
