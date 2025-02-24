@@ -74,7 +74,7 @@ export class CompositionComponent extends Behaviour {
 
     // The properties of the object may change dynamically,
     // so reset the track binding to avoid invalidation of the previously obtained binding object.
-    // this.resolveBindings();
+    this.resolveBindings();
     this.timelinePlayable.evaluate();
     this.graph.evaluate(dt);
   }
