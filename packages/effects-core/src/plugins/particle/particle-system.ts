@@ -216,8 +216,6 @@ export class ParticleSystem extends Component {
       position, rotation, path,
     };
 
-    const parentTransform = this.transform.parentTransform;
-
     const selfPos = position.clone();
 
     if (path) {
@@ -225,16 +223,14 @@ export class ParticleSystem extends Component {
     }
     this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
 
-    if (this.options.particleFollowParent && parentTransform) {
-      const worldMatrix = parentTransform.getWorldMatrix();
+    if (this.options.particleFollowParent) {
+      const worldMatrix = this.transform.getWorldMatrix();
 
       this.renderer.updateWorldMatrix(worldMatrix);
     }
   }
 
   private updateEmitterTransform (time: number) {
-    const parentTransform = this.transform.parentTransform;
-
     const { path, position } = this.basicTransform;
     const selfPos = position.clone();
 
@@ -245,8 +241,8 @@ export class ParticleSystem extends Component {
     }
     this.transform.setPosition(selfPos.x, selfPos.y, selfPos.z);
 
-    if (this.options.particleFollowParent && parentTransform) {
-      const worldMatrix = parentTransform.getWorldMatrix();
+    if (this.options.particleFollowParent) {
+      const worldMatrix = this.transform.getWorldMatrix();
 
       this.renderer.updateWorldMatrix(worldMatrix);
     }
@@ -662,7 +658,7 @@ export class ParticleSystem extends Component {
     const lifetime = this.lifetime;
     const shape = this.shape;
     const speed = options.startSpeed.getValue(lifetime);
-    const matrix4 = options.particleFollowParent ? this.transform.getMatrix() : this.transform.getWorldMatrix();
+    const matrix4 = options.particleFollowParent ? Matrix4.IDENTITY : this.transform.getWorldMatrix();
     const pointPosition: Vector3 = data.position;
 
     // 粒子的位置受发射器的位置影响，自身的旋转和缩放不受影响
