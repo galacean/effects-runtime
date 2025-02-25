@@ -174,7 +174,7 @@ void main() {
 }
 `;
 
-  get path () {
+  get shape () {
     this.shapeDirty = true;
 
     return this.shapeAttribute;
