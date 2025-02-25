@@ -103,6 +103,7 @@ export class AnimationGraph extends EditorWindow {
     const stateNode2 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(600, 100));
     const stateNode3 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(800, 300));
 
+    this.stateMachineGraph.SetDefaultEntryState(stateNode1.GetID());
     const buildStateGraph = (stateNode: StateToolsNode, animationID: string)=>{
       const animationClipNode1 = stateNode.GetChildGraph()!.CreateNode(AnimationClipToolsNode);
       const state1ResultNode = stateNode.GetChildGraph()!.FindAllNodesOfType(PoseResultToolsNode)[0];
@@ -118,11 +119,8 @@ export class AnimationGraph extends EditorWindow {
 
     // stateNode1.GetChildGraph()?.CreateNode(StateMachineToolsNode);
     stateNode1.Rename('State1');
-    stateNode1.m_ID = 'State1';
     stateNode2.Rename('State2');
-    stateNode2.m_ID = 'State2';
     stateNode3.Rename('State3');
-    stateNode3.m_ID = 'State3';
 
     const transition1 = this.stateMachineGraph.CreateNode(TransitionConduitToolsNode, stateNode1, stateNode2);
     const transition2 = this.stateMachineGraph.CreateNode(TransitionConduitToolsNode, stateNode2, stateNode3);
@@ -136,13 +134,17 @@ export class AnimationGraph extends EditorWindow {
     const conditionNode2 = transition2.GetSecondaryGraph()!.CreateNode(ConstBoolToolsNode);
     const conditionNode3 = transition3.GetSecondaryGraph()!.CreateNode(ConstBoolToolsNode);
 
+    conditionNode1.m_value = true;
+    conditionNode2.m_value = true;
+    conditionNode3.m_value = true;
+
+    transitionToolsNode1.m_duration = 2;
+    transitionToolsNode2.m_duration = 2;
+    transitionToolsNode3.m_duration = 3;
+
     (transition1.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode1, conditionNode1.GetOutputPin(0), transitionToolsNode1, transitionToolsNode1.GetInputPin(0));
     (transition2.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode2, conditionNode2.GetOutputPin(0), transitionToolsNode2, transitionToolsNode2.GetInputPin(0));
     (transition3.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode3, conditionNode3.GetOutputPin(0), transitionToolsNode3, transitionToolsNode3.GetInputPin(0));
-
-    transitionToolsNode1.m_ID = '1';
-    transitionToolsNode2.m_ID = '2';
-    transitionToolsNode3.m_ID = '3';
 
     this.primaryGraphView.SetGraphToView(this.flowGraph);
     this.userContext.OnNavigateToGraph(this.NavigateToGraph.bind(this));
@@ -193,12 +195,7 @@ export class AnimationGraph extends EditorWindow {
     animationGraphComponent.graph = this.graph;
 
     this.userContext.m_pGraphInstance = this.graph;
-    this.userContext.m_nodeIDtoIndexMap.set('1', 5);
-    this.userContext.m_nodeIDtoIndexMap.set('2', 6);
-    this.userContext.m_nodeIDtoIndexMap.set('3', 7);
-    this.userContext.m_nodeIDtoIndexMap.set('State1', 1);
-    this.userContext.m_nodeIDtoIndexMap.set('State2', 2);
-    this.userContext.m_nodeIDtoIndexMap.set('State3', 3);
+    this.userContext.m_nodeIDtoIndexMap = this.compilationContext.GetUUIDToRuntimeIndexMap();
     // this.imNodeFlow.update();
 
     this.DrawGraphView();
@@ -626,104 +623,9 @@ export class AnimationGraph extends EditorWindow {
     // console.log(context.nodeAssetDatas, resources);
 
     const graphAsset: AnimationGraphAssetData = {
-      nodeAssetDatas: [
-        {
-          'type': 'StateMachineNodeAsset',
-          'stateDatas': [
-            {
-              'stateNodeIndex': 1,
-              'transitionDatas': [
-                {
-                  'targetStateIndex': 1,
-                  'conditionNodeIndex': 4,
-                  'transitionNodeIndex': 5,
-                },
-              ],
-            },
-            {
-              'stateNodeIndex': 2,
-              'transitionDatas': [
-                {
-                  'targetStateIndex': 2,
-                  'conditionNodeIndex': 4,
-                  'transitionNodeIndex': 6,
-                },
-              ],
-            },
-            {
-              'stateNodeIndex': 3,
-              'transitionDatas': [
-                {
-                  'targetStateIndex': 0,
-                  'conditionNodeIndex': 4,
-                  'transitionNodeIndex': 7,
-                },
-              ],
-            },
-          ],
-          'defaultStateIndex': 0,
-          'index': 0,
-        },
-        {
-          'type': 'StateNodeAsset',
-          'index': 1,
-          'childNodeIndex': 8,
-        },
-        {
-          'type': 'StateNodeAsset',
-          'index': 2,
-          'childNodeIndex': 9,
-        },
-        {
-          'type': 'StateNodeAsset',
-          'index': 3,
-          'childNodeIndex': 10,
-        },
-        {
-          'type': 'ConstFloatNodeAsset',
-          'value': 1,
-          'index': 4,
-        },
-        {
-          'type': 'TransitionNodeAsset',
-          'index': 5,
-          'duration': 2,
-          'targetStateNodeIndex': 2,
-        },
-        {
-          'type': 'TransitionNodeAsset',
-          'index': 6,
-          'duration': 2,
-          'targetStateNodeIndex': 3,
-        },
-        {
-          'type': 'TransitionNodeAsset',
-          'index': 7,
-          'duration': 3,
-          'targetStateNodeIndex': 1,
-        },
-        {
-          'type': 'AnimationClipNodeAsset',
-          'index': 8,
-          'dataSlotIndex': 0,
-        },
-        {
-          'type': 'AnimationClipNodeAsset',
-          'index': 9,
-          'dataSlotIndex': 1,
-        },
-        {
-          'type': 'AnimationClipNodeAsset',
-          'index': 10,
-          'dataSlotIndex': 2,
-        },
-      ],
+      nodeAssetDatas: context.nodeAssetDatas,
       graphDataSet: {
-        resources: [
-          { id: '25ea2eda5e0e41a1a59a45294bcb5b2d' },
-          { id: '83864e16075b490b8b487e58844d1191' },
-          { id: 'e366a3769aa14592ab0e37f2a8763834' },
-        ],
+        resources: resources,
       },
       id: '',
       dataType: 'AnimationGraphAsset' as spec.DataType,
