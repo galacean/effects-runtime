@@ -10,6 +10,7 @@ import {
   itemFrag,
   itemVert,
   GLSLVersion,
+  PLAYER_OPTIONS_ENV_EDITOR,
 } from '@galacean/effects';
 
 /**
@@ -106,6 +107,7 @@ export class VideoComponent extends BaseRenderComponent {
 
     const macros: ShaderMacros = [
       ['TRANSPARENT_VIDEO', this.transparent],
+      ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
     ];
     const fragment = itemFrag;
     const vertex = itemVert;
