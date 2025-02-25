@@ -1,9 +1,15 @@
 import type {
   Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
+  ItemRenderInfo,
+  MaterialProps,
+  ShaderMacros,
 } from '@galacean/effects';
 import {
   spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
   assertExist, Texture,
+  itemFrag,
+  itemVert,
+  GLSLVersion,
 } from '@galacean/effects';
 
 /**
@@ -37,6 +43,11 @@ export class VideoComponent extends BaseRenderComponent {
    * 视频元素是否激活
    */
   isVideoActive = false;
+
+  /**
+   * 是否为透明视频
+   */
+  protected transparent = false;
 
   constructor (engine: Engine) {
     super(engine);
@@ -91,6 +102,27 @@ export class VideoComponent extends BaseRenderComponent {
     });
   }
 
+  protected override getMaterialProps (renderInfo: ItemRenderInfo, count: number): MaterialProps {
+
+    const macros: ShaderMacros = [
+      ['TRANSPARENT_VIDEO', this.transparent],
+    ];
+    const fragment = itemFrag;
+    const vertex = itemVert;
+
+    const shader = {
+      fragment,
+      vertex,
+      glslVersion: count === 1 ? GLSLVersion.GLSL1 : GLSLVersion.GLSL3,
+      macros,
+      shared: true,
+    };
+
+    return {
+      shader,
+    };
+  }
+
   override fromData (data: VideoItemProps): void {
     super.fromData(data);
 
@@ -101,9 +133,11 @@ export class VideoComponent extends BaseRenderComponent {
       playbackRate = 1,
       volume = 1,
       muted = false,
+      transparent = false,
     } = options;
     let renderer = data.renderer;
 
+    this.transparent = transparent;
     if (!renderer) {
       renderer = {} as SpriteItemProps['renderer'];
     }
@@ -140,6 +174,9 @@ export class VideoComponent extends BaseRenderComponent {
     const geometry = this.createGeometry(glContext.TRIANGLES);
     const material = this.createMaterial(this.renderInfo, 2);
 
+    if (this.transparent) {
+      this.material.enableMacro('TRANSPARENT_VIDEO', this.transparent);
+    }
     this.worldMatrix = math.Matrix4.fromIdentity();
     this.material = material;
     this.geometry = geometry;
