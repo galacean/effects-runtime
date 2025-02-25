@@ -201,7 +201,7 @@ export class VideoComponent extends BaseRenderComponent {
       this.playVideo();
     }
 
-    if ((time === 0 || time === (rootDuration - start))) {
+    if ((time === 0 || time === (rootDuration - start) || Math.abs(rootDuration - duration - time) < 1e-10)) {
       if (rootEndBehavior === spec.EndBehavior.freeze) {
         if (!this.video?.paused) {
           this.pauseVideo();
