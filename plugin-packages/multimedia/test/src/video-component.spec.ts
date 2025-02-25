@@ -292,12 +292,10 @@ describe('videoComponent ', function () {
       endBehavior: spec.EndBehavior.destroy,
       composisitonDuration: 20,
       id,
-      videos: [
-        {
-          id,
-          url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
-        },
-      ],
+      videos: [{
+        id,
+        url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
+      }],
       start: 0,
       options: { video: { id }, transparent: true },
     };
@@ -315,9 +313,9 @@ describe('videoComponent ', function () {
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     expect(videoComponent.isVideoActive).to.be.false;
-    //@ts-expect-error
+    // @ts-expect-error
     expect(videoComponent.transparent).to.be.true;
-    //@ts-expect-error
+    // @ts-expect-error
     const macros = videoComponent.material.shader.shaderData.macros;
 
     macros.forEach((macro: [string, boolean]) => {

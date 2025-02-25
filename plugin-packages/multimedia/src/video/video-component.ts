@@ -1,16 +1,10 @@
 import type {
   Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
-  ItemRenderInfo,
-  MaterialProps,
-  ShaderMacros,
+  ItemRenderInfo, MaterialProps, ShaderMacros,
 } from '@galacean/effects';
 import {
   spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
-  assertExist, Texture,
-  itemFrag,
-  itemVert,
-  GLSLVersion,
-  PLAYER_OPTIONS_ENV_EDITOR,
+  assertExist, Texture, itemFrag, itemVert, GLSLVersion, PLAYER_OPTIONS_ENV_EDITOR,
 } from '@galacean/effects';
 
 /**
@@ -104,7 +98,6 @@ export class VideoComponent extends BaseRenderComponent {
   }
 
   protected override getMaterialProps (renderInfo: ItemRenderInfo, count: number): MaterialProps {
-
     const macros: ShaderMacros = [
       ['TRANSPARENT_VIDEO', this.transparent],
       ['ENV_EDITOR', this.engine.renderer?.env === PLAYER_OPTIONS_ENV_EDITOR],
