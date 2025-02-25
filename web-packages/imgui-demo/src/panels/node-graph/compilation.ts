@@ -4,10 +4,12 @@ import { InvalidIndex, NodeAssetType } from '@galacean/effects';
 import { AnimationClipGraphNode, AnimationRootGraphNode, Blend1DGraphNode, ConstFloatGraphNode } from './animation-graph-nodes/animation-graph-node';
 import { StateMachineToolsNode } from './tools-graph/nodes/state-machine-tools-node';
 import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
-import { TransitionConduitToolsNode } from './tools-graph/nodes/transition-tools-node';
+import { TransitionConduitToolsNode, TransitionToolsNode } from './tools-graph/nodes/transition-tools-node';
 import type { BaseNode } from './visual-graph/base-graph';
 import type { UUID } from './visual-graph';
 import type * as NodeGraph from './visual-graph';
+import { ConstBoolToolsNode, ConstFloatToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
+import { AnimationClipToolsNode } from './tools-graph/nodes/animation-clip-tools-node';
 
 export enum NodeCompilationState {
   NeedCompilation,
@@ -324,20 +326,18 @@ export class GraphCompilationContext {
   }
 
   private getNodeAssetType (node: BaseNode) {
-    if (node instanceof AnimationClipGraphNode) {
+    if (node instanceof AnimationClipToolsNode) {
       return NodeAssetType.AnimationClipNodeAsset;
-    } else if (node instanceof AnimationRootGraphNode) {
-      return NodeAssetType.AnimationRootNodeAsset;
-    } else if (node instanceof Blend1DGraphNode) {
-      return NodeAssetType.Blend1DNodeAsset;
-    } else if (node instanceof ConstFloatGraphNode) {
-      return NodeAssetType.ConstFloatNodeAsset;
     } else if (node instanceof StateMachineToolsNode) {
       return NodeAssetType.StateMachineNodeAsset;
     } else if (node instanceof StateToolsNode) {
       return NodeAssetType.StateNodeAsset;
-    } else if (node instanceof TransitionConduitToolsNode) {
+    } else if (node instanceof TransitionToolsNode) {
       return NodeAssetType.TransitionNodeAsset;
+    } else if (node instanceof ConstFloatToolsNode) {
+      return NodeAssetType.ConstFloatNodeAsset;
+    } else if (node instanceof ConstBoolToolsNode) {
+      return NodeAssetType.ConstBoolNodeAsset;
     }
   }
 }

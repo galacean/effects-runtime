@@ -1,4 +1,4 @@
-import { NodeAssetType, nodeAssetClass } from '../..';
+import { BoolValueNode, NodeAssetType, nodeAssetClass } from '../..';
 import type { GraphContext, InstantiationContext } from '../graph-context';
 import type { GraphNodeAssetData } from '../graph-node';
 import { FloatValueNode, GraphNodeAsset } from '../graph-node';
@@ -26,6 +26,39 @@ export class ConstFloatNodeAsset extends GraphNodeAsset {
 
 export class ConstFloatNode extends FloatValueNode {
   value = 0;
+
+  override getValue<T>(context: GraphContext): T {
+    if (!this.isUpdated(context)) {
+      this.markNodeActive(context);
+    }
+
+    return this.value as T;
+  }
+}
+
+export interface ConstBoolNodeAssetData extends GraphNodeAssetData {
+  type: NodeAssetType.ConstBoolNodeAsset,
+  value: boolean,
+}
+
+@nodeAssetClass(NodeAssetType.ConstBoolNodeAsset)
+export class ConstBoolNodeAsset extends GraphNodeAsset {
+  value = true;
+
+  override instantiate (context: InstantiationContext) {
+    const node = this.createNode(ConstBoolNode, context);
+
+    node.value = this.value;
+  }
+
+  override load (data: ConstBoolNodeAssetData): void {
+    super.load(data);
+    this.value = data.value;
+  }
+}
+
+export class ConstBoolNode extends BoolValueNode {
+  value = true;
 
   override getValue<T>(context: GraphContext): T {
     if (!this.isUpdated(context)) {

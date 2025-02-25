@@ -25,6 +25,7 @@ import { FlowGraph } from './tools-graph/graphs/flow-graph';
 import { PoseResultToolsNode } from './tools-graph/nodes/result-tools-node';
 import type { FlowToolsNode } from './tools-graph/nodes/flow-tools-node';
 import { GraphCompilationContext } from './compilation';
+import { ConstBoolToolsNode, ConstFloatToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
 
 type ImVec2 = ImGui.ImVec2;
 type ImColor = ImGui.ImColor;
@@ -102,8 +103,20 @@ export class AnimationGraph extends EditorWindow {
     const stateNode2 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(600, 100));
     const stateNode3 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(800, 300));
 
-    stateNode1.GetChildGraph()?.CreateNode(AnimationClipToolsNode);
-    stateNode1.GetChildGraph()?.CreateNode(StateMachineToolsNode);
+    const buildStateGraph = (stateNode: StateToolsNode, animationID: string)=>{
+      const animationClipNode1 = stateNode.GetChildGraph()!.CreateNode(AnimationClipToolsNode);
+      const state1ResultNode = stateNode.GetChildGraph()!.FindAllNodesOfType(PoseResultToolsNode)[0];
+
+      animationClipNode1.m_defaultResourceID = animationID;
+
+      (stateNode.GetChildGraph()! as FlowGraph).TryMakeConnection(animationClipNode1, animationClipNode1?.GetOutputPin(0), state1ResultNode, state1ResultNode.GetInputPin(0));
+    };
+
+    buildStateGraph(stateNode1, '25ea2eda5e0e41a1a59a45294bcb5b2d');
+    buildStateGraph(stateNode2, '83864e16075b490b8b487e58844d1191');
+    buildStateGraph(stateNode3, 'e366a3769aa14592ab0e37f2a8763834');
+
+    // stateNode1.GetChildGraph()?.CreateNode(StateMachineToolsNode);
     stateNode1.Rename('State1');
     stateNode1.m_ID = 'State1';
     stateNode2.Rename('State2');
@@ -118,6 +131,14 @@ export class AnimationGraph extends EditorWindow {
     const transitionToolsNode1 = transition1.GetSecondaryGraph()!.CreateNode(TransitionToolsNode);
     const transitionToolsNode2 = transition2.GetSecondaryGraph()!.CreateNode(TransitionToolsNode);
     const transitionToolsNode3 = transition3.GetSecondaryGraph()!.CreateNode(TransitionToolsNode);
+
+    const conditionNode1 = transition1.GetSecondaryGraph()!.CreateNode(ConstBoolToolsNode);
+    const conditionNode2 = transition2.GetSecondaryGraph()!.CreateNode(ConstBoolToolsNode);
+    const conditionNode3 = transition3.GetSecondaryGraph()!.CreateNode(ConstBoolToolsNode);
+
+    (transition1.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode1, conditionNode1.GetOutputPin(0), transitionToolsNode1, transitionToolsNode1.GetInputPin(0));
+    (transition2.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode2, conditionNode2.GetOutputPin(0), transitionToolsNode2, transitionToolsNode2.GetInputPin(0));
+    (transition3.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode3, conditionNode3.GetOutputPin(0), transitionToolsNode3, transitionToolsNode3.GetInputPin(0));
 
     transitionToolsNode1.m_ID = '1';
     transitionToolsNode2.m_ID = '2';

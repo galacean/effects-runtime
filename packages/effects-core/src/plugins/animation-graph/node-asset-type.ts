@@ -6,6 +6,7 @@ export enum NodeAssetType {
   AnimationRootNodeAsset = 'AnimationRootNodeAsset',
   Blend1DNodeAsset = 'Blend1DNodeAsset',
   ConstFloatNodeAsset = 'ConstFloatNodeAsset',
+  ConstBoolNodeAsset = 'ConstBoolNodeAsset',
   ControlParameterFloatNodeAsset = 'ControlParameterFloatNodeAsset',
   StateMachineNodeAsset = 'StateMachineNodeAsset',
   TransitionNodeAsset = 'TransitionNodeAsset',
