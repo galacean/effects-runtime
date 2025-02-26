@@ -2,14 +2,15 @@ import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
   SpineContent, TimelineAssetData,
   CustomShapeData,
+  ShapeComponentData,
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion,
+  ShapePrimitiveType,
 } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
-import { spec } from '..';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -65,10 +66,10 @@ export function version31Migration (json: JSONScene): JSONScene {
 
   // Custom shape fill 属性位置迁移
   for (const component of json.components) {
-    if (component.dataType === spec.DataType.ShapeComponent) {
-      const shapeComponent = component as spec.ShapeComponentData;
+    if (component.dataType === DataType.ShapeComponent) {
+      const shapeComponent = component as ShapeComponentData;
 
-      if (shapeComponent.type === spec.ShapePrimitiveType.Custom) {
+      if (shapeComponent.type === ShapePrimitiveType.Custom) {
 
         const customShapeComponent = shapeComponent as CustomShapeData;
 
