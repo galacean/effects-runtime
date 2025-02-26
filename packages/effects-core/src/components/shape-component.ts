@@ -11,7 +11,7 @@ import { Geometry, GLSLVersion } from '../render';
 import { MeshComponent } from './mesh-component';
 import { StarType } from '../plugins/shape/poly-star';
 import type { StrokeAttributes } from '../plugins/shape/build-line';
-import { buildLine } from '../plugins/shape/build-line';
+import { LineCap, LineJoin, buildLine } from '../plugins/shape/build-line';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 
 interface CurveData {
@@ -230,8 +230,8 @@ void main() {
     this.strokeAttributes = {
       width: 1,
       alignment: 0.5,
-      cap: 'butt',
-      join: 'miter',
+      cap: LineCap.Butt,
+      join: LineJoin.Miter,
       miterLimit: 10,
     };
     this.shapeAttribute = {
@@ -330,10 +330,10 @@ void main() {
         const easingIns = customShapeAtribute.easingIns;
         const easingOuts = customShapeAtribute.easingOuts;
 
+        this.setFillColor(customShapeAtribute.fill);
+
         for (const shape of customShapeAtribute.shapes) {
           this.curveValues = [];
-
-          this.setFillColor(shape.fill);
 
           const indices = shape.indexes;
 
@@ -427,15 +427,16 @@ void main() {
 
     switch (data.type) {
       case spec.ShapePrimitiveType.Custom: {
-        this.shapeAttribute = {
+        const customShapeData = data as spec.CustomShapeData;
+        const customShapeAttribute: CustomShapeAttribute = {
           type: spec.ShapePrimitiveType.Custom,
           points: [],
           easingIns: [],
           easingOuts: [],
           shapes: [],
-        } as CustomShapeAttribute;
-        const customShapeData = data as spec.CustomShapeData;
-        const customShapeAttribute = this.shapeAttribute as CustomShapeAttribute;
+          // @ts-expect-error
+          fill: customShapeData.fill,
+        };
 
         for (const point of customShapeData.points) {
           customShapeAttribute.points.push(new Vector2(point.x, point.y));
@@ -447,6 +448,8 @@ void main() {
           customShapeAttribute.easingOuts.push(new Vector2(easingOut.x, easingOut.y));
         }
         customShapeAttribute.shapes = customShapeData.shapes;
+
+        this.shapeAttribute = customShapeAttribute;
 
         break;
       }
@@ -480,12 +483,12 @@ void main() {
       case spec.ShapePrimitiveType.Star: {
         const starData = data as spec.StarData;
         const starAttribute: StarAttribute = {
-          type:spec.ShapePrimitiveType.Star,
+          type: spec.ShapePrimitiveType.Star,
           pointCount: starData.pointCount,
           innerRadius: starData.innerRadius,
           outerRadius: starData.outerRadius,
           innerRoundness: starData.innerRoundness,
-          outerRoundness:starData.outerRoundness,
+          outerRoundness: starData.outerRoundness,
           fill: starData.fill,
         };
 

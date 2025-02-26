@@ -24,8 +24,6 @@ export function getStandardJSON (json: any): JSONScene {
 
   // 修正老版本数据中，meshItem 以及 lightItem 结束行为错误问题
   version22Migration(json);
-  // 修正老版本数据中，富文本插件名称的问题
-  version31Migration(json);
 
   if (v0.test(json.version)) {
     reverseParticle = (/^(\d+)/).exec(json.version)?.[0] === '0';
@@ -44,7 +42,13 @@ export function getStandardJSON (json: any): JSONScene {
       json = version24Migration(json);
     }
     if (mainVersion < 3) {
-      return version30Migration(version21Migration(json));
+      json = version30Migration(version21Migration(json));
+    }
+    // 3.x 版本格式转换
+    if (mainVersion < 4) {
+      if (minorVersion < 2) {
+        json = version31Migration(json);
+      }
     }
 
     return json;
