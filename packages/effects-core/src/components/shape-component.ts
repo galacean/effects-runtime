@@ -11,7 +11,7 @@ import { Geometry, GLSLVersion } from '../render';
 import { MeshComponent } from './mesh-component';
 import { StarType } from '../plugins/shape/poly-star';
 import type { StrokeAttributes } from '../plugins/shape/build-line';
-import { buildLine } from '../plugins/shape/build-line';
+import { LineCap, LineJoin, buildLine } from '../plugins/shape/build-line';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 
 interface CurveData {
@@ -230,8 +230,8 @@ void main() {
     this.strokeAttributes = {
       width: 1,
       alignment: 0.5,
-      cap: 'butt',
-      join: 'miter',
+      cap: LineCap.Butt,
+      join: LineJoin.Miter,
       miterLimit: 10,
     };
     this.shapeAttribute = {
