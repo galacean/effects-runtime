@@ -435,7 +435,7 @@ void main() {
           easingOuts: [],
           shapes: [],
           // @ts-expect-error
-          fill:customShapeData.fill,
+          fill: customShapeData.fill,
         };
 
         for (const point of customShapeData.points) {
@@ -483,12 +483,12 @@ void main() {
       case spec.ShapePrimitiveType.Star: {
         const starData = data as spec.StarData;
         const starAttribute: StarAttribute = {
-          type:spec.ShapePrimitiveType.Star,
+          type: spec.ShapePrimitiveType.Star,
           pointCount: starData.pointCount,
           innerRadius: starData.innerRadius,
           outerRadius: starData.outerRadius,
           innerRoundness: starData.innerRoundness,
-          outerRoundness:starData.outerRoundness,
+          outerRoundness: starData.outerRoundness,
           fill: starData.fill,
         };
 

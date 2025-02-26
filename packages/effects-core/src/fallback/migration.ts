@@ -1,13 +1,10 @@
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
-  SpineContent, TimelineAssetData,
-  CustomShapeData,
-  ShapeComponentData,
+  SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData,
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
-  JSONSceneVersion,
-  ShapePrimitiveType,
+  JSONSceneVersion, ShapePrimitiveType,
 } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
@@ -57,7 +54,7 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
  * - 富文本插件名称的适配
  */
 export function version31Migration (json: JSONScene): JSONScene {
-  //version31Migration - 修正老版本数据中，富文本插件名称的问题
+  // 修正老版本数据中，富文本插件名称的问题
   json.plugins?.forEach((plugin, index) => {
     if (plugin === 'richtext') {
       json.plugins[index] = 'rich-text';
@@ -70,11 +67,10 @@ export function version31Migration (json: JSONScene): JSONScene {
       const shapeComponent = component as ShapeComponentData;
 
       if (shapeComponent.type === ShapePrimitiveType.Custom) {
-
         const customShapeComponent = shapeComponent as CustomShapeData;
 
         if (customShapeComponent.shapes?.length > 0 && customShapeComponent.shapes[0].fill) {
-          //@ts-expect-error
+          // @ts-expect-error
           customShapeComponent.fill = customShapeComponent.shapes[0].fill;
         }
       }

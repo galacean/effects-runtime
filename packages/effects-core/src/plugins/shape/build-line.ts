@@ -6,13 +6,13 @@ import { Point } from './point';
 export enum LineCap {
   Butt,
   Round,
-  Square
+  Square,
 }
 
 export enum LineJoin {
   Round,
   Bevel,
-  Miter
+  Miter,
 }
 
 export const closePointEps = 1e-4;
