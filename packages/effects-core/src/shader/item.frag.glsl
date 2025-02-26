@@ -2,7 +2,7 @@ precision highp float;
 
 varying vec4 vColor;
 varying vec2 vTexCoord;//x y
-varying vec3 vParams;//texIndex mulAplha transparentOcclusion
+varying vec3 vParams;//maskMode mulAplha transparentOcclusion
 
 uniform sampler2D _MainTex;
 
@@ -25,14 +25,19 @@ vec4 blendColor(vec4 color, vec4 vc, float mode) {
 void main() {
   vec4 color = vec4(0.);
   vec4 texColor = texture2D(_MainTex, vTexCoord.xy);
-  color = blendColor(texColor, vColor, floor(0.5 + vParams.y));
+  color = blend Color(texColor, vColor, floor(0.5 + vParams.y));
+
+// 如果是蒙版且透明度小于阈值 舍弃像素
+  if (vParams.x == 1. && color.a < 0.04) {
+    discard;
+  }
 
   #ifdef ALPHA_CLIP
   if(vParams.z == 0. && color.a < 0.04) { // 1/256 = 0.04
     discard;
   }
   #endif
-  //color.rgb = pow(color.rgb, vec3(2.2));
+
   color.a = clamp(color.a, 0.0, 1.0);
   gl_FragColor = color;
 }

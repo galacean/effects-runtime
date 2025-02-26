@@ -221,6 +221,7 @@ export class BaseRenderComponent extends RendererComponent {
       texParams.x = renderer.occlusion ? +(renderer.transparentOcclusion) : 1;
       texParams.y = +this.preMultiAlpha;
       texParams.z = renderer.renderMode;
+      texParams.w = renderer.maskMode;
 
       if (texParams.x === 0) {
         this.material.enableMacro('ALPHA_CLIP');
@@ -309,6 +310,7 @@ export class BaseRenderComponent extends RendererComponent {
     this.preMultiAlpha = getPreMultiAlpha(blending);
 
     const material = Material.create(this.engine, materialProps);
+
     const states = {
       side,
       blending: true,
@@ -320,9 +322,15 @@ export class BaseRenderComponent extends RendererComponent {
     };
 
     material.blending = states.blending;
-    material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
     material.depthTest = states.depthTest;
     material.depthMask = states.depthMask;
+    // 关闭蒙版元素的颜色写入
+    // if (states.maskMode === MaskMode.MASK) {
+    //   material.colorMask = [true, true, true, true];
+    // }
+
+    material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
+
     states.blending && setBlendMode(material, states.blendMode);
     setMaskMode(material, states.maskMode);
     setSideMode(material, states.side);
