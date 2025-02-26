@@ -1,6 +1,7 @@
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
   SpineContent, TimelineAssetData,
+  CustomShapeData,
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
@@ -8,6 +9,7 @@ import {
 } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
+import { spec } from '..';
 
 /**
  * 2.1 以下版本数据适配（mars-player@2.4.0 及以上版本支持 2.1 以下数据的适配）
@@ -54,11 +56,29 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
  * - 富文本插件名称的适配
  */
 export function version31Migration (json: JSONScene): JSONScene {
+  //version31Migration - 修正老版本数据中，富文本插件名称的问题
   json.plugins?.forEach((plugin, index) => {
     if (plugin === 'richtext') {
       json.plugins[index] = 'rich-text';
     }
   });
+
+  // Custom shape fill 属性位置迁移
+  for (const component of json.components) {
+    if (component.dataType === spec.DataType.ShapeComponent) {
+      const shapeComponent = component as spec.ShapeComponentData;
+
+      if (shapeComponent.type === spec.ShapePrimitiveType.Custom) {
+
+        const customShapeComponent = shapeComponent as CustomShapeData;
+
+        if (customShapeComponent.shapes[0].fill) {
+          //@ts-expect-error
+          customShapeComponent.fill = customShapeComponent.shapes[0].fill;
+        }
+      }
+    }
+  }
 
   return json;
 }

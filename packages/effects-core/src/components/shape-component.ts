@@ -330,10 +330,10 @@ void main() {
         const easingIns = customShapeAtribute.easingIns;
         const easingOuts = customShapeAtribute.easingOuts;
 
+        this.setFillColor(customShapeAtribute.fill);
+
         for (const shape of customShapeAtribute.shapes) {
           this.curveValues = [];
-
-          this.setFillColor(shape.fill);
 
           const indices = shape.indexes;
 
@@ -427,15 +427,16 @@ void main() {
 
     switch (data.type) {
       case spec.ShapePrimitiveType.Custom: {
-        this.shapeAttribute = {
+        const customShapeData = data as spec.CustomShapeData;
+        const customShapeAttribute: CustomShapeAttribute = {
           type: spec.ShapePrimitiveType.Custom,
           points: [],
           easingIns: [],
           easingOuts: [],
           shapes: [],
-        } as CustomShapeAttribute;
-        const customShapeData = data as spec.CustomShapeData;
-        const customShapeAttribute = this.shapeAttribute as CustomShapeAttribute;
+          // @ts-expect-error
+          fill:customShapeData.fill,
+        };
 
         for (const point of customShapeData.points) {
           customShapeAttribute.points.push(new Vector2(point.x, point.y));
@@ -447,6 +448,8 @@ void main() {
           customShapeAttribute.easingOuts.push(new Vector2(easingOut.x, easingOut.y));
         }
         customShapeAttribute.shapes = customShapeData.shapes;
+
+        this.shapeAttribute = customShapeAttribute;
 
         break;
       }

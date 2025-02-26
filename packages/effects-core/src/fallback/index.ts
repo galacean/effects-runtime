@@ -47,9 +47,6 @@ export function getStandardJSON (json: any): JSONScene {
     // 3.x 版本格式转换
     if (mainVersion < 4) {
       if (minorVersion < 2) {
-        /**
-         * version31Migration - 修正老版本数据中，富文本插件名称的问题
-         */
         json = version31Migration(json);
       }
     }
