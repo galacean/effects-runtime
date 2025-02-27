@@ -1,7 +1,7 @@
 // Based on:
 // https://github.com/pixijs/pixijs/blob/dev/src/maths/shapes/RoundedRectangle.ts
 
-import type { ShapePrimitive } from './shape-primitive';
+import { ShapePrimitive } from './shape-primitive';
 
 /**
  * The `Rectangle` object is an area defined by its position, as indicated by its top-left corner
@@ -9,44 +9,41 @@ import type { ShapePrimitive } from './shape-primitive';
  * defines the roundness of the rounded corners.
  * @memberof maths
  */
-export class Rectangle implements ShapePrimitive {
+export class Rectangle extends ShapePrimitive {
   /**
-     * The X coordinate of the upper-left corner of the rectangle
-     * @default 0
-     */
+   * The X coordinate of the upper-left corner of the rectangle
+   */
   x: number;
 
   /**
-     * The Y coordinate of the upper-left corner of the rectangle
-     * @default 0
-     */
+   * The Y coordinate of the upper-left corner of the rectangle
+   */
   y: number;
 
   /**
-     * The overall width of this rectangle
-     * @default 0
-     */
+   * The overall width of this rectangle
+   */
   width: number;
 
   /**
-     * The overall height of this rectangle
-     * @default 0
-     */
+   * The overall height of this rectangle
+   */
   height: number;
 
   /**
-     * Controls the roundness of the rounded corners
-     */
+   * Controls the roundness of the rounded corners
+   */
   roundness: number;
 
   /**
-     * @param x - The X coordinate of the upper-left corner of the rectangle
-     * @param y - The Y coordinate of the upper-left corner of the rectangle
-     * @param width - The overall width of this rectangle
-     * @param height - The overall height of this rectangle
-     * @param roundness - Controls the roundness of the rounded corners
-     */
+   * @param x - The X coordinate of the upper-left corner of the rectangle
+   * @param y - The Y coordinate of the upper-left corner of the rectangle
+   * @param width - The overall width of this rectangle
+   * @param height - The overall height of this rectangle
+   * @param roundness - Controls the roundness of the rounded corners
+   */
   constructor (x = 0, y = 0, width = 0, height = 0, roundness = 20) {
+    super();
     this.x = x;
     this.y = y;
     this.width = width;
@@ -55,10 +52,10 @@ export class Rectangle implements ShapePrimitive {
   }
 
   /**
-     * Returns the framing rectangle of the rectangle as a Rectangle object
-     * @param out - optional rectangle to store the result
-     * @returns The framing rectangle
-     */
+   * Returns the framing rectangle of the rectangle as a Rectangle object
+   * @param out - optional rectangle to store the result
+   * @returns The framing rectangle
+   */
   getBounds (out?: Rectangle): Rectangle {
     out = out || new Rectangle();
 
@@ -71,18 +68,18 @@ export class Rectangle implements ShapePrimitive {
   }
 
   /**
-     * Creates a clone of this rectangle.
-     * @returns - A copy of the rectangle.
-     */
+   * Creates a clone of this rectangle.
+   * @returns - A copy of the rectangle.
+   */
   clone (): Rectangle {
     return new Rectangle(this.x, this.y, this.width, this.height, this.roundness);
   }
 
   /**
-     * Copies another rectangle to this one.
-     * @param rectangle - The rectangle to copy from.
-     * @returns Returns itself.
-     */
+   * Copies another rectangle to this one.
+   * @param rectangle - The rectangle to copy from.
+   * @returns Returns itself.
+   */
   copyFrom (rectangle: Rectangle): this {
     this.x = rectangle.x;
     this.y = rectangle.y;
@@ -93,17 +90,17 @@ export class Rectangle implements ShapePrimitive {
   }
 
   /**
-     * Copies this rectangle to another one.
-     * @param rectangle - The rectangle to copy to.
-     * @returns Returns given parameter.
-     */
+   * Copies this rectangle to another one.
+   * @param rectangle - The rectangle to copy to.
+   * @returns Returns given parameter.
+   */
   copyTo (rectangle: Rectangle): Rectangle {
     rectangle.copyFrom(this);
 
     return rectangle;
   }
 
-  build (points: number[]): void {
+  override build (points: number[]): void {
     let ry;
 
     const halfWidth = this.width / 2;
@@ -202,7 +199,7 @@ export class Rectangle implements ShapePrimitive {
     }
   }
 
-  triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void {
+  override triangulate (points: number[], vertices: number[], verticesOffset: number, indices: number[], indicesOffset: number): void {
     if (points.length === 0) {
       return;
     }
