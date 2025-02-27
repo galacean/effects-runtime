@@ -85,6 +85,14 @@ export class Rectangle extends ShapePrimitive {
     this.y = rectangle.y;
     this.width = rectangle.width;
     this.height = rectangle.height;
+    this.roundness = rectangle.roundness;
+
+    return this;
+  }
+    this.x = rectangle.x;
+    this.y = rectangle.y;
+    this.width = rectangle.width;
+    this.height = rectangle.height;
 
     return this;
   }
