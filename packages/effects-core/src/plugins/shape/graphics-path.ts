@@ -94,8 +94,8 @@ export class GraphicsPath {
    * @param transform - An optional `Matrix` object to apply a transformation to the rectangle.
    * @returns The instance of the current object for chaining.
    */
-  rect (x: number, y: number, w: number, h: number, transform?: Matrix4): this {
-    this.instructions.push({ action: 'rect', data: [x, y, w, h, transform] });
+  rect (x: number, y: number, w: number, h: number, roundness: number, transform?: Matrix4): this {
+    this.instructions.push({ action: 'rect', data: [x, y, w, h, roundness, transform] });
 
     this.dirty = true;
 

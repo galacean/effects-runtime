@@ -380,7 +380,7 @@ void main() {
       case spec.ShapePrimitiveType.Rectangle: {
         const rectangleData = shapeAttribute as RectangleAttribute;
 
-        this.graphicsPath.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height);
+        this.graphicsPath.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height, rectangleData.roundness);
 
         this.setFillColor(rectangleData.fill);
 
