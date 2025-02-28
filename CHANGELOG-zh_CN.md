@@ -8,6 +8,12 @@
 
 ---
 
+## 2.2.7
+
+`2025-02-28`
+
+- Fix: 曲线起止采点不区分关键帧类型。[#889](https://github.com/galacean/effects-runtime/pull/889) @RGCHN
+
 ## 2.2.6
 
 `2025-02-21`
