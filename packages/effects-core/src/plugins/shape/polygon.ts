@@ -152,7 +152,7 @@ export class Polygon extends ShapePrimitive {
     const triangles = triangulate([points]);
     const indexStart = vertices.length / 2;
 
-    // 当所有 points 在一条直线时, gluTess 三角化 triangles 会返回空数组，这边做一下额外处理返回线段的左右端点，确保拿到的包围盒是正确的。
+    // 当所有 points 在一条直线时, gluTess 三角化 triangles 会返回空数组，这边做一下额外处理返回线段左右端点组成的三角形，确保拿到的包围盒是正确的。
     if (triangles.length === 0 && points.length > 1) {
       let leftX = points[0];
       let leftY = points[1];
