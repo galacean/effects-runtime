@@ -22,8 +22,7 @@ import { Colors } from './tools-graph/colors';
 import * as NodeGraph from './visual-graph';
 import { AnimationClipToolsNode } from './tools-graph/nodes/animation-clip-tools-node';
 import { FlowGraph } from './tools-graph/graphs/flow-graph';
-import { PoseResultToolsNode } from './tools-graph/nodes/result-tools-node';
-import type { FlowToolsNode } from './tools-graph/nodes/flow-tools-node';
+import { PoseResultToolsNode, ResultToolsNode } from './tools-graph/nodes/result-tools-node';
 import { GraphCompilationContext } from './compilation';
 import { ConstBoolToolsNode, ConstFloatToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
 
@@ -96,8 +95,11 @@ export class AnimationGraph extends EditorWindow {
 
     this.fromData(data);
 
-    this.flowGraph.CreateNode(PoseResultToolsNode, new ImVec2(500, 200));
-    this.stateMachineGraph = this.flowGraph.CreateNode(StateMachineToolsNode, new ImVec2(300, 200)).GetChildGraph() as StateMachineGraph;
+    const rootResultNode = this.flowGraph.CreateNode(PoseResultToolsNode, new ImVec2(500, 200));
+    const stateMachineNode = this.flowGraph.CreateNode(StateMachineToolsNode, new ImVec2(300, 200));
+
+    this.stateMachineGraph = stateMachineNode.GetChildGraph() as StateMachineGraph;
+    this.flowGraph.TryMakeConnection(stateMachineNode, stateMachineNode.GetOutputPin(0), rootResultNode, rootResultNode.GetInputPin(0));
 
     const stateNode1 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(400, 300));
     const stateNode2 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(600, 100));
@@ -605,9 +607,8 @@ export class AnimationGraph extends EditorWindow {
 
     context.reset();
 
-    for (let i = 0; i < nodes.length; i++) {
-      (nodes[i] as FlowToolsNode).Compile(context);
-    }
+    const resultNodes = this.flowGraph.FindAllNodesOfType(ResultToolsNode);
+    const rootNodeIdx = resultNodes[0].Compile(context);
 
     const resources = [];
 
@@ -629,7 +630,7 @@ export class AnimationGraph extends EditorWindow {
       },
       id: '',
       dataType: 'AnimationGraphAsset' as spec.DataType,
-      rootNodeIndex: 0,
+      rootNodeIndex: rootNodeIdx,
     };
 
     return graphAsset;
