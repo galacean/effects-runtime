@@ -172,6 +172,12 @@ export class Polygon extends ShapePrimitive {
    * 获取直线上最远的两个端点坐标组成的三角形
    */
   private getLineEndPointsTriangle (points: number[], triangles: number[]): void {
+    // 参数检查
+    if (!points || points.length < 2 || points.length % 2 !== 0) {
+
+      throw new Error('Invalid points array');
+    }
+
     if (points.length === 2) {
       triangles.push(
         points[0], points[1],
@@ -180,11 +186,6 @@ export class Polygon extends ShapePrimitive {
       );
 
       return;
-    }
-    // 参数检查
-    if (!points || points.length < 4 || points.length % 2 !== 0) {
-
-      throw new Error('Invalid points array');
     }
 
     // 取第一个线段计算斜率
