@@ -1346,29 +1346,30 @@ export class GraphView {
     this.m_pUserContext.NotifySelectionChanged(oldSelection, this.m_selectedNodes);
   }
 
-  // DestroySelectedNodes (): void {
-  //   const pGraph = this.GetViewedGraph();
+  DestroySelectedNodes (): void {
+    const pGraph = this.GetViewedGraph()!;
 
-  //   if (this.m_isReadOnly) {
-  //     throw new Error('Graph is read-only');
-  //   }
+    if (this.m_isReadOnly) {
+      throw new Error('Graph is read-only');
+    }
 
-  //   const sgm = new ScopedGraphModification(pGraph);
+    const sgm = new ScopedGraphModification(pGraph);
 
-  //   // Exclude any state machine transitions, as we will end up double deleting them since they are removed if the state is removed
-  //   if (this.IsViewingStateMachineGraph()) {
-  //     this.m_selectedNodes = this.m_selectedNodes.filter(node => !(node.m_pNode instanceof TransitionConduitNode));
-  //   }
+    // Exclude any state machine transitions, as we will end up double deleting them since they are removed if the state is removed
+    if (this.IsViewingStateMachineGraph()) {
+      this.m_selectedNodes = this.m_selectedNodes.filter(node => !(node.m_pNode instanceof TransitionConduitNode));
+    }
 
-  //   // Delete selected nodes
-  //   for (const selectedNode of this.m_selectedNodes) {
-  //     if (pGraph.CanDestroyNode(selectedNode.m_pNode) && selectedNode.m_pNode.IsDestroyable()) {
-  //       pGraph.DestroyNode(selectedNode.m_nodeID);
-  //     }
-  //   }
+    // Delete selected nodes
+    for (const selectedNode of this.m_selectedNodes) {
+      if (pGraph.CanDestroyNode(selectedNode.m_pNode!) && selectedNode.m_pNode!.IsDestroyable()) {
+        pGraph.DestroyNode(selectedNode.m_nodeID);
+      }
+    }
 
-  //   this.ClearSelection();
-  // }
+    this.ClearSelection();
+    sgm.End();
+  }
 
   // CreateCommentAroundSelectedNodes (): void {
   //   if (this.m_selectedNodes.length === 0) {
@@ -2314,44 +2315,46 @@ export class GraphView {
 
     // Keyboard
     // These operations require the graph view to be focused!
-    // if (this.m_hasFocus) {
-    //   // General operations
-    //   if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.C)) {
-    //     this.CopySelectedNodes(typeRegistry);
-    //   }
+    if (this.m_hasFocus) {
+      // General operations
+      // if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGui.Key.C)) {
+      //   this.CopySelectedNodes(typeRegistry);
+      // }
 
-    //   // Operations that modify the graph
-    //   if (!this.m_isReadOnly) {
-    //     if (ImGui.IsKeyPressed(ImGui.Key.F2)) {
-    //       if (this.m_selectedNodes.length === 1 && this.m_selectedNodes[0].m_pNode.IsRenameable()) {
-    //         this.BeginRenameNode(this.m_selectedNodes[0].m_pNode);
-    //       }
-    //     } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.X)) {
-    //       this.CopySelectedNodes(typeRegistry);
-    //       this.DestroySelectedNodes();
-    //     } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.V)) {
-    //       let pasteLocation = new ImVec2(0.0, 0.0);
+      // Operations that modify the graph
+      if (!this.m_isReadOnly) {
+        // if (ImGui.IsKeyPressed(ImGui.Key.F2)) {
+        //   if (this.m_selectedNodes.length === 1 && this.m_selectedNodes[0].m_pNode.IsRenameable()) {
+        //     this.BeginRenameNode(this.m_selectedNodes[0].m_pNode);
+        //   }
+        // } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.X)) {
+        //   this.CopySelectedNodes(typeRegistry);
+        //   this.DestroySelectedNodes();
+        // } else if (IO.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.V)) {
+        //   let pasteLocation = new ImVec2(0.0, 0.0);
 
-    //       if (this.m_isViewHovered) {
-    //         pasteLocation = ctx.m_mouseCanvasPos;
-    //       } else {
-    //         pasteLocation = ctx.m_canvasVisibleRect.GetCenter();
-    //       }
+        //   if (this.m_isViewHovered) {
+        //     pasteLocation = ctx.m_mouseCanvasPos;
+        //   } else {
+        //     pasteLocation = ctx.m_canvasVisibleRect.GetCenter();
+        //   }
 
-    //       this.PasteNodes(typeRegistry, pasteLocation);
-    //     }
+        //   this.PasteNodes(typeRegistry, pasteLocation);
+        // }
 
-    //     if (this.m_selectedNodes.length > 0) {
-    //       if (!ImGui.IsAnyItemActive() && ImGui.IsKeyPressed(ImGui.Key.Delete)) {
-    //         this.DestroySelectedNodes();
-    //       }
+        if (this.m_selectedNodes.length > 0) {
+          const DeleteKeyCode = 46;
 
-    //       if (IO.KeyShift && ImGui.IsKeyPressed(ImGui.Key.C)) {
-    //         this.CreateCommentAroundSelectedNodes();
-    //       }
-    //     }
-    //   }
-    // }
+          if (!ImGui.IsAnyItemActive() && ImGui.IsKeyPressed(DeleteKeyCode)) {
+            this.DestroySelectedNodes();
+          }
+
+          // if (IO.KeyShift && ImGui.IsKeyPressed(ImGui.Key.C)) {
+          //   this.CreateCommentAroundSelectedNodes();
+          // }
+        }
+      }
+    }
   }
 
   //   private HandleContextMenu (ctx: DrawContext): void {
