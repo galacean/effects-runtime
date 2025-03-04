@@ -215,7 +215,7 @@ export class FlowNode extends BaseNode {
     return false;
   }
 
-  protected DrawContextMenuOptions (ctx: DrawContext, userContext: UserContext, mouseCanvasPos: ImVec2, hoveredPin: Pin | null): void {}
+  DrawContextMenuOptions (ctx: DrawContext, userContext: UserContext, mouseCanvasPos: ImVec2, hoveredPin: Pin | null): void {}
 
   CreateDynamicInputPin (): void;
   CreateDynamicInputPin (pinName: string, pinType: string): void;

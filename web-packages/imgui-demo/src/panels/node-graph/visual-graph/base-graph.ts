@@ -22,7 +22,7 @@ export enum NodeVisualState {
 
 export abstract class BaseNode {
   m_ID: UUID;
-  protected m_name: string;
+  m_name: string;
   m_canvasPosition: ImVec2;
   m_size: ImVec2;
   m_titleRectSize: ImVec2;

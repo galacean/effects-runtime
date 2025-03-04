@@ -1171,7 +1171,7 @@ export class GraphView {
     this.EndDrawCanvas(drawingContext);
 
     this.HandleInput(drawingContext);
-    // this.HandleContextMenu(drawingContext);
+    this.HandleContextMenu(drawingContext);
     // this.DrawDialogs();
 
     // Handle drag and drop
@@ -2357,78 +2357,78 @@ export class GraphView {
     }
   }
 
-  //   private HandleContextMenu (ctx: DrawContext): void {
-  //     if (this.m_pGraph === null) {
-  //       return;
-  //     }
+  private HandleContextMenu (ctx: DrawContext): void {
+    if (this.m_pGraph === null) {
+      return;
+    }
 
-  //     if (this.m_isViewHovered && !this.m_contextMenuState.m_menuOpened && this.m_contextMenuState.m_requestOpenMenu) {
-  //       this.m_contextMenuState.m_mouseCanvasPos = ctx.m_mouseCanvasPos;
-  //       this.m_contextMenuState.m_menuOpened = true;
+    if (this.m_isViewHovered && !this.m_contextMenuState.m_menuOpened && this.m_contextMenuState.m_requestOpenMenu) {
+      this.m_contextMenuState.m_mouseCanvasPos = ctx.m_mouseCanvasPos;
+      this.m_contextMenuState.m_menuOpened = true;
 
-  //       // If this isn't an auto-connect request, then use the hovered data
-  //       if (!this.m_contextMenuState.m_isAutoConnectMenu) {
-  //         this.m_contextMenuState.m_pNode = this.m_pHoveredNode;
-  //         this.m_contextMenuState.m_pPin = this.m_pHoveredPin;
-  //       }
+      // If this isn't an auto-connect request, then use the hovered data
+      if (!this.m_contextMenuState.m_isAutoConnectMenu) {
+        this.m_contextMenuState.m_pNode = this.m_pHoveredNode;
+        this.m_contextMenuState.m_pPin = this.m_pHoveredPin;
+      }
 
-  //       // If we are opening a context menu for a node, set that node as selected
-  //       if (this.m_contextMenuState.m_pNode !== null) {
-  //         this.UpdateSelection(this.m_contextMenuState.m_pNode);
-  //       }
+      // If we are opening a context menu for a node, set that node as selected
+      if (this.m_contextMenuState.m_pNode !== null) {
+        this.UpdateSelection(this.m_contextMenuState.m_pNode);
+      }
 
-  //       ImGui.OpenPopupEx(ImGui.GetID('GraphContextMenu'));
-  //     }
+      ImGui.OpenPopup('GraphContextMenu');
+    }
 
-  //     this.m_contextMenuState.m_requestOpenMenu = false;
+    this.m_contextMenuState.m_requestOpenMenu = false;
 
-  //     if (this.IsContextMenuOpen()) {
-  //       ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new ImVec2(8, 8));
-  //       ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new ImVec2(4, 8));
-  //       if (ImGui.BeginPopupContextItem('GraphContextMenu')) {
-  //         if (this.m_contextMenuState.m_pNode instanceof CommentNode) {
-  //           this.DrawCommentContextMenu(ctx);
-  //         } else if (this.IsViewingFlowGraph()) {
-  //           this.DrawFlowGraphContextMenu(ctx);
-  //         } else if (this.IsViewingStateMachineGraph()) {
-  //           this.DrawStateMachineContextMenu(ctx);
-  //         }
+    if (this.IsContextMenuOpen()) {
+      ImGui.PushStyleVar(ImGui.StyleVar.WindowPadding, new ImVec2(8, 8));
+      ImGui.PushStyleVar(ImGui.StyleVar.ItemSpacing, new ImVec2(4, 8));
+      if (ImGui.BeginPopupContextItem('GraphContextMenu')) {
+        if (this.m_contextMenuState.m_pNode instanceof CommentNode) {
+          // this.DrawCommentContextMenu(ctx);
+        } else if (this.IsViewingFlowGraph()) {
+          this.DrawFlowGraphContextMenu(ctx);
+        } else if (this.IsViewingStateMachineGraph()) {
+          // this.DrawStateMachineContextMenu(ctx);
+        }
 
-  //         ImGui.EndPopup();
-  //       } else { // Close menu
-  //         ImGui.SetWindowFocus();
-  //         this.m_contextMenuState.Reset();
-  //       }
-  //       ImGui.PopStyleVar(2);
-  //     }
-  //   }
+        ImGui.EndPopup();
+      } else { // Close menu
+        ImGui.SetWindowFocus();
+        this.m_contextMenuState.Reset();
+      }
+      ImGui.PopStyleVar(2);
+    }
+  }
 
-  //   private DrawSharedContextMenuOptions (ctx: DrawContext): void {
-  //     // View
-  //     if (ImGui.MenuItem(EE_ICON_FIT_TO_PAGE_OUTLINE + ' Reset View')) {
-  //       this.ResetView();
-  //     }
+  private DrawSharedContextMenuOptions (ctx: DrawContext): void {
+    // View
+    if (ImGui.MenuItem(' Reset View')) {
+      this.ResetView();
+    }
 
-  //     // Zoom
-  //     if (this.m_pGraph !== null) {
-  //       if (this.m_pGraph.m_viewScaleFactor !== 1.0) {
-  //         if (ImGui.MenuItem(EE_ICON_MAGNIFY + ' Reset Zoom')) {
-  //           this.ChangeViewScale(ctx, 1.0);
-  //         }
-  //       }
-  //     }
+    // Zoom
+    if (this.m_pGraph !== null) {
+      if (this.m_pGraph.m_viewScaleFactor !== 1.0) {
+        if (ImGui.MenuItem(' Reset Zoom')) {
+          this.ChangeViewScale(ctx, 1.0);
+        }
+      }
+    }
 
-  //     // Add comment node
-  //     if (this.m_pGraph.SupportsComments()) {
-  //       if (ImGui.MenuItem(EE_ICON_COMMENT + ' Add Comment')) {
-  //         const pCommentNode = this.m_pGraph.CreateNode<CommentNode>();
+    // Add comment node
+    if (this.m_pGraph!.SupportsComments()) {
+      if (ImGui.MenuItem(' Add Comment')) {
+        const pCommentNode = this.m_pGraph!.CreateNode<CommentNode>(CommentNode);
 
-  //         pCommentNode.m_name = 'Comment';
-  //         pCommentNode.m_canvasPosition = this.m_contextMenuState.m_mouseCanvasPos;
-  //         pCommentNode.m_commentBoxSize = new ImVec2(100, 100);
-  //       }
-  //     }
-  //   }
+        pCommentNode.m_name = 'Comment';
+        pCommentNode.m_canvasPosition = this.m_contextMenuState.m_mouseCanvasPos;
+        pCommentNode.m_commentBoxSize = new ImVec2(100, 100);
+      }
+    }
+  }
 
   //   private DrawCommentContextMenu (ctx: DrawContext): void {
   //     const pCommentNode = this.m_contextMenuState.m_pNode as CommentNode;
@@ -2443,90 +2443,96 @@ export class GraphView {
   //     }
   //   }
 
-  //   private DrawFlowGraphContextMenu (ctx: DrawContext): void {
-  //     if (!this.IsViewingFlowGraph()) {
-  //       throw new Error('Not viewing flow graph');
-  //     }
+  private DrawFlowGraphContextMenu (ctx: DrawContext): void {
+    if (!this.IsViewingFlowGraph()) {
+      throw new Error('Not viewing flow graph');
+    }
 
-  //     const pFlowGraph = this.GetFlowGraph();
+    const pFlowGraph = this.GetFlowGraph()!;
 
-  //     // Node Menu
-  //     if (!this.m_contextMenuState.m_isAutoConnectMenu && this.m_contextMenuState.m_pNode !== null) {
-  //       if (this.m_contextMenuState.m_pNode instanceof CommentNode) {
-  //         throw new Error('Unexpected comment node');
-  //       }
+    // Node Menu
+    if (!this.m_contextMenuState.m_isAutoConnectMenu && this.m_contextMenuState.m_pNode !== null) {
+      if (this.m_contextMenuState.m_pNode instanceof CommentNode) {
+        throw new Error('Unexpected comment node');
+      }
 
-  //       const pFlowNode = this.m_contextMenuState.GetAsFlowNode();
+      const pFlowNode = this.m_contextMenuState.GetAsFlowNode()!;
 
-  //       // Default node Menu
-  //       pFlowNode.DrawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos, this.m_contextMenuState.m_pPin);
+      // Default node Menu
+      pFlowNode.DrawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos, this.m_contextMenuState.m_pPin);
 
-  //       if (!this.m_isReadOnly) {
-  //         ImGui.SeparatorText('Connections');
+      if (!this.m_isReadOnly) {
+        // Source:
+        // ImGui.SeparatorText('Connections');
+        ImGui.Separator();
+        ImGui.Text('Connections');
 
-  //         // Dynamic Pins
-  //         if (pFlowNode.SupportsUserEditableDynamicInputPins()) {
-  //           if (ImGui.MenuItem(EE_ICON_PLUS_CIRCLE_OUTLINE + ' Add Input')) {
-  //             pFlowGraph.CreateDynamicPin(pFlowNode.GetID());
-  //           }
+        // Dynamic Pins
+        if (pFlowNode.SupportsUserEditableDynamicInputPins()) {
+          if (ImGui.MenuItem(' Add Input')) {
+            pFlowGraph.CreateDynamicPin(pFlowNode.GetID());
+          }
 
-  //           if (this.m_contextMenuState.m_pPin !== null && this.m_contextMenuState.m_pPin.IsDynamicPin()) {
-  //             if (ImGui.MenuItem(EE_ICON_CLOSE_CIRCLE_OUTLINE + ' Remove Input')) {
-  //               pFlowGraph.DestroyDynamicPin(pFlowNode.GetID(), this.m_contextMenuState.m_pPin.m_ID);
-  //             }
-  //           }
-  //         }
+          if (this.m_contextMenuState.m_pPin !== null && this.m_contextMenuState.m_pPin.IsDynamicPin()) {
+            if (ImGui.MenuItem(' Remove Input')) {
+              pFlowGraph.DestroyDynamicPin(pFlowNode.GetID(), this.m_contextMenuState.m_pPin.m_ID);
+            }
+          }
+        }
 
-  //         // Connections
-  //         if (ImGui.MenuItem(EE_ICON_PIPE_DISCONNECTED + ' Break All Connections')) {
-  //           pFlowGraph.BreakAllConnectionsForNode(pFlowNode);
-  //         }
-  //       }
+        // Connections
+        if (ImGui.MenuItem(' Break All Connections')) {
+          pFlowGraph.BreakAllConnectionsForNode(pFlowNode);
+        }
+      }
 
-  //       if (!this.m_isReadOnly) {
-  //         ImGui.SeparatorText('Node');
+      if (!this.m_isReadOnly) {
+        // Source:
+        // ImGui.SeparatorText('Node');
+        ImGui.Separator();
+        ImGui.Text('Node');
 
-  //         if (ImGui.BeginMenu(EE_ICON_IDENTIFIER + ' Node ID')) {
-  //           // UUID
-  //           const IDStr = this.m_contextMenuState.m_pNode.GetID().ToString();
-  //           const label = `${IDStr}`;
+        if (ImGui.BeginMenu(' Node ID')) {
+          // UUID
+          const IDStr = this.m_contextMenuState.m_pNode.GetID();
+          const label = `${IDStr}`;
 
-  //           if (ImGui.MenuItem(label)) {
-  //             ImGui.SetClipboardText(IDStr);
-  //           }
+          if (ImGui.MenuItem(label)) {
+            ImGui.SetClipboardText(IDStr);
+          }
 
-  //           ImGui.EndMenu();
-  //         }
+          ImGui.EndMenu();
+        }
 
-  //         // Renameable Nodes
-  //         if (this.m_contextMenuState.m_pNode.IsRenameable()) {
-  //           if (ImGui.MenuItem(EE_ICON_RENAME_BOX + ' Rename Node')) {
-  //             this.BeginRenameNode(this.m_contextMenuState.m_pNode);
-  //           }
-  //         }
+        // Renameable Nodes
+        if (this.m_contextMenuState.m_pNode.IsRenameable()) {
+          if (ImGui.MenuItem(' Rename Node')) {
+            this.BeginRenameNode(this.m_contextMenuState.m_pNode);
+          }
+        }
 
-  //         // Destroyable Nodes
-  //         if (this.m_contextMenuState.m_pNode.IsDestroyable() && this.m_pGraph.CanDestroyNode(this.m_contextMenuState.m_pNode)) {
-  //           if (ImGui.MenuItem(EE_ICON_DELETE + ' Delete Node')) {
-  //             this.ClearSelection();
-  //             this.m_contextMenuState.m_pNode.Destroy();
-  //             this.m_contextMenuState.Reset();
-  //           }
-  //         }
-  //       }
-  //     } else { // Graph Menu
-  //       if (pFlowGraph.HasContextMenuFilter()) {
-  //         this.m_contextMenuState.m_filterWidget.UpdateAndDraw(-1, ImGuiX.FilterWidget.TakeInitialFocus);
-  //       }
+        // Destroyable Nodes
+        if (this.m_contextMenuState.m_pNode.IsDestroyable() && this.m_pGraph!.CanDestroyNode(this.m_contextMenuState.m_pNode)) {
+          if (ImGui.MenuItem(' Delete Node')) {
+            this.ClearSelection();
+            this.m_contextMenuState.m_pNode.Destroy();
+            this.m_contextMenuState.Reset();
+          }
+        }
+      }
+    } else { // Graph Menu
+      if (pFlowGraph.HasContextMenuFilter()) {
+        this.m_contextMenuState.m_filterWidget.updateAndDraw(-1, ImGuiX.FilterWidget.Flags.TakeInitialFocus);
+      }
 
-  //       this.DrawSharedContextMenuOptions(ctx);
+      this.DrawSharedContextMenuOptions(ctx);
 
-  //       if (pFlowGraph.DrawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos, this.m_contextMenuState.m_filterWidget.GetFilterTokens(), this.m_contextMenuState.GetAsFlowNode(), this.m_contextMenuState.m_pPin)) {
-  //         this.m_contextMenuState.Reset();
-  //         ImGui.CloseCurrentPopup();
-  //       }
-  //     }
-  //   }
+      if (pFlowGraph.DrawContextMenuOptions(ctx, this.m_pUserContext, this.m_contextMenuState.m_mouseCanvasPos, this.m_contextMenuState.m_filterWidget.getFilterTokens(), this.m_contextMenuState.GetAsFlowNode(), this.m_contextMenuState.m_pPin)) {
+        this.m_contextMenuState.Reset();
+        ImGui.CloseCurrentPopup();
+      }
+    }
+  }
 
   //   private DrawStateMachineContextMenu (ctx: DrawContext): void {
   //     if (!this.IsViewingStateMachineGraph()) {

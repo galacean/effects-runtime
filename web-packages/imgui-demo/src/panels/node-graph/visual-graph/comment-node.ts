@@ -15,7 +15,7 @@ export class CommentNode extends BaseNode {
   static readonly s_resizeSelectionRadius: number = 10.0;
   static readonly s_minBoxDimensions: number = (CommentNode.s_resizeSelectionRadius * 2) + 20.0;
 
-  private m_commentBoxSize = new ImVec2(0, 0);
+  m_commentBoxSize = new ImVec2(0, 0);
   private m_nodeColor: Color = new Color(0xFF4C4C4C);
 
   constructor () {
