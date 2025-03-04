@@ -1,6 +1,6 @@
 //@ts-nocheck
-import type { AnimationGraphAssetData, GraphNodeAssetData, spec } from '@galacean/effects';
-import { AnimationGraphAsset, AnimationGraphComponent, GraphInstance, InvalidIndex, NodeAssetType, VFXItem } from '@galacean/effects';
+import type { AnimationGraphAssetData, spec } from '@galacean/effects';
+import { AnimationGraphAsset, AnimationGraphComponent, GraphInstance, InvalidIndex, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
 import { Selection } from '../../core/selection';
 import { GalaceanEffects } from '../../ge';
@@ -8,23 +8,22 @@ import { ImGui } from '../../imgui';
 import { EditorWindow } from '../editor-window';
 import { AnimationClipGraphNode, AnimationRootGraphNode, Blend1DGraphNode, ConstFloatGraphNode } from './animation-graph-nodes/animation-graph-node';
 import type { BaseNodeData } from './base-node';
-import { ImNodeFlow } from './node-flow';
-import { GraphView } from './visual-graph/node-graph-view';
-import type { StateMachineGraph } from './tools-graph/graphs/state-machine-graph';
-import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
-import { ToolsGraphUserContext } from './tools-graph/tools-graph-user-context';
-import { TransitionConduitToolsNode, TransitionToolsNode } from './tools-graph/nodes/transition-tools-node';
-import type { BaseGraph } from './visual-graph/base-graph';
-import type { BaseNode } from './visual-graph/base-graph';
-import { StateMachineToolsNode } from './tools-graph/nodes/state-machine-tools-node';
-import { SelectedNode } from './visual-graph/user-context';
-import { Colors } from './tools-graph/colors';
-import * as NodeGraph from './visual-graph';
-import { AnimationClipToolsNode } from './tools-graph/nodes/animation-clip-tools-node';
-import { FlowGraph } from './tools-graph/graphs/flow-graph';
-import { PoseResultToolsNode, ResultToolsNode } from './tools-graph/nodes/result-tools-node';
 import { GraphCompilationContext } from './compilation';
-import { ConstBoolToolsNode, ConstFloatToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
+import { ImNodeFlow } from './node-flow';
+import { Colors } from './tools-graph/colors';
+import { FlowGraph } from './tools-graph/graphs/flow-graph';
+import type { StateMachineGraph } from './tools-graph/graphs/state-machine-graph';
+import { AnimationClipToolsNode } from './tools-graph/nodes/animation-clip-tools-node';
+import { ConstBoolToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
+import { PoseResultToolsNode, ResultToolsNode } from './tools-graph/nodes/result-tools-node';
+import { StateMachineToolsNode } from './tools-graph/nodes/state-machine-tools-node';
+import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
+import { TransitionConduitToolsNode, TransitionToolsNode } from './tools-graph/nodes/transition-tools-node';
+import { ToolsGraphUserContext } from './tools-graph/tools-graph-user-context';
+import * as NodeGraph from './visual-graph';
+import type { BaseGraph, BaseNode } from './visual-graph/base-graph';
+import { GraphView } from './visual-graph/node-graph-view';
+import { SelectedNode } from './visual-graph/user-context';
 
 type ImVec2 = ImGui.ImVec2;
 type ImColor = ImGui.ImColor;
@@ -63,6 +62,7 @@ export class AnimationGraph extends EditorWindow {
   stateMachineGraph: StateMachineGraph;
   flowGraph = new FlowGraph();
 
+  private m_primaryGraphViewProportionalHeight = 0.6;
   private primaryGraphView: GraphView;
   private secondaryGraphView: GraphView;
   private loadedGraphStack: LoadedGraphData[] = [];
@@ -99,7 +99,7 @@ export class AnimationGraph extends EditorWindow {
     const stateMachineNode = this.flowGraph.CreateNode(StateMachineToolsNode, new ImVec2(300, 200));
 
     this.stateMachineGraph = stateMachineNode.GetChildGraph() as StateMachineGraph;
-    this.flowGraph.TryMakeConnection(stateMachineNode, stateMachineNode.GetOutputPin(0), rootResultNode, rootResultNode.GetInputPin(0));
+    this.flowGraph.TryMakeConnection(stateMachineNode, stateMachineNode.GetOutputPin(0)!, rootResultNode, rootResultNode.GetInputPin(0)!);
 
     const stateNode1 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(400, 300));
     const stateNode2 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(600, 100));
@@ -112,7 +112,7 @@ export class AnimationGraph extends EditorWindow {
 
       animationClipNode1.m_defaultResourceID = animationID;
 
-      (stateNode.GetChildGraph()! as FlowGraph).TryMakeConnection(animationClipNode1, animationClipNode1?.GetOutputPin(0), state1ResultNode, state1ResultNode.GetInputPin(0));
+      (stateNode.GetChildGraph()! as FlowGraph).TryMakeConnection(animationClipNode1, animationClipNode1.GetOutputPin(0)!, state1ResultNode, state1ResultNode.GetInputPin(0)!);
     };
 
     buildStateGraph(stateNode1, '25ea2eda5e0e41a1a59a45294bcb5b2d');
@@ -225,7 +225,44 @@ export class AnimationGraph extends EditorWindow {
 
     // Primary View
     //-------------------------------------------------------------------------
-    this.primaryGraphView.UpdateAndDraw();
+
+    const availableRegion = ImGui.GetContentRegionAvail();
+
+    this.primaryGraphView.UpdateAndDraw(availableRegion.y * this.m_primaryGraphViewProportionalHeight);
+
+    if (this.primaryGraphView.HasSelectionChangedThisFrame()) {
+      this.SetSelectedNodes(this.primaryGraphView.GetSelectedNodes());
+    }
+
+    // Splitter
+    //-------------------------------------------------------------------------
+
+    ImGui.PushStyleVar(ImGui.StyleVar.FrameRounding, 0.0);
+    ImGui.Button('##GraphViewSplitter', new ImVec2(-1, 5));
+    ImGui.PopStyleVar();
+
+    if (ImGui.IsItemHovered()) {
+      ImGui.SetMouseCursor(ImGui.MouseCursor.ResizeNS);
+    }
+
+    if (ImGui.IsItemActive()) {
+      this.m_primaryGraphViewProportionalHeight += (ImGui.GetIO().MouseDelta.y / availableRegion.y);
+      this.m_primaryGraphViewProportionalHeight = Math.max(0.1, this.m_primaryGraphViewProportionalHeight);
+    }
+
+    // SecondaryView
+    //-------------------------------------------------------------------------
+
+    this.UpdateSecondaryViewState();
+    this.secondaryGraphView.UpdateAndDraw();
+
+    if (this.secondaryGraphView.HasSelectionChangedThisFrame()) {
+      this.SetSelectedNodes(this.secondaryGraphView.GetSelectedNodes());
+
+      if (this.selectedNodes.length === 0) {
+        this.selectedNodes = this.primaryGraphView.GetSelectedNodes();
+      }
+    }
   }
 
   private DrawGraphViewNavigationBar (): void {
@@ -721,16 +758,15 @@ export class AnimationGraph extends EditorWindow {
             pSecondaryGraphToView = pSecondaryGraph;
           }
         } else {
-          //@ts-expect-error
-          const pParameterReference = (pSelectedNode) as ParameterReferenceToolsNode;
+          // const pParameterReference = (pSelectedNode) as ParameterReferenceToolsNode;
 
-          if (pParameterReference) {
-            const pVP = pParameterReference.GetReferencedVirtualParameter();
+          // if (pParameterReference) {
+          //   const pVP = pParameterReference.GetReferencedVirtualParameter();
 
-            if (pVP) {
-              pSecondaryGraphToView = pVP.GetChildGraph();
-            }
-          }
+          //   if (pVP) {
+          //     pSecondaryGraphToView = pVP.GetChildGraph();
+          //   }
+          // }
         }
       }
     }
