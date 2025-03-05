@@ -8,7 +8,7 @@ export default {
     name: '文本测试',
   },
   richTextTest: {
-    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*tyzZQIAD4Q4AAAAAAAAAAAAAelB4AQ',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*Z0v1T5rij5AAAAAAAAAAAAAAelB4AQ',
     name: '富文本测试',
   },
 };
