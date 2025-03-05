@@ -19,6 +19,9 @@ export class SubdComponent extends MeshComponent {
   private subdivisionLevel = 1; // 默认细分级别
   private animated = false;
 
+  // 泊松采样的最小距离
+  private minDistance = 0.05;
+
   // FFD 顶点着色器
   private vert = `
 precision highp float;
@@ -109,9 +112,15 @@ void main() {
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
+
+    if (this.subdivisionLevel > 0) {
+      // 在组件启动时创建细分网格
+      this.createSubdividedMesh();
+    }
   }
 
   override onUpdate (dt: number): void {
+    // 如果需要动态更新，可以在这里添加逻辑
     if (this.animated) {
       this.createSubdividedMesh();
       this.animated = false;
@@ -131,66 +140,98 @@ void main() {
   }
 
   private createSubdividedMesh (): void {
-    if (!this.geometry || !this.geometry) {
+    // 如果没有几何体，直接返回
+    if (!this.geometry) {
       return;
     }
 
     // 获取原始几何体数据
-    const sourceGeometry = this.geometry;
-    const originalPositions = sourceGeometry.getAttributeData('aPos');
-    const originalIndices = sourceGeometry.getIndexData();
+    const originalPositions = this.geometry.getAttributeData('aPos');
+    // 获取但不使用的变量添加下划线前缀
+    const _originalUVs = this.geometry.getAttributeData('aUV');
+    const _originalIndices = this.geometry.getIndexData();
 
-    if (!originalPositions || !originalIndices) {
+    if (!originalPositions) {
       return;
     }
 
-    // 收集顶点
-    const vertices: Array<[number, number, number]> = [];
+    // 如果细分级别为0，不执行细分，直接使用原始几何体
+    if (this.subdivisionLevel <= 0) {
+      return;
+    }
+
+    // 收集原始顶点
+    const originalVertices: Array<[number, number, number]> = [];
 
     for (let i = 0; i < originalPositions.length; i += 3) {
-      vertices.push([
+      originalVertices.push([
         originalPositions[i],
         originalPositions[i + 1],
         originalPositions[i + 2],
       ]);
     }
 
-    // 收集三角形面
-    const faces: Array<[number, number, number]> = [];
+    // 生成泊松采样点（仅在正方形内生成额外的点）
+    const poissonPoints = this.generatePoissonPoints();
 
-    for (let i = 0; i < originalIndices.length; i += 3) {
-      faces.push([
-        originalIndices[i],
-        originalIndices[i + 1],
-        originalIndices[i + 2],
-      ]);
+    // 确保生成了足够的泊松采样点
+    if (poissonPoints.length < 1) {
+      // 如果没有足够的泊松采样点，则使用原始几何体
+      return;
     }
 
-    // 执行Delaunay三角剖分
-    const delaunayMesh = this.performDelaunayTriangulation(vertices, faces);
+    // 将所有点合并起来
+    const allPoints: Array<[number, number, number]> = [...originalVertices];
 
-    // 更新几何体数据
-    const newPositions = delaunayMesh.positions;
-    const newIndices = delaunayMesh.indices;
-
-    if (this.geometry) {
-      this.geometry.setAttributeData('aPos', new Float32Array(newPositions));
-      this.geometry.setIndexData(new Uint16Array(newIndices));
-      this.geometry.setDrawCount(newIndices.length);
-    } else {
-      this.geometry = Geometry.create(this.engine, {
-        attributes: {
-          aPos: {
-            type: glContext.FLOAT,
-            size: 3,
-            data: new Float32Array(newPositions),
-          },
-        },
-        indices: { data: new Uint16Array(newIndices) },
-        mode: glContext.TRIANGLES,
-        drawCount: newIndices.length,
-      });
+    // 添加泊松采样点（z坐标为0）
+    for (const point of poissonPoints) {
+      allPoints.push([point[0], point[1], 0]);
     }
+
+    // 直接使用四个角点和泊松采样点进行三角剖分，不使用delaunay2D方法
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    // 添加所有顶点和UV
+    for (let i = 0; i < allPoints.length; i++) {
+      const point = allPoints[i];
+
+      positions.push(point[0], point[1], point[2]);
+
+      // 计算UV（基于点的位置）
+      const u = (point[0] + 0.5);
+      const v = (point[1] + 0.5);
+
+      uvs.push(u, v);
+    }
+
+    // 使用原始四个顶点（矩形四角）和内部的泊松采样点创建三角形
+    // 这里使用简单的方法：将每个泊松采样点与矩形的四个角连接形成三角形
+    if (originalVertices.length >= 4) {
+      // 首先添加矩形本身的两个三角形
+      indices.push(0, 1, 2); // 第一个三角形
+      indices.push(2, 3, 0); // 第二个三角形
+
+      // 然后将每个泊松采样点与四个角相连
+      for (let i = 4; i < allPoints.length; i++) {
+        // 与四个角点相连
+        indices.push(0, 1, i);
+        indices.push(1, 2, i);
+        indices.push(2, 3, i);
+        indices.push(3, 0, i);
+      }
+    }
+
+    // 更新几何体
+    this.geometry.setAttributeData('aPos', new Float32Array(positions));
+
+    if (uvs.length > 0) {
+      this.geometry.setAttributeData('aUV', new Float32Array(uvs));
+    }
+
+    this.geometry.setIndexData(new Uint16Array(indices));
+    this.geometry.setDrawCount(indices.length);
   }
 
   private performDelaunayTriangulation (
@@ -402,18 +443,19 @@ void main() {
 
   private projectPointTo3D (
     point2D: [number, number],
-    origin1: [number, number, number],
+    originPoint: [number, number, number],
     basis: { u: [number, number, number], v: [number, number, number] }
   ): [number, number, number] {
     // 将2D点投影回3D空间
     const u = basis.u;
     const v = basis.v;
 
-    return [
-      origin1[0] + point2D[0] * u[0] + point2D[1] * v[0],
-      origin1[1] + point2D[0] * u[1] + point2D[1] * v[1],
-      origin1[2] + point2D[0] * u[2] + point2D[1] * v[2],
-    ];
+    // 计算3D坐标
+    const x = originPoint[0] + point2D[0] * u[0] + point2D[1] * v[0];
+    const y = originPoint[1] + point2D[0] * u[1] + point2D[1] * v[1];
+    const z = originPoint[2] + point2D[0] * u[2] + point2D[1] * v[2];
+
+    return [x, y, z];
   }
 
   private delaunay2D (points: Array<[number, number]>): number[] {
@@ -562,6 +604,128 @@ void main() {
       n12 * n21 * n34 * n43 - n11 * n22 * n34 * n43 - n13 * n22 * n31 * n44 + n12 * n23 * n31 * n44 +
       n13 * n21 * n32 * n44 - n11 * n23 * n32 * n44 - n12 * n21 * n33 * n44 + n11 * n22 * n33 * n44
     );
+  }
+
+  // 泊松圆盘采样算法
+  private generatePoissonPoints (): Array<[number, number]> {
+    // 根据细分级别计算需要生成的点数
+    const numPoints = Math.max(4, this.subdivisionLevel * this.subdivisionLevel * 2);
+
+    // 泊松圆盘采样的参数
+    const minDist = this.minDistance;
+    const width = 1.0; // 正方形宽度
+    const height = 1.0; // 正方形高度
+    const cellSize = minDist / Math.sqrt(2);
+
+    // 结果数组
+    const result: Array<[number, number]> = [];
+
+    // 活动点列表
+    const activePoints: Array<[number, number]> = [];
+
+    // 网格
+    const cols = Math.ceil(width / cellSize);
+    const rows = Math.ceil(height / cellSize);
+    const grid: number[][] = new Array(cols).fill(0).map(() => new Array(rows).fill(-1));
+
+    // 添加第一个随机点
+    const firstPoint: [number, number] = [
+      Math.random() * width - width / 2,
+      Math.random() * height - height / 2,
+    ];
+
+    const col = Math.floor((firstPoint[0] + width / 2) / cellSize);
+    const row = Math.floor((firstPoint[1] + height / 2) / cellSize);
+
+    if (col >= 0 && col < cols && row >= 0 && row < rows) {
+      grid[col][row] = 0;
+      activePoints.push(firstPoint);
+      result.push(firstPoint);
+    }
+
+    // 主循环
+    while (activePoints.length > 0 && result.length < numPoints) {
+      // 随机选择一个活动点
+      const randomIndex = Math.floor(Math.random() * activePoints.length);
+      const point = activePoints[randomIndex];
+
+      // 尝试生成新点
+      let found = false;
+
+      for (let i = 0; i < 30; i++) { // 每个点尝试30次
+        // 在点周围的圆环生成随机点
+        const angle = Math.random() * Math.PI * 2;
+        const radius = minDist + Math.random() * minDist;
+
+        const newPoint: [number, number] = [
+          point[0] + Math.cos(angle) * radius,
+          point[1] + Math.sin(angle) * radius,
+        ];
+
+        // 检查新点是否在边界内
+        if (newPoint[0] < -width / 2 || newPoint[0] >= width / 2 ||
+            newPoint[1] < -height / 2 || newPoint[1] >= height / 2) {
+          continue;
+        }
+
+        // 计算网格位置
+        const newCol = Math.floor((newPoint[0] + width / 2) / cellSize);
+        const newRow = Math.floor((newPoint[1] + height / 2) / cellSize);
+
+        if (newCol < 0 || newCol >= cols || newRow < 0 || newRow >= rows) {
+          continue;
+        }
+
+        // 检查与已有点的距离
+        let valid = true;
+
+        // 检查周围的网格
+        for (let dc = -1; dc <= 1; dc++) {
+          for (let dr = -1; dr <= 1; dr++) {
+            const checkCol = newCol + dc;
+            const checkRow = newRow + dr;
+
+            if (checkCol >= 0 && checkCol < cols && checkRow >= 0 && checkRow < rows) {
+              const index = grid[checkCol][checkRow];
+
+              if (index !== -1) {
+                const existingPoint = result[index];
+                const dx = newPoint[0] - existingPoint[0];
+                const dy = newPoint[1] - existingPoint[1];
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < minDist) {
+                  valid = false;
+
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!valid) {
+            break;
+          }
+        }
+
+        if (valid) {
+          // 添加新点
+          grid[newCol][newRow] = result.length;
+          activePoints.push(newPoint);
+          result.push(newPoint);
+          found = true;
+
+          break;
+        }
+      }
+
+      // 如果没有找到有效点，从活动列表中移除
+      if (!found) {
+        activePoints.splice(randomIndex, 1);
+      }
+    }
+
+    return result;
   }
 }
 
