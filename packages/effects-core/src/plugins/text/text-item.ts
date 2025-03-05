@@ -58,15 +58,16 @@ let seed = 0;
 @effectsClass(spec.DataType.TextComponent)
 export class TextComponent extends BaseRenderComponent {
   isDirty = true;
-  /**
-   * 每一行文本的最大宽度
-   */
-  maxLineWidth = 0;
 
   /**
    * 文本行数
    */
   lineCount = 0;
+
+  /**
+   * 每一行文本的最大宽度
+   */
+  protected maxLineWidth = 0;
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
@@ -166,8 +167,9 @@ export class TextComponentBase {
   renderer: ItemRenderer;
   /***** mix 类型兼容用 *****/
 
+  protected maxLineWidth: number;
+
   private char: string[];
-  maxLineWidth: number;
 
   updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
@@ -186,7 +188,7 @@ export class TextComponentBase {
 
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = (context?.measureText(str)?.width ?? 0);
+      const textMetrics = context?.measureText(str)?.width ?? 0;
 
       // 和浏览器行为保持一致
       x += letterSpace;
@@ -587,7 +589,7 @@ export class TextComponentBase {
 
   private getFontDesc (fontSize: number): string {
     const { fontFamily, textWeight, fontStyle } = this.textStyle;
-    let fontDesc = `${(fontSize).toString()}px `;
+    let fontDesc = `${fontSize.toString()}px `;
 
     if (!DEFAULT_FONTS.includes(fontFamily)) {
       fontDesc += `"${fontFamily}"`;
