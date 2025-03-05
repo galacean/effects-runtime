@@ -1072,7 +1072,7 @@ export class GraphView {
       drawingContext.m_mouseCanvasPos = drawingContext.ScreenToCanvasPosition(drawingContext.m_mouseScreenPos);
 
       // Apply imgui scale
-      const unscaledStyle = ImGui.GetStyle();
+      const unscaledStyle = new ImGui.ImGuiStyle().Copy(ImGui.GetStyle());
 
       ImGui.SetWindowFontScale(drawingContext.m_viewScaleFactor);
       ImGui.GetStyle().ScaleAllSizes(drawingContext.m_viewScaleFactor);
