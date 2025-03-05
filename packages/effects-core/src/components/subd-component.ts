@@ -162,10 +162,7 @@ void main() {
       ]);
     }
 
-    // 步骤1：细分轮廓
-    const outlineVertices = this.subdivideOutline(originalVertices, this.subdivisionLevel);
-
-    // 步骤2：泊松盘采样生成内部顶点
+    // 泊松盘采样生成轮廓和内部顶点
     const poissonPoints = this.generatePoissonPoints();
 
     // 确保生成了足够的泊松采样点
@@ -174,26 +171,11 @@ void main() {
       return;
     }
 
-    // 合并轮廓点和内部点
-    const allPoints2D: Array<[number, number]> = [];
-
-    // 添加轮廓点（去除z坐标）
-    for (const vertex of outlineVertices) {
-      allPoints2D.push([vertex[0], vertex[1]]);
-    }
-
-    // 添加泊松采样点
-    for (const point of poissonPoints) {
-      allPoints2D.push([point[0], point[1]]);
-    }
-
-    console.log(allPoints2D);
-
     // 步骤3：进行Delaunay三角剖分
-    const indices = this.delaunay2D(allPoints2D);
+    const indices = this.delaunay2D(poissonPoints);
 
     // 调试日志
-    console.log('三角剖分点数:', allPoints2D.length);
+    console.log('三角剖分点数:', poissonPoints.length);
     console.log('三角剖分生成的索引数:', indices.length);
     console.log('三角形数量:', indices.length / 3);
 
@@ -201,8 +183,8 @@ void main() {
     let invalidIndex = false;
 
     for (let i = 0; i < indices.length; i++) {
-      if (indices[i] >= allPoints2D.length) {
-        console.error(`发现无效索引: ${indices[i]}, 点总数: ${allPoints2D.length}`);
+      if (indices[i] >= poissonPoints.length) {
+        console.error(`发现无效索引: ${indices[i]}, 点总数: ${poissonPoints.length}`);
         invalidIndex = true;
 
         break;
@@ -223,7 +205,7 @@ void main() {
     const uvs: number[] = [];
 
     // 对所有点添加顶点和UV坐标
-    for (const point of allPoints2D) {
+    for (const point of poissonPoints) {
       // 顶点坐标（z=0，因为我们是在2D平面上工作）
       positions.push(point[0], point[1], 0);
 
@@ -276,47 +258,6 @@ void main() {
         console.warn('无法设置三角形模式:', e);
       }
     }
-  }
-
-  /**
-   * 细分轮廓线
-   * @param vertices 原始顶点
-   * @param level 细分级别
-   * @returns 细分后的轮廓点
-   */
-  private subdivideOutline (vertices: Array<[number, number, number]>, level: number): Array<[number, number, number]> {
-    if (level <= 1 || vertices.length < 3) {
-      return [...vertices];
-    }
-
-    const result: Array<[number, number, number]> = [];
-
-    // 对于每条边，使用均匀的细分级别
-    for (let i = 0; i < vertices.length; i++) {
-      const current = vertices[i];
-      const next = vertices[(i + 1) % vertices.length];
-
-      // 计算边长
-      const dx = next[0] - current[0];
-      const dy = next[1] - current[1];
-      const dz = next[2] - current[2];
-      // 基于细分级别计算采样点数量
-      // 采用固定的细分级别，与内部点密度保持一致
-      const numSamples = level;
-
-      // 添加采样点
-      for (let j = 0; j < numSamples; j++) {
-        const t = j / numSamples;
-
-        result.push([
-          current[0] + t * dx,
-          current[1] + t * dy,
-          current[2] + t * dz,
-        ]);
-      }
-    }
-
-    return result;
   }
 
   private delaunay2D (points: Array<[number, number]>): number[] {
