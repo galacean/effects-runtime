@@ -334,7 +334,7 @@ void main() {
     return [minX, minY, maxX, maxY];
   }
 
-  // 泊松圆盘采样算法 - 改进版
+  // 泊松圆盘采样算法
   private generatePoissonPoints (): Array<[number, number]> {
     // 从原始几何体提取2D轮廓
     const contour: Array<[number, number]> = [];
@@ -357,7 +357,6 @@ void main() {
     const [minX, minY, maxX, maxY] = this.getBounds(contour);
 
     // 基于细分级别计算需要的点数和采样半径
-    // 增加点的数量，使内部点密度更高
     const numPoints = Math.max(10, this.subdivisionLevel * this.subdivisionLevel * 3);
     const radius = Math.sqrt(((maxX - minX) * (maxY - minY)) / numPoints);
     const cellSize = radius / Math.sqrt(2);
