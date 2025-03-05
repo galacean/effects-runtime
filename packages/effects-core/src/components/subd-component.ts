@@ -14,11 +14,8 @@ import Delaunator from './delaunator';
 export class SubdComponent extends MeshComponent {
   private animated = false;
 
-  private subdivisionLevel = 5; // 默认细分级别
+  private subdivisionLevel = 10; // 细分级别控制整体密度
   private wireframe = true; // 是否使用线框模式
-
-  // 泊松采样的最小距离
-  private minDistance = 0.05;
 
   // TODO 占个位
   private vert = `
@@ -294,7 +291,7 @@ void main() {
 
     const result: Array<[number, number, number]> = [];
 
-    // 对于每条边，基于边长增加细分点
+    // 对于每条边，使用均匀的细分级别
     for (let i = 0; i < vertices.length; i++) {
       const current = vertices[i];
       const next = vertices[(i + 1) % vertices.length];
@@ -303,23 +300,19 @@ void main() {
       const dx = next[0] - current[0];
       const dy = next[1] - current[1];
       const dz = next[2] - current[2];
-      const edgeLength = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-      // 基于边长计算采样点数量（至少level个点）
-      const numSamples = Math.max(level, Math.ceil(edgeLength / this.minDistance));
+      // 基于细分级别计算采样点数量
+      // 采用固定的细分级别，与内部点密度保持一致
+      const numSamples = level;
 
       // 添加采样点
-      for (let j = 0; j <= numSamples; j++) {
+      for (let j = 0; j < numSamples; j++) {
         const t = j / numSamples;
 
-        // 只在j=0时添加当前点，避免重复添加
-        if (j === 0 || j < numSamples) {
-          result.push([
-            current[0] + t * dx,
-            current[1] + t * dy,
-            current[2] + t * dz,
-          ]);
-        }
+        result.push([
+          current[0] + t * dx,
+          current[1] + t * dy,
+          current[2] + t * dz,
+        ]);
       }
     }
 
@@ -423,12 +416,10 @@ void main() {
     const [minX, minY, maxX, maxY] = this.getBounds(contour);
 
     // 基于细分级别计算需要的点数和采样半径
-    const numPoints = Math.max(4, this.subdivisionLevel * this.subdivisionLevel * 2);
-    const radius = Math.sqrt(((maxX - minX) * (maxY - minY)) / numPoints) * 1.5;
+    // 增加点的数量，使内部点密度更高
+    const numPoints = Math.max(10, this.subdivisionLevel * this.subdivisionLevel * 3);
+    const radius = Math.sqrt(((maxX - minX) * (maxY - minY)) / numPoints);
     const cellSize = radius / Math.sqrt(2);
-
-    // 创建空的内轮廓（这里可以根据需要修改）
-    const inner: Array<[number, number]> = [];
 
     // 结果和活动点数组
     const points: Array<[number, number]> = [];
@@ -476,13 +467,14 @@ void main() {
     // 添加轮廓点
     const borderPoints: Array<[number, number]> = [];
 
-    // 外轮廓细分
+    // 外轮廓细分 - 与内部点保持一致的密度
     contour.forEach((point1, index) => {
       const point2 = contour[(index + 1) % contour.length];
       const dx = point2[0] - point1[0];
       const dy = point2[1] - point1[1];
       const edgeLength = Math.sqrt(dx * dx + dy * dy);
-      const numSamples = Math.ceil(edgeLength / radius);
+      // 使用radius作为边上点的间距，确保与内部点密度一致
+      const numSamples = Math.max(1, Math.ceil(edgeLength / radius));
 
       for (let i = 0; i <= numSamples; i++) {
         const t = i / numSamples;
@@ -492,25 +484,6 @@ void main() {
         borderPoints.push([x, y]);
       }
     });
-
-    // 内轮廓细分（如果有）
-    if (inner.length > 0) {
-      inner.forEach((point1, index) => {
-        const point2 = inner[(index + 1) % inner.length];
-        const dx = point2[0] - point1[0];
-        const dy = point2[1] - point1[1];
-        const edgeLength = Math.sqrt(dx * dx + dy * dy);
-        const numSamples = Math.ceil(edgeLength / radius);
-
-        for (let i = 0; i <= numSamples; i++) {
-          const t = i / numSamples;
-          const x = point1[0] + t * dx;
-          const y = point1[1] + t * dy;
-
-          borderPoints.push([x, y]);
-        }
-      });
-    }
 
     // 将边界点加入网格
     borderPoints.forEach(point => {
