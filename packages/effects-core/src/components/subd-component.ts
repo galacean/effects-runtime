@@ -14,8 +14,8 @@ import Delaunator from './delaunator';
 export class SubdComponent extends MeshComponent {
   private animated = false;
 
-  private subdivisionLevel = 3; // 默认细分级别
-  private wireframe = false; // 是否使用线框模式
+  private subdivisionLevel = 5; // 默认细分级别
+  private wireframe = true; // 是否使用线框模式
 
   // 泊松采样的最小距离
   private minDistance = 0.05;
@@ -29,7 +29,10 @@ attribute vec3 aPos;
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_ObjectToWorld;
 
+varying vec3 vPos;
+
 void main() {
+  vPos = aPos;
   gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos, 1.0);
 }
 `;
@@ -38,8 +41,13 @@ void main() {
   private frag = `
 precision highp float;
 
+varying vec3 vPos;
+
 void main() {
-  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+  // 使用位置作为颜色，以便更好地可视化三角形
+  vec3 color = abs(fract(vPos * 0.5) * 2.0 - 1.0);
+  
+  gl_FragColor = vec4(color, 1.0);
 }
 `;
 
@@ -184,10 +192,29 @@ void main() {
 
     console.log(allPoints2D);
 
-    // 步骤3：执行Delaunay三角剖分
+    // 步骤3：进行Delaunay三角剖分
     const indices = this.delaunay2D(allPoints2D);
 
-    console.log(indices);
+    // 调试日志
+    console.log('三角剖分点数:', allPoints2D.length);
+    console.log('三角剖分生成的索引数:', indices.length);
+    console.log('三角形数量:', indices.length / 3);
+
+    // 检查生成的三角形索引是否有效
+    let invalidIndex = false;
+
+    for (let i = 0; i < indices.length; i++) {
+      if (indices[i] >= allPoints2D.length) {
+        console.error(`发现无效索引: ${indices[i]}, 点总数: ${allPoints2D.length}`);
+        invalidIndex = true;
+
+        break;
+      }
+    }
+
+    if (invalidIndex) {
+      console.error('三角剖分生成了无效索引，请检查delaunay2D方法');
+    }
 
     // 如果三角剖分失败或没有产生任何三角形，返回
     if (indices.length < 3) {
@@ -235,7 +262,7 @@ void main() {
       // 设置为线框模式
       try {
         // 尝试直接设置绘制模式
-        (this.geometry as any).drawMode = glContext.LINES;
+        (this.geometry as any).mode = glContext.LINES;
       } catch (e) {
         console.warn('无法设置线框模式:', e);
       }
@@ -247,7 +274,7 @@ void main() {
       // 设置为三角形模式
       try {
         // 尝试直接设置绘制模式
-        (this.geometry as any).drawMode = glContext.TRIANGLES;
+        (this.geometry as any).mode = glContext.TRIANGLES;
       } catch (e) {
         console.warn('无法设置三角形模式:', e);
       }
