@@ -261,6 +261,56 @@ export class RichTextComponent extends TextComponent {
     context.restore();
   }
 
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 水平偏移距离
+   * @returns
+   */
+  override setShadowOffsetY (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 模糊程度
+   */
+  override setShadowBlur (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 水平偏移距离
+   */
+  override setShadowOffsetX (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 阴影颜色
+   */
+  override setShadowColor (value: spec.RGBAColorValue): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 外描边宽度
+   * @returns
+   */
+  override setOutlineWidth (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 是否自动设置宽度
+   */
+  override setAutoWidth (value: boolean): void {
+    throw new Error('Method not implemented.');
+  }
+
   override updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
