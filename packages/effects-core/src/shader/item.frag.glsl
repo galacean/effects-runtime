@@ -24,10 +24,18 @@ vec4 blendColor(vec4 color, vec4 vc, float mode) {
 
 void main() {
   vec4 color = vec4(0.);
-  vec4 texColor = texture2D(_MainTex, vTexCoord.xy);
-  color = blend Color(texColor, vColor, floor(0.5 + vParams.y));
+  #ifdef TRANSPARENT_VIDEO
+    vec2 uv_rgb = vec2(vTexCoord.x * 0.5000, vTexCoord.y);
+    vec2 uv_alpha = vec2(vTexCoord.x * 0.5000 + 0.5000, vTexCoord.y);
+    vec3 rgb = texture2D(_MainTex, uv_rgb).rgb;
+    float alpha = texture2D(_MainTex, uv_alpha).r;
+    vec4 texColor = vec4(rgb / alpha, alpha);
+  #else
+    vec4 texColor = texture2D(_MainTex, vTexCoord.xy);
+  #endif
+  color = blendColor(texColor, vColor, floor(0.5 + vParams.y));
 
-// 如果是蒙版且透明度小于阈值 舍弃像素
+  // 如果是蒙版且透明度小于阈值 舍弃像素
   if (vParams.x == 1. && color.a < 0.04) {
     discard;
   }
@@ -37,7 +45,7 @@ void main() {
     discard;
   }
   #endif
-
+  //color.rgb = pow(color.rgb, vec3(2.2));
   color.a = clamp(color.a, 0.0, 1.0);
   gl_FragColor = color;
 }

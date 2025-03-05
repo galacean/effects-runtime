@@ -1,18 +1,20 @@
 import { Color } from '@galacean/effects-math/es/core/color';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
+import { MaskMode } from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { MaterialProps } from '../material';
 import { Material, setMaskMode } from '../material';
+import type { Maskable } from '../material/mask-ref-manager';
+import type { StrokeAttributes } from '../plugins/shape/build-line';
+import { buildLine } from '../plugins/shape/build-line';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
+import { StarType } from '../plugins/shape/poly-star';
 import type { ShapePath } from '../plugins/shape/shape-path';
 import { Geometry, GLSLVersion } from '../render';
 import { MeshComponent } from './mesh-component';
-import { StarType } from '../plugins/shape/poly-star';
-import type { StrokeAttributes } from '../plugins/shape/build-line';
-import { buildLine } from '../plugins/shape/build-line';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 
 interface CurveData {
   point: spec.Vector2Data,
@@ -138,9 +140,9 @@ export interface PolygonAttribute extends ShapeAttribute {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends MeshComponent {
+export class ShapeComponent extends MeshComponent implements Maskable {
   isStroke = false;
-
+  maskRef: number;
   private graphicsPath = new GraphicsPath();
   private curveValues: CurveData[] = [];
   private shapeDirty = true;
@@ -510,10 +512,24 @@ void main() {
     }
 
     const material = this.material;
+    // @ts-expect-error
+    const { mask = false, mode = MaskMode.NONE, ref } = data.mask || {};
 
-    //@ts-expect-error // TODO 新版蒙版上线后重构
-    material.stencilRef = data.renderer.mask !== undefined ? [data.renderer.mask, data.renderer.mask] : undefined;
-    //@ts-expect-error // TODO 新版蒙版上线后重构
-    setMaskMode(material, data.renderer.maskMode);
+    if (mask) {
+      this.getRefValue();
+    } else if (mode === MaskMode.OBSCURED || mode === MaskMode.OBSCURED) {
+      this.maskRef = ref.getRefValue();
+    }
+
+    material.stencilRef = this.maskRef !== undefined ? [this.maskRef, this.maskRef] : undefined;
+    setMaskMode(material, mask ? MaskMode.MASK : mode);
+  }
+
+  getRefValue (): number {
+    if (!this.maskRef) {
+      this.maskRef = this.engine.maskRefManager.distributeRef();
+    }
+
+    return this.maskRef;
   }
 }

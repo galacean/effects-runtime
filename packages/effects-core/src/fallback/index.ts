@@ -6,7 +6,14 @@ import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType, JSONSceneVersion } from
 import { generateGUID } from '../utils';
 import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
-import { version21Migration, version22Migration, version24Migration, version30Migration, version31Migration } from './migration';
+import {
+  version21Migration,
+  version22Migration,
+  version24Migration,
+  version30Migration,
+  version31Migration,
+  version32Migration,
+} from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
 import { arrAdd, quatFromXYZRotation, rotationZYXFromQuat } from './utils';
@@ -44,7 +51,11 @@ export function getStandardJSON (json: any): JSONScene {
       json = version24Migration(json);
     }
     if (mainVersion < 3) {
-      return version30Migration(version21Migration(json));
+      json = version30Migration(version21Migration(json));
+    }
+    if (mainVersion < 3 || (mainVersion === 3 && minorVersion < 2)) {
+      // 修正老版本数据中，蒙版参数的位置
+      version32Migration(json);
     }
 
     return json;

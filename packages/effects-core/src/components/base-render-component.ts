@@ -324,11 +324,6 @@ export class BaseRenderComponent extends RendererComponent {
     material.blending = states.blending;
     material.depthTest = states.depthTest;
     material.depthMask = states.depthMask;
-    // 关闭蒙版元素的颜色写入
-    // if (states.maskMode === MaskMode.MASK) {
-    //   material.colorMask = [true, true, true, true];
-    // }
-
     material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
 
     states.blending && setBlendMode(material, states.blendMode);

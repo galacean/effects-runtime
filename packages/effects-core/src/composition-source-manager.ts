@@ -165,8 +165,7 @@ export class CompositionSourceManager implements Disposable {
       //   this.processMask(renderContent.renderer);
       // }
       // 处理mask字段到renderer
-      // @ts-expect-error
-      this.processMask(renderContent);
+      // this.processMask(renderContent);
 
       const split = renderContent.splits && !renderContent.textureSheetAnimation ? renderContent.splits[0] : undefined;
       const shape = renderContent.renderer.shape;
@@ -217,12 +216,12 @@ export class CompositionSourceManager implements Disposable {
    * 处理蒙版和遮挡关系写入 stencil 的 ref 值
    */
   private processMask (renderContent: RendererOptionsWithMask) {
-    const maskOptions = renderContent.mask;
-
-    // @ts-expect-error
-    renderContent.renderer.mask = maskOptions.ref;
-    // @ts-expect-error
-    renderContent.renderer.maskMode = maskOptions.mask ? spec.MaskMode.MASK : maskOptions.mode;
+    // const maskOptions = renderContent.mask;
+    //
+    // // @ts-expect-error
+    // renderContent.renderer.mask = maskOptions.ref;
+    // // @ts-expect-error
+    // renderContent.renderer.maskMode = maskOptions.mask ? spec.MaskMode.MASK : maskOptions.mode;
 
     // const maskMode = renderer.maskMode;
     //

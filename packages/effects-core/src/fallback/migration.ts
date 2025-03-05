@@ -1,7 +1,7 @@
+import * as spec from '@galacean/effects-specification';
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
-  SpineContent, TimelineAssetData,
-} from '@galacean/effects-specification';
+  SpineContent, TimelineAssetData } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion,
@@ -47,6 +47,104 @@ export function version22Migration (json: JSONSceneLegacy): JSONSceneLegacy {
   });
 
   return json;
+}
+
+let currentMaskComponent: string;
+const componentMap: Map<string, spec.ComponentData> = new Map();
+const itemMap: Map<string, spec.VFXItemData > = new Map();
+const refCompositions: Map<string, spec.CompositionData> = new Map();
+
+export function version32Migration (json: JSONScene) {
+  componentMap.clear();
+  itemMap.clear();
+  refCompositions.clear();
+  const { compositions, compositionId, components, items } = json;
+
+  let mainComp = compositions[0];
+
+  for (const comp of compositions) {
+    if (comp.id === compositionId) {
+      mainComp = comp;
+    } else {
+      refCompositions.set(comp.id, comp);
+    }
+  }
+  for (const component of components) {
+    componentMap.set(component.id, component);
+  }
+  for (const item of items) {
+    itemMap.set(item.id, item);
+  }
+
+  processContent(mainComp);
+}
+
+export function processContent (composition: spec.CompositionData) {
+  for (const item of composition.items) {
+    const itemProps = itemMap.get(item.id);
+
+    if (!itemProps) {
+      return;
+    }
+
+    const component = componentMap.get(itemProps.components[0].id);
+
+    if (!component) {
+      return;
+    }
+
+    if (
+      itemProps.type === spec.ItemType.sprite ||
+      itemProps.type === spec.ItemType.particle ||
+      itemProps.type === spec.ItemType.spine ||
+      itemProps.type === spec.ItemType.text ||
+      itemProps.type === spec.ItemType.video ||
+      itemProps.type === spec.ItemType.shape
+    ) {
+      processMask(component);
+    }
+
+    // 处理预合成的渲染顺序
+    if (itemProps.type === spec.ItemType.composition) {
+      const refId = (itemProps.content as spec.CompositionContent).options.refId;
+      const comp = refCompositions.get(refId);
+
+      comp && processContent(comp);
+    }
+
+  }
+}
+// TODO 类型完善
+export function processMask (renderContent: spec.ComponentData) {
+  // @ts-expect-error
+  const renderer = renderContent.renderer;
+  const maskMode = renderer.maskMode;
+
+  if (maskMode === spec.MaskMode.NONE) {
+    // @ts-expect-error
+    renderContent.mask = {};
+
+    return;
+  }
+
+  if (maskMode === spec.MaskMode.MASK) {
+    // @ts-expect-error
+    renderContent.mask = {
+      mask: true,
+    };
+    currentMaskComponent = renderContent.id;
+  } else if (
+    maskMode === spec.MaskMode.OBSCURED ||
+    maskMode === spec.MaskMode.REVERSE_OBSCURED
+  ) {
+    // @ts-expect-error
+    renderContent.mask = {
+      mode: maskMode,
+      ref: {
+        'id': currentMaskComponent,
+      },
+    };
+  }
 }
 
 /**

@@ -1,17 +1,19 @@
 import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { effectsClass } from '../../decorators';
-import type { Engine } from '../../engine';
-import { glContext } from '../../gl';
-import type { GeometryDrawMode } from '../../render';
-import { Geometry } from '../../render';
-import type { GeometryFromShape } from '../../shape';
-import { TextureSourceType, type Texture, type Texture2DSourceOptionsVideo } from '../../texture';
-import type { PlayableGraph, Playable } from '../cal/playable-graph';
-import { PlayableAsset } from '../cal/playable-graph';
+import { MaskMode } from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/base-render-component';
+import { effectsClass } from '../../decorators';
+import type { Engine } from '../../engine';
+import { glContext } from '../../gl';
+import type { Maskable } from '../../material/mask-ref-manager';
+import type { GeometryDrawMode } from '../../render';
+import { Geometry } from '../../render';
+import type { GeometryFromShape } from '../../shape';
+import { type Texture, type Texture2DSourceOptionsVideo, TextureSourceType } from '../../texture';
+import type { Playable, PlayableGraph } from '../cal/playable-graph';
+import { PlayableAsset } from '../cal/playable-graph';
 
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
@@ -57,10 +59,11 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
 }
 
 @effectsClass(spec.DataType.SpriteComponent)
-export class SpriteComponent extends BaseRenderComponent {
+export class SpriteComponent extends BaseRenderComponent implements Maskable {
   textureSheetAnimation?: spec.TextureSheetAnimation;
   splits: splitsDataType = singleSplits;
   frameAnimationLoop = false;
+  maskRef: number;
 
   /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
   // override colorOverLifetime: { stop: number, color: any }[];
@@ -291,6 +294,15 @@ export class SpriteComponent extends BaseRenderComponent {
       renderer = {} as SpriteItemProps['renderer'];
     }
 
+    // @ts-expect-error
+    const { mask = false, mode = MaskMode.NONE, ref } = data.mask || {};
+
+    if (mask) {
+      this.getRefValue();
+    } else if (mode === MaskMode.OBSCURED || mode === MaskMode.OBSCURED) {
+      this.maskRef = ref.getRefValue();
+    }
+
     this.interaction = interaction;
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.MESH,
@@ -300,8 +312,8 @@ export class SpriteComponent extends BaseRenderComponent {
       transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       shape: renderer.shape,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      mask: this.maskRef,
+      maskMode: mask ? MaskMode.MASK : mode,
       order: listIndex,
     };
 
@@ -322,5 +334,13 @@ export class SpriteComponent extends BaseRenderComponent {
     this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.setItem();
+  }
+
+  public getRefValue (): number {
+    if (!this.maskRef) {
+      this.maskRef = this.engine.maskRefManager.distributeRef();
+    }
+
+    return this.maskRef;
   }
 }

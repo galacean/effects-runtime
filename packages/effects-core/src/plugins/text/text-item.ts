@@ -1,18 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
+import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import type { Engine } from '../../engine';
-import { Texture } from '../../texture';
-import { TextLayout } from './text-layout';
-import { TextStyle } from './text-style';
-import { glContext } from '../../gl';
-import { effectsClass } from '../../decorators';
+import { MaskMode } from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
-import { applyMixins, isValidFontFamily } from '../../utils';
-import type { Material } from '../../material';
-import type { VFXItem } from '../../vfx-item';
 import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
-import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { effectsClass } from '../../decorators';
+import type { Engine } from '../../engine';
+import { glContext } from '../../gl';
+import type { Material } from '../../material';
+import type { Maskable } from '../../material/mask-ref-manager';
+import { Texture } from '../../texture';
+import { applyMixins, isValidFontFamily } from '../../utils';
+import type { VFXItem } from '../../vfx-item';
+import { TextLayout } from './text-layout';
+import { TextStyle } from './text-style';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -56,9 +58,9 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends BaseRenderComponent {
+export class TextComponent extends BaseRenderComponent implements Maskable {
   isDirty = true;
-
+  maskRef: number;
   /**
    * 文本行数
    */
@@ -105,6 +107,15 @@ export class TextComponent extends BaseRenderComponent {
       renderer = {} as TextItemProps['renderer'];
     }
 
+    // @ts-expect-error
+    const { mask = false, mode = MaskMode.NONE, ref } = data.mask || {};
+
+    if (mask) {
+      this.getRefValue();
+    } else if (mode === MaskMode.OBSCURED || mode === MaskMode.OBSCURED) {
+      this.maskRef = ref.getRefValue();
+    }
+
     this.interaction = interaction;
 
     this.renderer = {
@@ -114,8 +125,8 @@ export class TextComponent extends BaseRenderComponent {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      mask: this.maskRef,
+      maskMode: mask ? MaskMode.MASK : mode,
       order: listIndex,
     };
     this.interaction = interaction;
@@ -144,6 +155,14 @@ export class TextComponent extends BaseRenderComponent {
 
   updateTexture (flipY = true) {
     // OVERRIDE by mixins
+  }
+
+  getRefValue (): number {
+    if (!this.maskRef) {
+      this.maskRef = this.engine.maskRefManager.distributeRef();
+    }
+
+    return this.maskRef;
   }
 }
 
