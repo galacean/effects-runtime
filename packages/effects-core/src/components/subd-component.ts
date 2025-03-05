@@ -20,7 +20,10 @@ export class SubdComponent extends MeshComponent {
   private animated = false;
 
   // 泊松采样的最小距离
-  private minDistance = 0.05;
+  private minDistance = 0.1;
+
+  //! DEBUG 是否显示线框模式
+  private wireframeMode = true;
 
   // FFD 顶点着色器
   private vert = `
@@ -232,6 +235,11 @@ void main() {
 
     this.geometry.setIndexData(new Uint16Array(indices));
     this.geometry.setDrawCount(indices.length);
+
+    //! DEBUG 如果当前是线框模式，转换为线条渲染
+    if (this.wireframeMode) {
+      this.convertTrianglesToLines();
+    }
   }
 
   private performDelaunayTriangulation (
@@ -726,6 +734,93 @@ void main() {
     }
 
     return result;
+  }
+
+  //! DEBUG ================== 线框模式 ==================
+
+  // 设置线框模式
+  setWireframeMode (enabled: boolean): void {
+    this.wireframeMode = enabled;
+    this.updateRenderMode();
+  }
+
+  // 切换线框模式
+  toggleWireframeMode (): void {
+    this.wireframeMode = !this.wireframeMode;
+    this.updateRenderMode();
+  }
+
+  // 更新渲染模式
+  private updateRenderMode (): void {
+    if (!this.geometry) {
+      return;
+    }
+
+    if (this.wireframeMode) {
+      // 线框模式 - 用线条渲染
+      // 获取当前几何体的数据
+      const indices = this.geometry.getIndexData();
+
+      if (!indices) {
+        return;
+      }
+
+      // 如果当前是三角形渲染模式，需要转换为线条索引
+      this.convertTrianglesToLines();
+    } else {
+      // 普通模式 - 用三角形渲染
+      // 重新创建几何体以恢复三角形模式
+      this.createSubdividedMesh();
+    }
+  }
+
+  // 将三角形索引转换为线条索引
+  private convertTrianglesToLines (): void {
+    if (!this.geometry) {
+      return;
+    }
+
+    const indices = this.geometry.getIndexData();
+    const positions = this.geometry.getAttributeData('aPos');
+    const uvs = this.geometry.getAttributeData('aUV');
+
+    if (!indices || !positions || !uvs) {
+      return;
+    }
+
+    // 创建线条索引
+    const lineIndices = [];
+
+    // 遍历三角形，为每条边创建线条索引
+    for (let i = 0; i < indices.length; i += 3) {
+      const i0 = indices[i];
+      const i1 = indices[i + 1];
+      const i2 = indices[i + 2];
+
+      // 添加三角形的三条边
+      lineIndices.push(i0, i1); // 边1
+      lineIndices.push(i1, i2); // 边2
+      lineIndices.push(i2, i0); // 边3
+    }
+
+    // 创建一个新的几何体，使用线条绘制模式
+    this.geometry = Geometry.create(this.engine, {
+      attributes: {
+        aPos: {
+          type: glContext.FLOAT,
+          size: 3,
+          data: new Float32Array(positions),
+        },
+        aUV: {
+          type: glContext.FLOAT,
+          size: 2,
+          data: new Float32Array(uvs),
+        },
+      },
+      indices: { data: new Uint16Array(lineIndices) },
+      mode: glContext.LINES,
+      drawCount: lineIndices.length,
+    });
   }
 }
 
