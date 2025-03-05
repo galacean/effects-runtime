@@ -14,7 +14,7 @@ import Delaunator from './delaunator';
 export class SubdComponent extends MeshComponent {
   private animated = false;
 
-  private subdivisionLevel = 10; // 细分级别控制整体密度
+  private subdivisionLevel = 4; // 细分级别控制整体密度
   private wireframe = true; // 是否使用线框模式
 
   // TODO 占个位
@@ -357,7 +357,8 @@ void main() {
     const [minX, minY, maxX, maxY] = this.getBounds(contour);
 
     // 基于细分级别计算需要的点数和采样半径
-    const numPoints = Math.max(10, this.subdivisionLevel * this.subdivisionLevel * 3);
+    // TODO 这个函数要线性还是非线性？
+    const numPoints = this.subdivisionLevel * this.subdivisionLevel * 3;
     const radius = Math.sqrt(((maxX - minX) * (maxY - minY)) / numPoints);
     const cellSize = radius / Math.sqrt(2);
 
