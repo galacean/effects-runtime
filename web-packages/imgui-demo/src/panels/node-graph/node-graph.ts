@@ -71,6 +71,8 @@ export class AnimationGraph extends EditorWindow {
   private m_pFocusedGraphView: GraphView;
   private breadcrumbPopupContext: NodeGraph.BaseNode | null = null;
 
+  private selectedNode: SelectedNode | null;
+
   @menuItem('Window/AnimationGraph')
   static showWindow () {
     EditorWindow.getWindow(AnimationGraph).open();
@@ -202,7 +204,18 @@ export class AnimationGraph extends EditorWindow {
     // this.imNodeFlow.update();
 
     this.DrawGraphView();
+    this.UpdateSelectedNode();
+  }
 
+  private UpdateSelectedNode () {
+    if (this.selectedNodes.length > 0) {
+      const currentSelectedNode = this.selectedNodes[this.selectedNodes.length - 1];
+
+      if (this.selectedNode !== currentSelectedNode) {
+        Selection.setActiveObject(currentSelectedNode.m_pNode);
+        this.selectedNode = currentSelectedNode;
+      }
+    }
   }
 
   private GetEditedRootGraph (): NodeGraph.FlowGraph | null {
