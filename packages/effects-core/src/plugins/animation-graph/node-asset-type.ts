@@ -10,7 +10,8 @@ export enum NodeAssetType {
   ControlParameterFloatNodeAsset = 'ControlParameterFloatNodeAsset',
   StateMachineNodeAsset = 'StateMachineNodeAsset',
   TransitionNodeAsset = 'TransitionNodeAsset',
-  StateNodeAsset = 'StateNodeAsset'
+  StateNodeAsset = 'StateNodeAsset',
+  ControlParameterBoolNodeAsset = 'ControlParameterBoolNodeAsset'
 }
 
 const nodeAssetClassStore: Record<string, any> = {};

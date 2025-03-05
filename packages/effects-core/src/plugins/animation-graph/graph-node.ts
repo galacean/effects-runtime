@@ -86,12 +86,10 @@ export interface GraphNodeAssetData {
   index: number,
 }
 
-export class GraphNodeAsset {
+export abstract class GraphNodeAsset {
   index: number;
 
-  instantiate (context: InstantiationContext) {
-    // OVERRIDE
-  }
+  abstract instantiate (context: InstantiationContext): void;
 
   load (data: GraphNodeAssetData) {
     this.index = data.index;
