@@ -135,7 +135,7 @@ export class TextComponent extends BaseRenderComponent {
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     // TextComponentBase
     this.updateWithOptions(options);
-    this.updateTexture();
+    this.renderText(options);
 
     this.setItem();
     // 恢复默认颜色
@@ -170,6 +170,10 @@ export class TextComponentBase {
   protected maxLineWidth: number;
 
   private char: string[];
+
+  protected renderText (options: spec.TextContentOptions) {
+    this.updateTexture();
+  }
 
   updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
