@@ -112,7 +112,7 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
 
     if (mask) {
       this.getRefValue();
-    } else if (mode === MaskMode.OBSCURED || mode === MaskMode.OBSCURED) {
+    } else if (mode === MaskMode.OBSCURED || mode === MaskMode.REVERSE_OBSCURED) {
       this.maskRef = ref.getRefValue();
     }
 

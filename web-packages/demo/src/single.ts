@@ -1,7 +1,8 @@
 import { AssetManager, Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 
-/*let json = {
+/*
+const json = {
   'playerVersion': {
     'web': '2.2.5',
     'native': '0.0.1.202311221223',
@@ -187,7 +188,7 @@ import '@galacean/effects-plugin-spine';
         // 'maskMode': 2,
       },
       'mask': {
-        'mode': 2,
+        'mode': 3,
         'ref': {
           'id': '989b6e9b32bf49b0b9191000d8370e16',
         },
@@ -252,13 +253,12 @@ import '@galacean/effects-plugin-spine';
       },
       'renderer': {
         'renderMode': 1,
-        'maskMode': 2,
         'texture': {
           'id': 'fd93606579684f67a1818452c0db274b',
         },
       },
       'mask': {
-        'mode': 2,
+        'mode': 3,
         'ref': {
           'id': 'eaf3ffdea0414572a644d6b2c9fa9df9',
         },
@@ -484,7 +484,7 @@ import '@galacean/effects-plugin-spine';
         },
       },
       'mask': {
-        'mode': 2,
+        'mode': 3,
         'ref': {
           'id': 'cca53dcc674b496b9d2b53d82d193b27',
         },
@@ -594,7 +594,7 @@ import '@galacean/effects-plugin-spine';
       'transform': {
         'position': {
           'x': 0,
-          'y': 1,
+          'y': 6,
           'z': 0,
         },
         'eulerHint': {
@@ -635,7 +635,7 @@ import '@galacean/effects-plugin-spine';
       'transform': {
         'position': {
           'x': -0.2329,
-          'y': 1,
+          'y': 6,
           'z': 0,
         },
         'eulerHint': {
@@ -676,7 +676,7 @@ import '@galacean/effects-plugin-spine';
       'transform': {
         'position': {
           'x': 0.0141,
-          'y': -0.6,
+          'y': -3.5,
           'z': 0,
         },
         'eulerHint': {
@@ -713,7 +713,7 @@ import '@galacean/effects-plugin-spine';
       'transform': {
         'position': {
           'x': 0.0755,
-          'y': -3.6988,
+          'y': -4,
           'z': 0,
         },
         'eulerHint': {
@@ -1230,7 +1230,8 @@ import '@galacean/effects-plugin-spine';
     },
   ],
   'compositionId': '2',
-};*/
+};
+*/
 
 const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*N6fqSaIfq4gAAAAAAAAAAAAAelB4AQ';
 const container = document.getElementById('J-container');
