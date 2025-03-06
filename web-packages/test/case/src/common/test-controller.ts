@@ -30,6 +30,7 @@ export class TestController {
   ) {
     await this.loadOldPlayer(oldVersion);
     await this.loadOldPlugin('model', oldVersion);
+    await this.loadOldPlugin('rich-text', oldVersion);
     await this.loadOldPlugin('spine', oldVersion);
     await this.loadOldPlugin('orientation-transformer', oldVersion);
 
