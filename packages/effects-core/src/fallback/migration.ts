@@ -69,6 +69,7 @@ export function version31Migration (json: JSONScene): JSONScene {
       if (shapeComponent.type === ShapePrimitiveType.Custom) {
         const customShapeComponent = shapeComponent as CustomShapeData;
 
+        //@ts-expect-error
         if (customShapeComponent.shapes?.length > 0 && customShapeComponent.shapes[0].fill) {
           // @ts-expect-error
           customShapeComponent.fill = customShapeComponent.shapes[0].fill;

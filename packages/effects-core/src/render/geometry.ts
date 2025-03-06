@@ -58,12 +58,12 @@ export abstract class Geometry extends EffectsObject {
   /**
    * Geometry 的名称
    */
-  name: string;
+  name: string = '';
 
   /**
    * 子网格数据
    */
-  subMeshes: spec.SubMesh[];
+  subMeshes: spec.SubMesh[] = [];
   /**
    * Geometry 创建函数
    */

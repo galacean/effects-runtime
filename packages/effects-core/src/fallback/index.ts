@@ -99,14 +99,11 @@ function getStandardJSONFromV0 (json: any): JSONSceneLegacy {
 export function getStandardImage (image: any, index: number, imageTags: RenderLevel[]): TemplateImage | Image | CompressedImage {
   const renderLevel = imageTags[index];
 
-  const oriY = image.oriY;
-
   if (typeof image === 'string') {
     return {
       id: generateGUID(),
       renderLevel,
       url: image,
-      oriY,
     };
   } else if (image.template) {
     return {
@@ -115,13 +112,11 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       template: image.template,
       webp: image.webp,
       renderLevel,
-      oriY,
     };
   } else if (image.compressed) {
     return {
       id: generateGUID(),
       url: image.url,
-      oriY,
       compressed: {
         astc: image.compressed.android,
         pvrtc: image.compressed.iOS,
@@ -135,7 +130,6 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       url: image.url,
       webp: image.webp,
       renderLevel,
-      oriY,
     };
   } else if (image && image.sourceType) {
     return image;
