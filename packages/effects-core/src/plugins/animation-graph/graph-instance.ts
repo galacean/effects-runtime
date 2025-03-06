@@ -4,14 +4,14 @@ import { GraphDataSet } from './graph-data-set';
 import { PoseResult } from './pose-result';
 import type { SkeletonRecordProperties } from './skeleton';
 import { Skeleton } from './skeleton';
-import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, PoseNode, PoseNodeDebugInfo } from './graph-node';
+import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, PoseNode, PoseNodeDebugInfo, ValueNode } from './graph-node';
 import { InvalidIndex } from './graph-node';
 import type { VFXItem } from '../../vfx-item';
 import { EffectsObject } from '../../effects-object';
-import type { NodeAssetType } from '..';
-import { getNodeAssetClass } from '..';
 import { effectsClass } from '../../decorators';
 import type { AnimationClip } from '../cal/calculate-vfx-item';
+import type { NodeAssetType } from './node-asset-type';
+import { getNodeAssetClass } from './node-asset-type';
 
 export class GraphInstance {
   rootNode: PoseNode;
@@ -98,15 +98,19 @@ export class GraphInstance {
   //-------------------------------------------------------------------------
 
   getNumControlParameters () {
-    // TODO implement this
-    return 0;
-    // return m_pGraphVariation->m_pGraphDefinition->m_controlParameterIDs.size();
+    return this.graphAsset.controlParameterIDs.length;
   }
 
   getPoseNodeDebugInfo (nodeIdx: number): PoseNodeDebugInfo {
     const node = this.nodes[nodeIdx] as PoseNode;
 
     return node.getDebugInfo();
+  }
+
+  getRuntimeNodeDebugValue<T>(nodeIdx: number): T {
+    const pValueNode = this.nodes[nodeIdx] as ValueNode;
+
+    return pValueNode.getValue<T>(this.context);
   }
 
   resetGraphState () {
@@ -135,12 +139,15 @@ export interface AnimationGraphAssetData extends spec.EffectsObjectData {
   nodeAssetDatas: GraphNodeAssetData[],
   graphDataSet: GraphDataSetData,
   rootNodeIndex: number,
+  controlParameterIDs: string[],
 }
 
 @effectsClass('AnimationGraphAsset')
 export class AnimationGraphAsset extends EffectsObject {
   nodeAssets: GraphNodeAsset[] = [];
   graphDataSet = new GraphDataSet();
+  controlParameterIDs: string[] = [];
+  parameterLookupMap = new Map<string, number>();
   rootNodeIndex = InvalidIndex;
 
   static createNodeAsset (type: NodeAssetType) {
@@ -158,12 +165,29 @@ export class AnimationGraphAsset extends EffectsObject {
     const nodeAssetDatas = graphAssetData.nodeAssetDatas;
 
     this.rootNodeIndex = graphAssetData.rootNodeIndex;
+    this.controlParameterIDs = graphAssetData.controlParameterIDs;
+
+    // Create parameter lookup map
+    //-------------------------------------------------------------------------
+
+    const numControlParameters = graphAssetData.controlParameterIDs.length;
+
+    for (let i = 0; i < numControlParameters; i++) {
+      this.parameterLookupMap.set(graphAssetData.controlParameterIDs[i], i);
+    }
+
+    // Deserialize node asset
+    //-------------------------------------------------------------------------
+
     this.nodeAssets = [];
 
     for (let i = 0;i < nodeAssetDatas.length;i++) {
       this.nodeAssets[i] = AnimationGraphAsset.createNodeAsset(nodeAssetDatas[i].type as NodeAssetType);
       this.nodeAssets[i].load(nodeAssetDatas[i]);
     }
+
+    // Deserialize graph data set
+    //-------------------------------------------------------------------------
 
     this.graphDataSet = new GraphDataSet();
     this.graphDataSet.resources = [];

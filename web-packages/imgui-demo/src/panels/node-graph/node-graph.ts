@@ -1,4 +1,3 @@
-//@ts-nocheck
 import type { AnimationGraphAssetData, GraphNodeAssetData, spec } from '@galacean/effects';
 import { AnimationGraphAsset, AnimationGraphComponent, GraphInstance, InvalidIndex, NodeAssetType, VFXItem } from '@galacean/effects';
 import { editorWindow, menuItem } from '../../core/decorators';
@@ -24,7 +23,9 @@ import { AnimationClipToolsNode } from './tools-graph/nodes/animation-clip-tools
 import { FlowGraph } from './tools-graph/graphs/flow-graph';
 import { PoseResultToolsNode, ResultToolsNode } from './tools-graph/nodes/result-tools-node';
 import { GraphCompilationContext } from './compilation';
-import { ConstBoolToolsNode, ConstFloatToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
+import { ConstBoolToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
+import { ControlParameterToolsNode } from './tools-graph/nodes/parameter-tools-nodes';
+import { BoolControlParameterToolsNode, BoolParameterReferenceToolsNode, FloatControlParameterToolsNode } from './tools-graph/nodes/parameter-tools-nodes';
 
 type ImVec2 = ImGui.ImVec2;
 type ImColor = ImGui.ImColor;
@@ -109,7 +110,7 @@ export class AnimationGraph extends EditorWindow {
     const stateNode3 = this.stateMachineGraph.CreateNode(StateToolsNode, new ImVec2(800, 300));
 
     this.stateMachineGraph.SetDefaultEntryState(stateNode1.GetID());
-    const buildStateGraph = (stateNode: StateToolsNode, animationID: string)=>{
+    const buildStateGraph = (stateNode: StateToolsNode, animationID: string) => {
       const animationClipNode1 = stateNode.GetChildGraph()!.CreateNode(AnimationClipToolsNode);
       const state1ResultNode = stateNode.GetChildGraph()!.FindAllNodesOfType(PoseResultToolsNode)[0];
 
@@ -135,21 +136,26 @@ export class AnimationGraph extends EditorWindow {
     const transitionToolsNode2 = transition2.GetSecondaryGraph()!.CreateNode(TransitionToolsNode);
     const transitionToolsNode3 = transition3.GetSecondaryGraph()!.CreateNode(TransitionToolsNode);
 
-    const conditionNode1 = transition1.GetSecondaryGraph()!.CreateNode(ConstBoolToolsNode);
+    const boolControlParameterToolsNode = this.flowGraph.CreateNode(BoolControlParameterToolsNode);
+    const conditionNode1 = transition1.GetSecondaryGraph()!.CreateNode(BoolParameterReferenceToolsNode, boolControlParameterToolsNode);
     const conditionNode2 = transition2.GetSecondaryGraph()!.CreateNode(ConstBoolToolsNode);
     const conditionNode3 = transition3.GetSecondaryGraph()!.CreateNode(ConstBoolToolsNode);
 
-    conditionNode1.m_value = true;
+    boolControlParameterToolsNode.Rename('TestParam');
+    //@ts-expect-error
+    boolControlParameterToolsNode.m_value = true;
+    //@ts-expect-error
     conditionNode2.m_value = true;
+    //@ts-expect-error
     conditionNode3.m_value = true;
 
     transitionToolsNode1.m_duration = 2;
     transitionToolsNode2.m_duration = 2;
     transitionToolsNode3.m_duration = 3;
 
-    (transition1.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode1, conditionNode1.GetOutputPin(0), transitionToolsNode1, transitionToolsNode1.GetInputPin(0));
-    (transition2.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode2, conditionNode2.GetOutputPin(0), transitionToolsNode2, transitionToolsNode2.GetInputPin(0));
-    (transition3.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode3, conditionNode3.GetOutputPin(0), transitionToolsNode3, transitionToolsNode3.GetInputPin(0));
+    (transition1.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode1, conditionNode1.GetOutputPin(0)!, transitionToolsNode1, transitionToolsNode1.GetInputPin(0)!);
+    (transition2.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode2, conditionNode2.GetOutputPin(0)!, transitionToolsNode2, transitionToolsNode2.GetInputPin(0)!);
+    (transition3.GetSecondaryGraph() as FlowGraph).TryMakeConnection(conditionNode3, conditionNode3.GetOutputPin(0)!, transitionToolsNode3, transitionToolsNode3.GetInputPin(0)!);
 
     this.primaryGraphView.SetGraphToView(this.flowGraph);
     this.userContext.OnNavigateToGraph(this.NavigateToGraph.bind(this));
@@ -384,7 +390,7 @@ export class AnimationGraph extends EditorWindow {
         if (pathFromChildToRoot[i].m_pNode instanceof ChildGraphToolsNode) {
           pChildGraphToCheck = this.loadedGraphStack[pathFromChildToRoot[i].m_stackIdx + 1]
             .m_pGraphDefinition!.GetRootGraph();
-        // eslint-disable-next-line brace-style
+          // eslint-disable-next-line brace-style
         }
         // We should search child graph
         else if (!(pathFromChildToRoot[i].m_pNode instanceof StateMachineToolsNode)) {
@@ -457,8 +463,7 @@ export class AnimationGraph extends EditorWindow {
       // Draw the chevron
       if (drawChevron) {
         ImGui.SameLine(0, 0);
-        const separatorStr = `-->##${pathFromChildToRoot[i].m_pNode!.GetName()}${
-          pathFromChildToRoot[i].m_pNode!.GetID().toString()}`;
+        const separatorStr = `-->##${pathFromChildToRoot[i].m_pNode!.GetName()}${pathFromChildToRoot[i].m_pNode!.GetID().toString()}`;
 
         if (ImGui.Button(separatorStr, new ImVec2(0, buttonHeight))) {
           if (pGraphToNavigateTo === null) { // Don't open the popup if we have a nav request
@@ -650,21 +655,42 @@ export class AnimationGraph extends EditorWindow {
   }
 
   compileGraph (): AnimationGraphAssetData {
-    const nodes = this.flowGraph.GetNodes();
-
-    // const nodeLookupMap = new Map<NodeGraph.UUID,node>();
-
+    const rootGraph = this.flowGraph;
     const context = this.compilationContext;
 
     context.reset();
 
-    const resultNodes = this.flowGraph.FindAllNodesOfType(ResultToolsNode);
+    // Always compile control parameters first
+    //-------------------------------------------------------------------------
+
+    const controlParameters = rootGraph.FindAllNodesOfType<ControlParameterToolsNode>(
+      ControlParameterToolsNode,
+      [],
+      NodeGraph.SearchMode.Localized,
+      NodeGraph.SearchTypeMatch.Derived
+    );
+
+    const controlParameterIDs = [];
+
+    for (const pParameter of controlParameters) {
+      if (pParameter.Compile(context) === InvalidIndex) {
+        console.error('Control parameter compile error.');
+        // return false;
+      }
+
+      controlParameterIDs.push(pParameter.GetParameterID());
+    }
+
+    // Compile the actual graph
+    //-------------------------------------------------------------------------
+
+    const resultNodes = rootGraph.FindAllNodesOfType(ResultToolsNode);
     const rootNodeIdx = resultNodes[0].Compile(context);
 
     const resources = [];
 
     for (const nodeID of context.GetRegisteredDataSlots()) {
-      const animationClipNode = this.flowGraph.FindNode(nodeID, true) as AnimationClipToolsNode;
+      const animationClipNode = rootGraph.FindNode(nodeID, true) as AnimationClipToolsNode;
 
       if (!(animationClipNode instanceof AnimationClipToolsNode)) {
         throw new Error('registeredDataSlots has non-AnimationClipGraphNode');
@@ -672,7 +698,8 @@ export class AnimationGraph extends EditorWindow {
       resources.push({ id: animationClipNode.m_defaultResourceID });
     }
 
-    // console.log(context.nodeAssetDatas, resources);
+    // Fill runtime definition
+    //-------------------------------------------------------------------------
 
     const graphAsset: AnimationGraphAssetData = {
       nodeAssetDatas: context.nodeAssetDatas,
@@ -682,7 +709,9 @@ export class AnimationGraph extends EditorWindow {
       id: '',
       dataType: 'AnimationGraphAsset' as spec.DataType,
       rootNodeIndex: rootNodeIdx,
+      controlParameterIDs: controlParameterIDs,
     };
+    // console.log(graphAsset);
 
     return graphAsset;
   }
@@ -714,7 +743,7 @@ export class AnimationGraph extends EditorWindow {
         this.primaryGraphView.CenterView(pNode);
       }
     } else if (this.secondaryGraphView.GetViewedGraph() !== null &&
-             this.secondaryGraphView.GetViewedGraph()!.FindNode(pNode.GetID())) {
+      this.secondaryGraphView.GetViewedGraph()!.FindNode(pNode.GetID())) {
       this.secondaryGraphView.SelectNode(pNode);
       this.SetSelectedNodes([new SelectedNode(pNode)]);
       if (focusViewOnNode) {

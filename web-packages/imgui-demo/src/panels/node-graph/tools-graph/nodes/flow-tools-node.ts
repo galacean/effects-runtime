@@ -306,7 +306,7 @@ export abstract class FlowToolsNode extends NodeGraph.FlowNode {
     }
     // Draw Value Node
     else {
-      // this.DrawInfoText(ctx);
+      // this.DrawInfoText(ctx);j
 
       // if (nodeValueType !== GraphValueType.Unknown &&
       //           nodeValueType !== GraphValueType.BoneMask &&
@@ -349,5 +349,63 @@ export abstract class FlowToolsNode extends NodeGraph.FlowNode {
         ImGui.EndMenu();
       }
     }
+  }
+}
+
+export function DrawValueDisplayText (
+  ctx: NodeGraph.DrawContext,
+  pGraphNodeContext: ToolsGraphUserContext,
+  runtimeNodeIdx: number,
+  valueType: GraphValueType
+): void {
+  //-------------------------------------------------------------------------
+
+  switch (valueType) {
+    case GraphValueType.Bool: {
+      const value = pGraphNodeContext.GetNodeValue<boolean>(runtimeNodeIdx);
+
+      ImGui.Text('Value: ');
+      ImGui.SameLine();
+      ImGui.TextColored(
+        value ? new ImGui.ImColor(Colors.LimeGreen) : new ImGui.ImColor(Colors.IndianRed),
+        value ? 'True' : 'False'
+      );
+    }
+
+      break;
+    case GraphValueType.ID: {
+      // const value = pGraphNodeContext.GetNodeValue<StringID>(runtimeNodeIdx);
+
+      // if (value.IsValid()) {
+      //   ImGui.Text(`Value: ${value.toString()}`);
+      // } else {
+      //   ImGui.Text('Value: Invalid');
+      // }
+    }
+
+      break;
+    case GraphValueType.Float: {
+      const value = pGraphNodeContext.GetNodeValue<number>(runtimeNodeIdx);
+
+      ImGui.Text(`Value: ${value.toFixed(3)}`);
+    }
+
+      break;
+    case GraphValueType.Vector: {
+      // const value = pGraphNodeContext.GetNodeValue<Float3>(runtimeNodeIdx);
+
+      // DrawVectorInfoText(ctx, value);
+    }
+
+      break;
+    case GraphValueType.Target: {
+      // const value = pGraphNodeContext.GetNodeValue<Target>(runtimeNodeIdx);
+
+      // DrawTargetInfoText(ctx, value);
+    }
+
+      break;
+    default:
+      break;
   }
 }

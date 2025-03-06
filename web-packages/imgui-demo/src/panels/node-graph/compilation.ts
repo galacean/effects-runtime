@@ -10,6 +10,7 @@ import type { UUID } from './visual-graph';
 import type * as NodeGraph from './visual-graph';
 import { ConstBoolToolsNode, ConstFloatToolsNode } from './tools-graph/nodes/const-value-tools-nodes';
 import { AnimationClipToolsNode } from './tools-graph/nodes/animation-clip-tools-node';
+import { BoolControlParameterToolsNode, ControlParameterToolsNode, FloatControlParameterToolsNode } from './tools-graph/nodes/parameter-tools-nodes';
 
 export enum NodeCompilationState {
   NeedCompilation,
@@ -96,11 +97,11 @@ export class GraphCompilationContext {
   // General Compilation
   //-------------------------------------------------------------------------
 
-  GetUUIDToRuntimeIndexMap (): ReadonlyMap<UUID, number> {
+  GetUUIDToRuntimeIndexMap (): Map<UUID, number> {
     return this.m_nodeIDToIndexMap;
   }
 
-  GetRuntimeIndexToUUIDMap (): ReadonlyMap<number, UUID> {
+  GetRuntimeIndexToUUIDMap (): Map<number, UUID> {
     return this.m_nodeIndexToIDMap;
   }
 
@@ -338,6 +339,10 @@ export class GraphCompilationContext {
       return NodeAssetType.ConstFloatNodeAsset;
     } else if (node instanceof ConstBoolToolsNode) {
       return NodeAssetType.ConstBoolNodeAsset;
+    } else if (node instanceof FloatControlParameterToolsNode) {
+      return NodeAssetType.ControlParameterFloatNodeAsset;
+    } else if (node instanceof BoolControlParameterToolsNode) {
+      return NodeAssetType.ControlParameterBoolNodeAsset;
     }
   }
 }

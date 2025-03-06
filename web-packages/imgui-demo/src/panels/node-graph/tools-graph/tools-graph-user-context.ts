@@ -75,11 +75,11 @@ export class ToolsGraphUserContext extends UserContext {
     return this.m_pGraphInstance.getNodeDebugInstance(runtimeNodeIdx);
   }
 
-  //   GetNodeValue<T>(runtimeNodeIdx: number): T {
-  //     if (this.m_pGraphInstance === null) {
-  //       throw new Error('m_pGraphInstance is null');
-  //     }
+  GetNodeValue<T>(runtimeNodeIdx: number): T {
+    if (this.m_pGraphInstance === null) {
+      throw new Error('m_pGraphInstance is null');
+    }
 
-//     return this.m_pGraphInstance.GetRuntimeNodeDebugValue<T>(runtimeNodeIdx);
-//   }
+    return this.m_pGraphInstance.getRuntimeNodeDebugValue<T>(runtimeNodeIdx);
+  }
 }
