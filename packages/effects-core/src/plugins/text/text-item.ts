@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { MaskMode } from '@galacean/effects-specification';
 import { canvasPool } from '../../canvas-pool';
 import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
@@ -60,7 +59,6 @@ let seed = 0;
 @effectsClass(spec.DataType.TextComponent)
 export class TextComponent extends BaseRenderComponent implements Maskable {
   isDirty = true;
-  maskRef: number;
   /**
    * 文本行数
    */
@@ -107,14 +105,7 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
       renderer = {} as TextItemProps['renderer'];
     }
 
-    // @ts-expect-error
-    const { mask = false, mode = MaskMode.NONE, ref } = data.mask || {};
-
-    if (mask) {
-      this.getRefValue();
-    } else if (mode === MaskMode.OBSCURED || mode === MaskMode.REVERSE_OBSCURED) {
-      this.maskRef = ref.getRefValue();
-    }
+    const maskMode = this.getMaskOptions(data);
 
     this.interaction = interaction;
 
@@ -126,7 +117,7 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
       transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskRef,
-      maskMode: mask ? MaskMode.MASK : mode,
+      maskMode,
       order: listIndex,
     };
     this.interaction = interaction;
@@ -157,7 +148,7 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
     // OVERRIDE by mixins
   }
 
-  getRefValue (): number {
+  override getRefValue (): number {
     if (!this.maskRef) {
       this.maskRef = this.engine.maskRefManager.distributeRef();
     }

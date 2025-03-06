@@ -1,6 +1,7 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
+import { MaskMode } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
@@ -971,6 +972,7 @@ export class ParticleSystem extends Component {
       this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
     }
 
+    let maskProps = this.getMaskOptions(data);
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,
       meshSlots: options.meshSlots,
@@ -991,8 +993,8 @@ export class ParticleSystem extends Component {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion,
       maxCount: options.maxCount,
-      mask: renderer.mask,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      mask: maskProps.maskRef,
+      maskMode: maskProps.maskMode,
       forceTarget,
       diffuse: renderer.texture,
       sizeOverLifetime: sizeOverLifetimeGetter,
@@ -1067,6 +1069,8 @@ export class ParticleSystem extends Component {
         inheritParticleColor: !!trails.inheritParticleColor,
         parentAffectsPosition: !!trails.parentAffectsPosition,
       };
+
+      maskProps = this.getMaskOptions(trails);
       trailMeshProps = {
         name: 'Trail',
         matrix: Matrix4.IDENTITY,
@@ -1083,8 +1087,8 @@ export class ParticleSystem extends Component {
         occlusion: !!trails.occlusion,
         transparentOcclusion: !!trails.transparentOcclusion,
         textureMap: trails.textureMap,
-        mask: renderer.mask,
-        maskMode: renderer.maskMode,
+        mask: maskProps.maskRef,
+        maskMode: maskProps.maskRef,
       };
 
       if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {
@@ -1110,6 +1114,23 @@ export class ParticleSystem extends Component {
     }
     this.item.getHitTestParams = this.getHitTestParams;
     this.item._content = this;
+  }
+
+  getMaskOptions (data: unknown) {
+    let maskMode = MaskMode.NONE, maskRef;
+    // @ts-expect-error
+    const { mode = MaskMode.NONE, ref } = data.mask;
+
+    // @ts-expect-error
+    if (data.mask) {
+      maskMode = mode;
+      maskRef = ref.getRefValue();
+    }
+
+    return {
+      maskMode,
+      maskRef,
+    };
   }
 }
 

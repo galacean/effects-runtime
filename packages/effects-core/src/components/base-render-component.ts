@@ -1,7 +1,9 @@
+import { MaskMode } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
+import type { Maskable } from '../material/mask-ref-manager';
 import { RendererComponent } from './renderer-component';
 import { Texture } from '../texture';
 import type { GeometryDrawMode, Renderer } from '../render';
@@ -45,13 +47,13 @@ export interface ItemRenderInfo {
 /**
  * @since 2.1.0
  */
-export class BaseRenderComponent extends RendererComponent {
+export class BaseRenderComponent extends RendererComponent implements Maskable {
   interaction?: { behavior: spec.InteractBehavior };
   cachePrefix = '-';
   geoData: { atlasOffset: number[] | spec.TypedArray, index: number[] | spec.TypedArray };
   anchor?: spec.vec2;
   renderer: ItemRenderer;
-
+  maskRef: number;
   emptyTexture: Texture;
   color: spec.vec4 = [1, 1, 1, 1];
   worldMatrix: Matrix4;
@@ -394,6 +396,33 @@ export class BaseRenderComponent extends RendererComponent {
       }
     }
   };
+
+  getRefValue (): number {
+    if (!this.maskRef) {
+      this.maskRef = this.engine.maskRefManager.distributeRef();
+    }
+
+    return this.maskRef;
+  }
+
+  // TODO 类型指定
+  getMaskOptions (data: any): spec.MaskMode {
+    let maskMode = MaskMode.NONE;
+
+    if (data.mask) {
+      const { mask = false, mode = MaskMode.NONE, ref } = data.mask;
+
+      if (mask) {
+        maskMode = MaskMode.MASK;
+        this.getRefValue();
+      } else if (mode === MaskMode.OBSCURED || mode === MaskMode.REVERSE_OBSCURED) {
+        maskMode = mode;
+        this.maskRef = ref.getRefValue();
+      }
+    }
+
+    return maskMode;
+  }
 }
 
 export function getImageItemRenderInfo (item: BaseRenderComponent): ItemRenderInfo {

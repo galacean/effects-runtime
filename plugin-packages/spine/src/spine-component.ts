@@ -120,6 +120,10 @@ export class SpineComponent extends RendererComponent {
     this.options = data.options;
     this.rendererOptions = data.renderer || {};
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
+    const { maskMode, maskRef } = this.getMaskOptions(data);
+
+    this.rendererOptions.maskMode = maskMode;
+    this.rendererOptions.mask = maskRef;
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
       return;
@@ -551,6 +555,23 @@ export class SpineComponent extends RendererComponent {
       y: this.offset.y,
       width: this.size.x,
       height: this.size.y,
+    };
+  }
+
+  getMaskOptions (data: spec.SpineContent) {
+    let maskMode = spec.MaskMode.NONE, maskRef;
+    // @ts-expect-error
+    const { mode = spec.MaskMode.NONE, ref } = data.mask;
+
+    // @ts-expect-error
+    if (data.mask) {
+      maskMode = mode;
+      maskRef = ref.getRefValue();
+    }
+
+    return {
+      maskMode,
+      maskRef,
     };
   }
 

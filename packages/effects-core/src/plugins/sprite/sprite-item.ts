@@ -1,13 +1,11 @@
 import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
-import { MaskMode } from '@galacean/effects-specification';
 import type { ColorPlayableAssetData } from '../../animation';
 import { ColorPlayable } from '../../animation';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/base-render-component';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
-import type { Maskable } from '../../material/mask-ref-manager';
 import type { GeometryDrawMode } from '../../render';
 import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
@@ -59,11 +57,10 @@ export class SpriteColorPlayableAsset extends PlayableAsset {
 }
 
 @effectsClass(spec.DataType.SpriteComponent)
-export class SpriteComponent extends BaseRenderComponent implements Maskable {
+export class SpriteComponent extends BaseRenderComponent {
   textureSheetAnimation?: spec.TextureSheetAnimation;
   splits: splitsDataType = singleSplits;
   frameAnimationLoop = false;
-  maskRef: number;
 
   /* 要过包含父节点颜色/透明度变化的动画的帧对比 打开这段兼容代码 */
   // override colorOverLifetime: { stop: number, color: any }[];
@@ -294,14 +291,7 @@ export class SpriteComponent extends BaseRenderComponent implements Maskable {
       renderer = {} as SpriteItemProps['renderer'];
     }
 
-    // @ts-expect-error
-    const { mask = false, mode = MaskMode.NONE, ref } = data.mask || {};
-
-    if (mask) {
-      this.getRefValue();
-    } else if (mode === MaskMode.OBSCURED || mode === MaskMode.REVERSE_OBSCURED) {
-      this.maskRef = ref.getRefValue();
-    }
+    const maskMode = this.getMaskOptions(data);
 
     this.interaction = interaction;
     this.renderer = {
@@ -313,7 +303,7 @@ export class SpriteComponent extends BaseRenderComponent implements Maskable {
       side: renderer.side ?? spec.SideMode.DOUBLE,
       shape: renderer.shape,
       mask: this.maskRef,
-      maskMode: mask ? MaskMode.MASK : mode,
+      maskMode,
       order: listIndex,
     };
 
@@ -334,13 +324,5 @@ export class SpriteComponent extends BaseRenderComponent implements Maskable {
     this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.setItem();
-  }
-
-  public getRefValue (): number {
-    if (!this.maskRef) {
-      this.maskRef = this.engine.maskRefManager.distributeRef();
-    }
-
-    return this.maskRef;
   }
 }

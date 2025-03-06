@@ -510,19 +510,24 @@ void main() {
         break;
       }
     }
-
-    const material = this.material;
     // @ts-expect-error
-    const { mask = false, mode = MaskMode.NONE, ref } = data.mask || {};
+    if (data.mask) {
+      const material = this.material;
+      let maskMode = MaskMode.NONE;
+      // @ts-expect-error
+      const { mask = false, mode = MaskMode.NONE, ref } = data.mask;
 
-    if (mask) {
-      this.getRefValue();
-    } else if (mode === MaskMode.OBSCURED || mode === MaskMode.REVERSE_OBSCURED) {
-      this.maskRef = ref.getRefValue();
+      if (mask) {
+        maskMode = MaskMode.MASK;
+        this.getRefValue();
+      } else if (mode === MaskMode.OBSCURED || mode === MaskMode.REVERSE_OBSCURED) {
+        maskMode = mode;
+        this.maskRef = ref.getRefValue();
+      }
+      material.stencilRef = this.maskRef !== undefined ? [this.maskRef, this.maskRef] : undefined;
+      setMaskMode(material, maskMode);
     }
 
-    material.stencilRef = this.maskRef !== undefined ? [this.maskRef, this.maskRef] : undefined;
-    setMaskMode(material, mask ? MaskMode.MASK : mode);
   }
 
   getRefValue (): number {
