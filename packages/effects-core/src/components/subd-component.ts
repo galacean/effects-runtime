@@ -1,11 +1,16 @@
 /* eslint-disable no-console */
+import type * as spec from '@galacean/effects-specification';
+import { EffectComponent } from './effect-component';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { Geometry } from '../render';
+import type { Geometry } from '../render/geometry';
 import { Component } from './component';
 // 导入 Delaunator 库
 import Delaunator from './delaunator';
+
+// TODO 改到编辑时做，现在是运行时细分的。
+// TODO 细分算法还有问题
 
 @effectsClass('SubdComponent')
 export class SubdComponent extends Component {
@@ -14,11 +19,23 @@ export class SubdComponent extends Component {
   private subdivisionLevel = 4; // 细分级别控制整体密度
   private wireframe = true; // 是否使用线框模式
 
+  // 存储EffectComponent引用
+  private effectComponent: EffectComponent;
+
   constructor (engine: Engine) {
     super(engine);
   }
 
   override onStart (): void {
+    // 获取EffectComponent
+    this.effectComponent = this.item.getComponent(EffectComponent);
+
+    if (!this.effectComponent || !this.effectComponent.geometry) {
+      console.warn('SubdComponent 需要 EffectComponent 才能工作');
+
+      return;
+    }
+
     if (this.subdivisionLevel > 0) {
       // 在组件启动时创建细分网格
       // this.createSubdividedMesh();
@@ -34,6 +51,11 @@ export class SubdComponent extends Component {
   }
 
   private createSubdividedMesh (geometry: Geometry): void {
+    // 如果细分级别为0，不执行细分，直接使用原始几何体
+    if (this.subdivisionLevel <= 0) {
+      return;
+    }
+
     // 如果没有几何体，直接返回
     if (!geometry) {
       return;
@@ -46,24 +68,10 @@ export class SubdComponent extends Component {
       return;
     }
 
-    // 如果细分级别为0，不执行细分，直接使用原始几何体
-    if (this.subdivisionLevel <= 0) {
-      return;
-    }
-
-    // 收集原始顶点（轮廓点）
-    const originalVertices: Array<[number, number, number]> = [];
-
-    for (let i = 0; i < originalPositions.length; i += 3) {
-      originalVertices.push([
-        originalPositions[i],
-        originalPositions[i + 1],
-        originalPositions[i + 2],
-      ]);
-    }
-
     // 泊松盘采样生成轮廓和内部顶点
-    const poissonPoints = this.generatePoissonPoints(geometry);
+    const poissonPoints = this.generatePoissonPoints(originalPositions);
+
+    console.log(poissonPoints);
 
     // 确保生成了足够的泊松采样点
     if (poissonPoints.length < 1 && this.subdivisionLevel > 1) {
@@ -235,14 +243,13 @@ export class SubdComponent extends Component {
   }
 
   // 泊松圆盘采样算法
-  private generatePoissonPoints (geometry: Geometry): Array<[number, number]> {
-    // 从原始几何体提取2D轮廓
-    const contour: Array<[number, number]> = [];
-    const originalPositions = geometry.getAttributeData('aPos');
-
+  private generatePoissonPoints (originalPositions: spec.TypedArray): Array<[number, number]> {
     if (!originalPositions) {
       return [];
     }
+
+    // 从原始几何体提取2D轮廓
+    const contour: Array<[number, number]> = [];
 
     for (let i = 0; i < originalPositions.length; i += 3) {
       contour.push([originalPositions[i], originalPositions[i + 1]]);
