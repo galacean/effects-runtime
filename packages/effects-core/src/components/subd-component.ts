@@ -1,146 +1,46 @@
 /* eslint-disable no-console */
-import { Color } from '@galacean/effects-math/es/core/color';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { MaterialProps } from '../material';
-import { Material } from '../material';
-import { Geometry, GLSLVersion } from '../render';
-import { MeshComponent } from './mesh-component';
+import type { Geometry } from '../render';
+import { Component } from './component';
 // 导入 Delaunator 库
 import Delaunator from './delaunator';
 
 @effectsClass('SubdComponent')
-export class SubdComponent extends MeshComponent {
+export class SubdComponent extends Component {
   private animated = false;
 
   private subdivisionLevel = 4; // 细分级别控制整体密度
   private wireframe = true; // 是否使用线框模式
 
-  // TODO 占个位
-  private vert = `
-precision highp float;
-
-attribute vec3 aPos;
-
-uniform mat4 effects_MatrixVP;
-uniform mat4 effects_ObjectToWorld;
-
-varying vec3 vPos;
-
-void main() {
-  vPos = aPos;
-  gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(aPos, 1.0);
-}
-`;
-
-  // 基础片段着色器
-  private frag = `
-precision highp float;
-
-varying vec3 vPos;
-
-void main() {
-  // 使用位置作为颜色，以便更好地可视化三角形
-  vec3 color = abs(fract(vPos * 0.5) * 2.0 - 1.0);
-  
-  gl_FragColor = vec4(color, 1.0);
-}
-`;
-
   constructor (engine: Engine) {
     super(engine);
-
-    // 创建一个简单的正方形（4个顶点）
-    if (!this.geometry) {
-      // 定义正方形的4个顶点
-      const vertices = [
-        -0.5, -0.5, 0, // 左下
-        0.5, -0.5, 0,  // 右下
-        0.5, 0.5, 0,   // 右上
-        -0.5, 0.5, 0,   // 左上
-      ];
-
-      // 定义UV坐标
-      const uvs = [
-        0, 0,  // 左下
-        1, 0,  // 右下
-        1, 1,  // 右上
-        0, 1,   // 左上
-      ];
-
-      const indices = [];
-
-      // 生成三角形索引
-      // 每个网格由两个三角形组成
-      indices.push(0, 1, 2);
-      indices.push(2, 3, 0);
-
-      this.geometry = Geometry.create(engine, {
-        attributes: {
-          aPos: {
-            type: glContext.FLOAT,
-            size: 3,
-            data: new Float32Array(vertices),
-          },
-          aUV: {
-            type: glContext.FLOAT,
-            size: 2,
-            data: new Float32Array(uvs),
-          },
-        },
-        indices: { data: new Uint16Array(indices) },
-        mode: glContext.TRIANGLES,
-        drawCount: indices.length,
-      });
-    }
-
-    // 创建材质
-    if (!this.material) {
-      const materialProps: MaterialProps = {
-        shader: {
-          vertex: this.vert,
-          fragment: this.frag,
-          glslVersion: GLSLVersion.GLSL1,
-        },
-      };
-
-      this.material = Material.create(engine, materialProps);
-      this.material.setColor('_Color', new Color(1, 1, 1, 1));
-      this.material.depthMask = false;
-      this.material.depthTest = true;
-      this.material.blending = true;
-    }
   }
 
   override onStart (): void {
-    this.item.getHitTestParams = this.getHitTestParams;
-
     if (this.subdivisionLevel > 0) {
       // 在组件启动时创建细分网格
-      this.createSubdividedMesh();
+      // this.createSubdividedMesh();
     }
   }
 
   override onUpdate (dt: number): void {
     // 如果需要动态更新，可以在这里添加逻辑
     if (this.animated) {
-      this.createSubdividedMesh();
+      // this.createSubdividedMesh();
       this.animated = false;
     }
   }
 
-  private createSubdividedMesh (): void {
+  private createSubdividedMesh (geometry: Geometry): void {
     // 如果没有几何体，直接返回
-    if (!this.geometry) {
+    if (!geometry) {
       return;
     }
 
     // 获取原始几何体数据
-    const originalPositions = this.geometry.getAttributeData('aPos');
-    // 获取但不使用的变量添加下划线前缀
-    const _originalUVs = this.geometry.getAttributeData('aUV');
-    const _originalIndices = this.geometry.getIndexData();
+    const originalPositions = geometry.getAttributeData('aPos');
 
     if (!originalPositions) {
       return;
@@ -163,7 +63,7 @@ void main() {
     }
 
     // 泊松盘采样生成轮廓和内部顶点
-    const poissonPoints = this.generatePoissonPoints();
+    const poissonPoints = this.generatePoissonPoints(geometry);
 
     // 确保生成了足够的泊松采样点
     if (poissonPoints.length < 1 && this.subdivisionLevel > 1) {
@@ -217,9 +117,9 @@ void main() {
     }
 
     // 更新几何体
-    this.geometry.setAttributeData('aPos', new Float32Array(positions));
+    geometry.setAttributeData('aPos', new Float32Array(positions));
     if (uvs.length > 0) {
-      this.geometry.setAttributeData('aUV', new Float32Array(uvs));
+      geometry.setAttributeData('aUV', new Float32Array(uvs));
     }
 
     // 根据线框模式决定索引和绘制模式
@@ -235,25 +135,25 @@ void main() {
       }
 
       // 使用线框索引
-      this.geometry.setIndexData(new Uint16Array(wireIndices));
-      this.geometry.setDrawCount(wireIndices.length);
+      geometry.setIndexData(new Uint16Array(wireIndices));
+      geometry.setDrawCount(wireIndices.length);
 
       // 设置为线框模式
       try {
         // 尝试直接设置绘制模式
-        (this.geometry as any).mode = glContext.LINES;
+        (geometry as any).mode = glContext.LINES;
       } catch (e) {
         console.warn('无法设置线框模式:', e);
       }
     } else {
       // 使用普通三角形索引
-      this.geometry.setIndexData(new Uint16Array(indices));
-      this.geometry.setDrawCount(indices.length);
+      geometry.setIndexData(new Uint16Array(indices));
+      geometry.setDrawCount(indices.length);
 
       // 设置为三角形模式
       try {
         // 尝试直接设置绘制模式
-        (this.geometry as any).mode = glContext.TRIANGLES;
+        (geometry as any).mode = glContext.TRIANGLES;
       } catch (e) {
         console.warn('无法设置三角形模式:', e);
       }
@@ -335,10 +235,10 @@ void main() {
   }
 
   // 泊松圆盘采样算法
-  private generatePoissonPoints (): Array<[number, number]> {
+  private generatePoissonPoints (geometry: Geometry): Array<[number, number]> {
     // 从原始几何体提取2D轮廓
     const contour: Array<[number, number]> = [];
-    const originalPositions = this.geometry?.getAttributeData('aPos');
+    const originalPositions = geometry.getAttributeData('aPos');
 
     if (!originalPositions) {
       return [];
@@ -489,7 +389,6 @@ void main() {
           break;
         }
       }
-
       // 如果未找到符合条件的新点，从活跃点列表中移除
       if (!found) {
         active.splice(activeIndex, 1);
@@ -498,6 +397,5 @@ void main() {
 
     return points;
   }
-
 }
 

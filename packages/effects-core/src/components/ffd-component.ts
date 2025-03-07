@@ -51,6 +51,8 @@ uniform mat4 effects_MatrixVP;
 uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_ObjectToWorld;
 uniform vec3 u_ControlPoints[25]; // 5x5 控制点
+// TODO 受多个晶格影响时， 收集所有晶格， 依次计算。
+
 
 // TODO 现在是通过 UV 获取最近的四个控制点，后续通过 本地坐标/世界坐标/屏幕坐标 获取最近的四个控制点
 // 双线性插值
