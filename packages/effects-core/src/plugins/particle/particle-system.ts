@@ -1089,7 +1089,7 @@ export class ParticleSystem extends Component {
         transparentOcclusion: !!trails.transparentOcclusion,
         textureMap: trails.textureMap,
         mask: maskProps.maskRef,
-        maskMode: maskProps.maskRef,
+        maskMode: maskProps.maskMode,
       };
 
       if (trails.colorOverLifetime && trails.colorOverLifetime[0] === spec.ValueType.GRADIENT_COLOR) {
