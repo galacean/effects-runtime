@@ -110,7 +110,7 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
       renderer = {} as TextItemProps['renderer'];
     }
 
-    const maskMode = this.getMaskOptions(data);
+    const maskMode = this.getMaskMode(data);
 
     this.interaction = interaction;
 

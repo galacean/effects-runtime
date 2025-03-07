@@ -35,15 +35,13 @@ void main() {
   #endif
   color = blendColor(texColor, vColor, floor(0.5 + vParams.y));
 
-  // 如果是蒙版且透明度小于阈值 舍弃像素
-  if (vParams.x == 1. && color.a < 0.04) {
+  #ifdef ALPHA_CLIP
+  // 如果是蒙版且透明度小于阈值
+  // 或者关闭透明像素写入深度缓存
+  if( color.a < 0.04) { // 1/256 = 0.04
     discard;
   }
 
-  #ifdef ALPHA_CLIP
-  if(vParams.z == 0. && color.a < 0.04) { // 1/256 = 0.04
-    discard;
-  }
   #endif
   //color.rgb = pow(color.rgb, vec3(2.2));
   color.a = clamp(color.a, 0.0, 1.0);

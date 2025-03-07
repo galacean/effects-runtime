@@ -291,7 +291,7 @@ export class SpriteComponent extends BaseRenderComponent {
       renderer = {} as SpriteItemProps['renderer'];
     }
 
-    const maskMode = this.getMaskOptions(data);
+    const maskMode = this.getMaskMode(data);
 
     this.interaction = interaction;
     this.renderer = {

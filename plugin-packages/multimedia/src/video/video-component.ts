@@ -160,7 +160,7 @@ export class VideoComponent extends BaseRenderComponent {
       }
     }
 
-    const maskMode = this.getMaskOptions(data);
+    const maskMode = this.getMaskMode(data);
 
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,

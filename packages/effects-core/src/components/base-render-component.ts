@@ -1,21 +1,20 @@
-import * as spec from '@galacean/effects-specification';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import { MaskMode } from '../material';
-import { RendererComponent } from './renderer-component';
-import { Texture } from '../texture';
-import type { GeometryDrawMode, Renderer } from '../render';
-import { Geometry } from '../render';
+import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import { addItem } from '../utils';
+import type { Maskable, MaterialProps } from '../material';
+import { getPreMultiAlpha, MaskMode, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
+import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType, spriteMeshShaderFromRenderInfo } from '../plugins';
-import type { MaterialProps, Maskable } from '../material';
-import { getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
-import { trianglesFromRect } from '../math';
+import type { GeometryDrawMode, Renderer } from '../render';
+import { Geometry } from '../render';
 import type { GeometryFromShape } from '../shape';
+import { Texture } from '../texture';
+import { addItem } from '../utils';
+import { RendererComponent } from './renderer-component';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -225,7 +224,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       texParams.z = renderer.renderMode;
       texParams.w = renderer.maskMode;
 
-      if (texParams.x === 0) {
+      if (texParams.x === 0 || renderer.maskMode === MaskMode.MASK) {
         this.material.enableMacro('ALPHA_CLIP');
       } else {
         this.material.disableMacro('ALPHA_CLIP');
@@ -409,7 +408,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return this.maskRef;
   }
 
-  getMaskOptions (data: any): MaskMode {
+  getMaskMode (data: any): MaskMode {
     let maskMode = MaskMode.NONE;
 
     if (data.mask) {
