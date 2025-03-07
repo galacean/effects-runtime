@@ -4,7 +4,7 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { Maskable, MaterialProps } from '../material';
+import type { MaterialProps } from '../material';
 import { Material, setMaskMode, MaskMode } from '../material';
 import type { StrokeAttributes } from '../plugins/shape/build-line';
 import { buildLine } from '../plugins/shape/build-line';
@@ -18,6 +18,10 @@ interface CurveData {
   point: spec.Vector2Data,
   controlPoint1: spec.Vector2Data,
   controlPoint2: spec.Vector2Data,
+}
+
+interface FillAttribute {
+  color: Color,
 }
 
 interface ShapeAttribute {
@@ -138,12 +142,14 @@ export interface PolygonAttribute extends ShapeAttribute {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends MeshComponent implements Maskable {
-  isStroke = false;
+export class ShapeComponent extends MeshComponent {
+  private isStroke = false;
+  private isFill = false;
+  private shapeDirty = true;
   maskRef: number;
   private graphicsPath = new GraphicsPath();
   private curveValues: CurveData[] = [];
-  private shapeDirty = true;
+  private fillAttribute: FillAttribute;
   private strokeAttributes: StrokeAttributes;
   private shapeAttribute: ShapeAttribute;
 
@@ -209,6 +215,16 @@ void main() {
         mode: glContext.TRIANGLES,
         drawCount: 4,
       });
+
+      this.geometry.subMeshes.push({
+        offset: 0,
+        indexCount: 0,
+        vertexCount: 0,
+      }, {
+        offset: 0,
+        indexCount: 0,
+        vertexCount: 0,
+      });
     }
 
     if (!this.material) {
@@ -220,20 +236,36 @@ void main() {
         },
       };
 
-      this.material = Material.create(engine, materialProps);
-      this.material.setColor('_Color', new Color(1, 1, 1, 1));
-      this.material.depthMask = false;
-      this.material.depthTest = true;
-      this.material.blending = true;
+      const fillMaterial = Material.create(engine, materialProps);
+
+      fillMaterial.setColor('_Color', new Color(1, 1, 1, 1));
+      fillMaterial.depthMask = false;
+      fillMaterial.depthTest = true;
+      fillMaterial.blending = true;
+      this.material = fillMaterial;
+
+      const strokeMaterial = Material.create(engine, materialProps);
+
+      strokeMaterial.setColor('_Color', new Color(0.25, 0.25, 0.25, 1));
+      strokeMaterial.depthMask = false;
+      strokeMaterial.depthTest = true;
+      strokeMaterial.blending = true;
+      this.materials[1] = strokeMaterial;
     }
 
     this.strokeAttributes = {
       width: 1,
       alignment: 0.5,
-      cap: 'butt',
-      join: 'miter',
+      cap: spec.LineCap.Butt,
+      join: spec.LineJoin.Miter,
       miterLimit: 10,
+      color: new Color(1, 1, 1, 1),
     };
+
+    this.fillAttribute = {
+      color: new Color(1, 1, 1, 1),
+    };
+
     this.shapeAttribute = {
       type: spec.ShapePrimitiveType.Custom,
       points: [],
@@ -248,6 +280,8 @@ void main() {
   }
 
   override onUpdate (dt: number): void {
+    this.material.color = this.fillAttribute.color;
+    this.materials[1].color = this.strokeAttributes.color;
     if (this.shapeDirty) {
       this.buildPath(this.shapeAttribute);
       this.buildGeometryFromPath(this.graphicsPath.shapePath);
@@ -260,25 +294,36 @@ void main() {
     const vertices: number[] = [];
     const indices: number[] = [];
 
-    // triangulate shapePrimitive
-    for (const shapePrimitive of shapePrimitives) {
-      const shape = shapePrimitive.shape;
-      const points: number[] = [];
-      const indexOffset = indices.length;
-      const vertOffset = vertices.length / 2;
+    // Triangulate shapePrimitive
+    //---------------------------------------------------
 
-      shape.build(points);
+    if (this.isFill) {
+      for (const shapePrimitive of shapePrimitives) {
+        const shape = shapePrimitive.shape;
+        const points: number[] = [];
+        const indexOffset = indices.length;
+        const vertOffset = vertices.length / 2;
 
-      if (!this.isStroke) {
+        shape.build(points);
         shape.triangulate(points, vertices, vertOffset, indices, indexOffset);
-      } else {
+      }
+    }
+    const fillIndexCount = indices.length;
+
+    if (this.isStroke) {
+      for (const shapePrimitive of shapePrimitives) {
+        const shape = shapePrimitive.shape;
+        const points: number[] = [];
+        const indexOffset = indices.length;
+        const vertOffset = vertices.length / 2;
         const close = true;
         const lineStyle = this.strokeAttributes;
 
+        shape.build(points);
         buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
       }
     }
-
+    const strokeIndexCount = indices.length - fillIndexCount;
     const vertexCount = vertices.length / 2;
 
     // get the current attribute and index arrays from the geometry, avoiding re-creation
@@ -318,6 +363,14 @@ void main() {
     this.geometry.setAttributeData('aUV', uvArray);
     this.geometry.setIndexData(indexArray);
     this.geometry.setDrawCount(indices.length);
+
+    const u16Size = 2;
+    const fillSubMesh = this.geometry.subMeshes[0];
+    const strokeSubMesh = this.geometry.subMeshes[1];
+
+    fillSubMesh.indexCount = fillIndexCount;
+    strokeSubMesh.offset = fillIndexCount * u16Size;
+    strokeSubMesh.indexCount = strokeIndexCount;
   }
 
   private buildPath (shapeAttribute: ShapeAttribute) {
@@ -332,9 +385,6 @@ void main() {
 
         for (const shape of customShapeAtribute.shapes) {
           this.curveValues = [];
-
-          // @ts-expect-error
-          this.setFillColor(shape.fill);
 
           const indices = shape.indexes;
 
@@ -374,16 +424,12 @@ void main() {
 
         this.graphicsPath.ellipse(0, 0, ellipseData.xRadius, ellipseData.yRadius);
 
-        this.setFillColor(ellipseData.fill);
-
         break;
       }
       case spec.ShapePrimitiveType.Rectangle: {
         const rectangleData = shapeAttribute as RectangleAttribute;
 
-        this.graphicsPath.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height);
-
-        this.setFillColor(rectangleData.fill);
+        this.graphicsPath.rect(-rectangleData.width / 2, -rectangleData.height / 2, rectangleData.width, rectangleData.height, rectangleData.roundness);
 
         break;
       }
@@ -392,8 +438,6 @@ void main() {
 
         this.graphicsPath.polyStar(starData.pointCount, starData.outerRadius, starData.innerRadius, starData.outerRoundness, starData.innerRoundness, StarType.Star);
 
-        this.setFillColor(starData.fill);
-
         break;
       }
       case spec.ShapePrimitiveType.Polygon: {
@@ -401,42 +445,43 @@ void main() {
 
         this.graphicsPath.polyStar(polygonData.pointCount, polygonData.radius, polygonData.radius, polygonData.roundness, polygonData.roundness, StarType.Polygon);
 
-        this.setFillColor(polygonData.fill);
-
         break;
       }
-    }
-  }
-
-  private setFillColor (fill?: spec.ShapeFillParam) {
-    if (fill) {
-      const color = fill.color;
-
-      this.material.setColor('_Color', new Color(color.r, color.g, color.b, color.a));
     }
   }
 
   override fromData (data: spec.ShapeComponentData): void {
     super.fromData(data);
     this.shapeDirty = true;
+
     const strokeParam = data.stroke;
 
     if (strokeParam) {
       this.isStroke = true;
       this.strokeAttributes.width = strokeParam.width;
+      this.strokeAttributes.color.copyFrom(strokeParam.color);
+      this.strokeAttributes.cap = strokeParam.cap;
+      this.strokeAttributes.join = strokeParam.join;
+    }
+
+    const fillParam = data.fill;
+
+    if (fillParam) {
+      this.isFill = true;
+      this.fillAttribute.color.copyFrom(fillParam.color);
     }
 
     switch (data.type) {
       case spec.ShapePrimitiveType.Custom: {
-        this.shapeAttribute = {
+        const customShapeData = data as spec.CustomShapeData;
+        const customShapeAttribute: CustomShapeAttribute = {
           type: spec.ShapePrimitiveType.Custom,
           points: [],
           easingIns: [],
           easingOuts: [],
           shapes: [],
-        } as CustomShapeAttribute;
-        const customShapeData = data as spec.CustomShapeData;
-        const customShapeAttribute = this.shapeAttribute as CustomShapeAttribute;
+          fill: customShapeData.fill,
+        };
 
         for (const point of customShapeData.points) {
           customShapeAttribute.points.push(new Vector2(point.x, point.y));
@@ -448,6 +493,8 @@ void main() {
           customShapeAttribute.easingOuts.push(new Vector2(easingOut.x, easingOut.y));
         }
         customShapeAttribute.shapes = customShapeData.shapes;
+
+        this.shapeAttribute = customShapeAttribute;
 
         break;
       }
@@ -481,12 +528,12 @@ void main() {
       case spec.ShapePrimitiveType.Star: {
         const starData = data as spec.StarData;
         const starAttribute: StarAttribute = {
-          type:spec.ShapePrimitiveType.Star,
+          type: spec.ShapePrimitiveType.Star,
           pointCount: starData.pointCount,
           innerRadius: starData.innerRadius,
           outerRadius: starData.outerRadius,
           innerRoundness: starData.innerRoundness,
-          outerRoundness:starData.outerRoundness,
+          outerRoundness: starData.outerRoundness,
           fill: starData.fill,
         };
 

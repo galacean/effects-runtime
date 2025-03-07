@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import type { Engine, SpriteItemProps } from '@galacean/effects-core';
-import { effectsClass, spec, applyMixins, canvasPool, TextComponentBase } from '@galacean/effects-core';
+import { math, effectsClass, spec, applyMixins, canvasPool, TextComponentBase, getImageItemRenderInfo } from '@galacean/effects-core';
 import { ThreeSpriteComponent } from './three-sprite-component';
 
 export interface ThreeTextComponent extends TextComponentBase { }
@@ -28,21 +28,31 @@ export class ThreeTextComponent extends ThreeSpriteComponent {
     const { options } = props;
 
     this.updateWithOptions(options);
-    this.updateTexture(false);
+    this.updateTexture();
   }
 
   override onUpdate (dt: number): void {
     super.onUpdate(dt);
-    this.updateTexture(false);
+    this.updateTexture();
   }
 
   override fromData (data: SpriteItemProps): void {
     super.fromData(data);
     const options = data.options as spec.TextContentOptions;
 
+    this.renderInfo = getImageItemRenderInfo(this);
+
+    this.worldMatrix = math.Matrix4.fromIdentity();
+
+    this.material.setVector4('_TexOffset', new math.Vector4().setFromArray([0, 0, 1, 1]));
+    // TextComponentBase
     this.updateWithOptions(options);
     // Text
-    this.updateTexture(false);
+    this.updateTexture();
+    this.setItem();
+    // 恢复默认颜色
+    this.material.setVector4('_Color', new math.Vector4(1, 1, 1, 1));
+
   }
 
   updateWithOptions (options: spec.TextContentOptions) {

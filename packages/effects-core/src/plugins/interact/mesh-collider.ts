@@ -53,10 +53,8 @@ export class MeshCollider {
   }
 
   setGeometry (geometry: Geometry, worldMatrix?: Matrix4) {
-    if (this.geometry !== geometry) {
-      this.triangles = this.geometryToTriangles(geometry);
-      this.geometry = geometry;
-    }
+    this.triangles = this.geometryToTriangles(geometry);
+    this.geometry = geometry;
     const area = [];
 
     for (const triangle of this.triangles) {
@@ -74,10 +72,11 @@ export class MeshCollider {
 
   private geometryToTriangles (geometry: Geometry) {
     const indices = geometry.getIndexData() ?? [];
+    const drawCount = geometry.getDrawCount();
     const vertices = geometry.getAttributeData('aPos') ?? [];
     const res: TriangleLike[] = [];
 
-    for (let i = 0; i < indices.length; i += 3) {
+    for (let i = 0; i < drawCount; i += 3) {
       const index0 = indices[i] * 3;
       const index1 = indices[i + 1] * 3;
       const index2 = indices[i + 2] * 3;

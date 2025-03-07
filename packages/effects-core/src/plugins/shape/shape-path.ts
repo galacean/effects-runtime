@@ -130,8 +130,8 @@ export class ShapePath {
    * @param transform - An optional `Matrix` object to apply a transformation to the rectangle.
    * @returns The instance of the current object for chaining.
    */
-  rect (x: number, y: number, w: number, h: number, transform?: Matrix4): this {
-    this.drawShape(new Rectangle(x, y, w, h), transform);
+  rect (x: number, y: number, w: number, h: number, roundness: number, transform?: Matrix4): this {
+    this.drawShape(new Rectangle(x, y, w, h, roundness), transform);
 
     return this;
   }

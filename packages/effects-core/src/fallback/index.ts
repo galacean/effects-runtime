@@ -12,7 +12,6 @@ import {
   version24Migration,
   version30Migration,
   version31Migration,
-  version32Migration,
 } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
@@ -31,8 +30,6 @@ export function getStandardJSON (json: any): JSONScene {
 
   // 修正老版本数据中，meshItem 以及 lightItem 结束行为错误问题
   version22Migration(json);
-  // 修正老版本数据中，富文本插件名称的问题
-  version31Migration(json);
 
   if (v0.test(json.version)) {
     reverseParticle = (/^(\d+)/).exec(json.version)?.[0] === '0';
@@ -53,9 +50,11 @@ export function getStandardJSON (json: any): JSONScene {
     if (mainVersion < 3) {
       json = version30Migration(version21Migration(json));
     }
-    if (mainVersion < 3 || (mainVersion === 3 && minorVersion < 2)) {
-      // 修正老版本数据中，蒙版参数的位置
-      version32Migration(json);
+    // 3.x 版本格式转换
+    if (mainVersion < 4) {
+      if (minorVersion < 2) {
+        json = version31Migration(json);
+      }
     }
 
     return json;
@@ -106,15 +105,11 @@ function getStandardJSONFromV0 (json: any): JSONSceneLegacy {
 export function getStandardImage (image: any, index: number, imageTags: RenderLevel[]): TemplateImage | Image | CompressedImage {
   const renderLevel = imageTags[index];
 
-  const oriY = image.oriY;
-
   if (typeof image === 'string') {
     return {
       id: generateGUID(),
       renderLevel,
       url: image,
-      // @ts-expect-error
-      oriY,
     };
   } else if (image.template) {
     return {
@@ -123,15 +118,11 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       template: image.template,
       webp: image.webp,
       renderLevel,
-      // @ts-expect-error
-      oriY,
     };
   } else if (image.compressed) {
     return {
       id: generateGUID(),
       url: image.url,
-      // @ts-expect-error
-      oriY,
       compressed: {
         astc: image.compressed.android,
         pvrtc: image.compressed.iOS,
@@ -145,8 +136,6 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       url: image.url,
       webp: image.webp,
       renderLevel,
-      // @ts-expect-error
-      oriY,
     };
   } else if (image && image.sourceType) {
     return image;

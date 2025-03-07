@@ -1,10 +1,9 @@
 // Based on:
 // https://github.com/pixijs/pixijs/blob/dev/src/scene/graphics/shared/buildCommands/buildLine.ts
 
+import type { Color } from '@galacean/effects-math/es/core/color';
+import * as spec from '@galacean/effects-specification';
 import { Point } from './point';
-
-export type LineCap = 'butt' | 'round' | 'square';
-export type LineJoin = 'round' | 'bevel' | 'miter';
 
 export const closePointEps = 1e-4;
 export const curveEps = 0.0001;
@@ -175,11 +174,13 @@ export interface StrokeAttributes {
   /** The alignment of the stroke. */
   alignment: number,
   /** The line cap style to use. */
-  cap: LineCap,
+  cap: spec.LineCap,
   /** The line join style to use. */
-  join: LineJoin,
+  join: spec.LineJoin,
   /** The miter limit to use. */
   miterLimit: number,
+  /** Stroke color */
+  color: Color,
 }
 
 /**
@@ -291,7 +292,7 @@ export function buildLine (
   const outerWeight = ratio * 2;
 
   if (!closedShape) {
-    if (style.cap === 'round') {
+    if (style.cap === spec.LineCap.Round) {
       indexCount += round(
         x0 - (perpX * (innerWeight - outerWeight) * 0.5),
         y0 - (perpY * (innerWeight - outerWeight) * 0.5),
@@ -302,7 +303,7 @@ export function buildLine (
         verts,
         true,
       ) + 2;
-    } else if (style.cap === 'square') {
+    } else if (style.cap === spec.LineCap.Square) {
       indexCount += square(x0, y0, perpX, perpY, innerWeight, outerWeight, true, verts);
     }
   }
@@ -367,7 +368,7 @@ export function buildLine (
 
       /* 180 degree corner? */
       if (dot >= 0) {
-        if (style.join === 'round') {
+        if (style.join === spec.LineJoin.Round) {
           indexCount += round(
             x1, y1,
             x1 - (perpX * innerWeight), y1 - (perpY * innerWeight),
@@ -409,7 +410,7 @@ export function buildLine (
     const insideMiterOk = pDist <= smallerInsideDiagonalSq;
 
     if (insideMiterOk) {
-      if (style.join === 'bevel' || pDist / widthSquared > miterLimitSquared) {
+      if (style.join === spec.LineJoin.Bevel || pDist / widthSquared > miterLimitSquared) {
         if (clockwise) /* rotating at inner angle */ {
           verts.push(imx, imy); // inner miter point
           verts.push(x1 + (perpX * outerWeight), y1 + (perpY * outerWeight)); // first segment's outer vertex
@@ -423,7 +424,7 @@ export function buildLine (
         }
 
         indexCount += 2;
-      } else if (style.join === 'round') {
+      } else if (style.join === spec.LineJoin.Round) {
         if (clockwise) /* arc is outside */ {
           verts.push(imx, imy);
           verts.push(x1 + (perpX * outerWeight), y1 + (perpY * outerWeight));
@@ -458,7 +459,7 @@ export function buildLine (
     } else {
       verts.push(x1 - (perpX * innerWeight), y1 - (perpY * innerWeight)); // first segment's inner vertex
       verts.push(x1 + (perpX * outerWeight), y1 + (perpY * outerWeight)); // first segment's outer vertex
-      if (style.join === 'round') {
+      if (style.join === spec.LineJoin.Round) {
         if (clockwise) /* arc is outside */ {
           indexCount += round(
             x1, y1,
@@ -474,7 +475,7 @@ export function buildLine (
             verts, false
           ) + 2;
         }
-      } else if (style.join === 'miter' && pDist / widthSquared <= miterLimitSquared) {
+      } else if (style.join === spec.LineJoin.Miter && pDist / widthSquared <= miterLimitSquared) {
         if (clockwise) {
           verts.push(omx, omy); // inner miter point
           verts.push(omx, omy); // inner miter point
@@ -509,7 +510,7 @@ export function buildLine (
   verts.push(x1 + (perpX * outerWeight), y1 + (perpY * outerWeight));
 
   if (!closedShape) {
-    if (style.cap === 'round') {
+    if (style.cap === spec.LineCap.Round) {
       indexCount += round(
         x1 - (perpX * (innerWeight - outerWeight) * 0.5),
         y1 - (perpY * (innerWeight - outerWeight) * 0.5),
@@ -520,7 +521,7 @@ export function buildLine (
         verts,
         false
       ) + 2;
-    } else if (style.cap === 'square') {
+    } else if (style.cap === spec.LineCap.Square) {
       indexCount += square(x1, y1, perpX, perpY, innerWeight, outerWeight, false, verts);
     }
   }

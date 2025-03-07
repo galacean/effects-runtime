@@ -7,6 +7,12 @@
 
 ---
 
+## 2.2.7
+
+`2025-02-28`
+
+- Fix: The sampling of the curve's start and end points does not differentiate between types of keyframes. [#889](https://github.com/galacean/effects-runtime/pull/889) @RGCHN
+
 ## 2.2.6
 
 `2025-02-21`

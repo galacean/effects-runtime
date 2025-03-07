@@ -25,8 +25,6 @@ describe('core/fallback/images', () => {
       expect(ret.compressed.pvrtc).to.eql('https://gw.alipayobjects.com/os/gltf-asset/mars-cli/OETSLEJGJROX/-1973629473-d139a.ktx');
       expect(ret.renderLevel).to.eql(spec.RenderLevel.BPlus);
       expect(ret.webp).to.eql('fake_webp');
-      //@ts-expect-error
-      expect(ret.oriY).to.eql(1);
     });
 
   });

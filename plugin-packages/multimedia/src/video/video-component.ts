@@ -1,12 +1,22 @@
 import type {
-  Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
-  ItemRenderInfo, MaterialProps, ShaderMacros,
-} from '@galacean/effects';
-import { MaskMode,
+  Engine,
+  Texture2DSourceOptionsVideo,
+  Asset,
+  SpriteItemProps,
+  GeometryFromShape,
+  ItemRenderInfo,
+  MaterialProps,
+  ShaderMacros,
 } from '@galacean/effects';
 import {
-  spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
-  assertExist, Texture, itemFrag, itemVert, GLSLVersion, PLAYER_OPTIONS_ENV_EDITOR,
+  spec,
+  math,
+  Texture,
+  MaskMode,
+  effectsClass,
+  BaseRenderComponent,
+  glContext,
+  PLAYER_OPTIONS_ENV_EDITOR, itemFrag, itemVert, GLSLVersion, getImageItemRenderInfo, assertExist,
 } from '@galacean/effects';
 
 /**
