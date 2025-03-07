@@ -12,12 +12,13 @@ import { effectsClass } from '../../decorators';
 import type { AnimationClip } from '../cal/calculate-vfx-item';
 import type { NodeAssetType } from './node-asset-type';
 import { getNodeAssetClass } from './node-asset-type';
+import type { ControlParameterBoolNode, ControlParameterFloatNode } from './nodes/control-parameter-nodes';
 
 export class GraphInstance {
-  rootNode: PoseNode;
   nodes: GraphNode[] = [];
   skeleton: Skeleton;
 
+  private rootNode: PoseNode;
   private graphAsset: AnimationGraphAsset;
   private context = new GraphContext();
   private result: PoseResult;
@@ -90,16 +91,57 @@ export class GraphInstance {
     return this.rootNode && this.rootNode.isInitialized();
   }
 
+  // General Node Info
+  //-------------------------------------------------------------------------
+
   isNodeActive (nodeIdx: number): boolean {
     return this.isControlParameter(nodeIdx) || this.nodes[nodeIdx].isNodeActive(this.context.updateID);
+  }
+
+  // Graph State
+  //-------------------------------------------------------------------------
+
+  resetGraphState () {
+    if (this.rootNode.isInitialized()) {
+      this.rootNode.shutdown(this.context);
+    }
+
+    this.context.updateID++; // Bump the update ID to ensure that any initialization code that relies on it is dirtied.
+    this.rootNode.initialize(this.context);
   }
 
   // Control Parameters
   //-------------------------------------------------------------------------
 
-  getNumControlParameters () {
+  getNumControlParameters (): number {
     return this.graphAsset.controlParameterIDs.length;
   }
+
+  getControlParameterIndex (parameterID: string): number {
+    const parameterLookupMap = this.graphAsset.parameterLookupMap;
+    const res = parameterLookupMap.get(parameterID);
+
+    if (res !== undefined) {
+      return res;
+    }
+
+    return InvalidIndex;
+  }
+
+  getControlParameterID (paramterNodeIndex: number): string {
+    return this.graphAsset.controlParameterIDs[paramterNodeIndex];
+  }
+
+  setBool (parameterNodeIndex: number, value: boolean) {
+    (this.nodes[parameterNodeIndex] as ControlParameterBoolNode).setValue(value);
+  }
+
+  setFloat (parameterNodeIndex: number, value: number) {
+    (this.nodes[parameterNodeIndex] as ControlParameterFloatNode).setValue(value);
+  }
+
+  // Debug Information
+  //-------------------------------------------------------------------------
 
   getPoseNodeDebugInfo (nodeIdx: number): PoseNodeDebugInfo {
     const node = this.nodes[nodeIdx] as PoseNode;
@@ -111,15 +153,6 @@ export class GraphInstance {
     const pValueNode = this.nodes[nodeIdx] as ValueNode;
 
     return pValueNode.getValue<T>(this.context);
-  }
-
-  resetGraphState () {
-    if (this.rootNode.isInitialized()) {
-      this.rootNode.shutdown(this.context);
-    }
-
-    this.context.updateID++; // Bump the update ID to ensure that any initialization code that relies on it is dirtied.
-    this.rootNode.initialize(this.context);
   }
 
   getNodeDebugInstance (nodeIdx: number): GraphNode {

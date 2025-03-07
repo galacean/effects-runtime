@@ -20,7 +20,7 @@ export class ControlParameterFloatNodeAsset extends GraphNodeAsset {
   override instantiate (context: InstantiationContext) {
     const node = this.createNode(ControlParameterFloatNode, context);
 
-    node.value = this.value;
+    node.setValue(this.value);
   }
 
   override load (data: ControlParameterFloatNodeAssetData): void {
@@ -30,7 +30,7 @@ export class ControlParameterFloatNodeAsset extends GraphNodeAsset {
 }
 
 export class ControlParameterFloatNode extends FloatValueNode {
-  value = 0;
+  private value = 0;
 
   override getValue<T>(context: GraphContext): T {
     if (!this.isUpdated(context)) {
@@ -39,16 +39,20 @@ export class ControlParameterFloatNode extends FloatValueNode {
 
     return this.value as T;
   }
+
+  override setValue<T>(value: T): void {
+    this.value = value as number;
+  }
 }
 
 @nodeAssetClass(NodeAssetType.ControlParameterBoolNodeAsset)
 export class ControlParameterBoolNodeAsset extends GraphNodeAsset {
-  value = false;
+  private value = false;
 
   override instantiate (context: InstantiationContext) {
     const node = this.createNode(ControlParameterBoolNode, context);
 
-    node.value = this.value;
+    node.setValue(this.value);
   }
 
   override load (data: ControlParameterBoolNodeAssetData): void {
@@ -58,7 +62,7 @@ export class ControlParameterBoolNodeAsset extends GraphNodeAsset {
 }
 
 export class ControlParameterBoolNode extends FloatValueNode {
-  value = false;
+  private value = false;
 
   override getValue<T>(context: GraphContext): T {
     if (!this.isUpdated(context)) {
@@ -66,5 +70,9 @@ export class ControlParameterBoolNode extends FloatValueNode {
     }
 
     return this.value as T;
+  }
+
+  override setValue<T>(value: T): void {
+    this.value = value as boolean;
   }
 }
