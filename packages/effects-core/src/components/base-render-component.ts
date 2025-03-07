@@ -1,9 +1,8 @@
-import { MaskMode } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 import { Vector4 } from '@galacean/effects-math/es/core/vector4';
-import type { Maskable } from '../material/mask-ref-manager';
+import { MaskMode } from '../material';
 import { RendererComponent } from './renderer-component';
 import { Texture } from '../texture';
 import type { GeometryDrawMode, Renderer } from '../render';
@@ -13,7 +12,7 @@ import { glContext } from '../gl';
 import { addItem } from '../utils';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType, spriteMeshShaderFromRenderInfo } from '../plugins';
-import type { MaterialProps } from '../material';
+import type { MaterialProps, Maskable } from '../material';
 import { getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
 import { trianglesFromRect } from '../math';
 import type { GeometryFromShape } from '../shape';
@@ -23,8 +22,9 @@ import type { GeometryFromShape } from '../shape';
  */
 export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin'>> {
   order: number,
-  mask: number,
   texture: Texture,
+  mask: number,
+  maskMode: MaskMode,
   shape?: GeometryFromShape,
   anchor?: spec.vec2,
   particleOrigin?: spec.ParticleOrigin,
@@ -81,8 +81,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       occlusion: false,
       transparentOcclusion: false,
       side: spec.SideMode.DOUBLE,
+      maskMode: MaskMode.NONE,
       mask: 0,
-      maskMode: spec.MaskMode.NONE,
       order: 0,
     };
     this.emptyTexture = this.engine.emptyTexture;
@@ -405,8 +405,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return this.maskRef;
   }
 
-  // TODO 类型指定
-  getMaskOptions (data: any): spec.MaskMode {
+  getMaskOptions (data: any): MaskMode {
     let maskMode = MaskMode.NONE;
 
     if (data.mask) {
@@ -415,7 +414,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       if (mask) {
         maskMode = MaskMode.MASK;
         this.getRefValue();
-      } else if (mode === MaskMode.OBSCURED || mode === MaskMode.REVERSE_OBSCURED) {
+      } else if (mode === spec.ObscuredMode.OBSCURED || mode === spec.ObscuredMode.REVERSE_OBSCURED) {
         maskMode = mode;
         this.maskRef = ref.getRefValue();
       }

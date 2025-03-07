@@ -1,5 +1,6 @@
 import type {
-  Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape,
+  Engine, Texture2DSourceOptionsVideo, Asset, SpriteItemProps, GeometryFromShape } from '@galacean/effects';
+import { MaskMode,
 } from '@galacean/effects';
 import {
   spec, math, BaseRenderComponent, effectsClass, glContext, getImageItemRenderInfo,
@@ -12,7 +13,6 @@ import {
 export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'> {
   listIndex?: number,
   renderer: {
-    mask: number,
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
@@ -120,15 +120,17 @@ export class VideoComponent extends BaseRenderComponent {
       }
     }
 
+    const maskMode = this.getMaskOptions(data);
+
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: renderer.mask ?? 0,
-      maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
+      mask: this.maskRef,
+      maskMode,
       order: listIndex,
       shape: renderer.shape,
     };

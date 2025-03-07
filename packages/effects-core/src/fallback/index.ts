@@ -113,6 +113,7 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       id: generateGUID(),
       renderLevel,
       url: image,
+      // @ts-expect-error
       oriY,
     };
   } else if (image.template) {
@@ -122,12 +123,14 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       template: image.template,
       webp: image.webp,
       renderLevel,
+      // @ts-expect-error
       oriY,
     };
   } else if (image.compressed) {
     return {
       id: generateGUID(),
       url: image.url,
+      // @ts-expect-error
       oriY,
       compressed: {
         astc: image.compressed.android,
@@ -142,6 +145,7 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       url: image.url,
       webp: image.webp,
       renderLevel,
+      // @ts-expect-error
       oriY,
     };
   } else if (image && image.sourceType) {

@@ -7,8 +7,8 @@ import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
-import type { Material } from '../../material';
-import type { Maskable } from '../../material/mask-ref-manager';
+import type { Maskable, Material } from '../../material';
+import { MaskMode } from '../../material';
 import { Texture } from '../../texture';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { VFXItem } from '../../vfx-item';
@@ -114,7 +114,7 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       mask: this.maskRef,
       maskMode,

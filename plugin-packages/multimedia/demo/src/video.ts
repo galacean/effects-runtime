@@ -46,7 +46,6 @@ addButton?.addEventListener('click', async () => {
         },
       },
       renderer: {
-        mask: 0,
         texture,
       },
     });

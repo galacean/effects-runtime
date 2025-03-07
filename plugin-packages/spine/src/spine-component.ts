@@ -1,16 +1,31 @@
 import type { AnimationStateListener, SkeletonData, TextureAtlas } from '@esotericsoftware/spine-core';
 import { AnimationState, AnimationStateData, Physics, Skeleton } from '@esotericsoftware/spine-core';
 import type {
-  BinaryAsset, BoundingBoxTriangle, Engine, HitTestTriangleParams, Renderer, Texture,
+  BinaryAsset,
+  BoundingBoxTriangle,
+  Engine,
+  HitTestTriangleParams,
+  Renderer,
+  Texture,
 } from '@galacean/effects';
 import {
-  effectsClass, HitTestType, math, PLAYER_OPTIONS_ENV_EDITOR, RendererComponent, serialize,
+  effectsClass,
+  HitTestType,
+  MaskMode,
+  math,
+  PLAYER_OPTIONS_ENV_EDITOR,
+  RendererComponent,
+  serialize,
   spec,
 } from '@galacean/effects';
 import { SlotGroup } from './slot-group';
 import {
-  createSkeletonData, getAnimationDuration, getAnimationList, getSkeletonFromBuffer,
-  getSkinList, readAtlasData,
+  createSkeletonData,
+  getAnimationDuration,
+  getAnimationList,
+  getSkeletonFromBuffer,
+  getSkinList,
+  readAtlasData,
 } from './utils';
 
 const { Vector2, Vector3 } = math;
@@ -86,9 +101,13 @@ export class SpineComponent extends RendererComponent {
    */
   pma: boolean;
   /**
-   * renderer 数据
+   * renderer 和 mask 数据
    */
-  rendererOptions: SpineMaskOptions;
+  rendererOptions: spec.SpineComponent['renderer'] & SpineMaskOptions;
+  /**
+   * mask 配置
+   */
+  maskOptions: SpineMaskOptions = {};
   options: spec.PluginSpineOption;
 
   private content: SlotGroup | null;
@@ -118,7 +137,11 @@ export class SpineComponent extends RendererComponent {
   override fromData (data: spec.SpineComponent) {
     super.fromData(data);
     this.options = data.options;
-    this.rendererOptions = data.renderer || {};
+    this.rendererOptions = data.renderer || {
+      renderMode: spec.RenderMode.MESH,
+      mask: 0,
+      maskMode: MaskMode.NONE,
+    };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
     const { maskMode, maskRef } = this.getMaskOptions(data);
 
@@ -232,7 +255,7 @@ export class SpineComponent extends RendererComponent {
       meshName: this.name,
       transform: this.transform,
       pma: this.pma,
-      renderOptions: this.rendererOptions,
+      renderOptions:this.rendererOptions,
       engine: this.engine,
     });
   }
@@ -558,13 +581,12 @@ export class SpineComponent extends RendererComponent {
     };
   }
 
-  getMaskOptions (data: spec.SpineContent) {
-    let maskMode = spec.MaskMode.NONE, maskRef;
-    // @ts-expect-error
-    const { mode = spec.MaskMode.NONE, ref } = data.mask;
+  getMaskOptions (data: any) {
+    let maskMode = MaskMode.NONE, maskRef;
 
-    // @ts-expect-error
     if (data.mask) {
+      const { mode = MaskMode.NONE, ref } = data.mask;
+
       maskMode = mode;
       maskRef = ref.getRefValue();
     }

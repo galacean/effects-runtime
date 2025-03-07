@@ -10,7 +10,3 @@ export class MaskRefManager {
   }
 }
 
-export interface Maskable {
-  maskRef: number,
-  getRefValue (): number,
-}

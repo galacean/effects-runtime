@@ -82,3 +82,27 @@ export enum ShaderType {
   vertex = 0,
   fragment = 1
 }
+
+export interface Maskable {
+  maskRef: number,
+  getRefValue (): number,
+}
+
+export enum MaskMode {
+  /**
+   * 无
+   */
+  NONE = 0,
+  /**
+   * 蒙版
+   */
+  MASK = 1,
+  /**
+   * 被遮挡
+   */
+  OBSCURED = 2,
+  /**
+   * 被反向遮挡
+   */
+  REVERSE_OBSCURED = 3,
+}

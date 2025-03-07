@@ -6,6 +6,7 @@ import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
   JSONSceneVersion,
 } from '@galacean/effects-specification';
+import { MaskMode } from '../material';
 import { generateGUID } from '../utils';
 import { convertAnchor, ensureFixedNumber, ensureFixedVec3 } from './utils';
 
@@ -114,30 +115,26 @@ export function processContent (composition: spec.CompositionData) {
 
   }
 }
-// TODO 类型完善
-export function processMask (renderContent: spec.ComponentData) {
-  // @ts-expect-error
+
+export function processMask (renderContent: any) {
   const renderer = renderContent.renderer;
   const maskMode = renderer.maskMode;
 
-  if (maskMode === spec.MaskMode.NONE) {
-    // @ts-expect-error
+  if (maskMode === MaskMode.NONE) {
     renderContent.mask = {};
 
     return;
   }
 
-  if (maskMode === spec.MaskMode.MASK) {
-    // @ts-expect-error
+  if (maskMode === MaskMode.MASK) {
     renderContent.mask = {
       mask: true,
     };
     currentMaskComponent = renderContent.id;
   } else if (
-    maskMode === spec.MaskMode.OBSCURED ||
-    maskMode === spec.MaskMode.REVERSE_OBSCURED
+    maskMode === spec.ObscuredMode.OBSCURED ||
+    maskMode === spec.ObscuredMode.REVERSE_OBSCURED
   ) {
-    // @ts-expect-error
     renderContent.mask = {
       mode: maskMode,
       ref: {

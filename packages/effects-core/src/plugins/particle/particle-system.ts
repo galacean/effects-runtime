@@ -1,7 +1,6 @@
 import type { Ray } from '@galacean/effects-math/es/core/index';
 import { Euler, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { vec2, vec3, vec4 } from '@galacean/effects-specification';
-import { MaskMode } from '@galacean/effects-specification';
 import * as spec from '@galacean/effects-specification';
 import { Component } from '../../components';
 import { effectsClass } from '../../decorators';
@@ -9,6 +8,7 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
+import { MaskMode } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
 import { Texture } from '../../texture';
@@ -1116,13 +1116,12 @@ export class ParticleSystem extends Component {
     this.item._content = this;
   }
 
-  getMaskOptions (data: unknown) {
+  getMaskOptions (data: any) {
     let maskMode = MaskMode.NONE, maskRef;
-    // @ts-expect-error
-    const { mode = MaskMode.NONE, ref } = data.mask;
 
-    // @ts-expect-error
     if (data.mask) {
+      const { mode, ref } = data.mask;
+
       maskMode = mode;
       maskRef = ref.getRefValue();
     }

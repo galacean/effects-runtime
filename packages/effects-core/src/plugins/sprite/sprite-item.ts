@@ -6,6 +6,7 @@ import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/ba
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
+import { MaskMode } from '../../material';
 import type { GeometryDrawMode } from '../../render';
 import { Geometry } from '../../render';
 import type { GeometryFromShape } from '../../shape';
@@ -19,7 +20,6 @@ import { PlayableAsset } from '../cal/playable-graph';
 export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
   listIndex?: number,
   renderer: {
-    mask: number,
     shape: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
@@ -299,7 +299,7 @@ export class SpriteComponent extends BaseRenderComponent {
       blending: renderer.blending ?? spec.BlendingMode.ALPHA,
       texture: renderer.texture ?? this.engine.emptyTexture,
       occlusion: !!renderer.occlusion,
-      transparentOcclusion: !!renderer.transparentOcclusion || (renderer.maskMode === spec.MaskMode.MASK),
+      transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       shape: renderer.shape,
       mask: this.maskRef,

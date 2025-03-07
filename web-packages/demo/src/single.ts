@@ -1,7 +1,6 @@
 import { AssetManager, Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 
-/*
 const json = {
   'playerVersion': {
     'web': '2.2.5',
@@ -9,22 +8,165 @@ const json = {
   },
   'images': [
     {
-      'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*9QqYTpyl6-oAAAAAAAAAAAAAelB4AQ/original',
-      'id': '032f8e585a6f47ffa4ad0bf6eb746de5',
+      'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*qvXeSrgAlxoAAAAAAAAAAAAAelB4AQ/original',
+      'id': 'fcffb200e5cc453d869df0329ba4bdf0',
       'renderLevel': 'B+',
-      'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*WK81QL2S27EAAAAAAAAAAAAAelB4AQ/original',
+      'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*V4btRZiPuIEAAAAAAAAAAAAAelB4AQ/original',
     },
     {
-      'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*Jzi6Q5Dw-cAAAAAAAAAAAAAAelB4AQ/original',
-      'id': '58bbac32a799438db4354b5e9f79fb55',
+      'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*KELKR6HimgEAAAAAAAAAAAAAelB4AQ/original',
+      'id': '447043deab6f409ea32c5cc5fb351938',
       'renderLevel': 'B+',
-      'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*XHtcT5ptGiQAAAAAAAAAAAAAelB4AQ/original',
+      'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*Xu49T4SPpxAAAAAAAAAAAAAAelB4AQ/original',
+    },
+    {
+      'url': 'https://mdn.alipayobjects.com/mars/afts/img/A*rYvXR4eldt8AAAAAAAAAAAAAelB4AQ/original',
+      'id': '6a6c79a2222e49488ba6d5b731958aa5',
+      'oriY': 1,
+      'webp': 'https://mdn.alipayobjects.com/mars/afts/img/A*3BdzT4LNXdkAAAAAAAAAAAAAelB4AQ/original',
     },
   ],
   'fonts': [],
   'version': '3.2',
-  'shapes': [],
-  'plugins': [],
+  'shapes': [
+    {
+      'p': [
+        10,
+        [
+          [
+            -0.006,
+            1,
+            0.0863,
+            0.7483,
+            -0.0843,
+            0.7483,
+          ],
+          [
+            -0.244,
+            0.245,
+            -0.1541,
+            0.4967,
+            -0.496,
+            0.245,
+          ],
+          [
+            -1,
+            0.245,
+            -0.748,
+            0.245,
+            -0.7956,
+            0.0839,
+          ],
+          [
+            -0.3869,
+            -0.2252,
+            -0.5913,
+            -0.0676,
+            -0.4584,
+            -0.479,
+          ],
+          [
+            -0.619,
+            -0.9868,
+            -0.5442,
+            -0.7329,
+            -0.4167,
+            -0.8327,
+          ],
+          [
+            -0.0119,
+            -0.5232,
+            -0.2143,
+            -0.6799,
+            0.1964,
+            -0.6529,
+          ],
+          [
+            0.6131,
+            -0.9868,
+            0.4048,
+            -0.8371,
+            0.5383,
+            -0.7329,
+          ],
+          [
+            0.381,
+            -0.2252,
+            0.4525,
+            -0.479,
+            0.5853,
+            -0.0676,
+          ],
+          [
+            0.994,
+            0.245,
+            0.7897,
+            0.0839,
+            0.7421,
+            0.245,
+          ],
+          [
+            0.2381,
+            0.245,
+            0.4901,
+            0.245,
+            0.1442,
+            0.4967,
+          ],
+        ],
+      ],
+      's': [
+        11,
+        [
+          [
+            0,
+            1,
+          ],
+          [
+            0,
+            1,
+          ],
+          [
+            0,
+            1,
+          ],
+          [
+            0,
+            1,
+          ],
+          [
+            0,
+            1,
+          ],
+          [
+            0,
+            0.5,
+            1,
+          ],
+          [
+            0,
+            1,
+          ],
+          [
+            0,
+            1,
+          ],
+          [
+            0,
+            1,
+          ],
+          [
+            0,
+            0.5,
+            1,
+          ],
+        ],
+      ],
+    },
+  ],
+  'plugins': [
+    'spine',
+  ],
   'type': 'ge',
   'compositions': [
     {
@@ -39,22 +181,28 @@ const json = {
       ],
       'items': [
         {
-          'id': 'e858da630d55426c86629ad50640ff5c',
-        },
-        {
-          'id': 'ef5492b7919a45e5921455bc12904697',
-        },
-        {
           'id': '8c366b769d7342ebbf3593f353dbddc7',
-        },
-        {
-          'id': '38d99ac1571947d688c80956a569e44a',
         },
         {
           'id': 'e2773001f806484ab4f51282c9bdf068',
         },
         {
+          'id': 'e858da630d55426c86629ad50640ff5c',
+        },
+        {
+          'id': '38d99ac1571947d688c80956a569e44a',
+        },
+        {
+          'id': '8cd3163409a44cf4a88261328f9ca531',
+        },
+        {
+          'id': 'ef5492b7919a45e5921455bc12904697',
+        },
+        {
           'id': '367a125187e14279acb536148ff249b4',
+        },
+        {
+          'id': '4684fe588a4e460c97a2e3de00a27411',
         },
       ],
       'camera': {
@@ -76,7 +224,7 @@ const json = {
       'sceneBindings': [
         {
           'key': {
-            'id': '9d2b00ed92474cd6b90c8b192fb10873',
+            'id': '608599f33a774cfb9db74fdc4ca2fcc4',
           },
           'value': {
             'id': '8c366b769d7342ebbf3593f353dbddc7',
@@ -84,7 +232,7 @@ const json = {
         },
         {
           'key': {
-            'id': '5cdde70f957048088d84dbfa660bf0f4',
+            'id': '631bdb90a0d14ad5a4869920588be2c5',
           },
           'value': {
             'id': 'e2773001f806484ab4f51282c9bdf068',
@@ -92,7 +240,7 @@ const json = {
         },
         {
           'key': {
-            'id': 'f58535a1ed364c009eb0d7791ceb2b5e',
+            'id': 'be80a041dda84b8a9747fdd60f2aa506',
           },
           'value': {
             'id': 'e858da630d55426c86629ad50640ff5c',
@@ -100,7 +248,7 @@ const json = {
         },
         {
           'key': {
-            'id': 'b53272d0aec44cad954532da6fda9efb',
+            'id': '552cbcb0d99e4da58d05a2ebdcd7a52d',
           },
           'value': {
             'id': '38d99ac1571947d688c80956a569e44a',
@@ -108,7 +256,15 @@ const json = {
         },
         {
           'key': {
-            'id': '844e1a4a59bb417abfa9f31199f55ca7',
+            'id': 'aa7f94fc568346b289b475ad1e628821',
+          },
+          'value': {
+            'id': '8cd3163409a44cf4a88261328f9ca531',
+          },
+        },
+        {
+          'key': {
+            'id': '45653b2345e24a44b9c350aa3ffe856c',
           },
           'value': {
             'id': 'ef5492b7919a45e5921455bc12904697',
@@ -116,21 +272,29 @@ const json = {
         },
         {
           'key': {
-            'id': '9e65050e175347a499f2dd0ad8982e7c',
+            'id': 'c4b7a94bb111479a8279f24e43b0c9be',
           },
           'value': {
             'id': '367a125187e14279acb536148ff249b4',
           },
         },
+        {
+          'key': {
+            'id': 'e0b8787e2fb843aa9fb6bb3c384a5263',
+          },
+          'value': {
+            'id': '4684fe588a4e460c97a2e3de00a27411',
+          },
+        },
       ],
       'timelineAsset': {
-        'id': '8a03cedea3eb4f62a1fa8d59867e05bf',
+        'id': '63258a289c794101a8a1389965bf5ed8',
       },
     },
   ],
   'components': [
     {
-      'id': '989b6e9b32bf49b0b9191000d8370e16',
+      'id': 'd42c111ed757466e9ecf856c5381bbdb',
       'item': {
         'id': '8c366b769d7342ebbf3593f353dbddc7',
       },
@@ -140,10 +304,10 @@ const json = {
         'fontFamily': 'sans-serif',
         'fontSize': 80,
         'textColor': [
-          1,
-          1,
-          1,
-          1,
+          255,
+          255,
+          255,
+          255,
         ],
         'fontWeight': 'bold',
         'letterSpace': 0,
@@ -167,7 +331,7 @@ const json = {
       },
     },
     {
-      'id': '0608f99b2b484280bb874a044ba7c77f',
+      'id': 'd54380990a9c4df5af3424ede709eeaf',
       'item': {
         'id': 'e2773001f806484ab4f51282c9bdf068',
       },
@@ -183,16 +347,16 @@ const json = {
       'renderer': {
         'renderMode': 1,
         'texture': {
-          'id': 'fd93606579684f67a1818452c0db274b',
+          'id': 'f4a3e71bbc774645ace887ff6c766882',
         },
         // 'maskMode': 2,
       },
-      'mask': {
-        'mode': 3,
-        'ref': {
-          'id': '989b6e9b32bf49b0b9191000d8370e16',
-        },
-      },
+      // 'mask': {
+      //   'mode': 2,
+      //   'ref': {
+      //     'id': 'd42c111ed757466e9ecf856c5381bbdb',
+      //   },
+      // },
       'splits': [
         [
           0.6416015625,
@@ -204,7 +368,7 @@ const json = {
       ],
     },
     {
-      'id': 'eaf3ffdea0414572a644d6b2c9fa9df9',
+      'id': 'a700e6261e3c4d808dafe63e55818a6b',
       'item': {
         'id': 'e858da630d55426c86629ad50640ff5c',
       },
@@ -220,9 +384,10 @@ const json = {
       'renderer': {
         'renderMode': 1,
         'texture': {
-          'id': 'f61952fd42ae47e791d1c69d3b097f97',
+          'id': 'd1a7b63877054812b36a68812b083233',
         },
         // 'maskMode': 1,
+        'shape': 0,
       },
       'mask': {
         'mask': true,
@@ -238,7 +403,7 @@ const json = {
       ],
     },
     {
-      'id': '7994320e30c14b2c85e279480e21489f',
+      'id': '6c19e5b23a4c47f2a343e6e1854653be',
       'item': {
         'id': '38d99ac1571947d688c80956a569e44a',
       },
@@ -253,14 +418,15 @@ const json = {
       },
       'renderer': {
         'renderMode': 1,
+        // 'maskMode': 2,
         'texture': {
-          'id': 'fd93606579684f67a1818452c0db274b',
+          'id': 'f4a3e71bbc774645ace887ff6c766882',
         },
       },
       'mask': {
-        'mode': 3,
+        'mode': 2,
         'ref': {
-          'id': 'eaf3ffdea0414572a644d6b2c9fa9df9',
+          'id': 'a700e6261e3c4d808dafe63e55818a6b',
         },
       },
       'splits': [
@@ -274,7 +440,103 @@ const json = {
       ],
     },
     {
-      'id': 'cca53dcc674b496b9d2b53d82d193b27',
+      'id': 'a8bd539978e14485ad1646db79235637',
+      'item': {
+        'id': '8cd3163409a44cf4a88261328f9ca531',
+      },
+      'dataType': 'ParticleSystem',
+      'shape': {
+        'type': 1,
+        'radius': 1,
+        'arc': 360,
+        'arcMode': 0,
+        'alignSpeedDirection': false,
+        'shape': 'Sphere',
+      },
+      'renderer': {
+        'renderMode': 1,
+        'anchor': [
+          0,
+          0,
+        ],
+        // 'maskMode': 2,
+        'texture': {
+          'id': 'f4a3e71bbc774645ace887ff6c766882',
+        },
+      },
+      'mask': {
+        'mode': 2,
+        'ref': {
+          'id': 'a700e6261e3c4d808dafe63e55818a6b',
+        },
+      },
+      'splits': [
+        [
+          0.734375,
+          0,
+          0.1474609375,
+          0.1318359375,
+          0,
+        ],
+      ],
+      'emission': {
+        'rateOverTime': [
+          0,
+          5,
+        ],
+      },
+      'options': {
+        'maxCount': 20,
+        'startLifetime': [
+          0,
+          1.2,
+        ],
+        'startDelay': [
+          0,
+          0,
+        ],
+        'particleFollowParent': false,
+        'start3DSize': false,
+        'startRotationZ': [
+          0,
+          0,
+        ],
+        'startColor': [
+          8,
+          [
+            1,
+            1,
+            1,
+            1,
+          ],
+        ],
+        'startSize': [
+          0,
+          0.5,
+        ],
+        'sizeAspect': [
+          0,
+          1,
+        ],
+      },
+      'positionOverLifetime': {
+        'startSpeed': [
+          0,
+          1,
+        ],
+        'gravity': [
+          0,
+          0,
+          0,
+        ],
+        'gravityOverLifetime': [
+          0,
+          1,
+        ],
+      },
+    },
+    {
+      'id': '0cf037dc90d54b12aeac201c41133e15',
       'item': {
         'id': 'ef5492b7919a45e5921455bc12904697',
       },
@@ -456,6 +718,10 @@ const json = {
       ],
       'renderer': {
         'renderMode': 1,
+        'anchor': [
+          0.5,
+          0.5,
+        ],
         // 'maskMode': 1,
       },
       'mask': {
@@ -463,7 +729,7 @@ const json = {
       },
     },
     {
-      'id': 'a365c15929ea45849750d90026b187f5',
+      'id': '78d38cb728304571abff05b18d0c4de1',
       'item': {
         'id': '367a125187e14279acb536148ff249b4',
       },
@@ -478,15 +744,19 @@ const json = {
       },
       'renderer': {
         'renderMode': 1,
+        'anchor': [
+          0.5,
+          0.5,
+        ],
         // 'maskMode': 2,
         'texture': {
-          'id': 'fd93606579684f67a1818452c0db274b',
+          'id': 'f4a3e71bbc774645ace887ff6c766882',
         },
       },
       'mask': {
-        'mode': 3,
+        'mode': 2,
         'ref': {
-          'id': 'cca53dcc674b496b9d2b53d82d193b27',
+          'id': '0cf037dc90d54b12aeac201c41133e15',
         },
       },
       'splits': [
@@ -498,6 +768,70 @@ const json = {
           1,
         ],
       ],
+    },
+    {
+      'options': {
+        'activeSkin': '',
+        'spine': 'res:spine/spine/pirate2-tw9mewfa',
+        'size': [
+          2.1359,
+          373.2848,
+        ],
+        'startSize': 2.1359,
+        'activeAnimation': [
+          'Walk',
+        ],
+        'mixDuration': 0,
+        'speed': 1,
+        'resizeRule': 1,
+        'loopEnd': false,
+      },
+      'resource': {
+        'atlas': {
+          'bins': {
+            'id': '5f740147bf2d4b80be10a71dffd549fe',
+          },
+          'source': [
+            0,
+            1269,
+          ],
+        },
+        'skeleton': {
+          'bins': {
+            'id': '5f740147bf2d4b80be10a71dffd549fe',
+          },
+          'source': [
+            1269,
+            83554,
+          ],
+        },
+        'images': [
+          {
+            'id': '03370a8234cd4e8b82ba5f3d5d2597e3',
+          },
+        ],
+        'skeletonType': 'json',
+        'editorResourceID': 'res:spine/spine/pirate2-tw9mewfa',
+      },
+      'id': '796c174e874447f29509c126dd1b5064',
+      'renderer': {
+        'renderMode': 1,
+        'anchor': [
+          0.5,
+          0.5,
+        ],
+        // 'maskMode': 2,
+      },
+      'mask': {
+        'mode': 2,
+        'ref': {
+          'id': '0cf037dc90d54b12aeac201c41133e15',
+        },
+      },
+      'item': {
+        'id': '4684fe588a4e460c97a2e3de00a27411',
+      },
+      'dataType': 'SpineComponent',
     },
   ],
   'geometries': [],
@@ -515,7 +849,7 @@ const json = {
       'transform': {
         'position': {
           'x': 0.0962,
-          'y': 0,
+          'y': 0.7756,
           'z': 0,
         },
         'eulerHint': {
@@ -531,7 +865,7 @@ const json = {
       },
       'components': [
         {
-          'id': '989b6e9b32bf49b0b9191000d8370e16',
+          'id': 'd42c111ed757466e9ecf856c5381bbdb',
         },
       ],
       'dataType': 'VFXItemData',
@@ -539,7 +873,7 @@ const json = {
     {
       'id': 'e2773001f806484ab4f51282c9bdf068',
       'name': 'sprite_5',
-      'duration': 1,
+      'duration': 5,
       'type': '1',
       'visible': true,
       'endBehavior': 0,
@@ -547,13 +881,13 @@ const json = {
       'renderLevel': 'B+',
       'components': [
         {
-          'id': '0608f99b2b484280bb874a044ba7c77f',
+          'id': 'd54380990a9c4df5af3424ede709eeaf',
         },
       ],
       'transform': {
         'position': {
-          'x': 0,
-          'y': 0,
+          'x': -28.7081,
+          'y': -21.0278,
           'z': 0,
         },
         'eulerHint': {
@@ -588,13 +922,13 @@ const json = {
       'renderLevel': 'B+',
       'components': [
         {
-          'id': 'eaf3ffdea0414572a644d6b2c9fa9df9',
+          'id': 'a700e6261e3c4d808dafe63e55818a6b',
         },
       ],
       'transform': {
         'position': {
-          'x': 0,
-          'y': 6,
+          'x': -0.2947,
+          'y': 7.406,
           'z': 0,
         },
         'eulerHint': {
@@ -607,8 +941,8 @@ const json = {
           'y': 0,
         },
         'size': {
-          'x': 4.1352,
-          'y': 3.7178,
+          'x': 5.8239,
+          'y': 6.2808,
         },
         'scale': {
           'x': 1,
@@ -629,13 +963,13 @@ const json = {
       'renderLevel': 'B+',
       'components': [
         {
-          'id': '7994320e30c14b2c85e279480e21489f',
+          'id': '6c19e5b23a4c47f2a343e6e1854653be',
         },
       ],
       'transform': {
         'position': {
-          'x': -0.2329,
-          'y': 6,
+          'x': 0,
+          'y': 7.1331,
           'z': 0,
         },
         'eulerHint': {
@@ -660,6 +994,116 @@ const json = {
       'dataType': 'VFXItemData',
     },
     {
+      'id': '8cd3163409a44cf4a88261328f9ca531',
+      'name': 'particle_9',
+      'duration': 5,
+      'type': '2',
+      'visible': true,
+      'endBehavior': 0,
+      'delay': 0,
+      'renderLevel': 'B+',
+      'content': {
+        'dataType': 'ParticleSystem',
+        'shape': {
+          'type': 1,
+          'radius': 1,
+          'arc': 360,
+          'arcMode': 0,
+          'alignSpeedDirection': false,
+          'shape': 'Sphere',
+        },
+        'renderer': {
+          'renderMode': 1,
+          'anchor': [
+            0,
+            0,
+          ],
+          'maskMode': 2,
+          'texture': {
+            'id': 'f4a3e71bbc774645ace887ff6c766882',
+          },
+        },
+        'emission': {
+          'rateOverTime': [
+            0,
+            5,
+          ],
+        },
+        'options': {
+          'maxCount': 20,
+          'startLifetime': [
+            0,
+            1.2,
+          ],
+          'startDelay': [
+            0,
+            0,
+          ],
+          'particleFollowParent': false,
+          'start3DSize': false,
+          'startRotationZ': [
+            0,
+            0,
+          ],
+          'startColor': [
+            8,
+            [
+              1,
+              1,
+              1,
+              1,
+            ],
+          ],
+          'startSize': [
+            0,
+            0.5,
+          ],
+          'sizeAspect': [
+            0,
+            1,
+          ],
+        },
+        'positionOverLifetime': {
+          'startSpeed': [
+            0,
+            1,
+          ],
+          'gravity': [
+            0,
+            0,
+            0,
+          ],
+          'gravityOverLifetime': [
+            0,
+            1,
+          ],
+        },
+      },
+      'components': [
+        {
+          'id': 'a8bd539978e14485ad1646db79235637',
+        },
+      ],
+      'transform': {
+        'position': {
+          'x': 0,
+          'y': 7.1331,
+          'z': 0,
+        },
+        'eulerHint': {
+          'x': 0,
+          'y': 0,
+          'z': 0,
+        },
+        'scale': {
+          'x': 1,
+          'y': 1,
+          'z': 1,
+        },
+      },
+      'dataType': 'VFXItemData',
+    },
+    {
       'id': 'ef5492b7919a45e5921455bc12904697',
       'name': '矢量',
       'duration': 5,
@@ -670,13 +1114,13 @@ const json = {
       'renderLevel': 'B+',
       'components': [
         {
-          'id': 'cca53dcc674b496b9d2b53d82d193b27',
+          'id': '0cf037dc90d54b12aeac201c41133e15',
         },
       ],
       'transform': {
         'position': {
           'x': 0.0141,
-          'y': -3.5,
+          'y': -3.6697,
           'z': 0,
         },
         'eulerHint': {
@@ -707,13 +1151,13 @@ const json = {
       'renderLevel': 'B+',
       'components': [
         {
-          'id': 'a365c15929ea45849750d90026b187f5',
+          'id': '78d38cb728304571abff05b18d0c4de1',
         },
       ],
       'transform': {
         'position': {
           'x': 0.0755,
-          'y': -4,
+          'y': -3.6988,
           'z': 0,
         },
         'eulerHint': {
@@ -737,66 +1181,141 @@ const json = {
       },
       'dataType': 'VFXItemData',
     },
+    {
+      'id': '4684fe588a4e460c97a2e3de00a27411',
+      'name': 'spine_8',
+      'duration': 1,
+      'dataType': 'VFXItemData',
+      'type': 'spine',
+      'pluginName': 'spine',
+      'visible': true,
+      'endBehavior': 5,
+      'delay': 0,
+      'renderLevel': 'B+',
+      'transform': {
+        'position': {
+          'x': -0.0653,
+          'y': -6.4707,
+          'z': 0,
+        },
+        'eulerHint': {
+          'x': 0,
+          'y': 0,
+          'z': 0,
+        },
+        'anchor': {
+          'x': 0,
+          'y': 0,
+        },
+        'size': {
+          'x': 2.1359,
+          'y': 373.2848,
+        },
+        'scale': {
+          'x': 1,
+          'y': 1,
+          'z': 1,
+        },
+      },
+      'components': [
+        {
+          'id': '796c174e874447f29509c126dd1b5064',
+        },
+      ],
+    },
   ],
   'shaders': [],
-  'bins': [],
+  'bins': [
+    {
+      'url': 'https://mdn.alipayobjects.com/mars/afts/file/A*ymquRa-vcfIAAAAAAAAAAAAAelB4AQ',
+      'id': '5f740147bf2d4b80be10a71dffd549fe',
+      'dataType': 'BinaryAsset',
+    },
+  ],
   'textures': [
     {
-      'id': 'fd93606579684f67a1818452c0db274b',
+      'id': 'f4a3e71bbc774645ace887ff6c766882',
       'source': {
-        'id': '032f8e585a6f47ffa4ad0bf6eb746de5',
+        'id': 'fcffb200e5cc453d869df0329ba4bdf0',
       },
       'flipY': true,
     },
     {
-      'id': 'f61952fd42ae47e791d1c69d3b097f97',
+      'id': 'd1a7b63877054812b36a68812b083233',
       'source': {
-        'id': '58bbac32a799438db4354b5e9f79fb55',
+        'id': '447043deab6f409ea32c5cc5fb351938',
       },
       'flipY': true,
+    },
+    {
+      'minFilter': 9729,
+      'magFilter': 9729,
+      'wrapS': 33071,
+      'wrapT': 10497,
+      'target': 3553,
+      'format': 6408,
+      'internalFormat': 6408,
+      'type': 5121,
+      'flipY': false,
+      'images': [
+        'Pirate-03.png',
+      ],
+      'pma': false,
+      'name': 'Pirate-03.png',
+      'sourceType': 2,
+      'id': '03370a8234cd4e8b82ba5f3d5d2597e3',
+      'source': {
+        'id': '6a6c79a2222e49488ba6d5b731958aa5',
+      },
     },
   ],
   'animations': [],
   'miscs': [
     {
-      'id': '8a03cedea3eb4f62a1fa8d59867e05bf',
+      'id': '63258a289c794101a8a1389965bf5ed8',
       'dataType': 'TimelineAsset',
       'tracks': [
         {
-          'id': '9d2b00ed92474cd6b90c8b192fb10873',
+          'id': '608599f33a774cfb9db74fdc4ca2fcc4',
         },
         {
-          'id': '5cdde70f957048088d84dbfa660bf0f4',
+          'id': '631bdb90a0d14ad5a4869920588be2c5',
         },
         {
-          'id': 'f58535a1ed364c009eb0d7791ceb2b5e',
+          'id': 'be80a041dda84b8a9747fdd60f2aa506',
         },
         {
-          'id': 'b53272d0aec44cad954532da6fda9efb',
+          'id': '552cbcb0d99e4da58d05a2ebdcd7a52d',
         },
         {
-          'id': '844e1a4a59bb417abfa9f31199f55ca7',
+          'id': 'aa7f94fc568346b289b475ad1e628821',
         },
         {
-          'id': '9e65050e175347a499f2dd0ad8982e7c',
+          'id': '45653b2345e24a44b9c350aa3ffe856c',
+        },
+        {
+          'id': 'c4b7a94bb111479a8279f24e43b0c9be',
+        },
+        {
+          'id': 'e0b8787e2fb843aa9fb6bb3c384a5263',
         },
       ],
     },
     {
-      'id': 'cdda0203be0b400299e7d68808c51645',
+      'id': '14b342b594284e47bffac7deb2e00a25',
       'dataType': 'ActivationPlayableAsset',
     },
     {
-      'id': '669ecc07cb42439d8fc85705dc662fea',
+      'id': '31ae571ee02746f88f54c155c4b7c623',
       'dataType': 'TransformPlayableAsset',
       'positionOverLifetime': {},
     },
     {
-      'id': '400a69865f754a82a76d50510130a849',
+      'id': 'a328bf2dadce455ebc514a7338d4a747',
       'dataType': 'SpriteColorPlayableAsset',
     },
     {
-      'id': '75ede6426e5c40b5b4311443d453bfa8',
+      'id': '3eff9a89e9d6444187ee7ecd907e3e19',
       'dataType': 'ActivationTrack',
       'children': [],
       'clips': [
@@ -805,13 +1324,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': 'cdda0203be0b400299e7d68808c51645',
+            'id': '14b342b594284e47bffac7deb2e00a25',
           },
         },
       ],
     },
     {
-      'id': '57e45da1c53e4f05bba6ca980cd491a4',
+      'id': '1def457c6eb74b738eceb2e037a8a7da',
       'dataType': 'TransformTrack',
       'children': [],
       'clips': [
@@ -820,13 +1339,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '669ecc07cb42439d8fc85705dc662fea',
+            'id': '31ae571ee02746f88f54c155c4b7c623',
           },
         },
       ],
     },
     {
-      'id': '233ed132922c49ff9606273f9aceda9d',
+      'id': '746f164a26094f68beefd4877a0a7d59',
       'dataType': 'SpriteColorTrack',
       'children': [],
       'clips': [
@@ -835,118 +1354,38 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '400a69865f754a82a76d50510130a849',
+            'id': 'a328bf2dadce455ebc514a7338d4a747',
           },
         },
       ],
     },
     {
-      'id': '9d2b00ed92474cd6b90c8b192fb10873',
+      'id': '608599f33a774cfb9db74fdc4ca2fcc4',
       'dataType': 'ObjectBindingTrack',
       'children': [
         {
-          'id': '75ede6426e5c40b5b4311443d453bfa8',
+          'id': '3eff9a89e9d6444187ee7ecd907e3e19',
         },
         {
-          'id': '57e45da1c53e4f05bba6ca980cd491a4',
+          'id': '1def457c6eb74b738eceb2e037a8a7da',
         },
         {
-          'id': '233ed132922c49ff9606273f9aceda9d',
+          'id': '746f164a26094f68beefd4877a0a7d59',
         },
       ],
       'clips': [],
     },
     {
-      'id': '7ac403203a7e4237a744af3ac7fcb369',
+      'id': 'a2d54dc1281a434e85f6e4c97ddbf1a6',
       'dataType': 'ActivationPlayableAsset',
     },
     {
-      'id': '48eedd4843ec48488128a4e2a6a690b5',
+      'id': '766bace057d944efac02810dd1bea8c9',
       'dataType': 'TransformPlayableAsset',
       'positionOverLifetime': {},
     },
     {
-      'id': '8602a109eb984ee6bef1719f8476badf',
-      'dataType': 'SpriteColorPlayableAsset',
-      'startColor': [
-        1,
-        1,
-        1,
-        1,
-      ],
-    },
-    {
-      'id': 'e9e0082ded7e4ee59a847a426fa31626',
-      'dataType': 'ActivationTrack',
-      'children': [],
-      'clips': [
-        {
-          'start': 0,
-          'duration': 5,
-          'endBehavior': 0,
-          'asset': {
-            'id': '7ac403203a7e4237a744af3ac7fcb369',
-          },
-        },
-      ],
-    },
-    {
-      'id': 'dfb7bbd86001427c93aafdd7ae6ed854',
-      'dataType': 'TransformTrack',
-      'children': [],
-      'clips': [
-        {
-          'start': 0,
-          'duration': 5,
-          'endBehavior': 0,
-          'asset': {
-            'id': '48eedd4843ec48488128a4e2a6a690b5',
-          },
-        },
-      ],
-    },
-    {
-      'id': 'badbe7fc444441a58787d6dcb5804667',
-      'dataType': 'SpriteColorTrack',
-      'children': [],
-      'clips': [
-        {
-          'start': 0,
-          'duration': 5,
-          'endBehavior': 0,
-          'asset': {
-            'id': '8602a109eb984ee6bef1719f8476badf',
-          },
-        },
-      ],
-    },
-    {
-      'id': '5cdde70f957048088d84dbfa660bf0f4',
-      'dataType': 'ObjectBindingTrack',
-      'children': [
-        {
-          'id': 'e9e0082ded7e4ee59a847a426fa31626',
-        },
-        {
-          'id': 'dfb7bbd86001427c93aafdd7ae6ed854',
-        },
-        {
-          'id': 'badbe7fc444441a58787d6dcb5804667',
-        },
-      ],
-      'clips': [],
-    },
-    {
-      'id': '5e1c404a74ea4b1192abaa1bfd279ff5',
-      'dataType': 'ActivationPlayableAsset',
-    },
-    {
-      'id': '3bc61d3e7bcd413cb7c177081b09246d',
-      'dataType': 'TransformPlayableAsset',
-      'positionOverLifetime': {},
-    },
-    {
-      'id': '4003002390024a2ba0fc6fa88bf42b3d',
+      'id': '7addb0efb89149c39bc9e2c45edf6e4b',
       'dataType': 'SpriteColorPlayableAsset',
       'startColor': [
         1,
@@ -956,7 +1395,7 @@ const json = {
       ],
     },
     {
-      'id': 'd5a4a6ca94fa48eda00d51029dc52505',
+      'id': 'a8d328ca57f9421abcd43ac79a9d6da7',
       'dataType': 'ActivationTrack',
       'children': [],
       'clips': [
@@ -965,13 +1404,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '5e1c404a74ea4b1192abaa1bfd279ff5',
+            'id': 'a2d54dc1281a434e85f6e4c97ddbf1a6',
           },
         },
       ],
     },
     {
-      'id': 'a3e9b53ada4d4abba66f385bcfab9f13',
+      'id': '9b5a794efcbc449fbc0b41aec54b6c21',
       'dataType': 'TransformTrack',
       'children': [],
       'clips': [
@@ -980,13 +1419,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '3bc61d3e7bcd413cb7c177081b09246d',
+            'id': '766bace057d944efac02810dd1bea8c9',
           },
         },
       ],
     },
     {
-      'id': '39989ba774804afcb3c6d1f9b4c2531c',
+      'id': '6a3862d0f25d408cb1e2bcd0fe7efba8',
       'dataType': 'SpriteColorTrack',
       'children': [],
       'clips': [
@@ -995,38 +1434,38 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '4003002390024a2ba0fc6fa88bf42b3d',
+            'id': '7addb0efb89149c39bc9e2c45edf6e4b',
           },
         },
       ],
     },
     {
-      'id': 'f58535a1ed364c009eb0d7791ceb2b5e',
+      'id': '631bdb90a0d14ad5a4869920588be2c5',
       'dataType': 'ObjectBindingTrack',
       'children': [
         {
-          'id': 'd5a4a6ca94fa48eda00d51029dc52505',
+          'id': 'a8d328ca57f9421abcd43ac79a9d6da7',
         },
         {
-          'id': 'a3e9b53ada4d4abba66f385bcfab9f13',
+          'id': '9b5a794efcbc449fbc0b41aec54b6c21',
         },
         {
-          'id': '39989ba774804afcb3c6d1f9b4c2531c',
+          'id': '6a3862d0f25d408cb1e2bcd0fe7efba8',
         },
       ],
       'clips': [],
     },
     {
-      'id': 'dbf02abdc86344f9b8d1362a11f2f3f3',
+      'id': 'a1ce2a2e68d14912b2a51f3b267a6f59',
       'dataType': 'ActivationPlayableAsset',
     },
     {
-      'id': '24ef0aa0cc7e4b7bbd71f2aeeddbb423',
+      'id': '7475a189564f48e1979d517362689b19',
       'dataType': 'TransformPlayableAsset',
       'positionOverLifetime': {},
     },
     {
-      'id': '0cdca251cdb54dad8f38aef19518ff23',
+      'id': '8b6d71fbead74495a3b1a1a02dd05715',
       'dataType': 'SpriteColorPlayableAsset',
       'startColor': [
         1,
@@ -1036,7 +1475,7 @@ const json = {
       ],
     },
     {
-      'id': '5a6530ec197044d7b06bd08dc5665ac4',
+      'id': 'e2ba2c992165423c8a58daf27ca14a84',
       'dataType': 'ActivationTrack',
       'children': [],
       'clips': [
@@ -1045,13 +1484,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': 'dbf02abdc86344f9b8d1362a11f2f3f3',
+            'id': 'a1ce2a2e68d14912b2a51f3b267a6f59',
           },
         },
       ],
     },
     {
-      'id': '3ca11e5277c8465283eb672dc11defcc',
+      'id': '49b3da720e0a4a81a7a666f61bc28c17',
       'dataType': 'TransformTrack',
       'children': [],
       'clips': [
@@ -1060,13 +1499,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '24ef0aa0cc7e4b7bbd71f2aeeddbb423',
+            'id': '7475a189564f48e1979d517362689b19',
           },
         },
       ],
     },
     {
-      'id': 'ae9adbe7bc094c918a8536d8a7995f33',
+      'id': 'd6592e1f394f4a478a62e11bfe475c71',
       'dataType': 'SpriteColorTrack',
       'children': [],
       'clips': [
@@ -1075,38 +1514,48 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '0cdca251cdb54dad8f38aef19518ff23',
+            'id': '8b6d71fbead74495a3b1a1a02dd05715',
           },
         },
       ],
     },
     {
-      'id': 'b53272d0aec44cad954532da6fda9efb',
+      'id': 'be80a041dda84b8a9747fdd60f2aa506',
       'dataType': 'ObjectBindingTrack',
       'children': [
         {
-          'id': '5a6530ec197044d7b06bd08dc5665ac4',
+          'id': 'e2ba2c992165423c8a58daf27ca14a84',
         },
         {
-          'id': '3ca11e5277c8465283eb672dc11defcc',
+          'id': '49b3da720e0a4a81a7a666f61bc28c17',
         },
         {
-          'id': 'ae9adbe7bc094c918a8536d8a7995f33',
+          'id': 'd6592e1f394f4a478a62e11bfe475c71',
         },
       ],
       'clips': [],
     },
     {
-      'id': 'd350bdd335674d00b767529abcebfbc3',
+      'id': '747f14f4e0d84dc6abfd4e9f614d4a0b',
       'dataType': 'ActivationPlayableAsset',
     },
     {
-      'id': 'af61d16b4b5544bc822e0f4477ff984c',
+      'id': '9a7b1cdbbdb04e9cbce980d150f1f18e',
       'dataType': 'TransformPlayableAsset',
       'positionOverLifetime': {},
     },
     {
-      'id': '26faedfa811a4ca4a791c0375fdc876c',
+      'id': '615ec31a8d3f402aa44e7d68738a3127',
+      'dataType': 'SpriteColorPlayableAsset',
+      'startColor': [
+        1,
+        1,
+        1,
+        1,
+      ],
+    },
+    {
+      'id': '1a4f2be49bcb44f4a9b73b6102e99bcd',
       'dataType': 'ActivationTrack',
       'children': [],
       'clips': [
@@ -1115,13 +1564,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': 'd350bdd335674d00b767529abcebfbc3',
+            'id': '747f14f4e0d84dc6abfd4e9f614d4a0b',
           },
         },
       ],
     },
     {
-      'id': 'fa910a1a87de44ecb17516fc3eb2f85b',
+      'id': '033d2a2d22b74553995fa989086f544e',
       'dataType': 'TransformTrack',
       'children': [],
       'clips': [
@@ -1130,35 +1579,134 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': 'af61d16b4b5544bc822e0f4477ff984c',
+            'id': '9a7b1cdbbdb04e9cbce980d150f1f18e',
           },
         },
       ],
     },
     {
-      'id': '844e1a4a59bb417abfa9f31199f55ca7',
+      'id': '6bd27a4f1a0944829848079aeb6b5ca3',
+      'dataType': 'SpriteColorTrack',
+      'children': [],
+      'clips': [
+        {
+          'start': 0,
+          'duration': 5,
+          'endBehavior': 0,
+          'asset': {
+            'id': '615ec31a8d3f402aa44e7d68738a3127',
+          },
+        },
+      ],
+    },
+    {
+      'id': '552cbcb0d99e4da58d05a2ebdcd7a52d',
       'dataType': 'ObjectBindingTrack',
       'children': [
         {
-          'id': '26faedfa811a4ca4a791c0375fdc876c',
+          'id': '1a4f2be49bcb44f4a9b73b6102e99bcd',
         },
         {
-          'id': 'fa910a1a87de44ecb17516fc3eb2f85b',
+          'id': '033d2a2d22b74553995fa989086f544e',
+        },
+        {
+          'id': '6bd27a4f1a0944829848079aeb6b5ca3',
         },
       ],
       'clips': [],
     },
     {
-      'id': 'ef88fbb1d9bf44ef82098e355d8df1f9',
+      'id': '052158287d1d48b7a8acb843fb34e2f5',
       'dataType': 'ActivationPlayableAsset',
     },
     {
-      'id': '780a658963614fa89a01c594c49eb19c',
+      'id': '16ee5a7f25ea4d9aaf27d18d318dbb1e',
+      'dataType': 'ActivationTrack',
+      'children': [],
+      'clips': [
+        {
+          'start': 0,
+          'duration': 5,
+          'endBehavior': 0,
+          'asset': {
+            'id': '052158287d1d48b7a8acb843fb34e2f5',
+          },
+        },
+      ],
+    },
+    {
+      'id': 'aa7f94fc568346b289b475ad1e628821',
+      'dataType': 'ObjectBindingTrack',
+      'children': [
+        {
+          'id': '16ee5a7f25ea4d9aaf27d18d318dbb1e',
+        },
+      ],
+      'clips': [],
+    },
+    {
+      'id': '30627ad9292e416eacc534c2a558d5ae',
+      'dataType': 'ActivationPlayableAsset',
+    },
+    {
+      'id': 'f1007e552aa8447392503c00b156d1fe',
       'dataType': 'TransformPlayableAsset',
       'positionOverLifetime': {},
     },
     {
-      'id': '7fef84da54b2402893ea895645ed3569',
+      'id': 'a513edc93d124b0ba009f92fb2d6f095',
+      'dataType': 'ActivationTrack',
+      'children': [],
+      'clips': [
+        {
+          'start': 0,
+          'duration': 5,
+          'endBehavior': 0,
+          'asset': {
+            'id': '30627ad9292e416eacc534c2a558d5ae',
+          },
+        },
+      ],
+    },
+    {
+      'id': '3b3fbe49bf9a4d57a6747a274ba0d1f8',
+      'dataType': 'TransformTrack',
+      'children': [],
+      'clips': [
+        {
+          'start': 0,
+          'duration': 5,
+          'endBehavior': 0,
+          'asset': {
+            'id': 'f1007e552aa8447392503c00b156d1fe',
+          },
+        },
+      ],
+    },
+    {
+      'id': '45653b2345e24a44b9c350aa3ffe856c',
+      'dataType': 'ObjectBindingTrack',
+      'children': [
+        {
+          'id': 'a513edc93d124b0ba009f92fb2d6f095',
+        },
+        {
+          'id': '3b3fbe49bf9a4d57a6747a274ba0d1f8',
+        },
+      ],
+      'clips': [],
+    },
+    {
+      'id': 'f3798571d58a4b84946a6430a5c19b1d',
+      'dataType': 'ActivationPlayableAsset',
+    },
+    {
+      'id': '7bceb5bf47e749d896f83448abe7406e',
+      'dataType': 'TransformPlayableAsset',
+      'positionOverLifetime': {},
+    },
+    {
+      'id': 'be6b51a09b8540aaa14c96a02cd24d85',
       'dataType': 'SpriteColorPlayableAsset',
       'startColor': [
         0.9608,
@@ -1168,7 +1716,7 @@ const json = {
       ],
     },
     {
-      'id': 'baa0c68a030946ea838c22e240997303',
+      'id': 'ed2b638a95bd4396a26ca85cd5fc31bc',
       'dataType': 'ActivationTrack',
       'children': [],
       'clips': [
@@ -1177,13 +1725,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': 'ef88fbb1d9bf44ef82098e355d8df1f9',
+            'id': 'f3798571d58a4b84946a6430a5c19b1d',
           },
         },
       ],
     },
     {
-      'id': '2ccd0699ec5a4f6f936d5f0e86d91066',
+      'id': '079086f7f566459f9ff3ee75225e56be',
       'dataType': 'TransformTrack',
       'children': [],
       'clips': [
@@ -1192,13 +1740,13 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '780a658963614fa89a01c594c49eb19c',
+            'id': '7bceb5bf47e749d896f83448abe7406e',
           },
         },
       ],
     },
     {
-      'id': 'b43fe847b1bf496fa9a529664a5603a9',
+      'id': 'f8f27a123d3949b4b31c09f7131c2c83',
       'dataType': 'SpriteColorTrack',
       'children': [],
       'clips': [
@@ -1207,23 +1755,75 @@ const json = {
           'duration': 5,
           'endBehavior': 0,
           'asset': {
-            'id': '7fef84da54b2402893ea895645ed3569',
+            'id': 'be6b51a09b8540aaa14c96a02cd24d85',
           },
         },
       ],
     },
     {
-      'id': '9e65050e175347a499f2dd0ad8982e7c',
+      'id': 'c4b7a94bb111479a8279f24e43b0c9be',
       'dataType': 'ObjectBindingTrack',
       'children': [
         {
-          'id': 'baa0c68a030946ea838c22e240997303',
+          'id': 'ed2b638a95bd4396a26ca85cd5fc31bc',
         },
         {
-          'id': '2ccd0699ec5a4f6f936d5f0e86d91066',
+          'id': '079086f7f566459f9ff3ee75225e56be',
         },
         {
-          'id': 'b43fe847b1bf496fa9a529664a5603a9',
+          'id': 'f8f27a123d3949b4b31c09f7131c2c83',
+        },
+      ],
+      'clips': [],
+    },
+    {
+      'id': 'f4a8e481dd2c412ea27f6fefdc6c6f0b',
+      'dataType': 'ActivationPlayableAsset',
+    },
+    {
+      'id': '53aeffec4cb74619a1b3b6d4777fab24',
+      'dataType': 'TransformPlayableAsset',
+      'positionOverLifetime': {},
+    },
+    {
+      'id': '938f5e96837b464191f266e752f8f7ac',
+      'dataType': 'ActivationTrack',
+      'children': [],
+      'clips': [
+        {
+          'start': 0,
+          'duration': 1,
+          'endBehavior': 5,
+          'asset': {
+            'id': 'f4a8e481dd2c412ea27f6fefdc6c6f0b',
+          },
+        },
+      ],
+    },
+    {
+      'id': '727fd3a2c52a4e75b7b33e3839546173',
+      'dataType': 'TransformTrack',
+      'children': [],
+      'clips': [
+        {
+          'start': 0,
+          'duration': 1,
+          'endBehavior': 5,
+          'asset': {
+            'id': '53aeffec4cb74619a1b3b6d4777fab24',
+          },
+        },
+      ],
+    },
+    {
+      'id': 'e0b8787e2fb843aa9fb6bb3c384a5263',
+      'dataType': 'ObjectBindingTrack',
+      'children': [
+        {
+          'id': '938f5e96837b464191f266e752f8f7ac',
+        },
+        {
+          'id': '727fd3a2c52a4e75b7b33e3839546173',
         },
       ],
       'clips': [],
@@ -1231,9 +1831,7 @@ const json = {
   ],
   'compositionId': '2',
 };
-*/
-
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*N6fqSaIfq4gAAAAAAAAAAAAAelB4AQ';
+// json = 'https://mdn.alipayobjects.com/mars/afts/file/A*2CAWT7bJGVsAAAAAAAAAAAAAelB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -1247,7 +1845,7 @@ const container = document.getElementById('J-container');
     // const data = await converter.processScene(json);
     // const scene = await assetManager.loadScene(json);
 
-    await player.loadScene(json);
+    await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*vO0wT4S4shEAAAAAAAAAAAAAelB4AQ');
 
     player.gotoAndStop(3);
 

@@ -1,13 +1,11 @@
 import { Color } from '@galacean/effects-math/es/core/color';
 import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
-import { MaskMode } from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { MaterialProps } from '../material';
-import { Material, setMaskMode } from '../material';
-import type { Maskable } from '../material/mask-ref-manager';
+import type { Maskable, MaterialProps } from '../material';
+import { Material, setMaskMode, MaskMode } from '../material';
 import type { StrokeAttributes } from '../plugins/shape/build-line';
 import { buildLine } from '../plugins/shape/build-line';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
@@ -335,6 +333,7 @@ void main() {
         for (const shape of customShapeAtribute.shapes) {
           this.curveValues = [];
 
+          // @ts-expect-error
           this.setFillColor(shape.fill);
 
           const indices = shape.indexes;
@@ -520,7 +519,7 @@ void main() {
       if (mask) {
         maskMode = MaskMode.MASK;
         this.getRefValue();
-      } else if (mode === MaskMode.OBSCURED || mode === MaskMode.REVERSE_OBSCURED) {
+      } else if (mode === spec.ObscuredMode.OBSCURED || mode === spec.ObscuredMode.REVERSE_OBSCURED) {
         maskMode = mode;
         this.maskRef = ref.getRefValue();
       }
