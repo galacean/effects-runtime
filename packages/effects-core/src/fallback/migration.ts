@@ -118,12 +118,6 @@ export function processContent (composition: spec.CompositionData) {
       return;
     }
 
-    const component = componentMap.get(itemProps.components[0].id);
-
-    if (!component) {
-      return;
-    }
-
     if (
       itemProps.type === spec.ItemType.sprite ||
       itemProps.type === spec.ItemType.particle ||
@@ -132,7 +126,11 @@ export function processContent (composition: spec.CompositionData) {
       itemProps.type === spec.ItemType.video ||
       itemProps.type === spec.ItemType.shape
     ) {
-      processMask(component);
+      const component = componentMap.get(itemProps.components[0].id);
+
+      if (component) {
+        processMask(component);
+      }
     }
 
     // 处理预合成的渲染顺序

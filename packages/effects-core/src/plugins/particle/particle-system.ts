@@ -973,6 +973,7 @@ export class ParticleSystem extends Component {
     }
 
     let maskProps = this.getMaskOptions(data);
+
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,
       meshSlots: options.meshSlots,

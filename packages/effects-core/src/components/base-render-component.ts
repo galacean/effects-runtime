@@ -224,7 +224,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       texParams.z = renderer.renderMode;
       texParams.w = renderer.maskMode;
 
-      if (texParams.x === 0 || renderer.maskMode === MaskMode.MASK) {
+      if (texParams.x === 0 || (renderer.maskMode === MaskMode.MASK && !renderer.shape)) {
         this.material.enableMacro('ALPHA_CLIP');
       } else {
         this.material.disableMacro('ALPHA_CLIP');

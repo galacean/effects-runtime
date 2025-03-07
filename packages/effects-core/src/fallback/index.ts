@@ -34,7 +34,7 @@ export function getStandardJSON (json: any): JSONScene {
   if (v0.test(json.version)) {
     reverseParticle = (/^(\d+)/).exec(json.version)?.[0] === '0';
 
-    return version30Migration(version21Migration(getStandardJSONFromV0(json)));
+    return version31Migration(version30Migration(version21Migration(getStandardJSONFromV0(json))));
   }
 
   reverseParticle = false;
@@ -54,6 +54,7 @@ export function getStandardJSON (json: any): JSONScene {
     if (mainVersion < 4) {
       if (minorVersion < 2) {
         json = version31Migration(json);
+
       }
     }
 
