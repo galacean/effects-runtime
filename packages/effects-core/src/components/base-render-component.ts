@@ -303,11 +303,15 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     });
   }
 
-  protected createMaterial (renderInfo: ItemRenderInfo, count: number): Material {
-    const { side, occlusion, blending, maskMode, mask } = renderInfo;
-    const materialProps: MaterialProps = {
+  protected getMaterialProps (renderInfo: ItemRenderInfo, count: number): MaterialProps {
+    return {
       shader: spriteMeshShaderFromRenderInfo(renderInfo, count, 1),
     };
+  }
+
+  protected createMaterial (renderInfo: ItemRenderInfo, count: number): Material {
+    const { side, occlusion, blending, maskMode, mask } = renderInfo;
+    const materialProps = this.getMaterialProps(renderInfo, count);
 
     this.preMultiAlpha = getPreMultiAlpha(blending);
 

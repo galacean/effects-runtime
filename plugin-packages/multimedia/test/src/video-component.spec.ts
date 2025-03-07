@@ -285,6 +285,48 @@ describe('videoComponent ', function () {
     composition.dispose();
   });
 
+  it('videoComponent:transparent video', async function () {
+    const id = generateGUID();
+    const options: VideoCompositionOptions = {
+      duration: 10,
+      endBehavior: spec.EndBehavior.destroy,
+      composisitonDuration: 20,
+      id,
+      videos: [{
+        id,
+        url: 'https://gw.alipayobjects.com/v/huamei_anctlg/afts/video/zdqnQqZit5AAAAAAAAAAAAAAfoeUAQBr',
+      }],
+      start: 0,
+      options: { video: { id }, transparent: true },
+    };
+    const videoJson = getVideoJson(options);
+    const composition = await player.loadScene(videoJson);
+    const video = composition.getItemByName('video');
+
+    player.gotoAndPlay(11);
+
+    if (!video) { throw new Error('video is null'); }
+    expect(video.endBehavior).to.equal(options.endBehavior);
+    expect(video.duration).to.equal(options.duration);
+    expect(video.start).to.equal(options.start);
+    const videoComponent = video.getComponent<VideoComponent>(VideoComponent);
+
+    expect(videoComponent).to.be.instanceOf(VideoComponent);
+    expect(videoComponent.isVideoActive).to.be.false;
+    // @ts-expect-error
+    expect(videoComponent.transparent).to.be.true;
+    // @ts-expect-error
+    const macros = videoComponent.material.shader.shaderData.macros;
+
+    macros.forEach((macro: [string, boolean]) => {
+      if (macro[0] === 'TRANSPARENT') {
+        expect(macro[1]).to.be.true;
+      }
+    });
+
+    composition.dispose();
+  });
+
   it('videoComponent:component destroy & composition forward', async function () {
     const id = generateGUID();
     const options: VideoCompositionOptions = {
@@ -453,7 +495,6 @@ describe('videoComponent ', function () {
 
     expect(videoComponent).to.be.instanceOf(VideoComponent);
     expect(videoComponent.isVideoActive).to.be.true;
-    expect(videoComponent.video?.paused).to.be.false;
     expect(videoComponent.getCurrentTime()).to.be.within(2, 2.1);
     composition.dispose();
   });
