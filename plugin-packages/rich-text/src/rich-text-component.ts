@@ -1,6 +1,5 @@
 import type { Engine } from '@galacean/effects';
-import { assertExist, math } from '@galacean/effects';
-import { effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
+import { assertExist, math, effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
 
@@ -171,8 +170,10 @@ export class RichTextComponent extends TextComponent {
     const { x = 1, y = 1 } = this.size;
 
     if (!this.initialized) {
-      this.canvasSize = new math.Vector2(width, height);
-      this.item.transform.size.set(x * width * this.SCALE_FACTOR * this.SCALE_FACTOR, y * height * this.SCALE_FACTOR * this.SCALE_FACTOR);
+      this.canvasSize = !this.canvasSize ? new math.Vector2(width, height) : this.canvasSize;
+      const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
+
+      this.item.transform.size.set(x * canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR, y * canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR);
       this.size = this.item.transform.size.clone();
       this.initialized = true;
     }
@@ -316,6 +317,15 @@ export class RichTextComponent extends TextComponent {
     this.textLayout = new TextLayout(options);
     this.textLayout.textBaseline = options.textBaseline || spec.TextBaseline.middle;
     this.text = options.text ? options.text.toString() : ' ';
+  }
+
+  protected override renderText (options: spec.RichTextContentOptions) {
+    const { size } = options;
+
+    if (size) {
+      this.canvasSize = new math.Vector2(size[0], size[1]);
+    }
+    this.updateTexture();
   }
 
 }
