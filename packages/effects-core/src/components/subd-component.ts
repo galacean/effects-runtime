@@ -4,7 +4,7 @@ import { EffectComponent } from './effect-component';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { Geometry } from '../render/geometry';
+import { Geometry } from '../render';
 import { Component } from './component';
 // 导入 Delaunator 库
 import Delaunator from './delaunator';
@@ -38,35 +38,41 @@ export class SubdComponent extends Component {
 
     if (this.subdivisionLevel > 0) {
       // 在组件启动时创建细分网格
-      // this.createSubdividedMesh();
+      this.createSubdividedMesh();
     }
   }
 
   override onUpdate (dt: number): void {
     // 如果需要动态更新，可以在这里添加逻辑
     if (this.animated) {
-      // this.createSubdividedMesh();
+      this.createSubdividedMesh();
       this.animated = false;
     }
   }
 
-  private createSubdividedMesh (geometry: Geometry): void {
+  private createSubdividedMesh (): void {
     // 如果细分级别为0，不执行细分，直接使用原始几何体
     if (this.subdivisionLevel <= 0) {
       return;
     }
 
-    // 如果没有几何体，直接返回
-    if (!geometry) {
+    // 如果没有EffectComponent或几何体，直接返回
+    if (!this.effectComponent || !this.effectComponent.geometry) {
       return;
     }
 
     // 获取原始几何体数据
-    const originalPositions = geometry.getAttributeData('aPos');
+    const originalPositions = this.effectComponent.geometry.getAttributeData('aPos');
+
+    console.log(originalPositions);
 
     if (!originalPositions) {
       return;
     }
+
+    // TODO 这里有问题，得到的 _originalIndices 非常奇怪。但应该不影响
+    // const _originalIndices = originalGeometry.getIndexData();
+    // console.log(_originalIndices);
 
     // 泊松盘采样生成轮廓和内部顶点
     const poissonPoints = this.generatePoissonPoints(originalPositions);
@@ -83,8 +89,8 @@ export class SubdComponent extends Component {
     const indices = this.delaunay2D(poissonPoints);
 
     // 调试日志
-    console.log('三角剖分点数:', poissonPoints.length);
-    console.log('三角剖分生成的索引数:', indices.length);
+    console.log('顶点:', poissonPoints);
+    console.log('索引:', indices);
     console.log('三角形数量:', indices.length / 3);
 
     // 检查生成的三角形索引是否有效
@@ -115,6 +121,7 @@ export class SubdComponent extends Component {
     // 对所有点添加顶点和UV坐标
     for (const point of poissonPoints) {
       // 顶点坐标（z=0，因为我们是在2D平面上工作）
+      // TODO 改成3D
       positions.push(point[0], point[1], 0);
 
       // 计算UV坐标（基于点的位置，归一化到0-1范围）
@@ -124,48 +131,47 @@ export class SubdComponent extends Component {
       uvs.push(u, v);
     }
 
-    // 更新几何体
-    geometry.setAttributeData('aPos', new Float32Array(positions));
-    if (uvs.length > 0) {
-      geometry.setAttributeData('aUV', new Float32Array(uvs));
+    console.log(positions);
+
+    // 创建新的几何体，而不是直接修改原始几何体
+    // 使用 Geometry.create 创建新的几何体
+    const newGeometry = Geometry.create(
+      this.engine,
+      {
+        attributes: {
+          aPos: {
+            size: 3,
+            data: new Float32Array(positions),
+          },
+          aUV: {
+            size: 2,
+            data: new Float32Array(uvs),
+          },
+        },
+        indices: this.wireframe
+          ? { data: new Uint16Array(this.createWireframeIndices(indices)) }
+          : { data: new Uint16Array(indices) },
+        mode: this.wireframe ? glContext.LINES : glContext.TRIANGLES,
+        drawCount: this.wireframe ? this.createWireframeIndices(indices).length : indices.length,
+      }
+    );
+
+    // 替换 effectComponent 的几何体引用
+    this.effectComponent.geometry = newGeometry;
+  }
+
+  // 辅助方法：创建线框索引
+  private createWireframeIndices (triangleIndices: number[]): number[] {
+    const wireIndices: number[] = [];
+
+    for (let i = 0; i < triangleIndices.length; i += 3) {
+      // 三角形的三条边
+      wireIndices.push(triangleIndices[i], triangleIndices[i + 1]);
+      wireIndices.push(triangleIndices[i + 1], triangleIndices[i + 2]);
+      wireIndices.push(triangleIndices[i + 2], triangleIndices[i]);
     }
 
-    // 根据线框模式决定索引和绘制模式
-    if (this.wireframe) {
-      // 创建线框索引
-      const wireIndices: number[] = [];
-
-      for (let i = 0; i < indices.length; i += 3) {
-        // 三角形的三条边
-        wireIndices.push(indices[i], indices[i + 1]);
-        wireIndices.push(indices[i + 1], indices[i + 2]);
-        wireIndices.push(indices[i + 2], indices[i]);
-      }
-
-      // 使用线框索引
-      geometry.setIndexData(new Uint16Array(wireIndices));
-      geometry.setDrawCount(wireIndices.length);
-
-      // 设置为线框模式
-      try {
-        // 尝试直接设置绘制模式
-        (geometry as any).mode = glContext.LINES;
-      } catch (e) {
-        console.warn('无法设置线框模式:', e);
-      }
-    } else {
-      // 使用普通三角形索引
-      geometry.setIndexData(new Uint16Array(indices));
-      geometry.setDrawCount(indices.length);
-
-      // 设置为三角形模式
-      try {
-        // 尝试直接设置绘制模式
-        (geometry as any).mode = glContext.TRIANGLES;
-      } catch (e) {
-        console.warn('无法设置三角形模式:', e);
-      }
-    }
+    return wireIndices;
   }
 
   private delaunay2D (points: Array<[number, number]>): number[] {
