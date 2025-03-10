@@ -55,6 +55,11 @@ export class ShapePath {
 
           break;
         }
+        case 'closePath':{
+          this.closePath();
+
+          break;
+        }
       }
     }
     this.endPoly();
@@ -93,6 +98,17 @@ export class ShapePath {
 
   moveTo (x: number, y: number): ShapePath {
     this.startPoly(x, y);
+
+    return this;
+  }
+
+  /**
+   * Closes the current path by drawing a straight line back to the start.
+   * If the shape is already closed or there are no points in the path, this method does nothing.
+   * @returns The instance of the current object for chaining.
+   */
+  closePath (): this {
+    this.endPoly(true);
 
     return this;
   }
