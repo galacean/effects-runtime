@@ -1,18 +1,19 @@
 import { Color } from '@galacean/effects-math/es/core/color';
-import { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { MaterialProps } from '../material';
 import { Material, setMaskMode, MaskMode } from '../material';
-import type { StrokeAttributes } from '../plugins/shape/build-line';
-import { buildLine } from '../plugins/shape/build-line';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
-import { StarType } from '../plugins/shape/poly-star';
 import type { ShapePath } from '../plugins/shape/shape-path';
 import { Geometry, GLSLVersion } from '../render';
 import { MeshComponent } from './mesh-component';
+import { StarType } from '../plugins/shape/poly-star';
+import type { StrokeAttributes } from '../plugins/shape/build-line';
+import { buildLine } from '../plugins/shape/build-line';
+import { Vector2 } from '@galacean/effects-math/es/core/vector2';
+import type { Polygon } from '../plugins/shape/polygon';
 
 interface CurveData {
   point: spec.Vector2Data,
@@ -143,8 +144,8 @@ export interface PolygonAttribute extends ShapeAttribute {
  */
 @effectsClass('ShapeComponent')
 export class ShapeComponent extends MeshComponent {
-  private isStroke = false;
-  private isFill = false;
+  private hasStroke = false;
+  private hasFill = false;
   private shapeDirty = true;
   maskRef: number;
   private graphicsPath = new GraphicsPath();
@@ -297,7 +298,7 @@ void main() {
     // Triangulate shapePrimitive
     //---------------------------------------------------
 
-    if (this.isFill) {
+    if (this.hasFill) {
       for (const shapePrimitive of shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
@@ -310,14 +311,19 @@ void main() {
     }
     const fillIndexCount = indices.length;
 
-    if (this.isStroke) {
+    if (this.hasStroke) {
       for (const shapePrimitive of shapePrimitives) {
         const shape = shapePrimitive.shape;
         const points: number[] = [];
         const indexOffset = indices.length;
         const vertOffset = vertices.length / 2;
-        const close = true;
         const lineStyle = this.strokeAttributes;
+
+        let close = false;
+
+        if (this.shapeAttribute.type === spec.ShapePrimitiveType.Custom) {
+          close = (shape as Polygon).closePath;
+        }
 
         shape.build(points);
         buildLine(points, lineStyle, false, close, vertices, 2, vertOffset, indices, indexOffset);
@@ -415,6 +421,10 @@ void main() {
 
             this.graphicsPath.bezierCurveTo(control1.x, control1.y, control2.x, control2.y, point.x, point.y, 1);
           }
+
+          if (shape.close) {
+            this.graphicsPath.closePath();
+          }
         }
 
         break;
@@ -457,7 +467,7 @@ void main() {
     const strokeParam = data.stroke;
 
     if (strokeParam) {
-      this.isStroke = true;
+      this.hasStroke = true;
       this.strokeAttributes.width = strokeParam.width;
       this.strokeAttributes.color.copyFrom(strokeParam.color);
       this.strokeAttributes.cap = strokeParam.cap;
@@ -467,7 +477,7 @@ void main() {
     const fillParam = data.fill;
 
     if (fillParam) {
-      this.isFill = true;
+      this.hasFill = true;
       this.fillAttribute.color.copyFrom(fillParam.color);
     }
 
