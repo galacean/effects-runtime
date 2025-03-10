@@ -1,6 +1,6 @@
 import { AssetManager, Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
-const json = 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/CVVEESIKVATT/199364128-b865e.json';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*SmtETIh6bcAAAAAAAAAAAAAAelB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {
@@ -16,7 +16,7 @@ const container = document.getElementById('J-container');
 
     await player.loadScene(json);
 
-    player.gotoAndStop(3);
+    // player.gotoAndStop(3);
 
   } catch (e) {
     console.error('biz', e);

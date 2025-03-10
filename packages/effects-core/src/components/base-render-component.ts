@@ -223,7 +223,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       texParams.y = +this.preMultiAlpha;
       texParams.z = renderer.renderMode;
       texParams.w = renderer.maskMode;
-
       if (texParams.x === 0 || (renderer.maskMode === MaskMode.MASK && !renderer.shape)) {
         this.material.enableMacro('ALPHA_CLIP');
       } else {
@@ -332,7 +331,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     material.stencilRef = states.mask !== undefined ? [states.mask, states.mask] : undefined;
 
     states.blending && setBlendMode(material, states.blendMode);
-    setMaskMode(material, states.maskMode);
+    // 兼容旧数据中模板需要渲染的情况
+    setMaskMode(material, states.maskMode, !!this.renderer.shape);
     setSideMode(material, states.side);
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';

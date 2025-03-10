@@ -254,10 +254,11 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/WEPWUNCGNVQI/-1695824449-958ba.json',
     name: '闪光弹窗',
   },
-  countdown: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/YDITHDADWXXM/1601633123-e644d.json',
-    name: '七夕倒计时',
-  },
+  // 蒙版无法兼容，原始蒙版未设置形状
+  // countdown: {
+  //   url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/YDITHDADWXXM/1601633123-e644d.json',
+  //   name: '七夕倒计时',
+  // },
   combineCard: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/BRNUKQWSAIKG/136315478-98a3d.json',
     name: '合成卡',
@@ -384,8 +385,9 @@ export default {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/DVHWTIBIRXHY/-788542078-c8fed.json',
     name: '支付宝2021——缴费',
   },
+  // 旧JSON元素顺序问题
   autumn: {
-    url: 'https://gw.alipayobjects.com/os/gltf-asset/mars-cli/LSQRKALOXBYU/1384187888-f221a.json',
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*SmtETIh6bcAAAAAAAAAAAAAAelB4AQ',
     name: '天猫中秋大街',
   },
   camera: {
