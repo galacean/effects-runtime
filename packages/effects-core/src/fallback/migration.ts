@@ -149,7 +149,6 @@ export function processMask (renderContent: any) {
   const maskMode = renderer.maskMode;
 
   if (maskMode === MaskMode.NONE) {
-    renderContent.mask = {};
 
     return;
   }
