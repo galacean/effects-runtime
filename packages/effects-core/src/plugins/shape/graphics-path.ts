@@ -68,6 +68,19 @@ export class GraphicsPath {
   }
 
   /**
+   * Closes the current path by drawing a straight line back to the start.
+   * If the shape is already closed or there are no points in the path, this method does nothing.
+   * @returns The instance of the current object for chaining.
+   */
+  closePath (): this {
+    this.instructions.push({ action: 'closePath', data: [] });
+
+    this.dirty = true;
+
+    return this;
+  }
+
+  /**
    * Draws an ellipse at the specified location and with the given x and y radii.
    * An optional transformation can be applied, allowing for rotation, scaling, and translation.
    * @param x - The x-coordinate of the center of the ellipse.
