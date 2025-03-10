@@ -51,38 +51,36 @@ uniform mat4 effects_MatrixVP;
 uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_ObjectToWorld;
 uniform vec3 u_ControlPoints[25]; // 5x5 控制点
-// TODO 受多个晶格影响时， 收集所有晶格， 依次计算。
 
+// 计算4阶伯恩斯坦基函数
+float B0(float t) { return (1.0 - t) * (1.0 - t) * (1.0 - t) * (1.0 - t); }
+float B1(float t) { return 4.0 * t * (1.0 - t) * (1.0 - t) * (1.0 - t); }
+float B2(float t) { return 6.0 * t * t * (1.0 - t) * (1.0 - t); }
+float B3(float t) { return 4.0 * t * t * t * (1.0 - t); }
+float B4(float t) { return t * t * t * t; }
 
-// TODO 现在是通过 UV 获取最近的四个控制点，后续通过 本地坐标/世界坐标/屏幕坐标 获取最近的四个控制点
-// 双线性插值
-vec3 bilinear(vec2 p) {
-  // 计算网格位置
-  vec2 grid = p * 4.0; // 因为是5x5的控制点，所以范围是0-4
-  vec2 gridFloor = floor(grid);
-  vec2 gridFract = grid - gridFloor;
-  
-  int x0 = int(gridFloor.x);
-  int y0 = int(gridFloor.y);
-  int x1 = min(x0 + 1, 4);
-  int y1 = min(y0 + 1, 4);
-  
-  // 获取四个角的控制点
-  vec3 p00 = u_ControlPoints[y0 * 5 + x0];
-  vec3 p10 = u_ControlPoints[y0 * 5 + x1];
-  vec3 p01 = u_ControlPoints[y1 * 5 + x0];
-  vec3 p11 = u_ControlPoints[y1 * 5 + x1];
-  
-  // 双线性插值
-  vec3 p0 = mix(p00, p10, gridFract.x);
-  vec3 p1 = mix(p01, p11, gridFract.x);
-  return mix(p0, p1, gridFract.y);
+// 4阶贝塞尔曲面插值
+vec3 bezierSurface(vec2 uv) {
+    vec3 result = vec3(0.0);
+    float u = uv.x;
+    float v = uv.y;
+    
+    float bu[5] = float[5](B0(u), B1(u), B2(u), B3(u), B4(u));
+    float bv[5] = float[5](B0(v), B1(v), B2(v), B3(v), B4(v));
+    
+    for(int i = 0; i < 5; i++) {
+        for(int j = 0; j < 5; j++) {
+            result += u_ControlPoints[i * 5 + j] * bu[j] * bv[i];
+        }
+    }
+    
+    return result;
 }
 
 void main() {
-  vec3 newPos = bilinear(aUV);
-  v_UV = vec2(aUV.x, 1.0 - aUV.y);
-  gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(newPos, 1.0);
+    vec3 newPos = bezierSurface(aUV);
+    v_UV = vec2(aUV.x, 1.0 - aUV.y);
+    gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(newPos, 1.0);
 }
 `;
 
