@@ -75,6 +75,7 @@ export class TrailMesh {
       occlusion,
       blending,
       maskMode,
+      mask,
       // order,
       textureMap = [0, 0, 1, 1],
       texture,
@@ -195,6 +196,7 @@ export class TrailMesh {
     material.blending = true;
     material.depthMask = occlusion;
     material.depthTest = true;
+    material.stencilRef = mask ? [mask, mask] : undefined;
     setMaskMode(material, maskMode);
     setBlendMode(material, blending);
 

@@ -8,6 +8,7 @@ import type { Engine } from '../../engine';
 import type { ValueGetter } from '../../math';
 import { calculateTranslation, createValueGetter, ensureVec3 } from '../../math';
 import type { Mesh } from '../../render';
+import type { Maskable } from '../../material';
 import { MaskMode } from '../../material';
 import type { ShapeGenerator, ShapeGeneratorOptions, ShapeParticle } from '../../shape';
 import { createShape } from '../../shape';
@@ -121,23 +122,31 @@ export interface ParticleSystemOptions extends spec.ParticleOptions {
   meshSlots?: number[],
 }
 
-export interface ParticleSystemProps extends Omit<spec.ParticleContent, 'options' | 'renderer' | 'trails'> {
+export interface ParticleSystemProps extends Omit<spec.ParticleContent, 'options' | 'renderer' | 'trails' | 'mask'> {
   options: ParticleSystemOptions,
   renderer: ParticleSystemRendererOptions,
   trails?: ParticleTrailProps,
+  mask?: {
+    mode: MaskMode,
+    ref: Maskable,
+  },
 }
 
 // spec.RenderOptions 经过处理
 export interface ParticleSystemRendererOptions extends Required<Omit<spec.RendererOptions, 'texture' | 'anchor' | 'particleOrigin'>> {
-  mask: number,
+  // mask: number,
   texture: Texture,
   anchor?: vec2,
   particleOrigin?: spec.ParticleOrigin,
 }
 
-export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture'> {
+export interface ParticleTrailProps extends Omit<spec.ParticleTrail, 'texture' | 'mask'> {
   texture: Texture,
   textureMap: vec4,
+  mask?: {
+    mode: MaskMode,
+    ref: Maskable,
+  },
 }
 
 // 粒子节点包含的数据
@@ -972,7 +981,7 @@ export class ParticleSystem extends Component {
       this.options.sizeAspect = createValueGetter(options.sizeAspect || 1);
     }
 
-    let maskProps = this.getMaskOptions(data);
+    let maskProps = this.getMaskOptions(props);
 
     const particleMeshProps: ParticleMeshProps = {
       // listIndex: vfxItem.listIndex,
@@ -1117,8 +1126,8 @@ export class ParticleSystem extends Component {
     this.item._content = this;
   }
 
-  getMaskOptions (data: any) {
-    let maskMode = MaskMode.NONE, maskRef;
+  getMaskOptions (data: ParticleSystemProps | ParticleTrailProps) {
+    let maskMode = MaskMode.NONE, maskRef = 0;
 
     if (data.mask) {
       const { mode, ref } = data.mask;

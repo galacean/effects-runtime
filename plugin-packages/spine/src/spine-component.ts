@@ -5,6 +5,8 @@ import type {
   BoundingBoxTriangle,
   Engine,
   HitTestTriangleParams,
+  IObscuredProps,
+  Obscured,
   Renderer,
   Texture,
 } from '@galacean/effects';
@@ -66,17 +68,12 @@ export interface SpineDataCache extends SpineBaseData {
   editorResourceID?: string,
 }
 
-export interface SpineMaskOptions {
-  mask?: number,
-  maskMode?: number,
-}
-
 /**
  * Spine 组件
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.SpineComponent)
-export class SpineComponent extends RendererComponent {
+export class SpineComponent extends RendererComponent implements Obscured {
   startSize: number;
   /**
    * 根据相机计算的缩放比例
@@ -103,11 +100,10 @@ export class SpineComponent extends RendererComponent {
   /**
    * renderer 和 mask 数据
    */
-  rendererOptions: spec.SpineComponent['renderer'] & SpineMaskOptions;
-  /**
-   * mask 配置
-   */
-  maskOptions: SpineMaskOptions = {};
+  rendererOptions: spec.SpineComponent['renderer'] & {
+    maskMode: MaskMode,
+    mask: number,
+  };
   options: spec.PluginSpineOption;
 
   private content: SlotGroup | null;
@@ -129,6 +125,7 @@ export class SpineComponent extends RendererComponent {
   resource: SpineResource;
   @serialize()
   cache: SpineDataCache;
+  maskRef: number;
 
   constructor (engine: Engine) {
     super(engine);
@@ -137,16 +134,15 @@ export class SpineComponent extends RendererComponent {
   override fromData (data: spec.SpineComponent) {
     super.fromData(data);
     this.options = data.options;
-    this.rendererOptions = data.renderer || {
+    this.rendererOptions = {
       renderMode: spec.RenderMode.MESH,
+      ...data.renderer || {},
       mask: 0,
       maskMode: MaskMode.NONE,
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
-    const { maskMode, maskRef } = this.getMaskOptions(data);
-
-    this.rendererOptions.maskMode = maskMode;
-    this.rendererOptions.mask = maskRef;
+    this.rendererOptions.maskMode = this.getMaskMode(data as IObscuredProps);
+    this.rendererOptions.mask = this.maskRef;
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
       return;
@@ -581,20 +577,17 @@ export class SpineComponent extends RendererComponent {
     };
   }
 
-  getMaskOptions (data: any) {
-    let maskMode = MaskMode.NONE, maskRef;
+  getMaskMode (data: IObscuredProps): MaskMode {
+    let maskMode = MaskMode.NONE;
 
     if (data.mask) {
       const { mode = MaskMode.NONE, ref } = data.mask;
 
-      maskMode = mode;
-      maskRef = ref.getRefValue();
+      maskMode = mode === spec.ObscuredMode.OBSCURED ? MaskMode.OBSCURED : MaskMode.REVERSE_OBSCURED;
+      this.maskRef = ref!.getRefValue();
     }
 
-    return {
-      maskMode,
-      maskRef,
-    };
+    return maskMode;
   }
 
 }

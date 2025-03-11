@@ -83,8 +83,31 @@ export enum ShaderType {
   fragment = 1
 }
 
-export interface Maskable {
+export interface IObscuredProps {
+  mask?: {
+    mode?: spec.ObscuredMode,
+    ref?: Maskable,
+  },
+}
+
+export interface IMaskProps {
+  mask?: {
+    mask?: boolean,
+  } & IObscuredProps['mask'],
+}
+
+/**
+ * 允许被遮挡/被反向遮挡
+ */
+export interface Obscured {
   maskRef: number,
+  getMaskMode(data: IObscuredProps): MaskMode,
+}
+/**
+ * 允许做蒙版
+ */
+export interface Maskable extends Obscured {
+  getMaskMode(data: IMaskProps): MaskMode,
   getRefValue (): number,
 }
 

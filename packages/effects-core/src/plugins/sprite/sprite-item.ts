@@ -6,6 +6,7 @@ import { BaseRenderComponent, getImageItemRenderInfo } from '../../components/ba
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
+import type { IMaskProps } from '../../material';
 import { MaskMode } from '../../material';
 import type { GeometryDrawMode } from '../../render';
 import { Geometry } from '../../render';
@@ -17,7 +18,7 @@ import { PlayableAsset } from '../cal/playable-graph';
 /**
  * 用于创建 spriteItem 的数据类型, 经过处理后的 spec.SpriteContent
  */
-export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer'> {
+export interface SpriteItemProps extends Omit<spec.SpriteContent, 'renderer' | 'mask'>, IMaskProps {
   listIndex?: number,
   renderer: {
     shape: GeometryFromShape,

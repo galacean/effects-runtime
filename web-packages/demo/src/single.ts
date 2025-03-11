@@ -1,6 +1,6 @@
 import { AssetManager, Player } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
-const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*SmtETIh6bcAAAAAAAAAAAAAAelB4AQ';
+const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*vO0wT4S4shEAAAAAAAAAAAAAelB4AQ';
 const container = document.getElementById('J-container');
 
 (async () => {

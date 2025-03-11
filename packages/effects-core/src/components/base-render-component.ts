@@ -4,8 +4,19 @@ import { Vector4 } from '@galacean/effects-math/es/core/vector4';
 import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { Maskable, MaterialProps } from '../material';
-import { getPreMultiAlpha, MaskMode, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
+import type {
+  IMaskProps,
+  Maskable,
+  MaterialProps,
+} from '../material';
+import {
+  getPreMultiAlpha,
+  MaskMode,
+  Material,
+  setBlendMode,
+  setMaskMode,
+  setSideMode,
+} from '../material';
 import { trianglesFromRect } from '../math';
 import type { BoundingBoxTriangle, HitTestTriangleParams } from '../plugins';
 import { HitTestType, spriteMeshShaderFromRenderInfo } from '../plugins';
@@ -19,7 +30,7 @@ import { RendererComponent } from './renderer-component';
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
  */
-export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin'>> {
+export interface ItemRenderer extends Required<Omit<spec.RendererOptions, 'texture' | 'shape' | 'anchor' | 'particleOrigin' | 'mask'>> {
   order: number,
   texture: Texture,
   mask: number,
@@ -408,7 +419,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     return this.maskRef;
   }
 
-  getMaskMode (data: any): MaskMode {
+  getMaskMode (data: IMaskProps) {
     let maskMode = MaskMode.NONE;
 
     if (data.mask) {
@@ -418,8 +429,8 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
         maskMode = MaskMode.MASK;
         this.getRefValue();
       } else if (mode === spec.ObscuredMode.OBSCURED || mode === spec.ObscuredMode.REVERSE_OBSCURED) {
-        maskMode = mode;
-        this.maskRef = ref.getRefValue();
+        maskMode = mode === spec.ObscuredMode.OBSCURED ? MaskMode.OBSCURED : MaskMode.REVERSE_OBSCURED;
+        this.maskRef = ref!.getRefValue();
       }
     }
 

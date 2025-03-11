@@ -3,7 +3,7 @@ import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
-import type { MaterialProps } from '../material';
+import type { IMaskProps, Maskable, MaterialProps } from '../material';
 import { Material, setMaskMode, MaskMode } from '../material';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
 import type { ShapePath } from '../plugins/shape/shape-path';
@@ -143,7 +143,7 @@ export interface PolygonAttribute extends ShapeAttribute {
  * @since 2.1.0
  */
 @effectsClass('ShapeComponent')
-export class ShapeComponent extends MeshComponent {
+export class ShapeComponent extends MeshComponent implements Maskable {
   private hasStroke = false;
   private hasFill = false;
   private shapeDirty = true;
@@ -566,23 +566,11 @@ void main() {
         break;
       }
     }
-    // @ts-expect-error
-    if (data.mask) {
-      const material = this.material;
-      let maskMode = MaskMode.NONE;
-      // @ts-expect-error
-      const { mask = false, mode = MaskMode.NONE, ref } = data.mask;
 
-      if (mask) {
-        maskMode = MaskMode.MASK;
-        this.getRefValue();
-      } else if (mode === spec.ObscuredMode.OBSCURED || mode === spec.ObscuredMode.REVERSE_OBSCURED) {
-        maskMode = mode;
-        this.maskRef = ref.getRefValue();
-      }
-      material.stencilRef = this.maskRef !== undefined ? [this.maskRef, this.maskRef] : undefined;
-      setMaskMode(material, maskMode);
-    }
+    const maskMode = this.getMaskMode(data as IMaskProps);
+
+    this.material.stencilRef = this.maskRef !== undefined ? [this.maskRef, this.maskRef] : undefined;
+    setMaskMode(this.material, maskMode);
 
   }
 
@@ -593,4 +581,23 @@ void main() {
 
     return this.maskRef;
   }
+
+  getMaskMode (data: IMaskProps) {
+    let maskMode = MaskMode.NONE;
+
+    if (data.mask) {
+      const { mask = false, mode = MaskMode.NONE, ref } = data.mask;
+
+      if (mask) {
+        maskMode = MaskMode.MASK;
+        this.getRefValue();
+      } else if (mode === spec.ObscuredMode.OBSCURED || mode === spec.ObscuredMode.REVERSE_OBSCURED) {
+        maskMode = mode === spec.ObscuredMode.OBSCURED ? MaskMode.OBSCURED : MaskMode.REVERSE_OBSCURED;
+        this.maskRef = ref!.getRefValue();
+      }
+    }
+
+    return maskMode;
+  }
 }
+

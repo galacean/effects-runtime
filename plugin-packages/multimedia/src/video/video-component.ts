@@ -6,7 +6,7 @@ import type {
   GeometryFromShape,
   ItemRenderInfo,
   MaterialProps,
-  ShaderMacros,
+  ShaderMacros, Obscured, IObscuredProps,
 } from '@galacean/effects';
 import {
   spec,
@@ -22,12 +22,13 @@ import {
 /**
  * 用于创建 videoItem 的数据类型, 经过处理后的 spec.VideoContent
  */
-export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'> {
+export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer' | 'mask'> {
   listIndex?: number,
   renderer: {
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
+  mask?: IObscuredProps['mask'],
 }
 
 let seed = 0;
@@ -36,7 +37,7 @@ let seed = 0;
  *
  */
 @effectsClass(spec.DataType.VideoComponent)
-export class VideoComponent extends BaseRenderComponent {
+export class VideoComponent extends BaseRenderComponent implements Obscured {
   video?: HTMLVideoElement;
 
   private threshold = 0.03;
