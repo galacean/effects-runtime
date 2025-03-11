@@ -4,17 +4,16 @@ const json = 'https://mdn.alipayobjects.com/mars/afts/file/A*PubBSpHUbjYAAAAAAAA
 const container = document.getElementById('J-container');
 
 (async () => {
-  try {
-    const player = new Player({
-      container,
-    });
+  const player = new Player({
+    container,
+    onError: (err, ...args) => {
+      console.error('biz', err.message);
+    },
+  });
 
-    await player.loadScene(json, {
-      variables: {
-        image: 'https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*ySrfRJvfvfQAAAAAAAAAAAAADvV6AQ/original',
-      },
-    });
-  } catch (e) {
-    console.error('biz', e);
-  }
+  await player.loadScene(json, {
+    variables: {
+      image: 'https://mdn.alipayobjects.com/huamei_klifp9/afts/img/A*ySrfRJvfvfQAAAAAAAAAAAAADvV6AQ/original',
+    },
+  });
 })();

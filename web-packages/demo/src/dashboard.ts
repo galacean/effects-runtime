@@ -25,41 +25,38 @@ const jsons = [
 ];
 
 (async () => {
-  try {
+  const container = createContainer();
+  const player = new Player({
+    container,
+    onError: (err, ...args) => {
+      console.error('biz', err.message);
+    },
+  });
+  const compositions = await player.loadScene([
+    'https://mdn.alipayobjects.com/mars/afts/file/A*kgZpSZrwf44AAAAAAAAAAAAADlB4AQ',
+    'https://mdn.alipayobjects.com/mars/afts/file/A*L0_gRYNia70AAAAAAAAAAAAADlB4AQ',
+    'https://mdn.alipayobjects.com/mars/afts/file/A*1LmLT4UawyMAAAAAAAAAAAAADlB4AQ',
+    'https://mdn.alipayobjects.com/mars/afts/file/A*pUKbR68CeEMAAAAAAAAAAAAADlB4AQ',
+  ], { autoplay: false }) as unknown as Composition[];
+
+  compositions.forEach(composition => {
+    composition.on('end', () => {
+      console.info(`Composition ${composition.name} end.`);
+    });
+  });
+  player.playSequence(compositions);
+
+  await Promise.all(jsons.map(async json => {
     const container = createContainer();
     const player = new Player({
       container,
+      renderFramework: 'webgl2',
+      onError: (err, ...args) => {
+        console.error('biz', err.message);
+      },
     });
-    const compositions = await player.loadScene([
-      'https://mdn.alipayobjects.com/mars/afts/file/A*kgZpSZrwf44AAAAAAAAAAAAADlB4AQ',
-      'https://mdn.alipayobjects.com/mars/afts/file/A*L0_gRYNia70AAAAAAAAAAAAADlB4AQ',
-      'https://mdn.alipayobjects.com/mars/afts/file/A*1LmLT4UawyMAAAAAAAAAAAAADlB4AQ',
-      'https://mdn.alipayobjects.com/mars/afts/file/A*pUKbR68CeEMAAAAAAAAAAAAADlB4AQ',
-    ], { autoplay: false }) as unknown as Composition[];
 
-    compositions.forEach(composition => {
-      composition.on('end', () => {
-        console.info(`Composition ${composition.name} end.`);
-      });
-    });
-    player.playSequence(compositions);
-  } catch (e) {
-    console.error('biz', e);
-  }
-
-  await Promise.all(jsons.map(async json => {
-    try {
-      const container = createContainer();
-      const player = new Player({
-        container,
-        renderFramework: 'webgl2',
-      });
-
-      await player.loadScene(json);
-    } catch (e) {
-      console.error('biz', e);
-      // do something
-    }
+    await player.loadScene(json);
   }));
 })();
 
