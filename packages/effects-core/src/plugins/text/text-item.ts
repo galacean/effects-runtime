@@ -10,7 +10,9 @@ import { canvasPool } from '../../canvas-pool';
 import { applyMixins, isValidFontFamily } from '../../utils';
 import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
-import { BaseRenderComponent } from '../../components';
+import type { ItemRenderer } from '../../components';
+import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
+import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -61,6 +63,11 @@ export class TextComponent extends BaseRenderComponent {
    * 文本行数
    */
   lineCount = 0;
+
+  /**
+   * 每一行文本的最大宽度
+   */
+  protected maxLineWidth = 0;
   protected readonly SCALE_FACTOR = 0.1;
   protected readonly ALPHA_FIX_VALUE = 1 / 255;
 
@@ -116,11 +123,24 @@ export class TextComponent extends BaseRenderComponent {
       maskMode: renderer.maskMode ?? spec.MaskMode.NONE,
       order: listIndex,
     };
-
     this.interaction = interaction;
+    this.cachePrefix = '-';
+    this.renderInfo = getImageItemRenderInfo(this);
+
+    const material = this.createMaterial(this.renderInfo, 2);
+
+    this.worldMatrix = Matrix4.fromIdentity();
+    this.material = material;
+
+    this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
+    // TextComponentBase
     this.updateWithOptions(options);
-    // Text
-    this.updateTexture();
+    this.renderText(options);
+
+    this.setItem();
+    // 恢复默认颜色
+    this.material.setVector4('_Color', new Vector4(1, 1, 1, 1));
+
   }
 
   updateWithOptions (options: spec.TextContentOptions) {
@@ -138,45 +158,62 @@ export class TextComponentBase {
   context: CanvasRenderingContext2D | null;
   textLayout: TextLayout;
   text: string;
-
   /***** mix 类型兼容用 *****/
   isDirty: boolean;
   engine: Engine;
   material: Material;
   lineCount: number;
   item: VFXItem;
+  renderer: ItemRenderer;
   /***** mix 类型兼容用 *****/
 
+  protected maxLineWidth: number;
+
   private char: string[];
+
+  protected renderText (options: spec.TextContentOptions) {
+    this.updateTexture();
+  }
 
   updateWithOptions (options: spec.TextContentOptions) {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
-    this.lineCount = this.getLineCount(options.text, true);
   }
 
-  private getLineCount (text: string, init: boolean) {
-    const context = this.context;
-    const letterSpace = this.textLayout.letterSpace;
-    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
+  private getLineCount (text: string, context: CanvasRenderingContext2D) {
+
+    const { letterSpace, overflow } = this.textLayout;
+
     const width = (this.textLayout.width + this.textStyle.fontOffset);
+
     let lineCount = 1;
     let x = 0;
 
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
+      const textMetrics = context?.measureText(str)?.width ?? 0;
 
       // 和浏览器行为保持一致
       x += letterSpace;
-
-      if (((x + textMetrics) > width && i > 0) || str === '\n') {
-        lineCount++;
-        x = 0;
-      }
-      if (str !== '\n') {
-        x += textMetrics;
+      // 处理文本结束行为
+      if (overflow === spec.TextOverflow.display) {
+        if (str === '\n') {
+          lineCount++;
+          x = 0;
+        } else {
+          x += textMetrics;
+          this.maxLineWidth = Math.max(this.maxLineWidth, x);
+        }
+      } else {
+        if (((x + textMetrics) > width && i > 0) || str === '\n') {
+          lineCount++;
+          this.maxLineWidth = Math.max(this.maxLineWidth, x);
+          x = 0;
+        }
+        if (str !== '\n') {
+          x += textMetrics;
+        }
       }
     }
 
@@ -237,7 +274,6 @@ export class TextComponentBase {
       return;
     }
     this.text = value.toString();
-    this.lineCount = this.getLineCount(value, false);
     this.isDirty = true;
   }
 
@@ -335,6 +371,20 @@ export class TextComponentBase {
   }
 
   /**
+   * 设置文本溢出模式
+   *
+   * - clip: 当文本内容超出边界框时，多余的会被截断。
+   * - display: 该模式下会显示所有文本，会自动调整文本字号以保证显示完整。
+   * > 当存在多行时，部分行内文本可能存在文本字号变小的情况，其他行为正常情况
+   *
+   * @param overflow - 文本溢出模式
+   */
+  setOverflow (overflow: spec.TextOverflow) {
+    this.textLayout.overflow = overflow;
+    this.isDirty = true;
+  }
+
+  /**
    * 设置阴影颜色
    * @param value - 阴影颜色
    * @returns
@@ -415,13 +465,18 @@ export class TextComponentBase {
     const fontScale = style.fontScale;
 
     const width = (layout.width + style.fontOffset) * fontScale;
-    const finalHeight = layout.lineHeight * this.lineCount;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
 
+    style.fontDesc = this.getFontDesc(fontSize);
     this.char = (this.text || '').split('');
     this.canvas.width = width;
+    const height = this.canvas.height;
+
+    context.font = style.fontDesc;
+    this.lineCount = this.getLineCount(this.text, context);
+    const finalHeight = layout.lineHeight * this.lineCount;
 
     if (layout.autoWidth) {
       this.canvas.height = finalHeight * fontScale;
@@ -429,21 +484,21 @@ export class TextComponentBase {
     } else {
       this.canvas.height = layout.height * fontScale;
     }
-
-    const height = this.canvas.height;
-
-    context.clearRect(0, 0, width, height);
+    // canvas size 变化后重新刷新 context
+    if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
+      context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
+    } else {
+      context.font = style.fontDesc;
+    }
     // fix bug 1/255
     context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
+    context.clearRect(0, 0, width, height);
 
     if (!flipY) {
       context.translate(0, height);
       context.scale(1, -1);
     }
-
     context.fillRect(0, 0, width, height);
-    style.fontDesc = this.getFontDesc();
-    context.font = style.fontDesc;
 
     if (style.hasShadow) {
       this.setupShadow();
@@ -455,7 +510,6 @@ export class TextComponentBase {
 
     // 文本颜色
     context.fillStyle = `rgba(${style.textColor[0]}, ${style.textColor[1]}, ${style.textColor[2]}, ${style.textColor[3]})`;
-
     const charsInfo: CharInfo[] = [];
 
     let x = 0;
@@ -515,31 +569,31 @@ export class TextComponentBase {
 
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
-
-    this.material.setTexture('_MainTex',
-      Texture.createWithData(
-        this.engine,
-        {
-          data: new Uint8Array(imageData.data),
-          width: imageData.width,
-          height: imageData.height,
-        },
-        {
-          flipY,
-          magFilter: glContext.LINEAR,
-          minFilter: glContext.LINEAR,
-          wrapS: glContext.CLAMP_TO_EDGE,
-          wrapT: glContext.CLAMP_TO_EDGE,
-        },
-      ),
+    const texture = Texture.createWithData(
+      this.engine,
+      {
+        data: new Uint8Array(imageData.data),
+        width: imageData.width,
+        height: imageData.height,
+      },
+      {
+        flipY,
+        magFilter: glContext.LINEAR,
+        minFilter: glContext.LINEAR,
+        wrapS: glContext.CLAMP_TO_EDGE,
+        wrapT: glContext.CLAMP_TO_EDGE,
+      },
     );
+
+    this.renderer.texture = texture;
+    this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
   }
 
-  private getFontDesc (): string {
-    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
-    let fontDesc = `${(fontSize * fontScale).toString()}px `;
+  private getFontDesc (fontSize: number): string {
+    const { fontFamily, textWeight, fontStyle } = this.textStyle;
+    let fontDesc = `${fontSize.toString()}px `;
 
     if (!DEFAULT_FONTS.includes(fontFamily)) {
       fontDesc += `"${fontFamily}"`;

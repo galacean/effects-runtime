@@ -23,7 +23,9 @@ export class MeshComponent extends RendererComponent {
     if (renderer.renderingData.currentFrame.globalUniforms) {
       renderer.setGlobalMatrix('effects_ObjectToWorld', this.transform.getWorldMatrix());
     }
-    renderer.drawGeometry(this.geometry, this.material);
+    for (let i = 0;i < this.materials.length;i++) {
+      renderer.drawGeometry(this.geometry, this.materials[i], i);
+    }
   }
 
   // TODO 点击测试后续抽象一个 Collider 组件

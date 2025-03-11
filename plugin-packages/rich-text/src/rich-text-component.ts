@@ -1,6 +1,5 @@
 import type { Engine } from '@galacean/effects';
-import { assertExist, math } from '@galacean/effects';
-import { effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
+import { assertExist, math, effectsClass, glContext, spec, TextComponent, Texture, TextLayout, TextStyle } from '@galacean/effects';
 import { generateProgram } from './rich-text-parser';
 import { toRGBA } from './color-utils';
 
@@ -141,7 +140,7 @@ export class RichTextComponent extends TextComponent {
         height += charInfo.lineHeight;
       }
       //恢复默认设置
-      context.font = `10px ${options.fontFamily || textStyle.fontFamily}`;
+      context.font = `${options.fontWeight || textStyle.textWeight} 10px ${options.fontFamily || textStyle.fontFamily}`;
       const textWidth = context.measureText(text).width;
       const textHeight = fontSize * this.singleLineHeight * this.textStyle.fontScale;
 
@@ -171,8 +170,10 @@ export class RichTextComponent extends TextComponent {
     const { x = 1, y = 1 } = this.size;
 
     if (!this.initialized) {
-      this.canvasSize = new math.Vector2(width, height);
-      this.item.transform.size.set(x * width * this.SCALE_FACTOR * this.SCALE_FACTOR, y * height * this.SCALE_FACTOR * this.SCALE_FACTOR);
+      this.canvasSize = !this.canvasSize ? new math.Vector2(width, height) : this.canvasSize;
+      const { x: canvasWidth, y: canvasHeight } = this.canvasSize;
+
+      this.item.transform.size.set(x * canvasWidth * this.SCALE_FACTOR * this.SCALE_FACTOR, y * canvasHeight * this.SCALE_FACTOR * this.SCALE_FACTOR);
       this.size = this.item.transform.size.clone();
       this.initialized = true;
     }
@@ -238,40 +239,77 @@ export class RichTextComponent extends TextComponent {
     //与 toDataURL() 两种方式都需要像素读取操作
     const imageData = context.getImageData(0, 0, this.canvas.width, this.canvas.height);
 
-    this.material.setTexture('_MainTex',
-      Texture.createWithData(
-        this.engine,
-        {
-          data: new Uint8Array(imageData.data),
-          width: imageData.width,
-          height: imageData.height,
-        },
-        {
-          flipY,
-          magFilter: glContext.LINEAR,
-          minFilter: glContext.LINEAR,
-          wrapS: glContext.CLAMP_TO_EDGE,
-          wrapT: glContext.CLAMP_TO_EDGE,
-        },
-      ),
+    const texture = Texture.createWithData(
+      this.engine,
+      {
+        data: new Uint8Array(imageData.data),
+        width: imageData.width,
+        height: imageData.height,
+      },
+      {
+        flipY,
+        magFilter: glContext.LINEAR,
+        minFilter: glContext.LINEAR,
+        wrapS: glContext.CLAMP_TO_EDGE,
+        wrapT: glContext.CLAMP_TO_EDGE,
+      },
     );
+
+    this.renderer.texture = texture;
+    this.material.setTexture('_MainTex', texture);
 
     this.isDirty = false;
     context.restore();
   }
 
   /**
-   * 设置文本溢出模式
-   *
-   * - clip: 当文本内容超出边界框时，多余的会被截断。
-   * - display: 该模式下会显示所有文本，会自动调整文本字号以保证显示完整。
-   * > 当存在多行时，部分行内文本可能存在文本字号变小的情况，其他行为正常情况
-   *
-   * @param overflow - 文本溢出模式
+   * 该方法富文本组件不支持
+   * @param value - 水平偏移距离
+   * @returns
    */
-  setOverflow (overflow: spec.TextOverflow) {
-    this.textLayout.overflow = overflow;
-    this.isDirty = true;
+  override setShadowOffsetY (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 模糊程度
+   */
+  override setShadowBlur (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 水平偏移距离
+   */
+  override setShadowOffsetX (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 阴影颜色
+   */
+  override setShadowColor (value: spec.RGBAColorValue): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 外描边宽度
+   * @returns
+   */
+  override setOutlineWidth (value: number): void {
+    throw new Error('Method not implemented.');
+  }
+
+  /**
+   * 该方法富文本组件不支持
+   * @param value - 是否自动设置宽度
+   */
+  override setAutoWidth (value: boolean): void {
+    throw new Error('Method not implemented.');
   }
 
   override updateWithOptions (options: spec.TextContentOptions) {
@@ -279,6 +317,15 @@ export class RichTextComponent extends TextComponent {
     this.textLayout = new TextLayout(options);
     this.textLayout.textBaseline = options.textBaseline || spec.TextBaseline.middle;
     this.text = options.text ? options.text.toString() : ' ';
+  }
+
+  protected override renderText (options: spec.RichTextContentOptions) {
+    const { size } = options;
+
+    if (size) {
+      this.canvasSize = new math.Vector2(size[0], size[1]);
+    }
+    this.updateTexture();
   }
 
 }

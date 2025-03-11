@@ -6,7 +6,7 @@ import { Behaviour } from './components';
 import type { CompositionHitTestOptions } from './composition';
 import type { Region, TimelinePlayable, TrackAsset } from './plugins';
 import { HitTestType } from './plugins';
-import { PlayableGraph } from './plugins/cal/playable-graph';
+import { PlayState, PlayableGraph } from './plugins/cal/playable-graph';
 import { TimelineAsset } from './plugins/timeline';
 import { generateGUID, noop } from './utils';
 import { VFXItem } from './vfx-item';
@@ -29,6 +29,11 @@ export class CompositionComponent extends Behaviour {
   time = 0;
   startTime = 0;
   items: VFXItem[] = [];  // 场景的所有元素
+
+  /**
+   * @internal
+   */
+  state: PlayState = PlayState.Playing;
 
   private reusable = false;
   private sceneBindings: SceneBinding[] = [];
@@ -67,14 +72,25 @@ export class CompositionComponent extends Behaviour {
     return this.reusable;
   }
 
+  pause () {
+    this.state = PlayState.Paused;
+  }
+
+  resume () {
+    this.state = PlayState.Playing;
+  }
+
   override onUpdate (dt: number): void {
+    if (this.state === PlayState.Paused) {
+      return;
+    }
     const time = this.time;
 
     this.timelinePlayable.setTime(time);
 
     // The properties of the object may change dynamically,
     // so reset the track binding to avoid invalidation of the previously obtained binding object.
-    // this.resolveBindings();
+    this.resolveBindings();
     this.timelinePlayable.evaluate();
     this.graph.evaluate(dt);
   }

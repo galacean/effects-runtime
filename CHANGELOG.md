@@ -7,6 +7,58 @@
 
 ---
 
+## 2.2.7
+
+`2025-02-28`
+
+- Fix: The sampling of the curve's start and end points does not differentiate between types of keyframes. [#889](https://github.com/galacean/effects-runtime/pull/889) @RGCHN
+
+## 2.2.6
+
+`2025-02-21`
+
+- Fix: Corrected the name of the rich text plugin. [#873](https://github.com/galacean/effects-runtime/pull/873) @Sruimeng
+- Fix: Fixed the error at the end of the freeze frame keyframe. [#876](https://github.com/galacean/effects-runtime/pull/876) @RGCHN
+- Fix: Resolved an error in the event system after the player is destroyed. [#872](https://github.com/galacean/effects-runtime/pull/872) @Sruimeng
+- Chore(deps): bump @vvfx/resource-detection to 0.7.1. [#875](https://github.com/galacean/effects-runtime/pull/875) @yiiqii
+
+## 2.2.5
+
+`2025-02-14`
+
+- Fix: Resolved the issue where rich text rendering resulted in a blank screen. [#857](https://github.com/galacean/effects-runtime/pull/857) @Sruimeng
+- Fix: Eliminated the logic where an additional particle was removed upon clicking. [#863](https://github.com/galacean/effects-runtime/pull/863) @RGCHN
+- Fix: Removed the logic where an HTTP request response code of 0 indicated success. [#860](https://github.com/galacean/effects-runtime/pull/860) @RGCHN
+- Fix: 3d mesh max joint and camera rotation error. [#858](https://github.com/galacean/effects-runtime/pull/858) @wumaolinmaoan
+
+## 2.2.4
+
+`2025-02-07`
+
+- Fix: update texture and material in TextComponentBase. [#855](https://github.com/galacean/effects-runtime/pull/855) @Sruimen
+
+## 2.2.3
+
+`2025-02-07`
+
+- Fix: interact item drag invalid when delayed. [#849](https://github.com/galacean/effects-runtime/pull/849) @wumaolinmaoan
+- Fix: Resolve the issue with text masking. [#848](https://github.com/galacean/effects-runtime/pull/848) @Sruimeng
+- Fix: opt render level filter logic. [#844](https://github.com/galacean/effects-runtime/pull/844) @wumaolinmaoan
+- Chore: add gl lost check when framebuffer failed. [#841](https://github.com/galacean/effects-runtime/pull/841) @wumaolinmaoan
+
+## 2.2.2
+
+`2025-01-13`
+
+- Chore: add framebuffer creation failed error. [#836](https://github.com/galacean/effects-runtime/pull/836) @wumaolinmaoan
+
+## 2.2.1
+
+`2025-01-03`
+
+- Fix: Resolved the issue of bold font in rich text on Android devices. [#824](https://github.com/galacean/effects-runtime/pull/824) @Sruimeng
+- Fix: bounding box offset. [#822](https://github.com/galacean/effects-runtime/pull/822) @wumaolinmaoan
+
 ## 2.2.0
 
 `2024-12-31`

@@ -1,30 +1,17 @@
 import type {
-  Scene,
-  SceneLoadOptions,
-  Composition,
-  RenderFrame,
-  VFXItemProps,
-  Engine,
-  Component,
-  Renderer,
+  Scene, SceneLoadOptions, Composition, RenderFrame, Engine, Component, Renderer,
 } from '@galacean/effects';
 import {
-  VFXItem,
-  AbstractPlugin,
-  spec,
-  Behaviour,
-  PLAYER_OPTIONS_ENV_EDITOR,
-  effectsClass,
-  GLSLVersion,
-  Geometry,
+  VFXItem, AbstractPlugin, spec, Behaviour, PLAYER_OPTIONS_ENV_EDITOR, effectsClass,
+  GLSLVersion, Geometry,
 } from '@galacean/effects';
-import { CompositionCache } from '../runtime/cache';
-import { PluginHelper } from '../utility/plugin-helper';
-import { PTransform, PSceneManager, PCoordinate, PBRShaderGUID, UnlitShaderGUID } from '../runtime';
-import { DEG2RAD, Matrix4, Vector3 } from '../runtime/math';
+import {
+  CompositionCache, PTransform, PSceneManager, PCoordinate, PBRShaderGUID,
+  UnlitShaderGUID, DEG2RAD, Matrix4, Vector3,
+} from '../runtime';
 import { VFX_ITEM_TYPE_3D } from './const';
 import { ModelCameraComponent, ModelLightComponent, ModelMeshComponent } from './model-item';
-import { fetchPBRShaderCode, fetchUnlitShaderCode } from '../utility';
+import { fetchPBRShaderCode, fetchUnlitShaderCode, PluginHelper } from '../utility';
 
 /**
  * Model 插件类，负责支持播放器中的 3D 功能
@@ -130,7 +117,7 @@ export class ModelPlugin extends AbstractPlugin {
       name: 'ModelPluginItem',
       duration: 9999999,
       endBehavior: spec.END_BEHAVIOR_FORWARD,
-    } as unknown as VFXItemProps;
+    } as unknown as spec.Item;
     const item = new VFXItem(composition.getEngine(), props);
 
     composition.addItem(item);
@@ -311,7 +298,7 @@ export class ModelPluginComponent extends Behaviour {
       renderMode3DUVGridSize: this.renderMode3DUVGridSize,
       renderSkybox: this.renderSkybox,
       lightItemCount: this.getLightItemCount(),
-      maxJointCount: this.getMaxJointCount(),
+      maxJointCount: this.getMaxJointCount(this.item.composition?.items ?? []),
     });
     this.updateSceneCamera(component);
   }
@@ -339,9 +326,8 @@ export class ModelPluginComponent extends Behaviour {
     return lightItemCount;
   }
 
-  private getMaxJointCount (): number {
+  private getMaxJointCount (items: VFXItem[]): number {
     let maxJointCount = 0;
-    const items = this.item.composition?.items ?? [];
 
     items.forEach(item => {
       const meshComp = item.getComponent(ModelMeshComponent);
@@ -356,6 +342,9 @@ export class ModelPluginComponent extends Behaviour {
             maxJointCount = Math.max(skin.boneNames.length, maxJointCount);
           }
         }
+      }
+      if (item.children.length !== 0) {
+        maxJointCount = Math.max(this.getMaxJointCount(item.children), maxJointCount);
       }
     });
 

@@ -1,13 +1,14 @@
+import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { clamp } from '@galacean/effects-math/es/core/utils';
 import type { Vector2 } from '@galacean/effects-math/es/core/vector2';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import * as spec from '@galacean/effects-specification';
-import { colorStopsFromGradient, interpolateColor } from '../../utils';
 import type { ColorStop } from '../../utils';
+import { colorStopsFromGradient, interpolateColor } from '../../utils';
 import type { BezierEasing } from '../bezier';
-import { BezierPath, buildEasingCurve, BezierQuat } from '../bezier';
+import { BezierPath, BezierQuat, buildEasingCurve } from '../bezier';
 import { Float16ArrayWrapper } from '../float16array-wrapper';
+import { keyframeInfo } from '../keyframe-info';
 import { numberToFix } from '../utils';
 
 interface KeyFrameMeta {
@@ -419,6 +420,10 @@ export class BezierCurve extends ValueGetter<number> {
   keys: number[][];
   keyTimeData: string[];
 
+  // 定格关键帧用
+  startKeyframe: spec.BezierKeyframeValue;
+  endKeyframe: spec.BezierKeyframeValue;
+
   override onCreate (props: spec.BezierKeyframeValue[]) {
     const keyframes = props;
 
@@ -444,6 +449,8 @@ export class BezierCurve extends ValueGetter<number> {
         timeEnd: Number(e.x),
       };
     }
+    this.startKeyframe = keyframes[0];
+    this.endKeyframe = keyframes[keyframes.length - 1];
     this.keyTimeData = Object.keys(this.curveMap);
   }
   override getValue (time: number) {
@@ -453,14 +460,16 @@ export class BezierCurve extends ValueGetter<number> {
     const keyTimeStart = this.curveMap[keyTimeData[0]].timeStart;
     const keyTimeEnd = this.curveMap[keyTimeData[keyTimeData.length - 1]].timeEnd;
 
-    // const keyTimeStart = Number(keyTimeData[0].split('&')[0]);
-    // const keyTimeEnd = Number(keyTimeData[keyTimeData.length - 1].split('&')[1]);
-
     if (time <= keyTimeStart) {
-      return this.getCurveValue(keyTimeData[0], keyTimeStart);
+      keyframeInfo.getPointIndexInCurve(this.startKeyframe, keyframeInfo.pointIndexCache);
+
+      return this.startKeyframe[1][keyframeInfo.pointIndexCache.yIndex];
     }
     if (time >= keyTimeEnd) {
-      return this.getCurveValue(keyTimeData[keyTimeData.length - 1], keyTimeEnd);
+      keyframeInfo.getPointIndexInCurve(this.endKeyframe, keyframeInfo.pointIndexCache);
+
+      return this.endKeyframe[1][keyframeInfo.pointIndexCache.yIndex];
+
     }
 
     for (let i = 0; i < keyTimeData.length; i++) {

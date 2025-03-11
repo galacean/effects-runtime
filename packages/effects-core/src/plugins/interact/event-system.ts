@@ -55,7 +55,7 @@ export class EventSystem implements Disposable {
       const ts = performance.now();
 
       if (!this.target) {
-        logger.error('Trigger TouchEvent after EventSystem is disposed.');
+        logger.warn('Trigger TouchEvent after EventSystem is disposed.');
 
         return {
           x, y, vx: 0, vy, dx, dy, ts, width: 0, height: 0, origin: event,

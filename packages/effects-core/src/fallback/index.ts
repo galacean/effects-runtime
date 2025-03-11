@@ -2,11 +2,11 @@ import type {
   BaseItem, BaseItemTransform, Composition, CompressedImage, Image, JSONScene, JSONSceneLegacy,
   ParticleItem, RenderLevel, SpriteItem, TemplateImage,
 } from '@galacean/effects-specification';
-import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType } from '@galacean/effects-specification';
+import { CAMERA_CLIP_MODE_NORMAL, EndBehavior, ItemType, JSONSceneVersion } from '@galacean/effects-specification';
 import { generateGUID } from '../utils';
 import { getStandardCameraContent } from './camera';
 import { getStandardInteractContent } from './interact';
-import { version21Migration, version22Migration, version24Migration, version30Migration } from './migration';
+import { version21Migration, version22Migration, version24Migration, version30Migration, version31Migration } from './migration';
 import { getStandardParticleContent } from './particle';
 import { getStandardNullContent, getStandardSpriteContent } from './sprite';
 import { arrAdd, quatFromXYZRotation, rotationZYXFromQuat } from './utils';
@@ -42,7 +42,13 @@ export function getStandardJSON (json: any): JSONScene {
       json = version24Migration(json);
     }
     if (mainVersion < 3) {
-      return version30Migration(version21Migration(json));
+      json = version30Migration(version21Migration(json));
+    }
+    // 3.x 版本格式转换
+    if (mainVersion < 4) {
+      if (minorVersion < 2) {
+        json = version31Migration(json);
+      }
     }
 
     return json;
@@ -51,14 +57,14 @@ export function getStandardJSON (json: any): JSONScene {
   throw new Error(`Invalid JSON version: ${json.version}.`);
 }
 
-let currentVersion: '1.0' | '1.1' | '1.3' = '1.0';
+let currentVersion: JSONSceneVersion = JSONSceneVersion['1_0'];
 
 function getStandardJSONFromV0 (json: any): JSONSceneLegacy {
-  currentVersion = '1.0';
+  currentVersion = JSONSceneVersion['1_0'];
   const plugins = json.plugins || [];
 
   if (json.bins?.length) {
-    currentVersion = '1.3';
+    currentVersion = JSONSceneVersion['1_3'];
   }
   const requires: string[] = (json.requires || []).slice();
   const images = json.images.map((img: any, index: number) => getStandardImage(img, index, json.imageTags || []));
@@ -93,14 +99,11 @@ function getStandardJSONFromV0 (json: any): JSONSceneLegacy {
 export function getStandardImage (image: any, index: number, imageTags: RenderLevel[]): TemplateImage | Image | CompressedImage {
   const renderLevel = imageTags[index];
 
-  const oriY = image.oriY;
-
   if (typeof image === 'string') {
     return {
       id: generateGUID(),
       renderLevel,
       url: image,
-      oriY,
     };
   } else if (image.template) {
     return {
@@ -109,13 +112,11 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       template: image.template,
       webp: image.webp,
       renderLevel,
-      oriY,
     };
   } else if (image.compressed) {
     return {
       id: generateGUID(),
       url: image.url,
-      oriY,
       compressed: {
         astc: image.compressed.android,
         pvrtc: image.compressed.iOS,
@@ -129,7 +130,6 @@ export function getStandardImage (image: any, index: number, imageTags: RenderLe
       url: image.url,
       webp: image.webp,
       renderLevel,
-      oriY,
     };
   } else if (image && image.sourceType) {
     return image;

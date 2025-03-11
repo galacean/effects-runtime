@@ -2,7 +2,7 @@ import type { TriangleLike } from '@galacean/effects-math/es/core/type';
 import type { Geometry } from '../../render/geometry';
 import type { BoundingBoxTriangle } from './click-handler';
 import { HitTestType } from './click-handler';
-import type { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
+import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
 
 /**
@@ -12,8 +12,11 @@ export class MeshCollider {
   private boundingBoxData: BoundingBoxTriangle;
   private geometry: Geometry;
   private triangles: TriangleLike[] = [];
+  private worldMatrix = new Matrix4();
 
   getBoundingBoxData (): BoundingBoxTriangle {
+    this.applyWorldMatrix(this.boundingBoxData.area);
+
     return this.boundingBoxData;
   }
 
@@ -41,6 +44,8 @@ export class MeshCollider {
     area.push({ p0: point0, p1: point1, p2: point2 });
     area.push({ p0: point0, p1: point2, p2: point3 });
 
+    this.applyWorldMatrix(area);
+
     return {
       type: HitTestType.triangle,
       area,
@@ -48,22 +53,15 @@ export class MeshCollider {
   }
 
   setGeometry (geometry: Geometry, worldMatrix?: Matrix4) {
-    if (this.geometry !== geometry) {
-      this.triangles = this.geometryToTriangles(geometry);
-      this.geometry = geometry;
-    }
+    this.triangles = this.geometryToTriangles(geometry);
+    this.geometry = geometry;
     const area = [];
 
     for (const triangle of this.triangles) {
       area.push({ p0: triangle.p0, p1: triangle.p1, p2: triangle.p2 });
     }
-
     if (worldMatrix) {
-      area.forEach(triangle => {
-        triangle.p0 = worldMatrix.transformPoint(triangle.p0 as Vector3, new Vector3());
-        triangle.p1 = worldMatrix.transformPoint(triangle.p1 as Vector3, new Vector3());
-        triangle.p2 = worldMatrix.transformPoint(triangle.p2 as Vector3, new Vector3());
-      });
+      this.worldMatrix.copyFrom(worldMatrix);
     }
 
     this.boundingBoxData = {
@@ -74,10 +72,11 @@ export class MeshCollider {
 
   private geometryToTriangles (geometry: Geometry) {
     const indices = geometry.getIndexData() ?? [];
+    const drawCount = geometry.getDrawCount();
     const vertices = geometry.getAttributeData('aPos') ?? [];
     const res: TriangleLike[] = [];
 
-    for (let i = 0; i < indices.length; i += 3) {
+    for (let i = 0; i < drawCount; i += 3) {
       const index0 = indices[i] * 3;
       const index1 = indices[i + 1] * 3;
       const index2 = indices[i + 2] * 3;
@@ -89,5 +88,15 @@ export class MeshCollider {
     }
 
     return res;
+  }
+
+  private applyWorldMatrix (area: TriangleLike[]) {
+    area.forEach(triangle => {
+      triangle.p0 = this.worldMatrix.transformPoint(triangle.p0 as Vector3, new Vector3());
+      triangle.p1 = this.worldMatrix.transformPoint(triangle.p1 as Vector3, new Vector3());
+      triangle.p2 = this.worldMatrix.transformPoint(triangle.p2 as Vector3, new Vector3());
+    });
+
+    return area;
   }
 }

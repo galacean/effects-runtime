@@ -15,19 +15,22 @@ import type { Texture } from './texture';
 import { TextureLoadAction, TextureSourceType } from './texture';
 import type { Disposable, LostHandler } from './utils';
 import { assertExist, logger, noop, removeItem } from './utils';
-import type { VFXItemProps } from './vfx-item';
 import { VFXItem } from './vfx-item';
 import type { CompositionEvent } from './events';
 import { EventEmitter } from './events';
 import type { PostProcessVolume } from './components';
 import { SceneTicking } from './composition/scene-ticking';
 import { SerializationHelper } from './serialization-helper';
+import { PlayState } from './plugins/cal/playable-graph';
 
 /**
  * 合成统计信息
  */
 export interface CompositionStatistic {
   loadStart: number,
+  /**
+   * 加载耗时
+   */
   loadTime: number,
   /**
    * Shader 编译耗时
@@ -43,9 +46,21 @@ export interface CompositionStatistic {
  * 合成消息对象
  */
 export interface MessageItem {
+  /**
+   * 元素 ID
+   */
   id: string,
+  /**
+   * 元素名称
+   */
   name: string,
-  phrase: number,
+  /**
+   * 消息阶段（2：开始，1：结束）
+   */
+  phrase: typeof spec.MESSAGE_ITEM_PHRASE_BEGIN | typeof spec.MESSAGE_ITEM_PHRASE_END,
+  /**
+   * 合成 ID
+   */
   compositionId: string,
 }
 
@@ -53,8 +68,21 @@ export interface MessageItem {
  *
  */
 export interface CompositionHitTestOptions {
+  /**
+   *
+   */
   maxCount?: number,
+  /**
+   *
+   * @param region
+   * @returns
+   */
   stop?: (region: Region) => boolean,
+  /**
+   *
+   * @param item
+   * @returns
+   */
   skip?: (item: VFXItem) => boolean,
 }
 
@@ -62,13 +90,39 @@ export interface CompositionHitTestOptions {
  *
  */
 export interface CompositionProps {
+  /**
+   *
+   */
   reusable?: boolean,
+  /**
+   *
+   */
   baseRenderOrder?: number,
+  /**
+   *
+   */
   renderer: Renderer,
+  /**
+   *
+   * @param message
+   * @returns
+   */
   handleItemMessage: (message: MessageItem) => void,
+  /**
+   *
+   */
   event?: EventSystem,
+  /**
+   *
+   */
   width: number,
+  /**
+   *
+   */
   height: number,
+  /**
+   *
+   */
   speed?: number,
 }
 
@@ -219,7 +273,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * Composition 构造函数
    * @param props - composition 的创建参数
    * @param scene
-   * @param compositionSourceManager
    */
   constructor (
     props: CompositionProps,
@@ -250,11 +303,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.renderer = renderer;
     this.refCompositionProps = refCompositionProps;
 
-    this.rootItem = new VFXItem(this.getEngine(), sourceContent as unknown as VFXItemProps);
+    // Instantiate composition rootItem
+    this.rootItem = new VFXItem(this.getEngine());
     this.rootItem.name = 'rootItem';
+    this.rootItem.duration = sourceContent.duration;
+    this.rootItem.endBehavior = sourceContent.endBehavior;
     this.rootItem.composition = this;
 
-    // Spawn rootCompositionComponent
+    // Create rootCompositionComponent
     this.rootComposition = this.rootItem.addComponent(CompositionComponent);
 
     this.width = width;
@@ -399,6 +455,9 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     return this.speed;
   }
 
+  /**
+   *
+   */
   play () {
     if (this.isEnded && this.reusable) {
       this.restart();
@@ -417,6 +476,10 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.paused = true;
   }
 
+  /**
+   *
+   * @returns
+   */
   getPaused () {
     return this.paused;
   }
@@ -467,7 +530,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   setTime (time: number) {
     const speed = this.speed;
-    const pause = this.paused;
+    const pause = this.getPaused();
 
     if (pause) {
       this.resume();
@@ -532,8 +595,14 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * @param deltaTime - 更新的时间步长
    */
   update (deltaTime: number) {
-    if (!this.assigned || this.paused) {
+    if (!this.assigned || this.getPaused()) {
       return;
+    }
+
+    // scene VFXItem components lifetime function.
+    if (!this.rootItem.isDuringPlay) {
+      this.callAwake(this.rootItem);
+      this.rootItem.beginPlay();
     }
 
     const dt = parseFloat(this.getUpdateTime(deltaTime * this.speed).toFixed(0));
@@ -543,11 +612,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     // 更新 model-tree-plugin
     this.updatePluginLoaders(deltaTime);
 
-    // scene VFXItem components lifetime function.
-    if (!this.rootItem.isDuringPlay) {
-      this.callAwake(this.rootItem);
-      this.rootItem.beginPlay();
-    }
     this.sceneTicking.update.tick(dt);
     this.sceneTicking.lateUpdate.tick(dt);
 
@@ -662,51 +726,52 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    * 更新主合成组件
    */
   private updateRootComposition (deltaTime: number) {
-    if (this.rootComposition.isActiveAndEnabled) {
+    if (this.rootComposition.state === PlayState.Paused || !this.rootComposition.isActiveAndEnabled) {
+      return;
+    }
 
-      let localTime = parseFloat((this.time + deltaTime - this.rootItem.start).toFixed(3));
-      let isEnded = false;
+    let localTime = parseFloat((this.time + deltaTime - this.rootItem.start).toFixed(3));
+    let isEnded = false;
 
-      const duration = this.rootItem.duration;
-      const endBehavior = this.rootItem.endBehavior;
+    const duration = this.rootItem.duration;
+    const endBehavior = this.rootItem.endBehavior;
 
-      if (localTime - duration > 0.001) {
+    if (localTime - duration > 0.001) {
 
-        isEnded = true;
+      isEnded = true;
 
-        switch (endBehavior) {
-          case spec.EndBehavior.restart: {
-            localTime = localTime % duration;
-            this.restart();
+      switch (endBehavior) {
+        case spec.EndBehavior.restart: {
+          localTime = localTime % duration;
+          this.restart();
 
-            break;
-          }
-          case spec.EndBehavior.freeze: {
-            localTime = Math.min(duration, localTime);
+          break;
+        }
+        case spec.EndBehavior.freeze: {
+          localTime = Math.min(duration, localTime);
 
-            break;
-          }
-          case spec.EndBehavior.forward: {
+          break;
+        }
+        case spec.EndBehavior.forward: {
 
-            break;
-          }
-          case spec.EndBehavior.destroy: {
+          break;
+        }
+        case spec.EndBehavior.destroy: {
 
-            break;
-          }
+          break;
         }
       }
+    }
 
-      this.rootComposition.time = localTime;
+    this.rootComposition.time = localTime;
 
-      // end state changed, handle onEnd flags
-      if (this.isEnded !== isEnded) {
-        if (isEnded) {
-          this.isEnded = true;
-        } else {
-          this.isEnded = false;
-          this.isEndCalled = false;
-        }
+    // end state changed, handle onEnd flags
+    if (this.isEnded !== isEnded) {
+      if (isEnded) {
+        this.isEnded = true;
+      } else {
+        this.isEnded = false;
+        this.isEndCalled = false;
       }
     }
   }

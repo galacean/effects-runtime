@@ -11,7 +11,7 @@ export * from './rich-text-loader';
  */
 export const version = __VERSION__;
 
-registerPlugin('richtext', RichTextLoader, VFXItem, true);
+registerPlugin('rich-text', RichTextLoader, VFXItem, true);
 
 logger.info(`Plugin rich text version: ${version}.`);
 
