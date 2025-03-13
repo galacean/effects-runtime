@@ -5,9 +5,6 @@ import { Selection } from '../../core/selection';
 import { GalaceanEffects } from '../../ge';
 import { ImGui } from '../../imgui';
 import { EditorWindow } from '../editor-window';
-import { AnimationClipGraphNode, AnimationRootGraphNode, Blend1DGraphNode, ConstFloatGraphNode } from './animation-graph-nodes/animation-graph-node';
-import type { BaseNodeData } from './base-node';
-import { ImNodeFlow } from './node-flow';
 import { GraphView } from './visual-graph/node-graph-view';
 import type { StateMachineGraph } from './tools-graph/graphs/state-machine-graph';
 import { StateToolsNode } from './tools-graph/nodes/state-tools-node';
@@ -55,7 +52,6 @@ interface LoadedGraphData {
 export class AnimationGraph extends EditorWindow {
   currentAnimationComponent: AnimationGraphComponent;
   currentVFXItem: VFXItem;
-  imNodeFlow = new ImNodeFlow();
   graph: GraphInstance;
 
   compilationContext = new GraphCompilationContext();
@@ -84,7 +80,6 @@ export class AnimationGraph extends EditorWindow {
     this.title = 'AnimationGraph';
     this.open();
     this.setWindowFlags(ImGui.WindowFlags.NoScrollWithMouse | ImGui.WindowFlags.NoScrollbar);
-    this.imNodeFlow.rightClickPopUpContent(() => { });
     this.primaryGraphView = new GraphView(this.userContext);
     this.secondaryGraphView = new GraphView(this.userContext);
 
@@ -96,8 +91,6 @@ export class AnimationGraph extends EditorWindow {
       m_pGraphDefinition: graphDefinition,
       m_pParentNode: null,
     });
-
-    this.fromData(data);
 
     const rootResultNode = this.flowGraph.CreateNode(PoseResultToolsNode, new ImVec2(500, 200));
     const stateMachineNode = this.flowGraph.CreateNode(StateMachineToolsNode, new ImVec2(300, 200));
@@ -600,60 +593,6 @@ export class AnimationGraph extends EditorWindow {
     // }
   }
 
-  toData (): ImNodeFlowData {
-    const data: ImNodeFlowData = {
-      nodes: [],
-      links: [],
-    };
-
-    for (const baseNode of this.imNodeFlow.getNodes()) {
-      const nodeData = {
-        id: baseNode[1].getUID(),
-        type: baseNode[1].getClassName(),
-        position: baseNode[1].getPos(),
-      };
-
-      baseNode[1].toData(nodeData);
-      data.nodes.push(nodeData);
-    }
-
-    for (const link of this.imNodeFlow.getLinks()) {
-      data.links.push({
-        sourceNode: link.getLeft().getParent()!.getUID(),
-        sourcePin: link.getLeft().getUID(),
-        targetNode: link.getRight().getParent()!.getUID(),
-        targetPin: link.getRight().getUID(),
-      });
-    }
-
-    return data;
-  }
-
-  fromData (data: ImNodeFlowData) {
-    this.imNodeFlow.getNodes().clear();
-    const nodes = [];
-
-    for (const nodeData of data.nodes) {
-      const node = this.imNodeFlow.addNode(this.getNodeClass(nodeData.type), new ImVec2(nodeData.position.x, nodeData.position.y));
-
-      nodes.push(node);
-    }
-
-    for (let i = 0; i < nodes.length; i++) {
-      nodes[i].fromData(data.nodes[i]);
-    }
-
-    for (const linkData of data.links) {
-      const sourceNode = this.imNodeFlow.getNodes().get(linkData.sourceNode);
-      const targetNode = this.imNodeFlow.getNodes().get(linkData.targetNode);
-
-      if (sourceNode && targetNode) {
-
-        sourceNode.outPin(linkData.sourcePin)!.createLink(targetNode.inPin(linkData.targetPin)!);
-      }
-    }
-  }
-
   compileGraph (): AnimationGraphAssetData {
     const rootGraph = this.flowGraph;
     const context = this.compilationContext;
@@ -714,19 +653,6 @@ export class AnimationGraph extends EditorWindow {
     // console.log(graphAsset);
 
     return graphAsset;
-  }
-
-  getNodeClass (type: string): any {
-    switch (type) {
-      case 'AnimationRootGraphNode':
-        return AnimationRootGraphNode;
-      case 'Blend1DGraphNode':
-        return Blend1DGraphNode;
-      case 'ConstFloatGraphNode':
-        return ConstFloatGraphNode;
-      case 'AnimationClipGraphNode':
-        return AnimationClipGraphNode;
-    }
   }
 
   NavigateToNode (pNode: BaseNode, focusViewOnNode: boolean): void {
@@ -864,18 +790,6 @@ export class AnimationGraph extends EditorWindow {
       this.userContext.ResetExtraTitleInfo();
     }
   }
-}
-
-interface linkData {
-  sourceNode: number,
-  sourcePin: number,
-  targetNode: number,
-  targetPin: number,
-}
-
-interface ImNodeFlowData {
-  nodes: BaseNodeData[],
-  links: linkData[],
 }
 
 const data = {
