@@ -48,7 +48,6 @@ attribute vec2 aUV;
 varying vec2 v_UV;
 
 uniform mat4 effects_MatrixVP;
-uniform mat4 effects_MatrixInvV;
 uniform mat4 effects_ObjectToWorld;
 uniform vec3 u_ControlPoints[25]; // 5x5 控制点
 
@@ -59,26 +58,34 @@ float B2(float t) { return 6.0 * t * t * (1.0 - t) * (1.0 - t); }
 float B3(float t) { return 4.0 * t * t * t * (1.0 - t); }
 float B4(float t) { return t * t * t * t; }
 
-// 4阶贝塞尔曲面插值
-vec3 bezierSurface(vec2 uv) {
-    vec3 result = vec3(0.0);
-    float u = uv.x;
-    float v = uv.y;
+// 基于顶点位置的4阶贝塞尔曲面插值
+vec3 bezierSurface(vec3 originalPos) {
+    // 定义控制点包围盒的边界（这应该由uniform传入，这里为简化使用硬编码）
+    vec3 minBound = vec3(-0.5, -0.5, 0.0);  // 左下角
+    vec3 maxBound = vec3(0.5, 0.5, 0.0);    // 右上角
     
+    // 将原始顶点位置映射到[0,1]空间用于插值计算
+    // 仅使用xy平面坐标计算参数
+    float u = clamp((originalPos.x - minBound.x) / (maxBound.x - minBound.x), 0.0, 1.0);
+    float v = clamp((originalPos.y - minBound.y) / (maxBound.y - minBound.y), 0.0, 1.0);
+    
+    // 计算伯恩斯坦基函数
     float bu[5] = float[5](B0(u), B1(u), B2(u), B3(u), B4(u));
     float bv[5] = float[5](B0(v), B1(v), B2(v), B3(v), B4(v));
     
+    // 计算变形后的位置
+    vec3 newPos = vec3(0.0);
     for(int i = 0; i < 5; i++) {
         for(int j = 0; j < 5; j++) {
-            result += u_ControlPoints[i * 5 + j] * bu[j] * bv[i];
+            newPos += u_ControlPoints[i * 5 + j] * bu[j] * bv[i];
         }
     }
     
-    return result;
+    return newPos;
 }
 
 void main() {
-    vec3 newPos = bezierSurface(aUV);
+    vec3 newPos = bezierSurface(aPos);
     v_UV = vec2(aUV.x, 1.0 - aUV.y);
     gl_Position = effects_MatrixVP * effects_ObjectToWorld * vec4(newPos, 1.0);
 }
