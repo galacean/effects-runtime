@@ -109,7 +109,7 @@ export class RichTextComponent extends TextComponent {
     this.generateTextProgram(this.text);
     let width = 0, height = 0;
     const { textLayout, textStyle } = this;
-    const { overflow, letterSpace } = textLayout;
+    const { overflow, letterSpace = 0 } = textLayout;
     const context = this.context;
 
     context.save();
