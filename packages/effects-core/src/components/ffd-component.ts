@@ -16,7 +16,7 @@ declare module '@galacean/effects-specification' {
     controlPoints?: {
       x: number,
       y: number,
-      z?: number,
+      z: number,
     }[],
     renderer?: {
       texture?: any,
@@ -50,6 +50,8 @@ varying vec2 v_UV;
 uniform mat4 effects_MatrixVP;
 uniform mat4 effects_ObjectToWorld;
 uniform vec3 u_ControlPoints[25]; // 5x5 控制点
+uniform vec3 u_BoundMin;          // 包围盒最小点
+uniform vec3 u_BoundMax;          // 包围盒最大点
 
 // 计算4阶伯恩斯坦基函数
 float B0(float t) { return (1.0 - t) * (1.0 - t) * (1.0 - t) * (1.0 - t); }
@@ -60,14 +62,21 @@ float B4(float t) { return t * t * t * t; }
 
 // 基于顶点位置的4阶贝塞尔曲面插值
 vec3 bezierSurface(vec3 originalPos) {
-    // 定义控制点包围盒的边界（这应该由uniform传入，这里为简化使用硬编码）
-    vec3 minBound = vec3(-0.5, -0.5, 0.0);  // 左下角
-    vec3 maxBound = vec3(0.5, 0.5, 0.0);    // 右上角
+    // 检查顶点是否在包围盒内
+    bool isInBoundingBox = 
+        originalPos.x >= u_BoundMin.x && originalPos.x <= u_BoundMax.x &&
+        originalPos.y >= u_BoundMin.y && originalPos.y <= u_BoundMax.y &&
+        originalPos.z >= u_BoundMin.z && originalPos.z <= u_BoundMax.z;
+    
+    // 如果顶点在包围盒外，保持原始位置不变
+    if (!isInBoundingBox) {
+        return originalPos;
+    }
     
     // 将原始顶点位置映射到[0,1]空间用于插值计算
     // 仅使用xy平面坐标计算参数
-    float u = clamp((originalPos.x - minBound.x) / (maxBound.x - minBound.x), 0.0, 1.0);
-    float v = clamp((originalPos.y - minBound.y) / (maxBound.y - minBound.y), 0.0, 1.0);
+    float u = (originalPos.x - u_BoundMin.x) / (u_BoundMax.x - u_BoundMin.x);
+    float v = (originalPos.y - u_BoundMin.y) / (u_BoundMax.y - u_BoundMin.y);
     
     // 计算伯恩斯坦基函数
     float bu[5] = float[5](B0(u), B1(u), B2(u), B3(u), B4(u));
@@ -180,76 +189,16 @@ void main() {
       this.material.depthTest = true;
       this.material.blending = true;
 
-      // 初始化控制点
-      this.initControlPoints();
+      // 初始化默认控制点 (会在onStart中基于实际包围盒更新)
+      this.initDefaultControlPoints();
     }
-
-    // const boundingBox = [new Vector2(Number.MIN_VALUE, Number.MIN_VALUE), new Vector2(Number.MAX_VALUE, Number.MAX_VALUE)];
-
-    // // 遍历子元素计算包围盒
-    // for (const child of this.item.children) {
-    //   const childBox = child.getComponent(MeshComponent).getBoundingBox();
-
-    //   if (childBox) {
-    //     // 更新包围盒的最小点
-    //     boundingBox[0].x = Math.min(boundingBox[0].x, childBox.area[0].p0.x, childBox.area[0].p1.x, childBox.area[0].p2.x);
-    //     boundingBox[0].y = Math.min(boundingBox[0].y, childBox.area[1].p0.y, childBox.area[1].p1.y, childBox.area[1].p2.y);
-
-    //     // 更新包围盒的最大点
-    //     boundingBox[1].x = Math.max(boundingBox[1].x, childBox.area[0].p0.x, childBox.area[0].p1.x, childBox.area[0].p2.x);
-    //     boundingBox[1].y = Math.max(boundingBox[1].y, childBox.area[1].p0.y, childBox.area[1].p1.y, childBox.area[1].p2.y);
-    //   }
-    // }
-
-    // 创建包围盒的线框几何体
-    // const boxVertices = [
-    //   // 前面的四个顶点
-    //   boundingBox[0].x, boundingBox[0].y, 0,
-    //   boundingBox[1].x, boundingBox[0].y, 0,
-    //   boundingBox[1].x, boundingBox[1].y, 0,
-    //   boundingBox[0].x, boundingBox[1].y, 0,
-    // ];
-
-    // const boxIndices = [
-    //   0, 1, 1, 2, 2, 3, 3, 0, // 前面的四条边
-    // ];
-
-    // // 创建包围盒的几何体
-    // const boxGeometry = Geometry.create(engine, {
-    //   attributes: {
-    //     aPos: {
-    //       type: glContext.FLOAT,
-    //       size: 3,
-    //       data: new Float32Array(boxVertices),
-    //     },
-    //   },
-    //   indices: { data: new Uint8Array(boxIndices) },
-    //   mode: glContext.LINES,
-    //   drawCount: boxIndices.length,
-    // });
-
-    // // 创建包围盒的材质
-    // const boxMaterial = Material.create(engine, {
-    //   shader: {
-    //     vertex: this.vert,
-    //     fragment: `
-    //       precision highp float;
-    //       void main() {
-    //         gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 红色线框
-    //       }
-    //     `,
-    //     glslVersion: GLSLVersion.GLSL1,
-    //   },
-    // });
-
-    // TODO 展示包围盒
-
-    // TODO 根据包围盒生成控制点
-
   }
 
   override onStart (): void {
     this.item.getHitTestParams = this.getHitTestParams;
+
+    // 在组件启动时，基于 item 的包围盒更新控制点
+    this.initControlPointsFromBoundingBox();
   }
 
   override onUpdate (dt: number): void {
@@ -260,29 +209,149 @@ void main() {
   }
 
   /**
-   * 初始化控制点
+   * 初始化默认控制点
    */
-  private initControlPoints () {
+  private initDefaultControlPoints () {
     const pointCount = 25; // 5x5 控制点
 
     this.controlPoints = new Float32Array(pointCount * 3);
 
-    // 初始化控制点位置为均匀网格
+    // 设置临时的默认包围盒边界，会在onStart中更新为实际值
+    this.material.setVector3('u_BoundMin', new Vector3(-0.5, -0.5, 0.0));
+    this.material.setVector3('u_BoundMax', new Vector3(0.5, 0.5, 0.0));
+
+    // 初始化控制点为默认网格
     for (let i = 0; i < 5; i++) {
       for (let j = 0; j < 5; j++) {
         const idx = (i * 5 + j) * 3;
-        const x = j / 4.0 - 0.5; // 将范围映射到 [-0.5, 0.5]
+        const x = j / 4.0 - 0.5;
         const y = i / 4.0 - 0.5;
+        const z = 0.0;
 
         this.controlPoints[idx] = x;
         this.controlPoints[idx + 1] = y;
-        this.controlPoints[idx + 2] = 0;
+        this.controlPoints[idx + 2] = z;
+
+        // 更新uniform
+        this.material.setVector3(`u_ControlPoints[${i * 5 + j}]`, new Vector3(x, y, z));
       }
     }
+  }
 
-    // 更新所有控制点
-    for (let i = 0; i < 25; i++) {
-      this.material.setVector3(`u_ControlPoints[${i}]`, new Vector3(this.controlPoints[i * 3], this.controlPoints[i * 3 + 1], this.controlPoints[i * 3 + 2]));
+  /**
+   * 基于包围盒初始化控制点
+   */
+  private initControlPointsFromBoundingBox () {
+    // 此时this.item应该已经初始化
+    if (!this.item) {
+      console.warn('FFDComponent: item is not initialized, cannot get bounding box');
+
+      return;
+    }
+
+    // 获取网格的包围盒
+    let minX = -0.5, minY = -0.5, minZ = 0;
+    let maxX = 0.5, maxY = 0.5, maxZ = 0;
+
+    // 尝试获取包围盒，可能是从当前组件或子组件获取
+    const boundingBox = this.getBoundingBox();
+
+    // 如果当前组件没有包围盒，尝试从子组件获取
+    if (!boundingBox && this.item.children && this.item.children.length > 0) {
+      // 初始化一个无限大的包围盒
+      minX = Infinity; minY = Infinity; minZ = Infinity;
+      maxX = -Infinity; maxY = -Infinity; maxZ = -Infinity;
+
+      // 遍历所有子组件，合并它们的包围盒
+      for (const child of this.item.children) {
+        const childComponent = child.getComponent(MeshComponent);
+
+        if (childComponent) {
+          const childBox = childComponent.getBoundingBox();
+
+          if (childBox && childBox.area) {
+            // 合并子组件的包围盒
+            if (childBox.area[0]?.p0 !== undefined) {
+              minX = Math.min(minX, childBox.area[0].p0.x, childBox.area[0].p1.x, childBox.area[0].p2.x);
+              maxX = Math.max(maxX, childBox.area[0].p0.x, childBox.area[0].p1.x, childBox.area[0].p2.x);
+
+              minY = Math.min(minY, childBox.area[0].p0.y, childBox.area[0].p1.y, childBox.area[0].p2.y);
+              maxY = Math.max(maxY, childBox.area[0].p0.y, childBox.area[0].p1.y, childBox.area[0].p2.y);
+
+              minZ = Math.min(minZ, childBox.area[0].p0.z, childBox.area[0].p1.z, childBox.area[0].p2.z);
+              maxZ = Math.max(maxZ, childBox.area[0].p0.z, childBox.area[0].p1.z, childBox.area[0].p2.z);
+            }
+          }
+        }
+      }
+
+      // 如果没有找到有效的包围盒，使用默认值
+      if (minX === Infinity) {
+        minX = -0.5; minY = -0.5; minZ = 0;
+        maxX = 0.5; maxY = 0.5; maxZ = 0;
+        console.warn('FFDComponent: No valid bounding box found in children, using default range.');
+      }
+    } else if (boundingBox && boundingBox.area) {
+      // 使用当前组件的包围盒
+      if (boundingBox.area[0]?.p0 !== undefined) {
+        minX = Math.min(
+          boundingBox.area[0].p0.x,
+          boundingBox.area[0].p1.x,
+          boundingBox.area[0].p2.x
+        );
+        maxX = Math.max(
+          boundingBox.area[0].p0.x,
+          boundingBox.area[0].p1.x,
+          boundingBox.area[0].p2.x
+        );
+
+        minY = Math.min(
+          boundingBox.area[0].p0.y,
+          boundingBox.area[0].p1.y,
+          boundingBox.area[0].p2.y
+        );
+        maxY = Math.max(
+          boundingBox.area[0].p0.y,
+          boundingBox.area[0].p1.y,
+          boundingBox.area[0].p2.y
+        );
+
+        minZ = Math.min(
+          boundingBox.area[0].p0.z,
+          boundingBox.area[0].p1.z,
+          boundingBox.area[0].p2.z
+        );
+        maxZ = Math.max(
+          boundingBox.area[0].p0.z,
+          boundingBox.area[0].p1.z,
+          boundingBox.area[0].p2.z
+        );
+      }
+    } else {
+      console.warn('FFDComponent: Unable to get bounding box, using default range.');
+    }
+
+    // 更新包围盒边界的uniform
+    this.material.setVector3('u_BoundMin', new Vector3(minX, minY, minZ));
+    this.material.setVector3('u_BoundMax', new Vector3(maxX, maxY, maxZ));
+
+    // 基于包围盒范围均匀生成5x5控制点
+    for (let i = 0; i < 5; i++) {
+      for (let j = 0; j < 5; j++) {
+        const idx = (i * 5 + j) * 3;
+
+        // 将控制点均匀分布在包围盒范围内
+        const x = minX + (j / 4.0) * (maxX - minX);
+        const y = minY + (i / 4.0) * (maxY - minY);
+        const z = minZ; // 通常Z值保持不变
+
+        this.controlPoints[idx] = x;
+        this.controlPoints[idx + 1] = y;
+        this.controlPoints[idx + 2] = z;
+
+        // 更新uniform
+        this.material.setVector3(`u_ControlPoints[${i * 5 + j}]`, new Vector3(x, y, z));
+      }
     }
   }
 
@@ -301,10 +370,10 @@ void main() {
 
       this.controlPoints[idx] = point.x;
       this.controlPoints[idx + 1] = point.y;
-      this.controlPoints[idx + 2] = point.z || 0;
+      this.controlPoints[idx + 2] = point.z;
 
       // 直接更新 uniform
-      this.material.setVector3(`u_ControlPoints[${i}]`, new Vector3(point.x, point.y, point.z || 0));
+      this.material.setVector3(`u_ControlPoints[${i}]`, new Vector3(point.x, point.y, point.z));
     }
   }
 
