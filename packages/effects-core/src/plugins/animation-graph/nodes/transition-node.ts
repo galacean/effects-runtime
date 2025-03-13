@@ -16,30 +16,40 @@ export enum SourceType {
 export interface TransitionNodeAssetData extends GraphNodeAssetData {
   type: NodeAssetType.TransitionNodeAsset,
   duration: number,
+  hasExitTime: boolean,
+  exitTime: number,
   targetStateNodeIndex: number,
 }
 
 @nodeAssetClass(NodeAssetType.TransitionNodeAsset)
 export class TransitionNodeAsset extends GraphNodeAsset {
-  targetStateNodeIndex = InvalidIndex;
   duration = 0;
+  hasExitTime = false;
+  exitTime = 0.75;
+  targetStateNodeIndex = InvalidIndex;
 
   override instantiate (context: InstantiationContext): void {
     const node = this.createNode(TransitionNode, context);
 
     node.targetNode = context.getNode(this.targetStateNodeIndex);
+    node.hasExitTime = this.hasExitTime;
+    node.exitTime = this.exitTime;
   }
 
   override load (data: TransitionNodeAssetData): void {
     super.load(data);
 
     this.duration = data.duration;
+    this.hasExitTime = data.hasExitTime;
+    this.exitTime = data.exitTime;
     this.targetStateNodeIndex = data.targetStateNodeIndex;
   }
 }
 
 export class TransitionNode extends PoseNode {
   targetNode: StateNode;
+  hasExitTime = false;
+  exitTime = 0.75;
 
   private transitionLength = 0;
   private transitionProgress = 0;

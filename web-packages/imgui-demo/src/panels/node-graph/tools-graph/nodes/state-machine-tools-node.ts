@@ -490,6 +490,8 @@ export class StateMachineToolsNode extends FlowToolsNode {
     pDefinition.duration = Math.max(pTransitionNode.m_duration, 0.0);
     // pDefinition.m_syncEventOffset = pTransitionNode.m_syncEventOffset;
     // pDefinition.m_boneMaskBlendInTimePercentage = pTransitionNode.m_boneMaskBlendInTimePercentage.GetClamped(false);
+    pDefinition.hasExitTime = pTransitionNode.hasExitTime;
+    pDefinition.exitTime = pTransitionNode.exitTime;
 
     //-------------------------------------------------------------------------
 

@@ -106,8 +106,8 @@ export abstract class GraphNodeAsset {
 
 export interface PoseNodeDebugInfo {
   duration: number,
-  currentTime: number,    // Clamped percentage over the duration
-  previousTime: number,   // Clamped percentage over the duration
+  currentTime: number,
+  previousTime: number,
 }
 
 export abstract class PoseNode extends GraphNode {
@@ -115,14 +115,23 @@ export abstract class PoseNode extends GraphNode {
   protected previousTime: number = 0;
   protected currentTime: number = 0;
 
+  /**
+   * Get current clamped percentage over the duration
+   */
   getCurrentTime (): number {
     return this.currentTime;
   }
 
+  /**
+   * Get previous clamped percentage over the duration
+   */
   getPreviousTime (): number {
     return this.previousTime;
   }
 
+  /**
+   * Get node duration
+   */
   getDuration (): number {
     return this.duration;
   }

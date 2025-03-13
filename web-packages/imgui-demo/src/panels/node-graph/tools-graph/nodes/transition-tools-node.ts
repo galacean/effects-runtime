@@ -32,6 +32,9 @@ export class TransitionToolsNode extends ResultToolsNode {
   m_syncEventOffset: number = 0.0;
   m_boneMaskBlendInTimePercentage = 0.33;
 
+  hasExitTime = false;
+  exitTime = 0.75;
+
   constructor () {
     super();
     this.CreateInputPin('Condition', GraphValueType.Bool);

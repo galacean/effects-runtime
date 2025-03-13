@@ -138,9 +138,18 @@ export class StateMachineNode extends PoseNode {
         continue;
       }
 
-      // Check transition conditions
-      if (transition.conditionNode !== null &&
-        transition.conditionNode.getValue<boolean>(context)) {
+      let canEnterTransition = false;
+
+      // HasExitTime override transition condition
+      if (transition.transitionNode.hasExitTime) {
+        if (currentlyActiveStateInfo.stateNode.getCurrentTime() > transition.transitionNode.exitTime) {
+          canEnterTransition = true;
+        }
+      } else if (transition.conditionNode !== null && transition.conditionNode.getValue<boolean>(context)) {  // Check transition conditions
+        canEnterTransition = true;
+      }
+
+      if (canEnterTransition) {
         transitionIdx = i;
 
         break;
