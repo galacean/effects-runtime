@@ -109,7 +109,7 @@ export class RichTextComponent extends TextComponent {
     this.generateTextProgram(this.text);
     let width = 0, height = 0;
     const { textLayout, textStyle } = this;
-    const { overflow } = textLayout;
+    const { overflow, letterSpace } = textLayout;
     const context = this.context;
 
     context.save();
@@ -152,7 +152,7 @@ export class RichTextComponent extends TextComponent {
       }
       charInfo.offsetX.push(charInfo.width);
 
-      charInfo.width += textWidth * fontSize * this.SCALE_FACTOR * this.textStyle.fontScale;
+      charInfo.width += (textWidth <= 0 ? 0 : textWidth) * fontSize * this.SCALE_FACTOR * this.textStyle.fontScale + text.length * letterSpace;
       charInfo.richOptions.push(options);
     });
     charsInfo.push(charInfo);
@@ -199,20 +199,18 @@ export class RichTextComponent extends TextComponent {
 
     charsInfo.forEach((charInfo, index) => {
       const { richOptions, offsetX, width } = charInfo;
-
       let charWidth = width;
       let offset = offsetX;
 
       if (overflow === spec.TextOverflow.display) {
         if (width > canvasWidth) {
-          const scale = canvasWidth / width;
+          const canvasScale = canvasWidth / width;
 
-          charWidth *= scale;
-          offset = offsetX.map(x => x * scale);
+          charWidth *= canvasScale;
+          offset = offsetX.map(x => x * canvasScale);
         }
 
       }
-
       const x = this.textLayout.getOffsetX(textStyle, charWidth);
 
       if (index > 0) {
@@ -232,8 +230,19 @@ export class RichTextComponent extends TextComponent {
         context.font = `${fontStyle} ${fontWeight} ${textSize * fontScale}px ${fontFamily}`;
 
         context.fillStyle = `rgba(${fontColor[0]}, ${fontColor[1]}, ${fontColor[2]}, ${fontColor[3]})`;
+        let strOffsetX = offset[index] + x;
 
-        context.fillText(text, offset[index] + x, charsLineHeight);
+        if (text === ' ') {
+          context.fillText(text, offset[index] + x, charsLineHeight);
+        } else {
+          for (let i = 0; i < text.length; i++) {
+            const str = text[i];
+            const x = context.measureText(str).width;
+
+            context.fillText(str, strOffsetX, charsLineHeight);
+            strOffsetX += (x + ((i === text.length - 1 || text === ' ') ? 0 : letterSpace * textSize / fontSize));
+          }
+        }
       });
     });
     //与 toDataURL() 两种方式都需要像素读取操作
