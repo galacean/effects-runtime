@@ -21,6 +21,7 @@ export class FFDComponent extends Component {
   private data: spec.FFDComponentData;
   private animated = false;
 
+  private relatedMeshComponents: MeshComponent[] = []; // 存储相关的MeshComponent
   private controlPoints = new Float32Array(25 * 3); // 控制点数组
   private boundMin = new Vector3(-0.5, -0.5, 0.0);
   private boundMax = new Vector3(0.5, 0.5, 0.0);
@@ -33,6 +34,9 @@ export class FFDComponent extends Component {
   }
 
   override onStart (): void {
+    // 收集相关的MeshComponent
+    this.collectRelatedMeshComponents();
+
     // 在组件启动时，基于相关组件的包围盒更新控制点
     this.initControlPointsFromBoundingBox();
   }
@@ -42,6 +46,14 @@ export class FFDComponent extends Component {
       this.updateControlPoints();
       this.animated = false;
     }
+  }
+
+  override fromData (data: spec.FFDComponentData): void {
+    super.fromData(data);
+    this.data = data;
+
+    // 标记需要更新
+    this.animated = true;
   }
 
   /**
@@ -58,6 +70,34 @@ export class FFDComponent extends Component {
         this.controlPoints[idx] = x;
         this.controlPoints[idx + 1] = y;
         this.controlPoints[idx + 2] = z;
+      }
+    }
+
+  }
+
+  /**
+   * 收集所有相关的MeshComponent（自己和子元素的）
+   */
+  private collectRelatedMeshComponents () {
+    this.relatedMeshComponents = [];
+
+    // 收集同级MeshComponent
+    if (this.item) {
+      const siblingMeshComponents = this.item.getComponents(MeshComponent);
+
+      if (siblingMeshComponents && siblingMeshComponents.length > 0) {
+        this.relatedMeshComponents.push(...siblingMeshComponents);
+      }
+
+      // 收集子元素的MeshComponent
+      if (this.item.children && this.item.children.length > 0) {
+        for (const child of this.item.children) {
+          const childComponent = child.getComponent(MeshComponent);
+
+          if (childComponent) {
+            this.relatedMeshComponents.push(childComponent);
+          }
+        }
       }
     }
   }
@@ -201,17 +241,10 @@ export class FFDComponent extends Component {
       this.controlPoints[idx] = point.x;
       this.controlPoints[idx + 1] = point.y;
       this.controlPoints[idx + 2] = point.z;
-
-      // TODO 更新 uniform
-      // this.material.setVector3(`u_ControlPoints[${i}]`, new Vector3(point.x, point.y, point.z));
     }
+
+    // TODO 更新 uniform
+    // this.material.setVector3(`u_ControlPoints[${i}]`, new Vector3(point.x, point.y, point.z));
   }
 
-  override fromData (data: spec.FFDComponentData): void {
-    super.fromData(data);
-    this.data = data;
-
-    // 标记需要更新
-    this.animated = true;
-  }
 }
