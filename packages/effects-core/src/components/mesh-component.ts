@@ -13,7 +13,7 @@ export class MeshComponent extends RendererComponent {
    * 渲染的 Geometry
    */
   @serialize()
-  protected geometry: Geometry;
+  public geometry: Geometry;
   /**
    * 用于点击测试的碰撞器
    */
