@@ -36,7 +36,7 @@ declare module '@galacean/effects-specification' {
 export class FFDComponent extends MeshComponent {
   private data: spec.FFDComponentData;
   private controlPoints: Float32Array; // 控制点数组
-  private animated = true;
+  private animated = false;
 
   // FFD 顶点着色器
   private vert = `
