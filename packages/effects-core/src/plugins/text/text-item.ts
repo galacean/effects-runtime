@@ -7,7 +7,7 @@ import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
 import { glContext } from '../../gl';
-import type { IMaskProps, Maskable, Material } from '../../material';
+import type { IMaskProps, Material } from '../../material';
 import { MaskMode } from '../../material';
 import { Texture } from '../../texture';
 import { applyMixins, isValidFontFamily } from '../../utils';
@@ -56,7 +56,7 @@ let seed = 0;
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.TextComponent)
-export class TextComponent extends BaseRenderComponent implements Maskable {
+export class TextComponent extends BaseRenderComponent {
   isDirty = true;
   /**
    * 文本行数
@@ -109,7 +109,7 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
       renderer = {} as TextItemProps['renderer'];
     }
 
-    const maskMode = this.getMaskMode(data);
+    const maskMode = this.maskManager.getMaskMode(data);
 
     this.interaction = interaction;
 
@@ -120,7 +120,7 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: this.maskRef,
+      mask: this.maskManager.getRefValue(),
       maskMode,
       order: listIndex,
     };
@@ -150,14 +150,6 @@ export class TextComponent extends BaseRenderComponent implements Maskable {
 
   updateTexture (flipY = true) {
     // OVERRIDE by mixins
-  }
-
-  override getRefValue (): number {
-    if (!this.maskRef) {
-      this.maskRef = this.engine.maskRefManager.distributeRef();
-    }
-
-    return this.maskRef;
   }
 }
 

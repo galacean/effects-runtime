@@ -2,6 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
+import type { MaskManager } from './mask-ref-manager';
 
 export type UniformSemantic =
   | 'VIEW'
@@ -83,32 +84,18 @@ export enum ShaderType {
   fragment = 1
 }
 
-export interface IObscuredProps {
+export interface IMaskProps {
   mask?: {
+    mask?: boolean,
     mode?: spec.ObscuredMode,
     ref?: Maskable,
   },
 }
-
-export interface IMaskProps {
-  mask?: {
-    mask?: boolean,
-  } & IObscuredProps['mask'],
-}
-
 /**
- * 允许被遮挡/被反向遮挡
+ *
  */
-export interface Obscured {
-  maskRef: number,
-  getMaskMode(data: IObscuredProps): MaskMode,
-}
-/**
- * 允许做蒙版
- */
-export interface Maskable extends Obscured {
-  getMaskMode(data: IMaskProps): MaskMode,
-  getRefValue (): number,
+export interface Maskable {
+  maskManager: MaskManager,
 }
 
 export enum MaskMode {

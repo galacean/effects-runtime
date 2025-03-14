@@ -5,10 +5,10 @@ import * as spec from '@galacean/effects-specification';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type {
-  IMaskProps,
   Maskable,
   MaterialProps,
 } from '../material';
+import { MaskManager } from '../material';
 import {
   getPreMultiAlpha,
   MaskMode,
@@ -63,11 +63,11 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   geoData: { atlasOffset: number[] | spec.TypedArray, index: number[] | spec.TypedArray };
   anchor?: spec.vec2;
   renderer: ItemRenderer;
-  maskRef: number;
   emptyTexture: Texture;
   color: spec.vec4 = [1, 1, 1, 1];
   worldMatrix: Matrix4;
   geometry: Geometry;
+  maskManager: MaskManager;
 
   protected renderInfo: ItemRenderInfo;
   // readonly mesh: Mesh;
@@ -104,6 +104,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     this.material = material;
     this.material.setVector4('_Color', new Vector4().setFromArray([1, 1, 1, 1]));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
+    this.maskManager = new MaskManager(engine);
   }
 
   /**
@@ -410,32 +411,6 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
       }
     }
   };
-
-  getRefValue (): number {
-    if (!this.maskRef) {
-      this.maskRef = this.engine.maskRefManager.distributeRef();
-    }
-
-    return this.maskRef;
-  }
-
-  getMaskMode (data: IMaskProps) {
-    let maskMode = MaskMode.NONE;
-
-    if (data.mask) {
-      const { mask = false, mode = MaskMode.NONE, ref } = data.mask;
-
-      if (mask) {
-        maskMode = MaskMode.MASK;
-        this.getRefValue();
-      } else if (mode === spec.ObscuredMode.OBSCURED || mode === spec.ObscuredMode.REVERSE_OBSCURED) {
-        maskMode = mode === spec.ObscuredMode.OBSCURED ? MaskMode.OBSCURED : MaskMode.REVERSE_OBSCURED;
-        this.maskRef = ref!.getRefValue();
-      }
-    }
-
-    return maskMode;
-  }
 }
 
 export function getImageItemRenderInfo (item: BaseRenderComponent): ItemRenderInfo {

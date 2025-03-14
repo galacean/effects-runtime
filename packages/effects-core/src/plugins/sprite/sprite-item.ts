@@ -292,7 +292,7 @@ export class SpriteComponent extends BaseRenderComponent {
       renderer = {} as SpriteItemProps['renderer'];
     }
 
-    const maskMode = this.getMaskMode(data);
+    const maskMode = this.maskManager.getMaskMode(data);
 
     this.interaction = interaction;
     this.renderer = {
@@ -303,7 +303,7 @@ export class SpriteComponent extends BaseRenderComponent {
       transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
       shape: renderer.shape,
-      mask: this.maskRef,
+      mask: this.maskManager.getRefValue(),
       maskMode,
       order: listIndex,
     };

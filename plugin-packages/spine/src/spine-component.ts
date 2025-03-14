@@ -4,11 +4,11 @@ import type {
   BinaryAsset,
   BoundingBoxTriangle,
   Engine,
-  HitTestTriangleParams,
-  IObscuredProps,
-  Obscured,
+  HitTestTriangleParams, IMaskProps, Maskable,
   Renderer,
-  Texture,
+  Texture } from '@galacean/effects';
+import {
+  MaskManager,
 } from '@galacean/effects';
 import {
   effectsClass,
@@ -73,7 +73,7 @@ export interface SpineDataCache extends SpineBaseData {
  * @since 2.0.0
  */
 @effectsClass(spec.DataType.SpineComponent)
-export class SpineComponent extends RendererComponent implements Obscured {
+export class SpineComponent extends RendererComponent implements Maskable {
   startSize: number;
   /**
    * 根据相机计算的缩放比例
@@ -100,7 +100,7 @@ export class SpineComponent extends RendererComponent implements Obscured {
   /**
    * renderer 和 mask 数据
    */
-  rendererOptions: spec.SpineComponent['renderer'] & {
+  rendererOptions: Pick<spec.SpineComponent, 'renderer'> & {
     maskMode: MaskMode,
     mask: number,
   };
@@ -125,10 +125,11 @@ export class SpineComponent extends RendererComponent implements Obscured {
   resource: SpineResource;
   @serialize()
   cache: SpineDataCache;
-  maskRef: number;
+  maskManager: MaskManager;
 
   constructor (engine: Engine) {
     super(engine);
+    this.maskManager = new MaskManager(engine);
   }
 
   override fromData (data: spec.SpineComponent) {
@@ -141,8 +142,8 @@ export class SpineComponent extends RendererComponent implements Obscured {
       maskMode: MaskMode.NONE,
     };
     this.item.getHitTestParams = this.getHitTestParams.bind(this);
-    this.rendererOptions.maskMode = this.getMaskMode(data as IObscuredProps);
-    this.rendererOptions.mask = this.maskRef;
+    this.rendererOptions.maskMode = this.maskManager.getMaskMode(data as IMaskProps);
+    this.rendererOptions.mask = this.maskManager.getRefValue();
     // 兼容编辑器逻辑
     if (!this.resource || !Object.keys(this.resource).length) {
       return;
@@ -575,19 +576,6 @@ export class SpineComponent extends RendererComponent implements Obscured {
       width: this.size.x,
       height: this.size.y,
     };
-  }
-
-  getMaskMode (data: IObscuredProps): MaskMode {
-    let maskMode = MaskMode.NONE;
-
-    if (data.mask) {
-      const { mode = MaskMode.NONE, ref } = data.mask;
-
-      maskMode = mode === spec.ObscuredMode.OBSCURED ? MaskMode.OBSCURED : MaskMode.REVERSE_OBSCURED;
-      this.maskRef = ref!.getRefValue();
-    }
-
-    return maskMode;
   }
 
 }

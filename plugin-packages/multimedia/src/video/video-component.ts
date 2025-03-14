@@ -6,7 +6,7 @@ import type {
   GeometryFromShape,
   ItemRenderInfo,
   MaterialProps,
-  ShaderMacros, Obscured, IObscuredProps,
+  ShaderMacros, IMaskProps,
 } from '@galacean/effects';
 import {
   spec,
@@ -28,7 +28,7 @@ export interface VideoItemProps extends Omit<spec.VideoComponentData, 'renderer'
     shape?: GeometryFromShape,
     texture: Texture,
   } & Omit<spec.RendererOptions, 'texture'>,
-  mask?: IObscuredProps['mask'],
+  mask?: IMaskProps['mask'],
 }
 
 let seed = 0;
@@ -37,7 +37,7 @@ let seed = 0;
  *
  */
 @effectsClass(spec.DataType.VideoComponent)
-export class VideoComponent extends BaseRenderComponent implements Obscured {
+export class VideoComponent extends BaseRenderComponent {
   video?: HTMLVideoElement;
 
   private threshold = 0.03;
@@ -161,7 +161,7 @@ export class VideoComponent extends BaseRenderComponent implements Obscured {
       }
     }
 
-    const maskMode = this.getMaskMode(data);
+    const maskMode = this.maskManager.getMaskMode(data);
 
     this.renderer = {
       renderMode: renderer.renderMode ?? spec.RenderMode.BILLBOARD,
@@ -170,7 +170,7 @@ export class VideoComponent extends BaseRenderComponent implements Obscured {
       occlusion: !!renderer.occlusion,
       transparentOcclusion: !!renderer.transparentOcclusion || (maskMode === MaskMode.MASK),
       side: renderer.side ?? spec.SideMode.DOUBLE,
-      mask: this.maskRef,
+      mask: this.maskManager.getRefValue(),
       maskMode,
       order: listIndex,
       shape: renderer.shape,
