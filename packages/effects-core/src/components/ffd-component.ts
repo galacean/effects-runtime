@@ -73,6 +73,8 @@ export class FFDComponent extends Component {
       }
     }
 
+    // 初始化后更新相关材质的uniform
+    this.updateMaterialUniforms();
   }
 
   /**
@@ -187,11 +189,11 @@ export class FFDComponent extends Component {
         this.controlPoints[idx] = x;
         this.controlPoints[idx + 1] = y;
         this.controlPoints[idx + 2] = z;
-
-        // TODO 更新uniform
-        // this.material.setVector3(`u_ControlPoints[${i * 5 + j}]`, new Vector3(x, y, z));
       }
     }
+
+    // 更新所有相关材质的uniform
+    this.updateMaterialUniforms();
   }
 
   /**
@@ -212,8 +214,35 @@ export class FFDComponent extends Component {
       this.controlPoints[idx + 2] = point.z;
     }
 
-    // TODO 更新 uniform
-    // this.material.setVector3(`u_ControlPoints[${i}]`, new Vector3(point.x, point.y, point.z));
+    // 更新所有相关材质的uniform
+    this.updateMaterialUniforms();
   }
 
+  /**
+   * 更新所有相关材质的uniform
+   */
+  private updateMaterialUniforms (): void {
+    // 使用已收集的MeshComponent，无需每次都重新收集
+    for (const meshComp of this.relatedMeshComponents) {
+      const material = meshComp.material;
+
+      if (material) {
+        // 设置包围盒信息
+        material.setVector3('u_BoundMin', this.boundMin);
+        material.setVector3('u_BoundMax', this.boundMax);
+
+        // 设置控制点信息
+        for (let i = 0; i < 5; i++) {
+          for (let j = 0; j < 5; j++) {
+            const idx = (i * 5 + j) * 3;
+            const x = this.controlPoints[idx];
+            const y = this.controlPoints[idx + 1];
+            const z = this.controlPoints[idx + 2];
+
+            material.setVector3(`u_ControlPoints[${i * 5 + j}]`, new Vector3(x, y, z));
+          }
+        }
+      }
+    }
+  }
 }
