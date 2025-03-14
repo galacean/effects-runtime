@@ -492,7 +492,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
   }
 
   /**
-   * 跳转合成到指定时间播放
+   * 跳转合成到指定时间播放hy
    * @param time - 相对 startTime 的时间
    */
   gotoAndPlay (time: number) {

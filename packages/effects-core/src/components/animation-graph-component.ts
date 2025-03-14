@@ -17,28 +17,28 @@ export class AnimationGraphComponent extends Component {
 
     let animatedTransforms: Transform[];
 
-    animatedTransforms = this.graph.skeleton.positionTransformBindings;
+    animatedTransforms = this.graph.referencePose.positionTransformBindings;
     for (let i = 0;i < animatedTransforms.length;i++) {
       const position = result.pose.parentSpaceReferencePosition[i];
 
       animatedTransforms[i].setPosition(position.x, position.y, position.z);
     }
 
-    animatedTransforms = this.graph.skeleton.rotationTransformBindings;
+    animatedTransforms = this.graph.referencePose.rotationTransformBindings;
     for (let i = 0;i < animatedTransforms.length;i++) {
       const rotation = result.pose.parentSpaceReferenceRotation[i];
 
       animatedTransforms[i].setQuaternion(rotation.x, rotation.y, rotation.z, rotation.w);
     }
 
-    animatedTransforms = this.graph.skeleton.scaleTransformBindings;
+    animatedTransforms = this.graph.referencePose.scaleTransformBindings;
     for (let i = 0;i < animatedTransforms.length;i++) {
       const scale = result.pose.parentSpaceReferenceScale[i];
 
       animatedTransforms[i].setScale(scale.x, scale.y, scale.z);
     }
 
-    animatedTransforms = this.graph.skeleton.eulerTransformBindings;
+    animatedTransforms = this.graph.referencePose.eulerTransformBindings;
     for (let i = 0;i < animatedTransforms.length;i++) {
       const euler = result.pose.parentSpaceReferenceEuler[i];
 

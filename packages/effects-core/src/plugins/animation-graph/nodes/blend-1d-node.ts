@@ -47,8 +47,8 @@ export class Blend1DNode extends PoseNode {
 
   protected override initializeInternal (context: GraphContext): void {
     super.initializeInternal(context);
-    this.source0Result = new PoseResult(context.skeleton);
-    this.source1Result = new PoseResult(context.skeleton);
+    this.source0Result = new PoseResult(context.referencePose);
+    this.source1Result = new PoseResult(context.referencePose);
 
     this.source0?.initialize(context);
     this.source1?.initialize(context);

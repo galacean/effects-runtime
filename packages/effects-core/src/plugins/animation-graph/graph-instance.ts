@@ -2,8 +2,8 @@ import type * as spec from '@galacean/effects-specification';
 import { GraphContext, InstantiationContext } from './graph-context';
 import { GraphDataSet } from './graph-data-set';
 import { PoseResult } from './pose-result';
-import type { SkeletonRecordProperties } from './skeleton';
-import { Skeleton } from './skeleton';
+import type { AnimationRecordProperties } from './reference-pose';
+import { ReferencePose } from './reference-pose';
 import type { GraphNode, GraphNodeAsset, GraphNodeAssetData, PoseNode, PoseNodeDebugInfo, ValueNode } from './graph-node';
 import { InvalidIndex } from './graph-node';
 import type { VFXItem } from '../../vfx-item';
@@ -16,7 +16,7 @@ import type { ControlParameterBoolNode, ControlParameterFloatNode } from './node
 
 export class GraphInstance {
   nodes: GraphNode[] = [];
-  skeleton: Skeleton;
+  referencePose: ReferencePose;
 
   private rootNode: PoseNode;
   private graphAsset: AnimationGraphAsset;
@@ -26,8 +26,8 @@ export class GraphInstance {
   constructor (graphAsset: AnimationGraphAsset, rootBone: VFXItem) {
     this.graphAsset = graphAsset;
 
-    // initialize skeleton
-    const recordProperties: SkeletonRecordProperties = {
+    // initialize referencePose
+    const recordProperties: AnimationRecordProperties = {
       position: [],
       scale: [],
       rotation: [],
@@ -52,11 +52,11 @@ export class GraphInstance {
         recordProperties.euler.push(eulerCurve.path);
       }
     }
-    this.skeleton = new Skeleton(rootBone, recordProperties);
+    this.referencePose = new ReferencePose(rootBone, recordProperties);
 
     // create PoseResult
-    this.result = new PoseResult(this.skeleton);
-    this.context.skeleton = this.skeleton;
+    this.result = new PoseResult(this.referencePose);
+    this.context.referencePose = this.referencePose;
 
     // instantiate graph nodes
     const instantiationContext = new InstantiationContext();

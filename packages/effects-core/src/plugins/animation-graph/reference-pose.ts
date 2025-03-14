@@ -4,7 +4,7 @@ import type { VFXItem } from '../../vfx-item';
 import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import type { Transform } from '../../transform';
 
-export interface SkeletonRecordProperties {
+export interface AnimationRecordProperties {
   position: string[],
   scale: string[],
   rotation: string[],
@@ -18,7 +18,7 @@ export interface FloatRecordProperty {
   property: string,
 }
 
-export class Skeleton {
+export class ReferencePose {
   parentSpaceReferencePosition: Vector3[] = [];
   positionTransformBindings: Transform[] = [];
   pathToPositionIndex = new Map<string, number>();
@@ -40,7 +40,7 @@ export class Skeleton {
 
   rootBone: VFXItem;
 
-  constructor (rootBone: VFXItem, recordProperties: SkeletonRecordProperties) {
+  constructor (rootBone: VFXItem, recordProperties: AnimationRecordProperties) {
     this.rootBone = rootBone;
     for (const path of recordProperties.position) {
       this.addReferencePosition(path);
