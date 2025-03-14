@@ -8,7 +8,7 @@ import type {
   Renderer,
   Texture } from '@galacean/effects';
 import {
-  MaskManager,
+  MaskProcessor,
 } from '@galacean/effects';
 import {
   effectsClass,
@@ -125,11 +125,11 @@ export class SpineComponent extends RendererComponent implements Maskable {
   resource: SpineResource;
   @serialize()
   cache: SpineDataCache;
-  maskManager: MaskManager;
+  maskManager: MaskProcessor;
 
   constructor (engine: Engine) {
     super(engine);
-    this.maskManager = new MaskManager(engine);
+    this.maskManager = new MaskProcessor(engine);
   }
 
   override fromData (data: spec.SpineComponent) {

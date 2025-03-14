@@ -8,7 +8,7 @@ import type {
   Maskable,
   MaterialProps,
 } from '../material';
-import { MaskManager } from '../material';
+import { MaskProcessor } from '../material';
 import {
   getPreMultiAlpha,
   MaskMode,
@@ -67,7 +67,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
   color: spec.vec4 = [1, 1, 1, 1];
   worldMatrix: Matrix4;
   geometry: Geometry;
-  maskManager: MaskManager;
+  maskManager: MaskProcessor;
 
   protected renderInfo: ItemRenderInfo;
   // readonly mesh: Mesh;
@@ -104,7 +104,7 @@ export class BaseRenderComponent extends RendererComponent implements Maskable {
     this.material = material;
     this.material.setVector4('_Color', new Vector4().setFromArray([1, 1, 1, 1]));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
-    this.maskManager = new MaskManager(engine);
+    this.maskManager = new MaskProcessor(engine);
   }
 
   /**

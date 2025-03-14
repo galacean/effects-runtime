@@ -4,7 +4,7 @@ import { effectsClass } from '../decorators';
 import type { Engine } from '../engine';
 import { glContext } from '../gl';
 import type { IMaskProps, MaterialProps, Maskable } from '../material';
-import { MaskManager } from '../material';
+import { MaskProcessor } from '../material';
 import { Material, setMaskMode } from '../material';
 import { GraphicsPath } from '../plugins/shape/graphics-path';
 import type { ShapePath } from '../plugins/shape/shape-path';
@@ -179,7 +179,7 @@ void main() {
   gl_FragColor = color;
 }
 `;
-  maskManager: MaskManager;
+  maskManager: MaskProcessor;
 
   get shape () {
     this.shapeDirty = true;
@@ -275,7 +275,7 @@ void main() {
       shapes: [],
     } as CustomShapeAttribute;
 
-    this.maskManager = new MaskManager(engine);
+    this.maskManager = new MaskProcessor(engine);
 
   }
 

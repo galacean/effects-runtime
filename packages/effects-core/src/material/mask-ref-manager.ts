@@ -15,7 +15,7 @@ export class MaskRefManager {
   }
 }
 
-export class MaskManager {
+export class MaskProcessor {
   maskRef: number;
 
   constructor (public engine: Engine) {

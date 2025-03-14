@@ -2,7 +2,7 @@ import type * as spec from '@galacean/effects-specification';
 import type { Matrix3, Matrix4, Vector2, Vector3, Vector4 } from '@galacean/effects-math/es/core/index';
 import type { Texture } from '../texture';
 import type { DestroyOptions } from '../utils';
-import type { MaskManager } from './mask-ref-manager';
+import type { MaskProcessor } from './mask-ref-manager';
 
 export type UniformSemantic =
   | 'VIEW'
@@ -95,7 +95,7 @@ export interface IMaskProps {
  *
  */
 export interface Maskable {
-  maskManager: MaskManager,
+  maskManager: MaskProcessor,
 }
 
 export enum MaskMode {
