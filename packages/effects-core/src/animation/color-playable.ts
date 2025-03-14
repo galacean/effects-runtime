@@ -34,7 +34,7 @@ export class ColorPlayable extends Playable {
     }
     if (!this.activeMaterial) {
       this.activeMaterial = this.activeComponent?.material;
-      const startColor = this.activeMaterial?.getVector4('_Color');
+      const startColor = this.activeMaterial?.getColor('_Color');
 
       if (startColor) {
         this.startColor = startColor.toArray();
@@ -60,7 +60,7 @@ export class ColorPlayable extends Playable {
 
     if (colorChanged) {
       vecMulCombine<spec.vec4>(this.renderColor, colorInc, this.startColor);
-      this.activeMaterial?.getVector4('_Color')?.setFromArray(this.renderColor);
+      this.activeMaterial?.getColor('_Color')?.setFromArray(this.renderColor);
     }
   }
 

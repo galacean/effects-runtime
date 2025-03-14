@@ -15,6 +15,7 @@ import type { MaterialProps } from '../material';
 import { getPreMultiAlpha, Material, setBlendMode, setMaskMode, setSideMode } from '../material';
 import { trianglesFromRect } from '../math';
 import type { GeometryFromShape } from '../shape';
+import { Color } from '@galacean/effects-math/es/core/color';
 
 /**
  * 图层元素渲染属性, 经过处理后的 spec.SpriteContent.renderer
@@ -90,7 +91,7 @@ export class BaseRenderComponent extends RendererComponent {
 
     this.worldMatrix = Matrix4.fromIdentity();
     this.material = material;
-    this.material.setVector4('_Color', new Vector4().setFromArray([1, 1, 1, 1]));
+    this.material.setColor('_Color', new Color().setFromArray([1, 1, 1, 1]));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
   }
 
@@ -116,7 +117,7 @@ export class BaseRenderComponent extends RendererComponent {
    */
   setColor (color: spec.vec4) {
     this.color = color;
-    this.material.setVector4('_Color', new Vector4().setFromArray(color));
+    this.material.setColor('_Color', new Color().setFromArray(color));
   }
 
   /**
@@ -333,7 +334,7 @@ export class BaseRenderComponent extends RendererComponent {
 
     material.shader.shaderData.properties = '_MainTex("_MainTex",2D) = "white" {}';
     if (!material.hasUniform('_Color')) {
-      material.setVector4('_Color', new Vector4(0, 0, 0, 1));
+      material.setColor('_Color', new Color(0, 0, 0, 1));
     }
     if (!material.hasUniform('_TexOffset')) {
       material.setVector4('_TexOffset', new Vector4());
