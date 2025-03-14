@@ -12,7 +12,7 @@ import type { Material } from '../../material';
 import type { VFXItem } from '../../vfx-item';
 import type { ItemRenderer } from '../../components';
 import { BaseRenderComponent, getImageItemRenderInfo } from '../../components';
-import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 
 /**
  * 用于创建 textItem 的数据类型, 经过处理后的 spec.TextContentOptions
@@ -139,7 +139,7 @@ export class TextComponent extends BaseRenderComponent {
 
     this.setItem();
     // 恢复默认颜色
-    this.material.setVector4('_Color', new Vector4(1, 1, 1, 1));
+    this.material.setColor('_Color', new Color(1, 1, 1, 1));
 
   }
 

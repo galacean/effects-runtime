@@ -1,4 +1,4 @@
-import { Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
+import { Color, Matrix4, Vector4 } from '@galacean/effects-math/es/core/index';
 import * as spec from '@galacean/effects-specification';
 import { effectsClass } from '../../decorators';
 import type { Engine } from '../../engine';
@@ -319,7 +319,7 @@ export class SpriteComponent extends BaseRenderComponent {
     this.geometry = geometry;
     const startColor = options.startColor || [1, 1, 1, 1];
 
-    this.material.setVector4('_Color', new Vector4().setFromArray(startColor));
+    this.material.setColor('_Color', new Color().setFromArray(startColor));
     this.material.setVector4('_TexOffset', new Vector4().setFromArray([0, 0, 1, 1]));
     this.setItem();
   }
