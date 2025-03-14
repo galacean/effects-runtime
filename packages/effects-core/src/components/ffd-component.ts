@@ -117,80 +117,49 @@ export class FFDComponent extends Component {
     let minX = Infinity, minY = Infinity, minZ = Infinity;
     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
-    // 从同级的MeshComponent组件获取包围盒
-    const siblingMeshComponents = this.item.getComponents(MeshComponent);
+    // 使用已收集的MeshComponent来获取包围盒
+    for (const meshComp of this.relatedMeshComponents) {
+      const box = meshComp.getBoundingBox();
 
-    if (siblingMeshComponents && siblingMeshComponents.length > 0) {
-      for (const meshComp of siblingMeshComponents) {
-        // 不需要比较组件类型，只需确认不是在比较相同的实例
-        const box = meshComp.getBoundingBox();
+      if (box && box.area && box.area[0]?.p0 !== undefined) {
+        minX = Math.min(
+          minX,
+          box.area[0].p0.x,
+          box.area[0].p1.x,
+          box.area[0].p2.x
+        );
+        maxX = Math.max(
+          maxX,
+          box.area[0].p0.x,
+          box.area[0].p1.x,
+          box.area[0].p2.x
+        );
 
-        if (box && box.area && box.area[0]?.p0 !== undefined) {
-          minX = Math.min(
-            minX,
-            box.area[0].p0.x,
-            box.area[0].p1.x,
-            box.area[0].p2.x
-          );
-          maxX = Math.max(
-            maxX,
-            box.area[0].p0.x,
-            box.area[0].p1.x,
-            box.area[0].p2.x
-          );
+        minY = Math.min(
+          minY,
+          box.area[0].p0.y,
+          box.area[0].p1.y,
+          box.area[0].p2.y
+        );
+        maxY = Math.max(
+          maxY,
+          box.area[0].p0.y,
+          box.area[0].p1.y,
+          box.area[0].p2.y
+        );
 
-          minY = Math.min(
-            minY,
-            box.area[0].p0.y,
-            box.area[0].p1.y,
-            box.area[0].p2.y
-          );
-          maxY = Math.max(
-            maxY,
-            box.area[0].p0.y,
-            box.area[0].p1.y,
-            box.area[0].p2.y
-          );
-
-          minZ = Math.min(
-            minZ,
-            box.area[0].p0.z,
-            box.area[0].p1.z,
-            box.area[0].p2.z
-          );
-          maxZ = Math.max(
-            maxZ,
-            box.area[0].p0.z,
-            box.area[0].p1.z,
-            box.area[0].p2.z
-          );
-        }
-      }
-    }
-
-    // 同时从子组件获取包围盒并合并
-    if (this.item.children && this.item.children.length > 0) {
-      // 遍历所有子组件，合并它们的包围盒
-      for (const child of this.item.children) {
-        const childComponent = child.getComponent(MeshComponent);
-
-        if (childComponent) {
-          const childBox = childComponent.getBoundingBox();
-
-          if (childBox && childBox.area) {
-            // 合并子组件的包围盒
-            if (childBox.area[0]?.p0 !== undefined) {
-              minX = Math.min(minX, childBox.area[0].p0.x, childBox.area[0].p1.x, childBox.area[0].p2.x);
-              maxX = Math.max(maxX, childBox.area[0].p0.x, childBox.area[0].p1.x, childBox.area[0].p2.x);
-
-              minY = Math.min(minY, childBox.area[0].p0.y, childBox.area[0].p1.y, childBox.area[0].p2.y);
-              maxY = Math.max(maxY, childBox.area[0].p0.y, childBox.area[0].p1.y, childBox.area[0].p2.y);
-
-              minZ = Math.min(minZ, childBox.area[0].p0.z, childBox.area[0].p1.z, childBox.area[0].p2.z);
-              maxZ = Math.max(maxZ, childBox.area[0].p0.z, childBox.area[0].p1.z, childBox.area[0].p2.z);
-            }
-          }
-        }
+        minZ = Math.min(
+          minZ,
+          box.area[0].p0.z,
+          box.area[0].p1.z,
+          box.area[0].p2.z
+        );
+        maxZ = Math.max(
+          maxZ,
+          box.area[0].p0.z,
+          box.area[0].p1.z,
+          box.area[0].p2.z
+        );
       }
     }
 
