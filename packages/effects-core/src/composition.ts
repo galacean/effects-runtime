@@ -676,9 +676,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         const parent = itemMap.get(item.parentId);
 
         if (parent) {
-          item.parent = parent;
-          item.transform.parentTransform = parent.transform;
-          parent.children.push(item);
+          item.setParent(parent);
         } else {
           throw new Error('The element references a non-existent element, please check the data.');
         }

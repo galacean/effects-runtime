@@ -138,6 +138,7 @@ export class CompositionSourceManager implements Disposable {
           }
           const ref = this.getContent(composition);
 
+          this.engine.addEffectsObjectData(ref as unknown as spec.EffectsObjectData);
           if (!this.refCompositionProps.has(refId)) {
             this.refCompositionProps.set(refId, ref);
           }

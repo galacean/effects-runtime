@@ -20,7 +20,9 @@ import { ParticleSystem } from './plugins';
 import type { TransformProps } from './transform';
 import { Transform } from './transform';
 import type { Constructor, Disposable } from './utils';
-import { removeItem } from './utils';
+import { generateGUID, removeItem } from './utils';
+import { CompositionComponent } from './comp-vfx-item';
+import { SerializationHelper } from './serialization-helper';
 
 export type VFXItemContent = ParticleSystem | SpriteComponent | CameraController | InteractComponent | undefined | {};
 export type VFXItemConstructor = new (engine: Engine, props: spec.Item, composition: Composition) => VFXItem;
@@ -684,6 +686,10 @@ export class VFXItem extends EffectsObject implements Disposable {
         this.rendererComponents.push(component.renderer);
       }
     }
+
+    if (VFXItem.isComposition(this)) {
+      this.instantiatePreComposition();
+    }
   }
 
   override toData (): void {
@@ -757,6 +763,26 @@ export class VFXItem extends EffectsObject implements Disposable {
     //   removeItem(this.parent?.children, this);
     // }
     // }
+  }
+
+  private instantiatePreComposition () {
+    const compositionContent = this.props.content as unknown as spec.CompositionContent;
+    const refId = compositionContent.options.refId;
+    const props = this.engine.findEffectsObjectData(refId);
+
+    if (!props) {
+      throw new Error(`Referenced precomposition with Id: ${refId} does not exist.`);
+    }
+    const compositionComponent = this.addComponent(CompositionComponent);
+
+    SerializationHelper.deserialize(props as unknown as spec.EffectsObjectData, compositionComponent);
+    compositionComponent.createContent();
+    for (const vfxItem of compositionComponent.items) {
+      vfxItem.setInstanceId(generateGUID());
+      for (const component of vfxItem.components) {
+        component.setInstanceId(generateGUID());
+      }
+    }
   }
 }
 

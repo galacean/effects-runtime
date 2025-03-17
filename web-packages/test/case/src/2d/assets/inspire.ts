@@ -1,4 +1,8 @@
 export default {
+  preComp: {
+    url: 'https://gw.alipayobjects.com/os/gltf-asset/97436498253707/pre.json',
+    name: '预合成',
+  },
   spring: {
     url: 'https://mdn.alipayobjects.com/mars/afts/file/A*oF1NRJG7GU4AAAAAAAAAAAAADlB4AQ',
     name: '春促-主页互动',
