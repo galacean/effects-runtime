@@ -343,7 +343,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.createRenderFrame();
     this.rendererOptions = null;
     SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
-    this.rootComposition.createContent();
 
     this.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);

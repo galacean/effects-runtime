@@ -45,10 +45,6 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   transform: Transform = new Transform();
   /**
-   * 合成属性
-   */
-  composition: Composition | null;
-  /**
    * 元素动画的当前时间
    */
   time = 0;
@@ -104,6 +100,10 @@ export class VFXItem extends EffectsObject implements Disposable {
   private listIndex = 0;
   private isEnabled = false;
   private eventProcessor: EventEmitter<ItemEvent> = new EventEmitter();
+  /**
+   * 合成属性
+   */
+  private _composition: Composition | null;
 
   /**
    *
@@ -204,6 +204,26 @@ export class VFXItem extends EffectsObject implements Disposable {
    */
   get content (): VFXItemContent {
     return this._content;
+  }
+
+  /**
+   * 获取元素的合成
+   */
+  get composition (): Composition | null {
+    return this._composition;
+  }
+
+  /**
+   * 设置元素的合成
+   */
+  set composition (value: Composition) {
+    this._composition = value;
+
+    for (const child of this.children) {
+      if (!child.composition) {
+        child.composition = value;
+      }
+    }
   }
 
   /**
@@ -366,7 +386,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       this.transform.parentTransform = vfxItem.transform;
     }
     vfxItem.children.push(this);
-    if (!this.composition) {
+    if (!this.composition && vfxItem.composition) {
       this.composition = vfxItem.composition;
     }
     if (!this.isDuringPlay && vfxItem.isDuringPlay) {
@@ -737,7 +757,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       }
       this.components = [];
       this._content = undefined;
-      this.composition = null;
+      this._composition = null;
       this.transform.setValid(false);
     }
   }
@@ -776,7 +796,6 @@ export class VFXItem extends EffectsObject implements Disposable {
     const compositionComponent = this.addComponent(CompositionComponent);
 
     SerializationHelper.deserialize(props as unknown as spec.EffectsObjectData, compositionComponent);
-    compositionComponent.createContent();
     for (const vfxItem of compositionComponent.items) {
       vfxItem.setInstanceId(generateGUID());
       for (const component of vfxItem.components) {

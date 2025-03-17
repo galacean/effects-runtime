@@ -96,14 +96,6 @@ export class CompositionComponent extends Behaviour {
     this.graph.evaluate(dt);
   }
 
-  createContent () {
-    if (this.item.composition) {
-      for (const item of this.items) {
-        item.composition = this.item.composition;
-      }
-    }
-  }
-
   override onEnable () {
     for (const item of this.items) {
       item.setActive(true);
