@@ -20,3 +20,24 @@ export function throwError (destroyedErrorMessage: string) {
 export function throwErrorPromise (destroyedErrorMessage: string) {
   return Promise.reject(destroyedErrorMessage);
 }
+
+export function handleThrowError<T> (target: T, propertyKey: string, descriptor: PropertyDescriptor) {
+  // 保存原始方法
+  const originalMethod = descriptor.value;
+
+  // 替换原始方法
+  descriptor.value = async function (...args: any[]) {
+    try {
+      // 调用原始方法
+      const result = await originalMethod.apply(this, args);
+
+      return result;
+    } catch (e: any) {
+      // @ts-expect-error
+      target.handleThrowError.call(this, e);
+    }
+  };
+
+  // 返回修改后的描述符
+  return descriptor;
+}
