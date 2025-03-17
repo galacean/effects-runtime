@@ -226,10 +226,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly refContent: VFXItem[] = [];
   /**
-   * 预合成的合成属性，在 content 中会被其元素属性覆盖
-   */
-  readonly refCompositionProps: Map<string, spec.CompositionData> = new Map();
-  /**
    * 合成的相机对象
    */
   readonly camera: Camera;
@@ -295,13 +291,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       scene.textures = undefined;
       scene.consumed = true;
     }
-    const { sourceContent, pluginSystem, imgUsage, totalTime, refCompositionProps } = this.compositionSourceManager;
+    const { sourceContent, pluginSystem, imgUsage, totalTime } = this.compositionSourceManager;
 
     this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
 
     assertExist(sourceContent);
     this.renderer = renderer;
-    this.refCompositionProps = refCompositionProps;
 
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.getEngine());
@@ -982,7 +977,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       textures.forEach(tex => tex.dispose = textureDisposes[tex.id]);
     }
     this.compositionSourceManager.dispose();
-    this.refCompositionProps.clear();
 
     if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;

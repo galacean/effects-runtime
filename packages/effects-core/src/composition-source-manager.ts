@@ -29,9 +29,7 @@ export interface ContentOptions {
  * 合成资源管理
  */
 export class CompositionSourceManager implements Disposable {
-  composition?: spec.CompositionData;
   sourceContent?: spec.CompositionData;
-  refCompositionProps: Map<string, spec.CompositionData> = new Map();
   renderLevel?: SceneRenderLevel;
   pluginSystem?: PluginSystem;
   totalTime: number;
@@ -40,8 +38,6 @@ export class CompositionSourceManager implements Disposable {
   jsonScene?: spec.JSONScene;
   mask = 0;
   engine: Engine;
-
-  private refCompositions: Map<string, spec.CompositionData> = new Map();
 
   constructor (
     scene: Scene,
@@ -57,23 +53,24 @@ export class CompositionSourceManager implements Disposable {
     }
     const cachedTextures = textureOptions as Texture[];
 
-    for (const comp of compositions) {
-      if (comp.id === compositionId) {
-        this.composition = comp;
-      } else {
-        this.refCompositions.set(comp.id, comp);
-      }
-    }
-
-    if (!this.composition) {
-      throw new Error(`Invalid composition id: ${compositionId}.`);
-    }
     this.jsonScene = jsonScene;
     this.renderLevel = renderLevel;
     this.pluginSystem = pluginSystem;
     this.totalTime = totalTime ?? 0;
     this.textures = cachedTextures;
-    this.sourceContent = this.getContent(this.composition);
+
+    for (const comp of compositions) {
+      const compositionData = this.getContent(comp);
+
+      this.engine.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
+      if (comp.id === compositionId) {
+        this.sourceContent = compositionData;
+      }
+    }
+
+    if (!this.sourceContent) {
+      throw new Error(`Invalid composition id: ${compositionId}.`);
+    }
   }
 
   private getContent (composition: spec.CompositionData): spec.CompositionData {
@@ -125,22 +122,6 @@ export class CompositionSourceManager implements Disposable {
             const componentData = componentMap[componentPath.id] as spec.SpriteComponentData | spec.ParticleSystemData;
 
             this.preProcessItemContent(componentData);
-          }
-        }
-
-        // 处理预合成的渲染顺序
-        if (itemProps.type === spec.ItemType.composition) {
-          const refId = (sourceItemData.content as spec.CompositionContent).options.refId;
-          const composition = this.refCompositions.get(refId);
-
-          if (!composition) {
-            throw new Error(`Invalid ref composition id: ${refId}.`);
-          }
-          const ref = this.getContent(composition);
-
-          this.engine.addEffectsObjectData(ref as unknown as spec.EffectsObjectData);
-          if (!this.refCompositionProps.has(refId)) {
-            this.refCompositionProps.set(refId, ref);
           }
         }
         items.push(itemDataPath);
@@ -234,12 +215,9 @@ export class CompositionSourceManager implements Disposable {
 
   dispose (): void {
     this.textures = [];
-    this.composition = undefined;
     this.jsonScene = undefined;
     this.totalTime = 0;
     this.pluginSystem = undefined;
     this.sourceContent = undefined;
-    this.refCompositions.clear();
-    this.refCompositionProps.clear();
   }
 }

@@ -1,6 +1,5 @@
 import type {
   Scene,
-  Composition,
   Attribute,
   GeometryProps,
   TextureSourceOptions,
@@ -10,7 +9,6 @@ import type {
   TextureCubeSourceOptionsImageMipmaps,
   Engine,
   math,
-  VFXItemData,
 } from '@galacean/effects';
 import {
   Player,
@@ -32,7 +30,7 @@ import {
   PLAYER_OPTIONS_ENV_EDITOR,
   GLSLVersion,
 } from '@galacean/effects';
-import { deserializeGeometry, typedArrayFromBinary } from '@galacean/effects-helper';
+import { deserializeGeometry } from '@galacean/effects-helper';
 import type { GLTFCamera, GLTFImage, GLTFLight, GLTFTexture } from '@vvfx/resource-detection';
 import type {
   ModelAnimationOptions,
@@ -55,7 +53,6 @@ import type { PImageBufferData } from '../runtime/skybox';
 import { PGlobalState } from '../runtime/common';
 import { RayTriangleTesting } from './hit-test-helper';
 import { PMorph } from '../runtime/animation';
-import type { CompositionCache } from '../runtime/cache';
 
 type Box3 = math.Box3;
 type VertexArray = Float32Array | Int32Array | Int16Array | Int8Array | Uint32Array | Uint16Array | Uint8Array;
@@ -907,103 +904,103 @@ export class PluginHelper {
     }
   }
 
-  /**
-   * 设置 3D 元素参数，在播放器创建 3D 元素前
-   * @param scene - 场景
-   * @param cache - 缓存
-   * @param composition - 合成
-   * @returns
-   */
-  static setupItem3DOptions (scene: Scene, cache: CompositionCache, composition: Composition) {
-    if (scene === undefined || scene.bins.length <= 0) {
-      return;
-    }
+  // /**
+  //  * 设置 3D 元素参数，在播放器创建 3D 元素前
+  //  * @param scene - 场景
+  //  * @param cache - 缓存
+  //  * @param composition - 合成
+  //  * @returns
+  //  */
+  // static setupItem3DOptions (scene: Scene, cache: CompositionCache, composition: Composition) {
+  //   if (scene === undefined || scene.bins.length <= 0) {
+  //     return;
+  //   }
 
-    const { jsonScene } = scene;
-    const compIndexSet: Set<number> = new Set();
+  //   const { jsonScene } = scene;
+  //   const compIndexSet: Set<number> = new Set();
 
-    if (jsonScene.compositionId === undefined) {
-      compIndexSet.add(0);
-    }
+  //   if (jsonScene.compositionId === undefined) {
+  //     compIndexSet.add(0);
+  //   }
 
-    jsonScene.compositions.forEach((comp, index) => {
-      if (comp.id === jsonScene.compositionId || composition.refCompositionProps.has(comp.id)) {
-        compIndexSet.add(index);
-      }
-    });
+  //   jsonScene.compositions.forEach((comp, index) => {
+  //     if (comp.id === jsonScene.compositionId || composition.refCompositionProps.has(comp.id)) {
+  //       compIndexSet.add(index);
+  //     }
+  //   });
 
-    compIndexSet.forEach(compIndex => {
-      const sceneComp = jsonScene.compositions[compIndex];
+  //   compIndexSet.forEach(compIndex => {
+  //     const sceneComp = jsonScene.compositions[compIndex];
 
-      sceneComp.items.forEach(data => {
-        const itemId = data.id;
-        const item = composition.getEngine().jsonSceneData[itemId] as VFXItemData;
+  //     sceneComp.items.forEach(data => {
+  //       const itemId = data.id;
+  //       const item = composition.getEngine().jsonSceneData[itemId] as VFXItemData;
 
-        if (item.type === spec.ItemType.mesh) {
-          const meshItem = item as spec.ModelMeshItem<'json'>;
-          const skin = meshItem.content.options.skin;
-          const primitives = meshItem.content.options.primitives;
+  //       if (item.type === spec.ItemType.mesh) {
+  //         const meshItem = item as spec.ModelMeshItem<'json'>;
+  //         const skin = meshItem.content.options.skin;
+  //         const primitives = meshItem.content.options.primitives;
 
-          primitives.forEach((prim, primId) => {
-            if (prim.geometry instanceof Geometry) {
-              // 可能已经创建，直接返回
-              return;
-            }
+  //         primitives.forEach((prim, primId) => {
+  //           if (prim.geometry instanceof Geometry) {
+  //             // 可能已经创建，直接返回
+  //             return;
+  //           }
 
-            const name = `Geom_C${compIndex}_I${itemId}_P${primId}`;
-            const riGeometry = cache.getOrCreateGeometry(name, prim.geometry, scene.bins);
-            const studioPrim = prim as spec.PrimitiveOptions<'studio'>;
+  //           const name = `Geom_C${compIndex}_I${itemId}_P${primId}`;
+  //           const riGeometry = cache.getOrCreateGeometry(name, prim.geometry, scene.bins);
+  //           const studioPrim = prim as spec.PrimitiveOptions<'studio'>;
 
-            studioPrim.geometry = riGeometry;
-            const material = prim.material;
+  //           studioPrim.geometry = riGeometry;
+  //           const material = prim.material;
 
-            if (material.type === spec.MaterialType.pbr) {
-              const studioMat = studioPrim.material as spec.MaterialPBROptions<'studio'>;
+  //           if (material.type === spec.MaterialType.pbr) {
+  //             const studioMat = studioPrim.material as spec.MaterialPBROptions<'studio'>;
 
-              studioMat.baseColorTexture = this.getTextureObj(composition.textures, material.baseColorTexture);
-              studioMat.metallicRoughnessTexture = this.getTextureObj(composition.textures, material.metallicRoughnessTexture);
-              studioMat.normalTexture = this.getTextureObj(composition.textures, material.normalTexture);
-              studioMat.occlusionTexture = this.getTextureObj(composition.textures, material.occlusionTexture);
-              studioMat.emissiveTexture = this.getTextureObj(composition.textures, material.emissiveTexture);
-            } else {
-              const studioMat = studioPrim.material as spec.MaterialUnlitOptions<'studio'>;
+  //             studioMat.baseColorTexture = this.getTextureObj(composition.textures, material.baseColorTexture);
+  //             studioMat.metallicRoughnessTexture = this.getTextureObj(composition.textures, material.metallicRoughnessTexture);
+  //             studioMat.normalTexture = this.getTextureObj(composition.textures, material.normalTexture);
+  //             studioMat.occlusionTexture = this.getTextureObj(composition.textures, material.occlusionTexture);
+  //             studioMat.emissiveTexture = this.getTextureObj(composition.textures, material.emissiveTexture);
+  //           } else {
+  //             const studioMat = studioPrim.material as spec.MaterialUnlitOptions<'studio'>;
 
-              studioMat.baseColorTexture = this.getTextureObj(composition.textures, material.baseColorTexture);
-            }
-          });
+  //             studioMat.baseColorTexture = this.getTextureObj(composition.textures, material.baseColorTexture);
+  //           }
+  //         });
 
-          if (skin !== undefined && skin.inverseBindMatrices !== undefined) {
-            const studioSkin = skin as any as spec.SkinOptions<'studio'>;
-            const inverseBindMatrices = typedArrayFromBinary(scene.bins, skin.inverseBindMatrices);
+  //         if (skin !== undefined && skin.inverseBindMatrices !== undefined) {
+  //           const studioSkin = skin as any as spec.SkinOptions<'studio'>;
+  //           const inverseBindMatrices = typedArrayFromBinary(scene.bins, skin.inverseBindMatrices);
 
-            if (inverseBindMatrices instanceof Float32Array) {
-              studioSkin.inverseBindMatrices = inverseBindMatrices;
-            } else {
-              console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}.`);
-            }
-          }
-        } else if (item.type === spec.ItemType.skybox) {
-          const skybox = item as spec.ModelSkyboxItem<'json'>;
-          const studioSkybox = item as spec.ModelSkyboxItem<'studio'>;
-          const options = skybox.content.options;
-          const studioOptions = studioSkybox.content.options;
-          const specularImage = this.getTextureObj(composition.textures, options.specularImage);
+  //           if (inverseBindMatrices instanceof Float32Array) {
+  //             studioSkin.inverseBindMatrices = inverseBindMatrices;
+  //           } else {
+  //             console.error(`setupItem3DOptions: Invalid inverseBindMatrices type, ${inverseBindMatrices}.`);
+  //           }
+  //         }
+  //       } else if (item.type === spec.ItemType.skybox) {
+  //         const skybox = item as spec.ModelSkyboxItem<'json'>;
+  //         const studioSkybox = item as spec.ModelSkyboxItem<'studio'>;
+  //         const options = skybox.content.options;
+  //         const studioOptions = studioSkybox.content.options;
+  //         const specularImage = this.getTextureObj(composition.textures, options.specularImage);
 
-          if (specularImage === undefined) {
-            console.error(`setupItem3DOptions: skybox specualrImage is undefined, ${CheckerHelper.stringify(options)}.`);
-          }
-          studioOptions.specularImage = specularImage;
-          //
-          const diffuseImage = this.getTextureObj(composition.textures, options.diffuseImage);
+  //         if (specularImage === undefined) {
+  //           console.error(`setupItem3DOptions: skybox specualrImage is undefined, ${CheckerHelper.stringify(options)}.`);
+  //         }
+  //         studioOptions.specularImage = specularImage;
+  //         //
+  //         const diffuseImage = this.getTextureObj(composition.textures, options.diffuseImage);
 
-          if (diffuseImage !== undefined) {
-            studioOptions.diffuseImage = diffuseImage;
-          }
-        }
-      });
-    });
+  //         if (diffuseImage !== undefined) {
+  //           studioOptions.diffuseImage = diffuseImage;
+  //         }
+  //       }
+  //     });
+  //   });
 
-  }
+  // }
 
   /**
    * 创建几何体，根据几何参数描述 JSON 和数据数组
