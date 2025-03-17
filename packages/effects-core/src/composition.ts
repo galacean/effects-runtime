@@ -312,6 +312,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     // Create rootCompositionComponent
     this.rootComposition = this.rootItem.addComponent(CompositionComponent);
+    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
 
     this.width = width;
     this.height = height;
@@ -342,7 +343,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
     this.rendererOptions = null;
-    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
 
     this.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
