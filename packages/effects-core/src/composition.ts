@@ -291,7 +291,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       scene.textures = undefined;
       scene.consumed = true;
     }
-    const { sourceContent, pluginSystem, imgUsage, totalTime } = this.compositionSourceManager;
+    const { sourceContent, imgUsage } = this.compositionSourceManager;
 
     this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
 
@@ -318,7 +318,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.event = event;
     this.statistic = {
       loadStart: scene.startTime ?? 0,
-      loadTime: totalTime ?? 0,
+      loadTime: scene.totalTime ?? 0,
       compileTime: 0,
       firstFrameTime: 0,
     };
@@ -326,7 +326,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.speed = speed;
     this.autoRefTex = !this.keepResource && this.texInfo && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
-    this.pluginSystem = pluginSystem as PluginSystem;
+    this.pluginSystem = scene.pluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,

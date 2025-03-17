@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import type { SceneBindingData } from './comp-vfx-item';
 import type { Engine } from './engine';
 import { passRenderLevel } from './pass-render-level';
-import type { PluginSystem } from './plugin-system';
 import type { Scene, SceneRenderLevel } from './scene';
 import { getGeometryByShape } from './shape';
 import type { Texture } from './texture';
@@ -31,8 +30,6 @@ export interface ContentOptions {
 export class CompositionSourceManager implements Disposable {
   sourceContent?: spec.CompositionData;
   renderLevel?: SceneRenderLevel;
-  pluginSystem?: PluginSystem;
-  totalTime: number;
   imgUsage: Record<string, number> = {};
   textures: Texture[];
   jsonScene?: spec.JSONScene;
@@ -45,7 +42,7 @@ export class CompositionSourceManager implements Disposable {
   ) {
     this.engine = engine;
     // 资源
-    const { jsonScene, renderLevel, textureOptions, pluginSystem, totalTime } = scene;
+    const { jsonScene, renderLevel, textureOptions } = scene;
     const { compositions, compositionId } = jsonScene;
 
     if (!textureOptions) {
@@ -55,8 +52,6 @@ export class CompositionSourceManager implements Disposable {
 
     this.jsonScene = jsonScene;
     this.renderLevel = renderLevel;
-    this.pluginSystem = pluginSystem;
-    this.totalTime = totalTime ?? 0;
     this.textures = cachedTextures;
 
     for (const comp of compositions) {
@@ -216,8 +211,6 @@ export class CompositionSourceManager implements Disposable {
   dispose (): void {
     this.textures = [];
     this.jsonScene = undefined;
-    this.totalTime = 0;
-    this.pluginSystem = undefined;
     this.sourceContent = undefined;
   }
 }
