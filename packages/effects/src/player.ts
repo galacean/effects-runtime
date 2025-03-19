@@ -294,41 +294,83 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   async loadScene (scene: Scene.LoadType, options?: SceneLoadOptions): Promise<Composition>;
   async loadScene (scene: Scene.LoadType[], options?: SceneLoadOptions): Promise<Composition[]>;
-  async loadScene<T extends Composition | Composition[]> (
+  async loadScene (
     scene: Scene.LoadType | Scene.LoadType[],
     options?: SceneLoadOptions,
-  ): Promise<T> {
-    let composition: Composition | Composition[];
-    const baseOrder = this.baseCompositionIndex;
+  ): Promise<Composition | Composition[]> {
+    const scenes: Scene.LoadType[] = [];
+    const compositions: Composition[] = [];
 
     if (isArray(scene)) {
-      this.baseCompositionIndex += scene.length;
-      composition = await Promise.all(scene.map(async (scn, index) => {
-        const res = await this.createComposition(scn, options);
-
-        res.setIndex(baseOrder + index);
-
-        return res;
-      }));
+      scenes.push(...scene);
     } else {
-      this.baseCompositionIndex += 1;
-      composition = await this.createComposition(scene, options);
-      composition.setIndex(baseOrder);
+      scenes.push(scene);
+    }
+
+    const last = performance.now();
+
+    const loadResults = await Promise.all(scenes.map(async (scn, index) => {
+      const res = await this.loadAssets(scn, options);
+
+      return res;
+    }));
+
+    const baseOrder = this.baseCompositionIndex;
+
+    this.baseCompositionIndex += scenes.length;
+    for (let i = 0;i < loadResults.length;i++) {
+      const loadResult = loadResults[i];
+      const newComposition = this.createComposition(loadResult.scene, loadResult.assetManager, loadResult.options);
+
+      newComposition.setIndex(baseOrder + i);
+      compositions.push(newComposition);
+    }
+
+    const compileStart = performance.now();
+
+    await new Promise(resolve => {
+      this.renderer.getShaderLibrary()?.compileAllShaders(() => {
+        resolve(null);
+      });
+    });
+
+    const compileTime = performance.now() - compileStart;
+
+    for (let i = 0;i < compositions.length;i++) {
+      const comp = compositions[i];
+      const loadResult = loadResults[i];
+
+      if (loadResult.options.autoplay) {
+        this.autoPlaying = true;
+        comp.play();
+      } else {
+        comp.pause();
+      }
     }
 
     this.ticker?.start();
 
-    return composition as T;
+    const firstFrameTime = performance.now() - last;
+    const asyncShaderCompile = this.renderer.engine.gpuCapability?.detail?.asyncShaderCompile;
+
+    for (const composition of compositions) {
+      composition.statistic.compileTime = compileTime;
+      composition.statistic.firstFrameTime = firstFrameTime;
+      logger.info(`First frame [${composition.name}]: ${firstFrameTime.toFixed(4)}ms.`);
+      logger.info(`Shader ${asyncShaderCompile ? 'async' : 'sync'} compile [${composition.name}]: ${compileTime.toFixed(4)}ms.`);
+    }
+
+    if (isArray(scene)) {
+      return compositions;
+    } else {
+      return compositions[0];
+    }
   }
 
-  private async createComposition (
+  private async loadAssets (
     url: Scene.LoadType,
     options: SceneLoadOptions = {},
-  ): Promise<Composition> {
-    const renderer = this.renderer;
-    const engine = renderer.engine;
-    const asyncShaderCompile = engine.gpuCapability?.detail?.asyncShaderCompile;
-    const last = performance.now();
+  ): Promise<Scene.LoadResult> {
     let opts = {
       autoplay: true,
       ...options,
@@ -352,9 +394,25 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
     // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
-    engine.clearResources();
     this.assetManagers.push(assetManager);
     const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
+
+    const loadResult: Scene.LoadResult = {
+      scene,
+      options:opts,
+      assetManager,
+    };
+
+    return loadResult;
+  }
+
+  createComposition (scene: Scene, assetManager: AssetManager, opts: Omit<SceneLoadOptions, 'speed' | 'reusable'> = {}) {
+    const renderer = this.renderer;
+    const engine = renderer.engine;
+
+    engine.clearResources();
+
+    assetManager.prepareAssets(engine);
 
     // 加入 json 资产数据
     engine.addPackageDatas(scene);
@@ -382,9 +440,9 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       textureOptions.initialize();
     }
 
-    if (engine.database) {
-      await engine.createVFXItems(scene);
-    }
+    // if (engine.database) {
+    //   await engine.createVFXItems(scene);
+    // }
 
     const composition = new Composition({
       ...opts,
@@ -413,29 +471,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         }
       }
     }
-
-    const compileStart = performance.now();
-
-    await new Promise(resolve => {
-      this.renderer.getShaderLibrary()?.compileAllShaders(() => {
-        resolve(null);
-      });
-    });
-
-    if (opts.autoplay) {
-      this.autoPlaying = true;
-      composition.play();
-    } else {
-      composition.pause();
-    }
-
-    const compileTime = performance.now() - compileStart;
-    const firstFrameTime = performance.now() - last;
-
-    composition.statistic.compileTime = compileTime;
-    composition.statistic.firstFrameTime = firstFrameTime;
-    logger.info(`Shader ${asyncShaderCompile ? 'async' : 'sync'} compile [${composition.name}]: ${compileTime.toFixed(4)}ms.`);
-    logger.info(`First frame [${composition.name}]: ${firstFrameTime.toFixed(4)}ms.`);
 
     this.compositions.push(composition);
 

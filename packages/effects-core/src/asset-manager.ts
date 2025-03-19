@@ -185,8 +185,6 @@ export class AssetManager implements Disposable {
         await hookTimeInfo('plugin:prepareResource', () => pluginSystem.loadResources(scene, this.options));
       }
 
-      await hookTimeInfo('prepareAssets', () => this.prepareAssets(renderer?.engine));
-
       const totalTime = performance.now() - startTime;
 
       logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}.`);
@@ -388,11 +386,7 @@ export class AssetManager implements Disposable {
     }
   }
 
-  private async prepareAssets (engine?: Engine) {
-    if (!engine) {
-      return;
-    }
-
+  prepareAssets (engine: Engine) {
     for (const assetId of Object.keys(this.assets)) {
       const asset = this.assets[assetId];
       const engineAsset = new Asset(engine);
