@@ -1,3 +1,5 @@
+import terser from '@rollup/plugin-terser';
+
 /**
  * 小程序产物编译配置
  */
@@ -22,6 +24,8 @@ export default [
       paths,
     }],
     external: ['@galacean/effects'],
-    plugins: [],
+    plugins: [
+      terser(),
+    ],
   };
 });
