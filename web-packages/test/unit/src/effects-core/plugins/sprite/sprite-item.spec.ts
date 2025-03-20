@@ -146,7 +146,7 @@ describe('core/plugins/sprite/item', () => {
     expect(spriteItem?.color).to.eql([0.3, 0.2, 0.2, 1], 'color');
 
     const material = spriteItem?.material;
-    const color = material?.getVector4('_Color')?.toArray();
+    const color = material?.getColor('_Color')?.toArray();
 
     expect(color).to.eql([0.3, 0.2, 0.2, 1], 'color');
   });
