@@ -220,10 +220,19 @@ export class Camera {
     return this.viewportMatrix;
   }
 
+  /**
+   * @internal
+   * 获取相机的父节点世界矩阵
+   */
   getParentWorldMatrix () {
     return this.parentWorldMatrix;
   }
 
+  /**
+   * @internal
+   * 设置相机的父节点世界矩阵
+   * @param matrix 父节点世界矩阵
+   */
   setParentWorldMatrix (matrix: Matrix4) {
     if (this.parentWorldMatrix.equals(matrix)) {
       return;
