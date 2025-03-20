@@ -8,6 +8,7 @@ export * from './sortable';
 export * from './asserts';
 export * from './text';
 export * from './logger';
+export * from './mesh-utils';
 
 export type Immutable<O> = O extends Record<any, any>
   ? { readonly [key in keyof O]: Immutable<O[key]> }
