@@ -1,5 +1,5 @@
 import type * as spec from '@galacean/effects-specification';
-import Delaunator from '../components/delaunator';
+import Delaunator from './delaunator';
 
 // ========== 几何工具函数 ==========
 
