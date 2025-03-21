@@ -4,8 +4,7 @@ export * from './create-gl-context';
 export * from './gpu-time';
 
 export const initErrors: string[] = [];
-// @ts-expect-error
-export const glContext: WebGL2RenderingContext = {};
+export const glContext: WebGL2RenderingContext = {} as WebGL2RenderingContext;
 
 if (!initErrors.length) {
   initGLContext();

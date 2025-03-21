@@ -79,6 +79,8 @@ export class Camera {
   private inverseViewMatrix = Matrix4.fromIdentity();
   private inverseProjectionMatrix: Matrix4 | null;
   private inverseViewProjectionMatrix: Matrix4 | null;
+  private parentWorldMatrix = Matrix4.fromIdentity();
+
   private dirty = true;
 
   /**
@@ -216,6 +218,27 @@ export class Camera {
 
   getViewportMatrix () {
     return this.viewportMatrix;
+  }
+
+  /**
+   * @internal
+   * 获取相机的父节点世界矩阵
+   */
+  getParentWorldMatrix () {
+    return this.parentWorldMatrix;
+  }
+
+  /**
+   * @internal
+   * 设置相机的父节点世界矩阵
+   * @param matrix 父节点世界矩阵
+   */
+  setParentWorldMatrix (matrix: Matrix4) {
+    if (this.parentWorldMatrix.equals(matrix)) {
+      return;
+    }
+    this.parentWorldMatrix.copyFrom(matrix);
+    this.dirty = true;
   }
 
   /**
@@ -399,9 +422,9 @@ export class Camera {
       );
       this.projectionMatrix.premultiply(this.viewportMatrix);
       this.inverseViewMatrix.compose(position, this.getQuat(), tmpScale);
+      this.inverseViewMatrix.premultiply(this.parentWorldMatrix);
       this.viewMatrix.copyFrom(this.inverseViewMatrix).invert();
       this.viewProjectionMatrix.multiplyMatrices(this.projectionMatrix, this.viewMatrix);
-
       this.inverseViewProjectionMatrix = null;
       this.dirty = false;
     }

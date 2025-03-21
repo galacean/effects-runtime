@@ -6,12 +6,12 @@ import {
   AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, Material,
   TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
   isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, EventEmitter,
-  generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, Scene,
+  generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, Scene, assertExist,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
-import { isDowngradeIOS, throwError, throwErrorPromise } from './utils';
-import type { PlayerConfig, PlayerEvent } from './types';
+import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
+import type { PlayerConfig, PlayerErrorCause, PlayerEvent } from './types';
 
 const playerMap = new Map<HTMLCanvasElement, Player>();
 let enableDebugType = false;
@@ -52,6 +52,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private readonly builtinObjects: EffectsObject[] = [];
   private readonly event: EventSystem;
   private readonly reportGPUTime?: (time: number) => void;
+  private readonly onError?: (e: Error, ...args: any) => void;
   /**
    * 当前播放的合成对象数组，请不要修改内容
    */
@@ -73,18 +74,17 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   constructor (config: PlayerConfig) {
     super();
+
     const {
       container, canvas, fps, name, pixelRatio, manualRender, reportGPUTime,
-      renderFramework: glType, notifyTouch,
+      renderFramework: glType, notifyTouch, onError,
       interactive = false,
       renderOptions = {},
       env = '',
     } = config;
     const { willCaptureImage: preserveDrawingBuffer, premultipliedAlpha } = renderOptions;
 
-    if (initErrors.length) {
-      throw new Error(`Errors before player create: ${initErrors.map((message, index) => `\n ${index + 1}: ${message}`)}.`);
-    }
+    this.onError = onError;
 
     // 原 debug-disable 直接返回
     if (enableDebugType || glType === 'debug-disable') {
@@ -105,29 +105,53 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.env = env;
     this.name = name || `${seed++}`;
 
-    if (canvas) {
-      this.canvas = canvas;
-    } else {
-      assertContainer(container);
-      this.canvas = document.createElement('canvas');
-      container.appendChild(this.canvas);
-    }
-
-    this.container = this.canvas.parentElement;
-
-    this.renderer = Renderer.create(
-      this.canvas,
-      framework,
-      {
-        preserveDrawingBuffer,
-        premultipliedAlpha,
+    try {
+      if (initErrors.length) {
+        throw new Error(
+          `Errors before player create: ${initErrors.map((message, index) => `\n ${index + 1}: ${message}`)}.`,
+          { cause: 'webgliniterror' },
+        );
       }
-    );
-    this.renderer.env = env;
-    this.renderer.addLostHandler({ lost: this.lost });
-    this.renderer.addRestoreHandler({ restore: this.restore });
-    this.gpuCapability = this.renderer.engine.gpuCapability;
-    this.builtinObjects.push(generateWhiteTexture(this.renderer.engine));
+
+      if (canvas) {
+        this.canvas = canvas;
+      } else {
+        assertContainer(container);
+        this.canvas = document.createElement('canvas');
+        container.appendChild(this.canvas);
+      }
+
+      this.container = this.canvas.parentElement;
+
+      this.renderer = Renderer.create(
+        this.canvas,
+        framework,
+        {
+          preserveDrawingBuffer,
+          premultipliedAlpha,
+        }
+      );
+      this.renderer.env = env;
+      this.renderer.addLostHandler({ lost: this.lost });
+      this.renderer.addRestoreHandler({ restore: this.restore });
+      this.gpuCapability = this.renderer.engine.gpuCapability;
+      this.builtinObjects.push(generateWhiteTexture(this.renderer.engine));
+
+      if (!manualRender) {
+        this.ticker = new Ticker(fps);
+        this.ticker.add(this.tick.bind(this));
+      }
+
+      this.event = new EventSystem(this.canvas, !!notifyTouch);
+      this.event.bindListeners();
+      this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
+      this.interactive = interactive;
+
+      this.resize();
+      setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
+    } catch (e: any) {
+      this.handleThrowError(e);
+    }
 
     // 如果存在 WebGL 和 WebGL2 的 Player，需要给出警告
     playerMap.forEach(player => {
@@ -135,20 +159,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         logger.warn(`Create player with different WebGL version: old=${player.gpuCapability.type}, new=${this.gpuCapability.type}.\nsee ${HELP_LINK['Create player with different WebGL version']}.`);
       }
     });
-
-    if (!manualRender) {
-      this.ticker = new Ticker(fps);
-      this.ticker.add(this.tick.bind(this));
-    }
-
-    this.event = new EventSystem(this.canvas, !!notifyTouch);
-    this.event.bindListeners();
-    this.event.addEventListener(EVENT_TYPE_CLICK, this.handleClick);
-    this.interactive = interactive;
-
-    this.resize();
-    setSpriteMeshMaxItemCountByGPU(this.gpuCapability.detail);
     playerMap.set(this.canvas, this);
+
     assertNoConcurrentPlayers();
     broadcastPlayerEvent(this, true);
   }
@@ -294,10 +306,13 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   async loadScene (scene: Scene.LoadType, options?: SceneLoadOptions): Promise<Composition>;
   async loadScene (scene: Scene.LoadType[], options?: SceneLoadOptions): Promise<Composition[]>;
+  @handleThrowError<Player>
   async loadScene (
     scene: Scene.LoadType | Scene.LoadType[],
     options?: SceneLoadOptions,
   ): Promise<Composition | Composition[]> {
+    assertExist(this.renderer, 'Renderer is not exist, maybe the Player has been disabled or in gl \'debug-disable\' mode.');
+
     const scenes: Scene.LoadType[] = [];
     const compositions: Composition[] = [];
 
@@ -318,7 +333,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const baseOrder = this.baseCompositionIndex;
 
     this.baseCompositionIndex += scenes.length;
-    for (let i = 0;i < loadResults.length;i++) {
+    for (let i = 0; i < loadResults.length; i++) {
       const loadResult = loadResults[i];
       const newComposition = this.createComposition(loadResult.scene, loadResult.assetManager, loadResult.options);
 
@@ -336,7 +351,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     const compileTime = performance.now() - compileStart;
 
-    for (let i = 0;i < compositions.length;i++) {
+    for (let i = 0; i < compositions.length; i++) {
       const comp = compositions[i];
       const loadResult = loadResults[i];
 
@@ -399,7 +414,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     const loadResult: Scene.LoadResult = {
       scene,
-      options:opts,
+      options: opts,
       assetManager,
     };
 
@@ -629,7 +644,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     const { renderErrors } = this.renderer.engine;
 
     if (renderErrors.size > 0) {
-      this.emit('rendererror', renderErrors.values().next().value);
+      this.handleEmitEvent('rendererror', renderErrors.values().next().value);
       // 有渲染错误时暂停播放
       this.ticker?.pause();
     }
@@ -659,7 +674,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.compositions = currentCompositions;
     this.baseCompositionIndex = this.compositions.length;
     if (skipRender) {
-      this.emit('rendererror', new Error('Play when texture offloaded.'));
+      this.handleEmitEvent('rendererror', new Error('Play when texture offloaded.'));
 
       return this.ticker?.pause();
     }
@@ -794,7 +809,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     this.ticker?.pause();
     this.compositions.forEach(comp => comp.lost(e));
     this.renderer.lost(e);
-    this.emit('webglcontextlost', e);
+    this.handleEmitEvent('webglcontextlost', e);
     broadcastPlayerEvent(this, false);
   };
 
@@ -999,6 +1014,32 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }
 
     this.builtinObjects.length = 0;
+  }
+
+  private handleThrowError (e: Error) {
+    if (this.onError) {
+      this.onError(e);
+    } else {
+      throw e;
+    }
+  }
+
+  private handleEmitEvent (
+    name: Exclude<PlayerErrorCause, 'webgliniterror' | 'unknown'>,
+    e: Event | Error,
+  ) {
+    if (this.onError) {
+      if (e instanceof Event) {
+        this.onError(new Error(e.type, { cause: name }), e);
+      } else if (e instanceof Error) {
+        this.onError(new Error(e.message, { cause: name }), e);
+      } else {
+        this.onError(new Error('Unknown error.', { cause: name }), e);
+      }
+    } else {
+      console.warn(`[${name}] event is deprecated, please use 'onError' instead.`);
+      this.emit(name, e as any);
+    }
   }
 }
 
