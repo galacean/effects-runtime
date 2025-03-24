@@ -191,6 +191,14 @@ export class ParticleSystem extends Component {
     return this.particleLink.length;
   }
 
+  get maxBurstCount () {
+    return this.options.maxCount;
+  }
+
+  set maxBurstCount (count: number) {
+    this.options.maxCount = count;
+  }
+
   isFrozen () {
     return this.frozen;
   }
