@@ -85,8 +85,10 @@ export class MeshCollider {
       }
 
       const elementSize = indices.BYTES_PER_ELEMENT;
+      const start = subMesh.offset / elementSize;
+      const end = start + subMesh.indexCount;
 
-      for (let i = subMesh.offset / elementSize; i < subMesh.indexCount; i += 3) {
+      for (let i = start; i < end; i += 3) {
         const index0 = indices[i] * 3;
         const index1 = indices[i + 1] * 3;
         const index2 = indices[i + 2] * 3;
