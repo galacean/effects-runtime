@@ -129,10 +129,10 @@ export class ParticleMesh implements ParticleMeshData {
   rotationOverLifetime?: { asRotation?: boolean, x?: ValueGetter<number>, y?: ValueGetter<number>, z?: ValueGetter<number> };
   speedOverLifetime?: ValueGetter<number>;
   time: number;
+  maxCount: number;
 
   readonly useSprite?: boolean;
   readonly textureOffsets: number[];
-  readonly maxCount: number;
   readonly anchor: Vector2;
 
   private cachedRotationVector3 = new Vector3();
