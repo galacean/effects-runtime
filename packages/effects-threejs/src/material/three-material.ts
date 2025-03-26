@@ -1,8 +1,7 @@
 import type {
-  MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine, math,
-  GlobalUniforms, Renderer,
-} from '@galacean/effects-core';
-import { Material, Shader, ShaderType, ShaderFactory, generateGUID, spec } from '@galacean/effects-core';
+  MaterialProps, Texture, UniformValue, MaterialDestroyOptions, UndefinedAble, Engine,
+  GlobalUniforms, Renderer } from '@galacean/effects-core';
+import { math, Material, Shader, ShaderType, ShaderFactory, generateGUID, spec } from '@galacean/effects-core';
 import * as THREE from 'three';
 import type { ThreeTexture } from '../three-texture';
 import {
@@ -436,10 +435,12 @@ export class ThreeMaterial extends Material {
   }
 
   getColor (name: string): Color | null {
-    return this.uniforms[name].value;
+    const value = this.uniforms[name].value;
+
+    return new math.Color(value.x, value.y, value.z, value.w);
   }
   setColor (name: string, value: Color): void {
-    this.setUniform(name, value);
+    this.setUniform(name, new THREE.Vector4(value.r, value.g, value.b, value.a));
   }
 
   getQuaternion (name: string): Quaternion | null {
@@ -474,7 +475,7 @@ export class ThreeMaterial extends Material {
     return !!this.uniforms[name];
   }
 
-  private setUniform (name: string, value: THREE.Texture | number | number[] | Matrix4 | Matrix3 | Quaternion | Vector2 | Vector3 | Vector4 | Vector4[] | Color) {
+  private setUniform (name: string, value: THREE.Texture | number | number[] | Matrix4 | Matrix3 | Quaternion | Vector2 | Vector3 | Vector4 | Vector4[] | THREE.Vector4): void {
     const uniform = new THREE.Uniform(value);
 
     this.uniforms[name] = this.material.uniforms[name] = uniform;
