@@ -149,5 +149,6 @@ export class AssetService implements Disposable {
    */
   dispose (): void {
     this.destroyBuiltinObjects();
+    // Optionally remove references from engine if any
   }
 }

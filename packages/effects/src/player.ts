@@ -198,7 +198,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    * 获取当前播放的所有合成（请不要修改返回的数组内容）
    */
   getCompositions () {
-    return this.compositions;
+    return this.compositions.sort((a, b) => a.getIndex() - b.getIndex());
   }
 
   /**
@@ -344,7 +344,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
         this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
-        compositions.push(composition);
+        compositions[index] = composition;
       }),
     );
 

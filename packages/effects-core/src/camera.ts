@@ -173,7 +173,6 @@ export class Camera {
       this.options.clipMode = clipMode;
       this.dirty = true;
     }
-
   }
   get clipMode () {
     return this.options.clipMode;
@@ -189,7 +188,6 @@ export class Camera {
       this.dirty = true;
     }
   }
-
   /**
    * 获取相机的本地位置
    */
@@ -199,6 +197,7 @@ export class Camera {
 
   /**
    * 获取相机的世界位置
+   * @since 2.3.0
    */
   get worldPosition () {
     return this.transform.getWorldPosition();
@@ -214,11 +213,15 @@ export class Camera {
       this.dirty = true;
     }
   }
-
   get rotation () {
     return this.transform.rotation.clone();
   }
 
+  /**
+   * 设置相机变换
+   * @since 2.3.0
+   * @param transform
+   */
   setTransform (transform: Transform) {
     this.transform.parentTransform = transform.parentTransform;
     this.transform.cloneFromMatrix(transform.getMatrix());
@@ -352,8 +355,8 @@ export class Camera {
   getOptions (): CameraOptionsEx {
     return {
       ...this.options,
-      position:this.position.clone(),
-      rotation:this.rotation.clone(),
+      position: this.position.clone(),
+      rotation: this.rotation.clone(),
     };
   }
 
