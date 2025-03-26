@@ -315,7 +315,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
     const last = performance.now();
     const scenes: Scene.LoadType[] = [];
-    const compositions = this.compositions;
+    const compositions: Composition[] = [];
     const autoplay = options?.autoplay ?? true;
     const asyncShaderCompile = this.renderer.engine.gpuCapability?.detail?.asyncShaderCompile;
     const baseOrder = this.baseCompositionIndex;
@@ -344,6 +344,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
 
         this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
+        compositions.push(composition);
       }),
     );
 
