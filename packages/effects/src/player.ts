@@ -1,19 +1,19 @@
 import type {
-  Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions,
-  Texture2DSourceOptionsVideo, TouchEventType, EffectsObject, MessageItem,
+  Disposable, GLType, GPUCapability, LostHandler, RestoreHandler, SceneLoadOptions, Scene,
+  Texture2DSourceOptionsVideo, TouchEventType, MessageItem,
 } from '@galacean/effects-core';
 import {
-  AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, Material,
-  TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors,
-  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, EventEmitter,
-  generateWhiteTexture, Texture, PLAYER_OPTIONS_ENV_EDITOR, isIOS, Scene, assertExist,
+  AssetManager, Composition, EVENT_TYPE_CLICK, EventSystem, logger, Renderer, EventEmitter,
+  TextureLoadAction, Ticker, canvasPool, getPixelRatio, gpuTimer, initErrors, isIOS,
+  isArray, pluginLoaderMap, setSpriteMeshMaxItemCountByGPU, spec, PLAYER_OPTIONS_ENV_EDITOR,
+  assertExist, AssetService,
 } from '@galacean/effects-core';
 import type { GLRenderer } from '@galacean/effects-webgl';
 import { HELP_LINK } from './constants';
 import { handleThrowError, isDowngradeIOS, throwError, throwErrorPromise } from './utils';
 import type { PlayerConfig, PlayerErrorCause, PlayerEvent } from './types';
+import { assertNoConcurrentPlayers, playerMap } from './player-map';
 
-const playerMap = new Map<HTMLCanvasElement, Player>();
 let enableDebugType = false;
 let seed = 1;
 
@@ -49,7 +49,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
    */
   readonly ticker: Ticker;
 
-  private readonly builtinObjects: EffectsObject[] = [];
   private readonly event: EventSystem;
   private readonly reportGPUTime?: (time: number) => void;
   private readonly onError?: (e: Error, ...args: any) => void;
@@ -65,6 +64,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   private offscreenMode: boolean;
   private disposed = false;
   private assetManagers: AssetManager[] = [];
+  private assetService: AssetService;
   private speed = 1;
   private baseCompositionIndex = 0;
 
@@ -135,7 +135,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       this.renderer.addLostHandler({ lost: this.lost });
       this.renderer.addRestoreHandler({ restore: this.restore });
       this.gpuCapability = this.renderer.engine.gpuCapability;
-      this.builtinObjects.push(generateWhiteTexture(this.renderer.engine));
+      this.assetService = new AssetService(this.renderer.engine);
 
       if (!manualRender) {
         this.ticker = new Ticker(fps);
@@ -313,8 +313,12 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
   ): Promise<Composition | Composition[]> {
     assertExist(this.renderer, 'Renderer is not exist, maybe the Player has been disabled or in gl \'debug-disable\' mode.');
 
+    const last = performance.now();
     const scenes: Scene.LoadType[] = [];
-    const compositions: Composition[] = [];
+    const compositions = this.compositions;
+    const autoplay = options?.autoplay ?? true;
+    const asyncShaderCompile = this.renderer.engine.gpuCapability?.detail?.asyncShaderCompile;
+    const baseOrder = this.baseCompositionIndex;
 
     if (isArray(scene)) {
       scenes.push(...scene);
@@ -322,145 +326,72 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
       scenes.push(scene);
     }
 
-    const last = performance.now();
+    await Promise.all(
+      scenes.map(async (url, index) => {
+        const { source, options: opts } = this.assetService.assembleSceneLoadOptions(url, { autoplay, ...options });
+        const assetManager = new AssetManager(opts);
 
-    const loadResults = await Promise.all(scenes.map(async (scn, index) => {
-      const res = await this.loadAssets(scn, options);
+        // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
+        // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
+        this.assetManagers.push(assetManager);
+        const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
-      return res;
-    }));
+        this.assetService.prepareAssets(scene, assetManager.getAssets());
+        this.assetService.updateTextVariables(scene, opts.variables);
+        this.assetService.initializeTexture(scene);
 
-    const baseOrder = this.baseCompositionIndex;
+        const composition = this.createComposition(scene, opts);
 
-    this.baseCompositionIndex += scenes.length;
-    for (let i = 0; i < loadResults.length; i++) {
-      const loadResult = loadResults[i];
-      const newComposition = this.createComposition(loadResult.scene, loadResult.assetManager, loadResult.options);
-
-      newComposition.setIndex(baseOrder + i);
-      compositions.push(newComposition);
-    }
+        this.baseCompositionIndex += 1;
+        composition.setIndex(baseOrder + index);
+      }),
+    );
 
     const compileStart = performance.now();
 
     await new Promise(resolve => {
-      this.renderer.getShaderLibrary()?.compileAllShaders(() => {
-        resolve(null);
-      });
+      this.renderer.getShaderLibrary()?.compileAllShaders(() => resolve(null));
     });
 
     const compileTime = performance.now() - compileStart;
 
     for (let i = 0; i < compositions.length; i++) {
-      const comp = compositions[i];
-      const loadResult = loadResults[i];
-
-      if (loadResult.options.autoplay) {
+      if (autoplay) {
         this.autoPlaying = true;
-        comp.play();
+        compositions[i].play();
       } else {
-        comp.pause();
+        compositions[i].pause();
       }
     }
 
     this.ticker?.start();
 
+    const compositionNames = compositions.map(composition => composition.name);
     const firstFrameTime = performance.now() - last;
-    const asyncShaderCompile = this.renderer.engine.gpuCapability?.detail?.asyncShaderCompile;
 
     for (const composition of compositions) {
       composition.statistic.compileTime = compileTime;
       composition.statistic.firstFrameTime = firstFrameTime;
-      logger.info(`First frame [${composition.name}]: ${firstFrameTime.toFixed(4)}ms.`);
-      logger.info(`Shader ${asyncShaderCompile ? 'async' : 'sync'} compile [${composition.name}]: ${compileTime.toFixed(4)}ms.`);
     }
+    logger.info(`First frame [${compositionNames}]: ${firstFrameTime.toFixed(4)}ms.`);
+    logger.info(`Shader ${asyncShaderCompile ? 'async' : 'sync'} compile [${compositionNames}]: ${compileTime.toFixed(4)}ms.`);
 
-    if (isArray(scene)) {
-      return compositions;
-    } else {
-      return compositions[0];
-    }
+    return isArray(scene) ? compositions : compositions[0];
   }
 
-  private async loadAssets (
-    url: Scene.LoadType,
-    options: SceneLoadOptions = {},
-  ): Promise<Scene.LoadResult> {
-    let opts = {
-      autoplay: true,
-      ...options,
-    };
-    let source: Scene.LoadType = url;
-
-    // 加载多个合成链接并各自设置可选参数
-    if (Scene.isURL(url)) {
-      if (!Scene.isJSONObject(url)) {
-        source = url.url;
-      }
-      if (Scene.isWithOptions(url)) {
-        opts = {
-          ...opts,
-          ...url.options,
-        };
-      }
-    }
-
-    const assetManager = new AssetManager(opts);
-
-    // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-    // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
-    this.assetManagers.push(assetManager);
-    const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
-
-    const loadResult: Scene.LoadResult = {
-      scene,
-      options: opts,
-      assetManager,
-    };
-
-    return loadResult;
-  }
-
-  createComposition (scene: Scene, assetManager: AssetManager, opts: Omit<SceneLoadOptions, 'speed' | 'reusable'> = {}) {
+  private createComposition (
+    scene: Scene,
+    options: Omit<SceneLoadOptions, 'speed' | 'reusable'> = {},
+  ) {
     const renderer = this.renderer;
-    const engine = renderer.engine;
-
-    engine.clearResources();
-
-    assetManager.prepareAssets(engine);
-
-    // 加入 json 资产数据
-    engine.addPackageDatas(scene);
-    // 加入内置引擎对象
-    for (const effectsObject of this.builtinObjects) {
-      engine.addInstance(effectsObject);
-    }
-
-    this.updateTextVariables(scene, opts.variables);
 
     // 加载期间 player 销毁
     if (this.disposed) {
       throw new Error('Disposed player can not used to create Composition.');
     }
 
-    for (let i = 0; i < scene.textureOptions.length; i++) {
-      let textureOptions = scene.textureOptions[i];
-
-      if (textureOptions instanceof Texture) {
-        engine.addInstance(textureOptions);
-      } else {
-        textureOptions = engine.assetLoader.loadGUID<Texture>(scene.textureOptions[i].id);
-        scene.textureOptions[i] = textureOptions;
-      }
-      textureOptions.initialize();
-    }
-
-    // if (engine.database) {
-    //   await engine.createVFXItems(scene);
-    // }
-
     const composition = new Composition({
-      ...opts,
+      ...options,
       renderer,
       width: renderer.getWidth(),
       height: renderer.getHeight(),
@@ -471,54 +402,18 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     }, scene);
 
     // 中低端设备降帧到 30fps·
-    if (this.ticker && opts.renderLevel === spec.RenderLevel.B) {
+    if (this.ticker && options.renderLevel === spec.RenderLevel.B) {
       this.ticker.setFPS(Math.min(this.ticker.getFPS(), 30));
     }
 
     // TODO 目前编辑器会每帧调用 loadScene, 在这编译会导致闪帧，待编辑器渲染逻辑优化后移除。
     if (this.env !== PLAYER_OPTIONS_ENV_EDITOR) {
-      // TODO Material 单独存表, 加速查询
-      for (const guid of Object.keys(this.renderer.engine.objectInstance)) {
-        const effectsObject = this.renderer.engine.objectInstance[guid];
-
-        if (effectsObject instanceof Material) {
-          effectsObject.createShaderVariant();
-        }
-      }
+      this.assetService.createShaderVariant();
     }
 
     this.compositions.push(composition);
 
     return composition;
-  }
-
-  /**
-   * 根据用户参数修改原始数据
-   * @param scene
-   * @param options
-   */
-  private updateTextVariables (scene: Scene, variables: spec.TemplateVariables = {}) {
-    const renderer = this.renderer;
-    const engine = renderer.engine;
-
-    scene.jsonScene.items.forEach(item => {
-      if (item.type === spec.ItemType.text || item.type === spec.ItemType.richtext) {
-
-        const textVariable = variables[item.name] as string;
-
-        if (!textVariable) {
-          return;
-        }
-
-        item.components.forEach(({ id }) => {
-          const componentData = engine.findEffectsObjectData(id) as spec.TextComponentData;
-
-          if (componentData?.dataType === spec.DataType.TextComponent || componentData?.dataType === spec.DataType.RichTextComponent) {
-            componentData.options.text = textVariable;
-          }
-        });
-      }
-    });
   }
 
   /**
@@ -888,7 +783,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     if (this.event) {
       this.event.dispose();
     }
-    this.destroyBuiltinObjects();
+    this.assetService.dispose();
     broadcastPlayerEvent(this, false);
     if (
       this.canvas instanceof HTMLCanvasElement &&
@@ -1008,14 +903,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
     return [containerWidth, containerHeight, targetWidth, targetHeight];
   }
 
-  private destroyBuiltinObjects () {
-    for (const effectsObject of this.builtinObjects) {
-      effectsObject.dispose();
-    }
-
-    this.builtinObjects.length = 0;
-  }
-
   private handleThrowError (e: Error) {
     if (this.onError) {
       this.onError(e);
@@ -1052,32 +939,6 @@ export function disableAllPlayer (disable: boolean) {
 }
 
 /**
- * 判断指定的 canvas 是否有播放器正在使用
- * @param canvas - 指定的 canvas
- * @returns
- */
-export function isCanvasUsedByPlayer (canvas: HTMLCanvasElement) {
-  return playerMap.has(canvas);
-}
-
-/**
- * 获取 canvas 对应的播放器
- * @param canvas - 指定的 canvas
- * @returns
- */
-export function getPlayerByCanvas (canvas: HTMLCanvasElement) {
-  return playerMap.get(canvas);
-}
-
-/**
- * 获取使用中的播放器
- * @returns
- */
-export function getActivePlayers () {
-  return Array.from(playerMap.values());
-}
-
-/**
  * 播放器在实例化、销毁（`dispose`）时分别触发插件的 `onPlayerCreated`、`onPlayerDestroy` 回调
  * @param player - 播放器
  * @param isCreate - 是否处于实例化时
@@ -1089,23 +950,6 @@ function broadcastPlayerEvent (player: Player, isCreate: boolean) {
 
     func?.(player);
   });
-}
-
-/**
- * 同时允许的播放器数量超过 1 时打印错误
- */
-function assertNoConcurrentPlayers () {
-  const runningPlayers = [];
-
-  for (const player of playerMap.values()) {
-    if (!player.paused) {
-      runningPlayers.push(player);
-    }
-  }
-
-  if (runningPlayers.length > 1) {
-    logger.error(`Current running player count: ${runningPlayers.length}, see ${HELP_LINK['Current running player count']}.`, runningPlayers);
-  }
 }
 
 /**

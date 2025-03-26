@@ -400,8 +400,7 @@ const particleOriginTranslateMap = {
 
 async function generateComposition (player: Player, items: any, currentTime = 0) {
   const json = `{"compositionId":5,"requires":[],"compositions":[{"name":"1","id":5,"duration":5,"camera":{"fov":30,"far":20,"near":0.1,"position":[0,0,8],"clipMode":1,"z":8},"items":${items},"previewSize":[512,512],"endBehavior":1,"startTime":0}],"gltf":[],"images":[{"url":"https://mdn.alipayobjects.com/mars/afts/img/A*OIR4RY9qmrEAAAAAAAAAAAAADlB4AQ/original","webp":"https://mdn.alipayobjects.com/mars/afts/img/A*UI-NSIe2AywAAAAAAAAAAAAADlB4AQ/original","renderLevel":"B+"}],"version":"1.5","shapes":[],"plugins":[],"type":"mars","textures":[{"source":0,"flipY":true}]}`;
-  //@ts-expect-error
-  const scene = player.createComposition(JSON.parse(json));
+  const scene = await player.loadScene(JSON.parse(json));
 
   player.gotoAndPlay(currentTime);
 

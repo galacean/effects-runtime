@@ -53,11 +53,11 @@ export class CompositionSourceManager implements Disposable {
     this.renderLevel = renderLevel;
     this.textures = cachedTextures;
 
-    for (const comp of compositions) {
-      const compositionData = this.getContent(comp);
+    for (const composition of compositions) {
+      const compositionData = this.getContent(composition);
 
       this.engine.addEffectsObjectData(compositionData as unknown as spec.EffectsObjectData);
-      if (comp.id === compositionId) {
+      if (composition.id === compositionId) {
         this.sourceContent = compositionData;
       }
     }

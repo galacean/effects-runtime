@@ -191,6 +191,26 @@ export class ParticleSystem extends Component {
     return this.particleLink.length;
   }
 
+  /**
+   * 获取当前发射的最大粒子数
+   * @since 2.3.0
+   */
+  get maxBurstCount () {
+    return this.options.maxCount;
+  }
+
+  /**
+   * 设置当前发射的最大粒子数
+   * 注意：暂时不支持增加拖尾数量
+   * @since 2.3.0
+   */
+  set maxBurstCount (count: number) {
+    this.options.maxCount = count;
+    if (this.renderer?.particleMesh) {
+      this.renderer.particleMesh.maxCount = count;
+    }
+  }
+
   isFrozen () {
     return this.frozen;
   }
