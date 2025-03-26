@@ -15,8 +15,6 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { Asset } from './asset';
-import type { Engine } from './engine';
 
 let seed = 1;
 
@@ -201,6 +199,10 @@ export class AssetManager implements Disposable {
     return Promise.race([waitPromise, loadResourcePromise()]);
   }
 
+  getAssets () {
+    return this.assets;
+  }
+
   private async precompile (
     compositions: spec.CompositionData[],
     pluginSystem: PluginSystem,
@@ -383,17 +385,6 @@ export class AssetManager implements Disposable {
 
     for (let i = 0; i < assets.length; i++) {
       this.assets[assets[i].id] = loadedAssets[i] as ImageLike;
-    }
-  }
-
-  prepareAssets (engine: Engine) {
-    for (const assetId of Object.keys(this.assets)) {
-      const asset = this.assets[assetId];
-      const engineAsset = new Asset(engine);
-
-      engineAsset.data = asset;
-      engineAsset.setInstanceId(assetId);
-      engine.addInstance(engineAsset);
     }
   }
 
