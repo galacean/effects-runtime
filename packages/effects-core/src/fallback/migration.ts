@@ -1,7 +1,6 @@
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
-  SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData,
-  CompositionContent,
+  SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData, CompositionContent,
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,

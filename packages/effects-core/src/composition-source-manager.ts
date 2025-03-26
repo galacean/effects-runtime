@@ -34,13 +34,11 @@ export class CompositionSourceManager implements Disposable {
   textures: Texture[];
   jsonScene?: spec.JSONScene;
   mask = 0;
-  engine: Engine;
 
   constructor (
     scene: Scene,
-    engine: Engine,
+    public engine: Engine,
   ) {
-    this.engine = engine;
     // 资源
     const { jsonScene, renderLevel, textureOptions } = scene;
     const { compositions, compositionId } = jsonScene;
@@ -48,6 +46,7 @@ export class CompositionSourceManager implements Disposable {
     if (!textureOptions) {
       throw new Error('scene.textures expected.');
     }
+
     const cachedTextures = textureOptions as Texture[];
 
     this.jsonScene = jsonScene;
