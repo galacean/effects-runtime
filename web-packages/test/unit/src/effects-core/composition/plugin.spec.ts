@@ -48,7 +48,7 @@ describe('core/composition/plugin', () => {
 
       override onCompositionConstructed (composition: Composition, scene: Scene) {
         expect(scene.storage.xx).to.eql(1);
-        expect(composition.items.length).to.eql(0);
+        expect(composition.items.length).to.eql(1);
         // @ts-expect-error
         constructSpy(ipp());
       }

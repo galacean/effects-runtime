@@ -382,9 +382,7 @@ export class VFXItem extends EffectsObject implements Disposable {
       removeItem(this.parent.children, this);
     }
     this.parent = vfxItem;
-    if (!VFXItem.isCamera(this)) {
-      this.transform.parentTransform = vfxItem.transform;
-    }
+    this.transform.parentTransform = vfxItem.transform;
     vfxItem.children.push(this);
     if (!this.composition && vfxItem.composition) {
       this.composition = vfxItem.composition;
