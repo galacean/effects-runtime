@@ -1,6 +1,6 @@
 import type {
   BaseContent, BinaryFile, CompositionData, Item, JSONScene, JSONSceneLegacy, SpineResource,
-  SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData,
+  SpineContent, TimelineAssetData, CustomShapeData, ShapeComponentData, CompositionContent,
 } from '@galacean/effects-specification';
 import {
   DataType, END_BEHAVIOR_PAUSE, END_BEHAVIOR_PAUSE_AND_DESTROY, EndBehavior, ItemType,
@@ -74,6 +74,30 @@ export function version31Migration (json: JSONScene): JSONScene {
           // @ts-expect-error
           customShapeComponent.fill = customShapeComponent.shapes[0].fill;
         }
+      }
+    }
+  }
+
+  // Composition id 转 guid
+  const compositionId = json.compositionId;
+  const compositionIdToGUIDMap: Record<string, string> = {};
+
+  for (const composition of json.compositions) {
+    const guid = generateGUID();
+
+    compositionIdToGUIDMap[composition.id] = guid;
+    if (composition.id === compositionId) {
+      json.compositionId = guid;
+    }
+    composition.id = guid;
+  }
+  // 预合成元素 refId 同步改为生成的合成 guid
+  for (const item of json.items) {
+    if (item.content) {
+      const compositionOptions = (item.content as CompositionContent).options;
+
+      if (compositionOptions && compositionOptions.refId !== undefined) {
+        compositionOptions.refId = compositionIdToGUIDMap[compositionOptions.refId];
       }
     }
   }
