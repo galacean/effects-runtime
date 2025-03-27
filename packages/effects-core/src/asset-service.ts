@@ -24,10 +24,6 @@ export class AssetService implements Disposable {
     this.builtinObjects.push(generateWhiteTexture(engine));
   }
 
-  loadScene () {
-
-  }
-
   /**
    * @internal
    * @param url
