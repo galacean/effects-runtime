@@ -226,10 +226,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
    */
   readonly refContent: VFXItem[] = [];
   /**
-   * 预合成的合成属性，在 content 中会被其元素属性覆盖
-   */
-  readonly refCompositionProps: Map<string, spec.CompositionData> = new Map();
-  /**
    * 合成的相机对象
    */
   readonly camera: Camera;
@@ -295,13 +291,12 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       scene.textures = undefined;
       scene.consumed = true;
     }
-    const { sourceContent, pluginSystem, imgUsage, totalTime, refCompositionProps } = this.compositionSourceManager;
+    const { sourceContent, imgUsage } = this.compositionSourceManager;
 
     this.postProcessingEnabled = scene.jsonScene.renderSettings?.postProcessingEnabled ?? false;
 
     assertExist(sourceContent);
     this.renderer = renderer;
-    this.refCompositionProps = refCompositionProps;
 
     // Instantiate composition rootItem
     this.rootItem = new VFXItem(this.getEngine());
@@ -312,6 +307,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
 
     // Create rootCompositionComponent
     this.rootComposition = this.rootItem.addComponent(CompositionComponent);
+    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
 
     this.width = width;
     this.height = height;
@@ -322,7 +318,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.event = event;
     this.statistic = {
       loadStart: scene.startTime ?? 0,
-      loadTime: totalTime ?? 0,
+      loadTime: scene.totalTime ?? 0,
       compileTime: 0,
       firstFrameTime: 0,
     };
@@ -330,7 +326,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.speed = speed;
     this.autoRefTex = !this.keepResource && this.texInfo && this.rootItem.endBehavior !== spec.EndBehavior.restart;
     this.name = sourceContent.name;
-    this.pluginSystem = pluginSystem as PluginSystem;
+    this.pluginSystem = scene.pluginSystem;
     this.pluginSystem.initializeComposition(this, scene);
     this.camera = new Camera(this.name, {
       ...sourceContent?.camera,
@@ -342,8 +338,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     this.handleItemMessage = handleItemMessage;
     this.createRenderFrame();
     this.rendererOptions = null;
-    SerializationHelper.deserialize(sourceContent as unknown as spec.EffectsObjectData, this.rootComposition);
-    this.rootComposition.createContent();
 
     this.buildItemTree(this.rootItem);
     this.rootComposition.setChildrenRenderOrder(0);
@@ -676,9 +670,7 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
         const parent = itemMap.get(item.parentId);
 
         if (parent) {
-          item.parent = parent;
-          item.transform.parentTransform = parent.transform;
-          parent.children.push(item);
+          item.setParent(parent);
         } else {
           throw new Error('The element references a non-existent element, please check the data.');
         }
@@ -819,7 +811,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
     const regions: Region[] = [];
     const ray = this.getHitTestRay(x, y);
 
-    this.rootItem.getComponent(CompositionComponent)?.hitTest(ray, x, y, regions, force, options);
     this.refContent.forEach(ref => {
       ref.getComponent(CompositionComponent)?.hitTest(ray, x, y, regions, force, options);
     });
@@ -985,7 +976,6 @@ export class Composition extends EventEmitter<CompositionEvent<Composition>> imp
       textures.forEach(tex => tex.dispose = textureDisposes[tex.id]);
     }
     this.compositionSourceManager.dispose();
-    this.refCompositionProps.clear();
 
     if (this.renderer.env === PLAYER_OPTIONS_ENV_EDITOR) {
       return;

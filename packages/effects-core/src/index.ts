@@ -14,6 +14,7 @@ export * from './asset';
 export * from './binary-asset';
 export * from './asset-loader';
 export * from './asset-manager';
+export * from './asset-service';
 export * from './camera';
 export * from './canvas-pool';
 export * from './comp-vfx-item';

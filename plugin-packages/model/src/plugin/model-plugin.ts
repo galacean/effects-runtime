@@ -102,8 +102,6 @@ export class ModelPlugin extends AbstractPlugin {
 
     this.cache = new CompositionCache(engine);
     this.cache.setup(false);
-    // FIXME: 先注释元素参数的配置
-    //PluginHelper.setupItem3DOptions(scene, this.cache, composition);
   }
 
   /**

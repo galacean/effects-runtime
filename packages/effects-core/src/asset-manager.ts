@@ -15,8 +15,6 @@ import { deserializeMipmapTexture, TextureSourceType, getKTXTextureOptions, Text
 import type { Renderer } from './render';
 import { COMPRESSED_TEXTURE } from './render';
 import { combineImageTemplate, getBackgroundImage } from './template-image';
-import { Asset } from './asset';
-import type { Engine } from './engine';
 
 let seed = 1;
 
@@ -185,8 +183,6 @@ export class AssetManager implements Disposable {
         await hookTimeInfo('plugin:prepareResource', () => pluginSystem.loadResources(scene, this.options));
       }
 
-      await hookTimeInfo('prepareAssets', () => this.prepareAssets(renderer?.engine));
-
       const totalTime = performance.now() - startTime;
 
       logger.info(`Load asset: totalTime: ${totalTime.toFixed(4)}ms ${timeInfoMessages.join(' ')}, url: ${assetUrl}.`);
@@ -201,6 +197,10 @@ export class AssetManager implements Disposable {
     };
 
     return Promise.race([waitPromise, loadResourcePromise()]);
+  }
+
+  getAssets () {
+    return this.assets;
   }
 
   private async precompile (
@@ -385,21 +385,6 @@ export class AssetManager implements Disposable {
 
     for (let i = 0; i < assets.length; i++) {
       this.assets[assets[i].id] = loadedAssets[i] as ImageLike;
-    }
-  }
-
-  private async prepareAssets (engine?: Engine) {
-    if (!engine) {
-      return;
-    }
-
-    for (const assetId of Object.keys(this.assets)) {
-      const asset = this.assets[assetId];
-      const engineAsset = new Asset(engine);
-
-      engineAsset.data = asset;
-      engineAsset.setInstanceId(assetId);
-      engine.addInstance(engineAsset);
     }
   }
 

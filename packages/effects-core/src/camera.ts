@@ -1,7 +1,7 @@
 import { Vector3 } from '@galacean/effects-math/es/core/vector3';
-import { Quaternion } from '@galacean/effects-math/es/core/quaternion';
+import type { Quaternion } from '@galacean/effects-math/es/core/quaternion';
 import { Matrix4 } from '@galacean/effects-math/es/core/matrix4';
-import { Euler } from '@galacean/effects-math/es/core/euler';
+import type { Euler } from '@galacean/effects-math/es/core/euler';
 import { DEG2RAD } from '@galacean/effects-math/es/core/utils';
 import * as spec from '@galacean/effects-specification';
 import { Transform } from './transform';
@@ -72,15 +72,14 @@ export class Camera {
    * 编辑器用于缩放画布
    */
   private viewportMatrix = Matrix4.fromIdentity();
-  private options: CameraOptionsEx;
+  private options: CameraOptionsBase;
   private viewMatrix = Matrix4.fromIdentity();
   private projectionMatrix = Matrix4.fromIdentity();
   private viewProjectionMatrix = Matrix4.fromIdentity();
   private inverseViewMatrix = Matrix4.fromIdentity();
   private inverseProjectionMatrix: Matrix4 | null;
   private inverseViewProjectionMatrix: Matrix4 | null;
-  private parentWorldMatrix = Matrix4.fromIdentity();
-
+  private transform: Transform = new Transform();
   private dirty = true;
 
   /**
@@ -102,11 +101,9 @@ export class Camera {
       rotation = [0, 0, 0],
     } = options;
 
-    this.options = {
-      near, far, fov, aspect, clipMode,
-      position: Vector3.fromArray(position),
-      rotation: Euler.fromArray(rotation),
-    };
+    this.options = { near, far, fov, aspect, clipMode };
+    this.transform.setPosition(position[0], position[1], position[2]);
+    this.transform.setRotation(rotation[0], rotation[1], rotation[2]);
     this.dirty = true;
     this.updateMatrix();
   }
@@ -176,24 +173,34 @@ export class Camera {
       this.options.clipMode = clipMode;
       this.dirty = true;
     }
-
   }
   get clipMode () {
     return this.options.clipMode;
   }
 
   /**
-   * 设置相机的位置
+   * 设置相机的本地位置
    * @param value
    */
   set position (value: Vector3) {
-    if (!this.options.position.equals(value)) {
-      this.options.position.copyFrom(value);
+    if (!this.transform.position.equals(value)) {
+      this.transform.setPosition(value.x, value.y, value.z);
       this.dirty = true;
     }
   }
+  /**
+   * 获取相机的本地位置
+   */
   get position () {
-    return this.options.position.clone();
+    return this.transform.position.clone();
+  }
+
+  /**
+   * 获取相机的世界位置
+   * @since 2.3.0
+   */
+  get worldPosition () {
+    return this.transform.getWorldPosition();
   }
 
   /**
@@ -201,14 +208,24 @@ export class Camera {
    * @param value
    */
   set rotation (value: Euler) {
-    if (!this.options.rotation.equals(value)) {
-      this.options.rotation.copyFrom(value);
+    if (!this.transform.rotation.equals(value)) {
+      this.transform.setRotation(value.x, value.y, value.z);
       this.dirty = true;
-      this.options.quat = undefined;
     }
   }
   get rotation () {
-    return this.options.rotation.clone();
+    return this.transform.rotation.clone();
+  }
+
+  /**
+   * 设置相机变换
+   * @since 2.3.0
+   * @param transform
+   */
+  setTransform (transform: Transform) {
+    this.transform.parentTransform = transform.parentTransform;
+    this.transform.cloneFromMatrix(transform.getMatrix());
+    this.dirty = true;
   }
 
   setViewportMatrix (matrix: Matrix4) {
@@ -218,27 +235,6 @@ export class Camera {
 
   getViewportMatrix () {
     return this.viewportMatrix;
-  }
-
-  /**
-   * @internal
-   * 获取相机的父节点世界矩阵
-   */
-  getParentWorldMatrix () {
-    return this.parentWorldMatrix;
-  }
-
-  /**
-   * @internal
-   * 设置相机的父节点世界矩阵
-   * @param matrix 父节点世界矩阵
-   */
-  setParentWorldMatrix (matrix: Matrix4) {
-    if (this.parentWorldMatrix.equals(matrix)) {
-      return;
-    }
-    this.parentWorldMatrix.copyFrom(matrix);
-    this.dirty = true;
   }
 
   /**
@@ -341,18 +337,7 @@ export class Camera {
    * @param value - 旋转四元数
    */
   setQuat (value: Quaternion) {
-    if (this.options.quat === undefined) {
-      this.options.quat = value.clone();
-      this.dirty = true;
-    } else {
-      if (!this.options.quat.equals(value)) {
-        this.options.quat.copyFrom(value);
-        this.dirty = true;
-      }
-    }
-    if (this.dirty) {
-      this.setRotationByQuat(value);
-    }
+    this.transform.setQuaternion(value.x, value.y, value.z, value.w);
   }
 
   /**
@@ -360,20 +345,7 @@ export class Camera {
    * @returns
    */
   getQuat (): Quaternion {
-    let quat = this.options.quat;
-
-    if (quat === undefined) {
-      quat = new Quaternion();
-      const { rotation } = this.options;
-
-      if (rotation) {
-        quat.setFromEuler(rotation);
-      }
-
-      this.options.quat = quat;
-    }
-
-    return quat;
+    return this.transform.quat.clone();
   }
 
   /**
@@ -381,7 +353,11 @@ export class Camera {
    * @returns 相机 options
    */
   getOptions (): CameraOptionsEx {
-    return this.options;
+    return {
+      ...this.options,
+      position: this.position.clone(),
+      rotation: this.rotation.clone(),
+    };
   }
 
   /**
@@ -414,23 +390,19 @@ export class Camera {
    */
   updateMatrix () {
     if (this.dirty) {
-      const { fov, aspect, near, far, clipMode, position } = this.options;
+      const { fov, aspect, near, far, clipMode } = this.options;
 
       this.projectionMatrix.perspective(
         fov * DEG2RAD, aspect, near, far,
         clipMode === spec.CameraClipMode.portrait
       );
       this.projectionMatrix.premultiply(this.viewportMatrix);
-      this.inverseViewMatrix.compose(position, this.getQuat(), tmpScale);
-      this.inverseViewMatrix.premultiply(this.parentWorldMatrix);
+      this.inverseViewMatrix.compose(this.position, this.getQuat().conjugate(), tmpScale);
+      this.inverseViewMatrix.premultiply(this.transform.getParentMatrix() ?? Matrix4.IDENTITY);
       this.viewMatrix.copyFrom(this.inverseViewMatrix).invert();
       this.viewProjectionMatrix.multiplyMatrices(this.projectionMatrix, this.viewMatrix);
       this.inverseViewProjectionMatrix = null;
       this.dirty = false;
     }
-  }
-
-  private setRotationByQuat (quat: Quaternion) {
-    Transform.getRotation(quat, this.options.rotation);
   }
 }
