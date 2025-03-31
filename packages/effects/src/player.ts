@@ -345,7 +345,6 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
         compositions[index] = composition;
-        index += 1;
       }),
     );
 
