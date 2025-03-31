@@ -339,7 +339,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         this.assetService.prepareAssets(scene, assetManager.getAssets());
         this.assetService.updateTextVariables(scene, assetManager.options.variables);
         this.assetService.initializeTexture(scene);
-        assetManager.precompile(scene.jsonScene.compositions, scene.pluginSystem, this.renderer, options);
+
+        scene.pluginSystem.precompile(scene.jsonScene.compositions, this.renderer, options);
 
         const composition = this.createComposition(scene, opts);
 

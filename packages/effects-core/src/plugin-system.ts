@@ -21,12 +21,10 @@ const pluginCtrlMap: Record<string, VFXItemConstructor> = {};
  * @param itemClass class of item
  * @param isDefault load
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function registerPlugin<T> (
+export function registerPlugin (
   name: string,
   pluginClass: PluginConstructor,
   itemClass: VFXItemConstructor,
-  isDefault?: boolean,
 ) {
   if (pluginCtrlMap[name]) {
     logger.error(`Duplicate registration for plugin ${name}.`);
@@ -35,9 +33,7 @@ export function registerPlugin<T> (
   pluginCtrlMap[name] = itemClass;
   pluginLoaderMap[name] = pluginClass;
 
-  if (isDefault) {
-    addItem(defaultPlugins, name);
-  }
+  addItem(defaultPlugins, name);
 }
 export function unregisterPlugin (name: string) {
   delete pluginCtrlMap[name];
@@ -48,7 +44,7 @@ export function unregisterPlugin (name: string) {
 export class PluginSystem {
   readonly plugins: Plugin[];
 
-  constructor (pluginNames: string[]) {
+  constructor () {
     const loaders: Record<string, PluginConstructor> = {};
     const loaded: PluginConstructor[] = [];
     const addLoader = (name: string) => {
@@ -61,7 +57,6 @@ export class PluginSystem {
     };
 
     defaultPlugins.forEach(addLoader);
-    pluginNames.forEach(addLoader);
     this.plugins = Object.keys(loaders)
       .map(name => {
         const CTRL = pluginLoaderMap[name];

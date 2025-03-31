@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from './fallback';
 import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
-import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
@@ -201,22 +200,9 @@ export class AssetManager implements Disposable {
     return this.assets;
   }
 
-  precompile (
-    compositions: spec.CompositionData[],
-    pluginSystem: PluginSystem,
-    renderer?: Renderer,
-    options?: PrecompileOptions,
-  ) {
-    if (!renderer || !renderer.getShaderLibrary()) {
-      return;
-    }
-    pluginSystem.precompile(compositions, renderer, options);
-  }
-
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
-    const { plugins = [] } = jsonScene;
-    const pluginSystem = new PluginSystem(plugins);
+    const pluginSystem = new PluginSystem();
 
     await pluginSystem.processRawJSON(jsonScene, this.options);
 

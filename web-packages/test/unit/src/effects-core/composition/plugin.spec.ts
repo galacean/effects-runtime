@@ -54,7 +54,7 @@ describe('core/composition/plugin', () => {
       }
     }
 
-    registerPlugin('test-plugin', TestPlugin, VFXItem, true);
+    registerPlugin('test-plugin', TestPlugin, VFXItem);
     await player.loadScene(generateScene());
 
     player.gotoAndStop(0.1);
