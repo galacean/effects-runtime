@@ -332,8 +332,8 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         const assetManager = new AssetManager(opts);
 
         // TODO 多 json 之间目前不共用资源，如果后续需要多 json 共用，这边缓存机制需要额外处理
-        // 在 assetManager.loadScene 前清除，避免 loadScene 创建的 EffectsObject 对象丢失
         this.assetManagers.push(assetManager);
+
         const scene = await assetManager.loadScene(source, this.renderer, { env: this.env });
 
         this.assetService.prepareAssets(scene, assetManager.getAssets());
@@ -345,6 +345,7 @@ export class Player extends EventEmitter<PlayerEvent<Player>> implements Disposa
         this.baseCompositionIndex += 1;
         composition.setIndex(baseOrder + index);
         compositions[index] = composition;
+        index += 1;
       }),
     );
 

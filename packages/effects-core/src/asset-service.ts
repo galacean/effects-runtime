@@ -25,7 +25,6 @@ export class AssetService implements Disposable {
   }
 
   /**
-   * @internal
    * @param url
    * @param options
    * @returns
@@ -59,7 +58,6 @@ export class AssetService implements Disposable {
    * 根据用户参数修改文本元素的原始数据
    * @param scene
    * @param options
-   * @internal
    */
   updateTextVariables (
     scene: Scene,
