@@ -4,6 +4,7 @@
 import type { Color } from '@galacean/effects-math/es/core/color';
 import * as spec from '@galacean/effects-specification';
 import { Point } from './point';
+import { NumberEpsilon } from '@galacean/effects-math/es/core/utils';
 
 export const closePointEps = 1e-4;
 export const curveEps = 0.0001;
@@ -280,7 +281,8 @@ export function buildLine (
   let perp1x = 0;
   let perp1y = 0;
 
-  let dist = Math.sqrt((perpX * perpX) + (perpY * perpY));
+  // 计算向量长度并添加极小值 NumberEpsilon 以避免除以零的情况。
+  let dist = Math.sqrt((perpX * perpX) + (perpY * perpY)) + NumberEpsilon;
 
   perpX /= dist;
   perpY /= dist;
@@ -329,7 +331,7 @@ export function buildLine (
     perpX = -(y0 - y1);
     perpY = x0 - x1;
 
-    dist = Math.sqrt((perpX * perpX) + (perpY * perpY));
+    dist = Math.sqrt((perpX * perpX) + (perpY * perpY)) + NumberEpsilon;
     perpX /= dist;
     perpY /= dist;
     perpX *= width;
@@ -338,7 +340,7 @@ export function buildLine (
     perp1x = -(y1 - y2);
     perp1y = x1 - x2;
 
-    dist = Math.sqrt((perp1x * perp1x) + (perp1y * perp1y));
+    dist = Math.sqrt((perp1x * perp1x) + (perp1y * perp1y)) + NumberEpsilon;
     perp1x /= dist;
     perp1y /= dist;
     perp1x *= width;
@@ -500,7 +502,7 @@ export function buildLine (
   perpX = -(y0 - y1);
   perpY = x0 - x1;
 
-  dist = Math.sqrt((perpX * perpX) + (perpY * perpY));
+  dist = Math.sqrt((perpX * perpX) + (perpY * perpY)) + NumberEpsilon;
   perpX /= dist;
   perpY /= dist;
   perpX *= width;
