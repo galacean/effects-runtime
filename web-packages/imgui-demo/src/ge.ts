@@ -234,7 +234,266 @@ export class GalaceanEffects {
     GalaceanEffects.player.ticker.add(GalaceanEffects.updateRenderTexture);
     GalaceanEffects.assetDataBase = new AssetDatabase(GalaceanEffects.player.renderer.engine);
     GalaceanEffects.player.renderer.engine.database = GalaceanEffects.assetDataBase;
-    GalaceanEffects.playURL('https://mdn.alipayobjects.com/mars/afts/file/A*e_PETLT8XnAAAAAAAAAAAAAAelB4AQ');
+    //@ts-expect-error
+    GalaceanEffects.playURL({
+      'playerVersion': {
+        'web': '2.0.4',
+        'native': '0.0.1.202311221223',
+      },
+      'images': [],
+      'fonts': [],
+      'version': '3.0',
+      'shapes': [],
+      'plugins': [],
+      'type': 'ge',
+      'compositions': [
+        {
+          'id': '1',
+          'name': '新建合成1',
+          'duration': 6,
+          'startTime': 0,
+          'endBehavior': 4,
+          'previewSize': [
+            750,
+            1624,
+          ],
+          'items': [
+            {
+              'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
+            },
+          ],
+          'camera': {
+            'fov': 60,
+            'far': 40,
+            'near': 0.1,
+            'clipMode': 1,
+            'position': [
+              0,
+              0,
+              8,
+            ],
+            'rotation': [
+              0,
+              0,
+              0,
+            ],
+          },
+          'sceneBindings': [
+            {
+              'key': {
+                'id': 'f8a6089ed7794f479907ed0bcac17220',
+              },
+              'value': {
+                'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
+              },
+            },
+          ],
+          'timelineAsset': {
+            'id': 'dd50ad0de3f044a5819576175acf05f7',
+          },
+        },
+      ],
+      'components': [
+        {
+          'id': 'b7890caa354a4c279ff9678c5530cd83',
+          'item': {
+            'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
+          },
+          'dataType': 'ShapeComponent',
+          'type': 0,
+          'points': [
+            {
+              'x': -1,
+              'y': -1,
+              'z': 0,
+            },
+            {
+              'x': 1,
+              'y': -1,
+              'z': 0,
+            },
+            {
+              'x': 0,
+              'y': 1,
+              'z': 0,
+            },
+          ],
+          'easingIns': [
+            {
+              'x': -1,
+              'y': -0.5,
+              'z': 0,
+            },
+            {
+              'x': 0.5,
+              'y': -1.5,
+              'z': 0,
+            },
+            {
+              'x': 0.5,
+              'y': 1,
+              'z': 0,
+            },
+          ],
+          'easingOuts': [
+            {
+              'x': -0.5,
+              'y': -1.5,
+              'z': 0,
+            },
+            {
+              'x': 1,
+              'y': -0.5,
+              'z': 0,
+            },
+            {
+              'x': -0.5,
+              'y': 1,
+              'z': 0,
+            },
+          ],
+          'shapes': [
+            {
+              'verticalToPlane': 'z',
+              'indexes': [
+                {
+                  'point': 0,
+                  'easingIn': 0,
+                  'easingOut': 0,
+                },
+                {
+                  'point': 1,
+                  'easingIn': 1,
+                  'easingOut': 1,
+                },
+                {
+                  'point': 2,
+                  'easingIn': 2,
+                  'easingOut': 2,
+                },
+              ],
+              'close': true,
+              'fill': {
+                'color': { 'r': 1, 'g': 0.7, 'b': 0.5, 'a': 1 },
+              },
+            },
+          ],
+          'renderer': {
+            'renderMode': 1,
+          },
+        },
+      ],
+      'geometries': [],
+      'materials': [],
+      'items': [
+        {
+          'id': '21135ac68dfc49bcb2bc7552cbb9ad07',
+          'name': 'sprite_1',
+          'duration': 5,
+          'type': '1',
+          'visible': true,
+          'endBehavior': 0,
+          'delay': 0,
+          'renderLevel': 'B+',
+          'components': [
+            {
+              'id': 'b7890caa354a4c279ff9678c5530cd83',
+            },
+          ],
+          'transform': {
+            'position': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'eulerHint': {
+              'x': 0,
+              'y': 0,
+              'z': 0,
+            },
+            'anchor': {
+              'x': 0,
+              'y': 0,
+            },
+            'size': {
+              'x': 1.2,
+              'y': 1.2,
+            },
+            'scale': {
+              'x': 1,
+              'y': 1,
+              'z': 1,
+            },
+          },
+          'dataType': 'VFXItemData',
+        },
+      ],
+      'shaders': [],
+      'bins': [],
+      'textures': [],
+      'animations': [],
+      'miscs': [
+        {
+          'id': 'dd50ad0de3f044a5819576175acf05f7',
+          'dataType': 'TimelineAsset',
+          'tracks': [
+          ],
+        },
+        {
+          'id': '51ed062462544526998daf514c320854',
+          'dataType': 'ActivationPlayableAsset',
+        },
+        {
+          'id': '9fd3412cf92c4dc19a2deabb942dadb2',
+          'dataType': 'TransformPlayableAsset',
+          'positionOverLifetime': {},
+        },
+        {
+          'id': 'a59a15a3f3b4414abb81217733561926',
+          'dataType': 'ActivationTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 5,
+              'endBehavior': 0,
+              'asset': {
+                'id': '51ed062462544526998daf514c320854',
+              },
+            },
+          ],
+        },
+        {
+          'id': '9436a285d586414ab72622f64b11f54d',
+          'dataType': 'TransformTrack',
+          'children': [],
+          'clips': [
+            {
+              'start': 0,
+              'duration': 5,
+              'endBehavior': 0,
+              'asset': {
+                'id': '9fd3412cf92c4dc19a2deabb942dadb2',
+              },
+            },
+          ],
+        },
+        {
+          'id': 'f8a6089ed7794f479907ed0bcac17220',
+          'dataType': 'ObjectBindingTrack',
+          'children': [
+            {
+              'id': 'a59a15a3f3b4414abb81217733561926',
+            },
+            {
+              'id': '9436a285d586414ab72622f64b11f54d',
+            },
+          ],
+          'clips': [],
+        },
+      ],
+      'compositionId': '1',
+    });
   }
 
   static playURL (url: string, use3DConverter = false) {
