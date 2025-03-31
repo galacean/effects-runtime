@@ -1,7 +1,4 @@
 import { registerPlugin } from './plugin-system';
-import type {
-  CameraController, InteractComponent, ParticleSystem, SpriteComponent, TextComponent,
-} from './plugins';
 import {
   CalculateLoader, CameraVFXItemLoader, InteractLoader, ParticleLoader, SpriteLoader, TextLoader,
 } from './plugins';
@@ -53,12 +50,12 @@ export * from './effects-package';
 export * from './events';
 export * from './pass-render-level';
 
-registerPlugin<CameraController>('camera', CameraVFXItemLoader, VFXItem, true);
-registerPlugin<TextComponent>('text', TextLoader, VFXItem, true);
-registerPlugin<SpriteComponent>('sprite', SpriteLoader, VFXItem, true);
-registerPlugin<ParticleSystem>('particle', ParticleLoader, VFXItem, true);
-registerPlugin('cal', CalculateLoader, VFXItem, true);
-registerPlugin<InteractComponent>('interact', InteractLoader, VFXItem, true);
+registerPlugin('camera', CameraVFXItemLoader, VFXItem);
+registerPlugin('text', TextLoader, VFXItem);
+registerPlugin('sprite', SpriteLoader, VFXItem);
+registerPlugin('particle', ParticleLoader, VFXItem);
+registerPlugin('cal', CalculateLoader, VFXItem);
+registerPlugin('interact', InteractLoader, VFXItem);
 
 export const version = __VERSION__;
 

@@ -2,7 +2,6 @@ import * as spec from '@galacean/effects-specification';
 import { getStandardJSON } from './fallback';
 import { glContext } from './gl';
 import { passRenderLevel } from './pass-render-level';
-import type { PrecompileOptions } from './plugin-system';
 import { PluginSystem } from './plugin-system';
 import type { JSONValue } from './downloader';
 import { Downloader, loadWebPOptional, loadImage, loadVideo, loadMedia, loadAVIFOptional } from './downloader';
@@ -146,23 +145,21 @@ export class AssetManager implements Disposable {
         };
 
         const { jsonScene, pluginSystem, images: loadedImages } = scene;
-        const { compositions, images } = jsonScene;
+        const { images } = jsonScene;
 
         this.assignImagesToAssets(images, loadedImages);
         await Promise.all([
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
-          hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
         ]);
       } else {
         // TODO: JSONScene 中 bins 的类型可能为 ArrayBuffer[]
         const { jsonScene, pluginSystem } = await hookTimeInfo('processJSON', () => this.processJSON(rawJSON as JSONValue));
-        const { bins = [], images, compositions, fonts } = jsonScene;
+        const { bins = [], images, fonts } = jsonScene;
 
         const [loadedBins, loadedImages] = await Promise.all([
           hookTimeInfo('processBins', () => this.processBins(bins)),
           hookTimeInfo('processImages', () => this.processImages(images, compressedTexture)),
           hookTimeInfo('plugin:processAssets', () => this.processPluginAssets(jsonScene, pluginSystem, options)),
-          hookTimeInfo('plugin:precompile', () => this.precompile(compositions, pluginSystem, renderer, options)),
           hookTimeInfo('processFontURL', () => this.processFontURL(fonts as spec.FontDefine[])),
         ]);
         const loadedTextures = await hookTimeInfo('processTextures', () => this.processTextures(loadedImages, loadedBins, jsonScene));
@@ -203,22 +200,9 @@ export class AssetManager implements Disposable {
     return this.assets;
   }
 
-  private async precompile (
-    compositions: spec.CompositionData[],
-    pluginSystem: PluginSystem,
-    renderer?: Renderer,
-    options?: PrecompileOptions,
-  ) {
-    if (!renderer || !renderer.getShaderLibrary()) {
-      return;
-    }
-    await pluginSystem.precompile(compositions, renderer, options);
-  }
-
   private async processJSON (json: JSONValue) {
     const jsonScene = getStandardJSON(json);
-    const { plugins = [] } = jsonScene;
-    const pluginSystem = new PluginSystem(plugins);
+    const pluginSystem = new PluginSystem();
 
     await pluginSystem.processRawJSON(jsonScene, this.options);
 

@@ -18,7 +18,7 @@ export {
   getSkeletonFromBuffer,
 };
 
-registerPlugin<void>('spine', class SpineLoader extends AbstractPlugin { }, VFXItem);
+registerPlugin('spine', class SpineLoader extends AbstractPlugin { }, VFXItem);
 
 /**
  * 插件版本号

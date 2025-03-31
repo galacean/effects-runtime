@@ -7,7 +7,7 @@ const { expect } = chai;
 
 class CustomePlugin extends AbstractPlugin { }
 
-registerPlugin('orientation-transformer', CustomePlugin, VFXItem, true);
+registerPlugin('orientation-transformer', CustomePlugin, VFXItem);
 
 describe('显存泄漏（单合成）', function () {
   this.timeout(60 * 1000);
