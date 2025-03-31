@@ -111,7 +111,7 @@ describe('测试 CameraGestureHandler 对象接口', function () {
       speed: 15,
     });
     comp.camera.getQuat().toArray().forEach((v, i) => {
-      expect([-0.41165038943, -0.5583808422088, 0.6160783171653, -0.3730981945991][i]).closeTo(v, 1e-5);
+      expect([0.41165038943, 0.5583808422088, -0.6160783171653, 0.3730981945991][i]).closeTo(v, 1e-5);
     });
     comp.camera.position.toArray().forEach((v, i) => {
       expect([4.380855560302, 90.79966735839, 83.62515258789][i]).closeTo(v, 1e-5);
@@ -129,7 +129,7 @@ describe('测试 CameraGestureHandler 对象接口', function () {
       speed: 7,
     });
     comp.camera.getQuat().toArray().forEach((v, i) => {
-      expect([-0.4116503894329071, -0.5583808422088623, 0.6160783171653748, -0.3730981945991516][i]).closeTo(v, 1e-5);
+      expect([0.4116503894329071, 0.5583808422088623, -0.6160783171653748, 0.3730981945991516][i]).closeTo(v, 1e-5);
     });
     comp.camera.position.toArray().forEach((v, i) => {
       expect([14.007980346679688, 84.97274780273438, 84.22966766357422][i]).closeTo(v, 1e-5);
@@ -153,7 +153,7 @@ describe('测试 CameraGestureHandler 对象接口', function () {
     handler.onRotatingPoint(420, 370);
     handler.onRotatePointEnd();
     comp.camera.getQuat().toArray().forEach((v, i) => {
-      expect([0.115898996591568, 0.8160297870635986, -0.5383279919624329, 0.17568668723106384][i]).closeTo(v, 1e-5);
+      expect([-0.115898996591568, -0.8160297870635986, 0.5383279919624329, -0.17568668723106384][i]).closeTo(v, 1e-5);
     });
     comp.camera.position.toArray().forEach((v, i) => {
       expect([50.17472457885742, 65.73796081542969, 79.31233215332031][i]).closeTo(v, 1e-5);
@@ -280,7 +280,7 @@ describe('测试 CameraGestureHandler 对象接口', function () {
       expect([-263.5001525878906, -2097.41015625, -383.27386474609375][i]).closeTo(v, 5e-4);
     });
     comp.camera.getQuat().toArray().forEach((v, i) => {
-      expect([0.22716321051120758, 0.5978137254714966, 0.74696946144104, -0.18180298805236816][i]).closeTo(v, 1e-5);
+      expect([-0.22716321051120758, -0.5978137254714966, -0.74696946144104, 0.18180298805236816][i]).closeTo(v, 1e-5);
     });
     handler.onRotatingPoint(999, 1001);
     handler.onRotatePointEnd();
