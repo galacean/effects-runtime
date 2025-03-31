@@ -61,7 +61,7 @@ export class ModelPlugin extends AbstractPlugin {
     await CompositionCache.loadStaticResources();
   }
 
-  static override precompile (compositions: spec.Composition[], renderer: Renderer): Promise<void> {
+  override precompile (compositions: spec.CompositionData[], renderer: Renderer): Promise<void> {
     const isWebGL2 = renderer.engine.gpuCapability.level === 2;
     const pbrShaderCode = fetchPBRShaderCode();
     const unlitShaderCode = fetchUnlitShaderCode();

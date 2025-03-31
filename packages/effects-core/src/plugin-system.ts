@@ -99,12 +99,14 @@ export class PluginSystem {
     return this.callStatic<{ assets: spec.AssetBase[], loadedAssets: unknown[] }>('processAssets', json, options);
   }
 
-  async precompile (
+  precompile (
     compositions: spec.CompositionData[],
     renderer: Renderer,
     options?: PrecompileOptions,
   ) {
-    return this.callStatic('precompile', compositions, renderer, options);
+    for (const plugin of this.plugins) {
+      plugin.precompile(compositions, renderer, options);
+    }
   }
 
   async loadResources (scene: Scene, options: SceneLoadOptions) {
