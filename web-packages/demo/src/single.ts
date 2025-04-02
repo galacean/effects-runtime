@@ -1,4 +1,4 @@
-import { Player } from '@galacean/effects';
+import { Player, TextComponent } from '@galacean/effects';
 import '@galacean/effects-plugin-spine';
 
 // 特效元素
@@ -20,5 +20,10 @@ const container = document.getElementById('J-container');
     },
   });
 
-  await player.loadScene(jsons);
+  const comp = await player.loadScene('https://mdn.alipayobjects.com/mars/afts/file/A*MjyfTJg5GpwAAAAAAAAAAAAAelB4AQ', {
+    variables: {
+
+    },
+  });
+  const item = comp.getItemByName('text_2')?.getComponent(TextComponent);
 })();

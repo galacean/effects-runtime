@@ -179,20 +179,20 @@ export class TextComponentBase {
     this.textStyle = new TextStyle(options);
     this.textLayout = new TextLayout(options);
     this.text = options.text.toString();
+    this.lineCount = this.getLineCount(options.text, true);
   }
 
-  private getLineCount (text: string, context: CanvasRenderingContext2D) {
-
+  private getLineCount (text: string, init: boolean) {
+    const context = this.context;
     const { letterSpace, overflow } = this.textLayout;
-
+    const fontScale = init ? this.textStyle.fontSize / 10 : 1 / this.textStyle.fontScale;
     const width = (this.textLayout.width + this.textStyle.fontOffset);
-
     let lineCount = 1;
     let x = 0;
 
     for (let i = 0; i < text.length; i++) {
       const str = text[i];
-      const textMetrics = context?.measureText(str)?.width ?? 0;
+      const textMetrics = (context?.measureText(str)?.width ?? 0) * fontScale;
 
       // 和浏览器行为保持一致
       x += letterSpace;
@@ -274,6 +274,7 @@ export class TextComponentBase {
       return;
     }
     this.text = value.toString();
+    this.lineCount = this.getLineCount(value, false);
     this.isDirty = true;
   }
 
@@ -465,6 +466,7 @@ export class TextComponentBase {
     const fontScale = style.fontScale;
 
     const width = (layout.width + style.fontOffset) * fontScale;
+    const finalHeight = layout.lineHeight * this.lineCount;
 
     const fontSize = style.fontSize * fontScale;
     const lineHeight = layout.lineHeight * fontScale;
@@ -472,11 +474,6 @@ export class TextComponentBase {
     style.fontDesc = this.getFontDesc(fontSize);
     this.char = (this.text || '').split('');
     this.canvas.width = width;
-    const height = this.canvas.height;
-
-    context.font = style.fontDesc;
-    this.lineCount = this.getLineCount(this.text, context);
-    const finalHeight = layout.lineHeight * this.lineCount;
 
     if (layout.autoWidth) {
       this.canvas.height = finalHeight * fontScale;
@@ -484,21 +481,23 @@ export class TextComponentBase {
     } else {
       this.canvas.height = layout.height * fontScale;
     }
+
+    const height = this.canvas.height;
+
+    // fix bug 1/255
+    context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
+
+    if (!flipY) {
+      context.translate(0, height);
+      context.scale(1, -1);
+    }
     // canvas size 变化后重新刷新 context
     if (this.maxLineWidth > width && layout.overflow === spec.TextOverflow.display) {
       context.font = this.getFontDesc(fontSize * width / this.maxLineWidth);
     } else {
       context.font = style.fontDesc;
     }
-    // fix bug 1/255
-    context.fillStyle = 'rgba(255, 255, 255, 0.0039)';
     context.clearRect(0, 0, width, height);
-
-    if (!flipY) {
-      context.translate(0, height);
-      context.scale(1, -1);
-    }
-    context.fillRect(0, 0, width, height);
 
     if (style.hasShadow) {
       this.setupShadow();
@@ -591,9 +590,9 @@ export class TextComponentBase {
     this.isDirty = false;
   }
 
-  private getFontDesc (fontSize: number): string {
-    const { fontFamily, textWeight, fontStyle } = this.textStyle;
-    let fontDesc = `${fontSize.toString()}px `;
+  private getFontDesc (size?: number): string {
+    const { fontSize, fontScale, fontFamily, textWeight, fontStyle } = this.textStyle;
+    let fontDesc = `${(size || fontSize * fontScale).toString()}px `;
 
     if (!DEFAULT_FONTS.includes(fontFamily)) {
       fontDesc += `"${fontFamily}"`;
