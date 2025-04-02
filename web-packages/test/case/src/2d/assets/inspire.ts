@@ -1,4 +1,36 @@
 export default {
+  wufu2022: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*dnU-SprU5pAAAAAAAAAAAAAADlB4AQ',
+    name: '2022-集五福氛围',
+  },
+  WufuParticle0: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*qTquTKYbk6EAAAAAAAAAAAAADsF2AQ',
+    name: '24五福烟花-步步高升',
+  },
+  WufuParticle1: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*OzJ7QZTxFbUAAAAAAAAAAAAADsF2AQ',
+    name: '24五福烟花-江山如画',
+  },
+  WufuParticle2: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*sEdkT5cdXGEAAAAAAAAAAAAADsF2AQ',
+    name: '24五福烟花-家和万事兴',
+  },
+  textParticle1: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*JS2GS4h_2REAAAAAAAAAAAAADsF2AQ',
+    name: '文字烟花-幸运',
+  },
+  textParticle2: {
+    url: 'https://mdn.alipayobjects.com/graph_jupiter/afts/file/A*yjUxQLnBbJwAAAAAAAAAAAAADsF2AQ',
+    name: '文字烟花-泼天富贵',
+  },
+  midAutumn: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*E8WcRom4-4cAAAAAAAAAAAAADlB4AQ',
+    name: '支付宝会员中秋',
+  },
+  particleFollow: {
+    url: 'https://mdn.alipayobjects.com/mars/afts/file/A*gU3-RKGZABcAAAAAAAAAAAAADlB4AQ',
+    name: '粒子跟随',
+  },
   preComp: {
     url: 'https://gw.alipayobjects.com/os/gltf-asset/97436498253707/pre.json',
     name: '预合成',
