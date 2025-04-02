@@ -7,6 +7,54 @@
 
 ---
 
+## 2.3.0
+
+`2025-04-02`
+
+- Feat: Added logic for Android to default to using WebGL2. [#861](https://github.com/galacean/effects-runtime/pull/861) @RGCHN
+- Feat: Extended the `setTexture` method to support direct input of resource URLs. [#862](https://github.com/galacean/effects-runtime/pull/862) @Sruimeng
+- Feat: shape component support multi-shape and stroke attribute. [#870](https://github.com/galacean/effects-runtime/pull/870) @wumaolinmaoan
+  - Feat: shape support both stroke and fill. [#899](https://github.com/galacean/effects-runtime/pull/899) @wumaolinmaoan
+  - Feat: support custom shape close attribute. [#902](https://github.com/galacean/effects-runtime/pull/902) @wumaolinmaoan
+  - Fix: shape bounding box error when draw line. [#896](https://github.com/galacean/effects-runtime/pull/896) @wumaolinmaoan
+  - Fix: primitive shape default close path and build line return Nan when dist is zero. [#920](https://github.com/galacean/effects-runtime/pull/920) @wumaolinmaoan
+- Feat: add vector2 curve. [#878](https://github.com/galacean/effects-runtime/pull/878) @wumaolinmaoan
+- Feat: support rectangle roundness. [#891](https://github.com/galacean/effects-runtime/pull/891) @wumaolinmaoan
+- Feat: support vector animation. [#882](https://github.com/galacean/effects-runtime/pull/882) @wumaolinmaoan
+  - Refactor: remove vector property mixer setZero function call. [#883](https://github.com/galacean/effects-runtime/pull/883) @wumaolinmaoan
+  - Feat: primitive shape support key frame animation. [#884](https://github.com/galacean/effects-runtime/pull/884) @wumaolinmaoan
+- Feat: particle follow emitter transform. [#887](https://github.com/galacean/effects-runtime/pull/887) @wumaolinmaoan
+- Feat: composition component add pause and resume. [#903](https://github.com/galacean/effects-runtime/pull/903) @wumaolinmaoan
+- Feat: Added an `onError` parameter to the `Player` initialization options to capture all exceptions during `new Player` or `loadScene`. [#905](https://github.com/galacean/effects-runtime/pull/905) @yiiqii
+- Feat: Support for dynamically modifying the maximum number of particles. [#913](https://github.com/galacean/effects-runtime/pull/913) @RGCHN
+  - Feat: opt max particles properties name and note. [#918](https://github.com/galacean/effects-runtime/pull/918) @wumaolinmaoan
+- Feat: Exposed video play and pause methods of the multimedia plugin and fixed video freeze logic. [#871](https://github.com/galacean/effects-runtime/pull/871) @Sruimeng
+- Feat: enhance video component for transparent video support. [#888](https://github.com/galacean/effects-runtime/pull/888) @Sruimeng
+  - Fix: improve alpha blending in transparent video shader. [#907](https://github.com/galacean/effects-runtime/pull/907) @Sruimeng
+- Feat: Added implementation for unsupported methods in the rich text component. [#892](https://github.com/galacean/effects-runtime/pull/892) @Sruimeng
+- Feat: Added support for text overflow modes and optimized text line count calculations. [#898](https://github.com/galacean/effects-runtime/pull/898) @Sruimeng
+  - Fix: Fixed issues with text component line count calculation and font description logic. [#927](https://github.com/galacean/effects-runtime/pull/927) @Sruimeng
+- Feat(rich-text): Added support for rich text size parameters and refactored text rendering logic. [#900](https://github.com/galacean/effects-runtime/pull/900) @Sruimeng
+- Feat(rich-text): Supported letter spacing adjustments and optimized text rendering logic. [#906](https://github.com/galacean/effects-runtime/pull/906) @Sruimeng
+- Fix: camera view matrix calculate. [#912](https://github.com/galacean/effects-runtime/pull/912) @wumaolinmaoan
+- Fix: Improved the processing of colors and uniform variables in `ThreeMaterial`. [#917](https://github.com/galacean/effects-runtime/pull/917) @Sruimeng
+- Fix: geometry bounding box. [#915](https://github.com/galacean/effects-runtime/pull/915) @wumaolinmaoan
+- Fix: camera gesture rotation. [#926](https://github.com/galacean/effects-runtime/pull/926) @wumaolinmaoan
+- Refactor: Refactored the `version31Migration` function and its calculation location. [#890](https://github.com/galacean/effects-runtime/pull/890) @Sruimeng
+- Refactor: base render component set color use math.Color type. [#908](https://github.com/galacean/effects-runtime/pull/908) @wumaolinmaoan
+  - Fix: sprite color unit test. [#910](https://github.com/galacean/effects-runtime/pull/910) @wumaolinmaoan
+- Refactor: Scene load and pre composition instantiation logic. [#909](https://github.com/galacean/effects-runtime/pull/909) @wumaolinmaoan
+  - Refactor: Refactored the THREE plugin to follow the Player's `loadScene` multi-composition changes. [#928](https://github.com/galacean/effects-runtime/pull/928) @yiiqii
+    - test: Added frame comparison test cases.
+    - fix: typo issue
+  - Refactor: plugin system register and precompile logic. [#922](https://github.com/galacean/effects-runtime/pull/922) @wumaolinmaoan
+    - fix 3d rendering error caused by precompile timing
+  - Fix: composition index issue. [#921](https://github.com/galacean/effects-runtime/pull/921) @yiiqii
+  - Fix: 3d unit test. [#923](https://github.com/galacean/effects-runtime/pull/923) @wumaolinmaoan
+- Perf: Removed the `string-hash` dependency, unifying the use of internal methods. [#877](https://github.com/galacean/effects-runtime/pull/877) @yiiqii
+- Build: Minified the output for mini-programs. [#911](https://github.com/galacean/effects-runtime/pull/911) @yiiqii
+- Chore: Replaced the resources used in the Spine multi-composition demo. [#919](https://github.com/galacean/effects-runtime/pull/919) @RGCHN
+
 ## 2.2.7
 
 `2025-02-28`
